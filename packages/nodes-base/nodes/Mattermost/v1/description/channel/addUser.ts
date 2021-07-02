@@ -1,8 +1,8 @@
 import {
-	INodeProperties,
-} from 'n8n-workflow';
+	ChannelProperties,
+} from '../../actions/Interfaces';
 
-const channelAddUserDescription: INodeProperties[] = [
+const channelAddUserDescription: ChannelProperties = [
 	{
 		displayName: 'Channel ID',
 		name: 'channelId',
@@ -47,7 +47,6 @@ const channelAddUserDescription: INodeProperties[] = [
 		},
 		description: 'The ID of the user to invite into channel.',
 	},
-	
 ];
 
 export { channelAddUserDescription };

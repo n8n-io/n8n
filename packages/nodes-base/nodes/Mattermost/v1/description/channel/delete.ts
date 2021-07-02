@@ -1,8 +1,8 @@
 import {
-	INodeProperties,
-} from 'n8n-workflow';
+	ChannelProperties,
+} from '../../actions/Interfaces';
 
-const channelDeleteDescription: INodeProperties[] = [
+const channelDeleteDescription: ChannelProperties = [
 	{
 		displayName: 'Channel ID',
 		name: 'channelId',
@@ -25,7 +25,7 @@ const channelDeleteDescription: INodeProperties[] = [
 		},
 		description: 'The ID of the channel to soft delete',
 	},
-	
+
 ];
 
 export { channelDeleteDescription };
