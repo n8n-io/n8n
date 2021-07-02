@@ -1,8 +1,8 @@
 import {
-	INodeProperties,
-} from 'n8n-workflow';
+	MessageProperties,
+} from '../../actions/Interfaces';
 
-const messageDeleteDescription: INodeProperties[] = [
+const messageDeleteDescription: MessageProperties = [
 	{
 		displayName: 'Post ID',
 		name: 'postId',
