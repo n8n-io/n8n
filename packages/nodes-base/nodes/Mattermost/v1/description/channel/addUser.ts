@@ -2,7 +2,7 @@ import {
 	ChannelProperties,
 } from '../../actions/Interfaces';
 
-const channelAddUserDescription: ChannelProperties = [
+export const channelAddUserDescription: ChannelProperties = [
 	{
 		displayName: 'Channel ID',
 		name: 'channelId',
@@ -48,5 +48,3 @@ const channelAddUserDescription: ChannelProperties = [
 		description: 'The ID of the user to invite into channel.',
 	},
 ];
-
-export { channelAddUserDescription };

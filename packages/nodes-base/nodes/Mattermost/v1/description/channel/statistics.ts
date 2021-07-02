@@ -2,7 +2,7 @@ import {
 	ChannelProperties,
 } from '../../actions/Interfaces';
 
-const channelStatisticsDescription: ChannelProperties = [
+export const channelStatisticsDescription: ChannelProperties = [
 	{
 		displayName: 'Channel ID',
 		name: 'channelId',
@@ -27,4 +27,3 @@ const channelStatisticsDescription: ChannelProperties = [
 	},
 ];
 
-export { channelStatisticsDescription };

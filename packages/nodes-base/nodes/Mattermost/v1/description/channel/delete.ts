@@ -2,7 +2,7 @@ import {
 	ChannelProperties,
 } from '../../actions/Interfaces';
 
-const channelDeleteDescription: ChannelProperties = [
+export const channelDeleteDescription: ChannelProperties = [
 	{
 		displayName: 'Channel ID',
 		name: 'channelId',
@@ -25,7 +25,4 @@ const channelDeleteDescription: ChannelProperties = [
 		},
 		description: 'The ID of the channel to soft delete',
 	},
-
 ];
-
-export { channelDeleteDescription };

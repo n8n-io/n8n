@@ -2,7 +2,7 @@ import {
 	ChannelProperties,
 } from '../../actions/Interfaces';
 
-const channelMembersDescription: ChannelProperties = [
+export const channelMembersDescription: ChannelProperties = [
 	{
 		displayName: 'Team ID',
 		name: 'teamId',
@@ -110,4 +110,3 @@ const channelMembersDescription: ChannelProperties = [
 	},
 ];
 
-export { channelMembersDescription };

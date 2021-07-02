@@ -2,7 +2,7 @@ import {
 	ChannelProperties,
 } from '../../actions/Interfaces';
 
-const channelCreateDescription: ChannelProperties = [
+export const channelCreateDescription: ChannelProperties = [
 	{
 		displayName: 'Team ID',
 		name: 'teamId',
@@ -90,7 +90,4 @@ const channelCreateDescription: ChannelProperties = [
 		default: 'public',
 		description: 'The type of channel to create.',
 	},
-
 ];
-
-export { channelCreateDescription };

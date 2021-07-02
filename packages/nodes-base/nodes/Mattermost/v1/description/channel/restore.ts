@@ -2,7 +2,7 @@ import {
 	ChannelProperties,
 } from '../../actions/Interfaces';
 
-const channelRestoreDescription: ChannelProperties = [
+export const channelRestoreDescription: ChannelProperties = [
 	{
 		displayName: 'Channel ID',
 		name: 'channelId',
@@ -22,5 +22,3 @@ const channelRestoreDescription: ChannelProperties = [
 		description: 'The ID of the channel to restore.',
 	},
 ];
-
-export { channelRestoreDescription };
