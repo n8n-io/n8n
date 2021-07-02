@@ -157,6 +157,7 @@ export const folderFields = [
 		default: '',
 		description: 'Folder ID',
 	},
+
 	/* -------------------------------------------------------------------------- */
 	/*                                 folder:delete                              */
 	/* -------------------------------------------------------------------------- */
@@ -451,6 +452,7 @@ export const folderFields = [
 			},
 		],
 	},
+
 	/* -------------------------------------------------------------------------- */
 	/*                                 folder:share                               */
 	/* -------------------------------------------------------------------------- */
@@ -590,14 +592,14 @@ export const folderFields = [
 		type: 'options',
 		options: [
 			{
+				name: 'Co-Owner',
+				value: 'coOwner',
+				description: 'A Co-owner has all of functional read/write access that an editor does',
+			},
+			{
 				name: 'Editor',
 				value: 'editor',
 				description: 'An editor has full read/write access to a folder or file',
-			},
-			{
-				name: 'Viewer',
-				value: 'viewer',
-				description: 'A viewer has read access to a folder or file',
 			},
 			{
 				name: 'Previewer',
@@ -605,24 +607,24 @@ export const folderFields = [
 				description: 'A previewer has limited read access',
 			},
 			{
-				name: 'Uploader',
-				value: 'uploader',
-				description: 'An uploader has limited write access',
-			},
-			{
 				name: 'Previewer Uploader',
 				value: 'previewerUploader',
 				description: 'This access level is a combination of Previewer and Uploader',
 			},
 			{
+				name: 'Uploader',
+				value: 'uploader',
+				description: 'An uploader has limited write access',
+			},
+			{
+				name: 'Viewer',
+				value: 'viewer',
+				description: 'A viewer has read access to a folder or file',
+			},
+			{
 				name: 'Viewer Uploader',
 				value: 'viewerUploader',
 				description: 'This access level is a combination of Viewer and Uploader',
-			},
-			{
-				name: 'Co-Owner',
-				value: 'coOwner',
-				description: 'A Co-owner has all of functional read/write access that an editor does',
 			},
 		],
 		displayOptions: {
@@ -686,6 +688,7 @@ export const folderFields = [
 			},
 		],
 	},
+
 	/* -------------------------------------------------------------------------- */
 	/*                                 folder:update                              */
 	/* -------------------------------------------------------------------------- */
@@ -790,9 +793,9 @@ export const folderFields = [
 						type: 'options',
 						options: [
 							{
-								name: 'Open',
-								value: 'open',
-								description: 'Anyone with the link',
+								name: 'Collaborators',
+								value: 'collaborators',
+								description: 'Only those who have been invited to the folder',
 							},
 							{
 								name: 'Company',
@@ -800,9 +803,9 @@ export const folderFields = [
 								description: 'only people within the company',
 							},
 							{
-								name: 'Collaborators',
-								value: 'collaborators',
-								description: 'Only those who have been invited to the folder',
+								name: 'Open',
+								value: 'open',
+								description: 'Anyone with the link',
 							},
 						],
 						default: 'open',
@@ -863,5 +866,3 @@ export const folderFields = [
 		],
 	},
 ] as INodeProperties[];
-
-
