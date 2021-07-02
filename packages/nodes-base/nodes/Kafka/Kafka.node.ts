@@ -81,7 +81,7 @@ export class Kafka implements INodeType {
 				name: 'useSchemaRegistry',
 				type: 'boolean',
 				default: false,
-				description: 'Use Apache Avro serialization format and Confluent\' wire formats.',
+				description: 'Use Confluent Schema Registry.',
 			},
 			{
 				displayName: 'Schema Registry URL',
@@ -95,7 +95,7 @@ export class Kafka implements INodeType {
 						],
 					},
 				},
-				default: '',
+				default: 'https://schema-registry-domain:8081',
 				description: 'URL of the schema registry.',
 			},
 			{
@@ -270,7 +270,9 @@ export class Kafka implements INodeType {
 					const id = await registry.getLatestSchemaId(eventName);
 
 					message = await registry.encode(id, JSON.parse(message));
-				} catch (error) {}
+				} catch (exception) {
+					throw new NodeOperationError(this.getNode(), 'Verify your Schema Registry configuration');
+				}
 			}
 
 			const topic = this.getNodeParameter('topic', i) as string;

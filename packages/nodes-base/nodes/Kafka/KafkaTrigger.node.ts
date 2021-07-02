@@ -63,7 +63,7 @@ export class KafkaTrigger implements INodeType {
 				name: 'useSchemaRegistry',
 				type: 'boolean',
 				default: false,
-				description: 'Use Apache Avro serialization format and Confluent\' wire formats.',
+				description: 'Use Confluent Schema Registry.',
 			},
 			{
 				displayName: 'Schema Registry URL',
@@ -77,7 +77,7 @@ export class KafkaTrigger implements INodeType {
 						],
 					},
 				},
-				default: '',
+				default: 'https://schema-registry-domain:8081',
 				description: 'URL of the schema registry.',
 			},
 			{
@@ -182,11 +182,6 @@ export class KafkaTrigger implements INodeType {
 
 		const schemaRegistryUrl = this.getNodeParameter('schemaRegistryUrl', 0) as string;
 
-		let registry: SchemaRegistry;
-		if (useSchemaRegistry) {
-			registry = new SchemaRegistry({ host: schemaRegistryUrl });
-		}
-
 		const startConsumer = async () => {
 			await consumer.run({
 				eachMessage: async ({ topic, message }) => {
@@ -202,6 +197,7 @@ export class KafkaTrigger implements INodeType {
 
 					if (useSchemaRegistry) {
 						try {
+							const registry = new SchemaRegistry({ host: schemaRegistryUrl });
 							value = await registry.decode(message.value as Buffer);
 						} catch (error) { }
 					}
