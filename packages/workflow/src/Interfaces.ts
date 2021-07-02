@@ -433,10 +433,10 @@ export interface INodePropertyTypeOptions {
 
 export interface IDisplayOptions {
 	hide?: {
-		[key: string]: NodeParameterValue[];
+		[key: string]: NodeParameterValue[] | undefined;
 	};
 	show?: {
-		[key: string]: NodeParameterValue[];
+		[key: string]: NodeParameterValue[] | undefined;
 	};
 }
 
@@ -813,3 +813,21 @@ export type CodexData = {
 export type JsonValue = string | number | boolean | null | JsonObject | JsonValue[];
 
 export type JsonObject = { [key: string]: JsonValue };
+
+export type AllEntities<M> = M extends { [key: string]: string }
+	? Entity<M, keyof M>
+	: never;
+
+export type Entity<M, K> = K extends keyof M
+	? { resource: K, operation: M[K] }
+	: never;
+
+export type PropertiesOf<M extends { resource: string; operation: string }> = Array<Omit<INodeProperties, 'displayOptions'> & {
+	displayOptions?: {
+		[key in 'show' | 'hide']?: {
+			resource?: Array<M['resource']>;
+			operation?: Array<M['operation']>;
+			[otherKey: string]: NodeParameterValue[] | undefined;
+		}
+	}
+}>;
