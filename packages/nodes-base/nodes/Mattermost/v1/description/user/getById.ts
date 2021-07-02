@@ -1,8 +1,8 @@
 import {
-	INodeProperties,
-} from 'n8n-workflow';
+	UserProperties,
+} from '../../actions/Interfaces';
 
-const userGetByIdDescription: INodeProperties[] = [
+const userGetByIdDescription: UserProperties = [
 	{
 		displayName: 'User IDs',
 		name: 'userIds',
