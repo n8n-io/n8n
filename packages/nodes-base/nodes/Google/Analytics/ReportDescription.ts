@@ -50,6 +50,47 @@ export const reportFields = [
 		description: 'The View ID of Google Analytics',
 	},
 	{
+		displayName: 'Return All',
+		name: 'returnAll',
+		type: 'boolean',
+		displayOptions: {
+			show: {
+				operation: [
+					'get',
+				],
+				resource: [
+					'report',
+				],
+			},
+		},
+		default: false,
+		description: 'If all results should be returned or only up to a given limit.',
+	},
+	{
+		displayName: 'Limit',
+		name: 'limit',
+		type: 'number',
+		displayOptions: {
+			show: {
+				operation: [
+					'get',
+				],
+				resource: [
+					'report',
+				],
+				returnAll: [
+					false,
+				],
+			},
+		},
+		typeOptions: {
+			minValue: 1,
+			maxValue: 1000,
+		},
+		default: 1000,
+		description: 'How many results to return.',
+	},
+	{
 		displayName: 'Simple',
 		name: 'simple',
 		type: 'boolean',
@@ -137,6 +178,85 @@ export const reportFields = [
 								},
 								default: '',
 								description: 'Name of the dimension to fetch, for example ga:browser.',
+							},
+						],
+					},
+				],
+			},
+			{
+				displayName: 'Dimension Filters',
+				name: 'dimensionFiltersUi',
+				type: 'fixedCollection',
+				default: {},
+				typeOptions: {
+					multipleValues: true,
+				},
+				placeholder: 'Add Dimension Filter',
+				description: 'Dimension Filters in the request',
+				options: [
+					{
+						displayName: 'Filters',
+						name: 'filterValues',
+						values: [
+							{
+								displayName: 'Dimension Name',
+								name: 'dimensionName',
+								type: 'options',
+								typeOptions: {
+									loadOptionsMethod: 'getDimensions',
+								},
+								default: '',
+								description: 'Name of the dimension to filter by.',
+							},
+							// https://developers.google.com/analytics/devguides/reporting/core/v4/rest/v4/reports/batchGet#Operator
+							{
+								displayName: 'Operator',
+								name: 'operator',
+								type: 'options',
+								default: 'EXACT',
+								description: 'Operator to use in combination with value.',
+								options: [
+									{
+										name: 'Begins With',
+										value: 'BEGINS_WITH',
+									},
+									{
+										name: 'Ends With',
+										value: 'ENDS_WITH',
+									},
+									{
+										name: 'Exact',
+										value: 'EXACT',
+									},
+									{
+										name: 'Greater Than (number)',
+										value: 'NUMERIC_GREATER_THAN',
+									},
+									{
+										name: 'Partial',
+										value: 'PARTIAL',
+									},
+									{
+										name: 'Regular Expression',
+										value: 'REGEXP',
+									},
+									{
+										name: 'Equal (number)',
+										value: 'NUMERIC_EQUAL',
+									},
+									{
+										name: 'Less Than (number)',
+										value: 'NUMERIC_LESS_THAN',
+									},
+								],
+							},
+							{
+								displayName: 'Value',
+								name: 'expressions',
+								type: 'string',
+								default: '',
+								placeholder: 'ga:newUsers',
+								description: `String or <a href="https://support.google.com/analytics/answer/1034324?hl=en" target="_blank">regular expression</a> to match against.`,
 							},
 						],
 					},

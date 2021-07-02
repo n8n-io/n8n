@@ -504,12 +504,12 @@ export const caseFields = [
 						name: 'Indeterminate',
 					},
 					{
-						value: 'False Positive',
-						name: 'FalsePositive',
+						value: 'FalsePositive',
+						name: 'False Positive',
 					},
 					{
-						value: 'True Positive',
-						name: 'TruePositive',
+						value: 'TruePositive',
+						name: 'True Positive',
 					},
 					{
 						value: 'Other',

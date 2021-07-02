@@ -158,6 +158,7 @@ import Vue from 'vue';
 import ExecutionTime from '@/components/ExecutionTime.vue';
 import WorkflowActivator from '@/components/WorkflowActivator.vue';
 
+import { externalHooks } from '@/components/mixins/externalHooks';
 import { restApi } from '@/components/mixins/restApi';
 import { genericHelpers } from '@/components/mixins/genericHelpers';
 import { showMessage } from '@/components/mixins/showMessage';
@@ -175,9 +176,14 @@ import {
 	IDataObject,
 } from 'n8n-workflow';
 
+import {
+	range as _range,
+} from 'lodash';
+
 import mixins from 'vue-typed-mixins';
 
 export default mixins(
+	externalHooks,
 	genericHelpers,
 	restApi,
 	showMessage,
@@ -432,12 +438,29 @@ export default mixins(
 
 			this.$store.commit('setActiveExecutions', results[1]);
 
-			const alreadyPresentExecutionIds = this.finishedExecutions.map(exec => exec.id);
+			// execution IDs are typed as string, int conversion is necessary so we can order.
+			const alreadyPresentExecutionIds = this.finishedExecutions.map(exec => parseInt(exec.id, 10));
+			let lastId = 0;
+			const gaps = [] as number[];
 			for(let i = results[0].results.length - 1; i >= 0; i--) {
 				const currentItem = results[0].results[i];
+				const currentId = parseInt(currentItem.id, 10);
+				if (lastId !== 0 && isNaN(currentId) === false) {
+					// We are doing this iteration to detect possible gaps.
+					// The gaps are used to remove executions that finished
+					// and were deleted from database but were displaying
+					// in this list while running.
+					if (currentId - lastId > 1) {
+						// We have some gaps.
+						const range = _range(lastId + 1, currentId);
+						gaps.push(...range);
+					}
+				}
+				lastId = parseInt(currentItem.id, 10) || 0;
+
 				// Check new results from end to start
 				// Add new items accordingly.
-				const executionIndex = alreadyPresentExecutionIds.indexOf(currentItem.id);
+				const executionIndex = alreadyPresentExecutionIds.indexOf(currentId);
 				if (executionIndex !== -1) {
 					// Execution that we received is already present.
 
@@ -455,7 +478,7 @@ export default mixins(
 				// Find the correct position to place this newcomer
 				let j;
 				for (j = this.finishedExecutions.length - 1; j >= 0; j--) {
-					if (currentItem.id < this.finishedExecutions[j].id) {
+					if (currentId < parseInt(this.finishedExecutions[j].id, 10)) {
 						this.finishedExecutions.splice(j + 1, 0, currentItem);
 						break;
 					}
@@ -464,6 +487,7 @@ export default mixins(
 					this.finishedExecutions.unshift(currentItem);
 				}
 			}
+			this.finishedExecutions = this.finishedExecutions.filter(execution => !gaps.includes(parseInt(execution.id, 10)) && lastId >= parseInt(execution.id, 10));
 			this.finishedExecutionsCount = results[0].count;
 		},
 		async loadFinishedExecutions (): Promise<void> {
@@ -537,6 +561,8 @@ export default mixins(
 			await this.loadWorkflows();
 			await this.refreshData();
 			this.handleAutoRefreshToggle();
+
+			this.$externalHooks().run('executionsList.openDialog');
 		},
 		async retryExecution (execution: IExecutionShortResponse, loadWorkflow?: boolean) {
 			this.isDataLoading = true;

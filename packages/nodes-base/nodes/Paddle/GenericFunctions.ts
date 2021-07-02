@@ -11,22 +11,26 @@ import {
 } from 'n8n-core';
 
 import {
-	IDataObject,
+	IDataObject, NodeApiError, NodeOperationError,
 } from 'n8n-workflow';
 
 export async function paddleApiRequest(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions | IWebhookFunctions, endpoint: string, method: string, body: any = {}, query?: IDataObject, uri?: string): Promise<any> { // tslint:disable-line:no-any
 	const credentials = this.getCredentials('paddleApi');
+	const productionUrl = 'https://vendors.paddle.com/api';
+	const sandboxUrl = 'https://sandbox-vendors.paddle.com/api';
 
 	if (credentials === undefined) {
-		throw new Error('Could not retrieve credentials!');
+		throw new NodeOperationError(this.getNode(), 'Could not retrieve credentials!');
 	}
+
+	const isSandbox = credentials.sandbox;
 
 	const options: OptionsWithUri = {
 		method,
 		headers: {
 			'content-type': 'application/json',
 		},
-		uri: `https://vendors.paddle.com/api${endpoint}`,
+		uri: `${isSandbox === true ? sandboxUrl : productionUrl}${endpoint}`,
 		body,
 		json: true,
 	};
@@ -37,12 +41,12 @@ export async function paddleApiRequest(this: IHookFunctions | IExecuteFunctions 
 		const response = await this.helpers.request!(options);
 
 		if (!response.success) {
-			throw new Error(`Code: ${response.error.code}. Message: ${response.error.message}`);
+			throw new NodeApiError(this.getNode(), response);
 		}
 
 		return response;
 	} catch (error) {
-		throw new Error(`ERROR: Code: ${error.code}. Message: ${error.message}`);
+		throw new NodeApiError(this.getNode(), error);
 	}
 }
 

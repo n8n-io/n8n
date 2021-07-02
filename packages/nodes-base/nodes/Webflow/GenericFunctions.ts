@@ -4,7 +4,6 @@ import {
 
 import {
 	IExecuteFunctions,
-	IExecuteSingleFunctions,
 	IHookFunctions,
 	ILoadOptionsFunctions,
 	IWebhookFunctions,
@@ -12,9 +11,19 @@ import {
 
 import {
 	IDataObject,
- } from 'n8n-workflow';
+	NodeApiError,
+	NodeOperationError,
+} from 'n8n-workflow';
 
-export async function webflowApiRequest(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions | IWebhookFunctions, method: string, resource: string, body: any = {}, qs: IDataObject = {}, uri?: string, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
+export async function webflowApiRequest(
+	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions | IWebhookFunctions,
+	method: string,
+	resource: string,
+	body: IDataObject = {},
+	qs: IDataObject = {},
+	uri?: string,
+	option: IDataObject = {},
+) {
 	const authenticationMethod = this.getNodeParameter('authentication', 0);
 
 	let options: OptionsWithUri = {
@@ -24,19 +33,23 @@ export async function webflowApiRequest(this: IHookFunctions | IExecuteFunctions
 		method,
 		qs,
 		body,
-		uri: uri ||`https://api.webflow.com${resource}`,
+		uri: uri || `https://api.webflow.com${resource}`,
 		json: true,
 	};
 	options = Object.assign({}, options, option);
+
+	if (Object.keys(options.qs).length === 0) {
+		delete options.qs;
+	}
+
 	if (Object.keys(options.body).length === 0) {
 		delete options.body;
 	}
-
 	try {
 		if (authenticationMethod === 'accessToken') {
 			const credentials = this.getCredentials('webflowApi');
 			if (credentials === undefined) {
-				throw new Error('No credentials got returned!');
+				throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
 			}
 
 			options.headers!['authorization'] = `Bearer ${credentials.accessToken}`;
@@ -46,9 +59,35 @@ export async function webflowApiRequest(this: IHookFunctions | IExecuteFunctions
 			return await this.helpers.requestOAuth2!.call(this, 'webflowOAuth2Api', options);
 		}
 	} catch (error) {
-		if (error.response.body.err) {
-			throw new Error(`Webflow Error: [${error.statusCode}]: ${error.response.body.err}`);
-		}
-		return error;
+		throw new NodeApiError(this.getNode(), error);
 	}
 }
+
+export async function webflowApiRequestAllItems(
+	this: IExecuteFunctions | ILoadOptionsFunctions,
+	method: string,
+	endpoint: string,
+	body: IDataObject = {},
+	query: IDataObject = {},
+) {
+
+	const returnData: IDataObject[] = [];
+
+	let responseData;
+
+	query.limit = 100;
+	query.offset = 0;
+
+	do {
+		responseData = await webflowApiRequest.call(this, method, endpoint, body, query);
+		if (responseData.offset !== undefined) {
+			query.offset += query.limit;
+		}
+		returnData.push.apply(returnData, responseData.items);
+	} while (
+		returnData.length < responseData.total
+	);
+
+	return returnData;
+}
+

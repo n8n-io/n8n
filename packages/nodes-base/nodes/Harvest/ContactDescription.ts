@@ -1,6 +1,10 @@
-import { INodeProperties } from 'n8n-workflow';
+import {
+	INodeProperties,
+} from 'n8n-workflow';
 
-const resource = ['contact'];
+const resource = [
+	'contact',
+];
 
 export const contactOperations = [
 	{
@@ -48,7 +52,7 @@ export const contactOperations = [
 export const contactFields = [
 
 	/* -------------------------------------------------------------------------- */
-	/*                                contact:getAll                            */
+	/*                                contact:getAll                              */
 	/* -------------------------------------------------------------------------- */
 
 	{
@@ -121,7 +125,7 @@ export const contactFields = [
 	},
 
 	/* -------------------------------------------------------------------------- */
-	/*                                contact:get                            */
+	/*                                contact:get                                 */
 	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Contact Id',
@@ -141,7 +145,7 @@ export const contactFields = [
 	},
 
 	/* -------------------------------------------------------------------------- */
-	/*                                contact:delete                            */
+	/*                                contact:delete                              */
 	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Contact Id',
@@ -161,7 +165,7 @@ export const contactFields = [
 	},
 
 	/* -------------------------------------------------------------------------- */
-	/*                                contact:create                           */
+	/*                                contact:create                              */
 	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'First Name',
@@ -211,20 +215,6 @@ export const contactFields = [
 		default: {},
 		options: [
 			{
-				displayName: 'Last Name',
-				name: 'last_name',
-				type: 'string',
-				default: '',
-				description: 'The last name of the contact.',
-			},
-			{
-				displayName: 'Title',
-				name: 'title',
-				type: 'string',
-				default: '',
-				description: 'The title of the contact.',
-			},
-			{
 				displayName: 'Email',
 				name: 'email',
 				type: 'string',
@@ -232,11 +222,18 @@ export const contactFields = [
 				description: 'The contact’s email address.',
 			},
 			{
-				displayName: 'Phone Office',
-				name: 'phone_office',
+				displayName: 'Fax',
+				name: 'fax',
 				type: 'string',
 				default: '',
-				description: 'The contact’s office phone number.',
+				description: 'The contact’s fax number.',
+			},
+			{
+				displayName: 'Last Name',
+				name: 'last_name',
+				type: 'string',
+				default: '',
+				description: 'The last name of the contact.',
 			},
 			{
 				displayName: 'Phone Mobile',
@@ -246,17 +243,25 @@ export const contactFields = [
 				description: 'The contact’s mobile phone number.',
 			},
 			{
-				displayName: 'Fax',
-				name: 'fax',
+				displayName: 'Phone Office',
+				name: 'phone_office',
 				type: 'string',
 				default: '',
-				description: 'The contact’s fax number.',
+				description: 'The contact’s office phone number.',
+			},
+
+			{
+				displayName: 'Title',
+				name: 'title',
+				type: 'string',
+				default: '',
+				description: 'The title of the contact.',
 			},
 		],
 	},
 
 	/* -------------------------------------------------------------------------- */
-	/*                                contact:update                           */
+	/*                                contact:update                              */
 	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Contact Id',
@@ -297,6 +302,20 @@ export const contactFields = [
 				description: 'The ID of the client associated with this contact.',
 			},
 			{
+				displayName: 'Email',
+				name: 'email',
+				type: 'string',
+				default: '',
+				description: 'The contact’s email address.',
+			},
+			{
+				displayName: 'Fax',
+				name: 'fax',
+				type: 'string',
+				default: '',
+				description: 'The contact’s fax number.',
+			},
+			{
 				displayName: 'First Name',
 				name: 'first_name',
 				type: 'string',
@@ -311,18 +330,11 @@ export const contactFields = [
 				description: 'The last name of the contact.',
 			},
 			{
-				displayName: 'Title',
-				name: 'title',
+				displayName: 'Phone Mobile',
+				name: 'phone_mobile',
 				type: 'string',
 				default: '',
-				description: 'The title of the contact.',
-			},
-			{
-				displayName: 'Email',
-				name: 'email',
-				type: 'string',
-				default: '',
-				description: 'The contact’s email address.',
+				description: 'The contact’s mobile phone number.',
 			},
 			{
 				displayName: 'Phone Office',
@@ -332,18 +344,11 @@ export const contactFields = [
 				description: 'The contact’s office phone number.',
 			},
 			{
-				displayName: 'Phone Mobile',
-				name: 'phone_mobile',
+				displayName: 'Title',
+				name: 'title',
 				type: 'string',
 				default: '',
-				description: 'The contact’s mobile phone number.',
-			},
-			{
-				displayName: 'Fax',
-				name: 'fax',
-				type: 'string',
-				default: '',
-				description: 'The contact’s fax number.',
+				description: 'The title of the contact.',
 			},
 		],
 	},

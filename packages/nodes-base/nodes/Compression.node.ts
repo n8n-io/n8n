@@ -8,6 +8,7 @@ import {
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
+	NodeOperationError,
 } from 'n8n-workflow';
 
 import * as fflate from 'fflate';
@@ -216,11 +217,11 @@ export class Compression implements INodeType {
 
 				for (const [index, binaryPropertyName] of binaryPropertyNames.entries()) {
 					if (items[i].binary === undefined) {
-						throw new Error('No binary data exists on item!');
+						throw new NodeOperationError(this.getNode(), 'No binary data exists on item!');
 					}
 					//@ts-ignore
 					if (items[i].binary[binaryPropertyName] === undefined) {
-						throw new Error(`No binary data property "${binaryPropertyName}" does not exists on item!`);
+						throw new NodeOperationError(this.getNode(), `No binary data property "${binaryPropertyName}" does not exists on item!`);
 					}
 
 					const binaryData = (items[i].binary as IBinaryKeyData)[binaryPropertyName];
@@ -270,11 +271,11 @@ export class Compression implements INodeType {
 				for (const [index, binaryPropertyName] of binaryPropertyNames.entries()) {
 
 					if (items[i].binary === undefined) {
-						throw new Error('No binary data exists on item!');
+						throw new NodeOperationError(this.getNode(), 'No binary data exists on item!');
 					}
 					//@ts-ignore
 					if (items[i].binary[binaryPropertyName] === undefined) {
-						throw new Error(`No binary data property "${binaryPropertyName}" does not exists on item!`);
+						throw new NodeOperationError(this.getNode(), `No binary data property "${binaryPropertyName}" does not exists on item!`);
 					}
 
 					const binaryData = (items[i].binary as IBinaryKeyData)[binaryPropertyName];

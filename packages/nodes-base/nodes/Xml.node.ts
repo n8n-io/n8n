@@ -5,6 +5,7 @@ import {
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
+	NodeOperationError,
 } from 'n8n-workflow';
 
 
@@ -245,7 +246,7 @@ export class Xml implements INodeType {
 				const parser = new Parser(parserOptions);
 
 				if (item.json[dataPropertyName] === undefined) {
-					throw new Error(`No json property "${dataPropertyName}" does not exists on item!`);
+					throw new NodeOperationError(this.getNode(), `No json property "${dataPropertyName}" does not exists on item!`);
 				}
 
 				// @ts-ignore
@@ -260,7 +261,7 @@ export class Xml implements INodeType {
 					},
 				};
 			} else {
-				throw new Error(`The operation "${mode}" is not known!`);
+				throw new NodeOperationError(this.getNode(), `The operation "${mode}" is not known!`);
 			}
 		}
 

@@ -10,6 +10,21 @@
 			{
 				"url": "https://docs.n8n.io/nodes/n8n-nodes-base.xml/"
 			}
+		],
+		"generic": [
+			{
+				"label": "What are APIs and how to use them with no code",
+				"icon": " 🪢",
+				"url": "https://n8n.io/blog/what-are-apis-how-to-use-them-with-no-code/"
+			}
+		]
+	},
+	"alias": [
+		"Parse"
+	],
+	"subcategories": {
+		"Core Nodes": [
+			"Files"
 		]
 	}
 }
