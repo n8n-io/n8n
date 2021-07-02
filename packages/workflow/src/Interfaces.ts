@@ -514,7 +514,7 @@ export interface INodeVersionedType {
 	nodeVersions: {
 		[key: number]: INodeType
 	};
-	defaultVersion: number;
+	currentVersion: number;
 	description: INodeTypeBaseDescription;
 	getNodeType: (version?: number) => INodeType;
 }

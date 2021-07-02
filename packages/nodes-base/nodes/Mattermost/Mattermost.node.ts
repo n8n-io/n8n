@@ -8,7 +8,7 @@ import { NodeVersionedType } from '../../src/NodeVersionedType';
 
 export class Mattermost extends NodeVersionedType {
 	constructor() {
-		const description: INodeTypeBaseDescription = {
+		const baseDescription: INodeTypeBaseDescription = {
 			displayName: 'Mattermost V1',
 			name: 'mattermost',
 			icon: 'file:mattermost.svg',
@@ -16,11 +16,12 @@ export class Mattermost extends NodeVersionedType {
 			subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 			description: 'Sends data to Mattermost',
 			defaultVersion: 1,
-		},
-		nodeVersions: INodeVersions = {
-			1: new MattermostV1(description),
-		},
-		defaultVersion = description.defaultVersion;
-		super(nodeVersions, description, defaultVersion);
+		};
+
+		const nodeVersions: INodeVersions = {
+			1: new MattermostV1(baseDescription),
+		};
+
+		super(nodeVersions, baseDescription);
 	}
 }
