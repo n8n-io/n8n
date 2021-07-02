@@ -7,8 +7,12 @@ export class NodeVersionedType implements INodeVersionedType {
 
 	constructor(nodeVersions: INodeVersions, description: INodeTypeBaseDescription) {
 		this.nodeVersions = nodeVersions;
-		this.currentVersion = description.defaultVersion || Math.max(...Object.keys(nodeVersions).map(k => parseInt(k, 10)));
+		this.currentVersion = description.defaultVersion ?? this.getLatestVersion();
 		this.description = description;
+	}
+
+	getLatestVersion() {
+		return Math.max(...Object.keys(this.nodeVersions).map(Number));
 	}
 
 	getNodeType(version?: number): INodeType {
