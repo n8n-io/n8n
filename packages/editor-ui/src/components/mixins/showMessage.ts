@@ -1,5 +1,5 @@
 import { Notification } from 'element-ui';
-import { ElNotificationOptions } from 'element-ui/types/notification';
+import { ElNotificationComponent, ElNotificationOptions } from 'element-ui/types/notification';
 import mixins from 'vue-typed-mixins';
 
 import { externalHooks } from '@/components/mixins/externalHooks';
@@ -13,6 +13,26 @@ export const showMessage = mixins(externalHooks).extend({
 			}
 
 			return Notification(messageData);
+		},
+
+		$showWarning(title: string, message: string,  config?: {onClick?: () => void, duration?: number, customClass?: string, closeOnClick?: boolean}) {
+			let notification: ElNotificationComponent;
+			if (config && config.closeOnClick) {
+				const cb = config.onClick;
+				config.onClick = () => {
+					notification && notification.close();
+					cb && cb();
+				};
+			}
+
+			notification = this.$showMessage({
+				title,
+				message,
+				type: 'warning',
+				...(config || {}),
+			});
+
+			return notification;
 		},
 
 		$showError(error: Error, title: string, message?: string) {

@@ -166,6 +166,7 @@ import {
 	XYPositon,
 	IPushDataExecutionFinished,
 	ITag,
+	IVersion,
 	IWorkflowTemplate,
 } from '../Interface';
 import { mapGetters } from 'vuex';
@@ -2235,8 +2236,26 @@ export default mixins(
 				}
 				this.stopLoading();
 
-				setTimeout(() => {
-					this.$store.dispatch('versions/fetchVersions');
+				setTimeout(async () => {
+					await this.$store.dispatch('versions/fetchVersions');
+					const currentVersion: IVersion | undefined = this.$store.getters['versions/currentVersion'];
+					if (currentVersion && currentVersion.hasSecurityIssue) {
+						const fixVersion = currentVersion.securityIssueFixVersion;
+						let message = `Please update to latest version.`;
+						if (fixVersion) {
+							message = `Please update to version ${fixVersion} or higher.`;
+						}
+						message = `${message}<br/><a class="primary-color">More info</a>`;
+						this.$showWarning('Critical Update', message, {
+							onClick: () => {
+								this.$store.dispatch('ui/openVersionsModal');
+							},
+							closeOnClick: true,
+							customClass: 'clickable',
+							duration: 0,
+						});
+					}
+
 				}, 0);
 			});
 
