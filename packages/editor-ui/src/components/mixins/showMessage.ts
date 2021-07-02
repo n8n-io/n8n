@@ -20,8 +20,12 @@ export const showMessage = mixins(externalHooks).extend({
 			if (config && config.closeOnClick) {
 				const cb = config.onClick;
 				config.onClick = () => {
-					notification && notification.close();
-					cb && cb();
+					if (notification) {
+						notification.close();
+					}
+					if (cb) {
+						cb();
+					}
 				};
 			}
 

@@ -614,7 +614,7 @@ a.logo {
 
 	.gift-container {
 		display: flex;
-		justify-content: end;
+		justify-content: flex-start;
 		align-items: center;
 		height: 100%;
 		width: 100%;
