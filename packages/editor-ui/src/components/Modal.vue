@@ -1,11 +1,11 @@
 <template>
-	<div v-if="dialogVisible">
+	<div>
 		<el-drawer
 			v-if="drawer"
 			:direction="drawerDirection"
-			:before-close="closeDialog"
-			:visible="true"
+			:visible="visibleDrawer"
 			:size="drawerWidth"
+			:before-close="closeDrawer"
 			>
 			<template v-slot:title>
 				<slot name="header" />
@@ -48,6 +48,11 @@ const sizeMap: {[size: string]: string} = {
 export default Vue.extend({
 	name: "Modal",
 	props: ['name', 'title', 'eventBus', 'size', 'drawer', 'drawerDirection', 'drawerWidth'],
+	data() {
+		return {
+			visibleDrawer: this.drawer,
+		};
+	},
 	mounted() {
 		window.addEventListener('keydown', this.onWindowKeydown);
 
@@ -82,6 +87,12 @@ export default Vue.extend({
 		},
 		closeDialog() {
 			this.$store.commit('ui/closeTopModal');
+		},
+		closeDrawer() {
+			this.visibleDrawer = false;
+			setTimeout(() =>{
+				this.$store.commit('ui/closeTopModal');
+			}, 300); // delayed for closing animation to take effect
 		},
 	},
 	computed: {
