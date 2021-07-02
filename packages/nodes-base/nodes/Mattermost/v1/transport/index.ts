@@ -12,15 +12,6 @@ import {
 	IDataObject, NodeApiError, NodeOperationError,
 } from 'n8n-workflow';
 
-export interface IAttachment {
-	fields: {
-		item?: object[];
-	};
-	actions: {
-		item?: object[];
-	};
-}
-
 /**
  * Make an API request to Mattermost
  *

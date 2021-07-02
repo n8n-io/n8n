@@ -22,3 +22,12 @@ export type ChannelProperties = PropertiesOf<MattermostChannel>;
 export type MessageProperties = PropertiesOf<MattermostMessage>;
 export type ReactionProperties = PropertiesOf<MattermostReaction>;
 export type UserProperties = PropertiesOf<MattermostUser>;
+
+export interface IAttachment {
+	fields: {
+		item?: object[];
+	};
+	actions: {
+		item?: object[];
+	};
+}
