@@ -5,9 +5,9 @@ import { restore } from './restore';
 import { addUser } from './addUser';
 import { statistics } from './statistics';
 
-export { 
+export {
 	create,
-	del,
+	del as delete,
 	members,
 	restore,
 	addUser,
