@@ -14,12 +14,6 @@ import {
 
 /**
  * Make an API request to Mattermost
- *
- * @param {IHookFunctions} this
- * @param {string} method
- * @param {string} url
- * @param {object} body
- * @returns {Promise<any>}
  */
 export async function apiRequest(this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions, method: string, endpoint: string, body: object, query?: IDataObject): Promise<any> { // tslint:disable-line:no-any
 	const credentials = this.getCredentials('mattermostApi');
