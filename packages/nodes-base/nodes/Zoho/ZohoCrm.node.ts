@@ -77,7 +77,7 @@ export class ZohoCrm implements INodeType {
 		group: ['transform'],
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 		version: 1,
-		description: 'Consume the Zoho API',
+		description: 'Consume Zoho CRM API',
 		defaults: {
 			name: 'Zoho',
 			color: '#CE2232',
