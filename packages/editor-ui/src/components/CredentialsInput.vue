@@ -185,7 +185,7 @@ export default mixins(
 			const returnNodeTypes: string[] = [];
 
 			const nodeTypes: INodeTypeDescription[] = this.$store.getters.allNodeTypes;
-
+			
 			let nodeType: INodeTypeDescription;
 			let credentialTypeDescription: INodeCredentialDescription;
 

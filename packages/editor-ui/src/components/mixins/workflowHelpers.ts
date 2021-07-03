@@ -12,6 +12,7 @@ import {
 	INodeTypes,
 	INodeTypeData,
 	INodeTypeDescription,
+	INodeVersionedType,
 	IRunData,
 	IRunExecutionData,
 	IWorfklowIssues,
@@ -152,7 +153,7 @@ export const workflowHelpers = mixins(
 						continue;
 					}
 
-					nodeType = workflow.nodeTypes.getByName(node.type);
+					nodeType = workflow.nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
 
 					if (nodeType === undefined) {
 						// Node type is not known
@@ -183,12 +184,23 @@ export const workflowHelpers = mixins(
 				const nodeTypes: INodeTypes = {
 					nodeTypes: {},
 					init: async (nodeTypes?: INodeTypeData): Promise<void> => { },
-					getAll: (): INodeType[] => {
+					getAll: (): Array<INodeType | INodeVersionedType> => {
 						// Does not get used in Workflow so no need to return it
 						return [];
 					},
-					getByName: (nodeType: string): INodeType | undefined => {
+					getByName: (nodeType: string): INodeType | INodeVersionedType | undefined => {
 						const nodeTypeDescription = this.$store.getters.nodeType(nodeType);
+
+						if (nodeTypeDescription === null) {
+							return undefined;
+						}
+
+						return {
+							description: nodeTypeDescription,
+						};
+					},
+					getByNameAndVersion: (nodeType: string, version?: number): INodeType | undefined => {
+						const nodeTypeDescription = this.$store.getters.nodeType(nodeType, version);
 
 						if (nodeTypeDescription === null) {
 							return undefined;

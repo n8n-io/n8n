@@ -84,10 +84,13 @@ import {
 	INodeCredentials,
 	INodeParameters,
 	INodePropertyOptions,
+	INodeType,
 	INodeTypeDescription,
+	INodeTypeNameVersion,
 	IRunData,
 	IWorkflowBase,
 	IWorkflowCredentials,
+	NodeHelpers,
 	Workflow,
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
@@ -756,6 +759,7 @@ class App {
 				const credentials = await WorkflowCredentials(workflowData.nodes);
 				const additionalData = await WorkflowExecuteAdditionalData.getBase(credentials);
 				const nodeTypes = NodeTypes();
+				
 				const workflowInstance = new Workflow({ id: workflowData.id, name: workflowData.name, nodes: workflowData.nodes, connections: workflowData.connections, active: false, nodeTypes, staticData: undefined, settings: workflowData.settings });
 				const needsWebhook = await this.testWebhooks.needsWebhookData(workflowData, workflowInstance, additionalData, executionMode, activationMode, sessionId, destinationNode);
 				if (needsWebhook === true) {
@@ -855,10 +859,10 @@ class App {
 		// Returns parameter values which normally get loaded from an external API or
 		// get generated dynamically
 		this.app.get(`/${this.restEndpoint}/node-parameter-options`, ResponseHelper.send(async (req: express.Request, res: express.Response): Promise<INodePropertyOptions[]> => {
-			const nodeType = req.query.nodeType as string;
+			const nodeTypeAndVersion = JSON.parse('' + req.query.nodeTypeAndVersion) as INodeTypeNameVersion;
 			const path = req.query.path as string;
 			let credentials: INodeCredentials | undefined = undefined;
-			const currentNodeParameters = JSON.parse('' + req.query.currentNodeParameters) as INodeParameters;
+			const currentNodeParameters = JSON.parse(`${req.query.nodeTypeAndVersion}`) as INodeParameters;
 			if (req.query.credentials !== undefined) {
 				credentials = JSON.parse(req.query.credentials as string);
 			}
@@ -866,8 +870,7 @@ class App {
 
 			const nodeTypes = NodeTypes();
 
-			// @ts-ignore
-			const loadDataInstance = new LoadNodeParameterOptions(nodeType, nodeTypes, path, JSON.parse('' + req.query.currentNodeParameters), credentials!);
+			const loadDataInstance = new LoadNodeParameterOptions(nodeTypeAndVersion, nodeTypes, path, JSON.parse(`${req.query.currentNodeParameters}`), credentials!);
 
 			const workflowData = loadDataInstance.getWorkflowData() as IWorkflowBase;
 			const workflowCredentials = await WorkflowCredentials(workflowData.nodes);
@@ -879,41 +882,55 @@ class App {
 
 		// Returns all the node-types
 		this.app.get(`/${this.restEndpoint}/node-types`, ResponseHelper.send(async (req: express.Request, res: express.Response): Promise<INodeTypeDescription[]> => {
-
 			const returnData: INodeTypeDescription[] = [];
+			const onlyLatest = req.query.onlyLatest === 'true';
 
 			const nodeTypes = NodeTypes();
-
 			const allNodes = nodeTypes.getAll();
 
-			allNodes.forEach((nodeData) => {
-				// Make a copy of the object. If we don't do this, then when
-				// The method below is called the properties are removed for good
-				// This happens because nodes are returned as reference.
-				const nodeInfo: INodeTypeDescription = { ...nodeData.description };
+			const getNodeDescription = (nodeType: INodeType):INodeTypeDescription => {
+				const nodeInfo: INodeTypeDescription =  { ...nodeType.description };
 				if (req.query.includeProperties !== 'true') {
 					// @ts-ignore
 					delete nodeInfo.properties;
 				}
-				returnData.push(nodeInfo);
-			});
+				return nodeInfo;
+			};
+
+			if (onlyLatest) {
+				allNodes.forEach((nodeData) => {
+					const nodeType = NodeHelpers.getVersionedTypeNode(nodeData);
+					const nodeInfo: INodeTypeDescription = getNodeDescription(nodeType);
+					returnData.push(nodeInfo);
+				});
+			} else {
+				allNodes.forEach((nodeData) => {
+					const allNodeTypes = NodeHelpers.getVersionedTypeNodeAll(nodeData);
+					allNodeTypes.forEach(element => {
+						const nodeInfo: INodeTypeDescription = getNodeDescription(element);
+						returnData.push(nodeInfo);
+					});
+				});
+			}
 
 			return returnData;
 		}));
 
 
-		// Returns node information baesd on namese
+		// Returns node information based on node names and versions
 		this.app.post(`/${this.restEndpoint}/node-types`, ResponseHelper.send(async (req: express.Request, res: express.Response): Promise<INodeTypeDescription[]> => {
-			const nodeNames = _.get(req, 'body.nodeNames', []) as string[];
+			const nodeInfos = _.get(req, 'body.nodeInfos', []) as INodeTypeNameVersion[];
 			const nodeTypes = NodeTypes();
 
-			return nodeNames.map(name => {
-				try {
-					return nodeTypes.getByName(name);
-				} catch (e) {
-					return undefined;
+			const returnData: INodeTypeDescription[] = [];
+			nodeInfos.forEach(nodeInfo => {
+				const nodeType = nodeTypes.getByNameAndVersion(nodeInfo.name, nodeInfo.version);
+				if (nodeType && nodeType.description) {
+					returnData.push(nodeType.description);
 				}
-			}).filter(nodeData => !!nodeData).map(nodeData => nodeData!.description);
+			});
+
+			return returnData;
 		}));
 
 
@@ -928,7 +945,7 @@ class App {
 			const nodeTypeName = `${req.params.scope ? `${req.params.scope}/` : ''}${req.params.nodeType}`;
 
 			const nodeTypes = NodeTypes();
-			const nodeType = nodeTypes.getByName(nodeTypeName);
+			const nodeType = nodeTypes.getByNameAndVersion(nodeTypeName);
 
 			if (nodeType === undefined) {
 				res.status(404).send('The nodeType is not known.');

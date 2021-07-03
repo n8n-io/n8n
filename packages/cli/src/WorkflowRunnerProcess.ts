@@ -84,6 +84,12 @@ export class WorkflowRunnerProcess {
 			const tempModule = require(filePath);
 
 			try {
+				const nodeObject = new tempModule[className]();
+				if (nodeObject.getNodeType !== undefined) {
+					tempNode = nodeObject.getNodeType();
+				} else {
+					tempNode = nodeObject;
+				}
 				tempNode = new tempModule[className]() as INodeType;
 			} catch (error) {
 				throw new Error(`Error loading node "${nodeTypeName}" from: "${filePath}"`);

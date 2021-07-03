@@ -8,6 +8,8 @@ import {
 	ILogger,
 	INodeType,
 	INodeTypeData,
+	INodeTypeNameVersion,
+	INodeVersionedType,
 	LoggerProxy,
 } from 'n8n-workflow';
 
@@ -164,12 +166,13 @@ class LoadNodesAndCredentialsClass {
 	 * @returns {Promise<void>}
 	 */
 	async loadNodeFromFile(packageName: string, nodeName: string, filePath: string): Promise<void> {
-		let tempNode: INodeType;
+		let tempNode: INodeType | INodeVersionedType;
 		let fullNodeName: string;
 
 		const tempModule = require(filePath);
+
 		try {
-			tempNode = new tempModule[nodeName]() as INodeType;
+			tempNode = new tempModule[nodeName]();
 			this.addCodex({ node: tempNode, filePath, isCustom: packageName === 'CUSTOM' });
 		} catch (error) {
 			console.error(`Error loading node "${nodeName}" from: "${filePath}"`);
@@ -185,8 +188,23 @@ class LoadNodesAndCredentialsClass {
 			tempNode.description.icon = 'file:' + path.join(path.dirname(filePath), tempNode.description.icon.substr(5));
 		}
 
-		if (tempNode.executeSingle) {
+		if (tempNode.hasOwnProperty('executeSingle')) {
 			this.logger.warn(`"executeSingle" will get deprecated soon. Please update the code of node "${packageName}.${nodeName}" to use "execute" instead!`, { filePath });
+		}
+
+		if (tempNode.hasOwnProperty('nodeVersions')) {
+			const versionedNodeType = (tempNode as INodeVersionedType).getNodeType();
+			this.addCodex({ node: versionedNodeType, filePath, isCustom: packageName === 'CUSTOM' });
+			
+			if (versionedNodeType.description.icon !== undefined &&
+				versionedNodeType.description.icon.startsWith('file:')) {
+				// If a file icon gets used add the full path
+				versionedNodeType.description.icon = 'file:' + path.join(path.dirname(filePath), versionedNodeType.description.icon.substr(5));
+			}
+
+			if (versionedNodeType.hasOwnProperty('executeSingle')) {
+				this.logger.warn(`"executeSingle" will get deprecated soon. Please update the code of node "${packageName}.${nodeName}" to use "execute" instead!`, { filePath });
+			}
 		}
 
 		if (this.includeNodes !== undefined && !this.includeNodes.includes(fullNodeName)) {
@@ -231,7 +249,7 @@ class LoadNodesAndCredentialsClass {
 	 * @returns {void}
 	 */
 	addCodex({ node, filePath, isCustom }: {
-		node: INodeType;
+		node: INodeType | INodeVersionedType;
 		filePath: string;
 		isCustom: boolean;
 	}) {

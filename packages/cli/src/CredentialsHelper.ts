@@ -35,6 +35,9 @@ const mockNodeTypes: INodeTypes = {
 	getByName: (nodeType: string): INodeType | undefined => {
 		return undefined;
 	},
+	getByNameAndVersion: (nodeType: string, version?: number): INodeType | undefined => {
+		return undefined;
+	},
 };
 
 

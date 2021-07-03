@@ -161,6 +161,10 @@ export interface IDataObject {
 	[key: string]: GenericValue | IDataObject | GenericValue[] | IDataObject[];
 }
 
+export interface INodeTypeNameVersion {
+	name: string;
+	version: number;
+}
 
 export interface IGetExecutePollFunctions {
 	(workflow: Workflow, node: INode, additionalData: IWorkflowExecuteAdditionalData, mode: WorkflowExecuteMode, activation: WorkflowActivateMode): IPollFunctions;
@@ -483,6 +487,10 @@ export interface ITriggerResponse {
 	manualTriggerResponse?: Promise<INodeExecutionData[][]>;
 }
 
+export interface INodeVersions {
+	[key: number]: INodeType;
+}
+
 export interface INodeType {
 	description: INodeTypeDescription;
 	execute?(this: IExecuteFunctions): Promise<INodeExecutionData[][] | null>;
@@ -501,6 +509,15 @@ export interface INodeType {
 	webhookMethods?: {
 		[key: string]: IWebhookSetupMethods;
 	};
+}
+
+export interface INodeVersionedType {
+	nodeVersions: {
+		[key: number]: INodeType
+	};
+	defaultVersion: number;
+	description: INodeTypeBaseDescription;
+	getNodeType: (version?: number) => INodeType;
 }
 
 export type WebhookSetupMethodNames = 'checkExists' | 'create' | 'delete';
@@ -544,15 +561,21 @@ export interface IWorfklowIssues {
 	[key: string]: INodeIssues;
 }
 
-export interface INodeTypeDescription {
+export interface INodeTypeBaseDescription {
 	displayName: string;
 	name: string;
 	icon?: string;
 	group: string[];
-	version: number;
 	description: string;
-	defaults: INodeParameters;
 	documentationUrl?: string;
+	subtitle?: string;
+	defaultVersion?: number;
+	codex?: CodexData;
+}
+
+export interface INodeTypeDescription extends INodeTypeBaseDescription {
+	version: number;
+	defaults: INodeParameters;
 	inputs: string[];
 	inputNames?: string[];
 	outputs: string[];
@@ -561,14 +584,12 @@ export interface INodeTypeDescription {
 	credentials?: INodeCredentialDescription[];
 	maxNodes?: number; // How many nodes of that type can be created in a workflow
 	polling?: boolean;
-	subtitle?: string;
 	hooks?: {
 		[key: string]: INodeHookDescription[] | undefined;
 		activate?: INodeHookDescription[];
 		deactivate?: INodeHookDescription[];
 	};
 	webhooks?: IWebhookDescription[];
-	codex?: CodexData;
 }
 
 export interface INodeHookDescription {
@@ -631,14 +652,15 @@ export type WebhookResponseMode = 'onReceived' | 'lastNode';
 export interface INodeTypes {
 	nodeTypes: INodeTypeData;
 	init(nodeTypes?: INodeTypeData): Promise<void>;
-	getAll(): INodeType[];
-	getByName(nodeType: string): INodeType | undefined;
+	getAll(): Array<INodeType | INodeVersionedType>;
+	getByName(nodeType: string): INodeType | INodeVersionedType | undefined;
+	getByNameAndVersion(nodeType: string, version?: number): INodeType | undefined;
 }
 
 
 export interface INodeTypeData {
 	[key: string]: {
-		type: INodeType;
+		type: INodeType | INodeVersionedType;
 		sourcePath: string;
 	};
 }

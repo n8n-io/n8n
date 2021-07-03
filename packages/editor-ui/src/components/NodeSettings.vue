@@ -79,10 +79,8 @@ export default mixins(
 		},
 		computed: {
 			nodeType (): INodeTypeDescription | null {
-				const activeNode = this.node;
-
 				if (this.node) {
-					return this.$store.getters.nodeType(this.node.type);
+					return this.$store.getters.nodeType(this.node.type, this.node.typeVersion);
 				}
 
 				return null;

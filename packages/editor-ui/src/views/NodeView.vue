@@ -148,6 +148,7 @@ import {
 	INodeConnections,
 	INodeIssues,
 	INodeTypeDescription,
+	INodeTypeNameVersion,
 	NodeInputConnections,
 	NodeHelpers,
 	Workflow,
@@ -1842,13 +1843,13 @@ export default mixins(
 				// Before proceeding we must check if all nodes contain the `properties` attribute.
 				// Nodes are loaded without this information so we must make sure that all nodes
 				// being added have this information.
-				await this.loadNodesProperties(nodes.map(node => node.type));
+				await this.loadNodesProperties(nodes.map(node => ({name: node.type, version: node.typeVersion})));
 
 				// Add the node to the node-list
 				let nodeType: INodeTypeDescription | null;
 				let foundNodeIssues: INodeIssues | null;
 				nodes.forEach((node) => {
-					nodeType = this.$store.getters.nodeType(node.type);
+					nodeType = this.$store.getters.nodeType(node.type, node.typeVersion);
 
 					// Make sure that some properties always exist
 					if (!node.hasOwnProperty('disabled')) {
@@ -1955,7 +1956,7 @@ export default mixins(
 				let newName: string;
 				const createNodes: INode[] = [];
 
-				await this.loadNodesProperties(data.nodes.map(node => node.type));
+				await this.loadNodesProperties(data.nodes.map(node => ({name: node.type, version: node.typeVersion})));
 
 				data.nodes.forEach(node => {
 					if (nodeTypesCount[node.type] !== undefined) {
@@ -2182,9 +2183,19 @@ export default mixins(
 				const credentials = await this.restApi().getAllCredentials();
 				this.$store.commit('setCredentials', credentials);
 			},
-			async loadNodesProperties(nodeNames: string[]): Promise<void> {
-				const allNodes = this.$store.getters.allNodeTypes;
-				const nodesToBeFetched = allNodes.filter((node: INodeTypeDescription) => nodeNames.includes(node.name) && !node.hasOwnProperty('properties')).map((node: INodeTypeDescription) => node.name) as string[];
+			async loadNodesProperties(nodeInfos: INodeTypeNameVersion[]): Promise<void> {
+				const allNodes:INodeTypeDescription[] = this.$store.getters.allNodeTypes;
+
+				const nodesToBeFetched:INodeTypeNameVersion[] = [];
+				allNodes.forEach(node => {
+					if(!!nodeInfos.find(n => n.name === node.name && n.version === node.version) && !node.hasOwnProperty('properties')) {
+						nodesToBeFetched.push({
+							name: node.name,
+							version: node.version,
+						});
+					}
+				});
+
 				if (nodesToBeFetched.length > 0) {
 					// Only call API if node information is actually missing
 					this.startLoading();
