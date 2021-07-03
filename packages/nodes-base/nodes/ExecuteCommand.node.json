@@ -21,6 +21,12 @@
 			}
 		]
 	},
+	"alias": [
+		"Shell",
+		"Command",
+		"OS",
+		"Bash"
+	],
 	"subcategories": {
 		"Core Nodes": [
 			"Helpers"
