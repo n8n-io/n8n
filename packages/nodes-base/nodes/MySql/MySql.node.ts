@@ -18,7 +18,7 @@ export class MySql implements INodeType {
 		icon: 'file:mysql.svg',
 		group: ['input'],
 		version: 1,
-		description: 'Get, add and update data in MySQL.',
+		description: 'Get, add and update data in MySQL',
 		defaults: {
 			name: 'MySQL',
 			color: '#4279a2',
