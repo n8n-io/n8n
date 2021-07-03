@@ -25,7 +25,7 @@ export class Spotify implements INodeType {
 		icon: 'file:spotify.svg',
 		group: ['input'],
 		version: 1,
-		description: 'Access public song data via the Spotify API.',
+		description: 'Access public song data via the Spotify API',
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 		defaults: {
 			name: 'Spotify',

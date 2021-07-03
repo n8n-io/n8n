@@ -38,7 +38,7 @@ export class MicrosoftSql implements INodeType {
 		icon: 'file:mssql.svg',
 		group: ['input'],
 		version: 1,
-		description: 'Gets, add and update data in Microsoft SQL.',
+		description: 'Get, add and update data in Microsoft SQL',
 		defaults: {
 			name: 'Microsoft SQL',
 			color: '#bcbcbd',

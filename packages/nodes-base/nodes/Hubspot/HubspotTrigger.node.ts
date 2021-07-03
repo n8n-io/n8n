@@ -37,7 +37,7 @@ export class HubspotTrigger implements INodeType {
 		icon: 'file:hubspot.svg',
 		group: ['trigger'],
 		version: 1,
-		description: 'Starts the workflow when HubSpot events occur.',
+		description: 'Starts the workflow when HubSpot events occur',
 		defaults: {
 			name: 'Hubspot Trigger',
 			color: '#ff7f64',
