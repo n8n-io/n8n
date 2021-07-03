@@ -94,49 +94,6 @@ export class Airtable implements INodeType {
 			},
 
 			// ----------------------------------
-			//         append + delete + update
-			// ----------------------------------
-			{
-				displayName: 'Bulk',
-				name: 'bulk',
-				type: 'boolean',
-				displayOptions: {
-					show: {
-						operation: [
-							'append',
-							'delete',
-							'update',
-						],
-					},
-				},
-				default: false,
-				description: 'If bulk records should be sent to Airtable.',
-			},
-			{
-				displayName: 'Size',
-				name: 'bulkSize',
-				type: 'number',
-				displayOptions: {
-					show: {
-						operation: [
-							'append',
-							'delete',
-							'update',
-						],
-						bulk: [
-							true,
-						],
-					},
-				},
-				typeOptions: {
-					minValue: 1,
-					maxValue: 10,
-				},
-				default: 10,
-				description: `Number of the bulk records.`,
-			},
-
-			// ----------------------------------
 			//         append
 			// ----------------------------------
 			{
@@ -433,7 +390,7 @@ export class Airtable implements INodeType {
 			},
 
 			// ----------------------------------
-			//         append + update
+			//         append + delete + update
 			// ----------------------------------
 			{
 				displayName: 'Options',
@@ -444,12 +401,24 @@ export class Airtable implements INodeType {
 					show: {
 						operation: [
 							'append',
+							'delete',
 							'update',
 						],
 					},
 				},
 				default: {},
 				options: [
+					{
+						displayName: 'Bulk Size',
+						name: 'bulkSize',
+						type: 'number',
+						typeOptions: {
+							minValue: 1,
+							maxValue: 10,
+						},
+						default: 10,
+						description: `Number of records to process at once.`,
+					},
 					{
 						displayName: 'Ignore Fields',
 						name: 'ignoreFields',
@@ -471,6 +440,14 @@ export class Airtable implements INodeType {
 						displayName: 'Typecast',
 						name: 'typecast',
 						type: 'boolean',
+						displayOptions: {
+							show: {
+								'/operation': [
+									'append',
+									'update',
+								],
+							},
+						},
 						default: false,
 						description: 'If the Airtable API should attempt mapping of string values for linked records & select options.',
 					},
@@ -509,12 +486,12 @@ export class Airtable implements INodeType {
 			let options: IDataObject;
 
 			const rows: IDataObject[] = [];
-			const bulk: boolean = this.getNodeParameter('bulk', 0) as boolean;
-			const bulkSize: number = bulk ? this.getNodeParameter('bulkSize', 0) as number : 1;
+			let bulkSize = 10;
 
 			for (let i = 0; i < items.length; i++) {
 				addAllFields = this.getNodeParameter('addAllFields', i) as boolean;
 				options = this.getNodeParameter('options', i, {}) as IDataObject;
+				bulkSize = options.bulkSize as number || bulkSize;
 
 				const row: IDataObject = {};
 
@@ -556,8 +533,8 @@ export class Airtable implements INodeType {
 			requestMethod = 'DELETE';
 
 			const rows: string[] = [];
-			const bulk: boolean = this.getNodeParameter('bulk', 0) as boolean;
-			const bulkSize: number = bulk ? this.getNodeParameter('bulkSize', 0) as number : 1;
+			const options = this.getNodeParameter('options', 0, {}) as IDataObject;
+			const bulkSize = options.bulkSize as number || 10;
 
 			for (let i = 0; i < items.length; i++) {
 				let id: string;
@@ -660,14 +637,15 @@ export class Airtable implements INodeType {
 			let options: IDataObject;
 
 			const rows: IDataObject[] = [];
-			const bulk: boolean = this.getNodeParameter('bulk', 0) as boolean;
-			const bulkSize: number = bulk ? this.getNodeParameter('bulkSize', 0) as number : 1;
+			let bulkSize = 10;
 
 			for (let i = 0; i < items.length; i++) {
 				updateAllFields = this.getNodeParameter('updateAllFields', i) as boolean;
 				options = this.getNodeParameter('options', i, {}) as IDataObject;
+				bulkSize = options.bulkSize as number || bulkSize;
 
 				const row: IDataObject = {};
+				row.fields = {} as IDataObject;
 
 				if (updateAllFields === true) {
 					// Update all the fields the item has
