@@ -73,9 +73,15 @@ export default mixins(
 		};
 	},
 	methods: {
-		valueChanged (value: string) {
+		valueChanged (value: string, forceUpdate = false) {
 			this.latestValue = value;
-			this.callDebounced('updateDisplayValue', 500);
+
+			if (forceUpdate === true) {
+				this.updateDisplayValue();
+				this.$emit('valueChanged', this.latestValue);
+			} else {
+				this.callDebounced('updateDisplayValue', 500);
+			}
 		},
 
 		updateDisplayValue () {

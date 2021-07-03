@@ -426,6 +426,7 @@ export class AwsTranscribe implements INodeType {
 							Media: {
 								MediaFileUri: mediaFileUri,
 							},
+							Settings: {},
 						};
 
 						if (detectLang) {
@@ -438,16 +439,16 @@ export class AwsTranscribe implements INodeType {
 							Object.assign(body.Settings, { ChannelIdentification: options.channelIdentification });
 						}
 
-						if (options.MaxAlternatives) {
+						if (options.maxAlternatives) {
 							Object.assign(body.Settings, {
-								ShowAlternatives: options.maxAlternatives,
+								ShowAlternatives: true,
 								MaxAlternatives: options.maxAlternatives,
 							});
-						}
+						} 
 
-						if (options.showSpeakerLabels) {
+						if (options.maxSpeakerLabels) {
 							Object.assign(body.Settings, {
-								ShowSpeakerLabels: options.showSpeakerLabels,
+								ShowSpeakerLabels: true,
 								MaxSpeakerLabels: options.maxSpeakerLabels,
 							});
 						}

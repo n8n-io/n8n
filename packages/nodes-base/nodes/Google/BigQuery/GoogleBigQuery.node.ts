@@ -22,7 +22,7 @@ import {
 	recordOperations,
 } from './RecordDescription';
 
-import * as uuid from 'uuid';
+import { v4 as uuid } from 'uuid';
 
 export class GoogleBigQuery implements INodeType {
 	description: INodeTypeDescription = {

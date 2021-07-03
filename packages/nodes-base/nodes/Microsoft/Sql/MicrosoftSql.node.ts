@@ -229,6 +229,7 @@ export class MicrosoftSql implements INodeType {
 			connectTimeout: credentials.connectTimeout as number,
 			options: {
 				encrypt: credentials.tls as boolean,
+				enableArithAbort: false,
 			},
 		};
 
@@ -277,7 +278,6 @@ export class MicrosoftSql implements INodeType {
 							const values = insertValues
 								.map((item: IDataObject) => extractValues(item))
 								.join(',');
-
 							return pool
 								.request()
 								.query(
