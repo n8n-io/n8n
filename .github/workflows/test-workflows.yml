@@ -82,4 +82,4 @@ jobs:
           git config --global user.name 'n8n test bot'
           git config --global user.email 'n8n-test-bot@users.noreply.github.com'
           git commit -am "Automated credential update"
-          git push
+          git push --force --quiet "https://janober:${{ secrets.TOKEN }}@github.com/n8n-io/test-workflows.git" main:main
