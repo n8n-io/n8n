@@ -77,7 +77,8 @@ export class KafkaTrigger implements INodeType {
 						],
 					},
 				},
-				default: 'https://schema-registry-domain:8081',
+				placeholder: 'https://schema-registry-domain:8081',
+				default: '',
 				description: 'URL of the schema registry.',
 			},
 			{
