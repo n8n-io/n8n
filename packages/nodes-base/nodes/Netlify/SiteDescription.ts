@@ -16,12 +16,12 @@ export const siteOperations = [
 			{
 				name: 'Create',
 				value: 'createSite',
-				description: 'Create a new site'
+				description: 'Create a new site',
 			},
 			{
 				name: 'Delete',
 				value: 'deleteSite',
-				description: 'Delete a site'
+				description: 'Delete a site',
 			},
 			{
 				name: 'Get Site',

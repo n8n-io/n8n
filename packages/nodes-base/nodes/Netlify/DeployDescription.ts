@@ -16,12 +16,12 @@ export const deployOperations = [
 			{
 				name: 'Cancel',
 				value: 'cancelSiteDeploy',
-				description: 'Cancel a deploy'
+				description: 'Cancel a deploy',
 			},
 			{
 				name: 'Create',
 				value: 'createSiteDeploy',
-				description: 'Create a new deploy'
+				description: 'Create a new deploy',
 			},
 			{
 				name: 'Get',
@@ -36,8 +36,8 @@ export const deployOperations = [
 			{
 				name: 'Rollback',
 				value: 'rollbackSiteDeploy',
-				description: 'Rollback site deploy'
-			}
+				description: 'Rollback site deploy',
+			},
 			// {
 			// 	name: 'Update',
 			// 	value: 'updateSiteDeploys',
@@ -62,16 +62,16 @@ export const deployFields = [
 		displayOptions:{
 			show: {
 				resource: [
-					'deploy'
+					'deploy',
 				],
 				operation: [
 					'getSiteDeploy',
 					'createSiteDeploy',
 					'listSiteDeploys',
-					'rollbackSiteDeploy'
+					'rollbackSiteDeploy',
 				],
-			}
-		}
+			},
+		},
 	},
 	{
 		displayName: 'Deploy ID',
@@ -81,14 +81,14 @@ export const deployFields = [
 		displayOptions:{
 			show: {
 				resource: [
-					'deploy'
+					'deploy',
 				],
 				operation: [
 					'getSiteDeploy',
-					'cancelSiteDeploy'
+					'cancelSiteDeploy',
 				],
-			}
-		}
+			},
+		},
 	},
 		// ----- Get All Deploys ------ //
 	{

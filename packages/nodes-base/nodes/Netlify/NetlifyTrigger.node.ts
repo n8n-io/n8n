@@ -6,8 +6,8 @@ import {
 
  import {
 	IDataObject,
-	 ILoadOptionsFunctions,
-	 INodePropertyOptions,
+	ILoadOptionsFunctions,
+	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
 	IWebhookResponseData,
@@ -15,14 +15,8 @@ import {
 
 
  import {
-	 netlifyApiRequest,
- } from './GenericFunctions';
-
- /*
- import {
-	 snakeCase,
- } from 'change-case';
- */
+	netlifyApiRequest,
+} from './GenericFunctions';
 
 
  export class NetlifyTrigger implements INodeType {
@@ -117,9 +111,9 @@ import {
 				displayOptions: {
 					show:{
 						event: [
-							'submissionCreated'
-						]
-					}
+							'submissionCreated',
+						],
+					},
 				},
 				default: '',
 				typeOptions: {
@@ -157,12 +151,12 @@ webhookMethods = {
 			const body: IDataObject = {
 				event: snakeCase(event),
 				data: {
-					url: webhookUrl
+					url: webhookUrl,
 				},
 			};
 			const qs: IDataObject = {
-				site_id: this.getNodeParameter('siteId') as string
-			}
+				site_id: this.getNodeParameter('siteId') as string,
+			};
 			const webhook = await netlifyApiRequest.call(this, 'POST', '/hooks', body, qs);
 			webhookData.webhookId = webhook.id;
 			return true;
@@ -214,7 +208,7 @@ webhookMethods = {
 				}
 				return returnData;
 			},
-		}
+		},
 	};
 
 	async webhook(this: IWebhookFunctions): Promise<IWebhookResponseData> {
@@ -223,6 +217,6 @@ webhookMethods = {
 			workflowData: [
 				this.helpers.returnJsonArray(req.body),
 			],
-		}
- 	}
+		};
+	}
 }

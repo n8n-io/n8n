@@ -1,18 +1,18 @@
 import {
-    IExecuteFunctions,
+	IExecuteFunctions,
 } from 'n8n-core';
 
 import {
-    IDataObject,
+	IDataObject,
 	ILoadOptionsFunctions,
-    INodeExecutionData,
+	INodeExecutionData,
 	INodePropertyOptions,
-    INodeType,
-    INodeTypeDescription,
+	INodeType,
+	INodeTypeDescription,
 } from 'n8n-workflow';
 
 import {
-    OptionsWithUri,
+	OptionsWithUri,
 } from 'request';
 
 import {
@@ -26,20 +26,20 @@ import {
 } from './DeployDescription';
 
 export class Netlify implements INodeType {
-    description: INodeTypeDescription = {
-        displayName: 'Netlify',
-        name: 'netlify',
-        icon: 'file:netlify.svg',
-        group: ['transform'],
-        version: 1,
-        description: 'Consume Netlify API',
-        defaults: {
-            name: 'Netlify',
-            color: '#1A82e2',
-        },
-        inputs: ['main'],
-        outputs: ['main'],
-        credentials: [
+	description: INodeTypeDescription = {
+		displayName: 'Netlify',
+		name: 'netlify',
+		icon: 'file:netlify.svg',
+		group: ['transform'],
+		version: 1,
+		description: 'Consume Netlify API',
+		defaults: {
+			name: 'Netlify',
+			color: '#1A82e2',
+		},
+		inputs: ['main'],
+		outputs: ['main'],
+		credentials: [
 			// {
 			// 	name: 'netlifyOAuth2Api',
 			// 	required: true,
@@ -103,10 +103,10 @@ export class Netlify implements INodeType {
 				required: true,
 				description: 'Resource to consume',
 			},
-            ...deployOperations,
-			...deployFields
-        ],
-    };
+			...deployOperations,
+			...deployFields,
+		],
+	};
 
 	methods = {
 		loadOptions: {
@@ -125,8 +125,8 @@ export class Netlify implements INodeType {
 				}
 				return returnData;
 			},
-		}
-	}
+		},
+	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
@@ -144,7 +144,7 @@ export class Netlify implements INodeType {
 					for (let i = 0; i < length; i++) {
 						const siteId = this.getNodeParameter('siteId',i);
 						// TO DO: Implement Pagination
-					responseData = await netlifyApiRequest.call(this, 'GET', `/sites/${siteId}/deploys`, {}, {})
+					responseData = await netlifyApiRequest.call(this, 'GET', `/sites/${siteId}/deploys`, {}, {});
 					}
 				}
 				if(operation === 'createSiteDeploy') {
@@ -153,33 +153,33 @@ export class Netlify implements INodeType {
 						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 
 						if(additionalFields.title) {
-							qs.title = additionalFields.title as String;
+							qs.title = additionalFields.title as string;
 						}
 
 						if(additionalFields.async) {
-							body.async = additionalFields.async as Boolean;
+							body.async = additionalFields.async as boolean;
 						}
 
 						if(additionalFields.branch) {
-							body.branch = additionalFields.branch as String;
+							body.branch = additionalFields.branch as string;
 						}
 
 						if(additionalFields.draft) {
-							body.draft = additionalFields.draft as Boolean;
+							body.draft = additionalFields.draft as boolean;
 						}
 
 						if(additionalFields.framework) {
-							body.framework = additionalFields.framework as String;
+							body.framework = additionalFields.framework as string;
 						}
 
-						responseData = await netlifyApiRequest.call(this, 'POST', `/sites/${siteId}/deploys`, body, qs)
+						responseData = await netlifyApiRequest.call(this, 'POST', `/sites/${siteId}/deploys`, body, qs);
 					}
 				}
 				if(operation === 'getSiteDeploy') {
 					for (let i = 0; i < length; i++) {
 						const siteId = this.getNodeParameter('siteId',i);
 						const deployId = this.getNodeParameter('deployId',i);
-						responseData = await netlifyApiRequest.call(this, 'GET', `/sites/${siteId}/deploys/${deployId}`, body, qs)
+						responseData = await netlifyApiRequest.call(this, 'GET', `/sites/${siteId}/deploys/${deployId}`, body, qs);
 					}
 				}
 
@@ -197,6 +197,6 @@ export class Netlify implements INodeType {
 					}
 				}
 			}
-		return [this.helpers.returnJsonArray(responseData)]
-    }
+		return [this.helpers.returnJsonArray(responseData)];
+	}
 }
