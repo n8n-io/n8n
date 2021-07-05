@@ -1,8 +1,8 @@
 import {
-	INodeProperties,
-} from 'n8n-workflow';
+	ReactionProperties,
+} from '../../actions/Interfaces';
 
-const reactionCreateDescription: INodeProperties[] = [
+export const reactionCreateDescription: ReactionProperties = [
 	{
 		displayName: 'User ID',
 		name: 'userId',
@@ -63,5 +63,3 @@ const reactionCreateDescription: INodeProperties[] = [
 		description: 'Emoji to use for this reaction.',
 	},
 ];
-
-export { reactionCreateDescription };

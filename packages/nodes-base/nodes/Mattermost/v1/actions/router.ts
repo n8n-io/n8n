@@ -3,21 +3,22 @@ import {
 } from 'n8n-core';
 
 import {
-	INodeExecutionData, NodeApiError,
+	INodeExecutionData,
 } from 'n8n-workflow';
 
 import * as channel from './channel';
 import * as message from './message';
 import * as reaction from './reaction';
 import * as user from './user';
+import { Mattermost } from './Interfaces';
 
 export async function router(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 	const items = this.getInputData();
 	const operationResult: INodeExecutionData[] = [];
 
 	for (let i = 0; i < items.length; i++) {
-		const resource = this.getNodeParameter('resource', i) as string;
-		let operation = this.getNodeParameter('operation', i) as string;
+		const resource = this.getNodeParameter<Mattermost>('resource', i);
+		let operation = this.getNodeParameter('operation', i);
 		if (operation === 'delete') {
 			operation = 'del';
 		} else if (operation === 'desactive') {
@@ -27,7 +28,7 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 			resource,
 			operation,
 		} as Mattermost;
-		
+
 		try {
 			if (mattermost.resource === 'channel') {
 				operationResult.push(...await channel[mattermost.operation].call(this, i));
@@ -37,8 +38,6 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 				operationResult.push(...await reaction[mattermost.operation].call(this, i));
 			} else if (mattermost.resource === 'user') {
 				operationResult.push(...await user[mattermost.operation].call(this, i));
-			} else {
-				throw new NodeApiError(this.getNode(), {message: 'Resource not supported.'});
 			}
 		} catch (err) {
 			if (this.continueOnFail()) {

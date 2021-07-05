@@ -1,8 +1,8 @@
 import {
-	INodeProperties,
-} from 'n8n-workflow';
+	MessageProperties,
+} from '../../actions/Interfaces';
 
-const messagePostDescription: INodeProperties[] = [
+export const messagePostDescription: MessageProperties = [
 	{
 		displayName: 'Channel ID',
 		name: 'channelId',
@@ -123,7 +123,7 @@ const messagePostDescription: INodeProperties[] = [
 										name: 'Users',
 										value: 'users',
 									},
-									
+
 								],
 								default: 'custom',
 								description: 'The type of the action.',
@@ -437,7 +437,4 @@ const messagePostDescription: INodeProperties[] = [
 			},
 		],
 	},
-	
 ];
-
-export { messagePostDescription };

@@ -1,8 +1,8 @@
 import {
-	INodeProperties,
-} from 'n8n-workflow';
+	MessageProperties,
+} from '../../actions/Interfaces';
 
-const messagePostEphemeralDescription: INodeProperties[] = [
+export const messagePostEphemeralDescription: MessageProperties = [
 	{
 		displayName: 'User ID',
 		name: 'userId',
@@ -66,7 +66,4 @@ const messagePostEphemeralDescription: INodeProperties[] = [
 		},
 		description: 'Text to send in the ephemeral message.',
 	},
-	
 ];
-
-export { messagePostEphemeralDescription };

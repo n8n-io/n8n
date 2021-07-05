@@ -1,8 +1,8 @@
 import {
-	INodeProperties,
-} from 'n8n-workflow';
+	ChannelProperties,
+} from '../../actions/Interfaces';
 
-const channelCreateDescription: INodeProperties[] = [
+export const channelCreateDescription: ChannelProperties = [
 	{
 		displayName: 'Team ID',
 		name: 'teamId',
@@ -90,7 +90,4 @@ const channelCreateDescription: INodeProperties[] = [
 		default: 'public',
 		description: 'The type of channel to create.',
 	},
-	
 ];
-
-export { channelCreateDescription };

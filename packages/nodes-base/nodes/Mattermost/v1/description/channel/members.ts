@@ -1,8 +1,8 @@
 import {
-	INodeProperties,
-} from 'n8n-workflow';
+	ChannelProperties,
+} from '../../actions/Interfaces';
 
-const channelMembersDescription: INodeProperties[] = [
+export const channelMembersDescription: ChannelProperties = [
 	{
 		displayName: 'Team ID',
 		name: 'teamId',
@@ -110,4 +110,3 @@ const channelMembersDescription: INodeProperties[] = [
 	},
 ];
 
-export { channelMembersDescription };

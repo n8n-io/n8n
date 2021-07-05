@@ -301,7 +301,7 @@ export function displayParameter(nodeValues: INodeParameters, parameter: INodePr
 				return true;
 			}
 
-			if (values.length === 0 || !parameter.displayOptions.show[propertyName].some(v => values.includes(v))) {
+			if (values.length === 0 || !parameter.displayOptions.show[propertyName]!.some(v => values.includes(v))) {
 				return false;
 			}
 		}
@@ -325,7 +325,7 @@ export function displayParameter(nodeValues: INodeParameters, parameter: INodePr
 				values.push.apply(values, value);
 			}
 
-			if (values.length !== 0 && parameter.displayOptions.hide[propertyName].some(v => values.includes(v))) {
+			if (values.length !== 0 && parameter.displayOptions.hide[propertyName]!.some(v => values.includes(v))) {
 				return false;
 			}
 		}
