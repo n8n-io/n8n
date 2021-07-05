@@ -28,7 +28,7 @@ export class Github implements INodeType {
 		group: ['input'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
-		description: 'Consume GitHub API.',
+		description: 'Consume GitHub API',
 		defaults: {
 			name: 'GitHub',
 			color: '#000000',

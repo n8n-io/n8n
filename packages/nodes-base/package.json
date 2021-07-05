@@ -1,6 +1,6 @@
 {
   "name": "n8n-nodes-base",
-  "version": "0.122.0",
+  "version": "0.124.0",
   "description": "Base nodes of n8n",
   "license": "SEE LICENSE IN LICENSE.md",
   "homepage": "https://n8n.io",
@@ -27,6 +27,7 @@
   ],
   "n8n": {
     "credentials": [
+      "dist/credentials/ActionNetworkApi.credentials.js",
       "dist/credentials/ActiveCampaignApi.credentials.js",
       "dist/credentials/AgileCrmApi.credentials.js",
       "dist/credentials/AcuitySchedulingApi.credentials.js",
@@ -100,6 +101,7 @@
       "dist/credentials/GoogleBooksOAuth2Api.credentials.js",
       "dist/credentials/GoogleCalendarOAuth2Api.credentials.js",
       "dist/credentials/GoogleContactsOAuth2Api.credentials.js",
+      "dist/credentials/GoogleDocsOAuth2Api.credentials.js",
       "dist/credentials/GoogleCloudNaturalLanguageOAuth2Api.credentials.js",
       "dist/credentials/GoogleDriveOAuth2Api.credentials.js",
       "dist/credentials/GoogleFirebaseCloudFirestoreOAuth2Api.credentials.js",
@@ -281,6 +283,7 @@
       "dist/credentials/ZulipApi.credentials.js"
     ],
     "nodes": [
+      "dist/nodes/ActionNetwork/ActionNetwork.node.js",
       "dist/nodes/ActiveCampaign/ActiveCampaign.node.js",
       "dist/nodes/ActiveCampaign/ActiveCampaignTrigger.node.js",
       "dist/nodes/AgileCrm/AgileCrm.node.js",
@@ -382,6 +385,7 @@
       "dist/nodes/Google/Calendar/GoogleCalendar.node.js",
       "dist/nodes/Google/CloudNaturalLanguage/GoogleCloudNaturalLanguage.node.js",
       "dist/nodes/Google/Contacts/GoogleContacts.node.js",
+      "dist/nodes/Google/Docs/GoogleDocs.node.js",
       "dist/nodes/Google/Drive/GoogleDrive.node.js",
       "dist/nodes/Google/Firebase/CloudFirestore/CloudFirestore.node.js",
       "dist/nodes/Google/Firebase/RealtimeDatabase/RealtimeDatabase.node.js",
@@ -464,6 +468,8 @@
       "dist/nodes/NoOp.node.js",
       "dist/nodes/Notion/Notion.node.js",
       "dist/nodes/Notion/NotionTrigger.node.js",
+      "dist/nodes/N8nTrainingCustomerDatastore.node.js",
+      "dist/nodes/N8nTrainingCustomerMessenger.node.js",
       "dist/nodes/OpenThesaurus/OpenThesaurus.node.js",
       "dist/nodes/OpenWeatherMap.node.js",
       "dist/nodes/Orbit/Orbit.node.js",
@@ -606,7 +612,7 @@
     "@types/xml2js": "^0.4.3",
     "gulp": "^4.0.0",
     "jest": "^26.4.2",
-    "n8n-workflow": "~0.62.0",
+    "n8n-workflow": "~0.63.0",
     "ts-jest": "^26.3.0",
     "tslint": "^6.1.2",
     "typescript": "~3.9.7"
@@ -622,7 +628,7 @@
     "cheerio": "1.0.0-rc.6",
     "cron": "^1.7.2",
     "eventsource": "^1.0.7",
-    "fflate": "^0.6.9",
+    "fflate": "^0.7.0",
     "formidable": "^1.2.1",
     "get-system-fonts": "^2.0.2",
     "glob-promise": "^3.4.0",
@@ -644,7 +650,7 @@
     "mqtt": "4.2.6",
     "mssql": "^6.2.0",
     "mysql2": "~2.2.0",
-    "n8n-core": "~0.75.0",
+    "n8n-core": "~0.76.0",
     "node-ssh": "^11.0.0",
     "nodemailer": "^6.5.0",
     "pdf-parse": "^1.1.1",

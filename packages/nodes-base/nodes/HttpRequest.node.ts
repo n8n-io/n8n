@@ -32,7 +32,7 @@ export class HttpRequest implements INodeType {
 		group: ['input'],
 		version: 1,
 		subtitle: '={{$parameter["requestMethod"] + ": " + $parameter["url"]}}',
-		description: 'Makes a HTTP request and returns the received data',
+		description: 'Makes an HTTP request and returns the response data',
 		defaults: {
 			name: 'HTTP Request',
 			color: '#2200DD',
