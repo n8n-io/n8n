@@ -22,7 +22,7 @@ import {
 	LoggerProxy as Logger,
 	Workflow,} from 'n8n-workflow';
 
-import { config } from '@config';
+import * as config from '../config';
 import { WorkflowEntity } from './databases/entities/WorkflowEntity';
 import { validate } from 'class-validator';
 

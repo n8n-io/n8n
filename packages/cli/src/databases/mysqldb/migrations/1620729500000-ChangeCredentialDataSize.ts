@@ -1,5 +1,5 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
-import { config } from '@config';
+import * as config from '../../../../config';
 
 export class ChangeCredentialDataSize1620729500000 implements MigrationInterface {
 	name = 'ChangeCredentialDataSize1620729500000';

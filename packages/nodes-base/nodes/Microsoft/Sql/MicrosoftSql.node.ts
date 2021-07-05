@@ -38,7 +38,7 @@ export class MicrosoftSql implements INodeType {
 		icon: 'file:mssql.svg',
 		group: ['input'],
 		version: 1,
-		description: 'Gets, add and update data in Microsoft SQL.',
+		description: 'Get, add and update data in Microsoft SQL',
 		defaults: {
 			name: 'Microsoft SQL',
 			color: '#bcbcbd',
@@ -278,7 +278,6 @@ export class MicrosoftSql implements INodeType {
 							const values = insertValues
 								.map((item: IDataObject) => extractValues(item))
 								.join(',');
-
 							return pool
 								.request()
 								.query(

@@ -1,5 +1,5 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
-import { config } from '@config';
+import config = require('../../../../config');
 
 export class CertifyCorrectCollation1623936588000 implements MigrationInterface {
 	name = 'CertifyCorrectCollation1623936588000';

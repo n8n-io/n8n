@@ -70,6 +70,10 @@ export async function googleApiRequestAllItems(this: IExecuteFunctions | ILoadOp
 export function simplify(responseData: any | [any]) { // tslint:disable-line:no-any
 	const response = [];
 	for (const { columnHeader: { dimensions }, data: { rows } } of responseData) {
+		if (rows === undefined) {
+			// Do not error if there is no data
+			continue;
+		}
 		for (const row of rows) {
 			const data: IDataObject = {};
 			if (dimensions) {

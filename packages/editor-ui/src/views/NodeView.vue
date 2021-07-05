@@ -42,15 +42,15 @@
 			<button @click="zoomToFit" class="button-white" title="Zoom to Fit">
 				<font-awesome-icon icon="expand"/>
 			</button>
-			<button @click="setZoom('in')" class="button-white" title="Zoom In">
+			<button @click="zoomIn()" class="button-white" title="Zoom In">
 				<font-awesome-icon icon="search-plus"/>
 			</button>
-			<button @click="setZoom('out')" class="button-white" title="Zoom Out">
+			<button @click="zoomOut()" class="button-white" title="Zoom Out">
 				<font-awesome-icon icon="search-minus"/>
 			</button>
 			<button
 				v-if="nodeViewScale !== 1"
-				@click="setZoom('reset')"
+				@click="resetZoom()"
 				class="button-white"
 				title="Reset Zoom"
 				>
@@ -136,7 +136,7 @@ import NodeCreator from '@/components/NodeCreator/NodeCreator.vue';
 import NodeSettings from '@/components/NodeSettings.vue';
 import RunData from '@/components/RunData.vue';
 
-import { getLeftmostTopNode, getWorkflowCorners } from './helpers';
+import { getLeftmostTopNode, getWorkflowCorners, scaleSmaller, scaleBigger, scaleReset } from './helpers';
 
 import mixins from 'vue-typed-mixins';
 import { v4 as uuidv4} from 'uuid';
@@ -349,6 +349,7 @@ export default mixins(
 				this.$externalHooks().run('nodeView.createNodeActiveChanged', { source: 'add_node_button' });
 			},
 			async openExecution (executionId: string) {
+				this.resetWorkspace();
 
 				let data: IExecutionResponse | undefined;
 				try {
@@ -368,6 +369,10 @@ export default mixins(
 				this.$store.commit('setWorkflowExecutionData', data);
 
 				await this.addNodes(JSON.parse(JSON.stringify(data.workflowData.nodes)), JSON.parse(JSON.stringify(data.workflowData.connections)));
+				this.$nextTick(() => {
+					this.zoomToFit();
+					this.$store.commit('setStateDirty', false);
+				});
 
 				this.$externalHooks().run('execution.open', { workflowId: data.workflowData.id, workflowName: data.workflowData.name, executionId });
 			},
@@ -486,9 +491,9 @@ export default mixins(
 				//* Control + scroll zoom
 				if (e.ctrlKey) {
 					if (e.deltaY > 0) {
-						this.setZoom('out');
+						this.zoomOut();
 					} else {
-						this.setZoom('in');
+						this.zoomIn();
 					}
 
 					e.preventDefault();
@@ -509,13 +514,29 @@ export default mixins(
 				// else which should ignore the default keybindings
 				for (let index = 0; index < path.length; index++) {
 					if (path[index].className && typeof path[index].className === 'string' && (
-						path[index].className.includes('el-message-box') || path[index].className.includes('ignore-key-press')
+						path[index].className.includes('ignore-key-press')
 					)) {
 						return;
 					}
 				}
-				const anyModalsOpen = this.$store.getters['ui/anyModalsOpen'];
-				if (anyModalsOpen) {
+
+				// el-dialog or el-message-box element is open
+				if (window.document.body.classList.contains('el-popup-parent--hidden')) {
+					return;
+				}
+
+				if (e.key === 'Escape') {
+					this.createNodeActive = false;
+					if (this.activeNode) {
+						this.$externalHooks().run('dataDisplay.nodeEditingFinished');
+						this.$store.commit('setActiveNode', null);
+					}
+
+					return;
+				}
+
+				// node modal is open
+				if (this.activeNode) {
 					return;
 				}
 
@@ -526,25 +547,24 @@ export default mixins(
 					e.preventDefault();
 
 					this.callDebounced('deleteSelectedNodes', 500);
-				} else if (e.key === 'Escape') {
-					this.$externalHooks().run('dataDisplay.nodeEditingFinished');
-					this.createNodeActive = false;
-					this.$store.commit('setActiveNode', null);
+
 				} else if (e.key === 'Tab') {
 					this.createNodeActive = !this.createNodeActive && !this.isReadOnly;
 				} else if (e.key === this.controlKeyCode) {
 					this.ctrlKeyPressed = true;
-				} else if (e.key === 'F2') {
+				} else if (e.key === 'F2' && !this.isReadOnly) {
 					const lastSelectedNode = this.lastSelectedNode;
 					if (lastSelectedNode !== null) {
 						this.callDebounced('renameNodePrompt', 1500, lastSelectedNode.name);
 					}
-				} else if (e.key === '+') {
-					this.callDebounced('setZoom', 300, 'in');
-				} else if (e.key === '-') {
-					this.callDebounced('setZoom', 300, 'out');
-				} else if ((e.key === '0') && (this.isCtrlKeyPressed(e) === true)) {
-					this.callDebounced('setZoom', 300, 'reset');
+				} else if ((e.key === '=' || e.key === '+') && !this.isCtrlKeyPressed(e)) {
+					this.zoomIn();
+				} else if ((e.key === '_' || e.key === '-') && !this.isCtrlKeyPressed(e)) {
+					this.zoomOut();
+				} else if ((e.key === '0') && !this.isCtrlKeyPressed(e)) {
+					this.resetZoom();
+				} else if ((e.key === '1') && !this.isCtrlKeyPressed(e)) {
+					this.zoomToFit();
 				} else if ((e.key === 'a') && (this.isCtrlKeyPressed(e) === true)) {
 					// Select all nodes
 					e.stopPropagation();
@@ -778,16 +798,25 @@ export default mixins(
 				});
 			},
 
-			setZoom (zoom: string) {
-				let scale = this.nodeViewScale;
-				if (zoom === 'in') {
-					scale *= 1.25;
-				} else if (zoom === 'out') {
-					scale /= 1.25;
-				} else {
-					scale = 1;
-				}
+			resetZoom () {
+				const { scale, offset } = scaleReset({scale: this.nodeViewScale, offset: this.$store.getters.getNodeViewOffsetPosition});
+
 				this.setZoomLevel(scale);
+				this.$store.commit('setNodeViewOffsetPosition', {newOffset: offset});
+			},
+
+			zoomIn() {
+				const { scale, offset: [xOffset, yOffset] } = scaleBigger({scale: this.nodeViewScale, offset: this.$store.getters.getNodeViewOffsetPosition});
+
+				this.setZoomLevel(scale);
+				this.$store.commit('setNodeViewOffsetPosition', {newOffset: [xOffset, yOffset]});
+			},
+
+			zoomOut() {
+				const { scale, offset: [xOffset, yOffset] } = scaleSmaller({scale: this.nodeViewScale, offset: this.$store.getters.getNodeViewOffsetPosition});
+
+				this.setZoomLevel(scale);
+				this.$store.commit('setNodeViewOffsetPosition', {newOffset: [xOffset, yOffset]});
 			},
 
 			setZoomLevel (zoomLevel: number) {
@@ -810,6 +839,10 @@ export default mixins(
 
 			zoomToFit () {
 				const nodes = this.$store.getters.allNodes as INodeUi[];
+
+				if (nodes.length === 0) { // some unknown workflow executions
+					return;
+				}
 
 				const {minX, minY, maxX, maxY} = getWorkflowCorners(nodes);
 
