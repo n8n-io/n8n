@@ -11,7 +11,6 @@ import {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { copyInputItems } from '../../MySql/GenericFunctions';
 
 import {
 	awsApiRequest,
@@ -25,11 +24,13 @@ import {
 } from './ItemDescription';
 
 import {
+	IAttributeNameUi,
 	IAttributeValueUi,
 	IRequestBody,
 } from './types';
 
 import {
+	adjustExpressionAttributeName,
 	adjustExpressionAttributeValues,
 	decodeItem,
 	simplify,
@@ -42,7 +43,7 @@ export class AwsDynamoDB implements INodeType {
 		icon: 'file:dynamodb.svg',
 		group: ['transform'],
 		version: 1,
-		subtitle: '={{$parameter["operation"]}}',
+		subtitle: '={{$parameter["operation"] + ":" + $parameter["resource"]}}',
 		description: 'Consume the AWS DynamoDB API',
 		defaults: {
 			name: 'AWS DynamoDB',
@@ -84,7 +85,7 @@ export class AwsDynamoDB implements INodeType {
 				};
 
 				const responseData = await awsApiRequest.call(this, 'dynamodb', 'POST', '/', {}, headers);
-
+				
 				return responseData.TableNames.map((table: string) => ({ name: table, value: table }));
 			},
 		},
@@ -100,243 +101,248 @@ export class AwsDynamoDB implements INodeType {
 		const returnData: IDataObject[] = [];
 
 		for (let i = 0; i < items.length; i++) {
-			if (resource === 'item') {
-				if (operation === 'upsert') {
 
-					// ----------------------------------
-					//          upsert
-					// ----------------------------------
+			try {
+				if (resource === 'item') {
+					if (operation === 'upsert') {
 
-					// https://docs.aws.amazon.com/amazondynamodb/latest/APIReference/API_PutItem.html
+						// ----------------------------------
+						//          upsert
+						// ----------------------------------
 
-					const eavUi = this.getNodeParameter('expressionAttributeValues.details', i) as IAttributeValueUi[];
+						// https://docs.aws.amazon.com/amazondynamodb/latest/APIReference/API_PutItem.html
 
-					const body: IRequestBody = {
-						TableName: this.getNodeParameter('tableName', i) as string,
-						//ConditionExpression: this.getNodeParameter('conditionExpression', i) as string,
-						//ExpressionAttributeValues: adjustExpressionAttributeValues(eavUi),
-						ReturnValues: 'ALL_OLD',
-					};
+						const eavUi = this.getNodeParameter('additionalFields.eavUi.eavValues', i, []) as IAttributeValueUi[];
+						const conditionExpession = this.getNodeParameter('conditionExpression', i, '') as string;
+						const eanUi = this.getNodeParameter('additionalFields.eanUi.eanValues', i, []) as IAttributeNameUi[];
 
-					const columnString = this.getNodeParameter('columns', 0) as string;
-					const columns = columnString.split(',').map(column => column.trim());
+						const body: IRequestBody = {
+							TableName: this.getNodeParameter('tableName', i) as string,
+						};
 
-					const insertItem = copyInputItem(items[i], columns);
-
-					body.Item = insertItem;
-
-					const headers = {
-						'Content-Type': 'application/x-amz-json-1.0',
-						'X-Amz-Target': 'DynamoDB_20120810.PutItem',
-					};
-
-					console.log(body);
-
-					responseData = await awsApiRequest.call(this, 'dynamodb', 'POST', '/', body, headers);
-					
-					console.log(responseData);
-
-					responseData = decodeItem(responseData.Attributes);
-					//responseData = { success: true };
-
-				} else if (operation === 'delete') {
-
-					// ----------------------------------
-					//              delete
-					// ----------------------------------
-					// https://docs.aws.amazon.com/amazondynamodb/latest/APIReference/API_DeleteItem.html
-
-					const body: IRequestBody = {
-						TableName: this.getNodeParameter('tableName', i) as string,
-						Key: {},
-						ExpressionAttributeValues: {},
-						ExpressionAttributeNames: {},
-						ReturnValues: this.getNodeParameter('returnValues', 0) as string,
-					};
-
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
-					const simple = this.getNodeParameter('simple', 0, false) as boolean;
-
-					const items = this.getNodeParameter('keysUi.keyValues', i, []) as IDataObject[];
-					for (const item of items) {
-						//@ts-ignore
-						body.Key![item.key as string] = { [(item.type as string).toUpperCase()]: item.value };
-					}
-
-					delete body.keysUi;
-
-					if (additionalFields.expressionAttributeValuesUi) {
-						const attributeValues = (additionalFields.expressionAttributeValuesUi as IDataObject || {}).expressionAttributeValuesValues as IDataObject[] || [];
-						for (const attributeValue of attributeValues) {
-							//@ts-ignore
-							body.ExpressionAttributeValues![attributeValue.key as string] = { [(attributeValue.type as string).toUpperCase()]: attributeValue.value };
+						const expressionAttributeValues = adjustExpressionAttributeValues(eavUi);
+						
+						if (Object.keys(expressionAttributeValues).length) {
+							body.ExpressionAttributeValues = expressionAttributeValues;
 						}
-					}
 
-					if (additionalFields.expressionAttributeNamesUi) {
-						const data = (additionalFields.expressionAttributeNamesUi as IDataObject || {}).expressionAttributeNamesValues as IDataObject[];
-						body.ExpressionAttributeNames = data.reduce((obj, value) => Object.assign(obj, { [`${value.key}`]: value.value }), {});
-					}
+						const expressionAttributeName = adjustExpressionAttributeName(eanUi);
 
-					if (Object.keys(body.ExpressionAttributeNames as IDataObject).length === 0) {
-						delete body.ExpressionAttributeNames;
-					}
+						if (Object.keys(expressionAttributeName).length) {
+							body.expressionAttributeNames = expressionAttributeName;
+						}
 
-					if (Object.keys(body.ExpressionAttributeValues as IDataObject).length === 0) {
-						delete body.ExpressionAttributeValues;
-					}
+						if (conditionExpession) {
+							body.ConditionExpression = conditionExpession;
+						}
 
-					const headers = {
-						'Content-Type': 'application/x-amz-json-1.0',
-						'X-Amz-Target': 'DynamoDB_20120810.DeleteItem',
-					};
+						const columnString = this.getNodeParameter('columns', 0) as string;
+						const columns = columnString.split(',').map(column => column.trim());
 
-					if (additionalFields.conditionExpression) {
-						body.ConditionExpression = additionalFields.conditionExpression as string;
-					}
+						body.Item = copyInputItem(items[i], columns);
 
-					responseData = await awsApiRequest.call(this, 'dynamodb', 'POST', '/', body, headers);
+						const headers = {
+							'Content-Type': 'application/x-amz-json-1.0',
+							'X-Amz-Target': 'DynamoDB_20120810.PutItem',
+						};
 
-					if (simple === true) {
-						responseData = decodeItem(responseData.Attributes);
-					}
-
-				} else if (operation === 'get') {
-
-					// ----------------------------------
-					//              get
-					// ----------------------------------
-
-					// https://docs.aws.amazon.com/amazondynamodb/latest/APIReference/API_GetItem.html
-
-					const tableName = this.getNodeParameter('tableName', 0) as string;
-					const simple = this.getNodeParameter('simple', 0, false) as boolean;
-					const select = this.getNodeParameter('select', 0) as string;
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
-
-					const body: IRequestBody = {
-						TableName: tableName,
-						Key: {},
-						Select: select,
-					};
-
-					Object.assign(body, additionalFields);
-
-					if (additionalFields.expressionAttributeNames) {
-						const values = this.getNodeParameter('additionalFields.expressionAttributeNames.expressionAttributeNamesValues', i, []) as IDataObject[];
-						body.ExpressionAttributeNames = values.reduce((obj, value) => Object.assign(obj, { [`${value.key}`]: value.value }), {}) as { [key: string]: string };
-					}
-
-					if (additionalFields.consistentRead) {
-						body.ConsistentRead = additionalFields.consistentRead as boolean;
-					}
-
-					if (additionalFields.projectionExpression) {
-						body.ProjectionExpression = additionalFields.projectionExpression as string;
-					}
-
-					const items = this.getNodeParameter('keysUi.keyValues', i, []) as IDataObject[];
-					for (const item of items) {
-						//@ts-ignore
-						body.Key![item.key as string] = { [(item.type as string).toUpperCase()]: item.value };
-					}
-
-					const headers = {
-						'X-Amz-Target': 'DynamoDB_20120810.GetItem',
-						'Content-Type': 'application/x-amz-json-1.0',
-					};
-
-					responseData = await awsApiRequest.call(this, 'dynamodb', 'POST', '/', body, headers);
-
-					responseData = responseData.Item;
-
-					if (simple && responseData) {
-						responseData = decodeItem(responseData);
-					}
-
-				} else if (operation === 'getAll') {
-
-					// ----------------------------------
-					//             getAll
-					// ----------------------------------
-
-					// https://docs.aws.amazon.com/amazondynamodb/latest/APIReference/API_Query.html
-
-					const eavUi = this.getNodeParameter('expressionAttributeUi.expressionAttributeValues', i, []) as IAttributeValueUi[];
-					const simple = this.getNodeParameter('simple', 0, false) as boolean;
-					const select = this.getNodeParameter('select', 0) as string;
-					const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
-
-					const body: IRequestBody = {
-						TableName: this.getNodeParameter('tableName', i) as string,
-						KeyConditionExpression: this.getNodeParameter('keyConditionExpression', i) as string,
-						ExpressionAttributeValues: adjustExpressionAttributeValues(eavUi),
-						ExpressionAttributeNames: {},
-					};
-
-					const {
-						indexName,
-						projectionExpression,
-						readConsistencyModel,
-						expressionAttributeNamesUi,
-					} = this.getNodeParameter('options', i) as {
-						indexName: string;
-						projectionExpression: string;
-						readConsistencyModel: 'eventuallyConsistent' | 'stronglyConsistent';
-						expressionAttributeNamesUi: IDataObject;
-					};
-
-					if (expressionAttributeNamesUi) {
-						const values = expressionAttributeNamesUi.expressionAttributeNamesValues as IDataObject[] || [];
-						body.ExpressionAttributeNames = values.reduce((obj, value) => Object.assign(obj, { [`${value.key}`]: value.value }), {}) as { [key: string]: string };
-					}
-
-					if (indexName) {
-						body.IndexName = indexName;
-					}
-
-					if (projectionExpression) {
-						body.ProjectionExpression = projectionExpression;
-					}
-
-					if (readConsistencyModel) {
-						body.ConsistentRead = readConsistencyModel === 'stronglyConsistent';
-					}
-
-					if (select) {
-						body.Select = select;
-					}
-
-					const headers = {
-						'Content-Type': 'application/json',
-						'X-Amz-Target': 'DynamoDB_20120810.Query',
-					};
-
-					if (Object.keys(body.ExpressionAttributeNames as IDataObject).length === 0) {
-						delete body.ExpressionAttributeNames;
-					}
-
-					if (returnAll === true && select !== 'COUNT') {
-						responseData = await awsApiRequestAllItems.call(this, 'dynamodb', 'POST', '/', body, headers);
-					} else {
-						body.Limit = this.getNodeParameter('limit', 0, 1) as number;
 						responseData = await awsApiRequest.call(this, 'dynamodb', 'POST', '/', body, headers);
-						if (select !== 'COUNT') {
-							responseData = responseData.Items;
+
+						responseData = { success: true };
+
+					} else if (operation === 'delete') {
+
+						// ----------------------------------
+						//              delete
+						// ----------------------------------
+						// https://docs.aws.amazon.com/amazondynamodb/latest/APIReference/API_DeleteItem.html
+						
+						// tslint:disable-next-line: no-any
+						const body: { [key: string]: any } = {
+							TableName: this.getNodeParameter('tableName', i) as string,
+							Key: {},
+							ReturnValues: this.getNodeParameter('returnValues', 0) as string,
+						};
+
+						const eavUi = this.getNodeParameter('additionalFields.eavUi.eavValues', i, []) as IAttributeValueUi[];
+						const eanUi = this.getNodeParameter('additionalFields.eanUi.eanValues', i, []) as IAttributeNameUi[];
+						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const simple = this.getNodeParameter('simple', 0, false) as boolean;
+
+						const items = this.getNodeParameter('keysUi.keyValues', i, []) as [{ key: string, type: string, value: string }];
+						for (const item of items) {
+							body.Key[item.key] = { [item.type.toUpperCase()]: item.value };
+						}
+						
+						const expressionAttributeValues = adjustExpressionAttributeValues(eavUi);
+
+						if (Object.keys(expressionAttributeValues).length) {
+							body.ExpressionAttributeValues = expressionAttributeValues;
+						}
+
+						const expressionAttributeName = adjustExpressionAttributeName(eanUi);
+
+						if (Object.keys(expressionAttributeName).length) {
+							body.expressionAttributeNames = expressionAttributeName;
+						}
+
+						const headers = {
+							'Content-Type': 'application/x-amz-json-1.0',
+							'X-Amz-Target': 'DynamoDB_20120810.DeleteItem',
+						};
+
+						if (additionalFields.conditionExpression) {
+							body.ConditionExpression = additionalFields.conditionExpression as string;
+						}
+
+						responseData = await awsApiRequest.call(this, 'dynamodb', 'POST', '/', body, headers);
+
+						if (!Object.keys(responseData).length) {
+							responseData = { success: true };
+						} else if (simple === true) {
+							responseData = decodeItem(responseData.Attributes);
+						}
+
+					} else if (operation === 'get') {
+
+						// ----------------------------------
+						//              get
+						// ----------------------------------
+
+						// https://docs.aws.amazon.com/amazondynamodb/latest/APIReference/API_GetItem.html
+
+						const tableName = this.getNodeParameter('tableName', 0) as string;
+						const simple = this.getNodeParameter('simple', 0, false) as boolean;
+						const select = this.getNodeParameter('select', 0) as string;
+						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const eanUi = this.getNodeParameter('additionalFields.eanUi.eanValues', i, []) as IAttributeNameUi[];
+
+						// tslint:disable-next-line: no-any
+						const body: { [key: string]: any } = {
+							TableName: tableName,
+							Key: {},
+							Select: select,
+						};
+
+						Object.assign(body, additionalFields);
+
+						const expressionAttributeName = adjustExpressionAttributeName(eanUi);
+
+						if (Object.keys(expressionAttributeName).length) {
+							body.expressionAttributeNames = expressionAttributeName;
+						}
+
+						if (additionalFields.consistentRead) {
+							body.ConsistentRead = additionalFields.consistentRead as boolean;
+						}
+
+						if (additionalFields.projectionExpression) {
+							body.ProjectionExpression = additionalFields.projectionExpression as string;
+						}
+
+						const items = this.getNodeParameter('keysUi.keyValues', i, []) as IDataObject[];
+						for (const item of items) {
+							body.Key[item.key as string] = { [(item.type as string).toUpperCase()]: item.value };
+						}
+
+						const headers = {
+							'X-Amz-Target': 'DynamoDB_20120810.GetItem',
+							'Content-Type': 'application/x-amz-json-1.0',
+						};
+
+						responseData = await awsApiRequest.call(this, 'dynamodb', 'POST', '/', body, headers);
+
+						responseData = responseData.Item;
+
+						if (simple && responseData) {
+							responseData = decodeItem(responseData);
+						}
+
+					} else if (operation === 'getAll') {
+
+						// ----------------------------------
+						//             getAll
+						// ----------------------------------
+
+						// https://docs.aws.amazon.com/amazondynamodb/latest/APIReference/API_Query.html
+
+						const eavUi = this.getNodeParameter('eavUi.eavValues', i, []) as IAttributeValueUi[];
+						const simple = this.getNodeParameter('simple', 0, false) as boolean;
+						const select = this.getNodeParameter('select', 0) as string;
+						const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
+						const eanUi = this.getNodeParameter('additionalFields.eanUi.eanValues', i, []) as IAttributeNameUi[];
+
+						const body: IRequestBody = {
+							TableName: this.getNodeParameter('tableName', i) as string,
+							KeyConditionExpression: this.getNodeParameter('keyConditionExpression', i) as string,
+							ExpressionAttributeValues: adjustExpressionAttributeValues(eavUi),
+						};
+
+						const {
+							indexName,
+							projectionExpression,
+						} = this.getNodeParameter('options', i) as {
+							indexName: string;
+							projectionExpression: string;
+						};
+
+						const expressionAttributeName = adjustExpressionAttributeName(eanUi);
+
+						if (Object.keys(expressionAttributeName).length) {
+							body.expressionAttributeNames = expressionAttributeName;
+						}
+
+						if (indexName) {
+							body.IndexName = indexName;
+						}
+
+						if (projectionExpression) {
+							body.ProjectionExpression = projectionExpression;
+						}
+
+						if (select) {
+							body.Select = select;
+						}
+
+						const headers = {
+							'Content-Type': 'application/json',
+							'X-Amz-Target': 'DynamoDB_20120810.Query',
+						};
+
+						if (returnAll === true && select !== 'COUNT') {
+							responseData = await awsApiRequestAllItems.call(this, 'dynamodb', 'POST', '/', body, headers);
+						} else {
+							body.Limit = this.getNodeParameter('limit', 0, 1) as number;
+							responseData = await awsApiRequest.call(this, 'dynamodb', 'POST', '/', body, headers);
+							if (select !== 'COUNT') {
+								responseData = responseData.Items;
+							}
+						}
+						if (simple === true) {
+							responseData = responseData.map(simplify);
 						}
 					}
-					if (simple === true) {
-						responseData = responseData.map(simplify);
-					}
+
+					Array.isArray(responseData)
+						? returnData.push(...responseData)
+						: returnData.push(responseData);
 				}
 
-				Array.isArray(responseData)
-					? returnData.push(...responseData)
-					: returnData.push(responseData);
+			} catch (error) {
+				if (this.continueOnFail() !== true) {
+					throw error;
+				} else {
+					// Return the actual reason as error
+					returnData.push(
+						{
+							error: error.message,
+						},
+					);
+					continue;
+				}
 			}
 		}
 
 		return [this.helpers.returnJsonArray(returnData)];
-
 	}
 }

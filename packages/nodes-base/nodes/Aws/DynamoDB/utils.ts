@@ -11,6 +11,7 @@ import {
 import {
 	AttributeValueType,
 	EAttributeValueType,
+	IAttributeNameUi,
 	IAttributeValue,
 	IAttributeValueUi,
 	IAttributeValueValue,
@@ -18,10 +19,9 @@ import {
 
 const addColon = (attribute: string) => attribute = attribute.charAt(0) === ':' ? attribute : `:${attribute}`;
 
+const addPound = (key: string) => key = key.charAt(0) === '#' ? key : `#${key}`;
+
 export function adjustExpressionAttributeValues(eavUi: IAttributeValueUi[]) {
-	if (isEmpty(eavUi)) {
-		throw new Error('Expression attribute values must not be empty.');
-	}
 
 	const eav: IAttributeValue = {};
 
@@ -30,6 +30,18 @@ export function adjustExpressionAttributeValues(eavUi: IAttributeValueUi[]) {
 	});
 
 	return eav;
+}
+
+export function adjustExpressionAttributeName(eanUi: IAttributeNameUi[]) {
+
+	// tslint:disable-next-line: no-any
+	const ean: { [key: string]: any } = {};
+
+	eanUi.forEach(({ key, value }) => {
+		ean[addPound(key)] = { value } as IAttributeValueValue;
+	});
+
+	return ean;
 }
 
 export function simplify(item: IAttributeValue): IDataObject {

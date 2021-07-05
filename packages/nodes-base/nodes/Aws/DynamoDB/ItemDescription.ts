@@ -16,9 +16,9 @@ export const itemOperations = [
 		},
 		options: [
 			{
-				name: 'Create/Update',
+				name: 'Create or Update',
 				value: 'upsert',
-				description: 'Create/Update an item',
+				description: 'Create a new item, or update the current one if it already exists (upsert)',
 			},
 			{
 				name: 'Delete',
@@ -33,7 +33,7 @@ export const itemOperations = [
 			{
 				name: 'Get All',
 				value: 'getAll',
-				description: 'Get all item',
+				description: 'Get all items',
 			},
 		],
 		default: 'upsert',
@@ -86,17 +86,11 @@ export const itemFields = [
 		description: 'Comma separated list of the properties which should used as columns for the new rows.',
 	},
 	{
-		displayName: 'Expression Attribute Values',
-		name: 'expressionAttributeValues',
-		description: 'Substitution tokens for attribute names in an expression.',
-		placeholder: 'Add Metadata',
-		type: 'fixedCollection',
+		displayName: 'Additional Fields',
+		name: 'additionalFields',
+		type: 'collection',
+		placeholder: 'Add Field',
 		default: {},
-		required: true,
-		typeOptions: {
-			multipleValues: true,
-			minValue: 1,
-		},
 		displayOptions: {
 			show: {
 				resource: [
@@ -109,58 +103,95 @@ export const itemFields = [
 		},
 		options: [
 			{
-				name: 'details',
-				displayName: 'Details',
-				values: [
+				displayName: 'Expression Attribute Values',
+				name: 'eavUi',
+				description: `Substitution tokens for attribute names in an expression.</br>
+				Only needed when the parameter "condition expression" is set `,
+				placeholder: 'Add Attribute Value',
+				type: 'fixedCollection',
+				default: '',
+				required: true,
+				typeOptions: {
+					multipleValues: true,
+					minValue: 1,
+				},
+				options: [
 					{
-						displayName: 'Attribute',
-						name: 'attribute',
-						type: 'string',
-						default: '',
-					},
-					{
-						displayName: 'Type',
-						name: 'type',
-						type: 'options',
-						options: [
+						name: 'eavValues',
+						displayName: 'Expression Attribute Vaue',
+						values: [
 							{
-								name: 'Number',
-								value: 'N',
+								displayName: 'Attribute',
+								name: 'attribute',
+								type: 'string',
+								default: '',
 							},
 							{
-								name: 'String',
-								value: 'S',
+								displayName: 'Type',
+								name: 'type',
+								type: 'options',
+								options: [
+									{
+										name: 'Number',
+										value: 'N',
+									},
+									{
+										name: 'String',
+										value: 'S',
+									},
+								],
+								default: 'S',
+							},
+							{
+								displayName: 'Value',
+								name: 'value',
+								type: 'string',
+								default: '',
 							},
 						],
-						default: 'S',
-					},
-					{
-						displayName: 'Value',
-						name: 'value',
-						type: 'string',
-						default: '',
 					},
 				],
+			},
+			{
+				displayName: 'Condition Expression',
+				name: 'conditionExpression',
+				type: 'string',
+				default: '',
+				description: `A condition that must be satisfied in order for a conditional upsert to succeed.
+				Check <a href="https://docs.aws.amazon.com/amazondynamodb/latest/APIReference/API_PutItem.html" target="_blank">Info</a>`,
+			},
+			{
+				displayName: 'Expression Attribute Names',
+				name: 'eanUi',
+				placeholder: 'Add Expression',
+				type: 'fixedCollection',
+				default: '',
+				typeOptions: {
+					multipleValues: true,
+				},
+				options: [
+					{
+						name: 'eanValues',
+						displayName: 'Expression',
+						values: [
+							{
+								displayName: 'Key',
+								name: 'key',
+								type: 'string',
+								default: '',
+							},
+							{
+								displayName: 'Value',
+								name: 'value',
+								type: 'string',
+								default: '',
+							},
+						],
+					},
+				],
+				description: `One or more substitution tokens for attribute names in an expression. Check <a href="https://docs.aws.amazon.com/amazondynamodb/latest/APIReference/API_PutItem.html" target="_blank">Info</a>`,
 			},
 		],
-	},
-	{
-		displayName: 'Condition Expression',
-		name: 'conditionExpression',
-		description: 'Condition to be satisfied for the create/update operation to succeed.',
-		type: 'string',
-		default: '',
-		placeholder: 'id = :id',
-		displayOptions: {
-			show: {
-				resource: [
-					'item',
-				],
-				operation: [
-					'upsert',
-				],
-			},
-		},
 	},
 
 	// ----------------------------------
@@ -225,8 +256,8 @@ export const itemFields = [
 				],
 			},
 		],
-		description: `For the primary key, you must provide all of the attributes. For example, with a simple primary key,</br>
-		you only need to provide a value for the partition key. For a composite primary key, you must provide values for both the partition key and the sort key.`,
+		description: `Item's primary key. For example, with a simple primary key, you only need to provide a value for the partition key.</br>
+		For a composite primary key, you must provide values for both the partition key and the sort key`,
 	},
 	{
 		displayName: 'Return Values',
@@ -246,16 +277,16 @@ export const itemFields = [
 			{
 				name: 'All Old',
 				value: 'ALL_OLD',
+				description: 'The content of the old item is returned',
 			},
 			{
 				name: 'None',
 				value: 'NONE',
+				description: 'Nothing is returned',
 			},
 		],
 		default: 'NONE',
-		description: `Use ReturnValues if you want to get the item attributes as they appeared before they were deleted. For DeleteItem, the valid values are:</br>
-				NONE - If ReturnValues is not specified, or if its value is NONE, then nothing is returned. (This setting is the default for ReturnValues.)</br>
-				ALL_OLD - The content of the old item is returned.`,
+		description: `Use ReturnValues if you want to get the item attributes as they appeared before they were deleted`,
 	},
 	{
 		displayName: 'Simple',
@@ -299,11 +330,11 @@ export const itemFields = [
 				name: 'conditionExpression',
 				type: 'string',
 				default: '',
-				description: `A condition that must be satisfied in order for a conditional DeleteItem to succeed.`,
+				description: `A condition that must be satisfied in order for a conditional delete to succeed.`,
 			},
 			{
 				displayName: 'Expression Attribute Names',
-				name: 'expressionAttributeNamesUi',
+				name: 'eanUi',
 				placeholder: 'Add Expression',
 				type: 'fixedCollection',
 				default: '',
@@ -312,7 +343,7 @@ export const itemFields = [
 				},
 				options: [
 					{
-						name: 'expressionAttributeNamesValues',
+						name: 'eanValues',
 						displayName: 'Expression',
 						values: [
 							{
@@ -330,24 +361,29 @@ export const itemFields = [
 						],
 					},
 				],
+				description: `One or more substitution tokens for attribute names in an expression. Check <a href="https://docs.aws.amazon.com/amazondynamodb/latest/APIReference/API_PutItem.html" target="_blank">Info</a>`,
 			},
 			{
 				displayName: 'Expression Attribute Values',
-				name: 'expressionAttributeValuesUi',
-				type: 'fixedCollection',
+				name: 'expressionAttributeUi',
+				description: `Substitution tokens for attribute names in an expression.</br>
+				Only needed when the parameter "condition expression" is set `,
 				placeholder: 'Add Attribute Value',
-				default: {},
+				type: 'fixedCollection',
+				default: '',
+				required: true,
 				typeOptions: {
 					multipleValues: true,
+					minValue: 1,
 				},
 				options: [
 					{
-						displayName: 'Expression Attribute Value',
-						name: 'expressionAttributeValuesValues',
+						name: 'expressionAttributeValues',
+						displayName: 'Expression Attribute Vaue',
 						values: [
 							{
-								displayName: 'Key',
-								name: 'key',
+								displayName: 'Attribute',
+								name: 'attribute',
 								type: 'string',
 								default: '',
 							},
@@ -357,47 +393,15 @@ export const itemFields = [
 								type: 'options',
 								options: [
 									{
-										name: 'Binary',
-										value: 'b',
-									},
-									{
-										name: 'Boolean',
-										value: 'bool',
-									},
-									{
-										name: 'Binary Set',
-										value: 'bs',
-									},
-									{
-										name: 'List',
-										value: 'l',
-									},
-									{
-										name: 'Map',
-										value: 'm',
-									},
-									{
 										name: 'Number',
-										value: 'n',
-									},
-									{
-										name: 'Number Set',
-										value: 'ns',
-									},
-									{
-										name: 'Null',
-										value: 'null',
+										value: 'N',
 									},
 									{
 										name: 'String',
-										value: 's',
-									},
-									{
-										name: 'String Set',
-										value: 'ss',
+										value: 'S',
 									},
 								],
-								default: 's',
+								default: 'S',
 							},
 							{
 								displayName: 'Value',
@@ -408,8 +412,6 @@ export const itemFields = [
 						],
 					},
 				],
-				description: `For the primary key, you must provide all of the attributes. For example, with a simple primary key,</br>
-		you only need to provide a value for the partition key. For a composite primary key, you must provide values for both the partition key and the sort key.`,
 			},
 		],
 	},
@@ -476,8 +478,8 @@ export const itemFields = [
 				],
 			},
 		],
-		description: `For the primary key, you must provide all of the attributes. For example, with a simple primary key,</br>
-		you only need to provide a value for the partition key. For a composite primary key, you must provide values for both the partition key and the sort key.`,
+		description: `Item's primary key. For example, with a simple primary key, you only need to provide a value for the partition key.</br>
+		For a composite primary key, you must provide values for both the partition key and the sort key`,
 	},
 	{
 		displayName: 'Select',
@@ -565,7 +567,7 @@ export const itemFields = [
 			},
 			{
 				displayName: 'Expression Attribute Names',
-				name: 'expressionAttributeNames',
+				name: 'eanUi',
 				placeholder: 'Add Expression',
 				type: 'fixedCollection',
 				default: '',
@@ -574,7 +576,7 @@ export const itemFields = [
 				},
 				options: [
 					{
-						name: 'ExpressionAttributeNamesValues',
+						name: 'eanValues',
 						displayName: 'Expression',
 						values: [
 							{
@@ -592,6 +594,7 @@ export const itemFields = [
 						],
 					},
 				],
+				description: `One or more substitution tokens for attribute names in an expression. Check <a href="https://docs.aws.amazon.com/amazondynamodb/latest/APIReference/API_PutItem.html" target="_blank">Info</a>`,
 			},
 		],
 	},
@@ -611,6 +614,7 @@ export const itemFields = [
 			},
 		},
 		default: false,
+		description: 'Whether to do an scan or query. Check <a href="https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/bp-query-scan.html">differences</a>',
 	},
 	{
 		displayName: 'Key Condition Expression',
@@ -633,8 +637,8 @@ export const itemFields = [
 	},
 	{
 		displayName: 'Expression Attribute Values',
-		name: 'expressionAttributeUi',
-		description: 'Substitution tokens for attribute names in an expression.',
+		name: 'eavUi',
+		description: `Substitution tokens for attribute names in an expression`,
 		placeholder: 'Add Attribute Value',
 		type: 'fixedCollection',
 		default: '',
@@ -655,7 +659,7 @@ export const itemFields = [
 		},
 		options: [
 			{
-				name: 'expressionAttributeValues',
+				name: 'eavValues',
 				displayName: 'Expression Attribute Vaue',
 				values: [
 					{
@@ -813,35 +817,22 @@ export const itemFields = [
 				name: 'projectionExpression',
 				type: 'string',
 				default: '',
-				description: `A string that identifies one or more attributes to retrieve from the table. These attributes can include scalars, sets, or elements of a JSON document. The attributes in the expression must be separated by commas.`,
+				description: `A string that identifies one or more attributes to retrieve from the table.</br>
+				These attributes can include scalars, sets, or elements of a JSON document. The attributes</br>
+				in the expression must be separated by commas`,
 			},
 			{
 				displayName: 'Filter Expression',
 				name: 'filterExpression',
 				type: 'string',
 				default: '',
-				description: `A string that contains conditions that DynamoDB applies after the Query operation, but before the data is returned to you. Items that do not satisfy the FilterExpression criteria are not returned.`,
-			},
-			{
-				displayName: 'Read Consistency Model',
-				name: 'readConsistencyModel',
-				type: 'options',
-				default: 'stronglyConsistent',
-				description: 'Select the <a href="https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/HowItWorks.ReadConsistency.html">read consistency model</a>.',
-				options: [
-					{
-						name: 'Eventually Consistent',
-						value: 'eventuallyConsistent',
-					},
-					{
-						name: 'Strongly Consistent',
-						value: 'stronglyConsistent',
-					},
-				],
+				description: `A string that contains conditions that DynamoDB applies after the Query operation,</br>
+				but before the data is returned to you. Items that do not satisfy the FilterExpression criteria</br>
+				are not returned.`,
 			},
 			{
 				displayName: 'Expression Attribute Names',
-				name: 'expressionAttributeNamesUi',
+				name: 'eanUi',
 				placeholder: 'Add Expression',
 				type: 'fixedCollection',
 				default: '',
@@ -850,7 +841,7 @@ export const itemFields = [
 				},
 				options: [
 					{
-						name: 'expressionAttributeNamesValues',
+						name: 'eanValues',
 						displayName: 'Expression',
 						values: [
 							{
@@ -868,6 +859,7 @@ export const itemFields = [
 						],
 					},
 				],
+				description: `One or more substitution tokens for attribute names in an expression. Check <a href="https://docs.aws.amazon.com/amazondynamodb/latest/APIReference/API_PutItem.html" target="_blank">Info</a>`,
 			},
 		],
 	},

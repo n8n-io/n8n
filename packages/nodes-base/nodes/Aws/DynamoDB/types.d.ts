@@ -16,10 +16,6 @@ export interface IAttributeValue {
 	[attribute: string]: IAttributeValueValue;
 }
 
-// type IAttributeValueValue = {
-// 	[type in AttributeValueType]: string;
-// };
-
 interface IAttributeValueValue {
 	[type: string]: string | string[] | IAttributeValue[];
 }
@@ -27,6 +23,11 @@ interface IAttributeValueValue {
 export interface IAttributeValueUi {
 	attribute: string;
 	type: AttributeValueType;
+	value: string;
+}
+
+export interface IAttributeNameUi {
+	key: string;
 	value: string;
 }
 
