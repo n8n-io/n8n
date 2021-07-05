@@ -1,1 +1,1 @@
-export * as methods from './loadOptions';
+export * as loadOptions from './loadOptions';

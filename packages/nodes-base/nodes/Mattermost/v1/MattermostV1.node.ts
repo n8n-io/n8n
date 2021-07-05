@@ -9,7 +9,7 @@ import {
 } from 'n8n-workflow';
 
 import { versionDescription } from './description';
-import { methods } from './methods';
+import { loadOptions } from './methods';
 import { router } from './actions/router';
 
 export class MattermostV1 implements INodeType {
@@ -23,7 +23,7 @@ export class MattermostV1 implements INodeType {
 		};
 	}
 
-	methods = methods;
+	methods = { loadOptions };
 
 	async execute(this: IExecuteFunctions) {
 		return await router.call(this);

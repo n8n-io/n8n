@@ -19,11 +19,12 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 	for (let i = 0; i < items.length; i++) {
 		const resource = this.getNodeParameter<Mattermost>('resource', i);
 		let operation = this.getNodeParameter('operation', i);
-		if (operation === 'delete') {
-			operation = 'del';
+		if (operation === 'del') {
+			operation = 'delete';
 		} else if (operation === 'desactive') {
 			operation = 'deactive';
 		}
+
 		const mattermost = {
 			resource,
 			operation,

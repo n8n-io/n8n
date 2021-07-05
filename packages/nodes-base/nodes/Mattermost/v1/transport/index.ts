@@ -9,7 +9,9 @@ import {
 } from 'request';
 
 import {
+	GenericValue,
 	IDataObject,
+	IHttpRequestOptions,
 	NodeApiError,
 	NodeOperationError,
 } from 'n8n-workflow';
@@ -19,9 +21,9 @@ import {
  */
 export async function apiRequest(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
-	method: string,
+	method: 'GET' | 'POST' | 'PUT' | 'DELETE' | 'HEAD',
 	endpoint: string,
-	body: object = {},
+	body: IDataObject | GenericValue | GenericValue[] = {},
 	qs: IDataObject = {},
 ) {
 	const credentials = this.getCredentials('mattermostApi');
@@ -30,20 +32,19 @@ export async function apiRequest(
 		throw new NodeOperationError(this.getNode(), 'No credentials returned!');
 	}
 
-	const options: OptionsWithUri = {
+	const options: IHttpRequestOptions = {
 		method,
 		body,
-		qs,
-		uri: `${credentials.baseUrl}/api/v4/${endpoint}`,
+		queryString: qs,
+		url: `${credentials.baseUrl}/api/v4/${endpoint}`,
 		headers: {
 			Authorization: `Bearer ${credentials.accessToken}`,
 			'content-type': 'application/json; charset=utf-8',
 		},
-		json: true,
 	};
 
 	try {
-		return await this.helpers.request!(options);
+		return await this.helpers.httpRequest(options);
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error);
 	}
@@ -51,7 +52,7 @@ export async function apiRequest(
 
 export async function apiRequestAllItems(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
-	method: string,
+	method: 'GET' | 'POST' | 'PUT' | 'DELETE' | 'HEAD',
 	endpoint: string,
 	body: IDataObject = {},
 	query: IDataObject = {},

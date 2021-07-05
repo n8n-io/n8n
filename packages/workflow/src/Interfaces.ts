@@ -214,7 +214,7 @@ export interface IExecuteContextData {
 export interface IHttpRequestOptions {
 	headers?: IDataObject;
 	method?: 'GET' | 'POST' | 'PUT' | 'DELETE' | 'HEAD';
-	body?: IDataObject | FormData;
+	body?: FormData | GenericValue | GenericValue[];
 	queryString?: IDataObject;
 	url: string;
 	arrayFormat?: 'indices' | 'brackets' | 'repeat' | 'comma';

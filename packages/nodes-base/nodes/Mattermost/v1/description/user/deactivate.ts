@@ -14,7 +14,7 @@ export const userDeactiveDescription: UserProperties = [
 					'user',
 				],
 				operation: [
-					'desactive',
+					'deactive',
 				],
 			},
 		},

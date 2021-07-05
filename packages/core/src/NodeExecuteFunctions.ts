@@ -1115,15 +1115,34 @@ export function getExecuteWebhookFunctions(workflow: Workflow, node: INode, addi
 
 }
 
-// function proxyRequestToAxios() {
-// 	const axiosConfig: AxiosRequestConfig = {};
+function parseRequestObject(requestObject: object) {
 
-// 	return axios(axiosConfig);
-// }
+}
+
+function proxyRequestToAxios() {
+	let axiosConfig: AxiosRequestConfig = {};
+	if (arguments[0] !== undefined && typeof arguments[0] === 'string') {
+		axiosConfig.url = arguments[0];
+	}
+	if (arguments[0] !== undefined && typeof arguments[0] === 'object') {
+		axiosConfig = Object.assign(axiosConfig,parseRequestObject(arguments[0] as object));
+	}
+	if (arguments[1] !== undefined && typeof arguments[1] === 'object') {
+		axiosConfig = Object.assign(axiosConfig,parseRequestObject(arguments[1]));
+	}
+	
+
+
+	return axios(axiosConfig);
+}
 
 async function httpRequest(requestParams: IHttpRequestOptions): Promise<any> { //tslint:disable-line:no-any
 	const axiosRequest = convertN8nRequestToAxios(requestParams);
-	return axios(axiosRequest);
+	const result = await axios(axiosRequest);
+	if (requestParams.returnFullResponse) {
+		return result;
+	}
+	return result.data;
 }
 
 
@@ -1173,12 +1192,6 @@ function convertN8nRequestToAxios(n8nRequest: IHttpRequestOptions): AxiosRequest
 	if (n8nRequest.body !== undefined) {
 		axiosRequest.data = n8nRequest.body;
 	}
-	
-
-	if (n8nRequest.returnFullResponse !== undefined) {
-		
-	}
-	
 
 	return axiosRequest;
 }

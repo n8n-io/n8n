@@ -7,7 +7,7 @@ import { invite } from './invite';
 
 export {
 	create,
-	deactive as desactive,
+	deactive,
 	getAll,
 	getByEmail,
 	getById,

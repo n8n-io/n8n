@@ -10,7 +10,7 @@ import {
 } from '../transport';
 
 // Get all the available channels
-async function getChannels(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+export async function getChannels(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 	const endpoint = 'channels';
 	const responseData = await apiRequest.call(this, 'GET', endpoint, {});
 
@@ -43,7 +43,7 @@ async function getChannels(this: ILoadOptionsFunctions): Promise<INodePropertyOp
 }
 
 // Get all the channels in a team
-async function getChannelsInTeam(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+export async function getChannelsInTeam(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 	const teamId = this.getCurrentNodeParameter('teamId');
 	const endpoint = `users/me/teams/${teamId}/channels`;
 	const responseData = await apiRequest.call(this, 'GET', endpoint, {});
@@ -83,7 +83,7 @@ async function getChannelsInTeam(this: ILoadOptionsFunctions): Promise<INodeProp
 	return returnData;
 }
 
-async function getTeams(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+export async function getTeams(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 	const endpoint = 'users/me/teams';
 	const responseData = await apiRequest.call(this, 'GET', endpoint, {});
 
@@ -116,7 +116,7 @@ async function getTeams(this: ILoadOptionsFunctions): Promise<INodePropertyOptio
 	return returnData;
 }
 
-async function getUsers(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+export async function getUsers(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 	const endpoint = 'users';
 	const responseData = await apiRequest.call(this, 'GET', endpoint, {});
 
