@@ -89,6 +89,7 @@ import {
 	IRunData,
 	IWorkflowBase,
 	IWorkflowCredentials,
+	LoggerProxy,
 	Workflow,
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
@@ -2167,20 +2168,23 @@ async function getExecutionsCount(countFilter: object): Promise<{count: number; 
 		return {count, estimate: false};
 	}
 
-	// Get an estimate of rows count.
-	const estimateRowsNumberSql = "SELECT n_live_tup FROM pg_stat_all_tables WHERE relname = 'execution_entity';";
+	try {
+		// Get an estimate of rows count.
+		const estimateRowsNumberSql = "SELECT n_live_tup FROM pg_stat_all_tables WHERE relname = 'execution_entity';";
+		const rows: Array<{n_live_tup: string}> = await Db.collections.Execution!.query(estimateRowsNumberSql);
 
-	const rows: Array<{n_live_tup: number}> = await Db.collections.Execution!.query(estimateRowsNumberSql);
-
-	const estimate = rows[0].n_live_tup;
-	// If over 500k, return just an estimate.
-	if (estimate > 500000) {
-		// get order of magnitude
-		const order = Math.floor(Math.log(estimate) / Math.LN10 + 0.000000001); // float point stuff.
-		return {count: Math.pow(10,order), estimate: true};
-	} else {
-		const count = await Db.collections.Execution!.count(countFilter);
-		return {count, estimate: false};
+		const estimate = parseInt(rows[0].n_live_tup, 10);
+		// If over 500k, return just an estimate.
+		if (estimate > 100000) {
+			// if less than 100k, we get the real count as even a full
+			// table scan should not take so long.
+			return {count: estimate, estimate: true};
+		}
+	} catch(err) {
+		LoggerProxy.warn('Unable to get executions count from postgres: ' + err);
 	}
+	
+	const count = await Db.collections.Execution!.count(countFilter);
+	return {count, estimate: false};
 
 }

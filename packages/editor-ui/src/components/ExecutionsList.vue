@@ -1,6 +1,6 @@
 <template>
 	<span>
-		<el-dialog :visible="dialogVisible" append-to-body width="80%" :title="`Workflow Executions ${combinedExecutions.length}/${combinedExecutionsCount}${finishedExecutionsCountEstimated === true ? '+' : ''}`" :before-close="closeDialog">
+		<el-dialog :visible="dialogVisible" append-to-body width="80%" :title="`Workflow Executions ${combinedExecutions.length}/${finishedExecutionsCountEstimated === true ? '~' : ''}${combinedExecutionsCount}`" :before-close="closeDialog">
 			<div class="filters">
 				<el-row>
 					<el-col :span="4" class="filter-headline">
@@ -38,7 +38,7 @@
 
 			<div class="selection-options">
 				<span v-if="checkAll === true || isIndeterminate === true">
-					Selected: {{numSelected}}/{{finishedExecutionsCount}}<span v-if="finishedExecutionsCountEstimated === true">+</span>
+					Selected: {{numSelected}} / <span v-if="finishedExecutionsCountEstimated === true">~</span>{{finishedExecutionsCount}}
 					<el-button type="danger" title="Delete Selected" icon="el-icon-delete" size="mini" @click="handleDeleteSelected" circle></el-button>
 				</span>
 			</div>
@@ -257,7 +257,7 @@ export default mixins(
 			return returnData;
 		},
 		combinedExecutionsCount (): number {
-			return this.activeExecutions.length + this.finishedExecutionsCount;
+			return 0 + this.activeExecutions.length + this.finishedExecutionsCount;
 		},
 		numSelected (): number {
 			if (this.checkAll === true) {
