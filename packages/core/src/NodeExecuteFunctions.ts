@@ -16,6 +16,7 @@ import {
 	IExecuteFunctions,
 	IExecuteSingleFunctions,
 	IExecuteWorkflowInfo,
+	IHttpRequestOptions,
 	INode,
 	INodeExecutionData,
 	INodeParameters,
@@ -40,6 +41,8 @@ import {
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
 
+import { Agent } from 'https';
+import { stringify } from 'qs';
 import * as clientOAuth1 from 'oauth-1.0a';
 import { Token } from 'oauth-1.0a';
 import * as clientOAuth2 from 'client-oauth2';
@@ -54,10 +57,13 @@ import { lookup } from 'mime-types';
 import {
 	LoggerProxy as Logger,
 } from 'n8n-workflow';
+import axios, { AxiosRequestConfig } from 'axios';
 
 const requestPromiseWithDefaults = requestPromise.defaults({
 	timeout: 300000, // 5 minutes
 });
+
+axios.defaults.timeout = 300000;
 
 /**
  * Takes a buffer and converts it into the format n8n uses. It encodes the binary data as
@@ -587,6 +593,7 @@ export function getExecutePollFunctions(workflow: Workflow, node: INode, additio
 				return workflow.getStaticData(type, node);
 			},
 			helpers: {
+				httpRequest,
 				prepareBinaryData,
 				request: requestPromiseWithDefaults,
 				requestOAuth2(this: IAllExecuteFunctions, credentialsType: string, requestOptions: OptionsWithUri | requestPromise.RequestPromiseOptions, oAuth2Options?: IOAuth2Options): Promise<any> { // tslint:disable-line:no-any
@@ -653,6 +660,7 @@ export function getExecuteTriggerFunctions(workflow: Workflow, node: INode, addi
 				return workflow.getStaticData(type, node);
 			},
 			helpers: {
+				httpRequest,
 				prepareBinaryData,
 				request: requestPromiseWithDefaults,
 				requestOAuth2(this: IAllExecuteFunctions, credentialsType: string, requestOptions: OptionsWithUri | requestPromise.RequestPromiseOptions, oAuth2Options?: IOAuth2Options): Promise<any> { // tslint:disable-line:no-any
@@ -761,6 +769,7 @@ export function getExecuteFunctions(workflow: Workflow, runExecutionData: IRunEx
 				}
 			},
 			helpers: {
+				httpRequest,
 				prepareBinaryData,
 				request: requestPromiseWithDefaults,
 				requestOAuth2(this: IAllExecuteFunctions, credentialsType: string, requestOptions: OptionsWithUri | requestPromise.RequestPromiseOptions, oAuth2Options?: IOAuth2Options): Promise<any> { // tslint:disable-line:no-any
@@ -859,6 +868,7 @@ export function getExecuteSingleFunctions(workflow: Workflow, runExecutionData: 
 				return workflow.getStaticData(type, node);
 			},
 			helpers: {
+				httpRequest,
 				prepareBinaryData,
 				request: requestPromiseWithDefaults,
 				requestOAuth2(this: IAllExecuteFunctions, credentialsType: string, requestOptions: OptionsWithUri | requestPromise.RequestPromiseOptions, oAuth2Options?: IOAuth2Options): Promise<any> { // tslint:disable-line:no-any
@@ -918,6 +928,7 @@ export function getLoadOptionsFunctions(workflow: Workflow, node: INode, path: s
 				return additionalData.restApiUrl;
 			},
 			helpers: {
+				httpRequest,
 				request: requestPromiseWithDefaults,
 				requestOAuth2(this: IAllExecuteFunctions, credentialsType: string, requestOptions: OptionsWithUri | requestPromise.RequestPromiseOptions, oAuth2Options?: IOAuth2Options): Promise<any> { // tslint:disable-line:no-any
 					return requestOAuth2.call(this, credentialsType, requestOptions, node, additionalData, oAuth2Options);
@@ -988,6 +999,7 @@ export function getExecuteHookFunctions(workflow: Workflow, node: INode, additio
 				return workflow.getStaticData(type, node);
 			},
 			helpers: {
+				httpRequest,
 				request: requestPromiseWithDefaults,
 				requestOAuth2(this: IAllExecuteFunctions, credentialsType: string, requestOptions: OptionsWithUri | requestPromise.RequestPromiseOptions, oAuth2Options?: IOAuth2Options): Promise<any> { // tslint:disable-line:no-any
 					return requestOAuth2.call(this, credentialsType, requestOptions, node, additionalData, oAuth2Options);
@@ -1087,6 +1099,7 @@ export function getExecuteWebhookFunctions(workflow: Workflow, node: INode, addi
 			},
 			prepareOutputData: NodeHelpers.prepareOutputData,
 			helpers: {
+				httpRequest,
 				prepareBinaryData,
 				request: requestPromiseWithDefaults,
 				requestOAuth2(this: IAllExecuteFunctions, credentialsType: string, requestOptions: OptionsWithUri | requestPromise.RequestPromiseOptions, oAuth2Options?: IOAuth2Options): Promise<any> { // tslint:disable-line:no-any
@@ -1101,3 +1114,73 @@ export function getExecuteWebhookFunctions(workflow: Workflow, node: INode, addi
 	})(workflow, node);
 
 }
+
+// function proxyRequestToAxios() {
+// 	const axiosConfig: AxiosRequestConfig = {};
+
+// 	return axios(axiosConfig);
+// }
+
+async function httpRequest(requestParams: IHttpRequestOptions): Promise<any> { //tslint:disable-line:no-any
+	const axiosRequest = convertN8nRequestToAxios(requestParams);
+	return axios(axiosRequest);
+}
+
+
+function convertN8nRequestToAxios(n8nRequest: IHttpRequestOptions): AxiosRequestConfig {
+	// Destructure properties with the same name first.
+	const { 
+		headers, 
+		method, 
+		timeout, 
+		auth, 
+		proxy,
+		url,
+	 } = n8nRequest;
+
+	const axiosRequest = {
+		headers,
+		method,
+		timeout,
+		auth,
+		proxy,
+		url,
+	} as AxiosRequestConfig;
+
+	axiosRequest.params = n8nRequest.queryString;
+
+	if (n8nRequest.disableFollowRedirect === true) {
+		axiosRequest.maxRedirects = 0;
+	}
+
+	if (n8nRequest.encoding !== undefined) {
+		axiosRequest.responseType = n8nRequest.encoding;
+	}
+
+	if (n8nRequest.skipSslCertificateValidation !== undefined) {
+		axiosRequest.httpsAgent = new Agent({  
+			rejectUnauthorized: false,
+		});
+	}
+
+
+	if (n8nRequest.arrayFormat !== undefined) {
+		axiosRequest.paramsSerializer = (params) => {
+			return stringify(params, {arrayFormat: n8nRequest.arrayFormat});
+		};
+	}
+
+	if (n8nRequest.body !== undefined) {
+		axiosRequest.data = n8nRequest.body;
+	}
+	
+
+	if (n8nRequest.returnFullResponse !== undefined) {
+		
+	}
+	
+
+	return axiosRequest;
+}
+
+

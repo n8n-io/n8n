@@ -3,6 +3,7 @@ import { WorkflowHooks } from './WorkflowHooks';
 import { WorkflowOperationError } from './WorkflowErrors';
 import { NodeApiError, NodeOperationError } from './NodeErrors';
 import * as express from 'express';
+import * as FormData from 'form-data';
 
 export type IAllExecuteFunctions = IExecuteFunctions | IExecuteSingleFunctions | IHookFunctions | ILoadOptionsFunctions | IPollFunctions | ITriggerFunctions | IWebhookFunctions;
 
@@ -210,6 +211,34 @@ export interface IExecuteContextData {
 	[key: string]: IContextObject;
 }
 
+export interface IHttpRequestOptions {
+	headers?: IDataObject;
+	method?: 'GET' | 'POST' | 'PUT' | 'DELETE' | 'HEAD';
+	body?: IDataObject | FormData;
+	queryString?: IDataObject;
+	url: string;
+	arrayFormat?: 'indices' | 'brackets' | 'repeat' | 'comma';
+	auth?: {
+		username: string,
+		password: string,
+	};
+	// json?: boolean;
+	disableFollowRedirect?: boolean;
+	encoding?: 'arraybuffer' | 'blob' | 'document' | 'json' | 'text' | 'stream';
+	skipSslCertificateValidation?: boolean;
+	returnFullResponse?: boolean;
+	proxy?: {
+		host: string;
+		port: string | number;
+		auth?: {
+			username: string;
+			password: string;
+		},
+		protocol?: string;
+	};
+	timeout?: number;
+}
+
 
 export interface IExecuteFunctions {
 	continueOnFail(): boolean;
@@ -229,6 +258,7 @@ export interface IExecuteFunctions {
 	prepareOutputData(outputData: INodeExecutionData[], outputIndex?: number): Promise<INodeExecutionData[][]>;
 	sendMessageToUI(message: any): void; // tslint:disable-line:no-any
 	helpers: {
+		httpRequest(requestOptions: IHttpRequestOptions): Promise<any>; //tslint:disable-line:no-any
 		[key: string]: (...args: any[]) => any //tslint:disable-line:no-any
 	};
 }
@@ -249,6 +279,7 @@ export interface IExecuteSingleFunctions {
 	getWorkflowDataProxy(): IWorkflowDataProxyData;
 	getWorkflowStaticData(type: string): IDataObject;
 	helpers: {
+		httpRequest(requestOptions: IHttpRequestOptions): Promise<any>; //tslint:disable-line:no-any
 		[key: string]: (...args: any[]) => any //tslint:disable-line:no-any
 	};
 }
@@ -267,6 +298,7 @@ export interface ILoadOptionsFunctions {
 	getTimezone(): string;
 	getRestApiUrl(): string;
 	helpers: {
+		httpRequest(requestOptions: IHttpRequestOptions): Promise<any>; //tslint:disable-line:no-any
 		[key: string]: ((...args: any[]) => any) | undefined; //tslint:disable-line:no-any
 	};
 }
@@ -284,6 +316,7 @@ export interface IHookFunctions {
 	getWorkflow(): IWorkflowMetadata;
 	getWorkflowStaticData(type: string): IDataObject;
 	helpers: {
+		httpRequest(requestOptions: IHttpRequestOptions): Promise<any>; //tslint:disable-line:no-any
 		[key: string]: (...args: any[]) => any //tslint:disable-line:no-any
 	};
 }
@@ -300,6 +333,7 @@ export interface IPollFunctions {
 	getWorkflow(): IWorkflowMetadata;
 	getWorkflowStaticData(type: string): IDataObject;
 	helpers: {
+		httpRequest(requestOptions: IHttpRequestOptions): Promise<any>; //tslint:disable-line:no-any
 		[key: string]: (...args: any[]) => any //tslint:disable-line:no-any
 	};
 }
@@ -316,6 +350,7 @@ export interface ITriggerFunctions {
 	getWorkflow(): IWorkflowMetadata;
 	getWorkflowStaticData(type: string): IDataObject;
 	helpers: {
+		httpRequest(requestOptions: IHttpRequestOptions): Promise<any>; //tslint:disable-line:no-any
 		[key: string]: (...args: any[]) => any //tslint:disable-line:no-any
 	};
 }
@@ -338,6 +373,7 @@ export interface IWebhookFunctions {
 	getWorkflow(): IWorkflowMetadata;
 	prepareOutputData(outputData: INodeExecutionData[], outputIndex?: number): Promise<INodeExecutionData[][]>;
 	helpers: {
+		httpRequest(requestOptions: IHttpRequestOptions): Promise<any>; //tslint:disable-line:no-any
 		[key: string]: (...args: any[]) => any //tslint:disable-line:no-any
 	};
 }

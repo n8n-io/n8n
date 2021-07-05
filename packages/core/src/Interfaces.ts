@@ -6,6 +6,7 @@ import {
 	IExecuteFunctions as IExecuteFunctionsBase,
 	IExecuteSingleFunctions as IExecuteSingleFunctionsBase,
 	IHookFunctions as IHookFunctionsBase,
+	IHttpRequestOptions,
 	ILoadOptionsFunctions as ILoadOptionsFunctionsBase,
 	INodeExecutionData,
 	INodeType,
@@ -33,6 +34,7 @@ export interface IProcessMessage {
 
 export interface IExecuteFunctions extends IExecuteFunctionsBase {
 	helpers: {
+		httpRequest(requestOptions: IHttpRequestOptions): Promise<any>; //tslint:disable-line:no-any
 		prepareBinaryData(binaryData: Buffer, filePath?: string, mimeType?: string): Promise<IBinaryData>;
 		request: requestPromise.RequestPromiseAPI,
 		requestOAuth2(this: IAllExecuteFunctions, credentialsType: string, requestOptions: OptionsWithUri | requestPromise.RequestPromiseOptions, oAuth2Options?: IOAuth2Options): Promise<any>, // tslint:disable-line:no-any
@@ -44,6 +46,7 @@ export interface IExecuteFunctions extends IExecuteFunctionsBase {
 
 export interface IExecuteSingleFunctions extends IExecuteSingleFunctionsBase {
 	helpers: {
+		httpRequest(requestOptions: IHttpRequestOptions): Promise<any>; //tslint:disable-line:no-any
 		prepareBinaryData(binaryData: Buffer, filePath?: string, mimeType?: string): Promise<IBinaryData>;
 		request: requestPromise.RequestPromiseAPI,
 		requestOAuth2(this: IAllExecuteFunctions, credentialsType: string, requestOptions: OptionsWithUri | requestPromise.RequestPromiseOptions, oAuth2Options?: IOAuth2Options): Promise<any>, // tslint:disable-line:no-any
@@ -54,6 +57,7 @@ export interface IExecuteSingleFunctions extends IExecuteSingleFunctionsBase {
 
 export interface IPollFunctions extends IPollFunctionsBase {
 	helpers: {
+		httpRequest(requestOptions: IHttpRequestOptions): Promise<any>; //tslint:disable-line:no-any
 		prepareBinaryData(binaryData: Buffer, filePath?: string, mimeType?: string): Promise<IBinaryData>;
 		request: requestPromise.RequestPromiseAPI,
 		requestOAuth2(this: IAllExecuteFunctions, credentialsType: string, requestOptions: OptionsWithUri | requestPromise.RequestPromiseOptions, oAuth2Options?: IOAuth2Options): Promise<any>, // tslint:disable-line:no-any
@@ -70,6 +74,7 @@ export interface IResponseError extends Error {
 
 export interface ITriggerFunctions extends ITriggerFunctionsBase {
 	helpers: {
+		httpRequest(requestOptions: IHttpRequestOptions): Promise<any>; //tslint:disable-line:no-any
 		prepareBinaryData(binaryData: Buffer, filePath?: string, mimeType?: string): Promise<IBinaryData>;
 		request: requestPromise.RequestPromiseAPI,
 		requestOAuth2(this: IAllExecuteFunctions, credentialsType: string, requestOptions: OptionsWithUri | requestPromise.RequestPromiseOptions, oAuth2Options?: IOAuth2Options): Promise<any>, // tslint:disable-line:no-any
@@ -96,6 +101,7 @@ export interface IUserSettings {
 
 export interface ILoadOptionsFunctions extends ILoadOptionsFunctionsBase {
 	helpers: {
+		httpRequest(requestOptions: IHttpRequestOptions): Promise<any>; //tslint:disable-line:no-any
 		request?: requestPromise.RequestPromiseAPI,
 		requestOAuth2?: (this: IAllExecuteFunctions, credentialsType: string, requestOptions: OptionsWithUri | requestPromise.RequestPromiseOptions, oAuth2Options?: IOAuth2Options) => Promise<any>, // tslint:disable-line:no-any
 		requestOAuth1?(this: IAllExecuteFunctions, credentialsType: string, requestOptions: OptionsWithUrl | requestPromise.RequestPromiseOptions): Promise<any>, // tslint:disable-line:no-any
@@ -105,6 +111,7 @@ export interface ILoadOptionsFunctions extends ILoadOptionsFunctionsBase {
 
 export interface IHookFunctions extends IHookFunctionsBase {
 	helpers: {
+		httpRequest(requestOptions: IHttpRequestOptions): Promise<any>; //tslint:disable-line:no-any
 		request: requestPromise.RequestPromiseAPI,
 		requestOAuth2(this: IAllExecuteFunctions, credentialsType: string, requestOptions: OptionsWithUri | requestPromise.RequestPromiseOptions, oAuth2Options?: IOAuth2Options): Promise<any>, // tslint:disable-line:no-any
 		requestOAuth1(this: IAllExecuteFunctions, credentialsType: string, requestOptions: OptionsWithUrl | requestPromise.RequestPromiseOptions): Promise<any>, // tslint:disable-line:no-any
@@ -114,6 +121,7 @@ export interface IHookFunctions extends IHookFunctionsBase {
 
 export interface IWebhookFunctions extends IWebhookFunctionsBase {
 	helpers: {
+		httpRequest(requestOptions: IHttpRequestOptions): Promise<any>; //tslint:disable-line:no-any
 		prepareBinaryData(binaryData: Buffer, filePath?: string, mimeType?: string): Promise<IBinaryData>;
 		request: requestPromise.RequestPromiseAPI,
 		requestOAuth2(this: IAllExecuteFunctions, credentialsType: string, requestOptions: OptionsWithUri | requestPromise.RequestPromiseOptions, oAuth2Options?: IOAuth2Options): Promise<any>, // tslint:disable-line:no-any
