@@ -1,8 +1,8 @@
 import {
-	INodeProperties,
-} from 'n8n-workflow';
+	UserProperties,
+} from '../../actions/Interfaces';
 
-const userInviteDescription: INodeProperties[] = [
+export const userInviteDescription: UserProperties = [
 	{
 		displayName: 'Team ID',
 		name: 'teamId',
@@ -41,7 +41,4 @@ const userInviteDescription: INodeProperties[] = [
 		default: '',
 		description: `User's email. Multiple can be set separated by comma.`,
 	},
-
 ];
-
-export { userInviteDescription };

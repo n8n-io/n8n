@@ -1,8 +1,8 @@
 import {
-	INodeProperties,
-} from 'n8n-workflow';
+	ReactionProperties,
+} from '../../actions/Interfaces';
 
-const reactionGetAllDescription: INodeProperties[] = [
+export const reactionGetAllDescription: ReactionProperties = [
 	{
 		displayName: 'Post ID',
 		name: 'postId',
@@ -63,5 +63,3 @@ const reactionGetAllDescription: INodeProperties[] = [
 		description: 'How many results to return.',
 	},
 ];
-
-export { reactionGetAllDescription };

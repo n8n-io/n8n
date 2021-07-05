@@ -1,21 +1,33 @@
-type MattermostChannel = {
-	resource: 'channel';
-	operation: 'addUser' | 'create' | 'del' | 'members' | 'restore' | 'statistics';
+import {
+	AllEntities,
+	Entity,
+	PropertiesOf,
+} from 'n8n-workflow';
+
+type MattermostMap = {
+	channel: 'addUser' | 'create' | 'delete' | 'members' | 'restore' | 'statistics';
+	message: 'delete' | 'post' | 'postEphemeral';
+	reaction: 'create' | 'delete' | 'getAll';
+	user: 'create' | 'desactive' | 'getAll' | 'getByEmail' | 'getById' | 'invite';
 };
 
-type MattermostMessage = {
-	resource: 'message';
-	operation: 'del' | 'post' | 'postEphemeral';
-};
+export type Mattermost = AllEntities<MattermostMap>;
 
-type MattermostReaction = {
-	resource: 'reaction';
-	operation: 'create' | 'del' | 'getAll';
-};
+export type MattermostChannel = Entity<MattermostMap, 'channel'>;
+export type MattermostMessage = Entity<MattermostMap, 'message'>;
+export type MattermostReaction = Entity<MattermostMap, 'reaction'>;
+export type MattermostUser = Entity<MattermostMap, 'user'>;
 
-type MattermostUser = {
-	resource: 'user';
-	operation: 'create' | 'deactive' | 'getAll' | 'getById' | 'invite';
-};
+export type ChannelProperties = PropertiesOf<MattermostChannel>;
+export type MessageProperties = PropertiesOf<MattermostMessage>;
+export type ReactionProperties = PropertiesOf<MattermostReaction>;
+export type UserProperties = PropertiesOf<MattermostUser>;
 
-type Mattermost = MattermostChannel | MattermostMessage | MattermostReaction | MattermostUser;
+export interface IAttachment {
+	fields: {
+		item?: object[];
+	};
+	actions: {
+		item?: object[];
+	};
+}

@@ -220,6 +220,8 @@ export interface IExecuteFunctions {
 	getInputData(inputIndex?: number, inputName?: string): INodeExecutionData[];
 	getMode(): WorkflowExecuteMode;
 	getNode(): INode;
+	getNodeParameter<T extends { resource: string }>(parameterName: 'resource', itemIndex?: number): T['resource'];
+	getNodeParameter(parameterName: 'operation', itemIndex?: number): string;
 	getNodeParameter(parameterName: string, itemIndex: number, fallbackValue?: any): NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[] | object; //tslint:disable-line:no-any
 	getWorkflowDataProxy(itemIndex: number): IWorkflowDataProxyData;
 	getWorkflowStaticData(type: string): IDataObject;
@@ -433,10 +435,10 @@ export interface INodePropertyTypeOptions {
 
 export interface IDisplayOptions {
 	hide?: {
-		[key: string]: NodeParameterValue[];
+		[key: string]: NodeParameterValue[] | undefined;
 	};
 	show?: {
-		[key: string]: NodeParameterValue[];
+		[key: string]: NodeParameterValue[] | undefined;
 	};
 }
 
@@ -486,10 +488,6 @@ export interface ITriggerResponse {
 	manualTriggerResponse?: Promise<INodeExecutionData[][]>;
 }
 
-export interface INodeVersions {
-	[key: number]: INodeType;
-}
-
 export interface INodeType {
 	description: INodeTypeDescription;
 	execute?(this: IExecuteFunctions): Promise<INodeExecutionData[][] | null>;
@@ -514,7 +512,7 @@ export interface INodeVersionedType {
 	nodeVersions: {
 		[key: number]: INodeType
 	};
-	defaultVersion: number;
+	currentVersion: number;
 	description: INodeTypeBaseDescription;
 	getNodeType: (version?: number) => INodeType;
 }
@@ -813,3 +811,21 @@ export type CodexData = {
 export type JsonValue = string | number | boolean | null | JsonObject | JsonValue[];
 
 export type JsonObject = { [key: string]: JsonValue };
+
+export type AllEntities<M> = M extends { [key: string]: string }
+	? Entity<M, keyof M>
+	: never;
+
+export type Entity<M, K> = K extends keyof M
+	? { resource: K, operation: M[K] }
+	: never;
+
+export type PropertiesOf<M extends { resource: string; operation: string }> = Array<Omit<INodeProperties, 'displayOptions'> & {
+	displayOptions?: {
+		[key in 'show' | 'hide']?: {
+			resource?: Array<M['resource']>;
+			operation?: Array<M['operation']>;
+			[otherKey: string]: NodeParameterValue[] | undefined;
+		}
+	}
+}>;

@@ -1,8 +1,8 @@
 import {
-	INodeProperties,
-} from 'n8n-workflow';
+	ChannelProperties,
+} from '../../actions/Interfaces';
 
-const channelRestoreDescription: INodeProperties[] = [
+export const channelRestoreDescription: ChannelProperties = [
 	{
 		displayName: 'Channel ID',
 		name: 'channelId',
@@ -22,5 +22,3 @@ const channelRestoreDescription: INodeProperties[] = [
 		description: 'The ID of the channel to restore.',
 	},
 ];
-
-export { channelRestoreDescription };

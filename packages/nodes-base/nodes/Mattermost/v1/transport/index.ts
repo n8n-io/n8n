@@ -9,40 +9,31 @@ import {
 } from 'request';
 
 import {
-	IDataObject, NodeApiError, NodeOperationError,
+	IDataObject,
+	NodeApiError,
+	NodeOperationError,
 } from 'n8n-workflow';
-
-export interface IAttachment {
-	fields: {
-		item?: object[];
-	};
-	actions: {
-		item?: object[];
-	};
-}
 
 /**
  * Make an API request to Mattermost
- *
- * @param {IHookFunctions} this
- * @param {string} method
- * @param {string} url
- * @param {object} body
- * @returns {Promise<any>}
  */
-export async function apiRequest(this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions, method: string, endpoint: string, body: object, query?: IDataObject): Promise<any> { // tslint:disable-line:no-any
+export async function apiRequest(
+	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
+	method: string,
+	endpoint: string,
+	body: object = {},
+	qs: IDataObject = {},
+) {
 	const credentials = this.getCredentials('mattermostApi');
 
 	if (credentials === undefined) {
 		throw new NodeOperationError(this.getNode(), 'No credentials returned!');
 	}
 
-	query = query || {};
-
 	const options: OptionsWithUri = {
 		method,
 		body,
-		qs: query,
+		qs,
 		uri: `${credentials.baseUrl}/api/v4/${endpoint}`,
 		headers: {
 			Authorization: `Bearer ${credentials.accessToken}`,
@@ -58,7 +49,13 @@ export async function apiRequest(this: IHookFunctions | IExecuteFunctions | ILoa
 	}
 }
 
-export async function apiRequestAllItems(this: IExecuteFunctions | ILoadOptionsFunctions, method: string, endpoint: string, body: any = {}, query: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
+export async function apiRequestAllItems(
+	this: IExecuteFunctions | ILoadOptionsFunctions,
+	method: string,
+	endpoint: string,
+	body: IDataObject = {},
+	query: IDataObject = {},
+) {
 
 	const returnData: IDataObject[] = [];
 
