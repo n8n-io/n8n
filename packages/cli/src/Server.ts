@@ -33,6 +33,7 @@ import {
 	CredentialsHelper,
 	CredentialsOverwrites,
 	CredentialTypes,
+	DatabaseType,
 	Db,
 	ExternalHooks,
 	GenericHelpers,
@@ -88,6 +89,7 @@ import {
 	IRunData,
 	IWorkflowBase,
 	IWorkflowCredentials,
+	LoggerProxy,
 	Workflow,
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
@@ -1612,8 +1614,7 @@ class App {
 			executingWorkflowIds.push(...this.activeExecutionsInstance.getActiveExecutions().map(execution => execution.id.toString()) as string[]);
 
 			const countFilter = JSON.parse(JSON.stringify(filter));
-			countFilter.select = ['id'];
-			countFilter.where = {id: Not(In(executingWorkflowIds))};
+			countFilter.id = Not(In(executingWorkflowIds));
 
 			const resultsQuery = await Db.collections.Execution!
 				.createQueryBuilder("execution")
@@ -1645,10 +1646,10 @@ class App {
 
 			const resultsPromise = resultsQuery.getMany();
 
-			const countPromise = Db.collections.Execution!.count(countFilter);
+			const countPromise = getExecutionsCount(countFilter);
 
 			const results: IExecutionFlattedDb[] = await resultsPromise;
-			const count = await countPromise;
+			const countedObjects = await countPromise;
 
 			const returnResults: IExecutionsSummary[] = [];
 
@@ -1667,8 +1668,9 @@ class App {
 			}
 
 			return {
-				count,
+				count: countedObjects.count,
 				results: returnResults,
+				estimated: countedObjects.estimate,
 			};
 		}));
 
@@ -2160,4 +2162,36 @@ export async function start(): Promise<void> {
 
 		await app.externalHooks.run('n8n.ready', [app]);
 	});
+}
+
+async function getExecutionsCount(countFilter: IDataObject): Promise<{ count: number; estimate: boolean; }> {
+
+	const dbType = await GenericHelpers.getConfigValue('database.type') as DatabaseType;
+	const filteredFields = Object.keys(countFilter).filter(field => field !== 'id');
+
+	// Do regular count for other databases than pgsql and
+	// if we are filtering based on workflowId or finished fields.
+	if (dbType !== 'postgresdb' || filteredFields.length > 0) {
+		const count = await Db.collections.Execution!.count(countFilter);
+		return { count, estimate: false };
+	}
+
+	try {
+		// Get an estimate of rows count.
+		const estimateRowsNumberSql = "SELECT n_live_tup FROM pg_stat_all_tables WHERE relname = 'execution_entity';";
+		const rows: Array<{ n_live_tup: string }> = await Db.collections.Execution!.query(estimateRowsNumberSql);
+
+		const estimate = parseInt(rows[0].n_live_tup, 10);
+		// If over 100k, return just an estimate.
+		if (estimate > 100000) {
+			// if less than 100k, we get the real count as even a full
+			// table scan should not take so long.
+			return { count: estimate, estimate: true };
+		}
+	} catch (err) {
+		LoggerProxy.warn('Unable to get executions count from postgres: ' + err);
+	}
+
+	const count = await Db.collections.Execution!.count(countFilter);
+	return { count, estimate: false };
 }
