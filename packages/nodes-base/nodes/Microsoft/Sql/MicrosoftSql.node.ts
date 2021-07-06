@@ -366,7 +366,7 @@ export class MicrosoftSql implements INodeType {
 									return pool
 										.request()
 										.query(
-											`DELETE FROM ${table} WHERE ${deleteKey} IN ${extractDeleteValues(
+											`DELETE FROM ${table} WHERE "${deleteKey}" IN ${extractDeleteValues(
 												deleteValues,
 												deleteKey,
 											)};`,
