@@ -1614,8 +1614,7 @@ class App {
 			executingWorkflowIds.push(...this.activeExecutionsInstance.getActiveExecutions().map(execution => execution.id.toString()) as string[]);
 
 			const countFilter = JSON.parse(JSON.stringify(filter));
-			countFilter.select = ['id'];
-			countFilter.where = {id: Not(In(executingWorkflowIds))};
+			countFilter.id = Not(In(executingWorkflowIds));
 
 			const resultsQuery = await Db.collections.Execution!
 				.createQueryBuilder("execution")
@@ -2165,11 +2164,14 @@ export async function start(): Promise<void> {
 	});
 }
 
-async function getExecutionsCount(countFilter: object): Promise<{count: number; estimate: boolean;}> {
+async function getExecutionsCount(countFilter: IDataObject): Promise<{count: number; estimate: boolean;}> {
 
 	const dbType = await GenericHelpers.getConfigValue('database.type') as DatabaseType;
+	const filteredFields = Object.keys(countFilter).filter(field => field !== 'id');
 
-	if (dbType !== 'postgresdb') {
+	// Do regular count for other databases than pgsql and
+	// if we are filtering based on workflowId or finished fields.
+	if (dbType !== 'postgresdb' || filteredFields.length > 0) {
 		const count = await Db.collections.Execution!.count(countFilter);
 		return {count, estimate: false};
 	}
