@@ -1,38 +1,38 @@
 import {
 	ICredentialType,
-	NodePropertyTypes,
+	INodeProperties,
 } from 'n8n-workflow';
 
 export class Sftp implements ICredentialType {
 	name = 'sftp';
 	displayName = 'SFTP';
 	documentationUrl = 'ftp';
-	properties = [
+	properties: INodeProperties[] = [
 		{
 			displayName: 'Host',
 			name: 'host',
 			required: true,
-			type: 'string' as NodePropertyTypes,
+			type: 'string',
 			default: '',
 		},
 		{
 			displayName: 'Port',
 			name: 'port',
 			required: true,
-			type: 'number' as NodePropertyTypes,
+			type: 'number',
 			default: 22,
 		},
 		{
 			displayName: 'Username',
 			name: 'username',
 			required: true,
-			type: 'string' as NodePropertyTypes,
+			type: 'string',
 			default: '',
 		},
 		{
 			displayName: 'Password',
 			name: 'password',
-			type: 'string' as NodePropertyTypes,
+			type: 'string',
 			typeOptions: {
 				password: true,
 			},
@@ -41,7 +41,7 @@ export class Sftp implements ICredentialType {
 		{
 			displayName: 'Private Key',
 			name: 'privateKey',
-			type: 'string' as NodePropertyTypes,
+			type: 'string',
 			typeOptions: {
 				alwaysOpenEditWindow: true,
 			},
@@ -54,7 +54,7 @@ export class Sftp implements ICredentialType {
 			typeOptions: {
 				password: true,
 			},
-			type: 'string' as NodePropertyTypes,
+			type: 'string',
 			default: '',
 			description: 'For an encrypted private key, this is the passphrase used to decrypt it.',
 		},

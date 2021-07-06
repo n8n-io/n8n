@@ -26,7 +26,7 @@ export class Mindee implements INodeType {
 		group: ['input'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
-		description: 'Consume Mindee API.',
+		description: 'Consume Mindee API',
 		defaults: {
 			name: 'Mindee',
 			color: '#e94950',

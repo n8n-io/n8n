@@ -390,7 +390,7 @@ export class Airtable implements INodeType {
 			},
 
 			// ----------------------------------
-			//         append + update
+			//         append + delete + update
 			// ----------------------------------
 			{
 				displayName: 'Options',
@@ -401,12 +401,24 @@ export class Airtable implements INodeType {
 					show: {
 						operation: [
 							'append',
+							'delete',
 							'update',
 						],
 					},
 				},
 				default: {},
 				options: [
+					{
+						displayName: 'Bulk Size',
+						name: 'bulkSize',
+						type: 'number',
+						typeOptions: {
+							minValue: 1,
+							maxValue: 10,
+						},
+						default: 10,
+						description: `Number of records to process at once.`,
+					},
 					{
 						displayName: 'Ignore Fields',
 						name: 'ignoreFields',
@@ -428,6 +440,14 @@ export class Airtable implements INodeType {
 						displayName: 'Typecast',
 						name: 'typecast',
 						type: 'boolean',
+						displayOptions: {
+							show: {
+								'/operation': [
+									'append',
+									'update',
+								],
+							},
+						},
 						default: false,
 						description: 'If the Airtable API should attempt mapping of string values for linked records & select options.',
 					},
@@ -465,54 +485,81 @@ export class Airtable implements INodeType {
 			let fields: string[];
 			let options: IDataObject;
 
+			const rows: IDataObject[] = [];
+			let bulkSize = 10;
+
 			for (let i = 0; i < items.length; i++) {
 				addAllFields = this.getNodeParameter('addAllFields', i) as boolean;
 				options = this.getNodeParameter('options', i, {}) as IDataObject;
+				bulkSize = options.bulkSize as number || bulkSize;
+
+				const row: IDataObject = {};
 
 				if (addAllFields === true) {
 					// Add all the fields the item has
-					body.fields = items[i].json;
+					row.fields = { ...items[i].json };
+					// tslint:disable-next-line: no-any
+					delete (row.fields! as any).id;
 				} else {
 					// Add only the specified fields
-					body.fields = {} as IDataObject;
+					row.fields = {} as IDataObject;
 
 					fields = this.getNodeParameter('fields', i, []) as string[];
 
 					for (const fieldName of fields) {
 						// @ts-ignore
-						body.fields[fieldName] = items[i].json[fieldName];
+						row.fields[fieldName] = items[i].json[fieldName];
 					}
 				}
 
-				if (options.typecast === true) {
-					body['typecast'] = true;
+				rows.push(row);
+
+				if (rows.length === bulkSize || i === items.length - 1) {
+					if (options.typecast === true) {
+						body['typecast'] = true;
+					}
+
+					body['records'] = rows;
+
+					responseData = await apiRequest.call(this, requestMethod, endpoint, body, qs);
+
+					returnData.push(...responseData.records);
+					// empty rows
+					rows.length = 0;
 				}
-
-				responseData = await apiRequest.call(this, requestMethod, endpoint, body, qs);
-
-				returnData.push(responseData);
 			}
 
 		} else if (operation === 'delete') {
 			requestMethod = 'DELETE';
 
-			let id: string;
+			const rows: string[] = [];
+			const options = this.getNodeParameter('options', 0, {}) as IDataObject;
+			const bulkSize = options.bulkSize as number || 10;
+
 			for (let i = 0; i < items.length; i++) {
+				let id: string;
+
 				id = this.getNodeParameter('id', i) as string;
 
-				endpoint = `${application}/${table}`;
+				rows.push(id);
 
-				// Make one request after another. This is slower but makes
-				// sure that we do not run into the rate limit they have in
-				// place and so block for 30 seconds. Later some global
-				// functionality in core should make it easy to make requests
-				// according to specific rules like not more than 5 requests
-				// per seconds.
-				qs.records = [id];
+				if (rows.length === bulkSize || i === items.length - 1) {
+					endpoint = `${application}/${table}`;
 
-				responseData = await apiRequest.call(this, requestMethod, endpoint, body, qs);
+					// Make one request after another. This is slower but makes
+					// sure that we do not run into the rate limit they have in
+					// place and so block for 30 seconds. Later some global
+					// functionality in core should make it easy to make requests
+					// according to specific rules like not more than 5 requests
+					// per seconds.
+					qs.records = rows;
 
-				returnData.push(...responseData.records);
+					responseData = await apiRequest.call(this, requestMethod, endpoint, body, qs);
+
+					returnData.push(...responseData.records);
+					// empty rows
+					rows.length = 0;
+				}
 			}
 
 		} else if (operation === 'list') {
@@ -585,55 +632,69 @@ export class Airtable implements INodeType {
 
 			requestMethod = 'PATCH';
 
-			let id: string;
 			let updateAllFields: boolean;
 			let fields: string[];
 			let options: IDataObject;
+
+			const rows: IDataObject[] = [];
+			let bulkSize = 10;
+
 			for (let i = 0; i < items.length; i++) {
 				updateAllFields = this.getNodeParameter('updateAllFields', i) as boolean;
 				options = this.getNodeParameter('options', i, {}) as IDataObject;
+				bulkSize = options.bulkSize as number || bulkSize;
+
+				const row: IDataObject = {};
+				row.fields = {} as IDataObject;
 
 				if (updateAllFields === true) {
 					// Update all the fields the item has
-					body.fields = items[i].json;
+					row.fields = { ...items[i].json };
+					// remove id field
+					// tslint:disable-next-line: no-any
+					delete (row.fields! as any).id;
 
 					if (options.ignoreFields && options.ignoreFields !== '') {
 						const ignoreFields = (options.ignoreFields as string).split(',').map(field => field.trim()).filter(field => !!field);
 						if (ignoreFields.length) {
 							// From: https://stackoverflow.com/questions/17781472/how-to-get-a-subset-of-a-javascript-objects-properties
-							body.fields = Object.entries(items[i].json)
+							row.fields = Object.entries(items[i].json)
 								.filter(([key]) => !ignoreFields.includes(key))
 								.reduce((obj, [key, val]) => Object.assign(obj, { [key]: val }), {});
 						}
 					}
 				} else {
-					// Update only the specified fields
-					body.fields = {} as IDataObject;
-
 					fields = this.getNodeParameter('fields', i, []) as string[];
 
 					for (const fieldName of fields) {
 						// @ts-ignore
-						body.fields[fieldName] = items[i].json[fieldName];
+						row.fields[fieldName] = items[i].json[fieldName];
 					}
 				}
 
-				id = this.getNodeParameter('id', i) as string;
+				row.id = this.getNodeParameter('id', i) as string;
 
-				endpoint = `${application}/${table}`;
+				rows.push(row);
 
-				// Make one request after another. This is slower but makes
-				// sure that we do not run into the rate limit they have in
-				// place and so block for 30 seconds. Later some global
-				// functionality in core should make it easy to make requests
-				// according to specific rules like not more than 5 requests
-				// per seconds.
+				if (rows.length === bulkSize || i === items.length - 1) {
+					endpoint = `${application}/${table}`;
 
-				const data = { records: [{ id, fields: body.fields }], typecast: (options.typecast) ? true : false };
+					// Make one request after another. This is slower but makes
+					// sure that we do not run into the rate limit they have in
+					// place and so block for 30 seconds. Later some global
+					// functionality in core should make it easy to make requests
+					// according to specific rules like not more than 5 requests
+					// per seconds.
 
-				responseData = await apiRequest.call(this, requestMethod, endpoint, data, qs);
+					const data = { records: rows, typecast: (options.typecast) ? true : false };
 
-				returnData.push(...responseData.records);
+					responseData = await apiRequest.call(this, requestMethod, endpoint, data, qs);
+
+					returnData.push(...responseData.records);
+
+					// empty rows
+					rows.length = 0;
+				}
 			}
 
 		} else {

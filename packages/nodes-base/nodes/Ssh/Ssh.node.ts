@@ -320,7 +320,7 @@ export class Ssh implements INodeType {
 					privateKey: path,
 				} as any; // tslint:disable-line: no-any
 
-				if (!credentials.passphrase) {
+				if (credentials.passphrase) {
 					options.passphrase = credentials.passphrase as string;
 				}
 

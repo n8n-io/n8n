@@ -64,7 +64,7 @@ export class HelpScout implements INodeType {
 		group: ['input'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
-		description: 'Consume Help Scout API.',
+		description: 'Consume HelpScout API',
 		defaults: {
 			name: 'HelpScout',
 			color: '#1392ee',

@@ -20,6 +20,10 @@
 			}
 		]
 	},
+	"alias": [
+		"CSV",
+		"Spreadsheet"
+	],
 	"subcategories": {
 		"Core Nodes": [
 			"Files"

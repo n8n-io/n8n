@@ -44,11 +44,11 @@ export class ConvertKit implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'ConvertKit',
 		name: 'convertKit',
-		icon: 'file:convertKit.png',
+		icon: 'file:convertKit.svg',
 		group: ['input'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
-		description: 'Consume ConvertKit API.',
+		description: 'Consume ConvertKit API',
 		defaults: {
 			name: 'ConvertKit',
 			color: '#fb6970',

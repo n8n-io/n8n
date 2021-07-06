@@ -16,7 +16,7 @@ import {
 	googleApiRequestAllItems,
 } from './GenericFunctions';
 
-import uuid = require('uuid');
+import { v4 as uuid } from 'uuid';
 
 export class GoogleDrive implements INodeType {
 	description: INodeTypeDescription = {

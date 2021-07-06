@@ -55,7 +55,7 @@ export class Discourse implements INodeType {
 		group: ['input'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
-		description: 'Consume Discourse API.',
+		description: 'Consume Discourse API',
 		defaults: {
 			name: 'Discourse',
 			color: '#000000',
