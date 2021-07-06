@@ -88,7 +88,7 @@ export class NocoDB implements INodeType {
 				type: 'string',
 				default: '',
 				required: true,
-				description: 'The name of table to access.',
+				description: 'The name of the table to access.',
 			},
 
 			// ----------------------------------
@@ -428,7 +428,6 @@ export class NocoDB implements INodeType {
 		let responseData;
 
 		const operation = this.getNodeParameter('operation', 0) as string;
-
 		const project = this.getNodeParameter('project', 0) as string;
 		const table = encodeURI(this.getNodeParameter('table', 0) as string);
 
@@ -438,7 +437,6 @@ export class NocoDB implements INodeType {
 
 		const body: IDataObject = {};
 		let qs: IDataObject = {};
-
 
 		if (operation === 'append') {
 
@@ -477,12 +475,20 @@ export class NocoDB implements INodeType {
 				rows.push(row);
 
 				if (rows.length === bulkSize || i === items.length - 1) {
+					try {
 
-					responseData = await apiRequest.call(this, requestMethod, endpoint, rows, qs);
-					// @ts-ignore
-					returnData.push(...responseData.map(value => ({lastAddedID: value})));
+						responseData = await apiRequest.call(this, requestMethod, endpoint, rows, qs);
+						// @ts-ignore
+						returnData.push(...responseData.map(value => ({lastAddedID: value})));
 
-					rows.length = 0;
+						rows.length = 0;
+					} catch (error) {
+						if (this.continueOnFail()) {
+							returnData.push({ error: error.toString() });
+							continue;
+						}
+						throw error;
+					}
 				}
 			}
 
@@ -505,13 +511,21 @@ export class NocoDB implements INodeType {
 				});
 
 				if (rows.length === bulkSize || i === items.length - 1) {
+					try {
 
-					responseData = await apiRequest.call(this, requestMethod, endpoint, rows, qs);
+						responseData = await apiRequest.call(this, requestMethod, endpoint, rows, qs);
 
-					// @ts-ignore
-					returnData.push(...responseData.map(() => ({ success: true})));
+						// @ts-ignore
+						returnData.push(...responseData.map(() => ({ success: true})));
 
-					rows.length = 0;
+						rows.length = 0;
+					} catch (error) {
+						if (this.continueOnFail()) {
+							returnData.push({ error: error.toString() });
+							continue;
+						}
+						throw error;
+					}
 				}
 			}
 
@@ -534,20 +548,28 @@ export class NocoDB implements INodeType {
 			if ( qs.fields ) {
 				qs.fields = (qs.fields as IDataObject[]).join(',');
 			}
+			try {
 
-			if (returnAll === true) {
-				responseData = await apiRequestAllItems.call(this, requestMethod, endpoint, body, qs);
-			} else {
-				qs.limit = this.getNodeParameter('limit', 0) as number;
-				responseData = await apiRequest.call(this, requestMethod, endpoint, body, qs);
-			}
+				if (returnAll === true) {
+					responseData = await apiRequestAllItems.call(this, requestMethod, endpoint, body, qs);
+				} else {
+					qs.limit = this.getNodeParameter('limit', 0) as number;
+					responseData = await apiRequest.call(this, requestMethod, endpoint, body, qs);
+				}
 
-			returnData.push.apply(returnData, responseData);
+				returnData.push.apply(returnData, responseData);
 
-			if (downloadAttachments === true) {
-				const downloadFieldNames = (this.getNodeParameter('downloadFieldNames', 0) as string).split(',');
-				const data = await downloadRecordAttachments.call(this, responseData, downloadFieldNames);
-				return [data];
+				if (downloadAttachments === true) {
+					const downloadFieldNames = (this.getNodeParameter('downloadFieldNames', 0) as string).split(',');
+					const data = await downloadRecordAttachments.call(this, responseData, downloadFieldNames);
+					return [data];
+				}
+			} catch (error) {
+				if (this.continueOnFail()) {
+					returnData.push({ error: error.toString() });
+				} else {
+					throw error;
+				}
 			}
 
 		} else if (operation === 'read') {
@@ -556,14 +578,23 @@ export class NocoDB implements INodeType {
 
 			let id: string;
 			for (let i = 0; i < items.length; i++) {
+				try {
 
-				id = this.getNodeParameter('id', i) as string;
+					id = this.getNodeParameter('id', i) as string;
 
-				endpoint = `/nc/${project}/api/v1/${table}/${id}`;
+					endpoint = `/nc/${project}/api/v1/${table}/${id}`;
 
-				responseData = await apiRequest.call(this, requestMethod, endpoint, body, qs);
+					responseData = await apiRequest.call(this, requestMethod, endpoint, body, qs);
 
-				returnData.push(responseData);
+					returnData.push(responseData);
+				} catch (error) {
+					if (this.continueOnFail()) {
+						returnData.push({ error: error.toString() });
+						continue;
+					}
+
+					throw error;
+				}
 			}
 
 		} else if (operation === 'update') {
@@ -603,13 +634,21 @@ export class NocoDB implements INodeType {
 				rows.push(row);
 
 				if (rows.length === bulkSize || i === items.length - 1) {
+					try {
 
-					responseData = await apiRequest.call(this, requestMethod, endpoint, rows, qs);
-					// @ts-ignore
-					returnData.push(...responseData.map(() => ({ success: true})));
+						responseData = await apiRequest.call(this, requestMethod, endpoint, rows, qs);
+						// @ts-ignore
+						returnData.push(...responseData.map(() => ({ success: true})));
 
-					// empty rows
-					rows.length = 0;
+						// empty rows
+						rows.length = 0;
+					} catch (error) {
+						if (this.continueOnFail()) {
+							returnData.push({ error: error.toString() });
+							continue;
+						}
+						throw error;
+					}
 				}
 			}
 
