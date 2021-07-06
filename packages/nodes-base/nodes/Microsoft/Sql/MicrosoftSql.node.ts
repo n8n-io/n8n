@@ -226,7 +226,8 @@ export class MicrosoftSql implements INodeType {
 			user: credentials.user as string,
 			password: credentials.password as string,
 			domain: credentials.domain ? (credentials.domain as string) : undefined,
-			connectTimeout: credentials.connectTimeout as number,
+			connectionTimeout: credentials.connectTimeout as number,
+			requestTimeout: credentials.requestTimeout as number,
 			options: {
 				encrypt: credentials.tls as boolean,
 				enableArithAbort: false,
