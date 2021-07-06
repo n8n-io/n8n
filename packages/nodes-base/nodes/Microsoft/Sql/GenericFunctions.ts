@@ -121,7 +121,7 @@ export function extractUpdateSet(item: IDataObject, columns: string[]): string {
 	return columns
 		.map(
 			column =>
-				`${column} = ${
+				`"${column}" = ${
 					typeof item[column] === 'string' ? `'${item[column]}'` : item[column]
 				}`,
 		)
@@ -157,5 +157,5 @@ export function extractDeleteValues(items: IDataObject[], key: string): string {
 
 export function formatColumns(columns: string) {
 	return columns.split(',')
-	.map((column) => (`"${column}"`)).join(',');
+	.map((column) => (`"${column.trim()}"`)).join(',');
 }
