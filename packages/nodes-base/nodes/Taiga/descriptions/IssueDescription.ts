@@ -586,9 +586,12 @@ export const issueFields = [
 			{
 				displayName: 'Project ID',
 				name: 'projectId',
-				type: 'string',
+				type: 'options',
+				typeOptions: {
+					loadOptionsMethod: 'getProjects',
+				},
 				default: '',
-				description: 'ID of the project to which the issue belongs',
+				description: 'ID of the project to set the issue to',
 			},
 			{
 				displayName: 'Severity',

@@ -545,7 +545,7 @@ export const userStoryFields = [
 					loadOptionsMethod: 'getProjects',
 				},
 				default: '',
-				description: 'ID of the project to which the user story belongs',
+				description: 'ID of the project to set the user story to',
 			},
 			{
 				displayName: 'Subject',

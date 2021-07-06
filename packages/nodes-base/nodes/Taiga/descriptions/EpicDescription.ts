@@ -394,7 +394,7 @@ export const epicFields = [
 					loadOptionsMethod: 'getProjects',
 				},
 				default: '',
-				description: 'ID of the project to which the epic belongs',
+				description: 'ID of the project to set the epic to',
 			},
 			{
 				displayName: 'Subject',
