@@ -2164,7 +2164,7 @@ export async function start(): Promise<void> {
 	});
 }
 
-async function getExecutionsCount(countFilter: IDataObject): Promise<{count: number; estimate: boolean;}> {
+async function getExecutionsCount(countFilter: IDataObject): Promise<{ count: number; estimate: boolean; }> {
 
 	const dbType = await GenericHelpers.getConfigValue('database.type') as DatabaseType;
 	const filteredFields = Object.keys(countFilter).filter(field => field !== 'id');
@@ -2173,26 +2173,25 @@ async function getExecutionsCount(countFilter: IDataObject): Promise<{count: num
 	// if we are filtering based on workflowId or finished fields.
 	if (dbType !== 'postgresdb' || filteredFields.length > 0) {
 		const count = await Db.collections.Execution!.count(countFilter);
-		return {count, estimate: false};
+		return { count, estimate: false };
 	}
 
 	try {
 		// Get an estimate of rows count.
 		const estimateRowsNumberSql = "SELECT n_live_tup FROM pg_stat_all_tables WHERE relname = 'execution_entity';";
-		const rows: Array<{n_live_tup: string}> = await Db.collections.Execution!.query(estimateRowsNumberSql);
+		const rows: Array<{ n_live_tup: string }> = await Db.collections.Execution!.query(estimateRowsNumberSql);
 
 		const estimate = parseInt(rows[0].n_live_tup, 10);
-		// If over 500k, return just an estimate.
+		// If over 100k, return just an estimate.
 		if (estimate > 100000) {
 			// if less than 100k, we get the real count as even a full
 			// table scan should not take so long.
-			return {count: estimate, estimate: true};
+			return { count: estimate, estimate: true };
 		}
-	} catch(err) {
+	} catch (err) {
 		LoggerProxy.warn('Unable to get executions count from postgres: ' + err);
 	}
-	
-	const count = await Db.collections.Execution!.count(countFilter);
-	return {count, estimate: false};
 
+	const count = await Db.collections.Execution!.count(countFilter);
+	return { count, estimate: false };
 }
