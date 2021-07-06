@@ -26,7 +26,7 @@ export class TaigaTrigger implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Taiga Trigger',
 		name: 'taigaTrigger',
-		icon: 'file:taiga.png',
+		icon: 'file:taiga.svg',
 		group: ['trigger'],
 		version: 1,
 		subtitle: '={{"project:" + $parameter["projectSlug"]}}',

@@ -92,6 +92,7 @@ export async function taigaApiRequest(
 	}
 
 	try {
+		console.log(options);
 		return await this.helpers.request!(options);
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error);
@@ -123,4 +124,45 @@ export async function taigaApiRequestAllItems(this: IHookFunctions | IExecuteFun
 export function getAutomaticSecret(credentials: ICredentialDataDecryptedObject) {
 	const data = `${credentials.username},${credentials.password}`;
 	return createHash('md5').update(data).digest('hex');
+}
+
+export async function handleListing(
+	this: IExecuteFunctions,
+	method: string,
+	endpoint: string,
+	body: IDataObject = {},
+	qs: IDataObject = {},
+	i: number,
+) {
+	let responseData;
+	qs.project = this.getNodeParameter('projectId', i) as number;
+	const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+
+	if (returnAll) {
+		return await taigaApiRequestAllItems.call(this, method, endpoint, body, qs);
+	} else {
+		qs.limit = this.getNodeParameter('limit', i) as number;
+		responseData = await taigaApiRequestAllItems.call(this, method, endpoint, body, qs);
+		return responseData.splice(0, qs.limit);
+	}
+}
+
+export const toOptions = (items: LoadedResource[]) =>
+	items.map(({ name, id }) => ({ name, value: id }));
+
+export function throwOnEmptyUpdate(
+	this: IExecuteFunctions,
+	resource: Resource,
+) {
+	throw new NodeOperationError(
+		this.getNode(),
+		`Please enter at least one field to update for the ${resource}.`,
+	);
+}
+
+export async function getVersionForUpdate(
+	this: IExecuteFunctions,
+	endpoint: string,
+) {
+	return await taigaApiRequest.call(this, 'GET', endpoint).then(response => response.version);
 }
