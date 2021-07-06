@@ -29,6 +29,7 @@ import {
 	extractUpdateCondition,
 	extractUpdateSet,
 	extractValues,
+	formatColumns,
 } from './GenericFunctions';
 
 export class MicrosoftSql implements INodeType {
@@ -282,7 +283,7 @@ export class MicrosoftSql implements INodeType {
 							return pool
 								.request()
 								.query(
-									`INSERT INTO ${table}(${columnString}) VALUES ${values};`,
+									`INSERT INTO ${table}(${formatColumns(columnString)}) VALUES ${values};`,
 								);
 						});
 					},

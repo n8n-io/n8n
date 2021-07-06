@@ -153,3 +153,9 @@ export function extractDeleteValues(items: IDataObject[], key: string): string {
 		.map(item => (typeof item[key] === 'string' ? `'${item[key]}'` : item[key]))
 		.join(',')})`;
 }
+
+
+export function formatColumns(columns: string) {
+	return columns.split(',')
+	.map((column) => (`"${column}"`)).join(',');
+}
