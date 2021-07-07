@@ -123,6 +123,13 @@ export class Taiga implements INodeType {
 
 	methods = {
 		loadOptions: {
+			async getEpics(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const project = this.getCurrentNodeParameter('projectId') as string;
+				const epics = await taigaApiRequest.call(this, 'GET', '/epics', {}, { project }) as LoadedEpic[];
+
+				return epics.map(({ subject, id }) => ({ name: subject, value: id }));
+			},
+
 			async getMilestones(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const project = this.getCurrentNodeParameter('projectId') as string;
 				const milestones = await taigaApiRequest.call(this, 'GET', '/milestones', {}, { project }) as LoadedResource[];

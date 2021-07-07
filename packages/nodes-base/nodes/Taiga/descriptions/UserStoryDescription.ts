@@ -363,7 +363,13 @@ export const userStoryFields = [
 				displayName: 'Epic',
 				name: 'epic',
 				description: 'ID of the epic to which the user story belongs',
-				type: 'string',
+				type: 'options',
+				typeOptions: {
+					loadOptionsDependsOn: [
+						'projectId',
+					],
+					loadOptionsMethod: 'getEpics',
+				},
 				default: '',
 			},
 			{

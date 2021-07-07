@@ -17,6 +17,8 @@ type LoadedUserStory = {
 	subject: string;
 };
 
+type LoadedEpic = LoadedUserStory;
+
 type LoadedTags = {
 	[tagName: string]: string | null; // hex color
 }
