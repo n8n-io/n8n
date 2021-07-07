@@ -1,5 +1,6 @@
 import {
 	ICredentialType,
+	IDisplayOptions,
 	INodeProperties,
 } from 'n8n-workflow';
 
