@@ -8,6 +8,7 @@ import {
 	ILoadOptionsFunctions,
 	INodeExecutionData,
 	INodePropertyOptions,
+	NodeApiError,
 } from 'n8n-workflow';
 
 import {
@@ -27,6 +28,10 @@ import {
 import {
 	OptionsWithUri,
 } from 'request';
+
+import {
+	QuickBooksOAuth2Credentials,
+} from './types';
 
 /**
  * Make an authenticated API request to QuickBooks.
@@ -52,7 +57,7 @@ export async function quickBooksApiRequest(
 	const productionUrl = 'https://quickbooks.api.intuit.com';
 	const sandboxUrl = 'https://sandbox-quickbooks.api.intuit.com';
 
-	const credentials = this.getCredentials('quickBooksOAuth2Api') as IDataObject;
+	const credentials = this.getCredentials('quickBooksOAuth2Api') as QuickBooksOAuth2Credentials;
 
 	const options: OptionsWithUri = {
 		headers: {
@@ -95,18 +100,7 @@ export async function quickBooksApiRequest(
 	try {
 		return await this.helpers.requestOAuth2!.call(this, 'quickBooksOAuth2Api', options);
 	} catch (error) {
-
-		const errors = error.error.Fault.Error;
-
-		if (errors && Array.isArray(errors)) {
-			const errorMessage = errors.map(
-				(e) => `QuickBooks error response [${e.code}]: ${e.Message} - Detail: ${e.Detail}`,
-			).join('|');
-
-			throw new Error(errorMessage);
-		}
-
-		throw error;
+		throw new NodeApiError(this.getNode(), error);
 	}
 }
 

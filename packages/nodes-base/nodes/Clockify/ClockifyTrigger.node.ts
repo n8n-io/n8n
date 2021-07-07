@@ -22,17 +22,17 @@ import { IWorkspaceDto } from './WorkpaceInterfaces';
 export class ClockifyTrigger implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Clockify Trigger',
-		icon: 'file:clockify.png',
+		icon: 'file:clockify.svg',
 		name: 'clockifyTrigger',
-		group: ['trigger'],
+		group: [ 'trigger' ],
 		version: 1,
-		description: 'Watches Clockify For Events',
+		description: 'Listens to Clockify events',
 		defaults: {
 			name: 'Clockify Trigger',
 			color: '#000000',
 		},
 		inputs: [],
-		outputs: ['main'],
+		outputs: [ 'main' ],
 		credentials: [
 			{
 				name: 'clockifyApi',
@@ -109,7 +109,7 @@ export class ClockifyTrigger implements INodeType {
 				qs.start = webhookData.lastTimeChecked;
 				qs.end = moment().tz(workflowTimezone).format('YYYY-MM-DDTHH:mm:ss') + 'Z';
 				qs.hydrated = true;
-				qs['in-progress'] = false;
+				qs[ 'in-progress' ] = false;
 				break;
 		}
 
@@ -117,8 +117,8 @@ export class ClockifyTrigger implements INodeType {
 		webhookData.lastTimeChecked = qs.end;
 
 		if (Array.isArray(result) && result.length !== 0) {
-			result = [this.helpers.returnJsonArray(result)];
+			return [ this.helpers.returnJsonArray(result) ];
 		}
-		return result;
+		return null;
 	}
 }

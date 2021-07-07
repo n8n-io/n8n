@@ -21,7 +21,7 @@ export class PushcutTrigger implements INodeType {
 		icon: 'file:pushcut.png',
 		group: ['trigger'],
 		version: 1,
-		description: 'Starts the workflow when a Pushcut events occurs.',
+		description: 'Starts the workflow when Pushcut events occur',
 		defaults: {
 			name: 'Pushcut Trigger',
 			color: '#1f2957',
@@ -105,7 +105,7 @@ export class PushcutTrigger implements INodeType {
 
 					try {
 						await pushcutApiRequest.call(this, 'DELETE', endpoint);
-					} catch (e) {
+					} catch (error) {
 						return false;
 					}
 

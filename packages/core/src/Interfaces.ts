@@ -18,14 +18,12 @@ import {
 	IWorkflowSettings as IWorkflowSettingsWorkflow,
  } from 'n8n-workflow';
 
-
 import { OptionsWithUri, OptionsWithUrl } from 'request';
 import * as requestPromise from 'request-promise-native';
 
 interface Constructable<T> {
 	new(): T;
 }
-
 
 export interface IProcessMessage {
 	data?: any; // tslint:disable-line:no-any

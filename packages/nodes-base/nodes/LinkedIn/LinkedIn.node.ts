@@ -9,6 +9,7 @@ import {
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
+	NodeOperationError,
 } from 'n8n-workflow';
 import { linkedInApiRequest } from './GenericFunctions';
 import {
@@ -23,7 +24,7 @@ export class LinkedIn implements INodeType {
 		icon: 'file:linkedin.png',
 		group: ['input'],
 		version: 1,
-		description: 'Consume LinkedIn Api',
+		description: 'Consume LinkedIn API',
 		defaults: {
 			name: 'LinkedIn',
 			color: '#0075b4',
@@ -138,13 +139,13 @@ export class LinkedIn implements INodeType {
 						const item = items[i];
 
 						if (item.binary === undefined) {
-							throw new Error('No binary data exists on item!');
+							throw new NodeOperationError(this.getNode(), 'No binary data exists on item!');
 						}
 
 						const propertyNameUpload = this.getNodeParameter('binaryPropertyName', i) as string;
 
 						if (item.binary[propertyNameUpload] === undefined) {
-							throw new Error(`No binary data property "${propertyNameUpload}" does not exists on item!`);
+							throw new NodeOperationError(this.getNode(), `No binary data property "${propertyNameUpload}" does not exists on item!`);
 						}
 
 						// Buffer binary data

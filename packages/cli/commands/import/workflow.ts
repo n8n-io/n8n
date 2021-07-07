@@ -5,12 +5,22 @@ import {
 
 import {
 	Db,
-	GenericHelpers,
 } from '../../src';
+
+import { 
+	getLogger,
+} from '../../src/Logger';
+
+import {
+	LoggerProxy,
+} from 'n8n-workflow';
 
 import * as fs from 'fs';
 import * as glob from 'glob-promise';
 import * as path from 'path';
+import { 
+	UserSettings,
+} from 'n8n-core';
 
 export class ImportWorkflowsCommand extends Command {
 	static description = 'Import workflows';
@@ -32,17 +42,20 @@ export class ImportWorkflowsCommand extends Command {
 	};
 
 	async run() {
+		const logger = getLogger();
+		LoggerProxy.init(logger);
+
 		const { flags } = this.parse(ImportWorkflowsCommand);
 
 		if (!flags.input) {
-			GenericHelpers.logOutput(`An input file or directory with --input must be provided`);
+			console.info(`An input file or directory with --input must be provided`);
 			return;
 		}
 
 		if (flags.separate) {
 			if (fs.existsSync(flags.input)) {
 				if (!fs.lstatSync(flags.input).isDirectory()) {
-					GenericHelpers.logOutput(`The paramenter --input must be a directory`);
+					console.info(`The paramenter --input must be a directory`);
 					return;
 				}
 			}
@@ -50,6 +63,9 @@ export class ImportWorkflowsCommand extends Command {
 
 		try {
 			await Db.init();
+
+			// Make sure the settings exist
+			await UserSettings.prepareUserSettings();
 			let i;
 			if (flags.separate) {
 				const files = await glob((flags.input.endsWith(path.sep) ? flags.input : flags.input + path.sep) + '*.json');
@@ -69,9 +85,11 @@ export class ImportWorkflowsCommand extends Command {
 				}
 			}
 
-			console.log('Successfully imported', i, i === 1 ? 'workflow.' : 'workflows.');
+			console.info(`Successfully imported ${i} ${i === 1 ? 'workflow.' : 'workflows.'}`);
+			process.exit(0);
 		} catch (error) {
-			this.error(error.message);
+			console.error('An error occurred while exporting workflows. See log messages for details.');
+			logger.error(error.message);
 			this.exit(1);
 		}
 	}

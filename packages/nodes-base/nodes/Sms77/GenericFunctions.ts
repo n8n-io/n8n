@@ -6,6 +6,8 @@ import {
 import {
 	ICredentialDataDecryptedObject,
 	IDataObject,
+	NodeApiError,
+	NodeOperationError,
 } from 'n8n-workflow';
 
 /**
@@ -21,7 +23,7 @@ import {
 export async function sms77ApiRequest(this: IHookFunctions | IExecuteFunctions, method: string, endpoint: string, form: IDataObject, qs?: IDataObject): Promise<any> { // tslint:disable-line:no-any
 	const credentials = this.getCredentials('sms77Api');
 	if (credentials === undefined) {
-		throw new Error('No credentials got returned!');
+		throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
 	}
 
 	if ('GET' === method) {
@@ -38,7 +40,7 @@ export async function sms77ApiRequest(this: IHookFunctions | IExecuteFunctions, 
 	});
 
 	if ('100' !== response.success) {
-		throw new Error('Invalid sms77 credentials or API error!');
+		throw new NodeApiError(this.getNode(), response, { message: 'Invalid sms77 credentials or API error!' });
 	}
 
 	return response;

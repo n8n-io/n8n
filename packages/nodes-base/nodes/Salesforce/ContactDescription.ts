@@ -31,6 +31,11 @@ export const contactOperations = [
 				description: 'Create a contact',
 			},
 			{
+				name: 'Create or Update',
+				value: 'upsert',
+				description: 'Create a new contact, or update the current one if it already exists (upsert)',
+			},
+			{
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete a contact',
@@ -67,6 +72,48 @@ export const contactFields = [
 	/*                                contact:create                              */
 	/* -------------------------------------------------------------------------- */
 	{
+		displayName: 'Match Against',
+		name: 'externalId',
+		type: 'options',
+		typeOptions: {
+			loadOptionsMethod: 'getExternalIdFields',
+			loadOptionsDependsOn: [
+				'resource',
+			],
+		},
+		required: true,
+		default: '',
+		displayOptions: {
+			show: {
+				resource: [
+					'contact',
+				],
+				operation: [
+					'upsert',
+				],
+			},
+		},
+		description: `The field to check to see if the contact already exists`,
+	},
+	{
+		displayName: 'Value to Match',
+		name: 'externalIdValue',
+		type: 'string',
+		required: true,
+		default: '',
+		displayOptions: {
+			show: {
+				resource: [
+					'contact',
+				],
+				operation: [
+					'upsert',
+				],
+			},
+		},
+		description: `If this value exists in the 'match against' field, update the contact. Otherwise create a new one`,
+	},
+	{
 		displayName: 'Last Name',
 		name: 'lastname',
 		type: 'string',
@@ -79,6 +126,7 @@ export const contactFields = [
 				],
 				operation: [
 					'create',
+					'upsert',
 				],
 			},
 		},
@@ -97,6 +145,7 @@ export const contactFields = [
 				],
 				operation: [
 					'create',
+					'upsert',
 				],
 			},
 		},
@@ -152,7 +201,7 @@ export const contactFields = [
 								name: 'fieldId',
 								type: 'options',
 								typeOptions: {
-									loadOptionsMethod: 'getLeadCustomFields',
+									loadOptionsMethod: 'getCustomFields',
 								},
 								default: '',
 								description: 'The ID of the field to add custom field to.',
@@ -441,7 +490,7 @@ export const contactFields = [
 								name: 'fieldId',
 								type: 'options',
 								typeOptions: {
-									loadOptionsMethod: 'getLeadCustomFields',
+									loadOptionsMethod: 'getCustomFields',
 								},
 								default: '',
 								description: 'The ID of the field to add custom field to.',
@@ -520,6 +569,13 @@ export const contactFields = [
 				default: '',
 				description: `references the ID of a contact in Data.com.
 				If a contact has a value in this field, it means that a contact was imported as a contact from Data.com.`,
+			},
+			{
+				displayName: 'Last Name',
+				name: 'lastName',
+				type: 'string',
+				default: '',
+				description: 'Last name of the contact. Limited to 80 characters.',
 			},
 			{
 				displayName: 'Lead Source',
@@ -642,7 +698,7 @@ export const contactFields = [
 	},
 
 	/* -------------------------------------------------------------------------- */
-	/*                                  contact:get                                  */
+	/*                                  contact:get                               */
 	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Contact ID',

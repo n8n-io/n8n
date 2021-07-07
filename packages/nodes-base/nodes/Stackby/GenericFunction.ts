@@ -11,6 +11,7 @@ import {
 import {
 	IDataObject,
 	IPollFunctions,
+	NodeApiError,
 } from 'n8n-workflow';
 
 /**
@@ -49,20 +50,7 @@ export async function apiRequest(this: IHookFunctions | IExecuteFunctions | ILoa
 		return await this.helpers.request!(options);
 
 	} catch (error) {
-		if (error.statusCode === 401) {
-			// Return a clear error
-			throw new Error('The stackby credentials are not valid!');
-		}
-
-		if (error.response && error.response.body && error.response.body.error) {
-			// Try to return the error prettier
-			const message = error.response.body.error;
-
-			throw new Error(`Stackby error response [${error.statusCode}]: ${message}`);
-		}
-
-		// Expected error data did not get returned so rhow the actual error
-		throw error;
+		throw new NodeApiError(this.getNode(), error);
 	}
 }
 

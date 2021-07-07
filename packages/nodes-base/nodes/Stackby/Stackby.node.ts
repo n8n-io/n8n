@@ -7,6 +7,7 @@ import {
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
+	NodeOperationError,
 } from 'n8n-workflow';
 
 import {
@@ -22,7 +23,7 @@ export class Stackby implements INodeType {
 		icon: 'file:stackby.png',
 		group: ['transform'],
 		version: 1,
-		description: 'Read, Write, and Delete Data in Stackby',
+		description: 'Read, write, and delete data in Stackby',
 		defaults: {
 			name: 'Stackby',
 			color: '#772244',
@@ -230,7 +231,7 @@ export class Stackby implements INodeType {
 				const record: { [key: string]: any } = {};
 				for (const column of columnList) {
 					if (items[i].json[column] === undefined) {
-						throw new Error(`Column ${column} does not exist on input`);
+						throw new NodeOperationError(this.getNode(), `Column ${column} does not exist on input`);
 					} else {
 						record[column] = items[i].json[column];
 					}

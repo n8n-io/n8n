@@ -10,6 +10,8 @@ import {
 	INodeType,
 	INodeTypeDescription,
 	IWebhookResponseData,
+	NodeApiError,
+	NodeOperationError,
 } from 'n8n-workflow';
 
 import {
@@ -24,7 +26,7 @@ export class GetResponseTrigger implements INodeType {
 		icon: 'file:getResponse.png',
 		group: ['trigger'],
 		version: 1,
-		description: 'Starts the workflow when GetResponse events occure.',
+		description: 'Starts the workflow when GetResponse events occur',
 		defaults: {
 			name: 'GetResponse Trigger',
 			color: '#00afec',
@@ -174,11 +176,11 @@ export class GetResponseTrigger implements INodeType {
 
 					if (data.url !== webhookUrl) {
 						if (deleteCurrentSubscription === false) {
-							throw new Error(`The webhook (${data.url}) is active in the account. Delete it manually or set the parameter "Delete Current Subscription" to true, and the node will delete it for you.`);
+							throw new NodeApiError(this.getNode(), data, { message: `The webhook (${data.url}) is active in the account. Delete it manually or set the parameter "Delete Current Subscription" to true, and the node will delete it for you.` });
 						}
 					}
 				} catch (error) {
-					if (error.message.includes('[404]')) {
+					if (error.httpCode === '404') {
 						return false;
 					}
 				}
@@ -206,7 +208,7 @@ export class GetResponseTrigger implements INodeType {
 			async delete(this: IHookFunctions): Promise<boolean> {
 				try {
 					await getresponseApiRequest.call(this, 'DELETE', '/accounts/callbacks');
-				} catch (e) {
+				} catch (error) {
 					return false;
 				}
 

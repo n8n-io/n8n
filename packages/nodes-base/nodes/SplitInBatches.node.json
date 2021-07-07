@@ -10,6 +10,21 @@
 			{
 				"url": "https://docs.n8n.io/nodes/n8n-nodes-base.splitInBatches/"
 			}
+		],
+		"generic": [
+			{
+				"label": "Benefits of automation and n8n: An interview with HubSpot's Hugh Durkin",
+				"icon": "🎖",
+				"url": "https://n8n.io/blog/benefits-of-automation-and-n8n-an-interview-with-hubspots-hugh-durkin/"
+			}
+		]
+	},
+	"alias": [
+		"Loop"
+	],
+	"subcategories": {
+		"Core Nodes": [
+			"Flow"
 		]
 	}
 }

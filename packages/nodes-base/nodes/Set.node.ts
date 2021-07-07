@@ -16,7 +16,7 @@ export class Set implements INodeType {
 		icon: 'fa:pen',
 		group: ['input'],
 		version: 1,
-		description: 'Sets values on the items and removes if selected all other values.',
+		description: 'Sets values on items and optionally remove other values',
 		defaults: {
 			name: 'Set',
 			color: '#0000FF',
@@ -142,7 +142,7 @@ export class Set implements INodeType {
 		let item: INodeExecutionData;
 		let keepOnlySet: boolean;
 		for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
-			keepOnlySet = this.getNodeParameter('keepOnlySet', itemIndex, []) as boolean;
+			keepOnlySet = this.getNodeParameter('keepOnlySet', itemIndex, false) as boolean;
 			item = items[itemIndex];
 			const options = this.getNodeParameter('options', itemIndex, {}) as IDataObject;
 

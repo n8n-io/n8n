@@ -17,9 +17,16 @@ import {
 	NodeTypes,
 	TestWebhooks,
 	WebhookServer,
-} from "../src";
+} from '../src';
 import { IDataObject } from 'n8n-workflow';
 
+import { 
+	getLogger,
+} from '../src/Logger';
+
+import {
+	LoggerProxy,
+} from 'n8n-workflow';
 
 let activeWorkflowRunner: ActiveWorkflowRunner.ActiveWorkflowRunner | undefined;
 let processExistCode = 0;
@@ -42,7 +49,7 @@ export class Webhook extends Command {
 	 * get removed.
 	 */
 	static async stopProcess() {
-		console.log(`\nStopping n8n...`);
+		LoggerProxy.info(`\nStopping n8n...`);
 
 		try {
 			const externalHooks = ExternalHooks();
@@ -54,17 +61,6 @@ export class Webhook extends Command {
 				process.exit(processExistCode);
 			}, 30000);
 
-			const removePromises = [];
-			if (activeWorkflowRunner !== undefined) {
-				removePromises.push(activeWorkflowRunner.removeAll());
-			}
-
-			// Remove all test webhooks
-			const testWebhooks = TestWebhooks.getInstance();
-			removePromises.push(testWebhooks.removeAll());
-
-			await Promise.all(removePromises);
-
 			// Wait for active workflow executions to finish
 			const activeExecutionsInstance = ActiveExecutions.getInstance();
 			let executingWorkflows = activeExecutionsInstance.getActiveExecutions();
@@ -72,7 +68,7 @@ export class Webhook extends Command {
 			let count = 0;
 			while (executingWorkflows.length !== 0) {
 				if (count++ % 4 === 0) {
-					console.log(`Waiting for ${executingWorkflows.length} active executions to finish...`);
+					LoggerProxy.info(`Waiting for ${executingWorkflows.length} active executions to finish...`);
 				}
 				await new Promise((resolve) => {
 					setTimeout(resolve, 500);
@@ -81,7 +77,7 @@ export class Webhook extends Command {
 			}
 
 		} catch (error) {
-			console.error('There was an error shutting down n8n.', error);
+			LoggerProxy.error('There was an error shutting down n8n.', error);
 		}
 
 		process.exit(processExistCode);
@@ -89,6 +85,9 @@ export class Webhook extends Command {
 
 
 	async run() {
+		const logger = getLogger();
+		LoggerProxy.init(logger);
+
 		// Make sure that n8n shuts down gracefully if possible
 		process.on('SIGTERM', Webhook.stopProcess);
 		process.on('SIGINT', Webhook.stopProcess);
@@ -98,7 +97,7 @@ export class Webhook extends Command {
 		// Wrap that the process does not close but we can still use async
 		await (async () => {
 			if (config.get('executions.mode') !== 'queue') {
-				/** 
+				/**
 				 * It is technically possible to run without queues but
 				 * there are 2 known bugs when running in this mode:
 				 * - Executions list will be problematic as the main process
@@ -116,11 +115,12 @@ export class Webhook extends Command {
 			try {
 				// Start directly with the init of the database to improve startup time
 				const startDbInitPromise = Db.init().catch(error => {
-					console.error(`There was an error initializing DB: ${error.message}`);
+					logger.error(`There was an error initializing DB: "${error.message}"`);
 
 					processExistCode = 1;
 					// @ts-ignore
 					process.emit('SIGINT');
+					process.exit(1);
 				});
 
 				// Make sure the settings exist
@@ -154,7 +154,7 @@ export class Webhook extends Command {
 					const redisDB = config.get('queue.bull.redis.db');
 					const redisConnectionTimeoutLimit = config.get('queue.bull.redis.timeoutThreshold');
 					let lastTimer = 0, cumulativeTimeout = 0;
-					
+
 					const settings = {
 						retryStrategy: (times: number): number | null => {
 							const now = Date.now();
@@ -166,7 +166,7 @@ export class Webhook extends Command {
 								cumulativeTimeout += now - lastTimer;
 								lastTimer = now;
 								if (cumulativeTimeout > redisConnectionTimeoutLimit) {
-									console.error('Unable to connect to Redis after ' + redisConnectionTimeoutLimit + ". Exiting process.");
+									logger.error('Unable to connect to Redis after ' + redisConnectionTimeoutLimit + ". Exiting process.");
 									process.exit(1);
 								}
 							}
@@ -186,7 +186,7 @@ export class Webhook extends Command {
 					if (redisDB) {
 						settings.db = redisDB;
 					}
-					
+
 					// This connection is going to be our heartbeat
 					// IORedis automatically pings redis and tries to reconnect
 					// We will be using the retryStrategy above
@@ -195,13 +195,13 @@ export class Webhook extends Command {
 
 					redis.on('error', (error) => {
 						if (error.toString().includes('ECONNREFUSED') === true) {
-							console.warn('Redis unavailable - trying to reconnect...');
+							logger.warn('Redis unavailable - trying to reconnect...');
 						} else {
-							console.warn('Error with Redis: ', error);
+							logger.warn('Error with Redis: ', error);
 						}
 					});
 				}
-				
+
 				await WebhookServer.start();
 
 				// Start to get active workflows and run their triggers
@@ -209,14 +209,16 @@ export class Webhook extends Command {
 				await activeWorkflowRunner.initWebhooks();
 
 				const editorUrl = GenericHelpers.getBaseUrl();
-				this.log('Webhook listener waiting for requests.');
+				console.info('Webhook listener waiting for requests.');
 
 			} catch (error) {
-				this.error(`There was an error: ${error.message}`);
+				console.error('Exiting due to error. See log message for details.');
+				logger.error(`Webhook process cannot continue. "${error.message}"`);
 
 				processExistCode = 1;
 				// @ts-ignore
 				process.emit('SIGINT');
+				process.exit(1);
 			}
 		})();
 	}

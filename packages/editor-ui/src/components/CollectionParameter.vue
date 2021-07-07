@@ -68,7 +68,7 @@ export default mixins(
 				for (const name of this.propertyNames) {
 					tempProperties = this.getOptionProperties(name);
 					if (tempProperties !== undefined) {
-						returnProperties.push(tempProperties);
+						returnProperties.push(...tempProperties);
 					}
 				}
 				return returnProperties;
@@ -104,14 +104,15 @@ export default mixins(
 
 				return this.parameter.typeOptions[argumentName];
 			},
-			getOptionProperties (optionName: string): INodeProperties | undefined {
+			getOptionProperties (optionName: string): INodeProperties[] {
+				const properties: INodeProperties[] = [];
 				for (const option of this.parameter.options) {
 					if (option.name === optionName) {
-						return option;
+						properties.push(option);
 					}
 				}
 
-				return undefined;
+				return properties;
 			},
 			displayNodeParameter (parameter: INodeProperties) {
 				if (parameter.displayOptions === undefined) {
@@ -121,10 +122,12 @@ export default mixins(
 				return this.displayParameter(this.nodeValues, parameter, this.path);
 			},
 			optionSelected (optionName: string) {
-				const option = this.getOptionProperties(optionName);
-				if (option === undefined) {
+				const options = this.getOptionProperties(optionName);
+				if (options.length === 0) {
 					return;
 				}
+
+				const option = options[0];
 				const name = `${this.path}.${option.name}`;
 
 				let parameterData;

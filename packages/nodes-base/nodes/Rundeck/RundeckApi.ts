@@ -1,6 +1,6 @@
 import { OptionsWithUri } from 'request';
 import { IExecuteFunctions } from 'n8n-core';
-import { IDataObject } from 'n8n-workflow';
+import { IDataObject, NodeApiError, NodeOperationError } from 'n8n-workflow';
 
 export interface RundeckCredentials {
 	url: string;
@@ -13,15 +13,15 @@ export class RundeckApi {
 
 
 	constructor(executeFunctions: IExecuteFunctions) {
-
 		const credentials = executeFunctions.getCredentials('rundeckApi');
 
+		this.executeFunctions = executeFunctions;
+
 		if (credentials === undefined) {
-			throw new Error('No credentials got returned!');
+			throw new NodeOperationError(this.executeFunctions.getNode(), 'No credentials got returned!');
 		}
 
 		this.credentials = credentials as unknown as RundeckCredentials;
-		this.executeFunctions = executeFunctions;
 	}
 
 
@@ -43,12 +43,7 @@ export class RundeckApi {
 		try {
 			return await this.executeFunctions.helpers.request!(options);
 		} catch (error) {
-			let errorMessage = error.message;
-			if (error.response && error.response.body && error.response.body.message) {
-				errorMessage = error.response.body.message.replace('\n', '');
-			}
-
-			throw Error(`Rundeck Error [${error.statusCode}]: ${errorMessage}`);
+			throw new NodeApiError(this.executeFunctions.getNode(), error);
 		}
 	}
 

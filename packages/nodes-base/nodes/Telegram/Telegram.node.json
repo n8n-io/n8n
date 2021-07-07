@@ -18,8 +18,34 @@
 		],
 		"generic": [
 			{
+				"label": "Why business process automation with n8n can change your daily life",
+				"icon": "🧬",
+				"url": "https://n8n.io/blog/why-business-process-automation-with-n8n-can-change-your-daily-life/"
+			},
+			{
+				"label": "Automatically Adding Expense Receipts to Google Sheets with Telegram, Mindee, Twilio, and n8n",
+				"icon": "🧾",
+				"url": "https://n8n.io/blog/automatically-adding-expense-receipts-to-google-sheets-with-telegram-mindee-twilio-and-n8n/"
+			},
+			{
+				"label": "Celebrating World Poetry Day with a daily poem in Telegram",
+				"icon": "📜",
+				"url": "https://n8n.io/blog/world-poetry-day-workflow/"
+			},
+			{
+				"label": "Using Automation to Boost Productivity in the Workplace",
+				"icon": "💪",
+				"url": "https://n8n.io/blog/using-automation-to-boost-productivity-in-the-workplace/"
+			},
+			{
+				"label": "Creating scheduled text affirmations with n8n",
+				"icon": "🤟",
+				"url": "https://n8n.io/blog/creating-scheduled-text-affirmations-with-n8n/"
+			},
+			{
 				"label": "Creating Telegram Bots with n8n, a No-Code Platform",
-				"url": "https://medium.com/n8n-io/creating-telegram-bots-with-n8n-a-no-code-platform-fdf1f0928da7"
+				"icon": "💬",
+				"url": "https://n8n.io/blog/creating-telegram-bots-with-n8n-a-no-code-platform/"
 			}
 		]
 	}

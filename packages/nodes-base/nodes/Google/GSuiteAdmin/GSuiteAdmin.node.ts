@@ -9,6 +9,7 @@ import {
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
+	NodeOperationError,
 } from 'n8n-workflow';
 
 import {
@@ -328,7 +329,7 @@ export class GSuiteAdmin implements INodeType {
 					}
 
 					if (qs.projection === 'custom' && qs.customFieldMask === undefined) {
-						throw new Error('When projection is set to custom, the custom schemas field must be defined');
+						throw new NodeOperationError(this.getNode(), 'When projection is set to custom, the custom schemas field must be defined');
 					}
 
 					responseData = await googleApiRequest.call(
@@ -361,7 +362,7 @@ export class GSuiteAdmin implements INodeType {
 					}
 
 					if (qs.projection === 'custom' && qs.customFieldMask === undefined) {
-						throw new Error('When projection is set to custom, the custom schemas field must be defined');
+						throw new NodeOperationError(this.getNode(), 'When projection is set to custom, the custom schemas field must be defined');
 					}
 
 					if (returnAll) {

@@ -9,6 +9,7 @@ import {
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
+	NodeOperationError,
 } from 'n8n-workflow';
 
 import {
@@ -54,6 +55,7 @@ import {
 	taskFields,
 	taskOperations,
 } from './TaskDescription';
+
 import {
 	timeEntryFields,
 	timeEntryOperations,
@@ -174,17 +176,6 @@ export class Harvest implements INodeType {
 				description: 'The resource to operate on.',
 			},
 
-			{
-				displayName: 'Account ID',
-				name: 'accountId',
-				type: 'options',
-				required: true,
-				typeOptions: {
-					loadOptionsMethod: 'getAccounts',
-				},
-				default: '',
-			},
-
 			// operations
 			...clientOperations,
 			...companyOperations,
@@ -196,6 +187,17 @@ export class Harvest implements INodeType {
 			...taskOperations,
 			...timeEntryOperations,
 			...userOperations,
+
+			{
+				displayName: 'Account ID',
+				name: 'accountId',
+				type: 'options',
+				required: true,
+				typeOptions: {
+					loadOptionsMethod: 'getAccounts',
+				},
+				default: '',
+			},
 
 			// fields
 			...clientFields,
@@ -366,7 +368,7 @@ export class Harvest implements INodeType {
 					returnData.push(responseData);
 
 				} else {
-					throw new Error(`The operation "${operation}" is not known!`);
+					throw new NodeOperationError(this.getNode(), `The operation "${operation}" is not known!`);
 				}
 
 			} else if (resource === 'client') {
@@ -434,7 +436,7 @@ export class Harvest implements INodeType {
 					const responseData = await harvestApiRequest.call(this, requestMethod, qs, endpoint);
 					returnData.push(responseData);
 				} else {
-					throw new Error(`The resource "${resource}" is not known!`);
+					throw new NodeOperationError(this.getNode(), `The resource "${resource}" is not known!`);
 				}
 			} else if (resource === 'project') {
 				if (operation === 'get') {
@@ -505,7 +507,7 @@ export class Harvest implements INodeType {
 					const responseData = await harvestApiRequest.call(this, requestMethod, qs, endpoint);
 					returnData.push(responseData);
 				} else {
-					throw new Error(`The resource "${resource}" is not known!`);
+					throw new NodeOperationError(this.getNode(), `The resource "${resource}" is not known!`);
 				}
 			} else if (resource === 'user') {
 				if (operation === 'get') {
@@ -586,7 +588,7 @@ export class Harvest implements INodeType {
 					const responseData = await harvestApiRequest.call(this, requestMethod, qs, endpoint);
 					returnData.push(responseData);
 				} else {
-					throw new Error(`The resource "${resource}" is not known!`);
+					throw new NodeOperationError(this.getNode(), `The resource "${resource}" is not known!`);
 				}
 			} else if (resource === 'contact') {
 				if (operation === 'get') {
@@ -654,7 +656,7 @@ export class Harvest implements INodeType {
 					const responseData = await harvestApiRequest.call(this, requestMethod, qs, endpoint);
 					returnData.push(responseData);
 				} else {
-					throw new Error(`The resource "${resource}" is not known!`);
+					throw new NodeOperationError(this.getNode(), `The resource "${resource}" is not known!`);
 				}
 			} else if (resource === 'company') {
 				if (operation === 'get') {
@@ -669,7 +671,7 @@ export class Harvest implements INodeType {
 					returnData.push(responseData);
 
 				} else {
-					throw new Error(`The resource "${resource}" is not known!`);
+					throw new NodeOperationError(this.getNode(), `The resource "${resource}" is not known!`);
 				}
 			} else if (resource === 'task') {
 				if (operation === 'get') {
@@ -693,6 +695,37 @@ export class Harvest implements INodeType {
 					const responseData: IDataObject[] = await getAllResource.call(this, 'tasks', i);
 					returnData.push.apply(returnData, responseData);
 
+				} else if (operation === 'create') {
+					// ----------------------------------
+					//         create
+					// ----------------------------------
+
+					requestMethod = 'POST';
+					endpoint = 'tasks';
+
+					body.name = this.getNodeParameter('name', i) as string;
+
+					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					Object.assign(body, additionalFields);
+
+					const responseData = await harvestApiRequest.call(this, requestMethod, qs, endpoint, body);
+					returnData.push(responseData);
+
+				} else if (operation === 'update') {
+					// ----------------------------------
+					//         update
+					// ----------------------------------
+
+					requestMethod = 'PATCH';
+					const id = this.getNodeParameter('id', i) as string;
+					endpoint = `tasks/${id}`;
+
+					const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+					Object.assign(qs, updateFields);
+
+					const responseData = await harvestApiRequest.call(this, requestMethod, qs, endpoint, body);
+					returnData.push(responseData);
+
 				} else if (operation === 'delete') {
 					// ----------------------------------
 					//         delete
@@ -705,7 +738,7 @@ export class Harvest implements INodeType {
 					const responseData = await harvestApiRequest.call(this, requestMethod, qs, endpoint);
 					returnData.push(responseData);
 				} else {
-					throw new Error(`The resource "${resource}" is not known!`);
+					throw new NodeOperationError(this.getNode(), `The resource "${resource}" is not known!`);
 				}
 			} else if (resource === 'invoice') {
 				if (operation === 'get') {
@@ -772,7 +805,7 @@ export class Harvest implements INodeType {
 					const responseData = await harvestApiRequest.call(this, requestMethod, qs, endpoint);
 					returnData.push(responseData);
 				} else {
-					throw new Error(`The resource "${resource}" is not known!`);
+					throw new NodeOperationError(this.getNode(), `The resource "${resource}" is not known!`);
 				}
 			} else if (resource === 'expense') {
 				if (operation === 'get') {
@@ -841,7 +874,7 @@ export class Harvest implements INodeType {
 					const responseData = await harvestApiRequest.call(this, requestMethod, qs, endpoint);
 					returnData.push(responseData);
 				} else {
-					throw new Error(`The resource "${resource}" is not known!`);
+					throw new NodeOperationError(this.getNode(), `The resource "${resource}" is not known!`);
 				}
 			} else if (resource === 'estimate') {
 				if (operation === 'get') {
@@ -908,10 +941,10 @@ export class Harvest implements INodeType {
 					const responseData = await harvestApiRequest.call(this, requestMethod, qs, endpoint);
 					returnData.push(responseData);
 				} else {
-					throw new Error(`The resource "${resource}" is not known!`);
+					throw new NodeOperationError(this.getNode(), `The resource "${resource}" is not known!`);
 				}
 			} else {
-				throw new Error(`The resource "${resource}" is not known!`);
+				throw new NodeOperationError(this.getNode(), `The resource "${resource}" is not known!`);
 			}
 		}
 

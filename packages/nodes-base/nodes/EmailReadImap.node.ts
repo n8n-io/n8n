@@ -7,6 +7,7 @@ import {
 	INodeType,
 	INodeTypeDescription,
 	ITriggerResponse,
+	NodeOperationError,
 } from 'n8n-workflow';
 
 import {
@@ -23,6 +24,10 @@ import {
 
 import * as lodash from 'lodash';
 
+import {
+	LoggerProxy as Logger
+} from 'n8n-workflow';
+
 export class EmailReadImap implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'EmailReadImap',
@@ -30,7 +35,7 @@ export class EmailReadImap implements INodeType {
 		icon: 'fa:inbox',
 		group: ['trigger'],
 		version: 1,
-		description: 'Triggers the workflow when a new email gets received',
+		description: 'Triggers the workflow when a new email is received',
 		defaults: {
 			name: 'IMAP Email',
 			color: '#44AA22',
@@ -157,6 +162,13 @@ export class EmailReadImap implements INodeType {
 						default: false,
 						description: 'Do connect even if SSL certificate validation is not possible.',
 					},
+					{
+						displayName: 'Force reconnect',
+						name: 'forceReconnect',
+						type: 'number',
+						default: 60,
+						description: 'Sets an interval (in minutes) to force a reconnection.',
+					},
 				],
 			},
 		],
@@ -168,23 +180,15 @@ export class EmailReadImap implements INodeType {
 		const credentials = this.getCredentials('imap');
 
 		if (credentials === undefined) {
-			throw new Error('No credentials got returned!');
+			throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
 		}
 
 		const mailbox = this.getNodeParameter('mailbox') as string;
 		const postProcessAction = this.getNodeParameter('postProcessAction') as string;
 		const options = this.getNodeParameter('options', {}) as IDataObject;
 
-		let searchCriteria = [
-			'UNSEEN',
-		];
-		if (options.customEmailConfig !== undefined) {
-			try {
-				searchCriteria = JSON.parse(options.customEmailConfig as string);
-			} catch (err) {
-				throw new Error(`Custom email config is not valid JSON.`);
-			}
-		}
+		const staticData = this.getWorkflowStaticData('node');
+		Logger.debug('Loaded static data for node "EmailReadImap"', {staticData});
 
 		// Returns the email text
 		const getText = async (parts: any[], message: Message, subtype: string) => { // tslint:disable-line:no-any
@@ -236,7 +240,7 @@ export class EmailReadImap implements INodeType {
 
 
 		// Returns all the new unseen messages
-		const getNewEmails = async (connection: ImapSimple, searchCriteria: string[]): Promise<INodeExecutionData[]> => {
+		const getNewEmails = async (connection: ImapSimple, searchCriteria: Array<string | string[]>): Promise<INodeExecutionData[]> => {
 			const format = this.getNodeParameter('format', 0) as string;
 
 			let fetchOptions = {};
@@ -276,10 +280,16 @@ export class EmailReadImap implements INodeType {
 				const dataPropertyAttachmentsPrefixName = this.getNodeParameter('dataPropertyAttachmentsPrefixName') as string;
 
 				for (const message of results) {
+					if (staticData.lastMessageUid !== undefined && message.attributes.uid <= (staticData.lastMessageUid as number)) {
+						continue;
+					}
+					if (staticData.lastMessageUid === undefined || staticData.lastMessageUid as number < message.attributes.uid) {
+						staticData.lastMessageUid = message.attributes.uid;
+					}
 					const part = lodash.find(message.parts, { which: '' });
 
 					if (part === undefined) {
-						throw new Error('Email part could not be parsed.');
+						throw new NodeOperationError(this.getNode(), 'Email part could not be parsed.');
 					}
 					const parsedEmail = await parseRawEmail.call(this, part.body, dataPropertyAttachmentsPrefixName);
 
@@ -294,6 +304,12 @@ export class EmailReadImap implements INodeType {
 				}
 
 				for (const message of results) {
+					if (staticData.lastMessageUid !== undefined && message.attributes.uid <= (staticData.lastMessageUid as number)) {
+						continue;
+					}
+					if (staticData.lastMessageUid === undefined || staticData.lastMessageUid as number < message.attributes.uid) {
+						staticData.lastMessageUid = message.attributes.uid;
+					}
 					const parts = getParts(message.attributes.struct!);
 
 					newEmail = {
@@ -334,10 +350,16 @@ export class EmailReadImap implements INodeType {
 				}
 			} else if (format === 'raw') {
 				for (const message of results) {
+					if (staticData.lastMessageUid !== undefined && message.attributes.uid <= (staticData.lastMessageUid as number)) {
+						continue;
+					}
+					if (staticData.lastMessageUid === undefined || staticData.lastMessageUid as number < message.attributes.uid) {
+						staticData.lastMessageUid = message.attributes.uid;
+					}
 					const part = lodash.find(message.parts, { which: 'TEXT' });
 
 					if (part === undefined) {
-						throw new Error('Email part could not be parsed.');
+						throw new NodeOperationError(this.getNode(), 'Email part could not be parsed.');
 					}
 					// Return base64 string
 					newEmail = {
@@ -353,39 +375,95 @@ export class EmailReadImap implements INodeType {
 			return newEmails;
 		};
 
-		let connection: ImapSimple;
+		const establishConnection = (): Promise<ImapSimple> => {
+			const config: ImapSimpleOptions = {
+				imap: {
+					user: credentials.user as string,
+					password: credentials.password as string,
+					host: credentials.host as string,
+					port: credentials.port as number,
+					tls: credentials.secure as boolean,
+					authTimeout: 20000,
+				},
+				onmail: async () => {
+					if (connection) {
+						let searchCriteria = [
+							'UNSEEN',
+						] as Array<string | string[]>;
+						if (options.customEmailConfig !== undefined) {
+							try {
+								searchCriteria = JSON.parse(options.customEmailConfig as string);
+							} catch (error) {
+								throw new NodeOperationError(this.getNode(), `Custom email config is not valid JSON.`);
+							}
+						}
+						if (staticData.lastMessageUid !== undefined) {
+							searchCriteria.push(['UID', `${staticData.lastMessageUid as number}:*`]);
+							/** 
+							 * A short explanation about UIDs and how they work
+							 * can be found here: https://dev.to/kehers/imap-new-messages-since-last-check-44gm
+							 * TL;DR:
+							 * - You cannot filter using ['UID', 'CURRENT ID + 1:*'] because IMAP
+							 * won't return correct results if current id + 1 does not yet exist.
+							 * - UIDs can change but this is not being treated here.
+							 * If the mailbox is recreated (lets say you remove all emails, remove
+							 * the mail box and create another with same name, UIDs will change)
+							 * - You can check if UIDs changed in the above example
+							 * by checking UIDValidity.
+							 */
+							Logger.debug('Querying for new messages on node "EmailReadImap"', {searchCriteria});
+						}
+				
+						const returnData = await getNewEmails(connection, searchCriteria);
 
-		const config: ImapSimpleOptions = {
-			imap: {
-				user: credentials.user as string,
-				password: credentials.password as string,
-				host: credentials.host as string,
-				port: credentials.port as number,
-				tls: credentials.secure as boolean,
-				authTimeout: 20000,
-			},
-			onmail: async () => {
-				const returnData = await getNewEmails(connection, searchCriteria);
+						if (returnData.length) {
+							this.emit([returnData]);
+						}
+					}
+				},
+			};
 
-				if (returnData.length) {
-					this.emit([returnData]);
-				}
-			},
+			if (options.allowUnauthorizedCerts === true) {
+				config.imap.tlsOptions = {
+					rejectUnauthorized: false,
+				};
+			}
+
+			// Connect to the IMAP server and open the mailbox
+			// that we get informed whenever a new email arrives
+			return imapConnect(config).then(async conn => {
+				conn.on('error', async err => {
+					if (err.code.toUpperCase() === 'ECONNRESET') {
+						Logger.verbose('IMAP connection was reset - reconnecting.');
+						connection = await establishConnection();
+						await connection.openBox(mailbox);
+					}
+					throw err;
+				});
+				return conn;
+			});
 		};
 
-		if (options.allowUnauthorizedCerts === true) {
-			config.imap.tlsOptions = {
-				rejectUnauthorized: false,
-			};
-		}
+		let connection: ImapSimple = await establishConnection();
 
-		// Connect to the IMAP server and open the mailbox
-		// that we get informed whenever a new email arrives
-		connection = await imapConnect(config);
 		await connection.openBox(mailbox);
+
+		let reconnectionInterval: NodeJS.Timeout | undefined;
+
+		if (options.forceReconnect !== undefined) {
+			reconnectionInterval = setInterval(async () => {
+				Logger.verbose('Forcing reconnection of IMAP node.');
+				await connection.end();
+				connection = await establishConnection();
+				await connection.openBox(mailbox);
+			}, options.forceReconnect as number * 1000 * 60);
+		}
 
 		// When workflow and so node gets set to inactive close the connectoin
 		async function closeFunction() {
+			if (reconnectionInterval) {
+				clearInterval(reconnectionInterval);
+			}
 			await connection.end();
 		}
 

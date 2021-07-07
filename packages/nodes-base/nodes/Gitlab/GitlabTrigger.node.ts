@@ -8,6 +8,8 @@ import {
 	INodeType,
 	INodeTypeDescription,
 	IWebhookResponseData,
+	NodeApiError,
+	NodeOperationError,
 } from 'n8n-workflow';
 
 import {
@@ -18,11 +20,11 @@ export class GitlabTrigger implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'GitLab Trigger',
 		name: 'gitlabTrigger',
-		icon: 'file:gitlab.png',
+		icon: 'file:gitlab.svg',
 		group: ['trigger'],
 		version: 1,
 		subtitle: '={{$parameter["owner"] + "/" + $parameter["repository"] + ": " + $parameter["events"].join(", ")}}',
-		description: 'Starts the workflow when a GitLab event occurs.',
+		description: 'Starts the workflow when GitLab events occur',
 		defaults: {
 			name: 'Gitlab Trigger',
 			color: '#FC6D27',
@@ -170,14 +172,14 @@ export class GitlabTrigger implements INodeType {
 				const owner = this.getNodeParameter('owner') as string;
 				const repository = this.getNodeParameter('repository') as string;
 
-				const path = (`${owner}/${repository}`).replace(/\//g,'%2F');
+				const path = (`${owner}/${repository}`).replace(/\//g, '%2F');
 
 				const endpoint = `/projects/${path}/hooks/${webhookData.webhookId}`;
 
 				try {
 					await gitlabApiRequest.call(this, 'GET', endpoint, {});
-				} catch (e) {
-					if (e.message.includes('[404]:')) {
+				} catch (error) {
+					if (error.httpCode === '404') {
 						// Webhook does not exist
 						delete webhookData.webhookId;
 						delete webhookData.webhookEvents;
@@ -186,7 +188,7 @@ export class GitlabTrigger implements INodeType {
 					}
 
 					// Some error occured
-					throw e;
+					throw error;
 				}
 
 				// If it did not error then the webhook exists
@@ -207,7 +209,7 @@ export class GitlabTrigger implements INodeType {
 					eventsArray = ['note', 'issues', 'job', 'merge_requests', 'pipeline', 'push', 'tag_push', 'wiki_page'];
 				}
 
-				const events: { [key: string]: boolean } = { };
+				const events: { [key: string]: boolean } = {};
 				for (const e of eventsArray) {
 					events[`${e}_events`] = true;
 				}
@@ -218,7 +220,7 @@ export class GitlabTrigger implements INodeType {
 					events['push_events'] = false;
 				}
 
-				const path = (`${owner}/${repository}`).replace(/\//g,'%2F');
+				const path = (`${owner}/${repository}`).replace(/\//g, '%2F');
 
 				const endpoint = `/projects/${path}/hooks`;
 
@@ -231,13 +233,13 @@ export class GitlabTrigger implements INodeType {
 				let responseData;
 				try {
 					responseData = await gitlabApiRequest.call(this, 'POST', endpoint, body);
-				} catch (e) {
-					throw e;
+				} catch (error) {
+					throw new NodeApiError(this.getNode(), error);
 				}
 
 				if (responseData.id === undefined) {
 					// Required data is missing so was not successful
-					throw new Error('GitLab webhook creation response did not contain the expected data.');
+					throw new NodeApiError(this.getNode(), responseData, { message: 'GitLab webhook creation response did not contain the expected data.' });
 				}
 
 				const webhookData = this.getWorkflowStaticData('node');
@@ -253,14 +255,14 @@ export class GitlabTrigger implements INodeType {
 					const owner = this.getNodeParameter('owner') as string;
 					const repository = this.getNodeParameter('repository') as string;
 
-					const path = (`${owner}/${repository}`).replace(/\//g,'%2F');
+					const path = (`${owner}/${repository}`).replace(/\//g, '%2F');
 
 					const endpoint = `/projects/${path}/hooks/${webhookData.webhookId}`;
 					const body = {};
 
 					try {
 						await gitlabApiRequest.call(this, 'DELETE', endpoint, body);
-					} catch (e) {
+					} catch (error) {
 						return false;
 					}
 
