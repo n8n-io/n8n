@@ -64,7 +64,7 @@ const module: Module<IUiState, IRootState> = {
 		openDuplicateModal: async (context: ActionContext<IUiState, IRootState>) => {
 			context.commit('openModal', DUPLICATE_MODAL_KEY);
 		},
-		openVersionsModal: async (context: ActionContext<IUiState, IRootState>) => {
+		openUpdatesPanel: async (context: ActionContext<IUiState, IRootState>) => {
 			context.commit('openModal', VERSIONS_MODAL_KEY);
 		},
 	},

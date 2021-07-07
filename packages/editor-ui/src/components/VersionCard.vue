@@ -5,12 +5,12 @@
 				<div :class="$style.name">
 					Version {{version.name}}
 				</div>
-				<el-tooltip class="item" effect="light" content=" " placement="top" v-if="version.hasSecurityIssue">
+				<el-tooltip effect="light" content=" " placement="top" v-if="version.hasSecurityIssue">
 					<div slot="content">This version has a security issue.<br/>It is listed here for completeness.</div>
 					<font-awesome-icon :class="$style['security-flag']" icon="exclamation-triangle"></font-awesome-icon>
 				</el-tooltip>
-				<el-tag type="danger" v-if="version.hasSecurityFix" size="small" :class="$style['security-update']">Security Update</el-tag>
-				<el-tag v-if="version.hasBreakingChange" size="small" :class="$style['breaking-change']">Breaking Change</el-tag>
+				<el-tag type="danger" v-if="version.hasSecurityFix" size="small" :class="$style['security-update']">Security update</el-tag>
+				<el-tag v-if="version.hasBreakingChange" size="small" :class="$style['breaking-change']">Breaking changes</el-tag>
 			</div>
 			<div :class="$style.released">
 				Released {{releaseDate}}
@@ -20,7 +20,6 @@
 			<div v-html="version.description" :class="$style.description"></div>
 			<div :class="$style.nodes" v-if="version.nodes && version.nodes.length > 0">
 				<NodeIcon 
-					:class="$style['node-icon']"
 					v-for="node in version.nodes"
 					:key="node.name"
 					:nodeType="node"
@@ -38,7 +37,7 @@ import NodeIcon from './NodeIcon.vue';
 
 export default Vue.extend({
 	components: { NodeIcon },
-	name: 'VersionsModal',
+	name: 'UpdatesPanel',
 	props: ['version'],
 	computed: {
 		releaseDate() {
@@ -57,6 +56,10 @@ export default Vue.extend({
 		padding: 15px;
 		padding-bottom: 10px;
 		text-decoration: none;
+
+		&:hover {
+			box-shadow: 0px 2px 10px rgba(109, 48, 40, 0.07);
+		}
 	}
 
 	.header {
@@ -88,6 +91,7 @@ export default Vue.extend({
 
 	.description {
 		font-size: 14px;
+		font-weight: 400;
 		line-height: 19px;
 		color: #7D7D87;
 		margin-top: 15px;
@@ -103,16 +107,16 @@ export default Vue.extend({
 		display: flex;
 		margin-top: 20px;
 		flex-wrap: wrap;
+
+		> div {
+			margin-right: 15px;
+			margin-bottom: 5px;
+		}
 	}
 
 	.security-update {
 		line-height: 18px;
 		max-height: 18px;
-	}
-
-	.node-icon {
-		margin-right: 15px;
-		margin-bottom: 5px;
 	}
 
 	.breaking-change {
@@ -128,6 +132,8 @@ export default Vue.extend({
 	}
 
 	.security-flag {
-		color: red;
+		font-size: 14px;
+		height: 18px;
+		color: #ff8080;
 	}
 </style>

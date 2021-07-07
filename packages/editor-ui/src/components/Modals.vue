@@ -26,7 +26,7 @@
 		</ModalRoot>
 		<ModalRoot :name="VERSIONS_MODAL_KEY" :keepAlive="true">
 			<template v-slot="{ modalName, open }">
-				<VersionsModal
+				<UpdatesPanel
 					:modalName="modalName"
 					:visible="open"
 				/>
@@ -43,7 +43,7 @@ import TagsManager from "@/components/TagsManager/TagsManager.vue";
 import DuplicateWorkflowDialog from "@/components/DuplicateWorkflowDialog.vue";
 import WorkflowOpen from "@/components/WorkflowOpen.vue";
 import ModalRoot from "./ModalRoot.vue";
-import VersionsModal from "./VersionsModal.vue";
+import UpdatesPanel from "./UpdatesPanel.vue";
 
 export default Vue.extend({
 	name: "Modals",
@@ -52,7 +52,7 @@ export default Vue.extend({
 		DuplicateWorkflowDialog,
 		WorkflowOpen,
 		ModalRoot,
-		VersionsModal,
+		UpdatesPanel,
 	},
 	data: () => ({
 		DUPLICATE_MODAL_KEY,

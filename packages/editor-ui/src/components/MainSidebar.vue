@@ -128,7 +128,7 @@
 				<MenuItemsIterator :items="sidebarMenuBottomItems" :root="true"/>
 
 				<div class="foot-menu-items">
-					<el-menu-item index="updates" class="updates" v-if="hasVersionUpdates" @click="openVersionsModal">
+					<el-menu-item index="updates" class="updates" v-if="hasVersionUpdates" @click="openUpdatesPanel">
 						<div class="gift-container">
 							<div class="gift-icon">
 								<font-awesome-icon icon="gift"/>
@@ -328,8 +328,8 @@ export default mixins(
 			openTagManager() {
 				this.$store.dispatch('ui/openTagsManagerModal');
 			},
-			openVersionsModal() {
-				this.$store.dispatch('ui/openVersionsModal');
+			openUpdatesPanel() {
+				this.$store.dispatch('ui/openUpdatesPanel');
 			},
 			async stopExecution () {
 				const executionId = this.$store.getters.activeExecutionId;

@@ -5,13 +5,13 @@
 		:drawer="true"
 		:visible="visible"
 		drawerDirection="ltr"
-		drawerWidth="480px"
+		drawerWidth="520px"
 	>
 		<template slot="header">
 			<p :class="$style.title"> We’ve been busy ✨</p>
 		</template>
 		<template slot="content">
-			<section :class="$style['header-content']">
+			<section :class="$style['description']">
 				<p>You’re on {{ currentVersion.name }}, which was released <strong>{{currentReleaseDate}}</strong> and is {{ nextVersions.length }} version{{nextVersions.length > 1 ? 's' : ''}} behind the latest and greatest n8n</p>	
 
 				<a :class="$style.update" :href="UPDATE_INFO_URL" v-if="UPDATE_INFO_URL" target="_blank">
@@ -41,7 +41,7 @@ import VersionCard from './VersionCard.vue';
 import { UPDATE_INFO_URL } from '@/constants';
 
 export default Vue.extend({
-	name: 'VersionsModal',
+	name: 'UpdatesPanel',
 	components: {
 		Modal,
 		VersionCard,
@@ -65,14 +65,15 @@ export default Vue.extend({
 </script>
 
 <style module lang="scss">
-	.header-content {
+	.description {
 		padding: 0px 30px;
 		margin-bottom: 30px;
 
 		p {
-			font-size: 16px;
+			font-size: 14px;
 			line-height: 22px;
 			color: #7D7D87;
+			font-weight: 400;
 		}
 
 		div {
@@ -98,7 +99,7 @@ export default Vue.extend({
 		height: 100%;
 		padding: 30px;
 		overflow-y: scroll;
-		padding-bottom: 140px;
+		padding-bottom: 220px;
 	}
 
 	.versions-card {
@@ -107,6 +108,7 @@ export default Vue.extend({
 
 	.update {
 		text-decoration: none;
+		font-size: 14px;
 
 		svg {
 			color: #909399;

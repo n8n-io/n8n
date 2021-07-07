@@ -2247,10 +2247,10 @@ export default mixins(
 							message = `Please update to version ${fixVersion} or higher.`;
 						}
 
-						message = `${message}<br/><a class="primary-color">More info</a>`;
+						message = `${message} <a class="primary-color">More info</a>`;
 						this.$showWarning('Critical Update', message, {
 							onClick: () => {
-								this.$store.dispatch('ui/openVersionsModal');
+								this.$store.dispatch('ui/openUpdatesPanel');
 							},
 							closeOnClick: true,
 							customClass: 'clickable',
