@@ -28,7 +28,7 @@ export class TypeformTrigger implements INodeType {
 		group: ['trigger'],
 		version: 1,
 		subtitle: '=Form ID: {{$parameter["formId"]}}',
-		description: 'Starts the workflow on a Typeform form submission.',
+		description: 'Starts the workflow on a Typeform form submission',
 		defaults: {
 			name: 'Typeform Trigger',
 			color: '#404040',

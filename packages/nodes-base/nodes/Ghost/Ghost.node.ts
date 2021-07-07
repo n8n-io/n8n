@@ -33,7 +33,7 @@ export class Ghost implements INodeType {
 		group: ['input'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
-		description: 'Consume Ghost API.',
+		description: 'Consume Ghost API',
 		defaults: {
 			name: 'Ghost',
 			color: '#15212a',

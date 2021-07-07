@@ -25,7 +25,7 @@ export class CrateDb implements INodeType {
 		icon: 'file:cratedb.png',
 		group: ['input'],
 		version: 1,
-		description: 'Add and update data in CrateDB.',
+		description: 'Add and update data in CrateDB',
 		defaults: {
 			name: 'CrateDB',
 			color: '#47889f',
