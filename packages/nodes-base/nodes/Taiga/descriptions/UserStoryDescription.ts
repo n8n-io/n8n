@@ -414,7 +414,7 @@ export const userStoryFields = [
 					loadOptionsDependsOn: [
 						'projectId',
 					],
-					loadOptionsMethod: 'getProjectStatuses',
+					loadOptionsMethod: 'getUserStoryStatuses',
 				},
 				default: '',
 			},
