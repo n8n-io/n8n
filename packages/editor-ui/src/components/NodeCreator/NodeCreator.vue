@@ -86,7 +86,7 @@ export default Vue.extend({
 			if (prevList.length === 0) {
 				this.allNodeTypes = newList;
 			}
-		}
+		},
 	},
 });
 </script>
