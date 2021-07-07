@@ -9,8 +9,8 @@
 					<div slot="content">This version has a security issue.<br/>It is listed here for completeness.</div>
 					<font-awesome-icon :class="$style['security-flag']" icon="exclamation-triangle"></font-awesome-icon>
 				</el-tooltip>
-				<el-tag type="danger" v-if="version.hasSecurityFix" size="small" :class="$style['security-update']">Security update</el-tag>
-				<el-tag v-if="version.hasBreakingChange" size="small" :class="$style['breaking-change']">Breaking changes</el-tag>
+				<el-tag type="danger" v-if="version.hasSecurityFix" size="small" :class="`${$style['security-update']} ${$style['badge']}`">Security update</el-tag>
+				<el-tag v-if="version.hasBreakingChange" size="small" :class="`${$style['breaking-change']} ${$style['badge']}`">Breaking changes</el-tag>
 			</div>
 			<div :class="$style.released">
 				Released {{releaseDate}}
@@ -114,21 +114,26 @@ export default Vue.extend({
 		}
 	}
 
-	.security-update {
-		line-height: 18px;
-		max-height: 18px;
-	}
-
-	.breaking-change {
-		background-color: rgba(255, 229, 100, 0.3);
-		color: #6B5900;
-		border: none;
+	.badge {
 		font-size: 11px;
 		line-height: 18px;
 		max-height: 18px;
 		font-weight: 400;
 		display: flex;
 		align-items: center;
+		padding: 2px 4px;
+	}
+
+	.security-update {
+		color: #f45959;
+		background-color: #fef0f0;
+		border-color: #fde2e2;
+	}
+
+	.breaking-change {
+		background-color: rgba(255, 229, 100, 0.3);
+		color: #6B5900;
+		border: none;
 	}
 
 	.security-flag {
