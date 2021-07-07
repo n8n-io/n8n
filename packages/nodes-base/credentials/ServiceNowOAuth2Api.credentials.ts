@@ -12,24 +12,26 @@ export class ServiceNowOAuth2Api implements ICredentialType {
 	documentationUrl = 'serviceNow';
 	properties = [
 		{
-			displayName: 'Instance domain',
-			name: 'instanceDomain',
+			displayName: 'Subdomain',
+			name: 'subdomain',
 			type: 'string' as NodePropertyTypes,
-			default: 'https://<instance>.service-now.com',
+			default: '',
+			placeholder: 'n8n',
+			description: 'The subdomain of your ServiceNow environment.',
 			required: true,
 		},
 		{
 			displayName: 'Authorization URL',
 			name: 'authUrl',
-			type: 'string' as NodePropertyTypes,
-			default: `https://<instance>.servicenow.com/oauth_auth.do`,
+			type: 'hidden' as NodePropertyTypes,
+			default: '=https://{{$self["subdomain"]}}.service-now.com/oauth_auth.do',
 			required: true,
 		},
 		{
 			displayName: 'Access Token URL',
 			name: 'accessTokenUrl',
-			type: 'string' as NodePropertyTypes,
-			default: 'https://<instance>.service-now.com/oauth_token.do',
+			type: 'hidden' as NodePropertyTypes,
+			default: '=https://{{$self["subdomain"]}}.service-now.com/oauth_token.do',
 			required: true,
 		},
 		{
