@@ -54,7 +54,6 @@ export default Vue.extend({
 		border-radius: 8px;
 		display: block;
 		padding: 15px;
-		padding-bottom: 10px;
 		text-decoration: none;
 
 		&:hover {
@@ -104,14 +103,10 @@ export default Vue.extend({
 	}
 
 	.nodes {
-		display: flex;
-		margin-top: 20px;
-		flex-wrap: wrap;
-
-		> div {
-			margin-right: 15px;
-			margin-bottom: 5px;
-		}
+		display: grid;
+		grid-template-columns: repeat(10, 1fr);
+		grid-row-gap: 5px;
+		margin-block-start: 15px;
 	}
 
 	.badge {
