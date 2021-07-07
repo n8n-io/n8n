@@ -205,16 +205,13 @@ export default mixins(
 	 * so its translations are not yet available.
 	 */
 	beforeMount() {
-		return new Promise<void>(resolve => {
-			this.restApi().getNodesInformation([this.credentialsParams.nodeType])
-				.then(nodeInfo => {
-					if (nodeInfo[0] && nodeInfo[0].translation) {
-						const nodeTranslations = nodeInfo[0].translation;
-						if (nodeTranslations) addNodeTranslations(nodeTranslations);
-						resolve();
-					}
-				});
-		});
+		this.restApi().getNodesInformation([this.credentialsParams.nodeType])
+			.then(nodeInfo => {
+				if (nodeInfo[0] && nodeInfo[0].translation) {
+					const nodeTranslations = nodeInfo[0].translation;
+					if (nodeTranslations) addNodeTranslations(nodeTranslations);
+				}
+			});
 	},
 
 	computed: {
