@@ -29,9 +29,17 @@ export default Vue.extend({
 	props: [
 		'active',
 	],
+	data() {
+		return {
+			allNodeTypes: [],
+		};
+	},
 	computed: {
+		nodeTypes(): INodeTypeDescription[] {
+			return this.$store.getters.allNodeTypes;
+		},
 		visibleNodeTypes(): INodeTypeDescription[] {
-			return this.$store.getters.allNodeTypes
+			return this.allNodeTypes
 				.filter((nodeType: INodeTypeDescription) => {
 					return !HIDDEN_NODES.includes(nodeType.name);
 				});
@@ -72,6 +80,13 @@ export default Vue.extend({
 		nodeTypeSelected (nodeTypeName: string) {
 			this.$emit('nodeTypeSelected', nodeTypeName);
 		},
+	},
+	watch: {
+		nodeTypes(newList, prevList) {
+			if (prevList.length === 0) {
+				this.allNodeTypes = newList;
+			}
+		}
 	},
 });
 </script>
