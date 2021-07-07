@@ -73,13 +73,13 @@ export class Mqtt implements ICredentialType {
 		{
 			displayName: 'SSL',
 			name: 'ssl',
-			type: 'boolean' as NodePropertyTypes,
+			type: 'boolean',
 			default: false,
 		},
 		{
 			displayName: 'Passwordless',
 			name: 'passwordless',
-			type: 'boolean' as NodePropertyTypes,
+			type: 'boolean',
 			displayOptions: {
 				show: {
 					ssl: [
@@ -93,7 +93,7 @@ export class Mqtt implements ICredentialType {
 		{
 			displayName: 'CA Certificates',
 			name: 'ca',
-			type: 'string' as NodePropertyTypes,
+			type: 'string',
 			typeOptions: {
 				password: true,
 			},
@@ -110,7 +110,7 @@ export class Mqtt implements ICredentialType {
 		{
 			displayName: 'Reject Unauthorized Certificate',
 			name: 'rejectUnauthorized',
-			type: 'boolean' as NodePropertyTypes,			
+			type: 'boolean',			
 			displayOptions: {
 				show: {
 					ssl: [
@@ -127,7 +127,7 @@ export class Mqtt implements ICredentialType {
 		{
 			displayName: 'Client Certificate',
 			name: 'cert',
-			type: 'string' as NodePropertyTypes,
+			type: 'string',
 			typeOptions: {
 				password: true,
 			},
@@ -147,7 +147,7 @@ export class Mqtt implements ICredentialType {
 		{
 			displayName: 'Client Key',
 			name: 'key',
-			type: 'string' as NodePropertyTypes,
+			type: 'string',
 			typeOptions: {
 				password: true,
 			},
