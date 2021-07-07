@@ -6,6 +6,7 @@ import {
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
+	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
@@ -25,12 +26,12 @@ import {
 
 import {
 	balanceOperations,
-	cardFields,
-	cardOperations,
 	chargeFields,
 	chargeOperations,
 	couponFields,
 	couponOperations,
+	customerCardFields,
+	customerCardOperations,
 	customerFields,
 	customerOperations,
 	sourceFields,
@@ -71,8 +72,8 @@ export class Stripe implements INodeType {
 						value: 'balance',
 					},
 					{
-						name: 'Card',
-						value: 'card',
+						name: 'Customer Card',
+						value: 'customerCard',
 					},
 					{
 						name: 'Charge',
@@ -99,8 +100,8 @@ export class Stripe implements INodeType {
 				description: 'Resource to consume',
 			},
 			...balanceOperations,
-			...cardOperations,
-			...cardFields,
+			...customerCardOperations,
+			...customerCardFields,
 			...chargeOperations,
 			...chargeFields,
 			...couponOperations,
@@ -118,6 +119,17 @@ export class Stripe implements INodeType {
 		loadOptions: {
 			async getCustomers(this: ILoadOptionsFunctions) {
 				return await loadResource.call(this, 'customer');
+			},
+			async getCurrencies(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const returnData: INodePropertyOptions[] = [];
+				const { data } = await stripeApiRequest.call(this, 'GET', '/country_specs', {});
+				for (const currency of data[0].supported_payment_currencies) {
+					returnData.push({
+						name: currency.toUpperCase(),
+						value: currency,
+					});
+				}
+				return returnData;
 			},
 		},
 	};
@@ -153,7 +165,7 @@ export class Stripe implements INodeType {
 
 				}
 
-			} else if (resource === 'card') {
+			} else if (resource === 'customerCard') {
 
 				// *********************************************************************
 				//                             card
@@ -161,10 +173,10 @@ export class Stripe implements INodeType {
 
 				// https://stripe.com/docs/api/cards
 
-				if (operation === 'create') {
+				if (operation === 'add') {
 
 					// ----------------------------------
-					//          card: create
+					//          customerCard: add
 					// ----------------------------------
 
 					const body = {
@@ -175,10 +187,10 @@ export class Stripe implements INodeType {
 					const endpoint = `/customers/${customerId}/sources`;
 					responseData = await stripeApiRequest.call(this, 'POST', endpoint, body, {});
 
-				} else if (operation === 'delete') {
+				} else if (operation === 'remove') {
 
 					// ----------------------------------
-					//           card: delete
+					//           customerCard: remove
 					// ----------------------------------
 
 					const customerId = this.getNodeParameter('customerId', i);
@@ -189,7 +201,7 @@ export class Stripe implements INodeType {
 				} else if (operation === 'get') {
 
 					// ----------------------------------
-					//           card: get
+					//           customerCard: get
 					// ----------------------------------
 
 					const customerId = this.getNodeParameter('customerId', i);
@@ -473,7 +485,6 @@ export class Stripe implements INodeType {
 					Object.assign(body, { card: cardFields });
 
 					responseData = await stripeApiRequest.call(this, 'POST', '/tokens', body, {});
-
 				}
 
 			}

@@ -34,7 +34,7 @@ export const tokenFields = [
 		name: 'type',
 		type: 'options',
 		required: true,
-		default: 'card',
+		default: 'cardToken',
 		description: 'Type of token to create.',
 		options: [
 			{

@@ -2,7 +2,7 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const cardOperations = [
+export const customerCardOperations = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -11,49 +11,46 @@ export const cardOperations = [
 		description: 'Operation to perform',
 		options: [
 			{
-				name: 'Create',
-				value: 'create',
-			},
-			{
-				name: 'Delete',
-				value: 'delete',
+				name: 'Add',
+				value: 'add',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 			},
+			{
+				name: 'Remove',
+				value: 'remove',
+			},
 		],
 		displayOptions: {
 			show: {
 				resource: [
-					'card',
+					'customerCard',
 				],
 			},
 		},
 	},
 ] as INodeProperties[];
 
-export const cardFields = [
+export const customerCardFields = [
 	// ----------------------------------
-	//         card: create
+	//         customerCard: add
 	// ----------------------------------
 	{
 		displayName: 'Customer ID',
 		name: 'customerId',
-		type: 'options',
+		type: 'string',
 		required: true,
-		default: [],
-		typeOptions: {
-			loadOptionsMethod: 'getCustomers',
-		},
+		default: '',
 		description: 'ID of the customer to be associated with this card.',
 		displayOptions: {
 			show: {
 				resource: [
-					'card',
+					'customerCard',
 				],
 				operation: [
-					'create',
+					'add',
 				],
 			},
 		},
@@ -69,35 +66,32 @@ export const cardFields = [
 		displayOptions: {
 			show: {
 				resource: [
-					'card',
+					'customerCard',
 				],
 				operation: [
-					'create',
+					'add',
 				],
 			},
 		},
 	},
 
 	// ----------------------------------
-	//         card: delete
+	//         customerCard: remove
 	// ----------------------------------
 	{
 		displayName: 'Customer ID',
 		name: 'customerId',
-		type: 'options',
+		type: 'string',
 		required: true,
-		default: [],
-		typeOptions: {
-			loadOptionsMethod: 'getCustomers',
-		},
-		description: 'ID of the customer whose card to delete.',
+		default: '',
+		description: 'ID of the customer whose card to remove.',
 		displayOptions: {
 			show: {
 				resource: [
-					'card',
+					'customerCard',
 				],
 				operation: [
-					'delete',
+					'remove',
 				],
 			},
 		},
@@ -108,36 +102,33 @@ export const cardFields = [
 		type: 'string',
 		required: true,
 		default: '',
-		description: 'ID of the card to delete.',
+		description: 'ID of the card to remove.',
 		displayOptions: {
 			show: {
 				resource: [
-					'card',
+					'customerCard',
 				],
 				operation: [
-					'delete',
+					'remove',
 				],
 			},
 		},
 	},
 
 	// ----------------------------------
-	//         card: get
+	//         customerCard: get
 	// ----------------------------------
 	{
 		displayName: 'Customer ID',
 		name: 'customerId',
-		type: 'options',
+		type: 'string',
 		required: true,
-		default: [],
-		typeOptions: {
-			loadOptionsMethod: 'getCustomers',
-		},
+		default: '',
 		description: 'ID of the customer whose card to retrieve.',
 		displayOptions: {
 			show: {
 				resource: [
-					'card',
+					'customerCard',
 				],
 				operation: [
 					'get',
@@ -155,7 +146,7 @@ export const cardFields = [
 		displayOptions: {
 			show: {
 				resource: [
-					'card',
+					'customerCard',
 				],
 				operation: [
 					'get',

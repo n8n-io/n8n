@@ -44,12 +44,9 @@ export const chargeFields = [
 	{
 		displayName: 'Customer ID',
 		name: 'customerId',
-		type: 'options',
+		type: 'string',
 		required: true,
-		default: [],
-		typeOptions: {
-			loadOptionsMethod: 'getCustomers',
-		},
+		default: '',
 		description: 'ID of the customer to be associated with this charge.',
 		displayOptions: {
 			show: {
@@ -87,7 +84,10 @@ export const chargeFields = [
 	{
 		displayName: 'Currency',
 		name: 'currency',
-		type: 'string',
+		type: 'options',
+		typeOptions: {
+			loadOptionsMethod: 'getCurrencies',
+		},
 		required: true,
 		default: '',
 		description: 'Three-letter ISO currency code, e.g. USD or EUR. It must be a <a href="https://stripe.com/docs/currencies">Stripe-supported currency</a>.',

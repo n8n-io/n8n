@@ -2,7 +2,11 @@ import {
 	IExecuteFunctions,
 	IHookFunctions,
 } from 'n8n-core';
-import { NodeApiError, NodeOperationError, } from 'n8n-workflow';
+
+import {
+	NodeApiError,
+	NodeOperationError,
+} from 'n8n-workflow';
 
 import {
 	flow,
@@ -51,7 +55,7 @@ export async function stripeApiRequest(
 	if (options.qs && Object.keys(options.qs).length === 0) {
 		delete options.qs;
 	}
-
+	console.log(options);
 	try {
 		return await this.helpers.request!.call(this, options);
 	} catch (error) {
@@ -80,7 +84,7 @@ export const adjustCustomerFields = flow([
  * Convert n8n's address object into a Stripe API request shipping object.
  */
 function adjustAddress(
-	addressFields: { address: { details: IDataObject }  },
+	addressFields: { address: { details: IDataObject } },
 ) {
 	if (!addressFields.address) return addressFields;
 
@@ -114,7 +118,7 @@ export function adjustMetadata(
  * Convert n8n's shipping object into a Stripe API request shipping object.
  */
 function adjustShipping(
-	shippingFields: { shipping?: { shippingProperties: Array<{ address: { details: IDataObject }; name: string }> }  },
+	shippingFields: { shipping?: { shippingProperties: Array<{ address: { details: IDataObject }; name: string }> } },
 ) {
 	const shippingProperties = shippingFields.shipping?.shippingProperties[0];
 

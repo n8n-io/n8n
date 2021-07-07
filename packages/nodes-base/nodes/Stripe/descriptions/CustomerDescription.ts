@@ -285,12 +285,9 @@ export const customerFields = [
 	{
 		displayName: 'Customer ID',
 		name: 'customerId',
-		type: 'options',
+		type: 'string',
 		required: true,
-		default: [],
-		typeOptions: {
-			loadOptionsMethod: 'getCustomers',
-		},
+		default: '',
 		description: 'ID of the customer to delete.',
 		displayOptions: {
 			show: {
@@ -310,12 +307,9 @@ export const customerFields = [
 	{
 		displayName: 'Customer ID',
 		name: 'customerId',
-		type: 'options',
+		type: 'string',
 		required: true,
-		default: [],
-		typeOptions: {
-			loadOptionsMethod: 'getCustomers',
-		},
+		default: '',
 		description: 'ID of the customer to retrieve.',
 		displayOptions: {
 			show: {
@@ -406,12 +400,9 @@ export const customerFields = [
 	{
 		displayName: 'Customer ID',
 		name: 'customerId',
-		type: 'options',
+		type: 'string',
 		required: true,
-		default: [],
-		typeOptions: {
-			loadOptionsMethod: 'getCustomers',
-		},
+		default: '',
 		description: 'ID of the customer to update.',
 		displayOptions: {
 			show: {

@@ -1,5 +1,5 @@
 export * from './BalanceDescription';
-export * from './CardDescription';
+export * from './CustomerCardDescription';
 export * from './ChargeDescription';
 export * from './CouponDescription';
 export * from './CustomerDescription';
