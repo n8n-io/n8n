@@ -12,5 +12,13 @@
 				"url": "https://docs.n8n.io/nodes/n8n-nodes-base.executeWorkflow/"
 			}
 		]
+	},
+	"alias": [
+		"n8n"
+	],
+	"subcategories": {
+		"Core Nodes": [
+			"Helpers"
+		]
 	}
 }

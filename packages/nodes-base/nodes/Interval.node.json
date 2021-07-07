@@ -23,5 +23,15 @@
 				"url": "https://n8n.io/blog/creating-triggers-for-n8n-workflows-using-polling/"
 			}
 		]
+	},
+	"alias": [
+		"Time",
+		"Scheduler",
+		"Polling"
+	],
+	"subcategories": {
+		"Core Nodes": [
+			"Flow"
+		]
 	}
 }

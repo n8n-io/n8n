@@ -24,7 +24,7 @@ export class Telegram implements INodeType {
 		group: ['output'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
-		description: 'Sends data to Telegram.',
+		description: 'Sends data to Telegram',
 		defaults: {
 			name: 'Telegram',
 			color: '#0088cc',

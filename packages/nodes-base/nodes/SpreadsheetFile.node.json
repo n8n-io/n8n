@@ -19,5 +19,14 @@
 				"url": "https://n8n.io/blog/build-your-own-virtual-assistant-with-n8n-a-step-by-step-guide/"
 			}
 		]
+	},
+	"alias": [
+		"CSV",
+		"Spreadsheet"
+	],
+	"subcategories": {
+		"Core Nodes": [
+			"Files"
+		]
 	}
 }

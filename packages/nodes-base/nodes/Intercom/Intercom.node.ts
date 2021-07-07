@@ -47,7 +47,7 @@ export class Intercom implements INodeType {
 		group: ['output'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
-		description: 'Consume intercom API',
+		description: 'Consume Intercom API',
 		defaults: {
 			name: 'Intercom',
 			color: '#0575f3',

@@ -24,7 +24,7 @@ export class Signl4 implements INodeType {
 		group: ['transform'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
-		description: 'Consume SIGNL4 API.',
+		description: 'Consume SIGNL4 API',
 		defaults: {
 			name: 'SIGNL4',
 			color: '#53afe8',

@@ -1,6 +1,6 @@
 import {
 	ICredentialType,
-	NodePropertyTypes,
+	INodeProperties,
 } from 'n8n-workflow';
 
 
@@ -8,11 +8,11 @@ export class CustomerIoApi implements ICredentialType {
 	name = 'customerIoApi';
 	displayName = 'Customer.io API';
 	documentationUrl = 'customerIo';
-	properties = [
+	properties: INodeProperties[] = [
 		{
 			displayName: 'Tracking API Key',
 			name: 'trackingApiKey',
-			type: 'string' as NodePropertyTypes,
+			type: 'string',
 			default: '',
 			description: 'Required for tracking API.',
 			required: true,
@@ -20,14 +20,14 @@ export class CustomerIoApi implements ICredentialType {
 		{
 			displayName: 'Tracking Site ID',
 			name: 'trackingSiteId',
-			type: 'string' as NodePropertyTypes,
+			type: 'string',
 			default: '',
 			description: 'Required for tracking API.',
 		},
 		{
 			displayName: 'App API Key',
 			name: 'appApiKey',
-			type: 'string' as NodePropertyTypes,
+			type: 'string',
 			default: '',
 			description: 'Required for App API.',
 		},

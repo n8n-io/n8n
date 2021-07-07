@@ -29,7 +29,7 @@ export class Strava implements INodeType {
 		group: ['input'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
-		description: 'Consume Strava API.',
+		description: 'Consume Strava API',
 		defaults: {
 			name: 'Strava',
 			color: '#ea5929',
