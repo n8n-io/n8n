@@ -47,7 +47,7 @@ export const incidentFields = [
 	/* -------------------------------------------------------------------------- */
 
 	{
-		displayName: 'Short description',
+		displayName: 'Short Description',
 		name: 'short_description',
 		type: 'string',
 		default: '',
@@ -82,21 +82,21 @@ export const incidentFields = [
 		default: {},
 		options: [
 			{
-				displayName: 'Assigned to',
+				displayName: 'Assigned To',
 				name: 'assigned_to',
 				type: 'string',
 				default: '',
 				description: 'What user is the incident assigned to.',
 			},
 			{
-				displayName: 'Assignment group',
+				displayName: 'Assignment Group',
 				name: 'assignment_group',
 				type: 'string',
 				default: '',
 				description: 'The assignment group of the incident.',
 			},
 			{
-				displayName: 'Business service',
+				displayName: 'Business Service',
 				name: 'business_service',
 				type: 'string',
 				default: '',
@@ -131,7 +131,7 @@ export const incidentFields = [
 				description: 'Configuration Items, \'cmdb_ci\' in metadata.',
 			},
 			{
-				displayName: 'Contact type',
+				displayName: 'Contact Type',
 				name: 'contact_type',
 				type: 'string',
 				default: '',
@@ -152,7 +152,7 @@ export const incidentFields = [
 				description: 'The impact of the incident.',
 			},
 			{
-				displayName: 'Resolution code',
+				displayName: 'Resolution Code',
 				name: 'close_code',
 				type: 'string',
 				default: '',
@@ -230,7 +230,7 @@ export const incidentFields = [
 	/*                                incident:get/delete                       */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'ID',
+		displayName: 'Incident ID',
 		name: 'id',
 		type: 'string',
 		default: '',
@@ -249,10 +249,10 @@ export const incidentFields = [
 		description: 'Unique identifier of the incident.',
 	},
 	{
-		displayName: 'Additional Fields',
-		name: 'additionalFields',
+		displayName: 'Options',
+		name: 'options',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add Option',
 		displayOptions: {
 			show: {
 				resource: [
@@ -267,16 +267,16 @@ export const incidentFields = [
 		default: {},
 		options: [
 			{
-				displayName: 'Display values',
+				displayName: 'Display Values',
 				name: 'sysparm_display_value',
 				type: 'options',
 				options: [
 					{
-						name: 'Display values',
+						name: 'Display Values',
 						value: 'true',
 					},
 					{
-						name: 'Actual values',
+						name: 'Actual Values',
 						value: 'false',
 					},
 					{
@@ -288,7 +288,7 @@ export const incidentFields = [
 				description: 'Choose which values to return.',
 			},
 			{
-				displayName: 'Exclude reference link',
+				displayName: 'Exclude Reference Link',
 				name: 'sysparm_exclude_reference_link',
 				type: 'boolean',
 				default: false,
@@ -304,8 +304,8 @@ export const incidentFields = [
 			{
 				displayName: 'Query',
 				name: 'sysparm_query',
-				type: 'boolean',
-				default: false,
+				type: 'string',
+				default: '',
 				description: 'An encoded query string used to filter the results.',
 			},
 			{
@@ -321,7 +321,7 @@ export const incidentFields = [
 	/*                                incident:update                             */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'ID',
+		displayName: 'Incident ID',
 		name: 'id',
 		type: 'string',
 		default: '',
@@ -356,28 +356,28 @@ export const incidentFields = [
 		default: {},
 		options: [
 			{
-				displayName: 'Assigned to',
+				displayName: 'Assigned To',
 				name: 'assigned_to',
 				type: 'string',
 				default: '',
 				description: 'The user who is assigned to the incident.',
 			},
 			{
-				displayName: 'Close notes',
+				displayName: 'Close Notes',
 				name: 'close_notes',
 				type: 'string',
 				default: '',
 				description: 'The close notes for the incident.',
 			},
 			{
-				displayName: 'On hold reason',
+				displayName: 'On Hold Reason',
 				name: 'hold_reason',
 				type: 'number',
 				default: '',
 				description: 'The on hold reason for the incident.',
 			},
 			{
-				displayName: 'Resolution code',
+				displayName: 'Resolution Code',
 				name: 'close_code',
 				type: 'string',
 				default: '',

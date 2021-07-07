@@ -55,7 +55,7 @@ export const userFields = [
 	/* -------------------------------------------------------------------------- */
 
 	{
-		displayName: 'Short description',
+		displayName: 'Short Description',
 		name: 'short_description',
 		type: 'string',
 		default: '',
@@ -139,7 +139,7 @@ export const userFields = [
 				description:'The email address associated with the user.',
 			},
 			{
-				displayName: 'First name',
+				displayName: 'First Name',
 				name: 'first_name',
 				type: 'string',
 				default: '',
@@ -153,14 +153,14 @@ export const userFields = [
 				description:'The gender of the user.',
 			},
 			{
-				displayName: 'Home phone',
+				displayName: 'Home Phone',
 				name: 'home_phone',
 				type: 'string',
 				default: '',
 				description:'Home phone of the user.',
 			},
 			{
-				displayName: 'Last name',
+				displayName: 'Last Name',
 				name: 'last_name',
 				type: 'string',
 				default: '',
@@ -181,14 +181,14 @@ export const userFields = [
 				description:'Manager of the user.',
 			},
 			{
-				displayName: 'Middle name',
+				displayName: 'Middle Name',
 				name: 'middle_name',
 				type: 'string',
 				default: '',
 				description:'The middle name of the user.',
 			},
 			{
-				displayName: 'Mobile phone',
+				displayName: 'Mobile Phone',
 				name: 'mobile_phone',
 				type: 'string',
 				default: '',
@@ -202,7 +202,7 @@ export const userFields = [
 				description:'The user\'s password.',
 			},
 			{
-				displayName: 'Password needs reset',
+				displayName: 'Password Needs Reset',
 				name: 'password_needs_reset',
 				type: 'boolean',
 				default: '',
@@ -244,14 +244,14 @@ export const userFields = [
 				description:'Street information for the user separated by comma.',
 			},
 			{
-				displayName: 'User name',
+				displayName: 'User Name',
 				name: 'user_name',
 				type: 'string',
 				default: '',
 				description:'A username associated with the user (e.g. user_name.123).',
 			},
 			{
-				displayName: 'Zip',
+				displayName: 'Zip Code',
 				name: 'zip',
 				type: 'string',
 				default: '',
@@ -312,17 +312,17 @@ export const userFields = [
 	/*                                user:get/delete                       */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Retrieve identifier',
+		displayName: 'Retrieve Identifier',
 		name: 'getOption',
 		type: 'options',
 		default: 'id',
 		options: [
 			{
-				name: 'Using ID',
+				name: 'ID',
 				value: 'id',
 			},
 			{
-				name: 'Using User Name',
+				name: 'Username',
 				value: 'user_name',
 			},
 		],
@@ -361,7 +361,7 @@ export const userFields = [
 		description: 'Unique identifier of the user.',
 	},
 	{
-		displayName: 'ID',
+		displayName: 'User ID',
 		name: 'id',
 		type: 'string',
 		default: '',
@@ -382,7 +382,7 @@ export const userFields = [
 		description: 'Unique identifier of the user.',
 	},
 	{
-		displayName: 'ID',
+		displayName: 'User ID',
 		name: 'id',
 		type: 'string',
 		default: '',
@@ -400,8 +400,8 @@ export const userFields = [
 		description: 'Unique identifier of the user.',
 	},
 	{
-		displayName: 'Additional Fields',
-		name: 'additionalFields',
+		displayName: 'Options',
+		name: 'options',
 		type: 'collection',
 		placeholder: 'Add Field',
 		displayOptions: {
@@ -420,16 +420,16 @@ export const userFields = [
 		default: {},
 		options: [
 			{
-				displayName: 'Display values',
+				displayName: 'Display Values',
 				name: 'sysparm_display_value',
 				type: 'options',
 				options: [
 					{
-						name: 'Display values',
+						name: 'Display Values',
 						value: 'true',
 					},
 					{
-						name: 'Actual values',
+						name: 'Actual Values',
 						value: 'false',
 					},
 					{
@@ -441,7 +441,7 @@ export const userFields = [
 				description: 'Choose which values to return.',
 			},
 			{
-				displayName: 'Exclude reference link',
+				displayName: 'Exclude Reference Link',
 				name: 'sysparm_exclude_reference_link',
 				type: 'boolean',
 				default: false,
@@ -457,8 +457,8 @@ export const userFields = [
 			{
 				displayName: 'Query',
 				name: 'sysparm_query',
-				type: 'boolean',
-				default: false,
+				type: 'string',
+				default: '',
 				description: 'An encoded query string used to filter the results.',
 			},
 			{
@@ -474,7 +474,7 @@ export const userFields = [
 	/*                                user:update                             */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'ID',
+		displayName: 'User ID',
 		name: 'id',
 		type: 'string',
 		default: '',
@@ -558,7 +558,7 @@ export const userFields = [
 				description:'The email address associated with the user.',
 			},
 			{
-				displayName: 'First name',
+				displayName: 'First Name',
 				name: 'first_name',
 				type: 'string',
 				default: '',
@@ -572,14 +572,14 @@ export const userFields = [
 				description:'The gender of the user.',
 			},
 			{
-				displayName: 'Home phone',
+				displayName: 'Home Phone',
 				name: 'home_phone',
 				type: 'string',
 				default: '',
 				description:'Home phone of the user.',
 			},
 			{
-				displayName: 'Last name',
+				displayName: 'Last Name',
 				name: 'last_name',
 				type: 'string',
 				default: '',
@@ -600,14 +600,14 @@ export const userFields = [
 				description:'Manager of the user.',
 			},
 			{
-				displayName: 'Middle name',
+				displayName: 'Middle Name',
 				name: 'middle_name',
 				type: 'string',
 				default: '',
 				description:'The middle name of the user.',
 			},
 			{
-				displayName: 'Mobile phone',
+				displayName: 'Mobile Phone',
 				name: 'mobile_phone',
 				type: 'string',
 				default: '',
@@ -621,7 +621,7 @@ export const userFields = [
 				description:'The user\'s password.',
 			},
 			{
-				displayName: 'Password needs reset',
+				displayName: 'Password Needs Reset',
 				name: 'password_needs_reset',
 				type: 'boolean',
 				default: '',
@@ -663,14 +663,14 @@ export const userFields = [
 				description:'Street information for the user separated by comma.',
 			},
 			{
-				displayName: 'User name',
+				displayName: 'User Name',
 				name: 'user_name',
 				type: 'string',
 				default: '',
 				description:'A username associated with the user (e.g. user_name.123).',
 			},
 			{
-				displayName: 'Zip',
+				displayName: 'Zip Code',
 				name: 'zip',
 				type: 'string',
 				default: '',

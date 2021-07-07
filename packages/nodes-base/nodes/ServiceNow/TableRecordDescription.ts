@@ -64,10 +64,9 @@ export const tableRecordFields = [
 		description: 'The table name.',
 	},
 	{
-		displayName: 'JSON/RAW fields',
-		name: 'json',
+		displayName: 'Send Input Data',
+		name: 'sendInputData',
 		type: 'boolean',
-		default: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -78,14 +77,13 @@ export const tableRecordFields = [
 				],
 			},
 		},
-		required: true,
-		description: 'If the input fields should be set via the value-key pair UI or JSON/RAW.',
+		default: true,
+		description: 'Send the the data the node receives as JSON.',
 	},
 	{
-		displayName: 'JSON Body',
-		name: 'jsonBody',
+		displayName: 'Columns',
+		name: 'columns',
 		type: 'string',
-		default: '',
 		displayOptions: {
 			show: {
 				resource: [
@@ -94,19 +92,23 @@ export const tableRecordFields = [
 				operation: [
 					'create',
 				],
-				json: [
+				sendInputData: [
 					true,
 				],
 			},
 		},
+		default: '',
 		required: true,
-		description: 'The Input fields in JSON format.',
+		description: 'Comma-separated list of the properties to use as columns for the rows to create',
 	},
 	{
 		displayName: 'Input Fields',
 		name: 'inputFields',
 		type: 'fixedCollection',
 		placeholder: 'Add Field',
+		typeOptions: {
+			multipleValues: true,
+		},
 		displayOptions: {
 			show: {
 				resource: [
@@ -115,13 +117,10 @@ export const tableRecordFields = [
 				operation: [
 					'create',
 				],
-				json: [
+				sendInputData: [
 					false,
 				],
 			},
-		},
-		typeOptions: {
-			multipleValues: true,
 		},
 		default: {},
 		options: [
@@ -237,7 +236,7 @@ export const tableRecordFields = [
 		description: 'Name of the table in which the record exists.',
 	},
 	{
-		displayName: 'ID',
+		displayName: 'Record ID',
 		name: 'id',
 		type: 'string',
 		default: '',
@@ -256,8 +255,8 @@ export const tableRecordFields = [
 		description: 'Unique identifier of the record.',
 	},
 	{
-		displayName: 'Additional Fields',
-		name: 'additionalFields',
+		displayName: 'Options',
+		name: 'options',
 		type: 'collection',
 		placeholder: 'Add Field',
 		displayOptions: {
@@ -274,16 +273,16 @@ export const tableRecordFields = [
 		default: {},
 		options: [
 			{
-				displayName: 'Display values',
+				displayName: 'Display Values',
 				name: 'sysparm_display_value',
 				type: 'options',
 				options: [
 					{
-						name: 'Display values',
+						name: 'Display Values',
 						value: 'true',
 					},
 					{
-						name: 'Actual values',
+						name: 'Actual Values',
 						value: 'false',
 					},
 					{
@@ -295,7 +294,7 @@ export const tableRecordFields = [
 				description: 'Choose which values to return.',
 			},
 			{
-				displayName: 'Exclude reference link',
+				displayName: 'Exclude Reference Link',
 				name: 'sysparm_exclude_reference_link',
 				type: 'boolean',
 				default: false,
@@ -311,8 +310,8 @@ export const tableRecordFields = [
 			{
 				displayName: 'Query',
 				name: 'sysparm_query',
-				type: 'boolean',
-				default: false,
+				type: 'string',
+				default: '',
 				description: 'An encoded query string used to filter the results.',
 			},
 			{
@@ -346,7 +345,7 @@ export const tableRecordFields = [
 		description: 'The table name.',
 	},
 	{
-		displayName: 'ID',
+		displayName: 'Record ID',
 		name: 'id',
 		type: 'string',
 		default: '',
@@ -364,10 +363,9 @@ export const tableRecordFields = [
 		description: 'Unique identifier of the record.',
 	},
 	{
-		displayName: 'JSON/RAW fields',
-		name: 'json',
+		displayName: 'Send Input Data',
+		name: 'sendInputData',
 		type: 'boolean',
-		default: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -378,14 +376,13 @@ export const tableRecordFields = [
 				],
 			},
 		},
-		required: true,
-		description: 'If the update fields should be set via the value-key pair UI or JSON/RAW.',
+		default: true,
+		description: 'Send the the data the node receives as JSON.',
 	},
 	{
-		displayName: 'JSON Body',
-		name: 'jsonBody',
+		displayName: 'Columns',
+		name: 'columns',
 		type: 'string',
-		default: '',
 		displayOptions: {
 			show: {
 				resource: [
@@ -394,13 +391,14 @@ export const tableRecordFields = [
 				operation: [
 					'update',
 				],
-				json: [
+				sendInputData: [
 					true,
 				],
 			},
 		},
+		default: '',
 		required: true,
-		description: 'The Update fields in JSON format.',
+		description: 'Comma-separated list of the properties to use as columns for the rows to create',
 	},
 	{
 		displayName: 'Update Fields',
@@ -415,7 +413,7 @@ export const tableRecordFields = [
 				operation: [
 					'update',
 				],
-				json: [
+				sendInputData: [
 					false,
 				],
 			},

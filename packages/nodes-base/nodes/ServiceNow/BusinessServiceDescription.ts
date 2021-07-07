@@ -89,16 +89,16 @@ export const businessServiceFields = [
 		default: {},
 		options: [
 			{
-				displayName: 'Display values',
+				displayName: 'Display Values',
 				name: 'sysparm_display_value',
 				type: 'options',
 				options: [
 					{
-						name: 'Display values',
+						name: 'Display Values',
 						value: 'true',
 					},
 					{
-						name: 'Actual values',
+						name: 'Actual Values',
 						value: 'false',
 					},
 					{
@@ -110,7 +110,7 @@ export const businessServiceFields = [
 				description: 'Choose which values to return.',
 			},
 			{
-				displayName: 'Exclude reference link',
+				displayName: 'Exclude Reference Link',
 				name: 'sysparm_exclude_reference_link',
 				type: 'boolean',
 				default: false,
@@ -126,8 +126,8 @@ export const businessServiceFields = [
 			{
 				displayName: 'Query',
 				name: 'sysparm_query',
-				type: 'boolean',
-				default: false,
+				type: 'string',
+				default: '',
 				description: 'An encoded query string used to filter the results.',
 			},
 			{
