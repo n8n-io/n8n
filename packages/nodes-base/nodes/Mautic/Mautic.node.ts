@@ -194,6 +194,19 @@ export class Mautic implements INodeType {
 				}
 				return returnData;
 			},
+			// Get all the available segments to display them to user so that he can
+			// select them easily
+			async getSegments(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const returnData: INodePropertyOptions[] = [];
+				const segments = await mauticApiRequestAllItems.call(this, 'lists', 'GET', '/segments');
+				for (const segment of segments) {
+					returnData.push({
+						name: segment.name,
+						value: segment.id,
+					});
+				}
+				return returnData;
+			},
 		},
 	};
 
@@ -540,6 +553,17 @@ export class Mautic implements INodeType {
 					const options = this.getNodeParameter('options', i) as IDataObject;
 					const contactId = this.getNodeParameter('contactId', i) as string;
 					responseData = await mauticApiRequest.call(this, 'DELETE', `/contacts/${contactId}/delete`);
+					responseData = [responseData.contact];
+					if (options.rawData === false) {
+						responseData = responseData.map(item => item.fields.all);
+					}
+				}
+				//https://developer.mautic.org/?php#add-contact-to-a-segment
+				if (operation === 'addToSegment') {
+					const options = this.getNodeParameter('options', i) as IDataObject;
+					const contactId = this.getNodeParameter('contactId', i) as string;
+					const segmentId = this.getNodeParameter('segmentId', i) as string;
+					responseData = await mauticApiRequest.call(this, 'POST', `/segments/${segmentId}/contact/${contactId}/add`);
 					responseData = [responseData.contact];
 					if (options.rawData === false) {
 						responseData = responseData.map(item => item.fields.all);

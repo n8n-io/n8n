@@ -16,6 +16,11 @@ export const contactOperations = [
 		},
 		options: [
 			{
+				name: 'Add to Segment',
+				value: 'addToSegment',
+				description: 'Add to a segment',
+			},
+			{
 				name: 'Create',
 				value: 'create',
 				description: 'Create a new contact',
@@ -1114,6 +1119,51 @@ export const contactFields = [
 		},
 		default: '',
 		description: 'Contact ID',
+	},
+
+	/* -------------------------------------------------------------------------- */
+	/*                               contact:addToSegment                         */
+	/* -------------------------------------------------------------------------- */
+	{
+		displayName: 'Contact ID',
+		name: 'contactId',
+		type: 'string',
+		required: true,
+		displayOptions: {
+			show: {
+				operation: [
+					'addToSegment',
+				],
+				resource: [
+					'contact',
+				],
+			},
+		},
+		default: '',
+		description: 'Contact ID',
+	},
+	{
+		
+		displayName: 'Segment',
+		name: 'segmentId',
+		type: 'options',
+		required: true,
+		displayOptions: {
+			show: {
+				operation: [
+					'addToSegment',
+				],
+				resource: [
+					'contact',
+				],
+			},
+		},
+		typeOptions: {
+			loadOptionsMethod: 'getSegments',
+		},
+		default: '',
+		description: 'Segment ID',
+		
 	},
 
 	/* -------------------------------------------------------------------------- */
