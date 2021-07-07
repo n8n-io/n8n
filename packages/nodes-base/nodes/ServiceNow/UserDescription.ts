@@ -218,9 +218,12 @@ export const userFields = [
 			{
 				displayName: 'Roles',
 				name: 'roles',
-				type: 'string',
+				type: 'multiOptions',
+				typeOptions: {
+					loadOptionsMethod: 'getUserRoles'
+				},
 				default: '',
-				description:'Roles of the user separated by comma.',
+				description:'Roles of the user.',
 			},
 			{
 				displayName: 'Source',
@@ -244,7 +247,7 @@ export const userFields = [
 				description:'Street information for the user separated by comma.',
 			},
 			{
-				displayName: 'User Name',
+				displayName: 'Username',
 				name: 'user_name',
 				type: 'string',
 				default: '',
@@ -340,7 +343,7 @@ export const userFields = [
 		description: 'Unique identifier of the user.',
 	},
 	{
-		displayName: 'User Name',
+		displayName: 'Username',
 		name: 'user_name',
 		type: 'string',
 		default: '',
@@ -643,9 +646,12 @@ export const userFields = [
 			{
 				displayName: 'Roles',
 				name: 'roles',
-				type: 'string',
+				type: 'multiOptions',
+				typeOptions: {
+					loadOptionsMethod: 'getUserRoles'
+				},
 				default: '',
-				description:'Roles of the user separated by comma.',
+				description:'Roles of the user.',
 			},
 			{
 				displayName: 'Source',
@@ -669,7 +675,7 @@ export const userFields = [
 				description:'Street information for the user separated by comma.',
 			},
 			{
-				displayName: 'User Name',
+				displayName: 'Username',
 				name: 'user_name',
 				type: 'string',
 				default: '',

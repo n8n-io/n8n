@@ -48,7 +48,10 @@ export const tableRecordFields = [
 	{
 		displayName: 'Table Name',
 		name: 'tableName',
-		type: 'string',
+		type: 'options',
+		typeOptions: {
+			loadOptionsMethod: 'getTables',
+		},
 		default: '',
 		displayOptions: {
 			show: {
@@ -156,7 +159,10 @@ export const tableRecordFields = [
 	{
 		displayName: 'Table Name',
 		name: 'tableName',
-		type: 'string',
+		type: 'options',
+		typeOptions: {
+			loadOptionsMethod: 'getTables',
+		},
 		default: '',
 		displayOptions: {
 			show: {
@@ -219,7 +225,10 @@ export const tableRecordFields = [
 	{
 		displayName: 'Table Name',
 		name: 'tableName',
-		type: 'string',
+		type: 'options',
+		typeOptions: {
+			loadOptionsMethod: 'getTables',
+		},
 		default: '',
 		displayOptions: {
 			show: {
@@ -236,7 +245,7 @@ export const tableRecordFields = [
 		description: 'Name of the table in which the record exists.',
 	},
 	{
-		displayName: 'Record ID',
+		displayName: 'Table Record ID',
 		name: 'id',
 		type: 'string',
 		default: '',
@@ -335,7 +344,10 @@ export const tableRecordFields = [
 	{
 		displayName: 'Table Name',
 		name: 'tableName',
-		type: 'string',
+		type: 'options',
+		typeOptions: {
+			loadOptionsMethod: 'getTables',
+		},
 		default: '',
 		displayOptions: {
 			show: {
@@ -351,7 +363,7 @@ export const tableRecordFields = [
 		description: 'The table name.',
 	},
 	{
-		displayName: 'Record ID',
+		displayName: 'Table Record ID',
 		name: 'id',
 		type: 'string',
 		default: '',

@@ -139,6 +139,23 @@ export class ServiceNow implements INodeType {
 
 	methods = {
 		loadOptions: {
+			async getTables(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const returnData: INodePropertyOptions[] = [];
+				const response = await serviceNowApiRequest.call(this, 'GET', `/now/doc/table/schema`, {}, {});
+				for (const table of response.result) {
+					returnData.push({
+						name: table.label,
+						value: table.value,
+						description: table.value,
+					});
+				}
+				returnData.sort((a, b) => {
+					if (a.name < b.name) { return -1; }
+					if (a.name > b.name) { return 1; }
+					return 0;
+				});
+				return returnData;
+			},
 			// Get all the table column to display them to user
 			async getColumns(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const resource = this.getNodeParameter('resource', 0) as string;
@@ -171,6 +188,100 @@ export class ServiceNow implements INodeType {
 				});
 				return returnData;
 			},
+			async getUsers(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const returnData: INodePropertyOptions[] = [];
+				const qs = {
+					sysparm_fields: 'sys_id,user_name',
+				};
+				const response = await serviceNowRequestAllItems.call(this, 'GET', '/now/table/sys_user', {}, qs);
+				console.log(response);
+
+				for (const column of response) {
+					if (column.user_name) {
+						returnData.push({
+							name: column.user_name,
+							value: column.sys_id,
+						});
+					}
+				}
+				returnData.sort((a, b) => {
+					if (a.name < b.name) { return -1; }
+					if (a.name > b.name) { return 1; }
+					return 0;
+				});
+				return returnData;
+			},
+			async getAssignmentGroups(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const returnData: INodePropertyOptions[] = [];
+				const qs = {
+					sysparm_fields: 'sys_id,name',
+				};
+				const response = await serviceNowRequestAllItems.call(this, 'GET', '/now/table/sys_user_group', {}, qs);
+				console.log(response);
+
+				for (const column of response) {
+					if (column.name) {
+						returnData.push({
+							name: column.name,
+							value: column.sys_id,
+						});
+					}
+				}
+				returnData.sort((a, b) => {
+					if (a.name < b.name) { return -1; }
+					if (a.name > b.name) { return 1; }
+					return 0;
+				});
+				return returnData;
+			},
+			async getUserRoles(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const returnData: INodePropertyOptions[] = [];
+				const qs = {
+					sysparm_fields: 'sys_id,name',
+				};
+				const response = await serviceNowRequestAllItems.call(this, 'GET', '/now/table/sys_user_role', {}, qs);
+				console.log(response);
+
+				for (const column of response) {
+					if (column.name) {
+						returnData.push({
+							name: column.name,
+							value: column.sys_id,
+						});
+					}
+				}
+				returnData.sort((a, b) => {
+					if (a.name < b.name) { return -1; }
+					if (a.name > b.name) { return 1; }
+					return 0;
+				});
+				return returnData;
+			},
+			async getSubcategories(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const returnData: INodePropertyOptions[] = [];
+				const additionalFields = this.getNodeParameter('additionalFields') as IDataObject;
+				const category = additionalFields.category as string;
+				const subcatMap = new Map([
+					["Inquiry / Help", ["Antivirus", "Email", "Internal Application",]],
+					["Software", ["Email","Operating System",]],
+					["Hardware", ["CPU", "Disk", "Keyboard", "Memory", "Monitor", "Mouse",]],
+					["Network", ["DHCP", "DNS", "IP Address", "VPN", "Wireless",]],
+					["Database", ["DB2", "MS SQL Server", "Oracle",]],
+				])
+
+				for (const column of subcatMap.get(category) as string[]) {
+					returnData.push({
+						name: column,
+						value: column,
+					});
+				}
+				returnData.sort((a, b) => {
+					if (a.name < b.name) { return -1; }
+					if (a.name > b.name) { return 1; }
+					return 0;
+				});
+				return returnData;
+			},
 		},
 	};
 
@@ -192,7 +303,7 @@ export class ServiceNow implements INodeType {
 						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
 						qs = this.getNodeParameter('options', i) as IDataObject;
 
-						if (qs) {
+						if (qs.sysparm_fields) {
 							qs.sysparm_fields = (qs.sysparm_fields as string[]).join(',')
 						}
 
@@ -213,7 +324,7 @@ export class ServiceNow implements INodeType {
 						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
 						qs = this.getNodeParameter('options', i) as IDataObject;
 
-						if (qs) {
+						if (qs.sysparm_fields) {
 							qs.sysparm_fields = (qs.sysparm_fields as string[]).join(',')
 						}
 
@@ -234,7 +345,7 @@ export class ServiceNow implements INodeType {
 						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
 						qs = this.getNodeParameter('options', i) as IDataObject;
 
-						if (qs) {
+						if (qs.sysparm_fields) {
 							qs.sysparm_fields = (qs.sysparm_fields as string[]).join(',')
 						}
 
@@ -255,7 +366,7 @@ export class ServiceNow implements INodeType {
 						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
 						qs = this.getNodeParameter('options', i) as IDataObject;
 
-						if (qs) {
+						if (qs.sysparm_fields) {
 							qs.sysparm_fields = (qs.sysparm_fields as string[]).join(',')
 						}
 
@@ -294,7 +405,7 @@ export class ServiceNow implements INodeType {
 						const id = this.getNodeParameter('id', i) as string;
 						qs = this.getNodeParameter('options', i) as IDataObject;
 
-						if (qs) {
+						if (qs.sysparm_fields) {
 							qs.sysparm_fields = (qs.sysparm_fields as string[]).join(',')
 						}
 
@@ -306,7 +417,7 @@ export class ServiceNow implements INodeType {
 						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
 						qs = this.getNodeParameter('options', i) as IDataObject;
 
-						if (qs) {
+						if (qs.sysparm_fields) {
 							qs.sysparm_fields = (qs.sysparm_fields as string[]).join(',')
 						}
 
@@ -371,7 +482,7 @@ export class ServiceNow implements INodeType {
 						const id = this.getNodeParameter('id', i) as string;
 						qs = this.getNodeParameter('options', i) as IDataObject;
 
-						if (qs) {
+						if (qs.sysparm_fields) {
 							qs.sysparm_fields = (qs.sysparm_fields as string[]).join(',')
 						}
 
@@ -384,7 +495,7 @@ export class ServiceNow implements INodeType {
 						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
 						qs = this.getNodeParameter('options', i) as IDataObject;
 
-						if (qs) {
+						if (qs.sysparm_fields) {
 							qs.sysparm_fields = (qs.sysparm_fields as string[]).join(',')
 						}
 
@@ -452,7 +563,7 @@ export class ServiceNow implements INodeType {
 						const getOption = this.getNodeParameter('getOption', i) as string;
 						qs = this.getNodeParameter('options', i) as IDataObject;
 
-						if (qs) {
+						if (qs.sysparm_fields) {
 							qs.sysparm_fields = (qs.sysparm_fields as string[]).join(',')
 						}
 
@@ -473,7 +584,7 @@ export class ServiceNow implements INodeType {
 						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
 						qs = this.getNodeParameter('options', i) as IDataObject;
 
-						if (qs) {
+						if (qs.sysparm_fields) {
 							qs.sysparm_fields = (qs.sysparm_fields as string[]).join(',')
 						}
 
@@ -491,7 +602,7 @@ export class ServiceNow implements INodeType {
 						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
 						qs = this.getNodeParameter('options', i) as IDataObject;
 
-						if (qs) {
+						if (qs.sysparm_fields) {
 							qs.sysparm_fields = (qs.sysparm_fields as string[]).join(',')
 						}
 
@@ -509,7 +620,7 @@ export class ServiceNow implements INodeType {
 						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
 						qs = this.getNodeParameter('options', i) as IDataObject;
 
-						if (qs) {
+						if (qs.sysparm_fields) {
 							qs.sysparm_fields = (qs.sysparm_fields as string[]).join(',')
 						}
 
