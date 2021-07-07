@@ -297,9 +297,12 @@ export const incidentFields = [
 			{
 				displayName: 'Fields',
 				name: 'sysparm_fields',
-				type: 'string',
+				type: 'multiOptions',
+				typeOptions: {
+					loadOptionsMethod: 'getColumns',
+				},
 				default: '',
-				description: 'A comma-separated list of fields to return.',
+				description: 'A list of fields to return.',
 			},
 			{
 				displayName: 'Query',

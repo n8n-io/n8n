@@ -450,9 +450,15 @@ export const userFields = [
 			{
 				displayName: 'Fields',
 				name: 'sysparm_fields',
-				type: 'string',
+				type: 'multiOptions',
+				typeOptions: {
+					loadOptionsMethod: 'getColumns',
+					loadOptionsDependsOn: [
+						'operation',
+					]
+				},
 				default: '',
-				description: 'A comma-separated list of fields to return.',
+				description: 'A list of fields to return.',
 			},
 			{
 				displayName: 'Query',

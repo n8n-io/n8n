@@ -133,7 +133,7 @@ export const tableRecordFields = [
 						name: 'column',
 						type: 'options',
 						typeOptions:{
-							loadOptionsMethod: 'getTableColumns',
+							loadOptionsMethod: 'getColumns',
 							loadOptionsDependsOn: [
 								'tableName',
 							],
@@ -303,9 +303,15 @@ export const tableRecordFields = [
 			{
 				displayName: 'Fields',
 				name: 'sysparm_fields',
-				type: 'string',
+				type: 'multiOptions',
+				typeOptions: {
+					loadOptionsMethod: 'getColumns',
+					loadOptionsDependsOn: [
+						'tableName',
+					],
+				},
 				default: '',
-				description: 'A comma-separated list of fields to return.',
+				description: 'A list of fields to return.',
 			},
 			{
 				displayName: 'Query',
@@ -432,7 +438,7 @@ export const tableRecordFields = [
 						name: 'column',
 						type: 'options',
 						typeOptions:{
-							loadOptionsMethod: 'getTableColumns',
+							loadOptionsMethod: 'getColumns',
 							loadOptionsDependsOn: [
 								'tableName',
 							],

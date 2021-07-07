@@ -72,8 +72,8 @@ export const businessServiceFields = [
 		description: 'How many results to return.',
 	},
 	{
-		displayName: 'Additional Fields',
-		name: 'additionalFields',
+		displayName: 'Options',
+		name: 'options',
 		type: 'collection',
 		placeholder: 'Add Field',
 		displayOptions: {
@@ -119,9 +119,12 @@ export const businessServiceFields = [
 			{
 				displayName: 'Fields',
 				name: 'sysparm_fields',
-				type: 'string',
+				type: 'multiOptions',
+				typeOptions: {
+					loadOptionsMethod: 'getColumns',
+				},
 				default: '',
-				description: 'A comma-separated list of fields to return.',
+				description: 'A list of fields to return.',
 			},
 			{
 				displayName: 'Query',

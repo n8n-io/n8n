@@ -13,6 +13,7 @@ import {
 } from 'n8n-workflow';
 
 import {
+	mapEndpoint,
 	serviceNowApiRequest,
 	serviceNowRequestAllItems,
 } from './GenericFunctions';
@@ -139,9 +140,17 @@ export class ServiceNow implements INodeType {
 	methods = {
 		loadOptions: {
 			// Get all the table column to display them to user
-			async getTableColumns(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+			async getColumns(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const resource = this.getNodeParameter('resource', 0) as string;
+				const operation = this.getNodeParameter('operation', 0) as string;
 				const returnData: INodePropertyOptions[] = [];
-				const tableName = this.getNodeParameter('tableName') as string;
+				let tableName;
+				if (resource === 'tableRecord') {
+					tableName = this.getNodeParameter('tableName') as string;
+				} else {
+					tableName = mapEndpoint(resource, operation);
+				}
+
 				const qs = {
 					sysparm_query: `name=${tableName}`,
 					sysparm_fields: 'column_label,element',
@@ -183,6 +192,10 @@ export class ServiceNow implements INodeType {
 						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
 						qs = this.getNodeParameter('options', i) as IDataObject;
 
+						if (qs) {
+							qs.sysparm_fields = (qs.sysparm_fields as string[]).join(',')
+						}
+
 						if (!returnAll) {
 							const limit = this.getNodeParameter('limit', i) as number;
 							qs.sysparm_limit = limit;
@@ -199,6 +212,10 @@ export class ServiceNow implements INodeType {
 
 						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
 						qs = this.getNodeParameter('options', i) as IDataObject;
+
+						if (qs) {
+							qs.sysparm_fields = (qs.sysparm_fields as string[]).join(',')
+						}
 
 						if (!returnAll) {
 							const limit = this.getNodeParameter('limit', i) as number;
@@ -217,6 +234,10 @@ export class ServiceNow implements INodeType {
 						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
 						qs = this.getNodeParameter('options', i) as IDataObject;
 
+						if (qs) {
+							qs.sysparm_fields = (qs.sysparm_fields as string[]).join(',')
+						}
+
 						if (!returnAll) {
 							const limit = this.getNodeParameter('limit', i) as number;
 							qs.sysparm_limit = limit;
@@ -233,6 +254,10 @@ export class ServiceNow implements INodeType {
 
 						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
 						qs = this.getNodeParameter('options', i) as IDataObject;
+
+						if (qs) {
+							qs.sysparm_fields = (qs.sysparm_fields as string[]).join(',')
+						}
 
 						if (!returnAll) {
 							const limit = this.getNodeParameter('limit', i) as number;
@@ -269,6 +294,10 @@ export class ServiceNow implements INodeType {
 						const id = this.getNodeParameter('id', i) as string;
 						qs = this.getNodeParameter('options', i) as IDataObject;
 
+						if (qs) {
+							qs.sysparm_fields = (qs.sysparm_fields as string[]).join(',')
+						}
+
 						const response = await serviceNowApiRequest.call(this, 'GET', `/now/table/incident/${id}`, {}, qs);
 						responseData = response.result;
 
@@ -276,6 +305,10 @@ export class ServiceNow implements INodeType {
 
 						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
 						qs = this.getNodeParameter('options', i) as IDataObject;
+
+						if (qs) {
+							qs.sysparm_fields = (qs.sysparm_fields as string[]).join(',')
+						}
 
 						if (!returnAll) {
 							const limit = this.getNodeParameter('limit', i) as number;
@@ -338,6 +371,10 @@ export class ServiceNow implements INodeType {
 						const id = this.getNodeParameter('id', i) as string;
 						qs = this.getNodeParameter('options', i) as IDataObject;
 
+						if (qs) {
+							qs.sysparm_fields = (qs.sysparm_fields as string[]).join(',')
+						}
+
 						const response = await serviceNowApiRequest.call(this, 'GET', `/now/table/${tableName}/${id}`, {}, qs);
 						responseData = response.result;
 
@@ -346,6 +383,10 @@ export class ServiceNow implements INodeType {
 						const tableName = this.getNodeParameter('tableName', i) as string;
 						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
 						qs = this.getNodeParameter('options', i) as IDataObject;
+
+						if (qs) {
+							qs.sysparm_fields = (qs.sysparm_fields as string[]).join(',')
+						}
 
 						if (!returnAll) {
 							const limit = this.getNodeParameter('limit', i) as number;
@@ -411,6 +452,10 @@ export class ServiceNow implements INodeType {
 						const getOption = this.getNodeParameter('getOption', i) as string;
 						qs = this.getNodeParameter('options', i) as IDataObject;
 
+						if (qs) {
+							qs.sysparm_fields = (qs.sysparm_fields as string[]).join(',')
+						}
+
 						if (getOption === 'id') {
 							const id = this.getNodeParameter('id', i) as string;
 							const response = await serviceNowApiRequest.call(this, 'GET', `/now/table/sys_user/${id}`, {}, qs);
@@ -428,6 +473,10 @@ export class ServiceNow implements INodeType {
 						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
 						qs = this.getNodeParameter('options', i) as IDataObject;
 
+						if (qs) {
+							qs.sysparm_fields = (qs.sysparm_fields as string[]).join(',')
+						}
+
 						if (!returnAll) {
 							const limit = this.getNodeParameter('limit', i) as number;
 							qs.sysparm_limit = limit;
@@ -442,6 +491,10 @@ export class ServiceNow implements INodeType {
 						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
 						qs = this.getNodeParameter('options', i) as IDataObject;
 
+						if (qs) {
+							qs.sysparm_fields = (qs.sysparm_fields as string[]).join(',')
+						}
+
 						if (!returnAll) {
 							const limit = this.getNodeParameter('limit', i) as number;
 							qs.sysparm_limit = limit;
@@ -455,6 +508,10 @@ export class ServiceNow implements INodeType {
 
 						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
 						qs = this.getNodeParameter('options', i) as IDataObject;
+
+						if (qs) {
+							qs.sysparm_fields = (qs.sysparm_fields as string[]).join(',')
+						}
 
 						if (!returnAll) {
 							const limit = this.getNodeParameter('limit', i) as number;

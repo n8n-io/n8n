@@ -72,3 +72,26 @@ export async function serviceNowRequestAllItems(this: IExecuteFunctions | ILoadO
 
 	return returnData;
 }
+
+
+export const mapEndpoint = (resource: string, operation: string) => {
+	const resourceEndpoint = new Map([
+		["tableRecord","sys_dictionary"],
+		["businessService","cmdb_ci_service"],
+		["configurationItems","cmdb_ci"],
+		["department","cmn_department"],
+		["dictionary","sys_dictionary"],
+		["incident","incident"],
+		["user","sys_user"],
+	])
+	const operationEndpoint = new Map([
+		["getUserGroups","sys_user_group"],
+		["getUserRoles","sys_user_role"],
+	])
+	if (resource === 'user') {
+		if (operationEndpoint.has(operation)) {
+			return operationEndpoint.get(operation);
+		}
+	}
+	return resourceEndpoint.get(resource);
+}
