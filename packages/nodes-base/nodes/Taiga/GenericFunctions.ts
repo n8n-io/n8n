@@ -60,16 +60,7 @@ export async function taigaApiRequest(
 	uri?: string | undefined,
 	option = {},
 ): Promise<any> { // tslint:disable-line:no-any
-
-	const version = this.getNodeParameter('version', 0, 'cloud') as string;
-
-	let credentials;
-
-	if (version === 'server') {
-		credentials = this.getCredentials('taigaServerApi') as ICredentialDataDecryptedObject;
-	} else {
-		credentials = this.getCredentials('taigaCloudApi') as ICredentialDataDecryptedObject;
-	}
+	const credentials = this.getCredentials('taigaApi') as ICredentialDataDecryptedObject;
 
 	const authToken = await getAuthorization.call(this, credentials);
 

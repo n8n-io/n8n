@@ -47,45 +47,11 @@ export class Taiga implements INodeType {
 		outputs: ['main'],
 		credentials: [
 			{
-				name: 'taigaCloudApi',
-				displayOptions: {
-					show: {
-						version: [
-							'cloud',
-						],
-					},
-				},
-				required: true,
-			},
-			{
-				name: 'taigaServerApi',
-				displayOptions: {
-					show: {
-						version: [
-							'server',
-						],
-					},
-				},
+				name: 'taigaApi',
 				required: true,
 			},
 		],
 		properties: [
-			{
-				displayName: 'Taiga Version',
-				name: 'version',
-				type: 'options',
-				options: [
-					{
-						name: 'Cloud',
-						value: 'cloud',
-					},
-					{
-						name: 'Server (Self Hosted)',
-						value: 'server',
-					},
-				],
-				default: 'cloud',
-			},
 			{
 				displayName: 'Resource',
 				name: 'resource',
