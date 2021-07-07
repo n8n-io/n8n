@@ -194,7 +194,6 @@ export class ServiceNow implements INodeType {
 					sysparm_fields: 'sys_id,user_name',
 				};
 				const response = await serviceNowRequestAllItems.call(this, 'GET', '/now/table/sys_user', {}, qs);
-				console.log(response);
 
 				for (const column of response) {
 					if (column.user_name) {
@@ -217,7 +216,6 @@ export class ServiceNow implements INodeType {
 					sysparm_fields: 'sys_id,name',
 				};
 				const response = await serviceNowRequestAllItems.call(this, 'GET', '/now/table/sys_user_group', {}, qs);
-				console.log(response);
 
 				for (const column of response) {
 					if (column.name) {
@@ -240,7 +238,6 @@ export class ServiceNow implements INodeType {
 					sysparm_fields: 'sys_id,name',
 				};
 				const response = await serviceNowRequestAllItems.call(this, 'GET', '/now/table/sys_user_role', {}, qs);
-				console.log(response);
 
 				for (const column of response) {
 					if (column.name) {
@@ -452,7 +449,8 @@ export class ServiceNow implements INodeType {
 							const columns = this.getNodeParameter('columns', i) as string;
 							body = columns.split(',').map(col=>col.trim()).reduce((obj, column) => {
 								obj= {
-									column: items[i].json[column],
+									...obj,
+									[column as string]: items[i].json[column],
 								}
 								return obj
 							}, {});
@@ -519,7 +517,8 @@ export class ServiceNow implements INodeType {
 							const columns = this.getNodeParameter('columns', i) as string;
 							body = columns.split(',').map(col=>col.trim()).reduce((obj, column) => {
 								obj= {
-									column: items[i].json[column],
+									...obj,
+									[column as string]: items[i].json[column],
 								}
 								return obj
 							}, {});
@@ -544,10 +543,6 @@ export class ServiceNow implements INodeType {
 					if (operation === 'create') {
 
 						const body = this.getNodeParameter('additionalFields', i) as IDataObject;
-
-						if (body.roles) {
-							body.roles = (body.roles as string).split(',');
-						}
 
 						const response = await serviceNowApiRequest.call(this, 'POST', '/now/table/sys_user', body);
 						responseData = response.result;
@@ -637,10 +632,6 @@ export class ServiceNow implements INodeType {
 
 						const id = this.getNodeParameter('id', i) as string;
 						const body = this.getNodeParameter('updateFields', i) as IDataObject;
-
-						if (body.roles) {
-							body.roles = (body.roles as string).split(',');
-						}
 
 						const response = await serviceNowApiRequest.call(this, 'PATCH', `/now/table/sys_user/${id}`, body);
 						responseData = response.result;
