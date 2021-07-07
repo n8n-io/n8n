@@ -440,6 +440,26 @@ export const taskFields = [
 	//               task: update
 	// ----------------------------------------
 	{
+		displayName: 'Project ID',
+		name: 'projectId',
+		description: 'ID of the project to set the task to',
+		type: 'options',
+		typeOptions: {
+			loadOptionsMethod: 'getProjects',
+		},
+		default: '',
+		displayOptions: {
+			show: {
+				resource: [
+					'task',
+				],
+				operation: [
+					'update',
+				],
+			},
+		},
+	},
+	{
 		displayName: 'Task ID',
 		name: 'taskId',
 		description: 'ID of the task to update',
@@ -519,16 +539,6 @@ export const taskFields = [
 				},
 				default: '',
 				description: 'ID of the milestone of the task',
-			},
-			{
-				displayName: 'Project ID',
-				name: 'projectId',
-				description: 'ID of the project to set the task to',
-				type: 'options',
-				typeOptions: {
-					loadOptionsMethod: 'getProjects',
-				},
-				default: '',
 			},
 			{
 				displayName: 'Status',

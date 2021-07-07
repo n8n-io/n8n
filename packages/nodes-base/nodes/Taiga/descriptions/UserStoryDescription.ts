@@ -461,6 +461,26 @@ export const userStoryFields = [
 		},
 	},
 	{
+		displayName: 'Project ID',
+		name: 'projectId',
+		type: 'options',
+		typeOptions: {
+			loadOptionsMethod: 'getProjects',
+		},
+		default: '',
+		description: 'ID of the project to set the user story to',
+		displayOptions: {
+			show: {
+				resource: [
+					'userStory',
+				],
+				operation: [
+					'update',
+				],
+			},
+		},
+	},
+	{
 		displayName: 'Update Fields',
 		name: 'updateFields',
 		type: 'collection',
@@ -542,16 +562,6 @@ export const userStoryFields = [
 				},
 				default: '',
 				description: 'ID of the milestone of the user story',
-			},
-			{
-				displayName: 'Project ID',
-				name: 'projectId',
-				type: 'options',
-				typeOptions: {
-					loadOptionsMethod: 'getProjects',
-				},
-				default: '',
-				description: 'ID of the project to set the user story to',
 			},
 			{
 				displayName: 'Subject',

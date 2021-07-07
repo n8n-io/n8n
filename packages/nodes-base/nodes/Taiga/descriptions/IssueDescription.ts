@@ -491,6 +491,26 @@ export const issueFields = [
 	//              issue: update
 	// ----------------------------------------
 	{
+		displayName: 'Project ID',
+		name: 'projectId',
+		type: 'options',
+		typeOptions: {
+			loadOptionsMethod: 'getProjects',
+		},
+		default: '',
+		description: 'ID of the project to set the issue to',
+		displayOptions: {
+			show: {
+				resource: [
+					'issue',
+				],
+				operation: [
+					'update',
+				],
+			},
+		},
+	},
+	{
 		displayName: 'Issue ID',
 		name: 'issueId',
 		description: 'ID of the issue to update',
@@ -582,16 +602,6 @@ export const issueFields = [
 					loadOptionsMethod: 'getPriorities',
 				},
 				default: '',
-			},
-			{
-				displayName: 'Project ID',
-				name: 'projectId',
-				type: 'options',
-				typeOptions: {
-					loadOptionsMethod: 'getProjects',
-				},
-				default: '',
-				description: 'ID of the project to set the issue to',
 			},
 			{
 				displayName: 'Severity',

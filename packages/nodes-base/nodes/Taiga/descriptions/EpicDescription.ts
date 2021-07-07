@@ -312,6 +312,26 @@ export const epicFields = [
 	//               epic: update
 	// ----------------------------------------
 	{
+		displayName: 'Project ID',
+		name: 'projectId',
+		type: 'options',
+		typeOptions: {
+			loadOptionsMethod: 'getProjects',
+		},
+		default: '',
+		description: 'ID of the project to set the epic to',
+		displayOptions: {
+			show: {
+				resource: [
+					'epic',
+				],
+				operation: [
+					'update',
+				],
+			},
+		},
+	},
+	{
 		displayName: 'Epic ID',
 		name: 'epicId',
 		description: 'ID of the epic to update',
@@ -385,16 +405,6 @@ export const epicFields = [
 				type: 'boolean',
 				default: false,
 				description: 'Whether the epic is blocked',
-			},
-			{
-				displayName: 'Project ID',
-				name: 'projectId',
-				type: 'options',
-				typeOptions: {
-					loadOptionsMethod: 'getProjects',
-				},
-				default: '',
-				description: 'ID of the project to set the epic to',
 			},
 			{
 				displayName: 'Subject',
