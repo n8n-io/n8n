@@ -4,14 +4,14 @@
       v-if="props.type === 'danger'"
       type="danger"
       size="small"
-      :class="`${$style['danger']} ${$style['badge']}`"
+      :class="$style['danger']"
     >
       {{ props.text }}
     </el-tag>
     <el-tag
       v-else-if="props.type === 'warning'"
       size="small"
-      :class="`${$style['warning']} ${$style['badge']}`"
+      :class="$style['warning']"
     >
       {{ props.text }}
     </el-tag>
@@ -36,12 +36,14 @@ export default {
 }
 
 .danger {
+  composes: badge;
   color: $--version-card-security-badge-color;
   background-color: $--version-card-security-badge-background-color;
   border-color: $--version-card-security-badge-border-color;
 }
 
 .warning {
+  composes: badge;
   background-color: $--version-card-breaking-change-background-color;
   color: $--version-card-breaking-change-color;
   border: none;
