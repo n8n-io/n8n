@@ -202,6 +202,13 @@ export const chargeFields = [
 						name: 'shippingProperties',
 						values: [
 							{
+								displayName: 'Recipient Name',
+								name: 'name',
+								type: 'string',
+								description: 'Name of the person who will receive the shipment',
+								default: '',
+							},
+							{
 								displayName: 'Address',
 								name: 'address',
 								type: 'fixedCollection',
@@ -257,13 +264,6 @@ export const chargeFields = [
 										],
 									},
 								],
-							},
-							{
-								displayName: 'Recipient Name',
-								name: 'name',
-								type: 'string',
-								description: 'Name of the person who will receive the shipment',
-								default: '',
 							},
 						],
 					},
@@ -437,6 +437,12 @@ export const chargeFields = [
 						default: {},
 						values: [
 							{
+								displayName: 'Recipient Name',
+								name: 'name',
+								type: 'string',
+								default: '',
+							},
+							{
 								displayName: 'Recipient Address',
 								name: 'address',
 								type: 'fixedCollection',
@@ -492,12 +498,6 @@ export const chargeFields = [
 										],
 									},
 								],
-							},
-							{
-								displayName: 'Recipient Name',
-								name: 'name',
-								type: 'string',
-								default: '',
 							},
 						],
 					},

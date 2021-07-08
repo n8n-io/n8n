@@ -210,6 +210,12 @@ export const customerFields = [
 						name: 'shippingProperties',
 						values: [
 							{
+								displayName: 'Recipient Name',
+								name: 'name',
+								type: 'string',
+								default: '',
+							},
+							{
 								displayName: 'Recipient Address',
 								name: 'address',
 								type: 'fixedCollection',
@@ -265,12 +271,6 @@ export const customerFields = [
 										],
 									},
 								],
-							},
-							{
-								displayName: 'Recipient Name',
-								name: 'name',
-								type: 'string',
-								default: '',
 							},
 							{
 								displayName: 'Recipient Phone',
@@ -570,6 +570,13 @@ export const customerFields = [
 						name: 'shippingProperties',
 						values: [
 							{
+								displayName: 'Recipient Name',
+								name: 'name',
+								type: 'string',
+								default: '',
+								description: 'Name of the person who will receive the shipment',
+							},
+							{
 								displayName: 'Recipient Address',
 								name: 'address',
 								type: 'fixedCollection',
@@ -625,13 +632,6 @@ export const customerFields = [
 										],
 									},
 								],
-							},
-							{
-								displayName: 'Recipient Name',
-								name: 'name',
-								type: 'string',
-								default: '',
-								description: 'Name of the person who will receive the shipment',
 							},
 							{
 								displayName: 'Recipient Phone',
