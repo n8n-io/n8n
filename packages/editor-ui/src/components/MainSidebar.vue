@@ -606,8 +606,8 @@ a.logo {
 
 .el-menu-item.updates {
 	color: $--sidebar-inactive-color;	
-	font-size: 13px;
 	.item-title-root {
+		font-size: 13px;
 		top: 0 !important;
 	}
 
@@ -624,15 +624,8 @@ a.logo {
 	}
 
 	.gift-icon {
-		width: 19px;
-		height: 16.8px;
 		display: flex;
 		position: relative;
-
-		svg {
-			font-size: 16.8px;
-			line-height: 19px;
-		}
 
 		.notification {
 			height: 8px;
@@ -641,7 +634,6 @@ a.logo {
 			color: $--sidebar-active-color;
 			position: absolute;
 			background-color: $--sidebar-gift-notification-outer-color;
-			z-index: 9999;
 			left: 75%;
 			display: flex;
 			align-items: center;
