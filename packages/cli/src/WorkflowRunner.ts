@@ -88,11 +88,14 @@ export class WorkflowRunner {
 	 * @memberof WorkflowRunner
 	 */
 	async processError(error: ExecutionError, startedAt: Date, executionMode: WorkflowExecuteMode, executionId: string, hooks?: WorkflowHooks) {
-		// TODO: Seems like the error does currently not get displayed anywhere
 		const fullRunData: IRun = {
 			data: {
 				resultData: {
-					error,
+					error: {
+						...error,
+						message: error.message,
+						stack: error.stack,
+					},
 					runData: {},
 				},
 			},

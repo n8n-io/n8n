@@ -375,6 +375,27 @@ export default mixins(
 				});
 
 				this.$externalHooks().run('execution.open', { workflowId: data.workflowData.id, workflowName: data.workflowData.name, executionId });
+
+				if (data.finished !== true && data.data.resultData.error) {
+					// Check if any node contains an error
+					let nodeErrorFound = false;
+					if (data.data.resultData.runData) {
+						const runData = data.data.resultData.runData;
+						errorCheck:
+						for (const nodeName in runData) {
+							for (const taskData of runData[nodeName]) {
+								if (taskData.error) {
+									nodeErrorFound = true;
+									break errorCheck;
+								}
+							}
+						}
+					}
+
+					if (nodeErrorFound === false) {
+						this.$showExecutionError(data.data.resultData.error, 'Failed execution');
+					}
+				}
 			},
 			async openWorkflowTemplate (templateId: string) {
 				this.setLoadingText('Loading template');

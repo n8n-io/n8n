@@ -217,31 +217,8 @@ export const pushConnection = mixins(
 					// @ts-ignore
 					const workflow = this.getWorkflow();
 					if (runDataExecuted.finished !== true) {
-						// There was a problem with executing the workflow
-						let errorMessage = 'There was a problem executing the workflow!';
-
-						if (runDataExecuted.data.resultData.error && runDataExecuted.data.resultData.error.message) {
-							let nodeName: string | undefined;
-							if (runDataExecuted.data.resultData.error.node) {
-								nodeName = typeof runDataExecuted.data.resultData.error.node === 'string'
-									? runDataExecuted.data.resultData.error.node
-									: runDataExecuted.data.resultData.error.node.name;
-							}
-
-							const receivedError = nodeName
-								? `${nodeName}: ${runDataExecuted.data.resultData.error.message}`
-								: runDataExecuted.data.resultData.error.message;
-							errorMessage = `There was a problem executing the workflow:<br /><strong>"${receivedError}"</strong>`;
-						}
-
-						runDataExecutedErrorMessage = errorMessage;
-
 						this.$titleSet(workflow.name as string, 'ERROR');
-						this.$showMessage({
-							title: 'Problem executing workflow',
-							message: errorMessage,
-							type: 'error',
-						});
+						this.$showExecutionError(runDataExecuted.data.resultData.error);
 					} else {
 						// Workflow did execute without a problem
 						this.$titleSet(workflow.name as string, 'IDLE');
