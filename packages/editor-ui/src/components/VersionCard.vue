@@ -5,12 +5,21 @@
 				<div :class="$style.name">
 					Version {{version.name}}
 				</div>
-				<el-tooltip effect="light" content=" " placement="top" v-if="version.hasSecurityIssue">
-					<div slot="content">This version has a security issue.<br/>It is listed here for completeness.</div>
-					<font-awesome-icon :class="$style['security-flag']" icon="exclamation-triangle"></font-awesome-icon>
-				</el-tooltip>
-				<el-tag type="danger" v-if="version.hasSecurityFix" size="small" :class="`${$style['security-update']} ${$style['badge']}`">Security update</el-tag>
-				<el-tag v-if="version.hasBreakingChange" size="small" :class="`${$style['breaking-change']} ${$style['badge']}`">Breaking changes</el-tag>
+				<WarningTooltip v-if="version.hasSecurityIssue">
+					<template>
+						This version has a security issue.<br/>It is listed here for completeness.
+					</template>
+				</WarningTooltip>
+				<Badge
+					v-if="version.hasSecurityFix"
+					text="Security update"
+					type="danger"
+				/>
+				<Badge
+					v-if="version.hasSecurityFix"
+					text="Breaking changes"
+					type="warning"
+				/>
 			</div>
 			<div :class="$style.released">
 				Released&nbsp;<TimeAgo :date="version.createdAt" />
@@ -34,10 +43,12 @@ import Vue from 'vue';
 import NodeIcon from './NodeIcon.vue';
 import { IVersion } from '@/Interface';
 import TimeAgo from './TimeAgo.vue';
+import Badge from './Badge.vue';
+import WarningTooltip from './WarningTooltip.vue';
 
 
 export default Vue.extend({
-	components: { NodeIcon, TimeAgo },
+	components: { NodeIcon, TimeAgo, Badge, WarningTooltip },
 	name: 'UpdatesPanel',
 	props: ['version'],
 	computed: {
@@ -114,33 +125,5 @@ export default Vue.extend({
 
 	.expanded {
 		grid-row-gap: 8px;
-	}
-
-	.badge {
-		font-size: 11px;
-		line-height: 18px;
-		max-height: 18px;
-		font-weight: 400;
-		display: flex;
-		align-items: center;
-		padding: 2px 4px;
-	}
-
-	.security-update {
-		color: $--version-card-security-badge-color;
-		background-color: $--version-card-security-badge-background-color;
-		border-color: $--version-card-security-badge-border-color;
-	}
-
-	.breaking-change {
-		background-color: $--version-card-breaking-change-background-color;
-		color: $--version-card-breaking-change-color;
-		border: none;
-	}
-
-	.security-flag {
-		font-size: 14px;
-		height: 18px;
-		color: $--version-card-security-flag-color;
 	}
 </style>
