@@ -13,6 +13,7 @@ export const balanceOperations = [
 			{
 				name: 'Get',
 				value: 'get',
+				description: 'Get a balance',
 			},
 		],
 		displayOptions: {

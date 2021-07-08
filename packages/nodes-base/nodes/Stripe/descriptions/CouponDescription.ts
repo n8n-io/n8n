@@ -13,10 +13,12 @@ export const couponOperations = [
 			{
 				name: 'Create',
 				value: 'create',
+				description: 'Create a coupon',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
+				description: 'Get all coupons',
 			},
 		],
 		displayOptions: {
@@ -39,7 +41,7 @@ export const couponFields = [
 		type: 'options',
 		required: true,
 		default: 'once',
-		description: 'How long the discount will be in effect.',
+		description: 'How long the discount will be in effect',
 		options: [
 			{
 				name: 'Forever',
@@ -67,7 +69,7 @@ export const couponFields = [
 		type: 'options',
 		required: true,
 		default: 'percent',
-		description: 'Whether the coupon discount is a percentage or a fixed amount.',
+		description: 'Whether the coupon discount is a percentage or a fixed amount',
 		options: [
 			{
 				name: 'Fixed Amount',
@@ -95,7 +97,7 @@ export const couponFields = [
 		type: 'number',
 		required: true,
 		default: 0,
-		description: 'Amount to subtract from an invoice total.',
+		description: 'Amount to subtract from an invoice total',
 		typeOptions: {
 			minValue: 0,
 			maxValue: 99999999,
@@ -123,7 +125,7 @@ export const couponFields = [
 		},
 		required: true,
 		default: '',
-		description: 'Three-letter ISO currency code, e.g. USD or EUR. It must be a <a href="https://stripe.com/docs/currencies">Stripe-supported currency</a>.',
+		description: 'Three-letter ISO currency code, e.g. <code>USD</code> or <code>EUR</code>. It must be a <a href="https://stripe.com/docs/currencies">Stripe-supported currency</a>',
 		displayOptions: {
 			show: {
 				resource: [
@@ -144,7 +146,7 @@ export const couponFields = [
 		type: 'number',
 		required: true,
 		default: 1,
-		description: 'Percentage to apply with the coupon.',
+		description: 'Percentage to apply with the coupon',
 		typeOptions: {
 			minValue: 1,
 			maxValue: 100,
@@ -172,7 +174,7 @@ export const couponFields = [
 		name: 'returnAll',
 		type: 'boolean',
 		default: false,
-		description: 'Return all results.',
+		description: 'Return all results',
 		displayOptions: {
 			show: {
 				resource: [
@@ -189,7 +191,7 @@ export const couponFields = [
 		name: 'limit',
 		type: 'number',
 		default: 5,
-		description: 'The number of results to return.',
+		description: 'The number of results to return',
 		typeOptions: {
 			minValue: 1,
 			maxValue: 1000,

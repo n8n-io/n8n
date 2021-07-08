@@ -13,18 +13,22 @@ export const chargeOperations = [
 			{
 				name: 'Create',
 				value: 'create',
+				description: 'Create a charge',
 			},
 			{
 				name: 'Get',
 				value: 'get',
+				description: 'Get a charge',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
+				description: 'Get all charges',
 			},
 			{
 				name: 'Update',
 				value: 'update',
+				description: 'Update a charge',
 			},
 		],
 		displayOptions: {
@@ -47,7 +51,7 @@ export const chargeFields = [
 		type: 'string',
 		required: true,
 		default: '',
-		description: 'ID of the customer to be associated with this charge.',
+		description: 'ID of the customer to be associated with this charge',
 		displayOptions: {
 			show: {
 				resource: [
@@ -65,7 +69,7 @@ export const chargeFields = [
 		type: 'number',
 		required: true,
 		default: 0,
-		description: 'Amount in cents to be collected for this charge, e.g. enter <code>100</code> for $1.00.',
+		description: 'Amount in cents to be collected for this charge, e.g. enter <code>100</code> for $1.00',
 		typeOptions: {
 			minValue: 0,
 			maxValue: 99999999,
@@ -90,7 +94,7 @@ export const chargeFields = [
 		},
 		required: true,
 		default: '',
-		description: 'Three-letter ISO currency code, e.g. USD or EUR. It must be a <a href="https://stripe.com/docs/currencies">Stripe-supported currency</a>.',
+		description: 'Three-letter ISO currency code, e.g. <code>USD</code> or <code>EUR</code>. It must be a <a href="https://stripe.com/docs/currencies">Stripe-supported currency</a>',
 		displayOptions: {
 			show: {
 				resource: [
@@ -108,7 +112,7 @@ export const chargeFields = [
 		type: 'string',
 		required: true,
 		default: '',
-		description: 'ID of the customer\'s payment source to be charged.',
+		description: 'ID of the customer\'s payment source to be charged',
 		displayOptions: {
 			show: {
 				resource: [
@@ -142,14 +146,14 @@ export const chargeFields = [
 				name: 'description',
 				type: 'string',
 				default: '',
-				description: 'Arbitrary string to describe the charge to create.',
+				description: 'Arbitrary string to describe the charge to create',
 			},
 			{
 				displayName: 'Metadata',
 				name: 'metadata',
 				type: 'fixedCollection',
 				placeholder: 'Add Metadata Item',
-				description: 'Set of key-value pairs to attach to the charge to create.',
+				description: 'Set of key-value pairs to attach to the charge to create',
 				typeOptions: {
 					multipleValues: true,
 				},
@@ -179,13 +183,13 @@ export const chargeFields = [
 				name: 'receipt_email',
 				type: 'string',
 				default: '',
-				description: 'Email address to which the receipt for this charge will be sent.',
+				description: 'Email address to which the receipt for this charge will be sent',
 			},
 			{
 				displayName: 'Shipping',
 				name: 'shipping',
 				type: 'fixedCollection',
-				description: 'Shipping information for the charge.',
+				description: 'Shipping information for the charge',
 				placeholder: 'Add Field',
 				typeOptions: {
 					multipleValues: true,
@@ -209,42 +213,42 @@ export const chargeFields = [
 											{
 												displayName: 'Country',
 												name: 'country',
-												description: 'Two-letter country code (<a href="https://en.wikipedia.org/wiki/ISO_3166-1_alpha-2">ISO 3166-1 alpha-2</a>).',
+												description: 'Two-letter country code (<a href="https://en.wikipedia.org/wiki/ISO_3166-1_alpha-2">ISO 3166-1 alpha-2</a>)',
 												type: 'string',
 												default: '',
 											},
 											{
 												displayName: 'Line 1',
 												name: 'line1',
-												description: 'Address line 1 (e.g., street, PO Box, or company name).',
+												description: 'Address line 1 (e.g. street, PO Box, or company name)',
 												type: 'string',
 												default: '',
 											},
 											{
 												displayName: 'Line 2',
 												name: 'line2',
-												description: 'Address line 2 (e.g., apartment, suite, unit, or building).',
+												description: 'Address line 2 (e.g. apartment, suite, unit, or building)',
 												type: 'string',
 												default: '',
 											},
 											{
 												displayName: 'City',
 												name: 'city',
-												description: 'City, district, suburb, town, or village.',
+												description: 'City, district, suburb, town, or village',
 												type: 'string',
 												default: '',
 											},
 											{
 												displayName: 'State',
 												name: 'state',
-												description: 'State, county, province, or region.',
+												description: 'State, county, province, or region',
 												type: 'string',
 												default: '',
 											},
 											{
 												displayName: 'Postal Code',
 												name: 'postal_code',
-												description: 'ZIP or postal code.',
+												description: 'ZIP or postal code',
 												type: 'string',
 												default: '',
 											},
@@ -256,7 +260,7 @@ export const chargeFields = [
 								displayName: 'Recipient Name',
 								name: 'name',
 								type: 'string',
-								description: 'Name of the person who will receive the shipment.',
+								description: 'Name of the person who will receive the shipment',
 								default: '',
 							},
 						],
@@ -458,14 +462,14 @@ export const chargeFields = [
 											{
 												displayName: 'Line 1',
 												name: 'line1',
-												description: 'Address line 1 (e.g., street, PO Box, or company name).',
+												description: 'Address line 1 (e.g. street, PO Box, or company name).',
 												type: 'string',
 												default: '',
 											},
 											{
 												displayName: 'Line 2',
 												name: 'line2',
-												description: 'Address line 2 (e.g., apartment, suite, unit, or building).',
+												description: 'Address line 2 (e.g. apartment, suite, unit, or building).',
 												type: 'string',
 												default: '',
 											},

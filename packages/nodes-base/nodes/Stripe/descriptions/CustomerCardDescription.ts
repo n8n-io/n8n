@@ -13,14 +13,17 @@ export const customerCardOperations = [
 			{
 				name: 'Add',
 				value: 'add',
+				description: 'Add a customer card',
 			},
 			{
 				name: 'Get',
 				value: 'get',
+				description: 'Get a customer card',
 			},
 			{
 				name: 'Remove',
 				value: 'remove',
+				description: 'Remove a customer card',
 			},
 		],
 		displayOptions: {
@@ -35,7 +38,7 @@ export const customerCardOperations = [
 
 export const customerCardFields = [
 	// ----------------------------------
-	//         customerCard: add
+	//        customerCard: add
 	// ----------------------------------
 	{
 		displayName: 'Customer ID',
@@ -43,7 +46,7 @@ export const customerCardFields = [
 		type: 'string',
 		required: true,
 		default: '',
-		description: 'ID of the customer to be associated with this card.',
+		description: 'ID of the customer to be associated with this card',
 		displayOptions: {
 			show: {
 				resource: [
@@ -62,7 +65,7 @@ export const customerCardFields = [
 		required: true,
 		default: '',
 		placeholder: 'tok_1IMfKdJhRTnqS5TKQVG1LI9o',
-		description: 'Token representing sensitive card information.',
+		description: 'Token representing sensitive card information',
 		displayOptions: {
 			show: {
 				resource: [
@@ -76,7 +79,7 @@ export const customerCardFields = [
 	},
 
 	// ----------------------------------
-	//         customerCard: remove
+	//       customerCard: remove
 	// ----------------------------------
 	{
 		displayName: 'Customer ID',
@@ -84,7 +87,7 @@ export const customerCardFields = [
 		type: 'string',
 		required: true,
 		default: '',
-		description: 'ID of the customer whose card to remove.',
+		description: 'ID of the customer whose card to remove',
 		displayOptions: {
 			show: {
 				resource: [
@@ -102,7 +105,7 @@ export const customerCardFields = [
 		type: 'string',
 		required: true,
 		default: '',
-		description: 'ID of the card to remove.',
+		description: 'ID of the card to remove',
 		displayOptions: {
 			show: {
 				resource: [
@@ -124,7 +127,7 @@ export const customerCardFields = [
 		type: 'string',
 		required: true,
 		default: '',
-		description: 'ID of the customer whose card to retrieve.',
+		description: 'ID of the customer whose card to retrieve',
 		displayOptions: {
 			show: {
 				resource: [
@@ -142,7 +145,7 @@ export const customerCardFields = [
 		type: 'string',
 		required: true,
 		default: '',
-		description: 'ID of the source to retrieve.',
+		description: 'ID of the source to retrieve',
 		displayOptions: {
 			show: {
 				resource: [

@@ -13,6 +13,7 @@ export const tokenOperations = [
 			{
 				name: 'Create',
 				value: 'create',
+				description: 'Create a token',
 			},
 		],
 		displayOptions: {
@@ -35,7 +36,7 @@ export const tokenFields = [
 		type: 'options',
 		required: true,
 		default: 'cardToken',
-		description: 'Type of token to create.',
+		description: 'Type of token to create',
 		options: [
 			{
 				name: 'Card Token',
@@ -84,7 +85,7 @@ export const tokenFields = [
 				type: 'string',
 				default: '',
 				placeholder: '314',
-				description: 'Security code printed on the back of the card.',
+				description: 'Security code printed on the back of the card',
 			},
 			{
 				displayName: 'Expiration Month',

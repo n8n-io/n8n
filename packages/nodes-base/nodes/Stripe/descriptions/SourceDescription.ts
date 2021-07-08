@@ -13,14 +13,17 @@ export const sourceOperations = [
 			{
 				name: 'Create',
 				value: 'create',
+				description: 'Create a source',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
+				description: 'Delete a source',
 			},
 			{
 				name: 'Get',
 				value: 'get',
+				description: 'Get a source',
 			},
 		],
 		displayOptions: {
@@ -43,7 +46,7 @@ export const sourceFields = [
 		type: 'string',
 		required: true,
 		default: '',
-		description: 'ID of the customer to attach the source to.',
+		description: 'ID of the customer to attach the source to',
 		displayOptions: {
 			show: {
 				resource: [
@@ -61,7 +64,7 @@ export const sourceFields = [
 		type: 'options',
 		required: true,
 		default: '',
-		description: 'Type of source (payment instrument) to create.',
+		description: 'Type of source (payment instrument) to create',
 		options: [
 			{
 				name: 'WeChat',
@@ -84,7 +87,7 @@ export const sourceFields = [
 		name: 'amount',
 		type: 'number',
 		default: 0,
-		description: 'Amount in cents to be collected for this charge, e.g. enter <code>100</code> for $1.00.',
+		description: 'Amount in cents to be collected for this charge, e.g. enter <code>100</code> for $1.00',
 		typeOptions: {
 			minValue: 0,
 			maxValue: 99999999,
@@ -108,7 +111,7 @@ export const sourceFields = [
 			loadOptionsMethod: 'getCurrencies',
 		},
 		default: '',
-		description: 'Three-letter ISO currency code, e.g. USD or EUR. It must be a <a href="https://stripe.com/docs/currencies">Stripe-supported currency</a>.',
+		description: 'Three-letter ISO currency code, e.g. <code>USD</code> or <code>EUR</code>. It must be a <a href="https://stripe.com/docs/currencies">Stripe-supported currency</a>',
 		displayOptions: {
 			show: {
 				resource: [
@@ -142,7 +145,7 @@ export const sourceFields = [
 				name: 'metadata',
 				type: 'fixedCollection',
 				placeholder: 'Add Metadata Item',
-				description: 'Set of key-value pairs to attach to the source to create.',
+				description: 'Set of key-value pairs to attach to the source to create',
 				typeOptions: {
 					multipleValues: true,
 				},
@@ -172,7 +175,7 @@ export const sourceFields = [
 				name: 'statement_descriptor',
 				type: 'string',
 				default: '',
-				description: 'Arbitrary string to display on the customer\'s statement.',
+				description: 'Arbitrary string to display on the customer\'s statement',
 			},
 		],
 	},
@@ -186,7 +189,7 @@ export const sourceFields = [
 		type: 'string',
 		required: true,
 		default: '',
-		description: 'ID of the customer whose source to delete.',
+		description: 'ID of the customer whose source to delete',
 		displayOptions: {
 			show: {
 				resource: [
@@ -204,7 +207,7 @@ export const sourceFields = [
 		type: 'string',
 		required: true,
 		default: '',
-		description: 'ID of the source to delete.',
+		description: 'ID of the source to delete',
 		displayOptions: {
 			show: {
 				resource: [
@@ -226,7 +229,7 @@ export const sourceFields = [
 		type: 'string',
 		required: true,
 		default: '',
-		description: 'ID of the source to retrieve.',
+		description: 'ID of the source to retrieve',
 		displayOptions: {
 			show: {
 				resource: [
