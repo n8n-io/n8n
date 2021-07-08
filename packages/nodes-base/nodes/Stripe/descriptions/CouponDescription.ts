@@ -36,7 +36,7 @@ export const couponFields = [
 	//       coupon: create
 	// ----------------------------------
 	{
-		displayName: 'Duration',
+		displayName: 'Apply',
 		name: 'duration',
 		type: 'options',
 		required: true,
@@ -64,7 +64,7 @@ export const couponFields = [
 		},
 	},
 	{
-		displayName: 'Type',
+		displayName: 'Discount Type',
 		name: 'type',
 		type: 'options',
 		required: true,
@@ -72,7 +72,7 @@ export const couponFields = [
 		description: 'Whether the coupon discount is a percentage or a fixed amount',
 		options: [
 			{
-				name: 'Fixed Amount',
+				name: 'Fixed Amount (in Cents)',
 				value: 'fixedAmount',
 			},
 			{
