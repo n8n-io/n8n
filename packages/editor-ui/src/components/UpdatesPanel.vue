@@ -69,7 +69,7 @@ export default Vue.extend({
 
 	.description {
 		padding: 0px 30px;
-		margin-block-start: 30px;
+		margin-block-start: 16px;
 		margin-block-end: 30px;
 
 		p {
