@@ -89,6 +89,7 @@ export const tokenFields = [
 			},
 			{
 				displayName: 'Expiration Month',
+				description: 'Month when the card will expire',
 				name: 'exp_month',
 				type: 'number',
 				typeOptions: {
@@ -99,6 +100,7 @@ export const tokenFields = [
 			},
 			{
 				displayName: 'Expiration Year',
+				description: 'Year when the card will expire',
 				name: 'exp_year',
 				type: 'string',
 				default: '',
