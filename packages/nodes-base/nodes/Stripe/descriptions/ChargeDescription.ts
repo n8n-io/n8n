@@ -152,6 +152,7 @@ export const chargeFields = [
 				displayName: 'Metadata',
 				name: 'metadata',
 				type: 'fixedCollection',
+				default: [],
 				placeholder: 'Add Metadata Item',
 				description: 'Set of key-value pairs to attach to the charge to create',
 				typeOptions: {
@@ -194,6 +195,7 @@ export const chargeFields = [
 				typeOptions: {
 					multipleValues: true,
 				},
+				default: [],
 				options: [
 					{
 						displayName: 'Shipping Properties',
@@ -210,13 +212,6 @@ export const chargeFields = [
 										displayName: 'Details',
 										name: 'details',
 										values: [
-											{
-												displayName: 'Country',
-												name: 'country',
-												description: 'Two-letter country code (<a target="_blank" href="https://en.wikipedia.org/wiki/ISO_3166-1_alpha-2">ISO 3166-1 alpha-2</a>)',
-												type: 'string',
-												default: '',
-											},
 											{
 												displayName: 'Line 1',
 												name: 'line1',
@@ -242,6 +237,13 @@ export const chargeFields = [
 												displayName: 'State',
 												name: 'state',
 												description: 'State, county, province, or region',
+												type: 'string',
+												default: '',
+											},
+											{
+												displayName: 'Country',
+												name: 'country',
+												description: 'Two-letter country code (<a target="_blank" href="https://en.wikipedia.org/wiki/ISO_3166-1_alpha-2">ISO 3166-1 alpha-2</a>)',
 												type: 'string',
 												default: '',
 											},
@@ -300,7 +302,7 @@ export const chargeFields = [
 		name: 'returnAll',
 		type: 'boolean',
 		default: false,
-		description: 'Return all results.',
+		description: 'Whether to return all results or only up to a given limit',
 		displayOptions: {
 			show: {
 				resource: [
@@ -316,8 +318,8 @@ export const chargeFields = [
 		displayName: 'Limit',
 		name: 'limit',
 		type: 'number',
-		default: 5,
-		description: 'The number of results to return.',
+		default: 50,
+		description: 'How many results to return',
 		typeOptions: {
 			minValue: 1,
 			maxValue: 1000,
@@ -338,7 +340,7 @@ export const chargeFields = [
 	},
 
 	// ----------------------------------
-	//       charge: update
+	//          charge: update
 	// ----------------------------------
 	{
 		displayName: 'Charge ID',
@@ -346,7 +348,7 @@ export const chargeFields = [
 		type: 'string',
 		required: true,
 		default: '',
-		description: 'ID of the charge to update.',
+		description: 'ID of the charge to update',
 		displayOptions: {
 			show: {
 				resource: [
@@ -380,14 +382,14 @@ export const chargeFields = [
 				name: 'description',
 				type: 'string',
 				default: '',
-				description: 'Arbitrary string to describe the charge to update.',
+				description: 'Arbitrary string to describe the charge to update',
 			},
 			{
 				displayName: 'Metadata',
 				name: 'metadata',
 				type: 'fixedCollection',
 				placeholder: 'Add Metadata Item',
-				description: 'Set of key-value pairs to attach to the charge to update.',
+				description: 'Set of key-value pairs to attach to the charge to update',
 				typeOptions: {
 					multipleValues: true,
 				},
@@ -417,13 +419,13 @@ export const chargeFields = [
 				name: 'receipt_email',
 				type: 'string',
 				default: '',
-				description: 'The email address to which the receipt for this charge will be sent.',
+				description: 'The email address to which the receipt for this charge will be sent',
 			},
 			{
 				displayName: 'Shipping',
 				name: 'shipping',
 				type: 'fixedCollection',
-				description: 'Shipping information for the charge.',
+				description: 'Shipping information for the charge',
 				placeholder: 'Add Field',
 				typeOptions: {
 					multipleValues: true,
@@ -446,44 +448,44 @@ export const chargeFields = [
 										name: 'details',
 										values: [
 											{
-												displayName: 'City',
-												name: 'city',
-												description: 'City, district, suburb, town, or village.',
-												type: 'string',
-												default: '',
-											},
-											{
-												displayName: 'Country',
-												name: 'country',
-												description: 'Two-letter country code (<a target="_blank" href="https://en.wikipedia.org/wiki/ISO_3166-1_alpha-2">ISO 3166-1 alpha-2</a>).',
-												type: 'string',
-												default: '',
-											},
-											{
 												displayName: 'Line 1',
 												name: 'line1',
-												description: 'Address line 1 (e.g. street, PO Box, or company name).',
+												description: 'Address line 1 (e.g. street, PO Box, or company name)',
 												type: 'string',
 												default: '',
 											},
 											{
 												displayName: 'Line 2',
 												name: 'line2',
-												description: 'Address line 2 (e.g. apartment, suite, unit, or building).',
+												description: 'Address line 2 (e.g. apartment, suite, unit, or building)',
 												type: 'string',
 												default: '',
 											},
 											{
-												displayName: 'Postal Code',
-												name: 'postal_code',
-												description: 'ZIP or postal code.',
+												displayName: 'City',
+												name: 'city',
+												description: 'City, district, suburb, town, or village',
 												type: 'string',
 												default: '',
 											},
 											{
 												displayName: 'State',
 												name: 'state',
-												description: 'State, county, province, or region.',
+												description: 'State, county, province, or region',
+												type: 'string',
+												default: '',
+											},
+											{
+												displayName: 'Country',
+												name: 'country',
+												description: 'Two-letter country code (<a target="_blank" href="https://en.wikipedia.org/wiki/ISO_3166-1_alpha-2">ISO 3166-1 alpha-2</a>)',
+												type: 'string',
+												default: '',
+											},
+											{
+												displayName: 'Postal Code',
+												name: 'postal_code',
+												description: 'ZIP or postal code',
 												type: 'string',
 												default: '',
 											},
