@@ -607,6 +607,9 @@ a.logo {
 .el-menu-item.updates {
 	color: $--sidebar-inactive-color;	
 	font-size: 13px;
+	.item-title-root {
+		top: 0 !important;
+	}
 
 	&:hover {
 		color: $--sidebar-active-color;
