@@ -117,6 +117,8 @@ import { TagEntity } from './databases/entities/TagEntity';
 import { WorkflowEntity } from './databases/entities/WorkflowEntity';
 import { WorkflowNameRequest } from './WorkflowHelpers';
 
+import { DateUtils } from 'typeorm/util/DateUtils';
+
 class App {
 
 	app: express.Application;
@@ -1783,8 +1785,11 @@ class App {
 			const deleteData = req.body as IExecutionDeleteFilter;
 
 			if (deleteData.deleteBefore !== undefined) {
+				// date reformatting needed - see https://github.com/typeorm/typeorm/issues/2286
+				const utcDeleteBefore = DateUtils.mixedDateToUtcDatetimeString(deleteData.deleteBefore);
+
 				const filters = {
-					startedAt: LessThanOrEqual(deleteData.deleteBefore),
+					startedAt: LessThanOrEqual(utcDeleteBefore),
 				};
 				if (deleteData.filters !== undefined) {
 					Object.assign(filters, deleteData.filters);
