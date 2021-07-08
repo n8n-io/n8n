@@ -85,7 +85,8 @@ export class WorkflowRunner {
 	 * @param {string} executionId
 	 * @memberof WorkflowRunner
 	 */
-	processError(error: ExecutionError, startedAt: Date, executionMode: WorkflowExecuteMode, executionId: string): IRun {
+	async processError(error: ExecutionError, startedAt: Date, executionMode: WorkflowExecuteMode, executionId: string, hooks?: WorkflowHooks) {
+		// TODO: Seems like the error does currently not get displayed anywhere
 		const fullRunData: IRun = {
 			data: {
 				resultData: {
@@ -103,7 +104,9 @@ export class WorkflowRunner {
 		// set the execution to failed.
 		this.activeExecutions.remove(executionId, fullRunData);
 
-		return fullRunData;
+		if (hooks) {
+			await hooks.executeHookFunctions('workflowExecuteAfter', [fullRunData]);
+		}
 	}
 
 	/**
@@ -206,8 +209,7 @@ export class WorkflowRunner {
 			}
 
 		} catch (error) {
-			const fullRunData = this.processError(error, new Date(), data.executionMode, executionId);
-			await additionalData.hooks.executeHookFunctions('workflowExecuteAfter', [fullRunData]);
+			this.processError(error, new Date(), data.executionMode, executionId, additionalData.hooks);
 
 			throw error;
 		}
@@ -447,7 +449,7 @@ export class WorkflowRunner {
 			// Send all data to subprocess it needs to run the workflow
 			subprocess.send({ type: 'startWorkflow', data } as IProcessMessage);
 		} catch (error) {
-			this.processError(error, new Date(), data.executionMode, executionId);
+			this.processError(error, new Date(), data.executionMode, executionId, workflowHooks);
 			return executionId;
 		}
 
@@ -497,7 +499,7 @@ export class WorkflowRunner {
 			} else if (message.type === 'processError') {
 				clearTimeout(executionTimeout);
 				const executionError = message.data.executionError as ExecutionError;
-				this.processError(executionError, startedAt, data.executionMode, executionId);
+				this.processError(executionError, startedAt, data.executionMode, executionId, workflowHooks);
 
 			} else if (message.type === 'processHook') {
 				this.processHookMessage(workflowHooks, message.data as IProcessMessageDataHook);
@@ -505,6 +507,7 @@ export class WorkflowRunner {
 				// Execution timed out and its process has been terminated
 				const timeoutError = new WorkflowOperationError('Workflow execution timed out!');
 
+				// No need to add hook here as the subprocess takes care of calling the hooks
 				this.processError(timeoutError, startedAt, data.executionMode, executionId);
 			} else if (message.type === 'startExecution') {
 				const executionId = await this.activeExecutions.add(message.data.runData);
@@ -527,13 +530,13 @@ export class WorkflowRunner {
 				// Execution timed out and its process has been terminated
 				const timeoutError = new WorkflowOperationError('Workflow execution timed out!');
 
-				this.processError(timeoutError, startedAt, data.executionMode, executionId);
+				this.processError(timeoutError, startedAt, data.executionMode, executionId, workflowHooks);
 			} else if (code !== 0) {
 				Logger.debug(`Subprocess for execution ID ${executionId} finished with error code ${code}.`, {executionId});
 				// Process did exit with error code, so something went wrong.
 				const executionError = new WorkflowOperationError('Workflow execution process did crash for an unknown reason!');
 
-				this.processError(executionError, startedAt, data.executionMode, executionId);
+				this.processError(executionError, startedAt, data.executionMode, executionId, workflowHooks);
 			}
 
 			for(const executionId of childExecutionIds) {
