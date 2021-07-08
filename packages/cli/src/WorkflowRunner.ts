@@ -262,7 +262,10 @@ export class WorkflowRunner {
 		try {
 			job = await this.jobQueue.add(jobData, jobOptions);
 		} catch (error) {
-			this.processError(error, new Date(), data.executionMode, executionId);
+			// We use "getWorkflowHooksIntegrated" here as we are just integrated in the "workflowExecuteAfter"
+			// hook anyway and other get so ignored
+			const hooks = WorkflowExecuteAdditionalData.getWorkflowHooksIntegrated(data.executionMode, executionId, data.workflowData, { retryOf: data.retryOf ? data.retryOf.toString() : undefined });
+			this.processError(error, new Date(), data.executionMode, executionId, hooks);
 			return executionId;
 		}
 
