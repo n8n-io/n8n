@@ -1,6 +1,5 @@
 <template>
 	<Modal
-		v-if="currentVersion"
 		:name="modalName"
 		:drawer="true"
 		:visible="visible"
@@ -12,7 +11,7 @@
 		</template>
 		<template slot="content">
 			<section :class="$style['description']">
-				<p>You’re on {{ currentVersion.name }}, which was released <strong>{{currentReleaseDate}}</strong> and is {{ nextVersions.length }} version{{nextVersions.length > 1 ? 's' : ''}} behind the latest and greatest n8n</p>	
+				<p v-if="currentVersion">You’re on {{ currentVersion.name }}, which was released <strong>{{currentReleaseDate}}</strong> and is {{ nextVersions.length }} version{{nextVersions.length > 1 ? 's' : ''}} behind the latest and greatest n8n</p>	
 
 				<a :class="$style.update" :href="infoUrl" v-if="infoUrl" target="_blank">
 					<font-awesome-icon icon="info-circle"></font-awesome-icon>
@@ -60,28 +59,30 @@ export default Vue.extend({
 </script>
 
 <style module lang="scss">
-	.description {
-		padding: 0px 30px;
-		margin-bottom: 30px;
-
-		p {
-			font-size: 16px;
-			line-height: 22px;
-			color: $--updates-panel-description-text-color;
-			font-weight: 400;
-		}
-
-		div {
-			padding-top: 20px;
-		}
-	}
-
 	.title {
 		margin: 0;
 		font-size: 24px;
 		line-height: 24px;
 		color: $--updates-panel-text-color;
 		font-weight: 400;
+	}
+
+	.description {
+		padding: 0px 30px;
+		margin-block-start: 30px;
+		margin-block-end: 30px;
+
+		p {
+			font-size: 16px;
+			line-height: 22px;
+			color: $--updates-panel-description-text-color;
+			font-weight: 400;
+			margin: 0 0 30px 0;
+		}
+
+		div {
+			padding-top: 20px;
+		}
 	}
 
 	.content {
@@ -98,7 +99,7 @@ export default Vue.extend({
 	}
 
 	.versions-card {
-		margin-bottom: 15px;
+		margin-block-end: 15px;
 	}
 
 	.update {
