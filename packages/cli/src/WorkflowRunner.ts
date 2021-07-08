@@ -85,7 +85,7 @@ export class WorkflowRunner {
 	 * @param {string} executionId
 	 * @memberof WorkflowRunner
 	 */
-	processError(error: ExecutionError, startedAt: Date, executionMode: WorkflowExecuteMode, executionId: string) {
+	processError(error: ExecutionError, startedAt: Date, executionMode: WorkflowExecuteMode, executionId: string): IRun {
 		const fullRunData: IRun = {
 			data: {
 				resultData: {
@@ -102,6 +102,8 @@ export class WorkflowRunner {
 		// Remove from active execution with empty data. That will
 		// set the execution to failed.
 		this.activeExecutions.remove(executionId, fullRunData);
+
+		return fullRunData;
 	}
 
 	/**
@@ -180,12 +182,11 @@ export class WorkflowRunner {
 		const executionId = await this.activeExecutions.add(data, undefined);
 		Logger.verbose(`Execution for workflow ${data.workflowData.name} was assigned id ${executionId}`, {executionId});
 		let workflowExecution: PCancelable<IRun>;
+		additionalData.hooks = WorkflowExecuteAdditionalData.getWorkflowHooksMain(data, executionId, true);
 
 		try {
-			additionalData.hooks = WorkflowExecuteAdditionalData.getWorkflowHooksMain(data, executionId, true);
-
 			additionalData.sendMessageToUI = WorkflowExecuteAdditionalData.sendMessageToUI.bind({sessionId: data.sessionId});
-	
+
 			if (data.executionData !== undefined) {
 				Logger.debug(`Execution ID ${executionId} had Execution data. Running with payload.`, {executionId});
 				const workflowExecute = new WorkflowExecute(additionalData, data.executionMode, data.executionData);
@@ -193,7 +194,7 @@ export class WorkflowRunner {
 			} else if (data.runData === undefined || data.startNodes === undefined || data.startNodes.length === 0 || data.destinationNode === undefined) {
 				Logger.debug(`Execution ID ${executionId} will run executing all nodes.`, {executionId});
 				// Execute all nodes
-	
+
 				// Can execute without webhook so go on
 				const workflowExecute = new WorkflowExecute(additionalData, data.executionMode);
 				workflowExecution = workflowExecute.run(workflow, undefined, data.destinationNode);
@@ -203,12 +204,14 @@ export class WorkflowRunner {
 				const workflowExecute = new WorkflowExecute(additionalData, data.executionMode);
 				workflowExecution = workflowExecute.runPartialWorkflow(workflow, data.runData, data.startNodes, data.destinationNode);
 			}
-	
+
 		} catch (error) {
-			this.processError(error, new Date(), data.executionMode, executionId);
-			return executionId;
+			const fullRunData = this.processError(error, new Date(), data.executionMode, executionId);
+			await additionalData.hooks.executeHookFunctions('workflowExecuteAfter', [fullRunData]);
+
+			throw error;
 		}
-		
+
 		this.activeExecutions.attachWorkflowExecution(executionId, workflowExecution);
 
 		if (workflowTimeout > 0) {
@@ -260,7 +263,7 @@ export class WorkflowRunner {
 			this.processError(error, new Date(), data.executionMode, executionId);
 			return executionId;
 		}
-		
+
 		console.log('Started with ID: ' + job.id.toString());
 
 		const hooks = WorkflowExecuteAdditionalData.getWorkflowHooksWorkerMain(data.executionMode, executionId, data.workflowData, { retryOf: data.retryOf ? data.retryOf.toString() : undefined });
@@ -447,7 +450,7 @@ export class WorkflowRunner {
 			this.processError(error, new Date(), data.executionMode, executionId);
 			return executionId;
 		}
-		
+
 		// Start timeout for the execution
 		let executionTimeout: NodeJS.Timeout;
 		let workflowTimeout = config.get('executions.timeout') as number; // initialize with default
