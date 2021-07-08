@@ -4,26 +4,26 @@ import {
 
 export const operationFields = [
 	// ----------------------------------
-	//           shared (top)
+	//             shared
 	// ----------------------------------
 	{
-		displayName: 'Database ID',
+		displayName: 'Database',
 		name: 'databaseId',
 		type: 'options',
 		default: '',
 		required: true,
-		description: 'ID of the database to operate on',
+		description: 'Database to operate on',
 		typeOptions: {
 			loadOptionsMethod: 'getDatabaseIds',
 		},
 	},
 	{
-		displayName: 'Table ID',
+		displayName: 'Table',
 		name: 'tableId',
 		type: 'options',
 		default: '',
 		required: true,
-		description: 'ID of the table to operate on',
+		description: 'Table to operate on',
 		typeOptions: {
 			loadOptionsDependsOn: [
 				'databaseId',
@@ -50,6 +50,7 @@ export const operationFields = [
 		required: true,
 		description: 'ID of the row to return',
 	},
+
 	// ----------------------------------
 	//              update
 	// ----------------------------------
@@ -151,7 +152,6 @@ export const operationFields = [
 	// ----------------------------------
 	//             create
 	// ----------------------------------
-	
 	{
 		displayName: 'Send Input Data',
 		name: 'sendInputData',
