@@ -1,5 +1,5 @@
 <template functional>
-  <span>
+  <fragment>
     <el-tag
       v-if="props.type === 'danger'"
       type="danger"
@@ -15,7 +15,7 @@
     >
       {{ props.text }}
     </el-tag>
-  </span>
+  </fragment>
 </template>
 
 <script lang="ts">

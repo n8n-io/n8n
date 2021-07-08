@@ -21,6 +21,7 @@ import { runExternalHook } from './components/mixins/externalHooks';
 
 // @ts-ignore
 import vClickOutside from 'v-click-outside';
+import Fragment from 'vue-fragment'
 
 import { library } from '@fortawesome/fontawesome-svg-core';
 import {
@@ -196,6 +197,7 @@ library.add(faUsers);
 library.add(faClock);
 
 Vue.component('font-awesome-icon', FontAwesomeIcon);
+Vue.use(Fragment.Plugin);
 
 Vue.config.productionTip = false;
 router.afterEach((to, from) => {
