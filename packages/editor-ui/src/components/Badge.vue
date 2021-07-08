@@ -20,7 +20,7 @@
 
 <script lang="ts">
 export default {
-  props: ["text", "type"],
+	props: ["text", "type"],
 };
 </script>
 

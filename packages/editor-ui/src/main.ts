@@ -21,7 +21,7 @@ import { runExternalHook } from './components/mixins/externalHooks';
 
 // @ts-ignore
 import vClickOutside from 'v-click-outside';
-import Fragment from 'vue-fragment'
+import Fragment from 'vue-fragment';
 
 import { library } from '@fortawesome/fontawesome-svg-core';
 import {
