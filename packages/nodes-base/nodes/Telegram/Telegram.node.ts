@@ -206,6 +206,11 @@ export class Telegram implements INodeType {
 						description: 'Edit a text message',
 					},
 					{
+						name: 'Delete Chat Message',
+						value: 'deleteMessage',
+						description: 'Delete a chat message',
+					},
+					{
 						name: 'Pin Chat Message',
 						value: 'pinChatMessage',
 						description: 'Pin a chat message',
@@ -286,6 +291,7 @@ export class Telegram implements INodeType {
 							'get',
 							'leave',
 							'member',
+							'deleteMessage',
 							'pinChatMessage',
 							'unpinChatMessage',
 							'setDescription',
@@ -309,6 +315,28 @@ export class Telegram implements INodeType {
 				},
 				required: true,
 				description: 'Unique identifier for the target chat or username of the target<br />channel (in the format @channelusername).',
+			},
+
+			// ----------------------------------
+			//       message:deleteMessage
+			// ----------------------------------
+			{
+				displayName: 'Message ID',
+				name: 'messageId',
+				type: 'string',
+				default: '',
+				displayOptions: {
+					show: {
+						operation: [
+							'deleteMessage',
+						],
+						resource: [
+							'message',
+						],
+					},
+				},
+				required: true,
+				description: 'Unique identifier of the message to delete.',
 			},
 
 			// ----------------------------------
@@ -1848,6 +1876,16 @@ export class Telegram implements INodeType {
 
 					// Add additional fields and replyMarkup
 					addAdditionalFields.call(this, body, i);
+
+				} else if (operation === 'deleteMessage') {
+					// ----------------------------------
+					//       message:deleteMessage
+					// ----------------------------------
+
+					endpoint = 'deleteMessage';
+
+					body.chat_id = this.getNodeParameter('chatId', i) as string;
+					body.message_id = this.getNodeParameter('messageId', i) as string;
 
 				} else if (operation === 'pinChatMessage') {
 					// ----------------------------------
