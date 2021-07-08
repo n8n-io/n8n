@@ -11,7 +11,7 @@
 		</template>
 		<template slot="content">
 			<section :class="$style['description']">
-				<p v-if="currentVersion">You’re on {{ currentVersion.name }}, which was released <strong>{{currentReleaseDate}}</strong> and is <strong> {{ nextVersions.length }} version{{nextVersions.length > 1 ? 's' : ''}}</strong> behind the latest and greatest n8n</p>	
+				<p v-if="currentVersion">You’re on {{ currentVersion.name }}, which was released <strong><TimeAgo :date="currentVersion.createdAt" /></strong> and is <strong> {{ nextVersions.length }} version{{nextVersions.length > 1 ? 's' : ''}}</strong> behind the latest and greatest n8n</p>	
 
 				<a :class="$style.update" :href="infoUrl" v-if="infoUrl" target="_blank">
 					<font-awesome-icon icon="info-circle"></font-awesome-icon>
@@ -33,9 +33,9 @@
 <script lang="ts">
 import Vue from 'vue';
 import { mapGetters } from 'vuex';
-import { format } from 'timeago.js';
 
 import Modal from './Modal.vue';
+import TimeAgo from './TimeAgo.vue';
 import VersionCard from './VersionCard.vue';
 
 export default Vue.extend({
@@ -43,6 +43,7 @@ export default Vue.extend({
 	components: {
 		Modal,
 		VersionCard,
+		TimeAgo,
 	},
 	props: ['modalName', 'visible'],
 	computed: {
@@ -51,9 +52,6 @@ export default Vue.extend({
 			'currentVersion',
 			'infoUrl',
 		]),
-		currentReleaseDate() {
-			return format(this.currentVersion.createdAt);
-		},
 	},
 });
 </script>

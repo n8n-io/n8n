@@ -13,7 +13,7 @@
 				<el-tag v-if="version.hasBreakingChange" size="small" :class="`${$style['breaking-change']} ${$style['badge']}`">Breaking changes</el-tag>
 			</div>
 			<div :class="$style.released">
-				Released {{releaseDate}}
+				Released&nbsp;<TimeAgo :date="version.createdAt" />
 			</div>
 		</div>
 		<div>
@@ -31,19 +31,16 @@
 
 <script lang="ts">
 import Vue from 'vue';
-import { format } from 'timeago.js';
 import NodeIcon from './NodeIcon.vue';
 import { IVersion } from '@/Interface';
+import TimeAgo from './TimeAgo.vue';
 
 
 export default Vue.extend({
-	components: { NodeIcon },
+	components: { NodeIcon, TimeAgo },
 	name: 'UpdatesPanel',
 	props: ['version'],
 	computed: {
-		releaseDate() {
-			return format(this.version.createdAt);
-		},
 		hasMoreThan2Rows(): boolean {
 			const version = this.version as IVersion;
 			return version.nodes && version.nodes.length > 20;
