@@ -620,7 +620,7 @@ const config = convict({
 
 	versionNotifications: {
 		enabled: {
-			doc: 'Whether feature to request more version information is enabled.',
+			doc: 'Whether feature to request new version notifications is enabled.',
 			format: Boolean,
 			default: true,
 			env: 'N8N_VERSION_NOTIFICATIONS_ENABLED',
@@ -632,10 +632,10 @@ const config = convict({
 			env: 'N8N_VERSION_NOTIFICATIONS_ENDPOINT',
 		},
 		infoUrl: {
-			doc: 'Url in updates panel UI to get more informaton on updating instance',
+			doc: `Url in New Versions Panel with more information on updating one's instance.`,
 			format: String,
 			default: 'https://docs.n8n.io/reference/',
-			env: 'N8N_VERSION_NOTIFICATIONS_ENDPOINT',
+			env: 'N8N_VERSION_NOTIFICATIONS_INFO_URL',
 		},
 	},
 
