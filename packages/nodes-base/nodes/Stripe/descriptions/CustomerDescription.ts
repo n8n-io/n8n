@@ -581,13 +581,6 @@ export const customerFields = [
 										name: 'details',
 										values: [
 											{
-												displayName: 'Country',
-												name: 'country',
-												description: 'Two-letter country code (<a target="_blank" href="https://en.wikipedia.org/wiki/ISO_3166-1_alpha-2">ISO 3166-1 alpha-2</a>)',
-												type: 'string',
-												default: '',
-											},
-											{
 												displayName: 'Line 1',
 												name: 'line1',
 												description: 'Address line 1 (e.g. street, PO Box, or company name)',
@@ -612,6 +605,13 @@ export const customerFields = [
 												displayName: 'State',
 												name: 'state',
 												description: 'State, county, province, or region',
+												type: 'string',
+												default: '',
+											},
+											{
+												displayName: 'Country',
+												name: 'country',
+												description: 'Two-letter country code (<a target="_blank" href="https://en.wikipedia.org/wiki/ISO_3166-1_alpha-2">ISO 3166-1 alpha-2</a>)',
 												type: 'string',
 												default: '',
 											},
