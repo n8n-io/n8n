@@ -14,7 +14,7 @@
 			<section :class="$style['description']">
 				<p>You’re on {{ currentVersion.name }}, which was released <strong>{{currentReleaseDate}}</strong> and is {{ nextVersions.length }} version{{nextVersions.length > 1 ? 's' : ''}} behind the latest and greatest n8n</p>	
 
-				<a :class="$style.update" :href="UPDATE_INFO_URL" v-if="UPDATE_INFO_URL" target="_blank">
+				<a :class="$style.update" :href="infoUrl" v-if="infoUrl" target="_blank">
 					<font-awesome-icon icon="info-circle"></font-awesome-icon>
 					<span>How to update your n8n version</span>
 				</a>
@@ -38,7 +38,6 @@ import { format } from 'timeago.js';
 
 import Modal from './Modal.vue';
 import VersionCard from './VersionCard.vue';
-import { UPDATE_INFO_URL } from '@/constants';
 
 export default Vue.extend({
 	name: 'UpdatesPanel',
@@ -47,15 +46,11 @@ export default Vue.extend({
 		VersionCard,
 	},
 	props: ['modalName', 'visible'],
-	data() {
-		return {
-			UPDATE_INFO_URL,
-		};
-	},
 	computed: {
 		...mapGetters('versions', [
 			'nextVersions',
 			'currentVersion',
+			'infoUrl',
 		]),
 		currentReleaseDate() {
 			return format(this.currentVersion.createdAt);

@@ -445,6 +445,12 @@ export interface IPushDataConsoleMessage {
 	message: string;
 }
 
+export interface IVersionNotificationSettings {
+	enabled: boolean;
+	endpoint: string;
+	infoUrl: string;
+}
+
 export interface IN8nUISettings {
 	endpointWebhook: string;
 	endpointWebhookTest: string;
@@ -463,6 +469,7 @@ export interface IN8nUISettings {
 	n8nMetadata?: {
 		[key: string]: string | number | undefined;
 	};
+	versionNotifications: IVersionNotificationSettings;
 }
 
 export interface IWorkflowSettings extends IWorkflowSettingsWorkflow {
@@ -635,6 +642,7 @@ export interface IUiState {
 }
 
 export interface IVersionsState {
+	versionNotificationSettings: IVersionNotificationSettings;
 	nextVersions: IVersion[];
 	currentVersion: IVersion | undefined;
 }

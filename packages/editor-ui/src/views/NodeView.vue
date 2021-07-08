@@ -2170,6 +2170,7 @@ export default mixins(
 				this.$store.commit('setVersionCli', settings.versionCli);
 				this.$store.commit('setOauthCallbackUrls', settings.oauthCallbackUrls);
 				this.$store.commit('setN8nMetadata', settings.n8nMetadata || {});
+				this.$store.commit('versions/setVersionNotificationSettings', settings.versionNotifications);
 			},
 			async loadNodeTypes (): Promise<void> {
 				const nodeTypes = await this.restApi().getNodeTypes();
@@ -2194,7 +2195,35 @@ export default mixins(
 					this.stopLoading();
 				}
 			},
+			async checkForNewVersions() {
+				const enabled = this.$store.getters['versions/areNotificationsEnabled'];
+				if (!enabled) {
+					return;
+				}
+
+				await this.$store.dispatch('versions/fetchVersions');
+				const currentVersion: IVersion | undefined = this.$store.getters['versions/currentVersion'];
+				const nextVersions: IVersion[] = this.$store.getters['versions/nextVersions'];
+				if (currentVersion && currentVersion.hasSecurityIssue && nextVersions.length) {
+					const fixVersion = currentVersion.securityIssueFixVersion;
+					let message = `Please update to latest version.`;
+					if (fixVersion) {
+						message = `Please update to version ${fixVersion} or higher.`;
+					}
+
+					message = `${message} <a class="primary-color">More info</a>`;
+					this.$showWarning('Critical Update', message, {
+						onClick: () => {
+							this.$store.dispatch('ui/openUpdatesPanel');
+						},
+						closeOnClick: true,
+						customClass: 'clickable',
+						duration: 0,
+					});
+				}
+			},
 		},
+
 
 		async mounted () {
 			this.$root.$on('importWorkflowData', async (data: IDataObject) => {
@@ -2237,27 +2266,7 @@ export default mixins(
 				this.stopLoading();
 
 				setTimeout(async () => {
-					await this.$store.dispatch('versions/fetchVersions');
-					const currentVersion: IVersion | undefined = this.$store.getters['versions/currentVersion'];
-					const nextVersions: IVersion[] = this.$store.getters['versions/nextVersions'];
-					if (currentVersion && currentVersion.hasSecurityIssue && nextVersions.length) {
-						const fixVersion = currentVersion.securityIssueFixVersion;
-						let message = `Please update to latest version.`;
-						if (fixVersion) {
-							message = `Please update to version ${fixVersion} or higher.`;
-						}
-
-						message = `${message} <a class="primary-color">More info</a>`;
-						this.$showWarning('Critical Update', message, {
-							onClick: () => {
-								this.$store.dispatch('ui/openUpdatesPanel');
-							},
-							closeOnClick: true,
-							customClass: 'clickable',
-							duration: 0,
-						});
-					}
-
+					this.checkForNewVersions();
 				}, 0);
 			});
 

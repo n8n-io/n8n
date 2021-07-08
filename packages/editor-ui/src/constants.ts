@@ -49,7 +49,3 @@ export const HIDDEN_NODES = ['n8n-nodes-base.start'];
 export const WEBHOOK_NODE_NAME = 'n8n-nodes-base.webhook';
 export const HTTP_REQUEST_NODE_NAME = 'n8n-nodes-base.httpRequest';
 export const REQUEST_NODE_FORM_URL = 'https://n8n-community.typeform.com/to/K1fBVTZ3';
-
-// versions
-export const VERSIONS_BASE_URL = `https://api-staging.n8n.io/versions/`;
-export const UPDATE_INFO_URL = 'https://docs.n8n.io/';
