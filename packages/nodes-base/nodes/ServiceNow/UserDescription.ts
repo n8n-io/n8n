@@ -45,7 +45,6 @@ export const userOperations = [
 			},
 		],
 		default: 'get',
-		description: 'The operation to perform',
 	},
 ] as INodeProperties[];
 
@@ -70,7 +69,7 @@ export const userFields = [
 			},
 		},
 		required: true,
-		description: 'Short description of the user.',
+		description: 'Short description of the user',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -94,7 +93,7 @@ export const userFields = [
 				name: 'active',
 				type: 'boolean',
 				default: '',
-				description:'If checked, the user will be set to active.',
+				description:'Whether to activate the user.',
 			},
 			{
 				displayName: 'Building',
@@ -206,7 +205,7 @@ export const userFields = [
 				name: 'password_needs_reset',
 				type: 'boolean',
 				default: '',
-				description:'If checked, the password will need to be reset when the user logs in.',
+				description:'Whether to require a password reset when the user logs in.',
 			},
 			{
 				displayName: 'Phone',
@@ -282,7 +281,7 @@ export const userFields = [
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'If all results should be returned or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -307,8 +306,8 @@ export const userFields = [
 			minValue: 1,
 			maxValue: 500,
 		},
-		default: 100,
-		description: 'How many results to return.',
+		default: 50,
+		description: 'How many results to return',
 	},
 
 	/* -------------------------------------------------------------------------- */
@@ -340,7 +339,7 @@ export const userFields = [
 			},
 		},
 		required: true,
-		description: 'Unique identifier of the user.',
+		description: 'Unique identifier of the user',
 	},
 	{
 		displayName: 'Username',
@@ -361,7 +360,7 @@ export const userFields = [
 			},
 		},
 		required: true,
-		description: 'Unique identifier of the user.',
+		description: 'Unique identifier of the user',
 	},
 	{
 		displayName: 'User ID',
@@ -382,7 +381,7 @@ export const userFields = [
 			},
 		},
 		required: true,
-		description: 'Unique identifier of the user.',
+		description: 'Unique identifier of the user',
 	},
 	{
 		displayName: 'User ID',
@@ -400,7 +399,7 @@ export const userFields = [
 			},
 		},
 		required: true,
-		description: 'Unique identifier of the user.',
+		description: 'Unique identifier of the user',
 	},
 	{
 		displayName: 'Options',
@@ -441,14 +440,14 @@ export const userFields = [
 					},
 				],
 				default: 'false',
-				description: 'Choose which values to return.',
+				description: 'Choose which values to return',
 			},
 			{
 				displayName: 'Exclude Reference Link',
 				name: 'sysparm_exclude_reference_link',
 				type: 'boolean',
 				default: false,
-				description: 'Exclude Table API links for reference fields.',
+				description: 'Whether to exclude Table API links for reference fields',
 			},
 			{
 				displayName: 'Fields',
@@ -461,21 +460,21 @@ export const userFields = [
 					],
 				},
 				default: '',
-				description: 'A list of fields to return.',
+				description: 'A list of fields to return',
 			},
 			{
 				displayName: 'Query',
 				name: 'sysparm_query',
 				type: 'string',
 				default: '',
-				description: 'An encoded query string used to filter the results. <br/> The encoded query can be created as mentioned in the <a href="https://developer.servicenow.com/dev.do#!/learn/learning-plans/quebec/servicenow_application_developer/app_store_learnv2_rest_quebec_more_about_query_parameters" target="_blank">Docs</a>.',
+				description: 'An encoded query string used to filter the results, <a href="https://developer.servicenow.com/dev.do#!/learn/learning-plans/quebec/servicenow_application_developer/app_store_learnv2_rest_quebec_more_about_query_parameters" target="_blank">more info</a>',
 			},
 			{
 				displayName: 'View',
 				name: 'sysparm_view',
 				type: 'boolean',
 				default: false,
-				description: 'Render the response according to the specified UI view (overridden by Fields option).',
+				description: 'Whether to render the response according to the specified UI view (overridden by Fields option)',
 			},
 		],
 	},
@@ -498,7 +497,7 @@ export const userFields = [
 			},
 		},
 		required: true,
-		description: 'Unique identifier of the user.',
+		description: 'Unique identifier of the user',
 	},
 	{
 		displayName: 'Update Fields',
@@ -522,7 +521,7 @@ export const userFields = [
 				name: 'active',
 				type: 'boolean',
 				default: '',
-				description:'If checked, the user will be set to active.',
+				description:'Whether to activate the user.',
 			},
 			{
 				displayName: 'Building',
@@ -634,7 +633,7 @@ export const userFields = [
 				name: 'password_needs_reset',
 				type: 'boolean',
 				default: '',
-				description:'If checked, the password will need to be reset when the user logs in.',
+				description:'Whether to require a password reset when the user logs in.',
 			},
 			{
 				displayName: 'Phone',
