@@ -179,30 +179,36 @@ export class WorkflowRunner {
 		// Register the active execution
 		const executionId = await this.activeExecutions.add(data, undefined);
 		Logger.verbose(`Execution for workflow ${data.workflowData.name} was assigned id ${executionId}`, {executionId});
-
-		additionalData.hooks = WorkflowExecuteAdditionalData.getWorkflowHooksMain(data, executionId, true);
-
-		additionalData.sendMessageToUI = WorkflowExecuteAdditionalData.sendMessageToUI.bind({sessionId: data.sessionId});
-
 		let workflowExecution: PCancelable<IRun>;
-		if (data.executionData !== undefined) {
-			Logger.debug(`Execution ID ${executionId} had Execution data. Running with payload.`, {executionId});
-			const workflowExecute = new WorkflowExecute(additionalData, data.executionMode, data.executionData);
-			workflowExecution = workflowExecute.processRunExecutionData(workflow);
-		} else if (data.runData === undefined || data.startNodes === undefined || data.startNodes.length === 0 || data.destinationNode === undefined) {
-			Logger.debug(`Execution ID ${executionId} will run executing all nodes.`, {executionId});
-			// Execute all nodes
 
-			// Can execute without webhook so go on
-			const workflowExecute = new WorkflowExecute(additionalData, data.executionMode);
-			workflowExecution = workflowExecute.run(workflow, undefined, data.destinationNode);
-		} else {
-			Logger.debug(`Execution ID ${executionId} is a partial execution.`, {executionId});
-			// Execute only the nodes between start and destination nodes
-			const workflowExecute = new WorkflowExecute(additionalData, data.executionMode);
-			workflowExecution = workflowExecute.runPartialWorkflow(workflow, data.runData, data.startNodes, data.destinationNode);
+		try {
+			additionalData.hooks = WorkflowExecuteAdditionalData.getWorkflowHooksMain(data, executionId, true);
+
+			additionalData.sendMessageToUI = WorkflowExecuteAdditionalData.sendMessageToUI.bind({sessionId: data.sessionId});
+	
+			if (data.executionData !== undefined) {
+				Logger.debug(`Execution ID ${executionId} had Execution data. Running with payload.`, {executionId});
+				const workflowExecute = new WorkflowExecute(additionalData, data.executionMode, data.executionData);
+				workflowExecution = workflowExecute.processRunExecutionData(workflow);
+			} else if (data.runData === undefined || data.startNodes === undefined || data.startNodes.length === 0 || data.destinationNode === undefined) {
+				Logger.debug(`Execution ID ${executionId} will run executing all nodes.`, {executionId});
+				// Execute all nodes
+	
+				// Can execute without webhook so go on
+				const workflowExecute = new WorkflowExecute(additionalData, data.executionMode);
+				workflowExecution = workflowExecute.run(workflow, undefined, data.destinationNode);
+			} else {
+				Logger.debug(`Execution ID ${executionId} is a partial execution.`, {executionId});
+				// Execute only the nodes between start and destination nodes
+				const workflowExecute = new WorkflowExecute(additionalData, data.executionMode);
+				workflowExecution = workflowExecute.runPartialWorkflow(workflow, data.runData, data.startNodes, data.destinationNode);
+			}
+	
+		} catch (error) {
+			this.activeExecutions.remove(executionId);
+			return executionId;
 		}
-
+		
 		this.activeExecutions.attachWorkflowExecution(executionId, workflowExecution);
 
 		if (workflowTimeout > 0) {
@@ -247,7 +253,14 @@ export class WorkflowRunner {
 			removeOnComplete: true,
 			removeOnFail: true,
 		};
-		const job = await this.jobQueue.add(jobData, jobOptions);
+		let job: Bull.Job;
+		try {
+			job = await this.jobQueue.add(jobData, jobOptions);
+		} catch (error) {
+			this.activeExecutions.remove(executionId);
+			return executionId;
+		}
+		
 		console.log('Started with ID: ' + job.id.toString());
 
 		const hooks = WorkflowExecuteAdditionalData.getWorkflowHooksWorkerMain(data.executionMode, executionId, data.workflowData, { retryOf: data.retryOf ? data.retryOf.toString() : undefined });
@@ -427,9 +440,14 @@ export class WorkflowRunner {
 
 		const workflowHooks = WorkflowExecuteAdditionalData.getWorkflowHooksMain(data, executionId);
 
-		// Send all data to subprocess it needs to run the workflow
-		subprocess.send({ type: 'startWorkflow', data } as IProcessMessage);
-
+		try {
+			// Send all data to subprocess it needs to run the workflow
+			subprocess.send({ type: 'startWorkflow', data } as IProcessMessage);
+		} catch (error) {
+			this.activeExecutions.stopExecution(executionId, 'timeout');
+			return executionId;
+		}
+		
 		// Start timeout for the execution
 		let executionTimeout: NodeJS.Timeout;
 		let workflowTimeout = config.get('executions.timeout') as number; // initialize with default
