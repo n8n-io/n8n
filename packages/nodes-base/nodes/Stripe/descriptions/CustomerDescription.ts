@@ -148,7 +148,7 @@ export const customerFields = [
 				name: 'description',
 				type: 'string',
 				default: '',
-				description: 'Arbitrary string to describe the customer to create',
+				description: 'Arbitrary text to describe the customer to create',
 			},
 			{
 				displayName: 'Email',
@@ -501,7 +501,7 @@ export const customerFields = [
 				name: 'description',
 				type: 'string',
 				default: '',
-				description: 'Arbitrary string to describe the customer to create',
+				description: 'Arbitrary text to describe the customer to create',
 			},
 			{
 				displayName: 'Email',

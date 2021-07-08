@@ -176,7 +176,7 @@ export const sourceFields = [
 				name: 'statement_descriptor',
 				type: 'string',
 				default: '',
-				description: 'Arbitrary string to display on the customer\'s statement',
+				description: 'Arbitrary text to display on the customer\'s statement',
 			},
 		],
 	},

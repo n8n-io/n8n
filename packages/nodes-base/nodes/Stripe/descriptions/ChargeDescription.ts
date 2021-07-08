@@ -146,7 +146,7 @@ export const chargeFields = [
 				name: 'description',
 				type: 'string',
 				default: '',
-				description: 'Arbitrary string to describe the charge to create',
+				description: 'Arbitrary text to describe the charge to create',
 			},
 			{
 				displayName: 'Metadata',
@@ -382,7 +382,7 @@ export const chargeFields = [
 				name: 'description',
 				type: 'string',
 				default: '',
-				description: 'Arbitrary string to describe the charge to update',
+				description: 'Arbitrary text to describe the charge to update',
 			},
 			{
 				displayName: 'Metadata',
