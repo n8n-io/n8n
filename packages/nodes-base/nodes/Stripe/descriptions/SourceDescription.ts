@@ -63,7 +63,7 @@ export const sourceFields = [
 		name: 'type',
 		type: 'options',
 		required: true,
-		default: '',
+		default: 'wechat',
 		description: 'Type of source (payment instrument) to create',
 		options: [
 			{
@@ -146,6 +146,7 @@ export const sourceFields = [
 				type: 'fixedCollection',
 				placeholder: 'Add Metadata Item',
 				description: 'Set of key-value pairs to attach to the source to create',
+				default: {},
 				typeOptions: {
 					multipleValues: true,
 				},
