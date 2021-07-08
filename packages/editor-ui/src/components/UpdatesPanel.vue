@@ -11,7 +11,7 @@
 		</template>
 		<template slot="content">
 			<section :class="$style['description']">
-				<p v-if="currentVersion">You’re on {{ currentVersion.name }}, which was released <strong>{{currentReleaseDate}}</strong> and is {{ nextVersions.length }} version{{nextVersions.length > 1 ? 's' : ''}} behind the latest and greatest n8n</p>	
+				<p v-if="currentVersion">You’re on {{ currentVersion.name }}, which was released <strong>{{currentReleaseDate}}</strong> and is <strong> {{ nextVersions.length }} version{{nextVersions.length > 1 ? 's' : ''}}</strong> behind the latest and greatest n8n</p>	
 
 				<a :class="$style.update" :href="infoUrl" v-if="infoUrl" target="_blank">
 					<font-awesome-icon icon="info-circle"></font-awesome-icon>
