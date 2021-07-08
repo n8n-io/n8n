@@ -637,7 +637,7 @@ a.logo {
 			border-radius: 50%;
 			color: $--sidebar-active-color;
 			position: absolute;
-			background-color: #fff;
+			background-color: $--sidebar-gift-notification-outer-color;
 			z-index: 9999;
 			left: 75%;
 			display: flex;
@@ -648,7 +648,7 @@ a.logo {
 			div {
 				height: 6px;
 				width: 6px;
-				background-color: $--color-primary;
+				background-color: $--sidebar-gift-notification-inner-color;
 				border-radius: 50%;
 			}
 		}

@@ -77,7 +77,7 @@ export default Vue.extend({
 			line-height: 22px;
 			color: $--updates-panel-description-text-color;
 			font-weight: 400;
-			margin: 0 0 30px 0;
+			margin: 0 0 16px 0;
 		}
 
 		div {

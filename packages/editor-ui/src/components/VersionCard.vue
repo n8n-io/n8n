@@ -54,7 +54,7 @@ export default Vue.extend({
 
 <style module lang="scss">
 	.card {
-		background-color: #fff;
+		background-color: $--version-card-background-color;
 		border: $--version-card-border;
 		border-radius: 8px;
 		display: block;

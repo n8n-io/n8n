@@ -49,6 +49,8 @@ $--sidebar-width: 65px;
 $--sidebar-expanded-width: 200px;
 $--sidebar-inactive-color: #909399;
 $--sidebar-active-color: $--color-primary;
+$--sidebar-gift-notification-inner-color: $--color-primary;
+$--sidebar-gift-notification-outer-color: #fff;
 
 $--tags-manager-min-height: 300px;
 
@@ -101,6 +103,7 @@ $--updates-panel-text-color: #555555;
 
 // versions card
 $--version-card-name-text-color: #666666;
+$--version-card-background-color: #fff;
 $--version-card-border: 1px #dbdfe7 solid;
 $--version-card-description-text-color: #7d7d87;
 $--version-card-release-date-text-color: #909399;
@@ -111,3 +114,4 @@ $--version-card-breaking-change-background-color: rgba(255, 229, 100, 0.3);
 $--version-card-breaking-change-color: #6b5900;
 $--version-card-security-flag-color: #ff8080;
 $--version-card-box-shadow-color: rgba(109, 48, 40, 0.07);
+
