@@ -618,6 +618,27 @@ const config = convict({
 		},
 	},
 
+	versionNotifications: {
+		enabled: {
+			doc: 'Whether feature to request more version information is enabled.',
+			format: Boolean,
+			default: true,
+			env: 'N8N_VERSION_NOTIFICATIONS_ENABLED',
+		},
+		endpoint: {
+			doc: 'Endpoint to retrieve version information from.',
+			format: String,
+			default: 'https://api-staging.n8n.io/versions/',
+			env: 'N8N_VERSION_NOTIFICATIONS_ENDPOINT',
+		},
+		infoUrl: {
+			doc: 'Url in updates panel UI to get more informaton on updating instance',
+			format: String,
+			default: 'https://docs.n8n.io/reference/',
+			env: 'N8N_VERSION_NOTIFICATIONS_ENDPOINT',
+		}
+	},
+
 });
 
 // Overwrite default configuration with settings which got defined in
