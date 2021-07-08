@@ -153,7 +153,7 @@ export const operationFields = [
 	//             create
 	// ----------------------------------
 	{
-		displayName: 'Send Input Data',
+		displayName: 'Insert Input Data',
 		name: 'sendInputData',
 		type: 'boolean',
 		displayOptions: {
@@ -164,7 +164,7 @@ export const operationFields = [
 			},
 		},
 		default: true,
-		description: 'Send the the data the node receives as JSON.',
+		description: 'Whether to insert the input data this node receives in the new row',
 	},
 	{
 		displayName: 'Columns',
