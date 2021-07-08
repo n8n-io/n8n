@@ -70,8 +70,8 @@ export const operationFields = [
 		description: 'ID of the row to update',
 	},
 	{
-		displayName: 'Send Input Data',
-		name: 'sendInputData',
+		displayName: 'Insert Input Data',
+		name: 'insertInputData',
 		type: 'boolean',
 		displayOptions: {
 			show: {
@@ -81,10 +81,10 @@ export const operationFields = [
 			},
 		},
 		default: true,
-		description: 'Send the the data the node receives as JSON.',
+		description: 'Whether to insert the input data this node receives in the new row',
 	},
 	{
-		displayName: 'Columns',
+		displayName: 'Inputs for Columns',
 		name: 'columns',
 		type: 'string',
 		displayOptions: {
@@ -99,7 +99,7 @@ export const operationFields = [
 		},
 		default: '',
 		required: true,
-		description: 'Comma-separated list of the properties to use as columns for the rows to update',
+		description: 'The node input field containing the data to be used for each column. Separate field names by commas',
 		placeholder: 'Enter fields...',
 	},
 	{
@@ -444,26 +444,26 @@ export const operationFields = [
 					{
 						name: 'AND',
 						value: 'AND',
-						description: 'Indicates that the rows must match all the provided filters.',
+						description: 'Indicates that the rows must match all the provided filters',
 					},
 					{
 						name: 'OR',
 						value: 'OR',
-						description: 'Indicates that the rows only have to match one of the filters.',
+						description: 'Indicates that the rows only have to match one of the filters',
 					},
 				],
 				default: 'AND',
-				description: 'This works only if two or more filters are provided.',
+				description: 'This works only if two or more filters are provided. Defaults to <code>AND</code>',
 			},
 			{
 				displayName: 'Search Term',
 				name: 'search',
 				type: 'string',
 				default: '',
-				description: 'If provided only rows with data that matches the search query are going to be returned.',
+				description: 'Text to match (can be in any column)',
 			},
 			{
-				displayName: 'Sort Order',
+				displayName: 'Sorting',
 				name: 'order',
 				placeholder: 'Add Sort Order',
 				description: 'Set the sort order of the result rows',
@@ -477,6 +477,19 @@ export const operationFields = [
 						name: 'Fields',
 						displayName: 'Field',
 						values: [
+							{
+								displayName: 'Field Name',
+								name: 'field',
+								type: 'options',
+								default: '',
+								description: 'Field name to sort by',
+								typeOptions: {
+									loadOptionsDependsOn: [
+										'tableId',
+									],
+									loadOptionsMethod: 'getTableFields',
+								},
+							},
 							{
 								displayName: 'Direction',
 								name: 'direction',
@@ -495,19 +508,6 @@ export const operationFields = [
 								],
 								default: '',
 								description: 'Sort direction, either ascending or descending',
-							},
-							{
-								displayName: 'Field Name',
-								name: 'field',
-								type: 'options',
-								default: '',
-								description: 'Field name to sort by',
-								typeOptions: {
-									loadOptionsDependsOn: [
-										'tableId',
-									],
-									loadOptionsMethod: 'getTableFields',
-								},
 							},
 						],
 					},
