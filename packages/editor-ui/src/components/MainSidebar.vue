@@ -137,7 +137,7 @@
 								</div>
 							</div>
 						</div>
-						<span slot="title" class="item-title-root">{{nextVersions.length > 99? '99+': ''}} update{{nextVersions.length > 1? 's': ''}} available</span>
+						<span slot="title" class="item-title-root">{{nextVersions.length > 99? '99+': nextVersions.length}} update{{nextVersions.length > 1? 's': ''}} available</span>
 					</el-menu-item>
 				</div>
 			</el-menu>

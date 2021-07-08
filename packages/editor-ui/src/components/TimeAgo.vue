@@ -5,13 +5,11 @@
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
-
 import { format } from 'timeago.js';
 
-export default Vue.extend({
+export default {
 	name: 'UpdatesPanel',
 	props: ['date'],
 	format,
-});
+};
 </script>
