@@ -12,6 +12,22 @@ export class SalesforceOAuth2Api implements ICredentialType {
 	documentationUrl = 'salesforce';
 	properties: INodeProperties[] = [
 		{
+			displayName: 'Environment Type',
+			name: 'environment',
+			type: 'options',
+			options: [
+				{
+					name: 'Production',
+					value: 'production',
+				},
+				{
+					name: 'Sandbox',
+					value: 'sandbox',
+				},
+			],
+			default: 'production',
+		},
+		{
 			displayName: 'Authorization URL',
 			name: 'authUrl',
 			type: 'hidden',
