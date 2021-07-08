@@ -213,12 +213,18 @@ export const pushConnection = mixins(
 
 					const runDataExecuted = pushData.data;
 
-					let runDataExecutedErrorMessage;
+					const runDataExecutedErrorMessage = this.$getExecutionError(runDataExecuted.data.resultData.error);
+
 					// @ts-ignore
 					const workflow = this.getWorkflow();
 					if (runDataExecuted.finished !== true) {
 						this.$titleSet(workflow.name as string, 'ERROR');
-						this.$showExecutionError(runDataExecuted.data.resultData.error);
+
+						this.$showMessage({
+							title: 'Problem executing workflow',
+							message: runDataExecutedErrorMessage,
+							type: 'error',
+						});
 					} else {
 						// Workflow did execute without a problem
 						this.$titleSet(workflow.name as string, 'IDLE');

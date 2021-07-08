@@ -16,7 +16,7 @@ export const showMessage = mixins(externalHooks).extend({
 			return Notification(messageData);
 		},
 
-		$showExecutionError(error?: ExecutionError, title?: string) {
+		$getExecutionError(error?: ExecutionError) {
 			// There was a problem with executing the workflow
 			let errorMessage = 'There was a problem executing the workflow!';
 
@@ -34,11 +34,7 @@ export const showMessage = mixins(externalHooks).extend({
 				errorMessage = `There was a problem executing the workflow:<br /><strong>"${receivedError}"</strong>`;
 			}
 
-			this.$showMessage({
-				title: title || 'Problem executing workflow',
-				message: errorMessage,
-				type: 'error',
-			});
+			return errorMessage;
 		},
 
 		$showError(error: Error, title: string, message?: string) {

@@ -382,7 +382,7 @@ export default mixins(
 					if (data.data.resultData.runData) {
 						const runData = data.data.resultData.runData;
 						errorCheck:
-						for (const nodeName in runData) {
+						for (const nodeName of Object.keys(runData)) {
 							for (const taskData of runData[nodeName]) {
 								if (taskData.error) {
 									nodeErrorFound = true;
@@ -393,7 +393,19 @@ export default mixins(
 					}
 
 					if (nodeErrorFound === false) {
-						this.$showExecutionError(data.data.resultData.error, 'Failed execution');
+						const errorMessage = this.$getExecutionError(data.data.resultData.error);
+						this.$showMessage({
+							title: 'Failed execution',
+							message: errorMessage,
+							type: 'error',
+						});
+
+						if (data.data.resultData.error.stack) {
+							// Display some more information for now in console to make debugging easier
+							// TODO: Improve this in the future by displaying in UI
+							console.log(`Execution ${executionId} error:`);
+							console.log(data.data.resultData.error.stack);
+						}
 					}
 				}
 			},

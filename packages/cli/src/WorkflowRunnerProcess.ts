@@ -30,6 +30,7 @@ import {
 	IWorkflowExecuteHooks,
 	LoggerProxy,
 	Workflow,
+	WorkflowExecuteMode,
 	WorkflowHooks,
 	WorkflowOperationError,
 } from 'n8n-workflow';
@@ -337,7 +338,7 @@ process.on('message', async (message: IProcessMessage) => {
 						},
 					},
 					finished: message.type !== 'timeout',
-					mode: workflowRunner.data!.executionMode,
+					mode: workflowRunner.data ? workflowRunner.data!.executionMode : 'own' as WorkflowExecuteMode,
 					startedAt: workflowRunner.startedAt,
 					stoppedAt: new Date(),
 				};
