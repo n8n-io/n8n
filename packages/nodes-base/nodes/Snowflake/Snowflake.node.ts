@@ -25,7 +25,7 @@ export class Snowflake implements INodeType {
 		icon: 'file:snowflake.svg',
 		group: ['input'],
 		version: 1,
-		description: 'Get, add and update data in Snowflake.',
+		description: 'Get, add and update data in Snowflake',
 		defaults: {
 			name: 'Snowflake',
 			color: '#5ebbeb',

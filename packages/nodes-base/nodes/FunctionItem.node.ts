@@ -17,7 +17,7 @@ export class FunctionItem implements INodeType {
 		icon: 'fa:code',
 		group: ['transform'],
 		version: 1,
-		description: 'Run custom function code which gets executed once per item.',
+		description: 'Run custom function code which gets executed once per item',
 		defaults: {
 			name: 'FunctionItem',
 			color: '#ddbb33',
