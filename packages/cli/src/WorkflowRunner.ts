@@ -205,7 +205,7 @@ export class WorkflowRunner {
 			}
 	
 		} catch (error) {
-			this.activeExecutions.remove(executionId);
+			this.processError(error, new Date(), data.executionMode, executionId);
 			return executionId;
 		}
 		
@@ -257,7 +257,7 @@ export class WorkflowRunner {
 		try {
 			job = await this.jobQueue.add(jobData, jobOptions);
 		} catch (error) {
-			this.activeExecutions.remove(executionId);
+			this.processError(error, new Date(), data.executionMode, executionId);
 			return executionId;
 		}
 		
@@ -444,7 +444,7 @@ export class WorkflowRunner {
 			// Send all data to subprocess it needs to run the workflow
 			subprocess.send({ type: 'startWorkflow', data } as IProcessMessage);
 		} catch (error) {
-			this.activeExecutions.stopExecution(executionId, 'timeout');
+			this.processError(error, new Date(), data.executionMode, executionId);
 			return executionId;
 		}
 		

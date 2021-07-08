@@ -610,42 +610,51 @@ export async function executeWorkflow(workflowInfo: IExecuteWorkflowInfo, additi
 
 	const runExecutionData = runData.executionData as IRunExecutionData;
 
-	// Get the needed credentials for the current workflow as they will differ to the ones of the
-	// calling workflow.
-	const credentials = await WorkflowCredentials(workflowData!.nodes);
+	let data;
+	try {
+		// Get the needed credentials for the current workflow as they will differ to the ones of the
+		// calling workflow.
+		const credentials = await WorkflowCredentials(workflowData!.nodes);
 
 
-	// Create new additionalData to have different workflow loaded and to call
-	// different webooks
-	const additionalDataIntegrated = await getBase(credentials);
-	additionalDataIntegrated.hooks = getWorkflowHooksIntegrated(runData.executionMode, executionId, workflowData!, { parentProcessMode: additionalData.hooks!.mode });
-	// Make sure we pass on the original executeWorkflow function we received
-	// This one already contains changes to talk to parent process
-	// and get executionID from `activeExecutions` running on main process
-	additionalDataIntegrated.executeWorkflow = additionalData.executeWorkflow;
+		// Create new additionalData to have different workflow loaded and to call
+		// different webooks
+		const additionalDataIntegrated = await getBase(credentials);
+		additionalDataIntegrated.hooks = getWorkflowHooksIntegrated(runData.executionMode, executionId, workflowData!, { parentProcessMode: additionalData.hooks!.mode });
+		// Make sure we pass on the original executeWorkflow function we received
+		// This one already contains changes to talk to parent process
+		// and get executionID from `activeExecutions` running on main process
+		additionalDataIntegrated.executeWorkflow = additionalData.executeWorkflow;
 
-	let subworkflowTimeout = additionalData.executionTimeoutTimestamp;
-	if (workflowData.settings?.executionTimeout !== undefined && workflowData.settings.executionTimeout > 0) {
-		// We might have received a max timeout timestamp from the parent workflow
-		// If we did, then we get the minimum time between the two timeouts
-		// If no timeout was given from the parent, then we use our timeout.
-		subworkflowTimeout = Math.min(additionalData.executionTimeoutTimestamp || Number.MAX_SAFE_INTEGER, Date.now() + (workflowData.settings.executionTimeout as number * 1000));
-	}
+		let subworkflowTimeout = additionalData.executionTimeoutTimestamp;
+		if (workflowData.settings?.executionTimeout !== undefined && workflowData.settings.executionTimeout > 0) {
+			// We might have received a max timeout timestamp from the parent workflow
+			// If we did, then we get the minimum time between the two timeouts
+			// If no timeout was given from the parent, then we use our timeout.
+			subworkflowTimeout = Math.min(additionalData.executionTimeoutTimestamp || Number.MAX_SAFE_INTEGER, Date.now() + (workflowData.settings.executionTimeout as number * 1000));
+		}
 
-	additionalDataIntegrated.executionTimeoutTimestamp = subworkflowTimeout;
+		additionalDataIntegrated.executionTimeoutTimestamp = subworkflowTimeout;
 
 
-	// Execute the workflow
-	const workflowExecute = new WorkflowExecute(additionalDataIntegrated, runData.executionMode, runExecutionData);
-	if (parentExecutionId !== undefined) {
-		// Must be changed to become typed
-		return {
-			startedAt: new Date(),
-			workflow,
-			workflowExecute,
+		// Execute the workflow
+		const workflowExecute = new WorkflowExecute(additionalDataIntegrated, runData.executionMode, runExecutionData);
+		if (parentExecutionId !== undefined) {
+			// Must be changed to become typed
+			return {
+				startedAt: new Date(),
+				workflow,
+				workflowExecute,
+			};
+		}
+		data = await workflowExecute.processRunExecutionData(workflow);
+	} catch (error) {
+		this.processError(error, new Date(), runData.executionMode, executionId);
+		throw {
+			...error,
+			stack: error!.stack,
 		};
 	}
-	const data = await workflowExecute.processRunExecutionData(workflow);
 
 	await externalHooks.run('workflow.postExecute', [data, workflowData]);
 
