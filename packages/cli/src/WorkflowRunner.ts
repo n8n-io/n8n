@@ -87,7 +87,8 @@ export class WorkflowRunner {
 	 * @param {string} executionId
 	 * @memberof WorkflowRunner
 	 */
-	async processError(error: ExecutionError, startedAt: Date, executionMode: WorkflowExecuteMode, executionId: string, workflowData?: IWorkflowBase) {
+	async processError(error: ExecutionError, startedAt: Date, executionMode: WorkflowExecuteMode, executionId: string, hooks?: WorkflowHooks) {
+		// TODO: Seems like the error does currently not get displayed anywhere
 		const fullRunData: IRun = {
 			data: {
 				resultData: {
@@ -100,29 +101,14 @@ export class WorkflowRunner {
 			startedAt,
 			stoppedAt: new Date(),
 		};
-		if (workflowData !== undefined) {
-			// When failing, we might not have finished the execution
-			// Therefore, database might not contain finished errors.
-			// Force an update to db as there should be no harm doing this
-	
-			const fullExecutionData: IExecutionDb = {
-				data: fullRunData.data,
-				mode: fullRunData.mode,
-				finished: fullRunData.finished ? fullRunData.finished : false,
-				startedAt: fullRunData.startedAt,
-				stoppedAt: fullRunData.stoppedAt,
-				workflowData: workflowData,
-			};
-	
-			const executionData = ResponseHelper.flattenExecutionData(fullExecutionData);
-	
-			await Db.collections.Execution!.update(executionId, executionData as IExecutionFlattedDb);
-		}
-		
 
 		// Remove from active execution with empty data. That will
 		// set the execution to failed.
 		this.activeExecutions.remove(executionId, fullRunData);
+
+		if (hooks) {
+			await hooks.executeHookFunctions('workflowExecuteAfter', [fullRunData]);
+		}
 	}
 
 	/**
@@ -201,12 +187,11 @@ export class WorkflowRunner {
 		const executionId = await this.activeExecutions.add(data, undefined);
 		Logger.verbose(`Execution for workflow ${data.workflowData.name} was assigned id ${executionId}`, {executionId});
 		let workflowExecution: PCancelable<IRun>;
+		additionalData.hooks = WorkflowExecuteAdditionalData.getWorkflowHooksMain(data, executionId, true);
 
 		try {
-			additionalData.hooks = WorkflowExecuteAdditionalData.getWorkflowHooksMain(data, executionId, true);
-
 			additionalData.sendMessageToUI = WorkflowExecuteAdditionalData.sendMessageToUI.bind({sessionId: data.sessionId});
-	
+
 			if (data.executionData !== undefined) {
 				Logger.debug(`Execution ID ${executionId} had Execution data. Running with payload.`, {executionId});
 				const workflowExecute = new WorkflowExecute(additionalData, data.executionMode, data.executionData);
@@ -214,7 +199,7 @@ export class WorkflowRunner {
 			} else if (data.runData === undefined || data.startNodes === undefined || data.startNodes.length === 0 || data.destinationNode === undefined) {
 				Logger.debug(`Execution ID ${executionId} will run executing all nodes.`, {executionId});
 				// Execute all nodes
-	
+
 				// Can execute without webhook so go on
 				const workflowExecute = new WorkflowExecute(additionalData, data.executionMode);
 				workflowExecution = workflowExecute.run(workflow, undefined, data.destinationNode);
@@ -224,12 +209,13 @@ export class WorkflowRunner {
 				const workflowExecute = new WorkflowExecute(additionalData, data.executionMode);
 				workflowExecution = workflowExecute.runPartialWorkflow(workflow, data.runData, data.startNodes, data.destinationNode);
 			}
-	
+
 		} catch (error) {
-			await this.processError(error, new Date(), data.executionMode, executionId, data.workflowData);
-			return executionId;
+			await this.processError(error, new Date(), data.executionMode, executionId, additionalData.hooks);
+
+			throw error;
 		}
-		
+
 		this.activeExecutions.attachWorkflowExecution(executionId, workflowExecution);
 
 		if (workflowTimeout > 0) {
@@ -278,10 +264,13 @@ export class WorkflowRunner {
 		try {
 			job = await this.jobQueue.add(jobData, jobOptions);
 		} catch (error) {
-			await this.processError(error, new Date(), data.executionMode, executionId, data.workflowData);
+			// We use "getWorkflowHooksIntegrated" here as we are just integrated in the "workflowExecuteAfter"
+			// hook anyway and other get so ignored
+			const hooks = WorkflowExecuteAdditionalData.getWorkflowHooksIntegrated(data.executionMode, executionId, data.workflowData, { retryOf: data.retryOf ? data.retryOf.toString() : undefined });
+			await this.processError(error, new Date(), data.executionMode, executionId, hooks);
 			return executionId;
 		}
-		
+
 		console.log('Started with ID: ' + job.id.toString());
 
 		const hooks = WorkflowExecuteAdditionalData.getWorkflowHooksWorkerMain(data.executionMode, executionId, data.workflowData, { retryOf: data.retryOf ? data.retryOf.toString() : undefined });
@@ -465,10 +454,10 @@ export class WorkflowRunner {
 			// Send all data to subprocess it needs to run the workflow
 			subprocess.send({ type: 'startWorkflow', data } as IProcessMessage);
 		} catch (error) {
-			await this.processError(error, new Date(), data.executionMode, executionId, data.workflowData);
+			await this.processError(error, new Date(), data.executionMode, executionId, workflowHooks);
 			return executionId;
 		}
-		
+
 		// Start timeout for the execution
 		let executionTimeout: NodeJS.Timeout;
 		let workflowTimeout = config.get('executions.timeout') as number; // initialize with default
@@ -515,14 +504,14 @@ export class WorkflowRunner {
 			} else if (message.type === 'processError') {
 				clearTimeout(executionTimeout);
 				const executionError = message.data.executionError as ExecutionError;
-				await this.processError(executionError, startedAt, data.executionMode, executionId, data.workflowData);
-
+				await this.processError(executionError, startedAt, data.executionMode, executionId, workflowHooks);
 			} else if (message.type === 'processHook') {
 				this.processHookMessage(workflowHooks, message.data as IProcessMessageDataHook);
 			} else if (message.type === 'timeout') {
 				// Execution timed out and its process has been terminated
 				const timeoutError = new WorkflowOperationError('Workflow execution timed out!');
 
+				// No need to add hook here as the subprocess takes care of calling the hooks
 				this.processError(timeoutError, startedAt, data.executionMode, executionId);
 			} else if (message.type === 'startExecution') {
 				const executionId = await this.activeExecutions.add(message.data.runData);
@@ -545,13 +534,13 @@ export class WorkflowRunner {
 				// Execution timed out and its process has been terminated
 				const timeoutError = new WorkflowOperationError('Workflow execution timed out!');
 
-				this.processError(timeoutError, startedAt, data.executionMode, executionId);
+				await this.processError(timeoutError, startedAt, data.executionMode, executionId, workflowHooks);
 			} else if (code !== 0) {
 				Logger.debug(`Subprocess for execution ID ${executionId} finished with error code ${code}.`, {executionId});
 				// Process did exit with error code, so something went wrong.
 				const executionError = new WorkflowOperationError('Workflow execution process did crash for an unknown reason!');
 
-				this.processError(executionError, startedAt, data.executionMode, executionId);
+				await this.processError(executionError, startedAt, data.executionMode, executionId, workflowHooks);
 			}
 
 			for(const executionId of childExecutionIds) {
