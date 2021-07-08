@@ -30,9 +30,9 @@ import {
 } from './CompanyDescription';
 
 import {
-	contactCompanyFields,
-	contactCompanyOperations,
-} from './ContactCompanyDescription';
+	companyContactFields,
+	companyContactOperations,
+} from './CompanyContactDescription';
 
 import {
 	contactSegmentFields,
@@ -110,14 +110,14 @@ export class Mautic implements INodeType {
 						description: 'Create or modify a company',
 					},
 					{
+						name: 'Company Contact',
+						value: 'companyContact',
+						description: 'Add/remove contacts to/from a company',
+					},
+					{
 						name: 'Contact',
 						value: 'contact',
 						description: 'Create & modify contacts',
-					},
-					{
-						name: 'Contact Company',
-						value: 'contactCompany',
-						description: 'Add/remove contacts to/from a company',
 					},
 					{
 						name: 'Contact Segment',
@@ -134,8 +134,8 @@ export class Mautic implements INodeType {
 			...contactFields,
 			...contactSegmentOperations,
 			...contactSegmentFields,
-			...contactCompanyOperations,
-			...contactCompanyFields,
+			...companyContactOperations,
+			...companyContactFields,
 		],
 	};
 
@@ -587,7 +587,7 @@ export class Mautic implements INodeType {
 				}
 			}
 
-			if (resource === 'contactCompany') {
+			if (resource === 'companyContact') {
 				//https://developer.mautic.org/#add-contact-to-a-company
 				if (operation === 'add') {
 					const contactId = this.getNodeParameter('contactId', i) as string;
