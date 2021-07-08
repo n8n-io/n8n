@@ -24,8 +24,10 @@ import {
 
 import {
 	BaserowCredentials,
+	FieldsUiValues,
 	GetAllAdditionalOptions,
 	LoadedResource,
+	Operation,
 	Row,
 } from './types';
 
@@ -143,7 +145,7 @@ export class Baserow implements INodeType {
 		const items = this.getInputData();
 		const mapper = new TableFieldMapper();
 		const returnData: IDataObject[] = [];
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const operation = this.getNodeParameter('operation', 0) as Operation;
 
 		const tableId = this.getNodeParameter('tableId', 0) as string;
 		const credentials = this.getCredentials('baserowApi') as BaserowCredentials;
@@ -186,7 +188,7 @@ export class Baserow implements INodeType {
 					if (search) {
 						qs.search = search;
 					}
-					
+
 					const endpoint = `/api/database/rows/table/${tableId}/`;
 					const rows = await baserowApiRequestAllItems.call(this, 'GET', endpoint, {}, qs, jwtToken) as Row[];
 
@@ -234,7 +236,7 @@ export class Baserow implements INodeType {
 							mapper.namesToIds(body);
 						}
 					} else {
-						const fields = this.getNodeParameter('fieldsUi.fieldValues', i, []) as [{ fieldId: string, fieldValue: string }];
+						const fields = this.getNodeParameter('fieldsUi.fieldValues', i, []) as FieldsUiValues;
 						for (const field of fields) {
 							body[`field_${field.fieldId}`] = field.fieldValue;
 						}
@@ -272,12 +274,11 @@ export class Baserow implements INodeType {
 							body[key] = items[i].json[key];
 						}
 					} else {
-						const fields = this.getNodeParameter('fieldsUi.fieldValues', i, []) as [{ fieldId: string, fieldValue: string }];
+						const fields = this.getNodeParameter('fieldsUi.fieldValues', i, []) as FieldsUiValues;
 						for (const field of fields) {
 							body[`field_${field.fieldId}`] = field.fieldValue;
 						}
 					}
-
 
 					const endpoint = `/api/database/rows/table/${tableId}/${rowId}/`;
 					const updatedRow = await baserowApiRequest.call(this, 'PATCH', endpoint, body, {}, jwtToken);

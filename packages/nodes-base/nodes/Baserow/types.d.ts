@@ -32,3 +32,10 @@ export type Accumulator = {
 }
 
 export type Row = Record<string, string>
+
+export type FieldsUiValues = Array<{
+	fieldId: string;
+	fieldValue: string;
+}>;
+
+export type Operation = 'create' | 'delete' | 'update' | 'get' | 'getAll';
