@@ -1,6 +1,6 @@
 import {
 	ICredentialType,
-	NodePropertyTypes,
+	INodeProperties,
 } from 'n8n-workflow';
 
 export class ZoomOAuth2Api implements ICredentialType {
@@ -8,35 +8,35 @@ export class ZoomOAuth2Api implements ICredentialType {
 	extends = ['oAuth2Api'];
 	displayName = 'Zoom OAuth2 API';
 	documentationUrl = 'zoom';
-	properties = [
+	properties: INodeProperties[] = [
 		{
 			displayName: 'Authorization URL',
 			name: 'authUrl',
-			type: 'hidden' as NodePropertyTypes,
+			type: 'hidden',
 			default: 'https://zoom.us/oauth/authorize',
 		},
 		{
 			displayName: 'Access Token URL',
 			name: 'accessTokenUrl',
-			type: 'hidden' as NodePropertyTypes,
+			type: 'hidden',
 			default: 'https://zoom.us/oauth/token',
 		},
 		{
 			displayName: 'Scope',
 			name: 'scope',
-			type: 'hidden' as NodePropertyTypes,
+			type: 'hidden',
 			default: '',
 		},
 		{
 			displayName: 'Auth URI Query Parameters',
 			name: 'authQueryParameters',
-			type: 'hidden' as NodePropertyTypes,
+			type: 'hidden',
 			default: '',
 		},
 		{
 			displayName: 'Authentication',
 			name: 'authentication',
-			type: 'hidden' as NodePropertyTypes,
+			type: 'hidden',
 			default: 'header',
 		},
 	];

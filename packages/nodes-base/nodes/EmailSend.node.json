@@ -29,5 +29,10 @@
 				"url": "https://n8n.io/blog/build-your-own-virtual-assistant-with-n8n-a-step-by-step-guide/"
 			}
 		]
+	},
+	"subcategories": {
+		"Core Nodes": [
+			"Helpers"
+		]
 	}
 }

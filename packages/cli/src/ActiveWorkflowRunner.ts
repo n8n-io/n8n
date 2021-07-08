@@ -253,7 +253,7 @@ export class ActiveWorkflowRunner {
 	 * @memberof ActiveWorkflowRunner
 	 */
 	async isActive(id: string): Promise<boolean> {
-		const workflow = await Db.collections.Workflow?.findOne({ id }) as IWorkflowDb;
+		const workflow = await Db.collections.Workflow?.findOne({ id: Number(id) }) as IWorkflowDb;
 		return workflow?.active as boolean;
 	}
 
@@ -313,7 +313,6 @@ export class ActiveWorkflowRunner {
 
 			try {
 				await Db.collections.Webhook?.insert(webhook);
-
 				const webhookExists = await workflow.runWebhookMethod('checkExists', webhookData, NodeExecuteFunctions, mode, activation, false);
 				if (webhookExists !== true) {
 					// If webhook does not exist yet create it
@@ -341,7 +340,7 @@ export class ActiveWorkflowRunner {
 					errorMessage = error.message;
 				}
 
-				throw new Error(errorMessage);
+				throw error;
 			}
 		}
 		// Save static data!

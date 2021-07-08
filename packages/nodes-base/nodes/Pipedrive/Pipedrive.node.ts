@@ -48,7 +48,7 @@ export class Pipedrive implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Pipedrive',
 		name: 'pipedrive',
-		icon: 'file:pipedrive.png',
+		icon: 'file:pipedrive.svg',
 		group: ['transform'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
@@ -222,6 +222,11 @@ export class Pipedrive implements INodeType {
 						name: 'Get All',
 						value: 'getAll',
 						description: 'Get data of all deals',
+					},
+					{
+						name: 'Search',
+						value: 'search',
+						description: 'Search a deal',
 					},
 					{
 						name: 'Update',
@@ -531,6 +536,13 @@ export class Pipedrive implements INodeType {
 						description: 'ID of the deal this activity will be associated with',
 					},
 					{
+						displayName: 'Due Date',
+						name: 'due_date',
+						type: 'dateTime',
+						default: '',
+						description: 'Due Date to activity be done YYYY-MM-DD',
+					},
+					{
 						displayName: 'Note',
 						name: 'note',
 						type: 'string',
@@ -544,8 +556,11 @@ export class Pipedrive implements INodeType {
 					{
 						displayName: 'Organization ID',
 						name: 'org_id',
-						type: 'number',
-						default: 0,
+						type: 'options',
+						typeOptions: {
+							loadOptionsMethod: 'getOrganizationIds',
+						},
+						default: '',
 						description: 'ID of the organization this activity will be associated with',
 					},
 					{
@@ -558,9 +573,12 @@ export class Pipedrive implements INodeType {
 					{
 						displayName: 'User ID',
 						name: 'user_id',
-						type: 'number',
-						default: 0,
-						description: 'ID of the user whom the activity will be assigned to. If omitted, the activity will be assigned to the authorized user.',
+						type: 'options',
+						typeOptions: {
+							loadOptionsMethod: 'getUserIds',
+						},
+						default: '',
+						description: 'ID of the active user whom the activity will be assigned to. If omitted, the activity will be assigned to the authorized user.',
 					},
 					{
 						displayName: 'Custom Properties',
@@ -642,7 +660,6 @@ export class Pipedrive implements INodeType {
 				required: true,
 				description: 'ID of the activity to get.',
 			},
-
 			// ----------------------------------
 			//         activity:update
 			// ----------------------------------
@@ -689,6 +706,13 @@ export class Pipedrive implements INodeType {
 						description: 'ID of the deal this activity will be associated with',
 					},
 					{
+						displayName: 'Due Date',
+						name: 'due_date',
+						type: 'dateTime',
+						default: '',
+						description: 'Due Date to activity be done YYYY-MM-DD',
+					},
+					{
 						displayName: 'Done',
 						name: 'done',
 						type: 'options',
@@ -720,8 +744,11 @@ export class Pipedrive implements INodeType {
 					{
 						displayName: 'Organization ID',
 						name: 'org_id',
-						type: 'number',
-						default: 0,
+						type: 'options',
+						typeOptions: {
+							loadOptionsMethod: 'getOrganizationIds',
+						},
+						default: '',
 						description: 'ID of the organization this activity will be associated with',
 					},
 					{
@@ -749,9 +776,12 @@ export class Pipedrive implements INodeType {
 					{
 						displayName: 'User ID',
 						name: 'user_id',
-						type: 'number',
-						default: 0,
-						description: 'ID of the user whom the activity will be assigned to. If omitted, the activity will be assigned to the authorized user.',
+						type: 'options',
+						typeOptions: {
+							loadOptionsMethod: 'getUserIds',
+						},
+						default: '',
+						description: 'ID of the active user whom the activity will be assigned to. If omitted, the activity will be assigned to the authorized user.',
 					},
 					{
 						displayName: 'Custom Properties',
@@ -858,7 +888,10 @@ export class Pipedrive implements INodeType {
 									{
 										displayName: 'Property Name',
 										name: 'name',
-										type: 'string',
+										type: 'options',
+										typeOptions: {
+											loadOptionsMethod: 'getDealCustomFields',
+										},
 										default: '',
 										description: 'Name of the property to set.',
 									},
@@ -892,8 +925,11 @@ export class Pipedrive implements INodeType {
 					{
 						displayName: 'Organization ID',
 						name: 'org_id',
-						type: 'number',
-						default: 0,
+						type: 'options',
+						typeOptions: {
+							loadOptionsMethod: 'getOrganizationIds',
+						},
+						default: '',
 						description: 'ID of the organization this deal will be associated with.',
 					},
 					{
@@ -917,9 +953,12 @@ export class Pipedrive implements INodeType {
 					{
 						displayName: 'Stage ID',
 						name: 'stage_id',
-						type: 'number',
-						default: 0,
-						description: 'ID of the stage this deal will be placed in a pipeline. If omitted, the deal will be placed in the first stage of the default pipeline.',
+						type: 'options',
+						typeOptions: {
+							loadOptionsMethod: 'getStageIds',
+						},
+						default: '',
+						description: 'ID of the stage this deal will be placed in a pipeline. If omitted, the deal will be placed in the first stage of the default pipeline. (PIPELINE > STAGE)',
 					},
 					{
 						displayName: 'Status',
@@ -949,9 +988,12 @@ export class Pipedrive implements INodeType {
 					{
 						displayName: 'User ID',
 						name: 'user_id',
-						type: 'number',
-						default: 0,
-						description: 'ID of the user who will be marked as the owner of this deal. If omitted, the authorized user ID will be used.',
+						type: 'options',
+						typeOptions: {
+							loadOptionsMethod: 'getUserIds',
+						},
+						default: '',
+						description: 'ID of the active user whom the activity will be assigned to. If omitted, the activity will be assigned to the authorized user.',
 					},
 					{
 						displayName: 'Value',
@@ -1109,9 +1151,12 @@ export class Pipedrive implements INodeType {
 									{
 										displayName: 'Property Name',
 										name: 'name',
-										type: 'string',
+										type: 'options',
+										typeOptions: {
+											loadOptionsMethod: 'getDealCustomFields',
+										},
 										default: '',
-										description: 'Name of the property to set.',
+										description: 'Name of the custom field to set.',
 									},
 									{
 										displayName: 'Property Value',
@@ -1123,6 +1168,16 @@ export class Pipedrive implements INodeType {
 								],
 							},
 						],
+					},
+					{
+						displayName: 'User ID',
+						name: 'user_id',
+						type: 'options',
+						typeOptions: {
+							loadOptionsMethod: 'getUserIds',
+						},
+						default: '',
+						description: 'ID of the active user whom the activity will be assigned to. If omitted, the activity will be assigned to the authorized user.',
 					},
 					{
 						displayName: 'Label',
@@ -1143,8 +1198,11 @@ export class Pipedrive implements INodeType {
 					{
 						displayName: 'Organization ID',
 						name: 'org_id',
-						type: 'number',
-						default: 0,
+						type: 'options',
+						typeOptions: {
+							loadOptionsMethod: 'getOrganizationIds',
+						},
+						default: '',
 						description: 'ID of the organization this deal will be associated with.',
 					},
 					{
@@ -1168,9 +1226,12 @@ export class Pipedrive implements INodeType {
 					{
 						displayName: 'Stage ID',
 						name: 'stage_id',
-						type: 'number',
-						default: 0,
-						description: 'ID of the stage this deal will be placed in a pipeline. If omitted, the deal will be placed in the first stage of the default pipeline.',
+						type: 'options',
+						typeOptions: {
+							loadOptionsMethod: 'getStageIds',
+						},
+						default: '',
+						description: 'ID of the stage this deal will be placed in a pipeline. If omitted, the deal will be placed in the first stage of the default pipeline. (PIPELINE > STAGE)',
 					},
 					{
 						displayName: 'Status',
@@ -1230,7 +1291,164 @@ export class Pipedrive implements INodeType {
 					},
 				],
 			},
-
+			// ----------------------------------
+			//         deal:search
+			// ----------------------------------
+			{
+				displayName: 'Term',
+				name: 'term',
+				type: 'string',
+				required: true,
+				displayOptions: {
+					show: {
+						operation: [
+							'search',
+						],
+						resource: [
+							'deal',
+						],
+					},
+				},
+				default: '',
+				description: 'The search term to look for. Minimum 2 characters (or 1 if using exact_match).',
+			},
+			{
+				displayName: 'Exact Match',
+				name: 'exactMatch',
+				type: 'boolean',
+				displayOptions: {
+					show: {
+						operation: [
+							'search',
+						],
+						resource: [
+							'deal',
+						],
+					},
+				},
+				default: false,
+				description: 'When enabled, only full exact matches against the given term are returned. It is not case sensitive.',
+			},
+			{
+				displayName: 'Return All',
+				name: 'returnAll',
+				type: 'boolean',
+				displayOptions: {
+					show: {
+						operation: [
+							'search',
+						],
+					},
+				},
+				default: false,
+				description: 'If all results should be returned or only up to a given limit.',
+			},
+			{
+				displayName: 'Limit',
+				name: 'limit',
+				type: 'number',
+				displayOptions: {
+					show: {
+						operation: [
+							'search',
+						],
+						returnAll: [
+							false,
+						],
+					},
+				},
+				typeOptions: {
+					minValue: 1,
+					maxValue: 500,
+				},
+				default: 100,
+				description: 'How many results to return.',
+			}, {
+				displayName: 'Additional Fields',
+				name: 'additionalFields',
+				type: 'collection',
+				placeholder: 'Add Field',
+				displayOptions: {
+					show: {
+						operation: [
+							'search',
+						],
+						resource: [
+							'deal',
+						],
+					},
+				},
+				default: {},
+				options: [
+					{
+						displayName: 'Include Fields',
+						name: 'includeFields',
+						type: 'string',
+						default: '',
+						description: 'Supports including optional fields in the results which are not provided by default. Example: deal.cc_email',
+					},
+					{
+						displayName: 'Organization ID',
+						name: 'organizationId',
+						type: 'string',
+						default: '',
+						description: 'Will filter Deals by the provided Organization ID.',
+					},
+					{
+						displayName: 'Person ID',
+						name: 'personId',
+						type: 'string',
+						default: '',
+						description: 'Will filter Deals by the provided Person ID.',
+					},
+					{
+						displayName: 'Search Fields',
+						name: 'fields',
+						type: 'multiOptions',
+						options: [
+							{
+								name: 'Custom Fields',
+								value: 'custom_fields',
+							},
+							{
+								name: 'Notes',
+								value: 'notes',
+							},
+							{
+								name: 'Title',
+								value: 'title',
+							},
+						],
+						default: [
+							'custom_fields',
+							'notes',
+							'title',
+						],
+						description: 'A comma-separated string array. The fields to perform the search from. Defaults to all of them.',
+					},
+					{
+						displayName: 'Status',
+						name: 'status',
+						type: 'options',
+						options: [
+							{
+								name: 'Open',
+								value: 'open',
+							},
+							{
+								name: 'Won',
+								value: 'won',
+							},
+							{
+								name: 'Lost',
+								value: 'lost',
+							},
+						],
+						default: 'open',
+						description: 'The status of the deal. If not provided it will automatically be set to "open".',
+					},
+				],
+			},
 
 
 			// ----------------------------------
@@ -1294,9 +1512,12 @@ export class Pipedrive implements INodeType {
 					{
 						displayName: 'Organization ID',
 						name: 'org_id',
-						type: 'number',
-						default: 0,
-						description: 'ID of the organization this file will be associated with.',
+						type: 'options',
+						typeOptions: {
+							loadOptionsMethod: 'getOrganizationIds',
+						},
+						default: '',
+						description: 'ID of the organization this deal will be associated with.',
 					},
 					{
 						displayName: 'Person ID',
@@ -1429,47 +1650,50 @@ export class Pipedrive implements INodeType {
 				},
 				description: 'The content of the note to create',
 			},
-			{
-				displayName: 'Additional Fields',
-				name: 'additionalFields',
-				type: 'collection',
-				placeholder: 'Add Field',
-				displayOptions: {
-					show: {
-						operation: [
-							'create',
-							'getAll',
-						],
-						resource: [
-							'note',
-						],
-					},
-				},
-				default: {},
-				options: [
-					{
-						displayName: 'Deal ID',
-						name: 'deal_id',
-						type: 'number',
-						default: 0,
-						description: 'ID of the deal this note will be associated with',
-					},
-					{
-						displayName: 'Organization ID',
-						name: 'org_id',
-						type: 'number',
-						default: 0,
-						description: 'ID of the organization this note will be associated with.',
-					},
-					{
-						displayName: 'Person ID',
-						name: 'person_id',
-						type: 'number',
-						default: 0,
-						description: 'ID of the person this note will be associated with.',
-					},
-				],
-			},
+			// {
+			// 	displayName: 'Additional Fields',
+			// 	name: 'additionalFields',
+			// 	type: 'collection',
+			// 	placeholder: 'Add Field',
+			// 	displayOptions: {
+			// 		show: {
+			// 			operation: [
+			// 				'create',
+			// 				'getAll',
+			// 			],
+			// 			resource: [
+			// 				'note',
+			// 			],
+			// 		},
+			// 	},
+			// 	default: {},
+			// 	options: [
+			// 		{
+			// 			displayName: 'Deal ID',
+			// 			name: 'deal_id',
+			// 			type: 'number',
+			// 			default: 0,
+			// 			description: 'ID of the deal this note will be associated with',
+			// 		},
+			// 		{
+			// 			displayName: 'Organization ID',
+			// 			name: 'org_id',
+			// 			type: 'options',
+			// 			typeOptions: {
+			// 				loadOptionsMethod: 'getOrganizationIds',
+			// 			},
+			// 			default: '',
+			// 			description: 'ID of the organization this deal will be associated with.',
+			// 		},
+			// 		{
+			// 			displayName: 'Person ID',
+			// 			name: 'person_id',
+			// 			type: 'number',
+			// 			default: 0,
+			// 			description: 'ID of the person this note will be associated with.',
+			// 		},
+			// 	],
+			// },
 
 			// ----------------------------------
 			//         note:delete
@@ -1573,9 +1797,12 @@ export class Pipedrive implements INodeType {
 					{
 						displayName: 'Organization ID',
 						name: 'org_id',
-						type: 'number',
-						default: 0,
-						description: 'ID of the organization this note will be associated with.',
+						type: 'options',
+						typeOptions: {
+							loadOptionsMethod: 'getOrganizationIds',
+						},
+						default: '',
+						description: 'ID of the organization this deal will be associated with.',
 					},
 					{
 						displayName: 'Person ID',
@@ -1913,9 +2140,12 @@ export class Pipedrive implements INodeType {
 									{
 										displayName: 'Property Name',
 										name: 'name',
-										type: 'string',
+										type: 'options',
+										typeOptions: {
+											loadOptionsMethod: 'getPersonCustomFields',
+										},
 										default: '',
-										description: 'Name of the property to set.',
+										description: 'Name of the custom field to set.',
 									},
 									{
 										displayName: 'Property Value',
@@ -1950,9 +2180,12 @@ export class Pipedrive implements INodeType {
 					{
 						displayName: 'Organization ID',
 						name: 'org_id',
-						type: 'number',
-						default: 0,
-						description: 'ID of the organization this person will belong to.',
+						type: 'options',
+						typeOptions: {
+							loadOptionsMethod: 'getOrganizationIds',
+						},
+						default: '',
+						description: 'ID of the organization this deal will be associated with.',
 					},
 					{
 						displayName: 'Phone',
@@ -2085,9 +2318,12 @@ export class Pipedrive implements INodeType {
 									{
 										displayName: 'Property Name',
 										name: 'name',
-										type: 'string',
+										type: 'options',
+										typeOptions: {
+											loadOptionsMethod: 'getPersonCustomFields',
+										},
 										default: '',
-										description: 'Name of the property to set.',
+										description: 'Name of the custom field to set.',
 									},
 									{
 										displayName: 'Property Value',
@@ -2129,9 +2365,12 @@ export class Pipedrive implements INodeType {
 					{
 						displayName: 'Organization ID',
 						name: 'org_id',
-						type: 'number',
-						default: 0,
-						description: 'ID of the organization this person will belong to.',
+						type: 'options',
+						typeOptions: {
+							loadOptionsMethod: 'getOrganizationIds',
+						},
+						default: '',
+						description: 'ID of the organization this deal will be associated with.',
 					},
 					{
 						displayName: 'Phone',
@@ -2220,7 +2459,6 @@ export class Pipedrive implements INodeType {
 					show: {
 						operation: [
 							'getAll',
-							'search',
 						],
 					},
 				},
@@ -2235,7 +2473,6 @@ export class Pipedrive implements INodeType {
 					show: {
 						operation: [
 							'getAll',
-							'search',
 						],
 						returnAll: [
 							false,
@@ -2397,9 +2634,12 @@ export class Pipedrive implements INodeType {
 					{
 						displayName: 'Organization ID',
 						name: 'org_id',
-						type: 'number',
-						default: 0,
-						description: 'ID of the organization this note will be associated with.',
+						type: 'options',
+						typeOptions: {
+							loadOptionsMethod: 'getOrganizationIds',
+						},
+						default: '',
+						description: 'ID of the organization this deal will be associated with.',
 					},
 					{
 						displayName: 'Person ID',
@@ -2410,11 +2650,243 @@ export class Pipedrive implements INodeType {
 					},
 				],
 			},
+			// ----------------------------------
+			//         activity:getAll
+			// ----------------------------------
+			{
+				displayName: 'Additional Fields',
+				name: 'additionalFields',
+				type: 'collection',
+				placeholder: 'Add Field',
+				displayOptions: {
+					show: {
+						operation: [
+							'getAll',
+						],
+						resource: [
+							'activity',
+						],
+					},
+				},
+				default: {},
+				options: [
+					{
+						displayName: 'Done',
+						name: 'done',
+						type: 'boolean',
+						default: false,
+						description: 'Whether the Activity is done or not. 0 = Not done, 1 = Done. If omitted returns both Done and Not done activities.',
+					},
+					{
+						displayName: 'End Date',
+						name: 'end_date',
+						type: 'dateTime',
+						default: '',
+						description: 'Use the Activity due date where you wish to stop fetching Activities from. Insert due date in YYYY-MM-DD format.',
+					},
+					{
+						displayName: 'Filter ID ',
+						name: 'filterId',
+						type: 'string',
+						default: '',
+						description: 'The ID of the Filter to use (will narrow down results if used together with user_id parameter)',
+					},
+					{
+						displayName: 'Star Date',
+						name: 'start_date',
+						type: 'dateTime',
+						default: '',
+						description: 'Use the Activity due date where you wish to begin fetching Activities from. Insert due date in YYYY-MM-DD format.',
+					},
+					{
+						displayName: 'Type',
+						name: 'type',
+						type: 'multiOptions',
+						typeOptions: {
+							loadOptionsMethod: 'getActivityTypes',
+						},
+						default: [],
+						description: 'Type of the Activity.',
+					},
+					{
+						displayName: 'User ID',
+						name: 'user_id',
+						type: 'options',
+						typeOptions: {
+							loadOptionsMethod: 'getUserIds',
+						},
+						default: '',
+						description: 'The ID of the User whose Activities will be fetched. If omitted, the User associated with the API token will be used. If 0, Activities for all company Users will be fetched based on the permission sets.',
+					},
+				],
+			},
 		],
 	};
 
 	methods = {
 		loadOptions: {
+			// Get all Organizations to display them to user so that he can
+			// select them easily
+			async getActivityTypes(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const returnData: INodePropertyOptions[] = [];
+				const { data } = await pipedriveApiRequest.call(this, 'GET', '/activityTypes', {});
+				for (const activity of data) {
+					returnData.push({
+						name: activity.name,
+						value: activity.key_string,
+					});
+				}
+
+				returnData.sort((a, b) => {
+					const aName = a.name.toLowerCase();
+					const bName = b.name.toLowerCase();
+					if (aName < bName) { return -1; }
+					if (aName > bName) { return 1; }
+					return 0;
+				});
+
+				return returnData;
+			},
+			// Get all Organizations to display them to user so that he can
+			// select them easily
+			async getOrganizationIds(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const returnData: INodePropertyOptions[] = [];
+				const { data } = await pipedriveApiRequest.call(this, 'GET', '/organizations', {});
+				for (const org of data) {
+					returnData.push({
+						name: org.name,
+						value: org.id,
+					});
+				}
+
+				returnData.sort((a, b) => {
+					const aName = a.name.toLowerCase();
+					const bName = b.name.toLowerCase();
+					if (aName < bName) { return -1; }
+					if (aName > bName) { return 1; }
+					return 0;
+				});
+
+				return returnData;
+			},
+			// Get all Organizations to display them to user so that he can
+			// select them easily
+			async getUserIds(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const returnData: INodePropertyOptions[] = [];
+				const { data } = await pipedriveApiRequest.call(this, 'GET', '/users', {});
+				for (const user of data) {
+					if (user.active_flag === true) {
+						returnData.push({
+							name: user.name,
+							value: user.id,
+						});
+					}
+				}
+
+				returnData.sort((a, b) => {
+					const aName = a.name.toLowerCase();
+					const bName = b.name.toLowerCase();
+					if (aName < bName) { return -1; }
+					if (aName > bName) { return 1; }
+					return 0;
+				});
+
+				return returnData;
+			},
+			// Get all Stages to display them to user so that he can
+			// select them easily
+			async getStageIds(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const returnData: INodePropertyOptions[] = [];
+				const { data } = await pipedriveApiRequest.call(this, 'GET', '/stages', {});
+				for (const stage of data) {
+					returnData.push({
+						name: `${stage.pipeline_name} > ${stage.name}`,
+						value: stage.id,
+					});
+				}
+
+				returnData.sort((a, b) => {
+					const aName = a.name.toLowerCase();
+					const bName = b.name.toLowerCase();
+					if (aName < bName) { return -1; }
+					if (aName > bName) { return 1; }
+					return 0;
+				});
+
+				return returnData;
+			},
+			// Get all the Organization Custom Fields to display them to user so that he can
+			// select them easily
+			async getOrganizationCustomFields(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const returnData: INodePropertyOptions[] = [];
+				const { data } = await pipedriveApiRequest.call(this, 'GET', '/organizationFields', {});
+				for (const field of data) {
+					if (field.key.length === 40) {
+						returnData.push({
+							name: field.name,
+							value: field.key,
+						});
+					}
+				}
+
+				returnData.sort((a, b) => {
+					const aName = a.name.toLowerCase();
+					const bName = b.name.toLowerCase();
+					if (aName < bName) { return -1; }
+					if (aName > bName) { return 1; }
+					return 0;
+				});
+
+				return returnData;
+			},
+			// Get all the Deal Custom Fields to display them to user so that he can
+			// select them easily
+			async getDealCustomFields(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const returnData: INodePropertyOptions[] = [];
+				const { data } = await pipedriveApiRequest.call(this, 'GET', '/dealFields', {});
+				for (const field of data) {
+					if (field.key.length === 40) {
+						returnData.push({
+							name: field.name,
+							value: field.key,
+						});
+					}
+				}
+
+				returnData.sort((a, b) => {
+					const aName = a.name.toLowerCase();
+					const bName = b.name.toLowerCase();
+					if (aName < bName) { return -1; }
+					if (aName > bName) { return 1; }
+					return 0;
+				});
+
+				return returnData;
+			},
+			// Get all the Person Custom Fields to display them to user so that he can
+			// select them easily
+			async getPersonCustomFields(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const returnData: INodePropertyOptions[] = [];
+				const { data } = await pipedriveApiRequest.call(this, 'GET', '/personFields', {});
+				for (const field of data) {
+					if (field.key.length === 40) {
+						returnData.push({
+							name: field.name,
+							value: field.key,
+						});
+					}
+				}
+
+				returnData.sort((a, b) => {
+					const aName = a.name.toLowerCase();
+					const bName = b.name.toLowerCase();
+					if (aName < bName) { return -1; }
+					if (aName > bName) { return 1; }
+					return 0;
+				});
+
+				return returnData;
+			},
 			// Get all the filters to display them to user so that he can
 			// select them easily
 			async getFilters(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
@@ -2428,6 +2900,15 @@ export class Pipedrive implements INodeType {
 						value: filterId,
 					});
 				}
+
+				returnData.sort((a, b) => {
+					const aName = a.name.toLowerCase();
+					const bName = b.name.toLowerCase();
+					if (aName < bName) { return -1; }
+					if (aName > bName) { return 1; }
+					return 0;
+				});
+
 				return returnData;
 			},
 			// Get all the person labels to display them to user so that he can
@@ -2448,6 +2929,15 @@ export class Pipedrive implements INodeType {
 						}
 					}
 				}
+
+				returnData.sort((a, b) => {
+					const aName = a.name.toLowerCase();
+					const bName = b.name.toLowerCase();
+					if (aName < bName) { return -1; }
+					if (aName > bName) { return 1; }
+					return 0;
+				});
+
 				if (operation === 'update') {
 					returnData.push({
 						name: 'No Label',
@@ -2474,6 +2964,15 @@ export class Pipedrive implements INodeType {
 						}
 					}
 				}
+
+				returnData.sort((a, b) => {
+					const aName = a.name.toLowerCase();
+					const bName = b.name.toLowerCase();
+					if (aName < bName) { return -1; }
+					if (aName > bName) { return 1; }
+					return 0;
+				});
+
 				if (operation === 'update') {
 					returnData.push({
 						name: 'No Label',
@@ -2500,6 +2999,15 @@ export class Pipedrive implements INodeType {
 						}
 					}
 				}
+
+				returnData.sort((a, b) => {
+					const aName = a.name.toLowerCase();
+					const bName = b.name.toLowerCase();
+					if (aName < bName) { return -1; }
+					if (aName > bName) { return 1; }
+					return 0;
+				});
+
 				if (operation === 'update') {
 					returnData.push({
 						name: 'No Label',
@@ -2606,6 +3114,13 @@ export class Pipedrive implements INodeType {
 						qs.limit = this.getNodeParameter('limit', i) as number;
 					}
 
+					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					addAdditionalFields(qs, additionalFields);
+
+					if (qs.type) {
+						qs.type = (qs.type as string[]).join(',');
+					}
+
 					endpoint = `/activities`;
 
 				} else if (operation === 'update') {
@@ -2695,6 +3210,43 @@ export class Pipedrive implements INodeType {
 					if (body.label === 'null') {
 						body.label = null;
 					}
+				} else if (operation === 'search') {
+					// ----------------------------------
+					//         deal:search
+					// ----------------------------------
+
+					requestMethod = 'GET';
+
+					qs.term = this.getNodeParameter('term', i) as string;
+					returnAll = this.getNodeParameter('returnAll', i) as boolean;
+					qs.exact_match = this.getNodeParameter('exactMatch', i) as boolean;
+					if (returnAll === false) {
+						qs.limit = this.getNodeParameter('limit', i) as number;
+					}
+
+					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+
+					if (additionalFields.fields) {
+						qs.fields = (additionalFields.fields as string[]).join(',');
+					}
+
+					if (additionalFields.organizationId) {
+						qs.organization_id = parseInt(additionalFields.organizationId as string, 10);
+					}
+
+					if (additionalFields.includeFields) {
+						qs.include_fields = additionalFields.includeFields as string;
+					}
+
+					if (additionalFields.personId) {
+						qs.person_id = parseInt(additionalFields.personId as string, 10);
+					}
+					if (additionalFields.status) {
+						qs.status = additionalFields.status as string;
+					}
+
+					endpoint = `/deals/search`;
+
 				}
 			} else if (resource === 'file') {
 				if (operation === 'create') {

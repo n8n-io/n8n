@@ -65,6 +65,9 @@ export class ImportCredentialsCommand extends Command {
 
 		try {
 			await Db.init();
+
+			// Make sure the settings exist
+			await UserSettings.prepareUserSettings();
 			let i;
 
 			const encryptionKey = await UserSettings.getEncryptionKey();

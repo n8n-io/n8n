@@ -56,7 +56,7 @@ export class Wekan implements INodeType {
 		group: ['transform'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
-		description: 'Open-Source Kanban',
+		description: 'Consume Wekan API',
 		defaults: {
 			name: 'Wekan',
 			color: '#006581',

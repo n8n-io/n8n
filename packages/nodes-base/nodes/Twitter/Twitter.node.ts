@@ -38,7 +38,7 @@ export class Twitter implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Twitter ',
 		name: 'twitter',
-		icon: 'file:twitter.png',
+		icon: 'file:twitter.svg',
 		group: ['input', 'output'],
 		version: 1,
 		description: 'Consume Twitter API',
