@@ -632,8 +632,8 @@ a.logo {
 		}
 
 		.notification {
-			height: 6px;
-			width: 6px;
+			height: 8px;
+			width: 8px;
 			border-radius: 50%;
 			color: $--sidebar-active-color;
 			position: absolute;
@@ -643,11 +643,11 @@ a.logo {
 			display: flex;
 			align-items: center;
 			justify-content: center;
-			top: -1px;
+			top: -2.5px;
 			
 			div {
-				height: 4px;
-				width: 4px;
+				height: 6px;
+				width: 6px;
 				background-color: $--color-primary;
 				border-radius: 50%;
 			}

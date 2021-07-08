@@ -18,7 +18,7 @@
 		</div>
 		<div>
 			<div v-html="version.description" :class="$style.description"></div>
-			<div :class="$style.nodes" v-if="version.nodes && version.nodes.length > 0">
+			<div :class="`${$style.nodes} ${hasMoreThan2Rows ? $style.expanded: ''}`" v-if="version.nodes && version.nodes.length > 0">
 				<NodeIcon 
 					v-for="node in version.nodes"
 					:key="node.name"
@@ -33,6 +33,7 @@
 import Vue from 'vue';
 import { format } from 'timeago.js';
 import NodeIcon from './NodeIcon.vue';
+import { IVersion } from '@/Interface';
 
 
 export default Vue.extend({
@@ -42,6 +43,10 @@ export default Vue.extend({
 	computed: {
 		releaseDate() {
 			return format(this.version.createdAt);
+		},
+		hasMoreThan2Rows(): boolean {
+			const version = this.version as IVersion;
+			return version.nodes && version.nodes.length > 20;
 		},
 	},
 });
@@ -53,7 +58,7 @@ export default Vue.extend({
 		border: $--version-card-border;
 		border-radius: 8px;
 		display: block;
-		padding: 15px;
+		padding: 16px;
 		text-decoration: none;
 
 		&:hover {
@@ -99,6 +104,7 @@ export default Vue.extend({
 	.released {
 		font-size: 12px;
 		line-height: 18px;
+		font-weight: 400;
 		color: $--version-card-release-date-text-color;
 	}
 
@@ -106,7 +112,11 @@ export default Vue.extend({
 		display: grid;
 		grid-template-columns: repeat(10, 1fr);
 		grid-row-gap: 5px;
-		margin-block-start: 15px;
+		margin-block-start: 24px;
+	}
+
+	.expanded {
+		grid-row-gap: 8px;
 	}
 
 	.badge {
