@@ -9,6 +9,7 @@ import {
 
 import {
 	IDataObject,
+	INodePropertyOptions,
 	NodeApiError,
 } from 'n8n-workflow';
 
@@ -94,4 +95,13 @@ export const mapEndpoint = (resource: string, operation: string) => {
 		}
 	}
 	return resourceEndpoint.get(resource);
+};
+
+export const sortData = (returnData: INodePropertyOptions[]):INodePropertyOptions[] => {
+	returnData.sort((a, b) => {
+		if (a.name < b.name) { return -1; }
+		if (a.name > b.name) { return 1; }
+		return 0;
+	});
+	return returnData;
 };

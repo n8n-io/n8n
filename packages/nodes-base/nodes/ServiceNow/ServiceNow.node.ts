@@ -16,6 +16,7 @@ import {
 	mapEndpoint,
 	serviceNowApiRequest,
 	serviceNowRequestAllItems,
+	sortData
 } from './GenericFunctions';
 
 import {
@@ -149,12 +150,7 @@ export class ServiceNow implements INodeType {
 						description: table.value,
 					});
 				}
-				returnData.sort((a, b) => {
-					if (a.name < b.name) { return -1; }
-					if (a.name > b.name) { return 1; }
-					return 0;
-				});
-				return returnData;
+				return sortData(returnData);
 			},
 			// Get all the table column to display them to user
 			async getColumns(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
@@ -181,12 +177,7 @@ export class ServiceNow implements INodeType {
 						});
 					}
 				}
-				returnData.sort((a, b) => {
-					if (a.name < b.name) { return -1; }
-					if (a.name > b.name) { return 1; }
-					return 0;
-				});
-				return returnData;
+				return sortData(returnData);
 			},
 			async getUsers(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -229,12 +220,7 @@ export class ServiceNow implements INodeType {
 						}
 					}
 				}
-				returnData.sort((a, b) => {
-					if (a.name < b.name) { return -1; }
-					if (a.name > b.name) { return 1; }
-					return 0;
-				});
-				return returnData;
+				return sortData(returnData);
 			},
 			async getAssignmentGroups(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -251,12 +237,7 @@ export class ServiceNow implements INodeType {
 						});
 					}
 				}
-				returnData.sort((a, b) => {
-					if (a.name < b.name) { return -1; }
-					if (a.name > b.name) { return 1; }
-					return 0;
-				});
-				return returnData;
+				return sortData(returnData);
 			},
 			async getUserRoles(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -273,12 +254,7 @@ export class ServiceNow implements INodeType {
 						});
 					}
 				}
-				returnData.sort((a, b) => {
-					if (a.name < b.name) { return -1; }
-					if (a.name > b.name) { return 1; }
-					return 0;
-				});
-				return returnData;
+				return sortData(returnData);
 			},
 			async getIncidentCategories(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -295,12 +271,7 @@ export class ServiceNow implements INodeType {
 					});
 
 				}
-				returnData.sort((a, b) => {
-					if (a.name < b.name) { return -1; }
-					if (a.name > b.name) { return 1; }
-					return 0;
-				});
-				return returnData;
+				return sortData(returnData);
 			},
 			async getIncidentSubcategories(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -319,12 +290,7 @@ export class ServiceNow implements INodeType {
 					});
 				}
 
-				returnData.sort((a, b) => {
-					if (a.name < b.name) { return -1; }
-					if (a.name > b.name) { return 1; }
-					return 0;
-				});
-				return returnData;
+				return sortData(returnData);
 			},
 			async getIncidentStates(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -341,12 +307,7 @@ export class ServiceNow implements INodeType {
 					});
 
 				}
-				returnData.sort((a, b) => {
-					if (a.name < b.name) { return -1; }
-					if (a.name > b.name) { return 1; }
-					return 0;
-				});
-				return returnData;
+				return sortData(returnData);
 			},
 			async getIncidentResolutionCodes(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -363,12 +324,7 @@ export class ServiceNow implements INodeType {
 					});
 
 				}
-				returnData.sort((a, b) => {
-					if (a.name < b.name) { return -1; }
-					if (a.name > b.name) { return 1; }
-					return 0;
-				});
-				return returnData;
+				return sortData(returnData);
 			},
 			async getIncidentHoldReasons(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -385,12 +341,7 @@ export class ServiceNow implements INodeType {
 					});
 
 				}
-				returnData.sort((a, b) => {
-					if (a.name < b.name) { return -1; }
-					if (a.name > b.name) { return 1; }
-					return 0;
-				});
-				return returnData;
+				return sortData(returnData);
 			},
 		},
 	};
