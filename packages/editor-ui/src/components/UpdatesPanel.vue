@@ -67,7 +67,7 @@ export default Vue.extend({
 		p {
 			font-size: 14px;
 			line-height: 22px;
-			color: #7D7D87;
+			color: $--updates-panel-description-text-color;
 			font-weight: 400;
 		}
 
@@ -80,7 +80,7 @@ export default Vue.extend({
 		margin: 0;
 		font-size: 24px;
 		line-height: 24px;
-		color: #555555;
+		color: $--updates-panel-text-color;
 		font-weight: 400;
 	}
 
@@ -89,8 +89,8 @@ export default Vue.extend({
 	}
 
 	.versions {
-		background-color: #F8F9FB;
-		border-top: 1px #DBDFE7 solid;
+		background-color: $--updates-panel-dark-background-color;
+		border-top: $--updates-panel-border;
 		height: 100%;
 		padding: 30px;
 		overflow-y: scroll;
@@ -106,12 +106,12 @@ export default Vue.extend({
 		font-size: 14px;
 
 		svg {
-			color: #909399;
+			color: $--updates-panel-info-icon-color;
 			margin-right: 5px;
 		}
 
 		span {
-			color: $--color-primary;
+			color: $--updates-panel-info-url-color;
 			font-weight: 600;
 		}
 	}

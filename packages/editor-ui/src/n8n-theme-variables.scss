@@ -90,3 +90,24 @@ $--trigger-icon-background-color: #fff;
 
 // drawer
 $--drawer-background-color: #fff;
+
+// updates-panel
+$--updates-panel-info-icon-color: #909399;
+$--updates-panel-info-url-color: $--color-primary;
+$--updates-panel-border: 1px #dbdfe7 solid;
+$--updates-panel-dark-background-color: #f8f9fb;
+$--updates-panel-description-text-color: #7d7d87;
+$--updates-panel-text-color: #555555;
+
+// versions card
+$--version-card-name-text-color: #666666;
+$--version-card-border: 1px #dbdfe7 solid;
+$--version-card-description-text-color: #7d7d87;
+$--version-card-release-date-text-color: #909399;
+$--version-card-security-badge-color: #f45959;
+$--version-card-security-badge-background-color: #fef0f0;
+$--version-card-security-badge-border-color: #fde2e2;
+$--version-card-breaking-change-background-color: rgba(255, 229, 100, 0.3);
+$--version-card-breaking-change-color: #6b5900;
+$--version-card-security-flag-color: #ff8080;
+$--version-card-box-shadow-color: rgba(109, 48, 40, 0.07);

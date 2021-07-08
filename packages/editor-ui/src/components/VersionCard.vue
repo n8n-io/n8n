@@ -50,21 +50,21 @@ export default Vue.extend({
 <style module lang="scss">
 	.card {
 		background-color: #fff;
-		border: 1px #DBDFE7 solid;
+		border: $--version-card-border;
 		border-radius: 8px;
 		display: block;
 		padding: 15px;
 		text-decoration: none;
 
 		&:hover {
-			box-shadow: 0px 2px 10px rgba(109, 48, 40, 0.07);
+			box-shadow: 0px 2px 10px $--version-card-box-shadow-color;
 		}
 	}
 
 	.header {
 		display: flex;
 		flex-wrap: wrap;
-		border-bottom: 1px solid #DBDFE7;
+		border-bottom: $--version-card-border;
 		padding-bottom: 10px;
 
 		> * {
@@ -85,21 +85,21 @@ export default Vue.extend({
 		font-weight: 600;
 		font-size: 16px;
 		line-height: 18px;
-		color: #666666;
+		color: $--version-card-name-text-color;
 	}
 
 	.description {
 		font-size: 14px;
 		font-weight: 400;
 		line-height: 19px;
-		color: #7D7D87;
+		color: $--version-card-description-text-color;
 		margin-top: 15px;
 	}
 
 	.released {
 		font-size: 12px;
 		line-height: 18px;
-		color: #909399;
+		color: $--version-card-release-date-text-color;
 	}
 
 	.nodes {
@@ -120,20 +120,20 @@ export default Vue.extend({
 	}
 
 	.security-update {
-		color: #f45959;
-		background-color: #fef0f0;
-		border-color: #fde2e2;
+		color: $--version-card-security-badge-color;
+		background-color: $--version-card-security-badge-background-color;
+		border-color: $--version-card-security-badge-border-color;
 	}
 
 	.breaking-change {
-		background-color: rgba(255, 229, 100, 0.3);
-		color: #6B5900;
+		background-color: $--version-card-breaking-change-background-color;
+		color: $--version-card-breaking-change-color;
 		border: none;
 	}
 
 	.security-flag {
 		font-size: 14px;
 		height: 18px;
-		color: #ff8080;
+		color: $--version-card-security-flag-color;
 	}
 </style>
