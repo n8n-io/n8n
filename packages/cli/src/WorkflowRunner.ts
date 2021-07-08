@@ -8,6 +8,7 @@ import {
 	IBullJobResponse,
 	ICredentialsOverwrite,
 	ICredentialsTypeData,
+	IExecutionDb,
 	IExecutionFlattedDb,
 	IExecutionResponse,
 	IProcessMessageDataHook,
@@ -29,6 +30,7 @@ import {
 import {
 	ExecutionError,
 	IRun,
+	IWorkflowBase,
 	LoggerProxy as Logger,
 	Workflow,
 	WorkflowExecuteMode,
@@ -85,7 +87,7 @@ export class WorkflowRunner {
 	 * @param {string} executionId
 	 * @memberof WorkflowRunner
 	 */
-	processError(error: ExecutionError, startedAt: Date, executionMode: WorkflowExecuteMode, executionId: string) {
+	async processError(error: ExecutionError, startedAt: Date, executionMode: WorkflowExecuteMode, executionId: string, workflowData?: IWorkflowBase) {
 		const fullRunData: IRun = {
 			data: {
 				resultData: {
@@ -98,6 +100,25 @@ export class WorkflowRunner {
 			startedAt,
 			stoppedAt: new Date(),
 		};
+		if (workflowData !== undefined) {
+			// When failing, we might not have finished the execution
+			// Therefore, database might not contain finished errors.
+			// Force an update to db as there should be no harm doing this
+	
+			const fullExecutionData: IExecutionDb = {
+				data: fullRunData.data,
+				mode: fullRunData.mode,
+				finished: fullRunData.finished ? fullRunData.finished : false,
+				startedAt: fullRunData.startedAt,
+				stoppedAt: fullRunData.stoppedAt,
+				workflowData: workflowData,
+			};
+	
+			const executionData = ResponseHelper.flattenExecutionData(fullExecutionData);
+	
+			await Db.collections.Execution!.update(executionId, executionData as IExecutionFlattedDb);
+		}
+		
 
 		// Remove from active execution with empty data. That will
 		// set the execution to failed.
@@ -205,7 +226,7 @@ export class WorkflowRunner {
 			}
 	
 		} catch (error) {
-			this.processError(error, new Date(), data.executionMode, executionId);
+			await this.processError(error, new Date(), data.executionMode, executionId, data.workflowData);
 			return executionId;
 		}
 		
@@ -257,7 +278,7 @@ export class WorkflowRunner {
 		try {
 			job = await this.jobQueue.add(jobData, jobOptions);
 		} catch (error) {
-			this.processError(error, new Date(), data.executionMode, executionId);
+			await this.processError(error, new Date(), data.executionMode, executionId, data.workflowData);
 			return executionId;
 		}
 		
@@ -444,7 +465,7 @@ export class WorkflowRunner {
 			// Send all data to subprocess it needs to run the workflow
 			subprocess.send({ type: 'startWorkflow', data } as IProcessMessage);
 		} catch (error) {
-			this.processError(error, new Date(), data.executionMode, executionId);
+			await this.processError(error, new Date(), data.executionMode, executionId, data.workflowData);
 			return executionId;
 		}
 		
@@ -494,7 +515,7 @@ export class WorkflowRunner {
 			} else if (message.type === 'processError') {
 				clearTimeout(executionTimeout);
 				const executionError = message.data.executionError as ExecutionError;
-				this.processError(executionError, startedAt, data.executionMode, executionId);
+				await this.processError(executionError, startedAt, data.executionMode, executionId, data.workflowData);
 
 			} else if (message.type === 'processHook') {
 				this.processHookMessage(workflowHooks, message.data as IProcessMessageDataHook);

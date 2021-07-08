@@ -649,7 +649,34 @@ export async function executeWorkflow(workflowInfo: IExecuteWorkflowInfo, additi
 		}
 		data = await workflowExecute.processRunExecutionData(workflow);
 	} catch (error) {
-		this.processError(error, new Date(), runData.executionMode, executionId);
+		const fullRunData: IRun = {
+			data: {
+				resultData: {
+					error,
+					runData: {},
+				},
+			},
+			finished: false,
+			mode: 'integrated',
+			startedAt: new Date(),
+			stoppedAt: new Date(),
+		};
+		// When failing, we might not have finished the execution
+		// Therefore, database might not contain finished errors.
+		// Force an update to db as there should be no harm doing this
+
+		const fullExecutionData: IExecutionDb = {
+			data: fullRunData.data,
+			mode: fullRunData.mode,
+			finished: fullRunData.finished ? fullRunData.finished : false,
+			startedAt: fullRunData.startedAt,
+			stoppedAt: fullRunData.stoppedAt,
+			workflowData: workflowData,
+		};
+
+		const executionData = ResponseHelper.flattenExecutionData(fullExecutionData);
+
+		await Db.collections.Execution!.update(executionId, executionData as IExecutionFlattedDb);
 		throw {
 			...error,
 			stack: error!.stack,
