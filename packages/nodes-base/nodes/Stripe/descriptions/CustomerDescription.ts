@@ -56,7 +56,7 @@ export const customerFields = [
 		type: 'string',
 		required: true,
 		default: '',
-		description: 'Full name or business name of the customer to create.',
+		description: 'Full name or business name of the customer to create',
 		displayOptions: {
 			show: {
 				resource: [
@@ -98,13 +98,6 @@ export const customerFields = [
 						name: 'details',
 						values: [
 							{
-								displayName: 'Country',
-								name: 'country',
-								description: 'Two-letter country code (<a target="_blank" href="https://en.wikipedia.org/wiki/ISO_3166-1_alpha-2">ISO 3166-1 alpha-2</a>)',
-								type: 'string',
-								default: '',
-							},
-							{
 								displayName: 'Line 1',
 								name: 'line1',
 								description: 'Address line 1 (e.g. street, PO Box, or company name)',
@@ -129,6 +122,13 @@ export const customerFields = [
 								displayName: 'State',
 								name: 'state',
 								description: 'State, county, province, or region',
+								type: 'string',
+								default: '',
+							},
+							{
+								displayName: 'Country',
+								name: 'country',
+								description: 'Two-letter country code (<a target="_blank" href="https://en.wikipedia.org/wiki/ISO_3166-1_alpha-2">ISO 3166-1 alpha-2</a>)',
 								type: 'string',
 								default: '',
 							},
@@ -161,6 +161,7 @@ export const customerFields = [
 				displayName: 'Metadata',
 				name: 'metadata',
 				type: 'fixedCollection',
+				default: {},
 				placeholder: 'Add Metadata Item',
 				description: 'Set of key-value pairs to attach to the customer to create',
 				typeOptions: {
@@ -220,13 +221,6 @@ export const customerFields = [
 										name: 'details',
 										values: [
 											{
-												displayName: 'Country',
-												name: 'country',
-												description: 'Two-letter country code (<a target="_blank" href="https://en.wikipedia.org/wiki/ISO_3166-1_alpha-2">ISO 3166-1 alpha-2</a>)',
-												type: 'string',
-												default: '',
-											},
-											{
 												displayName: 'Line 1',
 												name: 'line1',
 												description: 'Address line 1 (e.g. street, PO Box, or company name)',
@@ -251,6 +245,13 @@ export const customerFields = [
 												displayName: 'State',
 												name: 'state',
 												description: 'State, county, province, or region',
+												type: 'string',
+												default: '',
+											},
+											{
+												displayName: 'Country',
+												name: 'country',
+												description: 'Two-letter country code (<a target="_blank" href="https://en.wikipedia.org/wiki/ISO_3166-1_alpha-2">ISO 3166-1 alpha-2</a>)',
 												type: 'string',
 												default: '',
 											},
@@ -336,7 +337,7 @@ export const customerFields = [
 		name: 'returnAll',
 		type: 'boolean',
 		default: false,
-		description: 'Return all results',
+		description: 'Whether to return all results or only up to a given limit',
 		displayOptions: {
 			show: {
 				resource: [
@@ -352,8 +353,8 @@ export const customerFields = [
 		displayName: 'Limit',
 		name: 'limit',
 		type: 'number',
-		default: 5,
-		description: 'The number of results to return',
+		default: 50,
+		description: 'How many results to return',
 		typeOptions: {
 			minValue: 1,
 			maxValue: 1000,
@@ -450,20 +451,6 @@ export const customerFields = [
 						name: 'details',
 						values: [
 							{
-								displayName: 'City',
-								name: 'city',
-								description: 'City, district, suburb, town, or village',
-								type: 'string',
-								default: '',
-							},
-							{
-								displayName: 'Country',
-								name: 'country',
-								description: 'Two-letter country code (<a target="_blank" href="https://en.wikipedia.org/wiki/ISO_3166-1_alpha-2">ISO 3166-1 alpha-2</a>)',
-								type: 'string',
-								default: '',
-							},
-							{
 								displayName: 'Line 1',
 								name: 'line1',
 								description: 'Address line 1 (e.g. street, PO Box, or company name)',
@@ -478,9 +465,9 @@ export const customerFields = [
 								default: '',
 							},
 							{
-								displayName: 'Postal Code',
-								name: 'postal_code',
-								description: 'ZIP or postal code',
+								displayName: 'City',
+								name: 'city',
+								description: 'City, district, suburb, town, or village',
 								type: 'string',
 								default: '',
 							},
@@ -488,6 +475,20 @@ export const customerFields = [
 								displayName: 'State',
 								name: 'state',
 								description: 'State, county, province, or region',
+								type: 'string',
+								default: '',
+							},
+							{
+								displayName: 'Country',
+								name: 'country',
+								description: 'Two-letter country code (<a target="_blank" href="https://en.wikipedia.org/wiki/ISO_3166-1_alpha-2">ISO 3166-1 alpha-2</a>)',
+								type: 'string',
+								default: '',
+							},
+							{
+								displayName: 'Postal Code',
+								name: 'postal_code',
+								description: 'ZIP or postal code',
 								type: 'string',
 								default: '',
 							},
@@ -562,6 +563,7 @@ export const customerFields = [
 				typeOptions: {
 					multipleValues: true,
 				},
+				default: {},
 				options: [
 					{
 						displayName: 'Shipping Properties',
