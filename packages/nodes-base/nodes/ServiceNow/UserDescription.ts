@@ -220,7 +220,7 @@ export const userFields = [
 				name: 'roles',
 				type: 'multiOptions',
 				typeOptions: {
-					loadOptionsMethod: 'getUserRoles'
+					loadOptionsMethod: 'getUserRoles',
 				},
 				default: '',
 				description:'Roles of the user.',
@@ -458,7 +458,7 @@ export const userFields = [
 					loadOptionsMethod: 'getColumns',
 					loadOptionsDependsOn: [
 						'operation',
-					]
+					],
 				},
 				default: '',
 				description: 'A list of fields to return.',
@@ -468,7 +468,7 @@ export const userFields = [
 				name: 'sysparm_query',
 				type: 'string',
 				default: '',
-				description: 'An encoded query string used to filter the results.',
+				description: 'An encoded query string used to filter the results. <br/> The encoded query can be created as mentioned in the <a href="https://developer.servicenow.com/dev.do#!/learn/learning-plans/quebec/servicenow_application_developer/app_store_learnv2_rest_quebec_more_about_query_parameters" target="_blank">Docs</a>.',
 			},
 			{
 				displayName: 'View',
@@ -648,7 +648,7 @@ export const userFields = [
 				name: 'roles',
 				type: 'multiOptions',
 				typeOptions: {
-					loadOptionsMethod: 'getUserRoles'
+					loadOptionsMethod: 'getUserRoles',
 				},
 				default: '',
 				description:'Roles of the user.',

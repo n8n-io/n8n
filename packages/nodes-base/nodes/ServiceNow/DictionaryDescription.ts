@@ -131,7 +131,7 @@ export const dictionaryFields = [
 				name: 'sysparm_query',
 				type: 'string',
 				default: '',
-				description: 'An encoded query string used to filter the results.',
+				description: 'An encoded query string used to filter the results. <br/> The encoded query can be created as mentioned in the <a href="https://developer.servicenow.com/dev.do#!/learn/learning-plans/quebec/servicenow_application_developer/app_store_learnv2_rest_quebec_more_about_query_parameters" target="_blank">Docs</a>.',
 			},
 			{
 				displayName: 'View',

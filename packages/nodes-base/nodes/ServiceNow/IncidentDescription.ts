@@ -86,17 +86,20 @@ export const incidentFields = [
 				name: 'assigned_to',
 				type: 'options',
 				typeOptions: {
-					loadOptionsMethod: 'getUsers'
+					loadOptionsMethod: 'getUsers',
+					loadOptionsDependsOn: [
+						'additionalFields.assignment_group',
+					],
 				},
 				default: '',
-				description: 'What user is the incident assigned to.',
+				description: 'What user is the incident assigned to. Require the selection of an assignment group.',
 			},
 			{
 				displayName: 'Assignment Group',
 				name: 'assignment_group',
 				type: 'options',
 				typeOptions: {
-					loadOptionsMethod: 'getAssignmentGroups'
+					loadOptionsMethod: 'getAssignmentGroups',
 				},
 				default: '',
 				description: 'The assignment group of the incident.',
@@ -119,33 +122,14 @@ export const incidentFields = [
 				displayName: 'Category',
 				name: 'category',
 				type: 'options',
-				options: [
-					{
-						name: "Inquiry / Help",
-						value: "Inquiry / Help",
-					},
-					{
-						name: "Software",
-						value: "Software",
-					},
-					{
-						name: "Hardware",
-						value: "Hardware",
-					},
-					{
-						name: "Network",
-						value: "Network",
-					},
-					{
-						name: "Database",
-						value: "Database",
-					},
-				],
+				typeOptions: {
+					loadOptionsMethod: 'getIncidentCategories',
+				},
 				default: '',
 				description: 'The category of the incident.',
 			},
 			{
-				displayName: 'Close note',
+				displayName: 'Close Notes',
 				name: 'close_notes',
 				type: 'string',
 				default: '',
@@ -164,20 +148,20 @@ export const incidentFields = [
 				type: 'options',
 				options: [
 					{
-						name: "Email",
-						value: "Email",
+						name: 'Email',
+						value: 'email',
 					},
 					{
-						name: "Phone",
-						value: "Phone",
+						name: 'Phone',
+						value: 'phone',
 					},
 					{
-						name: "Self Service",
-						value: "Self-service",
+						name: 'Self Service',
+						value: 'self-service',
 					},
 					{
-						name: "Walk In",
-						value: "Walk-in",
+						name: 'Walk In',
+						value: 'walk-in',
 					},
 				],
 				default: '',
@@ -196,15 +180,15 @@ export const incidentFields = [
 				type: 'options',
 				options: [
 					{
-						name: "Low",
+						name: 'Low',
 						value: 1,
 					},
 					{
-						name: "Medium",
+						name: 'Medium',
 						value: 2,
 					},
 					{
-						name: "High",
+						name: 'High',
 						value: 3,
 					},
 				],
@@ -215,36 +199,9 @@ export const incidentFields = [
 				displayName: 'Resolution Code',
 				name: 'close_code',
 				type: 'options',
-				options: [
-					{
-						name: "Solved (Work Around)",
-						value: "Solved (Work Around)",
-					},
-					{
-						name: "Solved (Permanently)",
-						value: "Solved (Permanently)",
-					},
-					{
-						name: "Solved Remotely (Work Around)",
-						value: "Solved Remotely (Work Around)",
-					},
-					{
-						name: "Solved Remotely (Permanently)",
-						value: "Solved Remotely (Permanently)",
-					},
-					{
-						name: "Not Solved (Not Reproducible)",
-						value: "Not Solved (Not Reproducible)",
-					},
-					{
-						name: "Not Solved (Too Costly)",
-						value: "Not Solved (Too Costly)",
-					},
-					{
-						name: "Closed/Resolved By Caller",
-						value: "Closed/Resolved by Caller",
-					},
-				],
+				typeOptions: {
+					loadOptionsMethod: 'getIncidentResolutionCodes',
+				},
 				default: '',
 				description: 'The resolution code of the incident. \'close_code\' in metadata.',
 			},
@@ -252,38 +209,9 @@ export const incidentFields = [
 				displayName: 'State',
 				name: 'state',
 				type: 'options',
-				options: [
-					{
-						name: "New",
-						value: 1,
-						description: "Incident is logged but not yet investigated."
-					},
-					{
-						name: "In Progress",
-						value: 2,
-						description: "Incident is assigned and is being investigated."
-					},
-					{
-						name: "On Hold",
-						value: 3,
-						description: "The responsibility for the incident shifts temporarily to another entity to provide further information, evidence, or a resolution."
-					},
-					{
-						name: "Resolved",
-						value: 6,
-						description: "A satisfactory fix is provided for the incident to ensure that it does not occur again."
-					},
-					{
-						name: "Closed",
-						value: 7,
-						description: "Incident is marked Closed after it is in the Resolved state for a specific duration and it is confirmed that the incident is satisfactorily resolved."
-					},
-					{
-						name: "Canceled",
-						value: 8,
-						description: "Incident was triaged but found to be a duplicate incident, an unnecessary incident, or not an incident at all."
-					},
-				],
+				typeOptions: {
+					loadOptionsMethod: 'getIncidentStates',
+				},
 				default: '',
 				description: 'The state of the incident.',
 			},
@@ -292,7 +220,7 @@ export const incidentFields = [
 				name: 'subcategory',
 				type: 'options',
 				typeOptions: {
-					loadOptionsMethod: 'getSubcategories',
+					loadOptionsMethod: 'getIncidentSubcategories',
 					loadOptionsDependsOn: [
 						'additionalFields.category',
 					],
@@ -306,15 +234,15 @@ export const incidentFields = [
 				type: 'options',
 				options: [
 					{
-						name: "Low",
+						name: 'Low',
 						value: 1,
 					},
 					{
-						name: "Medium",
+						name: 'Medium',
 						value: 2,
 					},
 					{
-						name: "High",
+						name: 'High',
 						value: 3,
 					},
 				],
@@ -451,7 +379,7 @@ export const incidentFields = [
 				name: 'sysparm_query',
 				type: 'string',
 				default: '',
-				description: 'An encoded query string used to filter the results.',
+				description: 'An encoded query string used to filter the results. <br/> The encoded query can be created as mentioned in the <a href="https://developer.servicenow.com/dev.do#!/learn/learning-plans/quebec/servicenow_application_developer/app_store_learnv2_rest_quebec_more_about_query_parameters" target="_blank">Docs</a>.',
 			},
 			{
 				displayName: 'View',
@@ -505,7 +433,7 @@ export const incidentFields = [
 				name: 'assigned_to',
 				type: 'options',
 				typeOptions: {
-					loadOptionsMethod: 'getUsers'
+					loadOptionsMethod: 'getUsers',
 				},
 				default: '',
 				description: 'What user is the incident assigned to.',
@@ -520,14 +448,20 @@ export const incidentFields = [
 			{
 				displayName: 'On Hold Reason',
 				name: 'hold_reason',
-				type: 'number',
+				type: 'options',
+				typeOptions: {
+					loadOptionsMethod: 'getIncidentHoldReasons',
+				},
 				default: '',
 				description: 'The on hold reason for the incident.',
 			},
 			{
 				displayName: 'Resolution Code',
 				name: 'close_code',
-				type: 'string',
+				type: 'options',
+				typeOptions: {
+					loadOptionsMethod: 'getIncidentResolutionCodes',
+				},
 				default: '',
 				description: 'The resolution code of the incident. \'close_code\' in metadata.',
 			},
@@ -535,38 +469,9 @@ export const incidentFields = [
 				displayName: 'State',
 				name: 'state',
 				type: 'options',
-				options: [
-					{
-						name: "New",
-						value: 1,
-						description: "Incident is logged but not yet investigated."
-					},
-					{
-						name: "In Progress",
-						value: 2,
-						description: "Incident is assigned and is being investigated."
-					},
-					{
-						name: "On Hold",
-						value: 3,
-						description: "The responsibility for the incident shifts temporarily to another entity to provide further information, evidence, or a resolution."
-					},
-					{
-						name: "Resolved",
-						value: 6,
-						description: "A satisfactory fix is provided for the incident to ensure that it does not occur again."
-					},
-					{
-						name: "Closed",
-						value: 7,
-						description: "Incident is marked Closed after it is in the Resolved state for a specific duration and it is confirmed that the incident is satisfactorily resolved."
-					},
-					{
-						name: "Canceled",
-						value: 8,
-						description: "Incident was triaged but found to be a duplicate incident, an unnecessary incident, or not an incident at all."
-					},
-				],
+				typeOptions: {
+					loadOptionsMethod: 'getIncidentStates',
+				},
 				default: '',
 				description: 'The state of the incident.',
 			},

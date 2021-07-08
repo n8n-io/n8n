@@ -84,6 +84,26 @@ export const tableRecordFields = [
 		description: 'Send the the data the node receives as JSON.',
 	},
 	{
+		displayName: 'Send All Fields',
+		name: 'sendAll',
+		type: 'boolean',
+		displayOptions: {
+			show: {
+				resource: [
+					'tableRecord',
+				],
+				operation: [
+					'create',
+				],
+				sendInputData: [
+					true,
+				],
+			},
+		},
+		default: true,
+		description: 'Send all input fields.',
+	},
+	{
 		displayName: 'Columns',
 		name: 'columns',
 		type: 'string',
@@ -97,6 +117,9 @@ export const tableRecordFields = [
 				],
 				sendInputData: [
 					true,
+				],
+				sendAll: [
+					false,
 				],
 			},
 		},
@@ -327,7 +350,7 @@ export const tableRecordFields = [
 				name: 'sysparm_query',
 				type: 'string',
 				default: '',
-				description: 'An encoded query string used to filter the results.',
+				description: 'An encoded query string used to filter the results. <br/> The encoded query can be created as mentioned in the <a href="https://developer.servicenow.com/dev.do#!/learn/learning-plans/quebec/servicenow_application_developer/app_store_learnv2_rest_quebec_more_about_query_parameters" target="_blank">Docs</a>.',
 			},
 			{
 				displayName: 'View',
@@ -398,6 +421,26 @@ export const tableRecordFields = [
 		description: 'Send the the data the node receives as JSON.',
 	},
 	{
+		displayName: 'Send All Fields',
+		name: 'sendAll',
+		type: 'boolean',
+		displayOptions: {
+			show: {
+				resource: [
+					'tableRecord',
+				],
+				operation: [
+					'update',
+				],
+				sendInputData: [
+					true,
+				],
+			},
+		},
+		default: true,
+		description: 'Send all input fields.',
+	},
+	{
 		displayName: 'Columns',
 		name: 'columns',
 		type: 'string',
@@ -412,11 +455,14 @@ export const tableRecordFields = [
 				sendInputData: [
 					true,
 				],
+				sendAll: [
+					false,
+				],
 			},
 		},
 		default: '',
 		required: true,
-		description: 'Comma-separated list of the properties to use as columns for the rows to create',
+		description: 'Comma-separated list of the properties to use as columns for the rows to update',
 	},
 	{
 		displayName: 'Update Fields',
