@@ -72,10 +72,6 @@ export class Stripe implements INodeType {
 						value: 'balance',
 					},
 					{
-						name: 'Customer Card',
-						value: 'customerCard',
-					},
-					{
 						name: 'Charge',
 						value: 'charge',
 					},
@@ -86,6 +82,10 @@ export class Stripe implements INodeType {
 					{
 						name: 'Customer',
 						value: 'customer',
+					},
+					{
+						name: 'Customer Card',
+						value: 'customerCard',
 					},
 					{
 						name: 'Source',
@@ -168,7 +168,7 @@ export class Stripe implements INodeType {
 			} else if (resource === 'customerCard') {
 
 				// *********************************************************************
-				//                             card
+				//                           customer card
 				// *********************************************************************
 
 				// https://stripe.com/docs/api/cards
@@ -176,7 +176,7 @@ export class Stripe implements INodeType {
 				if (operation === 'add') {
 
 					// ----------------------------------
-					//          customerCard: add
+					//         customerCard: add
 					// ----------------------------------
 
 					const body = {
@@ -190,7 +190,7 @@ export class Stripe implements INodeType {
 				} else if (operation === 'remove') {
 
 					// ----------------------------------
-					//           customerCard: remove
+					//       customerCard: remove
 					// ----------------------------------
 
 					const customerId = this.getNodeParameter('customerId', i);
@@ -201,7 +201,7 @@ export class Stripe implements INodeType {
 				} else if (operation === 'get') {
 
 					// ----------------------------------
-					//           customerCard: get
+					//        customerCard: get
 					// ----------------------------------
 
 					const customerId = this.getNodeParameter('customerId', i);
@@ -222,7 +222,7 @@ export class Stripe implements INodeType {
 				if (operation === 'create') {
 
 					// ----------------------------------
-					//       charge: create
+					//          charge: create
 					// ----------------------------------
 
 					const body = {
@@ -243,7 +243,7 @@ export class Stripe implements INodeType {
 				} else if (operation === 'get') {
 
 					// ----------------------------------
-					//        charge: get
+					//           charge: get
 					// ----------------------------------
 
 					const chargeId = this.getNodeParameter('chargeId', i);
@@ -252,7 +252,7 @@ export class Stripe implements INodeType {
 				} else if (operation === 'getAll') {
 
 					// ----------------------------------
-					//        charge: getAll
+					//          charge: getAll
 					// ----------------------------------
 
 					responseData = await handleListing.call(this, resource);
@@ -260,7 +260,7 @@ export class Stripe implements INodeType {
 				} else if (operation === 'update') {
 
 					// ----------------------------------
-					//        charge: update
+					//         charge: update
 					// ----------------------------------
 
 					const body = {} as IDataObject;
@@ -328,7 +328,7 @@ export class Stripe implements INodeType {
 				if (operation === 'create') {
 
 					// ----------------------------------
-					//       customer: create
+					//         customer: create
 					// ----------------------------------
 
 					const body = {
@@ -346,7 +346,7 @@ export class Stripe implements INodeType {
 				} else if (operation === 'delete') {
 
 					// ----------------------------------
-					//        customer: delete
+					//         customer: delete
 					// ----------------------------------
 
 					const customerId = this.getNodeParameter('customerId', i);
@@ -355,7 +355,7 @@ export class Stripe implements INodeType {
 				} else if (operation === 'get') {
 
 					// ----------------------------------
-					//        customer: get
+					//          customer: get
 					// ----------------------------------
 
 					const customerId = this.getNodeParameter('customerId', i);
@@ -434,7 +434,7 @@ export class Stripe implements INodeType {
 				} else if (operation === 'delete') {
 
 					// ----------------------------------
-					//        source: delete
+					//          source: delete
 					// ----------------------------------
 
 					const sourceId = this.getNodeParameter('sourceId', i);
@@ -445,7 +445,7 @@ export class Stripe implements INodeType {
 				} else if (operation === 'get') {
 
 					// ----------------------------------
-					//        source: get
+					//          source: get
 					// ----------------------------------
 
 					const sourceId = this.getNodeParameter('sourceId', i);
@@ -464,7 +464,7 @@ export class Stripe implements INodeType {
 				if (operation === 'create') {
 
 					// ----------------------------------
-					//         token: create
+					//          token: create
 					// ----------------------------------
 
 					const type = this.getNodeParameter('type', i);
