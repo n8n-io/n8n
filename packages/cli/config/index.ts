@@ -636,7 +636,7 @@ const config = convict({
 			format: String,
 			default: 'https://docs.n8n.io/reference/',
 			env: 'N8N_VERSION_NOTIFICATIONS_ENDPOINT',
-		}
+		},
 	},
 
 });
