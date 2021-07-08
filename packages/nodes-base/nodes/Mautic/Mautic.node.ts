@@ -30,9 +30,14 @@ import {
 } from './CompanyDescription';
 
 import {
-	contactCompanyFields,
-	contactCompanyOperations,
-} from './ContactCompanyDescription';
+	companyContactFields,
+	companyContactOperations,
+} from './CompanyContactDescription';
+
+import {
+	contactSegmentFields,
+	contactSegmentOperations,
+} from './ContactSegmentDescription';
 
 import {
 	snakeCase,
@@ -42,7 +47,7 @@ export class Mautic implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Mautic',
 		name: 'mautic',
-		icon: 'file:mautic.png',
+		icon: 'file:mautic.svg',
 		group: ['output'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
@@ -105,14 +110,19 @@ export class Mautic implements INodeType {
 						description: 'Create or modify a company',
 					},
 					{
+						name: 'Company Contact',
+						value: 'companyContact',
+						description: 'Add/remove contacts to/from a company',
+					},
+					{
 						name: 'Contact',
 						value: 'contact',
 						description: 'Create & modify contacts',
 					},
 					{
-						name: 'Contact <> Company',
-						value: 'contactCompany',
-						description: 'Add/ remove contacts from a company',
+						name: 'Contact Segment',
+						value: 'contactSegment',
+						description: 'Add/remove contacts to/from a segment',
 					},
 				],
 				default: 'contact',
@@ -122,8 +132,10 @@ export class Mautic implements INodeType {
 			...companyFields,
 			...contactOperations,
 			...contactFields,
-			...contactCompanyOperations,
-			...contactCompanyFields,
+			...contactSegmentOperations,
+			...contactSegmentFields,
+			...companyContactOperations,
+			...companyContactFields,
 		],
 	};
 
@@ -190,6 +202,19 @@ export class Mautic implements INodeType {
 					returnData.push({
 						name: field.label,
 						value: field.alias,
+					});
+				}
+				return returnData;
+			},
+			// Get all the available segments to display them to user so that he can
+			// select them easily
+			async getSegments(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const returnData: INodePropertyOptions[] = [];
+				const segments = await mauticApiRequestAllItems.call(this, 'lists', 'GET', '/segments');
+				for (const segment of segments) {
+					returnData.push({
+						name: segment.name,
+						value: segment.id,
 					});
 				}
 				return returnData;
@@ -547,7 +572,22 @@ export class Mautic implements INodeType {
 				}
 			}
 
-			if (resource === 'contactCompany') {
+			if (resource === 'contactSegment') {
+				//https://developer.mautic.org/?php#add-contact-to-a-segment
+				if (operation === 'add') {
+					const contactId = this.getNodeParameter('contactId', i) as string;
+					const segmentId = this.getNodeParameter('segmentId', i) as string;
+					responseData = await mauticApiRequest.call(this, 'POST', `/segments/${segmentId}/contact/${contactId}/add`);
+				}
+				//https://developer.mautic.org/#remove-contact-from-a-segment
+				if (operation === 'remove') {
+					const contactId = this.getNodeParameter('contactId', i) as string;
+					const segmentId = this.getNodeParameter('segmentId', i) as string;
+					responseData = await mauticApiRequest.call(this, 'POST', `/segments/${segmentId}/contact/${contactId}/remove`);
+				}
+			}
+
+			if (resource === 'companyContact') {
 				//https://developer.mautic.org/#add-contact-to-a-company
 				if (operation === 'add') {
 					const contactId = this.getNodeParameter('contactId', i) as string;
