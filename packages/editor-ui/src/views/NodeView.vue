@@ -2212,7 +2212,7 @@ export default mixins(
 					}
 
 					message = `${message} <a class="primary-color">More info</a>`;
-					this.$showWarning('Critical Update', message, {
+					this.$showWarning('Critical Update available', message, {
 						onClick: () => {
 							this.$store.dispatch('ui/openUpdatesPanel');
 						},
