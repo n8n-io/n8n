@@ -55,7 +55,7 @@ export async function stripeApiRequest(
 	if (options.qs && Object.keys(options.qs).length === 0) {
 		delete options.qs;
 	}
-	console.log(options);
+
 	try {
 		return await this.helpers.request!.call(this, options);
 	} catch (error) {
