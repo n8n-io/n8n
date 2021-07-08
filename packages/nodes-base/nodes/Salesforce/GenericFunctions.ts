@@ -42,7 +42,8 @@ export async function salesforceApiRequest(this: IExecuteFunctions | IExecuteSin
 			const credentialsType = 'salesforceOAuth2Api';
 			const credentials = this.getCredentials(credentialsType);
 			const subdomain = ((credentials!.accessTokenUrl as string).match(/https:\/\/(.+).salesforce\.com/) || [])[1];
-			const options = getOptions.call(this, method, (uri || endpoint), body, qs, `https://${subdomain}.salesforce.com`);
+			const url = credentials!.environment === 'sandbox' ? 'https://test.salesforce.com' : `https://${subdomain}.salesforce.com`;
+			const options = getOptions.call(this, method, (uri || endpoint), body, qs, url);
 			Logger.debug(`Authentication for "Salesforce" node is using "OAuth2". Invoking URI ${options.uri}`);
 			//@ts-ignore
 			return await this.helpers.requestOAuth2.call(this, credentialsType, options);
