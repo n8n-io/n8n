@@ -35,6 +35,11 @@ import {
 } from './ContactCompanyDescription';
 
 import {
+	contactSegmentFields,
+	contactSegmentOperations,
+} from './ContactSegmentDescription';
+
+import {
 	snakeCase,
 } from 'change-case';
 
@@ -42,7 +47,7 @@ export class Mautic implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Mautic',
 		name: 'mautic',
-		icon: 'file:mautic.png',
+		icon: 'file:mautic.svg',
 		group: ['output'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
@@ -110,9 +115,14 @@ export class Mautic implements INodeType {
 						description: 'Create & modify contacts',
 					},
 					{
-						name: 'Contact <> Company',
+						name: 'Contact Company',
 						value: 'contactCompany',
-						description: 'Add/ remove contacts from a company',
+						description: 'Add/remove contacts to/from a company',
+					},
+					{
+						name: 'Contact Segment',
+						value: 'contactSegment',
+						description: 'Add/remove contacts to/from a segment',
 					},
 				],
 				default: 'contact',
@@ -122,6 +132,8 @@ export class Mautic implements INodeType {
 			...companyFields,
 			...contactOperations,
 			...contactFields,
+			...contactSegmentOperations,
+			...contactSegmentFields,
 			...contactCompanyOperations,
 			...contactCompanyFields,
 		],
@@ -558,16 +570,20 @@ export class Mautic implements INodeType {
 						responseData = responseData.map(item => item.fields.all);
 					}
 				}
+			}
+
+			if (resource === 'contactSegment') {
 				//https://developer.mautic.org/?php#add-contact-to-a-segment
-				if (operation === 'addToSegment') {
-					const options = this.getNodeParameter('options', i) as IDataObject;
+				if (operation === 'add') {
 					const contactId = this.getNodeParameter('contactId', i) as string;
 					const segmentId = this.getNodeParameter('segmentId', i) as string;
 					responseData = await mauticApiRequest.call(this, 'POST', `/segments/${segmentId}/contact/${contactId}/add`);
-					responseData = [responseData.contact];
-					if (options.rawData === false) {
-						responseData = responseData.map(item => item.fields.all);
-					}
+				}
+				//https://developer.mautic.org/#remove-contact-from-a-segment
+				if (operation === 'remove') {
+					const contactId = this.getNodeParameter('contactId', i) as string;
+					const segmentId = this.getNodeParameter('segmentId', i) as string;
+					responseData = await mauticApiRequest.call(this, 'POST', `/segments/${segmentId}/contact/${contactId}/remove`);
 				}
 			}
 
