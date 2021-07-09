@@ -5,7 +5,7 @@ import {
 } from '../../Interface';
 
 export const newVersions = mixins(
-	showMessage
+	showMessage,
 ).extend({
 	methods: {
 		async checkForNewVersions() {
