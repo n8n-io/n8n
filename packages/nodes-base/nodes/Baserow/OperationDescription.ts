@@ -70,9 +70,21 @@ export const operationFields = [
 		description: 'ID of the row to update',
 	},
 	{
-		displayName: 'Insert Input Data',
-		name: 'insertInputData',
-		type: 'boolean',
+		displayName: 'Data to Send',
+		name: 'dataToSend',
+		type: 'options',
+		options: [
+			{
+				name: 'Define Each Field Below',
+				value: 'defineBelow',
+				description: 'Set the value for each destination field',
+			},
+			{
+				name: 'Auto-match Inputs to Fields',
+				value: 'automatchInputs',
+				description: 'Use when node input names match destination field names',
+			},
+		],
 		displayOptions: {
 			show: {
 				operation: [
@@ -80,34 +92,35 @@ export const operationFields = [
 				],
 			},
 		},
-		default: true,
+		default: 'defineBelow',
 		description: 'Whether to insert the input data this node receives in the new row',
 	},
 	{
-		displayName: 'Inputs for Columns',
-		name: 'columns',
+		displayName: 'Inputs to Ignore',
+		name: 'inputsToIgnore',
 		type: 'string',
 		displayOptions: {
 			show: {
 				operation: [
 					'update',
 				],
-				sendInputData: [
-					true,
+				dataToSend: [
+					'automatchInputs',
 				],
 			},
 		},
 		default: '',
 		required: true,
-		description: 'The node input field containing the data to be used for each column. Separate field names by commas',
+		description: 'List of input names to avoid sending, separated by commas',
 		placeholder: 'Enter fields...',
 	},
 	{
-		displayName: 'Fields',
+		displayName: 'Fields to Send',
 		name: 'fieldsUi',
 		placeholder: 'Add Field',
 		type: 'fixedCollection',
 		typeOptions: {
+			multipleValueButtonText: 'Add Field to Send',
 			multipleValues: true,
 		},
 		displayOptions: {
@@ -115,8 +128,8 @@ export const operationFields = [
 				operation: [
 					'update',
 				],
-				sendInputData: [
-					false,
+				dataToSend: [
+					'defineBelow',
 				],
 			},
 		},
@@ -153,9 +166,21 @@ export const operationFields = [
 	//             create
 	// ----------------------------------
 	{
-		displayName: 'Insert Input Data',
-		name: 'sendInputData',
-		type: 'boolean',
+		displayName: 'Data to Send',
+		name: 'dataToSend',
+		type: 'options',
+		options: [
+			{
+				name: 'Define Each Field Below',
+				value: 'defineBelow',
+				description: 'Set the value for each destination field',
+			},
+			{
+				name: 'Auto-match Inputs to Fields',
+				value: 'automatchInputs',
+				description: 'Use when node input names match destination field names',
+			},
+		],
 		displayOptions: {
 			show: {
 				operation: [
@@ -163,34 +188,35 @@ export const operationFields = [
 				],
 			},
 		},
-		default: true,
+		default: 'defineBelow',
 		description: 'Whether to insert the input data this node receives in the new row',
 	},
 	{
-		displayName: 'Columns',
-		name: 'columns',
+		displayName: 'Inputs to Ignore',
+		name: 'inputsToIgnore',
 		type: 'string',
 		displayOptions: {
 			show: {
 				operation: [
 					'create',
 				],
-				sendInputData: [
-					true,
+				dataToSend: [
+					'automatchInputs',
 				],
 			},
 		},
 		default: '',
 		required: true,
-		description: 'Comma-separated list of the properties to use as columns for the rows to create',
+		description: 'List of input names to avoid sending, separated by commas',
 		placeholder: 'Enter fields...',
 	},
 	{
-		displayName: 'Fields',
+		displayName: 'Fields to Send',
 		name: 'fieldsUi',
 		placeholder: 'Add Field',
 		type: 'fixedCollection',
 		typeOptions: {
+			multipleValueButtonText: 'Add Field to Send',
 			multipleValues: true,
 		},
 		displayOptions: {
@@ -198,8 +224,8 @@ export const operationFields = [
 				operation: [
 					'create',
 				],
-				sendInputData: [
-					false,
+				dataToSend: [
+					'defineBelow',
 				],
 			},
 		},

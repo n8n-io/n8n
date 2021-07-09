@@ -222,16 +222,16 @@ export class Baserow implements INodeType {
 
 					const body: IDataObject = {};
 
-					const sendInputData = this.getNodeParameter('sendInputData', 0, false) as boolean;
+					const dataToSend = this.getNodeParameter('dataToSend', 0) as 'defineBelow' | 'automatchInputs';
 
-					if (sendInputData) {
+					if (dataToSend === 'automatchInputs') {
 
 						const incomingKeys = Object.keys(items[i].json);
-						const rawColumns = this.getNodeParameter('columns', i) as string;
-						const columns = rawColumns.split(',').map(c => c.trim());
+						const rawInputsToIgnore = this.getNodeParameter('inputsToIgnore', i) as string;
+						const inputsToIgnore = rawInputsToIgnore.split(',').map(c => c.trim());
 
 						for (const key of incomingKeys) {
-							if (!columns.includes(key)) continue;
+							if (inputsToIgnore.includes(key)) continue;
 							body[key] = items[i].json[key];
 							mapper.namesToIds(body);
 						}
@@ -261,17 +261,18 @@ export class Baserow implements INodeType {
 
 					const body: IDataObject = {};
 
-					const sendInputData = this.getNodeParameter('sendInputData', 0, false) as boolean;
+					const dataToSend = this.getNodeParameter('dataToSend', 0) as 'defineBelow' | 'automatchInputs';
 
-					if (sendInputData) {
+					if (dataToSend === 'automatchInputs') {
 
 						const incomingKeys = Object.keys(items[i].json);
-						const rawColumns = this.getNodeParameter('columns', i) as string;
-						const columns = rawColumns.split(',').map(c => c.trim());
+						const rawInputsToIgnore = this.getNodeParameter('inputsToIgnore', i) as string;
+						const inputsToIgnore = rawInputsToIgnore.split(',').map(c => c.trim());
 
 						for (const key of incomingKeys) {
-							if (!columns.includes(key)) continue;
+							if (inputsToIgnore.includes(key)) continue;
 							body[key] = items[i].json[key];
+							mapper.namesToIds(body);
 						}
 					} else {
 						const fields = this.getNodeParameter('fieldsUi.fieldValues', i, []) as FieldsUiValues;
