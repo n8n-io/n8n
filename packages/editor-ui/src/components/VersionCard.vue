@@ -16,7 +16,7 @@
 					type="danger"
 				/>
 				<Badge
-					v-if="version.hasSecurityFix"
+					v-if="version.hasBreakingChange"
 					text="Breaking changes"
 					type="warning"
 				/>
@@ -25,7 +25,8 @@
 				Released&nbsp;<TimeAgo :date="version.createdAt" />
 			</div>
 		</div>
-		<div v-if="version.description || (version.nodes && version.nodes.length)">
+		<div :class="$style.divider" v-if="version.description || (version.nodes && version.nodes.length)"></div>
+		<div>
 			<div v-if="version.description" v-html="version.description" :class="$style.description"></div>
 			<div :class="$style.nodes" v-if="version.nodes && version.nodes.length > 0">
 				<NodeIcon 
@@ -70,8 +71,6 @@ export default Vue.extend({
 	.header {
 		display: flex;
 		flex-wrap: wrap;
-		border-bottom: $--version-card-border;
-		padding-bottom: 10px;
 
 		> * {
 			display: flex;
@@ -94,12 +93,17 @@ export default Vue.extend({
 		color: $--version-card-name-text-color;
 	}
 
+	.divider {
+		border-bottom: $--version-card-border;
+		width: 100%;
+		margin: 10px 0 15px 0;
+	}
+
 	.description {
 		font-size: 14px;
 		font-weight: 400;
 		line-height: 19px;
 		color: $--version-card-description-text-color;
-		margin-top: 15px;
 	}
 
 	.released {
