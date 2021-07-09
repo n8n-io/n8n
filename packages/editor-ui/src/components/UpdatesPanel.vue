@@ -19,12 +19,15 @@
 				</a>
 			</section>
 			<section :class="$style.versions">
-				<VersionCard 
+				<div
 					v-for="version in nextVersions"
 					:key="version.name"
-					:version="version"
 					:class="$style['versions-card']"
-				/>
+				>
+					<VersionCard 
+						:version="version"
+					/>
+				</div>
 			</section>
 		</template>
 	</Modal>

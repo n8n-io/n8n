@@ -1,5 +1,5 @@
-<template>
-	<a :href="version.documentationUrl" target="_blank" :class="$style.card">
+<template functional>
+	<a v-if="props.version" :set="version = props.version" :href="version.documentationUrl" target="_blank" :class="$style.card">
 		<div :class="$style.header">
 			<div>
 				<div :class="$style.name">
@@ -46,6 +46,10 @@ import TimeAgo from './TimeAgo.vue';
 import Badge from './Badge.vue';
 import WarningTooltip from './WarningTooltip.vue';
 
+Vue.component('NodeIcon', NodeIcon);
+Vue.component('TimeAgo', TimeAgo);
+Vue.component('Badge', Badge);
+Vue.component('WarningTooltip', WarningTooltip);
 
 export default Vue.extend({
 	components: { NodeIcon, TimeAgo, Badge, WarningTooltip },
