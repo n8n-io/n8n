@@ -111,7 +111,7 @@ export const operationFields = [
 		},
 		default: '',
 		required: true,
-		description: 'List of input names to avoid sending, separated by commas',
+		description: 'List of input names to avoid sending, separated by commas. Leave empty to send all inputs',
 		placeholder: 'Enter fields...',
 	},
 	{
@@ -207,7 +207,7 @@ export const operationFields = [
 		},
 		default: '',
 		required: true,
-		description: 'List of input names to avoid sending, separated by commas',
+		description: 'List of input names to avoid sending, separated by commas. Leave empty to send all inputs',
 		placeholder: 'Enter fields...',
 	},
 	{
