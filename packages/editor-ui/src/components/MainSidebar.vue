@@ -130,12 +130,7 @@
 				<div class="footer-menu-items">
 					<el-menu-item index="updates" class="updates" v-if="hasVersionUpdates" @click="openUpdatesPanel">
 						<div class="gift-container">
-							<div class="gift-icon">
-								<font-awesome-icon icon="gift"/>
-								<div class="notification">
-									<div></div>
-								</div>
-							</div>
+							<GiftNotificationIcon />
 						</div>
 						<span slot="title" class="item-title-root">{{nextVersions.length > 99? '99+': nextVersions.length}} update{{nextVersions.length > 1? 's': ''}} available</span>
 					</el-menu-item>
@@ -162,6 +157,7 @@ import About from '@/components/About.vue';
 import CredentialsEdit from '@/components/CredentialsEdit.vue';
 import CredentialsList from '@/components/CredentialsList.vue';
 import ExecutionsList from '@/components/ExecutionsList.vue';
+import GiftNotificationIcon from './GiftNotificationIcon.vue';
 import WorkflowSettings from '@/components/WorkflowSettings.vue';
 
 import { genericHelpers } from '@/components/mixins/genericHelpers';
@@ -225,6 +221,7 @@ export default mixins(
 			CredentialsEdit,
 			CredentialsList,
 			ExecutionsList,
+			GiftNotificationIcon,
 			WorkflowSettings,
 			MenuItemsIterator,
 		},
@@ -622,32 +619,6 @@ a.logo {
 		align-items: center;
 		height: 100%;
 		width: 100%;
-	}
-
-	.gift-icon {
-		display: flex;
-		position: relative;
-
-		.notification {
-			height: 8px;
-			width: 8px;
-			border-radius: 50%;
-			color: $--sidebar-active-color;
-			position: absolute;
-			background-color: $--sidebar-gift-notification-outer-color;
-			left: 75%;
-			display: flex;
-			align-items: center;
-			justify-content: center;
-			top: -2.5px;
-			
-			div {
-				height: 6px;
-				width: 6px;
-				background-color: $--sidebar-gift-notification-inner-color;
-				border-radius: 50%;
-			}
-		}
 	}
 }
 
