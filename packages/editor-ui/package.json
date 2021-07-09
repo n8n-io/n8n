@@ -25,7 +25,9 @@
     "test:unit": "vue-cli-service test:unit"
   },
   "dependencies": {
-    "v-click-outside": "^3.1.2"
+    "timeago.js": "^4.0.2",
+    "v-click-outside": "^3.1.2",
+    "vue-fragment": "^1.5.2"
   },
   "devDependencies": {
     "@beyonk/google-fonts-webpack-plugin": "^1.5.0",

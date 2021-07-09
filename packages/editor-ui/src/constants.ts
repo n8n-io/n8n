@@ -14,6 +14,7 @@ export const MAX_TAG_NAME_LENGTH = 24;
 export const DUPLICATE_MODAL_KEY = 'duplicate';
 export const TAGS_MANAGER_MODAL_KEY = 'tagsManager';
 export const WORKLOW_OPEN_MODAL_KEY = 'workflowOpen';
+export const VERSIONS_MODAL_KEY = 'versions';
 
 // breakpoints
 export const BREAKPOINT_SM = 768;

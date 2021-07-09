@@ -24,17 +24,26 @@
 				/>
 			</template>
 		</ModalRoot>
+		<ModalRoot :name="VERSIONS_MODAL_KEY" :keepAlive="true">
+			<template v-slot="{ modalName, open }">
+				<UpdatesPanel
+					:modalName="modalName"
+					:visible="open"
+				/>
+			</template>
+		</ModalRoot>
 	</div>
 </template>
 
 <script lang="ts">
 import Vue from "vue";
-import { DUPLICATE_MODAL_KEY, TAGS_MANAGER_MODAL_KEY, WORKLOW_OPEN_MODAL_KEY } from '@/constants';
+import { DUPLICATE_MODAL_KEY, TAGS_MANAGER_MODAL_KEY, WORKLOW_OPEN_MODAL_KEY, VERSIONS_MODAL_KEY } from '@/constants';
 
 import TagsManager from "@/components/TagsManager/TagsManager.vue";
 import DuplicateWorkflowDialog from "@/components/DuplicateWorkflowDialog.vue";
 import WorkflowOpen from "@/components/WorkflowOpen.vue";
 import ModalRoot from "./ModalRoot.vue";
+import UpdatesPanel from "./UpdatesPanel.vue";
 
 export default Vue.extend({
 	name: "Modals",
@@ -43,11 +52,13 @@ export default Vue.extend({
 		DuplicateWorkflowDialog,
 		WorkflowOpen,
 		ModalRoot,
+		UpdatesPanel,
 	},
 	data: () => ({
 		DUPLICATE_MODAL_KEY,
 		TAGS_MANAGER_MODAL_KEY,
 		WORKLOW_OPEN_MODAL_KEY,
+		VERSIONS_MODAL_KEY,
 	}),
 });
 </script>

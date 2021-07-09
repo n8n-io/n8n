@@ -28,6 +28,16 @@ $--custom-success-text : #40c351;
 $--custom-warning-background : #ffffe5;
 $--custom-warning-text : #eb9422;
 
+// Badge
+$--badge-danger-color: #f45959;
+$--badge-danger-background-color: #fef0f0;
+$--badge-danger-border-color: #fde2e2;
+$--badge-warning-background-color: rgba(255, 229, 100, 0.3);
+$--badge-warning-color: #6b5900;
+
+// Warning tooltip
+$--warning-tooltip-color: #ff8080;
+
 $--custom-node-view-background : #faf9fe;
 
 // Table
@@ -44,8 +54,18 @@ $--custom-input-border-shadow: 1px solid $--custom-input-border-color;
 
 $--header-height: 65px;
 
+// sidebar
 $--sidebar-width: 65px;
 $--sidebar-expanded-width: 200px;
+$--sidebar-inactive-color: #909399;
+$--sidebar-active-color: $--color-primary;
+
+// gifts notification
+$--gift-notification-active-color: $--color-primary;
+$--gift-notification-inner-color: $--color-primary;
+$--gift-notification-outer-color: #fff;
+
+// tags manager
 $--tags-manager-min-height: 300px;
 
 // based on element.io breakpoints
@@ -83,3 +103,23 @@ $--node-creator-description-color: #7d7d87;
 // trigger icon
 $--trigger-icon-border-color: #dcdfe6;
 $--trigger-icon-background-color: #fff;
+
+// drawer
+$--drawer-background-color: #fff;
+
+// updates-panel
+$--updates-panel-info-icon-color: #909399;
+$--updates-panel-info-url-color: $--color-primary;
+$--updates-panel-border: 1px #dbdfe7 solid;
+$--updates-panel-dark-background-color: #f8f9fb;
+$--updates-panel-description-text-color: #7d7d87;
+$--updates-panel-text-color: #555;
+
+// versions card
+$--version-card-name-text-color: #666;
+$--version-card-background-color: #fff;
+$--version-card-border: 1px #dbdfe7 solid;
+$--version-card-description-text-color: #7d7d87;
+$--version-card-release-date-text-color: #909399;
+$--version-card-box-shadow-color: rgba(109, 48, 40, 0.07);
+

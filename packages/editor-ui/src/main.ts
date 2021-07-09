@@ -21,6 +21,7 @@ import { runExternalHook } from './components/mixins/externalHooks';
 
 // @ts-ignore
 import vClickOutside from 'v-click-outside';
+import Fragment from 'vue-fragment';
 
 import { library } from '@fortawesome/fontawesome-svg-core';
 import {
@@ -62,6 +63,7 @@ import {
 	faFileImport,
 	faFilePdf,
 	faFolderOpen,
+	faGift,
 	faHdd,
 	faHome,
 	faHourglass,
@@ -151,6 +153,7 @@ library.add(faFileExport);
 library.add(faFileImport);
 library.add(faFilePdf);
 library.add(faFolderOpen);
+library.add(faGift);
 library.add(faHdd);
 library.add(faHome);
 library.add(faHourglass);
@@ -194,6 +197,7 @@ library.add(faUsers);
 library.add(faClock);
 
 Vue.component('font-awesome-icon', FontAwesomeIcon);
+Vue.use(Fragment.Plugin);
 
 Vue.config.productionTip = false;
 router.afterEach((to, from) => {

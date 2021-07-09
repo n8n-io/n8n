@@ -125,6 +125,7 @@ import { moveNodeWorkflow } from '@/components/mixins/moveNodeWorkflow';
 import { restApi } from '@/components/mixins/restApi';
 import { showMessage } from '@/components/mixins/showMessage';
 import { titleChange } from '@/components/mixins/titleChange';
+import { newVersions } from '@/components/mixins/newVersions';
 
 import { workflowHelpers } from '@/components/mixins/workflowHelpers';
 import { workflowRun } from '@/components/mixins/workflowRun';
@@ -198,6 +199,7 @@ export default mixins(
 	titleChange,
 	workflowHelpers,
 	workflowRun,
+	newVersions,
 )
 	.extend({
 		name: 'NodeView',
@@ -2169,6 +2171,7 @@ export default mixins(
 				this.$store.commit('setVersionCli', settings.versionCli);
 				this.$store.commit('setOauthCallbackUrls', settings.oauthCallbackUrls);
 				this.$store.commit('setN8nMetadata', settings.n8nMetadata || {});
+				this.$store.commit('versions/setVersionNotificationSettings', settings.versionNotifications);
 			},
 			async loadNodeTypes (): Promise<void> {
 				const nodeTypes = await this.restApi().getNodeTypes();
@@ -2194,6 +2197,7 @@ export default mixins(
 				}
 			},
 		},
+
 
 		async mounted () {
 			this.$root.$on('importWorkflowData', async (data: IDataObject) => {
@@ -2234,6 +2238,10 @@ export default mixins(
 					this.$showError(error, 'Init Problem', 'There was a problem initializing the workflow:');
 				}
 				this.stopLoading();
+
+				setTimeout(async () => {
+					this.checkForNewVersions();
+				}, 0);
 			});
 
 			this.$externalHooks().run('nodeView.mount');

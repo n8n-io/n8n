@@ -196,6 +196,11 @@ class App {
 				'oauth1': urlBaseWebhook + `${this.restEndpoint}/oauth1-credential/callback`,
 				'oauth2': urlBaseWebhook + `${this.restEndpoint}/oauth2-credential/callback`,
 			},
+			versionNotifications: {
+				enabled: config.get('versionNotifications.enabled'),
+				endpoint: config.get('versionNotifications.endpoint'),
+				infoUrl: config.get('versionNotifications.infoUrl'),
+			},
 		};
 	}
 

@@ -30,7 +30,7 @@
 				</div>
 			</div>
 
-			<NodeIcon class="node-icon" :nodeType="nodeType" size="60" :style="nodeIconStyle" :shrink="true"/>
+			<NodeIcon class="node-icon" :nodeType="nodeType" size="60" :shrink="true" :disabled="this.data.disabled"/>
 		</div>
 		<div class="node-description">
 			<div class="node-name" :title="data.name">
@@ -76,11 +76,6 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 		},
 		isExecuting (): boolean {
 			return this.$store.getters.executingNode === this.data.name;
-		},
-		nodeIconStyle (): object {
-			return {
-				color: this.data.disabled ? '#ccc' : this.data.color,
-			};
 		},
 		nodeType (): INodeTypeDescription | null {
 			return this.$store.getters.nodeType(this.data.type);

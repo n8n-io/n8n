@@ -1,6 +1,6 @@
 <template functional>
 	<div :class="{[$style['node-item']]: true, [$style.bordered]: props.bordered}">
-		<NodeIcon :class="$style['node-icon']" :nodeType="props.nodeType" :style="{color: props.nodeType.defaults.color}" />
+		<NodeIcon :class="$style['node-icon']" :nodeType="props.nodeType" />
 		<div>
 			<div :class="$style.details">
 				<span :class="$style.name">{{props.nodeType.displayName}}</span>
