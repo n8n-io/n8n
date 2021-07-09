@@ -291,7 +291,7 @@ export const documentFields = [
 				default: true,
 			},
 			{
-				displayName: 'Docvalue Fields',
+				displayName: 'Doc Value Fields',
 				name: 'docvalue_fields',
 				description: 'Comma-separated list of fields to return as the docvalue representation of a field for each hit.',
 				type: 'string',
