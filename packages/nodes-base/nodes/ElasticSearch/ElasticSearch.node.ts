@@ -125,6 +125,12 @@ export class Elasticsearch implements INodeType {
 						const endpoint = `/${indexId}/_doc/${documentId}`;
 						responseData = await elasticsearchApiRequest.call(this, 'GET', endpoint, {}, qs);
 
+						const simple = this.getNodeParameter('simple', i) as IDataObject;
+
+						if (simple) {
+							responseData = responseData._source;
+						}
+
 					} else if (operation === 'getAll') {
 
 						// ----------------------------------------
