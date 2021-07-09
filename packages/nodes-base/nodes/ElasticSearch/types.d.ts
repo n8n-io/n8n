@@ -4,7 +4,7 @@ export type ElasticsearchApiCredentials = {
 	baseUrl: string;
 };
 
-export type DocumentGetAllAdditionalFields = {
+export type DocumentGetAllOptions = Partial<{
 	allow_no_indices: boolean;
 	allow_partial_search_results: boolean;
 	batched_reduce_size: number;
@@ -32,4 +32,4 @@ export type DocumentGetAllAdditionalFields = {
 	track_scores: boolean;
 	track_total_hits: string;
 	version: boolean;
-}
+}>;

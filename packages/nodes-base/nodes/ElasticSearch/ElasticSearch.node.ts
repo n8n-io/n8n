@@ -21,7 +21,7 @@ import {
 } from './descriptions';
 
 import {
-	DocumentGetAllAdditionalFields,
+	DocumentGetAllOptions,
 } from './types';
 
 export class Elasticsearch implements INodeType {
@@ -137,11 +137,11 @@ export class Elasticsearch implements INodeType {
 
 						const body = {} as IDataObject;
 						const qs = {} as IDataObject;
-						const additionalFields = this.getNodeParameter('additionalFields', i) as DocumentGetAllAdditionalFields;
+						const options = this.getNodeParameter('options', i) as DocumentGetAllOptions;
 
-						if (Object.keys(additionalFields).length) {
-							const { query, ...rest } = additionalFields;
-							Object.assign(body, JSON.parse(query));
+						if (Object.keys(options).length) {
+							const { query, ...rest } = options;
+							if (query) Object.assign(body, JSON.parse(query));
 							Object.assign(qs, rest);
 							qs._source = true;
 						}
@@ -151,6 +151,7 @@ export class Elasticsearch implements INodeType {
 						if (!returnAll) {
 							qs.size = this.getNodeParameter('limit', 0);
 						}
+
 						responseData = await elasticsearchApiRequest.call(this, 'GET', `/${indexId}/_search`, body, qs);
 						responseData = responseData.hits.hits;
 

@@ -51,7 +51,7 @@ export async function elasticsearchApiRequest(
 	}
 
 	try {
-		// console.log(options);
+		console.log(options);
 		return await this.helpers.request(options);
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error);
