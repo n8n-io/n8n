@@ -24,6 +24,10 @@ import {
 	DocumentGetAllOptions,
 } from './types';
 
+import {
+	omit,
+} from 'lodash';
+
 export class Elasticsearch implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Elasticsearch',
@@ -170,19 +174,23 @@ export class Elasticsearch implements INodeType {
 						// https://www.elastic.co/guide/en/elasticsearch/reference/current/docs-index_.html
 
 						const body = JSON.parse(this.getNodeParameter('content', i) as string);
-
 						const indexId = this.getNodeParameter('indexId', i);
-						const documentId = this.getNodeParameter('documentId', i);
-
 						const qs = {} as IDataObject;
 						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 
 						if (Object.keys(additionalFields).length) {
-							Object.assign(qs, additionalFields);
+							Object.assign(qs, omit(additionalFields, ['documentId']));
 						}
 
-						const endpoint = `/${indexId}/_doc/${documentId}`;
-						responseData = await elasticsearchApiRequest.call(this, 'PUT', endpoint, body);
+						const { documentId } = additionalFields;
+
+						if (documentId) {
+							const endpoint = `/${indexId}/_doc/${documentId}`;
+							responseData = await elasticsearchApiRequest.call(this, 'PUT', endpoint, body);
+						} else {
+							const endpoint = `/${indexId}/_doc`;
+							responseData = await elasticsearchApiRequest.call(this, 'POST', endpoint, body);
+						}
 
 					} else if (operation === 'update') {
 

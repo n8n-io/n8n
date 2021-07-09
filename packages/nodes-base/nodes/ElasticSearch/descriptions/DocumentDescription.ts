@@ -494,24 +494,6 @@ export const documentFields = [
 		},
 	},
 	{
-		displayName: 'Document ID',
-		name: 'documentId',
-		description: 'ID of the document to create and add.',
-		type: 'string',
-		required: true,
-		default: '',
-		displayOptions: {
-			show: {
-				resource: [
-					'document',
-				],
-				operation: [
-					'index',
-				],
-			},
-		},
-	},
-	{
 		displayName: 'Content',
 		name: 'content',
 		description: 'JSON source for the document data.',
@@ -550,6 +532,13 @@ export const documentFields = [
 			},
 		},
 		options: [
+			{
+				displayName: 'Document ID',
+				name: 'documentId',
+				description: 'ID of the document to create and add to the index.',
+				type: 'string',
+				default: '',
+			},
 			{
 				displayName: 'Routing',
 				name: 'routing',
