@@ -21,7 +21,7 @@
 					type="warning"
 				/>
 			</div>
-			<div :class="$style.releaseDate">
+			<div :class="$style['release-date']">
 				Released&nbsp;<TimeAgo :date="version.createdAt" />
 			</div>
 		</div>
@@ -110,7 +110,7 @@ export default Vue.extend({
 		color: $--version-card-description-text-color;
 	}
 
-	.releaseDate {
+	.release-date {
 		font-size: 12px;
 		line-height: 18px;
 		font-weight: 400;

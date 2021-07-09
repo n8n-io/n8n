@@ -7,7 +7,7 @@
 		drawerWidth="520px"
 	>
 		<template slot="header">
-			<p :class="$style.title">We’ve been busy ✨</p>
+			<span :class="$style.title">We’ve been busy ✨</span>
 		</template>
 		<template slot="content">
 			<section :class="$style['description']">
@@ -20,7 +20,7 @@
 				</p>
 
 				<a
-					:class="$style.update"
+					:class="$style['info-url']"
 					:href="infoUrl"
 					v-if="infoUrl"
 					target="_blank"
@@ -92,10 +92,6 @@ export default Vue.extend({
 	}
 }
 
-.content {
-	overflow: hidden;
-}
-
 .versions {
 	background-color: $--updates-panel-dark-background-color;
 	border-top: $--updates-panel-border;
@@ -109,7 +105,7 @@ export default Vue.extend({
 	margin-block-end: 15px;
 }
 
-.update {
+.info-url {
 	text-decoration: none;
 	font-size: 14px;
 
