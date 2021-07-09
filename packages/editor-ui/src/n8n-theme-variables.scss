@@ -28,6 +28,16 @@ $--custom-success-text : #40c351;
 $--custom-warning-background : #ffffe5;
 $--custom-warning-text : #eb9422;
 
+// Badge
+$--badge-danger-color: #f45959;
+$--badge-danger-background-color: #fef0f0;
+$--badge-danger-border-color: #fde2e2;
+$--badge-warning-background-color: rgba(255, 229, 100, 0.3);
+$--badge-warning-color: #6b5900;
+
+// Warning tooltip
+$--warning-tooltip-color: #ff8080;
+
 $--custom-node-view-background : #faf9fe;
 
 // Table
@@ -107,11 +117,5 @@ $--version-card-background-color: #fff;
 $--version-card-border: 1px #dbdfe7 solid;
 $--version-card-description-text-color: #7d7d87;
 $--version-card-release-date-text-color: #909399;
-$--badge-danger-color: #f45959;
-$--badge-danger-background-color: #fef0f0;
-$--badge-danger-border-color: #fde2e2;
-$--badge-warning-background-color: rgba(255, 229, 100, 0.3);
-$--badge-warning-color: #6b5900;
-$--warning-tooltip-color: #ff8080;
 $--version-card-box-shadow-color: rgba(109, 48, 40, 0.07);
 
