@@ -31,15 +31,15 @@ export class SalesforceOAuth2Api implements ICredentialType {
 			displayName: 'Authorization URL',
 			name: 'authUrl',
 			type: 'hidden',
-			default: 'https://login.salesforce.com/services/oauth2/authorize',
 			required: true,
+			default: '={{ $self["environment"] === "sandbox" ? "https://test.salesforce.com/services/oauth2/authorize" : "https://login.salesforce.com/services/oauth2/authorize" }}',
 		},
 		{
 			displayName: 'Access Token URL',
 			name: 'accessTokenUrl',
-			type: 'string',
-			default: 'https://yourcompany.salesforce.com/services/oauth2/token',
+			type: 'hidden',
 			required: true,
+			default: '={{ $self["environment"] === "sandbox" ? "https://test.salesforce.com/services/oauth2/token" : "https://login.salesforce.com/services/oauth2/token" }}',
 		},
 		{
 			displayName: 'Scope',
