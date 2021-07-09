@@ -45,11 +45,14 @@ const module: Module<IVersionsState, IRootState> = {
 	},
 	actions: {
 		async fetchVersions(context: ActionContext<IVersionsState, IRootState>) {
-			const { enabled, endpoint } = context.state.versionNotificationSettings;
-			if (enabled && endpoint) {
-				const currentVersion = context.rootState.versionCli;
-				const versions = await getNextVersions(endpoint, currentVersion);
-				context.commit('setVersions', {versions, currentVersion});
+			try {
+				const { enabled, endpoint } = context.state.versionNotificationSettings;
+				if (enabled && endpoint) {
+					const currentVersion = context.rootState.versionCli;
+					const versions = await getNextVersions(endpoint, currentVersion);
+					context.commit('setVersions', {versions, currentVersion});
+				}
+			} catch (e) {
 			}
 		},
 	},

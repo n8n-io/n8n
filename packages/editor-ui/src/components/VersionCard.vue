@@ -25,8 +25,8 @@
 				Released&nbsp;<TimeAgo :date="version.createdAt" />
 			</div>
 		</div>
-		<div>
-			<div v-html="version.description" :class="$style.description"></div>
+		<div v-if="version.description || (version.nodes && version.nodes.length)">
+			<div v-if="version.description" v-html="version.description" :class="$style.description"></div>
 			<div :class="$style.nodes" v-if="version.nodes && version.nodes.length > 0">
 				<NodeIcon 
 					v-for="node in version.nodes"
