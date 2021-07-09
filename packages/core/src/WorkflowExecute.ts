@@ -87,7 +87,7 @@ export class WorkflowExecute {
 	 * @returns {(Promise<string>)}
 	 * @memberof WorkflowExecute
 	 */
-	run(workflow: Workflow, startNode?: INode, destinationNode?: string): PCancelable<IRun> {
+	run(workflow: Workflow, executionId: string, startNode?: INode, destinationNode?: string): PCancelable<IRun> {
 		// Get the nodes to start workflow execution from
 		startNode = startNode || workflow.getStartNode(destinationNode);
 
@@ -133,7 +133,7 @@ export class WorkflowExecute {
 			},
 		};
 
-		return this.processRunExecutionData(workflow);
+		return this.processRunExecutionData(workflow, executionId);
 	}
 
 
@@ -243,7 +243,7 @@ export class WorkflowExecute {
 			},
 		};
 
-		return this.processRunExecutionData(workflow);
+		return this.processRunExecutionData(workflow, "12");
 	}
 
 
@@ -516,7 +516,7 @@ export class WorkflowExecute {
 	 * @returns {Promise<string>}
 	 * @memberof WorkflowExecute
 	 */
-	processRunExecutionData(workflow: Workflow): PCancelable<IRun> {
+	processRunExecutionData(workflow: Workflow, executionId: string): PCancelable<IRun> {
 		Logger.verbose('Workflow execution started', { workflowId: workflow.id });
 
 		const startedAt = new Date();
@@ -699,7 +699,7 @@ export class WorkflowExecute {
 							}
 
 							Logger.debug(`Running node "${executionNode.name}" started`, { node: executionNode.name, workflowId: workflow.id });
-							nodeSuccessData = await workflow.runNode(executionData.node, executionData.data, this.runExecutionData, runIndex, this.additionalData, NodeExecuteFunctions, this.mode);
+							nodeSuccessData = await workflow.runNode(executionData.node, executionData.data, this.runExecutionData, runIndex, this.additionalData, NodeExecuteFunctions, this.mode, executionId);
 							Logger.debug(`Running node "${executionNode.name}" finished successfully`, { node: executionNode.name, workflowId: workflow.id });
 
 							if (nodeSuccessData === undefined) {

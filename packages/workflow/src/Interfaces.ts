@@ -13,6 +13,7 @@ export interface IBinaryData {
 	fileName?: string;
 	directory?: string;
 	fileExtension?: string;
+	internalPath?: string;
 }
 
 export interface IOAuth2Options {
@@ -172,7 +173,7 @@ export interface IGetExecuteTriggerFunctions {
 
 
 export interface IGetExecuteFunctions {
-	(workflow: Workflow, runExecutionData: IRunExecutionData, runIndex: number, connectionInputData: INodeExecutionData[], inputData: ITaskDataConnections, node: INode, additionalData: IWorkflowExecuteAdditionalData, mode: WorkflowExecuteMode): IExecuteFunctions;
+	(workflow: Workflow, runExecutionData: IRunExecutionData, runIndex: number, connectionInputData: INodeExecutionData[], inputData: ITaskDataConnections, node: INode, additionalData: IWorkflowExecuteAdditionalData, mode: WorkflowExecuteMode, executionId: string): IExecuteFunctions;
 }
 
 

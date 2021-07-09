@@ -3,6 +3,8 @@ import {
 	IExecuteFunctions,
 } from 'n8n-core';
 
+import { promises as fs } from 'fs';
+
 import {
 	IBinaryKeyData,
 	INodeExecutionData,
@@ -223,11 +225,16 @@ export class Compression implements INodeType {
 					if (items[i].binary[binaryPropertyName] === undefined) {
 						throw new NodeOperationError(this.getNode(), `No binary data property "${binaryPropertyName}" does not exists on item!`);
 					}
-
+					
 					const binaryData = (items[i].binary as IBinaryKeyData)[binaryPropertyName];
 
+					// const binaryDataBuffer = await fs.readFile(`${items[i].binary?.internalPath}`);
+					console.log('path: ', binaryData.internalPath);
+					const binaryDataBuffer = await fs.readFile(`${binaryData.internalPath}`);
+					// const binaryDataBuffer = Buffer.from(binaryData.data as string, BINARY_ENCODING);
+
 					if (binaryData.fileExtension === 'zip') {
-						const files = await unzip(Buffer.from(binaryData.data as string, BINARY_ENCODING));
+						const files = await unzip(binaryDataBuffer);
 
 						for (const key of Object.keys(files)) {
 							// when files are compresed using MACOSX for some reason they are duplicated under __MACOSX
@@ -281,8 +288,19 @@ export class Compression implements INodeType {
 					const binaryData = (items[i].binary as IBinaryKeyData)[binaryPropertyName];
 
 					if (outputFormat === 'zip') {
+
+						// ahsan
+					// retrieve binary data from internal path
+					// await fs.readFile('internal_data');
+
+					// const binaryDataBuffer = Buffer.from(binaryData.data, BINARY_ENCODING);
+					// const binaryDataBuffer = await fs.readFile('internal_data');
+					console.log('path', binaryData.internalPath);
+					const binaryDataBuffer = await fs.readFile(`${binaryData.internalPath}`);
+					
+
 						zipData[binaryData.fileName as string] = [
-							Buffer.from(binaryData.data, BINARY_ENCODING), {
+							binaryDataBuffer, {
 								level: ALREADY_COMPRESSED.includes(binaryData.fileExtension as string) ? 0 : 6,
 							},
 						];

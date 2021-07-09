@@ -166,7 +166,7 @@ const config = convict({
 		process: {
 			doc: 'In what process workflows should be executed',
 			format: ['main', 'own'],
-			default: 'own',
+			default: 'main',
 			env: 'EXECUTIONS_PROCESS',
 		},
 
@@ -587,7 +587,7 @@ const config = convict({
 		level: {
 			doc: 'Log output level. Options are error, warn, info, verbose and debug.',
 			format: String,
-			default: 'debug',
+			default: 'info',
 			env: 'N8N_LOG_LEVEL',
 		},
 		output: {

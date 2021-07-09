@@ -645,7 +645,7 @@ export async function executeWorkflow(workflowInfo: IExecuteWorkflowInfo, additi
 			workflowExecute,
 		};
 	}
-	const data = await workflowExecute.processRunExecutionData(workflow);
+	const data = await workflowExecute.processRunExecutionData(workflow, executionId);
 
 	await externalHooks.run('workflow.postExecute', [data, workflowData]);
 

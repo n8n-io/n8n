@@ -6,6 +6,8 @@ import {
 	IWorkflowSettings,
 } from './';
 
+import { promises as fs } from 'fs';
+
 import {
 	IAllExecuteFunctions,
 	IBinaryData,
@@ -69,7 +71,9 @@ const requestPromiseWithDefaults = requestPromise.defaults({
  * @param {string} [mimeType]
  * @returns {Promise<IBinaryData>}
  */
-export async function prepareBinaryData(binaryData: Buffer, filePath?: string, mimeType?: string): Promise<IBinaryData> {
+export async function prepareBinaryData(binaryData: Buffer, filePath?: string, mimeType?: string, executionId?: string, nodeName?: string, item?: string): Promise<IBinaryData> {
+	// todo improve internalPath arg name, make it required?
+	
 	if (!mimeType) {
 		// If no mime type is given figure it out
 
@@ -95,9 +99,6 @@ export async function prepareBinaryData(binaryData: Buffer, filePath?: string, m
 		}
 	}
 
-	// AHSAN
-	console.log('binaryData.toString(BINARY_ENCODING),');
-
 	const returnData: IBinaryData = {
 		mimeType,
 		// TODO: Should program it in a way that it does not have to converted to base64
@@ -106,7 +107,11 @@ export async function prepareBinaryData(binaryData: Buffer, filePath?: string, m
 
 		// AHSAN
 		// Large binary data fails here
-		data: binaryData.toString(BINARY_ENCODING),
+		// data: binaryData.toString(BINARY_ENCODING),
+		// enc: BINARY_ENCODING,
+
+		// fs.writeFileSync(flags.output, this.formatJsonOutput(results));
+		
 	};
 
 	if (filePath) {
@@ -128,6 +133,12 @@ export async function prepareBinaryData(binaryData: Buffer, filePath?: string, m
 			returnData.fileExtension = fileExtension;
 		}
 	}
+
+	returnData.internalPath = `internal_data-${executionId}-${nodeName}-${item}`;
+
+	console.log('path', returnData.internalPath);
+
+	await fs.writeFile(path.join(returnData.internalPath), binaryData);
 
 	return returnData;
 }
@@ -690,7 +701,7 @@ export function getExecuteTriggerFunctions(workflow: Workflow, node: INode, addi
  * @param {WorkflowExecuteMode} mode
  * @returns {IExecuteFunctions}
  */
-export function getExecuteFunctions(workflow: Workflow, runExecutionData: IRunExecutionData, runIndex: number, connectionInputData: INodeExecutionData[], inputData: ITaskDataConnections, node: INode, additionalData: IWorkflowExecuteAdditionalData, mode: WorkflowExecuteMode): IExecuteFunctions {
+export function getExecuteFunctions(workflow: Workflow, runExecutionData: IRunExecutionData, runIndex: number, connectionInputData: INodeExecutionData[], inputData: ITaskDataConnections, node: INode, additionalData: IWorkflowExecuteAdditionalData, mode: WorkflowExecuteMode, executionId: string): IExecuteFunctions {
 	return ((workflow, runExecutionData, connectionInputData, inputData, node) => {
 		return {
 			continueOnFail: () => {
@@ -768,7 +779,10 @@ export function getExecuteFunctions(workflow: Workflow, runExecutionData: IRunEx
 				}
 			},
 			helpers: {
-				prepareBinaryData,
+				prepareBinaryData(binaryData: Buffer, filePath?: string, mimeType?: string, itemIndex?: number): Promise<IBinaryData> {
+					console.log(executionId, node.name, itemIndex);
+					return prepareBinaryData.call(this, binaryData, filePath, mimeType, executionId, node.name, '' + itemIndex);
+				},
 				request: requestPromiseWithDefaults,
 				requestOAuth2(this: IAllExecuteFunctions, credentialsType: string, requestOptions: OptionsWithUri | requestPromise.RequestPromiseOptions, oAuth2Options?: IOAuth2Options): Promise<any> { // tslint:disable-line:no-any
 					return requestOAuth2.call(this, credentialsType, requestOptions, node, additionalData, oAuth2Options);
