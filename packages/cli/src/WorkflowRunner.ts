@@ -306,6 +306,9 @@ export class WorkflowRunner {
 
 			const queueRecoveryInterval = config.get('queue.bull.queueRecoveryInterval') as number;
 
+			const racingPromises: Array<Promise<IBullJobResponse | object>> = [jobData];
+			
+			let clearWatchdogInterval;
 			if (queueRecoveryInterval > 0) {
 				/*************************************************
 				 * Long explanation about what this solves:      *
@@ -321,7 +324,7 @@ export class WorkflowRunner {
 				*************************************************/
 				let watchDogInterval: NodeJS.Timeout | undefined;
 
-				const watchDog = new Promise((res) => {
+				const watchDog: Promise<object> = new Promise((res) => {
 					watchDogInterval = setInterval(async () => {
 						const currentJob = await this.jobQueue.getJob(job.id);
 						// When null means job is finished (not found in queue)
@@ -332,19 +335,43 @@ export class WorkflowRunner {
 					}, queueRecoveryInterval * 1000);
 				});
 
+				racingPromises.push(watchDog);
 
-				const clearWatchdogInterval = () => {
+				clearWatchdogInterval = () => {
 					if (watchDogInterval) {
 						clearInterval(watchDogInterval);
 						watchDogInterval = undefined;
 					}
 				};
+			} 
 
-				await Promise.race([jobData, watchDog]);
-				clearWatchdogInterval();
-
-			} else {
-				await jobData;
+			try {
+				await Promise.race(racingPromises);
+				if (clearWatchdogInterval !== undefined) {
+					clearWatchdogInterval();
+				} 
+			} catch (error) {
+				const hooks = WorkflowExecuteAdditionalData.getWorkflowHooksWorkerExecuter(data.executionMode, executionId, data.workflowData, { retryOf: data.retryOf ? data.retryOf.toString() : undefined });
+				Logger.error(`Problem with execution ${executionId}: ${error.message}. Aborting.`);
+				if (clearWatchdogInterval !== undefined) {
+					clearWatchdogInterval();
+				} 
+				await this.processError(error, new Date(), data.executionMode, executionId, hooks);
+				
+				const fullRunData :IRun = {
+					data: {
+						resultData: {
+							error,
+							runData: {},
+						},
+					},
+					mode: data.executionMode,
+					startedAt: new Date(),
+					stoppedAt: new Date(),
+				};
+				this.activeExecutions.remove(executionId, fullRunData);
+				resolve(fullRunData);
+				return;
 			}
 
 
