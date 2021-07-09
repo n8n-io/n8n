@@ -46,7 +46,7 @@ export const indexFields = [
 	{
 		displayName: 'Index ID',
 		name: 'indexId',
-		description: 'ID of the index to create.',
+		description: 'ID of the index to create',
 		type: 'string',
 		required: true,
 		default: '',
@@ -81,7 +81,7 @@ export const indexFields = [
 			{
 				displayName: 'Aliases',
 				name: 'aliases',
-				description: 'Index aliases which include the index, as an <a href="https://www.elastic.co/guide/en/elasticsearch/reference/current/indices-aliases.html" target="_blank">alias object</a>.',
+				description: 'Index aliases which include the index, as an <a href="https://www.elastic.co/guide/en/elasticsearch/reference/current/indices-aliases.html" target="_blank">alias object</a>',
 				type: 'json',
 				typeOptions: {
 					alwaysOpenEditWindow: true,
@@ -92,14 +92,14 @@ export const indexFields = [
 			{
 				displayName: 'Include Type Name',
 				name: 'include_type_name',
-				description: 'If true, a mapping type is expected in the body of mappings. Defaults to false.',
+				description: 'If true, a mapping type is expected in the body of mappings. Defaults to false',
 				type: 'boolean',
 				default: false,
 			},
 			{
 				displayName: 'Mappings',
 				name: 'mappings',
-				description: 'Mapping for fields in the index, as <a href="https://www.elastic.co/guide/en/elasticsearch/reference/current/mapping.html" target="_blank">mapping object</a>.',
+				description: 'Mapping for fields in the index, as <a href="https://www.elastic.co/guide/en/elasticsearch/reference/current/mapping.html" target="_blank">mapping object</a>',
 				type: 'json',
 				typeOptions: {
 					alwaysOpenEditWindow: true,
@@ -110,14 +110,14 @@ export const indexFields = [
 			{
 				displayName: 'Master Timeout',
 				name: 'master_timeout',
-				description: 'Period to wait for a connection to the master node. If no response is received before the timeout expires,<br>the request fails and returns an error. Defaults to <code>1m</code>. See the <a href="https://www.elastic.co/guide/en/elasticsearch/reference/current/common-options.html#time-units" target="_blank">Elasticsearch time units reference</a>.',
+				description: 'Period to wait for a connection to the master node. If no response is received before the timeout expires,<br>the request fails and returns an error. Defaults to <code>1m</code>. See the <a href="https://www.elastic.co/guide/en/elasticsearch/reference/current/common-options.html#time-units" target="_blank">Elasticsearch time units reference</a>',
 				type: 'string',
 				default: '1m',
 			},
 			{
 				displayName: 'Settings',
 				name: 'settings',
-				description: 'Configuration options for the index, as an <a href="https://www.elastic.co/guide/en/elasticsearch/reference/current/index-modules.html#index-modules-settings" target="_blank">index settings object</a>.',
+				description: 'Configuration options for the index, as an <a href="https://www.elastic.co/guide/en/elasticsearch/reference/current/index-modules.html#index-modules-settings" target="_blank">index settings object</a>',
 				type: 'json',
 				typeOptions: {
 					alwaysOpenEditWindow: true,
@@ -128,14 +128,14 @@ export const indexFields = [
 			{
 				displayName: 'Timeout',
 				name: 'timeout',
-				description: 'Period to wait for a response. If no response is received before the timeout expires, the request<br>fails and returns an error. Defaults to <code>30s</code>. See the <a href="https://www.elastic.co/guide/en/elasticsearch/reference/current/common-options.html#time-units" target="_blank">Elasticsearch time units reference</a>.',
+				description: 'Period to wait for a response. If no response is received before the timeout expires, the request<br>fails and returns an error. Defaults to <code>30s</code>. See the <a href="https://www.elastic.co/guide/en/elasticsearch/reference/current/common-options.html#time-units" target="_blank">Elasticsearch time units reference</a>',
 				type: 'string',
 				default: '30s',
 			},
 			{
 				displayName: 'Wait for Active Shards',
 				name: 'wait_for_active_shards',
-				description: 'The number of shard copies that must be active before proceeding with the operation. Set to <code>all</code><br>or any positive integer up to the total number of shards in the index. Default: 1, the primary shard.',
+				description: 'The number of shard copies that must be active before proceeding with the operation. Set to <code>all</code><br>or any positive integer up to the total number of shards in the index. Default: 1, the primary shard',
 				type: 'string',
 				default: '1',
 			},
@@ -148,7 +148,7 @@ export const indexFields = [
 	{
 		displayName: 'Index ID',
 		name: 'indexId',
-		description: 'ID of the index to delete.',
+		description: 'ID of the index to delete',
 		type: 'string',
 		required: true,
 		default: '',
@@ -170,7 +170,7 @@ export const indexFields = [
 	{
 		displayName: 'Index ID',
 		name: 'indexId',
-		description: 'ID of the index to retrieve.',
+		description: 'ID of the index to retrieve',
 		type: 'string',
 		required: true,
 		default: '',
@@ -205,23 +205,19 @@ export const indexFields = [
 			{
 				displayName: 'Allow No Indices',
 				name: 'allow_no_indices',
-				description: 'If false, return an error if any of the following targets only missing/closed indices: wildcard expression, index alias, or <code>_all</code> value. Defaults to true.',
+				description: 'If false, return an error if any of the following targets only missing/closed indices: wildcard expression, index alias, or <code>_all</code> value. Defaults to true',
 				type: 'boolean',
 				default: true,
 			},
 			{
 				displayName: 'Expand Wildcards',
 				name: 'expand_wildcards',
-				description: 'Type of index that wildcard expressions can match. Defaults to <code>open</code>.',
+				description: 'Type of index that wildcard expressions can match. Defaults to <code>open</code>',
 				type: 'options',
 				options: [
 					{
 						name: 'All',
 						value: 'all',
-					},
-					{
-						name: 'Open',
-						value: 'open',
 					},
 					{
 						name: 'Closed',
@@ -235,41 +231,45 @@ export const indexFields = [
 						name: 'None',
 						value: 'none',
 					},
+					{
+						name: 'Open',
+						value: 'open',
+					},
 				],
 				default: 'all',
 			},
 			{
 				displayName: 'Flat Settings',
 				name: 'flat_settings',
-				description: 'If true, return settings in flat format. Defaults to false.',
+				description: 'If true, return settings in flat format. Defaults to false',
 				type: 'boolean',
 				default: false,
 			},
 			{
 				displayName: 'Ignore Unavailable',
 				name: 'ignore_unavailable',
-				description: ' If false, requests that target a missing index return an error. Defaults to false.',
+				description: 'If false, requests that target a missing index return an error. Defaults to false',
 				type: 'boolean',
 				default: false,
 			},
 			{
 				displayName: 'Include Defaults',
 				name: 'include_defaults',
-				description: 'If true, return all default settings in the response. Defaults to false.',
+				description: 'If true, return all default settings in the response. Defaults to false',
 				type: 'boolean',
 				default: false,
 			},
 			{
 				displayName: 'Local',
 				name: 'local',
-				description: 'If true, retrieve information from the local node only. Defaults to false.',
+				description: 'If true, retrieve information from the local node only. Defaults to false',
 				type: 'boolean',
 				default: false,
 			},
 			{
 				displayName: 'Master Timeout',
 				name: 'master_timeout',
-				description: 'Period to wait for a connection to the master node. If no response is received before the timeout expires,<br>the request fails and returns an error. Defaults to <code>1m</code>. See the <a href="https://www.elastic.co/guide/en/elasticsearch/reference/current/common-options.html#time-units" target="_blank">Elasticsearch time units reference</a>.',
+				description: 'Period to wait for a connection to the master node. If no response is received before the timeout expires,<br>the request fails and returns an error. Defaults to <code>1m</code>. See the <a href="https://www.elastic.co/guide/en/elasticsearch/reference/current/common-options.html#time-units" target="_blank">Elasticsearch time units reference</a>',
 				type: 'string',
 				default: '1m',
 			},
@@ -284,7 +284,7 @@ export const indexFields = [
 		name: 'returnAll',
 		type: 'boolean',
 		default: false,
-		description: 'Return all results.',
+		description: 'Whether to return all results or only up to a given limit',
 		displayOptions: {
 			show: {
 				resource: [
@@ -301,7 +301,7 @@ export const indexFields = [
 		name: 'limit',
 		type: 'number',
 		default: 50,
-		description: 'The number of results to return.',
+		description: 'How many results to return',
 		typeOptions: {
 			minValue: 1,
 		},
