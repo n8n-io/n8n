@@ -119,6 +119,7 @@ export class Elasticsearch implements INodeType {
 
 						if (Object.keys(additionalFields).length) {
 							Object.assign(qs, additionalFields);
+							qs._source = true;
 						}
 
 						const endpoint = `/${indexId}/_doc/${documentId}`;
@@ -142,6 +143,7 @@ export class Elasticsearch implements INodeType {
 							const { query, ...rest } = additionalFields;
 							Object.assign(body, JSON.parse(query));
 							Object.assign(qs, rest);
+							qs._source = true;
 						}
 
 						const returnAll = this.getNodeParameter('returnAll', 0);
