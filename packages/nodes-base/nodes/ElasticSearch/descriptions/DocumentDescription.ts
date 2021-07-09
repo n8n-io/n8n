@@ -494,6 +494,23 @@ export const documentFields = [
 		},
 	},
 	{
+		displayName: 'Send Input Data',
+		name: 'sendInputData',
+		type: 'boolean',
+		displayOptions: {
+			show: {
+				resource: [
+					'document',
+				],
+				operation: [
+					'index',
+				],
+			},
+		},
+		default: true,
+		description: 'Whether to send the input data this node receives in the new document',
+	},
+	{
 		displayName: 'Content',
 		name: 'content',
 		description: 'JSON source for the document data.',
@@ -512,8 +529,31 @@ export const documentFields = [
 				operation: [
 					'index',
 				],
+				sendInputData: [
+					false,
+				],
 			},
 		},
+	},
+	{
+		displayName: 'Inputs for Fields',
+		name: 'inputsForFields',
+		type: 'string',
+		displayOptions: {
+			show: {
+				resource: [
+					'document',
+				],
+				operation: [
+					'index',
+				],
+				sendInputData: [
+					true,
+				],
+			},
+		},
+		default: '',
+		description: 'The node input field containing the data to be used for each field in the document. Separate field names by commas',
 	},
 	{
 		displayName: 'Additional Fields',

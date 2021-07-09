@@ -173,8 +173,21 @@ export class Elasticsearch implements INodeType {
 
 						// https://www.elastic.co/guide/en/elasticsearch/reference/current/docs-index_.html
 
-						const body = JSON.parse(this.getNodeParameter('content', i) as string);
 						const indexId = this.getNodeParameter('indexId', i);
+						const sendInputData = this.getNodeParameter('sendInputData', 0, false) as boolean;
+
+						let body: IDataObject = {};
+
+						if (sendInputData) {
+							const rawFields = this.getNodeParameter('inputsForFields', i) as string;
+							const fields = rawFields.split(',').map(c => c.trim());
+							for (const field of fields) {
+								body[field] = items[i].json[field];
+							}
+						} else {
+							body = JSON.parse(this.getNodeParameter('content', i) as string);
+						}
+
 						const qs = {} as IDataObject;
 						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 
