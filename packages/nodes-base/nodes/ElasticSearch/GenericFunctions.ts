@@ -8,7 +8,6 @@ import {
 
 import {
 	IDataObject,
-	ILoadOptionsFunctions,
 	NodeApiError,
 } from 'n8n-workflow';
 
@@ -17,7 +16,7 @@ import {
 } from './types';
 
 export async function elasticsearchApiRequest(
-	this: IExecuteFunctions | ILoadOptionsFunctions,
+	this: IExecuteFunctions,
 	method: 'GET' | 'PUT' | 'POST' | 'DELETE',
 	endpoint: string,
 	body: IDataObject = {},
@@ -52,7 +51,8 @@ export async function elasticsearchApiRequest(
 	}
 
 	try {
-		return await this.helpers.request!(options);
+		// console.log(options);
+		return await this.helpers.request(options);
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error);
 	}

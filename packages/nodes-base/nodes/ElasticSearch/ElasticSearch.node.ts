@@ -4,7 +4,6 @@ import {
 
 import {
 	IDataObject,
-	ILoadOptionsFunctions,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
@@ -69,21 +68,6 @@ export class Elasticsearch implements INodeType {
 			...indexOperations,
 			...indexFields,
 		],
-	};
-
-	methods = {
-		loadOptions: {
-			async getDocuments(this: ILoadOptionsFunctions) {
-				const indexId = this.getNodeParameter('indexId', 0);
-				const responseData = await elasticsearchApiRequest.call(this, 'GET', `/${indexId}/_search`);
-				return responseData.hits.hits.map(({ _id }: { _id: string }) => ({ name: _id, value: _id }));
-			},
-
-			async getIndices(this: ILoadOptionsFunctions) {
-				const responseData = await elasticsearchApiRequest.call(this, 'GET', '/_aliases');
-				return Object.keys(responseData).map((index: string) => ({ name: index, value: index }));
-			},
-		},
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
