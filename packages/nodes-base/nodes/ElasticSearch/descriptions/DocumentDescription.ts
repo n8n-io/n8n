@@ -496,7 +496,7 @@ export const documentFields = [
 	},
 	{
 		displayName: 'Content',
-		name: 'field',
+		name: 'content',
 		description: 'JSON source for the document data.',
 		type: 'json',
 		typeOptions: {
