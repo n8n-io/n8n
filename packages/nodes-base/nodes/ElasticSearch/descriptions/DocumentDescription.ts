@@ -124,10 +124,10 @@ export const documentFields = [
 		},
 	},
 	{
-		displayName: 'Additional Fields',
-		name: 'additionalFields',
+		displayName: 'Options',
+		name: 'options',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add Option',
 		default: {},
 		displayOptions: {
 			show: {
@@ -229,7 +229,7 @@ export const documentFields = [
 		displayName: 'Options',
 		name: 'options',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add Option',
 		default: {},
 		displayOptions: {
 			show: {
