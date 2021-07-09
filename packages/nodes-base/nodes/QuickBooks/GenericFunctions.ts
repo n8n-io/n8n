@@ -29,6 +29,10 @@ import {
 	OptionsWithUri,
 } from 'request';
 
+import {
+	QuickBooksOAuth2Credentials,
+} from './types';
+
 /**
  * Make an authenticated API request to QuickBooks.
  */
@@ -53,7 +57,7 @@ export async function quickBooksApiRequest(
 	const productionUrl = 'https://quickbooks.api.intuit.com';
 	const sandboxUrl = 'https://sandbox-quickbooks.api.intuit.com';
 
-	const credentials = this.getCredentials('quickBooksOAuth2Api') as IDataObject;
+	const credentials = this.getCredentials('quickBooksOAuth2Api') as QuickBooksOAuth2Credentials;
 
 	const options: OptionsWithUri = {
 		headers: {

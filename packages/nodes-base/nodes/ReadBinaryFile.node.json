@@ -24,6 +24,11 @@
 			}
 		]
 	},
+	"alias": [
+		"Text",
+		"Open",
+		"Import"
+	],
 	"subcategories": {
 		"Core Nodes": [
 			"Files"

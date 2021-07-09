@@ -20,7 +20,7 @@ export class Redis implements INodeType {
 		icon: 'file:redis.svg',
 		group: ['input'],
 		version: 1,
-		description: 'Get, send and update data in Redis.',
+		description: 'Get, send and update data in Redis',
 		defaults: {
 			name: 'Redis',
 			color: '#0033AA',

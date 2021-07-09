@@ -1,6 +1,6 @@
 import {
 	ICredentialType,
-	NodePropertyTypes,
+	INodeProperties,
 } from 'n8n-workflow';
 
 //https://developers.google.com/youtube/v3/guides/auth/client-side-web-apps#identify-access-scopes
@@ -19,11 +19,11 @@ export class YouTubeOAuth2Api implements ICredentialType {
 	];
 	displayName = 'YouTube OAuth2 API';
 	documentationUrl = 'google';
-	properties = [
+	properties: INodeProperties[] = [
 		{
 			displayName: 'Scope',
 			name: 'scope',
-			type: 'hidden' as NodePropertyTypes,
+			type: 'hidden',
 			default: scopes.join(' '),
 		},
 	];

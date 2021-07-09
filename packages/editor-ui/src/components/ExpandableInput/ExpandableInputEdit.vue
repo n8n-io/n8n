@@ -10,7 +10,7 @@
 			@keydown.esc="onEscape"
 			ref="input"
 			size="4"
-			v-click-outside="onBlur"
+			v-click-outside="onClickOutside"
 		/>
 	</ExpandableInputBase>
 </template>
@@ -47,8 +47,10 @@ export default Vue.extend({
 		onEnter() {
 			this.$emit('enter', (this.$refs.input as HTMLInputElement).value);
 		},
-		onBlur() {
-			this.$emit('blur', (this.$refs.input as HTMLInputElement).value);
+		onClickOutside(e: Event) {
+			if (e.type === 'click') {
+				this.$emit('blur', (this.$refs.input as HTMLInputElement).value);
+			}
 		},
 		onEscape() {
 			this.$emit('esc');

@@ -2,6 +2,16 @@
 
 This list shows all the versions which include breaking changes and how to upgrade.
 
+## 0.127.0
+
+### What changed?
+
+For the Zoho node, the `lead:create` operation now requires a "Company" parameter, the parameter "Address" is now inside "Additional Options", and the parameters "Title" and "Is Duplicate Record" were removed. Also, the `lead:delete` operation now returns only the `id` of the deleted lead.
+
+### When is action necessary?
+
+If you are using `lead:create` with "Company" or "Address", reset the parameters; for the other two parameters, no action needed. If you are using the response from `lead:delete`, reselect the `id` key.
+
 ## 0.118.0
 
 ### What changed?

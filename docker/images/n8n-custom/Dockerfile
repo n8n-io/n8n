@@ -29,7 +29,7 @@ FROM node:14.15-alpine
 
 USER root
 
-RUN apk add --update graphicsmagick tzdata tini su-exec
+RUN apk add --update graphicsmagick tzdata tini su-exec git
 
 WORKDIR /data
 
