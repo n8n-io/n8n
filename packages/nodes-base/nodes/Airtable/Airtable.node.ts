@@ -311,6 +311,13 @@ export class Airtable implements INodeType {
 						placeholder: 'All Stories',
 						description: 'The name or ID of a view in the Stories table. If set,<br />only the records in that view will be returned. The records<br />will be sorted according to the order of the view.',
 					},
+					{
+						displayName: 'Offset',
+						name: 'offset',
+						type: 'string',
+						default: '',
+						description: 'Specify the offset of the first hit to return.',
+					},
 				],
 			},
 
@@ -587,7 +594,7 @@ export class Airtable implements INodeType {
 			if (returnAll === true) {
 				responseData = await apiRequestAllItems.call(this, requestMethod, endpoint, body, qs);
 			} else {
-				qs.maxRecords = this.getNodeParameter('limit', 0) as number;
+				qs.pageSize = this.getNodeParameter('limit', 0) as number;
 				responseData = await apiRequest.call(this, requestMethod, endpoint, body, qs);
 			}
 
@@ -596,9 +603,15 @@ export class Airtable implements INodeType {
 			if (downloadAttachments === true) {
 				const downloadFieldNames = (this.getNodeParameter('downloadFieldNames', 0) as string).split(',');
 				const data = await downloadRecordAttachments.call(this, responseData.records, downloadFieldNames);
-				return [data];
+				returnData.length = 0;
+				returnData.push.apply(returnData, data);
 			}
 
+			if (!returnAll && qs.offset != undefined) {
+				const data = [{ records: [...returnData], offset: responseData.offset }];
+				returnData.length = 0;
+				returnData.push.apply(returnData, data);
+			}
 		} else if (operation === 'read') {
 			// ----------------------------------
 			//         read
