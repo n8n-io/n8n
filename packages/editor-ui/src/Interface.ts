@@ -21,6 +21,11 @@ import {
 } from 'n8n-workflow';
 
 import {
+	IN8nUISettings,
+	IVersionNotificationSettings,
+} from 'n8n';
+
+import {
 	PaintStyle,
 } from 'jsplumb';
 
@@ -443,33 +448,6 @@ export interface IPushDataTestWebhook {
 export interface IPushDataConsoleMessage {
 	source: string;
 	message: string;
-}
-
-export interface IVersionNotificationSettings {
-	enabled: boolean;
-	endpoint: string;
-	infoUrl: string;
-}
-
-export interface IN8nUISettings {
-	endpointWebhook: string;
-	endpointWebhookTest: string;
-	saveDataErrorExecution: string;
-	saveDataSuccessExecution: string;
-	saveManualExecutions: boolean;
-	timezone: string;
-	executionTimeout: number;
-	maxExecutionTimeout: number;
-	oauthCallbackUrls: {
-		oauth1: string;
-		oauth2: string;
-	};
-	urlBaseWebhook: string;
-	versionCli: string;
-	n8nMetadata?: {
-		[key: string]: string | number | undefined;
-	};
-	versionNotifications: IVersionNotificationSettings;
 }
 
 export interface IWorkflowSettings extends IWorkflowSettingsWorkflow {

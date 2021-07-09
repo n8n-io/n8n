@@ -27,7 +27,7 @@
 		</div>
 		<div>
 			<div v-html="version.description" :class="$style.description"></div>
-			<div :class="`${$style.nodes} ${hasMoreThan2Rows ? $style.expanded: ''}`" v-if="version.nodes && version.nodes.length > 0">
+			<div :class="$style.nodes" v-if="version.nodes && version.nodes.length > 0">
 				<NodeIcon 
 					v-for="node in version.nodes"
 					:key="node.name"
@@ -41,7 +41,6 @@
 <script lang="ts">
 import Vue from 'vue';
 import NodeIcon from './NodeIcon.vue';
-import { IVersion } from '@/Interface';
 import TimeAgo from './TimeAgo.vue';
 import Badge from './Badge.vue';
 import WarningTooltip from './WarningTooltip.vue';
@@ -51,12 +50,6 @@ export default Vue.extend({
 	components: { NodeIcon, TimeAgo, Badge, WarningTooltip },
 	name: 'UpdatesPanel',
 	props: ['version'],
-	computed: {
-		hasMoreThan2Rows(): boolean {
-			const version = this.version as IVersion;
-			return version.nodes && version.nodes.length > 20;
-		},
-	},
 });
 </script>
 
@@ -119,11 +112,7 @@ export default Vue.extend({
 	.nodes {
 		display: grid;
 		grid-template-columns: repeat(10, 1fr);
-		grid-row-gap: 5px;
+		grid-row-gap: 12px;
 		margin-block-start: 24px;
-	}
-
-	.expanded {
-		grid-row-gap: 8px;
 	}
 </style>

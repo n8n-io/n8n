@@ -127,7 +127,7 @@
 
 				<MenuItemsIterator :items="sidebarMenuBottomItems" :root="true"/>
 
-				<div class="foot-menu-items">
+				<div class="footer-menu-items">
 					<el-menu-item index="updates" class="updates" v-if="hasVersionUpdates" @click="openUpdatesPanel">
 						<div class="gift-container">
 							<div class="gift-icon">
@@ -597,11 +597,12 @@ a.logo {
 	}
 }
 
-.foot-menu-items {
+.footer-menu-items {
 	display: flex;
 	flex-grow: 1;
 	flex-direction: column;
 	justify-content: flex-end;
+	padding-bottom: 32px;
 }
 
 .el-menu-item.updates {
