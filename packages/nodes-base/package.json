@@ -530,6 +530,7 @@
       "dist/nodes/Strapi/Strapi.node.js",
       "dist/nodes/Strava/Strava.node.js",
       "dist/nodes/Strava/StravaTrigger.node.js",
+      "dist/nodes/Stripe/Stripe.node.js",
       "dist/nodes/Stripe/StripeTrigger.node.js",
       "dist/nodes/Switch.node.js",
       "dist/nodes/Salesmate/Salesmate.node.js",
