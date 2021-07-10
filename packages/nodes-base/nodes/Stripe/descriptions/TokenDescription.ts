@@ -57,7 +57,7 @@ export const tokenFields = [
 					'create',
 				],
 				type: [
-					'cardToken'
+					'cardToken',
 				],
 			},
 		},
@@ -77,7 +77,7 @@ export const tokenFields = [
 					'create',
 				],
 				type: [
-					'cardToken'
+					'cardToken',
 				],
 			},
 		},
@@ -99,7 +99,7 @@ export const tokenFields = [
 					'create',
 				],
 				type: [
-					'cardToken'
+					'cardToken',
 				],
 			},
 		},
@@ -120,7 +120,7 @@ export const tokenFields = [
 					'create',
 				],
 				type: [
-					'cardToken'
+					'cardToken',
 				],
 			},
 		},
