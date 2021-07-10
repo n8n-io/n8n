@@ -290,7 +290,7 @@ export class WorkflowRunner {
 				const fullRunData :IRun = {
 					data: {
 						resultData: {
-							error: new WorkflowOperationError('Workflow has been canceled!'),
+							error: new WorkflowOperationError('Workflow-Execution has been canceled!'),
 							runData: {},
 						},
 					},
@@ -307,7 +307,7 @@ export class WorkflowRunner {
 			const queueRecoveryInterval = config.get('queue.bull.queueRecoveryInterval') as number;
 
 			const racingPromises: Array<Promise<IBullJobResponse | object>> = [jobData];
-			
+
 			let clearWatchdogInterval;
 			if (queueRecoveryInterval > 0) {
 				/*************************************************
@@ -343,21 +343,21 @@ export class WorkflowRunner {
 						watchDogInterval = undefined;
 					}
 				};
-			} 
+			}
 
 			try {
 				await Promise.race(racingPromises);
 				if (clearWatchdogInterval !== undefined) {
 					clearWatchdogInterval();
-				} 
+				}
 			} catch (error) {
 				const hooks = WorkflowExecuteAdditionalData.getWorkflowHooksWorkerExecuter(data.executionMode, executionId, data.workflowData, { retryOf: data.retryOf ? data.retryOf.toString() : undefined });
 				Logger.error(`Problem with execution ${executionId}: ${error.message}. Aborting.`);
 				if (clearWatchdogInterval !== undefined) {
 					clearWatchdogInterval();
-				} 
+				}
 				await this.processError(error, new Date(), data.executionMode, executionId, hooks);
-				
+
 				const fullRunData :IRun = {
 					data: {
 						resultData: {
