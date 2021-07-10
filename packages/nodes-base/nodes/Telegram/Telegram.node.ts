@@ -201,24 +201,19 @@ export class Telegram implements INodeType {
 				},
 				options: [
 					{
-						name: 'Edit Message Text',
-						value: 'editMessageText',
-						description: 'Edit a text message',
-					},
-					{
 						name: 'Delete Chat Message',
 						value: 'deleteMessage',
 						description: 'Delete a chat message',
 					},
 					{
+						name: 'Edit Message Text',
+						value: 'editMessageText',
+						description: 'Edit a text message',
+					},
+					{
 						name: 'Pin Chat Message',
 						value: 'pinChatMessage',
 						description: 'Pin a chat message',
-					},
-					{
-						name: 'Unpin Chat Message',
-						value: 'unpinChatMessage',
-						description: 'Unpin a chat message',
 					},
 					{
 						name: 'Send Animation',
@@ -246,14 +241,14 @@ export class Telegram implements INodeType {
 						description: 'Send a location',
 					},
 					{
-						name: 'Send Message',
-						value: 'sendMessage',
-						description: 'Send a text message',
-					},
-					{
 						name: 'Send Media Group',
 						value: 'sendMediaGroup',
 						description: 'Send group of photos or videos to album',
+					},
+					{
+						name: 'Send Message',
+						value: 'sendMessage',
+						description: 'Send a text message',
 					},
 					{
 						name: 'Send Photo',
@@ -269,6 +264,11 @@ export class Telegram implements INodeType {
 						name: 'Send Video',
 						value: 'sendVideo',
 						description: 'Send a video',
+					},
+					{
+						name: 'Unpin Chat Message',
+						value: 'unpinChatMessage',
+						description: 'Unpin a chat message',
 					},
 				],
 				default: 'sendMessage',
@@ -288,12 +288,11 @@ export class Telegram implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
+							'deleteMessage',
 							'get',
 							'leave',
 							'member',
-							'deleteMessage',
 							'pinChatMessage',
-							'unpinChatMessage',
 							'setDescription',
 							'setTitle',
 							'sendAnimation',
@@ -306,6 +305,7 @@ export class Telegram implements INodeType {
 							'sendPhoto',
 							'sendSticker',
 							'sendVideo',
+							'unpinChatMessage',
 						],
 						resource: [
 							'chat',
