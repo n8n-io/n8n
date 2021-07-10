@@ -21,7 +21,7 @@ export class QuestDb implements INodeType {
 		icon: 'file:questdb.png',
 		group: ['input'],
 		version: 1,
-		description: 'Gets, add and update data in QuestDB.',
+		description: 'Get, add and update data in QuestDB',
 		defaults: {
 			name: 'QuestDB',
 			color: '#2C4A79',
