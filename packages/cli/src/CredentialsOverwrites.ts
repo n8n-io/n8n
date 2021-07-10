@@ -17,7 +17,7 @@ class CredentialsOverwritesClass {
 
 
 	async init(overwriteData?: ICredentialsOverwrite) {
-		if (overwriteData !== undefined) {
+		if (typeof overwriteData !== 'undefined') {
 			// If data is already given it can directly be set instead of
 			// loaded from environment
 			this.__setData(JSON.parse(JSON.stringify(overwriteData)));
@@ -54,14 +54,14 @@ class CredentialsOverwritesClass {
 
 		const overwrites = this.get(type);
 
-		if (overwrites === undefined) {
+		if (typeof overwrites === 'undefined') {
 			return data;
 		}
 
 		const returnData = JSON.parse(JSON.stringify(data));
 		// Overwrite only if there is currently no data set
 		for (const key of Object.keys(overwrites)) {
-			if ([null, undefined, ''].includes(returnData[key])) {
+			if ([null, void 0, ''].includes(returnData[key])) {
 				returnData[key] = overwrites[key];
 			}
 		}
@@ -79,11 +79,11 @@ class CredentialsOverwritesClass {
 
 		const credentialTypeData = this.credentialTypes.getByName(type);
 
-		if (credentialTypeData === undefined) {
+		if (typeof credentialTypeData === 'undefined') {
 			throw new Error(`The credentials of type "${type}" are not known.`);
 		}
 
-		if (credentialTypeData.extends === undefined) {
+		if (typeof credentialTypeData.extends === 'undefined') {
 			this.resolvedTypes.push(type);
 			return this.overwriteData[type];
 		}
@@ -93,7 +93,7 @@ class CredentialsOverwritesClass {
 			Object.assign(overwrites, this.__getExtended(credentialsTypeName));
 		}
 
-		if (this.overwriteData[type] !== undefined) {
+		if (typeof this.overwriteData[type] !== 'undefined') {
 			Object.assign(overwrites, this.overwriteData[type]);
 		}
 
@@ -117,7 +117,7 @@ class CredentialsOverwritesClass {
 let credentialsOverwritesInstance: CredentialsOverwritesClass | undefined;
 
 export function CredentialsOverwrites(): CredentialsOverwritesClass {
-	if (credentialsOverwritesInstance === undefined) {
+	if (typeof credentialsOverwritesInstance === 'undefined') {
 		credentialsOverwritesInstance = new CredentialsOverwritesClass();
 	}
 

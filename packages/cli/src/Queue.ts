@@ -59,7 +59,7 @@ export class Queue {
 let activeQueueInstance: Queue | undefined;
 
 export function getInstance(): Queue {
-	if (activeQueueInstance === undefined) {
+	if (typeof activeQueueInstance === 'undefined') {
 		activeQueueInstance = new Queue();
 	}
 	

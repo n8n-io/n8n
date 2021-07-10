@@ -141,12 +141,12 @@ export class ActiveWorkflowRunner {
 		let webhookId: string | undefined;
 
 		// check if path is dynamic
-		if (webhook === undefined) {
+		if (typeof webhook === 'undefined') {
 			// check if a dynamic webhook path exists
 			const pathElements = path.split('/');
 			webhookId = pathElements.shift();
 			const dynamicWebhooks = await Db.collections.Webhook?.find({ webhookId, method: httpMethod, pathLength: pathElements.length });
-			if (dynamicWebhooks === undefined || dynamicWebhooks.length === 0) {
+			if (typeof dynamicWebhooks === 'undefined' || dynamicWebhooks.length === 0) {
 				// The requested webhook is not registered
 				throw new ResponseHelper.ResponseError(`The requested webhook "${httpMethod} ${path}" is not registered.`, 404, 404);
 			}
@@ -168,7 +168,7 @@ export class ActiveWorkflowRunner {
 					webhook = dynamicWebhook;
 				}
 			});
-			if (webhook === undefined) {
+			if (typeof webhook === 'undefined') {
 				throw new ResponseHelper.ResponseError(`The requested webhook "${httpMethod} ${path}" is not registered.`, 404, 404);
 			}
 
@@ -183,7 +183,7 @@ export class ActiveWorkflowRunner {
 		}
 
 		const workflowData = await Db.collections.Workflow!.findOne(webhook.workflowId);
-		if (workflowData === undefined) {
+		if (typeof workflowData === 'undefined') {
 			throw new ResponseHelper.ResponseError(`Could not find workflow with id "${webhook.workflowId}"`, 404, 404);
 		}
 
@@ -209,7 +209,7 @@ export class ActiveWorkflowRunner {
 		return new Promise((resolve, reject) => {
 			const executionMode = 'webhook';
 			//@ts-ignore
-			WebhookHelpers.executeWebhook(workflow, webhookData, workflowData, workflowStartNode, executionMode, undefined, req, res, (error: Error | null, data: object) => {
+			WebhookHelpers.executeWebhook(workflow, webhookData, workflowData, workflowStartNode, executionMode, void 0, req, res, (error: Error | null, data: object) => {
 				if (error !== null) {
 					return reject(error);
 				}
@@ -241,7 +241,7 @@ export class ActiveWorkflowRunner {
 	 */
 	async getActiveWorkflows(): Promise<IWorkflowDb[]> {
 		const activeWorkflows = await Db.collections.Workflow?.find({ where: { active: true }, select: ['id'] }) as IWorkflowDb[];
-		return activeWorkflows.filter(workflow => this.activationErrors[workflow.id.toString()] === undefined);
+		return activeWorkflows.filter(workflow => typeof this.activationErrors[workflow.id.toString()] === 'undefined');
 	}
 
 
@@ -265,8 +265,8 @@ export class ActiveWorkflowRunner {
 	 * @memberof ActiveWorkflowRunner
 	 */
 	getActivationError(id: string): IActivationError | undefined {
-		if (this.activationErrors[id] === undefined) {
-			return undefined;
+		if (typeof this.activationErrors[id] === 'undefined') {
+			return;
 		}
 
 		return this.activationErrors[id];
@@ -357,7 +357,7 @@ export class ActiveWorkflowRunner {
 	 */
 	async removeWorkflowWebhooks(workflowId: string): Promise<void> {
 		const workflowData = await Db.collections.Workflow!.findOne(workflowId);
-		if (workflowData === undefined) {
+		if (typeof workflowData === 'undefined') {
 			throw new Error(`Could not find workflow with id "${workflowId}"`);
 		}
 
@@ -489,7 +489,7 @@ export class ActiveWorkflowRunner {
 
 		let workflowInstance: Workflow;
 		try {
-			if (workflowData === undefined) {
+			if (typeof workflowData === 'undefined') {
 				workflowData = await Db.collections.Workflow!.findOne(workflowId) as IWorkflowDb;
 			}
 
@@ -520,7 +520,7 @@ export class ActiveWorkflowRunner {
 				Logger.verbose(`Successfully activated workflow "${workflowData.name}"`, { workflowId, workflowName: workflowData.name });
 			}
 
-			if (this.activationErrors[workflowId] !== undefined) {
+			if (typeof this.activationErrors[workflowId] !== 'undefined') {
 				// If there were activation errors delete them
 				delete this.activationErrors[workflowId];
 			}
@@ -560,7 +560,7 @@ export class ActiveWorkflowRunner {
 				console.error(`Could not remove webhooks of workflow "${workflowId}" because of error: "${error.message}"`);
 			}
 
-			if (this.activationErrors[workflowId] !== undefined) {
+			if (typeof this.activationErrors[workflowId] !== 'undefined') {
 				// If there were any activation errors delete them
 				delete this.activationErrors[workflowId];
 			}
@@ -584,7 +584,7 @@ export class ActiveWorkflowRunner {
 let workflowRunnerInstance: ActiveWorkflowRunner | undefined;
 
 export function getInstance(): ActiveWorkflowRunner {
-	if (workflowRunnerInstance === undefined) {
+	if (typeof workflowRunnerInstance === 'undefined') {
 		workflowRunnerInstance = new ActiveWorkflowRunner();
 	}
 

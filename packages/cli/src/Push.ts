@@ -27,7 +27,7 @@ export class Push {
 		});
 
 		this.channel.on('disconnect', (channel: string, res: express.Response) => {
-			if (res.req !== undefined) {
+			if (typeof res.req !== 'undefined') {
 				Logger.debug(`Remove editor-UI session`, { sessionId: res.req.query.sessionId });
 				delete this.connections[res.req.query.sessionId as string];
 			}
@@ -46,7 +46,7 @@ export class Push {
 	add(sessionId: string, req: express.Request, res: express.Response) {
 		Logger.debug(`Add editor-UI session`, { sessionId });
 
-		if (this.connections[sessionId] !== undefined) {
+		if (typeof this.connections[sessionId] !== 'undefined') {
 			// Make sure to remove existing connection with the same session
 			// id if one exists already
 			this.connections[sessionId].end();
@@ -70,7 +70,7 @@ export class Push {
 
 
 	send(type: IPushDataType, data: any, sessionId?: string) { // tslint:disable-line:no-any
-		if (sessionId !== undefined && this.connections[sessionId] === undefined) {
+		if (typeof sessionId !== 'undefined' && typeof this.connections[sessionId] === 'undefined') {
 			Logger.error(`The session "${sessionId}" is not registred.`, { sessionId });
 			return;
 		}
@@ -82,7 +82,7 @@ export class Push {
 			data,
 		};
 
-		if (sessionId === undefined) {
+		if (typeof sessionId === 'undefined') {
 			// Send to all connected clients
 			this.channel.send(JSON.stringify(sendData));
 		} else {
@@ -96,7 +96,7 @@ export class Push {
 let activePushInstance: Push | undefined;
 
 export function getInstance(): Push {
-	if (activePushInstance === undefined) {
+	if (typeof activePushInstance === 'undefined') {
 		activePushInstance = new Push();
 	}
 

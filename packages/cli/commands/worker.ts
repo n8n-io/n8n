@@ -129,7 +129,7 @@ export class Worker extends Command {
 				select: ['id', 'staticData'],
 			} as FindOneOptions;
 			const workflowData = await Db.collections!.Workflow!.findOne(currentExecutionDb.workflowData.id, findOptions);
-			if (workflowData === undefined) {
+			if (typeof workflowData === 'undefined') {
 				throw new Error(`The workflow with the ID "${currentExecutionDb.workflowData.id}" could not be found`);
 			}
 			staticData = workflowData.staticData;
@@ -150,12 +150,12 @@ export class Worker extends Command {
 
 		const credentials = await WorkflowCredentials(currentExecutionDb.workflowData.nodes);
 
-		const additionalData = await WorkflowExecuteAdditionalData.getBase(credentials, undefined, executionTimeoutTimestamp);
+		const additionalData = await WorkflowExecuteAdditionalData.getBase(credentials, void 0, executionTimeoutTimestamp);
 		additionalData.hooks = WorkflowExecuteAdditionalData.getWorkflowHooksWorkerExecuter(currentExecutionDb.mode, job.data.executionId, currentExecutionDb.workflowData, { retryOf: currentExecutionDb.retryOf as string });
 
 		let workflowExecute: WorkflowExecute;
 		let workflowRun: PCancelable<IRun>;
-		if (currentExecutionDb.data !== undefined) {
+		if (typeof currentExecutionDb.data !== 'undefined') {
 			workflowExecute = new WorkflowExecute(additionalData, currentExecutionDb.mode, currentExecutionDb.data);
 			workflowRun = workflowExecute.processRunExecutionData(workflow);
 		} else {
@@ -244,7 +244,7 @@ export class Worker extends Command {
 
 					if (progress === -1) {
 						// Job has to get canceled
-						if (Worker.runningJobs[jobId] !== undefined) {
+						if (typeof Worker.runningJobs[jobId] !== 'undefined') {
 							// Job is processed by current worker so cancel
 							Worker.runningJobs[jobId].cancel();
 							delete Worker.runningJobs[jobId];

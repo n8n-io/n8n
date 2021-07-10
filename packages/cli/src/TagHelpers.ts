@@ -44,17 +44,17 @@ export async function validateTag(newTag: TagEntity) {
 
 	if (errors.length) {
 		const validationErrorMessage = Object.values(errors[0].constraints!)[0];
-		throw new ResponseHelper.ResponseError(validationErrorMessage, undefined, 400);
+		throw new ResponseHelper.ResponseError(validationErrorMessage, void 0, 400);
 	}
 }
 
 export function throwDuplicateEntryError(error: Error) {
 	const errorMessage = error.message.toLowerCase();
 	if (errorMessage.includes('unique') || errorMessage.includes('duplicate')) {
-		throw new ResponseHelper.ResponseError('Tag name already exists', undefined, 400);
+		throw new ResponseHelper.ResponseError('Tag name already exists', void 0, 400);
 	}
 
-	throw new ResponseHelper.ResponseError(errorMessage, undefined, 400);
+	throw new ResponseHelper.ResponseError(errorMessage, void 0, 400);
 }
 
 // ----------------------------------

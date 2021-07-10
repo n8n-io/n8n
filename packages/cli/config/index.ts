@@ -550,7 +550,7 @@ const config = convict({
 					throw new TypeError(`The Nodes to include is not a valid Array of strings.`);
 				}
 			},
-			default: undefined,
+			default: void 0,
 			env: 'NODES_INCLUDE',
 		},
 		exclude: {
@@ -622,7 +622,7 @@ const config = convict({
 
 // Overwrite default configuration with settings which got defined in
 // optional configuration files
-if (process.env.N8N_CONFIG_FILES !== undefined) {
+if (typeof process.env.N8N_CONFIG_FILES !== 'undefined') {
 	const configFiles = process.env.N8N_CONFIG_FILES.split(',');
 	console.log(`\nLoading configuration overwrites from:\n - ${configFiles.join('\n - ')}\n`);
 

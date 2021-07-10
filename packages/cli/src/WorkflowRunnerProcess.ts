@@ -112,13 +112,13 @@ export class WorkflowRunnerProcess {
 
 		// This code has been split into 3 ifs just to make it easier to understand
 		// Can be made smaller but in the end it will make it impossible to read.
-		if (inputData.workflowData.settings !== undefined && inputData.workflowData.settings.saveExecutionProgress === true) {
+		if (typeof inputData.workflowData.settings !== 'undefined' && inputData.workflowData.settings.saveExecutionProgress === true) {
 			// Workflow settings specifying it should save
 			await Db.init();
-		} else if (inputData.workflowData.settings !== undefined && inputData.workflowData.settings.saveExecutionProgress !== false && config.get('executions.saveExecutionProgress') as boolean) {
+		} else if (typeof inputData.workflowData.settings !== 'undefined' && inputData.workflowData.settings.saveExecutionProgress !== false && config.get('executions.saveExecutionProgress') as boolean) {
 			// Workflow settings not saying anything about saving but default settings says so
 			await Db.init();
-		} else if (inputData.workflowData.settings === undefined && config.get('executions.saveExecutionProgress') as boolean) {
+		} else if (typeof inputData.workflowData.settings === 'undefined' && config.get('executions.saveExecutionProgress') as boolean) {
 			// Workflow settings not saying anything about saving but default settings says so
 			await Db.init();
 		}
@@ -134,7 +134,7 @@ export class WorkflowRunnerProcess {
 		}
 
 		this.workflow = new Workflow({ id: this.data.workflowData.id as string | undefined, name: this.data.workflowData.name, nodes: this.data.workflowData!.nodes, connections: this.data.workflowData!.connections, active: this.data.workflowData!.active, nodeTypes, staticData: this.data.workflowData!.staticData, settings: this.data.workflowData!.settings });
-		const additionalData = await WorkflowExecuteAdditionalData.getBase(this.data.credentials, undefined, workflowTimeout <= 0 ? undefined : Date.now() + workflowTimeout * 1000);
+		const additionalData = await WorkflowExecuteAdditionalData.getBase(this.data.credentials, void 0, workflowTimeout <= 0 ? void 0 : Date.now() + workflowTimeout * 1000);
 		additionalData.hooks = this.getProcessForwardHooks();
 
 		additionalData.sendMessageToUI = async (source: string, message: any) => { // tslint:disable-line:no-any
@@ -181,15 +181,15 @@ export class WorkflowRunnerProcess {
 			return returnData!.data!.main;
 		};
 
-		if (this.data.executionData !== undefined) {
+		if (typeof this.data.executionData !== 'undefined') {
 			this.workflowExecute = new WorkflowExecute(additionalData, this.data.executionMode, this.data.executionData);
 			return this.workflowExecute.processRunExecutionData(this.workflow);
-		} else if (this.data.runData === undefined || this.data.startNodes === undefined || this.data.startNodes.length === 0 || this.data.destinationNode === undefined) {
+		} else if (typeof this.data.runData === 'undefined' || typeof this.data.startNodes === 'undefined' || this.data.startNodes.length === 0 || typeof this.data.destinationNode === 'undefined') {
 			// Execute all nodes
 
 			// Can execute without webhook so go on
 			this.workflowExecute = new WorkflowExecute(additionalData, this.data.executionMode);
-			return this.workflowExecute.run(this.workflow, undefined, this.data.destinationNode);
+			return this.workflowExecute.run(this.workflow, void 0, this.data.destinationNode);
 		} else {
 			// Execute only the nodes between start and destination nodes
 			this.workflowExecute = new WorkflowExecute(additionalData, this.data.executionMode);
@@ -250,7 +250,7 @@ export class WorkflowRunnerProcess {
 
 		const preExecuteFunctions = WorkflowExecuteAdditionalData.hookFunctionsPreExecute();
 		for (const key of Object.keys(preExecuteFunctions)) {
-			if (hookFunctions[key] === undefined) {
+			if (typeof hookFunctions[key] === 'undefined') {
 				hookFunctions[key] = [];
 			}
 			hookFunctions[key]!.push.apply(hookFunctions[key], preExecuteFunctions[key]);
@@ -308,14 +308,14 @@ process.on('message', async (message: IProcessMessage) => {
 			// The workflow execution should be stopped
 			let runData: IRun;
 
-			if (workflowRunner.workflowExecute !== undefined) {
+			if (typeof workflowRunner.workflowExecute !== 'undefined') {
 
 				const executionIds = Object.keys(workflowRunner.childExecutions);
 
 				for (const executionId of executionIds) {
 					const childWorkflowExecute = workflowRunner.childExecutions[executionId];
 					runData = childWorkflowExecute.workflowExecute.getFullRunData(workflowRunner.childExecutions[executionId].startedAt);
-					const timeOutError = message.type === 'timeout' ? new WorkflowOperationError('Workflow execution timed out!') : undefined;
+					const timeOutError = message.type === 'timeout' ? new WorkflowOperationError('Workflow execution timed out!') : void 0;
 
 					// If there is any data send it to parent process, if execution timedout add the error
 					await childWorkflowExecute.workflowExecute.processSuccessExecution(workflowRunner.childExecutions[executionId].startedAt, childWorkflowExecute.workflow, timeOutError);
@@ -324,7 +324,7 @@ process.on('message', async (message: IProcessMessage) => {
 				// Workflow started already executing
 				runData = workflowRunner.workflowExecute.getFullRunData(workflowRunner.startedAt);
 
-				const timeOutError = message.type === 'timeout' ? new WorkflowOperationError('Workflow execution timed out!') : undefined;
+				const timeOutError = message.type === 'timeout' ? new WorkflowOperationError('Workflow execution timed out!') : void 0;
 
 				// If there is any data send it to parent process, if execution timedout add the error
 				await workflowRunner.workflowExecute.processSuccessExecution(workflowRunner.startedAt, workflowRunner.workflow!, timeOutError);

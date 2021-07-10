@@ -11,7 +11,7 @@ export class MakeStoppedAtNullable1607431743768 implements MigrationInterface {
 		if (schema) {
 			tablePrefix = schema + '.' + tablePrefix;
 		}
-		await queryRunner.query('ALTER TABLE ' + tablePrefix + 'execution_entity ALTER COLUMN "stoppedAt" DROP NOT NULL', undefined);
+		await queryRunner.query('ALTER TABLE ' + tablePrefix + 'execution_entity ALTER COLUMN "stoppedAt" DROP NOT NULL', void 0);
 	}
 
 	async down(queryRunner: QueryRunner): Promise<void> {

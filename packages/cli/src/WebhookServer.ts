@@ -231,7 +231,7 @@ class App {
 		
 		this.app.use((req: express.Request, res: express.Response, next: express.NextFunction) => {
 			if (Db.collections.Workflow === null) {
-				const error = new ResponseHelper.ResponseError('Database is not ready!', undefined, 503);
+				const error = new ResponseHelper.ResponseError('Database is not ready!', void 0, 503);
 				return ResponseHelper.sendErrorResponse(res, error);
 			}
 			
@@ -251,13 +251,13 @@ class App {
 			const connectionManager = getConnectionManager();
 			
 			if (connectionManager.connections.length === 0) {
-				const error = new ResponseHelper.ResponseError('No Database connection found!', undefined, 503);
+				const error = new ResponseHelper.ResponseError('No Database connection found!', void 0, 503);
 				return ResponseHelper.sendErrorResponse(res, error);
 			}
 			
 			if (connectionManager.connections[0].isConnected === false) {
 				// Connection is not active
-				const error = new ResponseHelper.ResponseError('Database connection not active!', undefined, 503);
+				const error = new ResponseHelper.ResponseError('Database connection not active!', void 0, 503);
 				return ResponseHelper.sendErrorResponse(res, error);
 			}
 			

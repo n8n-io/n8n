@@ -126,13 +126,13 @@ export class ExportWorkflowsCommand extends Command {
 			if (flags.separate) {
 				let fileContents: string, i: number;
 				for (i = 0; i < workflows.length; i++) {
-					fileContents = JSON.stringify(workflows[i], null, flags.pretty ? 2 : undefined);
+					fileContents = JSON.stringify(workflows[i], null, flags.pretty ? 2 : void 0);
 					const filename = (flags.output!.endsWith(path.sep) ? flags.output! : flags.output + path.sep) + workflows[i].id + '.json';
 					fs.writeFileSync(filename, fileContents);
 				}
 				console.info(`Successfully exported ${i} workflows.`);
 			} else {
-				const fileContents = JSON.stringify(workflows, null, flags.pretty ? 2 : undefined);
+				const fileContents = JSON.stringify(workflows, null, flags.pretty ? 2 : void 0);
 				if (flags.output) {
 					fs.writeFileSync(flags.output!, fileContents);
 					console.info(`Successfully exported ${workflows.length} ${workflows.length === 1 ? 'workflow.' : 'workflows.'}`);

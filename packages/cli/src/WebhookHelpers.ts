@@ -53,14 +53,14 @@ export function getWorkflowWebhooks(workflow: Workflow, additionalData: IWorkflo
 	const returnData: IWebhookData[] = [];
 
 	let parentNodes: string[] | undefined;
-	if (destinationNode !== undefined) {
+	if (typeof destinationNode !== 'undefined') {
 		parentNodes = workflow.getParentNodes(destinationNode);
 		// Also add the destination node in case it itself is a webhook node
 		parentNodes.push(destinationNode);
 	}
 
 	for (const node of Object.values(workflow.nodes)) {
-		if (parentNodes !== undefined && !parentNodes.includes(node.name)) {
+		if (typeof parentNodes !== 'undefined' && !parentNodes.includes(node.name)) {
 			// If parentNodes are given check only them if they have webhooks
 			// and no other ones
 			continue;
@@ -109,7 +109,7 @@ export function getWorkflowWebhooksBasic(workflow: Workflow): IWebhookData[] {
  export async function executeWebhook(workflow: Workflow, webhookData: IWebhookData, workflowData: IWorkflowDb, workflowStartNode: INode, executionMode: WorkflowExecuteMode, sessionId: string | undefined, req: express.Request, res: express.Response, responseCallback: (error: Error | null, data: IResponseCallbackData) => void): Promise<string | undefined> {
 	// Get the nodeType to know which responseMode is set
 	const nodeType = workflow.nodeTypes.getByName(workflowStartNode.type);
-	if (nodeType === undefined) {
+	if (typeof nodeType === 'undefined') {
 		const errorMessage = `The type of the webhook node "${workflowStartNode.name}" is not known.`;
 		responseCallback(new Error(errorMessage), {});
 		throw new ResponseHelper.ResponseError(errorMessage, 500, 500);
@@ -175,15 +175,15 @@ export function getWorkflowWebhooksBasic(workflow: Workflow): IWebhookData[] {
 		// Save static data if it changed
 		await WorkflowHelpers.saveStaticData(workflow);
 
-		if (webhookData.webhookDescription['responseHeaders'] !== undefined) {
-			const responseHeaders = workflow.expression.getComplexParameterValue(workflowStartNode, webhookData.webhookDescription['responseHeaders'], executionMode, undefined) as {
+		if (typeof webhookData.webhookDescription['responseHeaders'] !== 'undefined') {
+			const responseHeaders = workflow.expression.getComplexParameterValue(workflowStartNode, webhookData.webhookDescription['responseHeaders'], executionMode, void 0) as {
 				entries?: Array<{
 					name: string;
 					value: string;
 				}> | undefined;
 			};
 
-			if (responseHeaders !== undefined && responseHeaders['entries'] !== undefined) {
+			if (typeof responseHeaders !== 'undefined' && typeof responseHeaders['entries'] !== 'undefined') {
 				for (const item of responseHeaders['entries']) {
 					res.setHeader(item['name'], item['value']);
 				}
@@ -198,9 +198,9 @@ export function getWorkflowWebhooksBasic(workflow: Workflow): IWebhookData[] {
 			didSendResponse = true;
 		}
 
-		if (webhookResultData.workflowData === undefined) {
+		if (typeof webhookResultData.workflowData === 'undefined') {
 			// Workflow should not run
-			if (webhookResultData.webhookResponse !== undefined) {
+			if (typeof webhookResultData.webhookResponse !== 'undefined') {
 				// Data to respond with is given
 				if (didSendResponse === false) {
 					responseCallback(null, {
@@ -228,7 +228,7 @@ export function getWorkflowWebhooksBasic(workflow: Workflow): IWebhookData[] {
 		// directly if responseMode it set to "onReceived" and a respone should be sent
 		if (responseMode === 'onReceived' && didSendResponse === false) {
 			// Return response directly and do not wait for the workflow to finish
-			if (webhookResultData.webhookResponse !== undefined) {
+			if (typeof webhookResultData.webhookResponse !== 'undefined') {
 				// Data to respond with is given
 				responseCallback(null, {
 					data: webhookResultData.webhookResponse,
@@ -292,7 +292,7 @@ export function getWorkflowWebhooksBasic(workflow: Workflow): IWebhookData[] {
 		// Get a promise which resolves when the workflow did execute and send then response
 		const executePromise = activeExecutions.getPostExecutePromise(executionId) as Promise<IExecutionDb | undefined>;
 		executePromise.then((data) => {
-			if (data === undefined) {
+			if (typeof data === 'undefined') {
 				if (didSendResponse === false) {
 					responseCallback(null, {
 						data: {
@@ -302,11 +302,11 @@ export function getWorkflowWebhooksBasic(workflow: Workflow): IWebhookData[] {
 					});
 					didSendResponse = true;
 				}
-				return undefined;
+				return;
 			}
 
 			const returnData = WorkflowHelpers.getDataLastExecutedNodeData(data);
-			if(data.data.resultData.error || returnData?.error !== undefined) {
+			if(data.data.resultData.error || typeof returnData?.error !== 'undefined') {
 				if (didSendResponse === false) {
 					responseCallback(null, {
 						data: {
@@ -319,7 +319,7 @@ export function getWorkflowWebhooksBasic(workflow: Workflow): IWebhookData[] {
 				return data;
 			}
 
-			if (returnData === undefined) {
+			if (typeof returnData === 'undefined') {
 				if (didSendResponse === false) {
 					responseCallback(null, {
 						data: {
@@ -340,27 +340,27 @@ export function getWorkflowWebhooksBasic(workflow: Workflow): IWebhookData[] {
 				if (responseData === 'firstEntryJson') {
 					// Return the JSON data of the first entry
 
-					if (returnData.data!.main[0]![0] === undefined) {
+					if (typeof returnData.data!.main[0]![0] === 'undefined') {
 						responseCallback(new Error('No item to return got found.'), {});
 						didSendResponse = true;
 					}
 
 					data = returnData.data!.main[0]![0].json;
 
-					const responsePropertyName = workflow.expression.getSimpleParameterValue(workflowStartNode, webhookData.webhookDescription['responsePropertyName'], executionMode, undefined);
+					const responsePropertyName = workflow.expression.getSimpleParameterValue(workflowStartNode, webhookData.webhookDescription['responsePropertyName'], executionMode, void 0);
 
-					if (responsePropertyName !== undefined) {
+					if (typeof responsePropertyName !== 'undefined') {
 						data = get(data, responsePropertyName as string) as IDataObject;
 					}
 
-					const responseContentType = workflow.expression.getSimpleParameterValue(workflowStartNode, webhookData.webhookDescription['responseContentType'], executionMode, undefined);
+					const responseContentType = workflow.expression.getSimpleParameterValue(workflowStartNode, webhookData.webhookDescription['responseContentType'], executionMode, void 0);
 
-					if (responseContentType !== undefined) {
+					if (typeof responseContentType !== 'undefined') {
 						// Send the webhook response manually to be able to set the content-type
 						res.setHeader('Content-Type', responseContentType as string);
 
 						// Returning an object, boolean, number, ... causes problems so make sure to stringify if needed
-						if (data !== null && data !== undefined && ['Buffer', 'String'].includes(data.constructor.name)) {
+						if (data !== null && typeof data !== 'undefined' && ['Buffer', 'String'].includes(data.constructor.name)) {
 							res.end(data);
 						} else {
 							res.end(JSON.stringify(data));
@@ -376,25 +376,25 @@ export function getWorkflowWebhooksBasic(workflow: Workflow): IWebhookData[] {
 					// Return the binary data of the first entry
 					data = returnData.data!.main[0]![0];
 
-					if (data === undefined) {
+					if (typeof data === 'undefined') {
 						responseCallback(new Error('No item to return got found.'), {});
 						didSendResponse = true;
 					}
 
-					if (data.binary === undefined) {
+					if (typeof data.binary === 'undefined') {
 						responseCallback(new Error('No binary data to return got found.'), {});
 						didSendResponse = true;
 					}
 
 					const responseBinaryPropertyName = workflow.expression.getSimpleParameterValue(workflowStartNode, webhookData.webhookDescription['responseBinaryPropertyName'], executionMode, 'data');
 
-					if (responseBinaryPropertyName === undefined && didSendResponse === false) {
+					if (typeof responseBinaryPropertyName === 'undefined' && didSendResponse === false) {
 						responseCallback(new Error('No "responseBinaryPropertyName" is set.'), {});
 						didSendResponse = true;
 					}
 
 					const binaryData = (data.binary as IBinaryKeyData)[responseBinaryPropertyName as string];
-					if (binaryData === undefined && didSendResponse === false) {
+					if (typeof binaryData === 'undefined' && didSendResponse === false) {
 						responseCallback(new Error(`The binary property "${responseBinaryPropertyName}" which should be returned does not exist.`), {});
 						didSendResponse = true;
 					}
@@ -459,7 +459,7 @@ export function getWebhookBaseUrl() {
 
 	// We renamed WEBHOOK_TUNNEL_URL to WEBHOOK_URL. This is here to maintain
 	// backward compatibility. Will be deprecated and removed in the future.
-	if (process.env.WEBHOOK_TUNNEL_URL !== undefined || process.env.WEBHOOK_URL !== undefined) {
+	if (typeof process.env.WEBHOOK_TUNNEL_URL !== 'undefined' || typeof process.env.WEBHOOK_URL !== 'undefined') {
 		// @ts-ignore
 		urlBaseWebhook = process.env.WEBHOOK_TUNNEL_URL || process.env.WEBHOOK_URL;
 	}

@@ -45,11 +45,11 @@ export class ActiveExecutions {
 			workflowData: executionData.workflowData,
 		};
 
-		if (executionData.retryOf !== undefined) {
+		if (typeof executionData.retryOf !== 'undefined') {
 			fullExecutionData.retryOf = executionData.retryOf.toString();
 		}
 
-		if (executionData.workflowData.id !== undefined && WorkflowHelpers.isWorkflowIdValid(executionData.workflowData.id.toString()) === true) {
+		if (typeof executionData.workflowData.id !== 'undefined' && WorkflowHelpers.isWorkflowIdValid(executionData.workflowData.id.toString()) === true) {
 			fullExecutionData.workflowId = executionData.workflowData.id.toString();
 		}
 
@@ -79,7 +79,7 @@ export class ActiveExecutions {
 	 * @memberof ActiveExecutions
 	 */
 	attachWorkflowExecution(executionId: string, workflowExecution: PCancelable<IRun>) {
-		if (this.activeExecutions[executionId] === undefined) {
+		if (typeof this.activeExecutions[executionId] === 'undefined') {
 			throw new Error(`No active execution with id "${executionId}" got found to attach to workflowExecution to!`);
 		}
 
@@ -96,7 +96,7 @@ export class ActiveExecutions {
 	 * @memberof ActiveExecutions
 	 */
 	remove(executionId: string, fullRunData?: IRun): void {
-		if (this.activeExecutions[executionId] === undefined) {
+		if (typeof this.activeExecutions[executionId] === 'undefined') {
 			return;
 		}
 
@@ -119,14 +119,14 @@ export class ActiveExecutions {
 	 * @memberof ActiveExecutions
 	 */
 	async stopExecution(executionId: string, timeout?: string): Promise<IRun | undefined> {
-		if (this.activeExecutions[executionId] === undefined) {
+		if (typeof this.activeExecutions[executionId] === 'undefined') {
 			// There is no execution running with that id
 			return;
 		}
 
 		// In case something goes wrong make sure that promise gets first
 		// returned that it gets then also resolved correctly.
-		if (this.activeExecutions[executionId].process !== undefined) {
+		if (typeof this.activeExecutions[executionId].process !== 'undefined') {
 			// Workflow is running in subprocess
 			if (this.activeExecutions[executionId].process!.connected) {
 				setTimeout(() => {
@@ -157,7 +157,7 @@ export class ActiveExecutions {
 		// Create the promise which will be resolved when the execution finished
 		const waitPromise = await createDeferredPromise<IRun | undefined>();
 
-		if (this.activeExecutions[executionId] === undefined) {
+		if (typeof this.activeExecutions[executionId] === 'undefined') {
 			throw new Error(`There is no active execution with id "${executionId}".`);
 		}
 
@@ -199,7 +199,7 @@ export class ActiveExecutions {
 let activeExecutionsInstance: ActiveExecutions | undefined;
 
 export function getInstance(): ActiveExecutions {
-	if (activeExecutionsInstance === undefined) {
+	if (typeof activeExecutionsInstance === 'undefined') {
 		activeExecutionsInstance = new ActiveExecutions();
 	}
 

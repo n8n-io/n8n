@@ -33,7 +33,7 @@ const mockNodeTypes: INodeTypes = {
 		return [];
 	},
 	getByName: (nodeType: string): INodeType | undefined => {
-		return undefined;
+		return;
 	},
 };
 
@@ -72,11 +72,11 @@ export class CredentialsHelper extends ICredentialsHelper {
 		const credentialTypes = CredentialTypes();
 		const credentialTypeData = credentialTypes.getByName(type);
 
-		if (credentialTypeData === undefined) {
+		if (typeof credentialTypeData === 'undefined') {
 			throw new Error(`The credentials of type "${type}" are not known.`);
 		}
 
-		if (credentialTypeData.extends === undefined) {
+		if (typeof credentialTypeData.extends === 'undefined') {
 			return credentialTypeData.properties;
 		}
 
@@ -129,7 +129,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 		// Add the default credential values
 		let decryptedData = NodeHelpers.getNodeParameters(credentialsProperties, decryptedDataOriginal as INodeParameters, true, false) as ICredentialDataDecryptedObject;
 
-		if (decryptedDataOriginal.oauthTokenData !== undefined) {
+		if (typeof decryptedDataOriginal.oauthTokenData !== 'undefined') {
 			// The OAuth data gets removed as it is not defined specifically as a parameter
 			// on the credentials so add it back in case it was set
 			decryptedData.oauthTokenData = decryptedDataOriginal.oauthTokenData;
@@ -155,7 +155,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 			const workflow = new Workflow({ nodes: [node!], connections: {}, active: false, nodeTypes: mockNodeTypes });
 
 			// Resolve expressions if any are set
-			decryptedData = workflow.expression.getComplexParameterValue(node!, decryptedData as INodeParameters, mode, undefined, decryptedData) as ICredentialDataDecryptedObject;
+			decryptedData = workflow.expression.getComplexParameterValue(node!, decryptedData as INodeParameters, mode, void 0, decryptedData) as ICredentialDataDecryptedObject;
 		}
 
 		// Load and apply the credentials overwrites if any exist
