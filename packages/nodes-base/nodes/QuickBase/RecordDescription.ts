@@ -88,7 +88,7 @@ export const recordFields = [
 		description: 'Comma separated list of the properties which should used as columns for the new rows.',
 	},
 	{
-		displayName: 'Simplified Response',
+		displayName: 'Simplify Response',
 		name: 'simple',
 		type: 'boolean',
 		displayOptions: {
@@ -102,7 +102,7 @@ export const recordFields = [
 			},
 		},
 		default: true,
-		description: 'When set to true a simplify version of the response will be used else the raw data.',
+		description: 'Return a simplified version of the response instead of the raw data.',
 	},
 	{
 		displayName: 'Options',
@@ -385,7 +385,7 @@ export const recordFields = [
 		description: 'update can use the key field on the table, or any other supported unique field.',
 	},
 	{
-		displayName: 'Simple',
+		displayName: 'Simplify Response',
 		name: 'simple',
 		type: 'boolean',
 		displayOptions: {
@@ -399,7 +399,7 @@ export const recordFields = [
 			},
 		},
 		default: true,
-		description: 'When set to true a simplify version of the response will be used else the raw data.',
+		description: 'Return a simplified version of the response instead of the raw data.',
 	},
 	{
 		displayName: 'Options',
@@ -532,7 +532,7 @@ export const recordFields = [
 		choosing the field in the app table that holds unique matching values. This is called a merge field.`,
 	},
 	{
-		displayName: 'Simple',
+		displayName: 'Simplify Response',
 		name: 'simple',
 		type: 'boolean',
 		displayOptions: {
@@ -546,7 +546,7 @@ export const recordFields = [
 			},
 		},
 		default: true,
-		description: 'When set to true a simplify version of the response will be used else the raw data.',
+		description: 'Return a simplified version of the response instead of the raw data.',
 	},
 	{
 		displayName: 'Options',
