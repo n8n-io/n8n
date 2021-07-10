@@ -29,6 +29,7 @@ import {
 	extractUpdateCondition,
 	extractUpdateSet,
 	extractValues,
+	formatColumns,
 } from './GenericFunctions';
 
 export class MicrosoftSql implements INodeType {
@@ -226,7 +227,8 @@ export class MicrosoftSql implements INodeType {
 			user: credentials.user as string,
 			password: credentials.password as string,
 			domain: credentials.domain ? (credentials.domain as string) : undefined,
-			connectTimeout: credentials.connectTimeout as number,
+			connectionTimeout: credentials.connectTimeout as number,
+			requestTimeout: credentials.requestTimeout as number,
 			options: {
 				encrypt: credentials.tls as boolean,
 				enableArithAbort: false,
@@ -281,7 +283,7 @@ export class MicrosoftSql implements INodeType {
 							return pool
 								.request()
 								.query(
-									`INSERT INTO ${table}(${columnString}) VALUES ${values};`,
+									`INSERT INTO ${table}(${formatColumns(columnString)}) VALUES ${values};`,
 								);
 						});
 					},
@@ -364,7 +366,7 @@ export class MicrosoftSql implements INodeType {
 									return pool
 										.request()
 										.query(
-											`DELETE FROM ${table} WHERE ${deleteKey} IN ${extractDeleteValues(
+											`DELETE FROM ${table} WHERE "${deleteKey}" IN ${extractDeleteValues(
 												deleteValues,
 												deleteKey,
 											)};`,
