@@ -97,7 +97,7 @@ export const couponFields = [
 		type: 'number',
 		required: true,
 		default: 0,
-		description: 'Amount to subtract from an invoice total',
+		description: 'Amount in cents to subtract from an invoice total, e.g. enter <code>100</code> for $1.00',
 		typeOptions: {
 			minValue: 0,
 			maxValue: 99999999,

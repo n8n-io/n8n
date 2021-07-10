@@ -474,33 +474,30 @@ export class Stripe implements INodeType {
 							throw new Error('Only card token creation implemented.');
 						}
 
-						const cardFields = this.getNodeParameter('cardFields', i) as IDataObject;
-
-						['number', 'exp_month', 'exp_year', 'cvc'].forEach(field => {
-							if (cardFields[field] === undefined) {
-								throw new Error('Please fill in all card fields to create a card token.');
-							}
-						});
-
-						Object.assign(body, { card: cardFields });
+						body.card = {
+							number: this.getNodeParameter('number', i),
+							exp_month: this.getNodeParameter('expirationMonth', i),
+							exp_year: this.getNodeParameter('expirationYear', i),
+							cvc: this.getNodeParameter('cvc', i),
+						};
 
 						responseData = await stripeApiRequest.call(this, 'POST', '/tokens', body, {});
 					}
 
 				}
 
-		} catch (error) {
-			if (this.continueOnFail()) {
-				returnData.push({ error: error.message });
-				continue;
+			} catch (error) {
+				if (this.continueOnFail()) {
+					returnData.push({ error: error.message });
+					continue;
+				}
+
+				throw error;
 			}
 
-			throw error;
-		}
-
-		Array.isArray(responseData)
-			? returnData.push(...responseData)
-			: returnData.push(responseData);
+			Array.isArray(responseData)
+				? returnData.push(...responseData)
+				: returnData.push(responseData);
 		}
 
 		return [this.helpers.returnJsonArray(returnData)];

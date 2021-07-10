@@ -43,24 +43,11 @@ export const tokenFields = [
 				value: 'cardToken',
 			},
 		],
-		displayOptions: {
-			show: {
-				resource: [
-					'token',
-				],
-				operation: [
-					'create',
-				],
-			},
-		},
 	},
 	{
-		displayName: 'Card Fields',
-		name: 'cardFields',
-		type: 'collection',
-		default: {},
-		required: true,
-		placeholder: 'Add Card Field',
+		displayName: 'Card Number',
+		name: 'number',
+		type: 'string',
 		displayOptions: {
 			show: {
 				resource: [
@@ -69,40 +56,75 @@ export const tokenFields = [
 				operation: [
 					'create',
 				],
+				type: [
+					'cardToken'
+				],
 			},
 		},
-		options: [
-			{
-				displayName: 'Card Number',
-				name: 'number',
-				type: 'string',
-				placeholder: '4242424242424242',
-				default: '',
+		placeholder: '4242424242424242',
+		default: '',
+	},
+	{
+		displayName: 'CVC',
+		name: 'cvc',
+		type: 'string',
+		displayOptions: {
+			show: {
+				resource: [
+					'token',
+				],
+				operation: [
+					'create',
+				],
+				type: [
+					'cardToken'
+				],
 			},
-			{
-				displayName: 'CVC',
-				name: 'cvc',
-				type: 'string',
-				default: '',
-				placeholder: '314',
-				description: 'Security code printed on the back of the card',
+		},
+		default: '',
+		placeholder: '314',
+		description: 'Security code printed on the back of the card',
+	},
+	{
+		displayName: 'Expiration Month',
+		description: 'Number of the month when the card will expire',
+		name: 'expirationMonth',
+		type: 'string',
+		displayOptions: {
+			show: {
+				resource: [
+					'token',
+				],
+				operation: [
+					'create',
+				],
+				type: [
+					'cardToken'
+				],
 			},
-			{
-				displayName: 'Expiration Month',
-				description: 'Number of the month when the card will expire',
-				name: 'exp_month',
-				type: 'string',
-				default: '',
-				placeholder: '10',
+		},
+		default: '',
+		placeholder: '10',
+	},
+	{
+		displayName: 'Expiration Year',
+		description: 'Year when the card will expire',
+		name: 'expirationYear',
+		type: 'string',
+		displayOptions: {
+			show: {
+				resource: [
+					'token',
+				],
+				operation: [
+					'create',
+				],
+				type: [
+					'cardToken'
+				],
 			},
-			{
-				displayName: 'Expiration Year',
-				description: 'Year when the card will expire',
-				name: 'exp_year',
-				type: 'string',
-				default: '',
-				placeholder: '2022',
-			},
-		],
+		},
+		default: '',
+		placeholder: '2022',
 	},
 ] as INodeProperties[];
