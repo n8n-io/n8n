@@ -53,11 +53,11 @@ export const logFields = [
 		},
 		options: [
 			{
-				displayName: 'Start Time',
-				name: 'startTime',
+				displayName: 'End Time',
+				name: 'endTime',
 				type: 'dateTime',
 				default: '',
-				description: 'The beginning of the period.',
+				description: 'The end of the period.',
 			},
 			{
 				displayName: 'Entity ID',
@@ -67,11 +67,11 @@ export const logFields = [
 				description: 'The entity ID.',
 			},
 			{
-				displayName: 'End Time',
-				name: 'endTime',
+				displayName: 'Start Time',
+				name: 'startTime',
 				type: 'dateTime',
 				default: '',
-				description: 'The end of the period.',
+				description: 'The beginning of the period.',
 			},
 		],
 	},

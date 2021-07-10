@@ -16,14 +16,14 @@ export const serviceOperations = [
 		},
 		options: [
 			{
-				name: 'Get All',
-				value: 'getAll',
-				description: 'Get all services',
-			},
-			{
 				name: 'Call',
 				value: 'call',
 				description: 'Call a service within a specific domain',
+			},
+			{
+				name: 'Get All',
+				value: 'getAll',
+				description: 'Get all services',
 			},
 		],
 		default: 'getAll',
@@ -76,6 +76,7 @@ export const serviceFields = [
 		default: 50,
 		description: 'How many results to return.',
 	},
+
 	/* -------------------------------------------------------------------------- */
 	/*                                service:Call                                */
 	/* -------------------------------------------------------------------------- */

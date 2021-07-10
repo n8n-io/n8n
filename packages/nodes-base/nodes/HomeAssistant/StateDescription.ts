@@ -21,14 +21,14 @@ export const stateOperations = [
 				description: 'Create a new record, or update the current one if it already exists (upsert)',
 			},
 			{
-				name: 'Get All',
-				value: 'getAll',
-				description: 'Get all states',
-			},
-			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get a state for a specific entity',
+			},
+			{
+				name: 'Get All',
+				value: 'getAll',
+				description: 'Get all states',
 			},
 		],
 		default: 'get',
@@ -58,6 +58,7 @@ export const stateFields = [
 		default: '',
 		description: 'The entity ID.',
 	},
+
 	/* -------------------------------------------------------------------------- */
 	/*                                state:getAll                                */
 	/* -------------------------------------------------------------------------- */
@@ -102,6 +103,7 @@ export const stateFields = [
 		default: 50,
 		description: 'How many results to return.',
 	},
+
 	/* -------------------------------------------------------------------------- */
 	/*                                state:upsert                                */
 	/* -------------------------------------------------------------------------- */

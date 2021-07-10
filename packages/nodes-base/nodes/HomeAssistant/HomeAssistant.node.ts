@@ -87,10 +87,10 @@ export class HomeAssistant implements INodeType {
 						name: 'Config',
 						value: 'config',
 					},
-					{
-						name: 'Event',
-						value: 'event',
-					},
+					// {
+					// 	name: 'Event',
+					// 	value: 'event',
+					// },
 					// {
 					// 	name: 'History',
 					// 	value: 'history',
@@ -221,7 +221,7 @@ export class HomeAssistant implements INodeType {
 				} else if (resource === 'event') {
 					if (operation === 'getAll') {
 						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
-						responseData = await homeAssistantApiRequest.call(this, 'GET', '/events')  as IDataObject[];
+						responseData = await homeAssistantApiRequest.call(this, 'GET', '/events') as IDataObject[];
 						if (!returnAll) {
 							const limit = this.getNodeParameter('limit', i) as number;
 							responseData = responseData.slice(0, limit);
@@ -364,8 +364,8 @@ export class HomeAssistant implements INodeType {
 			}
 
 			Array.isArray(responseData)
-			? returnData.push(...responseData)
-			: returnData.push(responseData);
+				? returnData.push(...responseData)
+				: returnData.push(responseData);
 		}
 
 		if (resource === 'cameraProxy' && operation === 'getScreenshot') {
