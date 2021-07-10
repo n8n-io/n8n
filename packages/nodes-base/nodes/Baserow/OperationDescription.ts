@@ -69,101 +69,9 @@ export const operationFields = [
 		required: true,
 		description: 'ID of the row to update',
 	},
-	{
-		displayName: 'Data to Send',
-		name: 'dataToSend',
-		type: 'options',
-		options: [
-			{
-				name: 'Define Each Field Below',
-				value: 'defineBelow',
-				description: 'Set the value for each destination field',
-			},
-			{
-				name: 'Auto-match Inputs to Fields',
-				value: 'automatchInputs',
-				description: 'Use when node input names match destination field names',
-			},
-		],
-		displayOptions: {
-			show: {
-				operation: [
-					'update',
-				],
-			},
-		},
-		default: 'defineBelow',
-		description: 'Whether to insert the input data this node receives in the new row',
-	},
-	{
-		displayName: 'Inputs to Ignore',
-		name: 'inputsToIgnore',
-		type: 'string',
-		displayOptions: {
-			show: {
-				operation: [
-					'update',
-				],
-				dataToSend: [
-					'automatchInputs',
-				],
-			},
-		},
-		default: '',
-		required: true,
-		description: 'List of input names to avoid sending, separated by commas. Leave empty to send all inputs',
-		placeholder: 'Enter fields...',
-	},
-	{
-		displayName: 'Fields to Send',
-		name: 'fieldsUi',
-		placeholder: 'Add Field',
-		type: 'fixedCollection',
-		typeOptions: {
-			multipleValueButtonText: 'Add Field to Send',
-			multipleValues: true,
-		},
-		displayOptions: {
-			show: {
-				operation: [
-					'update',
-				],
-				dataToSend: [
-					'defineBelow',
-				],
-			},
-		},
-		default: {},
-		options: [
-			{
-				displayName: 'Field',
-				name: 'fieldValues',
-				values: [
-					{
-						displayName: 'Field ID',
-						name: 'fieldId',
-						type: 'options',
-						typeOptions: {
-							loadOptionsDependsOn: [
-								'tableId',
-							],
-							loadOptionsMethod: 'getTableFields',
-						},
-						default: '',
-					},
-					{
-						displayName: 'Field Value',
-						name: 'fieldValue',
-						type: 'string',
-						default: '',
-					},
-				],
-			},
-		],
-	},
 
 	// ----------------------------------
-	//             create
+	//             create/update
 	// ----------------------------------
 	{
 		displayName: 'Data to Send',
@@ -171,20 +79,21 @@ export const operationFields = [
 		type: 'options',
 		options: [
 			{
-				name: 'Define Each Field Below',
-				value: 'defineBelow',
-				description: 'Set the value for each destination field',
-			},
-			{
 				name: 'Auto-match Inputs to Fields',
 				value: 'automatchInputs',
 				description: 'Use when node input names match destination field names',
+			},
+			{
+				name: 'Define Each Field Below',
+				value: 'defineBelow',
+				description: 'Set the value for each destination field',
 			},
 		],
 		displayOptions: {
 			show: {
 				operation: [
 					'create',
+					'update',
 				],
 			},
 		},
@@ -199,6 +108,7 @@ export const operationFields = [
 			show: {
 				operation: [
 					'create',
+					'update',
 				],
 				dataToSend: [
 					'automatchInputs',
@@ -206,7 +116,7 @@ export const operationFields = [
 			},
 		},
 		default: '',
-		required: true,
+		required: false,
 		description: 'List of input names to avoid sending, separated by commas. Leave empty to send all inputs',
 		placeholder: 'Enter fields...',
 	},
@@ -223,6 +133,7 @@ export const operationFields = [
 			show: {
 				operation: [
 					'create',
+					'update',
 				],
 				dataToSend: [
 					'defineBelow',
