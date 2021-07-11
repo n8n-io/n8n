@@ -403,8 +403,8 @@ export default mixins(
 						if (data.data.resultData.error.stack) {
 							// Display some more information for now in console to make debugging easier
 							// TODO: Improve this in the future by displaying in UI
-							console.error(`Execution ${executionId} error:`);
-							console.error(data.data.resultData.error.stack);
+							console.error(`Execution ${executionId} error:`); // eslint-disable-line no-console
+							console.error(data.data.resultData.error.stack); // eslint-disable-line no-console
 						}
 					}
 				}
