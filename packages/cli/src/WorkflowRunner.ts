@@ -169,7 +169,6 @@ export class WorkflowRunner {
 
 		const nodeTypes = NodeTypes();
 
-
 		// Soft timeout to stop workflow execution after current running node
 		// Changes were made by adding the `workflowTimeout` to the `additionalData`
 		// So that the timeout will also work for executions with nested workflows.
@@ -188,11 +187,11 @@ export class WorkflowRunner {
 
 		// Register the active execution
 		const executionId = await this.activeExecutions.add(data, undefined);
-		Logger.verbose(`Execution for workflow ${data.workflowData.name} was assigned id ${executionId}`, {executionId});
 		let workflowExecution: PCancelable<IRun>;
-		additionalData.hooks = WorkflowExecuteAdditionalData.getWorkflowHooksMain(data, executionId, true);
 
 		try {
+			Logger.verbose(`Execution for workflow ${data.workflowData.name} was assigned id ${executionId}`, { executionId });
+			additionalData.hooks = WorkflowExecuteAdditionalData.getWorkflowHooksMain(data, executionId, true);
 			additionalData.sendMessageToUI = WorkflowExecuteAdditionalData.sendMessageToUI.bind({sessionId: data.sessionId});
 
 			if (data.executionData !== undefined) {
@@ -264,8 +263,17 @@ export class WorkflowRunner {
 			removeOnFail: true,
 		};
 		let job: Bull.Job;
+		let hooks: WorkflowHooks;
 		try {
 			job = await this.jobQueue.add(jobData, jobOptions);
+
+			console.log('Started with ID: ' + job.id.toString());
+
+			hooks = WorkflowExecuteAdditionalData.getWorkflowHooksWorkerMain(data.executionMode, executionId, data.workflowData, { retryOf: data.retryOf ? data.retryOf.toString() : undefined });
+
+			// Normally also workflow should be supplied here but as it only used for sending
+			// data to editor-UI is not needed.
+			hooks.executeHookFunctions('workflowExecuteBefore', []);
 		} catch (error) {
 			// We use "getWorkflowHooksIntegrated" here as we are just integrated in the "workflowExecuteAfter"
 			// hook anyway and other get so ignored
@@ -273,14 +281,6 @@ export class WorkflowRunner {
 			await this.processError(error, new Date(), data.executionMode, executionId, hooks);
 			return executionId;
 		}
-
-		console.log('Started with ID: ' + job.id.toString());
-
-		const hooks = WorkflowExecuteAdditionalData.getWorkflowHooksWorkerMain(data.executionMode, executionId, data.workflowData, { retryOf: data.retryOf ? data.retryOf.toString() : undefined });
-
-		// Normally also workflow should be supplied here but as it only used for sending
-		// data to editor-UI is not needed.
-		hooks.executeHookFunctions('workflowExecuteBefore', []);
 
 		const workflowExecution: PCancelable<IRun> = new PCancelable(async (resolve, reject, onCancel) => {
 			onCancel.shouldReject = false;
@@ -385,7 +385,6 @@ export class WorkflowRunner {
 				startedAt: fullExecutionData.startedAt,
 				stoppedAt: fullExecutionData.stoppedAt,
 			} as IRun;
-
 
 			this.activeExecutions.remove(executionId, runData);
 			// Normally also static data should be supplied here but as it only used for sending
