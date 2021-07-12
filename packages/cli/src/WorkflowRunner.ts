@@ -275,11 +275,11 @@ export class WorkflowRunner {
 			// data to editor-UI is not needed.
 			hooks.executeHookFunctions('workflowExecuteBefore', []);
 		} catch (error) {
-			// We use "getWorkflowHooksIntegrated" here as we are just integrated in the "workflowExecuteAfter"
-			// hook anyway and other get so ignored
-			const hooks = WorkflowExecuteAdditionalData.getWorkflowHooksIntegrated(data.executionMode, executionId, data.workflowData, { retryOf: data.retryOf ? data.retryOf.toString() : undefined });
+			// We use "getWorkflowHooksWorkerExecuter" as "getWorkflowHooksWorkerMain" does not contain the
+			// "workflowExecuteAfter" which we require.
+			const hooks = WorkflowExecuteAdditionalData.getWorkflowHooksWorkerExecuter(data.executionMode, executionId, data.workflowData, { retryOf: data.retryOf ? data.retryOf.toString() : undefined });
 			await this.processError(error, new Date(), data.executionMode, executionId, hooks);
-			return executionId;
+			throw error;
 		}
 
 		const workflowExecution: PCancelable<IRun> = new PCancelable(async (resolve, reject, onCancel) => {
@@ -287,19 +287,14 @@ export class WorkflowRunner {
 			onCancel(async () => {
 				await Queue.getInstance().stopJob(job);
 
-				const fullRunData :IRun = {
-					data: {
-						resultData: {
-							error: new WorkflowOperationError('Workflow-Execution has been canceled!'),
-							runData: {},
-						},
-					},
-					mode: data.executionMode,
-					startedAt: new Date(),
-					stoppedAt: new Date(),
-				};
-				this.activeExecutions.remove(executionId, fullRunData);
-				resolve(fullRunData);
+				// We use "getWorkflowHooksWorkerExecuter" as "getWorkflowHooksWorkerMain" does not contain the
+				// "workflowExecuteAfter" which we require.
+				const hooksWorker = WorkflowExecuteAdditionalData.getWorkflowHooksWorkerExecuter(data.executionMode, executionId, data.workflowData, { retryOf: data.retryOf ? data.retryOf.toString() : undefined });
+
+				const error = new WorkflowOperationError('Workflow-Execution has been canceled!');
+				await this.processError(error, new Date(), data.executionMode, executionId, hooksWorker);
+
+				reject(error);
 			});
 
 			const jobData: Promise<IBullJobResponse> = job.finished();
@@ -351,6 +346,8 @@ export class WorkflowRunner {
 					clearWatchdogInterval();
 				}
 			} catch (error) {
+				// We use "getWorkflowHooksWorkerExecuter" as "getWorkflowHooksWorkerMain" does not contain the
+				// "workflowExecuteAfter" which we require.
 				const hooks = WorkflowExecuteAdditionalData.getWorkflowHooksWorkerExecuter(data.executionMode, executionId, data.workflowData, { retryOf: data.retryOf ? data.retryOf.toString() : undefined });
 				Logger.error(`Problem with execution ${executionId}: ${error.message}. Aborting.`);
 				if (clearWatchdogInterval !== undefined) {
@@ -358,23 +355,8 @@ export class WorkflowRunner {
 				}
 				await this.processError(error, new Date(), data.executionMode, executionId, hooks);
 
-				const fullRunData :IRun = {
-					data: {
-						resultData: {
-							error,
-							runData: {},
-						},
-					},
-					mode: data.executionMode,
-					startedAt: new Date(),
-					stoppedAt: new Date(),
-				};
-				this.activeExecutions.remove(executionId, fullRunData);
-				resolve(fullRunData);
-				return;
+				reject(error);
 			}
-
-
 
 			const executionDb = await Db.collections.Execution!.findOne(executionId) as IExecutionFlattedDb;
 			const fullExecutionData = ResponseHelper.unflattenExecutionData(executionDb) as IExecutionResponse;
