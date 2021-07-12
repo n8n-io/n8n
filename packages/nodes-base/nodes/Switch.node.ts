@@ -16,7 +16,7 @@ export class Switch implements INodeType {
 		icon: 'fa:map-signs',
 		group: ['transform'],
 		version: 1,
-		description: 'Route items depending on defined expression or rules.',
+		description: 'Route items depending on defined expression or rules',
 		defaults: {
 			name: 'Switch',
 			color: '#506000',

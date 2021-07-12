@@ -815,7 +815,7 @@ export class WorkflowExecute {
 			})()
 			.then(async () => {
 				if (gotCancel && executionError === undefined) {
-					return this.processSuccessExecution(startedAt, workflow, new WorkflowOperationError('Workflow has been canceled!'));
+					return this.processSuccessExecution(startedAt, workflow, new WorkflowOperationError('Workflow has been canceled or timed out!'));
 				}
 				return this.processSuccessExecution(startedAt, workflow, executionError);
 			})
@@ -852,7 +852,11 @@ export class WorkflowExecute {
 
 		if (executionError !== undefined) {
 			Logger.verbose(`Workflow execution finished with error`, { error: executionError, workflowId: workflow.id });
-			fullRunData.data.resultData.error = executionError;
+			fullRunData.data.resultData.error = {
+				...executionError,
+				message: executionError.message,
+				stack: executionError.stack,
+			} as ExecutionError;
 		} else if (this.runExecutionData.sleepTill!!) {
 			Logger.verbose(`Workflow execution finished successfully`, { workflowId: workflow.id });
 			fullRunData.sleepTill = this.runExecutionData.sleepTill;

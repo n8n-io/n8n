@@ -14,7 +14,7 @@ export class SplitInBatches implements INodeType {
 		icon: 'fa:th-large',
 		group: ['organization'],
 		version: 1,
-		description: 'Saves the originally incoming data and with each iteration it returns a predefined amount of them.',
+		description: 'Split data into batches and iterate over each batch',
 		defaults: {
 			name: 'SplitInBatches',
 			color: '#007755',

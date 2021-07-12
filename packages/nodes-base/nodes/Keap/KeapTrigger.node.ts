@@ -28,7 +28,7 @@ export class KeapTrigger implements INodeType {
 		group: ['trigger'],
 		version: 1,
 		subtitle: '={{$parameter["eventId"]}}',
-		description: 'Starts the workflow when Infusionsoft events occur.',
+		description: 'Starts the workflow when Infusionsoft events occur',
 		defaults: {
 			name: 'Keap Trigger',
 			color: '#79af53',

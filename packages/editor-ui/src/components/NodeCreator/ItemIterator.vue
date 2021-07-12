@@ -8,7 +8,7 @@
 			@before-leave="beforeLeave"
 			@leave="leave"
 		>
-			<div v-for="(item, index) in elements" :key="item.key" :class="item.type">
+			<div v-for="(item, index) in elements" :key="item.key" :class="item.type" :data-key="item.key">
 				<CreatorItem
 					:item="item"
 					:active="activeIndex === index && !disabled"
