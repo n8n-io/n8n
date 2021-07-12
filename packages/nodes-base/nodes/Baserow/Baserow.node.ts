@@ -222,16 +222,16 @@ export class Baserow implements INodeType {
 
 					const body: IDataObject = {};
 
-					const dataToSend = this.getNodeParameter('dataToSend', 0) as 'defineBelow' | 'automatchInputs';
+					const dataToSend = this.getNodeParameter('dataToSend', 0) as 'defineBelow' | 'autoMapColumns';
 
-					if (dataToSend === 'automatchInputs') {
+					if (dataToSend === 'autoMapColumns') {
 
 						const incomingKeys = Object.keys(items[i].json);
-						const rawInputsToIgnore = this.getNodeParameter('inputsToIgnore', i) as string;
-						const inputsToIgnore = rawInputsToIgnore.split(',').map(c => c.trim());
+						const rawInputsToIgnore = this.getNodeParameter('inputDataToIgnore', i) as string;
+						const inputDataToIgnore = rawInputsToIgnore.split(',').map(c => c.trim());
 
 						for (const key of incomingKeys) {
-							if (inputsToIgnore.includes(key)) continue;
+							if (inputDataToIgnore.includes(key)) continue;
 							body[key] = items[i].json[key];
 							mapper.namesToIds(body);
 						}
@@ -261,9 +261,9 @@ export class Baserow implements INodeType {
 
 					const body: IDataObject = {};
 
-					const dataToSend = this.getNodeParameter('dataToSend', 0) as 'defineBelow' | 'automatchInputs';
+					const dataToSend = this.getNodeParameter('dataToSend', 0) as 'defineBelow' | 'autoMapInputData';
 
-					if (dataToSend === 'automatchInputs') {
+					if (dataToSend === 'autoMapInputData') {
 
 						const incomingKeys = Object.keys(items[i].json);
 						const rawInputsToIgnore = this.getNodeParameter('inputsToIgnore', i) as string;

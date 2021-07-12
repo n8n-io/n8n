@@ -79,14 +79,14 @@ export const operationFields = [
 		type: 'options',
 		options: [
 			{
-				name: 'Auto-match Inputs to Fields',
-				value: 'automatchInputs',
-				description: 'Use when node input names match destination field names',
+				name: 'Auto-map Input Data to Columns',
+				value: 'autoMapInputData',
+				description: 'Use when node input properties match destination column names',
 			},
 			{
-				name: 'Define Each Field Below',
+				name: 'Define Below for Each Column',
 				value: 'defineBelow',
-				description: 'Set the value for each destination field',
+				description: 'Set the value for each destination column',
 			},
 		],
 		displayOptions: {
@@ -111,14 +111,14 @@ export const operationFields = [
 					'update',
 				],
 				dataToSend: [
-					'automatchInputs',
+					'autoMapInputData',
 				],
 			},
 		},
 		default: '',
 		required: false,
-		description: 'List of input names to avoid sending, separated by commas. Leave empty to send all inputs',
-		placeholder: 'Enter fields...',
+		description: 'List of input properties to avoid sending, separated by commas. Leave empty to send all properties.',
+		placeholder: 'Enter properties...',
 	},
 	{
 		displayName: 'Fields to Send',
