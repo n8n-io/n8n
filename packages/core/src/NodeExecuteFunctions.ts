@@ -101,17 +101,7 @@ export async function prepareBinaryData(binaryData: Buffer, filePath?: string, m
 
 	const returnData: IBinaryData = {
 		mimeType,
-		// TODO: Should program it in a way that it does not have to converted to base64
-		//       It should only convert to and from base64 when saved in database because
-		//       of for example an error or when there is a wait node.
-
-		// AHSAN
-		// Large binary data fails here
-		// data: binaryData.toString(BINARY_ENCODING),
-		// enc: BINARY_ENCODING,
-
-		// fs.writeFileSync(flags.output, this.formatJsonOutput(results));
-		
+		data: BINARY_ENCODING, // todo cleanup
 	};
 
 	if (filePath) {
@@ -134,10 +124,14 @@ export async function prepareBinaryData(binaryData: Buffer, filePath?: string, m
 		}
 	}
 
+	// ahsan
+
+	// internal storage path of binary data
 	returnData.internalPath = `internal_data-${executionId}-${nodeName}-${item}`;
 
-	console.log('path', returnData.internalPath);
+	console.log('returnData.internalPath', returnData.internalPath);
 
+	// internal storage path of binary data
 	await fs.writeFile(path.join(returnData.internalPath), binaryData);
 
 	return returnData;
@@ -780,6 +774,7 @@ export function getExecuteFunctions(workflow: Workflow, runExecutionData: IRunEx
 			},
 			helpers: {
 				prepareBinaryData(binaryData: Buffer, filePath?: string, mimeType?: string, itemIndex?: number): Promise<IBinaryData> {
+					// ahsan
 					console.log(executionId, node.name, itemIndex);
 					return prepareBinaryData.call(this, binaryData, filePath, mimeType, executionId, node.name, '' + itemIndex);
 				},
