@@ -634,7 +634,7 @@ const config = convict({
 		infoUrl: {
 			doc: `Url in New Versions Panel with more information on updating one's instance.`,
 			format: String,
-			default: 'https://docs.n8n.io/reference/',
+			default: 'https://docs.n8n.io/getting-started/installation/updating.html',
 			env: 'N8N_VERSION_NOTIFICATIONS_INFO_URL',
 		},
 	},
