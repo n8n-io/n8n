@@ -50,7 +50,7 @@ export class SleepingWebhooks {
 		const fullExecutionData = ResponseHelper.unflattenExecutionData(execution);
 
 		if (fullExecutionData.finished === true || fullExecutionData.data.resultData.error) {
-			throw new ResponseHelper.ResponseError(`The execution "${executionId} did already complete.`, 409, 409);
+			throw new ResponseHelper.ResponseError(`The execution "${executionId} has finished already.`, 409, 409);
 		}
 
 		return this.startExecution(httpMethod, path, fullExecutionData, req, res);

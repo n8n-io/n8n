@@ -1,6 +1,8 @@
 import {
 	ActiveExecutions,
+	DatabaseType,
 	Db,
+	GenericHelpers,
 	IExecutionFlattedDb,
 	IWorkflowExecutionDataProcess,
 	ResponseHelper,
@@ -15,6 +17,7 @@ import {
 import {
 	FindManyOptions,
 	LessThanOrEqual,
+	ObjectLiteral,
 } from 'typeorm';
 
 import { DateUtils } from 'typeorm/util/DateUtils';
@@ -60,15 +63,19 @@ export class SleepTracker {
 		const findQuery: FindManyOptions<IExecutionFlattedDb> = {
 			select: ['id', 'sleepTill'],
 			where: {
-				// This is needed because of issue in TypeORM <> SQLite:
-				// https://github.com/typeorm/typeorm/issues/2286
-				// TODO: Check if this causes problems with other databases
-				sleepTill: LessThanOrEqual(DateUtils.mixedDateToUtcDatetimeString(new Date(Date.now() + 70000))),
+				sleepTill: LessThanOrEqual(new Date(Date.now() + 70000)),
 			},
 			order: {
 				sleepTill: 'ASC',
 			},
 		};
+		const dbType = await GenericHelpers.getConfigValue('database.type') as DatabaseType;
+		if (dbType === 'sqlite') {
+			// This is needed because of issue in TypeORM <> SQLite:
+			// https://github.com/typeorm/typeorm/issues/2286
+			(findQuery.where! as ObjectLiteral).sleepTill = LessThanOrEqual(DateUtils.mixedDateToUtcDatetimeString(new Date(Date.now() + 70000)));
+		}
+
 
 		const executions = await Db.collections.Execution!.find(findQuery);
 
