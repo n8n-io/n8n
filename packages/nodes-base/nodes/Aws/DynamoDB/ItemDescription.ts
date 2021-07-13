@@ -18,7 +18,7 @@ export const itemOperations = [
 			{
 				name: 'Create or Update',
 				value: 'upsert',
-				description: 'Create a new item, or update the current one if it already exists (upsert)',
+				description: 'Create a new record, or update the current one if it already exists (upsert)',
 			},
 			{
 				name: 'Delete',
@@ -37,7 +37,6 @@ export const itemOperations = [
 			},
 		],
 		default: 'upsert',
-		description: 'The operation to perform.',
 	},
 ] as INodeProperties[];
 
@@ -48,7 +47,7 @@ export const itemFields = [
 	{
 		displayName: 'Table Name',
 		name: 'tableName',
-		description: 'Table to operate on.',
+		description: 'Table to operate on',
 		type: 'options',
 		required: true,
 		displayOptions: {
@@ -82,8 +81,8 @@ export const itemFields = [
 			},
 		},
 		default: '',
-		placeholder: 'id,name,description',
-		description: 'Comma separated list of the properties which should used as columns for the new rows.',
+		placeholder: 'id, name, description',
+		description: 'Comma-separated list of the properties which should used as columns for the new rows',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -105,8 +104,7 @@ export const itemFields = [
 			{
 				displayName: 'Expression Attribute Values',
 				name: 'eavUi',
-				description: `Substitution tokens for attribute names in an expression.</br>
-				Only needed when the parameter "condition expression" is set `,
+				description: 'Substitution tokens for attribute names in an expression.<br>Only needed when the parameter "condition expression" is set',
 				placeholder: 'Add Attribute Value',
 				type: 'fixedCollection',
 				default: '',
@@ -157,8 +155,7 @@ export const itemFields = [
 				name: 'conditionExpression',
 				type: 'string',
 				default: '',
-				description: `A condition that must be satisfied in order for a conditional upsert to succeed.
-				Check <a href="https://docs.aws.amazon.com/amazondynamodb/latest/APIReference/API_PutItem.html" target="_blank">Info</a>`,
+				description: 'A condition that must be satisfied in order for a conditional upsert to succeed. <a target="_blank" href="https://docs.aws.amazon.com/amazondynamodb/latest/APIReference/API_PutItem.html">View details</a>',
 			},
 			{
 				displayName: 'Expression Attribute Names',
@@ -189,7 +186,7 @@ export const itemFields = [
 						],
 					},
 				],
-				description: `One or more substitution tokens for attribute names in an expression. Check <a href="https://docs.aws.amazon.com/amazondynamodb/latest/APIReference/API_PutItem.html" target="_blank">Info</a>`,
+				description: 'One or more substitution tokens for attribute names in an expression. <a target="_blank" href="https://docs.aws.amazon.com/amazondynamodb/latest/APIReference/API_PutItem.html">View details</a>',
 			},
 		],
 	},
@@ -256,8 +253,7 @@ export const itemFields = [
 				],
 			},
 		],
-		description: `Item's primary key. For example, with a simple primary key, you only need to provide a value for the partition key.</br>
-		For a composite primary key, you must provide values for both the partition key and the sort key`,
+		description: 'Item\'s primary key. For example, with a simple primary key, you only need to provide a value for the partition key.<br>For a composite primary key, you must provide values for both the partition key and the sort key',
 	},
 	{
 		displayName: 'Return Values',
@@ -286,7 +282,7 @@ export const itemFields = [
 			},
 		],
 		default: 'NONE',
-		description: `Use ReturnValues if you want to get the item attributes as they appeared before they were deleted`,
+		description: 'Use ReturnValues if you want to get the item attributes as they appeared before they were deleted',
 	},
 	{
 		displayName: 'Simple',
@@ -306,7 +302,7 @@ export const itemFields = [
 			},
 		},
 		default: true,
-		description: 'When set to true a simplify version of the response will be used else the raw data.',
+		description: 'Whether to return a simplified version of the response instead of the raw data',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -330,7 +326,7 @@ export const itemFields = [
 				name: 'conditionExpression',
 				type: 'string',
 				default: '',
-				description: `A condition that must be satisfied in order for a conditional delete to succeed.`,
+				description: 'A condition that must be satisfied in order for a conditional delete to succeed',
 			},
 			{
 				displayName: 'Expression Attribute Names',
@@ -361,13 +357,12 @@ export const itemFields = [
 						],
 					},
 				],
-				description: `One or more substitution tokens for attribute names in an expression. Check <a href="https://docs.aws.amazon.com/amazondynamodb/latest/APIReference/API_PutItem.html" target="_blank">Info</a>`,
+				description: 'One or more substitution tokens for attribute names in an expression. Check <a href="https://docs.aws.amazon.com/amazondynamodb/latest/APIReference/API_PutItem.html" target="_blank">Info</a>',
 			},
 			{
 				displayName: 'Expression Attribute Values',
 				name: 'expressionAttributeUi',
-				description: `Substitution tokens for attribute names in an expression.</br>
-				Only needed when the parameter "condition expression" is set `,
+				description: 'Substitution tokens for attribute names in an expression.<br>Only needed when the parameter "condition expression" is set',
 				placeholder: 'Add Attribute Value',
 				type: 'fixedCollection',
 				default: '',
@@ -478,8 +473,7 @@ export const itemFields = [
 				],
 			},
 		],
-		description: `Item's primary key. For example, with a simple primary key, you only need to provide a value for the partition key.</br>
-		For a composite primary key, you must provide values for both the partition key and the sort key`,
+		description: 'Item\'s primary key. For example, with a simple primary key, you only need to provide a value for the partition key.<br>For a composite primary key, you must provide values for both the partition key and the sort key',
 	},
 	{
 		displayName: 'Select',
@@ -510,7 +504,7 @@ export const itemFields = [
 			},
 		],
 		default: 'ALL_ATTRIBUTES',
-		description: `The attributes to be returned in the result. You can retrieve all item attributes, specific item attributes, the count of matching items, or in the case of an index, some or all of the attributes projected into the index.`,
+		description: 'The attributes to be returned in the result. You can retrieve all item attributes, specific item attributes, the count of matching items, or in the case of an index, some or all of the attributes projected into the index',
 	},
 	{
 		displayName: 'Simple',
@@ -531,7 +525,7 @@ export const itemFields = [
 			},
 		},
 		default: true,
-		description: 'When set to true a simplify version of the response will be used else the raw data.',
+		description: 'Whether to return a simplified version of the response instead of the raw data',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -551,11 +545,12 @@ export const itemFields = [
 		},
 		options: [
 			{
+				// TODO change to options
 				displayName: 'Consistent Read',
 				name: 'consistentRead',
 				type: 'boolean',
 				default: false,
-				description: `Determines the read consistency model: If set to true, then the operation uses strongly consistent reads; otherwise, the operation uses eventually consistent reads.`,
+				description: 'Determines the read consistency model: If set to true, then the operation uses strongly consistent reads; otherwise, the operation uses eventually consistent reads',
 			},
 			{
 				displayName: 'Projection Expression',
@@ -594,7 +589,7 @@ export const itemFields = [
 						],
 					},
 				],
-				description: `One or more substitution tokens for attribute names in an expression. Check <a href="https://docs.aws.amazon.com/amazondynamodb/latest/APIReference/API_PutItem.html" target="_blank">Info</a>`,
+				description: 'One or more substitution tokens for attribute names in an expression. Check <a href="https://docs.aws.amazon.com/amazondynamodb/latest/APIReference/API_PutItem.html" target="_blank">Info</a>',
 			},
 		],
 	},
@@ -614,7 +609,7 @@ export const itemFields = [
 			},
 		},
 		default: false,
-		description: 'Whether to do an scan or query. Check <a href="https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/bp-query-scan.html">differences</a>',
+		description: 'Whether to do an scan or query. Check <a target="_blank" href="https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/bp-query-scan.html">differences</a>',
 	},
 	{
 		displayName: 'Key Condition Expression',
@@ -638,7 +633,7 @@ export const itemFields = [
 	{
 		displayName: 'Expression Attribute Values',
 		name: 'eavUi',
-		description: `Substitution tokens for attribute names in an expression`,
+		description: 'Substitution tokens for attribute names in an expression',
 		placeholder: 'Add Attribute Value',
 		type: 'fixedCollection',
 		default: '',
@@ -709,7 +704,7 @@ export const itemFields = [
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -730,7 +725,7 @@ export const itemFields = [
 			maxValue: 100,
 		},
 		default: 50,
-		description: 'How many results to return.',
+		description: 'How many results to return',
 	},
 	{
 		displayName: 'Select',
@@ -765,7 +760,7 @@ export const itemFields = [
 			},
 		],
 		default: 'ALL_ATTRIBUTES',
-		description: `The attributes to be returned in the result. You can retrieve all item attributes, specific item attributes, the count of matching items, or in the case of an index, some or all of the attributes projected into the index.`,
+		description: 'The attributes to be returned in the result. You can retrieve all item attributes, specific item attributes, the count of matching items, or in the case of an index, some or all of the attributes projected into the index.',
 	},
 	{
 		displayName: 'Simple',
@@ -786,7 +781,7 @@ export const itemFields = [
 			},
 		},
 		default: true,
-		description: 'When set to true a simplify version of the response will be used else the raw data.',
+		description: 'Whether to return a simplified version of the response instead of the raw data',
 	},
 	{
 		displayName: 'Options',
@@ -817,18 +812,14 @@ export const itemFields = [
 				name: 'projectionExpression',
 				type: 'string',
 				default: '',
-				description: `A string that identifies one or more attributes to retrieve from the table.</br>
-				These attributes can include scalars, sets, or elements of a JSON document. The attributes</br>
-				in the expression must be separated by commas`,
+				description: 'Text that identifies one or more attributes to retrieve from the table.<br>These attributes can include scalars, sets, or elements of a JSON document. The attributes<br>in the expression must be separated by commas',
 			},
 			{
 				displayName: 'Filter Expression',
 				name: 'filterExpression',
 				type: 'string',
 				default: '',
-				description: `A string that contains conditions that DynamoDB applies after the Query operation,</br>
-				but before the data is returned to you. Items that do not satisfy the FilterExpression criteria</br>
-				are not returned.`,
+				description: 'Text that contains conditions that DynamoDB applies after the Query operation,<br>but before the data is returned to you. Items that do not satisfy the FilterExpression criteria</br>are not returned',
 			},
 			{
 				displayName: 'Expression Attribute Names',
@@ -859,7 +850,7 @@ export const itemFields = [
 						],
 					},
 				],
-				description: `One or more substitution tokens for attribute names in an expression. Check <a href="https://docs.aws.amazon.com/amazondynamodb/latest/APIReference/API_PutItem.html" target="_blank">Info</a>`,
+				description: 'One or more substitution tokens for attribute names in an expression. Check <a target="_blank" href="https://docs.aws.amazon.com/amazondynamodb/latest/APIReference/API_PutItem.html">Info</a>',
 			},
 		],
 	},
