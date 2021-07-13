@@ -468,6 +468,24 @@ export const alertFields = [
 			},
 		},
 	},
+	{
+		displayName: 'JSON Parameters',
+		name: 'jsonParameters',
+		type: 'boolean',
+		default: true,
+		displayOptions: {
+			show: {
+				resource: [
+					'alert',
+				],
+				operation: [
+					'create',
+					'update',
+				],
+			},
+		},
+	},
+
 	// optional attributs (Create, Promote operations)
 	{
 		displayName: 'Additional Fields',
@@ -483,7 +501,6 @@ export const alertFields = [
 				],
 				operation: [
 					'create',
-					'promote',
 				],
 			},
 		},
@@ -500,6 +517,13 @@ export const alertFields = [
 				name: 'customFieldsUi',
 				type: 'fixedCollection',
 				default: {},
+				displayOptions: {
+					show: {
+						'/jsonParameters': [
+							false,
+						],
+					},
+				},
 				typeOptions: {
 					multipleValues: true,
 				},
@@ -534,7 +558,43 @@ export const alertFields = [
 				name: 'customFieldsJson',
 				type: 'string',
 				default: '',
+				displayOptions: {
+					show: {
+						'/jsonParameters': [
+							true,
+						],
+					},
+				},
 				description: 'Custom fields in JSON format. Overrides Custom Fields UI if set.',
+			},
+		],
+	},
+	// optional attributs (Promote operation)
+
+	{
+		displayName: 'Additional Fields',
+		name: 'additionalFields',
+		placeholder: 'Add Field',
+		type: 'collection',
+		required: false,
+		default: '',
+		displayOptions: {
+			show: {
+				resource: [
+					'alert',
+				],
+				operation: [
+					'promote',
+				],
+			},
+		},
+		options: [
+			{
+				displayName: 'Case Template',
+				name: 'caseTemplate',
+				type: 'string',
+				default: '',
+				description: `Case template to use when a case is created from this alert.`,
 			},
 		],
 	},
@@ -630,6 +690,13 @@ export const alertFields = [
 				typeOptions: {
 					multipleValues: true,
 				},
+				displayOptions: {
+					show: {
+						'/jsonParameters': [
+							false,
+						],
+					},
+				},
 				placeholder: 'Add Custom Field',
 				options: [
 					{
@@ -660,6 +727,13 @@ export const alertFields = [
 				displayName: 'Custom Fields (JSON)',
 				name: 'customFieldsJson',
 				type: 'string',
+				displayOptions: {
+					show: {
+						'/jsonParameters': [
+							true,
+						],
+					},
+				},
 				default: '',
 				description: 'Custom fields in JSON format. Overrides Custom Fields UI if set.',
 			},

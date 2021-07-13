@@ -295,6 +295,23 @@ export const caseFields = [
 			},
 		},
 	},
+	{
+		displayName: 'JSON Parameters',
+		name: 'jsonParameters',
+		type: 'boolean',
+		default: true,
+		displayOptions: {
+			show: {
+				resource: [
+					'case',
+				],
+				operation: [
+					'create',
+					'update',
+				],
+			},
+		},
+	},
 	// Optional fields (Create operation)
 	{
 		displayName: 'Options',
@@ -321,6 +338,13 @@ export const caseFields = [
 				default: {},
 				typeOptions: {
 					multipleValues: true,
+				},
+				displayOptions: {
+					show: {
+						'/jsonParameters': [
+							false,
+						],
+					},
 				},
 				placeholder: 'Add Custom Field',
 				options: [
@@ -353,6 +377,13 @@ export const caseFields = [
 				name: 'customFieldsJson',
 				type: 'string',
 				default: '',
+				displayOptions: {
+					show: {
+						'/jsonParameters': [
+							true,
+						],
+					},
+				},
 				description: 'Custom fields in JSON format. Overrides Custom Fields UI if set.',
 			},
 			{
@@ -374,6 +405,13 @@ export const caseFields = [
 				name: 'metrics',
 				default: '[]',
 				type: 'json',
+				displayOptions: {
+					show: {
+						'/jsonParameters': [
+							true,
+						],
+					},
+				},
 				description: 'List of metrics',
 			},
 		],
@@ -405,6 +443,13 @@ export const caseFields = [
 				typeOptions: {
 					multipleValues: true,
 				},
+				displayOptions: {
+					show: {
+						'/jsonParameters': [
+							false,
+						],
+					},
+				},
 				placeholder: 'Add Custom Field',
 				options: [
 					{
@@ -436,6 +481,13 @@ export const caseFields = [
 				name: 'customFieldsJson',
 				type: 'string',
 				default: '',
+				displayOptions: {
+					show: {
+						'/jsonParameters': [
+							true,
+						],
+					},
+				},
 				description: 'Custom fields in JSON format. Overrides Custom Fields UI if set.',
 			},
 			{
@@ -485,6 +537,13 @@ export const caseFields = [
 				name: 'metrics',
 				type: 'json',
 				default: '[]',
+				displayOptions: {
+					show: {
+						'/jsonParameters': [
+							true,
+						],
+					},
+				},
 				description: 'List of metrics',
 			},
 			{

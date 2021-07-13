@@ -95,9 +95,9 @@ export function prepareOptional(optionals: IDataObject): IDataObject {
 	return response;
 }
 
-export async function prepareCustomFields(this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions, additionalFields: IDataObject): Promise<IDataObject | undefined> {
+export async function prepareCustomFields(this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions, additionalFields: IDataObject, jsonParameters = false): Promise<IDataObject | undefined> {
 	// Check if the additionalFields object contains customFields
-	if ('customFieldsJson' in additionalFields && additionalFields.customFieldsJson) {
+	if (jsonParameters === true) {
 		const customFieldsJson = additionalFields.customFieldsJson;
 		// Delete from additionalFields as some operations (e.g. alert:update) do not run prepareOptional
 		// which would remove the extra fields
@@ -112,8 +112,7 @@ export async function prepareCustomFields(this: IHookFunctions | IExecuteFunctio
 		else {
 			throw Error('customFieldsJson value is invalid');
 		}
-	}
-	else if ('customFieldsUi' in additionalFields) {
+	} else {
 		// Get Custom Field Types from TheHive
 		const version = this.getCredentials('theHiveApi')?.apiVersion;
 		const endpoint = version === 'v1' ? '/customField' : '/list/custom_fields';

@@ -383,7 +383,9 @@ export class TheHive implements INodeType {
 
 				if (operation === 'create') {
 					const additionalFields = this.getNodeParameter('additionalFields', i) as INodeParameters;
-					const customFields = await prepareCustomFields.call(this, additionalFields);
+					const jsonParameters = this.getNodeParameter('jsonParameters', i) as boolean;
+
+					const customFields = await prepareCustomFields.call(this, additionalFields, jsonParameters);
 					const body: IDataObject = {
 						title: this.getNodeParameter('title', i),
 						description: this.getNodeParameter('description', i),
@@ -677,9 +679,10 @@ export class TheHive implements INodeType {
 
 				if (operation === 'update') {
 					const alertId = this.getNodeParameter('id', i) as string;
+					const jsonParameters = this.getNodeParameter('jsonParameters', i) as boolean;
 
 					const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
-					const customFields = await prepareCustomFields.call(this, updateFields);
+					const customFields = await prepareCustomFields.call(this, updateFields, jsonParameters);
 
 					const artifactUi = updateFields.artifactUi as IDataObject;
 
@@ -1312,7 +1315,9 @@ export class TheHive implements INodeType {
 
 				if (operation === 'create') {
 					const options = this.getNodeParameter('options', i, {}) as INodeParameters;
-					const customFields = await prepareCustomFields.call(this, options);
+					const jsonParameters = this.getNodeParameter('jsonParameters', i) as boolean;
+					const customFields = await prepareCustomFields.call(this, options, jsonParameters);
+
 					const body: IDataObject = {
 						title: this.getNodeParameter('title', i),
 						description: this.getNodeParameter('description', i),
@@ -1482,7 +1487,9 @@ export class TheHive implements INodeType {
 				if (operation === 'update') {
 					const id = this.getNodeParameter('id', i) as string;
 					const updateFields = this.getNodeParameter('updateFields', i, {}) as INodeParameters;
-					const customFields = await prepareCustomFields.call(this, updateFields);
+					const jsonParameters = this.getNodeParameter('jsonParameters', i) as boolean;
+
+					const customFields = await prepareCustomFields.call(this, updateFields, jsonParameters);
 
 					const body: IDataObject = {
 						customFields,
