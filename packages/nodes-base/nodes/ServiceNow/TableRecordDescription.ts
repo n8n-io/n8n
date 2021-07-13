@@ -83,7 +83,7 @@ export const tableRecordFields = [
 			{
 				name: 'Nothing',
 				value: 'nothing',
-				description: 'Don\'t send any column data',
+				description: `Don't send any column data`,
 			},
 		],
 		displayOptions: {
@@ -96,7 +96,7 @@ export const tableRecordFields = [
 				],
 			},
 		},
-		default: 'colmuns',
+		default: 'columns',
 	},
 	{
 		displayName: 'Inputs to Ignore',
@@ -116,7 +116,7 @@ export const tableRecordFields = [
 			},
 		},
 		default: '',
-		required: true,
+		required: false,
 		description: 'List of input properties to avoid sending, separated by commas. Leave empty to send all inputs',
 	},
 	{
@@ -464,7 +464,7 @@ export const tableRecordFields = [
 			{
 				name: 'Nothing',
 				value: 'nothing',
-				description: 'Don\'t send any column data',
+				description: `Don't send any column data`,
 			},
 		],
 		displayOptions: {
@@ -497,7 +497,7 @@ export const tableRecordFields = [
 			},
 		},
 		default: '',
-		required: true,
+		required: false,
 		description: 'List of input properties to avoid sending, separated by commas. Leave empty to send all inputs',
 	},
 	{
