@@ -66,9 +66,26 @@ export const tableRecordFields = [
 		description: 'The table name',
 	},
 	{
-		displayName: 'Send Input Data',
-		name: 'sendInputData',
-		type: 'boolean',
+		displayName: 'Data to Send',
+		name: 'dataToSend',
+		type: 'options',
+		options: [
+			{
+				name: 'Define Below for Each Column',
+				value: 'columns',
+				description: 'Set the value for each destination column',
+			},
+			{
+				name: 'Auto-map Input Data to Columns',
+				value: 'mapInput',
+				description: 'Use when node input names match destination field names',
+			},
+			{
+				name: 'Nothing',
+				value: 'nothing',
+				description: 'Don\'t send any column data',
+			},
+		],
 		displayOptions: {
 			show: {
 				resource: [
@@ -79,32 +96,11 @@ export const tableRecordFields = [
 				],
 			},
 		},
-		default: true,
-		description: 'Whether to send the received JSON data',
+		default: 'colmuns',
 	},
 	{
-		displayName: 'Send All Fields',
-		name: 'sendAll',
-		type: 'boolean',
-		displayOptions: {
-			show: {
-				resource: [
-					'tableRecord',
-				],
-				operation: [
-					'create',
-				],
-				sendInputData: [
-					true,
-				],
-			},
-		},
-		default: true,
-		description: 'Whether to send all input fields',
-	},
-	{
-		displayName: 'Columns',
-		name: 'columns',
+		displayName: 'Inputs to Ignore',
+		name: 'inputsToIgnore',
 		type: 'string',
 		displayOptions: {
 			show: {
@@ -114,23 +110,20 @@ export const tableRecordFields = [
 				operation: [
 					'create',
 				],
-				sendInputData: [
-					true,
-				],
-				sendAll: [
-					false,
+				dataToSend: [
+					'mapInput',
 				],
 			},
 		},
 		default: '',
 		required: true,
-		description: 'Comma-separated list of the properties to use as columns for the rows to create',
+		description: 'List of input properties to avoid sending, separated by commas. Leave empty to send all inputs',
 	},
 	{
-		displayName: 'Input Fields',
-		name: 'inputFields',
+		displayName: 'Fields to Send',
+		name: 'fieldsToSend',
 		type: 'fixedCollection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field to send',
 		typeOptions: {
 			multipleValues: true,
 		},
@@ -142,15 +135,15 @@ export const tableRecordFields = [
 				operation: [
 					'create',
 				],
-				sendInputData: [
-					false,
+				dataToSend: [
+					'columns',
 				],
 			},
 		},
 		default: {},
 		options: [
 			{
-				displayName: 'Input Field',
+				displayName: 'Field',
 				name: 'field',
 				values: [
 					{
@@ -238,9 +231,75 @@ export const tableRecordFields = [
 			maxValue: 500,
 		},
 		default: 50,
-		description: 'How many results to return',
+		description: 'The max number of results to return',
 	},
-
+	{
+		displayName: 'Options',
+		name: 'options',
+		type: 'collection',
+		placeholder: 'Add Field',
+		displayOptions: {
+			show: {
+				resource: [
+					'tableRecord',
+				],
+				operation: [
+					'getAll',
+				],
+			},
+		},
+		default: {},
+		options: [
+			{
+				displayName: 'Return Values',
+				name: 'sysparm_display_value',
+				type: 'options',
+				options: [
+					{
+						name: 'Display Values',
+						value: 'true',
+					},
+					{
+						name: 'Actual Values',
+						value: 'false',
+					},
+					{
+						name: 'Both',
+						value: 'all',
+					},
+				],
+				default: 'false',
+				description: 'Choose which values to return',
+			},
+			{
+				displayName: 'Exclude Reference Link',
+				name: 'sysparm_exclude_reference_link',
+				type: 'boolean',
+				default: false,
+				description: 'Whether to exclude Table API links for reference fields',
+			},
+			{
+				displayName: 'Fields',
+				name: 'sysparm_fields',
+				type: 'multiOptions',
+				typeOptions: {
+					loadOptionsMethod: 'getColumns',
+					loadOptionsDependsOn: [
+						'tableName',
+					],
+				},
+				default: '',
+				description: 'A list of fields to return',
+			},
+			{
+				displayName: 'Filter',
+				name: 'sysparm_query',
+				type: 'string',
+				default: '',
+				description: 'An encoded query string used to filter the results. <a href="https://developer.servicenow.com/dev.do#!/learn/learning-plans/quebec/servicenow_application_developer/app_store_learnv2_rest_quebec_more_about_query_parameters" target="_blank">More info</a>',
+			},
+		],
+	},
 	/* -------------------------------------------------------------------------- */
 	/*                                tableRecord:get/delete                       */
 	/* -------------------------------------------------------------------------- */
@@ -297,14 +356,13 @@ export const tableRecordFields = [
 				],
 				operation: [
 					'get',
-					'getAll',
 				],
 			},
 		},
 		default: {},
 		options: [
 			{
-				displayName: 'Display Values',
+				displayName: 'Return Values',
 				name: 'sysparm_display_value',
 				type: 'options',
 				options: [
@@ -343,20 +401,6 @@ export const tableRecordFields = [
 				},
 				default: '',
 				description: 'A list of fields to return',
-			},
-			{
-				displayName: 'Query',
-				name: 'sysparm_query',
-				type: 'string',
-				default: '',
-				description: 'An encoded query string used to filter the results, <a href="https://developer.servicenow.com/dev.do#!/learn/learning-plans/quebec/servicenow_application_developer/app_store_learnv2_rest_quebec_more_about_query_parameters" target="_blank">more info</a>',
-			},
-			{
-				displayName: 'View',
-				name: 'sysparm_view',
-				type: 'boolean',
-				default: false,
-				description: 'Whether to render the response according to the specified UI view (overridden by Fields option)',
 			},
 		],
 	},
@@ -403,9 +447,26 @@ export const tableRecordFields = [
 		description: 'Unique identifier of the record',
 	},
 	{
-		displayName: 'Send Input Data',
-		name: 'sendInputData',
-		type: 'boolean',
+		displayName: 'Data to Send',
+		name: 'dataToSend',
+		type: 'options',
+		options: [
+			{
+				name: 'Define Below for Each Column',
+				value: 'columns',
+				description: 'Set the value for each destination column',
+			},
+			{
+				name: 'Auto-map Input Data to Columns',
+				value: 'mapInput',
+				description: 'Use when node input names match destination field names',
+			},
+			{
+				name: 'Nothing',
+				value: 'nothing',
+				description: 'Don\'t send any column data',
+			},
+		],
 		displayOptions: {
 			show: {
 				resource: [
@@ -416,32 +477,11 @@ export const tableRecordFields = [
 				],
 			},
 		},
-		default: true,
-		description: 'Whether to send the received JSON data',
+		default: 'colmuns',
 	},
 	{
-		displayName: 'Send All Fields',
-		name: 'sendAll',
-		type: 'boolean',
-		displayOptions: {
-			show: {
-				resource: [
-					'tableRecord',
-				],
-				operation: [
-					'update',
-				],
-				sendInputData: [
-					true,
-				],
-			},
-		},
-		default: true,
-		description: 'Whether to send all input fields',
-	},
-	{
-		displayName: 'Columns',
-		name: 'columns',
+		displayName: 'Inputs to Ignore',
+		name: 'inputsToIgnore',
 		type: 'string',
 		displayOptions: {
 			show: {
@@ -451,23 +491,23 @@ export const tableRecordFields = [
 				operation: [
 					'update',
 				],
-				sendInputData: [
-					true,
-				],
-				sendAll: [
-					false,
+				dataToSend: [
+					'mapInput',
 				],
 			},
 		},
 		default: '',
 		required: true,
-		description: 'Comma-separated list of the properties to use as columns for the rows to update',
+		description: 'List of input properties to avoid sending, separated by commas. Leave empty to send all inputs',
 	},
 	{
-		displayName: 'Update Fields',
-		name: 'updateFields',
+		displayName: 'Fields to Send',
+		name: 'fieldsToSend',
 		type: 'fixedCollection',
-		placeholder: 'Add Field',
+		placeholder: 'Add field to send',
+		typeOptions: {
+			multipleValues: true,
+		},
 		displayOptions: {
 			show: {
 				resource: [
@@ -476,18 +516,15 @@ export const tableRecordFields = [
 				operation: [
 					'update',
 				],
-				sendInputData: [
-					false,
+				dataToSend: [
+					'columns',
 				],
 			},
-		},
-		typeOptions: {
-			multipleValues: true,
 		},
 		default: {},
 		options: [
 			{
-				displayName: 'Input Field',
+				displayName: 'Field',
 				name: 'field',
 				values: [
 					{

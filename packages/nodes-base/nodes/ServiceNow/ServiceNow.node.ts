@@ -256,6 +256,24 @@ export class ServiceNow implements INodeType {
 				}
 				return sortData(returnData);
 			},
+			async getConfigurationItems(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const returnData: INodePropertyOptions[] = [];
+				const qs = {
+					sysparm_fields: 'sys_id,name,sys_class_name',
+				};
+				const response = await serviceNowRequestAllItems.call(this, 'GET', '/now/table/cmdb_ci', {}, qs);
+
+				for (const column of response) {
+					if (column.name) {
+						returnData.push({
+							name: column.name,
+							value: column.sys_id,
+							description: column.sys_class_name,
+						});
+					}
+				}
+				return sortData(returnData);
+			},
 			async getIncidentCategories(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
 				const qs = {
@@ -507,28 +525,19 @@ export class ServiceNow implements INodeType {
 					if (operation === 'create') {
 
 						const tableName = this.getNodeParameter('tableName', i) as string;
-						const sendInputData = this.getNodeParameter('sendInputData', i) as boolean;
+						const dataToSend = this.getNodeParameter('dataToSend', i) as string;
 						let body = {};
-						if (sendInputData) {
-							const sendAll = this.getNodeParameter('sendAll', i) as boolean;
-							if (sendAll) {
-								body = items[i].json;
-							} else {
 
-								const columns = this.getNodeParameter('columns', i) as string;
-								body = columns.split(',').map(col=>col.trim()).reduce((obj, column) => {
-									obj= {
-										...obj,
-										[column as string]: items[i].json[column],
-									};
-									return obj;
-								}, {});
-							}
-						} else {
-							const inputFields = this.getNodeParameter('inputFields', i) as {
+						if (dataToSend === 'mapInput') {
+							const inputsToIgnore = (this.getNodeParameter('inputsToIgnore', i) as string).split(',').map(field => field.trim());
+							body = Object.entries(items[i].json)
+								.filter(([key]) => !inputsToIgnore.includes(key))
+								.reduce((obj, [key, val]) => Object.assign(obj, { [key]: val }), {});
+						} else if (dataToSend === 'columns'){
+							const fieldsToSend = this.getNodeParameter('fieldsToSend', i) as {
 								field: IDataObject[]
 							};
-							body = inputFields.field.reduce((obj,field) => {
+							body = fieldsToSend.field.reduce((obj,field) => {
 								obj[field.column as string] = field.value;
 								return obj;
 							},{});

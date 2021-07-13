@@ -68,7 +68,7 @@ export const businessServiceFields = [
 			maxValue: 500,
 		},
 		default: 50,
-		description: 'How many results to return',
+		description: 'The max number of results to return',
 	},
 	{
 		displayName: 'Options',
@@ -88,7 +88,7 @@ export const businessServiceFields = [
 		default: {},
 		options: [
 			{
-				displayName: 'Display Values',
+				displayName: 'Return Values',
 				name: 'sysparm_display_value',
 				type: 'options',
 				options: [
@@ -126,18 +126,11 @@ export const businessServiceFields = [
 				description: 'A list of fields to return',
 			},
 			{
-				displayName: 'Query',
+				displayName: 'Filter',
 				name: 'sysparm_query',
 				type: 'string',
 				default: '',
-				description: 'An encoded query string used to filter the results, <a href="https://developer.servicenow.com/dev.do#!/learn/learning-plans/quebec/servicenow_application_developer/app_store_learnv2_rest_quebec_more_about_query_parameters" target="_blank">more info</a>',
-			},
-			{
-				displayName: 'View',
-				name: 'sysparm_view',
-				type: 'boolean',
-				default: false,
-				description: 'Whether to render the response according to the specified UI view (overridden by Fields option)',
+				description: 'An encoded query string used to filter the results. <a href="https://developer.servicenow.com/dev.do#!/learn/learning-plans/quebec/servicenow_application_developer/app_store_learnv2_rest_quebec_more_about_query_parameters" target="_blank">More info</a>',
 			},
 		],
 	},

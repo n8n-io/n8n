@@ -91,7 +91,7 @@ export const incidentFields = [
 					],
 				},
 				default: '',
-				description: 'What user is the incident assigned to. Require the selection of an assignment group',
+				description: 'Which user is the incident assigned to. Requires the selection of an assignment group',
 			},
 			{
 				displayName: 'Assignment Group',
@@ -137,7 +137,10 @@ export const incidentFields = [
 			{
 				displayName: 'Configuration Items',
 				name: 'cmdb_ci',
-				type: 'string',
+				type: 'multiOptions',
+				typeOptions: {
+					loadOptionsMethod: 'getConfigurationItems',
+				},
 				default: '',
 				description: 'Configuration Items, \'cmdb_ci\' in metadata',
 			},
@@ -292,30 +295,7 @@ export const incidentFields = [
 			maxValue: 500,
 		},
 		default: 50,
-		description: 'How many results to return',
-	},
-
-	/* -------------------------------------------------------------------------- */
-	/*                                incident:get/delete                       */
-	/* -------------------------------------------------------------------------- */
-	{
-		displayName: 'Incident ID',
-		name: 'id',
-		type: 'string',
-		default: '',
-		displayOptions: {
-			show: {
-				resource: [
-					'incident',
-				],
-				operation: [
-					'delete',
-					'get',
-				],
-			},
-		},
-		required: true,
-		description: 'Unique identifier of the incident',
+		description: 'The max number of results to return',
 	},
 	{
 		displayName: 'Options',
@@ -328,7 +308,6 @@ export const incidentFields = [
 					'incident',
 				],
 				operation: [
-					'get',
 					'getAll',
 				],
 			},
@@ -336,7 +315,7 @@ export const incidentFields = [
 		default: {},
 		options: [
 			{
-				displayName: 'Display Values',
+				displayName: 'Return Values',
 				name: 'sysparm_display_value',
 				type: 'options',
 				options: [
@@ -374,18 +353,90 @@ export const incidentFields = [
 				description: 'A list of fields to return',
 			},
 			{
-				displayName: 'Query',
+				displayName: 'Filter',
 				name: 'sysparm_query',
 				type: 'string',
 				default: '',
-				description: 'An encoded query string used to filter the results, <a href="https://developer.servicenow.com/dev.do#!/learn/learning-plans/quebec/servicenow_application_developer/app_store_learnv2_rest_quebec_more_about_query_parameters" target="_blank">more info</a>',
+				description: 'An encoded query string used to filter the results. <a href="https://developer.servicenow.com/dev.do#!/learn/learning-plans/quebec/servicenow_application_developer/app_store_learnv2_rest_quebec_more_about_query_parameters" target="_blank">More info</a>',
+			},
+		],
+	},
+	/* -------------------------------------------------------------------------- */
+	/*                                incident:get/delete                       */
+	/* -------------------------------------------------------------------------- */
+	{
+		displayName: 'Incident ID',
+		name: 'id',
+		type: 'string',
+		default: '',
+		displayOptions: {
+			show: {
+				resource: [
+					'incident',
+				],
+				operation: [
+					'delete',
+					'get',
+				],
+			},
+		},
+		required: true,
+		description: 'Unique identifier of the incident',
+	},
+	{
+		displayName: 'Options',
+		name: 'options',
+		type: 'collection',
+		placeholder: 'Add Option',
+		displayOptions: {
+			show: {
+				resource: [
+					'incident',
+				],
+				operation: [
+					'get',
+				],
+			},
+		},
+		default: {},
+		options: [
+			{
+				displayName: 'Return Values',
+				name: 'sysparm_display_value',
+				type: 'options',
+				options: [
+					{
+						name: 'Display Values',
+						value: 'true',
+					},
+					{
+						name: 'Actual Values',
+						value: 'false',
+					},
+					{
+						name: 'Both',
+						value: 'all',
+					},
+				],
+				default: 'false',
+				description: 'Choose which values to return',
 			},
 			{
-				displayName: 'View',
-				name: 'sysparm_view',
+				displayName: 'Exclude Reference Link',
+				name: 'sysparm_exclude_reference_link',
 				type: 'boolean',
 				default: false,
-				description: 'Whether to render the response according to the specified UI view (overridden by Fields option)',
+				description: 'Whether to exclude Table API links for reference fields',
+			},
+			{
+				displayName: 'Fields',
+				name: 'sysparm_fields',
+				type: 'multiOptions',
+				typeOptions: {
+					loadOptionsMethod: 'getColumns',
+				},
+				default: '',
+				description: 'A list of fields to return',
 			},
 		],
 	},
@@ -433,9 +484,46 @@ export const incidentFields = [
 				type: 'options',
 				typeOptions: {
 					loadOptionsMethod: 'getUsers',
+					loadOptionsDependsOn: [
+						'additionalFields.assignment_group',
+					],
 				},
 				default: '',
-				description: 'What user is the incident assigned to',
+				description: 'Which user is the incident assigned to. Requires the selection of an assignment group',
+			},
+			{
+				displayName: 'Assignment Group',
+				name: 'assignment_group',
+				type: 'options',
+				typeOptions: {
+					loadOptionsMethod: 'getAssignmentGroups',
+				},
+				default: '',
+				description: 'The assignment group of the incident',
+			},
+			{
+				displayName: 'Business Service',
+				name: 'business_service',
+				type: 'string',
+				default: '',
+				description: 'The business service',
+			},
+			{
+				displayName: 'Caller ID',
+				name: 'caller_id',
+				type: 'string',
+				default: '',
+				description: 'The unique identifier of the caller of the incident',
+			},
+			{
+				displayName: 'Category',
+				name: 'category',
+				type: 'options',
+				typeOptions: {
+					loadOptionsMethod: 'getIncidentCategories',
+				},
+				default: '',
+				description: 'The category of the incident',
 			},
 			{
 				displayName: 'Close Notes',
@@ -445,14 +533,67 @@ export const incidentFields = [
 				description: 'The close notes for the incident',
 			},
 			{
-				displayName: 'On Hold Reason',
-				name: 'hold_reason',
-				type: 'options',
+				displayName: 'Configuration Items',
+				name: 'cmdb_ci',
+				type: 'multiOptions',
 				typeOptions: {
-					loadOptionsMethod: 'getIncidentHoldReasons',
+					loadOptionsMethod: 'getConfigurationItems',
 				},
 				default: '',
-				description: 'The on hold reason for the incident',
+				description: 'Configuration Items, \'cmdb_ci\' in metadata',
+			},
+			{
+				displayName: 'Contact Type',
+				name: 'contact_type',
+				type: 'options',
+				options: [
+					{
+						name: 'Email',
+						value: 'email',
+					},
+					{
+						name: 'Phone',
+						value: 'phone',
+					},
+					{
+						name: 'Self Service',
+						value: 'self-service',
+					},
+					{
+						name: 'Walk In',
+						value: 'walk-in',
+					},
+				],
+				default: '',
+				description: 'The contact type',
+			},
+			{
+				displayName: 'Description',
+				name: 'description',
+				type: 'string',
+				default: '',
+				description: 'The description of the incident',
+			},
+			{
+				displayName: 'Impact',
+				name: 'impact',
+				type: 'options',
+				options: [
+					{
+						name: 'Low',
+						value: 1,
+					},
+					{
+						name: 'Medium',
+						value: 2,
+					},
+					{
+						name: 'High',
+						value: 3,
+					},
+				],
+				default: '',
+				description: 'The impact of the incident',
 			},
 			{
 				displayName: 'Resolution Code',
@@ -465,6 +606,16 @@ export const incidentFields = [
 				description: 'The resolution code of the incident. \'close_code\' in metadata',
 			},
 			{
+				displayName: 'On Hold Reason',
+				name: 'hold_reason',
+				type: 'options',
+				typeOptions: {
+					loadOptionsMethod: 'getIncidentHoldReasons',
+				},
+				default: '',
+				description: 'The on hold reason for the incident. It applies if the state is <code>On Hold</code>',
+			},
+			{
 				displayName: 'State',
 				name: 'state',
 				type: 'options',
@@ -473,6 +624,40 @@ export const incidentFields = [
 				},
 				default: '',
 				description: 'The state of the incident',
+			},
+			{
+				displayName: 'Subcategory',
+				name: 'subcategory',
+				type: 'options',
+				typeOptions: {
+					loadOptionsMethod: 'getIncidentSubcategories',
+					loadOptionsDependsOn: [
+						'additionalFields.category',
+					],
+				},
+				default: '',
+				description: 'The subcategory of the incident',
+			},
+			{
+				displayName: 'Urgency',
+				name: 'urgency',
+				type: 'options',
+				options: [
+					{
+						name: 'Low',
+						value: 1,
+					},
+					{
+						name: 'Medium',
+						value: 2,
+					},
+					{
+						name: 'High',
+						value: 3,
+					},
+				],
+				default: '',
+				description: 'The urgency of the incident',
 			},
 		],
 	},
