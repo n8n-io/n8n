@@ -440,6 +440,7 @@ export const itemFields = [
 			{
 				name: 'Specific Attributes',
 				value: 'SPECIFIC_ATTRIBUTES',
+				description: 'Select them in Attributes to Select under Additional Fields',
 			},
 		],
 		default: 'ALL_ATTRIBUTES',
@@ -750,6 +751,7 @@ export const itemFields = [
 			{
 				name: 'Specific Attributes',
 				value: 'SPECIFIC_ATTRIBUTES',
+				description: 'Select them in Attributes to Select under Additional Fields',
 			},
 		],
 		default: 'ALL_ATTRIBUTES',
