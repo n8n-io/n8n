@@ -233,8 +233,8 @@ export class AwsDynamoDB implements INodeType {
 							body.expressionAttributeNames = expressionAttributeName;
 						}
 
-						if (additionalFields.consistentRead) {
-							body.ConsistentRead = additionalFields.consistentRead as boolean;
+						if (additionalFields.readType) {
+							body.ConsistentRead = additionalFields.readType === 'stronglyConsistentRead';
 						}
 
 						if (additionalFields.projectionExpression) {
@@ -298,7 +298,7 @@ export class AwsDynamoDB implements INodeType {
 							body.IndexName = indexName;
 						}
 
-						if (projectionExpression) {
+						if (projectionExpression && select !== 'COUNT') {
 							body.ProjectionExpression = projectionExpression;
 						}
 

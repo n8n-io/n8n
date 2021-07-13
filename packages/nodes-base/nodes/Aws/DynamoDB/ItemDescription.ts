@@ -16,11 +16,6 @@ export const itemOperations = [
 		},
 		options: [
 			{
-				name: 'Create or Update',
-				value: 'upsert',
-				description: 'Create a new record, or update the current one if it already exists (upsert)',
-			},
-			{
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete an item',
@@ -34,6 +29,11 @@ export const itemOperations = [
 				name: 'Get All',
 				value: 'getAll',
 				description: 'Get all items',
+			},
+			{
+				name: 'Put',
+				value: 'upsert',
+				description: 'Create a new record, or update the current one if it already exists (upsert)',
 			},
 		],
 		default: 'upsert',
@@ -195,6 +195,35 @@ export const itemFields = [
 	//              delete
 	// ----------------------------------
 	{
+		displayName: 'Return Values',
+		name: 'returnValues',
+		type: 'options',
+		displayOptions: {
+			show: {
+				resource: [
+					'item',
+				],
+				operation: [
+					'delete',
+				],
+			},
+		},
+		options: [
+			{
+				name: 'Attribute Values',
+				value: 'ALL_OLD',
+				description: 'The content of the old item is returned',
+			},
+			{
+				name: 'Nothing',
+				value: 'NONE',
+				description: 'Nothing is returned',
+			},
+		],
+		default: 'NONE',
+		description: 'Use ReturnValues if you want to get the item attributes as they appeared before they were deleted',
+	},
+	{
 		displayName: 'Keys',
 		name: 'keysUi',
 		type: 'fixedCollection',
@@ -254,35 +283,6 @@ export const itemFields = [
 			},
 		],
 		description: 'Item\'s primary key. For example, with a simple primary key, you only need to provide a value for the partition key.<br>For a composite primary key, you must provide values for both the partition key and the sort key',
-	},
-	{
-		displayName: 'Return Values',
-		name: 'returnValues',
-		type: 'options',
-		displayOptions: {
-			show: {
-				resource: [
-					'item',
-				],
-				operation: [
-					'delete',
-				],
-			},
-		},
-		options: [
-			{
-				name: 'All Old',
-				value: 'ALL_OLD',
-				description: 'The content of the old item is returned',
-			},
-			{
-				name: 'None',
-				value: 'NONE',
-				description: 'Nothing is returned',
-			},
-		],
-		default: 'NONE',
-		description: 'Use ReturnValues if you want to get the item attributes as they appeared before they were deleted',
 	},
 	{
 		displayName: 'Simple',
@@ -415,6 +415,57 @@ export const itemFields = [
 	//              get
 	// ----------------------------------
 	{
+		displayName: 'Select',
+		name: 'select',
+		type: 'options',
+		displayOptions: {
+			show: {
+				resource: [
+					'item',
+				],
+				operation: [
+					'get',
+				],
+			},
+		},
+		options: [
+			{
+				name: 'All Attributes',
+				value: 'ALL_ATTRIBUTES',
+			},
+			{
+				name: 'All Projected Attributes',
+				value: 'ALL_PROJECTED_ATTRIBUTES',
+			},
+			{
+				name: 'Specific Attributes',
+				value: 'SPECIFIC_ATTRIBUTES',
+			},
+		],
+		default: 'ALL_ATTRIBUTES',
+	},
+	{
+		displayName: 'Simple',
+		name: 'simple',
+		type: 'boolean',
+		displayOptions: {
+			show: {
+				resource: [
+					'item',
+				],
+				operation: [
+					'get',
+				],
+				select: [
+					'ALL_PROJECTED_ATTRIBUTES',
+					'ALL_ATTRIBUTES',
+				],
+			},
+		},
+		default: true,
+		description: 'Whether to return a simplified version of the response instead of the raw data',
+	},
+	{
 		displayName: 'Keys',
 		name: 'keysUi',
 		type: 'fixedCollection',
@@ -476,58 +527,6 @@ export const itemFields = [
 		description: 'Item\'s primary key. For example, with a simple primary key, you only need to provide a value for the partition key.<br>For a composite primary key, you must provide values for both the partition key and the sort key',
 	},
 	{
-		displayName: 'Select',
-		name: 'select',
-		type: 'options',
-		displayOptions: {
-			show: {
-				resource: [
-					'item',
-				],
-				operation: [
-					'get',
-				],
-			},
-		},
-		options: [
-			{
-				name: 'All Attributes',
-				value: 'ALL_ATTRIBUTES',
-			},
-			{
-				name: 'All Projected Attributes',
-				value: 'ALL_PROJECTED_ATTRIBUTES',
-			},
-			{
-				name: 'Specific Attributes',
-				value: 'SPECIFIC_ATTRIBUTES',
-			},
-		],
-		default: 'ALL_ATTRIBUTES',
-		description: 'The attributes to be returned in the result. You can retrieve all item attributes, specific item attributes, the count of matching items, or in the case of an index, some or all of the attributes projected into the index',
-	},
-	{
-		displayName: 'Simple',
-		name: 'simple',
-		type: 'boolean',
-		displayOptions: {
-			show: {
-				resource: [
-					'item',
-				],
-				operation: [
-					'get',
-				],
-				select: [
-					'ALL_PROJECTED_ATTRIBUTES',
-					'ALL_ATTRIBUTES',
-				],
-			},
-		},
-		default: true,
-		description: 'Whether to return a simplified version of the response instead of the raw data',
-	},
-	{
 		displayName: 'Additional Fields',
 		name: 'additionalFields',
 		type: 'collection',
@@ -545,20 +544,11 @@ export const itemFields = [
 		},
 		options: [
 			{
-				// TODO change to options
-				displayName: 'Consistent Read',
-				name: 'consistentRead',
-				type: 'boolean',
-				default: false,
-				description: 'Determines the read consistency model: If set to true, then the operation uses strongly consistent reads; otherwise, the operation uses eventually consistent reads',
-			},
-			{
-				displayName: 'Projection Expression',
+				displayName: 'Attributes to Select',
 				name: 'projectionExpression',
 				type: 'string',
 				placeholder: 'id, name',
 				default: '',
-				description: 'Attributes to select',
 			},
 			{
 				displayName: 'Expression Attribute Names',
@@ -589,7 +579,24 @@ export const itemFields = [
 						],
 					},
 				],
-				description: 'One or more substitution tokens for attribute names in an expression. Check <a href="https://docs.aws.amazon.com/amazondynamodb/latest/APIReference/API_PutItem.html" target="_blank">Info</a>',
+				description: 'One or more substitution tokens for attribute names in an expression. <a href="https://docs.aws.amazon.com/amazondynamodb/latest/APIReference/API_PutItem.html" target="_blank">View details</a>',
+			},
+			{
+				displayName: 'Read Type',
+				name: 'readType',
+				type: 'options',
+				options: [
+					{
+						name: 'Strongly consistent read',
+						value: 'stronglyConsistentRead',
+					},
+					{
+						name: 'Eventually consistent read',
+						value: 'eventuallyConsistentRead',
+					},
+				],
+				default: 'eventuallyConsistentRead',
+				description: 'Type of read to perform on the table. <a href="https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/HowItWorks.ReadConsistency.html" target="_blank">View details</a>',
 			},
 		],
 	},
@@ -746,7 +753,6 @@ export const itemFields = [
 			},
 		],
 		default: 'ALL_ATTRIBUTES',
-		description: 'The attributes to be returned in the result. You can retrieve all item attributes, specific item attributes, the count of matching items, or in the case of an index, some or all of the attributes projected into the index',
 	},
 	{
 		displayName: 'Simple',
@@ -763,6 +769,7 @@ export const itemFields = [
 				select: [
 					'ALL_PROJECTED_ATTRIBUTES',
 					'ALL_ATTRIBUTES',
+					'SPECIFIC_ATTRIBUTES',
 				],
 			},
 		},
@@ -794,7 +801,7 @@ export const itemFields = [
 				default: '',
 			},
 			{
-				displayName: 'Projection Expression',
+				displayName: 'Attributes to Select',
 				name: 'projectionExpression',
 				type: 'string',
 				default: '',
@@ -805,7 +812,7 @@ export const itemFields = [
 				name: 'filterExpression',
 				type: 'string',
 				default: '',
-				description: 'Text that contains conditions that DynamoDB applies after the Query operation,<br>but before the data is returned to you. Items that do not satisfy the FilterExpression criteria</br>are not returned',
+				description: 'Text that contains conditions that DynamoDB applies after the Query operation,<br>but before the data is returned. Items that do not satisfy the FilterExpression criteria</br>are not returned',
 			},
 			{
 				displayName: 'Expression Attribute Names',
