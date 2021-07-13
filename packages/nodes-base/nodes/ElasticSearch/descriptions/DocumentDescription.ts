@@ -499,9 +499,21 @@ export const documentFields = [
 		},
 	},
 	{
-		displayName: 'Send Input Data',
-		name: 'sendInputData',
-		type: 'boolean',
+		displayName: 'Data to Send',
+		name: 'dataToSend',
+		type: 'options',
+		options: [
+			{
+				name: 'Define Below for Each Column',
+				value: 'defineBelow',
+				description: 'Set the value for each destination column',
+			},
+			{
+				name: 'Auto-map Input Data to Columns',
+				value: 'autoMapInputData',
+				description: 'Use when node input properties match destination column names',
+			},
+		],
 		displayOptions: {
 			show: {
 				resource: [
@@ -512,37 +524,12 @@ export const documentFields = [
 				],
 			},
 		},
-		default: true,
-		description: 'Whether to send the input data this node receives in the new document',
+		default: 'defineBelow',
+		description: 'Whether to insert the input data this node receives in the new row',
 	},
 	{
-		displayName: 'Content',
-		name: 'content',
-		description: 'JSON source for the document data',
-		type: 'json',
-		typeOptions: {
-			alwaysOpenEditWindow: true,
-		},
-		required: true,
-		default: '',
-		placeholder: placeholders.document,
-		displayOptions: {
-			show: {
-				resource: [
-					'document',
-				],
-				operation: [
-					'index',
-				],
-				sendInputData: [
-					false,
-				],
-			},
-		},
-	},
-	{
-		displayName: 'Inputs for Fields',
-		name: 'inputsForFields',
+		displayName: 'Inputs to Ignore',
+		name: 'inputsToIgnore',
 		type: 'string',
 		displayOptions: {
 			show: {
@@ -552,13 +539,59 @@ export const documentFields = [
 				operation: [
 					'index',
 				],
-				sendInputData: [
-					true,
+				dataToSend: [
+					'autoMapInputData',
 				],
 			},
 		},
 		default: '',
-		description: 'The node input field containing the data to be used for each field in the document. Separate field names by commas',
+		required: false,
+		description: 'List of input properties to avoid sending, separated by commas. Leave empty to send all properties',
+		placeholder: 'Enter properties...',
+	},
+	{
+		displayName: 'Fields to Send',
+		name: 'fieldsUi',
+		placeholder: 'Add Field',
+		type: 'fixedCollection',
+		typeOptions: {
+			multipleValueButtonText: 'Add Field to Send',
+			multipleValues: true,
+		},
+		displayOptions: {
+			show: {
+				resource: [
+					'document',
+				],
+				operation: [
+					'index',
+				],
+				dataToSend: [
+					'defineBelow',
+				],
+			},
+		},
+		default: {},
+		options: [
+			{
+				displayName: 'Field',
+				name: 'fieldValues',
+				values: [
+					{
+						displayName: 'Field ID',
+						name: 'fieldId',
+						type: 'string',
+						default: '',
+					},
+					{
+						displayName: 'Field Value',
+						name: 'fieldValue',
+						type: 'string',
+						default: '',
+					},
+				],
+			},
+		],
 	},
 	{
 		displayName: 'Additional Fields',

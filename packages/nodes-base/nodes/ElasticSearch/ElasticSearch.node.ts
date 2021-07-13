@@ -22,6 +22,7 @@ import {
 
 import {
 	DocumentGetAllOptions,
+	FieldsUiValues,
 } from './types';
 
 import {
@@ -173,19 +174,26 @@ export class Elasticsearch implements INodeType {
 
 						// https://www.elastic.co/guide/en/elasticsearch/reference/current/docs-index_.html
 
-						const indexId = this.getNodeParameter('indexId', i);
-						const sendInputData = this.getNodeParameter('sendInputData', 0, false) as boolean;
+						const body: IDataObject = {};
 
-						let body: IDataObject = {};
+						const dataToSend = this.getNodeParameter('dataToSend', 0) as 'defineBelow' | 'autoMapInputData';
 
-						if (sendInputData) {
-							const rawFields = this.getNodeParameter('inputsForFields', i) as string;
-							const fields = rawFields.split(',').map(c => c.trim());
-							for (const field of fields) {
-								body[field] = items[i].json[field];
-							}
+						if (dataToSend === 'defineBelow') {
+
+							const fields = this.getNodeParameter('fieldsUi.fieldValues', i, []) as FieldsUiValues;
+							fields.forEach(({ fieldId, fieldValue }) => body[fieldId] = fieldValue);
+
 						} else {
-							body = JSON.parse(this.getNodeParameter('content', i) as string);
+
+							const inputData = items[i].json;
+							const rawInputsToIgnore = this.getNodeParameter('inputsToIgnore', i) as string;
+							const inputsToIgnore = rawInputsToIgnore.split(',').map(c => c.trim());
+
+							for (const key of Object.keys(inputData)) {
+								if (inputsToIgnore.includes(key)) continue;
+								body[key] = inputData[key];
+							}
+
 						}
 
 						const qs = {} as IDataObject;
@@ -195,6 +203,7 @@ export class Elasticsearch implements INodeType {
 							Object.assign(qs, omit(additionalFields, ['documentId']));
 						}
 
+						const indexId = this.getNodeParameter('indexId', i);
 						const { documentId } = additionalFields;
 
 						if (documentId) {

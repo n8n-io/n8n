@@ -33,3 +33,8 @@ export type DocumentGetAllOptions = Partial<{
 	track_total_hits: string;
 	version: boolean;
 }>;
+
+export type FieldsUiValues = Array<{
+	fieldId: string;
+	fieldValue: string;
+}>;
