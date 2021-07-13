@@ -1,20 +1,17 @@
 import {
 	IDataObject,
-	IExecuteFunctions,
 	INodeExecutionData,
 } from 'n8n-workflow';
 
 import {
-	isEmpty,
-} from 'lodash';
-
-import {
+	AdjustedPutItem,
 	AttributeValueType,
 	EAttributeValueType,
 	IAttributeNameUi,
 	IAttributeValue,
 	IAttributeValueUi,
 	IAttributeValueValue,
+	PutItemUi,
 } from './types';
 
 const addColon = (attribute: string) => attribute = attribute.charAt(0) === ':' ? attribute : `:${attribute}`;
@@ -22,7 +19,6 @@ const addColon = (attribute: string) => attribute = attribute.charAt(0) === ':' 
 const addPound = (key: string) => key = key.charAt(0) === '#' ? key : `#${key}`;
 
 export function adjustExpressionAttributeValues(eavUi: IAttributeValueUi[]) {
-
 	const eav: IAttributeValue = {};
 
 	eavUi.forEach(({ attribute, type, value }) => {
@@ -42,6 +38,29 @@ export function adjustExpressionAttributeName(eanUi: IAttributeNameUi[]) {
 	});
 
 	return ean;
+}
+
+export function adjustPutItem(putItemUi: PutItemUi) {
+	const adjustedPutItem: AdjustedPutItem = {};
+
+	Object.entries(putItemUi).forEach(([attribute, value]) => {
+		let type: string;
+
+		if (typeof value === 'boolean') {
+			type = 'BOOL';
+		} else if (typeof value === 'object' && !Array.isArray(value) && value !== null) {
+			type = 'M';
+			// @ts-ignore
+		} else if (isNaN(value)) {
+			type = 'S';
+		} else {
+			type = 'N';
+		}
+
+		adjustedPutItem[attribute] = { [type]: value.toString() };
+	});
+
+	return adjustedPutItem;
 }
 
 export function simplify(item: IAttributeValue): IDataObject {

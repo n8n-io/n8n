@@ -60,3 +60,20 @@ export interface IExpressionAttributeValue {
 	type: EAttributeValueType;
 	value: string;
 }
+
+export type FieldsUiValues = Array<{
+	fieldId: string;
+	fieldValue: string;
+}>;
+
+export type PutItemUi = {
+	attribute: string;
+	type: 'S' | 'N';
+	value: string;
+};
+
+export type AdjustedPutItem = {
+	[attribute: string]: {
+		[type: string]: string
+	}
+};

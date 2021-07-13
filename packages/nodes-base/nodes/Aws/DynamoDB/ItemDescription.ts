@@ -67,22 +67,90 @@ export const itemFields = [
 	//           upsert
 	// ----------------------------------
 	{
-		displayName: 'Columns',
-		name: 'columns',
-		type: 'string',
+		displayName: 'Data to Send',
+		name: 'dataToSend',
+		type: 'options',
+		options: [
+			{
+				name: 'Auto-map Input Data to Columns',
+				value: 'autoMapInputData',
+				description: 'Use when node input properties match destination column names',
+			},
+			{
+				name: 'Define Below for Each Column',
+				value: 'defineBelow',
+				description: 'Set the value for each destination column',
+			},
+		],
 		displayOptions: {
 			show: {
-				resource: [
-					'item',
-				],
 				operation: [
 					'upsert',
 				],
 			},
 		},
+		default: 'defineBelow',
+		description: 'Whether to insert the input data this node receives in the new row',
+	},
+	{
+		displayName: 'Inputs to Ignore',
+		name: 'inputsToIgnore',
+		type: 'string',
+		displayOptions: {
+			show: {
+				operation: [
+					'upsert',
+				],
+				dataToSend: [
+					'autoMapInputData',
+				],
+			},
+		},
 		default: '',
-		placeholder: 'id, name, description',
-		description: 'Comma-separated list of the properties which should used as columns for the new rows',
+		required: false,
+		description: 'List of input properties to avoid sending, separated by commas. Leave empty to send all properties.',
+		placeholder: 'Enter properties...',
+	},
+	{
+		displayName: 'Fields to Send',
+		name: 'fieldsUi',
+		placeholder: 'Add Field',
+		type: 'fixedCollection',
+		typeOptions: {
+			multipleValueButtonText: 'Add Field to Send',
+			multipleValues: true,
+		},
+		displayOptions: {
+			show: {
+				operation: [
+					'upsert',
+				],
+				dataToSend: [
+					'defineBelow',
+				],
+			},
+		},
+		default: {},
+		options: [
+			{
+				displayName: 'Field',
+				name: 'fieldValues',
+				values: [
+					{
+						displayName: 'Field ID',
+						name: 'fieldId',
+						type: 'string',
+						default: '',
+					},
+					{
+						displayName: 'Field Value',
+						name: 'fieldValue',
+						type: 'string',
+						default: '',
+					},
+				],
+			},
+		],
 	},
 	{
 		displayName: 'Additional Fields',

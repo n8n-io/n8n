@@ -13,7 +13,6 @@ import {
 import {
 	awsApiRequest,
 	awsApiRequestAllItems,
-	copyInputItem,
 } from './GenericFunctions';
 
 import {
@@ -22,14 +21,17 @@ import {
 } from './ItemDescription';
 
 import {
+	FieldsUiValues,
 	IAttributeNameUi,
 	IAttributeValueUi,
 	IRequestBody,
+	PutItemUi,
 } from './types';
 
 import {
 	adjustExpressionAttributeName,
 	adjustExpressionAttributeValues,
+	adjustPutItem,
 	decodeItem,
 	simplify,
 } from './utils';
@@ -135,10 +137,30 @@ export class AwsDynamoDB implements INodeType {
 							body.ConditionExpression = conditionExpession;
 						}
 
-						const columnString = this.getNodeParameter('columns', 0) as string;
-						const columns = columnString.split(',').map(column => column.trim());
+						const dataToSend = this.getNodeParameter('dataToSend', 0) as 'defineBelow' | 'autoMapInputData';
 
-						body.Item = copyInputItem(items[i], columns);
+						if (dataToSend === 'autoMapInputData') {
+
+							const incomingKeys = Object.keys(items[i].json);
+							const rawInputsToIgnore = this.getNodeParameter('inputsToIgnore', i) as string;
+							const inputsToIgnore = rawInputsToIgnore.split(',').map(c => c.trim());
+							const item: { [key: string]: string } = {};
+
+							for (const key of incomingKeys) {
+								if (inputsToIgnore.includes(key)) continue;
+								item[key] = items[i].json[key] as string;
+							}
+
+							body.Item = adjustPutItem(item as PutItemUi);
+
+						} else {
+
+							const fields = this.getNodeParameter('fieldsUi.fieldValues', i, []) as FieldsUiValues;
+							const item: { [key: string]: string } = {};
+							fields.forEach(({ fieldId, fieldValue }) => item[fieldId] = fieldValue);
+							body.Item = adjustPutItem(item as PutItemUi);
+
+						}
 
 						const headers = {
 							'Content-Type': 'application/x-amz-json-1.0',
