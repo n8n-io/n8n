@@ -35,8 +35,6 @@ export class SleepTracker {
 
 	constructor() {
 		// TODO: Implement and test for/with other databases
-		// TODO: Check with different modes: own, main, queue (basic tests done for "own" & "main", for "queue" not implemented at all)
-		// TODO: Do proper testing
 		// TODO: Make it possible to select "waiting" executions in Execution List
 		// TODO: Think about security. Is it OK that people can restart an execution by knowing (or guessing) the execution-ID?
 		// TODO: Think about how to best mark an execution waiting for a webhook in DB (currently also uses time)
@@ -47,7 +45,7 @@ export class SleepTracker {
 
 		this.activeExecutionsInstance = ActiveExecutions.getInstance();
 
-		// Gell all 60 seconds a list of upcoming executions
+		// Poll every 60 seconds a list of upcoming executions
 		this.mainTimer = setInterval(() => {
 			this.getSleepingExecutions();
 		}, 60000);
@@ -57,6 +55,7 @@ export class SleepTracker {
 
 
 	async getSleepingExecutions() {
+		Logger.debug('Sleep tracker querying database for sleeping executions...');
 		// Find all the executions which should be triggered in the next 70 seconds
 		const findQuery: FindManyOptions<IExecutionFlattedDb> = {
 			select: ['id', 'sleepTill'],
@@ -73,6 +72,11 @@ export class SleepTracker {
 
 		const executions = await Db.collections.Execution!.find(findQuery);
 
+		if (executions.length > 0) {
+			const executionIds = executions.map(execution => execution.id.toString()).join(', ');
+			Logger.debug(`Sleep tracker found ${executions.length} executions. Setting timer for IDs: ${executionIds}`);
+		}
+		
 		// Add timers for each waiting execution that they get started at the correct time
 		for (const execution of executions) {
 			const executionId = execution.id.toString();
@@ -90,6 +94,7 @@ export class SleepTracker {
 
 
 	startExecution(executionId: string) {
+		Logger.debug(`Sleep tracker resuming execution ${executionId}`, {executionId});
 		delete this.sleepingExecutions[executionId];
 
 		(async () => {
@@ -106,18 +111,6 @@ export class SleepTracker {
 				if (fullExecutionData.finished === true) {
 					throw new Error('The execution did succeed and can so not be started again.');
 				}
-
-				const lastNodeExecuted = fullExecutionData!.data.resultData.lastNodeExecuted as string;
-
-				// Set the node as disabled so that the data does not get executed again as it would result
-				// in starting the sleep all over again
-				fullExecutionData!.data.executionData!.nodeExecutionStack[0].node.disabled = true;
-
-				// Remove sleepTill information else the execution would stop
-				fullExecutionData!.data.sleepTill = undefined;
-
-				// Remove the data of the node execution again else it will display the node as executed twice
-				fullExecutionData!.data.resultData.runData[lastNodeExecuted].pop();
 
 				const credentials = await WorkflowCredentials(fullExecutionData.workflowData.nodes);
 

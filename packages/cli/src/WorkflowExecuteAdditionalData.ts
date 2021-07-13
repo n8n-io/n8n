@@ -466,6 +466,7 @@ function hookFunctionsSaveWorker(): IWorkflowExecuteHooks {
 						startedAt: fullRunData.startedAt,
 						stoppedAt: fullRunData.stoppedAt,
 						workflowData: this.workflowData,
+						sleepTill: fullRunData.data.sleepTill,
 					};
 
 					if (this.retryOf !== undefined) {

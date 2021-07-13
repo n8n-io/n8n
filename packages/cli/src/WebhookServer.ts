@@ -19,7 +19,6 @@ import {
 	IExternalHooksClass,
 	IPackageVersions,
 	ResponseHelper,
-	SleepingWebhooks,
 } from './';
 
 import * as compression from 'compression';
@@ -27,76 +26,6 @@ import * as config from '../config';
 import * as parseUrl from 'parseurl';
 
 export function registerProductionWebhooks() {
-
-	// ----------------------------------------
-	// Sleeping Webhooks
-	// ----------------------------------------
-
-	const sleepingWebhooks = new SleepingWebhooks();
-
-	// HEAD webhook-sleeping requests
-	this.app.head(`/${this.endpointWebhookSleeping}/*`, async (req: express.Request, res: express.Response) => {
-		// Cut away the "/webhook-sleeping/" to get the registred part of the url
-		const requestUrl = (req as ICustomRequest).parsedUrl!.pathname!.slice(this.endpointWebhookSleeping.length + 2);
-
-		let response;
-		try {
-			response = await sleepingWebhooks.executeWebhook('HEAD', requestUrl, req, res);
-		} catch (error) {
-			ResponseHelper.sendErrorResponse(res, error);
-			return;
-		}
-
-		if (response.noWebhookResponse === true) {
-			// Nothing else to do as the response got already sent
-			return;
-		}
-
-		ResponseHelper.sendSuccessResponse(res, response.data, true, response.responseCode);
-	});
-
-	// GET webhook-sleeping requests
-	this.app.get(`/${this.endpointWebhookSleeping}/*`, async (req: express.Request, res: express.Response) => {
-		// Cut away the "/webhook-sleeping/" to get the registred part of the url
-		const requestUrl = (req as ICustomRequest).parsedUrl!.pathname!.slice(this.endpointWebhookSleeping.length + 2);
-
-		let response;
-		try {
-			response = await sleepingWebhooks.executeWebhook('GET', requestUrl, req, res);
-		} catch (error) {
-			ResponseHelper.sendErrorResponse(res, error);
-			return;
-		}
-
-		if (response.noWebhookResponse === true) {
-			// Nothing else to do as the response got already sent
-			return;
-		}
-
-		ResponseHelper.sendSuccessResponse(res, response.data, true, response.responseCode);
-	});
-
-	// POST webhook-sleeping requests
-	this.app.post(`/${this.endpointWebhookSleeping}/*`, async (req: express.Request, res: express.Response) => {
-		// Cut away the "/webhook-sleeping/" to get the registred part of the url
-		const requestUrl = (req as ICustomRequest).parsedUrl!.pathname!.slice(this.endpointWebhookSleeping.length + 2);
-
-		let response;
-		try {
-			response = await sleepingWebhooks.executeWebhook('POST', requestUrl, req, res);
-		} catch (error) {
-			ResponseHelper.sendErrorResponse(res, error);
-			return;
-		}
-
-		if (response.noWebhookResponse === true) {
-			// Nothing else to do as the response got already sent
-			return;
-		}
-
-		ResponseHelper.sendSuccessResponse(res, response.data, true, response.responseCode);
-	});
-
 
 	// ----------------------------------------
 	// Regular Webhooks

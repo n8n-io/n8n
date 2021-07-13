@@ -511,6 +511,13 @@ export class WorkflowExecute {
 			this.runExecutionData.startData = {};
 		}
 
+		if (this.runExecutionData.sleepTill) {
+			const lastNodeExecuted = this.runExecutionData.resultData.lastNodeExecuted as string;
+			this.runExecutionData.executionData!.nodeExecutionStack[0].node.disabled = true;
+			this.runExecutionData.sleepTill = undefined;
+			this.runExecutionData.resultData.runData[lastNodeExecuted].pop();
+		}
+
 		let currentExecutionTry = '';
 		let lastExecutionTry = '';
 
@@ -858,7 +865,7 @@ export class WorkflowExecute {
 				stack: executionError.stack,
 			} as ExecutionError;
 		} else if (this.runExecutionData.sleepTill!!) {
-			Logger.verbose(`Workflow execution finished successfully`, { workflowId: workflow.id });
+			Logger.verbose(`Workflow execution will sleep until ${this.runExecutionData.sleepTill}`, { workflowId: workflow.id });
 			fullRunData.sleepTill = this.runExecutionData.sleepTill;
 		} else {
 			Logger.verbose(`Workflow execution finished successfully`, { workflowId: workflow.id });

@@ -711,7 +711,7 @@ export class Wait implements INodeType {
 
 		if (sleepValue < 60000) {
 			// If wait time is shorter than 60 seconds leave execution active because
-			// we just check the database all 60 seconds.
+			// we just check the database every 60 seconds.
 			return new Promise((resolve, reject) => {
 				setTimeout(() => {
 					resolve([this.getInputData()]);

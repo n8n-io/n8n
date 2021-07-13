@@ -131,7 +131,7 @@ export class WorkflowRunner {
 		if (executionsMode === 'queue' && data.executionMode !== 'manual') {
 			// Do not run "manual" executions in bull because sending events to the
 			// frontend would not be possible
-			executionId = await this.runBull(data, loadStaticData, realtime);
+			executionId = await this.runBull(data, loadStaticData, realtime, executionId);
 		} else if (executionsProcess === 'main') {
 			executionId = await this.runMainProcess(data, loadStaticData, executionId);
 		} else {
@@ -241,12 +241,12 @@ export class WorkflowRunner {
 		return executionId;
 	}
 
-	async runBull(data: IWorkflowExecutionDataProcess, loadStaticData?: boolean, realtime?: boolean): Promise<string> {
+	async runBull(data: IWorkflowExecutionDataProcess, loadStaticData?: boolean, realtime?: boolean, restartExecutionId?: string): Promise<string> {
 
 		// TODO: If "loadStaticData" is set to true it has to load data new on worker
 
 		// Register the active execution
-		const executionId = await this.activeExecutions.add(data, undefined);
+		const executionId = await this.activeExecutions.add(data, undefined, restartExecutionId);
 
 		const jobData: IBullJobData = {
 			executionId,
