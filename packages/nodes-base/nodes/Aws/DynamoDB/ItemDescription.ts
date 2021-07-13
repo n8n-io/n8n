@@ -598,20 +598,6 @@ export const itemFields = [
 	//              Get All
 	// ----------------------------------
 	{
-		displayName: 'Scan',
-		name: 'scan',
-		type: 'boolean',
-		displayOptions: {
-			show: {
-				operation: [
-					'getAll',
-				],
-			},
-		},
-		default: false,
-		description: 'Whether to do an scan or query. Check <a target="_blank" href="https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/bp-query-scan.html">differences</a>',
-	},
-	{
 		displayName: 'Key Condition Expression',
 		name: 'keyConditionExpression',
 		description: 'Condition to determine the items to be retrieved. The condition must perform an equality test<br>on a single partition key value, in this format: <code>partitionKeyName = :partitionkeyval</code>',
@@ -760,7 +746,7 @@ export const itemFields = [
 			},
 		],
 		default: 'ALL_ATTRIBUTES',
-		description: 'The attributes to be returned in the result. You can retrieve all item attributes, specific item attributes, the count of matching items, or in the case of an index, some or all of the attributes projected into the index.',
+		description: 'The attributes to be returned in the result. You can retrieve all item attributes, specific item attributes, the count of matching items, or in the case of an index, some or all of the attributes projected into the index',
 	},
 	{
 		displayName: 'Simple',
