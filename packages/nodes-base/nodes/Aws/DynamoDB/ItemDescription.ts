@@ -195,7 +195,7 @@ export const itemFields = [
 	//              delete
 	// ----------------------------------
 	{
-		displayName: 'Return Values',
+		displayName: 'Return',
 		name: 'returnValues',
 		type: 'options',
 		displayOptions: {
