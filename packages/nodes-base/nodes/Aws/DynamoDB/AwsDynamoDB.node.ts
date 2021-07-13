@@ -1,5 +1,3 @@
-
-
 import {
 	IExecuteFunctions,
 } from 'n8n-core';
@@ -43,7 +41,7 @@ export class AwsDynamoDB implements INodeType {
 		icon: 'file:dynamodb.svg',
 		group: ['transform'],
 		version: 1,
-		subtitle: '={{$parameter["operation"] + ":" + $parameter["resource"]}}',
+		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 		description: 'Consume the AWS DynamoDB API',
 		defaults: {
 			name: 'AWS DynamoDB',
@@ -69,7 +67,6 @@ export class AwsDynamoDB implements INodeType {
 					},
 				],
 				default: 'item',
-				description: 'The resource to operate on.',
 			},
 			...itemOperations,
 			...itemFields,
@@ -85,7 +82,7 @@ export class AwsDynamoDB implements INodeType {
 				};
 
 				const responseData = await awsApiRequest.call(this, 'dynamodb', 'POST', '/', {}, headers);
-				
+
 				return responseData.TableNames.map((table: string) => ({ name: table, value: table }));
 			},
 		},
@@ -103,11 +100,13 @@ export class AwsDynamoDB implements INodeType {
 		for (let i = 0; i < items.length; i++) {
 
 			try {
+
 				if (resource === 'item') {
+
 					if (operation === 'upsert') {
 
 						// ----------------------------------
-						//          upsert
+						//             upsert
 						// ----------------------------------
 
 						// https://docs.aws.amazon.com/amazondynamodb/latest/APIReference/API_PutItem.html
@@ -121,7 +120,7 @@ export class AwsDynamoDB implements INodeType {
 						};
 
 						const expressionAttributeValues = adjustExpressionAttributeValues(eavUi);
-						
+
 						if (Object.keys(expressionAttributeValues).length) {
 							body.ExpressionAttributeValues = expressionAttributeValues;
 						}
@@ -155,8 +154,9 @@ export class AwsDynamoDB implements INodeType {
 						// ----------------------------------
 						//              delete
 						// ----------------------------------
+
 						// https://docs.aws.amazon.com/amazondynamodb/latest/APIReference/API_DeleteItem.html
-						
+
 						// tslint:disable-next-line: no-any
 						const body: { [key: string]: any } = {
 							TableName: this.getNodeParameter('tableName', i) as string,
@@ -170,10 +170,11 @@ export class AwsDynamoDB implements INodeType {
 						const simple = this.getNodeParameter('simple', 0, false) as boolean;
 
 						const items = this.getNodeParameter('keysUi.keyValues', i, []) as [{ key: string, type: string, value: string }];
+
 						for (const item of items) {
 							body.Key[item.key] = { [item.type.toUpperCase()]: item.value };
 						}
-						
+
 						const expressionAttributeValues = adjustExpressionAttributeValues(eavUi);
 
 						if (Object.keys(expressionAttributeValues).length) {
@@ -241,6 +242,7 @@ export class AwsDynamoDB implements INodeType {
 						}
 
 						const items = this.getNodeParameter('keysUi.keyValues', i, []) as IDataObject[];
+
 						for (const item of items) {
 							body.Key[item.key as string] = { [(item.type as string).toUpperCase()]: item.value };
 						}
@@ -329,17 +331,12 @@ export class AwsDynamoDB implements INodeType {
 				}
 
 			} catch (error) {
-				if (this.continueOnFail() !== true) {
-					throw error;
-				} else {
-					// Return the actual reason as error
-					returnData.push(
-						{
-							error: error.message,
-						},
-					);
+				if (this.continueOnFail()) {
+					returnData.push({ error: error.message });
 					continue;
 				}
+
+				throw error;
 			}
 		}
 
