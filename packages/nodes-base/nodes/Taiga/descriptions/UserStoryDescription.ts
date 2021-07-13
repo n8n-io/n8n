@@ -443,12 +443,14 @@ export const userStoryFields = [
 	//            userStory: update
 	// ----------------------------------------
 	{
-		displayName: 'User Story ID',
-		name: 'userStoryId',
-		description: 'ID of the user story to update',
-		type: 'string',
-		required: true,
+		displayName: 'Project ID',
+		name: 'projectId',
+		type: 'options',
+		typeOptions: {
+			loadOptionsMethod: 'getProjects',
+		},
 		default: '',
+		description: 'ID of the project to set the user story to',
 		displayOptions: {
 			show: {
 				resource: [
@@ -461,14 +463,12 @@ export const userStoryFields = [
 		},
 	},
 	{
-		displayName: 'Project ID',
-		name: 'projectId',
-		type: 'options',
-		typeOptions: {
-			loadOptionsMethod: 'getProjects',
-		},
+		displayName: 'User Story ID',
+		name: 'userStoryId',
+		description: 'ID of the user story to update',
+		type: 'string',
+		required: true,
 		default: '',
-		description: 'ID of the project to set the user story to',
 		displayOptions: {
 			show: {
 				resource: [
