@@ -147,12 +147,12 @@ export class KafkaTrigger implements INodeType {
 		const consumer = kafka.consumer({ groupId });
 
 		await consumer.connect();
+		
+		const options = this.getNodeParameter('options', {}) as IDataObject;
 
 		await consumer.subscribe({ topic, fromBeginning: (options.fromBeginning)? true : false });
 
 		const self = this;
-
-		const options = this.getNodeParameter('options', {}) as IDataObject;
 
 		const startConsumer = async () => {
 			await consumer.run({
