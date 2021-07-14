@@ -233,6 +233,8 @@ export class WorkflowRunner {
 				fullRunData.finished = false;
 			}
 			this.activeExecutions.remove(executionId, fullRunData);
+		}).catch((error) => {
+			this.processError(error, new Date(), data.executionMode, executionId, additionalData.hooks);
 		});
 
 		return executionId;
