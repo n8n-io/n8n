@@ -49,7 +49,8 @@ const module: Module<IVersionsState, IRootState> = {
 				const { enabled, endpoint } = context.state.versionNotificationSettings;
 				if (enabled && endpoint) {
 					const currentVersion = context.rootState.versionCli;
-					const versions = await getNextVersions(endpoint, currentVersion);
+					const instanceId = context.rootState.instanceId;
+					const versions = await getNextVersions(endpoint, currentVersion, instanceId);
 					context.commit('setVersions', {versions, currentVersion});
 				}
 			} catch (e) {

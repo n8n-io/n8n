@@ -87,6 +87,7 @@ const state: IRootState = {
 		tags: [],
 	},
 	sidebarMenuItems: [],
+	instanceId: '',
 };
 
 const modules = {
@@ -545,8 +546,11 @@ export const store = new Vuex.Store({
 		setMaxExecutionTimeout (state, maxExecutionTimeout: number) {
 			Vue.set(state, 'maxExecutionTimeout', maxExecutionTimeout);
 		},
-		setVersionCli (state, version: string) {
+		setVersionCli(state, version: string) {
 			Vue.set(state, 'versionCli', version);
+		},
+		setInstanceId(state, instanceId: string) {
+			Vue.set(state, 'instanceId', instanceId);
 		},
 		setOauthCallbackUrls(state, urls: IDataObject) {
 			Vue.set(state, 'oauthCallbackUrls', urls);

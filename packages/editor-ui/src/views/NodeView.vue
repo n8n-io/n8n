@@ -2169,6 +2169,7 @@ export default mixins(
 				this.$store.commit('setExecutionTimeout', settings.executionTimeout);
 				this.$store.commit('setMaxExecutionTimeout', settings.maxExecutionTimeout);
 				this.$store.commit('setVersionCli', settings.versionCli);
+				this.$store.commit('setInstanceId', settings.instanceId);
 				this.$store.commit('setOauthCallbackUrls', settings.oauthCallbackUrls);
 				this.$store.commit('setN8nMetadata', settings.n8nMetadata || {});
 				this.$store.commit('versions/setVersionNotificationSettings', settings.versionNotifications);

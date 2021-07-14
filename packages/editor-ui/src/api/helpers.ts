@@ -5,7 +5,7 @@ import {
 import {
 	IRestApiContext,
 } from '../Interface';
-
+import { INSTANCE_ID_HEADER } from '@/constants';
 
 class ResponseError extends Error {
 	// The HTTP status code of response
@@ -91,6 +91,7 @@ export async function makeRestApiRequest(context: IRestApiContext, method: Metho
 	return response.data;
 }
 
-export async function get(baseURL: string, endpoint: string, params?: IDataObject) {
-	return await request({method: 'GET', baseURL, endpoint, data: params});
+export async function get(baseURL: string, endpoint: string, params?: IDataObject, instanceId?: string) {
+	const headers = {[INSTANCE_ID_HEADER as string] : instanceId};
+	return await request({method: 'GET', baseURL, endpoint, headers, data: params});
 }
