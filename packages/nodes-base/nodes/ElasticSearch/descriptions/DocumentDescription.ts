@@ -695,4 +695,99 @@ export const documentFields = [
 			},
 		},
 	},
+	{
+		displayName: 'Data to Send',
+		name: 'dataToSend',
+		type: 'options',
+		options: [
+			{
+				name: 'Define Below for Each Column',
+				value: 'defineBelow',
+				description: 'Set the value for each destination column',
+			},
+			{
+				name: 'Auto-map Input Data to Columns',
+				value: 'autoMapInputData',
+				description: 'Use when node input properties match destination column names',
+			},
+		],
+		displayOptions: {
+			show: {
+				resource: [
+					'document',
+				],
+				operation: [
+					'update',
+				],
+			},
+		},
+		default: 'defineBelow',
+		description: 'Whether to insert the input data this node receives in the new row',
+	},
+	{
+		displayName: 'Inputs to Ignore',
+		name: 'inputsToIgnore',
+		type: 'string',
+		displayOptions: {
+			show: {
+				resource: [
+					'document',
+				],
+				operation: [
+					'update',
+				],
+				dataToSend: [
+					'autoMapInputData',
+				],
+			},
+		},
+		default: '',
+		required: false,
+		description: 'List of input properties to avoid sending, separated by commas. Leave empty to send all properties',
+		placeholder: 'Enter properties...',
+	},
+	{
+		displayName: 'Fields to Send',
+		name: 'fieldsUi',
+		placeholder: 'Add Field',
+		type: 'fixedCollection',
+		typeOptions: {
+			multipleValueButtonText: 'Add Field to Send',
+			multipleValues: true,
+		},
+		displayOptions: {
+			show: {
+				resource: [
+					'document',
+				],
+				operation: [
+					'update',
+				],
+				dataToSend: [
+					'defineBelow',
+				],
+			},
+		},
+		default: {},
+		options: [
+			{
+				displayName: 'Field',
+				name: 'fieldValues',
+				values: [
+					{
+						displayName: 'Field ID',
+						name: 'fieldId',
+						type: 'string',
+						default: '',
+					},
+					{
+						displayName: 'Field Value',
+						name: 'fieldValue',
+						type: 'string',
+						default: '',
+					},
+				],
+			},
+		],
+	},
 ] as INodeProperties[];

@@ -223,8 +223,30 @@ export class Elasticsearch implements INodeType {
 						// https://www.elastic.co/guide/en/elasticsearch/reference/current/docs-update.html
 
 						const body = {
+							doc: {},
 							script: this.getNodeParameter('script', i),
 						} as IDataObject;
+
+						const dataToSend = this.getNodeParameter('dataToSend', 0) as 'defineBelow' | 'autoMapInputData';
+
+						if (dataToSend === 'defineBelow') {
+
+							const fields = this.getNodeParameter('fieldsUi.fieldValues', i, []) as FieldsUiValues;
+							// @ts-ignore
+							fields.forEach(({ fieldId, fieldValue }) => body.doc[fieldId] = fieldValue);
+
+						} else {
+
+							const inputData = items[i].json;
+							const rawInputsToIgnore = this.getNodeParameter('inputsToIgnore', i) as string;
+							const inputsToIgnore = rawInputsToIgnore.split(',').map(c => c.trim());
+
+							for (const key of Object.keys(inputData)) {
+								if (inputsToIgnore.includes(key)) continue;
+								body[key] = inputData[key];
+							}
+
+						}
 
 						const indexId = this.getNodeParameter('indexId', i);
 						const documentId = this.getNodeParameter('documentId', i);
