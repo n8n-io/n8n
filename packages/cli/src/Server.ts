@@ -21,7 +21,7 @@ import * as clientOAuth1 from 'oauth-1.0a';
 import { RequestOptions } from 'oauth-1.0a';
 import * as csrf from 'csrf';
 import * as requestPromise from 'request-promise-native';
-import { createHmac, createHash } from 'crypto';
+import { createHash, createHmac } from 'crypto';
 // IMPORTANT! Do not switch to anther bcrypt library unless really necessary and
 // tested with all possible systems like Windows, Alpine on ARM, FreeBSD, ...
 import { compare } from 'bcryptjs';
