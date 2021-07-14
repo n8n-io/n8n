@@ -337,6 +337,7 @@ export interface IN8nUISettings {
 		[key: string]: string | number | undefined;
 	};
 	versionNotifications: IVersionNotificationSettings;
+	instanceId?: string;
 }
 
 export interface IPackageVersions {

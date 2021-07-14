@@ -24,7 +24,7 @@ import * as requestPromise from 'request-promise-native';
 import { createHmac } from 'crypto';
 // IMPORTANT! Do not switch to anther bcrypt library unless really necessary and
 // tested with all possible systems like Windows, Alpine on ARM, FreeBSD, ...
-import { compare } from 'bcryptjs';
+import { compare, genSaltSync, hashSync } from 'bcryptjs';
 import * as promClient from 'prom-client';
 
 import {
@@ -230,6 +230,7 @@ class App {
 
 		this.versions = await GenericHelpers.getVersions();
 		this.frontendSettings.versionCli = this.versions.cli;
+		this.frontendSettings.instanceId = await generateInstanceId();
 
 		await this.externalHooks.run('frontend.settings', [this.frontendSettings]);
 
@@ -2199,4 +2200,12 @@ async function getExecutionsCount(countFilter: IDataObject): Promise<{ count: nu
 
 	const count = await Db.collections.Execution!.count(countFilter);
 	return { count, estimate: false };
+}
+
+async function generateInstanceId(){
+	const salt = genSaltSync(10);
+	const encryptionKey = await UserSettings.getEncryptionKey();
+	const hash = encryptionKey ? hashSync(encryptionKey, salt) : undefined;
+
+	return hash;
 }
