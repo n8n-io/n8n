@@ -477,7 +477,7 @@ export const tableRecordFields = [
 				],
 			},
 		},
-		default: 'colmuns',
+		default: 'columns',
 	},
 	{
 		displayName: 'Inputs to Ignore',
