@@ -212,30 +212,30 @@ export class WorkflowRunner {
 				workflowExecution = workflowExecute.runPartialWorkflow(workflow, data.runData, data.startNodes, data.destinationNode);
 			}
 
+			this.activeExecutions.attachWorkflowExecution(executionId, workflowExecution);
+
+			if (workflowTimeout > 0) {
+				const timeout = Math.min(workflowTimeout, config.get('executions.maxTimeout') as number) * 1000; // as seconds
+				executionTimeout = setTimeout(() => {
+					this.activeExecutions.stopExecution(executionId, 'timeout');
+				}, timeout);
+			}
+
+			workflowExecution.then((fullRunData) => {
+				clearTimeout(executionTimeout);
+				if (workflowExecution.isCanceled) {
+					fullRunData.finished = false;
+				}
+				this.activeExecutions.remove(executionId, fullRunData);
+			}).catch((error) => {
+				this.processError(error, new Date(), data.executionMode, executionId, additionalData.hooks);
+			});
+
 		} catch (error) {
 			await this.processError(error, new Date(), data.executionMode, executionId, additionalData.hooks);
 
 			throw error;
 		}
-
-		this.activeExecutions.attachWorkflowExecution(executionId, workflowExecution);
-
-		if (workflowTimeout > 0) {
-			const timeout = Math.min(workflowTimeout, config.get('executions.maxTimeout') as number) * 1000; // as seconds
-			executionTimeout = setTimeout(() => {
-				this.activeExecutions.stopExecution(executionId, 'timeout');
-			}, timeout);
-		}
-
-		workflowExecution.then((fullRunData) => {
-			clearTimeout(executionTimeout);
-			if (workflowExecution.isCanceled) {
-				fullRunData.finished = false;
-			}
-			this.activeExecutions.remove(executionId, fullRunData);
-		}).catch((error) => {
-			this.processError(error, new Date(), data.executionMode, executionId, additionalData.hooks);
-		});
 
 		return executionId;
 	}
