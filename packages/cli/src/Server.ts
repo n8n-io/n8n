@@ -21,10 +21,10 @@ import * as clientOAuth1 from 'oauth-1.0a';
 import { RequestOptions } from 'oauth-1.0a';
 import * as csrf from 'csrf';
 import * as requestPromise from 'request-promise-native';
-import { createHmac } from 'crypto';
+import { createHmac, createHash } from 'crypto';
 // IMPORTANT! Do not switch to anther bcrypt library unless really necessary and
 // tested with all possible systems like Windows, Alpine on ARM, FreeBSD, ...
-import { compare, genSaltSync, hashSync } from 'bcryptjs';
+import { compare } from 'bcryptjs';
 import * as promClient from 'prom-client';
 
 import {
@@ -2203,9 +2203,8 @@ async function getExecutionsCount(countFilter: IDataObject): Promise<{ count: nu
 }
 
 async function generateInstanceId(){
-	const salt = genSaltSync(10);
 	const encryptionKey = await UserSettings.getEncryptionKey();
-	const hash = encryptionKey ? hashSync(encryptionKey, salt) : undefined;
+	const hash = encryptionKey ? createHash('sha256').update(encryptionKey).digest('hex') : undefined;
 
 	return hash;
 }
