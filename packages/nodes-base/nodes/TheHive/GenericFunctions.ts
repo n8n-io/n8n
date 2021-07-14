@@ -105,14 +105,12 @@ export async function prepareCustomFields(this: IHookFunctions | IExecuteFunctio
 
 		if (typeof customFieldsJson === 'string') {
 			return JSON.parse(customFieldsJson);
-		}
-		else if (typeof customFieldsJson === 'object') {
+		} else if (typeof customFieldsJson === 'object') {
 			return customFieldsJson as IDataObject;
-		}
-		else {
+		} else if (customFieldsJson) {
 			throw Error('customFieldsJson value is invalid');
 		}
-	} else {
+	} else if (additionalFields.customFieldsUi) {
 		// Get Custom Field Types from TheHive
 		const version = this.getCredentials('theHiveApi')?.apiVersion;
 		const endpoint = version === 'v1' ? '/customField' : '/list/custom_fields';
