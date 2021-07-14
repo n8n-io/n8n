@@ -29,6 +29,10 @@ import {
 
 import * as moment from 'moment-timezone';
 
+import {
+	noCase,
+} from 'change-case';
+
 export class Box implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Box',
@@ -81,6 +85,7 @@ export class Box implements INodeType {
 		const length = items.length as unknown as number;
 		const qs: IDataObject = {};
 		let responseData;
+		const timezone = this.getTimezone();
 		const resource = this.getNodeParameter('resource', 0) as string;
 		const operation = this.getNodeParameter('operation', 0) as string;
 		for (let i = 0; i < length; i++) {
@@ -198,6 +203,51 @@ export class Box implements INodeType {
 						responseData = responseData.entries;
 					}
 					returnData.push.apply(returnData, responseData as IDataObject[]);
+				}
+				// https://developer.box.com/reference/post-collaborations/
+				if (operation === 'share') {
+					const fileId = this.getNodeParameter('fileId', i) as string;
+					const role = this.getNodeParameter('role', i) as string;
+					const accessibleBy = this.getNodeParameter('accessibleBy', i) as string;
+					const options = this.getNodeParameter('options', i) as IDataObject;
+					// tslint:disable-next-line: no-any
+					const body: { accessible_by: IDataObject, [key: string]: any } = {
+						accessible_by: {},
+						item: {
+							id: fileId,
+							type: 'file',
+						},
+						role: (role === 'coOwner') ? 'co-owner' : noCase(role),
+						...options,
+					};
+
+					if (body.fields) {
+						qs.fields = body.fields;
+						delete body.fields;
+					}
+
+					if (body.expires_at) {
+						body.expires_at = moment.tz(body.expires_at, timezone).format();
+					}
+
+					if (body.notify) {
+						qs.notify = body.notify;
+						delete body.notify;
+					}
+
+					if (accessibleBy === 'user') {
+						const useEmail = this.getNodeParameter('useEmail', i) as boolean;
+						if (useEmail) {
+							body.accessible_by['login'] = this.getNodeParameter('email', i) as string;
+						} else {
+							body.accessible_by['id'] = this.getNodeParameter('userId', i) as string;
+						}
+					} else {
+						body.accessible_by['id'] = this.getNodeParameter('groupId', i) as string;
+					}
+
+					responseData = await boxApiRequest.call(this, 'POST', `/collaborations`, body, qs);
+					returnData.push(responseData as IDataObject);
 				}
 				// https://developer.box.com/reference/post-files-content
 				if (operation === 'upload') {
@@ -355,6 +405,79 @@ export class Box implements INodeType {
 						responseData = responseData.entries;
 					}
 					returnData.push.apply(returnData, responseData as IDataObject[]);
+				}
+				// https://developer.box.com/reference/post-collaborations/
+				if (operation === 'share') {
+					const folderId = this.getNodeParameter('folderId', i) as string;
+					const role = this.getNodeParameter('role', i) as string;
+					const accessibleBy = this.getNodeParameter('accessibleBy', i) as string;
+					const options = this.getNodeParameter('options', i) as IDataObject;
+					// tslint:disable-next-line: no-any
+					const body: { accessible_by: IDataObject, [key: string]: any } = {
+						accessible_by: {},
+						item: {
+							id: folderId,
+							type: 'folder',
+						},
+						role: (role === 'coOwner') ? 'co-owner' : noCase(role),
+						...options,
+					};
+
+					if (body.fields) {
+						qs.fields = body.fields;
+						delete body.fields;
+					}
+
+					if (body.expires_at) {
+						body.expires_at = moment.tz(body.expires_at, timezone).format();
+					}
+
+					if (body.notify) {
+						qs.notify = body.notify;
+						delete body.notify;
+					}
+
+					if (accessibleBy === 'user') {
+						const useEmail = this.getNodeParameter('useEmail', i) as boolean;
+						if (useEmail) {
+							body.accessible_by['login'] = this.getNodeParameter('email', i) as string;
+						} else {
+							body.accessible_by['id'] = this.getNodeParameter('userId', i) as string;
+						}
+					} else {
+						body.accessible_by['id'] = this.getNodeParameter('groupId', i) as string;
+					}
+
+					responseData = await boxApiRequest.call(this, 'POST', `/collaborations`, body, qs);
+					returnData.push(responseData as IDataObject);
+				}
+				//https://developer.box.com/guides/folders/single/move/
+				if (operation === 'update') {
+					const folderId = this.getNodeParameter('folderId', i) as string;
+					const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+
+					if (updateFields.fields) {
+						qs.fields = updateFields.fields;
+						delete updateFields.fields;
+					}
+
+					const body = {
+						...updateFields,
+					} as IDataObject;
+
+					if (body.parentId) {
+						body.parent = {
+							id: body.parentId,
+						};
+						delete body.parentId;
+					}
+
+					if (body.tags) {
+						body.tags = (body.tags as string).split(',');
+					}
+
+					responseData = await boxApiRequest.call(this, 'PUT', `/folders/${folderId}`, body, qs);
+					returnData.push(responseData as IDataObject);
 				}
 			}
 		}

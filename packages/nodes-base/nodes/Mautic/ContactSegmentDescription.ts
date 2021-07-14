@@ -2,7 +2,7 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const contactCompanyOperations = [
+export const contactSegmentOperations = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -10,7 +10,7 @@ export const contactCompanyOperations = [
 		displayOptions: {
 			show: {
 				resource: [
-					'contactCompany',
+					'contactSegment',
 				],
 			},
 		},
@@ -18,32 +18,33 @@ export const contactCompanyOperations = [
 			{
 				name: 'Add',
 				value: 'add',
-				description: 'Add contact to a company',
+				description: 'Add contact to a segment',
 			},
 			{
 				name: 'Remove',
 				value: 'remove',
-				description: 'Remove a contact from a company',
+				description: 'Remove contact from a segment',
 			},
 		],
-		default: 'create',
+		default: 'add',
 		description: 'The operation to perform.',
 	},
 ] as INodeProperties[];
 
-export const contactCompanyFields = [
+export const contactSegmentFields = [
 
 	/* -------------------------------------------------------------------------- */
-	/*                                contactCompany:add                          */
+	/*                               contactSegment:add                           */
 	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Contact ID',
 		name: 'contactId',
 		type: 'string',
+		required: true,
 		displayOptions: {
 			show: {
 				resource: [
-					'contactCompany',
+					'contactSegment',
 				],
 				operation: [
 					'add',
@@ -52,16 +53,18 @@ export const contactCompanyFields = [
 			},
 		},
 		default: '',
-		description: 'The ID of the contact.',
+		description: 'Contact ID',
 	},
 	{
-		displayName: 'Company ID',
-		name: 'companyId',
-		type: 'string',
+
+		displayName: 'Segment ID',
+		name: 'segmentId',
+		type: 'options',
+		required: true,
 		displayOptions: {
 			show: {
 				resource: [
-					'contactCompany',
+					'contactSegment',
 				],
 				operation: [
 					'add',
@@ -69,7 +72,11 @@ export const contactCompanyFields = [
 				],
 			},
 		},
+		typeOptions: {
+			loadOptionsMethod: 'getSegments',
+		},
 		default: '',
-		description: 'The ID of the company.',
+		description: 'Segment ID',
+
 	},
 ] as INodeProperties[];

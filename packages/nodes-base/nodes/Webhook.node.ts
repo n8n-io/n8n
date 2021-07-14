@@ -45,7 +45,7 @@ export class Webhook implements INodeType {
 		name: 'webhook',
 		group: ['trigger'],
 		version: 1,
-		description: 'Starts the workflow when a webhook got called.',
+		description: 'Starts the workflow when a webhook is called',
 		defaults: {
 			name: 'Webhook',
 			color: '#885577',

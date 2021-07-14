@@ -408,6 +408,9 @@ export default mixins(
 					const workflowData = await this.getWorkflowDataToSave();
 
 					const {tags, ...data} = workflowData;
+					if (data.id && typeof data.id === 'string') {
+						data.id = parseInt(data.id, 10);
+					}
 					const blob = new Blob([JSON.stringify(data, null, 2)], {
 						type: 'application/json;charset=utf-8',
 					});
