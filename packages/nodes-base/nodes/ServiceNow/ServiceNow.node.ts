@@ -179,6 +179,21 @@ export class ServiceNow implements INodeType {
 				}
 				return sortData(returnData);
 			},
+			async getBusinessServices(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const returnData: INodePropertyOptions[] = [];
+				const qs = {
+					sysparm_fields: 'name,sys_id',
+				};
+				const response = await serviceNowApiRequest.call(this, 'GET', `/now/table/cmdb_ci_service`, {}, qs);
+
+				for (const column of response.result) {
+					returnData.push({
+						name: column.name,
+						value: column.sys_id,
+					});
+				}
+				return sortData(returnData);
+			},
 			async getUsers(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
 				const resource = this.getNodeParameter('resource', 0) as string;
@@ -293,8 +308,15 @@ export class ServiceNow implements INodeType {
 			},
 			async getIncidentSubcategories(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-				const additionalFields = this.getNodeParameter('additionalFields') as IDataObject;
-				const category = additionalFields.category;
+				const operation = this.getNodeParameter('operation');
+				let category;
+				if (operation === 'update') {
+					const updateFields = this.getNodeParameter('updateFields') as IDataObject;
+					category = updateFields.category;
+				} else {
+					const additionalFields = this.getNodeParameter('additionalFields') as IDataObject;
+					category = additionalFields.category;
+				}
 				const qs = {
 					sysparm_fields: 'label,value',
 					sysparm_query: `name=incident^element=subcategory^dependent_value=${category}`,
@@ -590,27 +612,19 @@ export class ServiceNow implements INodeType {
 
 						const tableName = this.getNodeParameter('tableName', i) as string;
 						const id = this.getNodeParameter('id', i) as string;
-						const sendInputData = this.getNodeParameter('sendInputData', i) as boolean;
+						const dataToSend = this.getNodeParameter('dataToSend', i) as string;
 						let body = {};
-						if (sendInputData) {
-							const sendAll = this.getNodeParameter('sendAll', i) as boolean;
-							if (sendAll) {
-								body = items[i].json;
-							} else {
-								const columns = this.getNodeParameter('columns', i) as string;
-								body = columns.split(',').map(col=>col.trim()).reduce((obj, column) => {
-									obj= {
-										...obj,
-										[column as string]: items[i].json[column],
-									};
-									return obj;
-								}, {});
-							}
-						} else {
-							const updateFields = this.getNodeParameter('updateFields', i) as {
+
+						if (dataToSend === 'mapInput') {
+							const inputsToIgnore = (this.getNodeParameter('inputsToIgnore', i) as string).split(',').map(field => field.trim());
+							body = Object.entries(items[i].json)
+								.filter(([key]) => !inputsToIgnore.includes(key))
+								.reduce((obj, [key, val]) => Object.assign(obj, { [key]: val }), {});
+						} else if (dataToSend === 'columns'){
+							const fieldsToSend = this.getNodeParameter('fieldsToSend', i) as {
 								field: IDataObject[]
 							};
-							body = updateFields.field.reduce((obj,field) => {
+							body = fieldsToSend.field.reduce((obj,field) => {
 								obj[field.column as string] = field.value;
 								return obj;
 							},{});

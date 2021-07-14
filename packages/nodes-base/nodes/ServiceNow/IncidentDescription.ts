@@ -106,7 +106,10 @@ export const incidentFields = [
 			{
 				displayName: 'Business Service',
 				name: 'business_service',
-				type: 'string',
+				type: 'options',
+				typeOptions: {
+					loadOptionsMethod: 'getBusinessServices',
+				},
 				default: '',
 				description: 'The business service',
 			},
@@ -504,7 +507,10 @@ export const incidentFields = [
 			{
 				displayName: 'Business Service',
 				name: 'business_service',
-				type: 'string',
+				type: 'options',
+				typeOptions: {
+					loadOptionsMethod: 'getBusinessServices',
+				},
 				default: '',
 				description: 'The business service',
 			},
