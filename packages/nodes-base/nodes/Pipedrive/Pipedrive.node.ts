@@ -21,6 +21,10 @@ import {
 	pipedriveResolveCustomProperties,
 } from './GenericFunctions';
 
+import {
+	currencies,
+} from './utils';
+
 interface CustomProperty {
 	name: string;
 	value: string;
@@ -117,6 +121,10 @@ export class Pipedrive implements INodeType {
 					{
 						name: 'File',
 						value: 'file',
+					},
+					{
+						name: 'Lead',
+						value: 'lead',
 					},
 					{
 						name: 'Note',
@@ -285,6 +293,46 @@ export class Pipedrive implements INodeType {
 				description: 'The operation to perform.',
 			},
 
+			{
+				displayName: 'Operation',
+				name: 'operation',
+				type: 'options',
+				displayOptions: {
+					show: {
+						resource: [
+							'lead',
+						],
+					},
+				},
+				options: [
+					{
+						name: 'Create',
+						value: 'create',
+						description: 'Create a lead',
+					},
+					{
+						name: 'Delete',
+						value: 'delete',
+						description: 'Delete a lead',
+					},
+					{
+						name: 'Get',
+						value: 'get',
+						description: 'Get data of a lead',
+					},
+					{
+						name: 'Get All',
+						value: 'getAll',
+						description: 'Get data of all leads',
+					},
+					{
+						name: 'Update',
+						value: 'update',
+						description: 'Update a lead',
+					},
+				],
+				default: 'create',
+			},
 			{
 				displayName: 'Operation',
 				name: 'operation',
@@ -1620,6 +1668,289 @@ export class Pipedrive implements INodeType {
 				description: 'ID of the file to get.',
 			},
 
+			// ----------------------------------------
+			//               lead: create
+			// ----------------------------------------
+			{
+				displayName: 'Title',
+				name: 'title',
+				description: 'Name of the lead to create',
+				type: 'string',
+				required: true,
+				default: '',
+				displayOptions: {
+					show: {
+						resource: [
+							'lead',
+						],
+						operation: [
+							'create',
+						],
+					},
+				},
+			},
+			{
+				displayName: 'Organization ID',
+				name: 'organization_id',
+				type: 'options',
+				typeOptions: {
+					loadOptionsMethod: 'getOrganizationIds',
+				},
+				default: '',
+				description: 'ID of the organization to link to this lead',
+				displayOptions: {
+					show: {
+						resource: [
+							'lead',
+						],
+						operation: [
+							'create',
+						],
+					},
+				},
+			},
+			{
+				displayName: 'Additional Fields',
+				name: 'additionalFields',
+				type: 'collection',
+				placeholder: 'Add Field',
+				default: {},
+				displayOptions: {
+					show: {
+						resource: [
+							'lead',
+						],
+						operation: [
+							'create',
+						],
+					},
+				},
+				options: [
+					{
+						displayName: 'Owner ID',
+						name: 'owner_id',
+						type: 'options',
+						typeOptions: {
+							loadOptionsMethod: 'getUserIds',
+						},
+						default: '',
+						description: 'ID of the user who will own the lead to create',
+					},
+					{
+						displayName: 'Label IDs',
+						name: 'label_ids',
+						type: 'multiOptions',
+						typeOptions: {
+							loadOptionsMethod: 'getLeadLabels',
+						},
+						default: [],
+						description: 'ID of the labels to attach to the lead to create',
+					},
+					{
+						displayName: 'Person ID',
+						name: 'person_id',
+						type: 'options',
+						typeOptions: {
+							loadOptionsMethod: 'getPersons',
+						},
+						default: '',
+						description: 'ID of the person to link to this lead',
+					},
+					{
+						displayName: 'Value',
+						name: 'value',
+						type: 'fixedCollection',
+						description: 'Potential monetary value associated with the lead',
+						default: {},
+						options: [
+							{
+								displayName: 'Value Properties',
+								name: 'valueProperties',
+								values: [
+									{
+										displayName: 'Amount',
+										name: 'amount',
+										type: 'number',
+										default: '',
+									},
+									{
+										displayName: 'Currency',
+										name: 'currency',
+										type: 'options',
+										default: 'USD',
+										options: currencies.sort((a, b) => a.name.localeCompare(b.name)),
+									},
+								],
+							},
+						],
+					},
+					{
+						displayName: 'Expected Close Date',
+						name: 'expected_close_date',
+						type: 'dateTime',
+						default: '',
+						description: 'Date when the lead’s deal is expected to be closed, in ISO-8601 format',
+					},
+				],
+			},
+
+			// ----------------------------------------
+			//               lead: delete
+			// ----------------------------------------
+			{
+				displayName: 'Lead ID',
+				name: 'leadId',
+				description: 'ID of the lead to delete.',
+				type: 'string',
+				required: true,
+				default: '',
+				displayOptions: {
+					show: {
+						resource: [
+							'lead',
+						],
+						operation: [
+							'delete',
+						],
+					},
+				},
+			},
+
+			// ----------------------------------------
+			//                lead: get
+			// ----------------------------------------
+			{
+				displayName: 'Lead ID',
+				name: 'leadId',
+				description: 'ID of the lead to retrieve.',
+				type: 'string',
+				required: true,
+				default: '',
+				displayOptions: {
+					show: {
+						resource: [
+							'lead',
+						],
+						operation: [
+							'get',
+						],
+					},
+				},
+			},
+
+			// ----------------------------------------
+			//               lead: update
+			// ----------------------------------------
+			{
+				displayName: 'Lead ID',
+				name: 'leadId',
+				description: 'ID of the lead to update.',
+				type: 'string',
+				required: true,
+				default: '',
+				displayOptions: {
+					show: {
+						resource: [
+							'lead',
+						],
+						operation: [
+							'update',
+						],
+					},
+				},
+			},
+			{
+				displayName: 'Update Fields',
+				name: 'updateFields',
+				type: 'collection',
+				placeholder: 'Add Field',
+				default: {},
+				displayOptions: {
+					show: {
+						resource: [
+							'lead',
+						],
+						operation: [
+							'update',
+						],
+					},
+				},
+				options: [
+					{
+						displayName: 'Title',
+						name: 'title',
+						type: 'string',
+						default: '',
+						description: 'Name of the lead to update',
+					},
+					{
+						displayName: 'Owner ID',
+						name: 'owner_id',
+						type: 'options',
+						typeOptions: {
+							loadOptionsMethod: 'getUserIds',
+						},
+						default: '',
+						description: 'ID of the user who will own the lead to update',
+					},
+					{
+						displayName: 'Label IDs',
+						name: 'label_ids',
+						type: 'multiOptions',
+						typeOptions: {
+							loadOptionsMethod: 'getLeadLabels',
+						},
+						default: [],
+						description: 'ID of the labels to attach to the lead to update',
+					},
+					{
+						displayName: 'Person ID',
+						name: 'person_id',
+						type: 'options',
+						typeOptions: {
+							loadOptionsMethod: 'getPersons',
+						},
+						default: '',
+						description: 'ID of the person to link to this lead',
+					},
+					{
+						displayName: 'Value',
+						name: 'value',
+						type: 'fixedCollection',
+						description: 'Potential monetary value associated with the lead',
+						default: {},
+						options: [
+							{
+								displayName: 'Value Properties',
+								name: 'valueProperties',
+								values: [
+									{
+										displayName: 'Amount',
+										name: 'amount',
+										type: 'number',
+										default: '',
+									},
+									{
+										displayName: 'Currency',
+										name: 'currency',
+										type: 'options',
+										default: 'USD',
+										options: currencies.sort((a, b) => a.name.localeCompare(b.name)),
+									},
+								],
+							},
+						],
+					},
+					{
+						displayName: 'Expected Close Date',
+						name: 'expected_close_date',
+						type: 'dateTime',
+						default: '',
+						description: 'Date when the lead’s deal is expected to be closed, in ISO-8601 format',
+					},
+				],
+			},
+
 
 
 			// ----------------------------------
@@ -2487,6 +2818,49 @@ export class Pipedrive implements INodeType {
 				description: 'How many results to return.',
 			},
 
+			// ----------------------------------------
+			//               lead: getAll
+			// ----------------------------------------
+			{
+				displayName: 'Filters',
+				name: 'filters',
+				type: 'collection',
+				placeholder: 'Add Filter',
+				default: {},
+				displayOptions: {
+					show: {
+						resource: [
+							'lead',
+						],
+						operation: [
+							'getAll',
+						],
+					},
+				},
+				options: [
+					{
+						displayName: 'Archived Status',
+						name: 'archived_status',
+						type: 'options',
+						default: 'all',
+						options: [
+							{
+								name: 'Archived',
+								value: 'archived',
+							},
+							{
+								name: 'All',
+								value: 'all',
+							},
+							{
+								name: 'Not Archived',
+								value: 'not_archived',
+							},
+						],
+					},
+				],
+			},
+
 			// ----------------------------------
 			//         person:getAll
 			// ----------------------------------
@@ -2981,6 +3355,27 @@ export class Pipedrive implements INodeType {
 				}
 				return returnData;
 			},
+
+			// Get all the persons to display them to user so that he can
+			// select them easily
+			async getPersons(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const { data } = await pipedriveApiRequest.call(this, 'GET', '/persons', {}) as {
+					data: Array<{ id: string; name: string; }>
+				};
+
+				return data.map(({ id, name }) => ({ value: id, name }));
+			},
+
+			// Get all the lead labels to display them to user so that he can
+			// select them easily
+			async getLeadLabels(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const { data } = await pipedriveApiRequest.call(this, 'GET', '/leadLabels', {}) as {
+					data: Array<{ id: string; name: string; }>
+				};
+
+				return data.map(({ id, name }) => ({ value: id, name }));
+			},
+
 			// Get all the labels to display them to user so that he can
 			// select them easily
 			async getDealLabels(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
@@ -3314,6 +3709,131 @@ export class Pipedrive implements INodeType {
 					endpoint = `/files/${fileId}`;
 
 				}
+
+			} else if (resource === 'lead') {
+
+				if (operation === 'create') {
+
+					// ----------------------------------------
+					//               lead: create
+					// ----------------------------------------
+
+					// https://developers.pipedrive.com/docs/api/v1/Leads#addLead
+
+					body = {
+						title: this.getNodeParameter('title', i),
+						organization_id: this.getNodeParameter('organization_id', i),
+					} as IDataObject;
+
+					const { value, expected_close_date, ...rest } = this.getNodeParameter('additionalFields', i) as {
+						value: {
+							valueProperties: {
+								amount: number;
+								currency: string;
+							}
+						};
+						expected_close_date: string;
+					};
+
+					if (Object.keys(rest).length) {
+						Object.assign(body, rest);
+					}
+
+					if (value) {
+						Object.assign(body, { value: value.valueProperties });
+					}
+
+					if (expected_close_date) {
+						body.expected_close_date = expected_close_date.split('T')[0];
+					}
+
+					requestMethod = 'POST';
+					endpoint = '/leads';
+
+				} else if (operation === 'delete') {
+
+					// ----------------------------------------
+					//               lead: delete
+					// ----------------------------------------
+
+					// https://developers.pipedrive.com/docs/api/v1/Leads#deleteLead
+
+					const leadId = this.getNodeParameter('leadId', i);
+
+					requestMethod = 'DELETE';
+					endpoint = `/leads/${leadId}`;
+
+				} else if (operation === 'get') {
+
+					// ----------------------------------------
+					//                lead: get
+					// ----------------------------------------
+
+					// https://developers.pipedrive.com/docs/api/v1/Leads#getLead
+
+					const leadId = this.getNodeParameter('leadId', i);
+
+					requestMethod = 'GET';
+					endpoint = `/leads/${leadId}`;
+
+				} else if (operation === 'getAll') {
+
+					// ----------------------------------------
+					//               lead: getAll
+					// ----------------------------------------
+
+					// https://developers.pipedrive.com/docs/api/v1/Leads#getLeads
+
+					const filters = this.getNodeParameter('filters', i) as IDataObject;
+
+					if (Object.keys(filters).length) {
+						Object.assign(qs, filters);
+					}
+
+					requestMethod = 'GET';
+					endpoint = '/leads';
+
+				} else if (operation === 'update') {
+
+					// ----------------------------------------
+					//               lead: update
+					// ----------------------------------------
+
+					// https://developers.pipedrive.com/docs/api/v1/Leads#updateLead
+
+					const { value, expected_close_date, ...rest } = this.getNodeParameter('updateFields', i) as {
+						value: {
+							valueProperties: {
+								amount: number;
+								currency: string;
+							}
+						};
+						expected_close_date: string;
+					};
+
+					if (Object.keys(rest).length) {
+						Object.assign(body, rest);
+					}
+
+					if (value) {
+						Object.assign(body, { value: value.valueProperties });
+					}
+
+					if (expected_close_date) {
+						body.expected_close_date = expected_close_date.split('T')[0];
+					}
+
+					if (Object.keys(rest).length) {
+						Object.assign(body, rest);
+					}
+
+					const leadId = this.getNodeParameter('leadId', i);
+
+					requestMethod = 'PATCH';
+					endpoint = `/leads/${leadId}`;
+
+				}
+
 			} else if (resource === 'note') {
 				if (operation === 'create') {
 					// ----------------------------------
