@@ -5,7 +5,6 @@ import {
 	IVersion,
 	IVersionsState,
 } from '../Interface';
-import { INSTANCE_ID_HEADER } from '@/constants';
 
 const module: Module<IVersionsState, IRootState> = {
 	namespaced: true,
@@ -51,8 +50,7 @@ const module: Module<IVersionsState, IRootState> = {
 				if (enabled && endpoint) {
 					const currentVersion = context.rootState.versionCli;
 					const instanceId = context.rootState.instanceId;
-					const headers = {[INSTANCE_ID_HEADER as string] : instanceId};
-					const versions = await getNextVersions(endpoint, currentVersion, headers);
+					const versions = await getNextVersions(endpoint, currentVersion, instanceId);
 					context.commit('setVersions', {versions, currentVersion});
 				}
 			} catch (e) {
