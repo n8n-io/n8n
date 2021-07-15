@@ -59,7 +59,7 @@ export class CiscoWebex implements INodeType {
 				type: 'options',
 				options: [
 					{
-						name: 'Meeeting',
+						name: 'Meeting',
 						value: 'meeting',
 					},
 					// {
@@ -138,32 +138,33 @@ export class CiscoWebex implements INodeType {
 						// https://developer.webex.com/docs/api/v1/messages/create-a-message
 						for (let i = 0; i < items.length; i++) {
 							const destination = this.getNodeParameter('destination', i);
-							const markdown = this.getNodeParameter('markdown', i);
 							const file = this.getNodeParameter('additionalFields.fileUi.fileValue', i, {}) as IDataObject;
+							const markdown = this.getNodeParameter('additionalFields.markdown', i, '') as boolean;
 							const body = {} as IDataObject;
 							if (destination === 'room') {
 								body['roomId'] = this.getNodeParameter('roomId', i);
 							}
 
-							if (destination === 'personId') {
-								body['toPersonId'] = this.getNodeParameter('toPersonId', i);
+							if (destination === 'person') {
+								const specifyPersonBy = this.getNodeParameter('specifyPersonBy', 0) as string;
+								if (specifyPersonBy === 'id') {
+									body['toPersonId'] = this.getNodeParameter('toPersonId', i);
+								} else {
+									body['toPersonEmail'] = this.getNodeParameter('toPersonEmail', i);
+								}
 							}
 
-							if (destination === 'personEmail') {
-								body['toPersonEmail'] = this.getNodeParameter('toPersonEmail', i);
+							if (markdown) {
+								body['markdown'] = markdown;
 							}
 
-							if (markdown === true) {
-								body['markdown'] = this.getNodeParameter('markdownText', i);
-							} else {
-								body['text'] = this.getNodeParameter('text', i);
-							}
+							body['text'] = this.getNodeParameter('text', i);
 
 							body.attachments = getAttachemnts(this.getNodeParameter('additionalFields.attachmentsUi.attachmentValues', i, []) as IDataObject[]);
 
 							if (Object.keys(file).length) {
 
-								const isBinaryData = file.binaryData;
+								const isBinaryData = file.fileLocation === 'binaryData' ? true : false;
 
 								if (isBinaryData) {
 
@@ -191,7 +192,7 @@ export class CiscoWebex implements INodeType {
 								}
 							}
 
-							if (file.binaryData === true) {
+							if (file.fileLocation === 'binaryData') {
 								responseData = await webexApiRequest.call(this, 'POST', '/messages', {}, {}, undefined, { formData: body });
 							} else {
 								responseData = await webexApiRequest.call(this, 'POST', '/messages', body);
@@ -303,6 +304,12 @@ export class CiscoWebex implements INodeType {
 								...additionalFields,
 							};
 
+							if (body.requireRegistrationInfo) {
+								body['registration'] = (body.requireRegistrationInfo as string[])
+									.reduce((obj, value) => Object.assign(obj, { [`${value}`]: true }), {});
+								delete body.requireRegistrationInfo;
+							}
+
 							if (invitees) {
 								body['invitees'] = invitees;
 								delete body.inviteesUi;
@@ -363,11 +370,13 @@ export class CiscoWebex implements INodeType {
 							}
 
 							if (qs.from) {
-								qs.from = moment.tz(qs.from, timezone).format();
+								qs.from = moment.tz(qs.from, 'utc').format();
+								//qs.from = moment(qs.from as string).utc(true).format();
 							}
 
 							if (qs.to) {
-								qs.to = moment.tz(qs.to, timezone).format();
+								qs.to = moment.tz(qs.to, 'utc').format();
+								//qs.to = moment(qs.to as string).utc(true).format();
 							}
 
 							if (returnAll === true) {
@@ -387,7 +396,7 @@ export class CiscoWebex implements INodeType {
 							const invitees = this.getNodeParameter('updateFields.inviteesUi.inviteeValues', i, []) as IDataObject[];
 							const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
 
-							const { 
+							const {
 								title,
 								password,
 								start,
@@ -397,6 +406,12 @@ export class CiscoWebex implements INodeType {
 							const body: IDataObject = {
 								...updateFields,
 							};
+
+							if (body.requireRegistrationInfo) {
+								body['registration'] = (body.requireRegistrationInfo as string[])
+									.reduce((obj, value) => Object.assign(obj, { [`${value}`]: true }), {});
+								delete body.requireRegistrationInfo;
+							}
 
 							if (invitees.length) {
 								body['invitees'] = invitees;

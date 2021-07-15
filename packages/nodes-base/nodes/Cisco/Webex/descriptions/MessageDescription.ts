@@ -59,12 +59,8 @@ export const messageFields = [
 				value: 'room',
 			},
 			{
-				name: 'Person Email',
-				value: 'personEmail',
-			},
-			{
-				name: 'Person ID',
-				value: 'personId',
+				name: 'Person',
+				value: 'person',
 			},
 		],
 		required: true,
@@ -83,7 +79,7 @@ export const messageFields = [
 	{
 		displayName: 'Room ID',
 		name: 'roomId',
-		description: ' The room ID of the message',
+		description: ' The room ID',
 		type: 'options',
 		typeOptions: {
 			loadOptionsMethod: 'getRooms',
@@ -105,9 +101,39 @@ export const messageFields = [
 		},
 	},
 	{
+		displayName: 'Specify Person By',
+		name: 'specifyPersonBy',
+		type: 'options',
+		options: [
+			{
+				name: 'Email',
+				value: 'email',
+			},
+			{
+				name: 'ID',
+				value: 'id',
+			},
+		],
+		required: true,
+		default: 'email',
+		displayOptions: {
+			show: {
+				resource: [
+					'message',
+				],
+				operation: [
+					'create',
+				],
+				destination: [
+					'person',
+				],
+			},
+		},
+	},
+	{
 		displayName: 'Person ID',
 		name: 'toPersonId',
-		description: 'The person ID of the recipient when sending a private 1:1 message',
+		description: 'The person ID',
 		type: 'string',
 		required: true,
 		default: '',
@@ -119,8 +145,8 @@ export const messageFields = [
 				operation: [
 					'create',
 				],
-				destination: [
-					'personId',
+				specifyPersonBy: [
+					'id',
 				],
 			},
 		},
@@ -128,7 +154,6 @@ export const messageFields = [
 	{
 		displayName: 'Person Email',
 		name: 'toPersonEmail',
-		description: 'The email address of the recipient when sending a private 1:1 message',
 		type: 'string',
 		required: true,
 		default: '',
@@ -140,26 +165,8 @@ export const messageFields = [
 				operation: [
 					'create',
 				],
-				destination: [
-					'personEmail',
-				],
-			},
-		},
-	},
-	{
-		displayName: 'Is Markdown',
-		name: 'markdown',
-		description: 'Whether the message uses markdown',
-		type: 'boolean',
-		required: true,
-		default: false,
-		displayOptions: {
-			show: {
-				resource: [
-					'message',
-				],
-				operation: [
-					'create',
+				specifyPersonBy: [
+					'email',
 				],
 			},
 		},
@@ -178,33 +185,9 @@ export const messageFields = [
 				operation: [
 					'create',
 				],
-				markdown: [
-					false,
-				],
 			},
 		},
 		description: 'The message, in plain text',
-	},
-	{
-		displayName: 'Markdown',
-		name: 'markdownText',
-		description: 'The message, in Markdown format. The maximum message length is 7439 bytes',
-		type: 'string',
-		required: true,
-		default: '',
-		displayOptions: {
-			show: {
-				resource: [
-					'message',
-				],
-				operation: [
-					'create',
-				],
-				markdown: [
-					true,
-				],
-			},
-		},
 	},
 	{
 		displayName: 'Additional Fields',
@@ -370,6 +353,7 @@ export const messageFields = [
 														name: 'text',
 														type: 'string',
 														default: '',
+														required: true,
 														description: 'Text to display. A subset of markdown is supported (https://aka.ms/ACTextFeatures)',
 													},
 													{
@@ -736,26 +720,36 @@ export const messageFields = [
 						displayName: 'File',
 						values: [
 							{
-								displayName: 'Binary Data',
-								name: 'binaryData',
-								type: 'boolean',
-								default: false,
-								description: 'If the file to upload should be taken from binary field',
+								displayName: 'File Location',
+								name: 'fileLocation',
+								type: 'options',
+								options: [
+									{
+										name: 'URL',
+										value: 'url',
+									},
+									{
+										name: 'Binary Data',
+										value: 'binaryData',
+									},
+								],
+								default: 'url',
+								description: '',
 							},
 							{
-								displayName: 'Binary Property',
+								displayName: 'Input Field With File',
 								name: 'binaryPropertyName',
 								type: 'string',
 								default: 'data',
 								required: true,
 								displayOptions: {
 									show: {
-										binaryData: [
-											true,
+										fileLocation: [
+											'binaryData',
 										],
 									},
 								},
-								description: '',
+								description: 'The field in the node input containing the binary file data',
 							},
 							{
 								displayName: 'URL',
@@ -764,16 +758,23 @@ export const messageFields = [
 								default: '',
 								displayOptions: {
 									show: {
-										binaryData: [
-											false,
+										fileLocation: [
+											'url',
 										],
 									},
 								},
-								description: 'The public URL',
+								description: 'The public URL of the file',
 							},
 						],
 					},
 				],
+			},
+			{
+				displayName: 'Markdown',
+				name: 'markdown',
+				type: 'string',
+				default: '',
+				description: 'The message in markdown format. When used the text parameter is used to provide alternate text for UI clients that do not support rich text',
 			},
 		],
 	},
@@ -918,18 +919,18 @@ export const messageFields = [
 				default: '',
 			},
 			{
-				displayName: 'Parent ID',
+				displayName: 'Parent Message ID',
 				name: 'parentId',
 				description: 'List messages with a parent, by ID',
 				type: 'string',
 				default: '',
 			},
 			{
-				displayName: 'Mentioned People',
+				displayName: 'Mentioned Person',
 				name: 'mentionedPeople',
-				description: 'List messages with these people mentioned, by ID. Use me as a shorthand for the current API user. Only me or the person ID of the current user may be specified. Bots must include this parameter to list messages in group rooms (spaces)',
 				type: 'string',
 				default: '',
+				description: `List only messages with certain person mentioned. Enter their ID. You can use 'me' as a shorthand for yourself`,
 			},
 		],
 	},

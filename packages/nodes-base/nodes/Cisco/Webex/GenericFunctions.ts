@@ -37,7 +37,6 @@ export async function webexApiRequest(this: IExecuteFunctions | ILoadOptionsFunc
 		if (Object.keys(qs).length === 0) {
 			delete options.qs;
 		}
-		console.log(options);
 		//@ts-ignore
 		return await this.helpers.requestOAuth2.call(this, 'ciscoWebexOAuth2Api', options, { tokenType: 'Bearer' });
 	} catch (error) {
@@ -150,6 +149,7 @@ export function getActionInheritedProperties() {
 			name: 'title',
 			type: 'string',
 			default: '',
+			required: true,
 			description: 'Label for button or link that represents this action.',
 		},
 		{
