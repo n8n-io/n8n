@@ -36,7 +36,7 @@ export class Coda implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Coda',
 		name: 'coda',
-		icon: 'file:coda.png',
+		icon: 'file:coda.svg',
 		group: ['output'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',

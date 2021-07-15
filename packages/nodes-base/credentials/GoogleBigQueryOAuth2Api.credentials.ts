@@ -1,6 +1,6 @@
 import {
 	ICredentialType,
-	NodePropertyTypes,
+	INodeProperties,
 } from 'n8n-workflow';
 
 const scopes = [
@@ -14,11 +14,11 @@ export class GoogleBigQueryOAuth2Api implements ICredentialType {
 	];
 	displayName = 'Google BigQuery OAuth2 API';
 	documentationUrl = 'google';
-	properties = [
+	properties: INodeProperties[] = [
 		{
 			displayName: 'Scope',
 			name: 'scope',
-			type: 'hidden' as NodePropertyTypes,
+			type: 'hidden',
 			default: scopes.join(' '),
 		},
 	];

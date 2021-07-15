@@ -1,6 +1,6 @@
 import {
 	ICredentialType,
-	NodePropertyTypes,
+	INodeProperties,
 } from 'n8n-workflow';
 
 
@@ -11,45 +11,45 @@ export class LinkedInOAuth2Api implements ICredentialType {
 	];
 	displayName = 'LinkedIn OAuth2 API';
 	documentationUrl = 'linkedIn';
-	properties = [
+	properties: INodeProperties[] = [
 		{
 			displayName: 'Organization Support',
 			name: 'organizationSupport',
-			type: 'boolean' as NodePropertyTypes,
+			type: 'boolean',
 			default: true,
 			description: 'Request permissions to post as an orgaization.',
 		},
 		{
 			displayName: 'Authorization URL',
 			name: 'authUrl',
-			type: 'hidden' as NodePropertyTypes,
+			type: 'hidden',
 			default: 'https://www.linkedin.com/oauth/v2/authorization',
 			required: true,
 		},
 		{
 			displayName: 'Access Token URL',
 			name: 'accessTokenUrl',
-			type: 'hidden' as NodePropertyTypes,
+			type: 'hidden',
 			default: 'https://www.linkedin.com/oauth/v2/accessToken',
 			required: true,
 		},
 		{
 			displayName: 'Scope',
 			name: 'scope',
-			type: 'hidden' as NodePropertyTypes,
+			type: 'hidden',
 			default: '=r_liteprofile,r_emailaddress,w_member_social{{$self["organizationSupport"] === true ? ",w_organization_social":""}}',
 			description: 'Standard scopes for posting on behalf of a user or organization. See <a href="https://docs.microsoft.com/en-us/linkedin/marketing/getting-started#available-permissions"> this resource </a>.',
 		},
 		{
 			displayName: 'Auth URI Query Parameters',
 			name: 'authQueryParameters',
-			type: 'hidden' as NodePropertyTypes,
+			type: 'hidden',
 			default: '',
 		},
 		{
 			displayName: 'Authentication',
 			name: 'authentication',
-			type: 'hidden' as NodePropertyTypes,
+			type: 'hidden',
 			default: 'body',
 		},
 	];

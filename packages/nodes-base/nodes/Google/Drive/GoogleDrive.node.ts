@@ -16,7 +16,7 @@ import {
 	googleApiRequestAllItems,
 } from './GenericFunctions';
 
-import uuid = require('uuid');
+import { v4 as uuid } from 'uuid';
 
 export class GoogleDrive implements INodeType {
 	description: INodeTypeDescription = {
@@ -741,6 +741,7 @@ export class GoogleDrive implements INodeType {
 				placeholder: '',
 				description: 'Name of the binary property which contains<br />the data for the file to be uploaded.',
 			},
+
 			// ----------------------------------
 			//         file:update
 			// ----------------------------------
@@ -1898,6 +1899,91 @@ export class GoogleDrive implements INodeType {
 					},
 				],
 			},
+			{
+				displayName: 'Options',
+				name: 'options',
+				type: 'collection',
+				placeholder: 'Add Option',
+				default: {},
+				displayOptions: {
+					show: {
+						operation: [
+							'upload',
+						],
+						resource: [
+							'file',
+						],
+					},
+				},
+				options: [
+					{
+						displayName: 'APP Properties',
+						name: 'appPropertiesUi',
+						placeholder: 'Add Property',
+						type: 'fixedCollection',
+						default: '',
+						typeOptions: {
+							multipleValues: true,
+						},
+						description: 'A collection of arbitrary key-value pairs which are private to the requesting app',
+						options: [
+							{
+								name: 'appPropertyValues',
+								displayName: 'APP Property',
+								values: [
+									{
+										displayName: 'Key',
+										name: 'key',
+										type: 'string',
+										default: '',
+										description: 'Name of the key to add.',
+									},
+									{
+										displayName: 'Value',
+										name: 'value',
+										type: 'string',
+										default: '',
+										description: 'Value to set for the key.',
+									},
+								],
+							},
+						],
+					},
+					{
+						displayName: 'Properties',
+						name: 'propertiesUi',
+						placeholder: 'Add Property',
+						type: 'fixedCollection',
+						default: '',
+						typeOptions: {
+							multipleValues: true,
+						},
+						description: 'A collection of arbitrary key-value pairs which are visible to all apps.',
+						options: [
+							{
+								name: 'propertyValues',
+								displayName: 'Property',
+								values: [
+									{
+										displayName: 'Key',
+										name: 'key',
+										type: 'string',
+										default: '',
+										description: 'Name of the key to add.',
+									},
+									{
+										displayName: 'Value',
+										name: 'value',
+										type: 'string',
+										default: '',
+										description: 'Value to set for the key.',
+									},
+								],
+							},
+						],
+					},
+				],
+			},
 		],
 	};
 
@@ -2227,6 +2313,18 @@ export class GoogleDrive implements INodeType {
 						name,
 						originalFilename,
 					};
+
+					const properties = this.getNodeParameter('options.propertiesUi.propertyValues', i, []) as IDataObject[];
+
+					if (properties.length) {
+						Object.assign(body, { properties: properties.reduce((obj, value) => Object.assign(obj, { [`${value.key}`]: value.value }), {}) } );	
+					}
+
+					const appProperties = this.getNodeParameter('options.appPropertiesUi.appPropertyValues', i, []) as IDataObject[];
+
+					if (properties.length) {
+						Object.assign(body, { appProperties: appProperties.reduce((obj, value) => Object.assign(obj, { [`${value.key}`]: value.value }), {}) });
+					}
 
 					qs = {
 						addParents: parents.join(','),

@@ -42,7 +42,7 @@ export class MicrosoftExcel implements INodeType {
 		group: ['input'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
-		description: 'Consume Microsoft Excel API.',
+		description: 'Consume Microsoft Excel API',
 		defaults: {
 			name: 'Microsoft Excel',
 			color: '#1c6d40',

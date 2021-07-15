@@ -408,6 +408,9 @@ export default mixins(
 					const workflowData = await this.getWorkflowDataToSave();
 
 					const {tags, ...data} = workflowData;
+					if (data.id && typeof data.id === 'string') {
+						data.id = parseInt(data.id, 10);
+					}
 					const blob = new Blob([JSON.stringify(data, null, 2)], {
 						type: 'application/json;charset=utf-8',
 					});
@@ -431,7 +434,11 @@ export default mixins(
 						const importConfirm = await this.confirmMessage(`When you switch workflows your current workflow changes will be lost.`, 'Save your Changes?', 'warning', 'Yes, switch workflows and forget changes');
 						if (importConfirm === true) {
 							this.$store.commit('setStateDirty', false);
-							this.$router.push({ name: 'NodeViewNew' });
+							if (this.$router.currentRoute.name === 'NodeViewNew') {
+								this.$root.$emit('newWorkflow');
+							} else {
+								this.$router.push({ name: 'NodeViewNew' });
+							}
 
 							this.$showMessage({
 								title: 'Workflow created',
@@ -440,7 +447,9 @@ export default mixins(
 							});
 						}
 					} else {
-						this.$router.push({ name: 'NodeViewNew' });
+						if (this.$router.currentRoute.name !== 'NodeViewNew') {
+							this.$router.push({ name: 'NodeViewNew' });
+						}
 
 						this.$showMessage({
 							title: 'Workflow created',
