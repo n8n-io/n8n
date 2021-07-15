@@ -1,7 +1,7 @@
 <template>
 	<div>
 		<SlideTransition>
-			<div class="node-creator" v-if="active" v-click-outside="closeCreator">
+			<div class="node-creator" v-if="active" v-click-outside="onClickOutside">
 				<MainPanel @nodeTypeSelected="nodeTypeSelected" :categorizedItems="categorizedItems" :categoriesWithNodes="categoriesWithNodes" :searchItems="searchItems"></MainPanel>
 			</div>
 		</SlideTransition>
@@ -29,9 +29,17 @@ export default Vue.extend({
 	props: [
 		'active',
 	],
+	data() {
+		return {
+			allNodeTypes: [],
+		};
+	},
 	computed: {
+		nodeTypes(): INodeTypeDescription[] {
+			return this.$store.getters.allNodeTypes;
+		},
 		visibleNodeTypes(): INodeTypeDescription[] {
-			return this.$store.getters.allNodeTypes
+			return this.allNodeTypes
 				.filter((nodeType: INodeTypeDescription) => {
 					return !HIDDEN_NODES.includes(nodeType.name);
 				});
@@ -64,11 +72,20 @@ export default Vue.extend({
 		},
 	},
 	methods: {
-		closeCreator () {
-			this.$emit('closeNodeCreator');
+		onClickOutside (e: Event) {
+			if (e.type === 'click') {
+				this.$emit('closeNodeCreator');
+			}
 		},
 		nodeTypeSelected (nodeTypeName: string) {
 			this.$emit('nodeTypeSelected', nodeTypeName);
+		},
+	},
+	watch: {
+		nodeTypes(newList, prevList) {
+			if (prevList.length === 0) {
+				this.allNodeTypes = newList;
+			}
 		},
 	},
 });

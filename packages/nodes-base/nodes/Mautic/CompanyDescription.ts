@@ -69,7 +69,7 @@ export const companyFields = [
 		description: 'The name of the company to create.',
 	},
 	{
-		displayName: 'Simple',
+		displayName: 'Simplify Response',
 		name: 'simple',
 		type: 'boolean',
 		displayOptions: {
@@ -83,7 +83,7 @@ export const companyFields = [
 			},
 		},
 		default: true,
-		description: 'When set to true a simplify version of the response will be used else the raw data.',
+		description: 'Return a simplified version of the response instead of the raw data.',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -139,7 +139,7 @@ export const companyFields = [
 		description: 'The ID of the company to update.',
 	},
 	{
-		displayName: 'Simple',
+		displayName: 'Simplify Response',
 		name: 'simple',
 		type: 'boolean',
 		displayOptions: {
@@ -153,7 +153,7 @@ export const companyFields = [
 			},
 		},
 		default: true,
-		description: 'When set to true a simplify version of the response will be used else the raw data.',
+		description: 'Return a simplified version of the response instead of the raw data.',
 	},
 	{
 		displayName: 'Update Fields',
@@ -216,7 +216,7 @@ export const companyFields = [
 		description: 'The ID of the company to return.',
 	},
 	{
-		displayName: 'Simple',
+		displayName: 'Simplify Response',
 		name: 'simple',
 		type: 'boolean',
 		displayOptions: {
@@ -230,7 +230,7 @@ export const companyFields = [
 			},
 		},
 		default: true,
-		description: 'When set to true a simplify version of the response will be used else the raw data.',
+		description: 'Return a simplified version of the response instead of the raw data.',
 	},
 
 	/* -------------------------------------------------------------------------- */
@@ -278,7 +278,7 @@ export const companyFields = [
 		description: 'How many results to return.',
 	},
 	{
-		displayName: 'Simple',
+		displayName: 'Simplify Response',
 		name: 'simple',
 		type: 'boolean',
 		displayOptions: {
@@ -292,7 +292,7 @@ export const companyFields = [
 			},
 		},
 		default: true,
-		description: 'When set to true a simplify version of the response will be used else the raw data.',
+		description: 'Return a simplified version of the response instead of the raw data.',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -368,7 +368,7 @@ export const companyFields = [
 		description: 'The ID of the company to delete.',
 	},
 	{
-		displayName: 'Simple',
+		displayName: 'Simplify Response',
 		name: 'simple',
 		type: 'boolean',
 		displayOptions: {
@@ -382,6 +382,6 @@ export const companyFields = [
 			},
 		},
 		default: true,
-		description: 'When set to true a simplify version of the response will be used else the raw data.',
+		description: 'Return a simplified version of the response instead of the raw data.',
 	},
 ] as INodeProperties[];

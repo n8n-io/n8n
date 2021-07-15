@@ -515,7 +515,7 @@ export class Egoi implements INodeType {
 				description: 'How many results to return.',
 			},
 			{
-				displayName: 'Simple',
+				displayName: 'Simplify Response',
 				name: 'simple',
 				type: 'boolean',
 				displayOptions: {
@@ -530,7 +530,7 @@ export class Egoi implements INodeType {
 					},
 				},
 				default: true,
-				description: 'When set to true a simple version of the response will be returned else the RAW data.',
+				description: 'Return a simplified version of the response instead of the raw data.',
 			},
 		],
 	};

@@ -35,7 +35,7 @@ export class EmailReadImap implements INodeType {
 		icon: 'fa:inbox',
 		group: ['trigger'],
 		version: 1,
-		description: 'Triggers the workflow when a new email gets received',
+		description: 'Triggers the workflow when a new email is received',
 		defaults: {
 			name: 'IMAP Email',
 			color: '#44AA22',
