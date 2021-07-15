@@ -56,7 +56,9 @@ import {
 } from './QueryFunctions';
 
 import {
+	buildCustomFieldSearch,
 	mapResource,
+	prepareCustomFields,
 	prepareOptional,
 	prepareRangeQuery,
 	prepareSortQuery,
@@ -180,6 +182,31 @@ export class TheHive implements INodeType {
 				}
 				return returnData;
 			},
+			async loadCustomFields(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const version = this.getCredentials('theHiveApi')?.apiVersion;
+				const endpoint = version === 'v1' ? '/customField' : '/list/custom_fields';
+
+				const requestResult = await theHiveApiRequest.call(
+					this,
+					'GET',
+					endpoint as string,
+				);
+
+				const returnData: INodePropertyOptions[] = [];
+
+				// Convert TheHive3 response to the same format as TheHive 4
+				const customFields = version === 'v1' ? requestResult : Object.keys(requestResult).map(key => requestResult[key]);
+
+				for (const field of customFields) {
+					returnData.push({
+						name: `${field.name}: ${field.reference}`,
+						value: field.reference,
+						description: `${field.type}: ${field.description}`,
+					} as INodePropertyOptions);
+				}
+
+				return returnData;
+			},
 			async loadObservableOptions(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				// if v1 is not used we remove 'count' option
 				const version = this.getCredentials('theHiveApi')?.apiVersion;
@@ -296,9 +323,16 @@ export class TheHive implements INodeType {
 		for (let i = 0; i < length; i++) {
 			if (resource === 'alert') {
 				if (operation === 'count') {
-					const countQueryAttributs: any = prepareOptional(this.getNodeParameter('filters', i, {}) as INodeParameters); // tslint:disable-line:no-any
-
+					const filters = this.getNodeParameter('filters', i, {}) as INodeParameters;
+					const countQueryAttributs: any = prepareOptional(filters); // tslint:disable-line:no-any
+					
 					const _countSearchQuery: IQueryObject = And();
+
+					if ('customFieldsUi' in filters) {
+						const customFields = await prepareCustomFields.call(this, filters) as IDataObject;
+						const searchQueries = buildCustomFieldSearch(customFields);
+						(_countSearchQuery['_and'] as IQueryObject[]).push(...searchQueries);
+					}
 
 					for (const key of Object.keys(countQueryAttributs)) {
 						if (key === 'tags') {
@@ -348,6 +382,10 @@ export class TheHive implements INodeType {
 				}
 
 				if (operation === 'create') {
+					const additionalFields = this.getNodeParameter('additionalFields', i) as INodeParameters;
+					const jsonParameters = this.getNodeParameter('jsonParameters', i) as boolean;
+
+					const customFields = await prepareCustomFields.call(this, additionalFields, jsonParameters);
 					const body: IDataObject = {
 						title: this.getNodeParameter('title', i),
 						description: this.getNodeParameter('description', i),
@@ -360,7 +398,8 @@ export class TheHive implements INodeType {
 						source: this.getNodeParameter('source', i),
 						sourceRef: this.getNodeParameter('sourceRef', i),
 						follow: this.getNodeParameter('follow', i, true),
-						...prepareOptional(this.getNodeParameter('optionals', i, {}) as INodeParameters),
+						customFields,
+						...prepareOptional(additionalFields),
 					};
 
 					const artifactUi = this.getNodeParameter('artifactUi', i) as IDataObject;
@@ -497,11 +536,17 @@ export class TheHive implements INodeType {
 
 					const version = credentials.apiVersion;
 
-					const queryAttributs: any = prepareOptional(this.getNodeParameter('filters', i, {}) as INodeParameters); // tslint:disable-line:no-any
-
+					const filters = this.getNodeParameter('filters', i, {}) as INodeParameters;
+					const queryAttributs: any = prepareOptional(filters); // tslint:disable-line:no-any
 					const options = this.getNodeParameter('options', i) as IDataObject;
 
 					const _searchQuery: IQueryObject = And();
+
+					if ('customFieldsUi' in filters) {
+						const customFields = await prepareCustomFields.call(this, filters) as IDataObject;
+						const searchQueries = buildCustomFieldSearch(customFields);
+						(_searchQuery['_and'] as IQueryObject[]).push(...searchQueries);
+					}
 
 					for (const key of Object.keys(queryAttributs)) {
 						if (key === 'tags') {
@@ -634,14 +679,18 @@ export class TheHive implements INodeType {
 
 				if (operation === 'update') {
 					const alertId = this.getNodeParameter('id', i) as string;
+					const jsonParameters = this.getNodeParameter('jsonParameters', i) as boolean;
 
 					const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+					const customFields = await prepareCustomFields.call(this, updateFields, jsonParameters);
 
 					const artifactUi = updateFields.artifactUi as IDataObject;
 
 					delete updateFields.artifactUi;
 
-					const body: IDataObject = {};
+					const body: IDataObject = {
+						customFields,
+					};
 
 					Object.assign(body, updateFields);
 
@@ -1149,9 +1198,16 @@ export class TheHive implements INodeType {
 
 			if (resource === 'case') {
 				if (operation === 'count') {
-					const countQueryAttributs: any = prepareOptional(this.getNodeParameter('filters', i, {}) as INodeParameters); // tslint:disable-line:no-any
+					const filters = this.getNodeParameter('filters', i, {}) as INodeParameters;
+					const countQueryAttributs: any = prepareOptional(filters); // tslint:disable-line:no-any
 
 					const _countSearchQuery: IQueryObject = And();
+
+					if ('customFieldsUi' in filters) {
+						const customFields = await prepareCustomFields.call(this, filters) as IDataObject;
+						const searchQueries = buildCustomFieldSearch(customFields);
+						(_countSearchQuery['_and'] as IQueryObject[]).push(...searchQueries);
+					}
 
 					for (const key of Object.keys(countQueryAttributs)) {
 						if (key === 'tags') {
@@ -1258,6 +1314,9 @@ export class TheHive implements INodeType {
 				}
 
 				if (operation === 'create') {
+					const options = this.getNodeParameter('options', i, {}) as INodeParameters;
+					const jsonParameters = this.getNodeParameter('jsonParameters', i) as boolean;
+					const customFields = await prepareCustomFields.call(this, options, jsonParameters);
 
 					const body: IDataObject = {
 						title: this.getNodeParameter('title', i),
@@ -1268,7 +1327,8 @@ export class TheHive implements INodeType {
 						flag: this.getNodeParameter('flag', i),
 						tlp: this.getNodeParameter('tlp', i),
 						tags: splitTags(this.getNodeParameter('tags', i) as string),
-						...prepareOptional(this.getNodeParameter('options', i, {}) as INodeParameters),
+						customFields,
+						...prepareOptional(options),
 					};
 
 					responseData = await theHiveApiRequest.call(
@@ -1333,11 +1393,18 @@ export class TheHive implements INodeType {
 
 					const version = credentials.apiVersion;
 
-					const queryAttributs: any = prepareOptional(this.getNodeParameter('filters', i, {}) as INodeParameters); // tslint:disable-line:no-any
-
+					const filters = this.getNodeParameter('filters', i, {}) as INodeParameters;
+					const queryAttributs: any = prepareOptional(filters); // tslint:disable-line:no-any
+					
 					const _searchQuery: IQueryObject = And();
 
 					const options = this.getNodeParameter('options', i) as IDataObject;
+
+					if ('customFieldsUi' in filters) {
+						const customFields = await prepareCustomFields.call(this, filters) as IDataObject;
+						const searchQueries = buildCustomFieldSearch(customFields);
+						(_searchQuery['_and'] as IQueryObject[]).push(...searchQueries);
+					}
 
 					for (const key of Object.keys(queryAttributs)) {
 						if (key === 'tags') {
@@ -1419,9 +1486,14 @@ export class TheHive implements INodeType {
 
 				if (operation === 'update') {
 					const id = this.getNodeParameter('id', i) as string;
+					const updateFields = this.getNodeParameter('updateFields', i, {}) as INodeParameters;
+					const jsonParameters = this.getNodeParameter('jsonParameters', i) as boolean;
+
+					const customFields = await prepareCustomFields.call(this, updateFields, jsonParameters);
 
 					const body: IDataObject = {
-						...prepareOptional(this.getNodeParameter('updateFields', i, {}) as INodeParameters),
+						customFields,
+						...prepareOptional(updateFields),
 					};
 
 					responseData = await theHiveApiRequest.call(
