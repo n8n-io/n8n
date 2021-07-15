@@ -90,7 +90,7 @@ export async function apiRequestAllItems(this: IHookFunctions | IExecuteFunction
 		query = {};
 	}
 	query.limit = 100;
-	query.offset = 0;
+	query.offset = query?.offset ? query.offset as number : 0;
 	const returnData: IDataObject[] = [];
 
 	let responseData;
