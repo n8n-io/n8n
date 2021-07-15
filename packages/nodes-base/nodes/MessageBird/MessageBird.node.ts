@@ -22,7 +22,7 @@ export class MessageBird implements INodeType {
 		group: ['output'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
-		description: 'Sending SMS',
+		description: 'Sends SMS via MessageBird',
 		defaults: {
 			name: 'MessageBird',
 			color: '#2481d7',

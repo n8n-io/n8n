@@ -28,6 +28,16 @@
 				"url": "https://n8n.io/blog/2021-the-year-to-automate-the-new-you-with-n8n/"
 			},
 			{
+				"label": "How to build a low-code, self-hosted URL shortener in 3 steps",
+				"icon": "🔗",
+				"url": "https://n8n.io/blog/how-to-build-a-low-code-self-hosted-url-shortener/"
+			},
+			{
+				"label": "15 Google apps you can combine and automate to increase productivity",
+				"icon": "💡",
+				"url": "https://n8n.io/blog/automate-google-apps-for-productivity/"
+			},
+			{
 				"label": "Building an expense tracking app in 10 minutes",
 				"icon": "📱",
 				"url": "https://n8n.io/blog/building-an-expense-tracking-app-in-10-minutes/"

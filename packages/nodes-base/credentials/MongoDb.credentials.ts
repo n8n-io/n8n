@@ -1,14 +1,14 @@
-import { ICredentialType, NodePropertyTypes } from 'n8n-workflow';
+import { ICredentialType, INodeProperties } from 'n8n-workflow';
 
 export class MongoDb implements ICredentialType {
 	name = 'mongoDb';
 	displayName = 'MongoDB';
 	documentationUrl = 'mongoDb';
-	properties = [
+	properties: INodeProperties[] = [
 		{
 			displayName: 'Configuration Type',
 			name: 'configurationType',
-			type: 'options' as NodePropertyTypes,
+			type: 'options',
 			options: [
 				{
 					name: 'Connection String',
@@ -27,7 +27,7 @@ export class MongoDb implements ICredentialType {
 		{
 			displayName: 'Connection String',
 			name: 'connectionString',
-			type: 'string' as NodePropertyTypes,
+			type: 'string',
 			displayOptions: {
 				show: {
 					configurationType: [
@@ -44,7 +44,7 @@ export class MongoDb implements ICredentialType {
 		{
 			displayName: 'Host',
 			name: 'host',
-			type: 'string' as NodePropertyTypes,
+			type: 'string',
 			displayOptions: {
 				show: {
 					configurationType: [
@@ -57,14 +57,14 @@ export class MongoDb implements ICredentialType {
 		{
 			displayName: 'Database',
 			name: 'database',
-			type: 'string' as NodePropertyTypes,
+			type: 'string',
 			default: '',
 			description: 'Note: the database should still be provided even if using an override connection string',
 		},
 		{
 			displayName: 'User',
 			name: 'user',
-			type: 'string' as NodePropertyTypes,
+			type: 'string',
 			displayOptions: {
 				show: {
 					configurationType: [
@@ -77,7 +77,7 @@ export class MongoDb implements ICredentialType {
 		{
 			displayName: 'Password',
 			name: 'password',
-			type: 'string' as NodePropertyTypes,
+			type: 'string',
 			typeOptions: {
 				password: true,
 			},
@@ -93,7 +93,7 @@ export class MongoDb implements ICredentialType {
 		{
 			displayName: 'Port',
 			name: 'port',
-			type: 'number' as NodePropertyTypes,
+			type: 'number',
 			displayOptions: {
 				show: {
 					configurationType: [

@@ -49,6 +49,11 @@
 				"url": "https://n8n.io/blog/migrating-community-metrics-to-orbit-using-n8n/"
 			},
 			{
+				"label": "15 Google apps you can combine and automate to increase productivity",
+				"icon": "💡",
+				"url": "https://n8n.io/blog/automate-google-apps-for-productivity/"
+			},
+			{
 				"label": "Hey founders! Your business doesn't need you to operate",
 				"icon": " 🖥️",
 				"url": "https://n8n.io/blog/your-business-doesnt-need-you-to-operate/"
@@ -74,5 +79,10 @@
 				"url": "https://n8n.io/blog/sending-automated-congratulations-with-google-sheets-twilio-and-n8n/"
 			}
 		]
-	}
+	},
+	"alias": [
+		"CSV",
+		"Spreadsheet",
+		"GS"
+	]
 }
