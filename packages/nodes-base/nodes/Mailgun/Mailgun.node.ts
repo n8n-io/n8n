@@ -16,10 +16,10 @@ export class Mailgun implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Mailgun',
 		name: 'mailgun',
-		icon: 'file:mailgun.png',
+		icon: 'file:mailgun.svg',
 		group: ['output'],
 		version: 1,
-		description: 'Sends an Email via Mailgun',
+		description: 'Sends an email via Mailgun',
 		defaults: {
 			name: 'Mailgun',
 			color: '#c02428',

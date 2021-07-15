@@ -26,7 +26,7 @@ export class Vero implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Vero',
 		name: 'vero',
-		icon: 'file:vero.png',
+		icon: 'file:vero.svg',
 		group: ['output'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',

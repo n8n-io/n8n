@@ -37,13 +37,13 @@ import {
 	ITrack,
 } from './TrackInterface';
 
-import * as uuid from 'uuid/v4';
+import { v4 as uuid } from 'uuid';
 
 export class Segment implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Segment',
 		name: 'segment',
-		icon: 'file:segment.png',
+		icon: 'file:segment.svg',
 		group: ['output'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ":" + $parameter["resource"]}}',

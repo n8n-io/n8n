@@ -16,7 +16,7 @@ export class AwsSns implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'AWS SNS',
 		name: 'awsSns',
-		icon: 'file:sns.png',
+		icon: 'file:sns.svg',
 		group: ['output'],
 		version: 1,
 		subtitle: '={{$parameter["topic"]}}',

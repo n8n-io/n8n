@@ -19,18 +19,24 @@ import router from './router';
 
 import { runExternalHook } from './components/mixins/externalHooks';
 
+// @ts-ignore
+import vClickOutside from 'v-click-outside';
+
 import { library } from '@fortawesome/fontawesome-svg-core';
 import {
 	faAngleDoubleLeft,
 	faAngleDown,
 	faAngleRight,
 	faAngleUp,
+	faArrowLeft,
 	faArrowRight,
 	faAt,
 	faBook,
 	faBug,
 	faCalendar,
 	faCheck,
+	faChevronDown,
+	faChevronUp,
 	faCode,
 	faCodeBranch,
 	faCog,
@@ -45,6 +51,7 @@ import {
 	faEnvelope,
 	faEye,
 	faExclamationTriangle,
+	faExpand,
 	faExternalLinkAlt,
 	faExchangeAlt,
 	faFile,
@@ -70,11 +77,13 @@ import {
 	faPlay,
 	faPlayCircle,
 	faPlus,
+	faPlusCircle,
 	faQuestion,
 	faQuestionCircle,
 	faRedo,
 	faRss,
 	faSave,
+	faSearch,
 	faSearchMinus,
 	faSearchPlus,
 	faServer,
@@ -102,17 +111,21 @@ import { store } from './store';
 Vue.use(Vue2TouchEvents);
 
 Vue.use(ElementUI, { locale });
+Vue.use(vClickOutside);
 
 library.add(faAngleDoubleLeft);
 library.add(faAngleDown);
 library.add(faAngleRight);
 library.add(faAngleUp);
+library.add(faArrowLeft);
 library.add(faArrowRight);
 library.add(faAt);
 library.add(faBook);
 library.add(faBug);
 library.add(faCalendar);
 library.add(faCheck);
+library.add(faChevronDown);
+library.add(faChevronUp);
 library.add(faCode);
 library.add(faCodeBranch);
 library.add(faCog);
@@ -127,6 +140,7 @@ library.add(faEdit);
 library.add(faEnvelope);
 library.add(faEye);
 library.add(faExclamationTriangle);
+library.add(faExpand);
 library.add(faExternalLinkAlt);
 library.add(faExchangeAlt);
 library.add(faFile);
@@ -152,11 +166,13 @@ library.add(faPen);
 library.add(faPlay);
 library.add(faPlayCircle);
 library.add(faPlus);
+library.add(faPlusCircle);
 library.add(faQuestion);
 library.add(faQuestionCircle);
 library.add(faRedo);
 library.add(faRss);
 library.add(faSave);
+library.add(faSearch);
 library.add(faSearchMinus);
 library.add(faSearchPlus);
 library.add(faServer);

@@ -17,6 +17,7 @@ import {
 
 interface IBodyCreateTask {
 	content: string;
+	description?: string;
 	project_id?: number;
 	section_id?: number;
 	parent?: number;
@@ -34,7 +35,7 @@ export class Todoist implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Todoist',
 		name: 'todoist',
-		icon: 'file:todoist.png',
+		icon: 'file:todoist.svg',
 		group: ['output'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
@@ -248,6 +249,13 @@ export class Todoist implements INodeType {
 					},
 				},
 				options: [
+					{
+						displayName: 'Description',
+						name: 'description',
+						type: 'string',
+						default: '',
+						description: 'A description for the task.',
+					},
 					{
 						displayName: 'Due Date Time',
 						name: 'dueDateTime',
@@ -477,29 +485,33 @@ export class Todoist implements INodeType {
 						const projectId = this.getNodeParameter('project', i) as number;
 						const labels = this.getNodeParameter('labels', i) as number[];
 						const options = this.getNodeParameter('options', i) as IDataObject;
-
+	
 						const body: IBodyCreateTask = {
 							content,
 							project_id: projectId,
 							priority: (options.priority!) ? parseInt(options.priority as string, 10) : 1,
 						};
-
+	
+						if (options.description) {
+							body.description = options.description as string;
+						}
+	
 						if (options.dueDateTime) {
 							body.due_datetime = options.dueDateTime as string;
 						}
-
+	
 						if (options.dueString) {
 							body.due_string = options.dueString as string;
 						}
-
+	
 						if (labels !== undefined && labels.length !== 0) {
 							body.label_ids = labels;
 						}
-
+	
 						if (options.section) {
 							body.section_id = options.section as number;
 						}
-
+	
 						responseData = await todoistApiRequest.call(this, 'POST', '/tasks', body);
 					}
 					if (operation === 'close') {

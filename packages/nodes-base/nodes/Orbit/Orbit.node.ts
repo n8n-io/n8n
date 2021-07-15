@@ -415,10 +415,12 @@ export class Orbit implements INodeType {
 						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 						const body: IDataObject = {
 							type: 'post',
+							activity_type: 'post',
 							url,
 						};
 						if (additionalFields.publishedAt) {
 							body.occurred_at = additionalFields.publishedAt as string;
+							delete body.publishedAt;
 						}
 
 						responseData = await orbitApiRequest.call(this, 'POST', `/${workspaceId}/members/${memberId}/activities/`, body);
@@ -466,3 +468,14 @@ export class Orbit implements INodeType {
 		return [this.helpers.returnJsonArray(returnData)];
 	}
 }
+
+
+
+
+
+
+
+
+
+
+

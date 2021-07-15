@@ -27,7 +27,7 @@ export class Pushover implements INodeType {
 		group: ['input'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
-		description: 'Consume Pushover API.',
+		description: 'Consume Pushover API',
 		defaults: {
 			name: 'Pushover',
 			color: '#4b9cea',

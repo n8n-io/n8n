@@ -1036,12 +1036,12 @@ export class Slack implements INodeType {
 					if (operation === 'get') {
 						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 
-						const body: IDataObject = {};
-
-						Object.assign(body, additionalFields);
-
-						responseData = await slackApiRequest.call(this, 'POST', '/users.profile.get', body);
-
+						const qs: IDataObject = {};
+	
+						Object.assign(qs, additionalFields);
+	
+						responseData = await slackApiRequest.call(this, 'POST', '/users.profile.get', undefined, qs);
+	
 						responseData = responseData.profile;
 					}
 				}

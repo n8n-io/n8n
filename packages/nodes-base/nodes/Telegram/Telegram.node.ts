@@ -24,7 +24,7 @@ export class Telegram implements INodeType {
 		group: ['output'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
-		description: 'Sends data to Telegram.',
+		description: 'Sends data to Telegram',
 		defaults: {
 			name: 'Telegram',
 			color: '#0088cc',
@@ -201,6 +201,11 @@ export class Telegram implements INodeType {
 				},
 				options: [
 					{
+						name: 'Delete Chat Message',
+						value: 'deleteMessage',
+						description: 'Delete a chat message',
+					},
+					{
 						name: 'Edit Message Text',
 						value: 'editMessageText',
 						description: 'Edit a text message',
@@ -209,11 +214,6 @@ export class Telegram implements INodeType {
 						name: 'Pin Chat Message',
 						value: 'pinChatMessage',
 						description: 'Pin a chat message',
-					},
-					{
-						name: 'Unpin Chat Message',
-						value: 'unpinChatMessage',
-						description: 'Unpin a chat message',
 					},
 					{
 						name: 'Send Animation',
@@ -241,14 +241,14 @@ export class Telegram implements INodeType {
 						description: 'Send a location',
 					},
 					{
-						name: 'Send Message',
-						value: 'sendMessage',
-						description: 'Send a text message',
-					},
-					{
 						name: 'Send Media Group',
 						value: 'sendMediaGroup',
 						description: 'Send group of photos or videos to album',
+					},
+					{
+						name: 'Send Message',
+						value: 'sendMessage',
+						description: 'Send a text message',
 					},
 					{
 						name: 'Send Photo',
@@ -264,6 +264,11 @@ export class Telegram implements INodeType {
 						name: 'Send Video',
 						value: 'sendVideo',
 						description: 'Send a video',
+					},
+					{
+						name: 'Unpin Chat Message',
+						value: 'unpinChatMessage',
+						description: 'Unpin a chat message',
 					},
 				],
 				default: 'sendMessage',
@@ -283,11 +288,11 @@ export class Telegram implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
+							'deleteMessage',
 							'get',
 							'leave',
 							'member',
 							'pinChatMessage',
-							'unpinChatMessage',
 							'setDescription',
 							'setTitle',
 							'sendAnimation',
@@ -300,6 +305,7 @@ export class Telegram implements INodeType {
 							'sendPhoto',
 							'sendSticker',
 							'sendVideo',
+							'unpinChatMessage',
 						],
 						resource: [
 							'chat',
@@ -309,6 +315,28 @@ export class Telegram implements INodeType {
 				},
 				required: true,
 				description: 'Unique identifier for the target chat or username of the target<br />channel (in the format @channelusername).',
+			},
+
+			// ----------------------------------
+			//       message:deleteMessage
+			// ----------------------------------
+			{
+				displayName: 'Message ID',
+				name: 'messageId',
+				type: 'string',
+				default: '',
+				displayOptions: {
+					show: {
+						operation: [
+							'deleteMessage',
+						],
+						resource: [
+							'message',
+						],
+					},
+				},
+				required: true,
+				description: 'Unique identifier of the message to delete.',
 			},
 
 			// ----------------------------------
@@ -1833,137 +1861,147 @@ export class Telegram implements INodeType {
 						// ----------------------------------
 						//         message:editMessageText
 						// ----------------------------------
-
+	
 						endpoint = 'editMessageText';
-
+	
 						const messageType = this.getNodeParameter('messageType', i) as string;
-
+	
 						if (messageType === 'inlineMessage') {
 							body.inline_message_id = this.getNodeParameter('inlineMessageId', i) as string;
 						} else {
 							body.chat_id = this.getNodeParameter('chatId', i) as string;
 							body.message_id = this.getNodeParameter('messageId', i) as string;
 						}
-
+	
 						body.text = this.getNodeParameter('text', i) as string;
-
+	
 						// Add additional fields and replyMarkup
 						addAdditionalFields.call(this, body, i);
-
+	
+					} else if (operation === 'deleteMessage') {
+						// ----------------------------------
+						//       message:deleteMessage
+						// ----------------------------------
+	
+						endpoint = 'deleteMessage';
+	
+						body.chat_id = this.getNodeParameter('chatId', i) as string;
+						body.message_id = this.getNodeParameter('messageId', i) as string;
+	
 					} else if (operation === 'pinChatMessage') {
 						// ----------------------------------
 						//        message:pinChatMessage
 						// ----------------------------------
-
+	
 						endpoint = 'pinChatMessage';
-
+	
 						body.chat_id = this.getNodeParameter('chatId', i) as string;
 						body.message_id = this.getNodeParameter('messageId', i) as string;
-
+	
 						const { disable_notification } = this.getNodeParameter('additionalFields', i) as IDataObject;
 						if (disable_notification) {
 							body.disable_notification = true;
 						}
-
+	
 					} else if (operation === 'unpinChatMessage') {
 						// ----------------------------------
 						//        message:unpinChatMessage
 						// ----------------------------------
-
+	
 						endpoint = 'unpinChatMessage';
-
+	
 						body.chat_id = this.getNodeParameter('chatId', i) as string;
 						body.message_id = this.getNodeParameter('messageId', i) as string;
-
+	
 					} else if (operation === 'sendAnimation') {
 						// ----------------------------------
 						//         message:sendAnimation
 						// ----------------------------------
-
+	
 						endpoint = 'sendAnimation';
-
+	
 						body.chat_id = this.getNodeParameter('chatId', i) as string;
 						body.animation = this.getNodeParameter('file', i) as string;
-
+	
 						// Add additional fields and replyMarkup
 						addAdditionalFields.call(this, body, i);
-
-
+	
+	
 					} else if (operation === 'sendAudio') {
 						// ----------------------------------
 						//         message:sendAudio
 						// ----------------------------------
-
+	
 						endpoint = 'sendAudio';
-
+	
 						body.chat_id = this.getNodeParameter('chatId', i) as string;
 						body.audio = this.getNodeParameter('file', i) as string;
-
+	
 						// Add additional fields and replyMarkup
 						addAdditionalFields.call(this, body, i);
-
+	
 					} else if (operation === 'sendChatAction') {
 						// ----------------------------------
 						//         message:sendChatAction
 						// ----------------------------------
-
+	
 						endpoint = 'sendChatAction';
-
+	
 						body.chat_id = this.getNodeParameter('chatId', i) as string;
 						body.action = this.getNodeParameter('action', i) as string;
-
+	
 					} else if (operation === 'sendDocument') {
 						// ----------------------------------
 						//         message:sendDocument
 						// ----------------------------------
-
+	
 						endpoint = 'sendDocument';
-
+	
 						body.chat_id = this.getNodeParameter('chatId', i) as string;
 						body.document = this.getNodeParameter('file', i) as string;
-
+	
 						// Add additional fields and replyMarkup
 						addAdditionalFields.call(this, body, i);
-
+	
 					} else if (operation === 'sendLocation') {
 						// ----------------------------------
 						//         message:sendLocation
 						// ----------------------------------
-
+	
 						endpoint = 'sendLocation';
-
+	
 						body.chat_id = this.getNodeParameter('chatId', i) as string;
 						body.latitude = this.getNodeParameter('latitude', i) as string;
 						body.longitude = this.getNodeParameter('longitude', i) as string;
-
+	
 						// Add additional fields and replyMarkup
 						addAdditionalFields.call(this, body, i);
-
+	
 					} else if (operation === 'sendMessage') {
 						// ----------------------------------
 						//         message:sendMessage
 						// ----------------------------------
-
+	
 						endpoint = 'sendMessage';
-
+	
 						body.chat_id = this.getNodeParameter('chatId', i) as string;
 						body.text = this.getNodeParameter('text', i) as string;
-
+	
 						// Add additional fields and replyMarkup
 						addAdditionalFields.call(this, body, i);
-
+	
 					} else if (operation === 'sendMediaGroup') {
 						// ----------------------------------
 						//         message:sendMediaGroup
 						// ----------------------------------
-
+	
 						endpoint = 'sendMediaGroup';
-
+	
 						body.chat_id = this.getNodeParameter('chatId', i) as string;
-
+	
 						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 						Object.assign(body, additionalFields);
-
+	
 						const mediaItems = this.getNodeParameter('media', i) as IDataObject;
 						body.media = [];
 						for (const mediaItem of mediaItems.media as IDataObject[]) {
@@ -1973,46 +2011,46 @@ export class Telegram implements INodeType {
 							}
 							(body.media as IDataObject[]).push(mediaItem);
 						}
-
+	
 					} else if (operation === 'sendPhoto') {
 						// ----------------------------------
 						//         message:sendPhoto
 						// ----------------------------------
-
+	
 						endpoint = 'sendPhoto';
-
+	
 						body.chat_id = this.getNodeParameter('chatId', i) as string;
 						body.photo = this.getNodeParameter('file', i) as string;
-
+	
 						// Add additional fields and replyMarkup
 						addAdditionalFields.call(this, body, i);
-
+	
 					} else if (operation === 'sendSticker') {
 						// ----------------------------------
 						//         message:sendSticker
 						// ----------------------------------
-
+	
 						endpoint = 'sendSticker';
-
+	
 						body.chat_id = this.getNodeParameter('chatId', i) as string;
 						body.sticker = this.getNodeParameter('file', i) as string;
-
+	
 						// Add additional fields and replyMarkup
 						addAdditionalFields.call(this, body, i);
-
+	
 					} else if (operation === 'sendVideo') {
 						// ----------------------------------
 						//         message:sendVideo
 						// ----------------------------------
-
+	
 						endpoint = 'sendVideo';
-
+	
 						body.chat_id = this.getNodeParameter('chatId', i) as string;
 						body.video = this.getNodeParameter('file', i) as string;
-
+	
 						// Add additional fields and replyMarkup
 						addAdditionalFields.call(this, body, i);
-
+	
 					}
 				} else {
 					throw new NodeOperationError(this.getNode(), `The resource "${resource}" is not known!`);

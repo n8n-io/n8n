@@ -55,7 +55,7 @@ export class YouTube implements INodeType {
 		group: ['input'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
-		description: 'Consume YouTube API.',
+		description: 'Consume YouTube API',
 		defaults: {
 			name: 'YouTube',
 			color: '#FF0000',

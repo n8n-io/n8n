@@ -34,7 +34,7 @@ import {
 
 import * as moment from 'moment-timezone';
 
-import * as uuid from 'uuid/v4';
+import { v4 as uuid } from 'uuid';
 
 export class GoogleCalendar implements INodeType {
 	description: INodeTypeDescription = {
@@ -44,7 +44,7 @@ export class GoogleCalendar implements INodeType {
 		group: ['input'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
-		description: 'Consume Google Calendar API.',
+		description: 'Consume Google Calendar API',
 		defaults: {
 			name: 'Google Calendar',
 			color: '#3E87E4',

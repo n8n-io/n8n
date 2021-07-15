@@ -19,7 +19,7 @@ export class OpenWeatherMap implements INodeType {
 		icon: 'fa:sun',
 		group: ['input'],
 		version: 1,
-		description: 'Gets current and future weather information.',
+		description: 'Gets current and future weather information',
 		defaults: {
 			name: 'OpenWeatherMap',
 			color: '#554455',

@@ -29,7 +29,7 @@ export class Line implements INodeType {
 		group: ['input'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
-		description: 'Consume Line API.',
+		description: 'Consume Line API',
 		defaults: {
 			name: 'Line',
 			color: '#00b900',

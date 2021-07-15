@@ -16,7 +16,7 @@ export class Switch implements INodeType {
 		icon: 'fa:map-signs',
 		group: ['transform'],
 		version: 1,
-		description: 'Route items depending on defined expression or rules.',
+		description: 'Route items depending on defined expression or rules',
 		defaults: {
 			name: 'Switch',
 			color: '#506000',
@@ -618,8 +618,6 @@ export class Switch implements INodeType {
 			}
 		};
 
-		const dataType = this.getNodeParameter('dataType', 0) as string;
-
 		// Itterate over all items to check to which output they should be routed to
 		itemLoop:
 		for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
@@ -630,29 +628,31 @@ export class Switch implements INodeType {
 
 				if (mode === 'expression') {
 					// One expression decides how to route item
-
+	
 					outputIndex = this.getNodeParameter('output', itemIndex) as number;
 					checkIndexRange(outputIndex);
-
+	
 					returnData[outputIndex].push(item);
 				} else if (mode === 'rules') {
 					// Rules decide how to route item
-
+	
+					const dataType = this.getNodeParameter('dataType', 0) as string;
+	
 					value1 = this.getNodeParameter('value1', itemIndex) as NodeParameterValue;
 					if (dataType === 'dateTime') {
 						value1 = convertDateTime(value1);
 					}
-
+	
 					for (ruleData of this.getNodeParameter('rules.rules', itemIndex, []) as INodeParameters[]) {
 						// Check if the values passes
-
+	
 						value2 = ruleData.value2 as NodeParameterValue;
 						if (dataType === 'dateTime') {
 							value2 = convertDateTime(value2);
 						}
-
+	
 						compareOperationResult = compareOperationFunctions[ruleData.operation as string](value1, value2);
-
+	
 						if (compareOperationResult === true) {
 							// If rule matches add it to the correct output and continue with next item
 							checkIndexRange(ruleData.output as number);
@@ -660,7 +660,7 @@ export class Switch implements INodeType {
 							continue itemLoop;
 						}
 					}
-
+	
 					// Check if a fallback output got defined and route accordingly
 					outputIndex = this.getNodeParameter('fallbackOutput', itemIndex) as number;
 					if (outputIndex !== -1) {

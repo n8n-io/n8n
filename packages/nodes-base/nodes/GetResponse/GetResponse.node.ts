@@ -31,7 +31,7 @@ export class GetResponse implements INodeType {
 		group: ['input'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
-		description: 'Consume GetResponse API.',
+		description: 'Consume GetResponse API',
 		defaults: {
 			name: 'GetResponse',
 			color: '#00afec',

@@ -22,7 +22,7 @@ export class Gotify implements INodeType {
 		group: ['input'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
-		description: 'Consume Gotify API.',
+		description: 'Consume Gotify API',
 		defaults: {
 			name: 'Gotify',
 			color: '#71c8ec',

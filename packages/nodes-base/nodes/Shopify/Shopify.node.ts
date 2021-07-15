@@ -43,7 +43,7 @@ export class Shopify implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Shopify',
 		name: 'shopify',
-		icon: 'file:shopify.png',
+		icon: 'file:shopify.svg',
 		group: ['output'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',

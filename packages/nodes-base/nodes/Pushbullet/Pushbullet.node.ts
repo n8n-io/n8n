@@ -29,7 +29,7 @@ export class Pushbullet implements INodeType {
 		group: ['input'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
-		description: 'Consume Pushbullet API.',
+		description: 'Consume Pushbullet API',
 		defaults: {
 			name: 'Pushbullet',
 			color: '#457854',

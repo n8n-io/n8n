@@ -33,7 +33,7 @@ export class GoogleContacts implements INodeType {
 		group: ['input'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
-		description: 'Consume Google Contacts API.',
+		description: 'Consume Google Contacts API',
 		defaults: {
 			name: 'Google Contacts',
 			color: '#1a73e8',

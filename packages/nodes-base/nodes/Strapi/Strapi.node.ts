@@ -30,7 +30,7 @@ export class Strapi implements INodeType {
 		group: ['input'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
-		description: 'Consume Strapi API.',
+		description: 'Consume Strapi API',
 		defaults: {
 			name: 'Strapi',
 			color: '#725ed8',

@@ -53,7 +53,7 @@ export class SpreadsheetFile implements INodeType {
 		icon: 'fa:table',
 		group: ['transform'],
 		version: 1,
-		description: 'Reads and writes data from a spreadsheet file.',
+		description: 'Reads and writes data from a spreadsheet file',
 		defaults: {
 			name: 'Spreadsheet File',
 			color: '#2244FF',

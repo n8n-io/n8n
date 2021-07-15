@@ -390,7 +390,7 @@ export class Salesforce implements INodeType {
 			},
 			// Get all the lead custom fields to display them to user so that he can
 			// select them easily
-			async getCustomFields(this: ILoadOptionsFunctions): Promise < INodePropertyOptions[] > {
+			async getCustomFields(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
 				const resource = this.getNodeParameter('resource', 0) as string;
 				// TODO: find a way to filter this object to get just the lead sources instead of the whole object
@@ -398,6 +398,26 @@ export class Salesforce implements INodeType {
 
 				for (const field of fields) {
 					if (field.custom === true) {
+						const fieldName = field.label;
+						const fieldId = field.name;
+						returnData.push({
+							name: fieldName,
+							value: fieldId,
+						});
+					}
+				}
+				sortOptions(returnData);
+				return returnData;
+			},
+			// Get all the external id fields to display them to user so that he can
+			// select them easily
+			async getExternalIdFields(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const returnData: INodePropertyOptions[] = [];
+				let resource = this.getCurrentNodeParameter('resource') as string;
+				resource = (resource === 'customObject') ? this.getCurrentNodeParameter('customObject') as string : resource;
+				const { fields } = await salesforceApiRequest.call(this, 'GET', `/sobjects/${resource}/describe`);
+				for (const field of fields) {
+					if (field.externalId === true || field.idLookup === true) {
 						const fieldName = field.label;
 						const fieldId = field.name;
 						returnData.push({
@@ -933,7 +953,7 @@ export class Salesforce implements INodeType {
 			try {
 				if (resource === 'lead') {
 					//https://developer.salesforce.com/docs/api-explorer/sobject/Lead/post-lead
-					if (operation === 'create') {
+					if (operation === 'create' || operation === 'upsert') {
 						const company = this.getNodeParameter('company', i) as string;
 						const lastname = this.getNodeParameter('lastname', i) as string;
 						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
@@ -1016,7 +1036,18 @@ export class Salesforce implements INodeType {
 								}
 							}
 						}
-						responseData = await salesforceApiRequest.call(this, 'POST', '/sobjects/lead', body);
+						let endpoint = '/sobjects/lead';
+						let method = 'POST';
+						if (operation === 'upsert') {
+							method = 'PATCH';
+							const externalId = this.getNodeParameter('externalId', 0) as string;
+							const externalIdValue = this.getNodeParameter('externalIdValue', i) as string;
+							endpoint = `/sobjects/lead/${externalId}/${externalIdValue}`;
+							if (body[externalId] !== undefined) {
+								delete body[externalId];
+							}
+						}
+						responseData = await salesforceApiRequest.call(this, method, endpoint, body);
 					}
 					//https://developer.salesforce.com/docs/api-explorer/sobject/Lead/patch-lead-id
 					if (operation === 'update') {
@@ -1181,9 +1212,9 @@ export class Salesforce implements INodeType {
 				}
 				if (resource === 'contact') {
 					//https://developer.salesforce.com/docs/api-explorer/sobject/Contact/post-contact
-					if (operation === 'create') {
-						const lastname = this.getNodeParameter('lastname', i) as string;
+					if (operation === 'create' || operation === 'upsert') {
 						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const lastname = this.getNodeParameter('lastname', i) as string;
 						const body: IContact = {
 							LastName: lastname,
 						};
@@ -1286,7 +1317,18 @@ export class Salesforce implements INodeType {
 								}
 							}
 						}
-						responseData = await salesforceApiRequest.call(this, 'POST', '/sobjects/contact', body);
+						let endpoint = '/sobjects/contact';
+						let method = 'POST';
+						if (operation === 'upsert') {
+							method = 'PATCH';
+							const externalId = this.getNodeParameter('externalId', 0) as string;
+							const externalIdValue = this.getNodeParameter('externalIdValue', i) as string;
+							endpoint = `/sobjects/contact/${externalId}/${externalIdValue}`;
+							if (body[externalId] !== undefined) {
+								delete body[externalId];
+							}
+						}
+						responseData = await salesforceApiRequest.call(this, method, endpoint, body);
 					}
 					//https://developer.salesforce.com/docs/api-explorer/sobject/Contact/patch-contact-id
 					if (operation === 'update') {
@@ -1295,6 +1337,9 @@ export class Salesforce implements INodeType {
 						const body: IContact = {};
 						if (!Object.keys(updateFields).length) {
 							throw new NodeOperationError(this.getNode(), 'You must add at least one update field');
+						}
+						if (updateFields.lastName !== undefined) {
+							body.LastName = updateFields.lastName as string;
 						}
 						if (updateFields.fax !== undefined) {
 							body.Fax = updateFields.fax as string;
@@ -1464,11 +1509,12 @@ export class Salesforce implements INodeType {
 						if (options.isPrivate !== undefined) {
 							body.IsPrivate = options.isPrivate as boolean;
 						}
+
 						responseData = await salesforceApiRequest.call(this, 'POST', '/sobjects/note', body);
 					}
 				}
 				if (resource === 'customObject') {
-					if (operation === 'create') {
+					if (operation === 'create' || operation === 'upsert') {
 						const customObject = this.getNodeParameter('customObject', i) as string;
 						const customFieldsUi = this.getNodeParameter('customFieldsUi', i) as IDataObject;
 						const body: IDataObject = {};
@@ -1481,7 +1527,18 @@ export class Salesforce implements INodeType {
 								}
 							}
 						}
-						responseData = await salesforceApiRequest.call(this, 'POST', `/sobjects/${customObject}`, body);
+						let endpoint = `/sobjects/${customObject}`;
+						let method = 'POST';
+						if (operation === 'upsert') {
+							method = 'PATCH';
+							const externalId = this.getNodeParameter('externalId', 0) as string;
+							const externalIdValue = this.getNodeParameter('externalIdValue', i) as string;
+							endpoint = `/sobjects/${customObject}/${externalId}/${externalIdValue}`;
+							if (body[externalId] !== undefined) {
+								delete body[externalId];
+							}
+						}
+						responseData = await salesforceApiRequest.call(this, method, endpoint, body);
 					}
 					if (operation === 'update') {
 						const recordId = this.getNodeParameter('recordId', i) as string;
@@ -1533,7 +1590,7 @@ export class Salesforce implements INodeType {
 				}
 				if (resource === 'opportunity') {
 					//https://developer.salesforce.com/docs/api-explorer/sobject/Opportunity/post-opportunity
-					if (operation === 'create') {
+					if (operation === 'create' || operation === 'upsert') {
 						const name = this.getNodeParameter('name', i) as string;
 						const closeDate = this.getNodeParameter('closeDate', i) as string;
 						const stageName = this.getNodeParameter('stageName', i) as string;
@@ -1585,7 +1642,18 @@ export class Salesforce implements INodeType {
 								}
 							}
 						}
-						responseData = await salesforceApiRequest.call(this, 'POST', '/sobjects/opportunity', body);
+						let endpoint = '/sobjects/opportunity';
+						let method = 'POST';
+						if (operation === 'upsert') {
+							method = 'PATCH';
+							const externalId = this.getNodeParameter('externalId', 0) as string;
+							const externalIdValue = this.getNodeParameter('externalIdValue', i) as string;
+							endpoint = `/sobjects/opportunity/${externalId}/${externalIdValue}`;
+							if (body[externalId] !== undefined) {
+								delete body[externalId];
+							}
+						}
+						responseData = await salesforceApiRequest.call(this, method, endpoint, body);
 					}
 					//https://developer.salesforce.com/docs/api-explorer/sobject/Opportunity/post-opportunity
 					if (operation === 'update') {
@@ -1703,9 +1771,9 @@ export class Salesforce implements INodeType {
 				}
 				if (resource === 'account') {
 					//https://developer.salesforce.com/docs/api-explorer/sobject/Account/post-account
-					if (operation === 'create') {
-						const name = this.getNodeParameter('name', i) as string;
+					if (operation === 'create' || operation === 'upsert') {
 						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const name = this.getNodeParameter('name', i) as string;
 						const body: IAccount = {
 							Name: name,
 						};
@@ -1790,7 +1858,18 @@ export class Salesforce implements INodeType {
 								}
 							}
 						}
-						responseData = await salesforceApiRequest.call(this, 'POST', '/sobjects/account', body);
+						let endpoint = '/sobjects/account';
+						let method = 'POST';
+						if (operation === 'upsert') {
+							method = 'PATCH';
+							const externalId = this.getNodeParameter('externalId', 0) as string;
+							const externalIdValue = this.getNodeParameter('externalIdValue', i) as string;
+							endpoint = `/sobjects/account/${externalId}/${externalIdValue}`;
+							if (body[externalId] !== undefined) {
+								delete body[externalId];
+							}
+						}
+						responseData = await salesforceApiRequest.call(this, method, endpoint, body);
 					}
 					//https://developer.salesforce.com/docs/api-explorer/sobject/Account/patch-account-id
 					if (operation === 'update') {
@@ -2507,3 +2586,6 @@ export class Salesforce implements INodeType {
 		return [this.helpers.returnJsonArray(returnData)];
 	}
 }
+
+
+

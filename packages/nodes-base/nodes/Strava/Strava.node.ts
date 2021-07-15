@@ -29,7 +29,7 @@ export class Strava implements INodeType {
 		group: ['input'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
-		description: 'Consume Strava API.',
+		description: 'Consume Strava API',
 		defaults: {
 			name: 'Strava',
 			color: '#ea5929',
@@ -138,7 +138,7 @@ export class Strava implements INodeType {
 
 							responseData = await stravaApiRequestAllItems.call(this, 'GET', `/activities`, {}, qs);
 						} else {
-							qs.limit = this.getNodeParameter('limit', i) as number;
+							qs.per_page = this.getNodeParameter('limit', i) as number;
 
 							responseData = await stravaApiRequest.call(this, 'GET', `/activities`, {}, qs);
 						}

@@ -30,6 +30,7 @@ import {
 	IWorkflowExecuteHooks,
 	LoggerProxy,
 	Workflow,
+	WorkflowExecuteMode,
 	WorkflowHooks,
 	WorkflowOperationError,
 } from 'n8n-workflow';
@@ -137,6 +138,17 @@ export class WorkflowRunnerProcess {
 		const additionalData = await WorkflowExecuteAdditionalData.getBase(this.data.credentials, undefined, workflowTimeout <= 0 ? undefined : Date.now() + workflowTimeout * 1000);
 		additionalData.hooks = this.getProcessForwardHooks();
 
+		additionalData.sendMessageToUI = async (source: string, message: any) => { // tslint:disable-line:no-any
+			if (workflowRunner.data!.executionMode !== 'manual') {
+				return;
+			}
+
+			try {
+				await sendToParentProcess('sendMessageToUI', { source, message });
+			} catch (error) {
+				this.logger.error(`There was a problem sending UI data to parent process: "${error.message}"`);
+			}
+		};
 		const executeWorkflowFunction = additionalData.executeWorkflow;
 		additionalData.executeWorkflow = async (workflowInfo: IExecuteWorkflowInfo, additionalData: IWorkflowExecuteAdditionalData, inputData?: INodeExecutionData[] | undefined): Promise<Array<INodeExecutionData[] | null> | IRun> => {
 			const workflowData = await WorkflowExecuteAdditionalData.getWorkflowData(workflowInfo);
@@ -304,7 +316,7 @@ process.on('message', async (message: IProcessMessage) => {
 				for (const executionId of executionIds) {
 					const childWorkflowExecute = workflowRunner.childExecutions[executionId];
 					runData = childWorkflowExecute.workflowExecute.getFullRunData(workflowRunner.childExecutions[executionId].startedAt);
-					const timeOutError = message.type === 'timeout' ? new WorkflowOperationError('Workflow execution timed out!') : undefined;
+					const timeOutError = message.type === 'timeout' ? new WorkflowOperationError('Workflow execution timed out!') : new WorkflowOperationError('Workflow-Execution has been canceled!');
 
 					// If there is any data send it to parent process, if execution timedout add the error
 					await childWorkflowExecute.workflowExecute.processSuccessExecution(workflowRunner.childExecutions[executionId].startedAt, childWorkflowExecute.workflow, timeOutError);
@@ -313,7 +325,7 @@ process.on('message', async (message: IProcessMessage) => {
 				// Workflow started already executing
 				runData = workflowRunner.workflowExecute.getFullRunData(workflowRunner.startedAt);
 
-				const timeOutError = message.type === 'timeout' ? new WorkflowOperationError('Workflow execution timed out!') : undefined;
+				const timeOutError = message.type === 'timeout' ? new WorkflowOperationError('Workflow execution timed out!') : new WorkflowOperationError('Workflow-Execution has been canceled!');
 
 				// If there is any data send it to parent process, if execution timedout add the error
 				await workflowRunner.workflowExecute.processSuccessExecution(workflowRunner.startedAt, workflowRunner.workflow!, timeOutError);
@@ -325,8 +337,8 @@ process.on('message', async (message: IProcessMessage) => {
 							runData: {},
 						},
 					},
-					finished: message.type !== 'timeout',
-					mode: workflowRunner.data!.executionMode,
+					finished: false,
+					mode: workflowRunner.data ? workflowRunner.data!.executionMode : 'own' as WorkflowExecuteMode,
 					startedAt: workflowRunner.startedAt,
 					stoppedAt: new Date(),
 				};

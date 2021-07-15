@@ -211,7 +211,7 @@ export class EmailSend implements INodeType {
 				// Send the email
 				const info = await transporter.sendMail(mailOptions);
 
-				returnData.push({ json: info });
+				returnData.push({ json: info as unknown as IDataObject });
 
 			}catch (error) {
 				if (this.continueOnFail()) {

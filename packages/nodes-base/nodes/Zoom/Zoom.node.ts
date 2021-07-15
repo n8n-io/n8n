@@ -63,7 +63,7 @@ export class Zoom implements INodeType {
 			name: 'Zoom',
 			color: '#0B6CF9',
 		},
-		icon: 'file:zoom.png',
+		icon: 'file:zoom.svg',
 		inputs: ['main'],
 		outputs: ['main'],
 		credentials: [

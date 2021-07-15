@@ -53,7 +53,7 @@ export class ExecuteCommand implements INodeType {
 		icon: 'fa:terminal',
 		group: ['transform'],
 		version: 1,
-		description: 'Executes a command on the host.',
+		description: 'Executes a command on the host',
 		defaults: {
 			name: 'Execute Command',
 			color: '#886644',

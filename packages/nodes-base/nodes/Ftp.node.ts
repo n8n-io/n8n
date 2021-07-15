@@ -45,7 +45,7 @@ export class Ftp implements INodeType {
 		group: ['input'],
 		version: 1,
 		subtitle: '={{$parameter["protocol"] + ": " + $parameter["operation"]}}',
-		description: 'Transfers files via FTP or SFTP.',
+		description: 'Transfers files via FTP or SFTP',
 		defaults: {
 			name: 'FTP',
 			color: '#303050',

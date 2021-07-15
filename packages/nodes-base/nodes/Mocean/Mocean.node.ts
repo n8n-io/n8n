@@ -17,7 +17,7 @@ export class Mocean implements INodeType {
 		icon: 'file:mocean.png',
 		group: ['transform'],
 		version: 1,
-		description: 'Send SMS & voice messages via Mocean (https://moceanapi.com)',
+		description: 'Send SMS and voice messages via Mocean',
 		defaults: {
 			name: 'Mocean',
 			color: '#772244',

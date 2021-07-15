@@ -24,7 +24,7 @@ export class LinkedIn implements INodeType {
 		icon: 'file:linkedin.png',
 		group: ['input'],
 		version: 1,
-		description: 'Consume LinkedIn Api',
+		description: 'Consume LinkedIn API',
 		defaults: {
 			name: 'LinkedIn',
 			color: '#0075b4',

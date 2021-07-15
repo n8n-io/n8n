@@ -25,7 +25,7 @@ export class Nasa implements INodeType {
 		group: ['transform'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ":" + $parameter["resource"]}}',
-		description: 'Retrieve data the from NASA API',
+		description: 'Retrieve data from the NASA API',
 		defaults: {
 			name: 'NASA',
 			color: '#0B3D91',

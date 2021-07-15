@@ -1,6 +1,6 @@
 import {
 	ICredentialType,
-	NodePropertyTypes,
+	INodeProperties,
 } from 'n8n-workflow';
 
 
@@ -8,29 +8,29 @@ export class MySql implements ICredentialType {
 	name = 'mySql';
 	displayName = 'MySQL';
 	documentationUrl = 'mySql';
-	properties = [
+	properties: INodeProperties[] = [
 		{
 			displayName: 'Host',
 			name: 'host',
-			type: 'string' as NodePropertyTypes,
+			type: 'string',
 			default: 'localhost',
 		},
 		{
 			displayName: 'Database',
 			name: 'database',
-			type: 'string' as NodePropertyTypes,
+			type: 'string',
 			default: 'mysql',
 		},
 		{
 			displayName: 'User',
 			name: 'user',
-			type: 'string' as NodePropertyTypes,
+			type: 'string',
 			default: 'mysql',
 		},
 		{
 			displayName: 'Password',
 			name: 'password',
-			type: 'string' as NodePropertyTypes,
+			type: 'string',
 			typeOptions: {
 				password: true,
 			},
@@ -39,20 +39,20 @@ export class MySql implements ICredentialType {
 		{
 			displayName: 'Port',
 			name: 'port',
-			type: 'number' as NodePropertyTypes,
+			type: 'number',
 			default: 3306,
 		},
 		{
 			displayName: 'Connect Timeout',
 			name: 'connectTimeout',
-			type: 'number' as NodePropertyTypes,
+			type: 'number',
 			default: 10000,
 			description: 'The milliseconds before a timeout occurs during the initial connection to the MySQL server.',
 		},
 		{
 			displayName: 'SSL',
 			name: 'ssl',
-			type: 'boolean' as NodePropertyTypes,
+			type: 'boolean',
 			default: false,
 		},
 		{
@@ -69,7 +69,7 @@ export class MySql implements ICredentialType {
 					],
 				},
 			},
-			type: 'string' as NodePropertyTypes,
+			type: 'string',
 			default: '',
 		},
 		{
@@ -86,7 +86,7 @@ export class MySql implements ICredentialType {
 					],
 				},
 			},
-			type: 'string' as NodePropertyTypes,
+			type: 'string',
 			default: '',
 		},
 		{
@@ -103,7 +103,7 @@ export class MySql implements ICredentialType {
 					],
 				},
 			},
-			type: 'string' as NodePropertyTypes,
+			type: 'string',
 			default: '',
 		},
 	];

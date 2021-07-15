@@ -17,7 +17,7 @@ export class FunctionItem implements INodeType {
 		icon: 'fa:code',
 		group: ['transform'],
 		version: 1,
-		description: 'Run custom function code which gets executed once per item.',
+		description: 'Run custom function code which gets executed once per item',
 		defaults: {
 			name: 'FunctionItem',
 			color: '#ddbb33',
@@ -34,7 +34,16 @@ export class FunctionItem implements INodeType {
 					rows: 10,
 				},
 				type: 'string',
-				default: 'item.myVariable = 1;\nreturn item;',
+				default: `// Code here will run once per input item.
+// More info and help: https://docs.n8n.io/nodes/n8n-nodes-base.functionItem
+
+// Add a new field called 'myNewField' to the JSON of the item
+item.myNewField = 1;
+
+// You can write logs to the browser console
+console.log('Done!');
+
+return item;`,
 				description: 'The JavaScript code to execute for each item.',
 				noDataExpression: true,
 			},
@@ -50,7 +59,6 @@ export class FunctionItem implements INodeType {
 
 		for (let itemIndex = 0; itemIndex < length; itemIndex++) {
 			try {
-
 				item = items[itemIndex];
 
 				// Copy the items as they may get changed in the functions
@@ -74,8 +82,10 @@ export class FunctionItem implements INodeType {
 				const dataProxy = this.getWorkflowDataProxy(itemIndex);
 				Object.assign(sandbox, dataProxy);
 
+				const mode = this.getMode();
+
 				const options = {
-					console: 'inherit',
+					console: (mode === 'manual') ? 'redirect' : 'inherit',
 					sandbox,
 					require: {
 						external: false as boolean | { modules: string[] },
@@ -93,10 +103,12 @@ export class FunctionItem implements INodeType {
 
 				const vm = new NodeVM(options);
 
+				if (mode === 'manual') {
+					vm.on('console.log', this.sendMessageToUI);
+				}
+
 				// Get the code to execute
 				const functionCode = this.getNodeParameter('functionCode', itemIndex) as string;
-
-
 
 				let jsonData: IDataObject;
 				try {
@@ -125,7 +137,6 @@ export class FunctionItem implements INodeType {
 				}
 
 				returnData.push(returnItem);
-
 			} catch (error) {
 				if (this.continueOnFail()) {
 					returnData.push({json:{ error: error.message }});

@@ -37,7 +37,7 @@ import {
 	commentFields,
 	commentOperations
 } from './CommentDescription';
-import uuid = require('uuid');
+import { v4 as uuid } from 'uuid';
 import * as moment from 'moment';
 
 export class Twist implements INodeType {

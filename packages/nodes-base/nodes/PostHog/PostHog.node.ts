@@ -47,7 +47,7 @@ export class PostHog implements INodeType {
 		group: ['input'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
-		description: 'Consume PostHog API.',
+		description: 'Consume PostHog API',
 		defaults: {
 			name: 'PostHog',
 			color: '#000000',
