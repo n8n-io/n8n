@@ -201,6 +201,7 @@ class App {
 				endpoint: config.get('versionNotifications.endpoint'),
 				infoUrl: config.get('versionNotifications.infoUrl'),
 			},
+			instanceId: '',
 		};
 	}
 
@@ -230,7 +231,7 @@ class App {
 
 		this.versions = await GenericHelpers.getVersions();
 		this.frontendSettings.versionCli = this.versions.cli;
-		this.frontendSettings.instanceId = await generateInstanceId();
+		this.frontendSettings.instanceId = await generateInstanceId() as string;
 
 		await this.externalHooks.run('frontend.settings', [this.frontendSettings]);
 
@@ -2204,7 +2205,7 @@ async function getExecutionsCount(countFilter: IDataObject): Promise<{ count: nu
 
 async function generateInstanceId(){
 	const encryptionKey = await UserSettings.getEncryptionKey();
-	const hash = encryptionKey ? createHash('sha256').update(encryptionKey).digest('hex') : undefined;
+	const hash = encryptionKey ? createHash('sha256').update(encryptionKey.slice(16)).digest('hex') : undefined;
 
 	return hash;
 }

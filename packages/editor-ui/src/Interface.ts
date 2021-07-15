@@ -470,7 +470,7 @@ export interface IN8nUISettings {
 		[key: string]: string | number | undefined;
 	};
 	versionNotifications: IVersionNotificationSettings;
-	instanceId?: string;
+	instanceId: string;
 }
 
 export interface IWorkflowSettings extends IWorkflowSettingsWorkflow {
