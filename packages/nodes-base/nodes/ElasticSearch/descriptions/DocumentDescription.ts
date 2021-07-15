@@ -674,28 +674,6 @@ export const documentFields = [
 		},
 	},
 	{
-		displayName: 'Script',
-		name: 'script',
-		description: 'Script to update the document. See the <a href="https://www.elastic.co/guide/en/elasticsearch/reference/current/modules-scripting-using.html" target="_blank">Elasticsearch guide to writing scripts</a>',
-		type: 'string',
-		required: true,
-		default: '',
-		placeholder: 'ctx._source.my_field = 1',
-		typeOptions: {
-			alwaysOpenEditWindow: true,
-		},
-		displayOptions: {
-			show: {
-				resource: [
-					'document',
-				],
-				operation: [
-					'update',
-				],
-			},
-		},
-	},
-	{
 		displayName: 'Data to Send',
 		name: 'dataToSend',
 		type: 'options',
