@@ -895,6 +895,27 @@ export class Pipedrive implements INodeType {
 				description: 'The title of the deal to create',
 			},
 			{
+				displayName: 'Organization ID',
+				name: 'org_id',
+				type: 'options',
+				typeOptions: {
+					loadOptionsMethod: 'getOrganizationIds',
+				},
+				default: '',
+				description: 'ID of the organization this deal will be associated with',
+				required: true,
+				displayOptions: {
+					show: {
+						operation: [
+							'create',
+						],
+						resource: [
+							'deal',
+						],
+					},
+				},
+			},
+			{
 				displayName: 'Additional Fields',
 				name: 'additionalFields',
 				type: 'collection',
@@ -969,16 +990,6 @@ export class Pipedrive implements INodeType {
 						type: 'string',
 						default: '',
 						description: 'Reason why the deal was lost.',
-					},
-					{
-						displayName: 'Organization ID',
-						name: 'org_id',
-						type: 'options',
-						typeOptions: {
-							loadOptionsMethod: 'getOrganizationIds',
-						},
-						default: '',
-						description: 'ID of the organization this deal will be associated with.',
 					},
 					{
 						displayName: 'Person ID',
@@ -3542,6 +3553,7 @@ export class Pipedrive implements INodeType {
 					endpoint = '/deals';
 
 					body.title = this.getNodeParameter('title', i) as string;
+					body.org_id = this.getNodeParameter('org_id', i) as string;
 					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 					addAdditionalFields(body, additionalFields);
 
