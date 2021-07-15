@@ -21,7 +21,7 @@ import * as clientOAuth1 from 'oauth-1.0a';
 import { RequestOptions } from 'oauth-1.0a';
 import * as csrf from 'csrf';
 import * as requestPromise from 'request-promise-native';
-import { createHmac } from 'crypto';
+import { createHash, createHmac } from 'crypto';
 // IMPORTANT! Do not switch to anther bcrypt library unless really necessary and
 // tested with all possible systems like Windows, Alpine on ARM, FreeBSD, ...
 import { compare } from 'bcryptjs';
@@ -201,6 +201,7 @@ class App {
 				endpoint: config.get('versionNotifications.endpoint'),
 				infoUrl: config.get('versionNotifications.infoUrl'),
 			},
+			instanceId: '',
 		};
 	}
 
@@ -230,6 +231,7 @@ class App {
 
 		this.versions = await GenericHelpers.getVersions();
 		this.frontendSettings.versionCli = this.versions.cli;
+		this.frontendSettings.instanceId = await generateInstanceId() as string;
 
 		await this.externalHooks.run('frontend.settings', [this.frontendSettings]);
 
@@ -2199,4 +2201,11 @@ async function getExecutionsCount(countFilter: IDataObject): Promise<{ count: nu
 
 	const count = await Db.collections.Execution!.count(countFilter);
 	return { count, estimate: false };
+}
+
+async function generateInstanceId() {
+	const encryptionKey = await UserSettings.getEncryptionKey();
+	const hash = encryptionKey ? createHash('sha256').update(encryptionKey.slice(Math.round(encryptionKey.length / 2))).digest('hex') : undefined;
+
+	return hash;
 }

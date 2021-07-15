@@ -470,6 +470,7 @@ export interface IN8nUISettings {
 		[key: string]: string | number | undefined;
 	};
 	versionNotifications: IVersionNotificationSettings;
+	instanceId: string;
 }
 
 export interface IWorkflowSettings extends IWorkflowSettingsWorkflow {
@@ -619,6 +620,7 @@ export interface IRootState {
 	urlBaseWebhook: string;
 	workflow: IWorkflowDb;
 	sidebarMenuItems: IMenuItem[];
+	instanceId: string;
 }
 
 export interface ITagsState {
