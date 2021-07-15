@@ -166,6 +166,8 @@ export class ExecuteBatch extends Command {
 			'429',
 			'econnrefused',
 			'missing a required parameter',
+			'insufficient credit balance',
+			'request timed out',
 		];
 
 		errorMessage = errorMessage.toLowerCase();
