@@ -17,7 +17,7 @@ export class ServiceNowOAuth2Api implements ICredentialType {
 			type: 'string' as NodePropertyTypes,
 			default: '',
 			placeholder: 'n8n',
-			description: 'The subdomain of your ServiceNow environment.',
+			description: 'The subdomain of your ServiceNow environment',
 			required: true,
 		},
 		{
