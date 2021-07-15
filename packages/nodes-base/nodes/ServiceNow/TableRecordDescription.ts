@@ -71,14 +71,14 @@ export const tableRecordFields = [
 		type: 'options',
 		options: [
 			{
-				name: 'Define Below for Each Column',
-				value: 'columns',
-				description: 'Set the value for each destination column',
-			},
-			{
 				name: 'Auto-map Input Data to Columns',
 				value: 'mapInput',
 				description: 'Use when node input names match destination field names',
+			},
+			{
+				name: 'Define Below for Each Column',
+				value: 'columns',
+				description: 'Set the value for each destination column',
 			},
 			{
 				name: 'Nothing',
@@ -150,7 +150,7 @@ export const tableRecordFields = [
 						displayName: 'Field Name',
 						name: 'column',
 						type: 'options',
-						typeOptions:{
+						typeOptions: {
 							loadOptionsMethod: 'getColumns',
 							loadOptionsDependsOn: [
 								'tableName',
@@ -168,6 +168,7 @@ export const tableRecordFields = [
 			},
 		],
 	},
+
 	/* -------------------------------------------------------------------------- */
 	/*                                tableRecord:getAll                          */
 	/* -------------------------------------------------------------------------- */
@@ -251,27 +252,6 @@ export const tableRecordFields = [
 		default: {},
 		options: [
 			{
-				displayName: 'Return Values',
-				name: 'sysparm_display_value',
-				type: 'options',
-				options: [
-					{
-						name: 'Display Values',
-						value: 'true',
-					},
-					{
-						name: 'Actual Values',
-						value: 'false',
-					},
-					{
-						name: 'Both',
-						value: 'all',
-					},
-				],
-				default: 'false',
-				description: 'Choose which values to return',
-			},
-			{
 				displayName: 'Exclude Reference Link',
 				name: 'sysparm_exclude_reference_link',
 				type: 'boolean',
@@ -298,8 +278,30 @@ export const tableRecordFields = [
 				default: '',
 				description: 'An encoded query string used to filter the results. <a href="https://developer.servicenow.com/dev.do#!/learn/learning-plans/quebec/servicenow_application_developer/app_store_learnv2_rest_quebec_more_about_query_parameters" target="_blank">More info</a>',
 			},
+			{
+				displayName: 'Return Values',
+				name: 'sysparm_display_value',
+				type: 'options',
+				options: [
+					{
+						name: 'Actual Values',
+						value: 'false',
+					},
+					{
+						name: 'Both',
+						value: 'all',
+					},
+					{
+						name: 'Display Values',
+						value: 'true',
+					},
+				],
+				default: 'false',
+				description: 'Choose which values to return',
+			},
 		],
 	},
+
 	/* -------------------------------------------------------------------------- */
 	/*                                tableRecord:get/delete                       */
 	/* -------------------------------------------------------------------------- */
@@ -362,27 +364,6 @@ export const tableRecordFields = [
 		default: {},
 		options: [
 			{
-				displayName: 'Return Values',
-				name: 'sysparm_display_value',
-				type: 'options',
-				options: [
-					{
-						name: 'Display Values',
-						value: 'true',
-					},
-					{
-						name: 'Actual Values',
-						value: 'false',
-					},
-					{
-						name: 'Both',
-						value: 'all',
-					},
-				],
-				default: 'false',
-				description: 'Choose which values to return',
-			},
-			{
 				displayName: 'Exclude Reference Link',
 				name: 'sysparm_exclude_reference_link',
 				type: 'boolean',
@@ -402,8 +383,30 @@ export const tableRecordFields = [
 				default: '',
 				description: 'A list of fields to return',
 			},
+			{
+				displayName: 'Return Values',
+				name: 'sysparm_display_value',
+				type: 'options',
+				options: [
+					{
+						name: 'Actual Values',
+						value: 'false',
+					},
+					{
+						name: 'Both',
+						value: 'all',
+					},
+					{
+						name: 'Display Values',
+						value: 'true',
+					},
+				],
+				default: 'false',
+				description: 'Choose which values to return',
+			},
 		],
 	},
+
 	/* -------------------------------------------------------------------------- */
 	/*                                tableRecord:update                          */
 	/* -------------------------------------------------------------------------- */
@@ -452,14 +455,14 @@ export const tableRecordFields = [
 		type: 'options',
 		options: [
 			{
-				name: 'Define Below for Each Column',
-				value: 'columns',
-				description: 'Set the value for each destination column',
-			},
-			{
 				name: 'Auto-map Input Data to Columns',
 				value: 'mapInput',
 				description: 'Use when node input names match destination field names',
+			},
+			{
+				name: 'Define Below for Each Column',
+				value: 'columns',
+				description: 'Set the value for each destination column',
 			},
 			{
 				name: 'Nothing',
@@ -531,7 +534,7 @@ export const tableRecordFields = [
 						displayName: 'Field Name',
 						name: 'column',
 						type: 'options',
-						typeOptions:{
+						typeOptions: {
 							loadOptionsMethod: 'getColumns',
 							loadOptionsDependsOn: [
 								'tableName',

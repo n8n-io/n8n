@@ -20,7 +20,7 @@ export const configurationItemsOperations = [
 				value: 'getAll',
 			},
 		],
-		default: 'get',
+		default: 'getAll',
 	},
 ] as INodeProperties[];
 
@@ -88,27 +88,6 @@ export const configurationItemsFields = [
 		default: {},
 		options: [
 			{
-				displayName: 'Return Values',
-				name: 'sysparm_display_value',
-				type: 'options',
-				options: [
-					{
-						name: 'Display Values',
-						value: 'true',
-					},
-					{
-						name: 'Actual Values',
-						value: 'false',
-					},
-					{
-						name: 'Both',
-						value: 'all',
-					},
-				],
-				default: 'false',
-				description: 'Choose which values to return',
-			},
-			{
 				displayName: 'Exclude Reference Link',
 				name: 'sysparm_exclude_reference_link',
 				type: 'boolean',
@@ -131,6 +110,27 @@ export const configurationItemsFields = [
 				type: 'string',
 				default: '',
 				description: 'An encoded query string used to filter the results. <a href="https://developer.servicenow.com/dev.do#!/learn/learning-plans/quebec/servicenow_application_developer/app_store_learnv2_rest_quebec_more_about_query_parameters" target="_blank">More info</a>',
+			},
+			{
+				displayName: 'Return Values',
+				name: 'sysparm_display_value',
+				type: 'options',
+				options: [
+					{
+						name: 'Actual Values',
+						value: 'false',
+					},
+					{
+						name: 'Both',
+						value: 'all',
+					},
+					{
+						name: 'Display Values',
+						value: 'true',
+					},
+				],
+				default: 'false',
+				description: 'Choose which values to return',
 			},
 		],
 	},

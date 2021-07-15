@@ -20,21 +20,6 @@ import {
 } from './GenericFunctions';
 
 import {
-	tableRecordFields,
-	tableRecordOperations,
-} from './TableRecordDescription';
-
-import {
-	incidentFields,
-	incidentOperations,
-} from './IncidentDescription';
-
-import {
-	userFields,
-	userOperations,
-} from './UserDescription';
-
-import {
 	businessServiceFields,
 	businessServiceOperations,
 } from './BusinessServiceDescription';
@@ -54,6 +39,31 @@ import {
 	dictionaryOperations,
 } from './DictionaryDescription';
 
+import {
+	incidentFields,
+	incidentOperations,
+} from './IncidentDescription';
+
+import {
+	tableRecordFields,
+	tableRecordOperations,
+} from './TableRecordDescription';
+
+import {
+	userFields,
+	userOperations,
+} from './UserDescription';
+
+import {
+	userGroupFields,
+	userGroupOperations,
+} from './UserGroupDescription';
+
+import {
+	userRoleFields,
+	userRoleOperations,
+} from './UserRoleDescription';
+
 export class ServiceNow implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'ServiceNow',
@@ -64,7 +74,7 @@ export class ServiceNow implements INodeType {
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 		description: 'Consume ServiceNow API',
 		defaults: {
-			name: 'Service Now',
+			name: 'ServiceNow',
 			color: '#81b5a1',
 		},
 		inputs: ['main'],
@@ -109,6 +119,14 @@ export class ServiceNow implements INodeType {
 						name: 'User',
 						value: 'user',
 					},
+					{
+						name: 'User Group',
+						value: 'userGroup',
+					},
+					{
+						name: 'User Role',
+						value: 'userRole',
+					},
 				],
 				default: 'user',
 				description: 'Resource to consume',
@@ -135,6 +153,12 @@ export class ServiceNow implements INodeType {
 			// USER
 			...userOperations,
 			...userFields,
+			// USER GROUP
+			...userGroupOperations,
+			...userGroupFields,
+			// USER ROLE
+			...userRoleOperations,
+			...userRoleFields,
 		],
 	};
 
@@ -499,7 +523,7 @@ export class ServiceNow implements INodeType {
 
 						const id = this.getNodeParameter('id', i) as string;
 						responseData = await serviceNowApiRequest.call(this, 'DELETE', `/now/table/incident/${id}`);
-						responseData = {success : true};
+						responseData = { success: true };
 
 					} else if (operation === 'get') {
 
@@ -555,14 +579,14 @@ export class ServiceNow implements INodeType {
 							body = Object.entries(items[i].json)
 								.filter(([key]) => !inputsToIgnore.includes(key))
 								.reduce((obj, [key, val]) => Object.assign(obj, { [key]: val }), {});
-						} else if (dataToSend === 'columns'){
+						} else if (dataToSend === 'columns') {
 							const fieldsToSend = this.getNodeParameter('fieldsToSend', i) as {
 								field: IDataObject[]
 							};
-							body = fieldsToSend.field.reduce((obj,field) => {
+							body = fieldsToSend.field.reduce((obj, field) => {
 								obj[field.column as string] = field.value;
 								return obj;
-							},{});
+							}, {});
 						}
 
 						const response = await serviceNowApiRequest.call(this, 'POST', `/now/table/${tableName}`, body);
@@ -573,7 +597,7 @@ export class ServiceNow implements INodeType {
 						const tableName = this.getNodeParameter('tableName', i) as string;
 						const id = this.getNodeParameter('id', i) as string;
 						responseData = await serviceNowApiRequest.call(this, 'DELETE', `/now/table/${tableName}/${id}`);
-						responseData = {success : true};
+						responseData = { success: true };
 
 					} else if (operation === 'get') {
 
@@ -620,14 +644,14 @@ export class ServiceNow implements INodeType {
 							body = Object.entries(items[i].json)
 								.filter(([key]) => !inputsToIgnore.includes(key))
 								.reduce((obj, [key, val]) => Object.assign(obj, { [key]: val }), {});
-						} else if (dataToSend === 'columns'){
+						} else if (dataToSend === 'columns') {
 							const fieldsToSend = this.getNodeParameter('fieldsToSend', i) as {
 								field: IDataObject[]
 							};
-							body = fieldsToSend.field.reduce((obj,field) => {
+							body = fieldsToSend.field.reduce((obj, field) => {
 								obj[field.column as string] = field.value;
 								return obj;
-							},{});
+							}, {});
 						}
 
 						const response = await serviceNowApiRequest.call(this, 'PATCH', `/now/table/${tableName}/${id}`, body);
@@ -649,7 +673,7 @@ export class ServiceNow implements INodeType {
 
 						const id = this.getNodeParameter('id', i) as string;
 						responseData = await serviceNowApiRequest.call(this, 'DELETE', `/now/table/sys_user/${id}`);
-						responseData = {success : true};
+						responseData = { success: true };
 
 					} else if (operation === 'get') {
 
@@ -690,7 +714,19 @@ export class ServiceNow implements INodeType {
 							responseData = await serviceNowRequestAllItems.call(this, 'GET', '/now/table/sys_user', {}, qs);
 						}
 
-					} else if (operation === 'getUserGroups') {
+					} else if (operation === 'update') {
+
+						const id = this.getNodeParameter('id', i) as string;
+						const body = this.getNodeParameter('updateFields', i) as IDataObject;
+
+						const response = await serviceNowApiRequest.call(this, 'PATCH', `/now/table/sys_user/${id}`, body);
+						responseData = response.result;
+
+					} else {
+						throw new NodeOperationError(this.getNode(), `The operation "${operation}" is not known!`);
+					}
+				} else if (resource === 'userGroup') {
+					if (operation === 'getAll') {
 
 						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
 						qs = this.getNodeParameter('options', i) as IDataObject;
@@ -707,8 +743,11 @@ export class ServiceNow implements INodeType {
 						} else {
 							responseData = await serviceNowRequestAllItems.call(this, 'GET', '/now/table/sys_user_group', {}, qs);
 						}
-
-					} else if (operation === 'getUserRoles') {
+					} else {
+						throw new NodeOperationError(this.getNode(), `The operation "${operation}" is not known!`);
+					}
+				} else if (resource === 'userRole') {
+					if (operation === 'getAll') {
 
 						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
 						qs = this.getNodeParameter('options', i) as IDataObject;
@@ -725,15 +764,6 @@ export class ServiceNow implements INodeType {
 						} else {
 							responseData = await serviceNowRequestAllItems.call(this, 'GET', '/now/table/sys_user_role', {}, qs);
 						}
-
-					} else if (operation === 'update') {
-
-						const id = this.getNodeParameter('id', i) as string;
-						const body = this.getNodeParameter('updateFields', i) as IDataObject;
-
-						const response = await serviceNowApiRequest.call(this, 'PATCH', `/now/table/sys_user/${id}`, body);
-						responseData = response.result;
-
 					} else {
 						throw new NodeOperationError(this.getNode(), `The operation "${operation}" is not known!`);
 					}
