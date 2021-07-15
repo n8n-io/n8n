@@ -7,35 +7,41 @@ import {
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
+	NodeOperationError,
 } from 'n8n-workflow';
 
 import {
-	FloatValue,
-	IData,
+	AttributesValuesUi,
+	CommentAnalyzeBody,
+	Language,
 	RequestedAttributes,
-} from './Interface';
+} from './types';
 
 import {
 	googleApiRequest,
 } from './GenericFunctions';
-import { stringify } from 'lossless-json';
 
 export class GooglePerspective implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Google Perspective',
 		name: 'googlePerspective',
-		icon: 'file:perspective.png',
-		group: ['input', 'output'],
+		icon: 'file:perspective.svg',
+		group: [
+			'transform',
+		],
 		version: 1,
 		description: 'Consume Google Perspective API',
-		subtitle:
-			'={{$parameter["operation"] + ": " + $parameter["resource"]}}',
+		subtitle: '={{$parameter["operation"]}}',
 		defaults: {
 			name: 'Google Perspective',
 			color: '#200647',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		inputs: [
+			'main',
+		],
+		outputs: [
+			'main',
+		],
 		credentials: [
 			{
 				name: 'googlePerspectiveOAuth2Api',
@@ -49,12 +55,11 @@ export class GooglePerspective implements INodeType {
 				type: 'options',
 				options: [
 					{
-						name: 'comment',
+						name: 'Comment',
 						value: 'comment',
 					},
 				],
 				default: 'comment',
-				description: 'The resource to operate on.',
 			},
 			{
 				displayName: 'Operation',
@@ -62,171 +67,136 @@ export class GooglePerspective implements INodeType {
 				type: 'options',
 				displayOptions: {
 					show: {
-						resource: ['comment'],
+						resource: [
+							'comment',
+						],
 					},
 				},
 				options: [
 					{
-						name: 'Analyze Comment',
-						value: 'AnalyzeComment',
-						description: 'Analyze Comment',
+						name: 'Analyze',
+						value: 'analyze',
 					},
 				],
-				default: 'AnalyzeComment',
-				description: 'The operation to perform',
-			},
-			// ----------------------------------
-			//         All
-			// ----------------------------------
-			{
-				displayName: 'Source',
-				name: 'source',
-				type: 'options',
-				options: [
-					{
-						name: 'text',
-						value: 'text',
-					},
-				],
-				default: 'text',
-				description: 'The source of the comment.',
-				required: true,
-				displayOptions: {
-					show: {
-						operation: ['AnalyzeComment'],
-					},
-				},
+				default: 'analyze',
 			},
 			{
 				displayName: 'Text',
 				name: 'text',
 				type: 'string',
 				default: '',
-				description: 'The text of the input in string format.',
 				required: true,
 				displayOptions: {
 					show: {
-						operation: ['AnalyzeComment'],
-						source: ['text'],
+						operation: [
+							'analyze',
+						],
 					},
 				},
 			},
 			{
-				displayName: 'Options',
-				name: 'options',
+				displayName: 'Attributes to Analyze',
+				name: 'requestedAttributesUi',
+				type: 'fixedCollection',
+				default: '',
+				typeOptions: {
+					multipleValues: true,
+				},
+				placeholder: 'Add Atrribute',
+				required: true,
+				displayOptions: {
+					show: {
+						operation: [
+							'analyze',
+						],
+					},
+				},
+				options: [
+					{
+						displayName: 'Properties',
+						name: 'requestedAttributesValues',
+						values: [
+							{
+								displayName: 'Attribute Name',
+								name: 'attributeName',
+								type: 'options',
+								options: [
+									{
+										name: 'Flirtation',
+										value: 'flirtation',
+									},
+									{
+										name: 'Identity Attack',
+										value: 'identity_attack',
+									},
+									{
+										name: 'Insult',
+										value: 'insult',
+									},
+									{
+										name: 'Profanity',
+										value: 'profanity',
+									},
+									{
+										name: 'Severe Toxicity',
+										value: 'severe_toxicity',
+									},
+									{
+										name: 'Sexually Explicit',
+										value: 'sexually_explicit',
+									},
+									{
+										name: 'Threat',
+										value: 'threat',
+									},
+									{
+										name: 'Toxicity',
+										value: 'toxicity',
+									},
+								],
+								description: 'Attribute to analyze in the text',
+								default: 'flirtation',
+							},
+							{
+								displayName: 'Score Threshold',
+								name: 'scoreThreshold',
+								type: 'number',
+								typeOptions: {
+									numberStepSize: 0.1,
+									numberPrecision: 2,
+									minValue: 0,
+									maxValue: 1,
+								},
+								description: 'Score above which to return results. At zero, all scores are returned.',
+								default: 0,
+							},
+						],
+					},
+				],
+			},
+			{
+				displayName: 'Additional Options',
+				name: 'additionalOptions',
 				type: 'collection',
 				displayOptions: {
 					show: {
-						operation: ['AnalyzeComment'],
+						operation: [
+							'analyze',
+						],
 					},
 				},
 				default: {},
-				description: '',
 				placeholder: 'Add Option',
 				options: [
 					{
-						displayName: 'Requested Attributes',
-						name: 'requestedAttributesUi',
-						type: 'fixedCollection',
-						default: '',
-						typeOptions: {
-							multipleValues: true,
-						},
-						placeholder: 'Add Requested Atrribute',
+						displayName: 'Languages',
+						name: 'languages',
+						type: 'multiOptions',
 						options: [
 							{
-								name: 'requestedAttributesValues',
-								displayName: 'Requested Attribute',
-								values: [
-									{
-										displayName: 'Attribute Name',
-										name: 'attributeName',
-										type: 'options',
-										options: [
-											{
-												name: 'Toxicity',
-												value: 'toxicity',
-											},
-											{
-												name: 'Severe Toxicity',
-												value: 'severe_toxicity',
-											},
-											{
-												name: 'Identity Attack',
-												value: 'identity_attack',
-											},
-											{
-												name: 'Insult',
-												value: 'insult',
-											},
-											{
-												name: 'Profanity',
-												value: 'profanity',
-											},
-											{
-												name: 'Threat',
-												value: 'threat',
-											},
-											{
-												name: 'Sexually Explicit',
-												value: 'sexually_explicit',
-											},
-											{
-												name: 'Flirtation',
-												value: 'flirtation',
-											},
-										],
-										description: 'Attributes to analyze in the text. You can specify multiple attribute names here to get scores from multiple attributes in a single request.',
-										default: '',
-									},
-									{
-										displayName: 'Score Type',
-										name: 'scoreType',
-										type: 'options',
-										options: [
-											{
-												name: 'Probability',
-												value: 'probability',
-											},
-										],
-										description: 'Probability score for the attribute, in the range [0,1].',
-										default: '',
-									},
-									{
-										displayName: 'Score Threshold',
-										name: 'scoreThreshold',
-										type: 'number',
-										typeOptions: {
-											numberPrecision: 2,
-											minValue: 0,
-											maxValue: 1,
-										},
-										description: 'The API won\'t return scores that are below this threshold for this attribute. By default, all scores are returned.',
-										default: 0,
-									},
-								],
+								name: 'Arabic',
+								value: 'ar',
 							},
-						],
-					},
-					{
-						displayName: 'Comment Type',
-						name: 'commentType',
-						type: 'options',
-						options: [
-							{
-								name: 'Plain Text',
-								value: 'PLAIN_TEXT',
-							},
-						],
-						default: 'PLAIN_TEXT',
-						description: 'The type of input comment.',
-						required: true,
-					},
-					{
-						displayName: 'Language',
-						name: 'language',
-						type: 'options',
-						options: [
 							{
 								name: 'English',
 								value: 'en',
@@ -239,9 +209,25 @@ export class GooglePerspective implements INodeType {
 								name: 'German',
 								value: 'de',
 							},
+							{
+								name: 'Italian',
+								value: 'it',
+							},
+							{
+								name: 'Portuguese',
+								value: 'pt',
+							},
+							{
+								name: 'Russian',
+								value: 'ru',
+							},
+							{
+								name: 'Spanish',
+								value: 'es',
+							},
 						],
-						default: 'en',
-						description: 'The language of input comment.',
+						default: [],
+						description: 'Languages of the text input per ISO 631-1',
 						required: true,
 					},
 				],
@@ -249,63 +235,77 @@ export class GooglePerspective implements INodeType {
 		],
 	};
 
-	async execute(
-		this: IExecuteFunctions,
-	): Promise<INodeExecutionData[][]> {
+	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
-		const length = (items.length as unknown) as number;
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
-		const responseData = [];
-		for (let i = 0; i < length; i++) {
-			if (resource === 'comment') {
-				if (operation === 'AnalyzeComment') {
-					const source = this.getNodeParameter('source', i) as string;
-					const options = this.getNodeParameter(
-						'options',
-						i,
-					) as IDataObject;
-					const commentType =
-						(options.commentType as string | undefined) || 'PLAIN_TEXT';
-					const attributes = this.getNodeParameter(
-						'options.requestedAttributesUi.requestedAttributesValues',
-						i, [],
-					) as IDataObject[];
 
-					const data = attributes.reduce((accumulator: { [key: string]: any }, currentValue: IDataObject) => { // tslint:disable-line:no-any
-						return Object.assign(accumulator, {
-						[`${(currentValue.attributeName as string).toUpperCase()}`]: {
-							'scoreType': currentValue.scoreType,
-							'scoreThreshold': currentValue.scoreThreshold,
-						} });
-					}, {});
+		const resource = this.getNodeParameter('resource', 0) as 'comment';
+		const operation = this.getNodeParameter('operation', 0) as 'analyze';
 
-					const body: IData = {
-						comment: {
-							type: commentType,
-						},
-						requestedAttributes: (data as unknown) as RequestedAttributes,
-					};
+		const returnData: IDataObject[] = [];
+		let responseData;
 
-					if (source === 'text') {
-						const text = this.getNodeParameter('text', i) as string;
-						body.comment.text = text;
+		for (let i = 0; i < items.length; i++) {
+
+			try {
+
+				if (resource === 'comment') {
+
+					if (operation === 'analyze') {
+
+						// https://developers.perspectiveapi.com/s/about-the-api-methods
+
+						const attributes = this.getNodeParameter(
+							'requestedAttributesUi.requestedAttributesValues', i, [],
+						) as AttributesValuesUi[];
+
+						if (!attributes.length) {
+							throw new NodeOperationError(
+								this.getNode(),
+								'Please enter at least one attribute to analyze.',
+							);
+						}
+
+						const requestedAttributes = attributes.reduce<RequestedAttributes>((acc, cur) => {
+							return Object.assign(acc, {
+								[cur.attributeName.toUpperCase()]: {
+									scoreType: 'probability',
+									scoreThreshold: cur.scoreThreshold,
+								},
+							});
+						}, {});
+
+						const body: CommentAnalyzeBody = {
+							comment: {
+								type: 'PLAIN_TEXT',
+								text: this.getNodeParameter('text', i) as string,
+							},
+							requestedAttributes,
+						};
+
+						const { languages } = this.getNodeParameter('additionalOptions', i) as { languages: Language };
+
+						if (languages?.length) {
+							body.languages = languages;
+						}
+
+						responseData = await googleApiRequest.call(this, 'POST', '/v1alpha1/comments:analyze', body);
 					}
-
-					if (options.language) {
-						body.languages = options.language as string;
-					}
-
-					const response = await googleApiRequest.call(
-						this,
-						'POST',
-						`/v1alpha1/comments:analyze`,
-						body,
-					);
-					responseData.push(response);
 				}
+
+			} catch (error) {
+				if (this.continueOnFail()) {
+					returnData.push({ error: error.message });
+					continue;
+				}
+				throw error;
 			}
+
+			Array.isArray(responseData)
+				? returnData.push(...responseData)
+				: returnData.push(responseData);
+
 		}
+
 		return [this.helpers.returnJsonArray(responseData)];
 	}
 }
