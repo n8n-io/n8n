@@ -1701,6 +1701,34 @@ export class Pipedrive implements INodeType {
 				},
 			},
 			{
+				displayName: 'Identification',
+				name: 'identification',
+				type: 'options',
+				options: [
+					{
+						name: 'By Organization',
+						value: 'byOrganization',
+					},
+					{
+						name: 'By Person',
+						value: 'byPerson',
+					},
+				],
+				default: 'byOrganization',
+				description: 'Type of entity to link to this lead',
+				required: true,
+				displayOptions: {
+					show: {
+						resource: [
+							'lead',
+						],
+						operation: [
+							'create',
+						],
+					},
+				},
+			},
+			{
 				displayName: 'Organization ID',
 				name: 'organization_id',
 				type: 'options',
@@ -1709,6 +1737,7 @@ export class Pipedrive implements INodeType {
 				},
 				default: '',
 				description: 'ID of the organization to link to this lead',
+				required: true,
 				displayOptions: {
 					show: {
 						resource: [
@@ -1716,6 +1745,33 @@ export class Pipedrive implements INodeType {
 						],
 						operation: [
 							'create',
+						],
+						identification: [
+							'byOrganization',
+						],
+					},
+				},
+			},
+			{
+				displayName: 'Person ID',
+				name: 'person_id',
+				type: 'options',
+				typeOptions: {
+					loadOptionsMethod: 'getPersons',
+				},
+				default: '',
+				description: 'ID of the person to link to this lead',
+				required: true,
+				displayOptions: {
+					show: {
+						resource: [
+							'lead',
+						],
+						operation: [
+							'create',
+						],
+						identification: [
+							'byPerson',
 						],
 					},
 				},
@@ -1756,16 +1812,6 @@ export class Pipedrive implements INodeType {
 						},
 						default: [],
 						description: 'ID of the labels to attach to the lead to create',
-					},
-					{
-						displayName: 'Person ID',
-						name: 'person_id',
-						type: 'options',
-						typeOptions: {
-							loadOptionsMethod: 'getPersons',
-						},
-						default: '',
-						description: 'ID of the person to link to this lead',
 					},
 					{
 						displayName: 'Value',
@@ -3734,8 +3780,15 @@ export class Pipedrive implements INodeType {
 
 					body = {
 						title: this.getNodeParameter('title', i),
-						organization_id: this.getNodeParameter('organization_id', i),
 					} as IDataObject;
+
+					const identification = this.getNodeParameter('identification', i) as 'byOrganization' | 'byPerson';
+
+					if (identification === 'byOrganization') {
+						body.organization_id = this.getNodeParameter('organization_id', i);
+					} else {
+						body.person_id = this.getNodeParameter('person_id', i);
+					}
 
 					const { value, expected_close_date, ...rest } = this.getNodeParameter('additionalFields', i) as {
 						value: {
