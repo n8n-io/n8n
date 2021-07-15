@@ -895,6 +895,34 @@ export class Pipedrive implements INodeType {
 				description: 'The title of the deal to create',
 			},
 			{
+				displayName: 'Identification',
+				name: 'identification',
+				type: 'options',
+				options: [
+					{
+						name: 'By Organization',
+						value: 'byOrganization',
+					},
+					{
+						name: 'By Person',
+						value: 'byPerson',
+					},
+				],
+				default: 'byOrganization',
+				description: 'Type of entity to link to this deal',
+				required: true,
+				displayOptions: {
+					show: {
+						resource: [
+							'deal',
+						],
+						operation: [
+							'create',
+						],
+					},
+				},
+			},
+			{
 				displayName: 'Organization ID',
 				name: 'org_id',
 				type: 'options',
@@ -911,6 +939,32 @@ export class Pipedrive implements INodeType {
 						],
 						resource: [
 							'deal',
+						],
+						identification: [
+							'byOrganization',
+						],
+					},
+				},
+			},
+			{
+				displayName: 'Person ID',
+				name: 'person_id',
+				type: 'options',
+				typeOptions: {
+					loadOptionsMethod: 'getPersons',
+				},
+				default: 0,
+				description: 'ID of the person this deal will be associated with.',
+				displayOptions: {
+					show: {
+						operation: [
+							'create',
+						],
+						resource: [
+							'deal',
+						],
+						identification: [
+							'byPerson',
 						],
 					},
 				},
@@ -990,13 +1044,6 @@ export class Pipedrive implements INodeType {
 						type: 'string',
 						default: '',
 						description: 'Reason why the deal was lost.',
-					},
-					{
-						displayName: 'Person ID',
-						name: 'person_id',
-						type: 'number',
-						default: 0,
-						description: 'ID of the person this deal will be associated with.',
 					},
 					{
 						displayName: 'Probability',
@@ -3599,7 +3646,15 @@ export class Pipedrive implements INodeType {
 					endpoint = '/deals';
 
 					body.title = this.getNodeParameter('title', i) as string;
-					body.org_id = this.getNodeParameter('org_id', i) as string;
+
+					const identification = this.getNodeParameter('identification', i) as 'byOrganization' | 'byPerson';
+
+					if (identification === 'byOrganization') {
+						body.org_id = this.getNodeParameter('org_id', i);
+					} else {
+						body.person_id = this.getNodeParameter('person_id', i);
+					}
+
 					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 					addAdditionalFields(body, additionalFields);
 
