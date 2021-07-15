@@ -9,6 +9,7 @@ import {
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
+	NodeOperationError,
 } from 'n8n-workflow';
 
 import {
@@ -431,7 +432,7 @@ export class ActiveCampaign implements INodeType {
 					addAdditionalFields(body.contact as IDataObject, updateFields);
 
 				} else {
-					throw new Error(`The operation "${operation}" is not known`);
+					throw new NodeOperationError(this.getNode(), `The operation "${operation}" is not known`);
 				}
 			} else if (resource === 'account') {
 				if (operation === 'create') {
@@ -512,7 +513,7 @@ export class ActiveCampaign implements INodeType {
 					addAdditionalFields(body.account as IDataObject, updateFields);
 
 				} else {
-					throw new Error(`The operation "${operation}" is not known`);
+					throw new NodeOperationError(this.getNode(), `The operation "${operation}" is not known`);
 				}
 			} else if (resource === 'accountContact') {
 				if (operation === 'create') {
@@ -562,7 +563,7 @@ export class ActiveCampaign implements INodeType {
 					endpoint = `/api/3/accountContacts/${accountContactId}`;
 
 				} else {
-					throw new Error(`The operation "${operation}" is not known`);
+					throw new NodeOperationError(this.getNode(), `The operation "${operation}" is not known`);
 				}
 			} else if (resource === 'contactTag') {
 				if (operation === 'add') {
@@ -592,7 +593,7 @@ export class ActiveCampaign implements INodeType {
 					endpoint = `/api/3/contactTags/${contactTagId}`;
 
 				} else {
-					throw new Error(`The operation "${operation}" is not known`);
+					throw new NodeOperationError(this.getNode(), `The operation "${operation}" is not known`);
 				}
 			} else if (resource === 'contactList') {
 				if (operation === 'add') {
@@ -630,7 +631,7 @@ export class ActiveCampaign implements INodeType {
 					dataKey = 'contacts';
 
 				} else {
-					throw new Error(`The operation "${operation}" is not known`);
+					throw new NodeOperationError(this.getNode(), `The operation "${operation}" is not known`);
 				}
 			} else if (resource === 'list') {
 				if (operation === 'getAll') {
@@ -732,7 +733,7 @@ export class ActiveCampaign implements INodeType {
 					addAdditionalFields(body.tag as IDataObject, updateFields);
 
 				} else {
-					throw new Error(`The operation "${operation}" is not known`);
+					throw new NodeOperationError(this.getNode(), `The operation "${operation}" is not known`);
 				}
 			} else if (resource === 'deal') {
 				if (operation === 'create') {
@@ -851,7 +852,7 @@ export class ActiveCampaign implements INodeType {
 					endpoint = `/api/3/deals/${dealId}/notes/${dealNoteId}`;
 
 				} else {
-					throw new Error(`The operation "${operation}" is not known`);
+					throw new NodeOperationError(this.getNode(), `The operation "${operation}" is not known`);
 				}
 			} else if (resource === 'connection') {
 				if (operation === 'create') {
@@ -926,7 +927,7 @@ export class ActiveCampaign implements INodeType {
 					endpoint = `/api/3/connections`;
 
 				} else {
-					throw new Error(`The operation "${operation}" is not known`);
+					throw new NodeOperationError(this.getNode(), `The operation "${operation}" is not known`);
 				}
 			} else if (resource === 'ecommerceOrder') {
 				if (operation === 'create') {
@@ -1024,7 +1025,7 @@ export class ActiveCampaign implements INodeType {
 					endpoint = `/api/3/ecomOrders`;
 
 				} else {
-					throw new Error(`The operation "${operation}" is not known`);
+					throw new NodeOperationError(this.getNode(), `The operation "${operation}" is not known`);
 				}
 			} else if (resource === 'ecommerceCustomer') {
 				if (operation === 'create') {
@@ -1114,7 +1115,7 @@ export class ActiveCampaign implements INodeType {
 					endpoint = `/api/3/ecomCustomers`;
 
 				} else {
-					throw new Error(`The operation "${operation}" is not known`);
+					throw new NodeOperationError(this.getNode(), `The operation "${operation}" is not known`);
 				}
 			} else if (resource === 'ecommerceOrderProducts') {
 				if (operation === 'getByProductId') {
@@ -1160,11 +1161,11 @@ export class ActiveCampaign implements INodeType {
 					endpoint = `/api/3/ecomOrderProducts`;
 
 				} else {
-					throw new Error(`The operation "${operation}" is not known`);
+					throw new NodeOperationError(this.getNode(), `The operation "${operation}" is not known`);
 				}
 
 			} else {
-				throw new Error(`The resource "${resource}" is not known!`);
+				throw new NodeOperationError(this.getNode(), `The resource "${resource}" is not known!`);
 			}
 
 			let responseData;

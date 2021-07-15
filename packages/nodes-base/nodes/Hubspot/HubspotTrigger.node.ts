@@ -10,6 +10,8 @@ import {
 	INodeType,
 	INodeTypeDescription,
 	IWebhookResponseData,
+	NodeApiError,
+	NodeOperationError,
 } from 'n8n-workflow';
 
 import {
@@ -35,7 +37,7 @@ export class HubspotTrigger implements INodeType {
 		icon: 'file:hubspot.svg',
 		group: ['trigger'],
 		version: 1,
-		description: 'Starts the workflow when HubSpot events occur.',
+		description: 'Starts the workflow when HubSpot events occur',
 		defaults: {
 			name: 'Hubspot Trigger',
 			color: '#ff7f64',
@@ -280,7 +282,7 @@ export class HubspotTrigger implements INodeType {
 				try {
 					const { targetUrl } = await hubspotApiRequest.call(this, 'GET', `/webhooks/v3/${appId}/settings`, {});
 					if (targetUrl !== currentWebhookUrl) {
-						throw new Error(`The APP ID ${appId} already has a target url ${targetUrl}. Delete it or use another APP ID before executing the trigger. Due to Hubspot API limitations, you can have just one trigger per APP.`);
+						throw new NodeOperationError(this.getNode(), `The APP ID ${appId} already has a target url ${targetUrl}. Delete it or use another APP ID before executing the trigger. Due to Hubspot API limitations, you can have just one trigger per APP.`);
 					}
 				} catch (error) {
 					if (error.statusCode === 404) {
@@ -316,7 +318,7 @@ export class HubspotTrigger implements INodeType {
 				endpoint = `/webhooks/v3/${appId}/subscriptions`;
 
 				if (Array.isArray(events) && events.length === 0) {
-					throw new Error(`You must define at least one event`);
+					throw new NodeOperationError(this.getNode(), `You must define at least one event`);
 				}
 
 				for (const event of events) {
@@ -344,7 +346,7 @@ export class HubspotTrigger implements INodeType {
 
 				try {
 					await hubspotApiRequest.call(this, 'DELETE', `/webhooks/v3/${appId}/settings`, {});
-				} catch (e) {
+				} catch (error) {
 					return false;
 				}
 				return true;
@@ -357,7 +359,7 @@ export class HubspotTrigger implements INodeType {
 		const credentials = this.getCredentials('hubspotDeveloperApi') as IDataObject;
 
 		if (credentials === undefined) {
-			throw new Error('No credentials found!');
+			throw new NodeOperationError(this.getNode(), 'No credentials found!');
 		}
 
 		const req = this.getRequestObject();

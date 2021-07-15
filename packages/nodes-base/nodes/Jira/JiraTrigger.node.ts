@@ -26,7 +26,7 @@ export class JiraTrigger implements INodeType {
 		icon: 'file:jira.svg',
 		group: ['trigger'],
 		version: 1,
-		description: 'Starts the workflow when Jira events occurs.',
+		description: 'Starts the workflow when Jira events occur',
 		defaults: {
 			name: 'Jira Trigger',
 			color: '#4185f7',
@@ -427,7 +427,7 @@ export class JiraTrigger implements INodeType {
 
 					try {
 						await jiraSoftwareCloudApiRequest.call(this, endpoint, 'DELETE', body);
-					} catch (e) {
+					} catch (error) {
 						return false;
 					}
 					// Remove from the static workflow data so that it is clear

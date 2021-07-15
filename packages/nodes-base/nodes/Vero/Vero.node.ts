@@ -6,6 +6,8 @@ import {
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
+	NodeApiError,
+	NodeOperationError,
 } from 'n8n-workflow';
 import {
 	validateJSON,
@@ -24,7 +26,7 @@ export class Vero implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Vero',
 		name: 'vero',
-		icon: 'file:vero.png',
+		icon: 'file:vero.svg',
 		group: ['output'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
@@ -110,8 +112,8 @@ export class Vero implements INodeType {
 					}
 					try {
 						responseData = await veroApiRequest.call(this, 'POST', '/users/track', body);
-					} catch (err) {
-						throw new Error(`Vero Error: ${err}`);
+					} catch (error) {
+						throw new NodeApiError(this.getNode(), error);
 					}
 				}
 				//https://developers.getvero.com/?bash#users-alias
@@ -124,8 +126,8 @@ export class Vero implements INodeType {
 					};
 					try {
 						responseData = await veroApiRequest.call(this, 'PUT', '/users/reidentify', body);
-					} catch (err) {
-						throw new Error(`Vero Error: ${err}`);
+					} catch (error) {
+						throw new NodeApiError(this.getNode(), error);
 					}
 				}
 				//https://developers.getvero.com/?bash#users-unsubscribe
@@ -140,8 +142,8 @@ export class Vero implements INodeType {
 					};
 					try {
 						responseData = await veroApiRequest.call(this, 'POST', `/users/${operation}`, body);
-					} catch (err) {
-						throw new Error(`Vero Error: ${err}`);
+					} catch (error) {
+						throw new NodeApiError(this.getNode(), error);
 					}
 				}
 				//https://developers.getvero.com/?bash#tags-add
@@ -163,8 +165,8 @@ export class Vero implements INodeType {
 					}
 					try {
 						responseData = await veroApiRequest.call(this, 'PUT', '/users/tags/edit', body);
-					} catch (err) {
-						throw new Error(`Vero Error: ${err}`);
+					} catch (error) {
+						throw new NodeApiError(this.getNode(), error);
 					}
 				}
 			}
@@ -216,8 +218,8 @@ export class Vero implements INodeType {
 					}
 					try {
 						responseData = await veroApiRequest.call(this, 'POST', '/events/track', body);
-					} catch (err) {
-						throw new Error(`Vero Error: ${err}`);
+					} catch (error) {
+						throw new NodeApiError(this.getNode(), error);
 					}
 				}
 			}

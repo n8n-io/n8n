@@ -6,6 +6,7 @@ import {
 	IExecuteFunctions,
 	ILoadOptionsFunctions,
 } from 'n8n-core';
+import { NodeApiError } from 'n8n-workflow';
 
 export async function apiTemplateIoApiRequest(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
@@ -42,14 +43,11 @@ export async function apiTemplateIoApiRequest(
 	try {
 		const response = await this.helpers.request!(options);
 		if (response.status === 'error') {
-			throw new Error(response.message);
+			throw new NodeApiError(this.getNode(), response.message);
 		}
 		return response;
 	} catch (error) {
-		if (error?.response?.body?.message) {
-			throw new Error(`APITemplate.io error response [${error.statusCode}]: ${error.response.body.message}`);
-		}
-		throw error;
+		throw new NodeApiError(this.getNode(), error);
 	}
 }
 

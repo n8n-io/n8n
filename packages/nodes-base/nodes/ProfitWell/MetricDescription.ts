@@ -84,7 +84,7 @@ export const metricFields = [
 		description: 'Can only be the current or previous month. Format should be YYYY-MM',
 	},
 	{
-		displayName: 'Simple',
+		displayName: 'Simplify Response',
 		name: 'simple',
 		type: 'boolean',
 		default: true,
@@ -98,7 +98,7 @@ export const metricFields = [
 				],
 			},
 		},
-		description: 'When set to true a simplify version of the response will be used else the raw data.',
+		description: 'Return a simplified version of the response instead of the raw data.',
 	},
 	{
 		displayName: 'Options',

@@ -17,10 +17,10 @@ export class CalendlyTrigger implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Calendly Trigger',
 		name: 'calendlyTrigger',
-		icon: 'file:calendly.png',
+		icon: 'file:calendly.svg',
 		group: ['trigger'],
 		version: 1,
-		description: 'Starts the workflow when Calendly events occure.',
+		description: 'Starts the workflow when Calendly events occur',
 		defaults: {
 			name: 'Calendly Trigger',
 			color: '#374252',
@@ -122,7 +122,7 @@ export class CalendlyTrigger implements INodeType {
 
 					try {
 						await calendlyApiRequest.call(this, 'DELETE', endpoint);
-					} catch (e) {
+					} catch (error) {
 						return false;
 					}
 

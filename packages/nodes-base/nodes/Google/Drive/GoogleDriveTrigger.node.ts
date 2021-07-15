@@ -10,6 +10,7 @@
 // 	INodeTypeDescription,
 // 	INodeType,
 // 	IWebhookResponseData,
+//  NodeOperationError,
 // } from 'n8n-workflow';
 
 // import { getAuthenticationClient } from './GoogleApi';
@@ -23,7 +24,7 @@
 // 		group: ['trigger'],
 // 		version: 1,
 // 		subtitle: '={{$parameter["owner"] + "/" + $parameter["repository"] + ": " + $parameter["events"].join(", ")}}',
-// 		description: 'Starts the workflow when a file on Google Drive got changed.',
+// 		description: 'Starts the workflow when a file on Google Drive is changed',
 // 		defaults: {
 // 			name: 'Google Drive Trigger',
 // 			color: '#3f87f2',
@@ -75,8 +76,8 @@
 
 // 				// try {
 // 				// 	await githubApiRequest.call(this, 'GET', endpoint, {});
-// 				// } catch (e) {
-// 				// 	if (e.message.includes('[404]:')) {
+// 				// } catch (error) {
+// 				// 	if (error.message.includes('[404]:')) {
 // 				// 		// Webhook does not exist
 // 				// 		delete webhookData.webhookId;
 // 				// 		delete webhookData.webhookEvents;
@@ -100,7 +101,7 @@
 // 				const credentials = this.getCredentials('googleApi');
 
 // 				if (credentials === undefined) {
-// 					throw new Error('No credentials got returned!');
+// 					throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
 // 				}
 
 // 				const scopes = [
@@ -165,9 +166,9 @@
 // 				// let responseData;
 // 				// try {
 // 				// 	responseData = await githubApiRequest.call(this, 'POST', endpoint, body);
-// 				// } catch (e) {
-// 				// 	if (e.message.includes('[422]:')) {
-// 				// 		throw new Error('A webhook with the identical URL exists already. Please delete it manually on Github!');
+// 				// } catch (error) {
+// 				// 	if (error.message.includes('[422]:')) {
+// 				// 		throw new NodeOperationError(this.getNode(), 'A webhook with the identical URL exists already. Please delete it manually on Github!');
 // 				// 	}
 
 // 				// 	throw e;
@@ -175,7 +176,7 @@
 
 // 				// if (responseData.id === undefined || responseData.active !== true) {
 // 				// 	// Required data is missing so was not successful
-// 				// 	throw new Error('Github webhook creation response did not contain the expected data.');
+// 				// 	throw new NodeOperationError(this.getNode(), 'Github webhook creation response did not contain the expected data.');
 // 				// }
 
 // 				// const webhookData = this.getWorkflowStaticData('node');
@@ -192,7 +193,7 @@
 // 				const credentials = this.getCredentials('googleApi');
 
 // 				if (credentials === undefined) {
-// 					throw new Error('No credentials got returned!');
+// 					throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
 // 				}
 
 // 				const scopes = [
@@ -234,7 +235,7 @@
 
 // 				// 	try {
 // 				// 		await githubApiRequest.call(this, 'DELETE', endpoint, body);
-// 				// 	} catch (e) {
+// 				// 	} catch (error) {
 // 				// 		return false;
 // 				// 	}
 

@@ -9,7 +9,7 @@ import {
 } from 'n8n-core';
 
 import {
-	IDataObject,
+	IDataObject, NodeApiError, NodeOperationError,
 } from 'n8n-workflow';
 
 export async function zoomApiRequest(this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: string, resource: string, body: object = {}, query: object = {}, headers: {} | undefined = undefined, option: {} = {}): Promise<any> { // tslint:disable-line:no-any
@@ -38,7 +38,7 @@ export async function zoomApiRequest(this: IExecuteFunctions | IExecuteSingleFun
 		if (authenticationMethod === 'accessToken') {
 			const credentials = this.getCredentials('zoomApi');
 			if (credentials === undefined) {
-				throw new Error('No credentials got returned!');
+				throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
 			}
 			options.headers!.Authorization = `Bearer ${credentials.accessToken}`;
 
@@ -49,18 +49,7 @@ export async function zoomApiRequest(this: IExecuteFunctions | IExecuteSingleFun
 			return await this.helpers.requestOAuth2.call(this, 'zoomOAuth2Api', options);
 		}
 	} catch (error) {
-		if (error.statusCode === 401) {
-			// Return a clear error
-			throw new Error('The Zoom credentials are not valid!');
-		}
-
-		if (error.response && error.response.body && error.response.body.message) {
-			// Try to return the error prettier
-			throw new Error(`Zoom error response [${error.statusCode}]: ${error.response.body.message}`);
-		}
-
-		// If that data does not exist for some reason return the actual error
-		throw error;
+		throw new NodeApiError(this.getNode(), error);
 	}
 }
 

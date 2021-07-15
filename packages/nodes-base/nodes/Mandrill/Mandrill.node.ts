@@ -9,6 +9,8 @@ import {
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
+	NodeApiError,
+	NodeOperationError,
 } from 'n8n-workflow';
 
 import {
@@ -99,11 +101,11 @@ export class Mandrill implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Mandrill',
 		name: 'mandrill',
-		icon: 'file:mandrill.png',
+		icon: 'file:mandrill.svg',
 		group: ['output'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
-		description: 'Consume mandrill API',
+		description: 'Consume Mandrill API',
 		defaults: {
 			name: 'Mandrill',
 			color: '#c02428',
@@ -708,8 +710,8 @@ export class Mandrill implements INodeType {
 				let templates;
 				try {
 					templates = await mandrillApiRequest.call(this, '/templates', 'POST', '/list');
-				} catch (err) {
-					throw new Error(`Mandrill Error: ${err}`);
+				} catch (error) {
+					throw new NodeApiError(this.getNode(), error);
 				}
 				for (const template of templates) {
 					const templateName = template.name;

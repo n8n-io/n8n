@@ -4,6 +4,7 @@ import {
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
+	NodeOperationError,
 } from 'n8n-workflow';
 
 import * as Parser from 'rss-parser';
@@ -40,7 +41,7 @@ export class RssFeedRead implements INodeType {
 		const url = this.getNodeParameter('url', 0) as string;
 
 		if (!url) {
-			throw new Error('The parameter "URL" has to be set!');
+			throw new NodeOperationError(this.getNode(), 'The parameter "URL" has to be set!');
 		}
 		// TODO: Later add also check if the url has a valid format
 
@@ -49,12 +50,12 @@ export class RssFeedRead implements INodeType {
 		let feed: Parser.Output<IDataObject>;
 		try {
 			feed = await parser.parseURL(url);
-		} catch (e) {
-			if (e.code === 'ECONNREFUSED') {
-				throw new Error(`It was not possible to connect to the URL. Please make sure the URL "${url}" it is valid!`);
+		} catch (error) {
+			if (error.code === 'ECONNREFUSED') {
+				throw new NodeOperationError(this.getNode(), `It was not possible to connect to the URL. Please make sure the URL "${url}" it is valid!`);
 			}
 
-			throw e;
+			throw new NodeOperationError(this.getNode(), error);
 		}
 
 

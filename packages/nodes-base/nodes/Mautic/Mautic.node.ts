@@ -9,10 +9,11 @@ import {
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
+	NodeApiError,
+	NodeOperationError,
 } from 'n8n-workflow';
 
 import {
-	getErrors,
 	mauticApiRequest,
 	mauticApiRequestAllItems,
 	validateJSON,
@@ -29,9 +30,14 @@ import {
 } from './CompanyDescription';
 
 import {
-	contactCompanyFields,
-	contactCompanyOperations,
-} from './ContactCompanyDescription';
+	companyContactFields,
+	companyContactOperations,
+} from './CompanyContactDescription';
+
+import {
+	contactSegmentFields,
+	contactSegmentOperations,
+} from './ContactSegmentDescription';
 
 import {
 	snakeCase,
@@ -41,7 +47,7 @@ export class Mautic implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Mautic',
 		name: 'mautic',
-		icon: 'file:mautic.png',
+		icon: 'file:mautic.svg',
 		group: ['output'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
@@ -104,14 +110,19 @@ export class Mautic implements INodeType {
 						description: 'Create or modify a company',
 					},
 					{
+						name: 'Company Contact',
+						value: 'companyContact',
+						description: 'Add/remove contacts to/from a company',
+					},
+					{
 						name: 'Contact',
 						value: 'contact',
 						description: 'Create & modify contacts',
 					},
 					{
-						name: 'Contact <> Company',
-						value: 'contactCompany',
-						description: 'Add/ remove contacts from a company',
+						name: 'Contact Segment',
+						value: 'contactSegment',
+						description: 'Add/remove contacts to/from a segment',
 					},
 				],
 				default: 'contact',
@@ -121,8 +132,10 @@ export class Mautic implements INodeType {
 			...companyFields,
 			...contactOperations,
 			...contactFields,
-			...contactCompanyOperations,
-			...contactCompanyFields,
+			...contactSegmentOperations,
+			...contactSegmentFields,
+			...companyContactOperations,
+			...companyContactFields,
 		],
 	};
 
@@ -189,6 +202,19 @@ export class Mautic implements INodeType {
 					returnData.push({
 						name: field.label,
 						value: field.alias,
+					});
+				}
+				return returnData;
+			},
+			// Get all the available segments to display them to user so that he can
+			// select them easily
+			async getSegments(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const returnData: INodePropertyOptions[] = [];
+				const segments = await mauticApiRequestAllItems.call(this, 'lists', 'GET', '/segments');
+				for (const segment of segments) {
+					returnData.push({
+						name: segment.name,
+						value: segment.id,
 					});
 				}
 				return returnData;
@@ -265,7 +291,7 @@ export class Mautic implements INodeType {
 						qs.start = 0;
 						responseData = await mauticApiRequest.call(this, 'GET', '/companies', {}, qs);
 						if (responseData.errors) {
-							throw new Error(getErrors(responseData));
+							throw new NodeApiError(this.getNode(), responseData);
 						}
 						responseData = responseData.companies;
 						responseData = Object.values(responseData);
@@ -306,14 +332,14 @@ export class Mautic implements INodeType {
 						if (json !== undefined) {
 							body = { ...json };
 						} else {
-							throw new Error('Invalid JSON');
+							throw new NodeOperationError(this.getNode(), 'Invalid JSON');
 						}
 					}
 					if (additionalFields.ipAddress) {
 						body.ipAddress = additionalFields.ipAddress as string;
 					}
 					if (additionalFields.lastActive) {
-						body.ipAddress = additionalFields.lastActive as string;
+						body.lastActive = additionalFields.lastActive as string;
 					}
 					if (additionalFields.ownerId) {
 						body.ownerId = additionalFields.ownerId as string;
@@ -415,14 +441,14 @@ export class Mautic implements INodeType {
 						if (json !== undefined) {
 							body = { ...json };
 						} else {
-							throw new Error('Invalid JSON');
+							throw new NodeOperationError(this.getNode(), 'Invalid JSON');
 						}
 					}
 					if (updateFields.ipAddress) {
 						body.ipAddress = updateFields.ipAddress as string;
 					}
 					if (updateFields.lastActive) {
-						body.ipAddress = updateFields.lastActive as string;
+						body.lastActive = updateFields.lastActive as string;
 					}
 					if (updateFields.ownerId) {
 						body.ownerId = updateFields.ownerId as string;
@@ -524,7 +550,7 @@ export class Mautic implements INodeType {
 						qs.start = 0;
 						responseData = await mauticApiRequest.call(this, 'GET', '/contacts', {}, qs);
 						if (responseData.errors) {
-							throw new Error(getErrors(responseData));
+							throw new NodeApiError(this.getNode(), responseData);
 						}
 						responseData = responseData.contacts;
 						responseData = Object.values(responseData);
@@ -546,7 +572,22 @@ export class Mautic implements INodeType {
 				}
 			}
 
-			if (resource === 'contactCompany') {
+			if (resource === 'contactSegment') {
+				//https://developer.mautic.org/?php#add-contact-to-a-segment
+				if (operation === 'add') {
+					const contactId = this.getNodeParameter('contactId', i) as string;
+					const segmentId = this.getNodeParameter('segmentId', i) as string;
+					responseData = await mauticApiRequest.call(this, 'POST', `/segments/${segmentId}/contact/${contactId}/add`);
+				}
+				//https://developer.mautic.org/#remove-contact-from-a-segment
+				if (operation === 'remove') {
+					const contactId = this.getNodeParameter('contactId', i) as string;
+					const segmentId = this.getNodeParameter('segmentId', i) as string;
+					responseData = await mauticApiRequest.call(this, 'POST', `/segments/${segmentId}/contact/${contactId}/remove`);
+				}
+			}
+
+			if (resource === 'companyContact') {
 				//https://developer.mautic.org/#add-contact-to-a-company
 				if (operation === 'add') {
 					const contactId = this.getNodeParameter('contactId', i) as string;

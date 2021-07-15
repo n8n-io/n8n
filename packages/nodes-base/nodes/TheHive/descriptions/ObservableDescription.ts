@@ -120,64 +120,9 @@ export const observableFields = [
 		type: 'options',
 		required: true,
 		default: '',
-		options: [
-			{
-				name: 'domain',
-				value: 'domain',
-			},
-			{
-				name: 'file',
-				value: 'file',
-			},
-			{
-				name: 'filename',
-				value: 'filename',
-			},
-			{
-				name: 'fqdn',
-				value: 'fqdn',
-			},
-			{
-				name: 'hash',
-				value: 'hash',
-			},
-			{
-				name: 'ip',
-				value: 'ip',
-			},
-			{
-				name: 'mail',
-				value: 'mail',
-			},
-			{
-				name: 'mail_subject',
-				value: 'mail_subject',
-			},
-			{
-				name: 'other',
-				value: 'other',
-			},
-			{
-				name: 'regexp',
-				value: 'regexp',
-			},
-			{
-				name: 'registry',
-				value: 'registry',
-			},
-			{
-				name: 'uri_path',
-				value: 'uri_path',
-			},
-			{
-				name: 'url',
-				value: 'url',
-			},
-			{
-				name: 'user-agent',
-				value: 'user-agent',
-			},
-		],
+		typeOptions: {
+			loadOptionsMethod: 'loadObservableTypes',
+		},
 		displayOptions: {
 			show: {
 				resource: [
@@ -604,64 +549,9 @@ export const observableFields = [
 				name: 'dataType',
 				type: 'multiOptions',
 				default: [],
-				options: [
-					{
-						name: 'domain',
-						value: 'domain',
-					},
-					{
-						name: 'file',
-						value: 'file',
-					},
-					{
-						name: 'filename',
-						value: 'filename',
-					},
-					{
-						name: 'fqdn',
-						value: 'fqdn',
-					},
-					{
-						name: 'hash',
-						value: 'hash',
-					},
-					{
-						name: 'ip',
-						value: 'ip',
-					},
-					{
-						name: 'mail',
-						value: 'mail',
-					},
-					{
-						name: 'mail_subject',
-						value: 'mail_subject',
-					},
-					{
-						name: 'other',
-						value: 'other',
-					},
-					{
-						name: 'regexp',
-						value: 'regexp',
-					},
-					{
-						name: 'registry',
-						value: 'registry',
-					},
-					{
-						name: 'uri_path',
-						value: 'uri_path',
-					},
-					{
-						name: 'url',
-						value: 'url',
-					},
-					{
-						name: 'user-agent',
-						value: 'user-agent',
-					},
-				],
+				typeOptions: {
+					loadOptionsMethod: 'loadObservableTypes',
+				},
 				description: 'Type of the observable',
 			},
 			{

@@ -4,6 +4,7 @@ import {
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
+	NodeOperationError,
 } from 'n8n-workflow';
 
 import {moceanApiRequest} from './GenericFunctions';
@@ -16,7 +17,7 @@ export class Mocean implements INodeType {
 		icon: 'file:mocean.png',
 		group: ['transform'],
 		version: 1,
-		description: 'Send SMS & voice messages via Mocean (https://moceanapi.com)',
+		description: 'Send SMS and voice messages via Mocean',
 		defaults: {
 			name: 'Mocean',
 			color: '#772244',
@@ -220,7 +221,7 @@ export class Mocean implements INodeType {
 				body['mocean-text'] = text;
 				endpoint = '/rest/2/sms';
 			} else {
-				throw new Error(`Unknown resource ${resource}`);
+				throw new NodeOperationError(this.getNode(), `Unknown resource ${resource}`);
 			}
 
 			if (operation === 'send') {
@@ -232,7 +233,7 @@ export class Mocean implements INodeType {
 				}
 
 			} else {
-				throw new Error(`Unknown operation ${operation}`);
+				throw new NodeOperationError(this.getNode(), `Unknown operation ${operation}`);
 			}
 		}
 

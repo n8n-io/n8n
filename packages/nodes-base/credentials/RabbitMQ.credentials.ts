@@ -1,37 +1,38 @@
 import {
 	ICredentialType,
-	NodePropertyTypes,
+	IDisplayOptions,
+	INodeProperties,
 } from 'n8n-workflow';
 
 export class RabbitMQ implements ICredentialType {
 	name = 'rabbitmq';
 	displayName = 'RabbitMQ';
 	documentationUrl = 'rabbitmq';
-	properties = [
+	properties: INodeProperties[] = [
 		{
 			displayName: 'Hostname',
 			name: 'hostname',
-			type: 'string' as NodePropertyTypes,
+			type: 'string',
 			default: '',
 			placeholder: 'localhost',
 		},
 		{
 			displayName: 'Port',
 			name: 'port',
-			type: 'number' as NodePropertyTypes,
+			type: 'number',
 			default: 5672,
 		},
 		{
 			displayName: 'User',
 			name: 'username',
-			type: 'string' as NodePropertyTypes,
+			type: 'string',
 			default: '',
 			placeholder: 'guest',
 		},
 		{
 			displayName: 'Password',
 			name: 'password',
-			type: 'string' as NodePropertyTypes,
+			type: 'string',
 			typeOptions: {
 				password: true,
 			},
@@ -41,22 +42,19 @@ export class RabbitMQ implements ICredentialType {
 		{
 			displayName: 'Vhost',
 			name: 'vhost',
-			type: 'string' as NodePropertyTypes,
+			type: 'string',
 			default: '/',
 		},
 		{
 			displayName: 'SSL',
 			name: 'ssl',
-			type: 'boolean' as NodePropertyTypes,
+			type: 'boolean',
 			default: false,
 		},
 		{
-			displayName: 'Client Certificate',
-			name: 'cert',
-			type: 'string' as NodePropertyTypes,
-			typeOptions: {
-				password: true,
-			},
+			displayName: 'Passwordless',
+			name: 'passwordless',
+			type: 'boolean',
 			displayOptions: {
 				show: {
 					ssl: [
@@ -64,54 +62,16 @@ export class RabbitMQ implements ICredentialType {
 					],
 				},
 			},
-			default: '',
-			description: 'SSL Client Certificate to use.',
-		},
-		{
-			displayName: 'Client Key',
-			name: 'key',
-			type: 'string' as NodePropertyTypes,
-			typeOptions: {
-				password: true,
-			},
-			displayOptions: {
-				show: {
-					ssl: [
-						true,
-					],
-				},
-			},
-			default: '',
-			description: 'SSL Client Key to use.',
-		},
-		{
-			displayName: 'Passphrase',
-			name: 'passphrase',
-			type: 'string' as NodePropertyTypes,
-			typeOptions: {
-				password: true,
-			},
-			displayOptions: {
-				show: {
-					ssl: [
-						true,
-					],
-				},
-			},
-			default: '',
-			description: 'SSL passphrase to use.',
+			default: true,
+			description: 'Passwordless connection with certificates (SASL mechanism EXTERNAL)',
 		},
 		{
 			displayName: 'CA Certificates',
 			name: 'ca',
-			type: 'string' as NodePropertyTypes,
+			type: 'string',
 			typeOptions: {
 				password: true,
 			},
-			// typeOptions: {
-			// 	multipleValues: true,
-			// 	multipleValueButtonText: 'Add Certificate',
-			// },
 			displayOptions: {
 				show: {
 					ssl: [
@@ -122,31 +82,91 @@ export class RabbitMQ implements ICredentialType {
 			default: '',
 			description: 'SSL CA Certificates to use.',
 		},
+		{
+			displayName: 'Client Certificate',
+			name: 'cert',
+			type: 'string',
+			typeOptions: {
+				password: true,
+			},
+			displayOptions: {
+				show: {
+					ssl: [
+						true,
+					],
+					passwordless: [
+						true,
+					],
+				},
+			} as IDisplayOptions,
+			default: '',
+			description: 'SSL Client Certificate to use.',
+		},
+		{
+			displayName: 'Client Key',
+			name: 'key',
+			type: 'string',
+			typeOptions: {
+				password: true,
+			},
+			displayOptions: {
+				show: {
+					ssl: [
+						true,
+					],
+					passwordless: [
+						true,
+					],
+				},
+			},
+			default: '',
+			description: 'SSL Client Key to use.',
+		},
+		{
+			displayName: 'Passphrase',
+			name: 'passphrase',
+			type: 'string',
+			typeOptions: {
+				password: true,
+			},
+			displayOptions: {
+				show: {
+					ssl: [
+						true,
+					],
+					passwordless: [
+						true,
+					],
+				},
+			},
+			default: '',
+			description: 'SSL passphrase to use.',
+		},
 		// {
 		// 	displayName: 'Client ID',
 		// 	name: 'clientId',
-		// 	type: 'string' as NodePropertyTypes,
+		// 	type: 'string',
 		// 	default: '',
 		// 	placeholder: 'my-app',
 		// },
 		// {
 		// 	displayName: 'Brokers',
 		// 	name: 'brokers',
-		// 	type: 'string' as NodePropertyTypes,
+		// 	type: 'string',
 		// 	default: '',
 		// 	placeholder: 'kafka1:9092,kafka2:9092',
 		// },
 		// {
 		// 	displayName: 'Username',
 		// 	name: 'username',
-		// 	type: 'string' as NodePropertyTypes,
+		// 	type: 'string',
 		// 	default: '',
 		// 	description: 'Optional username if authenticated is required.',
 		// },
 		// {
 		// 	displayName: 'Password',
 		// 	name: 'password',
-		// 	type: 'string' as NodePropertyTypes,
+		// 	type: 'string',
 		// 	typeOptions: {
 		// 		password: true,
 		// 	},

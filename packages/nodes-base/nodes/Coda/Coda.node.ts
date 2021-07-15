@@ -8,6 +8,8 @@ import {
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
+	NodeApiError,
+	NodeOperationError,
 } from 'n8n-workflow';
 import {
 	codaApiRequest,
@@ -34,7 +36,7 @@ export class Coda implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Coda',
 		name: 'coda',
-		icon: 'file:coda.png',
+		icon: 'file:coda.svg',
 		group: ['output'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
@@ -338,8 +340,8 @@ export class Coda implements INodeType {
 						responseData = await codaApiRequest.call(this, 'GET', endpoint, {}, qs);
 						responseData = responseData.items;
 					}
-				} catch (err) {
-					throw new Error(`Coda Error: ${err.message}`);
+				} catch (error) {
+					throw new NodeApiError(this.getNode(), error);
 				}
 
 				if (options.rawData === true) {
@@ -540,8 +542,8 @@ export class Coda implements INodeType {
 						responseData = await codaApiRequest.call(this, 'GET', endpoint, {}, qs);
 						responseData = responseData.items;
 					}
-				} catch (err) {
-					throw new Error(`Coda Error: ${err.message}`);
+				} catch (error) {
+					throw new NodeApiError(this.getNode(), error);
 				}
 
 				if (options.rawData === true) {

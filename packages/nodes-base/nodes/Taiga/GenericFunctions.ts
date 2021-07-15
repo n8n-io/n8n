@@ -13,6 +13,8 @@ import {
 import {
 	ICredentialDataDecryptedObject,
 	IDataObject,
+	NodeApiError,
+	NodeOperationError,
 } from 'n8n-workflow';
 
 import {
@@ -24,7 +26,7 @@ export async function getAuthorization(
 	credentials?: ICredentialDataDecryptedObject,
 ): Promise<string> {
 	if (credentials === undefined) {
-		throw new Error('No credentials got returned!');
+		throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
 	}
 
 	const { password, username } = credentials;
@@ -45,7 +47,7 @@ export async function getAuthorization(
 
 		return response.auth_token;
 	} catch (error) {
-		throw new Error('Taiga Error: ' + error.err || error);
+		throw new NodeApiError(this.getNode(), error);
 	}
 }
 
@@ -58,16 +60,7 @@ export async function taigaApiRequest(
 	uri?: string | undefined,
 	option = {},
 ): Promise<any> { // tslint:disable-line:no-any
-
-	const version = this.getNodeParameter('version', 0, 'cloud') as string;
-
-	let credentials;
-
-	if (version === 'server') {
-		credentials = this.getCredentials('taigaServerApi') as ICredentialDataDecryptedObject;
-	} else {
-		credentials = this.getCredentials('taigaCloudApi') as ICredentialDataDecryptedObject;
-	}
+	const credentials = this.getCredentials('taigaApi') as ICredentialDataDecryptedObject;
 
 	const authToken = await getAuthorization.call(this, credentials);
 
@@ -92,12 +85,7 @@ export async function taigaApiRequest(
 	try {
 		return await this.helpers.request!(options);
 	} catch (error) {
-		let errorMessage = error;
-		if (error.response.body && error.response.body._error_message) {
-			errorMessage = error.response.body._error_message;
-		}
-
-		throw new Error(`Taigan error response [${error.statusCode}]: ${errorMessage}`);
+		throw new NodeApiError(this.getNode(), error);
 	}
 }
 
@@ -126,4 +114,45 @@ export async function taigaApiRequestAllItems(this: IHookFunctions | IExecuteFun
 export function getAutomaticSecret(credentials: ICredentialDataDecryptedObject) {
 	const data = `${credentials.username},${credentials.password}`;
 	return createHash('md5').update(data).digest('hex');
+}
+
+export async function handleListing(
+	this: IExecuteFunctions,
+	method: string,
+	endpoint: string,
+	body: IDataObject = {},
+	qs: IDataObject = {},
+	i: number,
+) {
+	let responseData;
+	qs.project = this.getNodeParameter('projectId', i) as number;
+	const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+
+	if (returnAll) {
+		return await taigaApiRequestAllItems.call(this, method, endpoint, body, qs);
+	} else {
+		qs.limit = this.getNodeParameter('limit', i) as number;
+		responseData = await taigaApiRequestAllItems.call(this, method, endpoint, body, qs);
+		return responseData.splice(0, qs.limit);
+	}
+}
+
+export const toOptions = (items: LoadedResource[]) =>
+	items.map(({ name, id }) => ({ name, value: id }));
+
+export function throwOnEmptyUpdate(
+	this: IExecuteFunctions,
+	resource: Resource,
+) {
+	throw new NodeOperationError(
+		this.getNode(),
+		`Please enter at least one field to update for the ${resource}.`,
+	);
+}
+
+export async function getVersionForUpdate(
+	this: IExecuteFunctions,
+	endpoint: string,
+) {
+	return await taigaApiRequest.call(this, 'GET', endpoint).then(response => response.version);
 }

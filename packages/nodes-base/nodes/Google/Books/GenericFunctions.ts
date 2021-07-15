@@ -9,7 +9,7 @@ import {
 } from 'n8n-core';
 
 import {
-	IDataObject,
+	IDataObject, NodeApiError, NodeOperationError,
 } from 'n8n-workflow';
 
 import * as moment from 'moment-timezone';
@@ -40,7 +40,7 @@ export async function googleApiRequest(this: IExecuteFunctions | IExecuteSingleF
 			const credentials = this.getCredentials('googleApi');
 
 			if (credentials === undefined) {
-				throw new Error('No credentials got returned!');
+				throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
 			}
 
 			const { access_token } = await getAccessToken.call(this, credentials as IDataObject);
@@ -53,24 +53,11 @@ export async function googleApiRequest(this: IExecuteFunctions | IExecuteSingleF
 			return await this.helpers.requestOAuth2.call(this, 'googleBooksOAuth2Api', options);
 		}
 	} catch (error) {
-		if (error.response && error.response.body && error.response.body.error) {
-
-			let errors;
-
-			if (error.response.body.error.errors) {
-				errors = error.response.body.error.errors;
-
-				errors = errors.map((e: IDataObject) => e.message).join('|');
-
-			} else {
-				errors = error.response.body.error.message;
-			}
-			// Try to return the error prettier
-			throw new Error(
-				`Google Books error response [${error.statusCode}]: ${errors}`,
-			);
+		if (error.code === 'ERR_OSSL_PEM_NO_START_LINE') {
+			error.statusCode = '401';
 		}
-		throw error;
+
+		throw new NodeApiError(this.getNode(), error);
 	}
 }
 
