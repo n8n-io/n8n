@@ -238,50 +238,64 @@ export class Mautic implements INodeType {
 			if (resource === 'company') {
 				//https://developer.mautic.org/#create-company
 				if (operation === 'create') {
-					const name = this.getNodeParameter('name', i) as string;
-					const simple = this.getNodeParameter('simple', i) as boolean;
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
-					const body: IDataObject = {
-						companyname: name,
-					};
-					Object.assign(body, additionalFields);
+					const options = this.getNodeParameter('options', i) as IDataObject;
+					const jsonActive = this.getNodeParameter('jsonParameters', i) as boolean;
+					let body: IDataObject = {};
+					if (!jsonActive) {
+						body.companyname = this.getNodeParameter('companyname', i) as string;
+						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						Object.assign(body, additionalFields);
+					} else {
+						const json = validateJSON(this.getNodeParameter('bodyJson', i) as string);
+						if (json !== undefined) {
+							body = { ...json };
+						} else {
+							throw new NodeOperationError(this.getNode(), 'Invalid JSON');
+						}
+					}
 					responseData = await mauticApiRequest.call(this, 'POST', '/companies/new', body);
 					responseData = responseData.company;
-					if (simple === true) {
+					if (options.rawData === false) {
 						responseData = responseData.fields.all;
 					}
 				}
 				//https://developer.mautic.org/#edit-company
 				if (operation === 'update') {
 					const companyId = this.getNodeParameter('companyId', i) as string;
-					const simple = this.getNodeParameter('simple', i) as boolean;
-					const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
-					const body: IDataObject = {};
-					Object.assign(body, updateFields);
-					if (body.name) {
-						body.companyname = body.name;
-						delete body.name;
+					const options = this.getNodeParameter('options', i) as IDataObject;
+					const jsonActive = this.getNodeParameter('jsonParameters', i) as boolean;
+					let body: IDataObject = {};
+					if (!jsonActive) {
+						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+						Object.assign(body, updateFields);
+					} else {
+						const json = validateJSON(this.getNodeParameter('bodyJson', i) as string);
+						if (json !== undefined) {
+							body = { ...json };
+						} else {
+							throw new NodeOperationError(this.getNode(), 'Invalid JSON');
+						}
 					}
 					responseData = await mauticApiRequest.call(this, 'PATCH', `/companies/${companyId}/edit`, body);
 					responseData = responseData.company;
-					if (simple === true) {
+					if (options.rawData === false) {
 						responseData = responseData.fields.all;
 					}
 				}
 				//https://developer.mautic.org/#get-company
 				if (operation === 'get') {
 					const companyId = this.getNodeParameter('companyId', i) as string;
-					const simple = this.getNodeParameter('simple', i) as boolean;
+					const options = this.getNodeParameter('options', i) as IDataObject;
 					responseData = await mauticApiRequest.call(this, 'GET', `/companies/${companyId}`);
 					responseData = responseData.company;
-					if (simple === true) {
+					if (options.rawData === false) {
 						responseData = responseData.fields.all;
 					}
 				}
 				//https://developer.mautic.org/#list-contact-companies
 				if (operation === 'getAll') {
 					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
-					const simple = this.getNodeParameter('simple', i) as boolean;
+					const options = this.getNodeParameter('options', i) as IDataObject;
 					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 					qs = Object.assign(qs, additionalFields);
 					if (returnAll === true) {
@@ -296,18 +310,18 @@ export class Mautic implements INodeType {
 						responseData = responseData.companies;
 						responseData = Object.values(responseData);
 					}
-					if (simple === true) {
+					if (options.rawData === false) {
 						//@ts-ignore
 						responseData = responseData.map(item => item.fields.all);
 					}
 				}
 				//https://developer.mautic.org/#delete-company
 				if (operation === 'delete') {
-					const simple = this.getNodeParameter('simple', i) as boolean;
+					const options = this.getNodeParameter('options', i) as IDataObject;
 					const companyId = this.getNodeParameter('companyId', i) as string;
 					responseData = await mauticApiRequest.call(this, 'DELETE', `/companies/${companyId}/delete`);
 					responseData = responseData.company;
-					if (simple === true) {
+					if (options.rawData === false) {
 						responseData = responseData.fields.all;
 					}
 				}
@@ -317,7 +331,6 @@ export class Mautic implements INodeType {
 				//https://developer.mautic.org/?php#create-contact
 				if (operation === 'create') {
 					const options = this.getNodeParameter('options', i) as IDataObject;
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 					const jsonActive = this.getNodeParameter('jsonParameters', i) as boolean;
 					let body: IDataObject = {};
 					if (!jsonActive) {
@@ -327,6 +340,79 @@ export class Mautic implements INodeType {
 						body.company = this.getNodeParameter('company', i) as string;
 						body.position = this.getNodeParameter('position', i) as string;
 						body.title = this.getNodeParameter('title', i) as string;
+
+						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						if (additionalFields.ipAddress) {
+							body.ipAddress = additionalFields.ipAddress as string;
+						}
+						if (additionalFields.lastActive) {
+							body.lastActive = additionalFields.lastActive as string;
+						}
+						if (additionalFields.ownerId) {
+							body.ownerId = additionalFields.ownerId as string;
+						}
+						if (additionalFields.addressUi) {
+							const addressValues = (additionalFields.addressUi as IDataObject).addressValues as IDataObject;
+							if (addressValues) {
+								body.address1 = addressValues.address1 as string;
+								body.address2 = addressValues.address2 as string;
+								body.city = addressValues.city as string;
+								body.state = addressValues.state as string;
+								body.country = addressValues.country as string;
+								body.zipcode = addressValues.zipCode as string;
+							}
+						}
+						if (additionalFields.socialMediaUi) {
+							const socialMediaValues = (additionalFields.socialMediaUi as IDataObject).socialMediaValues as IDataObject;
+							if (socialMediaValues) {
+								body.facebook = socialMediaValues.facebook as string;
+								body.foursquare = socialMediaValues.foursquare as string;
+								body.instagram = socialMediaValues.instagram as string;
+								body.linkedin = socialMediaValues.linkedIn as string;
+								body.skype = socialMediaValues.skype as string;
+								body.twitter = socialMediaValues.twitter as string;
+							}
+						}
+						if (additionalFields.customFieldsUi) {
+							const customFields = (additionalFields.customFieldsUi as IDataObject).customFieldValues as IDataObject[];
+							if (customFields) {
+								const data = customFields.reduce((obj, value) => Object.assign(obj, { [`${value.fieldId}`]: value.fieldValue }), {});
+								Object.assign(body, data);
+							}
+						}
+						if (additionalFields.b2bOrb2c) {
+							body.b2b_or_b2c = additionalFields.b2bOrb2c as string;
+						}
+						if (additionalFields.crmId) {
+							body.crm_id = additionalFields.crmId as string;
+						}
+						if (additionalFields.fax) {
+							body.fax = additionalFields.fax as string;
+						}
+						if (additionalFields.hasPurchased) {
+							body.haspurchased = additionalFields.hasPurchased as boolean;
+						}
+						if (additionalFields.mobile) {
+							body.mobile = additionalFields.mobile as string;
+						}
+						if (additionalFields.phone) {
+							body.phone = additionalFields.phone as string;
+						}
+						if (additionalFields.prospectOrCustomer) {
+							body.prospect_or_customer = additionalFields.prospectOrCustomer as string;
+						}
+						if (additionalFields.sandbox) {
+							body.sandbox = additionalFields.sandbox as boolean;
+						}
+						if (additionalFields.stage) {
+							body.stage = additionalFields.stage as string;
+						}
+						if (additionalFields.tags) {
+							body.tags = additionalFields.tags as string;
+						}
+						if (additionalFields.website) {
+							body.website = additionalFields.website as string;
+						}
 					} else {
 						const json = validateJSON(this.getNodeParameter('bodyJson', i) as string);
 						if (json !== undefined) {
@@ -334,77 +420,6 @@ export class Mautic implements INodeType {
 						} else {
 							throw new NodeOperationError(this.getNode(), 'Invalid JSON');
 						}
-					}
-					if (additionalFields.ipAddress) {
-						body.ipAddress = additionalFields.ipAddress as string;
-					}
-					if (additionalFields.lastActive) {
-						body.lastActive = additionalFields.lastActive as string;
-					}
-					if (additionalFields.ownerId) {
-						body.ownerId = additionalFields.ownerId as string;
-					}
-					if (additionalFields.addressUi) {
-						const addressValues = (additionalFields.addressUi as IDataObject).addressValues as IDataObject;
-						if (addressValues) {
-							body.address1 = addressValues.address1 as string;
-							body.address2 = addressValues.address2 as string;
-							body.city = addressValues.city as string;
-							body.state = addressValues.state as string;
-							body.country = addressValues.country as string;
-							body.zipcode = addressValues.zipCode as string;
-						}
-					}
-					if (additionalFields.socialMediaUi) {
-						const socialMediaValues = (additionalFields.socialMediaUi as IDataObject).socialMediaValues as IDataObject;
-						if (socialMediaValues) {
-							body.facebook = socialMediaValues.facebook as string;
-							body.foursquare = socialMediaValues.foursquare as string;
-							body.instagram = socialMediaValues.instagram as string;
-							body.linkedin = socialMediaValues.linkedIn as string;
-							body.skype = socialMediaValues.skype as string;
-							body.twitter = socialMediaValues.twitter as string;
-						}
-					}
-					if (additionalFields.customFieldsUi) {
-						const customFields = (additionalFields.customFieldsUi as IDataObject).customFieldValues as IDataObject[];
-						if (customFields) {
-							const data = customFields.reduce((obj, value) => Object.assign(obj, { [`${value.fieldId}`]: value.fieldValue }), {});
-							Object.assign(body, data);
-						}
-					}
-					if (additionalFields.b2bOrb2c) {
-						body.b2b_or_b2c = additionalFields.b2bOrb2c as string;
-					}
-					if (additionalFields.crmId) {
-						body.crm_id = additionalFields.crmId as string;
-					}
-					if (additionalFields.fax) {
-						body.fax = additionalFields.fax as string;
-					}
-					if (additionalFields.hasPurchased) {
-						body.haspurchased = additionalFields.hasPurchased as boolean;
-					}
-					if (additionalFields.mobile) {
-						body.mobile = additionalFields.mobile as string;
-					}
-					if (additionalFields.phone) {
-						body.phone = additionalFields.phone as string;
-					}
-					if (additionalFields.prospectOrCustomer) {
-						body.prospect_or_customer = additionalFields.prospectOrCustomer as string;
-					}
-					if (additionalFields.sandbox) {
-						body.sandbox = additionalFields.sandbox as boolean;
-					}
-					if (additionalFields.stage) {
-						body.stage = additionalFields.stage as string;
-					}
-					if (additionalFields.tags) {
-						body.tags = additionalFields.tags as string;
-					}
-					if (additionalFields.website) {
-						body.website = additionalFields.website as string;
 					}
 					responseData = await mauticApiRequest.call(this, 'POST', '/contacts/new', body);
 					responseData = [responseData.contact];
@@ -415,105 +430,115 @@ export class Mautic implements INodeType {
 				//https://developer.mautic.org/?php#edit-contact
 				if (operation === 'update') {
 					const options = this.getNodeParameter('options', i) as IDataObject;
-					const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+					const jsonActive = this.getNodeParameter('jsonParameters', i) as boolean;
 					const contactId = this.getNodeParameter('contactId', i) as string;
 					let body: IDataObject = {};
-					if (updateFields.email) {
-						body.email = updateFields.email as string;
-					}
-					if (updateFields.firstName) {
-						body.firstname = updateFields.firstName as string;
-					}
-					if (updateFields.lastName) {
-						body.lastname = updateFields.lastName as string;
-					}
-					if (updateFields.company) {
-						body.company = updateFields.company as string;
-					}
-					if (updateFields.position) {
-						body.position = updateFields.position as string;
-					}
-					if (updateFields.title) {
-						body.title = updateFields.title as string;
-					}
-					if (updateFields.bodyJson) {
-						const json = validateJSON(updateFields.bodyJson as string);
+					if (!jsonActive) {
+						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+						if (updateFields.email) {
+							body.email = updateFields.email as string;
+						}
+						if (updateFields.firstName) {
+							body.firstname = updateFields.firstName as string;
+						}
+						if (updateFields.lastName) {
+							body.lastname = updateFields.lastName as string;
+						}
+						if (updateFields.company) {
+							body.company = updateFields.company as string;
+						}
+						if (updateFields.position) {
+							body.position = updateFields.position as string;
+						}
+						if (updateFields.title) {
+							body.title = updateFields.title as string;
+						}
+						if (updateFields.bodyJson) {
+							const json = validateJSON(updateFields.bodyJson as string);
+							if (json !== undefined) {
+								body = { ...json };
+							} else {
+								throw new NodeOperationError(this.getNode(), 'Invalid JSON');
+							}
+						}
+						if (updateFields.ipAddress) {
+							body.ipAddress = updateFields.ipAddress as string;
+						}
+						if (updateFields.lastActive) {
+							body.lastActive = updateFields.lastActive as string;
+						}
+						if (updateFields.ownerId) {
+							body.ownerId = updateFields.ownerId as string;
+						}
+						if (updateFields.addressUi) {
+							const addressValues = (updateFields.addressUi as IDataObject).addressValues as IDataObject;
+							if (addressValues) {
+								body.address1 = addressValues.address1 as string;
+								body.address2 = addressValues.address2 as string;
+								body.city = addressValues.city as string;
+								body.state = addressValues.state as string;
+								body.country = addressValues.country as string;
+								body.zipcode = addressValues.zipCode as string;
+							}
+						}
+						if (updateFields.socialMediaUi) {
+							const socialMediaValues = (updateFields.socialMediaUi as IDataObject).socialMediaValues as IDataObject;
+							if (socialMediaValues) {
+								body.facebook = socialMediaValues.facebook as string;
+								body.foursquare = socialMediaValues.foursquare as string;
+								body.instagram = socialMediaValues.instagram as string;
+								body.linkedin = socialMediaValues.linkedIn as string;
+								body.skype = socialMediaValues.skype as string;
+								body.twitter = socialMediaValues.twitter as string;
+							}
+						}
+						if (updateFields.customFieldsUi) {
+							const customFields = (updateFields.customFieldsUi as IDataObject).customFieldValues as IDataObject[];
+							if (customFields) {
+								const data = customFields.reduce((obj, value) => Object.assign(obj, { [`${value.fieldId}`]: value.fieldValue }), {});
+								Object.assign(body, data);
+							}
+						}
+						if (updateFields.b2bOrb2c) {
+							body.b2b_or_b2c = updateFields.b2bOrb2c as string;
+						}
+						if (updateFields.crmId) {
+							body.crm_id = updateFields.crmId as string;
+						}
+						if (updateFields.fax) {
+							body.fax = updateFields.fax as string;
+						}
+						if (updateFields.hasPurchased) {
+							body.haspurchased = updateFields.hasPurchased as boolean;
+						}
+						if (updateFields.mobile) {
+							body.mobile = updateFields.mobile as string;
+						}
+						if (updateFields.phone) {
+							body.phone = updateFields.phone as string;
+						}
+						if (updateFields.prospectOrCustomer) {
+							body.prospect_or_customer = updateFields.prospectOrCustomer as string;
+						}
+						if (updateFields.sandbox) {
+							body.sandbox = updateFields.sandbox as boolean;
+						}
+						if (updateFields.stage) {
+							body.stage = updateFields.stage as string;
+						}
+						if (updateFields.tags) {
+							body.tags = updateFields.tags as string;
+						}
+						if (updateFields.website) {
+							body.website = updateFields.website as string;
+						}
+					} else {
+						const json = validateJSON(this.getNodeParameter('bodyJson', i) as string);
 						if (json !== undefined) {
 							body = { ...json };
 						} else {
 							throw new NodeOperationError(this.getNode(), 'Invalid JSON');
 						}
-					}
-					if (updateFields.ipAddress) {
-						body.ipAddress = updateFields.ipAddress as string;
-					}
-					if (updateFields.lastActive) {
-						body.lastActive = updateFields.lastActive as string;
-					}
-					if (updateFields.ownerId) {
-						body.ownerId = updateFields.ownerId as string;
-					}
-					if (updateFields.addressUi) {
-						const addressValues = (updateFields.addressUi as IDataObject).addressValues as IDataObject;
-						if (addressValues) {
-							body.address1 = addressValues.address1 as string;
-							body.address2 = addressValues.address2 as string;
-							body.city = addressValues.city as string;
-							body.state = addressValues.state as string;
-							body.country = addressValues.country as string;
-							body.zipcode = addressValues.zipCode as string;
-						}
-					}
-					if (updateFields.socialMediaUi) {
-						const socialMediaValues = (updateFields.socialMediaUi as IDataObject).socialMediaValues as IDataObject;
-						if (socialMediaValues) {
-							body.facebook = socialMediaValues.facebook as string;
-							body.foursquare = socialMediaValues.foursquare as string;
-							body.instagram = socialMediaValues.instagram as string;
-							body.linkedin = socialMediaValues.linkedIn as string;
-							body.skype = socialMediaValues.skype as string;
-							body.twitter = socialMediaValues.twitter as string;
-						}
-					}
-					if (updateFields.customFieldsUi) {
-						const customFields = (updateFields.customFieldsUi as IDataObject).customFieldValues as IDataObject[];
-						if (customFields) {
-							const data = customFields.reduce((obj, value) => Object.assign(obj, { [`${value.fieldId}`]: value.fieldValue }), {});
-							Object.assign(body, data);
-						}
-					}
-					if (updateFields.b2bOrb2c) {
-						body.b2b_or_b2c = updateFields.b2bOrb2c as string;
-					}
-					if (updateFields.crmId) {
-						body.crm_id = updateFields.crmId as string;
-					}
-					if (updateFields.fax) {
-						body.fax = updateFields.fax as string;
-					}
-					if (updateFields.hasPurchased) {
-						body.haspurchased = updateFields.hasPurchased as boolean;
-					}
-					if (updateFields.mobile) {
-						body.mobile = updateFields.mobile as string;
-					}
-					if (updateFields.phone) {
-						body.phone = updateFields.phone as string;
-					}
-					if (updateFields.prospectOrCustomer) {
-						body.prospect_or_customer = updateFields.prospectOrCustomer as string;
-					}
-					if (updateFields.sandbox) {
-						body.sandbox = updateFields.sandbox as boolean;
-					}
-					if (updateFields.stage) {
-						body.stage = updateFields.stage as string;
-					}
-					if (updateFields.tags) {
-						body.tags = updateFields.tags as string;
-					}
-					if (updateFields.website) {
-						body.website = updateFields.website as string;
 					}
 					responseData = await mauticApiRequest.call(this, 'PATCH', `/contacts/${contactId}/edit`, body);
 					responseData = [responseData.contact];

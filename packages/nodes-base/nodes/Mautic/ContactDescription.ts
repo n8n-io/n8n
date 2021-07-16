@@ -225,6 +225,9 @@ export const contactFields = [
 				operation: [
 					'create',
 				],
+				jsonParameters: [
+					false,
+				],
 			},
 		},
 		options: [
@@ -526,6 +529,26 @@ export const contactFields = [
 		},
 	},
 	{
+		displayName: 'Body',
+		name: 'bodyJson',
+		type: 'json',
+		displayOptions: {
+			show: {
+				operation: [
+					'update',
+				],
+				resource: [
+					'contact',
+				],
+				jsonParameters: [
+					true,
+				],
+			},
+		},
+		default: '',
+		description: 'Contact parameters',
+	},
+	{
 		displayName: 'Update Fields',
 		name: 'updateFields',
 		type: 'collection',
@@ -539,23 +562,12 @@ export const contactFields = [
 				operation: [
 					'update',
 				],
+				jsonParameters: [
+					false,
+				],
 			},
 		},
 		options: [
-			{
-				displayName: 'Body',
-				name: 'bodyJson',
-				type: 'json',
-				displayOptions: {
-					show: {
-						'/jsonParameters': [
-							true,
-						],
-					},
-				},
-				default: '',
-				description: 'Contact parameters',
-			},
 			{
 				displayName: 'Address',
 				name: 'addressUi',
