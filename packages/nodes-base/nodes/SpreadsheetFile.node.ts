@@ -474,9 +474,7 @@ export class SpreadsheetFile implements INodeType {
 
 				newItem.binary![binaryPropertyName] = await this.helpers.prepareBinaryData(wbout, fileName);
 
-				const newItems = [];
 				newItems.push(newItem);
-
 			} catch (error) {
 				if (this.continueOnFail()) {
 					newItems.push({json:{ error: error.message }});
@@ -484,7 +482,6 @@ export class SpreadsheetFile implements INodeType {
 					throw error;
 				}
 			}
-			return this.prepareOutputData(newItems);
 		} else {
 			if (this.continueOnFail()) {
 				return this.prepareOutputData([{json:{ error: `The operation "${operation}" is not supported!` }}]);
@@ -492,5 +489,6 @@ export class SpreadsheetFile implements INodeType {
 				throw new NodeOperationError(this.getNode(), `The operation "${operation}" is not supported!`);
 			}
 		}
+		return this.prepareOutputData(newItems);
 	}
 }
