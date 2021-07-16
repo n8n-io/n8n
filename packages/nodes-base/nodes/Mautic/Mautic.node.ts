@@ -238,13 +238,21 @@ export class Mautic implements INodeType {
 			if (resource === 'company') {
 				//https://developer.mautic.org/#create-company
 				if (operation === 'create') {
-					const name = this.getNodeParameter('name', i) as string;
 					const simple = this.getNodeParameter('simple', i) as boolean;
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
-					const body: IDataObject = {
-						companyname: name,
-					};
-					Object.assign(body, additionalFields);
+					const jsonActive = this.getNodeParameter('jsonParameters', i) as boolean;
+					let body: IDataObject = {};
+					if (!jsonActive) {
+						body.companyname = this.getNodeParameter('name', i) as string;
+						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						Object.assign(body, additionalFields);
+					} else {
+						const json = validateJSON(this.getNodeParameter('bodyJson', i) as string);
+						if (json !== undefined) {
+							body = { ...json };
+						} else {
+							throw new NodeOperationError(this.getNode(), 'Invalid JSON');
+						}
+					}
 					responseData = await mauticApiRequest.call(this, 'POST', '/companies/new', body);
 					responseData = responseData.company;
 					if (simple === true) {
@@ -255,12 +263,18 @@ export class Mautic implements INodeType {
 				if (operation === 'update') {
 					const companyId = this.getNodeParameter('companyId', i) as string;
 					const simple = this.getNodeParameter('simple', i) as boolean;
-					const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
-					const body: IDataObject = {};
-					Object.assign(body, updateFields);
-					if (body.name) {
-						body.companyname = body.name;
-						delete body.name;
+					const jsonActive = this.getNodeParameter('jsonParameters', i) as boolean;
+					let body: IDataObject = {};
+					if (!jsonActive) {
+						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+						Object.assign(body, updateFields);
+					} else {
+						const json = validateJSON(this.getNodeParameter('bodyJson', i) as string);
+						if (json !== undefined) {
+							body = { ...json };
+						} else {
+							throw new NodeOperationError(this.getNode(), 'Invalid JSON');
+						}
 					}
 					responseData = await mauticApiRequest.call(this, 'PATCH', `/companies/${companyId}/edit`, body);
 					responseData = responseData.company;
