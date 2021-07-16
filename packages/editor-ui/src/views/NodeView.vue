@@ -375,6 +375,39 @@ export default mixins(
 				});
 
 				this.$externalHooks().run('execution.open', { workflowId: data.workflowData.id, workflowName: data.workflowData.name, executionId });
+
+				if (data.finished !== true && data.data.resultData.error) {
+					// Check if any node contains an error
+					let nodeErrorFound = false;
+					if (data.data.resultData.runData) {
+						const runData = data.data.resultData.runData;
+						errorCheck:
+						for (const nodeName of Object.keys(runData)) {
+							for (const taskData of runData[nodeName]) {
+								if (taskData.error) {
+									nodeErrorFound = true;
+									break errorCheck;
+								}
+							}
+						}
+					}
+
+					if (nodeErrorFound === false) {
+						const errorMessage = this.$getExecutionError(data.data.resultData.error);
+						this.$showMessage({
+							title: 'Failed execution',
+							message: errorMessage,
+							type: 'error',
+						});
+
+						if (data.data.resultData.error.stack) {
+							// Display some more information for now in console to make debugging easier
+							// TODO: Improve this in the future by displaying in UI
+							console.error(`Execution ${executionId} error:`); // eslint-disable-line no-console
+							console.error(data.data.resultData.error.stack); // eslint-disable-line no-console
+						}
+					}
+				}
 			},
 			async openWorkflowTemplate (templateId: string) {
 				this.setLoadingText('Loading template');
@@ -514,15 +547,29 @@ export default mixins(
 				// else which should ignore the default keybindings
 				for (let index = 0; index < path.length; index++) {
 					if (path[index].className && typeof path[index].className === 'string' && (
-						path[index].className.includes('el-message-box') ||
-						path[index].className.includes('el-select') ||
 						path[index].className.includes('ignore-key-press')
 					)) {
 						return;
 					}
 				}
-				const anyModalsOpen = this.$store.getters['ui/anyModalsOpen'];
-				if (anyModalsOpen) {
+
+				// el-dialog or el-message-box element is open
+				if (window.document.body.classList.contains('el-popup-parent--hidden')) {
+					return;
+				}
+
+				if (e.key === 'Escape') {
+					this.createNodeActive = false;
+					if (this.activeNode) {
+						this.$externalHooks().run('dataDisplay.nodeEditingFinished');
+						this.$store.commit('setActiveNode', null);
+					}
+
+					return;
+				}
+
+				// node modal is open
+				if (this.activeNode) {
 					return;
 				}
 
@@ -533,15 +580,12 @@ export default mixins(
 					e.preventDefault();
 
 					this.callDebounced('deleteSelectedNodes', 500);
-				} else if (e.key === 'Escape') {
-					this.$externalHooks().run('dataDisplay.nodeEditingFinished');
-					this.createNodeActive = false;
-					this.$store.commit('setActiveNode', null);
+
 				} else if (e.key === 'Tab') {
 					this.createNodeActive = !this.createNodeActive && !this.isReadOnly;
 				} else if (e.key === this.controlKeyCode) {
 					this.ctrlKeyPressed = true;
-				} else if (e.key === 'F2') {
+				} else if (e.key === 'F2' && !this.isReadOnly) {
 					const lastSelectedNode = this.lastSelectedNode;
 					if (lastSelectedNode !== null) {
 						this.callDebounced('renameNodePrompt', 1500, lastSelectedNode.name);

@@ -287,7 +287,7 @@ export const recordFields = [
 		description: 'How many results to return.',
 	},
 	{
-		displayName: 'Simple',
+		displayName: 'Simplify Response',
 		name: 'simple',
 		type: 'boolean',
 		displayOptions: {
