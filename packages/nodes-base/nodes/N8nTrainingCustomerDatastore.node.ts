@@ -147,7 +147,7 @@ export class N8nTrainingCustomerDatastore implements INodeType {
 					responseData = data;
 				} else {
 					const limit = this.getNodeParameter('limit', i) as number;
-					responseData = data.splice(0, limit);
+					responseData = data.slice(0, limit);
 				}
 			}
 

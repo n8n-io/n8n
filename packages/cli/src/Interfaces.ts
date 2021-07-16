@@ -188,6 +188,7 @@ export interface IExecutionsListResponse {
 	count: number;
 	// results: IExecutionShortResponse[];
 	results: IExecutionsSummary[];
+	estimated: boolean;
 }
 
 export interface IExecutionsStopData {

@@ -32,7 +32,7 @@ export class HttpRequest implements INodeType {
 		group: ['input'],
 		version: 1,
 		subtitle: '={{$parameter["requestMethod"] + ": " + $parameter["url"]}}',
-		description: 'Makes a HTTP request and returns the received data',
+		description: 'Makes an HTTP request and returns the response data',
 		defaults: {
 			name: 'HTTP Request',
 			color: '#2200DD',
@@ -811,8 +811,23 @@ export class HttpRequest implements INodeType {
 						// @ts-ignore
 						requestOptions[optionName] = {};
 						for (const parameterData of setUiParameter!.parameter as IDataObject[]) {
-							// @ts-ignore
-							requestOptions[optionName][parameterData!.name as string] = parameterData!.value;
+							const parameterDataName = parameterData!.name as string;
+							const newValue = parameterData!.value;
+							if (optionName === 'qs') {
+								const computeNewValue = (oldValue: unknown) => {
+									if (typeof oldValue === 'string') {
+										return [oldValue, newValue];
+									} else if (Array.isArray(oldValue)) {
+										return [...oldValue, newValue];
+									} else {
+										return newValue;
+									}
+								};
+								requestOptions[optionName][parameterDataName] = computeNewValue(requestOptions[optionName][parameterDataName]);
+							} else {
+								// @ts-ignore
+								requestOptions[optionName][parameterDataName] = newValue;
+							}
 						}
 					}
 				}

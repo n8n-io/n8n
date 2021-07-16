@@ -29,7 +29,7 @@ export class MailerLite implements INodeType {
 		group: ['input'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
-		description: 'Consume Mailer Lite API.',
+		description: 'Consume Mailer Lite API',
 		defaults: {
 			name: 'MailerLite',
 			color: '#58be72',
