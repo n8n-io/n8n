@@ -713,8 +713,8 @@ export class ExecuteBatch extends Command {
 												if (nodeEdgeCases[nodeName] !== undefined && nodeEdgeCases[nodeName].keepOnlyProperties !== undefined) {
 													keepOnlyFields = nodeEdgeCases[nodeName].keepOnlyProperties!;
 												}
-
-												const jsonProperties = keepOnlyFields.length > 0 ?  pick(executionData.json, keepOnlyFields) : executionData.json;
+												executionData.json = keepOnlyFields.length > 0 ?  pick(executionData.json, keepOnlyFields) : executionData.json;
+												const jsonProperties = executionData.json;
 
 												const nodeOutputAttributes = Object.keys(jsonProperties);
 												nodeOutputAttributes.map(attributeName => {
