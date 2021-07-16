@@ -202,7 +202,7 @@ export interface IVariableSelectorOption {
 
 // Simple version of n8n-workflow.Workflow
 export interface IWorkflowData {
-	id?: string;
+	id?: string | number;
 	name?: string;
 	active?: boolean;
 	nodes: INode[];
@@ -212,7 +212,7 @@ export interface IWorkflowData {
 }
 
 export interface IWorkflowDataUpdate {
-	id?: string;
+	id?: string | number;
 	name?: string;
 	nodes?: INode[];
 	connections?: IConnections;
@@ -325,6 +325,7 @@ export interface IExecutionShortResponse {
 export interface IExecutionsListResponse {
 	count: number;
 	results: IExecutionsSummary[];
+	estimated: boolean;
 }
 
 export interface IExecutionsCurrentSummaryExtended {

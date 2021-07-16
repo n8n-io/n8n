@@ -102,6 +102,8 @@ export function extractValues(item: IDataObject): string {
 				return 'NULL';
 			} else if (typeof val === 'string') {
 				return `'${val.replace(/'/g, '\'\'')}'`;
+			} else if (typeof val === 'boolean') {
+				return +!!val;
 			}
 			return val;
 		}) // maybe other types such as dates have to be handled as well
@@ -119,7 +121,7 @@ export function extractUpdateSet(item: IDataObject, columns: string[]): string {
 	return columns
 		.map(
 			column =>
-				`${column} = ${
+				`"${column}" = ${
 					typeof item[column] === 'string' ? `'${item[column]}'` : item[column]
 				}`,
 		)
@@ -150,4 +152,10 @@ export function extractDeleteValues(items: IDataObject[], key: string): string {
 	return `(${items
 		.map(item => (typeof item[key] === 'string' ? `'${item[key]}'` : item[key]))
 		.join(',')})`;
+}
+
+
+export function formatColumns(columns: string) {
+	return columns.split(',')
+	.map((column) => (`"${column.trim()}"`)).join(',');
 }

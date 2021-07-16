@@ -24,7 +24,7 @@ export class Telegram implements INodeType {
 		group: ['output'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
-		description: 'Sends data to Telegram.',
+		description: 'Sends data to Telegram',
 		defaults: {
 			name: 'Telegram',
 			color: '#0088cc',
@@ -201,6 +201,11 @@ export class Telegram implements INodeType {
 				},
 				options: [
 					{
+						name: 'Delete Chat Message',
+						value: 'deleteMessage',
+						description: 'Delete a chat message',
+					},
+					{
 						name: 'Edit Message Text',
 						value: 'editMessageText',
 						description: 'Edit a text message',
@@ -209,11 +214,6 @@ export class Telegram implements INodeType {
 						name: 'Pin Chat Message',
 						value: 'pinChatMessage',
 						description: 'Pin a chat message',
-					},
-					{
-						name: 'Unpin Chat Message',
-						value: 'unpinChatMessage',
-						description: 'Unpin a chat message',
 					},
 					{
 						name: 'Send Animation',
@@ -241,14 +241,14 @@ export class Telegram implements INodeType {
 						description: 'Send a location',
 					},
 					{
-						name: 'Send Message',
-						value: 'sendMessage',
-						description: 'Send a text message',
-					},
-					{
 						name: 'Send Media Group',
 						value: 'sendMediaGroup',
 						description: 'Send group of photos or videos to album',
+					},
+					{
+						name: 'Send Message',
+						value: 'sendMessage',
+						description: 'Send a text message',
 					},
 					{
 						name: 'Send Photo',
@@ -264,6 +264,11 @@ export class Telegram implements INodeType {
 						name: 'Send Video',
 						value: 'sendVideo',
 						description: 'Send a video',
+					},
+					{
+						name: 'Unpin Chat Message',
+						value: 'unpinChatMessage',
+						description: 'Unpin a chat message',
 					},
 				],
 				default: 'sendMessage',
@@ -283,11 +288,11 @@ export class Telegram implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
+							'deleteMessage',
 							'get',
 							'leave',
 							'member',
 							'pinChatMessage',
-							'unpinChatMessage',
 							'setDescription',
 							'setTitle',
 							'sendAnimation',
@@ -300,6 +305,7 @@ export class Telegram implements INodeType {
 							'sendPhoto',
 							'sendSticker',
 							'sendVideo',
+							'unpinChatMessage',
 						],
 						resource: [
 							'chat',
@@ -309,6 +315,28 @@ export class Telegram implements INodeType {
 				},
 				required: true,
 				description: 'Unique identifier for the target chat or username of the target<br />channel (in the format @channelusername).',
+			},
+
+			// ----------------------------------
+			//       message:deleteMessage
+			// ----------------------------------
+			{
+				displayName: 'Message ID',
+				name: 'messageId',
+				type: 'string',
+				default: '',
+				displayOptions: {
+					show: {
+						operation: [
+							'deleteMessage',
+						],
+						resource: [
+							'message',
+						],
+					},
+				},
+				required: true,
+				description: 'Unique identifier of the message to delete.',
 			},
 
 			// ----------------------------------
@@ -1848,6 +1876,16 @@ export class Telegram implements INodeType {
 
 					// Add additional fields and replyMarkup
 					addAdditionalFields.call(this, body, i);
+
+				} else if (operation === 'deleteMessage') {
+					// ----------------------------------
+					//       message:deleteMessage
+					// ----------------------------------
+
+					endpoint = 'deleteMessage';
+
+					body.chat_id = this.getNodeParameter('chatId', i) as string;
+					body.message_id = this.getNodeParameter('messageId', i) as string;
 
 				} else if (operation === 'pinChatMessage') {
 					// ----------------------------------
