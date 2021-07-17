@@ -18,7 +18,7 @@ export function resolveDataType(dataType: string) {
 			json: 'simple-json',
 		},
 		postgresdb: {
-			datetime: 'timestamp',
+			datetime: 'timestamptz',
 		},
 		mysqldb: {},
 		mariadb: {},

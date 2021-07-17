@@ -89,6 +89,7 @@ export async function init(): Promise<IDatabaseCollections> {
 				migrations: mysqlMigrations,
 				migrationsRun: true,
 				migrationsTableName: `${entityPrefix}migrations`,
+				timezone: 'Z', // set UTC as default
 			};
 			break;
 

@@ -46,6 +46,7 @@ import {
 import * as config from '../config';
 
 import { LessThanOrEqual } from 'typeorm';
+import { DateUtils } from 'typeorm/util/DateUtils';
 
 const ERROR_TRIGGER_TYPE = config.get('nodes.errorTriggerType') as string;
 
@@ -102,7 +103,7 @@ function executeErrorWorkflow(workflowData: IWorkflowBase, fullRunData: IRun, mo
  *
  */
 let throttling = false;
-function pruneExecutionData(): void {
+function pruneExecutionData(this: WorkflowHooks): void {
 	if (!throttling) {
 		Logger.verbose('Pruning execution data from database');
 
@@ -112,13 +113,20 @@ function pruneExecutionData(): void {
 		const date = new Date(); // today
 		date.setHours(date.getHours() - maxAge);
 
+		// date reformatting needed - see https://github.com/typeorm/typeorm/issues/2286
+		const utcDate = DateUtils.mixedDateToUtcDatetimeString(date);
+
 		// throttle just on success to allow for self healing on failure
-		Db.collections.Execution!.delete({ stoppedAt: LessThanOrEqual(date.toISOString()) })
+		Db.collections.Execution!.delete({ stoppedAt: LessThanOrEqual(utcDate) })
 			.then(data =>
 				setTimeout(() => {
 					throttling = false;
 				}, timeout * 1000)
-			).catch(err => throttling = false);
+			).catch(error => {
+				throttling = false;
+
+				Logger.error(`Failed pruning execution data from database for execution ID ${this.executionId} (hookFunctionsSave)`, { ...error, executionId: this.executionId, sessionId: this.sessionId, workflowId: this.workflowData.id });
+			});
 	}
 }
 
@@ -322,7 +330,7 @@ function hookFunctionsSave(parentProcessMode?: string): IWorkflowExecuteHooks {
 
 				// Prune old execution data
 				if (config.get('executions.pruneData')) {
-					pruneExecutionData();
+					pruneExecutionData.call(this);
 				}
 
 				const isManualMode = [this.mode, parentProcessMode].includes('manual');
