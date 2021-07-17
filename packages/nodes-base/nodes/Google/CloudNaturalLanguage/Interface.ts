@@ -1,6 +1,6 @@
 export interface IData {
 	document: IDocument;
-	encodingType: string;
+	encodingType?: string;
 }
 
 export interface IDocument {
