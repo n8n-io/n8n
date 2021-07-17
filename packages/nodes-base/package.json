@@ -305,6 +305,7 @@
       "dist/nodes/Autopilot/AutopilotTrigger.node.js",
       "dist/nodes/Aws/AwsLambda.node.js",
       "dist/nodes/Aws/Comprehend/AwsComprehend.node.js",
+      "dist/nodes/Aws/DynamoDB/AwsDynamoDB.node.js",
       "dist/nodes/Aws/Rekognition/AwsRekognition.node.js",
       "dist/nodes/Aws/S3/AwsS3.node.js",
       "dist/nodes/Aws/SES/AwsSes.node.js",
