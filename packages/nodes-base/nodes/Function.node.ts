@@ -102,31 +102,36 @@ return items;`,
 		try {
 			// Execute the function code
 			items = (await vm.run(`module.exports = async function() {${functionCode}}()`, __dirname));
-		} catch (error) {
-			return Promise.reject(error);
-		}
-
-
-		// Do very basic validation of the data
-		if (items === undefined) {
-			throw new NodeOperationError(this.getNode(), 'No data got returned. Always return an Array of items!');
-		}
-		if (!Array.isArray(items)) {
-			throw new NodeOperationError(this.getNode(), 'Always an Array of items has to be returned!');
-		}
-		for (const item of items) {
-			if (item.json === undefined) {
-				throw new NodeOperationError(this.getNode(), 'All returned items have to contain a property named "json"!');
+			// Do very basic validation of the data
+			if (items === undefined) {
+				throw new NodeOperationError(this.getNode(), 'No data got returned. Always return an Array of items!');
 			}
-			if (typeof item.json !== 'object') {
-				throw new NodeOperationError(this.getNode(), 'The json-property has to be an object!');
+			if (!Array.isArray(items)) {
+				throw new NodeOperationError(this.getNode(), 'Always an Array of items has to be returned!');
 			}
-			if (item.binary !== undefined) {
-				if (Array.isArray(item.binary) || typeof item.binary !== 'object') {
-					throw new NodeOperationError(this.getNode(), 'The binary-property has to be an object!');
+			for (const item of items) {
+				if (item.json === undefined) {
+					throw new NodeOperationError(this.getNode(), 'All returned items have to contain a property named "json"!');
+				}
+				if (typeof item.json !== 'object') {
+					throw new NodeOperationError(this.getNode(), 'The json-property has to be an object!');
+				}
+				if (item.binary !== undefined) {
+					if (Array.isArray(item.binary) || typeof item.binary !== 'object') {
+						throw new NodeOperationError(this.getNode(), 'The binary-property has to be an object!');
+					}
 				}
 			}
+		} catch (error) {
+			if (this.continueOnFail()) {
+				items=[{json:{ error: error.message }}];
+			} else {
+				return Promise.reject(error);
+			}
 		}
+
+
+
 
 		return this.prepareOutputData(items);
 	}

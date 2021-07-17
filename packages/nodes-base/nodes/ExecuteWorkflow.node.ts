@@ -149,53 +149,64 @@ export class ExecuteWorkflow implements INodeType {
 		const source = this.getNodeParameter('source', 0) as string;
 
 		const workflowInfo: IExecuteWorkflowInfo = {};
-		if (source === 'database') {
-			// Read workflow from database
-			workflowInfo.id = this.getNodeParameter('workflowId', 0) as string;
 
-		} else if (source === 'localFile') {
-			// Read workflow from filesystem
-			const workflowPath = this.getNodeParameter('workflowPath', 0) as string;
+		try {
 
-			let workflowJson;
-			try {
-				workflowJson = await fsReadFile(workflowPath, { encoding: 'utf8' }) as string;
-			} catch (error) {
-				if (error.code === 'ENOENT') {
-					throw new NodeOperationError(this.getNode(), `The file "${workflowPath}" could not be found.`);
+			if (source === 'database') {
+				// Read workflow from database
+				workflowInfo.id = this.getNodeParameter('workflowId', 0) as string;
+
+			} else if (source === 'localFile') {
+				// Read workflow from filesystem
+				const workflowPath = this.getNodeParameter('workflowPath', 0) as string;
+
+				let workflowJson;
+				try {
+					workflowJson = await fsReadFile(workflowPath, { encoding: 'utf8' }) as string;
+				} catch (error) {
+					if (error.code === 'ENOENT') {
+						throw new NodeOperationError(this.getNode(), `The file "${workflowPath}" could not be found.`);
+					}
+
+					throw error;
 				}
 
-				throw error;
+				workflowInfo.code = JSON.parse(workflowJson) as IWorkflowBase;
+			} else if (source === 'parameter') {
+				// Read workflow from parameter
+				const workflowJson = this.getNodeParameter('workflowJson', 0) as string;
+				workflowInfo.code = JSON.parse(workflowJson) as IWorkflowBase;
+
+			} else if (source === 'url') {
+				// Read workflow from url
+				const workflowUrl = this.getNodeParameter('workflowUrl', 0) as string;
+
+
+				const requestOptions = {
+					headers: {
+						'accept': 'application/json,text/*;q=0.99',
+					},
+					method: 'GET',
+					uri: workflowUrl,
+					json: true,
+					gzip: true,
+				};
+
+				const response = await this.helpers.request(requestOptions);
+				workflowInfo.code = response;
+
 			}
 
-			workflowInfo.code = JSON.parse(workflowJson) as IWorkflowBase;
-		} else if (source === 'parameter') {
-			// Read workflow from parameter
-			const workflowJson = this.getNodeParameter('workflowJson', 0) as string;
-			workflowInfo.code = JSON.parse(workflowJson) as IWorkflowBase;
+			const receivedData = await this.executeWorkflow(workflowInfo, items);
 
-		} else if (source === 'url') {
-			// Read workflow from url
-			const workflowUrl = this.getNodeParameter('workflowUrl', 0) as string;
+			return receivedData;
 
+		} catch (error) {
+			if (this.continueOnFail()) {
+				return this.prepareOutputData([{json:{ error: error.message }}]);
+			}
 
-			const requestOptions = {
-				headers: {
-					'accept': 'application/json,text/*;q=0.99',
-				},
-				method: 'GET',
-				uri: workflowUrl,
-				json: true,
-				gzip: true,
-			};
-
-			const response = await this.helpers.request(requestOptions);
-			workflowInfo.code = response;
-
+			throw error;
 		}
-
-		const receivedData = await this.executeWorkflow(workflowInfo, items);
-
-		return receivedData;
 	}
 }

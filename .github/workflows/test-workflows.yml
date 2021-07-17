@@ -32,6 +32,14 @@ jobs:
         with:
           node-version: ${{ matrix.node-version }}
       -
+        name: Install dependencies
+        run: |
+          apt update -y
+          echo 'tzdata tzdata/Areas select Europe' | debconf-set-selections
+          echo 'tzdata tzdata/Zones/Europe select Paris' | debconf-set-selections
+          DEBIAN_FRONTEND="noninteractive" apt-get install -y graphicsmagick
+        shell: bash
+      -
         name: npm install and build
         run: |
           cd n8n

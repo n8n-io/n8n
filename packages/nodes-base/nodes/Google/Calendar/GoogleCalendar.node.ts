@@ -606,6 +606,12 @@ export class GoogleCalendar implements INodeType {
 						);
 					}
 				}
+
+				if (Array.isArray(responseData)) {
+					returnData.push.apply(returnData, responseData as IDataObject[]);
+				} else if (responseData !== undefined) {
+					returnData.push(responseData as IDataObject);
+				}
 			} catch (error) {
 				if (this.continueOnFail() !== true) {
 					throw error;
@@ -618,12 +624,6 @@ export class GoogleCalendar implements INodeType {
 					);
 					continue;
 				}
-			}
-
-			if (Array.isArray(responseData)) {
-				returnData.push.apply(returnData, responseData as IDataObject[]);
-			} else if (responseData !== undefined) {
-				returnData.push(responseData as IDataObject);
 			}
 		}
 		return [this.helpers.returnJsonArray(returnData)];

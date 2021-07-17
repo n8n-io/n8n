@@ -45,6 +45,10 @@ import {
 	LoggerProxy,
 } from 'n8n-workflow';
 
+import {
+	pick,
+} from 'lodash';
+
 export class ExecuteBatch extends Command {
 	static description = '\nExecutes multiple workflows once';
 
@@ -166,6 +170,8 @@ export class ExecuteBatch extends Command {
 			'429',
 			'econnrefused',
 			'missing a required parameter',
+			'insufficient credit balance',
+			'request timed out',
 		];
 
 		errorMessage = errorMessage.toLowerCase();
@@ -600,6 +606,8 @@ export class ExecuteBatch extends Command {
 							nodeEdgeCases[node.name].capResults = parseInt(parts[1], 10);
 						} else if (parts[0] === 'IGNORED_PROPERTIES') {
 							nodeEdgeCases[node.name].ignoredProperties = parts[1].split(',').map(property => property.trim());
+						} else if (parts[0] === 'KEEP_ONLY_PROPERTIES') {
+							nodeEdgeCases[node.name].keepOnlyProperties = parts[1].split(',').map(property => property.trim());
 						}
 					}
 				});
@@ -701,6 +709,11 @@ export class ExecuteBatch extends Command {
 													nodeEdgeCases[nodeName].ignoredProperties!.forEach(ignoredProperty => delete executionData.json[ignoredProperty]);
 												}
 
+												let keepOnlyFields = [] as string[];
+												if (nodeEdgeCases[nodeName] !== undefined && nodeEdgeCases[nodeName].keepOnlyProperties !== undefined) {
+													keepOnlyFields = nodeEdgeCases[nodeName].keepOnlyProperties!;
+												}
+												executionData.json = keepOnlyFields.length > 0 ?  pick(executionData.json, keepOnlyFields) : executionData.json;
 												const jsonProperties = executionData.json;
 
 												const nodeOutputAttributes = Object.keys(jsonProperties);

@@ -322,68 +322,75 @@ export class Pushover implements INodeType {
 		const resource = this.getNodeParameter('resource', 0) as string;
 		const operation = this.getNodeParameter('operation', 0) as string;
 		for (let i = 0; i < length; i++) {
+			try {
+				if (resource === 'message') {
+					if (operation === 'push') {
+						const userKey = this.getNodeParameter('userKey', i) as string;
 
-			if (resource === 'message') {
-				if (operation === 'push') {
-					const userKey = this.getNodeParameter('userKey', i) as string;
+						const message = this.getNodeParameter('message', i) as string;
 
-					const message = this.getNodeParameter('message', i) as string;
+						const priority = this.getNodeParameter('priority', i) as number;
 
-					const priority = this.getNodeParameter('priority', i) as number;
+						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const body: IDataObject = {
+							user: userKey,
+							message,
+							priority,
+						};
 
-					const body: IDataObject = {
-						user: userKey,
-						message,
-						priority,
-					};
+						if (priority === 2) {
+							body.retry = this.getNodeParameter('retry', i) as number;
 
-					if (priority === 2) {
-						body.retry = this.getNodeParameter('retry', i) as number;
-
-						body.expire = this.getNodeParameter('expire', i) as number;
-					}
-
-					Object.assign(body, additionalFields);
-
-					if (body.attachmentsUi) {
-						const attachment = (body.attachmentsUi as IDataObject).attachmentsValues as IDataObject;
-
-						if (attachment) {
-
-							const binaryPropertyName = attachment.binaryPropertyName as string;
-
-							if (items[i].binary === undefined) {
-								throw new NodeOperationError(this.getNode(), 'No binary data exists on item!');
-							}
-
-							const item = items[i].binary as IBinaryKeyData;
-
-							const binaryData = item[binaryPropertyName] as IBinaryData;
-
-							if (binaryData === undefined) {
-								throw new NodeOperationError(this.getNode(), `No binary data property "${binaryPropertyName}" does not exists on item!`);
-							}
-
-							body.attachment = {
-								value: Buffer.from(binaryData.data, BINARY_ENCODING),
-								options: {
-									filename: binaryData.fileName,
-								},
-							};
-
-							delete body.attachmentsUi;
+							body.expire = this.getNodeParameter('expire', i) as number;
 						}
-					}
 
-					responseData = await pushoverApiRequest.call(
-						this,
-						'POST',
-						`/messages.json`,
-						body,
-					);
+						Object.assign(body, additionalFields);
+
+						if (body.attachmentsUi) {
+							const attachment = (body.attachmentsUi as IDataObject).attachmentsValues as IDataObject;
+
+							if (attachment) {
+
+								const binaryPropertyName = attachment.binaryPropertyName as string;
+
+								if (items[i].binary === undefined) {
+									throw new NodeOperationError(this.getNode(), 'No binary data exists on item!');
+								}
+
+								const item = items[i].binary as IBinaryKeyData;
+
+								const binaryData = item[binaryPropertyName] as IBinaryData;
+
+								if (binaryData === undefined) {
+									throw new NodeOperationError(this.getNode(), `No binary data property "${binaryPropertyName}" does not exists on item!`);
+								}
+
+								body.attachment = {
+									value: Buffer.from(binaryData.data, BINARY_ENCODING),
+									options: {
+										filename: binaryData.fileName,
+									},
+								};
+
+								delete body.attachmentsUi;
+							}
+						}
+
+						responseData = await pushoverApiRequest.call(
+							this,
+							'POST',
+							`/messages.json`,
+							body,
+						);
+					}
 				}
+			} catch (error) {
+				if (this.continueOnFail()) {
+					returnData.push({ error: error.message });
+					continue;
+				}
+				throw error;
 			}
 		}
 		if (Array.isArray(responseData)) {

@@ -58,80 +58,92 @@ return item;`,
 		let item: INodeExecutionData;
 
 		for (let itemIndex = 0; itemIndex < length; itemIndex++) {
-
-			item = items[itemIndex];
-
-			// Copy the items as they may get changed in the functions
-			item = JSON.parse(JSON.stringify(item));
-
-			// Define the global objects for the custom function
-			const sandbox = {
-				getBinaryData: (): IBinaryKeyData | undefined => {
-					return item.binary;
-				},
-				getNodeParameter: this.getNodeParameter,
-				getWorkflowStaticData: this.getWorkflowStaticData,
-				helpers: this.helpers,
-				item: item.json,
-				setBinaryData: (data: IBinaryKeyData) => {
-					item.binary = data;
-				},
-			};
-
-			// Make it possible to access data via $node, $parameter, ...
-			const dataProxy = this.getWorkflowDataProxy(itemIndex);
-			Object.assign(sandbox, dataProxy);
-
-			const mode = this.getMode();
-
-			const options = {
-				console: (mode === 'manual') ? 'redirect' : 'inherit',
-				sandbox,
-				require: {
-					external: false as boolean | { modules: string[] },
-					builtin: [] as string[],
-				},
-			};
-
-			if (process.env.NODE_FUNCTION_ALLOW_BUILTIN) {
-				options.require.builtin = process.env.NODE_FUNCTION_ALLOW_BUILTIN.split(',');
-			}
-
-			if (process.env.NODE_FUNCTION_ALLOW_EXTERNAL) {
-				options.require.external = { modules: process.env.NODE_FUNCTION_ALLOW_EXTERNAL.split(',') };
-			}
-
-			const vm = new NodeVM(options);
-
-			if (mode === 'manual') {
-				vm.on('console.log', this.sendMessageToUI);
-			}
-
-			// Get the code to execute
-			const functionCode = this.getNodeParameter('functionCode', itemIndex) as string;
-
-			let jsonData: IDataObject;
 			try {
-				// Execute the function code
-				jsonData = await vm.run(`module.exports = async function() {${functionCode}}()`, __dirname);
+				item = items[itemIndex];
+
+				// Copy the items as they may get changed in the functions
+				item = JSON.parse(JSON.stringify(item));
+
+				// Define the global objects for the custom function
+				const sandbox = {
+					getBinaryData: (): IBinaryKeyData | undefined => {
+						return item.binary;
+					},
+					getNodeParameter: this.getNodeParameter,
+					getWorkflowStaticData: this.getWorkflowStaticData,
+					helpers: this.helpers,
+					item: item.json,
+					setBinaryData: (data: IBinaryKeyData) => {
+						item.binary = data;
+					},
+				};
+
+				// Make it possible to access data via $node, $parameter, ...
+				const dataProxy = this.getWorkflowDataProxy(itemIndex);
+				Object.assign(sandbox, dataProxy);
+
+				const mode = this.getMode();
+
+				const options = {
+					console: (mode === 'manual') ? 'redirect' : 'inherit',
+					sandbox,
+					require: {
+						external: false as boolean | { modules: string[] },
+						builtin: [] as string[],
+					},
+				};
+
+				if (process.env.NODE_FUNCTION_ALLOW_BUILTIN) {
+					options.require.builtin = process.env.NODE_FUNCTION_ALLOW_BUILTIN.split(',');
+				}
+
+				if (process.env.NODE_FUNCTION_ALLOW_EXTERNAL) {
+					options.require.external = { modules: process.env.NODE_FUNCTION_ALLOW_EXTERNAL.split(',') };
+				}
+
+				const vm = new NodeVM(options);
+
+				if (mode === 'manual') {
+					vm.on('console.log', this.sendMessageToUI);
+				}
+
+				// Get the code to execute
+				const functionCode = this.getNodeParameter('functionCode', itemIndex) as string;
+
+				let jsonData: IDataObject;
+				try {
+					// Execute the function code
+					jsonData = await vm.run(`module.exports = async function() {${functionCode}}()`, __dirname);
+				} catch (error) {
+					if (this.continueOnFail()) {
+						returnData.push({json:{ error: error.message }});
+						continue;
+					} else {
+						return Promise.reject(error);
+					}
+				}
+
+				// Do very basic validation of the data
+				if (jsonData === undefined) {
+					throw new NodeOperationError(this.getNode(), 'No data got returned. Always an object has to be returned!');
+				}
+
+				const returnItem: INodeExecutionData = {
+					json: jsonData,
+				};
+
+				if (item.binary) {
+					returnItem.binary = item.binary;
+				}
+
+				returnData.push(returnItem);
 			} catch (error) {
-				return Promise.reject(error);
+				if (this.continueOnFail()) {
+					returnData.push({json:{ error: error.message }});
+					continue;
+				}
+				throw error;
 			}
-
-			// Do very basic validation of the data
-			if (jsonData === undefined) {
-				throw new NodeOperationError(this.getNode(), 'No data got returned. Always an object has to be returned!');
-			}
-
-			const returnItem: INodeExecutionData = {
-				json: jsonData,
-			};
-
-			if (item.binary) {
-				returnItem.binary = item.binary;
-			}
-
-			returnData.push(returnItem);
 		}
 		return this.prepareOutputData(returnData);
 	}

@@ -95,11 +95,19 @@ export class Mailcheck implements INodeType {
 		const resource = this.getNodeParameter('resource', 0) as string;
 		const operation = this.getNodeParameter('operation', 0) as string;
 		for (let i = 0; i < length; i++) {
-			if (resource === 'email') {
-				if (operation === 'check') {
-					const email = this.getNodeParameter('email', i) as string;
-					responseData = await mailCheckApiRequest.call(this, 'POST', '/singleEmail:check', { email });
+			try {
+				if (resource === 'email') {
+					if (operation === 'check') {
+						const email = this.getNodeParameter('email', i) as string;
+						responseData = await mailCheckApiRequest.call(this, 'POST', '/singleEmail:check', { email });
+					}
 				}
+			} catch (error) {
+				if (this.continueOnFail()) {
+					returnData.push({ error: error.message });
+					continue;
+				}
+				throw error;
 			}
 			if (Array.isArray(responseData)) {
 				returnData.push.apply(returnData, responseData as IDataObject[]);

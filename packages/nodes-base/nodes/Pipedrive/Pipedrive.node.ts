@@ -3065,568 +3065,579 @@ export class Pipedrive implements INodeType {
 			body = {};
 			formData = {};
 			qs = {};
+			try {
+				if (resource === 'activity') {
+					if (operation === 'create') {
+						// ----------------------------------
+						//         activity:create
+						// ----------------------------------
 
-			if (resource === 'activity') {
-				if (operation === 'create') {
-					// ----------------------------------
-					//         activity:create
-					// ----------------------------------
+						requestMethod = 'POST';
+						endpoint = '/activities';
 
-					requestMethod = 'POST';
-					endpoint = '/activities';
+						body.subject = this.getNodeParameter('subject', i) as string;
+						body.done = this.getNodeParameter('done', i) as string;
+						body.type = this.getNodeParameter('type', i) as string;
+						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						addAdditionalFields(body, additionalFields);
 
-					body.subject = this.getNodeParameter('subject', i) as string;
-					body.done = this.getNodeParameter('done', i) as string;
-					body.type = this.getNodeParameter('type', i) as string;
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
-					addAdditionalFields(body, additionalFields);
+					} else if (operation === 'delete') {
+						// ----------------------------------
+						//         activity:delete
+						// ----------------------------------
 
-				} else if (operation === 'delete') {
-					// ----------------------------------
-					//         activity:delete
-					// ----------------------------------
+						requestMethod = 'DELETE';
 
-					requestMethod = 'DELETE';
+						const activityId = this.getNodeParameter('activityId', i) as number;
+						endpoint = `/activities/${activityId}`;
 
-					const activityId = this.getNodeParameter('activityId', i) as number;
-					endpoint = `/activities/${activityId}`;
+					} else if (operation === 'get') {
+						// ----------------------------------
+						//         activity:get
+						// ----------------------------------
 
-				} else if (operation === 'get') {
-					// ----------------------------------
-					//         activity:get
-					// ----------------------------------
+						requestMethod = 'GET';
 
-					requestMethod = 'GET';
+						const activityId = this.getNodeParameter('activityId', i) as number;
 
-					const activityId = this.getNodeParameter('activityId', i) as number;
+						endpoint = `/activities/${activityId}`;
 
-					endpoint = `/activities/${activityId}`;
+					} else if (operation === 'getAll') {
+						// ----------------------------------
+						//         activity:getAll
+						// ----------------------------------
 
-				} else if (operation === 'getAll') {
-					// ----------------------------------
-					//         activity:getAll
-					// ----------------------------------
+						requestMethod = 'GET';
 
-					requestMethod = 'GET';
+						returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						if (returnAll === false) {
+							qs.limit = this.getNodeParameter('limit', i) as number;
+						}
 
-					returnAll = this.getNodeParameter('returnAll', i) as boolean;
-					if (returnAll === false) {
-						qs.limit = this.getNodeParameter('limit', i) as number;
+						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						addAdditionalFields(qs, additionalFields);
+
+						if (qs.type) {
+							qs.type = (qs.type as string[]).join(',');
+						}
+
+						endpoint = `/activities`;
+
+					} else if (operation === 'update') {
+						// ----------------------------------
+						//         activity:update
+						// ----------------------------------
+
+						requestMethod = 'PUT';
+
+						const activityId = this.getNodeParameter('activityId', i) as number;
+						endpoint = `/activities/${activityId}`;
+
+						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+						addAdditionalFields(body, updateFields);
+
+					}
+				} else if (resource === 'deal') {
+					if (operation === 'create') {
+						// ----------------------------------
+						//         deal:create
+						// ----------------------------------
+
+						requestMethod = 'POST';
+						endpoint = '/deals';
+
+						body.title = this.getNodeParameter('title', i) as string;
+						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						addAdditionalFields(body, additionalFields);
+
+					} else if (operation === 'delete') {
+						// ----------------------------------
+						//         deal:delete
+						// ----------------------------------
+
+						requestMethod = 'DELETE';
+
+						const dealId = this.getNodeParameter('dealId', i) as number;
+						endpoint = `/deals/${dealId}`;
+
+					} else if (operation === 'duplicate') {
+						// ----------------------------------
+						//         deal:duplicate
+						// ----------------------------------
+
+						requestMethod = 'POST';
+
+						const dealId = this.getNodeParameter('dealId', i) as number;
+						endpoint = `/deals/${dealId}/duplicate`;
+
+					} else if (operation === 'get') {
+						// ----------------------------------
+						//         deal:get
+						// ----------------------------------
+
+						requestMethod = 'GET';
+
+						const dealId = this.getNodeParameter('dealId', i) as number;
+						endpoint = `/deals/${dealId}`;
+
+					} else if (operation === 'getAll') {
+						// ----------------------------------
+						//         deal:getAll
+						// ----------------------------------
+
+						requestMethod = 'GET';
+
+						returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						if (returnAll === false) {
+							qs.limit = this.getNodeParameter('limit', i) as number;
+						}
+
+						endpoint = `/deals`;
+
+					} else if (operation === 'update') {
+						// ----------------------------------
+						//         deal:update
+						// ----------------------------------
+
+						requestMethod = 'PUT';
+
+						const dealId = this.getNodeParameter('dealId', i) as number;
+						endpoint = `/deals/${dealId}`;
+
+						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+						addAdditionalFields(body, updateFields);
+
+						if (body.label === 'null') {
+							body.label = null;
+						}
+					} else if (operation === 'search') {
+						// ----------------------------------
+						//         deal:search
+						// ----------------------------------
+
+						requestMethod = 'GET';
+
+						qs.term = this.getNodeParameter('term', i) as string;
+						returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						qs.exact_match = this.getNodeParameter('exactMatch', i) as boolean;
+						if (returnAll === false) {
+							qs.limit = this.getNodeParameter('limit', i) as number;
+						}
+
+						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+
+						if (additionalFields.fields) {
+							qs.fields = (additionalFields.fields as string[]).join(',');
+						}
+
+						if (additionalFields.organizationId) {
+							qs.organization_id = parseInt(additionalFields.organizationId as string, 10);
+						}
+
+						if (additionalFields.includeFields) {
+							qs.include_fields = additionalFields.includeFields as string;
+						}
+
+						if (additionalFields.personId) {
+							qs.person_id = parseInt(additionalFields.personId as string, 10);
+						}
+						if (additionalFields.status) {
+							qs.status = additionalFields.status as string;
+						}
+
+						endpoint = `/deals/search`;
+
+					}
+				} else if (resource === 'file') {
+					if (operation === 'create') {
+						// ----------------------------------
+						//         file:create
+						// ----------------------------------
+
+						requestMethod = 'POST';
+						endpoint = '/files';
+
+						const item = items[i];
+
+						if (item.binary === undefined) {
+							throw new NodeOperationError(this.getNode(), 'No binary data exists on item!');
+						}
+
+						const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i) as string;
+
+						if (item.binary[binaryPropertyName] === undefined) {
+							throw new NodeOperationError(this.getNode(), `No binary data property "${binaryPropertyName}" does not exists on item!`);
+						}
+
+						const fileBufferData = Buffer.from(item.binary[binaryPropertyName].data, BINARY_ENCODING);
+
+						formData.file = {
+							value: fileBufferData,
+							options: {
+								contentType: item.binary[binaryPropertyName].mimeType,
+								filename: item.binary[binaryPropertyName].fileName,
+							},
+						};
+
+						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						addAdditionalFields(formData, additionalFields);
+
+					} else if (operation === 'delete') {
+						// ----------------------------------
+						//         file:delete
+						// ----------------------------------
+
+						requestMethod = 'DELETE';
+
+						const fileId = this.getNodeParameter('fileId', i) as number;
+						endpoint = `/files/${fileId}`;
+
+					} else if (operation === 'download') {
+						// ----------------------------------
+						//         file:download
+						// ----------------------------------
+
+						requestMethod = 'GET';
+						downloadFile = true;
+
+						const fileId = this.getNodeParameter('fileId', i) as number;
+						endpoint = `/files/${fileId}/download`;
+
+					} else if (operation === 'get') {
+						// ----------------------------------
+						//         file:get
+						// ----------------------------------
+
+						requestMethod = 'GET';
+
+						const fileId = this.getNodeParameter('fileId', i) as number;
+						endpoint = `/files/${fileId}`;
+
+					}
+				} else if (resource === 'note') {
+					if (operation === 'create') {
+						// ----------------------------------
+						//         note:create
+						// ----------------------------------
+
+						requestMethod = 'POST';
+						endpoint = '/notes';
+
+						body.content = this.getNodeParameter('content', i) as string;
+						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						addAdditionalFields(body, additionalFields);
+
+					} else if (operation === 'delete') {
+						// ----------------------------------
+						//         note:delete
+						// ----------------------------------
+
+						requestMethod = 'DELETE';
+
+						const noteId = this.getNodeParameter('noteId', i) as number;
+						endpoint = `/notes/${noteId}`;
+
+					} else if (operation === 'get') {
+						// ----------------------------------
+						//         note:get
+						// ----------------------------------
+
+						requestMethod = 'GET';
+
+						const noteId = this.getNodeParameter('noteId', i) as number;
+						endpoint = `/notes/${noteId}`;
+
+					} else if (operation === 'getAll') {
+						// ----------------------------------
+						//         note:getAll
+						// ----------------------------------
+
+						requestMethod = 'GET';
+						endpoint = `/notes`;
+
+						returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						if (returnAll === false) {
+							qs.limit = this.getNodeParameter('limit', i) as number;
+						}
+						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						addAdditionalFields(qs, additionalFields);
+
+					} else if (operation === 'update') {
+						// ----------------------------------
+						//         note:update
+						// ----------------------------------
+
+						requestMethod = 'PUT';
+
+						const noteId = this.getNodeParameter('noteId', i) as number;
+						endpoint = `/notes/${noteId}`;
+
+						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+						addAdditionalFields(body, updateFields);
+
+					}
+				} else if (resource === 'organization') {
+					if (operation === 'create') {
+						// ----------------------------------
+						//         organization:create
+						// ----------------------------------
+
+						requestMethod = 'POST';
+						endpoint = '/organizations';
+
+						body.name = this.getNodeParameter('name', i) as string;
+						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						addAdditionalFields(body, additionalFields);
+
+					} else if (operation === 'delete') {
+						// ----------------------------------
+						//         organization:delete
+						// ----------------------------------
+
+						requestMethod = 'DELETE';
+
+						const organizationId = this.getNodeParameter('organizationId', i) as number;
+						endpoint = `/organizations/${organizationId}`;
+
+					} else if (operation === 'get') {
+						// ----------------------------------
+						//         organization:get
+						// ----------------------------------
+
+						requestMethod = 'GET';
+
+						const organizationId = this.getNodeParameter('organizationId', i) as number;
+						endpoint = `/organizations/${organizationId}`;
+
+					} else if (operation === 'getAll') {
+						// ----------------------------------
+						//         organization:getAll
+						// ----------------------------------
+
+						requestMethod = 'GET';
+
+						returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						if (returnAll === false) {
+							qs.limit = this.getNodeParameter('limit', i) as number;
+						}
+
+						endpoint = `/organizations`;
+
+					}
+					if (operation === 'update') {
+						// ----------------------------------
+						//         organization:update
+						// ----------------------------------
+
+						const id = this.getNodeParameter('organizationId', i) as string;
+
+						requestMethod = 'PUT';
+						endpoint = `/organizations/${id}`;
+
+						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+						addAdditionalFields(body, updateFields);
+
+						if (body.label === 'null') {
+							body.label = null;
+						}
+
+					}
+				} else if (resource === 'person') {
+					if (operation === 'create') {
+						// ----------------------------------
+						//         person:create
+						// ----------------------------------
+
+						requestMethod = 'POST';
+						endpoint = '/persons';
+
+						body.name = this.getNodeParameter('name', i) as string;
+						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						addAdditionalFields(body, additionalFields);
+
+					} else if (operation === 'delete') {
+						// ----------------------------------
+						//         person:delete
+						// ----------------------------------
+
+						requestMethod = 'DELETE';
+
+						const personId = this.getNodeParameter('personId', i) as number;
+						endpoint = `/persons/${personId}`;
+
+					} else if (operation === 'get') {
+						// ----------------------------------
+						//         person:get
+						// ----------------------------------
+
+						requestMethod = 'GET';
+
+						const personId = this.getNodeParameter('personId', i) as number;
+						endpoint = `/persons/${personId}`;
+
+					} else if (operation === 'getAll') {
+						// ----------------------------------
+						//         persons:getAll
+						// ----------------------------------
+
+						requestMethod = 'GET';
+
+						returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						if (returnAll === false) {
+							qs.limit = this.getNodeParameter('limit', i) as number;
+						}
+
+						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+
+						if (additionalFields.filterId) {
+							qs.filter_id = additionalFields.filterId as string;
+						}
+
+						if (additionalFields.firstChar) {
+							qs.first_char = additionalFields.firstChar as string;
+						}
+
+						endpoint = `/persons`;
+
+					} else if (operation === 'search') {
+						// ----------------------------------
+						//         persons:search
+						// ----------------------------------
+
+						requestMethod = 'GET';
+
+						qs.term = this.getNodeParameter('term', i) as string;
+						returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						if (returnAll === false) {
+							qs.limit = this.getNodeParameter('limit', i) as number;
+						}
+
+						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+
+						if (additionalFields.fields) {
+							qs.fields = additionalFields.fields as string;
+						}
+
+						if (additionalFields.exactMatch) {
+							qs.exact_match = additionalFields.exactMatch as boolean;
+						}
+
+						if (additionalFields.organizationId) {
+							qs.organization_id = parseInt(additionalFields.organizationId as string, 10);
+						}
+
+						if (additionalFields.includeFields) {
+							qs.include_fields = additionalFields.includeFields as string;
+						}
+
+						endpoint = `/persons/search`;
+
+					} else if (operation === 'update') {
+						// ----------------------------------
+						//         person:update
+						// ----------------------------------
+
+						requestMethod = 'PUT';
+
+						const personId = this.getNodeParameter('personId', i) as number;
+						endpoint = `/persons/${personId}`;
+
+						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+						addAdditionalFields(body, updateFields);
+
+						if (body.label === 'null') {
+							body.label = null;
+						}
+
+					}
+				} else if (resource === 'product') {
+					if (operation === 'getAll') {
+						// ----------------------------------
+						//         product:getAll
+						// ----------------------------------
+
+						requestMethod = 'GET';
+
+						returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						if (returnAll === false) {
+							qs.limit = this.getNodeParameter('limit', i) as number;
+						}
+
+						endpoint = `/products`;
+
+					}
+				} else {
+					throw new NodeOperationError(this.getNode(), `The resource "${resource}" is not known!`);
+				}
+
+				let responseData;
+				if (returnAll === true) {
+
+					responseData = await pipedriveApiRequestAllItems.call(this, requestMethod, endpoint, body, qs);
+
+				} else {
+
+					if (customProperties !== undefined) {
+						pipedriveEncodeCustomProperties(customProperties!, body);
 					}
 
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
-					addAdditionalFields(qs, additionalFields);
-
-					if (qs.type) {
-						qs.type = (qs.type as string[]).join(',');
-					}
-
-					endpoint = `/activities`;
-
-				} else if (operation === 'update') {
-					// ----------------------------------
-					//         activity:update
-					// ----------------------------------
-
-					requestMethod = 'PUT';
-
-					const activityId = this.getNodeParameter('activityId', i) as number;
-					endpoint = `/activities/${activityId}`;
-
-					const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
-					addAdditionalFields(body, updateFields);
+					responseData = await pipedriveApiRequest.call(this, requestMethod, endpoint, body, qs, formData, downloadFile);
 
 				}
-			} else if (resource === 'deal') {
-				if (operation === 'create') {
-					// ----------------------------------
-					//         deal:create
-					// ----------------------------------
 
-					requestMethod = 'POST';
-					endpoint = '/deals';
+				if (resource === 'file' && operation === 'download') {
+					const newItem: INodeExecutionData = {
+						json: items[i].json,
+						binary: {},
+					};
 
-					body.title = this.getNodeParameter('title', i) as string;
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
-					addAdditionalFields(body, additionalFields);
-
-				} else if (operation === 'delete') {
-					// ----------------------------------
-					//         deal:delete
-					// ----------------------------------
-
-					requestMethod = 'DELETE';
-
-					const dealId = this.getNodeParameter('dealId', i) as number;
-					endpoint = `/deals/${dealId}`;
-
-				} else if (operation === 'duplicate') {
-					// ----------------------------------
-					//         deal:duplicate
-					// ----------------------------------
-
-					requestMethod = 'POST';
-
-					const dealId = this.getNodeParameter('dealId', i) as number;
-					endpoint = `/deals/${dealId}/duplicate`;
-
-				} else if (operation === 'get') {
-					// ----------------------------------
-					//         deal:get
-					// ----------------------------------
-
-					requestMethod = 'GET';
-
-					const dealId = this.getNodeParameter('dealId', i) as number;
-					endpoint = `/deals/${dealId}`;
-
-				} else if (operation === 'getAll') {
-					// ----------------------------------
-					//         deal:getAll
-					// ----------------------------------
-
-					requestMethod = 'GET';
-
-					returnAll = this.getNodeParameter('returnAll', i) as boolean;
-					if (returnAll === false) {
-						qs.limit = this.getNodeParameter('limit', i) as number;
+					if (items[i].binary !== undefined) {
+						// Create a shallow copy of the binary data so that the old
+						// data references which do not get changed still stay behind
+						// but the incoming data does not get changed.
+						Object.assign(newItem.binary, items[i].binary);
 					}
 
-					endpoint = `/deals`;
-
-				} else if (operation === 'update') {
-					// ----------------------------------
-					//         deal:update
-					// ----------------------------------
-
-					requestMethod = 'PUT';
-
-					const dealId = this.getNodeParameter('dealId', i) as number;
-					endpoint = `/deals/${dealId}`;
-
-					const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
-					addAdditionalFields(body, updateFields);
-
-					if (body.label === 'null') {
-						body.label = null;
-					}
-				} else if (operation === 'search') {
-					// ----------------------------------
-					//         deal:search
-					// ----------------------------------
-
-					requestMethod = 'GET';
-
-					qs.term = this.getNodeParameter('term', i) as string;
-					returnAll = this.getNodeParameter('returnAll', i) as boolean;
-					qs.exact_match = this.getNodeParameter('exactMatch', i) as boolean;
-					if (returnAll === false) {
-						qs.limit = this.getNodeParameter('limit', i) as number;
-					}
-
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
-
-					if (additionalFields.fields) {
-						qs.fields = (additionalFields.fields as string[]).join(',');
-					}
-
-					if (additionalFields.organizationId) {
-						qs.organization_id = parseInt(additionalFields.organizationId as string, 10);
-					}
-
-					if (additionalFields.includeFields) {
-						qs.include_fields = additionalFields.includeFields as string;
-					}
-
-					if (additionalFields.personId) {
-						qs.person_id = parseInt(additionalFields.personId as string, 10);
-					}
-					if (additionalFields.status) {
-						qs.status = additionalFields.status as string;
-					}
-
-					endpoint = `/deals/search`;
-
-				}
-			} else if (resource === 'file') {
-				if (operation === 'create') {
-					// ----------------------------------
-					//         file:create
-					// ----------------------------------
-
-					requestMethod = 'POST';
-					endpoint = '/files';
-
-					const item = items[i];
-
-					if (item.binary === undefined) {
-						throw new NodeOperationError(this.getNode(), 'No binary data exists on item!');
-					}
+					items[i] = newItem;
 
 					const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i) as string;
 
-					if (item.binary[binaryPropertyName] === undefined) {
-						throw new NodeOperationError(this.getNode(), `No binary data property "${binaryPropertyName}" does not exists on item!`);
-					}
-
-					const fileBufferData = Buffer.from(item.binary[binaryPropertyName].data, BINARY_ENCODING);
-
-					formData.file = {
-						value: fileBufferData,
-						options: {
-							contentType: item.binary[binaryPropertyName].mimeType,
-							filename: item.binary[binaryPropertyName].fileName,
-						},
-					};
-
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
-					addAdditionalFields(formData, additionalFields);
-
-				} else if (operation === 'delete') {
-					// ----------------------------------
-					//         file:delete
-					// ----------------------------------
-
-					requestMethod = 'DELETE';
-
-					const fileId = this.getNodeParameter('fileId', i) as number;
-					endpoint = `/files/${fileId}`;
-
-				} else if (operation === 'download') {
-					// ----------------------------------
-					//         file:download
-					// ----------------------------------
-
-					requestMethod = 'GET';
-					downloadFile = true;
-
-					const fileId = this.getNodeParameter('fileId', i) as number;
-					endpoint = `/files/${fileId}/download`;
-
-				} else if (operation === 'get') {
-					// ----------------------------------
-					//         file:get
-					// ----------------------------------
-
-					requestMethod = 'GET';
-
-					const fileId = this.getNodeParameter('fileId', i) as number;
-					endpoint = `/files/${fileId}`;
-
-				}
-			} else if (resource === 'note') {
-				if (operation === 'create') {
-					// ----------------------------------
-					//         note:create
-					// ----------------------------------
-
-					requestMethod = 'POST';
-					endpoint = '/notes';
-
-					body.content = this.getNodeParameter('content', i) as string;
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
-					addAdditionalFields(body, additionalFields);
-
-				} else if (operation === 'delete') {
-					// ----------------------------------
-					//         note:delete
-					// ----------------------------------
-
-					requestMethod = 'DELETE';
-
-					const noteId = this.getNodeParameter('noteId', i) as number;
-					endpoint = `/notes/${noteId}`;
-
-				} else if (operation === 'get') {
-					// ----------------------------------
-					//         note:get
-					// ----------------------------------
-
-					requestMethod = 'GET';
-
-					const noteId = this.getNodeParameter('noteId', i) as number;
-					endpoint = `/notes/${noteId}`;
-
-				} else if (operation === 'getAll') {
-					// ----------------------------------
-					//         note:getAll
-					// ----------------------------------
-
-					requestMethod = 'GET';
-					endpoint = `/notes`;
-
-					returnAll = this.getNodeParameter('returnAll', i) as boolean;
-					if (returnAll === false) {
-						qs.limit = this.getNodeParameter('limit', i) as number;
-					}
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
-					addAdditionalFields(qs, additionalFields);
-
-				} else if (operation === 'update') {
-					// ----------------------------------
-					//         note:update
-					// ----------------------------------
-
-					requestMethod = 'PUT';
-
-					const noteId = this.getNodeParameter('noteId', i) as number;
-					endpoint = `/notes/${noteId}`;
-
-					const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
-					addAdditionalFields(body, updateFields);
-
-				}
-			} else if (resource === 'organization') {
-				if (operation === 'create') {
-					// ----------------------------------
-					//         organization:create
-					// ----------------------------------
-
-					requestMethod = 'POST';
-					endpoint = '/organizations';
-
-					body.name = this.getNodeParameter('name', i) as string;
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
-					addAdditionalFields(body, additionalFields);
-
-				} else if (operation === 'delete') {
-					// ----------------------------------
-					//         organization:delete
-					// ----------------------------------
-
-					requestMethod = 'DELETE';
-
-					const organizationId = this.getNodeParameter('organizationId', i) as number;
-					endpoint = `/organizations/${organizationId}`;
-
-				} else if (operation === 'get') {
-					// ----------------------------------
-					//         organization:get
-					// ----------------------------------
-
-					requestMethod = 'GET';
-
-					const organizationId = this.getNodeParameter('organizationId', i) as number;
-					endpoint = `/organizations/${organizationId}`;
-
-				} else if (operation === 'getAll') {
-					// ----------------------------------
-					//         organization:getAll
-					// ----------------------------------
-
-					requestMethod = 'GET';
-
-					returnAll = this.getNodeParameter('returnAll', i) as boolean;
-					if (returnAll === false) {
-						qs.limit = this.getNodeParameter('limit', i) as number;
-					}
-
-					endpoint = `/organizations`;
-
-				}
-				if (operation === 'update') {
-					// ----------------------------------
-					//         organization:update
-					// ----------------------------------
-
-					const id = this.getNodeParameter('organizationId', i) as string;
-
-					requestMethod = 'PUT';
-					endpoint = `/organizations/${id}`;
-
-					const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
-					addAdditionalFields(body, updateFields);
-
-					if (body.label === 'null') {
-						body.label = null;
-					}
-
-				}
-			} else if (resource === 'person') {
-				if (operation === 'create') {
-					// ----------------------------------
-					//         person:create
-					// ----------------------------------
-
-					requestMethod = 'POST';
-					endpoint = '/persons';
-
-					body.name = this.getNodeParameter('name', i) as string;
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
-					addAdditionalFields(body, additionalFields);
-
-				} else if (operation === 'delete') {
-					// ----------------------------------
-					//         person:delete
-					// ----------------------------------
-
-					requestMethod = 'DELETE';
-
-					const personId = this.getNodeParameter('personId', i) as number;
-					endpoint = `/persons/${personId}`;
-
-				} else if (operation === 'get') {
-					// ----------------------------------
-					//         person:get
-					// ----------------------------------
-
-					requestMethod = 'GET';
-
-					const personId = this.getNodeParameter('personId', i) as number;
-					endpoint = `/persons/${personId}`;
-
-				} else if (operation === 'getAll') {
-					// ----------------------------------
-					//         persons:getAll
-					// ----------------------------------
-
-					requestMethod = 'GET';
-
-					returnAll = this.getNodeParameter('returnAll', i) as boolean;
-					if (returnAll === false) {
-						qs.limit = this.getNodeParameter('limit', i) as number;
-					}
-
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
-
-					if (additionalFields.filterId) {
-						qs.filter_id = additionalFields.filterId as string;
-					}
-
-					if (additionalFields.firstChar) {
-						qs.first_char = additionalFields.firstChar as string;
-					}
-
-					endpoint = `/persons`;
-
-				} else if (operation === 'search') {
-					// ----------------------------------
-					//         persons:search
-					// ----------------------------------
-
-					requestMethod = 'GET';
-
-					qs.term = this.getNodeParameter('term', i) as string;
-					returnAll = this.getNodeParameter('returnAll', i) as boolean;
-					if (returnAll === false) {
-						qs.limit = this.getNodeParameter('limit', i) as number;
-					}
-
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
-
-					if (additionalFields.fields) {
-						qs.fields = additionalFields.fields as string;
-					}
-
-					if (additionalFields.exactMatch) {
-						qs.exact_match = additionalFields.exactMatch as boolean;
-					}
-
-					if (additionalFields.organizationId) {
-						qs.organization_id = parseInt(additionalFields.organizationId as string, 10);
-					}
-
-					if (additionalFields.includeFields) {
-						qs.include_fields = additionalFields.includeFields as string;
-					}
-
-					endpoint = `/persons/search`;
-
-				} else if (operation === 'update') {
-					// ----------------------------------
-					//         person:update
-					// ----------------------------------
-
-					requestMethod = 'PUT';
-
-					const personId = this.getNodeParameter('personId', i) as number;
-					endpoint = `/persons/${personId}`;
-
-					const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
-					addAdditionalFields(body, updateFields);
-
-					if (body.label === 'null') {
-						body.label = null;
-					}
-
-				}
-			} else if (resource === 'product') {
-				if (operation === 'getAll') {
-					// ----------------------------------
-					//         product:getAll
-					// ----------------------------------
-
-					requestMethod = 'GET';
-
-					returnAll = this.getNodeParameter('returnAll', i) as boolean;
-					if (returnAll === false) {
-						qs.limit = this.getNodeParameter('limit', i) as number;
-					}
-
-					endpoint = `/products`;
-
-				}
-			} else {
-				throw new NodeOperationError(this.getNode(), `The resource "${resource}" is not known!`);
-			}
-
-			let responseData;
-			if (returnAll === true) {
-
-				responseData = await pipedriveApiRequestAllItems.call(this, requestMethod, endpoint, body, qs);
-
-			} else {
-
-				if (customProperties !== undefined) {
-					pipedriveEncodeCustomProperties(customProperties!, body);
-				}
-
-				responseData = await pipedriveApiRequest.call(this, requestMethod, endpoint, body, qs, formData, downloadFile);
-
-			}
-
-			if (resource === 'file' && operation === 'download') {
-				const newItem: INodeExecutionData = {
-					json: items[i].json,
-					binary: {},
-				};
-
-				if (items[i].binary !== undefined) {
-					// Create a shallow copy of the binary data so that the old
-					// data references which do not get changed still stay behind
-					// but the incoming data does not get changed.
-					Object.assign(newItem.binary, items[i].binary);
-				}
-
-				items[i] = newItem;
-
-				const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i) as string;
-
-				items[i].binary![binaryPropertyName] = await this.helpers.prepareBinaryData(responseData.data);
-			} else {
-
-				if (responseData.data === null) {
-					responseData.data = [];
-				}
-
-				if (operation === 'search' && responseData.data && responseData.data.items) {
-					responseData.data = responseData.data.items;
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
-					if (additionalFields.rawData !== true) {
-						responseData.data = responseData.data.map((item: { result_score: number, item: object }) => {
-							return {
-								result_score: item.result_score,
-								...item.item,
-							};
-						});
-					}
-				}
-
-				if (Array.isArray(responseData.data)) {
-					returnData.push.apply(returnData, responseData.data as IDataObject[]);
+					items[i].binary![binaryPropertyName] = await this.helpers.prepareBinaryData(responseData.data);
 				} else {
-					returnData.push(responseData.data as IDataObject);
+
+					if (responseData.data === null) {
+						responseData.data = [];
+					}
+
+					if (operation === 'search' && responseData.data && responseData.data.items) {
+						responseData.data = responseData.data.items;
+						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						if (additionalFields.rawData !== true) {
+							responseData.data = responseData.data.map((item: { result_score: number, item: object }) => {
+								return {
+									result_score: item.result_score,
+									...item.item,
+								};
+							});
+						}
+					}
+
+					if (Array.isArray(responseData.data)) {
+						returnData.push.apply(returnData, responseData.data as IDataObject[]);
+					} else {
+						returnData.push(responseData.data as IDataObject);
+					}
 				}
+			} catch (error) {
+				if (this.continueOnFail()) {
+					if (resource === 'file' && operation === 'download') {
+						items[i].json = { error: error.message };
+					} else {
+						returnData.push({ error: error.message });
+					}
+					continue;
+				}
+				throw error;
 			}
 		}
 

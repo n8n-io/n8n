@@ -477,106 +477,114 @@ export class Todoist implements INodeType {
 
 		for (let i = 0; i < length; i++) {
 
-			if (resource === 'task') {
-				if (operation === 'create') {
-					//https://developer.todoist.com/rest/v1/#create-a-new-task
-					const content = this.getNodeParameter('content', i) as string;
-					const projectId = this.getNodeParameter('project', i) as number;
-					const labels = this.getNodeParameter('labels', i) as number[];
-					const options = this.getNodeParameter('options', i) as IDataObject;
-
-					const body: IBodyCreateTask = {
-						content,
-						project_id: projectId,
-						priority: (options.priority!) ? parseInt(options.priority as string, 10) : 1,
-					};
-
-					if (options.description) {
-						body.description = options.description as string;
+			try {
+				if (resource === 'task') {
+					if (operation === 'create') {
+						//https://developer.todoist.com/rest/v1/#create-a-new-task
+						const content = this.getNodeParameter('content', i) as string;
+						const projectId = this.getNodeParameter('project', i) as number;
+						const labels = this.getNodeParameter('labels', i) as number[];
+						const options = this.getNodeParameter('options', i) as IDataObject;
+	
+						const body: IBodyCreateTask = {
+							content,
+							project_id: projectId,
+							priority: (options.priority!) ? parseInt(options.priority as string, 10) : 1,
+						};
+	
+						if (options.description) {
+							body.description = options.description as string;
+						}
+	
+						if (options.dueDateTime) {
+							body.due_datetime = options.dueDateTime as string;
+						}
+	
+						if (options.dueString) {
+							body.due_string = options.dueString as string;
+						}
+	
+						if (labels !== undefined && labels.length !== 0) {
+							body.label_ids = labels;
+						}
+	
+						if (options.section) {
+							body.section_id = options.section as number;
+						}
+	
+						responseData = await todoistApiRequest.call(this, 'POST', '/tasks', body);
 					}
+					if (operation === 'close') {
+						//https://developer.todoist.com/rest/v1/#close-a-task
+						const id = this.getNodeParameter('taskId', i) as string;
 
-					if (options.dueDateTime) {
-						body.due_datetime = options.dueDateTime as string;
+						responseData = await todoistApiRequest.call(this, 'POST', `/tasks/${id}/close`);
+
+						responseData = { success: true };
+
 					}
+					if (operation === 'delete') {
+						//https://developer.todoist.com/rest/v1/#delete-a-task
+						const id = this.getNodeParameter('taskId', i) as string;
 
-					if (options.dueString) {
-						body.due_string = options.dueString as string;
+						responseData = await todoistApiRequest.call(this, 'DELETE', `/tasks/${id}`);
+
+						responseData = { success: true };
+
 					}
+					if (operation === 'get') {
+						//https://developer.todoist.com/rest/v1/#get-an-active-task
+						const id = this.getNodeParameter('taskId', i) as string;
 
-					if (labels !== undefined && labels.length !== 0) {
-						body.label_ids = labels;
+						responseData = await todoistApiRequest.call(this, 'GET', `/tasks/${id}`);
 					}
+					if (operation === 'getAll') {
+						//https://developer.todoist.com/rest/v1/#get-active-tasks
+						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const filters = this.getNodeParameter('filters', i) as IDataObject;
+						if (filters.projectId) {
+							qs.project_id = filters.projectId as string;
+						}
+						if (filters.labelId) {
+							qs.label_id = filters.labelId as string;
+						}
+						if (filters.filter) {
+							qs.filter = filters.filter as string;
+						}
+						if (filters.lang) {
+							qs.lang = filters.lang as string;
+						}
+						if (filters.ids) {
+							qs.ids = filters.ids as string;
+						}
 
-					if (options.section) {
-						body.section_id = options.section as number;
+						responseData = await todoistApiRequest.call(this, 'GET', '/tasks', {}, qs);
+
+						if (!returnAll) {
+							const limit = this.getNodeParameter('limit', i) as number;
+							responseData = responseData.splice(0, limit);
+						}
 					}
+					if (operation === 'reopen') {
+						//https://developer.todoist.com/rest/v1/#get-an-active-task
+						const id = this.getNodeParameter('taskId', i) as string;
 
-					responseData = await todoistApiRequest.call(this, 'POST', '/tasks', body);
+						responseData = await todoistApiRequest.call(this, 'POST', `/tasks/${id}/reopen`);
+
+						responseData = { success: true };
+					}
 				}
-				if (operation === 'close') {
-					//https://developer.todoist.com/rest/v1/#close-a-task
-					const id = this.getNodeParameter('taskId', i) as string;
-
-					responseData = await todoistApiRequest.call(this, 'POST', `/tasks/${id}/close`);
-
-					responseData = { success: true };
-
+				if (Array.isArray(responseData)) {
+					returnData.push.apply(returnData, responseData as IDataObject[]);
+				} else {
+					returnData.push(responseData as IDataObject);
 				}
-				if (operation === 'delete') {
-					//https://developer.todoist.com/rest/v1/#delete-a-task
-					const id = this.getNodeParameter('taskId', i) as string;
-
-					responseData = await todoistApiRequest.call(this, 'DELETE', `/tasks/${id}`);
-
-					responseData = { success: true };
-
+			} catch (error) {
+				if (this.continueOnFail()) {
+					returnData.push({ error: error.message });
+					continue;
 				}
-				if (operation === 'get') {
-					//https://developer.todoist.com/rest/v1/#get-an-active-task
-					const id = this.getNodeParameter('taskId', i) as string;
-
-					responseData = await todoistApiRequest.call(this, 'GET', `/tasks/${id}`);
-				}
-				if (operation === 'getAll') {
-					//https://developer.todoist.com/rest/v1/#get-active-tasks
-					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
-					const filters = this.getNodeParameter('filters', i) as IDataObject;
-					if (filters.projectId) {
-						qs.project_id = filters.projectId as string;
-					}
-					if (filters.labelId) {
-						qs.label_id = filters.labelId as string;
-					}
-					if (filters.filter) {
-						qs.filter = filters.filter as string;
-					}
-					if (filters.lang) {
-						qs.lang = filters.lang as string;
-					}
-					if (filters.ids) {
-						qs.ids = filters.ids as string;
-					}
-
-					responseData = await todoistApiRequest.call(this, 'GET', '/tasks', {}, qs);
-
-					if (!returnAll) {
-						const limit = this.getNodeParameter('limit', i) as number;
-						responseData = responseData.splice(0, limit);
-					}
-				}
-				if (operation === 'reopen') {
-					//https://developer.todoist.com/rest/v1/#get-an-active-task
-					const id = this.getNodeParameter('taskId', i) as string;
-
-					responseData = await todoistApiRequest.call(this, 'POST', `/tasks/${id}/reopen`);
-
-					responseData = { success: true };
-				}
-			}
-			if (Array.isArray(responseData)) {
-				returnData.push.apply(returnData, responseData as IDataObject[]);
-			} else {
-				returnData.push(responseData as IDataObject);
+				throw error;
 			}
 		}
 

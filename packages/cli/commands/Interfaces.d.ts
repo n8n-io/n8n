@@ -42,6 +42,7 @@ interface INodeSpecialCases {
 interface INodeSpecialCase {
 	ignoredProperties?: string[];
 	capResults?: number;
+	keepOnlyProperties?: string[];
 }
 
 type ExecutionStatus = 'success' | 'error' | 'warning' | 'running';
