@@ -29,7 +29,7 @@ services:
       - N8N_BASIC_AUTH_PASSWORD
     ports:
       - 5678:5678
-    links:
+    depends_on: # link is basically deprecated https://stackoverflow.com/a/54251381/2919380
       - postgres
     volumes:
       - ~/.n8n:/home/node/.n8n

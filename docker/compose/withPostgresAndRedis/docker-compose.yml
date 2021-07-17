@@ -1,0 +1,124 @@
+version: '3.1'
+
+services:
+
+  postgres:
+    image: postgres:11
+    restart: always
+    environment:
+      - POSTGRES_USER
+      - POSTGRES_PASSWORD
+      - POSTGRES_DB
+      - POSTGRES_NON_ROOT_USER
+      - POSTGRES_NON_ROOT_PASSWORD
+    volumes:
+      - ./init-data.sh:/docker-entrypoint-initdb.d/init-data.sh
+    
+  redis:
+    image: redis:6.0-alpine
+    restart: always
+    command: redis-server --requirepass sOmE_sEcUrE_pAsS
+    ports:
+      - 6379:6379
+    volumes:
+      - ./redis-data:/var/lib/redis
+      - ./redis.conf:/usr/local/etc/redis/redis.conf
+    environment:
+     - REDIS_REPLICATION_MODE=master
+
+  n8n:
+    image: n8nio/n8n
+    restart: always
+    environment:
+      - DB_TYPE=postgresdb
+      - DB_POSTGRESDB_HOST=postgres
+      - DB_POSTGRESDB_PORT=5432
+      - DB_POSTGRESDB_DATABASE=${POSTGRES_DB}
+      - DB_POSTGRESDB_USER=${POSTGRES_NON_ROOT_USER}
+      - DB_POSTGRESDB_PASSWORD=${POSTGRES_NON_ROOT_PASSWORD}
+      - N8N_BASIC_AUTH_ACTIVE=true
+      - N8N_BASIC_AUTH_USER
+      - N8N_BASIC_AUTH_PASSWORD
+      - EXECUTIONS_MODE=queue
+      - QUEUE_BULL_REDIS_HOST=redis
+      # - QUEUE_BULL_REDIS_PORT=6379
+    ports:
+      - 5678:5678
+    depends_on: # link is basically deprecated https://stackoverflow.com/a/54251381/2919380
+      - postgres
+      - redis
+    volumes:
+      - ~/.n8n:/home/node/.n8n
+    # Wait 5 seconds to start n8n to make sure that PostgreSQL is ready
+    # when n8n tries to connect to it
+    command: /bin/sh -c "sleep 5; n8n start"
+
+    n8n-queue:
+      image: n8nio/n8n
+      restart: always
+      environment:
+        - DB_TYPE=postgresdb
+        - DB_POSTGRESDB_HOST=postgres
+        - DB_POSTGRESDB_PORT=5432
+        - DB_POSTGRESDB_DATABASE=${POSTGRES_DB}
+        - DB_POSTGRESDB_USER=${POSTGRES_NON_ROOT_USER}
+        - DB_POSTGRESDB_PASSWORD=${POSTGRES_NON_ROOT_PASSWORD}
+        - N8N_BASIC_AUTH_ACTIVE=true
+        - N8N_BASIC_AUTH_USER
+        - N8N_BASIC_AUTH_PASSWORD
+        - EXECUTIONS_MODE=queue
+        - QUEUE_BULL_REDIS_HOST=redis
+        # - QUEUE_BULL_REDIS_PORT=6379
+        - N8N_HOST=${TLD:-local}
+        - WEBHOOK_URL=https://wh.${TLD:-local}/
+        - NODE_FUNCTION_ALLOW_BUILTIN=*
+        - NODE_FUNCTION_ALLOW_EXTERNAL=*
+        - GENERIC_TIMEZONE=Europe/Lisbon
+        - N8N_LOG_LEVEL=debug  # error, warning, info, verbose, debug
+      cpus: 3
+      ports:
+        - 5679:5678
+      depends_on: # link is basically deprecated https://stackoverflow.com/a/54251381/2919380
+        - postgres
+        - redis
+        - n8n
+      volumes:
+        - ~/.n8n:/home/node/.n8n
+      command: /bin/sh -c "n8n worker"
+
+  n8n-wh:
+        image: n8nio/n8n
+        restart: always
+        environment:
+          - DB_TYPE=postgresdb
+          - DB_POSTGRESDB_HOST=postgres
+          - DB_POSTGRESDB_PORT=5432
+          - DB_POSTGRESDB_DATABASE=${POSTGRES_DB}
+          - DB_POSTGRESDB_USER=${POSTGRES_NON_ROOT_USER}
+          - DB_POSTGRESDB_PASSWORD=${POSTGRES_NON_ROOT_PASSWORD}
+          - N8N_BASIC_AUTH_ACTIVE=true
+          - N8N_BASIC_AUTH_USER
+          - N8N_BASIC_AUTH_PASSWORD
+          - EXECUTIONS_MODE=queue
+          - QUEUE_BULL_REDIS_HOST=redis
+          # - QUEUE_BULL_REDIS_PORT=6379
+          - N8N_HOST=${TLD:-local}
+          - WEBHOOK_URL=https://wh.${TLD:-local}/
+          - NODE_FUNCTION_ALLOW_BUILTIN=*
+          - NODE_FUNCTION_ALLOW_EXTERNAL=*
+          - GENERIC_TIMEZONE=Europe/Lisbon
+          - N8N_LOG_LEVEL=debug  # error, warning, info, verbose, debug
+        cpus: 3
+        ports:
+          - 5680:5678
+        networks:
+          - default
+        depends_on: # link is basically deprecated https://stackoverflow.com/a/54251381/2919380
+          - postgres
+          - redis
+          - n8n
+          - n8n-queue
+        volumes:
+          - ~/.n8n:/home/node/.n8n 
+        command: /bin/sh -c "n8n webhook"
+
