@@ -1,15 +1,24 @@
-import { IExecuteFunctions } from 'n8n-core';
+import { 
+	IExecuteFunctions,
+} from 'n8n-core';
+
 import {
 	ICredentialDataDecryptedObject,
 	IDataObject,
 	INodeExecutionData,
 	NodeOperationError,
 } from 'n8n-workflow';
+
 import {
 	IMongoCredentials,
 	IMongoCredentialsType,
 	IMongoParametricCredentials,
 } from './mongo.node.types';
+
+import {
+	get,
+	set,
+} from 'lodash';
 
 /**
  * Standard way of building the MongoDB connection string, unless overridden with a provided string
@@ -92,28 +101,49 @@ export function validateAndResolveMongoCredentials(
 export function getItemCopy(
 	items: INodeExecutionData[],
 	properties: string[],
+	dotNotation: boolean,
 ): IDataObject[] {
 	// Prepare the data to insert and copy it to be returned
 	let newItem: IDataObject;
 	return items.map(item => {
 		newItem = {};
 		for (const property of properties) {
-			if (item.json[property] === undefined) {
-				newItem[property] = null;
+			if (dotNotation === false) {
+				if (item.json[property] === undefined) {
+					newItem[property] = null;
+				} else {
+					newItem[property] = JSON.parse(JSON.stringify(item.json[property]));
+				}
 			} else {
-				newItem[property] = JSON.parse(JSON.stringify(item.json[property]));
+				let writeTo = property;
+				let readFrom = property;
+				if (property.includes(':')) {
+					writeTo = property.split(':').pop() as string;
+					readFrom = property.split(':').shift() as string;
+				}
+				if (get(item.json, readFrom) === undefined) {
+					set(item.json, readFrom, null);
+				} else {
+					set(newItem, writeTo, JSON.parse(JSON.stringify(get(item.json, readFrom))));
+				}
 			}
 		}
 		return newItem;
 	});
 }
 
-export function handleDateFields(insertItems: IDataObject[], fields: string) {
+export function handleDateFields(insertItems: IDataObject[], fields: string, dotNotation: boolean) {
 	const dateFields = (fields as string).split(',');
 	for (let i = 0; i < insertItems.length; i++) {
-		for (const key of Object.keys(insertItems[i])) {
-			if (dateFields.includes(key)) {
-				insertItems[i][key] = new Date(insertItems[i][key] as string);
+		for (const field of dateFields) {
+			if (dotNotation) {
+				if (get(insertItems[i], field) !== undefined) {
+					set(insertItems[i], field, new Date(get(insertItems[i], field) as string));
+				}
+			} else {
+				if (insertItems[i][field] !== undefined) {
+					insertItems[i][field] = new Date(insertItems[i][field] as string);
+				}
 			}
 		}
 	}
