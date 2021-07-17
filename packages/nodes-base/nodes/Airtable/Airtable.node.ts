@@ -221,7 +221,7 @@ export class Airtable implements INodeType {
 					},
 				},
 				default: '',
-				description: `Name of the fields of type 'attachment' that should be downloaded. Multiple ones can be defined separated by comma. Case sensitive.`,
+				description: `Name of the fields of type 'attachment' that should be downloaded. Multiple ones can be defined separated by comma. Case sensitive and cannot include spaces after a comma.`,
 			},
 			{
 				displayName: 'Additional Options',
