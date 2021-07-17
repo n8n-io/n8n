@@ -133,7 +133,10 @@ export class Elasticsearch implements INodeType {
 						const simple = this.getNodeParameter('simple', i) as IDataObject;
 
 						if (simple) {
-							responseData = responseData._source;
+							responseData = { 
+								...responseData._source,
+								_id: responseData._id,
+							};
 						}
 
 					} else if (operation === 'getAll') {
