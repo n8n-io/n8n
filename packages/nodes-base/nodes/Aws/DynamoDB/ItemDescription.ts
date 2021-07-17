@@ -16,6 +16,11 @@ export const itemOperations = [
 		},
 		options: [
 			{
+				name: 'Create or Update',
+				value: 'upsert',
+				description: 'Create a new record, or update the current one if it already exists (upsert/put)',
+			},
+			{
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete an item',
@@ -29,11 +34,6 @@ export const itemOperations = [
 				name: 'Get All',
 				value: 'getAll',
 				description: 'Get all items',
-			},
-			{
-				name: 'Put',
-				value: 'upsert',
-				description: 'Create a new record, or update the current one if it already exists (upsert)',
 			},
 		],
 		default: 'upsert',
@@ -328,18 +328,18 @@ export const itemFields = [
 						options: [
 							{
 								name: 'Binary',
-								value: 'b',
+								value: 'B',
 							},
 							{
 								name: 'Number',
-								value: 'n',
+								value: 'N',
 							},
 							{
 								name: 'String',
-								value: 's',
+								value: 'S',
 							},
 						],
-						default: 's',
+						default: 'S',
 					},
 					{
 						displayName: 'Value',
@@ -571,18 +571,18 @@ export const itemFields = [
 						options: [
 							{
 								name: 'Binary',
-								value: 'b',
+								value: 'B',
 							},
 							{
 								name: 'Number',
-								value: 'n',
+								value: 'N',
 							},
 							{
 								name: 'String',
-								value: 's',
+								value: 'S',
 							},
 						],
-						default: 's',
+						default: 'S',
 					},
 					{
 						displayName: 'Value',

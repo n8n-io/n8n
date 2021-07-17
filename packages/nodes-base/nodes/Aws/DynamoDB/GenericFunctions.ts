@@ -19,7 +19,7 @@ import {
 	INodeExecutionData,
 } from 'n8n-workflow';
 
-import { 
+import {
 	IRequestBody,
 } from './types';
 
@@ -96,7 +96,7 @@ export async function awsApiRequestAllItems(this: IHookFunctions | IExecuteFunct
 export function copyInputItem(item: INodeExecutionData, properties: string[]): IDataObject {
 	// Prepare the data to insert and copy it to be returned
 	let newItem: IDataObject;
-		newItem = {};
+	newItem = {};
 	for (const property of properties) {
 		if (item.json[property] === undefined) {
 			newItem[property] = null;
@@ -106,7 +106,3 @@ export function copyInputItem(item: INodeExecutionData, properties: string[]): I
 	}
 	return newItem;
 }
-
-
-
-

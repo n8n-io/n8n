@@ -8,6 +8,7 @@ import {
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
+	NodeParameterValue,
 } from 'n8n-workflow';
 
 import {
@@ -138,13 +139,13 @@ export class AwsDynamoDB implements INodeType {
 						}
 
 						const dataToSend = this.getNodeParameter('dataToSend', 0) as 'defineBelow' | 'autoMapInputData';
+						const item: { [key: string]: string } = {};
 
 						if (dataToSend === 'autoMapInputData') {
 
 							const incomingKeys = Object.keys(items[i].json);
 							const rawInputsToIgnore = this.getNodeParameter('inputsToIgnore', i) as string;
 							const inputsToIgnore = rawInputsToIgnore.split(',').map(c => c.trim());
-							const item: { [key: string]: string } = {};
 
 							for (const key of incomingKeys) {
 								if (inputsToIgnore.includes(key)) continue;
@@ -156,7 +157,6 @@ export class AwsDynamoDB implements INodeType {
 						} else {
 
 							const fields = this.getNodeParameter('fieldsUi.fieldValues', i, []) as FieldsUiValues;
-							const item: { [key: string]: string } = {};
 							fields.forEach(({ fieldId, fieldValue }) => item[fieldId] = fieldValue);
 							body.Item = adjustPutItem(item as PutItemUi);
 
@@ -168,8 +168,7 @@ export class AwsDynamoDB implements INodeType {
 						};
 
 						responseData = await awsApiRequest.call(this, 'dynamodb', 'POST', '/', body, headers);
-
-						responseData = { success: true };
+						responseData = item;
 
 					} else if (operation === 'delete') {
 
@@ -194,7 +193,11 @@ export class AwsDynamoDB implements INodeType {
 						const items = this.getNodeParameter('keysUi.keyValues', i, []) as [{ key: string, type: string, value: string }];
 
 						for (const item of items) {
-							body.Key[item.key] = { [item.type.toUpperCase()]: item.value };
+							let value = item.value as NodeParameterValue;
+							// All data has to get send as string even numbers
+							// @ts-ignore
+							value = ![null, undefined].includes(value) ? value?.toString() : '';
+							body.Key[item.key as string] = { [item.type as string]: value };
 						}
 
 						const expressionAttributeValues = adjustExpressionAttributeValues(eavUi);
@@ -266,7 +269,11 @@ export class AwsDynamoDB implements INodeType {
 						const items = this.getNodeParameter('keysUi.keyValues', i, []) as IDataObject[];
 
 						for (const item of items) {
-							body.Key[item.key as string] = { [(item.type as string).toUpperCase()]: item.value };
+							let value = item.value as NodeParameterValue;
+							// All data has to get send as string even numbers
+							// @ts-ignore
+							value = ![null, undefined].includes(value) ? value?.toString() : '';
+							body.Key[item.key as string] = { [item.type as string]: value };
 						}
 
 						const headers = {
