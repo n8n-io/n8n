@@ -72,19 +72,6 @@ Windows:
 npm install -g windows-build-tools
 ```
 
-#### lerna
-
-n8n is split up in different modules which are all in a single mono repository.
-To facilitate those modules management, [lerna](https://lerna.js.org) gets
-used. It automatically sets up file-links between modules which depend on each
-other.
-
-So for the setup to work correctly lerna has to be installed globally like this:
-
-```
-npm install -g lerna
-```
-
 
 ### Actual n8n setup
 
@@ -104,9 +91,14 @@ checked out and set up:
 	cd n8n
 	```
 
+1. Install tools
+	```
+	npm install
+	```
+
 1. Install all dependencies of all modules and link them together:
 	```
-	lerna bootstrap --hoist
+	npx lerna bootstrap --hoist
 	```
 
 1. Build all the code:
