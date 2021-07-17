@@ -1,5 +1,6 @@
 import {
 	CUSTOM_EXTENSION_ENV,
+	CUSTOM_CWD_ENV,
 	UserSettings,
 } from 'n8n-core';
 import {
@@ -91,7 +92,13 @@ class LoadNodesAndCredentialsClass {
 		// Add folders from special environment variable
 		if (process.env[CUSTOM_EXTENSION_ENV] !== undefined) {
 			const customExtensionFolders = process.env[CUSTOM_EXTENSION_ENV]!.split(';');
-			customDirectories.push.apply(customDirectories, customExtensionFolders);
+			const cwd = process.env[CUSTOM_CWD_ENV] || process.cwd();
+			for (let extensionFolder of customExtensionFolders) {
+				if (!path.isAbsolute(extensionFolder)) {
+					extensionFolder = path.join(cwd, extensionFolder);
+				}
+				customDirectories.push(extensionFolder);
+			}
 		}
 
 		for (const directory of customDirectories) {
