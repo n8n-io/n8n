@@ -28,7 +28,7 @@ export class ElasticsearchApi implements ICredentialType {
 			name: 'baseUrl',
 			type: 'string' as NodePropertyTypes,
 			default: '',
-			placeholder: 'https://a-b-optimized-deployment-ffc9df.es.us-west1.gcp.cloud.es.io:9243',
+			placeholder: 'https://abc.elastic-cloud.com:9243',
 			description: 'Referred to as \'endpoint\' in the Elasticsearch dashboard.',
 		},
 	];

@@ -18,6 +18,11 @@ export const documentOperations = [
 		},
 		options: [
 			{
+				name: 'Create',
+				value: 'create',
+				description: 'Create a document',
+			},
+			{
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete a document',
@@ -31,11 +36,6 @@ export const documentOperations = [
 				name: 'Get All',
 				value: 'getAll',
 				description: 'Get all documents',
-			},
-			{
-				name: 'Index',
-				value: 'index',
-				description: 'Index a document',
 			},
 			{
 				name: 'Update',
@@ -401,12 +401,12 @@ export const documentFields = [
 				type: 'options',
 				options: [
 					{
-						name: 'Query Then Fetch',
-						value: 'query_then_fetch',
-					},
-					{
 						name: 'DFS Query Then Fetch',
 						value: 'dfs_query_then_fetch',
+					},
+					{
+						name: 'Query Then Fetch',
+						value: 'query_then_fetch',
 					},
 				],
 				default: 'query_then_fetch',
@@ -478,7 +478,7 @@ export const documentFields = [
 	},
 
 	// ----------------------------------------
-	//             document: index
+	//             document: create
 	// ----------------------------------------
 	{
 		displayName: 'Index ID',
@@ -493,7 +493,7 @@ export const documentFields = [
 					'document',
 				],
 				operation: [
-					'index',
+					'create',
 				],
 			},
 		},
@@ -520,7 +520,7 @@ export const documentFields = [
 					'document',
 				],
 				operation: [
-					'index',
+					'create',
 				],
 			},
 		},
@@ -537,7 +537,7 @@ export const documentFields = [
 					'document',
 				],
 				operation: [
-					'index',
+					'create',
 				],
 				dataToSend: [
 					'autoMapInputData',
@@ -564,7 +564,7 @@ export const documentFields = [
 					'document',
 				],
 				operation: [
-					'index',
+					'create',
 				],
 				dataToSend: [
 					'defineBelow',
@@ -578,7 +578,7 @@ export const documentFields = [
 				name: 'fieldValues',
 				values: [
 					{
-						displayName: 'Field ID',
+						displayName: 'Field Name',
 						name: 'fieldId',
 						type: 'string',
 						default: '',
@@ -605,7 +605,7 @@ export const documentFields = [
 					'document',
 				],
 				operation: [
-					'index',
+					'create',
 				],
 			},
 		},
@@ -753,7 +753,7 @@ export const documentFields = [
 				name: 'fieldValues',
 				values: [
 					{
-						displayName: 'Field ID',
+						displayName: 'Field Name',
 						name: 'fieldId',
 						type: 'string',
 						default: '',
