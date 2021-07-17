@@ -1,4 +1,9 @@
 import {
+	get,
+	set,
+} from 'lodash';
+
+import {
 	BINARY_ENCODING,
 	IExecuteFunctions,
 } from 'n8n-core';
@@ -76,6 +81,16 @@ export class SpreadsheetFile implements INodeType {
 						value: 'toFile',
 						description: 'Writes the workflow data to a spreadsheet file',
 					},
+					{
+						name: 'Read from JSON',
+						value: 'fromJson',
+						description: 'Read spreadsheet from JSON',
+					},
+					{
+						name: 'Write to JSON',
+						value: 'toJson',
+						description: 'Write spreadsheet to JSON',
+					},
 				],
 				default: 'fromFile',
 				description: 'The operation to perform.',
@@ -100,6 +115,26 @@ export class SpreadsheetFile implements INodeType {
 				},
 				placeholder: '',
 				description: 'Name of the binary property from which to read<br />the binary data of the spreadsheet file.',
+			},
+			
+			// ----------------------------------
+			//         fromJson
+			// ----------------------------------
+			{
+				displayName: 'Source Key',
+				name: 'sourceKey',
+				type: 'string',
+				displayOptions: {
+					show: {
+						operation: [
+							'fromJson',
+						],
+					},
+				},
+				default: 'data',
+				required: true,
+				placeholder: 'data',
+				description: 'The name of the JSON key to get data from.<br />It is also possible to define deep keys by using dot-notation like for example:<br />"level1.level2.currentKey"',
 			},
 
 			// ----------------------------------
@@ -167,6 +202,51 @@ export class SpreadsheetFile implements INodeType {
 				placeholder: '',
 				description: 'Name of the binary property in which to save<br />the binary data of the spreadsheet file.',
 			},
+			// ----------------------------------
+			//         toJson
+			// ----------------------------------
+			{
+				displayName: 'File Format',
+				name: 'fileFormat',
+				type: 'options',
+				options: [
+					{
+						name: 'CSV',
+						value: 'csv',
+						description: 'Comma-separated values',
+					},
+					{
+						name: 'HTML',
+						value: 'html',
+						description: 'HTML Table',
+					},
+				],
+				default: 'csv',
+				displayOptions: {
+					show: {
+						operation: [
+							'toJson',
+						],
+					},
+				},
+				description: 'The format of the file to save the data as.',
+			},
+			{
+				displayName: 'Destination Key',
+				name: 'destinationKey',
+				type: 'string',
+				displayOptions: {
+					show: {
+						operation: [
+							'toJson',
+						],
+					},
+				},
+				default: 'data',
+				required: true,
+				placeholder: '',
+				description: 'The name the JSON key to copy data to. It is also possible<br />to define deep keys by using dot-notation like for example:<br />"level1.level2.newKey"',
+			},
 
 			{
 				displayName: 'Options',
@@ -175,38 +255,9 @@ export class SpreadsheetFile implements INodeType {
 				placeholder: 'Add Option',
 				default: {},
 				options: [
-					{
-						displayName: 'Compression',
-						name: 'compression',
-						type: 'boolean',
-						displayOptions: {
-							show: {
-								'/operation': [
-									'toFile',
-								],
-								'/fileFormat': [
-									'xlsx',
-									'ods',
-								],
-							},
-						},
-						default: false,
-						description: 'Weather compression will be applied or not',
-					},
-					{
-						displayName: 'File Name',
-						name: 'fileName',
-						type: 'string',
-						displayOptions: {
-							show: {
-								'/operation': [
-									'toFile',
-								],
-							},
-						},
-						default: '',
-						description: 'File name to set in binary data. By default will "spreadsheet.<fileFormat>" be used.',
-					},
+					// ----------------------------------
+					//         fromFile
+					// ----------------------------------
 					{
 						displayName: 'Header Row',
 						name: 'headerRow',
@@ -291,6 +342,58 @@ export class SpreadsheetFile implements INodeType {
 						default: 'Sheet',
 						description: 'Name of the sheet to read from in the spreadsheet (if supported). If not set, the first one gets chosen.',
 					},
+					// ----------------------------------
+					//         fromJson
+					// ----------------------------------
+					{
+						displayName: 'RAW Data',
+						name: 'rawData',
+						type: 'boolean',
+						displayOptions: {
+							show: {
+								'/operation': [
+									'fromJson',
+								],
+							},
+						},
+						default: false,
+						description: 'If the data should be returned RAW instead of parsed.',
+					},
+					// ----------------------------------
+					//         toFile
+					// ----------------------------------
+					{
+						displayName: 'Compression',
+						name: 'compression',
+						type: 'boolean',
+						displayOptions: {
+							show: {
+								'/operation': [
+									'toFile',
+								],
+								'/fileFormat': [
+									'xlsx',
+									'ods',
+								],
+							},
+						},
+						default: false,
+						description: 'Weather compression will be applied or not',
+					},
+					{
+						displayName: 'File Name',
+						name: 'fileName',
+						type: 'string',
+						displayOptions: {
+							show: {
+								'/operation': [
+									'toFile',
+								],
+							},
+						},
+						default: '',
+						description: 'File name to set in binary data. By default will "spreadsheet.<fileFormat>" be used.',
+					},
 					{
 						displayName: 'Sheet Name',
 						name: 'sheetName',
@@ -309,6 +412,16 @@ export class SpreadsheetFile implements INodeType {
 						},
 						default: 'Sheet',
 						description: 'Name of the sheet to create in the spreadsheet.',
+					},
+					// ----------------------------------
+					//         csv
+					// ----------------------------------
+					{
+						displayName: 'Delimiter',
+						name: 'delimiter',
+						type: 'string',
+						default: '',
+						description: 'Change the csv delimiter.',
 					},
 				],
 			},
@@ -340,7 +453,10 @@ export class SpreadsheetFile implements INodeType {
 				}
 
 				// Read the binary spreadsheet data
-				const binaryData = Buffer.from(item.binary[binaryPropertyName].data, BINARY_ENCODING);
+				let binaryData = Buffer.from(item.binary[binaryPropertyName].data, BINARY_ENCODING);
+				if (options.delimiter) {
+					binaryData = Buffer.concat([new Buffer('sep=' + options.delimiter + '\n'), binaryData])
+				}
 				let workbook;
 				if (options.readAsString === true) {
 					workbook = xlsxRead(binaryData.toString(), { type: 'string', raw: options.rawData as boolean });
@@ -398,6 +514,58 @@ export class SpreadsheetFile implements INodeType {
 			}
 
 			return this.prepareOutputData(newItems);
+		} else if (operation === 'fromJson') {
+			// Read data from spreadsheet string to workflow
+
+			let item: INodeExecutionData;
+			for (let i = 0; i < items.length; i++) {
+				item = items[i];
+
+				const sourceKey = this.getNodeParameter('sourceKey', i) as string;
+				const options = this.getNodeParameter('options', i, {}) as IDataObject;
+				
+				const workbook = xlsxRead(options.delimiter ? 'sep=' + options.delimiter + '\n' + get(item.json, sourceKey) : get(item.json, sourceKey), { raw: options.rawData as boolean });
+
+				if (workbook.SheetNames.length === 0) {
+					throw new Error('Spreadsheet does not have any sheets!');
+				}
+
+				let sheetName = workbook.SheetNames[0];
+				if (options.sheetName) {
+					if (!workbook.SheetNames.includes(options.sheetName as string)) {
+						throw new Error(`Spreadsheet does not contain sheet called "${options.sheetName}"!`);
+					}
+					sheetName = options.sheetName as string;
+				}
+
+				// Convert it to json
+				const sheetToJsonOptions: Sheet2JSONOpts = {};
+				if (options.range) {
+					if (isNaN(options.range as number)) {
+						sheetToJsonOptions.range = options.range;
+					} else {
+						sheetToJsonOptions.range = parseInt(options.range as string, 10);
+					}
+				}
+
+				if (options.includeEmptyCells) {
+					sheetToJsonOptions.defval = '';
+				}
+
+				const sheetJson = xlsxUtils.sheet_to_json(workbook.Sheets[sheetName], sheetToJsonOptions);
+
+				// Check if data could be found in file
+				if (sheetJson.length === 0) {
+					continue;
+				}
+
+				// Add all the found data columns to the workflow data
+				for (const rowData of sheetJson) {
+					newItems.push({ json: rowData } as INodeExecutionData);
+				}
+			}
+
+			return this.prepareOutputData(newItems);
 		} else if (operation === 'toFile') {
 			// Write the workflow data to spreadsheet file
 			const binaryPropertyName = this.getNodeParameter('binaryPropertyName', 0) as string;
@@ -413,41 +581,46 @@ export class SpreadsheetFile implements INodeType {
 			}
 
 			const ws = xlsxUtils.json_to_sheet(itemData);
-
-			const wopts: WritingOptions = {
-				bookSST: false,
-				type: 'buffer',
-			};
-
+			let wbout;
+			
 			if (fileFormat === 'csv') {
-				wopts.bookType = 'csv';
-			} else if (fileFormat === 'html') {
-				wopts.bookType = 'html';
-			} else if (fileFormat === 'rtf') {
-				wopts.bookType = 'rtf';
-			} else if (fileFormat === 'ods') {
-				wopts.bookType = 'ods';
-				if (options.compression) {
-					wopts.compression = true;
-				}
-			} else if (fileFormat === 'xls') {
-				wopts.bookType = 'xls';
-			} else if (fileFormat === 'xlsx') {
-				wopts.bookType = 'xlsx';
-				if (options.compression) {
-					wopts.compression = true;
-				}
-			}
+				wbout = Buffer.from(xlsxUtils.sheet_to_csv(ws, {
+					FS: options.delimiter ? options.delimiter as string : ','
+				}));
+			} else {
+				const wopts: WritingOptions = {
+					bookSST: false,
+					type: 'buffer',
+				};
 
-			// Convert the data in the correct format
-			const sheetName = options.sheetName as string || 'Sheet';
-			const wb: WorkBook = {
-				SheetNames: [sheetName],
-				Sheets: {
-					[sheetName]: ws,
-				},
-			};
-			const wbout = xlsxWrite(wb, wopts);
+				if (fileFormat === 'html') {
+					wopts.bookType = 'html';
+				} else if (fileFormat === 'rtf') {
+					wopts.bookType = 'rtf';
+				} else if (fileFormat === 'ods') {
+					wopts.bookType = 'ods';
+					if (options.compression) {
+						wopts.compression = true;
+					}
+				} else if (fileFormat === 'xls') {
+					wopts.bookType = 'xls';
+				} else if (fileFormat === 'xlsx') {
+					wopts.bookType = 'xlsx';
+					if (options.compression) {
+						wopts.compression = true;
+					}
+				}
+
+				// Convert the data in the correct format
+				const sheetName = options.sheetName as string || 'Sheet';
+				const wb: WorkBook = {
+					SheetNames: [sheetName],
+					Sheets: {
+						[sheetName]: ws,
+					},
+				};
+				wbout = xlsxWrite(wb, wopts);
+			}
 
 			// Create a new item with only the binary spreadsheet data
 			const newItem: INodeExecutionData = {
@@ -462,10 +635,36 @@ export class SpreadsheetFile implements INodeType {
 
 			newItem.binary![binaryPropertyName] = await this.helpers.prepareBinaryData(wbout, fileName);
 
-			const newItems = [];
-			newItems.push(newItem);
+			return this.prepareOutputData([newItem]);
+		} else if (operation === 'toJson') {
+			const fileFormat = this.getNodeParameter('fileFormat', 0) as string;
+			const destinationKey = this.getNodeParameter('destinationKey', 0) as string;
+			const options = this.getNodeParameter('options', 0, {}) as IDataObject;
+			
+			// Get the json data of the items and flatten it
+			let item: INodeExecutionData;
+			const itemData: IDataObject[] = [];
+			for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
+				item = items[itemIndex];
+				itemData.push(flattenObject(item.json));
+			}
 
-			return this.prepareOutputData(newItems);
+			const ws = xlsxUtils.json_to_sheet(itemData);
+			
+			const newItem: INodeExecutionData = {
+				json: {},
+				binary: {},
+			};
+			
+			if (fileFormat === 'csv') {
+				set(newItem.json, destinationKey, xlsxUtils.sheet_to_csv(ws, {
+					FS: options.delimiter ? options.delimiter as string : ','
+				}));
+			}  else if (fileFormat === 'html') {
+				set(newItem.json, destinationKey, xlsxUtils.sheet_to_html(ws));
+			}
+
+			return this.prepareOutputData([newItem]);
 		} else {
 			throw new NodeOperationError(this.getNode(), `The operation "${operation}" is not supported!`);
 		}
