@@ -528,6 +528,7 @@
       "dist/nodes/Spotify/Spotify.node.js",
       "dist/nodes/SpreadsheetFile.node.js",
       "dist/nodes/Stackby/Stackby.node.js",
+      "dist/nodes/Stackby/StackbyTrigger.node.js",
       "dist/nodes/SseTrigger.node.js",
       "dist/nodes/Ssh/Ssh.node.js",
       "dist/nodes/Start.node.js",
