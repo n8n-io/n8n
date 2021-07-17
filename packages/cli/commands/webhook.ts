@@ -4,7 +4,7 @@ import {
 import { Command, flags } from '@oclif/command';
 import * as Redis from 'ioredis';
 
-import * as config from '../config';
+import { config } from '@config';
 import {
 	ActiveExecutions,
 	ActiveWorkflowRunner,
@@ -20,7 +20,7 @@ import {
 } from '../src';
 import { IDataObject } from 'n8n-workflow';
 
-import { 
+import {
 	getLogger,
 } from '../src/Logger';
 

@@ -37,7 +37,7 @@ import {
 	WorkflowExecuteAdditionalData,
 } from '../src';
 
-import { 
+import {
 	getLogger,
 } from '../src/Logger';
 
@@ -45,7 +45,7 @@ import {
 	LoggerProxy,
 } from 'n8n-workflow';
 
-import * as config from '../config';
+import { config } from '@config';
 import * as Bull from 'bull';
 import * as Queue from '../src/Queue';
 

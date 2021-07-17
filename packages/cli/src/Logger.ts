@@ -1,4 +1,4 @@
-import config = require('../config');
+import { config } from '@config';
 import * as winston from 'winston';
 
 import {

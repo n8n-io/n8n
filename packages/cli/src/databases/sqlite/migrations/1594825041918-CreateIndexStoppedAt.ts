@@ -1,6 +1,6 @@
 import { MigrationInterface, QueryRunner } from "typeorm";
 
-import * as config from '../../../../config';
+import { config } from '@config';
 
 export class CreateIndexStoppedAt1594825041918 implements MigrationInterface {
 	name = 'CreateIndexStoppedAt1594825041918';
