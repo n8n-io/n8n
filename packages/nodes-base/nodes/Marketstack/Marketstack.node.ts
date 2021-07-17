@@ -63,7 +63,7 @@ export class Marketstack implements INodeType {
 					{
 						name: 'End-of-day',
 						value: 'eod',
-						description: 'Data at closing of the market',
+						description: 'Data at closing of the market.',
 					},
 				],
 				default: 'eod',
@@ -82,7 +82,7 @@ export class Marketstack implements INodeType {
 					},
 				},
 				default: '',
-				description: 'Ticker symbol, including exchange suffix where necessary',
+				description: 'Ticker symbol, including exchange suffix where necessary.',
 			},
 		],
 	};
@@ -94,6 +94,7 @@ export class Marketstack implements INodeType {
 		const resource = this.getNodeParameter('resource', 0) as string;
 		const operation = this.getNodeParameter('operation', 0) as string;
 		const credentials = this.getCredentials('marketstackApi') as IDataObject;
+		const protocol = credentials.useHttps ? 'https' : 'http'; // Free API does not support HTTPS
 
 		if (resource === 'stockmarket') {
 			const symbols: string[] = [];
@@ -108,7 +109,7 @@ export class Marketstack implements INodeType {
 						'Accept': 'application/json',
 					},
 					method: 'GET',
-					uri: `http://api.marketstack.com/v1/eod/latest`,
+					uri: `${protocol}://api.marketstack.com/v1/eod/latest`,
 					qs: {
 						access_key: credentials.apiKey,
 						symbols: symbols.join(','),

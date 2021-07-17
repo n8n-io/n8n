@@ -14,5 +14,12 @@ export class MarketstackApi implements ICredentialType {
 			type: 'string' as NodePropertyTypes,
 			default: '',
 		},
+		{
+			displayName: 'Use HTTPS',
+			name: 'useHttps',
+			type: 'boolean' as NodePropertyTypes,
+			default: false,
+			description: 'Use HTTPS (paid plans only).',
+		},
 	];
 }
