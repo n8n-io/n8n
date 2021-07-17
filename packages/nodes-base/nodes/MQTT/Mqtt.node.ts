@@ -119,19 +119,46 @@ export class Mqtt implements INodeType {
 		const port = credentials.port as number || 1883;
 		const clientId = credentials.clientId as string || `mqttjs_${Math.random().toString(16).substr(2, 8)}`;
 		const clean = credentials.clean as boolean;
+		const ssl = credentials.ssl as boolean;
+		const ca = credentials.ca as string;
+		const cert = credentials.cert as string;
+		const key = credentials.key as string;
+		const rejectUnauthorized = credentials.rejectUnauthorized as boolean;
 
-		const clientOptions: IClientOptions = {
-			port,
-			clean,
-			clientId,
-		};
+		let client: mqtt.MqttClient;
 
-		if (credentials.username && credentials.password) {
-			clientOptions.username = credentials.username as string;
-			clientOptions.password = credentials.password as string;
+		if (ssl === false) {
+			const clientOptions: IClientOptions = {
+				port,
+				clean,
+				clientId,
+			};
+
+			if (credentials.username && credentials.password) {
+					clientOptions.username = credentials.username as string;
+					clientOptions.password = credentials.password as string;
+			}
+
+			 client = mqtt.connect(brokerUrl, clientOptions);
 		}
+		else {
+			const clientOptions: IClientOptions = {
+				port,
+				clean,
+				clientId,
+				ca,
+				cert,
+				key,
+				rejectUnauthorized,	
+			};
+			if (credentials.username && credentials.password) {
+				clientOptions.username = credentials.username as string;
+				clientOptions.password = credentials.password as string;
+			}
 
-		const client = mqtt.connect(brokerUrl, clientOptions);
+			 client = mqtt.connect(brokerUrl, clientOptions);
+		}
+		
 		const sendInputData = this.getNodeParameter('sendInputData', 0) as boolean;
 
 		// tslint:disable-next-line: no-any
