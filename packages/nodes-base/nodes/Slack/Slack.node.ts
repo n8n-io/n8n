@@ -34,6 +34,11 @@ import {
 } from './FileDescription';
 
 import {
+	userGroupFields,
+	userGroupOperations,
+} from './UserGroupDescription';
+
+import {
 	reactionFields,
 	reactionOperations,
 } from './ReactionDescription';
@@ -172,6 +177,10 @@ export class Slack implements INodeType {
 						value: 'file',
 					},
 					{
+						name: 'Group',
+						value: 'group',
+					},
+					{
 						name: 'Message',
 						value: 'message',
 					},
@@ -182,6 +191,10 @@ export class Slack implements INodeType {
 					{
 						name: 'Star',
 						value: 'star',
+					},
+					{
+						name: 'User Group',
+						value: 'userGroup',
 					},
 					{
 						name: 'User',
@@ -204,6 +217,8 @@ export class Slack implements INodeType {
 			...starFields,
 			...fileOperations,
 			...fileFields,
+			...userGroupOperations,
+			...userGroupFields,
 			...reactionOperations,
 			...reactionFields,
 			...userOperations,
@@ -551,6 +566,7 @@ export class Slack implements INodeType {
 									attachment.fields = attachment.fields.item;
 								} else {
 									// If it does not have any items set remove it
+									// @ts-ignore
 									delete attachment.fields;
 								}
 							}
@@ -785,6 +801,7 @@ export class Slack implements INodeType {
 								attachment.fields = attachment.fields.item;
 							} else {
 								// If it does not have any items set remove it
+								// @ts-ignore
 								delete attachment.fields;
 							}
 						}
@@ -1042,6 +1059,94 @@ export class Slack implements INodeType {
 					responseData = await slackApiRequest.call(this, 'POST', '/users.profile.get', undefined, qs);
 
 					responseData = responseData.profile;
+				}
+			}
+			if (resource === 'userGroup') {
+				//https://api.slack.com/methods/usergroups.create
+				if (operation === 'create') {
+					const name = this.getNodeParameter('name', i) as string;
+
+					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+
+					const body: IDataObject = {
+						name,
+					};
+
+					Object.assign(body, additionalFields);
+
+					responseData = await slackApiRequest.call(this, 'POST', '/usergroups.create', body, qs);
+
+					responseData = responseData.usergroups;
+				}
+				//https://api.slack.com/methods/usergroups.enable
+				if (operation === 'enable') {
+					const userGroupId = this.getNodeParameter('userGroupId', i) as string;
+
+					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+
+					const body: IDataObject = {
+						usergroup: userGroupId,
+					};
+
+					Object.assign(body, additionalFields);
+
+					responseData = await slackApiRequest.call(this, 'POST', '/usergroups.enable', body, qs);
+
+					responseData = responseData.usergroups;
+				}
+				//https://api.slack.com/methods/usergroups.disable
+				if (operation === 'disable') {
+					const userGroupId = this.getNodeParameter('userGroupId', i) as string;
+
+					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+
+					const body: IDataObject = {
+						usergroup: userGroupId,
+					};
+
+					Object.assign(body, additionalFields);
+
+					responseData = await slackApiRequest.call(this, 'POST', '/usergroups.disable', body, qs);
+
+					responseData = responseData.usergroups;
+				}
+
+				//https://api.slack.com/methods/usergroups.list
+				if (operation === 'getAll') {
+					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+
+					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+
+					const body: IDataObject = {};
+
+					Object.assign(body, additionalFields);
+
+					responseData = await slackApiRequest.call(this, 'GET', '/usergroups.list', body, qs);
+
+					responseData = responseData.usergroups;
+
+					if (returnAll === false) {
+						const limit = this.getNodeParameter('limit', i) as number;
+
+						responseData = responseData.slice(0, limit);
+					}
+				}
+
+				//https://api.slack.com/methods/usergroups.update
+				if (operation === 'update') {
+					const userGroupId = this.getNodeParameter('userGroupId', i) as string;
+
+					const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+
+					const body: IDataObject = {
+						usergroup: userGroupId,
+					};
+
+					Object.assign(body, updateFields);
+
+					responseData = await slackApiRequest.call(this, 'POST', '/usergroups.update', body, qs);
+
+					responseData = responseData.usergroups;
 				}
 			}
 			if (Array.isArray(responseData)) {

@@ -5,6 +5,7 @@ import {
 
 //https://api.slack.com/authentication/oauth-v2
 const userScopes = [
+	'channels:read',
 	'chat:write',
 	'files:read',
 	'files:write',
@@ -15,6 +16,8 @@ const userScopes = [
 	'reactions:write',
 	'stars:read',
 	'stars:write',
+	'usergroups:write',
+	'usergroups:read',
 	'users.profile:read',
 	'users.profile:write',
 ];
