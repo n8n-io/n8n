@@ -580,6 +580,7 @@ export class Telegram implements INodeType {
 				required: true,
 				description: 'A JSON-serialized array of results for the inline query.',
 			},
+
 			{
 				displayName: 'Additional Fields',
 				name: 'additionalFields',
