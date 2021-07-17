@@ -1,0 +1,151 @@
+apiVersion: template.openshift.io/v1
+kind: Template
+metadata:
+  name: n8n-server
+  annotations:
+    description: Extendable workflow automation n8n.io
+objects:
+- apiVersion: apps.openshift.io/v1
+  kind: DeploymentConfig
+  metadata:
+    labels:
+      app: n8n-server
+    name: n8n-server
+  spec:
+    replicas: 1
+    selector:
+      app: n8n-server
+      deploymentconfig: n8n-server
+    strategy:
+      activeDeadlineSeconds: 21600
+      resources: {}
+      rollingParams:
+        intervalSeconds: 1
+        maxSurge: 25%
+        maxUnavailable: 25%
+        timeoutSeconds: 600
+        updatePeriodSeconds: 1
+      type: Recreate
+    template:
+      metadata:
+        annotations:
+          openshift.io/generated-by: OpenShiftWebConsole
+        creationTimestamp: null
+        labels:
+          app: n8n-server
+          deploymentconfig: n8n-server
+      spec:
+        containers:
+          - image: ${IMAGE}
+            imagePullPolicy: Always
+            name: n8n-server
+            env:
+            - name: N8N_BASIC_AUTH_ACTIVE
+              value: 'true'
+            - name: N8N_BASIC_AUTH_USER
+              value: ${USERNAME}
+            - name: N8N_BASIC_AUTH_PASSWORD
+              value: ${PASSWORD}
+            - name: GENERIC_TIMEZONE
+              value: '"Europe/Hungary"'
+            - name: TZ
+              value: '"Europe/Hungary"'
+            - name: N8N_PORT
+              value: '5678'
+            - name: N8N_PROTOCOL
+              value: https
+            - name: N8N_HOST
+              value: ${URL}
+            ports:
+              - containerPort: 5678
+                protocol: TCP
+            resources: {}
+            terminationMessagePath: /dev/termination-log
+            terminationMessagePolicy: File
+            volumeMounts:
+            - mountPath: /root/.n8n
+              name: n8n-server-home
+              subPath: .n8n
+        dnsPolicy: ClusterFirst
+        restartPolicy: Always
+        schedulerName: default-scheduler
+        terminationGracePeriodSeconds: 30
+        volumes:
+        - name: n8n-server-home
+          persistentVolumeClaim:
+            claimName: n8n-server-pvc
+    test: false
+- apiVersion: v1
+  kind: Service
+  metadata:
+    labels:
+      app: n8n-server
+    name: n8n-server
+  spec:
+    ports:
+      - name: 5678-tcp
+        port: 5678
+        protocol: TCP
+        targetPort: 5678
+    selector:
+      deploymentconfig: n8n-server
+    sessionAffinity: None
+    type: ClusterIP
+  status:
+    loadBalancer: {}
+- apiVersion: route.openshift.io/v1
+  kind: Route
+  metadata:
+    labels:
+      app: n8n-server
+    name: n8n-server
+  spec:
+    host: ${URL}
+    port:
+      targetPort: 5678-tcp
+    tls:
+      insecureEdgeTerminationPolicy: Redirect
+      termination: edge
+    to:
+      kind: Service
+      name: n8n-server
+      weight: 100
+    wildcardPolicy: None
+- apiVersion: v1
+  kind: PersistentVolumeClaim
+  metadata:
+    labels:
+      app: n8n-server
+    name: n8n-server-pvc
+  spec:
+    accessModes:
+      - ReadWriteOnce
+    resources:
+      requests:
+        storage: ${SIZE}
+parameters:
+  - name: URL
+    diplayName: URL
+    description: URL what you will be use in the browser
+    value: 
+    required: true
+  - name: USERNAME
+    diplayName: USERNAME
+    description: USERNAME what you will be use in the browser
+    value: 
+    required: true
+  - name: PASSWORD
+    diplayName: PASSWORD
+    description: PASSWORD what you will be use in the browser
+    value: 
+    required: true
+  - name: IMAGE
+    diplayName: IMAGE
+    description: IMAGE your docker image
+    value: n8nio/n8n
+    required: true
+  - name: SIZE
+    diplayName: SIZE
+    description: SIZE your disk mounted on your home directory
+    value: 10Gi
+    required: true

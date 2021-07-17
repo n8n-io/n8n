@@ -34,7 +34,6 @@ The changelog can be found [here](https://docs.n8n.io/reference/changelog.html) 
 - :whale: Learn [how to run n8n in **Docker**](https://github.com/n8n-io/n8n/tree/master/docker/images/n8n/README.md)
 
 
-
 ## Start
 
 Execute: `npm run start`
