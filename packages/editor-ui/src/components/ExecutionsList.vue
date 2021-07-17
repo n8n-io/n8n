@@ -82,7 +82,10 @@
 						<el-tooltip placement="top" effect="light">
 							<div slot="content" v-html="statusTooltipText(scope.row)"></div>
 
-							<span class="status-badge running" v-if="scope.row.stoppedAt === undefined">
+							<span class="status-badge running" v-if="scope.row.sleepTill">
+								Sleeping
+							</span>
+							<span class="status-badge running" v-else-if="scope.row.stoppedAt === undefined">
 								Running
 							</span>
 							<span class="status-badge success" v-else-if="scope.row.finished">
@@ -98,7 +101,7 @@
 
 						<el-dropdown trigger="click" @command="handleRetryClick">
 							<span class="el-dropdown-link">
-								<el-button class="retry-button" v-bind:class="{ warning: scope.row.stoppedAt === null }" circle v-if="scope.row.stoppedAt !== undefined && !scope.row.finished && scope.row.retryOf === undefined && scope.row.retrySuccessId === undefined" type="text" size="small" title="Retry execution">
+								<el-button class="retry-button" v-bind:class="{ warning: scope.row.stoppedAt === null }" circle v-if="scope.row.stoppedAt !== undefined && !scope.row.finished && scope.row.retryOf === undefined && scope.row.retrySuccessId === undefined && scope.row.sleepTill === undefined" type="text" size="small" title="Retry execution">
 									<font-awesome-icon icon="redo" />
 								</el-button>
 							</span>
@@ -233,6 +236,10 @@ export default mixins(
 					name: 'Running',
 				},
 				{
+					id: 'sleeping',
+					name: 'Sleeping',
+				},
+				{
 					id: 'success',
 					name: 'Success',
 				},
@@ -288,7 +295,9 @@ export default mixins(
 			if (this.filter.workflowId !== 'ALL') {
 				filter.workflowId = this.filter.workflowId;
 			}
-			if (['error', 'success'].includes(this.filter.status)) {
+			if (this.filter.status === 'sleeping') {
+				filter.sleepTill = true;
+			} else if (['error', 'success'].includes(this.filter.status)) {
 				filter.finished = this.filter.status === 'success';
 			}
 			return filter;
@@ -610,7 +619,10 @@ export default mixins(
 			this.isDataLoading = false;
 		},
 		statusTooltipText (entry: IExecutionsSummary): string {
-			if (entry.stoppedAt === undefined) {
+			if (entry.sleepTill) {
+				const sleepDate = new Date(entry.sleepTill);
+				return `The worklow is sleeping till ${sleepDate.toLocaleDateString()} ${sleepDate.toLocaleTimeString()}.`;
+			} else if (entry.stoppedAt === undefined) {
 				return 'The worklow is currently executing.';
 			} else if (entry.finished === true && entry.retryOf !== undefined) {
 				return `The workflow execution was a retry of "${entry.retryOf}" and it was successful.`;

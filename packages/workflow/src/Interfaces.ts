@@ -223,6 +223,7 @@ export interface IExecuteFunctions {
 	getTimezone(): string;
 	getWorkflow(): IWorkflowMetadata;
 	prepareOutputData(outputData: INodeExecutionData[], outputIndex?: number): Promise<INodeExecutionData[][]>;
+	putExecutionToSleep(sleepTill: Date): Promise<void>;
 	sendMessageToUI(message: any): void; // tslint:disable-line:no-any
 	helpers: {
 		[key: string]: (...args: any[]) => any //tslint:disable-line:no-any
@@ -405,8 +406,7 @@ export interface INodeParameters {
 	[key: string]: NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[];
 }
 
-
-export type NodePropertyTypes = 'boolean' | 'collection' | 'color' | 'dateTime' | 'fixedCollection' | 'hidden' | 'json' | 'multiOptions' | 'number' | 'options' | 'string';
+export type NodePropertyTypes = 'boolean' | 'collection' | 'color' | 'dateTime' | 'fixedCollection' | 'hidden' | 'json' | 'notice' | 'multiOptions' | 'number' | 'options' | 'string';
 
 export type EditorTypes = 'code';
 
@@ -452,8 +452,6 @@ export interface INodeProperties {
 	noDataExpression?: boolean;
 	required?: boolean;
 }
-
-
 export interface INodePropertyOptions {
 	name: string;
 	value: string | number;
@@ -596,6 +594,7 @@ export interface IWebhookDescription {
 	responsePropertyName?: string;
 	responseMode?: WebhookResponseMode | string;
 	responseData?: WebhookResponseData | string;
+	restartWebhook?: boolean;
 }
 
 export interface IWorkflowDataProxyData {
@@ -609,6 +608,10 @@ export interface IWorkflowDataProxyData {
 	$node: any; // tslint:disable-line:no-any
 	$parameter: any; // tslint:disable-line:no-any
 	$workflow: any; // tslint:disable-line:no-any
+}
+
+export interface IWorkflowDataProxyAdditionalKeys {
+	[key: string]: string | number | undefined;
 }
 
 export interface IWorkflowMetadata {
@@ -647,6 +650,7 @@ export interface IRun {
 	data: IRunExecutionData;
 	finished?: boolean;
 	mode: WorkflowExecuteMode;
+	sleepTill?: Date;
 	startedAt: Date;
 	stoppedAt?: Date;
 }
@@ -670,6 +674,7 @@ export interface IRunExecutionData {
 		nodeExecutionStack: IExecuteData[];
 		waitingExecution: IWaitingForExecution;
 	};
+	sleepTill?: Date;
 }
 
 
@@ -743,6 +748,7 @@ export interface IWorkflowExecuteAdditionalData {
 	encryptionKey: string;
 	executeWorkflow: (workflowInfo: IExecuteWorkflowInfo, additionalData: IWorkflowExecuteAdditionalData, inputData?: INodeExecutionData[], parentExecutionId?: string, loadedWorkflowData?: IWorkflowBase, loadedRunData?: any) => Promise<any>; // tslint:disable-line:no-any
 	// hooks?: IWorkflowExecuteHooks;
+	executionId?: string;
 	hooks?: WorkflowHooks;
 	httpResponse?: express.Response;
 	httpRequest?: express.Request;
@@ -750,6 +756,7 @@ export interface IWorkflowExecuteAdditionalData {
 	sendMessageToUI?: (source: string, message: any) => void; // tslint:disable-line:no-any
 	timezone: string;
 	webhookBaseUrl: string;
+	webhookSleepingBaseUrl: string;
 	webhookTestBaseUrl: string;
 	currentNodeParameters?: INodeParameters;
 	executionTimeoutTimestamp?: number;

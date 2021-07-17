@@ -21,11 +21,12 @@ import {
 	LoadNodesAndCredentials,
 	NodeTypes,
 	Server,
+	SleepTracker,
 	TestWebhooks,
 } from '../src';
 import { IDataObject } from 'n8n-workflow';
 
-import { 
+import {
 	getLogger,
 } from '../src/Logger';
 
@@ -280,6 +281,8 @@ export class Start extends Command {
 				// Start to get active workflows and run their triggers
 				activeWorkflowRunner = ActiveWorkflowRunner.getInstance();
 				await activeWorkflowRunner.init();
+
+				const sleepTracker = new SleepTracker();
 
 				const editorUrl = GenericHelpers.getBaseUrl();
 				this.log(`\nEditor is now accessible via:\n${editorUrl}`);

@@ -63,6 +63,7 @@ import {
 	NodeTypes,
 	Push,
 	ResponseHelper,
+	SleepingWebhooks,
 	TestWebhooks,
 	WebhookHelpers,
 	WebhookServer,
@@ -125,6 +126,7 @@ class App {
 	activeWorkflowRunner: ActiveWorkflowRunner.ActiveWorkflowRunner;
 	testWebhooks: TestWebhooks.TestWebhooks;
 	endpointWebhook: string;
+	endpointWebhookSleeping: string;
 	endpointWebhookTest: string;
 	endpointPresetCredentials: string;
 	externalHooks: IExternalHooksClass;
@@ -151,6 +153,7 @@ class App {
 		this.app = express();
 
 		this.endpointWebhook = config.get('endpoints.webhook') as string;
+		this.endpointWebhookSleeping = config.get('endpoints.webhookSleeping') as string;
 		this.endpointWebhookTest = config.get('endpoints.webhookTest') as string;
 
 		this.defaultWorkflowName = config.get('workflows.defaultName') as string;
@@ -611,7 +614,6 @@ class App {
 
 			return { name: `${nameToReturn} ${maxSuffix + 1}` };
 		}));
-
 
 		// Returns a specific workflow
 		this.app.get(`/${this.restEndpoint}/workflows/:id`, ResponseHelper.send(async (req: express.Request, res: express.Response): Promise<WorkflowEntity | undefined> => {
@@ -1624,6 +1626,7 @@ class App {
 					'execution.mode',
 					'execution.retryOf',
 					'execution.retrySuccessId',
+					'execution.sleepTill',
 					'execution.startedAt',
 					'execution.stoppedAt',
 					'execution.workflowData',
@@ -1660,6 +1663,7 @@ class App {
 					mode: result.mode,
 					retryOf: result.retryOf ? result.retryOf.toString() : undefined,
 					retrySuccessId: result.retrySuccessId ? result.retrySuccessId.toString() : undefined,
+					sleepTill: result.sleepTill as Date | undefined,
 					startedAt: result.startedAt,
 					stoppedAt: result.stoppedAt,
 					workflowId: result.workflowData!.id ? result.workflowData!.id!.toString() : '',
@@ -1983,6 +1987,76 @@ class App {
 		if (config.get('endpoints.disableProductionWebhooksOnMainProcess') !== true) {
 			WebhookServer.registerProductionWebhooks.apply(this);
 		}
+
+		// ----------------------------------------
+		// Sleeping Webhooks
+		// ----------------------------------------
+
+		const sleepingWebhooks = new SleepingWebhooks();
+
+		// HEAD webhook-sleeping requests
+		this.app.head(`/${this.endpointWebhookSleeping}/*`, async (req: express.Request, res: express.Response) => {
+			// Cut away the "/webhook-sleeping/" to get the registred part of the url
+			const requestUrl = (req as ICustomRequest).parsedUrl!.pathname!.slice(this.endpointWebhookSleeping.length + 2);
+
+			let response;
+			try {
+				response = await sleepingWebhooks.executeWebhook('HEAD', requestUrl, req, res);
+			} catch (error) {
+				ResponseHelper.sendErrorResponse(res, error);
+				return;
+			}
+
+			if (response.noWebhookResponse === true) {
+				// Nothing else to do as the response got already sent
+				return;
+			}
+
+			ResponseHelper.sendSuccessResponse(res, response.data, true, response.responseCode);
+		});
+
+		// GET webhook-sleeping requests
+		this.app.get(`/${this.endpointWebhookSleeping}/*`, async (req: express.Request, res: express.Response) => {
+			// Cut away the "/webhook-sleeping/" to get the registred part of the url
+			const requestUrl = (req as ICustomRequest).parsedUrl!.pathname!.slice(this.endpointWebhookSleeping.length + 2);
+
+			let response;
+			try {
+				response = await sleepingWebhooks.executeWebhook('GET', requestUrl, req, res);
+			} catch (error) {
+				ResponseHelper.sendErrorResponse(res, error);
+				return;
+			}
+
+			if (response.noWebhookResponse === true) {
+				// Nothing else to do as the response got already sent
+				return;
+			}
+
+			ResponseHelper.sendSuccessResponse(res, response.data, true, response.responseCode);
+		});
+
+		// POST webhook-sleeping requests
+		this.app.post(`/${this.endpointWebhookSleeping}/*`, async (req: express.Request, res: express.Response) => {
+			// Cut away the "/webhook-sleeping/" to get the registred part of the url
+			const requestUrl = (req as ICustomRequest).parsedUrl!.pathname!.slice(this.endpointWebhookSleeping.length + 2);
+
+			let response;
+			try {
+				response = await sleepingWebhooks.executeWebhook('POST', requestUrl, req, res);
+			} catch (error) {
+				ResponseHelper.sendErrorResponse(res, error);
+				return;
+			}
+
+			if (response.noWebhookResponse === true) {
+				// Nothing else to do as the response got already sent
+				return;
+			}
+
+			ResponseHelper.sendSuccessResponse(res, response.data, true, response.responseCode);
+		});
+
 
 		// HEAD webhook requests (test for UI)
 		this.app.head(`/${this.endpointWebhookTest}/*`, async (req: express.Request, res: express.Response) => {

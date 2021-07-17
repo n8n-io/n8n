@@ -47,6 +47,8 @@ import * as config from '../config';
 
 import { LessThanOrEqual } from 'typeorm';
 
+import { DateUtils } from 'typeorm/util/DateUtils';
+
 const ERROR_TRIGGER_TYPE = config.get('nodes.errorTriggerType') as string;
 
 /**
@@ -113,7 +115,9 @@ function pruneExecutionData(): void {
 		date.setHours(date.getHours() - maxAge);
 
 		// throttle just on success to allow for self healing on failure
-		Db.collections.Execution!.delete({ stoppedAt: LessThanOrEqual(date.toISOString()) })
+		// This is needed because of issue in TypeORM <> SQLite:
+		// https://github.com/typeorm/typeorm/issues/2286
+		Db.collections.Execution!.delete({ stoppedAt: LessThanOrEqual(DateUtils.mixedDateToUtcDatetimeString(date)), sleepTill: null })
 			.then(data =>
 				setTimeout(() => {
 					throttling = false;
@@ -248,7 +252,7 @@ export function hookFunctionsPreExecute(parentProcessMode?: string): IWorkflowEx
 					if (execution === undefined) {
 						// Something went badly wrong if this happens.
 						// This check is here mostly to make typescript happy.
-						return undefined;
+						return;
 					}
 					const fullExecutionData: IExecutionResponse = ResponseHelper.unflattenExecutionData(execution);
 
@@ -259,11 +263,9 @@ export function hookFunctionsPreExecute(parentProcessMode?: string): IWorkflowEx
 						return;
 					}
 
-
 					if (fullExecutionData.data === undefined) {
 						fullExecutionData.data = {
-							startData: {
-							},
+							startData: {},
 							resultData: {
 								runData: {},
 							},
@@ -343,7 +345,7 @@ function hookFunctionsSave(parentProcessMode?: string): IWorkflowExecuteHooks {
 						saveManualExecutions = this.workflowData.settings.saveManualExecutions as boolean;
 					}
 
-					if (isManualMode && saveManualExecutions === false) {
+					if (isManualMode && saveManualExecutions === false && !fullRunData.sleepTill) {
 						// Data is always saved, so we remove from database
 						await Db.collections.Execution!.delete(this.executionId);
 						return;
@@ -361,12 +363,14 @@ function hookFunctionsSave(parentProcessMode?: string): IWorkflowExecuteHooks {
 					if (workflowDidSucceed === true && saveDataSuccessExecution === 'none' ||
 						workflowDidSucceed === false && saveDataErrorExecution === 'none'
 					) {
-						if (!isManualMode) {
-							executeErrorWorkflow(this.workflowData, fullRunData, this.mode, undefined, this.retryOf);
+						if (!fullRunData.sleepTill) {
+							if (!isManualMode) {
+								executeErrorWorkflow(this.workflowData, fullRunData, this.mode, undefined, this.retryOf);
+							}
+							// Data is always saved, so we remove from database
+							await Db.collections.Execution!.delete(this.executionId);
+							return;
 						}
-						// Data is always saved, so we remove from database
-						await Db.collections.Execution!.delete(this.executionId);
-						return;
 					}
 
 					const fullExecutionData: IExecutionDb = {
@@ -376,6 +380,7 @@ function hookFunctionsSave(parentProcessMode?: string): IWorkflowExecuteHooks {
 						startedAt: fullRunData.startedAt,
 						stoppedAt: fullRunData.stoppedAt,
 						workflowData: this.workflowData,
+						sleepTill: fullRunData.sleepTill,
 					};
 
 					if (this.retryOf !== undefined) {
@@ -461,6 +466,7 @@ function hookFunctionsSaveWorker(): IWorkflowExecuteHooks {
 						startedAt: fullRunData.startedAt,
 						stoppedAt: fullRunData.stoppedAt,
 						workflowData: this.workflowData,
+						sleepTill: fullRunData.data.sleepTill,
 					};
 
 					if (this.retryOf !== undefined) {
@@ -732,6 +738,7 @@ export async function getBase(credentials: IWorkflowCredentials, currentNodePara
 
 	const timezone = config.get('generic.timezone') as string;
 	const webhookBaseUrl = urlBaseWebhook + config.get('endpoints.webhook') as string;
+	const webhookSleepingBaseUrl = urlBaseWebhook + config.get('endpoints.webhookSleeping') as string;
 	const webhookTestBaseUrl = urlBaseWebhook + config.get('endpoints.webhookTest') as string;
 
 	const encryptionKey = await UserSettings.getEncryptionKey();
@@ -747,6 +754,7 @@ export async function getBase(credentials: IWorkflowCredentials, currentNodePara
 		restApiUrl: urlBaseWebhook + config.get('endpoints.rest') as string,
 		timezone,
 		webhookBaseUrl,
+		webhookSleepingBaseUrl,
 		webhookTestBaseUrl,
 		currentNodeParameters,
 		executionTimeoutTimestamp,

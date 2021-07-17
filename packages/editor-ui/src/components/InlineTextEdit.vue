@@ -13,7 +13,7 @@
 				@enter="submit"
 			/>
 		</span>
-	
+
 		<span @click="onClick" class="preview"  v-else>
 			<ExpandableInputPreview
 				:value="previewValue || value"

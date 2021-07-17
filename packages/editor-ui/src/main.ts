@@ -41,6 +41,7 @@ import {
 	faCodeBranch,
 	faCog,
 	faCogs,
+	faClock,
 	faClone,
 	faCloud,
 	faCloudDownloadAlt,
@@ -102,7 +103,6 @@ import {
 	faTrash,
 	faUndo,
 	faUsers,
-	faClock,
 } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
 
@@ -130,6 +130,7 @@ library.add(faCode);
 library.add(faCodeBranch);
 library.add(faCog);
 library.add(faCogs);
+library.add(faClock);
 library.add(faClone);
 library.add(faCloud);
 library.add(faCloudDownloadAlt);
@@ -191,7 +192,6 @@ library.add(faTimes);
 library.add(faTrash);
 library.add(faUndo);
 library.add(faUsers);
-library.add(faClock);
 
 Vue.component('font-awesome-icon', FontAwesomeIcon);
 

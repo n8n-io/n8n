@@ -320,7 +320,7 @@ $--border-radius: 20px;
 	}
 
 	li {
-		height: $--item-height; 
+		height: $--item-height;
 		background-color: white;
 		padding: $--item-padding;
 		margin: 0;
