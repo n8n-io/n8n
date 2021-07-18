@@ -656,7 +656,7 @@
     "moment-timezone": "^0.5.28",
     "mongodb": "^3.6.9",
     "mqtt": "4.2.6",
-    "mssql": "^6.2.0",
+    "mssql": "^7.0.0",
     "mysql2": "~2.2.0",
     "n8n-core": "~0.77.0",
     "node-ssh": "^11.0.0",
