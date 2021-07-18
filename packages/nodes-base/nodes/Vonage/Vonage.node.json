@@ -5,6 +5,9 @@
 	"categories": [
 		"Communication"
 	],
+	"alias": [
+		"SMS"
+	],
 	"resources": {
 		"credentialDocumentation": [
 			{

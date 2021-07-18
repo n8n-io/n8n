@@ -5,6 +5,9 @@
 	"categories": [
 		"Finance & Accounting"
 	],
+	"alias": [
+		"Currency"
+	],
 	"resources": {
 		"credentialDocumentation": [
 			{

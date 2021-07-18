@@ -5,6 +5,10 @@
 	"categories": [
 		"Utility"
 	],
+	"alias": [
+		"Translate",
+		"Translator"
+	],
 	"resources": {
 		"credentialDocumentation": [
 			{

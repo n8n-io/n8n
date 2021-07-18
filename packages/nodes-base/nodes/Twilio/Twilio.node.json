@@ -6,6 +6,9 @@
 		"Communication",
 		"Development"
 	],
+	"alias": [
+		"SMS"
+	],
 	"resources": {
 		"credentialDocumentation": [
 			{
