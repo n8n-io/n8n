@@ -169,6 +169,17 @@ export class Elasticsearch implements INodeType {
 					responseData = await elasticsearchApiRequest.call(this, 'GET', `/${indexId}/_search`, body, qs);
 					responseData = responseData.hits.hits;
 
+					const simple = this.getNodeParameter('simple', 0) as IDataObject;
+
+					if (simple) {
+						responseData = responseData.map((item: IDataObject) => {
+							return {
+								_id: item._id,
+								...(item._source as Object),
+							};
+						});
+					}
+
 				} else if (operation === 'create') {
 
 					// ----------------------------------------
