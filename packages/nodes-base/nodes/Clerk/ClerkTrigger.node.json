@@ -1,0 +1,20 @@
+{
+	"node": "n8n-nodes-base.clerkTrigger",
+	"nodeVersion": "1.0",
+	"codexVersion": "1.0",
+	"categories": [
+		"Miscellaneous"
+	],
+	"resources": {
+		"credentialDocumentation": [
+			{
+				"url": "https://docs.n8n.io/credentials/clerk"
+			}
+		],
+		"primaryDocumentation": [
+			{
+				"url": "https://docs.n8n.io/nodes/n8n-nodes-base.clerkTrigger/"
+			}
+		]
+	}
+}
