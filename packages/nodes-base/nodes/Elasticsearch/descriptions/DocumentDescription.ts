@@ -248,6 +248,23 @@ export const documentFields = [
 		},
 	},
 	{
+		displayName: 'Simple',
+		name: 'simple',
+		type: 'boolean',
+		default: true,
+		description: 'Whether to return a simplified version of the response instead of the raw data',
+		displayOptions: {
+			show: {
+				resource: [
+					'document',
+				],
+				operation: [
+					'getAll',
+				],
+			},
+		},
+	},
+	{
 		displayName: 'Options',
 		name: 'options',
 		type: 'collection',
