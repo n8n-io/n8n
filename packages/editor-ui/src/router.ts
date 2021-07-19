@@ -48,5 +48,14 @@ export default new Router({
 			path: '/',
 			redirect: '/workflow',
 		},
+		{
+			path: '/workflows/templates/:id',
+			name: 'WorkflowTemplate',
+			components: {
+				default: NodeView,
+				header: MainHeader,
+				sidebar: MainSidebar,
+			},
+		},
 	],
 });

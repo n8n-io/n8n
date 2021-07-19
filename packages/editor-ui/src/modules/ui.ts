@@ -31,9 +31,6 @@ const module: Module<IUiState, IRootState> = {
 		isModalActive: (state: IUiState) => {
 			return (name: string) => state.modalStack.length > 0 && name === state.modalStack[0];
 		},
-		anyModalsOpen: (state: IUiState) => {
-			return state.modalStack.length > 0;
-		},
 		sidebarMenuCollapsed: (state: IUiState): boolean => state.sidebarMenuCollapsed,
 	},
 	mutations: {

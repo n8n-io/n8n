@@ -51,7 +51,7 @@ export class AwsS3 implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'AWS S3',
 		name: 'awsS3',
-		icon: 'file:s3.png',
+		icon: 'file:s3.svg',
 		group: ['output'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
@@ -163,6 +163,15 @@ export class AwsS3 implements INodeType {
 
 					returnData.push({ success: true });
 				}
+
+				// https://docs.aws.amazon.com/AmazonS3/latest/API/API_DeleteBucket.html
+				if (operation === 'delete') {
+					const name = this.getNodeParameter('name', i) as string;
+
+					responseData = await awsApiRequestSOAP.call(this, `${name}.s3`, 'DELETE', '', '', {}, headers);
+					returnData.push({ success: true });
+				}
+
 				//https://docs.aws.amazon.com/AmazonS3/latest/API/API_ListBuckets.html
 				if (operation === 'getAll') {
 					const returnAll = this.getNodeParameter('returnAll', 0) as boolean;

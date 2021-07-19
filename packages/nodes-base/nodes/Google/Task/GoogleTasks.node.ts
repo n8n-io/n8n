@@ -29,7 +29,7 @@ export class GoogleTasks implements INodeType {
 		group: ['input'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
-		description: 'Consume Google Tasks API.',
+		description: 'Consume Google Tasks API',
 		defaults: {
 			name: 'Google Tasks',
 			color: '#3E87E4',

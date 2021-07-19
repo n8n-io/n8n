@@ -19,6 +19,9 @@
 			}
 		]
 	},
+	"alias": [
+		"Loop"
+	],
 	"subcategories": {
 		"Core Nodes": [
 			"Flow"

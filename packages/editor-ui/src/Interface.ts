@@ -202,7 +202,7 @@ export interface IVariableSelectorOption {
 
 // Simple version of n8n-workflow.Workflow
 export interface IWorkflowData {
-	id?: string;
+	id?: string | number;
 	name?: string;
 	active?: boolean;
 	nodes: INode[];
@@ -212,13 +212,22 @@ export interface IWorkflowData {
 }
 
 export interface IWorkflowDataUpdate {
-	id?: string;
+	id?: string | number;
 	name?: string;
 	nodes?: INode[];
 	connections?: IConnections;
 	settings?: IWorkflowSettings;
 	active?: boolean;
 	tags?: ITag[] | string[]; // string[] when store or requested, ITag[] from API response
+}
+
+export interface IWorkflowTemplate {
+	id: string;
+	name: string;
+	workflow: {
+		nodes: INodeUi[];
+		connections: IConnections;
+	};
 }
 
 // Almost identical to cli.Interfaces.ts
@@ -316,6 +325,7 @@ export interface IExecutionShortResponse {
 export interface IExecutionsListResponse {
 	count: number;
 	results: IExecutionsSummary[];
+	estimated: boolean;
 }
 
 export interface IExecutionsCurrentSummaryExtended {
@@ -489,6 +499,39 @@ export interface ILinkMenuItemProperties {
 	newWindow?: boolean;
 }
 
+export interface ISubcategoryItemProps {
+	subcategory: string;
+	description: string;
+}
+
+export interface INodeItemProps {
+	subcategory: string;
+	nodeType: INodeTypeDescription;
+}
+
+export interface ICategoryItemProps {
+	expanded: boolean;
+}
+
+export interface INodeCreateElement {
+	type: 'node' | 'category' | 'subcategory';
+	category: string;
+	key: string;
+	includedByTrigger?: boolean;
+	includedByRegular?: boolean;
+	properties: ISubcategoryItemProps | INodeItemProps | ICategoryItemProps;
+}
+
+export interface ICategoriesWithNodes {
+	[category: string]: {
+		[subcategory: string]: {
+			regularCount: number;
+			triggerCount: number;
+			nodes: INodeCreateElement[];
+		};
+	};
+}
+
 export interface ITag {
 	id: string;
 	name: string;
@@ -568,4 +611,9 @@ export interface IWorkflowsState {
 export interface IRestApiContext {
 	baseUrl: string;
 	sessionId: string;
+}
+
+export interface IZoomConfig {
+	scale: number;
+	offset: XYPositon;
 }

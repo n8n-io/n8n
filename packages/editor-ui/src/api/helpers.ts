@@ -42,15 +42,13 @@ class ResponseError extends Error {
 	}
 }
 
-export async function makeRestApiRequest(context: IRestApiContext, method: Method, endpoint: string, data?: IDataObject) {
-	const { baseUrl, sessionId } = context;
+async function request(config: {method: Method, baseURL: string, endpoint: string, headers?: IDataObject, data?: IDataObject}) {
+	const { method, baseURL, endpoint, headers, data } = config;
 	const options: AxiosRequestConfig = {
 		method,
 		url: endpoint,
-		baseURL: baseUrl,
-		headers: {
-			sessionid: sessionId,
-		},
+		baseURL,
+		headers,
 	};
 	if (['PATCH', 'POST', 'PUT'].includes(method)) {
 		options.data = data;
@@ -60,7 +58,7 @@ export async function makeRestApiRequest(context: IRestApiContext, method: Metho
 
 	try {
 		const response = await axios.request(options);
-		return response.data.data;
+		return response.data;
 	} catch (error) {
 		if (error.message === 'Network Error') {
 			throw new ResponseError('API-Server can not be reached. It is probably down.');
@@ -68,9 +66,31 @@ export async function makeRestApiRequest(context: IRestApiContext, method: Metho
 
 		const errorResponseData = error.response.data;
 		if (errorResponseData !== undefined && errorResponseData.message !== undefined) {
+			if (errorResponseData.name === 'NodeApiError') {
+				errorResponseData.httpStatusCode = error.response.status;
+				throw errorResponseData;
+			}
+
 			throw new ResponseError(errorResponseData.message, {errorCode: errorResponseData.code, httpStatusCode: error.response.status, stack: errorResponseData.stack});
 		}
 
 		throw error;
 	}
+}
+
+export async function makeRestApiRequest(context: IRestApiContext, method: Method, endpoint: string, data?: IDataObject) {
+	const response = await request({
+		method,
+		baseURL: context.baseUrl,
+		endpoint,
+		headers: {sessionid: context.sessionId},
+		data,
+	});
+
+	// @ts-ignore all cli rest api endpoints return data wrapped in `data` key
+	return response.data;
+}
+
+export async function get(baseURL: string, endpoint: string, params?: IDataObject) {
+	return await request({method: 'GET', baseURL, endpoint, data: params});
 }

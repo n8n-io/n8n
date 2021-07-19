@@ -46,7 +46,7 @@ export class QuickBase implements INodeType {
 		group: ['input'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
-		description: 'Integrate with the Quick Base RESTful API.',
+		description: 'Integrate with the Quick Base RESTful API',
 		defaults: {
 			name: 'Quick Base',
 			color: '#73489d',
