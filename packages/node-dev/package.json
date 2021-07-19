@@ -21,6 +21,8 @@
   "scripts": {
     "dev": "npm run watch",
     "build": "tsc",
+    "eslint": "eslint '*/**/*.ts' -c .eslintrc.js",
+    "eslintfix": "eslint '*/**/*.ts' -c .eslintrc.js --fix",
     "postpack": "rm -f oclif.manifest.json",
     "prepack": "echo \"Building project...\" && rm -rf dist && tsc -b && oclif-dev manifest",
     "tslint": "tslint -p tsconfig.json -c tslint.json",
@@ -49,6 +51,10 @@
     "@types/inquirer": "^6.5.0",
     "@types/tmp": "^0.2.0",
     "@types/vorpal": "^1.11.0",
+    "eslint": "^7.21.0",
+    "eslint-config-prettier": "^8.1.0",
+    "eslint-plugin-import": "^2.22.1",
+    "eslint-plugin-prettier": "^3.3.1",
     "tslint": "^6.1.2"
   },
   "dependencies": {
