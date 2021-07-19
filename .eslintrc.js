@@ -2,7 +2,7 @@
 /**
  * Global ESLint config file, inherited by each package.
  *
- * Only `parserOptions` must be set by the child package.
+ * Only `parserOptions` must be set at the package.
  */
 module.exports = {
 	env: {
