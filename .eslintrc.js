@@ -193,6 +193,7 @@ module.exports = {
 		'no-unused-expressions': 'off',
 		'no-unused-labels': 'error',
 		'no-unused-vars': 'off',
+		'no-array-constructor': 'error',
 		'no-useless-escape': 'error',
 		'no-var': 'error',
 		'object-shorthand': 'error',
@@ -202,19 +203,5 @@ module.exports = {
 		'prettier/prettier': 'error',
 		radix: 'error',
 		'use-isnan': 'error',
-		'@typescript-eslint/tslint/config': [
-			'error',
-			{
-				rules: {
-					ban: [
-						true,
-						{
-							name: 'Array',
-							message: 'tsstyle#array-constructor',
-						},
-					],
-				},
-			},
-		],
 	},
 };
