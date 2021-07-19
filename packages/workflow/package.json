@@ -17,8 +17,8 @@
   "scripts": {
     "dev": "npm run watch",
     "build": "tsc",
-    "eslint": "eslint '*/**/*.{js,ts}' -c .eslintrc.js",
-    "eslintfix": "eslint '*/**/*.{js,ts}' -c .eslintrc.js --fix",
+    "eslint": "eslint '*/**/*.ts' -c .eslintrc.js",
+    "eslintfix": "eslint '*/**/*.ts' -c .eslintrc.js --fix",
     "watch": "tsc --watch",
     "test": "jest"
   },
