@@ -122,11 +122,13 @@ export class WorkflowDataProxy {
 			get(target, name) {
 				name = name.toString();
 
+				/* eslint-disable @typescript-eslint/indent */
+				// solve conflict in favor of Prettier
 				let returnValue:
-				| INodeParameters
-				| NodeParameterValue
-				| NodeParameterValue[]
-				| INodeParameters[];
+					| INodeParameters
+					| NodeParameterValue
+					| NodeParameterValue[]
+					| INodeParameters[];
 				if (name[0] === '&') {
 					const key = name.slice(1);
 					if (!that.siblingParameters.hasOwnProperty(key)) {

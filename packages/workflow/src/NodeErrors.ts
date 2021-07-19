@@ -1,5 +1,5 @@
 import { parseString } from 'xml2js';
-import { INode, IStatusCodeMessages, JsonObject} from '.';
+import { INode, IStatusCodeMessages, JsonObject } from '.';
 
 /**
  * Top-level properties where an error message can be found in an API response.
@@ -69,12 +69,11 @@ abstract class NodeError extends Error {
 	 * This method iterates over `potentialKeys` and, if the value at the key is a
 	 * truthy value, the type of the value is checked:
 	 * (1) if a string or number, the value is returned as a string; or
-	 * (2) if an array,
-	 * 		its string or number elements are collected as a long string,
-	 * 		its object elements are traversed recursively (restart this function
-	 *    with each object as a starting point), or
+	 * (2) if an array, its string or number elements are collected as a long string;
+	 * its object elements are traversed recursively (restart this function with
+	 * each object as a starting point), or
 	 * (3) if it is an object, it traverses the object and nested ones recursively
-	 * 		based on the `potentialKeys` and returns a string if found.
+	 * based on the `potentialKeys` and returns a string if found.
 	 *
 	 * If nothing found via `potentialKeys` this method iterates over `traversalKeys` and
 	 * if the value at the key is a traversable object, it restarts with the object as the
@@ -140,7 +139,8 @@ abstract class NodeError extends Error {
 	/**
 	 * Check if a value is an object with at least one key, i.e. it can be traversed.
 	 */
-	protected isTraversableObject(value: any): value is JsonObject { // tslint:disable-line:no-any
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any
+	protected isTraversableObject(value: any): value is JsonObject {
 		return value && typeof value === 'object' && !Array.isArray(value) && !!Object.keys(value).length;
 	}
 
@@ -151,6 +151,7 @@ abstract class NodeError extends Error {
 		seen.add(obj);
 		Object.entries(obj).forEach(([key, value]) => {
 			if (this.isTraversableObject(value)) {
+				// eslint-disable-next-line @typescript-eslint/no-unused-expressions
 				seen.has(value) ? obj[key] = { circularReference: true } : this.removeCircularRefs(value, seen);
 				return;
 			}
@@ -236,6 +237,7 @@ export class NodeApiError extends NodeError {
 	}
 
 	private setDescriptionFromXml(xml: string) {
+		// eslint-disable-next-line @typescript-eslint/naming-convention
 		parseString(xml, { explicitArray: false }, (_, result) => {
 			if (!result) return;
 
