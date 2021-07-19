@@ -72,7 +72,7 @@ export class TestWebhooks {
 			webhookData = this.activeWebhooks!.get(httpMethod, pathElements.join('/'), webhookId);
 			if (webhookData === undefined) {
 				// The requested webhook is not registered
-				throw new ResponseHelper.ResponseError(`The requested webhook "${httpMethod} ${path}" is not registered.`, 404, 404);
+				throw new ResponseHelper.ResponseError(`The requested webhook "${httpMethod} ${path}" is not registered.`, 404, 404, `Click the 'Execute workflow' button on the canvas, then try again. (In test mode, the webhook only works for one call after you click this button)`);
 			}
 
 			path = webhookData.path;
@@ -90,7 +90,7 @@ export class TestWebhooks {
 		// TODO: Clean that duplication up one day and improve code generally
 		if (this.testWebhookData[webhookKey] === undefined) {
 			// The requested webhook is not registered
-			throw new ResponseHelper.ResponseError(`The requested webhook "${httpMethod} ${path}" is not registered.`, 404, 404);
+			throw new ResponseHelper.ResponseError(`The requested webhook "${httpMethod} ${path}" is not registered.`, 404, 404, `Click the 'Execute workflow' button on the canvas, then try again. (In test mode, the webhook only works for one call after you click this button)`);
 		}
 
 		const workflow = this.testWebhookData[webhookKey].workflow;
@@ -145,7 +145,7 @@ export class TestWebhooks {
 
 		if (webhookMethods === undefined) {
 			// The requested webhook is not registered
-			throw new ResponseHelper.ResponseError(`The requested webhook "${path}" is not registered.`, 404, 404);
+			throw new ResponseHelper.ResponseError(`The requested webhook "${path}" is not registered.`, 404, 404, `Click the 'Execute workflow' button on the canvas, then try again. (In test mode, the webhook only works for one call after you click this button)`);
 		}
 
 		return webhookMethods;
