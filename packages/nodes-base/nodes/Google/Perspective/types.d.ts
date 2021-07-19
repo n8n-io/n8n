@@ -4,7 +4,7 @@ export type CommentAnalyzeBody = {
 	languages?: Language;
 };
 
-export type Language = 'de' | 'en' | 'fr';
+export type Language = 'de' | 'en' | 'fr' | 'ar' | 'es' | 'it' | 'pt' | 'ru';
 
 export type Comment = {
 	text?: string;
