@@ -13,7 +13,6 @@ module.exports = {
 	extends: ['prettier'],
 	parser: '@typescript-eslint/parser',
 	plugins: [
-		'eslint-plugin-jsdoc', // TODO: Unused - remove?
 		'eslint-plugin-import',
 		'@typescript-eslint',
 		'@typescript-eslint/tslint', // TODO: Replace its rule (see bottom) and remove plugin
@@ -181,9 +180,6 @@ module.exports = {
 		'import/no-default-export': 'error',
 		'import/order': 'error',
 		indent: 'off',
-		'jsdoc/check-alignment': 'error',
-		'jsdoc/check-indentation': 'error',
-		'jsdoc/newline-after-description': 'error',
 		'new-parens': 'error',
 		'no-caller': 'error',
 		'no-cond-assign': 'error',
