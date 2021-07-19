@@ -15,7 +15,6 @@ module.exports = {
 	plugins: [
 		'eslint-plugin-import',
 		'@typescript-eslint',
-		'@typescript-eslint/tslint', // TODO: Replace its rule (see bottom) and remove plugin
 		'prettier',
 	],
 	ignorePatterns: ['.eslintrc.js'],
