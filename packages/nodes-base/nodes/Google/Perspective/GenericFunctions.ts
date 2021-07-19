@@ -33,7 +33,6 @@ export async function googleApiRequest(
 	}
 
 	try {
-		console.log(options);
 		return await this.helpers.requestOAuth2.call(this, 'googlePerspectiveOAuth2Api', options);
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error);
