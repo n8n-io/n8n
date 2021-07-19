@@ -12,8 +12,4 @@ import * as LoggerProxy from './LoggerProxy';
 import * as NodeHelpers from './NodeHelpers';
 import * as ObservableObject from './ObservableObject';
 
-export {
-	LoggerProxy,
-	NodeHelpers,
-	ObservableObject,
-};
+export { LoggerProxy, NodeHelpers, ObservableObject };

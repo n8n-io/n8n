@@ -1,5 +1,5 @@
-import { INode, IStatusCodeMessages, JsonObject} from '.';
 import { parseString } from 'xml2js';
+import { INode, IStatusCodeMessages, JsonObject} from '.';
 
 /**
  * Top-level properties where an error message can be found in an API response.
@@ -102,13 +102,13 @@ abstract class NodeError extends Error {
 				if (Array.isArray(error[key])) {
 					// @ts-ignore
 					const resolvedErrors: string[] = error[key].map((error) => {
-							if (typeof error === 'string') return error;
-							if (typeof error === 'number') return error.toString();
-							if (this.isTraversableObject(error)) {
-								return this.findProperty(error, potentialKeys);
-							}
-							return null;
-						})
+						if (typeof error === 'string') return error;
+						if (typeof error === 'number') return error.toString();
+						if (this.isTraversableObject(error)) {
+							return this.findProperty(error, potentialKeys);
+						}
+						return null;
+					})
 						.filter((errorValue: string | null) => errorValue !== null);
 
 					if (resolvedErrors.length === 0) {
@@ -211,7 +211,7 @@ export class NodeApiError extends NodeError {
 	constructor(
 		node: INode,
 		error: JsonObject,
-		{ message, description, httpCode, parseXml }: { message?: string, description?: string, httpCode?: string, parseXml?: boolean } = {},
+		{ message, description, httpCode, parseXml }: { message?: string; description?: string; httpCode?: string; parseXml?: boolean } = {},
 	) {
 		super(node, error);
 		if (error.error) { // only for request library error

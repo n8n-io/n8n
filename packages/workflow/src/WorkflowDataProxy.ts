@@ -24,9 +24,18 @@ export class WorkflowDataProxy {
 	private mode: WorkflowExecuteMode;
 	private selfData: IDataObject;
 
-
-
-	constructor(workflow: Workflow, runExecutionData: IRunExecutionData | null, runIndex: number, itemIndex: number, activeNodeName: string, connectionInputData: INodeExecutionData[], siblingParameters: INodeParameters, mode: WorkflowExecuteMode, defaultReturnRunIndex = -1, selfData = {}) {
+	constructor(
+		workflow: Workflow,
+		runExecutionData: IRunExecutionData | null,
+		runIndex: number,
+		itemIndex: number,
+		activeNodeName: string,
+		connectionInputData: INodeExecutionData[],
+		siblingParameters: INodeParameters,
+		mode: WorkflowExecuteMode,
+		defaultReturnRunIndex = -1,
+		selfData = {},
+	) {
 		this.workflow = workflow;
 		this.runExecutionData = runExecutionData;
 		this.defaultReturnRunIndex = defaultReturnRunIndex;
@@ -113,12 +122,15 @@ export class WorkflowDataProxy {
 			get(target, name) {
 				name = name.toString();
 
-				let returnValue: INodeParameters | NodeParameterValue | NodeParameterValue[] | INodeParameters[];
+				let returnValue:
+				| INodeParameters
+				| NodeParameterValue
+				| NodeParameterValue[]
+				| INodeParameters[];
 				if (name[0] === '&') {
 					const key = name.slice(1);
 					if (!that.siblingParameters.hasOwnProperty(key)) {
 						throw new Error(`Could not find sibling parameter "${key}" on node "${nodeName}"`);
-
 					}
 					returnValue = that.siblingParameters[key];
 				} else {
@@ -404,7 +416,17 @@ export class WorkflowDataProxy {
 			},
 			$item: (itemIndex: number, runIndex?: number) => {
 				const defaultReturnRunIndex = runIndex === undefined ? -1 : runIndex;
-				const dataProxy = new WorkflowDataProxy(this.workflow, this.runExecutionData, this.runIndex, itemIndex, this.activeNodeName, this.connectionInputData, that.siblingParameters, that.mode, defaultReturnRunIndex);
+				const dataProxy = new WorkflowDataProxy(
+					this.workflow,
+					this.runExecutionData,
+					this.runIndex,
+					itemIndex,
+					this.activeNodeName,
+					this.connectionInputData,
+					that.siblingParameters,
+					that.mode,
+					defaultReturnRunIndex,
+				);
 				return dataProxy.getDataProxy();
 			},
 			$items: (nodeName?: string, outputIndex?: number, runIndex?: number) => {

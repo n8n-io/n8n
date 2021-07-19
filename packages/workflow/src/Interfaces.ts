@@ -182,11 +182,23 @@ export interface IDataObject {
 }
 
 export interface IGetExecutePollFunctions {
-	(workflow: Workflow, node: INode, additionalData: IWorkflowExecuteAdditionalData, mode: WorkflowExecuteMode, activation: WorkflowActivateMode): IPollFunctions;
+	(
+		workflow: Workflow,
+		node: INode,
+		additionalData: IWorkflowExecuteAdditionalData,
+		mode: WorkflowExecuteMode,
+		activation: WorkflowActivateMode,
+	): IPollFunctions;
 }
 
 export interface IGetExecuteTriggerFunctions {
-	(workflow: Workflow, node: INode, additionalData: IWorkflowExecuteAdditionalData, mode: WorkflowExecuteMode, activation: WorkflowActivateMode): ITriggerFunctions;
+	(
+		workflow: Workflow,
+		node: INode,
+		additionalData: IWorkflowExecuteAdditionalData,
+		mode: WorkflowExecuteMode,
+		activation: WorkflowActivateMode,
+	): ITriggerFunctions;
 }
 
 export interface IGetExecuteFunctions {
@@ -217,7 +229,15 @@ export interface IGetExecuteSingleFunctions {
 }
 
 export interface IGetExecuteHookFunctions {
-	(workflow: Workflow, node: INode, additionalData: IWorkflowExecuteAdditionalData, mode: WorkflowExecuteMode, activation: WorkflowActivateMode, isTest?: boolean, webhookData?: IWebhookData): IHookFunctions;
+	(
+		workflow: Workflow,
+		node: INode,
+		additionalData: IWorkflowExecuteAdditionalData,
+		mode: WorkflowExecuteMode,
+		activation: WorkflowActivateMode,
+		isTest?: boolean,
+		webhookData?: IWebhookData,
+	): IHookFunctions;
 }
 
 export interface IGetExecuteWebhookFunctions {
@@ -269,7 +289,10 @@ export interface IExecuteFunctions {
 	getRestApiUrl(): string;
 	getTimezone(): string;
 	getWorkflow(): IWorkflowMetadata;
-	prepareOutputData(outputData: INodeExecutionData[], outputIndex?: number): Promise<INodeExecutionData[][]>;
+	prepareOutputData(
+		outputData: INodeExecutionData[],
+		outputIndex?: number,
+	): Promise<INodeExecutionData[][]>;
 	sendMessageToUI(message: any): void; // tslint:disable-line:no-any
 	helpers: {
 		[key: string]: (...args: any[]) => any;
@@ -835,7 +858,15 @@ export interface IWorkflowExecuteAdditionalData {
 	executionTimeoutTimestamp?: number;
 }
 
-export type WorkflowExecuteMode = 'cli' | 'error' | 'integrated' | 'internal' | 'manual' | 'retry' | 'trigger' | 'webhook';
+export type WorkflowExecuteMode =
+	| 'cli'
+	| 'error'
+	| 'integrated'
+	| 'internal'
+	| 'manual'
+	| 'retry'
+	| 'trigger'
+	| 'webhook';
 export type WorkflowActivateMode = 'init' | 'create' | 'update' | 'activate' | 'manual';
 
 export interface IWorkflowHooksOptionalParameters {
@@ -865,7 +896,7 @@ export interface IStatusCodeMessages {
 
 export type CodexData = {
 	categories?: string[];
-	subcategories?: {[category: string]: string[]};
+	subcategories?: { [category: string]: string[] };
 	alias?: string[];
 };
 
