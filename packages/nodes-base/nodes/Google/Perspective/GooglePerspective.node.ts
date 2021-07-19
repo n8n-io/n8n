@@ -4,7 +4,9 @@ import {
 
 import {
 	IDataObject,
+	ILoadOptionsFunctions,
 	INodeExecutionData,
+	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
 	NodeOperationError,
@@ -20,6 +22,8 @@ import {
 import {
 	googleApiRequest,
 } from './GenericFunctions';
+
+const ISO6391 = require('iso-639-1');
 
 export class GooglePerspective implements INodeType {
 	description: INodeTypeDescription = {
@@ -50,35 +54,16 @@ export class GooglePerspective implements INodeType {
 		],
 		properties: [
 			{
-				displayName: 'Resource',
-				name: 'resource',
-				type: 'options',
-				options: [
-					{
-						name: 'Comment',
-						value: 'comment',
-					},
-				],
-				default: 'comment',
-			},
-			{
 				displayName: 'Operation',
 				name: 'operation',
 				type: 'options',
-				displayOptions: {
-					show: {
-						resource: [
-							'comment',
-						],
-					},
-				},
 				options: [
 					{
-						name: 'Analyze',
-						value: 'analyze',
+						name: 'Analyze Comment',
+						value: 'analyzeComment',
 					},
 				],
-				default: 'analyze',
+				default: 'analyzeComment',
 			},
 			{
 				displayName: 'Text',
@@ -89,7 +74,7 @@ export class GooglePerspective implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'analyze',
+							'analyzeComment',
 						],
 					},
 				},
@@ -107,7 +92,7 @@ export class GooglePerspective implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'analyze',
+							'analyzeComment',
 						],
 					},
 				},
@@ -154,7 +139,7 @@ export class GooglePerspective implements INodeType {
 										value: 'toxicity',
 									},
 								],
-								description: 'Attribute to analyze in the text',
+								description: 'Attribute to analyze in the text. Details <a target="_blank" href="https://developers.perspectiveapi.com/s/about-the-api-attributes-and-languages">here</a>',
 								default: 'flirtation',
 							},
 							{
@@ -175,13 +160,13 @@ export class GooglePerspective implements INodeType {
 				],
 			},
 			{
-				displayName: 'Additional Options',
-				name: 'additionalOptions',
+				displayName: 'Options',
+				name: 'options',
 				type: 'collection',
 				displayOptions: {
 					show: {
 						operation: [
-							'analyze',
+							'analyzeComment',
 						],
 					},
 				},
@@ -191,55 +176,52 @@ export class GooglePerspective implements INodeType {
 					{
 						displayName: 'Languages',
 						name: 'languages',
-						type: 'multiOptions',
-						options: [
-							{
-								name: 'Arabic',
-								value: 'ar',
-							},
-							{
-								name: 'English',
-								value: 'en',
-							},
-							{
-								name: 'French',
-								value: 'fr',
-							},
-							{
-								name: 'German',
-								value: 'de',
-							},
-							{
-								name: 'Italian',
-								value: 'it',
-							},
-							{
-								name: 'Portuguese',
-								value: 'pt',
-							},
-							{
-								name: 'Russian',
-								value: 'ru',
-							},
-							{
-								name: 'Spanish',
-								value: 'es',
-							},
-						],
-						default: [],
-						description: 'Languages of the text input per ISO 631-1',
-						required: true,
+						type: 'options',
+						typeOptions: {
+							loadOptionsMethod: 'getLanguages',
+						},
+						default: '',
+						description: 'Languages of the text input. If unspecified, the API will auto-detect the comment language',
 					},
 				],
 			},
 		],
 	};
 
+	methods = {
+		loadOptions: {
+			// Get all the available languages to display them to user so that he can
+			// select them easily
+			async getLanguages(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const returnData: INodePropertyOptions[] = [];
+				const supportedLanguages = [
+					'English',
+					'Spanish',
+					'French',
+					'German',
+					'Portuguese',
+					'Italian',
+					'Russian',
+				];
+
+				const languages = ISO6391.getAllNames().filter((language: string) => supportedLanguages.includes(language));
+				for (const language of languages) {
+					const languageName = language;
+					const languageId = ISO6391.getCode(language);
+					returnData.push({
+						name: languageName,
+						value: languageId,
+					});
+				}
+				return returnData;
+			},
+		},
+	};
+
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
 
-		const resource = this.getNodeParameter('resource', 0) as 'comment';
-		const operation = this.getNodeParameter('operation', 0) as 'analyze';
+		const operation = this.getNodeParameter('operation', 0);
 
 		const returnData: IDataObject[] = [];
 		let responseData;
@@ -248,49 +230,48 @@ export class GooglePerspective implements INodeType {
 
 			try {
 
-				if (resource === 'comment') {
 
-					if (operation === 'analyze') {
+				if (operation === 'analyzeComment') {
 
-						// https://developers.perspectiveapi.com/s/about-the-api-methods
+					// https://developers.perspectiveapi.com/s/about-the-api-methods
 
-						const attributes = this.getNodeParameter(
-							'requestedAttributesUi.requestedAttributesValues', i, [],
-						) as AttributesValuesUi[];
+					const attributes = this.getNodeParameter(
+						'requestedAttributesUi.requestedAttributesValues', i, [],
+					) as AttributesValuesUi[];
 
-						if (!attributes.length) {
-							throw new NodeOperationError(
-								this.getNode(),
-								'Please enter at least one attribute to analyze.',
-							);
-						}
-
-						const requestedAttributes = attributes.reduce<RequestedAttributes>((acc, cur) => {
-							return Object.assign(acc, {
-								[cur.attributeName.toUpperCase()]: {
-									scoreType: 'probability',
-									scoreThreshold: cur.scoreThreshold,
-								},
-							});
-						}, {});
-
-						const body: CommentAnalyzeBody = {
-							comment: {
-								type: 'PLAIN_TEXT',
-								text: this.getNodeParameter('text', i) as string,
-							},
-							requestedAttributes,
-						};
-
-						const { languages } = this.getNodeParameter('additionalOptions', i) as { languages: Language };
-
-						if (languages?.length) {
-							body.languages = languages;
-						}
-
-						responseData = await googleApiRequest.call(this, 'POST', '/v1alpha1/comments:analyze', body);
+					if (!attributes.length) {
+						throw new NodeOperationError(
+							this.getNode(),
+							'Please enter at least one attribute to analyze.',
+						);
 					}
+
+					const requestedAttributes = attributes.reduce<RequestedAttributes>((acc, cur) => {
+						return Object.assign(acc, {
+							[cur.attributeName.toUpperCase()]: {
+								scoreType: 'probability',
+								scoreThreshold: cur.scoreThreshold,
+							},
+						});
+					}, {});
+
+					const body: CommentAnalyzeBody = {
+						comment: {
+							type: 'PLAIN_TEXT',
+							text: this.getNodeParameter('text', i) as string,
+						},
+						requestedAttributes,
+					};
+
+					const { languages } = this.getNodeParameter('options', i) as { languages: Language };
+
+					if (languages?.length) {
+						body.languages = languages;
+					}
+
+					responseData = await googleApiRequest.call(this, 'POST', '/v1alpha1/comments:analyze', body);
 				}
+
 
 			} catch (error) {
 				if (this.continueOnFail()) {
