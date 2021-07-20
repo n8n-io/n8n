@@ -11,6 +11,7 @@ import {
 	INodeTypeDescription,
 	NodeOperationError,
 } from 'n8n-workflow';
+import { id } from 'rhea';
 
 import {
 	ICustomProperties,
@@ -895,20 +896,20 @@ export class Pipedrive implements INodeType {
 				description: 'The title of the deal to create',
 			},
 			{
-				displayName: 'Identification',
-				name: 'identification',
+				displayName: 'Associate With',
+				name: 'associateWith',
 				type: 'options',
 				options: [
 					{
-						name: 'By Organization',
-						value: 'byOrganization',
+						name: 'Organization',
+						value: 'organization',
 					},
 					{
-						name: 'By Person',
-						value: 'byPerson',
+						name: 'Person',
+						value: 'person',
 					},
 				],
-				default: 'byOrganization',
+				default: 'organization',
 				description: 'Type of entity to link to this deal',
 				required: true,
 				displayOptions: {
@@ -925,11 +926,8 @@ export class Pipedrive implements INodeType {
 			{
 				displayName: 'Organization ID',
 				name: 'org_id',
-				type: 'options',
-				typeOptions: {
-					loadOptionsMethod: 'getOrganizationIds',
-				},
-				default: '',
+				type: 'number',
+				default: 0,
 				description: 'ID of the organization this deal will be associated with',
 				required: true,
 				displayOptions: {
@@ -940,8 +938,8 @@ export class Pipedrive implements INodeType {
 						resource: [
 							'deal',
 						],
-						identification: [
-							'byOrganization',
+						associateWith: [
+							'organization',
 						],
 					},
 				},
@@ -949,10 +947,7 @@ export class Pipedrive implements INodeType {
 			{
 				displayName: 'Person ID',
 				name: 'person_id',
-				type: 'options',
-				typeOptions: {
-					loadOptionsMethod: 'getPersons',
-				},
+				type: 'number',
 				default: 0,
 				description: 'ID of the person this deal will be associated with.',
 				displayOptions: {
@@ -963,8 +958,8 @@ export class Pipedrive implements INodeType {
 						resource: [
 							'deal',
 						],
-						identification: [
-							'byPerson',
+						associateWith: [
+							'person',
 						],
 					},
 				},
@@ -1044,6 +1039,35 @@ export class Pipedrive implements INodeType {
 						type: 'string',
 						default: '',
 						description: 'Reason why the deal was lost.',
+					},
+					{
+						displayName: 'Organization ID',
+						name: 'org_id',
+						type: 'number',
+						default: 0,
+						required: true,
+						displayOptions: {
+							show: {
+								'/associateWith': [
+									'person',
+								],
+							},
+						},
+						description: 'ID of the organization this deal will be associated with',
+					},
+					{
+						displayName: 'Person ID',
+						name: 'person_id',
+						type: 'number',
+						default: 0,
+						displayOptions: {
+							show: {
+								'/associateWith': [
+									'organization',
+								],
+							},
+						},
+						description: 'ID of the person this deal will be associated with.',
 					},
 					{
 						displayName: 'Probability',
@@ -1748,20 +1772,20 @@ export class Pipedrive implements INodeType {
 				},
 			},
 			{
-				displayName: 'Identification',
-				name: 'identification',
+				displayName: 'Associate With',
+				name: 'associateWith',
 				type: 'options',
 				options: [
 					{
-						name: 'By Organization',
-						value: 'byOrganization',
+						name: 'Organization',
+						value: 'organization',
 					},
 					{
-						name: 'By Person',
-						value: 'byPerson',
+						name: 'Person',
+						value: 'person',
 					},
 				],
-				default: 'byOrganization',
+				default: 'organization',
 				description: 'Type of entity to link to this lead',
 				required: true,
 				displayOptions: {
@@ -1778,11 +1802,8 @@ export class Pipedrive implements INodeType {
 			{
 				displayName: 'Organization ID',
 				name: 'organization_id',
-				type: 'options',
-				typeOptions: {
-					loadOptionsMethod: 'getOrganizationIds',
-				},
-				default: '',
+				type: 'number',
+				default: 0,
 				description: 'ID of the organization to link to this lead',
 				required: true,
 				displayOptions: {
@@ -1793,8 +1814,8 @@ export class Pipedrive implements INodeType {
 						operation: [
 							'create',
 						],
-						identification: [
-							'byOrganization',
+						associateWith: [
+							'organization',
 						],
 					},
 				},
@@ -1802,11 +1823,8 @@ export class Pipedrive implements INodeType {
 			{
 				displayName: 'Person ID',
 				name: 'person_id',
-				type: 'options',
-				typeOptions: {
-					loadOptionsMethod: 'getPersons',
-				},
-				default: '',
+				type: 'number',
+				default: 0,
 				description: 'ID of the person to link to this lead',
 				required: true,
 				displayOptions: {
@@ -1817,8 +1835,8 @@ export class Pipedrive implements INodeType {
 						operation: [
 							'create',
 						],
-						identification: [
-							'byPerson',
+						associateWith: [
+							'person',
 						],
 					},
 				},
@@ -1841,14 +1859,11 @@ export class Pipedrive implements INodeType {
 				},
 				options: [
 					{
-						displayName: 'Owner ID',
-						name: 'owner_id',
-						type: 'options',
-						typeOptions: {
-							loadOptionsMethod: 'getUserIds',
-						},
+						displayName: 'Expected Close Date',
+						name: 'expected_close_date',
+						type: 'dateTime',
 						default: '',
-						description: 'ID of the user who will own the lead to create',
+						description: 'Date when the lead’s deal is expected to be closed, in ISO-8601 format',
 					},
 					{
 						displayName: 'Label IDs',
@@ -1859,6 +1874,44 @@ export class Pipedrive implements INodeType {
 						},
 						default: [],
 						description: 'ID of the labels to attach to the lead to create',
+					},
+					{
+						displayName: 'Organization ID',
+						name: 'organization_id',
+						type: 'number',
+						default: 0,
+						description: 'ID of the organization to link to this lead',
+						displayOptions: {
+							show: {
+								'/associateWith': [
+									'person',
+								],
+							},
+						},
+					},
+					{
+						displayName: 'Owner ID',
+						name: 'owner_id',
+						type: 'options',
+						typeOptions: {
+							loadOptionsMethod: 'getUserIds',
+						},
+						default: '',
+						description: 'ID of the user who will own the lead to create',
+					},
+					{
+						displayName: 'Person ID',
+						name: 'person_id',
+						type: 'number',
+						default: 0,
+						description: 'ID of the person to link to this lead',
+						displayOptions: {
+							show: {
+								'/associateWith': [
+									'organization',
+								],
+							},
+						},
 					},
 					{
 						displayName: 'Value',
@@ -1887,13 +1940,6 @@ export class Pipedrive implements INodeType {
 								],
 							},
 						],
-					},
-					{
-						displayName: 'Expected Close Date',
-						name: 'expected_close_date',
-						type: 'dateTime',
-						default: '',
-						description: 'Date when the lead’s deal is expected to be closed, in ISO-8601 format',
 					},
 				],
 			},
@@ -3647,12 +3693,12 @@ export class Pipedrive implements INodeType {
 
 					body.title = this.getNodeParameter('title', i) as string;
 
-					const identification = this.getNodeParameter('identification', i) as 'byOrganization' | 'byPerson';
+					const associateWith = this.getNodeParameter('associateWith', i) as 'organization' | 'person';
 
-					if (identification === 'byOrganization') {
-						body.org_id = this.getNodeParameter('org_id', i);
+					if (associateWith === 'organization') {
+						body.org_id = this.getNodeParameter('org_id', i) as string;
 					} else {
-						body.person_id = this.getNodeParameter('person_id', i);
+						body.person_id = this.getNodeParameter('person_id', i) as string;
 					}
 
 					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
@@ -3837,12 +3883,12 @@ export class Pipedrive implements INodeType {
 						title: this.getNodeParameter('title', i),
 					} as IDataObject;
 
-					const identification = this.getNodeParameter('identification', i) as 'byOrganization' | 'byPerson';
+					const associateWith = this.getNodeParameter('associateWith', i) as 'organization' | 'person';
 
-					if (identification === 'byOrganization') {
-						body.organization_id = this.getNodeParameter('organization_id', i);
+					if (associateWith === 'organization') {
+						body.organization_id = this.getNodeParameter('organization_id', i) as number;
 					} else {
-						body.person_id = this.getNodeParameter('person_id', i);
+						body.person_id = this.getNodeParameter('person_id', i) as number;
 					}
 
 					const { value, expected_close_date, ...rest } = this.getNodeParameter('additionalFields', i) as {
@@ -3853,6 +3899,8 @@ export class Pipedrive implements INodeType {
 							}
 						};
 						expected_close_date: string;
+						person_id: number,
+						organization_id: number,
 					};
 
 					if (Object.keys(rest).length) {
