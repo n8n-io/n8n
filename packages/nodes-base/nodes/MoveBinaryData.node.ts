@@ -4,15 +4,42 @@ import {
 	unset,
 } from 'lodash';
 
+import {
+	BINARY_ENCODING,
+} from 'n8n-core';
+
 import { IExecuteFunctions } from 'n8n-core';
 import {
 	IBinaryData,
 	IDataObject,
 	INodeExecutionData,
+	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
+	NodeOperationError,
 } from 'n8n-workflow';
 
+import * as iconv from 'iconv-lite';
+iconv.encodingExists('utf8');
+
+// Create options for bomAware and encoding
+const bomAware: string[] = [];
+const encodeDecodeOptions: INodePropertyOptions[] = [];
+const encodings = (iconv as any).encodings; // tslint:disable-line:no-any
+Object.keys(encodings).forEach(encoding => {
+	if (!(encoding.startsWith('_') || typeof encodings[encoding] === 'string')) { // only encodings without direct alias or internals
+		if (encodings[encoding].bomAware) {
+			bomAware.push(encoding);
+		}
+		encodeDecodeOptions.push({ name: encoding, value: encoding });
+	}
+});
+
+encodeDecodeOptions.sort((a, b) => {
+	if (a.name < b.name) { return -1; }
+	if (a.name > b.name) { return 1; }
+	return 0;
+});
 
 export class MoveBinaryData implements INodeType {
 	description: INodeTypeDescription = {
@@ -22,7 +49,7 @@ export class MoveBinaryData implements INodeType {
 		group: ['transform'],
 		version: 1,
 		subtitle: '={{$parameter["mode"]==="binaryToJson" ? "Binary to JSON" : "JSON to Binary"}}',
-		description: 'Move data between binary and JSON properties.',
+		description: 'Move data between binary and JSON properties',
 		defaults: {
 			name: 'Move Binary Data',
 			color: '#7722CC',
@@ -189,16 +216,46 @@ export class MoveBinaryData implements INodeType {
 					{
 						displayName: 'Encoding',
 						name: 'encoding',
-						type: 'string',
+						type: 'options',
+						options: encodeDecodeOptions,
 						displayOptions: {
 							show: {
 								'/mode': [
 									'binaryToJson',
+									'jsonToBinary',
 								],
 							},
 						},
 						default: 'utf8',
 						description: 'Set the encoding of the data stream',
+					},
+					{
+						displayName: 'Strip BOM',
+						name: 'stripBOM',
+						displayOptions: {
+							show: {
+								'/mode': [
+									'binaryToJson',
+								],
+								encoding: bomAware,
+							},
+						},
+						type: 'boolean',
+						default: true,
+					},
+					{
+						displayName: 'Add BOM',
+						name: 'addBOM',
+						displayOptions: {
+							show: {
+								'/mode': [
+									'jsonToBinary',
+								],
+								encoding: bomAware,
+							},
+						},
+						type: 'boolean',
+						default: false,
 					},
 					{
 						displayName: 'File Name',
@@ -336,19 +393,19 @@ export class MoveBinaryData implements INodeType {
 					continue;
 				}
 
-				const encoding = (options.encoding as BufferEncoding) || 'utf8';
+				const encoding = (options.encoding as string) || 'utf8';
 				let convertedValue = value.data;
 
 				if (setAllData === true) {
 					// Set the full data
-					convertedValue = Buffer.from(convertedValue, 'base64').toString(encoding);
+					convertedValue = iconv.decode(Buffer.from(convertedValue, BINARY_ENCODING), encoding, { stripBOM: options.stripBOM as boolean });
 					newItem.json = JSON.parse(convertedValue);
 				} else {
 					// Does get added to existing data so copy it first
 					newItem.json = JSON.parse(JSON.stringify(item.json));
 
 					if (options.keepAsBase64 !== true) {
-						convertedValue = Buffer.from(convertedValue, 'base64').toString(encoding);
+						convertedValue = iconv.decode(Buffer.from(convertedValue, BINARY_ENCODING), encoding, { stripBOM: options.stripBOM as boolean });
 					}
 
 					if (options.jsonParse) {
@@ -372,6 +429,7 @@ export class MoveBinaryData implements INodeType {
 				const convertAllData = this.getNodeParameter('convertAllData', itemIndex) as boolean;
 				const destinationKey = this.getNodeParameter('destinationKey', itemIndex) as string;
 
+				const encoding = (options.encoding as string) || 'utf8';
 				let value: IDataObject | string = item.json;
 				if (convertAllData === false) {
 					const sourceKey = this.getNodeParameter('sourceKey', itemIndex) as string;
@@ -396,7 +454,7 @@ export class MoveBinaryData implements INodeType {
 						value = JSON.stringify(value);
 					}
 
-					value = Buffer.from(value as string).toString('base64');
+					value = iconv.encode(value as string, encoding, { addBOM: options.addBOM as boolean }).toString(BINARY_ENCODING);
 				}
 
 				const convertedValue: IBinaryData = {
@@ -429,7 +487,7 @@ export class MoveBinaryData implements INodeType {
 					}
 				}
 			} else {
-				throw new Error(`The operation "${mode}" is not known!`);
+				throw new NodeOperationError(this.getNode(), `The operation "${mode}" is not known!`);
 			}
 
 			returnData.push(newItem);

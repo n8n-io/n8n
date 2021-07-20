@@ -1,6 +1,6 @@
 <template>
 	<span>
-		<el-dialog :visible="dialogVisible" append-to-body width="80%" :title="`Workflow Executions (${combinedExecutions.length}/${combinedExecutionsCount})`" :before-close="closeDialog">
+		<el-dialog :visible="dialogVisible" append-to-body width="80%" :title="`Workflow Executions ${combinedExecutions.length}/${finishedExecutionsCountEstimated === true ? '~' : ''}${combinedExecutionsCount}`" :before-close="closeDialog">
 			<div class="filters">
 				<el-row>
 					<el-col :span="4" class="filter-headline">
@@ -38,7 +38,7 @@
 
 			<div class="selection-options">
 				<span v-if="checkAll === true || isIndeterminate === true">
-					Selected: {{numSelected}}/{{finishedExecutionsCount}}
+					Selected: {{numSelected}} / <span v-if="finishedExecutionsCountEstimated === true">~</span>{{finishedExecutionsCount}}
 					<el-button type="danger" title="Delete Selected" icon="el-icon-delete" size="mini" @click="handleDeleteSelected" circle></el-button>
 				</span>
 			</div>
@@ -142,7 +142,7 @@
 				</el-table-column>
 			</el-table>
 
-			<div class="load-more" v-if="finishedExecutionsCount > finishedExecutions.length">
+			<div class="load-more" v-if="finishedExecutionsCount > finishedExecutions.length || finishedExecutionsCountEstimated === true">
 				<el-button title="Load More" @click="loadMore()" size="small" :disabled="isDataLoading">
 					<font-awesome-icon icon="sync" /> Load More
 				</el-button>
@@ -158,6 +158,7 @@ import Vue from 'vue';
 import ExecutionTime from '@/components/ExecutionTime.vue';
 import WorkflowActivator from '@/components/WorkflowActivator.vue';
 
+import { externalHooks } from '@/components/mixins/externalHooks';
 import { restApi } from '@/components/mixins/restApi';
 import { genericHelpers } from '@/components/mixins/genericHelpers';
 import { showMessage } from '@/components/mixins/showMessage';
@@ -175,9 +176,14 @@ import {
 	IDataObject,
 } from 'n8n-workflow';
 
+import {
+	range as _range,
+} from 'lodash';
+
 import mixins from 'vue-typed-mixins';
 
 export default mixins(
+	externalHooks,
 	genericHelpers,
 	restApi,
 	showMessage,
@@ -194,6 +200,7 @@ export default mixins(
 		return {
 			finishedExecutions: [] as IExecutionsSummary[],
 			finishedExecutionsCount: 0,
+			finishedExecutionsCountEstimated: false,
 
 			checkAll: false,
 			autoRefresh: true,
@@ -250,7 +257,7 @@ export default mixins(
 			return returnData;
 		},
 		combinedExecutionsCount (): number {
-			return this.activeExecutions.length + this.finishedExecutionsCount;
+			return 0 + this.activeExecutions.length + this.finishedExecutionsCount;
 		},
 		numSelected (): number {
 			if (this.checkAll === true) {
@@ -432,12 +439,29 @@ export default mixins(
 
 			this.$store.commit('setActiveExecutions', results[1]);
 
-			const alreadyPresentExecutionIds = this.finishedExecutions.map(exec => exec.id);
+			// execution IDs are typed as string, int conversion is necessary so we can order.
+			const alreadyPresentExecutionIds = this.finishedExecutions.map(exec => parseInt(exec.id, 10));
+			let lastId = 0;
+			const gaps = [] as number[];
 			for(let i = results[0].results.length - 1; i >= 0; i--) {
 				const currentItem = results[0].results[i];
+				const currentId = parseInt(currentItem.id, 10);
+				if (lastId !== 0 && isNaN(currentId) === false) {
+					// We are doing this iteration to detect possible gaps.
+					// The gaps are used to remove executions that finished
+					// and were deleted from database but were displaying
+					// in this list while running.
+					if (currentId - lastId > 1) {
+						// We have some gaps.
+						const range = _range(lastId + 1, currentId);
+						gaps.push(...range);
+					}
+				}
+				lastId = parseInt(currentItem.id, 10) || 0;
+
 				// Check new results from end to start
 				// Add new items accordingly.
-				const executionIndex = alreadyPresentExecutionIds.indexOf(currentItem.id);
+				const executionIndex = alreadyPresentExecutionIds.indexOf(currentId);
 				if (executionIndex !== -1) {
 					// Execution that we received is already present.
 
@@ -455,7 +479,7 @@ export default mixins(
 				// Find the correct position to place this newcomer
 				let j;
 				for (j = this.finishedExecutions.length - 1; j >= 0; j--) {
-					if (currentItem.id < this.finishedExecutions[j].id) {
+					if (currentId < parseInt(this.finishedExecutions[j].id, 10)) {
 						this.finishedExecutions.splice(j + 1, 0, currentItem);
 						break;
 					}
@@ -464,17 +488,21 @@ export default mixins(
 					this.finishedExecutions.unshift(currentItem);
 				}
 			}
+			this.finishedExecutions = this.finishedExecutions.filter(execution => !gaps.includes(parseInt(execution.id, 10)) && lastId >= parseInt(execution.id, 10));
 			this.finishedExecutionsCount = results[0].count;
+			this.finishedExecutionsCountEstimated = results[0].estimated;
 		},
 		async loadFinishedExecutions (): Promise<void> {
 			if (this.filter.status === 'running') {
 				this.finishedExecutions = [];
 				this.finishedExecutionsCount = 0;
+				this.finishedExecutionsCountEstimated = false;
 				return;
 			}
 			const data = await this.restApi().getPastExecutions(this.workflowFilterPast, this.requestItemsPerRequest);
 			this.finishedExecutions = data.results;
 			this.finishedExecutionsCount = data.count;
+			this.finishedExecutionsCountEstimated = data.estimated;
 		},
 		async loadMore () {
 			if (this.filter.status === 'running') {
@@ -502,6 +530,7 @@ export default mixins(
 
 			this.finishedExecutions.push.apply(this.finishedExecutions, data.results);
 			this.finishedExecutionsCount = data.count;
+			this.finishedExecutionsCountEstimated = data.estimated;
 
 			this.isDataLoading = false;
 		},
@@ -537,6 +566,8 @@ export default mixins(
 			await this.loadWorkflows();
 			await this.refreshData();
 			this.handleAutoRefreshToggle();
+
+			this.$externalHooks().run('executionsList.openDialog');
 		},
 		async retryExecution (execution: IExecutionShortResponse, loadWorkflow?: boolean) {
 			this.isDataLoading = true;

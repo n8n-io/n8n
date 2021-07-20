@@ -10,6 +10,7 @@ import {
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
+	NodeOperationError,
 } from 'n8n-workflow';
 
 import {
@@ -23,13 +24,14 @@ import {
 
 import {
 	googleApiRequest,
+	hexToRgb,
 } from './GenericFunctions';
 
 export class GoogleSheets implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Google Sheets ',
 		name: 'googleSheets',
-		icon: 'file:googlesheets.png',
+		icon: 'file:googleSheets.svg',
 		group: ['input', 'output'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
@@ -122,6 +124,11 @@ export class GoogleSheets implements INodeType {
 						description: 'Clear data from a sheet',
 					},
 					{
+						name: 'Create',
+						value: 'create',
+						description: 'Create a new sheet',
+					},
+					{
 						name: 'Delete',
 						value: 'delete',
 						description: 'Delete columns and rows from a sheet',
@@ -137,6 +144,11 @@ export class GoogleSheets implements INodeType {
 						description: 'Read data from a sheet',
 					},
 					{
+						name: 'Remove',
+						value: 'remove',
+						description: 'Remove a sheet',
+					},
+					{
 						name: 'Update',
 						value: 'update',
 						description: 'Update rows in a sheet',
@@ -150,7 +162,7 @@ export class GoogleSheets implements INodeType {
 			//         All
 			// ----------------------------------
 			{
-				displayName: 'Sheet ID',
+				displayName: 'Spreadsheet ID',
 				name: 'sheetId',
 				type: 'string',
 				displayOptions: {
@@ -162,7 +174,7 @@ export class GoogleSheets implements INodeType {
 				},
 				default: '',
 				required: true,
-				description: 'The ID of the Google Sheet.<br />Found as part of the sheet URL https://docs.google.com/spreadsheets/d/{ID}/',
+				description: 'The ID of the Google Spreadsheet.<br />Found as part of the sheet URL https://docs.google.com/spreadsheets/d/{ID}/',
 			},
 			{
 				displayName: 'Range',
@@ -176,7 +188,9 @@ export class GoogleSheets implements INodeType {
 					},
 					hide: {
 						operation: [
+							'create',
 							'delete',
+							'remove',
 						],
 					},
 				},
@@ -184,7 +198,6 @@ export class GoogleSheets implements INodeType {
 				required: true,
 				description: 'The table range to read from or to append data to. See the Google <a href="https://developers.google.com/sheets/api/guides/values#writing">documentation</a> for the details.<br />If it contains multiple sheets it can also be<br />added like this: "MySheet!A:F"',
 			},
-
 
 			// ----------------------------------
 			//         Delete
@@ -392,8 +405,10 @@ export class GoogleSheets implements INodeType {
 					hide: {
 						operation: [
 							'append',
+							'create',
 							'clear',
 							'delete',
+							'remove',
 						],
 						rawData: [
 							true,
@@ -422,7 +437,9 @@ export class GoogleSheets implements INodeType {
 					hide: {
 						operation: [
 							'clear',
+							'create',
 							'delete',
+							'remove',
 						],
 						rawData: [
 							true,
@@ -596,7 +613,7 @@ export class GoogleSheets implements INodeType {
 							{
 								name: 'Formula',
 								value: 'FORMULA',
-								description: '	Values will not be calculated. The reply will include the formulas. For example, if A1 is 1.23 and A2 is =A1 and formatted as currency, then A2 would return "=A1".',
+								description: 'Values will not be calculated. The reply will include the formulas. For example, if A1 is 1.23 and A2 is =A1 and formatted as currency, then A2 would return "=A1".',
 							},
 							{
 								name: 'Unformatted Value',
@@ -793,6 +810,170 @@ export class GoogleSheets implements INodeType {
 					},
 				],
 			},
+
+			// ----------------------------------
+			//         sheet:create
+			// ----------------------------------
+			{
+				displayName: 'Simple',
+				name: 'simple',
+				type: 'boolean',
+				default: true,
+				displayOptions: {
+					show: {
+						resource: [
+							'sheet',
+						],
+						operation: [
+							'create',
+						],
+					},
+				},
+				description: 'When set to true a simplify version of the response will be used else the raw data.',
+			},
+			{
+				displayName: 'Options',
+				name: 'options',
+				type: 'collection',
+				placeholder: 'Add Option',
+				default: {},
+				displayOptions: {
+					show: {
+						resource: [
+							'sheet',
+						],
+						operation: [
+							'create',
+						],
+					},
+				},
+				options: [
+					{
+						displayName: 'Grid Properties',
+						name: 'gridProperties',
+						type: 'collection',
+						placeholder: 'Add Property',
+						default: '',
+						options: [
+							{
+								displayName: 'Column Count',
+								name: 'columnCount',
+								type: 'number',
+								default: 0,
+								description: 'The number of columns in the grid.',
+							},
+							{
+								displayName: 'Column Group Control After',
+								name: 'columnGroupControlAfter',
+								type: 'boolean',
+								default: false,
+								description: 'True if the column grouping control toggle is shown after the group.',
+							},
+							{
+								displayName: 'Frozen Column Count',
+								name: 'frozenColumnCount',
+								type: 'number',
+								default: 0,
+								description: 'The number of columns that are frozen in the grid.',
+							},
+							{
+								displayName: 'Frozen Row Count',
+								name: 'frozenRowCount',
+								type: 'number',
+								default: 0,
+								description: 'The number of rows that are frozen in the grid.',
+							},
+							{
+								displayName: 'Hide Gridlines',
+								name: 'hideGridlines',
+								type: 'boolean',
+								default: false,
+								description: 'True if the grid isn\'t showing gridlines in the UI.',
+							},
+							{
+								displayName: 'Row Count',
+								name: 'rowCount',
+								type: 'number',
+								default: 0,
+								description: 'The number of rows in the grid.',
+							},
+							{
+								displayName: 'Row Group Control After',
+								name: 'rowGroupControlAfter',
+								type: 'boolean',
+								default: false,
+								description: 'True if the row grouping control toggle is shown after the group.',
+							},
+
+						],
+						description: 'The type of the sheet.',
+					},
+					{
+						displayName: 'Hidden',
+						name: 'hidden',
+						type: 'boolean',
+						default: false,
+						description: 'True if the sheet is hidden in the UI, false if it\'s visible.',
+					},
+					{
+						displayName: 'Right To Left',
+						name: 'rightToLeft',
+						type: 'boolean',
+						default: false,
+						description: 'True if the sheet is an RTL sheet instead of an LTR sheet.',
+					},
+					{
+						displayName: 'Sheet ID',
+						name: 'sheetId',
+						type: 'number',
+						default: 0,
+						description: 'The ID of the sheet. Must be non-negative. This field cannot be changed once set.',
+					},
+					{
+						displayName: 'Sheet Index',
+						name: 'index',
+						type: 'number',
+						default: 0,
+						description: 'The index of the sheet within the spreadsheet.',
+					},
+					{
+						displayName: 'Tab Color',
+						name: 'tabColor',
+						type: 'color',
+						default: '0aa55c',
+						description: 'The color of the tab in the UI.',
+					},
+					{
+						displayName: 'Title',
+						name: 'title',
+						type: 'string',
+						default: '',
+						description: 'The Sheet name.',
+					},
+				],
+			},
+
+			// ----------------------------------
+			//         sheet:remove
+			// ----------------------------------
+			{
+				displayName: 'Sheet ID',
+				name: 'id',
+				type: 'string',
+				default: '',
+				required: true,
+				displayOptions: {
+					show: {
+						resource: [
+							'sheet',
+						],
+						operation: [
+							'remove',
+						],
+					},
+				},
+				description: 'The ID of the sheet to delete.',
+			},
 		],
 	};
 
@@ -807,7 +988,7 @@ export class GoogleSheets implements INodeType {
 				const responseData = await sheet.spreadsheetGetSheets();
 
 				if (responseData === undefined) {
-					throw new Error('No data got returned');
+					throw new NodeOperationError(this.getNode(), 'No data got returned');
 				}
 
 				const returnData: INodePropertyOptions[] = [];
@@ -840,7 +1021,7 @@ export class GoogleSheets implements INodeType {
 			const sheet = new GoogleSheet(spreadsheetId, this);
 
 			let range = '';
-			if (operation !== 'delete') {
+			if (!['create', 'delete', 'remove'].includes(operation)) {
 				range = this.getNodeParameter('range', 0) as string;
 			}
 
@@ -853,127 +1034,228 @@ export class GoogleSheets implements INodeType {
 				// ----------------------------------
 				//         append
 				// ----------------------------------
-				const keyRow = parseInt(this.getNodeParameter('keyRow', 0) as string, 10);
+				try {
+					const keyRow = parseInt(this.getNodeParameter('keyRow', 0) as string, 10);
 
-				const items = this.getInputData();
+					const items = this.getInputData();
 
-				const setData: IDataObject[] = [];
-				items.forEach((item) => {
-					setData.push(item.json);
-				});
+					const setData: IDataObject[] = [];
+					items.forEach((item) => {
+						setData.push(item.json);
+					});
 
-				// Convert data into array format
-				const data = await sheet.appendSheetData(setData, sheet.encodeRange(range), keyRow, valueInputMode);
+					// Convert data into array format
+					const data = await sheet.appendSheetData(setData, sheet.encodeRange(range), keyRow, valueInputMode);
 
-				// TODO: Should add this data somewhere
-				// TODO: Should have something like add metadata which does not get passed through
+					// TODO: Should add this data somewhere
+					// TODO: Should have something like add metadata which does not get passed through
 
-				return this.prepareOutputData(items);
+					return this.prepareOutputData(items);
+				} catch (error) {
+					if (this.continueOnFail()) {
+						return this.prepareOutputData([{json:{ error: error.message }}]);
+					}
+					throw error;
+				}
 			} else if (operation === 'clear') {
 				// ----------------------------------
 				//         clear
 				// ----------------------------------
+				try {
+					await sheet.clearData(sheet.encodeRange(range));
 
-				await sheet.clearData(sheet.encodeRange(range));
+					const items = this.getInputData();
+					return this.prepareOutputData(items);
+				} catch (error) {
+					if (this.continueOnFail()) {
+						return this.prepareOutputData([{json:{ error: error.message }}]);
+					}
+					throw error;
+				}
 
-				const items = this.getInputData();
-				return this.prepareOutputData(items);
+			} else if (operation === 'create') {
+				const returnData: IDataObject[] = [];
+
+				let responseData;
+				for (let i = 0; i < this.getInputData().length; i++) {
+					try {
+						const spreadsheetId = this.getNodeParameter('sheetId', i) as string;
+						const options = this.getNodeParameter('options', i, {}) as IDataObject;
+						const simple = this.getNodeParameter('simple', 0) as boolean;
+						const properties = { ...options };
+
+						if (options.tabColor) {
+							const { red, green, blue } = hexToRgb(options.tabColor as string)!;
+							properties.tabColor = { red: red / 255, green: green / 255, blue: blue / 255 };
+						}
+
+						const requests = [{
+							addSheet: {
+								properties,
+							},
+						}];
+
+						responseData = await googleApiRequest.call(this, 'POST', `/v4/spreadsheets/${spreadsheetId}:batchUpdate`, { requests });
+
+						if (simple === true) {
+							Object.assign(responseData, responseData.replies[0].addSheet.properties);
+							delete responseData.replies;
+						}
+						returnData.push(responseData);
+					} catch (error) {
+						if (this.continueOnFail()) {
+							returnData.push({ error: error.message });
+							continue;
+						}
+						throw error;
+					}
+				}
+
+				return [this.helpers.returnJsonArray(returnData)];
+
 			} else if (operation === 'delete') {
 				// ----------------------------------
 				//         delete
 				// ----------------------------------
+				try {
+					const requests: IDataObject[] = [];
 
-				const requests: IDataObject[] = [];
+					const toDelete = this.getNodeParameter('toDelete', 0) as IToDelete;
 
-				const toDelete = this.getNodeParameter('toDelete', 0) as IToDelete;
+					const deletePropertyToDimensions: IDataObject = {
+						'columns': 'COLUMNS',
+						'rows': 'ROWS',
+					};
 
-				const deletePropertyToDimensions: IDataObject = {
-					'columns': 'COLUMNS',
-					'rows': 'ROWS',
-				};
-
-				for (const propertyName of Object.keys(deletePropertyToDimensions)) {
-					if (toDelete[propertyName] !== undefined) {
-						toDelete[propertyName]!.forEach(range => {
-							requests.push({
-								deleteDimension: {
-									range: {
-										sheetId: range.sheetId,
-										dimension: deletePropertyToDimensions[propertyName] as string,
-										startIndex: range.startIndex,
-										endIndex: parseInt(range.startIndex.toString(), 10) + parseInt(range.amount.toString(), 10),
+					for (const propertyName of Object.keys(deletePropertyToDimensions)) {
+						if (toDelete[propertyName] !== undefined) {
+							toDelete[propertyName]!.forEach(range => {
+								requests.push({
+									deleteDimension: {
+										range: {
+											sheetId: range.sheetId,
+											dimension: deletePropertyToDimensions[propertyName] as string,
+											startIndex: range.startIndex,
+											endIndex: parseInt(range.startIndex.toString(), 10) + parseInt(range.amount.toString(), 10),
+										},
 									},
-								},
+								});
 							});
-						});
+						}
 					}
+
+					const data = await sheet.spreadsheetBatchUpdate(requests);
+
+					const items = this.getInputData();
+					return this.prepareOutputData(items);
+				} catch (error) {
+					if (this.continueOnFail()) {
+						return this.prepareOutputData([{json:{ error: error.message }}]);
+					}
+					throw error;
 				}
-
-				const data = await sheet.spreadsheetBatchUpdate(requests);
-
-				const items = this.getInputData();
-				return this.prepareOutputData(items);
 			} else if (operation === 'lookup') {
 				// ----------------------------------
 				//         lookup
 				// ----------------------------------
+				try {
+					const sheetData = await sheet.getData(sheet.encodeRange(range), valueRenderMode);
 
-				const sheetData = await sheet.getData(sheet.encodeRange(range), valueRenderMode);
+					if (sheetData === undefined) {
+						return [];
+					}
 
-				if (sheetData === undefined) {
-					return [];
+					const dataStartRow = parseInt(this.getNodeParameter('dataStartRow', 0) as string, 10);
+					const keyRow = parseInt(this.getNodeParameter('keyRow', 0) as string, 10);
+
+					const items = this.getInputData();
+
+					const lookupValues: ILookupValues[] = [];
+					for (let i = 0; i < items.length; i++) {
+						lookupValues.push({
+							lookupColumn: this.getNodeParameter('lookupColumn', i) as string,
+							lookupValue: this.getNodeParameter('lookupValue', i) as string,
+						});
+					}
+
+					let returnData = await sheet.lookupValues(sheetData, keyRow, dataStartRow, lookupValues, options.returnAllMatches as boolean | undefined);
+
+					if (returnData.length === 0 && options.continue && options.returnAllMatches) {
+						returnData = [{}];
+					} else if (returnData.length === 1 && Object.keys(returnData[0]).length === 0 && !options.continue && !options.returnAllMatches) {
+						returnData = [];
+					}
+
+					return [this.helpers.returnJsonArray(returnData)];
+				} catch (error) {
+					if (this.continueOnFail()) {
+						return [this.helpers.returnJsonArray({ error: error.message })];
+					}
+					throw error;
 				}
-
-				const dataStartRow = parseInt(this.getNodeParameter('dataStartRow', 0) as string, 10);
-				const keyRow = parseInt(this.getNodeParameter('keyRow', 0) as string, 10);
-
-				const items = this.getInputData();
-
-				const lookupValues: ILookupValues[] = [];
-				for (let i = 0; i < items.length; i++) {
-					lookupValues.push({
-						lookupColumn: this.getNodeParameter('lookupColumn', i) as string,
-						lookupValue: this.getNodeParameter('lookupValue', i) as string,
-					});
-				}
-
-				let returnData = await sheet.lookupValues(sheetData, keyRow, dataStartRow, lookupValues, options.returnAllMatches as boolean | undefined);
-
-				if (returnData.length === 0 && options.continue && options.returnAllMatches) {
-					returnData = [{}];
-				} else if (returnData.length === 1 && Object.keys(returnData[0]).length === 0 && !options.continue && !options.returnAllMatches) {
-					returnData = [];
-				}
-
-				return [this.helpers.returnJsonArray(returnData)];
 			} else if (operation === 'read') {
 				// ----------------------------------
 				//         read
 				// ----------------------------------
+				try {
+					const rawData = this.getNodeParameter('rawData', 0) as boolean;
 
-				const rawData = this.getNodeParameter('rawData', 0) as boolean;
+					const sheetData = await sheet.getData(sheet.encodeRange(range), valueRenderMode);
 
-				const sheetData = await sheet.getData(sheet.encodeRange(range), valueRenderMode);
+					let returnData: IDataObject[];
+					if (!sheetData) {
+						returnData = [];
+					} else if (rawData === true) {
+						const dataProperty = this.getNodeParameter('dataProperty', 0) as string;
+						returnData = [
+							{
+								[dataProperty]: sheetData,
+							},
+						];
+					} else {
+						const dataStartRow = parseInt(this.getNodeParameter('dataStartRow', 0) as string, 10);
+						const keyRow = parseInt(this.getNodeParameter('keyRow', 0) as string, 10);
 
-				let returnData: IDataObject[];
-				if (!sheetData) {
-					returnData = [];
-				} else if (rawData === true) {
-					const dataProperty = this.getNodeParameter('dataProperty', 0) as string;
-					returnData = [
-						{
-							[dataProperty]: sheetData,
-						},
-					];
-				} else {
-					const dataStartRow = parseInt(this.getNodeParameter('dataStartRow', 0) as string, 10);
-					const keyRow = parseInt(this.getNodeParameter('keyRow', 0) as string, 10);
+						returnData = sheet.structureArrayDataByColumn(sheetData, keyRow, dataStartRow);
+					}
 
-					returnData = sheet.structureArrayDataByColumn(sheetData, keyRow, dataStartRow);
+					if (returnData.length === 0 && options.continue) {
+						returnData = [{}];
+					}
+
+					return [this.helpers.returnJsonArray(returnData)];
+				} catch (error) {
+					if (this.continueOnFail()) {
+						return [this.helpers.returnJsonArray({ error: error.message })];
+					}
+					throw error;
 				}
 
-				if (returnData.length === 0 && options.continue) {
-					returnData = [{}];
+			} else if (operation === 'remove') {
+				const returnData: IDataObject[] = [];
+
+				let responseData;
+				for (let i = 0; i < this.getInputData().length; i++) {
+					try {
+						const sheetId = this.getNodeParameter('id', i) as string;
+						const spreadsheetId = this.getNodeParameter('sheetId', i) as string;
+
+						const requests = [{
+							deleteSheet: {
+								sheetId,
+							},
+						}];
+
+						responseData = await googleApiRequest.call(this, 'POST', `/v4/spreadsheets/${spreadsheetId}:batchUpdate`, { requests });
+						delete responseData.replies;
+						returnData.push(responseData);
+					} catch (error) {
+						if (this.continueOnFail()) {
+							returnData.push({ error: error.message });
+							continue;
+						}
+						throw error;
+					}
 				}
 
 				return [this.helpers.returnJsonArray(returnData)];
@@ -981,40 +1263,46 @@ export class GoogleSheets implements INodeType {
 				// ----------------------------------
 				//         update
 				// ----------------------------------
+				try {
+					const rawData = this.getNodeParameter('rawData', 0) as boolean;
 
-				const rawData = this.getNodeParameter('rawData', 0) as boolean;
+					const items = this.getInputData();
 
-				const items = this.getInputData();
+					if (rawData === true) {
+						const dataProperty = this.getNodeParameter('dataProperty', 0) as string;
 
-				if (rawData === true) {
-					const dataProperty = this.getNodeParameter('dataProperty', 0) as string;
+						const updateData: ISheetUpdateData[] = [];
+						for (let i = 0; i < items.length; i++) {
+							updateData.push({
+								range,
+								values: items[i].json[dataProperty] as string[][],
+							});
+						}
 
-					const updateData: ISheetUpdateData[] = [];
-					for (let i = 0; i < items.length; i++) {
-						updateData.push({
-							range,
-							values: items[i].json[dataProperty] as string[][],
+						const data = await sheet.batchUpdate(updateData, valueInputMode);
+					} else {
+						const keyName = this.getNodeParameter('key', 0) as string;
+						const keyRow = parseInt(this.getNodeParameter('keyRow', 0) as string, 10);
+						const dataStartRow = parseInt(this.getNodeParameter('dataStartRow', 0) as string, 10);
+
+						const setData: IDataObject[] = [];
+						items.forEach((item) => {
+							setData.push(item.json);
 						});
+
+						const data = await sheet.updateSheetData(setData, keyName, range, keyRow, dataStartRow, valueInputMode, valueRenderMode);
 					}
+					// TODO: Should add this data somewhere
+					// TODO: Should have something like add metadata which does not get passed through
 
-					const data = await sheet.batchUpdate(updateData, valueInputMode);
-				} else {
-					const keyName = this.getNodeParameter('key', 0) as string;
-					const keyRow = parseInt(this.getNodeParameter('keyRow', 0) as string, 10);
-					const dataStartRow = parseInt(this.getNodeParameter('dataStartRow', 0) as string, 10);
 
-					const setData: IDataObject[] = [];
-					items.forEach((item) => {
-						setData.push(item.json);
-					});
-
-					const data = await sheet.updateSheetData(setData, keyName, range, keyRow, dataStartRow, valueInputMode, valueRenderMode);
+					return this.prepareOutputData(items);
+				} catch (error) {
+					if (this.continueOnFail()) {
+						return this.prepareOutputData([{json:{ error: error.message }}]);
+					}
+					throw error;
 				}
-				// TODO: Should add this data somewhere
-				// TODO: Should have something like add metadata which does not get passed through
-
-
-				return this.prepareOutputData(items);
 			}
 
 		}
@@ -1032,39 +1320,46 @@ export class GoogleSheets implements INodeType {
 				// https://developers.google.com/sheets/api/reference/rest/v4/spreadsheets/create
 
 				for (let i = 0; i < this.getInputData().length; i++) {
+					try {
+						const title = this.getNodeParameter('title', i) as string;
+						const sheetsUi = this.getNodeParameter('sheetsUi', i, {}) as IDataObject;
 
-					const title = this.getNodeParameter('title', i) as string;
-					const sheetsUi = this.getNodeParameter('sheetsUi', i, {}) as IDataObject;
+						const body = {
+							properties: {
+								title,
+								autoRecalc: undefined as undefined | string,
+								locale: undefined as undefined | string,
+							},
+							sheets: [] as IDataObject[],
+						};
 
-					const body = {
-						properties: {
-							title,
-							autoRecalc: undefined as undefined | string,
-							locale: undefined as undefined | string,
-						},
-						sheets: [] as IDataObject[],
-					};
+						const options = this.getNodeParameter('options', i, {}) as IDataObject;
 
-					const options = this.getNodeParameter('options', i, {}) as IDataObject;
-
-					if (Object.keys(sheetsUi).length) {
-						const data = [];
-						const sheets = sheetsUi.sheetValues as IDataObject[];
-						for (const sheet of sheets) {
-							const properties = sheet.propertiesUi as IDataObject;
-							if (properties) {
-								data.push({ properties });
+						if (Object.keys(sheetsUi).length) {
+							const data = [];
+							const sheets = sheetsUi.sheetValues as IDataObject[];
+							for (const sheet of sheets) {
+								const properties = sheet.propertiesUi as IDataObject;
+								if (properties) {
+									data.push({ properties });
+								}
 							}
+							body.sheets = data;
 						}
-						body.sheets = data;
+
+						body.properties!.autoRecalc = options.autoRecalc ? (options.autoRecalc as string) : undefined;
+						body.properties!.locale = options.locale ? (options.locale as string) : undefined;
+
+						responseData = await googleApiRequest.call(this, 'POST', `/v4/spreadsheets`, body);
+
+						returnData.push(responseData);
+					} catch (error) {
+						if (this.continueOnFail()) {
+							returnData.push({ error: error.message });
+							continue;
+						}
+						throw error;
 					}
-
-					body.properties!.autoRecalc = options.autoRecalc ? (options.autoRecalc as string) : undefined;
-					body.properties!.locale = options.locale ? (options.locale as string) : undefined;
-
-					responseData = await googleApiRequest.call(this, 'POST', `/v4/spreadsheets`, body);
-
-					returnData.push(responseData);
 				}
 
 			}

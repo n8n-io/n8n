@@ -10,6 +10,7 @@ import {
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
+	NodeOperationError,
 } from 'n8n-workflow';
 
 import {
@@ -308,7 +309,7 @@ export class Beeminder implements INodeType {
 				const credentials = this.getCredentials('beeminderApi');
 
 				if (credentials === undefined) {
-					throw new Error('No credentials got returned!');
+					throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
 				}
 
 				const endpoint = `/users/${credentials.user}/goals.json`;
@@ -339,60 +340,66 @@ export class Beeminder implements INodeType {
 
 
 		for (let i = 0; i < length; i++) {
+			try {
+				if (resource === 'datapoint') {
+					const goalName = this.getNodeParameter('goalName', i) as string;
+					if (operation === 'create') {
+						const value = this.getNodeParameter('value', i) as number;
+						const options = this.getNodeParameter('additionalFields', i) as INodeParameters;
+						const data: IDataObject = {
+							value,
+							goalName,
+						};
+						Object.assign(data, options);
 
-			if (resource === 'datapoint') {
-				const goalName = this.getNodeParameter('goalName', i) as string;
-				if (operation === 'create') {
-					const value = this.getNodeParameter('value', i) as number;
-					const options = this.getNodeParameter('additionalFields', i) as INodeParameters;
-					const data: IDataObject = {
-						value,
-						goalName,
-					};
-					Object.assign(data, options);
-
-					if (data.timestamp) {
-						data.timestamp = moment.tz(data.timestamp, timezone).unix();
+						if (data.timestamp) {
+							data.timestamp = moment.tz(data.timestamp, timezone).unix();
+						}
+						results = await createDatapoint.call(this, data);
 					}
-					results = await createDatapoint.call(this, data);
-				}
-				else if (operation === 'getAll') {
-					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
-					const options = this.getNodeParameter('options', i) as INodeParameters;
-					const data: IDataObject = {
-						goalName,
-					};
-					Object.assign(data, options);
+					else if (operation === 'getAll') {
+						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const options = this.getNodeParameter('options', i) as INodeParameters;
+						const data: IDataObject = {
+							goalName,
+						};
+						Object.assign(data, options);
 
-					if (returnAll === false) {
-						data.count = this.getNodeParameter('limit', 0) as number;
-					}
+						if (returnAll === false) {
+							data.count = this.getNodeParameter('limit', 0) as number;
+						}
 
-					results = await getAllDatapoints.call(this, data);
-				}
-				else if (operation === 'update') {
-					const datapointId = this.getNodeParameter('datapointId', i) as string;
-					const options = this.getNodeParameter('updateFields', i) as INodeParameters;
-					const data: IDataObject = {
-						goalName,
-						datapointId,
-					};
-					Object.assign(data, options);
-					if (data.timestamp) {
-						data.timestamp = moment.tz(data.timestamp, timezone).unix();
+						results = await getAllDatapoints.call(this, data);
 					}
-					results = await updateDatapoint.call(this, data);
+					else if (operation === 'update') {
+						const datapointId = this.getNodeParameter('datapointId', i) as string;
+						const options = this.getNodeParameter('updateFields', i) as INodeParameters;
+						const data: IDataObject = {
+							goalName,
+							datapointId,
+						};
+						Object.assign(data, options);
+						if (data.timestamp) {
+							data.timestamp = moment.tz(data.timestamp, timezone).unix();
+						}
+						results = await updateDatapoint.call(this, data);
+					}
+					else if (operation === 'delete') {
+						const datapointId = this.getNodeParameter('datapointId', i) as string;
+						const data: IDataObject = {
+							goalName,
+							datapointId,
+						};
+						results = await deleteDatapoint.call(this, data);
+					}
 				}
-				else if (operation === 'delete') {
-					const datapointId = this.getNodeParameter('datapointId', i) as string;
-					const data: IDataObject = {
-						goalName,
-						datapointId,
-					};
-					results = await deleteDatapoint.call(this, data);
+			} catch (error) {
+				if (this.continueOnFail()) {
+					returnData.push({ error: error.message });
+					continue;
 				}
+				throw error;
 			}
-
 			if (Array.isArray(results)) {
 				returnData.push.apply(returnData, results as IDataObject[]);
 			} else {

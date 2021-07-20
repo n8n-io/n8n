@@ -1,20 +1,19 @@
 import {
 	BINARY_ENCODING,
-	IExecuteSingleFunctions,
+	IExecuteFunctions,
+	IExecuteSingleFunctions
 } from 'n8n-core';
 import {
 	IDataObject,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
+	NodeOperationError,
 } from 'n8n-workflow';
 
 import {
 	writeFile as fsWriteFile,
-} from 'fs';
-import { promisify } from 'util';
-
-const fsWriteFileAsync = promisify(fsWriteFile);
+} from 'fs/promises';
 
 
 export class WriteBinaryFile implements INodeType {
@@ -53,39 +52,61 @@ export class WriteBinaryFile implements INodeType {
 	};
 
 
-	async executeSingle(this: IExecuteSingleFunctions): Promise<INodeExecutionData> {
-		const item = this.getInputData();
+	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 
-		const dataPropertyName = this.getNodeParameter('dataPropertyName') as string;
-		const fileName = this.getNodeParameter('fileName') as string;
+		const items = this.getInputData();
 
-		if (item.binary === undefined) {
-			throw new Error('No binary data set. So file can not be written!');
+		const returnData: INodeExecutionData[] = [];
+		const length = items.length as unknown as number;
+		let item: INodeExecutionData;
+
+		for (let itemIndex = 0; itemIndex < length; itemIndex++) {
+			try {
+				const dataPropertyName = this.getNodeParameter('dataPropertyName', itemIndex) as string;
+
+				const fileName = this.getNodeParameter('fileName', itemIndex) as string;
+
+				item = items[itemIndex];
+
+				if (item.binary === undefined) {
+					throw new NodeOperationError(this.getNode(), 'No binary data set. So file can not be written!');
+				}
+
+				if (item.binary[dataPropertyName] === undefined) {
+					throw new NodeOperationError(this.getNode(), `The binary property "${dataPropertyName}" does not exist. So no file can be written!`);
+				}
+
+				// Write the file to disk
+				await fsWriteFile(fileName, Buffer.from(item.binary[dataPropertyName].data, BINARY_ENCODING), 'binary');
+
+				const newItem: INodeExecutionData = {
+					json: {},
+				};
+				Object.assign(newItem.json, item.json);
+
+				if (item.binary !== undefined) {
+					// Create a shallow copy of the binary data so that the old
+					// data references which do not get changed still stay behind
+					// but the incoming data does not get changed.
+					newItem.binary = {};
+					Object.assign(newItem.binary, item.binary);
+				}
+
+				// Add the file name to data
+
+				(newItem.json as IDataObject).fileName = fileName;
+
+				returnData.push(newItem);
+
+			} catch (error) {
+				if (this.continueOnFail()) {
+					returnData.push({json:{ error: error.message }});
+					continue;
+				}
+				throw error;
+			}
 		}
-
-		if (item.binary[dataPropertyName] === undefined) {
-			throw new Error(`The binary property "${dataPropertyName}" does not exist. So no file can be written!`);
-		}
-
-		// Write the file to disk
-		await fsWriteFileAsync(fileName, Buffer.from(item.binary[dataPropertyName].data, BINARY_ENCODING), 'binary');
-
-		const newItem: INodeExecutionData = {
-			json: {},
-		};
-		Object.assign(newItem.json, item.json);
-
-		if (item.binary !== undefined) {
-			// Create a shallow copy of the binary data so that the old
-			// data references which do not get changed still stay behind
-			// but the incoming data does not get changed.
-			newItem.binary = {};
-			Object.assign(newItem.binary, item.binary);
-		}
-
-		// Add the file name to data
-		(newItem.json as IDataObject).fileName = fileName;
-
-		return newItem;
+		return this.prepareOutputData(returnData);
 	}
+
 }

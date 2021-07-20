@@ -9,6 +9,8 @@ import {
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
+	NodeApiError,
+	NodeOperationError,
 } from 'n8n-workflow';
 
 import {
@@ -40,7 +42,7 @@ export class Iterable implements INodeType {
 		group: ['input'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
-		description: 'Consume Iterable API.',
+		description: 'Consume Iterable API',
 		defaults: {
 			name: 'Iterable',
 			color: '#725ed8',
@@ -123,7 +125,7 @@ export class Iterable implements INodeType {
 					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 
 					if (!additionalFields.email && !additionalFields.id) {
-						throw new Error('Either email or userId must be passed in to identify the user. Please add one of both via "Additional Fields". If both are passed in, email takes precedence.');
+						throw new NodeOperationError(this.getNode(), 'Either email or userId must be passed in to identify the user. Please add one of both via "Additional Fields". If both are passed in, email takes precedence.');
 					}
 
 					const body: IDataObject = {
@@ -191,7 +193,7 @@ export class Iterable implements INodeType {
 
 					if (this.continueOnFail() === false) {
 						if (responseData.code !== 'Success') {
-							throw new Error(
+							throw new NodeOperationError(this.getNode(),
 								`Iterable error response [400]: ${responseData.msg}`,
 							);
 						}
@@ -221,9 +223,7 @@ export class Iterable implements INodeType {
 
 					if (this.continueOnFail() === false) {
 						if (responseData.code !== 'Success') {
-							throw new Error(
-								`Iterable error response [400]: ${responseData.msg}`,
-							);
+							throw new NodeApiError(this.getNode(), responseData);
 						}
 					}
 
@@ -253,8 +253,8 @@ export class Iterable implements INodeType {
 
 					if (this.continueOnFail() === false) {
 						if (Object.keys(responseData).length === 0) {
-							throw new Error(
-								`Iterable error response [404]: User not found`,
+							throw new NodeApiError(this.getNode(), responseData,
+								{ message: `User not found`, httpCode: '404' },
 							);
 						}
 					}

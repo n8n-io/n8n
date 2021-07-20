@@ -20,7 +20,7 @@ export class WebflowTrigger implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Webflow Trigger',
 		name: 'webflowTrigger',
-		icon: 'file:webflow.png',
+		icon: 'file:webflow.svg',
 		group: ['trigger'],
 		version: 1,
 		description: 'Handle Webflow events via webhooks',
@@ -98,8 +98,16 @@ export class WebflowTrigger implements INodeType {
 				required: true,
 				options: [
 					{
-						name: 'Form submission',
-						value: 'form_submission',
+						name: 'Collection Item Created',
+						value: 'collection_item_created',
+					},
+					{
+						name: 'Collection Item Deleted',
+						value: 'collection_item_deleted',
+					},
+					{
+						name: 'Collection Item Updated',
+						value: 'collection_item_changed',
 					},
 					{
 						name: 'Ecomm Inventory Changed',
@@ -114,12 +122,54 @@ export class WebflowTrigger implements INodeType {
 						value: 'ecomm_order_changed',
 					},
 					{
+						name: 'Form Submission',
+						value: 'form_submission',
+					},
+					{
 						name: 'Site Publish',
 						value: 'site_publish',
 					},
 				],
 				default: 'form_submission',
 			},
+			// {
+			// 	displayName: 'All collections',
+			// 	name: 'allCollections',
+			// 	type: 'boolean',
+			// 	displayOptions: {
+			// 		show: {
+			// 			event: [
+			// 				'collection_item_created',
+			// 				'collection_item_changed',
+			// 				'collection_item_deleted',
+			// 			],
+			// 		},
+			// 	},
+			// 	required: false,
+			// 	default: true,
+			// 	description: 'Receive events from all collections',
+			// },
+			// {
+			// 	displayName: 'Collection',
+			// 	name: 'collection',
+			// 	type: 'options',
+			// 	required: false,
+			// 	default: '',
+			// 	typeOptions: {
+			// 		loadOptionsMethod: 'getCollections',
+			// 		loadOptionsDependsOn: [
+			// 			'site',
+			// 		],
+			// 	},
+			// 	description: 'Collection that will trigger the events',
+			// 	displayOptions: {
+			// 		show: {
+			// 			allCollections: [
+			// 				false,
+			// 			],
+			// 		},
+			// 	},
+			// },
 		],
 	};
 
@@ -140,6 +190,18 @@ export class WebflowTrigger implements INodeType {
 				}
 				return returnData;
 			},
+			// async getCollections(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+			// 	const returnData: INodePropertyOptions[] = [];
+			// 	const siteId = this.getCurrentNodeParameter('site');
+			// 	const collections = await webflowApiRequest.call(this, 'GET', `/sites/${siteId}/collections`);
+			// 	for (const collection of collections) {
+			// 		returnData.push({
+			// 			name: collection.name,
+			// 			value: collection._id,
+			// 		});
+			// 	}
+			// 	return returnData;
+			// },
 		},
 	};
 
@@ -155,7 +217,7 @@ export class WebflowTrigger implements INodeType {
 				const endpoint = `/sites/${siteId}/webhooks/${webhookData.webhookId}`;
 				try {
 					await webflowApiRequest.call(this, 'GET', endpoint);
-				} catch (err) {
+				} catch (error) {
 					return false;
 				}
 				return true;
@@ -172,6 +234,17 @@ export class WebflowTrigger implements INodeType {
 					url: webhookUrl,
 
 				};
+
+				// if (event.startsWith('collection')) {
+				// 	const allCollections = this.getNodeParameter('allCollections') as boolean;
+
+				// 	if (allCollections === false) {
+				// 		body.filter = {
+				// 			'cid': this.getNodeParameter('collection') as string,
+				// 		};
+				// 	}
+				// }
+
 				const { _id } = await webflowApiRequest.call(this, 'POST', endpoint, body);
 				webhookData.webhookId = _id;
 				return true;
@@ -183,7 +256,7 @@ export class WebflowTrigger implements INodeType {
 				const endpoint = `/sites/${siteId}/webhooks/${webhookData.webhookId}`;
 				try {
 					responseData = await webflowApiRequest.call(this, 'DELETE', endpoint);
-				} catch(error) {
+				} catch (error) {
 					return false;
 				}
 				if (!responseData.deleted) {

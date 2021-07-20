@@ -14,9 +14,16 @@ import {
 
 import {
 	Db,
-	GenericHelpers,
 	ICredentialsDecryptedDb,
 } from '../../src';
+
+import { 
+	getLogger,
+} from '../../src/Logger';
+
+import {
+	LoggerProxy,
+} from 'n8n-workflow';
 
 import * as fs from 'fs';
 import * as path from 'path';
@@ -59,8 +66,11 @@ export class ExportCredentialsCommand extends Command {
 	};
 
 	async run() {
-		const { flags } = this.parse(ExportCredentialsCommand);
+		const logger = getLogger();
+		LoggerProxy.init(logger);
 
+		const { flags } = this.parse(ExportCredentialsCommand);
+		
 		if (flags.backup) {
 			flags.all = true;
 			flags.pretty = true;
@@ -68,41 +78,42 @@ export class ExportCredentialsCommand extends Command {
 		}
 
 		if (!flags.all && !flags.id) {
-			GenericHelpers.logOutput(`Either option "--all" or "--id" have to be set!`);
+			console.info(`Either option "--all" or "--id" have to be set!`);
 			return;
 		}
 
 		if (flags.all && flags.id) {
-			GenericHelpers.logOutput(`You should either use "--all" or "--id" but never both!`);
+			console.info(`You should either use "--all" or "--id" but never both!`);
 			return;
 		}
 
 		if (flags.separate) {
 			try {
 				if (!flags.output) {
-					GenericHelpers.logOutput(`You must inform an output directory via --output when using --separate`);
+					console.info(`You must inform an output directory via --output when using --separate`);
 					return;
 				}
 
 				if (fs.existsSync(flags.output)) {
 					if (!fs.lstatSync(flags.output).isDirectory()) {
-						GenericHelpers.logOutput(`The paramenter --output must be a directory`);
+						console.info(`The paramenter --output must be a directory`);
 						return;
 					}
 				} else {
 					fs.mkdirSync(flags.output, { recursive: true });
 				}
 			} catch (e) {
-				console.error('\nFILESYSTEM ERROR');
-				console.log('====================================');
-				console.error(e.message);
-				console.error(e.stack);
+				console.error('Aborting execution as a filesystem error has been encountered while creating the output directory. See log messages for details.');
+				logger.error('\nFILESYSTEM ERROR');
+				logger.info('====================================');
+				logger.error(e.message);
+				logger.error(e.stack);
 				this.exit(1);
 			}
 		} else if (flags.output) {
 			if (fs.existsSync(flags.output)) {
 				if (fs.lstatSync(flags.output).isDirectory()) {
-					GenericHelpers.logOutput(`The paramenter --output must be a writeble file`);
+					console.info(`The paramenter --output must be a writeble file`);
 					return;
 				}
 			}
@@ -140,21 +151,24 @@ export class ExportCredentialsCommand extends Command {
 				let fileContents: string, i: number;
 				for (i = 0; i < credentials.length; i++) {
 					fileContents = JSON.stringify(credentials[i], null, flags.pretty ? 2 : undefined);
-					const filename = (flags.output!.endsWith(path.sep) ? flags.output! : flags.output + path.sep) + credentials[i].id + ".json";
+					const filename = (flags.output!.endsWith(path.sep) ? flags.output! : flags.output + path.sep) + credentials[i].id + '.json';
 					fs.writeFileSync(filename, fileContents);
 				}
-				console.log('Successfully exported', i, 'credentials.');
+				console.info(`Successfully exported ${i} credentials.`);
 			} else {
 				const fileContents = JSON.stringify(credentials, null, flags.pretty ? 2 : undefined);
 				if (flags.output) {
 					fs.writeFileSync(flags.output!, fileContents);
-					console.log('Successfully exported', credentials.length, 'credentials.');
+					console.info(`Successfully exported ${credentials.length} credentials.`);
 				} else {
-					console.log(fileContents);
+					console.info(fileContents);
 				}
 			}
+			// Force exit as process won't exit using MySQL or Postgres.
+			process.exit(0);
 		} catch (error) {
-			this.error(error.message);
+			console.error('Error exporting credentials. See log messages for details.');
+			logger.error(error.message);
 			this.exit(1);
 		}
 	}

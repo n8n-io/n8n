@@ -8,6 +8,7 @@ import {
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
+	NodeOperationError,
 } from 'n8n-workflow';
 
 import * as fflate from 'fflate';
@@ -204,122 +205,131 @@ export class Compression implements INodeType {
 		const operation = this.getNodeParameter('operation', 0) as string;
 
 		for (let i = 0; i < length; i++) {
+			try {
 
-			if (operation === 'decompress') {
-				const binaryPropertyNames = (this.getNodeParameter('binaryPropertyName', 0) as string).split(',').map(key => key.trim());
+				if (operation === 'decompress') {
+					const binaryPropertyNames = (this.getNodeParameter('binaryPropertyName', 0) as string).split(',').map(key => key.trim());
 
-				const outputPrefix = this.getNodeParameter('outputPrefix', 0) as string;
+					const outputPrefix = this.getNodeParameter('outputPrefix', 0) as string;
 
-				const binaryObject: IBinaryKeyData = {};
+					const binaryObject: IBinaryKeyData = {};
 
-				let zipIndex = 0;
+					let zipIndex = 0;
 
-				for (const [index, binaryPropertyName] of binaryPropertyNames.entries()) {
-					if (items[i].binary === undefined) {
-						throw new Error('No binary data exists on item!');
-					}
-					//@ts-ignore
-					if (items[i].binary[binaryPropertyName] === undefined) {
-						throw new Error(`No binary data property "${binaryPropertyName}" does not exists on item!`);
-					}
-
-					const binaryData = (items[i].binary as IBinaryKeyData)[binaryPropertyName];
-
-					if (binaryData.fileExtension === 'zip') {
-						const files = await unzip(Buffer.from(binaryData.data as string, BINARY_ENCODING));
-
-						for (const key of Object.keys(files)) {
-							// when files are compresed using MACOSX for some reason they are duplicated under __MACOSX
-							if (key.includes('__MACOSX')) {
-								continue;
-							}
-
-							const data = await this.helpers.prepareBinaryData(Buffer.from(files[key].buffer), key);
-
-							binaryObject[`${outputPrefix}${zipIndex++}`] = data;
+					for (const [index, binaryPropertyName] of binaryPropertyNames.entries()) {
+						if (items[i].binary === undefined) {
+							throw new NodeOperationError(this.getNode(), 'No binary data exists on item!');
 						}
-					} else if (binaryData.fileExtension === 'gz') {
-						const file = await gunzip(Buffer.from(binaryData.data as string, BINARY_ENCODING));
+						//@ts-ignore
+						if (items[i].binary[binaryPropertyName] === undefined) {
+							throw new NodeOperationError(this.getNode(), `No binary data property "${binaryPropertyName}" does not exists on item!`);
+						}
 
-						const fileName = binaryData.fileName?.split('.')[0];
+						const binaryData = (items[i].binary as IBinaryKeyData)[binaryPropertyName];
 
-						const propertyName = `${outputPrefix}${index}`;
+						if (binaryData.fileExtension === 'zip') {
+							const files = await unzip(Buffer.from(binaryData.data as string, BINARY_ENCODING));
 
-						binaryObject[propertyName] = await this.helpers.prepareBinaryData(Buffer.from(file.buffer), fileName);
-						const fileExtension = mime.extension(binaryObject[propertyName].mimeType) as string;
-						binaryObject[propertyName].fileName = `${fileName}.${fileExtension}`;
-						binaryObject[propertyName].fileExtension = fileExtension;
-					}
-				}
+							for (const key of Object.keys(files)) {
+								// when files are compresed using MACOSX for some reason they are duplicated under __MACOSX
+								if (key.includes('__MACOSX')) {
+									continue;
+								}
 
-				returnData.push({
-					json: items[i].json,
-					binary: binaryObject,
-				});
-			}
+								const data = await this.helpers.prepareBinaryData(Buffer.from(files[key].buffer), key);
 
-			if (operation === 'compress') {
-				const binaryPropertyNames = (this.getNodeParameter('binaryPropertyName', 0) as string).split(',').map(key => key.trim());
+								binaryObject[`${outputPrefix}${zipIndex++}`] = data;
+							}
+						} else if (binaryData.fileExtension === 'gz') {
+							const file = await gunzip(Buffer.from(binaryData.data as string, BINARY_ENCODING));
 
-				const outputFormat = this.getNodeParameter('outputFormat', 0) as string;
+							const fileName = binaryData.fileName?.split('.')[0];
 
-				const zipData: fflate.Zippable = {};
+							const propertyName = `${outputPrefix}${index}`;
 
-				const binaryObject: IBinaryKeyData = {};
-
-				for (const [index, binaryPropertyName] of binaryPropertyNames.entries()) {
-
-					if (items[i].binary === undefined) {
-						throw new Error('No binary data exists on item!');
-					}
-					//@ts-ignore
-					if (items[i].binary[binaryPropertyName] === undefined) {
-						throw new Error(`No binary data property "${binaryPropertyName}" does not exists on item!`);
+							binaryObject[propertyName] = await this.helpers.prepareBinaryData(Buffer.from(file.buffer), fileName);
+							const fileExtension = mime.extension(binaryObject[propertyName].mimeType) as string;
+							binaryObject[propertyName].fileName = `${fileName}.${fileExtension}`;
+							binaryObject[propertyName].fileExtension = fileExtension;
+						}
 					}
 
-					const binaryData = (items[i].binary as IBinaryKeyData)[binaryPropertyName];
-
-					if (outputFormat === 'zip') {
-						zipData[binaryData.fileName as string] = [
-							Buffer.from(binaryData.data, BINARY_ENCODING), {
-								level: ALREADY_COMPRESSED.includes(binaryData.fileExtension as string) ? 0 : 6,
-							},
-						];
-
-					} else if (outputFormat === 'gzip') {
-						const outputPrefix = this.getNodeParameter('outputPrefix', 0) as string;
-
-						const data = await gzip(Buffer.from(binaryData.data, BINARY_ENCODING)) as Uint8Array;
-
-						const fileName = binaryData.fileName?.split('.')[0];
-
-						binaryObject[`${outputPrefix}${index}`] = await this.helpers.prepareBinaryData(Buffer.from(data), `${fileName}.gzip`);
-					}
-				}
-
-				if (outputFormat === 'zip') {
-					const fileName = this.getNodeParameter('fileName', 0) as string;
-
-					const binaryPropertyOutput = this.getNodeParameter('binaryPropertyOutput', 0) as string;
-
-					const buffer = await zip(zipData);
-
-					const data = await this.helpers.prepareBinaryData(Buffer.from(buffer), fileName);
-
-					returnData.push({
-						json: items[i].json,
-						binary: {
-							[binaryPropertyOutput]: data,
-						},
-					});
-				}
-
-				if (outputFormat === 'gzip') {
 					returnData.push({
 						json: items[i].json,
 						binary: binaryObject,
 					});
 				}
+
+				if (operation === 'compress') {
+					const binaryPropertyNames = (this.getNodeParameter('binaryPropertyName', 0) as string).split(',').map(key => key.trim());
+
+					const outputFormat = this.getNodeParameter('outputFormat', 0) as string;
+
+					const zipData: fflate.Zippable = {};
+
+					const binaryObject: IBinaryKeyData = {};
+
+					for (const [index, binaryPropertyName] of binaryPropertyNames.entries()) {
+
+						if (items[i].binary === undefined) {
+							throw new NodeOperationError(this.getNode(), 'No binary data exists on item!');
+						}
+						//@ts-ignore
+						if (items[i].binary[binaryPropertyName] === undefined) {
+							throw new NodeOperationError(this.getNode(), `No binary data property "${binaryPropertyName}" does not exists on item!`);
+						}
+
+						const binaryData = (items[i].binary as IBinaryKeyData)[binaryPropertyName];
+
+						if (outputFormat === 'zip') {
+							zipData[binaryData.fileName as string] = [
+								Buffer.from(binaryData.data, BINARY_ENCODING), {
+									level: ALREADY_COMPRESSED.includes(binaryData.fileExtension as string) ? 0 : 6,
+								},
+							];
+
+						} else if (outputFormat === 'gzip') {
+							const outputPrefix = this.getNodeParameter('outputPrefix', 0) as string;
+
+							const data = await gzip(Buffer.from(binaryData.data, BINARY_ENCODING)) as Uint8Array;
+
+							const fileName = binaryData.fileName?.split('.')[0];
+
+							binaryObject[`${outputPrefix}${index}`] = await this.helpers.prepareBinaryData(Buffer.from(data), `${fileName}.gzip`);
+						}
+					}
+
+					if (outputFormat === 'zip') {
+						const fileName = this.getNodeParameter('fileName', 0) as string;
+
+						const binaryPropertyOutput = this.getNodeParameter('binaryPropertyOutput', 0) as string;
+
+						const buffer = await zip(zipData);
+
+						const data = await this.helpers.prepareBinaryData(Buffer.from(buffer), fileName);
+
+						returnData.push({
+							json: items[i].json,
+							binary: {
+								[binaryPropertyOutput]: data,
+							},
+						});
+					}
+
+					if (outputFormat === 'gzip') {
+						returnData.push({
+							json: items[i].json,
+							binary: binaryObject,
+						});
+					}
+				}
+			
+			} catch (error) {
+				if (this.continueOnFail()) {
+					returnData.push({json:{ error: error.message }});
+					continue;
+				}
+				throw error;
 			}
 		}
 

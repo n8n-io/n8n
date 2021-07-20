@@ -8,6 +8,8 @@ import {
 	INodeType,
 	INodeTypeDescription,
 	IWebhookResponseData,
+	NodeApiError,
+	NodeOperationError,
 } from 'n8n-workflow';
 
 import {
@@ -18,7 +20,7 @@ export class StripeTrigger implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Stripe Trigger',
 		name: 'stripeTrigger',
-		icon: 'file:stripe.png',
+		icon: 'file:stripe.svg',
 		group: ['trigger'],
 		version: 1,
 		description: 'Handle Stripe events via webhooks',
@@ -817,8 +819,8 @@ export class StripeTrigger implements INodeType {
 
 				try {
 					await stripeApiRequest.call(this, 'GET', endpoint, {});
-				} catch (e) {
-					if (e.message.includes('resource_missing')) {
+				} catch (error) {
+					if (error.message.includes('resource_missing')) {
 						// Webhook does not exist
 						delete webhookData.webhookId;
 						delete webhookData.webhookEvents;
@@ -828,7 +830,7 @@ export class StripeTrigger implements INodeType {
 					}
 
 					// Some error occured
-					throw e;
+					throw error;
 				}
 
 				// If it did not error then the webhook exists
@@ -849,13 +851,13 @@ export class StripeTrigger implements INodeType {
 				let responseData;
 				try {
 					responseData = await stripeApiRequest.call(this, 'POST', endpoint, body);
-				} catch (e) {
-					throw e;
+				} catch (error) {
+					throw error;
 				}
 
 				if (responseData.id === undefined || responseData.secret === undefined || responseData.status !== 'enabled') {
 					// Required data is missing so was not successful
-					throw new Error('Stripe webhook creation response did not contain the expected data.');
+					throw new NodeApiError(this.getNode(), responseData, { message: 'Stripe webhook creation response did not contain the expected data.' });
 				}
 
 				const webhookData = this.getWorkflowStaticData('node');
@@ -874,7 +876,7 @@ export class StripeTrigger implements INodeType {
 
 					try {
 						await stripeApiRequest.call(this, 'DELETE', endpoint, body);
-					} catch (e) {
+					} catch (error) {
 						return false;
 					}
 

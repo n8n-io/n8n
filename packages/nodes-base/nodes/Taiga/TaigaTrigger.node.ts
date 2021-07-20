@@ -26,7 +26,7 @@ export class TaigaTrigger implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Taiga Trigger',
 		name: 'taigaTrigger',
-		icon: 'file:taiga.png',
+		icon: 'file:taiga.svg',
 		group: ['trigger'],
 		version: 1,
 		subtitle: '={{"project:" + $parameter["projectSlug"]}}',
@@ -39,25 +39,7 @@ export class TaigaTrigger implements INodeType {
 		outputs: ['main'],
 		credentials: [
 			{
-				name: 'taigaCloudApi',
-				displayOptions: {
-					show: {
-						version: [
-							'cloud',
-						],
-					},
-				},
-				required: true,
-			},
-			{
-				name: 'taigaServerApi',
-				displayOptions: {
-					show: {
-						version: [
-							'server',
-						],
-					},
-				},
+				name: 'taigaApi',
 				required: true,
 			},
 		],
@@ -70,22 +52,6 @@ export class TaigaTrigger implements INodeType {
 			},
 		],
 		properties: [
-			{
-				displayName: 'Taiga Version',
-				name: 'version',
-				type: 'options',
-				options: [
-					{
-						name: 'Cloud',
-						value: 'cloud',
-					},
-					{
-						name: 'Server (Self Hosted)',
-						value: 'server',
-					},
-				],
-				default: 'cloud',
-			},
 			{
 				displayName: 'Project ID',
 				name: 'projectId',
@@ -146,15 +112,7 @@ export class TaigaTrigger implements INodeType {
 				return false;
 			},
 			async create(this: IHookFunctions): Promise<boolean> {
-				const version = this.getNodeParameter('version') as string;
-
-				let credentials;
-
-				if (version === 'server') {
-					credentials = this.getCredentials('taigaServerApi') as ICredentialDataDecryptedObject;
-				} else {
-					credentials = this.getCredentials('taigaCloudApi') as ICredentialDataDecryptedObject;
-				}
+				const credentials = this.getCredentials('taigaApi') as ICredentialDataDecryptedObject;
 
 				const webhookUrl = this.getNodeWebhookUrl('default') as string;
 

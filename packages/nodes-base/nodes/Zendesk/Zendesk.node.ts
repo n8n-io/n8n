@@ -9,6 +9,8 @@ import {
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
+	NodeApiError,
+	NodeOperationError,
 } from 'n8n-workflow';
 
 import {
@@ -231,279 +233,287 @@ export class Zendesk implements INodeType {
 		const qs: IDataObject = {};
 		let responseData;
 		for (let i = 0; i < length; i++) {
-			const resource = this.getNodeParameter('resource', 0) as string;
-			const operation = this.getNodeParameter('operation', 0) as string;
-			//https://developer.zendesk.com/rest_api/docs/support/introduction
-			if (resource === 'ticket') {
-				//https://developer.zendesk.com/rest_api/docs/support/tickets
-				if (operation === 'create') {
-					const description = this.getNodeParameter('description', i) as string;
-					const jsonParameters = this.getNodeParameter('jsonParameters', i) as boolean;
-					const comment: IComment = {
-						body: description,
-					};
-					const body: ITicket = {
-							comment,
-					};
-					if (jsonParameters) {
-						const additionalFieldsJson = this.getNodeParameter('additionalFieldsJson', i) as string;
+			try {
+				const resource = this.getNodeParameter('resource', 0) as string;
+				const operation = this.getNodeParameter('operation', 0) as string;
+				//https://developer.zendesk.com/rest_api/docs/support/introduction
+				if (resource === 'ticket') {
+					//https://developer.zendesk.com/rest_api/docs/support/tickets
+					if (operation === 'create') {
+						const description = this.getNodeParameter('description', i) as string;
+						const jsonParameters = this.getNodeParameter('jsonParameters', i) as boolean;
+						const comment: IComment = {
+							body: description,
+						};
+						const body: ITicket = {
+								comment,
+						};
+						if (jsonParameters) {
+							const additionalFieldsJson = this.getNodeParameter('additionalFieldsJson', i) as string;
 
-						if (additionalFieldsJson !== '' ) {
+							if (additionalFieldsJson !== '' ) {
 
-							if (validateJSON(additionalFieldsJson) !== undefined) {
+								if (validateJSON(additionalFieldsJson) !== undefined) {
 
-								Object.assign(body, JSON.parse(additionalFieldsJson));
+									Object.assign(body, JSON.parse(additionalFieldsJson));
 
-							} else {
-								throw new Error('Additional fields must be a valid JSON');
+								} else {
+									throw new NodeOperationError(this.getNode(), 'Additional fields must be a valid JSON');
+								}
+							}
+
+						} else {
+
+							const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+
+							if (additionalFields.type) {
+								body.type = additionalFields.type as string;
+							}
+							if (additionalFields.externalId) {
+								body.external_id = additionalFields.externalId as string;
+							}
+							if (additionalFields.subject) {
+								body.subject = additionalFields.subject as string;
+							}
+							if (additionalFields.status) {
+								body.status = additionalFields.status as string;
+							}
+							if (additionalFields.recipient) {
+								body.recipient = additionalFields.recipient as string;
+							}
+							if (additionalFields.group) {
+								body.group = additionalFields.group as string;
+							}
+							if (additionalFields.tags) {
+								body.tags = additionalFields.tags as string[];
+							}
+							if (additionalFields.customFieldsUi) {
+								body.custom_fields = (additionalFields.customFieldsUi as IDataObject).customFieldsValues as IDataObject[];
 							}
 						}
+						responseData = await zendeskApiRequest.call(this, 'POST', '/tickets', { ticket: body });
+						responseData = responseData.ticket;
+					}
+					//https://developer.zendesk.com/rest_api/docs/support/tickets#update-ticket
+					if (operation === 'update') {
+						const ticketId = this.getNodeParameter('id', i) as string;
+						const jsonParameters = this.getNodeParameter('jsonParameters', i) as boolean;
+						const body: ITicket = {};
 
-					} else {
+						if (jsonParameters) {
+							const updateFieldsJson = this.getNodeParameter('updateFieldsJson', i) as string;
 
+							if (updateFieldsJson !== '' ) {
+
+								if (validateJSON(updateFieldsJson) !== undefined) {
+
+									Object.assign(body, JSON.parse(updateFieldsJson));
+
+								} else {
+									throw new NodeOperationError(this.getNode(), 'Additional fields must be a valid JSON');
+								}
+							}
+
+						} else {
+
+							const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+
+							if (updateFields.type) {
+								body.type = updateFields.type as string;
+							}
+							if (updateFields.externalId) {
+								body.external_id = updateFields.externalId as string;
+							}
+							if (updateFields.subject) {
+								body.subject = updateFields.subject as string;
+							}
+							if (updateFields.status) {
+								body.status = updateFields.status as string;
+							}
+							if (updateFields.recipient) {
+								body.recipient = updateFields.recipient as string;
+							}
+							if (updateFields.group) {
+								body.group = updateFields.group as string;
+							}
+							if (updateFields.tags) {
+								body.tags = updateFields.tags as string[];
+							}
+							if (updateFields.customFieldsUi) {
+								body.custom_fields = (updateFields.customFieldsUi as IDataObject).customFieldsValues as IDataObject[];
+							}
+						}
+						responseData = await zendeskApiRequest.call(this, 'PUT', `/tickets/${ticketId}`, { ticket: body });
+						responseData = responseData.ticket;
+					}
+					//https://developer.zendesk.com/rest_api/docs/support/tickets#show-ticket
+					if (operation === 'get') {
+						const ticketId = this.getNodeParameter('id', i) as string;
+						responseData = await zendeskApiRequest.call(this, 'GET', `/tickets/${ticketId}`, {});
+						responseData = responseData.ticket;
+					}
+					//https://developer.zendesk.com/rest_api/docs/support/search#list-search-results
+					if (operation === 'getAll') {
+						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const options = this.getNodeParameter('options', i) as IDataObject;
+						qs.query = 'type:ticket';
+						if (options.status) {
+							qs.query += ` status:${options.status}`;
+						}
+						if (options.sortBy) {
+							qs.sort_by = options.sortBy;
+						}
+						if (options.sortOrder) {
+							qs.sort_order = options.sortOrder;
+						}
+						if (returnAll) {
+							responseData = await zendeskApiRequestAllItems.call(this, 'results', 'GET', `/search`, {}, qs);
+						} else {
+							const limit = this.getNodeParameter('limit', i) as number;
+							qs.per_page = limit;
+							responseData = await zendeskApiRequest.call(this, 'GET', `/search`, {}, qs);
+							responseData = responseData.results;
+						}
+					}
+					//https://developer.zendesk.com/rest_api/docs/support/tickets#delete-ticket
+					if (operation === 'delete') {
+						const ticketId = this.getNodeParameter('id', i) as string;
+						try {
+							responseData = await zendeskApiRequest.call(this, 'DELETE', `/tickets/${ticketId}`, {});
+						} catch (error) {
+							throw new NodeApiError(this.getNode(), error);
+						}
+					}
+				}
+				//https://developer.zendesk.com/rest_api/docs/support/ticket_fields
+				if (resource === 'ticketField') {
+					//https://developer.zendesk.com/rest_api/docs/support/tickets#show-ticket
+					if (operation === 'get') {
+						const ticketFieldId = this.getNodeParameter('ticketFieldId', i) as string;
+						responseData = await zendeskApiRequest.call(this, 'GET', `/ticket_fields/${ticketFieldId}`, {});
+						responseData = responseData.ticket_field;
+					}
+					//https://developer.zendesk.com/rest_api/docs/support/ticket_fields#list-ticket-fields
+					if (operation === 'getAll') {
+						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						if (returnAll) {
+							responseData = await zendeskApiRequestAllItems.call(this, 'ticket_fields', 'GET', '/ticket_fields', {}, qs);
+						} else {
+							const limit = this.getNodeParameter('limit', i) as number;
+							qs.limit = limit;
+							responseData = await zendeskApiRequestAllItems.call(this, 'ticket_fields', 'GET', '/ticket_fields', {}, qs);
+							responseData = responseData.slice(0, limit);
+						}
+					}
+				}
+				//https://developer.zendesk.com/rest_api/docs/support/users
+				if (resource === 'user') {
+					//https://developer.zendesk.com/rest_api/docs/support/users#create-user
+					if (operation === 'create') {
+						const name = this.getNodeParameter('name', i) as string;
 						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 
-						if (additionalFields.type) {
-							body.type = additionalFields.type as string;
-						}
-						if (additionalFields.externalId) {
-							body.external_id = additionalFields.externalId as string;
-						}
-						if (additionalFields.subject) {
-							body.subject = additionalFields.subject as string;
-						}
-						if (additionalFields.status) {
-							body.status = additionalFields.status as string;
-						}
-						if (additionalFields.recipient) {
-							body.recipient = additionalFields.recipient as string;
-						}
-						if (additionalFields.group) {
-							body.group = additionalFields.group as string;
-						}
-						if (additionalFields.tags) {
-							body.tags = additionalFields.tags as string[];
-						}
-						if (additionalFields.customFieldsUi) {
-							body.custom_fields = (additionalFields.customFieldsUi as IDataObject).customFieldsValues as IDataObject[];
-						}
-					}
-					responseData = await zendeskApiRequest.call(this, 'POST', '/tickets', { ticket: body });
-					responseData = responseData.ticket;
-				}
-				//https://developer.zendesk.com/rest_api/docs/support/tickets#update-ticket
-				if (operation === 'update') {
-					const ticketId = this.getNodeParameter('id', i) as string;
-					const jsonParameters = this.getNodeParameter('jsonParameters', i) as boolean;
-					const body: ITicket = {};
+						const body: IDataObject = {
+							name,
+						};
 
-					if (jsonParameters) {
-						const updateFieldsJson = this.getNodeParameter('updateFieldsJson', i) as string;
+						Object.assign(body, additionalFields);
 
-						if (updateFieldsJson !== '' ) {
-
-							if (validateJSON(updateFieldsJson) !== undefined) {
-
-								Object.assign(body, JSON.parse(updateFieldsJson));
-
-							} else {
-								throw new Error('Additional fields must be a valid JSON');
+						if (body.userFieldsUi) {
+							const userFields = (body.userFieldsUi as IDataObject).userFieldValues as IDataObject[];
+							if (userFields) {
+								body.user_fields = {};
+								for (const userField of userFields) {
+									//@ts-ignore
+									body.user_fields[userField.field] = userField.value;
+								}
+								delete body.userFieldsUi;
 							}
 						}
 
-					} else {
-
+						responseData = await zendeskApiRequest.call(this, 'POST', '/users', { user: body });
+						responseData = responseData.user;
+					}
+					//https://developer.zendesk.com/rest_api/docs/support/tickets#update-ticket
+					if (operation === 'update') {
+						const userId = this.getNodeParameter('id', i) as string;
 						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
 
-						if (updateFields.type) {
-							body.type = updateFields.type as string;
-						}
-						if (updateFields.externalId) {
-							body.external_id = updateFields.externalId as string;
-						}
-						if (updateFields.subject) {
-							body.subject = updateFields.subject as string;
-						}
-						if (updateFields.status) {
-							body.status = updateFields.status as string;
-						}
-						if (updateFields.recipient) {
-							body.recipient = updateFields.recipient as string;
-						}
-						if (updateFields.group) {
-							body.group = updateFields.group as string;
-						}
-						if (updateFields.tags) {
-							body.tags = updateFields.tags as string[];
-						}
-						if (updateFields.customFieldsUi) {
-							body.custom_fields = (updateFields.customFieldsUi as IDataObject).customFieldsValues as IDataObject[];
-						}
-					}
-					responseData = await zendeskApiRequest.call(this, 'PUT', `/tickets/${ticketId}`, { ticket: body });
-					responseData = responseData.ticket;
-				}
-				//https://developer.zendesk.com/rest_api/docs/support/tickets#show-ticket
-				if (operation === 'get') {
-					const ticketId = this.getNodeParameter('id', i) as string;
-					responseData = await zendeskApiRequest.call(this, 'GET', `/tickets/${ticketId}`, {});
-					responseData = responseData.ticket;
-				}
-				//https://developer.zendesk.com/rest_api/docs/support/search#list-search-results
-				if (operation === 'getAll') {
-					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
-					const options = this.getNodeParameter('options', i) as IDataObject;
-					qs.query = 'type:ticket';
-					if (options.status) {
-						qs.query += ` status:${options.status}`;
-					}
-					if (options.sortBy) {
-						qs.sort_by = options.sortBy;
-					}
-					if (options.sortOrder) {
-						qs.sort_order = options.sortOrder;
-					}
-					if (returnAll) {
-						responseData = await zendeskApiRequestAllItems.call(this, 'results', 'GET', `/search`, {}, qs);
-					} else {
-						const limit = this.getNodeParameter('limit', i) as number;
-						qs.per_page = limit;
-						responseData = await zendeskApiRequest.call(this, 'GET', `/search`, {}, qs);
-						responseData = responseData.results;
-					}
-				}
-				//https://developer.zendesk.com/rest_api/docs/support/tickets#delete-ticket
-				if (operation === 'delete') {
-					const ticketId = this.getNodeParameter('id', i) as string;
-					try {
-						responseData = await zendeskApiRequest.call(this, 'DELETE', `/tickets/${ticketId}`, {});
-					} catch (err) {
-						throw new Error(`Zendesk Error: ${err}`);
-					}
-				}
-			}
-			//https://developer.zendesk.com/rest_api/docs/support/ticket_fields
-			if (resource === 'ticketField') {
-				//https://developer.zendesk.com/rest_api/docs/support/tickets#show-ticket
-				if (operation === 'get') {
-					const ticketFieldId = this.getNodeParameter('ticketFieldId', i) as string;
-					responseData = await zendeskApiRequest.call(this, 'GET', `/ticket_fields/${ticketFieldId}`, {});
-					responseData = responseData.ticket_field;
-				}
-				//https://developer.zendesk.com/rest_api/docs/support/ticket_fields#list-ticket-fields
-				if (operation === 'getAll') {
-					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
-					if (returnAll) {
-						responseData = await zendeskApiRequestAllItems.call(this, 'ticket_fields', 'GET', '/ticket_fields', {}, qs);
-					} else {
-						const limit = this.getNodeParameter('limit', i) as number;
-						qs.limit = limit;
-						responseData = await zendeskApiRequestAllItems.call(this, 'ticket_fields', 'GET', '/ticket_fields', {}, qs);
-						responseData = responseData.slice(0, limit);
-					}
-				}
-			}
-			//https://developer.zendesk.com/rest_api/docs/support/users
-			if (resource === 'user') {
-				//https://developer.zendesk.com/rest_api/docs/support/users#create-user
-				if (operation === 'create') {
-					const name = this.getNodeParameter('name', i) as string;
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const body: IDataObject = {};
 
-					const body: IDataObject = {
-						name,
-					};
+						Object.assign(body, updateFields);
 
-					Object.assign(body, additionalFields);
-
-					if (body.userFieldsUi) {
-						const userFields = (body.userFieldsUi as IDataObject).userFieldValues as IDataObject[];
-						if (userFields) {
-							body.user_fields = {};
-							for (const userField of userFields) {
-								//@ts-ignore
-								body.user_fields[userField.field] = userField.value;
+						if (body.userFieldsUi) {
+							const userFields = (body.userFieldsUi as IDataObject).userFieldValues as IDataObject[];
+							if (userFields) {
+								body.user_fields = {};
+								for (const userField of userFields) {
+									//@ts-ignore
+									body.user_fields[userField.field] = userField.value;
+								}
+								delete body.userFieldsUi;
 							}
-							delete body.userFieldsUi;
+						}
+
+						responseData = await zendeskApiRequest.call(this, 'PUT', `/users/${userId}`, { user: body });
+						responseData = responseData.user;
+					}
+					//https://developer.zendesk.com/rest_api/docs/support/users#show-user
+					if (operation === 'get') {
+						const userId = this.getNodeParameter('id', i) as string;
+						responseData = await zendeskApiRequest.call(this, 'GET', `/users/${userId}`, {});
+						responseData = responseData.user;
+					}
+					//https://developer.zendesk.com/rest_api/docs/support/users#list-users
+					if (operation === 'getAll') {
+						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const options = this.getNodeParameter('filters', i) as IDataObject;
+
+						Object.assign(qs, options);
+
+						if (returnAll) {
+							responseData = await zendeskApiRequestAllItems.call(this, 'users', 'GET', `/users`, {}, qs);
+						} else {
+							const limit = this.getNodeParameter('limit', i) as number;
+							qs.per_page = limit;
+							responseData = await zendeskApiRequest.call(this, 'GET', `/users`, {}, qs);
+							responseData = responseData.users;
 						}
 					}
+					//https://developer.zendesk.com/rest_api/docs/support/users#search-users
+					if (operation === 'search') {
+						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const options = this.getNodeParameter('filters', i) as IDataObject;
 
-					responseData = await zendeskApiRequest.call(this, 'POST', '/users', { user: body });
-					responseData = responseData.user;
-				}
-				//https://developer.zendesk.com/rest_api/docs/support/tickets#update-ticket
-				if (operation === 'update') {
-					const userId = this.getNodeParameter('id', i) as string;
-					const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+						Object.assign(qs, options);
 
-					const body: IDataObject = {};
-
-					Object.assign(body, updateFields);
-
-					if (body.userFieldsUi) {
-						const userFields = (body.userFieldsUi as IDataObject).userFieldValues as IDataObject[];
-						if (userFields) {
-							body.user_fields = {};
-							for (const userField of userFields) {
-								//@ts-ignore
-								body.user_fields[userField.field] = userField.value;
-							}
-							delete body.userFieldsUi;
+						if (returnAll) {
+							responseData = await zendeskApiRequestAllItems.call(this, 'users', 'GET', `/users/search`, {}, qs);
+						} else {
+							const limit = this.getNodeParameter('limit', i) as number;
+							qs.per_page = limit;
+							responseData = await zendeskApiRequest.call(this, 'GET', `/users/search`, {}, qs);
+							responseData = responseData.users;
 						}
 					}
-
-					responseData = await zendeskApiRequest.call(this, 'PUT', `/users/${userId}`, { user: body });
-					responseData = responseData.user;
-				}
-				//https://developer.zendesk.com/rest_api/docs/support/users#show-user
-				if (operation === 'get') {
-					const userId = this.getNodeParameter('id', i) as string;
-					responseData = await zendeskApiRequest.call(this, 'GET', `/users/${userId}`, {});
-					responseData = responseData.user;
-				}
-				//https://developer.zendesk.com/rest_api/docs/support/users#list-users
-				if (operation === 'getAll') {
-					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
-					const options = this.getNodeParameter('filters', i) as IDataObject;
-
-					Object.assign(qs, options);
-
-					if (returnAll) {
-						responseData = await zendeskApiRequestAllItems.call(this, 'users', 'GET', `/users`, {}, qs);
-					} else {
-						const limit = this.getNodeParameter('limit', i) as number;
-						qs.per_page = limit;
-						responseData = await zendeskApiRequest.call(this, 'GET', `/users`, {}, qs);
-						responseData = responseData.users;
+					//https://developer.zendesk.com/rest_api/docs/support/users#delete-user
+					if (operation === 'delete') {
+						const userId = this.getNodeParameter('id', i) as string;
+						responseData = await zendeskApiRequest.call(this, 'DELETE', `/users/${userId}`, {});
+						responseData = responseData.user;
 					}
 				}
-				//https://developer.zendesk.com/rest_api/docs/support/users#search-users
-				if (operation === 'search') {
-					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
-					const options = this.getNodeParameter('filters', i) as IDataObject;
-
-					Object.assign(qs, options);
-
-					if (returnAll) {
-						responseData = await zendeskApiRequestAllItems.call(this, 'users', 'GET', `/users/search`, {}, qs);
-					} else {
-						const limit = this.getNodeParameter('limit', i) as number;
-						qs.per_page = limit;
-						responseData = await zendeskApiRequest.call(this, 'GET', `/users/search`, {}, qs);
-						responseData = responseData.users;
-					}
+				if (Array.isArray(responseData)) {
+					returnData.push.apply(returnData, responseData as IDataObject[]);
+				} else {
+					returnData.push(responseData as IDataObject);
 				}
-				//https://developer.zendesk.com/rest_api/docs/support/users#delete-user
-				if (operation === 'delete') {
-					const userId = this.getNodeParameter('id', i) as string;
-					responseData = await zendeskApiRequest.call(this, 'DELETE', `/users/${userId}`, {});
-					responseData = responseData.user;
+			} catch (error) {
+				if (this.continueOnFail()) {
+					returnData.push({ error: error.message });
+					continue;
 				}
-			}
-			if (Array.isArray(responseData)) {
-				returnData.push.apply(returnData, responseData as IDataObject[]);
-			} else {
-				returnData.push(responseData as IDataObject);
+				throw error;
 			}
 		}
 		return [this.helpers.returnJsonArray(returnData)];

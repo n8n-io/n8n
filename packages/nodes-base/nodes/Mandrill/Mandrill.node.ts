@@ -9,6 +9,8 @@ import {
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
+	NodeApiError,
+	NodeOperationError,
 } from 'n8n-workflow';
 
 import {
@@ -99,11 +101,11 @@ export class Mandrill implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Mandrill',
 		name: 'mandrill',
-		icon: 'file:mandrill.png',
+		icon: 'file:mandrill.svg',
 		group: ['output'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
-		description: 'Consume mandrill API',
+		description: 'Consume Mandrill API',
 		defaults: {
 			name: 'Mandrill',
 			color: '#c02428',
@@ -708,8 +710,8 @@ export class Mandrill implements INodeType {
 				let templates;
 				try {
 					templates = await mandrillApiRequest.call(this, '/templates', 'POST', '/list');
-				} catch (err) {
-					throw new Error(`Mandrill Error: ${err}`);
+				} catch (error) {
+					throw new NodeApiError(this.getNode(), error);
 				}
 				for (const template of templates) {
 					const templateName = template.name;
@@ -736,154 +738,162 @@ export class Mandrill implements INodeType {
 		const operation = this.getNodeParameter('operation', 0) as string;
 
 		for (let i = 0; i < items.length; i++) {
-			if (resource === 'message') {
+			try {
+				if (resource === 'message') {
 
-				const options = this.getNodeParameter('options', i) as Options;
-				const fromEmail = this.getNodeParameter('fromEmail', i) as string;
-				const toEmail = this.getNodeParameter('toEmail', i) as string;
-				const jsonActive = this.getNodeParameter('jsonParameters', i) as boolean;
-				const toEmailArray = getToEmailArray(toEmail);
+					const options = this.getNodeParameter('options', i) as Options;
+					const fromEmail = this.getNodeParameter('fromEmail', i) as string;
+					const toEmail = this.getNodeParameter('toEmail', i) as string;
+					const jsonActive = this.getNodeParameter('jsonParameters', i) as boolean;
+					const toEmailArray = getToEmailArray(toEmail);
 
-				const message: Message = {
-					html: (options.html) ? options.html : '',
-					text: (options.text) ? options.text : '',
-					subject: (options.subject) ? options.subject : '',
-					from_email: fromEmail,
-					to: toEmailArray,
-					important: (options.important) ? options.important : false,
-					track_opens: (options.trackOpens) ? options.trackOpens : false,
-					track_clicks: (options.trackClicks) ? options.trackClicks : false,
-					auto_text: (options.autoText) ? options.autoText : false,
-					auto_html: (options.autoHtml) ? options.autoHtml : false,
-					inline_css: (options.inlineCss) ? options.inlineCss : false,
-					url_strip_qs: (options.urlStripQs) ? options.urlStripQs : false,
-					preserve_recipients: (options.preserveRecipients) ? options.preserveRecipients : false,
-					view_content_link: (options.viewContentLink) ? options.viewContentLink : false,
-					async: (options.async) ? options.async : false,
-					google_analytics_campaign: (options.googleAnalyticsCampaign) ? options.googleAnalyticsCampaign : '',
-					ip_pool: (options.ipPool) ? options.ipPool : '',
-					bcc_address: (options.bccAddress) ? options.bccAddress : '',
-					tracking_domain: (options.trackingDomain) ? options.trackingDomain : '',
-					signing_domain: (options.signingDomain) ? options.signingDomain : '',
-					return_path_domain: (options.returnPathDomain) ? options.returnPathDomain : '',
-				};
+					const message: Message = {
+						html: (options.html) ? options.html : '',
+						text: (options.text) ? options.text : '',
+						subject: (options.subject) ? options.subject : '',
+						from_email: fromEmail,
+						to: toEmailArray,
+						important: (options.important) ? options.important : false,
+						track_opens: (options.trackOpens) ? options.trackOpens : false,
+						track_clicks: (options.trackClicks) ? options.trackClicks : false,
+						auto_text: (options.autoText) ? options.autoText : false,
+						auto_html: (options.autoHtml) ? options.autoHtml : false,
+						inline_css: (options.inlineCss) ? options.inlineCss : false,
+						url_strip_qs: (options.urlStripQs) ? options.urlStripQs : false,
+						preserve_recipients: (options.preserveRecipients) ? options.preserveRecipients : false,
+						view_content_link: (options.viewContentLink) ? options.viewContentLink : false,
+						async: (options.async) ? options.async : false,
+						google_analytics_campaign: (options.googleAnalyticsCampaign) ? options.googleAnalyticsCampaign : '',
+						ip_pool: (options.ipPool) ? options.ipPool : '',
+						bcc_address: (options.bccAddress) ? options.bccAddress : '',
+						tracking_domain: (options.trackingDomain) ? options.trackingDomain : '',
+						signing_domain: (options.signingDomain) ? options.signingDomain : '',
+						return_path_domain: (options.returnPathDomain) ? options.returnPathDomain : '',
+					};
 
-				if (options.googleAnalyticsDomains) {
-					message.google_analytics_domains = getGoogleAnalyticsDomainsArray(options.googleAnalyticsDomains);
-				}
+					if (options.googleAnalyticsDomains) {
+						message.google_analytics_domains = getGoogleAnalyticsDomainsArray(options.googleAnalyticsDomains);
+					}
 
-				if (options.tags) {
-					message.tags = getTags(options.tags);
-				}
+					if (options.tags) {
+						message.tags = getTags(options.tags);
+					}
 
-				if (options.fromName) {
-					message.from_name = options.fromName;
-				}
+					if (options.fromName) {
+						message.from_name = options.fromName;
+					}
 
-				if (options.subaccount) {
-					message.subaccount = options.subaccount;
-				}
+					if (options.subaccount) {
+						message.subaccount = options.subaccount;
+					}
 
-				const body: Body = {
-					template_content: [],
-					message,
-				};
+					const body: Body = {
+						template_content: [],
+						message,
+					};
 
-				if (options.sendAt) {
-					body.send_at = moment(options.sendAt).utc().format('YYYY-MM-DD HH:mm:ss');
-				}
+					if (options.sendAt) {
+						body.send_at = moment(options.sendAt).utc().format('YYYY-MM-DD HH:mm:ss');
+					}
 
-				if (jsonActive) {
+					if (jsonActive) {
 
-					body.message.headers = validateJSON(this.getNodeParameter('headersJson', i) as string);
-					body.message.metadata = validateJSON(this.getNodeParameter('metadataJson', i) as string);
-					body.message.global_merge_vars = validateJSON(this.getNodeParameter('mergeVarsJson', i) as string);
-					body.message.attachments = validateJSON(this.getNodeParameter('attachmentsJson', i) as string);
+						body.message.headers = validateJSON(this.getNodeParameter('headersJson', i) as string);
+						body.message.metadata = validateJSON(this.getNodeParameter('metadataJson', i) as string);
+						body.message.global_merge_vars = validateJSON(this.getNodeParameter('mergeVarsJson', i) as string);
+						body.message.attachments = validateJSON(this.getNodeParameter('attachmentsJson', i) as string);
 
-				} else {
+					} else {
 
-					const headersUi = this.getNodeParameter('headersUi', i) as IDataObject;
-					if (!_.isEmpty(headersUi)) {
-						// @ts-ignore
-						body.message.headers = _.map(headersUi.headersValues, (o) => {
-							const aux: IDataObject = {};
+						const headersUi = this.getNodeParameter('headersUi', i) as IDataObject;
+						if (!_.isEmpty(headersUi)) {
 							// @ts-ignore
-							aux[o.name] = o.value;
-							return aux;
-						});
-					}
-
-					const metadataUi = this.getNodeParameter('metadataUi', i) as IDataObject;
-					if (!_.isEmpty(metadataUi)) {
-						// @ts-ignore
-						body.message.metadata = _.map(metadataUi.metadataValues, (o: IDataObject) => {
-							const aux: IDataObject = {};
-							aux[o.name as string] = o.value;
-							return aux;
-						});
-					}
-
-					const mergeVarsUi = this.getNodeParameter('mergeVarsUi', i) as IDataObject;
-					if (!_.isEmpty(mergeVarsUi)) {
-						// @ts-ignore
-						body.message.global_merge_vars = _.map(mergeVarsUi.mergeVarsValues, (o: IDataObject) => {
-							const aux: IDataObject = {};
-							aux.name = o.name;
-							aux.content = o.content;
-							return aux;
-						});
-					}
-
-					const attachmentsUi = this.getNodeParameter('attachmentsUi', i) as IDataObject;
-					let attachmentsBinary: Attachments[] = [], attachmentsValues: Attachments[] = [];
-					if (!_.isEmpty(attachmentsUi)) {
-
-						if (attachmentsUi.hasOwnProperty('attachmentsValues')
-							&& !_.isEmpty(attachmentsUi.attachmentsValues)) {
-							// @ts-ignore
-							attachmentsValues = _.map(attachmentsUi.attachmentsValues, (o: IDataObject) => {
+							body.message.headers = _.map(headersUi.headersValues, (o) => {
 								const aux: IDataObject = {};
 								// @ts-ignore
-								aux.name = o.name;
-								aux.content = o.content;
-								aux.type = o.type;
+								aux[o.name] = o.value;
 								return aux;
 							});
 						}
 
-						if (attachmentsUi.hasOwnProperty('attachmentsBinary')
-							&& !_.isEmpty(attachmentsUi.attachmentsBinary)
-							&& items[i].binary) {
+						const metadataUi = this.getNodeParameter('metadataUi', i) as IDataObject;
+						if (!_.isEmpty(metadataUi)) {
 							// @ts-ignore
-							attachmentsBinary = _.map(attachmentsUi.attachmentsBinary, (o: IDataObject) => {
-								if (items[i].binary!.hasOwnProperty(o.property as string)) {
-									const aux: IDataObject = {};
-									aux.name = items[i].binary![o.property as string].fileName || 'unknown';
-									aux.content = items[i].binary![o.property as string].data;
-									aux.type = items[i].binary![o.property as string].mimeType;
-									return aux;
-								}
+							body.message.metadata = _.map(metadataUi.metadataValues, (o: IDataObject) => {
+								const aux: IDataObject = {};
+								aux[o.name as string] = o.value;
+								return aux;
 							});
 						}
+
+						const mergeVarsUi = this.getNodeParameter('mergeVarsUi', i) as IDataObject;
+						if (!_.isEmpty(mergeVarsUi)) {
+							// @ts-ignore
+							body.message.global_merge_vars = _.map(mergeVarsUi.mergeVarsValues, (o: IDataObject) => {
+								const aux: IDataObject = {};
+								aux.name = o.name;
+								aux.content = o.content;
+								return aux;
+							});
+						}
+
+						const attachmentsUi = this.getNodeParameter('attachmentsUi', i) as IDataObject;
+						let attachmentsBinary: Attachments[] = [], attachmentsValues: Attachments[] = [];
+						if (!_.isEmpty(attachmentsUi)) {
+
+							if (attachmentsUi.hasOwnProperty('attachmentsValues')
+								&& !_.isEmpty(attachmentsUi.attachmentsValues)) {
+								// @ts-ignore
+								attachmentsValues = _.map(attachmentsUi.attachmentsValues, (o: IDataObject) => {
+									const aux: IDataObject = {};
+									// @ts-ignore
+									aux.name = o.name;
+									aux.content = o.content;
+									aux.type = o.type;
+									return aux;
+								});
+							}
+
+							if (attachmentsUi.hasOwnProperty('attachmentsBinary')
+								&& !_.isEmpty(attachmentsUi.attachmentsBinary)
+								&& items[i].binary) {
+								// @ts-ignore
+								attachmentsBinary = _.map(attachmentsUi.attachmentsBinary, (o: IDataObject) => {
+									if (items[i].binary!.hasOwnProperty(o.property as string)) {
+										const aux: IDataObject = {};
+										aux.name = items[i].binary![o.property as string].fileName || 'unknown';
+										aux.content = items[i].binary![o.property as string].data;
+										aux.type = items[i].binary![o.property as string].mimeType;
+										return aux;
+									}
+								});
+							}
+						}
+
+						body.message.attachments = attachmentsBinary.concat(attachmentsValues);
 					}
 
-					body.message.attachments = attachmentsBinary.concat(attachmentsValues);
-				}
+					if (operation === 'sendTemplate') {
+						const template = this.getNodeParameter('template', i) as string;
+						body.template_name = template;
+						emailSentResponse = mandrillApiRequest.call(this, '/messages', 'POST', '/send-template', body);
+					} else if (operation === 'sendHtml') {
+						emailSentResponse = mandrillApiRequest.call(this, '/messages', 'POST', '/send', body);
+					}
 
-				if (operation === 'sendTemplate') {
-					const template = this.getNodeParameter('template', i) as string;
-					body.template_name = template;
-					emailSentResponse = mandrillApiRequest.call(this, '/messages', 'POST', '/send-template', body);
-				} else if (operation === 'sendHtml') {
-					emailSentResponse = mandrillApiRequest.call(this, '/messages', 'POST', '/send', body);
+					responseData = await emailSentResponse;
 				}
-
-				responseData = await emailSentResponse;
-			}
-			if (Array.isArray(responseData)) {
-				returnData.push.apply(returnData, responseData as IDataObject[]);
-			} else {
-				returnData.push(responseData as IDataObject);
+				if (Array.isArray(responseData)) {
+					returnData.push.apply(returnData, responseData as IDataObject[]);
+				} else {
+					returnData.push(responseData as IDataObject);
+				}
+			} catch (error) {
+				if (this.continueOnFail()) {
+					returnData.push({ error: error.message });
+					continue;
+				}
+				throw error;
 			}
 		}
 		return [this.helpers.returnJsonArray(returnData)];

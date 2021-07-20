@@ -30,7 +30,7 @@
 						Credential type:
 					</el-col>
 					<el-col :span="18">
-						<el-select v-model="credentialType" filterable placeholder="Select Type" size="small">
+						<el-select v-model="credentialType" filterable placeholder="Select Type" size="small" ref="credentialsDropdown">
 							<el-option
 								v-for="item in credentialTypes"
 								:key="item.name"
@@ -50,6 +50,7 @@
 <script lang="ts">
 import Vue from 'vue';
 
+import { externalHooks } from '@/components/mixins/externalHooks';
 import { restApi } from '@/components/mixins/restApi';
 import { showMessage } from '@/components/mixins/showMessage';
 import CredentialsInput from '@/components/CredentialsInput.vue';
@@ -71,6 +72,7 @@ import { INodeUi } from '../Interface';
 export default mixins(
 	restApi,
 	showMessage,
+	externalHooks,
 ).extend({
 	name: 'CredentialsEdit',
 	props: [
@@ -195,9 +197,11 @@ export default mixins(
 						});
 						return;
 					}
-
 					this.credentialData = currentCredentials;
 				} else {
+					Vue.nextTick(() => {
+						(this.$refs.credentialsDropdown as HTMLDivElement).focus();
+					});
 					if (this.credentialType || this.setCredentialType) {
 						const credentialType = this.$store.getters.credentialType(this.credentialType || this.setCredentialType);
 						if (credentialType === null) {
@@ -223,6 +227,9 @@ export default mixins(
 				// again the last selection from when it was open the previous time.
 				this.credentialType = null;
 			}
+		},
+		async credentialType (newValue, oldValue) {
+			this.$externalHooks().run('credentialsEdit.credentialTypeChanged', { newValue, oldValue, editCredentials: !!this.editCredentials, credentialType: this.credentialType, setCredentialType: this.setCredentialType });
 		},
 	},
 	methods: {

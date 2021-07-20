@@ -9,12 +9,12 @@ import {
 } from 'n8n-workflow';
 
 import {
+	BinaryToTextEncoding,
 	createHash,
 	createHmac,
 	createSign,
 	getHashes,
-	HexBase64Latin1Encoding,
- } from 'crypto';
+} from 'crypto';
 
 export class Crypto implements INodeType {
 	description: INodeTypeDescription = {
@@ -60,7 +60,7 @@ export class Crypto implements INodeType {
 				name: 'type',
 				displayOptions: {
 					show: {
-						action:[
+						action: [
 							'hash',
 						],
 					},
@@ -93,7 +93,7 @@ export class Crypto implements INodeType {
 				name: 'value',
 				displayOptions: {
 					show: {
-						action:[
+						action: [
 							'hash',
 						],
 					},
@@ -123,7 +123,7 @@ export class Crypto implements INodeType {
 				name: 'encoding',
 				displayOptions: {
 					show: {
-						action:[
+						action: [
 							'hash',
 						],
 					},
@@ -147,7 +147,7 @@ export class Crypto implements INodeType {
 				name: 'type',
 				displayOptions: {
 					show: {
-						action:[
+						action: [
 							'hmac',
 						],
 					},
@@ -180,7 +180,7 @@ export class Crypto implements INodeType {
 				name: 'value',
 				displayOptions: {
 					show: {
-						action:[
+						action: [
 							'hmac',
 						],
 					},
@@ -210,7 +210,7 @@ export class Crypto implements INodeType {
 				name: 'secret',
 				displayOptions: {
 					show: {
-						action:[
+						action: [
 							'hmac',
 						],
 					},
@@ -224,7 +224,7 @@ export class Crypto implements INodeType {
 				name: 'encoding',
 				displayOptions: {
 					show: {
-						action:[
+						action: [
 							'hmac',
 						],
 					},
@@ -248,7 +248,7 @@ export class Crypto implements INodeType {
 				name: 'value',
 				displayOptions: {
 					show: {
-						action:[
+						action: [
 							'sign',
 						],
 					},
@@ -278,7 +278,7 @@ export class Crypto implements INodeType {
 				name: 'algorithm',
 				displayOptions: {
 					show: {
-						action:[
+						action: [
 							'sign',
 						],
 					},
@@ -295,7 +295,7 @@ export class Crypto implements INodeType {
 				name: 'encoding',
 				displayOptions: {
 					show: {
-						action:[
+						action: [
 							'sign',
 						],
 					},
@@ -319,7 +319,7 @@ export class Crypto implements INodeType {
 				name: 'privateKey',
 				displayOptions: {
 					show: {
-						action:[
+						action: [
 							'sign',
 						],
 					},
@@ -364,52 +364,63 @@ export class Crypto implements INodeType {
 
 		let item: INodeExecutionData;
 		for (let i = 0; i < length; i++) {
-			item = items[i];
-			const dataPropertyName = this.getNodeParameter('dataPropertyName', i) as string;
-			const value = this.getNodeParameter('value', i) as string;
-			let newValue;
 
-			if (action === 'hash') {
-				const type = this.getNodeParameter('type', i) as string;
-				const encoding = this.getNodeParameter('encoding', i) as HexBase64Latin1Encoding;
-				newValue = createHash(type).update(value).digest(encoding);
-			}
-			if (action === 'hmac') {
-				const type = this.getNodeParameter('type', i) as string;
-				const secret = this.getNodeParameter('secret', i) as string;
-				const encoding = this.getNodeParameter('encoding', i) as HexBase64Latin1Encoding;
-				newValue = createHmac(type, secret).update(value).digest(encoding);
-			}
-			if (action === 'sign') {
-				const algorithm = this.getNodeParameter('algorithm', i) as string;
-				const encoding = this.getNodeParameter('encoding', i) as HexBase64Latin1Encoding;
-				const privateKey = this.getNodeParameter('privateKey', i) as string;
-				const sign = createSign(algorithm);
-				sign.write(value as string);
-				sign.end();
-				newValue = sign.sign(privateKey, encoding);
-			}
+			try {
 
-			let newItem: INodeExecutionData;
-			if (dataPropertyName.includes('.')) {
-				// Uses dot notation so copy all data
-				newItem = {
-					json: JSON.parse(JSON.stringify(item.json)),
-				};
-			} else {
-				// Does not use dot notation so shallow copy is enough
-				newItem = {
-					json: { ...item.json },
-				};
+				item = items[i];
+				const dataPropertyName = this.getNodeParameter('dataPropertyName', i) as string;
+				const value = this.getNodeParameter('value', i) as string;
+				let newValue;
+
+				if (action === 'hash') {
+					const type = this.getNodeParameter('type', i) as string;
+					const encoding = this.getNodeParameter('encoding', i) as BinaryToTextEncoding;
+					newValue = createHash(type).update(value).digest(encoding);
+				}
+				if (action === 'hmac') {
+					const type = this.getNodeParameter('type', i) as string;
+					const secret = this.getNodeParameter('secret', i) as string;
+					const encoding = this.getNodeParameter('encoding', i) as BinaryToTextEncoding;
+					newValue = createHmac(type, secret).update(value).digest(encoding);
+				}
+				if (action === 'sign') {
+					const algorithm = this.getNodeParameter('algorithm', i) as string;
+					const encoding = this.getNodeParameter('encoding', i) as BinaryToTextEncoding;
+					const privateKey = this.getNodeParameter('privateKey', i) as string;
+					const sign = createSign(algorithm);
+					sign.write(value as string);
+					sign.end();
+					newValue = sign.sign(privateKey, encoding);
+				}
+
+				let newItem: INodeExecutionData;
+				if (dataPropertyName.includes('.')) {
+					// Uses dot notation so copy all data
+					newItem = {
+						json: JSON.parse(JSON.stringify(item.json)),
+					};
+				} else {
+					// Does not use dot notation so shallow copy is enough
+					newItem = {
+						json: { ...item.json },
+					};
+				}
+
+				if (item.binary !== undefined) {
+					newItem.binary = item.binary;
+				}
+
+				set(newItem, `json.${dataPropertyName}`, newValue);
+
+				returnData.push(newItem);
+			
+			} catch (error) {
+				if (this.continueOnFail()) {
+					returnData.push({json:{ error: error.message }});
+					continue;
+				}
+				throw error;
 			}
-
-			if (item.binary !== undefined) {
-				newItem.binary = item.binary;
-			}
-
-			set(newItem, `json.${dataPropertyName}`, newValue);
-
-			returnData.push(newItem);
 		}
 		return this.prepareOutputData(returnData);
 	}

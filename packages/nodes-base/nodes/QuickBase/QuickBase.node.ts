@@ -9,6 +9,7 @@ import {
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
+	NodeOperationError,
 } from 'n8n-workflow';
 
 import {
@@ -45,7 +46,7 @@ export class QuickBase implements INodeType {
 		group: ['input'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
-		description: 'Integrate with the Quick Base RESTful API.',
+		description: 'Integrate with the Quick Base RESTful API',
 		defaults: {
 			name: 'Quick Base',
 			color: '#73489d',
@@ -229,8 +230,6 @@ export class QuickBase implements INodeType {
 			if (operation === 'create') {
 				const tableId = this.getNodeParameter('tableId', 0) as string;
 
-				const { fieldsLabelKey, fieldsIdKey } = await getFieldsObject.call(this, tableId);
-
 				const simple = this.getNodeParameter('simple', 0) as boolean;
 
 				const data: IDataObject[] = [];
@@ -243,10 +242,16 @@ export class QuickBase implements INodeType {
 					const columns = this.getNodeParameter('columns', i) as string;
 
 					const columnList = columns.split(',').map(column => column.trim());
-
-					for (const key of Object.keys(items[i].json)) {
-						if (fieldsLabelKey.hasOwnProperty(key) && columnList.includes(key)) {
-							record[fieldsLabelKey[key].toString()] = { value: items[i].json[key] };
+					if (options.useFieldIDs === true) {
+						for (const key of Object.keys(items[i].json)) {
+							record[key] = { value: items[i].json[key] };
+						}
+					} else {
+						const { fieldsLabelKey } = await getFieldsObject.call(this, tableId);
+						for (const key of Object.keys(items[i].json)) {
+							if (fieldsLabelKey.hasOwnProperty(key) && columnList.includes(key)) {
+								record[fieldsLabelKey[key].toString()] = { value: items[i].json[key] };
+							}
 						}
 					}
 
@@ -258,8 +263,9 @@ export class QuickBase implements INodeType {
 					to: tableId,
 				};
 
-				// If not fields are set return at least the record id
-				body.fieldsToReturn = [fieldsLabelKey['Record ID#']];
+				// If no fields are set return at least the record id
+				// 3 == Default Quickbase RecordID #
+				body.fieldsToReturn = [3];
 
 				if (options.fields) {
 					body.fieldsToReturn = options.fields as string[];
@@ -274,7 +280,7 @@ export class QuickBase implements INodeType {
 					for (const record of records) {
 						const data: IDataObject = {};
 						for (const [key, value] of Object.entries(record)) {
-							data[fieldsIdKey[key]] = (value as IDataObject).value;
+							data[key] = (value as IDataObject).value;
 						}
 						responseData.push(data);
 					}
@@ -379,17 +385,22 @@ export class QuickBase implements INodeType {
 
 					const columnList = columns.split(',').map(column => column.trim());
 
-					for (const key of Object.keys(items[i].json)) {
-						if (fieldsLabelKey.hasOwnProperty(key) && columnList.includes(key)) {
-							record[fieldsLabelKey[key].toString()] = { value: items[i].json[key] };
+					if (options.useFieldIDs === true) {
+						for (const key of Object.keys(items[i].json)) {
+							record[key] = { value: items[i].json[key] };
+						}
+					} else {
+						const { fieldsLabelKey } = await getFieldsObject.call(this, tableId);
+						for (const key of Object.keys(items[i].json)) {
+							if (fieldsLabelKey.hasOwnProperty(key) && columnList.includes(key)) {
+								record[fieldsLabelKey[key].toString()] = { value: items[i].json[key] };
+							}
 						}
 					}
 
 					if (items[i].json[updateKey] === undefined) {
-						throw new Error(`The update key ${updateKey} could not be found in the input`);
+						throw new NodeOperationError(this.getNode(), `The update key ${updateKey} could not be found in the input`);
 					}
-
-					record[fieldsLabelKey['Record ID#']] = { value: items[i].json[updateKey] };
 
 					data.push(record);
 				}
@@ -399,8 +410,9 @@ export class QuickBase implements INodeType {
 					to: tableId,
 				};
 
-				// If not fields are set return at least the record id
-				body.fieldsToReturn = [fieldsLabelKey['Record ID#']];
+				// If no fields are set return at least the record id
+				// 3 == Default Quickbase RecordID #
+				//body.fieldsToReturn = [fieldsLabelKey['Record ID#']];
 
 				if (options.fields) {
 					body.fieldsToReturn = options.fields as string[];
@@ -431,8 +443,6 @@ export class QuickBase implements INodeType {
 			if (operation === 'upsert') {
 				const tableId = this.getNodeParameter('tableId', 0) as string;
 
-				const { fieldsLabelKey, fieldsIdKey } = await getFieldsObject.call(this, tableId);
-
 				const simple = this.getNodeParameter('simple', 0) as boolean;
 
 				const updateKey = this.getNodeParameter('updateKey', 0) as string;
@@ -450,14 +460,21 @@ export class QuickBase implements INodeType {
 
 					const columnList = columns.split(',').map(column => column.trim());
 
-					for (const key of Object.keys(items[i].json)) {
-						if (fieldsLabelKey.hasOwnProperty(key) && columnList.includes(key)) {
-							record[fieldsLabelKey[key].toString()] = { value: items[i].json[key] };
+					if (options.useFieldIDs === true) {
+						for (const key of Object.keys(items[i].json)) {
+							record[key] = { value: items[i].json[key] };
+						}
+					} else {
+						const { fieldsLabelKey } = await getFieldsObject.call(this, tableId);
+						for (const key of Object.keys(items[i].json)) {
+							if (fieldsLabelKey.hasOwnProperty(key) && columnList.includes(key)) {
+								record[fieldsLabelKey[key].toString()] = { value: items[i].json[key] };
+							}
 						}
 					}
 
 					if (items[i].json[updateKey] === undefined) {
-						throw new Error(`The update key ${updateKey} could not be found in the input`);
+						throw new NodeOperationError(this.getNode(), `The update key ${updateKey} could not be found in the input`);
 					}
 
 					record[mergeFieldId] = { value: items[i].json[updateKey] };
@@ -471,8 +488,9 @@ export class QuickBase implements INodeType {
 					mergeFieldId,
 				};
 
-				// If not fields are set return at least the record id
-				body.fieldsToReturn = [fieldsLabelKey['Record ID#']];
+				// If no fields are set return at least the record id
+				// 3 == Default Quickbase RecordID #
+				body.fieldsToReturn = [3];
 
 				if (options.fields) {
 					body.fieldsToReturn = options.fields as string[];
@@ -487,7 +505,7 @@ export class QuickBase implements INodeType {
 					for (const record of records) {
 						const data: IDataObject = {};
 						for (const [key, value] of Object.entries(record)) {
-							data[fieldsIdKey[key]] = (value as IDataObject).value;
+							data[key] = (value as IDataObject).value;
 						}
 						responseData.push(data);
 					}

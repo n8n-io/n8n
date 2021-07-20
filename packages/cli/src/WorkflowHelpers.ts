@@ -6,6 +6,7 @@ import {
 	IWorkflowErrorData,
 	IWorkflowExecutionDataProcess,
 	NodeTypes,
+	ResponseHelper,
 	WorkflowCredentials,
 	WorkflowRunner,
 } from './';
@@ -18,10 +19,12 @@ import {
 	IRunExecutionData,
 	ITaskData,
 	IWorkflowCredentials,
-	Workflow,
-} from 'n8n-workflow';
+	LoggerProxy as Logger,
+	Workflow,} from 'n8n-workflow';
 
 import * as config from '../config';
+import { WorkflowEntity } from './databases/entities/WorkflowEntity';
+import { validate } from 'class-validator';
 
 const ERROR_TRIGGER_TYPE = config.get('nodes.errorTriggerType') as string;
 
@@ -82,11 +85,11 @@ export function isWorkflowIdValid (id: string | null | undefined | number): bool
 export async function executeErrorWorkflow(workflowId: string, workflowErrorData: IWorkflowErrorData): Promise<void> {
 	// Wrap everything in try/catch to make sure that no errors bubble up and all get caught here
 	try {
-		const workflowData = await Db.collections.Workflow!.findOne({ id: workflowId });
+		const workflowData = await Db.collections.Workflow!.findOne({ id: Number(workflowId) });
 
 		if (workflowData === undefined) {
 			// The error workflow could not be found
-			console.error(`ERROR: Calling Error Workflow for "${workflowErrorData.workflow.id}". Could not find error workflow "${workflowId}"`);
+			Logger.error(`Calling Error Workflow for "${workflowErrorData.workflow.id}". Could not find error workflow "${workflowId}"`, { workflowId });
 			return;
 		}
 
@@ -105,7 +108,7 @@ export async function executeErrorWorkflow(workflowId: string, workflowErrorData
 		}
 
 		if (workflowStartNode === undefined) {
-			console.error(`ERROR: Calling Error Workflow for "${workflowErrorData.workflow.id}". Could not find "${ERROR_TRIGGER_TYPE}" in workflow "${workflowId}"`);
+			Logger.error(`Calling Error Workflow for "${workflowErrorData.workflow.id}". Could not find "${ERROR_TRIGGER_TYPE}" in workflow "${workflowId}"`);
 			return;
 		}
 
@@ -153,7 +156,7 @@ export async function executeErrorWorkflow(workflowId: string, workflowErrorData
 		const workflowRunner = new WorkflowRunner();
 		await workflowRunner.run(runData);
 	} catch (error) {
-		console.error(`ERROR: Calling Error Workflow for "${workflowErrorData.workflow.id}": ${error.message}`);
+		Logger.error(`Calling Error Workflow for "${workflowErrorData.workflow.id}": "${error.message}"`, { workflowId: workflowErrorData.workflow.id });
 	}
 }
 
@@ -315,8 +318,7 @@ export async function saveStaticData(workflow: Workflow): Promise <void> {
 				await saveStaticDataById(workflow.id!, workflow.staticData);
 				workflow.staticData.__dataChanged = false;
 			} catch (e) {
-				// TODO: Add proper logging!
-				console.error(`There was a problem saving the workflow with id "${workflow.id}" to save changed staticData: ${e.message}`);
+				Logger.error(`There was a problem saving the workflow with id "${workflow.id}" to save changed staticData: "${e.message}"`, { workflowId: workflow.id });
 			}
 		}
 	}
@@ -358,3 +360,32 @@ export async function getStaticDataById(workflowId: string | number) {
 
 	return workflowData.staticData || {};
 }
+
+
+// TODO: Deduplicate `validateWorkflow` and `throwDuplicateEntryError` with TagHelpers?
+
+export async function validateWorkflow(newWorkflow: WorkflowEntity) {
+	const errors = await validate(newWorkflow);
+
+	if (errors.length) {
+		const validationErrorMessage = Object.values(errors[0].constraints!)[0];
+		throw new ResponseHelper.ResponseError(validationErrorMessage, undefined, 400);
+	}
+}
+
+export function throwDuplicateEntryError(error: Error) {
+	const errorMessage = error.message.toLowerCase();
+	if (errorMessage.includes('unique') || errorMessage.includes('duplicate')) {
+		throw new ResponseHelper.ResponseError('There is already a workflow with this name', undefined, 400);
+	}
+
+	throw new ResponseHelper.ResponseError(errorMessage, undefined, 400);
+}
+
+export type WorkflowNameRequest = Express.Request & {
+	query: {
+		name?: string;
+		offset?: string;
+	}
+};
+

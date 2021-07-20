@@ -10,7 +10,7 @@ import {
 } from 'n8n-core';
 
 import {
-	IDataObject,
+	IDataObject, NodeApiError,
 } from 'n8n-workflow';
 
 interface OMauticErrorResponse {
@@ -19,17 +19,6 @@ interface OMauticErrorResponse {
 		message: string;
 	}>;
 }
-
-export function getErrors(error: OMauticErrorResponse): string {
-	const returnErrors: string[] = [];
-
-	for (const errorItem of error.errors) {
-		returnErrors.push(errorItem.message);
-	}
-
-	return returnErrors.join(', ');
-}
-
 
 export async function mauticApiRequest(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: string, endpoint: string, body: any = {}, query?: IDataObject, uri?: string): Promise<any> { // tslint:disable-line:no-any
 	const authenticationMethod = this.getNodeParameter('authentication', 0, 'credentials') as string;
@@ -68,15 +57,12 @@ export async function mauticApiRequest(this: IHookFunctions | IExecuteFunctions 
 
 		if (returnData.errors) {
 			// They seem to to sometimes return 200 status but still error.
-			throw new Error(getErrors(returnData));
+			throw new NodeApiError(this.getNode(), returnData);
 		}
 
 		return returnData;
 	} catch (error) {
-		if (error.response && error.response.body && error.response.body.errors) {
-			throw new Error('Mautic Error: ' + getErrors(error.response.body));
-		}
-		throw new Error(`Mautic Error: ${error.message}`);
+		throw new NodeApiError(this.getNode(), error);
 	}
 }
 

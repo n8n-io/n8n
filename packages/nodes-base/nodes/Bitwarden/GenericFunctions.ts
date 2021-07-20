@@ -6,6 +6,7 @@ import {
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodePropertyOptions,
+	NodeApiError,
 } from 'n8n-workflow';
 
 import {
@@ -48,17 +49,7 @@ export async function bitwardenApiRequest(
 	try {
 		return await this.helpers.request!(options);
 	} catch (error) {
-
-		if (error.statusCode === 404) {
-			throw new Error('Bitwarden error response [404]: Not found');
-		}
-
-		if (error?.response?.body?.Message) {
-			const message = error?.response?.body?.Message;
-			throw new Error(`Bitwarden error response [${error.statusCode}]: ${message}`);
-		}
-		//TODO handle Errors array
-		throw error;
+		throw new NodeApiError(this.getNode(), error);
 	}
 }
 
@@ -93,7 +84,7 @@ export async function getAccessToken(
 		const { access_token } = await this.helpers.request!(options);
 		return access_token;
 	} catch (error) {
-		throw error;
+		throw new NodeApiError(this.getNode(), error);
 	}
 }
 
@@ -157,9 +148,9 @@ export async function loadResource(
 
 	const { data } = await bitwardenApiRequest.call(this, 'GET', endpoint, {}, {}, token);
 
-	data.forEach(({ id, name }: { id: string, name: string }) => {
+	data.forEach(({ id, name, externalId }: { id: string, name: string, externalId?: string }) => {
 		returnData.push({
-			name: name || id,
+			name: externalId || name || id,
 			value: id,
 		});
 	});

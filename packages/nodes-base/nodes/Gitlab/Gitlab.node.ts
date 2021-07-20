@@ -7,21 +7,23 @@ import {
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
+	NodeOperationError,
 } from 'n8n-workflow';
 
 import {
 	gitlabApiRequest,
+	gitlabApiRequestAllItems,
 } from './GenericFunctions';
 
 export class Gitlab implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'GitLab',
 		name: 'gitlab',
-		icon: 'file:gitlab.png',
+		icon: 'file:gitlab.svg',
 		group: ['input'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
-		description: 'Retrieve data from GitLab API.',
+		description: 'Retrieve data from GitLab API',
 		defaults: {
 			name: 'Gitlab',
 			color: '#FC6D27',
@@ -208,6 +210,26 @@ export class Gitlab implements INodeType {
 						name: 'Create',
 						value: 'create',
 						description: 'Create a new release',
+					},
+					{
+						name: 'Delete',
+						value: 'delete',
+						description: 'Delete a new release',
+					},
+					{
+						name: 'Get',
+						value: 'get',
+						description: 'Get a new release',
+					},
+					{
+						name: 'Get All',
+						value: 'getAll',
+						description: 'Get all releases',
+					},
+					{
+						name: 'Update',
+						value: 'update',
+						description: 'Update a new release',
 					},
 				],
 				default: 'create',
@@ -692,8 +714,254 @@ export class Gitlab implements INodeType {
 				],
 			},
 
+			// ----------------------------------
+			//         release:get/delete
+			// ----------------------------------
+			{
+				displayName: 'Project ID',
+				name: 'projectId',
+				type: 'string',
+				default: '',
+				required: true,
+				displayOptions: {
+					show: {
+						operation: [
+							'delete',
+							'get',
+						],
+						resource: [
+							'release',
+						],
+					},
+				},
+				description: 'The ID or URL-encoded path of the project.',
+			},
+			{
+				displayName: 'Tag Name',
+				name: 'tag_name',
+				type: 'string',
+				default: '',
+				required: true,
+				displayOptions: {
+					show: {
+						operation: [
+							'delete',
+							'get',
+						],
+						resource: [
+							'release',
+						],
+					},
+				},
+				description: 'The Git tag the release is associated with.',
+			},
 
+			// ----------------------------------
+			//         release:getAll
+			// ----------------------------------
+			{
+				displayName: 'Project ID',
+				name: 'projectId',
+				type: 'string',
+				default: '',
+				required: true,
+				displayOptions: {
+					show: {
+						operation: [
+							'getAll',
+						],
+						resource: [
+							'release',
+						],
+					},
+				},
+				description: 'The ID or URL-encoded path of the project.',
+			},
+			{
+				displayName: 'Return All',
+				name: 'returnAll',
+				type: 'boolean',
+				displayOptions: {
+					show: {
+						resource: [
+							'release',
+						],
+						operation: [
+							'getAll',
+						],
+					},
+				},
+				default: false,
+				description: 'If all results should be returned or only up to a given limit.',
+			},
+			{
+				displayName: 'Limit',
+				name: 'limit',
+				type: 'number',
+				displayOptions: {
+					show: {
+						resource: [
+							'release',
+						],
+						operation: [
+							'getAll',
+						],
+						returnAll: [
+							false,
+						],
+					},
+				},
+				typeOptions: {
+					minValue: 1,
+					maxValue: 100,
+				},
+				default: 20,
+				description: 'How many results to return.',
+			},
+			{
+				displayName: 'Additional Fields',
+				name: 'additionalFields',
+				type: 'collection',
+				typeOptions: {
+					multipleValueButtonText: 'Add Field',
+				},
+				displayOptions: {
+					show: {
+						operation: [
+							'getAll',
+						],
+						resource: [
+							'release',
+						],
+					},
+				},
+				default: {},
+				options: [
+					{
+						displayName: 'Order by',
+						name: 'order_by',
+						type: 'options',
+						options: [
+							{
+								name: 'Created At',
+								value: 'created_at',
+							},
+							{
+								name: 'Released At',
+								value: 'released_at',
+							},
+						],
+						default: 'released_at',
+						description: 'The field to use as order.',
+					},
+					{
+						displayName: 'Sort',
+						name: 'sort',
+						type: 'options',
+						options: [
+							{
+								name: 'ASC',
+								value: 'asc',
+							},
+							{
+								name: 'DESC',
+								value: 'desc',
+							},
+						],
+						default: 'desc',
+						description: 'The direction of the order. .',
+					},
+				],
+			},
 
+			// ----------------------------------
+			//         release:update
+			// ----------------------------------
+			{
+				displayName: 'Project ID',
+				name: 'projectId',
+				type: 'string',
+				default: '',
+				required: true,
+				displayOptions: {
+					show: {
+						operation: [
+							'update',
+						],
+						resource: [
+							'release',
+						],
+					},
+				},
+				description: 'The ID or URL-encoded path of the project.',
+			},
+			{
+				displayName: 'Tag Name',
+				name: 'tag_name',
+				type: 'string',
+				default: '',
+				required: true,
+				displayOptions: {
+					show: {
+						operation: [
+							'update',
+						],
+						resource: [
+							'release',
+						],
+					},
+				},
+				description: 'The Git tag the release is associated with.',
+			},
+			{
+				displayName: 'Additional Fields',
+				name: 'additionalFields',
+				type: 'collection',
+				typeOptions: {
+					multipleValueButtonText: 'Add Field',
+				},
+				displayOptions: {
+					show: {
+						operation: [
+							'update',
+						],
+						resource: [
+							'release',
+						],
+					},
+				},
+				default: {},
+				options: [
+					{
+						displayName: 'Name',
+						name: 'name',
+						type: 'string',
+						default: '',
+						description: 'The release name.',
+					},
+					{
+						displayName: 'Description',
+						name: 'description',
+						type: 'string',
+						default: '',
+						description: 'The description of the release. You can use Markdown.',
+					},
+					{
+						displayName: 'Milestones',
+						name: 'milestones',
+						type: 'string',
+						default: '',
+						description: 'The title of each milestone to associate with the release (provide a titles list spearated with comma).',
+					},
+					{
+						displayName: 'Released At',
+						name: 'released_at',
+						type: 'dateTime',
+						default: '',
+						description: 'The date when the release is/was ready..',
+					},
+				],
+			},
 			// ----------------------------------
 			//         repository
 			// ----------------------------------
@@ -836,17 +1104,20 @@ export class Gitlab implements INodeType {
 				credentials = this.getCredentials('gitlabApi');
 
 				if (credentials === undefined) {
-					throw new Error('No credentials got returned!');
+					throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
 				}
 			} else {
 				credentials = this.getCredentials('gitlabOAuth2Api');
 
 				if (credentials === undefined) {
-					throw new Error('No credentials got returned!');
+					throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
 				}
 			}
 		} catch (error) {
-			throw new Error(error);
+			if (this.continueOnFail()) {
+				return [this.helpers.returnJsonArray([{ error: error.message }])];
+			}
+			throw new NodeOperationError(this.getNode(), error);
 		}
 
 		// Operations which overwrite the returned data
@@ -856,16 +1127,20 @@ export class Gitlab implements INodeType {
 			'issue:edit',
 			'issue:get',
 			'release:create',
+			'release:delete',
+			'release:get',
+			'release:update',
 			'repository:get',
 		];
 		// Operations which overwrite the returned data and return arrays
 		// and has so to be merged with the data of other items
 		const overwriteDataOperationsArray = [
+			'release:getAll',
 			'repository:getIssues',
 			'user:getRepositories',
 		];
 
-
+		let responseData;
 		// For Post
 		let body: IDataObject;
 		// For Query string
@@ -873,157 +1148,237 @@ export class Gitlab implements INodeType {
 
 		let requestMethod: string;
 		let endpoint: string;
+		let returnAll = false;
 
 		const operation = this.getNodeParameter('operation', 0) as string;
 		const resource = this.getNodeParameter('resource', 0) as string;
 		const fullOperation = `${resource}:${operation}`;
 
 		for (let i = 0; i < items.length; i++) {
-			// Reset all values
-			requestMethod = 'GET';
-			endpoint = '';
-			body = {};
-			qs = {};
+			try {
+				// Reset all values
+				requestMethod = 'GET';
+				endpoint = '';
+				body = {};
+				qs = {};
 
-			// Request the parameters which almost all operations need
-			let owner = this.getNodeParameter('owner', i) as string;
+				// Request the parameters which almost all operations need
+				let owner = this.getNodeParameter('owner', i) as string;
 
-			// Replace all slashes to work with subgroups
-			owner = owner.replace(new RegExp(/\//g), '%2F');
+				// Replace all slashes to work with subgroups
+				owner = owner.replace(new RegExp(/\//g), '%2F');
 
-			let repository = '';
-			if (fullOperation !== 'user:getRepositories') {
-				repository = this.getNodeParameter('repository', i) as string;
-			}
+				let repository = '';
+				if (fullOperation !== 'user:getRepositories') {
+					repository = this.getNodeParameter('repository', i) as string;
+				}
 
-			const baseEndpoint = `/projects/${owner}%2F${repository}`;
+				const baseEndpoint = `/projects/${owner}%2F${repository}`;
 
-			if (resource === 'issue') {
-				if (operation === 'create') {
-					// ----------------------------------
-					//         create
-					// ----------------------------------
+				if (resource === 'issue') {
+					if (operation === 'create') {
+						// ----------------------------------
+						//         create
+						// ----------------------------------
 
-					requestMethod = 'POST';
+						requestMethod = 'POST';
 
-					body.title = this.getNodeParameter('title', i) as string;
-					body.description = this.getNodeParameter('body', i) as string;
-					body.due_date = this.getNodeParameter('due_date', i) as string;
-					const labels = this.getNodeParameter('labels', i) as IDataObject[];
+						body.title = this.getNodeParameter('title', i) as string;
+						body.description = this.getNodeParameter('body', i) as string;
+						body.due_date = this.getNodeParameter('due_date', i) as string;
+						const labels = this.getNodeParameter('labels', i) as IDataObject[];
 
-					const assigneeIds = this.getNodeParameter('assignee_ids', i) as IDataObject[];
+						const assigneeIds = this.getNodeParameter('assignee_ids', i) as IDataObject[];
 
-					body.labels = labels.map((data) => data['label']).join(',');
-					body.assignee_ids = assigneeIds.map((data) => data['assignee']);
+						body.labels = labels.map((data) => data['label']).join(',');
+						body.assignee_ids = assigneeIds.map((data) => data['assignee']);
 
-					endpoint = `${baseEndpoint}/issues`;
-				} else if (operation === 'createComment') {
-					// ----------------------------------
-					//         createComment
-					// ----------------------------------
-					requestMethod = 'POST';
+						endpoint = `${baseEndpoint}/issues`;
+					} else if (operation === 'createComment') {
+						// ----------------------------------
+						//         createComment
+						// ----------------------------------
+						requestMethod = 'POST';
 
-					const issueNumber = this.getNodeParameter('issueNumber', i) as string;
+						const issueNumber = this.getNodeParameter('issueNumber', i) as string;
 
-					body.body = this.getNodeParameter('body', i) as string;
+						body.body = this.getNodeParameter('body', i) as string;
 
-					endpoint = `${baseEndpoint}/issues/${issueNumber}/notes`;
-				} else if (operation === 'edit') {
-					// ----------------------------------
-					//         edit
-					// ----------------------------------
+						endpoint = `${baseEndpoint}/issues/${issueNumber}/notes`;
+					} else if (operation === 'edit') {
+						// ----------------------------------
+						//         edit
+						// ----------------------------------
 
-					requestMethod = 'PUT';
+						requestMethod = 'PUT';
 
-					const issueNumber = this.getNodeParameter('issueNumber', i) as string;
+						const issueNumber = this.getNodeParameter('issueNumber', i) as string;
 
-					body = this.getNodeParameter('editFields', i, {}) as IDataObject;
+						body = this.getNodeParameter('editFields', i, {}) as IDataObject;
 
-					if (body.labels !== undefined) {
-						body.labels = (body.labels as IDataObject[]).map((data) => data['label']).join(',');
+						if (body.labels !== undefined) {
+							body.labels = (body.labels as IDataObject[]).map((data) => data['label']).join(',');
+						}
+						if (body.assignee_ids !== undefined) {
+							body.assignee_ids = (body.assignee_ids as IDataObject[]).map((data) => data['assignee']);
+						}
+
+						endpoint = `${baseEndpoint}/issues/${issueNumber}`;
+					} else if (operation === 'get') {
+						// ----------------------------------
+						//         get
+						// ----------------------------------
+
+						requestMethod = 'GET';
+
+						const issueNumber = this.getNodeParameter('issueNumber', i) as string;
+
+						endpoint = `${baseEndpoint}/issues/${issueNumber}`;
+					} else if (operation === 'lock') {
+						// ----------------------------------
+						//         lock
+						// ----------------------------------
+
+						requestMethod = 'PUT';
+
+						const issueNumber = this.getNodeParameter('issueNumber', i) as string;
+
+						body.discussion_locked = true;
+
+						endpoint = `${baseEndpoint}/issues/${issueNumber}`;
 					}
-					if (body.assignee_ids !== undefined) {
-						body.assignee_ids = (body.assignee_ids as IDataObject[]).map((data) => data['assignee']);
+				} else if (resource === 'release') {
+					if (operation === 'create') {
+						// ----------------------------------
+						//         create
+						// ----------------------------------
+
+						requestMethod = 'POST';
+
+						body = this.getNodeParameter('additionalFields', i, {}) as IDataObject;
+
+						body.tag_name = this.getNodeParameter('releaseTag', i) as string;
+
+						endpoint = `${baseEndpoint}/releases`;
 					}
+					if (operation === 'delete') {
+						// ----------------------------------
+						//         delete
+						// ----------------------------------
 
-					endpoint = `${baseEndpoint}/issues/${issueNumber}`;
-				} else if (operation === 'get') {
-					// ----------------------------------
-					//         get
-					// ----------------------------------
+						requestMethod = 'DELETE';
 
-					requestMethod = 'GET';
+						const id = this.getNodeParameter('projectId', i) as string;
 
-					const issueNumber = this.getNodeParameter('issueNumber', i) as string;
+						const tagName = this.getNodeParameter('tag_name', i) as string;
 
-					endpoint = `${baseEndpoint}/issues/${issueNumber}`;
-				} else if (operation === 'lock') {
-					// ----------------------------------
-					//         lock
-					// ----------------------------------
+						endpoint = `/projects/${id}/releases/${tagName}`;
+					}
+					if (operation === 'get') {
+						// ----------------------------------
+						//         get
+						// ----------------------------------
 
-					requestMethod = 'PUT';
+						requestMethod = 'GET';
 
-					const issueNumber = this.getNodeParameter('issueNumber', i) as string;
+						const id = this.getNodeParameter('projectId', i) as string;
 
-					body.discussion_locked = true;
+						const tagName = this.getNodeParameter('tag_name', i) as string;
 
-					endpoint = `${baseEndpoint}/issues/${issueNumber}`;
+						endpoint = `/projects/${id}/releases/${tagName}`;
+					}
+					if (operation === 'getAll') {
+						// ----------------------------------
+						//         getAll
+						// ----------------------------------
+
+						requestMethod = 'GET';
+
+						const id = this.getNodeParameter('projectId', i) as string;
+
+						qs = this.getNodeParameter('additionalFields', i, {}) as IDataObject;
+
+						returnAll = this.getNodeParameter('returnAll', 0) as boolean;
+
+						if (returnAll === false) {
+							qs.per_page = this.getNodeParameter('limit', 0) as number;
+						}
+
+						endpoint = `/projects/${id}/releases`;
+					}
+					if (operation === 'update') {
+						// ----------------------------------
+						//         update
+						// ----------------------------------
+
+						requestMethod = 'PUT';
+
+						const id = this.getNodeParameter('projectId', i) as string;
+
+						const tagName = this.getNodeParameter('tag_name', i) as string;
+
+						body = this.getNodeParameter('additionalFields', i, {}) as IDataObject;
+						if(body.milestones){
+							body.milestones = (body.milestones as string).split(',');
+						}
+
+						endpoint = `/projects/${id}/releases/${tagName}`;
+					}
+				} else if (resource === 'repository') {
+					if (operation === 'get') {
+						// ----------------------------------
+						//         get
+						// ----------------------------------
+
+						requestMethod = 'GET';
+
+						endpoint = `${baseEndpoint}`;
+					} else if (operation === 'getIssues') {
+						// ----------------------------------
+						//         getIssues
+						// ----------------------------------
+
+						requestMethod = 'GET';
+
+						qs = this.getNodeParameter('getRepositoryIssuesFilters', i) as IDataObject;
+
+						endpoint = `${baseEndpoint}/issues`;
+					}
+				} else if (resource === 'user') {
+					if (operation === 'getRepositories') {
+						// ----------------------------------
+						//         getRepositories
+						// ----------------------------------
+
+						requestMethod = 'GET';
+
+						endpoint = `/users/${owner}/projects`;
+					}
+				} else {
+					throw new NodeOperationError(this.getNode(), `The resource "${resource}" is not known!`);
 				}
-			} else if (resource === 'release') {
-				if (operation === 'create') {
-					// ----------------------------------
-					//         create
-					// ----------------------------------
 
-					requestMethod = 'POST';
-
-					body = this.getNodeParameter('additionalFields', i, {}) as IDataObject;
-
-					body.tag_name = this.getNodeParameter('releaseTag', i) as string;
-
-					endpoint = `${baseEndpoint}/releases`;
+				if (returnAll === true) {
+					responseData = await gitlabApiRequestAllItems.call(this, requestMethod, endpoint, body, qs);
+				} else {
+					responseData = await gitlabApiRequest.call(this, requestMethod, endpoint, body, qs);
 				}
-			} else if (resource === 'repository') {
-				if (operation === 'get') {
-					// ----------------------------------
-					//         get
-					// ----------------------------------
 
-					requestMethod = 'GET';
-
-					endpoint = `${baseEndpoint}`;
-				} else if (operation === 'getIssues') {
-					// ----------------------------------
-					//         getIssues
-					// ----------------------------------
-
-					requestMethod = 'GET';
-
-					qs = this.getNodeParameter('getRepositoryIssuesFilters', i) as IDataObject;
-
-					endpoint = `${baseEndpoint}/issues`;
+				if (overwriteDataOperations.includes(fullOperation)) {
+					returnData.push(responseData);
+				} else if (overwriteDataOperationsArray.includes(fullOperation)) {
+					returnData.push.apply(returnData, responseData);
 				}
-			} else if (resource === 'user') {
-				if (operation === 'getRepositories') {
-					// ----------------------------------
-					//         getRepositories
-					// ----------------------------------
-
-					requestMethod = 'GET';
-
-					endpoint = `/users/${owner}/projects`;
+			} catch (error) {
+				if (this.continueOnFail()) {
+					if (overwriteDataOperations.includes(fullOperation) || overwriteDataOperationsArray.includes(fullOperation)) {
+						returnData.push({ error: error.message });
+					} else {
+						items[i].json = { error: error.message };
+					}
+					continue;
 				}
-			} else {
-				throw new Error(`The resource "${resource}" is not known!`);
-			}
-
-			const responseData = await gitlabApiRequest.call(this, requestMethod, endpoint, body, qs);
-
-			if (overwriteDataOperations.includes(fullOperation)) {
-				returnData.push(responseData);
-			} else if (overwriteDataOperationsArray.includes(fullOperation)) {
-				returnData.push.apply(returnData, responseData);
+				throw error;
 			}
 		}
 

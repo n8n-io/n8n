@@ -2,6 +2,7 @@ import dateformat from 'dateformat';
 
 import { showMessage } from '@/components/mixins/showMessage';
 import { MessageType } from '@/Interface';
+import { debounce } from 'lodash';
 
 import mixins from 'vue-typed-mixins';
 
@@ -9,6 +10,7 @@ export const genericHelpers = mixins(showMessage).extend({
 	data () {
 		return {
 			loadingService: null as any | null, // tslint:disable-line:no-any
+			debouncedFunctions: [] as any[], // tslint:disable-line:no-any
 		};
 	},
 	computed: {
@@ -52,7 +54,7 @@ export const genericHelpers = mixins(showMessage).extend({
 			return true;
 		},
 
-		startLoading () {
+		startLoading (text?: string) {
 			if (this.loadingService !== null) {
 				return;
 			}
@@ -60,17 +62,33 @@ export const genericHelpers = mixins(showMessage).extend({
 			this.loadingService = this.$loading(
 				{
 					lock: true,
-					text: 'Loading',
+					text: text || 'Loading',
 					spinner: 'el-icon-loading',
 					background: 'rgba(255, 255, 255, 0.8)',
 				},
 			);
+		},
+		setLoadingText (text: string) {
+			this.loadingService.text = text;
 		},
 		stopLoading () {
 			if (this.loadingService !== null) {
 				this.loadingService.close();
 				this.loadingService = null;
 			}
+		},
+
+		async callDebounced (...inputParameters: any[]): Promise<void> { // tslint:disable-line:no-any
+			const functionName = inputParameters.shift() as string;
+			const debounceTime = inputParameters.shift() as number;
+
+			// @ts-ignore
+			if (this.debouncedFunctions[functionName] === undefined) {
+				// @ts-ignore
+				this.debouncedFunctions[functionName] = debounce(this[functionName], debounceTime, { leading: true });
+			}
+			// @ts-ignore
+			await this.debouncedFunctions[functionName].apply(this, inputParameters);
 		},
 
 		async confirmMessage (message: string, headline: string, type = 'warning' as MessageType, confirmButtonText = 'OK', cancelButtonText = 'Cancel'): Promise<boolean> {

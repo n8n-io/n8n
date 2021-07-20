@@ -1,6 +1,6 @@
 import {
 	IDataObject,
-	INodeProperties,
+	INodeProperties
 } from 'n8n-workflow';
 
 import {

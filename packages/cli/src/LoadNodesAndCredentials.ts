@@ -3,26 +3,30 @@ import {
 	UserSettings,
 } from 'n8n-core';
 import {
+	CodexData,
 	ICredentialType,
+	ILogger,
 	INodeType,
 	INodeTypeData,
+	LoggerProxy,
 } from 'n8n-workflow';
 
 import * as config from '../config';
+
+import {
+	getLogger,
+} from '../src/Logger';
+
 import {
 	access as fsAccess,
 	readdir as fsReaddir,
 	readFile as fsReadFile,
 	stat as fsStat,
- } from 'fs';
+ } from 'fs/promises';
 import * as glob from 'glob-promise';
 import * as path from 'path';
-import { promisify } from 'util';
 
-const fsAccessAsync = promisify(fsAccess);
-const fsReaddirAsync = promisify(fsReaddir);
-const fsReadFileAsync = promisify(fsReadFile);
-const fsStatAsync = promisify(fsStat);
+const CUSTOM_NODES_CATEGORY = 'Custom Nodes';
 
 
 class LoadNodesAndCredentialsClass {
@@ -37,7 +41,12 @@ class LoadNodesAndCredentialsClass {
 
 	nodeModulesPath = '';
 
+	logger: ILogger;
+
 	async init() {
+		this.logger = getLogger();
+		LoggerProxy.init(this.logger);
+
 		// Get the path to the node-modules folder to be later able
 		// to load the credentials and nodes
 		const checkPaths = [
@@ -49,7 +58,7 @@ class LoadNodesAndCredentialsClass {
 		];
 		for (const checkPath of checkPaths) {
 			try {
-				await fsAccessAsync(checkPath);
+				await fsAccess(checkPath);
 				// Folder exists, so use it.
 				this.nodeModulesPath = path.dirname(checkPath);
 				break;
@@ -102,13 +111,13 @@ class LoadNodesAndCredentialsClass {
 		const getN8nNodePackagesRecursive = async (relativePath: string): Promise<string[]> => {
 			const results: string[] = [];
 			const nodeModulesPath = `${this.nodeModulesPath}/${relativePath}`;
-			for (const file of await fsReaddirAsync(nodeModulesPath)) {
+			for (const file of await fsReaddir(nodeModulesPath)) {
 				const isN8nNodesPackage = file.indexOf('n8n-nodes-') === 0;
 				const isNpmScopedPackage = file.indexOf('@') === 0;
 				if (!isN8nNodesPackage && !isNpmScopedPackage) {
 					continue;
 				}
-				if (!(await fsStatAsync(nodeModulesPath)).isDirectory()) {
+				if (!(await fsStat(nodeModulesPath)).isDirectory()) {
 					continue;
 				}
 				if (isN8nNodesPackage) { results.push(`${relativePath}${file}`); }
@@ -127,7 +136,6 @@ class LoadNodesAndCredentialsClass {
 	 * @param {string} credentialName The name of the credentials
 	 * @param {string} filePath The file to read credentials from
 	 * @returns {Promise<void>}
-	 * @memberof N8nPackagesInformationClass
 	 */
 	async loadCredentialsFromFile(credentialName: string, filePath: string): Promise<void> {
 		const tempModule = require(filePath);
@@ -154,7 +162,6 @@ class LoadNodesAndCredentialsClass {
 	 * @param {string} nodeName Tha name of the node
 	 * @param {string} filePath The file to read node from
 	 * @returns {Promise<void>}
-	 * @memberof N8nPackagesInformationClass
 	 */
 	async loadNodeFromFile(packageName: string, nodeName: string, filePath: string): Promise<void> {
 		let tempNode: INodeType;
@@ -163,6 +170,7 @@ class LoadNodesAndCredentialsClass {
 		const tempModule = require(filePath);
 		try {
 			tempNode = new tempModule[nodeName]() as INodeType;
+			this.addCodex({ node: tempNode, filePath, isCustom: packageName === 'CUSTOM' });
 		} catch (error) {
 			console.error(`Error loading node "${nodeName}" from: "${filePath}"`);
 			throw error;
@@ -175,6 +183,10 @@ class LoadNodesAndCredentialsClass {
 			tempNode.description.icon.startsWith('file:')) {
 			// If a file icon gets used add the full path
 			tempNode.description.icon = 'file:' + path.join(path.dirname(filePath), tempNode.description.icon.substr(5));
+		}
+
+		if (tempNode.executeSingle) {
+			this.logger.warn(`"executeSingle" will get deprecated soon. Please update the code of node "${packageName}.${nodeName}" to use "execute" instead!`, { filePath });
 		}
 
 		if (this.includeNodes !== undefined && !this.includeNodes.includes(fullNodeName)) {
@@ -192,6 +204,57 @@ class LoadNodesAndCredentialsClass {
 		};
 	}
 
+	/**
+	 * Retrieves `categories`, `subcategories` and alias (if defined)
+	 * from the codex data for the node at the given file path.
+	 *
+	 * @param {string} filePath The file path to a `*.node.js` file
+	 * @returns {CodexData}
+	 */
+	getCodex(filePath: string): CodexData {
+		const { categories, subcategories, alias } = require(`${filePath}on`); // .js to .json
+		return {
+			...(categories && { categories }),
+			...(subcategories && { subcategories }),
+			...(alias && { alias }),
+		};
+	}
+
+	/**
+	 * Adds a node codex `categories` and `subcategories` (if defined)
+	 * to a node description `codex` property.
+	 *
+	 * @param {object} obj
+	 * @param obj.node Node to add categories to
+	 * @param obj.filePath Path to the built node
+	 * @param obj.isCustom Whether the node is custom
+	 * @returns {void}
+	 */
+	addCodex({ node, filePath, isCustom }: {
+		node: INodeType;
+		filePath: string;
+		isCustom: boolean;
+	}) {
+		try {
+			const codex = this.getCodex(filePath);
+
+			if (isCustom) {
+				codex.categories = codex.categories
+					? codex.categories.concat(CUSTOM_NODES_CATEGORY)
+					: [CUSTOM_NODES_CATEGORY];
+			}
+
+			node.description.codex = codex;
+		} catch (_) {
+			this.logger.debug(`No codex available for: ${filePath.split('/').pop()}`);
+
+			if (isCustom) {
+				node.description.codex = {
+					categories: [CUSTOM_NODES_CATEGORY],
+				};
+			}
+		}
+	}
 
 	/**
 	 * Loads nodes and credentials from the given directory
@@ -199,7 +262,6 @@ class LoadNodesAndCredentialsClass {
 	 * @param {string} setPackageName The package name to set for the found nodes
 	 * @param {string} directory The directory to look in
 	 * @returns {Promise<void>}
-	 * @memberof N8nPackagesInformationClass
 	 */
 	async loadDataFromDirectory(setPackageName: string, directory: string): Promise<void> {
 		const files = await glob(path.join(directory, '**/*\.@(node|credentials)\.js'));
@@ -227,14 +289,13 @@ class LoadNodesAndCredentialsClass {
 	 *
 	 * @param {string} packageName The name to read data from
 	 * @returns {Promise<void>}
-	 * @memberof N8nPackagesInformationClass
 	 */
 	async loadDataFromPackage(packageName: string): Promise<void> {
 		// Get the absolute path of the package
 		const packagePath = path.join(this.nodeModulesPath, packageName);
 
 		// Read the data from the package.json file to see if any n8n data is defiend
-		const packageFileString = await fsReadFileAsync(path.join(packagePath, 'package.json'), 'utf8');
+		const packageFileString = await fsReadFile(path.join(packagePath, 'package.json'), 'utf8');
 		const packageFile = JSON.parse(packageFileString);
 		if (!packageFile.hasOwnProperty('n8n')) {
 			return;

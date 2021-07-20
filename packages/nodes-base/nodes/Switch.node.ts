@@ -4,6 +4,7 @@ import {
 	INodeParameters,
 	INodeType,
 	INodeTypeDescription,
+	NodeOperationError,
 	NodeParameterValue,
 } from 'n8n-workflow';
 
@@ -15,7 +16,7 @@ export class Switch implements INodeType {
 		icon: 'fa:map-signs',
 		group: ['transform'],
 		version: 1,
-		description: 'Route items depending on defined expression or rules.',
+		description: 'Route items depending on defined expression or rules',
 		defaults: {
 			name: 'Switch',
 			color: '#506000',
@@ -594,7 +595,7 @@ export class Switch implements INodeType {
 		};
 
 		// Converts the input data of a dateTime into a number for easy compare
-		function convertDateTime(value: NodeParameterValue): number {
+		const convertDateTime = (value: NodeParameterValue): number => {
 			let returnValue: number | undefined = undefined;
 			if (typeof value === 'string') {
 				returnValue = new Date(value).getTime();
@@ -605,65 +606,75 @@ export class Switch implements INodeType {
 			}
 
 			if (returnValue === undefined || isNaN(returnValue)) {
-				throw new Error(`The value "${value}" is not a valid DateTime.`);
+				throw new NodeOperationError(this.getNode(), `The value "${value}" is not a valid DateTime.`);
 			}
 
 			return returnValue;
-		}
+		};
 
-		function checkIndexRange(index: number) {
+		const checkIndexRange = (index: number) => {
 			if (index < 0 || index >= returnData.length) {
-				throw new Error(`The ouput ${index} is not allowed. It has to be between 0 and ${returnData.length - 1}!`);
+				throw new NodeOperationError(this.getNode(), `The ouput ${index} is not allowed. It has to be between 0 and ${returnData.length - 1}!`);
 			}
-		}
-
-		const dataType = this.getNodeParameter('dataType', 0) as string;
+		};
 
 		// Itterate over all items to check to which output they should be routed to
 		itemLoop:
 		for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
-			item = items[itemIndex];
-			mode = this.getNodeParameter('mode', itemIndex) as string;
+			try {
 
-			if (mode === 'expression') {
-				// One expression decides how to route item
+				item = items[itemIndex];
+				mode = this.getNodeParameter('mode', itemIndex) as string;
 
-				outputIndex = this.getNodeParameter('output', itemIndex) as number;
-				checkIndexRange(outputIndex);
-
-				returnData[outputIndex].push(item);
-			} else if (mode === 'rules') {
-				// Rules decide how to route item
-
-				value1 = this.getNodeParameter('value1', itemIndex) as NodeParameterValue;
-				if (dataType === 'dateTime') {
-					value1 = convertDateTime(value1);
-				}
-
-				for (ruleData of this.getNodeParameter('rules.rules', itemIndex, []) as INodeParameters[]) {
-					// Check if the values passes
-
-					value2 = ruleData.value2 as NodeParameterValue;
-					if (dataType === 'dateTime') {
-						value2 = convertDateTime(value2);
-					}
-
-					compareOperationResult = compareOperationFunctions[ruleData.operation as string](value1, value2);
-
-					if (compareOperationResult === true) {
-						// If rule matches add it to the correct output and continue with next item
-						checkIndexRange(ruleData.output as number);
-						returnData[ruleData.output as number].push(item);
-						continue itemLoop;
-					}
-				}
-
-				// Check if a fallback output got defined and route accordingly
-				outputIndex = this.getNodeParameter('fallbackOutput', itemIndex) as number;
-				if (outputIndex !== -1) {
+				if (mode === 'expression') {
+					// One expression decides how to route item
+	
+					outputIndex = this.getNodeParameter('output', itemIndex) as number;
 					checkIndexRange(outputIndex);
+	
 					returnData[outputIndex].push(item);
+				} else if (mode === 'rules') {
+					// Rules decide how to route item
+	
+					const dataType = this.getNodeParameter('dataType', 0) as string;
+	
+					value1 = this.getNodeParameter('value1', itemIndex) as NodeParameterValue;
+					if (dataType === 'dateTime') {
+						value1 = convertDateTime(value1);
+					}
+	
+					for (ruleData of this.getNodeParameter('rules.rules', itemIndex, []) as INodeParameters[]) {
+						// Check if the values passes
+	
+						value2 = ruleData.value2 as NodeParameterValue;
+						if (dataType === 'dateTime') {
+							value2 = convertDateTime(value2);
+						}
+	
+						compareOperationResult = compareOperationFunctions[ruleData.operation as string](value1, value2);
+	
+						if (compareOperationResult === true) {
+							// If rule matches add it to the correct output and continue with next item
+							checkIndexRange(ruleData.output as number);
+							returnData[ruleData.output as number].push(item);
+							continue itemLoop;
+						}
+					}
+	
+					// Check if a fallback output got defined and route accordingly
+					outputIndex = this.getNodeParameter('fallbackOutput', itemIndex) as number;
+					if (outputIndex !== -1) {
+						checkIndexRange(outputIndex);
+						returnData[outputIndex].push(item);
+					}
 				}
+
+			} catch (error) {
+				if (this.continueOnFail()) {
+					returnData[0].push({json:{ error: error.message }});
+					continue;
+				}
+				throw error;
 			}
 		}
 

@@ -75,7 +75,7 @@ export class UProc implements INodeType {
 						displayName: 'Data Webhook',
 						name: 'dataWebhook',
 						type: 'string',
-						description: 'URL to send tool response when tool has resolved your request. You can create your own webhook at <a href="https://beeceptor.com" target="_blank">Beeceptor</a>, <a href="https://www.integromat.com/" target="_blank">Integromat</a>, <a href="https://zapier.com/" target="_blank">Zapier</a> or <a href="https://n8n.io/" target="_blank">n8n</a>',
+						description: 'URL to send tool response when tool has resolved your request. You can create your own webhook at en <a href="https://beeceptor.com" target="_blank">Beeceptor</a>, <a href="https://www.integromat.com/" target="_blank">Integromat</a>, <a href="https://zapier.com/" target="_blank">Zapier</a> or <a href="https://n8n.io/" target="_blank">n8n</a>',
 						default: '',
 					},
 				],
@@ -92,7 +92,6 @@ export class UProc implements INodeType {
 		const tool = this.getNodeParameter('tool', 0) as string;
 		const additionalOptions = this.getNodeParameter('additionalOptions', 0) as IDataObject;
 
-
 		const dataWebhook = additionalOptions.dataWebhook as string;
 
 		interface LooseObject {
@@ -108,34 +107,42 @@ export class UProc implements INodeType {
 
 		const requestPromises = [];
 		for (let i = 0; i < length; i++) {
-			const toolKey = tool.replace(/([A-Z]+)/g, '-$1').toLowerCase();
-			const body: LooseObject = {
-				processor: toolKey,
-				params: {},
-			};
+			try {
+				const toolKey = tool.replace(/([A-Z]+)/g, '-$1').toLowerCase();
+				const body: LooseObject = {
+					processor: toolKey,
+					params: {},
+				};
 
-			fields.forEach((field) => {
-				if (field && field.length) {
-					const data = this.getNodeParameter(field, i) as string;
-					body.params[field] = data + '';
+				fields.forEach((field) => {
+					if (field && field.length) {
+						const data = this.getNodeParameter(field, i) as string;
+						body.params[field] = data + '';
+					}
+				});
+
+				if (dataWebhook && dataWebhook.length) {
+					body.callback = {};
 				}
-			});
 
-			if (dataWebhook && dataWebhook.length) {
-				body.callback = {};
-			}
+				if (dataWebhook && dataWebhook.length) {
+					body.callback.data = dataWebhook;
+				}
 
-			if (dataWebhook && dataWebhook.length) {
-				body.callback.data = dataWebhook;
-			}
+				//Change to multiple requests
+				responseData = await uprocApiRequest.call(this, 'POST', body);
 
-			//Change to multiple requests
-			responseData = await uprocApiRequest.call(this, 'POST', body);
-
-			if (Array.isArray(responseData)) {
-				returnData.push.apply(returnData, responseData as IDataObject[]);
-			} else {
-				returnData.push(responseData as IDataObject);
+				if (Array.isArray(responseData)) {
+					returnData.push.apply(returnData, responseData as IDataObject[]);
+				} else {
+					returnData.push(responseData as IDataObject);
+				}
+			} catch (error) {
+				if (this.continueOnFail()) {
+					returnData.push({ error: error.message });
+					continue;
+				}
+				throw error;
 			}
 		}
 		return [this.helpers.returnJsonArray(returnData)];

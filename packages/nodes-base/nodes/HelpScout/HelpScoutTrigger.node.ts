@@ -26,7 +26,7 @@ export class HelpScoutTrigger implements INodeType {
 		icon: 'file:helpScout.svg',
 		group: ['trigger'],
 		version: 1,
-		description: 'Starts the workflow when HelpScout events occure.',
+		description: 'Starts the workflow when HelpScout events occur',
 		defaults: {
 			name: 'HelpScout Trigger',
 			color: '#1392ee',
@@ -169,7 +169,7 @@ export class HelpScoutTrigger implements INodeType {
 					const endpoint = `/v2/webhooks/${webhookData.webhookId}`;
 					try {
 						await helpscoutApiRequest.call(this, 'DELETE', endpoint);
-					} catch (e) {
+					} catch (error) {
 						return false;
 					}
 

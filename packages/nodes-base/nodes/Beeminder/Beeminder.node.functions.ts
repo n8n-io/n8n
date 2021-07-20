@@ -7,6 +7,7 @@ import {
 	IDataObject,
 	IHookFunctions,
 	IWebhookFunctions,
+	NodeOperationError,
 } from 'n8n-workflow';
 
 import {
@@ -18,7 +19,7 @@ export async function createDatapoint(this: IExecuteFunctions | IWebhookFunction
 	const credentials = this.getCredentials('beeminderApi');
 
 	if (credentials === undefined) {
-		throw new Error('No credentials got returned!');
+		throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
 	}
 
 	const endpoint = `/users/${credentials.user}/goals/${data.goalName}/datapoints.json`;
@@ -30,7 +31,7 @@ export async function getAllDatapoints(this: IExecuteFunctions | IHookFunctions 
 	const credentials = this.getCredentials('beeminderApi');
 
 	if (credentials === undefined) {
-		throw new Error('No credentials got returned!');
+		throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
 	}
 
 	const endpoint = `/users/${credentials.user}/goals/${data.goalName}/datapoints.json`;
@@ -46,7 +47,7 @@ export async function updateDatapoint(this: IExecuteFunctions | IWebhookFunction
 	const credentials = this.getCredentials('beeminderApi');
 
 	if (credentials === undefined) {
-		throw new Error('No credentials got returned!');
+		throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
 	}
 
 	const endpoint = `/users/${credentials.user}/goals/${data.goalName}/datapoints/${data.datapointId}.json`;
@@ -58,7 +59,7 @@ export async function deleteDatapoint(this: IExecuteFunctions | IWebhookFunction
 	const credentials = this.getCredentials('beeminderApi');
 
 	if (credentials === undefined) {
-		throw new Error('No credentials got returned!');
+		throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
 	}
 
 	const endpoint = `/users/${credentials.user}/goals/${data.goalName}/datapoints/${data.datapointId}.json`;

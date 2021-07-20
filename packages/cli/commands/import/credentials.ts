@@ -10,8 +10,15 @@ import {
 
 import {
 	Db,
-	GenericHelpers,
 } from '../../src';
+
+import { 
+	getLogger,
+} from '../../src/Logger';
+
+import {
+	LoggerProxy,
+} from 'n8n-workflow';
 
 import * as fs from 'fs';
 import * as glob from 'glob-promise';
@@ -37,17 +44,20 @@ export class ImportCredentialsCommand extends Command {
 	};
 
 	async run() {
+		const logger = getLogger();
+		LoggerProxy.init(logger);
+
 		const { flags } = this.parse(ImportCredentialsCommand);
 
 		if (!flags.input) {
-			GenericHelpers.logOutput(`An input file or directory with --input must be provided`);
+			console.info(`An input file or directory with --input must be provided`);
 			return;
 		}
 
 		if (flags.separate) {
 			if (fs.existsSync(flags.input)) {
 				if (!fs.lstatSync(flags.input).isDirectory()) {
-					GenericHelpers.logOutput(`The paramenter --input must be a directory`);
+					console.info(`The paramenter --input must be a directory`);
 					return;
 				}
 			}
@@ -55,11 +65,26 @@ export class ImportCredentialsCommand extends Command {
 
 		try {
 			await Db.init();
+
+			// Make sure the settings exist
+			await UserSettings.prepareUserSettings();
 			let i;
+
+			const encryptionKey = await UserSettings.getEncryptionKey();
+			if (encryptionKey === undefined) {
+				throw new Error('No encryption key got found to encrypt the credentials!');
+			}
+
 			if (flags.separate) {
 				const files = await glob((flags.input.endsWith(path.sep) ? flags.input : flags.input + path.sep) + '*.json');
 				for (i = 0; i < files.length; i++) {
 					const credential = JSON.parse(fs.readFileSync(files[i], { encoding: 'utf8' }));
+
+					if (typeof credential.data === 'object') {
+						// plain data / decrypted input. Should be encrypted first.
+						Credentials.prototype.setData.call(credential, credential.data, encryptionKey);
+					}
+
 					await Db.collections.Credentials!.save(credential);
 				}
 			} else {
@@ -69,10 +94,6 @@ export class ImportCredentialsCommand extends Command {
 					throw new Error(`File does not seem to contain credentials.`);
 				}
 
-				const encryptionKey = await UserSettings.getEncryptionKey();
-				if (encryptionKey === undefined) {
-					throw new Error('No encryption key got found to encrypt the credentials!');
-				}
 				for (i = 0; i < fileContents.length; i++) {
 					if (typeof fileContents[i].data === 'object') {
 						// plain data / decrypted input. Should be encrypted first.
@@ -81,9 +102,11 @@ export class ImportCredentialsCommand extends Command {
 					await Db.collections.Credentials!.save(fileContents[i]);
 				}
 			}
-			console.log('Successfully imported', i, 'credentials.');
+			console.info(`Successfully imported ${i} ${i === 1 ? 'credential.' : 'credentials.'}`);
+			process.exit(0);
 		} catch (error) {
-			this.error(error.message);
+			console.error('An error occurred while exporting credentials. See log messages for details.');
+			logger.error(error.message);
 			this.exit(1);
 		}
 	}

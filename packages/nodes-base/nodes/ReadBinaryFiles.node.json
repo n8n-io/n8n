@@ -11,5 +11,15 @@
 				"url": "https://docs.n8n.io/nodes/n8n-nodes-base.readBinaryFiles/"
 			}
 		]
+	},
+	"alias": [
+		"Text",
+		"Open",
+		"Import"
+	],
+	"subcategories": {
+		"Core Nodes": [
+			"Files"
+		]
 	}
 }

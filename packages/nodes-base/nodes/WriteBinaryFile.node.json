@@ -11,5 +11,15 @@
 				"url": "https://docs.n8n.io/nodes/n8n-nodes-base.writeBinaryFile/"
 			}
 		]
+	},
+	"alias": [
+		"Text",
+		"Save",
+		"Export"
+	],
+	"subcategories": {
+		"Core Nodes": [
+			"Files"
+		]
 	}
 }
