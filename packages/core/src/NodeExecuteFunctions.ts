@@ -7,6 +7,7 @@ import {
 } from './';
 
 import {
+	GenericValue,
 	IAllExecuteFunctions,
 	IBinaryData,
 	IContextObject,
@@ -48,6 +49,7 @@ import { Token } from 'oauth-1.0a';
 import * as clientOAuth2 from 'client-oauth2';
 import { get } from 'lodash';
 import * as express from 'express';
+import * as FormData from 'form-data';
 import * as path from 'path';
 import { OptionsWithUri, OptionsWithUrl } from 'request';
 import * as requestPromise from 'request-promise-native';
@@ -57,11 +59,7 @@ import { lookup } from 'mime-types';
 import {
 	LoggerProxy as Logger,
 } from 'n8n-workflow';
-import axios, { AxiosRequestConfig } from 'axios';
-
-const requestPromiseWithDefaults = requestPromise.defaults({
-	timeout: 300000, // 5 minutes
-});
+import axios, { AxiosProxyConfig, AxiosRequestConfig, Method } from 'axios';
 
 axios.defaults.timeout = 300000;
 
@@ -595,7 +593,7 @@ export function getExecutePollFunctions(workflow: Workflow, node: INode, additio
 			helpers: {
 				httpRequest,
 				prepareBinaryData,
-				request: requestPromiseWithDefaults,
+				request: proxyRequestToAxios,
 				requestOAuth2(this: IAllExecuteFunctions, credentialsType: string, requestOptions: OptionsWithUri | requestPromise.RequestPromiseOptions, oAuth2Options?: IOAuth2Options): Promise<any> { // tslint:disable-line:no-any
 					return requestOAuth2.call(this, credentialsType, requestOptions, node, additionalData, oAuth2Options);
 				},
@@ -662,7 +660,7 @@ export function getExecuteTriggerFunctions(workflow: Workflow, node: INode, addi
 			helpers: {
 				httpRequest,
 				prepareBinaryData,
-				request: requestPromiseWithDefaults,
+				request: proxyRequestToAxios,
 				requestOAuth2(this: IAllExecuteFunctions, credentialsType: string, requestOptions: OptionsWithUri | requestPromise.RequestPromiseOptions, oAuth2Options?: IOAuth2Options): Promise<any> { // tslint:disable-line:no-any
 					return requestOAuth2.call(this, credentialsType, requestOptions, node, additionalData, oAuth2Options);
 				},
@@ -771,7 +769,7 @@ export function getExecuteFunctions(workflow: Workflow, runExecutionData: IRunEx
 			helpers: {
 				httpRequest,
 				prepareBinaryData,
-				request: requestPromiseWithDefaults,
+				request: proxyRequestToAxios,
 				requestOAuth2(this: IAllExecuteFunctions, credentialsType: string, requestOptions: OptionsWithUri | requestPromise.RequestPromiseOptions, oAuth2Options?: IOAuth2Options): Promise<any> { // tslint:disable-line:no-any
 					return requestOAuth2.call(this, credentialsType, requestOptions, node, additionalData, oAuth2Options);
 				},
@@ -870,7 +868,7 @@ export function getExecuteSingleFunctions(workflow: Workflow, runExecutionData: 
 			helpers: {
 				httpRequest,
 				prepareBinaryData,
-				request: requestPromiseWithDefaults,
+				request: proxyRequestToAxios,
 				requestOAuth2(this: IAllExecuteFunctions, credentialsType: string, requestOptions: OptionsWithUri | requestPromise.RequestPromiseOptions, oAuth2Options?: IOAuth2Options): Promise<any> { // tslint:disable-line:no-any
 					return requestOAuth2.call(this, credentialsType, requestOptions, node, additionalData, oAuth2Options);
 				},
@@ -929,7 +927,7 @@ export function getLoadOptionsFunctions(workflow: Workflow, node: INode, path: s
 			},
 			helpers: {
 				httpRequest,
-				request: requestPromiseWithDefaults,
+				request: proxyRequestToAxios,
 				requestOAuth2(this: IAllExecuteFunctions, credentialsType: string, requestOptions: OptionsWithUri | requestPromise.RequestPromiseOptions, oAuth2Options?: IOAuth2Options): Promise<any> { // tslint:disable-line:no-any
 					return requestOAuth2.call(this, credentialsType, requestOptions, node, additionalData, oAuth2Options);
 				},
@@ -1000,7 +998,7 @@ export function getExecuteHookFunctions(workflow: Workflow, node: INode, additio
 			},
 			helpers: {
 				httpRequest,
-				request: requestPromiseWithDefaults,
+				request: proxyRequestToAxios,
 				requestOAuth2(this: IAllExecuteFunctions, credentialsType: string, requestOptions: OptionsWithUri | requestPromise.RequestPromiseOptions, oAuth2Options?: IOAuth2Options): Promise<any> { // tslint:disable-line:no-any
 					return requestOAuth2.call(this, credentialsType, requestOptions, node, additionalData, oAuth2Options);
 				},
@@ -1101,10 +1099,6 @@ export function getExecuteWebhookFunctions(workflow: Workflow, node: INode, addi
 			helpers: {
 				httpRequest,
 				prepareBinaryData,
-				request: requestPromiseWithDefaults,
-				requestOAuth2(this: IAllExecuteFunctions, credentialsType: string, requestOptions: OptionsWithUri | requestPromise.RequestPromiseOptions, oAuth2Options?: IOAuth2Options): Promise<any> { // tslint:disable-line:no-any
-					return requestOAuth2.call(this, credentialsType, requestOptions, node, additionalData, oAuth2Options);
-				},
 				requestOAuth1(this: IAllExecuteFunctions, credentialsType: string, requestOptions: OptionsWithUrl | requestPromise.RequestPromiseOptions): Promise<any> { // tslint:disable-line:no-any
 					return requestOAuth1.call(this, credentialsType, requestOptions);
 				},
@@ -1115,25 +1109,100 @@ export function getExecuteWebhookFunctions(workflow: Workflow, node: INode, addi
 
 }
 
-function parseRequestObject(requestObject: object) {
+function parseRequestObject(requestObject: IDataObject) {
 
+	// This function is a temporary implementation
+	// That translates all http requests done via
+	// the request library to axios directly
+	// We are not using n8n's interface as it would
+	// an unnecessary step, considering the `request`
+	// helper can be deprecated and removed.
+	const axiosConfig: AxiosRequestConfig = {}; 
+
+	if (requestObject.uri !== undefined) {
+		axiosConfig.url = requestObject.uri as string;
+	}
+
+	if (requestObject.headers !== undefined) {
+		axiosConfig.headers = requestObject.headers as string;
+	}
+
+	if (requestObject.method !== undefined) {
+		axiosConfig.method = requestObject.method as Method;
+	}
+
+	if (requestObject.body !== undefined) {
+		axiosConfig.data = requestObject.body as FormData | GenericValue | GenericValue[];
+	}
+
+	if (requestObject.qs !== undefined) {
+		axiosConfig.params = requestObject.body as IDataObject;
+	}
+
+	if (requestObject.useQuerystring === true) {
+		axiosConfig.paramsSerializer = (params) => {
+			return stringify(params, {arrayFormat: 'repeat'});
+		};
+	}
+
+	if (requestObject.auth !== undefined) {
+		axiosConfig.auth = requestObject.auth as {
+			username: string;
+			password: string;
+		};
+	}
+
+	if (requestObject.json === true) {
+		// Add application/json headers
+		axiosConfig.headers = Object.assign(axiosConfig.headers || {}, {
+            'Content-Type': 'application/json',
+        });
+	}
+
+	if (requestObject.followRedirect === false || requestObject.followAllRedirects === false) {
+		axiosConfig.maxRedirects = 0;
+	}
+
+
+	if (requestObject.rejectUnauthorized === false) {
+		axiosConfig.httpsAgent = new Agent({  
+			rejectUnauthorized: false,
+		});
+	}
+
+	if (requestObject.timeout !== undefined) {
+		axiosConfig.timeout = requestObject.timeout as number;
+	}
+
+	if (requestObject.proxy !== undefined) {
+		axiosConfig.proxy = requestObject.proxy as AxiosProxyConfig;
+	}
+
+	/**
+	 * Missing properties:
+	 * encoding (need testing)
+	 * gzip (ignored - default already works)
+	 * resolveWithFullResponse (implemented elsewhere)
+	 * simple (???)
+	 */
+
+	return axiosConfig;
+	
 }
 
-function proxyRequestToAxios() {
+async function proxyRequestToAxios(): Promise<any> {
 	let axiosConfig: AxiosRequestConfig = {};
 	if (arguments[0] !== undefined && typeof arguments[0] === 'string') {
 		axiosConfig.url = arguments[0];
 	}
 	if (arguments[0] !== undefined && typeof arguments[0] === 'object') {
-		axiosConfig = Object.assign(axiosConfig,parseRequestObject(arguments[0] as object));
+		axiosConfig = Object.assign(axiosConfig,parseRequestObject(arguments[0] as IDataObject));
 	}
 	if (arguments[1] !== undefined && typeof arguments[1] === 'object') {
 		axiosConfig = Object.assign(axiosConfig,parseRequestObject(arguments[1]));
 	}
-	
 
-
-	return axios(axiosConfig);
+	return await axios(axiosConfig);
 }
 
 async function httpRequest(requestParams: IHttpRequestOptions): Promise<any> { //tslint:disable-line:no-any
@@ -1176,7 +1245,7 @@ function convertN8nRequestToAxios(n8nRequest: IHttpRequestOptions): AxiosRequest
 		axiosRequest.responseType = n8nRequest.encoding;
 	}
 
-	if (n8nRequest.skipSslCertificateValidation !== undefined) {
+	if (n8nRequest.skipSslCertificateValidation === true) {
 		axiosRequest.httpsAgent = new Agent({  
 			rejectUnauthorized: false,
 		});
