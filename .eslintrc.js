@@ -1,9 +1,3 @@
-
-/**
- * Global ESLint config file, inherited by each package.
- *
- * Only `parserOptions` must be set at the package.
- */
 module.exports = {
 	env: {
 		browser: true,
@@ -12,6 +6,10 @@ module.exports = {
 	},
 	extends: ['prettier'],
 	parser: '@typescript-eslint/parser',
+	parserOptions: {
+		project: ['./packages/*/tsconfig.json'],
+		sourceType: 'module',
+	},
 	plugins: [
 		'eslint-plugin-import',
 		'@typescript-eslint',
