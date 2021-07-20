@@ -395,6 +395,7 @@ export default mixins(
 						this.$showError(error, 'Problem deleting the workflow', 'There was a problem deleting the workflow:');
 						return;
 					}
+					this.$store.commit('setStateDirty', false);
 					// Reset tab title since workflow is deleted.
 					this.$titleReset();
 					this.$showMessage({
