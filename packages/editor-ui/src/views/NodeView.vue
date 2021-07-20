@@ -2273,7 +2273,7 @@ export default mixins(
 				}
 				this.stopLoading();
 
-				setTimeout(async () => {
+				setTimeout(() => {
 					this.checkForNewVersions();
 				}, 0);
 			});

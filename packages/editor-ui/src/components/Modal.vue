@@ -85,10 +85,10 @@ export default Vue.extend({
 				this.$emit('enter');
 			}
 		},
-		closeDialog(done?: () => void) {
+		closeDialog(callback?: () => void) {
 			this.$store.commit('ui/closeTopModal');
-			if (done) {
-				done();
+			if (callback) {
+				callback();
 			}
 		},
 		closeDrawer() {

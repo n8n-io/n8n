@@ -28,7 +28,7 @@
 		<div :class="$style.divider" v-if="version.description || (version.nodes && version.nodes.length)"></div>
 		<div>
 			<div v-if="version.description" v-html="version.description" :class="$style.description"></div>
-			<div :class="$style.nodes" v-if="version.nodes && version.nodes.length > 0">
+			<div v-if="version.nodes && version.nodes.length > 0" :class="$style.nodes">
 				<NodeIcon 
 					v-for="node in version.nodes"
 					:key="node.name"

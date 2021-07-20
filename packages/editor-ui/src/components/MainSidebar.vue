@@ -132,7 +132,7 @@
 						<div class="gift-container">
 							<GiftNotificationIcon />
 						</div>
-						<span slot="title" class="item-title-root">{{nextVersions.length > 99? '99+': nextVersions.length}} update{{nextVersions.length > 1? 's': ''}} available</span>
+						<span slot="title" class="item-title-root">{{nextVersions.length > 99 ? '99+' : nextVersions.length}} update{{nextVersions.length > 1 ? 's' : ''}} available</span>
 					</el-menu-item>
 				</div>
 			</el-menu>
