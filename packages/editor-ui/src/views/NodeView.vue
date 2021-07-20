@@ -148,7 +148,6 @@ import {
 	INodeConnections,
 	INodeIssues,
 	INodeTypeDescription,
-	NodeInputConnections,
 	NodeHelpers,
 	Workflow,
 	IRun,
