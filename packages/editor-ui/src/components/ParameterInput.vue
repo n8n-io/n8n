@@ -97,9 +97,9 @@
 					<font-awesome-icon icon="cogs" class="reset-icon clickable" title="Parameter Options"/>
 				</span>
 				<el-dropdown-menu slot="dropdown">
-					<el-dropdown-item command="refreshOptions" v-if="parameter.typeOptions!=null && parameter.typeOptions.loadOptionsMethod!==null">Refresh Options</el-dropdown-item>
 					<el-dropdown-item command="addExpression" v-if="parameter.noDataExpression !== true && !isValueExpression">Add Expression</el-dropdown-item>
 					<el-dropdown-item command="removeExpression" v-if="parameter.noDataExpression !== true && isValueExpression">Remove Expression</el-dropdown-item>
+					<el-dropdown-item command="refreshOptions" v-if="Boolean(remoteMethod)">Refresh List</el-dropdown-item>
 					<el-dropdown-item command="resetValue" :disabled="isDefault" divided>Reset Value</el-dropdown-item>
 				</el-dropdown-menu>
 			</el-dropdown>
@@ -577,7 +577,7 @@ export default mixins(
 					this.expressionEditDialogVisible = true;
 				} else if (command === 'removeExpression') {
 					this.valueChanged(this.expressionValueComputed || null);
-				}else if (command === 'refreshOptions'){
+				} else if (command === 'refreshOptions') {
 					this.loadRemoteParameterOptions();	
 				}
 			},
