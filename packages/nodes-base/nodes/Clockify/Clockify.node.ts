@@ -233,352 +233,360 @@ export class Clockify implements INodeType {
 
 		for (let i = 0; i < length; i++) {
 
-			if (resource === 'project') {
+			try {
+				if (resource === 'project') {
 
-				if (operation === 'create') {
+					if (operation === 'create') {
 
-					const workspaceId = this.getNodeParameter('workspaceId', i) as string;
+						const workspaceId = this.getNodeParameter('workspaceId', i) as string;
 
-					const name = this.getNodeParameter('name', i) as string;
+						const name = this.getNodeParameter('name', i) as string;
 
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 
-					const body: IDataObject = {
-						name,
-					};
+						const body: IDataObject = {
+							name,
+						};
 
-					Object.assign(body, additionalFields);
+						Object.assign(body, additionalFields);
 
-					if (body.estimateUi) {
+						if (body.estimateUi) {
 
-						body.estimate = (body.estimateUi as IDataObject).estimateValues;
+							body.estimate = (body.estimateUi as IDataObject).estimateValues;
 
-						delete body.estimateUi;
-					}
+							delete body.estimateUi;
+						}
 
-					responseData = await clockifyApiRequest.call(
-						this,
-						'POST',
-						`/workspaces/${workspaceId}/projects`,
-						body,
-						qs,
-					);
-				}
-
-				if (operation === 'delete') {
-
-					const workspaceId = this.getNodeParameter('workspaceId', i) as string;
-
-					const projectId = this.getNodeParameter('projectId', i) as string;
-
-					responseData = await clockifyApiRequest.call(
-						this,
-						'DELETE',
-						`/workspaces/${workspaceId}/projects/${projectId}`,
-						{},
-						qs,
-					);
-
-					responseData = { success: true };
-				}
-
-				if (operation === 'get') {
-
-					const workspaceId = this.getNodeParameter('workspaceId', i) as string;
-
-					const projectId = this.getNodeParameter('projectId', i) as string;
-
-					responseData = await clockifyApiRequest.call(
-						this,
-						'GET',
-						`/workspaces/${workspaceId}/projects/${projectId}`,
-						{},
-						qs,
-					);
-				}
-
-				if (operation === 'getAll') {
-
-					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
-
-					const workspaceId = this.getNodeParameter('workspaceId', i) as string;
-
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
-
-					Object.assign(qs, additionalFields);
-
-					if (returnAll) {
-						responseData = await clockifyApiRequestAllItems.call(
+						responseData = await clockifyApiRequest.call(
 							this,
-							'GET',
+							'POST',
 							`/workspaces/${workspaceId}/projects`,
+							body,
+							qs,
+						);
+					}
+
+					if (operation === 'delete') {
+
+						const workspaceId = this.getNodeParameter('workspaceId', i) as string;
+
+						const projectId = this.getNodeParameter('projectId', i) as string;
+
+						responseData = await clockifyApiRequest.call(
+							this,
+							'DELETE',
+							`/workspaces/${workspaceId}/projects/${projectId}`,
 							{},
 							qs,
 						);
 
-					} else {
+						responseData = { success: true };
+					}
 
-						qs.limit = this.getNodeParameter('limit', i) as number;
+					if (operation === 'get') {
 
-						responseData = await clockifyApiRequestAllItems.call(
+						const workspaceId = this.getNodeParameter('workspaceId', i) as string;
+
+						const projectId = this.getNodeParameter('projectId', i) as string;
+
+						responseData = await clockifyApiRequest.call(
 							this,
 							'GET',
-							`/workspaces/${workspaceId}/projects`,
+							`/workspaces/${workspaceId}/projects/${projectId}`,
 							{},
 							qs,
 						);
-
-						responseData = responseData.splice(0, qs.limit);
-					}
-				}
-
-				if (operation === 'update') {
-
-					const workspaceId = this.getNodeParameter('workspaceId', i) as string;
-
-					const projectId = this.getNodeParameter('projectId', i) as string;
-
-					const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
-
-					const body: IDataObject = {};
-
-					Object.assign(body, updateFields);
-
-					if (body.estimateUi) {
-
-						body.estimate = (body.estimateUi as IDataObject).estimateValues;
-
-						delete body.estimateUi;
 					}
 
-					responseData = await clockifyApiRequest.call(
-						this,
-						'PUT',
-						`/workspaces/${workspaceId}/projects/${projectId}`,
-						body,
-						qs,
-					);
-				}
-			}
+					if (operation === 'getAll') {
 
-			if (resource === 'tag') {
+						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
 
-				if (operation === 'create') {
+						const workspaceId = this.getNodeParameter('workspaceId', i) as string;
 
-					const workspaceId = this.getNodeParameter('workspaceId', i) as string;
+						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 
-					const name = this.getNodeParameter('name', i) as string;
+						Object.assign(qs, additionalFields);
 
-					const body: IDataObject = {
-						name,
-					};
+						if (returnAll) {
+							responseData = await clockifyApiRequestAllItems.call(
+								this,
+								'GET',
+								`/workspaces/${workspaceId}/projects`,
+								{},
+								qs,
+							);
 
-					responseData = await clockifyApiRequest.call(
-						this,
-						'POST',
-						`/workspaces/${workspaceId}/tags`,
-						body,
-						qs,
-					);
-				}
+						} else {
 
-				if (operation === 'delete') {
+							qs.limit = this.getNodeParameter('limit', i) as number;
 
-					const workspaceId = this.getNodeParameter('workspaceId', i) as string;
+							responseData = await clockifyApiRequestAllItems.call(
+								this,
+								'GET',
+								`/workspaces/${workspaceId}/projects`,
+								{},
+								qs,
+							);
 
-					const tagId = this.getNodeParameter('tagId', i) as string;
+							responseData = responseData.splice(0, qs.limit);
+						}
+					}
 
-					responseData = await clockifyApiRequest.call(
-						this,
-						'DELETE',
-						`/workspaces/${workspaceId}/tags/${tagId}`,
-						{},
-						qs,
-					);
+					if (operation === 'update') {
 
-					responseData = { success: true };
-				}
+						const workspaceId = this.getNodeParameter('workspaceId', i) as string;
 
-				if (operation === 'getAll') {
+						const projectId = this.getNodeParameter('projectId', i) as string;
 
-					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
 
-					const workspaceId = this.getNodeParameter('workspaceId', i) as string;
+						const body: IDataObject = {};
 
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						Object.assign(body, updateFields);
 
-					Object.assign(qs, additionalFields);
+						if (body.estimateUi) {
 
-					if (returnAll) {
-						responseData = await clockifyApiRequestAllItems.call(
+							body.estimate = (body.estimateUi as IDataObject).estimateValues;
+
+							delete body.estimateUi;
+						}
+
+						responseData = await clockifyApiRequest.call(
 							this,
-							'GET',
+							'PUT',
+							`/workspaces/${workspaceId}/projects/${projectId}`,
+							body,
+							qs,
+						);
+					}
+				}
+
+				if (resource === 'tag') {
+
+					if (operation === 'create') {
+
+						const workspaceId = this.getNodeParameter('workspaceId', i) as string;
+
+						const name = this.getNodeParameter('name', i) as string;
+
+						const body: IDataObject = {
+							name,
+						};
+
+						responseData = await clockifyApiRequest.call(
+							this,
+							'POST',
 							`/workspaces/${workspaceId}/tags`,
-							{},
+							body,
 							qs,
 						);
+					}
 
-					} else {
+					if (operation === 'delete') {
 
-						qs.limit = this.getNodeParameter('limit', i) as number;
+						const workspaceId = this.getNodeParameter('workspaceId', i) as string;
 
-						responseData = await clockifyApiRequestAllItems.call(
+						const tagId = this.getNodeParameter('tagId', i) as string;
+
+						responseData = await clockifyApiRequest.call(
 							this,
-							'GET',
-							`/workspaces/${workspaceId}/tags`,
+							'DELETE',
+							`/workspaces/${workspaceId}/tags/${tagId}`,
 							{},
 							qs,
 						);
 
-						responseData = responseData.splice(0, qs.limit);
+						responseData = { success: true };
+					}
+
+					if (operation === 'getAll') {
+
+						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+
+						const workspaceId = this.getNodeParameter('workspaceId', i) as string;
+
+						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+
+						Object.assign(qs, additionalFields);
+
+						if (returnAll) {
+							responseData = await clockifyApiRequestAllItems.call(
+								this,
+								'GET',
+								`/workspaces/${workspaceId}/tags`,
+								{},
+								qs,
+							);
+
+						} else {
+
+							qs.limit = this.getNodeParameter('limit', i) as number;
+
+							responseData = await clockifyApiRequestAllItems.call(
+								this,
+								'GET',
+								`/workspaces/${workspaceId}/tags`,
+								{},
+								qs,
+							);
+
+							responseData = responseData.splice(0, qs.limit);
+						}
+					}
+
+					if (operation === 'update') {
+
+						const workspaceId = this.getNodeParameter('workspaceId', i) as string;
+
+						const tagId = this.getNodeParameter('tagId', i) as string;
+
+						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+
+						const body: IDataObject = {};
+
+						Object.assign(body, updateFields);
+
+						responseData = await clockifyApiRequest.call(
+							this,
+							'PUT',
+							`/workspaces/${workspaceId}/tags/${tagId}`,
+							body,
+							qs,
+						);
 					}
 				}
 
-				if (operation === 'update') {
+				if (resource === 'timeEntry') {
 
-					const workspaceId = this.getNodeParameter('workspaceId', i) as string;
+					if (operation === 'create') {
 
-					const tagId = this.getNodeParameter('tagId', i) as string;
+						const timezone = this.getTimezone();
 
-					const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+						const workspaceId = this.getNodeParameter('workspaceId', i) as string;
 
-					const body: IDataObject = {};
+						const start = this.getNodeParameter('start', i) as string;
 
-					Object.assign(body, updateFields);
+						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 
-					responseData = await clockifyApiRequest.call(
-						this,
-						'PUT',
-						`/workspaces/${workspaceId}/tags/${tagId}`,
-						body,
-						qs,
-					);
-				}
-			}
+						const body: IDataObject = {
+							start: moment.tz(start, timezone).utc().format(),
+						};
 
-			if (resource === 'timeEntry') {
+						Object.assign(body, additionalFields);
 
-				if (operation === 'create') {
+						if (body.end) {
+							body.end = moment.tz(body.end, timezone).utc().format();
+						}
 
-					const timezone = this.getTimezone();
+						if (body.customFieldsUi) {
 
-					const workspaceId = this.getNodeParameter('workspaceId', i) as string;
+							const customFields = (body.customFieldsUi as IDataObject).customFieldsValues as IDataObject[];
 
-					const start = this.getNodeParameter('start', i) as string;
+							body.customFields = customFields;
+						}
 
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
-
-					const body: IDataObject = {
-						start: moment.tz(start, timezone).utc().format(),
-					};
-
-					Object.assign(body, additionalFields);
-
-					if (body.end) {
-						body.end = moment.tz(body.end, timezone).utc().format();
+						responseData = await clockifyApiRequest.call(
+							this,
+							'POST',
+							`/workspaces/${workspaceId}/time-entries`,
+							body,
+							qs,
+						);
 					}
 
-					if (body.customFieldsUi) {
+					if (operation === 'delete') {
 
-						const customFields = (body.customFieldsUi as IDataObject).customFieldsValues as IDataObject[];
+						const workspaceId = this.getNodeParameter('workspaceId', i) as string;
 
-						body.customFields = customFields;
+						const timeEntryId = this.getNodeParameter('timeEntryId', i) as string;
+
+						responseData = await clockifyApiRequest.call(
+							this,
+							'DELETE',
+							`/workspaces/${workspaceId}/time-entries/${timeEntryId}`,
+							{},
+							qs,
+						);
+
+						responseData = { success: true };
 					}
 
-					responseData = await clockifyApiRequest.call(
-						this,
-						'POST',
-						`/workspaces/${workspaceId}/time-entries`,
-						body,
-						qs,
-					);
-				}
+					if (operation === 'get') {
 
-				if (operation === 'delete') {
+						const workspaceId = this.getNodeParameter('workspaceId', i) as string;
 
-					const workspaceId = this.getNodeParameter('workspaceId', i) as string;
+						const timeEntryId = this.getNodeParameter('timeEntryId', i) as string;
 
-					const timeEntryId = this.getNodeParameter('timeEntryId', i) as string;
-
-					responseData = await clockifyApiRequest.call(
-						this,
-						'DELETE',
-						`/workspaces/${workspaceId}/time-entries/${timeEntryId}`,
-						{},
-						qs,
-					);
-
-					responseData = { success: true };
-				}
-
-				if (operation === 'get') {
-
-					const workspaceId = this.getNodeParameter('workspaceId', i) as string;
-
-					const timeEntryId = this.getNodeParameter('timeEntryId', i) as string;
-
-					responseData = await clockifyApiRequest.call(
-						this,
-						'GET',
-						`/workspaces/${workspaceId}/time-entries/${timeEntryId}`,
-						{},
-						qs,
-					);
-				}
-
-				if (operation === 'update') {
-
-					const timezone = this.getTimezone();
-
-					const workspaceId = this.getNodeParameter('workspaceId', i) as string;
-
-					const timeEntryId = this.getNodeParameter('timeEntryId', i) as string;
-
-					const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
-
-					const body: IDataObject = {};
-
-					Object.assign(body, updateFields);
-
-					if (body.end) {
-						body.end = moment.tz(body.end, timezone).utc().format();
-					}
-
-					if (body.start) {
-						body.start = moment.tz(body.start, timezone).utc().format();
-					} else {
-						// even if you do not want to update the start time, it always has to be set
-						// to make it more simple to the user, if he did not set a start time look for the current start time
-						// and set it
-						const { timeInterval: { start } } = await clockifyApiRequest.call(
+						responseData = await clockifyApiRequest.call(
 							this,
 							'GET',
 							`/workspaces/${workspaceId}/time-entries/${timeEntryId}`,
 							{},
 							qs,
 						);
-
-						body.start = start;
 					}
 
-					responseData = await clockifyApiRequest.call(
-						this,
-						'PUT',
-						`/workspaces/${workspaceId}/time-entries/${timeEntryId}`,
-						body,
-						qs,
-					);
+					if (operation === 'update') {
+
+						const timezone = this.getTimezone();
+
+						const workspaceId = this.getNodeParameter('workspaceId', i) as string;
+
+						const timeEntryId = this.getNodeParameter('timeEntryId', i) as string;
+
+						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+
+						const body: IDataObject = {};
+
+						Object.assign(body, updateFields);
+
+						if (body.end) {
+							body.end = moment.tz(body.end, timezone).utc().format();
+						}
+
+						if (body.start) {
+							body.start = moment.tz(body.start, timezone).utc().format();
+						} else {
+							// even if you do not want to update the start time, it always has to be set
+							// to make it more simple to the user, if he did not set a start time look for the current start time
+							// and set it
+							const { timeInterval: { start } } = await clockifyApiRequest.call(
+								this,
+								'GET',
+								`/workspaces/${workspaceId}/time-entries/${timeEntryId}`,
+								{},
+								qs,
+							);
+
+							body.start = start;
+						}
+
+						responseData = await clockifyApiRequest.call(
+							this,
+							'PUT',
+							`/workspaces/${workspaceId}/time-entries/${timeEntryId}`,
+							body,
+							qs,
+						);
+					}
 				}
+
+				if (Array.isArray(responseData)) {
+
+					returnData.push.apply(returnData, responseData as IDataObject[]);
+
+				} else if (responseData !== undefined) {
+
+					returnData.push(responseData as IDataObject);
+				}
+			} catch (error) {
+				if (this.continueOnFail()) {
+					returnData.push({ error: error.message });
+					continue;
+				}
+				throw error;
 			}
-		}
-
-		if (Array.isArray(responseData)) {
-
-			returnData.push.apply(returnData, responseData as IDataObject[]);
-
-		} else if (responseData !== undefined) {
-
-			returnData.push(responseData as IDataObject);
 		}
 
 		return [this.helpers.returnJsonArray(returnData)];
