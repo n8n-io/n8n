@@ -5,13 +5,14 @@ import {
 
 export class ClerkApi implements ICredentialType {
 	name = 'clerkApi';
-	displayName = 'Webhook Secret';
+	displayName = 'Clerk API';
 	properties: INodeProperties[] = [
 		{
 			displayName: 'Webhook Secret',
 			name: 'webhookSecret',
 			type: 'string',
-			placeholder: 'Find it under Clerk → Integrations → Svix',
+			description: 'Secret to verify webhook signatures',
+			placeholder: 'whsec_t6282haDhoSLqiamshd9X2deLWCmk3CA',
 			default: '',
 		},
 	];
