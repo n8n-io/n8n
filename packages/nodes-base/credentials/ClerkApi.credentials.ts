@@ -1,4 +1,7 @@
-import { ICredentialType, INodeProperties } from 'n8n-workflow';
+import {
+	ICredentialType,
+	INodeProperties,
+} from 'n8n-workflow';
 
 export class ClerkApi implements ICredentialType {
 	name = 'clerkApi';
@@ -9,7 +12,7 @@ export class ClerkApi implements ICredentialType {
 			name: 'webhookSecret',
 			type: 'string',
 			placeholder: 'Find it under Clerk → Integrations → Svix',
-			default: ''
-		}
+			default: '',
+		},
 	];
 }
