@@ -24,7 +24,7 @@
 // 		group: ['trigger'],
 // 		version: 1,
 // 		subtitle: '={{$parameter["owner"] + "/" + $parameter["repository"] + ": " + $parameter["events"].join(", ")}}',
-// 		description: 'Starts the workflow when a file on Google Drive got changed.',
+// 		description: 'Starts the workflow when a file on Google Drive is changed',
 // 		defaults: {
 // 			name: 'Google Drive Trigger',
 // 			color: '#3f87f2',

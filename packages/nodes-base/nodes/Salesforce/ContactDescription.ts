@@ -571,6 +571,13 @@ export const contactFields = [
 				If a contact has a value in this field, it means that a contact was imported as a contact from Data.com.`,
 			},
 			{
+				displayName: 'Last Name',
+				name: 'lastName',
+				type: 'string',
+				default: '',
+				description: 'Last name of the contact. Limited to 80 characters.',
+			},
+			{
 				displayName: 'Lead Source',
 				name: 'leadSource',
 				type: 'options',

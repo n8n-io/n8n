@@ -24,7 +24,7 @@ export class TrelloTrigger implements INodeType {
 		icon: 'file:trello.svg',
 		group: ['trigger'],
 		version: 1,
-		description: 'Starts the workflow when Trello events occur.',
+		description: 'Starts the workflow when Trello events occur',
 		defaults: {
 			name: 'Trello Trigger',
 			color: '#026aa7',

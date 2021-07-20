@@ -390,6 +390,7 @@ export interface INode {
 	type: string;
 	position: [number, number];
 	disabled?: boolean;
+	notes?: string;
 	notesInFlow?: boolean;
 	retryOnFail?: boolean;
 	maxTries?: number;

@@ -3,9 +3,9 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export class TaigaServerApi implements ICredentialType {
-	name = 'taigaServerApi';
-	displayName = 'Taiga Server API';
+export class TaigaApi implements ICredentialType {
+	name = 'taigaApi';
+	displayName = 'Taiga API';
 	documentationUrl = 'taiga';
 	properties: INodeProperties[] = [
 		{
@@ -21,11 +21,34 @@ export class TaigaServerApi implements ICredentialType {
 			default: '',
 		},
 		{
+			displayName: 'Environment',
+			name: 'environment',
+			type: 'options',
+			default: 'cloud',
+			options: [
+				{
+					name: 'Cloud',
+					value: 'cloud',
+				},
+				{
+					name: 'Self-Hosted',
+					value: 'selfHosted',
+				},
+			],
+		},
+		{
 			displayName: 'URL',
 			name: 'url',
 			type: 'string',
 			default: '',
 			placeholder: 'https://taiga.yourdomain.com',
+			displayOptions: {
+				show: {
+					environment: [
+						'selfHosted',
+					],
+				},
+			},
 		},
 	];
 }
