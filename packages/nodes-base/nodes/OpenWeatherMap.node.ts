@@ -223,65 +223,76 @@ export class OpenWeatherMap implements INodeType {
 		let qs: IDataObject;
 
 		for (let i = 0; i < items.length; i++) {
-			// Set base data
-			qs = {
-				APPID: credentials.accessToken,
-				units: this.getNodeParameter('format', i) as string,
-			};
 
-			// Get the location
-			locationSelection = this.getNodeParameter('locationSelection', i) as string;
-			if (locationSelection === 'cityName') {
-				qs.q = this.getNodeParameter('cityName', i) as string;
-			} else if (locationSelection === 'cityId') {
-				qs.id = this.getNodeParameter('cityId', i) as number;
-			} else if (locationSelection === 'coordinates') {
-				qs.lat = this.getNodeParameter('latitude', i) as string;
-				qs.lon = this.getNodeParameter('longitude', i) as string;
-			} else if (locationSelection === 'zipCode') {
-				qs.zip = this.getNodeParameter('zipCode', i) as string;
-			} else {
-				throw new NodeOperationError(this.getNode(), `The locationSelection "${locationSelection}" is not known!`);
-			}
-
-			// Get the language
-			language = this.getNodeParameter('language', i) as string;
-			if (language) {
-				qs.lang = language;
-			}
-
-			if (operation === 'currentWeather') {
-				// ----------------------------------
-				//         currentWeather
-				// ----------------------------------
-
-				endpoint = 'weather';
-			} else if (operation === '5DayForecast') {
-				// ----------------------------------
-				//         5DayForecast
-				// ----------------------------------
-
-				endpoint = 'forecast';
-			} else {
-				throw new NodeOperationError(this.getNode(), `The operation "${operation}" is not known!`);
-			}
-
-			const options: OptionsWithUri = {
-				method: 'GET',
-				qs,
-				uri: `https://api.openweathermap.org/data/2.5/${endpoint}`,
-				json: true,
-			};
-
-			let responseData;
 			try {
-				responseData = await this.helpers.request(options);
+
+				// Set base data
+				qs = {
+					APPID: credentials.accessToken,
+					units: this.getNodeParameter('format', i) as string,
+				};
+
+				// Get the location
+				locationSelection = this.getNodeParameter('locationSelection', i) as string;
+				if (locationSelection === 'cityName') {
+					qs.q = this.getNodeParameter('cityName', i) as string;
+				} else if (locationSelection === 'cityId') {
+					qs.id = this.getNodeParameter('cityId', i) as number;
+				} else if (locationSelection === 'coordinates') {
+					qs.lat = this.getNodeParameter('latitude', i) as string;
+					qs.lon = this.getNodeParameter('longitude', i) as string;
+				} else if (locationSelection === 'zipCode') {
+					qs.zip = this.getNodeParameter('zipCode', i) as string;
+				} else {
+					throw new NodeOperationError(this.getNode(), `The locationSelection "${locationSelection}" is not known!`);
+				}
+
+				// Get the language
+				language = this.getNodeParameter('language', i) as string;
+				if (language) {
+					qs.lang = language;
+				}
+
+				if (operation === 'currentWeather') {
+					// ----------------------------------
+					//         currentWeather
+					// ----------------------------------
+
+					endpoint = 'weather';
+				} else if (operation === '5DayForecast') {
+					// ----------------------------------
+					//         5DayForecast
+					// ----------------------------------
+
+					endpoint = 'forecast';
+				} else {
+					throw new NodeOperationError(this.getNode(), `The operation "${operation}" is not known!`);
+				}
+
+				const options: OptionsWithUri = {
+					method: 'GET',
+					qs,
+					uri: `https://api.openweathermap.org/data/2.5/${endpoint}`,
+					json: true,
+				};
+
+				let responseData;
+				try {
+					responseData = await this.helpers.request(options);
+				} catch (error) {
+					throw new NodeApiError(this.getNode(), error);
+				}
+
+
+				returnData.push(responseData as IDataObject);
+
 			} catch (error) {
-				throw new NodeApiError(this.getNode(), error);
+				if (this.continueOnFail()) {
+					returnData.push({json:{ error: error.message }});
+					continue;
+				}
+				throw error;
 			}
-
-
-			returnData.push(responseData as IDataObject);
 		}
 
 		return [this.helpers.returnJsonArray(returnData)];
