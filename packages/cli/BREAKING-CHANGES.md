@@ -2,7 +2,7 @@
 
 This list shows all the versions which include breaking changes and how to upgrade.
 
-## 0.130.0
+## 0.131.0
 
 ### What changed?
 
@@ -11,6 +11,16 @@ For the Pipedrive regular node, the `deal:create` operation now requires an orga
 ### When is action necessary?
 
 If you are using the `deal:create` operation in the Pipedrive regular node, set an organization ID or a person ID.
+
+## 0.130.0
+
+### What changed?
+
+For the Taiga regular and trigger nodes, the server and cloud credentials types are now unified into a single credentials type and the `version` param has been removed. Also, the `issue:create` operation now automatically loads the tags as `multiOptions`.
+
+### When is action necessary?
+
+If you are using the Taiga nodes, reconnect the credentials. If you are using tags in the `issue:create` operation, reselect them.
 
 ## 0.127.0
 
