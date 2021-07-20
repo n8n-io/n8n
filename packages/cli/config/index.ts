@@ -620,7 +620,7 @@ const config = convict({
 
 	versionNotifications: {
 		enabled: {
-			doc: 'Whether feature to request new version notifications and security updates is enabled.',
+			doc: 'Whether feature is enabled to request notifications about new versions and security updates.',
 			format: Boolean,
 			default: true,
 			env: 'N8N_VERSION_NOTIFICATIONS_ENABLED',
