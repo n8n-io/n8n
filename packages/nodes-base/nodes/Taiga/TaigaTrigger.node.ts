@@ -18,9 +18,9 @@ import {
 	taigaApiRequest,
 } from './GenericFunctions';
 
-// import {
-// 	createHmac,
-// } from 'crypto';
+import {
+	createHmac,
+} from 'crypto';
 
 export class TaigaTrigger implements INodeType {
 	description: INodeTypeDescription = {
@@ -62,6 +62,66 @@ export class TaigaTrigger implements INodeType {
 				default: '',
 				description: 'Project ID',
 				required: true,
+			},
+			{
+				displayName: 'Actions',
+				name: 'actions',
+				type: 'multiOptions',
+				required: true,
+				default: [],
+				description: 'Event actions to listen to',
+				options: [
+					{
+						name: 'All',
+						value: 'all',
+					},
+					{
+						name: 'Create',
+						value: 'create',
+					},
+					{
+						name: 'Delete',
+						value: 'delete',
+					},
+					{
+						name: 'Update',
+						value: 'change',
+					},
+				],
+			},
+			{
+				displayName: 'Types',
+				name: 'types',
+				type: 'multiOptions',
+				required: true,
+				default: [],
+				description: 'Event types to listen to',
+				options: [
+					{
+						name: 'All',
+						value: 'all',
+					},
+					{
+						name: 'Issue',
+						value: 'issue',
+					},
+					{
+						name: 'Milestone (Sprint)',
+						value: 'milestone',
+					},
+					{
+						name: 'Task',
+						value: 'task',
+					},
+					{
+						name: 'User Story',
+						value: 'userstory',
+					},
+					{
+						name: 'Wikipage',
+						value: 'wikipage',
+					},
+				],
 			},
 		],
 	};
@@ -125,7 +185,7 @@ export class TaigaTrigger implements INodeType {
 				const body: IDataObject = {
 					name: `n8n-webhook:${webhookUrl}`,
 					url: webhookUrl,
-					key, //can't validate the secret, see: https://github.com/taigaio/taiga-back/issues/1031
+					key,
 					project: projectId,
 				};
 				const { id } = await taigaApiRequest.call(this, 'POST', '/webhooks', body);
@@ -150,25 +210,34 @@ export class TaigaTrigger implements INodeType {
 	};
 
 	async webhook(this: IWebhookFunctions): Promise<IWebhookResponseData> {
-		//const webhookData = this.getWorkflowStaticData('node');
-		const req = this.getRequestObject();
-		const bodyData = req.body;
-		//const headerData = this.getHeaderData();
+		const body = this.getRequestObject().body as WebhookPayload;
 
+		const actions = this.getNodeParameter('actions', []) as EventAction[];
+		const types = this.getNodeParameter('types', []) as EventType[];
 
-		// TODO
-		// Validate signature
+		if (!actions.includes('all') && !actions.includes(body.action)) {
+			return {};
+		}
+
+		if (!types.includes('all') && !types.includes(body.type)) {
+			return {};
+		}
+
+		// TODO: Signature does not match payload hash
 		// https://github.com/taigaio/taiga-back/issues/1031
 
-		// //@ts-ignore
-		// const requestSignature: string = headerData['x-taiga-webhook-signature'];
+		// const webhookData = this.getWorkflowStaticData('node');
+		// const headerData = this.getHeaderData();
+
+		// // @ts-ignore
+		// const requestSignature = headerData['x-taiga-webhook-signature'];
+		// console.log(requestSignature);
 
 		// if (requestSignature === undefined) {
 		// 	return {};
 		// }
 
-		// //@ts-ignore
-		// const computedSignature = createHmac('sha1', webhookData.key as string).update(JSON.stringify(bodyData)).digest('hex');
+		// const computedSignature = createHmac('sha1', webhookData.key as string).update(JSON.stringify(body)).digest('hex');
 
 		// if (requestSignature !== computedSignature) {
 		// 	return {};
@@ -176,7 +245,7 @@ export class TaigaTrigger implements INodeType {
 
 		return {
 			workflowData: [
-				this.helpers.returnJsonArray(bodyData),
+				this.helpers.returnJsonArray(body),
 			],
 		};
 	}
