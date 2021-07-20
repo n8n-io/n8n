@@ -8,6 +8,7 @@ import {
 } from 'n8n-workflow';
 
 import * as Parser from 'rss-parser';
+import { URL } from 'url';
 
 export class RssFeedRead implements INodeType {
 	description: INodeTypeDescription = {
@@ -38,37 +39,60 @@ export class RssFeedRead implements INodeType {
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 
-		const url = this.getNodeParameter('url', 0) as string;
+		try{
 
-		if (!url) {
-			throw new NodeOperationError(this.getNode(), 'The parameter "URL" has to be set!');
-		}
-		// TODO: Later add also check if the url has a valid format
+			const url = this.getNodeParameter('url', 0) as string;
 
-		const parser = new Parser();
-
-		let feed: Parser.Output<IDataObject>;
-		try {
-			feed = await parser.parseURL(url);
-		} catch (error) {
-			if (error.code === 'ECONNREFUSED') {
-				throw new NodeOperationError(this.getNode(), `It was not possible to connect to the URL. Please make sure the URL "${url}" it is valid!`);
+			if (!url) {
+				throw new NodeOperationError(this.getNode(), 'The parameter "URL" has to be set!');
 			}
 
-			throw new NodeOperationError(this.getNode(), error);
+			if (!validateURL(url)){
+				throw new NodeOperationError(this.getNode(), 'The provided "URL" is not valid!');
+			}
+
+			const parser = new Parser();
+
+			let feed: Parser.Output<IDataObject>;
+			try {
+				feed = await parser.parseURL(url);
+			} catch (error) {
+				if (error.code === 'ECONNREFUSED') {
+					throw new NodeOperationError(this.getNode(), `It was not possible to connect to the URL. Please make sure the URL "${url}" it is valid!`);
+				}
+
+				throw new NodeOperationError(this.getNode(), error);
+			}
+
+
+			const returnData: IDataObject[] = [];
+
+			// For now we just take the items and ignore everything else
+			if (feed.items) {
+				feed.items.forEach((item) => {
+					// @ts-ignore
+					returnData.push(item);
+				});
+			}
+
+			return [this.helpers.returnJsonArray(returnData)];
+
+		} catch (error) {
+			if (this.continueOnFail()) {
+				return this.prepareOutputData([{json:{ error: error.message }}]);
+			}
+			throw error;
 		}
+	}
+}
 
+// Utility function
 
-		const returnData: IDataObject[] = [];
-
-		// For now we just take the items and ignore everything else
-		if (feed.items) {
-			feed.items.forEach((item) => {
-				// @ts-ignore
-				returnData.push(item);
-			});
-		}
-
-		return [this.helpers.returnJsonArray(returnData)];
+function validateURL (url: string) {
+	try {
+		const parseUrl = new URL(url);
+		return true;
+	} catch (err) {
+		return false;
 	}
 }

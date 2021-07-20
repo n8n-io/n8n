@@ -412,6 +412,7 @@ export default mixins(
 						this.$showError(error, 'Problem deleting the workflow', 'There was a problem deleting the workflow:');
 						return;
 					}
+					this.$store.commit('setStateDirty', false);
 					// Reset tab title since workflow is deleted.
 					this.$titleReset();
 					this.$showMessage({
@@ -425,6 +426,9 @@ export default mixins(
 					const workflowData = await this.getWorkflowDataToSave();
 
 					const {tags, ...data} = workflowData;
+					if (data.id && typeof data.id === 'string') {
+						data.id = parseInt(data.id, 10);
+					}
 					const blob = new Blob([JSON.stringify(data, null, 2)], {
 						type: 'application/json;charset=utf-8',
 					});

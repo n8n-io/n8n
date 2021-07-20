@@ -1034,60 +1034,81 @@ export class GoogleSheets implements INodeType {
 				// ----------------------------------
 				//         append
 				// ----------------------------------
-				const keyRow = parseInt(this.getNodeParameter('keyRow', 0) as string, 10);
+				try {
+					const keyRow = parseInt(this.getNodeParameter('keyRow', 0) as string, 10);
 
-				const items = this.getInputData();
+					const items = this.getInputData();
 
-				const setData: IDataObject[] = [];
-				items.forEach((item) => {
-					setData.push(item.json);
-				});
+					const setData: IDataObject[] = [];
+					items.forEach((item) => {
+						setData.push(item.json);
+					});
 
-				// Convert data into array format
-				const data = await sheet.appendSheetData(setData, sheet.encodeRange(range), keyRow, valueInputMode);
+					// Convert data into array format
+					const data = await sheet.appendSheetData(setData, sheet.encodeRange(range), keyRow, valueInputMode);
 
-				// TODO: Should add this data somewhere
-				// TODO: Should have something like add metadata which does not get passed through
+					// TODO: Should add this data somewhere
+					// TODO: Should have something like add metadata which does not get passed through
 
-				return this.prepareOutputData(items);
+					return this.prepareOutputData(items);
+				} catch (error) {
+					if (this.continueOnFail()) {
+						return this.prepareOutputData([{json:{ error: error.message }}]);
+					}
+					throw error;
+				}
 			} else if (operation === 'clear') {
 				// ----------------------------------
 				//         clear
 				// ----------------------------------
+				try {
+					await sheet.clearData(sheet.encodeRange(range));
 
-				await sheet.clearData(sheet.encodeRange(range));
-
-				const items = this.getInputData();
-				return this.prepareOutputData(items);
+					const items = this.getInputData();
+					return this.prepareOutputData(items);
+				} catch (error) {
+					if (this.continueOnFail()) {
+						return this.prepareOutputData([{json:{ error: error.message }}]);
+					}
+					throw error;
+				}
 
 			} else if (operation === 'create') {
 				const returnData: IDataObject[] = [];
 
 				let responseData;
 				for (let i = 0; i < this.getInputData().length; i++) {
-					const spreadsheetId = this.getNodeParameter('sheetId', i) as string;
-					const options = this.getNodeParameter('options', i, {}) as IDataObject;
-					const simple = this.getNodeParameter('simple', 0) as boolean;
-					const properties = { ...options };
+					try {
+						const spreadsheetId = this.getNodeParameter('sheetId', i) as string;
+						const options = this.getNodeParameter('options', i, {}) as IDataObject;
+						const simple = this.getNodeParameter('simple', 0) as boolean;
+						const properties = { ...options };
 
-					if (options.tabColor) {
-						const { red, green, blue } = hexToRgb(options.tabColor as string)!;
-						properties.tabColor = { red: red / 255, green: green / 255, blue: blue / 255 };
+						if (options.tabColor) {
+							const { red, green, blue } = hexToRgb(options.tabColor as string)!;
+							properties.tabColor = { red: red / 255, green: green / 255, blue: blue / 255 };
+						}
+
+						const requests = [{
+							addSheet: {
+								properties,
+							},
+						}];
+
+						responseData = await googleApiRequest.call(this, 'POST', `/v4/spreadsheets/${spreadsheetId}:batchUpdate`, { requests });
+
+						if (simple === true) {
+							Object.assign(responseData, responseData.replies[0].addSheet.properties);
+							delete responseData.replies;
+						}
+						returnData.push(responseData);
+					} catch (error) {
+						if (this.continueOnFail()) {
+							returnData.push({ error: error.message });
+							continue;
+						}
+						throw error;
 					}
-
-					const requests = [{
-						addSheet: {
-							properties,
-						},
-					}];
-
-					responseData = await googleApiRequest.call(this, 'POST', `/v4/spreadsheets/${spreadsheetId}:batchUpdate`, { requests });
-
-					if (simple === true) {
-						Object.assign(responseData, responseData.replies[0].addSheet.properties);
-						delete responseData.replies;
-					}
-					returnData.push(responseData);
 				}
 
 				return [this.helpers.returnJsonArray(returnData)];
@@ -1096,119 +1117,145 @@ export class GoogleSheets implements INodeType {
 				// ----------------------------------
 				//         delete
 				// ----------------------------------
+				try {
+					const requests: IDataObject[] = [];
 
-				const requests: IDataObject[] = [];
+					const toDelete = this.getNodeParameter('toDelete', 0) as IToDelete;
 
-				const toDelete = this.getNodeParameter('toDelete', 0) as IToDelete;
+					const deletePropertyToDimensions: IDataObject = {
+						'columns': 'COLUMNS',
+						'rows': 'ROWS',
+					};
 
-				const deletePropertyToDimensions: IDataObject = {
-					'columns': 'COLUMNS',
-					'rows': 'ROWS',
-				};
-
-				for (const propertyName of Object.keys(deletePropertyToDimensions)) {
-					if (toDelete[propertyName] !== undefined) {
-						toDelete[propertyName]!.forEach(range => {
-							requests.push({
-								deleteDimension: {
-									range: {
-										sheetId: range.sheetId,
-										dimension: deletePropertyToDimensions[propertyName] as string,
-										startIndex: range.startIndex,
-										endIndex: parseInt(range.startIndex.toString(), 10) + parseInt(range.amount.toString(), 10),
+					for (const propertyName of Object.keys(deletePropertyToDimensions)) {
+						if (toDelete[propertyName] !== undefined) {
+							toDelete[propertyName]!.forEach(range => {
+								requests.push({
+									deleteDimension: {
+										range: {
+											sheetId: range.sheetId,
+											dimension: deletePropertyToDimensions[propertyName] as string,
+											startIndex: range.startIndex,
+											endIndex: parseInt(range.startIndex.toString(), 10) + parseInt(range.amount.toString(), 10),
+										},
 									},
-								},
+								});
 							});
-						});
+						}
 					}
+
+					const data = await sheet.spreadsheetBatchUpdate(requests);
+
+					const items = this.getInputData();
+					return this.prepareOutputData(items);
+				} catch (error) {
+					if (this.continueOnFail()) {
+						return this.prepareOutputData([{json:{ error: error.message }}]);
+					}
+					throw error;
 				}
-
-				const data = await sheet.spreadsheetBatchUpdate(requests);
-
-				const items = this.getInputData();
-				return this.prepareOutputData(items);
 			} else if (operation === 'lookup') {
 				// ----------------------------------
 				//         lookup
 				// ----------------------------------
+				try {
+					const sheetData = await sheet.getData(sheet.encodeRange(range), valueRenderMode);
 
-				const sheetData = await sheet.getData(sheet.encodeRange(range), valueRenderMode);
+					if (sheetData === undefined) {
+						return [];
+					}
 
-				if (sheetData === undefined) {
-					return [];
+					const dataStartRow = parseInt(this.getNodeParameter('dataStartRow', 0) as string, 10);
+					const keyRow = parseInt(this.getNodeParameter('keyRow', 0) as string, 10);
+
+					const items = this.getInputData();
+
+					const lookupValues: ILookupValues[] = [];
+					for (let i = 0; i < items.length; i++) {
+						lookupValues.push({
+							lookupColumn: this.getNodeParameter('lookupColumn', i) as string,
+							lookupValue: this.getNodeParameter('lookupValue', i) as string,
+						});
+					}
+
+					let returnData = await sheet.lookupValues(sheetData, keyRow, dataStartRow, lookupValues, options.returnAllMatches as boolean | undefined);
+
+					if (returnData.length === 0 && options.continue && options.returnAllMatches) {
+						returnData = [{}];
+					} else if (returnData.length === 1 && Object.keys(returnData[0]).length === 0 && !options.continue && !options.returnAllMatches) {
+						returnData = [];
+					}
+
+					return [this.helpers.returnJsonArray(returnData)];
+				} catch (error) {
+					if (this.continueOnFail()) {
+						return [this.helpers.returnJsonArray({ error: error.message })];
+					}
+					throw error;
 				}
-
-				const dataStartRow = parseInt(this.getNodeParameter('dataStartRow', 0) as string, 10);
-				const keyRow = parseInt(this.getNodeParameter('keyRow', 0) as string, 10);
-
-				const items = this.getInputData();
-
-				const lookupValues: ILookupValues[] = [];
-				for (let i = 0; i < items.length; i++) {
-					lookupValues.push({
-						lookupColumn: this.getNodeParameter('lookupColumn', i) as string,
-						lookupValue: this.getNodeParameter('lookupValue', i) as string,
-					});
-				}
-
-				let returnData = await sheet.lookupValues(sheetData, keyRow, dataStartRow, lookupValues, options.returnAllMatches as boolean | undefined);
-
-				if (returnData.length === 0 && options.continue && options.returnAllMatches) {
-					returnData = [{}];
-				} else if (returnData.length === 1 && Object.keys(returnData[0]).length === 0 && !options.continue && !options.returnAllMatches) {
-					returnData = [];
-				}
-
-				return [this.helpers.returnJsonArray(returnData)];
 			} else if (operation === 'read') {
 				// ----------------------------------
 				//         read
 				// ----------------------------------
+				try {
+					const rawData = this.getNodeParameter('rawData', 0) as boolean;
 
-				const rawData = this.getNodeParameter('rawData', 0) as boolean;
+					const sheetData = await sheet.getData(sheet.encodeRange(range), valueRenderMode);
 
-				const sheetData = await sheet.getData(sheet.encodeRange(range), valueRenderMode);
+					let returnData: IDataObject[];
+					if (!sheetData) {
+						returnData = [];
+					} else if (rawData === true) {
+						const dataProperty = this.getNodeParameter('dataProperty', 0) as string;
+						returnData = [
+							{
+								[dataProperty]: sheetData,
+							},
+						];
+					} else {
+						const dataStartRow = parseInt(this.getNodeParameter('dataStartRow', 0) as string, 10);
+						const keyRow = parseInt(this.getNodeParameter('keyRow', 0) as string, 10);
 
-				let returnData: IDataObject[];
-				if (!sheetData) {
-					returnData = [];
-				} else if (rawData === true) {
-					const dataProperty = this.getNodeParameter('dataProperty', 0) as string;
-					returnData = [
-						{
-							[dataProperty]: sheetData,
-						},
-					];
-				} else {
-					const dataStartRow = parseInt(this.getNodeParameter('dataStartRow', 0) as string, 10);
-					const keyRow = parseInt(this.getNodeParameter('keyRow', 0) as string, 10);
+						returnData = sheet.structureArrayDataByColumn(sheetData, keyRow, dataStartRow);
+					}
 
-					returnData = sheet.structureArrayDataByColumn(sheetData, keyRow, dataStartRow);
+					if (returnData.length === 0 && options.continue) {
+						returnData = [{}];
+					}
+
+					return [this.helpers.returnJsonArray(returnData)];
+				} catch (error) {
+					if (this.continueOnFail()) {
+						return [this.helpers.returnJsonArray({ error: error.message })];
+					}
+					throw error;
 				}
-
-				if (returnData.length === 0 && options.continue) {
-					returnData = [{}];
-				}
-
-				return [this.helpers.returnJsonArray(returnData)];
 
 			} else if (operation === 'remove') {
 				const returnData: IDataObject[] = [];
 
 				let responseData;
 				for (let i = 0; i < this.getInputData().length; i++) {
-					const sheetId = this.getNodeParameter('id', i) as string;
-					const spreadsheetId = this.getNodeParameter('sheetId', i) as string;
+					try {
+						const sheetId = this.getNodeParameter('id', i) as string;
+						const spreadsheetId = this.getNodeParameter('sheetId', i) as string;
 
-					const requests = [{
-						deleteSheet: {
-							sheetId,
-						},
-					}];
+						const requests = [{
+							deleteSheet: {
+								sheetId,
+							},
+						}];
 
-					responseData = await googleApiRequest.call(this, 'POST', `/v4/spreadsheets/${spreadsheetId}:batchUpdate`, { requests });
-					delete responseData.replies;
-					returnData.push(responseData);
+						responseData = await googleApiRequest.call(this, 'POST', `/v4/spreadsheets/${spreadsheetId}:batchUpdate`, { requests });
+						delete responseData.replies;
+						returnData.push(responseData);
+					} catch (error) {
+						if (this.continueOnFail()) {
+							returnData.push({ error: error.message });
+							continue;
+						}
+						throw error;
+					}
 				}
 
 				return [this.helpers.returnJsonArray(returnData)];
@@ -1216,40 +1263,46 @@ export class GoogleSheets implements INodeType {
 				// ----------------------------------
 				//         update
 				// ----------------------------------
+				try {
+					const rawData = this.getNodeParameter('rawData', 0) as boolean;
 
-				const rawData = this.getNodeParameter('rawData', 0) as boolean;
+					const items = this.getInputData();
 
-				const items = this.getInputData();
+					if (rawData === true) {
+						const dataProperty = this.getNodeParameter('dataProperty', 0) as string;
 
-				if (rawData === true) {
-					const dataProperty = this.getNodeParameter('dataProperty', 0) as string;
+						const updateData: ISheetUpdateData[] = [];
+						for (let i = 0; i < items.length; i++) {
+							updateData.push({
+								range,
+								values: items[i].json[dataProperty] as string[][],
+							});
+						}
 
-					const updateData: ISheetUpdateData[] = [];
-					for (let i = 0; i < items.length; i++) {
-						updateData.push({
-							range,
-							values: items[i].json[dataProperty] as string[][],
+						const data = await sheet.batchUpdate(updateData, valueInputMode);
+					} else {
+						const keyName = this.getNodeParameter('key', 0) as string;
+						const keyRow = parseInt(this.getNodeParameter('keyRow', 0) as string, 10);
+						const dataStartRow = parseInt(this.getNodeParameter('dataStartRow', 0) as string, 10);
+
+						const setData: IDataObject[] = [];
+						items.forEach((item) => {
+							setData.push(item.json);
 						});
+
+						const data = await sheet.updateSheetData(setData, keyName, range, keyRow, dataStartRow, valueInputMode, valueRenderMode);
 					}
+					// TODO: Should add this data somewhere
+					// TODO: Should have something like add metadata which does not get passed through
 
-					const data = await sheet.batchUpdate(updateData, valueInputMode);
-				} else {
-					const keyName = this.getNodeParameter('key', 0) as string;
-					const keyRow = parseInt(this.getNodeParameter('keyRow', 0) as string, 10);
-					const dataStartRow = parseInt(this.getNodeParameter('dataStartRow', 0) as string, 10);
 
-					const setData: IDataObject[] = [];
-					items.forEach((item) => {
-						setData.push(item.json);
-					});
-
-					const data = await sheet.updateSheetData(setData, keyName, range, keyRow, dataStartRow, valueInputMode, valueRenderMode);
+					return this.prepareOutputData(items);
+				} catch (error) {
+					if (this.continueOnFail()) {
+						return this.prepareOutputData([{json:{ error: error.message }}]);
+					}
+					throw error;
 				}
-				// TODO: Should add this data somewhere
-				// TODO: Should have something like add metadata which does not get passed through
-
-
-				return this.prepareOutputData(items);
 			}
 
 		}
@@ -1267,39 +1320,46 @@ export class GoogleSheets implements INodeType {
 				// https://developers.google.com/sheets/api/reference/rest/v4/spreadsheets/create
 
 				for (let i = 0; i < this.getInputData().length; i++) {
+					try {
+						const title = this.getNodeParameter('title', i) as string;
+						const sheetsUi = this.getNodeParameter('sheetsUi', i, {}) as IDataObject;
 
-					const title = this.getNodeParameter('title', i) as string;
-					const sheetsUi = this.getNodeParameter('sheetsUi', i, {}) as IDataObject;
+						const body = {
+							properties: {
+								title,
+								autoRecalc: undefined as undefined | string,
+								locale: undefined as undefined | string,
+							},
+							sheets: [] as IDataObject[],
+						};
 
-					const body = {
-						properties: {
-							title,
-							autoRecalc: undefined as undefined | string,
-							locale: undefined as undefined | string,
-						},
-						sheets: [] as IDataObject[],
-					};
+						const options = this.getNodeParameter('options', i, {}) as IDataObject;
 
-					const options = this.getNodeParameter('options', i, {}) as IDataObject;
-
-					if (Object.keys(sheetsUi).length) {
-						const data = [];
-						const sheets = sheetsUi.sheetValues as IDataObject[];
-						for (const sheet of sheets) {
-							const properties = sheet.propertiesUi as IDataObject;
-							if (properties) {
-								data.push({ properties });
+						if (Object.keys(sheetsUi).length) {
+							const data = [];
+							const sheets = sheetsUi.sheetValues as IDataObject[];
+							for (const sheet of sheets) {
+								const properties = sheet.propertiesUi as IDataObject;
+								if (properties) {
+									data.push({ properties });
+								}
 							}
+							body.sheets = data;
 						}
-						body.sheets = data;
+
+						body.properties!.autoRecalc = options.autoRecalc ? (options.autoRecalc as string) : undefined;
+						body.properties!.locale = options.locale ? (options.locale as string) : undefined;
+
+						responseData = await googleApiRequest.call(this, 'POST', `/v4/spreadsheets`, body);
+
+						returnData.push(responseData);
+					} catch (error) {
+						if (this.continueOnFail()) {
+							returnData.push({ error: error.message });
+							continue;
+						}
+						throw error;
 					}
-
-					body.properties!.autoRecalc = options.autoRecalc ? (options.autoRecalc as string) : undefined;
-					body.properties!.locale = options.locale ? (options.locale as string) : undefined;
-
-					responseData = await googleApiRequest.call(this, 'POST', `/v4/spreadsheets`, body);
-
-					returnData.push(responseData);
 				}
 
 			}
