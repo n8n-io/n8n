@@ -27,6 +27,7 @@ export class NocoDB implements INodeType {
 		icon: 'file:nocodb.png',
 		group: ['input'],
 		version: 1,
+		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 		description: 'Read, update, write and delete data from NocoDB',
 		defaults: {
 			name: 'NocoDB',
@@ -98,6 +99,8 @@ export class NocoDB implements INodeType {
 			...operationFields,
 		],
 	};
+
+	
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
