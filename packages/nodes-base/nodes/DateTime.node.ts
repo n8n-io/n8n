@@ -393,110 +393,120 @@ export class DateTime implements INodeType {
 		let item: INodeExecutionData;
 
 		for (let i = 0; i < length; i++) {
-			const action = this.getNodeParameter('action', 0) as string;
-			item = items[i];
+			try {
 
-			if (action === 'format') {
-				const currentDate = this.getNodeParameter('value', i) as string;
-				const dataPropertyName = this.getNodeParameter('dataPropertyName', i) as string;
-				const toFormat = this.getNodeParameter('toFormat', i) as string;
-				const options = this.getNodeParameter('options', i) as IDataObject;
-				let newDate;
+				const action = this.getNodeParameter('action', 0) as string;
+				item = items[i];
 
-				if (currentDate === undefined) {
-					continue;
-				}
-				if (options.fromFormat === undefined && !moment(currentDate as string | number).isValid()) {
-					throw new NodeOperationError(this.getNode(), 'The date input format could not be recognized. Please set the "From Format" field');
-				}
+				if (action === 'format') {
+					const currentDate = this.getNodeParameter('value', i) as string;
+					const dataPropertyName = this.getNodeParameter('dataPropertyName', i) as string;
+					const toFormat = this.getNodeParameter('toFormat', i) as string;
+					const options = this.getNodeParameter('options', i) as IDataObject;
+					let newDate;
 
-				if (Number.isInteger(currentDate as unknown as number)) {
-					newDate = moment.unix(currentDate as unknown as number);
-				} else {
-					if (options.fromTimezone || options.toTimezone) {
-						const fromTimezone = options.fromTimezone || workflowTimezone;
-						if (options.fromFormat) {
-							newDate = moment.tz(currentDate as string, options.fromFormat as string, fromTimezone as string);
-						} else {
-							newDate = moment.tz(currentDate as string, fromTimezone as string);
-						}
+					if (currentDate === undefined) {
+						continue;
+					}
+					if (options.fromFormat === undefined && !moment(currentDate as string | number).isValid()) {
+						throw new NodeOperationError(this.getNode(), 'The date input format could not be recognized. Please set the "From Format" field');
+					}
+
+					if (Number.isInteger(currentDate as unknown as number)) {
+						newDate = moment.unix(currentDate as unknown as number);
 					} else {
-						if (options.fromFormat) {
-							newDate = moment(currentDate as string, options.fromFormat as string);
+						if (options.fromTimezone || options.toTimezone) {
+							const fromTimezone = options.fromTimezone || workflowTimezone;
+							if (options.fromFormat) {
+								newDate = moment.tz(currentDate as string, options.fromFormat as string, fromTimezone as string);
+							} else {
+								newDate = moment.tz(currentDate as string, fromTimezone as string);
+							}
 						} else {
-							newDate = moment(currentDate as string);
+							if (options.fromFormat) {
+								newDate = moment(currentDate as string, options.fromFormat as string);
+							} else {
+								newDate = moment(currentDate as string);
+							}
 						}
 					}
+
+					if (options.toTimezone || options.fromTimezone) {
+						// If either a source or a target timezone got defined the
+						// timezone of the date has to be changed. If a target-timezone
+						// is set use it else fall back to workflow timezone.
+						newDate = newDate.tz(options.toTimezone as string || workflowTimezone);
+					}
+
+					newDate = newDate.format(toFormat);
+
+					let newItem: INodeExecutionData;
+					if (dataPropertyName.includes('.')) {
+						// Uses dot notation so copy all data
+						newItem = {
+							json: JSON.parse(JSON.stringify(item.json)),
+						};
+					} else {
+						// Does not use dot notation so shallow copy is enough
+						newItem = {
+							json: { ...item.json },
+						};
+					}
+
+					if (item.binary !== undefined) {
+						newItem.binary = item.binary;
+					}
+
+					set(newItem, `json.${dataPropertyName}`, newDate);
+
+					returnData.push(newItem);
 				}
 
-				if (options.toTimezone || options.fromTimezone) {
-					// If either a source or a target timezone got defined the
-					// timezone of the date has to be changed. If a target-timezone
-					// is set use it else fall back to workflow timezone.
-					newDate = newDate.tz(options.toTimezone as string || workflowTimezone);
+				if (action === 'calculate') {
+
+					const dateValue = this.getNodeParameter('value', i) as string;
+					const operation = this.getNodeParameter('operation', i) as 'add' | 'subtract';
+					const duration = this.getNodeParameter('duration', i) as number;
+					const timeUnit = this.getNodeParameter('timeUnit', i) as moment.DurationInputArg2;
+					const { fromFormat } = this.getNodeParameter('options', i) as { fromFormat?: string };
+					const dataPropertyName = this.getNodeParameter('dataPropertyName', i) as string;
+
+					const newDate = fromFormat
+						? parseDateByFormat(dateValue, fromFormat)
+						: parseDateByDefault(dateValue);
+
+					operation === 'add'
+						? newDate.add(duration, timeUnit).utc().format()
+						: newDate.subtract(duration, timeUnit).utc().format();
+
+					let newItem: INodeExecutionData;
+					if (dataPropertyName.includes('.')) {
+						// Uses dot notation so copy all data
+						newItem = {
+							json: JSON.parse(JSON.stringify(item.json)),
+						};
+					} else {
+						// Does not use dot notation so shallow copy is enough
+						newItem = {
+							json: { ...item.json },
+						};
+					}
+
+					if (item.binary !== undefined) {
+						newItem.binary = item.binary;
+					}
+
+					set(newItem, `json.${dataPropertyName}`, newDate);
+
+					returnData.push(newItem);
 				}
 
-				newDate = newDate.format(toFormat);
-
-				let newItem: INodeExecutionData;
-				if (dataPropertyName.includes('.')) {
-					// Uses dot notation so copy all data
-					newItem = {
-						json: JSON.parse(JSON.stringify(item.json)),
-					};
-				} else {
-					// Does not use dot notation so shallow copy is enough
-					newItem = {
-						json: { ...item.json },
-					};
+			} catch (error) {
+				if (this.continueOnFail()) {
+					returnData.push({json:{ error: error.message }});
+					continue;
 				}
-
-				if (item.binary !== undefined) {
-					newItem.binary = item.binary;
-				}
-
-				set(newItem, `json.${dataPropertyName}`, newDate);
-
-				returnData.push(newItem);
-			}
-
-			if (action === 'calculate') {
-
-				const dateValue = this.getNodeParameter('value', i) as string;
-				const operation = this.getNodeParameter('operation', i) as 'add' | 'subtract';
-				const duration = this.getNodeParameter('duration', i) as number;
-				const timeUnit = this.getNodeParameter('timeUnit', i) as moment.DurationInputArg2;
-				const { fromFormat } = this.getNodeParameter('options', i) as { fromFormat?: string };
-				const dataPropertyName = this.getNodeParameter('dataPropertyName', i) as string;
-
-				const newDate = fromFormat
-					? parseDateByFormat(dateValue, fromFormat)
-					: parseDateByDefault(dateValue);
-
-				operation === 'add'
-					? newDate.add(duration, timeUnit).utc().format()
-					: newDate.subtract(duration, timeUnit).utc().format();
-
-				let newItem: INodeExecutionData;
-				if (dataPropertyName.includes('.')) {
-					// Uses dot notation so copy all data
-					newItem = {
-						json: JSON.parse(JSON.stringify(item.json)),
-					};
-				} else {
-					// Does not use dot notation so shallow copy is enough
-					newItem = {
-						json: { ...item.json },
-					};
-				}
-
-				if (item.binary !== undefined) {
-					newItem.binary = item.binary;
-				}
-
-				set(newItem, `json.${dataPropertyName}`, newDate);
-
-				returnData.push(newItem);
+				throw error;
 			}
 		}
 
