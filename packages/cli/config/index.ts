@@ -628,7 +628,7 @@ const config = convict({
 		endpoint: {
 			doc: 'Endpoint to retrieve version information from.',
 			format: String,
-			default: 'https://api-staging.n8n.io/versions/',
+			default: 'https://api.n8n.io/versions/',
 			env: 'N8N_VERSION_NOTIFICATIONS_ENDPOINT',
 		},
 		infoUrl: {
