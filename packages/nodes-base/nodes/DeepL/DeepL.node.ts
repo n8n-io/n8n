@@ -108,28 +108,35 @@ export class DeepL implements INodeType {
 		const responseData = [];
 
 		for (let i = 0; i < length; i++) {
+			try {
+				const resource = this.getNodeParameter('resource', i) as string;
+				const operation = this.getNodeParameter('operation', i) as string;
+				const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 
-			const resource = this.getNodeParameter('resource', i) as string;
-			const operation = this.getNodeParameter('operation', i) as string;
-			const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+				if (resource === 'language') {
 
-			if (resource === 'language') {
+					if (operation === 'translate') {
 
-				if (operation === 'translate') {
+						const text = this.getNodeParameter('text', i) as string;
+						const translateTo = this.getNodeParameter('translateTo', i) as string;
+						const qs = { target_lang: translateTo, text } as IDataObject;
 
-					const text = this.getNodeParameter('text', i) as string;
-					const translateTo = this.getNodeParameter('translateTo', i) as string;
-					const qs = { target_lang: translateTo, text } as IDataObject;
+						if (additionalFields.sourceLang !== undefined) {
+							qs.source_lang = ['EN-GB', 'EN-US'].includes(additionalFields.sourceLang as string)
+								? 'EN'
+								: additionalFields.sourceLang;
+						}
 
-					if (additionalFields.sourceLang !== undefined) {
-						qs.source_lang = ['EN-GB', 'EN-US'].includes(additionalFields.sourceLang as string)
-							? 'EN'
-							: additionalFields.sourceLang;
+						const response = await deepLApiRequest.call(this, 'GET', '/translate', {}, qs);
+						responseData.push(response.translations[0]);
 					}
-
-					const response = await deepLApiRequest.call(this, 'GET', '/translate', {}, qs);
-					responseData.push(response.translations[0]);
 				}
+			} catch (error) {
+				if (this.continueOnFail()) {
+					responseData.push({ error: error.message });
+					continue;
+				}
+				throw error;
 			}
 		}
 
