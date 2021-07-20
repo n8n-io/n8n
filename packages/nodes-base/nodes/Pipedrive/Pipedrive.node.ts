@@ -11,7 +11,6 @@ import {
 	INodeTypeDescription,
 	NodeOperationError,
 } from 'n8n-workflow';
-import { id } from 'rhea';
 
 import {
 	ICustomProperties,
@@ -1747,7 +1746,7 @@ export class Pipedrive implements INodeType {
 				},
 				default: 0,
 				required: true,
-				description: 'ID of the file to get.',
+				description: 'ID of the file to get',
 			},
 
 			// ----------------------------------------
@@ -1950,7 +1949,7 @@ export class Pipedrive implements INodeType {
 			{
 				displayName: 'Lead ID',
 				name: 'leadId',
-				description: 'ID of the lead to delete.',
+				description: 'ID of the lead to delete',
 				type: 'string',
 				required: true,
 				default: '',
@@ -1972,7 +1971,7 @@ export class Pipedrive implements INodeType {
 			{
 				displayName: 'Lead ID',
 				name: 'leadId',
-				description: 'ID of the lead to retrieve.',
+				description: 'ID of the lead to retrieve',
 				type: 'string',
 				required: true,
 				default: '',
@@ -1994,7 +1993,7 @@ export class Pipedrive implements INodeType {
 			{
 				displayName: 'Lead ID',
 				name: 'leadId',
-				description: 'ID of the lead to update.',
+				description: 'ID of the lead to update',
 				type: 'string',
 				required: true,
 				default: '',
