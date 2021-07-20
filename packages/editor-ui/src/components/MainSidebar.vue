@@ -140,7 +140,6 @@ import { MessageBoxInputData } from 'element-ui/types/message-box';
 
 import {
 	IExecutionResponse,
-	IExecutionsStopData,
 	IWorkflowDataUpdate,
 	IMenuItem,
 } from '../Interface';
@@ -319,7 +318,7 @@ export default mixins(
 
 				try {
 					this.stopExecutionInProgress = true;
-					const stopData: IExecutionsStopData = await this.restApi().stopCurrentExecution(executionId);
+					await this.restApi().stopCurrentExecution(executionId);
 					this.$showMessage({
 						title: 'Execution stopped',
 						message: `The execution with the id "${executionId}" got stopped!`,
@@ -388,9 +387,8 @@ export default mixins(
 						return;
 					}
 
-					let result;
 					try {
-						result = await this.restApi().deleteWorkflow(this.currentWorkflow);
+						await this.restApi().deleteWorkflow(this.currentWorkflow);
 					} catch (error) {
 						this.$showError(error, 'Problem deleting the workflow', 'There was a problem deleting the workflow:');
 						return;
