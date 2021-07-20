@@ -116,7 +116,7 @@ export default Vue.extend({
 <style lang="scss">
 .el-drawer__header {
 	margin: 0;
-	padding: 30px 30px 0 30px;; //todo
+	padding: 30px 30px 0 30px;
 }
 
 .el-drawer__body {
