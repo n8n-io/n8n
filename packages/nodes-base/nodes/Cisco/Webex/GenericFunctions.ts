@@ -117,16 +117,18 @@ export function getAttachemnts(attachements: IDataObject[]) {
 		const body: IDataObject[] = [];
 		const actions: IDataObject[] = [];
 		for (const element of (attachment?.elementsUi as IDataObject).elementValues as IDataObject[] || []) {
-			const { type, properties } = element as { type: string, properties: IDataObject };
+			// tslint:disable-next-line: no-any
+			const { type, ...rest } = element as { type: string, [key: string]: any };
 			if (type.startsWith('input')) {
-				body.push({ type: `Input.${upperFirst(type.replace('input', ''))}`, ...properties });
+				body.push({ type: `Input.${upperFirst(type.replace('input', ''))}`, ...removeEmptyProperties(rest) });
 			} else {
-				body.push({ type: upperFirst(type), ...properties });
+				body.push({ type: upperFirst(type), ...removeEmptyProperties(rest) });
 			}
 		}
 		for (const action of (attachment?.actionsUi as IDataObject).actionValues as IDataObject[] || []) {
-			const { type, properties } = action as { type: string, properties: IDataObject };
-			actions.push({ type: `Action.${upperFirst(type)}`, ...properties });
+			// tslint:disable-next-line: no-any
+			const { type, ...rest } = action as { type: string, [key: string]: any };
+			actions.push({ type: `Action.${upperFirst(type)}`, ...removeEmptyProperties(rest) });
 		}
 		_attachments.push({
 			contentType: 'application/vnd.microsoft.card.adaptive',
@@ -177,8 +179,470 @@ export function getActionInheritedProperties() {
 					value: 'destructive',
 				},
 			],
-			default: '',
+			default: 'default',
 			description: 'Controls the style of an Action, which influences how the action is displayed, spoken, etc.',
 		},
 	];
 }
+
+export function getTextBlockProperties() {
+	return [
+		{
+			displayName: 'Text',
+			name: 'text',
+			type: 'string',
+			default: '',
+			displayOptions: {
+				show: {
+					type: [
+						'textBlock',
+					],
+				},
+			},
+			required: true,
+			description: 'Text to display. A subset of markdown is supported (https://aka.ms/ACTextFeatures)',
+		},
+		{
+			displayName: 'Color',
+			name: 'color',
+			type: 'options',
+			displayOptions: {
+				show: {
+					type: [
+						'textBlock',
+					],
+				},
+			},
+			options: [
+				{
+					name: 'Default',
+					value: 'default',
+				},
+				{
+					name: 'Dark',
+					value: 'dark',
+				},
+				{
+					name: 'Light',
+					value: 'light',
+				},
+				{
+					name: 'Accent',
+					value: 'accent',
+				},
+				{
+					name: 'Good',
+					value: 'good',
+				},
+				{
+					name: 'Warning',
+					value: 'warning',
+				},
+				{
+					name: 'Attention',
+					value: 'attention',
+				},
+			],
+			default: 'default',
+			description: 'Color of the TextBlock element',
+		},
+		{
+			displayName: 'Font Type',
+			name: 'fontType',
+			type: 'options',
+			displayOptions: {
+				show: {
+					type: [
+						'textBlock',
+					],
+				},
+			},
+			options: [
+				{
+					name: 'Default',
+					value: 'default',
+				},
+				{
+					name: 'Monospace',
+					value: 'monospace',
+				},
+			],
+			default: 'default',
+			description: 'Type of font to use for rendering',
+		},
+		{
+			displayName: 'Horizontal Alignment',
+			name: 'horizontalAlignment',
+			type: 'options',
+			displayOptions: {
+				show: {
+					type: [
+						'textBlock',
+					],
+				},
+			},
+			options: [
+				{
+					name: 'Left',
+					value: 'left',
+				},
+				{
+					name: 'Center',
+					value: 'center',
+				},
+				{
+					name: 'Right',
+					value: 'right',
+				},
+			],
+			default: 'left',
+			description: 'Controls the horizontal text alignment',
+		},
+		{
+			displayName: 'Is Subtle',
+			name: 'isSubtle',
+			type: 'boolean',
+			displayOptions: {
+				show: {
+					type: [
+						'textBlock',
+					],
+				},
+			},
+			default: false,
+			description: 'Displays text slightly toned down to appear less prominent',
+		},
+		{
+			displayName: 'Max Lines',
+			name: 'maxLines',
+			type: 'number',
+			displayOptions: {
+				show: {
+					type: [
+						'textBlock',
+					],
+				},
+			},
+			default: 1,
+			description: 'Specifies the maximum number of lines to display',
+		},
+		{
+			displayName: 'Size',
+			name: 'size',
+			type: 'options',
+			displayOptions: {
+				show: {
+					type: [
+						'textBlock',
+					],
+				},
+			},
+			options: [
+				{
+					name: 'Default',
+					value: 'default',
+				},
+				{
+					name: 'Small',
+					value: 'small',
+				},
+				{
+					name: 'Medium',
+					value: 'medium',
+				},
+				{
+					name: 'Large',
+					value: 'large',
+				},
+				{
+					name: 'Extra Large',
+					value: 'extraLarge',
+				},
+			],
+			default: 'default',
+			description: 'Controls size of text',
+		},
+		{
+			displayName: 'Weight',
+			name: 'weight',
+			type: 'options',
+			displayOptions: {
+				show: {
+					type: [
+						'textBlock',
+					],
+				},
+			},
+			options: [
+				{
+					name: 'Default',
+					value: 'default',
+				},
+				{
+					name: 'Lighter',
+					value: 'lighter',
+				},
+				{
+					name: 'Bolder',
+					value: 'bolder',
+				},
+			],
+			default: 'default',
+			description: 'Controls the weight of TextBlock elements',
+		},
+		{
+			displayName: 'Wrap',
+			name: 'wrap',
+			type: 'boolean',
+			displayOptions: {
+				show: {
+					type: [
+						'textBlock',
+					],
+				},
+			},
+			default: true,
+			description: 'If true, allow text to wrap. Otherwise, text is clipped',
+		},
+		{
+			displayName: 'Height',
+			name: 'height',
+			type: 'options',
+			displayOptions: {
+				show: {
+					type: [
+						'textBlock',
+					],
+				},
+			},
+			options: [
+				{
+					name: 'Auto',
+					value: 'auto',
+				},
+				{
+					name: 'Stretch',
+					value: 'stretch',
+				},
+			],
+			default: 'auto',
+			description: 'Specifies the height of the element',
+		},
+		{
+			displayName: 'Separator',
+			name: 'separator',
+			type: 'boolean',
+			default: false,
+			displayOptions: {
+				show: {
+					type: [
+						'textBlock',
+					],
+				},
+			},
+			description: 'When true, draw a separating line at the top of the element.',
+		},
+		{
+			displayName: 'Spacing',
+			name: 'spacing',
+			type: 'options',
+			displayOptions: {
+				show: {
+					type: [
+						'textBlock',
+					],
+				},
+			},
+			options: [
+				{
+					name: 'Default',
+					value: 'default',
+				},
+				{
+					name: 'None',
+					value: 'none',
+				},
+				{
+					name: 'Small',
+					value: 'small',
+				},
+				{
+					name: 'Medium',
+					value: 'medium',
+				},
+				{
+					name: 'Large',
+					value: 'large',
+				},
+				{
+					name: 'Extra Large',
+					value: 'extraLarge',
+				},
+				{
+					name: 'Padding',
+					value: 'padding',
+				},
+			],
+			default: 'default',
+			description: 'Controls the amount of spacing between this element and the preceding element',
+		},
+		{
+			displayName: 'ID',
+			name: 'id',
+			type: 'string',
+			displayOptions: {
+				show: {
+					type: [
+						'textBlock',
+					],
+				},
+			},
+			default: '',
+			description: 'A unique identifier associated with the item',
+		},
+		{
+			displayName: 'Is Visible',
+			name: 'isVisible',
+			type: 'boolean',
+			displayOptions: {
+				show: {
+					type: [
+						'textBlock',
+					],
+				},
+			},
+			default: true,
+			description: 'If false, this item will be removed from the visual trees',
+		},
+	];
+}
+
+export function getInputTextProperties() {
+	return [
+		{
+			displayName: 'ID',
+			name: 'id',
+			type: 'string',
+			required: true,
+			displayOptions: {
+				show: {
+					type: [
+						'inputText',
+					],
+				},
+			},
+			default: '',
+			description: 'Unique identifier for the value. Used to identify collected input when the Submit action is performed',
+		},
+		{
+			displayName: 'Is Multiline',
+			name: 'isMultiline',
+			type: 'boolean',
+			displayOptions: {
+				show: {
+					type: [
+						'inputText',
+					],
+				},
+			},
+			default: false,
+			description: 'If true, allow multiple lines of input',
+		},
+		{
+			displayName: 'Max Length',
+			name: 'maxLength',
+			type: 'number',
+			displayOptions: {
+				show: {
+					type: [
+						'inputText',
+					],
+				},
+			},
+			default: 1,
+			description: 'Hint of maximum length characters to collect (may be ignored by some clients)',
+		},
+		{
+			displayName: 'Placeholder',
+			name: 'placeholder',
+			type: 'string',
+			displayOptions: {
+				show: {
+					type: [
+						'inputText',
+					],
+				},
+			},
+			default: '',
+			description: 'Description of the input desired. Displayed when no text has been input',
+		},
+		{
+			displayName: 'Regex',
+			name: 'regex',
+			type: 'string',
+			displayOptions: {
+				show: {
+					type: [
+						'inputText',
+					],
+				},
+			},
+			default: '',
+			description: 'Regular expression indicating the required format of this text input',
+		},
+		{
+			displayName: 'Style',
+			name: 'style',
+			type: 'options',
+			displayOptions: {
+				show: {
+					type: [
+						'inputText',
+					],
+				},
+			},
+			options: [
+				{
+					name: 'Text',
+					value: 'text',
+				},
+				{
+					name: 'Tel',
+					value: 'tel',
+				},
+				{
+					name: 'URL',
+					value: 'url',
+				},
+				{
+					name: 'Email',
+					value: 'email',
+				},
+			],
+			default: 'text',
+			description: 'Style hint for text input',
+		},
+		{
+			displayName: 'Value',
+			name: 'value',
+			type: 'string',
+			displayOptions: {
+				show: {
+					type: [
+						'inputText',
+					],
+				},
+			},
+			default: '',
+			description: 'The initial value for this field',
+		},
+	];
+}
+
+// tslint:disable-next-line: no-any
+function removeEmptyProperties(rest: { [key: string]: any }) {
+	return Object.keys(rest)
+		.filter((k) => rest[k] !== '')
+		.reduce((a, k) => ({ ...a, [k]: rest[k] }), {});
+}
+

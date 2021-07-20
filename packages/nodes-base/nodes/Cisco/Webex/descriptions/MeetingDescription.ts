@@ -603,13 +603,6 @@ export const meetingFields = [
 				description: 'Email of a person that must be a meeting participant',
 			},
 			{
-				displayName: 'Password',
-				name: 'password',
-				type: 'string',
-				default: '',
-				description: `Meeting password. It's required when the meeting is protected by a password and the current user is not privileged to view it if they are not a host, co-host or invitee of the meeting`,
-			},
-			{
 				displayName: 'Site URL',
 				name: 'siteUrl',
 				type: 'options',
@@ -673,32 +666,6 @@ export const meetingFields = [
 				type: 'string',
 				default: '',
 				description: 'URL encoded link to information page for the meeting objects being requested',
-			},
-		],
-	},
-	{
-		displayName: 'Options',
-		name: 'options',
-		type: 'collection',
-		placeholder: 'Add Option',
-		default: {},
-		displayOptions: {
-			show: {
-				resource: [
-					'meeting',
-				],
-				operation: [
-					'getAll',
-				],
-			},
-		},
-		options: [
-			{
-				displayName: 'Password',
-				name: 'password',
-				type: 'string',
-				default: '',
-				description: `Meeting password. It's required when the meeting is protected by a password and the current user is not privileged to view it if they are not a host, co-host or invitee of the meeting`,
 			},
 		],
 	},

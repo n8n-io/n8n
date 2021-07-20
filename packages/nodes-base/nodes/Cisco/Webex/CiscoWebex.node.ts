@@ -355,36 +355,26 @@ export class CiscoWebex implements INodeType {
 					if (operation === 'getAll') {
 						for (let i = 0; i < items.length; i++) {
 							const filters = this.getNodeParameter('filters', i) as IDataObject;
-							const options = this.getNodeParameter('options', i) as IDataObject;
 							const returnAll = this.getNodeParameter('returnAll', i) as boolean;
-							let headers = {};
 
 							const qs: IDataObject = {
 								...filters,
 							};
 
-							if (options.passsword) {
-								headers = {
-									passsword: options.passsword,
-								};
-							}
-
 							if (qs.from) {
-								qs.from = moment.tz(qs.from, 'utc').format();
-								//qs.from = moment(qs.from as string).utc(true).format();
+								qs.from = moment(qs.from as string).utc(true).format();
 							}
 
 							if (qs.to) {
-								qs.to = moment.tz(qs.to, 'utc').format();
-								//qs.to = moment(qs.to as string).utc(true).format();
+								qs.to = moment(qs.to as string).utc(true).format();
 							}
 
 							if (returnAll === true) {
-								responseData = await webexApiRequestAllItems.call(this, 'items', 'GET', '/meetings', {}, qs, { headers });
+								responseData = await webexApiRequestAllItems.call(this, 'items', 'GET', '/meetings', {}, qs);
 								returnData.push(...responseData);
 							} else {
 								qs.max = this.getNodeParameter('limit', i) as number;
-								responseData = await webexApiRequest.call(this, 'GET', '/meetings', {}, qs, undefined, { headers });
+								responseData = await webexApiRequest.call(this, 'GET', '/meetings', {}, qs);
 								responseData = responseData.items;
 							}
 						}
