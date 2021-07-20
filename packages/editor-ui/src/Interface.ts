@@ -572,16 +572,9 @@ export interface IVersion {
 	description: string;
 	documentationUrl: string;
 	hasBreakingChange: boolean; 
-	hasBugFixes: boolean; 
-	hasCoreChanges: boolean; 
-	hasNewNodes: boolean; 
-	hasNodeEnhancements: boolean; 
 	hasSecurityFix: boolean; 
 	hasSecurityIssue: boolean; 
-	isAvailableOnCloud: boolean; 
-	isStable: boolean; 
 	securityIssueFixVersion: string; 
-	showReleaseNotification: boolean;
 }
 
 export interface IRootState {
