@@ -4312,6 +4312,8 @@ export class Pipedrive implements INodeType {
 
 					if (Array.isArray(responseData.data)) {
 						returnData.push.apply(returnData, responseData.data as IDataObject[]);
+					} else if (responseData.data === true) {
+						returnData.push({ success: true });
 					} else {
 						returnData.push(responseData.data as IDataObject);
 					}
