@@ -2,6 +2,16 @@
 
 This list shows all the versions which include breaking changes and how to upgrade.
 
+## 0.131.0
+
+### What changed?
+
+For the Pipedrive regular node, the `deal:create` operation now requires an organization ID or person ID, in line with upcoming changes to the Pipedrive API.
+
+### When is action necessary?
+
+If you are using the `deal:create` operation in the Pipedrive regular node, set an organization ID or a person ID.
+
 ## 0.130.0
 
 ### What changed?

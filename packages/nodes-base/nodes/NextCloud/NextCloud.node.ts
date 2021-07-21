@@ -806,329 +806,345 @@ export class NextCloud implements INodeType {
 		let qs;
 
 		for (let i = 0; i < items.length; i++) {
-			if (resource === 'file') {
-				if (operation === 'download') {
-					// ----------------------------------
-					//         download
-					// ----------------------------------
-
-					requestMethod = 'GET';
-					endpoint = this.getNodeParameter('path', i) as string;
-
-				} else if (operation === 'upload') {
-					// ----------------------------------
-					//         upload
-					// ----------------------------------
-
-					requestMethod = 'PUT';
-					endpoint = this.getNodeParameter('path', i) as string;
-
-					if (this.getNodeParameter('binaryDataUpload', i) === true) {
-						// Is binary file to upload
-						const item = items[i];
-
-						if (item.binary === undefined) {
-							throw new NodeOperationError(this.getNode(), 'No binary data exists on item!');
-						}
-
-						const propertyNameUpload = this.getNodeParameter('binaryPropertyName', i) as string;
-
-
-						if (item.binary[propertyNameUpload] === undefined) {
-							throw new NodeOperationError(this.getNode(), `No binary data property "${propertyNameUpload}" does not exists on item!`);
-						}
-
-						body = Buffer.from(item.binary[propertyNameUpload].data, BINARY_ENCODING);
-					} else {
-						// Is text file
-						body = this.getNodeParameter('fileContent', i) as string;
-					}
-				}
-			} else if (resource === 'folder') {
-				if (operation === 'create') {
-					// ----------------------------------
-					//         create
-					// ----------------------------------
-
-					requestMethod = 'MKCOL';
-					endpoint = this.getNodeParameter('path', i) as string;
-
-				} else if (operation === 'list') {
-					// ----------------------------------
-					//         list
-					// ----------------------------------
-
-					requestMethod = 'PROPFIND';
-					endpoint = this.getNodeParameter('path', i) as string;
-
-				}
-			}
-
-			if (['file', 'folder'].includes(resource)) {
-				if (operation === 'copy') {
-					// ----------------------------------
-					//         copy
-					// ----------------------------------
-
-					requestMethod = 'COPY';
-					endpoint = this.getNodeParameter('path', i) as string;
-					const toPath = this.getNodeParameter('toPath', i) as string;
-					headers.Destination = `${credentials.webDavUrl}/${encodeURI(toPath)}`;
-
-				} else if (operation === 'delete') {
-					// ----------------------------------
-					//         delete
-					// ----------------------------------
-
-					requestMethod = 'DELETE';
-					endpoint = this.getNodeParameter('path', i) as string;
-
-				} else if (operation === 'move') {
-					// ----------------------------------
-					//         move
-					// ----------------------------------
-
-					requestMethod = 'MOVE';
-					endpoint = this.getNodeParameter('path', i) as string;
-					const toPath = this.getNodeParameter('toPath', i) as string;
-					headers.Destination = `${credentials.webDavUrl}/${encodeURI(toPath)}`;
-
-				}
-
-			} else if (resource === 'user') {
-				if (operation === 'create') {
-					// ----------------------------------
-					//         user:create
-					// ----------------------------------
-
-					requestMethod = 'POST';
-
-					endpoint = 'ocs/v1.php/cloud/users';
-
-					headers['OCS-APIRequest'] = true;
-					headers['Content-Type'] = 'application/x-www-form-urlencoded';
-
-					const userid = this.getNodeParameter('userId', i) as string;
-					const email = this.getNodeParameter('email', i) as string;
-
-					body = `userid=${userid}&email=${email}`;
-
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
-
-					if (additionalFields.displayName) {
-						body += `&displayName=${additionalFields.displayName}`;
-					}
-				}
-				if (operation === 'delete') {
-					// ----------------------------------
-					//         user:delete
-					// ----------------------------------
-
-					requestMethod = 'DELETE';
-
-					const userid = this.getNodeParameter('userId', i) as string;
-					endpoint = `ocs/v1.php/cloud/users/${userid}`;
-
-					headers['OCS-APIRequest'] = true;
-					headers['Content-Type'] = 'application/x-www-form-urlencoded';
-				}
-				if (operation === 'get') {
-					// ----------------------------------
-					//         user:get
-					// ----------------------------------
-
-					requestMethod = 'GET';
-
-					const userid = this.getNodeParameter('userId', i) as string;
-					endpoint = `ocs/v1.php/cloud/users/${userid}`;
-
-					headers['OCS-APIRequest'] = true;
-					headers['Content-Type'] = 'application/x-www-form-urlencoded';
-				}
-				if (operation === 'getAll') {
-					// ----------------------------------
-					//         user:getAll
-					// ----------------------------------
-
-					requestMethod = 'GET';
-					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
-					qs = this.getNodeParameter('options', i) as IDataObject;
-					if (!returnAll) {
-						qs.limit = this.getNodeParameter('limit', i) as number;
-					}
-					endpoint = `ocs/v1.php/cloud/users`;
-
-					headers['OCS-APIRequest'] = true;
-					headers['Content-Type'] = 'application/x-www-form-urlencoded';
-				}
-				if (operation === 'update') {
-					// ----------------------------------
-					//         user:update
-					// ----------------------------------
-
-					requestMethod = 'PUT';
-
-					const userid = this.getNodeParameter('userId', i) as string;
-					endpoint = `ocs/v1.php/cloud/users/${userid}`;
-
-					body = Object.entries((this.getNodeParameter('updateFields', i) as IDataObject).field as IDataObject).map(entry => {
-						const [key, value] = entry;
-						return `${key}=${value}`;
-					}).join('&');
-
-					headers['OCS-APIRequest'] = true;
-					headers['Content-Type'] = 'application/x-www-form-urlencoded';
-				}
-			} else {
-				throw new NodeOperationError(this.getNode(), `The resource "${resource}" is not known!`);
-			}
-
-			// Make sure that the webdav URL does never have a trailing slash because
-			// one gets added always automatically
-			let webDavUrl = credentials.webDavUrl as string;
-			if (webDavUrl.slice(-1) === '/') {
-				webDavUrl = webDavUrl.slice(0, -1);
-			}
-
-			let encoding = undefined;
-			if (resource === 'file' && operation === 'download') {
-				// Return the data as a buffer
-				encoding = null;
-			}
-
 			try {
-				responseData = await nextCloudApiRequest.call(this, requestMethod, endpoint, body, headers, encoding, qs);
-			} catch (error) {
-				if (this.continueOnFail() === true) {
-					returnData.push({ error });
-					continue;
+				if (resource === 'file') {
+					if (operation === 'download') {
+						// ----------------------------------
+						//         download
+						// ----------------------------------
+
+						requestMethod = 'GET';
+						endpoint = this.getNodeParameter('path', i) as string;
+
+					} else if (operation === 'upload') {
+						// ----------------------------------
+						//         upload
+						// ----------------------------------
+
+						requestMethod = 'PUT';
+						endpoint = this.getNodeParameter('path', i) as string;
+
+						if (this.getNodeParameter('binaryDataUpload', i) === true) {
+							// Is binary file to upload
+							const item = items[i];
+
+							if (item.binary === undefined) {
+								throw new NodeOperationError(this.getNode(), 'No binary data exists on item!');
+							}
+
+							const propertyNameUpload = this.getNodeParameter('binaryPropertyName', i) as string;
+
+
+							if (item.binary[propertyNameUpload] === undefined) {
+								throw new NodeOperationError(this.getNode(), `No binary data property "${propertyNameUpload}" does not exists on item!`);
+							}
+
+							body = Buffer.from(item.binary[propertyNameUpload].data, BINARY_ENCODING);
+						} else {
+							// Is text file
+							body = this.getNodeParameter('fileContent', i) as string;
+						}
+					}
+				} else if (resource === 'folder') {
+					if (operation === 'create') {
+						// ----------------------------------
+						//         create
+						// ----------------------------------
+
+						requestMethod = 'MKCOL';
+						endpoint = this.getNodeParameter('path', i) as string;
+
+					} else if (operation === 'list') {
+						// ----------------------------------
+						//         list
+						// ----------------------------------
+
+						requestMethod = 'PROPFIND';
+						endpoint = this.getNodeParameter('path', i) as string;
+
+					}
 				}
 
-				throw error;
-			}
+				if (['file', 'folder'].includes(resource)) {
+					if (operation === 'copy') {
+						// ----------------------------------
+						//         copy
+						// ----------------------------------
 
-			if (resource === 'file' && operation === 'download') {
+						requestMethod = 'COPY';
+						endpoint = this.getNodeParameter('path', i) as string;
+						const toPath = this.getNodeParameter('toPath', i) as string;
+						headers.Destination = `${credentials.webDavUrl}/${encodeURI(toPath)}`;
 
-				const newItem: INodeExecutionData = {
-					json: items[i].json,
-					binary: {},
-				};
+					} else if (operation === 'delete') {
+						// ----------------------------------
+						//         delete
+						// ----------------------------------
 
-				if (items[i].binary !== undefined) {
-					// Create a shallow copy of the binary data so that the old
-					// data references which do not get changed still stay behind
-					// but the incoming data does not get changed.
-					Object.assign(newItem.binary, items[i].binary);
+						requestMethod = 'DELETE';
+						endpoint = this.getNodeParameter('path', i) as string;
+
+					} else if (operation === 'move') {
+						// ----------------------------------
+						//         move
+						// ----------------------------------
+
+						requestMethod = 'MOVE';
+						endpoint = this.getNodeParameter('path', i) as string;
+						const toPath = this.getNodeParameter('toPath', i) as string;
+						headers.Destination = `${credentials.webDavUrl}/${encodeURI(toPath)}`;
+
+					}
+
+				} else if (resource === 'user') {
+					if (operation === 'create') {
+						// ----------------------------------
+						//         user:create
+						// ----------------------------------
+
+						requestMethod = 'POST';
+
+						endpoint = 'ocs/v1.php/cloud/users';
+
+						headers['OCS-APIRequest'] = true;
+						headers['Content-Type'] = 'application/x-www-form-urlencoded';
+
+						const userid = this.getNodeParameter('userId', i) as string;
+						const email = this.getNodeParameter('email', i) as string;
+
+						body = `userid=${userid}&email=${email}`;
+
+						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+
+						if (additionalFields.displayName) {
+							body += `&displayName=${additionalFields.displayName}`;
+						}
+					}
+					if (operation === 'delete') {
+						// ----------------------------------
+						//         user:delete
+						// ----------------------------------
+
+						requestMethod = 'DELETE';
+
+						const userid = this.getNodeParameter('userId', i) as string;
+						endpoint = `ocs/v1.php/cloud/users/${userid}`;
+
+						headers['OCS-APIRequest'] = true;
+						headers['Content-Type'] = 'application/x-www-form-urlencoded';
+					}
+					if (operation === 'get') {
+						// ----------------------------------
+						//         user:get
+						// ----------------------------------
+
+						requestMethod = 'GET';
+
+						const userid = this.getNodeParameter('userId', i) as string;
+						endpoint = `ocs/v1.php/cloud/users/${userid}`;
+
+						headers['OCS-APIRequest'] = true;
+						headers['Content-Type'] = 'application/x-www-form-urlencoded';
+					}
+					if (operation === 'getAll') {
+						// ----------------------------------
+						//         user:getAll
+						// ----------------------------------
+
+						requestMethod = 'GET';
+						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						qs = this.getNodeParameter('options', i) as IDataObject;
+						if (!returnAll) {
+							qs.limit = this.getNodeParameter('limit', i) as number;
+						}
+						endpoint = `ocs/v1.php/cloud/users`;
+
+						headers['OCS-APIRequest'] = true;
+						headers['Content-Type'] = 'application/x-www-form-urlencoded';
+					}
+					if (operation === 'update') {
+						// ----------------------------------
+						//         user:update
+						// ----------------------------------
+
+						requestMethod = 'PUT';
+
+						const userid = this.getNodeParameter('userId', i) as string;
+						endpoint = `ocs/v1.php/cloud/users/${userid}`;
+
+						body = Object.entries((this.getNodeParameter('updateFields', i) as IDataObject).field as IDataObject).map(entry => {
+							const [key, value] = entry;
+							return `${key}=${value}`;
+						}).join('&');
+
+						headers['OCS-APIRequest'] = true;
+						headers['Content-Type'] = 'application/x-www-form-urlencoded';
+					}
+				} else {
+					throw new NodeOperationError(this.getNode(), `The resource "${resource}" is not known!`);
 				}
 
-				items[i] = newItem;
+				// Make sure that the webdav URL does never have a trailing slash because
+				// one gets added always automatically
+				let webDavUrl = credentials.webDavUrl as string;
+				if (webDavUrl.slice(-1) === '/') {
+					webDavUrl = webDavUrl.slice(0, -1);
+				}
 
-				const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i) as string;
+				let encoding = undefined;
+				if (resource === 'file' && operation === 'download') {
+					// Return the data as a buffer
+					encoding = null;
+				}
 
-				items[i].binary![binaryPropertyName] = await this.helpers.prepareBinaryData(responseData, endpoint);
+				try {
+					responseData = await nextCloudApiRequest.call(this, requestMethod, endpoint, body, headers, encoding, qs);
+				} catch (error) {
+					if (this.continueOnFail()) {
+						if (resource === 'file' && operation === 'download') {
+							items[i].json = { error: error.message };
+						} else {
+							returnData.push({ error: error.message });
+						}
+						continue;
+					}
 
-			} else if (resource === 'user') {
+					throw error;
+				}
 
-				if (operation !== 'getAll') {
+				if (resource === 'file' && operation === 'download') {
+
+					const newItem: INodeExecutionData = {
+						json: items[i].json,
+						binary: {},
+					};
+
+					if (items[i].binary !== undefined) {
+						// Create a shallow copy of the binary data so that the old
+						// data references which do not get changed still stay behind
+						// but the incoming data does not get changed.
+						Object.assign(newItem.binary, items[i].binary);
+					}
+
+					items[i] = newItem;
+
+					const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i) as string;
+
+					items[i].binary![binaryPropertyName] = await this.helpers.prepareBinaryData(responseData, endpoint);
+
+				} else if (resource === 'user') {
+
+					if (operation !== 'getAll') {
+
+						const jsonResponseData: IDataObject = await new Promise((resolve, reject) => {
+							parseString(responseData, { explicitArray: false }, (err, data) => {
+								if (err) {
+									return reject(err);
+								}
+
+								if (data.ocs.meta.status !== 'ok') {
+									return reject(new Error(data.ocs.meta.message || data.ocs.meta.status));
+								}
+
+								if (operation === 'delete' || operation === 'update') {
+									resolve(data.ocs.meta as IDataObject);
+								} else {
+									resolve(data.ocs.data as IDataObject);
+								}
+							});
+						});
+
+						returnData.push(jsonResponseData as IDataObject);
+					} else {
+
+						const jsonResponseData: IDataObject[] = await new Promise((resolve, reject) => {
+							parseString(responseData, { explicitArray: false }, (err, data) => {
+								if (err) {
+									return reject(err);
+								}
+
+								if (data.ocs.meta.status !== 'ok') {
+									return reject(new Error(data.ocs.meta.message));
+								}
+
+								if (typeof (data.ocs.data.users.element) === 'string') {
+									resolve([data.ocs.data.users.element] as IDataObject[]);
+								} else {
+									resolve(data.ocs.data.users.element as IDataObject[]);
+								}
+							});
+						});
+
+						jsonResponseData.forEach(value => {
+							returnData.push({ id: value } as IDataObject);
+						});
+					}
+
+				} else if (resource === 'folder' && operation === 'list') {
 
 					const jsonResponseData: IDataObject = await new Promise((resolve, reject) => {
 						parseString(responseData, { explicitArray: false }, (err, data) => {
 							if (err) {
 								return reject(err);
 							}
-
-							if (data.ocs.meta.status !== 'ok') {
-								return reject(new Error(data.ocs.meta.message || data.ocs.meta.status));
-							}
-
-							if (operation === 'delete' || operation === 'update') {
-								resolve(data.ocs.meta as IDataObject);
-							} else {
-								resolve(data.ocs.data as IDataObject);
-							}
+							resolve(data as IDataObject);
 						});
 					});
 
-					returnData.push(jsonResponseData as IDataObject);
-				} else {
+					const propNames: { [key: string]: string } = {
+						'd:getlastmodified': 'lastModified',
+						'd:getcontentlength': 'contentLength',
+						'd:getcontenttype': 'contentType',
+					};
 
-					const jsonResponseData: IDataObject[] = await new Promise((resolve, reject) => {
-						parseString(responseData, { explicitArray: false }, (err, data) => {
-							if (err) {
-								return reject(err);
+					if (jsonResponseData['d:multistatus'] !== undefined &&
+						jsonResponseData['d:multistatus'] !== null &&
+						(jsonResponseData['d:multistatus'] as IDataObject)['d:response'] !== undefined &&
+						(jsonResponseData['d:multistatus'] as IDataObject)['d:response'] !== null) {
+						let skippedFirst = false;
+
+						// @ts-ignore
+						for (const item of jsonResponseData['d:multistatus']['d:response']) {
+							if (skippedFirst === false) {
+								skippedFirst = true;
+								continue;
+							}
+							const newItem: IDataObject = {};
+
+							newItem.path = item['d:href'].slice(19);
+
+							const props = item['d:propstat'][0]['d:prop'];
+
+							// Get the props and save them under a proper name
+							for (const propName of Object.keys(propNames)) {
+								if (props[propName] !== undefined) {
+									newItem[propNames[propName]] = props[propName];
+								}
 							}
 
-							if (data.ocs.meta.status !== 'ok') {
-								return reject(new Error(data.ocs.meta.message));
-							}
-
-							if (typeof (data.ocs.data.users.element) === 'string') {
-								resolve([data.ocs.data.users.element] as IDataObject[]);
+							if (props['d:resourcetype'] === '') {
+								newItem.type = 'file';
 							} else {
-								resolve(data.ocs.data.users.element as IDataObject[]);
+								newItem.type = 'folder';
 							}
-						});
-					});
+							newItem.eTag = props['d:getetag'].slice(1, -1);
 
-					jsonResponseData.forEach(value => {
-						returnData.push({ id: value } as IDataObject);
-					});
-				}
-
-			} else if (resource === 'folder' && operation === 'list') {
-
-				const jsonResponseData: IDataObject = await new Promise((resolve, reject) => {
-					parseString(responseData, { explicitArray: false }, (err, data) => {
-						if (err) {
-							return reject(err);
+							returnData.push(newItem as IDataObject);
 						}
-						resolve(data as IDataObject);
-					});
-				});
-
-				const propNames: { [key: string]: string } = {
-					'd:getlastmodified': 'lastModified',
-					'd:getcontentlength': 'contentLength',
-					'd:getcontenttype': 'contentType',
-				};
-
-				if (jsonResponseData['d:multistatus'] !== undefined &&
-					jsonResponseData['d:multistatus'] !== null &&
-					(jsonResponseData['d:multistatus'] as IDataObject)['d:response'] !== undefined &&
-					(jsonResponseData['d:multistatus'] as IDataObject)['d:response'] !== null) {
-					let skippedFirst = false;
-
-					// @ts-ignore
-					for (const item of jsonResponseData['d:multistatus']['d:response']) {
-						if (skippedFirst === false) {
-							skippedFirst = true;
-							continue;
-						}
-						const newItem: IDataObject = {};
-
-						newItem.path = item['d:href'].slice(19);
-
-						const props = item['d:propstat'][0]['d:prop'];
-
-						// Get the props and save them under a proper name
-						for (const propName of Object.keys(propNames)) {
-							if (props[propName] !== undefined) {
-								newItem[propNames[propName]] = props[propName];
-							}
-						}
-
-						if (props['d:resourcetype'] === '') {
-							newItem.type = 'file';
-						} else {
-							newItem.type = 'folder';
-						}
-						newItem.eTag = props['d:getetag'].slice(1, -1);
-
-						returnData.push(newItem as IDataObject);
 					}
+				} else {
+					returnData.push(responseData as IDataObject);
 				}
-			} else {
-				returnData.push(responseData as IDataObject);
+			} catch (error) {
+				if (this.continueOnFail()) {
+					if (resource === 'file' && operation === 'download') {
+						items[i].json = { error: error.message };
+					} else {
+						returnData.push({ error: error.message });
+					}
+					continue;
+				}
+				throw error;
 			}
 
 		}
