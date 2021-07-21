@@ -64,42 +64,13 @@ export class TaigaTrigger implements INodeType {
 				required: true,
 			},
 			{
-				displayName: 'Actions',
-				name: 'actions',
+				displayName: 'Resources',
+				name: 'resources',
 				type: 'multiOptions',
 				required: true,
 				default: [
 					'all',
 				],
-				description: 'Event actions to listen to',
-				options: [
-					{
-						name: 'All',
-						value: 'all',
-					},
-					{
-						name: 'Create',
-						value: 'create',
-					},
-					{
-						name: 'Delete',
-						value: 'delete',
-					},
-					{
-						name: 'Update',
-						value: 'change',
-					},
-				],
-			},
-			{
-				displayName: 'Types',
-				name: 'types',
-				type: 'multiOptions',
-				required: true,
-				default: [
-					'all',
-				],
-				description: 'Event types to listen to',
 				options: [
 					{
 						name: 'All',
@@ -124,6 +95,35 @@ export class TaigaTrigger implements INodeType {
 					{
 						name: 'Wikipage',
 						value: 'wikipage',
+					},
+				],
+				description: 'Resources to listen to',
+			},
+			{
+				displayName: 'Operations',
+				name: 'operations',
+				type: 'multiOptions',
+				required: true,
+				default: [
+					'all',
+				],
+				description: 'Event actions to listen to',
+				options: [
+					{
+						name: 'All',
+						value: 'all',
+					},
+					{
+						name: 'Create',
+						value: 'create',
+					},
+					{
+						name: 'Delete',
+						value: 'delete',
+					},
+					{
+						name: 'Update',
+						value: 'change',
 					},
 				],
 			},
@@ -216,14 +216,14 @@ export class TaigaTrigger implements INodeType {
 	async webhook(this: IWebhookFunctions): Promise<IWebhookResponseData> {
 		const body = this.getRequestObject().body as WebhookPayload;
 
-		const actions = this.getNodeParameter('actions', []) as EventAction[];
-		const types = this.getNodeParameter('types', []) as EventType[];
+		const operations = this.getNodeParameter('operations', []) as Operations[];
+		const resources = this.getNodeParameter('resources', []) as Resources[];
 
-		if (!actions.includes('all') && !actions.includes(body.action)) {
+		if (!operations.includes('all') && !operations.includes(body.action)) {
 			return {};
 		}
 
-		if (!types.includes('all') && !types.includes(body.type)) {
+		if (!resources.includes('all') && !resources.includes(body.type)) {
 			return {};
 		}
 

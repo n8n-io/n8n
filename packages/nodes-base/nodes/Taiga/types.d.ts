@@ -23,13 +23,13 @@ type LoadedTags = {
 	[tagName: string]: string | null; // hex color
 }
 
-type EventAction = 'all' | 'create' | 'delete' | 'change';
+type Operations = 'all' | 'create' | 'delete' | 'change';
 
-type EventType = 'all' | 'issue' | 'milestone' | 'task' | 'userstory' | 'wikipage';
+type Resources = 'all' | 'issue' | 'milestone' | 'task' | 'userstory' | 'wikipage';
 
 type WebhookPayload = {
-	action: EventAction;
-	type: EventType;
+	action: Operations;
+	type: Resources;
 	by: Record<string, string | number>;
 	date: string;
 	data: Record<string, string | number | object | string[]>;
