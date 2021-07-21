@@ -378,263 +378,271 @@ export class Ftp implements INodeType {
 		} else {
 			credentials = this.getCredentials('ftp');
 		}
+		try {
 
-		if (credentials === undefined) {
-			throw new NodeOperationError(this.getNode(), 'Failed to get credentials!');
-		}
-
-		let ftp : ftpClient;
-		let sftp : sftpClient;
-
-		if (protocol === 'sftp') {
-			sftp = new sftpClient();
-			await sftp.connect({
-				host: credentials.host as string,
-				port: credentials.port as number,
-				username: credentials.username as string,
-				password: credentials.password as string,
-				privateKey: credentials.privateKey as string | undefined,
-				passphrase: credentials.passphrase as string | undefined,
-			});
-
-		} else {
-			ftp = new ftpClient();
-			await ftp.connect({
-				host: credentials.host as string,
-				port: credentials.port as number,
-				user: credentials.username as string,
-				password: credentials.password as string,
-			});
-		}
-
-		for (let i = 0; i < items.length; i++) {
-			const newItem: INodeExecutionData = {
-				json: items[i].json,
-				binary: {},
-			};
-
-			if (items[i].binary !== undefined) {
-				// Create a shallow copy of the binary data so that the old
-				// data references which do not get changed still stay behind
-				// but the incoming data does not get changed.
-				Object.assign(newItem.binary, items[i].binary);
+			if (credentials === undefined) {
+				throw new NodeOperationError(this.getNode(), 'Failed to get credentials!');
 			}
 
-			items[i] = newItem;
+			let ftp : ftpClient;
+			let sftp : sftpClient;
 
 			if (protocol === 'sftp') {
+				sftp = new sftpClient();
+				await sftp.connect({
+					host: credentials.host as string,
+					port: credentials.port as number,
+					username: credentials.username as string,
+					password: credentials.password as string,
+					privateKey: credentials.privateKey as string | undefined,
+					passphrase: credentials.passphrase as string | undefined,
+				});
 
-				if (operation === 'list') {
-					const path = this.getNodeParameter('path', i) as string;
+			} else {
+				ftp = new ftpClient();
+				await ftp.connect({
+					host: credentials.host as string,
+					port: credentials.port as number,
+					user: credentials.username as string,
+					password: credentials.password as string,
+				});
+			}
 
-					const recursive = this.getNodeParameter('recursive', i) as boolean;
+			for (let i = 0; i < items.length; i++) {
+				const newItem: INodeExecutionData = {
+					json: items[i].json,
+					binary: {},
+				};
 
-					if (recursive) {
-						responseData = await callRecursiveList(path, sftp!, normalizeSFtpItem);
-						returnItems.push.apply(returnItems, this.helpers.returnJsonArray(responseData as unknown as IDataObject[]));
-					} else {
-						responseData = await sftp!.list(path);
-						responseData.forEach(item => normalizeSFtpItem(item as sftpClient.FileInfo, path));
-						returnItems.push.apply(returnItems, this.helpers.returnJsonArray(responseData as unknown as IDataObject[]));
-					}
+				if (items[i].binary !== undefined) {
+					// Create a shallow copy of the binary data so that the old
+					// data references which do not get changed still stay behind
+					// but the incoming data does not get changed.
+					Object.assign(newItem.binary, items[i].binary);
 				}
 
-				if (operation === 'delete') {
-					const path = this.getNodeParameter('path', i) as string;
-					const options = this.getNodeParameter('options', i) as IDataObject;
+				items[i] = newItem;
 
-					if (options.folder === true) {
-						responseData = await sftp!.rmdir(path, !!options.recursive);
-					} else {
-						responseData = await sftp!.delete(path);
-					}
+				if (protocol === 'sftp') {
 
-					returnItems.push({ json: { success: true } });
-				}
+					if (operation === 'list') {
+						const path = this.getNodeParameter('path', i) as string;
 
-				if (operation === 'rename') {
-					const oldPath = this.getNodeParameter('oldPath', i) as string;
+						const recursive = this.getNodeParameter('recursive', i) as boolean;
 
-					const newPath = this.getNodeParameter('newPath', i) as string;
-
-					responseData = await sftp!.rename(oldPath, newPath);
-
-					returnItems.push({ json: { success: true } });
-				}
-
-				if (operation === 'download') {
-					const path = this.getNodeParameter('path', i) as string;
-
-					responseData = await sftp!.get(path);
-
-					const dataPropertyNameDownload = this.getNodeParameter('binaryPropertyName', i) as string;
-
-					const filePathDownload = this.getNodeParameter('path', i) as string;
-					items[i].binary![dataPropertyNameDownload] = await this.helpers.prepareBinaryData(responseData as Buffer, filePathDownload);
-
-					returnItems.push(items[i]);
-				}
-
-				if (operation === 'upload') {
-					const remotePath = this.getNodeParameter('path', i) as string;
-
-					// Check if dir path exists
-					const dirPath = dirname(remotePath);
-					const dirExists = await sftp!.exists(dirPath);
-
-					// If dir does not exist, create all recursively in path
-					if (!dirExists) {
-						// Create directory
-						await sftp!.mkdir(dirPath, true);
+						if (recursive) {
+							responseData = await callRecursiveList(path, sftp!, normalizeSFtpItem);
+							returnItems.push.apply(returnItems, this.helpers.returnJsonArray(responseData as unknown as IDataObject[]));
+						} else {
+							responseData = await sftp!.list(path);
+							responseData.forEach(item => normalizeSFtpItem(item as sftpClient.FileInfo, path));
+							returnItems.push.apply(returnItems, this.helpers.returnJsonArray(responseData as unknown as IDataObject[]));
+						}
 					}
 
-					if (this.getNodeParameter('binaryData', i) === true) {
-						// Is binary file to upload
-						const item = items[i];
+					if (operation === 'delete') {
+						const path = this.getNodeParameter('path', i) as string;
+						const options = this.getNodeParameter('options', i) as IDataObject;
 
-						if (item.binary === undefined) {
-							throw new NodeOperationError(this.getNode(), 'No binary data exists on item!');
+						if (options.folder === true) {
+							responseData = await sftp!.rmdir(path, !!options.recursive);
+						} else {
+							responseData = await sftp!.delete(path);
 						}
 
-						const propertyNameUpload = this.getNodeParameter('binaryPropertyName', i) as string;
-
-						if (item.binary[propertyNameUpload] === undefined) {
-							throw new NodeOperationError(this.getNode(), `No binary data property "${propertyNameUpload}" does not exists on item!`);
-						}
-
-						const buffer = Buffer.from(item.binary[propertyNameUpload].data, BINARY_ENCODING) as Buffer;
-						await sftp!.put(buffer, remotePath);
-					} else {
-						// Is text file
-						const buffer = Buffer.from(this.getNodeParameter('fileContent', i) as string, 'utf8') as Buffer;
-						await sftp!.put(buffer, remotePath);
+						returnItems.push({ json: { success: true } });
 					}
 
-					returnItems.push(items[i]);
+					if (operation === 'rename') {
+						const oldPath = this.getNodeParameter('oldPath', i) as string;
+
+						const newPath = this.getNodeParameter('newPath', i) as string;
+
+						responseData = await sftp!.rename(oldPath, newPath);
+
+						returnItems.push({ json: { success: true } });
+					}
+
+					if (operation === 'download') {
+						const path = this.getNodeParameter('path', i) as string;
+
+						responseData = await sftp!.get(path);
+
+						const dataPropertyNameDownload = this.getNodeParameter('binaryPropertyName', i) as string;
+
+						const filePathDownload = this.getNodeParameter('path', i) as string;
+						items[i].binary![dataPropertyNameDownload] = await this.helpers.prepareBinaryData(responseData as Buffer, filePathDownload);
+
+						returnItems.push(items[i]);
+					}
+
+					if (operation === 'upload') {
+						const remotePath = this.getNodeParameter('path', i) as string;
+
+						// Check if dir path exists
+						const dirPath = dirname(remotePath);
+						const dirExists = await sftp!.exists(dirPath);
+
+						// If dir does not exist, create all recursively in path
+						if (!dirExists) {
+							// Create directory
+							await sftp!.mkdir(dirPath, true);
+						}
+
+						if (this.getNodeParameter('binaryData', i) === true) {
+							// Is binary file to upload
+							const item = items[i];
+
+							if (item.binary === undefined) {
+								throw new NodeOperationError(this.getNode(), 'No binary data exists on item!');
+							}
+
+							const propertyNameUpload = this.getNodeParameter('binaryPropertyName', i) as string;
+
+							if (item.binary[propertyNameUpload] === undefined) {
+								throw new NodeOperationError(this.getNode(), `No binary data property "${propertyNameUpload}" does not exists on item!`);
+							}
+
+							const buffer = Buffer.from(item.binary[propertyNameUpload].data, BINARY_ENCODING) as Buffer;
+							await sftp!.put(buffer, remotePath);
+						} else {
+							// Is text file
+							const buffer = Buffer.from(this.getNodeParameter('fileContent', i) as string, 'utf8') as Buffer;
+							await sftp!.put(buffer, remotePath);
+						}
+
+						returnItems.push(items[i]);
+					}
+				}
+
+				if (protocol === 'ftp') {
+
+					if (operation === 'list') {
+						const path = this.getNodeParameter('path', i) as string;
+
+						const recursive = this.getNodeParameter('recursive', i) as boolean;
+
+						if (recursive) {
+							responseData = await callRecursiveList(path, ftp!, normalizeFtpItem);
+							returnItems.push.apply(returnItems, this.helpers.returnJsonArray(responseData as unknown as IDataObject[]));
+						} else {
+							responseData = await ftp!.list(path);
+							responseData.forEach(item => normalizeFtpItem(item as ftpClient.ListingElement, path));
+							returnItems.push.apply(returnItems, this.helpers.returnJsonArray(responseData as unknown as IDataObject[]));
+						}
+					}
+
+					if (operation === 'delete') {
+						const path = this.getNodeParameter('path', i) as string;
+						const options = this.getNodeParameter('options', i) as IDataObject;
+
+						if (options.folder === true) {
+							responseData = await ftp!.rmdir(path, !!options.recursive);
+						} else {
+							responseData = await ftp!.delete(path);
+						}
+
+						returnItems.push({ json: { success: true } });
+					}
+
+					if (operation === 'download') {
+						const path = this.getNodeParameter('path', i) as string;
+
+						responseData = await ftp!.get(path);
+
+						// Convert readable stream to buffer so that can be displayed properly
+						const chunks = [];
+						for await (const chunk of responseData) {
+							chunks.push(chunk);
+						}
+
+						// @ts-ignore
+						responseData = Buffer.concat(chunks);
+
+						const dataPropertyNameDownload = this.getNodeParameter('binaryPropertyName', i) as string;
+
+						const filePathDownload = this.getNodeParameter('path', i) as string;
+						items[i].binary![dataPropertyNameDownload] = await this.helpers.prepareBinaryData(responseData, filePathDownload);
+
+						returnItems.push(items[i]);
+					}
+
+					if (operation === 'rename') {
+
+						const oldPath = this.getNodeParameter('oldPath', i) as string;
+
+						const newPath = this.getNodeParameter('newPath', i) as string;
+
+						responseData = await ftp!.rename(oldPath, newPath);
+
+						returnItems.push({ json: { success: true } });
+					}
+
+					if (operation === 'upload') {
+						const remotePath = this.getNodeParameter('path', i) as string;
+						const fileName = basename(remotePath);
+						const dirPath = remotePath.replace(fileName, '');
+
+						if (this.getNodeParameter('binaryData', i) === true) {
+							// Is binary file to upload
+							const item = items[i];
+
+							if (item.binary === undefined) {
+								throw new NodeOperationError(this.getNode(), 'No binary data exists on item!');
+							}
+
+							const propertyNameUpload = this.getNodeParameter('binaryPropertyName', i) as string;
+
+							if (item.binary[propertyNameUpload] === undefined) {
+								throw new NodeOperationError(this.getNode(), `No binary data property "${propertyNameUpload}" does not exists on item!`);
+							}
+
+							const buffer = Buffer.from(item.binary[propertyNameUpload].data, BINARY_ENCODING) as Buffer;
+
+							try {
+								await ftp!.put(buffer, remotePath);
+							} catch (error) {
+								if (error.code === 553) {
+									// Create directory
+									await ftp!.mkdir(dirPath, true);
+									await ftp!.put(buffer, remotePath);
+								} else {
+									throw new NodeApiError(this.getNode(), error);
+								}
+							}
+						} else {
+							// Is text file
+							const buffer = Buffer.from(this.getNodeParameter('fileContent', i) as string, 'utf8') as Buffer;
+							try {
+								await ftp!.put(buffer, remotePath);
+							} catch (error) {
+								if (error.code === 553) {
+									// Create directory
+									await ftp!.mkdir(dirPath, true);
+									await ftp!.put(buffer, remotePath);
+								} else {
+									throw new NodeApiError(this.getNode(), error);
+								}
+							}
+						}
+						returnItems.push(items[i]);
+					}
 				}
 			}
 
-			if (protocol === 'ftp') {
-
-				if (operation === 'list') {
-					const path = this.getNodeParameter('path', i) as string;
-
-					const recursive = this.getNodeParameter('recursive', i) as boolean;
-
-					if (recursive) {
-						responseData = await callRecursiveList(path, ftp!, normalizeFtpItem);
-						returnItems.push.apply(returnItems, this.helpers.returnJsonArray(responseData as unknown as IDataObject[]));
-					} else {
-						responseData = await ftp!.list(path);
-						responseData.forEach(item => normalizeFtpItem(item as ftpClient.ListingElement, path));
-						returnItems.push.apply(returnItems, this.helpers.returnJsonArray(responseData as unknown as IDataObject[]));
-					}
-				}
-
-				if (operation === 'delete') {
-					const path = this.getNodeParameter('path', i) as string;
-					const options = this.getNodeParameter('options', i) as IDataObject;
-
-					if (options.folder === true) {
-						responseData = await ftp!.rmdir(path, !!options.recursive);
-					} else {
-						responseData = await ftp!.delete(path);
-					}
-
-					returnItems.push({ json: { success: true } });
-				}
-
-				if (operation === 'download') {
-					const path = this.getNodeParameter('path', i) as string;
-
-					responseData = await ftp!.get(path);
-
-					// Convert readable stream to buffer so that can be displayed properly
-					const chunks = [];
-					for await (const chunk of responseData) {
-						chunks.push(chunk);
-					}
-
-					// @ts-ignore
-					responseData = Buffer.concat(chunks);
-
-					const dataPropertyNameDownload = this.getNodeParameter('binaryPropertyName', i) as string;
-
-					const filePathDownload = this.getNodeParameter('path', i) as string;
-					items[i].binary![dataPropertyNameDownload] = await this.helpers.prepareBinaryData(responseData, filePathDownload);
-
-					returnItems.push(items[i]);
-				}
-
-				if (operation === 'rename') {
-
-					const oldPath = this.getNodeParameter('oldPath', i) as string;
-
-					const newPath = this.getNodeParameter('newPath', i) as string;
-
-					responseData = await ftp!.rename(oldPath, newPath);
-
-					returnItems.push({ json: { success: true } });
-				}
-
-				if (operation === 'upload') {
-					const remotePath = this.getNodeParameter('path', i) as string;
-					const fileName = basename(remotePath);
-					const dirPath = remotePath.replace(fileName, '');
-
-					if (this.getNodeParameter('binaryData', i) === true) {
-						// Is binary file to upload
-						const item = items[i];
-
-						if (item.binary === undefined) {
-							throw new NodeOperationError(this.getNode(), 'No binary data exists on item!');
-						}
-
-						const propertyNameUpload = this.getNodeParameter('binaryPropertyName', i) as string;
-
-						if (item.binary[propertyNameUpload] === undefined) {
-							throw new NodeOperationError(this.getNode(), `No binary data property "${propertyNameUpload}" does not exists on item!`);
-						}
-
-						const buffer = Buffer.from(item.binary[propertyNameUpload].data, BINARY_ENCODING) as Buffer;
-
-						try {
-							await ftp!.put(buffer, remotePath);
-						} catch (error) {
-							if (error.code === 553) {
-								// Create directory
-								await ftp!.mkdir(dirPath, true);
-								await ftp!.put(buffer, remotePath);
-							} else {
-								throw new NodeApiError(this.getNode(), error);
-							}
-						}
-					} else {
-						// Is text file
-						const buffer = Buffer.from(this.getNodeParameter('fileContent', i) as string, 'utf8') as Buffer;
-						try {
-							await ftp!.put(buffer, remotePath);
-						} catch (error) {
-							if (error.code === 553) {
-								// Create directory
-								await ftp!.mkdir(dirPath, true);
-								await ftp!.put(buffer, remotePath);
-							} else {
-								throw new NodeApiError(this.getNode(), error);
-							}
-						}
-					}
-					returnItems.push(items[i]);
-				}
+			if (protocol === 'sftp') {
+				await sftp!.end();
+			} else {
+				await ftp!.end();
 			}
-		}
 
-		if (protocol === 'sftp') {
-			await sftp!.end();
-		} else {
-			await ftp!.end();
-		}
+		} catch (error) {
+			if (this.continueOnFail()) {
+				return this.prepareOutputData([{json:{ error: error.message }}]);
+			}
 
+			throw error;
+		}
 		return [returnItems];
 	}
 }
