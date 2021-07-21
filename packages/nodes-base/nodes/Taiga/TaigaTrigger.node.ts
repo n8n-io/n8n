@@ -68,7 +68,9 @@ export class TaigaTrigger implements INodeType {
 				name: 'actions',
 				type: 'multiOptions',
 				required: true,
-				default: [],
+				default: [
+					'all',
+				],
 				description: 'Event actions to listen to',
 				options: [
 					{
@@ -94,7 +96,9 @@ export class TaigaTrigger implements INodeType {
 				name: 'types',
 				type: 'multiOptions',
 				required: true,
-				default: [],
+				default: [
+					'all',
+				],
 				description: 'Event types to listen to',
 				options: [
 					{
