@@ -30,6 +30,8 @@ import {
 	purchaseOperations,
 	vendorFields,
 	vendorOperations,
+	transactionListFields,
+	transactionListOperations,
 } from './descriptions';
 
 import {
@@ -115,6 +117,10 @@ export class QuickBooks implements INodeType {
 						value: 'purchase',
 					},
 					{
+						name: 'Transaction List',
+						value: 'transactionList',
+					},
+					{
 						name: 'Vendor',
 						value: 'vendor',
 					},
@@ -138,6 +144,8 @@ export class QuickBooks implements INodeType {
 			...paymentFields,
 			...purchaseOperations,
 			...purchaseFields,
+			...transactionListOperations,
+			...transactionListFields,
 			...vendorOperations,
 			...vendorFields,
 		],
@@ -947,6 +955,25 @@ export class QuickBooks implements INodeType {
 					responseData = await handleListing.call(this, i, endpoint, resource);
 
 				}
+
+			} else if (resource === 'transactionList') {
+
+				// *********************************************************************
+				//                            transactionList
+				// *********************************************************************
+
+				// https://developer.intuit.com/app/developer/qbo/docs/api/accounting/all-entities/transactionlist
+					if (operation === 'get') {
+
+					// ----------------------------------
+					//         transactionList: get
+					// ----------------------------------
+
+					const filters = this.getNodeParameter('filters', i) as IDataObject;
+					const endpoint = `/v3/company/${companyId}/reports/TransactionList`;
+					responseData = await quickBooksApiRequest.call(this, 'GET', endpoint, filters, {});
+
+				} 
 
 			} else if (resource === 'vendor') {
 

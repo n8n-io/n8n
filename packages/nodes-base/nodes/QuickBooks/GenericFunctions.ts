@@ -97,6 +97,10 @@ export async function quickBooksApiRequest(
 		options.headers!['Content-Type'] = 'application/json';
 	}
 
+	if (resource === 'transactionList' && options.qs && options.qs.columns) {
+		options.qs.columns = options.qs.columns.join(',');
+	}
+
 	try {
 		return await this.helpers.requestOAuth2!.call(this, 'quickBooksOAuth2Api', options);
 	} catch (error) {
