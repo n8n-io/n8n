@@ -64,7 +64,6 @@ export class ClerkTrigger implements INodeType {
 					{
 						name: 'Session Created',
 						value: 'session.created',
-						description: 'User lo',
 					},
 					{
 						name: 'Session Ended',
