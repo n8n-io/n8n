@@ -1,5 +1,4 @@
-import express = require("express");
-import { WebhookRequiredHeaders } from "svix";
+import * as express from 'express';
 
 export type ClerkWebhookPayload = {
   data: Record<string, string | number>;
@@ -19,7 +18,7 @@ export type ClerkEvent =
 
 export type ClerkRequest = express.Request & {
 	rawBody: Buffer;
-	headers: WebhookRequiredHeaders;
+	headers: Record<string, string>;
 }
 
 export type ClerkCredentials = {

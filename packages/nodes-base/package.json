@@ -674,7 +674,6 @@
     "simple-git": "^2.36.2",
     "snowflake-sdk": "^1.5.3",
     "ssh2-sftp-client": "^5.2.1",
-    "svix": "^0.22.0",
     "tmp-promise": "^3.0.2",
     "uuid": "^8.3.0",
     "vm2": "^3.6.10",

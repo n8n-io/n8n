@@ -10,8 +10,8 @@ import {
 } from 'n8n-workflow';
 
 import {
-	Webhook,
-} from 'svix';
+	verify,
+} from './GenericFunctions';
 
 import {
 	ClerkCredentials,
@@ -98,12 +98,11 @@ export class ClerkTrigger implements INodeType {
 		const { rawBody, headers, body } = this.getRequestObject() as ClerkRequest;
 		const events = this.getNodeParameter('events', []) as ClerkEvent[];
 		const { webhookSecret } = this.getCredentials('clerkApi') as ClerkCredentials;
-		const webhook = new Webhook(webhookSecret);
 
 		let payload;
 
 		try {
-			payload = webhook.verify(rawBody.toString(), headers) as ClerkWebhookPayload;
+			payload = verify.call(this, rawBody.toString(), headers, webhookSecret) as ClerkWebhookPayload;
 		} catch (_) {
 			throw new NodeOperationError(this.getNode(), 'Unverified webhook call!');
 		}
