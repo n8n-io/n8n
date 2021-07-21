@@ -956,6 +956,24 @@ export class QuickBooks implements INodeType {
 
 					}
 
+				} else if (resource === 'transactionList') {
+
+					// *********************************************************************
+					//                            transactionList
+					// *********************************************************************
+
+					// https://developer.intuit.com/app/developer/qbo/docs/api/accounting/all-entities/transactionlist
+					if (operation === 'get') {
+
+						// ----------------------------------
+						//         transactionList: get
+						// ----------------------------------
+
+						const filters = this.getNodeParameter('filters', i) as IDataObject;
+						const endpoint = `/v3/company/${companyId}/reports/TransactionList`;
+						responseData = await quickBooksApiRequest.call(this, 'GET', endpoint, filters, {});
+					}
+
 				} else if (resource === 'vendor') {
 
 					// *********************************************************************
