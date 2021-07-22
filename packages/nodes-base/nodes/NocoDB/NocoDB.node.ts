@@ -7,6 +7,7 @@ import {
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
+	NodeApiError,
 	NodeOperationError,
 } from 'n8n-workflow';
 
@@ -100,7 +101,7 @@ export class NocoDB implements INodeType {
 		],
 	};
 
-	
+
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
@@ -116,20 +117,20 @@ export class NocoDB implements INodeType {
 		let endpoint = '';
 		let requestMethod = '';
 
-		const body: IDataObject = {};
 		let qs: IDataObject = {};
 
-		for (let i = 0; i < items.length; i++) {
-			try {
-				if (resource === 'row') {
+		if (resource === 'row') {
 
-					if (operation === 'create') {
+			if (operation === 'create') {
 
-						requestMethod = 'POST';
-						endpoint = `/nc/${projectId}/api/v1/${table}`;
+				requestMethod = 'POST';
+				endpoint = `/nc/${projectId}/api/v1/${table}/bulk`;
 
-						const body: IDataObject = {};
+				const body: IDataObject[] = [];
 
+				for (let i = 0; i < items.length; i++) {
+					try {
+						const newItem: IDataObject = {};
 						const dataToSend = this.getNodeParameter('dataToSend', 0) as 'defineBelow' | 'autoMapInputData';
 
 						if (dataToSend === 'autoMapInputData') {
@@ -139,7 +140,7 @@ export class NocoDB implements INodeType {
 
 							for (const key of incomingKeys) {
 								if (inputDataToIgnore.includes(key)) continue;
-								body[key] = items[i].json[key];
+								newItem[key] = items[i].json[key];
 							}
 						} else {
 							const fields = this.getNodeParameter('fieldsUi.fieldValues', i, []) as Array<{
@@ -148,111 +149,161 @@ export class NocoDB implements INodeType {
 							}>;
 
 							for (const field of fields) {
-								body[field.fieldName] = field.fieldValue;
+								newItem[field.fieldName] = field.fieldValue;
 							}
 						}
-
-						responseData = await apiRequest.call(this, requestMethod, endpoint, body, qs);
-						returnData.push(responseData);
-
-					} else if (operation === 'delete') {
-
-						const id = this.getNodeParameter('id', i) as string;
-						requestMethod = 'DELETE';
-						endpoint = `/nc/${projectId}/api/v1/${table}/${id}`;
-
-						responseData = await apiRequest.call(this, requestMethod, endpoint, {}, qs);
-						responseData = { success: true };
-						returnData.push(responseData);
-
-					} else if (operation === 'getAll') {
-
-						requestMethod = 'GET';
-						endpoint = `/nc/${projectId}/api/v1/${table}`;
-
-						returnAll = this.getNodeParameter('returnAll', 0) as boolean;
-						const downloadAttachments = this.getNodeParameter('downloadAttachments', 0) as boolean;
-						qs = this.getNodeParameter('options', 0, {}) as IDataObject;
-
-						if ( qs.sort ) {
-							const properties = (qs.sort as IDataObject).property as Array<{field: string, direction: string}>;
-							qs.sort = properties.map(prop => `${prop.direction === 'asc' ? '':'-'}${prop.field}`).join(',');
+						body.push(newItem);
+					} catch (error) {
+						if (this.continueOnFail()) {
+							returnData.push({ error: error.toString() });
+							continue;
 						}
-
-						if ( qs.fields ) {
-							qs.fields = (qs.fields as IDataObject[]).join(',');
-						}
-
-						if (returnAll === true) {
-							responseData = await apiRequestAllItems.call(this, requestMethod, endpoint, body, qs);
-
-						} else {
-							qs.limit = this.getNodeParameter('limit', 0) as number;
-							responseData = await apiRequest.call(this, requestMethod, endpoint, body, qs);
-						}
-
-						returnData.push.apply(returnData, responseData);
-
-						if (downloadAttachments === true) {
-							const downloadFieldNames = (this.getNodeParameter('downloadFieldNames', 0) as string).split(',');
-							const data = await downloadRecordAttachments.call(this, responseData, downloadFieldNames);
-							return [data];
-						}
-
-					} else if (operation === 'get') {
-
-						const id = this.getNodeParameter('id', i) as string;
-						requestMethod = 'GET';
-						endpoint = `/nc/${projectId}/api/v1/${table}/${id}`;
-
-						responseData = await apiRequest.call(this, requestMethod, endpoint, body, qs);
-						returnData.push(responseData);
-
-					} else if (operation === 'update') {
-
-						const id = this.getNodeParameter('id', i) as string;
-						requestMethod = 'PUT';
-						endpoint = `/nc/${projectId}/api/v1/${table}/${id}`;
-
-						const dataToSend = this.getNodeParameter('dataToSend', 0) as 'defineBelow' | 'autoMapInputData';
-
-						if (dataToSend === 'autoMapInputData') {
-							const incomingKeys = Object.keys(items[i].json);
-							const rawInputsToIgnore = this.getNodeParameter('inputsToIgnore', i) as string;
-							const inputDataToIgnore = rawInputsToIgnore.split(',').map(c => c.trim());
-
-							for (const key of incomingKeys) {
-								if (inputDataToIgnore.includes(key)) continue;
-								body[key] = items[i].json[key];
-							}
-						} else {
-							const fields = this.getNodeParameter('fieldsUi.fieldValues', i, []) as Array<{
-								fieldName: string;
-								fieldValue: string;
-							}>;
-							for (const field of fields) {
-								body[field.fieldName] = field.fieldValue;
-							}
-						}
-
-						responseData = await apiRequest.call(this, requestMethod, endpoint, body, qs);
-						responseData = { success: true };
-						returnData.push(responseData);
-					} else {
-						throw new NodeOperationError(this.getNode(), `The operation "${operation}" is not known!`);
+						throw new NodeOperationError(this.getNode(), error);
 					}
-				} else {
-					throw new NodeOperationError(this.getNode(), `The resource "${resource}" is not known!`);
 				}
-			} catch (error) {
-				if (this.continueOnFail()) {
-					returnData.push({ error: error.toString() });
-					continue;
+				try {
+					responseData = await apiRequest.call(this, requestMethod, endpoint, body, qs);
+					returnData.push({lastAddedRowId: responseData[0]});
+				} catch (error) {
+					if (this.continueOnFail()) {
+						returnData.push({ error: error.toString() });
+					}
+					throw new NodeApiError(this.getNode(), error);
 				}
-				throw error;
-			}
+			} else if (operation === 'delete') {
 
+				requestMethod = 'DELETE';
+				endpoint = `/nc/${projectId}/api/v1/${table}/bulk`;
+				const body: IDataObject[] = [];
+
+				for (let i = 0; i < items.length; i++) {
+					const id = this.getNodeParameter('id', i) as string;
+					body.push({id});
+				}
+				try {
+					responseData = await apiRequest.call(this, requestMethod, endpoint, body, qs);
+					responseData = { success: true };
+					returnData.push(responseData);
+				} catch (error) {
+					if (this.continueOnFail()) {
+						returnData.push({ error: error.toString() });
+					}
+					throw new NodeApiError(this.getNode(), error);
+				}
+			} else if (operation === 'getAll') {
+				try {
+					requestMethod = 'GET';
+					endpoint = `/nc/${projectId}/api/v1/${table}`;
+
+					returnAll = this.getNodeParameter('returnAll', 0) as boolean;
+					const downloadAttachments = this.getNodeParameter('downloadAttachments', 0) as boolean;
+					qs = this.getNodeParameter('options', 0, {}) as IDataObject;
+
+					if ( qs.sort ) {
+						const properties = (qs.sort as IDataObject).property as Array<{field: string, direction: string}>;
+						qs.sort = properties.map(prop => `${prop.direction === 'asc' ? '':'-'}${prop.field}`).join(',');
+					}
+
+					if ( qs.fields ) {
+						qs.fields = (qs.fields as IDataObject[]).join(',');
+					}
+
+					if (returnAll === true) {
+						responseData = await apiRequestAllItems.call(this, requestMethod, endpoint, {}, qs);
+					} else {
+						qs.limit = this.getNodeParameter('limit', 0) as number;
+						responseData = await apiRequest.call(this, requestMethod, endpoint, {}, qs);
+					}
+
+					returnData.push.apply(returnData, responseData);
+
+					if (downloadAttachments === true) {
+						const downloadFieldNames = (this.getNodeParameter('downloadFieldNames', 0) as string).split(',');
+						const data = await downloadRecordAttachments.call(this, responseData, downloadFieldNames);
+						return [data];
+					}
+				} catch (error) {
+					if (this.continueOnFail()) {
+						returnData.push({ error: error.toString() });
+					}
+					throw error;
+				}
+			} else if (operation === 'get') {
+
+				requestMethod = 'GET';
+				for (let i = 0; i < items.length; i++) {
+					try {
+						const id = this.getNodeParameter('id', i) as string;
+						endpoint = `/nc/${projectId}/api/v1/${table}/${id}`;
+						responseData = await apiRequest.call(this, requestMethod, endpoint, {}, qs);
+						returnData.push(responseData);
+					} catch (error) {
+						if (this.continueOnFail()) {
+							returnData.push({ error: error.toString() });
+							continue;
+						}
+						throw new NodeApiError(this.getNode(), error);
+					}
+				}
+
+			} else if (operation === 'update') {
+
+				requestMethod = 'PUT';
+				endpoint = `/nc/${projectId}/api/v1/${table}/bulk`;
+
+				const body: IDataObject[] = [];
+
+				for (let i = 0; i < items.length; i++) {
+					try {
+
+						const id = this.getNodeParameter('id', i) as string;
+						const newItem: IDataObject = {id};
+						const dataToSend = this.getNodeParameter('dataToSend', 0) as 'defineBelow' | 'autoMapInputData';
+
+						if (dataToSend === 'autoMapInputData') {
+							const incomingKeys = Object.keys(items[i].json);
+							const rawInputsToIgnore = this.getNodeParameter('inputsToIgnore', i) as string;
+							const inputDataToIgnore = rawInputsToIgnore.split(',').map(c => c.trim());
+
+							for (const key of incomingKeys) {
+								if (inputDataToIgnore.includes(key)) continue;
+								newItem[key] = items[i].json[key];
+							}
+						} else {
+							const fields = this.getNodeParameter('fieldsUi.fieldValues', i, []) as Array<{
+								fieldName: string;
+								fieldValue: string;
+							}>;
+							for (const field of fields) {
+								newItem[field.fieldName] = field.fieldValue;
+							}
+						}
+						body.push(newItem);
+					} catch (error) {
+						if (this.continueOnFail()) {
+							returnData.push({ error: error.toString() });
+							continue;
+						}
+						throw new NodeOperationError(this.getNode(), error);
+					}
+				}
+				try {
+					responseData = await apiRequest.call(this, requestMethod, endpoint, body, qs);
+					responseData = { success: true };
+					returnData.push(responseData);
+				} catch (error) {
+					if (this.continueOnFail()) {
+						returnData.push({ error: error.toString() });
+					}
+					throw new NodeApiError(this.getNode(), error);
+				}
+			} else {
+				throw new NodeOperationError(this.getNode(), `The operation "${operation}" is not known!`);
+			}
+		} else {
+			throw new NodeOperationError(this.getNode(), `The resource "${resource}" is not known!`);
 		}
+
 		return [this.helpers.returnJsonArray(returnData)];
 	}
 }
