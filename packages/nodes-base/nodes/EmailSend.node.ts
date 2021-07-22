@@ -133,84 +133,93 @@ export class EmailSend implements INodeType {
 		let item: INodeExecutionData;
 
 		for (let itemIndex = 0; itemIndex < length; itemIndex++) {
+			try {
 
-			item = items[itemIndex];
+				item = items[itemIndex];
 
-			const fromEmail = this.getNodeParameter('fromEmail', itemIndex) as string;
-			const toEmail = this.getNodeParameter('toEmail', itemIndex) as string;
-			const ccEmail = this.getNodeParameter('ccEmail', itemIndex) as string;
-			const bccEmail = this.getNodeParameter('bccEmail', itemIndex) as string;
-			const subject = this.getNodeParameter('subject', itemIndex) as string;
-			const text = this.getNodeParameter('text', itemIndex) as string;
-			const html = this.getNodeParameter('html', itemIndex) as string;
-			const attachmentPropertyString = this.getNodeParameter('attachments', itemIndex) as string;
-			const options = this.getNodeParameter('options', itemIndex, {}) as IDataObject;
+				const fromEmail = this.getNodeParameter('fromEmail', itemIndex) as string;
+				const toEmail = this.getNodeParameter('toEmail', itemIndex) as string;
+				const ccEmail = this.getNodeParameter('ccEmail', itemIndex) as string;
+				const bccEmail = this.getNodeParameter('bccEmail', itemIndex) as string;
+				const subject = this.getNodeParameter('subject', itemIndex) as string;
+				const text = this.getNodeParameter('text', itemIndex) as string;
+				const html = this.getNodeParameter('html', itemIndex) as string;
+				const attachmentPropertyString = this.getNodeParameter('attachments', itemIndex) as string;
+				const options = this.getNodeParameter('options', itemIndex, {}) as IDataObject;
 
-			const credentials = this.getCredentials('smtp');
+				const credentials = this.getCredentials('smtp');
 
-			if (credentials === undefined) {
-				throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
-			}
-
-			const connectionOptions: SMTPTransport.Options = {
-				host: credentials.host as string,
-				port: credentials.port as number,
-				secure: credentials.secure as boolean,
-			};
-
-			if (credentials.user || credentials.password) {
-				// @ts-ignore
-				connectionOptions.auth = {
-					user: credentials.user as string,
-					pass: credentials.password as string,
-				};
-			}
-
-			if (options.allowUnauthorizedCerts === true) {
-				connectionOptions.tls = {
-					rejectUnauthorized: false,
-				};
-			}
-
-			const transporter = createTransport(connectionOptions);
-
-			// setup email data with unicode symbols
-			const mailOptions = {
-				from: fromEmail,
-				to: toEmail,
-				cc: ccEmail,
-				bcc: bccEmail,
-				subject,
-				text,
-				html,
-			};
-
-			if (attachmentPropertyString && item.binary) {
-				const attachments = [];
-				const attachmentProperties: string[] = attachmentPropertyString.split(',').map((propertyName) => {
-					return propertyName.trim();
-				});
-
-				for (const propertyName of attachmentProperties) {
-					if (!item.binary.hasOwnProperty(propertyName)) {
-						continue;
-					}
-					attachments.push({
-						filename: item.binary[propertyName].fileName || 'unknown',
-						content: Buffer.from(item.binary[propertyName].data, BINARY_ENCODING),
-					});
+				if (credentials === undefined) {
+					throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
 				}
 
-				if (attachments.length) {
+				const connectionOptions: SMTPTransport.Options = {
+					host: credentials.host as string,
+					port: credentials.port as number,
+					secure: credentials.secure as boolean,
+				};
+
+				if (credentials.user || credentials.password) {
 					// @ts-ignore
-					mailOptions.attachments = attachments;
+					connectionOptions.auth = {
+						user: credentials.user as string,
+						pass: credentials.password as string,
+					};
 				}
+
+				if (options.allowUnauthorizedCerts === true) {
+					connectionOptions.tls = {
+						rejectUnauthorized: false,
+					};
+				}
+
+				const transporter = createTransport(connectionOptions);
+
+				// setup email data with unicode symbols
+				const mailOptions = {
+					from: fromEmail,
+					to: toEmail,
+					cc: ccEmail,
+					bcc: bccEmail,
+					subject,
+					text,
+					html,
+				};
+
+				if (attachmentPropertyString && item.binary) {
+					const attachments = [];
+					const attachmentProperties: string[] = attachmentPropertyString.split(',').map((propertyName) => {
+						return propertyName.trim();
+					});
+
+					for (const propertyName of attachmentProperties) {
+						if (!item.binary.hasOwnProperty(propertyName)) {
+							continue;
+						}
+						attachments.push({
+							filename: item.binary[propertyName].fileName || 'unknown',
+							content: Buffer.from(item.binary[propertyName].data, BINARY_ENCODING),
+						});
+					}
+
+					if (attachments.length) {
+						// @ts-ignore
+						mailOptions.attachments = attachments;
+					}
+				}
+
+				// Send the email
+				const info = await transporter.sendMail(mailOptions);
+
+				returnData.push({ json: info as unknown as IDataObject });
+
+			}catch (error) {
+				if (this.continueOnFail()) {
+					returnData.push({json:{ error: error.message }});
+					continue;
+				}
+				throw error;
 			}
-
-			// Send the email
-			const info = await transporter.sendMail(mailOptions);
-
-			returnData.push({ json: info as unknown as IDataObject });
 		}
 
 		return this.prepareOutputData(returnData);

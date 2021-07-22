@@ -1,4 +1,4 @@
-import { DUPLICATE_MODAL_KEY, TAGS_MANAGER_MODAL_KEY, WORKLOW_OPEN_MODAL_KEY } from '@/constants';
+import { DUPLICATE_MODAL_KEY, TAGS_MANAGER_MODAL_KEY, VERSIONS_MODAL_KEY, WORKLOW_OPEN_MODAL_KEY } from '@/constants';
 import Vue from 'vue';
 import { ActionContext, Module } from 'vuex';
 import {
@@ -19,12 +19,18 @@ const module: Module<IUiState, IRootState> = {
 			[WORKLOW_OPEN_MODAL_KEY]: {
 				open: false,
 			},
+			[VERSIONS_MODAL_KEY]: {
+				open: false,
+			},
 		},
 		modalStack: [],
 		sidebarMenuCollapsed: true,
 		isPageLoading: true,
 	},
 	getters: {
+		isVersionsOpen: (state: IUiState) => {
+			return state.modals[VERSIONS_MODAL_KEY].open;
+		},
 		isModalOpen: (state: IUiState) => {
 			return (name: string) => state.modals[name].open;
 		},
@@ -57,6 +63,9 @@ const module: Module<IUiState, IRootState> = {
 		},
 		openDuplicateModal: async (context: ActionContext<IUiState, IRootState>) => {
 			context.commit('openModal', DUPLICATE_MODAL_KEY);
+		},
+		openUpdatesPanel: async (context: ActionContext<IUiState, IRootState>) => {
+			context.commit('openModal', VERSIONS_MODAL_KEY);
 		},
 	},
 };
