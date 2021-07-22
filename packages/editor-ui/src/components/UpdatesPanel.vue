@@ -44,23 +44,23 @@
 </template>
 
 <script lang="ts">
-import Vue from "vue";
-import { mapGetters } from "vuex";
+import Vue from 'vue';
+import { mapGetters } from 'vuex';
 
-import Modal from "./Modal.vue";
-import TimeAgo from "./TimeAgo.vue";
-import VersionCard from "./VersionCard.vue";
+import Modal from './Modal.vue';
+import TimeAgo from './TimeAgo.vue';
+import VersionCard from './VersionCard.vue';
 
 export default Vue.extend({
-	name: "UpdatesPanel",
+	name: 'UpdatesPanel',
 	components: {
 		Modal,
 		VersionCard,
 		TimeAgo,
 	},
-	props: ["modalName", "visible"],
+	props: ['modalName', 'visible'],
 	computed: {
-		...mapGetters("versions", ["nextVersions", "currentVersion", "infoUrl"]),
+		...mapGetters('versions', ['nextVersions', 'currentVersion', 'infoUrl']),
 	},
 });
 </script>
