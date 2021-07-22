@@ -42,14 +42,5 @@ export class CiscoWebexOAuth2Api implements ICredentialType {
 			type: 'hidden' as NodePropertyTypes,
 			default: 'body',
 		},
-		{
-			displayName: 'Secret',
-			name: 'secret',
-			type: 'string' as NodePropertyTypes,
-			default: '',
-			description: `The secret used to generate payload signature.</br>
-			Only used for the Cisco Webex Trigger.</br>
-			If empty not validation is done when the webhook is recieved`,
-		},
 	];
 }

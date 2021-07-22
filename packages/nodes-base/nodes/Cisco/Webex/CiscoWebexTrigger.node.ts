@@ -11,6 +11,7 @@ import {
 } from 'n8n-workflow';
 
 import {
+	getAutomaticSecret,
 	getEvents,
 	mapResource,
 	webexApiRequest,
@@ -89,7 +90,7 @@ export class CiscoWebexTrigger implements INodeType {
 						value: 'all',
 					},
 				],
-				default: 'meetings',
+				default: 'meeting',
 				required: true,
 			},
 			...getEvents(),
@@ -599,7 +600,7 @@ export class CiscoWebexTrigger implements INodeType {
 				const event = this.getNodeParameter('event') as string;
 				const resource = this.getNodeParameter('resource') as string;
 				const filters = this.getNodeParameter('filters', {}) as IDataObject;
-				const { secret } = this.getCredentials('ciscoWebexOAuth2Api') as IDataObject;
+				const secret = getAutomaticSecret(this.getCredentials('ciscoWebexOAuth2Api')!);
 				const filter = [];
 				for (const key of Object.keys(filters)) {
 					if (key !== 'ownedBy') {
@@ -619,9 +620,7 @@ export class CiscoWebexTrigger implements INodeType {
 					body['ownedBy'] = filters.ownedBy as string;
 				}
 
-				if (secret !== '') {
-					body['secret'] = secret as string;
-				}
+				body['secret'] = secret;
 
 				if (filter.length) {
 					body['filter'] = filter.join('&');
@@ -634,6 +633,7 @@ export class CiscoWebexTrigger implements INodeType {
 				}
 
 				webhookData.webhookId = responseData.id as string;
+				webhookData.secret = secret;
 				return true;
 			},
 			async delete(this: IHookFunctions): Promise<boolean> {
@@ -658,16 +658,15 @@ export class CiscoWebexTrigger implements INodeType {
 
 	async webhook(this: IWebhookFunctions): Promise<IWebhookResponseData> {
 		let bodyData = this.getBodyData();
+		const webhookData = this.getWorkflowStaticData('node');
 		const headers = this.getHeaderData() as IDataObject;
 		const req = this.getRequestObject();
 		const resolveData = this.getNodeParameter('resolveData', false) as boolean;
-		const { secret } = this.getCredentials('ciscoWebexOAuth2Api') as IDataObject;
-		if (secret !== '') {
-			//@ts-ignore
-			const computedSignature = createHmac('sha1', secret as string).update(req.rawBody).digest('hex');
-			if (headers['x-spark-signature'] !== computedSignature) {
-				return {};
-			}
+		
+		//@ts-ignore
+		const computedSignature = createHmac('sha1', webhookData.secret).update(req.rawBody).digest('hex');
+		if (headers['x-spark-signature'] !== computedSignature) {
+			return {};
 		}
 
 		if (resolveData) {

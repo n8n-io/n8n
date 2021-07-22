@@ -9,6 +9,7 @@ import {
 } from 'n8n-core';
 
 import {
+	ICredentialDataDecryptedObject,
 	IDataObject,
 	INodeProperties,
 	IWebhookFunctions,
@@ -18,6 +19,10 @@ import {
 import {
 	upperFirst,
 } from 'lodash';
+
+import {
+	createHash,
+} from 'crypto';
 
 export async function webexApiRequest(this: IExecuteFunctions | ILoadOptionsFunctions | IHookFunctions | IWebhookFunctions, method: string, resource: string, body: any = {}, qs: IDataObject = {}, uri?: string, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
 	let options: OptionsWithUri = {
@@ -644,5 +649,10 @@ function removeEmptyProperties(rest: { [key: string]: any }) {
 	return Object.keys(rest)
 		.filter((k) => rest[k] !== '')
 		.reduce((a, k) => ({ ...a, [k]: rest[k] }), {});
+}
+
+export function getAutomaticSecret(credentials: ICredentialDataDecryptedObject) {
+	const data = `${credentials.clientId},${credentials.clientSecret}`;
+	return createHash('md5').update(data).digest('hex');
 }
 
