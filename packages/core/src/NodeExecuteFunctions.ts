@@ -60,6 +60,9 @@ import {
 	LoggerProxy as Logger,
 } from 'n8n-workflow';
 import axios, { AxiosProxyConfig, AxiosRequestConfig, Method } from 'axios';
+import { 
+	URLSearchParams,
+} from 'url';
 
 axios.defaults.timeout = 300000;
 
@@ -1123,6 +1126,10 @@ function parseRequestObject(requestObject: IDataObject) {
 		axiosConfig.url = requestObject.uri as string;
 	}
 
+	if (requestObject.url !== undefined) {
+		axiosConfig.url = requestObject.url as string;
+	}
+
 	if (requestObject.headers !== undefined) {
 		axiosConfig.headers = requestObject.headers as string;
 	}
@@ -1136,7 +1143,7 @@ function parseRequestObject(requestObject: IDataObject) {
 	}
 
 	if (requestObject.qs !== undefined) {
-		axiosConfig.params = requestObject.body as IDataObject;
+		axiosConfig.params = requestObject.qs as IDataObject;
 	}
 
 	if (requestObject.useQuerystring === true) {
@@ -1178,6 +1185,13 @@ function parseRequestObject(requestObject: IDataObject) {
 		axiosConfig.proxy = requestObject.proxy as AxiosProxyConfig;
 	}
 
+	if (requestObject.form !== undefined) {
+		axiosConfig.data = new URLSearchParams(requestObject.form as NodeJS.Dict<string>);
+		axiosConfig.headers = Object.assign(axiosConfig.headers || {}, {
+            'Content-Type': 'application/x-www-form-urlencoded',
+        });
+	}
+
 	/**
 	 * Missing properties:
 	 * encoding (need testing)
@@ -1192,17 +1206,31 @@ function parseRequestObject(requestObject: IDataObject) {
 
 async function proxyRequestToAxios(): Promise<any> {
 	let axiosConfig: AxiosRequestConfig = {};
+
+	let configObject: IDataObject;
 	if (arguments[0] !== undefined && typeof arguments[0] === 'string') {
 		axiosConfig.url = arguments[0];
 	}
 	if (arguments[0] !== undefined && typeof arguments[0] === 'object') {
-		axiosConfig = Object.assign(axiosConfig,parseRequestObject(arguments[0] as IDataObject));
+		configObject = arguments[0];
+	} else {
+		configObject = arguments[1];
 	}
-	if (arguments[1] !== undefined && typeof arguments[1] === 'object') {
-		axiosConfig = Object.assign(axiosConfig,parseRequestObject(arguments[1]));
-	}
+	axiosConfig = Object.assign(axiosConfig,parseRequestObject(configObject));
 
-	return await axios(axiosConfig);
+	return new Promise((resolve, reject) => {
+		axios(axiosConfig).then((data) => {
+			if (configObject.resolveWithFullResponse === true) {
+				resolve(data);
+			} else {
+				resolve(data.data)
+			}
+		}).catch(error => {
+			reject(error);
+		});
+	});
+
+	
 }
 
 async function httpRequest(requestParams: IHttpRequestOptions): Promise<any> { //tslint:disable-line:no-any
