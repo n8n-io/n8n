@@ -29,10 +29,11 @@
 		<div>
 			<div v-if="version.description" v-html="version.description" :class="$style.description"></div>
 			<div v-if="version.nodes && version.nodes.length > 0" :class="$style.nodes">
-				<NodeIcon 
+				<NodeIcon
 					v-for="node in version.nodes"
 					:key="node.name"
 					:nodeType="node"
+					:title="$options.nodeName(node)"
 				/>
 			</div>
 		</div>
@@ -45,6 +46,7 @@ import NodeIcon from './NodeIcon.vue';
 import TimeAgo from './TimeAgo.vue';
 import Badge from './Badge.vue';
 import WarningTooltip from './WarningTooltip.vue';
+import { IVersionNode } from '@/Interface';
 
 Vue.component('NodeIcon', NodeIcon);
 Vue.component('TimeAgo', TimeAgo);
@@ -55,6 +57,10 @@ export default Vue.extend({
 	components: { NodeIcon, TimeAgo, Badge, WarningTooltip },
 	name: 'UpdatesPanel',
 	props: ['version'],
+	// @ts-ignore
+	nodeName (node: IVersionNode): string {
+		return node !== null ? node.displayName : 'unknown';
+	},
 });
 </script>
 

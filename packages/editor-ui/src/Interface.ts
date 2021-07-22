@@ -557,26 +557,27 @@ export interface ITagRow {
 
 export interface IVersion {
 	name: string;
-	nodes: Array<{
-		name: string;
-		displayName: string;
-		icon: string;
-		defaults: INodeParameters;
-		iconData: {
-			type: string;
-			icon?: string;
-			fileBuffer?: string;
-		};
-	}>;
+	nodes: IVersionNode[];
 	createdAt: string;
 	description: string;
 	documentationUrl: string;
-	hasBreakingChange: boolean; 
-	hasSecurityFix: boolean; 
-	hasSecurityIssue: boolean; 
-	securityIssueFixVersion: string; 
+	hasBreakingChange: boolean;
+	hasSecurityFix: boolean;
+	hasSecurityIssue: boolean;
+	securityIssueFixVersion: string;
 }
 
+export interface IVersionNode {
+	name: string;
+	displayName: string;
+	icon: string;
+	defaults: INodeParameters;
+	iconData: {
+		type: string;
+		icon?: string;
+		fileBuffer?: string;
+	};
+}
 export interface IRootState {
 	activeExecutions: IExecutionsCurrentSummaryExtended[];
 	activeWorkflows: string[];
