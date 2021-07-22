@@ -65,7 +65,7 @@ export default mixins(
 		],
 		data () {
 			return {
-				isMinimized: false,
+				isMinimized: this.nodeType.name !== 'n8n-nodes-base.webhook',
 				showUrlFor: 'test',
 			};
 		},
