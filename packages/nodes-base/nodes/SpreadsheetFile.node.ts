@@ -31,6 +31,10 @@ function flattenObject(data: IDataObject) {
 	const returnData: IDataObject = {};
 	for (const key1 of Object.keys(data)) {
 		if (data[key1] !== null && (typeof data[key1]) === 'object') {
+			if (data[key1] instanceof Date) {
+				returnData[key1] = data[key1]?.toString();
+				continue;
+			}
 			const flatObject = flattenObject(data[key1] as IDataObject);
 			for (const key2 in flatObject) {
 				if (flatObject[key2] === undefined) {
