@@ -10,8 +10,8 @@
 					<el-row>
 						<el-col :span="24">
 							<el-radio-group v-model="showUrlFor" size="mini">
-								<el-radio-button label="Test URL"></el-radio-button>
-								<el-radio-button label="Production URL"></el-radio-button>
+								<el-radio-button label="test">Test URL</el-radio-button>
+								<el-radio-button label="production">Production URL</el-radio-button>
 							</el-radio-group>
 						</el-col>
 					</el-row>
@@ -66,7 +66,7 @@ export default mixins(
 		data () {
 			return {
 				isMinimized: false,
-				showUrlFor: 'Test URL',
+				showUrlFor: 'test',
 			};
 		},
 		computed: {
@@ -101,7 +101,7 @@ export default mixins(
 			},
 			getWebhookUrl (webhookData: IWebhookDescription): string {
 				let baseUrl = this.$store.getters.getWebhookUrl;
-				if (this.showUrlFor === 'Test URL') {
+				if (this.showUrlFor === 'test') {
 					baseUrl = this.$store.getters.getWebhookTestUrl;
 				}
 
