@@ -107,34 +107,42 @@ export class UProc implements INodeType {
 
 		const requestPromises = [];
 		for (let i = 0; i < length; i++) {
-			const toolKey = tool.replace(/([A-Z]+)/g, '-$1').toLowerCase();
-			const body: LooseObject = {
-				processor: toolKey,
-				params: {},
-			};
+			try {
+				const toolKey = tool.replace(/([A-Z]+)/g, '-$1').toLowerCase();
+				const body: LooseObject = {
+					processor: toolKey,
+					params: {},
+				};
 
-			fields.forEach((field) => {
-				if (field && field.length) {
-					const data = this.getNodeParameter(field, i) as string;
-					body.params[field] = data + '';
+				fields.forEach((field) => {
+					if (field && field.length) {
+						const data = this.getNodeParameter(field, i) as string;
+						body.params[field] = data + '';
+					}
+				});
+
+				if (dataWebhook && dataWebhook.length) {
+					body.callback = {};
 				}
-			});
 
-			if (dataWebhook && dataWebhook.length) {
-				body.callback = {};
-			}
+				if (dataWebhook && dataWebhook.length) {
+					body.callback.data = dataWebhook;
+				}
 
-			if (dataWebhook && dataWebhook.length) {
-				body.callback.data = dataWebhook;
-			}
+				//Change to multiple requests
+				responseData = await uprocApiRequest.call(this, 'POST', body);
 
-			//Change to multiple requests
-			responseData = await uprocApiRequest.call(this, 'POST', body);
-
-			if (Array.isArray(responseData)) {
-				returnData.push.apply(returnData, responseData as IDataObject[]);
-			} else {
-				returnData.push(responseData as IDataObject);
+				if (Array.isArray(responseData)) {
+					returnData.push.apply(returnData, responseData as IDataObject[]);
+				} else {
+					returnData.push(responseData as IDataObject);
+				}
+			} catch (error) {
+				if (this.continueOnFail()) {
+					returnData.push({ error: error.message });
+					continue;
+				}
+				throw error;
 			}
 		}
 		return [this.helpers.returnJsonArray(returnData)];
