@@ -18,9 +18,9 @@ import {
 	taigaApiRequest,
 } from './GenericFunctions';
 
-import {
-	createHmac,
-} from 'crypto';
+// import {
+// 	createHmac,
+// } from 'crypto';
 
 export class TaigaTrigger implements INodeType {
 	description: INodeTypeDescription = {
@@ -107,7 +107,7 @@ export class TaigaTrigger implements INodeType {
 				default: [
 					'all',
 				],
-				description: 'Event actions to listen to',
+				description: 'Operations to listen to',
 				options: [
 					{
 						name: 'All',
