@@ -4222,38 +4222,38 @@ export class Pipedrive implements INodeType {
 						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 						addAdditionalFields(formData, additionalFields);
 
-						} else if (operation === 'delete') {
-							// ----------------------------------
-							//         file:delete
-							// ----------------------------------
+					} else if (operation === 'delete') {
+						// ----------------------------------
+						//         file:delete
+						// ----------------------------------
 
-							requestMethod = 'DELETE';
+						requestMethod = 'DELETE';
 
-							const fileId = this.getNodeParameter('fileId', i) as number;
-							endpoint = `/files/${fileId}`;
+						const fileId = this.getNodeParameter('fileId', i) as number;
+						endpoint = `/files/${fileId}`;
 
-						} else if (operation === 'download') {
-							// ----------------------------------
-							//         file:download
-							// ----------------------------------
+					} else if (operation === 'download') {
+						// ----------------------------------
+						//         file:download
+						// ----------------------------------
 
-							requestMethod = 'GET';
-							downloadFile = true;
+						requestMethod = 'GET';
+						downloadFile = true;
 
-							const fileId = this.getNodeParameter('fileId', i) as number;
-							endpoint = `/files/${fileId}/download`;
+						const fileId = this.getNodeParameter('fileId', i) as number;
+						endpoint = `/files/${fileId}/download`;
 
-						} else if (operation === 'get') {
-							// ----------------------------------
-							//         file:get
-							// ----------------------------------
+					} else if (operation === 'get') {
+						// ----------------------------------
+						//         file:get
+						// ----------------------------------
 
-							requestMethod = 'GET';
+						requestMethod = 'GET';
 
-							const fileId = this.getNodeParameter('fileId', i) as number;
-							endpoint = `/files/${fileId}`;
+						const fileId = this.getNodeParameter('fileId', i) as number;
+						endpoint = `/files/${fileId}`;
 
-						}
+					}
 				} else if (resource === 'note') {
 					if (operation === 'create') {
 						// ----------------------------------
