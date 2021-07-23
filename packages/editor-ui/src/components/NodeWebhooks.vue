@@ -43,6 +43,7 @@ import {
 	NodeHelpers,
 } from 'n8n-workflow';
 
+import { WEBHOOK_NODE_NAME } from '@/constants';
 import { copyPaste } from '@/components/mixins/copyPaste';
 import { showMessage } from '@/components/mixins/showMessage';
 import { workflowHelpers } from '@/components/mixins/workflowHelpers';
@@ -62,7 +63,7 @@ export default mixins(
 		],
 		data () {
 			return {
-				isMinimized: this.nodeType.name !== 'n8n-nodes-base.webhook',
+				isMinimized: this.nodeType.name !== WEBHOOK_NODE_NAME,
 				showUrlFor: 'test',
 			};
 		},
@@ -111,7 +112,7 @@ export default mixins(
 		},
 		watch: {
 			node () {
-				this.isMinimized = false;
+				this.isMinimized = this.nodeType.name !== WEBHOOK_NODE_NAME;
 			},
 		},
 	});
