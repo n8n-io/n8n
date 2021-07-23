@@ -655,4 +655,3 @@ export function getAutomaticSecret(credentials: ICredentialDataDecryptedObject) 
 	const data = `${credentials.clientId},${credentials.clientSecret}`;
 	return createHash('md5').update(data).digest('hex');
 }
-

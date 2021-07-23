@@ -276,16 +276,16 @@ export const messageFields = [
 												type: 'options',
 												options: [
 													{
+														name: 'Execute',
+														value: 'execute',
+													},
+													{
 														name: 'Open URL',
 														value: 'openUrl',
 													},
 													{
 														name: 'Submit',
 														value: 'submit',
-													},
-													{
-														name: 'Execute',
-														value: 'execute',
 													},
 												],
 												default: 'openUrl',
@@ -439,9 +439,9 @@ export const messageFields = [
 		},
 	},
 
-	// // ----------------------------------------
-	// //               message: get
-	// // ----------------------------------------
+	// ----------------------------------------
+	//               message: get
+	// ----------------------------------------
 	{
 		displayName: 'Message ID',
 		name: 'messageId',
@@ -573,9 +573,9 @@ export const messageFields = [
 		],
 	},
 
-	// // ----------------------------------------
-	// //             message: update
-	// // ----------------------------------------
+	// ----------------------------------------
+	//             message: update
+	// ----------------------------------------
 	{
 		displayName: 'Message ID',
 		name: 'messageId',

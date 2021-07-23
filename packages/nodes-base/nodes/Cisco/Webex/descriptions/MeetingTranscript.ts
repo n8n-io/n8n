@@ -49,7 +49,7 @@ export const meetingTranscriptFields = [
 				],
 			},
 		},
-		description: 'Unique identifier for the meeting transcript.',
+		description: 'Unique identifier for the meeting transcript',
 	},
 	{
 		displayName: 'Meeting ID',
@@ -67,7 +67,7 @@ export const meetingTranscriptFields = [
 				],
 			},
 		},
-		description: 'Unique identifier for the meeting instance which the transcripts belong to.',
+		description: 'Unique identifier for the meeting instance which the transcripts belong to',
 	},
 	{
 		displayName: 'Options',
@@ -92,16 +92,16 @@ export const meetingTranscriptFields = [
 				type: 'options',
 				options: [
 					{
-						name: 'vtt',
-						value: 'vtt',
-					},
-					{
 						name: 'txt',
 						value: 'txt',
 					},
+					{
+						name: 'vtt',
+						value: 'vtt',
+					},
 				],
 				default: 'vtt',
-				description: 'Format for the downloaded meeting transcript.',
+				description: 'Format for the downloaded meeting transcript',
 			},
 		],
 	},
@@ -125,7 +125,7 @@ export const meetingTranscriptFields = [
 				],
 			},
 		},
-		description: 'Unique identifier for the meeting instance which the transcripts belong to.',
+		description: 'Unique identifier for the meeting instance which the transcripts belong to',
 	},
 	{
 		displayName: 'Return All',
@@ -149,7 +149,7 @@ export const meetingTranscriptFields = [
 		name: 'limit',
 		type: 'number',
 		default: 50,
-		description: 'The number of results to return.',
+		description: 'The number of results to return',
 		typeOptions: {
 			minValue: 1,
 		},
@@ -189,7 +189,7 @@ export const meetingTranscriptFields = [
 				name: 'hostEmail',
 				type: 'string',
 				default: '',
-				description: 'Email address for the meetingTranscript host.',
+				description: 'Email address for the meetingTranscript host',
 			},
 		],
 	},
