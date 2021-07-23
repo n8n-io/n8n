@@ -2497,9 +2497,27 @@ export class Pipedrive implements INodeType {
 					{
 						displayName: 'Fields',
 						name: 'fields',
-						type: 'string',
-						default: '',
-						description: 'A comma-separated string array. The fields to perform the search from. Defaults to all of them.',
+						type: 'multiOptions',
+						default: [],
+						description: 'Fields to the search in. Defaults to all of them.',
+						options: [
+							{
+								name: 'Address',
+								value: 'address',
+							},
+							{
+								name: 'Custom Fields',
+								value: 'custom_fields',
+							},
+							{
+								name: 'Name',
+								value: 'name',
+							},
+							{
+								name: 'Notes',
+								value: 'notes',
+							},
+						],
 					},
 					{
 						displayName: 'RAW Data',
@@ -4206,10 +4224,12 @@ export class Pipedrive implements INodeType {
 							qs.limit = this.getNodeParameter('limit', i) as number;
 						}
 
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject & {
+							fields?: string[];
+						};
 
-						if (additionalFields.fields) {
-							qs.fields = additionalFields.fields as string;
+						if (additionalFields?.fields?.length) {
+							qs.fields = additionalFields.fields.join(',');
 						}
 
 						if (additionalFields.exactMatch) {
