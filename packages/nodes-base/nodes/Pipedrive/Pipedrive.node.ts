@@ -2760,7 +2760,6 @@ export class Pipedrive implements INodeType {
 					show: {
 						operation: [
 							'getAll',
-							'getProducts',
 						],
 					},
 				},
@@ -2775,7 +2774,6 @@ export class Pipedrive implements INodeType {
 					show: {
 						operation: [
 							'getAll',
-							'getProducts',
 						],
 						returnAll: [
 							false,
