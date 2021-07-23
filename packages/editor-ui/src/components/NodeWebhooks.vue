@@ -1,20 +1,17 @@
 <template>
 	<div v-if="webhooksNode.length" class="webhoooks">
 		<div class="clickable headline" :class="{expanded: !isMinimized}" @click="isMinimized=!isMinimized" :title="isMinimized ? 'Click to display Webhook URLs' : 'Click to hide Webhook URLs'">
-			<font-awesome-icon icon="angle-up" class="minimize-button minimize-icon" />
+			<font-awesome-icon icon="angle-down" class="minimize-button minimize-icon" />
 			Webhook URLs
 		</div>
 		<el-collapse-transition>
 			<div class="node-webhooks" v-if="!isMinimized">
 				<div class="url-selection">
 					<el-row>
-						<el-col :span="10" class="mode-selection-headline">
-							Display URL for:
-						</el-col>
-						<el-col :span="14">
+						<el-col :span="24">
 							<el-radio-group v-model="showUrlFor" size="mini">
-								<el-radio-button label="Production"></el-radio-button>
-								<el-radio-button label="Test"></el-radio-button>
+								<el-radio-button label="test">Test URL</el-radio-button>
+								<el-radio-button label="production">Production URL</el-radio-button>
 							</el-radio-group>
 						</el-col>
 					</el-row>
@@ -68,8 +65,8 @@ export default mixins(
 		],
 		data () {
 			return {
-				isMinimized: true,
-				showUrlFor: 'Production',
+				isMinimized: this.nodeType.name !== 'n8n-nodes-base.webhook',
+				showUrlFor: 'test',
 			};
 		},
 		computed: {
@@ -104,7 +101,7 @@ export default mixins(
 			},
 			getWebhookUrl (webhookData: IWebhookDescription): string {
 				let baseUrl = this.$store.getters.getWebhookUrl;
-				if (this.showUrlFor === 'Test') {
+				if (this.showUrlFor === 'test') {
 					baseUrl = this.$store.getters.getWebhookTestUrl;
 				}
 
@@ -117,7 +114,7 @@ export default mixins(
 		},
 		watch: {
 			node () {
-				this.isMinimized = true;
+				this.isMinimized = false;
 			},
 		},
 	});
