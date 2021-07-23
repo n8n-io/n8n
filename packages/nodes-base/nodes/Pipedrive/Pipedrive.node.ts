@@ -115,6 +115,10 @@ export class Pipedrive implements INodeType {
 						value: 'deal',
 					},
 					{
+						name: 'Deal Product',
+						value: 'dealProduct',
+					},
+					{
 						name: 'File',
 						value: 'file',
 					},
@@ -233,29 +237,45 @@ export class Pipedrive implements INodeType {
 						value: 'update',
 						description: 'Update a deal',
 					},
-					{
-						name: 'Add Product',
-						value: 'addProduct',
-						description: 'Add Product to deal',
-					},
-					{
-						name: 'Get Products',
-						value: 'getProducts',
-						description: 'Get all Products in deal',
-					},
-					{
-						name: 'Remove Product',
-						value: 'removeProduct',
-						description: 'Remove Product from deal',
-					},
-					{
-						name: 'Update Product',
-						value: 'updateProduct',
-						description: 'Update a Product in Deal',
-					},
 				],
 				default: 'create',
 				description: 'The operation to perform.',
+			},
+
+			{
+				displayName: 'Operation',
+				name: 'operation',
+				type: 'options',
+				displayOptions: {
+					show: {
+						resource: [
+							'dealProduct',
+						],
+					},
+				},
+				options: [
+					{
+						name: 'Add',
+						value: 'add',
+						description: 'Add a product to a deal',
+					},
+					{
+						name: 'Get All',
+						value: 'getAll',
+						description: 'Get all products in a deal',
+					},
+					{
+						name: 'Remove',
+						value: 'remove',
+						description: 'Remove a product from a deal',
+					},
+					{
+						name: 'Update',
+						value: 'update',
+						description: 'Update a product in a deal',
+					},
+				],
+				default: 'add',
 			},
 
 			{
@@ -1312,25 +1332,28 @@ export class Pipedrive implements INodeType {
 				],
 			},
 			// ----------------------------------
-			//         deal:Add product
+			//         dealProduct:add
 			// ----------------------------------
 			{
 				displayName: 'Deal ID',
 				name: 'dealId',
-				type: 'number',
+				type: 'options',
 				default: '',
+				typeOptions: {
+					loadOptionsMethod: 'getDeals',
+				},
 				required: true,
 				displayOptions: {
 					show: {
 						operation: [
-							'addProduct',
+							'add',
 						],
 						resource: [
-							'deal',
+							'dealProduct',
 						],
 					},
 				},
-				description: 'The ID of the deal to attach a Product',
+				description: 'The ID of the deal to add a product to',
 			},
 			{
 				displayName: 'Product ID',
@@ -1344,35 +1367,38 @@ export class Pipedrive implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'addProduct',
+							'add',
 						],
 						resource: [
-							'deal',
+							'dealProduct',
 						],
 					},
 				},
-				description: 'The ID of the product to be attached to Deal',
+				description: 'The ID of the product to add to a deal',
 			},
 			// ----------------------------------
-			//         deal:Update product
+			//        dealProduct:update
 			// ----------------------------------
 			{
 				displayName: 'Deal ID',
 				name: 'dealId',
-				type: 'number',
+				type: 'options',
 				default: '',
+				typeOptions: {
+					loadOptionsMethod: 'getDeals',
+				},
 				required: true,
 				displayOptions: {
 					show: {
 						operation: [
-							'updateProduct',
+							'update',
 						],
 						resource: [
-							'deal',
+							'dealProduct',
 						],
 					},
 				},
-				description: 'The ID of the deal to update a Product',
+				description: 'The ID of the deal whose product to update',
 			},
 			{
 				displayName: 'Product ID',
@@ -1389,17 +1415,17 @@ export class Pipedrive implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'updateProduct',
+							'update',
 						],
 						resource: [
-							'deal',
+							'dealProduct',
 						],
 					},
 				},
-				description: 'The ID of the product to be updated in Deal',
+				description: 'The ID of the product to update in a deal',
 			},
 			// ----------------------------------------
-			//         deal: Add/Update product Params
+			//         dealProduct:add/update
 			// ----------------------------------------
 			{
 				displayName: 'Item Price',
@@ -1413,15 +1439,15 @@ export class Pipedrive implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'addProduct',
-							'updateProduct',
+							'add',
+							'update',
 						],
 						resource: [
-							'deal',
+							'dealProduct',
 						],
 					},
 				},
-				description: 'Price at which this product will be added/updated in deal',
+				description: 'Price at which to add or update this product in a deal',
 			},
 			{
 				displayName: 'Quantity',
@@ -1430,21 +1456,20 @@ export class Pipedrive implements INodeType {
 				default: 1,
 				typeOptions: {
 					minValue: 1,
-					numberStepSize: 1,
 				},
 				required: true,
 				displayOptions: {
 					show: {
 						operation: [
-							'addProduct',
-							'updateProduct',
+							'add',
+							'update',
 						],
 						resource: [
-							'deal',
+							'dealProduct',
 						],
 					},
 				},
-				description: 'How many items of this product will be added/updated in deal',
+				description: 'How many items of this product to add/update in a deal',
 			},
 			{
 				displayName: 'Additional Fields',
@@ -1454,30 +1479,16 @@ export class Pipedrive implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'addProduct',
-							'updateProduct'
+							'add',
+							'update',
 						],
 						resource: [
-							'deal',
+							'dealProduct',
 						],
 					},
 				},
 				default: {},
 				options: [
-					{
-						displayName: 'Discount Percentage',
-						name: 'discount_percentage',
-						type: 'number',
-						default: 0,
-						description: 'Discount %',
-					},
-					{
-						displayName: 'Product Variation ID',
-						name: 'product_variation_id',
-						type: 'number',
-						default: '',
-						description: 'ID of the product variation to use',
-					},
 					{
 						displayName: 'Comments',
 						name: 'comments',
@@ -1486,30 +1497,51 @@ export class Pipedrive implements INodeType {
 							rows: 4,
 						},
 						default: '',
-						description: 'Any textual comment associated with this product-deal attachment',
+						description: 'Text to describe this product-deal attachment',
+					},
+					{
+						displayName: 'Discount Percentage',
+						name: 'discount_percentage',
+						type: 'number',
+						default: 0,
+						typeOptions: {
+							minValue: 0,
+							maxValue: 100,
+						},
+						description: 'Percentage of discount to apply',
+					},
+					{
+						displayName: 'Product Variation ID',
+						name: 'product_variation_id',
+						type: 'string',
+						default: '',
+						description: 'ID of the product variation to use',
 					},
 				],
 			},
 			// ----------------------------------
-			//         deal:Remove product
+			//        dealProduct:remove
 			// ----------------------------------
 			{
 				displayName: 'Deal ID',
 				name: 'dealId',
-				type: 'number',
+				type: 'options',
 				default: '',
+				typeOptions: {
+					loadOptionsMethod: 'getDeals',
+				},
 				required: true,
 				displayOptions: {
 					show: {
 						operation: [
-							'removeProduct',
+							'remove',
 						],
 						resource: [
-							'deal',
+							'dealProduct',
 						],
 					},
 				},
-				description: 'The ID of the deal to remove a Product',
+				description: 'The ID of the deal whose product to remove',
 			},
 			{
 				displayName: 'Product ID',
@@ -1526,37 +1558,40 @@ export class Pipedrive implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'removeProduct',
+							'remove',
 						],
 						resource: [
-							'deal',
+							'dealProduct',
 						],
 					},
 				},
-				description: 'The ID of the product to be removed from Deal',
+				description: 'The ID of the product to remove from a deal',
 			},
 			// ----------------------------------
-			//         deal:Get products
+			//        dealProduct:getAll
 			// ----------------------------------
 			{
 				displayName: 'Deal ID',
 				name: 'dealId',
-				type: 'number',
+				type: 'options',
 				default: '',
+				typeOptions: {
+					loadOptionsMethod: 'getDeals',
+				},
 				required: true,
 				displayOptions: {
 					show: {
 						operation: [
-							'getProducts',
+							'getAll',
 						],
 						resource: [
-							'deal',
+							'dealProduct',
 						],
 					},
 				},
-				description: 'The ID of the deal to retrieve Products',
+				description: 'The ID of the deal whose products to retrieve',
 			},
-			
+
 			// ----------------------------------
 			//         deal:search
 			// ----------------------------------
@@ -3061,6 +3096,15 @@ export class Pipedrive implements INodeType {
 
 				return returnData;
 			},
+			// Get all Deals to display them to user so that he can
+			// select them easily
+			async getDeals(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const { data } = await pipedriveApiRequest.call(this, 'GET', '/deals', {}) as {
+					data: Array<{ id: string; title: string; }>
+				};
+
+				return data.map(({ id, title }) => ({ value: id, name: title }));
+			},
 			// Get all Products to display them to user so that he can
 			// select them easily
 			async getProducts(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
@@ -3073,7 +3117,7 @@ export class Pipedrive implements INodeType {
 			// Get all Products related to a deal and display them to user so that he can
 			// select them easily
 			async getProductsDeal(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-				
+
 				const dealId = this.getCurrentNodeParameter('dealId');
 				const { data } = await pipedriveApiRequest.call(this, 'GET', `/deals/${dealId}/products`, {}) as {
 					data: Array<{ id: string; name: string; }>
@@ -3438,59 +3482,6 @@ export class Pipedrive implements INodeType {
 					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 					addAdditionalFields(body, additionalFields);
 
-				} else if (operation === 'addProduct') {
-					// ----------------------------------
-					//         deal: add product
-					// ----------------------------------
-
-					requestMethod = 'POST';
-					const dealId = this.getNodeParameter('dealId', i) as string;
-
-					endpoint = `/deals/${dealId}/products`;
-
-					body.product_id  = this.getNodeParameter('productId', i) as string;
-					body.item_price = this.getNodeParameter('item_price', i) as string;
-					body.quantity = this.getNodeParameter('quantity', i) as string;
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
-					addAdditionalFields(body, additionalFields);
-
-				} else if (operation === 'getProducts') {
-					// ----------------------------------
-					//         deal: get products
-					// ----------------------------------
-
-					requestMethod = 'GET';
-					const dealId = this.getNodeParameter('dealId', i) as string;
-
-					endpoint = `/deals/${dealId}/products`;
-
-				} else if (operation === 'removeProduct') {
-					// ----------------------------------
-					//         deal: remove product
-					// ----------------------------------
-
-					requestMethod = 'DELETE';
-					const dealId = this.getNodeParameter('dealId', i) as string;
-					const product_id  = this.getNodeParameter('productId', i) as string;
-
-					endpoint = `/deals/${dealId}/products/${product_id}`;
-
-				} else if (operation === 'updateProduct') {
-					// ----------------------------------
-					//         deal: update product
-					// ----------------------------------
-
-					requestMethod = 'PUT';
-					const dealId = this.getNodeParameter('dealId', i) as string;
-					const product_id  = this.getNodeParameter('productId', i) as string;	
-					
-					endpoint = `/deals/${dealId}/products/${product_id}`;
-					
-					body.item_price = this.getNodeParameter('item_price', i) as string;
-					body.quantity = this.getNodeParameter('quantity', i) as string;
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
-					addAdditionalFields(body, additionalFields);
-
 				} else if (operation === 'delete') {
 					// ----------------------------------
 					//         deal:delete
@@ -3589,6 +3580,64 @@ export class Pipedrive implements INodeType {
 					endpoint = `/deals/search`;
 
 				}
+
+			} else if (resource === 'dealProduct') {
+
+				if (operation === 'add') {
+					// ----------------------------------
+					//          dealProduct: add
+					// ----------------------------------
+
+					requestMethod = 'POST';
+					const dealId = this.getNodeParameter('dealId', i) as string;
+
+					endpoint = `/deals/${dealId}/products`;
+
+					body.product_id  = this.getNodeParameter('productId', i) as string;
+					body.item_price = this.getNodeParameter('item_price', i) as string;
+					body.quantity = this.getNodeParameter('quantity', i) as string;
+
+					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					addAdditionalFields(body, additionalFields);
+
+				} else if (operation === 'getAll') {
+					// ----------------------------------
+					//        dealProduct: getAll
+					// ----------------------------------
+
+					requestMethod = 'GET';
+					const dealId = this.getNodeParameter('dealId', i) as string;
+
+					endpoint = `/deals/${dealId}/products`;
+
+				} else if (operation === 'remove') {
+					// ----------------------------------
+					//       dealProduct: remove
+					// ----------------------------------
+
+					requestMethod = 'DELETE';
+					const dealId = this.getNodeParameter('dealId', i) as string;
+					const productId  = this.getNodeParameter('productId', i) as string;
+
+					endpoint = `/deals/${dealId}/products/${productId}`;
+
+				} else if (operation === 'update') {
+					// ----------------------------------
+					//         dealProduct: update
+					// ----------------------------------
+
+					requestMethod = 'PUT';
+					const dealId = this.getNodeParameter('dealId', i) as string;
+					const productId  = this.getNodeParameter('productId', i) as string;
+
+					endpoint = `/deals/${dealId}/products/${productId}`;
+
+					body.item_price = this.getNodeParameter('item_price', i) as string;
+					body.quantity = this.getNodeParameter('quantity', i) as string;
+					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					addAdditionalFields(body, additionalFields);
+				}
+
 			} else if (resource === 'file') {
 				if (operation === 'create') {
 					// ----------------------------------
