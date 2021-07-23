@@ -347,9 +347,10 @@ export function mapFilters(filters: IDataObject[], timezone: string) {
 			key = 'text';
 		} else if (key === 'phone_number') {
 			key = 'phone';
-		} else if (key === 'date') {
+		} else if (key === 'date' && !['is_empty', 'is_not_empty'].includes(value.condition as string)) {
 			valuePropertyName = (valuePropertyName !== undefined && !Object.keys(valuePropertyName).length) ? {} : moment.tz(value.date, timezone).utc().format();
 		}
+		
 		return Object.assign(obj, {
 			['property']: getNameAndType(value.key).name,
 			[key]: { [`${value.condition}`]: valuePropertyName },
