@@ -266,6 +266,21 @@ export const operationFields = [
 		description: 'Whether to insert the input data this node receives in the new row',
 	},
 	{
+		displayName: 'Upload Attachments',
+		name: 'uploadAttachments',
+		type: 'boolean',
+		displayOptions: {
+			show: {
+				operation: [
+					'create',
+					'update',
+				],
+			},
+		},
+		default: false,
+		description: `When set to true the attachments will be uploaded to the fields defined in 'Row Fields'`,
+	},
+	{
 		displayName: 'Inputs to Ignore',
 		name: 'inputsToIgnore',
 		type: 'string',
@@ -326,5 +341,49 @@ export const operationFields = [
 				],
 			},
 		],
+	},
+	{
+		displayName: 'Attachments to Upload',
+		name: 'attachmentsUi',
+		placeholder: 'Add Attachment',
+		type: 'fixedCollection',
+		typeOptions:{
+			multipleValueButtonText: 'Add attachment to upload',
+			multipleValues: true,
+		},
+		options: [
+			{
+				displayName: 'Attachment',
+				name: 'attachmentValues',
+				values: [
+					{
+						displayName: 'Take input from field',
+						name: 'binaryProperty',
+						type: 'string',
+						description: 'The field containing the binary file data to be uploaded',
+						default: '',
+					},
+					{
+						displayName: 'Row Fields',
+						name: 'rowFields',
+						type: 'string',
+						description: `Name of the fields of type 'attachment' that should be uploaded. Multiple ones can be defined separated by comma. Case sensitive`,
+						default: '',
+					},
+				],
+			},
+		],
+		displayOptions: {
+			show: {
+				operation: [
+					'create',
+					'update',
+				],
+				uploadAttachments: [
+					true,
+				],
+			},
+		},
+		default: '',
 	},
 ] as INodeProperties[];

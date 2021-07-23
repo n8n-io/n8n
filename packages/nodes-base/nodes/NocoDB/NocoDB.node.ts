@@ -1,8 +1,10 @@
 import {
+	BINARY_ENCODING,
 	IExecuteFunctions,
 } from 'n8n-core';
 
 import {
+	IBinaryData,
 	IDataObject,
 	INodeExecutionData,
 	INodeType,
@@ -152,6 +154,49 @@ export class NocoDB implements INodeType {
 								newItem[field.fieldName] = field.fieldValue;
 							}
 						}
+						const uploadAttachments = this.getNodeParameter('uploadAttachments', i) as boolean;
+						if (uploadAttachments) {
+							const attachments = this.getNodeParameter('attachmentsUi.attachmentValues', i, []) as Array<{
+								binaryProperty: string;
+								rowFields: string;
+							}>;
+
+							if (!items[i].binary) {
+								throw new NodeOperationError(this.getNode(), 'No binary data exists on item!');
+							}
+
+							for (const attachment of attachments) {
+								const binaryPropertyName = attachment.binaryProperty;
+								if (binaryPropertyName && !items[i].binary![binaryPropertyName]) {
+									throw new NodeOperationError(this.getNode(), `Binary property ${binaryPropertyName} does not exist on item!`);
+								}
+								const fields = attachment.rowFields.split(',');
+								const binaryData = items[i].binary![binaryPropertyName] as IBinaryData;
+
+								const formData = {
+									file: {
+										value: Buffer.from(binaryData.data, BINARY_ENCODING),
+										options: {
+											filename: binaryData.fileName,
+											contentType: binaryData.mimeType,
+										},
+									},
+									json: JSON.stringify({
+										api: 'xcAttachmentUpload',
+										project_id: projectId,
+										dbAlias: 'db',
+										args: {},
+									}),
+								};
+								const qs = { project_id: projectId };
+
+								responseData = await apiRequest.call(this, 'POST', '/dashboard', {}, qs, undefined, { formData });
+
+								for (const field of fields) {
+									newItem[field] = JSON.stringify([responseData]);
+								}
+							}
+						}
 						body.push(newItem);
 					} catch (error) {
 						if (this.continueOnFail()) {
@@ -276,6 +321,49 @@ export class NocoDB implements INodeType {
 							}>;
 							for (const field of fields) {
 								newItem[field.fieldName] = field.fieldValue;
+							}
+						}
+						const uploadAttachments = this.getNodeParameter('uploadAttachments', i) as boolean;
+						if (uploadAttachments) {
+							const attachments = this.getNodeParameter('attachmentsUi.attachmentValues', i, []) as Array<{
+								binaryProperty: string;
+								rowFields: string;
+							}>;
+
+							if (!items[i].binary) {
+								throw new NodeOperationError(this.getNode(), 'No binary data exists on item!');
+							}
+
+							for (const attachment of attachments) {
+								const binaryPropertyName = attachment.binaryProperty;
+								if (binaryPropertyName && !items[i].binary![binaryPropertyName]) {
+									throw new NodeOperationError(this.getNode(), `Binary property ${binaryPropertyName} does not exist on item!`);
+								}
+								const fields = attachment.rowFields.split(',');
+								const binaryData = items[i].binary![binaryPropertyName] as IBinaryData;
+
+								const formData = {
+									file: {
+										value: Buffer.from(binaryData.data, BINARY_ENCODING),
+										options: {
+											filename: binaryData.fileName,
+											contentType: binaryData.mimeType,
+										},
+									},
+									json: JSON.stringify({
+										api: 'xcAttachmentUpload',
+										project_id: projectId,
+										dbAlias: 'db',
+										args: {},
+									}),
+								};
+								const qs = { project_id: projectId };
+
+								responseData = await apiRequest.call(this, 'POST', '/dashboard', {}, qs, undefined, { formData });
+
+								for (const field of fields) {
+									newItem[field] = JSON.stringify([responseData]);
+								}
 							}
 						}
 						body.push(newItem);
