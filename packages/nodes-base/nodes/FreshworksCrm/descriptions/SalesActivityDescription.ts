@@ -18,27 +18,27 @@ export const salesActivityOperations = [
 			{
 				name: 'Create',
 				value: 'create',
-				description: 'Create a salesActivity',
+				description: 'Create a sales activity',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
-				description: 'Delete a salesActivity',
+				description: 'Delete a sales activity',
 			},
 			{
 				name: 'Get',
 				value: 'get',
-				description: 'Retrieve a salesActivity',
+				description: 'Retrieve a sales activity',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
-				description: 'Retrieve all salesActivitys',
+				description: 'Retrieve all sales activities',
 			},
 			{
 				name: 'Update',
 				value: 'update',
-				description: 'Update a salesActivity',
+				description: 'Update a sales activity',
 			},
 		],
 		default: 'create',
@@ -266,7 +266,7 @@ export const salesActivityFields = [
 	//          salesActivity: delete
 	// ----------------------------------------
 	{
-		displayName: 'salesActivity ID',
+		displayName: 'Sales Activity ID',
 		name: 'salesActivityId',
 		description: 'ID of the salesActivity to delete',
 		type: 'string',
@@ -288,7 +288,7 @@ export const salesActivityFields = [
 	//            salesActivity: get
 	// ----------------------------------------
 	{
-		displayName: 'salesActivity ID',
+		displayName: 'Sales Activity ID',
 		name: 'salesActivityId',
 		description: 'ID of the salesActivity to retrieve',
 		type: 'string',
@@ -354,7 +354,7 @@ export const salesActivityFields = [
 	//          salesActivity: update
 	// ----------------------------------------
 	{
-		displayName: 'salesActivity ID',
+		displayName: 'Sales Activity ID',
 		name: 'salesActivityId',
 		description: 'ID of the salesActivity to update',
 		type: 'string',

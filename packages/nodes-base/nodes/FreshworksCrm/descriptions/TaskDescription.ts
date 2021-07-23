@@ -197,7 +197,7 @@ export const taskFields = [
 				displayName: 'Task Type ID',
 				name: 'task_type_id',
 				type: 'string', // not obtainable from API
-				default: 0,
+				default: '',
 				description: 'ID of the type of task',
 			},
 		],
@@ -391,7 +391,7 @@ export const taskFields = [
 				displayName: 'Task Type ID',
 				name: 'task_type_id',
 				type: 'string', // not obtainable from API
-				default: 0,
+				default: '',
 				description: 'ID of the type of task',
 			},
 			{

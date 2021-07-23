@@ -193,7 +193,7 @@ export const dealFields = [
 				displayName: 'Lead Source ID',
 				name: 'lead_source_id',
 				type: 'string', // not obtainable from API
-				default: 0,
+				default: '',
 				description: 'ID of the source where deal came from',
 			},
 			{
@@ -470,7 +470,7 @@ export const dealFields = [
 				displayName: 'Lead Source ID',
 				name: 'lead_source_id',
 				type: 'string', // not obtainable from API
-				default: 0,
+				default: '',
 				description: 'ID of the source where deal came from',
 			},
 			{

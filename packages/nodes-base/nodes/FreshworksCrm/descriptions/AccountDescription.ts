@@ -166,11 +166,8 @@ export const accountFields = [
 			{
 				displayName: 'Parent Sales Account ID',
 				name: 'parent_sales_account_id',
-				type: 'options',
+				type: 'string',
 				default: '',
-				typeOptions: {
-					loadOptionsMethod: 'getParentSalesAccountIds',
-				},
 				description: 'Parent account ID of the account',
 			},
 			{
@@ -436,11 +433,8 @@ export const accountFields = [
 			{
 				displayName: 'Parent Sales Account ID',
 				name: 'parent_sales_account_id',
-				type: 'options',
+				type: 'string',
 				default: '',
-				typeOptions: {
-					loadOptionsMethod: 'getParentSalesAccountIds',
-				},
 				description: 'Parent account ID of the account',
 			},
 			{

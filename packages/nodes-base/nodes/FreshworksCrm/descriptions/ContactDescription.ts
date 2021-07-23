@@ -246,8 +246,8 @@ export const contactFields = [
 			{
 				displayName: 'Sales Accounts',
 				name: 'sales_accounts',
-				type: 'options',
-				default: '',
+				type: 'multiOptions',
+				default: [],
 				typeOptions: {
 					loadOptionsMethod: 'getAccounts',
 				},
@@ -578,8 +578,8 @@ export const contactFields = [
 			{
 				displayName: 'Sales Accounts',
 				name: 'sales_accounts',
-				type: 'options',
-				default: '',
+				type: 'multiOptions',
+				default: [],
 				typeOptions: {
 					loadOptionsMethod: 'getAccounts',
 				},

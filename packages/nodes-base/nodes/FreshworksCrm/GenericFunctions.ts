@@ -17,6 +17,8 @@ import {
 	Attendees,
 	FreshworksConfigResponse,
 	FreshworksCrmApiCredentials,
+	SalesAccounts,
+	ViewsResponse,
 } from './types';
 
 import {
@@ -52,37 +54,64 @@ export async function freshworksCrmApiRequest(
 	}
 
 	try {
-		console.log(options);
 		return await this.helpers.request!(options);
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error);
 	}
 }
 
+export async function getAllItemsViewId(
+	this: IExecuteFunctions | ILoadOptionsFunctions,
+	{ fromLoadOptions } = { fromLoadOptions: false },
+) {
+	let resource = this.getNodeParameter('resource', 0) as string;
+	let keyword = 'All';
+
+	if (resource === 'account' || fromLoadOptions) {
+		resource = 'sales_account'; // adjust resource to endpoint
+	}
+
+	if (resource === 'deal') {
+		keyword = 'My Deals'; // no 'All Deals' available
+	}
+
+	const response = await freshworksCrmApiRequest.call(this, 'GET', `/${resource}s/filters`) as ViewsResponse;
+
+	const view = response.filters.find(v => v.name.includes(keyword));
+
+	if (!view) {
+		throw new NodeOperationError(this.getNode(), 'Failed to get all items view');
+	}
+
+	return view.id.toString();
+}
+
 export async function freshworksCrmApiRequestAllItems(
-	this: IExecuteFunctions,
+	this: IExecuteFunctions | ILoadOptionsFunctions,
 	method: string,
 	endpoint: string,
 	body: IDataObject = {},
 	qs: IDataObject = {},
 ) {
 	const returnData: IDataObject[] = [];
-	// tslint:disable-next-line: no-any
-	let responseData: any;
+	let response: any; // tslint:disable-line: no-any
+
+	qs.page = 1;
 
 	do {
-		responseData = await freshworksCrmApiRequest.call(this, method, endpoint, body, qs);
-		// TODO: Get next page
-		returnData.push(...responseData);
+		response = await freshworksCrmApiRequest.call(this, method, endpoint, body, qs);
+		const key = Object.keys(response)[0];
+		returnData.push(...response[key]);
+		qs.page++;
 	} while (
-		false // TODO: Add condition for total not yet reached
+		response.meta.total_pages && qs.page <= response.meta.total_pages
 	);
 
 	return returnData;
 }
 
 export async function handleListing(
-	this: IExecuteFunctions,
+	this: IExecuteFunctions | ILoadOptionsFunctions,
 	method: string,
 	endpoint: string,
 	body: IDataObject = {},
@@ -97,7 +126,9 @@ export async function handleListing(
 	const responseData = await freshworksCrmApiRequestAllItems.call(this, method, endpoint, body, qs);
 	const limit = this.getNodeParameter('limit', 0) as number;
 
-	return responseData.slice(0, limit);
+	if (limit) return responseData.slice(0, limit);
+
+	return responseData;
 }
 
 /**
@@ -115,8 +146,6 @@ export async function loadResource(
 
 	const key = Object.keys(response)[0];
 
-	if (resource === 'sales_activity') console.log(response);
-
 	return response[key].map(({ name, id }) => ({ name, value: id }));
 }
 
@@ -131,6 +160,24 @@ export function adjustAttendees(additionalFields: IDataObject & Attendees) {
 		appointment_attendees_attributes: additionalFields.appointment_attendees_attributes.map(attendeeId => {
 			return { type: 'user', id: attendeeId };
 		}),
+	};
+}
+
+/**
+ * Adjust account data from n8n UI to the format expected by Freshworks CRM API.
+ */
+ export function adjustAccounts(additionalFields: IDataObject & SalesAccounts) {
+	if (!additionalFields?.sales_accounts) return additionalFields;
+
+	const adjusted = additionalFields.sales_accounts.map(accountId => {
+		return { id: accountId, is_primary: false };
+	});
+
+	adjusted[0].is_primary = true;
+
+	return {
+		...omit(additionalFields, ['sales_accounts']),
+		sales_accounts: adjusted,
 	};
 }
 

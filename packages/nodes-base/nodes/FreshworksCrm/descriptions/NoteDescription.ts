@@ -46,7 +46,7 @@ export const noteFields = [
 		type: 'string',
 		required: true,
 		typeOptions: {
-			alwaysOpenEditWindow: true,
+			rows: 5,
 		},
 		default: '',
 		displayOptions: {
@@ -176,7 +176,7 @@ export const noteFields = [
 				name: 'description',
 				type: 'string',
 				typeOptions: {
-					alwaysOpenEditWindow: true,
+					rows: 5,
 				},
 				default: '',
 				description: 'Contents of the note',

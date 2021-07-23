@@ -124,7 +124,7 @@ export const appointmentFields = [
 				displayName: 'Attendees',
 				name: 'appointment_attendees_attributes',
 				type: 'multiOptions',
-				default: '',
+				default: [],
 				typeOptions: {
 					loadOptionsMethod: 'getUsers',
 				},
@@ -348,7 +348,7 @@ export const appointmentFields = [
 				displayName: 'Creator ID',
 				name: 'creater_id',
 				type: 'options',
-				default: '',
+				default: [],
 				typeOptions: {
 					loadOptionsMethod: 'getUsers',
 				},

@@ -7,6 +7,11 @@ type LoadedResource = {
 	name: string;
 };
 
+type LoadOption = {
+	value: string;
+	name: string;
+};
+
 type LoadedUser = {
 	id: string;
 	full_name_display: string;
