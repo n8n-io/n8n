@@ -276,20 +276,33 @@ export class NocoDB implements INodeType {
 			} else if (operation === 'get') {
 
 				requestMethod = 'GET';
+				const newItems: INodeExecutionData[] = [];
+
 				for (let i = 0; i < items.length; i++) {
 					try {
 						const id = this.getNodeParameter('id', i) as string;
 						endpoint = `/nc/${projectId}/api/v1/${table}/${id}`;
 						responseData = await apiRequest.call(this, requestMethod, endpoint, {}, qs);
-						returnData.push(responseData);
+						const newItem: INodeExecutionData = {json: responseData};
+
+						const downloadAttachments = this.getNodeParameter('downloadAttachments', i) as boolean;
+
+						if (downloadAttachments === true) {
+							const downloadFieldNames = (this.getNodeParameter('downloadFieldNames', i) as string).split(',');
+							const data = await downloadRecordAttachments.call(this, [responseData], downloadFieldNames);
+							newItem.binary = data[0].binary;
+						}
+
+						newItems.push(newItem) ;
 					} catch (error) {
 						if (this.continueOnFail()) {
-							returnData.push({ error: error.toString() });
+							newItems.push({ json: { error: error.toString() } });
 							continue;
 						}
 						throw new NodeApiError(this.getNode(), error);
 					}
 				}
+				return this.prepareOutputData(newItems);
 
 			} else if (operation === 'update') {
 

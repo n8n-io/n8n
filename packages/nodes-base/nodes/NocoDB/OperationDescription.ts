@@ -217,6 +217,38 @@ export const operationFields = [
 		required: true,
 		description: 'ID of the row to return',
 	},
+	{
+		displayName: 'Download Attachments',
+		name: 'downloadAttachments',
+		type: 'boolean',
+		displayOptions: {
+			show: {
+				operation: [
+					'get',
+				],
+			},
+		},
+		default: false,
+		description: `When set to true the attachment fields define in 'Download Fields' will be downloaded.`,
+	},
+	{
+		displayName: 'Download Fields',
+		name: 'downloadFieldNames',
+		type: 'string',
+		required: true,
+		displayOptions: {
+			show: {
+				operation: [
+					'get',
+				],
+				downloadAttachments: [
+					true,
+				],
+			},
+		},
+		default: '',
+		description: `Name of the fields of type 'attachment' that should be downloaded. Multiple ones can be defined separated by comma. Case sensitive.`,
+	},
 	// ----------------------------------
 	//         update
 	// ----------------------------------
