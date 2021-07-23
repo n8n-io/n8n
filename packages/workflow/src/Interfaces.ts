@@ -608,6 +608,7 @@ export interface IWorkflowDataProxyData {
 	$json: any; // tslint:disable-line:no-any
 	$node: any; // tslint:disable-line:no-any
 	$parameter: any; // tslint:disable-line:no-any
+	$position: any; // tslint:disable-line:no-any
 	$workflow: any; // tslint:disable-line:no-any
 }
 
