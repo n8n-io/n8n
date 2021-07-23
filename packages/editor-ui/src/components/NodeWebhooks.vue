@@ -38,12 +38,9 @@
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
-
 import {
 	IWebhookDescription,
 	NodeHelpers,
-	Workflow,
 } from 'n8n-workflow';
 
 import { copyPaste } from '@/components/mixins/copyPaste';

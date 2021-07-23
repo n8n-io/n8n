@@ -38,8 +38,6 @@
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
-
 import { genericHelpers } from '@/components/mixins/genericHelpers';
 import { showMessage } from '@/components/mixins/showMessage';
 
