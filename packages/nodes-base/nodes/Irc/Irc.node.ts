@@ -6,7 +6,7 @@ import {
 } from 'n8n-core';
 
 import {
-	NodeOperationError,
+    NodeOperationError,
     IDataObject,
     INodeExecutionData,
     INodeType,
@@ -25,13 +25,13 @@ export class Irc implements INodeType {
         group: ['output'],
         version: 1,
         description: 'Sends data to an IRC channel',
-		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
+        subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
         defaults: {
             name: 'IRC',
             color: '#1A82e2',
         },
         inputs: ['main'],
-		outputs: ['main'],
+        outputs: ['main'],
         credentials: [
             {
                 name: 'ircNetwork',
@@ -40,19 +40,19 @@ export class Irc implements INodeType {
         ],
         properties: [
 
-			{
-				displayName: 'Resource',
-				name: 'resource',
-				type: 'options',
-				options: [
-					{
-						name: 'Message',
-						value: 'message',
-					},
-				],
-				default: 'message',
-				description: 'The resource to operate on.',
-			},
+            {
+                displayName: 'Resource',
+                name: 'resource',
+                type: 'options',
+                options: [
+                    {
+                        name: 'Message',
+                        value: 'message',
+                    },
+                ],
+                default: 'message',
+                description: 'The resource to operate on.',
+            },
 
             //
             // message
@@ -82,29 +82,29 @@ export class Irc implements INodeType {
             //
             // message:create
             //
-			{
-				displayName: 'Channel Name',
-				name: 'channelName',
-				type: 'string',
+            {
+                displayName: 'Channel Name',
+                name: 'channelName',
+                type: 'string',
                 required: true,
-				default: '',
-				description: 'The channel to send the message to.',
-			},
-			{
-				displayName: 'Text',
-				name: 'text',
-				type: 'string',
-				default: '',
+                default: '',
+                description: 'The channel to send the message to.',
+            },
+            {
+                displayName: 'Text',
+                name: 'text',
+                type: 'string',
+                default: '',
                 placeholder: 'Hello from n8n!',
-				description: 'The text to send.',
-			},
-			{
-				displayName: 'Replace newlines with spaces',
-				name: 'textSendSingleLines',
-				type: 'boolean',
-				default: true,
-				description: "Don't send multiline messages.",
-			},
+                description: 'The text to send.',
+            },
+            {
+                displayName: 'Replace newlines with spaces',
+                name: 'textSendSingleLines',
+                type: 'boolean',
+                default: true,
+                description: "Don't send multiline messages.",
+            },
             {
                 displayName: 'Join Channel',
                 name: 'joinChannel',
@@ -112,11 +112,11 @@ export class Irc implements INodeType {
                 default: true,
                 description: 'Whether or not to join the channel.',
             },
-			{
-				displayName: 'Channel Key',
-				name: 'channelKey',
-				type: 'string',
-				default: '',
+            {
+                displayName: 'Channel Key',
+                name: 'channelKey',
+                type: 'string',
+                default: '',
                 displayOptions: {
                     show: {
                         'joinChannel': [
@@ -124,8 +124,8 @@ export class Irc implements INodeType {
                         ],
                     }
                 },
-				description: 'The key used to join this channel (optional).',
-			},
+                description: 'The key used to join this channel (optional).',
+            },
             {
                 displayName: 'Message Type',
                 name: 'messageType',
@@ -159,9 +159,9 @@ export class Irc implements INodeType {
         const operation = this.getNodeParameter('operation', 0) as string;
         const credentials = this.getCredentials('ircNetwork') as IDataObject;
 
-		if (credentials === undefined) {
-			throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
-		}
+        if (credentials === undefined) {
+            throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
+        }
 
         if (resource === 'message') {
             if (operation === 'create') {
