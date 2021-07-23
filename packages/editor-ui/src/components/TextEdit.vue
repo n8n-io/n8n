@@ -18,10 +18,6 @@
 <script lang="ts">
 import Vue from 'vue';
 
-import {
-	Workflow,
-} from 'n8n-workflow';
-
 export default Vue.extend({
 
 	name: 'TextEdit',
