@@ -17,6 +17,10 @@ import {
     IrcClient,
 } from './IrcClient';
 
+import {
+    EnsureIrcParam,
+} from './IrcParser';
+
 export class Irc implements INodeType {
     description: INodeTypeDescription = {
         displayName: ' Internet Relay Chat (IRC)',
@@ -174,14 +178,19 @@ export class Irc implements INodeType {
                 // assemble irc client
                 const client = new IrcClient(desiredNick, ident, realname);
 
-                // setup connected messages
-                // // get details
-                // const channelName = EnsureIrcParam(this.getNodeParameter('channelName', 0) as string);
-                // let text = this.getNodeParameter('text', 0) as string;
-                // let textSendSingleLines = this.getNodeParameter('textSendSingleLines', 0) as boolean;
-                // if (textSendSingleLines) {
-                //     text = text.replace(/\n/g, ' ');
-                // }
+                // get details
+                const messageType = this.getNodeParameter('messageType', 0) as string;
+                const channelName = EnsureIrcParam(this.getNodeParameter('channelName', 0) as string);
+                const joinChannel = this.getNodeParameter('joinChannel', 0) as boolean;
+                let channelKey = '';
+                if (joinChannel) {
+                    channelKey = EnsureIrcParam(this.getNodeParameter('channelKey', 0) as string);
+                }
+                let text = this.getNodeParameter('text', 0) as string;
+                let textSendSingleLines = this.getNodeParameter('textSendSingleLines', 0) as boolean;
+                if (textSendSingleLines) {
+                    text = text.replace(/\n/g, ' ');
+                }
 
                 // connect
                 if (credentials.tls as boolean) {
@@ -203,15 +212,38 @@ export class Irc implements INodeType {
                     client.connect(netConnectionOptions, undefined, serverPassword);
                 }
 
+                client.on('connected', () => {
+                    if (joinChannel) {
+                        client.sendLine(`JOIN ${channelName} ${channelKey}`);
+                    }
+                    let verb = 'PRIVMSG';
+                    if (messageType == 'notice') {
+                        verb = 'NOTICE';
+                    }
+                    text.split('\n').forEach(line => {
+                        let subLines = [];
+                        while (line.length > 410) {
+                            subLines.push(line.slice(0, 410));
+                            line = line.slice(410);
+                        }
+                        subLines.push(line);
+
+                        subLines.forEach(subLine => {
+                            if (messageType == 'action') {
+                                subLine = `\x01ACTION ${subLine}\x01`;
+                            }
+                            client.sendLine(`${verb} ${channelName} :${subLine}`);
+                        });
+                    });
+                });
+
                 // return when we're disconnected
-                console.log(' AAAAAAAA 2')
                 await client.runUntilClosed();
-                console.log(' BBBBBBBB 3')
+
                 return [this.helpers.returnJsonArray(client.statusInfo())];
             }
         }
 
-        // Map data to n8n data
-        return [this.helpers.returnJsonArray({'name': 'hi', 'features': {'blah': true, 'ack': 'asd'}})];
+        return [];
     }
 }

@@ -44,8 +44,8 @@ export class IrcClient extends EventEmitter {
             throw new Error("You must send either netConnectionOptions or tlsConnectionOptions");
         }
         this.socket.setEncoding('utf8');
-        this.socket.on('data', this.socketData);
-        this.socket.on('close', this.socketClosed);
+        this.socket.on('data', this.socketData.bind(this));
+        this.socket.on('close', this.socketClosed.bind(this));
     }
 
     private socketConnected(): void {
@@ -54,13 +54,15 @@ export class IrcClient extends EventEmitter {
         }
         this.sendLine(`NICK ${this.nick}`);
         this.sendLine(`USER ${this.ident} 0 * :${this.realname}`);
+        this.emit('connected');
         this.sendLine('QUIT');
     }
 
     private socketData(input: Buffer|string): void {
         if (input instanceof Buffer) {
-            //TODO: hm? what happened here?
-            input = Buffer.toString();
+            // sometimes we can get an early empty buffer if we don't
+            //  set the encoding in time
+            input = input.toString();
         }
         this.bufferedData += input;
 
@@ -78,13 +80,10 @@ export class IrcClient extends EventEmitter {
     }
 
     private socketClosed(hadError: boolean): void {
-        // process socket closing
-        console.log('emiting closed event');
         this.emit('closed');
-        console.log('emiting closed event 2');
     }
 
-    private sendLine(input: string): void {
+    public sendLine(input: string): void {
         if (this.socket == undefined) {
             return
         }
@@ -103,10 +102,6 @@ export class IrcClient extends EventEmitter {
         if (!this.socket || this.socket.destroyed) {
             return;
         }
-        console.log('running until closed');
         await once(this, 'closed');
-        console.log(' and now we are closed qq');
-        // return waitForEvent(this, 'close');
-        // return new Promise<void>(resolve => this.once('closed', resolve));
     }
 }
