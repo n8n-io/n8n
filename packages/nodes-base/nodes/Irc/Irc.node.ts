@@ -21,6 +21,16 @@ import {
     EnsureIrcParam,
 } from './IrcParser';
 
+class IrcError extends Error {
+    public ircDetails: any;
+
+    constructor(message: string, details: any) {
+        super(message);
+        this.name = 'IrcError';
+        this.ircDetails = details
+    }
+}
+
 export class Irc implements INodeType {
     description: INodeTypeDescription = {
         displayName: ' Internet Relay Chat (IRC)',
@@ -154,6 +164,13 @@ export class Irc implements INodeType {
                 default: 'privmsg',
                 description: 'The type of message to send.',
             },
+            {
+                displayName: 'Output Raw Logs',
+                name: 'saveRawLogs',
+                type: 'boolean',
+                default: false,
+                description: 'Output raw IRC log for debugging.',
+            },
         ],
     };
 
@@ -176,7 +193,8 @@ export class Irc implements INodeType {
                 const serverPassword = credentials.serverPassword as string;
 
                 // assemble irc client
-                const client = new IrcClient(desiredNick, ident, realname);
+                const saveRawLogs = this.getNodeParameter('saveRawLogs', 0) as boolean;
+                const client = new IrcClient(desiredNick, ident, realname, saveRawLogs);
 
                 // get details
                 const messageType = this.getNodeParameter('messageType', 0) as string;
@@ -240,7 +258,12 @@ export class Irc implements INodeType {
                 // return when we're disconnected
                 await client.runUntilClosed();
 
-                return [this.helpers.returnJsonArray(client.statusInfo())];
+                const statusInfo = client.statusInfo();
+                if (statusInfo.error) {
+                    throw new IrcError(statusInfo.error, statusInfo);
+                }
+
+                return [this.helpers.returnJsonArray(statusInfo)];
             }
         }
 

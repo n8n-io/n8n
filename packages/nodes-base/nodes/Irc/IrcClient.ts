@@ -6,6 +6,7 @@ import {
     EnsureIrcNick,
     EnsureIrcFinalParam,
     EnsureIrcParam,
+    ParseIrcMessage,
 } from './IrcParser';
 
 export class IrcClient extends EventEmitter {
@@ -14,16 +15,24 @@ export class IrcClient extends EventEmitter {
     private serverPassword?: string;
     private bufferedData: string = '';
     private rawLog: string = '';
+    private errorMessage: string = '';
+    public connectionRegComplete: boolean = false;
 
     constructor(
         public nick: string,
         public ident: string,
         public realname: string,
+        public saveRawLogs?: boolean,
     ) {
         super();
+
+        // throw errors for these values early
         this.nick = EnsureIrcNick(this.nick);
         this.ident = EnsureIrcParam(this.ident);
         this.realname = EnsureIrcFinalParam(this.realname);
+
+        // setup default event handlers
+        // e.g. PING, ENDOFMOTD/NOMOTD setting connectionRegComplete, SASL, BOT, etc.
     }
 
     connect(netConnectionOptions?: net.NetConnectOpts, tlsConnectionOptions?: tls.ConnectionOptions, serverPassword?: string): void {
@@ -46,6 +55,7 @@ export class IrcClient extends EventEmitter {
         this.socket.setEncoding('utf8');
         this.socket.on('data', this.socketData.bind(this));
         this.socket.on('close', this.socketClosed.bind(this));
+        this.socket.on('error', this.socketError.bind(this));
     }
 
     private socketConnected(): void {
@@ -73,14 +83,21 @@ export class IrcClient extends EventEmitter {
 
         messages.forEach(msgString => {
             msgString = msgString.replace(/\r/g, '');
+            if (this.saveRawLogs) {
+                this.rawLog += `<-  ${msgString}\n`;
+            }
             // const message = ParseIrcMessage(msgString);
-            console.log(msgString);
-            this.rawLog += `<-  ${msgString}\n`;
+            const message = ParseIrcMessage(msgString);
+            this.emit(`irc ${message.verb}`, message);
         });
     }
 
     private socketClosed(hadError: boolean): void {
-        this.emit('closed');
+        this.emit('closed', hadError);
+    }
+
+    private socketError(err: Error): void {
+        this.errorMessage = `socket error: ${err.message}`;
     }
 
     public sendLine(input: string): void {
@@ -89,12 +106,15 @@ export class IrcClient extends EventEmitter {
         }
         console.log(input);
         this.socket.write(`${input}\r\n`);
-        this.rawLog += ` -> ${input}\n`;
+        if (this.saveRawLogs) {
+            this.rawLog += ` -> ${input}\n`;
+        }
     }
 
     public statusInfo() {
         return {
             'log': this.rawLog,
+            'error': this.errorMessage,
         };
     }
 
