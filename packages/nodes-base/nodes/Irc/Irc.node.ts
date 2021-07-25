@@ -270,7 +270,11 @@ export class Irc implements INodeType {
 				const statusInfo = client.statusInfo();
 				Logger.verbose(`IRC connection closed, returned error message is [${statusInfo.error}].`);
 				if (statusInfo.error) {
-					throw new IrcError(statusInfo.error, statusInfo);
+					if (this.continueOnFail()) {
+						outputInfo.error = statusInfo.error;
+					} else {
+						throw new IrcError(statusInfo.error, statusInfo);
+					}
 				}
 
 				outputInfo.account = client.account;
