@@ -74,6 +74,10 @@ export class IrcMessage {
 
 		return messageParts.join(' ');
 	}
+
+	finalParam(): string {
+		return this.params ? this.params[this.params.length-1] : '';
+	}
 }
 
 export function ParseIrcMessage(input: string): IrcMessage {

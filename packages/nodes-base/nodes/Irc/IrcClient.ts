@@ -76,17 +76,17 @@ export class IrcClient extends EventEmitter {
 	}
 
 	private handleCannotSendMessage(message: IrcMessage) {
-		this.errorMessage = `could not send message: ${message.params[message.params.length-1]}`;
+		this.errorMessage = `could not send message: ${message.finalParam()}`;
 	}
 
 	private handleBadNick(message: IrcMessage) {
 		// we treat this as unrecoverable
-		this.errorMessage = `nickname is not valid: ${message.params[message.params.length-1]}`;
+		this.errorMessage = `nickname is not valid: ${message.finalParam()}`;
 		this.send('', 'QUIT');
 	}
 
 	private handleCannotJoinChannel(message: IrcMessage) {
-		this.errorMessage = `could not join channel: ${message.params[message.params.length-1]}`;
+		this.errorMessage = `could not join channel: ${message.finalParam()}`;
 	}
 
 	connect(netConnectionOptions?: net.NetConnectOpts, tlsConnectionOptions?: tls.ConnectionOptions, serverPassword?: string): void {
