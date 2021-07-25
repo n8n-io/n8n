@@ -15,3 +15,22 @@ describe ('messageParserJoinTests', () => {
 		});
 	});
 });
+
+describe ('messageParserSplitTests', () => {
+	ParserTests.SplitTests.tests.forEach(testCase => {
+		it(`Parsing incoming line [${testCase.input}]`, async () => {
+			// our parser doesn't support tags
+			if (testCase.atoms.tags) {
+				return;
+			}
+			const msg = IrcParser.ParseIrcMessage(testCase.input);
+			if (testCase.atoms.source) {
+				expect(testCase.atoms.source).toEqual(msg.prefix);
+			}
+			expect(testCase.atoms.verb).toEqual(msg.verb);
+			if (testCase.atoms.params) {
+				expect(testCase.atoms.params).toEqual(msg.params);
+			}
+		});
+	});
+});
