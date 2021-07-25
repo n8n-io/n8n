@@ -12,6 +12,9 @@ export function EnsureIrcNick(nick: string): string {
 // ensure that the given input is a valid irc param
 export function EnsureIrcParam(input: string): string {
 	input = input.trim();
+	if (!input) {
+		throw new Error(`Required property is empty`);
+	}
 	if (input.startsWith(':') || input.includes(' ') ||
 		input.includes('\r') || input.includes('\n')) {
 		throw new Error(`Property [${input}] can't start with a colon (:) or contain spaces/newlines`);
@@ -42,7 +45,9 @@ export class IrcMessage {
 	private ensureParts(): void {
 		// ensure that parts in this message are correct and
 		//  throw an error otherwise
-		this.prefix = EnsureIrcParam(this.prefix);
+		if (this.prefix) {
+			this.prefix = EnsureIrcParam(this.prefix);
+		}
 		this.verb = EnsureIrcParam(this.verb);
 		this.params.forEach((param, i) => {
 			if (i === this.params.length-1) {
