@@ -88,8 +88,8 @@ export function ParseIrcMessage(input: string): IrcMessage {
     }
 
     // parse message into parts
-    let i = 0; // index
-    let j = 0; // temp index
+    let i = 0; // start index
+    let j = 0; // end index
     const invalidMessageError = Error('IRC message cannot be parsed, is invalid');
 
     // ignore tags for now
