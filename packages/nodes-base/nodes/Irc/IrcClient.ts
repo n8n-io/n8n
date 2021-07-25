@@ -17,7 +17,7 @@ export class IrcClient extends EventEmitter {
 	private bufferedData = '';
 	private rawLog = '';
 	private errorMessage = '';
-	private nickInUseTries = 0;
+	timesNickWasInUse = 0;
 	connectionRegComplete = false;
 
 	constructor(
@@ -165,8 +165,8 @@ export class IrcClient extends EventEmitter {
 
 	private handleNickInUse(message: IrcMessage) {
 		if (!this.connectionRegComplete) {
-			this.nickInUseTries += 1;
-			if (this.nickInUseTries > 5) {
+			this.timesNickWasInUse += 1;
+			if (this.timesNickWasInUse > 5) {
 				this.errorMessage = 'nick was in use';
 				this.send('', 'QUIT');
 				return;

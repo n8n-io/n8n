@@ -168,6 +168,7 @@ export class Irc implements INodeType {
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
+		const outputInfo: any = {}; // tslint:disable-line:no-any
 		const items = this.getInputData();
 		const resource = this.getNodeParameter('resource', 0) as string;
 		const operation = this.getNodeParameter('operation', 0) as string;
@@ -255,17 +256,14 @@ export class Irc implements INodeType {
 					throw new IrcError(statusInfo.error, statusInfo);
 				}
 
-				const outputInfo: any = {}; // tslint:disable-line:no-any
 				if (outputRawLogs) {
-					outputInfo['log'] = statusInfo.log;
+					outputInfo.log = statusInfo.log;
 				}
-
-				if (outputInfo) {
-					return [this.helpers.returnJsonArray(outputInfo)];
-				}
+				outputInfo.nick = client.nick;
+				outputInfo.timesNickWasInUse = client.timesNickWasInUse;
 			}
 		}
 
-		return [];
+		return [this.helpers.returnJsonArray(outputInfo)];
 	}
 }
