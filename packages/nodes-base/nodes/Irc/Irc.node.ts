@@ -113,13 +113,6 @@ export class Irc implements INodeType {
 				description: 'The text to send.',
 			},
 			{
-				displayName: 'Replace newlines with spaces',
-				name: 'textSendSingleLines',
-				type: 'boolean',
-				default: true,
-				description: 'Don\'t send multiline messages.',
-			},
-			{
 				displayName: 'Join Channel',
 				name: 'joinChannel',
 				type: 'boolean',
@@ -203,11 +196,7 @@ export class Irc implements INodeType {
 				if (joinChannel) {
 					channelKey = EnsureIrcParam(this.getNodeParameter('channelKey', 0) as string);
 				}
-				let text = this.getNodeParameter('text', 0) as string;
-				const textSendSingleLines = this.getNodeParameter('textSendSingleLines', 0) as boolean;
-				if (textSendSingleLines) {
-					text = text.replace(/\n/g, ' ');
-				}
+				const text = this.getNodeParameter('text', 0) as string;
 
 				// connect
 				if (credentials.tls as boolean) {
