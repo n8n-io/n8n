@@ -87,7 +87,7 @@ export class Irc implements INodeType {
 					{
 						name: 'Create',
 						value: 'create',
-						description: 'Send a message to a channel',
+						description: 'Send a message to a channel.',
 					},
 				],
 				default: 'create',

@@ -42,7 +42,7 @@ export class IrcNetwork implements ICredentialType {
 				{
 					name: 'None',
 					value: 'none',
-					description: 'Don\'t try to login to an account',
+					description: 'Don\'t try to login to an account.',
 				},
 				{
 					name: 'SASL PLAIN',
@@ -73,6 +73,7 @@ export class IrcNetwork implements ICredentialType {
 			type: 'string',
 			required: true,
 			default: '',
+			description: 'Account to login with.',
 			displayOptions: {
 				show: {
 					'saslType': [
@@ -90,6 +91,7 @@ export class IrcNetwork implements ICredentialType {
 			typeOptions: {
 				password: true,
 			},
+			description: 'Password to login with.',
 			displayOptions: {
 				show: {
 					'saslType': [
@@ -117,12 +119,14 @@ export class IrcNetwork implements ICredentialType {
 			name: 'tls',
 			type: 'boolean',
 			default: true,
+			description: 'Connect securely using TLS.',
 		},
 		{
 			displayName: 'Force TLS Certificate Validation',
 			name: 'tlsValidation',
 			type: 'boolean',
 			default: true,
+			description: 'Ensure a valid TLS certificate is returned by the server. This should be disabled for self-signed certificates.',
 			displayOptions: {
 				show: {
 					'tls': [
@@ -150,6 +154,7 @@ export class IrcNetwork implements ICredentialType {
 				maxValue: 65535,
 			},
 			default: 6697,
+			description: 'TCP port to connect on.',
 		},
 		{
 			displayName: 'Port',
@@ -167,6 +172,7 @@ export class IrcNetwork implements ICredentialType {
 				maxValue: 65535,
 			},
 			default: 6667,
+			description: 'TCP port to connect on.',
 		},
 	];
 }
