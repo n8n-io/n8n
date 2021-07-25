@@ -168,6 +168,7 @@ export class Irc implements INodeType {
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
+		const items = this.getInputData();
 		const resource = this.getNodeParameter('resource', 0) as string;
 		const operation = this.getNodeParameter('operation', 0) as string;
 		const credentials = this.getCredentials('ircNetwork') as IDataObject;
@@ -196,7 +197,6 @@ export class Irc implements INodeType {
 				if (joinChannel) {
 					channelKey = EnsureIrcParam(this.getNodeParameter('channelKey', 0) as string);
 				}
-				const text = this.getNodeParameter('text', 0) as string;
 
 				// connect
 				if (credentials.tls as boolean) {
@@ -226,21 +226,24 @@ export class Irc implements INodeType {
 					if (messageType === 'notice') {
 						verb = 'NOTICE';
 					}
-					text.split('\n').forEach(line => {
-						const subLines = [];
-						while (line.length > 410) {
-							subLines.push(line.slice(0, 410));
-							line = line.slice(410);
-						}
-						subLines.push(line);
-
-						subLines.forEach(subLine => {
-							if (messageType === 'action') {
-								subLine = `\x01ACTION ${subLine}\x01`;
+					for (let i = 0; i < items.length; i++) {
+						const text = this.getNodeParameter('text', i) as string;
+						text.split('\n').forEach(line => {
+							const subLines = [];
+							while (line.length > 410) {
+								subLines.push(line.slice(0, 410));
+								line = line.slice(410);
 							}
-							client.send('', verb, channelName, subLine);
+							subLines.push(line);
+
+							subLines.forEach(subLine => {
+								if (messageType === 'action') {
+									subLine = `\x01ACTION ${subLine}\x01`;
+								}
+								client.send('', verb, channelName, subLine);
+							});
 						});
-					});
+					}
 					client.send('', 'QUIT');
 				});
 
