@@ -133,8 +133,16 @@ export class IrcClient extends EventEmitter {
 	//
 	private handleAuthenticate(message: IrcMessage) {
 		if (message.params && message.params[0] === '+') {
-			const saslBlob = Buffer.from(`${this.saslPlainUsername}\x00${this.saslPlainUsername}\x00${this.saslPlainPassword}`).toString('base64');
-			this.send('AUTHENTICATE', saslBlob);
+			let saslBlob = Buffer.from(`${this.saslPlainUsername}\x00${this.saslPlainUsername}\x00${this.saslPlainPassword}`).toString('base64');
+			// handle long sasl auth blobs
+			while (saslBlob) {
+				const tmp = saslBlob.slice(0, 400);
+				this.send('AUTHENTICATE', tmp);
+				saslBlob = saslBlob.slice(400);
+				if (tmp.length === 400 && !saslBlob) {
+					this.send('AUTHENTICATE', '+');
+				}
+			}
 		} else {
 			this.errorMessage = `SASL handleAuthenticate failed, we unexpectedly got [${message.toString()}]`;
 			this.send('QUIT');
