@@ -3,6 +3,10 @@ import net = require('net');
 import tls = require('tls');
 
 import {
+	LoggerProxy as Logger,
+} from 'n8n-workflow';
+
+import {
 	EnsureIrcFinalParam,
 	EnsureIrcNick,
 	EnsureIrcParam,
@@ -113,8 +117,7 @@ export class IrcClient extends EventEmitter {
 			if (this.saveRawLogs) {
 				this.rawLog += `<-  ${msgString}\n`;
 			}
-			// const message = ParseIrcMessage(msgString);
-			console.log(msgString);
+			Logger.debug(`IRC <-  ${msgString}`);
 			const message = ParseIrcMessage(msgString);
 			this.emit(`irc ${message.verb.toLowerCase()}`, message);
 		});
@@ -257,7 +260,7 @@ export class IrcClient extends EventEmitter {
 		if (this.socket === undefined) {
 			return;
 		}
-		console.log(input);
+		Logger.debug(`IRC  -> ${input}`);
 		this.socket.write(`${input}\r\n`);
 		if (this.saveRawLogs) {
 			this.rawLog += ` -> ${input}\n`;

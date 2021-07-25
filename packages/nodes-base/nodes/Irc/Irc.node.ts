@@ -10,6 +10,7 @@ import {
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
+	LoggerProxy as Logger,
 	NodeOperationError,
 } from 'n8n-workflow';
 
@@ -211,6 +212,7 @@ export class Irc implements INodeType {
 				const sentLines: string[] = [];
 
 				// connect
+				Logger.verbose('IRC connecting.');
 				if (credentials.tls as boolean) {
 					const tlsConnectionOptions = {
 						port: credentials.tlsPort as number,
@@ -231,6 +233,7 @@ export class Irc implements INodeType {
 				}
 
 				client.on('connected', () => {
+					Logger.verbose('IRC connection established, now sending messages.');
 					if (joinChannel) {
 						client.send('JOIN', channelName, channelKey);
 					}
@@ -261,9 +264,11 @@ export class Irc implements INodeType {
 				});
 
 				// return when we're disconnected
+				Logger.verbose('Waiting until IRC connection closes.');
 				await client.runUntilClosed();
 
 				const statusInfo = client.statusInfo();
+				Logger.verbose(`IRC connection closed, returned error message is [${statusInfo.error}].`);
 				if (statusInfo.error) {
 					throw new IrcError(statusInfo.error, statusInfo);
 				}
