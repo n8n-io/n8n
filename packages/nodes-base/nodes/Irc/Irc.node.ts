@@ -255,7 +255,7 @@ export class Irc implements INodeType {
 					throw new IrcError(statusInfo.error, statusInfo);
 				}
 
-				const outputInfo: any = {};
+				const outputInfo: any = {}; // tslint:disable-line:no-any
 				if (outputRawLogs) {
 					outputInfo['log'] = statusInfo.log;
 				}
