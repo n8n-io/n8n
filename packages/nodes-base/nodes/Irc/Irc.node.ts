@@ -193,9 +193,9 @@ export class Irc implements INodeType {
 				const messageType = this.getNodeParameter('messageType', 0) as string;
 				const channelName = EnsureIrcParam(this.getNodeParameter('channelName', 0) as string);
 				const joinChannel = this.getNodeParameter('joinChannel', 0) as boolean;
-				let channelKey = '';
-				if (joinChannel) {
-					channelKey = EnsureIrcParam(this.getNodeParameter('channelKey', 0) as string);
+				let channelKey = this.getNodeParameter('channelKey', 0) as string;
+				if (joinChannel && channelKey) {
+					channelKey = EnsureIrcParam(channelKey);
 				}
 
 				// connect
