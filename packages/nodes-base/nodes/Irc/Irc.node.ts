@@ -190,6 +190,14 @@ export class Irc implements INodeType {
 				const outputRawLogs = this.getNodeParameter('outputRawLogs', 0) as boolean;
 				const client = new IrcClient(desiredNick, ident, realname, outputRawLogs);
 
+				// setup sasl
+				if (credentials.saslType as string === 'plain') {
+					const saslUsername = credentials.saslAccountName as string;
+					const saslPassword = credentials.saslAccountPassword as string;
+					const saslRequired = credentials.saslRequired as boolean;
+					client.setupSaslPlain(saslUsername, saslPassword, saslRequired);
+				}
+
 				// get details
 				const messageType = this.getNodeParameter('messageType', 0) as string;
 				const channelName = EnsureIrcParam(this.getNodeParameter('channelName', 0) as string);
@@ -224,7 +232,7 @@ export class Irc implements INodeType {
 
 				client.on('connected', () => {
 					if (joinChannel) {
-						client.send('', 'JOIN', channelName, channelKey);
+						client.send('JOIN', channelName, channelKey);
 					}
 					let verb = 'PRIVMSG';
 					if (messageType === 'notice') {
@@ -245,11 +253,11 @@ export class Irc implements INodeType {
 								if (messageType === 'action') {
 									subLine = `\x01ACTION ${subLine}\x01`;
 								}
-								client.send('', verb, channelName, subLine);
+								client.send(verb, channelName, subLine);
 							});
 						});
 					}
-					client.send('', 'QUIT');
+					client.send('QUIT');
 				});
 
 				// return when we're disconnected
@@ -263,6 +271,7 @@ export class Irc implements INodeType {
 				if (outputRawLogs) {
 					outputInfo.log = statusInfo.log;
 				}
+				outputInfo.account = client.account;
 				outputInfo.nick = client.nick;
 				outputInfo.timesNickWasInUse = client.timesNickWasInUse;
 				outputInfo.sentLines = sentLines;

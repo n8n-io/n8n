@@ -20,6 +20,11 @@ export class IrcClient extends EventEmitter {
 	timesNickWasInUse = 0;
 	connectionRegComplete = false;
 
+	private saslPlainUsername = '';
+	private saslPlainPassword = '';
+	private saslRequired = false;
+	account = '';
+
 	constructor(
 		public nick: string,
 		public ident: string,
@@ -35,6 +40,8 @@ export class IrcClient extends EventEmitter {
 
 		// setup default event handlers
 		// e.g. PING, ENDOFMOTD/NOMOTD setting connectionRegComplete, SASL, BOT, etc.
+		this.on('irc authenticate', this.handleAuthenticate);
+		this.on('irc cap', this.handleCap);
 		this.on('irc ping', this.handlePing);
 		this.on('irc 001', this.handleWelcome);
 		this.on('irc 005', this.handleIsupport);
@@ -46,6 +53,9 @@ export class IrcClient extends EventEmitter {
 		this.on('irc 432', this.handleBadNick);
 		this.on('irc 433', this.handleNickInUse);
 		this.on('irc 475', this.handleCannotJoinChannel);
+		this.on('irc 900', this.handleLoggedIn);
+		this.on('irc 903', this.handleSaslSuccess);
+		this.on('irc 904', this.handleSaslFail);
 	}
 
 	connect(netConnectionOptions?: net.NetConnectOpts, tlsConnectionOptions?: tls.ConnectionOptions, serverPassword?: string): void {
@@ -76,10 +86,13 @@ export class IrcClient extends EventEmitter {
 	//
 	private socketConnected(): void {
 		if (this.serverPassword) {
-			this.sendLine(`PASS :${this.serverPassword}`);
+			this.send('PASS', this.serverPassword);
 		}
-		this.send('', 'NICK', this.nick);
-		this.send('', 'USER', this.ident, '0', '*', this.realname);
+		if (this.saslPlainUsername || this.saslRequired) {
+			this.send('CAP', 'REQ', 'sasl');
+		}
+		this.send('NICK', this.nick);
+		this.send('USER', this.ident, '0', '*', this.realname);
 	}
 
 	private socketData(input: Buffer|string): void {
@@ -118,8 +131,31 @@ export class IrcClient extends EventEmitter {
 	//
 	// irc message handlers
 	//
+	private handleAuthenticate(message: IrcMessage) {
+		if (message.params && message.params[0] === '+') {
+			const saslBlob = Buffer.from(`${this.saslPlainUsername}\x00${this.saslPlainUsername}\x00${this.saslPlainPassword}`).toString('base64');
+			this.send('AUTHENTICATE', saslBlob);
+		} else {
+			this.errorMessage = `SASL handleAuthenticate failed, we unexpectedly got [${message.toString()}]`;
+			this.send('QUIT');
+		}
+	}
+
+	private handleCap(message: IrcMessage) {
+		if (message.params.length > 2 && message.params[1].toLowerCase() === 'ack') {
+			this.send('AUTHENTICATE', 'PLAIN');
+		} else if (this.saslRequired) {
+			// REQ sasl failed for an unspecified reason and we require it
+			this.errorMessage = 'SASL Login failed, could not request capability (maybe services is down)';
+			this.send('QUIT');
+		} else {
+			// REQ sasl failed for an unspecified reason
+			this.send('CAP', 'END');
+		}
+	}
+
 	private handlePing(message: IrcMessage) {
-		this.send('', 'PONG', ...message.params);
+		this.send('PONG', ...message.params);
 	}
 
 	private handleWelcome(message: IrcMessage) {
@@ -136,7 +172,7 @@ export class IrcClient extends EventEmitter {
 			if (i < message.params.length-1) {
 				const split = param.split('=');
 				if (split.length === 2 && split[0].toLowerCase() === 'bot') {
-					this.send('', 'MODE', this.nick, `+${split[1]}`);
+					this.send('MODE', this.nick, `+${split[1]}`);
 				}
 			}
 		});
@@ -153,35 +189,62 @@ export class IrcClient extends EventEmitter {
 		// earlier error message is usually the one to focus on,
 		//  so don't overwrite it
 		if (!this.errorMessage) {
-			this.errorMessage = `could not send message: ${message.finalParam()}`;
+			this.errorMessage = `Could not send message: ${message.finalParam()}`;
 		}
 	}
 
 	private handleBadNick(message: IrcMessage) {
 		// we treat this as unrecoverable
-		this.errorMessage = `nickname is not valid: ${message.finalParam()}`;
-		this.send('', 'QUIT');
+		this.errorMessage = `Nickname is not valid: ${message.finalParam()}`;
+		this.send('QUIT');
 	}
 
 	private handleNickInUse(message: IrcMessage) {
 		if (!this.connectionRegComplete) {
 			this.timesNickWasInUse += 1;
 			if (this.timesNickWasInUse > 5) {
-				this.errorMessage = 'nick was in use';
-				this.send('', 'QUIT');
+				this.errorMessage = 'Nick was in use';
+				this.send('QUIT');
 				return;
 			}
-			this.send('', 'NICK', message.params[1]+'_');
+			this.send('NICK', message.params[1]+'_');
 		}
 	}
 
 	private handleCannotJoinChannel(message: IrcMessage) {
-		this.errorMessage = `could not join channel: ${message.finalParam()}`;
+		this.errorMessage = `Could not join channel: ${message.finalParam()}`;
+	}
+
+	private handleLoggedIn(message: IrcMessage) {
+		if (message.params.length > 2) {
+			this.account = message.params[2];
+		}
+	}
+
+	private handleSaslSuccess(message: IrcMessage) {
+		this.send('CAP', 'END');
+	}
+
+	private handleSaslFail(message: IrcMessage) {
+		if (this.saslRequired) {
+			this.errorMessage = `[904] ${message.finalParam()}`;
+			this.send('QUIT');
+		} else {
+			this.send('CAP', 'END');
+		}
 	}
 
 	//
 	// utility functions
 	//
+	setupSaslPlain(username: string, password: string, required?: boolean) {
+		this.saslPlainUsername = username;
+		this.saslPlainPassword = password;
+		if (required !== undefined) {
+			this.saslRequired = required;
+		}
+	}
+
 	private sendLine(input: string): void {
 		if (this.socket === undefined) {
 			return;
@@ -193,8 +256,8 @@ export class IrcClient extends EventEmitter {
 		}
 	}
 
-	send(prefix: string, verb: string, ...params: string[]): void {
-		this.sendLine(new IrcMessage(prefix, verb, params).toString());
+	send(verb: string, ...params: string[]): void {
+		this.sendLine(new IrcMessage('', verb, params).toString());
 	}
 
 	statusInfo() {
