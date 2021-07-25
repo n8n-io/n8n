@@ -159,10 +159,10 @@ export class Irc implements INodeType {
 			},
 			{
 				displayName: 'Output Raw Logs',
-				name: 'saveRawLogs',
+				name: 'outputRawLogs',
 				type: 'boolean',
 				default: false,
-				description: 'Output raw IRC log for debugging.',
+				description: 'Output log of raw IRC traffic.',
 			},
 		],
 	};
@@ -186,8 +186,8 @@ export class Irc implements INodeType {
 				const serverPassword = credentials.serverPassword as string;
 
 				// assemble irc client
-				const saveRawLogs = this.getNodeParameter('saveRawLogs', 0) as boolean;
-				const client = new IrcClient(desiredNick, ident, realname, saveRawLogs);
+				const outputRawLogs = this.getNodeParameter('outputRawLogs', 0) as boolean;
+				const client = new IrcClient(desiredNick, ident, realname, outputRawLogs);
 
 				// get details
 				const messageType = this.getNodeParameter('messageType', 0) as string;
@@ -255,7 +255,14 @@ export class Irc implements INodeType {
 					throw new IrcError(statusInfo.error, statusInfo);
 				}
 
-				return [this.helpers.returnJsonArray(statusInfo)];
+				const outputInfo: any = {};
+				if (outputRawLogs) {
+					outputInfo['log'] = statusInfo.log;
+				}
+
+				if (outputInfo) {
+					return [this.helpers.returnJsonArray(outputInfo)];
+				}
 			}
 		}
 
