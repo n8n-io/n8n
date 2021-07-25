@@ -232,7 +232,7 @@ export class Irc implements INodeType {
 
                 client.on('connected', () => {
                     if (joinChannel) {
-                        client.sendLine(`JOIN ${channelName} ${channelKey}`);
+                        client.send('', 'JOIN', channelName, channelKey);
                     }
                     let verb = 'PRIVMSG';
                     if (messageType == 'notice') {
@@ -250,7 +250,7 @@ export class Irc implements INodeType {
                             if (messageType == 'action') {
                                 subLine = `\x01ACTION ${subLine}\x01`;
                             }
-                            client.sendLine(`${verb} ${channelName} :${subLine}`);
+                            client.send('', verb, channelName, subLine);
                         });
                     });
                 });

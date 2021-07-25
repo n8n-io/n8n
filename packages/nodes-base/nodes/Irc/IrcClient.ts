@@ -6,6 +6,7 @@ import {
     EnsureIrcNick,
     EnsureIrcFinalParam,
     EnsureIrcParam,
+    IrcMessage,
     ParseIrcMessage,
 } from './IrcParser';
 
@@ -62,10 +63,10 @@ export class IrcClient extends EventEmitter {
         if (this.serverPassword) {
             this.sendLine(`PASS :${this.serverPassword}`);
         }
-        this.sendLine(`NICK ${this.nick}`);
-        this.sendLine(`USER ${this.ident} 0 * :${this.realname}`);
+        this.send('', 'NICK', this.nick);
+        this.send('', 'USER', this.ident, '0', '*', this.realname);
         this.emit('connected');
-        this.sendLine('QUIT');
+        this.send('', 'QUIT');
     }
 
     private socketData(input: Buffer|string): void {
@@ -100,7 +101,11 @@ export class IrcClient extends EventEmitter {
         this.errorMessage = `socket error: ${err.message}`;
     }
 
-    public sendLine(input: string): void {
+    public send(prefix: string, verb: string, ...params: string[]): void {
+        this.sendLine(new IrcMessage(prefix, verb, params).toString());
+    }
+
+    private sendLine(input: string): void {
         if (this.socket == undefined) {
             return
         }

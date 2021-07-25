@@ -35,7 +35,45 @@ export class IrcMessage {
         public prefix: string,
         public verb: string,
         public params: string[],
-    ) { }
+    ) {
+        this.ensureParts();
+    }
+
+    private ensureParts(): void {
+        // ensure that parts in this message are correct and
+        //  throw an error otherwise
+        this.prefix = EnsureIrcParam(this.prefix);
+        this.verb = EnsureIrcParam(this.verb);
+        this.params.forEach((param, i) => {
+            if (i == this.params.length-1) {
+                EnsureIrcFinalParam(param);
+            } else {
+                EnsureIrcParam(param);
+            }
+        });
+    }
+
+    public toString(): string {
+        this.ensureParts();
+
+        let messageParts: string[] = [];
+
+        if (this.prefix) {
+            messageParts.push(`:${this.prefix}`);
+        }
+        messageParts.push(this.verb);
+        if (this.params) {
+            messageParts = messageParts.concat(this.params);
+
+            try {
+                EnsureIrcParam(messageParts[messageParts.length-1]);
+            } catch {
+                messageParts[messageParts.length-1] = `:${messageParts[messageParts.length-1]}`;
+            }
+        }
+
+        return messageParts.join(' ');
+    }
 }
 
 export function ParseIrcMessage(input: string): IrcMessage {
