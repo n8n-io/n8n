@@ -253,6 +253,7 @@ export class Irc implements INodeType {
                             client.send('', verb, channelName, subLine);
                         });
                     });
+                    client.send('', 'QUIT');
                 });
 
                 // return when we're disconnected

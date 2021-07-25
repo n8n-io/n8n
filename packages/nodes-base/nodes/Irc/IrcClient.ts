@@ -34,9 +34,45 @@ export class IrcClient extends EventEmitter {
 
         // setup default event handlers
         // e.g. PING, ENDOFMOTD/NOMOTD setting connectionRegComplete, SASL, BOT, etc.
+        this.on('irc ping', this.handlePing);
+        this.on('irc 001', this.handleWelcome);
+        this.on('irc 005', this.handleIsupport);
+        this.on('irc 376', this.handleRegComplete);
+        this.on('irc 422', this.handleRegComplete);
     }
 
-    connect(netConnectionOptions?: net.NetConnectOpts, tlsConnectionOptions?: tls.ConnectionOptions, serverPassword?: string): void {
+    private handlePing(message: IrcMessage) {
+        this.send('', 'PONG', ...message.params);
+    }
+
+    private handleWelcome(message: IrcMessage) {
+        // fix our nickname if it was truncated
+        this.nick = message.params[0];
+    }
+
+    private handleIsupport(message: IrcMessage) {
+        if (this.connectionRegComplete) {
+            return;
+        }
+        // set BOT mode on ourselves
+        message.params.forEach((param, i) => {
+            if (i < message.params.length-1) {
+                const split = param.split('=')
+                if (split.length == 2 && split[0].toLowerCase() == 'bot') {
+                    this.send('', 'MODE', this.nick, `+${split[1]}`);
+                }
+            }
+        });
+    }
+
+    private handleRegComplete(message: IrcMessage) {
+        if (!this.connectionRegComplete) {
+            this.connectionRegComplete = true;
+            this.emit('connected');
+        }
+    }
+
+    public connect(netConnectionOptions?: net.NetConnectOpts, tlsConnectionOptions?: tls.ConnectionOptions, serverPassword?: string): void {
         this.serverPassword = serverPassword;
 
         if (netConnectionOptions && tlsConnectionOptions) {
@@ -65,8 +101,6 @@ export class IrcClient extends EventEmitter {
         }
         this.send('', 'NICK', this.nick);
         this.send('', 'USER', this.ident, '0', '*', this.realname);
-        this.emit('connected');
-        this.send('', 'QUIT');
     }
 
     private socketData(input: Buffer|string): void {
@@ -88,8 +122,9 @@ export class IrcClient extends EventEmitter {
                 this.rawLog += `<-  ${msgString}\n`;
             }
             // const message = ParseIrcMessage(msgString);
+            console.log(msgString);
             const message = ParseIrcMessage(msgString);
-            this.emit(`irc ${message.verb}`, message);
+            this.emit(`irc ${message.verb.toLowerCase()}`, message);
         });
     }
 
