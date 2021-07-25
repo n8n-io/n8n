@@ -39,6 +39,7 @@ export class IrcClient extends EventEmitter {
 		this.on('irc 005', this.handleIsupport);
 		this.on('irc 376', this.handleRegComplete);
 		this.on('irc 422', this.handleRegComplete);
+		this.on('irc 432', this.handleBadNick);
 	}
 
 	private handlePing(message: IrcMessage) {
@@ -70,6 +71,12 @@ export class IrcClient extends EventEmitter {
 			this.connectionRegComplete = true;
 			this.emit('connected');
 		}
+	}
+
+	private handleBadNick(message: IrcMessage) {
+		// we treat this as unrecoverable
+		this.errorMessage = `nickname is not valid: ${message.params[message.params.length-1]}`;
+		this.send('', 'QUIT');
 	}
 
 	connect(netConnectionOptions?: net.NetConnectOpts, tlsConnectionOptions?: tls.ConnectionOptions, serverPassword?: string): void {
