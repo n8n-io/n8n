@@ -1,4 +1,5 @@
 // created from https://raw.githubusercontent.com/ircdocs/parser-tests/master/tests/msg-join.yaml
+// used under CC0 Public Domain
 exports.JoinTests = {
   "tests": [
     {
@@ -254,6 +255,7 @@ exports.JoinTests = {
 }
 
 // created from https://raw.githubusercontent.com/ircdocs/parser-tests/master/tests/msg-split.yaml
+// used under CC0 Public Domain
 exports.SplitTests = {
   "tests": [
     {
