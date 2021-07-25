@@ -38,8 +38,10 @@ export class IrcClient extends EventEmitter {
 		this.on('irc 001', this.handleWelcome);
 		this.on('irc 005', this.handleIsupport);
 		this.on('irc 376', this.handleRegComplete);
+		this.on('irc 404', this.handleCannotSendMessage);
 		this.on('irc 422', this.handleRegComplete);
 		this.on('irc 432', this.handleBadNick);
+		this.on('irc 475', this.handleCannotJoinChannel);
 	}
 
 	private handlePing(message: IrcMessage) {
@@ -73,10 +75,18 @@ export class IrcClient extends EventEmitter {
 		}
 	}
 
+	private handleCannotSendMessage(message: IrcMessage) {
+		this.errorMessage = `could not send message: ${message.params[message.params.length-1]}`;
+	}
+
 	private handleBadNick(message: IrcMessage) {
 		// we treat this as unrecoverable
 		this.errorMessage = `nickname is not valid: ${message.params[message.params.length-1]}`;
 		this.send('', 'QUIT');
+	}
+
+	private handleCannotJoinChannel(message: IrcMessage) {
+		this.errorMessage = `could not join channel: ${message.params[message.params.length-1]}`;
 	}
 
 	connect(netConnectionOptions?: net.NetConnectOpts, tlsConnectionOptions?: tls.ConnectionOptions, serverPassword?: string): void {
