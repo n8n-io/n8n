@@ -48,6 +48,76 @@ export class IrcClient extends EventEmitter {
 		this.on('irc 475', this.handleCannotJoinChannel);
 	}
 
+	connect(netConnectionOptions?: net.NetConnectOpts, tlsConnectionOptions?: tls.ConnectionOptions, serverPassword?: string): void {
+		this.serverPassword = serverPassword;
+
+		if (netConnectionOptions && tlsConnectionOptions) {
+			throw new Error('You can only send either netConnectionOptions or tlsConnectionOptions, not both');
+		} else if (tlsConnectionOptions) {
+			this.socket = tls.connect(tlsConnectionOptions, () => {
+				this.socketConnected();
+			});
+			this.usingTLS = true;
+		} else if (netConnectionOptions) {
+			this.socket = net.connect(netConnectionOptions, () => {
+				this.socketConnected();
+			});
+		} else {
+			throw new Error('You must send either netConnectionOptions or tlsConnectionOptions');
+		}
+		this.socket.setEncoding('utf8');
+		this.socket.on('data', this.socketData.bind(this));
+		this.socket.on('close', this.socketClosed.bind(this));
+		this.socket.on('error', this.socketError.bind(this));
+	}
+
+	//
+	// socket handlers
+	//
+	private socketConnected(): void {
+		if (this.serverPassword) {
+			this.sendLine(`PASS :${this.serverPassword}`);
+		}
+		this.send('', 'NICK', this.nick);
+		this.send('', 'USER', this.ident, '0', '*', this.realname);
+	}
+
+	private socketData(input: Buffer|string): void {
+		if (input instanceof Buffer) {
+			// sometimes we can get an early empty buffer if we don't
+			//  set the encoding in time
+			input = input.toString();
+		}
+		this.bufferedData += input;
+
+		// empty the buffer
+		const messages = this.bufferedData.split('\n');
+
+		this.bufferedData = messages.pop()!;
+
+		messages.forEach(msgString => {
+			msgString = msgString.replace(/\r/g, '');
+			if (this.saveRawLogs) {
+				this.rawLog += `<-  ${msgString}\n`;
+			}
+			// const message = ParseIrcMessage(msgString);
+			console.log(msgString);
+			const message = ParseIrcMessage(msgString);
+			this.emit(`irc ${message.verb.toLowerCase()}`, message);
+		});
+	}
+
+	private socketClosed(hadError: boolean): void {
+		this.emit('closed', hadError);
+	}
+
+	private socketError(err: Error): void {
+		this.errorMessage = `socket error: ${err.message}`;
+	}
+
+	//
+	// irc message handlers
+	//
 	private handlePing(message: IrcMessage) {
 		this.send('', 'PONG', ...message.params);
 	}
@@ -109,74 +179,9 @@ export class IrcClient extends EventEmitter {
 		this.errorMessage = `could not join channel: ${message.finalParam()}`;
 	}
 
-	connect(netConnectionOptions?: net.NetConnectOpts, tlsConnectionOptions?: tls.ConnectionOptions, serverPassword?: string): void {
-		this.serverPassword = serverPassword;
-
-		if (netConnectionOptions && tlsConnectionOptions) {
-			throw new Error('You can only send either netConnectionOptions or tlsConnectionOptions, not both');
-		} else if (tlsConnectionOptions) {
-			this.socket = tls.connect(tlsConnectionOptions, () => {
-				this.socketConnected();
-			});
-			this.usingTLS = true;
-		} else if (netConnectionOptions) {
-			this.socket = net.connect(netConnectionOptions, () => {
-				this.socketConnected();
-			});
-		} else {
-			throw new Error('You must send either netConnectionOptions or tlsConnectionOptions');
-		}
-		this.socket.setEncoding('utf8');
-		this.socket.on('data', this.socketData.bind(this));
-		this.socket.on('close', this.socketClosed.bind(this));
-		this.socket.on('error', this.socketError.bind(this));
-	}
-
-	private socketConnected(): void {
-		if (this.serverPassword) {
-			this.sendLine(`PASS :${this.serverPassword}`);
-		}
-		this.send('', 'NICK', this.nick);
-		this.send('', 'USER', this.ident, '0', '*', this.realname);
-	}
-
-	private socketData(input: Buffer|string): void {
-		if (input instanceof Buffer) {
-			// sometimes we can get an early empty buffer if we don't
-			//  set the encoding in time
-			input = input.toString();
-		}
-		this.bufferedData += input;
-
-		// empty the buffer
-		const messages = this.bufferedData.split('\n');
-
-		this.bufferedData = messages.pop()!;
-
-		messages.forEach(msgString => {
-			msgString = msgString.replace(/\r/g, '');
-			if (this.saveRawLogs) {
-				this.rawLog += `<-  ${msgString}\n`;
-			}
-			// const message = ParseIrcMessage(msgString);
-			console.log(msgString);
-			const message = ParseIrcMessage(msgString);
-			this.emit(`irc ${message.verb.toLowerCase()}`, message);
-		});
-	}
-
-	private socketClosed(hadError: boolean): void {
-		this.emit('closed', hadError);
-	}
-
-	private socketError(err: Error): void {
-		this.errorMessage = `socket error: ${err.message}`;
-	}
-
-	send(prefix: string, verb: string, ...params: string[]): void {
-		this.sendLine(new IrcMessage(prefix, verb, params).toString());
-	}
-
+	//
+	// utility functions
+	//
 	private sendLine(input: string): void {
 		if (this.socket === undefined) {
 			return;
@@ -186,6 +191,10 @@ export class IrcClient extends EventEmitter {
 		if (this.saveRawLogs) {
 			this.rawLog += ` -> ${input}\n`;
 		}
+	}
+
+	send(prefix: string, verb: string, ...params: string[]): void {
+		this.sendLine(new IrcMessage(prefix, verb, params).toString());
 	}
 
 	statusInfo() {
