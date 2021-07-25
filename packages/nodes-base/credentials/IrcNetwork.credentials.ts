@@ -35,10 +35,22 @@ export class IrcNetwork implements ICredentialType {
             description: 'Nickname to use on the IRC network.'
         },
         {
-            displayName: 'Login with SASL',
-            name: 'sasl',
-            type: 'boolean',
-            default: false,
+            displayName: 'Account Login',
+            name: 'saslType',
+            type: 'options',
+            options: [
+                {
+                    name: 'None',
+                    value: 'none',
+                    description: "Don't try to login to an account",
+                },
+                {
+                    name: 'SASL PLAIN',
+                    value: 'plain',
+                    description: 'Login with username and password.',
+                },
+            ],
+            default: 'none',
             description: 'Login to an account (a NickServ account, using SASL PLAIN).',
         },
         {
@@ -48,12 +60,12 @@ export class IrcNetwork implements ICredentialType {
             default: true,
             description: "Require successful SASL login to connect to the network.",
             displayOptions: {
-                show: {
-                    'sasl': [
-                        true
+                hide: {
+                    'saslType': [
+                        'none',
                     ],
-                }
-            }
+                },
+            },
         },
         {
             displayName: 'Account Name',
@@ -63,8 +75,8 @@ export class IrcNetwork implements ICredentialType {
             default: '',
             displayOptions: {
                 show: {
-                    'sasl': [
-                        true
+                    'saslType': [
+                        'plain',
                     ],
                 }
             }
@@ -80,8 +92,8 @@ export class IrcNetwork implements ICredentialType {
             },
             displayOptions: {
                 show: {
-                    'sasl': [
-                        true
+                    'saslType': [
+                        'plain',
                     ],
                 }
             }
