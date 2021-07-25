@@ -38,6 +38,8 @@ export class IrcClient extends EventEmitter {
 		this.on('irc 001', this.handleWelcome);
 		this.on('irc 005', this.handleIsupport);
 		this.on('irc 376', this.handleRegComplete);
+		this.on('irc 401', this.handleCannotSendMessage);
+		this.on('irc 403', this.handleCannotJoinChannel);
 		this.on('irc 404', this.handleCannotSendMessage);
 		this.on('irc 422', this.handleRegComplete);
 		this.on('irc 432', this.handleBadNick);
@@ -76,7 +78,11 @@ export class IrcClient extends EventEmitter {
 	}
 
 	private handleCannotSendMessage(message: IrcMessage) {
-		this.errorMessage = `could not send message: ${message.finalParam()}`;
+		// earlier error message is usually the one to focus on,
+		//  so don't overwrite it
+		if (!this.errorMessage) {
+			this.errorMessage = `could not send message: ${message.finalParam()}`;
+		}
 	}
 
 	private handleBadNick(message: IrcMessage) {
