@@ -199,6 +199,9 @@ export class Irc implements INodeType {
 					channelKey = EnsureIrcParam(channelKey);
 				}
 
+				// this will be output at the end
+				const sentLines: string[] = [];
+
 				// connect
 				if (credentials.tls as boolean) {
 					const tlsConnectionOptions = {
@@ -238,6 +241,7 @@ export class Irc implements INodeType {
 							subLines.push(line);
 
 							subLines.forEach(subLine => {
+								sentLines.push(subLine);
 								if (messageType === 'action') {
 									subLine = `\x01ACTION ${subLine}\x01`;
 								}
@@ -261,6 +265,7 @@ export class Irc implements INodeType {
 				}
 				outputInfo.nick = client.nick;
 				outputInfo.timesNickWasInUse = client.timesNickWasInUse;
+				outputInfo.sentLines = sentLines;
 			}
 		}
 
