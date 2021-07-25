@@ -268,13 +268,13 @@ export class Irc implements INodeType {
 					throw new IrcError(statusInfo.error, statusInfo);
 				}
 
+				outputInfo.account = client.account;
+				outputInfo.nick = client.nick;
+				outputInfo.sentLines = sentLines;
+				outputInfo.timesNickWasInUse = client.timesNickWasInUse;
 				if (outputRawLogs) {
 					outputInfo.log = statusInfo.log;
 				}
-				outputInfo.account = client.account;
-				outputInfo.nick = client.nick;
-				outputInfo.timesNickWasInUse = client.timesNickWasInUse;
-				outputInfo.sentLines = sentLines;
 			}
 		}
 
