@@ -17,6 +17,7 @@ export class IrcClient extends EventEmitter {
 	private bufferedData = '';
 	private rawLog = '';
 	private errorMessage = '';
+	private nickInUseTries = 0;
 	connectionRegComplete = false;
 
 	constructor(
@@ -43,6 +44,7 @@ export class IrcClient extends EventEmitter {
 		this.on('irc 404', this.handleCannotSendMessage);
 		this.on('irc 422', this.handleRegComplete);
 		this.on('irc 432', this.handleBadNick);
+		this.on('irc 433', this.handleNickInUse);
 		this.on('irc 475', this.handleCannotJoinChannel);
 	}
 
@@ -89,6 +91,18 @@ export class IrcClient extends EventEmitter {
 		// we treat this as unrecoverable
 		this.errorMessage = `nickname is not valid: ${message.finalParam()}`;
 		this.send('', 'QUIT');
+	}
+
+	private handleNickInUse(message: IrcMessage) {
+		if (!this.connectionRegComplete) {
+			this.nickInUseTries += 1;
+			if (this.nickInUseTries > 5) {
+				this.errorMessage = 'nick was in use';
+				this.send('', 'QUIT');
+				return;
+			}
+			this.send('', 'NICK', message.params[1]+'_');
+		}
 	}
 
 	private handleCannotJoinChannel(message: IrcMessage) {
