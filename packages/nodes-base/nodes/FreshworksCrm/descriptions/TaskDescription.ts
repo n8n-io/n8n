@@ -340,6 +340,14 @@ export const taskFields = [
 				description: 'ID of the user who created the sales activity',
 			},
 			{
+				displayName: 'Due Date',
+				name: 'dueDate',
+				description: 'Timestamp that denotes when the task is due to be completed',
+				type: 'dateTime',
+				required: true,
+				default: '',
+			},
+			{
 				displayName: 'Outcome ID',
 				name: 'outcome_id',
 				type: 'options',

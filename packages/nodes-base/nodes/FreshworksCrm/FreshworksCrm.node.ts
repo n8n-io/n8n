@@ -47,6 +47,10 @@ import {
 	tz,
 } from 'moment-timezone';
 
+import {
+	DATETIME_FORMAT
+} from './constants';
+
 export class FreshworksCrm implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Freshworks CRM',
@@ -343,12 +347,10 @@ export class FreshworksCrm implements INodeType {
 
 						const timezone = additionalFields.time_zone ?? defaultTimezone;
 
-						const format = 'ddd MMM DD YYYY HH:mm:ss ZZ';
-
 						const body = {
 							title: this.getNodeParameter('title', i),
-							from_date: tz(startDate, timezone).format(format),
-							end_date: tz(endDate, timezone).format(format),
+							from_date: tz(startDate, timezone).format(DATETIME_FORMAT),
+							end_date: tz(endDate, timezone).format(DATETIME_FORMAT),
 						} as IDataObject;
 
 						if (Object.keys(additionalFields).length) {
@@ -419,14 +421,12 @@ export class FreshworksCrm implements INodeType {
 
 						const timezone = rest.time_zone ?? defaultTimezone;
 
-						const format = 'ddd MMM DD YYYY HH:mm:ss ZZ';
-
 						if (from_date) {
-							body.from_date = tz(from_date, timezone).format(format);
+							body.from_date = tz(from_date, timezone).format(DATETIME_FORMAT);
 						}
 
 						if (end_date) {
-							body.end_date = tz(end_date, timezone).format(format);
+							body.end_date = tz(end_date, timezone).format(DATETIME_FORMAT);
 						}
 
 						if (Object.keys(rest).length) {
@@ -708,14 +708,12 @@ export class FreshworksCrm implements INodeType {
 						const startDate = this.getNodeParameter('from_date', i) as string;
 						const endDate = this.getNodeParameter('end_date', i) as string;
 
-						const format = 'ddd MMM DD YYYY HH:mm:ss ZZ';
-
 						const body = {
 							sales_activity_type_id: this.getNodeParameter('sales_activity_type_id', i),
 							title: this.getNodeParameter('title', i),
 							owner_id: this.getNodeParameter('ownerId', i),
-							start_date: tz(startDate, defaultTimezone).format(format),
-							end_date: tz(endDate, defaultTimezone).format(format),
+							start_date: tz(startDate, defaultTimezone).format(DATETIME_FORMAT),
+							end_date: tz(endDate, defaultTimezone).format(DATETIME_FORMAT),
 							targetable_type: this.getNodeParameter('targetableType', i),
 							targetable_id: this.getNodeParameter('targetable_id', i),
 						} as IDataObject;
@@ -788,14 +786,12 @@ export class FreshworksCrm implements INodeType {
 						const body = {} as IDataObject;
 						const { from_date, end_date, ...rest } = updateFields;
 
-						const format = 'ddd MMM DD YYYY HH:mm:ss ZZ';
-
 						if (from_date) {
-							body.from_date = tz(from_date, defaultTimezone).format(format);
+							body.from_date = tz(from_date, defaultTimezone).format(DATETIME_FORMAT);
 						}
 
 						if (end_date) {
-							body.end_date = tz(end_date, defaultTimezone).format(format);
+							body.end_date = tz(end_date, defaultTimezone).format(DATETIME_FORMAT);
 						}
 
 						if (Object.keys(rest).length) {
@@ -826,10 +822,12 @@ export class FreshworksCrm implements INodeType {
 
 						// https://developers.freshworks.com/crm/api/#create_task
 
+						const dueDate = this.getNodeParameter('dueDate', i);
+
 						const body = {
 							title: this.getNodeParameter('title', i),
 							owner_id: this.getNodeParameter('ownerId', i),
-							due_date: this.getNodeParameter('dueDate', i),
+							due_date: tz(dueDate, defaultTimezone).format(DATETIME_FORMAT),
 							targetable_type: this.getNodeParameter('targetableType', i),
 							targetable_id: this.getNodeParameter('targetable_id', i),
 						} as IDataObject;
@@ -896,10 +894,18 @@ export class FreshworksCrm implements INodeType {
 						const body = {} as IDataObject;
 						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
 
-						if (Object.keys(updateFields).length) {
-							Object.assign(body, updateFields);
-						} else {
+						if (!Object.keys(updateFields).length) {
 							throwOnEmptyUpdate.call(this, resource);
+						}
+
+						const { dueDate, ...rest } = updateFields;
+
+						if (dueDate) {
+							body.due_date = tz(dueDate, defaultTimezone).format(DATETIME_FORMAT);
+						}
+
+						if (Object.keys(rest).length) {
+							Object.assign(body, rest);
 						}
 
 						const taskId = this.getNodeParameter('taskId', i);
