@@ -110,7 +110,7 @@ export const salesActivityFields = [
 	},
 	{
 		displayName: 'Start Date',
-		name: 'startDate',
+		name: 'from_date',
 		description: 'Timestamp that denotes the end of sales activity',
 		type: 'dateTime',
 		required: true,
@@ -128,7 +128,7 @@ export const salesActivityFields = [
 	},
 	{
 		displayName: 'End Date',
-		name: 'endDate',
+		name: 'end_date',
 		description: 'Timestamp that denotes the end of sales activity',
 		type: 'dateTime',
 		required: true,
@@ -399,6 +399,12 @@ export const salesActivityFields = [
 				description: 'ID of the user who created the sales activity',
 			},
 			{
+				displayName: 'Start Date',
+				name: 'end_date',
+				description: 'Timestamp that denotes the start of the sales activity',
+				type: 'dateTime',
+			},
+			{
 				displayName: 'Latitude',
 				name: 'latitude',
 				type: 'string',
@@ -455,6 +461,12 @@ export const salesActivityFields = [
 					loadOptionsMethod: 'getSalesActivityTypes',
 				},
 				description: 'ID of a sales activity type for which the sales activity is updated',
+			},
+			{
+				displayName: 'Start Date',
+				name: 'from_date',
+				description: 'Timestamp that denotes the start of the sales activity',
+				type: 'dateTime',
 			},
 			{
 				displayName: 'Targetable ID',

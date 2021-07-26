@@ -705,12 +705,17 @@ export class FreshworksCrm implements INodeType {
 
 						// https://developers.freshworks.com/crm/api/#create_sales_activity
 
+						const startDate = this.getNodeParameter('from_date', i) as string;
+						const endDate = this.getNodeParameter('end_date', i) as string;
+
+						const format = 'ddd MMM DD YYYY HH:mm:ss ZZ';
+
 						const body = {
 							sales_activity_type_id: this.getNodeParameter('sales_activity_type_id', i),
 							title: this.getNodeParameter('title', i),
 							owner_id: this.getNodeParameter('ownerId', i),
-							start_date: this.getNodeParameter('startDate', i),
-							end_date: this.getNodeParameter('endDate', i),
+							start_date: tz(startDate, defaultTimezone).format(format),
+							end_date: tz(endDate, defaultTimezone).format(format),
 							targetable_type: this.getNodeParameter('targetableType', i),
 							targetable_id: this.getNodeParameter('targetable_id', i),
 						} as IDataObject;
@@ -770,13 +775,31 @@ export class FreshworksCrm implements INodeType {
 
 						// https://developers.freshworks.com/crm/api/#update_a_sales_activity
 
-						const body = {} as IDataObject;
-						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject & {
+							from_date: string;
+							end_date: string;
+							time_zone: string;
+						};
 
-						if (Object.keys(updateFields).length) {
-							Object.assign(body, updateFields);
-						} else {
+						if (!Object.keys(updateFields).length) {
 							throwOnEmptyUpdate.call(this, resource);
+						}
+
+						const body = {} as IDataObject;
+						const { from_date, end_date, ...rest } = updateFields;
+
+						const format = 'ddd MMM DD YYYY HH:mm:ss ZZ';
+
+						if (from_date) {
+							body.from_date = tz(from_date, defaultTimezone).format(format);
+						}
+
+						if (end_date) {
+							body.end_date = tz(end_date, defaultTimezone).format(format);
+						}
+
+						if (Object.keys(rest).length) {
+							Object.assign(body, rest);
 						}
 
 						const salesActivityId = this.getNodeParameter('salesActivityId', i);
