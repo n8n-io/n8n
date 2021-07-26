@@ -119,6 +119,7 @@ export interface ICredentialsBase {
 
 export interface ICredentialsDb extends ICredentialsBase, ICredentialsEncrypted {
 	id: number | string;
+	name: string;
 }
 
 export interface ICredentialsResponse extends ICredentialsDb {
