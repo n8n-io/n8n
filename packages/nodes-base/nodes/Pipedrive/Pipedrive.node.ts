@@ -1505,6 +1505,95 @@ export class Pipedrive implements INodeType {
 				},
 				description: 'The ID of the product to add to a deal',
 			},
+			{
+				displayName: 'Item Price',
+				name: 'item_price',
+				type: 'number',
+				typeOptions: {
+					numberPrecision: 2,
+				},
+				default: 0.00,
+				required: true,
+				description: 'Price at which to add or update this product in a deal',
+				displayOptions: {
+					show: {
+						operation: [
+							'add',
+						],
+						resource: [
+							'dealProduct',
+						],
+					},
+				},
+			},
+			{
+				displayName: 'Quantity',
+				name: 'quantity',
+				type: 'number',
+				default: 1,
+				typeOptions: {
+					minValue: 1,
+				},
+				required: true,
+				description: 'How many items of this product to add/update in a deal',
+				displayOptions: {
+					show: {
+						operation: [
+							'add',
+						],
+						resource: [
+							'dealProduct',
+						],
+					},
+				},
+			},
+			{
+				displayName: 'Additional Fields',
+				name: 'additionalFields',
+				type: 'collection',
+				placeholder: 'Add Field',
+				displayOptions: {
+					show: {
+						operation: [
+							'add',
+						],
+						resource: [
+							'dealProduct',
+						],
+					},
+				},
+				default: {},
+				options: [
+					{
+						displayName: 'Comments',
+						name: 'comments',
+						type: 'string',
+						typeOptions: {
+							rows: 4,
+						},
+						default: '',
+						description: 'Text to describe this product-deal attachment',
+					},
+					{
+						displayName: 'Discount Percentage',
+						name: 'discount_percentage',
+						type: 'number',
+						default: 0,
+						typeOptions: {
+							minValue: 0,
+							maxValue: 100,
+						},
+						description: 'Percentage of discount to apply',
+					},
+					{
+						displayName: 'Product Variation ID',
+						name: 'product_variation_id',
+						type: 'string',
+						default: '',
+						description: 'ID of the product variation to use',
+					},
+				],
+			},
 			// ----------------------------------
 			//        dealProduct:update
 			// ----------------------------------
@@ -1553,62 +1642,14 @@ export class Pipedrive implements INodeType {
 				},
 				description: 'The ID of the product to update in a deal',
 			},
-			// ----------------------------------------
-			//         dealProduct:add/update
-			// ----------------------------------------
 			{
-				displayName: 'Item Price',
-				name: 'item_price',
-				type: 'number',
-				typeOptions: {
-					numberPrecision: 2,
-				},
-				default: 0.00,
-				required: true,
-				displayOptions: {
-					show: {
-						operation: [
-							'add',
-							'update',
-						],
-						resource: [
-							'dealProduct',
-						],
-					},
-				},
-				description: 'Price at which to add or update this product in a deal',
-			},
-			{
-				displayName: 'Quantity',
-				name: 'quantity',
-				type: 'number',
-				default: 1,
-				typeOptions: {
-					minValue: 1,
-				},
-				required: true,
-				displayOptions: {
-					show: {
-						operation: [
-							'add',
-							'update',
-						],
-						resource: [
-							'dealProduct',
-						],
-					},
-				},
-				description: 'How many items of this product to add/update in a deal',
-			},
-			{
-				displayName: 'Additional Fields',
-				name: 'additionalFields',
+				displayName: 'Update Fields',
+				name: 'updateFields',
 				type: 'collection',
 				placeholder: 'Add Field',
 				displayOptions: {
 					show: {
 						operation: [
-							'add',
 							'update',
 						],
 						resource: [
@@ -1638,6 +1679,28 @@ export class Pipedrive implements INodeType {
 							maxValue: 100,
 						},
 						description: 'Percentage of discount to apply',
+					},
+					{
+						displayName: 'Item Price',
+						name: 'item_price',
+						type: 'number',
+						typeOptions: {
+							numberPrecision: 2,
+						},
+						default: 0.00,
+						required: true,
+						description: 'Price at which to add or update this product in a deal',
+					},
+					{
+						displayName: 'Quantity',
+						name: 'quantity',
+						type: 'number',
+						default: 1,
+						typeOptions: {
+							minValue: 1,
+						},
+						required: true,
+						description: 'How many items of this product to add/update in a deal',
 					},
 					{
 						displayName: 'Product Variation ID',
@@ -4183,10 +4246,8 @@ export class Pipedrive implements INodeType {
 
 						endpoint = `/deals/${dealId}/products/${productId}`;
 
-						body.item_price = this.getNodeParameter('item_price', i) as string;
-						body.quantity = this.getNodeParameter('quantity', i) as string;
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
-						addAdditionalFields(body, additionalFields);
+						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+						addAdditionalFields(body, updateFields);
 					}
 
 				} else if (resource === 'file') {
