@@ -585,11 +585,11 @@ class App {
 
 
 		this.app.get(`/${this.restEndpoint}/workflows/new`, ResponseHelper.send(async (req: NameRequest, res: express.Response): Promise<{ name: string }> => {
-			const name = req.query.name && req.query.name !== "''"
+			const requestedName = req.query.name && req.query.name !== ''
 				? req.query.name
 				: this.defaultWorkflowName;
 
-			return await GenericHelpers.generateUniqueName(name, 'workflow');
+			return await GenericHelpers.generateUniqueName(requestedName, 'workflow');
 		}));
 
 
@@ -967,11 +967,11 @@ class App {
 		// ----------------------------------------
 
 		this.app.get(`/${this.restEndpoint}/credentials/new`, ResponseHelper.send(async (req: NameRequest, res: express.Response): Promise<{ name: string }> => {
-			const name = req.query.name && req.query.name !== ''
+			const requestedName = req.query.name && req.query.name !== ''
 				? req.query.name
 				: this.defaultCredentialsName;
 
-			return await GenericHelpers.generateUniqueName(name, 'credentials');
+			return await GenericHelpers.generateUniqueName(requestedName, 'credentials');
 		}));
 
 		// Deletes a specific credential
