@@ -344,7 +344,6 @@ export const taskFields = [
 				name: 'dueDate',
 				description: 'Timestamp that denotes when the task is due to be completed',
 				type: 'dateTime',
-				required: true,
 				default: '',
 			},
 			{
