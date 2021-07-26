@@ -17,6 +17,7 @@ import {
 	getAllItemsViewId,
 	handleListing,
 	loadResource,
+	throwOnEmptyFilter,
 	throwOnEmptyUpdate,
 } from './GenericFunctions';
 
@@ -135,6 +136,12 @@ export class FreshworksCrm implements INodeType {
 				return responseData.map(({ name, id }) => ({ name, value: id })) as LoadOption[];
 			},
 
+			async getAccountViews(this: ILoadOptionsFunctions) {
+				const responseData = await handleListing.call(this, 'GET', '/sales_accounts/filters');
+
+				return responseData.map(({ name, id }) => ({ name, value: id })) as LoadOption[];
+			},
+
 			async getBusinessTypes(this: ILoadOptionsFunctions) {
 				return await loadResource.call(this, 'business_types');
 			},
@@ -145,6 +152,12 @@ export class FreshworksCrm implements INodeType {
 
 			async getContactStatuses(this: ILoadOptionsFunctions) {
 				return await loadResource.call(this, 'contact_statuses');
+			},
+
+			async getContactViews(this: ILoadOptionsFunctions) {
+				const responseData = await handleListing.call(this, 'GET', '/contacts/filters');
+
+				return responseData.map(({ name, id }) => ({ name, value: id })) as LoadOption[];
 			},
 
 			async getCurrencies(this: ILoadOptionsFunctions) {
@@ -179,6 +192,12 @@ export class FreshworksCrm implements INodeType {
 
 			async getDealTypes(this: ILoadOptionsFunctions) {
 				return await loadResource.call(this, 'deal_types');
+			},
+
+			async getDealViews(this: ILoadOptionsFunctions) {
+				const responseData = await handleListing.call(this, 'GET', '/deals/filters');
+
+				return responseData.map(({ name, id }) => ({ name, value: id })) as LoadOption[];
 			},
 
 			async getIndustryTypes(this: ILoadOptionsFunctions) {
@@ -294,8 +313,13 @@ export class FreshworksCrm implements INodeType {
 
 						// https://developers.freshworks.com/crm/api/#list_all_accounts
 
-						const viewId = await getAllItemsViewId.call(this);
-						responseData = await handleListing.call(this, 'GET', `/sales_accounts/view/${viewId}`);
+						const filters = this.getNodeParameter('filters', i) as { view: number };
+
+						if (filters.view === undefined) {
+							throwOnEmptyFilter.call(this);
+						}
+
+						responseData = await handleListing.call(this, 'GET', `/sales_accounts/view/${filters.view}`);
 
 					} else if (operation === 'update') {
 
@@ -396,7 +420,22 @@ export class FreshworksCrm implements INodeType {
 
 						// https://developers.freshworks.com/crm/api/#list_all_appointments
 
-						responseData = await handleListing.call(this, 'GET', '/appointments');
+						const { filter, include } = this.getNodeParameter('filters', i) as {
+							filter: string;
+							include: string;
+						};
+
+						const qs: IDataObject = {};
+
+						if (filter) {
+							qs.filter = filter;
+						}
+
+						if (include) {
+							qs.include = include;
+						}
+
+						responseData = await handleListing.call(this, 'GET', '/appointments', {}, qs);
 
 					} else if (operation === 'update') {
 
@@ -508,8 +547,13 @@ export class FreshworksCrm implements INodeType {
 
 						// https://developers.freshworks.com/crm/api/#list_all_contacts
 
-						const viewId = await getAllItemsViewId.call(this);
-						responseData = await handleListing.call(this, 'GET', `/contacts/view/${viewId}`);
+						const filters = this.getNodeParameter('filters', i) as { view: number };
+
+						if (filters.view === undefined) {
+							throwOnEmptyFilter.call(this);
+						}
+
+						responseData = await handleListing.call(this, 'GET', `/contacts/view/${filters.view}`);
 
 					} else if (operation === 'update') {
 
@@ -600,8 +644,13 @@ export class FreshworksCrm implements INodeType {
 
 						// https://developers.freshworks.com/crm/api/#list_all_deals
 
-						const viewId = await getAllItemsViewId.call(this);
-						responseData = await handleListing.call(this, 'GET', `/deals/view/${viewId}`);
+						const filters = this.getNodeParameter('filters', i) as { view: number };
+
+						if (filters.view === undefined) {
+							throwOnEmptyFilter.call(this);
+						}
+
+						responseData = await handleListing.call(this, 'GET', `/deals/view/${filters.view}`);
 
 					} else if (operation === 'update') {
 
@@ -875,13 +924,22 @@ export class FreshworksCrm implements INodeType {
 
 						// https://developers.freshworks.com/crm/api/#list_all_tasks
 
-						responseData = [];
-						const taskFilters = ['open', 'due_today', 'due_tomorrow', 'overdue', 'completed'];
+						const { filter, include } = this.getNodeParameter('filters', i) as {
+							filter: string;
+							include: string;
+						};
 
-						for (const filter of taskFilters) {
-							const tasks = await handleListing.call(this, 'GET', '/tasks', {}, { filter });
-							responseData.push(...tasks);
+						const qs: IDataObject = {};
+
+						if (filter) {
+							qs.filter = filter;
 						}
+
+						if (include) {
+							qs.include = include;
+						}
+
+						responseData = await handleListing.call(this, 'GET', '/tasks', {}, qs);
 
 					} else if (operation === 'update') {
 

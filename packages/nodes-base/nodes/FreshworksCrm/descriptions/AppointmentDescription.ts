@@ -307,6 +307,60 @@ export const appointmentFields = [
 			},
 		},
 	},
+	{
+		displayName: 'Filters',
+		name: 'filters',
+		type: 'collection',
+		default: false,
+		displayOptions: {
+			show: {
+				resource: [
+					'appointment',
+				],
+				operation: [
+					'getAll',
+				],
+			},
+		},
+		options: [
+			{
+				displayName: 'Include',
+				name: 'include',
+				type: 'options',
+				default: 'creater',
+				options: [
+					{
+						name: 'Appointment Attendees',
+						value: 'appointment_attendees',
+					},
+					{
+						name: 'Creator',
+						value: 'creater',
+					},
+					{
+						name: 'Targetable',
+						value: 'targetable',
+					},
+				],
+			},
+			{
+				displayName: 'Time',
+				name: 'filter',
+				type: 'options',
+				default: 'upcoming',
+				options: [
+					{
+						name: 'Past',
+						value: 'past',
+					},
+					{
+						name: 'Upcoming',
+						value: 'upcoming',
+					},
+				],
+			},
+		],
+	},
 
 	// ----------------------------------------
 	//           appointment: update

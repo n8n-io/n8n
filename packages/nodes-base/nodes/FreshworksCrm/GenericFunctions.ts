@@ -190,3 +190,12 @@ export function throwOnEmptyUpdate(
 		`Please enter at least one field to update for the ${resource}.`,
 	);
 }
+
+export function throwOnEmptyFilter(
+	this: IExecuteFunctions,
+) {
+	throw new NodeOperationError(
+		this.getNode(),
+		`Please select at least one filter.`,
+	);
+}

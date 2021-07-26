@@ -290,6 +290,72 @@ export const taskFields = [
 			},
 		},
 	},
+	{
+		displayName: 'Filters',
+		name: 'filters',
+		type: 'collection',
+		default: false,
+		displayOptions: {
+			show: {
+				resource: [
+					'task',
+				],
+				operation: [
+					'getAll',
+				],
+			},
+		},
+		options: [
+			{
+				displayName: 'Include',
+				name: 'include',
+				type: 'options',
+				default: 'owner',
+				options: [
+					{
+						name: 'Owner',
+						value: 'owner',
+					},
+					{
+						name: 'Targetable',
+						value: 'targetable',
+					},
+					{
+						name: 'Users',
+						value: 'users',
+					},
+				],
+			},
+			{
+				displayName: 'Status',
+				name: 'filter',
+				type: 'options',
+				default: 'open',
+				options: [
+					{
+						name: 'Completed',
+						value: 'completed',
+					},
+					{
+						name: 'Due Today',
+						value: 'due_today',
+					},
+					{
+						name: 'Due Tomorrow',
+						value: 'due_tomorrow',
+					},
+					{
+						name: 'Open',
+						value: 'open',
+					},
+					{
+						name: 'Overdue',
+						value: 'overdue',
+					},
+				],
+			},
+		],
+	},
 
 	// ----------------------------------------
 	//               task: update

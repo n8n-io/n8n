@@ -305,6 +305,33 @@ export const accountFields = [
 			},
 		},
 	},
+	{
+		displayName: 'Filters',
+		name: 'filters',
+		type: 'collection',
+		default: false,
+		displayOptions: {
+			show: {
+				resource: [
+					'account',
+				],
+				operation: [
+					'getAll',
+				],
+			},
+		},
+		options: [
+			{
+				displayName: 'View',
+				name: 'view',
+				type: 'options',
+				typeOptions: {
+					loadOptionsMethod: 'getAccountViews',
+				},
+				default: '',
+			},
+		],
+	},
 
 	// ----------------------------------------
 	//             account: update

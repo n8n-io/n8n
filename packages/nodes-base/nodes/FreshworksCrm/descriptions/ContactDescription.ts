@@ -396,6 +396,33 @@ export const contactFields = [
 			},
 		},
 	},
+	{
+		displayName: 'Filters',
+		name: 'filters',
+		type: 'collection',
+		default: false,
+		displayOptions: {
+			show: {
+				resource: [
+					'contact',
+				],
+				operation: [
+					'getAll',
+				],
+			},
+		},
+		options: [
+			{
+				displayName: 'View',
+				name: 'view',
+				type: 'options',
+				typeOptions: {
+					loadOptionsMethod: 'getContactViews',
+				},
+				default: '',
+			},
+		],
+	},
 
 	// ----------------------------------------
 	//             contact: update

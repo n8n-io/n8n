@@ -327,6 +327,33 @@ export const dealFields = [
 			},
 		},
 	},
+	{
+		displayName: 'Filters',
+		name: 'filters',
+		type: 'collection',
+		default: false,
+		displayOptions: {
+			show: {
+				resource: [
+					'deal',
+				],
+				operation: [
+					'getAll',
+				],
+			},
+		},
+		options: [
+			{
+				displayName: 'View',
+				name: 'view',
+				type: 'options',
+				typeOptions: {
+					loadOptionsMethod: 'getDealViews',
+				},
+				default: '',
+			},
+		],
+	},
 
 	// ----------------------------------------
 	//               deal: update
