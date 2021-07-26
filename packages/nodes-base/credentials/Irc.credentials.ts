@@ -4,10 +4,10 @@ import {
 } from 'n8n-workflow';
 
 
-export class IrcNetwork implements ICredentialType {
-	name = 'ircNetwork';
+export class Irc implements ICredentialType {
+	name = 'irc';
 	displayName = 'IRC Network';
-	documentationUrl = 'ircNetwork';
+	documentationUrl = 'irc';
 	properties: INodeProperties[] = [
 		{
 			displayName: 'Host',

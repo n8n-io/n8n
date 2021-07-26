@@ -134,7 +134,7 @@
       "dist/credentials/Imap.credentials.js",
       "dist/credentials/IntercomApi.credentials.js",
       "dist/credentials/InvoiceNinjaApi.credentials.js",
-      "dist/credentials/IrcNetwork.credentials.js",
+      "dist/credentials/Irc.credentials.js",
       "dist/credentials/JiraSoftwareCloudApi.credentials.js",
       "dist/credentials/JiraSoftwareServerApi.credentials.js",
       "dist/credentials/JotFormApi.credentials.js",

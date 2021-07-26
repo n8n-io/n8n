@@ -49,7 +49,7 @@ export class Irc implements INodeType {
 		outputs: ['main'],
 		credentials: [
 			{
-				name: 'ircNetwork',
+				name: 'irc',
 				required: true,
 			},
 		],
@@ -173,7 +173,7 @@ export class Irc implements INodeType {
 		const items = this.getInputData();
 		const resource = this.getNodeParameter('resource', 0) as string;
 		const operation = this.getNodeParameter('operation', 0) as string;
-		const credentials = this.getCredentials('ircNetwork') as IDataObject;
+		const credentials = this.getCredentials('irc') as IDataObject;
 
 		if (credentials === undefined) {
 			throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
