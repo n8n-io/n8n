@@ -91,6 +91,7 @@ export const contactFields = [
 		type: 'string',
 		default: '',
 		description: 'Email addresses of the contact',
+		required: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -159,13 +160,6 @@ export const contactFields = [
 				type: 'string',
 				default: '',
 				description: 'Country that the contact belongs to',
-			},
-			{
-				displayName: 'Email Address',
-				name: 'emails',
-				type: 'string',
-				default: '',
-				description: 'Email addresses of the contact',
 			},
 			{
 				displayName: 'External ID',
