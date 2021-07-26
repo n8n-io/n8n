@@ -1,4 +1,8 @@
 import {
+	tz,
+} from 'moment-timezone';
+
+import {
 	INodeProperties,
 } from 'n8n-workflow';
 
@@ -201,9 +205,10 @@ export const appointmentFields = [
 			{
 				displayName: 'Time Zone',
 				name: 'time_zone',
-				type: 'string',
+				type: 'options',
 				default: '',
 				description: 'Timezone that the appointment is scheduled in',
+				options: tz.names().map(tz => ({ name: tz, value: tz })),
 			},
 		],
 	},
@@ -355,6 +360,13 @@ export const appointmentFields = [
 				description: 'ID of the user who created the appointment',
 			},
 			{
+				displayName: 'End Date',
+				name: 'endDate',
+				description: 'Timestamp that denotes the end of appointment. End date if this is an all-day appointment.',
+				type: 'dateTime',
+				default: '',
+			},
+			{
 				displayName: 'Latitude',
 				name: 'latitude',
 				type: 'string',
@@ -386,6 +398,13 @@ export const appointmentFields = [
 				description: 'ID of outcome of Appointment sales activity type',
 			},
 			{
+				displayName: 'Start Date',
+				name: 'fromDate',
+				description: 'Timestamp that denotes the start of appointment. Start date if this is an all-day appointment.',
+				type: 'dateTime',
+				default: '',
+			},
+			{
 				displayName: 'Targetable ID',
 				name: 'targetable_id',
 				type: 'string',
@@ -415,9 +434,10 @@ export const appointmentFields = [
 			{
 				displayName: 'Time Zone',
 				name: 'time_zone',
-				type: 'string',
+				type: 'options',
 				default: '',
 				description: 'Timezone that the appointment is scheduled in',
+				options: tz.names().map(tz => ({ name: tz, value: tz })),
 			},
 			{
 				displayName: 'Title',

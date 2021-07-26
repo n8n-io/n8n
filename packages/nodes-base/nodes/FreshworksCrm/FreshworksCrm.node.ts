@@ -43,6 +43,10 @@ import {
 	LoadedUser,
 } from './types';
 
+import {
+	tz,
+} from 'moment-timezone';
+
 export class FreshworksCrm implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Freshworks CRM',
@@ -213,6 +217,7 @@ export class FreshworksCrm implements INodeType {
 
 		const resource = this.getNodeParameter('resource', 0) as string;
 		const operation = this.getNodeParameter('operation', 0) as string;
+		const defaultTimezone = this.getTimezone();
 
 		let responseData;
 
@@ -329,13 +334,22 @@ export class FreshworksCrm implements INodeType {
 
 						// https://developers.freshworks.com/crm/api/#create_appointment
 
+						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject & {
+							time_zone: string;
+						};
+
+						const startDate = this.getNodeParameter('fromDate', i) as string;
+						const endDate = this.getNodeParameter('endDate', i) as string;
+
+						const timezone = additionalFields.time_zone ?? defaultTimezone;
+
+						const format = 'ddd MMM DD YYYY HH:mm:ss ZZ';
+
 						const body = {
 							title: this.getNodeParameter('title', i),
-							from_date: this.getNodeParameter('fromDate', i),
-							end_date: this.getNodeParameter('endDate', i),
+							from_date: tz(startDate, timezone).format(format),
+							end_date: tz(endDate, timezone).format(format),
 						} as IDataObject;
-
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 
 						if (Object.keys(additionalFields).length) {
 							Object.assign(body, adjustAttendees(additionalFields));
@@ -390,13 +404,33 @@ export class FreshworksCrm implements INodeType {
 
 						// https://developers.freshworks.com/crm/api/#update_a_appointment
 
-						const body = {} as IDataObject;
-						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject & {
+							from_date: string;
+							end_date: string;
+							time_zone: string;
+						};
 
-						if (Object.keys(updateFields).length) {
-							Object.assign(body, adjustAttendees(updateFields));
-						} else {
+						if (!Object.keys(updateFields).length) {
 							throwOnEmptyUpdate.call(this, resource);
+						}
+
+						const body = {} as IDataObject;
+						const { from_date, end_date, ...rest } = updateFields;
+
+						const timezone = rest.time_zone ?? defaultTimezone;
+
+						const format = 'ddd MMM DD YYYY HH:mm:ss ZZ';
+
+						if (from_date) {
+							body.from_date = tz(from_date, timezone).format(format);
+						}
+
+						if (end_date) {
+							body.end_date = tz(end_date, timezone).format(format);
+						}
+
+						if (Object.keys(rest).length) {
+							Object.assign(body, adjustAttendees(rest));
 						}
 
 						const appointmentId = this.getNodeParameter('appointmentId', i);
