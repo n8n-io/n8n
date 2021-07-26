@@ -145,6 +145,13 @@ export const appointmentFields = [
 				description: 'ID of the user who created the appointment',
 			},
 			{
+				displayName: 'Is All-Day',
+				name: 'is_allday',
+				type: 'boolean',
+				default: false,
+				description: 'Whether it is an all-day appointment or not',
+			},
+			{
 				displayName: 'Latitude',
 				name: 'latitude',
 				type: 'string',
@@ -365,6 +372,13 @@ export const appointmentFields = [
 				description: 'Timestamp that denotes the end of appointment. End date if this is an all-day appointment.',
 				type: 'dateTime',
 				default: '',
+			},
+			{
+				displayName: 'Is All-Day',
+				name: 'is_allday',
+				type: 'boolean',
+				default: false,
+				description: 'Whether it is an all-day appointment or not',
 			},
 			{
 				displayName: 'Latitude',
