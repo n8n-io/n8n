@@ -65,6 +65,8 @@ import {
 } from 'url';
 
 axios.defaults.timeout = 300000;
+// Prevent axios from adding x-form-www-urlencoded headers by default
+axios.defaults.headers.post = {};
 
 /**
  * Takes a buffer and converts it into the format n8n uses. It encodes the binary data as
@@ -1112,7 +1114,7 @@ export function getExecuteWebhookFunctions(workflow: Workflow, node: INode, addi
 
 }
 
-function parseRequestObject(requestObject: IDataObject) {
+async function parseRequestObject(requestObject: IDataObject) {
 
 	// This function is a temporary implementation
 	// That translates all http requests done via
@@ -1142,7 +1144,7 @@ function parseRequestObject(requestObject: IDataObject) {
 		axiosConfig.data = requestObject.body as FormData | GenericValue | GenericValue[];
 	}
 
-	if (requestObject.qs !== undefined) {
+	if (requestObject.qs !== undefined && Object.keys(requestObject.qs as object).length > 0) {
 		axiosConfig.params = requestObject.qs as IDataObject;
 	}
 
@@ -1153,17 +1155,30 @@ function parseRequestObject(requestObject: IDataObject) {
 	}
 
 	if (requestObject.auth !== undefined) {
-		axiosConfig.auth = requestObject.auth as {
-			username: string;
-			password: string;
-		};
+		// Check support for sendImmediately
+		if ((requestObject.auth as IDataObject).bearer !== undefined) {
+			axiosConfig.headers = Object.assign(axiosConfig.headers || {}, {
+				'Authorization': 'Bearer ' + (requestObject.auth as IDataObject).bearer,
+			});
+		} else {
+			const authObj = requestObject.auth as IDataObject;
+			axiosConfig.auth = {
+				username: (authObj!.user || authObj!.username) as string, 
+				password: (authObj!.password || authObj!.pass) as string,
+			};
+		}
 	}
 
-	if (requestObject.json === true) {
+	// Only set header if we have a body, otherwise it may fail
+	if (requestObject.json === true && requestObject.data !== undefined) {
 		// Add application/json headers
 		axiosConfig.headers = Object.assign(axiosConfig.headers || {}, {
-            'Content-Type': 'application/json',
+            'Content-Type': 'application/json; charset=utf-8',
         });
+	}
+	if (requestObject.json === false) {
+		// Prevent json parsing
+		axiosConfig.transformResponse = (res) => res;
 	}
 
 	if (requestObject.followRedirect === false || requestObject.followAllRedirects === false) {
@@ -1186,10 +1201,46 @@ function parseRequestObject(requestObject: IDataObject) {
 	}
 
 	if (requestObject.form !== undefined) {
-		axiosConfig.data = new URLSearchParams(requestObject.form as NodeJS.Dict<string>);
+		axiosConfig.data = new URLSearchParams((requestObject.form) as NodeJS.Dict<string>);
 		axiosConfig.headers = Object.assign(axiosConfig.headers || {}, {
             'Content-Type': 'application/x-www-form-urlencoded',
         });
+	}
+
+	if (requestObject.formData !== undefined) {
+		// remove any "content-type" that might exist.
+		if (axiosConfig.headers !== undefined) {
+			const headers = Object.keys(axiosConfig.headers);
+			headers.forEach(header => header.toLowerCase() === 'content-type' ? delete axiosConfig.headers[header] : null);
+		}
+
+		if (requestObject.formData instanceof FormData) {
+			axiosConfig.data = requestObject.formData;
+		} else {
+			const objectKeys = Object.keys(requestObject.formData as object);
+			if (objectKeys.length > 0) {
+				// Should be a standard object. We must convert to formdata
+				const form = new FormData();
+				
+				objectKeys.forEach(key => {
+					const formField = (requestObject.formData as IDataObject)[key] as IDataObject;
+					if (formField.hasOwnProperty('value') && formField['value'] instanceof Buffer) {
+						let filename;
+						// @ts-ignore
+						if (!!formField.options && formField.options.filename !== undefined) {
+							filename = (formField.options as IDataObject).filename as string;
+						}
+						form.append(key, formField.value, filename);
+					} else {
+						form.append(key, formField);
+					}
+				});
+				axiosConfig.data = form;
+			}
+		}
+
+		const headers = axiosConfig.data.getHeaders();
+		axiosConfig.headers = Object.assign(axiosConfig.headers || {}, headers);
 	}
 
 	/**
@@ -1216,16 +1267,22 @@ async function proxyRequestToAxios(): Promise<any> {
 	} else {
 		configObject = arguments[1];
 	}
-	axiosConfig = Object.assign(axiosConfig,parseRequestObject(configObject));
+
+	console.log('Original config object: ', configObject);
+	axiosConfig = Object.assign(axiosConfig, await parseRequestObject(configObject));
+	console.log('translated axios config object: ', axiosConfig, '\n\n');
 
 	return new Promise((resolve, reject) => {
-		axios(axiosConfig).then((data) => {
+		axios(axiosConfig).then((response) => {
+			console.log('axios request ok: ', axiosConfig.url, response);
 			if (configObject.resolveWithFullResponse === true) {
-				resolve(data);
+				resolve(response);
 			} else {
-				resolve(data.data)
+				console.log(response.data);
+				resolve(response.data)
 			}
 		}).catch(error => {
+			console.log(error);
 			reject(error);
 		});
 	});
