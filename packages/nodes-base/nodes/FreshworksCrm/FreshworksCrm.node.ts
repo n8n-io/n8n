@@ -42,15 +42,12 @@ import {
 	FreshworksConfigResponse,
 	LoadedCurrency,
 	LoadedUser,
+	LoadOption,
 } from './types';
 
 import {
 	tz,
 } from 'moment-timezone';
-
-import {
-	DATETIME_FORMAT
-} from './constants';
 
 export class FreshworksCrm implements INodeType {
 	description: INodeTypeDescription = {
@@ -138,7 +135,6 @@ export class FreshworksCrm implements INodeType {
 
 			async getAccountViews(this: ILoadOptionsFunctions) {
 				const responseData = await handleListing.call(this, 'GET', '/sales_accounts/filters');
-
 				return responseData.map(({ name, id }) => ({ name, value: id })) as LoadOption[];
 			},
 
@@ -313,13 +309,9 @@ export class FreshworksCrm implements INodeType {
 
 						// https://developers.freshworks.com/crm/api/#list_all_accounts
 
-						const filters = this.getNodeParameter('filters', i) as { view: number };
+						const view = this.getNodeParameter('view', i) as string;
 
-						if (filters.view === undefined) {
-							throwOnEmptyFilter.call(this);
-						}
-
-						responseData = await handleListing.call(this, 'GET', `/sales_accounts/view/${filters.view}`);
+						responseData = await handleListing.call(this, 'GET', `/sales_accounts/view/${view}`);
 
 					} else if (operation === 'update') {
 
@@ -364,23 +356,35 @@ export class FreshworksCrm implements INodeType {
 
 						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject & {
 							time_zone: string;
+							is_allday: boolean;
 						};
 
 						const startDate = this.getNodeParameter('fromDate', i) as string;
 						const endDate = this.getNodeParameter('endDate', i) as string;
+						const attendees = this.getNodeParameter('attendees.attendee', i, []) as [{ type: string, contactId: string, userId: string }];
 
 						const timezone = additionalFields.time_zone ?? defaultTimezone;
 
-						const body = {
-							title: this.getNodeParameter('title', i),
-							from_date: tz(startDate, timezone).format(DATETIME_FORMAT),
-							end_date: tz(endDate, timezone).format(DATETIME_FORMAT),
-						} as IDataObject;
+						let allDay = false;
 
-						if (Object.keys(additionalFields).length) {
-							Object.assign(body, adjustAttendees(additionalFields));
+						if (additionalFields.is_allday) {
+							allDay = additionalFields.is_allday as boolean;
 						}
 
+						const start = tz(startDate, timezone);
+						const end = tz(endDate, timezone);
+
+						const body = {
+							title: this.getNodeParameter('title', i),
+							from_date: start.format(),
+							end_date: (allDay) ? start.format() : end.format(),
+						} as IDataObject;
+
+						Object.assign(body, additionalFields);
+
+						if (attendees.length) {
+							body['appointment_attendees_attributes'] = adjustAttendees(attendees);
+						}
 						responseData = await freshworksCrmApiRequest.call(this, 'POST', '/appointments', body);
 						responseData = responseData.appointment;
 
@@ -422,7 +426,7 @@ export class FreshworksCrm implements INodeType {
 
 						const { filter, include } = this.getNodeParameter('filters', i) as {
 							filter: string;
-							include: string;
+							include: string[];
 						};
 
 						const qs: IDataObject = {};
@@ -434,7 +438,6 @@ export class FreshworksCrm implements INodeType {
 						if (include) {
 							qs.include = include;
 						}
-
 						responseData = await handleListing.call(this, 'GET', '/appointments', {}, qs);
 
 					} else if (operation === 'update') {
@@ -451,6 +454,8 @@ export class FreshworksCrm implements INodeType {
 							time_zone: string;
 						};
 
+						const attendees = this.getNodeParameter('updateFields.attendees.attendee', i, []) as [{ type: string, contactId: string, userId: string }];
+
 						if (!Object.keys(updateFields).length) {
 							throwOnEmptyUpdate.call(this, resource);
 						}
@@ -461,15 +466,18 @@ export class FreshworksCrm implements INodeType {
 						const timezone = rest.time_zone ?? defaultTimezone;
 
 						if (from_date) {
-							body.from_date = tz(from_date, timezone).format(DATETIME_FORMAT);
+							body.from_date = tz(from_date, timezone).format();
 						}
 
 						if (end_date) {
-							body.end_date = tz(end_date, timezone).format(DATETIME_FORMAT);
+							body.end_date = tz(end_date, timezone).format();
 						}
 
-						if (Object.keys(rest).length) {
-							Object.assign(body, adjustAttendees(rest));
+						Object.assign(body, rest);
+
+						if (attendees.length) {
+							body['appointment_attendees_attributes'] = adjustAttendees(attendees);
+							delete body.attendees;
 						}
 
 						const appointmentId = this.getNodeParameter('appointmentId', i);
@@ -547,13 +555,9 @@ export class FreshworksCrm implements INodeType {
 
 						// https://developers.freshworks.com/crm/api/#list_all_contacts
 
-						const filters = this.getNodeParameter('filters', i) as { view: number };
+						const view = this.getNodeParameter('view', i) as string;
 
-						if (filters.view === undefined) {
-							throwOnEmptyFilter.call(this);
-						}
-
-						responseData = await handleListing.call(this, 'GET', `/contacts/view/${filters.view}`);
+						responseData = await handleListing.call(this, 'GET', `/contacts/view/${view}`);
 
 					} else if (operation === 'update') {
 
@@ -644,13 +648,9 @@ export class FreshworksCrm implements INodeType {
 
 						// https://developers.freshworks.com/crm/api/#list_all_deals
 
-						const filters = this.getNodeParameter('filters', i) as { view: number };
+						const view = this.getNodeParameter('view', i) as string;
 
-						if (filters.view === undefined) {
-							throwOnEmptyFilter.call(this);
-						}
-
-						responseData = await handleListing.call(this, 'GET', `/deals/view/${filters.view}`);
+						responseData = await handleListing.call(this, 'GET', `/deals/view/${view}`);
 
 					} else if (operation === 'update') {
 
@@ -761,8 +761,8 @@ export class FreshworksCrm implements INodeType {
 							sales_activity_type_id: this.getNodeParameter('sales_activity_type_id', i),
 							title: this.getNodeParameter('title', i),
 							owner_id: this.getNodeParameter('ownerId', i),
-							start_date: tz(startDate, defaultTimezone).format(DATETIME_FORMAT),
-							end_date: tz(endDate, defaultTimezone).format(DATETIME_FORMAT),
+							start_date: tz(startDate, defaultTimezone).format(),
+							end_date: tz(endDate, defaultTimezone).format(),
 							targetable_type: this.getNodeParameter('targetableType', i),
 							targetable_id: this.getNodeParameter('targetable_id', i),
 						} as IDataObject;
@@ -773,7 +773,7 @@ export class FreshworksCrm implements INodeType {
 							Object.assign(body, additionalFields);
 						}
 
-						responseData = await freshworksCrmApiRequest.call(this, 'POST', '/sales_activities', body);
+						responseData = await freshworksCrmApiRequest.call(this, 'POST', '/sales_activities', { sales_activity: body });
 						responseData = responseData.sales_activity;
 
 					} else if (operation === 'delete') {
@@ -836,11 +836,11 @@ export class FreshworksCrm implements INodeType {
 						const { from_date, end_date, ...rest } = updateFields;
 
 						if (from_date) {
-							body.from_date = tz(from_date, defaultTimezone).format(DATETIME_FORMAT);
+							body.from_date = tz(from_date, defaultTimezone).format();
 						}
 
 						if (end_date) {
-							body.end_date = tz(end_date, defaultTimezone).format(DATETIME_FORMAT);
+							body.end_date = tz(end_date, defaultTimezone).format();
 						}
 
 						if (Object.keys(rest).length) {
@@ -876,7 +876,7 @@ export class FreshworksCrm implements INodeType {
 						const body = {
 							title: this.getNodeParameter('title', i),
 							owner_id: this.getNodeParameter('ownerId', i),
-							due_date: tz(dueDate, defaultTimezone).format(DATETIME_FORMAT),
+							due_date: tz(dueDate, defaultTimezone).format(),
 							targetable_type: this.getNodeParameter('targetableType', i),
 							targetable_id: this.getNodeParameter('targetable_id', i),
 						} as IDataObject;
@@ -929,7 +929,9 @@ export class FreshworksCrm implements INodeType {
 							include: string;
 						};
 
-						const qs: IDataObject = {};
+						const qs: IDataObject = {
+							filter: 'open',
+						};
 
 						if (filter) {
 							qs.filter = filter;
@@ -959,7 +961,7 @@ export class FreshworksCrm implements INodeType {
 						const { dueDate, ...rest } = updateFields;
 
 						if (dueDate) {
-							body.due_date = tz(dueDate, defaultTimezone).format(DATETIME_FORMAT);
+							body.due_date = tz(dueDate, defaultTimezone).format();
 						}
 
 						if (Object.keys(rest).length) {
@@ -977,7 +979,7 @@ export class FreshworksCrm implements INodeType {
 
 			} catch (error) {
 				if (this.continueOnFail()) {
-					returnData.push({json:{ error: error.message }});
+					returnData.push({ json: { error: error.message } });
 					continue;
 				}
 				throw error;

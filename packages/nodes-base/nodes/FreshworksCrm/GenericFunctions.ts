@@ -14,7 +14,6 @@ import {
 } from 'request';
 
 import {
-	Attendees,
 	FreshworksConfigResponse,
 	FreshworksCrmApiCredentials,
 	SalesAccounts,
@@ -52,7 +51,6 @@ export async function freshworksCrmApiRequest(
 	if (!Object.keys(qs).length) {
 		delete options.qs;
 	}
-
 	try {
 		return await this.helpers.request!(options);
 	} catch (error) {
@@ -145,23 +143,39 @@ export async function loadResource(
 	) as FreshworksConfigResponse<LoadedResource>;
 
 	const key = Object.keys(response)[0];
-
 	return response[key].map(({ name, id }) => ({ name, value: id }));
 }
 
-/**
- * Adjust attendee data from n8n UI to the format expected by Freshworks CRM API.
- */
-export function adjustAttendees(additionalFields: IDataObject & Attendees) {
-	if (!additionalFields?.appointment_attendees_attributes) return additionalFields;
-
-	return {
-		...omit(additionalFields, ['appointment_attendees_attributes']),
-		appointment_attendees_attributes: additionalFields.appointment_attendees_attributes.map(attendeeId => {
-			return { type: 'user', id: attendeeId };
-		}),
-	};
+export function adjustAttendees(attendees: [{ type: string, contactId: string, userId: string }]) {
+	return attendees.map((attendee) => {
+		if (attendee.type === 'contact') {
+			return {
+				attendee_type: 'Contact',
+				attendee_id: attendee.contactId.toString(),
+			};
+		} else if (attendee.type === 'user') {
+			return {
+				attendee_type: 'FdMultitenant::User',
+				attendee_id: attendee.userId.toString(),
+			};
+		}
+	});
 }
+
+
+// /**
+//  * Adjust attendee data from n8n UI to the format expected by Freshworks CRM API.
+//  */
+// export function adjustAttendees(additionalFields: IDataObject & Attendees) {
+// 	if (!additionalFields?.appointment_attendees_attributes) return additionalFields;
+
+// 	return {
+// 		...omit(additionalFields, ['appointment_attendees_attributes']),
+// 		appointment_attendees_attributes: additionalFields.appointment_attendees_attributes.map(attendeeId => {
+// 			return { type: 'user', id: attendeeId };
+// 		}),
+// 	};
+// }
 
 /**
  * Adjust account data from n8n UI to the format expected by Freshworks CRM API.

@@ -108,6 +108,79 @@ export const appointmentFields = [
 		},
 	},
 	{
+		displayName: 'Attendees',
+		name: 'attendees',
+		type: 'fixedCollection',
+		typeOptions: {
+			multipleValues: true,
+		},
+		displayOptions: {
+			show: {
+				resource: [
+					'appointment',
+				],
+				operation: [
+					'create',
+				],
+			},
+		},
+		placeholder: 'Add Attendee',
+		default: {},
+		options: [
+			{
+				name: 'attendee',
+				displayName: 'Attendee',
+				values: [
+					{
+						displayName: 'Type',
+						name: 'type',
+						type: 'options',
+						options: [
+							{
+								name: 'Contact',
+								value: 'contact',
+							},
+							{
+								name: 'User',
+								value: 'user',
+							},
+						],
+						default: 'contact',
+					},
+					{
+						displayName: 'User ID',
+						name: 'userId',
+						type: 'options',
+						displayOptions: {
+							show: {
+								type: [
+									'user',
+								],
+							},
+						},
+						typeOptions: {
+							loadOptionsMethod: 'getUsers',
+						},
+						default: '',
+					},
+					{
+						displayName: 'Contact ID',
+						name: 'contactId',
+						displayOptions: {
+							show: {
+								type: [
+									'contact',
+								],
+							},
+						},
+						type: 'string',
+						default: '',
+					},
+				],
+			},
+		],
+	},
+	{
 		displayName: 'Additional Fields',
 		name: 'additionalFields',
 		type: 'collection',
@@ -124,16 +197,16 @@ export const appointmentFields = [
 			},
 		},
 		options: [
-			{
-				displayName: 'Attendees',
-				name: 'appointment_attendees_attributes',
-				type: 'multiOptions',
-				default: [],
-				typeOptions: {
-					loadOptionsMethod: 'getUsers',
-				},
-				description: 'Attendees associated to the appointment',
-			},
+			// {
+			// 	displayName: 'Attendees',
+			// 	name: 'appointment_attendees_attributes',
+			// 	type: 'multiOptions',
+			// 	default: [],
+			// 	typeOptions: {
+			// 		loadOptionsMethod: 'getUsers',
+			// 	},
+			// 	description: 'Attendees associated to the appointment',
+			// },
 			{
 				displayName: 'Creator ID',
 				name: 'creater_id',
@@ -311,7 +384,8 @@ export const appointmentFields = [
 		displayName: 'Filters',
 		name: 'filters',
 		type: 'collection',
-		default: false,
+		default: '',
+		placeholder: 'Add Filter',
 		displayOptions: {
 			show: {
 				resource: [
@@ -402,13 +476,66 @@ export const appointmentFields = [
 		options: [
 			{
 				displayName: 'Attendees',
-				name: 'appointment_attendees_attributes',
-				type: 'multiOptions',
-				default: '',
+				name: 'attendees',
+				type: 'fixedCollection',
 				typeOptions: {
-					loadOptionsMethod: 'getUsers',
+					multipleValues: true,
 				},
-				description: 'Attendees associated to the appointment',
+				placeholder: 'Add Attendee',
+				default: {},
+				options: [
+					{
+						name: 'attendee',
+						displayName: 'Attendee',
+						values: [
+							{
+								displayName: 'Type',
+								name: 'type',
+								type: 'options',
+								options: [
+									{
+										name: 'Contact',
+										value: 'contact',
+									},
+									{
+										name: 'User',
+										value: 'user',
+									},
+								],
+								default: 'contact',
+							},
+							{
+								displayName: 'User ID',
+								name: 'userId',
+								type: 'options',
+								displayOptions: {
+									show: {
+										type: [
+											'user',
+										],
+									},
+								},
+								typeOptions: {
+									loadOptionsMethod: 'getUsers',
+								},
+								default: '',
+							},
+							{
+								displayName: 'Contact ID',
+								name: 'contactId',
+								displayOptions: {
+									show: {
+										type: [
+											'contact',
+										],
+									},
+								},
+								type: 'string',
+								default: '',
+							},
+						],
+					},
+				],
 			},
 			{
 				displayName: 'Creator ID',

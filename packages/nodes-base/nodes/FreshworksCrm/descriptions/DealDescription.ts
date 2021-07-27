@@ -288,6 +288,25 @@ export const dealFields = [
 	//               deal: getAll
 	// ----------------------------------------
 	{
+		displayName: 'View',
+		name: 'view',
+		type: 'options',
+		displayOptions: {
+			show: {
+				resource: [
+					'deal',
+				],
+				operation: [
+					'getAll',
+				],
+			},
+		},
+		typeOptions: {
+			loadOptionsMethod: 'getDealViews',
+		},
+		default: '',
+	},
+	{
 		displayName: 'Return All',
 		name: 'returnAll',
 		type: 'boolean',
@@ -326,33 +345,6 @@ export const dealFields = [
 				],
 			},
 		},
-	},
-	{
-		displayName: 'Filters',
-		name: 'filters',
-		type: 'collection',
-		default: false,
-		displayOptions: {
-			show: {
-				resource: [
-					'deal',
-				],
-				operation: [
-					'getAll',
-				],
-			},
-		},
-		options: [
-			{
-				displayName: 'View',
-				name: 'view',
-				type: 'options',
-				typeOptions: {
-					loadOptionsMethod: 'getDealViews',
-				},
-				default: '',
-			},
-		],
 	},
 
 	// ----------------------------------------

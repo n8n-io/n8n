@@ -7,9 +7,9 @@ export type FreshworksConfigResponse<T> = {
 	[key: string]: T[];
 };
 
-export type LoadedResource = {
+export type LoadOption = {
 	name: string;
-	id: string;
+	value: string;
 };
 
 export type LoadedCurrency = {
@@ -20,10 +20,6 @@ export type LoadedCurrency = {
 export type LoadedUser = {
 	id: string;
 	display_name: string;
-};
-
-export type Attendees = {
-	appointment_attendees_attributes?: number[];
 };
 
 export type SalesAccounts = {

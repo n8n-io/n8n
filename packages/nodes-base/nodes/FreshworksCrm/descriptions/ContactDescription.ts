@@ -357,6 +357,25 @@ export const contactFields = [
 	//             contact: getAll
 	// ----------------------------------------
 	{
+		displayName: 'View',
+		name: 'view',
+		type: 'options',
+		displayOptions: {
+			show: {
+				resource: [
+					'contact',
+				],
+				operation: [
+					'getAll',
+				],
+			},
+		},
+		typeOptions: {
+			loadOptionsMethod: 'getContactViews',
+		},
+		default: '',
+	},
+	{
 		displayName: 'Return All',
 		name: 'returnAll',
 		type: 'boolean',
@@ -395,33 +414,6 @@ export const contactFields = [
 				],
 			},
 		},
-	},
-	{
-		displayName: 'Filters',
-		name: 'filters',
-		type: 'collection',
-		default: false,
-		displayOptions: {
-			show: {
-				resource: [
-					'contact',
-				],
-				operation: [
-					'getAll',
-				],
-			},
-		},
-		options: [
-			{
-				displayName: 'View',
-				name: 'view',
-				type: 'options',
-				typeOptions: {
-					loadOptionsMethod: 'getContactViews',
-				},
-				default: '',
-			},
-		],
 	},
 
 	// ----------------------------------------

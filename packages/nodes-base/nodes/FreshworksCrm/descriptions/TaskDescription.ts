@@ -295,6 +295,7 @@ export const taskFields = [
 		name: 'filters',
 		type: 'collection',
 		default: false,
+		placeholder: 'Add Filter',
 		displayOptions: {
 			show: {
 				resource: [

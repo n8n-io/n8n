@@ -15,16 +15,16 @@ export const salesActivityOperations = [
 			},
 		},
 		options: [
-			{
-				name: 'Create',
-				value: 'create',
-				description: 'Create a sales activity',
-			},
-			{
-				name: 'Delete',
-				value: 'delete',
-				description: 'Delete a sales activity',
-			},
+			// {
+			// 	name: 'Create',
+			// 	value: 'create',
+			// 	description: 'Create a sales activity',
+			// },
+			// {
+			// 	name: 'Delete',
+			// 	value: 'delete',
+			// 	description: 'Delete a sales activity',
+			// },
 			{
 				name: 'Get',
 				value: 'get',
@@ -35,11 +35,11 @@ export const salesActivityOperations = [
 				value: 'getAll',
 				description: 'Retrieve all sales activities',
 			},
-			{
-				name: 'Update',
-				value: 'update',
-				description: 'Update a sales activity',
-			},
+			// {
+			// 	name: 'Update',
+			// 	value: 'update',
+			// 	description: 'Update a sales activity',
+			// },
 		],
 		default: 'create',
 	},
