@@ -7,16 +7,36 @@ import {
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
+	NodeOperationError,
 } from 'n8n-workflow';
 
 import {
-	OptionsWithUri,
-} from 'request';
+	endOfDayDataFields,
+	endOfDayDataOperations,
+	exchangeFields,
+	exchangeOperations,
+	tickerFields,
+	tickerOperations,
+} from './descriptions';
+
+import {
+	format,
+	marketstackApiRequest,
+	marketstackApiRequestAllItems,
+	validateTimeOptions,
+} from './GenericFunctions';
+
+import {
+	EndOfDayDataFilters,
+	Operation,
+	Resource,
+} from './types';
 
 export class Marketstack implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Marketstack',
 		name: 'marketstack',
+		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 		icon: 'file:marketstack.svg',
 		group: ['transform'],
 		version: 1,
@@ -40,89 +60,144 @@ export class Marketstack implements INodeType {
 				type: 'options',
 				options: [
 					{
-						name: 'Stock market data',
-						value: 'stockmarket',
+						name: 'End-of-Day Data',
+						value: 'endOfDayData',
+						description: 'Stock market closing data',
 					},
-				],
-				default: 'stockmarket',
-				required: true,
-				description: 'Resource to consume',
-			},
-			{
-				displayName: 'Operation',
-				name: 'operation',
-				type: 'options',
-				displayOptions: {
-					show: {
-						resource: [
-							'stockmarket',
-						],
-					},
-				},
-				options: [
 					{
-						name: 'End-of-day',
-						value: 'eod',
-						description: 'Data at closing of the market.',
+						name: 'Exchange',
+						value: 'exchange',
+						description: 'Stock market exchange',
+					},
+					{
+						name: 'Ticker',
+						value: 'ticker',
+						description: 'Stock market symbol',
 					},
 				],
-				default: 'eod',
-				description: 'Type of data',
-			},
-			{
-				displayName: 'Stock',
-				name: 'stock',
-				type: 'string',
+				default: 'endOfDayData',
 				required: true,
-				displayOptions: {
-					show: {
-						resource: [
-							'stockmarket',
-						],
-					},
-				},
-				default: '',
-				description: 'Ticker symbol, including exchange suffix where necessary.',
 			},
+			...endOfDayDataOperations,
+			...endOfDayDataFields,
+			...exchangeOperations,
+			...exchangeFields,
+			...tickerOperations,
+			...tickerFields,
 		],
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
-		let responseData;
 
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
-		const credentials = this.getCredentials('marketstackApi') as IDataObject;
-		const protocol = credentials.useHttps ? 'https' : 'http'; // Free API does not support HTTPS
+		const resource = this.getNodeParameter('resource', 0) as Resource;
+		const operation = this.getNodeParameter('operation', 0) as Operation;
 
-		if (resource === 'stockmarket') {
-			const symbols: string[] = [];
+		let responseData: any; // tslint:disable-line: no-any
+		const returnData: IDataObject[] = [];
 
-			for (let i = 0; i < items.length; i++) {
-				symbols.push(this.getNodeParameter('stock', i) as string);
+		for (let i = 0; i < items.length; i++) {
+
+			try {
+
+				if (resource === 'endOfDayData') {
+
+					if (operation === 'getAll') {
+
+						// ----------------------------------
+						//       endOfDayData: getAll
+						// ----------------------------------
+
+						const qs: IDataObject = {
+							symbols: this.getNodeParameter('symbols', i),
+						};
+
+						const {
+							latest,
+							specificDate,
+							dateFrom,
+							dateTo,
+							...rest
+						} = this.getNodeParameter('filters', i) as EndOfDayDataFilters;
+
+						validateTimeOptions.call(this, [
+							latest !== undefined,
+							specificDate !== undefined,
+							dateFrom !== undefined && dateTo !== undefined,
+						]);
+
+						if (Object.keys(rest).length) {
+							Object.assign(qs, rest);
+						}
+
+						let endpoint: string;
+
+						if (latest) {
+							endpoint = '/eod/latest';
+						} else if (specificDate) {
+							endpoint = `/eod/${format(specificDate)}`;
+						} else {
+							if (!dateFrom || !dateTo) {
+								throw new NodeOperationError(
+									this.getNode(),
+									'Please enter a start and end date to filter by timeframe.',
+								);
+							}
+							endpoint = '/eod';
+							qs.date_from = format(dateFrom);
+							qs.date_to = format(dateTo);
+						}
+
+						responseData = await marketstackApiRequestAllItems.call(this, 'GET', endpoint, {}, qs);
+
+					}
+
+				} else if (resource === 'exchange') {
+
+					if (operation === 'get') {
+
+						// ----------------------------------
+						//          exchange: get
+						// ----------------------------------
+
+						const exchange = this.getNodeParameter('exchange', i);
+						const endpoint = `/exchanges/${exchange}`;
+
+						responseData = await marketstackApiRequest.call(this, 'GET', endpoint);
+
+					}
+
+				} else if (resource === 'ticker') {
+
+					if (operation === 'get') {
+
+						// ----------------------------------
+						//           ticker: get
+						// ----------------------------------
+
+						const symbol = this.getNodeParameter('symbol', i);
+						const endpoint = `/tickers/${symbol}`;
+
+						responseData = await marketstackApiRequest.call(this, 'GET', endpoint);
+
+					}
+
+				}
+
+			} catch (error) {
+				if (this.continueOnFail()) {
+					returnData.push({ error: error.message });
+					continue;
+				}
+				throw error;
 			}
 
-			if (operation === 'eod') {
-				const options: OptionsWithUri = {
-					headers: {
-						'Accept': 'application/json',
-					},
-					method: 'GET',
-					uri: `${protocol}://api.marketstack.com/v1/eod/latest`,
-					qs: {
-						access_key: credentials.apiKey,
-						symbols: symbols.join(','),
-					},
-					json: true,
-				};
-	
-				responseData = await this.helpers.request(options);
-				responseData = responseData.data;
-			}
+			Array.isArray(responseData)
+				? returnData.push(...responseData)
+				: returnData.push(responseData);
+
 		}
-	
-		// Map data to n8n data
-		return [this.helpers.returnJsonArray(responseData)];
+
+		return [this.helpers.returnJsonArray(returnData)];
 	}
 }
