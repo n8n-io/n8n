@@ -25,6 +25,8 @@
     "test:unit": "vue-cli-service test:unit"
   },
   "dependencies": {
+    "n8n-design-system": "file:../../../n8n-design-system",
+    "regenerator-runtime": "^0.13.9",
     "timeago.js": "^4.0.2",
     "v-click-outside": "^3.1.2",
     "vue-fragment": "^1.5.2"

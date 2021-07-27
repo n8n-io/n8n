@@ -58,21 +58,14 @@
 			</button>
 		</div>
 		<div class="workflow-execute-wrapper" v-if="!isReadOnly">
-			<el-button
-				type="text"
+			<n8n-button
 				@click.stop="runWorkflow()"
-				class="workflow-run-button"
-				:class="{'running': workflowRunning}"
-				:disabled="workflowRunning"
+				:loading="workflowRunning"
+				:label="runButtonText"
+				size="lg"
+				icon="play-circle"
 				title="Executes the Workflow from the Start or Webhook Node."
-			>
-				<div class="run-icon">
-					<font-awesome-icon icon="spinner" spin v-if="workflowRunning"/>
-					<font-awesome-icon icon="play-circle" v-else/>
-				</div>
-
-				{{runButtonText}}
-			</el-button>
+			/>
 
 			<el-button
 				v-if="workflowRunning === true && !executionWaitingForWebhook"
@@ -169,6 +162,9 @@ import {
 } from '../Interface';
 import { mapGetters } from 'vuex';
 
+// import N8nIcon from 'n8n-design-system/src/components/N8nIcon';
+// import N8nButton from 'n8n-design-system/src/components/N8nButton/Button.vue';
+
 const NODE_SIZE = 100;
 const DEFAULT_START_POSITION_X = 250;
 const DEFAULT_START_POSITION_Y = 300;
@@ -208,6 +204,8 @@ export default mixins(
 			NodeCreator,
 			NodeSettings,
 			RunData,
+			// N8nButton,
+			// N8nIcon,
 		},
 		errorCaptured: (err, vm, info) => {
 			console.error('errorCaptured'); // eslint-disable-line no-console
@@ -2379,16 +2377,6 @@ export default mixins(
 		display: inline-block;
 		transform: scale(1.4);
 		margin-right: 0.5em;
-	}
-
-	.workflow-run-button {
-		padding: 12px;
-	}
-
-	.stop-execution,
-	.workflow-run-button.running {
-		color: $--color-primary;
-		background-color: $--color-primary-light;
 	}
 }
 
