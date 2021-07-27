@@ -37,7 +37,6 @@ export async function marketstackApiRequest(
 	}
 
 	try {
-		console.log(options);
 		return await this.helpers.request(options);
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error);
