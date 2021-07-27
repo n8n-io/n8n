@@ -38,3 +38,5 @@ export type FieldsUiValues = Array<{
 	fieldId: string;
 	fieldValue: string;
 }>;
+
+export type WatcherAction = 'email' | 'index' | 'logging' | 'slack' | 'webhook';

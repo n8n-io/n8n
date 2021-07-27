@@ -361,6 +361,7 @@
       "dist/nodes/EditImage.node.js",
       "dist/nodes/Egoi/Egoi.node.js",
       "dist/nodes/Elasticsearch/Elasticsearch.node.js",
+      "dist/nodes/Elasticsearch/ElasticsearchTrigger.node.js",
       "dist/nodes/EmailReadImap.node.js",
       "dist/nodes/EmailSend.node.js",
       "dist/nodes/Emelia/Emelia.node.js",

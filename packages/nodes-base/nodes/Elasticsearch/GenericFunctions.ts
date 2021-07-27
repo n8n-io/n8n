@@ -8,6 +8,7 @@ import {
 
 import {
 	IDataObject,
+	IHookFunctions,
 	NodeApiError,
 } from 'n8n-workflow';
 
@@ -16,7 +17,7 @@ import {
 } from './types';
 
 export async function elasticsearchApiRequest(
-	this: IExecuteFunctions,
+	this: IExecuteFunctions | IHookFunctions,
 	method: 'GET' | 'PUT' | 'POST' | 'DELETE',
 	endpoint: string,
 	body: IDataObject = {},
