@@ -29,8 +29,8 @@
 			</el-row>
 		</template>
 		<template v-slot:footer="{ close }">
-			<n8n-button size="md" @click="save" :loading="isSaving" label="Save" />
-			<n8n-button size="md" @click="close" :disabled="isSaving" label="Cancel" />
+			<n8n-button @click="save" :loading="isSaving" label="Save" />
+			<n8n-button @click="close" :disabled="isSaving" label="Cancel" />
 		</template>
 	</Modal>
 </template>

@@ -29,7 +29,7 @@
 			<div v-if="values && Object.keys(values).length === 0 || isReadOnly" class="no-items-exist">
 				Currently no items exist
 			</div>
-			<n8n-button v-if="!isReadOnly" fullWidth size="lg" @click="addItem()" :label="addButtonText" />
+			<n8n-button v-if="!isReadOnly" fullWidth @click="addItem()" :label="addButtonText" />
 		</div>
 
 	</div>

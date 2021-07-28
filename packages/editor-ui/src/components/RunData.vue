@@ -12,7 +12,6 @@
 				icon="play-circle"
 				type="outline"
 				label="Execute Node"
-				size="md"
 				@click.stop="runWorkflow(node.name, 'RunData.ExecuteNodeButton')"
 			/>
 		</div>
@@ -96,7 +95,6 @@
 						</div>
 
 						<n8n-button
-							size="md"
 							icon="eye"
 							label="Display Data Anyway"
 							@click="displayMode = 'Table';showData = true;"
