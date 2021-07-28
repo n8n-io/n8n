@@ -85,7 +85,7 @@ export default mixins(titleChange).extend({
 }
 
 .execution-icon.success {
-	color: $--custom-success-text-light;
+	color: var(--color-success);
 }
 
 .container {

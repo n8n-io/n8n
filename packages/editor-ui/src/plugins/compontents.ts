@@ -79,6 +79,8 @@ import {
 	Message,
 	Notification,
 } from 'element-ui';
+import CollapseTransition from 'element-ui/lib/transitions/collapse-transition';
+
 import lang from 'element-ui/lib/locale/lang/en';
 import locale from 'element-ui/lib/locale';
 
@@ -167,6 +169,8 @@ Vue.use(Image);
 Vue.use(Calendar);
 Vue.use(Backtop);
 Vue.use(PageHeader);
+
+Vue.component(CollapseTransition.name, CollapseTransition)
 
 Vue.use(Loading.directive);
 
