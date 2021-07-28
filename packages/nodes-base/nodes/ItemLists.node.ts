@@ -504,7 +504,7 @@ return 0;`,
 					}
 				}
 
-				return this.prepareOutputData(returnData)
+				return this.prepareOutputData(returnData);
 
 			} else if (operation === 'removeDuplicates') {
 
@@ -530,15 +530,45 @@ return 0;`,
 					}
 					keys = fieldsToCompare.map(key => (key.trim())).filter( key => !!key);
 				}
-				// TODO: this solution is O(n²), find another with O(nlogn)
-				const removedIndexes: number[]= [];
-				for (let index = 0; index < length; index++) {
-					for (let index2 = index+1; index2 < length; index2++) {
-						if (compareItems(items[index],items[index2], keys, allowDotNotation)){
-							removedIndexes.push(index2);
+				// This solution is O(nlogn)
+
+				// add original index to the items
+				const newItems = items.map((item,index) => ({ json: {...item['json'], INDEX:index,},} as INodeExecutionData));
+				// sort items using the compare keys
+				newItems.sort((a, b) => {
+					let result = 0;
+
+					for (const key of keys) {
+						let equal;
+						if (allowDotNotation) {
+							equal = isEqual(get(a.json, key), get(b.json, key));
+						} else {
+							equal = isEqual(a.json[key], b.json[key]);
+						}
+						if (!equal) {
+							let lessThan;
+							if (allowDotNotation) {
+								lessThan = lt(get(a.json, key), get(b.json, key));
+							} else {
+								lessThan = lt(a.json[key], b.json[key]);
+							}
+							result = lessThan? -1 : 1;
+							break;
 						}
 					}
+					return result;
+				});
+				// collect the original indexes of items to be removed
+				const removedIndexes: number[]= [];
+				let temp = newItems[0];
+				for (let index = 1; index < newItems.length; index++) {
+					if (compareItems(newItems[index], temp, keys, allowDotNotation)) {
+						removedIndexes.push(newItems[index].json.INDEX as unknown as number);
+					} else {
+						temp = newItems[index];
+					}
 				}
+				// return the filtered items
 				return this.prepareOutputData(items.filter((_,index) => !removedIndexes.includes(index)));
 
 			} else if (operation === 'sort') {
