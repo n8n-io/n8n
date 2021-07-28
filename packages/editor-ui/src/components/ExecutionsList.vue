@@ -702,7 +702,7 @@ export default mixins(
 	}
 
 	&.running, &.warning {
-		background-color: var(--color-warning-tint-1);
+		background-color: var(--color-warning-tint-2);
 		color: var(--color-warning);
 	}
 }
