@@ -76,7 +76,7 @@
 						</span>
 					</template>
 				</el-table-column>
-				<el-table-column label="Status" width="120" align="center">
+				<el-table-column label="Status" width="122" align="center">
 					<template slot-scope="scope" align="center">
 
 						<el-tooltip placement="top" effect="light">
@@ -692,23 +692,18 @@ export default mixins(
 	font-size: 12px;
 
 	&.error {
-		background-color: $--custom-error-background;
-		color: $--custom-error-text;
-	}
-
-	&.running {
-		background-color: $--custom-running-background;
-		color: $--custom-running-text;
+		background-color: var(--color-danger-tint-1);
+		color: var(--color-danger);
 	}
 
 	&.success {
-		background-color: $--custom-success-background;
-		color: $--custom-success-text;
+		background-color: var(--color-success-tint-1);
+		color: var(--color-success);
 	}
 
-	&.warning {
-		background-color: $--custom-warning-background;
-		color: $--custom-warning-text;
+	&.running, &.warning {
+		background-color: var(--color-warning-tint-1);
+		color: var(--color-warning);
 	}
 }
 
