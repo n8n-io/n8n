@@ -307,6 +307,9 @@ export const operationFields = [
 					'create',
 					'update',
 				],
+				dataToSend: [
+					'autoMapInputData',
+				],
 			},
 		},
 		default: false,
@@ -365,10 +368,37 @@ export const operationFields = [
 						default: '',
 					},
 					{
+						displayName: 'Upload attachment',
+						name: 'upload',
+						type: 'boolean',
+						default: false,
+					},
+					{
 						displayName: 'Field Value',
 						name: 'fieldValue',
 						type: 'string',
 						default: '',
+						displayOptions: {
+							show: {
+								upload: [
+									false,
+								],
+							},
+						},
+					},
+					{
+						displayName: 'Take input from field',
+						name: 'binaryProperty',
+						type: 'string',
+						description: 'The field containing the binary file data to be uploaded',
+						default: '',
+						displayOptions: {
+							show: {
+								upload: [
+									true,
+								],
+							},
+						},
 					},
 				],
 			},
@@ -410,6 +440,9 @@ export const operationFields = [
 				operation: [
 					'create',
 					'update',
+				],
+				dataToSend: [
+					'autoMapInputData',
 				],
 				uploadAttachments: [
 					true,
