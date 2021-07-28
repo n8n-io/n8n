@@ -79,15 +79,23 @@ import {
 	Message,
 	Notification,
 } from 'element-ui';
+import lang from 'element-ui/lib/locale/lang/en';
+import locale from 'element-ui/lib/locale';
 
-import { N8nButton } from 'n8n-design-system';
+import {
+	N8nIconButton,
+	N8nButton,
+} from 'n8n-design-system';
 
 Vue.use(Fragment.Plugin);
 
 // n8n design system
 Vue.use(N8nButton);
+Vue.use(N8nIconButton);
 
 // element io
+locale.use(lang)
+
 Vue.use(Pagination);
 Vue.use(Dialog);
 Vue.use(Autocomplete);

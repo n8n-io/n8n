@@ -155,9 +155,7 @@
 					</el-row>
 				</div>
 				<div class="action-buttons">
-					<el-button type="success" @click="saveSettings">
-						Save
-					</el-button>
+					<n8n-button label="Save" size="lg" @click="saveSettings" />
 				</div>
 			</div>
 		</el-dialog>

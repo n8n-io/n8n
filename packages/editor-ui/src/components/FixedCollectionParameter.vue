@@ -32,7 +32,7 @@
 		</div>
 
 		<div v-if="parameterOptions.length > 0 && !isReadOnly">
-			<el-button v-if="parameter.options.length === 1" size="small" class="add-option" @click="optionSelected(parameter.options[0].name)">{{ getPlaceholderText }}</el-button>
+			<n8n-button v-if="parameter.options.length === 1" fullWidth size="lg" class="add-option" @click="optionSelected(parameter.options[0].name)" :label="getPlaceholderText" />
 			<el-select v-else v-model="selectedOption" :placeholder="getPlaceholderText" size="small" class="add-option" @change="optionSelected" filterable>
 				<el-option
 					v-for="item in parameterOptions"

@@ -584,7 +584,6 @@ export default mixins(
 			font-weight: 600;
 		}
 
-		.el-button,
 		.add-option > .el-input .el-input__inner,
 		.add-option > .el-input .el-input__inner:hover
 		{
@@ -594,7 +593,6 @@ export default mixins(
 			height: 38px;
 		}
 
-		.el-button,
 		.add-option > .el-input .el-input__inner
 		{
 			border: 1px solid $--color-primary;

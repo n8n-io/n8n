@@ -31,7 +31,7 @@
 		</div>
 		<DataDisplay @valueChanged="valueChanged"/>
 		<div v-if="!createNodeActive && !isReadOnly" class="node-creator-button" title="Add Node" @click="openNodeCreator">
-			<el-button icon="el-icon-plus" circle></el-button>
+			<n8n-icon-button size="xl" icon="plus" />
 		</div>
 		<node-creator
 			:active="createNodeActive"
@@ -65,38 +65,38 @@
 				size="lg"
 				icon="play-circle"
 				title="Executes the Workflow from the Start or Webhook Node."
+				:type="workflowRunning ? 'light' : 'primary'"
 			/>
 
-			<el-button
+			<n8n-icon-button
 				v-if="workflowRunning === true && !executionWaitingForWebhook"
-				circle
-				type="text"
-				@click.stop="stopExecution()"
+				icon="stop"
+				size="lg"
 				class="stop-execution"
+				type="light"
 				:title="stopExecutionInProgress ? 'Stopping current execution':'Stop current execution'"
-			>
-				<font-awesome-icon icon="stop" :class="{'fa-spin': stopExecutionInProgress}"/>
-			</el-button>
-			<el-button
+				:loading="stopExecutionInProgress"
+				@click.stop="stopExecution()"
+			/>
+
+			<n8n-icon-button
 				v-if="workflowRunning === true && executionWaitingForWebhook === true"
-				circle
-				type="text"
-				@click.stop="stopWaitingForWebhook()"
 				class="stop-execution"
+				icon="stop"
+				size="lg"
 				title="Stop waiting for Webhook call"
-			>
-				<font-awesome-icon icon="stop" :class="{'fa-spin': stopExecutionInProgress}"/>
-			</el-button>
-			<el-button
+				type="light"
+				:loading="stopExecutionInProgress"
+				@click.stop="stopWaitingForWebhook()"
+			/>
+
+			<n8n-icon-button
 				v-if="!isReadOnly && workflowExecution && !workflowRunning"
-				circle
-				type="text"
-				@click.stop="clearExecutionData()"
-				class="clear-execution"
 				title="Deletes the current Execution Data."
-			>
-				<font-awesome-icon icon="trash" class="clear-execution-icon" />
-			</el-button>
+				icon="trash"
+				size="lg"
+				@click.stop="clearExecutionData()"
+			/>
 		</div>
 		<Modals />
 	</div>
@@ -2310,13 +2310,6 @@ export default mixins(
 
 .node-creator-button button {
 	position: relative;
-	background: $--color-primary;
-	font-size: 1.4em;
-	color: #fff;
-}
-
-.node-creator-button:hover button {
-	transform: scale(1.05);
 }
 
 .node-view-root {
@@ -2373,10 +2366,8 @@ export default mixins(
 	width: 300px;
 	text-align: center;
 
-	.run-icon {
-		display: inline-block;
-		transform: scale(1.4);
-		margin-right: 0.5em;
+	> * {
+		margin-inline-end: 0.625rem;
 	}
 }
 

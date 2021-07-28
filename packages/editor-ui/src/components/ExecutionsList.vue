@@ -39,7 +39,7 @@
 			<div class="selection-options">
 				<span v-if="checkAll === true || isIndeterminate === true">
 					Selected: {{numSelected}} / <span v-if="finishedExecutionsCountEstimated === true">~</span>{{finishedExecutionsCount}}
-					<el-button type="danger" title="Delete Selected" icon="el-icon-delete" size="mini" @click="handleDeleteSelected" circle></el-button>
+					<n8n-icon-button title="Delete Selected" icon="trash" size="sm" @click="handleDeleteSelected" />
 				</span>
 			</div>
 
@@ -97,10 +97,15 @@
 						</el-tooltip>
 
 						<el-dropdown trigger="click" @command="handleRetryClick">
-							<span class="el-dropdown-link">
-								<el-button class="retry-button" v-bind:class="{ warning: scope.row.stoppedAt === null }" circle v-if="scope.row.stoppedAt !== undefined && !scope.row.finished && scope.row.retryOf === undefined && scope.row.retrySuccessId === undefined" type="text" size="small" title="Retry execution">
-									<font-awesome-icon icon="redo" />
-								</el-button>
+							<span class="retry-button">
+								<n8n-icon-button
+									 v-if="scope.row.stoppedAt !== undefined && !scope.row.finished && scope.row.retryOf === undefined && scope.row.retrySuccessId === undefined" 
+									 type="light"
+									 :theme="scope.row.stoppedAt === null ? 'warning': 'danger'"
+									 size="md"
+									 title="Retry execution"
+									 icon="redo"
+								/>
 							</span>
 							<el-dropdown-menu slot="dropdown">
 								<el-dropdown-item :command="{command: 'currentlySaved', row: scope.row}">Retry with currently saved workflow</el-dropdown-item>
@@ -129,23 +134,17 @@
 				<el-table-column label="" width="100" align="center">
 					<template slot-scope="scope">
 						<span v-if="scope.row.stoppedAt === undefined">
-							<el-button circle title="Stop Execution" @click.stop="stopExecution(scope.row.id)" :loading="stoppingExecutions.includes(scope.row.id)" size="mini">
-								<font-awesome-icon icon="stop" />
-							</el-button>
+							<n8n-icon-button icon="stop" title="Stop Execution" @click.stop="stopExecution(scope.row.id)" :loading="stoppingExecutions.includes(scope.row.id)" />
 						</span>
 						<span v-else-if="scope.row.id">
-							<el-button circle title="Open Past Execution" @click.stop="displayExecution(scope.row)" size="mini">
-								<font-awesome-icon icon="folder-open" />
-							</el-button>
+							<n8n-icon-button icon="folder-open" title="Open Past Execution" @click.stop="displayExecution(scope.row)" />
 						</span>
 					</template>
 				</el-table-column>
 			</el-table>
 
 			<div class="load-more" v-if="finishedExecutionsCount > finishedExecutions.length || finishedExecutionsCountEstimated === true">
-				<el-button title="Load More" @click="loadMore()" size="small" :disabled="isDataLoading">
-					<font-awesome-icon icon="sync" /> Load More
-				</el-button>
+				<n8n-button icon="sync" title="Load More" label="Load More" @click="loadMore()" :disabled="isDataLoading" />
 			</div>
 
 		</el-dialog>
@@ -674,13 +673,7 @@ export default mixins(
 }
 
 .retry-button {
-	color: $--custom-error-text;
-	background-color: $--custom-error-background;
 	margin-left: 5px;
-	&.warning {
-		background-color: $--custom-warning-background;
-		color: $--custom-warning-text;
-	}
 }
 
 .selection-options {

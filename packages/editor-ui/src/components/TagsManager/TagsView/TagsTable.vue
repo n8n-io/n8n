@@ -44,22 +44,20 @@
 			<template slot-scope="scope">
 				<transition name="fade" mode="out-in">
 					<div class="ops" v-if="scope.row.create">
-						<el-button title="Cancel" @click.stop="cancel" size="small" plain :disabled="isSaving">Cancel</el-button>
-						<el-button title="Create Tag" @click.stop="apply" size="small" :loading="isSaving">
-							Create tag
-						</el-button>
+						<n8n-button label="Cancel" @click.stop="cancel" type="outline" :disabled="isSaving" />
+						<n8n-button label="Create tag" @click.stop="apply" :loading="isSaving" />
 					</div>
 					<div class="ops" v-else-if="scope.row.update">
-						<el-button title="Cancel" @click.stop="cancel" size="small" plain :disabled="isSaving">Cancel</el-button>
-						<el-button title="Save Tag" @click.stop="apply" size="small" :loading="isSaving">Save changes</el-button>
+						<n8n-button label="Cancel" @click.stop="cancel" type="outline" :disabled="isSaving" />
+						<n8n-button label="Save changes" @click.stop="apply" :loading="isSaving" />
 					</div>
 					<div class="ops" v-else-if="scope.row.delete">
-						<el-button title="Cancel" @click.stop="cancel" size="small" plain :disabled="isSaving">Cancel</el-button>
-						<el-button title="Delete Tag" @click.stop="apply" size="small" :loading="isSaving">Delete tag</el-button>
+						<n8n-button label="Cancel" @click.stop="cancel" type="outline" :disabled="isSaving" />
+						<n8n-button label="Delete tag" @click.stop="apply" :loading="isSaving" />
 					</div>
 					<div class="ops main" v-else-if="!scope.row.disable">
-						<el-button title="Edit Tag" @click.stop="enableUpdate(scope.row)" icon="el-icon-edit" circle></el-button>
-						<el-button title="Delete Tag" @click.stop="enableDelete(scope.row)" icon="el-icon-delete" circle></el-button>
+						<n8n-icon-button title="Edit Tag" @click.stop="enableUpdate(scope.row)" icon="pen" />
+						<n8n-icon-button title="Delete Tag" @click.stop="enableDelete(scope.row)" icon="trash" />
 					</div>
 				</transition>
 			</template>

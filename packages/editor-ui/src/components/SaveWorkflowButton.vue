@@ -1,5 +1,5 @@
 <template>
-	<el-button :disabled="isWorkflowSaving" :class="{saved: isSaved}" size="small" @click="save">
+	<el-button :disabled="isWorkflowSaving" :class="{saved: isSaved}" size="small" @click="save" round :type="isSaved ? 'text': 'primary'">
 		<font-awesome-icon v-if="isWorkflowSaving" icon="spinner" spin />
 		<span v-else-if="isDirty || isNewWorkflow">
 			Save

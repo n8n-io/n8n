@@ -29,7 +29,7 @@
 			<div v-if="values && Object.keys(values).length === 0 || isReadOnly" class="no-items-exist">
 				Currently no items exist
 			</div>
-			<el-button v-if="!isReadOnly" size="small" class="add-item" @click="addItem()">{{ addButtonText }}</el-button>
+			<n8n-button v-if="!isReadOnly" fullWidth size="lg" @click="addItem()" :label="addButtonText" />
 		</div>
 
 	</div>
@@ -137,10 +137,6 @@ export default mixins(genericHelpers)
 
 .add-item-wrapper {
 	margin: 0.5em 0 0em 2em;
-}
-
-.add-item {
-	width: 100%;
 }
 
 .delete-item {

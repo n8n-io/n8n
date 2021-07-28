@@ -104,12 +104,8 @@
 		</el-row>
 
 		<div class="action-buttons">
-			<el-button type="success" @click="updateCredentials(true)" v-if="credentialDataDynamic">
-				Save
-			</el-button>
-			<el-button type="success" @click="createCredentials(true)" v-else>
-				Create
-			</el-button>
+			<n8n-button type="success" @click="updateCredentials(true)" label="Save" size="lg" v-if="credentialDataDynamic" />
+			<n8n-button @click="createCredentials(true)" label="Create" size="lg" v-else />
 		</div>
 
 	</div>

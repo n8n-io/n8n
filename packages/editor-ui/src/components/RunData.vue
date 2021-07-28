@@ -2,20 +2,20 @@
 	<div class="run-data-view" v-loading="workflowRunning">
 		<BinaryDataDisplay :windowVisible="binaryDataDisplayVisible" :displayData="binaryDataDisplayData" @close="closeBinaryDataDisplay"/>
 
-		<el-button
-			v-if="node && !isReadOnly"
-			:disabled="workflowRunning"
-			@click.stop="runWorkflow(node.name, 'RunData.ExecuteNodeButton')"
+		<div
 			class="execute-node-button"
-			:title="`Executes this ${node.name} node after executing any previous nodes that have not yet returned data`"
 		>
-			<div class="run-icon-button">
-				<font-awesome-icon v-if="!workflowRunning" icon="play-circle"/>
-				<font-awesome-icon v-else icon="spinner" spin />
-			</div>
-
-			Execute Node
-		</el-button>
+			<n8n-button
+				v-if="node && !isReadOnly"
+				:title="`Executes this ${node.name} node after executing any previous nodes that have not yet returned data`"
+				:loading="workflowRunning"
+				icon="play-circle"
+				type="outline"
+				label="Execute Node"
+				size="md"
+				@click.stop="runWorkflow(node.name, 'RunData.ExecuteNodeButton')"
+			/>
+		</div>
 
 		<div class="header">
 			<div class="title-text">
@@ -75,7 +75,6 @@
 						<el-dropdown-item :command="{command: 'value'}">Copy Value</el-dropdown-item>
 					</el-dropdown-menu>
 				</el-dropdown>
-
 			</div>
 		</div>
 		<div class="data-display-content">
@@ -84,7 +83,7 @@
 					<NodeErrorView :error="workflowRunData[node.name][runIndex].error" />
 				</div>
 				<span v-else>
-					<div v-if="showData === false" class="to-much-data">
+					<div v-if="showData === false" class="too-much-data">
 						<h3>
 							Node returned a large amount of data
 						</h3>
@@ -96,10 +95,12 @@
 							If you do decide to display it, avoid the JSON view!
 						</div>
 
-						<el-button size="small" @click="displayMode = 'Table';showData = true;">
-							<font-awesome-icon icon="eye"/>
-							Display Data Anyway
-						</el-button>
+						<n8n-button
+							size="md"
+							icon="eye"
+							label="Display Data Anyway"
+							@click="displayMode = 'Table';showData = true;"
+						/>
 					</div>
 					<div v-else-if="['JSON', 'Table'].includes(displayMode)">
 						<div v-if="jsonData.length === 0" class="no-data">
@@ -169,11 +170,8 @@
 												<div class="value">{{binaryData.mimeType}}</div>
 											</div>
 
-											<!-- <el-button @click="displayBinaryData(binaryData)"> -->
 											<div class="binary-data-show-data-button-wrapper">
-												<el-button size="mini" class="binary-data-show-data-button" @click="displayBinaryData(index, key)">
-													Show Binary Data
-												</el-button>
+												<n8n-button size="sm" label="Show Binary Data" class="binary-data-show-data-button" @click="displayBinaryData(index, key)" />
 											</div>
 
 										</div>
@@ -680,11 +678,6 @@ export default mixins(
 					.binary-data-show-data-button-wrapper {
 						margin-top: 1.5em;
 						text-align: center;
-						width: 100%;
-
-						.binary-data-show-data-button {
-							width: 130px;
-						}
 					}
 
 					.label {
@@ -730,7 +723,7 @@ export default mixins(
 			margin: 1em;
 		}
 
-		.to-much-data  {
+		.too-much-data  {
 			margin: 1em;
 			text-align: center;
 
@@ -767,21 +760,6 @@ export default mixins(
 		position: absolute;
 		top: 10px;
 		right: 10px;
-		height: 30px;
-		width: 140px;
-		padding: 7px;
-		border-radius: 13px;
-		color: $--color-primary;
-		border: 1px solid $--color-primary;
-		background-color: #fff;
-	}
-	.execute-node-button:hover {
-		transform: scale(1.05);
-	}
-
-	.run-icon-button {
-		display: inline-block;
-		width: 20px;
 	}
 
 	.header {
