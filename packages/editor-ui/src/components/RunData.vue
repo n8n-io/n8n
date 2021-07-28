@@ -3,10 +3,10 @@
 		<BinaryDataDisplay :windowVisible="binaryDataDisplayVisible" :displayData="binaryDataDisplayData" @close="closeBinaryDataDisplay"/>
 
 		<div
+			v-if="node && !isReadOnly"
 			class="execute-node-button"
 		>
 			<n8n-button
-				v-if="node && !isReadOnly"
 				:title="`Executes this ${node.name} node after executing any previous nodes that have not yet returned data`"
 				:loading="workflowRunning"
 				icon="play-circle"
@@ -54,19 +54,17 @@
 
 				</span>
 			</div>
-			<div v-if="node && workflowRunData !== null && workflowRunData.hasOwnProperty(node.name) && !workflowRunData[node.name][runIndex].error" class="title-data-display-selector" @click.stop>
+			<div v-if="hasNodeRun && !hasRunError" class="title-data-display-selector" @click.stop>
 				<el-radio-group v-model="displayMode" size="mini">
 					<el-radio-button label="JSON" :disabled="showData === false"></el-radio-button>
 					<el-radio-button label="Table"></el-radio-button>
 					<el-radio-button label="Binary" v-if="binaryData.length !== 0"></el-radio-button>
 				</el-radio-group>
 			</div>
-			<div class="select-button" v-if="displayMode === 'JSON' && state.path !== deselectedPlaceholder">
+			<div class="select-button" v-if="hasNodeRun && !hasRunError && displayMode === 'JSON' && state.path !== deselectedPlaceholder">
 				<el-dropdown trigger="click" @command="handleCopyClick">
 					<span class="el-dropdown-link">
-						<el-button class="retry-button" circle type="text" size="small" title="Copy">
-							<font-awesome-icon icon="copy" />
-						</el-button>
+						<n8n-icon-button title="Copy to Clipboard" icon="copy" />
 					</span>
 					<el-dropdown-menu slot="dropdown">
 						<el-dropdown-item :command="{command: 'itemPath'}">Copy Item Path</el-dropdown-item>
@@ -266,6 +264,12 @@ export default mixins(
 			};
 		},
 		computed: {
+			hasNodeRun(): boolean {
+				return Boolean(this.node && this.workflowRunData && this.workflowRunData.hasOwnProperty(this.node.name));
+			},
+			hasRunError(): boolean {
+				return Boolean(this.node && this.workflowRunData && this.workflowRunData[this.node.name] && this.workflowRunData[this.node.name][this.runIndex] && this.workflowRunData[this.node.name][this.runIndex].error);
+			},
 			workflowRunning (): boolean {
 				return this.$store.getters.isActionActive('workflowRunning');
 			},
