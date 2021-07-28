@@ -98,6 +98,9 @@ export const genericHelpers = mixins(showMessage).extend({
 					cancelButtonText,
 					type,
 					dangerouslyUseHTMLString: true,
+					roundButton: true,
+					confirmButtonClass: 'force-medium',
+					cancelButtonClass: 'force-medium force-outline',
 				});
 				return true;
 			} catch (e) {
