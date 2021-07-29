@@ -181,8 +181,9 @@ export default Vue.extend({
 	align-items: center;
 	display: flex;
 	flex-wrap: nowrap;
+	float: right;
 
-	> .el-button {
+	> * {
 		margin: 2px;
 	}
 }
@@ -197,9 +198,8 @@ export default Vue.extend({
 	opacity: 0;
 }
 
-.ops.main > .el-button {
+.ops.main {
 	display: none;
-	float: right;
 	margin-left: 2px;
 }
 
@@ -207,8 +207,8 @@ export default Vue.extend({
 	pointer-events: none;
 }
 
-/deep/ tr:hover .ops:not(.disabled) .el-button {
-	display: block;
+tr:hover .ops:not(.disabled) {
+	display: flex;
 }
 
 /deep/ .el-input.is-disabled > input {

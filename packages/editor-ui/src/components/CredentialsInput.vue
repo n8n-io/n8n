@@ -41,15 +41,11 @@
 			</el-col>
 			<el-col :span="18">
 				<span v-if="requiredPropertiesFilled === false">
-					<el-button title="Connect OAuth Credentials" circle :disabled="true">
-						<font-awesome-icon icon="redo" />
-					</el-button>
+					<n8n-icon-button title="Connect OAuth Credentials" icon="redo" :disabled="true" size="lg" />
 					Enter all required properties
 				</span>
 				<span v-else-if="isOAuthConnected === true">
-					<el-button title="Reconnect OAuth Credentials" @click.stop="oAuthCredentialAuthorize()" circle>
-						<font-awesome-icon icon="redo" />
-					</el-button>
+					<n8n-icon-button title="Reconnect OAuth Credentials" @click.stop="oAuthCredentialAuthorize()" icon="redo" size="lg" />
 					Connected
 				</span>
 				<span v-else>
@@ -57,9 +53,7 @@
 						<img :src="basePath + 'google-signin.png'" class="google-icon clickable" alt="Sign in with Google" @click.stop="oAuthCredentialAuthorize()" />
 					</span>
 					<span v-else>
-						<el-button title="Connect OAuth Credentials" @click.stop="oAuthCredentialAuthorize()" circle>
-							<font-awesome-icon icon="sign-in-alt" />
-						</el-button>
+						<n8n-icon-button title="Connect OAuth Credentials" @click.stop="oAuthCredentialAuthorize()" icon="sign-in-alt" size="lg" />
 						Not connected
 					</span>
 				</span>

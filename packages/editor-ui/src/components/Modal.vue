@@ -146,9 +146,4 @@ export default Vue.extend({
 .modal-content > .el-row {
 	margin-bottom: 15px;
 }
-
-.modal-footer > .el-button {
-	float: right;
-	margin-left: 5px;
-}
 </style>

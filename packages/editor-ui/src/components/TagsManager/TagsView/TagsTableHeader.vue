@@ -13,7 +13,7 @@
 			</el-input>
 		</el-col>
 		<el-col :span="14">
-			<n8n-button @click="onAddNew" :disabled="disabled" icon="plus" label="Add new" size="lg" />
+			<n8n-button @click="onAddNew" :disabled="disabled" icon="plus" label="Add new" size="lg" float="right" />
 		</el-col>
 	</el-row>
 </template>
@@ -49,9 +49,5 @@ export default Vue.extend({
 <style lang="scss" scoped>
 .tags-header {
 	margin-bottom: 15px;
-}
-
-.el-button {
-	float: right;
 }
 </style>

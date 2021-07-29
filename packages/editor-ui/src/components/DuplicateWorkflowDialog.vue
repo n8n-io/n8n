@@ -29,8 +29,10 @@
 			</el-row>
 		</template>
 		<template v-slot:footer="{ close }">
-			<n8n-button @click="save" :loading="isSaving" label="Save" />
-			<n8n-button @click="close" :disabled="isSaving" label="Cancel" />
+			<div :class="$style.footer">
+				<n8n-button @click="save" :loading="isSaving" label="Save" float="right" />
+				<n8n-button type="outline" @click="close" :disabled="isSaving" label="Cancel" float="right" />
+			</div>
 		</template>
 	</Modal>
 </template>
@@ -123,3 +125,11 @@ export default mixins(showMessage, workflowHelpers).extend({
 	},
 });
 </script>
+
+<style lang="scss" module>
+.footer {
+	> * {
+		margin-left: var(--spacing-3xs);
+	}
+}
+</style>
