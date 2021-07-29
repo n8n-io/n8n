@@ -354,6 +354,22 @@ export const databasePageFields = [
 						description: 'Weather or not to include the time in the date.',
 					},
 					{
+						displayName: 'Timezone',
+						name: 'timezone',
+						type: 'options',
+						required: false,
+						typeOptions: {
+							show: {
+								type: [
+									'date',
+								],
+							},
+							loadOptionsMethod: 'getTimezones',
+						},
+						default: '',
+						description: 'Time zone used in the response. By default n8n timezone is used.',
+					},
+					{
 						displayName: 'Date',
 						name: 'date',
 						displayOptions: {
@@ -712,6 +728,22 @@ export const databasePageFields = [
 						type: 'boolean',
 						default: true,
 						description: 'Weather or not to include the time in the date.',
+					},
+					{
+						displayName: 'Timezone',
+						name: 'timezone',
+						type: 'options',
+						required: false,
+						typeOptions: {
+							show: {
+								type: [
+									'date',
+								],
+							},
+							loadOptionsMethod: 'getTimezones',
+						},
+						default: '',
+						description: 'Time zone used in the response. By default n8n timezone is used.',
 					},
 					{
 						displayName: 'Date',

@@ -48,6 +48,8 @@ import {
 	databasePageOperations,
 } from './DatabasePageDescription';
 
+import * as moment from 'moment-timezone';
+
 export class Notion implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Notion (Beta)',
@@ -265,6 +267,23 @@ export class Notion implements INodeType {
 				const { parent: { database_id: databaseId } } = await notionApiRequest.call(this, 'GET', `/pages/${pageId}`);
 				const { properties } = await notionApiRequest.call(this, 'GET', `/databases/${databaseId}`);
 				return (properties[name][type].options).map((option: IDataObject) => ({ name: option.name, value: option.id }));
+			},
+
+			// Get all the timezones to display them to user so that he can
+			// select them easily
+			async getTimezones(
+				this: ILoadOptionsFunctions,
+			): Promise<INodePropertyOptions[]> {
+				const returnData: INodePropertyOptions[] = [];
+				for (const timezone of moment.tz.names()) {
+					const timezoneName = timezone;
+					const timezoneId = timezone;
+					returnData.push({
+						name: timezoneName,
+						value: timezoneId,
+					});
+				}
+				return returnData;
 			},
 		},
 	};
