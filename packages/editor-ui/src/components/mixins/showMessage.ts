@@ -1,4 +1,5 @@
-import { Notification } from 'element-ui';
+// @ts-ignore
+import { Notification } from 'element-ui/lib/notification';
 import { ElNotificationComponent, ElNotificationOptions } from 'element-ui/types/notification';
 import mixins from 'vue-typed-mixins';
 

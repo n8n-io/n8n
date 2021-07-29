@@ -1,85 +1,84 @@
+// @ts-nocheck
+
 import Vue from "vue";
 import Fragment from 'vue-fragment';
 
 import "regenerator-runtime/runtime";
-import {
-	Pagination,
-	Autocomplete,
-	Drawer,
-	Dialog,
-	Dropdown,
-	DropdownMenu,
-	DropdownItem,
-	Menu,
-	Submenu,
-	MenuItem,
-	MenuItemGroup,
-	Input,
-	InputNumber,
-	Radio,
-	RadioGroup,
-	RadioButton,
-	Checkbox,
-	CheckboxButton,
-	CheckboxGroup,
-	Switch,
-	Select,
-	Option,
-	OptionGroup,
-	Button,
-	ButtonGroup,
-	Table,
-	TableColumn,
-	DatePicker,
-	TimeSelect,
-	TimePicker,
-	Popover,
-	Tooltip,
-	Breadcrumb,
-	BreadcrumbItem,
-	Form,
-	FormItem,
-	Tabs,
-	TabPane,
-	Tag,
-	Tree,
-	Alert,
-	Slider,
-	Icon,
-	Row,
-	Col,
-	Upload,
-	Progress,
-	Badge,
-	Card,
-	Rate,
-	Steps,
-	Step,
-	Carousel,
-	CarouselItem,
-	Collapse,
-	CollapseItem,
-	ColorPicker,
-	Transfer,
-	Container,
-	Header,
-	Aside,
-	Main,
-	Footer,
-	Timeline,
-	TimelineItem,
-	Link,
-	Divider,
-	Image,
-	Calendar,
-	Backtop,
-	PageHeader,
-	Loading,
-	MessageBox,
-	Message,
-	Notification,
-} from 'element-ui';
-// @ts-ignore
+// import Pagination 
+// import Autocomplete 
+import Drawer from 'element-ui/lib/drawer';
+import Dialog from 'element-ui/lib/dialog';
+import Dropdown from 'element-ui/lib/dropdown';
+import DropdownMenu from 'element-ui/lib/dropdown-menu';
+import DropdownItem from 'element-ui/lib/dropdown-item';
+import Menu from 'element-ui/lib/menu';
+import Submenu from 'element-ui/lib/submenu';
+import MenuItem from 'element-ui/lib/menu-item';
+// import MenuItemGroup from 'element-ui/lib/';
+import Input from 'element-ui/lib/input';
+import InputNumber from 'element-ui/lib/input-number';
+import Radio from 'element-ui/lib/radio';
+import RadioGroup from 'element-ui/lib/radio-group';
+import RadioButton from 'element-ui/lib/radio-button';
+import Checkbox from 'element-ui/lib/checkbox';
+// import CheckboxButton from 'element-ui/lib/';
+// import CheckboxGroup from 'element-ui/lib/';
+import Switch from 'element-ui/lib/switch';
+import Select from 'element-ui/lib/select';
+import Option from 'element-ui/lib/option';
+import OptionGroup from 'element-ui/lib/option-group';
+// import Button from 'element-ui/lib/';
+import ButtonGroup from 'element-ui/lib/button-group';
+import Table from 'element-ui/lib/table';
+import TableColumn from 'element-ui/lib/table-column';
+import DatePicker from 'element-ui/lib/date-picker';
+// import TimeSelect from 'element-ui/lib/';
+// import TimePicker from 'element-ui/lib/';
+import Popover from 'element-ui/lib/popover';
+import Tooltip from 'element-ui/lib/tooltip';
+// import Breadcrumb from 'element-ui/lib/';
+// import BreadcrumbItem from 'element-ui/lib/';
+import Form from 'element-ui/lib/form';
+import FormItem from 'element-ui/lib/form-item';
+import Tabs from 'element-ui/lib/tabs';
+import TabPane from 'element-ui/lib/tab-pane';
+import Tag from 'element-ui/lib/tag';
+// import Tree from 'element-ui/lib/';
+// import Alert from 'element-ui/lib/';
+// import Slider from 'element-ui/lib/';
+// import Icon from 'element-ui/lib/icon';
+import Row from 'element-ui/lib/row';
+import Col from 'element-ui/lib/col';
+// import Upload from 'element-ui/lib/';
+// import Progress from 'element-ui/lib/';
+import Badge from 'element-ui/lib/badge';
+import Card from 'element-ui/lib/card';
+// import Rate from 'element-ui/lib/';
+// import Steps from 'element-ui/lib/';
+// import Step from 'element-ui/lib/';
+// import Carousel from 'element-ui/lib/';
+// import CarouselItem from 'element-ui/lib/';
+// import Collapse from 'element-ui/lib/';
+// import CollapseItem from 'element-ui/lib/';
+import ColorPicker from 'element-ui/lib/color-picker';
+import Transfer from 'element-ui/lib/transfer';
+import Container from 'element-ui/lib/container';
+// import Header from 'element-ui/lib/';
+// import Aside from 'element-ui/lib/';
+// import Main from 'element-ui/lib/';
+// import Footer from 'element-ui/lib/';
+// import Timeline from 'element-ui/lib/';
+// import TimelineItem from 'element-ui/lib/';
+// import Link from 'element-ui/lib/';
+// import Divider from 'element-ui/lib/';
+// import Image from 'element-ui/lib/';
+// import Calendar from 'element-ui/lib/';
+// import Backtop from 'element-ui/lib/';
+// import PageHeader from 'element-ui/lib/';
+import Loading from 'element-ui/lib/loading';
+import MessageBox from 'element-ui/lib/message-box';
+import Message from 'element-ui/lib/message';
+import Notification from 'element-ui/lib/notification';
 import CollapseTransition from 'element-ui/lib/transitions/collapse-transition';
 
 // @ts-ignore
@@ -102,9 +101,9 @@ Vue.use(N8nIconButton);
 // element io
 locale.use(lang);
 
-Vue.use(Pagination);
+// Vue.use(Pagination);
 Vue.use(Dialog);
-Vue.use(Autocomplete);
+// Vue.use(Autocomplete);
 Vue.use(Drawer);
 Vue.use(Dropdown);
 Vue.use(DropdownMenu);
@@ -112,15 +111,15 @@ Vue.use(DropdownItem);
 Vue.use(Menu);
 Vue.use(Submenu);
 Vue.use(MenuItem);
-Vue.use(MenuItemGroup);
+// Vue.use(MenuItemGroup);
 Vue.use(Input);
 Vue.use(InputNumber);
 Vue.use(Radio);
 Vue.use(RadioGroup);
 Vue.use(RadioButton);
 Vue.use(Checkbox);
-Vue.use(CheckboxButton);
-Vue.use(CheckboxGroup);
+// Vue.use(CheckboxButton);
+// Vue.use(CheckboxGroup);
 Vue.use(Switch);
 Vue.use(Select);
 Vue.use(Option);
@@ -130,49 +129,49 @@ Vue.use(ButtonGroup);
 Vue.use(Table);
 Vue.use(TableColumn);
 Vue.use(DatePicker);
-Vue.use(TimeSelect);
-Vue.use(TimePicker);
+// Vue.use(TimeSelect);
+// Vue.use(TimePicker);
 Vue.use(Popover);
 Vue.use(Tooltip);
-Vue.use(Breadcrumb);
-Vue.use(BreadcrumbItem);
+// Vue.use(Breadcrumb);
+// Vue.use(BreadcrumbItem);
 Vue.use(Form);
 Vue.use(FormItem);
 Vue.use(Tabs);
 Vue.use(TabPane);
 Vue.use(Tag);
-Vue.use(Tree);
-Vue.use(Alert);
-Vue.use(Slider);
-Vue.use(Icon);
+// Vue.use(Tree);
+// Vue.use(Alert);
+// Vue.use(Slider);
+// Vue.use(Icon);
 Vue.use(Row);
 Vue.use(Col);
-Vue.use(Upload);
-Vue.use(Progress);
+// Vue.use(Upload);
+// Vue.use(Progress);
 Vue.use(Badge);
 Vue.use(Card);
-Vue.use(Rate);
-Vue.use(Steps);
-Vue.use(Step);
-Vue.use(Carousel);
-Vue.use(CarouselItem);
-Vue.use(Collapse);
-Vue.use(CollapseItem);
+// Vue.use(Rate);
+// Vue.use(Steps);
+// Vue.use(Step);
+// Vue.use(Carousel);
+// Vue.use(CarouselItem);
+// Vue.use(Collapse);
+// Vue.use(CollapseItem);
 Vue.use(ColorPicker);
 Vue.use(Transfer);
 Vue.use(Container);
-Vue.use(Header);
-Vue.use(Aside);
-Vue.use(Main);
-Vue.use(Footer);
-Vue.use(Timeline);
-Vue.use(TimelineItem);
-Vue.use(Link);
-Vue.use(Divider);
-Vue.use(Image);
-Vue.use(Calendar);
-Vue.use(Backtop);
-Vue.use(PageHeader);
+// Vue.use(Header);
+// Vue.use(Aside);
+// Vue.use(Main);
+// Vue.use(Footer);
+// Vue.use(Timeline);
+// Vue.use(TimelineItem);
+// Vue.use(Link);
+// Vue.use(Divider);
+// Vue.use(Image);
+// Vue.use(Calendar);
+// Vue.use(Backtop);
+// Vue.use(PageHeader);
 
 Vue.component(CollapseTransition.name, CollapseTransition);
 
