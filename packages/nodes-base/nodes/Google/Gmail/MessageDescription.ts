@@ -277,6 +277,16 @@ export const messageFields = [
 				placeholder: 'info@example.com',
 				default: [],
 			},
+			{
+				displayName: 'Sender Name',
+				name: 'senderName',
+				type: 'string',
+				placeholder: 'from message <test@gmail.com>',
+				default: '',
+				description: `The name displayed in your contacts' inboxes.</br>
+				It needs to follow the following format: your message <fromemail@gtest.com>.</br>
+				The email address has to match the email address of the logged in user for the API`,
+			},
 		],
 	},
 	{
