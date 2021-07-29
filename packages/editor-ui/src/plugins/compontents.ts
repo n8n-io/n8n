@@ -79,9 +79,12 @@ import {
 	Message,
 	Notification,
 } from 'element-ui';
+// @ts-ignore
 import CollapseTransition from 'element-ui/lib/transitions/collapse-transition';
 
+// @ts-ignore
 import lang from 'element-ui/lib/locale/lang/en';
+// @ts-ignore
 import locale from 'element-ui/lib/locale';
 
 import {
@@ -97,7 +100,7 @@ Vue.use(N8nButton);
 Vue.use(N8nIconButton);
 
 // element io
-locale.use(lang)
+locale.use(lang);
 
 Vue.use(Pagination);
 Vue.use(Dialog);
@@ -171,7 +174,7 @@ Vue.use(Calendar);
 Vue.use(Backtop);
 Vue.use(PageHeader);
 
-Vue.component(CollapseTransition.name, CollapseTransition)
+Vue.component(CollapseTransition.name, CollapseTransition);
 
 Vue.use(Loading.directive);
 
