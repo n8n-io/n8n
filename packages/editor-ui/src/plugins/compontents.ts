@@ -55,7 +55,7 @@ import locale from 'element-ui/lib/locale';
 import {
 	N8nIconButton,
 	N8nButton,
-} from 'n8n-design-system';
+} from 'n8n-design-system/dist/n8n-design-system.umd.min';
 import { ElMessageBoxOptions } from "element-ui/types/message-box";
 
 Vue.use(Fragment.Plugin);
