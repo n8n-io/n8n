@@ -40,9 +40,9 @@ export const noteFields = [
 	//               note: create
 	// ----------------------------------------
 	{
-		displayName: 'Contents',
+		displayName: 'Content',
 		name: 'description',
-		description: 'Contents of the note',
+		description: 'Content of the note',
 		type: 'string',
 		required: true,
 		typeOptions: {
@@ -61,7 +61,7 @@ export const noteFields = [
 		},
 	},
 	{
-		displayName: 'Targetable Type',
+		displayName: 'Target Type',
 		name: 'targetableType',
 		description: 'Type of the entity for which the note is created',
 		type: 'options',
@@ -93,9 +93,9 @@ export const noteFields = [
 		},
 	},
 	{
-		displayName: 'Targetable ID',
+		displayName: 'Target ID',
 		name: 'targetable_id',
-		description: 'ID of the entity for which note is created. The type of entity is selected in "Targetable Type".',
+		description: 'ID of the entity for which note is created. The type of entity is selected in "Target Type".',
 		type: 'string',
 		required: true,
 		default: '',
@@ -172,24 +172,24 @@ export const noteFields = [
 		},
 		options: [
 			{
-				displayName: 'Contents',
+				displayName: 'Content',
 				name: 'description',
 				type: 'string',
 				typeOptions: {
 					rows: 5,
 				},
 				default: '',
-				description: 'Contents of the note',
+				description: 'Content of the note',
 			},
 			{
-				displayName: 'Targetable ID',
+				displayName: 'Target ID',
 				name: 'targetable_id',
 				type: 'string',
 				default: '',
 				description: 'ID of the entity for which the note is updated',
 			},
 			{
-				displayName: 'Targetable Type',
+				displayName: 'Target Type',
 				name: 'targetable_type',
 				type: 'options',
 				default: 'Contact',
