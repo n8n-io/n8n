@@ -41,7 +41,7 @@ export const salesActivityOperations = [
 			// 	description: 'Update a sales activity',
 			// },
 		],
-		default: 'create',
+		default: 'get',
 	},
 ] as INodeProperties[];
 

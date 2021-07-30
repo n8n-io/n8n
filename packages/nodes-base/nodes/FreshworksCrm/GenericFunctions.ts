@@ -180,7 +180,7 @@ export function adjustAttendees(attendees: [{ type: string, contactId: string, u
 /**
  * Adjust account data from n8n UI to the format expected by Freshworks CRM API.
  */
- export function adjustAccounts(additionalFields: IDataObject & SalesAccounts) {
+export function adjustAccounts(additionalFields: IDataObject & SalesAccounts) {
 	if (!additionalFields?.sales_accounts) return additionalFields;
 
 	const adjusted = additionalFields.sales_accounts.map(accountId => {

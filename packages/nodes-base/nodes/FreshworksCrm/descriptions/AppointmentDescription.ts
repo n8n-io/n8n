@@ -197,16 +197,6 @@ export const appointmentFields = [
 			},
 		},
 		options: [
-			// {
-			// 	displayName: 'Attendees',
-			// 	name: 'appointment_attendees_attributes',
-			// 	type: 'multiOptions',
-			// 	default: [],
-			// 	typeOptions: {
-			// 		loadOptionsMethod: 'getUsers',
-			// 	},
-			// 	description: 'Attendees associated to the appointment',
-			// },
 			{
 				displayName: 'Creator ID',
 				name: 'creater_id',
