@@ -142,6 +142,7 @@ export async function encodeEmail(email: IEmail) {
 	let mailBody: Buffer;
 
 	const mailOptions = {
+		from: email.from,
 		to: email.to,
 		cc: email.cc,
 		bcc: email.bcc,
