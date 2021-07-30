@@ -26,7 +26,7 @@
     "test:unit": "vue-cli-service test:unit"
   },
   "dependencies": {
-    "n8n-design-system": "file:../../../n8n-design-system",
+    "n8n-design-system": "git+https://github.com/n8n-io/n8n-design-system.git",
     "regenerator-runtime": "^0.13.9",
     "timeago.js": "^4.0.2",
     "v-click-outside": "^3.1.2",
