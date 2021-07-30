@@ -10,7 +10,7 @@ import {
 	NodeOperationError,
 } from 'n8n-workflow';
 
-import { get, isEqual, isObject, lt, merge, reduce } from 'lodash';
+import { get, isEqual, isObject, lt, merge, reduce, set } from 'lodash';
 
 const { NodeVM } = require('vm2');
 
@@ -53,11 +53,11 @@ export class ItemLists implements INodeType {
 						value: 'splitOutItems',
 						description: 'Turn a list inside item(s) into separate items',
 					},
-					// {
-					// 	name: 'Aggregate items',
-					// 	value: 'aggregateItems',
-					// 	description: 'Merge fields into a single new item',
-					// },
+					{
+						name: 'Aggregate items',
+						value: 'aggregateItems',
+						description: 'Merge fields into a single new item',
+					},
 					{
 						name: 'Remove duplicates',
 						value: 'removeDuplicates',
@@ -159,6 +159,61 @@ export class ItemLists implements INodeType {
 						],
 						operation: [
 							'splitOutItems',
+						],
+					},
+				},
+			},
+			// Aggregate item - Fields
+			{
+				displayName: 'Fields to aggregate',
+				name: 'aggregateFieldsUi',
+				type: 'string',
+				typeOptions: {
+					multipleValues: true,
+					multipleValueButtonText: 'Add field to aggregate',
+				},
+				default: [],
+				displayOptions: {
+					show: {
+						resource: [
+							'itemList',
+						],
+						operation: [
+							'aggregateItems',
+						],
+					},
+				},
+			},
+			{
+				displayName: 'Output field name',
+				name: 'outputFieldName',
+				type: 'string',
+				default: 'data',
+				description: 'The name of the field to put the aggregated data in',
+				displayOptions: {
+					show: {
+						resource: [
+							'itemList',
+						],
+						operation: [
+							'aggregateItems',
+						],
+					},
+				},
+			},
+			{
+				displayName: 'Allow dot notation',
+				name: 'allowDotNotation',
+				type: 'boolean',
+				default: false,
+				description: 'Whether to allow referencing child fields using `parent.child` in the field name',
+				displayOptions: {
+					show: {
+						resource: [
+							'itemList',
+						],
+						operation: [
+							'aggregateItems',
 						],
 					},
 				},
@@ -442,7 +497,7 @@ return 0;`,
 
 					if (fieldToSplitBy === '') {
 						if (Array.isArray(items[i].json)) {
-							returnData.push.apply(items[i].json);
+							returnData.push(...(items[i].json as unknown as IDataObject[]).map(ele => ({json:ele})));
 						}
 					} else {
 						const allowDotNotation = this.getNodeParameter('allowDotNotation', i) as boolean;
@@ -463,6 +518,7 @@ return 0;`,
 									...typeof(element) === 'object' ? element: {[fieldToSplitBy as string]:element},
 								};
 								if (include === 'selectedOtherFields') {
+
 									const fieldsToInclude = (this.getNodeParameter('fieldsToInclude', i) as string).split(',');
 									newItem = {
 										...newItem,
@@ -480,11 +536,19 @@ return 0;`,
 											return prev;
 										},{}),
 									};
+
 								} else if (include === 'allOtherFields') {
+
+									let keys;
+									if (allowDotNotation) {
+										keys =  Object.keys(flattenKeys(items[i].json));
+									} else {
+										keys = Object.keys(items[i].json);
+									}
 									newItem = {
 										...newItem,
-										...Object.keys(items[i].json).reduce((prev, field) => {
-											if (field === fieldToSplitBy) {
+										...keys.reduce((prev, field) => {
+											if (field.startsWith(fieldToSplitBy)) {
 												return prev;
 											}
 											let value;
@@ -497,11 +561,43 @@ return 0;`,
 											return prev;
 										},{}),
 									};
+
 								}
 								returnData.push({ json: newItem });
 							}
 						}
 					}
+				}
+
+				return this.prepareOutputData(returnData);
+
+			} else if (operation === 'aggregateItems') {
+
+				const outputFieldName = this.getNodeParameter('outputFieldName', 0) as string;
+				const allowDotNotation = this.getNodeParameter('allowDotNotation', 0) as boolean;
+				const aggregateFieldsUi = this.getNodeParameter('aggregateFieldsUi', 0) as string[];
+
+				if (!aggregateFieldsUi.length) {
+					throw new NodeOperationError(this.getNode(), 'No fields specified. Please add a field to aggregate');
+				}
+
+				let newItem: INodeExecutionData;
+				for (let i = 0; i < length; i++) {
+					newItem = {json: {}};
+					const value = [];
+					for (const aggregateField of aggregateFieldsUi) {
+						if (aggregateField !== '') {
+							if (typeof(items[i].json[aggregateField]) === 'string') {
+								value.push(items[i].json[aggregateField]);
+							}
+						}
+					}
+					if (allowDotNotation) {
+						set(newItem.json, outputFieldName, value.join(' '));
+					} else {
+						newItem.json[outputFieldName] = value.join(' ');
+					}
+					returnData.push(newItem);
 				}
 
 				return this.prepareOutputData(returnData);
@@ -528,10 +624,9 @@ return 0;`,
 					if (allowDotNotation) {
 						keys = Object.keys(flattenKeys(items[0].json));
 					}
-					keys = fieldsToCompare.map(key => (key.trim())).filter( key => !!key);
+					keys = fieldsToCompare.map(key => (key.trim()));
 				}
 				// This solution is O(nlogn)
-
 				// add original index to the items
 				const newItems = items.map((item,index) => ({ json: {...item['json'], INDEX:index,},} as INodeExecutionData));
 				// sort items using the compare keys
@@ -552,14 +647,14 @@ return 0;`,
 							} else {
 								lessThan = lt(a.json[key], b.json[key]);
 							}
-							result = lessThan? -1 : 1;
+							result = lessThan ? -1 : 1;
 							break;
 						}
 					}
 					return result;
 				});
 				// collect the original indexes of items to be removed
-				const removedIndexes: number[]= [];
+				const removedIndexes: number[] = [];
 				let temp = newItems[0];
 				for (let index = 1; index < newItems.length; index++) {
 					if (compareItems(newItems[index], temp, keys, allowDotNotation)) {
@@ -665,7 +760,7 @@ return 0;`,
 const compareItems = (obj:INodeExecutionData, obj2:INodeExecutionData, keys: string[], allowDotNotation:boolean) =>  {
 	let result = true;
 	const keys1 = allowDotNotation ? Object.keys(flattenKeys(obj.json)) : Object.keys(obj.json);
-	const keys2 = allowDotNotation ? Object.keys(flattenKeys(obj2.json)) :  Object.keys(obj2.json);
+	const keys2 = allowDotNotation ? Object.keys(flattenKeys(obj2.json)) : Object.keys(obj2.json);
 	for (const key of keys) {
 
 		if (!keys1.includes(key) || !keys2.includes(key)){
