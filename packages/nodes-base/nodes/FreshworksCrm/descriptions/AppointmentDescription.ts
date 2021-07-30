@@ -246,14 +246,14 @@ export const appointmentFields = [
 				description: 'ID of outcome of Appointment sales activity type',
 			},
 			{
-				displayName: 'Targetable ID',
+				displayName: 'Target ID',
 				name: 'targetable_id',
 				type: 'string',
 				default: '',
 				description: 'ID of contact/account against whom appointment is created',
 			},
 			{
-				displayName: 'Targetable Type',
+				displayName: 'Target Type',
 				name: 'targetable_type',
 				type: 'options',
 				default: 'Contact',
@@ -402,7 +402,7 @@ export const appointmentFields = [
 						value: 'creater',
 					},
 					{
-						name: 'Targetable',
+						name: 'Target',
 						value: 'targetable',
 					},
 				],
@@ -590,14 +590,14 @@ export const appointmentFields = [
 				default: '',
 			},
 			{
-				displayName: 'Targetable ID',
+				displayName: 'Target ID',
 				name: 'targetable_id',
 				type: 'string',
 				default: '',
 				description: 'ID of contact/account against whom appointment is created',
 			},
 			{
-				displayName: 'Targetable Type',
+				displayName: 'Target Type',
 				name: 'targetable_type',
 				type: 'options',
 				default: 'Contact',
