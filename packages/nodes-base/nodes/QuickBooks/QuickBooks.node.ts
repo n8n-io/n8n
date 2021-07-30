@@ -28,13 +28,14 @@ import {
 	paymentOperations,
 	purchaseFields,
 	purchaseOperations,
+	transactionFields,
+	transactionOperations,
 	vendorFields,
 	vendorOperations,
-	transactionListFields,
-	transactionListOperations,
 } from './descriptions';
 
 import {
+	adjustTransactionDates,
 	getRefAndSyncToken,
 	getSyncToken,
 	handleBinaryData,
@@ -54,7 +55,9 @@ import {
 } from 'lodash';
 
 import {
+	DateFieldsUi,
 	QuickBooksOAuth2Credentials,
+	TransactionFields,
 } from './types';
 
 export class QuickBooks implements INodeType {
@@ -117,8 +120,8 @@ export class QuickBooks implements INodeType {
 						value: 'purchase',
 					},
 					{
-						name: 'Transaction List',
-						value: 'transactionList',
+						name: 'Transaction',
+						value: 'transaction',
 					},
 					{
 						name: 'Vendor',
@@ -144,8 +147,8 @@ export class QuickBooks implements INodeType {
 			...paymentFields,
 			...purchaseOperations,
 			...purchaseFields,
-			...transactionListOperations,
-			...transactionListFields,
+			...transactionOperations,
+			...transactionFields,
 			...vendorOperations,
 			...vendorFields,
 		],
@@ -161,12 +164,24 @@ export class QuickBooks implements INodeType {
 				return await loadResource.call(this, 'preferences');
 			},
 
+			async getDepartments(this: ILoadOptionsFunctions) {
+				return await loadResource.call(this, 'department');
+			},
+
 			async getItems(this: ILoadOptionsFunctions) {
 				return await loadResource.call(this, 'item');
 			},
 
+			async getMemos(this: ILoadOptionsFunctions) {
+				return await loadResource.call(this, 'CreditMemo');
+			},
+
 			async getPurchases(this: ILoadOptionsFunctions) {
 				return await loadResource.call(this, 'purchase');
+			},
+
+			async getTerms(this: ILoadOptionsFunctions) {
+				return await loadResource.call(this, 'Term');
 			},
 
 			async getVendors(this: ILoadOptionsFunctions) {
@@ -956,22 +971,60 @@ export class QuickBooks implements INodeType {
 
 					}
 
-				} else if (resource === 'transactionList') {
+				} else if (resource === 'transaction') {
 
 					// *********************************************************************
-					//                            transactionList
+					//                            transaction
 					// *********************************************************************
 
 					// https://developer.intuit.com/app/developer/qbo/docs/api/accounting/all-entities/transactionlist
-					if (operation === 'get') {
+
+					if (operation === 'getAll') {
 
 						// ----------------------------------
-						//         transactionList: get
+						//        transaction: getAll
 						// ----------------------------------
 
-						const filters = this.getNodeParameter('filters', i) as IDataObject;
+						const {
+							columns,
+							memo,
+							term,
+							customer,
+							vendor,
+							...rest
+						} = this.getNodeParameter('filters', i) as TransactionFields;
+
+						let qs = { ...rest };
+
+						if (columns?.length) {
+							qs.columns = columns.join(',');
+						}
+
+						if (memo?.length) {
+							qs.memo = memo.join(',');
+						}
+
+						if (term?.length) {
+							qs.term = term.join(',');
+						}
+
+						if (customer?.length) {
+							qs.customer = customer.join(',');
+						}
+
+						if (vendor?.length) {
+							qs.vendor = vendor.join(',');
+						}
+
+						qs = adjustTransactionDates(qs);
+
 						const endpoint = `/v3/company/${companyId}/reports/TransactionList`;
-						responseData = await quickBooksApiRequest.call(this, 'GET', endpoint, filters, {});
+						responseData = await quickBooksApiRequest.call(this, 'GET', endpoint, qs, {});
+
+						if (!Object.keys(responseData?.Rows).length) {
+							responseData = [];
+						}
+
 					}
 
 				} else if (resource === 'vendor') {
