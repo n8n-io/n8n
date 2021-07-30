@@ -145,7 +145,7 @@ export const salesActivityFields = [
 		},
 	},
 	{
-		displayName: 'Targetable Type',
+		displayName: 'Target Type',
 		name: 'targetableType',
 		description: 'Type of the entity for which the sales activity is created',
 		type: 'options',
@@ -177,9 +177,9 @@ export const salesActivityFields = [
 		},
 	},
 	{
-		displayName: 'Targetable ID',
+		displayName: 'Target ID',
 		name: 'targetable_id',
-		description: 'ID of the entity for which the sales activity is created. The type of entity is selected in "Targetable Type".',
+		description: 'ID of the entity for which the sales activity is created. The type of entity is selected in "Target Type".',
 		type: 'string',
 		required: true,
 		default: '',
@@ -469,14 +469,14 @@ export const salesActivityFields = [
 				type: 'dateTime',
 			},
 			{
-				displayName: 'Targetable ID',
+				displayName: 'Target ID',
 				name: 'targetable_id',
 				type: 'string',
 				default: '',
-				description: 'ID of the entity for which the sales activity is updated. The type of entity is selected in "Targetable Type".',
+				description: 'ID of the entity for which the sales activity is updated. The type of entity is selected in "Target Type".',
 			},
 			{
-				displayName: 'Targetable Type',
+				displayName: 'Target Type',
 				name: 'targetable_type',
 				type: 'options',
 				default: 'Contact',
