@@ -1,5 +1,4 @@
 // @ts-ignore
-import { Notification } from 'element-ui/lib/notification';
 import { ElNotificationComponent, ElNotificationOptions } from 'element-ui/types/notification';
 import mixins from 'vue-typed-mixins';
 
@@ -14,7 +13,7 @@ export const showMessage = mixins(externalHooks).extend({
 				messageData.position = 'bottom-right';
 			}
 
-			return Notification(messageData);
+			return this.$notify(messageData);
 		},
 
 		$showWarning(title: string, message: string,  config?: {onClick?: () => void, duration?: number, customClass?: string, closeOnClick?: boolean}) {
