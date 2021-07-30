@@ -127,6 +127,14 @@
 
 				<MenuItemsIterator :items="sidebarMenuBottomItems" :root="true"/>
 
+				<div class="footer-menu-items">
+					<el-menu-item index="updates" class="updates" v-if="hasVersionUpdates" @click="openUpdatesPanel">
+						<div class="gift-container">
+							<GiftNotificationIcon />
+						</div>
+						<span slot="title" class="item-title-root">{{nextVersions.length > 99 ? '99+' : nextVersions.length}} update{{nextVersions.length > 1 ? 's' : ''}} available</span>
+					</el-menu-item>
+				</div>
 			</el-menu>
 
 		</div>
@@ -140,7 +148,6 @@ import { MessageBoxInputData } from 'element-ui/types/message-box';
 
 import {
 	IExecutionResponse,
-	IExecutionsStopData,
 	IWorkflowDataUpdate,
 	IMenuItem,
 } from '../Interface';
@@ -149,6 +156,7 @@ import About from '@/components/About.vue';
 import CredentialsEdit from '@/components/CredentialsEdit.vue';
 import CredentialsList from '@/components/CredentialsList.vue';
 import ExecutionsList from '@/components/ExecutionsList.vue';
+import GiftNotificationIcon from './GiftNotificationIcon.vue';
 import WorkflowSettings from '@/components/WorkflowSettings.vue';
 
 import { genericHelpers } from '@/components/mixins/genericHelpers';
@@ -212,6 +220,7 @@ export default mixins(
 			CredentialsEdit,
 			CredentialsList,
 			ExecutionsList,
+			GiftNotificationIcon,
 			WorkflowSettings,
 			MenuItemsIterator,
 		},
@@ -232,6 +241,10 @@ export default mixins(
 			...mapGetters('ui', {
 				isCollapsed: 'sidebarMenuCollapsed',
 			}),
+			...mapGetters('versions', [
+				'hasVersionUpdates',
+				'nextVersions',
+			]),
 			exeuctionId (): string | undefined {
 				return this.$route.params.id;
 			},
@@ -311,6 +324,9 @@ export default mixins(
 			openTagManager() {
 				this.$store.dispatch('ui/openTagsManagerModal');
 			},
+			openUpdatesPanel() {
+				this.$store.dispatch('ui/openUpdatesPanel');
+			},
 			async stopExecution () {
 				const executionId = this.$store.getters.activeExecutionId;
 				if (executionId === null) {
@@ -319,7 +335,7 @@ export default mixins(
 
 				try {
 					this.stopExecutionInProgress = true;
-					const stopData: IExecutionsStopData = await this.restApi().stopCurrentExecution(executionId);
+					await this.restApi().stopCurrentExecution(executionId);
 					this.$showMessage({
 						title: 'Execution stopped',
 						message: `The execution with the id "${executionId}" got stopped!`,
@@ -388,9 +404,8 @@ export default mixins(
 						return;
 					}
 
-					let result;
 					try {
-						result = await this.restApi().deleteWorkflow(this.currentWorkflow);
+						await this.restApi().deleteWorkflow(this.currentWorkflow);
 					} catch (error) {
 						this.$showError(error, 'Problem deleting the workflow', 'There was a problem deleting the workflow:');
 						return;
@@ -573,6 +588,39 @@ a.logo {
 
 	&.expanded {
 		width: $--sidebar-expanded-width;
+	}
+
+	ul {
+		display: flex;
+		flex-direction: column;
+	}
+}
+
+.footer-menu-items {
+	display: flex;
+	flex-grow: 1;
+	flex-direction: column;
+	justify-content: flex-end;
+	padding-bottom: 32px;
+}
+
+.el-menu-item.updates {
+	color: $--sidebar-inactive-color;	
+	.item-title-root {
+		font-size: 13px;
+		top: 0 !important;
+	}
+
+	&:hover {
+		color: $--sidebar-active-color;
+	}
+
+	.gift-container {
+		display: flex;
+		justify-content: flex-start;
+		align-items: center;
+		height: 100%;
+		width: 100%;
 	}
 }
 

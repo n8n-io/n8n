@@ -412,6 +412,11 @@ export class Pipedrive implements INodeType {
 						value: 'update',
 						description: 'Update an organization',
 					},
+					{
+						name: 'Search',
+						value: 'search',
+						description: 'Search organizations',
+					},
 				],
 				default: 'create',
 				description: 'The operation to perform.',
@@ -2445,6 +2450,85 @@ export class Pipedrive implements INodeType {
 			},
 
 			// ----------------------------------
+			//         organization:search
+			// ----------------------------------
+			{
+				displayName: 'Term',
+				name: 'term',
+				type: 'string',
+				required: true,
+				displayOptions: {
+					show: {
+						operation: [
+							'search',
+						],
+						resource: [
+							'organization',
+						],
+					},
+				},
+				default: '',
+				description: 'The search term to look for. Minimum 2 characters (or 1 if using exact_match).',
+			},
+			{
+				displayName: 'Additional Fields',
+				name: 'additionalFields',
+				type: 'collection',
+				placeholder: 'Add Field',
+				displayOptions: {
+					show: {
+						operation: [
+							'search',
+						],
+						resource: [
+							'organization',
+						],
+					},
+				},
+				default: {},
+				options: [
+					{
+						displayName: 'Exact Match',
+						name: 'exactMatch',
+						type: 'boolean',
+						default: false,
+						description: 'When enabled, only full exact matches against the given term are returned. It is not case sensitive.',
+					},
+					{
+						displayName: 'Fields',
+						name: 'fields',
+						type: 'multiOptions',
+						default: [],
+						description: 'Fields to the search in. Defaults to all of them.',
+						options: [
+							{
+								name: 'Address',
+								value: 'address',
+							},
+							{
+								name: 'Custom Fields',
+								value: 'custom_fields',
+							},
+							{
+								name: 'Name',
+								value: 'name',
+							},
+							{
+								name: 'Notes',
+								value: 'notes',
+							},
+						],
+					},
+					{
+						displayName: 'RAW Data',
+						name: 'rawData',
+						type: 'boolean',
+						default: false,
+						description: `Returns the data exactly in the way it got received from the API.`,
+					},
+				],
+			},
+			// ----------------------------------
 			//         organization:update
 			// ----------------------------------
 			{
@@ -4110,8 +4194,7 @@ export class Pipedrive implements INodeType {
 
 						endpoint = `/organizations`;
 
-					}
-					if (operation === 'update') {
+					} else if (operation === 'update') {
 						// ----------------------------------
 						//         organization:update
 						// ----------------------------------
@@ -4128,6 +4211,32 @@ export class Pipedrive implements INodeType {
 							body.label = null;
 						}
 
+					} else if (operation === 'search') {
+						// ----------------------------------
+						//         organization:search
+						// ----------------------------------
+
+						requestMethod = 'GET';
+
+						qs.term = this.getNodeParameter('term', i) as string;
+						returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						if (returnAll === false) {
+							qs.limit = this.getNodeParameter('limit', i) as number;
+						}
+
+						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject & {
+							fields?: string[];
+						};
+
+						if (additionalFields?.fields?.length) {
+							qs.fields = additionalFields.fields.join(',');
+						}
+
+						if (additionalFields.exactMatch) {
+							qs.exact_match = additionalFields.exactMatch as boolean;
+						}
+
+						endpoint = `/organizations/search`;
 					}
 				} else if (resource === 'person') {
 					if (operation === 'create') {
