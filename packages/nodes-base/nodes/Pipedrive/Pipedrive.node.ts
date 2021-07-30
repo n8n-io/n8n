@@ -1619,16 +1619,16 @@ export class Pipedrive implements INodeType {
 				description: 'The ID of the deal whose product to update',
 			},
 			{
-				displayName: 'Product ID',
-				name: 'productId',
+				displayName: 'Product Attachment ID',
+				name: 'productAttachmentId',
 				type: 'options',
+				default: '',
 				typeOptions: {
 					loadOptionsMethod: 'getProductsDeal',
 					loadOptionsDependsOn: [
 						'dealId',
 					],
 				},
-				default: '',
 				required: true,
 				displayOptions: {
 					show: {
@@ -1640,7 +1640,7 @@ export class Pipedrive implements INodeType {
 						],
 					},
 				},
-				description: 'The ID of the product to update in a deal',
+				description: 'ID of the deal-product (the ID of the product attached to the deal)',
 			},
 			{
 				displayName: 'Update Fields',
@@ -1736,8 +1736,8 @@ export class Pipedrive implements INodeType {
 				description: 'The ID of the deal whose product to remove',
 			},
 			{
-				displayName: 'Product ID',
-				name: 'productId',
+				displayName: 'Product Attachment ID',
+				name: 'productAttachmentId',
 				type: 'options',
 				default: '',
 				typeOptions: {
@@ -1757,7 +1757,7 @@ export class Pipedrive implements INodeType {
 						],
 					},
 				},
-				description: 'The ID of the product to remove from a deal',
+				description: 'ID of the deal-product (the ID of the product attached to the deal)',
 			},
 			// ----------------------------------
 			//        dealProduct:getAll
@@ -3686,7 +3686,6 @@ export class Pipedrive implements INodeType {
 				const { data } = await pipedriveApiRequest.call(this, 'GET', '/deals', {}) as {
 					data: Array<{ id: string; title: string; }>
 				};
-
 				return data.map(({ id, title }) => ({ value: id, name: title }));
 			},
 			// Get all Products to display them to user so that he can
@@ -3695,7 +3694,6 @@ export class Pipedrive implements INodeType {
 				const { data } = await pipedriveApiRequest.call(this, 'GET', '/products', {}) as {
 					data: Array<{ id: string; name: string; }>
 				};
-
 				return data.map(({ id, name }) => ({ value: id, name }));
 			},
 			// Get all Products related to a deal and display them to user so that he can
@@ -3706,8 +3704,7 @@ export class Pipedrive implements INodeType {
 				const { data } = await pipedriveApiRequest.call(this, 'GET', `/deals/${dealId}/products`, {}) as {
 					data: Array<{ id: string; name: string; }>
 				};
-
-				return !!data ? data.map(({ id, name }) => ({ value: id, name })) : [];
+				return data.map(({ id, name }) => ({ value: id, name }));
 			},
 			// Get all Stages to display them to user so that he can
 			// select them easily
@@ -4231,9 +4228,9 @@ export class Pipedrive implements INodeType {
 
 						requestMethod = 'DELETE';
 						const dealId = this.getNodeParameter('dealId', i) as string;
-						const productId  = this.getNodeParameter('productId', i) as string;
+						const productAttachmentId = this.getNodeParameter('productAttachmentId', i) as string;
 
-						endpoint = `/deals/${dealId}/products/${productId}`;
+						endpoint = `/deals/${dealId}/products/${productAttachmentId}`;
 
 					} else if (operation === 'update') {
 						// ----------------------------------
@@ -4242,9 +4239,9 @@ export class Pipedrive implements INodeType {
 
 						requestMethod = 'PUT';
 						const dealId = this.getNodeParameter('dealId', i) as string;
-						const productId  = this.getNodeParameter('productId', i) as string;
+						const productAttachmentId = this.getNodeParameter('productAttachmentId', i) as string;
 
-						endpoint = `/deals/${dealId}/products/${productId}`;
+						endpoint = `/deals/${dealId}/products/${productAttachmentId}`;
 
 						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
 						addAdditionalFields(body, updateFields);
