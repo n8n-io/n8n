@@ -107,7 +107,7 @@ export const taskFields = [
 		},
 	},
 	{
-		displayName: 'Targetable Type',
+		displayName: 'Target Type',
 		name: 'targetableType',
 		description: 'Type of the entity for which the task is updated',
 		type: 'options',
@@ -139,9 +139,9 @@ export const taskFields = [
 		},
 	},
 	{
-		displayName: 'Targetable ID',
+		displayName: 'Target ID',
 		name: 'targetable_id',
-		description: 'ID of the entity for which the task is created. The type of entity is selected in "Targetable Type".',
+		description: 'ID of the entity for which the task is created. The type of entity is selected in "Target Type".',
 		type: 'string',
 		default: '',
 		required: true,
@@ -318,7 +318,7 @@ export const taskFields = [
 						value: 'owner',
 					},
 					{
-						name: 'Targetable',
+						name: 'Target',
 						value: 'targetable',
 					},
 					{
@@ -434,14 +434,14 @@ export const taskFields = [
 				description: 'ID of the user to whom the task is assigned',
 			},
 			{
-				displayName: 'Targetable ID',
+				displayName: 'Target ID',
 				name: 'targetable_id',
 				type: 'string',
 				default: '',
-				description: 'ID of the entity for which the task is updated. The type of entity is selected in "Targetable Type".',
+				description: 'ID of the entity for which the task is updated. The type of entity is selected in "Target Type".',
 			},
 			{
-				displayName: 'Targetable Type',
+				displayName: 'Target Type',
 				name: 'targetable_type',
 				description: 'Type of the entity for which the task is updated',
 				type: 'options',
