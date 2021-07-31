@@ -89,7 +89,7 @@ export class Wait implements INodeType {
 				responseContentType: '={{$parameter["options"]["responseContentType"]}}',
 				responsePropertyName: '={{$parameter["options"]["responsePropertyName"]}}',
 				responseHeaders: '={{$parameter["options"]["responseHeaders"]}}',
-				path: '',
+				path: '={{$parameter["options"]["webhookPostfix"] || ""}}',
 				restartWebhook: true,
 			},
 		],
@@ -487,6 +487,14 @@ export class Wait implements INodeType {
 						},
 						default: 'data',
 						description: 'Name of the property to return the data of instead of the whole JSON.',
+					},
+					{
+						displayName: 'Webhook Postfix',
+						name: 'webhookPostfix',
+						type: 'string',
+						default: '',
+						placeholder: 'webhook',
+						description: 'The webhook postfix path to attach to the restart URL.',
 					},
 					// {
 					// 	displayName: 'Raw Body',

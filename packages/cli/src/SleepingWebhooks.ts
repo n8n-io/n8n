@@ -86,13 +86,13 @@ export class SleepingWebhooks {
 		const additionalData = await WorkflowExecuteAdditionalData.getBase(credentials);
 
 		const webhookData = NodeHelpers.getNodeWebhooks(workflow, workflow.getNode(lastNodeExecuted) as INode, additionalData).filter((webhook) => {
-			return (webhook.httpMethod === httpMethod && webhook.webhookDescription.restartWebhook === true);
+			return (webhook.httpMethod === httpMethod && webhook.path === path && webhook.webhookDescription.restartWebhook === true);
 		})[0];
 
 		if (webhookData === undefined) {
 			// If no data got found it means that the execution can not be started via a webhook.
 			// Return 404 because we do not want to give any data if the execution exists or not.
-			const errorMessage = `The execution "${executionId}" is not known.`;
+			const errorMessage = `The execution "${executionId}" with webhook path "${path}" is not known.`;
 			throw new ResponseHelper.ResponseError(errorMessage, 404, 404);
 		}
 

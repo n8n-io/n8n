@@ -784,7 +784,8 @@ export function getNodeWebhooks(workflow: Workflow, node: INode, additionalData:
 		}
 
 		const isFullPath: boolean = workflow.expression.getSimpleParameterValue(node, webhookDescription['isFullPath'], 'internal', {}, false) as boolean;
-		const path = getNodeWebhookPath(workflowId, node, nodeWebhookPath, isFullPath);
+		const restartWebhook: boolean = workflow.expression.getSimpleParameterValue(node, webhookDescription['restartWebhook'], 'internal', {}, false) as boolean;
+		const path = getNodeWebhookPath(workflowId, node, nodeWebhookPath, isFullPath, restartWebhook);
 
 		if (ignoreRestartWehbooks === true && webhookDescription.restartWebhook === true) {
 			continue;
@@ -887,9 +888,11 @@ export function getNodeWebhooksBasic(workflow: Workflow, node: INode): IWebhookD
  * @param {string} path
  * @returns {string}
  */
-export function getNodeWebhookPath(workflowId: string, node: INode, path: string, isFullPath?: boolean): string {
+export function getNodeWebhookPath(workflowId: string, node: INode, path: string, isFullPath?: boolean, restartWebhook?: boolean): string {
 	let webhookPath = '';
-	if (node.webhookId === undefined) {
+	if (restartWebhook === true) {
+		return path;
+	} else if (node.webhookId === undefined) {
 		webhookPath = `${workflowId}/${encodeURIComponent(node.name.toLowerCase())}/${path}`;
 	} else {
 		if (isFullPath === true) {
