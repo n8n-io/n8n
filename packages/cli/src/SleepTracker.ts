@@ -40,11 +40,8 @@ export class SleepTrackerClass {
 
 
 	constructor() {
-		// TODO: Implement and test for/with other databases
 		// TODO: Make it possible to select "waiting" executions in Execution List
-		// TODO: Think about security. Is it OK that people can restart an execution by knowing (or guessing) the execution-ID?
-		// TODO: Think about how to best mark an execution waiting for a webhook in DB (currently also uses time)
-		// TODO: Allow to set time to continue (absolute & relative) in webhook-mode so that it goes on if no webhook is received (separate output?)
+		// TODO: Allow to set time to continue (absolute & relative) in webhook-mode so that it goes on if no webhook is received (separate output? probably for now same output as we can not add them dynamically.)
 
 		// Example URL:
 		// http://localhost:5678/webhook-sleeping/13485
