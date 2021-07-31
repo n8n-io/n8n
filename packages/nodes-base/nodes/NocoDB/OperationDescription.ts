@@ -54,7 +54,7 @@ export const operationFields = [
 				],
 			},
 		},
-		default: true,
+		default: false,
 		description: 'If all results should be returned or only up to a given limit',
 	},
 	{
@@ -143,13 +143,6 @@ export const operationFields = [
 				default: '',
 				placeholder: '(name,like,example%)~or(name,eq,test)',
 				description: 'A formula used to filter rows',
-			},
-			{
-				displayName: 'Offset',
-				name: 'offset',
-				type: 'number',
-				default: '',
-				description: 'An offset to use when retrieving rows',
 			},
 			{
 				displayName: 'Sort',
@@ -298,24 +291,6 @@ export const operationFields = [
 		description: 'Whether to insert the input data this node receives in the new row',
 	},
 	{
-		displayName: 'Upload Attachments',
-		name: 'uploadAttachments',
-		type: 'boolean',
-		displayOptions: {
-			show: {
-				operation: [
-					'create',
-					'update',
-				],
-				dataToSend: [
-					'autoMapInputData',
-				],
-			},
-		},
-		default: false,
-		description: `When set to true the attachments will be uploaded to the fields defined in 'Row Fields'`,
-	},
-	{
 		displayName: 'Inputs to Ignore',
 		name: 'inputsToIgnore',
 		type: 'string',
@@ -368,7 +343,7 @@ export const operationFields = [
 						default: '',
 					},
 					{
-						displayName: 'Upload attachment',
+						displayName: 'Upload Attachment',
 						name: 'upload',
 						type: 'boolean',
 						default: false,
@@ -387,7 +362,7 @@ export const operationFields = [
 						},
 					},
 					{
-						displayName: 'Take input from field',
+						displayName: 'Take Input From Field',
 						name: 'binaryProperty',
 						type: 'string',
 						description: 'The field containing the binary file data to be uploaded',
@@ -403,52 +378,5 @@ export const operationFields = [
 				],
 			},
 		],
-	},
-	{
-		displayName: 'Attachments to Upload',
-		name: 'attachmentsUi',
-		placeholder: 'Add Attachment',
-		type: 'fixedCollection',
-		typeOptions:{
-			multipleValueButtonText: 'Add attachment to upload',
-			multipleValues: true,
-		},
-		options: [
-			{
-				displayName: 'Attachment',
-				name: 'attachmentValues',
-				values: [
-					{
-						displayName: 'Take input from field',
-						name: 'binaryProperty',
-						type: 'string',
-						description: 'The field containing the binary file data to be uploaded',
-						default: '',
-					},
-					{
-						displayName: 'Row Fields',
-						name: 'rowFields',
-						type: 'string',
-						description: `Name of the fields of type 'attachment' that should be uploaded. Multiple ones can be defined separated by comma. Case sensitive`,
-						default: '',
-					},
-				],
-			},
-		],
-		displayOptions: {
-			show: {
-				operation: [
-					'create',
-					'update',
-				],
-				dataToSend: [
-					'autoMapInputData',
-				],
-				uploadAttachments: [
-					true,
-				],
-			},
-		},
-		default: '',
 	},
 ] as INodeProperties[];

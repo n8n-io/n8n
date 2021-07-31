@@ -27,7 +27,7 @@ export class NocoDB implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'NocoDB',
 		name: 'nocoDb',
-		icon: 'file:nocodb.png',
+		icon: 'file:nocodb.svg',
 		group: ['input'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
@@ -103,8 +103,6 @@ export class NocoDB implements INodeType {
 		],
 	};
 
-
-
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
 		const returnData: IDataObject[] = [];
@@ -131,118 +129,65 @@ export class NocoDB implements INodeType {
 				const body: IDataObject[] = [];
 
 				for (let i = 0; i < items.length; i++) {
-					try {
-						const newItem: IDataObject = {};
-						const dataToSend = this.getNodeParameter('dataToSend', i) as 'defineBelow' | 'autoMapInputData';
+					const newItem: IDataObject = {};
+					const dataToSend = this.getNodeParameter('dataToSend', i) as 'defineBelow' | 'autoMapInputData';
 
-						if (dataToSend === 'autoMapInputData') {
-							const incomingKeys = Object.keys(items[i].json);
-							const rawInputsToIgnore = this.getNodeParameter('inputsToIgnore', i) as string;
-							const inputDataToIgnore = rawInputsToIgnore.split(',').map(c => c.trim());
+					if (dataToSend === 'autoMapInputData') {
+						const incomingKeys = Object.keys(items[i].json);
+						const rawInputsToIgnore = this.getNodeParameter('inputsToIgnore', i) as string;
+						const inputDataToIgnore = rawInputsToIgnore.split(',').map(c => c.trim());
+						for (const key of incomingKeys) {
+							if (inputDataToIgnore.includes(key)) continue;
+							newItem[key] = items[i].json[key];
+						}
+					} else {
+						const fields = this.getNodeParameter('fieldsUi.fieldValues', i, []) as Array<{
+							fieldName: string;
+							upload: boolean;
+							fieldValue?: string;
+							binaryProperty?: string;
+						}>;
 
-							for (const key of incomingKeys) {
-								if (inputDataToIgnore.includes(key)) continue;
-								newItem[key] = items[i].json[key];
-							}
-							const uploadAttachments = this.getNodeParameter('uploadAttachments', i) as boolean;
-							if (uploadAttachments) {
-								const attachments = this.getNodeParameter('attachmentsUi.attachmentValues', i, []) as Array<{
-									binaryProperty: string;
-									rowFields: string;
-								}>;
-
+						for (const field of fields) {
+							if (!field.upload) {
+								newItem[field.fieldName] = field.fieldValue;
+							} else if (field.binaryProperty) {
 								if (!items[i].binary) {
 									throw new NodeOperationError(this.getNode(), 'No binary data exists on item!');
 								}
-
-								for (const attachment of attachments) {
-									const binaryPropertyName = attachment.binaryProperty;
-									if (binaryPropertyName && !items[i].binary![binaryPropertyName]) {
-										throw new NodeOperationError(this.getNode(), `Binary property ${binaryPropertyName} does not exist on item!`);
-									}
-									const fields = attachment.rowFields.split(',');
-									const binaryData = items[i].binary![binaryPropertyName] as IBinaryData;
-
-									const formData = {
-										file: {
-											value: Buffer.from(binaryData.data, BINARY_ENCODING),
-											options: {
-												filename: binaryData.fileName,
-												contentType: binaryData.mimeType,
-											},
-										},
-										json: JSON.stringify({
-											api: 'xcAttachmentUpload',
-											project_id: projectId,
-											dbAlias: 'db',
-											args: {},
-										}),
-									};
-									const qs = { project_id: projectId };
-
-									responseData = await apiRequest.call(this, 'POST', '/dashboard', {}, qs, undefined, { formData });
-
-									for (const field of fields) {
-										newItem[field] = JSON.stringify([responseData]);
-									}
+								const binaryPropertyName = field.binaryProperty;
+								if (binaryPropertyName && !items[i].binary![binaryPropertyName]) {
+									throw new NodeOperationError(this.getNode(), `Binary property ${binaryPropertyName} does not exist on item!`);
 								}
-							}
-						} else {
-							const fields = this.getNodeParameter('fieldsUi.fieldValues', i, []) as Array<{
-								fieldName: string;
-								upload: boolean;
-								fieldValue?: string;
-								binaryProperty?: string;
-							}>;
+								const binaryData = items[i].binary![binaryPropertyName] as IBinaryData;
 
-							for (const field of fields) {
-								if (!field.upload) {
-									newItem[field.fieldName] = field.fieldValue;
-								} else if (field.binaryProperty) {
-									if (!items[i].binary) {
-										throw new NodeOperationError(this.getNode(), 'No binary data exists on item!');
-									}
-									const binaryPropertyName = field.binaryProperty;
-									if (binaryPropertyName && !items[i].binary![binaryPropertyName]) {
-										throw new NodeOperationError(this.getNode(), `Binary property ${binaryPropertyName} does not exist on item!`);
-									}
-									const binaryData = items[i].binary![binaryPropertyName] as IBinaryData;
-
-									const formData = {
-										file: {
-											value: Buffer.from(binaryData.data, BINARY_ENCODING),
-											options: {
-												filename: binaryData.fileName,
-												contentType: binaryData.mimeType,
-											},
+								const formData = {
+									file: {
+										value: Buffer.from(binaryData.data, BINARY_ENCODING),
+										options: {
+											filename: binaryData.fileName,
+											contentType: binaryData.mimeType,
 										},
-										json: JSON.stringify({
-											api: 'xcAttachmentUpload',
-											project_id: projectId,
-											dbAlias: 'db',
-											args: {},
-										}),
-									};
-									const qs = { project_id: projectId };
+									},
+									json: JSON.stringify({
+										api: 'xcAttachmentUpload',
+										project_id: projectId,
+										dbAlias: 'db',
+										args: {},
+									}),
+								};
+								const qs = { project_id: projectId };
 
-									responseData = await apiRequest.call(this, 'POST', '/dashboard', {}, qs, undefined, { formData });
-									newItem[field.fieldName] = JSON.stringify([responseData]);
-								}
+								responseData = await apiRequest.call(this, 'POST', '/dashboard', {}, qs, undefined, { formData });
+								newItem[field.fieldName] = JSON.stringify([responseData]);
 							}
 						}
-						body.push(newItem);
-					} catch (error) {
-						if (this.continueOnFail()) {
-							returnData.push({ error: error.toString() });
-							continue;
-						}
-						throw new NodeOperationError(this.getNode(), error);
 					}
+					body.push(newItem);
 				}
 				try {
 					responseData = await apiRequest.call(this, requestMethod, endpoint, body, qs);
-					const lastId = responseData[0] as number;
-					returnData.push(...body.map((obj,index) => ({id:lastId-(body.length-index-1),...obj})));
+					returnData.push(...body);
 				} catch (error) {
 					if (this.continueOnFail()) {
 						returnData.push({ error: error.toString() });
@@ -257,12 +202,11 @@ export class NocoDB implements INodeType {
 
 				for (let i = 0; i < items.length; i++) {
 					const id = this.getNodeParameter('id', i) as string;
-					body.push({id});
+					body.push({ id });
 				}
 				try {
 					responseData = await apiRequest.call(this, requestMethod, endpoint, body, qs);
-					responseData = { success: true };
-					returnData.push(responseData);
+					returnData.push(...items.map(item => item.json));
 				} catch (error) {
 					if (this.continueOnFail()) {
 						returnData.push({ error: error.toString() });
@@ -270,37 +214,45 @@ export class NocoDB implements INodeType {
 					throw new NodeApiError(this.getNode(), error);
 				}
 			} else if (operation === 'getAll') {
+				const data = [];
+				const downloadAttachments = this.getNodeParameter('downloadAttachments', 0) as boolean;
 				try {
-					requestMethod = 'GET';
-					endpoint = `/nc/${projectId}/api/v1/${table}`;
+					for (let i = 0; i < items.length; i++) {
+						requestMethod = 'GET';
+						endpoint = `/nc/${projectId}/api/v1/${table}`;
 
-					returnAll = this.getNodeParameter('returnAll', 0) as boolean;
-					const downloadAttachments = this.getNodeParameter('downloadAttachments', 0) as boolean;
-					qs = this.getNodeParameter('options', 0, {}) as IDataObject;
+						returnAll = this.getNodeParameter('returnAll', 0) as boolean;
+						qs = this.getNodeParameter('options', i, {}) as IDataObject;
 
-					if ( qs.sort ) {
-						const properties = (qs.sort as IDataObject).property as Array<{field: string, direction: string}>;
-						qs.sort = properties.map(prop => `${prop.direction === 'asc' ? '':'-'}${prop.field}`).join(',');
+						if (qs.sort) {
+							const properties = (qs.sort as IDataObject).property as Array<{ field: string, direction: string }>;
+							qs.sort = properties.map(prop => `${prop.direction === 'asc' ? '' : '-'}${prop.field}`).join(',');
+						}
+
+						if (qs.fields) {
+							qs.fields = (qs.fields as IDataObject[]).join(',');
+						}
+
+						if (returnAll === true) {
+							responseData = await apiRequestAllItems.call(this, requestMethod, endpoint, {}, qs);
+						} else {
+							qs.limit = this.getNodeParameter('limit', 0) as number;
+							responseData = await apiRequest.call(this, requestMethod, endpoint, {}, qs);
+						}
+
+						returnData.push.apply(returnData, responseData);
+
+						if (downloadAttachments === true) {
+							const downloadFieldNames = (this.getNodeParameter('downloadFieldNames', 0) as string).split(',');
+							const response = await downloadRecordAttachments.call(this, responseData, downloadFieldNames);
+							data.push(...response);
+						}
 					}
 
-					if ( qs.fields ) {
-						qs.fields = (qs.fields as IDataObject[]).join(',');
-					}
-
-					if (returnAll === true) {
-						responseData = await apiRequestAllItems.call(this, requestMethod, endpoint, {}, qs);
-					} else {
-						qs.limit = this.getNodeParameter('limit', 0) as number;
-						responseData = await apiRequest.call(this, requestMethod, endpoint, {}, qs);
-					}
-
-					returnData.push.apply(returnData, responseData);
-
-					if (downloadAttachments === true) {
-						const downloadFieldNames = (this.getNodeParameter('downloadFieldNames', 0) as string).split(',');
-						const data = await downloadRecordAttachments.call(this, responseData, downloadFieldNames);
+					if (downloadAttachments) {
 						return [data];
 					}
+
 				} catch (error) {
 					if (this.continueOnFail()) {
 						returnData.push({ error: error.toString() });
@@ -317,7 +269,7 @@ export class NocoDB implements INodeType {
 						const id = this.getNodeParameter('id', i) as string;
 						endpoint = `/nc/${projectId}/api/v1/${table}/${id}`;
 						responseData = await apiRequest.call(this, requestMethod, endpoint, {}, qs);
-						const newItem: INodeExecutionData = {json: responseData};
+						const newItem: INodeExecutionData = { json: responseData };
 
 						const downloadAttachments = this.getNodeParameter('downloadAttachments', i) as boolean;
 
@@ -327,7 +279,7 @@ export class NocoDB implements INodeType {
 							newItem.binary = data[0].binary;
 						}
 
-						newItems.push(newItem) ;
+						newItems.push(newItem);
 					} catch (error) {
 						if (this.continueOnFail()) {
 							newItems.push({ json: { error: error.toString() } });
@@ -346,116 +298,65 @@ export class NocoDB implements INodeType {
 				const body: IDataObject[] = [];
 
 				for (let i = 0; i < items.length; i++) {
-					try {
 
-						const id = this.getNodeParameter('id', i) as string;
-						const newItem: IDataObject = {id};
-						const dataToSend = this.getNodeParameter('dataToSend', i) as 'defineBelow' | 'autoMapInputData';
+					const id = this.getNodeParameter('id', i) as string;
+					const newItem: IDataObject = { id };
+					const dataToSend = this.getNodeParameter('dataToSend', i) as 'defineBelow' | 'autoMapInputData';
 
-						if (dataToSend === 'autoMapInputData') {
-							const incomingKeys = Object.keys(items[i].json);
-							const rawInputsToIgnore = this.getNodeParameter('inputsToIgnore', i) as string;
-							const inputDataToIgnore = rawInputsToIgnore.split(',').map(c => c.trim());
+					if (dataToSend === 'autoMapInputData') {
+						const incomingKeys = Object.keys(items[i].json);
+						const rawInputsToIgnore = this.getNodeParameter('inputsToIgnore', i) as string;
+						const inputDataToIgnore = rawInputsToIgnore.split(',').map(c => c.trim());
+						for (const key of incomingKeys) {
+							if (inputDataToIgnore.includes(key)) continue;
+							newItem[key] = items[i].json[key];
+						}
+					} else {
+						const fields = this.getNodeParameter('fieldsUi.fieldValues', i, []) as Array<{
+							fieldName: string;
+							upload: boolean;
+							fieldValue?: string;
+							binaryProperty?: string;
+						}>;
 
-							for (const key of incomingKeys) {
-								if (inputDataToIgnore.includes(key)) continue;
-								newItem[key] = items[i].json[key];
-							}
-							const uploadAttachments = this.getNodeParameter('uploadAttachments', i) as boolean;
-							if (uploadAttachments) {
-								const attachments = this.getNodeParameter('attachmentsUi.attachmentValues', i, []) as Array<{
-									binaryProperty: string;
-									rowFields: string;
-								}>;
-
+						for (const field of fields) {
+							if (!field.upload) {
+								newItem[field.fieldName] = field.fieldValue;
+							} else if (field.binaryProperty) {
 								if (!items[i].binary) {
 									throw new NodeOperationError(this.getNode(), 'No binary data exists on item!');
 								}
-
-								for (const attachment of attachments) {
-									const binaryPropertyName = attachment.binaryProperty;
-									if (binaryPropertyName && !items[i].binary![binaryPropertyName]) {
-										throw new NodeOperationError(this.getNode(), `Binary property ${binaryPropertyName} does not exist on item!`);
-									}
-									const fields = attachment.rowFields.split(',');
-									const binaryData = items[i].binary![binaryPropertyName] as IBinaryData;
-
-									const formData = {
-										file: {
-											value: Buffer.from(binaryData.data, BINARY_ENCODING),
-											options: {
-												filename: binaryData.fileName,
-												contentType: binaryData.mimeType,
-											},
-										},
-										json: JSON.stringify({
-											api: 'xcAttachmentUpload',
-											project_id: projectId,
-											dbAlias: 'db',
-											args: {},
-										}),
-									};
-									const qs = { project_id: projectId };
-
-									responseData = await apiRequest.call(this, 'POST', '/dashboard', {}, qs, undefined, { formData });
-
-									for (const field of fields) {
-										newItem[field] = JSON.stringify([responseData]);
-									}
+								const binaryPropertyName = field.binaryProperty;
+								if (binaryPropertyName && !items[i].binary![binaryPropertyName]) {
+									throw new NodeOperationError(this.getNode(), `Binary property ${binaryPropertyName} does not exist on item!`);
 								}
-							}
-						} else {
-							const fields = this.getNodeParameter('fieldsUi.fieldValues', i, []) as Array<{
-								fieldName: string;
-								upload: boolean;
-								fieldValue?: string;
-								binaryProperty?: string;
-							}>;
+								const binaryData = items[i].binary![binaryPropertyName] as IBinaryData;
 
-							for (const field of fields) {
-								if (!field.upload) {
-									newItem[field.fieldName] = field.fieldValue;
-								} else if (field.binaryProperty) {
-									if (!items[i].binary) {
-										throw new NodeOperationError(this.getNode(), 'No binary data exists on item!');
-									}
-									const binaryPropertyName = field.binaryProperty;
-									if (binaryPropertyName && !items[i].binary![binaryPropertyName]) {
-										throw new NodeOperationError(this.getNode(), `Binary property ${binaryPropertyName} does not exist on item!`);
-									}
-									const binaryData = items[i].binary![binaryPropertyName] as IBinaryData;
-
-									const formData = {
-										file: {
-											value: Buffer.from(binaryData.data, BINARY_ENCODING),
-											options: {
-												filename: binaryData.fileName,
-												contentType: binaryData.mimeType,
-											},
+								const formData = {
+									file: {
+										value: Buffer.from(binaryData.data, BINARY_ENCODING),
+										options: {
+											filename: binaryData.fileName,
+											contentType: binaryData.mimeType,
 										},
-										json: JSON.stringify({
-											api: 'xcAttachmentUpload',
-											project_id: projectId,
-											dbAlias: 'db',
-											args: {},
-										}),
-									};
-									const qs = { project_id: projectId };
+									},
+									json: JSON.stringify({
+										api: 'xcAttachmentUpload',
+										project_id: projectId,
+										dbAlias: 'db',
+										args: {},
+									}),
+								};
+								const qs = { project_id: projectId };
 
-									responseData = await apiRequest.call(this, 'POST', '/dashboard', {}, qs, undefined, { formData });
-									newItem[field.fieldName] = JSON.stringify([responseData]);
-								}
+								responseData = await apiRequest.call(this, 'POST', '/dashboard', {}, qs, undefined, { formData });
+								newItem[field.fieldName] = JSON.stringify([responseData]);
 							}
 						}
-						body.push(newItem);
-					} catch (error) {
-						if (this.continueOnFail()) {
-							returnData.push({ error: error.toString() });
-							continue;
-						}
-						throw new NodeOperationError(this.getNode(), error);
 					}
+					body.push(newItem);
 				}
+
 				try {
 					responseData = await apiRequest.call(this, requestMethod, endpoint, body, qs);
 					returnData.push(...body);
@@ -465,13 +366,8 @@ export class NocoDB implements INodeType {
 					}
 					throw new NodeApiError(this.getNode(), error);
 				}
-			} else {
-				throw new NodeOperationError(this.getNode(), `The operation "${operation}" is not known!`);
 			}
-		} else {
-			throw new NodeOperationError(this.getNode(), `The resource "${resource}" is not known!`);
 		}
-
 		return [this.helpers.returnJsonArray(returnData)];
 	}
 }
