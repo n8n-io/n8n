@@ -67,7 +67,6 @@ export default mixins(titleChange).extend({
 		},
 		executionSleeping(): boolean {
 			const fullExecution = this.$store.getters.getWorkflowExecution;
-			console.log(fullExecution);
 
 			return !!fullExecution && !!fullExecution.sleepTill;
 		},
