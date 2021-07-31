@@ -767,6 +767,11 @@ export function getNodeWebhooks(workflow: Workflow, node: INode, additionalData:
 
 	const returnData: IWebhookData[] = [];
 	for (const webhookDescription of nodeType.description.webhooks) {
+
+		if (ignoreRestartWehbooks === true && webhookDescription.restartWebhook === true) {
+			continue;
+		}
+
 		let nodeWebhookPath = workflow.expression.getSimpleParameterValue(node, webhookDescription['path'], mode, {});
 		if (nodeWebhookPath === undefined) {
 			// TODO: Use a proper logger
@@ -786,10 +791,6 @@ export function getNodeWebhooks(workflow: Workflow, node: INode, additionalData:
 		const isFullPath: boolean = workflow.expression.getSimpleParameterValue(node, webhookDescription['isFullPath'], 'internal', {}, false) as boolean;
 		const restartWebhook: boolean = workflow.expression.getSimpleParameterValue(node, webhookDescription['restartWebhook'], 'internal', {}, false) as boolean;
 		const path = getNodeWebhookPath(workflowId, node, nodeWebhookPath, isFullPath, restartWebhook);
-
-		if (ignoreRestartWehbooks === true && webhookDescription.restartWebhook === true) {
-			continue;
-		}
 
 		const httpMethod = workflow.expression.getSimpleParameterValue(node, webhookDescription['httpMethod'], mode, {}, 'GET');
 
