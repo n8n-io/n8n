@@ -39,6 +39,8 @@ import {
 	LoggerProxy as Logger,
 } from 'n8n-workflow';
 
+const WEBHOOK_PROD_UNREGISTERED_HINT = `The workflow must be active for a production URL to run successfully. You can activate the workflow using the toggle in the top-right of the editor. Note that unlike test URL calls, production URL calls aren't shown on the canvas (only in the executions list)`;
+
 export class ActiveWorkflowRunner {
 	private activeWorkflows: ActiveWorkflows | null = null;
 
@@ -148,7 +150,7 @@ export class ActiveWorkflowRunner {
 			const dynamicWebhooks = await Db.collections.Webhook?.find({ webhookId, method: httpMethod, pathLength: pathElements.length });
 			if (dynamicWebhooks === undefined || dynamicWebhooks.length === 0) {
 				// The requested webhook is not registered
-				throw new ResponseHelper.ResponseError(`The requested webhook "${httpMethod} ${path}" is not registered.`, 404, 404);
+				throw new ResponseHelper.ResponseError(`The requested webhook "${httpMethod} ${path}" is not registered.`, 404, 404, WEBHOOK_PROD_UNREGISTERED_HINT);
 			}
 
 			let maxMatches = 0;
@@ -169,7 +171,7 @@ export class ActiveWorkflowRunner {
 				}
 			});
 			if (webhook === undefined) {
-				throw new ResponseHelper.ResponseError(`The requested webhook "${httpMethod} ${path}" is not registered.`, 404, 404);
+				throw new ResponseHelper.ResponseError(`The requested webhook "${httpMethod} ${path}" is not registered.`, 404, 404, WEBHOOK_PROD_UNREGISTERED_HINT);
 			}
 
 			path = webhook!.webhookPath;

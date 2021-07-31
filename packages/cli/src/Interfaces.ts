@@ -316,6 +316,11 @@ export interface IN8nConfigNodes {
 	exclude: string[];
 }
 
+export interface IVersionNotificationSettings {
+	enabled: boolean;
+	endpoint: string;
+	infoUrl: string;
+}
 
 export interface IN8nUISettings {
 	endpointWebhook: string;
@@ -335,6 +340,8 @@ export interface IN8nUISettings {
 	n8nMetadata?: {
 		[key: string]: string | number | undefined;
 	};
+	versionNotifications: IVersionNotificationSettings;
+	instanceId: string;
 }
 
 export interface IPackageVersions {

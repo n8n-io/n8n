@@ -1,6 +1,21 @@
 <template>
-	<div v-if="dialogVisible">
+	<div>
+		<el-drawer
+			v-if="drawer"
+			:direction="drawerDirection"
+			:visible="visible && visibleDrawer"
+			:size="drawerWidth"
+			:before-close="closeDrawer"
+			>
+			<template v-slot:title>
+				<slot name="header" />
+			</template>
+			<template>
+				<slot name="content"/>
+			</template>
+		</el-drawer>
 		<el-dialog
+			v-else
 			:visible="dialogVisible"
 			:before-close="closeDialog"
 			:title="title"
@@ -32,7 +47,12 @@ const sizeMap: {[size: string]: string} = {
 
 export default Vue.extend({
 	name: "Modal",
-	props: ['name', 'title', 'eventBus', 'size'],
+	props: ['name', 'title', 'eventBus', 'size', 'drawer', 'drawerDirection', 'drawerWidth', 'visible'],
+	data() {
+		return {
+			visibleDrawer: this.drawer,
+		};
+	},
 	mounted() {
 		window.addEventListener('keydown', this.onWindowKeydown);
 
@@ -65,8 +85,18 @@ export default Vue.extend({
 				this.$emit('enter');
 			}
 		},
-		closeDialog() {
+		closeDialog(callback?: () => void) {
 			this.$store.commit('ui/closeTopModal');
+			if (callback) {
+				callback();
+			}
+		},
+		closeDrawer() {
+			this.visibleDrawer = false;
+			setTimeout(() =>{
+				this.$store.commit('ui/closeTopModal');
+				this.visibleDrawer = true;
+			}, 300); // delayed for closing animation to take effect
 		},
 	},
 	computed: {
@@ -84,6 +114,15 @@ export default Vue.extend({
 </script>
 
 <style lang="scss">
+.el-drawer__header {
+	margin: 0;
+	padding: 30px 30px 0 30px;
+}
+
+.el-drawer__body {
+	overflow: hidden;
+}
+
 .dialog-wrapper {
 	* {
 		box-sizing: border-box;
