@@ -63,6 +63,8 @@ import {
 	NodeTypes,
 	Push,
 	ResponseHelper,
+	SleepTracker,
+	SleepTrackerClass,
 	SleepingWebhooks,
 	TestWebhooks,
 	WebhookHelpers,
@@ -130,6 +132,7 @@ class App {
 	endpointWebhookTest: string;
 	endpointPresetCredentials: string;
 	externalHooks: IExternalHooksClass;
+	sleepTracker: SleepTrackerClass;
 	defaultWorkflowName: string;
 	saveDataErrorExecution: string;
 	saveDataSuccessExecution: string;
@@ -172,6 +175,7 @@ class App {
 		this.push = Push.getInstance();
 
 		this.activeExecutionsInstance = ActiveExecutions.getInstance();
+		this.sleepTracker = SleepTracker();
 
 		this.protocol = config.get('protocol');
 		this.sslKey = config.get('ssl_key');
@@ -1915,15 +1919,22 @@ class App {
 				// Manual executions should still be stoppable, so
 				// try notifying the `activeExecutions` to stop it.
 				const result = await this.activeExecutionsInstance.stopExecution(req.params.id);
-				if (result !== undefined) {
-					const returnData: IExecutionsStopData = {
+
+				if (result === undefined) {
+					// If active execution could not be found check if it is a sleeping one
+					try {
+						return await this.sleepTracker.stopExecution(req.params.id);
+					} catch (error) {
+						// Ignore, if it errors as then it is probably a currently running
+						// execution
+					}
+				} else {
+					return {
 						mode: result.mode,
 						startedAt: new Date(result.startedAt),
-						stoppedAt: result.stoppedAt ?  new Date(result.stoppedAt) : undefined,
+						stoppedAt: result.stoppedAt ? new Date(result.stoppedAt) : undefined,
 						finished: result.finished,
-					};
-
-					return returnData;
+					} as IExecutionsStopData;
 				}
 
 				const currentJobs = await Queue.getInstance().getJobs(['active', 'waiting']);
@@ -1954,16 +1965,18 @@ class App {
 				// Stopt he execution and wait till it is done and we got the data
 				const result = await this.activeExecutionsInstance.stopExecution(executionId);
 
+				let returnData: IExecutionsStopData;
 				if (result === undefined) {
-					throw new Error(`The execution id "${executionId}" could not be found.`);
+					// If active execution could not be found check if it is a sleeping one
+					returnData = await this.sleepTracker.stopExecution(executionId);
+				} else {
+					returnData = {
+						mode: result.mode,
+						startedAt: new Date(result.startedAt),
+						stoppedAt: result.stoppedAt ? new Date(result.stoppedAt) : undefined,
+						finished: result.finished,
+					};
 				}
-
-				const returnData: IExecutionsStopData = {
-					mode: result.mode,
-					startedAt: new Date(result.startedAt),
-					stoppedAt: result.stoppedAt ?  new Date(result.stoppedAt) : undefined,
-					finished: result.finished,
-				};
 
 				return returnData;
 			}

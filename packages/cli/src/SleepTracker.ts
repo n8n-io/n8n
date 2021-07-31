@@ -4,6 +4,7 @@ import {
 	Db,
 	GenericHelpers,
 	IExecutionFlattedDb,
+	IExecutionsStopData,
 	IWorkflowExecutionDataProcess,
 	ResponseHelper,
 	WorkflowCredentials,
@@ -11,7 +12,9 @@ import {
 } from './';
 
 import {
+	IRun,
 	LoggerProxy as Logger,
+	WorkflowOperationError,
 } from 'n8n-workflow';
 
 import {
@@ -23,7 +26,7 @@ import {
 import { DateUtils } from 'typeorm/util/DateUtils';
 
 
-export class SleepTracker {
+export class SleepTrackerClass {
 	activeExecutionsInstance: ActiveExecutions.ActiveExecutions;
 
 	private sleepingExecutions: {
@@ -76,14 +79,13 @@ export class SleepTracker {
 			(findQuery.where! as ObjectLiteral).sleepTill = LessThanOrEqual(DateUtils.mixedDateToUtcDatetimeString(new Date(Date.now() + 70000)));
 		}
 
-
 		const executions = await Db.collections.Execution!.find(findQuery);
 
 		if (executions.length > 0) {
 			const executionIds = executions.map(execution => execution.id.toString()).join(', ');
 			Logger.debug(`Sleep tracker found ${executions.length} executions. Setting timer for IDs: ${executionIds}`);
 		}
-		
+
 		// Add timers for each waiting execution that they get started at the correct time
 		for (const execution of executions) {
 			const executionId = execution.id.toString();
@@ -97,6 +99,46 @@ export class SleepTracker {
 				};
 			}
 		}
+	}
+
+
+	async stopExecution(executionId: string): Promise<IExecutionsStopData> {
+		if (this.sleepingExecutions[executionId] !== undefined) {
+			// The sleeping execution was already sheduled to execute.
+			// So stop timer and remove.
+			clearTimeout(this.sleepingExecutions[executionId].timer);
+			delete this.sleepingExecutions[executionId];
+		}
+
+		// Also check in database
+		const execution = await Db.collections.Execution!.findOne(executionId);
+
+		if (execution === undefined || !execution.sleepTill) {
+			throw new Error(`The execution ID "${executionId}" could not be found.`);
+		}
+
+		const fullExecutionData = ResponseHelper.unflattenExecutionData(execution);
+
+		// Set in execution in DB as failed and remove sleepTill time
+		const error = new WorkflowOperationError('Workflow-Execution has been canceled!');
+
+		fullExecutionData.data.resultData.error = {
+			...error,
+			message: error.message,
+			stack: error.stack,
+		}
+
+		fullExecutionData.stoppedAt = new Date();
+		fullExecutionData.sleepTill = undefined;
+
+		await Db.collections.Execution!.update(executionId, ResponseHelper.flattenExecutionData(fullExecutionData));
+
+		return {
+			mode: fullExecutionData.mode,
+			startedAt: new Date(fullExecutionData.startedAt),
+			stoppedAt: fullExecutionData.stoppedAt ? new Date(fullExecutionData.stoppedAt) : undefined,
+			finished: fullExecutionData.finished,
+		};
 	}
 
 
@@ -138,4 +180,15 @@ export class SleepTracker {
 		})();
 
 	}
+}
+
+
+let sleepTrackerInstance: SleepTrackerClass | undefined;
+
+export function SleepTracker(): SleepTrackerClass {
+	if (sleepTrackerInstance === undefined) {
+		sleepTrackerInstance = new SleepTrackerClass();
+	}
+
+	return sleepTrackerInstance;
 }

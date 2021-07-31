@@ -131,12 +131,12 @@
 				</el-table-column>
 				<el-table-column label="" width="100" align="center">
 					<template slot-scope="scope">
-						<span v-if="scope.row.stoppedAt === undefined">
+						<span v-if="scope.row.stoppedAt === undefined || scope.row.sleepTill" class="execution-actions">
 							<el-button circle title="Stop Execution" @click.stop="stopExecution(scope.row.id)" :loading="stoppingExecutions.includes(scope.row.id)" size="mini">
 								<font-awesome-icon icon="stop" />
 							</el-button>
 						</span>
-						<span v-else-if="scope.row.id">
+						<span v-if="scope.row.stoppedAt !== undefined && scope.row.id" class="execution-actions">
 							<el-button circle title="Open Past Execution" @click.stop="displayExecution(scope.row)" size="mini">
 								<font-awesome-icon icon="folder-open" />
 							</el-button>
@@ -669,6 +669,12 @@ export default mixins(
 .autorefresh {
 	padding-right: 0.5em;
 	text-align: right;
+}
+
+.execution-actions {
+	button {
+		margin: 0 0.25em;
+	}
 }
 
 .filters {

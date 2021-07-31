@@ -285,7 +285,7 @@ export class Start extends Command {
 				activeWorkflowRunner = ActiveWorkflowRunner.getInstance();
 				await activeWorkflowRunner.init();
 
-				const sleepTracker = new SleepTracker();
+				const sleepTracker = SleepTracker();
 
 				const editorUrl = GenericHelpers.getBaseUrl();
 				this.log(`\nEditor is now accessible via:\n${editorUrl}`);

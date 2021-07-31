@@ -201,6 +201,7 @@ export function unflattenExecutionData(fullExecutionData: IExecutionFlattedDb): 
 		workflowData: fullExecutionData.workflowData as IWorkflowDb,
 		data: parse(fullExecutionData.data),
 		mode: fullExecutionData.mode,
+		sleepTill: fullExecutionData.sleepTill ? fullExecutionData.sleepTill : undefined,
 		startedAt: fullExecutionData.startedAt,
 		stoppedAt: fullExecutionData.stoppedAt,
 		finished: fullExecutionData.finished ? fullExecutionData.finished : false,
