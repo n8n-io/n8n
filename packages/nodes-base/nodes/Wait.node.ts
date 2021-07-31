@@ -711,14 +711,15 @@ export class Wait implements INodeType {
 		} else {
 			// Mode: dateTime
 			const dateTime = this.getNodeParameter('dateTime', 0) as string;
+			console.log('dateTime', dateTime);
 
 			sleepTill = new Date(dateTime);
 		}
 
 		const sleepValue = Math.max(sleepTill.getTime() - new Date().getTime(), 0);
 
-		if (sleepValue < 60000) {
-			// If wait time is shorter than 60 seconds leave execution active because
+		if (sleepValue < 65000) {
+			// If wait time is shorter than 65 seconds leave execution active because
 			// we just check the database every 60 seconds.
 			return new Promise((resolve, reject) => {
 				setTimeout(() => {
