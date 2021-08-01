@@ -24,7 +24,6 @@ import {
 
 export async function salesforceApiRequest(this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: string, endpoint: string, body: any = {}, qs: IDataObject = {}, uri?: string, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
 	const authenticationMethod = this.getNodeParameter('authentication', 0, 'oAuth2') as string;
-
 	try {
 		if (authenticationMethod === 'jwt') {
 			// https://help.salesforce.com/articleView?id=remoteaccess_oauth_jwt_flow.htm&type=5
@@ -35,6 +34,7 @@ export async function salesforceApiRequest(this: IExecuteFunctions | IExecuteSin
 			const options = getOptions.call(this, method, (uri || endpoint), body, qs, instance_url as string);
 			Logger.debug(`Authentication for "Salesforce" node is using "jwt". Invoking URI ${options.uri}`);
 			options.headers!.Authorization = `Bearer ${access_token}`;
+			Object.assign(options, option);
 			//@ts-ignore
 			return await this.helpers.request(options);
 		} else {
@@ -43,6 +43,7 @@ export async function salesforceApiRequest(this: IExecuteFunctions | IExecuteSin
 			const credentials = this.getCredentials(credentialsType) as { oauthTokenData: { instance_url: string } };
 			const options = getOptions.call(this, method, (uri || endpoint), body, qs, credentials.oauthTokenData.instance_url);
 			Logger.debug(`Authentication for "Salesforce" node is using "OAuth2". Invoking URI ${options.uri}`);
+			Object.assign(options, option);
 			//@ts-ignore
 			return await this.helpers.requestOAuth2.call(this, credentialsType, options);
 		}
@@ -90,11 +91,15 @@ function getOptions(this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOpt
 			'Content-Type': 'application/json',
 		},
 		method,
-		body: method === 'GET' ? undefined : body,
+		body,
 		qs,
 		uri: `${instanceUrl}/services/data/v39.0${endpoint}`,
 		json: true,
 	};
+
+	if (!Object.keys(options.body).length) {
+		delete options.body;
+	}
 
 	//@ts-ignore
 	return options;

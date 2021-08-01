@@ -1,4 +1,5 @@
 import {
+	BINARY_ENCODING,
 	IExecuteFunctions,
 } from 'n8n-core';
 
@@ -113,6 +114,11 @@ import {
 } from './UserDescription';
 
 import {
+	documentFields,
+	documentOperations,
+} from './DocumentDescription';
+
+import {
 	LoggerProxy as Logger,
 } from 'n8n-workflow';
 
@@ -204,6 +210,11 @@ export class Salesforce implements INodeType {
 						description: 'Represents a custom object.',
 					},
 					{
+						name: 'Document',
+						value: 'document',
+						description: 'Represents a document.',
+					},
+					{
 						name: 'Flow',
 						value: 'flow',
 						description: 'Represents an autolaunched flow.',
@@ -243,6 +254,8 @@ export class Salesforce implements INodeType {
 			...contactFields,
 			...customObjectOperations,
 			...customObjectFields,
+			...documentOperations,
+			...documentFields,
 			...opportunityOperations,
 			...opportunityFields,
 			...accountOperations,
@@ -936,6 +949,27 @@ export class Salesforce implements INodeType {
 				sortOptions(returnData);
 				return returnData;
 			},
+			// // Get all folders to display them to user so that he can
+			// // select them easily
+			// async getFolders(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+			// 	const returnData: INodePropertyOptions[] = [];
+			// 	const fields = await salesforceApiRequestAllItems.call(this, 'records', 'GET', '/sobjects/folder/describe');
+			// 	console.log(JSON.stringify(fields, undefined, 2))
+			// 	const qs = {
+			// 		//ContentFolderItem ContentWorkspace ContentFolder
+			// 		q: `SELECT Id, Title FROM ContentVersion`,
+			// 		//q: `SELECT Id FROM Folder where Type = 'Document'`,
+
+			// 	};
+			// 	const folders = await salesforceApiRequestAllItems.call(this, 'records', 'GET', '/query', {}, qs);
+			// 	for (const folder of folders) {
+			// 		returnData.push({
+			// 			name: folder.Name,
+			// 			value: folder.Id,
+			// 		});
+			// 	}
+			// 	return returnData;
+			// },
 		},
 	};
 
@@ -1586,6 +1620,49 @@ export class Salesforce implements INodeType {
 						} catch (error) {
 							throw new NodeApiError(this.getNode(), error);
 						}
+					}
+				}
+				if (resource === 'document') {
+					//https://developer.salesforce.com/docs/atlas.en-us.206.0.api_rest.meta/api_rest/dome_sobject_insert_update_blob.htm
+					if (operation === 'upload') {
+						const title = this.getNodeParameter('title', i) as string;
+						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i) as string;
+						let data;
+						const body: { entity_content: { [key: string]: string } } = {
+							entity_content: {
+								Title: title,
+								ContentLocation: 'S',
+							},
+						};
+						if (additionalFields.ownerId) {
+							body.entity_content['ownerId'] = additionalFields.ownerId as string;
+						}
+						if (additionalFields.linkToObjectId) {
+							body.entity_content['FirstPublishLocationId'] = additionalFields.linkToObjectId as string;
+						}
+						if (items[i].binary && items[i].binary![binaryPropertyName]) {
+							const binaryData = items[i].binary![binaryPropertyName];
+							body.entity_content['PathOnClient'] = `${title}.${binaryData.fileExtension}`;
+							data = {
+								entity_content: {
+									value: JSON.stringify(body.entity_content),
+									options: {
+										contentType: 'application/json',
+									},
+								},
+								VersionData: {
+									value: Buffer.from(binaryData.data, BINARY_ENCODING),
+									options: {
+										filename: binaryData.fileName,
+										contentType: binaryData.mimeType,
+									},
+								},
+							};
+						} else {
+							throw new NodeOperationError(this.getNode(), `The property ${binaryPropertyName} does not exist`);
+						}
+						responseData = await salesforceApiRequest.call(this, 'POST', '/sobjects/ContentVersion', {}, {}, undefined, { formData: data });
 					}
 				}
 				if (resource === 'opportunity') {

@@ -167,7 +167,6 @@ import {
 	IExecutionDeleteFilter,
 	IExecutionsListResponse,
 	IExecutionShortResponse,
-	IExecutionsStopData,
 	IExecutionsSummary,
 	IWorkflowShortResponse,
 } from '@/Interface';
@@ -632,7 +631,7 @@ export default mixins(
 				// can show the user in the UI that it is in progress
 				this.stoppingExecutions.push(activeExecutionId);
 
-				const stopData: IExecutionsStopData = await this.restApi().stopCurrentExecution(activeExecutionId);
+				await this.restApi().stopCurrentExecution(activeExecutionId);
 
 				// Remove it from the list of currently stopping executions
 				const index = this.stoppingExecutions.indexOf(activeExecutionId);
