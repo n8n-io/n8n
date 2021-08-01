@@ -7,6 +7,11 @@ type LoadedResource = {
 	name: string;
 };
 
+type LoadOption = {
+	value: string;
+	name: string;
+};
+
 type LoadedUser = {
 	id: string;
 	full_name_display: string;
@@ -21,4 +26,16 @@ type LoadedEpic = LoadedUserStory;
 
 type LoadedTags = {
 	[tagName: string]: string | null; // hex color
+}
+
+type Operations = 'all' | 'create' | 'delete' | 'change';
+
+type Resources = 'all' | 'issue' | 'milestone' | 'task' | 'userstory' | 'wikipage';
+
+type WebhookPayload = {
+	action: Operations;
+	type: Resources;
+	by: Record<string, string | number>;
+	date: string;
+	data: Record<string, string | number | object | string[]>;
 }
