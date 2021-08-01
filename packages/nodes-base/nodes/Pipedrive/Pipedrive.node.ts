@@ -119,6 +119,10 @@ export class Pipedrive implements INodeType {
 						value: 'deal',
 					},
 					{
+						name: 'Deal Product',
+						value: 'dealProduct',
+					},
+					{
 						name: 'File',
 						value: 'file',
 					},
@@ -244,6 +248,42 @@ export class Pipedrive implements INodeType {
 				],
 				default: 'create',
 				description: 'The operation to perform.',
+			},
+
+			{
+				displayName: 'Operation',
+				name: 'operation',
+				type: 'options',
+				displayOptions: {
+					show: {
+						resource: [
+							'dealProduct',
+						],
+					},
+				},
+				options: [
+					{
+						name: 'Add',
+						value: 'add',
+						description: 'Add a product to a deal',
+					},
+					{
+						name: 'Get All',
+						value: 'getAll',
+						description: 'Get all products in a deal',
+					},
+					{
+						name: 'Remove',
+						value: 'remove',
+						description: 'Remove a product from a deal',
+					},
+					{
+						name: 'Update',
+						value: 'update',
+						description: 'Update a product in a deal',
+					},
+				],
+				default: 'add',
 			},
 
 			{
@@ -1425,6 +1465,330 @@ export class Pipedrive implements INodeType {
 					},
 				],
 			},
+			// ----------------------------------
+			//         dealProduct:add
+			// ----------------------------------
+			{
+				displayName: 'Deal ID',
+				name: 'dealId',
+				type: 'options',
+				default: '',
+				typeOptions: {
+					loadOptionsMethod: 'getDeals',
+				},
+				required: true,
+				displayOptions: {
+					show: {
+						operation: [
+							'add',
+						],
+						resource: [
+							'dealProduct',
+						],
+					},
+				},
+				description: 'The ID of the deal to add a product to',
+			},
+			{
+				displayName: 'Product ID',
+				name: 'productId',
+				type: 'options',
+				default: '',
+				typeOptions: {
+					loadOptionsMethod: 'getProducts',
+				},
+				required: true,
+				displayOptions: {
+					show: {
+						operation: [
+							'add',
+						],
+						resource: [
+							'dealProduct',
+						],
+					},
+				},
+				description: 'The ID of the product to add to a deal',
+			},
+			{
+				displayName: 'Item Price',
+				name: 'item_price',
+				type: 'number',
+				typeOptions: {
+					numberPrecision: 2,
+				},
+				default: 0.00,
+				required: true,
+				description: 'Price at which to add or update this product in a deal',
+				displayOptions: {
+					show: {
+						operation: [
+							'add',
+						],
+						resource: [
+							'dealProduct',
+						],
+					},
+				},
+			},
+			{
+				displayName: 'Quantity',
+				name: 'quantity',
+				type: 'number',
+				default: 1,
+				typeOptions: {
+					minValue: 1,
+				},
+				required: true,
+				description: 'How many items of this product to add/update in a deal',
+				displayOptions: {
+					show: {
+						operation: [
+							'add',
+						],
+						resource: [
+							'dealProduct',
+						],
+					},
+				},
+			},
+			{
+				displayName: 'Additional Fields',
+				name: 'additionalFields',
+				type: 'collection',
+				placeholder: 'Add Field',
+				displayOptions: {
+					show: {
+						operation: [
+							'add',
+						],
+						resource: [
+							'dealProduct',
+						],
+					},
+				},
+				default: {},
+				options: [
+					{
+						displayName: 'Comments',
+						name: 'comments',
+						type: 'string',
+						typeOptions: {
+							rows: 4,
+						},
+						default: '',
+						description: 'Text to describe this product-deal attachment',
+					},
+					{
+						displayName: 'Discount Percentage',
+						name: 'discount_percentage',
+						type: 'number',
+						default: 0,
+						typeOptions: {
+							minValue: 0,
+							maxValue: 100,
+						},
+						description: 'Percentage of discount to apply',
+					},
+					{
+						displayName: 'Product Variation ID',
+						name: 'product_variation_id',
+						type: 'string',
+						default: '',
+						description: 'ID of the product variation to use',
+					},
+				],
+			},
+			// ----------------------------------
+			//        dealProduct:update
+			// ----------------------------------
+			{
+				displayName: 'Deal ID',
+				name: 'dealId',
+				type: 'options',
+				default: '',
+				typeOptions: {
+					loadOptionsMethod: 'getDeals',
+				},
+				required: true,
+				displayOptions: {
+					show: {
+						operation: [
+							'update',
+						],
+						resource: [
+							'dealProduct',
+						],
+					},
+				},
+				description: 'The ID of the deal whose product to update',
+			},
+			{
+				displayName: 'Product Attachment ID',
+				name: 'productAttachmentId',
+				type: 'options',
+				default: '',
+				typeOptions: {
+					loadOptionsMethod: 'getProductsDeal',
+					loadOptionsDependsOn: [
+						'dealId',
+					],
+				},
+				required: true,
+				displayOptions: {
+					show: {
+						operation: [
+							'update',
+						],
+						resource: [
+							'dealProduct',
+						],
+					},
+				},
+				description: 'ID of the deal-product (the ID of the product attached to the deal)',
+			},
+			{
+				displayName: 'Update Fields',
+				name: 'updateFields',
+				type: 'collection',
+				placeholder: 'Add Field',
+				displayOptions: {
+					show: {
+						operation: [
+							'update',
+						],
+						resource: [
+							'dealProduct',
+						],
+					},
+				},
+				default: {},
+				options: [
+					{
+						displayName: 'Comments',
+						name: 'comments',
+						type: 'string',
+						typeOptions: {
+							rows: 4,
+						},
+						default: '',
+						description: 'Text to describe this product-deal attachment',
+					},
+					{
+						displayName: 'Discount Percentage',
+						name: 'discount_percentage',
+						type: 'number',
+						default: 0,
+						typeOptions: {
+							minValue: 0,
+							maxValue: 100,
+						},
+						description: 'Percentage of discount to apply',
+					},
+					{
+						displayName: 'Item Price',
+						name: 'item_price',
+						type: 'number',
+						typeOptions: {
+							numberPrecision: 2,
+						},
+						default: 0.00,
+						required: true,
+						description: 'Price at which to add or update this product in a deal',
+					},
+					{
+						displayName: 'Quantity',
+						name: 'quantity',
+						type: 'number',
+						default: 1,
+						typeOptions: {
+							minValue: 1,
+						},
+						required: true,
+						description: 'How many items of this product to add/update in a deal',
+					},
+					{
+						displayName: 'Product Variation ID',
+						name: 'product_variation_id',
+						type: 'string',
+						default: '',
+						description: 'ID of the product variation to use',
+					},
+				],
+			},
+			// ----------------------------------
+			//        dealProduct:remove
+			// ----------------------------------
+			{
+				displayName: 'Deal ID',
+				name: 'dealId',
+				type: 'options',
+				default: '',
+				typeOptions: {
+					loadOptionsMethod: 'getDeals',
+				},
+				required: true,
+				displayOptions: {
+					show: {
+						operation: [
+							'remove',
+						],
+						resource: [
+							'dealProduct',
+						],
+					},
+				},
+				description: 'The ID of the deal whose product to remove',
+			},
+			{
+				displayName: 'Product Attachment ID',
+				name: 'productAttachmentId',
+				type: 'options',
+				default: '',
+				typeOptions: {
+					loadOptionsMethod: 'getProductsDeal',
+					loadOptionsDependsOn: [
+						'dealId',
+					],
+				},
+				required: true,
+				displayOptions: {
+					show: {
+						operation: [
+							'remove',
+						],
+						resource: [
+							'dealProduct',
+						],
+					},
+				},
+				description: 'ID of the deal-product (the ID of the product attached to the deal)',
+			},
+			// ----------------------------------
+			//        dealProduct:getAll
+			// ----------------------------------
+			{
+				displayName: 'Deal ID',
+				name: 'dealId',
+				type: 'options',
+				default: '',
+				typeOptions: {
+					loadOptionsMethod: 'getDeals',
+				},
+				required: true,
+				displayOptions: {
+					show: {
+						operation: [
+							'getAll',
+						],
+						resource: [
+							'dealProduct',
+						],
+					},
+				},
+				description: 'The ID of the deal whose products to retrieve',
+			},
+
 			// ----------------------------------
 			//         deal:search
 			// ----------------------------------
@@ -3400,6 +3764,32 @@ export class Pipedrive implements INodeType {
 
 				return returnData;
 			},
+			// Get all Deals to display them to user so that he can
+			// select them easily
+			async getDeals(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const { data } = await pipedriveApiRequest.call(this, 'GET', '/deals', {}) as {
+					data: Array<{ id: string; title: string; }>
+				};
+				return data.map(({ id, title }) => ({ value: id, name: title }));
+			},
+			// Get all Products to display them to user so that he can
+			// select them easily
+			async getProducts(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const { data } = await pipedriveApiRequest.call(this, 'GET', '/products', {}) as {
+					data: Array<{ id: string; name: string; }>
+				};
+				return data.map(({ id, name }) => ({ value: id, name }));
+			},
+			// Get all Products related to a deal and display them to user so that he can
+			// select them easily
+			async getProductsDeal(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+
+				const dealId = this.getCurrentNodeParameter('dealId');
+				const { data } = await pipedriveApiRequest.call(this, 'GET', `/deals/${dealId}/products`, {}) as {
+					data: Array<{ id: string; name: string; }>
+				};
+				return data.map(({ id, name }) => ({ value: id, name }));
+			},
 			// Get all Stages to display them to user so that he can
 			// select them easily
 			async getStageIds(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
@@ -3885,12 +4275,67 @@ export class Pipedrive implements INodeType {
 						endpoint = `/deals/search`;
 
 					}
+
+				} else if (resource === 'dealProduct') {
+
+					if (operation === 'add') {
+						// ----------------------------------
+						//          dealProduct: add
+						// ----------------------------------
+
+						requestMethod = 'POST';
+						const dealId = this.getNodeParameter('dealId', i) as string;
+
+						endpoint = `/deals/${dealId}/products`;
+
+						body.product_id  = this.getNodeParameter('productId', i) as string;
+						body.item_price = this.getNodeParameter('item_price', i) as string;
+						body.quantity = this.getNodeParameter('quantity', i) as string;
+
+						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						addAdditionalFields(body, additionalFields);
+
+					} else if (operation === 'getAll') {
+						// ----------------------------------
+						//        dealProduct: getAll
+						// ----------------------------------
+
+						requestMethod = 'GET';
+						const dealId = this.getNodeParameter('dealId', i) as string;
+
+						endpoint = `/deals/${dealId}/products`;
+
+					} else if (operation === 'remove') {
+						// ----------------------------------
+						//       dealProduct: remove
+						// ----------------------------------
+
+						requestMethod = 'DELETE';
+						const dealId = this.getNodeParameter('dealId', i) as string;
+						const productAttachmentId = this.getNodeParameter('productAttachmentId', i) as string;
+
+						endpoint = `/deals/${dealId}/products/${productAttachmentId}`;
+
+					} else if (operation === 'update') {
+						// ----------------------------------
+						//         dealProduct: update
+						// ----------------------------------
+
+						requestMethod = 'PUT';
+						const dealId = this.getNodeParameter('dealId', i) as string;
+						const productAttachmentId = this.getNodeParameter('productAttachmentId', i) as string;
+
+						endpoint = `/deals/${dealId}/products/${productAttachmentId}`;
+
+						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+						addAdditionalFields(body, updateFields);
+					}
+
 				} else if (resource === 'file') {
 					if (operation === 'create') {
 						// ----------------------------------
 						//         file:create
 						// ----------------------------------
-
 						requestMethod = 'POST';
 						endpoint = '/files';
 
