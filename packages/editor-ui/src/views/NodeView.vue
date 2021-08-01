@@ -125,6 +125,7 @@ import { moveNodeWorkflow } from '@/components/mixins/moveNodeWorkflow';
 import { restApi } from '@/components/mixins/restApi';
 import { showMessage } from '@/components/mixins/showMessage';
 import { titleChange } from '@/components/mixins/titleChange';
+import { newVersions } from '@/components/mixins/newVersions';
 
 import { workflowHelpers } from '@/components/mixins/workflowHelpers';
 import { workflowRun } from '@/components/mixins/workflowRun';
@@ -148,7 +149,6 @@ import {
 	INodeConnections,
 	INodeIssues,
 	INodeTypeDescription,
-	NodeInputConnections,
 	NodeHelpers,
 	Workflow,
 	IRun,
@@ -156,7 +156,6 @@ import {
 import {
 	IConnectionsUi,
 	IExecutionResponse,
-	IExecutionsStopData,
 	IN8nUISettings,
 	IWorkflowDb,
 	IWorkflowData,
@@ -198,6 +197,7 @@ export default mixins(
 	titleChange,
 	workflowHelpers,
 	workflowRun,
+	newVersions,
 )
 	.extend({
 		name: 'NodeView',
@@ -908,7 +908,7 @@ export default mixins(
 
 				try {
 					this.stopExecutionInProgress = true;
-					const stopData: IExecutionsStopData = await this.restApi().stopCurrentExecution(executionId);
+					await this.restApi().stopCurrentExecution(executionId);
 					this.$showMessage({
 						title: 'Execution stopped',
 						message: `The execution with the id "${executionId}" got stopped!`,
@@ -948,9 +948,8 @@ export default mixins(
 			},
 
 			async stopWaitingForWebhook () {
-				let result;
 				try {
-					result = await this.restApi().removeTestWebhook(this.$store.getters.workflowId);
+					await this.restApi().removeTestWebhook(this.$store.getters.workflowId);
 				} catch (error) {
 					this.$showError(error, 'Problem deleting the test-webhook', 'There was a problem deleting webhook:');
 					return;
@@ -2035,7 +2034,6 @@ export default mixins(
 							const nodeSourceConnections = [];
 							if (currentConnections[sourceNode][type][sourceIndex]) {
 								for (connectionIndex = 0; connectionIndex < currentConnections[sourceNode][type][sourceIndex].length; connectionIndex++) {
-									const nodeConnection: NodeInputConnections = [];
 									connectionData = currentConnections[sourceNode][type][sourceIndex][connectionIndex];
 									if (!createNodeNames.includes(connectionData.node)) {
 										// Node does not get created so skip input connection
@@ -2200,8 +2198,10 @@ export default mixins(
 				this.$store.commit('setExecutionTimeout', settings.executionTimeout);
 				this.$store.commit('setMaxExecutionTimeout', settings.maxExecutionTimeout);
 				this.$store.commit('setVersionCli', settings.versionCli);
+				this.$store.commit('setInstanceId', settings.instanceId);
 				this.$store.commit('setOauthCallbackUrls', settings.oauthCallbackUrls);
 				this.$store.commit('setN8nMetadata', settings.n8nMetadata || {});
+				this.$store.commit('versions/setVersionNotificationSettings', settings.versionNotifications);
 			},
 			async loadNodeTypes (): Promise<void> {
 				const nodeTypes = await this.restApi().getNodeTypes();
@@ -2228,9 +2228,10 @@ export default mixins(
 			},
 		},
 
+
 		async mounted () {
 			this.$root.$on('importWorkflowData', async (data: IDataObject) => {
-				const resData = await this.importWorkflowData(data.data as IWorkflowDataUpdate);
+				await this.importWorkflowData(data.data as IWorkflowDataUpdate);
 			});
 
 			this.$root.$on('newWorkflow', this.newWorkflow);
@@ -2238,7 +2239,7 @@ export default mixins(
 			this.$root.$on('importWorkflowUrl', async (data: IDataObject) => {
 				const workflowData = await this.getWorkflowDataFromUrl(data.url as string);
 				if (workflowData !== undefined) {
-					const resData = await this.importWorkflowData(workflowData);
+					await this.importWorkflowData(workflowData);
 				}
 			});
 
@@ -2267,6 +2268,10 @@ export default mixins(
 					this.$showError(error, 'Init Problem', 'There was a problem initializing the workflow:');
 				}
 				this.stopLoading();
+
+				setTimeout(() => {
+					this.checkForNewVersions();
+				}, 0);
 			});
 
 			this.$externalHooks().run('nodeView.mount');
