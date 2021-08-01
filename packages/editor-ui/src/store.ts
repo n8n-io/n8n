@@ -36,6 +36,7 @@ import {
 import tags from './modules/tags';
 import ui from './modules/ui';
 import workflows from './modules/workflows';
+import versions from './modules/versions';
 
 Vue.use(Vuex);
 
@@ -86,12 +87,14 @@ const state: IRootState = {
 		tags: [],
 	},
 	sidebarMenuItems: [],
+	instanceId: '',
 };
 
 const modules = {
 	tags,
 	ui,
 	workflows,
+	versions,
 };
 
 export const store = new Vuex.Store({
@@ -543,8 +546,11 @@ export const store = new Vuex.Store({
 		setMaxExecutionTimeout (state, maxExecutionTimeout: number) {
 			Vue.set(state, 'maxExecutionTimeout', maxExecutionTimeout);
 		},
-		setVersionCli (state, version: string) {
+		setVersionCli(state, version: string) {
 			Vue.set(state, 'versionCli', version);
+		},
+		setInstanceId(state, instanceId: string) {
+			Vue.set(state, 'instanceId', instanceId);
 		},
 		setOauthCallbackUrls(state, urls: IDataObject) {
 			Vue.set(state, 'oauthCallbackUrls', urls);
