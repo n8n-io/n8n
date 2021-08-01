@@ -343,10 +343,11 @@ export const operationFields = [
 						default: '',
 					},
 					{
-						displayName: 'Upload Attachment',
-						name: 'upload',
+						displayName: 'Is Binary Data',
+						name: 'binaryData',
 						type: 'boolean',
 						default: false,
+						description: 'If the field data to set is binary and should be taken from a binary property',
 					},
 					{
 						displayName: 'Field Value',
@@ -355,7 +356,7 @@ export const operationFields = [
 						default: '',
 						displayOptions: {
 							show: {
-								upload: [
+								binaryData: [
 									false,
 								],
 							},
@@ -369,7 +370,7 @@ export const operationFields = [
 						default: '',
 						displayOptions: {
 							show: {
-								upload: [
+								binaryData: [
 									true,
 								],
 							},

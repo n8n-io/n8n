@@ -143,13 +143,13 @@ export class NocoDB implements INodeType {
 					} else {
 						const fields = this.getNodeParameter('fieldsUi.fieldValues', i, []) as Array<{
 							fieldName: string;
-							upload: boolean;
+							binaryData: boolean;
 							fieldValue?: string;
 							binaryProperty?: string;
 						}>;
 
 						for (const field of fields) {
-							if (!field.upload) {
+							if (!field.binaryData) {
 								newItem[field.fieldName] = field.fieldValue;
 							} else if (field.binaryProperty) {
 								if (!items[i].binary) {
@@ -187,6 +187,13 @@ export class NocoDB implements INodeType {
 				}
 				try {
 					responseData = await apiRequest.call(this, requestMethod, endpoint, body, qs);
+
+					// Calculate ID manually and add to return data
+					let id = responseData[0];
+					for (let i = body.length - 1; i >= 0; i--) {
+						body[i].id = id--;
+					}
+
 					returnData.push(...body);
 				} catch (error) {
 					if (this.continueOnFail()) {
