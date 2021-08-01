@@ -92,7 +92,7 @@ export class ClerkTrigger implements INodeType {
 	async webhook(this: IWebhookFunctions): Promise<IWebhookResponseData> {
 		const req = this.getRequestObject();
         const request = this.getRequestObject()
-		const events = this.getNodeParameter('events', []) as string[];
+		const events = this.getNodeParameter('event', []) as string[];
 
 		const credentials = this.getCredentials('clerkApi');
 
