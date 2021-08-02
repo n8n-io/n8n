@@ -309,7 +309,7 @@ export const transactionFields = [
 				displayName: 'Sort By',
 				name: 'sort_by',
 				type: 'options',
-				default: '',
+				default: 'account_name',
 				description: 'Column to sort results by',
 				options: TRANSACTION_REPORT_COLUMNS,
 			},
@@ -317,7 +317,7 @@ export const transactionFields = [
 				displayName: 'Sort Order',
 				name: 'sort_order',
 				type: 'options',
-				default: 'ascend',
+				default: 'Ascend',
 				options: ['Ascend', 'Descend'].map(toOptions),
 			},
 			{
