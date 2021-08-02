@@ -471,7 +471,7 @@ class App {
 			try {
 				if (connection.isConnected === false) {
 					// Connection is not active
-					throw new Error('No active database connection!')
+					throw new Error('No active database connection!');
 				}
 				// DB ping
 				await connection.query('SELECT 1');
