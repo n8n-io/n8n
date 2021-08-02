@@ -287,7 +287,7 @@ export async function loadResource(
 
 	resourceItems.forEach((resourceItem: { DisplayName: string, Name: string, Id: string }) => {
 		returnData.push({
-			name: resourceItem.DisplayName || resourceItem.Name || resourceItem.Id,
+			name: resourceItem.DisplayName || resourceItem.Name || `Memo ${resourceItem.Id}`,
 			value: resourceItem.Id,
 		});
 	});
