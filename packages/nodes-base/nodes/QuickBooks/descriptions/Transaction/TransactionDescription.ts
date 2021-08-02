@@ -303,6 +303,7 @@ export const transactionFields = [
 				name: 'qzurl',
 				type: 'boolean',
 				default: true,
+				description: 'Whether Quick Zoom URL information should be generated',
 			},
 			{
 				displayName: 'Sort By',
