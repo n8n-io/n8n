@@ -649,6 +649,7 @@ export default mixins(
 		left: 0;
 		right: 0;
 		overflow-y: auto;
+		line-height: 1.5;
 
 		.binary-data-row {
 			display: inline-flex;
@@ -713,6 +714,8 @@ export default mixins(
 		}
 
 		.json-data {
+			line-height: 1.5;
+
 			&.vjs-tree {
 				color: $--custom-input-font;
 			}

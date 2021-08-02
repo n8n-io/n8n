@@ -184,6 +184,7 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 	height: 100px;
 
 	.node-description {
+		line-height: 1.5;
 		position: absolute;
 		bottom: -55px;
 		left: -50px;
@@ -273,7 +274,7 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 
 		.node-info-icon {
 			position: absolute;
-			top: -18px;
+			top: -14px;
 			right: 12px;
 			z-index: 10;
 

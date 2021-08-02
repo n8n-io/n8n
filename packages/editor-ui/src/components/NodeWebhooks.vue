@@ -210,6 +210,7 @@ export default mixins(
 }
 
 .webhook-wrapper {
+	line-height: 1.5;
 	position: relative;
 	margin: 1em 0 0.5em 0;
 	background-color: #fff;
