@@ -352,8 +352,9 @@ export const transactionFields = [
 				displayName: 'Source Account Type',
 				name: 'source_account_type',
 				default: 'Bank',
+				type: 'options',
 				description: 'Account type to filter results by',
-				options: SOURCE_ACCOUNT_TYPES.map(toOptions),
+				options: SOURCE_ACCOUNT_TYPES.map(toOptions).map(toDisplayName),
 			},
 			{
 				displayName: 'Vendor',
