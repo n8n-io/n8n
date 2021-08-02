@@ -72,6 +72,7 @@
 				v-if="workflowRunning === true && !executionWaitingForWebhook"
 				icon="stop"
 				size="lg"
+				iconSize="md"
 				class="stop-execution"
 				type="light"
 				:title="stopExecutionInProgress ? 'Stopping current execution':'Stop current execution'"
@@ -84,6 +85,7 @@
 				class="stop-execution"
 				icon="stop"
 				size="lg"
+				iconSize="md"
 				title="Stop waiting for Webhook call"
 				type="light"
 				:loading="stopExecutionInProgress"
@@ -95,6 +97,7 @@
 				title="Deletes the current Execution Data."
 				icon="trash"
 				size="lg"
+				iconSize="md"
 				@click.stop="clearExecutionData()"
 			/>
 		</div>

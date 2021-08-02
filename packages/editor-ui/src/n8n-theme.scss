@@ -303,7 +303,7 @@ h1, h2, h3, h4, h5, h6 {
 .el-input-number {
 	background-color: $--custom-input-background;
 	border-radius: 16px;
-	width: calc(100% - 20px);
+	width: 100%;
 
 	.el-input-number__decrease,
 	.el-input-number__increase {
