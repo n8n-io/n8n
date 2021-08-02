@@ -305,9 +305,8 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 			text-align: center;
 
 			.option {
-				width: 20px;
+				width: 28px;
 				display: inline-block;
-				padding: 0 0.3em;
 
 				&.touch {
 					display: none;
