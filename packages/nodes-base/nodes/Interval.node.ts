@@ -78,7 +78,13 @@ export class Interval implements INodeType {
 			this.emit([this.helpers.returnJsonArray([{}])]);
 		};
 
-		const intervalObj = setInterval(executeTrigger, intervalValue * 1000);
+		intervalValue *= 1000;
+
+		if (intervalValue > Number.MAX_SAFE_INTEGER) {
+			throw new Error('The interval value is too large.');
+		}
+
+		const intervalObj = setInterval(executeTrigger, );
 
 		async function closeFunction() {
 			clearInterval(intervalObj);

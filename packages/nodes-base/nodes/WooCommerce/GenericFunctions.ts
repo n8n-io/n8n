@@ -32,6 +32,10 @@ import {
 	snakeCase,
 } from 'change-case';
 
+import {
+	omit
+} from 'lodash';
+
 export async function woocommerceApiRequest(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions | IWebhookFunctions, method: string, resource: string, body: any = {}, qs: IDataObject = {}, uri?: string, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
 	const credentials = this.getCredentials('wooCommerceApi');
 	if (credentials === undefined) {
@@ -144,3 +148,18 @@ export function toSnakeCase(data:
 		}
 	}
 }
+
+export function adjustMetadata(fields: IDataObject & Metadata) {
+	if (!fields.meta_data) return fields;
+
+	return {
+		...omit(fields, ['meta_data']),
+		meta_data: fields.meta_data.meta_data_fields,
+	};
+}
+
+type Metadata = {
+	meta_data?: {
+		meta_data_fields: Array<{ key: string; value: string }>;
+	}
+};
