@@ -91,7 +91,7 @@ export default Vue
 
 		&:hover {
 			.parameter-info {
-				display: inline-block;
+				display: inline;
 			}
 		}
 
