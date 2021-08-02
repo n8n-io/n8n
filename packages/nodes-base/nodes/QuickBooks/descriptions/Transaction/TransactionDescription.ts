@@ -295,8 +295,17 @@ export const transactionFields = [
 				name: 'printed',
 				type: 'options',
 				default: 'Printed',
-				options: ['Printed', 'To_be_printed'].map(toOptions),
 				description: 'Printed state to filter results by',
+				options: [
+					{
+						name: 'Printed',
+						value: 'Printed',
+					},
+					{
+						name: 'To Be Printed',
+						value: 'To_be_printed',
+					},
+				],
 			},
 			{
 				displayName: 'Quick Zoom URL',
