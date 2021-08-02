@@ -497,6 +497,10 @@ export default mixins(
 	}
 }
 
+.el-input-number {
+	width: calc(100% - 20px);
+}
+
 .action-buttons {
 	margin-top: 1em;
 	text-align: right;
