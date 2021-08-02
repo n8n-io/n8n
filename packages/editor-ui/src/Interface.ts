@@ -446,6 +446,12 @@ export interface IPushDataConsoleMessage {
 	message: string;
 }
 
+export interface IVersionNotificationSettings {
+	enabled: boolean;
+	endpoint: string;
+	infoUrl: string;
+}
+
 export interface IN8nUISettings {
 	endpointWebhook: string;
 	endpointWebhookTest: string;
@@ -464,6 +470,8 @@ export interface IN8nUISettings {
 	n8nMetadata?: {
 		[key: string]: string | number | undefined;
 	};
+	versionNotifications: IVersionNotificationSettings;
+	instanceId: string;
 }
 
 export interface IWorkflowSettings extends IWorkflowSettingsWorkflow {
@@ -548,6 +556,29 @@ export interface ITagRow {
 	delete?: boolean;
 }
 
+export interface IVersion {
+	name: string;
+	nodes: IVersionNode[];
+	createdAt: string;
+	description: string;
+	documentationUrl: string;
+	hasBreakingChange: boolean;
+	hasSecurityFix: boolean;
+	hasSecurityIssue: boolean;
+	securityIssueFixVersion: string;
+}
+
+export interface IVersionNode {
+	name: string;
+	displayName: string;
+	icon: string;
+	defaults: INodeParameters;
+	iconData: {
+		type: string;
+		icon?: string;
+		fileBuffer?: string;
+	};
+}
 export interface IRootState {
 	activeExecutions: IExecutionsCurrentSummaryExtended[];
 	activeWorkflows: string[];
@@ -584,6 +615,7 @@ export interface IRootState {
 	urlBaseWebhook: string;
 	workflow: IWorkflowDb;
 	sidebarMenuItems: IMenuItem[];
+	instanceId: string;
 }
 
 export interface ITagsState {
@@ -604,6 +636,12 @@ export interface IUiState {
 		[key: string]: IModalState;
 	};
 	isPageLoading: boolean;
+}
+
+export interface IVersionsState {
+	versionNotificationSettings: IVersionNotificationSettings;
+	nextVersions: IVersion[];
+	currentVersion: IVersion | undefined;
 }
 
 export interface IWorkflowsState {
