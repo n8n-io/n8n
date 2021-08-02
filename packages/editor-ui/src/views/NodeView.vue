@@ -162,9 +162,6 @@ import {
 } from '../Interface';
 import { mapGetters } from 'vuex';
 
-// import N8nIcon from 'n8n-design-system/src/components/N8nIcon';
-// import N8nButton from 'n8n-design-system/src/components/N8nButton/Button.vue';
-
 const NODE_SIZE = 100;
 const DEFAULT_START_POSITION_X = 250;
 const DEFAULT_START_POSITION_Y = 300;
