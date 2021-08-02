@@ -31,7 +31,7 @@
 		</div>
 		<DataDisplay @valueChanged="valueChanged"/>
 		<div v-if="!createNodeActive && !isReadOnly" class="node-creator-button" title="Add Node" @click="openNodeCreator">
-			<n8n-icon-button size="xl" icon="plus" />
+			<n8n-icon-button size="lg" icon="plus" />
 		</div>
 		<node-creator
 			:active="createNodeActive"
