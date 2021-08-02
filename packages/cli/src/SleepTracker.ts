@@ -123,7 +123,7 @@ export class SleepTrackerClass {
 			...error,
 			message: error.message,
 			stack: error.stack,
-		}
+		};
 
 		fullExecutionData.stoppedAt = new Date();
 		fullExecutionData.sleepTill = undefined;
