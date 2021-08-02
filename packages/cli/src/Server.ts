@@ -871,7 +871,7 @@ class App {
 			const nodeTypeAndVersion = JSON.parse('' + req.query.nodeTypeAndVersion) as INodeTypeNameVersion;
 			const path = req.query.path as string;
 			let credentials: INodeCredentials | undefined = undefined;
-			const currentNodeParameters = JSON.parse(`${req.query.nodeTypeAndVersion}`) as INodeParameters;
+			const currentNodeParameters = JSON.parse(`${req.query.currentNodeParameters}`) as INodeParameters;
 			if (req.query.credentials !== undefined) {
 				credentials = JSON.parse(req.query.credentials as string);
 			}
@@ -879,7 +879,7 @@ class App {
 
 			const nodeTypes = NodeTypes();
 
-			const loadDataInstance = new LoadNodeParameterOptions(nodeTypeAndVersion, nodeTypes, path, JSON.parse(`${req.query.currentNodeParameters}`), credentials!);
+			const loadDataInstance = new LoadNodeParameterOptions(nodeTypeAndVersion, nodeTypes, path, currentNodeParameters, credentials!);
 
 			const workflowData = loadDataInstance.getWorkflowData() as IWorkflowBase;
 			const workflowCredentials = await WorkflowCredentials(workflowData.nodes);

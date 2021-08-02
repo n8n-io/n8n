@@ -4,6 +4,7 @@ import { WorkflowOperationError } from './WorkflowErrors';
 import { NodeApiError, NodeOperationError } from './NodeErrors';
 import * as express from 'express';
 import * as FormData from 'form-data';
+import { URLSearchParams } from 'url';
 
 export type IAllExecuteFunctions = IExecuteFunctions | IExecuteSingleFunctions | IHookFunctions | ILoadOptionsFunctions | IPollFunctions | ITriggerFunctions | IWebhookFunctions;
 
@@ -214,7 +215,7 @@ export interface IExecuteContextData {
 export interface IHttpRequestOptions {
 	headers?: IDataObject;
 	method?: 'GET' | 'POST' | 'PUT' | 'DELETE' | 'HEAD';
-	body?: FormData | GenericValue | GenericValue[];
+	body?: FormData | GenericValue | GenericValue[] | Buffer | URLSearchParams;
 	queryString?: IDataObject;
 	url: string;
 	arrayFormat?: 'indices' | 'brackets' | 'repeat' | 'comma';
