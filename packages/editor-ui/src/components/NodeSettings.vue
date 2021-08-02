@@ -605,7 +605,8 @@ export default mixins(
 	input.el-input__inner {
 		font-size: 0.9em;
 		line-height: 28px;
-		height: 28px;
+		min-height: 28px;
+		height: 100%;
 	}
 	.el-input-number {
 		padding: 0 10px;

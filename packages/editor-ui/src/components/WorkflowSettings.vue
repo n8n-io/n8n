@@ -521,6 +521,7 @@ export default mixins(
 }
 
 .timeout-setting-name {
+	line-height: 1.5;
 	text-align: center;
 	width: calc(100% - 20px);
 }
