@@ -82,8 +82,8 @@ export default Vue
 		background-color: #ffffffaa;
 		display: none;
 		position: absolute;
-		right: 0;
-		top: 8px;
+		right: 2px;
+		top: 10px;
 	}
 
 	.parameter-name {
