@@ -37,7 +37,7 @@ import {
 	WorkflowExecuteAdditionalData,
 } from '../src';
 
-import { 
+import {
 	getLogger,
 } from '../src/Logger';
 
@@ -152,6 +152,7 @@ export class Worker extends Command {
 
 		const additionalData = await WorkflowExecuteAdditionalData.getBase(credentials, undefined, executionTimeoutTimestamp);
 		additionalData.hooks = WorkflowExecuteAdditionalData.getWorkflowHooksWorkerExecuter(currentExecutionDb.mode, job.data.executionId, currentExecutionDb.workflowData, { retryOf: currentExecutionDb.retryOf as string });
+		additionalData.executionId = jobData.executionId;
 
 		let workflowExecute: WorkflowExecute;
 		let workflowRun: PCancelable<IRun>;
