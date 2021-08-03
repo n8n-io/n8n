@@ -694,6 +694,7 @@ export class HttpRequest implements INodeType {
 
 			if (options.followRedirect !== undefined) {
 				requestOptions.followRedirect = options.followRedirect as boolean;
+				requestOptions.followAllRedirects = requestOptions.followRedirect;
 			}
 			if (options.ignoreResponseCode === true) {
 				// @ts-ignore
