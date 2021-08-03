@@ -317,7 +317,6 @@ export const contactFields = [
 			},
 		},
 	},
-
 	{
 		displayName: 'Update Fields',
 		name: 'updateFields',
