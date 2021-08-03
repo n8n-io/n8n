@@ -590,14 +590,24 @@ export default mixins(
 			background-color: $--color-primary;
 			color: #fff;
 			text-align: center;
-			height: 38px;
+			height: 30px;
+			line-height: 30px;
+
+			i {
+				line-height: 30px;
+			}
 		}
 
 		.add-option > .el-input .el-input__inner
 		{
 			border: 1px solid $--color-primary;
 			border-radius: 17px;
-			height: 38px;
+			height: 30px;
+			line-height: 30px;
+
+			i {
+				line-height: 30px;
+			}
 		}
 	}
 
