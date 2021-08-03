@@ -10,6 +10,7 @@ import {
 	INodeTypeDescription,
 } from 'n8n-workflow';
 import {
+	adjustMetadata,
 	setMetadata,
 	toSnakeCase,
 	woocommerceApiRequest,
@@ -37,11 +38,16 @@ import {
 	IShoppingLine,
 } from './OrderInterface';
 
+import {
+	customerFields,
+	customerOperations,
+} from './descriptions';
+
 export class WooCommerce implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'WooCommerce',
 		name: 'wooCommerce',
-		icon: 'file:wooCommerce.png',
+		icon: 'file:wooCommerce.svg',
 		group: ['output'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
@@ -65,6 +71,10 @@ export class WooCommerce implements INodeType {
 				type: 'options',
 				options: [
 					{
+						name: 'Customer',
+						value: 'customer',
+					},
+					{
 						name: 'Order',
 						value: 'order',
 					},
@@ -76,6 +86,8 @@ export class WooCommerce implements INodeType {
 				default: 'product',
 				description: 'Resource to consume.',
 			},
+			...customerOperations,
+			...customerFields,
 			...productOperations,
 			...productFields,
 			...orderOperations,
@@ -128,7 +140,111 @@ export class WooCommerce implements INodeType {
 		const operation = this.getNodeParameter('operation', 0) as string;
 
 		for (let i = 0; i < length; i++) {
-			if (resource === 'product') {
+
+			if (resource === 'customer') {
+
+				// **********************************************************************
+				//                                customer
+				// **********************************************************************
+
+				// https://woocommerce.github.io/woocommerce-rest-api-docs/?shell#customer-properties
+
+				if (operation === 'create') {
+
+					// ----------------------------------------
+					//             customer: create
+					// ----------------------------------------
+
+					// https://woocommerce.github.io/woocommerce-rest-api-docs/?javascript#create-a-customer
+
+					const body = {
+						email: this.getNodeParameter('email', i),
+					} as IDataObject;
+
+					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+
+					if (Object.keys(additionalFields).length) {
+						Object.assign(body, adjustMetadata(additionalFields));
+					}
+
+					responseData = await woocommerceApiRequest.call(this, 'POST', '/customers', body);
+
+				} else if (operation === 'delete') {
+
+					// ----------------------------------------
+					//             customer: delete
+					// ----------------------------------------
+
+					// https://woocommerce.github.io/woocommerce-rest-api-docs/?javascript#delete-a-customer
+
+					const customerId = this.getNodeParameter('customerId', i);
+
+					const qs: IDataObject = {
+						force: true, // required, customers do not support trashing
+					};
+
+					const endpoint = `/customers/${customerId}`;
+					responseData = await woocommerceApiRequest.call(this, 'DELETE', endpoint, {}, qs);
+
+				} else if (operation === 'get') {
+
+					// ----------------------------------------
+					//              customer: get
+					// ----------------------------------------
+
+					// https://woocommerce.github.io/woocommerce-rest-api-docs/?javascript#retrieve-a-customer
+
+					const customerId = this.getNodeParameter('customerId', i);
+
+					const endpoint = `/customers/${customerId}`;
+					responseData = await woocommerceApiRequest.call(this, 'GET', endpoint);
+
+				} else if (operation === 'getAll') {
+
+					// ----------------------------------------
+					//             customer: getAll
+					// ----------------------------------------
+
+					// https://woocommerce.github.io/woocommerce-rest-api-docs/?javascript#list-all-customers
+
+					const qs = {} as IDataObject;
+					const filters = this.getNodeParameter('filters', i) as IDataObject;
+					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+
+					if (Object.keys(filters).length) {
+						Object.assign(qs, filters);
+					}
+
+					if (returnAll) {
+						responseData = await woocommerceApiRequestAllItems.call(this, 'GET', '/customers', {}, qs);
+					} else {
+						qs.per_page = this.getNodeParameter('limit', i) as number;
+						responseData = await woocommerceApiRequest.call(this, 'GET', '/customers', {}, qs);
+					}
+
+				} else if (operation === 'update') {
+
+					// ----------------------------------------
+					//             customer: update
+					// ----------------------------------------
+
+					// https://woocommerce.github.io/woocommerce-rest-api-docs/?javascript#update-a-customer
+
+					const body = {} as IDataObject;
+					const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+
+					if (Object.keys(updateFields).length) {
+						Object.assign(body, adjustMetadata(updateFields));
+					}
+
+					const customerId = this.getNodeParameter('customerId', i);
+
+					const endpoint = `/customers/${customerId}`;
+					responseData = await woocommerceApiRequest.call(this, 'PUT', endpoint, body);
+
+				}
+
+			} else if (resource === 'product') {
 				//https://woocommerce.github.io/woocommerce-rest-api-docs/#create-a-product
 				if (operation === 'create') {
 					const name = this.getNodeParameter('name', i) as string;
