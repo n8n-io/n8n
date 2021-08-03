@@ -27,37 +27,9 @@ import {
 import { get } from 'lodash';
 
 export class WorkflowExecute {
-	_runExecutionData!: IRunExecutionData;
-	private _additionalData!: IWorkflowExecuteAdditionalData;
-	private _mode!: WorkflowExecuteMode;
-
-	public get runExecutionData(): IRunExecutionData {
-		return this._runExecutionData;
-	}
-
-	public set runExecutionData(data: IRunExecutionData) {
-		console.log('set runExecutionData', data);
-		this._runExecutionData = data;
-	}
-
-	private get additionalData(): IWorkflowExecuteAdditionalData {
-		return this._additionalData;
-	}
-
-	private set additionalData(data: IWorkflowExecuteAdditionalData) {
-		console.log('set additionalData', data);
-		this._additionalData = data;
-	}
-
-	private get mode(): WorkflowExecuteMode {
-		return this._mode;
-	}
-
-	private set mode(data: WorkflowExecuteMode) {
-		console.log('set mode');
-		this._mode = data;
-	}
-
+	runExecutionData: IRunExecutionData;
+	private additionalData: IWorkflowExecuteAdditionalData;
+	private mode: WorkflowExecuteMode;
 
 	constructor(additionalData: IWorkflowExecuteAdditionalData, mode: WorkflowExecuteMode, runExecutionData?: IRunExecutionData) {
 		this.additionalData = additionalData;

@@ -227,11 +227,7 @@ export class Compression implements INodeType {
 					}
 					
 					const binaryData = (items[i].binary as IBinaryKeyData)[binaryPropertyName];
-
-					// const binaryDataBuffer = await fs.readFile(`${items[i].binary?.internalPath}`);
-					console.log('path: ', binaryData.internalPath);
-					const binaryDataBuffer = await fs.readFile(`${binaryData.internalPath}`);
-					// const binaryDataBuffer = Buffer.from(binaryData.data as string, BINARY_ENCODING);
+					const binaryDataBuffer = await this.helpers.getBinaryDataBuffer(binaryData);
 
 					if (binaryData.fileExtension === 'zip') {
 						const files = await unzip(binaryDataBuffer);
@@ -247,7 +243,8 @@ export class Compression implements INodeType {
 							binaryObject[`${outputPrefix}${zipIndex++}`] = data;
 						}
 					} else if (binaryData.fileExtension === 'gz') {
-						const file = await gunzip(Buffer.from(binaryData.data as string, BINARY_ENCODING));
+						const binaryDataBuffer = await this.helpers.getBinaryDataBuffer(binaryData);
+						const file = await gunzip(binaryDataBuffer);
 
 						const fileName = binaryData.fileName?.split('.')[0];
 
@@ -288,17 +285,7 @@ export class Compression implements INodeType {
 					const binaryData = (items[i].binary as IBinaryKeyData)[binaryPropertyName];
 
 					if (outputFormat === 'zip') {
-
-						// ahsan
-					// retrieve binary data from internal path
-					// await fs.readFile('internal_data');
-
-					// const binaryDataBuffer = Buffer.from(binaryData.data, BINARY_ENCODING);
-					// const binaryDataBuffer = await fs.readFile('internal_data');
-					console.log('path', binaryData.internalPath);
-					const binaryDataBuffer = await fs.readFile(`${binaryData.internalPath}`);
-					
-
+						const binaryDataBuffer = await this.helpers.getBinaryDataBuffer(binaryData);
 						zipData[binaryData.fileName as string] = [
 							binaryDataBuffer, {
 								level: ALREADY_COMPRESSED.includes(binaryData.fileExtension as string) ? 0 : 6,

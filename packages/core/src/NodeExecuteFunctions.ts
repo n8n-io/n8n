@@ -61,6 +61,14 @@ const requestPromiseWithDefaults = requestPromise.defaults({
 	timeout: 300000, // 5 minutes
 });
 
+export async function getBinaryDataBuffer(binaryData: IBinaryData): Promise<Buffer> {
+	if(!!binaryData.internalPath && binaryData.internalPath !== '') {
+		return fs.readFile(binaryData.internalPath);
+	}
+
+	return Buffer.from(binaryData.data, BINARY_ENCODING);
+}
+
 /**
  * Takes a buffer and converts it into the format n8n uses. It encodes the binary data as
  * base64 and adds metadata.
@@ -101,7 +109,7 @@ export async function prepareBinaryData(binaryData: Buffer, filePath?: string, m
 
 	const returnData: IBinaryData = {
 		mimeType,
-		data: BINARY_ENCODING, // todo cleanup
+		data: binaryData.toString(BINARY_ENCODING),// BINARY_ENCODING, // todo cleanup
 	};
 
 	if (filePath) {
@@ -124,12 +132,7 @@ export async function prepareBinaryData(binaryData: Buffer, filePath?: string, m
 		}
 	}
 
-	// ahsan
-
-	// internal storage path of binary data
 	returnData.internalPath = `internal_data-${executionId}-${nodeName}-${item}`;
-
-	console.log('returnData.internalPath', returnData.internalPath);
 
 	// internal storage path of binary data
 	await fs.writeFile(path.join(returnData.internalPath), binaryData);
@@ -774,10 +777,9 @@ export function getExecuteFunctions(workflow: Workflow, runExecutionData: IRunEx
 			},
 			helpers: {
 				prepareBinaryData(binaryData: Buffer, filePath?: string, mimeType?: string, itemIndex?: number): Promise<IBinaryData> {
-					// ahsan
-					console.log(executionId, node.name, itemIndex);
 					return prepareBinaryData.call(this, binaryData, filePath, mimeType, executionId, node.name, '' + itemIndex);
 				},
+				getBinaryDataBuffer,
 				request: requestPromiseWithDefaults,
 				requestOAuth2(this: IAllExecuteFunctions, credentialsType: string, requestOptions: OptionsWithUri | requestPromise.RequestPromiseOptions, oAuth2Options?: IOAuth2Options): Promise<any> { // tslint:disable-line:no-any
 					return requestOAuth2.call(this, credentialsType, requestOptions, node, additionalData, oAuth2Options);
