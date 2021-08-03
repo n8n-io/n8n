@@ -1,6 +1,6 @@
 <template>
 	<div class="node-wrapper" :style="nodePosition">
-		<div class="node-default" :ref="data.name" :style="nodeStyle" :class="nodeClass" @dblclick="setNodeActive" @click.left="mouseLeftClick" v-touch:start="touchStart" v-touch:end="touchEnd">
+		<div class="node-default" :ref="data.name" :style="nodeStyle" :class="nodeClass" @dblclick="setNodeActive" @click.left="mouseLeftClick" v-touch:start="touchStart" v-touch:tap="onTouchTap">
 			<div v-if="hasIssues" class="node-info-icon node-issues">
 				<el-tooltip placement="top" effect="light">
 					<div slot="content" v-html="nodeIssues"></div>
@@ -138,6 +138,7 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 	data () {
 		return {
 			isTouchActive: false,
+			lastTouchTapTimestamp: 0,
 		};
 	},
 	methods: {
@@ -169,6 +170,20 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 				setTimeout(() => {
 					this.isTouchActive = false;
 				}, 2000);
+			}
+		},
+		onTouchTap () {
+			const before = this.lastTouchTapTimestamp;
+			const now = new Date().getTime();
+			this.lastTouchTapTimestamp = now;
+
+			if (before === 0) {
+				return;
+			}
+
+			const isDoubleTap = (now - before) < 600;
+			if (isDoubleTap) {
+				this.setNodeActive();
 			}
 		},
 	},
