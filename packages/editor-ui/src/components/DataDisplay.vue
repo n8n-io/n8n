@@ -37,11 +37,7 @@
 </template>
 
 <script lang="ts">
-
-import Vue from 'vue';
-
 import {
-	IRunData,
 	INodeTypeDescription,
 } from 'n8n-workflow';
 import {

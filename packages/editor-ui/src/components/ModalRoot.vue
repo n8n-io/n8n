@@ -1,8 +1,8 @@
 <template>
 	<div
-			v-if="isOpen(name)"
+			v-if="isOpen(name) || keepAlive"
 	>
-		<slot :modalName="name" :active="isActive(name)"></slot>	
+		<slot :modalName="name" :active="isActive(name)" :open="isOpen(name)"></slot>	
 	</div>
 </template>
 
@@ -11,7 +11,7 @@ import Vue from "vue";
 
 export default Vue.extend({
 	name: "ModalRoot",
-	props: ["name"],
+	props: ["name", "keepAlive"],
 	methods: {
 		isActive(name: string) {
 			return this.$store.getters['ui/isModalActive'](name);
