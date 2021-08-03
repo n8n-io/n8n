@@ -92,7 +92,7 @@ export class SleepingWebhooks {
 		if (webhookData === undefined) {
 			// If no data got found it means that the execution can not be started via a webhook.
 			// Return 404 because we do not want to give any data if the execution exists or not.
-			const errorMessage = `The execution "${executionId}" with webhook path "${path}" is not known.`;
+			const errorMessage = `The execution "${executionId}" with webhook postfix path "${path}" is not known.`;
 			throw new ResponseHelper.ResponseError(errorMessage, 404, 404);
 		}
 
