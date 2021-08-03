@@ -132,7 +132,7 @@ export const conversationFields = [
 		description: 'Author of the message',
 		type: 'options',
 		required: true,
-		default: 'user',
+		default: true,
 		options: [
 			{
 				name: 'User',
@@ -400,7 +400,7 @@ export const conversationFields = [
 		description: 'Author of the message',
 		type: 'options',
 		required: true,
-		default: 'user',
+		default: true,
 		options: [
 			{
 				name: 'User',

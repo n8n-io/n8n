@@ -59,7 +59,7 @@ export const contactTagFields = [
 			loadOptionsMethod: 'getTagsToAdd',
 		},
 		required: true,
-		default: '',
+		default: [],
 		displayOptions: {
 			show: {
 				resource: [
@@ -102,7 +102,7 @@ export const contactTagFields = [
 		typeOptions: {
 			loadOptionsMethod: 'getTagsToRemove',
 		},
-		default: '',
+		default: [],
 		displayOptions: {
 			show: {
 				resource: [
