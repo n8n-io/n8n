@@ -121,7 +121,7 @@ export class WorkflowExecute {
 	 * @memberof WorkflowExecute
 	 */
 	// @ts-ignore
-	async runPartialWorkflow(workflow: Workflow, runData: IRunData, startNodes: string[], destinationNode: string): PCancelable<IRun> {
+	async runPartialWorkflow(workflow: Workflow, runData: IRunData, startNodes: string[], destinationNode: string, executionId: string): PCancelable<IRun> {
 		let incomingNodeConnections: INodeConnections | undefined;
 		let connection: IConnection;
 
@@ -215,7 +215,7 @@ export class WorkflowExecute {
 			},
 		};
 
-		return this.processRunExecutionData(workflow, "12");
+		return this.processRunExecutionData(workflow, executionId);
 	}
 
 

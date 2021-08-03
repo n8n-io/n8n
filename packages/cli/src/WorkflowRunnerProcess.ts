@@ -193,7 +193,7 @@ export class WorkflowRunnerProcess {
 		} else {
 			// Execute only the nodes between start and destination nodes
 			this.workflowExecute = new WorkflowExecute(additionalData, this.data.executionMode);
-			return this.workflowExecute.runPartialWorkflow(this.workflow, this.data.runData, this.data.startNodes, this.data.destinationNode);
+			return this.workflowExecute.runPartialWorkflow(this.workflow, this.data.runData, this.data.startNodes, this.data.destinationNode, '12');
 		}
 	}
 

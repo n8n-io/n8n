@@ -200,7 +200,7 @@ export class WorkflowRunner {
 			Logger.debug(`Execution ID ${executionId} is a partial execution.`, {executionId});
 			// Execute only the nodes between start and destination nodes
 			const workflowExecute = new WorkflowExecute(additionalData, data.executionMode);
-			workflowExecution = workflowExecute.runPartialWorkflow(workflow, data.runData, data.startNodes, data.destinationNode);
+			workflowExecution = workflowExecute.runPartialWorkflow(workflow, data.runData, data.startNodes, data.destinationNode, executionId);
 		}
 
 		this.activeExecutions.attachWorkflowExecution(executionId, workflowExecution);
