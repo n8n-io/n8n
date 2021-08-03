@@ -211,7 +211,7 @@ export class ActiveWorkflowRunner {
 		return new Promise((resolve, reject) => {
 			const executionMode = 'webhook';
 			//@ts-ignore
-			WebhookHelpers.executeWebhook(workflow, webhookData, workflowData, workflowStartNode, executionMode, undefined, req, res, (error: Error | null, data: object) => {
+			WebhookHelpers.executeWebhook(workflow, webhookData, workflowData, workflowStartNode, executionMode, undefined, undefined, undefined, req, res, (error: Error | null, data: object) => {
 				if (error !== null) {
 					return reject(error);
 				}
