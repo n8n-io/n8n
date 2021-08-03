@@ -10,7 +10,6 @@
 				:title="`Executes this ${node.name} node after executing any previous nodes that have not yet returned data`"
 				:loading="workflowRunning"
 				icon="play-circle"
-				type="outline"
 				label="Execute Node"
 				@click.stop="runWorkflow(node.name, 'RunData.ExecuteNodeButton')"
 			/>
