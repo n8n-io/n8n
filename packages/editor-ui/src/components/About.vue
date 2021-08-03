@@ -28,7 +28,7 @@
 				</el-row>
 
 				<div class="action-buttons">
-					<n8n-button @click="closeDialog" label="Close" size="lg" />
+					<n8n-button @click="closeDialog" label="Close" />
 				</div>
 			</div>
 		</el-dialog>

@@ -24,7 +24,7 @@
 			</el-row>
 		</template>
 		<template v-slot:footer="{ close }">
-			<n8n-button size="sm" label="Done" @click="close" float="right" />
+			<n8n-button label="Done" @click="close" float="right" />
 		</template>
 	</Modal>
 </template>

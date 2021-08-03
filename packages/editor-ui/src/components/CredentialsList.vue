@@ -31,8 +31,8 @@
 					width="120">
 					<template slot-scope="scope">
 						<div class="cred-operations">
-							<n8n-icon-button title="Edit Credentials" @click.stop="editCredential(scope.row)" icon="pen" size="md" />
-							<n8n-icon-button title="Delete Credentials" @click.stop="deleteCredential(scope.row)" icon="trash" size="md" />
+							<n8n-icon-button title="Edit Credentials" @click.stop="editCredential(scope.row)" icon="pen" />
+							<n8n-icon-button title="Delete Credentials" @click.stop="deleteCredential(scope.row)" icon="trash" />
 						</div>
 					</template>
 				</el-table-column>
