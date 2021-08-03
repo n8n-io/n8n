@@ -172,7 +172,11 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 				}, 2000);
 			}
 		},
-		onTouchTap () {
+		onTouchTap (e: MouseEvent | TouchEvent) {
+			if (e.type !== 'touchend') {
+				return;
+			}
+
 			const before = this.lastTouchTapTimestamp;
 			const now = new Date().getTime();
 			this.lastTouchTapTimestamp = now;
