@@ -67,7 +67,9 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 	},
 	props: [
 		'instance',
-		'workflow'
+		'workflow',
+		'isReadOnly',
+		'name'
 	],
 	computed: {
 		workflowDataItems () {
