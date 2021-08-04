@@ -16,8 +16,7 @@ export const eventOperations = [
 			{
 				name: 'Track',
 				value: 'track',
-				description: `This endpoint tracks an event for a specific customer.
-				If the customer profile doesn’t exist, Vero will create it.`,
+				description: `Track an event for a specific customer`,
 			},
 		],
 		default: 'track',
@@ -44,7 +43,7 @@ export const eventFields = [
 				],
 				operation: [
 					'track',
-				]
+				],
 			},
 		},
 		description: 'The unique identifier of the customer',
@@ -62,7 +61,7 @@ export const eventFields = [
 				],
 				operation: [
 					'track',
-				]
+				],
 			},
 		},
 		description: 'Email',
@@ -80,7 +79,7 @@ export const eventFields = [
 				],
 				operation: [
 					'track',
-				]
+				],
 			},
 		},
 		description: 'The name of the event tracked.',
@@ -98,9 +97,9 @@ export const eventFields = [
 				],
 				operation: [
 					'track',
-				]
+				],
 			},
-		}
+		},
 	},
 	{
 		displayName: 'Data',
@@ -144,7 +143,7 @@ export const eventFields = [
 						default: '',
 						description: 'Value of the property to set.',
 					},
-				]
+				],
 			},
 		],
 	},
@@ -190,7 +189,7 @@ export const eventFields = [
 						default: '',
 						description: 'Value of the property to set.',
 					},
-				]
+				],
 			},
 		],
 	},

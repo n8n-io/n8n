@@ -1,16 +1,17 @@
 import {
 	ICredentialType,
-	NodePropertyTypes,
+	INodeProperties,
 } from 'n8n-workflow';
 
 export class WebflowApi implements ICredentialType {
 	name = 'webflowApi';
 	displayName = 'Webflow API';
-	properties = [
+	documentationUrl = 'webflow';
+	properties: INodeProperties[] = [
 		{
 			displayName: 'Access Token',
 			name: 'accessToken',
-			type: 'string' as NodePropertyTypes,
+			type: 'string',
 			default: '',
 		},
 	];

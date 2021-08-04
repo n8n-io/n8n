@@ -1,10 +1,10 @@
 import {
 	IContextObject,
-	INodeCredentialDescription,
 	INode,
+	INodeCredentialDescription,
 	INodeExecutionData,
-	INodeIssues,
 	INodeIssueObjectProperty,
+	INodeIssues,
 	INodeParameters,
 	INodeProperties,
 	INodePropertyCollection,
@@ -21,7 +21,7 @@ import {
 	Workflow
 } from './Workflow';
 
-import { get } from 'lodash';
+import { get, isEqual } from 'lodash';
 
 
 
@@ -238,11 +238,11 @@ export function getSpecialNodeParameters(nodeType: INodeType) {
 								options: [
 									{
 										name: 'Minutes',
-										value: 'minutes'
+										value: 'minutes',
 									},
 									{
 										name: 'Hours',
-										value: 'hours'
+										value: 'hours',
 									},
 								],
 								default: 'hours',
@@ -294,6 +294,10 @@ export function displayParameter(nodeValues: INodeParameters, parameter: INodePr
 				values.push(value);
 			} else {
 				values.push.apply(values, value);
+			}
+
+			if (values.some(v => (typeof v) === 'string' && (v as string).charAt(0) === '=')) {
+				return true;
 			}
 
 			if (values.length === 0 || !parameter.displayOptions.show[propertyName].some(v => values.includes(v))) {
@@ -581,7 +585,9 @@ export function getNodeParameters(nodePropertiesArray: INodeProperties[], nodeVa
 					nodeParameters[nodeProperties.name] = nodeValues[nodeProperties.name] || nodeProperties.default;
 				}
 				nodeParametersFull[nodeProperties.name] = nodeParameters[nodeProperties.name];
-			} else if (nodeValues[nodeProperties.name] !== nodeProperties.default || (nodeValues[nodeProperties.name] !== undefined && parentType === 'collection')) {
+			} else if ((nodeValues[nodeProperties.name] !== nodeProperties.default && typeof nodeValues[nodeProperties.name] !== 'object') ||
+				(typeof nodeValues[nodeProperties.name] === 'object' && !isEqual(nodeValues[nodeProperties.name], nodeProperties.default)) ||
+				(nodeValues[nodeProperties.name] !== undefined && parentType === 'collection')) {
 				// Set only if it is different to the default value
 				nodeParameters[nodeProperties.name] = nodeValues[nodeProperties.name];
 				nodeParametersFull[nodeProperties.name] = nodeParameters[nodeProperties.name];
@@ -606,9 +612,14 @@ export function getNodeParameters(nodePropertiesArray: INodeProperties[], nodeVa
 				if (nodeValues[nodeProperties.name] !== undefined) {
 					nodeParameters[nodeProperties.name] = nodeValues[nodeProperties.name];
 				} else if (returnDefaults === true) {
-					// Does not have values defined but defaults should be returned which is in the
-					// case of a collection with multipleValues always an empty array
-					nodeParameters[nodeProperties.name] = [];
+					// Does not have values defined but defaults should be returned
+					if (Array.isArray(nodeProperties.default)) {
+						nodeParameters[nodeProperties.name] = JSON.parse(JSON.stringify(nodeProperties.default));
+					} else {
+						// As it is probably wrong for many nodes, do we keep on returning an empty array if
+						// anything else than an array is set as default
+						nodeParameters[nodeProperties.name] = [];
+					}
 				}
 				nodeParametersFull[nodeProperties.name] = nodeParameters[nodeProperties.name];
 			} else {
@@ -641,13 +652,13 @@ export function getNodeParameters(nodePropertiesArray: INodeProperties[], nodeVa
 				}
 			}
 
-			// Itterate over all collections
-			for (const itemName of Object.keys(propertyValues)) {
+			// Iterate over all collections
+			for (const itemName of Object.keys(propertyValues || {})) {
 				if (nodeProperties.typeOptions !== undefined && nodeProperties.typeOptions.multipleValues === true) {
 					// Multiple can be set so will be an array
 
 					const tempArrayValue: INodeParameters[] = [];
-					// Itterate over all items as it contains multiple ones
+					// Iterate over all items as it contains multiple ones
 					for (const nodeValue of (propertyValues as INodeParameters)[itemName] as INodeParameters[]) {
 						nodePropertyOptions = nodeProperties!.options!.find((nodePropertyOptions) => nodePropertyOptions.name === itemName) as INodePropertyCollection;
 
@@ -752,10 +763,11 @@ export function getNodeWebhooks(workflow: Workflow, node: INode, additionalData:
 	}
 
 	const workflowId = workflow.id || '__UNSAVED__';
+	const mode = 'internal';
 
 	const returnData: IWebhookData[] = [];
 	for (const webhookDescription of nodeType.description.webhooks) {
-		let nodeWebhookPath = workflow.getSimpleParameterValue(node, webhookDescription['path'], 'GET');
+		let nodeWebhookPath = workflow.expression.getSimpleParameterValue(node, webhookDescription['path'], mode);
 		if (nodeWebhookPath === undefined) {
 			// TODO: Use a proper logger
 			console.error(`No webhook path could be found for node "${node.name}" in workflow "${workflowId}".`);
@@ -764,18 +776,27 @@ export function getNodeWebhooks(workflow: Workflow, node: INode, additionalData:
 
 		nodeWebhookPath = nodeWebhookPath.toString();
 
-		if (nodeWebhookPath.charAt(0) === '/') {
+		if (nodeWebhookPath.startsWith('/')) {
 			nodeWebhookPath = nodeWebhookPath.slice(1);
 		}
+		if (nodeWebhookPath.endsWith('/')) {
+			nodeWebhookPath = nodeWebhookPath.slice(0, -1);
+		}
 
-		const path = getNodeWebhookPath(workflowId, node, nodeWebhookPath);
+		const isFullPath: boolean = workflow.expression.getSimpleParameterValue(node, webhookDescription['isFullPath'], 'internal', false) as boolean;
+		const path = getNodeWebhookPath(workflowId, node, nodeWebhookPath, isFullPath);
 
-		const httpMethod = workflow.getSimpleParameterValue(node, webhookDescription['httpMethod'], 'GET');
+		const httpMethod = workflow.expression.getSimpleParameterValue(node, webhookDescription['httpMethod'], mode, 'GET');
 
 		if (httpMethod === undefined) {
 			// TODO: Use a proper logger
 			console.error(`The webhook "${path}" for node "${node.name}" in workflow "${workflowId}" could not be added because the httpMethod is not defined.`);
 			continue;
+		}
+
+		let webhookId: string | undefined;
+		if ((path.startsWith(':') || path.includes('/:')) && node.webhookId) {
+			webhookId = node.webhookId;
 		}
 
 		returnData.push({
@@ -785,6 +806,67 @@ export function getNodeWebhooks(workflow: Workflow, node: INode, additionalData:
 			webhookDescription,
 			workflowId,
 			workflowExecuteAdditionalData: additionalData,
+			webhookId,
+		});
+	}
+
+	return returnData;
+}
+
+export function getNodeWebhooksBasic(workflow: Workflow, node: INode): IWebhookData[] {
+	if (node.disabled === true) {
+		// Node is disabled so webhooks will also not be enabled
+		return [];
+	}
+
+	const nodeType = workflow.nodeTypes.getByName(node.type) as INodeType;
+
+	if (nodeType.description.webhooks === undefined) {
+		// Node does not have any webhooks so return
+		return [];
+	}
+
+	const workflowId = workflow.id || '__UNSAVED__';
+
+	const mode = 'internal';
+
+	const returnData: IWebhookData[] = [];
+	for (const webhookDescription of nodeType.description.webhooks) {
+		let nodeWebhookPath = workflow.expression.getSimpleParameterValue(node, webhookDescription['path'], mode);
+		if (nodeWebhookPath === undefined) {
+			// TODO: Use a proper logger
+			console.error(`No webhook path could be found for node "${node.name}" in workflow "${workflowId}".`);
+			continue;
+		}
+
+		nodeWebhookPath = nodeWebhookPath.toString();
+
+		if (nodeWebhookPath.startsWith('/')) {
+			nodeWebhookPath = nodeWebhookPath.slice(1);
+		}
+		if (nodeWebhookPath.endsWith('/')) {
+			nodeWebhookPath = nodeWebhookPath.slice(0, -1);
+		}
+
+		const isFullPath: boolean = workflow.expression.getSimpleParameterValue(node, webhookDescription['isFullPath'], mode, false) as boolean;
+
+		const path = getNodeWebhookPath(workflowId, node, nodeWebhookPath, isFullPath);
+
+		const httpMethod = workflow.expression.getSimpleParameterValue(node, webhookDescription['httpMethod'], mode);
+
+		if (httpMethod === undefined) {
+			// TODO: Use a proper logger
+			console.error(`The webhook "${path}" for node "${node.name}" in workflow "${workflowId}" could not be added because the httpMethod is not defined.`);
+			continue;
+		}
+
+		//@ts-ignore
+		returnData.push({
+			httpMethod: httpMethod.toString() as WebhookHttpMethod,
+			node: node.name,
+			path,
+			webhookDescription,
+			workflowId,
 		});
 	}
 
@@ -801,8 +883,17 @@ export function getNodeWebhooks(workflow: Workflow, node: INode, additionalData:
  * @param {string} path
  * @returns {string}
  */
-export function getNodeWebhookPath(workflowId: string, node: INode, path: string): string {
-	return `${workflowId}/${encodeURIComponent(node.name.toLowerCase())}/${path}`;
+export function getNodeWebhookPath(workflowId: string, node: INode, path: string, isFullPath?: boolean): string {
+	let webhookPath = '';
+	if (node.webhookId === undefined) {
+		webhookPath = `${workflowId}/${encodeURIComponent(node.name.toLowerCase())}/${path}`;
+	} else {
+		if (isFullPath === true) {
+			return path;
+		}
+		webhookPath = `${node.webhookId}/${path}`;
+	}
+	return webhookPath;
 }
 
 
@@ -814,11 +905,18 @@ export function getNodeWebhookPath(workflowId: string, node: INode, path: string
  * @param {string} workflowId
  * @param {string} nodeTypeName
  * @param {string} path
+ * @param {boolean} isFullPath
  * @returns {string}
  */
-export function getNodeWebhookUrl(baseUrl: string, workflowId: string, node: INode, path: string): string {
-	// return `${baseUrl}/${workflowId}/${nodeTypeName}/${path}`;
-	return `${baseUrl}/${getNodeWebhookPath(workflowId, node, path)}`;
+export function getNodeWebhookUrl(baseUrl: string, workflowId: string, node: INode, path: string, isFullPath?: boolean): string {
+	if ((path.startsWith(':') || path.includes('/:')) && node.webhookId) {
+		// setting this to false to prefix the webhookId
+		isFullPath = false;
+	}
+	if (path.startsWith('/')) {
+		path = path.slice(1);
+	}
+	return `${baseUrl}/${getNodeWebhookPath(workflowId, node, path, isFullPath)}`;
 }
 
 
@@ -1091,5 +1189,29 @@ export function mergeIssues(destination: INodeIssues, source: INodeIssues | null
 
 	if (source.typeUnknown === true) {
 		destination.typeUnknown = true;
+	}
+}
+
+
+
+/**
+ * Merges the given node properties
+ *
+ * @export
+ * @param {INodeProperties[]} mainProperties
+ * @param {INodeProperties[]} addProperties
+ */
+export function mergeNodeProperties(mainProperties: INodeProperties[], addProperties: INodeProperties[]): void {
+	let existingIndex: number;
+	for (const property of addProperties) {
+		existingIndex = mainProperties.findIndex(element => element.name === property.name);
+
+		if (existingIndex === -1) {
+			// Property does not exist yet, so add
+			mainProperties.push(property);
+		} else {
+			// Property exists already, so overwrite
+			mainProperties[existingIndex] = property;
+		}
 	}
 }

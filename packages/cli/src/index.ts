@@ -1,4 +1,7 @@
+export * from './CredentialsHelper';
 export * from './CredentialTypes';
+export * from './CredentialsOverwrites';
+export * from './ExternalHooks';
 export * from './Interfaces';
 export * from './LoadNodesAndCredentials';
 export * from './NodeTypes';
@@ -14,6 +17,7 @@ import * as ResponseHelper from './ResponseHelper';
 import * as Server from './Server';
 import * as TestWebhooks from './TestWebhooks';
 import * as WebhookHelpers from './WebhookHelpers';
+import * as WebhookServer from './WebhookServer';
 import * as WorkflowExecuteAdditionalData from './WorkflowExecuteAdditionalData';
 import * as WorkflowHelpers from './WorkflowHelpers';
 export {
@@ -26,6 +30,7 @@ export {
 	Server,
 	TestWebhooks,
 	WebhookHelpers,
+	WebhookServer,
 	WorkflowExecuteAdditionalData,
 	WorkflowHelpers,
 };

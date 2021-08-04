@@ -31,9 +31,9 @@ export const emailOperations = [
 
 export const emailFields = [
 
-/* -------------------------------------------------------------------------- */
-/*                                email:send                                  */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                email:send                                  */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'From Email',
 		name: 'fromEmail',
@@ -47,7 +47,7 @@ export const emailFields = [
 				],
 				operation: [
 					'send',
-				]
+				],
 			},
 		},
 		placeholder: 'admin@example.com',
@@ -67,7 +67,7 @@ export const emailFields = [
 				],
 				operation: [
 					'send',
-				]
+				],
 			},
 		},
 	},
@@ -93,7 +93,7 @@ export const emailFields = [
 				],
 				operation: [
 					'send',
-				]
+				],
 			},
 		},
 		default: '',
@@ -113,7 +113,7 @@ export const emailFields = [
 				],
 				operation: [
 					'send',
-				]
+				],
 			},
 		},
 		default: '',
@@ -163,10 +163,17 @@ export const emailFields = [
 				default: 2,
 			},
 			{
+				displayName: 'Reply To',
+				name: 'replyTo',
+				type: 'string',
+				description: 'The reply-to email address. Multiple ones can be separated by comma.',
+				default: '',
+			},
+			{
 				displayName: 'Template Language',
 				name: 'templateLanguage',
 				type: 'boolean',
-				default: true,
+				default: false,
 			},
 			{
 				displayName: 'Track Clicks',
@@ -216,7 +223,7 @@ export const emailFields = [
 				description: 'Enable or disable open tracking on this message.',
 				default: 'account_default',
 			},
-		]
+		],
 	},
 	{
 		displayName: 'Variables',
@@ -232,7 +239,7 @@ export const emailFields = [
 				],
 				operation: [
 					'send',
-				]
+				],
 			},
 		},
 		placeholder: 'Add Variable',
@@ -254,13 +261,13 @@ export const emailFields = [
 						type: 'string',
 						default: '',
 					},
-				]
+				],
 			},
 		],
 	},
-/* -------------------------------------------------------------------------- */
-/*                                email:sendTemplate                          */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                email:sendTemplate                          */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'From Email',
 		name: 'fromEmail',
@@ -274,7 +281,7 @@ export const emailFields = [
 				],
 				operation: [
 					'sendTemplate',
-				]
+				],
 			},
 		},
 		placeholder: 'admin@example.com',
@@ -294,14 +301,17 @@ export const emailFields = [
 				],
 				operation: [
 					'sendTemplate',
-				]
+				],
 			},
 		},
 	},
 	{
 		displayName: 'Template ID',
 		name: 'templateId',
-		type: 'string',
+		type: 'options',
+		typeOptions: {
+			loadOptionsMethod: 'getTemplates',
+		},
 		required: true,
 		default: '',
 		displayOptions: {
@@ -311,7 +321,7 @@ export const emailFields = [
 				],
 				operation: [
 					'sendTemplate',
-				]
+				],
 			},
 		},
 	},
@@ -336,7 +346,7 @@ export const emailFields = [
 				displayName: 'Bcc Email',
 				name: 'bccEmail',
 				type: 'string',
-				description: 'Bcc Recipients of the email separated by ,.',
+				description: 'BCC Recipients of the email separated by ,.',
 				default: '',
 			},
 			{
@@ -357,6 +367,13 @@ export const emailFields = [
 				name: 'priority',
 				type: 'number',
 				default: 2,
+			},
+			{
+				displayName: 'Reply To',
+				name: 'replyTo',
+				type: 'string',
+				description: 'The reply-to email address. Multiple ones can be separated by comma.',
+				default: '',
 			},
 			{
 				displayName: 'Subject',
@@ -382,9 +399,9 @@ export const emailFields = [
 				displayName: 'Template Language',
 				name: 'templateLanguage',
 				type: 'boolean',
-				default: true,
+				default: false,
 			},
-		]
+		],
 	},
 	{
 		displayName: 'Variables',
@@ -400,7 +417,7 @@ export const emailFields = [
 				],
 				operation: [
 					'sendTemplate',
-				]
+				],
 			},
 		},
 		placeholder: 'Add Variable',
@@ -422,7 +439,7 @@ export const emailFields = [
 						type: 'string',
 						default: '',
 					},
-				]
+				],
 			},
 		],
 	},

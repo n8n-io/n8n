@@ -3,11 +3,15 @@
 		<div
 			class="node-view-wrapper"
 			:class="workflowClasses"
+			@touchstart="mouseDown"
+			@touchend="mouseUp"
+			@touchmove="mouseMoveNodeWorkflow"
 			@mousedown="mouseDown"
+			v-touch:tap="touchTap"
 			@mouseup="mouseUp"
 			@wheel="wheelScroll"
 			>
-			<div class="node-view-background" :style="backgroundStyle"></div>
+			<div id="node-view-background" class="node-view-background" :style="backgroundStyle"></div>
 			<div id="node-view" class="node-view" :style="workflowStyle">
 				<node
 				v-for="nodeData in nodes"
@@ -20,6 +24,7 @@
 				:id="'node-' + getNodeIndex(nodeData.name)"
 				:key="getNodeIndex(nodeData.name)"
 				:name="nodeData.name"
+				:isReadOnly="isReadOnly"
 				:instance="instance"
 				></node>
 			</div>
@@ -33,16 +38,19 @@
 			@nodeTypeSelected="nodeTypeSelected"
 			@closeNodeCreator="closeNodeCreator"
 			></node-creator>
-		<div class="zoom-menu">
-			<button @click="setZoom('in')" class="button-white" title="Zoom In">
+		<div :class="{ 'zoom-menu': true, expanded: !sidebarMenuCollapsed }">
+			<button @click="zoomToFit" class="button-white" title="Zoom to Fit">
+				<font-awesome-icon icon="expand"/>
+			</button>
+			<button @click="zoomIn()" class="button-white" title="Zoom In">
 				<font-awesome-icon icon="search-plus"/>
 			</button>
-			<button @click="setZoom('out')" class="button-white" title="Zoom Out">
+			<button @click="zoomOut()" class="button-white" title="Zoom Out">
 				<font-awesome-icon icon="search-minus"/>
 			</button>
 			<button
 				v-if="nodeViewScale !== 1"
-				@click="setZoom('reset')"
+				@click="resetZoom()"
 				class="button-white"
 				title="Reset Zoom"
 				>
@@ -97,33 +105,42 @@
 				<font-awesome-icon icon="trash" class="clear-execution-icon" />
 			</el-button>
 		</div>
+		<Modals />
 	</div>
 </template>
 
 <script lang="ts">
 import Vue from 'vue';
+import {
+	OverlaySpec,
+} from 'jsplumb';
 import { MessageBoxInputData } from 'element-ui/types/message-box';
 import { jsPlumb, Endpoint, OnConnectionBindInfo } from 'jsplumb';
-import { NODE_NAME_PREFIX, PLACEHOLDER_EMPTY_WORKFLOW_ID } from '@/constants';
+import { NODE_NAME_PREFIX, PLACEHOLDER_EMPTY_WORKFLOW_ID, START_NODE_TYPE } from '@/constants';
 import { copyPaste } from '@/components/mixins/copyPaste';
+import { externalHooks } from '@/components/mixins/externalHooks';
 import { genericHelpers } from '@/components/mixins/genericHelpers';
 import { mouseSelect } from '@/components/mixins/mouseSelect';
 import { moveNodeWorkflow } from '@/components/mixins/moveNodeWorkflow';
 import { restApi } from '@/components/mixins/restApi';
 import { showMessage } from '@/components/mixins/showMessage';
+import { titleChange } from '@/components/mixins/titleChange';
+import { newVersions } from '@/components/mixins/newVersions';
+
 import { workflowHelpers } from '@/components/mixins/workflowHelpers';
 import { workflowRun } from '@/components/mixins/workflowRun';
 
 import DataDisplay from '@/components/DataDisplay.vue';
+import Modals from '@/components/Modals.vue';
 import Node from '@/components/Node.vue';
-import NodeCreator from '@/components/NodeCreator.vue';
+import NodeCreator from '@/components/NodeCreator/NodeCreator.vue';
 import NodeSettings from '@/components/NodeSettings.vue';
 import RunData from '@/components/RunData.vue';
 
-import mixins from 'vue-typed-mixins';
+import { getLeftmostTopNode, getWorkflowCorners, scaleSmaller, scaleBigger, scaleReset } from './helpers';
 
-import { debounce } from 'lodash';
-import axios from 'axios';
+import mixins from 'vue-typed-mixins';
+import { v4 as uuidv4} from 'uuid';
 import {
 	IConnection,
 	IConnections,
@@ -132,40 +149,61 @@ import {
 	INodeConnections,
 	INodeIssues,
 	INodeTypeDescription,
-	IRunData,
-	NodeInputConnections,
 	NodeHelpers,
 	Workflow,
+	IRun,
 } from 'n8n-workflow';
 import {
 	IConnectionsUi,
 	IExecutionResponse,
-	IExecutionsStopData,
 	IN8nUISettings,
-	IStartRunData,
 	IWorkflowDb,
 	IWorkflowData,
 	INodeUi,
-	IRunDataUi,
 	IUpdateInformation,
 	IWorkflowDataUpdate,
 	XYPositon,
+	IPushDataExecutionFinished,
+	ITag,
+	IWorkflowTemplate,
 } from '../Interface';
+import { mapGetters } from 'vuex';
+
+const NODE_SIZE = 100;
+const DEFAULT_START_POSITION_X = 250;
+const DEFAULT_START_POSITION_Y = 300;
+const HEADER_HEIGHT = 65;
+const SIDEBAR_WIDTH = 65;
+
+const DEFAULT_START_NODE = {
+	name: 'Start',
+	type: 'n8n-nodes-base.start',
+	typeVersion: 1,
+	position: [
+		DEFAULT_START_POSITION_X,
+		DEFAULT_START_POSITION_Y,
+	] as XYPositon,
+	parameters: {},
+};
 
 export default mixins(
 	copyPaste,
+	externalHooks,
 	genericHelpers,
 	mouseSelect,
 	moveNodeWorkflow,
 	restApi,
 	showMessage,
+	titleChange,
 	workflowHelpers,
 	workflowRun,
+	newVersions,
 )
 	.extend({
 		name: 'NodeView',
 		components: {
 			DataDisplay,
+			Modals,
 			Node,
 			NodeCreator,
 			NodeSettings,
@@ -182,8 +220,46 @@ export default mixins(
 				// When a node gets set as active deactivate the create-menu
 				this.createNodeActive = false;
 			},
+			nodes: {
+				async handler (value, oldValue) {
+					// Load a workflow
+					let workflowId = null as string | null;
+					if (this.$route && this.$route.params.name) {
+						workflowId = this.$route.params.name;
+					}
+				},
+				deep: true,
+			},
+			connections: {
+				async handler (value, oldValue) {
+					// Load a workflow
+					let workflowId = null as string | null;
+					if (this.$route && this.$route.params.name) {
+						workflowId = this.$route.params.name;
+					}
+				},
+				deep: true,
+			},
+		},
+		async beforeRouteLeave(to, from, next) {
+			const result = this.$store.getters.getStateIsDirty;
+			if(result) {
+				const importConfirm = await this.confirmMessage(`When you switch workflows your current workflow changes will be lost.`, 'Save your Changes?', 'warning', 'Yes, switch workflows and forget changes');
+				if (importConfirm === false) {
+					next(false);
+				} else {
+					// Prevent other popups from displaying
+					this.$store.commit('setStateDirty', false);
+					next();
+				}
+			} else {
+				next();
+			}
 		},
 		computed: {
+			...mapGetters('ui', [
+				'sidebarMenuCollapsed',
+			]),
 			activeNode (): INodeUi | null {
 				return this.$store.getters.activeNode;
 			},
@@ -253,8 +329,8 @@ export default mixins(
 				lastClickPosition: [450, 450] as XYPositon,
 				nodeViewScale: 1,
 				ctrlKeyPressed: false,
-				debouncedFunctions: [] as any[], // tslint:disable-line:no-any
 				stopExecutionInProgress: false,
+				blankRedirect: false,
 			};
 		},
 		beforeDestroy () {
@@ -264,24 +340,13 @@ export default mixins(
 			document.removeEventListener('keyup', this.keyUp);
 		},
 		methods: {
-			async callDebounced (...inputParameters: any[]): Promise<void> { // tslint:disable-line:no-any
-				const functionName = inputParameters.shift() as string;
-				const debounceTime = inputParameters.shift() as number;
-
-				// @ts-ignore
-				if (this.debouncedFunctions[functionName] === undefined) {
-					// @ts-ignore
-					this.debouncedFunctions[functionName] = debounce(this[functionName], debounceTime, { leading: true });
-				}
-				// @ts-ignore
-				await this.debouncedFunctions[functionName].apply(this, inputParameters);
-			},
 			clearExecutionData () {
 				this.$store.commit('setWorkflowExecutionData', null);
 				this.updateNodesExecutionIssues();
 			},
 			openNodeCreator () {
 				this.createNodeActive = true;
+				this.$externalHooks().run('nodeView.createNodeActiveChanged', { source: 'add_node_button' });
 			},
 			async openExecution (executionId: string) {
 				this.resetWorkspace();
@@ -298,12 +363,105 @@ export default mixins(
 					throw new Error(`Execution with id "${executionId}" could not be found!`);
 				}
 
-				this.$store.commit('setWorkflowName', data.workflowData.name);
+				this.$store.commit('setWorkflowName', {newName: data.workflowData.name, setStateDirty: false});
 				this.$store.commit('setWorkflowId', PLACEHOLDER_EMPTY_WORKFLOW_ID);
 
 				this.$store.commit('setWorkflowExecutionData', data);
 
 				await this.addNodes(JSON.parse(JSON.stringify(data.workflowData.nodes)), JSON.parse(JSON.stringify(data.workflowData.connections)));
+				this.$nextTick(() => {
+					this.zoomToFit();
+					this.$store.commit('setStateDirty', false);
+				});
+
+				this.$externalHooks().run('execution.open', { workflowId: data.workflowData.id, workflowName: data.workflowData.name, executionId });
+
+				if (data.finished !== true && data.data.resultData.error) {
+					// Check if any node contains an error
+					let nodeErrorFound = false;
+					if (data.data.resultData.runData) {
+						const runData = data.data.resultData.runData;
+						errorCheck:
+						for (const nodeName of Object.keys(runData)) {
+							for (const taskData of runData[nodeName]) {
+								if (taskData.error) {
+									nodeErrorFound = true;
+									break errorCheck;
+								}
+							}
+						}
+					}
+
+					if (nodeErrorFound === false) {
+						const errorMessage = this.$getExecutionError(data.data.resultData.error);
+						this.$showMessage({
+							title: 'Failed execution',
+							message: errorMessage,
+							type: 'error',
+						});
+
+						if (data.data.resultData.error.stack) {
+							// Display some more information for now in console to make debugging easier
+							// TODO: Improve this in the future by displaying in UI
+							console.error(`Execution ${executionId} error:`); // eslint-disable-line no-console
+							console.error(data.data.resultData.error.stack); // eslint-disable-line no-console
+						}
+					}
+				}
+			},
+			async openWorkflowTemplate (templateId: string) {
+				this.setLoadingText('Loading template');
+				this.resetWorkspace();
+
+				let data: IWorkflowTemplate | undefined;
+				try {
+					this.$externalHooks().run('template.requested', { templateId });
+					data = await this.$store.dispatch('workflows/getWorkflowTemplate', templateId);
+
+					if (!data) {
+						throw new Error(`Workflow template with id "${templateId}" could not be found!`);
+					}
+
+					data.workflow.nodes.forEach((node) => {
+						if (!this.$store.getters.nodeType(node.type)) {
+							const name = node.type.replace('n8n-nodes-base.', '');
+							throw new Error(`The ${name} node is not supported`);
+						}
+					});
+				} catch (error) {
+					this.$showError(error, `Couldn't import workflow`);
+					this.$router.push({ name: 'NodeViewNew' });
+					return;
+				}
+
+				const nodes = data.workflow.nodes;
+				const hasStartNode = !!nodes.find(node => node.type === START_NODE_TYPE);
+
+				const leftmostTop = getLeftmostTopNode(nodes);
+
+				const diffX = DEFAULT_START_POSITION_X - leftmostTop.position[0];
+				const diffY = DEFAULT_START_POSITION_Y - leftmostTop.position[1];
+
+				data.workflow.nodes.map((node) => {
+					node.position[0] += diffX + (hasStartNode? 0 : NODE_SIZE * 2);
+					node.position[1] += diffY;
+				});
+
+				if (!hasStartNode) {
+					data.workflow.nodes.push(DEFAULT_START_NODE);
+				}
+
+				this.blankRedirect = true;
+				this.$router.push({ name: 'NodeViewNew' });
+
+				await this.addNodes(data.workflow.nodes, data.workflow.connections);
+				await this.$store.dispatch('workflows/setNewWorkflowName', data.name);
+				this.$nextTick(() => {
+					this.zoomToFit();
+					this.$store.commit('setStateDirty', true);
+				});
+
+				this.$externalHooks().run('template.open', { templateId, templateName: data.name, workflow: data.workflow });
 			},
 			async openWorkflow (workflowId: string) {
 				this.resetWorkspace();
@@ -322,19 +480,38 @@ export default mixins(
 
 				this.$store.commit('setActive', data.active || false);
 				this.$store.commit('setWorkflowId', workflowId);
-				this.$store.commit('setWorkflowName', data.name);
+				this.$store.commit('setWorkflowName', {newName: data.name, setStateDirty: false});
 				this.$store.commit('setWorkflowSettings', data.settings || {});
 
-				await this.addNodes(data.nodes, data.connections);
-			},
-			mouseDown (e: MouseEvent) {
-				// Save the location of the mouse click
-				const offsetPosition = this.$store.getters.getNodeViewOffsetPosition;
-				this.lastClickPosition[0] = e.pageX - offsetPosition[0];
-				this.lastClickPosition[1] = e.pageY - offsetPosition[1];
+				const tags = (data.tags || []) as ITag[];
+				this.$store.commit('tags/upsertTags', tags);
 
-				this.mouseDownMouseSelect(e);
-				this.mouseDownMoveWorkflow(e);
+				const tagIds = tags.map((tag) => tag.id);
+				this.$store.commit('setWorkflowTagIds', tagIds || []);
+
+				await this.addNodes(data.nodes, data.connections);
+
+				this.$store.commit('setStateDirty', false);
+				this.zoomToFit();
+
+				this.$externalHooks().run('workflow.open', { workflowId, workflowName: data.name });
+
+				return data;
+			},
+			touchTap (e: MouseEvent | TouchEvent) {
+				if (this.isTouchDevice) {
+					this.mouseDown(e);
+				}
+			},
+			mouseDown (e: MouseEvent | TouchEvent) {
+				// Save the location of the mouse click
+				const position = this.getMousePosition(e);
+				const offsetPosition = this.$store.getters.getNodeViewOffsetPosition;
+				this.lastClickPosition[0] = position.x - offsetPosition[0];
+				this.lastClickPosition[1] = position.y - offsetPosition[1];
+
+				this.mouseDownMouseSelect(e as MouseEvent);
+				this.mouseDownMoveWorkflow(e as MouseEvent);
 
 				// Hide the node-creator
 				this.createNodeActive = false;
@@ -344,6 +521,17 @@ export default mixins(
 				this.mouseUpMoveWorkflow(e);
 			},
 			wheelScroll (e: WheelEvent) {
+				//* Control + scroll zoom
+				if (e.ctrlKey) {
+					if (e.deltaY > 0) {
+						this.zoomOut();
+					} else {
+						this.zoomIn();
+					}
+
+					e.preventDefault();
+					return;
+				}
 				this.wheelMoveWorkflow(e);
 			},
 			keyUp (e: KeyboardEvent) {
@@ -359,10 +547,30 @@ export default mixins(
 				// else which should ignore the default keybindings
 				for (let index = 0; index < path.length; index++) {
 					if (path[index].className && typeof path[index].className === 'string' && (
-						path[index].className.includes('el-message-box') || path[index].className.includes('ignore-key-press')
+						path[index].className.includes('ignore-key-press')
 					)) {
 						return;
 					}
+				}
+
+				// el-dialog or el-message-box element is open
+				if (window.document.body.classList.contains('el-popup-parent--hidden')) {
+					return;
+				}
+
+				if (e.key === 'Escape') {
+					this.createNodeActive = false;
+					if (this.activeNode) {
+						this.$externalHooks().run('dataDisplay.nodeEditingFinished');
+						this.$store.commit('setActiveNode', null);
+					}
+
+					return;
+				}
+
+				// node modal is open
+				if (this.activeNode) {
+					return;
 				}
 
 				if (e.key === 'd') {
@@ -372,24 +580,24 @@ export default mixins(
 					e.preventDefault();
 
 					this.callDebounced('deleteSelectedNodes', 500);
-				} else if (e.key === 'Escape') {
-					this.createNodeActive = false;
-					this.$store.commit('setActiveNode', null);
+
 				} else if (e.key === 'Tab') {
 					this.createNodeActive = !this.createNodeActive && !this.isReadOnly;
 				} else if (e.key === this.controlKeyCode) {
 					this.ctrlKeyPressed = true;
-				} else if (e.key === 'F2') {
+				} else if (e.key === 'F2' && !this.isReadOnly) {
 					const lastSelectedNode = this.lastSelectedNode;
 					if (lastSelectedNode !== null) {
 						this.callDebounced('renameNodePrompt', 1500, lastSelectedNode.name);
 					}
-				} else if (e.key === '+') {
-					this.callDebounced('setZoom', 300, 'in');
-				} else if (e.key === '-') {
-					this.callDebounced('setZoom', 300, 'out');
-				} else if ((e.key === '0') && (this.isCtrlKeyPressed(e) === true)) {
-					this.callDebounced('setZoom', 300, 'reset');
+				} else if ((e.key === '=' || e.key === '+') && !this.isCtrlKeyPressed(e)) {
+					this.zoomIn();
+				} else if ((e.key === '_' || e.key === '-') && !this.isCtrlKeyPressed(e)) {
+					this.zoomOut();
+				} else if ((e.key === '0') && !this.isCtrlKeyPressed(e)) {
+					this.resetZoom();
+				} else if ((e.key === '1') && !this.isCtrlKeyPressed(e)) {
+					this.zoomToFit();
 				} else if ((e.key === 'a') && (this.isCtrlKeyPressed(e) === true)) {
 					// Select all nodes
 					e.stopPropagation();
@@ -409,16 +617,20 @@ export default mixins(
 					e.stopPropagation();
 					e.preventDefault();
 
-					this.$root.$emit('openWorkflowDialog');
+					this.$store.dispatch('ui/openWorklfowOpenModal');
 				} else if (e.key === 'n' && this.isCtrlKeyPressed(e) === true && e.altKey === true) {
 					// Create a new workflow
 					e.stopPropagation();
 					e.preventDefault();
 
-					this.$router.push({ name: 'NodeViewNew' });
+					if (this.$router.currentRoute.name === 'NodeViewNew') {
+						this.$root.$emit('newWorkflow');
+					} else {
+						this.$router.push({ name: 'NodeViewNew' });
+					}
 
 					this.$showMessage({
-						title: 'Created',
+						title: 'Workflow created',
 						message: 'A new workflow got created!',
 						type: 'success',
 					});
@@ -426,6 +638,10 @@ export default mixins(
 					// Save workflow
 					e.stopPropagation();
 					e.preventDefault();
+
+					if (this.isReadOnly) {
+						return;
+					}
 
 					this.callDebounced('saveCurrentWorkflow', 1000);
 				} else if (e.key === 'Enter') {
@@ -615,18 +831,32 @@ export default mixins(
 				});
 			},
 
-			setZoom (zoom: string) {
-				if (zoom === 'in') {
-					this.nodeViewScale *= 1.25;
-				} else if (zoom === 'out') {
-					this.nodeViewScale /= 1.25;
-				} else {
-					this.nodeViewScale = 1;
-				}
+			resetZoom () {
+				const { scale, offset } = scaleReset({scale: this.nodeViewScale, offset: this.$store.getters.getNodeViewOffsetPosition});
 
-				const zoomLevel = this.nodeViewScale;
+				this.setZoomLevel(scale);
+				this.$store.commit('setNodeViewOffsetPosition', {newOffset: offset});
+			},
 
+			zoomIn() {
+				const { scale, offset: [xOffset, yOffset] } = scaleBigger({scale: this.nodeViewScale, offset: this.$store.getters.getNodeViewOffsetPosition});
+
+				this.setZoomLevel(scale);
+				this.$store.commit('setNodeViewOffsetPosition', {newOffset: [xOffset, yOffset]});
+			},
+
+			zoomOut() {
+				const { scale, offset: [xOffset, yOffset] } = scaleSmaller({scale: this.nodeViewScale, offset: this.$store.getters.getNodeViewOffsetPosition});
+
+				this.setZoomLevel(scale);
+				this.$store.commit('setNodeViewOffsetPosition', {newOffset: [xOffset, yOffset]});
+			},
+
+			setZoomLevel (zoomLevel: number) {
+				this.nodeViewScale = zoomLevel; // important for background
 				const element = this.instance.getContainer() as HTMLElement;
+
+				// https://docs.jsplumbtoolkit.com/community/current/articles/zooming.html
 				const prependProperties = ['webkit', 'moz', 'ms', 'o'];
 				const scaleString = 'scale(' + zoomLevel + ')';
 
@@ -640,6 +870,36 @@ export default mixins(
 				this.instance.setZoom(zoomLevel);
 			},
 
+			zoomToFit () {
+				const nodes = this.$store.getters.allNodes as INodeUi[];
+
+				if (nodes.length === 0) { // some unknown workflow executions
+					return;
+				}
+
+				const {minX, minY, maxX, maxY} = getWorkflowCorners(nodes);
+
+				const PADDING = NODE_SIZE * 4;
+
+				const editorWidth = window.innerWidth;
+				const diffX = maxX - minX + SIDEBAR_WIDTH + PADDING;
+				const scaleX = editorWidth / diffX;
+
+				const editorHeight = window.innerHeight;
+				const diffY = maxY - minY + HEADER_HEIGHT + PADDING;
+				const scaleY = editorHeight / diffY;
+
+				const zoomLevel = Math.min(scaleX, scaleY, 1);
+				let xOffset = (minX * -1) * zoomLevel + SIDEBAR_WIDTH; // find top right corner
+				xOffset += (editorWidth - SIDEBAR_WIDTH - (maxX - minX + NODE_SIZE) * zoomLevel) / 2; // add padding to center workflow
+
+				let yOffset = (minY * -1) * zoomLevel + HEADER_HEIGHT; // find top right corner
+				yOffset += (editorHeight - HEADER_HEIGHT - (maxY - minY + NODE_SIZE * 2) * zoomLevel) / 2; // add padding to center workflow
+
+				this.setZoomLevel(zoomLevel);
+				this.$store.commit('setNodeViewOffsetPosition', {newOffset: [xOffset, yOffset]});
+			},
+
 			async stopExecution () {
 				const executionId = this.$store.getters.activeExecutionId;
 				if (executionId === null) {
@@ -648,22 +908,48 @@ export default mixins(
 
 				try {
 					this.stopExecutionInProgress = true;
-					const stopData: IExecutionsStopData = await this.restApi().stopCurrentExecution(executionId);
+					await this.restApi().stopCurrentExecution(executionId);
 					this.$showMessage({
 						title: 'Execution stopped',
 						message: `The execution with the id "${executionId}" got stopped!`,
 						type: 'success',
 					});
 				} catch (error) {
-					this.$showError(error, 'Problem stopping execution', 'There was a problem stopping the execuction:');
+					// Execution stop might fail when the execution has already finished. Let's treat this here.
+					const execution = await this.restApi().getExecution(executionId) as IExecutionResponse;
+					if (execution.finished) {
+						const executedData = {
+							data: execution.data,
+							finished: execution.finished,
+							mode: execution.mode,
+							startedAt: execution.startedAt,
+							stoppedAt: execution.stoppedAt,
+						} as IRun;
+						const pushData = {
+							data: executedData,
+							executionId,
+							retryOf: execution.retryOf,
+						} as IPushDataExecutionFinished;
+						this.$store.commit('finishActiveExecution', pushData);
+						this.$titleSet(execution.workflowData.name, 'IDLE');
+						this.$store.commit('setExecutingNode', null);
+						this.$store.commit('setWorkflowExecutionData', executedData);
+						this.$store.commit('removeActiveAction', 'workflowRunning');
+						this.$showMessage({
+							title: 'Workflow finished executing',
+							message: 'Unable to stop operation in time. Workflow finished executing already.',
+							type: 'success',
+						});
+					} else {
+						this.$showError(error, 'Problem stopping execution', 'There was a problem stopping the execuction:');
+					}
 				}
 				this.stopExecutionInProgress = false;
 			},
 
 			async stopWaitingForWebhook () {
-				let result;
 				try {
-					result = await this.restApi().removeTestWebhook(this.$store.getters.workflowId);
+					await this.restApi().removeTestWebhook(this.$store.getters.workflowId);
 				} catch (error) {
 					this.$showError(error, 'Problem deleting the test-webhook', 'There was a problem deleting webhook:');
 					return;
@@ -859,7 +1145,7 @@ export default mixins(
 					return originalName;
 				}
 
-				const nameMatch = originalName.match(/(.*[a-zA-Z])(\d*)/);
+				const nameMatch = originalName.match(/(.*\D+)(\d*)/);
 				let ignore, baseName, nameIndex, uniqueName;
 				let index = 1;
 
@@ -931,7 +1217,7 @@ export default mixins(
 					// If a node is active then add the new node directly after the current one
 					// newNodeData.position = [activeNode.position[0], activeNode.position[1] + 60];
 					newNodeData.position = this.getNewNodePosition(
-						[lastSelectedNode.position[0] + 150, lastSelectedNode.position[1]],
+						[lastSelectedNode.position[0] + 200, lastSelectedNode.position[1]],
 						[100, 0],
 					);
 				} else {
@@ -942,7 +1228,15 @@ export default mixins(
 				// Check if node-name is unique else find one that is
 				newNodeData.name = this.getUniqueNodeName(newNodeData.name);
 
+				if (nodeTypeData.webhooks && nodeTypeData.webhooks.length) {
+					newNodeData.webhookId = uuidv4();
+				}
+
 				await this.addNodes([newNodeData]);
+
+				this.$store.commit('setStateDirty', true);
+
+				this.$externalHooks().run('nodeView.addNodeButton', { nodeTypeName });
 
 				// Automatically deselect all nodes and select the current one and also active
 				// current node
@@ -1013,21 +1307,9 @@ export default mixins(
 				}
 			},
 			initNodeView () {
-				this.instance.importDefaults({
-					// notice the 'curviness' argument to this Bezier curve.
-					// the curves on this page are far smoother
-					// than the curves on the first demo, which use the default curviness value.
-					// Connector: ["Bezier", { curviness: 80 }],
-					Connector: ['Bezier', { curviness: 40 }],
-					// @ts-ignore
-					Endpoint: ['Dot', { radius: 5 }],
-					DragOptions: { cursor: 'pointer', zIndex: 5000 },
-					PaintStyle: { strokeWidth: 2, stroke: '#334455' },
-					EndpointStyle: { radius: 9, fill: '#acd', stroke: 'red' },
-					// EndpointStyle: {},
-					HoverPaintStyle: { stroke: '#ff6d5a', lineWidth: 4 },
-					EndpointHoverStyle: { fill: '#ff6d5a', stroke: '#acd' },
-					ConnectionOverlays: [
+				const connectionOverlays: OverlaySpec[] = [];
+				if (this.isReadOnly === false) {
+					connectionOverlays.push.apply(connectionOverlays, [
 						[
 							'Arrow',
 							{
@@ -1045,7 +1327,24 @@ export default mixins(
 								location: 0.5,
 							},
 						],
-					],
+					]);
+				}
+
+				this.instance.importDefaults({
+					// notice the 'curviness' argument to this Bezier curve.
+					// the curves on this page are far smoother
+					// than the curves on the first demo, which use the default curviness value.
+					// Connector: ["Bezier", { curviness: 80 }],
+					Connector: ['Bezier', { curviness: 40 }],
+					// @ts-ignore
+					Endpoint: ['Dot', { radius: 5 }],
+					DragOptions: { cursor: 'pointer', zIndex: 5000 },
+					PaintStyle: { strokeWidth: 2, stroke: '#334455' },
+					EndpointStyle: { radius: 9, fill: '#acd', stroke: 'red' },
+					// EndpointStyle: {},
+					HoverPaintStyle: { stroke: '#ff6d5a', lineWidth: 4 },
+					EndpointHoverStyle: { fill: '#ff6d5a', stroke: '#acd' },
+					ConnectionOverlays: connectionOverlays,
 					Container: '#node-view',
 				});
 
@@ -1061,6 +1360,7 @@ export default mixins(
 
 					// Display the node-creator
 					this.createNodeActive = true;
+					this.$externalHooks().run('nodeView.createNodeActiveChanged', { source: 'node_connection_drop' });
 				});
 
 				this.instance.bind('connection', (info: OnConnectionBindInfo) => {
@@ -1100,41 +1400,43 @@ export default mixins(
 						info.connection.setConnector(['Straight']);
 					}
 
-					// Display the connection-delete button only on hover
-					let timer: NodeJS.Timeout | undefined;
-					info.connection.bind('mouseover', (connection: IConnection) => {
-						if (timer !== undefined) {
-							clearTimeout(timer);
-						}
-						const overlay = info.connection.getOverlay('remove-connection');
-						overlay.setVisible(true);
-					});
-					info.connection.bind('mouseout', (connection: IConnection) => {
-						timer = setTimeout(() => {
-							const overlay = info.connection.getOverlay('remove-connection');
-							overlay.setVisible(false);
-							timer = undefined;
-						}, 500);
-					});
-
 					// @ts-ignore
 					info.connection.removeOverlay('drop-add-node');
 
-					// @ts-ignore
-					info.connection.addOverlay([
-						'Label',
-						{
-							id: 'remove-connection',
-							label: '<span class="delete-connection clickable" title="Delete Connection">x</span>',
-							cssClass: 'remove-connection-label',
-							visible: false,
-							events: {
-								mousedown: () => {
-									this.__removeConnectionByConnectionInfo(info, true);
+					if (this.isReadOnly === false) {
+						// Display the connection-delete button only on hover
+						let timer: NodeJS.Timeout | undefined;
+						info.connection.bind('mouseover', (connection: IConnection) => {
+							if (timer !== undefined) {
+								clearTimeout(timer);
+							}
+							const overlay = info.connection.getOverlay('remove-connection');
+							overlay.setVisible(true);
+						});
+						info.connection.bind('mouseout', (connection: IConnection) => {
+							timer = setTimeout(() => {
+								const overlay = info.connection.getOverlay('remove-connection');
+								overlay.setVisible(false);
+								timer = undefined;
+							}, 500);
+						});
+
+						// @ts-ignore
+						info.connection.addOverlay([
+							'Label',
+							{
+								id: 'remove-connection',
+								label: '<span class="delete-connection clickable" title="Delete Connection">x</span>',
+								cssClass: 'remove-connection-label',
+								visible: false,
+								events: {
+									mousedown: () => {
+										this.__removeConnectionByConnectionInfo(info, true);
+									},
 								},
 							},
-						},
-					]);
+						]);
+					}
 
 					// Display input names if they exist on connection
 					const targetNodeTypeData: INodeTypeDescription = this.$store.getters.nodeType(targetNode.type);
@@ -1197,7 +1499,6 @@ export default mixins(
 					if (![null, undefined].includes(inputNameOverlay)) {
 						inputNameOverlay.setVisible(false);
 					}
-
 					this.$store.commit('addConnection', {
 						connection: [
 							{
@@ -1211,6 +1512,7 @@ export default mixins(
 								index: targetInfo.index,
 							},
 						],
+						setStateDirty: true,
 					});
 				});
 
@@ -1271,42 +1573,54 @@ export default mixins(
 			},
 			async newWorkflow (): Promise<void> {
 				await this.resetWorkspace();
+				await this.$store.dispatch('workflows/setNewWorkflowName');
+				this.$store.commit('setStateDirty', false);
 
-				// Create start node
-				const defaultNodes = [
-					{
-						name: 'Start',
-						type: 'n8n-nodes-base.start',
-						typeVersion: 1,
-						position: [
-							250,
-							300,
-						] as XYPositon,
-						parameters: {},
-					},
-				];
+				await this.addNodes([DEFAULT_START_NODE]);
+				this.$store.commit('setStateDirty', false);
 
-				await this.addNodes(defaultNodes);
+				this.setZoomLevel(1);
 			},
 			async initView (): Promise<void> {
 				if (this.$route.params.action === 'workflowSave') {
 					// In case the workflow got saved we do not have to run init
 					// as only the route changed but all the needed data is already loaded
+					this.$store.commit('setStateDirty', false);
 					return Promise.resolve();
 				}
 
-				if (this.$route.name === 'ExecutionById') {
+				if (this.blankRedirect) {
+					this.blankRedirect = false;
+				}
+				else if (this.$route.name === 'WorkflowTemplate') {
+					const templateId = this.$route.params.id;
+					await this.openWorkflowTemplate(templateId);
+				}
+				else if (this.$route.name === 'ExecutionById') {
 					// Load an execution
 					const executionId = this.$route.params.id;
 					await this.openExecution(executionId);
 				} else {
+
+					const result = this.$store.getters.getStateIsDirty;
+					if(result) {
+						const importConfirm = await this.confirmMessage(`When you switch workflows your current workflow changes will be lost.`, 'Save your Changes?', 'warning', 'Yes, switch workflows and forget changes');
+						if (importConfirm === false) {
+							return Promise.resolve();
+						}
+					}
+
 					// Load a workflow
 					let workflowId = null as string | null;
 					if (this.$route.params.name) {
 						workflowId = this.$route.params.name;
 					}
-
 					if (workflowId !== null) {
+						const workflow = await this.restApi().getWorkflow(workflowId);
+						if (!workflow) {
+							throw new Error('Could not find workflow');
+						}
+						this.$titleSet(workflow.name, 'IDLE');
 						// Open existing workflow
 						await this.openWorkflow(workflowId);
 					} else {
@@ -1317,6 +1631,19 @@ export default mixins(
 
 				document.addEventListener('keydown', this.keyDown);
 				document.addEventListener('keyup', this.keyUp);
+
+				window.addEventListener("beforeunload",  (e) => {
+					if(this.$store.getters.getStateIsDirty === true) {
+						const confirmationMessage = 'It looks like you have been editing something. '
+								+ 'If you leave before saving, your changes will be lost.';
+						(e || window.event).returnValue = confirmationMessage; //Gecko + IE
+						return confirmationMessage; //Gecko + Webkit, Safari, Chrome etc.
+					} else {
+						this.startLoading('Redirecting');
+
+						return;
+					}
+				});
 			},
 			__addConnection (connection: [IConnection, IConnection], addVisualConnection = false) {
 				if (addVisualConnection === true) {
@@ -1329,11 +1656,13 @@ export default mixins(
 					// @ts-ignore
 					this.instance.connect({
 						uuids: uuid,
+						detachable: !this.isReadOnly,
 					});
 				} else {
+					const connectionProperties = {connection, setStateDirty: false};
 					// When nodes get connected it gets saved automatically to the storage
 					// so if we do not connect we have to save the connection manually
-					this.$store.commit('addConnection', { connection });
+					this.$store.commit('addConnection', connectionProperties);
 				}
 			},
 			__removeConnection (connection: [IConnection, IConnection], removeVisualConnection = false) {
@@ -1398,7 +1727,14 @@ export default mixins(
 					[0, 150],
 				);
 
+				if (newNodeData.webhookId) {
+					// Make sure that the node gets a new unique webhook-ID
+					newNodeData.webhookId = uuidv4();
+				}
+
 				await this.addNodes([newNodeData]);
+
+				this.$store.commit('setStateDirty', true);
 
 				// Automatically deselect all nodes and select the current one and also active
 				// current node
@@ -1518,7 +1854,7 @@ export default mixins(
 					this.instance.deleteEveryEndpoint();
 				}
 				this.$store.commit('removeAllConnections');
-				this.$store.commit('removeAllNodes');
+				this.$store.commit('removeAllNodes', {setStateDirty: true});
 
 				// Wait a tick that the old nodes had time to get removed
 				await Vue.nextTick();
@@ -1534,6 +1870,11 @@ export default mixins(
 				if (!nodes || !nodes.length) {
 					return;
 				}
+
+				// Before proceeding we must check if all nodes contain the `properties` attribute.
+				// Nodes are loaded without this information so we must make sure that all nodes
+				// being added have this information.
+				await this.loadNodesProperties(nodes.map(node => node.type));
 
 				// Add the node to the node-list
 				let nodeType: INodeTypeDescription | null;
@@ -1567,6 +1908,11 @@ export default mixins(
 							console.error(e); // eslint-disable-line no-console
 						}
 						node.parameters = nodeParameters !== null ? nodeParameters : {};
+
+						// if it's a webhook and the path is empty set the UUID as the default path
+						if (node.type === 'n8n-nodes-base.webhook' && node.parameters.path === '') {
+							node.parameters.path = node.webhookId as string;
+						}
 					}
 
 					foundNodeIssues = this.getNodeIssues(nodeType, node);
@@ -1640,6 +1986,9 @@ export default mixins(
 				let oldName: string;
 				let newName: string;
 				const createNodes: INode[] = [];
+
+				await this.loadNodesProperties(data.nodes.map(node => node.type));
+
 				data.nodes.forEach(node => {
 					if (nodeTypesCount[node.type] !== undefined) {
 						if (nodeTypesCount[node.type].exist >= nodeTypesCount[node.type].max) {
@@ -1683,16 +2032,17 @@ export default mixins(
 						connection[type] = [];
 						for (sourceIndex = 0; sourceIndex < currentConnections[sourceNode][type].length; sourceIndex++) {
 							const nodeSourceConnections = [];
-							for (connectionIndex = 0; connectionIndex < currentConnections[sourceNode][type][sourceIndex].length; connectionIndex++) {
-								const nodeConnection: NodeInputConnections = [];
-								connectionData = currentConnections[sourceNode][type][sourceIndex][connectionIndex];
-								if (!createNodeNames.includes(connectionData.node)) {
-									// Node does not get created so skip input connection
-									continue;
-								}
+							if (currentConnections[sourceNode][type][sourceIndex]) {
+								for (connectionIndex = 0; connectionIndex < currentConnections[sourceNode][type][sourceIndex].length; connectionIndex++) {
+									connectionData = currentConnections[sourceNode][type][sourceIndex][connectionIndex];
+									if (!createNodeNames.includes(connectionData.node)) {
+										// Node does not get created so skip input connection
+										continue;
+									}
 
-								nodeSourceConnections.push(connectionData);
-								// Add connection
+									nodeSourceConnections.push(connectionData);
+									// Add connection
+								}
 							}
 							connection[type].push(nodeSourceConnections);
 						}
@@ -1716,6 +2066,8 @@ export default mixins(
 
 				// Add the nodes with the changed node names, expressions and connections
 				await this.addNodes(Object.values(tempWorkflow.nodes), tempWorkflow.connectionsBySourceNode);
+
+				this.$store.commit('setStateDirty', true);
 
 				return {
 					nodes: Object.values(tempWorkflow.nodes),
@@ -1803,8 +2155,8 @@ export default mixins(
 						});
 				}
 
-				this.$store.commit('removeAllConnections');
-				this.$store.commit('removeAllNodes');
+				this.$store.commit('removeAllConnections', {setStateDirty: false});
+				this.$store.commit('removeAllNodes', {setStateDirty: false});
 
 				// Reset workflow execution data
 				this.$store.commit('setWorkflowExecutionData', null);
@@ -1813,8 +2165,9 @@ export default mixins(
 
 				this.$store.commit('setActive', false);
 				this.$store.commit('setWorkflowId', PLACEHOLDER_EMPTY_WORKFLOW_ID);
-				this.$store.commit('setWorkflowName', '');
+				this.$store.commit('setWorkflowName', {newName: '', setStateDirty: false});
 				this.$store.commit('setWorkflowSettings', {});
+				this.$store.commit('setWorkflowTagIds', []);
 
 				this.$store.commit('setActiveExecutionId', null);
 				this.$store.commit('setExecutingNode', null);
@@ -1824,7 +2177,7 @@ export default mixins(
 				this.$store.commit('resetNodeIndex');
 				this.$store.commit('resetSelectedNodes');
 
-				this.$store.commit('setNodeViewOffsetPosition', [0, 0]);
+				this.$store.commit('setNodeViewOffsetPosition', {newOffset: [0, 0], setStateDirty: false});
 
 				return Promise.resolve();
 			},
@@ -1842,7 +2195,13 @@ export default mixins(
 				this.$store.commit('setSaveDataSuccessExecution', settings.saveDataSuccessExecution);
 				this.$store.commit('setSaveManualExecutions', settings.saveManualExecutions);
 				this.$store.commit('setTimezone', settings.timezone);
+				this.$store.commit('setExecutionTimeout', settings.executionTimeout);
+				this.$store.commit('setMaxExecutionTimeout', settings.maxExecutionTimeout);
 				this.$store.commit('setVersionCli', settings.versionCli);
+				this.$store.commit('setInstanceId', settings.instanceId);
+				this.$store.commit('setOauthCallbackUrls', settings.oauthCallbackUrls);
+				this.$store.commit('setN8nMetadata', settings.n8nMetadata || {});
+				this.$store.commit('versions/setVersionNotificationSettings', settings.versionNotifications);
 			},
 			async loadNodeTypes (): Promise<void> {
 				const nodeTypes = await this.restApi().getNodeTypes();
@@ -1856,12 +2215,26 @@ export default mixins(
 				const credentials = await this.restApi().getAllCredentials();
 				this.$store.commit('setCredentials', credentials);
 			},
+			async loadNodesProperties(nodeNames: string[]): Promise<void> {
+				const allNodes = this.$store.getters.allNodeTypes;
+				const nodesToBeFetched = allNodes.filter((node: INodeTypeDescription) => nodeNames.includes(node.name) && !node.hasOwnProperty('properties')).map((node: INodeTypeDescription) => node.name) as string[];
+				if (nodesToBeFetched.length > 0) {
+					// Only call API if node information is actually missing
+					this.startLoading();
+					const nodeInfo = await this.restApi().getNodesInformation(nodesToBeFetched);
+					this.$store.commit('updateNodeTypes', nodeInfo);
+					this.stopLoading();
+				}
+			},
 		},
+
 
 		async mounted () {
 			this.$root.$on('importWorkflowData', async (data: IDataObject) => {
 				await this.importWorkflowData(data.data as IWorkflowDataUpdate);
 			});
+
+			this.$root.$on('newWorkflow', this.newWorkflow);
 
 			this.$root.$on('importWorkflowUrl', async (data: IDataObject) => {
 				const workflowData = await this.getWorkflowDataFromUrl(data.url as string);
@@ -1895,7 +2268,13 @@ export default mixins(
 					this.$showError(error, 'Init Problem', 'There was a problem initializing the workflow:');
 				}
 				this.stopLoading();
+
+				setTimeout(() => {
+					this.checkForNewVersions();
+				}, 0);
 			});
+
+			this.$externalHooks().run('nodeView.mount');
 		},
 
 		destroyed () {
@@ -1907,14 +2286,20 @@ export default mixins(
 <style scoped lang="scss">
 
 .zoom-menu {
+	$--zoom-menu-margin: 5;
+
 	position: fixed;
-	left: 70px;
+	left: $--sidebar-width + $--zoom-menu-margin;
 	width: 200px;
 	bottom: 45px;
 	line-height: 25px;
 	z-index: 18;
 	color: #444;
 	padding-right: 5px;
+
+	&.expanded {
+		left: $--sidebar-expanded-width + $--zoom-menu-margin;
+	}
 }
 
 .node-creator-button {
@@ -1955,6 +2340,7 @@ export default mixins(
 	position: relative;
 	width: 100%;
 	height: 100%;
+	transform-origin: 0 0;
 }
 
 .node-view-background {

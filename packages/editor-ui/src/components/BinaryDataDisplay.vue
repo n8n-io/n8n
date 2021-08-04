@@ -11,10 +11,14 @@
 		</el-button>
 
 		<div class="binary-data-window-wrapper">
-			<div v-if="binaryData === null">
+			<div v-if="!binaryData">
 				Data to display did not get found
 			</div>
-			<embed :src="'data:' + binaryData.mimeType + ';base64,' + binaryData.data" class="binary-data" :class="embedClass"/>
+			<video v-else-if="binaryData.mimeType && binaryData.mimeType.startsWith('video/')" controls autoplay>
+				<source :src="'data:' + binaryData.mimeType + ';base64,' + binaryData.data" :type="binaryData.mimeType">
+				Your browser does not support the video element. Kindly update it to latest version.
+			</video>
+			<embed v-else :src="'data:' + binaryData.mimeType + ';base64,' + binaryData.data" class="binary-data" :class="embedClass"/>
 		</div>
 
 	</div>

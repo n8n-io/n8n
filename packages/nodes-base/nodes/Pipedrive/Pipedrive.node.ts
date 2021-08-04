@@ -1,12 +1,15 @@
 import {
 	BINARY_ENCODING,
 	IExecuteFunctions,
+	ILoadOptionsFunctions,
 } from 'n8n-core';
 import {
 	IDataObject,
-	INodeTypeDescription,
 	INodeExecutionData,
+	INodePropertyOptions,
 	INodeType,
+	INodeTypeDescription,
+	NodeOperationError,
 } from 'n8n-workflow';
 
 import {
@@ -18,11 +21,14 @@ import {
 	pipedriveResolveCustomProperties,
 } from './GenericFunctions';
 
+import {
+	currencies,
+} from './utils';
+
 interface CustomProperty {
 	name: string;
 	value: string;
 }
-
 
 /**
  * Add the additional fields to the body
@@ -46,7 +52,7 @@ export class Pipedrive implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Pipedrive',
 		name: 'pipedrive',
-		icon: 'file:pipedrive.png',
+		icon: 'file:pipedrive.svg',
 		group: ['transform'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
@@ -61,9 +67,44 @@ export class Pipedrive implements INodeType {
 			{
 				name: 'pipedriveApi',
 				required: true,
-			}
+				displayOptions: {
+					show: {
+						authentication: [
+							'apiToken',
+						],
+					},
+				},
+			},
+			{
+				name: 'pipedriveOAuth2Api',
+				required: true,
+				displayOptions: {
+					show: {
+						authentication: [
+							'oAuth2',
+						],
+					},
+				},
+			},
 		],
 		properties: [
+			{
+				displayName: 'Authentication',
+				name: 'authentication',
+				type: 'options',
+				options: [
+					{
+						name: 'API Token',
+						value: 'apiToken',
+					},
+					{
+						name: 'OAuth2',
+						value: 'oAuth2',
+					},
+				],
+				default: 'apiToken',
+				description: 'Method of authentication.',
+			},
 			{
 				displayName: 'Resource',
 				name: 'resource',
@@ -80,6 +121,10 @@ export class Pipedrive implements INodeType {
 					{
 						name: 'File',
 						value: 'file',
+					},
+					{
+						name: 'Lead',
+						value: 'lead',
 					},
 					{
 						name: 'Note',
@@ -187,6 +232,11 @@ export class Pipedrive implements INodeType {
 						description: 'Get data of all deals',
 					},
 					{
+						name: 'Search',
+						value: 'search',
+						description: 'Search a deal',
+					},
+					{
 						name: 'Update',
 						value: 'update',
 						description: 'Update a deal',
@@ -250,6 +300,46 @@ export class Pipedrive implements INodeType {
 				displayOptions: {
 					show: {
 						resource: [
+							'lead',
+						],
+					},
+				},
+				options: [
+					{
+						name: 'Create',
+						value: 'create',
+						description: 'Create a lead',
+					},
+					{
+						name: 'Delete',
+						value: 'delete',
+						description: 'Delete a lead',
+					},
+					{
+						name: 'Get',
+						value: 'get',
+						description: 'Get data of a lead',
+					},
+					{
+						name: 'Get All',
+						value: 'getAll',
+						description: 'Get data of all leads',
+					},
+					{
+						name: 'Update',
+						value: 'update',
+						description: 'Update a lead',
+					},
+				],
+				default: 'create',
+			},
+			{
+				displayName: 'Operation',
+				name: 'operation',
+				type: 'options',
+				displayOptions: {
+					show: {
+						resource: [
 							'note',
 						],
 					},
@@ -273,7 +363,7 @@ export class Pipedrive implements INodeType {
 					{
 						name: 'Get All',
 						value: 'getAll',
-						description: 'Get data of all note',
+						description: 'Get data of all notes',
 					},
 					{
 						name: 'Update',
@@ -305,7 +395,7 @@ export class Pipedrive implements INodeType {
 					{
 						name: 'Delete',
 						value: 'delete',
-						description: 'Delete anorganization',
+						description: 'Delete an organization',
 					},
 					{
 						name: 'Get',
@@ -317,12 +407,16 @@ export class Pipedrive implements INodeType {
 						value: 'getAll',
 						description: 'Get data of all organizations',
 					},
-					// TODO: Currently missing
-					// {
-					// 	name: 'Update',
-					// 	value: 'update',
-					// 	description: 'Update an organization',
-					// },
+					{
+						name: 'Update',
+						value: 'update',
+						description: 'Update an organization',
+					},
+					{
+						name: 'Search',
+						value: 'search',
+						description: 'Search organizations',
+					},
 				],
 				default: 'create',
 				description: 'The operation to perform.',
@@ -359,6 +453,11 @@ export class Pipedrive implements INodeType {
 						name: 'Get All',
 						value: 'getAll',
 						description: 'Get data of all persons',
+					},
+					{
+						name: 'Search',
+						value: 'search',
+						description: 'Search all persons',
 					},
 					{
 						name: 'Update',
@@ -490,6 +589,13 @@ export class Pipedrive implements INodeType {
 						description: 'ID of the deal this activity will be associated with',
 					},
 					{
+						displayName: 'Due Date',
+						name: 'due_date',
+						type: 'dateTime',
+						default: '',
+						description: 'Due Date to activity be done YYYY-MM-DD',
+					},
+					{
 						displayName: 'Note',
 						name: 'note',
 						type: 'string',
@@ -503,8 +609,11 @@ export class Pipedrive implements INodeType {
 					{
 						displayName: 'Organization ID',
 						name: 'org_id',
-						type: 'number',
-						default: 0,
+						type: 'options',
+						typeOptions: {
+							loadOptionsMethod: 'getOrganizationIds',
+						},
+						default: '',
 						description: 'ID of the organization this activity will be associated with',
 					},
 					{
@@ -517,9 +626,12 @@ export class Pipedrive implements INodeType {
 					{
 						displayName: 'User ID',
 						name: 'user_id',
-						type: 'number',
-						default: 0,
-						description: 'ID of the user whom the activity will be assigned to. If omitted, the activity will be assigned to the authorized user.',
+						type: 'options',
+						typeOptions: {
+							loadOptionsMethod: 'getUserIds',
+						},
+						default: '',
+						description: 'ID of the active user whom the activity will be assigned to. If omitted, the activity will be assigned to the authorized user.',
 					},
 					{
 						displayName: 'Custom Properties',
@@ -550,7 +662,7 @@ export class Pipedrive implements INodeType {
 										default: '',
 										description: 'Value of the property to set.',
 									},
-								]
+								],
 							},
 						],
 					},
@@ -590,7 +702,7 @@ export class Pipedrive implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'get'
+							'get',
 						],
 						resource: [
 							'activity',
@@ -601,7 +713,6 @@ export class Pipedrive implements INodeType {
 				required: true,
 				description: 'ID of the activity to get.',
 			},
-
 			// ----------------------------------
 			//         activity:update
 			// ----------------------------------
@@ -612,7 +723,7 @@ export class Pipedrive implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'update'
+							'update',
 						],
 						resource: [
 							'activity',
@@ -631,7 +742,7 @@ export class Pipedrive implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'update'
+							'update',
 						],
 						resource: [
 							'activity',
@@ -646,6 +757,13 @@ export class Pipedrive implements INodeType {
 						type: 'number',
 						default: 0,
 						description: 'ID of the deal this activity will be associated with',
+					},
+					{
+						displayName: 'Due Date',
+						name: 'due_date',
+						type: 'dateTime',
+						default: '',
+						description: 'Due Date to activity be done YYYY-MM-DD',
 					},
 					{
 						displayName: 'Done',
@@ -679,8 +797,11 @@ export class Pipedrive implements INodeType {
 					{
 						displayName: 'Organization ID',
 						name: 'org_id',
-						type: 'number',
-						default: 0,
+						type: 'options',
+						typeOptions: {
+							loadOptionsMethod: 'getOrganizationIds',
+						},
+						default: '',
 						description: 'ID of the organization this activity will be associated with',
 					},
 					{
@@ -708,9 +829,12 @@ export class Pipedrive implements INodeType {
 					{
 						displayName: 'User ID',
 						name: 'user_id',
-						type: 'number',
-						default: 0,
-						description: 'ID of the user whom the activity will be assigned to. If omitted, the activity will be assigned to the authorized user.',
+						type: 'options',
+						typeOptions: {
+							loadOptionsMethod: 'getUserIds',
+						},
+						default: '',
+						description: 'ID of the active user whom the activity will be assigned to. If omitted, the activity will be assigned to the authorized user.',
 					},
 					{
 						displayName: 'Custom Properties',
@@ -741,7 +865,7 @@ export class Pipedrive implements INodeType {
 										default: '',
 										description: 'Value of the property to set.',
 									},
-								]
+								],
 							},
 						],
 					},
@@ -776,6 +900,75 @@ export class Pipedrive implements INodeType {
 				description: 'The title of the deal to create',
 			},
 			{
+				displayName: 'Associate With',
+				name: 'associateWith',
+				type: 'options',
+				options: [
+					{
+						name: 'Organization',
+						value: 'organization',
+					},
+					{
+						name: 'Person',
+						value: 'person',
+					},
+				],
+				default: 'organization',
+				description: 'Type of entity to link to this deal',
+				required: true,
+				displayOptions: {
+					show: {
+						resource: [
+							'deal',
+						],
+						operation: [
+							'create',
+						],
+					},
+				},
+			},
+			{
+				displayName: 'Organization ID',
+				name: 'org_id',
+				type: 'number',
+				default: 0,
+				description: 'ID of the organization this deal will be associated with',
+				required: true,
+				displayOptions: {
+					show: {
+						operation: [
+							'create',
+						],
+						resource: [
+							'deal',
+						],
+						associateWith: [
+							'organization',
+						],
+					},
+				},
+			},
+			{
+				displayName: 'Person ID',
+				name: 'person_id',
+				type: 'number',
+				default: 0,
+				description: 'ID of the person this deal will be associated with.',
+				displayOptions: {
+					show: {
+						operation: [
+							'create',
+						],
+						resource: [
+							'deal',
+						],
+						associateWith: [
+							'person',
+						],
+					},
+				},
+			},
+			{
 				displayName: 'Additional Fields',
 				name: 'additionalFields',
 				type: 'collection',
@@ -800,6 +993,51 @@ export class Pipedrive implements INodeType {
 						description: 'Currency of the deal. Accepts a 3-character currency code. Like EUR, USD, ...',
 					},
 					{
+						displayName: 'Custom Properties',
+						name: 'customProperties',
+						placeholder: 'Add Custom Property',
+						description: 'Adds a custom property to set also values which have not been predefined.',
+						type: 'fixedCollection',
+						typeOptions: {
+							multipleValues: true,
+						},
+						default: {},
+						options: [
+							{
+								name: 'property',
+								displayName: 'Property',
+								values: [
+									{
+										displayName: 'Property Name',
+										name: 'name',
+										type: 'options',
+										typeOptions: {
+											loadOptionsMethod: 'getDealCustomFields',
+										},
+										default: '',
+										description: 'Name of the property to set.',
+									},
+									{
+										displayName: 'Property Value',
+										name: 'value',
+										type: 'string',
+										default: '',
+										description: 'Value of the property to set.',
+									},
+								],
+							},
+						],
+					},
+					{
+						displayName: 'Label',
+						name: 'label',
+						type: 'options',
+						typeOptions: {
+							loadOptionsMethod: 'getDealLabels',
+						},
+						default: '',
+					},
+					{
 						displayName: 'Lost Reason',
 						name: 'lost_reason',
 						type: 'string',
@@ -811,13 +1049,28 @@ export class Pipedrive implements INodeType {
 						name: 'org_id',
 						type: 'number',
 						default: 0,
-						description: 'ID of the organization this deal will be associated with.',
+						required: true,
+						displayOptions: {
+							show: {
+								'/associateWith': [
+									'person',
+								],
+							},
+						},
+						description: 'ID of the organization this deal will be associated with',
 					},
 					{
 						displayName: 'Person ID',
 						name: 'person_id',
 						type: 'number',
 						default: 0,
+						displayOptions: {
+							show: {
+								'/associateWith': [
+									'organization',
+								],
+							},
+						},
 						description: 'ID of the person this deal will be associated with.',
 					},
 					{
@@ -834,9 +1087,12 @@ export class Pipedrive implements INodeType {
 					{
 						displayName: 'Stage ID',
 						name: 'stage_id',
-						type: 'number',
-						default: 0,
-						description: 'ID of the stage this deal will be placed in a pipeline. If omitted, the deal will be placed in the first stage of the default pipeline.',
+						type: 'options',
+						typeOptions: {
+							loadOptionsMethod: 'getStageIds',
+						},
+						default: '',
+						description: 'ID of the stage this deal will be placed in a pipeline. If omitted, the deal will be placed in the first stage of the default pipeline. (PIPELINE > STAGE)',
 					},
 					{
 						displayName: 'Status',
@@ -866,9 +1122,12 @@ export class Pipedrive implements INodeType {
 					{
 						displayName: 'User ID',
 						name: 'user_id',
-						type: 'number',
-						default: 0,
-						description: 'ID of the user who will be marked as the owner of this deal. If omitted, the authorized user ID will be used.',
+						type: 'options',
+						typeOptions: {
+							loadOptionsMethod: 'getUserIds',
+						},
+						default: '',
+						description: 'ID of the active user whom the activity will be assigned to. If omitted, the activity will be assigned to the authorized user.',
 					},
 					{
 						displayName: 'Value',
@@ -893,39 +1152,6 @@ export class Pipedrive implements INodeType {
 						],
 						default: '3',
 						description: 'Visibility of the deal. If omitted, visibility will be set to the default visibility setting of this item type for the authorized user.',
-					},
-					{
-						displayName: 'Custom Properties',
-						name: 'customProperties',
-						placeholder: 'Add Custom Property',
-						description: 'Adds a custom property to set also values which have not been predefined.',
-						type: 'fixedCollection',
-						typeOptions: {
-							multipleValues: true,
-						},
-						default: {},
-						options: [
-							{
-								name: 'property',
-								displayName: 'Property',
-								values: [
-									{
-										displayName: 'Property Name',
-										name: 'name',
-										type: 'string',
-										default: '',
-										description: 'Name of the property to set.',
-									},
-									{
-										displayName: 'Property Value',
-										name: 'value',
-										type: 'string',
-										default: '',
-										description: 'Value of the property to set.',
-									},
-								]
-							},
-						],
 					},
 				],
 			},
@@ -984,7 +1210,7 @@ export class Pipedrive implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'get'
+							'get',
 						],
 						resource: [
 							'deal',
@@ -1006,7 +1232,7 @@ export class Pipedrive implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'update'
+							'update',
 						],
 						resource: [
 							'deal',
@@ -1025,7 +1251,7 @@ export class Pipedrive implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'update'
+							'update',
 						],
 						resource: [
 							'deal',
@@ -1042,6 +1268,61 @@ export class Pipedrive implements INodeType {
 						description: 'Currency of the deal. Accepts a 3-character currency code. Like EUR, USD, ...',
 					},
 					{
+						displayName: 'Custom Properties',
+						name: 'customProperties',
+						placeholder: 'Add Custom Property',
+						description: 'Adds a custom property to set also values which have not been predefined.',
+						type: 'fixedCollection',
+						typeOptions: {
+							multipleValues: true,
+						},
+						default: {},
+						options: [
+							{
+								name: 'property',
+								displayName: 'Property',
+								values: [
+									{
+										displayName: 'Property Name',
+										name: 'name',
+										type: 'options',
+										typeOptions: {
+											loadOptionsMethod: 'getDealCustomFields',
+										},
+										default: '',
+										description: 'Name of the custom field to set.',
+									},
+									{
+										displayName: 'Property Value',
+										name: 'value',
+										type: 'string',
+										default: '',
+										description: 'Value of the property to set.',
+									},
+								],
+							},
+						],
+					},
+					{
+						displayName: 'User ID',
+						name: 'user_id',
+						type: 'options',
+						typeOptions: {
+							loadOptionsMethod: 'getUserIds',
+						},
+						default: '',
+						description: 'ID of the active user whom the activity will be assigned to. If omitted, the activity will be assigned to the authorized user.',
+					},
+					{
+						displayName: 'Label',
+						name: 'label',
+						type: 'options',
+						typeOptions: {
+							loadOptionsMethod: 'getDealLabels',
+						},
+						default: '',
+					},
+					{
 						displayName: 'Lost Reason',
 						name: 'lost_reason',
 						type: 'string',
@@ -1051,8 +1332,11 @@ export class Pipedrive implements INodeType {
 					{
 						displayName: 'Organization ID',
 						name: 'org_id',
-						type: 'number',
-						default: 0,
+						type: 'options',
+						typeOptions: {
+							loadOptionsMethod: 'getOrganizationIds',
+						},
+						default: '',
 						description: 'ID of the organization this deal will be associated with.',
 					},
 					{
@@ -1076,9 +1360,12 @@ export class Pipedrive implements INodeType {
 					{
 						displayName: 'Stage ID',
 						name: 'stage_id',
-						type: 'number',
-						default: 0,
-						description: 'ID of the stage this deal will be placed in a pipeline. If omitted, the deal will be placed in the first stage of the default pipeline.',
+						type: 'options',
+						typeOptions: {
+							loadOptionsMethod: 'getStageIds',
+						},
+						default: '',
+						description: 'ID of the stage this deal will be placed in a pipeline. If omitted, the deal will be placed in the first stage of the default pipeline. (PIPELINE > STAGE)',
 					},
 					{
 						displayName: 'Status',
@@ -1136,42 +1423,166 @@ export class Pipedrive implements INodeType {
 						default: '3',
 						description: 'Visibility of the deal. If omitted, visibility will be set to the default visibility setting of this item type for the authorized user.',
 					},
+				],
+			},
+			// ----------------------------------
+			//         deal:search
+			// ----------------------------------
+			{
+				displayName: 'Term',
+				name: 'term',
+				type: 'string',
+				required: true,
+				displayOptions: {
+					show: {
+						operation: [
+							'search',
+						],
+						resource: [
+							'deal',
+						],
+					},
+				},
+				default: '',
+				description: 'The search term to look for. Minimum 2 characters (or 1 if using exact_match).',
+			},
+			{
+				displayName: 'Exact Match',
+				name: 'exactMatch',
+				type: 'boolean',
+				displayOptions: {
+					show: {
+						operation: [
+							'search',
+						],
+						resource: [
+							'deal',
+						],
+					},
+				},
+				default: false,
+				description: 'When enabled, only full exact matches against the given term are returned. It is not case sensitive.',
+			},
+			{
+				displayName: 'Return All',
+				name: 'returnAll',
+				type: 'boolean',
+				displayOptions: {
+					show: {
+						operation: [
+							'search',
+						],
+					},
+				},
+				default: false,
+				description: 'If all results should be returned or only up to a given limit.',
+			},
+			{
+				displayName: 'Limit',
+				name: 'limit',
+				type: 'number',
+				displayOptions: {
+					show: {
+						operation: [
+							'search',
+						],
+						returnAll: [
+							false,
+						],
+					},
+				},
+				typeOptions: {
+					minValue: 1,
+					maxValue: 500,
+				},
+				default: 100,
+				description: 'How many results to return.',
+			}, {
+				displayName: 'Additional Fields',
+				name: 'additionalFields',
+				type: 'collection',
+				placeholder: 'Add Field',
+				displayOptions: {
+					show: {
+						operation: [
+							'search',
+						],
+						resource: [
+							'deal',
+						],
+					},
+				},
+				default: {},
+				options: [
 					{
-						displayName: 'Custom Properties',
-						name: 'customProperties',
-						placeholder: 'Add Custom Property',
-						description: 'Adds a custom property to set also values which have not been predefined.',
-						type: 'fixedCollection',
-						typeOptions: {
-							multipleValues: true,
-						},
-						default: {},
+						displayName: 'Include Fields',
+						name: 'includeFields',
+						type: 'string',
+						default: '',
+						description: 'Supports including optional fields in the results which are not provided by default. Example: deal.cc_email',
+					},
+					{
+						displayName: 'Organization ID',
+						name: 'organizationId',
+						type: 'string',
+						default: '',
+						description: 'Will filter Deals by the provided Organization ID.',
+					},
+					{
+						displayName: 'Person ID',
+						name: 'personId',
+						type: 'string',
+						default: '',
+						description: 'Will filter Deals by the provided Person ID.',
+					},
+					{
+						displayName: 'Search Fields',
+						name: 'fields',
+						type: 'multiOptions',
 						options: [
 							{
-								name: 'property',
-								displayName: 'Property',
-								values: [
-									{
-										displayName: 'Property Name',
-										name: 'name',
-										type: 'string',
-										default: '',
-										description: 'Name of the property to set.',
-									},
-									{
-										displayName: 'Property Value',
-										name: 'value',
-										type: 'string',
-										default: '',
-										description: 'Value of the property to set.',
-									},
-								]
+								name: 'Custom Fields',
+								value: 'custom_fields',
+							},
+							{
+								name: 'Notes',
+								value: 'notes',
+							},
+							{
+								name: 'Title',
+								value: 'title',
 							},
 						],
+						default: [
+							'custom_fields',
+							'notes',
+							'title',
+						],
+						description: 'A comma-separated string array. The fields to perform the search from. Defaults to all of them.',
+					},
+					{
+						displayName: 'Status',
+						name: 'status',
+						type: 'options',
+						options: [
+							{
+								name: 'Open',
+								value: 'open',
+							},
+							{
+								name: 'Won',
+								value: 'won',
+							},
+							{
+								name: 'Lost',
+								value: 'lost',
+							},
+						],
+						default: 'open',
+						description: 'The status of the deal. If not provided it will automatically be set to "open".',
 					},
 				],
 			},
-
 
 
 			// ----------------------------------
@@ -1190,7 +1601,7 @@ export class Pipedrive implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'create'
+							'create',
 						],
 						resource: [
 							'file',
@@ -1235,9 +1646,12 @@ export class Pipedrive implements INodeType {
 					{
 						displayName: 'Organization ID',
 						name: 'org_id',
-						type: 'number',
-						default: 0,
-						description: 'ID of the organization this file will be associated with.',
+						type: 'options',
+						typeOptions: {
+							loadOptionsMethod: 'getOrganizationIds',
+						},
+						default: '',
+						description: 'ID of the organization this deal will be associated with.',
 					},
 					{
 						displayName: 'Person ID',
@@ -1308,7 +1722,7 @@ export class Pipedrive implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'download'
+							'download',
 						],
 						resource: [
 							'file',
@@ -1328,7 +1742,7 @@ export class Pipedrive implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'get'
+							'get',
 						],
 						resource: [
 							'file',
@@ -1337,7 +1751,358 @@ export class Pipedrive implements INodeType {
 				},
 				default: 0,
 				required: true,
-				description: 'ID of the file to get.',
+				description: 'ID of the file to get',
+			},
+
+			// ----------------------------------------
+			//               lead: create
+			// ----------------------------------------
+			{
+				displayName: 'Title',
+				name: 'title',
+				description: 'Name of the lead to create',
+				type: 'string',
+				required: true,
+				default: '',
+				displayOptions: {
+					show: {
+						resource: [
+							'lead',
+						],
+						operation: [
+							'create',
+						],
+					},
+				},
+			},
+			{
+				displayName: 'Associate With',
+				name: 'associateWith',
+				type: 'options',
+				options: [
+					{
+						name: 'Organization',
+						value: 'organization',
+					},
+					{
+						name: 'Person',
+						value: 'person',
+					},
+				],
+				default: 'organization',
+				description: 'Type of entity to link to this lead',
+				required: true,
+				displayOptions: {
+					show: {
+						resource: [
+							'lead',
+						],
+						operation: [
+							'create',
+						],
+					},
+				},
+			},
+			{
+				displayName: 'Organization ID',
+				name: 'organization_id',
+				type: 'number',
+				default: 0,
+				description: 'ID of the organization to link to this lead',
+				required: true,
+				displayOptions: {
+					show: {
+						resource: [
+							'lead',
+						],
+						operation: [
+							'create',
+						],
+						associateWith: [
+							'organization',
+						],
+					},
+				},
+			},
+			{
+				displayName: 'Person ID',
+				name: 'person_id',
+				type: 'number',
+				default: 0,
+				description: 'ID of the person to link to this lead',
+				required: true,
+				displayOptions: {
+					show: {
+						resource: [
+							'lead',
+						],
+						operation: [
+							'create',
+						],
+						associateWith: [
+							'person',
+						],
+					},
+				},
+			},
+			{
+				displayName: 'Additional Fields',
+				name: 'additionalFields',
+				type: 'collection',
+				placeholder: 'Add Field',
+				default: {},
+				displayOptions: {
+					show: {
+						resource: [
+							'lead',
+						],
+						operation: [
+							'create',
+						],
+					},
+				},
+				options: [
+					{
+						displayName: 'Expected Close Date',
+						name: 'expected_close_date',
+						type: 'dateTime',
+						default: '',
+						description: 'Date when the lead’s deal is expected to be closed, in ISO-8601 format',
+					},
+					{
+						displayName: 'Label IDs',
+						name: 'label_ids',
+						type: 'multiOptions',
+						typeOptions: {
+							loadOptionsMethod: 'getLeadLabels',
+						},
+						default: [],
+						description: 'ID of the labels to attach to the lead to create',
+					},
+					{
+						displayName: 'Organization ID',
+						name: 'organization_id',
+						type: 'number',
+						default: 0,
+						description: 'ID of the organization to link to this lead',
+						displayOptions: {
+							show: {
+								'/associateWith': [
+									'person',
+								],
+							},
+						},
+					},
+					{
+						displayName: 'Owner ID',
+						name: 'owner_id',
+						type: 'options',
+						typeOptions: {
+							loadOptionsMethod: 'getUserIds',
+						},
+						default: '',
+						description: 'ID of the user who will own the lead to create',
+					},
+					{
+						displayName: 'Person ID',
+						name: 'person_id',
+						type: 'number',
+						default: 0,
+						description: 'ID of the person to link to this lead',
+						displayOptions: {
+							show: {
+								'/associateWith': [
+									'organization',
+								],
+							},
+						},
+					},
+					{
+						displayName: 'Value',
+						name: 'value',
+						type: 'fixedCollection',
+						description: 'Potential monetary value associated with the lead',
+						default: {},
+						options: [
+							{
+								displayName: 'Value Properties',
+								name: 'valueProperties',
+								values: [
+									{
+										displayName: 'Amount',
+										name: 'amount',
+										type: 'number',
+										default: '',
+									},
+									{
+										displayName: 'Currency',
+										name: 'currency',
+										type: 'options',
+										default: 'USD',
+										options: currencies.sort((a, b) => a.name.localeCompare(b.name)),
+									},
+								],
+							},
+						],
+					},
+				],
+			},
+
+			// ----------------------------------------
+			//               lead: delete
+			// ----------------------------------------
+			{
+				displayName: 'Lead ID',
+				name: 'leadId',
+				description: 'ID of the lead to delete',
+				type: 'string',
+				required: true,
+				default: '',
+				displayOptions: {
+					show: {
+						resource: [
+							'lead',
+						],
+						operation: [
+							'delete',
+						],
+					},
+				},
+			},
+
+			// ----------------------------------------
+			//                lead: get
+			// ----------------------------------------
+			{
+				displayName: 'Lead ID',
+				name: 'leadId',
+				description: 'ID of the lead to retrieve',
+				type: 'string',
+				required: true,
+				default: '',
+				displayOptions: {
+					show: {
+						resource: [
+							'lead',
+						],
+						operation: [
+							'get',
+						],
+					},
+				},
+			},
+
+			// ----------------------------------------
+			//               lead: update
+			// ----------------------------------------
+			{
+				displayName: 'Lead ID',
+				name: 'leadId',
+				description: 'ID of the lead to update',
+				type: 'string',
+				required: true,
+				default: '',
+				displayOptions: {
+					show: {
+						resource: [
+							'lead',
+						],
+						operation: [
+							'update',
+						],
+					},
+				},
+			},
+			{
+				displayName: 'Update Fields',
+				name: 'updateFields',
+				type: 'collection',
+				placeholder: 'Add Field',
+				default: {},
+				displayOptions: {
+					show: {
+						resource: [
+							'lead',
+						],
+						operation: [
+							'update',
+						],
+					},
+				},
+				options: [
+					{
+						displayName: 'Title',
+						name: 'title',
+						type: 'string',
+						default: '',
+						description: 'Name of the lead to update',
+					},
+					{
+						displayName: 'Owner ID',
+						name: 'owner_id',
+						type: 'options',
+						typeOptions: {
+							loadOptionsMethod: 'getUserIds',
+						},
+						default: '',
+						description: 'ID of the user who will own the lead to update',
+					},
+					{
+						displayName: 'Label IDs',
+						name: 'label_ids',
+						type: 'multiOptions',
+						typeOptions: {
+							loadOptionsMethod: 'getLeadLabels',
+						},
+						default: [],
+						description: 'ID of the labels to attach to the lead to update',
+					},
+					{
+						displayName: 'Person ID',
+						name: 'person_id',
+						type: 'options',
+						typeOptions: {
+							loadOptionsMethod: 'getPersons',
+						},
+						default: '',
+						description: 'ID of the person to link to this lead',
+					},
+					{
+						displayName: 'Value',
+						name: 'value',
+						type: 'fixedCollection',
+						description: 'Potential monetary value associated with the lead',
+						default: {},
+						options: [
+							{
+								displayName: 'Value Properties',
+								name: 'valueProperties',
+								values: [
+									{
+										displayName: 'Amount',
+										name: 'amount',
+										type: 'number',
+										default: '',
+									},
+									{
+										displayName: 'Currency',
+										name: 'currency',
+										type: 'options',
+										default: 'USD',
+										options: currencies.sort((a, b) => a.name.localeCompare(b.name)),
+									},
+								],
+							},
+						],
+					},
+					{
+						displayName: 'Expected Close Date',
+						name: 'expected_close_date',
+						type: 'dateTime',
+						default: '',
+						description: 'Date when the lead’s deal is expected to be closed, in ISO-8601 format',
+					},
+				],
 			},
 
 
@@ -1370,46 +2135,50 @@ export class Pipedrive implements INodeType {
 				},
 				description: 'The content of the note to create',
 			},
-			{
-				displayName: 'Additional Fields',
-				name: 'additionalFields',
-				type: 'collection',
-				placeholder: 'Add Field',
-				displayOptions: {
-					show: {
-						operation: [
-							'create',
-						],
-						resource: [
-							'note',
-						],
-					},
-				},
-				default: {},
-				options: [
-					{
-						displayName: 'Deal ID',
-						name: 'deal_id',
-						type: 'number',
-						default: 0,
-						description: 'ID of the deal this note will be associated with',
-					},
-					{
-						displayName: 'Organization ID',
-						name: 'org_id',
-						type: 'number',
-						default: 0,
-						description: 'ID of the organization this note will be associated with.',
-					},
-					{
-						displayName: 'Person ID',
-						name: 'person_id',
-						type: 'number',
-						default: 0,
-						description: 'ID of the person this note will be associated with.',
-					},
-				],
-			},
+			// {
+			// 	displayName: 'Additional Fields',
+			// 	name: 'additionalFields',
+			// 	type: 'collection',
+			// 	placeholder: 'Add Field',
+			// 	displayOptions: {
+			// 		show: {
+			// 			operation: [
+			// 				'create',
+			// 				'getAll',
+			// 			],
+			// 			resource: [
+			// 				'note',
+			// 			],
+			// 		},
+			// 	},
+			// 	default: {},
+			// 	options: [
+			// 		{
+			// 			displayName: 'Deal ID',
+			// 			name: 'deal_id',
+			// 			type: 'number',
+			// 			default: 0,
+			// 			description: 'ID of the deal this note will be associated with',
+			// 		},
+			// 		{
+			// 			displayName: 'Organization ID',
+			// 			name: 'org_id',
+			// 			type: 'options',
+			// 			typeOptions: {
+			// 				loadOptionsMethod: 'getOrganizationIds',
+			// 			},
+			// 			default: '',
+			// 			description: 'ID of the organization this deal will be associated with.',
+			// 		},
+			// 		{
+			// 			displayName: 'Person ID',
+			// 			name: 'person_id',
+			// 			type: 'number',
+			// 			default: 0,
+			// 			description: 'ID of the person this note will be associated with.',
+			// 		},
+			// 	],
+			// },
 
 			// ----------------------------------
 			//         note:delete
@@ -1443,7 +2212,7 @@ export class Pipedrive implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'get'
+							'get',
 						],
 						resource: [
 							'note',
@@ -1465,7 +2234,7 @@ export class Pipedrive implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'update'
+							'update',
 						],
 						resource: [
 							'note',
@@ -1484,7 +2253,7 @@ export class Pipedrive implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'update'
+							'update',
 						],
 						resource: [
 							'note',
@@ -1513,9 +2282,12 @@ export class Pipedrive implements INodeType {
 					{
 						displayName: 'Organization ID',
 						name: 'org_id',
-						type: 'number',
-						default: 0,
-						description: 'ID of the organization this note will be associated with.',
+						type: 'options',
+						typeOptions: {
+							loadOptionsMethod: 'getOrganizationIds',
+						},
+						default: '',
+						description: 'ID of the organization this deal will be associated with.',
 					},
 					{
 						displayName: 'Person ID',
@@ -1572,23 +2344,6 @@ export class Pipedrive implements INodeType {
 				default: {},
 				options: [
 					{
-						displayName: 'Visible to',
-						name: 'visible_to',
-						type: 'options',
-						options: [
-							{
-								name: 'Owner & followers (private)',
-								value: '1',
-							},
-							{
-								name: 'Entire company (shared)',
-								value: '3',
-							},
-						],
-						default: '3',
-						description: 'Visibility of the person. If omitted, visibility will be set to the default visibility setting of this item type for the authorized user.',
-					},
-					{
 						displayName: 'Custom Properties',
 						name: 'customProperties',
 						placeholder: 'Add Custom Property',
@@ -1617,9 +2372,35 @@ export class Pipedrive implements INodeType {
 										default: '',
 										description: 'Value of the property to set.',
 									},
-								]
+								],
 							},
 						],
+					},
+					{
+						displayName: 'Label',
+						name: 'label',
+						type: 'options',
+						typeOptions: {
+							loadOptionsMethod: 'getOrganizationLabels',
+						},
+						default: '',
+					},
+					{
+						displayName: 'Visible to',
+						name: 'visible_to',
+						type: 'options',
+						options: [
+							{
+								name: 'Owner & followers (private)',
+								value: '1',
+							},
+							{
+								name: 'Entire company (shared)',
+								value: '3',
+							},
+						],
+						default: '3',
+						description: 'Visibility of the person. If omitted, visibility will be set to the default visibility setting of this item type for the authorized user.',
 					},
 				],
 			},
@@ -1668,6 +2449,199 @@ export class Pipedrive implements INodeType {
 				description: 'ID of the organization to get.',
 			},
 
+			// ----------------------------------
+			//         organization:search
+			// ----------------------------------
+			{
+				displayName: 'Term',
+				name: 'term',
+				type: 'string',
+				required: true,
+				displayOptions: {
+					show: {
+						operation: [
+							'search',
+						],
+						resource: [
+							'organization',
+						],
+					},
+				},
+				default: '',
+				description: 'The search term to look for. Minimum 2 characters (or 1 if using exact_match).',
+			},
+			{
+				displayName: 'Additional Fields',
+				name: 'additionalFields',
+				type: 'collection',
+				placeholder: 'Add Field',
+				displayOptions: {
+					show: {
+						operation: [
+							'search',
+						],
+						resource: [
+							'organization',
+						],
+					},
+				},
+				default: {},
+				options: [
+					{
+						displayName: 'Exact Match',
+						name: 'exactMatch',
+						type: 'boolean',
+						default: false,
+						description: 'When enabled, only full exact matches against the given term are returned. It is not case sensitive.',
+					},
+					{
+						displayName: 'Fields',
+						name: 'fields',
+						type: 'multiOptions',
+						default: [],
+						description: 'Fields to the search in. Defaults to all of them.',
+						options: [
+							{
+								name: 'Address',
+								value: 'address',
+							},
+							{
+								name: 'Custom Fields',
+								value: 'custom_fields',
+							},
+							{
+								name: 'Name',
+								value: 'name',
+							},
+							{
+								name: 'Notes',
+								value: 'notes',
+							},
+						],
+					},
+					{
+						displayName: 'RAW Data',
+						name: 'rawData',
+						type: 'boolean',
+						default: false,
+						description: `Returns the data exactly in the way it got received from the API.`,
+					},
+				],
+			},
+			// ----------------------------------
+			//         organization:update
+			// ----------------------------------
+			{
+				displayName: 'Organization ID',
+				name: 'organizationId',
+				type: 'number',
+				default: '',
+				required: true,
+				displayOptions: {
+					show: {
+						operation: [
+							'update',
+						],
+						resource: [
+							'organization',
+						],
+					},
+				},
+				description: 'The ID of the organization to create',
+			},
+			{
+				displayName: 'Update Fields',
+				name: 'updateFields',
+				type: 'collection',
+				placeholder: 'Add Field',
+				displayOptions: {
+					show: {
+						operation: [
+							'update',
+						],
+						resource: [
+							'organization',
+						],
+					},
+				},
+				default: {},
+				options: [
+					{
+						displayName: 'Custom Properties',
+						name: 'customProperties',
+						placeholder: 'Add Custom Property',
+						description: 'Adds a custom property to set also values which have not been predefined.',
+						type: 'fixedCollection',
+						typeOptions: {
+							multipleValues: true,
+						},
+						default: {},
+						options: [
+							{
+								name: 'property',
+								displayName: 'Property',
+								values: [
+									{
+										displayName: 'Property Name',
+										name: 'name',
+										type: 'string',
+										default: '',
+										description: 'Name of the property to set.',
+									},
+									{
+										displayName: 'Property Value',
+										name: 'value',
+										type: 'string',
+										default: '',
+										description: 'Value of the property to set.',
+									},
+								],
+							},
+						],
+					},
+					{
+						displayName: 'Label',
+						name: 'label',
+						type: 'options',
+						typeOptions: {
+							loadOptionsMethod: 'getOrganizationLabels',
+						},
+						default: '',
+					},
+					{
+						displayName: 'Name',
+						name: 'name',
+						type: 'string',
+						default: '',
+						description: 'Organization name',
+					},
+					{
+						displayName: 'Owner ID',
+						name: 'owner_id',
+						type: 'number',
+						default: 0,
+						description: 'The ID of the user who will be marked as the owner of this Organization. When omitted, the authorized User ID will be used.',
+					},
+					{
+						displayName: 'Visible to',
+						name: 'visible_to',
+						type: 'options',
+						options: [
+							{
+								name: 'Owner & followers (private)',
+								value: '1',
+							},
+							{
+								name: 'Entire company (shared)',
+								value: '3',
+							},
+						],
+						default: '3',
+						description: 'Visibility of the person. If omitted, visibility will be set to the default visibility setting of this item type for the authorized user.',
+					},
+				],
+			},
+
 
 
 			// ----------------------------------
@@ -1713,6 +2687,42 @@ export class Pipedrive implements INodeType {
 				default: {},
 				options: [
 					{
+						displayName: 'Custom Properties',
+						name: 'customProperties',
+						placeholder: 'Add Custom Property',
+						description: 'Adds a custom property to set also values which have not been predefined.',
+						type: 'fixedCollection',
+						typeOptions: {
+							multipleValues: true,
+						},
+						default: {},
+						options: [
+							{
+								name: 'property',
+								displayName: 'Property',
+								values: [
+									{
+										displayName: 'Property Name',
+										name: 'name',
+										type: 'options',
+										typeOptions: {
+											loadOptionsMethod: 'getPersonCustomFields',
+										},
+										default: '',
+										description: 'Name of the custom field to set.',
+									},
+									{
+										displayName: 'Property Value',
+										name: 'value',
+										type: 'string',
+										default: '',
+										description: 'Value of the property to set.',
+									},
+								],
+							},
+						],
+					},
+					{
 						displayName: 'Email',
 						name: 'email',
 						type: 'string',
@@ -1723,11 +2733,23 @@ export class Pipedrive implements INodeType {
 						description: 'Email of the person.',
 					},
 					{
+						displayName: 'Label',
+						name: 'label',
+						type: 'options',
+						typeOptions: {
+							loadOptionsMethod: 'getPersonLabels',
+						},
+						default: '',
+					},
+					{
 						displayName: 'Organization ID',
 						name: 'org_id',
-						type: 'number',
-						default: 0,
-						description: 'ID of the organization this person will belong to.',
+						type: 'options',
+						typeOptions: {
+							loadOptionsMethod: 'getOrganizationIds',
+						},
+						default: '',
+						description: 'ID of the organization this deal will be associated with.',
 					},
 					{
 						displayName: 'Phone',
@@ -1755,39 +2777,6 @@ export class Pipedrive implements INodeType {
 						],
 						default: '3',
 						description: 'Visibility of the person. If omitted, visibility will be set to the default visibility setting of this item type for the authorized user.',
-					},
-					{
-						displayName: 'Custom Properties',
-						name: 'customProperties',
-						placeholder: 'Add Custom Property',
-						description: 'Adds a custom property to set also values which have not been predefined.',
-						type: 'fixedCollection',
-						typeOptions: {
-							multipleValues: true,
-						},
-						default: {},
-						options: [
-							{
-								name: 'property',
-								displayName: 'Property',
-								values: [
-									{
-										displayName: 'Property Name',
-										name: 'name',
-										type: 'string',
-										default: '',
-										description: 'Name of the property to set.',
-									},
-									{
-										displayName: 'Property Value',
-										name: 'value',
-										type: 'string',
-										default: '',
-										description: 'Value of the property to set.',
-									},
-								]
-							},
-						],
 					},
 				],
 			},
@@ -1876,6 +2865,42 @@ export class Pipedrive implements INodeType {
 				default: {},
 				options: [
 					{
+						displayName: 'Custom Properties',
+						name: 'customProperties',
+						placeholder: 'Add Custom Property',
+						description: 'Adds a custom property to set also values which have not been predefined.',
+						type: 'fixedCollection',
+						typeOptions: {
+							multipleValues: true,
+						},
+						default: {},
+						options: [
+							{
+								name: 'property',
+								displayName: 'Property',
+								values: [
+									{
+										displayName: 'Property Name',
+										name: 'name',
+										type: 'options',
+										typeOptions: {
+											loadOptionsMethod: 'getPersonCustomFields',
+										},
+										default: '',
+										description: 'Name of the custom field to set.',
+									},
+									{
+										displayName: 'Property Value',
+										name: 'value',
+										type: 'string',
+										default: '',
+										description: 'Value of the property to set.',
+									},
+								],
+							},
+						],
+					},
+					{
 						displayName: 'Email',
 						name: 'email',
 						type: 'string',
@@ -1884,6 +2909,15 @@ export class Pipedrive implements INodeType {
 						},
 						default: '',
 						description: 'Email of the person.',
+					},
+					{
+						displayName: 'Label',
+						name: 'label',
+						type: 'options',
+						typeOptions: {
+							loadOptionsMethod: 'getPersonLabels',
+						},
+						default: '',
 					},
 					{
 						displayName: 'Name',
@@ -1895,9 +2929,12 @@ export class Pipedrive implements INodeType {
 					{
 						displayName: 'Organization ID',
 						name: 'org_id',
-						type: 'number',
-						default: 0,
-						description: 'ID of the organization this person will belong to.',
+						type: 'options',
+						typeOptions: {
+							loadOptionsMethod: 'getOrganizationIds',
+						},
+						default: '',
+						description: 'ID of the organization this deal will be associated with.',
 					},
 					{
 						displayName: 'Phone',
@@ -1925,39 +2962,6 @@ export class Pipedrive implements INodeType {
 						],
 						default: '3',
 						description: 'Visibility of the deal. If omitted, visibility will be set to the default visibility setting of this item type for the authorized user.',
-					},
-					{
-						displayName: 'Custom Properties',
-						name: 'customProperties',
-						placeholder: 'Add Custom Property',
-						description: 'Adds a custom property to set also values which have not been predefined.',
-						type: 'fixedCollection',
-						typeOptions: {
-							multipleValues: true,
-						},
-						default: {},
-						options: [
-							{
-								name: 'property',
-								displayName: 'Property',
-								values: [
-									{
-										displayName: 'Property Name',
-										name: 'name',
-										type: 'string',
-										default: '',
-										description: 'Name of the property to set.',
-									},
-									{
-										displayName: 'Property Value',
-										name: 'value',
-										type: 'string',
-										default: '',
-										description: 'Value of the property to set.',
-									},
-								]
-							},
-						],
 					},
 				],
 			},
@@ -2047,7 +3051,600 @@ export class Pipedrive implements INodeType {
 				description: 'How many results to return.',
 			},
 
+			// ----------------------------------------
+			//               lead: getAll
+			// ----------------------------------------
+			{
+				displayName: 'Filters',
+				name: 'filters',
+				type: 'collection',
+				placeholder: 'Add Filter',
+				default: {},
+				displayOptions: {
+					show: {
+						resource: [
+							'lead',
+						],
+						operation: [
+							'getAll',
+						],
+					},
+				},
+				options: [
+					{
+						displayName: 'Archived Status',
+						name: 'archived_status',
+						type: 'options',
+						default: 'all',
+						options: [
+							{
+								name: 'Archived',
+								value: 'archived',
+							},
+							{
+								name: 'All',
+								value: 'all',
+							},
+							{
+								name: 'Not Archived',
+								value: 'not_archived',
+							},
+						],
+					},
+				],
+			},
+
+			// ----------------------------------
+			//         person:getAll
+			// ----------------------------------
+			{
+				displayName: 'Additional Fields',
+				name: 'additionalFields',
+				type: 'collection',
+				placeholder: 'Add Field',
+				displayOptions: {
+					show: {
+						operation: [
+							'getAll',
+						],
+						resource: [
+							'person',
+						],
+					},
+				},
+				default: {},
+				options: [
+					{
+						displayName: 'Filter ID',
+						name: 'filterId',
+						type: 'options',
+						typeOptions: {
+							loadOptionsMethod: 'getFilters',
+						},
+						default: '',
+						description: 'ID of the filter to use.',
+					},
+					{
+						displayName: 'First Char',
+						name: 'firstChar',
+						type: 'string',
+						default: '',
+						description: 'If supplied, only persons whose name starts with the specified letter will be returned ',
+					},
+				],
+			},
+
+			// ----------------------------------
+			//         person:search
+			// ----------------------------------
+			{
+				displayName: 'Term',
+				name: 'term',
+				type: 'string',
+				required: true,
+				displayOptions: {
+					show: {
+						operation: [
+							'search',
+						],
+						resource: [
+							'person',
+						],
+					},
+				},
+				default: '',
+				description: 'The search term to look for. Minimum 2 characters (or 1 if using exact_match).',
+			},
+			{
+				displayName: 'Additional Fields',
+				name: 'additionalFields',
+				type: 'collection',
+				placeholder: 'Add Field',
+				displayOptions: {
+					show: {
+						operation: [
+							'search',
+						],
+						resource: [
+							'person',
+						],
+					},
+				},
+				default: {},
+				options: [
+					{
+						displayName: 'Exact Match',
+						name: 'exactMatch',
+						type: 'boolean',
+						default: false,
+						description: 'When enabled, only full exact matches against the given term are returned. It is not case sensitive.',
+					},
+					{
+						displayName: 'Fields',
+						name: 'fields',
+						type: 'string',
+						default: '',
+						description: 'A comma-separated string array. The fields to perform the search from. Defaults to all of them.',
+					},
+					{
+						displayName: 'Include Fields',
+						name: 'includeFields',
+						type: 'string',
+						default: '',
+						description: 'Supports including optional fields in the results which are not provided by default.',
+					},
+					{
+						displayName: 'Organization ID',
+						name: 'organizationId',
+						type: 'string',
+						default: '',
+						description: 'Will filter Deals by the provided Organization ID.',
+					},
+					{
+						displayName: 'RAW Data',
+						name: 'rawData',
+						type: 'boolean',
+						default: false,
+						description: `Returns the data exactly in the way it got received from the API.`,
+					},
+				],
+			},
+
+			// ----------------------------------
+			//         note:create/getAll
+			// ----------------------------------
+			{
+				displayName: 'Additional Fields',
+				name: 'additionalFields',
+				type: 'collection',
+				placeholder: 'Add Field',
+				displayOptions: {
+					show: {
+						operation: [
+							'create',
+							'getAll',
+						],
+						resource: [
+							'note',
+						],
+					},
+				},
+				default: {},
+				options: [
+					{
+						displayName: 'Deal ID',
+						name: 'deal_id',
+						type: 'number',
+						default: 0,
+						description: 'ID of the deal this note will be associated with',
+					},
+					{
+						displayName: 'Organization ID',
+						name: 'org_id',
+						type: 'options',
+						typeOptions: {
+							loadOptionsMethod: 'getOrganizationIds',
+						},
+						default: '',
+						description: 'ID of the organization this deal will be associated with.',
+					},
+					{
+						displayName: 'Person ID',
+						name: 'person_id',
+						type: 'number',
+						default: 0,
+						description: 'ID of the person this note will be associated with.',
+					},
+				],
+			},
+			// ----------------------------------
+			//         activity:getAll
+			// ----------------------------------
+			{
+				displayName: 'Additional Fields',
+				name: 'additionalFields',
+				type: 'collection',
+				placeholder: 'Add Field',
+				displayOptions: {
+					show: {
+						operation: [
+							'getAll',
+						],
+						resource: [
+							'activity',
+						],
+					},
+				},
+				default: {},
+				options: [
+					{
+						displayName: 'Done',
+						name: 'done',
+						type: 'boolean',
+						default: false,
+						description: 'Whether the Activity is done or not. 0 = Not done, 1 = Done. If omitted returns both Done and Not done activities.',
+					},
+					{
+						displayName: 'End Date',
+						name: 'end_date',
+						type: 'dateTime',
+						default: '',
+						description: 'Use the Activity due date where you wish to stop fetching Activities from. Insert due date in YYYY-MM-DD format.',
+					},
+					{
+						displayName: 'Filter ID ',
+						name: 'filterId',
+						type: 'string',
+						default: '',
+						description: 'The ID of the Filter to use (will narrow down results if used together with user_id parameter)',
+					},
+					{
+						displayName: 'Star Date',
+						name: 'start_date',
+						type: 'dateTime',
+						default: '',
+						description: 'Use the Activity due date where you wish to begin fetching Activities from. Insert due date in YYYY-MM-DD format.',
+					},
+					{
+						displayName: 'Type',
+						name: 'type',
+						type: 'multiOptions',
+						typeOptions: {
+							loadOptionsMethod: 'getActivityTypes',
+						},
+						default: [],
+						description: 'Type of the Activity.',
+					},
+					{
+						displayName: 'User ID',
+						name: 'user_id',
+						type: 'options',
+						typeOptions: {
+							loadOptionsMethod: 'getUserIds',
+						},
+						default: '',
+						description: 'The ID of the User whose Activities will be fetched. If omitted, the User associated with the API token will be used. If 0, Activities for all company Users will be fetched based on the permission sets.',
+					},
+				],
+			},
 		],
+	};
+
+	methods = {
+		loadOptions: {
+			// Get all Organizations to display them to user so that he can
+			// select them easily
+			async getActivityTypes(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const returnData: INodePropertyOptions[] = [];
+				const { data } = await pipedriveApiRequest.call(this, 'GET', '/activityTypes', {});
+				for (const activity of data) {
+					returnData.push({
+						name: activity.name,
+						value: activity.key_string,
+					});
+				}
+
+				returnData.sort((a, b) => {
+					const aName = a.name.toLowerCase();
+					const bName = b.name.toLowerCase();
+					if (aName < bName) { return -1; }
+					if (aName > bName) { return 1; }
+					return 0;
+				});
+
+				return returnData;
+			},
+			// Get all Organizations to display them to user so that he can
+			// select them easily
+			async getOrganizationIds(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const returnData: INodePropertyOptions[] = [];
+				const { data } = await pipedriveApiRequest.call(this, 'GET', '/organizations', {});
+				for (const org of data) {
+					returnData.push({
+						name: org.name,
+						value: org.id,
+					});
+				}
+
+				returnData.sort((a, b) => {
+					const aName = a.name.toLowerCase();
+					const bName = b.name.toLowerCase();
+					if (aName < bName) { return -1; }
+					if (aName > bName) { return 1; }
+					return 0;
+				});
+
+				return returnData;
+			},
+			// Get all Organizations to display them to user so that he can
+			// select them easily
+			async getUserIds(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const returnData: INodePropertyOptions[] = [];
+				const { data } = await pipedriveApiRequest.call(this, 'GET', '/users', {});
+				for (const user of data) {
+					if (user.active_flag === true) {
+						returnData.push({
+							name: user.name,
+							value: user.id,
+						});
+					}
+				}
+
+				returnData.sort((a, b) => {
+					const aName = a.name.toLowerCase();
+					const bName = b.name.toLowerCase();
+					if (aName < bName) { return -1; }
+					if (aName > bName) { return 1; }
+					return 0;
+				});
+
+				return returnData;
+			},
+			// Get all Stages to display them to user so that he can
+			// select them easily
+			async getStageIds(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const returnData: INodePropertyOptions[] = [];
+				const { data } = await pipedriveApiRequest.call(this, 'GET', '/stages', {});
+				for (const stage of data) {
+					returnData.push({
+						name: `${stage.pipeline_name} > ${stage.name}`,
+						value: stage.id,
+					});
+				}
+
+				returnData.sort((a, b) => {
+					const aName = a.name.toLowerCase();
+					const bName = b.name.toLowerCase();
+					if (aName < bName) { return -1; }
+					if (aName > bName) { return 1; }
+					return 0;
+				});
+
+				return returnData;
+			},
+			// Get all the Organization Custom Fields to display them to user so that he can
+			// select them easily
+			async getOrganizationCustomFields(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const returnData: INodePropertyOptions[] = [];
+				const { data } = await pipedriveApiRequest.call(this, 'GET', '/organizationFields', {});
+				for (const field of data) {
+					if (field.key.length === 40) {
+						returnData.push({
+							name: field.name,
+							value: field.key,
+						});
+					}
+				}
+
+				returnData.sort((a, b) => {
+					const aName = a.name.toLowerCase();
+					const bName = b.name.toLowerCase();
+					if (aName < bName) { return -1; }
+					if (aName > bName) { return 1; }
+					return 0;
+				});
+
+				return returnData;
+			},
+			// Get all the Deal Custom Fields to display them to user so that he can
+			// select them easily
+			async getDealCustomFields(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const returnData: INodePropertyOptions[] = [];
+				const { data } = await pipedriveApiRequest.call(this, 'GET', '/dealFields', {});
+				for (const field of data) {
+					if (field.key.length === 40) {
+						returnData.push({
+							name: field.name,
+							value: field.key,
+						});
+					}
+				}
+
+				returnData.sort((a, b) => {
+					const aName = a.name.toLowerCase();
+					const bName = b.name.toLowerCase();
+					if (aName < bName) { return -1; }
+					if (aName > bName) { return 1; }
+					return 0;
+				});
+
+				return returnData;
+			},
+			// Get all the Person Custom Fields to display them to user so that he can
+			// select them easily
+			async getPersonCustomFields(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const returnData: INodePropertyOptions[] = [];
+				const { data } = await pipedriveApiRequest.call(this, 'GET', '/personFields', {});
+				for (const field of data) {
+					if (field.key.length === 40) {
+						returnData.push({
+							name: field.name,
+							value: field.key,
+						});
+					}
+				}
+
+				returnData.sort((a, b) => {
+					const aName = a.name.toLowerCase();
+					const bName = b.name.toLowerCase();
+					if (aName < bName) { return -1; }
+					if (aName > bName) { return 1; }
+					return 0;
+				});
+
+				return returnData;
+			},
+			// Get all the filters to display them to user so that he can
+			// select them easily
+			async getFilters(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const returnData: INodePropertyOptions[] = [];
+				const { data } = await pipedriveApiRequest.call(this, 'GET', '/filters', {}, { type: 'people' });
+				for (const filter of data) {
+					const filterName = filter.name;
+					const filterId = filter.id;
+					returnData.push({
+						name: filterName,
+						value: filterId,
+					});
+				}
+
+				returnData.sort((a, b) => {
+					const aName = a.name.toLowerCase();
+					const bName = b.name.toLowerCase();
+					if (aName < bName) { return -1; }
+					if (aName > bName) { return 1; }
+					return 0;
+				});
+
+				return returnData;
+			},
+			// Get all the person labels to display them to user so that he can
+			// select them easily
+			async getPersonLabels(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const returnData: INodePropertyOptions[] = [];
+				const operation = this.getCurrentNodeParameter('operation') as string;
+				const { data } = await pipedriveApiRequest.call(this, 'GET', '/personFields', {});
+				for (const field of data) {
+					if (field.key === 'label') {
+						if (field.options) {
+							for (const option of field.options) {
+								returnData.push({
+									name: option.label,
+									value: option.id,
+								});
+							}
+						}
+					}
+				}
+
+				returnData.sort((a, b) => {
+					const aName = a.name.toLowerCase();
+					const bName = b.name.toLowerCase();
+					if (aName < bName) { return -1; }
+					if (aName > bName) { return 1; }
+					return 0;
+				});
+
+				if (operation === 'update') {
+					returnData.push({
+						name: 'No Label',
+						value: 'null',
+					});
+				}
+				return returnData;
+			},
+			// Get all the labels to display them to user so that he can
+			// select them easily
+			async getOrganizationLabels(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const returnData: INodePropertyOptions[] = [];
+				const operation = this.getCurrentNodeParameter('operation') as string;
+				const { data } = await pipedriveApiRequest.call(this, 'GET', '/organizationFields', {});
+				for (const field of data) {
+					if (field.key === 'label') {
+						if (field.options) {
+							for (const option of field.options) {
+								returnData.push({
+									name: option.label,
+									value: option.id,
+								});
+							}
+						}
+					}
+				}
+
+				returnData.sort((a, b) => {
+					const aName = a.name.toLowerCase();
+					const bName = b.name.toLowerCase();
+					if (aName < bName) { return -1; }
+					if (aName > bName) { return 1; }
+					return 0;
+				});
+
+				if (operation === 'update') {
+					returnData.push({
+						name: 'No Label',
+						value: 'null',
+					});
+				}
+				return returnData;
+			},
+
+			// Get all the persons to display them to user so that he can
+			// select them easily
+			async getPersons(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const { data } = await pipedriveApiRequest.call(this, 'GET', '/persons', {}) as {
+					data: Array<{ id: string; name: string; }>
+				};
+
+				return data.map(({ id, name }) => ({ value: id, name }));
+			},
+
+			// Get all the lead labels to display them to user so that he can
+			// select them easily
+			async getLeadLabels(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const { data } = await pipedriveApiRequest.call(this, 'GET', '/leadLabels', {}) as {
+					data: Array<{ id: string; name: string; }>
+				};
+
+				return data.map(({ id, name }) => ({ value: id, name }));
+			},
+
+			// Get all the labels to display them to user so that he can
+			// select them easily
+			async getDealLabels(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const returnData: INodePropertyOptions[] = [];
+				const operation = this.getCurrentNodeParameter('operation') as string;
+				const { data } = await pipedriveApiRequest.call(this, 'GET', '/dealFields', {});
+				for (const field of data) {
+					if (field.key === 'label') {
+						if (field.options) {
+							for (const option of field.options) {
+								returnData.push({
+									name: option.label,
+									value: option.id,
+								});
+							}
+						}
+					}
+				}
+
+				returnData.sort((a, b) => {
+					const aName = a.name.toLowerCase();
+					const bName = b.name.toLowerCase();
+					if (aName < bName) { return -1; }
+					if (aName > bName) { return 1; }
+					return 0;
+				});
+
+				if (operation === 'update') {
+					returnData.push({
+						name: 'No Label',
+						value: 'null',
+					});
+				}
+				return returnData;
+			},
+		},
 	};
 
 
@@ -2096,435 +3693,749 @@ export class Pipedrive implements INodeType {
 			body = {};
 			formData = {};
 			qs = {};
+			try {
+				if (resource === 'activity') {
+					if (operation === 'create') {
+						// ----------------------------------
+						//         activity:create
+						// ----------------------------------
 
-			if (resource === 'activity') {
-				if (operation === 'create') {
-					// ----------------------------------
-					//         activity:create
-					// ----------------------------------
+						requestMethod = 'POST';
+						endpoint = '/activities';
 
-					requestMethod = 'POST';
-					endpoint = '/activities';
+						body.subject = this.getNodeParameter('subject', i) as string;
+						body.done = this.getNodeParameter('done', i) as string;
+						body.type = this.getNodeParameter('type', i) as string;
+						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						addAdditionalFields(body, additionalFields);
 
-					body.subject = this.getNodeParameter('subject', i) as string;
-					body.done = this.getNodeParameter('done', i) as string;
-					body.type = this.getNodeParameter('type', i) as string;
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
-					addAdditionalFields(body, additionalFields);
+					} else if (operation === 'delete') {
+						// ----------------------------------
+						//         activity:delete
+						// ----------------------------------
 
-				} else if (operation === 'delete') {
-					// ----------------------------------
-					//         activity:delete
-					// ----------------------------------
+						requestMethod = 'DELETE';
 
-					requestMethod = 'DELETE';
+						const activityId = this.getNodeParameter('activityId', i) as number;
+						endpoint = `/activities/${activityId}`;
 
-					const activityId = this.getNodeParameter('activityId', i) as number;
-					endpoint = `/activities/${activityId}`;
+					} else if (operation === 'get') {
+						// ----------------------------------
+						//         activity:get
+						// ----------------------------------
 
-				} else if (operation === 'get') {
-					// ----------------------------------
-					//         activity:get
-					// ----------------------------------
+						requestMethod = 'GET';
 
-					requestMethod = 'GET';
+						const activityId = this.getNodeParameter('activityId', i) as number;
 
-					const activityId = this.getNodeParameter('activityId', i) as number;
+						endpoint = `/activities/${activityId}`;
 
-					endpoint = `/activities/${activityId}`;
+					} else if (operation === 'getAll') {
+						// ----------------------------------
+						//         activity:getAll
+						// ----------------------------------
 
-				} else if (operation === 'getAll') {
-					// ----------------------------------
-					//         activity:getAll
-					// ----------------------------------
+						requestMethod = 'GET';
 
-					requestMethod = 'GET';
+						returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						if (returnAll === false) {
+							qs.limit = this.getNodeParameter('limit', i) as number;
+						}
 
-					returnAll = this.getNodeParameter('returnAll', i) as boolean;
-					if (returnAll === false) {
-						qs.limit = this.getNodeParameter('limit', i) as number;
+						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						addAdditionalFields(qs, additionalFields);
+
+						if (qs.type) {
+							qs.type = (qs.type as string[]).join(',');
+						}
+
+						endpoint = `/activities`;
+
+					} else if (operation === 'update') {
+						// ----------------------------------
+						//         activity:update
+						// ----------------------------------
+
+						requestMethod = 'PUT';
+
+						const activityId = this.getNodeParameter('activityId', i) as number;
+						endpoint = `/activities/${activityId}`;
+
+						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+						addAdditionalFields(body, updateFields);
+
+					}
+				} else if (resource === 'deal') {
+					if (operation === 'create') {
+						// ----------------------------------
+						//         deal:create
+						// ----------------------------------
+
+						requestMethod = 'POST';
+						endpoint = '/deals';
+
+						body.title = this.getNodeParameter('title', i) as string;
+
+						const associateWith = this.getNodeParameter('associateWith', i) as 'organization' | 'person';
+
+						if (associateWith === 'organization') {
+							body.org_id = this.getNodeParameter('org_id', i) as string;
+						} else {
+							body.person_id = this.getNodeParameter('person_id', i) as string;
+						}
+
+						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						addAdditionalFields(body, additionalFields);
+
+					} else if (operation === 'delete') {
+						// ----------------------------------
+						//         deal:delete
+						// ----------------------------------
+
+						requestMethod = 'DELETE';
+
+						const dealId = this.getNodeParameter('dealId', i) as number;
+						endpoint = `/deals/${dealId}`;
+
+					} else if (operation === 'duplicate') {
+						// ----------------------------------
+						//         deal:duplicate
+						// ----------------------------------
+
+						requestMethod = 'POST';
+
+						const dealId = this.getNodeParameter('dealId', i) as number;
+						endpoint = `/deals/${dealId}/duplicate`;
+
+					} else if (operation === 'get') {
+						// ----------------------------------
+						//         deal:get
+						// ----------------------------------
+
+						requestMethod = 'GET';
+
+						const dealId = this.getNodeParameter('dealId', i) as number;
+						endpoint = `/deals/${dealId}`;
+
+					} else if (operation === 'getAll') {
+						// ----------------------------------
+						//         deal:getAll
+						// ----------------------------------
+
+						requestMethod = 'GET';
+
+						returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						if (returnAll === false) {
+							qs.limit = this.getNodeParameter('limit', i) as number;
+						}
+
+						endpoint = `/deals`;
+
+					} else if (operation === 'update') {
+						// ----------------------------------
+						//         deal:update
+						// ----------------------------------
+
+						requestMethod = 'PUT';
+
+						const dealId = this.getNodeParameter('dealId', i) as number;
+						endpoint = `/deals/${dealId}`;
+
+						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+						addAdditionalFields(body, updateFields);
+
+						if (body.label === 'null') {
+							body.label = null;
+						}
+					} else if (operation === 'search') {
+						// ----------------------------------
+						//         deal:search
+						// ----------------------------------
+
+						requestMethod = 'GET';
+
+						qs.term = this.getNodeParameter('term', i) as string;
+						returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						qs.exact_match = this.getNodeParameter('exactMatch', i) as boolean;
+						if (returnAll === false) {
+							qs.limit = this.getNodeParameter('limit', i) as number;
+						}
+
+						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+
+						if (additionalFields.fields) {
+							qs.fields = (additionalFields.fields as string[]).join(',');
+						}
+
+						if (additionalFields.organizationId) {
+							qs.organization_id = parseInt(additionalFields.organizationId as string, 10);
+						}
+
+						if (additionalFields.includeFields) {
+							qs.include_fields = additionalFields.includeFields as string;
+						}
+
+						if (additionalFields.personId) {
+							qs.person_id = parseInt(additionalFields.personId as string, 10);
+						}
+						if (additionalFields.status) {
+							qs.status = additionalFields.status as string;
+						}
+
+						endpoint = `/deals/search`;
+
+					}
+				} else if (resource === 'file') {
+					if (operation === 'create') {
+						// ----------------------------------
+						//         file:create
+						// ----------------------------------
+
+						requestMethod = 'POST';
+						endpoint = '/files';
+
+						const item = items[i];
+
+						if (item.binary === undefined) {
+							throw new NodeOperationError(this.getNode(), 'No binary data exists on item!');
+						}
+
+						const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i) as string;
+
+						if (item.binary[binaryPropertyName] === undefined) {
+							throw new NodeOperationError(this.getNode(), `No binary data property "${binaryPropertyName}" does not exists on item!`);
+						}
+
+						const fileBufferData = Buffer.from(item.binary[binaryPropertyName].data, BINARY_ENCODING);
+
+						formData.file = {
+							value: fileBufferData,
+							options: {
+								contentType: item.binary[binaryPropertyName].mimeType,
+								filename: item.binary[binaryPropertyName].fileName,
+							},
+						};
+
+						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						addAdditionalFields(formData, additionalFields);
+
+					} else if (operation === 'delete') {
+						// ----------------------------------
+						//         file:delete
+						// ----------------------------------
+
+						requestMethod = 'DELETE';
+
+						const fileId = this.getNodeParameter('fileId', i) as number;
+						endpoint = `/files/${fileId}`;
+
+					} else if (operation === 'download') {
+						// ----------------------------------
+						//         file:download
+						// ----------------------------------
+
+						requestMethod = 'GET';
+						downloadFile = true;
+
+						const fileId = this.getNodeParameter('fileId', i) as number;
+						endpoint = `/files/${fileId}/download`;
+
+					} else if (operation === 'get') {
+						// ----------------------------------
+						//         file:get
+						// ----------------------------------
+
+						requestMethod = 'GET';
+
+						const fileId = this.getNodeParameter('fileId', i) as number;
+						endpoint = `/files/${fileId}`;
+
+					}
+				} else if (resource === 'note') {
+					if (operation === 'create') {
+						// ----------------------------------
+						//         note:create
+						// ----------------------------------
+
+						requestMethod = 'POST';
+						endpoint = '/notes';
+
+						body.content = this.getNodeParameter('content', i) as string;
+						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						addAdditionalFields(body, additionalFields);
+
+					} else if (operation === 'delete') {
+						// ----------------------------------
+						//         note:delete
+						// ----------------------------------
+
+						requestMethod = 'DELETE';
+
+						const noteId = this.getNodeParameter('noteId', i) as number;
+						endpoint = `/notes/${noteId}`;
+
+					} else if (operation === 'get') {
+						// ----------------------------------
+						//         note:get
+						// ----------------------------------
+
+						requestMethod = 'GET';
+
+						const noteId = this.getNodeParameter('noteId', i) as number;
+						endpoint = `/notes/${noteId}`;
+
+					} else if (operation === 'getAll') {
+						// ----------------------------------
+						//         note:getAll
+						// ----------------------------------
+
+						requestMethod = 'GET';
+						endpoint = `/notes`;
+
+						returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						if (returnAll === false) {
+							qs.limit = this.getNodeParameter('limit', i) as number;
+						}
+						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						addAdditionalFields(qs, additionalFields);
+
+					} else if (operation === 'update') {
+						// ----------------------------------
+						//         note:update
+						// ----------------------------------
+
+						requestMethod = 'PUT';
+
+						const noteId = this.getNodeParameter('noteId', i) as number;
+						endpoint = `/notes/${noteId}`;
+
+						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+						addAdditionalFields(body, updateFields);
+
 					}
 
-					endpoint = `/activities`;
+				} else if (resource === 'lead') {
 
-				} else if (operation === 'update') {
-					// ----------------------------------
-					//         activity:update
-					// ----------------------------------
+					if (operation === 'create') {
 
-					requestMethod = 'PUT';
+						// ----------------------------------------
+						//               lead: create
+						// ----------------------------------------
 
-					const activityId = this.getNodeParameter('activityId', i) as number;
-					endpoint = `/activities/${activityId}`;
+						// https://developers.pipedrive.com/docs/api/v1/Leads#addLead
 
-					const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
-					addAdditionalFields(body, updateFields);
+						body = {
+							title: this.getNodeParameter('title', i),
+						} as IDataObject;
+
+						const associateWith = this.getNodeParameter('associateWith', i) as 'organization' | 'person';
+
+						if (associateWith === 'organization') {
+							body.organization_id = this.getNodeParameter('organization_id', i) as number;
+						} else {
+							body.person_id = this.getNodeParameter('person_id', i) as number;
+						}
+
+						const { value, expected_close_date, ...rest } = this.getNodeParameter('additionalFields', i) as {
+							value: {
+								valueProperties: {
+									amount: number;
+									currency: string;
+								}
+							};
+							expected_close_date: string;
+							person_id: number,
+							organization_id: number,
+						};
+
+						if (Object.keys(rest).length) {
+							Object.assign(body, rest);
+						}
+
+						if (value) {
+							Object.assign(body, { value: value.valueProperties });
+						}
+
+						if (expected_close_date) {
+							body.expected_close_date = expected_close_date.split('T')[0];
+						}
+
+						requestMethod = 'POST';
+						endpoint = '/leads';
+
+					} else if (operation === 'delete') {
+
+						// ----------------------------------------
+						//               lead: delete
+						// ----------------------------------------
+
+						// https://developers.pipedrive.com/docs/api/v1/Leads#deleteLead
+
+						const leadId = this.getNodeParameter('leadId', i);
+
+						requestMethod = 'DELETE';
+						endpoint = `/leads/${leadId}`;
+
+					} else if (operation === 'get') {
+
+						// ----------------------------------------
+						//                lead: get
+						// ----------------------------------------
+
+						// https://developers.pipedrive.com/docs/api/v1/Leads#getLead
+
+						const leadId = this.getNodeParameter('leadId', i);
+
+						requestMethod = 'GET';
+						endpoint = `/leads/${leadId}`;
+
+					} else if (operation === 'getAll') {
+
+						// ----------------------------------------
+						//               lead: getAll
+						// ----------------------------------------
+
+						// https://developers.pipedrive.com/docs/api/v1/Leads#getLeads
+
+						const filters = this.getNodeParameter('filters', i) as IDataObject;
+
+						if (Object.keys(filters).length) {
+							Object.assign(qs, filters);
+						}
+
+						requestMethod = 'GET';
+						endpoint = '/leads';
+
+					} else if (operation === 'update') {
+
+						// ----------------------------------------
+						//               lead: update
+						// ----------------------------------------
+
+						// https://developers.pipedrive.com/docs/api/v1/Leads#updateLead
+
+						const { value, expected_close_date, ...rest } = this.getNodeParameter('updateFields', i) as {
+							value: {
+								valueProperties: {
+									amount: number;
+									currency: string;
+								}
+							};
+							expected_close_date: string;
+						};
+
+						if (Object.keys(rest).length) {
+							Object.assign(body, rest);
+						}
+
+						if (value) {
+							Object.assign(body, { value: value.valueProperties });
+						}
+
+						if (expected_close_date) {
+							body.expected_close_date = expected_close_date.split('T')[0];
+						}
+
+						if (Object.keys(rest).length) {
+							Object.assign(body, rest);
+						}
+
+						const leadId = this.getNodeParameter('leadId', i);
+
+						requestMethod = 'PATCH';
+						endpoint = `/leads/${leadId}`;
+
+					}
+
+				} else if (resource === 'organization') {
+					if (operation === 'create') {
+						// ----------------------------------
+						//         organization:create
+						// ----------------------------------
+
+						requestMethod = 'POST';
+						endpoint = '/organizations';
+
+						body.name = this.getNodeParameter('name', i) as string;
+						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						addAdditionalFields(body, additionalFields);
+
+					} else if (operation === 'delete') {
+						// ----------------------------------
+						//         organization:delete
+						// ----------------------------------
+
+						requestMethod = 'DELETE';
+
+						const organizationId = this.getNodeParameter('organizationId', i) as number;
+						endpoint = `/organizations/${organizationId}`;
+
+					} else if (operation === 'get') {
+						// ----------------------------------
+						//         organization:get
+						// ----------------------------------
+
+						requestMethod = 'GET';
+
+						const organizationId = this.getNodeParameter('organizationId', i) as number;
+						endpoint = `/organizations/${organizationId}`;
+
+					} else if (operation === 'getAll') {
+						// ----------------------------------
+						//         organization:getAll
+						// ----------------------------------
+
+						requestMethod = 'GET';
+
+						returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						if (returnAll === false) {
+							qs.limit = this.getNodeParameter('limit', i) as number;
+						}
+
+						endpoint = `/organizations`;
+
+					} else if (operation === 'update') {
+						// ----------------------------------
+						//         organization:update
+						// ----------------------------------
+
+						const id = this.getNodeParameter('organizationId', i) as string;
+
+						requestMethod = 'PUT';
+						endpoint = `/organizations/${id}`;
+
+						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+						addAdditionalFields(body, updateFields);
+
+						if (body.label === 'null') {
+							body.label = null;
+						}
+
+					} else if (operation === 'search') {
+						// ----------------------------------
+						//         organization:search
+						// ----------------------------------
+
+						requestMethod = 'GET';
+
+						qs.term = this.getNodeParameter('term', i) as string;
+						returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						if (returnAll === false) {
+							qs.limit = this.getNodeParameter('limit', i) as number;
+						}
+
+						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject & {
+							fields?: string[];
+						};
+
+						if (additionalFields?.fields?.length) {
+							qs.fields = additionalFields.fields.join(',');
+						}
+
+						if (additionalFields.exactMatch) {
+							qs.exact_match = additionalFields.exactMatch as boolean;
+						}
+
+						endpoint = `/organizations/search`;
+					}
+				} else if (resource === 'person') {
+					if (operation === 'create') {
+						// ----------------------------------
+						//         person:create
+						// ----------------------------------
+
+						requestMethod = 'POST';
+						endpoint = '/persons';
+
+						body.name = this.getNodeParameter('name', i) as string;
+						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						addAdditionalFields(body, additionalFields);
+
+					} else if (operation === 'delete') {
+						// ----------------------------------
+						//         person:delete
+						// ----------------------------------
+
+						requestMethod = 'DELETE';
+
+						const personId = this.getNodeParameter('personId', i) as number;
+						endpoint = `/persons/${personId}`;
+
+					} else if (operation === 'get') {
+						// ----------------------------------
+						//         person:get
+						// ----------------------------------
+
+						requestMethod = 'GET';
+
+						const personId = this.getNodeParameter('personId', i) as number;
+						endpoint = `/persons/${personId}`;
+
+					} else if (operation === 'getAll') {
+						// ----------------------------------
+						//         persons:getAll
+						// ----------------------------------
+
+						requestMethod = 'GET';
+
+						returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						if (returnAll === false) {
+							qs.limit = this.getNodeParameter('limit', i) as number;
+						}
+
+						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+
+						if (additionalFields.filterId) {
+							qs.filter_id = additionalFields.filterId as string;
+						}
+
+						if (additionalFields.firstChar) {
+							qs.first_char = additionalFields.firstChar as string;
+						}
+
+						endpoint = `/persons`;
+
+					} else if (operation === 'search') {
+						// ----------------------------------
+						//         persons:search
+						// ----------------------------------
+
+						requestMethod = 'GET';
+
+						qs.term = this.getNodeParameter('term', i) as string;
+						returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						if (returnAll === false) {
+							qs.limit = this.getNodeParameter('limit', i) as number;
+						}
+
+						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+
+						if (additionalFields.fields) {
+							qs.fields = additionalFields.fields as string;
+						}
+
+						if (additionalFields.exactMatch) {
+							qs.exact_match = additionalFields.exactMatch as boolean;
+						}
+
+						if (additionalFields.organizationId) {
+							qs.organization_id = parseInt(additionalFields.organizationId as string, 10);
+						}
+
+						if (additionalFields.includeFields) {
+							qs.include_fields = additionalFields.includeFields as string;
+						}
+
+						endpoint = `/persons/search`;
+
+					} else if (operation === 'update') {
+						// ----------------------------------
+						//         person:update
+						// ----------------------------------
+
+						requestMethod = 'PUT';
+
+						const personId = this.getNodeParameter('personId', i) as number;
+						endpoint = `/persons/${personId}`;
+
+						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+						addAdditionalFields(body, updateFields);
+
+						if (body.label === 'null') {
+							body.label = null;
+						}
+
+					}
+				} else if (resource === 'product') {
+					if (operation === 'getAll') {
+						// ----------------------------------
+						//         product:getAll
+						// ----------------------------------
+
+						requestMethod = 'GET';
+
+						returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						if (returnAll === false) {
+							qs.limit = this.getNodeParameter('limit', i) as number;
+						}
+
+						endpoint = `/products`;
+
+					}
+				} else {
+					throw new NodeOperationError(this.getNode(), `The resource "${resource}" is not known!`);
+				}
+
+				let responseData;
+				if (returnAll === true) {
+
+					responseData = await pipedriveApiRequestAllItems.call(this, requestMethod, endpoint, body, qs);
+
+				} else {
+
+					if (customProperties !== undefined) {
+						pipedriveEncodeCustomProperties(customProperties!, body);
+					}
+
+					responseData = await pipedriveApiRequest.call(this, requestMethod, endpoint, body, qs, formData, downloadFile);
 
 				}
-			} else if (resource === 'deal') {
-				if (operation === 'create') {
-					// ----------------------------------
-					//         deal:create
-					// ----------------------------------
 
-					requestMethod = 'POST';
-					endpoint = '/deals';
+				if (resource === 'file' && operation === 'download') {
+					const newItem: INodeExecutionData = {
+						json: items[i].json,
+						binary: {},
+					};
 
-					body.title = this.getNodeParameter('title', i) as string;
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
-					addAdditionalFields(body, additionalFields);
-
-				} else if (operation === 'delete') {
-					// ----------------------------------
-					//         deal:delete
-					// ----------------------------------
-
-					requestMethod = 'DELETE';
-
-					const dealId = this.getNodeParameter('dealId', i) as number;
-					endpoint = `/deals/${dealId}`;
-
-				} else if (operation === 'duplicate') {
-					// ----------------------------------
-					//         deal:duplicate
-					// ----------------------------------
-
-					requestMethod = 'POST';
-
-					const dealId = this.getNodeParameter('dealId', i) as number;
-					endpoint = `/deals/${dealId}/duplicate`;
-
-				} else if (operation === 'get') {
-					// ----------------------------------
-					//         deal:get
-					// ----------------------------------
-
-					requestMethod = 'GET';
-
-					const dealId = this.getNodeParameter('dealId', i) as number;
-					endpoint = `/deals/${dealId}`;
-
-				} else if (operation === 'getAll') {
-					// ----------------------------------
-					//         deal:getAll
-					// ----------------------------------
-
-					requestMethod = 'GET';
-
-					returnAll = this.getNodeParameter('returnAll', i) as boolean;
-					if (returnAll === false) {
-						qs.limit = this.getNodeParameter('limit', i) as number;
+					if (items[i].binary !== undefined) {
+						// Create a shallow copy of the binary data so that the old
+						// data references which do not get changed still stay behind
+						// but the incoming data does not get changed.
+						Object.assign(newItem.binary, items[i].binary);
 					}
 
-					endpoint = `/deals`;
-
-				} else if (operation === 'update') {
-					// ----------------------------------
-					//         deal:update
-					// ----------------------------------
-
-					requestMethod = 'PUT';
-
-					const dealId = this.getNodeParameter('dealId', i) as number;
-					endpoint = `/deals/${dealId}`;
-
-					const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
-					addAdditionalFields(body, updateFields);
-
-				}
-
-			} else if (resource === 'file') {
-				if (operation === 'create') {
-					// ----------------------------------
-					//         file:create
-					// ----------------------------------
-
-					requestMethod = 'POST';
-					endpoint = '/files';
-
-					const item = items[i];
-
-					if (item.binary === undefined) {
-						throw new Error('No binary data exists on item!');
-					}
+					items[i] = newItem;
 
 					const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i) as string;
 
-					if (item.binary[binaryPropertyName] === undefined) {
-						throw new Error(`No binary data property "${binaryPropertyName}" does not exists on item!`);
-					}
-
-					const fileBufferData = Buffer.from(item.binary[binaryPropertyName].data, BINARY_ENCODING);
-
-					formData.file = {
-						value: fileBufferData,
-						options: {
-							contentType: item.binary[binaryPropertyName].mimeType,
-							filename: item.binary[binaryPropertyName].fileName,
-						}
-					};
-
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
-					addAdditionalFields(formData, additionalFields);
-
-				} else if (operation === 'delete') {
-					// ----------------------------------
-					//         file:delete
-					// ----------------------------------
-
-					requestMethod = 'DELETE';
-
-					const fileId = this.getNodeParameter('fileId', i) as number;
-					endpoint = `/files/${fileId}`;
-
-				} else if (operation === 'download') {
-					// ----------------------------------
-					//         file:download
-					// ----------------------------------
-
-					requestMethod = 'GET';
-					downloadFile = true;
-
-					const fileId = this.getNodeParameter('fileId', i) as number;
-					endpoint = `/files/${fileId}/download`;
-
-				} else if (operation === 'get') {
-					// ----------------------------------
-					//         file:get
-					// ----------------------------------
-
-					requestMethod = 'GET';
-
-					const fileId = this.getNodeParameter('fileId', i) as number;
-					endpoint = `/files/${fileId}`;
-
-				}
-			} else if (resource === 'note') {
-				if (operation === 'create') {
-					// ----------------------------------
-					//         note:create
-					// ----------------------------------
-
-					requestMethod = 'POST';
-					endpoint = '/notes';
-
-					body.content = this.getNodeParameter('content', i) as string;
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
-					addAdditionalFields(body, additionalFields);
-
-				} else if (operation === 'delete') {
-					// ----------------------------------
-					//         note:delete
-					// ----------------------------------
-
-					requestMethod = 'DELETE';
-
-					const noteId = this.getNodeParameter('noteId', i) as number;
-					endpoint = `/notes/${noteId}`;
-
-				} else if (operation === 'get') {
-					// ----------------------------------
-					//         note:get
-					// ----------------------------------
-
-					requestMethod = 'GET';
-
-					const noteId = this.getNodeParameter('noteId', i) as number;
-					endpoint = `/notes/${noteId}`;
-
-				} else if (operation === 'getAll') {
-					// ----------------------------------
-					//         note:getAll
-					// ----------------------------------
-
-					requestMethod = 'GET';
-
-					returnAll = this.getNodeParameter('returnAll', i) as boolean;
-					if (returnAll === false) {
-						qs.limit = this.getNodeParameter('limit', i) as number;
-					}
-
-					endpoint = `/notes`;
-
-				} else if (operation === 'update') {
-					// ----------------------------------
-					//         note:update
-					// ----------------------------------
-
-					requestMethod = 'PUT';
-
-					const noteId = this.getNodeParameter('noteId', i) as number;
-					endpoint = `/notes/${noteId}`;
-
-					const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
-					addAdditionalFields(body, updateFields);
-
-				}
-			} else if (resource === 'organization') {
-				if (operation === 'create') {
-					// ----------------------------------
-					//         organization:create
-					// ----------------------------------
-
-					requestMethod = 'POST';
-					endpoint = '/organizations';
-
-					body.name = this.getNodeParameter('name', i) as string;
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
-					addAdditionalFields(body, additionalFields);
-
-				} else if (operation === 'delete') {
-					// ----------------------------------
-					//         organization:delete
-					// ----------------------------------
-
-					requestMethod = 'DELETE';
-
-					const organizationId = this.getNodeParameter('organizationId', i) as number;
-					endpoint = `/organizations/${organizationId}`;
-
-				} else if (operation === 'get') {
-					// ----------------------------------
-					//         organization:get
-					// ----------------------------------
-
-					requestMethod = 'GET';
-
-					const organizationId = this.getNodeParameter('organizationId', i) as number;
-					endpoint = `/organizations/${organizationId}`;
-
-				} else if (operation === 'getAll') {
-					// ----------------------------------
-					//         organization:getAll
-					// ----------------------------------
-
-					requestMethod = 'GET';
-
-					returnAll = this.getNodeParameter('returnAll', i) as boolean;
-					if (returnAll === false) {
-						qs.limit = this.getNodeParameter('limit', i) as number;
-					}
-
-					endpoint = `/organizations`;
-
-				}
-			} else if (resource === 'person') {
-				if (operation === 'create') {
-					// ----------------------------------
-					//         person:create
-					// ----------------------------------
-
-					requestMethod = 'POST';
-					endpoint = '/persons';
-
-					body.name = this.getNodeParameter('name', i) as string;
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
-					addAdditionalFields(body, additionalFields);
-
-				} else if (operation === 'delete') {
-					// ----------------------------------
-					//         person:delete
-					// ----------------------------------
-
-					requestMethod = 'DELETE';
-
-					const personId = this.getNodeParameter('personId', i) as number;
-					endpoint = `/persons/${personId}`;
-
-				} else if (operation === 'get') {
-					// ----------------------------------
-					//         person:get
-					// ----------------------------------
-
-					requestMethod = 'GET';
-
-					const personId = this.getNodeParameter('personId', i) as number;
-					endpoint = `/persons/${personId}`;
-
-				} else if (operation === 'getAll') {
-					// ----------------------------------
-					//         persons:getAll
-					// ----------------------------------
-
-					requestMethod = 'GET';
-
-					returnAll = this.getNodeParameter('returnAll', i) as boolean;
-					if (returnAll === false) {
-						qs.limit = this.getNodeParameter('limit', i) as number;
-					}
-
-					endpoint = `/persons`;
-
-				} else if (operation === 'update') {
-					// ----------------------------------
-					//         person:update
-					// ----------------------------------
-
-					requestMethod = 'PUT';
-
-					const personId = this.getNodeParameter('personId', i) as number;
-					endpoint = `/persons/${personId}`;
-
-					const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
-					addAdditionalFields(body, updateFields);
-
-				}
-			} else if (resource === 'product') {
-				if (operation === 'getAll') {
-					// ----------------------------------
-					//         product:getAll
-					// ----------------------------------
-
-					requestMethod = 'GET';
-
-					returnAll = this.getNodeParameter('returnAll', i) as boolean;
-					if (returnAll === false) {
-						qs.limit = this.getNodeParameter('limit', i) as number;
-					}
-
-					endpoint = `/products`;
-
-				}
-			} else {
-				throw new Error(`The resource "${resource}" is not known!`);
-			}
-
-			let responseData;
-			if (returnAll === true) {
-				responseData = await pipedriveApiRequestAllItems.call(this, requestMethod, endpoint, body, qs);
-			} else {
-
-				if (customProperties !== undefined) {
-					pipedriveEncodeCustomProperties(customProperties!, body);
-				}
-
-				responseData = await pipedriveApiRequest.call(this, requestMethod, endpoint, body, qs, formData, downloadFile);
-			}
-
-			if (resource === 'file' && operation === 'download') {
-				const newItem: INodeExecutionData = {
-					json: items[i].json,
-					binary: {},
-				};
-
-				if (items[i].binary !== undefined) {
-					// Create a shallow copy of the binary data so that the old
-					// data references which do not get changed still stay behind
-					// but the incoming data does not get changed.
-					Object.assign(newItem.binary, items[i].binary);
-				}
-
-				items[i] = newItem;
-
-				const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i) as string;
-
-				items[i].binary![binaryPropertyName] = await this.helpers.prepareBinaryData(responseData.data);
-			} else {
-				if (Array.isArray(responseData.data)) {
-					returnData.push.apply(returnData, responseData.data as IDataObject[]);
+					items[i].binary![binaryPropertyName] = await this.helpers.prepareBinaryData(responseData.data);
 				} else {
-					returnData.push(responseData.data as IDataObject);
+
+					if (responseData.data === null) {
+						responseData.data = [];
+					}
+
+					if (operation === 'search' && responseData.data && responseData.data.items) {
+						responseData.data = responseData.data.items;
+						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						if (additionalFields.rawData !== true) {
+							responseData.data = responseData.data.map((item: { result_score: number, item: object }) => {
+								return {
+									result_score: item.result_score,
+									...item.item,
+								};
+							});
+						}
+					}
+
+					if (Array.isArray(responseData.data)) {
+						returnData.push.apply(returnData, responseData.data as IDataObject[]);
+					} else if (responseData.data === true) {
+						returnData.push({ success: true });
+					} else {
+						returnData.push(responseData.data as IDataObject);
+					}
 				}
+			} catch (error) {
+				if (this.continueOnFail()) {
+					if (resource === 'file' && operation === 'download') {
+						items[i].json = { error: error.message };
+					} else {
+						returnData.push({ error: error.message });
+					}
+					continue;
+				}
+				throw error;
 			}
 		}
 

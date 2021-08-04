@@ -1,10 +1,11 @@
 import { Builder, Parser } from 'xml2js';
 import { IExecuteFunctions } from 'n8n-core';
 import {
+	IDataObject,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
-	IDataObject,
+	NodeOperationError,
 } from 'n8n-workflow';
 
 
@@ -220,7 +221,7 @@ export class Xml implements INodeType {
 					},
 				],
 			},
-		]
+		],
 	};
 
 
@@ -234,33 +235,42 @@ export class Xml implements INodeType {
 
 		let item: INodeExecutionData;
 		for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
-			item = items[itemIndex];
+			try {
 
-			if (mode === 'xmlToJson') {
-				const parserOptions = Object.assign({
-					mergeAttrs: true,
-					explicitArray: false,
-				}, options);
+				item = items[itemIndex];
 
-				const parser = new Parser(parserOptions);
+				if (mode === 'xmlToJson') {
+					const parserOptions = Object.assign({
+						mergeAttrs: true,
+						explicitArray: false,
+					}, options);
 
-				if (item.json[dataPropertyName] === undefined) {
-					throw new Error(`No json property "${dataPropertyName}" does not exists on item!`);
-				}
+					const parser = new Parser(parserOptions);
 
-				// @ts-ignore
-				const json = await parser.parseStringPromise(item.json[dataPropertyName]);
-				items[itemIndex] = { json };
-			} else if (mode === 'jsonToxml') {
-				const builder = new Builder(options);
-
-				items[itemIndex] = {
-					json: {
-						[dataPropertyName]: builder.buildObject(items[itemIndex].json)
+					if (item.json[dataPropertyName] === undefined) {
+						throw new NodeOperationError(this.getNode(), `No json property "${dataPropertyName}" does not exists on item!`);
 					}
-				};
-			} else {
-				throw new Error(`The operation "${mode}" is not known!`);
+
+					// @ts-ignore
+					const json = await parser.parseStringPromise(item.json[dataPropertyName]);
+					items[itemIndex] = { json };
+				} else if (mode === 'jsonToxml') {
+					const builder = new Builder(options);
+
+					items[itemIndex] = {
+						json: {
+							[dataPropertyName]: builder.buildObject(items[itemIndex].json),
+						},
+					};
+				} else {
+					throw new NodeOperationError(this.getNode(), `The operation "${mode}" is not known!`);
+				}
+			} catch (error) {
+				if (this.continueOnFail()) {
+					items[itemIndex] = ({json:{ error: error.message }});
+					continue;
+				}
+				throw error;
 			}
 		}
 

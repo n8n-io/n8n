@@ -2,29 +2,35 @@ import {
 	BINARY_ENCODING,
 	IExecuteFunctions,
 } from 'n8n-core';
+
 import {
 	IDataObject,
-	INodeTypeDescription,
 	INodeExecutionData,
 	INodeType,
+	INodeTypeDescription,
+	NodeOperationError,
 } from 'n8n-workflow';
 
-import { parseString } from 'xml2js';
-import { OptionsWithUri } from 'request';
+import {
+	parseString,
+} from 'xml2js';
 
+import {
+	nextCloudApiRequest,
+} from './GenericFunctions';
 
 export class NextCloud implements INodeType {
 	description: INodeTypeDescription = {
-		displayName: 'NextCloud',
+		displayName: 'Nextcloud',
 		name: 'nextCloud',
 		icon: 'file:nextcloud.png',
 		group: ['input'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
-		description: 'Access data on NextCloud',
+		description: 'Access data on Nextcloud',
 		defaults: {
-			name: 'NextCloud',
-			color: '#22BB44',
+			name: 'Nextcloud',
+			color: '#1cafff',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -32,9 +38,44 @@ export class NextCloud implements INodeType {
 			{
 				name: 'nextCloudApi',
 				required: true,
-			}
+				displayOptions: {
+					show: {
+						authentication: [
+							'accessToken',
+						],
+					},
+				},
+			},
+			{
+				name: 'nextCloudOAuth2Api',
+				required: true,
+				displayOptions: {
+					show: {
+						authentication: [
+							'oAuth2',
+						],
+					},
+				},
+			},
 		],
 		properties: [
+			{
+				displayName: 'Authentication',
+				name: 'authentication',
+				type: 'options',
+				options: [
+					{
+						name: 'Access Token',
+						value: 'accessToken',
+					},
+					{
+						name: 'OAuth2',
+						value: 'oAuth2',
+					},
+				],
+				default: 'accessToken',
+				description: 'The resource to operate on.',
+			},
 			{
 				displayName: 'Resource',
 				name: 'resource',
@@ -47,6 +88,10 @@ export class NextCloud implements INodeType {
 					{
 						name: 'Folder',
 						value: 'folder',
+					},
+					{
+						name: 'User',
+						value: 'user',
 					},
 				],
 				default: 'file',
@@ -130,7 +175,7 @@ export class NextCloud implements INodeType {
 					{
 						name: 'List',
 						value: 'list',
-						description: 'Return the files and folders in a given folder',
+						description: 'Return the contents of a given folder',
 					},
 					{
 						name: 'Move',
@@ -142,7 +187,47 @@ export class NextCloud implements INodeType {
 				description: 'The operation to perform.',
 			},
 
-
+			{
+				displayName: 'Operation',
+				name: 'operation',
+				type: 'options',
+				displayOptions: {
+					show: {
+						resource: [
+							'user',
+						],
+					},
+				},
+				options: [
+					{
+						name: 'Create',
+						value: 'create',
+						description: 'Invite a user to a NextCloud organization',
+					},
+					{
+						name: 'Delete',
+						value: 'delete',
+						description: 'Delete a user.',
+					},
+					{
+						name: 'Get',
+						value: 'get',
+						description: 'Retrieve information about a single user.',
+					},
+					{
+						name: 'Get All',
+						value: 'getAll',
+						description: 'Retrieve a list of users.',
+					},
+					{
+						name: 'Update',
+						value: 'update',
+						description: 'Edit attributes related to a user.',
+					},
+				],
+				default: 'create',
+				description: 'The operation to perform.',
+			},
 
 			// ----------------------------------
 			//         file
@@ -160,7 +245,7 @@ export class NextCloud implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'copy'
+							'copy',
 						],
 						resource: [
 							'file',
@@ -169,7 +254,7 @@ export class NextCloud implements INodeType {
 					},
 				},
 				placeholder: '/invoices/original.txt',
-				description: 'The path of file or folder to copy.',
+				description: 'The path of file or folder to copy. The path should start with "/"',
 			},
 			{
 				displayName: 'To Path',
@@ -180,7 +265,7 @@ export class NextCloud implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'copy'
+							'copy',
 						],
 						resource: [
 							'file',
@@ -189,7 +274,7 @@ export class NextCloud implements INodeType {
 					},
 				},
 				placeholder: '/invoices/copy.txt',
-				description: 'The destination path of file or folder.',
+				description: 'The destination path of file or folder. The path should start with "/"',
 			},
 
 			// ----------------------------------
@@ -204,7 +289,7 @@ export class NextCloud implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'delete'
+							'delete',
 						],
 						resource: [
 							'file',
@@ -212,8 +297,8 @@ export class NextCloud implements INodeType {
 						],
 					},
 				},
-				placeholder: 'invoices/2019/invoice_1.pdf',
-				description: 'The path to delete. Can be a single file or a whole folder.',
+				placeholder: '/invoices/2019/invoice_1.pdf',
+				description: 'The path to delete. Can be a single file or a whole folder. The path should start with "/"',
 			},
 
 			// ----------------------------------
@@ -228,7 +313,7 @@ export class NextCloud implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'move'
+							'move',
 						],
 						resource: [
 							'file',
@@ -237,7 +322,7 @@ export class NextCloud implements INodeType {
 					},
 				},
 				placeholder: '/invoices/old_name.txt',
-				description: 'The path of file or folder to move.',
+				description: 'The path of file or folder to move. The path should start with "/"',
 			},
 			{
 				displayName: 'To Path',
@@ -248,7 +333,7 @@ export class NextCloud implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'move'
+							'move',
 						],
 						resource: [
 							'file',
@@ -257,7 +342,7 @@ export class NextCloud implements INodeType {
 					},
 				},
 				placeholder: '/invoices/new_name.txt',
-				description: 'The new path of file or folder.',
+				description: 'The new path of file or folder. The path should start with "/"',
 			},
 
 			// ----------------------------------
@@ -272,15 +357,15 @@ export class NextCloud implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'download'
+							'download',
 						],
 						resource: [
 							'file',
 						],
 					},
 				},
-				placeholder: 'invoices/2019/invoice_1.pdf',
-				description: 'The file path of the file to download. Has to contain the full path.',
+				placeholder: '/invoices/2019/invoice_1.pdf',
+				description: 'The file path of the file to download. Has to contain the full path. The path should start with "/"',
 			},
 			{
 				displayName: 'Binary Property',
@@ -291,7 +376,7 @@ export class NextCloud implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'download'
+							'download',
 						],
 						resource: [
 							'file',
@@ -313,15 +398,15 @@ export class NextCloud implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'upload'
+							'upload',
 						],
 						resource: [
 							'file',
 						],
 					},
 				},
-				placeholder: 'invoices/2019/invoice_1.pdf',
-				description: 'The file path of the file to upload. Has to contain the full path. The parent folder has to exist. Existing files get overwritten.',
+				placeholder: '/invoices/2019/invoice_1.pdf',
+				description: 'The absolute file path of the file to upload. Has to contain the full path. The parent folder has to exist. Existing files get overwritten.',
 			},
 			{
 				displayName: 'Binary Data',
@@ -332,7 +417,7 @@ export class NextCloud implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'upload'
+							'upload',
 						],
 						resource: [
 							'file',
@@ -349,10 +434,10 @@ export class NextCloud implements INodeType {
 				displayOptions: {
 					show: {
 						binaryDataUpload: [
-							false
+							false,
 						],
 						operation: [
-							'upload'
+							'upload',
 						],
 						resource: [
 							'file',
@@ -372,10 +457,10 @@ export class NextCloud implements INodeType {
 				displayOptions: {
 					show: {
 						binaryDataUpload: [
-							true
+							true,
 						],
 						operation: [
-							'upload'
+							'upload',
 						],
 						resource: [
 							'file',
@@ -405,15 +490,15 @@ export class NextCloud implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'create'
+							'create',
 						],
 						resource: [
 							'folder',
 						],
 					},
 				},
-				placeholder: 'invoices/2019',
-				description: 'The folder to create. The parent folder has to exist.',
+				placeholder: '/invoices/2019',
+				description: 'The folder to create. The parent folder has to exist. The path should start with "/"',
 			},
 
 			// ----------------------------------
@@ -427,17 +512,267 @@ export class NextCloud implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'list'
+							'list',
 						],
 						resource: [
 							'folder',
 						],
 					},
 				},
-				placeholder: 'invoices/2019/',
-				description: 'The path of which to list the content.',
+				placeholder: '/invoices/2019/',
+				description: 'The path of which to list the content. The path should start with "/"',
 			},
 
+			// ----------------------------------
+			//         user
+			// ----------------------------------
+
+			// ----------------------------------
+			//         user:create
+			// ----------------------------------
+			{
+				displayName: 'Username',
+				name: 'userId',
+				type: 'string',
+				default: '',
+				required: true,
+				displayOptions: {
+					show: {
+						resource: [
+							'user',
+						],
+						operation: [
+							'create',
+						],
+					},
+				},
+				placeholder: 'john',
+				description: 'Username the user will have.',
+			},
+			{
+				displayName: 'Email',
+				name: 'email',
+				type: 'string',
+				default: '',
+				required: true,
+				displayOptions: {
+					show: {
+						resource: [
+							'user',
+						],
+						operation: [
+							'create',
+						],
+					},
+				},
+				placeholder: 'john@email.com',
+				description: 'The email of the user to invite.',
+			},
+			{
+				displayName: 'Additional Fields',
+				name: 'additionalFields',
+				type: 'collection',
+				placeholder: 'Add Field',
+				default: {},
+				displayOptions: {
+					show: {
+						resource: [
+							'user',
+						],
+						operation: [
+							'create',
+						],
+					},
+				},
+				options: [
+					{
+						displayName: 'Display name',
+						name: 'displayName',
+						type: 'string',
+						default: '',
+						description: 'The display name of the user to invite.',
+					},
+				],
+			},
+			// ----------------------------------
+			//         user:get/delete/update
+			// ----------------------------------
+			{
+				displayName: 'Username',
+				name: 'userId',
+				type: 'string',
+				default: '',
+				required: true,
+				displayOptions: {
+					show: {
+						resource: [
+							'user',
+						],
+						operation: [
+							'delete',
+							'get',
+							'update',
+						],
+					},
+				},
+				placeholder: 'john',
+				description: 'Username the user will have.',
+			},
+			// ----------------------------------
+			//         user:getAll
+			// ----------------------------------
+			{
+				displayName: 'Return All',
+				name: 'returnAll',
+				type: 'boolean',
+				displayOptions: {
+					show: {
+						resource: [
+							'user',
+						],
+						operation: [
+							'getAll',
+						],
+					},
+				},
+				default: false,
+				description: 'If all results should be returned or only up to a given limit.',
+			},
+			{
+				displayName: 'Limit',
+				name: 'limit',
+				type: 'number',
+				displayOptions: {
+					show: {
+						resource: [
+							'user',
+						],
+						operation: [
+							'getAll',
+						],
+						returnAll: [
+							false,
+						],
+					},
+				},
+				typeOptions: {
+					minValue: 1,
+					maxValue: 100,
+				},
+				default: 50,
+				description: 'How many results to return.',
+			},
+			{
+				displayName: 'Options',
+				name: 'options',
+				type: 'collection',
+				placeholder: 'Add Option',
+				default: {},
+				displayOptions: {
+					show: {
+						resource: [
+							'user',
+						],
+						operation: [
+							'getAll',
+						],
+					},
+				},
+				options: [
+					{
+						displayName: 'Search',
+						name: 'search',
+						type: 'string',
+						default: '',
+						description: 'Optional search string.',
+					},
+					{
+						displayName: 'Offset',
+						name: 'offset',
+						type: 'number',
+						default: '',
+						description: 'Optional offset value.',
+					},
+				],
+			},
+			// ----------------------------------
+			//         user:update
+			// ----------------------------------
+			{
+				displayName: 'Update Fields',
+				name: 'updateFields',
+				type: 'fixedCollection',
+				typeOptions: {
+					multipleValues: false,
+				},
+				placeholder: 'Add Option',
+				default: {},
+				displayOptions: {
+					show: {
+						resource: [
+							'user',
+						],
+						operation: [
+							'update',
+						],
+					},
+				},
+				options: [
+					{
+						displayName: 'Fields',
+						name: 'field',
+						values: [
+							{
+								displayName: 'Key',
+								name: 'key',
+								type: 'options',
+								default: 'email',
+								options:
+									[
+										{
+											name: 'Address',
+											value: 'address',
+											description: 'The new address for the user.',
+										},
+										{
+											name: 'Display Name',
+											value: 'displayname',
+											description: 'The new display name for the user.',
+										},
+										{
+											name: 'Email',
+											value: 'email',
+											description: 'The new email for the user.',
+										},
+										{
+											name: 'Password',
+											value: 'password',
+											description: 'The new password for the user.',
+										},
+										{
+											name: 'Twitter',
+											value: 'twitter',
+											description: 'The new twitter handle for the user.',
+										},
+										{
+											name: 'Website',
+											value: 'website',
+											description: 'The new website for the user.',
+										},
+									],
+								description: 'Key of the updated attribute.',
+							},
+							{
+								displayName: 'Value',
+								name: 'value',
+								type: 'string',
+								default: '',
+								description: 'Value of the updated attribute.',
+							},
+						],
+					},
+				],
+			},
 		],
 	};
 
@@ -446,10 +781,17 @@ export class NextCloud implements INodeType {
 		const items = this.getInputData().slice();
 		const returnData: IDataObject[] = [];
 
-		const credentials = this.getCredentials('nextCloudApi');
+		const authenticationMethod = this.getNodeParameter('authentication', 0);
+		let credentials;
+
+		if (authenticationMethod === 'accessToken') {
+			credentials = this.getCredentials('nextCloudApi');
+		} else {
+			credentials = this.getCredentials('nextCloudOAuth2Api');
+		}
 
 		if (credentials === undefined) {
-			throw new Error('No credentials got returned!');
+			throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
 		}
 
 		const resource = this.getNodeParameter('resource', 0) as string;
@@ -459,211 +801,350 @@ export class NextCloud implements INodeType {
 		let requestMethod = '';
 		let responseData: any; // tslint:disable-line:no-any
 
-		let body: string | Buffer = '';
+		let body: string | Buffer | IDataObject = '';
 		const headers: IDataObject = {};
+		let qs;
 
 		for (let i = 0; i < items.length; i++) {
-			if (resource === 'file') {
-				if (operation === 'download') {
-					// ----------------------------------
-					//         download
-					// ----------------------------------
+			try {
+				if (resource === 'file') {
+					if (operation === 'download') {
+						// ----------------------------------
+						//         download
+						// ----------------------------------
 
-					requestMethod = 'GET';
-					endpoint = this.getNodeParameter('path', i) as string;
+						requestMethod = 'GET';
+						endpoint = this.getNodeParameter('path', i) as string;
 
-				} else if (operation === 'upload') {
-					// ----------------------------------
-					//         upload
-					// ----------------------------------
+					} else if (operation === 'upload') {
+						// ----------------------------------
+						//         upload
+						// ----------------------------------
 
-					requestMethod = 'PUT';
-					endpoint = this.getNodeParameter('path', i) as string;
+						requestMethod = 'PUT';
+						endpoint = this.getNodeParameter('path', i) as string;
 
-					if (this.getNodeParameter('binaryDataUpload', i) === true) {
-						// Is binary file to upload
-						const item = items[i];
+						if (this.getNodeParameter('binaryDataUpload', i) === true) {
+							// Is binary file to upload
+							const item = items[i];
 
-						if (item.binary === undefined) {
-							throw new Error('No binary data exists on item!');
+							if (item.binary === undefined) {
+								throw new NodeOperationError(this.getNode(), 'No binary data exists on item!');
+							}
+
+							const propertyNameUpload = this.getNodeParameter('binaryPropertyName', i) as string;
+
+
+							if (item.binary[propertyNameUpload] === undefined) {
+								throw new NodeOperationError(this.getNode(), `No binary data property "${propertyNameUpload}" does not exists on item!`);
+							}
+
+							body = Buffer.from(item.binary[propertyNameUpload].data, BINARY_ENCODING);
+						} else {
+							// Is text file
+							body = this.getNodeParameter('fileContent', i) as string;
 						}
+					}
+				} else if (resource === 'folder') {
+					if (operation === 'create') {
+						// ----------------------------------
+						//         create
+						// ----------------------------------
 
-						const propertyNameUpload = this.getNodeParameter('binaryPropertyName', i) as string;
+						requestMethod = 'MKCOL';
+						endpoint = this.getNodeParameter('path', i) as string;
 
+					} else if (operation === 'list') {
+						// ----------------------------------
+						//         list
+						// ----------------------------------
 
-						if (item.binary[propertyNameUpload] === undefined) {
-							throw new Error(`No binary data property "${propertyNameUpload}" does not exists on item!`);
-						}
+						requestMethod = 'PROPFIND';
+						endpoint = this.getNodeParameter('path', i) as string;
 
-						body = Buffer.from(item.binary[propertyNameUpload].data, BINARY_ENCODING);
-					} else {
-						// Is text file
-						body = this.getNodeParameter('fileContent', i) as string;
 					}
 				}
-			} else if (resource === 'folder') {
-				if (operation === 'create') {
-					// ----------------------------------
-					//         create
-					// ----------------------------------
 
-					requestMethod = 'MKCOL';
-					endpoint = this.getNodeParameter('path', i) as string;
+				if (['file', 'folder'].includes(resource)) {
+					if (operation === 'copy') {
+						// ----------------------------------
+						//         copy
+						// ----------------------------------
 
-				} else if (operation === 'list') {
-					// ----------------------------------
-					//         list
-					// ----------------------------------
+						requestMethod = 'COPY';
+						endpoint = this.getNodeParameter('path', i) as string;
+						const toPath = this.getNodeParameter('toPath', i) as string;
+						headers.Destination = `${credentials.webDavUrl}/${encodeURI(toPath)}`;
 
-					requestMethod = 'PROPFIND';
-					endpoint = this.getNodeParameter('path', i) as string;
+					} else if (operation === 'delete') {
+						// ----------------------------------
+						//         delete
+						// ----------------------------------
 
+						requestMethod = 'DELETE';
+						endpoint = this.getNodeParameter('path', i) as string;
+
+					} else if (operation === 'move') {
+						// ----------------------------------
+						//         move
+						// ----------------------------------
+
+						requestMethod = 'MOVE';
+						endpoint = this.getNodeParameter('path', i) as string;
+						const toPath = this.getNodeParameter('toPath', i) as string;
+						headers.Destination = `${credentials.webDavUrl}/${encodeURI(toPath)}`;
+
+					}
+
+				} else if (resource === 'user') {
+					if (operation === 'create') {
+						// ----------------------------------
+						//         user:create
+						// ----------------------------------
+
+						requestMethod = 'POST';
+
+						endpoint = 'ocs/v1.php/cloud/users';
+
+						headers['OCS-APIRequest'] = true;
+						headers['Content-Type'] = 'application/x-www-form-urlencoded';
+
+						const userid = this.getNodeParameter('userId', i) as string;
+						const email = this.getNodeParameter('email', i) as string;
+
+						body = `userid=${userid}&email=${email}`;
+
+						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+
+						if (additionalFields.displayName) {
+							body += `&displayName=${additionalFields.displayName}`;
+						}
+					}
+					if (operation === 'delete') {
+						// ----------------------------------
+						//         user:delete
+						// ----------------------------------
+
+						requestMethod = 'DELETE';
+
+						const userid = this.getNodeParameter('userId', i) as string;
+						endpoint = `ocs/v1.php/cloud/users/${userid}`;
+
+						headers['OCS-APIRequest'] = true;
+						headers['Content-Type'] = 'application/x-www-form-urlencoded';
+					}
+					if (operation === 'get') {
+						// ----------------------------------
+						//         user:get
+						// ----------------------------------
+
+						requestMethod = 'GET';
+
+						const userid = this.getNodeParameter('userId', i) as string;
+						endpoint = `ocs/v1.php/cloud/users/${userid}`;
+
+						headers['OCS-APIRequest'] = true;
+						headers['Content-Type'] = 'application/x-www-form-urlencoded';
+					}
+					if (operation === 'getAll') {
+						// ----------------------------------
+						//         user:getAll
+						// ----------------------------------
+
+						requestMethod = 'GET';
+						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						qs = this.getNodeParameter('options', i) as IDataObject;
+						if (!returnAll) {
+							qs.limit = this.getNodeParameter('limit', i) as number;
+						}
+						endpoint = `ocs/v1.php/cloud/users`;
+
+						headers['OCS-APIRequest'] = true;
+						headers['Content-Type'] = 'application/x-www-form-urlencoded';
+					}
+					if (operation === 'update') {
+						// ----------------------------------
+						//         user:update
+						// ----------------------------------
+
+						requestMethod = 'PUT';
+
+						const userid = this.getNodeParameter('userId', i) as string;
+						endpoint = `ocs/v1.php/cloud/users/${userid}`;
+
+						body = Object.entries((this.getNodeParameter('updateFields', i) as IDataObject).field as IDataObject).map(entry => {
+							const [key, value] = entry;
+							return `${key}=${value}`;
+						}).join('&');
+
+						headers['OCS-APIRequest'] = true;
+						headers['Content-Type'] = 'application/x-www-form-urlencoded';
+					}
+				} else {
+					throw new NodeOperationError(this.getNode(), `The resource "${resource}" is not known!`);
 				}
-			}
 
-			if (['file', 'folder'].includes(resource)) {
-				if (operation === 'copy') {
-					// ----------------------------------
-					//         copy
-					// ----------------------------------
-
-					requestMethod = 'COPY';
-					endpoint = this.getNodeParameter('path', i) as string;
-					const toPath = this.getNodeParameter('toPath', i) as string;
-					headers.Destination = `${credentials.webDavUrl}/${encodeURI(toPath)}`;
-
-				} else if (operation === 'delete') {
-					// ----------------------------------
-					//         delete
-					// ----------------------------------
-
-					requestMethod = 'DELETE';
-					endpoint = this.getNodeParameter('path', i) as string;
-
-				} else if (operation === 'move') {
-					// ----------------------------------
-					//         move
-					// ----------------------------------
-
-					requestMethod = 'MOVE';
-					endpoint = this.getNodeParameter('path', i) as string;
-					const toPath = this.getNodeParameter('toPath', i) as string;
-					headers.Destination = `${credentials.webDavUrl}/${encodeURI(toPath)}`;
-
+				// Make sure that the webdav URL does never have a trailing slash because
+				// one gets added always automatically
+				let webDavUrl = credentials.webDavUrl as string;
+				if (webDavUrl.slice(-1) === '/') {
+					webDavUrl = webDavUrl.slice(0, -1);
 				}
-			} else {
-				throw new Error(`The resource "${resource}" is not known!`);
-			}
 
-			// Make sure that the webdav URL does never have a trailing slash because
-			// one gets added always automatically
-			let webDavUrl = credentials.webDavUrl as string;
-			if (webDavUrl.slice(-1) === '/') {
-				webDavUrl = webDavUrl.slice(0, -1);
-			}
+				let encoding = undefined;
+				if (resource === 'file' && operation === 'download') {
+					// Return the data as a buffer
+					encoding = null;
+				}
 
-			const options: OptionsWithUri = {
-				auth: {
-					user: credentials.user as string,
-					pass: credentials.password as string,
-				},
-				headers,
-				method: requestMethod,
-				body,
-				qs: {},
-				uri: `${credentials.webDavUrl}/${encodeURI(endpoint)}`,
-				json: false,
-			};
+				try {
+					responseData = await nextCloudApiRequest.call(this, requestMethod, endpoint, body, headers, encoding, qs);
+				} catch (error) {
+					if (this.continueOnFail()) {
+						if (resource === 'file' && operation === 'download') {
+							items[i].json = { error: error.message };
+						} else {
+							returnData.push({ error: error.message });
+						}
+						continue;
+					}
 
-			if (resource === 'file' && operation === 'download') {
-				// Return the data as a buffer
-				options.encoding = null;
-			}
+					throw error;
+				}
 
-			try {
-				responseData = await this.helpers.request(options);
+				if (resource === 'file' && operation === 'download') {
+
+					const newItem: INodeExecutionData = {
+						json: items[i].json,
+						binary: {},
+					};
+
+					if (items[i].binary !== undefined) {
+						// Create a shallow copy of the binary data so that the old
+						// data references which do not get changed still stay behind
+						// but the incoming data does not get changed.
+						Object.assign(newItem.binary, items[i].binary);
+					}
+
+					items[i] = newItem;
+
+					const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i) as string;
+
+					items[i].binary![binaryPropertyName] = await this.helpers.prepareBinaryData(responseData, endpoint);
+
+				} else if (resource === 'user') {
+
+					if (operation !== 'getAll') {
+
+						const jsonResponseData: IDataObject = await new Promise((resolve, reject) => {
+							parseString(responseData, { explicitArray: false }, (err, data) => {
+								if (err) {
+									return reject(err);
+								}
+
+								if (data.ocs.meta.status !== 'ok') {
+									return reject(new Error(data.ocs.meta.message || data.ocs.meta.status));
+								}
+
+								if (operation === 'delete' || operation === 'update') {
+									resolve(data.ocs.meta as IDataObject);
+								} else {
+									resolve(data.ocs.data as IDataObject);
+								}
+							});
+						});
+
+						returnData.push(jsonResponseData as IDataObject);
+					} else {
+
+						const jsonResponseData: IDataObject[] = await new Promise((resolve, reject) => {
+							parseString(responseData, { explicitArray: false }, (err, data) => {
+								if (err) {
+									return reject(err);
+								}
+
+								if (data.ocs.meta.status !== 'ok') {
+									return reject(new Error(data.ocs.meta.message));
+								}
+
+								if (typeof (data.ocs.data.users.element) === 'string') {
+									resolve([data.ocs.data.users.element] as IDataObject[]);
+								} else {
+									resolve(data.ocs.data.users.element as IDataObject[]);
+								}
+							});
+						});
+
+						jsonResponseData.forEach(value => {
+							returnData.push({ id: value } as IDataObject);
+						});
+					}
+
+				} else if (resource === 'folder' && operation === 'list') {
+
+					const jsonResponseData: IDataObject = await new Promise((resolve, reject) => {
+						parseString(responseData, { explicitArray: false }, (err, data) => {
+							if (err) {
+								return reject(err);
+							}
+							resolve(data as IDataObject);
+						});
+					});
+
+					const propNames: { [key: string]: string } = {
+						'd:getlastmodified': 'lastModified',
+						'd:getcontentlength': 'contentLength',
+						'd:getcontenttype': 'contentType',
+					};
+
+					if (jsonResponseData['d:multistatus'] !== undefined &&
+						jsonResponseData['d:multistatus'] !== null &&
+						(jsonResponseData['d:multistatus'] as IDataObject)['d:response'] !== undefined &&
+						(jsonResponseData['d:multistatus'] as IDataObject)['d:response'] !== null) {
+						let skippedFirst = false;
+
+						// @ts-ignore
+						for (const item of jsonResponseData['d:multistatus']['d:response']) {
+							if (skippedFirst === false) {
+								skippedFirst = true;
+								continue;
+							}
+							const newItem: IDataObject = {};
+
+							newItem.path = item['d:href'].slice(19);
+
+							const props = item['d:propstat'][0]['d:prop'];
+
+							// Get the props and save them under a proper name
+							for (const propName of Object.keys(propNames)) {
+								if (props[propName] !== undefined) {
+									newItem[propNames[propName]] = props[propName];
+								}
+							}
+
+							if (props['d:resourcetype'] === '') {
+								newItem.type = 'file';
+							} else {
+								newItem.type = 'folder';
+							}
+							newItem.eTag = props['d:getetag'].slice(1, -1);
+
+							returnData.push(newItem as IDataObject);
+						}
+					}
+				} else {
+					returnData.push(responseData as IDataObject);
+				}
 			} catch (error) {
-				if (this.continueOnFail() === true) {
-					returnData.push({ error });
+				if (this.continueOnFail()) {
+					if (resource === 'file' && operation === 'download') {
+						items[i].json = { error: error.message };
+					} else {
+						returnData.push({ error: error.message });
+					}
 					continue;
 				}
-
 				throw error;
-			}
-
-			if (resource === 'file' && operation === 'download') {
-
-				const newItem: INodeExecutionData = {
-					json: items[i].json,
-					binary: {},
-				};
-
-				if (items[i].binary !== undefined) {
-					// Create a shallow copy of the binary data so that the old
-					// data references which do not get changed still stay behind
-					// but the incoming data does not get changed.
-					Object.assign(newItem.binary, items[i].binary);
-				}
-
-				items[i] = newItem;
-
-				const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i) as string;
-
-				items[i].binary![binaryPropertyName] = await this.helpers.prepareBinaryData(responseData, endpoint);
-			} else if (resource === 'folder' && operation === 'list') {
-
-				const jsonResponseData: IDataObject = await new Promise((resolve, reject) => {
-					parseString(responseData, { explicitArray: false }, (err, data) => {
-						if (err) {
-							return reject(err);
-						}
-						resolve(data as IDataObject);
-					});
-				});
-
-				const propNames: { [key: string]: string } = {
-					'd:getlastmodified': 'lastModified',
-					'd:getcontentlength': 'contentLength',
-					'd:getcontenttype': 'contentType',
-				};
-
-				if (jsonResponseData['d:multistatus'] !== undefined &&
-					jsonResponseData['d:multistatus'] !== null &&
-					(jsonResponseData['d:multistatus'] as IDataObject)['d:response'] !== undefined &&
-					(jsonResponseData['d:multistatus'] as IDataObject)['d:response'] !== null) {
-					let skippedFirst = false;
-
-					// @ts-ignore
-					for (const item of jsonResponseData['d:multistatus']['d:response']) {
-						if (skippedFirst === false) {
-							skippedFirst = true;
-							continue;
-						}
-						const newItem: IDataObject = {};
-
-						newItem.path = item['d:href'].slice(19);
-
-						const props = item['d:propstat'][0]['d:prop'];
-
-						// Get the props and save them under a proper name
-						for (const propName of Object.keys(propNames)) {
-							if (props[propName] !== undefined) {
-								newItem[propNames[propName]] = props[propName];
-							}
-						}
-
-						if (props['d:resourcetype'] === '') {
-							newItem.type = 'file';
-						} else {
-							newItem.type = 'folder';
-						}
-						newItem.eTag = props['d:getetag'].slice(1, -1);
-
-						returnData.push(newItem as IDataObject);
-					}
-				}
-			} else {
-				returnData.push(responseData as IDataObject);
 			}
 
 		}
@@ -671,7 +1152,7 @@ export class NextCloud implements INodeType {
 		if (resource === 'file' && operation === 'download') {
 			// For file downloads the files get attached to the existing items
 			return this.prepareOutputData(items);
-		} else  {
+		} else {
 			// For all other ones does the output get replaced
 			return [this.helpers.returnJsonArray(returnData)];
 		}

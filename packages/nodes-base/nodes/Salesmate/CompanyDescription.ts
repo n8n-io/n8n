@@ -545,7 +545,7 @@ export const companyFields = [
 				],
 				default: 'desc',
 				description: 'Sort order',
-			}
+			},
 		],
 	},
 	{
@@ -693,12 +693,12 @@ export const companyFields = [
 										name: 'value',
 										type: 'string',
 										default: '',
-									}
-								]
+									},
+								],
 							},
 						],
 					},
-				]
+				],
 			},
 		],
 	},

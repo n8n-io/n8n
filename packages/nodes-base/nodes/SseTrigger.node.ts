@@ -14,7 +14,7 @@ export class SseTrigger implements INodeType {
 		icon: 'fa:cloud-download-alt',
 		group: ['trigger'],
 		version: 1,
-		description: 'Triggers workflow on a new Server-Sent Event',
+		description: 'Triggers the workflow when Server-Sent Events occur',
 		defaults: {
 			name: 'SSE Trigger',
 			color: '#225577',
@@ -31,7 +31,7 @@ export class SseTrigger implements INodeType {
 				description: 'The URL to receive the SSE from.',
 				required: true,
 			},
-		]
+		],
 	};
 
 

@@ -5,12 +5,16 @@ import {
 } from 'n8n-core';
 
 import {
-	INodePropertyOptions,
+	INodePropertyOptions, NodeApiError, NodeOperationError,
 } from 'n8n-workflow';
 
-import { OptionsWithUri } from 'request';
-import { IDataObject } from 'n8n-workflow';
+import {
+	OptionsWithUri,
+} from 'request';
 
+import {
+	IDataObject,
+} from 'n8n-workflow';
 
 // Interface in Typeform
 export interface ITypeformDefinition {
@@ -45,18 +49,10 @@ export interface ITypeformAnswerField {
  * @returns {Promise<any>}
  */
 export async function apiRequest(this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions, method: string, endpoint: string, body: object, query?: IDataObject): Promise<any> { // tslint:disable-line:no-any
-	const credentials = this.getCredentials('typeformApi');
-
-	if (credentials === undefined) {
-		throw new Error('No credentials got returned!');
-	}
-
-	query = query || {};
+	const authenticationMethod = this.getNodeParameter('authentication', 0);
 
 	const options: OptionsWithUri = {
-		headers: {
-			'Authorization': `bearer ${credentials.accessToken}`,
-		},
+		headers: {},
 		method,
 		body,
 		qs: query,
@@ -64,22 +60,25 @@ export async function apiRequest(this: IHookFunctions | IExecuteFunctions | ILoa
 		json: true,
 	};
 
+	query = query || {};
+
 	try {
-		return await this.helpers.request!(options);
+		if (authenticationMethod === 'accessToken') {
+
+			const credentials = this.getCredentials('typeformApi');
+
+			if (credentials === undefined) {
+				throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
+			}
+
+			options.headers!['Authorization'] = `bearer ${credentials.accessToken}`;
+
+			return await this.helpers.request!(options);
+		} else {
+			return await this.helpers.requestOAuth2!.call(this, 'typeformOAuth2Api', options);
+		}
 	} catch (error) {
-		if (error.statusCode === 401) {
-			// Return a clear error
-			throw new Error('The Typeform credentials are not valid!');
-		}
-
-		if (error.response && error.response.body && error.response.body.description) {
-			// Try to return the error prettier
-			const errorBody = error.response.body;
-			throw new Error(`Typeform error response [${error.statusCode} - errorBody.code]: ${errorBody.description}`);
-		}
-
-		// Expected error data did not get returned so throw the actual error
-		throw error;
+		throw new NodeApiError(this.getNode(), error);
 	}
 }
 
@@ -138,7 +137,7 @@ export async function getForms(this: ILoadOptionsFunctions): Promise<INodeProper
 	const responseData = await apiRequestAllItems.call(this, 'GET', endpoint, {});
 
 	if (responseData.items === undefined) {
-		throw new Error('No data got returned');
+		throw new NodeOperationError(this.getNode(), 'No data got returned');
 	}
 
 	const returnData: INodePropertyOptions[] = [];

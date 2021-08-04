@@ -1,16 +1,17 @@
 import {
 	ICredentialType,
-	NodePropertyTypes,
+	INodeProperties,
 } from 'n8n-workflow';
 
 export class SegmentApi implements ICredentialType {
 	name = 'segmentApi';
 	displayName = 'Segment API';
-	properties = [
+	documentationUrl = 'segment';
+	properties: INodeProperties[] = [
 		{
 			displayName: 'Write Key',
 			name: 'writekey',
-			type: 'string' as NodePropertyTypes,
+			type: 'string',
 			default: '',
 		},
 	];

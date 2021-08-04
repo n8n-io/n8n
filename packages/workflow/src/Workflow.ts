@@ -1,13 +1,14 @@
 
 import {
+	Expression,
 	IConnections,
 	IGetExecuteTriggerFunctions,
 	INode,
-	INodes,
 	INodeExecuteFunctions,
 	INodeExecutionData,
 	INodeIssues,
 	INodeParameters,
+	INodes,
 	INodeType,
 	INodeTypes,
 	IPollFunctions,
@@ -23,20 +24,11 @@ import {
 	NodeParameterValue,
 	ObservableObject,
 	WebhookSetupMethodNames,
-	WorkflowDataProxy,
+	WorkflowActivateMode,
 	WorkflowExecuteMode,
 } from './';
 
-// @ts-ignore
-import * as tmpl from 'riot-tmpl';
 import { IConnection, IDataObject, IObservableObject } from './Interfaces';
-
-// Set it to use double curly brackets instead of single ones
-tmpl.brackets.set('{{ }}');
-
-// Make sure that it does not always print an error when it could not resolve
-// a variable
-tmpl.tmpl.errorHandler = () => { };
 
 
 export class Workflow {
@@ -46,6 +38,7 @@ export class Workflow {
 	connectionsBySourceNode: IConnections;
 	connectionsByDestinationNode: IConnections;
 	nodeTypes: INodeTypes;
+	expression: Expression;
 	active: boolean;
 	settings: IWorkflowSettings;
 
@@ -90,6 +83,8 @@ export class Workflow {
 		this.staticData = ObservableObject.create(parameters.staticData || {}, undefined, { ignoreEmptyOnFirstChild: true });
 
 		this.settings = parameters.settings || {};
+
+		this.expression = new Expression(this);
 	}
 
 
@@ -135,7 +130,7 @@ export class Workflow {
 						returnConnection[connectionInfo.node][connectionInfo.type][connectionInfo.index].push({
 							node: sourceNode,
 							type,
-							index: parseInt(inputIndex, 10)
+							index: parseInt(inputIndex, 10),
 						});
 					}
 				}
@@ -143,21 +138,6 @@ export class Workflow {
 		}
 
 		return returnConnection;
-	}
-
-
-
-	/**
-	 * Converts an object to a string in a way to make it clear that
-	 * the value comes from an object
-	 *
-	 * @param {object} value
-	 * @returns {string}
-	 * @memberof Workflow
-	 */
-	convertObjectValueToString(value: object): string {
-		const typeName = Array.isArray(value) ? 'Array' : 'Object';
-		return `[${typeName}: ${JSON.stringify(value)}]`;
 	}
 
 
@@ -236,7 +216,7 @@ export class Workflow {
 					typeUnknown: true,
 				};
 			} else {
-				nodeIssues = NodeHelpers.getNodeParametersIssues(nodeType.description.properties, node);
+				nodeIssues = NodeHelpers.getNodeParametersIssues(nodeType.description.properties!, node);
 			}
 
 			if (nodeIssues !== null) {
@@ -401,8 +381,8 @@ export class Workflow {
 
 		const returnData: any = {}; // tslint:disable-line:no-any
 
-		for (const parameterName of Object.keys(parameterValue)) {
-			returnData[parameterName] = this.renameNodeInExpressions(parameterValue[parameterName], currentName, newName);
+		for (const parameterName of Object.keys(parameterValue || {})) {
+			returnData[parameterName] = this.renameNodeInExpressions(parameterValue![parameterName], currentName, newName);
 		}
 
 		return returnData;
@@ -706,65 +686,6 @@ export class Workflow {
 
 
 
-	/**
-	 * Resolves value of parameter. But does not work for workflow-data.
-	 *
-	 * @param {INode} node
-	 * @param {(string | undefined)} parameterValue
-	 * @param {string} [defaultValue]
-	 * @returns {(string | undefined)}
-	 * @memberof Workflow
-	 */
-	getSimpleParameterValue(node: INode, parameterValue: string | undefined, defaultValue?: boolean | number | string): boolean | number | string | undefined {
-		if (parameterValue === undefined) {
-			// Value is not set so return the default
-			return defaultValue;
-		}
-
-		// Get the value of the node (can be an expression)
-		const runIndex = 0;
-		const itemIndex = 0;
-		const connectionInputData: INodeExecutionData[] = [];
-		const runData: IRunExecutionData = {
-			resultData: {
-				runData: {},
-			}
-		};
-
-		return this.getParameterValue(parameterValue, runData, runIndex, itemIndex, node.name, connectionInputData) as boolean | number | string | undefined;
-	}
-
-	/**
-	 * Resolves value of complex parameter. But does not work for workflow-data.
-	 *
-	 * @param {INode} node
-	 * @param {(NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[])} parameterValue
-	 * @param {(NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[] | undefined)} [defaultValue]
-	 * @returns {(NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[] | undefined)}
-	 * @memberof Workflow
-	 */
-	getComplexParameterValue(node: INode, parameterValue: NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[], defaultValue: NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[] | undefined = undefined): NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[] | undefined {
-		if (parameterValue === undefined) {
-			// Value is not set so return the default
-			return defaultValue;
-		}
-
-		// Get the value of the node (can be an expression)
-		const runIndex = 0;
-		const itemIndex = 0;
-		const connectionInputData: INodeExecutionData[] = [];
-		const runData: IRunExecutionData = {
-			resultData: {
-				runData: {},
-			}
-		};
-
-		// Resolve the "outer" main values
-		const returnData = this.getParameterValue(parameterValue, runData, runIndex, itemIndex, node.name, connectionInputData);
-
-		// Resolve the "inner" values
-		return this.getParameterValue(returnData, runData, runIndex, itemIndex, node.name, connectionInputData);
-	}
 
 	/**
 	 * Returns from which of the given nodes the workflow should get started from
@@ -781,7 +702,11 @@ export class Workflow {
 			node = this.nodes[nodeName];
 			nodeType = this.nodeTypes.getByName(node.type) as INodeType;
 
+
 			if (nodeType.trigger !== undefined || nodeType.poll !== undefined) {
+				if (node.disabled === true) {
+					continue;
+				}
 				return node;
 			}
 		}
@@ -836,119 +761,6 @@ export class Workflow {
 
 
 	/**
-	 * Returns the resolved node parameter value. If it is an expression it will execute it and
-	 * return the result. If the value to resolve is an array or object it will do the same
-	 * for all of the items and values.
-	 *
-	 * @param {(NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[])} parameterValue
-	 * @param {(IRunExecutionData | null)} runExecutionData
-	 * @param {number} runIndex
-	 * @param {number} itemIndex
-	 * @param {string} activeNodeName
-	 * @param {INodeExecutionData[]} connectionInputData
-	 * @param {boolean} [returnObjectAsString=false]
-	 * @returns {(NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[])}
-	 * @memberof Workflow
-	 */
-	getParameterValue(parameterValue: NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[], runExecutionData: IRunExecutionData | null, runIndex: number, itemIndex: number, activeNodeName: string, connectionInputData: INodeExecutionData[], returnObjectAsString = false): NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[] {
-		// Helper function which returns true when the parameter is a complex one or array
-		const isComplexParameter = (value: NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[]) => {
-			return typeof value === 'object';
-		};
-
-		// Helper function which resolves a parameter value depending on if it is simply or not
-		const resolveParameterValue = (value: NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[]) => {
-			if (isComplexParameter(value)) {
-				return this.getParameterValue(value, runExecutionData, runIndex, itemIndex, activeNodeName, connectionInputData, returnObjectAsString);
-			} else {
-				return this.resolveSimpleParameterValue(value as NodeParameterValue, runExecutionData, runIndex, itemIndex, activeNodeName, connectionInputData, returnObjectAsString);
-			}
-		};
-
-		// Check if it value is a simple one that we can get it resolved directly
-		if (!isComplexParameter(parameterValue)) {
-			return this.resolveSimpleParameterValue(parameterValue as NodeParameterValue, runExecutionData, runIndex, itemIndex, activeNodeName, connectionInputData, returnObjectAsString);
-		}
-
-		// The parameter value is complex so resolve depending on type
-
-		if (Array.isArray(parameterValue)) {
-			// Data is an array
-			const returnData = [];
-			for (const item of parameterValue) {
-				returnData.push(resolveParameterValue(item));
-			}
-
-			if (returnObjectAsString === true && typeof returnData === 'object') {
-				return this.convertObjectValueToString(returnData);
-			}
-
-			return returnData as NodeParameterValue[] | INodeParameters[];
-		} else {
-			// Data is an object
-			const returnData: INodeParameters = {};
-			for (const key of Object.keys(parameterValue)) {
-				returnData[key] = resolveParameterValue((parameterValue as INodeParameters)[key]);
-			}
-
-			if (returnObjectAsString === true && typeof returnData === 'object') {
-				return this.convertObjectValueToString(returnData);
-			}
-			return returnData;
-		}
-	}
-
-
-
-	/**
-	 * Resolves the paramter value.  If it is an expression it will execute it and
-	 * return the result. For everything simply the supplied value will be returned.
-	 *
-	 * @param {NodeParameterValue} parameterValue
-	 * @param {(IRunExecutionData | null)} runExecutionData
-	 * @param {number} runIndex
-	 * @param {number} itemIndex
-	 * @param {string} activeNodeName
-	 * @param {INodeExecutionData[]} connectionInputData
-	 * @param {boolean} [returnObjectAsString=false]
-	 * @returns {(NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[])}
-	 * @memberof Workflow
-	 */
-	resolveSimpleParameterValue(parameterValue: NodeParameterValue, runExecutionData: IRunExecutionData | null, runIndex: number, itemIndex: number, activeNodeName: string, connectionInputData: INodeExecutionData[], returnObjectAsString = false): NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[] {
-		// Check if it is an expression
-		if (typeof parameterValue !== 'string' || parameterValue.charAt(0) !== '=') {
-			// Is no expression so return value
-			return parameterValue;
-		}
-
-		// Is an expression
-
-		// Remove the equal sign
-		parameterValue = parameterValue.substr(1);
-
-		// Generate a data proxy which allows to query workflow data
-		const dataProxy = new WorkflowDataProxy(this, runExecutionData, runIndex, itemIndex, activeNodeName, connectionInputData);
-		const data = dataProxy.getDataProxy();
-
-		// Execute the expression
-		try {
-			const returnValue = tmpl.tmpl(parameterValue, data);
-			if (typeof returnValue === 'function') {
-				throw new Error('Expression resolved to a function. Please add "()"');
-			} else if (returnValue !== null && typeof returnValue === 'object') {
-				if (returnObjectAsString === true)  {
-					return this.convertObjectValueToString(returnValue);
-				}
-			}
-			return returnValue;
-		} catch (e) {
-			throw new Error(`Expression is not valid: ${e.message}`);
-		}
-	}
-
-
-
-	/**
 	 * Executes the Webhooks method of the node
 	 *
 	 * @param {WebhookSetupMethodNames} method The name of the method to execute
@@ -958,7 +770,7 @@ export class Workflow {
 	 * @returns {(Promise<boolean | undefined>)}
 	 * @memberof Workflow
 	 */
-	async runWebhookMethod(method: WebhookSetupMethodNames, webhookData: IWebhookData, nodeExecuteFunctions: INodeExecuteFunctions, mode: WorkflowExecuteMode, isTest?: boolean): Promise<boolean | undefined> {
+	async runWebhookMethod(method: WebhookSetupMethodNames, webhookData: IWebhookData, nodeExecuteFunctions: INodeExecuteFunctions, mode: WorkflowExecuteMode, activation: WorkflowActivateMode, isTest?: boolean): Promise<boolean | undefined> {
 		const node = this.getNode(webhookData.node) as INode;
 		const nodeType = this.nodeTypes.getByName(node.type) as INodeType;
 
@@ -975,7 +787,7 @@ export class Workflow {
 			return;
 		}
 
-		const thisArgs = nodeExecuteFunctions.getExecuteHookFunctions(this, node, webhookData.workflowExecuteAdditionalData, mode, isTest, webhookData);
+		const thisArgs = nodeExecuteFunctions.getExecuteHookFunctions(this, node, webhookData.workflowExecuteAdditionalData, mode, activation, isTest, webhookData);
 		return nodeType.webhookMethods[webhookData.webhookDescription.name][method]!.call(thisArgs);
 	}
 
@@ -991,8 +803,8 @@ export class Workflow {
 	 * @returns {(Promise<ITriggerResponse | undefined>)}
 	 * @memberof Workflow
 	 */
-	async runTrigger(node: INode, getTriggerFunctions: IGetExecuteTriggerFunctions, additionalData: IWorkflowExecuteAdditionalData, mode: WorkflowExecuteMode): Promise<ITriggerResponse | undefined> {
-		const triggerFunctions = getTriggerFunctions(this, node, additionalData, mode);
+	async runTrigger(node: INode, getTriggerFunctions: IGetExecuteTriggerFunctions, additionalData: IWorkflowExecuteAdditionalData, mode: WorkflowExecuteMode, activation: WorkflowActivateMode): Promise<ITriggerResponse | undefined> {
+		const triggerFunctions = getTriggerFunctions(this, node, additionalData, mode, activation);
 
 		const nodeType = this.nodeTypes.getByName(node.type);
 
@@ -1085,18 +897,18 @@ export class Workflow {
 	 * @returns {(Promise<INodeExecutionData[][] | null>)}
 	 * @memberof Workflow
 	 */
-	async runNode(node: INode, inputData: ITaskDataConnections, runExecutionData: IRunExecutionData, runIndex: number, additionalData: IWorkflowExecuteAdditionalData, nodeExecuteFunctions: INodeExecuteFunctions, mode: WorkflowExecuteMode): Promise<INodeExecutionData[][] | null> {
+	async runNode(node: INode, inputData: ITaskDataConnections, runExecutionData: IRunExecutionData, runIndex: number, additionalData: IWorkflowExecuteAdditionalData, nodeExecuteFunctions: INodeExecuteFunctions, mode: WorkflowExecuteMode): Promise<INodeExecutionData[][] | null | undefined> {
 		if (node.disabled === true) {
 			// If node is disabled simply pass the data through
 			// return NodeRunHelpers.
 			if (inputData.hasOwnProperty('main') && inputData.main.length > 0) {
 				// If the node is disabled simply return the data from the first main input
 				if (inputData.main[0] === null) {
-					return null;
+					return undefined;
 				}
 				return [(inputData.main[0] as INodeExecutionData[])];
 			}
-			return null;
+			return undefined;
 		}
 
 		const nodeType = this.nodeTypes.getByName(node.type);
@@ -1105,23 +917,42 @@ export class Workflow {
 		}
 
 		let connectionInputData: INodeExecutionData[] = [];
-		if (inputData.hasOwnProperty('main') && inputData.main.length > 0) {
-			// We always use the data of main input and the first input for executeSingle
-			connectionInputData = (inputData.main[0] as INodeExecutionData[]);
-		}
+		if (nodeType.execute || nodeType.executeSingle) {
+			// Only stop if first input is empty for execute & executeSingle runs. For all others run anyways
+			// because then it is a trigger node. As they only pass data through and so the input-data
+			// becomes output-data it has to be possible.
 
-		if (connectionInputData.length === 0) {
-			// No data for node so return
-			return null;
+			if (inputData.hasOwnProperty('main') && inputData.main.length > 0) {
+				// We always use the data of main input and the first input for executeSingle
+				connectionInputData = (inputData.main[0] as INodeExecutionData[]);
+			}
+
+			if (connectionInputData.length === 0) {
+				// No data for node so return
+				return undefined;
+			}
 		}
 
 		if (runExecutionData.resultData.lastNodeExecuted === node.name && runExecutionData.resultData.error !== undefined) {
 			// The node did already fail. So throw an error here that it displays and logs it correctly.
 			// Does get used by webhook and trigger nodes in case they throw an error that it is possible
 			// to log the error and display in Editor-UI.
+
 			const error = new Error(runExecutionData.resultData.error.message);
 			error.stack = runExecutionData.resultData.error.stack;
 			throw error;
+		}
+
+		if (node.executeOnce === true) {
+			// If node should be executed only once so use only the first input item
+			connectionInputData = connectionInputData.slice(0, 1);
+			const newInputData: ITaskDataConnections = {};
+			for (const inputName of Object.keys(inputData)) {
+				newInputData[inputName] = inputData[inputName].map(input => {
+					return input && input.slice(0, 1);
+				});
+			}
+			inputData = newInputData;
 		}
 
 		if (nodeType.executeSingle) {
@@ -1151,12 +982,18 @@ export class Workflow {
 			const thisArgs = nodeExecuteFunctions.getExecuteFunctions(this, runExecutionData, runIndex, connectionInputData, inputData, node, additionalData, mode);
 			return nodeType.execute.call(thisArgs);
 		} else if (nodeType.poll) {
-			const thisArgs = nodeExecuteFunctions.getExecutePollFunctions(this, node, additionalData, mode);
-			return nodeType.poll.call(thisArgs);
+			if (mode === 'manual') {
+				// In manual mode run the poll function
+				const thisArgs = nodeExecuteFunctions.getExecutePollFunctions(this, node, additionalData, mode, 'manual');
+				return nodeType.poll.call(thisArgs);
+			} else {
+				// In any other mode pass data through as it already contains the result of the poll
+				return inputData.main as INodeExecutionData[][];
+			}
 		} else if (nodeType.trigger) {
 			if (mode === 'manual') {
 				// In manual mode start the trigger
-				const triggerResponse = await this.runTrigger(node, nodeExecuteFunctions.getExecuteTriggerFunctions, additionalData, mode);
+				const triggerResponse = await this.runTrigger(node, nodeExecuteFunctions.getExecuteTriggerFunctions, additionalData, mode, 'manual');
 
 				if (triggerResponse === undefined) {
 					return null;
@@ -1181,12 +1018,12 @@ export class Workflow {
 				return response;
 			} else {
 				// For trigger nodes in any mode except "manual" do we simply pass the data through
-				return NodeHelpers.prepareOutputData(connectionInputData);
+				return inputData.main as INodeExecutionData[][];
 			}
 
 		} else if (nodeType.webhook) {
 			// For webhook nodes always simply pass the data through
-			return NodeHelpers.prepareOutputData(connectionInputData);
+			return inputData.main as INodeExecutionData[][];
 		}
 
 		return null;

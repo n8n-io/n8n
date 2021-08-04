@@ -1,6 +1,6 @@
 <template>
 	<div v-if="credentialTypesNodeDescriptionDisplayed.length" class="node-credentials">
-		<credentials-edit :dialogVisible="credentialNewDialogVisible" :editCredentials="editCredentials" :setCredentialType="addType" :nodesInit="nodesInit" @closeDialog="closeCredentialNewDialog" @credentialsCreated="credentialsCreated" @credentialsUpdated="credentialsUpdated"></credentials-edit>
+		<credentials-edit :dialogVisible="credentialNewDialogVisible" :editCredentials="editCredentials" :setCredentialType="addType" :nodesInit="nodesInit" :node="node" @closeDialog="closeCredentialNewDialog" @credentialsCreated="credentialsCreated" @credentialsUpdated="credentialsUpdated"></credentials-edit>
 
 		<div class="headline">
 			Credentials
@@ -45,10 +45,10 @@ import Vue from 'vue';
 
 import { restApi } from '@/components/mixins/restApi';
 import {
+	ICredentialsCreatedEvent,
 	ICredentialsResponse,
 	INodeUi,
 	INodeUpdatePropertiesInformation,
-	IUpdateInformation,
 } from '@/Interface';
 import {
 	ICredentialType,
@@ -134,21 +134,23 @@ export default mixins(
 		closeCredentialNewDialog () {
 			this.credentialNewDialogVisible = false;
 		},
-		async credentialsCreated (data: ICredentialsResponse) {
-			await this.credentialsUpdated(data);
+		async credentialsCreated (eventData: ICredentialsCreatedEvent) {
+			await this.credentialsUpdated(eventData);
 		},
-		credentialsUpdated (data: ICredentialsResponse) {
-			if (!this.credentialTypesNode.includes(data.type)) {
+		credentialsUpdated (eventData: ICredentialsCreatedEvent) {
+			if (!this.credentialTypesNode.includes(eventData.data.type)) {
 				return;
 			}
 
 			this.init();
-			Vue.set(this.credentials, data.type, data.name);
+			Vue.set(this.credentials, eventData.data.type, eventData.data.name);
 
 			// Makes sure that it does also get set correctly on the node not just the UI
-			this.credentialSelected(data.type);
+			this.credentialSelected(eventData.data.type);
 
-			this.closeCredentialNewDialog();
+			if (eventData.options.closeDialog === true) {
+				this.closeCredentialNewDialog();
+			}
 		},
 		credentialInputWrapperStyle (credentialType: string) {
 			let deductWidth = 0;
@@ -209,8 +211,6 @@ export default mixins(
 			return node.issues.credentials[credentialTypeName];
 		},
 		updateCredentials (credentialType: string): void {
-			const credentials = this.credentials[credentialType];
-
 			const name = this.credentials[credentialType];
 			const credentialData = this.credentialOptions[credentialType].find((optionData: ICredentialsResponse) => optionData.name === name);
 			if (credentialData === undefined) {

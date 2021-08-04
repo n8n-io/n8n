@@ -22,6 +22,7 @@
 
 <script lang="ts">
 
+import { externalHooks } from '@/components/mixins/externalHooks';
 import { genericHelpers } from '@/components/mixins/genericHelpers';
 import { restApi } from '@/components/mixins/restApi';
 import { showMessage } from '@/components/mixins/showMessage';
@@ -31,8 +32,10 @@ import {
 } from '../Interface';
 
 import mixins from 'vue-typed-mixins';
+import { mapGetters } from "vuex";
 
 export default mixins(
+	externalHooks,
 	genericHelpers,
 	restApi,
 	showMessage,
@@ -52,6 +55,9 @@ export default mixins(
 				};
 			},
 			computed: {
+				...mapGetters({
+					dirtyState: "getStateIsDirty",
+				}),
 				nodesIssuesExist (): boolean {
 					return this.$store.getters.nodesIssuesExist;
 				},
@@ -98,9 +104,11 @@ export default mixins(
 						// workflow. If that would not happen then it could be quite confusing
 						// for people because it would activate a different version of the workflow
 						// than the one they can currently see.
-						const importConfirm = await this.confirmMessage(`When you activate the workflow all currently unsaved changes of the workflow will be saved.`, 'Activate and save?', 'warning', 'Yes, activate and save!');
-						if (importConfirm === false) {
-							return;
+						if (this.dirtyState) {
+							const importConfirm = await this.confirmMessage(`When you activate the workflow all currently unsaved changes of the workflow will be saved.`, 'Activate and save?', 'warning', 'Yes, activate and save!');
+							if (importConfirm === false) {
+								return;
+							}
 						}
 
 						// Get the current workflow data that it gets saved together with the activation
@@ -121,10 +129,12 @@ export default mixins(
 					}
 
 					const currentWorkflowId = this.$store.getters.workflowId;
+					let activationEventName = 'workflow.activeChange';
 					if (currentWorkflowId === this.workflowId) {
 						// If the status of the current workflow got changed
 						// commit it specifically
 						this.$store.commit('setActive', newActiveState);
+						activationEventName = 'workflow.activeChangeCurrent';
 					}
 
 					if (newActiveState === true) {
@@ -132,6 +142,8 @@ export default mixins(
 					} else {
 						this.$store.commit('setWorkflowInactive', this.workflowId);
 					}
+
+					this.$externalHooks().run(activationEventName, { workflowId: this.workflowId, active: newActiveState });
 
 					this.$emit('workflowActiveChanged', { id: this.workflowId, active: newActiveState });
 					this.loading = false;

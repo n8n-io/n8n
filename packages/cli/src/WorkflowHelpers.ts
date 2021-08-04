@@ -1,9 +1,12 @@
 import {
+	CredentialTypes,
 	Db,
+	ICredentialsTypeData,
 	ITransferNodeTypes,
-	IWorkflowExecutionDataProcess,
 	IWorkflowErrorData,
+	IWorkflowExecutionDataProcess,
 	NodeTypes,
+	ResponseHelper,
 	WorkflowCredentials,
 	WorkflowRunner,
 } from './';
@@ -15,10 +18,13 @@ import {
 	IRun,
 	IRunExecutionData,
 	ITaskData,
-	Workflow,
-} from 'n8n-workflow';
+	IWorkflowCredentials,
+	LoggerProxy as Logger,
+	Workflow,} from 'n8n-workflow';
 
 import * as config from '../config';
+import { WorkflowEntity } from './databases/entities/WorkflowEntity';
+import { validate } from 'class-validator';
 
 const ERROR_TRIGGER_TYPE = config.get('nodes.errorTriggerType') as string;
 
@@ -79,11 +85,11 @@ export function isWorkflowIdValid (id: string | null | undefined | number): bool
 export async function executeErrorWorkflow(workflowId: string, workflowErrorData: IWorkflowErrorData): Promise<void> {
 	// Wrap everything in try/catch to make sure that no errors bubble up and all get caught here
 	try {
-		const workflowData = await Db.collections.Workflow!.findOne({ id: workflowId });
+		const workflowData = await Db.collections.Workflow!.findOne({ id: Number(workflowId) });
 
 		if (workflowData === undefined) {
 			// The error workflow could not be found
-			console.error(`ERROR: Calling Error Workflow for "${workflowErrorData.workflow.id}". Could not find error workflow "${workflowId}"`);
+			Logger.error(`Calling Error Workflow for "${workflowErrorData.workflow.id}". Could not find error workflow "${workflowId}"`, { workflowId });
 			return;
 		}
 
@@ -102,7 +108,7 @@ export async function executeErrorWorkflow(workflowId: string, workflowErrorData
 		}
 
 		if (workflowStartNode === undefined) {
-			console.error(`ERROR: Calling Error Workflow for "${workflowErrorData.workflow.id}". Could not find "${ERROR_TRIGGER_TYPE}" in workflow "${workflowId}"`);
+			Logger.error(`Calling Error Workflow for "${workflowErrorData.workflow.id}". Could not find "${ERROR_TRIGGER_TYPE}" in workflow "${workflowId}"`);
 			return;
 		}
 
@@ -117,12 +123,12 @@ export async function executeErrorWorkflow(workflowId: string, workflowErrorData
 					main: [
 						[
 							{
-								json: workflowErrorData
-							}
-						]
+								json: workflowErrorData,
+							},
+						],
 					],
 				},
-			},
+			}
 		);
 
 		const runExecutionData: IRunExecutionData = {
@@ -150,7 +156,7 @@ export async function executeErrorWorkflow(workflowId: string, workflowErrorData
 		const workflowRunner = new WorkflowRunner();
 		await workflowRunner.run(runData);
 	} catch (error) {
-		console.error(`ERROR: Calling Error Workflow for "${workflowErrorData.workflow.id}": ${error.message}`);
+		Logger.error(`Calling Error Workflow for "${workflowErrorData.workflow.id}": "${error.message}"`, { workflowId: workflowErrorData.workflow.id });
 	}
 }
 
@@ -218,6 +224,63 @@ export function getNodeTypeData(nodes: INode[]): ITransferNodeTypes {
 
 
 /**
+ * Returns the credentials data of the given type and its parent types
+ * it extends
+ *
+ * @export
+ * @param {string} type The credential type to return data off
+ * @returns {ICredentialsTypeData}
+ */
+export function getCredentialsDataWithParents(type: string): ICredentialsTypeData {
+	const credentialTypes = CredentialTypes();
+	const credentialType = credentialTypes.getByName(type);
+
+	const credentialTypeData: ICredentialsTypeData = {};
+	credentialTypeData[type] = credentialType;
+
+	if (credentialType === undefined || credentialType.extends === undefined) {
+		return credentialTypeData;
+	}
+
+	for (const typeName of credentialType.extends) {
+		if (credentialTypeData[typeName] !== undefined) {
+			continue;
+		}
+
+		credentialTypeData[typeName] = credentialTypes.getByName(typeName);
+		Object.assign(credentialTypeData, getCredentialsDataWithParents(typeName));
+	}
+
+	return credentialTypeData;
+}
+
+
+
+/**
+ * Returns all the credentialTypes which are needed to resolve
+ * the given workflow credentials
+ *
+ * @export
+ * @param {IWorkflowCredentials} credentials The credentials which have to be able to be resolved
+ * @returns {ICredentialsTypeData}
+ */
+export function getCredentialsData(credentials: IWorkflowCredentials): ICredentialsTypeData {
+	const credentialTypeData: ICredentialsTypeData = {};
+
+	for (const credentialType of Object.keys(credentials)) {
+		if (credentialTypeData[credentialType] !== undefined) {
+			continue;
+		}
+
+		Object.assign(credentialTypeData, getCredentialsDataWithParents(credentialType));
+	}
+
+	return credentialTypeData;
+}
+
+
+
+/**
  * Returns the names of the NodeTypes which are are needed
  * to execute the gives nodes
  *
@@ -255,8 +318,7 @@ export async function saveStaticData(workflow: Workflow): Promise <void> {
 				await saveStaticDataById(workflow.id!, workflow.staticData);
 				workflow.staticData.__dataChanged = false;
 			} catch (e) {
-				// TODO: Add proper logging!
-				console.error(`There was a problem saving the workflow with id "${workflow.id}" to save changed staticData: ${e.message}`);
+				Logger.error(`There was a problem saving the workflow with id "${workflow.id}" to save changed staticData: "${e.message}"`, { workflowId: workflow.id });
 			}
 		}
 	}
@@ -298,3 +360,32 @@ export async function getStaticDataById(workflowId: string | number) {
 
 	return workflowData.staticData || {};
 }
+
+
+// TODO: Deduplicate `validateWorkflow` and `throwDuplicateEntryError` with TagHelpers?
+
+export async function validateWorkflow(newWorkflow: WorkflowEntity) {
+	const errors = await validate(newWorkflow);
+
+	if (errors.length) {
+		const validationErrorMessage = Object.values(errors[0].constraints!)[0];
+		throw new ResponseHelper.ResponseError(validationErrorMessage, undefined, 400);
+	}
+}
+
+export function throwDuplicateEntryError(error: Error) {
+	const errorMessage = error.message.toLowerCase();
+	if (errorMessage.includes('unique') || errorMessage.includes('duplicate')) {
+		throw new ResponseHelper.ResponseError('There is already a workflow with this name', undefined, 400);
+	}
+
+	throw new ResponseHelper.ResponseError(errorMessage, undefined, 400);
+}
+
+export type WorkflowNameRequest = Express.Request & {
+	query: {
+		name?: string;
+		offset?: string;
+	}
+};
+

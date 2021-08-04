@@ -1,17 +1,18 @@
 import {
 	ICredentialType,
-	NodePropertyTypes,
+	INodeProperties,
 } from 'n8n-workflow';
 
 
 export class MailgunApi implements ICredentialType {
 	name = 'mailgunApi';
 	displayName = 'Mailgun API';
-	properties = [
+	documentationUrl = 'mailgun';
+	properties: INodeProperties[] = [
 		{
 			displayName: 'API Domain',
 			name: 'apiDomain',
-			type: 'options' as NodePropertyTypes,
+			type: 'options',
 			options: [
 				{
 					name: 'api.eu.mailgun.net',
@@ -28,14 +29,14 @@ export class MailgunApi implements ICredentialType {
 		{
 			displayName: 'Email Domain',
 			name: 'emailDomain',
-			type: 'string' as NodePropertyTypes,
+			type: 'string',
 			default: '',
 			description: '.',
 		},
 		{
 			displayName: 'API Key',
 			name: 'apiKey',
-			type: 'string' as NodePropertyTypes,
+			type: 'string',
 			default: '',
 		},
 	];

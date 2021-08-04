@@ -4,6 +4,7 @@ import {
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
+	NodeOperationError,
 } from 'n8n-workflow';
 import { RundeckApi } from './RundeckApi';
 
@@ -26,7 +27,7 @@ export class Rundeck implements INodeType {
 			{
 				name: 'rundeckApi',
 				required: true,
-			}
+			},
 		],
 		properties: [
 			{
@@ -50,7 +51,7 @@ export class Rundeck implements INodeType {
 					{
 						name: 'Execute',
 						value: 'execute',
-						description: 'Executes job',
+						description: 'Execute a job',
 					},
 					{
 						name: 'Get Metadata',
@@ -120,7 +121,7 @@ export class Rundeck implements INodeType {
 								type: 'string',
 								default: '',
 							},
-						]
+						],
 					},
 				],
 			},
@@ -185,10 +186,10 @@ export class Rundeck implements INodeType {
 
 					returnData.push(response);
 				} else {
-					throw new Error(`The operation "${operation}" is not supported!`);
+					throw new NodeOperationError(this.getNode(), `The operation "${operation}" is not supported!`);
 				}
 			} else {
-				throw new Error(`The resource "${resource}" is not supported!`);
+				throw new NodeOperationError(this.getNode(), `The resource "${resource}" is not supported!`);
 			}
 		}
 

@@ -1,6 +1,7 @@
 import {
 	INode,
 	INodeCredentials,
+	INodeParameters,
 	INodePropertyOptions,
 	INodeTypes,
 	IWorkflowExecuteAdditionalData,
@@ -17,10 +18,12 @@ const TEMP_WORKFLOW_NAME = 'Temp-Workflow';
 
 
 export class LoadNodeParameterOptions {
+	path: string;
 	workflow: Workflow;
 
 
-	constructor(nodeTypeName: string, nodeTypes: INodeTypes, credentials?: INodeCredentials) {
+	constructor(nodeTypeName: string, nodeTypes: INodeTypes, path: string, currentNodeParameters: INodeParameters, credentials?: INodeCredentials) {
+		this.path = path;
 		const nodeType = nodeTypes.getByName(nodeTypeName);
 
 		if (nodeType === undefined) {
@@ -28,15 +31,14 @@ export class LoadNodeParameterOptions {
 		}
 
 		const nodeData: INode = {
-			parameters: {
-			},
+			parameters: currentNodeParameters,
 			name: TEMP_NODE_NAME,
 			type: nodeTypeName,
 			typeVersion: 1,
 			position: [
 				0,
 				0,
-			]
+			],
 		};
 
 		if (credentials) {
@@ -89,7 +91,7 @@ export class LoadNodeParameterOptions {
 			throw new Error(`The node-type "${node!.type}" does not have the method "${methodName}" defined!`);
 		}
 
-		const thisArgs = NodeExecuteFunctions.getLoadOptionsFunctions(this.workflow, node!, additionalData);
+		const thisArgs = NodeExecuteFunctions.getLoadOptionsFunctions(this.workflow, node!, this.path, additionalData);
 
 		return nodeType!.methods.loadOptions[methodName].call(thisArgs);
 	}

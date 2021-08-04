@@ -21,17 +21,21 @@ export class ResponseError extends Error {
 	// The HTTP status code of  response
 	httpStatusCode?: number;
 
-	// The error code in the resonse
+	// The error code in the response
 	errorCode?: number;
+
+	// The error hint the response
+	hint?: string;
 
 	/**
 	 * Creates an instance of ResponseError.
 	 * @param {string} message The error message
 	 * @param {number} [errorCode] The error code which can be used by frontend to identify the actual error
 	 * @param {number} [httpStatusCode] The HTTP status code the response should have
+	 * @param {string} [hint] The error hint to provide a context (webhook related)
 	 * @memberof ResponseError
 	 */
-	constructor(message: string, errorCode?: number, httpStatusCode?: number) {
+	constructor(message: string, errorCode?: number, httpStatusCode?: number, hint?:string) {
 		super(message);
 		this.name = 'ResponseError';
 
@@ -40,6 +44,9 @@ export class ResponseError extends Error {
 		}
 		if (httpStatusCode) {
 			this.httpStatusCode = httpStatusCode;
+		}
+		if (hint) {
+			this.hint = hint;
 		}
 	}
 }
@@ -64,10 +71,14 @@ export function sendSuccessResponse(res: Response, data: any, raw?: boolean, res
 	}
 
 	if (raw === true) {
-		res.json(data);
+		if (typeof data === 'string') {
+			res.send(data);
+		} else {
+			res.json(data);
+		}
 	} else {
 		res.json({
-			data
+			data,
 		});
 	}
 }
@@ -87,13 +98,21 @@ export function sendErrorResponse(res: Response, error: ResponseError) {
 	const response = {
 		code: 0,
 		message: 'Unknown error',
+		hint: '',
 	};
+
+	if (error.name === 'NodeApiError') {
+		Object.assign(response, error);
+	}
 
 	if (error.errorCode) {
 		response.code = error.errorCode;
 	}
 	if (error.message) {
 		response.message = error.message;
+	}
+	if (error.hint) {
+		response.hint = error.hint;
 	}
 	if (error.stack && process.env.NODE_ENV !== 'production') {
 		// @ts-ignore
@@ -183,7 +202,8 @@ export function unflattenExecutionData(fullExecutionData: IExecutionFlattedDb): 
 		mode: fullExecutionData.mode,
 		startedAt: fullExecutionData.startedAt,
 		stoppedAt: fullExecutionData.stoppedAt,
-		finished: fullExecutionData.finished ? fullExecutionData.finished : false
+		finished: fullExecutionData.finished ? fullExecutionData.finished : false,
+		workflowId: fullExecutionData.workflowId,
 	});
 
 	return returnData;

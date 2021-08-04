@@ -3,9 +3,11 @@ import {
 } from 'n8n-core';
 import {
 	IDataObject,
-	INodeTypeDescription,
 	INodeExecutionData,
 	INodeType,
+	INodeTypeDescription,
+	NodeApiError,
+	NodeOperationError,
 } from 'n8n-workflow';
 
 import { OptionsWithUri } from 'request';
@@ -17,7 +19,7 @@ export class OpenWeatherMap implements INodeType {
 		icon: 'fa:sun',
 		group: ['input'],
 		version: 1,
-		description: 'Gets current and future weather information.',
+		description: 'Gets current and future weather information',
 		defaults: {
 			name: 'OpenWeatherMap',
 			color: '#554455',
@@ -28,7 +30,7 @@ export class OpenWeatherMap implements INodeType {
 			{
 				name: 'openWeatherMapApi',
 				required: true,
-			}
+			},
 		],
 		properties: [
 			{
@@ -188,6 +190,16 @@ export class OpenWeatherMap implements INodeType {
 				description: 'The id of city to return the weather of. List can be downloaded here: http://bulk.openweathermap.org/sample/',
 			},
 
+			{
+				displayName: 'Language',
+				name: 'language',
+				type: 'string',
+				default: '',
+				placeholder: 'en',
+				required: false,
+				description: 'The two letter language code to get your output in (eg. en, de, ...).',
+			},
+
 		],
 	};
 
@@ -199,65 +211,88 @@ export class OpenWeatherMap implements INodeType {
 		const credentials = this.getCredentials('openWeatherMapApi');
 
 		if (credentials === undefined) {
-			throw new Error('No credentials got returned!');
+			throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
 		}
 
 		const operation = this.getNodeParameter('operation', 0) as string;
 
 		let endpoint = '';
 		let locationSelection;
+		let language;
 
 		let qs: IDataObject;
 
 		for (let i = 0; i < items.length; i++) {
-			// Set base data
-			qs = {
-				APPID: credentials.accessToken,
-				units: this.getNodeParameter('format', 0) as string
-			};
 
-			// Get the location
-			locationSelection = this.getNodeParameter('locationSelection', 0) as string;
-			if (locationSelection === 'cityName') {
-				qs.q = this.getNodeParameter('cityName', 0) as string;
-			} else if (locationSelection === 'cityId') {
-				qs.id = this.getNodeParameter('cityId', 0) as number;
-			} else if (locationSelection === 'coordinates') {
-				qs.lat = this.getNodeParameter('latitude', 0) as string;
-				qs.lon = this.getNodeParameter('longitude', 0) as string;
-			} else if (locationSelection === 'zipCode') {
-				qs.zip = this.getNodeParameter('zipCode', 0) as string;
-			} else {
-				throw new Error(`The locationSelection "${locationSelection}" is not known!`);
+			try {
+
+				// Set base data
+				qs = {
+					APPID: credentials.accessToken,
+					units: this.getNodeParameter('format', i) as string,
+				};
+
+				// Get the location
+				locationSelection = this.getNodeParameter('locationSelection', i) as string;
+				if (locationSelection === 'cityName') {
+					qs.q = this.getNodeParameter('cityName', i) as string;
+				} else if (locationSelection === 'cityId') {
+					qs.id = this.getNodeParameter('cityId', i) as number;
+				} else if (locationSelection === 'coordinates') {
+					qs.lat = this.getNodeParameter('latitude', i) as string;
+					qs.lon = this.getNodeParameter('longitude', i) as string;
+				} else if (locationSelection === 'zipCode') {
+					qs.zip = this.getNodeParameter('zipCode', i) as string;
+				} else {
+					throw new NodeOperationError(this.getNode(), `The locationSelection "${locationSelection}" is not known!`);
+				}
+
+				// Get the language
+				language = this.getNodeParameter('language', i) as string;
+				if (language) {
+					qs.lang = language;
+				}
+
+				if (operation === 'currentWeather') {
+					// ----------------------------------
+					//         currentWeather
+					// ----------------------------------
+
+					endpoint = 'weather';
+				} else if (operation === '5DayForecast') {
+					// ----------------------------------
+					//         5DayForecast
+					// ----------------------------------
+
+					endpoint = 'forecast';
+				} else {
+					throw new NodeOperationError(this.getNode(), `The operation "${operation}" is not known!`);
+				}
+
+				const options: OptionsWithUri = {
+					method: 'GET',
+					qs,
+					uri: `https://api.openweathermap.org/data/2.5/${endpoint}`,
+					json: true,
+				};
+
+				let responseData;
+				try {
+					responseData = await this.helpers.request(options);
+				} catch (error) {
+					throw new NodeApiError(this.getNode(), error);
+				}
+
+
+				returnData.push(responseData as IDataObject);
+
+			} catch (error) {
+				if (this.continueOnFail()) {
+					returnData.push({json:{ error: error.message }});
+					continue;
+				}
+				throw error;
 			}
-
-
-			if (operation === 'currentWeather') {
-				// ----------------------------------
-				//         currentWeather
-				// ----------------------------------
-
-				endpoint = 'weather';
-			} else if (operation === '5DayForecast') {
-				// ----------------------------------
-				//         5DayForecast
-				// ----------------------------------
-
-				endpoint = 'forecast';
-			} else {
-				throw new Error(`The operation "${operation}" is not known!`);
-			}
-
-			const options: OptionsWithUri = {
-				method: 'GET',
-				qs,
-				uri: `https://api.openweathermap.org/data/2.5/${endpoint}`,
-				json: true,
-			};
-
-			const responseData = await this.helpers.request(options);
-
-			returnData.push(responseData as IDataObject);
 		}
 
 		return [this.helpers.returnJsonArray(returnData)];

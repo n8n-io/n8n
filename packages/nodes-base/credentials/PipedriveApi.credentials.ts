@@ -1,17 +1,18 @@
 import {
 	ICredentialType,
-	NodePropertyTypes,
+	INodeProperties,
 } from 'n8n-workflow';
 
 
 export class PipedriveApi implements ICredentialType {
 	name = 'pipedriveApi';
 	displayName = 'Pipedrive API';
-	properties = [
+	documentationUrl = 'pipedrive';
+	properties: INodeProperties[] = [
 		{
 			displayName: 'API Token',
 			name: 'apiToken',
-			type: 'string' as NodePropertyTypes,
+			type: 'string',
 			default: '',
 		},
 	];

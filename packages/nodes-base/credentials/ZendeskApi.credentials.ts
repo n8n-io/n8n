@@ -1,28 +1,31 @@
 import {
 	ICredentialType,
-	NodePropertyTypes,
+	INodeProperties,
 } from 'n8n-workflow';
 
 export class ZendeskApi implements ICredentialType {
 	name = 'zendeskApi';
 	displayName = 'Zendesk API';
-	properties = [
+	documentationUrl = 'zendesk';
+	properties: INodeProperties[] = [
 		{
-			displayName: 'URL',
-			name: 'url',
-			type: 'string' as NodePropertyTypes,
+			displayName: 'Subdomain',
+			name: 'subdomain',
+			type: 'string',
+			description: 'The subdomain of your Zendesk work environment.',
+			placeholder: 'company',
 			default: '',
 		},
 		{
 			displayName: 'Email',
 			name: 'email',
-			type: 'string' as NodePropertyTypes,
+			type: 'string',
 			default: '',
 		},
 		{
 			displayName: 'API Token',
 			name: 'apiToken',
-			type: 'string' as NodePropertyTypes,
+			type: 'string',
 			default: '',
 		},
 	];

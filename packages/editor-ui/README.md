@@ -1,6 +1,6 @@
 # n8n-editor-ui
 
-![n8n.io - Workflow Automation](https://n8n.io/n8n-logo.png)
+![n8n.io - Workflow Automation](https://raw.githubusercontent.com/n8n-io/n8n/master/assets/n8n-logo.png)
 
 The UI to create and update n8n workflows
 

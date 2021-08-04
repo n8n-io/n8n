@@ -1,23 +1,24 @@
 import {
 	ICredentialType,
-	NodePropertyTypes,
+	INodeProperties,
 } from 'n8n-workflow';
 
 
 export class MattermostApi implements ICredentialType {
 	name = 'mattermostApi';
 	displayName = 'Mattermost API';
-	properties = [
+	documentationUrl = 'mattermost';
+	properties: INodeProperties[] = [
 		{
 			displayName: 'Access Token',
 			name: 'accessToken',
-			type: 'string' as NodePropertyTypes,
+			type: 'string',
 			default: '',
 		},
 		{
 			displayName: 'Base URL',
 			name: 'baseUrl',
-			type: 'string' as NodePropertyTypes,
+			type: 'string',
 			default: '',
 		},
 	];

@@ -10,30 +10,27 @@ import {
 import {
 	IDataObject,
 	IHookFunctions,
-	IWebhookFunctions
+	IWebhookFunctions,
+	NodeApiError,
+	NodeOperationError,
 } from 'n8n-workflow';
 
 export async function surveyMonkeyApiRequest(this: IExecuteFunctions | IWebhookFunctions | IHookFunctions | ILoadOptionsFunctions, method: string, resource: string, body: any = {}, query: IDataObject = {}, uri?: string, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
-
-	const credentials = this.getCredentials('surveyMonkeyApi');
-
-	if (credentials === undefined) {
-		throw new Error('No credentials got returned!');
-	}
+	const authenticationMethod = this.getNodeParameter('authentication', 0);
 
 	const endpoint = 'https://api.surveymonkey.com/v3';
 
 	let options: OptionsWithUri = {
 		headers: {
 			'Content-Type': 'application/json',
-			'Authorization': `bearer ${credentials.accessToken}`,
 		},
 		method,
 		body,
 		qs: query,
 		uri: uri || `${endpoint}${resource}`,
-		json: true
+		json: true,
 	};
+
 	if (!Object.keys(body).length) {
 		delete options.body;
 	}
@@ -41,14 +38,24 @@ export async function surveyMonkeyApiRequest(this: IExecuteFunctions | IWebhookF
 		delete options.qs;
 	}
 	options = Object.assign({}, options, option);
+
 	try {
-		return await this.helpers.request!(options);
-	} catch (error) {
-		const errorMessage =  error.response.body.error.message;
-		if (errorMessage !== undefined) {
-			throw new Error(`SurveyMonkey error response [${error.statusCode}]: ${errorMessage}`);
+		if ( authenticationMethod === 'accessToken') {
+			const credentials = this.getCredentials('surveyMonkeyApi');
+
+			if (credentials === undefined) {
+				throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
+			}
+			// @ts-ignore
+			options.headers['Authorization'] = `bearer ${credentials.accessToken}`;
+
+			return await this.helpers.request!(options);
+
+		} else {
+			return await this.helpers.requestOAuth2?.call(this, 'surveyMonkeyOAuth2Api', options);
 		}
-		throw error;
+	} catch (error) {
+		throw new NodeApiError(this.getNode(), error);
 	}
 }
 

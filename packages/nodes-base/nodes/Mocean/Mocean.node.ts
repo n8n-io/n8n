@@ -4,6 +4,7 @@ import {
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
+	NodeOperationError,
 } from 'n8n-workflow';
 
 import {moceanApiRequest} from './GenericFunctions';
@@ -16,7 +17,7 @@ export class Mocean implements INodeType {
 		icon: 'file:mocean.png',
 		group: ['transform'],
 		version: 1,
-		description: 'Send SMS & voice messages via Mocean (https://moceanapi.com)',
+		description: 'Send SMS and voice messages via Mocean',
 		defaults: {
 			name: 'Mocean',
 			color: '#772244',
@@ -27,7 +28,7 @@ export class Mocean implements INodeType {
 			{
 				name: 'moceanApi',
 				required: true,
-			}
+			},
 		],
 		properties: [
 			// Node properties which the user gets displayed and
@@ -44,7 +45,7 @@ export class Mocean implements INodeType {
 					{
 						name: 'Voice',
 						value: 'voice',
-					}
+					},
 				],
 				default: 'sms',
 			},
@@ -119,23 +120,23 @@ export class Mocean implements INodeType {
 				options:[
 					{
 						name: 'Chinese Mandarin (China)',
-						value: 'cmn-CN'
+						value: 'cmn-CN',
 					},
 					{
 						name: 'English (United Kingdom)',
-						value: 'en-GB'
+						value: 'en-GB',
 					},
 					{
 						name: 'English (United States)',
-						value: 'en-US'
+						value: 'en-US',
 					},
 					{
 						name: 'Japanese (Japan)',
-						value: 'ja-JP'
+						value: 'ja-JP',
 					},
 					{
 						name: 'Korean (Korea)',
-						value: 'ko-KR'
+						value: 'ko-KR',
 					},
 				],
 				displayOptions: {
@@ -194,45 +195,52 @@ export class Mocean implements INodeType {
 		for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
 			body = {};
 			qs = {};
+			try {
+				resource = this.getNodeParameter('resource', itemIndex, '') as string;
+				operation = this.getNodeParameter('operation',itemIndex,'') as string;
+				text = this.getNodeParameter('message', itemIndex, '') as string;
+				requesetMethod = 'POST';
+				body['mocean-from'] = this.getNodeParameter('from', itemIndex, '') as string;
+				body['mocean-to'] = this.getNodeParameter('to', itemIndex, '') as string;
 
-			resource = this.getNodeParameter('resource', itemIndex, '') as string;
-			operation = this.getNodeParameter('operation',itemIndex,'') as string;
-			text = this.getNodeParameter('message', itemIndex, '') as string;
-			requesetMethod = 'POST';
-			body['mocean-from'] = this.getNodeParameter('from', itemIndex, '') as string;
-			body['mocean-to'] = this.getNodeParameter('to', itemIndex, '') as string;
+				if (resource === 'voice') {
+					const language: string = this.getNodeParameter('language', itemIndex) as string;
+					const command = [
+						{
+							action: 'say',
+							language,
+							text,
+						},
+					];
 
-			if (resource === 'voice') {
-				const language: string = this.getNodeParameter('language', itemIndex) as string;
-				const command = [
-					{
-						action: 'say',
-						language,
-						text,
-					}
-				];
-
-				dataKey = 'voice';
-				body['mocean-command'] = JSON.stringify(command);
-				endpoint = '/rest/2/voice/dial';
-			} else if(resource === 'sms') {
-				dataKey = 'messages';
-				body['mocean-text'] = text;
-				endpoint = '/rest/2/sms';
-			} else {
-				throw new Error(`Unknown resource ${resource}`);
-			}
-
-			if (operation === 'send') {
-				const responseData = await moceanApiRequest.call(this,requesetMethod,endpoint,body,qs);
-
-				for (const item of responseData[dataKey] as IDataObject[]) {
-					item.type = resource;
-					returnData.push(item);
+					dataKey = 'voice';
+					body['mocean-command'] = JSON.stringify(command);
+					endpoint = '/rest/2/voice/dial';
+				} else if(resource === 'sms') {
+					dataKey = 'messages';
+					body['mocean-text'] = text;
+					endpoint = '/rest/2/sms';
+				} else {
+					throw new NodeOperationError(this.getNode(), `Unknown resource ${resource}`);
 				}
 
-			} else {
-				throw new Error(`Unknown operation ${operation}`);
+				if (operation === 'send') {
+					const responseData = await moceanApiRequest.call(this,requesetMethod,endpoint,body,qs);
+
+					for (const item of responseData[dataKey] as IDataObject[]) {
+						item.type = resource;
+						returnData.push(item);
+					}
+
+				} else {
+					throw new NodeOperationError(this.getNode(), `Unknown operation ${operation}`);
+				}
+			} catch (error) {
+				if (this.continueOnFail()) {
+					returnData.push({ error: error.message });
+					continue;
+				}
+				throw error;
 			}
 		}
 

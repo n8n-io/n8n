@@ -5,10 +5,14 @@ import {
 
 import {
 	IDataObject,
+	ILoadOptionsFunctions,
+	NodeApiError,
+	NodeOperationError,
 } from 'n8n-workflow';
 
-import { OptionsWithUri } from 'request';
-
+import {
+	OptionsWithUri,
+} from 'request';
 
 export interface ICustomInterface {
 	name: string;
@@ -23,7 +27,6 @@ export interface ICustomProperties {
 	[key: string]: ICustomInterface;
 }
 
-
 /**
  * Make an API request to Pipedrive
  *
@@ -33,19 +36,13 @@ export interface ICustomProperties {
  * @param {object} body
  * @returns {Promise<any>}
  */
-export async function pipedriveApiRequest(this: IHookFunctions | IExecuteFunctions, method: string, endpoint: string, body: IDataObject, query?: IDataObject, formData?: IDataObject, downloadFile?: boolean): Promise<any> { // tslint:disable-line:no-any
-	const credentials = this.getCredentials('pipedriveApi');
-	if (credentials === undefined) {
-		throw new Error('No credentials got returned!');
-	}
-
-	if (query === undefined) {
-		query = {};
-	}
-
-	query.api_token = credentials.apiToken;
+export async function pipedriveApiRequest(this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions, method: string, endpoint: string, body: IDataObject, query: IDataObject = {}, formData?: IDataObject, downloadFile?: boolean): Promise<any> { // tslint:disable-line:no-any
+	const authenticationMethod = this.getNodeParameter('authentication', 0);
 
 	const options: OptionsWithUri = {
+		headers: {
+			Accept: 'application/json',
+		},
 		method,
 		qs: query,
 		uri: `https://api.pipedrive.com/v1${endpoint}`,
@@ -65,8 +62,27 @@ export async function pipedriveApiRequest(this: IHookFunctions | IExecuteFunctio
 		options.formData = formData;
 	}
 
+	if (query === undefined) {
+		query = {};
+	}
+
+	let responseData;
+
 	try {
-		const responseData = await this.helpers.request(options);
+		if (authenticationMethod === 'basicAuth' || authenticationMethod === 'apiToken' || authenticationMethod === 'none') {
+
+			const credentials = this.getCredentials('pipedriveApi');
+			if (credentials === undefined) {
+				throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
+			}
+
+			query.api_token = credentials.apiToken;
+			//@ts-ignore
+			responseData = await this.helpers.request(options);
+
+		} else {
+			responseData = await this.helpers.requestOAuth2!.call(this, 'pipedriveOAuth2Api', options);
+		}
 
 		if (downloadFile === true) {
 			return {
@@ -75,7 +91,7 @@ export async function pipedriveApiRequest(this: IHookFunctions | IExecuteFunctio
 		}
 
 		if (responseData.success === false) {
-			throw new Error(`Pipedrive error response: ${responseData.error} (${responseData.error_info})`);
+			throw new NodeApiError(this.getNode(), responseData);
 		}
 
 		return {
@@ -83,26 +99,9 @@ export async function pipedriveApiRequest(this: IHookFunctions | IExecuteFunctio
 			data: responseData.data,
 		};
 	} catch (error) {
-		if (error.statusCode === 401) {
-			// Return a clear error
-			throw new Error('The Pipedrive credentials are not valid!');
-		}
-
-		if (error.response && error.response.body && error.response.body.error) {
-			// Try to return the error prettier
-			let errorMessage = `Pipedrive error response [${error.statusCode}]: ${error.response.body.error}`;
-			if (error.response.body.error_info) {
-				errorMessage += ` - ${error.response.body.error_info}`;
-			}
-			throw new Error(errorMessage);
-		}
-
-		// If that data does not exist for some reason return the actual error
-		throw error;
+		throw new NodeApiError(this.getNode(), error);
 	}
 }
-
-
 
 /**
  * Make an API request to paginated Pipedrive endpoint
@@ -121,7 +120,7 @@ export async function pipedriveApiRequestAllItems(this: IHookFunctions | IExecut
 	if (query === undefined) {
 		query = {};
 	}
-	query.limit = 500;
+	query.limit = 100;
 	query.start = 0;
 
 	const returnData: IDataObject[] = [];
@@ -130,7 +129,12 @@ export async function pipedriveApiRequestAllItems(this: IHookFunctions | IExecut
 
 	do {
 		responseData = await pipedriveApiRequest.call(this, method, endpoint, body, query);
-		returnData.push.apply(returnData, responseData.data);
+		// the search path returns data diferently
+		if (responseData.data.items) {
+			returnData.push.apply(returnData, responseData.data.items);
+		} else {
+			returnData.push.apply(returnData, responseData.data);
+		}
 
 		query.start = responseData.additionalData.pagination.next_start;
 	} while (
@@ -140,7 +144,7 @@ export async function pipedriveApiRequestAllItems(this: IHookFunctions | IExecut
 	);
 
 	return {
-		data: returnData
+		data: returnData,
 	};
 }
 
@@ -165,7 +169,7 @@ export async function pipedriveGetCustomProperties(this: IHookFunctions | IExecu
 	};
 
 	if (endpoints[resource] === undefined) {
-		throw new Error(`The resource "${resource}" is not supported for resolving custom values!`);
+		throw new NodeOperationError(this.getNode(), `The resource "${resource}" is not supported for resolving custom values!`);
 	}
 
 	const requestMethod = 'GET';

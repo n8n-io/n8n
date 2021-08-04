@@ -51,9 +51,9 @@ export const messageOperations = [
 
 export const messageFields = [
 
-/* -------------------------------------------------------------------------- */
-/*                                message:sendPrivate                         */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                message:sendPrivate                         */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'To',
 		name: 'to',
@@ -91,14 +91,14 @@ export const messageFields = [
 				],
 				operation: [
 					'sendPrivate',
-				]
+				],
 			},
 		},
 		description: 'The content of the message.',
 	},
-/* -------------------------------------------------------------------------- */
-/*                                message:sendStream                          */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                message:sendStream                          */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Stream',
 		name: 'stream',
@@ -158,14 +158,14 @@ export const messageFields = [
 				],
 				operation: [
 					'sendStream',
-				]
+				],
 			},
 		},
 		description: 'The content of the message.',
 	},
-/* -------------------------------------------------------------------------- */
-/*                                 message:update                             */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                 message:update                             */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Message ID',
 		name: 'messageId',
@@ -179,7 +179,7 @@ export const messageFields = [
 				],
 				operation: [
 					'update',
-				]
+				],
 			},
 		},
 		description: 'Unique identifier for the message.',
@@ -239,11 +239,11 @@ export const messageFields = [
 				default: '',
 				description: 'The topic of the message. Only required for stream messages',
 			},
-		]
+		],
 	},
-/* -------------------------------------------------------------------------- */
-/*                                 message:get                                */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                 message:get                                */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Message ID',
 		name: 'messageId',
@@ -257,14 +257,14 @@ export const messageFields = [
 				],
 				operation: [
 					'get',
-				]
+				],
 			},
 		},
 		description: 'Unique identifier for the message.',
 	},
-/* -------------------------------------------------------------------------- */
-/*                                 message:delete                             */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                 message:delete                             */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Message ID',
 		name: 'messageId',
@@ -278,14 +278,14 @@ export const messageFields = [
 				],
 				operation: [
 					'delete',
-				]
+				],
 			},
 		},
 		description: 'Unique identifier for the message.',
 	},
-/* -------------------------------------------------------------------------- */
-/*                                 message:updateFile                         */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                 message:updateFile                         */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Binary Property',
 		name: 'dataBinaryProperty',
@@ -299,7 +299,7 @@ export const messageFields = [
 				],
 				operation: [
 					'updateFile',
-				]
+				],
 			},
 		},
 		description: 'Name of the binary property to which to<br />write the data of the read file.',

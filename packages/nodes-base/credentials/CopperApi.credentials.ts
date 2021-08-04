@@ -1,24 +1,25 @@
 import {
 	ICredentialType,
-	NodePropertyTypes,
+	INodeProperties,
 } from 'n8n-workflow';
 
 export class CopperApi implements ICredentialType {
 	name = 'copperApi';
 	displayName = 'Copper API';
-	properties = [
+	documentationUrl = 'copper';
+	properties: INodeProperties[] = [
 		{
 			displayName: 'API Key',
 			name: 'apiKey',
 			required: true,
-			type: 'string' as NodePropertyTypes,
+			type: 'string',
 			default: '',
 		},
 		{
 			displayName: 'Email',
 			name: 'email',
 			required: true,
-			type: 'string' as NodePropertyTypes,
+			type: 'string',
 			default: '',
 		},
 	];

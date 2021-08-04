@@ -1,25 +1,14 @@
 import {
-	ICredentialDataDecryptedObject,
 	CredentialInformation,
+	ICredentialDataDecryptedObject,
+	ICredentials,
 	ICredentialsEncrypted,
-	ICredentialNodeAccess,
 } from 'n8n-workflow';
 
-import { enc, AES } from 'crypto-js';
-
-export class Credentials implements ICredentialsEncrypted {
-	name: string;
-	type: string;
-	data: string | undefined;
-	nodesAccess: ICredentialNodeAccess[];
+import { AES, enc } from 'crypto-js';
 
 
-	constructor(name: string, type: string, nodesAccess: ICredentialNodeAccess[], data?: string) {
-		this.name = name;
-		this.type = type;
-		this.nodesAccess = nodesAccess;
-		this.data = data;
-	}
+export class Credentials extends ICredentials {
 
 
 	/**

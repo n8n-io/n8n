@@ -16,7 +16,7 @@ export const personOperations = [
 			{
 				name: 'Enrich',
 				value: 'enrich',
-				description: 'Lets you look up person and company data based on an email or domain',
+				description: 'Look up a person and company data based on an email or domain',
 			},
 		],
 		default: 'enrich',
@@ -26,9 +26,9 @@ export const personOperations = [
 
 export const personFields = [
 
-/* -------------------------------------------------------------------------- */
-/*                                 person:enrich                                 */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                 person:enrich                                 */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Email',
 		name: 'email',

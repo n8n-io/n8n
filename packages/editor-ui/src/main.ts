@@ -5,6 +5,8 @@ import Vue from 'vue';
 import 'prismjs';
 import 'prismjs/themes/prism.css';
 import 'vue-prism-editor/dist/VuePrismEditor.css';
+import 'vue-json-pretty/lib/styles.css';
+import Vue2TouchEvents from 'vue2-touch-events';
 
 import * as ElementUI from 'element-ui';
 // @ts-ignore
@@ -15,18 +17,27 @@ import './n8n-theme.scss';
 import App from '@/App.vue';
 import router from './router';
 
+import { runExternalHook } from './components/mixins/externalHooks';
+
+// @ts-ignore
+import vClickOutside from 'v-click-outside';
+import Fragment from 'vue-fragment';
+
 import { library } from '@fortawesome/fontawesome-svg-core';
 import {
 	faAngleDoubleLeft,
 	faAngleDown,
 	faAngleRight,
 	faAngleUp,
+	faArrowLeft,
 	faArrowRight,
 	faAt,
 	faBook,
 	faBug,
 	faCalendar,
 	faCheck,
+	faChevronDown,
+	faChevronUp,
 	faCode,
 	faCodeBranch,
 	faCog,
@@ -41,16 +52,20 @@ import {
 	faEnvelope,
 	faEye,
 	faExclamationTriangle,
+	faExpand,
 	faExternalLinkAlt,
 	faExchangeAlt,
 	faFile,
+	faFileArchive,
 	faFileCode,
 	faFileDownload,
 	faFileExport,
 	faFileImport,
 	faFilePdf,
 	faFolderOpen,
+	faGift,
 	faHdd,
+	faHome,
 	faHourglass,
 	faImage,
 	faInbox,
@@ -64,13 +79,17 @@ import {
 	faPlay,
 	faPlayCircle,
 	faPlus,
+	faPlusCircle,
 	faQuestion,
 	faQuestionCircle,
 	faRedo,
 	faRss,
 	faSave,
+	faSearch,
 	faSearchMinus,
 	faSearchPlus,
+	faServer,
+	faSignInAlt,
 	faSlidersH,
 	faSpinner,
 	faStop,
@@ -85,22 +104,30 @@ import {
 	faTrash,
 	faUndo,
 	faUsers,
+	faClock,
 } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
 
 import { store } from './store';
+
+Vue.use(Vue2TouchEvents);
+
 Vue.use(ElementUI, { locale });
+Vue.use(vClickOutside);
 
 library.add(faAngleDoubleLeft);
 library.add(faAngleDown);
 library.add(faAngleRight);
 library.add(faAngleUp);
+library.add(faArrowLeft);
 library.add(faArrowRight);
 library.add(faAt);
 library.add(faBook);
 library.add(faBug);
 library.add(faCalendar);
 library.add(faCheck);
+library.add(faChevronDown);
+library.add(faChevronUp);
 library.add(faCode);
 library.add(faCodeBranch);
 library.add(faCog);
@@ -115,16 +142,20 @@ library.add(faEdit);
 library.add(faEnvelope);
 library.add(faEye);
 library.add(faExclamationTriangle);
+library.add(faExpand);
 library.add(faExternalLinkAlt);
 library.add(faExchangeAlt);
 library.add(faFile);
+library.add(faFileArchive);
 library.add(faFileCode);
 library.add(faFileDownload);
 library.add(faFileExport);
 library.add(faFileImport);
 library.add(faFilePdf);
 library.add(faFolderOpen);
+library.add(faGift);
 library.add(faHdd);
+library.add(faHome);
 library.add(faHourglass);
 library.add(faImage);
 library.add(faInbox);
@@ -138,13 +169,17 @@ library.add(faPen);
 library.add(faPlay);
 library.add(faPlayCircle);
 library.add(faPlus);
+library.add(faPlusCircle);
 library.add(faQuestion);
 library.add(faQuestionCircle);
 library.add(faRedo);
 library.add(faRss);
 library.add(faSave);
+library.add(faSearch);
 library.add(faSearchMinus);
 library.add(faSearchPlus);
+library.add(faServer);
+library.add(faSignInAlt);
 library.add(faSlidersH);
 library.add(faSpinner);
 library.add(faStop);
@@ -159,10 +194,15 @@ library.add(faTimes);
 library.add(faTrash);
 library.add(faUndo);
 library.add(faUsers);
+library.add(faClock);
 
 Vue.component('font-awesome-icon', FontAwesomeIcon);
+Vue.use(Fragment.Plugin);
 
 Vue.config.productionTip = false;
+router.afterEach((to, from) => {
+	runExternalHook('main.routeChange', store, { from, to });
+});
 
 new Vue({
 	router,
