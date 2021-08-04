@@ -65,6 +65,10 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 	components: {
 		NodeIcon,
 	},
+	props: [
+		'instance',
+		'workflow'
+	],
 	computed: {
 		workflowDataItems () {
 			const workflowResultDataNode = this.$store.getters.getWorkflowResultDataByNodeName(this.data.name);
@@ -130,9 +134,6 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 		},
 		workflowRunning (): boolean {
 			return this.$store.getters.isActionActive('workflowRunning');
-		},
-		workflow () {
-			return this.getWorkflow();
 		},
 	},
 	data () {
