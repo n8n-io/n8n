@@ -11,11 +11,11 @@ import {
 } from 'n8n-workflow';
 import {
 	adjustMetadata,
+	setFields,
 	setMetadata,
 	toSnakeCase,
 	woocommerceApiRequest,
 	woocommerceApiRequestAllItems,
-	setFields,
 } from './GenericFunctions';
 import {
 	productFields,
@@ -250,11 +250,11 @@ export class WooCommerce implements INodeType {
 				if (operation === 'create') {
 					const name = this.getNodeParameter('name', i) as string;
 					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
-					let body: IProduct = {
+					const body: IProduct = {
 						name,
 					};
 
-					setFields(additionalFields, body)
+					setFields(additionalFields, body);
 
 					if (additionalFields.categories) {
 						body.categories = (additionalFields.categories as string[]).map(category => ({ id: parseInt(category, 10) })) as unknown as IDataObject[];
@@ -280,7 +280,7 @@ export class WooCommerce implements INodeType {
 					const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
 					const body: IProduct = {};
 
-					setFields(updateFields, body)
+					setFields(updateFields, body);
 
 					const images = (this.getNodeParameter('imagesUi', i) as IDataObject).imagesValues as IImage[];
 					if (images) {
@@ -375,7 +375,7 @@ export class WooCommerce implements INodeType {
 					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 					const body: IOrder = {};
 
-					setFields(additionalFields, body)
+					setFields(additionalFields, body);
 
 					const billing = (this.getNodeParameter('billingUi', i) as IDataObject).billingValues as IAddress;
 					if (billing !== undefined) {
