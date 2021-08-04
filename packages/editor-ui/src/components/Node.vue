@@ -69,7 +69,7 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 		'instance',
 		'workflow',
 		'isReadOnly',
-		'name'
+		'name',
 	],
 	computed: {
 		workflowDataItems () {
