@@ -20,7 +20,7 @@ export class CollecthorMailInvite implements INodeType {
 				group: ['transform'],
 				icon: 'file:logo.svg',
 				version: 1,
-				description: 'Trigger mail invitation in Collecthor',
+				description: 'Trigger mail invitation in Collecthor.',
 				defaults: {
 						name: 'CollecthorMailInvite',
 						color: '#1A82e2',
@@ -35,11 +35,11 @@ export class CollecthorMailInvite implements INodeType {
 				],
 				properties: [
 					{
-						displayName: 'Channel',
+						displayName: 'Channel ID',
 						type: 'number',
 						name: 'channel',
 						required: true,
-						description: 'Channel',
+						description: 'Channel ID of the MailChannel to use.',
 						default: null,
 					},
 						{
@@ -48,7 +48,7 @@ export class CollecthorMailInvite implements INodeType {
 								type: 'string',
 								default: '',
 								required: true,
-								description: 'Recipient email',
+								description: 'Recipient email.',
 						},
 						{
 							displayName: 'Name',
@@ -63,7 +63,7 @@ export class CollecthorMailInvite implements INodeType {
 						name: 'daysBetweenMail',
 						required: false,
 						default: 0,
-						description: 'Minimum days between adding duplicate emails',
+						description: 'Minimum days between adding duplicate emails.',
 						type: 'number',
 					},
 					{
