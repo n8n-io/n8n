@@ -149,6 +149,17 @@ export function toSnakeCase(data:
 	}
 }
 
+export function setFields(fieldsToSet: IDataObject, body: IDataObject) {
+	for(const fields in fieldsToSet) {
+		if (fields === 'tags') {
+			body['tags'] = (fieldsToSet[fields] as string[]).map(tag => ({id: parseInt(tag, 10)}));
+		} else {
+			body[snakeCase(fields.toString())] = fieldsToSet[fields];
+		}
+		
+	}
+}
+
 export function adjustMetadata(fields: IDataObject & Metadata) {
 	if (!fields.meta_data) return fields;
 
