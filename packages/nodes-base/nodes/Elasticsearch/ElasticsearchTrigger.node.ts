@@ -31,7 +31,7 @@ import {
 
 import { v4 as uuid } from 'uuid';
 
-import * as config from '../../../cli/config';
+// import * as config from '../../../cli/config';
 
 export class ElasticsearchTrigger implements INodeType {
 	description: INodeTypeDescription = {
@@ -341,7 +341,6 @@ export class ElasticsearchTrigger implements INodeType {
 
 				// const port = config.get('port') as number;
 				// console.log('______________');
-				// console.log('HEREEEEEEE');
 				// console.log(port);
 				// console.log('______________');
 
