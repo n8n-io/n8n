@@ -149,6 +149,12 @@ export function toSnakeCase(data:
 	}
 }
 
+export function setFields(fieldsToSet: IDataObject, body: any) {
+	for(let fields in fieldsToSet) {
+		body[snakeCase(fields.toString())] = fieldsToSet[fields]
+	}
+}
+
 export function adjustMetadata(fields: IDataObject & Metadata) {
 	if (!fields.meta_data) return fields;
 
