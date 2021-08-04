@@ -13,5 +13,5 @@ export interface IImage {
 }
 
 export interface IProduct {
-	[index: string]: any
+	[index: string]: string | number | string[] | number[] | IDataObject | IDataObject[] | IImage[] | IDimension;
 }
