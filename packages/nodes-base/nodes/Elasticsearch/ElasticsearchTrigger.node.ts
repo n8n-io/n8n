@@ -1,26 +1,37 @@
 import {
+	IDataObject,
 	IHookFunctions,
 	INodeType,
 	INodeTypeDescription,
 	IWebhookFunctions,
 	IWebhookResponseData,
+	NodeOperationError,
 } from 'n8n-workflow';
 
 import {
 	elasticsearchApiRequest,
+	formatMultipleScheduleTimes,
+	formatSingleScheduleTime,
 } from './GenericFunctions';
 
 import {
-	WatcherAction,
-} from './types';
-
-import {
+	DAYS_OF_THE_WEEK,
+	DAYS_PER_MONTH,
+	HOURS_PER_DAY,
+	MINUTES_PER_HOUR,
+	MONTHS_OF_THE_YEAR,
 	WATCH_CHECK_SCHEDULES,
 } from './constants';
 
 import {
-	makeScheduleFields,
-} from './descriptions/shared';
+	ScheduleProperties,
+	WatchCreationPayload,
+	WatchSchedule,
+} from './types';
+
+import { v4 as uuid } from 'uuid';
+
+import * as config from '../../../cli/config';
 
 export class ElasticsearchTrigger implements INodeType {
 	description: INodeTypeDescription = {
@@ -52,570 +63,268 @@ export class ElasticsearchTrigger implements INodeType {
 		],
 		properties: [
 			{
-				displayName: 'Action',
-				name: 'action',
-				type: 'options',
-				required: true,
-				default: 'webhook',
-				options: [
-					{
-						name: 'Email',
-						value: 'email',
-						description: 'Send an email',
-					},
-					{
-						name: 'Index',
-						value: 'index',
-						description: 'Index into Elasticsearch',
-					},
-					{
-						name: 'Logging',
-						value: 'logging',
-						description: 'Log to Elasticsearch',
-					},
-					{
-						name: 'Slack',
-						value: 'slack',
-						description: 'Send a message to Slack',
-					},
-					{
-						name: 'Webhook',
-						value: 'webhook',
-						description: 'Send an HTTP request',
-					},
-				],
-			},
-
-			// ----------------------------------------
-			//              email action
-			// ----------------------------------------
-			// https://www.elastic.co/guide/en/elasticsearch/reference/current/actions-email.html#email-action-attributes
-			{
-				displayName: 'To',
-				name: 'to',
-				description: 'Email address to which the email will be sent',
-				required: true,
-				type: 'string',
-				default: '',
-				displayOptions: {
-					show: {
-						action: [
-							'email',
-						],
-					},
-				},
-			},
-			{
 				displayName: 'Schedule',
 				name: 'schedule',
+				required: true,
 				description: 'Frequency to check the watch condition',
 				type: 'options',
 				default: 'weekly',
-				required: true,
-				displayOptions: {
-					show: {
-						action: [
-							'email',
-						],
-					},
-				},
-				options: WATCH_CHECK_SCHEDULES.map(schedule => ({ name: schedule, value: schedule.toLowerCase() })),
+				options: WATCH_CHECK_SCHEDULES.map(schedule => {
+					return {
+						name: schedule[0].toUpperCase() + schedule.slice(1),
+						value: schedule,
+					};
+				}),
 			},
-			...makeScheduleFields('email'),
 			{
-				displayName: 'Additional Fields',
-				name: 'additionalFields',
-				type: 'collection',
-				placeholder: 'Add Field',
-				default: {},
+				displayName: 'Hourly Schedule',
+				name: 'hourlySchedule',
+				required: true,
+				type: 'fixedCollection',
+				typeOptions: {
+					multipleValues: true,
+				},
+				placeholder: 'Add Frequency',
 				displayOptions: {
 					show: {
-						action: [
-							'email',
+						schedule: [
+							'hourly',
 						],
 					},
 				},
+				default: {},
 				options: [
 					{
-						displayName: 'BCC',
-						name: 'bcc',
-						description: 'Comma-separated list of email addresses of the blind carbon copy recipients',
-						type: 'string',
-						default: '',
-					},
-					{
-						displayName: 'Body',
-						name: 'body',
-						description: 'Body of the email to send',
-						type: 'string',
-						default: '',
-					},
-					{
-						displayName: 'CC',
-						name: 'cc',
-						description: 'Comma-separated list of email addresses of the carbon copy recipients',
-						type: 'string',
-						default: '',
-					},
-					{
-						displayName: 'From',
-						name: 'from',
-						description: 'Email address from which the email will be sent',
-						type: 'string',
-						default: '',
-						required: true,
-					},
-					{
-						displayName: 'Reply To',
-						name: 'reply_to',
-						description: 'Comma-separated list of email addresses to which an eventual reply will be sent',
-						type: 'string',
-						default: '',
-					},
-					{
-						displayName: 'Subject',
-						name: 'subject',
-						description: 'Subject of the email to send',
-						type: 'string',
-						default: '',
-					},
-				],
-			},
-
-			// ----------------------------------------
-			//              index action
-			// ----------------------------------------
-			// https://www.elastic.co/guide/en/elasticsearch/reference/current/actions-index.html#index-action-attributes
-			{
-				displayName: 'Index',
-				name: 'index',
-				description: 'Index, alias, or data stream to index into',
-				required: true,
-				type: 'string',
-				default: '',
-				displayOptions: {
-					show: {
-						action: [
-							'index',
-						],
-					},
-				},
-			},
-			{
-				displayName: 'Schedule',
-				name: 'schedule',
-				description: 'Frequency to check the watch condition',
-				type: 'options',
-				default: 'weekly',
-				required: true,
-				displayOptions: {
-					show: {
-						action: [
-							'index',
-						],
-					},
-				},
-				options: WATCH_CHECK_SCHEDULES.map(schedule => ({ name: schedule, value: schedule.toLowerCase() })),
-			},
-			...makeScheduleFields('index'),
-			{
-				displayName: 'Additional Fields',
-				name: 'additionalFields',
-				type: 'collection',
-				placeholder: 'Add Field',
-				default: {},
-				displayOptions: {
-					show: {
-						action: [
-							'index',
-						],
-					},
-				},
-				options: [
-					{
-						displayName: 'Document ID',
-						name: 'doc_id',
-						description: 'ID of the document to index',
-						type: 'string',
-						default: '',
-					},
-					{
-						displayName: 'Execution Time Field',
-						name: 'execution_time_field',
-						description: 'Field to store/index the watch execution time',
-						type: 'string',
-						default: '',
-					},
-					{
-						displayName: 'Timeout',
-						name: 'timeout',
-						description: 'Time to wait for the index API call to return, expressed in <a href="https://www.elastic.co/guide/en/elasticsearch/reference/current/common-options.html#time-units" target="_blank">Elasticsearch time units</a>. If no response is received in time, the index action times out and fails.',
-						type: 'string',
-						default: '60s',
-					},
-				],
-			},
-
-			// ----------------------------------------
-			//              logging action
-			// ----------------------------------------
-			// https://www.elastic.co/guide/en/elasticsearch/reference/current/actions-logging.html#logging-action-attributes
-			{
-				displayName: 'Text',
-				name: 'text',
-				description: 'Text to write to the logs',
-				required: true,
-				type: 'string',
-				default: '',
-				displayOptions: {
-					show: {
-						action: [
-							'logging',
-						],
-					},
-				},
-			},
-			{
-				displayName: 'Schedule',
-				name: 'schedule',
-				description: 'Frequency to check the watch condition',
-				type: 'options',
-				default: 'weekly',
-				required: true,
-				displayOptions: {
-					show: {
-						action: [
-							'logging',
-						],
-					},
-				},
-				options: WATCH_CHECK_SCHEDULES.map(schedule => ({ name: schedule, value: schedule.toLowerCase() })),
-			},
-			...makeScheduleFields('logging'),
-			{
-				displayName: 'Additional Fields',
-				name: 'additionalFields',
-				type: 'collection',
-				placeholder: 'Add Field',
-				default: {},
-				displayOptions: {
-					show: {
-						action: [
-							'logging',
-						],
-					},
-				},
-				options: [
-					{
-						displayName: 'Category',
-						name: 'category',
-						description: 'Category under which to log the text',
-						type: 'string',
-						default: '',
-					},
-					{
-						displayName: 'Level',
-						name: 'level',
-						description: 'Level of the log to write',
-						type: 'options',
-						default: '',
-						options: [
+						displayName: 'Every hour at',
+						name: 'properties',
+						values: [
 							{
-								name: 'Debug',
-								value: 'debug',
-							},
-							{
-								name: 'Error',
-								value: 'error',
-							},
-							{
-								name: 'Info',
-								value: 'info',
-							},
-							{
-								name: 'Trace',
-								value: 'trace',
-							},
-							{
-								name: 'Warning',
-								value: 'warn',
+								displayName: 'Minute',
+								name: 'minute',
+								description: 'Minute to check the watch condition',
+								type: 'options',
+								default: '0',
+								options: MINUTES_PER_HOUR.map(minute => ({ name: minute, value: minute })),
 							},
 						],
 					},
 				],
 			},
-
-			// ----------------------------------------
-			//              slack action
-			// ----------------------------------------
-			// https://www.elastic.co/guide/en/elasticsearch/reference/current/actions-slack.html
 			{
-				displayName: 'To',
-				name: 'to',
+				displayName: 'Daily Schedule',
+				name: 'dailySchedule',
 				required: true,
-				description: 'Comma-separated list of channels and/or users to send the message to. Channel names must start with <code>#</code> and usernames must start with <code>@</code>.',
-				type: 'string',
-				default: '',
+				type: 'fixedCollection',
+				typeOptions: {
+					multipleValues: true,
+				},
+				placeholder: 'Add Frequency',
 				displayOptions: {
 					show: {
-						action: [
-							'slack',
+						schedule: [
+							'daily',
 						],
 					},
 				},
-			},
-			{
-				displayName: 'Text',
-				name: 'text',
-				required: true,
-				description: 'Content of the message to send',
-				type: 'string',
-				default: '',
-				displayOptions: {
-					show: {
-						action: [
-							'slack',
-						],
-					},
-				},
-			},
-			{
-				displayName: 'Schedule',
-				name: 'schedule',
-				description: 'Frequency to check the watch condition',
-				type: 'options',
-				default: 'weekly',
-				required: true,
-				displayOptions: {
-					show: {
-						action: [
-							'slack',
-						],
-					},
-				},
-				options: WATCH_CHECK_SCHEDULES.map(schedule => ({ name: schedule, value: schedule.toLowerCase() })),
-			},
-			...makeScheduleFields('slack'),
-			{
-				displayName: 'Additional Fields',
-				name: 'additionalFields',
-				type: 'collection',
-				placeholder: 'Add Field',
 				default: {},
-				displayOptions: {
-					show: {
-						action: [
-							'slack',
-						],
-					},
-				},
 				options: [
 					{
-						displayName: 'From',
-						name: 'from',
-						description: 'The sender name to display in the Slack message. Overrides the incoming webhook’s configured name.',
-						type: 'string',
-						default: '',
-					},
-					{
-						displayName: 'Icon',
-						name: 'icon',
-						description: 'The icon to display in the Slack messages. Overrides the incoming webhook\'s configured icon. Accepts a public URL to an image.',
-						type: 'string',
-						default: '',
+						displayName: 'Every day at',
+						name: 'properties',
+						values: [
+							{
+								displayName: 'Hour',
+								name: 'hour',
+								description: 'Hour of the day to check the watch condition',
+								type: 'options',
+								default: '0',
+								options: HOURS_PER_DAY.map(minute => ({ name: minute, value: minute })),
+							},
+						],
 					},
 				],
 			},
-
-			// ----------------------------------------
-			//            webhook action
-			// ----------------------------------------
-			// https://www.elastic.co/guide/en/elasticsearch/reference/current/actions-webhook.html
 			{
-				displayName: 'Host',
-				name: 'host',
-				description: 'Host to connect to',
+				displayName: 'Weekly Schedule',
+				name: 'weeklySchedule',
 				required: true,
-				type: 'string',
-				default: '',
+				type: 'fixedCollection',
+				typeOptions: {
+					multipleValues: true,
+				},
+				placeholder: 'Add Frequency',
 				displayOptions: {
 					show: {
-						action: [
-							'webhook',
+						schedule: [
+							'weekly',
 						],
 					},
 				},
-			},
-			{
-				displayName: 'Port',
-				name: 'port',
-				description: 'Port the HTTP service is listening on',
-				type: 'string',
-				required: true,
-				default: '',
-				displayOptions: {
-					show: {
-						action: [
-							'webhook',
-						],
-					},
-				},
-			},
-			{
-				displayName: 'Schedule',
-				name: 'schedule',
-				description: 'Frequency to check the watch condition',
-				type: 'options',
-				default: 'weekly',
-				required: true,
-				displayOptions: {
-					show: {
-						action: [
-							'webhook',
-						],
-					},
-				},
-				options: WATCH_CHECK_SCHEDULES.map(schedule => ({ name: schedule, value: schedule.toLowerCase() })),
-			},
-			...makeScheduleFields('webhook'),
-			{
-				displayName: 'Additional Fields',
-				name: 'additionalFields',
-				type: 'collection',
-				placeholder: 'Add Field',
 				default: {},
-				displayOptions: {
-					show: {
-						action: [
-							'webhook',
-						],
-					},
-				},
 				options: [
 					{
-						displayName: 'Body',
-						name: 'body',
-						description: 'The HTTP request body, either as static text or using <a href="https://www.elastic.co/guide/en/elasticsearch/reference/current/how-watcher-works.html#templates" target="_blank">Mustache templates</a>. When not specified, an empty body is sent.',
-						type: 'string',
-						default: '',
-					},
-					{
-						displayName: 'Connection Timeout',
-						name: 'connection_timeout',
-						description: 'Time to wait for setting up the HTTP connection, expressed in <a href="https://www.elastic.co/guide/en/elasticsearch/reference/current/common-options.html#time-units" target="_blank">Elasticsearch time units</a>.  If the connection could not be set up within this time, the action will timeout and fail.',
-						type: 'string',
-						default: '10s',
-					},
-					{
-						displayName: 'Headers',
-						name: 'headers',
-						description: 'The HTTP request headers, either as static text or using <a href="https://www.elastic.co/guide/en/elasticsearch/reference/current/how-watcher-works.html#templates" target="_blank">Mustache templates</a>',
-						type: 'string',
-						default: '',
-					},
-					{
-						displayName: 'Method',
-						name: 'method',
-						description: 'HTTP method to use',
-						type: 'options',
-						default: 'get',
-						options: [
+						displayName: 'Every week at',
+						name: 'properties',
+						values: [
 							{
-								name: 'DELETE',
-								value: 'delete',
+								displayName: 'Day',
+								name: 'day',
+								description: 'Day of the week to check the watch condition',
+								type: 'options',
+								default: 'monday',
+								options: DAYS_OF_THE_WEEK.map(day => ({ name: day, value: day.toLowerCase() })),
 							},
 							{
-								name: 'GET',
-								value: 'get',
-							},
-							{
-								name: 'HEAD',
-								value: 'head',
-							},
-							{
-								name: 'POST',
-								value: 'post',
-							},
-							{
-								name: 'PUT',
-								value: 'put',
+								displayName: 'Hour',
+								name: 'hour',
+								description: 'Hour of the day to check the watch condition',
+								type: 'options',
+								default: '0',
+								options: HOURS_PER_DAY.map(hour => ({ name: `${hour}:00`, value: hour })),
 							},
 						],
-					},
-					{
-						displayName: 'Path',
-						name: 'path',
-						description: 'The URL path, either static text or using <a href="https://www.elastic.co/guide/en/elasticsearch/reference/current/how-watcher-works.html#templates" target="_blank">Mustache templates</a>. URL query string parameters must be specified in the params field.',
-						type: 'string',
-						default: '',
-					},
-					{
-						displayName: 'Proxy Host',
-						name: 'proxyHost',
-						description: 'Proxy host to use when connecting to the host',
-						type: 'string',
-						default: '',
-					},
-					{
-						displayName: 'Proxy Port',
-						name: 'proxyPort',
-						description: 'Proxy port to use when connecting to the host',
-						type: 'string',
-						default: '',
-					},
-					{
-						displayName: 'Query String Parameters',
-						name: 'params',
-						description: 'URL query string parameters, either as static text or using <a href="https://www.elastic.co/guide/en/elasticsearch/reference/current/how-watcher-works.html#templates" target="_blank">Mustache templates</a>',
-						type: 'string',
-						default: '',
-					},
-					{
-						displayName: 'Read Timeout',
-						name: 'read_timeout',
-						description: 'Time to wait for reading data from the HTTP connection, expressed in <a href="https://www.elastic.co/guide/en/elasticsearch/reference/current/common-options.html#time-units" target="_blank">Elasticsearch time units</a>. If no response was received within this time, the action will timeout and fail.',
-						type: 'string',
-						default: '10s',
-					},
-					{
-						displayName: 'Scheme',
-						name: 'scheme',
-						description: 'Connection scheme for the webhook. Defaults to HTTP.',
-						type: 'options',
-						default: 'http',
-						options: [
-							{
-								name: 'HTTP',
-								value: 'http',
-							},
-							{
-								name: 'HTTPS',
-								value: 'https',
-							},
-						],
-					},
-					{
-						displayName: 'URL',
-						name: 'url',
-						description: 'A shortcut for specifying the request scheme, host, port, and path as a single string, e.g. <code>http://example.org/foo/my-service</code>',
-						type: 'string',
-						default: '',
 					},
 				],
+			},
+			{
+				displayName: 'Monthly Schedule',
+				name: 'monthlySchedule',
+				required: true,
+				type: 'fixedCollection',
+				typeOptions: {
+					multipleValues: true,
+				},
+				placeholder: 'Add Frequency',
+				displayOptions: {
+					show: {
+						schedule: [
+							'monthly',
+						],
+					},
+				},
+				default: {},
+				options: [
+					{
+						displayName: 'Every month at',
+						name: 'properties',
+						values: [
+							{
+								displayName: 'Day',
+								name: 'day',
+								description: 'Day of the month to check the watch condition',
+								type: 'options',
+								default: '1',
+								options: DAYS_PER_MONTH.map(day => ({ name: day, value: day })),
+							},
+							{
+								displayName: 'Hour',
+								name: 'hour',
+								description: 'Hour of the day to check the watch condition',
+								type: 'options',
+								default: '0',
+								options: HOURS_PER_DAY.map(hour => ({ name: `${hour}:00`, value: hour })),
+							},
+						],
+					},
+				],
+			},
+			{
+				displayName: 'Yearly Schedule',
+				name: 'yearlySchedule',
+				required: true,
+				type: 'fixedCollection',
+				typeOptions: {
+					multipleValues: true,
+				},
+				placeholder: 'Add Frequency',
+				displayOptions: {
+					show: {
+						schedule: [
+							'yearly',
+						],
+					},
+				},
+				default: {},
+				options: [
+					{
+						displayName: 'Properties',
+						name: 'properties',
+						values: [
+							{
+								displayName: 'Every year at',
+								name: 'month',
+								description: 'Month to check the watch condition',
+								type: 'options',
+								default: 'january',
+								options: MONTHS_OF_THE_YEAR.map(day => ({ name: day, value: day.toLowerCase() })),
+							},
+							{
+								displayName: 'Day',
+								name: 'day',
+								description: 'Day of the month to check the watch condition',
+								type: 'options',
+								default: '1',
+								options: DAYS_PER_MONTH.map(day => ({ name: day, value: day })),
+							},
+							{
+								displayName: 'Hour',
+								name: 'hour',
+								description: 'Hour of the day to check the watch condition',
+								type: 'options',
+								default: '0',
+								options: HOURS_PER_DAY.map(hour => ({ name: `${hour}:00`, value: hour })),
+							},
+						],
+					},
+				],
+			},
+			{
+				displayName: 'Interval',
+				name: 'interval',
+				required: true,
+				description: 'Fixed time interval to check the watch condition, expressed in <a href="https://www.elastic.co/guide/en/elasticsearch/reference/current/common-options.html#time-units" target="_blank">Elasticsearch time units</a>',
+				type: 'string',
+				default: '',
+				placeholder: '5m',
+				displayOptions: {
+					show: {
+						schedule: [
+							'interval',
+						],
+					},
+				},
+			},
+			{
+				displayName: 'Cron Expression',
+				name: 'cron',
+				required: true,
+				description: '<a href="https://en.wikipedia.org/wiki/Cron#Overview" target="_blank">Cron expression</a> to set a schedule to check the watch condition',
+				type: 'string',
+				default: '',
+				placeholder: '0 0 12 * * ?',
+				displayOptions: {
+					show: {
+						schedule: [
+							'cron',
+						],
+					},
+				},
 			},
 		],
 	};
 
 	webhookMethods = {
 		default: {
-			async checkExists(this: IHookFunctions): Promise<boolean> {
-				// TODO: Find GET /webhooks endpoint
-
+			async checkExists(this: IHookFunctions) {
 				// const webhookUrl = this.getNodeWebhookUrl('default') as string;
-				// const campaignId = this.getNodeParameter('campaignId') as string;
-				// const { webhooks } = await emeliaApiRequest.call(this, 'GET', '/webhook');
-				// for (const webhook of webhooks) {
-				// 	if (webhook.url === webhookUrl && webhook.campaignId === campaignId) {
+
+				// const endpoint = '/_watcher/_query/watches';
+				// const response = await elasticsearchApiRequest.call(this, 'GET', endpoint);
+				// console.log('Query watches response:');
+				// console.log(response);
+
+				// for (const watch of response.watches) {
+				// 	if (watch.url === webhookUrl && watch.campaignId === 'abc') {
 				// 		return true;
 				// 	}
 				// }
@@ -623,30 +332,78 @@ export class ElasticsearchTrigger implements INodeType {
 				return false;
 			},
 
-			async create(this: IHookFunctions): Promise<boolean> {
+			async create(this: IHookFunctions) {
+				console.log('______________');
 				const webhookData = this.getWorkflowStaticData('node');
-				const watchId = this.getNodeParameter('watchId') as string;
-				const endpoint = `_watcher/watch/${watchId}`;
+				const endpoint = `/_watcher/watch/${uuid()}`;
 
-				const body = {
-					action: this.getNodeParameter('action') as WatcherAction,
-					interval: this.getNodeParameter('interval') as string,
+				// console.log(config);
+
+				// const port = config.get('port') as number;
+				// console.log('______________');
+				// console.log('HEREEEEEEE');
+				// console.log(port);
+				// console.log('______________');
+
+				const body: WatchCreationPayload = {
+					trigger: {},
+					actions: {
+						my_webhook: {
+							webhook: {
+						// 		method: 'POST',
+						// 		host: '',
+						// 		port: 0,
+						// 		path: '',
+						// 		body: '',
+							},
+						},
+					},
 				};
 
-				// TODO: check response
-				const response = await elasticsearchApiRequest.call(this, 'PUT', endpoint, body);
-				console.log(response);
-				webhookData.webhookId = response.webhookId;
+				const scheduleType = this.getNodeParameter('schedule') as WatchSchedule;
+
+				if (scheduleType !== 'interval' && scheduleType !== 'cron') {
+					const { properties } = this.getNodeParameter(`${scheduleType}Schedule`) as ScheduleProperties;
+
+					if (!properties.length) {
+						throw new NodeOperationError(this.getNode(), 'Please fill in the schedule');
+					}
+
+					body.trigger = {
+						schedule: {
+							[scheduleType]: properties.length > 1
+								? formatMultipleScheduleTimes(properties)
+								: formatSingleScheduleTime(properties),
+						},
+					};
+				} else {
+					const value = this.getNodeParameter(scheduleType) as string;
+
+					body.trigger = {
+						schedule: {
+							[scheduleType]: Number(value),
+						},
+					};
+				}
+
+				// console.log(JSON.stringify(body, null, 2));
+
+				// const response = await elasticsearchApiRequest.call(this, 'PUT', endpoint, body);
+				// console.log('Create watch response:');
+				// console.log(response);
+				// webhookData.webhookId = response.webhookId;
 				return true;
 			},
 
-			async delete(this: IHookFunctions): Promise<boolean> {
+			async delete(this: IHookFunctions) {
 				const webhookData = this.getWorkflowStaticData('node');
-				const watchId = this.getNodeParameter('watchId') as string;
+				const webhookUrl = this.getNodeWebhookUrl('default') as string;
+
+				const watchId = 'abc'; // derive from webhookUrl
 				const endpoint = `_watcher/watch/${watchId}`;
 
 				try {
-					await elasticsearchApiRequest.call(this, 'DELETE', endpoint);
+					// await elasticsearchApiRequest.call(this, 'DELETE', endpoint);
 				} catch (error) {
 					return false;
 				}

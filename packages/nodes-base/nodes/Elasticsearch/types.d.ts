@@ -1,3 +1,5 @@
+import { WATCH_CHECK_SCHEDULES } from "./constants";
+
 export type ElasticsearchApiCredentials = {
 	username: string;
 	password: string;
@@ -39,4 +41,32 @@ export type FieldsUiValues = Array<{
 	fieldValue: string;
 }>;
 
-export type WatcherAction = 'email' | 'index' | 'logging' | 'slack' | 'webhook';
+// export type WatcherAction = 'email' | 'index' | 'logging' | 'slack' | 'webhook';
+
+export type ScheduleProperties = {
+	properties: Array<{ [key: string]: string }>
+};
+
+
+export type WatchSchedule = typeof WATCH_CHECK_SCHEDULES[number];
+
+export type WatchCreationPayload = {
+	trigger: {
+		schedule?: {
+			[key: string]: number | {
+				[key: string]: number[] | number;
+			}
+		},
+	},
+	actions: {
+		[key: string]: {
+			webhook: {
+				method: string,
+				host: string,
+				port: number,
+				path: string,
+				body: string,
+			} | {},
+		}
+	},
+};

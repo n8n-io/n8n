@@ -57,3 +57,23 @@ export async function elasticsearchApiRequest(
 		throw new NodeApiError(this.getNode(), error);
 	}
 }
+
+export function formatSingleScheduleTime(properties: Array<{ [key: string]: string }>) {
+	const key = Object.keys(properties[0])[0];
+	return { [key]: Number(properties[0][key]) };
+}
+
+/**
+ * Format watch creation payload properties for multiple schedule times.
+ */
+export function formatMultipleScheduleTimes(properties: Array<{ [key: string]: string }>) {
+	return properties.reduce<{ [key: string]: number[] }>((acc, cur) => {
+		const key = Object.keys(cur)[0];
+
+		acc[key]
+			? acc[key].push(Number(cur[key]))
+			: acc[key] = [Number(cur[key])];
+
+		return acc;
+	}, {});
+}

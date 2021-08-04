@@ -1,4 +1,4 @@
-export const WATCH_CHECK_SCHEDULES = ['Hourly', 'Daily', 'Weekly', 'Monthly', 'Yearly', 'Interval', 'Cron'];
+export const WATCH_CHECK_SCHEDULES = ['hourly', 'daily', 'weekly', 'monthly', 'yearly', 'interval', 'cron'] as const;
 
 export const MONTHS_OF_THE_YEAR = [
 	'January',
