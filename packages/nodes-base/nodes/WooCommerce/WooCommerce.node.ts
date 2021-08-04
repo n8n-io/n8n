@@ -15,6 +15,7 @@ import {
 	toSnakeCase,
 	woocommerceApiRequest,
 	woocommerceApiRequestAllItems,
+	setFields,
 } from './GenericFunctions';
 import {
 	productFields,
@@ -249,105 +250,16 @@ export class WooCommerce implements INodeType {
 				if (operation === 'create') {
 					const name = this.getNodeParameter('name', i) as string;
 					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
-					const body: IProduct = {
+					let body: IProduct = {
 						name,
 					};
-					if (additionalFields.backorders) {
-						body.backorders = additionalFields.backorders as string;
-					}
-					if (additionalFields.buttonText) {
-						body.button_text = additionalFields.buttonText as string;
-					}
-					if (additionalFields.catalogVisibility) {
-						body.catalog_visibility = additionalFields.catalogVisibility as string;
-					}
+
+					setFields(additionalFields, body)
+
 					if (additionalFields.categories) {
 						body.categories = (additionalFields.categories as string[]).map(category => ({ id: parseInt(category, 10) })) as unknown as IDataObject[];
 					}
-					if (additionalFields.crossSellIds) {
-						body.cross_sell_ids = (additionalFields.crossSellIds as string).split(',') as string[];
-					}
-					if (additionalFields.dateOnSaleFrom) {
-						body.date_on_sale_from = additionalFields.dateOnSaleFrom as string;
-					}
-					if (additionalFields.dateOnSaleTo) {
-						body.date_on_sale_to = additionalFields.dateOnSaleTo as string;
-					}
-					if (additionalFields.description) {
-						body.description = additionalFields.description as string;
-					}
-					if (additionalFields.downloadable) {
-						body.downloadable = additionalFields.downloadable as boolean;
-					}
-					if (additionalFields.externalUrl) {
-						body.external_url = additionalFields.externalUrl as string;
-					}
-					if (additionalFields.featured) {
-						body.featured = additionalFields.featured as boolean;
-					}
-					if (additionalFields.manageStock) {
-						body.manage_stock = additionalFields.manageStock as boolean;
-					}
-					if (additionalFields.parentId) {
-						body.parent_id = additionalFields.parentId as string;
-					}
-					if (additionalFields.purchaseNote) {
-						body.purchase_note = additionalFields.purchaseNote as string;
-					}
-					if (additionalFields.regularPrice) {
-						body.regular_price = additionalFields.regularPrice as string;
-					}
-					if (additionalFields.reviewsAllowed) {
-						body.reviews_allowed = additionalFields.reviewsAllowed as boolean;
-					}
-					if (additionalFields.salePrice) {
-						body.sale_price = additionalFields.salePrice as string;
-					}
-					if (additionalFields.shippingClass) {
-						body.shipping_class = additionalFields.shippingClass as string;
-					}
-					if (additionalFields.shortDescription) {
-						body.short_description = additionalFields.shortDescription as string;
-					}
-					if (additionalFields.sku) {
-						body.sku = additionalFields.sku as string;
-					}
-					if (additionalFields.slug) {
-						body.slug = additionalFields.slug as string;
-					}
-					if (additionalFields.soldIndividually) {
-						body.sold_individually = additionalFields.soldIndividually as boolean;
-					}
-					if (additionalFields.status) {
-						body.status = additionalFields.status as string;
-					}
-					if (additionalFields.stockQuantity) {
-						body.stock_quantity = additionalFields.stockQuantity as number;
-					}
-					if (additionalFields.stockStatus) {
-						body.stock_status = additionalFields.stockStatus as string;
-					}
-					if (additionalFields.tags) {
-						body.tags = (additionalFields.tags as string[]).map(tag => ({ 'id': parseInt(tag, 10) })) as unknown as IDataObject[];
-					}
-					if (additionalFields.taxClass) {
-						body.tax_class = additionalFields.taxClass as string;
-					}
-					if (additionalFields.taxStatus) {
-						body.tax_status = additionalFields.taxStatus as string;
-					}
-					if (additionalFields.type) {
-						body.type = additionalFields.type as string;
-					}
-					if (additionalFields.upsellIds) {
-						body.upsell_ids = (additionalFields.upsellIds as string).split(',') as string[];
-					}
-					if (additionalFields.virtual) {
-						body.virtual = additionalFields.virtual as boolean;
-					}
-					if (additionalFields.weight) {
-						body.weight = additionalFields.weight as string;
-					}
+
 					const images = (this.getNodeParameter('imagesUi', i) as IDataObject).imagesValues as IImage[];
 					if (images) {
 						body.images = images;
@@ -367,105 +279,9 @@ export class WooCommerce implements INodeType {
 					const productId = this.getNodeParameter('productId', i) as string;
 					const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
 					const body: IProduct = {};
-					if (updateFields.name) {
-						body.name = updateFields.name as string;
-					}
-					if (updateFields.backorders) {
-						body.backorders = updateFields.backorders as string;
-					}
-					if (updateFields.buttonText) {
-						body.button_text = updateFields.buttonText as string;
-					}
-					if (updateFields.catalogVisibility) {
-						body.catalog_visibility = updateFields.catalogVisibility as string;
-					}
-					if (updateFields.categories) {
-						body.categories = (updateFields.categories as string[]).map(category => ({ id: parseInt(category, 10) })) as unknown as IDataObject[];
-					}
-					if (updateFields.crossSellIds) {
-						body.cross_sell_ids = (updateFields.crossSellIds as string).split(',') as string[];
-					}
-					if (updateFields.dateOnSaleFrom) {
-						body.date_on_sale_from = updateFields.dateOnSaleFrom as string;
-					}
-					if (updateFields.dateOnSaleTo) {
-						body.date_on_sale_to = updateFields.dateOnSaleTo as string;
-					}
-					if (updateFields.description) {
-						body.description = updateFields.description as string;
-					}
-					if (updateFields.downloadable) {
-						body.downloadable = updateFields.downloadable as boolean;
-					}
-					if (updateFields.externalUrl) {
-						body.external_url = updateFields.externalUrl as string;
-					}
-					if (updateFields.featured) {
-						body.featured = updateFields.featured as boolean;
-					}
-					if (updateFields.manageStock) {
-						body.manage_stock = updateFields.manageStock as boolean;
-					}
-					if (updateFields.parentId) {
-						body.parent_id = updateFields.parentId as string;
-					}
-					if (updateFields.purchaseNote) {
-						body.purchase_note = updateFields.purchaseNote as string;
-					}
-					if (updateFields.regularPrice) {
-						body.regular_price = updateFields.regularPrice as string;
-					}
-					if (updateFields.reviewsAllowed) {
-						body.reviews_allowed = updateFields.reviewsAllowed as boolean;
-					}
-					if (updateFields.salePrice) {
-						body.sale_price = updateFields.salePrice as string;
-					}
-					if (updateFields.shippingClass) {
-						body.shipping_class = updateFields.shippingClass as string;
-					}
-					if (updateFields.shortDescription) {
-						body.short_description = updateFields.shortDescription as string;
-					}
-					if (updateFields.sku) {
-						body.sku = updateFields.sku as string;
-					}
-					if (updateFields.slug) {
-						body.slug = updateFields.slug as string;
-					}
-					if (updateFields.soldIndividually) {
-						body.sold_individually = updateFields.soldIndividually as boolean;
-					}
-					if (updateFields.status) {
-						body.status = updateFields.status as string;
-					}
-					if (updateFields.stockQuantity) {
-						body.stock_quantity = updateFields.stockQuantity as number;
-					}
-					if (updateFields.stockStatus) {
-						body.stock_status = updateFields.stockStatus as string;
-					}
-					if (updateFields.tags) {
-						body.tags = (updateFields.tags as string[]).map(tag => ({ id: parseInt(tag, 10) })) as unknown as IDataObject[];
-					}
-					if (updateFields.taxClass) {
-						body.tax_class = updateFields.taxClass as string;
-					}
-					if (updateFields.taxStatus) {
-						body.tax_status = updateFields.taxStatus as string;
-					}
-					if (updateFields.type) {
-						body.type = updateFields.type as string;
-					}
-					if (updateFields.upsellIds) {
-						body.upsell_ids = (updateFields.upsellIds as string).split(',') as string[];
-					}
-					if (updateFields.virtual) {
-						body.virtual = updateFields.virtual as boolean;
-					}
-					if (updateFields.weight) {
-						body.weight = updateFields.weight as string;
-					}
+
+					setFields(updateFields, body)
+
 					const images = (this.getNodeParameter('imagesUi', i) as IDataObject).imagesValues as IImage[];
 					if (images) {
 						body.images = images;
@@ -558,33 +374,9 @@ export class WooCommerce implements INodeType {
 				if (operation === 'create') {
 					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 					const body: IOrder = {};
-					if (additionalFields.currency) {
-						body.currency = additionalFields.currency as string;
-					}
-					if (additionalFields.customerId) {
-						body.customer_id = parseInt(additionalFields.customerId as string, 10);
-					}
-					if (additionalFields.customerNote) {
-						body.customer_note = additionalFields.customerNote as string;
-					}
-					if (additionalFields.parentId) {
-						body.parent_id = parseInt(additionalFields.parentId as string, 10);
-					}
-					if (additionalFields.paymentMethodId) {
-						body.payment_method = additionalFields.paymentMethodId as string;
-					}
-					if (additionalFields.paymentMethodTitle) {
-						body.payment_method_title = additionalFields.paymentMethodTitle as string;
-					}
-					if (additionalFields.setPaid) {
-						body.set_paid = additionalFields.setPaid as boolean;
-					}
-					if (additionalFields.status) {
-						body.status = additionalFields.status as string;
-					}
-					if (additionalFields.transactionID) {
-						body.transaction_id = additionalFields.transactionID as string;
-					}
+
+					setFields(additionalFields, body)
+
 					const billing = (this.getNodeParameter('billingUi', i) as IDataObject).billingValues as IAddress;
 					if (billing !== undefined) {
 						body.billing = billing;
@@ -631,6 +423,7 @@ export class WooCommerce implements INodeType {
 					const orderId = this.getNodeParameter('orderId', i) as string;
 					const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
 					const body: IOrder = {};
+
 					if (updateFields.currency) {
 						body.currency = updateFields.currency as string;
 					}
@@ -694,6 +487,7 @@ export class WooCommerce implements INodeType {
 						setMetadata(shippingLines);
 						toSnakeCase(shippingLines);
 					}
+
 					responseData = await woocommerceApiRequest.call(this, 'PUT', `/orders/${orderId}`, body);
 				}
 				//https://woocommerce.github.io/woocommerce-rest-api-docs/#retrieve-an-order
