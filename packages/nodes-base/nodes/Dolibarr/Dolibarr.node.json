@@ -1,0 +1,7 @@
+{
+	"node": "n8n-nodes-base.Dolibarr",
+	"nodeVersion": "1.0",
+	"categories": [
+		"Finance & Accounting"
+	]
+}
