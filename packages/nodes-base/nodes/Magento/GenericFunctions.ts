@@ -19,7 +19,7 @@ import {
 	Filter,
 	FilterGroup,
 	Search,
-} from './Types';
+} from './types';
 
 export async function magentoApiRequest(this: IWebhookFunctions | IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions, method: string, resource: string, body: any = {}, qs: IDataObject = {}, uri?: string, headers: IDataObject = {}, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
 	const credentials = this.getCredentials('magento2Api') as IDataObject;

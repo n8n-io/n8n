@@ -10,7 +10,6 @@ import {
 	INodeType,
 	INodeTypeDescription,
 	NodeApiError,
-	NodeOperationError,
 } from 'n8n-workflow';
 
 import {
@@ -40,18 +39,16 @@ import {
 import {
 	AddressExtensionAttributes,
 	CustomAttribute,
-	Customer,
 	CustomerAttributeMetadata,
 	Filter,
 	NewCustomer,
 	NewProduct,
 	Search,
-	SearchCriteria,
 } from './Types';
 
-import * as moment from 'moment-timezone';
-import { IData } from '../Google/CloudNaturalLanguage/Interface';
-import { capitalCase } from 'change-case';
+import { 
+	capitalCase,
+} from 'change-case';
 
 export class Magento2 implements INodeType {
 	description: INodeTypeDescription = {
