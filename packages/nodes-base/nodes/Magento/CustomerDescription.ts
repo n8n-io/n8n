@@ -3,7 +3,6 @@ import {
 } from 'n8n-workflow';
 
 import {
-	getAddressesUi,
 	getCustomerOptionalFields,
 	getSearchFilters,
 } from './GenericFunctions';
@@ -37,9 +36,9 @@ export const customerOperations = [
 				description: 'Get a customer',
 			},
 			{
-				name: 'Search',
-				value: 'search',
-				description: 'Search customers',
+				name: 'Get All',
+				value: 'getAll',
+				description: 'Get all customers',
 			},
 			{
 				name: 'Update',
@@ -190,7 +189,7 @@ export const customerFields = [
 		},
 	},
 	/* -------------------------------------------------------------------------- */
-	/*                                   customer:search			              */
+	/*                                   customer:getAll			              */
 	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Return All',
@@ -202,7 +201,7 @@ export const customerFields = [
 					'customer',
 				],
 				operation: [
-					'search',
+					'getAll',
 				],
 			},
 		},
@@ -219,7 +218,7 @@ export const customerFields = [
 					'customer',
 				],
 				operation: [
-					'search',
+					'getAll',
 				],
 				returnAll: [
 					false,
