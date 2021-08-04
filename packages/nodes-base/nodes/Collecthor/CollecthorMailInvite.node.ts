@@ -1,55 +1,55 @@
 import {
-    IExecuteFunctions
+		IExecuteFunctions
 } from 'n8n-core';
 
 import {
-    IDataObject,
-    INodeExecutionData,
-    INodeType,
-    INodeTypeDescription,
+		IDataObject,
+		INodeExecutionData,
+		INodeType,
+		INodeTypeDescription,
 } from 'n8n-workflow';
 
 import {
-    OptionsWithUri,
+		OptionsWithUri,
 } from 'request';
 
 export class CollecthorMailInvite implements INodeType {
-    description: INodeTypeDescription = {
-        displayName: "CollecthorMailInvite",
-			  name: "collecthorMailInvite",
+		description: INodeTypeDescription = {
+				displayName: 'CollecthorMailInvite',
+				name: 'collecthorMailInvite',
 				group: ['transform'],
-        icon: 'file:logo.png',
-        version: 1,
-        description: "Trigger mail invitation in Collecthor",
-        defaults: {
-            name: "CollecthorMailInvite",
-            color: '#1A82e2'
-        },
-        inputs: ['main'],
-        outputs: [],
-        credentials: [
+				icon: 'file:logo.svg',
+				version: 1,
+				description: 'Trigger mail invitation in Collecthor',
+				defaults: {
+						name: 'CollecthorMailInvite',
+						color: '#1A82e2',
+				},
+				inputs: ['main'],
+				outputs: [],
+				credentials: [
 					{
 						name: 'collecthorApi',
 						required: true,
 					},
-        ],
-        properties: [
+				],
+				properties: [
 					{
-						displayName: "Channel",
+						displayName: 'Channel',
 						type: 'number',
 						name: 'channel',
 						required: true,
 						description: 'Channel',
 						default: null,
 					},
-            {
-                displayName: 'Email address',
-                name: 'email',
-                type: 'string',
-                default: '',
-							  required: true,
-                description: 'Recipient email',
-            },
+						{
+								displayName: 'Email address',
+								name: 'email',
+								type: 'string',
+								default: '',
+								required: true,
+								description: 'Recipient email',
+						},
 						{
 							displayName: 'Name',
 							name: 'name',
@@ -98,25 +98,25 @@ export class CollecthorMailInvite implements INodeType {
 							},
 						],
 					},
-        ]
-    };
+				],
+		};
 
-    async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
+		async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 			let responseData;
 			const returnData = [];
 
 			const credentials = this.getCredentials('collecthorApi') as IDataObject;
 			const items = this.getInputData();
 
-    	for (let i = 0; i < items.length; i++) {
-    		const email = this.getNodeParameter('email', i) as string;
+			for (let i = 0; i < items.length; i++) {
+				const email = this.getNodeParameter('email', i) as string;
 				const name = this.getNodeParameter('name', i) as string;
 				const channel = this.getNodeParameter('channel', i) as string;
 				const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 
 				const dataDict: IDataObject = {};
 				if (additionalFields.parameter !== undefined) {
-					const parameters = additionalFields.parameter as {name: string; value: string }[];
+					const parameters = additionalFields.parameter as Array<{name: string; value: string }>;
 					for (let j = 0; j < parameters.length; j++) {
 						dataDict[parameters[j].name] = parameters[j].value;
 					}
@@ -124,7 +124,7 @@ export class CollecthorMailInvite implements INodeType {
 				const data: IDataObject = {
 					email,
 					name,
-					data: dataDict
+					data: dataDict,
 				};
 
 				const requestOptions: OptionsWithUri = {
@@ -135,17 +135,14 @@ export class CollecthorMailInvite implements INodeType {
 					method: 'POST',
 					body: data,
 					json: true,
-					uri: `https://app.collecthor.nl/v2/rpc/createAndInviteTarget?id=${channel}`
+					uri: `https://app.collecthor.nl/v2/rpc/createAndInviteTarget?id=${channel}`,
 
 
-				}
+				};
 				responseData = await this.helpers.request(requestOptions);
 				returnData.push(responseData);
 			}
+			return [this.helpers.returnJsonArray(returnData)];
 
-
-
-			  return [this.helpers.returnJsonArray(returnData)];
-
-    }
+		}
 }

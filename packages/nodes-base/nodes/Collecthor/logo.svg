@@ -1,0 +1,115 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg
+   xmlns:dc="http://purl.org/dc/elements/1.1/"
+   xmlns:cc="http://creativecommons.org/ns#"
+   xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+   xmlns:svg="http://www.w3.org/2000/svg"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:xlink="http://www.w3.org/1999/xlink"
+   version="1.1"
+   id="Logo_beeldmerk"
+   x="0px"
+   y="0px"
+   viewBox="0 0 110 110.00001"
+   xml:space="preserve"
+   width="110"
+   height="110"><metadata
+   id="metadata38"><rdf:RDF><cc:Work
+       rdf:about=""><dc:format>image/svg+xml</dc:format><dc:type
+         rdf:resource="http://purl.org/dc/dcmitype/StillImage" /><dc:title></dc:title></cc:Work></rdf:RDF></metadata><defs
+   id="defs36" />
+<style
+   type="text/css"
+   id="style2">
+	.st0{clip-path:url(#XMLID_3_);fill:url(#SVGID_1_);}
+	.st1{clip-path:url(#XMLID_3_);fill:url(#SVGID_2_);}
+	.st2{clip-path:url(#XMLID_3_);fill:url(#SVGID_3_);}
+</style>
+<g
+   id="g31"
+   transform="translate(-28.2375,-36.05)">
+	<defs
+   id="defs5">
+		<path
+   id="XMLID_1_"
+   d="M 84.2,91.1 129,117 c 1.3,0.7 1.3,2.6 0,3.3 l -43,24.8 c -1.2,0.7 -2.7,0.7 -3.9,0 L 38.2,119.7 c -1.2,-0.7 -1.9,-2 -1.9,-3.3 V 65.7 c 0,-1.4 0.7,-2.6 1.9,-3.3 L 82.2,37 c 1.2,-0.7 2.7,-0.7 3.9,0 l 43,24.8 c 1.3,0.7 1.3,2.6 0,3.3 z" />
+	</defs>
+	<clipPath
+   id="XMLID_3_">
+		<use
+   xlink:href="#XMLID_1_"
+   style="overflow:visible"
+   id="use7"
+   x="0"
+   y="0"
+   width="100%"
+   height="100%" />
+	</clipPath>
+	<linearGradient
+   id="SVGID_1_"
+   gradientUnits="userSpaceOnUse"
+   x1="68.176201"
+   y1="84.944099"
+   x2="94.527397"
+   y2="49.595001">
+		<stop
+   offset="8.409940e-03"
+   style="stop-color:#F39100"
+   id="stop10" />
+		<stop
+   offset="1"
+   style="stop-color:#ED6A00"
+   id="stop12" />
+	</linearGradient>
+	<polygon
+   class="st0"
+   points="36.4,63.5 84.2,91.1 131.9,63.5 84.2,35.9 "
+   clip-path="url(#XMLID_3_)"
+   id="polygon15"
+   style="fill:url(#SVGID_1_)" />
+	<linearGradient
+   id="SVGID_2_"
+   gradientUnits="userSpaceOnUse"
+   x1="61.427101"
+   y1="111.1535"
+   x2="116.0576"
+   y2="129.1494">
+		<stop
+   offset="0"
+   style="stop-color:#70CBF3"
+   id="stop17" />
+		<stop
+   offset="1"
+   style="stop-color:#00AEEA"
+   id="stop19" />
+	</linearGradient>
+	<polygon
+   class="st1"
+   points="131.9,118.6 84.2,91.1 36.4,118.6 84.2,146.2 "
+   clip-path="url(#XMLID_3_)"
+   id="polygon22"
+   style="fill:url(#SVGID_2_)" />
+	<linearGradient
+   id="SVGID_3_"
+   gradientUnits="userSpaceOnUse"
+   x1="44.565201"
+   y1="98.237999"
+   x2="61.9184"
+   y2="75.100403">
+		<stop
+   offset="0"
+   style="stop-color:#2B3166"
+   id="stop24" />
+		<stop
+   offset="1"
+   style="stop-color:#1F2349"
+   id="stop26" />
+	</linearGradient>
+	<polygon
+   class="st2"
+   points="36.4,63.5 36.4,118.6 84.2,91.1 "
+   clip-path="url(#XMLID_3_)"
+   id="polygon29"
+   style="fill:url(#SVGID_3_)" />
+</g>
+</svg>

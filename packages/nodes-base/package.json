@@ -329,7 +329,7 @@
       "dist/nodes/Clockify/ClockifyTrigger.node.js",
       "dist/nodes/Clockify/Clockify.node.js",
       "dist/nodes/Cockpit/Cockpit.node.js",
-      "dist/nodes/CollecthorMailInvite/CollecthorMailInvite.node.js",
+      "dist/nodes/Collecthor/CollecthorMailInvite.node.js",
       "dist/nodes/Compression.node.js",
       "dist/nodes/Coda/Coda.node.js",
       "dist/nodes/CoinGecko/CoinGecko.node.js",
