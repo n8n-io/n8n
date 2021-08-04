@@ -6,7 +6,7 @@ import {
 	IWorkflowSettings,
 } from './';
 
-import { promises as fs } from 'fs';
+import { BinaryDataHelper } from './BinaryDataManager';
 
 import {
 	IAllExecuteFunctions,
@@ -63,7 +63,7 @@ const requestPromiseWithDefaults = requestPromise.defaults({
 
 export async function getBinaryDataBuffer(binaryData: IBinaryData): Promise<Buffer> {
 	if(!!binaryData.internalPath && binaryData.internalPath !== '') {
-		return fs.readFile(binaryData.internalPath);
+		return BinaryDataHelper.getInstance().retrieveBinaryData(binaryData.internalPath);
 	}
 
 	return Buffer.from(binaryData.data, BINARY_ENCODING);
@@ -79,7 +79,7 @@ export async function getBinaryDataBuffer(binaryData: IBinaryData): Promise<Buff
  * @param {string} [mimeType]
  * @returns {Promise<IBinaryData>}
  */
-export async function prepareBinaryData(binaryData: Buffer, filePath?: string, mimeType?: string, executionId?: string, nodeName?: string, item?: string): Promise<IBinaryData> {
+export async function prepareBinaryData(binaryData: Buffer, filePath?: string, mimeType?: string, binaryStoreType?: string, executionId?: string, nodeName?: string, item?: string): Promise<IBinaryData> {
 	// todo improve internalPath arg name, make it required?
 	
 	if (!mimeType) {
@@ -109,7 +109,7 @@ export async function prepareBinaryData(binaryData: Buffer, filePath?: string, m
 
 	const returnData: IBinaryData = {
 		mimeType,
-		data: binaryData.toString(BINARY_ENCODING),// BINARY_ENCODING, // todo cleanup
+		data: '',//binaryData.toString(BINARY_ENCODING),// BINARY_ENCODING, // todo cleanup
 	};
 
 	if (filePath) {
@@ -132,10 +132,12 @@ export async function prepareBinaryData(binaryData: Buffer, filePath?: string, m
 		}
 	}
 
-	returnData.internalPath = `internal_data-${executionId}-${nodeName}-${item}`;
-
-	// internal storage path of binary data
-	await fs.writeFile(path.join(returnData.internalPath), binaryData);
+	if(binaryStoreType === 'binary_store') {
+		returnData.internalPath = `internal_data-${executionId}-${nodeName}-${item}`;
+		await BinaryDataHelper.getInstance().storeBinaryData(binaryData, returnData.internalPath);
+	} else {
+		returnData.data = binaryData.toString(BINARY_ENCODING);
+	}
 
 	return returnData;
 }
@@ -698,7 +700,7 @@ export function getExecuteTriggerFunctions(workflow: Workflow, node: INode, addi
  * @param {WorkflowExecuteMode} mode
  * @returns {IExecuteFunctions}
  */
-export function getExecuteFunctions(workflow: Workflow, runExecutionData: IRunExecutionData, runIndex: number, connectionInputData: INodeExecutionData[], inputData: ITaskDataConnections, node: INode, additionalData: IWorkflowExecuteAdditionalData, mode: WorkflowExecuteMode, executionId: string): IExecuteFunctions {
+export function getExecuteFunctions(workflow: Workflow, runExecutionData: IRunExecutionData, runIndex: number, connectionInputData: INodeExecutionData[], inputData: ITaskDataConnections, node: INode, additionalData: IWorkflowExecuteAdditionalData, mode: WorkflowExecuteMode, executionId: string, binaryStoreType: string): IExecuteFunctions {
 	return ((workflow, runExecutionData, connectionInputData, inputData, node) => {
 		return {
 			continueOnFail: () => {
@@ -777,7 +779,7 @@ export function getExecuteFunctions(workflow: Workflow, runExecutionData: IRunEx
 			},
 			helpers: {
 				prepareBinaryData(binaryData: Buffer, filePath?: string, mimeType?: string, itemIndex?: number): Promise<IBinaryData> {
-					return prepareBinaryData.call(this, binaryData, filePath, mimeType, executionId, node.name, '' + itemIndex);
+					return prepareBinaryData.call(this, binaryData, filePath, mimeType, binaryStoreType, executionId, node.name, '' + itemIndex);
 				},
 				getBinaryDataBuffer,
 				request: requestPromiseWithDefaults,

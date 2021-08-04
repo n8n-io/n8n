@@ -979,7 +979,7 @@ export class Workflow {
 				return [promiseResults];
 			}
 		} else if (nodeType.execute) {
-			const thisArgs = nodeExecuteFunctions.getExecuteFunctions(this, runExecutionData, runIndex, connectionInputData, inputData, node, additionalData, mode, executionId);
+			const thisArgs = nodeExecuteFunctions.getExecuteFunctions(this, runExecutionData, runIndex, connectionInputData, inputData, node, additionalData, mode, executionId, 'binary_store');
 			return nodeType.execute.call(thisArgs);
 		} else if (nodeType.poll) {
 			if (mode === 'manual') {

@@ -73,6 +73,7 @@ import {
 } from './';
 
 import {
+	BinaryDataHelper,
 	Credentials,
 	LoadNodeParameterOptions,
 	UserSettings,
@@ -1961,6 +1962,7 @@ class App {
 		}));
 
 
+		
 		// ----------------------------------------
 		// Binary data
 		// ----------------------------------------
@@ -1968,9 +1970,9 @@ class App {
 		// Returns binary buffer
 		this.app.get(`/${this.restEndpoint}/data/:path`, ResponseHelper.send(async (req: express.Request, res: express.Response): Promise<string> => {
 			const dataPath = req.params.path;
-			return fsPromises.readFile(dataPath)
-			.then(buffer => {
-				return buffer.toString('base64');
+			return BinaryDataHelper.getInstance().retrieveBinaryData(dataPath)
+				.then((buffer: Buffer) => {
+					return buffer.toString('base64');
 			})
 		}));
 
