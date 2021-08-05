@@ -964,11 +964,11 @@ export class HttpRequest implements INodeType {
 
 					newItem.json = returnItem;
 
-					newItem.binary![dataPropertyName] = await this.helpers.prepareBinaryData(response!.body, fileName, undefined, itemIndex);
+					newItem.binary![dataPropertyName] = await this.helpers.prepareBinaryData(response!.body, fileName);
 				} else {
 					newItem.json = items[itemIndex].json;
 
-					newItem.binary![dataPropertyName] = await this.helpers.prepareBinaryData(response!, fileName, undefined, itemIndex);
+					newItem.binary![dataPropertyName] = await this.helpers.prepareBinaryData(response!, fileName);
 				}
 
 				returnItems.push(newItem);

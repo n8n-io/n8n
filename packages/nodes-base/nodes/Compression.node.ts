@@ -238,7 +238,7 @@ export class Compression implements INodeType {
 								continue;
 							}
 
-							const data = await this.helpers.prepareBinaryData(Buffer.from(files[key].buffer), key, undefined, i);
+							const data = await this.helpers.prepareBinaryData(Buffer.from(files[key].buffer), key);
 
 							binaryObject[`${outputPrefix}${zipIndex++}`] = data;
 						}
@@ -310,7 +310,7 @@ export class Compression implements INodeType {
 
 					const buffer = await zip(zipData);
 
-					const data = await this.helpers.prepareBinaryData(Buffer.from(buffer), fileName, undefined, i);
+					const data = await this.helpers.prepareBinaryData(Buffer.from(buffer), fileName);
 
 					returnData.push({
 						json: items[i].json,

@@ -1,5 +1,8 @@
 import { promises as fs } from 'fs';
 import * as path from 'path';
+import { v4 as uuid } from 'uuid';
+import { IBinaryData } from 'n8n-workflow';
+import { BINARY_ENCODING } from './Constants';
 
 export class BinaryDataHelper {
     private static instance: BinaryDataHelper;
@@ -28,20 +31,34 @@ export class BinaryDataHelper {
         return BinaryDataHelper.instance;
     }
 
-    async storeBinaryData(data: Buffer, identifier: string) {
+    async storeBinaryData(binaryData: IBinaryData, binaryBuffer: Buffer, identifier: string) {
         if(this.storageMode === 'LOCAL_STORAGE') {
-            return this.saveToLocalStorage(data, identifier);
+            return this.saveToLocalStorage(binaryBuffer, identifier)
+                .then(() => binaryData);
         }
 
-        await fs.writeFile(path.join(identifier), data);
+        binaryData.data = binaryBuffer.toString(BINARY_ENCODING);
+        return binaryData;
     }
 
-    async retrieveBinaryData(identifier: string): Promise<Buffer> {
+    async retrieveBinaryData(binaryData: IBinaryData): Promise<Buffer> {
+        if(this.storageMode === 'LOCAL_STORAGE') {
+            return this.retrieveBinaryDataByIdentifier(binaryData.internalPath!);
+        }
+
+        return Buffer.from(binaryData.data, BINARY_ENCODING);
+    }
+
+    async retrieveBinaryDataByIdentifier(identifier: string): Promise<Buffer> {
         if(this.storageMode === 'LOCAL_STORAGE') {
             return this.retrieveFromLocalStorage(identifier);
         }
 
-        return fs.readFile(identifier);
+        throw 'Binary data storage mode is set to default';
+    }
+
+    public generateIdentifier() {
+        return uuid();
     }
 
     private async saveToLocalStorage(data: Buffer, identifier: string) {

@@ -1,5 +1,4 @@
 import {
-	BINARY_ENCODING,
 	IHookFunctions,
 	ILoadOptionsFunctions,
 	IResponseError,
@@ -62,11 +61,7 @@ const requestPromiseWithDefaults = requestPromise.defaults({
 });
 
 export async function getBinaryDataBuffer(binaryData: IBinaryData): Promise<Buffer> {
-	if(!!binaryData.internalPath && binaryData.internalPath !== '') {
-		return BinaryDataHelper.getInstance().retrieveBinaryData(binaryData.internalPath);
-	}
-
-	return Buffer.from(binaryData.data, BINARY_ENCODING);
+	return BinaryDataHelper.getInstance().retrieveBinaryData(binaryData);
 }
 
 /**
@@ -79,7 +74,7 @@ export async function getBinaryDataBuffer(binaryData: IBinaryData): Promise<Buff
  * @param {string} [mimeType]
  * @returns {Promise<IBinaryData>}
  */
-export async function prepareBinaryData(binaryData: Buffer, filePath?: string, mimeType?: string, binaryStoreType?: string, executionId?: string, nodeName?: string, item?: string): Promise<IBinaryData> {
+export async function prepareBinaryData(binaryData: Buffer, filePath?: string, mimeType?: string): Promise<IBinaryData> {
 	// todo improve internalPath arg name, make it required?
 	
 	if (!mimeType) {
@@ -132,14 +127,9 @@ export async function prepareBinaryData(binaryData: Buffer, filePath?: string, m
 		}
 	}
 
-	if(binaryStoreType === 'binary_store') {
-		returnData.internalPath = `internal_data-${executionId}-${nodeName}-${item}`;
-		await BinaryDataHelper.getInstance().storeBinaryData(binaryData, returnData.internalPath);
-	} else {
-		returnData.data = binaryData.toString(BINARY_ENCODING);
-	}
-
-	return returnData;
+	const binaryDataUniqueIdentifier = BinaryDataHelper.getInstance().generateIdentifier();
+	returnData.internalPath = binaryDataUniqueIdentifier;
+	return await BinaryDataHelper.getInstance().storeBinaryData(returnData, binaryData, binaryDataUniqueIdentifier);
 }
 
 
@@ -700,7 +690,7 @@ export function getExecuteTriggerFunctions(workflow: Workflow, node: INode, addi
  * @param {WorkflowExecuteMode} mode
  * @returns {IExecuteFunctions}
  */
-export function getExecuteFunctions(workflow: Workflow, runExecutionData: IRunExecutionData, runIndex: number, connectionInputData: INodeExecutionData[], inputData: ITaskDataConnections, node: INode, additionalData: IWorkflowExecuteAdditionalData, mode: WorkflowExecuteMode, executionId: string, binaryStoreType: string): IExecuteFunctions {
+export function getExecuteFunctions(workflow: Workflow, runExecutionData: IRunExecutionData, runIndex: number, connectionInputData: INodeExecutionData[], inputData: ITaskDataConnections, node: INode, additionalData: IWorkflowExecuteAdditionalData, mode: WorkflowExecuteMode): IExecuteFunctions {
 	return ((workflow, runExecutionData, connectionInputData, inputData, node) => {
 		return {
 			continueOnFail: () => {
@@ -778,9 +768,7 @@ export function getExecuteFunctions(workflow: Workflow, runExecutionData: IRunEx
 				}
 			},
 			helpers: {
-				prepareBinaryData(binaryData: Buffer, filePath?: string, mimeType?: string, itemIndex?: number): Promise<IBinaryData> {
-					return prepareBinaryData.call(this, binaryData, filePath, mimeType, binaryStoreType, executionId, node.name, '' + itemIndex);
-				},
+				prepareBinaryData,
 				getBinaryDataBuffer,
 				request: requestPromiseWithDefaults,
 				requestOAuth2(this: IAllExecuteFunctions, credentialsType: string, requestOptions: OptionsWithUri | requestPromise.RequestPromiseOptions, oAuth2Options?: IOAuth2Options): Promise<any> { // tslint:disable-line:no-any
