@@ -100,6 +100,7 @@ import {
 import {
 	FindManyOptions,
 	FindOneOptions,
+	IsNull,
 	LessThanOrEqual,
 	Not,
 } from 'typeorm';
@@ -1642,6 +1643,9 @@ class App {
 			executingWorkflowIds.push(...this.activeExecutionsInstance.getActiveExecutions().map(execution => execution.id.toString()) as string[]);
 
 			const countFilter = JSON.parse(JSON.stringify(filter));
+			if (countFilter.sleepTill !== undefined) {
+				countFilter.sleepTill = Not(IsNull());
+			}
 			countFilter.id = Not(In(executingWorkflowIds));
 
 			const resultsQuery = await Db.collections.Execution!
@@ -1661,7 +1665,14 @@ class App {
 				.take(limit);
 
 			Object.keys(filter).forEach((filterField) => {
-				resultsQuery.andWhere(`execution.${filterField} = :${filterField}`, {[filterField]: filter[filterField]});
+				if (filterField === 'sleepTill') {
+					resultsQuery.andWhere(`execution.${filterField} is not null`);
+				} else if(filterField === 'finished' && filter[filterField] === false) {
+					resultsQuery.andWhere(`execution.${filterField} = :${filterField}`, {[filterField]: filter[filterField]});
+					resultsQuery.andWhere(`execution.sleepTill is null`);
+				} else {
+					resultsQuery.andWhere(`execution.${filterField} = :${filterField}`, {[filterField]: filter[filterField]});
+				}
 			});
 			if (req.query.lastId) {
 				resultsQuery.andWhere(`execution.id < :lastId`, {lastId: req.query.lastId});

@@ -83,7 +83,7 @@
 							<div slot="content" v-html="statusTooltipText(scope.row)"></div>
 
 							<span class="status-badge running" v-if="scope.row.sleepTill">
-								Sleeping
+								Waiting
 							</span>
 							<span class="status-badge running" v-else-if="scope.row.stoppedAt === undefined">
 								Running
@@ -235,12 +235,12 @@ export default mixins(
 					name: 'Running',
 				},
 				{
-					id: 'sleeping',
-					name: 'Sleeping',
-				},
-				{
 					id: 'success',
 					name: 'Success',
+				},
+				{
+					id: 'waiting',
+					name: 'Waiting',
 				},
 			],
 
@@ -256,7 +256,7 @@ export default mixins(
 			if (['ALL', 'running'].includes(this.filter.status)) {
 				returnData.push.apply(returnData, this.activeExecutions);
 			}
-			if (['ALL', 'error', 'success'].includes(this.filter.status)) {
+			if (['ALL', 'error', 'success', 'waiting'].includes(this.filter.status)) {
 				returnData.push.apply(returnData, this.finishedExecutions);
 			}
 
@@ -294,7 +294,7 @@ export default mixins(
 			if (this.filter.workflowId !== 'ALL') {
 				filter.workflowId = this.filter.workflowId;
 			}
-			if (this.filter.status === 'sleeping') {
+			if (this.filter.status === 'waiting') {
 				filter.sleepTill = true;
 			} else if (['error', 'success'].includes(this.filter.status)) {
 				filter.finished = this.filter.status === 'success';

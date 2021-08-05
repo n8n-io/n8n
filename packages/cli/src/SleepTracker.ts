@@ -40,7 +40,6 @@ export class SleepTrackerClass {
 
 
 	constructor() {
-		// TODO: Make it possible to select "waiting" executions in Execution List
 		// TODO: Allow to set time to continue (absolute & relative) in webhook-mode so that it goes on if no webhook is received (separate output? probably for now same output as we can not add them dynamically.)
 
 		// Example URL:
