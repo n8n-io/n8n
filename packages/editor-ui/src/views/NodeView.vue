@@ -26,7 +26,7 @@
 				:name="nodeData.name"
 				:isReadOnly="isReadOnly"
 				:instance="instance"
-				:workflow="currentWorkflow"
+				:isActive="!!activeNode && activeNode.name === nodeData.name"
 				></node>
 			</div>
 		</div>
@@ -263,9 +263,6 @@ export default mixins(
 			]),
 			activeNode (): INodeUi | null {
 				return this.$store.getters.activeNode;
-			},
-			currentWorkflow () {
-				return this.getWorkflow();
 			},
 			executionWaitingForWebhook (): boolean {
 				return this.$store.getters.executionWaitingForWebhook;

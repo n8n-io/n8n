@@ -65,12 +65,6 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 	components: {
 		NodeIcon,
 	},
-	props: [
-		'instance',
-		'workflow',
-		'isReadOnly',
-		'name',
-	],
 	computed: {
 		workflowDataItems () {
 			const workflowResultDataNode = this.$store.getters.getWorkflowResultDataByNodeName(this.data.name);
@@ -131,19 +125,30 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 				return 'play';
 			}
 		},
-		nodeSubtitle (): string | undefined {
-			return this.getNodeSubtitle(this.data, this.nodeType, this.workflow);
-		},
 		workflowRunning (): boolean {
 			return this.$store.getters.isActionActive('workflowRunning');
 		},
 	},
+	watch: {
+		isActive(newValue, oldValue) {
+			if (!newValue && oldValue) {
+				this.setSubtitle();
+			}
+		},
+	},
+	mounted() {
+		this.setSubtitle();
+	},
 	data () {
 		return {
 			isTouchActive: false,
+			nodeSubtitle: '',
 		};
 	},
 	methods: {
+		setSubtitle() {
+			this.nodeSubtitle = this.getNodeSubtitle(this.data, this.nodeType, this.getWorkflow());
+		},
 		disableNode () {
 			this.disableNodes([this.data]);
 		},
