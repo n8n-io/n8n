@@ -35,7 +35,7 @@ export class CiscoWebex implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Cisco Webex',
 		name: 'ciscoWebex',
-		icon: 'file:ciscoWebex.svg',
+		icon: 'file:ciscoWebex.png',
 		group: ['transform'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',

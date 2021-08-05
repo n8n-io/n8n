@@ -26,7 +26,7 @@ export class CiscoWebexTrigger implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Cisco Webex Trigger',
 		name: 'ciscoWebexTrigger',
-		icon: 'file:ciscoWebex.svg',
+		icon: 'file:ciscoWebex.png',
 		group: ['trigger'],
 		version: 1,
 		subtitle: '={{$parameter["resource"] + ":" + $parameter["event"]}}',
