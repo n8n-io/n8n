@@ -84,7 +84,7 @@ export class Interval implements INodeType {
 			throw new Error('The interval value is too large.');
 		}
 
-		const intervalObj = setInterval(executeTrigger, );
+		const intervalObj = setInterval(executeTrigger, intervalValue);
 
 		async function closeFunction() {
 			clearInterval(intervalObj);
