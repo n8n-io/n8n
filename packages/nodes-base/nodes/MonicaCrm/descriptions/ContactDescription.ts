@@ -291,23 +291,6 @@ export const contactFields = [
 		},
 	},
 	{
-		displayName: 'First Name',
-		name: 'firstName',
-		type: 'string',
-		required: true,
-		default: '',
-		displayOptions: {
-			show: {
-				resource: [
-					'contact',
-				],
-				operation: [
-					'update',
-				],
-			},
-		},
-	},
-	{
 		displayName: 'Update Fields',
 		name: 'updateFields',
 		type: 'collection',
@@ -332,13 +315,19 @@ export const contactFields = [
 			},
 			{
 				displayName: 'Deceased Date',
-				name: 'deceasedDate',
+				name: 'deceased_date',
 				type: 'dateTime',
 				default: '',
 			},
 			{
+				displayName: 'First Name',
+				name: 'first_name',
+				type: 'string',
+				default: '',
+			},
+			{
 				displayName: 'Gender',
-				name: 'genderId',
+				name: 'gender_id',
 				type: 'options',
 				default: '',
 				typeOptions: {
@@ -347,7 +336,7 @@ export const contactFields = [
 			},
 			{
 				displayName: 'Is Deceased',
-				name: 'isDeceased',
+				name: 'is_deceased',
 				description: 'Whether the contact has passed away',
 				type: 'boolean',
 				default: false,

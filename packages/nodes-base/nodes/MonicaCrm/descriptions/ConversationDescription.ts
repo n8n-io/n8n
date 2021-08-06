@@ -16,11 +16,6 @@ export const conversationOperations = [
 		},
 		options: [
 			{
-				name: 'Add Message',
-				value: 'addMessage',
-				description: 'Add a message to a conversation',
-			},
-			{
 				name: 'Create',
 				value: 'create',
 				description: 'Create a conversation',
@@ -40,11 +35,6 @@ export const conversationOperations = [
 				value: 'update',
 				description: 'Update a conversation',
 			},
-			{
-				name: 'Update Message',
-				value: 'updateMessage',
-				description: 'Update a message in a conversation',
-			},
 		],
 		default: 'create',
 	},
@@ -52,26 +42,8 @@ export const conversationOperations = [
 
 export const conversationFields = [
 	// ----------------------------------------
-	//         conversation: addMessage
+	//           conversation: create
 	// ----------------------------------------
-	{
-		displayName: 'Conversation ID',
-		name: 'conversationId',
-		description: 'ID of the contact whose conversations to retrieve',
-		type: 'string',
-		required: true,
-		default: '',
-		displayOptions: {
-			show: {
-				resource: [
-					'conversation',
-				],
-				operation: [
-					'addMessage',
-				],
-			},
-		},
-	},
 	{
 		displayName: 'Contact ID',
 		name: 'contactId',
@@ -79,94 +51,6 @@ export const conversationFields = [
 		type: 'string',
 		required: true,
 		default: '',
-		displayOptions: {
-			show: {
-				resource: [
-					'conversation',
-				],
-				operation: [
-					'addMessage',
-				],
-			},
-		},
-	},
-	{
-		displayName: 'Description',
-		name: 'content',
-		description: 'Description of the message',
-		type: 'string',
-		required: true,
-		default: '',
-		displayOptions: {
-			show: {
-				resource: [
-					'conversation',
-				],
-				operation: [
-					'addMessage',
-				],
-			},
-		},
-	},
-	{
-		displayName: 'Written At',
-		name: 'writtenAt',
-		description: 'Date when the message was written',
-		type: 'dateTime',
-		required: true,
-		default: '',
-		displayOptions: {
-			show: {
-				resource: [
-					'conversation',
-				],
-				operation: [
-					'addMessage',
-				],
-			},
-		},
-	},
-	{
-		displayName: 'Written By',
-		name: 'writtenByMe',
-		description: 'Author of the message',
-		type: 'options',
-		required: true,
-		default: true,
-		options: [
-			{
-				name: 'User',
-				value: true,
-			},
-			{
-				name: 'Contact',
-				value: false,
-			},
-		],
-		displayOptions: {
-			show: {
-				resource: [
-					'conversation',
-				],
-				operation: [
-					'addMessage',
-				],
-			},
-		},
-	},
-
-	// ----------------------------------------
-	//           conversation: create
-	// ----------------------------------------
-	{
-		displayName: 'Contact Field Type',
-		name: 'contactFieldTypeId',
-		type: 'options',
-		required: true,
-		default: '',
-		typeOptions: {
-			loadOptionsMethod: 'getContactFieldTypes',
-		},
 		displayOptions: {
 			show: {
 				resource: [
@@ -179,12 +63,14 @@ export const conversationFields = [
 		},
 	},
 	{
-		displayName: 'Contact ID',
-		name: 'contactId',
-		description: 'ID of the contact to associate the conversation with',
-		type: 'string',
+		displayName: 'Contact Field Type',
+		name: 'contactFieldTypeId',
+		type: 'options',
 		required: true,
 		default: '',
+		typeOptions: {
+			loadOptionsMethod: 'getContactFieldTypes',
+		},
 		displayOptions: {
 			show: {
 				resource: [
@@ -314,128 +200,6 @@ export const conversationFields = [
 				],
 				operation: [
 					'update',
-				],
-			},
-		},
-	},
-
-	// ----------------------------------------
-	//       conversation: updateMessage
-	// ----------------------------------------
-	{
-		displayName: 'Message ID',
-		name: 'messageId',
-		description: 'ID of the message to update',
-		type: 'string',
-		required: true,
-		default: '',
-		displayOptions: {
-			show: {
-				resource: [
-					'conversation',
-				],
-				operation: [
-					'updateMessage',
-				],
-			},
-		},
-	},
-	{
-		displayName: 'Conversation ID',
-		name: 'conversationId',
-		description: 'ID of the conversation whose message to update',
-		type: 'string',
-		required: true,
-		default: '',
-		displayOptions: {
-			show: {
-				resource: [
-					'conversation',
-				],
-				operation: [
-					'updateMessage',
-				],
-			},
-		},
-	},
-	{
-		displayName: 'Contact ID',
-		name: 'contactId',
-		description: 'ID of the contact to associate the conversation with',
-		type: 'string',
-		required: true,
-		default: '',
-		displayOptions: {
-			show: {
-				resource: [
-					'conversation',
-				],
-				operation: [
-					'updateMessage',
-				],
-			},
-		},
-	},
-	{
-		displayName: 'Description',
-		name: 'content',
-		description: 'Description of the message',
-		type: 'string',
-		required: true,
-		default: '',
-		displayOptions: {
-			show: {
-				resource: [
-					'conversation',
-				],
-				operation: [
-					'updateMessage',
-				],
-			},
-		},
-	},
-	{
-		displayName: 'Written By',
-		name: 'writtenByMe',
-		description: 'Author of the message',
-		type: 'options',
-		required: true,
-		default: true,
-		options: [
-			{
-				name: 'User',
-				value: true,
-			},
-			{
-				name: 'Contact',
-				value: false,
-			},
-		],
-		displayOptions: {
-			show: {
-				resource: [
-					'conversation',
-				],
-				operation: [
-					'updateMessage',
-				],
-			},
-		},
-	},
-	{
-		displayName: 'Written At',
-		name: 'writtenAt',
-		description: 'Date when the message was written',
-		type: 'dateTime',
-		required: true,
-		default: '',
-		displayOptions: {
-			show: {
-				resource: [
-					'conversation',
-				],
-				operation: [
-					'updateMessage',
 				],
 			},
 		},

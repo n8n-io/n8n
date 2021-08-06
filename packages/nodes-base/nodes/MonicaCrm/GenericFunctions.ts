@@ -12,7 +12,10 @@ import {
 import {
 	OptionsWithUri,
 } from 'request';
-import { LoaderGetResponse } from './types';
+
+import {
+	LoaderGetResponse,
+} from './types';
 
 export async function monicaCrmApiRequest(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
@@ -47,7 +50,6 @@ export async function monicaCrmApiRequest(
 	}
 
 	try {
-		console.log(options);
 		return await this.helpers.request!(options);
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error);

@@ -16,21 +16,21 @@ export const contactTagOperations = [
 		},
 		options: [
 			{
-				name: 'Add Tag',
-				value: 'addTag',
+				name: 'Add',
+				value: 'add',
 			},
 			{
-				name: 'Remove Tag',
-				value: 'removeTag',
+				name: 'Remove',
+				value: 'remove',
 			},
 		],
-		default: 'addTag',
+		default: 'add',
 	},
 ] as INodeProperties[];
 
 export const contactTagFields = [
 	// ----------------------------------------
-	//               tag: addTag
+	//               tag: add
 	// ----------------------------------------
 	{
 		displayName: 'Contact ID',
@@ -45,7 +45,7 @@ export const contactTagFields = [
 					'contactTag',
 				],
 				operation: [
-					'addTag',
+					'add',
 				],
 			},
 		},
@@ -66,14 +66,14 @@ export const contactTagFields = [
 					'contactTag',
 				],
 				operation: [
-					'addTag',
+					'add',
 				],
 			},
 		},
 	},
 
 	// ----------------------------------------
-	//              tag: removeTag
+	//              tag: remove
 	// ----------------------------------------
 	{
 		displayName: 'Contact ID',
@@ -88,7 +88,7 @@ export const contactTagFields = [
 					'contactTag',
 				],
 				operation: [
-					'removeTag',
+					'remove',
 				],
 			},
 		},
@@ -109,7 +109,7 @@ export const contactTagFields = [
 					'contactTag',
 				],
 				operation: [
-					'removeTag',
+					'remove',
 				],
 			},
 		},

@@ -29,6 +29,8 @@ import {
 	contactTagFields,
 	contactTagOperations,
 	conversationFields,
+	conversationMessageFields,
+	conversationMessageOperations,
 	conversationOperations,
 	journalEntryFields,
 	journalEntryOperations,
@@ -43,7 +45,8 @@ import {
 } from './descriptions';
 
 import {
-	LoaderGetResponse, Option,
+	LoaderGetResponse,
+	Option,
 } from './types';
 import { IData } from '../Google/CloudNaturalLanguage/Interface';
 
@@ -99,6 +102,10 @@ export class MonicaCrm implements INodeType {
 						value: 'conversation',
 					},
 					{
+						name: 'Conversation Message',
+						value: 'conversationMessage',
+					},
+					{
 						name: 'Journal Entry',
 						value: 'journalEntry',
 					},
@@ -133,6 +140,8 @@ export class MonicaCrm implements INodeType {
 			...contactTagFields,
 			...conversationOperations,
 			...conversationFields,
+			...conversationMessageOperations,
+			...conversationMessageFields,
 			...journalEntryOperations,
 			...journalEntryFields,
 			...noteOperations,
@@ -493,23 +502,27 @@ export class MonicaCrm implements INodeType {
 						//             contact: update
 						// ----------------------------------------
 
+						const contactId = this.getNodeParameter('contactId', i);
+
+						const { data } = await monicaCrmApiRequest.call(this, 'GET', `/contacts/${contactId}`);
+
 						const body = {
-							first_name: this.getNodeParameter('firstName', i),
+							first_name: data.first_name,
 						} as IDataObject;
 
 						const {
-							isDeceased = false,
-							deceasedDate,
+							is_deaceased = false,
+							deceased_date,
 							birthdate,
 							...rest
 						} = this.getNodeParameter('updateFields', i) as {
-							isDeceased?: boolean;
-							deceasedDate?: string;
+							is_deaceased?: boolean;
+							deceased_date?: string;
 							birthdate?: string;
 						} & IDataObject;
 
 						body.is_birthdate_known = false;
-						body.is_deceased = isDeceased;
+						body.is_deceased = is_deaceased;
 						body.is_deceased_date_known = false;
 
 						if (birthdate) {
@@ -521,11 +534,11 @@ export class MonicaCrm implements INodeType {
 							body.birthdate_year = year;
 						}
 
-						if (deceasedDate) {
+						if (deceased_date) {
 							body.is_deceased = true;
 							body.is_deceased_date_known = true;
 
-							const [day, month, year] = getDateParts(deceasedDate);
+							const [day, month, year] = getDateParts(deceased_date);
 							body.deceased_date_day = day;
 							body.deceased_date_month = month;
 							body.deceased_date_year = year;
@@ -534,8 +547,6 @@ export class MonicaCrm implements INodeType {
 						if (Object.keys(rest).length) {
 							Object.assign(body, rest);
 						}
-
-						const contactId = this.getNodeParameter('contactId', i);
 
 						const endpoint = `/contacts/${contactId}`;
 						responseData = await monicaCrmApiRequest.call(this, 'PUT', endpoint, body);
@@ -631,10 +642,10 @@ export class MonicaCrm implements INodeType {
 					//                             contactTag
 					// **********************************************************************
 
-					if (operation === 'addTag') {
+					if (operation === 'add') {
 
 						// ----------------------------------------
-						//            contactTag: addTag
+						//            contactTag: add
 						// ----------------------------------------
 
 						// https://www.monicahq.com/api/tags#associate-a-tag-to-a-contact
@@ -648,10 +659,10 @@ export class MonicaCrm implements INodeType {
 						const endpoint = `/contacts/${contactId}/setTags`;
 						responseData = await monicaCrmApiRequest.call(this, 'POST', endpoint, body);
 
-					} else if (operation === 'removeTag') {
+					} else if (operation === 'remove') {
 
 						// ----------------------------------------
-						//              tag: removeTag
+						//              tag: remove
 						// ----------------------------------------
 
 						// https://www.monicahq.com/api/tags#remove-a-specific-tag-from-a-contact
@@ -673,27 +684,9 @@ export class MonicaCrm implements INodeType {
 					//                              conversation
 					// **********************************************************************
 
-					if (operation === 'addMessage') {
 
-						// ----------------------------------------
-						//         conversation: addMessage
-						// ----------------------------------------
 
-						// https://www.monicahq.com/api/conversations#add-a-message-to-a-conversation
-
-						const body = {
-							contact_id: this.getNodeParameter('contactId', i),
-							content: this.getNodeParameter('content', i),
-							written_at: this.getNodeParameter('writtenAt', i),
-							written_by_me: this.getNodeParameter('writtenByMe', i),
-						} as IDataObject;
-
-						const conversationId = this.getNodeParameter('conversationId', i);
-
-						const endpoint = `/conversations/${conversationId}/messages`;
-						responseData = await monicaCrmApiRequest.call(this, 'POST', endpoint, body);
-
-					} else if (operation === 'create') {
+					 if (operation === 'create') {
 
 						// ----------------------------------------
 						//           conversation: create
@@ -754,29 +747,62 @@ export class MonicaCrm implements INodeType {
 						const endpoint = `/conversations/${conversationId}`;
 						responseData = await monicaCrmApiRequest.call(this, 'PUT', endpoint, body);
 
-					} else if (operation === 'updateMessage') {
+					}
+				} else if (resource === 'conversationMessage') {
+					if (operation === 'add') {
 
 						// ----------------------------------------
-						//       conversation: updateMessage
+						//         conversationMessage: add
 						// ----------------------------------------
 
-						// https://www.monicahq.com/api/conversations#update-a-message-in-a-conversation
+						// https://www.monicahq.com/api/conversations#add-a-message-to-a-conversation
+
+						const conversationId = this.getNodeParameter('conversationId', i);
+
+						const endpoint = `/conversations/${conversationId}/messages`;
+
+						const { data } = await monicaCrmApiRequest.call(this, 'GET', `/conversations/${conversationId}`);
 
 						const body = {
-							contact_id: this.getNodeParameter('contactId', i),
+							contact_id: data.contact.id,
 							content: this.getNodeParameter('content', i),
 							written_at: this.getNodeParameter('writtenAt', i),
 							written_by_me: this.getNodeParameter('writtenByMe', i),
 						} as IDataObject;
 
+						responseData = await monicaCrmApiRequest.call(this, 'POST', endpoint, body);
+					
+					} else if (operation === 'update') {
+						
+						// ----------------------------------------
+						//       conversationMessage: update
+						// ----------------------------------------
+
+						// https://www.monicahq.com/api/conversations#update-a-message-in-a-conversation
 						const conversationId = this.getNodeParameter('conversationId', i);
-						const messageId = this.getNodeParameter('messageId', i);
-
+						const messageId = this.getNodeParameter('messageId', i) as string;
 						const endpoint = `/conversations/${conversationId}/messages/${messageId}`;
+
+						const updateFields = this.getNodeParameter('updateFields', i, {}) as IDataObject;
+
+						const { data } = await monicaCrmApiRequest.call(this, 'GET', `/conversations/${conversationId}`);
+
+						const message = data.messages.filter((message: IDataObject) => message.id === parseInt(messageId, 10))[0];
+
+						const body = {
+							contact_id: data.contact.id,
+							content: message.content,
+							written_at: message.written_at,
+							written_by_me: message.written_by_me,
+						} as IDataObject;
+
+						if (Object.keys(updateFields).length) {
+							Object.assign(body, updateFields);
+						}
+
 						responseData = await monicaCrmApiRequest.call(this, 'PUT', endpoint, body);
-
 					}
-
+				
 				} else if (resource === 'journalEntry') {
 
 					// **********************************************************************
@@ -1227,10 +1253,7 @@ export class MonicaCrm implements INodeType {
 				'create',
 				'get',
 				'update',
-				'addMessage',
-				'updateMessage',
-				'addTag',
-				'removeTag',
+				'add',
 			].includes(operation)) {
 				responseData = responseData.data;
 			}
