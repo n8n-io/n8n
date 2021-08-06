@@ -24,7 +24,7 @@ import {
 
 export class CiscoWebexTrigger implements INodeType {
 	description: INodeTypeDescription = {
-		displayName: 'Cisco Webex Trigger',
+		displayName: 'Webex by Cisco Trigger',
 		name: 'ciscoWebexTrigger',
 		icon: 'file:ciscoWebex.png',
 		group: ['trigger'],
@@ -32,7 +32,7 @@ export class CiscoWebexTrigger implements INodeType {
 		subtitle: '={{$parameter["resource"] + ":" + $parameter["event"]}}',
 		description: 'Starts the workflow when Cisco Webex events occur.',
 		defaults: {
-			name: 'Cisco Webex Trigger',
+			name: 'Webex by Cisco Trigger',
 			color: '#29b6f6',
 		},
 		inputs: [],
