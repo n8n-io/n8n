@@ -50,13 +50,10 @@ export const noteFields = [
 	//               note: create
 	// ----------------------------------------
 	{
-		displayName: 'Body',
-		name: 'body',
-		description: 'Body of the note - max 100,000 characters',
+		displayName: 'Contact ID',
+		name: 'contactId',
+		description: 'ID of the contact to associate the note with',
 		type: 'string',
-		typeOptions: {
-			alwaysOpenEditWindow: true,
-		},
 		required: true,
 		default: '',
 		displayOptions: {
@@ -71,10 +68,13 @@ export const noteFields = [
 		},
 	},
 	{
-		displayName: 'Contact ID',
-		name: 'contactId',
-		description: 'ID of the contact to associate the note with',
+		displayName: 'Body',
+		name: 'body',
+		description: 'Body of the note - max 100,000 characters',
 		type: 'string',
+		typeOptions: {
+			alwaysOpenEditWindow: true,
+		},
 		required: true,
 		default: '',
 		displayOptions: {
@@ -163,24 +163,6 @@ export const noteFields = [
 	//               note: getAll
 	// ----------------------------------------
 	{
-		displayName: 'Contact ID',
-		name: 'contactId',
-		description: 'ID of the contact whose notes to retrieve',
-		type: 'string',
-		required: true,
-		default: '',
-		displayOptions: {
-			show: {
-				resource: [
-					'note',
-				],
-				operation: [
-					'getAll',
-				],
-			},
-		},
-	},
-	{
 		displayName: 'Return All',
 		name: 'returnAll',
 		type: 'boolean',
@@ -243,45 +225,6 @@ export const noteFields = [
 		},
 	},
 	{
-		displayName: 'Body',
-		name: 'body',
-		description: 'Body of the note - max 100,000 characters',
-		type: 'string',
-		typeOptions: {
-			alwaysOpenEditWindow: true,
-		},
-		required: true,
-		default: '',
-		displayOptions: {
-			show: {
-				resource: [
-					'note',
-				],
-				operation: [
-					'update',
-				],
-			},
-		},
-	},
-	{
-		displayName: 'Contact ID',
-		name: 'contactId',
-		description: 'ID of the contact to associate the note with',
-		type: 'string',
-		required: true,
-		default: '',
-		displayOptions: {
-			show: {
-				resource: [
-					'note',
-				],
-				operation: [
-					'update',
-				],
-			},
-		},
-	},
-	{
 		displayName: 'Update Fields',
 		name: 'updateFields',
 		type: 'collection',
@@ -299,11 +242,27 @@ export const noteFields = [
 		},
 		options: [
 			{
+				displayName: 'Body',
+				name: 'body',
+				description: 'Body of the note - max 100,000 characters',
+				type: 'string',
+				typeOptions: {
+					alwaysOpenEditWindow: true,
+				},
+				default: '',
+			},
+			{
+				displayName: 'Contact ID',
+				name: 'contact_id',
+				description: 'ID of the contact to associate the note with',
+				type: 'string',
+				default: '',
+			},
+			{
 				displayName: 'Is Favorited',
-				name: 'isFavorited',
+				name: 'is_favorited',
 				description: 'Whether the note has been favorited',
 				type: 'boolean',
-				default: false,
 			},
 		],
 	},

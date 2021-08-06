@@ -110,16 +110,6 @@ export const contactFields = [
 				default: '',
 			},
 			{
-				displayName: 'Birthdate Age',
-				name: 'birthdate_age',
-				type: 'number',
-				default: 0,
-				typeOptions: {
-					minValue: 0,
-				},
-				description: 'Number of years between the birthdate and the current year',
-			},
-			{
 				displayName: 'Deceased Date',
 				name: 'deceasedDate',
 				type: 'dateTime',
@@ -341,16 +331,6 @@ export const contactFields = [
 				default: '',
 			},
 			{
-				displayName: 'Birthdate Age',
-				name: 'birthdate_age',
-				type: 'number',
-				default: 0,
-				typeOptions: {
-					minValue: 0,
-				},
-				description: 'Number of years between the birthdate and the current year',
-			},
-			{
 				displayName: 'Deceased Date',
 				name: 'deceasedDate',
 				type: 'dateTime',
@@ -360,7 +340,6 @@ export const contactFields = [
 				displayName: 'Gender',
 				name: 'genderId',
 				type: 'options',
-				required: true,
 				default: '',
 				typeOptions: {
 					loadOptionsMethod: 'getGenders',

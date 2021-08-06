@@ -163,24 +163,6 @@ export const taskFields = [
 	//               task: getAll
 	// ----------------------------------------
 	{
-		displayName: 'Contact ID',
-		name: 'contactId',
-		description: 'ID of the contact whose tasks to retrieve',
-		type: 'string',
-		required: true,
-		default: '',
-		displayOptions: {
-			show: {
-				resource: [
-					'task',
-				],
-				operation: [
-					'getAll',
-				],
-			},
-		},
-	},
-	{
 		displayName: 'Return All',
 		name: 'returnAll',
 		type: 'boolean',
@@ -243,60 +225,6 @@ export const taskFields = [
 		},
 	},
 	{
-		displayName: 'Contact ID',
-		name: 'contactId',
-		description: 'ID of the contact to associate the task with',
-		type: 'string',
-		required: true,
-		default: '',
-		displayOptions: {
-			show: {
-				resource: [
-					'task',
-				],
-				operation: [
-					'update',
-				],
-			},
-		},
-	},
-	{
-		displayName: 'Completed',
-		name: 'completed',
-		description: 'Whether the task has been completed',
-		type: 'boolean',
-		required: true,
-		default: false,
-		displayOptions: {
-			show: {
-				resource: [
-					'task',
-				],
-				operation: [
-					'update',
-				],
-			},
-		},
-	},
-	{
-		displayName: 'Title',
-		name: 'title',
-		description: 'Title of the task entry - max 250 characters',
-		type: 'string',
-		required: true,
-		default: '',
-		displayOptions: {
-			show: {
-				resource: [
-					'task',
-				],
-				operation: [
-					'update',
-				],
-			},
-		},
-	},
-	{
 		displayName: 'Update Fields',
 		name: 'updateFields',
 		type: 'collection',
@@ -322,6 +250,27 @@ export const taskFields = [
 				typeOptions: {
 					alwaysOpenEditWindow: true,
 				},
+			},
+			{
+				displayName: 'Contact ID',
+				name: 'contactId',
+				description: 'ID of the contact to associate the task with',
+				type: 'string',
+				default: '',
+			},
+			{
+				displayName: 'Completed',
+				name: 'completed',
+				description: 'Whether the task has been completed',
+				type: 'boolean',
+				default: false,
+			},
+			{
+				displayName: 'Title',
+				name: 'title',
+				description: 'Title of the task entry - max 250 characters',
+				type: 'string',
+				default: '',
 			},
 		],
 	},

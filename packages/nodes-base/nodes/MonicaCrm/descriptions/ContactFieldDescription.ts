@@ -30,11 +30,11 @@ export const contactFieldOperations = [
 				value: 'get',
 				description: 'Retrieve a contact field',
 			},
-			{
-				name: 'Get All',
-				value: 'getAll',
-				description: 'Retrieve all contact fields',
-			},
+			// {
+			// 	name: 'Get All',
+			// 	value: 'getAll',
+			// 	description: 'Retrieve all contact fields',
+			// },
 			{
 				name: 'Update',
 				value: 'update',
@@ -50,13 +50,11 @@ export const contactFieldFields = [
 	//           contactField: create
 	// ----------------------------------------
 	{
-		displayName: 'Contact Field Type',
-		name: 'contactFieldTypeId',
-		type: 'options',
+		displayName: 'Contact ID',
+		name: 'contactId',
+		description: 'ID of the contact to associate the contact field with',
+		type: 'string',
 		required: true,
-		typeOptions: {
-			loadOptionsMethod: 'getContactFieldTypes',
-		},
 		default: '',
 		displayOptions: {
 			show: {
@@ -70,11 +68,13 @@ export const contactFieldFields = [
 		},
 	},
 	{
-		displayName: 'Contact ID',
-		name: 'contactId',
-		description: 'ID of the contact to associate the contact field with',
-		type: 'string',
+		displayName: 'Contact Field Type',
+		name: 'contactFieldTypeId',
+		type: 'options',
 		required: true,
+		typeOptions: {
+			loadOptionsMethod: 'getContactFieldTypes',
+		},
 		default: '',
 		displayOptions: {
 			show: {
@@ -216,6 +216,24 @@ export const contactFieldFields = [
 	//           contactField: update
 	// ----------------------------------------
 	{
+		displayName: 'Contact ID',
+		name: 'contactId',
+		description: 'ID of the contact to associate the contact field with',
+		type: 'string',
+		required: true,
+		default: '',
+		displayOptions: {
+			show: {
+				resource: [
+					'contactField',
+				],
+				operation: [
+					'update',
+				],
+			},
+		},
+	},
+	{
 		displayName: 'Contact Field ID',
 		name: 'contactFieldId',
 		description: 'ID of the contact field to update',
@@ -254,25 +272,7 @@ export const contactFieldFields = [
 		},
 	},
 	{
-		displayName: 'Contact ID',
-		name: 'contactId',
-		description: 'ID of the contact to associate the contact field with',
-		type: 'string',
-		required: true,
-		default: '',
-		displayOptions: {
-			show: {
-				resource: [
-					'contactField',
-				],
-				operation: [
-					'update',
-				],
-			},
-		},
-	},
-	{
-		displayName: 'Data',
+		displayName: 'Content',
 		name: 'data',
 		description: 'Content of the contact field - max 255 characters',
 		type: 'string',

@@ -300,117 +300,6 @@ export const reminderFields = [
 		},
 	},
 	{
-		displayName: 'Contact ID',
-		name: 'contactId',
-		type: 'string',
-		default: '',
-		description: 'ID of the contact to associate the reminder with',
-		displayOptions: {
-			show: {
-				resource: [
-					'reminder',
-				],
-				operation: [
-					'update',
-				],
-			},
-		},
-	},
-	{
-		displayName: 'Frequency Type',
-		name: 'frequencyType',
-		description: 'Frequency of the reminder',
-		type: 'options',
-		required: true,
-		default: 'one_time',
-		options: [
-			{
-				name: 'One Time',
-				value: 'one_time',
-			},
-			{
-				name: 'Week',
-				value: 'week',
-			},
-			{
-				name: 'Month',
-				value: 'month',
-			},
-			{
-				name: 'Year',
-				value: 'year',
-			},
-		],
-		displayOptions: {
-			show: {
-				resource: [
-					'reminder',
-				],
-				operation: [
-					'update',
-				],
-			},
-		},
-	},
-	{
-		displayName: 'Recurring Interval',
-		name: 'frequencyNumber',
-		type: 'number',
-		default: 0,
-		description: 'Interval for the reminder',
-		displayOptions: {
-			show: {
-				resource: [
-					'reminder',
-				],
-				operation: [
-					'update',
-				],
-				frequencyType: [
-					'week',
-					'month',
-					'year',
-				],
-			},
-		},
-	},
-	{
-		displayName: 'Initial Date',
-		name: 'initialDate',
-		description: 'Date of the reminder',
-		type: 'dateTime',
-		required: true,
-		default: '',
-		displayOptions: {
-			show: {
-				resource: [
-					'reminder',
-				],
-				operation: [
-					'update',
-				],
-			},
-		},
-	},
-	{
-		displayName: 'Title',
-		name: 'title',
-		description: 'Title of the reminder - max 100,000 characters',
-		type: 'string',
-		required: true,
-		default: '',
-		displayOptions: {
-			show: {
-				resource: [
-					'reminder',
-				],
-				operation: [
-					'update',
-				],
-			},
-		},
-	},
-	{
 		displayName: 'Update Fields',
 		name: 'updateFields',
 		type: 'collection',
@@ -436,6 +325,68 @@ export const reminderFields = [
 				typeOptions: {
 					alwaysOpenEditWindow: true,
 				},
+			},
+			{
+				displayName: 'Contact ID',
+				name: 'contact_id',
+				type: 'string',
+				default: '',
+				description: 'ID of the contact to associate the reminder with',
+			},
+			{
+				displayName: 'Frequency Type',
+				name: 'frequency_type',
+				description: 'Frequency of the reminder',
+				type: 'options',
+				default: 'one_time',
+				options: [
+					{
+						name: 'One Time',
+						value: 'one_time',
+					},
+					{
+						name: 'Week',
+						value: 'week',
+					},
+					{
+						name: 'Month',
+						value: 'month',
+					},
+					{
+						name: 'Year',
+						value: 'year',
+					},
+				],
+			},
+			{
+				displayName: 'Recurring Interval',
+				name: 'frequency_number',
+				type: 'number',
+				default: 0,
+				description: 'Interval for the reminder',
+				displayOptions: {
+					show: {
+						frequency_type: [
+							'week',
+							'month',
+							'year',
+						],
+					},
+				},
+			},
+			{
+				displayName: 'Initial Date',
+				name: 'initial_data',
+				description: 'Date of the reminder',
+				type: 'dateTime',
+				default: '',
+			},
+			{
+				displayName: 'Title',
+				name: 'title',
+				description: 'Title of the reminder - max 100,000 characters',
+				type: 'string',
+				default: '',
 			},
 		],
 	},

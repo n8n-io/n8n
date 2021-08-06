@@ -45,6 +45,7 @@ import {
 import {
 	LoaderGetResponse, Option,
 } from './types';
+import { IData } from '../Google/CloudNaturalLanguage/Interface';
 
 export class MonicaCrm implements INodeType {
 	description: INodeTypeDescription = {
@@ -56,7 +57,7 @@ export class MonicaCrm implements INodeType {
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 		description: 'Consume the Monica CRM API',
 		defaults: {
-			name: 'MonicaCrm',
+			name: 'Monica CRM',
 			color: '#3cb371',
 		},
 		inputs: ['main'],
@@ -258,11 +259,9 @@ export class MonicaCrm implements INodeType {
 						//             activity: getAll
 						// ----------------------------------------
 
-						// https://www.monicahq.com/api/activities#list-all-the-activities-of-a-specific-contact
+						// https://www.monicahq.com/api/activities#list-all-the-activities-in-your-account
 
-						const contactId = this.getNodeParameter('contactId', i);
-
-						const endpoint = `/contacts/${contactId}/activities`;
+						const endpoint = `/activities`;
 						responseData = await monicaCrmApiRequestAllItems.call(this, 'GET', endpoint);
 
 					} else if (operation === 'update') {
@@ -273,14 +272,15 @@ export class MonicaCrm implements INodeType {
 
 						// https://www.monicahq.com/api/activities#update-an-activity
 
-						const contacts = this.getNodeParameter('contacts', i) as string;
-						const happenedAt = this.getNodeParameter('happenedAt', i) as string;
+						const activityId = this.getNodeParameter('activityId', i);
+
+						const { data } = await monicaCrmApiRequest.call(this, 'GET', `/activities/${activityId}`);
 
 						const body = {
-							activity_type_id: this.getNodeParameter('activityTypeId', i),
-							contacts: contacts.split(','),
-							happened_at: happenedAt.split('T')[0],
-							summary: this.getNodeParameter('summary', i),
+							activity_type_id: data.activity_type.id,
+							contacts: data.attendees.contacts.map((contact: IDataObject) => contact.id),
+							happened_at: data.happened_at,
+							summary: data.summary,
 						} as IDataObject;
 
 						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
@@ -289,7 +289,12 @@ export class MonicaCrm implements INodeType {
 							Object.assign(body, updateFields);
 						}
 
-						const activityId = this.getNodeParameter('activityId', i);
+						body.happened_at = (body.happened_at as string).split('T')[0];
+
+						if (typeof body.contacts === 'string') {
+							body.contacts = (body.contacts as string).split(',');
+						}
+
 						const endpoint = `/activities/${activityId}`;
 						responseData = await monicaCrmApiRequest.call(this, 'PUT', endpoint, body);
 
@@ -348,11 +353,9 @@ export class MonicaCrm implements INodeType {
 						//               call: getAll
 						// ----------------------------------------
 
-						// https://www.monicahq.com/api/calls#list-all-the-calls-of-a-specific-contact
+						// https://www.monicahq.com/api/calls#list-all-the-calls-in-your-account
 
-						const contactId = this.getNodeParameter('contactId', i);
-
-						const endpoint = `/contacts/${contactId}/calls`;
+						const endpoint = `/calls`;
 						responseData = await monicaCrmApiRequestAllItems.call(this, 'GET', endpoint);
 
 					} else if (operation === 'update') {
@@ -363,11 +366,13 @@ export class MonicaCrm implements INodeType {
 
 						// https://www.monicahq.com/api/calls#update-a-call
 
-						const body = {
-							called_at: this.getNodeParameter('calledAt', i),
-						} as IDataObject;
-
 						const callId = this.getNodeParameter('callId', i);
+
+						const { data } = await monicaCrmApiRequest.call(this, 'GET', `/calls/${callId}`);
+
+						const body = {
+							called_at: data.called_at,
+						} as IDataObject;
 
 						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
 
@@ -490,7 +495,6 @@ export class MonicaCrm implements INodeType {
 
 						const body = {
 							first_name: this.getNodeParameter('firstName', i),
-							gender_id: this.getNodeParameter('genderId', i),
 						} as IDataObject;
 
 						const {
@@ -837,12 +841,20 @@ export class MonicaCrm implements INodeType {
 
 						// https://www.monicahq.com/api/journal#update-a-journal-entry
 
+						const journalId = this.getNodeParameter('journalId', i);
+
+						const { data } = await monicaCrmApiRequest.call(this, 'GET', `/journal/${journalId}`);
+
+						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+
 						const body = {
-							post: this.getNodeParameter('post', i),
-							title: this.getNodeParameter('title', i),
+							post: data.post,
+							title: data.title,
 						} as IDataObject;
 
-						const journalId = this.getNodeParameter('journalId', i);
+						if (Object.keys(updateFields).length) {
+							Object.assign(body, updateFields);
+						}
 
 						responseData = await monicaCrmApiRequest.call(this, 'PUT', `/journal/${journalId}`, body);
 
@@ -902,11 +914,9 @@ export class MonicaCrm implements INodeType {
 						//               note: getAll
 						// ----------------------------------------
 
-						// https://www.monicahq.com/api/notes#list-all-the-notes-of-a-specific-contact
+						// https://www.monicahq.com/api/notes#list-all-the-notes-in-your-account
 
-						const contactId = this.getNodeParameter('contactId', i);
-
-						const endpoint = `/contacts/${contactId}/notes`;
+						const endpoint = `/notes`;
 						responseData = await monicaCrmApiRequestAllItems.call(this, 'GET', endpoint);
 
 					} else if (operation === 'update') {
@@ -917,13 +927,21 @@ export class MonicaCrm implements INodeType {
 
 						// https://www.monicahq.com/api/notes#update-a-note
 
+						const noteId = this.getNodeParameter('noteId', i);
+
+						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+
+						const { data } = await monicaCrmApiRequest.call(this, 'GET', `/notes/${noteId}`);
+
 						const body = {
-							body: this.getNodeParameter('body', i),
-							contact_id: this.getNodeParameter('contactId', i),
+							body: data.body,
+							contact_id: data.contact.id,
 						} as IDataObject;
 
-						body.is_favorited = this.getNodeParameter('updateFields.isFavorited', i, false);
-						const noteId = this.getNodeParameter('noteId', i);
+
+						if (Object.keys(updateFields).length) {
+							Object.assign(body, updateFields);
+						}
 
 						responseData = await monicaCrmApiRequest.call(this, 'PUT', `/notes/${noteId}`, body);
 
@@ -1006,14 +1024,16 @@ export class MonicaCrm implements INodeType {
 
 						// https://www.monicahq.com/api/reminders#update-a-reminder
 
-						const initialDate = this.getNodeParameter('initialDate', i) as string;
+						const reminderId = this.getNodeParameter('reminderId', i);
+
+						const { data } = await monicaCrmApiRequest.call(this, 'GET', `/reminders/${reminderId}`);
 
 						const body = {
-							contact_id: this.getNodeParameter('contactId', i),
-							frequency_type: this.getNodeParameter('frequencyType', i),
-							frequency_number: this.getNodeParameter('frequencyNumber', i, 1),
-							initial_date: initialDate.split('T')[0],
-							title: this.getNodeParameter('title', i),
+							contact_id: data.contact.id,
+							frequency_type: data.frequency_type,
+							frequency_number: data.frequency_number,
+							initial_date: data.initial_date,
+							title: data.title,
 						} as IDataObject;
 
 						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
@@ -1022,7 +1042,7 @@ export class MonicaCrm implements INodeType {
 							Object.assign(body, updateFields);
 						}
 
-						const reminderId = this.getNodeParameter('reminderId', i);
+						body.initial_date = (body.initial_date as string).split('T')[0];
 
 						const endpoint = `/reminders/${reminderId}`;
 						responseData = await monicaCrmApiRequest.call(this, 'PUT', endpoint, body);
@@ -1162,9 +1182,7 @@ export class MonicaCrm implements INodeType {
 
 						// https://www.monicahq.com/api/tasks#list-all-the-tasks-of-a-specific-contact
 
-						const contactId = this.getNodeParameter('contactId', i);
-
-						const endpoint = `/contacts/${contactId}/tasks`;
+						const endpoint = `/tasks`;
 						responseData = await monicaCrmApiRequestAllItems.call(this, 'GET', endpoint);
 
 					} else if (operation === 'update') {
@@ -1175,10 +1193,14 @@ export class MonicaCrm implements INodeType {
 
 						// https://www.monicahq.com/api/task#update-a-task
 
+						const taskId = this.getNodeParameter('taskId', i);
+
+						const { data } = await monicaCrmApiRequest.call(this, 'GET', `/tasks/${taskId}`);
+
 						const body = {
-							contact_id: this.getNodeParameter('contactId', i),
-							title: this.getNodeParameter('title', i),
-							completed: this.getNodeParameter('completed', i),
+							contact_id: data.contact.id,
+							title: data.title,
+							completed: data.completed,
 						} as IDataObject;
 
 						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
@@ -1187,17 +1209,14 @@ export class MonicaCrm implements INodeType {
 							Object.assign(body, updateFields);
 						}
 
-						const taskId = this.getNodeParameter('taskId', i);
-
 						responseData = await monicaCrmApiRequest.call(this, 'PUT', `/tasks/${taskId}`, body);
-
 					}
 
 				}
 
 			} catch (error) {
 				if (this.continueOnFail()) {
-					returnData.push({ json: { error: error.message }});
+					returnData.push({ json: { error: error.message } });
 					continue;
 				}
 

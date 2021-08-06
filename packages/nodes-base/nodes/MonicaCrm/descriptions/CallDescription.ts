@@ -155,24 +155,6 @@ export const callFields = [
 	//               call: getAll
 	// ----------------------------------------
 	{
-		displayName: 'Contact ID',
-		name: 'contactId',
-		description: 'ID of the contact whose calls to retrieve',
-		type: 'string',
-		required: true,
-		default: '',
-		displayOptions: {
-			show: {
-				resource: [
-					'call',
-				],
-				operation: [
-					'getAll',
-				],
-			},
-		},
-	},
-	{
 		displayName: 'Return All',
 		name: 'returnAll',
 		type: 'boolean',
@@ -235,24 +217,6 @@ export const callFields = [
 		},
 	},
 	{
-		displayName: 'Called At',
-		name: 'calledAt',
-		description: 'Date when the call happened',
-		type: 'dateTime',
-		required: true,
-		default: '',
-		displayOptions: {
-			show: {
-				resource: [
-					'call',
-				],
-				operation: [
-					'update',
-				],
-			},
-		},
-	},
-	{
 		displayName: 'Update Fields',
 		name: 'updateFields',
 		type: 'collection',
@@ -269,6 +233,13 @@ export const callFields = [
 			},
 		},
 		options: [
+			{
+				displayName: 'Called At',
+				name: 'calledAt',
+				description: 'Date when the call happened',
+				type: 'dateTime',
+				default: '',
+			},
 			{
 				displayName: 'Contact ID',
 				name: 'contactId',

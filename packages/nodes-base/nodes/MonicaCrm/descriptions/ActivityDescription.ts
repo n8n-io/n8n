@@ -201,24 +201,6 @@ export const activityFields = [
 	//             activity: getAll
 	// ----------------------------------------
 	{
-		displayName: 'Contact ID',
-		name: 'contactId',
-		description: 'ID of the contact whose activities to retrieve',
-		type: 'string',
-		required: true,
-		default: '',
-		displayOptions: {
-			show: {
-				resource: [
-					'activity',
-				],
-				operation: [
-					'getAll',
-				],
-			},
-		},
-	},
-	{
 		displayName: 'Return All',
 		name: 'returnAll',
 		type: 'boolean',
@@ -281,80 +263,6 @@ export const activityFields = [
 		},
 	},
 	{
-		displayName: 'Activity Type',
-		name: 'activityTypeId',
-		type: 'options',
-		required: true,
-		default: '',
-		typeOptions: {
-			loadOptionsMethod: 'getActivityTypes',
-		},
-		displayOptions: {
-			show: {
-				resource: [
-					'activity',
-				],
-				operation: [
-					'update',
-				],
-			},
-		},
-	},
-	{
-		displayName: 'Contacts',
-		name: 'contacts',
-		description: 'IDs of the contacts to associate the activity with',
-		type: 'string',
-		required: true,
-		default: '',
-		displayOptions: {
-			show: {
-				resource: [
-					'activity',
-				],
-				operation: [
-					'update',
-				],
-			},
-		},
-	},
-	{
-		displayName: 'Happened At',
-		name: 'happenedAt',
-		description: 'Date when the activity happened',
-		type: 'dateTime',
-		required: true,
-		default: '',
-		displayOptions: {
-			show: {
-				resource: [
-					'activity',
-				],
-				operation: [
-					'update',
-				],
-			},
-		},
-	},
-	{
-		displayName: 'Summary',
-		name: 'summary',
-		description: 'Brief description of the activity - max 255 characters',
-		type: 'dateTime',
-		required: true,
-		default: '',
-		displayOptions: {
-			show: {
-				resource: [
-					'activity',
-				],
-				operation: [
-					'update',
-				],
-			},
-		},
-	},
-	{
 		displayName: 'Update Fields',
 		name: 'updateFields',
 		type: 'collection',
@@ -372,6 +280,22 @@ export const activityFields = [
 		},
 		options: [
 			{
+				displayName: 'Activity Type',
+				name: 'activity_type_id',
+				type: 'options',
+				default: '',
+				typeOptions: {
+					loadOptionsMethod: 'getActivityTypes',
+				},
+			},
+			{
+				displayName: 'Contacts',
+				name: 'contacts',
+				description: 'IDs of the contacts to associate the activity with',
+				type: 'string',
+				default: '',
+			},
+			{
 				displayName: 'Description',
 				name: 'description',
 				type: 'string',
@@ -380,6 +304,20 @@ export const activityFields = [
 				typeOptions: {
 					alwaysOpenEditWindow: true,
 				},
+			},
+			{
+				displayName: 'Happened At',
+				name: 'happened_at',
+				description: 'Date when the activity happened',
+				type: 'dateTime',
+				default: '',
+			},
+			{
+				displayName: 'Summary',
+				name: 'summary',
+				description: 'Brief description of the activity - max 255 characters',
+				type: 'string',
+				default: '',
 			},
 		],
 	},

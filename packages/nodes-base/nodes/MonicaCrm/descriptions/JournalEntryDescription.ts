@@ -199,12 +199,11 @@ export const journalEntryFields = [
 		},
 	},
 	{
-		displayName: 'Title',
-		name: 'title',
-		description: 'Title of the journal entry - max 250 characters',
-		type: 'string',
-		required: true,
-		default: '',
+		displayName: 'Update Fields',
+		name: 'updateFields',
+		type: 'collection',
+		placeholder: 'Add Field',
+		default: {},
 		displayOptions: {
 			show: {
 				resource: [
@@ -215,26 +214,24 @@ export const journalEntryFields = [
 				],
 			},
 		},
-	},
-	{
-		displayName: 'Content',
-		name: 'post',
-		description: 'Content of the journal entry - max 100,000 characters',
-		type: 'string',
-		required: true,
-		default: '',
-		typeOptions: {
-			alwaysOpenEditWindow: true,
-		},
-		displayOptions: {
-			show: {
-				resource: [
-					'journalEntry',
-				],
-				operation: [
-					'update',
-				],
+		options: [
+			{
+				displayName: 'Content',
+				name: 'post',
+				description: 'Content of the journal entry - max 100,000 characters',
+				type: 'string',
+				default: '',
+				typeOptions: {
+					alwaysOpenEditWindow: true,
+				},
 			},
-		},
+			{
+				displayName: 'Title',
+				name: 'title',
+				description: 'Title of the journal entry - max 250 characters',
+				type: 'string',
+				default: '',
+			},
+		],
 	},
 ] as INodeProperties[];
