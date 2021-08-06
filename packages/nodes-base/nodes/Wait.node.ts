@@ -361,6 +361,110 @@ export class Wait implements INodeType {
 				description: 'Name of the binary property to return',
 			},
 			{
+				displayName: 'Resume execution after',
+				name: 'resumeExecutionAfter',
+				type: 'boolean',
+				default: false,
+				description: `If no webhook call is received, the workflow will <br />
+							 resume execution after specified condition.`,
+				displayOptions: {
+					show: {
+						mode: [
+							'webhook',
+						],
+					}
+				}
+			},
+			{
+				displayName: 'Resume condition',
+				name: 'resumeCondition',
+				type: 'options',
+				default: 'afterSpecifiedTime',
+				description: `Sets the condition for the execution to resume.<br />
+							 Can be a specified date or after some time.`,
+				displayOptions: {
+					show: {
+						resumeExecutionAfter: [
+							true,
+						]
+					}
+				},
+				options: [
+					{
+						name: 'After specified time',
+						value: 'afterSpecifiedTime',
+					},
+					{
+						name: 'On a specific date',
+						value: 'onSpecificDate',
+					},
+				],
+			},
+			{
+				displayName: 'Amount',
+				name: 'resumeAmount',
+				type: 'number',
+				displayOptions: {
+					show: {
+						resumeCondition: [
+							'afterSpecifiedTime',
+						],
+					},
+				},
+				typeOptions: {
+					minValue: 0,
+					numberPrecision: 2,
+				},
+				default: 1,
+				description: 'The time to wait.',
+			},
+			{
+				displayName: 'Unit',
+				name: 'resumeUnit',
+				type: 'options',
+				displayOptions: {
+					show: {
+						resumeCondition: [
+							'afterSpecifiedTime',
+						],
+					},
+				},
+				options: [
+					{
+						name: 'Seconds',
+						value: 'seconds',
+					},
+					{
+						name: 'Minutes',
+						value: 'minutes',
+					},
+					{
+						name: 'Hours',
+						value: 'hours',
+					},
+					{
+						name: 'Days',
+						value: 'days',
+					},
+				],
+				default: 'hours',
+				description: 'Unit of the interval value.',
+			},
+			{
+				displayName: 'Resume on Date and Time',
+				name: 'resumeDateTime',
+				type: 'dateTime',
+				displayOptions: {
+					show: {
+						resumeCondition: [
+							'onSpecificDate',
+						],
+					},
+				},
+				default: '',
+				description: 'Continue execution on the informed date.',
+			},
+			{
 				displayName: 'Options',
 				name: 'options',
 				type: 'collection',
@@ -683,8 +787,35 @@ export class Wait implements INodeType {
 		const mode = this.getNodeParameter('mode', 0) as string;
 
 		if (mode === 'webhook') {
-			// TODO: Think about proper solution
-			await this.putExecutionToSleep(new Date(SLEEP_TIME_UNLIMITED));
+			let sleepTill = new Date(SLEEP_TIME_UNLIMITED);
+
+			const resumeAfter = this.getNodeParameter('resumeExecutionAfter', 0);
+
+			if (resumeAfter === true) {
+				const resumeCondition = this.getNodeParameter('resumeCondition', 0);
+				if (resumeCondition === 'afterSpecifiedTime') {
+					let sleepAmount = this.getNodeParameter('resumeAmount', 0) as number;
+					const resumeUnit = this.getNodeParameter('resumeUnit', 0);
+					if (resumeUnit === 'minutes') {
+						sleepAmount *= 60;
+					}
+					if (resumeUnit === 'hours') {
+						sleepAmount *= 60 * 60;
+					}
+					if (resumeUnit === 'days') {
+						sleepAmount *= 60 * 60 * 24;
+					}
+		
+					sleepAmount *= 1000;
+		
+					sleepTill = new Date(new Date().getTime() + sleepAmount);
+				} else {
+					sleepTill = new Date(this.getNodeParameter('resumeDateTime', 0) as string);
+				}
+
+			}
+
+			await this.putExecutionToSleep(sleepTill);
 
 			return [this.getInputData()];
 		}
