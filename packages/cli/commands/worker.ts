@@ -157,12 +157,12 @@ export class Worker extends Command {
 		let workflowRun: PCancelable<IRun>;
 		if (currentExecutionDb.data !== undefined) {
 			workflowExecute = new WorkflowExecute(additionalData, currentExecutionDb.mode, currentExecutionDb.data);
-			workflowRun = workflowExecute.processRunExecutionData(workflow, jobData.executionId);
+			workflowRun = workflowExecute.processRunExecutionData(workflow);
 		} else {
 			// Execute all nodes
 			// Can execute without webhook so go on
 			workflowExecute = new WorkflowExecute(additionalData, currentExecutionDb.mode);
-			workflowRun = workflowExecute.run(workflow, jobData.executionId);
+			workflowRun = workflowExecute.run(workflow);
 		}
 
 		Worker.runningJobs[job.id] = workflowRun;

@@ -164,7 +164,7 @@ export class WorkflowRunnerProcess {
 				const workflowExecute = executeWorkflowFunctionOutput.workflowExecute;
 				this.childExecutions[executionId] = executeWorkflowFunctionOutput;
 				const workflow = executeWorkflowFunctionOutput.workflow;
-				result = await workflowExecute.processRunExecutionData(workflow, executionId) as IRun;
+				result = await workflowExecute.processRunExecutionData(workflow) as IRun;
 				await externalHooks.run('workflow.postExecute', [result, workflowData]);
 				await sendToParentProcess('finishExecution', { executionId, result });
 				delete this.childExecutions[executionId];
@@ -183,17 +183,17 @@ export class WorkflowRunnerProcess {
 
 		if (this.data.executionData !== undefined) {
 			this.workflowExecute = new WorkflowExecute(additionalData, this.data.executionMode, this.data.executionData);
-			return this.workflowExecute.processRunExecutionData(this.workflow, '12');
+			return this.workflowExecute.processRunExecutionData(this.workflow);
 		} else if (this.data.runData === undefined || this.data.startNodes === undefined || this.data.startNodes.length === 0 || this.data.destinationNode === undefined) {
 			// Execute all nodes
 
 			// Can execute without webhook so go on
 			this.workflowExecute = new WorkflowExecute(additionalData, this.data.executionMode);
-			return this.workflowExecute.run(this.workflow, '12', undefined, this.data.destinationNode);
+			return this.workflowExecute.run(this.workflow, undefined, this.data.destinationNode);
 		} else {
 			// Execute only the nodes between start and destination nodes
 			this.workflowExecute = new WorkflowExecute(additionalData, this.data.executionMode);
-			return this.workflowExecute.runPartialWorkflow(this.workflow, this.data.runData, this.data.startNodes, this.data.destinationNode, '12');
+			return this.workflowExecute.runPartialWorkflow(this.workflow, this.data.runData, this.data.startNodes, this.data.destinationNode);
 		}
 	}
 

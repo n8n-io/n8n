@@ -188,19 +188,19 @@ export class WorkflowRunner {
 		if (data.executionData !== undefined) {
 			Logger.debug(`Execution ID ${executionId} had Execution data. Running with payload.`, {executionId});
 			const workflowExecute = new WorkflowExecute(additionalData, data.executionMode, data.executionData);
-			workflowExecution = workflowExecute.processRunExecutionData(workflow, executionId);
+			workflowExecution = workflowExecute.processRunExecutionData(workflow);
 		} else if (data.runData === undefined || data.startNodes === undefined || data.startNodes.length === 0 || data.destinationNode === undefined) {
 			Logger.debug(`Execution ID ${executionId} will run executing all nodes.`, {executionId});
 			// Execute all nodes
 
 			// Can execute without webhook so go on
 			const workflowExecute = new WorkflowExecute(additionalData, data.executionMode);
-			workflowExecution = workflowExecute.run(workflow, executionId, undefined, data.destinationNode);
+			workflowExecution = workflowExecute.run(workflow, undefined, data.destinationNode);
 		} else {
 			Logger.debug(`Execution ID ${executionId} is a partial execution.`, {executionId});
 			// Execute only the nodes between start and destination nodes
 			const workflowExecute = new WorkflowExecute(additionalData, data.executionMode);
-			workflowExecution = workflowExecute.runPartialWorkflow(workflow, data.runData, data.startNodes, data.destinationNode, executionId);
+			workflowExecution = workflowExecute.runPartialWorkflow(workflow, data.runData, data.startNodes, data.destinationNode);
 		}
 
 		this.activeExecutions.attachWorkflowExecution(executionId, workflowExecution);

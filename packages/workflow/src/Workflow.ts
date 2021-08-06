@@ -897,7 +897,7 @@ export class Workflow {
 	 * @returns {(Promise<INodeExecutionData[][] | null>)}
 	 * @memberof Workflow
 	 */
-	async runNode(node: INode, inputData: ITaskDataConnections, runExecutionData: IRunExecutionData, runIndex: number, additionalData: IWorkflowExecuteAdditionalData, nodeExecuteFunctions: INodeExecuteFunctions, mode: WorkflowExecuteMode, executionId: string): Promise<INodeExecutionData[][] | null | undefined> {
+	async runNode(node: INode, inputData: ITaskDataConnections, runExecutionData: IRunExecutionData, runIndex: number, additionalData: IWorkflowExecuteAdditionalData, nodeExecuteFunctions: INodeExecuteFunctions, mode: WorkflowExecuteMode): Promise<INodeExecutionData[][] | null | undefined> {
 		if (node.disabled === true) {
 			// If node is disabled simply pass the data through
 			// return NodeRunHelpers.
