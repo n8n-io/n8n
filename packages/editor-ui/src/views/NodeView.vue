@@ -86,7 +86,6 @@
 				size="lg"
 				title="Stop waiting for Webhook call"
 				type="light"
-				:loading="stopExecutionInProgress"
 				@click.stop="stopWaitingForWebhook()"
 			/>
 
@@ -201,8 +200,6 @@ export default mixins(
 			NodeCreator,
 			NodeSettings,
 			RunData,
-			// N8nButton,
-			// N8nIcon,
 		},
 		errorCaptured: (err, vm, info) => {
 			console.error('errorCaptured'); // eslint-disable-line no-console

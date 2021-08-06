@@ -37,8 +37,8 @@
 							<span class="box-card__subtitle">Data below may contain sensitive information. Proceed with caution when sharing.</span>
 						</div>
 						<div>
-							<div class="copy-button">
-								<n8n-icon-button v-if="displayCause" @click="copyCause" title="Copy to Clipboard" icon="copy" />
+							<div class="copy-button" v-if="displayCause">
+								<n8n-icon-button @click="copyCause" title="Copy to Clipboard" icon="copy" />
 							</div>
 							<vue-json-pretty
 								v-if="displayCause"
