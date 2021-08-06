@@ -372,8 +372,8 @@ export class Wait implements INodeType {
 						mode: [
 							'webhook',
 						],
-					}
-				}
+					},
+				},
 			},
 			{
 				displayName: 'Resume condition',
@@ -386,8 +386,8 @@ export class Wait implements INodeType {
 					show: {
 						resumeExecutionAfter: [
 							true,
-						]
-					}
+						],
+					},
 				},
 				options: [
 					{
