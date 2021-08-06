@@ -60,6 +60,15 @@ const requestPromiseWithDefaults = requestPromise.defaults({
 	timeout: 300000, // 5 minutes
 });
 
+/**
+ * Returns binary data buffer for given item index and property name.
+ *
+ * @export
+ * @param {ITaskDataConnections} inputData
+ * @param {number} itemIndex
+ * @param {string} propertyName
+ * @returns {Promise<Buffer>}
+ */
 export async function getBinaryDataBuffer(inputData: ITaskDataConnections, itemIndex: number, propertyName: string): Promise<Buffer> {
 	try {
 		const binaryData = inputData['main']![0]![itemIndex]!.binary![propertyName]!;
