@@ -61,10 +61,13 @@ const requestPromiseWithDefaults = requestPromise.defaults({
 });
 
 export async function getBinaryDataBuffer(inputData: ITaskDataConnections, itemIndex: number, propertyName: string): Promise<Buffer> {
-
-	// return getBinaryDataBuffer.call(this, inputData['main']![0]![itemIndex]!.binary![propertyName]!);
-
-	return BinaryDataHelper.getInstance().retrieveBinaryData(inputData['main']![0]![itemIndex]!.binary![propertyName]!);
+	try {
+		const binaryData = inputData['main']![0]![itemIndex]!.binary![propertyName]!;
+		return BinaryDataHelper.getInstance().retrieveBinaryData(binaryData);
+	}
+	catch {
+		throw `Binary data with property name ${propertyName} not found in item ${itemIndex}`;
+	}
 }
 
 /**
@@ -772,11 +775,7 @@ export function getExecuteFunctions(workflow: Workflow, runExecutionData: IRunEx
 			},
 			helpers: {
 				prepareBinaryData,
-				// getBinaryDataBuffer,
 				getBinaryDataBuffer(itemIndex: number, propertyName: string): Promise<Buffer> {
-					// console.log('getBinaryDataBufferV2');
-					// console.log(propertyName);
-					// console.log(itemIndex);
 					return getBinaryDataBuffer.call(this, inputData, itemIndex, propertyName);
 				},
 				request: requestPromiseWithDefaults,
