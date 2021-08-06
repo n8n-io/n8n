@@ -3,7 +3,6 @@ import { get } from 'lodash';
 
 import {
 	ActiveExecutions,
-	ExternalHooks,
 	GenericHelpers,
 	IExecutionDb,
 	IResponseCallbackData,
@@ -17,9 +16,8 @@ import {
 } from './';
 
 import {
-	BINARY_ENCODING,
-	NodeExecuteFunctions,
 	BinaryDataHelper,
+	NodeExecuteFunctions,
 } from 'n8n-core';
 
 import {
