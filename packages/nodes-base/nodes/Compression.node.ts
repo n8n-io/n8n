@@ -227,7 +227,7 @@ export class Compression implements INodeType {
 					}
 					
 					const binaryData = (items[i].binary as IBinaryKeyData)[binaryPropertyName];
-					const binaryDataBuffer = await this.helpers.getBinaryDataBuffer(binaryData);
+					const binaryDataBuffer = await this.helpers.getBinaryDataBuffer(i, binaryPropertyName);
 
 					if (binaryData.fileExtension === 'zip') {
 						const files = await unzip(binaryDataBuffer);
@@ -243,7 +243,7 @@ export class Compression implements INodeType {
 							binaryObject[`${outputPrefix}${zipIndex++}`] = data;
 						}
 					} else if (binaryData.fileExtension === 'gz') {
-						const binaryDataBuffer = await this.helpers.getBinaryDataBuffer(binaryData);
+						const binaryDataBuffer = await this.helpers.getBinaryDataBuffer(i, binaryPropertyName);
 						const file = await gunzip(binaryDataBuffer);
 
 						const fileName = binaryData.fileName?.split('.')[0];
@@ -285,7 +285,7 @@ export class Compression implements INodeType {
 					const binaryData = (items[i].binary as IBinaryKeyData)[binaryPropertyName];
 
 					if (outputFormat === 'zip') {
-						const binaryDataBuffer = await this.helpers.getBinaryDataBuffer(binaryData);
+						const binaryDataBuffer = await this.helpers.getBinaryDataBuffer(i, binaryPropertyName);
 						zipData[binaryData.fileName as string] = [
 							binaryDataBuffer, {
 								level: ALREADY_COMPRESSED.includes(binaryData.fileExtension as string) ? 0 : 6,

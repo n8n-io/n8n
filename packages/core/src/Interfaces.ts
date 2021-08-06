@@ -34,7 +34,7 @@ export interface IProcessMessage {
 export interface IExecuteFunctions extends IExecuteFunctionsBase {
 	helpers: {
 		prepareBinaryData(binaryData: Buffer, filePath?: string, mimeType?: string): Promise<IBinaryData>;
-		getBinaryDataBuffer(binaryData: IBinaryData): Promise<Buffer>;
+		getBinaryDataBuffer(itemIndex: number, propertyName: string): Promise<Buffer>;
 		request: requestPromise.RequestPromiseAPI;
 		requestOAuth2(this: IAllExecuteFunctions, credentialsType: string, requestOptions: OptionsWithUri | requestPromise.RequestPromiseOptions, oAuth2Options?: IOAuth2Options): Promise<any>; // tslint:disable-line:no-any
 		requestOAuth1(this: IAllExecuteFunctions, credentialsType: string, requestOptions: OptionsWithUrl | requestPromise.RequestPromiseOptions): Promise<any>; // tslint:disable-line:no-any

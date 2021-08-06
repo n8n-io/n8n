@@ -60,8 +60,11 @@ const requestPromiseWithDefaults = requestPromise.defaults({
 	timeout: 300000, // 5 minutes
 });
 
-export async function getBinaryDataBuffer(binaryData: IBinaryData): Promise<Buffer> {
-	return BinaryDataHelper.getInstance().retrieveBinaryData(binaryData);
+export async function getBinaryDataBuffer(inputData: ITaskDataConnections, itemIndex: number, propertyName: string): Promise<Buffer> {
+
+	// return getBinaryDataBuffer.call(this, inputData['main']![0]![itemIndex]!.binary![propertyName]!);
+
+	return BinaryDataHelper.getInstance().retrieveBinaryData(inputData['main']![0]![itemIndex]!.binary![propertyName]!);
 }
 
 /**
@@ -769,7 +772,13 @@ export function getExecuteFunctions(workflow: Workflow, runExecutionData: IRunEx
 			},
 			helpers: {
 				prepareBinaryData,
-				getBinaryDataBuffer,
+				// getBinaryDataBuffer,
+				getBinaryDataBuffer(itemIndex: number, propertyName: string): Promise<Buffer> {
+					// console.log('getBinaryDataBufferV2');
+					// console.log(propertyName);
+					// console.log(itemIndex);
+					return getBinaryDataBuffer.call(this, inputData, itemIndex, propertyName);
+				},
 				request: requestPromiseWithDefaults,
 				requestOAuth2(this: IAllExecuteFunctions, credentialsType: string, requestOptions: OptionsWithUri | requestPromise.RequestPromiseOptions, oAuth2Options?: IOAuth2Options): Promise<any> { // tslint:disable-line:no-any
 					return requestOAuth2.call(this, credentialsType, requestOptions, node, additionalData, oAuth2Options);

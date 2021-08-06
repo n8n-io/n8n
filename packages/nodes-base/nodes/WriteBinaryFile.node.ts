@@ -77,7 +77,7 @@ export class WriteBinaryFile implements INodeType {
 				throw new NodeOperationError(this.getNode(), `The binary property "${dataPropertyName}" does not exist. So no file can be written!`);
 			}
 
-			const binaryDataBuffer = await this.helpers.getBinaryDataBuffer(item.binary[dataPropertyName]);
+			const binaryDataBuffer = await this.helpers.getBinaryDataBuffer(itemIndex, dataPropertyName);
 
 			// Write the file to disk
 			await fsWriteFile(fileName, binaryDataBuffer, 'binary');
