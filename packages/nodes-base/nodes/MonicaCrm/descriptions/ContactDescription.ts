@@ -256,6 +256,30 @@ export const contactFields = [
 				default: '',
 				description: 'Search term to filter results by',
 			},
+			{
+				displayName: 'Sort',
+				name: 'sort',
+				type: 'options',
+				options: [
+					{
+						name: 'Ascended Created At',
+						value: 'created_at',
+					},
+					{
+						name: 'Descended Created At',
+						value: '-created_at',
+					},
+					{
+						name: 'Ascended Updated At',
+						value: 'updated_at',
+					},
+					{
+						name: 'Descended Updated At',
+						value: '-updated_at',
+					},
+				],
+				default: '',
+			},
 		],
 		displayOptions: {
 			show: {
