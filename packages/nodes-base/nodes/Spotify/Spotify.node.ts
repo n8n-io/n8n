@@ -1403,7 +1403,7 @@ export class Spotify implements INodeType {
 
 						qs = {
 							type: 'artist',
-						}
+						};
 
 						if (!returnAll) {
 							const limit = this.getNodeParameter('limit', i) as number;
