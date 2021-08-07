@@ -26,6 +26,7 @@
 				:name="nodeData.name"
 				:isReadOnly="isReadOnly"
 				:instance="instance"
+				:isActive="!!activeNode && activeNode.name === nodeData.name"
 				></node>
 			</div>
 		</div>
