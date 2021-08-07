@@ -715,6 +715,7 @@ export class Spotify implements INodeType {
 							'myData',
 							'playlist',
 							'track',
+							'player',
 						],
 						operation: [
 							'getTracks',
@@ -724,6 +725,7 @@ export class Spotify implements INodeType {
 							'getLikedTracks',
 							'getFollowingArtists',
 							'search',
+							'recentlyPlayed',
 						],
 					},
 				},
@@ -921,15 +923,22 @@ export class Spotify implements INodeType {
 
 						endpoint = `/me/player/recently-played`;
 
-						const limit = this.getNodeParameter('limit', i) as number;
+						returnAll = this.getNodeParameter('returnAll', i) as boolean;
 
-						qs = {
-							limit,
-						};
+						propertyName = 'items';
 
-						responseData = await spotifyApiRequest.call(this, requestMethod, endpoint, body, qs);
+						if (!returnAll) {
 
-						responseData = responseData.items;
+							const limit = this.getNodeParameter('limit', i) as number;
+
+							qs = {
+								limit,
+							};
+
+							responseData = await spotifyApiRequest.call(this, requestMethod, endpoint, body, qs);
+
+							responseData = responseData.items;
+						}
 
 					} else if (operation === 'currentlyPlaying') {
 						requestMethod = 'GET';
