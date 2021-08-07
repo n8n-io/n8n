@@ -48,7 +48,6 @@ import {
 	LoaderGetResponse,
 	Option,
 } from './types';
-import { IData } from '../Google/CloudNaturalLanguage/Interface';
 
 export class MonicaCrm implements INodeType {
 	description: INodeTypeDescription = {

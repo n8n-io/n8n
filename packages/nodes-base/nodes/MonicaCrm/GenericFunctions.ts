@@ -1,4 +1,5 @@
 import {
+	Credentials,
 	IExecuteFunctions,
 } from 'n8n-core';
 
@@ -24,10 +25,16 @@ export async function monicaCrmApiRequest(
 	body: IDataObject = {},
 	qs: IDataObject = {},
 ) {
-	const credentials = this.getCredentials('monicaCrmApi') as { apiToken: string };
+	const credentials = this.getCredentials('monicaCrmApi') as { apiToken: string, environment: string, domain: string };
 
 	if (credentials === undefined) {
 		throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
+	}
+
+	let baseUrl = `https://app.monicahq.com`;
+
+	if (credentials.environment === 'selfHosted') {
+		baseUrl = credentials.domain;
 	}
 
 	const options: OptionsWithUri = {
@@ -37,7 +44,7 @@ export async function monicaCrmApiRequest(
 		method,
 		body,
 		qs,
-		uri: `https://app.monicahq.com/api${endpoint}`,
+		uri: `${baseUrl}/api${endpoint}`,
 		json: true,
 	};
 
