@@ -361,11 +361,11 @@ export class Wait implements INodeType {
 				description: 'Name of the binary property to return',
 			},
 			{
-				displayName: 'Resume execution after',
-				name: 'resumeExecutionAfter',
+				displayName: 'Auto Resume',
+				name: 'autoResume',
 				type: 'boolean',
 				default: false,
-				description: `If no webhook call is received, the workflow will <br />
+				description: `If no webhook call is received, the workflow will automatically<br />
 							 resume execution after specified condition.`,
 				displayOptions: {
 					show: {
@@ -384,7 +384,7 @@ export class Wait implements INodeType {
 							 Can be a specified date or after some time.`,
 				displayOptions: {
 					show: {
-						resumeExecutionAfter: [
+						autoResume: [
 							true,
 						],
 					},
@@ -395,8 +395,8 @@ export class Wait implements INodeType {
 						value: 'afterSpecifiedTime',
 					},
 					{
-						name: 'On a specific date',
-						value: 'onSpecificDate',
+						name: 'On a specific time',
+						value: 'onSpecificTime',
 					},
 				],
 			},
@@ -408,6 +408,9 @@ export class Wait implements INodeType {
 					show: {
 						resumeCondition: [
 							'afterSpecifiedTime',
+						],
+						autoResume: [
+							true,
 						],
 					},
 				},
@@ -426,6 +429,9 @@ export class Wait implements INodeType {
 					show: {
 						resumeCondition: [
 							'afterSpecifiedTime',
+						],
+						autoResume: [
+							true,
 						],
 					},
 				},
@@ -457,7 +463,10 @@ export class Wait implements INodeType {
 				displayOptions: {
 					show: {
 						resumeCondition: [
-							'onSpecificDate',
+							'onSpecificTime',
+						],
+						autoResume: [
+							true,
 						],
 					},
 				},
@@ -789,9 +798,9 @@ export class Wait implements INodeType {
 		if (mode === 'webhook') {
 			let sleepTill = new Date(SLEEP_TIME_UNLIMITED);
 
-			const resumeAfter = this.getNodeParameter('resumeExecutionAfter', 0);
+			const autoResume = this.getNodeParameter('autoResume', 0);
 
-			if (resumeAfter === true) {
+			if (autoResume === true) {
 				const resumeCondition = this.getNodeParameter('resumeCondition', 0);
 				if (resumeCondition === 'afterSpecifiedTime') {
 					let sleepAmount = this.getNodeParameter('resumeAmount', 0) as number;
@@ -805,14 +814,13 @@ export class Wait implements INodeType {
 					if (resumeUnit === 'days') {
 						sleepAmount *= 60 * 60 * 24;
 					}
-		
+
 					sleepAmount *= 1000;
-		
+
 					sleepTill = new Date(new Date().getTime() + sleepAmount);
 				} else {
 					sleepTill = new Date(this.getNodeParameter('resumeDateTime', 0) as string);
 				}
-
 			}
 
 			await this.putExecutionToSleep(sleepTill);
