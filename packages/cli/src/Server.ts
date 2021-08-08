@@ -466,16 +466,18 @@ class App {
 		// Does very basic health check
 		this.app.get('/healthz', async (req: express.Request, res: express.Response) => {
 
-			const connectionManager = getConnectionManager();
+			const connection = getConnectionManager().get();
 
-			if (connectionManager.connections.length === 0) {
-				const error = new ResponseHelper.ResponseError('No Database connection found!', undefined, 503);
-				return ResponseHelper.sendErrorResponse(res, error);
-			}
-
-			if (connectionManager.connections[0].isConnected === false) {
-				// Connection is not active
-				const error = new ResponseHelper.ResponseError('Database connection not active!', undefined, 503);
+			try {
+				if (connection.isConnected === false) {
+					// Connection is not active
+					throw new Error('No active database connection!');
+				}
+				// DB ping
+				await connection.query('SELECT 1');
+			} catch (err) {
+				LoggerProxy.error('No Database connection!', err);
+				const error = new ResponseHelper.ResponseError('No Database connection!', undefined, 503);
 				return ResponseHelper.sendErrorResponse(res, error);
 			}
 
