@@ -40,9 +40,6 @@ export class SleepTrackerClass {
 
 
 	constructor() {
-		// Example URL:
-		// http://localhost:5678/webhook-sleeping/13485
-
 		this.activeExecutionsInstance = ActiveExecutions.getInstance();
 
 		// Poll every 60 seconds a list of upcoming executions
