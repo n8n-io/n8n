@@ -308,18 +308,18 @@ export class HttpRequest implements INodeType {
 						description: 'Returns the full reponse data instead of only the body.',
 					},
 					{
-						displayName: 'Follow Redirect',
-						name: 'followRedirect',
-						type: 'boolean',
-						default: true,
-						description: 'Follow GET HTTP 3xx redirects.',
-					},
-					{
 						displayName: 'Follow All Redirects',
 						name: 'followAllRedirects',
 						type: 'boolean',
 						default: false,
 						description: 'Follow non-GET HTTP 3xx redirects.',
+					},
+					{
+						displayName: 'Follow GET Redirect',
+						name: 'followRedirect',
+						type: 'boolean',
+						default: true,
+						description: 'Follow GET HTTP 3xx redirects.',
 					},
 					{
 						displayName: 'Ignore Response Code',
