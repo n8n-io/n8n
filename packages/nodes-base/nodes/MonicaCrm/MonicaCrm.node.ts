@@ -685,7 +685,7 @@ export class MonicaCrm implements INodeType {
 
 
 
-					 if (operation === 'create') {
+					if (operation === 'create') {
 
 						// ----------------------------------------
 						//           conversation: create
@@ -770,9 +770,9 @@ export class MonicaCrm implements INodeType {
 						} as IDataObject;
 
 						responseData = await monicaCrmApiRequest.call(this, 'POST', endpoint, body);
-					
+
 					} else if (operation === 'update') {
-						
+
 						// ----------------------------------------
 						//       conversationMessage: update
 						// ----------------------------------------
@@ -801,7 +801,7 @@ export class MonicaCrm implements INodeType {
 
 						responseData = await monicaCrmApiRequest.call(this, 'PUT', endpoint, body);
 					}
-				
+
 				} else if (resource === 'journalEntry') {
 
 					// **********************************************************************

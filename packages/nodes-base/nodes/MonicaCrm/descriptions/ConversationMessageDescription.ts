@@ -116,6 +116,7 @@ export const conversationMessageFields = [
 			},
 		},
 	},
+
 	// ----------------------------------------
 	//       conversationMessage: update
 	// ----------------------------------------
@@ -187,6 +188,13 @@ export const conversationMessageFields = [
 				default: '',
 			},
 			{
+				displayName: 'Written At',
+				name: 'written_at',
+				description: 'Date when the message was written',
+				type: 'dateTime',
+				default: '',
+			},
+			{
 				displayName: 'Written By',
 				name: 'written_by_me',
 				description: 'Author of the message',
@@ -203,13 +211,6 @@ export const conversationMessageFields = [
 						value: false,
 					},
 				],
-			},
-			{
-				displayName: 'Written At',
-				name: 'written_at',
-				description: 'Date when the message was written',
-				type: 'dateTime',
-				default: '',
 			},
 		],
 	},

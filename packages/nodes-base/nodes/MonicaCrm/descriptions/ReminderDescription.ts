@@ -317,6 +317,13 @@ export const reminderFields = [
 		},
 		options: [
 			{
+				displayName: 'Contact ID',
+				name: 'contact_id',
+				type: 'string',
+				default: '',
+				description: 'ID of the contact to associate the reminder with',
+			},
+			{
 				displayName: 'Description',
 				name: 'description',
 				type: 'string',
@@ -325,13 +332,6 @@ export const reminderFields = [
 				typeOptions: {
 					alwaysOpenEditWindow: true,
 				},
-			},
-			{
-				displayName: 'Contact ID',
-				name: 'contact_id',
-				type: 'string',
-				default: '',
-				description: 'ID of the contact to associate the reminder with',
 			},
 			{
 				displayName: 'Frequency Type',
@@ -359,6 +359,13 @@ export const reminderFields = [
 				],
 			},
 			{
+				displayName: 'Initial Date',
+				name: 'initial_data',
+				description: 'Date of the reminder',
+				type: 'dateTime',
+				default: '',
+			},
+			{
 				displayName: 'Recurring Interval',
 				name: 'frequency_number',
 				type: 'number',
@@ -374,13 +381,7 @@ export const reminderFields = [
 					},
 				},
 			},
-			{
-				displayName: 'Initial Date',
-				name: 'initial_data',
-				description: 'Date of the reminder',
-				type: 'dateTime',
-				default: '',
-			},
+
 			{
 				displayName: 'Title',
 				name: 'title',

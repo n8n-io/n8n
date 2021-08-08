@@ -242,16 +242,6 @@ export const taskFields = [
 		},
 		options: [
 			{
-				displayName: 'Description',
-				name: 'description',
-				type: 'string',
-				default: '',
-				description: 'Description of the task - max 100,000 characters',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
-			},
-			{
 				displayName: 'Contact ID',
 				name: 'contactId',
 				description: 'ID of the contact to associate the task with',
@@ -264,6 +254,16 @@ export const taskFields = [
 				description: 'Whether the task has been completed',
 				type: 'boolean',
 				default: false,
+			},
+			{
+				displayName: 'Description',
+				name: 'description',
+				type: 'string',
+				default: '',
+				description: 'Description of the task - max 100,000 characters',
+				typeOptions: {
+					alwaysOpenEditWindow: true,
+				},
 			},
 			{
 				displayName: 'Title',
