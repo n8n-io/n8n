@@ -308,11 +308,18 @@ export class HttpRequest implements INodeType {
 						description: 'Returns the full reponse data instead of only the body.',
 					},
 					{
-						displayName: 'Follow Redirect',
+						displayName: 'Follow All Redirects',
+						name: 'followAllRedirects',
+						type: 'boolean',
+						default: false,
+						description: 'Follow non-GET HTTP 3xx redirects.',
+					},
+					{
+						displayName: 'Follow GET Redirect',
 						name: 'followRedirect',
 						type: 'boolean',
 						default: true,
-						description: 'Follow HTTP 3xx redirects.',
+						description: 'Follow GET HTTP 3xx redirects.',
 					},
 					{
 						displayName: 'Ignore Response Code',
@@ -695,6 +702,11 @@ export class HttpRequest implements INodeType {
 			if (options.followRedirect !== undefined) {
 				requestOptions.followRedirect = options.followRedirect as boolean;
 			}
+
+			if (options.followAllRedirects !== undefined) {
+				requestOptions.followAllRedirects = options.followAllRedirects as boolean;
+			}
+
 			if (options.ignoreResponseCode === true) {
 				// @ts-ignore
 				requestOptions.simple = false;
