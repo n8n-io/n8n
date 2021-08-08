@@ -334,6 +334,13 @@ export const nodeBase = mixins(
 			});
 
 		},
+		touchEnd(e: MouseEvent) {
+			if (this.isTouchDevice) {
+				if (this.$store.getters.isActionActive('dragActive')) {
+					this.$store.commit('removeActiveAction', 'dragActive');
+				}
+			}
+		},
 		mouseLeftClick (e: MouseEvent) {
 			// @ts-ignore
 			const path = e.path || (e.composedPath && e.composedPath());
