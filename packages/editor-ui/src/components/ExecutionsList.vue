@@ -162,6 +162,8 @@ import ExecutionTime from '@/components/ExecutionTime.vue';
 import WorkflowActivator from '@/components/WorkflowActivator.vue';
 
 import { externalHooks } from '@/components/mixins/externalHooks';
+import { SLEEP_TIME_UNLIMITED } from '@/constants';
+
 import { restApi } from '@/components/mixins/restApi';
 import { genericHelpers } from '@/components/mixins/genericHelpers';
 import { showMessage } from '@/components/mixins/showMessage';
@@ -620,7 +622,10 @@ export default mixins(
 		statusTooltipText (entry: IExecutionsSummary): string {
 			if (entry.sleepTill) {
 				const sleepDate = new Date(entry.sleepTill);
-				return `The worklow is sleeping till ${sleepDate.toLocaleDateString()} ${sleepDate.toLocaleTimeString()}.`;
+				if (sleepDate.toISOString() === SLEEP_TIME_UNLIMITED) {
+					return 'The workflow is waiting indefinitely.';
+				}
+				return `The worklow is waiting till ${sleepDate.toLocaleDateString()} ${sleepDate.toLocaleTimeString()}.`;
 			} else if (entry.stoppedAt === undefined) {
 				return 'The worklow is currently executing.';
 			} else if (entry.finished === true && entry.retryOf !== undefined) {
