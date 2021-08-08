@@ -125,22 +125,30 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 				return 'play';
 			}
 		},
-		nodeSubtitle (): string | undefined {
-			return this.getNodeSubtitle(this.data, this.nodeType, this.workflow);
-		},
 		workflowRunning (): boolean {
 			return this.$store.getters.isActionActive('workflowRunning');
 		},
-		workflow () {
-			return this.getWorkflow();
+	},
+	watch: {
+		isActive(newValue, oldValue) {
+			if (!newValue && oldValue) {
+				this.setSubtitle();
+			}
 		},
+	},
+	mounted() {
+		this.setSubtitle();
 	},
 	data () {
 		return {
 			isTouchActive: false,
+			nodeSubtitle: '',
 		};
 	},
 	methods: {
+		setSubtitle() {
+			this.nodeSubtitle = this.getNodeSubtitle(this.data, this.nodeType, this.getWorkflow()) || '';
+		},
 		disableNode () {
 			this.disableNodes([this.data]);
 		},
