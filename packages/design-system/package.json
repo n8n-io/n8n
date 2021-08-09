@@ -22,7 +22,9 @@
 		"lint": "vue-cli-service lint",
 		"build:theme": "gulp build:theme",
 		"watch:theme": "gulp watch:theme",
-		"prepare": "gulp build:theme; npm run build"
+		"prepare": "gulp build:theme; npm run build",
+    "tslint": "tslint -p tsconfig.json -c tslint.json",
+    "tslintfix": "tslint --fix -p tsconfig.json -c tslint.json"
 	},
 	"peerDependencies": {
 		"@fortawesome/fontawesome-svg-core": "1.x",
