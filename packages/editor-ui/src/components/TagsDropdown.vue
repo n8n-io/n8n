@@ -247,7 +247,7 @@ $--border-radius: 20px;
 	}
 }
 
-/deep/ .el-select {
+::v-deep .el-select {
 	.el-select__tags {
 		max-height: $--max-input-height;
 		border-radius: $--border-radius;
@@ -320,7 +320,7 @@ $--border-radius: 20px;
 	}
 
 	li {
-		height: $--item-height; 
+		height: $--item-height;
 		background-color: white;
 		padding: $--item-padding;
 		margin: 0;

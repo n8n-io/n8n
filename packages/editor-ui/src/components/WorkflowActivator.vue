@@ -185,7 +185,7 @@ export default mixins(
 	margin-left: 0.5em;
 }
 
-/deep/ .el-loading-spinner {
+::v-deep .el-loading-spinner {
 	margin-top: -10px;
 }
 </style>
