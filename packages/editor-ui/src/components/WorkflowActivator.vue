@@ -32,6 +32,7 @@ import {
 } from '../Interface';
 
 import mixins from 'vue-typed-mixins';
+import { mapGetters } from "vuex";
 
 export default mixins(
 	externalHooks,
@@ -54,6 +55,9 @@ export default mixins(
 				};
 			},
 			computed: {
+				...mapGetters({
+					dirtyState: "getStateIsDirty",
+				}),
 				nodesIssuesExist (): boolean {
 					return this.$store.getters.nodesIssuesExist;
 				},
@@ -100,9 +104,11 @@ export default mixins(
 						// workflow. If that would not happen then it could be quite confusing
 						// for people because it would activate a different version of the workflow
 						// than the one they can currently see.
-						const importConfirm = await this.confirmMessage(`When you activate the workflow all currently unsaved changes of the workflow will be saved.`, 'Activate and save?', 'warning', 'Yes, activate and save!');
-						if (importConfirm === false) {
-							return;
+						if (this.dirtyState) {
+							const importConfirm = await this.confirmMessage(`When you activate the workflow all currently unsaved changes of the workflow will be saved.`, 'Activate and save?', 'warning', 'Yes, activate and save!');
+							if (importConfirm === false) {
+								return;
+							}
 						}
 
 						// Get the current workflow data that it gets saved together with the activation

@@ -55,35 +55,46 @@ export class ReadBinaryFile implements INodeType {
 		let item: INodeExecutionData;
 
 		for (let itemIndex = 0; itemIndex < length; itemIndex++) {
-			item = items[itemIndex];
-			const dataPropertyName = this.getNodeParameter('dataPropertyName', itemIndex) as string;
-			const filePath = this.getNodeParameter('filePath', itemIndex) as string;
 
-			let data;
 			try {
-				data = await fsReadFile(filePath) as Buffer;
-			} catch (error) {
-				if (error.code === 'ENOENT') {
-					throw new NodeOperationError(this.getNode(), `The file "${filePath}" could not be found.`);
+
+				item = items[itemIndex];
+				const dataPropertyName = this.getNodeParameter('dataPropertyName', itemIndex) as string;
+				const filePath = this.getNodeParameter('filePath', itemIndex) as string;
+
+				let data;
+				try {
+					data = await fsReadFile(filePath) as Buffer;
+				} catch (error) {
+					if (error.code === 'ENOENT') {
+						throw new NodeOperationError(this.getNode(), `The file "${filePath}" could not be found.`);
+					}
+
+					throw error;
 				}
 
+				const newItem: INodeExecutionData = {
+					json: item.json,
+					binary: {},
+				};
+
+				if (item.binary !== undefined) {
+					// Create a shallow copy of the binary data so that the old
+					// data references which do not get changed still stay behind
+					// but the incoming data does not get changed.
+					Object.assign(newItem.binary, item.binary);
+				}
+
+				newItem.binary![dataPropertyName] = await this.helpers.prepareBinaryData(data, filePath);
+				returnData.push(newItem);
+
+			} catch (error) {
+				if (this.continueOnFail()) {
+					returnData.push({json:{ error: error.message }});
+					continue;
+				}
 				throw error;
 			}
-
-			const newItem: INodeExecutionData = {
-				json: item.json,
-				binary: {},
-			};
-
-			if (item.binary !== undefined) {
-				// Create a shallow copy of the binary data so that the old
-				// data references which do not get changed still stay behind
-				// but the incoming data does not get changed.
-				Object.assign(newItem.binary, item.binary);
-			}
-
-			newItem.binary![dataPropertyName] = await this.helpers.prepareBinaryData(data, filePath);
-			returnData.push(newItem);
 		}
 
 		return this.prepareOutputData(returnData);

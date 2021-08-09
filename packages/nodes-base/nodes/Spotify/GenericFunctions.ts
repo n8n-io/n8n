@@ -13,6 +13,10 @@ import {
 	NodeOperationError,
 } from 'n8n-workflow';
 
+import {
+	get,
+} from 'lodash';
+
 /**
  * Make an API request to Spotify
  *
@@ -40,7 +44,6 @@ export async function spotifyApiRequest(this: IHookFunctions | IExecuteFunctions
 	if (Object.keys(body).length > 0) {
 		options.body = body;
 	}
-
 	try {
 		return await this.helpers.requestOAuth2.call(this, 'spotifyOAuth2Api', options);
 	} catch (error) {
@@ -59,11 +62,16 @@ export async function spotifyApiRequestAllItems(this: IHookFunctions | IExecuteF
 
 	do {
 		responseData = await spotifyApiRequest.call(this, method, endpoint, body, query, uri);
-		returnData.push.apply(returnData, responseData[propertyName]);
-		uri = responseData.next;
-
+		returnData.push.apply(returnData, get(responseData, propertyName));
+		uri = responseData.next || responseData[propertyName.split('.')[0]].next;
+		//remove the query as the query parameters are already included in the next, else api throws error.
+		query = {};
+		if (uri?.includes('offset=1000')) {
+			return returnData;
+		}
 	} while (
-		responseData['next'] !== null
+		(responseData['next'] !== null && responseData['next'] !== undefined) ||
+		(responseData[propertyName.split('.')[0]].next !== null && responseData[propertyName.split('.')[0]].next !== undefined)
 	);
 
 	return returnData;

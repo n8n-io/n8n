@@ -37,11 +37,7 @@
 </template>
 
 <script lang="ts">
-
-import Vue from 'vue';
-
 import {
-	IRunData,
 	INodeTypeDescription,
 } from 'n8n-workflow';
 import {
@@ -86,11 +82,9 @@ export default mixins(externalHooks, nodeHelpers, workflowHelpers).extend({
 			return this.$store.getters.activeNode;
 		},
 		nodeType (): INodeTypeDescription | null {
-			const activeNode = this.node;
 			if (this.node) {
 				return this.$store.getters.nodeType(this.node.type);
 			}
-
 			return null;
 		},
 	},
@@ -111,6 +105,7 @@ export default mixins(externalHooks, nodeHelpers, workflowHelpers).extend({
 		close (e: MouseEvent) {
 			// @ts-ignore
 			if (e.target.className && e.target.className.includes && e.target.className.includes('close-on-click')) {
+				this.$externalHooks().run('dataDisplay.nodeEditingFinished');
 				this.showDocumentHelp = false;
 				this.$store.commit('setActiveNode', null);
 			}

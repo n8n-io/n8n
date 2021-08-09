@@ -1,17 +1,17 @@
 import {
 	ICredentialType,
-	NodePropertyTypes,
+	INodeProperties,
 } from 'n8n-workflow';
 
 export class KitemakerApi implements ICredentialType {
 	name = 'kitemakerApi';
 	displayName = 'Kitemaker API';
 	documentationUrl = 'kitemaker';
-	properties = [
+	properties: INodeProperties[] = [
 		{
 			displayName: 'Personal Access Token',
 			name: 'personalAccessToken',
-			type: 'string' as NodePropertyTypes,
+			type: 'string',
 			default: '',
 		},
 	];

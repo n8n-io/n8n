@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="64px" height="64px" viewBox="6 5 54 54" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+    <!-- Generator: Sketch 63.1 (92452) - https://sketch.com -->
+    <title>elastic-search-logo-color-64px</title>
+    <desc>Created with Sketch.</desc>
+    <g id="elastic-search-logo-color-64px" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
+        <rect id="bounding-box" x="0" y="0" width="64" height="64"></rect>
+        <g id="group" transform="translate(8.000000, 4.999500)">
+            <path d="M47.7246,9.708 L47.7276,9.702 C42.7746,3.774 35.3286,0 26.9996,0 C16.4006,0 7.2326,6.112 2.8136,15 L38.0056,15 C40.5306,15 42.9886,14.13 44.9206,12.504 C45.9246,11.659 46.8636,10.739 47.7246,9.708" id="Fill-1" fill="#FEC514"></path>
+            <path d="M0,27.0005 C0,29.4225 0.324,31.7675 0.922,34.0005 L34,34.0005 C37.866,34.0005 41,30.8665 41,27.0005 C41,23.1345 37.866,20.0005 34,20.0005 L0.922,20.0005 C0.324,22.2335 0,24.5785 0,27.0005" id="Fill-4" fill="#343741"></path>
+            <path d="M47.7246,44.293 L47.7276,44.299 C42.7746,50.227 35.3286,54.001 26.9996,54.001 C16.4006,54.001 7.2326,47.889 2.8136,39.001 L38.0056,39.001 C40.5306,39.001 42.9886,39.871 44.9206,41.497 C45.9246,42.342 46.8636,43.262 47.7246,44.293" id="Fill-6" fill="#00BFB3"></path>
+        </g>
+    </g>
+</svg>
