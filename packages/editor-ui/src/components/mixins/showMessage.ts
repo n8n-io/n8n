@@ -17,6 +17,7 @@ export const showMessage = mixins(externalHooks).extend({
 		},
 
 		$showWarning(title: string, message: string,  config?: {onClick?: () => void, duration?: number, customClass?: string, closeOnClick?: boolean}) {
+			// eslint-disable-next-line prefer-const
 			let notification: ElNotificationComponent;
 			if (config && config.closeOnClick) {
 				const cb = config.onClick;
