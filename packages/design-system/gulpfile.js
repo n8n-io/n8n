@@ -19,7 +19,7 @@ gulp.task(
 
 function compileTheme() {
 	return gulp
-		.src('./theme/src/*.scss')
+		.src('./theme/src/index.scss')
 		.pipe(sass.sync())
 		.pipe(
 			autoprefixer({
