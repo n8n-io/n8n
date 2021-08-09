@@ -11,7 +11,7 @@
 	"main": "src/main.js",
 	"repository": {
 		"type": "git",
-		"url": "git+https://github.com/n8n-io/n8n-design-system.git"
+		"url": "git+https://github.com/n8n-io/n8n.git"
 	},
 	"scripts": {
 		"build": "npm run build:theme",
