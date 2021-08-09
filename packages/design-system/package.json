@@ -14,7 +14,8 @@
 		"url": "git+https://github.com/n8n-io/n8n-design-system.git"
 	},
 	"scripts": {
-		"build": "vue-cli-service build --target lib ./src/main.js --report",
+		"build": "npm run build:theme",
+		"build:vue": "vue-cli-service build --target lib ./src/main.js --report",
 		"build:storybook": "build-storybook",
 		"storybook": "start-storybook -p 6006",
 		"test:unit": "vue-cli-service test:unit",
