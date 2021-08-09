@@ -11,6 +11,9 @@ export declare class N8nButton extends N8nComponent {
 	/** Button title on hover */
 	title: string;
 
+	/** Color scheme */
+	theme: string;
+
 	/** Button size */
 	size: N8nComponentSize;
 
@@ -34,4 +37,7 @@ export declare class N8nButton extends N8nComponent {
 
 	/** Full width */
 	fullWidth: boolean;
+
+	/** Float left or right */
+	float: boolean;
 }
