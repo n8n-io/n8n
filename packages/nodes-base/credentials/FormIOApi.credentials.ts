@@ -4,9 +4,9 @@ import {
 	NodePropertyTypes,
 } from 'n8n-workflow';
 
-export class FormIOApi implements ICredentialType {
-	name = 'formIOApi';
-	displayName = 'FormIO API';
+export class FormIoApi implements ICredentialType {
+	name = 'formIoApi';
+	displayName = 'Form.io API';
 	properties: INodeProperties[] = [
 		{
 			displayName: 'Environment',

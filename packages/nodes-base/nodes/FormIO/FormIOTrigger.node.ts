@@ -15,15 +15,15 @@ import {
 	formIOApiRequest,
 } from './GenericFunctions';
 
-export class FormIOTrigger implements INodeType {
+export class FormIoTrigger implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Form.io Trigger',
-		name: 'formIOTrigger',
+		name: 'formIoTrigger',
 		icon: 'file:formio.svg',
 		group: ['trigger'],
 		version: 1,
 		subtitle: '={{$parameter["event"]}}',
-		description: 'Handle form io events via webhooks',
+		description: 'Handle form.io events via webhooks',
 		defaults: {
 			name: 'Form.io Trigger',
 			color: '#6ad7b9',
@@ -32,7 +32,7 @@ export class FormIOTrigger implements INodeType {
 		outputs: ['main'],
 		credentials: [
 			{
-				name: 'formIOApi',
+				name: 'formIoApi',
 				required: true,
 			},
 		],
@@ -78,17 +78,20 @@ export class FormIOTrigger implements INodeType {
 						value: 'create',
 					},
 					{
-						name: 'Delete',
-						value: 'delete',
-					},
-					{
-						name: 'Update',
+						name: 'Record Updated',
 						value: 'update',
 					},
 				],
 				required: true,
 				default: '',
 				description: 'The methods for when this action will execute',
+			},
+			{
+				displayName: 'Simple',
+				name: 'simple',
+				type: 'boolean',
+				default: true,
+				description: 'Return a simplified version of the response instead of the raw data',
 			},
 		],
 	};
@@ -108,7 +111,7 @@ export class FormIOTrigger implements INodeType {
 			},
 			async getForms(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const projectId = this.getCurrentNodeParameter('projectId') as string;
-				const forms = await formIOApiRequest.call(this, 'GET', `/project/${projectId}/form`, {}, { type: 'form' });
+				const forms = await formIOApiRequest.call(this, 'GET', `/project/${projectId}/form`, {});
 				const returnData: INodePropertyOptions[] = [];
 				for (const form of forms) {
 					returnData.push({
@@ -129,12 +132,14 @@ export class FormIOTrigger implements INodeType {
 				const webhookUrl = this.getNodeWebhookUrl('default');
 				const formId = this.getNodeParameter('formId') as string;
 				const projectId = this.getNodeParameter('projectId') as string;
-				const webhooks = await formIOApiRequest.call(this, 'GET', `/project/${projectId}/form/${formId}/action`);
-				for (const webhook of webhooks) {
-					if (webhook.settings) {
-						if (webhook.settings.url === webhookUrl) {
-							webhookData.webhookId = webhook._id;
-							console.log('***webhook exists');
+				const method = this.getNodeParameter('events') as string[];
+				const actions = await formIOApiRequest.call(this, 'GET', `/project/${projectId}/form/${formId}/action`);
+				for (const action of actions) {
+					if (action.name === 'webhook') {
+						if (action.settings.url === webhookUrl &&
+							// tslint:disable-next-line: no-any
+							(action.method.length === method.length && action.method.every((value: any) => method.includes(value)))) {
+							webhookData.webhookId = action._id;
 							return true;
 						}
 					}
@@ -150,14 +155,15 @@ export class FormIOTrigger implements INodeType {
 				const method = this.getNodeParameter('events') as string[];
 				const payload = {
 					data: {
-						name: `n8n-webhook:${webhookUrl}`,
-						title: 'webhook',
+						name: `webhook`,
+						title: `webhook-n8n:${webhookUrl}`,
 						method,
 						handler: [
 							'after',
 						],
 						priority: 0,
 						settings: {
+							method: 'post',
 							block: false,
 							url: webhookUrl,
 						},
@@ -167,8 +173,6 @@ export class FormIOTrigger implements INodeType {
 					},
 				};
 				const webhook = await formIOApiRequest.call(this, 'POST', `/project/${projectId}/form/${formId}/action`, payload);
-				console.log('***webhook created', webhook._id);
-				console.log(webhook);
 				webhookData.webhookId = webhook._id;
 				return true;
 			},
@@ -186,18 +190,14 @@ export class FormIOTrigger implements INodeType {
 
 	async webhook(this: IWebhookFunctions): Promise<IWebhookResponseData> {
 		const req = this.getRequestObject();
-		const formId = this.getNodeParameter('formId') as string;
-		const projectId = this.getNodeParameter('projectId') as string;
-		const formDetails = await formIOApiRequest.call(this, 'DELETE', `/project/${projectId}/form/${formId}`);
-		const formData = req.body.request.data;
-		const formInputFields = formDetails.components;
-		const result = {
-			formData,
-			formInputFields,
-		};
+		const simple = this.getNodeParameter('simple') as boolean;
+		let response = req.body.request;
+		if (simple === true) {
+			response = response.data;
+		}
 		return {
 			workflowData: [
-				this.helpers.returnJsonArray(result),
+				this.helpers.returnJsonArray(response),
 			],
 		};
 	}

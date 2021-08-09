@@ -15,7 +15,7 @@ import {
  * @param this 
  */
 async function getToken(this: IExecuteFunctions | IWebhookFunctions | IHookFunctions | ILoadOptionsFunctions) {
-	const credentials = this.getCredentials('formIOApi') as IDataObject;
+	const credentials = this.getCredentials('formIoApi') as IDataObject;
 	const endpoint = credentials.endpoint || 'https://formio.form.io';
 	const username = credentials.username;
 	const password = credentials.password;
@@ -51,7 +51,7 @@ async function getToken(this: IExecuteFunctions | IWebhookFunctions | IHookFunct
  */
 export async function formIOApiRequest(this: IHookFunctions | ILoadOptionsFunctions | IWebhookFunctions, method: string, endpoint: string, body = {}, qs = {}): Promise<any> { // tslint:disable-line:no-any
 
-	const credentials = this.getCredentials('formIOApi') as { endpoint: string };
+	const credentials = this.getCredentials('formIoApi') as { endpoint: string };
 
 	const token = await getToken.call(this);
 
@@ -68,8 +68,6 @@ export async function formIOApiRequest(this: IHookFunctions | ILoadOptionsFuncti
 		uri: `${base}${endpoint}`,
 		json: true,
 	};
-
-	console.log(options);
 
 	try {
 		return await this.helpers.request!.call(this, options);
