@@ -11,7 +11,7 @@ import {
 import {
 	elasticsearchApiRequest,
 	formatMultipleScheduleTimes,
-	formatSingleScheduleTime,
+	formatSchedule,
 } from './GenericFunctions';
 
 import {
@@ -31,7 +31,7 @@ import {
 
 import { v4 as uuid } from 'uuid';
 
-// import * as config from '../../../cli/config';
+import { URL } from 'url';
 
 export class ElasticsearchTrigger implements INodeType {
 	description: INodeTypeDescription = {
@@ -316,44 +316,41 @@ export class ElasticsearchTrigger implements INodeType {
 	webhookMethods = {
 		default: {
 			async checkExists(this: IHookFunctions) {
-				// const webhookUrl = this.getNodeWebhookUrl('default') as string;
+				const endpoint = '/_watcher/_query/watches';
+				const response = await elasticsearchApiRequest.call(this, 'GET', endpoint);
 
-				// const endpoint = '/_watcher/_query/watches';
-				// const response = await elasticsearchApiRequest.call(this, 'GET', endpoint);
-				// console.log('Query watches response:');
-				// console.log(response);
+				const webhookUrl = this.getNodeWebhookUrl('default') as string;
+				const url = new URL(webhookUrl);
 
-				// for (const watch of response.watches) {
-				// 	if (watch.url === webhookUrl && watch.campaignId === 'abc') {
-				// 		return true;
-				// 	}
-				// }
+				for (const item of response.watches) {
+					const registeredPath = item.watch.actions?.n8n_webhook.webhook.path;
+					if (registeredPath === url.pathname) {
+						console.log('checkExists true');
+						return true;
+					}
+				}
 
+				console.log('checkExists false');
 				return false;
 			},
 
 			async create(this: IHookFunctions) {
-				console.log('______________');
-				const webhookData = this.getWorkflowStaticData('node');
-				const endpoint = `/_watcher/watch/${uuid()}`;
-
-				// console.log(config);
-
-				// const port = config.get('port') as number;
-				// console.log('______________');
-				// console.log(port);
-				// console.log('______________');
+				const webhookUrl = this.getNodeWebhookUrl('default') as string;
+				const url = new URL(webhookUrl);
 
 				const body: WatchCreationPayload = {
 					trigger: {},
+					condition: {
+						always: {},
+					},
 					actions: {
-						my_webhook: {
+						n8n_webhook: {
 							webhook: {
-						// 		method: 'POST',
-						// 		host: '',
-						// 		port: 0,
-						// 		path: '',
-						// 		body: '',
+								method: 'POST',
+								host: url.hostname,
+								port: Number(url.port),
+								path: url.pathname,
+								// body: '{{ctx.watch_id}}:{{ctx.payload.hits.total}}', // TODO: not needed?
 							},
 						},
 					},
@@ -362,48 +359,62 @@ export class ElasticsearchTrigger implements INodeType {
 				const scheduleType = this.getNodeParameter('schedule') as WatchSchedule;
 
 				if (scheduleType !== 'interval' && scheduleType !== 'cron') {
-					const { properties } = this.getNodeParameter(`${scheduleType}Schedule`) as ScheduleProperties;
+					const { properties: schedules } = this.getNodeParameter(`${scheduleType}Schedule`) as ScheduleProperties;
 
-					if (!properties.length) {
-						throw new NodeOperationError(this.getNode(), 'Please fill in the schedule');
+					if (schedules?.length === 0) {
+						throw new NodeOperationError(this.getNode(), 'Please fill in the schedule details');
 					}
 
 					body.trigger = {
 						schedule: {
-							[scheduleType]: properties.length > 1
-								? formatMultipleScheduleTimes(properties)
-								: formatSingleScheduleTime(properties),
+							[scheduleType]: schedules.length > 1
+								? schedules.map((schedule) => formatSchedule(schedule, scheduleType))
+								: formatSchedule(schedules[0], scheduleType),
 						},
 					};
 				} else {
-					const value = this.getNodeParameter(scheduleType) as string;
+					const scheduleValue = this.getNodeParameter(scheduleType) as string;
 
 					body.trigger = {
 						schedule: {
-							[scheduleType]: Number(value),
+							[scheduleType]: Number(scheduleValue),
 						},
 					};
 				}
 
-				// console.log(JSON.stringify(body, null, 2));
+				console.log('***************');
+				console.log('CREATION REQUEST BODY:');
+				console.log(JSON.stringify(body, null, 2));
+				console.log('***************');
 
-				// const response = await elasticsearchApiRequest.call(this, 'PUT', endpoint, body);
-				// console.log('Create watch response:');
-				// console.log(response);
-				// webhookData.webhookId = response.webhookId;
+				const watchId = url.pathname.split('/')[2];
+				const endpoint = `/_watcher/watch/${watchId}`;
+				const response = await elasticsearchApiRequest.call(this, 'PUT', endpoint, body);
+
+				console.log('***************');
+				console.log('CREATION RESPONSE:');
+				console.log(response);
+				console.log('***************');
+
+				const webhookData = this.getWorkflowStaticData('node');
+				webhookData.webhookId = response._id;
+
 				return true;
 			},
 
 			async delete(this: IHookFunctions) {
 				const webhookData = this.getWorkflowStaticData('node');
-				const webhookUrl = this.getNodeWebhookUrl('default') as string;
+				console.log(webhookData);
 
-				const watchId = 'abc'; // derive from webhookUrl
-				const endpoint = `_watcher/watch/${watchId}`;
-
+				const endpoint = `/_watcher/watch/${webhookData.webhookId}`;
 				try {
-					// await elasticsearchApiRequest.call(this, 'DELETE', endpoint);
+					console.log(endpoint);
+					const response = await elasticsearchApiRequest.call(this, 'DELETE', endpoint);
+					console.log('DELETION RESPONSE:');
+					console.log(response);
 				} catch (error) {
+					console.log('DELETION ERROR');
+					console.log(error);
 					return false;
 				}
 

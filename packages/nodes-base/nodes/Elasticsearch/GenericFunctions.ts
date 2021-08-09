@@ -13,7 +13,7 @@ import {
 } from 'n8n-workflow';
 
 import {
-	ElasticsearchApiCredentials,
+	ElasticsearchApiCredentials, WatchSchedule,
 } from './types';
 
 export async function elasticsearchApiRequest(
@@ -58,22 +58,69 @@ export async function elasticsearchApiRequest(
 	}
 }
 
-export function formatSingleScheduleTime(properties: Array<{ [key: string]: string }>) {
-	const key = Object.keys(properties[0])[0];
-	return { [key]: Number(properties[0][key]) };
+export function formatSchedule(
+	schedule: { [key: string]: string },
+	scheduleType: WatchSchedule,
+) {
+	if (scheduleType === 'hourly') {
+		return {
+			minute: Number(schedule.minute),
+		};
+	}
+
+	if (scheduleType === 'daily') {
+		return {
+			at: `${schedule.hour}:00`,
+		};
+	}
+
+	if (scheduleType === 'weekly') {
+		return {
+			on: schedule.day,
+			at: `${schedule.hour}:00`,
+		};
+	}
+
+	if (scheduleType === 'monthly') {
+		return {
+			on: Number(schedule.day),
+			at: `${schedule.hour}:00`,
+		};
+	}
+
+	if (scheduleType === 'yearly') {
+		return {
+			in: schedule.month,
+			on: Number(schedule.day),
+			at: `${schedule.hour}:00`,
+		};
+	}
 }
 
 /**
  * Format watch creation payload properties for multiple schedule times.
  */
-export function formatMultipleScheduleTimes(properties: Array<{ [key: string]: string }>) {
-	return properties.reduce<{ [key: string]: number[] }>((acc, cur) => {
-		const key = Object.keys(cur)[0];
+export function formatMultipleScheduleTimes(
+	schedules: Array<{ [key: string]: string }>,
+	scheduleType: WatchSchedule,
+) {
+	const whoa = schedules.map((schedule) => formatSchedule(schedule, scheduleType));
 
-		acc[key]
-			? acc[key].push(Number(cur[key]))
-			: acc[key] = [Number(cur[key])];
+	console.log('__________');
+	console.log(whoa);
+	console.log('__________');
 
-		return acc;
-	}, {});
+	return whoa;
+
+
+
+	// return properties.reduce<{ [key: string]: number[] }>((acc, cur) => {
+	// 	const key = Object.keys(cur)[0];
+
+	// 	acc[key]
+	// 		? acc[key].push(Number(cur[key]))
+	// 		: acc[key] = [Number(cur[key])];
+
+	// 	return acc;
+	// }, {});
 }

@@ -52,11 +52,10 @@ export type WatchSchedule = typeof WATCH_CHECK_SCHEDULES[number];
 
 export type WatchCreationPayload = {
 	trigger: {
-		schedule?: {
-			[key: string]: number | {
-				[key: string]: number[] | number;
-			}
-		},
+		schedule?: any, // TODO
+	},
+	condition: {
+		always: {},
 	},
 	actions: {
 		[key: string]: {
@@ -65,8 +64,8 @@ export type WatchCreationPayload = {
 				host: string,
 				port: number,
 				path: string,
-				body: string,
-			} | {},
+				body?: string,
+			},
 		}
 	},
 };
