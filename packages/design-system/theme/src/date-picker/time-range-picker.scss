@@ -1,0 +1,32 @@
+@use "../common/var";
+@use "../mixins/mixins";
+
+@include mixins.b(time-range-picker) {
+  width: 354px;
+  overflow: visible;
+
+  @include mixins.e(content) {
+    position: relative;
+    text-align: center;
+    padding: 10px;
+  }
+
+  @include mixins.e(cell) {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 4px 7px 7px;
+    width: 50%;
+    display: inline-block;
+  }
+
+  @include mixins.e(header) {
+    margin-bottom: 5px;
+    text-align: center;
+    font-size: 14px;
+  }
+
+  @include mixins.e(body) {
+    border-radius:2px;
+    border: 1px solid var.$datepicker-border-color;
+  }
+}

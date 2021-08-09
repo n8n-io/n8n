@@ -1,0 +1,40 @@
+name: Deploy Docs
+
+on:
+  push:
+    branches:
+      - main 
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    env:
+      NODE_OPTIONS: '--max_old_space_size=4096'
+    steps:
+      - uses: actions/checkout@v2
+      - name: Build and deploy
+        uses: actions/setup-node@v1
+        with:
+          node-version: 14.x
+          persist-credentials: false # otherwise, the token used is the GITHUB_TOKEN, instead of your personal token
+          fetch-depth: 0 # otherwise, you will failed to push refs to dest repo
+      - name: build
+        run: |
+          npm install
+          npm run build:storybook
+          cd storybook-static
+      - name: commit
+        run: |
+          cd storybook-static
+          git init
+          git config --local user.email "github-actions@users.noreply.github.com"
+          git config --local user.name "github-actions"
+          git add -A
+          git commit -m "Deploy" -a
+      - name: push
+        uses: ad-m/github-push-action@master
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          branch: gh-pages
+          force: true
+          directory: 'storybook-static'

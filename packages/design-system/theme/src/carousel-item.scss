@@ -1,0 +1,50 @@
+@use "mixins/mixins";
+@use "./common/var";
+
+@include mixins.b(carousel) {
+  @include mixins.e(item) {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    display: inline-block;
+    overflow: hidden;
+    z-index: #{var.$index-normal - 1};
+
+    @include mixins.when(active) {
+      z-index: #{var.$index-normal + 1};
+    }
+
+    @include mixins.when(animating) {
+      transition: transform .4s ease-in-out;
+    }
+
+    @include mixins.m(card) {
+      width: 50%;
+      transition: transform .4s ease-in-out;
+      &.is-in-stage {
+        cursor: pointer;
+        z-index: var.$index-normal;
+        &:hover .el-carousel__mask,
+        &.is-hover .el-carousel__mask {
+          opacity: 0.12;
+        }
+      }
+      &.is-active {
+        z-index: #{var.$index-normal + 1};
+      }
+    }
+  }
+
+  @include mixins.e(mask) {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    top: 0;
+    left: 0;
+    background-color: var.$color-white;
+    opacity: 0.24;
+    transition: .2s;
+  }
+}
