@@ -3,6 +3,9 @@ import { N8nComponent, N8nComponentSize } from '../component';
 /** Button type */
 export type ButtonType = 'primary' | 'outline' | 'light' | 'text';
 
+/** Button themes */
+export type ButtonTheme = 'success' | 'warning' | 'danger';
+
 /** Button Component */
 export declare class N8nButton extends N8nComponent {
 	/** Button text */
@@ -12,7 +15,7 @@ export declare class N8nButton extends N8nComponent {
 	title: string;
 
 	/** Color scheme */
-	theme: string;
+	theme: ButtonTheme;
 
 	/** Button size */
 	size: N8nComponentSize;
