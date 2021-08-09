@@ -17,6 +17,7 @@
     "build": "npm run build:theme",
     "build:vue": "vue-cli-service build --target lib ./src/main.js --report",
     "dev": "npm run watch:theme",
+    "test": "npm run test:unit",
     "build:storybook": "build-storybook",
     "storybook": "start-storybook -p 6006",
     "test:unit": "vue-cli-service test:unit",
