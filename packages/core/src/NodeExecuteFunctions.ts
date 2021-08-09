@@ -70,6 +70,10 @@ axios.defaults.timeout = 300000;
 // Prevent axios from adding x-form-www-urlencoded headers by default
 axios.defaults.headers.post = {};
 
+const requestPromiseWithDefaults = requestPromise.defaults({
+	timeout: 300000, // 5 minutes
+});
+
 /**
  * Takes a buffer and converts it into the format n8n uses. It encodes the binary data as
  * base64 and adds metadata.
@@ -1140,7 +1144,7 @@ async function parseRequestObject(requestObject: IDataObject) {
 	// - Check if the `formData` property exists. If yes, then it's multipart/form-data
 	// - Lastly, we should have a regular `body` that is probably a JSON.
 
-	let contentTypeHeaderKeyName = axiosConfig.headers && Object.keys(axiosConfig.headers).find(headerName => headerName.toLowerCase() === 'content-type');
+	const contentTypeHeaderKeyName = axiosConfig.headers && Object.keys(axiosConfig.headers).find(headerName => headerName.toLowerCase() === 'content-type');
 	const contentType = contentTypeHeaderKeyName && axiosConfig.headers[contentTypeHeaderKeyName] as string | undefined;
 	if (contentType === 'application/x-www-form-urlencoded' && requestObject.formData === undefined) {
 		// there are nodes incorrectly created, informing the content type header
@@ -1285,7 +1289,7 @@ async function parseRequestObject(requestObject: IDataObject) {
 	if (requestObject.json === true) {
 		// Add application/json headers - do not set charset as it breaks a lot of stuff
 		// only add if no other accept headers was sent.
-		let acceptHeaderExists = axiosConfig.headers === undefined ? 
+		const acceptHeaderExists = axiosConfig.headers === undefined ? 
 			false 
 				: 
 			Object.keys(axiosConfig.headers).map(headerKey => headerKey.toLowerCase()).includes('accept');
@@ -1353,17 +1357,24 @@ async function parseRequestObject(requestObject: IDataObject) {
 
 }
 
-async function proxyRequestToAxios(): Promise<any> {
+async function proxyRequestToAxios(uriOrObject: string | IDataObject, options?: IDataObject): Promise<any> { // tslint:disable-line:no-any
+
+	// Check if there's a better way of getting this config here
+	if (process.env.N8N_USE_DEPRECATED_REQUEST_LIB) {
+		// @ts-ignore
+		return requestPromiseWithDefaults.call(null, uriOrObject, options);
+	}
+
 	let axiosConfig: AxiosRequestConfig = {};
 
 	let configObject: IDataObject;
-	if (arguments[0] !== undefined && typeof arguments[0] === 'string') {
-		axiosConfig.url = arguments[0];
+	if (uriOrObject !== undefined && typeof uriOrObject === 'string') {
+		axiosConfig.url = uriOrObject;
 	}
-	if (arguments[0] !== undefined && typeof arguments[0] === 'object') {
-		configObject = arguments[0];
+	if (uriOrObject !== undefined && typeof uriOrObject === 'object') {
+		configObject = uriOrObject;
 	} else {
-		configObject = arguments[1];
+		configObject = options || {};
 	}
 
 	axiosConfig = Object.assign(axiosConfig, await parseRequestObject(configObject));
@@ -1398,7 +1409,7 @@ async function httpRequest(requestParams: IHttpRequestOptions): Promise<IN8nHttp
 			statusCode: result.status,
 			statusMessage: result.statusText,
 			request: result.request,
-		}
+		};
 	}
 	return result.data;
 }

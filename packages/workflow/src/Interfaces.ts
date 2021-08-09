@@ -243,11 +243,11 @@ export interface IHttpRequestOptions {
 export type IN8nHttpResponse = IDataObject | Buffer | GenericValue | GenericValue[];
 
 export interface IN8nHttpFullResponse {
-	body: IN8nHttpResponse,
-	headers: IDataObject,
-	statusCode: number,
-	statusMessage: string,
-	request: IDataObject,
+	body: IN8nHttpResponse;
+	headers: IDataObject;
+	statusCode: number;
+	statusMessage: string;
+	request: IDataObject;
 }
 
 
