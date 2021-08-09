@@ -99,7 +99,7 @@
 						<el-dropdown trigger="click" @command="handleRetryClick">
 							<span class="retry-button">
 								<n8n-icon-button
-									 v-if="scope.row.stoppedAt !== undefined && !scope.row.finished && scope.row.retryOf === undefined && scope.row.retrySuccessId === undefined" 
+									 v-if="scope.row.stoppedAt !== undefined && !scope.row.finished && scope.row.retryOf === undefined && scope.row.retrySuccessId === undefined"
 									 type="light"
 									 :theme="scope.row.stoppedAt === null ? 'warning': 'danger'"
 									 size="sm"
@@ -144,7 +144,7 @@
 			</el-table>
 
 			<div class="load-more" v-if="finishedExecutionsCount > finishedExecutions.length || finishedExecutionsCountEstimated === true">
-				<n8n-button icon="sync" title="Load More" label="Load More" @click="loadMore()" :disabled="isDataLoading" />
+				<n8n-button icon="sync" title="Load More" label="Load More" @click="loadMore()" :loading="isDataLoading" />
 			</div>
 
 		</el-dialog>
