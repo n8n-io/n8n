@@ -101,6 +101,7 @@ export async function quickBooksApiRequest(
 	}
 
 	try {
+		console.log(options);
 		return await this.helpers.requestOAuth2!.call(this, 'quickBooksOAuth2Api', options);
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error);
@@ -472,6 +473,10 @@ export function adjustTransactionDates(
 		const dateField = transactionFields[dateFieldKey];
 
 		if (dateField) {
+			Object.entries(dateField[`${dateFieldKey}Properties`]).map(([key, value]) =>
+				dateField[`${dateFieldKey}Properties`][key] = value.split('T')[0],
+			);
+
 			adjusted = {
 				...adjusted,
 				...dateField[`${dateFieldKey}Properties`],
