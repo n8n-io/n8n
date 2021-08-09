@@ -7,6 +7,7 @@ import {
 	IDataObject,
 	IHookFunctions,
 	IWebhookFunctions,
+	NodeApiError,
 } from 'n8n-workflow';
 
 /**
@@ -15,9 +16,9 @@ import {
  */
 async function getToken(this: IExecuteFunctions | IWebhookFunctions | IHookFunctions | ILoadOptionsFunctions) {
 	const credentials = this.getCredentials('formIOApi') as IDataObject;
-	const endpoint = credentials.formIOEndpoint;
-	const username = credentials.formIOUsername;
-	const password = credentials.formIOPassword;
+	const endpoint = credentials.endpoint || 'https://formio.form.io';
+	const username = credentials.username;
+	const password = credentials.password;
 	const resource = '/user/login';
 	const url = endpoint + resource;
 	const options = {
@@ -43,127 +44,36 @@ async function getToken(this: IExecuteFunctions | IWebhookFunctions | IHookFunct
 	}
 }
 
-export async function getFormFieldDetails(this: IExecuteFunctions | IWebhookFunctions | IHookFunctions | ILoadOptionsFunctions) {
-	const credentials = this.getCredentials('formIOApi') as IDataObject;
-	const endpoint = credentials.formIOEndpoint;
-	const formId = this.getNodeParameter('formId', 0) as string;
-	const resource = `/form/${formId}`;
-	const url = endpoint + resource;
-	const token = await getToken.call(this);
-	const options = {
-		headers: {
-			'Content-Type': 'application/json',
-			'x-jwt-token': token,
-		},
-		method: 'GET',
-		uri: url,
-		json: true,
-	};
-	try {
-		const responseObject = await this.helpers.request!(options);
-		return responseObject;
-	} catch (error) {
-		throw new Error(`Could not get Form details.`);
-	}
-}
-
-/**
- * Method has the logic to register webhook in the provided Form.io form
- * @param this 
- */
-async function registerWebhook(this: IHookFunctions ) {
-	const credentials = this.getCredentials('formIOApi') as IDataObject;
-	const endpoint = credentials.formIOEndpoint;
-	const formId = this.getNodeParameter('formId',0) as string;
-	const resource = `/form/${formId}/action`;
-	const webhookUrl = this.getNodeWebhookUrl('default') as string;
-	const token = await getToken.call(this);
-	const payload = {
-		data: {
-			name: 'webhook',
-			title: 'webhook',
-			method: [
-				'create', 'update',
-			],
-			handler: [
-				'after',
-			],
-			priority: 0,
-			settings: {
-				block: false,
-				url: webhookUrl,
-			},
-			condition: {
-				field: 'submit',
-			},
-		},
-	};
-	const url = endpoint + resource;
-	const options = {
-		headers: {
-			'Content-Type': 'application/json',
-			'x-jwt-token': token,
-		},
-		method: 'POST',
-		body: payload,
-		uri: url,
-		json: true,
-	};
-	try {
-		return await this.helpers.request!(options);
-	} catch (error) {
-		throw new Error(`Could not create register webhook`);
-	}
-}
-
-/**
- * Method has the logic to list registered webhooks in the provided Form.io form
- * @param this 
- */
-async function listRegisteredWebhooks(this: IExecuteFunctions | IWebhookFunctions | IHookFunctions | ILoadOptionsFunctions) {
-	const credentials = this.getCredentials('formIOApi') as IDataObject;
-	const endpoint = credentials.formIOEndpoint;
-	const formId = this.getNodeParameter('formId' , 0) as string;
-	const resource = `/form/${formId}/action`;
-	const token = await getToken.call(this);
-
-	const url = endpoint + resource;
-	const options = {
-		headers: {
-			'Content-Type': 'application/json',
-			'x-jwt-token': token,
-		},
-		method: 'GET',
-		uri: url,
-		json: true,
-	};
-	try {
-		return await this.helpers.request!(options);
-	} catch (error) {
-		throw new Error(`Could not create register webhook`);
-	}
-}
-
 /**
  * Method will call register or list webhooks based on the passed method in the parameter
  * @param this 
  * @param method 
  */
-export async function formIOApiRequest(this: IHookFunctions , method: string): Promise<any> { // tslint:disable-line:no-any
+export async function formIOApiRequest(this: IHookFunctions | ILoadOptionsFunctions | IWebhookFunctions, method: string, endpoint: string, body = {}, qs = {}): Promise<any> { // tslint:disable-line:no-any
+
+	const credentials = this.getCredentials('formIOApi') as { endpoint: string };
+
+	const token = await getToken.call(this);
+
+	const base = credentials.endpoint || 'https://api.form.io';
+
+	const options = {
+		headers: {
+			'Content-Type': 'application/json',
+			'x-jwt-token': token,
+		},
+		method,
+		body,
+		qs,
+		uri: `${base}${endpoint}`,
+		json: true,
+	};
+
+	console.log(options);
 
 	try {
-		if (method === 'GET') {
-			return await listRegisteredWebhooks.call(this);
-		}
-		else {
-			return await registerWebhook.call(this);
-		}
-
+		return await this.helpers.request!.call(this, options);
 	} catch (error) {
-		if (error.response) {
-			const errorMessage = error.response.body.message || error.response.body.description || error.message;
-			throw new Error(`FormIO error response [${error.statusCode}]: ${errorMessage}`);
-		}
-		throw error;
+		throw new NodeApiError(this.getNode(), error);
 	}
 }
