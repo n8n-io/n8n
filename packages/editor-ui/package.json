@@ -81,7 +81,7 @@
     "string-template-parser": "^1.2.6",
     "ts-jest": "^26.3.0",
     "tslint": "^6.1.2",
-    "typescript": "~4.1.5",
+    "typescript": "~3.9.7",
     "uuid": "^8.3.0",
     "vue": "^2.6.11",
     "vue-cli-plugin-webpack-bundle-analyzer": "^2.0.0",

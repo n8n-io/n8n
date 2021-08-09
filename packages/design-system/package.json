@@ -70,7 +70,7 @@
     "sass": "^1.26.5",
     "sass-loader": "^8.0.2",
     "storybook-addon-designs": "^6.0.1",
-    "typescript": "~4.1.5",
+    "typescript": "~3.9.7",
     "vue-loader": "^15.9.7",
     "vue-template-compiler": "^2.6.11",
     "gulp-autoprefixer": "^4.0.0",
