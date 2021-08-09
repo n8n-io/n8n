@@ -240,6 +240,16 @@ export interface IHttpRequestOptions {
 	timeout?: number;
 }
 
+export type IN8nHttpResponse = IDataObject | Buffer | GenericValue | GenericValue[];
+
+export interface IN8nHttpFullResponse {
+	body: IN8nHttpResponse,
+	headers: IDataObject,
+	statusCode: number,
+	statusMessage: string,
+	request: IDataObject,
+}
+
 
 export interface IExecuteFunctions {
 	continueOnFail(): boolean;

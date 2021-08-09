@@ -18,6 +18,8 @@ import {
 	IExecuteSingleFunctions,
 	IExecuteWorkflowInfo,
 	IHttpRequestOptions,
+	IN8nHttpFullResponse,
+	IN8nHttpResponse,
 	INode,
 	INodeExecutionData,
 	INodeParameters,
@@ -1380,22 +1382,23 @@ async function proxyRequestToAxios(): Promise<any> {
 				resolve(response.data);
 			}
 		}).catch(error => {
-			if (error.response && error.response.data) {
-				console.log(error.response.data);
-			} else {
-				console.log(error);
-			}
 			reject(error);
 		});
 	});
 
 }
 
-async function httpRequest(requestParams: IHttpRequestOptions): Promise<any> { //tslint:disable-line:no-any
+async function httpRequest(requestParams: IHttpRequestOptions): Promise<IN8nHttpFullResponse | IN8nHttpResponse> { //tslint:disable-line:no-any
 	const axiosRequest = convertN8nRequestToAxios(requestParams);
 	const result = await axios(axiosRequest);
 	if (requestParams.returnFullResponse) {
-		return result;
+		return {
+			body: result.data,
+			headers: result.headers,
+			statusCode: result.status,
+			statusMessage: result.statusText,
+			request: result.request,
+		}
 	}
 	return result.data;
 }
