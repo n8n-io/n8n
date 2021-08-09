@@ -161,7 +161,8 @@
         color: var.$checkbox-checked-font-color;
       }
     }
-    @include mixins.when(focus) { /*focus时 视觉上区分*/
+    @include mixins.when(focus) {
+      /*focus时 视觉上区分*/
       .el-checkbox__inner {
         border-color: var.$checkbox-input-border-color-hover;
       }
@@ -172,7 +173,7 @@
         border-color: var.$checkbox-checked-input-border-color;
 
         &::before {
-          content: '';
+          content: "";
           position: absolute;
           display: block;
           background-color: var.$checkbox-checked-icon-color;
@@ -199,8 +200,8 @@
     height: var.$checkbox-input-height;
     background-color: var.$checkbox-background-color;
     z-index: var.$index-normal;
-    transition: border-color .25s cubic-bezier(.71,-.46,.29,1.46),
-    background-color .25s cubic-bezier(.71,-.46,.29,1.46);
+    transition: border-color 0.25s cubic-bezier(0.71, -0.46, 0.29, 1.46),
+      background-color 0.25s cubic-bezier(0.71, -0.46, 0.29, 1.46);
 
     &:hover {
       border-color: var.$checkbox-input-border-color-hover;
@@ -218,7 +219,7 @@
       top: 1px;
       transform: rotate(45deg) scaleY(0);
       width: 3px;
-      transition: transform .15s ease-in .05s;
+      transition: transform 0.15s ease-in 0.05s;
       transform-origin: center;
     }
   }
@@ -270,7 +271,11 @@
     border-radius: 0;
     @include utils.utils-user-select(none);
 
-    @include button.button-size(var.$button-padding-vertical, var.$button-padding-horizontal, var.$button-font-size,);
+    @include button.button-size(
+      var.$button-padding-vertical,
+      var.$button-padding-horizontal,
+      var.$button-font-size
+    );
 
     &:hover {
       color: var(--color-primary);
@@ -341,19 +346,31 @@
   @include mixins.m(medium) {
     .el-checkbox-button__inner {
       border-radius: 0;
-      @include button.button-size(var.$button-medium-padding-vertical, var.$button-medium-padding-horizontal, var.$button-medium-font-size,);
+      @include button.button-size(
+        var.$button-medium-padding-vertical,
+        var.$button-medium-padding-horizontal,
+        var.$button-medium-font-size
+      );
     }
   }
   @include mixins.m(small) {
     .el-checkbox-button__inner {
       border-radius: 0;
-      @include button.button-size(var.$button-small-padding-vertical, var.$button-small-padding-horizontal, var.$button-small-font-size,);
+      @include button.button-size(
+        var.$button-small-padding-vertical,
+        var.$button-small-padding-horizontal,
+        var.$button-small-font-size
+      );
     }
   }
   @include mixins.m(mini) {
     .el-checkbox-button__inner {
       border-radius: 0;
-      @include button.button-size(var.$button-mini-padding-vertical, var.$button-mini-padding-horizontal, var.$button-mini-font-size,);
+      @include button.button-size(
+        var.$button-mini-padding-vertical,
+        var.$button-mini-padding-horizontal,
+        var.$button-mini-font-size
+      );
     }
   }
 }

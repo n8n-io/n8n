@@ -27,7 +27,11 @@
     transition: var.$all-transition;
     border-radius: 0;
 
-    @include button.button-size(var.$button-padding-vertical, var.$button-padding-horizontal, var.$button-font-size,);
+    @include button.button-size(
+      var.$button-padding-vertical,
+      var.$button-padding-horizontal,
+      var.$button-font-size
+    );
 
     &:hover {
       color: var(--color-primary);
@@ -95,23 +99,36 @@
   @include mixins.m(medium) {
     & .el-radio-button__inner {
       border-radius: 0;
-      @include button.button-size(var.$button-medium-padding-vertical, var.$button-medium-padding-horizontal, var.$button-medium-font-size,);
+      @include button.button-size(
+        var.$button-medium-padding-vertical,
+        var.$button-medium-padding-horizontal,
+        var.$button-medium-font-size
+      );
     }
   }
   @include mixins.m(small) {
     & .el-radio-button__inner {
       border-radius: 0;
-      @include button.button-size(var.$button-small-padding-vertical, var.$button-small-padding-horizontal, var.$button-small-font-size,);
+      @include button.button-size(
+        var.$button-small-padding-vertical,
+        var.$button-small-padding-horizontal,
+        var.$button-small-font-size
+      );
     }
   }
   @include mixins.m(mini) {
     & .el-radio-button__inner {
       border-radius: 0;
-      @include button.button-size(var.$button-mini-padding-vertical, var.$button-mini-padding-horizontal, var.$button-mini-font-size,);
+      @include button.button-size(
+        var.$button-mini-padding-vertical,
+        var.$button-mini-padding-horizontal,
+        var.$button-mini-font-size
+      );
     }
   }
 
-  &:focus:not(.is-focus):not(:active):not(.is-disabled){ /*获得焦点时 样式提醒*/
+  &:focus:not(.is-focus):not(:active):not(.is-disabled) {
+    /*获得焦点时 样式提醒*/
     box-shadow: 0 0 2px 2px var.$radio-button-checked-border-color;
   }
 }

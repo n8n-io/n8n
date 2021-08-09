@@ -14,7 +14,7 @@
     height: 2px;
     background-color: var(--color-primary);
     z-index: 1;
-    transition: transform .3s cubic-bezier(.645,.045,.355,1);
+    transition: transform 0.3s cubic-bezier(0.645, 0.045, 0.355, 1);
     list-style: none;
   }
   @include mixins.e(new-tab) {
@@ -29,7 +29,7 @@
     font-size: 12px;
     color: #d3dce6;
     cursor: pointer;
-    transition: all .15s;
+    transition: all 0.15s;
 
     .el-icon-plus {
       transform: scale(0.8, 0.8);
@@ -79,7 +79,7 @@
   @include mixins.e(nav) {
     white-space: nowrap;
     position: relative;
-    transition: transform .3s;
+    transition: transform 0.3s;
     float: left;
     z-index: #{var.$index-normal + 1};
 
@@ -104,7 +104,8 @@
     color: var.$color-text-primary;
     position: relative;
 
-    &:focus, &:focus:active {
+    &:focus,
+    &:focus:active {
       outline: none;
     }
 
@@ -116,10 +117,10 @@
     & .el-icon-close {
       border-radius: 50%;
       text-align: center;
-      transition: all .3s cubic-bezier(.645,.045,.355,1);
+      transition: all 0.3s cubic-bezier(0.645, 0.045, 0.355, 1);
       margin-left: 5px;
       &:before {
-        transform: scale(.9);
+        transform: scale(0.9);
         display: inline-block;
       }
 
@@ -178,7 +179,8 @@
     > .el-tabs__header .el-tabs__item {
       border-bottom: 1px solid transparent;
       border-left: 1px solid var.$border-color-light;
-      transition: color .3s cubic-bezier(.645,.045,.355,1), padding .3s cubic-bezier(.645,.045,.355,1);
+      transition: color 0.3s cubic-bezier(0.645, 0.045, 0.355, 1),
+        padding 0.3s cubic-bezier(0.645, 0.045, 0.355, 1);
       &:first-child {
         border-left: none;
       }
@@ -209,7 +211,7 @@
   @include mixins.m(border-card) {
     background: var.$color-white;
     border: 1px solid var.$border-color-base;
-    box-shadow: 0 2px 4px 0 rgba(0,0,0,0.12), 0 0 6px 0 rgba(0,0,0,0.04);
+    box-shadow: 0 2px 4px 0 rgba(0, 0, 0, 0.12), 0 0 6px 0 rgba(0, 0, 0, 0.04);
 
     > .el-tabs__content {
       padding: 15px;
@@ -223,7 +225,7 @@
       content: none;
     }
     > .el-tabs__header .el-tabs__item {
-      transition: all .3s cubic-bezier(.645,.045,.355,1);
+      transition: all 0.3s cubic-bezier(0.645, 0.045, 0.355, 1);
       border: 1px solid transparent;
       margin-top: -1px;
       color: var.$color-text-secondary;
@@ -264,8 +266,10 @@
       padding-right: 0;
     }
 
-    &.el-tabs--border-card, &.el-tabs--card,
-    .el-tabs--left, .el-tabs--right {
+    &.el-tabs--border-card,
+    &.el-tabs--card,
+    .el-tabs--left,
+    .el-tabs--right {
       > .el-tabs__header {
         .el-tabs__item:nth-child(2) {
           padding-left: 20px;
@@ -514,22 +518,22 @@
   display: inline-block;
 }
 .slideInRight-enter {
-  animation: slideInRight-enter .3s;
+  animation: slideInRight-enter 0.3s;
 }
 .slideInRight-leave {
   position: absolute;
   left: 0;
   right: 0;
-  animation: slideInRight-leave .3s;
+  animation: slideInRight-leave 0.3s;
 }
 .slideInLeft-enter {
-  animation: slideInLeft-enter .3s;
+  animation: slideInLeft-enter 0.3s;
 }
 .slideInLeft-leave {
   position: absolute;
   left: 0;
   right: 0;
-  animation: slideInLeft-leave .3s;
+  animation: slideInLeft-leave 0.3s;
 }
 
 @keyframes slideInRight-enter {
@@ -538,7 +542,7 @@
     -webkit-transform-origin: 0 0;
     transform-origin: 0 0;
     -webkit-transform: translateX(100%);
-    transform: translateX(100%)
+    transform: translateX(100%);
   }
 
   to {
@@ -546,7 +550,7 @@
     -webkit-transform-origin: 0 0;
     transform-origin: 0 0;
     -webkit-transform: translateX(0);
-    transform: translateX(0)
+    transform: translateX(0);
   }
 }
 @keyframes slideInRight-leave {
@@ -555,7 +559,7 @@
     transform-origin: 0 0;
     -webkit-transform: translateX(0);
     transform: translateX(0);
-    opacity: 1
+    opacity: 1;
   }
 
   100% {
@@ -563,7 +567,7 @@
     transform-origin: 0 0;
     -webkit-transform: translateX(100%);
     transform: translateX(100%);
-    opacity: 0
+    opacity: 0;
   }
 }
 @keyframes slideInLeft-enter {
@@ -572,7 +576,7 @@
     -webkit-transform-origin: 0 0;
     transform-origin: 0 0;
     -webkit-transform: translateX(-100%);
-    transform: translateX(-100%)
+    transform: translateX(-100%);
   }
 
   to {
@@ -580,7 +584,7 @@
     -webkit-transform-origin: 0 0;
     transform-origin: 0 0;
     -webkit-transform: translateX(0);
-    transform: translateX(0)
+    transform: translateX(0);
   }
 }
 @keyframes slideInLeft-leave {
@@ -589,7 +593,7 @@
     transform-origin: 0 0;
     -webkit-transform: translateX(0);
     transform: translateX(0);
-    opacity: 1
+    opacity: 1;
   }
 
   100% {
@@ -597,6 +601,6 @@
     transform-origin: 0 0;
     -webkit-transform: translateX(-100%);
     transform: translateX(-100%);
-    opacity: 0
+    opacity: 0;
   }
 }

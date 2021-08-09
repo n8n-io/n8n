@@ -12,7 +12,7 @@
   list-style: none;
   cursor: pointer;
   position: relative;
-  transition: border-color .3s, background-color .3s, color .3s;
+  transition: border-color 0.3s, background-color 0.3s, color 0.3s;
   box-sizing: border-box;
   white-space: nowrap;
 
@@ -65,7 +65,7 @@
       }
 
       &:not(.is-disabled):hover,
-      &:not(.is-disabled):focus{
+      &:not(.is-disabled):focus {
         background-color: #fff;
       }
     }
@@ -214,7 +214,7 @@
     }
   }
 }
-  
+
 @include mixins.b(submenu) {
   list-style: none;
   margin: 0;
@@ -241,7 +241,7 @@
     top: 50%;
     right: 20px;
     margin-top: -7px;
-    transition: transform .3s;
+    transition: transform 0.3s;
     font-size: 12px;
   }
   @include mixins.when(active) {
@@ -284,6 +284,6 @@
 }
 
 .horizontal-collapse-transition .el-submenu__title .el-submenu__icon-arrow {
-  transition: .2s;
+  transition: 0.2s;
   opacity: 0;
 }

@@ -14,7 +14,7 @@
       content: "";
     }
     #{$selector}::after {
-      clear: both
+      clear: both;
     }
   }
 }
@@ -27,7 +27,7 @@
       display: inline-block;
       content: "";
       height: 100%;
-      vertical-align: middle
+      vertical-align: middle;
     }
   }
 }

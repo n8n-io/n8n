@@ -13,7 +13,7 @@
   opacity: 1;
   display: flex;
   align-items: center;
-  transition: opacity .2s;
+  transition: opacity 0.2s;
 
   @include mixins.when(light) {
     .el-alert__closebtn {

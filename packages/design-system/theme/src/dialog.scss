@@ -50,7 +50,8 @@
       color: var(--color-info);
     }
 
-    &:focus, &:hover {
+    &:focus,
+    &:hover {
       .el-dialog__close {
         color: var(--color-primary);
       }
@@ -93,11 +94,11 @@
 }
 
 .dialog-fade-enter-active {
-  animation: dialog-fade-in .3s;
+  animation: dialog-fade-in 0.3s;
 }
 
 .dialog-fade-leave-active {
-  animation: dialog-fade-out .3s;
+  animation: dialog-fade-out 0.3s;
 }
 
 @keyframes dialog-fade-in {

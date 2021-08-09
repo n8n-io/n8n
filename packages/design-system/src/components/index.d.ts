@@ -1,1 +1,1 @@
-declare module "./N8nButton";
+declare module './N8nButton';

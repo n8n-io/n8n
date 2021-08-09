@@ -1,4 +1,4 @@
-import { N8nComponent, N8nComponentSize } from "../component";
+import { N8nComponent, N8nComponentSize } from '../component';
 
 /** Icon Button Component */
 export declare class N8nIconButton extends N8nComponent {
@@ -6,7 +6,7 @@ export declare class N8nIconButton extends N8nComponent {
   title: string;
 
   /** Button size */
-  size: N8nComponentSize | "xl";
+  size: N8nComponentSize | 'xl';
 
   /** icon size */
   iconSize: N8nComponentSize;

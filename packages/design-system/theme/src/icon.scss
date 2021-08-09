@@ -1,17 +1,19 @@
 @use "./common/var";
 
 @font-face {
-  font-family: 'element-icons';
-  src: url('#{var.$font-path}/element-icons.woff') format('woff'), /* chrome, firefox */
-       url('#{var.$font-path}/element-icons.ttf') format('truetype'); /* chrome, firefox, opera, Safari, Android, iOS 4.2+*/
+  font-family: "element-icons";
+  src: url("#{var.$font-path}/element-icons.woff") format("woff"),
+    /* chrome, firefox */ url("#{var.$font-path}/element-icons.ttf")
+      format("truetype"); /* chrome, firefox, opera, Safari, Android, iOS 4.2+*/
   font-weight: normal;
   font-display: var.$font-display;
   font-style: normal;
 }
 
-[class^="el-icon-"], [class*=" el-icon-"] {
+[class^="el-icon-"],
+[class*=" el-icon-"] {
   /* use !important to prevent issues with browser extensions that change fonts */
-  font-family: 'element-icons' !important;
+  font-family: "element-icons" !important;
   speak: none;
   font-style: normal;
   font-weight: normal;

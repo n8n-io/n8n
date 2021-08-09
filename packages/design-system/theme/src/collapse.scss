@@ -24,17 +24,17 @@
     border-bottom: 1px solid var.$collapse-border-color;
     font-size: var.$collapse-header-font-size;
     font-weight: 500;
-    transition: border-bottom-color .3s;
+    transition: border-bottom-color 0.3s;
     outline: none;
     @include mixins.e(arrow) {
       margin: 0 8px 0 auto;
-      transition: transform .3s;
+      transition: transform 0.3s;
       font-weight: 300;
       @include mixins.when(active) {
         transform: rotate(90deg);
       }
     }
-    &.focusing:focus:not(:hover){
+    &.focusing:focus:not(:hover) {
       color: var(--color-primary);
     }
     @include mixins.when(active) {

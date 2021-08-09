@@ -19,7 +19,8 @@
     position: relative;
     overflow: hidden;
 
-    &::after, &::before {
+    &::after,
+    &::before {
       content: "";
       top: 50%;
       position: absolute;

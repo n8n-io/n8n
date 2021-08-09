@@ -25,18 +25,23 @@
     &::before {
       $gap: 5px;
 
-      content: '';
+      content: "";
       position: absolute;
       display: block;
       width: 1px;
       top: $gap;
       bottom: $gap;
       left: 0;
-      background: rgba(var.$color-white, .5);
+      background: rgba(var.$color-white, 0.5);
     }
 
     &.el-button--default::before {
-      background: hsla(var(#{--button-default-border-color-h}), var(#{--button-default-border-color-s}), var(#{--button-default-border-color-l}), .5);
+      background: hsla(
+        var(#{--button-default-border-color-h}),
+        var(#{--button-default-border-color-s}),
+        var(#{--button-default-border-color-l}),
+        0.5
+      );
     }
 
     &:hover {
@@ -55,8 +60,10 @@
     margin: 0 3px;
   }
 
-  .el-dropdown-selfdefine { // 自定义
-    &:focus:active, &:focus:not(.focusing) {
+  .el-dropdown-selfdefine {
+    // 自定义
+    &:focus:active,
+    &:focus:not(.focusing) {
       outline-width: 0;
     }
   }
@@ -83,7 +90,8 @@
     color: var.$color-text-primary;
     cursor: pointer;
     outline: none;
-    &:not(.is-disabled):hover, &:focus {
+    &:not(.is-disabled):hover,
+    &:focus {
       background-color: var.$dropdown-menuItem-hover-fill;
       color: var.$dropdown-menuItem-hover-color;
     }
@@ -100,7 +108,7 @@
       border-top: 1px solid var.$border-color-lighter;
 
       &:before {
-        content: '';
+        content: "";
         height: $divided-offset;
         display: block;
         margin: 0 -20px;

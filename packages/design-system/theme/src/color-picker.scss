@@ -52,10 +52,15 @@
   @include mixins.e(bar) {
     position: relative;
     background: linear-gradient(
-      to right, #f00 0%,
-      #ff0 17%, #0f0 33%,
-      #0ff 50%, #00f 67%,
-      #f0f 83%, #f00 100%);
+      to right,
+      #f00 0%,
+      #ff0 17%,
+      #0f0 33%,
+      #0ff 50%,
+      #00f 67%,
+      #f0f 83%,
+      #f00 100%
+    );
     height: 100%;
   }
 
@@ -81,10 +86,15 @@
 
     .el-color-hue-slider__bar {
       background: linear-gradient(
-        to bottom, #f00 0%,
-        #ff0 17%, #0f0 33%,
-        #0ff 50%, #00f 67%,
-        #f0f 83%, #f00 100%);
+        to bottom,
+        #f00 0%,
+        #ff0 17%,
+        #0f0 33%,
+        #0ff 50%,
+        #00f 67%,
+        #f0f 83%,
+        #f00 100%
+      );
     }
 
     .el-color-hue-slider__thumb {
@@ -101,7 +111,7 @@
   width: 280px;
   height: 180px;
 
-  @include mixins.e(('white', 'black')) {
+  @include mixins.e(("white", "black")) {
     position: absolute;
     top: 0;
     left: 0;
@@ -109,12 +119,12 @@
     bottom: 0;
   }
 
-  @include mixins.e('white') {
-    background: linear-gradient(to right, #fff, rgba(255,255,255,0));
+  @include mixins.e("white") {
+    background: linear-gradient(to right, #fff, rgba(255, 255, 255, 0));
   }
 
-  @include mixins.e('black') {
-    background: linear-gradient(to top, #000, rgba(0,0,0,0));
+  @include mixins.e("black") {
+    background: linear-gradient(to top, #000, rgba(0, 0, 0, 0));
   }
 
   @include mixins.e(cursor) {
@@ -124,7 +134,8 @@
       cursor: head;
       width: 4px;
       height: 4px;
-      box-shadow: 0 0 0 1.5px #fff, inset 0 0 1px 1px rgba(0,0,0,0.3), 0 0 1px 2px rgba(0,0,0,0.4);
+      box-shadow: 0 0 0 1.5px #fff, inset 0 0 1px 1px rgba(0, 0, 0, 0.3),
+        0 0 1px 2px rgba(0, 0, 0, 0.4);
       border-radius: 50%;
       transform: translate(-2px, -2px);
     }
@@ -141,8 +152,10 @@
   @include mixins.e(bar) {
     position: relative;
     background: linear-gradient(
-      to right, rgba(255, 255, 255, 0) 0%,
-      rgba(255, 255, 255, 1) 100%);
+      to right,
+      rgba(255, 255, 255, 0) 0%,
+      rgba(255, 255, 255, 1) 100%
+    );
     height: 100%;
   }
 
@@ -167,8 +180,10 @@
 
     .el-color-alpha-slider__bar {
       background: linear-gradient(
-        to bottom, rgba(255, 255, 255, 0) 0%,
-        rgba(255, 255, 255, 1) 100%);
+        to bottom,
+        rgba(255, 255, 255, 0) 0%,
+        rgba(255, 255, 255, 1) 100%
+      );
     }
 
     .el-color-alpha-slider__thumb {
@@ -207,15 +222,15 @@
   }
 
   @include mixins.e(btn) {
-	@include button.button-small();
-	@include button.button-just-primary();
+    @include button.button-small();
+    @include button.button-just-primary();
   }
 
   @include mixins.e(link-btn) {
-	@include button.button-outline();
-	@include button.button-small();
+    @include button.button-outline();
+    @include button.button-small();
 
-	margin-right: var(--spacing-2xs);
+    margin-right: var(--spacing-2xs);
   }
 }
 
@@ -292,7 +307,7 @@
     left: 1px;
     z-index: 1;
     cursor: not-allowed;
-    background-color: rgba(255, 255, 255, .7);
+    background-color: rgba(255, 255, 255, 0.7);
   }
 
   @include mixins.e(trigger) {

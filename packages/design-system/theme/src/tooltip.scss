@@ -2,7 +2,8 @@
 @use "./common/var";
 
 @include mixins.b(tooltip) {
-  &:focus:not(.focusing), &:focus:hover {
+  &:focus:not(.focusing),
+  &:focus:hover {
     outline-width: 0;
   }
   @include mixins.e(popper) {

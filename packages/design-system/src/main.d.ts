@@ -1,1 +1,1 @@
-declare module "n8n-design-system";
+declare module 'n8n-design-system';

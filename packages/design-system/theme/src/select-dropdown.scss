@@ -24,7 +24,7 @@
       &::after {
         position: absolute;
         right: 20px;
-        font-family: 'element-icons';
+        font-family: "element-icons";
         content: "\e6da";
         font-size: 12px;
         font-weight: bold;
@@ -34,7 +34,7 @@
     }
   }
 
-  .el-scrollbar.is-empty .el-select-dropdown__list{
+  .el-scrollbar.is-empty .el-select-dropdown__list {
     padding: 0;
   }
 }

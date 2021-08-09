@@ -141,7 +141,7 @@
     top: 0;
     text-align: center;
     color: var.$input-icon-color;
-    transition: all .3s;
+    transition: all 0.3s;
     pointer-events: none;
   }
 
@@ -156,18 +156,18 @@
     top: 0;
     text-align: center;
     color: var.$input-icon-color;
-    transition: all .3s;
+    transition: all 0.3s;
   }
 
   @include mixins.e(icon) {
     height: 100%;
     width: 25px;
     text-align: center;
-    transition: all .3s;
+    transition: all 0.3s;
     line-height: var.$input-height;
 
     &:after {
-      content: '';
+      content: "";
       height: 100%;
       width: 0;
       display: inline-block;
@@ -270,7 +270,7 @@
   display: inline-table;
   width: 100%;
   border-collapse: separate;
-  border-spacing:0;
+  border-spacing: 0;
 
   > .el-input__inner {
     vertical-align: middle;

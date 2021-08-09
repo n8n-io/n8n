@@ -63,7 +63,7 @@
     font-size: 14px;
     box-sizing: border-box;
     background: var.$color-white;
-    transition: .15s ease-out;
+    transition: 0.15s ease-out;
 
     @include mixins.when(text) {
       border-radius: 50%;
@@ -84,7 +84,7 @@
     line-height: 1;
     color: inherit;
 
-    &[class*=el-icon]:not(.is-status) {
+    &[class*="el-icon"]:not(.is-status) {
       font-size: 25px;
       font-weight: normal;
     }
@@ -106,7 +106,7 @@
     border-width: 1px;
     border-style: solid;
     border-color: inherit;
-    transition: .15s ease-out;
+    transition: 0.15s ease-out;
     box-sizing: border-box;
     width: 0;
     height: 0;
@@ -215,7 +215,6 @@
   }
 
   @include mixins.when(center) {
-
     @include mixins.e(head) {
       text-align: center;
     }
@@ -253,12 +252,12 @@
     }
 
     @include mixins.e(icon-inner) {
-      &[class*=el-icon]:not(.is-status) {
+      &[class*="el-icon"]:not(.is-status) {
         font-size: 18px;
       }
 
       &.is-status {
-        transform: scale(.8) translateY(1px);
+        transform: scale(0.8) translateY(1px);
       }
     }
 
@@ -274,7 +273,7 @@
       line-height: 20px;
     }
 
-    @include mixins.pseudo('not(:last-of-type)') {
+    @include mixins.pseudo("not(:last-of-type)") {
       @include mixins.e(title) {
         max-width: 50%;
         word-break: break-all;
@@ -289,7 +288,7 @@
 
       &::before,
       &::after {
-        content: '';
+        content: "";
         display: inline-block;
         position: absolute;
         height: 15px;

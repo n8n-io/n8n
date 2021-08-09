@@ -65,12 +65,12 @@
       color: var(--color-info);
     }
 
-    &:focus, &:hover {
+    &:focus,
+    &:hover {
       .el-message-box__close {
         color: var(--color-primary);
       }
     }
-
   }
 
   @include mixins.e(content) {
@@ -78,7 +78,7 @@
     color: var.$messagebox-content-color;
     font-size: var.$messagebox-content-font-size;
   }
-  
+
   @include mixins.e(container) {
     position: relative;
   }
@@ -152,13 +152,13 @@
     }
 
     & .btn--confirm {
-       @include button.button-just-primary();
-       @include button.button-medium();
+      @include button.button-just-primary();
+      @include button.button-medium();
     }
 
     & .btn--cancel {
-       @include button.button-outline();
-       @include button.button-medium();
+      @include button.button-outline();
+      @include button.button-medium();
     }
   }
 
@@ -207,11 +207,11 @@
 }
 
 .msgbox-fade-enter-active {
-  animation: msgbox-fade-in .3s;
+  animation: msgbox-fade-in 0.3s;
 }
 
 .msgbox-fade-leave-active {
-  animation: msgbox-fade-out .3s;
+  animation: msgbox-fade-out 0.3s;
 }
 
 @keyframes msgbox-fade-in {

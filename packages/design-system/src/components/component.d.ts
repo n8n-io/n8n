@@ -1,4 +1,4 @@
-import Vue from "vue";
+import Vue from 'vue';
 
 /** N8n component common definition */
 export declare class N8nComponent extends Vue {
@@ -7,4 +7,4 @@ export declare class N8nComponent extends Vue {
 }
 
 /** Component size definition for button, input, etc */
-export type N8nComponentSize = "lg" | "md" | "sm";
+export type N8nComponentSize = 'lg' | 'md' | 'sm';

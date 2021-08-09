@@ -43,9 +43,9 @@ export default {
 }
 
 ._md {
-  font-size: .95em;
-  height: .95em;
-  width: .95em !important;
+  font-size: 0.95em;
+  height: 0.95em;
+  width: 0.95em !important;
 }
 
 ._lg {

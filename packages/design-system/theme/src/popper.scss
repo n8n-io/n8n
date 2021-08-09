@@ -14,7 +14,7 @@
 
   .popper__arrow {
     border-width: var.$popover-arrow-size;
-    filter: drop-shadow(0 2px 12px rgba(0, 0, 0, 0.03))
+    filter: drop-shadow(0 2px 12px rgba(0, 0, 0, 0.03));
   }
 
   .popper__arrow::after {

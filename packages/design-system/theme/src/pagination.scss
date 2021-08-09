@@ -10,7 +10,7 @@
   font-weight: bold;
   @include utils.utils-clearfix;
 
-  span:not([class*=suffix]),
+  span:not([class*="suffix"]),
   button {
     display: inline-block;
     font-size: var.$pagination-font-size;
@@ -30,7 +30,7 @@
   // pagesize 的下拉 icon
   .el-input__suffix {
     right: 0;
-    transform: scale(.8);
+    transform: scale(0.8);
   }
 
   .el-select .el-input {
@@ -84,7 +84,7 @@
   }
 
   .btn-next {
-    padding-left: 12px;    
+    padding-left: 12px;
   }
 
   .el-pager li.disabled {
@@ -115,7 +115,7 @@
       line-height: 24px;
     }
 
-    span:not([class*=suffix]),
+    span:not([class*="suffix"]),
     button {
       height: 22px;
       line-height: 22px;
@@ -168,7 +168,7 @@
     line-height: 18px;
     padding: 0 2px;
     height: var.$pagination-button-height;
-      
+
     text-align: center;
     margin: 0 2px;
     box-sizing: border-box;
@@ -204,7 +204,8 @@
       }
     }
 
-    .btn-prev, .btn-next {
+    .btn-prev,
+    .btn-next {
       padding: 0;
 
       &:disabled {

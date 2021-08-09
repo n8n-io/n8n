@@ -25,7 +25,7 @@
     height: var.$carousel-arrow-size;
     width: var.$carousel-arrow-size;
     cursor: pointer;
-    transition: .3s;
+    transition: 0.3s;
     border-radius: 50%;
     background-color: var.$carousel-arrow-background;
     color: var.$color-white;
@@ -73,7 +73,8 @@
     }
 
     @include mixins.m(outside) {
-      bottom: #{var.$carousel-indicator-height + var.$carousel-indicator-padding-vertical * 2};
+      bottom: #{var.$carousel-indicator-height +
+        var.$carousel-indicator-padding-vertical * 2};
       text-align: center;
       position: static;
       transform: none;
@@ -115,11 +116,13 @@
 
     @include mixins.m(horizontal) {
       display: inline-block;
-      padding: var.$carousel-indicator-padding-vertical var.$carousel-indicator-padding-horizontal;
+      padding: var.$carousel-indicator-padding-vertical
+        var.$carousel-indicator-padding-horizontal;
     }
 
     @include mixins.m(vertical) {
-      padding: var.$carousel-indicator-padding-horizontal var.$carousel-indicator-padding-vertical;
+      padding: var.$carousel-indicator-padding-horizontal
+        var.$carousel-indicator-padding-vertical;
       .el-carousel__button {
         width: var.$carousel-indicator-height;
         height: #{var.$carousel-indicator-width * 0.5};
@@ -144,7 +147,7 @@
     padding: 0;
     margin: 0;
     cursor: pointer;
-    transition: .3s;
+    transition: 0.3s;
   }
 }
 

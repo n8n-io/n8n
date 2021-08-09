@@ -23,32 +23,32 @@
 @function containWhenFlag($selector) {
   $selector: selectorToString($selector);
 
-  @if string.index($selector, '.' + config.$state-prefix) {
-    @return true
+  @if string.index($selector, "." + config.$state-prefix) {
+    @return true;
   } @else {
-    @return false
+    @return false;
   }
 }
 
 @function containPseudoClass($selector) {
   $selector: selectorToString($selector);
 
-  @if string.index($selector, ':') {
-    @return true
+  @if string.index($selector, ":") {
+    @return true;
   } @else {
-    @return false
+    @return false;
   }
 }
 
 @function hitAllSpecialNestRule($selector) {
-
-  @return containsModifier($selector) or containWhenFlag($selector) or containPseudoClass($selector);
+  @return containsModifier($selector) or containWhenFlag($selector) or
+    containPseudoClass($selector);
 }
 
 @function lightness($h, $s, $l, $lightness) {
-  @return hsl(var(#{$h}), var(#{$s}), calc(var(#{$l}) + #{$lightness}))
+  @return hsl(var(#{$h}), var(#{$s}), calc(var(#{$l}) + #{$lightness}));
 }
 
 @function saturation($h, $s, $l, $saturation) {
-  @return hsl(var(#{$h}), calc(var(#{$s}) + #{$saturation}), var(#{$l}))
+  @return hsl(var(#{$h}), calc(var(#{$s}) + #{$saturation}), var(#{$l}));
 }

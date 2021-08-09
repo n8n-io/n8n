@@ -56,22 +56,22 @@
  -------------------------- */
 @mixin placeholder {
   &::-webkit-input-placeholder {
-    @content
+    @content;
   }
 
   &::-moz-placeholder {
-    @content
+    @content;
   }
 
   &:-ms-input-placeholder {
-    @content
+    @content;
   }
 }
 
 /* BEM
  -------------------------- */
 @mixin b($block) {
-  $B: config.$namespace+'-'+$block !global;
+  $B: config.$namespace + "-" + $block !global;
 
   .#{$B} {
     @content;
@@ -83,7 +83,12 @@
   $selector: &;
   $currentSelector: "";
   @each $unit in $element {
-    $currentSelector: #{$currentSelector + "." + $B + config.$element-separator + $unit + ","};
+    $currentSelector: #{$currentSelector +
+      "." +
+      $B +
+      config.$element-separator +
+      $unit +
+      ","};
   }
 
   @if function.hitAllSpecialNestRule($selector) {
@@ -107,7 +112,11 @@
   $selector: &;
   $currentSelector: "";
   @each $unit in $modifier {
-    $currentSelector: #{$currentSelector + & + config.$modifier-separator + $unit + ","};
+    $currentSelector: #{$currentSelector +
+      & +
+      config.$modifier-separator +
+      $unit +
+      ","};
   }
 
   @at-root {
@@ -119,7 +128,7 @@
 
 @mixin configurable-m($modifier, $E-flag: false) {
   $selector: &;
-  $interpolation: '';
+  $interpolation: "";
 
   @if $E-flag {
     $interpolation: config.$element-separator + $E-flag;
@@ -127,30 +136,38 @@
 
   @at-root {
     #{$selector} {
-      .#{$B+$interpolation+config.$modifier-separator+$modifier} {
+      .#{$B + $interpolation + config.$modifier-separator + $modifier} {
         @content;
       }
     }
   }
 }
 
-@mixin spec-selector($specSelector: '', $element: $E, $modifier: false, $block: $B) {
-  $modifierCombo: '';
+@mixin spec-selector(
+  $specSelector: "",
+  $element: $E,
+  $modifier: false,
+  $block: $B
+) {
+  $modifierCombo: "";
 
   @if $modifier {
     $modifierCombo: config.$modifier-separator + $modifier;
   }
 
   @at-root {
-    #{&}#{$specSelector}.#{$block+config.$element-separator+$element+$modifierCombo} {
-      @content
+    #{&}#{$specSelector}.#{$block
+      + config.$element-separator
+      + $element
+      + $modifierCombo} {
+      @content;
     }
   }
 }
 
 @mixin meb($modifier: false, $element: $E, $block: $B) {
   $selector: &;
-  $modifierCombo: '';
+  $modifierCombo: "";
 
   @if $modifier {
     $modifierCombo: config.$modifier-separator + $modifier;
@@ -158,8 +175,8 @@
 
   @at-root {
     #{$selector} {
-      .#{$block+config.$element-separator+$element+$modifierCombo} {
-        @content
+      .#{$block + config.$element-separator + $element + $modifierCombo} {
+        @content;
       }
     }
   }
@@ -174,20 +191,19 @@
 }
 
 @mixin extend-rule($name) {
-  @extend #{'%shared-'+$name};
+  @extend #{"%shared-" + $name};
 }
 
 @mixin share-rule($name) {
-  $rule-name: '%shared-'+$name;
+  $rule-name: "%shared-" + $name;
 
   @at-root #{$rule-name} {
-    @content
+    @content;
   }
 }
 
 @mixin pseudo($pseudo) {
-  @at-root #{&}#{':#{$pseudo}'} {
-    @content
+  @at-root #{&}#{":#{$pseudo}"} {
+    @content;
   }
 }
-

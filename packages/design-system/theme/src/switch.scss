@@ -17,7 +17,7 @@
   }
 
   @include mixins.e(label) {
-    transition: .2s;
+    transition: 0.2s;
     height: var.$switch-height;
     display: inline-block;
     font-size: var.$switch-font-size;
@@ -63,7 +63,7 @@
     box-sizing: border-box;
     background: var.$switch-off-color;
     cursor: pointer;
-    transition: border-color .3s, background-color .3s;
+    transition: border-color 0.3s, background-color 0.3s;
     vertical-align: middle;
 
     &:after {
@@ -72,7 +72,7 @@
       top: 1px;
       left: 1px;
       border-radius: var.$border-radius-circle;
-      transition: all .3s;
+      transition: all 0.3s;
       width: var.$switch-button-size;
       height: var.$switch-button-size;
       background-color: var.$color-white;

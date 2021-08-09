@@ -17,12 +17,12 @@
     }
 
     @include mixins.when(animating) {
-      transition: transform .4s ease-in-out;
+      transition: transform 0.4s ease-in-out;
     }
 
     @include mixins.m(card) {
       width: 50%;
-      transition: transform .4s ease-in-out;
+      transition: transform 0.4s ease-in-out;
       &.is-in-stage {
         cursor: pointer;
         z-index: var.$index-normal;
@@ -45,6 +45,6 @@
     left: 0;
     background-color: var.$color-white;
     opacity: 0.24;
-    transition: .2s;
+    transition: 0.2s;
   }
 }

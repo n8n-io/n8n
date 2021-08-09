@@ -131,10 +131,10 @@
   }
 
   @include mixins.when(required) {
-    @include mixins.pseudo('not(.is-no-asterisk)') {
+    @include mixins.pseudo("not(.is-no-asterisk)") {
       & > .el-form-item__label:before,
       & .el-form-item__label-wrap > .el-form-item__label:before {
-        content: '*';
+        content: "*";
         color: var(--color-danger);
         margin-right: 4px;
       }
@@ -144,7 +144,8 @@
   @include mixins.when(error) {
     & .el-input__inner,
     & .el-textarea__inner {
-      &, &:focus {
+      &,
+      &:focus {
         border-color: var(--color-danger);
       }
     }

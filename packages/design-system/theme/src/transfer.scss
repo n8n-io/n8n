@@ -48,7 +48,8 @@
       margin: 0;
     }
 
-    i, span {
+    i,
+    span {
       font-size: 14px;
     }
 
@@ -87,7 +88,8 @@
     box-sizing: border-box;
 
     @include mixins.when(filterable) {
-      height: #{var.$transfer-panel-body-height - var.$transfer-filter-height - 20px};
+      height: #{var.$transfer-panel-body-height - var.$transfer-filter-height -
+        20px};
       padding-top: 0;
     }
   }

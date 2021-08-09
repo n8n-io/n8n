@@ -66,7 +66,7 @@
     background-color: var.$color-white;
 
     // 纯属为了增加权重
-    &[class*=cell] {
+    &[class*="cell"] {
       padding: 20px 50px;
     }
 
@@ -89,7 +89,8 @@
     border-right: 0;
     border-bottom: 0;
 
-    th.gutter, td.gutter {
+    th.gutter,
+    td.gutter {
       border-right-width: 1px;
     }
   }
@@ -117,7 +118,8 @@
     }
   }
 
-  th, td {
+  th,
+  td {
     padding: 12px 0;
     min-width: 0;
     box-sizing: border-box;
@@ -149,21 +151,24 @@
   }
 
   @include mixins.m(medium) {
-    th, td {
+    th,
+    td {
       padding: 10px 0;
     }
   }
 
   @include mixins.m(small) {
     font-size: 12px;
-    th, td {
+    th,
+    td {
       padding: 8px 0;
     }
   }
 
   @include mixins.m(mini) {
     font-size: 12px;
-    th, td {
+    th,
+    td {
       padding: 6px 0;
     }
   }
@@ -176,7 +181,8 @@
     }
   }
 
-  th.is-leaf, td {
+  th.is-leaf,
+  td {
     border-bottom: var.$table-border;
   }
 
@@ -246,7 +252,7 @@
     border: var.$table-border;
 
     @include mixins.share-rule(border-pseudo) {
-      content: '';
+      content: "";
       position: absolute;
       background-color: var.$table-border-color;
       z-index: 1;
@@ -280,7 +286,8 @@
       border-color: transparent;
     }
 
-    th, td {
+    th,
+    td {
       border-right: var.$table-border;
 
       &:first-child .cell {
@@ -311,7 +318,7 @@
     box-shadow: var.$table-fixed-box-shadow;
 
     &::before {
-      content: '';
+      content: "";
       position: absolute;
       left: 0;
       bottom: 0;
@@ -482,7 +489,7 @@
     & .el-table__body {
       & tr.el-table__row--striped {
         td {
-          background: #FAFAFA;
+          background: #fafafa;
         }
 
         &.current-row td {
@@ -494,8 +501,10 @@
 
   @include mixins.e(body) {
     tr.hover-row {
-      &, &.el-table__row--striped {
-        &, &.current-row {
+      &,
+      &.el-table__row--striped {
+        &,
+        &.current-row {
           > td {
             background-color: var.$table-row-hover-background-color;
           }
@@ -526,13 +535,13 @@
     & i {
       color: var(--color-info);
       font-size: 12px;
-      transform: scale(.75);
+      transform: scale(0.75);
     }
   }
 
   @include mixins.m(enable-row-transition) {
     .el-table__body td {
-      transition: background-color .25s ease;
+      transition: background-color 0.25s ease;
     }
   }
 
@@ -550,7 +559,7 @@
     }
   }
 
-  [class*=el-table__row--level] {
+  [class*="el-table__row--level"] {
     .el-table__expand-icon {
       display: inline-block;
       width: 20px;

@@ -12,10 +12,9 @@
   display: inline-block;
   position: relative;
 
-  .el-select__tags
-    >span {
-      display: contents;
-    }
+  .el-select__tags > span {
+    display: contents;
+  }
 
   &:hover {
     .el-input__inner {
@@ -36,7 +35,7 @@
     & .el-select__caret {
       color: var.$select-input-color;
       font-size: var.$select-input-font-size;
-      transition: transform .3s;
+      transition: transform 0.3s;
       transform: rotateZ(180deg);
       cursor: pointer;
 
@@ -141,7 +140,7 @@
 
       &::before {
         display: block;
-        transform: translate(0, .5px);
+        transform: translate(0, 0.5px);
       }
     }
   }

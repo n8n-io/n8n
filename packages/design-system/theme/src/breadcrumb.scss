@@ -12,7 +12,7 @@
     font-weight: bold;
     color: var.$color-text-placeholder;
 
-    &[class*=icon] {
+    &[class*="icon"] {
       margin: 0 6px;
       font-weight: normal;
     }
@@ -24,7 +24,8 @@
     @include mixins.e(inner) {
       color: var.$color-text-primary;
 
-      &.is-link, & a {
+      &.is-link,
+      & a {
         font-weight: bold;
         text-decoration: none;
         transition: var.$color-transition-base;
@@ -40,7 +41,8 @@
     &:last-child {
       .el-breadcrumb__inner,
       .el-breadcrumb__inner a {
-        &, &:hover {
+        &,
+        &:hover {
           font-weight: normal;
           color: var.$color-text-primary;
           cursor: text;

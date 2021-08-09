@@ -11,10 +11,8 @@
 }
 
 @mixin drawer-animation($direction) {
-
   @keyframes #{$direction}-drawer-in {
     0% {
-
       @if $direction == ltr {
         transform: translate(-100%, 0px);
       }
@@ -58,7 +56,7 @@
       }
 
       @if $direction == rtl {
-        transform: translate(0px, 0px);;
+        transform: translate(0px, 0px);
       }
 
       @if $direction == ttb {
@@ -92,13 +90,13 @@
 
 @mixin animation-in($direction) {
   .el-drawer__open &.#{$direction} {
-    animation: #{$direction}-drawer-in .3s 1ms;
+    animation: #{$direction}-drawer-in 0.3s 1ms;
   }
 }
 
 @mixin animation-out($direction) {
   &.#{$direction} {
-    animation: #{$direction}-drawer-out .3s;
+    animation: #{$direction}-drawer-out 0.3s;
   }
 }
 
@@ -116,8 +114,7 @@ $directions: rtl, ltr, ttb, btt;
   display: flex;
   flex-direction: column;
   box-shadow: 0 8px 10px -5px rgba(0, 0, 0, 0.2),
-  0 16px 24px 2px rgba(0, 0, 0, 0.14),
-  0 6px 30px 5px rgba(0, 0, 0, 0.12);
+    0 16px 24px 2px rgba(0, 0, 0, 0.14), 0 6px 30px 5px rgba(0, 0, 0, 0.12);
   overflow: hidden;
   outline: 0;
 
@@ -170,13 +167,15 @@ $directions: rtl, ltr, ttb, btt;
     }
   }
 
-  &.ltr, &.rtl {
+  &.ltr,
+  &.rtl {
     height: 100%;
     top: 0;
     bottom: 0;
   }
 
-  &.ttb, &.btt {
+  &.ttb,
+  &.btt {
     width: 100%;
     left: 0;
     right: 0;
@@ -210,9 +209,9 @@ $directions: rtl, ltr, ttb, btt;
 }
 
 .el-drawer-fade-enter-active {
-  animation: el-drawer-fade-in .3s;
+  animation: el-drawer-fade-in 0.3s;
 }
 
 .el-drawer-fade-leave-active {
-  animation: el-drawer-fade-in .3s reverse;
+  animation: el-drawer-fade-in 0.3s reverse;
 }

@@ -24,7 +24,8 @@
       }
     }
 
-    &.hover, &:hover {
+    &.hover,
+    &:hover {
       background-color: var.$select-option-hover-background;
     }
 

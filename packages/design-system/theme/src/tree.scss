@@ -38,7 +38,8 @@
 @include mixins.b(tree-node) {
   white-space: nowrap;
   outline: none;
-  &:focus { /* focus */
+  &:focus {
+    /* focus */
     > .el-tree-node__content {
       background-color: var.$tree-node-hover-background-color;
     }

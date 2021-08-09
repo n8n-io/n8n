@@ -104,7 +104,7 @@
   }
 
   @include mixins.when(dragover) {
-    background-color: rgba(32, 159, 255, .06);
+    background-color: rgba(32, 159, 255, 0.06);
     border: 2px dashed var(--color-primary);
   }
 }
@@ -115,7 +115,7 @@
   list-style: none;
 
   @include mixins.e(item) {
-    transition: all .5s cubic-bezier(.55,0,.1,1);
+    transition: all 0.5s cubic-bezier(0.55, 0, 0.1, 1);
     font-size: 14px;
     color: var.$color-text-primary;
     line-height: 1.8;
@@ -156,7 +156,7 @@
       top: 5px;
       right: 5px;
       cursor: pointer;
-      opacity: .75;
+      opacity: 0.75;
       color: var.$color-text-primary;
       //transform: scale(.7);
 
@@ -175,7 +175,7 @@
       opacity: 1;
       color: var(--color-primary);
     }
-    
+
     &:hover {
       background-color: var.$background-color-base;
 
@@ -193,25 +193,30 @@
         display: block;
       }
 
-      .el-upload-list__item-name:hover, .el-upload-list__item-name:focus {
+      .el-upload-list__item-name:hover,
+      .el-upload-list__item-name:focus {
         color: var.$link-hover-color;
         cursor: pointer;
       }
 
-      &:focus:not(:hover) {  /* 键盘focus */
+      &:focus:not(:hover) {
+        /* 键盘focus */
         .el-icon-close-tip {
           display: inline-block;
         }
       }
 
-      &:not(.focusing):focus, &:active { /* click时 */
+      &:not(.focusing):focus,
+      &:active {
+        /* click时 */
         outline-width: 0;
         .el-icon-close-tip {
           display: none;
         }
       }
 
-      &:hover, &:focus {
+      &:hover,
+      &:focus {
         .el-upload-list__item-status-label {
           display: none;
         }
@@ -232,7 +237,7 @@
     overflow: hidden;
     padding-left: 4px;
     text-overflow: ellipsis;
-    transition: color .3s;
+    transition: color 0.3s;
     white-space: nowrap;
 
     [class^="el-icon"] {
@@ -317,7 +322,7 @@
       background: #13ce66;
       text-align: center;
       transform: rotate(45deg);
-      box-shadow: 0 0 1pc 1px rgba(0,0,0,0.2);
+      box-shadow: 0 0 1pc 1px rgba(0, 0, 0, 0.2);
 
       i {
         font-size: 12px;
@@ -337,13 +342,13 @@
       color: #fff;
       opacity: 0;
       font-size: 20px;
-      background-color: rgba(0, 0, 0, .5);
-      transition: opacity .3s;
+      background-color: rgba(0, 0, 0, 0.5);
+      transition: opacity 0.3s;
       &::after {
         display: inline-block;
         content: "";
         height: 100%;
-        vertical-align: middle
+        vertical-align: middle;
       }
 
       span {
@@ -432,7 +437,7 @@
       position: relative;
       z-index: 1;
       margin-left: -80px;
-      background-color: var.$color-white
+      background-color: var.$color-white;
     }
 
     .el-upload-list__item-name {
@@ -499,7 +504,7 @@
     background: #13ce66;
     text-align: center;
     transform: rotate(45deg);
-    box-shadow: 0 0 1pc 1px rgba(0,0,0,0.2);
+    box-shadow: 0 0 1pc 1px rgba(0, 0, 0, 0.2);
 
     i {
       font-size: 12px;
@@ -534,7 +539,7 @@
     left: 0;
     width: 100%;
     height: 100%;
-    background-color: rgba(#000, .72);
+    background-color: rgba(#000, 0.72);
     text-align: center;
 
     .btn {
@@ -552,7 +557,7 @@
 
       span {
         opacity: 0;
-        transition: opacity .15s linear;
+        transition: opacity 0.15s linear;
       }
 
       &:not(:first-child) {

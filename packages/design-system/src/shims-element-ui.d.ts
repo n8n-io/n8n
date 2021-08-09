@@ -1,1 +1,1 @@
-declare module "element-ui/packages/button";
+declare module 'element-ui/packages/button';

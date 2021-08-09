@@ -5,7 +5,6 @@
 @use "./common/var";
 
 @include mixins.b(slider) {
-
   @include utils.utils-clearfix;
 
   @include mixins.e(runway) {
@@ -124,7 +123,7 @@
     border: solid 2px var.$slider-main-background-color;
     background-color: var.$color-white;
     border-radius: 50%;
-    transition: .2s;
+    transition: 0.2s;
     user-select: none;
 
     &:hover,
@@ -202,8 +201,7 @@
           padding-right: 5px;
         }
         .el-input-number__decrease,
-        .el-input-number__increase
-        {
+        .el-input-number__increase {
           top: var.$input-small-height;
           margin-top: -1px;
           border: var.$input-border;
@@ -226,15 +224,13 @@
         }
         &:hover {
           .el-input-number__decrease,
-          .el-input-number__increase
-          {
+          .el-input-number__increase {
             border-color: var.$input-hover-border;
           }
         }
         &:active {
           .el-input-number__decrease,
-          .el-input-number__increase
-          {
+          .el-input-number__increase {
             border-color: var.$input-focus-border;
           }
         }

@@ -177,7 +177,8 @@
     color: var.$input-disabled-color;
     cursor: not-allowed;
 
-    &:hover, &:focus {
+    &:hover,
+    &:focus {
       border-color: var.$input-disabled-border;
     }
 

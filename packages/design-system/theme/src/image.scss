@@ -45,10 +45,7 @@
   }
 }
 
-
 @include mixins.b(image-viewer) {
-
-
   @include mixins.e(wrapper) {
     position: fixed;
     top: 0;
@@ -64,7 +61,7 @@
     align-items: center;
     justify-content: center;
     border-radius: 50%;
-    opacity: .8;
+    opacity: 0.8;
     cursor: pointer;
     box-sizing: border-box;
     user-select: none;
@@ -112,7 +109,7 @@
     }
   }
 
-  @include mixins.e(prev){
+  @include mixins.e(prev) {
     top: 50%;
     transform: translateY(-50%);
     width: 44px;
@@ -124,7 +121,7 @@
     left: 40px;
   }
 
-  @include mixins.e(next){
+  @include mixins.e(next) {
     top: 50%;
     transform: translateY(-50%);
     width: 44px;
@@ -143,17 +140,17 @@
     height: 100%;
     top: 0;
     left: 0;
-    opacity: .5;
+    opacity: 0.5;
     background: #000;
   }
 }
 
 .viewer-fade-enter-active {
-  animation: viewer-fade-in .3s;
+  animation: viewer-fade-in 0.3s;
 }
 
 .viewer-fade-leave-active {
-  animation: viewer-fade-out .3s;
+  animation: viewer-fade-out 0.3s;
 }
 
 @keyframes viewer-fade-in {
