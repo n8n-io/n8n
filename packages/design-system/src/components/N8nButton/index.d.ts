@@ -1,7 +1,7 @@
 import { N8nComponent, N8nComponentSize } from '../component';
 
 /** Button type */
-export type ButtonType = 'primary' | 'outline' | 'light';
+export type ButtonType = 'primary' | 'outline' | 'light' | 'text';
 
 /** Button Component */
 export declare class N8nButton extends N8nComponent {
