@@ -33,8 +33,8 @@ Or
 
 ```html
 <link
-  rel="stylesheet"
-  href="path/to/node_modules/element-theme-chalk/css-variable/lib/index.css"
+	rel="stylesheet"
+	href="path/to/node_modules/element-theme-chalk/css-variable/lib/index.css"
 />
 ```
 

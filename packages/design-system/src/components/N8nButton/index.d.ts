@@ -5,33 +5,33 @@ export type ButtonType = 'primary' | 'outline' | 'light';
 
 /** Button Component */
 export declare class N8nButton extends N8nComponent {
-  /** Button text */
-  label: string;
+	/** Button text */
+	label: string;
 
-  /** Button title on hover */
-  title: string;
+	/** Button title on hover */
+	title: string;
 
-  /** Button size */
-  size: N8nComponentSize;
+	/** Button size */
+	size: N8nComponentSize;
 
-  /** Button type */
-  type: ButtonType;
+	/** Button type */
+	type: ButtonType;
 
-  /** Determine whether it's a circular button */
-  circle: boolean;
+	/** Determine whether it's a circular button */
+	circle: boolean;
 
-  /** Determine whether it's loading */
-  loading: boolean;
+	/** Determine whether it's loading */
+	loading: boolean;
 
-  /** Disable the button */
-  disabled: boolean;
+	/** Disable the button */
+	disabled: boolean;
 
-  /** Button icon, accepts an icon name of font awesome icon component */
-  icon: string;
+	/** Button icon, accepts an icon name of font awesome icon component */
+	icon: string;
 
-  /** Size of icon */
-  iconSize: N8nComponentSize;
+	/** Size of icon */
+	iconSize: N8nComponentSize;
 
-  /** Full width */
-  fullWidth: boolean;
+	/** Full width */
+	fullWidth: boolean;
 }

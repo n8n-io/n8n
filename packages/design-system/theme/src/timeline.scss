@@ -2,13 +2,13 @@
 @use "./common/var";
 
 @include mixins.b(timeline) {
-  margin: 0;
-  font-size: var.$font-size-base;
-  list-style: none;
+	margin: 0;
+	font-size: var.$font-size-base;
+	list-style: none;
 
-  & .el-timeline-item:last-child {
-    & .el-timeline-item__tail {
-      display: none;
-    }
-  }
+	& .el-timeline-item:last-child {
+		& .el-timeline-item__tail {
+			display: none;
+		}
+	}
 }

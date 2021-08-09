@@ -2,51 +2,51 @@
 @use "../mixins/mixins";
 
 @include mixins.b(year-table) {
-  font-size: 12px;
-  margin: -1px;
-  border-collapse: collapse;
+	font-size: 12px;
+	margin: -1px;
+	border-collapse: collapse;
 
-  .el-icon {
-    color: var.$datepicker-icon-color;
-  }
+	.el-icon {
+		color: var.$datepicker-icon-color;
+	}
 
-  td {
-    text-align: center;
-    padding: 20px 3px;
-    cursor: pointer;
+	td {
+		text-align: center;
+		padding: 20px 3px;
+		cursor: pointer;
 
-    &.today {
-      .cell {
-        color: var(--color-primary);
-        font-weight: bold;
-      }
-    }
+		&.today {
+			.cell {
+				color: var(--color-primary);
+				font-weight: bold;
+			}
+		}
 
-    &.disabled .cell {
-      background-color: var.$background-color-base;
-      cursor: not-allowed;
-      color: var.$color-text-placeholder;
+		&.disabled .cell {
+			background-color: var.$background-color-base;
+			cursor: not-allowed;
+			color: var.$color-text-placeholder;
 
-      &:hover {
-        color: var.$color-text-placeholder;
-      }
-    }
+			&:hover {
+				color: var.$color-text-placeholder;
+			}
+		}
 
-    .cell {
-      width: 48px;
-      height: 32px;
-      display: block;
-      line-height: 32px;
-      color: var.$datepicker-font-color;
-      margin: 0 auto;
+		.cell {
+			width: 48px;
+			height: 32px;
+			display: block;
+			line-height: 32px;
+			color: var.$datepicker-font-color;
+			margin: 0 auto;
 
-      &:hover {
-        color: var.$datepicker-hover-font-color;
-      }
-    }
+			&:hover {
+				color: var.$datepicker-hover-font-color;
+			}
+		}
 
-    &.current:not(.disabled) .cell {
-      color: var.$datepicker-active-color;
-    }
-  }
+		&.current:not(.disabled) .cell {
+			color: var.$datepicker-active-color;
+		}
+	}
 }

@@ -2,11 +2,11 @@
 @use "mixins/mixins";
 
 .hidden {
-  @each $break-point-name, $value in var.$breakpoints-spec {
-    &-#{$break-point-name} {
-      @include mixins.res($break-point-name, var.$breakpoints-spec) {
-        display: none !important;
-      }
-    }
-  }
+	@each $break-point-name, $value in var.$breakpoints-spec {
+		&-#{$break-point-name} {
+			@include mixins.res($break-point-name, var.$breakpoints-spec) {
+				display: none !important;
+			}
+		}
+	}
 }
