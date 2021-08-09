@@ -3,30 +3,20 @@ module.exports = {
 	env: {
 		node: true,
 	},
-	extends: [
+	'extends': [
 		'plugin:vue/essential',
-		'eslint:recommended',
-		'@vue/typescript/recommended',
-		'@vue/prettier',
-		'@vue/prettier/@typescript-eslint',
+		'@vue/typescript',
 	],
-	parserOptions: {
-		ecmaVersion: 2020,
-	},
 	rules: {
-		'no-console': process.env.NODE_ENV === 'production' ? 'warn' : 'off',
-		'no-debugger': process.env.NODE_ENV === 'production' ? 'warn' : 'off',
+		'no-console': process.env.NODE_ENV === 'production' ? 'error' : 'off',
+		'no-debugger': process.env.NODE_ENV === 'production' ? 'error' : 'off',
+		'semi': [2, 'always'],
+		'indent': ['error', 'tab'],
+		'comma-dangle': ['error', 'always-multiline'],
+		'no-tabs': 0,
+		'no-labels': 0,
 	},
-	ignorePatterns: ['gulpfile.js'],
-	overrides: [
-		{
-			files: [
-				'**/__tests__/*.{j,t}s?(x)',
-				'**/tests/unit/**/*.spec.{j,t}s?(x)',
-			],
-			env: {
-				jest: true,
-			},
-		},
-	],
+	parserOptions: {
+		parser: '@typescript-eslint/parser',
+	},
 };
