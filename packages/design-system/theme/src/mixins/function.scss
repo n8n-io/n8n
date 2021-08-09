@@ -23,7 +23,7 @@
 @function containWhenFlag($selector) {
 	$selector: selectorToString($selector);
 
-	@if string.index($selector, "." + config.$state-prefix) {
+	@if string.index($selector, '.' + config.$state-prefix) {
 		@return true;
 	} @else {
 		@return false;
@@ -33,7 +33,7 @@
 @function containPseudoClass($selector) {
 	$selector: selectorToString($selector);
 
-	@if string.index($selector, ":") {
+	@if string.index($selector, ':') {
 		@return true;
 	} @else {
 		@return false;

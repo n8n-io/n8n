@@ -81,7 +81,7 @@ $loading-overlay-background-color: rgba(255, 255, 255, 0.35);
 
 		&:before {
 			pointer-events: none;
-			content: "";
+			content: '';
 			position: absolute;
 			left: -1px;
 			top: -1px;

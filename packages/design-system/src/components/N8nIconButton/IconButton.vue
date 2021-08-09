@@ -14,20 +14,20 @@
 </template>
 
 <script lang="ts">
-import Vue from "vue";
-import N8nButton from "../N8nButton";
+import Vue from 'vue';
+import N8nButton from '../N8nButton';
 
 const iconSizeMap = {
-	sm: "sm",
-	md: "md",
-	lg: "md",
-	xl: "lg",
+	sm: 'sm',
+	md: 'md',
+	lg: 'md',
+	xl: 'lg',
 };
 
-Vue.component("N8nButton", N8nButton);
+Vue.component('N8nButton', N8nButton);
 
 export default {
-	name: "n8n-icon-button",
+	name: 'n8n-icon-button',
 	props: {
 		type: {
 			type: String,
@@ -38,7 +38,7 @@ export default {
 		size: {
 			type: String,
 			validator: (value: string): boolean =>
-				["sm", "md", "lg", "xl"].indexOf(value) !== -1,
+				['sm', 'md', 'lg', 'xl'].indexOf(value) !== -1,
 		},
 		loading: {
 			type: Boolean,

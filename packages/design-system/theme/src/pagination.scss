@@ -10,7 +10,7 @@
 	font-weight: bold;
 	@include utils.utils-clearfix;
 
-	span:not([class*="suffix"]),
+	span:not([class*='suffix']),
 	button {
 		display: inline-block;
 		font-size: var.$pagination-font-size;
@@ -115,7 +115,7 @@
 			line-height: 24px;
 		}
 
-		span:not([class*="suffix"]),
+		span:not([class*='suffix']),
 		button {
 			height: 22px;
 			line-height: 22px;

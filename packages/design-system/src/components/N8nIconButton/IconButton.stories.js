@@ -1,47 +1,47 @@
-import N8nIconButton from "./IconButton.vue";
-import { action } from "@storybook/addon-actions";
+import N8nIconButton from './IconButton.vue';
+import { action } from '@storybook/addon-actions';
 
 export default {
-	title: "Atoms/Icon Button",
+	title: 'Atoms/Icon Button',
 	component: N8nIconButton,
 	argTypes: {
 		type: {
-			control: "select",
-			options: ["primary", "outline", "light", "text"],
+			control: 'select',
+			options: ['primary', 'outline', 'light', 'text'],
 		},
 		title: {
-			control: "text",
+			control: 'text',
 		},
 		size: {
 			control: {
-				type: "select",
-				options: ["sm", "md", "lg", "xl"],
+				type: 'select',
+				options: ['sm', 'md', 'lg', 'xl'],
 			},
 		},
 		loading: {
 			control: {
-				type: "boolean",
+				type: 'boolean',
 			},
 		},
 		icon: {
 			control: {
-				type: "text",
+				type: 'text',
 			},
 		},
 		theme: {
 			control: {
-				type: "select",
-				options: ["success", "warning", "danger"],
+				type: 'select',
+				options: ['success', 'warning', 'danger'],
 			},
 		},
 	},
 	parameters: {
-		backgrounds: { default: "--color-background-light" },
+		backgrounds: { default: '--color-background-light' },
 	},
 };
 
 const methods = {
-	onClick: action("click"),
+	onClick: action('click'),
 };
 
 const Template = (args, { argTypes }) => ({
@@ -55,8 +55,8 @@ const Template = (args, { argTypes }) => ({
 
 export const Button = Template.bind({});
 Button.args = {
-	icon: "plus",
-	title: "my title",
+	icon: 'plus',
+	title: 'my title',
 };
 
 const ManyTemplate = (args, { argTypes }) => ({
@@ -71,28 +71,28 @@ const ManyTemplate = (args, { argTypes }) => ({
 
 export const Primary = ManyTemplate.bind({});
 Primary.args = {
-	icon: "plus",
-	title: "my title",
-	type: "primary",
+	icon: 'plus',
+	title: 'my title',
+	type: 'primary',
 };
 
 export const Outline = ManyTemplate.bind({});
 Outline.args = {
-	icon: "plus",
-	title: "my title",
-	type: "outline",
+	icon: 'plus',
+	title: 'my title',
+	type: 'outline',
 };
 
 export const Light = ManyTemplate.bind({});
 Light.args = {
-	icon: "plus",
-	title: "my title",
-	type: "light",
+	icon: 'plus',
+	title: 'my title',
+	type: 'light',
 };
 
 export const Text = ManyTemplate.bind({});
 Text.args = {
-	icon: "plus",
-	title: "my title",
-	type: "text",
+	icon: 'plus',
+	title: 'my title',
+	type: 'text',
 };

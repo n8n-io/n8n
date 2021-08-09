@@ -18,10 +18,10 @@
 </template>
 
 <script lang="ts">
-import Vue from "vue";
+import Vue from 'vue';
 
 export default Vue.extend({
-	name: "sizes",
+	name: 'sizes',
 	data() {
 		return {
 			observer: null as null | MutationObserver,
@@ -42,7 +42,7 @@ export default Vue.extend({
 			(this.variables as string[]).forEach((variable: string) => {
 				const style = getComputedStyle(document.body);
 				const rem = style.getPropertyValue(variable);
-				const px = parseFloat(rem.replace("rem", "")) * 16;
+				const px = parseFloat(rem.replace('rem', '')) * 16;
 
 				Vue.set(this.sizes, variable, { rem, px });
 			});
@@ -53,12 +53,12 @@ export default Vue.extend({
 		// when theme class is added or removed, reset color values
 		this.observer = new MutationObserver((mutationsList) => {
 			for (const mutation of mutationsList) {
-				if (mutation.type === "attributes") {
+				if (mutation.type === 'attributes') {
 					setSizes();
 				}
 			}
 		});
-		const body = document.querySelector("body");
+		const body = document.querySelector('body');
 		if (body) {
 			this.observer.observe(body, { attributes: true });
 		}

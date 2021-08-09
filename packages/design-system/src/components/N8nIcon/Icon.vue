@@ -8,10 +8,10 @@
 </template>
 
 <script lang="ts">
-import { FontAwesomeIcon } from "@fortawesome/vue-fontawesome";
+import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
 
 export default {
-	name: "n8n-icon",
+	name: 'n8n-icon',
 	components: {
 		FontAwesomeIcon,
 	},
@@ -22,9 +22,9 @@ export default {
 		},
 		size: {
 			type: String,
-			default: "md",
+			default: 'md',
 			validator: function (value: string): boolean {
-				return ["sm", "md", "lg"].indexOf(value) !== -1;
+				return ['sm', 'md', 'lg'].indexOf(value) !== -1;
 			},
 		},
 		spin: {

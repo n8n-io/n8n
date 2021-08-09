@@ -246,8 +246,8 @@ $fill-base: $color-white !default;
 
 /* Typography
 -------------------------- */
-$font-path: "fonts" !default;
-$font-display: "auto" !default;
+$font-path: 'fonts' !default;
+$font-display: 'auto' !default;
 /// fontSize|1|Font Size|0
 $font-size-extra-large: var(--font-size-xl) !default;
 /// fontSize|1|Font Size|0
@@ -1118,67 +1118,67 @@ $lg: 1200px !default;
 $xl: 1920px !default;
 
 $breakpoints: (
-	"xs": (
+	'xs': (
 		max-width: $sm - 1,
 	),
-	"sm": (
+	'sm': (
 		min-width: $sm,
 	),
-	"md": (
+	'md': (
 		min-width: $md,
 	),
-	"lg": (
+	'lg': (
 		min-width: $lg,
 	),
-	"xl": (
+	'xl': (
 		min-width: $xl,
 	),
 );
 
 $breakpoints-spec: (
-	"xs-only": (
+	'xs-only': (
 		max-width: $sm - 1,
 	),
-	"sm-and-up": (
+	'sm-and-up': (
 		min-width: $sm,
 	),
-	"sm-only": (
+	'sm-only': (
 		min-width: #{$sm},
 	)
 	and
 	(
 		max-width: #{$md - 1},
 	),
-	"sm-and-down": (
+	'sm-and-down': (
 		max-width: $md - 1,
 	),
-	"md-and-up": (
+	'md-and-up': (
 		min-width: $md,
 	),
-	"md-only": (
+	'md-only': (
 		min-width: #{$md},
 	)
 	and
 	(
 		max-width: #{$lg - 1},
 	),
-	"md-and-down": (
+	'md-and-down': (
 		max-width: $lg - 1,
 	),
-	"lg-and-up": (
+	'lg-and-up': (
 		min-width: $lg,
 	),
-	"lg-only": (
+	'lg-only': (
 		min-width: #{$lg},
 	)
 	and
 	(
 		max-width: #{$xl - 1},
 	),
-	"lg-and-down": (
+	'lg-and-down': (
 		max-width: $xl - 1,
 	),
-	"xl-only": (
+	'xl-only': (
 		min-width: $xl,
 	),
 );

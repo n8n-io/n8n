@@ -131,10 +131,10 @@
 	}
 
 	@include mixins.when(required) {
-		@include mixins.pseudo("not(.is-no-asterisk)") {
+		@include mixins.pseudo('not(.is-no-asterisk)') {
 			& > .el-form-item__label:before,
 			& .el-form-item__label-wrap > .el-form-item__label:before {
-				content: "*";
+				content: '*';
 				color: var(--color-danger);
 				margin-right: 4px;
 			}

@@ -173,7 +173,7 @@
 				border-color: var.$checkbox-checked-input-border-color;
 
 				&::before {
-					content: "";
+					content: '';
 					position: absolute;
 					display: block;
 					background-color: var.$checkbox-checked-icon-color;
@@ -209,7 +209,7 @@
 
 		&::after {
 			box-sizing: content-box;
-			content: "";
+			content: '';
 			border: 1px solid var.$checkbox-checked-icon-color;
 			border-left: 0;
 			border-top: 0;
@@ -281,7 +281,7 @@
 			color: var(--color-primary);
 		}
 
-		& [class*="el-icon-"] {
+		& [class*='el-icon-'] {
 			line-height: 0.9;
 
 			& + span {

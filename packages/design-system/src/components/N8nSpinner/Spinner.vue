@@ -8,10 +8,10 @@
 </template>
 
 <script lang="ts">
-import N8nIcon from "../N8nIcon";
+import N8nIcon from '../N8nIcon';
 
 export default {
-	name: "n8n-spinner",
+	name: 'n8n-spinner',
 	components: {
 		N8nIcon,
 	},
@@ -19,7 +19,7 @@ export default {
 		size: {
 			type: String,
 			validator: function (value: string): boolean {
-				return ["sm", "md", "lg"].indexOf(value) !== -1;
+				return ['sm', 'md', 'lg'].indexOf(value) !== -1;
 			},
 		},
 	},

@@ -111,7 +111,7 @@
 	width: 280px;
 	height: 180px;
 
-	@include mixins.e(("white", "black")) {
+	@include mixins.e(('white', 'black')) {
 		position: absolute;
 		top: 0;
 		left: 0;
@@ -119,11 +119,11 @@
 		bottom: 0;
 	}
 
-	@include mixins.e("white") {
+	@include mixins.e('white') {
 		background: linear-gradient(to right, #fff, rgba(255, 255, 255, 0));
 	}
 
-	@include mixins.e("black") {
+	@include mixins.e('black') {
 		background: linear-gradient(to top, #000, rgba(0, 0, 0, 0));
 	}
 
@@ -202,7 +202,7 @@
 		margin-bottom: 6px;
 
 		&::after {
-			content: "";
+			content: '';
 			display: table;
 			clear: both;
 		}

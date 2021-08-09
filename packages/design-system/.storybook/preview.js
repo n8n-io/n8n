@@ -1,7 +1,7 @@
-import "./font-awesome-icons";
-import "./storybook.scss";
+import './font-awesome-icons';
+import './storybook.scss';
 
-import Vue from "vue";
+import Vue from 'vue';
 
 // https://github.com/storybookjs/storybook/issues/6153
 Vue.prototype.toJSON = function () {
@@ -10,7 +10,7 @@ Vue.prototype.toJSON = function () {
 
 export const parameters = {
 	actions: {
-		argTypesRegex: "^on[A-Z].*",
+		argTypesRegex: '^on[A-Z].*',
 	},
 	controls: {
 		matchers: {
@@ -19,42 +19,42 @@ export const parameters = {
 		},
 	},
 	backgrounds: {
-		default: "--color-background-xlight",
+		default: '--color-background-xlight',
 		values: [
 			{
-				name: "--color-background-dark",
-				value: "var(--color-background-dark)",
+				name: '--color-background-dark',
+				value: 'var(--color-background-dark)',
 			},
 			{
-				name: "--color-background-base",
-				value: "var(--color-background-base)",
+				name: '--color-background-base',
+				value: 'var(--color-background-base)',
 			},
 			{
-				name: "--color-background-light",
-				value: "var(--color-background-light)",
+				name: '--color-background-light',
+				value: 'var(--color-background-light)',
 			},
 			{
-				name: "--color-background-lighter",
-				value: "var(--color-background-lighter)",
+				name: '--color-background-lighter',
+				value: 'var(--color-background-lighter)',
 			},
 			{
-				name: "--color-background-xlight",
-				value: "var(--color-background-xlight)",
+				name: '--color-background-xlight',
+				value: 'var(--color-background-xlight)',
 			},
 		],
 	},
 	themes: {
 		list: [
 			{
-				name: "dark",
-				class: "theme-dark",
-				color: "#000",
+				name: 'dark',
+				class: 'theme-dark',
+				color: '#000',
 			},
 		],
 	},
 	options: {
 		storySort: {
-			order: ["Docs", "Styleguide", "Atoms"],
+			order: ['Docs', 'Styleguide', 'Atoms'],
 		},
 	},
 };

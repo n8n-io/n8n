@@ -25,7 +25,7 @@ $typeMap: (
 
 	@include mixins.when(underline) {
 		&:hover:after {
-			content: "";
+			content: '';
 			position: absolute;
 			left: 0;
 			right: 0;
@@ -39,7 +39,7 @@ $typeMap: (
 		cursor: not-allowed;
 	}
 
-	& [class*="el-icon-"] {
+	& [class*='el-icon-'] {
 		& + span {
 			margin-left: 5px;
 		}

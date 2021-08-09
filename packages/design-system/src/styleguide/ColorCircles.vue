@@ -13,7 +13,7 @@
 </template>
 
 <script lang="ts">
-import Vue from "vue";
+import Vue from 'vue';
 
 function hslToHex(h: number, s: number, l: number): string {
 	l /= 100;
@@ -23,24 +23,24 @@ function hslToHex(h: number, s: number, l: number): string {
 		const color = l - a * Math.max(Math.min(k - 3, 9 - k, 1), -1);
 		return Math.round(255 * color)
 			.toString(16)
-			.padStart(2, "0"); // convert to Hex and prefix "0" if needed
+			.padStart(2, '0'); // convert to Hex and prefix "0" if needed
 	};
 	return `#${f(0)}${f(8)}${f(4)}`;
 }
 
 function getHex(hsl: string): string {
 	const colors = hsl
-		.replace("hsl(", "")
-		.replace(")", "")
-		.replace(/%/g, "")
-		.split(",")
+		.replace('hsl(', '')
+		.replace(')', '')
+		.replace(/%/g, '')
+		.split(',')
 		.map((n: string) => parseFloat(n));
 
 	return hslToHex(colors[0], colors[1], colors[2]);
 }
 
 export default Vue.extend({
-	name: "color-circles",
+	name: 'color-circles',
 	data() {
 		return {
 			observer: null as null | MutationObserver,
@@ -67,12 +67,12 @@ export default Vue.extend({
 		// when theme class is added or removed, reset color values
 		this.observer = new MutationObserver((mutationsList) => {
 			for (const mutation of mutationsList) {
-				if (mutation.type === "attributes") {
+				if (mutation.type === 'attributes') {
 					setColors();
 				}
 			}
 		});
-		const body = document.querySelector("body");
+		const body = document.querySelector('body');
 		if (body) {
 			this.observer.observe(body, { attributes: true });
 		}

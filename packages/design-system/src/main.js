@@ -1,4 +1,4 @@
-import * as components from "./components";
+import * as components from './components';
 
 for (const key in components) {
 	const component = components[key];
@@ -7,4 +7,4 @@ for (const key in components) {
 	};
 }
 
-export * from "./components";
+export * from './components';

@@ -31,15 +31,15 @@
 		}
 
 		.popper__arrow::after {
-			content: " ";
+			content: ' ';
 			border-width: 5px;
 		}
 
-		&[x-placement^="top"] {
+		&[x-placement^='top'] {
 			margin-bottom: #{var.$tooltip-arrow-size + 6px};
 		}
 
-		&[x-placement^="top"] .popper__arrow {
+		&[x-placement^='top'] .popper__arrow {
 			bottom: -(var.$tooltip-arrow-size);
 			border-top-color: var.$tooltip-border-color;
 			border-bottom-width: 0;
@@ -52,11 +52,11 @@
 			}
 		}
 
-		&[x-placement^="bottom"] {
+		&[x-placement^='bottom'] {
 			margin-top: #{var.$tooltip-arrow-size + 6px};
 		}
 
-		&[x-placement^="bottom"] .popper__arrow {
+		&[x-placement^='bottom'] .popper__arrow {
 			top: -(var.$tooltip-arrow-size);
 			border-top-width: 0;
 			border-bottom-color: var.$tooltip-border-color;
@@ -69,11 +69,11 @@
 			}
 		}
 
-		&[x-placement^="right"] {
+		&[x-placement^='right'] {
 			margin-left: #{var.$tooltip-arrow-size + 6px};
 		}
 
-		&[x-placement^="right"] .popper__arrow {
+		&[x-placement^='right'] .popper__arrow {
 			left: -(var.$tooltip-arrow-size);
 			border-right-color: var.$tooltip-border-color;
 			border-left-width: 0;
@@ -86,11 +86,11 @@
 			}
 		}
 
-		&[x-placement^="left"] {
+		&[x-placement^='left'] {
 			margin-right: #{var.$tooltip-arrow-size + 6px};
 		}
 
-		&[x-placement^="left"] .popper__arrow {
+		&[x-placement^='left'] .popper__arrow {
 			right: -(var.$tooltip-arrow-size);
 			border-right-width: 0;
 			border-left-color: var.$tooltip-border-color;
@@ -113,25 +113,25 @@
 			background: var.$tooltip-color;
 			border: 1px solid var.$tooltip-fill;
 
-			&[x-placement^="top"] .popper__arrow {
+			&[x-placement^='top'] .popper__arrow {
 				border-top-color: var.$tooltip-fill;
 				&::after {
 					border-top-color: var.$tooltip-color;
 				}
 			}
-			&[x-placement^="bottom"] .popper__arrow {
+			&[x-placement^='bottom'] .popper__arrow {
 				border-bottom-color: var.$tooltip-fill;
 				&::after {
 					border-bottom-color: var.$tooltip-color;
 				}
 			}
-			&[x-placement^="left"] .popper__arrow {
+			&[x-placement^='left'] .popper__arrow {
 				border-left-color: var.$tooltip-fill;
 				&::after {
 					border-left-color: var.$tooltip-color;
 				}
 			}
-			&[x-placement^="right"] .popper__arrow {
+			&[x-placement^='right'] .popper__arrow {
 				border-right-color: var.$tooltip-fill;
 				&::after {
 					border-right-color: var.$tooltip-color;

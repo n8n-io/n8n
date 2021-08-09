@@ -1078,124 +1078,124 @@
 	<script src="https://unpkg.com/element-ui/lib/index.js"></script>
 	<script>
 		const original = {
-			color_primary: "#409EFF",
-			color_success: "#67C23A",
-			color_warning: "#E6A23C",
-			color_danger: "#F56C6C",
-			color_info: "#909399",
-			color_white: "#FFFFFF",
-			color_black: "#000000",
-			color_text_primary: "#303133",
-			color_text_regular: "#606266",
-			color_text_secondary: "#909399",
-			color_text_placeholder: "#C0C4CC",
-			border_color_base: "#DCDFE6",
-			border_color_light: "#E4E7ED",
-			border_color_lighter: "#EBEEF5",
-			border_color_extra_light: "#F2F6FC",
-			font_size_extra_large: "20px",
-			font_size_large: "18px",
-			font_size_medium: "16px",
-			font_size_base: "14px",
-			font_size_small: "13px",
-			font_size_extra_small: "12px",
+			color_primary: '#409EFF',
+			color_success: '#67C23A',
+			color_warning: '#E6A23C',
+			color_danger: '#F56C6C',
+			color_info: '#909399',
+			color_white: '#FFFFFF',
+			color_black: '#000000',
+			color_text_primary: '#303133',
+			color_text_regular: '#606266',
+			color_text_secondary: '#909399',
+			color_text_placeholder: '#C0C4CC',
+			border_color_base: '#DCDFE6',
+			border_color_light: '#E4E7ED',
+			border_color_lighter: '#EBEEF5',
+			border_color_extra_light: '#F2F6FC',
+			font_size_extra_large: '20px',
+			font_size_large: '18px',
+			font_size_medium: '16px',
+			font_size_base: '14px',
+			font_size_small: '13px',
+			font_size_extra_small: '12px',
 			font_weight_primary: 500,
 			font_weight_secondary: 100,
-			font_line_height_primary: "24px",
-			font_line_height_secondary: "16px",
+			font_line_height_primary: '24px',
+			font_line_height_secondary: '16px',
 		};
 
 		Vue.config.devtools = true;
 		new Vue({
-			el: "#app",
+			el: '#app',
 			data() {
 				return {
 					global: {},
-					colorLine: ["Primary", "Success", "Warning", "Danger", "Info"],
-					color_primary: "",
-					color_success: "",
-					color_warning: "",
-					color_danger: "",
-					color_info: "",
-					color_white: "",
-					color_black: "",
-					color_text_primary: "",
-					color_text_regular: "",
-					color_text_secondary: "",
-					color_text_placeholder: "",
-					border_color_base: "",
-					border_color_light: "",
-					border_color_lighter: "",
-					border_color_extra_light: "",
-					font_size_extra_large: "",
-					font_size_large: "",
-					font_size_medium: "",
-					font_size_base: "",
-					font_size_small: "",
-					font_size_extra_small: "",
+					colorLine: ['Primary', 'Success', 'Warning', 'Danger', 'Info'],
+					color_primary: '',
+					color_success: '',
+					color_warning: '',
+					color_danger: '',
+					color_info: '',
+					color_white: '',
+					color_black: '',
+					color_text_primary: '',
+					color_text_regular: '',
+					color_text_secondary: '',
+					color_text_placeholder: '',
+					border_color_base: '',
+					border_color_light: '',
+					border_color_lighter: '',
+					border_color_extra_light: '',
+					font_size_extra_large: '',
+					font_size_large: '',
+					font_size_medium: '',
+					font_size_base: '',
+					font_size_small: '',
+					font_size_extra_small: '',
 					font_weight_primary: 0,
 					font_weight_secondary: 0,
-					font_line_height_primary: "",
-					font_line_height_secondary: "",
-					radio: "1",
-					radio1: "Washington",
-					radio2: "1",
+					font_line_height_primary: '',
+					font_line_height_secondary: '',
+					radio: '1',
+					radio1: 'Washington',
+					radio2: '1',
 					checked: true,
-					checked1: ["Shanghai"],
+					checked1: ['Shanghai'],
 					checked2: true,
-					input: "Element",
+					input: 'Element',
 					inputNumber: 1,
 					treeData: [
 						{
-							label: "一级 1",
+							label: '一级 1',
 							children: [
 								{
-									label: "二级 1-1",
+									label: '二级 1-1',
 									children: [
 										{
-											label: "三级 1-1-1",
+											label: '三级 1-1-1',
 										},
 									],
 								},
 							],
 						},
 						{
-							label: "一级 2",
+							label: '一级 2',
 							children: [
 								{
-									label: "二级 2-1",
+									label: '二级 2-1',
 									children: [
 										{
-											label: "三级 2-1-1",
+											label: '三级 2-1-1',
 										},
 									],
 								},
 								{
-									label: "二级 2-2",
+									label: '二级 2-2',
 									children: [
 										{
-											label: "三级 2-2-1",
+											label: '三级 2-2-1',
 										},
 									],
 								},
 							],
 						},
 						{
-							label: "一级 3",
+							label: '一级 3',
 							children: [
 								{
-									label: "二级 3-1",
+									label: '二级 3-1',
 									children: [
 										{
-											label: "三级 3-1-1",
+											label: '三级 3-1-1',
 										},
 									],
 								},
 								{
-									label: "二级 3-2",
+									label: '二级 3-2',
 									children: [
 										{
-											label: "三级 3-2-1",
+											label: '三级 3-2-1',
 										},
 									],
 								},
@@ -1204,63 +1204,63 @@
 					],
 					selectOptions: [
 						{
-							value: "Option1",
-							label: "Option1",
+							value: 'Option1',
+							label: 'Option1',
 						},
 						{
-							value: "Option2",
-							label: "Option2",
+							value: 'Option2',
+							label: 'Option2',
 						},
 						{
-							value: "Option3",
-							label: "Option3",
+							value: 'Option3',
+							label: 'Option3',
 						},
 						{
-							value: "Option4",
-							label: "Option4",
+							value: 'Option4',
+							label: 'Option4',
 						},
 						{
-							value: "Option5",
-							label: "Option5",
+							value: 'Option5',
+							label: 'Option5',
 						},
 					],
-					selectValue: "",
+					selectValue: '',
 					cascadeOptions: [
 						{
-							value: "guide",
-							label: "Guide",
+							value: 'guide',
+							label: 'Guide',
 							children: [
 								{
-									value: "disciplines",
-									label: "Disciplines",
+									value: 'disciplines',
+									label: 'Disciplines',
 									children: [
 										{
-											value: "consistency",
-											label: "Consistency",
+											value: 'consistency',
+											label: 'Consistency',
 										},
 										{
-											value: "feedback",
-											label: "Feedback",
+											value: 'feedback',
+											label: 'Feedback',
 										},
 									],
 								},
 							],
 						},
 						{
-							value: "resource",
-							label: "Resource",
+							value: 'resource',
+							label: 'Resource',
 							children: [
 								{
-									value: "axure",
-									label: "Axure Components",
+									value: 'axure',
+									label: 'Axure Components',
 								},
 								{
-									value: "sketch",
-									label: "Sketch Templates",
+									value: 'sketch',
+									label: 'Sketch Templates',
 								},
 								{
-									value: "docs",
-									label: "Design Documentation",
+									value: 'docs',
+									label: 'Design Documentation',
 								},
 							],
 						},
@@ -1268,7 +1268,7 @@
 					cascaderValue: [],
 					switchValue: true,
 					slider: 28,
-					datePicker: "",
+					datePicker: '',
 					rate: null,
 					transferData: (() => {
 						const data = [];
@@ -1284,80 +1284,80 @@
 					transfer: [1, 4],
 					tableData: [
 						{
-							date: "2016-05-03",
-							name: "Tom",
-							address: "No. 189, Grove St, Los Angeles",
+							date: '2016-05-03',
+							name: 'Tom',
+							address: 'No. 189, Grove St, Los Angeles',
 						},
 						{
-							date: "2016-05-02",
-							name: "Tom",
-							address: "No. 189, Grove St, Los Angeles",
+							date: '2016-05-02',
+							name: 'Tom',
+							address: 'No. 189, Grove St, Los Angeles',
 						},
 						{
-							date: "2016-05-04",
-							name: "Tom",
-							address: "No. 189, Grove St, Los Angeles",
+							date: '2016-05-04',
+							name: 'Tom',
+							address: 'No. 189, Grove St, Los Angeles',
 						},
 						{
-							date: "2016-05-01",
-							name: "Tom",
-							address: "No. 189, Grove St, Los Angeles",
+							date: '2016-05-01',
+							name: 'Tom',
+							address: 'No. 189, Grove St, Los Angeles',
 						},
 					],
-					menu: "1",
-					tab: "first",
-					collapse: ["1"],
+					menu: '1',
+					tab: 'first',
+					collapse: ['1'],
 					treeData: [
 						{
-							label: "Level one 1",
+							label: 'Level one 1',
 							children: [
 								{
-									label: "Level two 1-1",
+									label: 'Level two 1-1',
 									children: [
 										{
-											label: "Level three 1-1-1",
+											label: 'Level three 1-1-1',
 										},
 									],
 								},
 							],
 						},
 						{
-							label: "Level one 2",
+							label: 'Level one 2',
 							children: [
 								{
-									label: "Level two 2-1",
+									label: 'Level two 2-1',
 									children: [
 										{
-											label: "Level three 2-1-1",
+											label: 'Level three 2-1-1',
 										},
 									],
 								},
 								{
-									label: "Level two 2-2",
+									label: 'Level two 2-2',
 									children: [
 										{
-											label: "Level three 2-2-1",
+											label: 'Level three 2-2-1',
 										},
 									],
 								},
 							],
 						},
 						{
-							label: "Level one 3",
+							label: 'Level one 3',
 							children: [
 								{
-									label: "Level two 3-1",
+									label: 'Level two 3-1',
 									children: [
 										{
-											label: "Level three 3-1-1",
+											label: 'Level three 3-1-1',
 										},
 									],
 								},
 								{
-									label: "Level two 3-2",
+									label: 'Level two 3-2',
 									children: [
 										{
-											label: "Level three 3-2-1",
+											label: 'Level three 3-2-1',
 										},
 									],
 								},
@@ -1365,13 +1365,13 @@
 						},
 					],
 					defaultTreeProps: {
-						children: "children",
-						label: "label",
+						children: 'children',
+						label: 'label',
 					},
 					avatarData: {
-						url: "https://fuss10.elemecdn.com/e/5d/4a731a90594a4af544c0c25941171jpeg.jpeg",
+						url: 'https://fuss10.elemecdn.com/e/5d/4a731a90594a4af544c0c25941171jpeg.jpeg',
 					},
-					cssVariables: "",
+					cssVariables: '',
 					visible: false,
 				};
 			},
@@ -1380,7 +1380,7 @@
 					immediate: true,
 					handler(value) {
 						Object.keys(original).forEach((v) => {
-							const key = `$--${v.replace(/_/g, "-")}`;
+							const key = `$--${v.replace(/_/g, '-')}`;
 							if (value[key]) {
 								this[v] = value[key];
 							} else {
@@ -1390,43 +1390,43 @@
 					},
 				},
 				color_primary(v) {
-					this.setCssVariable("color-primary-base", v);
+					this.setCssVariable('color-primary-base', v);
 				},
 				color_success(v) {
-					this.setCssVariable("color-success-base", v);
+					this.setCssVariable('color-success-base', v);
 				},
 				color_warning(v) {
-					this.setCssVariable("color-warning-base", v);
+					this.setCssVariable('color-warning-base', v);
 				},
 				color_danger(v) {
-					this.setCssVariable("color-danger-base", v);
+					this.setCssVariable('color-danger-base', v);
 				},
 				color_info(v) {
-					this.setCssVariable("color-info-base", v);
+					this.setCssVariable('color-info-base', v);
 				},
 				color_text_primary(v) {
-					this.setCssVariable("color-text-dark", v);
+					this.setCssVariable('color-text-dark', v);
 				},
 				color_text_regular(v) {
-					this.setCssVariable("color-text-base", v);
+					this.setCssVariable('color-text-base', v);
 				},
 				color_text_secondary(v) {
-					this.setCssVariable("color-text-light", v);
+					this.setCssVariable('color-text-light', v);
 				},
 				color_text_placeholder(v) {
-					this.setCssVariable("color-text-lighter", v);
+					this.setCssVariable('color-text-lighter', v);
 				},
 				border_color_base(v) {
-					this.setCssVariable("border-color-base", v);
+					this.setCssVariable('border-color-base', v);
 				},
 				border_color_light(v) {
-					this.setCssVariable("border-color-light", v);
+					this.setCssVariable('border-color-light', v);
 				},
 				border_color_lighter(v) {
-					this.setCssVariable("border-color-lighter", v);
+					this.setCssVariable('border-color-lighter', v);
 				},
 				border_color_extra_light(v) {
-					this.setCssVariable("border-color-xlight", v);
+					this.setCssVariable('border-color-xlight', v);
 				},
 			},
 			methods: {
@@ -1442,14 +1442,14 @@
 					}
 				},
 				tintColor(c, tint) {
-					const color = c.replace("#", "");
+					const color = c.replace('#', '');
 					let red = parseInt(color.slice(0, 2), 16);
 					let green = parseInt(color.slice(2, 4), 16);
 					let blue = parseInt(color.slice(4, 6), 16);
 
 					if (tint === 0) {
 						// when primary color is in its rgb space
-						return [red, green, blue].join(",");
+						return [red, green, blue].join(',');
 					} else {
 						red += Math.round(tint * (255 - red));
 						green += Math.round(tint * (255 - green));
@@ -1501,8 +1501,8 @@
 
 					return {
 						h: h,
-						s: s + "%",
-						l: l + "%",
+						s: s + '%',
+						l: l + '%',
 					};
 				},
 				setCssVariable(key, color) {
@@ -1513,11 +1513,11 @@
 				},
 				copyCssVariables() {
 					const cssVariables = document
-						.querySelector("html")
-						.getAttribute("style");
+						.querySelector('html')
+						.getAttribute('style');
 					this.cssVariables = cssVariables
 						? cssVariables
-						: "没有进行颜色修改，请先修改颜色！";
+						: '没有进行颜色修改，请先修改颜色！';
 					this.visible = true;
 				},
 			},

@@ -1,21 +1,21 @@
-import N8nIcon from "./Icon.vue";
+import N8nIcon from './Icon.vue';
 
 export default {
-	title: "Atoms/Icon",
+	title: 'Atoms/Icon',
 	component: N8nIcon,
 	argTypes: {
 		icon: {
-			control: "text",
+			control: 'text',
 		},
 		size: {
 			control: {
-				type: "select",
-				options: ["sm", "md", "lg"],
+				type: 'select',
+				options: ['sm', 'md', 'lg'],
 			},
 		},
 		spin: {
 			control: {
-				type: "boolean",
+				type: 'boolean',
 			},
 		},
 	},
@@ -31,15 +31,15 @@ const Template = (args, { argTypes }) => ({
 
 export const Clock = Template.bind({});
 Clock.args = {
-	icon: "clock",
+	icon: 'clock',
 };
 
 export const Plus = Template.bind({});
 Plus.args = {
-	icon: "plus",
+	icon: 'plus',
 };
 
 export const Stop = Template.bind({});
 Stop.args = {
-	icon: "stop",
+	icon: 'stop',
 };

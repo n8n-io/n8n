@@ -1,13 +1,13 @@
-import N8nSpinner from "./Spinner.vue";
+import N8nSpinner from './Spinner.vue';
 
 export default {
-	title: "Atoms/Spinner",
+	title: 'Atoms/Spinner',
 	component: N8nSpinner,
 	argTypes: {
 		size: {
 			control: {
-				type: "select",
-				options: ["sm", "md", "lg"],
+				type: 'select',
+				options: ['sm', 'md', 'lg'],
 			},
 		},
 	},

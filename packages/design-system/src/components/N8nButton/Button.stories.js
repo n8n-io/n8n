@@ -1,69 +1,69 @@
-import N8nButton from "./Button.vue";
-import { action } from "@storybook/addon-actions";
+import N8nButton from './Button.vue';
+import { action } from '@storybook/addon-actions';
 
 export default {
-	title: "Atoms/Button",
+	title: 'Atoms/Button',
 	component: N8nButton,
 	argTypes: {
 		label: {
-			control: "text",
+			control: 'text',
 		},
 		title: {
-			control: "text",
+			control: 'text',
 		},
 		type: {
-			control: "select",
-			options: ["primary", "outline", "light", "text"],
+			control: 'select',
+			options: ['primary', 'outline', 'light', 'text'],
 		},
 		size: {
 			control: {
-				type: "select",
-				options: ["sm", "md", "lg"],
+				type: 'select',
+				options: ['sm', 'md', 'lg'],
 			},
 		},
 		loading: {
 			control: {
-				type: "boolean",
+				type: 'boolean',
 			},
 		},
 		icon: {
 			control: {
-				type: "text",
+				type: 'text',
 			},
 		},
 		iconSize: {
 			control: {
-				type: "select",
-				options: ["sm", "md", "lg"],
+				type: 'select',
+				options: ['sm', 'md', 'lg'],
 			},
 		},
 		circle: {
 			control: {
-				type: "boolean",
+				type: 'boolean',
 			},
 		},
 		fullWidth: {
-			type: "boolean",
+			type: 'boolean',
 		},
 		theme: {
-			type: "select",
-			options: ["success", "danger", "warning"],
+			type: 'select',
+			options: ['success', 'danger', 'warning'],
 		},
 		float: {
-			type: "select",
-			options: ["left", "right"],
+			type: 'select',
+			options: ['left', 'right'],
 		},
 	},
 	parameters: {
 		design: {
-			type: "figma",
-			url: "https://www.figma.com/file/DxLbnIyMK8X0uLkUguFV4n/n8n-design-system_v1?node-id=5%3A1147",
+			type: 'figma',
+			url: 'https://www.figma.com/file/DxLbnIyMK8X0uLkUguFV4n/n8n-design-system_v1?node-id=5%3A1147',
 		},
 	},
 };
 
 const methods = {
-	onClick: action("click"),
+	onClick: action('click'),
 };
 
 const Template = (args, { argTypes }) => ({
@@ -77,7 +77,7 @@ const Template = (args, { argTypes }) => ({
 
 export const Button = Template.bind({});
 Button.args = {
-	label: "Button",
+	label: 'Button',
 };
 
 const ManyTemplate = (args, { argTypes }) => ({
@@ -92,31 +92,31 @@ const ManyTemplate = (args, { argTypes }) => ({
 
 export const Primary = ManyTemplate.bind({});
 Primary.args = {
-	type: "primary",
-	label: "Button",
+	type: 'primary',
+	label: 'Button',
 };
 
 export const Outline = ManyTemplate.bind({});
 Outline.args = {
-	type: "outline",
-	label: "Button",
+	type: 'outline',
+	label: 'Button',
 };
 
 export const Light = ManyTemplate.bind({});
 Light.args = {
-	type: "light",
-	label: "Button",
+	type: 'light',
+	label: 'Button',
 };
 
 export const WithIcon = ManyTemplate.bind({});
 WithIcon.args = {
-	label: "Button",
-	icon: "plus-circle",
+	label: 'Button',
+	icon: 'plus-circle',
 };
 
 export const Text = ManyTemplate.bind({});
 Text.args = {
-	type: "text",
-	label: "Button",
-	icon: "plus-circle",
+	type: 'text',
+	label: 'Button',
+	icon: 'plus-circle',
 };

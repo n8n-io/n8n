@@ -71,7 +71,7 @@
 /* BEM
  -------------------------- */
 @mixin b($block) {
-	$B: config.$namespace + "-" + $block !global;
+	$B: config.$namespace + '-' + $block !global;
 
 	.#{$B} {
 		@content;
@@ -81,14 +81,14 @@
 @mixin e($element) {
 	$E: $element !global;
 	$selector: &;
-	$currentSelector: "";
+	$currentSelector: '';
 	@each $unit in $element {
 		$currentSelector: #{$currentSelector +
-			"." +
+			'.' +
 			$B +
 			config.$element-separator +
 			$unit +
-			","};
+			','};
 	}
 
 	@if function.hitAllSpecialNestRule($selector) {
@@ -110,13 +110,13 @@
 
 @mixin m($modifier) {
 	$selector: &;
-	$currentSelector: "";
+	$currentSelector: '';
 	@each $unit in $modifier {
 		$currentSelector: #{$currentSelector +
 			& +
 			config.$modifier-separator +
 			$unit +
-			","};
+			','};
 	}
 
 	@at-root {
@@ -128,7 +128,7 @@
 
 @mixin configurable-m($modifier, $E-flag: false) {
 	$selector: &;
-	$interpolation: "";
+	$interpolation: '';
 
 	@if $E-flag {
 		$interpolation: config.$element-separator + $E-flag;
@@ -144,12 +144,12 @@
 }
 
 @mixin spec-selector(
-	$specSelector: "",
+	$specSelector: '',
 	$element: $E,
 	$modifier: false,
 	$block: $B
 ) {
-	$modifierCombo: "";
+	$modifierCombo: '';
 
 	@if $modifier {
 		$modifierCombo: config.$modifier-separator + $modifier;
@@ -167,7 +167,7 @@
 
 @mixin meb($modifier: false, $element: $E, $block: $B) {
 	$selector: &;
-	$modifierCombo: "";
+	$modifierCombo: '';
 
 	@if $modifier {
 		$modifierCombo: config.$modifier-separator + $modifier;
@@ -191,11 +191,11 @@
 }
 
 @mixin extend-rule($name) {
-	@extend #{"%shared-" + $name};
+	@extend #{'%shared-' + $name};
 }
 
 @mixin share-rule($name) {
-	$rule-name: "%shared-" + $name;
+	$rule-name: '%shared-' + $name;
 
 	@at-root #{$rule-name} {
 		@content;
@@ -203,7 +203,7 @@
 }
 
 @mixin pseudo($pseudo) {
-	@at-root #{&}#{":#{$pseudo}"} {
+	@at-root #{&}#{':#{$pseudo}'} {
 		@content;
 	}
 }

@@ -30,18 +30,18 @@
 </template>
 
 <script lang="ts">
-import N8nIcon from "../N8nIcon";
-import N8nSpinner from "../N8nSpinner";
-import ElButton from "element-ui/packages/button";
+import N8nIcon from '../N8nIcon';
+import N8nSpinner from '../N8nSpinner';
+import ElButton from 'element-ui/packages/button';
 
 const sizeMap: { [size: string]: string } = {
-	sm: "small",
-	md: "medium",
-	lg: "",
+	sm: 'small',
+	md: 'medium',
+	lg: '',
 };
 
 export default {
-	name: "n8n-button",
+	name: 'n8n-button',
 	props: {
 		label: {
 			type: String,
@@ -51,20 +51,20 @@ export default {
 		},
 		type: {
 			type: String,
-			default: "primary",
+			default: 'primary',
 			validator: (value: string): boolean =>
-				["primary", "outline", "light", "text"].indexOf(value) !== -1,
+				['primary', 'outline', 'light', 'text'].indexOf(value) !== -1,
 		},
 		theme: {
 			type: String,
 			validator: (value: string): boolean =>
-				["success", "warning", "danger"].indexOf(value) !== -1,
+				['success', 'warning', 'danger'].indexOf(value) !== -1,
 		},
 		size: {
 			type: String,
-			default: "md",
+			default: 'md',
 			validator: (value: string): boolean =>
-				["sm", "md", "lg"].indexOf(value) !== -1,
+				['sm', 'md', 'lg'].indexOf(value) !== -1,
 		},
 		loading: {
 			type: Boolean,
@@ -87,7 +87,7 @@ export default {
 		float: {
 			type: String,
 			validator: (value: string): boolean =>
-				["left", "right"].indexOf(value) !== -1,
+				['left', 'right'].indexOf(value) !== -1,
 		},
 		fullWidth: {
 			type: Boolean,
@@ -106,13 +106,13 @@ export default {
 	}): { float?: string; width?: string } => {
 		return {
 			...(props.float ? { float: props.float } : {}),
-			...(props.fullWidth ? { width: "100%" } : {}),
+			...(props.fullWidth ? { width: '100%' } : {}),
 		};
 	},
 	getClass(props: { type: string; theme?: string }): string {
-		return props.type === "text"
-			? "text"
-			: `${props.type}-${props.theme || "primary"}`;
+		return props.type === 'text'
+			? 'text'
+			: `${props.type}-${props.theme || 'primary'}`;
 	},
 };
 </script>

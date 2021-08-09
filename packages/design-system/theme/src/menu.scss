@@ -134,7 +134,7 @@
 
 		> .el-menu-item,
 		> .el-submenu > .el-submenu__title {
-			[class^="el-icon-"] {
+			[class^='el-icon-'] {
 				margin: 0;
 				vertical-align: middle;
 				width: 24px;
@@ -200,7 +200,7 @@
 @include mixins.b(menu-item) {
 	@include menu-item;
 
-	& [class^="el-icon-"] {
+	& [class^='el-icon-'] {
 		margin-right: 5px;
 		width: 24px;
 		text-align: center;
@@ -262,7 +262,7 @@
 			background: none !important;
 		}
 	}
-	[class^="el-icon-"] {
+	[class^='el-icon-'] {
 		vertical-align: middle;
 		margin-right: 5px;
 		width: 24px;

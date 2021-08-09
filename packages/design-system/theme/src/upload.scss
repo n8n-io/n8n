@@ -240,7 +240,7 @@
 		transition: color 0.3s;
 		white-space: nowrap;
 
-		[class^="el-icon"] {
+		[class^='el-icon'] {
 			height: 100%;
 			margin-right: 7px;
 			color: var.$color-text-secondary;
@@ -346,7 +346,7 @@
 			transition: opacity 0.3s;
 			&::after {
 				display: inline-block;
-				content: "";
+				content: '';
 				height: 100%;
 				vertical-align: middle;
 			}

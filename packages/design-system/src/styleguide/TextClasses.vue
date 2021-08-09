@@ -1,7 +1,7 @@
 <template>
 	<table :class="$style.table">
 		<tr v-for="c in classes" :key="c">
-			<td>.{{ c }}{{ postfix ? postfix : "" }}</td>
+			<td>.{{ c }}{{ postfix ? postfix : '' }}</td>
 			<td :class="$style[`${c}${postfix ? postfix : ''}`]">
 				Lorem ipsum dolor sit amet, consectetur adipiscing elit. Suspendisse in
 				luctus sapien, a suscipit neque.
@@ -12,18 +12,18 @@
 
 <script lang="ts">
 export default {
-	name: "text-classes",
+	name: 'text-classes',
 	data(): { observer: null | MutationObserver; classes: string[] } {
 		return {
 			observer: null as null | MutationObserver,
 			classes: [
-				"heading1",
-				"heading2",
-				"heading3",
-				"heading4",
-				"body-large",
-				"body-medium",
-				"body-small",
+				'heading1',
+				'heading2',
+				'heading3',
+				'heading4',
+				'body-large',
+				'body-medium',
+				'body-small',
 			],
 		};
 	},

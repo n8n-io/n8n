@@ -16,10 +16,10 @@
 </template>
 
 <script lang="ts">
-import Vue from "vue";
+import Vue from 'vue';
 
 export default Vue.extend({
-	name: "variable-table",
+	name: 'variable-table',
 	data() {
 		return {
 			observer: null as null | MutationObserver,
@@ -50,12 +50,12 @@ export default Vue.extend({
 		// when theme class is added or removed, reset color values
 		this.observer = new MutationObserver((mutationsList) => {
 			for (const mutation of mutationsList) {
-				if (mutation.type === "attributes") {
+				if (mutation.type === 'attributes') {
 					setValues();
 				}
 			}
 		});
-		const body = document.querySelector("body");
+		const body = document.querySelector('body');
 		if (body) {
 			this.observer.observe(body, { attributes: true });
 		}

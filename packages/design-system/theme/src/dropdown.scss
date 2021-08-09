@@ -25,7 +25,7 @@
 		&::before {
 			$gap: 5px;
 
-			content: "";
+			content: '';
 			position: absolute;
 			display: block;
 			width: 1px;
@@ -108,7 +108,7 @@
 			border-top: 1px solid var.$border-color-lighter;
 
 			&:before {
-				content: "";
+				content: '';
 				height: $divided-offset;
 				display: block;
 				margin: 0 -20px;

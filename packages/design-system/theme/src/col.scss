@@ -3,7 +3,7 @@
 @use "./common/var.scss";
 @use "./mixins/mixins.scss";
 
-[class*="el-col-"] {
+[class*='el-col-'] {
 	float: left;
 	box-sizing: border-box;
 }

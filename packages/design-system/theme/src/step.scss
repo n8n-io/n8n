@@ -84,7 +84,7 @@
 		line-height: 1;
 		color: inherit;
 
-		&[class*="el-icon"]:not(.is-status) {
+		&[class*='el-icon']:not(.is-status) {
 			font-size: 25px;
 			font-weight: normal;
 		}
@@ -252,7 +252,7 @@
 		}
 
 		@include mixins.e(icon-inner) {
-			&[class*="el-icon"]:not(.is-status) {
+			&[class*='el-icon']:not(.is-status) {
 				font-size: 18px;
 			}
 
@@ -273,7 +273,7 @@
 			line-height: 20px;
 		}
 
-		@include mixins.pseudo("not(:last-of-type)") {
+		@include mixins.pseudo('not(:last-of-type)') {
 			@include mixins.e(title) {
 				max-width: 50%;
 				word-break: break-all;
@@ -288,7 +288,7 @@
 
 			&::before,
 			&::after {
-				content: "";
+				content: '';
 				display: inline-block;
 				position: absolute;
 				height: 15px;

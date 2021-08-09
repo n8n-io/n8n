@@ -18,15 +18,15 @@
 	}
 
 	.popper__arrow::after {
-		content: " ";
+		content: ' ';
 		border-width: var.$popover-arrow-size;
 	}
 
-	&[x-placement^="top"] {
+	&[x-placement^='top'] {
 		margin-bottom: #{var.$popover-arrow-size + 6};
 	}
 
-	&[x-placement^="top"] .popper__arrow {
+	&[x-placement^='top'] .popper__arrow {
 		bottom: -(var.$popover-arrow-size);
 		left: 50%;
 		margin-right: #{var.$tooltip-arrow-size * 0.5};
@@ -41,11 +41,11 @@
 		}
 	}
 
-	&[x-placement^="bottom"] {
+	&[x-placement^='bottom'] {
 		margin-top: #{var.$popover-arrow-size + 6};
 	}
 
-	&[x-placement^="bottom"] .popper__arrow {
+	&[x-placement^='bottom'] .popper__arrow {
 		top: -(var.$popover-arrow-size);
 		left: 50%;
 		margin-right: #{var.$tooltip-arrow-size * 0.5};
@@ -60,11 +60,11 @@
 		}
 	}
 
-	&[x-placement^="right"] {
+	&[x-placement^='right'] {
 		margin-left: #{var.$popover-arrow-size + 6};
 	}
 
-	&[x-placement^="right"] .popper__arrow {
+	&[x-placement^='right'] .popper__arrow {
 		top: 50%;
 		left: -(var.$popover-arrow-size);
 		margin-bottom: #{var.$tooltip-arrow-size * 0.5};
@@ -79,11 +79,11 @@
 		}
 	}
 
-	&[x-placement^="left"] {
+	&[x-placement^='left'] {
 		margin-right: #{var.$popover-arrow-size + 6};
 	}
 
-	&[x-placement^="left"] .popper__arrow {
+	&[x-placement^='left'] .popper__arrow {
 		top: 50%;
 		right: -(var.$popover-arrow-size);
 		margin-bottom: #{var.$tooltip-arrow-size * 0.5};

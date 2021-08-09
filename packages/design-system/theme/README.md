@@ -20,13 +20,13 @@ npm i element-theme-n8n -S
 Use Sass import
 
 ```css
-@import "element-theme-n8n";
+@import 'element-theme-n8n';
 ```
 
 Or Use webpack
 
 ```javascript
-import "element-theme-n8n";
+import 'element-theme-n8n';
 ```
 
 Or
@@ -41,8 +41,8 @@ Or
 ## Import on demand
 
 ```javascript
-import "element-theme-n8n/dist/input.css";
-import "element-theme-n8n/dist/select.css";
+import 'element-theme-n8n/dist/input.css';
+import 'element-theme-n8n/dist/select.css';
 
 // ...
 ```
