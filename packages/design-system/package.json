@@ -20,7 +20,7 @@
     "test": "npm run test:unit",
     "build:storybook": "build-storybook",
     "storybook": "start-storybook -p 6006",
-    "test:unit": "vue-cli-service test:unit",
+    "test:unit": "vue-cli-service test:unit --passWithNoTests",
     "lint": "vue-cli-service lint",
     "build:theme": "gulp build:theme",
     "watch:theme": "gulp watch:theme",
