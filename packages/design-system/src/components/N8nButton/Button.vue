@@ -109,7 +109,7 @@ export default {
       ...(props.fullWidth ? { width: "100%" } : {}),
     };
   },
-  getClass(props: { type: string; theme?: string }) {
+  getClass(props: { type: string; theme?: string }): string {
     return props.type === "text"
       ? "text"
       : `${props.type}-${props.theme || "primary"}`;
