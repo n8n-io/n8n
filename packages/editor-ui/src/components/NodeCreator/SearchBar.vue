@@ -9,6 +9,7 @@
 				ref="input"
 				:value="value"
 				@input="onInput"
+				class="data-hj-allow"
 			/>
 		</div>
 		<div class="suffix" v-if="value.length > 0" @click="clear">

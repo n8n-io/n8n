@@ -621,6 +621,16 @@ export default mixins(
 					}
 				}
 			}
+
+			// @ts-ignore
+			if (this.$refs['inputField'].$el && (this.parameter.name === 'resource' || this.parameter.name === 'operation')) {
+				// @ts-ignore
+				const inputField = this.$refs['inputField'].$el.querySelector('input');
+				if(inputField && inputField.classList && inputField.classList.value) {
+					// @ts-ignore
+					inputField.classList.value = inputField.classList.value + ' data-hj-allow';
+				}
+			}
 		},
 	});
 </script>

@@ -1,5 +1,5 @@
 <template>
-	<span :title="name">
+	<span :title="name" class="data-hj-allow">
 		<slot :shortenedName="shortenedName"></slot>
 	</span>
 </template>
