@@ -5,8 +5,7 @@ import Vue from 'vue';
 
 // https://github.com/storybookjs/storybook/issues/6153
 Vue.prototype.toJSON = function () {
-	console.log(this);
-	return {};
+	return this;
 };
 
 export const parameters = {
