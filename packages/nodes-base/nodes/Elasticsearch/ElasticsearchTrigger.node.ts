@@ -318,7 +318,7 @@ export class ElasticsearchTrigger implements INodeType {
 			async checkExists(this: IHookFunctions) {
 				const endpoint = '/_watcher/_query/watches';
 				const response = await elasticsearchApiRequest.call(this, 'GET', endpoint);
-
+				const webhookData = this.getWorkflowStaticData('node');
 				const webhookUrl = this.getNodeWebhookUrl('default') as string;
 				const url = new URL(webhookUrl);
 
@@ -326,6 +326,7 @@ export class ElasticsearchTrigger implements INodeType {
 					const registeredPath = item.watch.actions?.n8n_webhook.webhook.path;
 					if (registeredPath === url.pathname) {
 						console.log('checkExists true');
+						webhookData.webhookId = item._id;
 						return true;
 					}
 				}
@@ -340,9 +341,14 @@ export class ElasticsearchTrigger implements INodeType {
 
 				const body: WatchCreationPayload = {
 					trigger: {},
+
+					// TODO: change to condition with script
 					condition: {
 						always: {},
 					},
+
+					// TODO: Add input with search and indices
+
 					actions: {
 						n8n_webhook: {
 							webhook: {
@@ -404,11 +410,9 @@ export class ElasticsearchTrigger implements INodeType {
 
 			async delete(this: IHookFunctions) {
 				const webhookData = this.getWorkflowStaticData('node');
-				console.log(webhookData);
 
 				const endpoint = `/_watcher/watch/${webhookData.webhookId}`;
 				try {
-					console.log(endpoint);
 					const response = await elasticsearchApiRequest.call(this, 'DELETE', endpoint);
 					console.log('DELETION RESPONSE:');
 					console.log(response);
