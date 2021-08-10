@@ -1304,7 +1304,11 @@ async function parseRequestObject(requestObject: IDataObject) {
 		axiosConfig.transformResponse = (res) => res;
 	}
 
-	if (requestObject.followRedirect === false || requestObject.followAllRedirects === false) {
+	// Axios will follow redirects by default, so we simply tell it otherwise if needed.
+	if (requestObject.followRedirect === false && (requestObject.method as string | undefined || 'get').toLowerCase() === 'get') {
+		axiosConfig.maxRedirects = 0;
+	}
+	if (requestObject.followAllRedirect === false &&  (requestObject.method as string | undefined || 'get').toLowerCase() !== 'get') {
 		axiosConfig.maxRedirects = 0;
 	}
 

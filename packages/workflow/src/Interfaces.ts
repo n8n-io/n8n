@@ -223,7 +223,6 @@ export interface IHttpRequestOptions {
 		username: string,
 		password: string,
 	};
-	// json?: boolean;
 	disableFollowRedirect?: boolean;
 	encoding?: 'arraybuffer' | 'blob' | 'document' | 'json' | 'text' | 'stream';
 	skipSslCertificateValidation?: boolean;

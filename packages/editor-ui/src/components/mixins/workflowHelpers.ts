@@ -289,7 +289,7 @@ export const workflowHelpers = mixins(
 
 				// Get the data of the node type that we can get the default values
 				// TODO: Later also has to care about the node-type-version as defaults could be different
-				const nodeType = this.$store.getters.nodeType(node.type) as INodeTypeDescription;
+				const nodeType = this.$store.getters.nodeType(node.type, node.typeVersion) as INodeTypeDescription;
 
 				if (nodeType !== null) {
 					// Node-Type is known so we can save the parameters correctly
