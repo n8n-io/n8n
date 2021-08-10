@@ -1497,7 +1497,8 @@ export class Pipedrive implements INodeType {
 				},
 				default: 100,
 				description: 'How many results to return.',
-			}, {
+			}, 
+			{
 				displayName: 'Additional Fields',
 				name: 'additionalFields',
 				type: 'collection',
@@ -3327,6 +3328,87 @@ export class Pipedrive implements INodeType {
 					},
 				],
 			},
+			// ----------------------------------
+			//         deal: getAll
+			// ----------------------------------
+			{
+				displayName: 'Additional Fields',
+				name: 'additionalFields',
+				type: 'collection',
+				placeholder: 'Add Field',
+				displayOptions: {
+					show: {
+						operation: [
+							'getAll',
+						],
+						resource: [
+							'deal',
+						],
+					},
+				},
+				default: {},
+				options: [
+					{
+						displayName: 'User Id',
+						name: 'user_id',
+						type: 'options',
+						typeOptions: {
+							loadOptionsMethod: 'getUserIds',
+						},
+						default: '',
+						description: 'ID of the user deals are associated with',
+					},
+					{
+						displayName: 'Filter ID',
+						name: 'filter_id',
+						type: 'options',
+						typeOptions: {
+							loadOptionsMethod: 'getFilterIds',
+						},
+						default: '',
+						description: 'ID of the Filter that matches for Deals associated with.',
+					},
+					{
+						displayName: 'Stage ID',
+						name: 'stage_id',
+						type: 'options',
+						typeOptions: {
+							loadOptionsMethod: 'getStageIds',
+						},
+						default: '',
+						description: 'ID of the Stage, only deals within the given stage will be returned.',
+					},
+					{
+						displayName: 'Status',
+						name: 'status',
+						type: 'options',
+						options: [
+							{
+								name: 'Open',
+								value: 'open',
+							},
+							{
+								name: 'Won',
+								value: 'won',
+							},
+							{
+								name: 'Lost',
+								value: 'lost',
+							},
+							{
+								name: 'Deleted',
+								value: 'deleted',
+							},
+							{
+								name: 'All not deleted',
+								value: 'all_not_deleted',
+							},
+						],
+						default: 'all_not_deleted',
+						description: 'The status of the deal. If not provided it will automatically be set to "all_not_deleted".',
+					},
+				],
+			},
 		],
 	};
 
@@ -3341,6 +3423,28 @@ export class Pipedrive implements INodeType {
 					returnData.push({
 						name: activity.name,
 						value: activity.key_string,
+					});
+				}
+
+				returnData.sort((a, b) => {
+					const aName = a.name.toLowerCase();
+					const bName = b.name.toLowerCase();
+					if (aName < bName) { return -1; }
+					if (aName > bName) { return 1; }
+					return 0;
+				});
+
+				return returnData;
+			},
+			// Get all Filters to display them to user so that he can
+			// select them easily
+			async getFilterIds(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const returnData: INodePropertyOptions[] = [];
+				const { data } = await pipedriveApiRequest.call(this, 'GET', '/filters', {});
+				for (const filter of data) {
+					returnData.push({
+						name: filter.name,
+						value: filter.id,
 					});
 				}
 
@@ -3828,6 +3932,8 @@ export class Pipedrive implements INodeType {
 						if (returnAll === false) {
 							qs.limit = this.getNodeParameter('limit', i) as number;
 						}
+						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						addAdditionalFields(qs, additionalFields);
 
 						endpoint = `/deals`;
 
