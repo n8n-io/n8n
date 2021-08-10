@@ -1,8 +1,19 @@
-import { IExecuteFunctions, IHookFunctions, ILoadOptionsFunctions, IWebhookFunctions, } from 'n8n-core';
+import {
+	IExecuteFunctions,
+	IHookFunctions,
+	ILoadOptionsFunctions,
+	IWebhookFunctions,
+} from 'n8n-core';
 
-import { IDataObject, INodePropertyOptions, } from 'n8n-workflow';
+import {
+	IDataObject,
+	INodePropertyOptions,
+	NodeApiError,
+} from 'n8n-workflow';
 
-import { OptionsWithUri, } from 'request';
+import {
+	OptionsWithUri,
+} from 'request';
 
 export interface IFormstackFieldDefinitionType {
 	id: string;
@@ -47,22 +58,21 @@ export enum FormstackFieldFormat {
  * @param {object} body
  * @returns {Promise<any>}
  */
-export async function apiRequest(this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions | IWebhookFunctions, method: string, endpoint: string, body: object | string, query?: IDataObject): Promise<any> { // tslint:disable-line:no-any
+export async function apiRequest(this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions | IWebhookFunctions, method: string, endpoint: string, body: IDataObject = {}, query: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
 	const authenticationMethod = this.getNodeParameter('authentication', 0);
 
 	const options: OptionsWithUri = {
 		headers: {},
 		method,
+		body,
 		qs: query || {},
 		uri: `https://www.formstack.com/api/v2/${endpoint}`,
 		json: true,
 	};
 
-	if (body) {
-		options.body = body;
+	if (!Object.keys(body).length) {
+		delete options.body;
 	}
-
-	console.log(options);
 
 	try {
 		if (authenticationMethod === 'accessToken') {
@@ -78,19 +88,7 @@ export async function apiRequest(this: IHookFunctions | IExecuteFunctions | ILoa
 			return await this.helpers.requestOAuth2!.call(this, 'formstackOAuth2Api', options);
 		}
 	} catch (error) {
-		if (error.statusCode === 401) {
-			// Return a clear error
-			throw new Error('The Formstack credentials are not valid!');
-		}
-
-		if (error.response && error.response.body && error.response.body.error) {
-			// Try to return the error prettier
-			const errorBody = error.response.body;
-			throw new Error(`Formstack error response [${error.statusCode} - errorBody.code]: ${errorBody.error}`);
-		}
-
-		// Expected error data did not get returned so throw the actual error
-		throw error;
+		throw new NodeApiError(this.getNode(), error);
 	}
 }
 
@@ -107,7 +105,7 @@ export async function apiRequest(this: IHookFunctions | IExecuteFunctions | ILoa
  * @param {IDataObject} [query]
  * @returns {Promise<any>}
  */
-export async function apiRequestAllItems(this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions | IWebhookFunctions, method: string, endpoint: string, body: IDataObject | string, dataKey: string, query?: IDataObject): Promise<any> { // tslint:disable-line:no-any
+export async function apiRequestAllItems(this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions | IWebhookFunctions, method: string, endpoint: string, body: IDataObject, dataKey: string, query?: IDataObject): Promise<any> { // tslint:disable-line:no-any
 
 	if (query === undefined) {
 		query = {};
@@ -126,15 +124,11 @@ export async function apiRequestAllItems(this: IHookFunctions | IExecuteFunction
 		query.page += 1;
 
 		responseData = await apiRequest.call(this, method, endpoint, body, query);
-		console.log({
-			responseData,
-		});
-
 		returnData.items.push.apply(returnData.items, responseData[dataKey]);
 	} while (
 		responseData.total !== undefined &&
 		Math.ceil(responseData.total / query.per_page) > query.page
-		);
+	);
 
 	return returnData;
 }
@@ -149,7 +143,7 @@ export async function apiRequestAllItems(this: IHookFunctions | IExecuteFunction
  */
 export async function getForms(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 	const endpoint = 'form.json';
-	const responseData = await apiRequestAllItems.call(this, 'GET', endpoint, '', 'forms', {folders: false});
+	const responseData = await apiRequestAllItems.call(this, 'GET', endpoint, {}, 'forms', { folders: false });
 
 	if (responseData.items === undefined) {
 		throw new Error('No data got returned');
@@ -177,7 +171,7 @@ export async function getForms(this: ILoadOptionsFunctions): Promise<INodeProper
  */
 export async function getFields(this: IWebhookFunctions, formID: string): Promise<Record<string, IFormstackFieldDefinitionType>> {
 	const endpoint = `form/${formID}.json`;
-	const responseData = await apiRequestAllItems.call(this, 'GET', endpoint, '', 'fields');
+	const responseData = await apiRequestAllItems.call(this, 'GET', endpoint, {}, 'fields');
 
 	if (responseData.items === undefined) {
 		throw new Error('No form fields meta data got returned');
@@ -204,7 +198,7 @@ export async function getFields(this: IWebhookFunctions, formID: string): Promis
  */
 export async function getSubmission(this: ILoadOptionsFunctions | IWebhookFunctions, uniqueId: string): Promise<IFormstackSubmissionFieldContainer[]> {
 	const endpoint = `submission/${uniqueId}.json`;
-	const responseData = await apiRequestAllItems.call(this, 'GET', endpoint, '', 'data');
+	const responseData = await apiRequestAllItems.call(this, 'GET', endpoint, {}, 'data');
 
 	if (responseData.items === undefined) {
 		throw new Error('No form fields meta data got returned');

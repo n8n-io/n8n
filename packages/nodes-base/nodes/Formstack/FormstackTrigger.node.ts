@@ -1,9 +1,18 @@
-import { IHookFunctions, IWebhookFunctions, } from 'n8n-core';
+import {
+	IHookFunctions,
+	IWebhookFunctions,
+} from 'n8n-core';
 
-import { IDataObject, INodeType, INodeTypeDescription, IWebhookResponseData, } from 'n8n-workflow';
+import {
+	IDataObject,
+	INodeType,
+	INodeTypeDescription,
+	IWebhookResponseData,
+} from 'n8n-workflow';
+
 import {
 	apiRequest,
-	FormstackFieldFormat, getFields,
+	getFields,
 	getForms,
 	getSubmission,
 	IFormstackWebhookResponseBody
@@ -53,7 +62,7 @@ export class FormstackTrigger implements INodeType {
 				name: 'default',
 				httpMethod: 'POST',
 				responseMode: 'onReceived',
-				path: 'formstack-webhook',
+				path: 'webhook',
 			},
 		],
 		properties: [
@@ -81,31 +90,16 @@ export class FormstackTrigger implements INodeType {
 				typeOptions: {
 					loadOptionsMethod: 'getForms',
 				},
-				options: [],
 				default: '',
 				required: true,
 				description: 'Form which should trigger workflow on submission.',
 			},
 			{
-				displayName: 'Field Format',
-				name: 'fieldFormat',
-				type: 'options',
-				options: [
-					{
-						name: 'ID',
-						value: FormstackFieldFormat.ID,
-					},
-					{
-						name: 'Label',
-						value: FormstackFieldFormat.Label,
-					},
-					{
-						name: 'Name',
-						value: FormstackFieldFormat.Name,
-					},
-				],
-				default: 'id',
-				description: 'Whether to use the ID, Name or Label as the field key / column header.',
+				displayName: 'Simple',
+				name: 'simple',
+				type: 'boolean',
+				default: true,
+				description: 'When set to true a simplify version of the response will be used else the raw data.',
 			},
 		],
 	};
@@ -120,17 +114,18 @@ export class FormstackTrigger implements INodeType {
 	webhookMethods = {
 		default: {
 			async checkExists(this: IHookFunctions): Promise<boolean> {
-				const webhookData = this.getWorkflowStaticData('node');
 				const webhookUrl = this.getNodeWebhookUrl('default');
+				const webhookData = this.getWorkflowStaticData('node');
 
 				const formId = this.getNodeParameter('formId') as string;
 
 				const endpoint = `form/${formId}/webhook.json`;
 
-				const {webhooks} = await apiRequest.call(this, 'GET', endpoint, '');
+				const { webhooks } = await apiRequest.call(this, 'GET', endpoint);
 
-				for (const item of webhooks) {
-					if (item.id === webhookData.webhookId && item.url === webhookUrl) {
+				for (const webhook of webhooks) {
+					if (webhook.url === webhookUrl) {
+						webhookData.webhookId = webhook.id;
 						return true;
 					}
 				}
@@ -156,12 +151,9 @@ export class FormstackTrigger implements INodeType {
 
 				const webhookData = this.getWorkflowStaticData('node');
 				webhookData.webhookId = response.id;
-
 				return true;
 			},
 			async delete(this: IHookFunctions): Promise<boolean> {
-				const formId = this.getNodeParameter('formId') as string;
-
 				const webhookData = this.getWorkflowStaticData('node');
 
 				if (webhookData.webhookId !== undefined) {
@@ -186,26 +178,24 @@ export class FormstackTrigger implements INodeType {
 	// @ts-ignore
 	async webhook(this: IWebhookFunctions): Promise<IWebhookResponseData> {
 		const bodyData = (this.getBodyData() as unknown) as IFormstackWebhookResponseBody;
-		const fieldFormat = this.getNodeParameter('fieldFormat') as FormstackFieldFormat;
+		const simple = this.getNodeParameter('simple') as string;
+
+		let response = bodyData as unknown as IDataObject;
 
 		const submission = await getSubmission.call(this, bodyData.UniqueID);
 
-		const data: IDataObject = {};
-
-		if (fieldFormat === FormstackFieldFormat.ID) {
-			submission.forEach(formField => {
-				data[formField.field] = formField.value;
-			});
-		} else {
+		if (simple) {
+			const data: IDataObject = {};
 			const fields = await getFields.call(this, bodyData.FormID);
 			submission.forEach(formField => {
-				data[fields[formField.field][fieldFormat]] = formField.value;
+				data[fields[formField.field].label] = formField.value;
 			});
+			response = data;
 		}
 
 		return {
 			workflowData: [
-				this.helpers.returnJsonArray([data]),
+				this.helpers.returnJsonArray([response as unknown as IDataObject]),
 			],
 		};
 	}
