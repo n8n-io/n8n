@@ -286,15 +286,15 @@ export class Elasticsearch implements INodeType {
 
 					const body = {} as IDataObject;
 					const qs = {} as IDataObject;
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject & { mappings: string };
 
 					if (Object.keys(additionalFields).length) {
 						const { aliases, mappings, settings, ...rest } = additionalFields;
-						Object.assign(body, aliases, mappings, settings);
+						Object.assign(body, aliases, JSON.parse(mappings), settings);
 						Object.assign(qs, rest);
 					}
 
-					responseData = await elasticsearchApiRequest.call(this, 'PUT', `/${indexId}`);
+					responseData = await elasticsearchApiRequest.call(this, 'PUT', `/${indexId}`, body, qs);
 					responseData = { id: indexId, ...responseData };
 					delete responseData.index;
 
