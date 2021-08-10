@@ -20,14 +20,14 @@
 						</n8n-tooltip>
 					</div>
 					<div :style="credentialInputWrapperStyle(credentialTypeDescription.name)">
-						<el-select v-model="credentials[credentialTypeDescription.name]" :disabled="isReadOnly" @change="credentialSelected(credentialTypeDescription.name)" placeholder="Select Credential" size="small">
-							<el-option
+						<n8n-select v-model="credentials[credentialTypeDescription.name]" :disabled="isReadOnly" @change="credentialSelected(credentialTypeDescription.name)" placeholder="Select Credential" size="small">
+							<n8n-option
 								v-for="(item, index) in credentialOptions[credentialTypeDescription.name]"
 								:key="item.name + '_' + index"
 								:label="item.name"
 								:value="item.name">
-							</el-option>
-						</el-select>
+							</n8n-option>
+						</n8n-select>
 					</div>
 				</el-col>
 				<el-col :span="2" class="parameter-value">

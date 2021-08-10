@@ -211,10 +211,6 @@ tr:hover .ops:not(.disabled) {
 	display: flex;
 }
 
-::v-deep .el-input.is-disabled > input {
-	border: none;
-}
-
 .fade-enter-active,
 .fade-leave-active {
 	transition: opacity 0.2s;

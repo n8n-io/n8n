@@ -7,26 +7,26 @@
 						Filters:
 					</el-col>
 					<el-col :span="6">
-						<el-select v-model="filter.workflowId" placeholder="Select Workflow" size="small" filterable @change="handleFilterChanged">
-							<el-option
+						<n8n-select v-model="filter.workflowId" placeholder="Select Workflow" size="small" filterable @change="handleFilterChanged">
+							<n8n-option
 								v-for="item in workflows"
 								:key="item.id"
 								:label="item.name"
 								:value="item.id">
-							</el-option>
-						</el-select>
+							</n8n-option>
+						</n8n-select>
 					</el-col>
 					<el-col :span="2">&nbsp;
 					</el-col>
 					<el-col :span="4">
-						<el-select v-model="filter.status" placeholder="Select Status" size="small" filterable @change="handleFilterChanged">
-							<el-option
+						<n8n-select v-model="filter.status" placeholder="Select Status" size="small" filterable @change="handleFilterChanged">
+							<n8n-option
 								v-for="item in statuses"
 								:key="item.id"
 								:label="item.name"
 								:value="item.id">
-							</el-option>
-						</el-select>
+							</n8n-option>
+						</n8n-select>
 					</el-col>
 					<el-col :span="4">&nbsp;
 					</el-col>

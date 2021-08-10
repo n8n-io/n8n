@@ -37,7 +37,7 @@
 			<n8n-input-number ref="inputField" size="small" :value="displayValue" :controls="false" :max="getArgument('maxValue')" :min="getArgument('minValue')" :precision="getArgument('numberPrecision')" :step="getArgument('numberStepSize')" :disabled="isReadOnly" @change="valueChanged" @focus="setFocus" @keydown.stop :title="displayTitle" :placeholder="parameter.placeholder"></n8n-input-number>
 		</div>
 
-		<el-select
+		<n8n-select
 			v-else-if="parameter.type === 'options'"
 			ref="inputField"
 			size="small"
@@ -50,7 +50,7 @@
 			@keydown.stop
 			@focus="setFocus"
 		>
-			<el-option
+			<n8n-option
 				v-for="option in parameterOptions"
 				:value="option.value"
 				:key="option.value"
@@ -58,10 +58,10 @@
 			>
 				<div class="option-headline">{{ option.name }}</div>
 				<div v-if="option.description" class="option-description" v-html="option.description"></div>
-			</el-option>
-		</el-select>
+			</n8n-option>
+		</n8n-select>
 
-		<el-select
+		<n8n-select
 			v-else-if="parameter.type === 'multiOptions'"
 			ref="inputField"
 			size="small"
@@ -75,11 +75,11 @@
 			@focus="setFocus"
 			:title="displayTitle"
 		>
-			<el-option v-for="option in parameterOptions" :value="option.value" :key="option.value" :label="option.name" >
+			<n8n-option v-for="option in parameterOptions" :value="option.value" :key="option.value" :label="option.name" >
 				<div class="option-headline">{{ option.name }}</div>
 				<div v-if="option.description" class="option-description" v-html="option.description"></div>
-			</el-option>
-		</el-select>
+			</n8n-option>
+		</n8n-select>
 
 		<div v-else-if="parameter.type === 'color'" ref="inputField" class="color-input">
 			<el-color-picker :value="displayValue" :disabled="isReadOnly" @change="valueChanged" size="small" class="color-picker" @focus="setFocus" :title="displayTitle" :show-alpha="getArgument('showAlpha')"></el-color-picker>

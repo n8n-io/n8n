@@ -4,7 +4,9 @@ import N8nIconButton from './N8nIconButton';
 import N8nInput from './N8nInput';
 import N8nInputNumber from './N8nInputNumber';
 import N8nInputLabel from './N8nInputLabel';
+import N8nSelect from './N8nSelect';
 import N8nSpinner from './N8nSpinner';
 import N8nTooltip from './N8nTooltip';
+import N8nOption from './N8nOption';
 
-export { N8nButton, N8nIcon, N8nIconButton, N8nSpinner, N8nInput, N8nInputLabel, N8nTooltip, N8nInputNumber };
+export { N8nButton, N8nIcon, N8nIconButton, N8nSpinner, N8nInput, N8nInputLabel, N8nTooltip, N8nInputNumber, N8nSelect, N8nOption };

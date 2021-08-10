@@ -21,9 +21,9 @@
 					Items: {{ dataCount }}
 				</strong>
 				<strong v-else>Items:
-					<el-select v-model="maxDisplayItems" @click.stop>
-						<el-option v-for="option in maxDisplayItemsOptions" :label="option" :value="option" :key="option" />
-					</el-select>&nbsp;/
+					<n8n-select v-model="maxDisplayItems" @click.stop>
+						<n8n-option v-for="option in maxDisplayItemsOptions" :label="option" :value="option" :key="option" />
+					</n8n-select>&nbsp;/
 					{{ dataCount }}
 				</strong>
 				&nbsp;
@@ -39,17 +39,17 @@
 				</el-popover>
 				<span v-if="maxOutputIndex > 0">
 					| Output:
-					<el-select v-model="outputIndex" @click.stop>
-						<el-option v-for="option in (maxOutputIndex + 1)" :label="getOutputName(option-1)" :value="option -1" :key="option">
-						</el-option>
-					</el-select>
+					<n8n-select v-model="outputIndex" @click.stop>
+						<n8n-option v-for="option in (maxOutputIndex + 1)" :label="getOutputName(option-1)" :value="option -1" :key="option">
+						</n8n-option>
+					</n8n-select>
 				</span>
 				<span v-if="maxRunIndex > 0">
 					| Data of Execution:
-					<el-select v-model="runIndex" @click.stop>
-						<el-option v-for="option in (maxRunIndex + 1)" :label="option + '/' + (maxRunIndex+1)" :value="option-1" :key="option">
-						</el-option>
-					</el-select>
+					<n8n-select v-model="runIndex" @click.stop>
+						<n8n-option v-for="option in (maxRunIndex + 1)" :label="option + '/' + (maxRunIndex+1)" :value="option-1" :key="option">
+						</n8n-option>
+					</n8n-select>
 
 				</span>
 			</div>

@@ -33,14 +33,14 @@
 
 		<div v-if="parameterOptions.length > 0 && !isReadOnly">
 			<n8n-button v-if="parameter.options.length === 1" fullWidth class="add-option" @click="optionSelected(parameter.options[0].name)" :label="getPlaceholderText" />
-			<el-select v-else v-model="selectedOption" :placeholder="getPlaceholderText" size="small" class="add-option" @change="optionSelected" filterable>
-				<el-option
+			<n8n-select v-else v-model="selectedOption" :placeholder="getPlaceholderText" size="small" class="add-option" @change="optionSelected" filterable>
+				<n8n-option
 					v-for="item in parameterOptions"
 					:key="item.name"
 					:label="item.displayName"
 					:value="item.name">
-				</el-option>
-			</el-select>
+				</n8n-option>
+			</n8n-select>
 		</div>
 
 	</div>
@@ -216,10 +216,6 @@ export default mixins(genericHelpers)
 </script>
 
 <style scoped lang="scss">
-
-.add-option {
-	width: 100%;
-}
 
 .fixed-collection-parameter {
 	padding: 0 0 0 1em;

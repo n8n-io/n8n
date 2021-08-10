@@ -162,10 +162,9 @@
 		var(--color-text-light-l)
 	);
 
-	// todo placeholder color - hsl(222,16.7%,88.2%) - change after roll out inputs
-	--color-text-lighter-h: 220;
-	--color-text-lighter-s: 10.5%;
-	--color-text-lighter-l: 77.6%;
+	--color-text-lighter-h: 222;
+	--color-text-lighter-s: 16.7%;
+	--color-text-lighter-l: 88.2%;
 	--color-text-lighter: hsl(
 		var(--color-text-lighter-h),
 		var(--color-text-lighter-s),

@@ -1,15 +1,17 @@
 <template functional>
-	<label>
-		<div :class="$style.label">
-			<span>{{ props.label }}</span>
-			<span :class="$style.infoIcon" v-if="props.infoText">
-				<n8n-tooltip :content="props.infoText" placement="top">
-					<n8n-icon icon="info-circle" />
-				</n8n-tooltip>
-			</span>
-		</div>
-		<slot></slot>
-	</label>
+	<div :class="$style.inputLabel">
+		<label>
+			<div :class="$style.label">
+				<span>{{ props.label }}</span>
+				<span :class="$style.infoIcon" v-if="props.infoText">
+					<n8n-tooltip :content="props.infoText" placement="top">
+						<n8n-icon icon="info-circle" />
+					</n8n-tooltip>
+				</span>
+			</div>
+			<slot></slot>
+		</label>
+	</div>
 </template>
 
 <script lang="ts">
@@ -28,9 +30,6 @@ export default {
 			type: String,
 			required: true,
 		},
-		disabled: {
-			type: Boolean,
-		},
 		infoText: {
 			type: String,
 		},
@@ -39,6 +38,12 @@ export default {
 </script>
 
 <style lang="scss" module>
+.inputLabel {
+	&:hover {
+		--info-icon-display: inline-block;
+	}
+}
+
 .label {
 	font-weight: var(--font-weight-bold);
 	font-size: var(--font-size-s);
@@ -47,5 +52,6 @@ export default {
 
 .infoIcon {
 	color: var(--color-text-light);
+	display: var(--info-icon-display, none);
 }
 </style>

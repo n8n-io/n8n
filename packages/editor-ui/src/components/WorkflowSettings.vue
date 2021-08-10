@@ -11,14 +11,14 @@
 						</n8n-tooltip>
 					</el-col>
 					<el-col :span="14" class="ignore-key-press">
-						<el-select v-model="workflowSettings.errorWorkflow" placeholder="Select Workflow" size="small" filterable>
-							<el-option
+						<n8n-select v-model="workflowSettings.errorWorkflow" placeholder="Select Workflow" size="small" filterable>
+							<n8n-option
 								v-for="item in workflows"
 								:key="item.id"
 								:label="item.name"
 								:value="item.id">
-							</el-option>
-						</el-select>
+							</n8n-option>
+						</n8n-select>
 					</el-col>
 				</el-row>
 				<el-row>
@@ -30,14 +30,14 @@
 						</n8n-tooltip>
 					</el-col>
 					<el-col :span="14" class="ignore-key-press">
-						<el-select v-model="workflowSettings.timezone" placeholder="Select Timezone" size="small" filterable>
-							<el-option
+						<n8n-select v-model="workflowSettings.timezone" placeholder="Select Timezone" size="small" filterable>
+							<n8n-option
 								v-for="timezone of timezones"
 								:key="timezone.key"
 								:label="timezone.value"
 								:value="timezone.key">
-							</el-option>
-						</el-select>
+							</n8n-option>
+						</n8n-select>
 					</el-col>
 				</el-row>
 				<el-row>
@@ -49,14 +49,14 @@
 						</n8n-tooltip>
 					</el-col>
 					<el-col :span="14" class="ignore-key-press">
-						<el-select v-model="workflowSettings.saveDataErrorExecution" placeholder="Select Option" size="small" filterable>
-							<el-option
+						<n8n-select v-model="workflowSettings.saveDataErrorExecution" placeholder="Select Option" size="small" filterable>
+							<n8n-option
 								v-for="option of saveDataErrorExecutionOptions"
 								:key="option.key"
 								:label="option.value"
 								:value="option.key">
-							</el-option>
-						</el-select>
+							</n8n-option>
+						</n8n-select>
 					</el-col>
 				</el-row>
 				<el-row>
@@ -68,14 +68,14 @@
 						</n8n-tooltip>
 					</el-col>
 					<el-col :span="14" class="ignore-key-press">
-						<el-select v-model="workflowSettings.saveDataSuccessExecution" placeholder="Select Option" size="small" filterable>
-							<el-option
+						<n8n-select v-model="workflowSettings.saveDataSuccessExecution" placeholder="Select Option" size="small" filterable>
+							<n8n-option
 								v-for="option of saveDataSuccessExecutionOptions"
 								:key="option.key"
 								:label="option.value"
 								:value="option.key">
-							</el-option>
-						</el-select>
+							</n8n-option>
+						</n8n-select>
 					</el-col>
 				</el-row>
 				<el-row>
@@ -87,14 +87,14 @@
 						</n8n-tooltip>
 					</el-col>
 					<el-col :span="14" class="ignore-key-press">
-						<el-select v-model="workflowSettings.saveManualExecutions" placeholder="Select Option" size="small" filterable>
-							<el-option
+						<n8n-select v-model="workflowSettings.saveManualExecutions" placeholder="Select Option" size="small" filterable>
+							<n8n-option
 								v-for="option of saveManualOptions"
 								:key="option.key"
 								:label="option.value"
 								:value="option.key">
-							</el-option>
-						</el-select>
+							</n8n-option>
+						</n8n-select>
 					</el-col>
 				</el-row>
 				<el-row>
@@ -106,14 +106,14 @@
 						</n8n-tooltip>
 					</el-col>
 					<el-col :span="14" class="ignore-key-press">
-						<el-select v-model="workflowSettings.saveExecutionProgress" placeholder="Select Option" size="small" filterable>
-							<el-option
+						<n8n-select v-model="workflowSettings.saveExecutionProgress" placeholder="Select Option" size="small" filterable>
+							<n8n-option
 								v-for="option of saveExecutionProgressOptions"
 								:key="option.key"
 								:label="option.value"
 								:value="option.key">
-							</el-option>
-						</el-select>
+							</n8n-option>
+						</n8n-select>
 					</el-col>
 				</el-row>
 				<el-row>
@@ -144,11 +144,11 @@
 							<n8n-input-number :controls="false" size="small" v-model="timeoutHMS.hours" :min="0" placeholder="hours" type="number" class="el-input_inner"></n8n-input-number><br />
 							<div class="timeout-setting-name">hours</div>
 						</el-col>
-						<el-col :span="4">
+						<el-col :span="4" class="timeout-input">
 							<n8n-input-number :controls="false" size="small" v-model="timeoutHMS.minutes" :min="0" placeholder="minutes" type="number" class="el-input_inner"></n8n-input-number><br />
 							<div class="timeout-setting-name">minutes</div>
 						</el-col>
-						<el-col :span="4">
+						<el-col :span="4" class="timeout-input">
 							<n8n-input-number :controls="false" size="small" v-model="timeoutHMS.seconds" :min="0" placeholder="seconds" type="number" class="el-input_inner"></n8n-input-number><br />
 							<div class="timeout-setting-name">seconds</div>
 						</el-col>
@@ -519,7 +519,10 @@ export default mixins(
 .timeout-setting-name {
 	line-height: 1.5;
 	text-align: center;
-	width: calc(100% - 20px);
+}
+
+.timeout-input {
+	margin-left: 5px;
 }
 
 </style>

@@ -204,51 +204,11 @@ h1, h2, h3, h4, h5, h6 {
 	}
 }
 
-
-// Select input
-.el-scrollbar {
-	background-color: #fff;
-}
-.el-select-dropdown__item {
-	font-size: 0.8em;
-	color: #555;
-	height: auto;
-	line-height: 1.8em;
-	margin: 0.25em 0;
-	padding: 0.25em 1em;
-}
-.el-select-dropdown__item.selected {
-	font-weight: normal;
-}
-.el-select-dropdown__item + .el-select-dropdown__item {
-	border-top: 1px solid #ddd;
-}
-.el-dropdown-menu__item {
-	color: $--color-primary;
-}
-
-
 // Date selector
 .el-date-editor.el-input {
 	width: 100%;
 }
 
-// Select input
-.el-select {
-	width: 100%;
-	.el-tag {
-		color: $--custom-input-font;
-
-		.el-tag__close.el-icon-close {
-			background-color: $--custom-input-font;
-
-			&:hover {
-				background-color: $--custom-input-font;
-				transform: scale(0.8);
-			}
-		}
-	}
-}
 .el-switch__label {
 	color: #fff;
 }

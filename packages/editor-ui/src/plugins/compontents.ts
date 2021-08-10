@@ -53,6 +53,8 @@ import {
 	N8nInput,
 	N8nInputLabel,
 	N8nInputNumber,
+	N8nSelect,
+	N8nOption,
 } from 'n8n-design-system';
 import { ElMessageBoxOptions } from "element-ui/types/message-box";
 
@@ -64,6 +66,8 @@ Vue.use(N8nIconButton);
 Vue.use(N8nInput);
 Vue.use(N8nInputLabel);
 Vue.use(N8nInputNumber);
+Vue.use(N8nSelect);
+Vue.use(N8nOption);
 
 // element io
 locale.use(lang);

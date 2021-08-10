@@ -569,6 +569,10 @@ export default mixins(
 			padding-bottom: 1em;
 		}
 
+		.add-option {
+			width: 100%;
+		}
+
 		.add-option > .el-input input::placeholder {
 			color: #fff;
 			font-weight: 600;

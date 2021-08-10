@@ -17,6 +17,10 @@ export default {
 				type: 'boolean',
 			},
 		},
+		size: {
+			control: 'select',
+			options: ['large', 'medium', 'small', 'mini'],
+		},
 	},
 	parameters: {
 		backgrounds: { default: '--color-background-light' },
@@ -57,5 +61,27 @@ export const TextArea = Template.bind({});
 TextArea.args = {
 	type: 'textarea',
 	label: 'text area input:',
+	placeholder: 'placeholder...',
+};
+
+
+const ManyTemplate = (args, { argTypes }) => ({
+	props: Object.keys(argTypes),
+	components: {
+		N8nInput,
+	},
+	template:
+		'<div> <n8n-input style="margin-bottom:10px" v-bind="$props" v-model="val" @input="onInput" /> <n8n-input style="margin-bottom:10px" v-bind="$props" size="medium" v-model="val" @input="onInput" /> <n8n-input style="margin-bottom:10px" v-bind="$props" size="small" v-model="val" @input="onInput" /> <n8n-input style="margin-bottom:10px" v-bind="$props" v-model="val" size="mini" @input="onInput" /> </div>',
+	methods,
+	data() {
+		return {
+			val: '',
+		};
+	},
+});
+
+export const Sizes = ManyTemplate.bind({});
+Sizes.args = {
+	type: 'input',
 	placeholder: 'placeholder...',
 };
