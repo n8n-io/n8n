@@ -1,6 +1,9 @@
 @use "mixins/mixins";
 @use "./common/var";
 
+$input-placeholder-color: var(--color-text-light);
+$input-focus-border: var(--color-secondary);
+
 @include mixins.b(textarea) {
 	position: relative;
 	display: inline-block;
@@ -24,16 +27,12 @@
 		transition: var.$border-transition-base;
 
 		&::placeholder {
-			color: var.$input-placeholder-color;
-		}
-
-		&:hover {
-			border-color: var.$input-hover-border;
+			color: $input-placeholder-color;
 		}
 
 		&:focus {
 			outline: none;
-			border-color: var.$input-focus-border;
+			border-color: $input-focus-border;
 		}
 	}
 
@@ -121,16 +120,12 @@
 		width: 100%;
 
 		&::placeholder {
-			color: var.$input-placeholder-color;
-		}
-
-		&:hover {
-			border-color: var.$input-hover-border;
+			color: $input-placeholder-color;
 		}
 
 		&:focus {
 			outline: none;
-			border-color: var.$input-focus-border;
+			border-color: $input-focus-border;
 		}
 	}
 
@@ -182,7 +177,7 @@
 	@include mixins.when(active) {
 		.el-input__inner {
 			outline: none;
-			border-color: var.$input-focus-border;
+			border-color: $input-focus-border;
 		}
 	}
 

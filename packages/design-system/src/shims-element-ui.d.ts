@@ -1,1 +1,3 @@
-declare module 'element-ui/packages/button';
+declare module 'element-ui/lib/button';
+declare module 'element-ui/lib/input';
+declare module 'element-ui/lib/tooltip';
