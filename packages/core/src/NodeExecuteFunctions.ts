@@ -1464,9 +1464,31 @@ function convertN8nRequestToAxios(n8nRequest: IHttpRequestOptions): AxiosRequest
 
 	if (n8nRequest.body !== undefined) {
 		axiosRequest.data = n8nRequest.body;
+		// Let's add some useful header standards here.
+		const existingContentTypeHeaderKey = searchForHeader(axiosRequest.headers, 'content-type');
+		if (existingContentTypeHeaderKey === undefined) {
+			// We are only setting content type headers if the user did
+			// not set it already manually. We're not overriding, even if it's wrong.
+			if (axiosRequest.data instanceof FormData) {
+				axiosRequest.headers = axiosRequest.headers || {};
+				axiosRequest.headers['content-type'] = 'multipart/form-data';
+			} else if (axiosRequest.data instanceof URLSearchParams) {
+				axiosRequest.headers = axiosRequest.headers || {};
+				axiosRequest.headers['content-type'] = 'application/x-www-form-urlencoded';
+			}
+		}
+		
 	}
 
 	return axiosRequest;
 }
 
+function searchForHeader(headers: IDataObject, headerName: string) {
+	if (headers === undefined) {
+		return undefined;
+	}
 
+	const headerNames = Object.keys(headers);
+	headerName = headerName.toLowerCase();
+	return headerNames.find(thisHeader => thisHeader.toLowerCase() === headerName);
+}

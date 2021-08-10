@@ -24,7 +24,7 @@ export async function apiRequest(
 	method: 'GET' | 'POST' | 'PUT' | 'DELETE' | 'HEAD',
 	endpoint: string,
 	body: IDataObject | GenericValue | GenericValue[] = {},
-	qs: IDataObject = {},
+	query: IDataObject = {},
 ) {
 	const credentials = this.getCredentials('mattermostApi');
 
@@ -35,10 +35,10 @@ export async function apiRequest(
 	const options: IHttpRequestOptions = {
 		method,
 		body,
-		queryString: qs,
+		queryString: query,
 		url: `${credentials.baseUrl}/api/v4/${endpoint}`,
 		headers: {
-			Authorization: `Bearer ${credentials.accessToken}`,
+			authorization: `Bearer ${credentials.accessToken}`,
 			'content-type': 'application/json; charset=utf-8',
 		},
 	};
