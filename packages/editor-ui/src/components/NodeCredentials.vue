@@ -14,10 +14,10 @@
 				</el-col>
 				<el-col :span="12" class="parameter-value" :class="getIssues(credentialTypeDescription.name).length?'has-issues':''">
 					<div class="credential-issues">
-						<el-tooltip placement="top" effect="light">
+						<n8n-tooltip placement="top" >
 							<div slot="content" v-html="'Issues:<br />&nbsp;&nbsp;- ' + getIssues(credentialTypeDescription.name).join('<br />&nbsp;&nbsp;- ')"></div>
 							<font-awesome-icon icon="exclamation-triangle" />
-						</el-tooltip>
+						</n8n-tooltip>
 					</div>
 					<div :style="credentialInputWrapperStyle(credentialTypeDescription.name)">
 						<el-select v-model="credentials[credentialTypeDescription.name]" :disabled="isReadOnly" @change="credentialSelected(credentialTypeDescription.name)" placeholder="Select Credential" size="small">
@@ -288,11 +288,6 @@ export default mixins(
 	.has-issues {
 		.credential-issues {
 			display: inline-block;
-		}
-		.el-input input:hover {
-			border-width: 1px;
-			border-color: #ff8080;
-			border-style: solid;
 		}
 	}
 

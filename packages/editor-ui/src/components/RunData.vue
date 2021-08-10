@@ -810,7 +810,6 @@ export default mixins(
 			}
 
 			input.el-input__inner {
-				border: 1px solid $--color-primary;
 				height: 25px;
 				line-height: 25px;
 			}

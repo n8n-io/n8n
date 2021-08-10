@@ -4,10 +4,10 @@
 			<span v-if="node">
 				<display-with-change :key-name="'name'" @valueChanged="valueChanged"></display-with-change>
 				<a v-if="nodeType" :href="'http://n8n.io/nodes/' + nodeType.name" target="_blank" class="node-info">
-					<el-tooltip class="clickable" placement="top" effect="light">
+					<n8n-tooltip class="clickable" placement="top" >
 						<div slot="content" v-html="'<strong>Node Description:</strong><br />' + nodeTypeDescription + '<br /><br /><strong>Click the \'?\' icon to open this node on n8n.io </strong>'"></div>
 						<font-awesome-icon icon="question-circle" />
-					</el-tooltip>
+					</n8n-tooltip>
 				</a>
 			</span>
 			<span v-else>No node active</span>
@@ -521,16 +521,6 @@ export default mixins(
 	color: #555;
 	border-radius: 2px 0 0 2px;
 
-	textarea {
-		font-size: 0.9em;
-		line-height: 1.5em;
-		margin: 0.2em 0;
-
-	}
-	textarea:hover {
-		line-height: 1.5em;
-	}
-
 	.header-side-menu {
 		padding: 1em 0 1em 1.8em;
 		font-size: 1.35em;
@@ -609,26 +599,6 @@ export default mixins(
 				line-height: 30px;
 			}
 		}
-	}
-
-	.el-input-number,
-	input.el-input__inner {
-		font-size: 0.9em;
-		line-height: 28px;
-		min-height: 28px;
-		height: 100%;
-	}
-	.el-input-number {
-		padding: 0 10px;
-	}
-
-	.el-input--prefix .el-input__inner {
-		padding: 0 28px;
-	}
-
-	.el-input__prefix {
-		left: 2px;
-		top: 1px;
 	}
 
 	.el-select.add-option .el-input .el-select__caret {

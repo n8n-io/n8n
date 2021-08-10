@@ -2,10 +2,10 @@
 	<div class="node-wrapper" :style="nodePosition">
 		<div class="node-default" :ref="data.name" :style="nodeStyle" :class="nodeClass" @dblclick="setNodeActive" @click.left="mouseLeftClick" v-touch:start="touchStart" v-touch:end="touchEnd">
 			<div v-if="hasIssues" class="node-info-icon node-issues">
-				<el-tooltip placement="top" effect="light">
+				<n8n-tooltip placement="top" >
 					<div slot="content" v-html="nodeIssues"></div>
 					<font-awesome-icon icon="exclamation-triangle" />
-				</el-tooltip>
+				</n8n-tooltip>
 			</div>
 			<el-badge v-else :hidden="workflowDataItems === 0" class="node-info-icon data-count" :value="workflowDataItems"></el-badge>
 

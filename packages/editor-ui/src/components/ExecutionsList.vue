@@ -79,7 +79,7 @@
 				<el-table-column label="Status" width="122" align="center">
 					<template slot-scope="scope" align="center">
 
-						<el-tooltip placement="top" effect="light">
+						<n8n-tooltip placement="top" >
 							<div slot="content" v-html="statusTooltipText(scope.row)"></div>
 
 							<span class="status-badge running" v-if="scope.row.stoppedAt === undefined">
@@ -94,7 +94,7 @@
 							<span class="status-badge warning" v-else>
 								Unknown
 							</span>
-						</el-tooltip>
+						</n8n-tooltip>
 
 						<el-dropdown trigger="click" @command="handleRetryClick">
 							<span class="retry-button">

@@ -3,10 +3,10 @@
 
 		<div class="parameter-name">
 			{{parameter.displayName}}:
-			<el-tooltip class="parameter-info" placement="top" v-if="parameter.description" effect="light">
+			<n8n-tooltip class="parameter-info" placement="top" v-if="parameter.description" >
 				<div slot="content" v-html="parameter.description"></div>
 				<font-awesome-icon icon="question-circle" />
-			</el-tooltip>
+			</n8n-tooltip>
 		</div>
 
 		<div v-for="(value, index) in values" :key="index" class="duplicate-parameter-item" :class="parameter.type">

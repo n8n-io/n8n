@@ -5,10 +5,10 @@
 				<el-row>
 					<el-col :span="10" class="setting-name">
 						Error Workflow:
-						<el-tooltip class="setting-info" placement="top" effect="light">
+						<n8n-tooltip class="setting-info" placement="top" >
 							<div slot="content" v-html="helpTexts.errorWorkflow"></div>
 							<font-awesome-icon icon="question-circle" />
-						</el-tooltip>
+						</n8n-tooltip>
 					</el-col>
 					<el-col :span="14" class="ignore-key-press">
 						<el-select v-model="workflowSettings.errorWorkflow" placeholder="Select Workflow" size="small" filterable>
@@ -24,10 +24,10 @@
 				<el-row>
 					<el-col :span="10" class="setting-name">
 						Timezone:
-						<el-tooltip class="setting-info" placement="top" effect="light">
+						<n8n-tooltip class="setting-info" placement="top" >
 							<div slot="content" v-html="helpTexts.timezone"></div>
 							<font-awesome-icon icon="question-circle" />
-						</el-tooltip>
+						</n8n-tooltip>
 					</el-col>
 					<el-col :span="14" class="ignore-key-press">
 						<el-select v-model="workflowSettings.timezone" placeholder="Select Timezone" size="small" filterable>
@@ -43,10 +43,10 @@
 				<el-row>
 					<el-col :span="10" class="setting-name">
 						Save Data Error Execution:
-						<el-tooltip class="setting-info" placement="top" effect="light">
+						<n8n-tooltip class="setting-info" placement="top" >
 							<div slot="content" v-html="helpTexts.saveDataErrorExecution"></div>
 							<font-awesome-icon icon="question-circle" />
-						</el-tooltip>
+						</n8n-tooltip>
 					</el-col>
 					<el-col :span="14" class="ignore-key-press">
 						<el-select v-model="workflowSettings.saveDataErrorExecution" placeholder="Select Option" size="small" filterable>
@@ -62,10 +62,10 @@
 				<el-row>
 					<el-col :span="10" class="setting-name">
 						Save Data Success Execution:
-						<el-tooltip class="setting-info" placement="top" effect="light">
+						<n8n-tooltip class="setting-info" placement="top" >
 							<div slot="content" v-html="helpTexts.saveDataSuccessExecution"></div>
 							<font-awesome-icon icon="question-circle" />
-						</el-tooltip>
+						</n8n-tooltip>
 					</el-col>
 					<el-col :span="14" class="ignore-key-press">
 						<el-select v-model="workflowSettings.saveDataSuccessExecution" placeholder="Select Option" size="small" filterable>
@@ -81,10 +81,10 @@
 				<el-row>
 					<el-col :span="10" class="setting-name">
 						Save Manual Executions:
-						<el-tooltip class="setting-info" placement="top" effect="light">
+						<n8n-tooltip class="setting-info" placement="top" >
 							<div slot="content" v-html="helpTexts.saveManualExecutions"></div>
 							<font-awesome-icon icon="question-circle" />
-						</el-tooltip>
+						</n8n-tooltip>
 					</el-col>
 					<el-col :span="14" class="ignore-key-press">
 						<el-select v-model="workflowSettings.saveManualExecutions" placeholder="Select Option" size="small" filterable>
@@ -100,10 +100,10 @@
 				<el-row>
 					<el-col :span="10" class="setting-name">
 						Save Execution Progress:
-						<el-tooltip class="setting-info" placement="top" effect="light">
+						<n8n-tooltip class="setting-info" placement="top" >
 							<div slot="content" v-html="helpTexts.saveExecutionProgress"></div>
 							<font-awesome-icon icon="question-circle" />
-						</el-tooltip>
+						</n8n-tooltip>
 					</el-col>
 					<el-col :span="14" class="ignore-key-press">
 						<el-select v-model="workflowSettings.saveExecutionProgress" placeholder="Select Option" size="small" filterable>
@@ -119,10 +119,10 @@
 				<el-row>
 					<el-col :span="10" class="setting-name">
 						Timeout Workflow:
-						<el-tooltip class="setting-info" placement="top" effect="light">
+						<n8n-tooltip class="setting-info" placement="top" >
 							<div slot="content" v-html="helpTexts.executionTimeoutToggle"></div>
 							<font-awesome-icon icon="question-circle" />
-						</el-tooltip>
+						</n8n-tooltip>
 					</el-col>
 					<el-col :span="14">
 						<div>
@@ -135,21 +135,21 @@
 					<el-row>
 						<el-col :span="10" class="setting-name">
 							Timeout After:
-							<el-tooltip class="setting-info" placement="top" effect="light">
+							<n8n-tooltip class="setting-info" placement="top" >
 								<div slot="content" v-html="helpTexts.executionTimeout"></div>
 								<font-awesome-icon icon="question-circle" />
-							</el-tooltip>
+							</n8n-tooltip>
 						</el-col>
 						<el-col :span="4">
-							<el-input-number size="small" v-model="timeoutHMS.hours" :min="0" placeholder="hours" type="number" class="el-input_inner"></el-input-number><br />
+							<n8n-input-number :controls="false" size="small" v-model="timeoutHMS.hours" :min="0" placeholder="hours" type="number" class="el-input_inner"></n8n-input-number><br />
 							<div class="timeout-setting-name">hours</div>
 						</el-col>
 						<el-col :span="4">
-							<el-input-number size="small" v-model="timeoutHMS.minutes" :min="0" placeholder="minutes" type="number" class="el-input_inner"></el-input-number><br />
+							<n8n-input-number :controls="false" size="small" v-model="timeoutHMS.minutes" :min="0" placeholder="minutes" type="number" class="el-input_inner"></n8n-input-number><br />
 							<div class="timeout-setting-name">minutes</div>
 						</el-col>
 						<el-col :span="4">
-							<el-input-number size="small" v-model="timeoutHMS.seconds" :min="0" placeholder="seconds" type="number" class="el-input_inner"></el-input-number><br />
+							<n8n-input-number :controls="false" size="small" v-model="timeoutHMS.seconds" :min="0" placeholder="seconds" type="number" class="el-input_inner"></n8n-input-number><br />
 							<div class="timeout-setting-name">seconds</div>
 						</el-col>
 					</el-row>
@@ -469,7 +469,7 @@ export default mixins(
 			});
 
 			this.closeDialog();
-			
+
 			this.$externalHooks().run('workflowSettings.saveSettings', { oldSettings });
 		},
 		toggleTimeout() {
@@ -495,10 +495,6 @@ export default mixins(
 	.el-row {
 		padding: 0.25em 0;
 	}
-}
-
-.el-input-number {
-	width: calc(100% - 20px);
 }
 
 .action-buttons {

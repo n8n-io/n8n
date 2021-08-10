@@ -2,10 +2,10 @@
 	<el-row class="parameter-wrapper">
 		<el-col :span="isMultiLineParameter ? 24 : 10" class="parameter-name" :class="{'multi-line': isMultiLineParameter}">
 			<span class="title" :title="parameter.displayName">{{parameter.displayName}}</span>:
-			<el-tooltip class="parameter-info" placement="top" v-if="parameter.description" effect="light">
+			<n8n-tooltip class="parameter-info" placement="top" v-if="parameter.description" >
 				<div slot="content" v-html="parameter.description"></div>
 				<font-awesome-icon icon="question-circle" />
-			</el-tooltip>
+			</n8n-tooltip>
 		</el-col>
 		<el-col :span="isMultiLineParameter ? 24 : 14" class="parameter-value">
 			<parameter-input :parameter="parameter" :value="value" :displayOptions="displayOptions" :path="path" @valueChanged="valueChanged" />

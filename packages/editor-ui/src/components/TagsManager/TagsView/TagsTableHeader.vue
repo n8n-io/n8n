@@ -1,7 +1,7 @@
 <template>
 	<el-row class="tags-header">
 		<el-col :span="10">
-			<el-input
+			<n8n-input
 				placeholder="Search tags"
 				:value="search"
 				@input="onSearchChange"
@@ -10,7 +10,7 @@
 				:maxlength="maxLength"
 			>
 				<i slot="prefix" class="el-input__icon el-icon-search"></i>
-			</el-input>
+			</n8n-input>
 		</el-col>
 		<el-col :span="14">
 			<n8n-button @click="onAddNew" :disabled="disabled" icon="plus" label="Add new" size="lg" float="right" />

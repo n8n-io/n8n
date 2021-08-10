@@ -228,34 +228,6 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 
-// Color-Picker
-.color-picker {
-	.el-color-picker__trigger {
-		border: none;
-		background: none;
-		padding: 2px 0 0 4px;
-		.el-color-picker__icon {
-			color: $--color-primary;
-			left: 14px;
-		}
-	}
-	.el-color-picker__color {
-		position: relative;
-		top: 2px;
-		width: 20px;
-		height: 20px;
-		border: none;
-	}
-	.el-color-picker__color:hover {
-		transform: scale(1.1);
-	}
-	.el-color-picker__color-inner {
-		border: none;
-		border-radius: 11px;
-	}
-}
-
-
 // Date selector
 .el-date-editor.el-input {
 	width: 100%;
@@ -281,51 +253,6 @@ h1, h2, h3, h4, h5, h6 {
 	color: #fff;
 }
 
-
-// Input
-.el-input__inner {
-	border-radius: 20px;
-	text-overflow: ellipsis;
-}
-.el-input--small .el-input__inner {
-	border-radius: 13px;
-}
-.el-input__inner,
-.el-input__inner:hover {
-	background-color: $--custom-input-background;
-	color: $--custom-input-font;
-	border: none;
-	outline: 0;
-}
-
-
-// Number Input
-.el-input-number {
-	background-color: $--custom-input-background;
-	border-radius: 16px;
-	width: 100%;
-
-	.el-input-number__decrease,
-	.el-input-number__increase {
-		border: none;
-		color: #fff;
-		background-color: $--custom-table-background-main;
-		width: 20px;
-		height: 20px;
-		line-height: 20px;
-		border-radius: 10px;
-		margin: 3px;
-	}
-	.el-input-number__decrease:hover,
-	.el-input-number__increase:hover {
-		transform: scale(1.1);
-	}
-	.el-input-number__decrease.is-disabled,
-	.el-input-number__increase.is-disabled {
-		background-color: $--custom-input-background-disabled;
-	}
-}
-
 // Transfer list (nodes)
 .el-transfer {
 	.el-transfer-panel {
@@ -347,32 +274,6 @@ h1, h2, h3, h4, h5, h6 {
 		background-color: #fff;
 	}
 }
-
-.el-input.is-disabled .el-input__inner {
-	background-color: $--custom-input-background-disabled;
-	border-color: #555;
-	color: $--custom-input-font-disabled;
-}
-
-// Textarea
-.ql-editor,
-.el-textarea textarea,
-.el-textarea textarea:active,
-.el-textarea textarea:focus,
-.el-textarea textarea:hover {
-	background-color: $--custom-input-background;
-	color: $--custom-input-font;
-	border: none;
-	border-radius: 3px;
-	outline: 0;
-	padding: 0.8em 1em;
-	line-height: 1.5em;
-}
-.el-textarea.is-disabled .el-textarea__inner {
-	background-color: $--custom-input-background-disabled;
-	color: $--custom-input-font-disabled;
-}
-
 
 // Tabs
 .type-selector:focus,
@@ -411,14 +312,6 @@ h1, h2, h3, h4, h5, h6 {
 .el-pager li.btn-quicknext,
 .el-pager li.btn-quickprev {
 	color: #555;
-}
-
-// Tooltip
-.el-tooltip__popper.is-light {
-	border: none;
-	-webkit-box-shadow: 0px 0px 12px 0px rgba(0,0,0,0.15);
-	-moz-box-shadow: 0px 0px 12px 0px rgba(0,0,0,0.15);
-	box-shadow: 0px 0px 12px 0px rgba(0,0,0,0.15);
 }
 
 // Notification

@@ -240,26 +240,16 @@ $--border-radius: 20px;
 .tags-container {
 	overflow: hidden;
 	border: 1px solid transparent;
-	border-radius: $--border-radius;
-
-	&.focused {
-		border: 1px solid $--color-primary;
-	}
 }
 
 ::v-deep .el-select {
 	.el-select__tags {
 		max-height: $--max-input-height;
-		border-radius: $--border-radius;
 		overflow-y: scroll;
 		overflow-x: hidden;
 
 		// firefox fix for scrollbars
 		scrollbar-color: $--scrollbar-thumb-color transparent;
-	}
-
-	.el-input.is-focus {
-		border-radius: $--border-radius;
 	}
 
 	input {

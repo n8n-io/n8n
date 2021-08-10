@@ -5,7 +5,6 @@
 @include mixins.b(input-number) {
 	position: relative;
 	display: inline-block;
-	width: 180px;
 	line-height: #{var.$input-height - 2};
 
 	.el-input {
@@ -85,7 +84,6 @@
 	}
 
 	@include mixins.m(small) {
-		width: 130px;
 		line-height: #{var.$input-small-height - 2};
 
 		@include mixins.e((increase, decrease)) {
@@ -104,7 +102,6 @@
 	}
 
 	@include mixins.m(mini) {
-		width: 130px;
 		line-height: #{var.$input-mini-height - 2};
 
 		@include mixins.e((increase, decrease)) {

@@ -10,9 +10,9 @@
 				<prism-editor v-if="!codeEditDialogVisible" :lineNumbers="true" :readonly="true" :code="displayValue" language="js"></prism-editor>
 			</div>
 
-			<el-input v-else v-model="tempValue" ref="inputField" size="small" :type="getStringInputType" :rows="getArgument('rows')" :value="displayValue" :disabled="!isValueExpression && isReadOnly" @change="valueChanged" @keydown.stop @focus="setFocus" :title="displayTitle" :placeholder="isValueExpression?'':parameter.placeholder">
+			<n8n-input v-else v-model="tempValue" ref="inputField" size="small" :type="getStringInputType" :rows="getArgument('rows')" :value="displayValue" :disabled="!isValueExpression && isReadOnly" @change="valueChanged" @keydown.stop @focus="setFocus" :title="displayTitle" :placeholder="isValueExpression?'':parameter.placeholder">
 				<font-awesome-icon v-if="!isValueExpression && !isReadOnly" slot="suffix" icon="external-link-alt" class="edit-window-button clickable" title="Open Edit Window" @click="displayEditDialog()" />
-			</el-input>
+			</n8n-input>
 		</div>
 		<div v-else-if="parameter.type === 'dateTime'">
 			<el-date-picker
@@ -34,7 +34,7 @@
 
 		<div v-else-if="parameter.type === 'number'">
 			<!-- <el-slider :value="value" @input="valueChanged"></el-slider> -->
-			<el-input-number ref="inputField" size="small" :value="displayValue" :max="getArgument('maxValue')" :min="getArgument('minValue')" :precision="getArgument('numberPrecision')" :step="getArgument('numberStepSize')" :disabled="isReadOnly" @change="valueChanged" @focus="setFocus" @keydown.stop :title="displayTitle" :placeholder="parameter.placeholder"></el-input-number>
+			<n8n-input-number ref="inputField" size="small" :value="displayValue" :controls="false" :max="getArgument('maxValue')" :min="getArgument('minValue')" :precision="getArgument('numberPrecision')" :step="getArgument('numberStepSize')" :disabled="isReadOnly" @change="valueChanged" @focus="setFocus" @keydown.stop :title="displayTitle" :placeholder="parameter.placeholder"></n8n-input-number>
 		</div>
 
 		<el-select
@@ -83,7 +83,7 @@
 
 		<div v-else-if="parameter.type === 'color'" ref="inputField" class="color-input">
 			<el-color-picker :value="displayValue" :disabled="isReadOnly" @change="valueChanged" size="small" class="color-picker" @focus="setFocus" :title="displayTitle" :show-alpha="getArgument('showAlpha')"></el-color-picker>
-			<el-input v-model="tempValue" size="small" type="text" :value="tempValue" :disabled="isReadOnly" @change="valueChanged" @keydown.stop @focus="setFocus" :title="displayTitle" ></el-input>
+			<n8n-input v-model="tempValue" size="small" type="text" :value="tempValue" :disabled="isReadOnly" @change="valueChanged" @keydown.stop @focus="setFocus" :title="displayTitle" ></n8n-input>
 		</div>
 
 		<div v-else-if="parameter.type === 'boolean'">
@@ -106,10 +106,10 @@
 
 	</div>
 	<div class="parameter-issues" v-if="getIssues.length">
-		<el-tooltip placement="top" effect="light">
+		<n8n-tooltip placement="top" >
 			<div slot="content" v-html="'Issues:<br />&nbsp;&nbsp;- ' + getIssues.join('<br />&nbsp;&nbsp;- ')"></div>
 			<font-awesome-icon icon="exclamation-triangle" />
-		</el-tooltip>
+		</n8n-tooltip>
 	</div>
 
 	</div>
@@ -575,7 +575,7 @@ export default mixins(
 				} else if (command === 'removeExpression') {
 					this.valueChanged(this.expressionValueComputed || null);
 				} else if (command === 'refreshOptions') {
-					this.loadRemoteParameterOptions();	
+					this.loadRemoteParameterOptions();
 				}
 			},
 		},
@@ -645,17 +645,12 @@ export default mixins(
 	font-size: 1.2em;
 }
 
-.color-input {
-	background-color: $--custom-input-background;
-	border-radius: 16px;
+::v-deep .color-input {
 	line-height: 2.2em;
+	display: flex;
 
-	.el-input {
-		width: 90px;
-	}
-	.color-picker {
-		float: left;
-		z-index: 10;
+	.el-color-picker__trigger {
+		border: none;
 	}
 }
 
@@ -687,54 +682,13 @@ export default mixins(
 		border: 1px dashed $--custom-expression-text;
 	}
 
-	.el-input > .el-input__inner,
-	.el-select > .el-input__inner,
-	.el-textarea textarea,
-	.el-textarea textarea:active,
-	.el-textarea textarea:focus,
-	.el-textarea textarea:hover,
-	.el-input-number,
-	.color-input {
-		border: 1px dashed $--custom-expression-text;
-		color: $--custom-expression-text;
-		background-color: $--custom-expression-background;
-	}
-
-	.el-input-number input,
-	.color-input .el-input__inner {
-		background-color: $--custom-expression-background;
-	}
-
-	// Overwrite again for number and color inputs to not create
-	// a second border inside of the already existing one
-	.color-input .el-input > .el-input__inner,
-	.el-input-number .el-input > .el-input__inner {
-		border: none;
-		background-color: none;
-	}
+	--input-border-color: #{$--custom-expression-text};
+	--input-border-style: dashed;
+	--input-background-color: #{$--custom-expression-background};
 }
 
 .has-issues {
-	.el-textarea textarea,
-	.el-textarea textarea:active,
-	.el-textarea textarea:focus,
-	.el-textarea textarea:hover,
-	.el-input-number input,
-	.el-input-number input:active,
-	.el-input-number input:focus,
-	.el-input-number input:hover,
-	.el-input-number [role="button"],
-	.el-input-number [role="button"]:active,
-	.el-input-number [role="button"]:focus,
-	.el-input-number [role="button"]:hover,
-	.el-input input,
-	.el-input input:active,
-	.el-input input:focus,
-	.el-input input:hover {
-		border-width: 1px;
-		border-color: #ff8080;
-		border-style: solid;
-	}
+	--input-border-color: var(--color-danger);
 }
 
 .el-dropdown {

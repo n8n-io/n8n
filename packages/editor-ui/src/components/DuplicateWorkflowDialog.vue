@@ -4,11 +4,11 @@
 		:eventBus="modalBus"
 		@enter="save"
 		size="sm"
-		title="Duplicate Workflow"	
+		title="Duplicate Workflow"
 	>
 		<template v-slot:content>
 			<el-row>
-				<el-input
+				<n8n-input
 					v-model="name"
 					ref="nameInput"
 					placeholder="Enter workflow name"
