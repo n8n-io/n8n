@@ -10,7 +10,20 @@ export default {
 		},
 		placement: {
 			control: 'select',
-			options: ['top', 'top-start', 'top-end', 'bottom', 'bottom-start', 'bottom-end', 'left', 'left-start', 'left-end', 'right', 'right-start', 'right-end'],
+			options: [
+				'top',
+				'top-start',
+				'top-end',
+				'bottom',
+				'bottom-start',
+				'bottom-end',
+				'left',
+				'left-start',
+				'left-end',
+				'right',
+				'right-start',
+				'right-end',
+			],
 		},
 		disabled: {
 			control: { type: 'boolean' },
@@ -26,7 +39,8 @@ const Template = (args, { argTypes }) => ({
 	components: {
 		N8nTooltip,
 	},
-	template: '<n8n-tooltip v-bind="$props"><div style="margin:50px; display: inline-block;"><span>yo</span></div></n8n-tooltip>',
+	template:
+		'<n8n-tooltip v-bind="$props"><div style="margin:50px; display: inline-block;"><span>yo</span></div></n8n-tooltip>',
 });
 
 export const Tooltip = Template.bind({});

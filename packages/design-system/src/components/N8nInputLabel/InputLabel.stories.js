@@ -4,8 +4,7 @@ import N8nInput from '../N8nInput';
 export default {
 	title: 'Atoms/Input Label',
 	component: N8nInputLabel,
-	argTypes: {
-	},
+	argTypes: {},
 	parameters: {
 		backgrounds: { default: '--color-background-light' },
 	},
@@ -17,7 +16,8 @@ const Template = (args, { argTypes }) => ({
 		N8nInputLabel,
 		N8nInput,
 	},
-	template: '<div style="margin-top:50px"><n8n-input-label v-bind="$props"><n8n-input /></n8n-input-label></div>',
+	template:
+		'<div style="margin-top:50px"><n8n-input-label v-bind="$props"><n8n-input /></n8n-input-label></div>',
 });
 
 export const InputLabel = Template.bind({});
