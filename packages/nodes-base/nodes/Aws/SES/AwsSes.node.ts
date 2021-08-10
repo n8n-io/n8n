@@ -1091,7 +1091,7 @@ export class AwsSes implements INodeType {
 						];
 
 						if (isBodyHtml) {
-							params.push(`Message.Body.Html.Data=${encodeURI(message)}`);
+							params.push(`Message.Body.Html.Data=${encodeURIComponent(message)}`);
 						} else {
 							params.push(`Message.Body.Text.Data=${encodeURI(message)}`);
 						}
