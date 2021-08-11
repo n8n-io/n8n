@@ -93,6 +93,13 @@
 			<div class="expression-info clickable" @click="expressionEditDialogVisible = true">Edit Expression</div>
 		</div>
 	</div>
+	<div class="parameter-issues" v-if="getIssues.length">
+		<n8n-tooltip placement="top" >
+			<div slot="content" v-html="'Issues:<br />&nbsp;&nbsp;- ' + getIssues.join('<br />&nbsp;&nbsp;- ')"></div>
+			<font-awesome-icon icon="exclamation-triangle" />
+		</n8n-tooltip>
+	</div>
+
 	<div class="parameter-options" v-if="displayOptionsComputed">
 			<el-dropdown trigger="click" @command="optionSelected" size="mini">
 				<span class="el-dropdown-link">
@@ -105,13 +112,6 @@
 					<el-dropdown-item command="resetValue" :disabled="isDefault" divided>Reset Value</el-dropdown-item>
 				</el-dropdown-menu>
 			</el-dropdown>
-
-	</div>
-	<div class="parameter-issues" v-if="getIssues.length">
-		<n8n-tooltip placement="top" >
-			<div slot="content" v-html="'Issues:<br />&nbsp;&nbsp;- ' + getIssues.join('<br />&nbsp;&nbsp;- ')"></div>
-			<font-awesome-icon icon="exclamation-triangle" />
-		</n8n-tooltip>
 	</div>
 
 	</div>
@@ -163,6 +163,7 @@ export default mixins(
 			'path', // string
 			'value',
 			'isCredential', // boolean
+			'multiline', //boolean
 		],
 		data () {
 			return {
@@ -417,6 +418,9 @@ export default mixins(
 			},
 			parameterInputClasses () {
 				const classes = [];
+				if (!this.multiline) {
+					classes.push('parameter-input-container');
+				}
 				if (this.isValueExpression) {
 					classes.push('expression');
 				}
@@ -628,6 +632,15 @@ export default mixins(
 </script>
 
 <style scoped lang="scss">
+
+.parameter-input-container {
+	display: flex;
+}
+
+.parameter-actions {
+	display: inline-flex;
+	align-items: center;
+}
 
 .parameter-input {
 	display: inline-block;

@@ -13,12 +13,7 @@
 					{{credentialTypeNames[credentialTypeDescription.name]}}:
 				</el-col>
 				<el-col :span="12" class="parameter-value" :class="getIssues(credentialTypeDescription.name).length?'has-issues':''">
-					<div class="credential-issues">
-						<n8n-tooltip placement="top" >
-							<div slot="content" v-html="'Issues:<br />&nbsp;&nbsp;- ' + getIssues(credentialTypeDescription.name).join('<br />&nbsp;&nbsp;- ')"></div>
-							<font-awesome-icon icon="exclamation-triangle" />
-						</n8n-tooltip>
-					</div>
+
 					<div :style="credentialInputWrapperStyle(credentialTypeDescription.name)">
 						<n8n-select v-model="credentials[credentialTypeDescription.name]" :disabled="isReadOnly" @change="credentialSelected(credentialTypeDescription.name)" placeholder="Select Credential" size="medium">
 							<n8n-option
@@ -29,8 +24,16 @@
 							</n8n-option>
 						</n8n-select>
 					</div>
+
+					<div class="credential-issues">
+						<n8n-tooltip placement="top" >
+							<div slot="content" v-html="'Issues:<br />&nbsp;&nbsp;- ' + getIssues(credentialTypeDescription.name).join('<br />&nbsp;&nbsp;- ')"></div>
+							<font-awesome-icon icon="exclamation-triangle" />
+						</n8n-tooltip>
+					</div>
+
 				</el-col>
-				<el-col :span="2" class="parameter-value">
+				<el-col :span="2" class="parameter-value credential-action">
 					<font-awesome-icon v-if="credentials[credentialTypeDescription.name]" icon="pen" @click="updateCredentials(credentialTypeDescription.name)" class="update-credentials clickable" title="Update Credentials" />
 				</el-col>
 
@@ -305,10 +308,15 @@ export default mixins(
 		font-weight: 400;
 	}
 
-	.update-credentials {
-		position: absolute;
-		top: 7px;
-		right: 3px;
+	.parameter-value {
+		display: flex;
+		align-items: center;
+	}
+
+	.credential-action {
+		display: flex;
+		justify-content: center;
+		align-items: center;
 	}
 }
 

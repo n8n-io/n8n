@@ -121,8 +121,9 @@
 
 	@include mixins.when(without-controls) {
 		.el-input__inner {
-			padding-left: 15px;
-			padding-right: 15px;
+			text-align: left;
+			padding-left: 12px;
+			padding-right: 12px;
 		}
 	}
 
