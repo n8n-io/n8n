@@ -21,7 +21,7 @@
 				v-model="tempValue"
 				ref="inputField"
 				type="datetime"
-				size="small"
+				size="medium"
 				:value="displayValue"
 				:title="displayTitle"
 				:disabled="isReadOnly"
