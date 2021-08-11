@@ -781,6 +781,13 @@ export class GoogleDrive implements INodeType {
 				},
 				options: [
 					{
+						displayName: 'File Name',
+						name: 'fileName',
+						type: 'string',
+						default: '',
+						description: `The name of the file`,
+					},
+					{
 						displayName: 'Keep Revision Forever',
 						name: 'keepRevisionForever',
 						type: 'boolean',
@@ -788,13 +795,6 @@ export class GoogleDrive implements INodeType {
 						description: `Whether to set the 'keepForever' field in the new head revision.</br>
 						his is only applicable to files with binary content in Google Drive.</br>
 						Only 200 revisions for the file can be kept forever. If the limit is reached, try deleting pinned revisions.`,
-					},
-					{
-						displayName: 'Name',
-						name: 'name',
-						type: 'string',
-						default: '',
-						description: `The name of the file`,
 					},
 					{
 						displayName: 'OCR Language',
@@ -2325,7 +2325,7 @@ export class GoogleDrive implements INodeType {
 						const properties = this.getNodeParameter('options.propertiesUi.propertyValues', i, []) as IDataObject[];
 
 						if (properties.length) {
-							Object.assign(body, { properties: properties.reduce((obj, value) => Object.assign(obj, { [`${value.key}`]: value.value }), {}) } );	
+							Object.assign(body, { properties: properties.reduce((obj, value) => Object.assign(obj, { [`${value.key}`]: value.value }), {}) } );
 						}
 
 						const appProperties = this.getNodeParameter('options.appPropertiesUi.appPropertyValues', i, []) as IDataObject[];
@@ -2365,8 +2365,8 @@ export class GoogleDrive implements INodeType {
 
 						const body: IDataObject = {};
 
-						if (updateFields.name) {
-							body.name = updateFields.name;
+						if (updateFields.fileName) {
+							body.name = updateFields.fileName;
 						}
 
 						if (updateFields.parentId && updateFields.parentId !== '') {
