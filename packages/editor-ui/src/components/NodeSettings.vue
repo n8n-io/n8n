@@ -607,6 +607,7 @@ export default mixins(
 	}
 
 	.el-select.add-option .el-input .el-select__caret {
+		line-height: 1;
 		color: #fff;
 	}
 }
