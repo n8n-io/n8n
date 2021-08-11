@@ -168,11 +168,6 @@ export default Vue.extend({
 	min-height: 45px;
 	display: flex;
 	align-items: center;
-
-	::v-deep input {
-		border: 1px solid $--color-primary;
-		background: white;
-	}
 }
 
 .ops {
