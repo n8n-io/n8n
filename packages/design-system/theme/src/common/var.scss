@@ -593,7 +593,7 @@ $input-disabled-color: $disabled-color-base !default;
 $input-disabled-placeholder-color: $color-text-placeholder !default;
 
 /// fontSize||Font|1
-$input-medium-font-size: 14px !default;
+$input-medium-font-size: var(--input-font-size, 14px);
 /// height||Other|4
 $input-medium-height: 36px !default;
 /// fontSize||Font|1

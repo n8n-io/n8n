@@ -571,6 +571,7 @@ export default mixins(
 
 		.add-option {
 			width: 100%;
+			--input-font-size: 12px;
 		}
 
 		.add-option > .el-input input::placeholder {
