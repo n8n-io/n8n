@@ -1497,7 +1497,7 @@ export class Pipedrive implements INodeType {
 				},
 				default: 100,
 				description: 'How many results to return.',
-			}, 
+			},
 			{
 				displayName: 'Additional Fields',
 				name: 'additionalFields',
@@ -3332,10 +3332,10 @@ export class Pipedrive implements INodeType {
 			//         deal: getAll
 			// ----------------------------------
 			{
-				displayName: 'Additional Fields',
-				name: 'additionalFields',
+				displayName: 'Filters',
+				name: 'filters',
 				type: 'collection',
-				placeholder: 'Add Field',
+				placeholder: 'Add Filter',
 				displayOptions: {
 					show: {
 						operation: [
@@ -3349,24 +3349,14 @@ export class Pipedrive implements INodeType {
 				default: {},
 				options: [
 					{
-						displayName: 'User Id',
-						name: 'user_id',
-						type: 'options',
-						typeOptions: {
-							loadOptionsMethod: 'getUserIds',
-						},
-						default: '',
-						description: 'ID of the user deals are associated with',
-					},
-					{
-						displayName: 'Filter ID',
+						displayName: 'Predefined Filter',
 						name: 'filter_id',
 						type: 'options',
 						typeOptions: {
 							loadOptionsMethod: 'getFilterIds',
 						},
 						default: '',
-						description: 'ID of the Filter that matches for Deals associated with.',
+						description: 'Predefined filter to apply to the deals to retrieve',
 					},
 					{
 						displayName: 'Stage ID',
@@ -3376,13 +3366,25 @@ export class Pipedrive implements INodeType {
 							loadOptionsMethod: 'getStageIds',
 						},
 						default: '',
-						description: 'ID of the Stage, only deals within the given stage will be returned.',
+						description: 'ID of the stage to filter deals by',
 					},
 					{
 						displayName: 'Status',
 						name: 'status',
 						type: 'options',
 						options: [
+							{
+								name: 'All Not Deleted',
+								value: 'all_not_deleted',
+							},
+							{
+								name: 'Deleted',
+								value: 'deleted',
+							},
+							{
+								name: 'Lost',
+								value: 'lost',
+							},
 							{
 								name: 'Open',
 								value: 'open',
@@ -3391,21 +3393,19 @@ export class Pipedrive implements INodeType {
 								name: 'Won',
 								value: 'won',
 							},
-							{
-								name: 'Lost',
-								value: 'lost',
-							},
-							{
-								name: 'Deleted',
-								value: 'deleted',
-							},
-							{
-								name: 'All not deleted',
-								value: 'all_not_deleted',
-							},
 						],
 						default: 'all_not_deleted',
-						description: 'The status of the deal. If not provided it will automatically be set to "all_not_deleted".',
+						description: 'Status to filter deals by. Defaults to <code>all_not_deleted</code>',
+					},
+					{
+						displayName: 'User ID',
+						name: 'user_id',
+						type: 'options',
+						typeOptions: {
+							loadOptionsMethod: 'getUserIds',
+						},
+						default: '',
+						description: 'ID of the user to filter deals by',
 					},
 				],
 			},
@@ -3440,7 +3440,7 @@ export class Pipedrive implements INodeType {
 			// select them easily
 			async getFilterIds(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-				const { data } = await pipedriveApiRequest.call(this, 'GET', '/filters', {});
+				const { data } = await pipedriveApiRequest.call(this, 'GET', '/filters', {}, { type: 'deals' });
 				for (const filter of data) {
 					returnData.push({
 						name: filter.name,
@@ -3932,8 +3932,8 @@ export class Pipedrive implements INodeType {
 						if (returnAll === false) {
 							qs.limit = this.getNodeParameter('limit', i) as number;
 						}
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
-						addAdditionalFields(qs, additionalFields);
+						const filters = this.getNodeParameter('filters', i) as IDataObject;
+						addAdditionalFields(qs, filters);
 
 						endpoint = `/deals`;
 
