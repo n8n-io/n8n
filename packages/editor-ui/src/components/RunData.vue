@@ -21,7 +21,7 @@
 					Items: {{ dataCount }}
 				</strong>
 				<strong v-else>Items:
-					<n8n-select v-model="maxDisplayItems" @click.stop>
+					<n8n-select class="opts" size="mini" v-model="maxDisplayItems" @click.stop>
 						<n8n-option v-for="option in maxDisplayItemsOptions" :label="option" :value="option" :key="option" />
 					</n8n-select>&nbsp;/
 					{{ dataCount }}
@@ -39,14 +39,14 @@
 				</el-popover>
 				<span v-if="maxOutputIndex > 0">
 					| Output:
-					<n8n-select v-model="outputIndex" @click.stop>
+					<n8n-select class="opts" size="mini" v-model="outputIndex" @click.stop>
 						<n8n-option v-for="option in (maxOutputIndex + 1)" :label="getOutputName(option-1)" :value="option -1" :key="option">
 						</n8n-option>
 					</n8n-select>
 				</span>
 				<span v-if="maxRunIndex > 0">
 					| Data of Execution:
-					<n8n-select v-model="runIndex" @click.stop>
+					<n8n-select class="opts" size="mini" v-model="runIndex" @click.stop>
 						<n8n-option v-for="option in (maxRunIndex + 1)" :label="option + '/' + (maxRunIndex+1)" :value="option-1" :key="option">
 						</n8n-option>
 					</n8n-select>
@@ -798,21 +798,9 @@ export default mixins(
 			}
 		}
 
-		.el-select {
+		.opts {
 			width: 80px;
 			z-index: 1;
-
-			.el-input__suffix-inner {
-				// TODO: Not sure why I have to do that. Invesigate when I have some time
-				position: absolute;
-				top: -5px;
-				right: 0;
-			}
-
-			input.el-input__inner {
-				height: 25px;
-				line-height: 25px;
-			}
 		}
 	}
 }
