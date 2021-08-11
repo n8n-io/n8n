@@ -12,7 +12,7 @@
 					<div class="parameter-item-wrapper">
 						<div class="delete-option" v-if="!isReadOnly">
 							<font-awesome-icon icon="trash" class="reset-icon clickable" title="Delete Item" @click="deleteOption(property.name, index)" />
-							<div v-if="sortable">
+							<div v-if="sortable" class="sort-icon">
 								<font-awesome-icon v-if="index !== 0" icon="angle-up" class="clickable" title="Move up" @click="moveOptionUp(property.name, index)" />
 								<font-awesome-icon v-if="index !== (values[property.name].length -1)" icon="angle-down" class="clickable" title="Move down" @click="moveOptionDown(property.name, index)" />
 							</div>
@@ -240,7 +240,7 @@ export default mixins(genericHelpers)
 	z-index: 999;
 	color: #f56c6c;
 	left: 0;
-	top: 0;
+	top: .5em;
 	width: 15px;
 	height: 100%;
 }
@@ -264,5 +264,9 @@ export default mixins(genericHelpers)
 
 .no-items-exist {
 	margin: 0.8em 0;
+}
+
+.sort-icon {
+	margin-top: .5em;
 }
 </style>
