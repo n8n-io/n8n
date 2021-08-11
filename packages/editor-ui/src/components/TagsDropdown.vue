@@ -235,7 +235,6 @@ export default mixins(showMessage).extend({
 
 <style lang="scss" scoped>
 $--max-input-height: 60px;
-$--border-radius: 20px;
 
 .tags-container {
 	overflow: hidden;
@@ -355,6 +354,7 @@ $--border-radius: 20px;
 			position: absolute;
 			bottom: 0;
 			min-width: $--dropdown-width;
+			border-top: 1px solid var(--color-foreground-base);
 		}
 	}
 }
