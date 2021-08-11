@@ -9,7 +9,7 @@
 				</n8n-tooltip>
 			</el-col>
 			<el-col :span="18">
-				<n8n-input size="small" type="text" v-model="name"></n8n-input>
+				<n8n-input size="medium" type="text" v-model="name"></n8n-input>
 			</el-col>
 		</el-row>
 		<br />
@@ -545,7 +545,9 @@ export default mixins(
 	}
 
 	.parameter-wrapper {
-		line-height: 3em;
+		display: flex;
+		align-items: center;
+		margin: 8px 0;
 
 		.parameter-name {
 			position: relative;

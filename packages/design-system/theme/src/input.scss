@@ -19,9 +19,13 @@
 		color: var.$input-font-color;
 		background-color: var.$input-background-color;
 		background-image: none;
-		border: var.$input-border;
 		border-radius: var.$input-border-radius;
 		transition: var.$border-transition-base;
+
+		&,
+		&:hover {
+			border: var.$input-border;
+		}
 
 		&::placeholder {
 			color: var.$input-placeholder-color;

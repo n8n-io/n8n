@@ -633,14 +633,15 @@ export default mixins(
 }
 
 .parameter-wrapper {
-	line-height: 2.7em;
 	padding: 0 1em;
 }
+
 .parameter-name {
-	line-height: 2.7em;
+	line-height: 1.5;
 	white-space: nowrap;
 	overflow: hidden;
 	text-overflow: ellipsis;
+	align-self: center;
 }
 
 .color-reset-button-wrapper {

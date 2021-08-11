@@ -10,8 +10,10 @@
 				<prism-editor v-if="!codeEditDialogVisible" :lineNumbers="true" :readonly="true" :code="displayValue" language="js"></prism-editor>
 			</div>
 
-			<n8n-input v-else v-model="tempValue" ref="inputField" size="small" :type="getStringInputType" :rows="getArgument('rows')" :value="displayValue" :disabled="!isValueExpression && isReadOnly" @change="valueChanged" @keydown.stop @focus="setFocus" :title="displayTitle" :placeholder="isValueExpression?'':parameter.placeholder">
-				<font-awesome-icon v-if="!isValueExpression && !isReadOnly" slot="suffix" icon="external-link-alt" class="edit-window-button clickable" title="Open Edit Window" @click="displayEditDialog()" />
+			<n8n-input v-else v-model="tempValue" ref="inputField" size="medium" :type="getStringInputType" :rows="getArgument('rows')" :value="displayValue" :disabled="!isValueExpression && isReadOnly" @change="valueChanged" @keydown.stop @focus="setFocus" :title="displayTitle" :placeholder="isValueExpression?'':parameter.placeholder">
+				<div slot="suffix" class="expand-input-icon-container">
+					<font-awesome-icon v-if="!isValueExpression && !isReadOnly" icon="external-link-alt" class="edit-window-button clickable" title="Open Edit Window" @click="displayEditDialog()" />
+				</div>
 			</n8n-input>
 		</div>
 		<div v-else-if="parameter.type === 'dateTime'">
@@ -40,7 +42,7 @@
 		<n8n-select
 			v-else-if="parameter.type === 'options'"
 			ref="inputField"
-			size="small"
+			size="medium"
 			filterable
 			:value="displayValue"
 			:loading="remoteParameterOptionsLoading"
@@ -64,7 +66,7 @@
 		<n8n-select
 			v-else-if="parameter.type === 'multiOptions'"
 			ref="inputField"
-			size="small"
+			size="medium"
 			filterable
 			multiple
 			:value="displayValue"
@@ -83,7 +85,7 @@
 
 		<div v-else-if="parameter.type === 'color'" ref="inputField" class="color-input">
 			<el-color-picker :value="displayValue" :disabled="isReadOnly" @change="valueChanged" size="small" class="color-picker" @focus="setFocus" :title="displayTitle" :show-alpha="getArgument('showAlpha')"></el-color-picker>
-			<n8n-input v-model="tempValue" size="small" type="text" :value="tempValue" :disabled="isReadOnly" @change="valueChanged" @keydown.stop @focus="setFocus" :title="displayTitle" ></n8n-input>
+			<n8n-input v-model="tempValue" size="medium" type="text" :value="tempValue" :disabled="isReadOnly" @change="valueChanged" @keydown.stop @focus="setFocus" :title="displayTitle" ></n8n-input>
 		</div>
 
 		<div v-else-if="parameter.type === 'boolean'">
@@ -646,7 +648,6 @@ export default mixins(
 }
 
 ::v-deep .color-input {
-	line-height: 2.2em;
 	display: flex;
 
 	.el-color-picker__trigger {
@@ -661,6 +662,7 @@ export default mixins(
 .ql-editor {
 	padding: 6px;
 	line-height: 26px;
+	background-color: #f0f0f0;
 }
 
 .expression-info {
@@ -672,7 +674,6 @@ export default mixins(
 		background-color: #441133;
 		color: #fff;
 		font-size: 0.7em;
-		line-height: 2.5em;
 		padding: 0 0.5em;
 		margin-left: 1em;
 		border-radius: 3px;
@@ -715,6 +716,12 @@ li:not(.selected) .option-description {
 
 .parameter-input:hover .edit-window-button {
 	display: inline;
+}
+
+.expand-input-icon-container {
+	display: flex;
+	height: 100%;
+	align-items: center;
 }
 
 </style>

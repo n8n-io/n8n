@@ -11,15 +11,10 @@
 @include mixins.b(select) {
 	display: inline-block;
 	position: relative;
+	width: 100%;
 
 	.el-select__tags > span {
 		display: contents;
-	}
-
-	&:hover {
-		.el-input__inner {
-			border-color: var.$select-border-color-hover;
-		}
 	}
 
 	.el-input__inner {
@@ -127,6 +122,7 @@
 		border-color: transparent;
 		margin: 2px 0 2px 6px;
 		background-color: #f0f2f5;
+		color: #333;
 
 		&__close.el-icon-close {
 			background-color: var.$color-text-placeholder;

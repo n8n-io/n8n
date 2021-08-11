@@ -289,6 +289,7 @@ export default mixins(
 
 	.parameter-item {
 		position: relative;
+		margin: 8px 0;
 
 		>.delete-option {
 			left: -0.9em;

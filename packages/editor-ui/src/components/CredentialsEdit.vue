@@ -30,7 +30,7 @@
 						Credential type:
 					</el-col>
 					<el-col :span="18">
-						<n8n-select v-model="credentialType" filterable placeholder="Select Type" size="small" ref="credentialsDropdown">
+						<n8n-select v-model="credentialType" filterable placeholder="Select Type" size="medium" ref="credentialsDropdown">
 							<n8n-option
 								v-for="item in credentialTypes"
 								:key="item.name"

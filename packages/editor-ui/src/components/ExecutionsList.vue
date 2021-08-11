@@ -7,7 +7,7 @@
 						Filters:
 					</el-col>
 					<el-col :span="6">
-						<n8n-select v-model="filter.workflowId" placeholder="Select Workflow" size="small" filterable @change="handleFilterChanged">
+						<n8n-select v-model="filter.workflowId" placeholder="Select Workflow" size="medium" filterable @change="handleFilterChanged">
 							<n8n-option
 								v-for="item in workflows"
 								:key="item.id"
@@ -19,7 +19,7 @@
 					<el-col :span="2">&nbsp;
 					</el-col>
 					<el-col :span="4">
-						<n8n-select v-model="filter.status" placeholder="Select Status" size="small" filterable @change="handleFilterChanged">
+						<n8n-select v-model="filter.status" placeholder="Select Status" size="medium" filterable @change="handleFilterChanged">
 							<n8n-option
 								v-for="item in statuses"
 								:key="item.id"

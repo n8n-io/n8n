@@ -7,7 +7,7 @@
 		</div>
 
 		<div v-for="credentialTypeDescription in credentialTypesNodeDescriptionDisplayed" :key="credentialTypeDescription.name" class="credential-data">
-			<el-row v-if="displayCredentials(credentialTypeDescription)">
+			<el-row v-if="displayCredentials(credentialTypeDescription)" class="credential-parameter-wrapper">
 
 				<el-col :span="10" class="parameter-name">
 					{{credentialTypeNames[credentialTypeDescription.name]}}:
@@ -20,7 +20,7 @@
 						</n8n-tooltip>
 					</div>
 					<div :style="credentialInputWrapperStyle(credentialTypeDescription.name)">
-						<n8n-select v-model="credentials[credentialTypeDescription.name]" :disabled="isReadOnly" @change="credentialSelected(credentialTypeDescription.name)" placeholder="Select Credential" size="small">
+						<n8n-select v-model="credentials[credentialTypeDescription.name]" :disabled="isReadOnly" @change="credentialSelected(credentialTypeDescription.name)" placeholder="Select Credential" size="medium">
 							<n8n-option
 								v-for="(item, index) in credentialOptions[credentialTypeDescription.name]"
 								:key="item.name + '_' + index"
@@ -296,8 +296,12 @@ export default mixins(
 		margin-bottom: 0.7em;
 	}
 
+	.credential-parameter-wrapper {
+		display: flex;
+		align-items: center;
+	}
+
 	.parameter-name {
-		line-height: 2em;
 		font-weight: 400;
 	}
 

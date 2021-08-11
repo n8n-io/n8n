@@ -11,7 +11,7 @@
 						</n8n-tooltip>
 					</el-col>
 					<el-col :span="14" class="ignore-key-press">
-						<n8n-select v-model="workflowSettings.errorWorkflow" placeholder="Select Workflow" size="small" filterable>
+						<n8n-select v-model="workflowSettings.errorWorkflow" placeholder="Select Workflow" size="medium" filterable>
 							<n8n-option
 								v-for="item in workflows"
 								:key="item.id"
@@ -30,7 +30,7 @@
 						</n8n-tooltip>
 					</el-col>
 					<el-col :span="14" class="ignore-key-press">
-						<n8n-select v-model="workflowSettings.timezone" placeholder="Select Timezone" size="small" filterable>
+						<n8n-select v-model="workflowSettings.timezone" placeholder="Select Timezone" size="medium" filterable>
 							<n8n-option
 								v-for="timezone of timezones"
 								:key="timezone.key"
@@ -49,7 +49,7 @@
 						</n8n-tooltip>
 					</el-col>
 					<el-col :span="14" class="ignore-key-press">
-						<n8n-select v-model="workflowSettings.saveDataErrorExecution" placeholder="Select Option" size="small" filterable>
+						<n8n-select v-model="workflowSettings.saveDataErrorExecution" placeholder="Select Option" size="medium" filterable>
 							<n8n-option
 								v-for="option of saveDataErrorExecutionOptions"
 								:key="option.key"
@@ -68,7 +68,7 @@
 						</n8n-tooltip>
 					</el-col>
 					<el-col :span="14" class="ignore-key-press">
-						<n8n-select v-model="workflowSettings.saveDataSuccessExecution" placeholder="Select Option" size="small" filterable>
+						<n8n-select v-model="workflowSettings.saveDataSuccessExecution" placeholder="Select Option" size="medium" filterable>
 							<n8n-option
 								v-for="option of saveDataSuccessExecutionOptions"
 								:key="option.key"
@@ -87,7 +87,7 @@
 						</n8n-tooltip>
 					</el-col>
 					<el-col :span="14" class="ignore-key-press">
-						<n8n-select v-model="workflowSettings.saveManualExecutions" placeholder="Select Option" size="small" filterable>
+						<n8n-select v-model="workflowSettings.saveManualExecutions" placeholder="Select Option" size="medium" filterable>
 							<n8n-option
 								v-for="option of saveManualOptions"
 								:key="option.key"
@@ -106,7 +106,7 @@
 						</n8n-tooltip>
 					</el-col>
 					<el-col :span="14" class="ignore-key-press">
-						<n8n-select v-model="workflowSettings.saveExecutionProgress" placeholder="Select Option" size="small" filterable>
+						<n8n-select v-model="workflowSettings.saveExecutionProgress" placeholder="Select Option" size="medium" filterable>
 							<n8n-option
 								v-for="option of saveExecutionProgressOptions"
 								:key="option.key"
@@ -141,15 +141,15 @@
 							</n8n-tooltip>
 						</el-col>
 						<el-col :span="4">
-							<n8n-input-number :controls="false" size="small" v-model="timeoutHMS.hours" :min="0" placeholder="hours" type="number" class="el-input_inner"></n8n-input-number><br />
+							<n8n-input-number :controls="false" size="medium" v-model="timeoutHMS.hours" :min="0" placeholder="hours" type="number" class="el-input_inner"></n8n-input-number><br />
 							<div class="timeout-setting-name">hours</div>
 						</el-col>
 						<el-col :span="4" class="timeout-input">
-							<n8n-input-number :controls="false" size="small" v-model="timeoutHMS.minutes" :min="0" placeholder="minutes" type="number" class="el-input_inner"></n8n-input-number><br />
+							<n8n-input-number :controls="false" size="medium" v-model="timeoutHMS.minutes" :min="0" placeholder="minutes" type="number" class="el-input_inner"></n8n-input-number><br />
 							<div class="timeout-setting-name">minutes</div>
 						</el-col>
 						<el-col :span="4" class="timeout-input">
-							<n8n-input-number :controls="false" size="small" v-model="timeoutHMS.seconds" :min="0" placeholder="seconds" type="number" class="el-input_inner"></n8n-input-number><br />
+							<n8n-input-number :controls="false" size="medium" v-model="timeoutHMS.seconds" :min="0" placeholder="seconds" type="number" class="el-input_inner"></n8n-input-number><br />
 							<div class="timeout-setting-name">seconds</div>
 						</el-col>
 					</el-row>
