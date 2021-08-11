@@ -523,6 +523,11 @@ export default mixins(
 		font-weight: 600;
 		color: $--color-primary;
 		margin-bottom: 1em;
+		line-height: 1.5;
+	}
+
+	.headline-regular {
+		line-height: 1.5;
 	}
 
 	.nodes-access-wrapper {
