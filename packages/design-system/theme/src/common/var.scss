@@ -556,8 +556,8 @@ $notification-danger-icon-color: var(--color-danger) !default;
 
 /* Input
 -------------------------- */
-$input-placeholder-color: var(--color-text-light);
-$input-focus-border: var(--color-secondary);
+$input-placeholder-color: var(--input-placeholder-color, var(--color-text-light));
+$input-focus-border: var(--input-focus-border-color, var(--color-secondary));
 $input-border-color: var(--input-border-color, var(--color-foreground-base));
 $input-border-style: var(--input-border-style, var(--border-style-base));
 $input-border-width: var(--border-width-base);
@@ -565,13 +565,13 @@ $input-border: $input-border-color $input-border-style $input-border-width;
 
 $input-font-size: $font-size-base !default;
 /// color||Color|0
-$input-font-color: $color-text-primary !default;
+$input-font-color: var(--input-font-color, var(--color-text-dark));
 /// height||Other|4
 $input-width: 140px !default;
 /// height||Other|4
 $input-height: 40px !default;
 /// borderRadius||Border|2
-$input-border-radius: var(--border-radius-base) !default;
+$input-border-radius: var(--input-border-radius, var(--border-radius-base));
 $input-border-color-hover: $border-color-hover !default;
 /// color||Color|0
 $input-background-color: var(--input-background-color, var(--color-foreground-xlight));
@@ -597,13 +597,13 @@ $input-medium-font-size: var(--input-font-size, 14px);
 /// height||Other|4
 $input-medium-height: 36px !default;
 /// fontSize||Font|1
-$input-small-font-size: 13px !default;
+$input-small-font-size: 12px !default;
 /// height||Other|4
-$input-small-height: 32px !default;
+$input-small-height: 30px !default;
 /// fontSize||Font|1
 $input-mini-font-size: 12px !default;
 /// height||Other|4
-$input-mini-height: 28px !default;
+$input-mini-height: 26px !default;
 
 /* Cascader
 -------------------------- */

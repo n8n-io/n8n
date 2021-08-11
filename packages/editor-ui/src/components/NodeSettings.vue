@@ -570,45 +570,20 @@ export default mixins(
 		}
 
 		.add-option {
-			width: 100%;
-			--input-font-size: 12px;
-		}
-
-		.add-option > .el-input input::placeholder {
-			color: #fff;
-			font-weight: 600;
-		}
-
-		.add-option > .el-input .el-input__inner,
-		.add-option > .el-input .el-input__inner:hover
-		{
-			background-color: $--color-primary;
-			color: #fff;
-			text-align: center;
-			height: 30px;
-			line-height: 30px;
-
-			i {
-				line-height: 30px;
+			> .el-input .el-input__inner {
+				&,
+				&::placeholder,
+				&:hover,
+				&:focus {
+					border-radius: 20px;
+					color: #fff;
+					font-weight: 600;
+					background-color: $--color-primary;
+					border-color: $--color-primary;
+					text-align: center;
+				}
 			}
 		}
-
-		.add-option > .el-input .el-input__inner
-		{
-			border: 1px solid $--color-primary;
-			border-radius: 17px;
-			height: 30px;
-			line-height: 30px;
-
-			i {
-				line-height: 30px;
-			}
-		}
-	}
-
-	.el-select.add-option .el-input .el-select__caret {
-		line-height: 1;
-		color: #fff;
 	}
 }
 

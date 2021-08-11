@@ -419,7 +419,7 @@ export default mixins(
 			parameterInputClasses () {
 				const classes = [];
 				if (!this.multiline) {
-					classes.push('parameter-input-container');
+					classes.push('parameter-value-container');
 				}
 				if (this.isValueExpression) {
 					classes.push('expression');
@@ -633,8 +633,9 @@ export default mixins(
 
 <style scoped lang="scss">
 
-.parameter-input-container {
+.parameter-value-container {
 	display: flex;
+	align-items: center;
 }
 
 .parameter-actions {

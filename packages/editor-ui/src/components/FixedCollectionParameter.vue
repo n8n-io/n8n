@@ -32,8 +32,8 @@
 		</div>
 
 		<div v-if="parameterOptions.length > 0 && !isReadOnly">
-			<n8n-button v-if="parameter.options.length === 1" fullWidth class="add-option" @click="optionSelected(parameter.options[0].name)" :label="getPlaceholderText" />
-			<n8n-select v-else v-model="selectedOption" :placeholder="getPlaceholderText" size="medium" class="add-option" @change="optionSelected" filterable>
+			<n8n-button v-if="parameter.options.length === 1" fullWidth @click="optionSelected(parameter.options[0].name)" :label="getPlaceholderText" />
+			<n8n-select v-else v-model="selectedOption" :placeholder="getPlaceholderText" size="small" class="add-option" @change="optionSelected" filterable>
 				<n8n-option
 					v-for="item in parameterOptions"
 					:key="item.name"
