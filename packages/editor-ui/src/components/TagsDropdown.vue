@@ -236,11 +236,6 @@ export default mixins(showMessage).extend({
 <style lang="scss" scoped>
 $--max-input-height: 60px;
 
-.tags-container {
-	overflow: hidden;
-	border: 1px solid transparent;
-}
-
 ::v-deep .el-select {
 	.el-select__tags {
 		max-height: $--max-input-height;
@@ -271,10 +266,6 @@ $--max-input-height: 60px;
 
 	min-width: $--dropdown-width !important;
 	max-width: $--dropdown-width;
-
-	*,*:after {
-		box-sizing: border-box;
-	}
 
 	.el-tag {
 		white-space: normal;

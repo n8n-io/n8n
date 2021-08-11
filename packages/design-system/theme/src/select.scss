@@ -17,6 +17,14 @@
 		display: contents;
 	}
 
+	.el-select__tags + .el-input {
+		input {
+			box-sizing: content-box;
+			padding: 0;
+			text-indent: var(--spacing-xs);
+		}
+	}
+
 	.el-input__inner {
 		cursor: pointer;
 		padding-right: 35px;
