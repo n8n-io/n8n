@@ -12,6 +12,7 @@ import {
 } from 'n8n-workflow';
 
 import {
+	clean,
 	hubspotApiRequest,
 	hubspotApiRequestAllItems,
 } from './GenericFunctions';
@@ -2169,6 +2170,7 @@ export class Hubspot implements INodeType {
 								Object.assign(body, { legalConsentOptions: { legitimateInterest: legitimateInteres } });
 							}
 							if (context) {
+								clean(context);
 								Object.assign(body, { context });
 							}
 							const uri = `https://api.hsforms.com/submissions/v3/integration/submit/${portalId}/${formId}`;
