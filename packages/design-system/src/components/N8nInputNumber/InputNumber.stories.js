@@ -70,3 +70,25 @@ Input.args = {
 	placeholder: 'placeholder...',
 	controls: false,
 };
+
+const ManyTemplate = (args, { argTypes }) => ({
+	props: Object.keys(argTypes),
+	components: {
+		N8nInputNumber,
+	},
+	template:
+		'<div> <n8n-input-number style="margin-bottom:10px" v-bind="$props" v-model="val" @input="onInput" /> <n8n-input-number style="margin-bottom:10px" v-bind="$props" size="medium" v-model="val" @input="onInput" /> <n8n-input-number style="margin-bottom:10px" v-bind="$props" size="small" v-model="val" @input="onInput" /> <n8n-input-number style="margin-bottom:10px" v-bind="$props" v-model="val" size="mini" @input="onInput" /> </div>',
+	methods,
+	data() {
+		return {
+			val: '',
+		};
+	},
+});
+
+export const Sizes = ManyTemplate.bind({});
+Sizes.args = {
+	placeholder: 'placeholder...',
+	controls: false,
+};
+

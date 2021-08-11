@@ -6,6 +6,7 @@
 	position: relative;
 	display: inline-block;
 	line-height: #{var.$input-height - 2};
+	width: 100%;
 
 	.el-input {
 		display: block;
@@ -69,7 +70,6 @@
 	}
 
 	@include mixins.m(medium) {
-		width: 200px;
 		line-height: #{var.$input-medium-height - 2};
 
 		@include mixins.e((increase, decrease)) {

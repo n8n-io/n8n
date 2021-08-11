@@ -36,7 +36,7 @@
 
 		<div v-else-if="parameter.type === 'number'">
 			<!-- <el-slider :value="value" @input="valueChanged"></el-slider> -->
-			<n8n-input-number ref="inputField" size="small" :value="displayValue" :controls="false" :max="getArgument('maxValue')" :min="getArgument('minValue')" :precision="getArgument('numberPrecision')" :step="getArgument('numberStepSize')" :disabled="isReadOnly" @change="valueChanged" @focus="setFocus" @keydown.stop :title="displayTitle" :placeholder="parameter.placeholder"></n8n-input-number>
+			<n8n-input-number ref="inputField" size="medium" :value="displayValue" :controls="false" :max="getArgument('maxValue')" :min="getArgument('minValue')" :precision="getArgument('numberPrecision')" :step="getArgument('numberStepSize')" :disabled="isReadOnly" @change="valueChanged" @focus="setFocus" @keydown.stop :title="displayTitle" :placeholder="parameter.placeholder"></n8n-input-number>
 		</div>
 
 		<n8n-select

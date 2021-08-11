@@ -50,21 +50,6 @@ Input.args = {
 	placeholder: 'placeholder...',
 };
 
-export const Text = Template.bind({});
-Text.args = {
-	type: 'text',
-	label: 'text input:',
-	placeholder: 'placeholder...',
-};
-
-export const TextArea = Template.bind({});
-TextArea.args = {
-	type: 'textarea',
-	label: 'text area input:',
-	placeholder: 'placeholder...',
-};
-
-
 const ManyTemplate = (args, { argTypes }) => ({
 	props: Object.keys(argTypes),
 	components: {
@@ -80,8 +65,16 @@ const ManyTemplate = (args, { argTypes }) => ({
 	},
 });
 
-export const Sizes = ManyTemplate.bind({});
-Sizes.args = {
-	type: 'input',
+export const Text = ManyTemplate.bind({});
+Text.args = {
+	type: 'text',
+	label: 'text input:',
+	placeholder: 'placeholder...',
+};
+
+export const TextArea = ManyTemplate.bind({});
+TextArea.args = {
+	type: 'textarea',
+	label: 'text area input:',
 	placeholder: 'placeholder...',
 };
