@@ -31,3 +31,17 @@ export type TransactionFields = Partial<{
 }> & DateFieldsUi & IDataObject;
 
 export type Option = { name: string, value: string };
+
+export type TransactionReport = {
+	Columns: {
+		Column: Array<{
+			ColTitle: string;
+			ColType: string;
+		}>
+	};
+	Rows: {
+		Row: Array<{
+			ColData: Array<{ value: string }>;
+		}>
+	};
+};

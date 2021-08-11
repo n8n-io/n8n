@@ -44,6 +44,7 @@ import {
 	populateFields,
 	processLines,
 	quickBooksApiRequest,
+	simplifyTransactionReport,
 } from './GenericFunctions';
 
 import {
@@ -1021,8 +1022,14 @@ export class QuickBooks implements INodeType {
 						const endpoint = `/v3/company/${companyId}/reports/TransactionList`;
 						responseData = await quickBooksApiRequest.call(this, 'GET', endpoint, qs, {});
 
+						const simplifyResponse = this.getNodeParameter('simple', i, true) as boolean;
+
 						if (!Object.keys(responseData?.Rows).length) {
 							responseData = [];
+						}
+
+						if (simplifyResponse) {
+							responseData = simplifyTransactionReport(responseData);
 						}
 
 					}

@@ -44,6 +44,23 @@ export const transactionFields = [
 	//       transaction: getReport
 	// ----------------------------------
 	{
+		displayName: 'Simplify Response',
+		name: 'simple',
+		type: 'boolean',
+		displayOptions: {
+			show: {
+				resource: [
+					'transaction',
+				],
+				operation: [
+					'getReport',
+				],
+			},
+		},
+		default: true,
+		description: 'Return a simplified version of the response instead of the raw data.',
+	},
+	{
 		displayName: 'Filters',
 		name: 'filters',
 		type: 'collection',

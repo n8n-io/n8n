@@ -34,6 +34,7 @@ import {
 	DateFieldsUi,
 	Option,
 	QuickBooksOAuth2Credentials,
+	TransactionReport,
 } from './types';
 
 /**
@@ -101,7 +102,6 @@ export async function quickBooksApiRequest(
 	}
 
 	try {
-		console.log(options);
 		return await this.helpers.requestOAuth2!.call(this, 'quickBooksOAuth2Api', options);
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error);
@@ -485,4 +485,20 @@ export function adjustTransactionDates(
 	});
 
 	return adjusted;
+}
+
+export function simplifyTransactionReport(transactionReport: TransactionReport) {
+	const columns = transactionReport.Columns.Column.map((column) => column.ColType);
+	const rows = transactionReport.Rows.Row.map((row) => row.ColData.map(i => i.value));
+
+	const simplified = [];
+	for (const row of rows) {
+		const transaction: { [key: string]: string } = {};
+		for (let i = 0; i < row.length; i++) {
+			transaction[columns[i]] = row[i];
+		}
+		simplified.push(transaction);
+	}
+
+	return simplified;
 }
