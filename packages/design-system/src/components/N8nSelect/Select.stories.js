@@ -14,7 +14,7 @@ export default {
 		size: {
 			control: {
 				type: 'select',
-				options: ['large', 'small', 'mini'],
+				options: ['large', 'medium', 'small', 'mini'],
 			},
 		},
 		clearable: {
@@ -53,6 +53,29 @@ const Template = (args, { argTypes }) => ({
 });
 
 export const Input = Template.bind({});
-Input.args = {
+
+const selects = ['large', 'medium', 'small', 'mini'].map((size) => `<n8n-select style="margin-bottom:10px" v-bind="$props" v-model="val" @input="onInput" size="${size}"><n8n-option value="1">op1</n8n-option><n8n-option value="2">op2</n8n-option></n8n-select>`).join('');
+
+const ManyTemplate = (args, { argTypes }) => ({
+	props: Object.keys(argTypes),
+	components: {
+		N8nSelect,
+		N8nOption,
+	},
+	template: `<div>${selects}</div>`,
+	methods,
+	data() {
+		return {
+			val: '',
+		};
+	},
+});
+
+export const Sizes = ManyTemplate.bind({});
+Sizes.args = {
+	type: 'text',
+	label: 'text input:',
+	placeholder: 'placeholder...',
 };
+
 
