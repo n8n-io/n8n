@@ -979,10 +979,10 @@ export class QuickBooks implements INodeType {
 
 					// https://developer.intuit.com/app/developer/qbo/docs/api/accounting/all-entities/transactionlist
 
-					if (operation === 'getAll') {
+					if (operation === 'getReport') {
 
 						// ----------------------------------
-						//        transaction: getAll
+						//        transaction: getReport
 						// ----------------------------------
 
 						const {

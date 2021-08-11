@@ -21,12 +21,12 @@ export const transactionOperations = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
-		default: 'getAll',
+		default: 'getReport',
 		description: 'Operation to perform',
 		options: [
 			{
-				name: 'Get All',
-				value: 'getAll',
+				name: 'Get Report',
+				value: 'getReport',
 			},
 		],
 		displayOptions: {
@@ -41,7 +41,7 @@ export const transactionOperations = [
 
 export const transactionFields = [
 	// ----------------------------------
-	//       transaction: getAll
+	//       transaction: getReport
 	// ----------------------------------
 	{
 		displayName: 'Filters',
@@ -55,7 +55,7 @@ export const transactionFields = [
 					'transaction',
 				],
 				operation: [
-					'getAll',
+					'getReport',
 				],
 			},
 		},
