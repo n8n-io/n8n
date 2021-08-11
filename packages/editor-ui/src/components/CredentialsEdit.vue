@@ -307,7 +307,12 @@ export default mixins(
 <style lang="scss">
 .credentials-edit-wrapper {
 	.credential-type-item {
-		padding-bottom: 1em;
+		> .el-row {
+			display: flex;
+			align-items: center;
+		}
+
+		padding-bottom: 8px;
 	}
 
 	@media (min-width: 1200px){

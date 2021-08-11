@@ -1,6 +1,6 @@
 <template>
 	<div @keydown.stop class="credentials-input-wrapper">
-		<el-row>
+		<el-row class="credential-name-wrapper">
 			<el-col :span="6" class="headline-regular">
 				Credentials Name:
 				<n8n-tooltip class="credentials-info" placement="top" >
@@ -514,6 +514,11 @@ export default mixins(
 <style lang="scss">
 
 .credentials-input-wrapper {
+	.credential-name-wrapper {
+		display: flex;
+		align-items: center;
+	}
+
 	.action-buttons {
 		margin-top: 2em;
 		text-align: right;
