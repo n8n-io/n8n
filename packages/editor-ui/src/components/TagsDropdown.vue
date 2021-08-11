@@ -14,6 +14,7 @@
 			ref="select"
 			loading-text="..."
 			popper-class="tags-dropdown"
+			size="medium"
 		>
 			<n8n-option
 				v-if="options.length === 0 && filter && createEnabled"
