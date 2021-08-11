@@ -570,16 +570,19 @@ export default mixins(
 		}
 
 		.add-option {
+			i.el-select__caret {
+				color: var(--color-foreground-xlight);
+			}
 			> .el-input .el-input__inner {
 				&,
 				&::placeholder,
 				&:hover,
 				&:focus {
 					border-radius: 20px;
-					color: #fff;
+					color: var(--color-foreground-xlight);
 					font-weight: 600;
-					background-color: $--color-primary;
-					border-color: $--color-primary;
+					background-color: var(--color-primary);
+					border-color: var(--color-primary);
 					text-align: center;
 				}
 			}
