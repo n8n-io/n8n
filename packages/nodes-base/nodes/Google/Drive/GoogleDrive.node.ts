@@ -790,6 +790,13 @@ export class GoogleDrive implements INodeType {
 						Only 200 revisions for the file can be kept forever. If the limit is reached, try deleting pinned revisions.`,
 					},
 					{
+						displayName: 'Name',
+						name: 'name',
+						type: 'string',
+						default: '',
+						description: `The name of the file`,
+					},
+					{
 						displayName: 'OCR Language',
 						name: 'ocrLanguage',
 						type: 'string',
@@ -2356,11 +2363,17 @@ export class GoogleDrive implements INodeType {
 
 						qs.fields = queryFields;
 
+						const body: IDataObject = {};
+
+						if (updateFields.name) {
+							body.name = updateFields.name;
+						}
+
 						if (updateFields.parentId && updateFields.parentId !== '') {
 							qs.addParents = updateFields.parentId;
 						}
 
-						const responseData = await googleApiRequest.call(this, 'PATCH', `/drive/v3/files/${id}`, {}, qs);
+						const responseData = await googleApiRequest.call(this, 'PATCH', `/drive/v3/files/${id}`, body, qs);
 						returnData.push(responseData as IDataObject);
 					}
 
