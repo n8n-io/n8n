@@ -27,13 +27,13 @@
 		width: 100%;
 
 		@include mixins.when(process) {
-			color: var.$color-text-primary;
-			border-color: var.$color-text-primary;
+			color: var(--color-text-dark);
+			border-color: var(--color-text-dark);
 		}
 
 		@include mixins.when(wait) {
-			color: var.$color-text-placeholder;
-			border-color: var.$color-text-placeholder;
+			color: var(--color-text-lighter);
+			border-color: var(--color-text-lighter);
 		}
 
 		@include mixins.when(success) {
@@ -98,7 +98,7 @@
 	@include mixins.e(line) {
 		position: absolute;
 		border-color: inherit;
-		background-color: var.$color-text-placeholder;
+		background-color: var(--color-text-lighter);
 	}
 
 	@include mixins.e(line-inner) {
@@ -123,11 +123,11 @@
 
 		@include mixins.when(process) {
 			font-weight: bold;
-			color: var.$color-text-primary;
+			color: var(--color-text-dark);
 		}
 
 		@include mixins.when(wait) {
-			color: var.$color-text-placeholder;
+			color: var(--color-text-lighter);
 		}
 
 		@include mixins.when(success) {
@@ -151,11 +151,11 @@
 		font-weight: normal;
 
 		@include mixins.when(process) {
-			color: var.$color-text-primary;
+			color: var(--color-text-dark);
 		}
 
 		@include mixins.when(wait) {
-			color: var.$color-text-placeholder;
+			color: var(--color-text-lighter);
 		}
 
 		@include mixins.when(success) {
@@ -293,7 +293,7 @@
 				position: absolute;
 				height: 15px;
 				width: 1px;
-				background: var.$color-text-placeholder;
+				background: var(--color-text-lighter);
 			}
 
 			&::before {

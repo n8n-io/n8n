@@ -24,7 +24,7 @@
 				right: $gap;
 				bottom: 12px;
 				height: 1px;
-				background: var.$border-color-light;
+				background: var(--border-color-base);
 			}
 		}
 	}

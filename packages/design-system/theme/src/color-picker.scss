@@ -373,7 +373,7 @@
 		padding: 6px;
 		box-sizing: content-box;
 		background-color: var.$color-white;
-		border: 1px solid var.$border-color-lighter;
+		border: 1px solid var(--border-color-light);
 		border-radius: var(--border-radius-base);
 		box-shadow: var.$dropdown-menu-box-shadow;
 	}

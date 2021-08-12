@@ -10,7 +10,7 @@
 	@include mixins.e(separator) {
 		margin: 0 9px;
 		font-weight: bold;
-		color: var.$color-text-placeholder;
+		color: var(--color-text-lighter);
 
 		&[class*='icon'] {
 			margin: 0 6px;
@@ -22,14 +22,14 @@
 		float: left;
 
 		@include mixins.e(inner) {
-			color: var.$color-text-primary;
+			color: var(--color-text-dark);
 
 			&.is-link,
 			& a {
 				font-weight: bold;
 				text-decoration: none;
 				transition: var.$color-transition-base;
-				color: var.$color-text-primary;
+				color: var(--color-text-dark);
 
 				&:hover {
 					color: var(--color-primary);
@@ -44,7 +44,7 @@
 				&,
 				&:hover {
 					font-weight: normal;
-					color: var.$color-text-primary;
+					color: var(--color-text-dark);
 					cursor: text;
 				}
 			}

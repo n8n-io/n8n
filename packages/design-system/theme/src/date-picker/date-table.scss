@@ -117,7 +117,7 @@
 			background-color: var.$background-color-base;
 			opacity: 1;
 			cursor: not-allowed;
-			color: var.$color-text-placeholder;
+			color: var(--color-text-lighter);
 		}
 
 		&.selected div {
@@ -146,6 +146,6 @@
 		padding: 5px;
 		color: var.$datepicker-header-font-color;
 		font-weight: 400;
-		border-bottom: solid 1px var.$border-color-lighter;
+		border-bottom: solid 1px var(--border-color-light);
 	}
 }

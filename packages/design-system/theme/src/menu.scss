@@ -21,7 +21,7 @@
 	}
 
 	i {
-		color: var.$color-text-secondary;
+		color: var(--color-text-light);
 	}
 
 	&:hover,
@@ -57,7 +57,7 @@
 			line-height: 60px;
 			margin: 0;
 			border-bottom: 2px solid transparent;
-			color: var.$color-text-secondary;
+			color: var(--color-text-light);
 
 			a,
 			a:hover {
@@ -76,14 +76,14 @@
 			&:hover {
 				outline: none;
 				.el-submenu__title {
-					color: var.$color-text-primary;
+					color: var(--color-text-dark);
 				}
 			}
 
 			&.is-active {
 				.el-submenu__title {
 					border-bottom: 2px solid var(--color-primary);
-					color: var.$color-text-primary;
+					color: var(--color-text-dark);
 				}
 			}
 
@@ -91,7 +91,7 @@
 				height: 60px;
 				line-height: 60px;
 				border-bottom: 2px solid transparent;
-				color: var.$color-text-secondary;
+				color: var(--color-text-light);
 
 				&:hover {
 					background-color: #fff;
@@ -112,21 +112,21 @@
 				height: 36px;
 				line-height: 36px;
 				padding: 0 10px;
-				color: var.$color-text-secondary;
+				color: var(--color-text-light);
 			}
 			& .el-menu-item.is-active,
 			& .el-submenu.is-active > .el-submenu__title {
-				color: var.$color-text-primary;
+				color: var(--color-text-dark);
 			}
 		}
 		& .el-menu-item:not(.is-disabled):hover,
 		& .el-menu-item:not(.is-disabled):focus {
 			outline: none;
-			color: var.$color-text-primary;
+			color: var(--color-text-dark);
 		}
 		& > .el-menu-item.is-active {
 			border-bottom: 2px solid var(--color-primary);
-			color: var.$color-text-primary;
+			color: var(--color-text-dark);
 		}
 	}
 	@include mixins.m(collapse) {
@@ -168,7 +168,7 @@
 				top: 0;
 				left: 100%;
 				z-index: 10;
-				border: 1px solid var.$border-color-light;
+				border: 1px solid var(--border-color-base);
 				border-radius: var(--border-radius-small);
 				box-shadow: var.$box-shadow-light;
 			}
@@ -279,7 +279,7 @@
 		padding: 7px 0 7px 20px;
 		line-height: normal;
 		font-size: 12px;
-		color: var.$color-text-secondary;
+		color: var(--color-text-light);
 	}
 }
 

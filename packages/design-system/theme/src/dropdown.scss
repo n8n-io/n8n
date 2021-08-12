@@ -6,7 +6,7 @@
 @include mixins.b(dropdown) {
 	display: inline-block;
 	position: relative;
-	color: var.$color-text-primary;
+	color: var(--color-text-dark);
 	font-size: var.$font-size-base;
 
 	.el-button-group {
@@ -77,7 +77,7 @@
 	padding: 10px 0;
 	margin: 5px 0;
 	background-color: var.$color-white;
-	border: 1px solid var.$border-color-lighter;
+	border: 1px solid var(--border-color-light);
 	border-radius: var(--border-radius-base);
 	box-shadow: var.$dropdown-menu-box-shadow;
 
@@ -87,7 +87,7 @@
 		padding: 0 20px;
 		margin: 0;
 		font-size: var.$font-size-base;
-		color: var.$color-text-primary;
+		color: var(--color-text-dark);
 		cursor: pointer;
 		outline: none;
 		&:not(.is-disabled):hover,
@@ -105,7 +105,7 @@
 
 			position: relative;
 			margin-top: $divided-offset;
-			border-top: 1px solid var.$border-color-lighter;
+			border-top: 1px solid var(--border-color-light);
 
 			&:before {
 				content: '';

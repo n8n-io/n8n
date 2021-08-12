@@ -8,7 +8,7 @@
 
 	@include mixins.e(text) {
 		font-size: 14px;
-		color: var.$color-text-primary;
+		color: var(--color-text-dark);
 		display: inline-block;
 		vertical-align: middle;
 		margin-left: 10px;
@@ -100,7 +100,7 @@
 	@include mixins.e(outer) {
 		height: 6px;
 		border-radius: 100px;
-		background-color: var.$border-color-lighter;
+		background-color: var(--border-color-light);
 		overflow: hidden;
 		position: relative;
 		vertical-align: middle;

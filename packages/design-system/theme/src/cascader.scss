@@ -112,11 +112,11 @@
 
 			.el-icon-close {
 				flex: none;
-				background-color: var.$color-text-placeholder;
+				background-color: var(--color-text-lighter);
 				color: var.$color-white;
 
 				&:hover {
-					background-color: var.$color-text-secondary;
+					background-color: var(--color-text-light);
 				}
 			}
 		}
@@ -177,7 +177,7 @@
 		box-sizing: border-box;
 
 		&::placeholder {
-			color: var.$color-text-placeholder;
+			color: var(--color-text-lighter);
 		}
 	}
 }

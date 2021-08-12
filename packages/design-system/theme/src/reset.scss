@@ -161,7 +161,7 @@ h3,
 h4,
 h5,
 h6 {
-	color: var.$color-text-primary;
+	color: var(--color-text-dark);
 	font-weight: inherit;
 
 	&:first-child {

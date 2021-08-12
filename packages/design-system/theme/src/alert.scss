@@ -17,7 +17,7 @@
 
 	@include mixins.when(light) {
 		.el-alert__closebtn {
-			color: var.$color-text-placeholder;
+			color: var(--color-text-lighter);
 		}
 	}
 

@@ -97,7 +97,7 @@
 		vertical-align: middle;
 		float: left;
 		font-size: var.$form-label-font-size;
-		color: var.$color-text-primary;
+		color: var(--color-text-dark);
 		line-height: 40px;
 		padding: 0 12px 0 0;
 		box-sizing: border-box;
