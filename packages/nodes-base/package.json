@@ -19,6 +19,7 @@
     "build": "tsc && gulp",
     "tslint": "tslint -p tsconfig.json -c tslint.json",
     "tslintfix": "tslint --fix -p tsconfig.json -c tslint.json",
+    "nodelinter": "nodelinter",
     "watch": "tsc --watch",
     "test": "jest"
   },
@@ -634,6 +635,7 @@
     "gulp": "^4.0.0",
     "jest": "^26.4.2",
     "n8n-workflow": "~0.64.0",
+    "nodelinter": "^0.1.9",
     "ts-jest": "^26.3.0",
     "tslint": "^6.1.2",
     "typescript": "~3.9.7"
