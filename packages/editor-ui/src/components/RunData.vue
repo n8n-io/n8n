@@ -28,16 +28,16 @@
 					<strong>{{ dataCount }}</strong>
 				</div>
 				&nbsp;
-				<el-popover
+				<n8n-tooltip
 					v-if="runMetadata"
 					placement="right"
-					width="400"
-					trigger="hover"
 				>
-					<strong>Start Time:</strong> {{runMetadata.startTime}}<br/>
-					<strong>Execution Time:</strong> {{runMetadata.executionTime}} ms
-					<font-awesome-icon icon="info-circle" class="primary-color" slot="reference" />
-				</el-popover>
+					<div slot="content">
+						<strong>Start Time:</strong> {{runMetadata.startTime}}<br/>
+						<strong>Execution Time:</strong> {{runMetadata.executionTime}} ms
+					</div>
+					<font-awesome-icon icon="info-circle" class="primary-color" />
+				</n8n-tooltip>
 				<span v-if="maxOutputIndex > 0">
 					| Output:&nbsp;
 				</span>
