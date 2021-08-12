@@ -2,6 +2,7 @@
 @use 'mixins/mixins';
 @use 'mixins/utils';
 @use 'mixins/function';
+@use 'common/var';
 
 $active-shade-percent: 10%;
 $color-primary-shade: function.lightness(
@@ -10,17 +11,6 @@ $color-primary-shade: function.lightness(
 	--color-primary-l,
 	-($active-shade-percent)
 );
-
-$font-weight: var(--font-weight-bold);
-$font-size: var(--button-font-size, var(--font-size-s));
-
-$padding-vertical: var(--button-padding-vertical, var(--spacing-xs));
-$padding-horizontal: var(--button-padding-horizontal, var(--spacing-m));
-
-$border-width: var(--border-width-base);
-$border-style: var(--border-style-base);
-$border-radius: var(--button-border-radius, 4px);
-$border-color: var(--button-border-color, var(--color-primary));
 
 $color: var(--button-color, var(--color-text-xlight));
 $background-color: var(--button-background-color, var(--color-primary));
@@ -47,13 +37,13 @@ $loading-overlay-background-color: rgba(255, 255, 255, 0.35);
 	white-space: nowrap;
 	cursor: pointer;
 
-	border: $border-width $border-color $border-style;
+	border: var(--border-width-base) var.$button-border-color var(--border-style-base);
 	color: $color;
 	background-color: $background-color;
-	font-weight: $font-weight;
-	border-radius: $border-radius;
-	padding: $padding-vertical $padding-horizontal;
-	font-size: $font-size;
+	font-weight: var(--font-weight-bold);
+	border-radius: var.$button-border-radius;
+	padding: var.$button-padding-vertical var.$button-padding-horizontal;
+	font-size: var.$button-font-size;
 
 	-webkit-appearance: none;
 	text-align: center;

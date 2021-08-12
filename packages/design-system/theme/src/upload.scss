@@ -14,7 +14,7 @@
 
 	@include mixins.e(tip) {
 		font-size: 12px;
-		color: var.$color-text-primary;
+		color: var(--color-text-dark);
 		margin-top: 7px;
 	}
 
@@ -73,7 +73,7 @@
 
 	.el-icon-upload {
 		font-size: 67px;
-		color: var.$color-text-placeholder;
+		color: var(--color-text-lighter);
 		margin: 40px 0 16px;
 		line-height: 50px;
 	}
@@ -89,7 +89,7 @@
 	}
 
 	.el-upload__text {
-		color: var.$color-text-primary;
+		color: var(--color-text-dark);
 		font-size: 14px;
 		text-align: center;
 
@@ -117,7 +117,7 @@
 	@include mixins.e(item) {
 		transition: all 0.5s cubic-bezier(0.55, 0, 0.1, 1);
 		font-size: 14px;
-		color: var.$color-text-primary;
+		color: var(--color-text-dark);
 		line-height: 1.8;
 		margin-top: 5px;
 		position: relative;
@@ -157,7 +157,7 @@
 			right: 5px;
 			cursor: pointer;
 			opacity: 0.75;
-			color: var.$color-text-primary;
+			color: var(--color-text-dark);
 			//transform: scale(.7);
 
 			&:hover {
@@ -231,7 +231,7 @@
 	}
 
 	@include mixins.e(item-name) {
-		color: var.$color-text-primary;
+		color: var(--color-text-dark);
 		display: block;
 		margin-right: 40px;
 		overflow: hidden;
@@ -243,7 +243,7 @@
 		[class^='el-icon'] {
 			height: 100%;
 			margin-right: 7px;
-			color: var.$color-text-secondary;
+			color: var(--color-text-light);
 			line-height: inherit;
 		}
 	}
@@ -261,7 +261,7 @@
 		right: 10px;
 		top: 0;
 		font-size: 12px;
-		color: var.$color-text-primary;
+		color: var(--color-text-dark);
 		display: none;
 
 		&:hover {
@@ -598,7 +598,7 @@
 		margin: 0;
 		line-height: 36px;
 		font-size: 14px;
-		color: var.$color-text-primary;
+		color: var(--color-text-dark);
 	}
 
 	+ .el-upload__inner {

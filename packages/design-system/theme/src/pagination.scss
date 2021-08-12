@@ -88,7 +88,7 @@
 	}
 
 	.el-pager li.disabled {
-		color: var.$color-text-placeholder;
+		color: var(--color-text-lighter);
 		cursor: not-allowed;
 	}
 
@@ -132,7 +132,7 @@
 	@include mixins.e(sizes) {
 		margin: 0 10px 0 0;
 		font-weight: normal;
-		color: var.$color-text-primary;
+		color: var(--color-text-dark);
 
 		.el-input .el-input__inner {
 			font-size: var.$pagination-font-size;
@@ -147,13 +147,13 @@
 	@include mixins.e(total) {
 		margin-right: 10px;
 		font-weight: normal;
-		color: var.$color-text-primary;
+		color: var(--color-text-dark);
 	}
 
 	@include mixins.e(jump) {
 		margin-left: 24px;
 		font-weight: normal;
-		color: var.$color-text-primary;
+		color: var(--color-text-dark);
 
 		.el-input__inner {
 			padding: 0 3px;
@@ -195,12 +195,12 @@
 		.el-pager li {
 			margin: 0 5px;
 			background-color: var.$color-info-lighter;
-			color: var.$color-text-primary;
+			color: var(--color-text-dark);
 			min-width: 30px;
 			border-radius: 2px;
 
 			&.disabled {
-				color: var.$color-text-placeholder;
+				color: var(--color-text-lighter);
 			}
 		}
 
@@ -209,7 +209,7 @@
 			padding: 0;
 
 			&:disabled {
-				color: var.$color-text-placeholder;
+				color: var(--color-text-lighter);
 			}
 		}
 
@@ -268,7 +268,7 @@
 			color: var.$pagination-button-color;
 
 			&.disabled {
-				color: var.$color-text-placeholder;
+				color: var(--color-text-lighter);
 			}
 		}
 

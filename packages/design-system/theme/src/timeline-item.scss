@@ -67,11 +67,11 @@
 	}
 
 	@include mixins.e(content) {
-		color: var.$color-text-primary;
+		color: var(--color-text-dark);
 	}
 
 	@include mixins.e(timestamp) {
-		color: var.$color-text-secondary;
+		color: var(--color-text-light);
 		line-height: 1;
 		font-size: var.$font-size-small;
 

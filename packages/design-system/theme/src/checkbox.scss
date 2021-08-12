@@ -27,7 +27,7 @@
 		}
 
 		&.is-disabled {
-			border-color: var.$border-color-lighter;
+			border-color: var(--border-color-light);
 			cursor: not-allowed;
 		}
 

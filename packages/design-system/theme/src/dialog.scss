@@ -61,12 +61,12 @@
 	@include mixins.e(title) {
 		line-height: var.$dialog-font-line-height;
 		font-size: var.$dialog-title-font-size;
-		color: var.$color-text-primary;
+		color: var(--color-text-dark);
 	}
 
 	@include mixins.e(body) {
 		padding: (var.$dialog-padding-primary + 10px) var.$dialog-padding-primary;
-		color: var.$color-text-primary;
+		color: var(--color-text-dark);
 		font-size: var.$dialog-content-font-size;
 		word-break: break-all;
 	}

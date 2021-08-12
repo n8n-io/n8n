@@ -129,13 +129,13 @@
 		background-color: #f0f2f5;
 
 		&__close.el-icon-close {
-			background-color: var.$color-text-placeholder;
+			background-color: var(--color-text-lighter);
 			right: -7px;
 			top: 0;
 			color: var.$color-white;
 
 			&:hover {
-				background-color: var.$color-text-secondary;
+				background-color: var(--color-text-light);
 			}
 
 			&::before {
