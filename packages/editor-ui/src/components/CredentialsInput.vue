@@ -41,11 +41,11 @@
 			</el-col>
 			<el-col :span="18">
 				<span v-if="requiredPropertiesFilled === false">
-					<n8n-icon-button title="Connect OAuth Credentials" icon="redo" :disabled="true" size="lg" />
+					<n8n-icon-button title="Connect OAuth Credentials" icon="redo" :disabled="true" size="large" />
 					Enter all required properties
 				</span>
 				<span v-else-if="isOAuthConnected === true">
-					<n8n-icon-button title="Reconnect OAuth Credentials" @click.stop="oAuthCredentialAuthorize()" icon="redo" size="lg" />
+					<n8n-icon-button title="Reconnect OAuth Credentials" @click.stop="oAuthCredentialAuthorize()" icon="redo" size="large" />
 					Connected
 				</span>
 				<span v-else>
@@ -53,7 +53,7 @@
 						<img :src="basePath + 'google-signin.png'" class="google-icon clickable" alt="Sign in with Google" @click.stop="oAuthCredentialAuthorize()" />
 					</span>
 					<span v-else>
-						<n8n-icon-button title="Connect OAuth Credentials" @click.stop="oAuthCredentialAuthorize()" icon="sign-in-alt" size="lg" />
+						<n8n-icon-button title="Connect OAuth Credentials" @click.stop="oAuthCredentialAuthorize()" icon="sign-in-alt" size="large" />
 						Not connected
 					</span>
 				</span>
@@ -98,8 +98,8 @@
 		</el-row>
 
 		<div class="action-buttons">
-			<n8n-button type="success" @click="updateCredentials(true)" label="Save" size="lg" v-if="credentialDataDynamic" />
-			<n8n-button @click="createCredentials(true)" label="Create" size="lg" v-else />
+			<n8n-button type="success" @click="updateCredentials(true)" label="Save" size="large" v-if="credentialDataDynamic" />
+			<n8n-button @click="createCredentials(true)" label="Create" size="large" v-else />
 		</div>
 
 	</div>

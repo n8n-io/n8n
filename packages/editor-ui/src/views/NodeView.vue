@@ -32,7 +32,7 @@
 		</div>
 		<DataDisplay @valueChanged="valueChanged"/>
 		<div v-if="!createNodeActive && !isReadOnly" class="node-creator-button" title="Add Node" @click="openNodeCreator">
-			<n8n-icon-button size="xl" icon="plus" />
+			<n8n-icon-button size="xlarge" icon="plus" />
 		</div>
 		<node-creator
 			:active="createNodeActive"
@@ -63,7 +63,7 @@
 				@click.stop="runWorkflow()"
 				:loading="workflowRunning"
 				:label="runButtonText"
-				size="lg"
+				size="large"
 				icon="play-circle"
 				title="Executes the Workflow from the Start or Webhook Node."
 				:type="workflowRunning ? 'light' : 'primary'"
@@ -72,7 +72,7 @@
 			<n8n-icon-button
 				v-if="workflowRunning === true && !executionWaitingForWebhook"
 				icon="stop"
-				size="lg"
+				size="large"
 				class="stop-execution"
 				type="light"
 				:title="stopExecutionInProgress ? 'Stopping current execution':'Stop current execution'"
@@ -84,7 +84,7 @@
 				v-if="workflowRunning === true && executionWaitingForWebhook === true"
 				class="stop-execution"
 				icon="stop"
-				size="lg"
+				size="large"
 				title="Stop waiting for Webhook call"
 				type="light"
 				@click.stop="stopWaitingForWebhook()"
@@ -94,7 +94,7 @@
 				v-if="!isReadOnly && workflowExecution && !workflowRunning"
 				title="Deletes the current Execution Data."
 				icon="trash"
-				size="lg"
+				size="large"
 				@click.stop="clearExecutionData()"
 			/>
 		</div>
