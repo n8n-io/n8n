@@ -7,7 +7,7 @@ export default {
 		size: {
 			control: {
 				type: 'select',
-				options: ['sm', 'md', 'lg'],
+				options: ['small', 'medium', 'large'],
 			},
 		},
 	},

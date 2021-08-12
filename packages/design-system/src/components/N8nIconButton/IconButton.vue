@@ -2,11 +2,11 @@
 	<n8n-button
 		:type="props.type"
 		:disabled="props.disabled"
-		:size="props.size === 'xl' ? 'lg' : props.size"
+		:size="props.size === 'xlarge' ? 'large' : props.size"
 		:loading="props.loading"
 		:title="props.title"
 		:icon="props.icon"
-		:iconSize="$options.iconSizeMap[props.size]"
+		:iconSize="$options.iconSizeMap[props.size] || props.size"
 		:theme="props.theme"
 		@click="(e) => listeners.click && listeners.click(e)"
 		circle
@@ -18,10 +18,8 @@ import Vue from 'vue';
 import N8nButton from '../N8nButton';
 
 const iconSizeMap = {
-	sm: 'sm',
-	md: 'md',
-	lg: 'md',
-	xl: 'lg',
+	large: 'medium',
+	xlarge: 'large',
 };
 
 Vue.component('N8nButton', N8nButton);
@@ -37,8 +35,9 @@ export default {
 		},
 		size: {
 			type: String,
+			default: 'medium',
 			validator: (value: string): boolean =>
-				['sm', 'md', 'lg', 'xl'].indexOf(value) !== -1,
+				['small', 'medium', 'large', 'xlarge'].indexOf(value) !== -1,
 		},
 		loading: {
 			type: Boolean,

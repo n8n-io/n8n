@@ -19,7 +19,7 @@ $padding-horizontal: var(--button-padding-horizontal, var(--spacing-m));
 
 $border-width: var(--border-width-base);
 $border-style: var(--border-style-base);
-$border-radius: var(--button-border-radius, 20px);
+$border-radius: var(--button-border-radius, 4px);
 $border-color: var(--button-border-color, var(--color-primary));
 
 $color: var(--button-color, var(--color-text-xlight));
@@ -105,11 +105,14 @@ $loading-overlay-background-color: rgba(255, 255, 255, 0.35);
 		}
 	}
 
-	@include mixins.when(circle) {
-		border-radius: 50%;
+	@include mixins.when(round) {
+		--button-border-radius: 20px;
+  }
 
+	@include mixins.when(circle) {
 		--button-padding-vertical: var(--spacing-xs);
 		--button-padding-horizontal: var(--spacing-xs);
+		--button-border-radius: 50%;
 	}
 
 	@include mixins.m(small) {

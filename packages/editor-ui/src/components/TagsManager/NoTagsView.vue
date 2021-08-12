@@ -9,7 +9,7 @@
 					your flows
 				</div>
 			</div>
-			<n8n-button label="Create a tag" size="lg" @click="$emit('enableCreate')" />
+			<n8n-button label="Create a tag" size="large" @click="$emit('enableCreate')" />
 		</el-col>
 	</div>
 </template>

@@ -22,9 +22,9 @@ export default {
 		},
 		size: {
 			type: String,
-			default: 'md',
+			default: 'medium',
 			validator: function (value: string): boolean {
-				return ['sm', 'md', 'lg'].indexOf(value) !== -1;
+				return ['small', 'medium', 'large'].indexOf(value) !== -1;
 			},
 		},
 		spin: {
@@ -36,19 +36,19 @@ export default {
 </script>
 
 <style lang="scss" module>
-._sm {
+._small {
 	font-size: 0.85em;
 	height: 0.85em;
 	width: 0.85em !important;
 }
 
-._md {
+._medium {
 	font-size: 0.95em;
 	height: 0.95em;
 	width: 0.95em !important;
 }
 
-._lg {
+._large {
 	font-size: 1.22em;
 	height: 1.22em;
 	width: 1.22em !important;
