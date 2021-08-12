@@ -20,12 +20,13 @@
 				<strong v-if="dataCount < maxDisplayItems">
 					Items: {{ dataCount }}
 				</strong>
-				<strong v-else>Items:
+				<div v-else class="title-text">
+					<strong>Items:</strong>
 					<n8n-select class="opts" size="mini" v-model="maxDisplayItems" @click.stop>
 						<n8n-option v-for="option in maxDisplayItemsOptions" :label="option" :value="option" :key="option" />
 					</n8n-select>&nbsp;/
-					{{ dataCount }}
-				</strong>
+					<strong>{{ dataCount }}</strong>
+				</div>
 				&nbsp;
 				<el-popover
 					v-if="runMetadata"
