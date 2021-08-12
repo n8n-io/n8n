@@ -10,8 +10,9 @@ import {
 	NodeOperationError,
 } from 'n8n-workflow';
 
+import {RequestPromiseOptions} from 'request-promise-native';
 /**
- * Make an API request to MSG91
+ * Make an API request to Sms77
  *
  * @param {IHookFunctions | IExecuteFunctions} this
  * @param {string} method
@@ -20,24 +21,22 @@ import {
  * @param {object | undefined} qs
  * @returns {Promise<any>}
  */
-export async function sms77ApiRequest(this: IHookFunctions | IExecuteFunctions, method: string, endpoint: string, form: IDataObject, qs?: IDataObject): Promise<any> { // tslint:disable-line:no-any
+export async function sms77ApiRequest(this: IHookFunctions | IExecuteFunctions, method: string, endpoint: string, data: IDataObject): Promise<any> { // tslint:disable-line:no-any
 	const credentials = this.getCredentials('sms77Api');
 	if (credentials === undefined) {
 		throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
 	}
 
-	if ('GET' === method) {
-		qs = setPayload(credentials, qs);
-	} else {
-		form = setPayload(credentials, form);
-	}
-	const response = await this.helpers.request({
-		form,
+	const opts: RequestPromiseOptions = {
+		headers: {
+			SentWith: 'n8n',
+			'X-Api-Key': credentials.apiKey,
+		},
 		json: true,
 		method,
-		qs,
-		uri: `https://gateway.sms77.io/api/${endpoint}`,
-	});
+	};
+	opts['GET' === method ? 'qs' : 'form'] = setPayload(credentials, data);
+	const response = await this.helpers.request(`https://gateway.sms77.io/api/${endpoint}`, opts);
 
 	if ('100' !== response.success) {
 		throw new NodeApiError(this.getNode(), response, { message: 'Invalid sms77 credentials or API error!' });
@@ -52,9 +51,7 @@ function setPayload(credentials: ICredentialDataDecryptedObject, o?: IDataObject
 		o = {};
 	}
 
-	o.p = credentials!.apiKey as string;
 	o.json = 1;
-	o.sendwith = 'n8n';
 
 	return o;
 }

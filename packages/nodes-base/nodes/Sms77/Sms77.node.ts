@@ -4,7 +4,7 @@ import {sms77ApiRequest} from './GenericFunctions';
 
 export class Sms77 implements INodeType {
 	description: INodeTypeDescription = {
-		displayName: 'sms77',
+		displayName: 'Sms77',
 		name: 'sms77',
 		icon: 'file:sms77.png',
 		group: ['transform'],
@@ -13,7 +13,7 @@ export class Sms77 implements INodeType {
 		description: 'Send SMS',
 		defaults: {
 			name: 'Sms77',
-			color: '#18D46A',
+			color: '#00d46a',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -59,10 +59,139 @@ export class Sms77 implements INodeType {
 				description: 'The operation to perform.',
 			},
 			{
+				displayName: 'Label',
+				name: 'label',
+				type: 'string',
+				default: null,
+				placeholder: 'MyCustomLabel',
+				required: false,
+				displayOptions: {
+					show: {
+						operation: [
+							'send',
+						],
+						resource: [
+							'sms',
+						],
+					},
+				},
+				description: 'Custom label used to group analytics.',
+			},
+			{
+				displayName: 'Foreign ID',
+				name: 'foreign_id',
+				type: 'string',
+				default: null,
+				placeholder: 'MyCustomForeignID',
+				required: false,
+				displayOptions: {
+					show: {
+						operation: [
+							'send',
+						],
+						resource: [
+							'sms',
+						],
+					},
+				},
+				description: 'Custom foreign ID returned in DLR callbacks.',
+			},
+			{
+				displayName: 'TTL',
+				name: 'ttl',
+				type: 'number',
+				default: null,
+				required: false,
+				typeOptions: {minValue: 1},
+				displayOptions: {
+					show: {
+						operation: [
+							'send',
+						],
+						resource: [
+							'sms',
+						],
+					},
+				},
+				description: 'Custom time to live specifying the validity period of a message.',
+			},
+			{
+				displayName: 'Debug',
+				name: 'debug',
+				type: 'boolean',
+				default: false,
+				required: false,
+				displayOptions: {
+					show: {
+						operation: [
+							'send',
+						],
+						resource: [
+							'sms',
+						],
+					},
+				},
+				description: 'If enabled, the API returns fake responses like in a sandbox.',
+			},
+			{
+				displayName: 'Performance Tracking',
+				name: 'performance_tracking',
+				type: 'boolean',
+				default: false,
+				required: false,
+				displayOptions: {
+					show: {
+						operation: [
+							'send',
+						],
+						resource: [
+							'sms',
+						],
+					},
+				},
+				description: 'Enable performance tracking for URLs found in the message text.',
+			},
+			{
+				displayName: 'Flash',
+				name: 'flash',
+				type: 'boolean',
+				default: false,
+				required: false,
+				displayOptions: {
+					show: {
+						operation: [
+							'send',
+						],
+						resource: [
+							'sms',
+						],
+					},
+				},
+				description: 'Send as flash message being displayed directly the receiver\'s display.',
+			},
+			{
+				displayName: 'No Reload',
+				name: 'no_reload',
+				type: 'boolean',
+				default: false,
+				required: false,
+				displayOptions: {
+					show: {
+						operation: [
+							'send',
+						],
+						resource: [
+							'sms',
+						],
+					},
+				},
+				description: 'Disable reload lock to allow sending duplicate messages.',
+			},
+			{
 				displayName: 'From',
 				name: 'from',
 				type: 'string',
-				default: '',
+				default: null,
 				placeholder: '+4901234567890',
 				required: false,
 				displayOptions: {
@@ -75,7 +204,7 @@ export class Sms77 implements INodeType {
 						],
 					},
 				},
-				description: 'The number from which to send the message.',
+				description: 'The caller ID displayed in the receivers display. Max 16 numeric or 11 alphanumeric characters.',
 			},
 			{
 				displayName: 'To',
@@ -94,7 +223,7 @@ export class Sms77 implements INodeType {
 						],
 					},
 				},
-				description: 'The number, with coutry code, to which to send the message.',
+				description: 'The number, with country code, to which to send the message.',
 			},
 			{
 				displayName: 'Message',
@@ -131,10 +260,16 @@ export class Sms77 implements INodeType {
 				throw new NodeOperationError(this.getNode(), `The operation "${operation}" is not known!`);
 			}
 
-			const responseData = await sms77ApiRequest.call(this, 'POST', 'sms', {}, {
+			const responseData = await sms77ApiRequest.call(this, 'POST', 'sms', {
+				debug: Number(this.getNodeParameter('debug', i)),
+				flash: Number(this.getNodeParameter('flash', i)),
+				foreign_id: this.getNodeParameter('foreign_id', i),
 				from: this.getNodeParameter('from', i),
-				to: this.getNodeParameter('to', i),
+				label: this.getNodeParameter('label', i),
+				performance_tracking: Number(this.getNodeParameter('performance_tracking', i)),
 				text: this.getNodeParameter('message', i),
+				to: this.getNodeParameter('to', i),
+				ttl: this.getNodeParameter('ttl', i),
 			});
 
 			returnData.push(responseData);
