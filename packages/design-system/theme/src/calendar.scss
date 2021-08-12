@@ -29,14 +29,14 @@
 
 	thead th {
 		padding: 12px 0;
-		color: var.$color-text-primary;
+		color: var(--color-text-dark);
 		font-weight: normal;
 	}
 
 	&:not(.is-range) {
 		td.prev,
 		td.next {
-			color: var.$color-text-placeholder;
+			color: var(--color-text-lighter);
 		}
 	}
 

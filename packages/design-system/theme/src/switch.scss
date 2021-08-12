@@ -24,7 +24,7 @@
 		font-weight: 500;
 		cursor: pointer;
 		vertical-align: middle;
-		color: var.$color-text-primary;
+		color: var(--color-text-dark);
 
 		@include mixins.when(active) {
 			color: var(--color-primary);

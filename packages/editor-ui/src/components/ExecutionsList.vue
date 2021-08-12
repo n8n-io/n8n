@@ -3,10 +3,10 @@
 		<el-dialog :visible="dialogVisible" append-to-body width="80%" :title="`Workflow Executions ${combinedExecutions.length}/${finishedExecutionsCountEstimated === true ? '~' : ''}${combinedExecutionsCount}`" :before-close="closeDialog">
 			<div class="filters">
 				<el-row>
-					<el-col :span="4" class="filter-headline">
+					<el-col :span="2" class="filter-headline">
 						Filters:
 					</el-col>
-					<el-col :span="6">
+					<el-col :span="7">
 						<n8n-select v-model="filter.workflowId" placeholder="Select Workflow" size="medium" filterable @change="handleFilterChanged">
 							<n8n-option
 								v-for="item in workflows"
@@ -16,9 +16,7 @@
 							</n8n-option>
 						</n8n-select>
 					</el-col>
-					<el-col :span="2">&nbsp;
-					</el-col>
-					<el-col :span="4">
+					<el-col :span="5" :offset="1">
 						<n8n-select v-model="filter.status" placeholder="Select Status" size="medium" filterable @change="handleFilterChanged">
 							<n8n-option
 								v-for="item in statuses"
@@ -28,9 +26,7 @@
 							</n8n-option>
 						</n8n-select>
 					</el-col>
-					<el-col :span="4">&nbsp;
-					</el-col>
-					<el-col :span="4" class="autorefresh">
+					<el-col :span="4" :offset="5" class="autorefresh">
 						<el-checkbox v-model="autoRefresh" @change="handleAutoRefreshToggle">Auto refresh</el-checkbox>
 					</el-col>
 				</el-row>

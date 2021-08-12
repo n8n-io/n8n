@@ -51,7 +51,7 @@
 			bottom: 0;
 			width: 100%;
 			height: 2px;
-			background-color: var.$border-color-light;
+			background-color: var(--border-color-base);
 			z-index: var.$index-normal;
 		}
 
@@ -68,7 +68,7 @@
 		cursor: pointer;
 		line-height: 44px;
 		font-size: 12px;
-		color: var.$color-text-secondary;
+		color: var(--color-text-light);
 	}
 	@include mixins.e(nav-next) {
 		right: 0;
@@ -101,7 +101,7 @@
 		list-style: none;
 		font-size: 14px;
 		font-weight: 500;
-		color: var.$color-text-primary;
+		color: var(--color-text-dark);
 		position: relative;
 
 		&:focus,
@@ -125,7 +125,7 @@
 			}
 
 			&:hover {
-				background-color: var.$color-text-placeholder;
+				background-color: var(--color-text-lighter);
 				color: var.$color-white;
 			}
 		}
@@ -150,13 +150,13 @@
 	}
 	@include mixins.m(card) {
 		> .el-tabs__header {
-			border-bottom: 1px solid var.$border-color-light;
+			border-bottom: 1px solid var(--border-color-base);
 		}
 		> .el-tabs__header .el-tabs__nav-wrap::after {
 			content: none;
 		}
 		> .el-tabs__header .el-tabs__nav {
-			border: 1px solid var.$border-color-light;
+			border: 1px solid var(--border-color-base);
 			border-bottom: none;
 			border-radius: 4px 4px 0 0;
 			box-sizing: border-box;
@@ -178,7 +178,7 @@
 		}
 		> .el-tabs__header .el-tabs__item {
 			border-bottom: 1px solid transparent;
-			border-left: 1px solid var.$border-color-light;
+			border-left: 1px solid var(--border-color-base);
 			transition: color 0.3s cubic-bezier(0.645, 0.045, 0.355, 1),
 				padding 0.3s cubic-bezier(0.645, 0.045, 0.355, 1);
 			&:first-child {
@@ -210,7 +210,7 @@
 	}
 	@include mixins.m(border-card) {
 		background: var.$color-white;
-		border: 1px solid var.$border-color-base;
+		border: 1px solid var(--border-color-base);
 		box-shadow: 0 2px 4px 0 rgba(0, 0, 0, 0.12), 0 0 6px 0 rgba(0, 0, 0, 0.04);
 
 		> .el-tabs__content {
@@ -218,7 +218,7 @@
 		}
 		> .el-tabs__header {
 			background-color: var.$background-color-base;
-			border-bottom: 1px solid var.$border-color-light;
+			border-bottom: 1px solid var(--border-color-base);
 			margin: 0;
 		}
 		> .el-tabs__header .el-tabs__nav-wrap::after {
@@ -228,7 +228,7 @@
 			transition: all 0.3s cubic-bezier(0.645, 0.045, 0.355, 1);
 			border: 1px solid transparent;
 			margin-top: -1px;
-			color: var.$color-text-secondary;
+			color: var(--color-text-light);
 
 			&:first-child {
 				margin-left: -1px;
@@ -241,8 +241,8 @@
 			&.is-active {
 				color: var(--color-primary);
 				background-color: var.$color-white;
-				border-right-color: var.$border-color-base;
-				border-left-color: var.$border-color-base;
+				border-right-color: var(--border-color-base);
+				border-left-color: var(--border-color-base);
 			}
 			&:not(.is-disabled):hover {
 				color: var(--color-primary);
@@ -288,7 +288,7 @@
 		&.el-tabs--border-card {
 			.el-tabs__header.is-bottom {
 				border-bottom: 0;
-				border-top: 1px solid var.$border-color-base;
+				border-top: 1px solid var(--border-color-base);
 			}
 			.el-tabs__nav-wrap.is-bottom {
 				margin-top: -1px;
@@ -394,17 +394,17 @@
 			}
 			.el-tabs__item.is-left {
 				border-left: none;
-				border-right: 1px solid var.$border-color-light;
+				border-right: 1px solid var(--border-color-base);
 				border-bottom: none;
-				border-top: 1px solid var.$border-color-light;
+				border-top: 1px solid var(--border-color-base);
 				text-align: left;
 			}
 			.el-tabs__item.is-left:first-child {
-				border-right: 1px solid var.$border-color-light;
+				border-right: 1px solid var(--border-color-base);
 				border-top: none;
 			}
 			.el-tabs__item.is-left.is-active {
-				border: 1px solid var.$border-color-light;
+				border: 1px solid var(--border-color-base);
 				border-right-color: #fff;
 				border-left: none;
 				border-bottom: none;
@@ -419,7 +419,7 @@
 
 			.el-tabs__nav {
 				border-radius: 4px 0 0 4px;
-				border-bottom: 1px solid var.$border-color-light;
+				border-bottom: 1px solid var(--border-color-base);
 				border-right: none;
 			}
 
@@ -469,14 +469,14 @@
 			}
 			.el-tabs__item.is-right {
 				border-bottom: none;
-				border-top: 1px solid var.$border-color-light;
+				border-top: 1px solid var(--border-color-base);
 			}
 			.el-tabs__item.is-right:first-child {
-				border-left: 1px solid var.$border-color-light;
+				border-left: 1px solid var(--border-color-base);
 				border-top: none;
 			}
 			.el-tabs__item.is-right.is-active {
-				border: 1px solid var.$border-color-light;
+				border: 1px solid var(--border-color-base);
 				border-left-color: #fff;
 				border-right: none;
 				border-bottom: none;
@@ -491,7 +491,7 @@
 
 			.el-tabs__nav {
 				border-radius: 0 4px 4px 0;
-				border-bottom: 1px solid var.$border-color-light;
+				border-bottom: 1px solid var(--border-color-base);
 				border-left: none;
 			}
 		}

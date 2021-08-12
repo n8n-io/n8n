@@ -242,9 +242,6 @@ $--max-input-height: 60px;
 		max-height: $--max-input-height;
 		overflow-y: scroll;
 		overflow-x: hidden;
-
-		// firefox fix for scrollbars
-		scrollbar-color: $--scrollbar-thumb-color transparent;
 	}
 
 	input {
@@ -284,6 +281,10 @@ $--max-input-height: 60px;
 		ul {
 			padding: 0;
 			max-height: $--dropdown-height - $--item-height;
+
+			::-webkit-scrollbar {
+				display: none;
+			}
 		}
 
 		&:after {

@@ -31,12 +31,12 @@
 		@include mixins.when(disabled) {
 			border: var(--border-base);
 			background-color: var.$background-color-base;
-			color: var.$color-text-placeholder;
+			color: var(--color-text-lighter);
 
 			&:hover {
 				border: var(--border-base);
 				background-color: var.$background-color-base;
-				color: var.$color-text-placeholder;
+				color: var(--color-text-lighter);
 			}
 		}
 
@@ -105,7 +105,7 @@
 		}
 
 		&.el-checkbox {
-			color: var.$color-text-primary;
+			color: var(--color-text-dark);
 		}
 
 		&:hover {
@@ -170,13 +170,13 @@
 
 			.el-checkbox__label {
 				font-size: 16px;
-				color: var.$color-text-primary;
+				color: var(--color-text-dark);
 				font-weight: normal;
 
 				span {
 					position: absolute;
 					right: 15px;
-					color: var.$color-text-secondary;
+					color: var(--color-text-light);
 					font-size: 12px;
 					font-weight: normal;
 				}
@@ -199,7 +199,7 @@
 
 		.el-checkbox {
 			padding-left: 20px;
-			color: var.$color-text-primary;
+			color: var(--color-text-dark);
 		}
 	}
 
@@ -208,7 +208,7 @@
 		height: var.$transfer-item-height;
 		line-height: var.$transfer-item-height;
 		padding: 6px 15px 0;
-		color: var.$color-text-secondary;
+		color: var(--color-text-light);
 		text-align: center;
 	}
 

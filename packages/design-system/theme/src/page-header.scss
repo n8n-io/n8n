@@ -19,7 +19,7 @@
 			right: -20px;
 			top: 50%;
 			transform: translateY(-50%);
-			background-color: var.$border-color-base;
+			background-color: var(--border-color-base);
 		}
 
 		.el-icon-back {
@@ -36,6 +36,6 @@
 
 	@include mixins.e(content) {
 		font-size: 18px;
-		color: var.$color-text-primary;
+		color: var(--color-text-dark);
 	}
 }

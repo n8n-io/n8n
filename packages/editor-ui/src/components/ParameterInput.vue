@@ -10,7 +10,7 @@
 				<prism-editor v-if="!codeEditDialogVisible" :lineNumbers="true" :readonly="true" :code="displayValue" language="js"></prism-editor>
 			</div>
 
-			<n8n-input v-else v-model="tempValue" ref="inputField" size="medium" :type="getStringInputType" :rows="getArgument('rows')" :value="displayValue" :disabled="!isValueExpression && isReadOnly" @change="valueChanged" @keydown.stop @focus="setFocus" :title="displayTitle" :placeholder="isValueExpression?'':parameter.placeholder">
+			<n8n-input v-else v-model="tempValue" ref="inputField" :size="inputSize" :type="getStringInputType" :rows="getArgument('rows')" :value="displayValue" :disabled="!isValueExpression && isReadOnly" @change="valueChanged" @keydown.stop @focus="setFocus" :title="displayTitle" :placeholder="isValueExpression?'':parameter.placeholder">
 				<div slot="suffix" class="expand-input-icon-container">
 					<font-awesome-icon v-if="!isValueExpression && !isReadOnly" icon="external-link-alt" class="edit-window-button clickable" title="Open Edit Window" @click="displayEditDialog()" />
 				</div>
@@ -21,7 +21,7 @@
 				v-model="tempValue"
 				ref="inputField"
 				type="datetime"
-				size="medium"
+				:size="inputSize"
 				:value="displayValue"
 				:title="displayTitle"
 				:disabled="isReadOnly"
@@ -35,14 +35,13 @@
 		</div>
 
 		<div v-else-if="parameter.type === 'number'">
-			<!-- <el-slider :value="value" @input="valueChanged"></el-slider> -->
-			<n8n-input-number ref="inputField" size="medium" :value="displayValue" :controls="false" :max="getArgument('maxValue')" :min="getArgument('minValue')" :precision="getArgument('numberPrecision')" :step="getArgument('numberStepSize')" :disabled="isReadOnly" @change="valueChanged" @focus="setFocus" @keydown.stop :title="displayTitle" :placeholder="parameter.placeholder"></n8n-input-number>
+			<n8n-input-number ref="inputField" :size="inputSize" :value="displayValue" :controls="false" :max="getArgument('maxValue')" :min="getArgument('minValue')" :precision="getArgument('numberPrecision')" :step="getArgument('numberStepSize')" :disabled="isReadOnly" @change="valueChanged" @focus="setFocus" @keydown.stop :title="displayTitle" :placeholder="parameter.placeholder"></n8n-input-number>
 		</div>
 
 		<n8n-select
 			v-else-if="parameter.type === 'options'"
 			ref="inputField"
-			size="medium"
+			:size="inputSize"
 			filterable
 			:value="displayValue"
 			:loading="remoteParameterOptionsLoading"
@@ -66,7 +65,7 @@
 		<n8n-select
 			v-else-if="parameter.type === 'multiOptions'"
 			ref="inputField"
-			size="medium"
+			:size="inputSize"
 			filterable
 			multiple
 			:value="displayValue"
@@ -85,7 +84,7 @@
 
 		<div v-else-if="parameter.type === 'color'" ref="inputField" class="color-input">
 			<el-color-picker :value="displayValue" :disabled="isReadOnly" @change="valueChanged" size="small" class="color-picker" @focus="setFocus" :title="displayTitle" :show-alpha="getArgument('showAlpha')"></el-color-picker>
-			<n8n-input v-model="tempValue" size="medium" type="text" :value="tempValue" :disabled="isReadOnly" @change="valueChanged" @keydown.stop @focus="setFocus" :title="displayTitle" ></n8n-input>
+			<n8n-input v-model="tempValue" :size="inputSize" type="text" :value="tempValue" :disabled="isReadOnly" @change="valueChanged" @keydown.stop @focus="setFocus" :title="displayTitle" ></n8n-input>
 		</div>
 
 		<div v-else-if="parameter.type === 'boolean'">
@@ -164,6 +163,7 @@ export default mixins(
 			'value',
 			'isCredential', // boolean
 			'multiline', //boolean
+			'inputSize',
 		],
 		data () {
 			return {

@@ -6,7 +6,7 @@
 	border: 1px solid var.$card-border-color;
 	background-color: var.$color-white;
 	overflow: hidden;
-	color: var.$color-text-primary;
+	color: var(--color-text-dark);
 	transition: 0.3s;
 
 	@include mixins.when(always-shadow) {

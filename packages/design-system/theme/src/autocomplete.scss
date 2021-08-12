@@ -14,7 +14,7 @@
 	margin: 5px 0;
 	box-shadow: var.$box-shadow-light;
 	border-radius: var(--border-radius-base);
-	border: 1px solid var.$border-color-light;
+	border: 1px solid var(--border-color-base);
 	box-sizing: border-box;
 	background-color: var.$color-white;
 
@@ -34,7 +34,7 @@
 		margin: 0;
 		line-height: 34px;
 		cursor: pointer;
-		color: var.$color-text-primary;
+		color: var(--color-text-dark);
 		font-size: var.$font-size-base;
 		list-style: none;
 		white-space: nowrap;
