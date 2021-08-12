@@ -23,5 +23,5 @@ const Template = (args, { argTypes }) => ({
 export const InputLabel = Template.bind({});
 InputLabel.args = {
 	label: 'input label',
-	infoText: 'more info...',
+	tooltipText: 'more info...',
 };
