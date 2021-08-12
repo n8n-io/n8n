@@ -222,12 +222,11 @@ export class Baserow implements INodeType {
 
 					const body: IDataObject = {};
 
-					const dataToSend = this.getNodeParameter('dataToSend', 0) as 'defineBelow' | 'autoMapColumns';
+					const dataToSend = this.getNodeParameter('dataToSend', 0) as 'defineBelow' | 'autoMapInputData';
 
-					if (dataToSend === 'autoMapColumns') {
-
+					if (dataToSend === 'autoMapInputData') {
 						const incomingKeys = Object.keys(items[i].json);
-						const rawInputsToIgnore = this.getNodeParameter('inputDataToIgnore', i) as string;
+						const rawInputsToIgnore = this.getNodeParameter('inputsToIgnore', i) as string;
 						const inputDataToIgnore = rawInputsToIgnore.split(',').map(c => c.trim());
 
 						for (const key of incomingKeys) {
