@@ -15,7 +15,7 @@
 				<el-col :span="12" class="parameter-value" :class="getIssues(credentialTypeDescription.name).length?'has-issues':''">
 
 					<div :style="credentialInputWrapperStyle(credentialTypeDescription.name)">
-						<n8n-select v-model="credentials[credentialTypeDescription.name]" :disabled="isReadOnly" @change="credentialSelected(credentialTypeDescription.name)" placeholder="Select Credential" size="medium">
+						<n8n-select v-model="credentials[credentialTypeDescription.name]" :disabled="isReadOnly" @change="credentialSelected(credentialTypeDescription.name)" placeholder="Select Credential" size="small">
 							<n8n-option
 								v-for="(item, index) in credentialOptions[credentialTypeDescription.name]"
 								:key="item.name + '_' + index"

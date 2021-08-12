@@ -30,7 +30,7 @@
 					</n8n-tooltip>
 				</el-col>
 				<el-col :span="18">
-					<parameter-input :parameter="parameter" :value="propertyValue[parameter.name]" :path="parameter.name" :isCredential="true" :displayOptions="true" @valueChanged="valueChanged" />
+					<parameter-input :parameter="parameter" :value="propertyValue[parameter.name]" :path="parameter.name" :isCredential="true" :displayOptions="true" @valueChanged="valueChanged" inputSize="medium" />
 				</el-col>
 			</el-row>
 		</div>
