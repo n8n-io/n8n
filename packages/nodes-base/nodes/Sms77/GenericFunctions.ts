@@ -11,17 +11,19 @@ import {
 } from 'n8n-workflow';
 
 import {RequestPromiseOptions} from 'request-promise-native';
+
+type Endpoint = 'sms' | 'voice';
+
 /**
  * Make an API request to Sms77
  *
  * @param {IHookFunctions | IExecuteFunctions} this
  * @param {string} method
- * @param {string} endpoint
- * @param {object} form
- * @param {object | undefined} qs
+ * @param {Endpoint} endpoint
+ * @param {object | undefined} data
  * @returns {Promise<any>}
  */
-export async function sms77ApiRequest(this: IHookFunctions | IExecuteFunctions, method: string, endpoint: string, data: IDataObject): Promise<any> { // tslint:disable-line:no-any
+export async function sms77ApiRequest(this: IHookFunctions | IExecuteFunctions, method: string, endpoint: Endpoint, data?: IDataObject): Promise<any> { // tslint:disable-line:no-any
 	const credentials = this.getCredentials('sms77Api');
 	if (credentials === undefined) {
 		throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
@@ -44,7 +46,6 @@ export async function sms77ApiRequest(this: IHookFunctions | IExecuteFunctions, 
 
 	return response;
 }
-
 
 function setPayload(credentials: ICredentialDataDecryptedObject, o?: IDataObject) {
 	if (!o) {

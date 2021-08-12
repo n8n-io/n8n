@@ -1,16 +1,22 @@
-import {IExecuteFunctions,} from 'n8n-core';
-import {IDataObject, INodeExecutionData, INodeType, INodeTypeDescription, NodeOperationError,} from 'n8n-workflow';
-import {sms77ApiRequest} from './GenericFunctions';
+import {IExecuteFunctions,} from 'n8n-core'
+import {
+	IDataObject,
+	INodeExecutionData,
+	INodeType,
+	INodeTypeDescription,
+	NodeOperationError,
+} from 'n8n-workflow'
+import {sms77ApiRequest} from './GenericFunctions'
 
 export class Sms77 implements INodeType {
 	description: INodeTypeDescription = {
-		displayName: 'Sms77',
+		displayName: 'sms77',
 		name: 'sms77',
 		icon: 'file:sms77.png',
 		group: ['transform'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
-		description: 'Send SMS',
+		description: 'Send SMS and make text-to-speech calls',
 		defaults: {
 			name: 'Sms77',
 			color: '#00d46a',
@@ -33,10 +39,16 @@ export class Sms77 implements INodeType {
 						name: 'SMS',
 						value: 'sms',
 					},
+					{
+						name: 'Voice Call',
+						value: 'voice',
+					},
 				],
 				default: 'sms',
 				description: 'The resource to operate on.',
 			},
+
+			// operations
 			{
 				displayName: 'Operation',
 				name: 'operation',
@@ -59,62 +71,28 @@ export class Sms77 implements INodeType {
 				description: 'The operation to perform.',
 			},
 			{
-				displayName: 'Label',
-				name: 'label',
-				type: 'string',
-				default: null,
-				placeholder: 'MyCustomLabel',
-				required: false,
+				displayName: 'Operation',
+				name: 'operation',
+				type: 'options',
 				displayOptions: {
 					show: {
-						operation: [
-							'send',
-						],
 						resource: [
-							'sms',
+							 'voice',
 						],
 					},
 				},
-				description: 'Custom label used to group analytics.',
-			},
-			{
-				displayName: 'Foreign ID',
-				name: 'foreign_id',
-				type: 'string',
-				default: null,
-				placeholder: 'MyCustomForeignID',
-				required: false,
-				displayOptions: {
-					show: {
-						operation: [
-							'send',
-						],
-						resource: [
-							'sms',
-						],
+				options: [
+					{
+						name: 'Send',
+						value: 'send',
+						description: 'Converts text to voice and calls a given number',
 					},
-				},
-				description: 'Custom foreign ID returned in DLR callbacks.',
+				],
+				default: 'send',
+				description: 'The operation to perform.',
 			},
-			{
-				displayName: 'TTL',
-				name: 'ttl',
-				type: 'number',
-				default: null,
-				required: false,
-				typeOptions: {minValue: 1},
-				displayOptions: {
-					show: {
-						operation: [
-							'send',
-						],
-						resource: [
-							'sms',
-						],
-					},
-				},
-				description: 'Custom time to live specifying the validity period of a message.',
-			},
+
+			// common options
 			{
 				displayName: 'Debug',
 				name: 'debug',
@@ -127,12 +105,14 @@ export class Sms77 implements INodeType {
 							'send',
 						],
 						resource: [
-							'sms',
+							'sms', 'voice',
 						],
 					},
 				},
 				description: 'If enabled, the API returns fake responses like in a sandbox.',
 			},
+
+			// sms options
 			{
 				displayName: 'Performance Tracking',
 				name: 'performance_tracking',
@@ -188,6 +168,81 @@ export class Sms77 implements INodeType {
 				description: 'Disable reload lock to allow sending duplicate messages.',
 			},
 			{
+				displayName: 'Label',
+				name: 'label',
+				type: 'string',
+				default: null,
+				placeholder: 'MyCustomLabel',
+				required: false,
+				displayOptions: {
+					show: {
+						operation: [
+							'send',
+						],
+						resource: [
+							'sms',
+						],
+					},
+				},
+				description: 'Custom label used to group analytics.',
+			},
+			{
+				displayName: 'Foreign ID',
+				name: 'foreign_id',
+				type: 'string',
+				default: null,
+				placeholder: 'MyCustomForeignID',
+				required: false,
+				displayOptions: {
+					show: {
+						operation: [
+							'send',
+						],
+						resource: [
+							'sms',
+						],
+					},
+				},
+				description: 'Custom foreign ID returned in DLR callbacks.',
+			},
+			{
+				displayName: 'TTL',
+				name: 'ttl',
+				type: 'number',
+				default: 2880,
+				required: false,
+				typeOptions: {minValue: 1},
+				displayOptions: {
+					show: {
+						operation: [
+							'send',
+						],
+						resource: [
+							'sms',
+						],
+					},
+				},
+				description: 'Custom time to live specifying the validity period of a message in minutes.',
+			},
+			{
+				displayName: 'Delay',
+				name: 'delay',
+				type: 'dateTime',
+				default: null,
+				required: false,
+				displayOptions: {
+					show: {
+						operation: [
+							'send',
+						],
+						resource: [
+							'sms',
+						],
+					},
+				},
+				description: 'Pick a date for time delayed dispatch.',
+			},
+			{
 				displayName: 'From',
 				name: 'from',
 				type: 'string',
@@ -207,8 +262,85 @@ export class Sms77 implements INodeType {
 				description: 'The caller ID displayed in the receivers display. Max 16 numeric or 11 alphanumeric characters.',
 			},
 			{
-				displayName: 'To',
+				displayName: 'To (recipient)',
 				name: 'to',
+				type: 'string',
+				default: '',
+				placeholder: '+49876543210, MyGroup',
+				required: true,
+				displayOptions: {
+					show: {
+						operation: [
+							'send',
+						],
+						resource: [
+							'sms',
+						],
+					},
+				},
+				description: 'The number of your recipient(s) separated by comma. Can be regular numbers or contact/groups from Sms77.',
+			},
+			{
+				displayName: 'Message',
+				name: 'message',
+				type: 'string',
+				default: '',
+				required: true,
+				typeOptions: {rows: 5,},
+				displayOptions: {
+					show: {
+						operation: [
+							'send',
+						],
+						resource: [
+							'sms',
+						],
+					},
+				},
+				description: 'The message to send. Max. 1520 characters.',
+			},
+
+			// voice options
+			{
+				displayName: 'XML',
+				name: 'xml',
+				type: 'boolean',
+				default: false,
+				required: false,
+				displayOptions: {
+					show: {
+						operation: [
+							'send',
+						],
+						resource: [
+							'voice',
+						],
+					},
+				},
+				description: 'Enable if text is of XML format.',
+			},
+			{
+				displayName: 'From',
+				name: 'from_voice',
+				type: 'string',
+				default: null,
+				placeholder: '+491771783130',
+				required: false,
+				displayOptions: {
+					show: {
+						operation: [
+							'send',
+						],
+						resource: [
+							'voice',
+						],
+					},
+				},
+				description: 'Determines where the call originates from. Must be a verified number or a shared one from Sms77.',
+			},
+			{
+				displayName: 'To (recipient)',
+				name: 'to_voice',
 				type: 'string',
 				default: '',
 				placeholder: '+49876543210',
@@ -219,29 +351,30 @@ export class Sms77 implements INodeType {
 							'send',
 						],
 						resource: [
-							'sms',
+							'voice',
 						],
 					},
 				},
-				description: 'The number, with country code, to which to send the message.',
+				description: 'The number of your recipient(s) with the respective country code.',
 			},
 			{
 				displayName: 'Message',
-				name: 'message',
+				name: 'message_voice',
 				type: 'string',
 				default: '',
 				required: true,
+				typeOptions: {rows: 5,},
 				displayOptions: {
 					show: {
 						operation: [
 							'send',
 						],
 						resource: [
-							'sms',
+							'voice',
 						],
 					},
 				},
-				description: 'The message to send',
+				description: 'The message to convert and read loud. Max. 10.000 characters.',
 			},
 		],
 	};
@@ -250,30 +383,45 @@ export class Sms77 implements INodeType {
 		const returnData: IDataObject[] = [];
 
 		for (let i = 0; i < this.getInputData().length; i++) {
-			const resource = this.getNodeParameter('resource', i);
-			if ('sms' !== resource) {
-				throw new NodeOperationError(this.getNode(), `The resource "${resource}" is not known!`);
-			}
-
 			const operation = this.getNodeParameter('operation', i);
+
 			if ('send' !== operation) {
 				throw new NodeOperationError(this.getNode(), `The operation "${operation}" is not known!`);
 			}
 
-			const responseData = await sms77ApiRequest.call(this, 'POST', 'sms', {
-				debug: Number(this.getNodeParameter('debug', i)),
-				flash: Number(this.getNodeParameter('flash', i)),
-				foreign_id: this.getNodeParameter('foreign_id', i),
-				from: this.getNodeParameter('from', i),
-				label: this.getNodeParameter('label', i),
-				performance_tracking: Number(this.getNodeParameter('performance_tracking', i)),
-				text: this.getNodeParameter('message', i),
-				to: this.getNodeParameter('to', i),
-				ttl: this.getNodeParameter('ttl', i),
-			});
+			const resource = this.getNodeParameter('resource', i);
 
-			returnData.push(responseData);
+			switch (resource) {
+				case 'sms':
+					const delay = this.getNodeParameter('delay', i);
+
+					returnData.push(await sms77ApiRequest.call(this, 'POST', 'sms', {
+						debug: Number(this.getNodeParameter('debug', i)),
+						delay: delay ? (new Date(delay as string)).getTime() : null,
+						flash: Number(this.getNodeParameter('flash', i)),
+						foreign_id: this.getNodeParameter('foreign_id', i),
+						from: this.getNodeParameter('from', i),
+						label: this.getNodeParameter('label', i),
+						performance_tracking: Number(this.getNodeParameter('performance_tracking', i)),
+						text: this.getNodeParameter('message', i),
+						to: this.getNodeParameter('to', i),
+						ttl: this.getNodeParameter('ttl', i),
+					}));
+					break;
+				case 'voice':
+					returnData.push(await sms77ApiRequest.call(this, 'POST', 'voice', {
+						debug: Number(this.getNodeParameter('debug', i)),
+						from: this.getNodeParameter('from_voice', i),
+						text: this.getNodeParameter('message_voice', i),
+						to: this.getNodeParameter('to_voice', i),
+						xml: Number(this.getNodeParameter('xml', i)),
+					}));
+					break;
+				default:
+					throw new NodeOperationError(this.getNode(), `The resource "${resource}" is not known!`);
+			}
 		}
+
 		return [this.helpers.returnJsonArray(returnData)];
 	}
 }
