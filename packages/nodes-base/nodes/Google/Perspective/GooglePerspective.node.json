@@ -1,20 +1,24 @@
 {
-	"node": "n8n-nodes-base.perspective",
+	"node": "n8n-nodes-base.googlePerspective",
 	"nodeVersion": "1.0",
 	"codexVersion": "1.0",
 	"categories": [
-		"Development"
+		"Analytics",
+		"Utility"
 	],
 	"resources": {
 		"credentialDocumentation": [
 			{
-				"url": "https://docs.n8n.io/credentials/perspective"
+				"url": "https://docs.n8n.io/credentials/google"
 			}
 		],
 		"primaryDocumentation": [
 			{
-				"url": "https://docs.n8n.io/nodes/n8n-nodes-base.perspective/"
+				"url": "https://docs.n8n.io/nodes/n8n-nodes-base.googlePerspective/"
 			}
 		]
-	}
+	},
+	"alias": [
+		"Moderation"
+	]
 }
