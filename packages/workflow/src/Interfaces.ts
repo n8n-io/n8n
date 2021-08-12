@@ -430,12 +430,10 @@ export interface IBinaryKeyData {
 }
 
 export interface INodeExecutionData {
-	[key: string]: IDataObject | IBinaryKeyData | undefined;
-	// TODO: Rename this one as json does not really fit as it is not json (which is a string) it is actually a JS object
+	[key: string]: IDataObject | IBinaryKeyData | NodeApiError | NodeOperationError | undefined;
 	json: IDataObject;
-	// json: object;
-	// json?: object;
 	binary?: IBinaryKeyData;
+	error?: NodeApiError | NodeOperationError;
 }
 
 

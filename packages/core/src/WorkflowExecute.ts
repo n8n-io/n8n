@@ -25,6 +25,8 @@ import {
 } from './';
 
 import { get } from 'lodash';
+import { NodeApiError } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
 export class WorkflowExecute {
 	runExecutionData: IRunExecutionData;
@@ -748,6 +750,20 @@ export class WorkflowExecute {
 							await this.executeHook('nodeExecuteAfter', [executionNode.name, taskData, this.runExecutionData]);
 
 							break;
+						}
+					}
+
+					// Merge error information to default output for now
+					// As the new nodes can report the errors in 
+					// the `error` property.
+					for (const execution of nodeSuccessData!) {
+						for (const lineResult of execution) {
+							if (lineResult.json.$error !== undefined && lineResult.json.$json !== undefined) {
+								lineResult.error = lineResult.json.$error as NodeApiError | NodeOperationError;
+								lineResult.json = {error: (lineResult.json.$error as NodeApiError | NodeOperationError).message};
+							} else if (lineResult.error !== undefined) {
+								lineResult.json = { error: lineResult.error.message };
+							}
 						}
 					}
 

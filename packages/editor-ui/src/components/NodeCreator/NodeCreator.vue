@@ -42,7 +42,19 @@ export default Vue.extend({
 			return this.allNodeTypes
 				.filter((nodeType: INodeTypeDescription) => {
 					return !HIDDEN_NODES.includes(nodeType.name);
-				});
+				}).reduce((accumulator: INodeTypeDescription[], currentValue: INodeTypeDescription) => {
+					// keep only latest version of the nodes
+					// accumulator starts as an empty array.
+					const exists = accumulator.findIndex(nodes => nodes.name === currentValue.name);
+					if (exists >= 0 && accumulator[exists].version < currentValue.version) {
+						// This must be a versioned node and we've found a newer version.
+						// Replace the previous one with this one.
+						accumulator[exists] = currentValue;
+					} else {
+						accumulator.push(currentValue);
+					}
+					return accumulator;
+				}, []);
 		},
 		categoriesWithNodes(): ICategoriesWithNodes {
 			return getCategoriesWithNodes(this.visibleNodeTypes);

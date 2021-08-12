@@ -88,7 +88,7 @@ export default mixins(externalHooks).extend({
 		filteredNodeTypes(): INodeCreateElement[] {
 			const nodeTypes: INodeCreateElement[] = this.searchItems;
 			const filter = this.searchFilter;
-
+console.log(nodeTypes);
 			const returnData = nodeTypes.filter((el: INodeCreateElement) => {
 				const nodeType = (el.properties as INodeItemProps).nodeType;
 				return filter && matchesSelectType(el, this.selectedType) && matchesNodeType(el, filter);
