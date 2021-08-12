@@ -3,11 +3,11 @@
 		:is="$options.components.ElButton"
 		:plain="props.type === 'outline'"
 		:disabled="props.disabled"
-		:size="$options.mapToSize(props.size)"
+		:size="props.size"
 		:loading="props.loading"
 		:title="props.title || props.label"
 		:class="$style[$options.getClass(props)]"
-		:round="!props.circle"
+		:round="!props.circle && props.round"
 		:circle="props.circle"
 		:style="$options.styles(props)"
 		@click="listeners.click"
@@ -34,12 +34,6 @@ import N8nIcon from '../N8nIcon';
 import N8nSpinner from '../N8nSpinner';
 import ElButton from 'element-ui/packages/button';
 
-const sizeMap: { [size: string]: string } = {
-	sm: 'small',
-	md: 'medium',
-	lg: '',
-};
-
 export default {
 	name: 'n8n-button',
 	props: {
@@ -62,9 +56,9 @@ export default {
 		},
 		size: {
 			type: String,
-			default: 'md',
+			default: 'medium',
 			validator: (value: string): boolean =>
-				['sm', 'md', 'lg'].indexOf(value) !== -1,
+				['small', 'medium', 'large'].indexOf(value) !== -1,
 		},
 		loading: {
 			type: Boolean,
@@ -79,6 +73,10 @@ export default {
 		},
 		iconSize: {
 			type: String,
+		},
+		round: {
+			type: Boolean,
+			default: true,
 		},
 		circle: {
 			type: Boolean,
@@ -99,7 +97,6 @@ export default {
 		N8nSpinner,
 		N8nIcon,
 	},
-	mapToSize: (size: string): string => sizeMap[size],
 	styles: (props: {
 		fullWidth?: boolean;
 		float?: string;

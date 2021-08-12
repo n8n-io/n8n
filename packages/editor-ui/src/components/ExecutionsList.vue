@@ -39,7 +39,7 @@
 			<div class="selection-options">
 				<span v-if="checkAll === true || isIndeterminate === true">
 					Selected: {{numSelected}} / <span v-if="finishedExecutionsCountEstimated === true">~</span>{{finishedExecutionsCount}}
-					<n8n-icon-button title="Delete Selected" icon="trash" size="sm" @click="handleDeleteSelected" />
+					<n8n-icon-button title="Delete Selected" icon="trash" size="small" @click="handleDeleteSelected" />
 				</span>
 			</div>
 
@@ -102,7 +102,7 @@
 									 v-if="scope.row.stoppedAt !== undefined && !scope.row.finished && scope.row.retryOf === undefined && scope.row.retrySuccessId === undefined"
 									 type="light"
 									 :theme="scope.row.stoppedAt === null ? 'warning': 'danger'"
-									 size="sm"
+									 size="small"
 									 title="Retry execution"
 									 icon="redo"
 								/>

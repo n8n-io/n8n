@@ -8,11 +8,11 @@
 			</div>
 
 			<div class="new-credentials-button">
-				<n8n-button 
+				<n8n-button
 					title="Create New Credentials"
 					icon="plus"
 					label="Add New"
-					size="lg"
+					size="large"
 					@click="createCredential()"
 				/>
 			</div>

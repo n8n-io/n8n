@@ -13,7 +13,7 @@
 			</el-input>
 		</el-col>
 		<el-col :span="14">
-			<n8n-button @click="onAddNew" :disabled="disabled" icon="plus" label="Add new" size="lg" float="right" />
+			<n8n-button @click="onAddNew" :disabled="disabled" icon="plus" label="Add new" size="large" float="right" />
 		</el-col>
 	</el-row>
 </template>

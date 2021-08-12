@@ -155,7 +155,7 @@
 					</el-row>
 				</div>
 				<div class="action-buttons">
-					<n8n-button label="Save" size="lg" @click="saveSettings" />
+					<n8n-button label="Save" size="large" @click="saveSettings" />
 				</div>
 			</div>
 		</el-dialog>
@@ -469,7 +469,7 @@ export default mixins(
 			});
 
 			this.closeDialog();
-			
+
 			this.$externalHooks().run('workflowSettings.saveSettings', { oldSettings });
 		},
 		toggleTimeout() {

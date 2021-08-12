@@ -2,7 +2,7 @@
 	<div v-if="windowVisible" class="binary-data-window">
 		<n8n-button
 			@click.stop="closeWindow"
-			size="sm"
+			size="small"
 			class="binary-data-window-back"
 			title="Back to overview page"
 			icon="el-icon-arrow-left"

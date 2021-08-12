@@ -19,7 +19,7 @@ export default {
 		size: {
 			type: String,
 			validator: function (value: string): boolean {
-				return ['sm', 'md', 'lg'].indexOf(value) !== -1;
+				return ['small', 'medium', 'large'].indexOf(value) !== -1;
 			},
 		},
 	},

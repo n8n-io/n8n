@@ -166,7 +166,7 @@
 											</div>
 
 											<div class="binary-data-show-data-button-wrapper">
-												<n8n-button size="sm" label="Show Binary Data" class="binary-data-show-data-button" @click="displayBinaryData(index, key)" />
+												<n8n-button size="small" label="Show Binary Data" class="binary-data-show-data-button" @click="displayBinaryData(index, key)" />
 											</div>
 
 										</div>
