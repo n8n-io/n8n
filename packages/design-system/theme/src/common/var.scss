@@ -236,7 +236,7 @@ $fill-base: $color-white;
 
 /* Typography
 -------------------------- */
-$font-path: 'fonts';
+$font-path: 'fonts' !default;
 $font-display: 'auto';
 /// fontSize|1|Font Size|0
 $font-size-extra-large: var(--font-size-xl);
@@ -280,7 +280,7 @@ $checkbox-font-size: 14px;
 /// fontWeight||Font|1
 $checkbox-font-weight: $font-weight-primary;
 /// color||Color|0
-$checkbox-font-color: var(--color-text-dark)
+$checkbox-font-color: var(--color-text-dark);
 $checkbox-input-height: 14px;
 $checkbox-input-width: 14px;
 /// borderRadius||Border|2
@@ -290,12 +290,12 @@ $checkbox-background-color: $color-white;
 $checkbox-input-border: var(--border-base);
 
 /// color||Color|0
-$checkbox-disabled-border-color: var(--border-color-base)
+$checkbox-disabled-border-color: var(--border-color-base);
 $checkbox-disabled-input-fill: #edf2fc;
 $checkbox-disabled-icon-color: var(--color-text-lighter);
 
 $checkbox-disabled-checked-input-fill: var(--border-color-light);
-$checkbox-disabled-checked-input-border-color: var(--border-color-base)
+$checkbox-disabled-checked-input-border-color: var(--border-color-base);
 $checkbox-disabled-checked-icon-color: var(--color-text-lighter);
 
 /// color||Color|0
@@ -343,7 +343,7 @@ $radio-font-size: $font-size-base;
 /// fontWeight||Font|1
 $radio-font-weight: $font-weight-primary;
 /// color||Color|0
-$radio-font-color: var(--color-text-dark)
+$radio-font-color: var(--color-text-dark);
 $radio-input-height: 14px;
 $radio-input-width: 14px;
 /// borderRadius||Border|2
@@ -352,7 +352,7 @@ $radio-input-border-radius: $border-radius-circle;
 $radio-input-background-color: $color-white;
 $radio-input-border: var(--border-base);
 /// color||Color|0
-$radio-input-border-color: var(--border-color-base)
+$radio-input-border-color: var(--border-color-base);
 /// color||Color|0
 $radio-icon-color: $color-white;
 
@@ -415,7 +415,7 @@ $select-input-focus-border-color: var(--color-primary);
 /// fontSize||Font|1
 $select-input-font-size: 14px;
 
-$select-option-color: var(--color-text-dark)
+$select-option-color: var(--color-text-dark);
 $select-option-disabled-color: var(--color-text-lighter);
 $select-option-disabled-background: $color-white;
 /// height||Other|4
@@ -465,7 +465,7 @@ $alert-icon-large-size: 28px;
 /* MessageBox
 -------------------------- */
 /// color||Color|0
-$messagebox-title-color: var(--color-text-dark)
+$messagebox-title-color: var(--color-text-dark);
 $msgbox-width: 420px;
 $msgbox-border-radius: 4px;
 /// fontSize||Font|1
@@ -473,7 +473,7 @@ $messagebox-font-size: $font-size-large;
 /// fontSize||Font|1
 $messagebox-content-font-size: $font-size-base;
 /// color||Color|0
-$messagebox-content-color: var(--color-text-dark)
+$messagebox-content-color: var(--color-text-dark);
 /// fontSize||Font|1
 $messagebox-error-font-size: 12px;
 $msgbox-padding-primary: 15px;
@@ -524,16 +524,16 @@ $notification-group-margin-right: 8px;
 /// fontSize||Font|1
 $notification-content-font-size: $font-size-base;
 /// color||Color|0
-$notification-content-color: var(--color-text-dark)
+$notification-content-color: var(--color-text-dark);
 /// fontSize||Font|1
 $notification-title-font-size: 16px;
 /// color||Color|0
-$notification-title-color: var(--color-text-dark)
+$notification-title-color: var(--color-text-dark);
 
 /// color||Color|0
 $notification-close-color: var(--color-text-light);
 /// color||Color|0
-$notification-close-hover-color: var(--color-text-dark)
+$notification-close-hover-color: var(--color-text-dark);
 
 /// color||Color|0
 $notification-success-icon-color: var(--color-success);
@@ -548,13 +548,13 @@ $notification-danger-icon-color: var(--color-danger);
 -------------------------- */
 $input-font-size: $font-size-base;
 /// color||Color|0
-$input-font-color: var(--color-text-dark)
+$input-font-color: var(--color-text-dark);
 /// height||Other|4
 $input-width: 140px;
 /// height||Other|4
 $input-height: 40px;
 $input-border: var(--border-base);
-$input-border-color: var(--border-color-base)
+$input-border-color: var(--border-color-base);
 /// borderRadius||Border|2
 $input-border-radius: var(--border-radius-base);
 $input-border-color-hover: $border-color-hover;
@@ -595,7 +595,7 @@ $input-mini-height: 28px;
 /* Cascader
 -------------------------- */
 /// color||Color|0
-$cascader-menu-font-color: var(--color-text-dark)
+$cascader-menu-font-color: var(--color-text-dark);
 /// color||Color|0
 $cascader-menu-selected-font-color: var(--color-primary);
 $cascader-menu-fill: $fill-base;
@@ -622,8 +622,8 @@ $group-title-width: 66px;
 $tab-font-size: $font-size-base;
 $tab-border-line: 1px solid #e4e4e4;
 $tab-header-color-active: var(--color-text-light);
-$tab-header-color-hover: var(--color-text-dark)
-$tab-header-color: var(--color-text-dark)
+$tab-header-color-hover: var(--color-text-dark);
+$tab-header-color: var(--color-text-dark);
 $tab-header-fill-active: rgba($color-black, 0.06);
 $tab-header-fill-hover: rgba($color-black, 0.06);
 $tab-vertical-header-width: 90px;
@@ -666,11 +666,11 @@ $button-mini-padding-vertical: 7px;
 $button-mini-padding-horizontal: 15px;
 
 /// color||Color|0
-$button-default-font-color: var(--color-text-dark)
+$button-default-font-color: var(--color-text-dark);
 /// color||Color|0
 $button-default-background-color: $color-white;
 /// color||Color|0
-$button-default-border-color: var(--border-color-base)
+$button-default-border-color: var(--border-color-base);
 
 /// color||Color|0
 $button-disabled-font-color: var(--color-text-lighter);
@@ -723,7 +723,7 @@ $cascader-height: 200px;
 /// color||Color|0
 $switch-on-color: var(--color-primary);
 /// color||Color|0
-$switch-off-color: var(--border-color-base)
+$switch-off-color: var(--border-color-base);
 /// fontSize||Font|1
 $switch-font-size: $font-size-base;
 $switch-core-border-radius: 10px;
@@ -753,7 +753,7 @@ $dialog-padding-primary: 20px;
 $table-border-color: var(--border-color-light);
 $table-border: 1px solid $table-border-color;
 /// color||Color|0
-$table-font-color: var(--color-text-dark)
+$table-font-color: var(--color-text-dark);
 /// color||Color|0
 $table-header-font-color: var(--color-text-light);
 /// color||Color|0
@@ -770,10 +770,10 @@ $pagination-font-size: 13px;
 /// color||Color|0
 $pagination-background-color: $color-white;
 /// color||Color|0
-$pagination-font-color: var(--color-text-dark)
+$pagination-font-color: var(--color-text-dark);
 $pagination-border-radius: 3px;
 /// color||Color|0
-$pagination-button-color: var(--color-text-dark)
+$pagination-button-color: var(--color-text-dark);
 /// height||Other|4
 $pagination-button-width: 35.5px;
 /// height||Other|4
@@ -807,18 +807,18 @@ $popover-padding-large: 18px 20px;
 /// fontSize||Font|1
 $popover-title-font-size: 16px;
 /// color||Color|0
-$popover-title-font-color: var(--color-text-dark)
+$popover-title-font-color: var(--color-text-dark);
 
 /* Tooltip
 -------------------------- */
 /// color|1|Color|0
-$tooltip-fill: var(--color-text-dark)
+$tooltip-fill: var(--color-text-dark);
 /// color|1|Color|0
 $tooltip-color: $color-white;
 /// fontSize||Font|1
 $tooltip-font-size: 12px;
 /// color||Color|0
-$tooltip-border-color: var(--color-text-dark)
+$tooltip-border-color: var(--color-text-dark);
 $tooltip-arrow-size: 6px;
 /// padding||Spacing|3
 $tooltip-padding: 10px;
@@ -845,7 +845,7 @@ $tag-padding: 0 10px;
 /// color||Color|0
 $tree-node-hover-background-color: $background-color-base;
 /// color||Color|0
-$tree-font-color: var(--color-text-dark)
+$tree-font-color: var(--color-text-dark);
 /// color||Color|0
 $tree-expand-icon-color: var(--color-text-lighter);
 
@@ -909,7 +909,7 @@ $steps-padding: 20px;
 /// fontSize||Font|1
 $menu-item-font-size: $font-size-base;
 /// color||Color|0
-$menu-item-font-color: var(--color-text-dark)
+$menu-item-font-color: var(--color-text-dark);
 /// color||Color|0
 $menu-background-color: $color-white;
 $menu-item-hover-fill: $color-primary-light-9;
@@ -927,12 +927,12 @@ $rate-icon-color: var(--color-text-lighter);
 
 /* DatePicker
 --------------------------*/
-$datepicker-font-color: var(--color-text-dark)
+$datepicker-font-color: var(--color-text-dark);
 /// color|1|Color|0
 $datepicker-off-font-color: var(--color-text-lighter);
 /// color||Color|0
-$datepicker-header-font-color: var(--color-text-dark)
-$datepicker-icon-color: var(--color-text-dark)
+$datepicker-header-font-color: var(--color-text-dark);
+$datepicker-icon-color: var(--color-text-dark);
 $datepicker-border-color: $disabled-border-base;
 $datepicker-inner-border-color: #e4e4e4;
 /// color||Color|0
@@ -991,7 +991,7 @@ $collapse-header-height: 48px;
 /// color||Color|0
 $collapse-header-background-color: $color-white;
 /// color||Color|0
-$collapse-header-font-color: var(--color-text-dark)
+$collapse-header-font-color: var(--color-text-dark);
 /// fontSize||Font|1
 $collapse-header-font-size: 13px;
 /// color||Color|0
@@ -999,7 +999,7 @@ $collapse-content-background-color: $color-white;
 /// fontSize||Font|1
 $collapse-content-font-size: 13px;
 /// color||Color|0
-$collapse-content-font-color: var(--color-text-dark)
+$collapse-content-font-color: var(--color-text-dark);
 
 /* Transfer
 --------------------------*/
@@ -1054,7 +1054,7 @@ $link-font-size: $font-size-base;
 /// fontWeight||Font|1
 $link-font-weight: $font-weight-primary;
 /// color||Color|0
-$link-default-font-color: var(--color-text-dark)
+$link-default-font-color: var(--color-text-dark);
 /// color||Color|0
 $link-default-active-color: var(--color-primary);
 /// color||Color|0
