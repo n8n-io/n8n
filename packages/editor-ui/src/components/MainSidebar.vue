@@ -11,14 +11,14 @@
 			<div id="collapse-change-button" class="clickable" @click="toggleCollapse">
 				<font-awesome-icon icon="angle-right" class="icon" />
 			</div>
-			<el-menu default-active="workflow" @select="handleSelect" :collapse="isCollapsed">
+			<n8n-menu default-active="workflow" @select="handleSelect" :collapse="isCollapsed">
 
-				<el-menu-item index="logo" class="logo-item">
+				<n8n-menu-item index="logo" class="logo-item">
 					<a href="https://n8n.io" target="_blank" class="logo">
 						<img :src="basePath + 'n8n-icon-small.png'" class="icon" alt="n8n.io"/>
 						<span class="logo-text" slot="title">n8n.io</span>
 					</a>
-				</el-menu-item>
+				</n8n-menu-item>
 
 				<MenuItemsIterator :items="sidebarMenuTopItems" :root="true"/>
 
@@ -28,60 +28,60 @@
 						<span slot="title" class="item-title-root">Workflows</span>
 					</template>
 
-					<el-menu-item index="workflow-new">
+					<n8n-menu-item index="workflow-new">
 						<template slot="title">
 							<font-awesome-icon icon="file"/>&nbsp;
 							<span slot="title" class="item-title">New</span>
 						</template>
-					</el-menu-item>
-					<el-menu-item index="workflow-open">
+					</n8n-menu-item>
+					<n8n-menu-item index="workflow-open">
 						<template slot="title">
 							<font-awesome-icon icon="folder-open"/>&nbsp;
 							<span slot="title" class="item-title">Open</span>
 						</template>
-					</el-menu-item>
-					<el-menu-item index="workflow-save">
+					</n8n-menu-item>
+					<n8n-menu-item index="workflow-save">
 						<template slot="title">
 							<font-awesome-icon icon="save"/>
 							<span slot="title" class="item-title">Save</span>
 						</template>
-					</el-menu-item>
-					<el-menu-item index="workflow-duplicate" :disabled="!currentWorkflow">
+					</n8n-menu-item>
+					<n8n-menu-item index="workflow-duplicate" :disabled="!currentWorkflow">
 						<template slot="title">
 							<font-awesome-icon icon="copy"/>
 							<span slot="title" class="item-title">Duplicate</span>
 						</template>
-					</el-menu-item>
-					<el-menu-item index="workflow-delete" :disabled="!currentWorkflow">
+					</n8n-menu-item>
+					<n8n-menu-item index="workflow-delete" :disabled="!currentWorkflow">
 						<template slot="title">
 							<font-awesome-icon icon="trash"/>
 							<span slot="title" class="item-title">Delete</span>
 						</template>
-					</el-menu-item>
-					<el-menu-item index="workflow-download">
+					</n8n-menu-item>
+					<n8n-menu-item index="workflow-download">
 						<template slot="title">
 							<font-awesome-icon icon="file-download"/>
 							<span slot="title" class="item-title">Download</span>
 						</template>
-					</el-menu-item>
-					<el-menu-item index="workflow-import-url">
+					</n8n-menu-item>
+					<n8n-menu-item index="workflow-import-url">
 						<template slot="title">
 							<font-awesome-icon icon="cloud"/>
 							<span slot="title" class="item-title">Import from URL</span>
 						</template>
-					</el-menu-item>
-					<el-menu-item index="workflow-import-file">
+					</n8n-menu-item>
+					<n8n-menu-item index="workflow-import-file">
 						<template slot="title">
 							<font-awesome-icon icon="hdd"/>
 							<span slot="title" class="item-title">Import from File</span>
 						</template>
-					</el-menu-item>
-					<el-menu-item index="workflow-settings" :disabled="!currentWorkflow">
+					</n8n-menu-item>
+					<n8n-menu-item index="workflow-settings" :disabled="!currentWorkflow">
 						<template slot="title">
 							<font-awesome-icon icon="cog"/>
 							<span slot="title" class="item-title">Settings</span>
 						</template>
-					</el-menu-item>
+					</n8n-menu-item>
 				</el-submenu>
 
 				<el-submenu index="credentials" title="Credentials">
@@ -90,24 +90,24 @@
 						<span slot="title" class="item-title-root">Credentials</span>
 					</template>
 
-					<el-menu-item index="credentials-new">
+					<n8n-menu-item index="credentials-new">
 						<template slot="title">
 							<font-awesome-icon icon="file"/>
 							<span slot="title" class="item-title">New</span>
 						</template>
-					</el-menu-item>
-					<el-menu-item index="credentials-open">
+					</n8n-menu-item>
+					<n8n-menu-item index="credentials-open">
 						<template slot="title">
 							<font-awesome-icon icon="folder-open"/>
 							<span slot="title" class="item-title">Open</span>
 						</template>
-					</el-menu-item>
+					</n8n-menu-item>
 				</el-submenu>
 
-				<el-menu-item index="executions">
+				<n8n-menu-item index="executions">
 					<font-awesome-icon icon="tasks"/>&nbsp;
 					<span slot="title" class="item-title-root">Executions</span>
-				</el-menu-item>
+				</n8n-menu-item>
 
 				<el-submenu index="help" class="help-menu" title="Help">
 					<template slot="title">
@@ -117,25 +117,25 @@
 
 					<MenuItemsIterator :items="helpMenuItems" />
 
-					<el-menu-item index="help-about">
+					<n8n-menu-item index="help-about">
 						<template slot="title">
 							<font-awesome-icon class="about-icon" icon="info"/>
 							<span slot="title" class="item-title">About n8n</span>
 						</template>
-					</el-menu-item>
+					</n8n-menu-item>
 				</el-submenu>
 
 				<MenuItemsIterator :items="sidebarMenuBottomItems" :root="true"/>
 
 				<div class="footer-menu-items">
-					<el-menu-item index="updates" class="updates" v-if="hasVersionUpdates" @click="openUpdatesPanel">
+					<n8n-menu-item index="updates" class="updates" v-if="hasVersionUpdates" @click="openUpdatesPanel">
 						<div class="gift-container">
 							<GiftNotificationIcon />
 						</div>
 						<span slot="title" class="item-title-root">{{nextVersions.length > 99 ? '99+' : nextVersions.length}} update{{nextVersions.length > 1 ? 's' : ''}} available</span>
-					</el-menu-item>
+					</n8n-menu-item>
 				</div>
-			</el-menu>
+			</n8n-menu>
 
 		</div>
 	</div>
@@ -605,7 +605,7 @@ a.logo {
 }
 
 .el-menu-item.updates {
-	color: $--sidebar-inactive-color;	
+	color: $--sidebar-inactive-color;
 	.item-title-root {
 		font-size: 13px;
 		top: 0 !important;

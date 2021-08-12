@@ -53,6 +53,8 @@ import {
 	N8nInput,
 	N8nInputLabel,
 	N8nInputNumber,
+	N8nMenu,
+	N8nMenuItem,
 	N8nSelect,
 	N8nOption,
 } from 'n8n-design-system';
@@ -77,9 +79,7 @@ Vue.use(Drawer);
 Vue.use(Dropdown);
 Vue.use(DropdownMenu);
 Vue.use(DropdownItem);
-Vue.use(Menu);
 Vue.use(Submenu);
-Vue.use(MenuItem);
 Vue.use(Radio);
 Vue.use(RadioGroup);
 Vue.use(RadioButton);
@@ -99,6 +99,8 @@ Vue.use(Tag);
 Vue.use(Row);
 Vue.use(Col);
 Vue.use(Badge);
+Vue.use(N8nMenu);
+Vue.use(N8nMenuItem);
 Vue.use(Card);
 Vue.use(ColorPicker);
 Vue.use(Transfer);
