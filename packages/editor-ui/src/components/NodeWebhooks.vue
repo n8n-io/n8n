@@ -6,7 +6,7 @@
 		</div>
 		<el-collapse-transition>
 			<div class="node-webhooks" v-if="!isMinimized">
-				<div class="url-selection" v-if="!constainsOnlyRestartWebhooks">
+				<div class="url-selection">
 					<el-row>
 						<el-col :span="24">
 							<el-radio-group v-model="showUrlFor" size="mini">
@@ -39,6 +39,7 @@
 
 <script lang="ts">
 import {
+	INodeTypeDescription,
 	IWebhookDescription,
 	NodeHelpers,
 } from 'n8n-workflow';
@@ -59,7 +60,7 @@ export default mixins(
 		name: 'NodeWebhooks',
 		props: [
 			'node', // NodeUi
-			'nodeType', // NodeTypeDescription
+			'nodeType', // INodeTypeDescription
 		],
 		data () {
 			return {
@@ -68,15 +69,12 @@ export default mixins(
 			};
 		},
 		computed: {
-			constainsOnlyRestartWebhooks (): boolean {
-				return this.webhooksNode.filter(webhookData => webhookData.restartWebhook === true).length === this.webhooksNode.length;
-			},
 			webhooksNode (): IWebhookDescription[] {
 				if (this.nodeType === null || this.nodeType.webhooks === undefined) {
 					return [];
 				}
 
-				return this.nodeType.webhooks;
+				return (this.nodeType as INodeTypeDescription).webhooks!.filter(webhookData => webhookData.restartWebhook !== true);
 			},
 		},
 		methods: {
@@ -116,10 +114,6 @@ export default mixins(
 				return NodeHelpers.getNodeWebhookUrl(baseUrl, workflowId, this.node, path, isFullPath);
 			},
 			getWebhookUrlDisplay (webhookData: IWebhookDescription): string {
-				if (webhookData.restartWebhook === true) {
-					return `Reference at runtime via "${this.getWebhookUrl(webhookData)}"`;
-				}
-
 				return this.getWebhookUrl(webhookData);
 			},
 		},
