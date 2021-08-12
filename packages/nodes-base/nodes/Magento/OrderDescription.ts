@@ -27,7 +27,7 @@ export const orderOperations = [
 			{
 				name: 'Create Invoice',
 				value: 'createInvoice',
-				description: 'Create a sales order invoice ',
+				description: 'Create a sales order invoice',
 			},
 			{
 				name: 'Get',
@@ -35,18 +35,18 @@ export const orderOperations = [
 				description: 'Get an order',
 			},
 			{
-				name: 'Ship',
-				value: 'ship',
-				description: 'Ship an order',
-			},
-			{
 				name: 'Get All',
 				value: 'getAll',
 				description: 'Get all orders',
 			},
+			{
+				name: 'Ship',
+				value: 'ship',
+				description: 'Ship an order',
+			},
 		],
 		default: 'cancel',
-		description: 'The operation to perform.',
+		description: 'The operation to perform',
 	},
 ] as INodeProperties[];
 
@@ -93,7 +93,7 @@ export const orderFields = [
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'Whether all results should be returned or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -117,7 +117,7 @@ export const orderFields = [
 			maxValue: 10,
 		},
 		default: 5,
-		description: 'How many results to return.',
+		description: 'How many results to return',
 	},
 	...getSearchFilters('order', 'getOrderAttributes'),
 

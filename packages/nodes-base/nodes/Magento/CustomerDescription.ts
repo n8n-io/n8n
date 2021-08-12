@@ -47,7 +47,7 @@ export const customerOperations = [
 			},
 		],
 		default: 'create',
-		description: 'The operation to perform.',
+		description: 'The operation to perform',
 	},
 ] as INodeProperties[];
 
@@ -206,7 +206,7 @@ export const customerFields = [
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'Whether all results should be returned or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -230,7 +230,7 @@ export const customerFields = [
 			maxValue: 10,
 		},
 		default: 5,
-		description: 'How many results to return.',
+		description: 'How many results to return',
 	},
 	...getSearchFilters('customer', 'getSystemAttributes'),
 

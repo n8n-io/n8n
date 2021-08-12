@@ -173,6 +173,11 @@ export interface Product {
 	created_at?: string;
 	updated_at?: string;
 	weight?: number;
+	extension_attributes?: {
+		category_links?: [{
+			category_id?: string,
+		}]
+	}
 	custom_attributes?: CustomAttribute[];
 }
 

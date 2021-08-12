@@ -269,7 +269,7 @@ export function getSearchFilters(resource: string, attributeFunction: string) {
 					],
 				},
 			},
-			placeholder: `https://devdocs.magento.com/guides/v2.4/rest/performing-searches.html</br>
+			placeholder: `https://devdocs.magento.com/guides/v2.4/rest/performing-searches.html
 {
 	"search_criteria": {
 		"filter_groups": [
@@ -283,10 +283,9 @@ export function getSearchFilters(resource: string, attributeFunction: string) {
 				]
 			}
 		],
-	"page_size": 100
+		"page_size": 100
 	}
-}
-			`,
+}`,
 			default: '',
 		},
 		{
@@ -326,11 +325,11 @@ export function getSearchFilters(resource: string, attributeFunction: string) {
 									type: 'options',
 									options: [
 										{
-											name: 'ASC',
+											name: 'Ascending',
 											value: 'asc',
 										},
 										{
-											name: 'DESC',
+											name: 'Descending',
 											value: 'DESC',
 										},
 									],
@@ -382,7 +381,7 @@ function getConditionTypeFields() {
 			{
 				name: 'Like',
 				value: 'like',
-				description: 'The value can contain the SQL wildcard characters when like is specified.',
+				description: 'The value can contain the SQL wildcard characters when like is specified',
 			},
 			{
 				name: 'Less Than',
@@ -528,7 +527,7 @@ export function getCustomerOptionalFields() {
 		{
 			displayName: 'Date of Birth',
 			name: 'dob',
-			type: 'string',
+			type: 'dateTime',
 			default: '',
 		},
 		{
@@ -681,7 +680,7 @@ export function getCustomerOptionalFields() {
 			default: '',
 		},
 		{
-			displayName: 'Tax Vat',
+			displayName: 'Tax VAT',
 			name: 'taxvat',
 			type: 'string',
 			default: '',
@@ -733,6 +732,9 @@ export function getProductOptionalFields() {
 			displayName: 'Custom Attributes',
 			name: 'customAttributes',
 			type: 'fixedCollection',
+			typeOptions: {
+				multipleValues: true,
+			},
 			default: '',
 			placeholder: 'Add Custom Attribute',
 			options: [
@@ -745,7 +747,7 @@ export function getProductOptionalFields() {
 							name: 'attribute_code',
 							type: 'options',
 							typeOptions: {
-								loadOptionsMethod: 'getCustomAttributes',
+								loadOptionsMethod: 'getProductAttributes',
 							},
 							default: '',
 						},
@@ -759,15 +761,15 @@ export function getProductOptionalFields() {
 				},
 			],
 		},
-		{
-			displayName: 'Parent Category ID',
-			name: 'category',
-			type: 'options',
-			typeOptions: {
-				loadOptionsMethod: 'getCategories',
-			},
-			default: '',
-		},
+		// {
+		// 	displayName: 'Parent Category ID',
+		// 	name: 'category',
+		// 	type: 'options',
+		// 	typeOptions: {
+		// 		loadOptionsMethod: 'getCategories',
+		// 	},
+		// 	default: '',
+		// },
 		{
 			displayName: 'Price',
 			name: 'price',
@@ -825,7 +827,7 @@ export function getProductOptionalFields() {
 			default: 4,
 		},
 		{
-			displayName: 'Weight',
+			displayName: 'Weight (LBS)',
 			name: 'weight',
 			type: 'number',
 			default: 0,
@@ -968,3 +970,8 @@ export function getOrderFields() {
 		'weight',
 	];
 }
+export const sort = (a: { name: string }, b: { name: string }) => {
+	if (a.name < b.name) { return -1; }
+	if (a.name > b.name) { return 1; }
+	return 0;
+};

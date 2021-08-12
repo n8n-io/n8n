@@ -18,6 +18,7 @@ import {
 	getOrderFields,
 	magentoApiRequest,
 	magentoApiRequestAllItems,
+	sort,
 	validateJSON,
 } from './GenericFunctions';
 
@@ -91,7 +92,7 @@ export class Magento2 implements INodeType {
 					},
 				],
 				default: 'customer',
-				description: 'The resource to operate on.',
+				description: 'The resource to operate on',
 			},
 			...customerOperations,
 			...customerFields,
@@ -114,6 +115,7 @@ export class Magento2 implements INodeType {
 						value: country.id,
 					});
 				}
+				returnData.sort(sort);
 				return returnData;
 			},
 			async getGroups(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
@@ -124,6 +126,7 @@ export class Magento2 implements INodeType {
 					name: group.code,
 					value: group.id,
 				});
+				returnData.sort(sort);
 				return returnData;
 			},
 			async getStores(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
@@ -136,6 +139,7 @@ export class Magento2 implements INodeType {
 						value: store.id,
 					});
 				}
+				returnData.sort(sort);
 				return returnData;
 			},
 			async getWebsites(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
@@ -148,6 +152,7 @@ export class Magento2 implements INodeType {
 						value: website.id,
 					});
 				}
+				returnData.sort(sort);
 				return returnData;
 			},
 			async getCustomAttributes(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
@@ -163,6 +168,7 @@ export class Magento2 implements INodeType {
 						});
 					}
 				}
+				returnData.sort(sort);
 				return returnData;
 			},
 			async getSystemAttributes(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
@@ -178,6 +184,7 @@ export class Magento2 implements INodeType {
 						});
 					}
 				}
+				returnData.sort(sort);
 				return returnData;
 			},
 			async getProductTypes(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
@@ -190,6 +197,7 @@ export class Magento2 implements INodeType {
 						value: type.name as string,
 					});
 				}
+				returnData.sort(sort);
 				return returnData;
 			},
 			async getCategories(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
@@ -216,6 +224,7 @@ export class Magento2 implements INodeType {
 						value: category.id as string,
 					});
 				}
+				returnData.sort(sort);
 				return returnData;
 			},
 			async getAttributeSets(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
@@ -230,6 +239,7 @@ export class Magento2 implements INodeType {
 						value: attributeSet.attribute_set_id as string,
 					});
 				}
+				returnData.sort(sort);
 				return returnData;
 			},
 			async getProductAttributes(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
@@ -237,18 +247,20 @@ export class Magento2 implements INodeType {
 				const { items: attributes } = await magentoApiRequest.call(this, 'GET', `/rest/default/V1/products/attributes`, {}, {
 					search_criteria: 0,
 				}) as { items: IDataObject[] };
-
 				const returnData: INodePropertyOptions[] = [];
 				for (const attribute of attributes) {
-					returnData.push({
-						name: attribute.default_frontend_label as string,
-						value: attribute.attribute_id as string,
-					});
+					if (attribute.default_frontend_label !== '') {
+						returnData.push({
+							name: attribute.default_frontend_label as string,
+							value: attribute.attribute_id as string,
+						});
+					}
 				}
+				returnData.sort(sort);
 				return returnData;
 			},
 			async getOrderAttributes(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-				return getOrderFields().map(field => ({ name: capitalCase(field), value: field }));
+				return getOrderFields().map(field => ({ name: capitalCase(field), value: field })).sort(sort);
 			},
 		},
 	};
@@ -481,11 +493,13 @@ export class Magento2 implements INodeType {
 
 						const {
 							customAttributes,
+							category,
 							...rest
 						} = this.getNodeParameter('additionalFields', i) as {
 							customAttributes: {
 								customAttribute: CustomAttribute[],
 							},
+							category: string,
 						};
 
 						const body: NewProduct = {
