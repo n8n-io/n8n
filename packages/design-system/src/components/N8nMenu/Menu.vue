@@ -52,5 +52,6 @@ export default {
 	--menu-item-active-font-color: var(--color-text-dark);
 	--menu-item-active-background-color: var(--color-foreground-base);
 	--menu-item-border-radius: 4px;
+	--menu-item-height: 40px;
 }
 </style>

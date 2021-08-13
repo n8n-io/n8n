@@ -1,7 +1,5 @@
 <template>
 	<div v-if="dialogVisible">
-		<credentials-edit :dialogVisible="credentialEditDialogVisible" @closeDialog="closeCredentialEditDialog" @credentialsUpdated="reloadCredentialList" @credentialsCreated="reloadCredentialList" :setCredentialType="editCredentials && editCredentials.type" :editCredentials="editCredentials"></credentials-edit>
-
 		<el-dialog :visible="dialogVisible" append-to-body width="80%" title="Credentials" :before-close="closeDialog">
 			<div class="text-very-light">
 				Your saved credentials:
@@ -17,7 +15,7 @@
 				/>
 			</div>
 
-			<el-table :data="credentials" :default-sort = "{prop: 'name', order: 'ascending'}" stripe @row-click="editCredential" max-height="450" v-loading="isDataLoading">
+			<el-table :data="credentials" :default-sort = "{prop: 'name', order: 'ascending'}" stripe max-height="450" v-loading="isDataLoading">
 				<el-table-column property="name" label="Name" class-name="clickable" sortable></el-table-column>
 				<el-table-column property="type" label="Type" class-name="clickable" sortable>
 					<template slot-scope="scope">
@@ -31,7 +29,7 @@
 					width="120">
 					<template slot-scope="scope">
 						<div class="cred-operations">
-							<n8n-icon-button title="Edit Credentials" @click.stop="editCredential(scope.row)" icon="pen" />
+							<!-- <n8n-icon-button title="Edit Credentials" @click.stop="editCredential(scope.row)" icon="pen" /> -->
 							<n8n-icon-button title="Delete Credentials" @click.stop="deleteCredential(scope.row)" icon="trash" />
 						</div>
 					</template>
@@ -68,27 +66,23 @@ export default mixins(
 	},
 	data () {
 		return {
-			credentialEditDialogVisible: false,
 			credentialTypeDisplayNames: {} as { [key: string]: string; },
 			credentials: [] as ICredentialsResponse[],
 			displayAddCredentials: false,
-			editCredentials: null as ICredentialsResponse | null,
+			// editCredentials: null as ICredentialsResponse | null,
 			isDataLoading: false,
 		};
 	},
 	watch: {
 		dialogVisible (newValue) {
 			if (newValue) {
-				this.loadCredentials();
+				// this.loadCredentials();
 				this.loadCredentialTypes();
 			}
 			this.$externalHooks().run('credentialsList.dialogVisibleChanged', { dialogVisible: newValue });
 		},
 	},
 	methods: {
-		closeCredentialEditDialog () {
-			this.credentialEditDialogVisible = false;
-		},
 		closeDialog () {
 			// Handle the close externally as the visible parameter is an external prop
 			// and is so not allowed to be changed here.
@@ -96,22 +90,20 @@ export default mixins(
 			return false;
 		},
 		createCredential () {
-			this.editCredentials = null;
-			this.credentialEditDialogVisible = true;
+			this.$store.dispatch('ui/openCredentialsSelectModal');
 		},
-		editCredential (credential: ICredentialsResponse) {
-			const editCredentials = {
-				id: credential.id,
-				name: credential.name,
-				type: credential.type,
-			} as ICredentialsResponse;
+		// editCredential (credential: ICredentialsResponse) {
+		// 	const editCredentials = {
+		// 		id: credential.id,
+		// 		name: credential.name,
+		// 		type: credential.type,
+		// 	} as ICredentialsResponse;
 
-			this.editCredentials = editCredentials;
-			this.credentialEditDialogVisible = true;
-		},
-		reloadCredentialList () {
-			this.loadCredentials();
-		},
+		// 	// this.editCredentials = editCredentials;
+		// },
+		// reloadCredentialList () {
+		// 	this.loadCredentials();
+		// },
 		loadCredentialTypes () {
 			if (Object.keys(this.credentialTypeDisplayNames).length !== 0) {
 				// Data is already loaded
@@ -127,23 +119,23 @@ export default mixins(
 				this.credentialTypeDisplayNames[credentialType.name] = credentialType.displayName;
 			}
 		},
-		loadCredentials () {
-			this.isDataLoading = true;
-			try {
-				this.credentials = JSON.parse(JSON.stringify(this.$store.getters.allCredentials));
-			} catch (error) {
-				this.$showError(error, 'Problem loading credentials', 'There was a problem loading the credentials:');
-				this.isDataLoading = false;
-				return;
-			}
+		// loadCredentials () {
+		// 	this.isDataLoading = true;
+		// 	try {
+		// 		this.credentials = JSON.parse(JSON.stringify(this.$store.getters.allCredentials));
+		// 	} catch (error) {
+		// 		this.$showError(error, 'Problem loading credentials', 'There was a problem loading the credentials:');
+		// 		this.isDataLoading = false;
+		// 		return;
+		// 	}
 
-			this.credentials.forEach((credentialData: ICredentialsResponse) => {
-				credentialData.createdAt = this.convertToDisplayDate(credentialData.createdAt as number);
-				credentialData.updatedAt = this.convertToDisplayDate(credentialData.updatedAt as number);
-			});
+		// 	this.credentials.forEach((credentialData: ICredentialsResponse) => {
+		// 		credentialData.createdAt = this.convertToDisplayDate(credentialData.createdAt as number);
+		// 		credentialData.updatedAt = this.convertToDisplayDate(credentialData.updatedAt as number);
+		// 	});
 
-			this.isDataLoading = false;
-		},
+		// 	this.isDataLoading = false;
+		// },
 
 		async deleteCredential (credential: ICredentialsResponse) {
 			const deleteConfirmed = await this.confirmMessage(`Are you sure you want to delete "${credential.name}" credentials?`, 'Delete Credentials?', 'warning', 'Yes, delete!');
@@ -172,7 +164,7 @@ export default mixins(
 			});
 
 			// Refresh list
-			this.loadCredentials();
+			// this.loadCredentials();
 		},
 	},
 });

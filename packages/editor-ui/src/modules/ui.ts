@@ -1,4 +1,4 @@
-import { DUPLICATE_MODAL_KEY, TAGS_MANAGER_MODAL_KEY, VERSIONS_MODAL_KEY, WORKLOW_OPEN_MODAL_KEY } from '@/constants';
+import { CREDENTIAL_DETAILS_MODAL_KEY, DUPLICATE_MODAL_KEY, TAGS_MANAGER_MODAL_KEY, VERSIONS_MODAL_KEY, WORKLOW_OPEN_MODAL_KEY, NEW_CREDENTIAL_MODAL_KEY } from '@/constants';
 import Vue from 'vue';
 import { ActionContext, Module } from 'vuex';
 import {
@@ -10,6 +10,11 @@ const module: Module<IUiState, IRootState> = {
 	namespaced: true,
 	state: {
 		modals: {
+			[CREDENTIAL_DETAILS_MODAL_KEY]: {
+				open: false,
+				mode: '',
+				activeId: null,
+			},
 			[DUPLICATE_MODAL_KEY]: {
 				open: false,
 			},
@@ -20,6 +25,9 @@ const module: Module<IUiState, IRootState> = {
 				open: false,
 			},
 			[VERSIONS_MODAL_KEY]: {
+				open: false,
+			},
+			[NEW_CREDENTIAL_MODAL_KEY]: {
 				open: false,
 			},
 		},
@@ -37,9 +45,23 @@ const module: Module<IUiState, IRootState> = {
 		isModalActive: (state: IUiState) => {
 			return (name: string) => state.modalStack.length > 0 && name === state.modalStack[0];
 		},
+		getModalActiveId: (state: IUiState) => {
+			return (name: string) => state.modals[name].activeId;
+		},
+		getModalMode: (state: IUiState) => {
+			return (name: string) => state.modals[name].mode;
+		},
 		sidebarMenuCollapsed: (state: IUiState): boolean => state.sidebarMenuCollapsed,
 	},
 	mutations: {
+		setMode: (state: IUiState, params: {name: string, mode: string}) => {
+			const { name, mode } = params;
+			Vue.set(state.modals[name], 'mode', mode);
+		},
+		setActiveId: (state: IUiState, params: {name: string, id: string}) => {
+			const { name, id } = params;
+			Vue.set(state.modals[name], 'activeId', id);
+		},
 		openModal: (state: IUiState, name: string) => {
 			Vue.set(state.modals[name], 'open', true);
 			state.modalStack = [name].concat(state.modalStack);
@@ -66,6 +88,19 @@ const module: Module<IUiState, IRootState> = {
 		},
 		openUpdatesPanel: async (context: ActionContext<IUiState, IRootState>) => {
 			context.commit('openModal', VERSIONS_MODAL_KEY);
+		},
+		openExisitngCredentialDetails: async (context: ActionContext<IUiState, IRootState>, { id }: {id: string}) => {
+			context.commit('setActiveId', {name: CREDENTIAL_DETAILS_MODAL_KEY, id});
+			context.commit('setMode', {name: CREDENTIAL_DETAILS_MODAL_KEY, mode: 'edit'});
+			context.commit('openModal', CREDENTIAL_DETAILS_MODAL_KEY);
+		},
+		openNewCredentialDetails: async (context: ActionContext<IUiState, IRootState>, { type }: {type: string}) => {
+			context.commit('setActiveId', {name: CREDENTIAL_DETAILS_MODAL_KEY, id: type});
+			context.commit('setMode', {name: CREDENTIAL_DETAILS_MODAL_KEY, mode: 'new'});
+			context.commit('openModal', CREDENTIAL_DETAILS_MODAL_KEY);
+		},
+		openCredentialsSelectModal: async (context: ActionContext<IUiState, IRootState>) => {
+			context.commit('openModal', NEW_CREDENTIAL_MODAL_KEY);
 		},
 	},
 };

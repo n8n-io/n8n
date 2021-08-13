@@ -33,6 +33,7 @@ import {
 	IRestApiContext,
 } from './Interface';
 
+import credentials from './modules/credentials';
 import tags from './modules/tags';
 import ui from './modules/ui';
 import workflows from './modules/workflows';
@@ -91,10 +92,11 @@ const state: IRootState = {
 };
 
 const modules = {
+	credentials,
 	tags,
-	ui,
 	workflows,
 	versions,
+	ui,
 };
 
 export const store = new Vuex.Store({

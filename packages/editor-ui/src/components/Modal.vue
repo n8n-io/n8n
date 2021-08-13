@@ -41,6 +41,7 @@ import Vue from "vue";
 
 const sizeMap: {[size: string]: string} = {
 	xl: '80%',
+	lg: '70%',
 	m: '50%',
 	default: '50%',
 };

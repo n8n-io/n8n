@@ -1,107 +1,37 @@
 <template>
-	<div @keydown.stop class="credentials-input-wrapper">
-		<el-row class="credential-name-wrapper">
-			<el-col :span="6" class="headline-regular">
-				Credentials Name:
-				<n8n-tooltip class="credentials-info" placement="top" >
-					<div slot="content" v-html="helpTexts.credentialsName"></div>
-					<font-awesome-icon icon="question-circle" />
-				</n8n-tooltip>
-			</el-col>
-			<el-col :span="18">
-				<n8n-input size="medium" type="text" v-model="name"></n8n-input>
-			</el-col>
-		</el-row>
-		<br />
-		<div class="headline" v-if="credentialProperties.length">
-			Credential Data:
-			<n8n-tooltip class="credentials-info" placement="top" >
-				<div slot="content" v-html="helpTexts.credentialsData"></div>
-				<font-awesome-icon icon="question-circle" />
-			</n8n-tooltip>
-		</div>
-		<div v-for="parameter in credentialProperties" :key="parameter.name">
-			<el-row class="parameter-wrapper">
-				<el-col :span="6" class="parameter-name">
-					{{parameter.displayName}}:
-					<n8n-tooltip placement="top" class="parameter-info" v-if="parameter.description" >
-						<div slot="content" v-html="parameter.description"></div>
-						<font-awesome-icon icon="question-circle"/>
-					</n8n-tooltip>
-				</el-col>
-				<el-col :span="18">
-					<parameter-input :parameter="parameter" :value="propertyValue[parameter.name]" :path="parameter.name" :isCredential="true" :displayOptions="true" @valueChanged="valueChanged" inputSize="medium" />
-				</el-col>
-			</el-row>
+	<div @keydown.stop :class="$style.container">
+		<div v-if="isOAuthType && credentialProperties.length">
+			<n8n-input-label label="OAuth redirect url">
+				<div :class="$style.copyText" @click="copyCallbackUrl">
+					{{oAuthCallbackUrl}}
+					<div :class="$style.copyButton">Click to copy</div>
+				</div>
+			</n8n-input-label>
 		</div>
 
-		<el-row v-if="isOAuthType" class="oauth-information">
-			<el-col :span="6" class="headline">
-				OAuth
-			</el-col>
-			<el-col :span="18">
-				<span v-if="requiredPropertiesFilled === false">
-					<n8n-icon-button title="Connect OAuth Credentials" icon="redo" :disabled="true" size="large" />
-					Enter all required properties
-				</span>
-				<span v-else-if="isOAuthConnected === true">
-					<n8n-icon-button title="Reconnect OAuth Credentials" @click.stop="oAuthCredentialAuthorize()" icon="redo" size="large" />
-					Connected
+		<div v-for="parameter in credentialProperties" :key="parameter.name">
+				<n8n-input-label :label="parameter.displayName" :tooltipText="parameter.description">
+					<parameter-input :parameter="parameter" :value="propertyValue[parameter.name]" :path="parameter.name" :isCredential="true" :displayOptions="true" @valueChanged="valueChanged" inputSize="medium" />
+				</n8n-input-label>
+		</div>
+
+		<div v-if="isOAuthType" class="oauth-information">
+			<span v-if="requiredPropertiesFilled === false">
+				<n8n-button title="Connect OAuth Credentials" label="Connect my account"  :disabled="true" size="large" />
+			</span>
+			<span v-else-if="isOAuthConnected === true">
+				<n8n-icon-button title="Reconnect OAuth Credentials" @click.stop="oAuthCredentialAuthorize()" icon="redo" size="large" />
+				Connected
+			</span>
+			<span v-else>
+				<span v-if="isGoogleOAuthType">
+					<img :src="basePath + 'google-signin.png'" :class="$style.googleIcon" alt="Sign in with Google" @click.stop="oAuthCredentialAuthorize()" />
 				</span>
 				<span v-else>
-					<span v-if="isGoogleOAuthType">
-						<img :src="basePath + 'google-signin.png'" class="google-icon clickable" alt="Sign in with Google" @click.stop="oAuthCredentialAuthorize()" />
-					</span>
-					<span v-else>
-						<n8n-icon-button title="Connect OAuth Credentials" @click.stop="oAuthCredentialAuthorize()" icon="sign-in-alt" size="large" />
-						Not connected
-					</span>
+					<n8n-button title="Connect OAuth Credentials" label="Connect my account"  size="large" @click.stop="oAuthCredentialAuthorize()" />
 				</span>
-
-				<div v-if="credentialProperties.length">
-					<div class="clickable oauth-callback-headline" :class="{expanded: !isMinimized}" @click="isMinimized=!isMinimized" :title="isMinimized ? 'Click to display Webhook URLs' : 'Click to hide Webhook URLs'">
-						<font-awesome-icon icon="angle-up" class="minimize-button minimize-icon" />
-						OAuth Callback URL
-					</div>
-					<n8n-tooltip v-if="!isMinimized" class="item"  content="Click to copy Callback URL" placement="right">
-						<div class="callback-url left-ellipsis clickable" @click="copyCallbackUrl">
-							{{oAuthCallbackUrl}}
-						</div>
-					</n8n-tooltip>
-				</div>
-
-			</el-col>
-		</el-row>
-
-		<el-row class="nodes-access-wrapper">
-			<el-col :span="6" class="headline">
-				Nodes with access:
-				<n8n-tooltip class="credentials-info" placement="top" >
-					<div slot="content" v-html="helpTexts.nodesWithAccess"></div>
-					<font-awesome-icon icon="question-circle" />
-				</n8n-tooltip>
-			</el-col>
-			<el-col :span="18">
-				<el-transfer
-					:titles="['No Access', 'Access ']"
-					v-model="nodesAccess"
-					:data="allNodesRequestingAccess">
-				</el-transfer>
-
-				<div v-if="nodesAccess.length === 0" class="no-nodes-access">
-					<strong>
-						Important
-					</strong><br />
-					Add at least one node which has access to the credentials!
-				</div>
-			</el-col>
-		</el-row>
-
-		<div class="action-buttons">
-			<n8n-button type="success" @click="updateCredentials(true)" label="Save" size="large" v-if="credentialDataDynamic" />
-			<n8n-button @click="createCredentials(true)" label="Create" size="large" v-else />
+			</span>
 		</div>
-
 	</div>
 </template>
 
@@ -158,49 +88,12 @@ export default mixins(
 	data () {
 		return {
 			basePath: this.$store.getters.getBaseUrl,
-			isMinimized: true,
-			helpTexts: {
-				credentialsData: 'The credentials to set.',
-				credentialsName: 'A recognizable label for the credentials. Descriptive names work <br />best here, so you can easily select it from a list later.',
-				nodesWithAccess: 'Nodes with access to these credentials.',
-			},
 			credentialDataTemp: null as ICredentialsDecryptedResponse | null,
 			nodesAccess: [] as string[],
-			name: '',
 			propertyValue: {} as ICredentialDataDecryptedObject,
 		};
 	},
 	computed: {
-		allNodesRequestingAccess (): Array<{key: string, label: string}> {
-			const returnNodeTypes: string[] = [];
-
-			const nodeTypes: INodeTypeDescription[] = this.$store.getters.allNodeTypes;
-
-			let nodeType: INodeTypeDescription;
-			let credentialTypeDescription: INodeCredentialDescription;
-
-			// Find the node types which need the credentials
-			for (nodeType of nodeTypes) {
-				if (!nodeType.credentials) {
-					continue;
-				}
-
-				for (credentialTypeDescription of nodeType.credentials) {
-					if (credentialTypeDescription.name === (this.credentialTypeData as ICredentialType).name && !returnNodeTypes.includes(credentialTypeDescription.name)) {
-						returnNodeTypes.push(nodeType.name);
-						break;
-					}
-				}
-			}
-
-			// Return the data in the correct format el-transfer expects
-			return returnNodeTypes.map((nodeTypeName: string) => {
-				return {
-					key: nodeTypeName,
-					label: this.$store.getters.nodeType(nodeTypeName).displayName as string,
-				};
-			});
-		},
 		credentialProperties (): INodeProperties[] {
 			return this.credentialTypeData.properties.filter((propertyData: INodeProperties) => {
 				if (!this.displayCredentialParameter(propertyData)) {
@@ -266,7 +159,7 @@ export default mixins(
 			});
 		},
 		parentTypes (name: string): string[] {
-			const credentialType = this.$store.getters.credentialType(name);
+			const credentialType = this.$store.getters['credentials/getCredentialTypeByName'](name);
 
 			if (credentialType === undefined || credentialType.extends === undefined) {
 				return [];
@@ -308,7 +201,6 @@ export default mixins(
 			});
 
 			const newCredentials = {
-				name: this.name,
 				type: (this.credentialTypeData as ICredentialType).name,
 				nodesAccess,
 				// Save only the none default data
@@ -443,7 +335,6 @@ export default mixins(
 			}
 
 			const newCredentials = {
-				name: this.name,
 				type: (this.credentialTypeData as ICredentialType).name,
 				nodesAccess,
 				// Save only the none default data
@@ -472,7 +363,6 @@ export default mixins(
 		init () {
 			if (this.credentialData) {
 				// Initialize with the given data
-				this.name = (this.credentialData as ICredentialsDecryptedResponse).name;
 				this.propertyValue = (this.credentialData as ICredentialsDecryptedResponse).data as ICredentialDataDecryptedObject;
 				const nodesAccess = (this.credentialData as ICredentialsDecryptedResponse).nodesAccess.map((nodeAccess) => {
 					return nodeAccess.nodeType;
@@ -481,7 +371,6 @@ export default mixins(
 				Vue.set(this, 'nodesAccess', nodesAccess);
 			} else {
 				// No data supplied so init empty
-				this.name = '';
 				this.propertyValue = {} as ICredentialDataDecryptedObject;
 				const nodesAccess = [] as string[];
 				nodesAccess.push.apply(nodesAccess, this.nodesInit);
@@ -511,105 +400,40 @@ export default mixins(
 });
 </script>
 
-<style lang="scss">
-
-.credentials-input-wrapper {
-	.credential-name-wrapper {
-		display: flex;
-		align-items: center;
-	}
-
-	.action-buttons {
-		margin-top: 2em;
-		text-align: right;
-	}
-
-	.headline {
-		font-weight: 600;
-		color: $--color-primary;
-		margin-bottom: 1em;
-		line-height: 1.5;
-	}
-
-	.headline-regular {
-		line-height: 1.5;
-	}
-
-	.nodes-access-wrapper {
-		margin-top: 1em;
-	}
-
-	.no-nodes-access {
-		margin: 1em 0;
-		color: $--color-primary;
-		line-height: 1.75em;
-	}
-
-	.oauth-information {
-		line-height: 2.5em;
-		margin: 2em 0;
-
-		.google-icon {
-			width: 191px;
-		}
-	}
-
-	.parameter-wrapper {
-		display: flex;
-		align-items: center;
-		margin: 8px 0;
-
-		.parameter-name {
-			position: relative;
-
-			&:hover {
-				.parameter-info {
-					display: inline;
-				}
-			}
-
-			.parameter-info {
-				display: none;
-			}
-		}
-	}
-
-	.credentials-info {
-		display: none;
-	}
-
-	.callback-url {
-		position: relative;
-		top: 0;
-		width: 100%;
-		font-size: 0.9em;
-		white-space: normal;
-		overflow: visible;
-		text-overflow: initial;
-		color: #404040;
-		text-align: left;
-		direction: ltr;
-		word-break: break-all;
-	}
-
-	.headline:hover,
-	.headline-regular:hover {
-		.credentials-info {
-			display: inline;
-		}
-	}
-
-	.expanded .minimize-button {
-		-webkit-transform: rotate(180deg);
-		-moz-transform: rotate(180deg);
-		-o-transform: rotate(180deg);
-		transform: rotate(180deg);
-	}
-
-	.oauth-callback-headline {
-		padding-top: 1em;
-		font-weight: 500;
+<style lang="scss" module>
+.container {
+	> * {
+		margin-bottom: var(--spacing-l);
 	}
 }
 
+.copyText {
+	font-family: Monaco;
+	padding: var(--spacing-xs);
+	background-color: var(--color-background-light);
+	border: var(--border-base);
+	border-radius: var(--border-radius-base);
+	cursor: pointer;
+	display: inline-block;
+	position: relative;
+
+	&:hover {
+		--display-copy-button: block;
+		width: 100%;
+	}
+}
+
+.copyButton {
+	display: var(--display-copy-button, none);
+	position: absolute;
+	top: 0;
+	right: 0;
+	padding: var(--spacing-xs);
+	background-color: var(--color-background-light);
+}
+
+.googleIcon {
+	width: 191px;
+	cursor: pointer;
+}
 </style>

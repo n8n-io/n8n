@@ -617,6 +617,14 @@ export interface IRootState {
 	instanceId: string;
 }
 
+export interface ICredentialTypeMap {
+	[name: string]: ICredentialType;
+}
+
+export interface ICredentialsState {
+	credentialTypes: ICredentialTypeMap;
+}
+
 export interface ITagsState {
 	tags: { [id: string]: ITag };
 	isLoading: boolean;
@@ -626,6 +634,8 @@ export interface ITagsState {
 
 export interface IModalState {
 	open: boolean;
+	mode?: string | null;
+	activeId?: string | null;
 }
 
 export interface IUiState {

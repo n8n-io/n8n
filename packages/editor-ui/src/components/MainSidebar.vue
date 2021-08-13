@@ -3,7 +3,6 @@
 		<about :dialogVisible="aboutDialogVisible" @closeDialog="closeAboutDialog"></about>
 		<executions-list :dialogVisible="executionsListDialogVisible" @closeDialog="closeExecutionsListOpenDialog"></executions-list>
 		<credentials-list :dialogVisible="credentialOpenDialogVisible" @closeDialog="closeCredentialOpenDialog"></credentials-list>
-		<credentials-edit :dialogVisible="credentialNewDialogVisible" @closeDialog="closeCredentialNewDialog"></credentials-edit>
 		<workflow-settings :dialogVisible="workflowSettingsDialogVisible" @closeDialog="closeWorkflowSettingsDialog"></workflow-settings>
 		<input type="file" ref="importFile" style="display: none" v-on:change="handleFileImport()">
 
@@ -229,7 +228,6 @@ export default mixins(
 				aboutDialogVisible: false,
 				// @ts-ignore
 				basePath: this.$store.getters.getBaseUrl,
-				credentialNewDialogVisible: false,
 				credentialOpenDialogVisible: false,
 				executionsListDialogVisible: false,
 				stopExecutionInProgress: false,
@@ -317,9 +315,6 @@ export default mixins(
 			},
 			closeCredentialOpenDialog () {
 				this.credentialOpenDialogVisible = false;
-			},
-			closeCredentialNewDialog () {
-				this.credentialNewDialogVisible = false;
 			},
 			openTagManager() {
 				this.$store.dispatch('ui/openTagsManagerModal');
@@ -477,7 +472,7 @@ export default mixins(
 				} else if (key === 'credentials-open') {
 					this.credentialOpenDialogVisible = true;
 				} else if (key === 'credentials-new') {
-					this.credentialNewDialogVisible = true;
+					this.$store.dispatch('ui/openCredentialsSelectModal');
 				} else if (key === 'execution-open-workflow') {
 					if (this.workflowExecution !== null) {
 						this.openWorkflow(this.workflowExecution.workflowId as string);
@@ -530,28 +525,28 @@ export default mixins(
 	transform: scale(1.1);
 }
 
-.el-menu-item {
-	a {
-		color: #666;
+// .el-menu-item {
+// 	a {
+// 		color: #666;
 
-		&.primary-item {
-			color: $--color-primary;
-			vertical-align: baseline;
-		}
-	}
+// 		&.primary-item {
+// 			color: $--color-primary;
+// 			vertical-align: baseline;
+// 		}
+// 	}
 
-	&.logo-item {
-		background-color: $--color-primary !important;
-		height: $--header-height;
+// 	&.logo-item {
+// 		background-color: $--color-primary !important;
+// 		height: $--header-height;
 
-		.icon {
-			position: relative;
-			height: 23px;
-			left: -10px;
-			top: -2px;
-		}
-	}
-}
+// 		.icon {
+// 			position: relative;
+// 			height: 23px;
+// 			left: -10px;
+// 			top: -2px;
+// 		}
+// 	}
+// }
 
 a.logo {
 	text-decoration: none;

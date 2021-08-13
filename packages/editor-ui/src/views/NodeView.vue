@@ -2201,8 +2201,9 @@ export default mixins(
 				this.$store.commit('setNodeTypes', nodeTypes);
 			},
 			async loadCredentialTypes (): Promise<void> {
-				const credentialTypes = await this.restApi().getCredentialTypes();
-				this.$store.commit('setCredentialTypes', credentialTypes);
+				this.$store.dispatch('credentials/fetchCredentialTypes');
+				// const credentialTypes = await this.restApi().getCredentialTypes();
+				// this.$store.commit('setCredentialTypes', credentialTypes);
 			},
 			async loadCredentials (): Promise<void> {
 				const credentials = await this.restApi().getAllCredentials();
