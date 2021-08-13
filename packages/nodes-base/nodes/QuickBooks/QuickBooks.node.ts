@@ -1028,10 +1028,9 @@ export class QuickBooks implements INodeType {
 							responseData = [];
 						}
 
-						if (simplifyResponse) {
+						if (simplifyResponse && !Array.isArray(responseData)) {
 							responseData = simplifyTransactionReport(responseData);
 						}
-
 					}
 
 				} else if (resource === 'vendor') {
