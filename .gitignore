@@ -14,4 +14,4 @@ _START_PACKAGE
 .idea
 .prettierrc.js
 vetur.config.js
-nodelinter.config.js
+nodelinter.config.json
