@@ -10,6 +10,7 @@ import {
 	ICredentialType,
 	IDataObject,
 	INodeConnections,
+	INodeCredentialsDetails,
 	INodeIssueData,
 	INodeTypeDescription,
 	IRunData,
@@ -410,6 +411,32 @@ export const store = new Vuex.Store({
 				state.stateIsDirty = true;
 			}
 			state.workflow.name = data.newName;
+		},
+
+		// replace invalid credentials in workflow
+		replaceInvalidWorkflowCredentials(state, {credentials, invalid, type }) {
+			state.workflow.nodes.forEach((node) => {
+				if (!node.credentials || !node.credentials[type]) {
+					return;
+				}
+				const nodeCredentials = node.credentials[type];
+
+				if (typeof nodeCredentials === 'string' && nodeCredentials === invalid.name) {
+					node.credentials[type] = credentials;
+					return;
+				}
+
+				if (nodeCredentials.id === null) {
+					if (nodeCredentials.name === invalid.name){
+						node.credentials[type] = credentials;
+					}
+					return;
+				}
+
+				if (nodeCredentials.id === invalid.id) {
+					node.credentials[type] = credentials;
+				}
+			});
 		},
 
 		// Nodes

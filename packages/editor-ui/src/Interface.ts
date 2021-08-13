@@ -264,7 +264,7 @@ export interface IActivationError {
 }
 
 export interface ICredentialsResponse extends ICredentialsEncrypted {
-	id?: string;
+	id: string;
 	createdAt: number | string;
 	updatedAt: number | string;
 }

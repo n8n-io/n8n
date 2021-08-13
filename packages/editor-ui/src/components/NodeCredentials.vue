@@ -20,18 +20,18 @@
 						</el-tooltip>
 					</div>
 					<div :style="credentialInputWrapperStyle(credentialTypeDescription.name)">
-						<el-select v-model="credentials[credentialTypeDescription.name]" :disabled="isReadOnly" @change="credentialSelected(credentialTypeDescription.name)" placeholder="Select Credential" size="small">
+						<el-select v-model="currentCredentialsId" :disabled="isReadOnly" @change="credentialSelected(credentialTypeDescription.name)" placeholder="Select Credential" size="small">
 							<el-option
 								v-for="(item, index) in credentialOptions[credentialTypeDescription.name]"
 								:key="item.name + '_' + index"
 								:label="item.name"
-								:value="item.name">
+								:value="item.id">
 							</el-option>
 						</el-select>
 					</div>
 				</el-col>
 				<el-col :span="2" class="parameter-value">
-					<font-awesome-icon v-if="credentials[credentialTypeDescription.name]" icon="pen" @click="updateCredentials(credentialTypeDescription.name)" class="update-credentials clickable" title="Update Credentials" />
+					<font-awesome-icon v-if="!!currentCredentialsId" icon="pen" @click="updateCredentials(credentialTypeDescription.name)" class="update-credentials clickable" title="Update Credentials" />
 				</el-col>
 
 			</el-row>
@@ -52,7 +52,9 @@ import {
 } from '@/Interface';
 import {
 	ICredentialType,
+	INodeCredentials,
 	INodeCredentialDescription,
+	INodeCredentialsDetails,
 	INodeTypeDescription,
 } from 'n8n-workflow';
 
@@ -117,9 +119,7 @@ export default mixins(
 			addType: undefined as string | undefined,
 			credentialNewDialogVisible: false,
 			credentialOptions: {} as { [key: string]: ICredentialsResponse[]; },
-			credentials: {} as {
-				[key: string]: string | undefined
-			},
+			currentCredentialsId: null as null | string | undefined,
 			editCredentials: null as object | null, // Credentials filter
 			newCredentialText: '- Create New -',
 			nodesInit: undefined as string[] | undefined,
@@ -143,7 +143,7 @@ export default mixins(
 			}
 
 			this.init();
-			Vue.set(this.credentials, eventData.data.type, eventData.data.name);
+			Vue.set(this, 'currentCredentialsId', eventData.data.id);
 
 			// Makes sure that it does also get set correctly on the node not just the UI
 			this.credentialSelected(eventData.data.type);
@@ -168,23 +168,47 @@ export default mixins(
 			return styles;
 		},
 		credentialSelected (credentialType: string) {
-			const credential = this.credentials[credentialType];
-			if (credential === this.newCredentialText) {
+			const newCredentials: INodeCredentials = {};
+			const newCredentialData: ICredentialsResponse | undefined = this.credentialOptions[credentialType].find((optionData: ICredentialsResponse) => optionData.id === this.currentCredentialsId);
+			if (!newCredentialData) {
+				this.$showMessage({
+					title: 'Credentials not found',
+					message: `The selected credentials of type "${credentialType}" could not be found!`,
+					type: 'error',
+				});
+				return;
+			}
+			newCredentials[credentialType] = { id: newCredentialData.id, name: newCredentialData.name };
+
+			if (newCredentialData!.name === this.newCredentialText) {
 				// New credentials should be created
 				this.addType = credentialType;
 				this.editCredentials = null;
 				this.nodesInit = [ (this.node as INodeUi).type ];
 				this.credentialNewDialogVisible = true;
 
-				this.credentials[credentialType] = undefined;
+				this.currentCredentialsId = undefined;
+				return;
 			}
 
 			const node = this.node as INodeUi;
+			const nodeCredentials = node.credentials![credentialType];
+
+			// if credentials has been string or neither id nor name matched uniquely
+			if (nodeCredentials.id === null || !this.credentialOptions[credentialType].find((optionData: ICredentialsResponse) => optionData.id === nodeCredentials.id)) {
+				// update all nodes in the workflow with the same old/invalid credentials
+				this.$store.commit('replaceInvalidWorkflowCredentials', {
+					credentials: newCredentials[credentialType],
+					invalid: nodeCredentials,
+					type: credentialType,
+				});
+				this.updateNodesCredentialsIssues();
+			}
 
 			const updateInformation: INodeUpdatePropertiesInformation = {
 				name: node.name,
 				properties: {
-					credentials: JSON.parse(JSON.stringify(this.credentials)),
+					credentials: newCredentials,
 				},
 			};
 
@@ -211,20 +235,20 @@ export default mixins(
 			return node.issues.credentials[credentialTypeName];
 		},
 		updateCredentials (credentialType: string): void {
-			const name = this.credentials[credentialType];
-			const credentialData = this.credentialOptions[credentialType].find((optionData: ICredentialsResponse) => optionData.name === name);
+			const id = this.currentCredentialsId;
+			const credentialData = this.credentialOptions[credentialType].find((optionData: ICredentialsResponse) => optionData.id === id);
 			if (credentialData === undefined) {
 				this.$showMessage({
 					title: 'Credentials not found',
-					message: `The credentials named "${name}" of type "${credentialType}" could not be found!`,
+					message: `The selected credentials of type "${credentialType}" could not be found!`,
 					type: 'error',
 				});
 				return;
 			}
 
 			const editCredentials = {
-				id: credentialData.id,
-				name,
+				id,
+				name: credentialData.name,
 				type: credentialType,
 			};
 
@@ -251,9 +275,67 @@ export default mixins(
 
 			// Set the current node credentials
 			if (node.credentials) {
-				Vue.set(this, 'credentials', JSON.parse(JSON.stringify(node.credentials)));
-			} else {
-				Vue.set(this, 'credentials', {});
+				const nodeCredentialType = this.credentialTypesNode.find(type => node.credentials![type]) as string;
+				let nodeCredentials = node.credentials![nodeCredentialType];
+				const updateNode = {
+					name: node.name,
+					properties: {
+						credentials: {} as Record<string, INodeCredentialsDetails>,
+					},
+				};
+				// Check if workflows applies latest credentials type
+				if (typeof nodeCredentials === 'string') {
+					nodeCredentials = {
+						id: null,
+						name: nodeCredentials,
+					};
+				}
+
+				if (nodeCredentials.id) {
+					// Check whether the id is matching with a credential
+					const credentialsForId = this.credentialOptions[nodeCredentialType].find((optionData: ICredentialsResponse) => optionData.id === nodeCredentials.id);
+					if (credentialsForId) {
+						if (credentialsForId.name !== nodeCredentials.name) {
+							updateNode.properties.credentials[nodeCredentialType] = { id: credentialsForId.id, name: credentialsForId.name };
+
+							// update all nodes in the workflow with the same old/invalid credentials
+							this.$store.commit('replaceInvalidWorkflowCredentials', {
+								credentials: updateNode.properties.credentials[nodeCredentialType],
+								invalid: nodeCredentials,
+								type: nodeCredentialType,
+							});
+						}
+						Vue.set(this, 'currentCredentialsId', nodeCredentials.id);
+						return;
+					}
+				}
+
+				// No match for id found or old credentials type used
+
+				updateNode.properties.credentials[nodeCredentialType] = {
+					id: null,
+					name: nodeCredentials.name,
+				};
+
+				// check if only one option with the name would exist
+				const credentialsForName = this.credentialOptions[nodeCredentialType].filter((optionData: ICredentialsResponse) => optionData.name === nodeCredentials.name);
+
+				// only one option exists for the name, take it
+				if (credentialsForName.length === 1) {
+					updateNode.properties.credentials[nodeCredentialType].id = credentialsForName[0].id;
+
+					// update all nodes in the workflow with the same old/invalid credentials
+					this.$store.commit('replaceInvalidWorkflowCredentials', {
+						credentials: updateNode.properties.credentials[nodeCredentialType],
+						invalid: nodeCredentials,
+						type: nodeCredentialType,
+					});
+				}
+
+				if (nodeCredentials.id === null) {
+					this.$store.commit('updateNodeProperties', updateNode);
+				}
+				Vue.set(this, 'currentCredentialsId', updateNode.properties.credentials[nodeCredentialType].id);
 			}
 		},
 

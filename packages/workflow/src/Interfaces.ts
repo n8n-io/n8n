@@ -338,8 +338,13 @@ export interface IWebhookFunctions {
 	};
 }
 
+export interface INodeCredentialsDetails {
+	id: string | null;
+	name: string;
+}
+
 export interface INodeCredentials {
-	[key: string]: string;
+	[key: string]: INodeCredentialsDetails;
 }
 
 export interface INode {
