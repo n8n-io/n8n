@@ -28,6 +28,8 @@ import { validate as uuidValidate } from 'uuid';
 
 export async function notionApiRequest(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions | IPollFunctions, method: string, resource: string, body: any = {}, qs: IDataObject = {}, uri?: string, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
 
+	const authenticationMethod = this.getNodeParameter('authentication', 0) as string; 
+	
 	try {
 		let options: OptionsWithUri = {
 			headers: {
@@ -41,10 +43,16 @@ export async function notionApiRequest(this: IHookFunctions | IExecuteFunctions 
 		};
 
 		options = Object.assign({}, options, option);
-		const credentials = this.getCredentials('notionApi') as IDataObject;
-		options!.headers!['Authorization'] = `Bearer ${credentials.apiKey}`;
-		return this.helpers.request!(options);
 
+		if (authenticationMethod === 'apiKey') {
+			const credentials = this.getCredentials('notionApi') as IDataObject;
+			options!.headers!['Authorization'] = `Bearer ${credentials.apiKey}`;
+			return this.helpers.request!(options);
+		} else {
+			//@ts-ignore
+			return await this.helpers.requestOAuth2.call(this, 'notionOAuth2Api', options);
+		}
+		
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error);
 	}

@@ -69,44 +69,44 @@ export class Notion implements INodeType {
 			{
 				name: 'notionApi',
 				required: true,
-				// displayOptions: {
-				// 	show: {
-				// 		authentication: [
-				// 			'apiKey',
-				// 		],
-				// 	},
-				// },
+				displayOptions: {
+					show: {
+						authentication: [
+							'apiKey',
+						],
+					},
+				},
 			},
-			// {
-			// 	name: 'notionOAuth2Api',
-			// 	required: true,
-			// 	displayOptions: {
-			// 		show: {
-			// 			authentication: [
-			// 				'oAuth2',
-			// 			],
-			// 		},
-			// 	},
-			// },
+			{
+				name: 'notionOAuth2Api',
+				required: true,
+				displayOptions: {
+					show: {
+						authentication: [
+							'oAuth2',
+						],
+					},
+				},
+			},
 		],
 		properties: [
-			// {
-			// 	displayName: 'Authentication',
-			// 	name: 'authentication',
-			// 	type: 'options',
-			// 	options: [
-			// 		{
-			// 			name: 'API Key',
-			// 			value: 'apiKey',
-			// 		},
-			// 		{
-			// 			name: 'OAuth2',
-			// 			value: 'oAuth2',
-			// 		},
-			// 	],
-			// 	default: 'apiKey',
-			// 	description: 'The resource to operate on.',
-			// },
+			{
+				displayName: 'Authentication',
+				name: 'authentication',
+				type: 'options',
+				options: [
+					{
+						name: 'API Key',
+						value: 'apiKey',
+					},
+					{
+						name: 'OAuth2',
+						value: 'oAuth2',
+					},
+				],
+				default: 'apiKey',
+				description: 'The resource to operate on.',
+			},
 			{
 				displayName: 'Resource',
 				name: 'resource',
