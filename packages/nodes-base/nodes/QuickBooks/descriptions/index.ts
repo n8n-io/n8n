@@ -7,3 +7,4 @@ export * from './Item/ItemDescription';
 export * from './Payment/PaymentDescription';
 export * from './Vendor/VendorDescription';
 export * from './Purchase/PurchaseDescription';
+export * from './Transaction/TransactionDescription';
