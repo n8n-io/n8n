@@ -78,4 +78,27 @@ Sizes.args = {
 	placeholder: 'placeholder...',
 };
 
+const selectsWithIcon = ['large', 'medium', 'small', 'mini'].map((size) => `<n8n-select style="margin-bottom:10px" v-bind="$props" v-model="val" @input="onInput" size="${size}"><n8n-icon icon="search" slot="prefix" /><n8n-option value="1">op1</n8n-option><n8n-option value="2">op2</n8n-option></n8n-select>`).join('');
 
+const ManyTemplateWithIcon = (args, { argTypes }) => ({
+	props: Object.keys(argTypes),
+	components: {
+		N8nSelect,
+		N8nOption,
+	},
+	template: `<div>${selectsWithIcon}</div>`,
+	methods,
+	data() {
+		return {
+			val: '',
+		};
+	},
+});
+
+
+export const WithIcon = ManyTemplateWithIcon.bind({});
+WithIcon.args = {
+	type: 'text',
+	label: 'text input:',
+	placeholder: 'placeholder...',
+};

@@ -4,29 +4,6 @@
 @use 'mixins/function';
 @use 'common/var';
 
-$active-shade-percent: 10%;
-$color-primary-shade: function.lightness(
-	--color-primary-h,
-	--color-primary-s,
-	--color-primary-l,
-	-($active-shade-percent)
-);
-
-$color: var(--button-color, var(--color-text-xlight));
-$background-color: var(--button-background-color, var(--color-primary));
-
-$active-color: var(--button-active-color, var(--color-text-xlight));
-$active-border-color: var(--button-active-border-color, $color-primary-shade);
-$active-background-color: var(
-	--button-active-background-color,
-	$color-primary-shade
-);
-
-$disabled-color: var(--color-text-light);
-$disabled-background-color: var(
-	--button-disabled-background-color,
-	var(--color-foreground-base)
-);
 $disabled-border-color: var(--color-foreground-base);
 
 $loading-overlay-background-color: rgba(255, 255, 255, 0.35);
@@ -38,8 +15,8 @@ $loading-overlay-background-color: rgba(255, 255, 255, 0.35);
 	cursor: pointer;
 
 	border: var(--border-width-base) var.$button-border-color var(--border-style-base);
-	color: $color;
-	background-color: $background-color;
+	color: var.$button-font-color;
+	background-color: var.$button-background-color;
 	font-weight: var(--font-weight-bold);
 	border-radius: var.$button-border-radius;
 	padding: var.$button-padding-vertical var.$button-padding-horizontal;
@@ -55,9 +32,9 @@ $loading-overlay-background-color: rgba(255, 255, 255, 0.35);
 	@include utils.utils-user-select(none);
 
 	&:active {
-		color: $active-color;
-		border-color: $active-border-color;
-		background-color: $active-background-color;
+		color: var.$button-active-color;
+		border-color: var.$button-active-border-color;
+		background-color: var.$button-active-background-color;
 		outline: none;
 	}
 
@@ -89,9 +66,9 @@ $loading-overlay-background-color: rgba(255, 255, 255, 0.35);
 		&:focus {
 			cursor: not-allowed;
 			background-image: none;
-			color: $disabled-color;
-			background-color: $disabled-background-color;
-			border-color: $disabled-border-color;
+			color: var.$button-disabled-font-color;
+			background-color: var.$button-disabled-background-color;
+			border-color: var.$button-disabled-border-color;
 		}
 	}
 
