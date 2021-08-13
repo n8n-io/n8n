@@ -148,11 +148,13 @@
 	@include mixins.e(prefix) {
 		position: absolute;
 		height: 100%;
-		left: 5px;
+		left: 10px;
 		top: 0;
 		text-align: center;
 		color: var.$input-icon-color;
 		transition: all 0.3s;
+		display: flex;
+		align-items: center;
 	}
 
 	@include mixins.e(icon) {
