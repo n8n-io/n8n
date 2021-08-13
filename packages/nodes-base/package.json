@@ -52,6 +52,7 @@
       "dist/credentials/BrandfetchApi.credentials.js",
       "dist/credentials/BubbleApi.credentials.js",
       "dist/credentials/ChargebeeApi.credentials.js",
+      "dist/credentials/CamundaCloudApi.credentials.js",
       "dist/credentials/CircleCiApi.credentials.js",
       "dist/credentials/CiscoWebexOAuth2Api.credentials.js",
       "dist/credentials/ClearbitApi.credentials.js",
@@ -330,6 +331,8 @@
       "dist/nodes/Brandfetch/Brandfetch.node.js",
       "dist/nodes/Bubble/Bubble.node.js",
       "dist/nodes/Calendly/CalendlyTrigger.node.js",
+      "dist/nodes/CamundaCloud/CamundaCloud.node.js",
+      "dist/nodes/CamundaCloud/CamundaCloudTrigger.node.js",
       "dist/nodes/Chargebee/Chargebee.node.js",
       "dist/nodes/Chargebee/ChargebeeTrigger.node.js",
       "dist/nodes/CircleCi/CircleCi.node.js",
@@ -689,7 +692,8 @@
     "uuid": "^8.3.0",
     "vm2": "^3.6.10",
     "xlsx": "^0.17.0",
-    "xml2js": "^0.4.23"
+    "xml2js": "^0.4.23",
+    "zeebe-node": "^1.3.4"
   },
   "jest": {
     "transform": {
