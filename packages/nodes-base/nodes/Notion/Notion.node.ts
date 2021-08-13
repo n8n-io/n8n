@@ -284,8 +284,9 @@ export class Notion implements INodeType {
 					});
 				}
 				returnData.unshift({
-					name: 'Default n8n Timezone',
+					name: 'Default',
 					value: 'default',
+					description: 'Timezone set in n8n',
 				});
 				return returnData;
 			},

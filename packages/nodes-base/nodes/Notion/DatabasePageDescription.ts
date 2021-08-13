@@ -420,7 +420,7 @@ export const databasePageFields = [
 							loadOptionsMethod: 'getTimezones',
 						},
 						default: 'default',
-						description: 'Time zone used. By default n8n timezone is used.',
+						description: 'Time zone to use. By default n8n timezone is used.',
 					},
 				],
 			},
@@ -788,7 +788,6 @@ export const databasePageFields = [
 						type: 'options',
 						displayOptions: {
 							show: {
-
 								type: [
 									'date',
 								],
@@ -798,7 +797,7 @@ export const databasePageFields = [
 							loadOptionsMethod: 'getTimezones',
 						},
 						default: 'default',
-						description: 'Time zone used. By default n8n timezone is used.',
+						description: 'Time zone to use. By default n8n timezone is used.',
 					},
 				],
 			},
