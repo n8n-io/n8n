@@ -22,6 +22,7 @@ import {
 } from 'change-case';
 
 import {
+	omit,
 	pickBy,
 } from 'lodash';
 
@@ -30,7 +31,10 @@ import {
 } from 'request';
 
 import {
+	DateFieldsUi,
+	Option,
 	QuickBooksOAuth2Credentials,
+	TransactionReport,
 } from './types';
 
 /**
@@ -123,12 +127,22 @@ export async function quickBooksApiRequestAllItems(
 
 	const maxCount = await getCount.call(this, method, endpoint, qs);
 
-	const originalQuery = qs.query;
+	const originalQuery = qs.query as string;
 
 	do {
 		qs.query = `${originalQuery} MAXRESULTS ${maxResults} STARTPOSITION ${startPosition}`;
 		responseData = await quickBooksApiRequest.call(this, method, endpoint, qs, body);
-		returnData.push(...responseData.QueryResponse[capitalCase(resource)]);
+		try {
+			const nonResource = originalQuery.split(' ')?.pop();
+			if (nonResource === 'CreditMemo' || nonResource === 'Term') {
+				returnData.push(...responseData.QueryResponse[nonResource]);
+			} else {
+				returnData.push(...responseData.QueryResponse[capitalCase(resource)]);
+			}
+		} catch (error) {
+			return [];
+		}
+
 		startPosition += maxResults;
 
 	} while (maxCount > returnData.length);
@@ -273,7 +287,7 @@ export async function loadResource(
 
 	resourceItems.forEach((resourceItem: { DisplayName: string, Name: string, Id: string }) => {
 		returnData.push({
-			name: resourceItem.DisplayName || resourceItem.Name,
+			name: resourceItem.DisplayName || resourceItem.Name || `Memo ${resourceItem.Id}`,
 			value: resourceItem.Id,
 		});
 	});
@@ -427,4 +441,64 @@ export function populateFields(
 		}
 	});
 	return body;
+}
+
+export const toOptions = (option: string) => ({ name: option, value: option });
+
+export const toDisplayName = ({ name, value }: Option) => {
+	return { name: splitPascalCase(name), value };
+};
+
+export const splitPascalCase = (word: string) => {
+	return word.match(/($[a-z])|[A-Z][^A-Z]+/g)?.join(' ');
+};
+
+export function adjustTransactionDates(
+	transactionFields: IDataObject & DateFieldsUi,
+): IDataObject {
+	const dateFieldKeys = [
+		'dateRangeCustom',
+		'dateRangeDueCustom',
+		'dateRangeModificationCustom',
+		'dateRangeCreationCustom',
+	] as const;
+
+	if (dateFieldKeys.every(dateField => !transactionFields[dateField])) {
+		return transactionFields;
+	}
+
+	let adjusted = omit(transactionFields, dateFieldKeys) as IDataObject;
+
+	dateFieldKeys.forEach(dateFieldKey => {
+		const dateField = transactionFields[dateFieldKey];
+
+		if (dateField) {
+			Object.entries(dateField[`${dateFieldKey}Properties`]).map(([key, value]) =>
+				dateField[`${dateFieldKey}Properties`][key] = value.split('T')[0],
+			);
+
+			adjusted = {
+				...adjusted,
+				...dateField[`${dateFieldKey}Properties`],
+			};
+		}
+	});
+
+	return adjusted;
+}
+
+export function simplifyTransactionReport(transactionReport: TransactionReport) {
+	const columns = transactionReport.Columns.Column.map((column) => column.ColType);
+	const rows = transactionReport.Rows.Row.map((row) => row.ColData.map(i => i.value));
+
+	const simplified = [];
+	for (const row of rows) {
+		const transaction: { [key: string]: string } = {};
+		for (let i = 0; i < row.length; i++) {
+			transaction[columns[i]] = row[i];
+		}
+		simplified.push(transaction);
+	}
+
+	return simplified;
 }

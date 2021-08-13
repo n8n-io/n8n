@@ -781,6 +781,13 @@ export class GoogleDrive implements INodeType {
 				},
 				options: [
 					{
+						displayName: 'File Name',
+						name: 'fileName',
+						type: 'string',
+						default: '',
+						description: `The name of the file`,
+					},
+					{
 						displayName: 'Keep Revision Forever',
 						name: 'keepRevisionForever',
 						type: 'boolean',
@@ -2318,7 +2325,7 @@ export class GoogleDrive implements INodeType {
 						const properties = this.getNodeParameter('options.propertiesUi.propertyValues', i, []) as IDataObject[];
 
 						if (properties.length) {
-							Object.assign(body, { properties: properties.reduce((obj, value) => Object.assign(obj, { [`${value.key}`]: value.value }), {}) } );	
+							Object.assign(body, { properties: properties.reduce((obj, value) => Object.assign(obj, { [`${value.key}`]: value.value }), {}) } );
 						}
 
 						const appProperties = this.getNodeParameter('options.appPropertiesUi.appPropertyValues', i, []) as IDataObject[];
@@ -2356,11 +2363,17 @@ export class GoogleDrive implements INodeType {
 
 						qs.fields = queryFields;
 
+						const body: IDataObject = {};
+
+						if (updateFields.fileName) {
+							body.name = updateFields.fileName;
+						}
+
 						if (updateFields.parentId && updateFields.parentId !== '') {
 							qs.addParents = updateFields.parentId;
 						}
 
-						const responseData = await googleApiRequest.call(this, 'PATCH', `/drive/v3/files/${id}`, {}, qs);
+						const responseData = await googleApiRequest.call(this, 'PATCH', `/drive/v3/files/${id}`, body, qs);
 						returnData.push(responseData as IDataObject);
 					}
 
