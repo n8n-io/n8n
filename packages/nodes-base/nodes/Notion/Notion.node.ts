@@ -283,6 +283,10 @@ export class Notion implements INodeType {
 						value: timezoneId,
 					});
 				}
+				returnData.unshift({
+					name: 'Default n8n Timezone',
+					value: 'default',
+				});
 				return returnData;
 			},
 		},

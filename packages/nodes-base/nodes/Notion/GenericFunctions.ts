@@ -284,13 +284,13 @@ function getPropertyKeyValue(value: any, type: string, timezone: string) {
 			break;
 		case 'date':
 			const format = getDateFormat(value.includeTime);
-			const timezoneValue = value.timezone === '' ? timezone : value.timezone;
+			const timezoneValue = (value.timezone === 'default') ? timezone : value.timezone;
 			if (value.range === true) {
 				result = {
 					type: 'date',
 					date: {
 						start: moment.tz(value.dateStart, timezoneValue).format(format),
-						end: moment.tz(value.dateEnd, timezoneValue).format(format)
+						end: moment.tz(value.dateEnd, timezoneValue).format(format),
 					},
 				};
 			} else {
@@ -298,7 +298,7 @@ function getPropertyKeyValue(value: any, type: string, timezone: string) {
 					type: 'date',
 					date: {
 						start: moment.tz(value.date, timezoneValue).format(format),
-						end: null
+						end: null,
 					},
 				};
 			}

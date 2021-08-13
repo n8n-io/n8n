@@ -354,22 +354,6 @@ export const databasePageFields = [
 						description: 'Weather or not to include the time in the date.',
 					},
 					{
-						displayName: 'Timezone',
-						name: 'timezone',
-						type: 'options',
-						required: false,
-						typeOptions: {
-							show: {
-								type: [
-									'date',
-								],
-							},
-							loadOptionsMethod: 'getTimezones',
-						},
-						default: '',
-						description: 'Time zone used in the response. By default n8n timezone is used.',
-					},
-					{
 						displayName: 'Date',
 						name: 'date',
 						displayOptions: {
@@ -420,6 +404,23 @@ export const databasePageFields = [
 						default: '',
 						description: `
 						An ISO 8601 formatted date, with optional time. Represents the end of a date range.`,
+					},
+					{
+						displayName: 'Timezone',
+						name: 'timezone',
+						type: 'options',
+						displayOptions: {
+							show: {
+								type: [
+									'date',
+								],
+							},
+						},
+						typeOptions: {
+							loadOptionsMethod: 'getTimezones',
+						},
+						default: 'default',
+						description: 'Time zone used. By default n8n timezone is used.',
 					},
 				],
 			},
@@ -730,22 +731,6 @@ export const databasePageFields = [
 						description: 'Weather or not to include the time in the date.',
 					},
 					{
-						displayName: 'Timezone',
-						name: 'timezone',
-						type: 'options',
-						required: false,
-						typeOptions: {
-							show: {
-								type: [
-									'date',
-								],
-							},
-							loadOptionsMethod: 'getTimezones',
-						},
-						default: '',
-						description: 'Time zone used in the response. By default n8n timezone is used.',
-					},
-					{
 						displayName: 'Date',
 						name: 'date',
 						displayOptions: {
@@ -796,6 +781,24 @@ export const databasePageFields = [
 						default: '',
 						description: `
 						An ISO 8601 formatted date, with optional time. Represents the end of a date range.`,
+					},
+					{
+						displayName: 'Timezone',
+						name: 'timezone',
+						type: 'options',
+						displayOptions: {
+							show: {
+
+								type: [
+									'date',
+								],
+							},
+						},
+						typeOptions: {
+							loadOptionsMethod: 'getTimezones',
+						},
+						default: 'default',
+						description: 'Time zone used. By default n8n timezone is used.',
 					},
 				],
 			},
