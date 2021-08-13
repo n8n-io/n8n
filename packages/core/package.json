@@ -43,7 +43,7 @@
   "dependencies": {
     "client-oauth2": "^4.2.5",
     "cron": "^1.7.2",
-    "crypto-js": "4.1.1",
+    "crypto-js": "~4.1.1",
     "file-type": "^14.6.2",
     "lodash.get": "^4.4.2",
     "mime-types": "^2.1.27",
