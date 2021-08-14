@@ -687,7 +687,7 @@ export const itemFields = [
 				],
 			},
 		},
-		default: true,
+		default: false,
 		description: 'Whether to do an scan or query. Check <a href="https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/bp-query-scan.html" target="_blank" >differences</a>',
 	},
 	{
@@ -713,7 +713,6 @@ export const itemFields = [
 		default: '',
 		type: 'string',
 		required: true,
-		
 		displayOptions: {
 			show: {
 				resource: [
