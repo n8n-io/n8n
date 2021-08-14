@@ -193,6 +193,21 @@ export class Mautic implements INodeType {
 				}
 				return returnData;
 			},
+			async getIndustries(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const returnData: INodePropertyOptions[] = [];
+				const fields = await mauticApiRequestAllItems.call(this, 'fields', 'GET', '/fields/company');
+				for (const field of fields) {
+					if (field.alias === 'companyindustry') {
+						for (const { label, value } of field.properties.list) {
+							returnData.push({
+								name: label,
+								value,
+							});
+						}
+					}
+				}
+				return returnData;
+			},
 			// Get all the available contact fields to display them to user so that he can
 			// select them easily
 			async getContactFields(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
@@ -239,20 +254,96 @@ export class Mautic implements INodeType {
 				//https://developer.mautic.org/#create-company
 				if (operation === 'create') {
 					const simple = this.getNodeParameter('simple', i) as boolean;
-					const jsonActive = this.getNodeParameter('jsonParameters', i) as boolean;
-					let body: IDataObject = {};
-					if (!jsonActive) {
-						body.companyname = this.getNodeParameter('name', i) as string;
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
-						Object.assign(body, additionalFields);
-					} else {
-						const json = validateJSON(this.getNodeParameter('bodyJson', i) as string);
-						if (json !== undefined) {
-							body = { ...json };
-						} else {
-							throw new NodeOperationError(this.getNode(), 'Invalid JSON');
+					const name = this.getNodeParameter('name', i) as string;
+					const body: IDataObject = {
+						companyname: name,
+					};
+					const {
+						addressUi,
+						customFieldsUi,
+						companyEmail,
+						fax,
+						industry,
+						numberOfEmpoyees,
+						phone,
+						website,
+						annualRevenue,
+						description,
+						...rest
+					} = this.getNodeParameter('additionalFields', i) as {
+						addressUi: {
+							addressValues: IDataObject,
+						},
+						customFieldsUi: {
+							customFieldValues: [
+								{
+									fieldId: string,
+									fieldValue: string,
+								},
+							],
 						}
+						companyEmail: string,
+						fax: string,
+						industry: string,
+						numberOfEmpoyees: number,
+						phone: string,
+						website: string,
+						annualRevenue: number,
+						description: string,
+					};
+					if (addressUi?.addressValues) {
+						const { addressValues } = addressUi;
+						body.companyaddress1 = addressValues.address1 as string;
+						body.companyaddress2 = addressValues.address2 as string;
+						body.companycity = addressValues.city as string;
+						body.companystate = addressValues.state as string;
+						body.companycountry = addressValues.country as string;
+						body.companyzipcode = addressValues.zipCode as string;
 					}
+
+					if (companyEmail) {
+						body.companyemail = companyEmail;
+					}
+
+					if (fax) {
+						body.companyfax = fax;
+					}
+
+					if (industry) {
+						body.companyindustry = industry;
+					}
+
+					if (industry) {
+						body.companyindustry = industry;
+					}
+
+					if (numberOfEmpoyees) {
+						body.companynumber_of_employees = numberOfEmpoyees;
+					}
+
+					if (phone) {
+						body.companyphone = phone;
+					}
+
+					if (website) {
+						body.companywebsite = website;
+					}
+
+					if (annualRevenue) {
+						body.companyannual_revenue = annualRevenue;
+					}
+
+					if (description) {
+						body.companydescription = description;
+					}
+
+					if (customFieldsUi?.customFieldValues) {
+						const { customFieldValues } = customFieldsUi;
+						const data = customFieldValues.reduce((obj, value) => Object.assign(obj, { [`${value.fieldId}`]: value.fieldValue }), {});
+						Object.assign(body, data);
+					}
+
+					Object.assign(body, rest);
 					responseData = await mauticApiRequest.call(this, 'POST', '/companies/new', body);
 					responseData = responseData.company;
 					if (simple === true) {
@@ -263,19 +354,100 @@ export class Mautic implements INodeType {
 				if (operation === 'update') {
 					const companyId = this.getNodeParameter('companyId', i) as string;
 					const simple = this.getNodeParameter('simple', i) as boolean;
-					const jsonActive = this.getNodeParameter('jsonParameters', i) as boolean;
-					let body: IDataObject = {};
-					if (!jsonActive) {
-						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
-						Object.assign(body, updateFields);
-					} else {
-						const json = validateJSON(this.getNodeParameter('bodyJson', i) as string);
-						if (json !== undefined) {
-							body = { ...json };
-						} else {
-							throw new NodeOperationError(this.getNode(), 'Invalid JSON');
+					const body: IDataObject = {};
+					const {
+						addressUi,
+						customFieldsUi,
+						companyEmail,
+						name,
+						fax,
+						industry,
+						numberOfEmpoyees,
+						phone,
+						website,
+						annualRevenue,
+						description,
+						...rest
+					} = this.getNodeParameter('updateFields', i) as {
+						addressUi: {
+							addressValues: IDataObject,
+						},
+						customFieldsUi: {
+							customFieldValues: [
+								{
+									fieldId: string,
+									fieldValue: string,
+								},
+							],
 						}
+						companyEmail: string,
+						name: string,
+						fax: string,
+						industry: string,
+						numberOfEmpoyees: number,
+						phone: string,
+						website: string,
+						annualRevenue: number,
+						description: string,
+					};
+					if (addressUi?.addressValues) {
+						const { addressValues } = addressUi;
+						body.companyaddress1 = addressValues.address1 as string;
+						body.companyaddress2 = addressValues.address2 as string;
+						body.companycity = addressValues.city as string;
+						body.companystate = addressValues.state as string;
+						body.companycountry = addressValues.country as string;
+						body.companyzipcode = addressValues.zipCode as string;
 					}
+
+					if (companyEmail) {
+						body.companyemail = companyEmail;
+					}
+
+					if (name) {
+						body.companyname = name;
+					}
+
+					if (fax) {
+						body.companyfax = fax;
+					}
+
+					if (industry) {
+						body.companyindustry = industry;
+					}
+
+					if (industry) {
+						body.companyindustry = industry;
+					}
+
+					if (numberOfEmpoyees) {
+						body.companynumber_of_employees = numberOfEmpoyees;
+					}
+
+					if (phone) {
+						body.companyphone = phone;
+					}
+
+					if (website) {
+						body.companywebsite = website;
+					}
+
+					if (annualRevenue) {
+						body.companyannual_revenue = annualRevenue;
+					}
+
+					if (description) {
+						body.companydescription = description;
+					}
+
+					if (customFieldsUi?.customFieldValues) {
+						const { customFieldValues } = customFieldsUi;
+						const data = customFieldValues.reduce((obj, value) => Object.assign(obj, { [`${value.fieldId}`]: value.fieldValue }), {});
+						Object.assign(body, data);
+					}
+
+					Object.assign(body, rest);
+
 					responseData = await mauticApiRequest.call(this, 'PATCH', `/companies/${companyId}/edit`, body);
 					responseData = responseData.company;
 					if (simple === true) {
