@@ -1,4 +1,5 @@
 import {
+	BINARY_ENCODING,
 	IExecuteFunctions,
 } from 'n8n-core';
 
@@ -113,8 +114,14 @@ import {
 } from './UserDescription';
 
 import {
+	documentFields,
+	documentOperations,
+} from './DocumentDescription';
+
+import {
 	LoggerProxy as Logger,
 } from 'n8n-workflow';
+import { query } from '../Elasticsearch/descriptions/placeholders';
 
 export class Salesforce implements INodeType {
 	description: INodeTypeDescription = {
@@ -204,6 +211,11 @@ export class Salesforce implements INodeType {
 						description: 'Represents a custom object.',
 					},
 					{
+						name: 'Document',
+						value: 'document',
+						description: 'Represents a document.',
+					},
+					{
 						name: 'Flow',
 						value: 'flow',
 						description: 'Represents an autolaunched flow.',
@@ -243,6 +255,8 @@ export class Salesforce implements INodeType {
 			...contactFields,
 			...customObjectOperations,
 			...customObjectFields,
+			...documentOperations,
+			...documentFields,
 			...opportunityOperations,
 			...opportunityFields,
 			...accountOperations,
@@ -395,7 +409,6 @@ export class Salesforce implements INodeType {
 				const resource = this.getNodeParameter('resource', 0) as string;
 				// TODO: find a way to filter this object to get just the lead sources instead of the whole object
 				const { fields } = await salesforceApiRequest.call(this, 'GET', `/sobjects/${resource}/describe`);
-
 				for (const field of fields) {
 					if (field.custom === true) {
 						const fieldName = field.label;
@@ -403,6 +416,29 @@ export class Salesforce implements INodeType {
 						returnData.push({
 							name: fieldName,
 							value: fieldId,
+						});
+					}
+				}
+				sortOptions(returnData);
+				return returnData;
+			},
+			// Get all the record types to display them to user so that he can
+			// select them easily
+			async getRecordTypes(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const returnData: INodePropertyOptions[] = [];
+				let resource = this.getNodeParameter('resource', 0) as string;
+				if (resource === 'customObject') {
+					resource = this.getNodeParameter('customObject', 0) as string;
+				}
+				const qs = {
+					q: `SELECT Id, Name, SobjectType, IsActive FROM RecordType WHERE SobjectType = '${resource}'`,
+				};
+				const types = await salesforceApiRequestAllItems.call(this, 'records', 'GET', '/query', {}, qs);
+				for (const type of types) {
+					if (type.IsActive === true) {
+						returnData.push({
+							name: type.Name,
+							value: type.Id,
 						});
 					}
 				}
@@ -936,6 +972,27 @@ export class Salesforce implements INodeType {
 				sortOptions(returnData);
 				return returnData;
 			},
+			// // Get all folders to display them to user so that he can
+			// // select them easily
+			// async getFolders(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+			// 	const returnData: INodePropertyOptions[] = [];
+			// 	const fields = await salesforceApiRequestAllItems.call(this, 'records', 'GET', '/sobjects/folder/describe');
+			// 	console.log(JSON.stringify(fields, undefined, 2))
+			// 	const qs = {
+			// 		//ContentFolderItem ContentWorkspace ContentFolder
+			// 		q: `SELECT Id, Title FROM ContentVersion`,
+			// 		//q: `SELECT Id FROM Folder where Type = 'Document'`,
+
+			// 	};
+			// 	const folders = await salesforceApiRequestAllItems.call(this, 'records', 'GET', '/query', {}, qs);
+			// 	for (const folder of folders) {
+			// 		returnData.push({
+			// 			name: folder.Name,
+			// 			value: folder.Id,
+			// 		});
+			// 	}
+			// 	return returnData;
+			// },
 		},
 	};
 
@@ -1026,6 +1083,9 @@ export class Salesforce implements INodeType {
 						}
 						if (additionalFields.mobilePhone !== undefined) {
 							body.MobilePhone = additionalFields.mobilePhone as string;
+						}
+						if (additionalFields.recordTypeId !== undefined) {
+							body.RecordTypeId = additionalFields.recordTypeId as string;
 						}
 						if (additionalFields.customFieldsUi) {
 							const customFields = (additionalFields.customFieldsUi as IDataObject).customFieldsValues as IDataObject[];
@@ -1128,6 +1188,9 @@ export class Salesforce implements INodeType {
 						}
 						if (updateFields.mobilePhone !== undefined) {
 							body.MobilePhone = updateFields.mobilePhone as string;
+						}
+						if (updateFields.recordTypeId !== undefined) {
+							body.RecordTypeId = updateFields.recordTypeId as string;
 						}
 						if (updateFields.customFieldsUi) {
 							const customFields = (updateFields.customFieldsUi as IDataObject).customFieldsValues as IDataObject[];
@@ -1232,6 +1295,9 @@ export class Salesforce implements INodeType {
 						}
 						if (additionalFields.jigsaw !== undefined) {
 							body.Jigsaw = additionalFields.jigsaw as string;
+						}
+						if (additionalFields.recordTypeId !== undefined) {
+							body.RecordTypeId = additionalFields.recordTypeId as string;
 						}
 						if (additionalFields.owner !== undefined) {
 							body.OwnerId = additionalFields.owner as string;
@@ -1346,6 +1412,9 @@ export class Salesforce implements INodeType {
 						}
 						if (updateFields.email !== undefined) {
 							body.Email = updateFields.email as string;
+						}
+						if (updateFields.recordTypeId !== undefined) {
+							body.RecordTypeId = updateFields.recordTypeId as string;
 						}
 						if (updateFields.phone !== undefined) {
 							body.Phone = updateFields.phone as string;
@@ -1517,6 +1586,7 @@ export class Salesforce implements INodeType {
 					if (operation === 'create' || operation === 'upsert') {
 						const customObject = this.getNodeParameter('customObject', i) as string;
 						const customFieldsUi = this.getNodeParameter('customFieldsUi', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 						const body: IDataObject = {};
 						if (customFieldsUi) {
 							const customFields = (customFieldsUi as IDataObject).customFieldsValues as IDataObject[];
@@ -1526,6 +1596,9 @@ export class Salesforce implements INodeType {
 									body[customField.fieldId] = customField.value;
 								}
 							}
+						}
+						if (additionalFields.recordTypeId) {
+							body.RecordTypeId = additionalFields.recordTypeId as string;
 						}
 						let endpoint = `/sobjects/${customObject}`;
 						let method = 'POST';
@@ -1544,7 +1617,11 @@ export class Salesforce implements INodeType {
 						const recordId = this.getNodeParameter('recordId', i) as string;
 						const customObject = this.getNodeParameter('customObject', i) as string;
 						const customFieldsUi = this.getNodeParameter('customFieldsUi', i) as IDataObject;
+						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
 						const body: IDataObject = {};
+						if (updateFields.recordTypeId) {
+							body.RecordTypeId = updateFields.recordTypeId as string;
+						}
 						if (customFieldsUi) {
 							const customFields = (customFieldsUi as IDataObject).customFieldsValues as IDataObject[];
 							if (customFields) {
@@ -1586,6 +1663,49 @@ export class Salesforce implements INodeType {
 						} catch (error) {
 							throw new NodeApiError(this.getNode(), error);
 						}
+					}
+				}
+				if (resource === 'document') {
+					//https://developer.salesforce.com/docs/atlas.en-us.206.0.api_rest.meta/api_rest/dome_sobject_insert_update_blob.htm
+					if (operation === 'upload') {
+						const title = this.getNodeParameter('title', i) as string;
+						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i) as string;
+						let data;
+						const body: { entity_content: { [key: string]: string } } = {
+							entity_content: {
+								Title: title,
+								ContentLocation: 'S',
+							},
+						};
+						if (additionalFields.ownerId) {
+							body.entity_content['ownerId'] = additionalFields.ownerId as string;
+						}
+						if (additionalFields.linkToObjectId) {
+							body.entity_content['FirstPublishLocationId'] = additionalFields.linkToObjectId as string;
+						}
+						if (items[i].binary && items[i].binary![binaryPropertyName]) {
+							const binaryData = items[i].binary![binaryPropertyName];
+							body.entity_content['PathOnClient'] = `${title}.${binaryData.fileExtension}`;
+							data = {
+								entity_content: {
+									value: JSON.stringify(body.entity_content),
+									options: {
+										contentType: 'application/json',
+									},
+								},
+								VersionData: {
+									value: Buffer.from(binaryData.data, BINARY_ENCODING),
+									options: {
+										filename: binaryData.fileName,
+										contentType: binaryData.mimeType,
+									},
+								},
+							};
+						} else {
+							throw new NodeOperationError(this.getNode(), `The property ${binaryPropertyName} does not exist`);
+						}
+						responseData = await salesforceApiRequest.call(this, 'POST', '/sobjects/ContentVersion', {}, {}, undefined, { formData: data });
 					}
 				}
 				if (resource === 'opportunity') {
@@ -1849,6 +1969,9 @@ export class Salesforce implements INodeType {
 						if (additionalFields.shippingPostalCode !== undefined) {
 							body.ShippingPostalCode = additionalFields.shippingPostalCode as string;
 						}
+						if (additionalFields.recordTypeId !== undefined) {
+							body.RecordTypeId = additionalFields.recordTypeId as string;
+						}
 						if (additionalFields.customFieldsUi) {
 							const customFields = (additionalFields.customFieldsUi as IDataObject).customFieldsValues as IDataObject[];
 							if (customFields) {
@@ -1896,6 +2019,9 @@ export class Salesforce implements INodeType {
 						}
 						if (updateFields.sicDesc !== undefined) {
 							body.SicDesc = updateFields.sicDesc as string;
+						}
+						if (updateFields.recordTypeId !== undefined) {
+							body.RecordTypeId = updateFields.recordTypeId as string;
 						}
 						if (updateFields.website !== undefined) {
 							body.Website = updateFields.website as string;
@@ -2068,6 +2194,9 @@ export class Salesforce implements INodeType {
 						if (additionalFields.suppliedCompany !== undefined) {
 							body.SuppliedCompany = additionalFields.suppliedCompany as string;
 						}
+						if (additionalFields.recordTypeId !== undefined) {
+							body.RecordTypeId = additionalFields.recordTypeId as string;
+						}
 						if (additionalFields.customFieldsUi) {
 							const customFields = (additionalFields.customFieldsUi as IDataObject).customFieldsValues as IDataObject[];
 							if (customFields) {
@@ -2107,6 +2236,9 @@ export class Salesforce implements INodeType {
 						}
 						if (updateFields.accountId !== undefined) {
 							body.AccountId = updateFields.accountId as string;
+						}
+						if (updateFields.recordTypeId !== undefined) {
+							body.RecordTypeId = updateFields.recordTypeId as string;
 						}
 						if (updateFields.contactId !== undefined) {
 							body.ContactId = updateFields.contactId as string;

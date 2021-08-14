@@ -5,6 +5,8 @@ import {
 
 import {
 	IDataObject,
+	ILoadOptionsFunctions,
+	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
 	IWebhookResponseData,
@@ -18,7 +20,7 @@ import {
 } from 'change-case';
 
 import {
-	facebookApiRequest,
+	facebookApiRequest, getAllFields, getFields,
 } from './GenericFunctions';
 
 import {
@@ -61,6 +63,14 @@ export class FacebookTrigger implements INodeType {
 			},
 		],
 		properties: [
+			{
+				displayName: 'APP ID',
+				name: 'appId',
+				type: 'string',
+				required: true,
+				default: '',
+				description: 'Facebook APP ID',
+			},
 			{
 				displayName: 'Object',
 				name: 'object',
@@ -126,13 +136,20 @@ export class FacebookTrigger implements INodeType {
 				default: 'user',
 				description: 'The object to subscribe to',
 			},
+			//https://developers.facebook.com/docs/graph-api/webhooks/reference/page
 			{
-				displayName: 'App ID',
-				name: 'appId',
-				type: 'string',
-				required: true,
-				default: '',
-				description: 'Facebook APP ID',
+				displayName: 'Fields',
+				name: 'fields',
+				type: 'multiOptions',
+				typeOptions: {
+					loadOptionsMethod: 'getObjectFields',
+					loadOptionsDependsOn: [
+						'object',
+					],
+				},
+				required: false,
+				default: [],
+				description: 'The set of fields in this object that are subscribed to',
 			},
 			{
 				displayName: 'Options',
@@ -151,6 +168,18 @@ export class FacebookTrigger implements INodeType {
 				],
 			},
 		],
+	};
+
+
+	methods = {
+		loadOptions: {
+			// Get all the available organizations to display them to user so that he can
+			// select them easily
+			async getObjectFields(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const object = this.getCurrentNodeParameter('object') as string;
+				return getFields(object) as INodePropertyOptions[];
+			},
+		},
 	};
 
 	// @ts-ignore (because of request)
@@ -175,12 +204,14 @@ export class FacebookTrigger implements INodeType {
 				const webhookUrl = this.getNodeWebhookUrl('default') as string;
 				const object = this.getNodeParameter('object') as string;
 				const appId = this.getNodeParameter('appId') as string;
+				const fields = this.getNodeParameter('fields') as string[];
 				const options = this.getNodeParameter('options') as IDataObject;
 
 				const body = {
 					object: snakeCase(object),
 					callback_url: webhookUrl,
 					verify_token: uuid(),
+					fields: (fields.includes('*')) ? getAllFields(object) : fields,
 				} as IDataObject;
 
 				if (options.includeValues !== undefined) {

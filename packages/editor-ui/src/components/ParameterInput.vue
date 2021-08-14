@@ -99,6 +99,7 @@
 				<el-dropdown-menu slot="dropdown">
 					<el-dropdown-item command="addExpression" v-if="parameter.noDataExpression !== true && !isValueExpression">Add Expression</el-dropdown-item>
 					<el-dropdown-item command="removeExpression" v-if="parameter.noDataExpression !== true && isValueExpression">Remove Expression</el-dropdown-item>
+					<el-dropdown-item command="refreshOptions" v-if="Boolean(remoteMethod)">Refresh List</el-dropdown-item>
 					<el-dropdown-item command="resetValue" :disabled="isDefault" divided>Reset Value</el-dropdown-item>
 				</el-dropdown-menu>
 			</el-dropdown>
@@ -115,13 +116,10 @@
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
 import { get } from 'lodash';
 
 import {
 	INodeUi,
-	IVariableItemSelected,
-	IVariableSelectorOption,
 } from '@/Interface';
 import {
 	NodeHelpers,
@@ -136,6 +134,7 @@ import ExpressionEdit from '@/components/ExpressionEdit.vue';
 // @ts-ignore
 import PrismEditor from 'vue-prism-editor';
 import TextEdit from '@/components/TextEdit.vue';
+import { externalHooks } from '@/components/mixins/externalHooks';
 import { genericHelpers } from '@/components/mixins/genericHelpers';
 import { nodeHelpers } from '@/components/mixins/nodeHelpers';
 import { showMessage } from '@/components/mixins/showMessage';
@@ -144,6 +143,7 @@ import { workflowHelpers } from '@/components/mixins/workflowHelpers';
 import mixins from 'vue-typed-mixins';
 
 export default mixins(
+	externalHooks,
 	genericHelpers,
 	nodeHelpers,
 	showMessage,
@@ -576,6 +576,8 @@ export default mixins(
 					this.expressionEditDialogVisible = true;
 				} else if (command === 'removeExpression') {
 					this.valueChanged(this.expressionValueComputed || null);
+				} else if (command === 'refreshOptions') {
+					this.loadRemoteParameterOptions();	
 				}
 			},
 		},
@@ -621,6 +623,8 @@ export default mixins(
 					}
 				}
 			}
+
+			this.$externalHooks().run('parameterInput.mount', { parameter: this.parameter, inputFieldRef: this.$refs['inputField'] });
 		},
 	});
 </script>
