@@ -9,25 +9,25 @@ export class CamundaCloudApi implements ICredentialType {
 			displayName: 'Client ID',
 			name: 'clientId',
 			type: 'string' as NodePropertyTypes,
-			default: ''
+			default: '',
 		},
 		{
 			displayName: 'Client Secret',
 			name: 'clientSecret',
 			type: 'string' as NodePropertyTypes,
-			default: ''
+			default: '',
 		},
 		{
 			displayName: 'Cluster ID',
 			name: 'clusterId',
 			type: 'string' as NodePropertyTypes,
-			default: ''
+			default: '',
 		},
 		{
 			displayName: 'Cluster Region',
 			name: 'clusterRegion',
 			type: 'string' as NodePropertyTypes,
-			default: 'bru-2'
-		}
+			default: 'bru-2',
+		},
 	];
 }
