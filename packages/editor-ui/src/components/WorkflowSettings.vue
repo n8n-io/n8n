@@ -355,7 +355,6 @@ export default mixins(
 			Vue.set(this, 'workflows', workflows);
 		},
 		async openDialog () {
-			const workflowId = this.$route.params.name;
 			if (this.$route.params.name === undefined) {
 				this.$showMessage({
 					title: 'No workflow active',

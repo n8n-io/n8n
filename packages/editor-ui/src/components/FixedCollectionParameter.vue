@@ -47,8 +47,6 @@
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
-
 import {
 	IUpdateInformation,
 } from '@/Interface';

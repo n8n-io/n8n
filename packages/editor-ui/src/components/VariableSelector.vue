@@ -12,13 +12,10 @@
 
 <script lang="ts">
 
-import Vue from 'vue';
-
 import {
 	GenericValue,
 	IContextObject,
 	IDataObject,
-	IRun,
 	IRunData,
 	IRunExecutionData,
 	Workflow,
