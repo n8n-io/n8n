@@ -35,11 +35,6 @@ export const itemOperations = [
 				value: 'getAll',
 				description: 'Get all items',
 			},
-			{
-				name: 'Scan',
-				value: 'scan',
-				description: 'Scan database',
-			},
 		],
 		default: 'upsert',
 	},
@@ -679,13 +674,9 @@ export const itemFields = [
 	//              Get All
 	// ----------------------------------
 	{
-		displayName: 'Key Condition Expression',
-		name: 'keyConditionExpression',
-		description: 'Condition to determine the items to be retrieved. The condition must perform an equality test<br>on a single partition key value, in this format: <code>partitionKeyName = :partitionkeyval</code>',
-		placeholder: 'id = :id',
-		default: '',
-		type: 'string',
-		required: true,
+		displayName: 'Scan',
+		name: 'scan',
+		type: 'boolean',
 		displayOptions: {
 			show: {
 				resource: [
@@ -693,6 +684,46 @@ export const itemFields = [
 				],
 				operation: [
 					'getAll',
+				],
+			},
+		},
+		default: true,
+		description: 'Whether to do an scan or query. Check <a href="https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/bp-query-scan.html" target="_blank" >differences</a>',
+	},
+	{
+		displayName: 'Filter Expression',
+		name: 'filterExpression',
+		type: 'string',
+		required: true,
+		displayOptions: {
+			show: {
+				scan: [
+					true,
+				],
+			},
+		},
+		default: '',
+		description: 'A filter expression determines which items within the Scan results should be returned to you. All of the other results are discarded.',
+	},
+	{
+		displayName: 'Key Condition Expression',
+		name: 'keyConditionExpression',
+		description: 'Condition to determine the items to be retrieved. The condition must perform an equality test<br>on a single partition key value, in this format: <code>partitionKeyName = :partitionkeyval</code>',
+		placeholder: 'id = :id',
+		default: '',
+		type: 'string',
+		required: true,
+		
+		displayOptions: {
+			show: {
+				resource: [
+					'item',
+				],
+				operation: [
+					'getAll',
+				],
+				scan: [
+					false,
 				],
 			},
 		},
@@ -886,247 +917,15 @@ export const itemFields = [
 				displayName: 'Filter Expression',
 				name: 'filterExpression',
 				type: 'string',
+				displayOptions: {
+					show: {
+						'/scan': [
+							false,
+						],
+					},
+				},
 				default: '',
 				description: 'Text that contains conditions that DynamoDB applies after the Query operation,<br>but before the data is returned. Items that do not satisfy the FilterExpression criteria</br>are not returned',
-			},
-			{
-				displayName: 'Expression Attribute Names',
-				name: 'eanUi',
-				placeholder: 'Add Expression',
-				type: 'fixedCollection',
-				default: '',
-				typeOptions: {
-					multipleValues: true,
-				},
-				options: [
-					{
-						name: 'eanValues',
-						displayName: 'Expression',
-						values: [
-							{
-								displayName: 'Key',
-								name: 'key',
-								type: 'string',
-								default: '',
-							},
-							{
-								displayName: 'Value',
-								name: 'value',
-								type: 'string',
-								default: '',
-							},
-						],
-					},
-				],
-				description: 'One or more substitution tokens for attribute names in an expression. Check <a target="_blank" href="https://docs.aws.amazon.com/amazondynamodb/latest/APIReference/API_PutItem.html">Info</a>',
-			},
-		],
-	},
-
-
-	// ----------------------------------
-	//              Scan
-	// ----------------------------------
-	{
-		displayName: 'Filter Expression',
-		name: 'filterExpression',
-		type: 'string',
-		default: '',
-		description: 'Text that contains conditions that DynamoDB applies after the Query operation,<br>but before the data is returned. Items that do not satisfy the FilterExpression criteria</br>are not returned',
-		displayOptions: {
-			show: {
-				resource: [
-					'item',
-				],
-				operation: [
-					'scan',
-				],
-			},
-		},
-	},
-	{
-		displayName: 'Expression Attribute Values',
-		name: 'eavUi',
-		description: 'Substitution tokens for attribute names in an expression',
-		placeholder: 'Add Attribute Value',
-		type: 'fixedCollection',
-		default: '',
-		typeOptions: {
-			multipleValues: true,
-			minValue: 1,
-		},
-		displayOptions: {
-			show: {
-				resource: [
-					'item',
-				],
-				operation: [
-					'scan',
-				],
-			},
-		},
-		options: [
-			{
-				name: 'eavValues',
-				displayName: 'Expression Attribute Vaue',
-				values: [
-					{
-						displayName: 'Attribute',
-						name: 'attribute',
-						type: 'string',
-						default: '',
-					},
-					{
-						displayName: 'Type',
-						name: 'type',
-						type: 'options',
-						options: [
-							{
-								name: 'Number',
-								value: 'N',
-							},
-							{
-								name: 'String',
-								value: 'S',
-							},
-						],
-						default: 'S',
-					},
-					{
-						displayName: 'Value',
-						name: 'value',
-						type: 'string',
-						default: '',
-					},
-				],
-			},
-		],
-	},
-	{
-		displayName: 'Return All',
-		name: 'returnAll',
-		type: 'boolean',
-		displayOptions: {
-			show: {
-				resource: [
-					'item',
-				],
-				operation: [
-					'scan',
-				],
-			},
-		},
-		default: false,
-		description: 'Whether to return all results or only up to a given limit',
-	},
-	{
-		displayName: 'Limit',
-		name: 'limit',
-		type: 'number',
-		displayOptions: {
-			show: {
-				operation: [
-					'scan',
-				],
-				returnAll: [
-					false,
-				],
-			},
-		},
-		typeOptions: {
-			minValue: 1,
-			maxValue: 100,
-		},
-		default: 50,
-		description: 'How many results to return',
-	},
-	{
-		displayName: 'Select',
-		name: 'select',
-		type: 'options',
-		displayOptions: {
-			show: {
-				resource: [
-					'item',
-				],
-				operation: [
-					'scan',
-				],
-			},
-		},
-		options: [
-			{
-				name: 'All Attributes',
-				value: 'ALL_ATTRIBUTES',
-			},
-			{
-				name: 'All Projected Attributes',
-				value: 'ALL_PROJECTED_ATTRIBUTES',
-			},
-			{
-				name: 'Count',
-				value: 'COUNT',
-			},
-			{
-				name: 'Specific Attributes',
-				value: 'SPECIFIC_ATTRIBUTES',
-				description: 'Select them in Attributes to Select under Additional Fields',
-			},
-		],
-		default: 'ALL_ATTRIBUTES',
-	},
-	{
-		displayName: 'Simple',
-		name: 'simple',
-		type: 'boolean',
-		displayOptions: {
-			show: {
-				resource: [
-					'item',
-				],
-				operation: [
-					'scan',
-				],
-				select: [
-					'ALL_PROJECTED_ATTRIBUTES',
-					'ALL_ATTRIBUTES',
-					'SPECIFIC_ATTRIBUTES',
-				],
-			},
-		},
-		default: true,
-		description: 'Whether to return a simplified version of the response instead of the raw data',
-	},
-	{
-		displayName: 'Options',
-		name: 'options',
-		type: 'collection',
-		placeholder: 'Add Field',
-		default: {},
-		displayOptions: {
-			show: {
-				resource: [
-					'item',
-				],
-				operation: [
-					'scan',
-				],
-			},
-		},
-		options: [
-			{
-				displayName: 'Index Name',
-				name: 'indexName',
-				description: 'Name of the index to query. It can be any <br>secondary local or global index on the table.',
-				type: 'string',
-				default: '',
-			},
-			{
-				displayName: 'Attributes to Select',
-				name: 'projectionExpression',
-				type: 'string',
-				default: '',
-				description: 'Text that identifies one or more attributes to retrieve from the table.<br>These attributes can include scalars, sets, or elements of a JSON document. The attributes<br>in the expression must be separated by commas',
 			},
 			{
 				displayName: 'Expression Attribute Names',

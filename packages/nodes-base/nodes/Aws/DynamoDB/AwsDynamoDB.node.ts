@@ -301,13 +301,19 @@ export class AwsDynamoDB implements INodeType {
 						const simple = this.getNodeParameter('simple', 0, false) as boolean;
 						const select = this.getNodeParameter('select', 0) as string;
 						const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
+						const scan = this.getNodeParameter('scan', 0) as boolean;
 						const eanUi = this.getNodeParameter('additionalFields.eanUi.eanValues', i, []) as IAttributeNameUi[];
 
 						const body: IRequestBody = {
 							TableName: this.getNodeParameter('tableName', i) as string,
-							KeyConditionExpression: this.getNodeParameter('keyConditionExpression', i) as string,
 							ExpressionAttributeValues: adjustExpressionAttributeValues(eavUi),
 						};
+
+						if (scan === true) {
+							body['FilterExpression'] = this.getNodeParameter('filterExpression', i) as string;
+						} else {
+							body['KeyConditionExpression'] = this.getNodeParameter('KeyConditionExpression', i) as string;
+						}
 
 						const {
 							indexName,
@@ -343,7 +349,7 @@ export class AwsDynamoDB implements INodeType {
 
 						const headers = {
 							'Content-Type': 'application/json',
-							'X-Amz-Target': 'DynamoDB_20120810.Query',
+							'X-Amz-Target': (scan) ? 'DynamoDB_20120810.Scan' : 'DynamoDB_20120810.Query',
 						};
 
 						if (returnAll === true && select !== 'COUNT') {
@@ -359,76 +365,6 @@ export class AwsDynamoDB implements INodeType {
 							responseData = responseData.map(simplify);
 						}
 
-					} else if (operation === 'scan') {
-
-						// ----------------------------------
-						//             scan
-						// ----------------------------------
-
-						// https://docs.aws.amazon.com/amazondynamodb/latest/APIReference/API_Scan.html
-
-						const eavUi = this.getNodeParameter('eavUi.eavValues', i, []) as IAttributeValueUi[];
-						const simple = this.getNodeParameter('simple', 0, false) as boolean;
-						const select = this.getNodeParameter('select', 0) as string;
-						const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
-						const filterExpression = this.getNodeParameter('filterExpression', i) as string;
-						const eanUi = this.getNodeParameter('additionalFields.eanUi.eanValues', i, []) as IAttributeNameUi[];
-
-						const body: IRequestBody = {
-							TableName: this.getNodeParameter('tableName', i) as string,
-						};
-
-						const {
-							indexName,
-							projectionExpression,
-						} = this.getNodeParameter('options', i) as {
-							indexName: string;
-							projectionExpression: string;
-						};
-
-						const expressionAttributeName = adjustExpressionAttributeName(eanUi);
-
-						if (Object.keys(expressionAttributeName).length) {
-							body.ExpressionAttributeNames = expressionAttributeName;
-						}
-
-						if (filterExpression) {
-							body.FilterExpression = filterExpression;
-						}
-
-						if (eavUi) {
-							body.ExpressionAttributeValues = adjustExpressionAttributeValues(eavUi);
-						}
-
-						if (indexName) {
-							body.IndexName = indexName;
-						}
-
-						if (projectionExpression && select !== 'COUNT') {
-							body.ProjectionExpression = projectionExpression;
-						}
-
-						if (select) {
-							body.Select = select;
-						}
-
-						const headers = {
-							'Content-Type': 'application/json',
-							'X-Amz-Target': 'DynamoDB_20120810.Scan',
-						};
-
-						if (returnAll === true && select !== 'COUNT') {
-							responseData = await awsApiRequestAllItems.call(this, 'dynamodb', 'POST', '/', body, headers);
-						} else {
-							body.Limit = this.getNodeParameter('limit', 0, 1) as number;
-							responseData = await awsApiRequest.call(this, 'dynamodb', 'POST', '/', body, headers);
-							if (select !== 'COUNT') {
-								responseData = responseData.Items;
-							}
-						}
-						if (simple === true) {
-							responseData = responseData.map(simplify);
-						}
 					}
 
 					Array.isArray(responseData)
