@@ -249,211 +249,212 @@ export class Mautic implements INodeType {
 
 		for (let i = 0; i < length; i++) {
 			qs = {};
+			try {
 
-			if (resource === 'company') {
-				//https://developer.mautic.org/#create-company
-				if (operation === 'create') {
-					const simple = this.getNodeParameter('simple', i) as boolean;
-					const name = this.getNodeParameter('name', i) as string;
-					const body: IDataObject = {
-						companyname: name,
-					};
-					const {
-						addressUi,
-						customFieldsUi,
-						companyEmail,
-						fax,
-						industry,
-						numberOfEmpoyees,
-						phone,
-						website,
-						annualRevenue,
-						description,
-						...rest
-					} = this.getNodeParameter('additionalFields', i) as {
-						addressUi: {
-							addressValues: IDataObject,
-						},
-						customFieldsUi: {
-							customFieldValues: [
-								{
-									fieldId: string,
-									fieldValue: string,
-								},
-							],
+				if (resource === 'company') {
+					//https://developer.mautic.org/#create-company
+					if (operation === 'create') {
+						const simple = this.getNodeParameter('simple', i) as boolean;
+						const name = this.getNodeParameter('name', i) as string;
+						const body: IDataObject = {
+							companyname: name,
+						};
+						const {
+							addressUi,
+							customFieldsUi,
+							companyEmail,
+							fax,
+							industry,
+							numberOfEmpoyees,
+							phone,
+							website,
+							annualRevenue,
+							description,
+							...rest
+						} = this.getNodeParameter('additionalFields', i) as {
+							addressUi: {
+								addressValues: IDataObject,
+							},
+							customFieldsUi: {
+								customFieldValues: [
+									{
+										fieldId: string,
+										fieldValue: string,
+									},
+								],
+							}
+							companyEmail: string,
+							fax: string,
+							industry: string,
+							numberOfEmpoyees: number,
+							phone: string,
+							website: string,
+							annualRevenue: number,
+							description: string,
+						};
+						if (addressUi?.addressValues) {
+							const { addressValues } = addressUi;
+							body.companyaddress1 = addressValues.address1 as string;
+							body.companyaddress2 = addressValues.address2 as string;
+							body.companycity = addressValues.city as string;
+							body.companystate = addressValues.state as string;
+							body.companycountry = addressValues.country as string;
+							body.companyzipcode = addressValues.zipCode as string;
 						}
-						companyEmail: string,
-						fax: string,
-						industry: string,
-						numberOfEmpoyees: number,
-						phone: string,
-						website: string,
-						annualRevenue: number,
-						description: string,
-					};
-					if (addressUi?.addressValues) {
-						const { addressValues } = addressUi;
-						body.companyaddress1 = addressValues.address1 as string;
-						body.companyaddress2 = addressValues.address2 as string;
-						body.companycity = addressValues.city as string;
-						body.companystate = addressValues.state as string;
-						body.companycountry = addressValues.country as string;
-						body.companyzipcode = addressValues.zipCode as string;
-					}
 
-					if (companyEmail) {
-						body.companyemail = companyEmail;
-					}
-
-					if (fax) {
-						body.companyfax = fax;
-					}
-
-					if (industry) {
-						body.companyindustry = industry;
-					}
-
-					if (industry) {
-						body.companyindustry = industry;
-					}
-
-					if (numberOfEmpoyees) {
-						body.companynumber_of_employees = numberOfEmpoyees;
-					}
-
-					if (phone) {
-						body.companyphone = phone;
-					}
-
-					if (website) {
-						body.companywebsite = website;
-					}
-
-					if (annualRevenue) {
-						body.companyannual_revenue = annualRevenue;
-					}
-
-					if (description) {
-						body.companydescription = description;
-					}
-
-					if (customFieldsUi?.customFieldValues) {
-						const { customFieldValues } = customFieldsUi;
-						const data = customFieldValues.reduce((obj, value) => Object.assign(obj, { [`${value.fieldId}`]: value.fieldValue }), {});
-						Object.assign(body, data);
-					}
-
-					Object.assign(body, rest);
-					responseData = await mauticApiRequest.call(this, 'POST', '/companies/new', body);
-					responseData = responseData.company;
-					if (simple === true) {
-						responseData = responseData.fields.all;
-					}
-				}
-				//https://developer.mautic.org/#edit-company
-				if (operation === 'update') {
-					const companyId = this.getNodeParameter('companyId', i) as string;
-					const simple = this.getNodeParameter('simple', i) as boolean;
-					const body: IDataObject = {};
-					const {
-						addressUi,
-						customFieldsUi,
-						companyEmail,
-						name,
-						fax,
-						industry,
-						numberOfEmpoyees,
-						phone,
-						website,
-						annualRevenue,
-						description,
-						...rest
-					} = this.getNodeParameter('updateFields', i) as {
-						addressUi: {
-							addressValues: IDataObject,
-						},
-						customFieldsUi: {
-							customFieldValues: [
-								{
-									fieldId: string,
-									fieldValue: string,
-								},
-							],
+						if (companyEmail) {
+							body.companyemail = companyEmail;
 						}
-						companyEmail: string,
-						name: string,
-						fax: string,
-						industry: string,
-						numberOfEmpoyees: number,
-						phone: string,
-						website: string,
-						annualRevenue: number,
-						description: string,
-					};
-					if (addressUi?.addressValues) {
-						const { addressValues } = addressUi;
-						body.companyaddress1 = addressValues.address1 as string;
-						body.companyaddress2 = addressValues.address2 as string;
-						body.companycity = addressValues.city as string;
-						body.companystate = addressValues.state as string;
-						body.companycountry = addressValues.country as string;
-						body.companyzipcode = addressValues.zipCode as string;
+
+						if (fax) {
+							body.companyfax = fax;
+						}
+
+						if (industry) {
+							body.companyindustry = industry;
+						}
+
+						if (industry) {
+							body.companyindustry = industry;
+						}
+
+						if (numberOfEmpoyees) {
+							body.companynumber_of_employees = numberOfEmpoyees;
+						}
+
+						if (phone) {
+							body.companyphone = phone;
+						}
+
+						if (website) {
+							body.companywebsite = website;
+						}
+
+						if (annualRevenue) {
+							body.companyannual_revenue = annualRevenue;
+						}
+
+						if (description) {
+							body.companydescription = description;
+						}
+
+						if (customFieldsUi?.customFieldValues) {
+							const { customFieldValues } = customFieldsUi;
+							const data = customFieldValues.reduce((obj, value) => Object.assign(obj, { [`${value.fieldId}`]: value.fieldValue }), {});
+							Object.assign(body, data);
+						}
+
+						Object.assign(body, rest);
+						responseData = await mauticApiRequest.call(this, 'POST', '/companies/new', body);
+						responseData = responseData.company;
+						if (simple === true) {
+							responseData = responseData.fields.all;
+						}
 					}
+					//https://developer.mautic.org/#edit-company
+					if (operation === 'update') {
+						const companyId = this.getNodeParameter('companyId', i) as string;
+						const simple = this.getNodeParameter('simple', i) as boolean;
+						const body: IDataObject = {};
+						const {
+							addressUi,
+							customFieldsUi,
+							companyEmail,
+							name,
+							fax,
+							industry,
+							numberOfEmpoyees,
+							phone,
+							website,
+							annualRevenue,
+							description,
+							...rest
+						} = this.getNodeParameter('updateFields', i) as {
+							addressUi: {
+								addressValues: IDataObject,
+							},
+							customFieldsUi: {
+								customFieldValues: [
+									{
+										fieldId: string,
+										fieldValue: string,
+									},
+								],
+							}
+							companyEmail: string,
+							name: string,
+							fax: string,
+							industry: string,
+							numberOfEmpoyees: number,
+							phone: string,
+							website: string,
+							annualRevenue: number,
+							description: string,
+						};
+						if (addressUi?.addressValues) {
+							const { addressValues } = addressUi;
+							body.companyaddress1 = addressValues.address1 as string;
+							body.companyaddress2 = addressValues.address2 as string;
+							body.companycity = addressValues.city as string;
+							body.companystate = addressValues.state as string;
+							body.companycountry = addressValues.country as string;
+							body.companyzipcode = addressValues.zipCode as string;
+						}
 
-					if (companyEmail) {
-						body.companyemail = companyEmail;
+						if (companyEmail) {
+							body.companyemail = companyEmail;
+						}
+
+						if (name) {
+							body.companyname = name;
+						}
+
+						if (fax) {
+							body.companyfax = fax;
+						}
+
+						if (industry) {
+							body.companyindustry = industry;
+						}
+
+						if (industry) {
+							body.companyindustry = industry;
+						}
+
+						if (numberOfEmpoyees) {
+							body.companynumber_of_employees = numberOfEmpoyees;
+						}
+
+						if (phone) {
+							body.companyphone = phone;
+						}
+
+						if (website) {
+							body.companywebsite = website;
+						}
+
+						if (annualRevenue) {
+							body.companyannual_revenue = annualRevenue;
+						}
+
+						if (description) {
+							body.companydescription = description;
+						}
+
+						if (customFieldsUi?.customFieldValues) {
+							const { customFieldValues } = customFieldsUi;
+							const data = customFieldValues.reduce((obj, value) => Object.assign(obj, { [`${value.fieldId}`]: value.fieldValue }), {});
+							Object.assign(body, data);
+						}
+
+						Object.assign(body, rest);
+
+						responseData = await mauticApiRequest.call(this, 'PATCH', `/companies/${companyId}/edit`, body);
+						responseData = responseData.company;
+						if (simple === true) {
+							responseData = responseData.fields.all;
+						}
 					}
-
-					if (name) {
-						body.companyname = name;
-					}
-
-					if (fax) {
-						body.companyfax = fax;
-					}
-
-					if (industry) {
-						body.companyindustry = industry;
-					}
-
-					if (industry) {
-						body.companyindustry = industry;
-					}
-
-					if (numberOfEmpoyees) {
-						body.companynumber_of_employees = numberOfEmpoyees;
-					}
-
-					if (phone) {
-						body.companyphone = phone;
-					}
-
-					if (website) {
-						body.companywebsite = website;
-					}
-
-					if (annualRevenue) {
-						body.companyannual_revenue = annualRevenue;
-					}
-
-					if (description) {
-						body.companydescription = description;
-					}
-
-					if (customFieldsUi?.customFieldValues) {
-						const { customFieldValues } = customFieldsUi;
-						const data = customFieldValues.reduce((obj, value) => Object.assign(obj, { [`${value.fieldId}`]: value.fieldValue }), {});
-						Object.assign(body, data);
-					}
-
-					Object.assign(body, rest);
-
-					responseData = await mauticApiRequest.call(this, 'PATCH', `/companies/${companyId}/edit`, body);
-					responseData = responseData.company;
-					if (simple === true) {
-						responseData = responseData.fields.all;
-					}
-
 					//https://developer.mautic.org/#get-company
 					if (operation === 'get') {
 						const companyId = this.getNodeParameter('companyId', i) as string;
