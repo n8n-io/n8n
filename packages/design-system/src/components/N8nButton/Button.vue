@@ -10,7 +10,7 @@
 		:round="!props.circle && props.round"
 		:circle="props.circle"
 		:style="$options.styles(props)"
-		@click="listeners.click"
+		@click="(e) => listeners.click && listeners.click(e)"
 	>
 		<span :class="$style.icon" v-if="props.loading || props.icon">
 			<component
