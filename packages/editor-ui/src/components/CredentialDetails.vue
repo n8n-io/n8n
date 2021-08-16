@@ -7,7 +7,7 @@
 		<template slot="header">
 			<div :class="$style.header">
 				<div :class="$style.credInfo">
-					<div :class="$style.headline">{{ displayName }}</div>
+					<div :class="$style.headline">{{ credentialName }}</div>
 					<div :class="$style.subtitle">{{ credentialType.displayName }}</div>
 				</div>
 				<div :class="$style.credActions">
@@ -38,7 +38,7 @@
 						</el-col>
 						<el-col :span="16">
 							<div v-for="node in nodesWithAccess" :key="node.name">
-								<el-checkbox /> <span :class="$style.nodeName"> {{ node.displayName }} </span>
+								<el-checkbox :value="nodeAccess[node.name]" /> <span :class="$style.nodeName"> {{ node.displayName }} </span>
 							</div>
 						</el-col>
 					</el-row>
@@ -71,6 +71,7 @@ import Modal from './Modal.vue';
 import CredentialsInput from './CredentialsInput.vue';
 import { convertToDisplayDate } from './helpers';
 import TimeAgo from './TimeAgo.vue';
+import { INodeTypeDescription } from 'n8n-workflow';
 
 export default Vue.extend({
 	name: 'CredentialsDetail',
@@ -96,12 +97,26 @@ export default Vue.extend({
 		return {
 			loading: true,
 			credentialName: '',
+			data: {},
+			nodeAccess: {} as {[nodeName: string]: boolean},
 			activeTab: 'connection',
 		};
 	},
 	async mounted() {
+		this.nodeAccess = this.nodesWithAccess.reduce((accu: any, node: INodeTypeDescription) => {
+			accu[node.name] = this.mode === 'new'; // enable all nodes by default
+
+			return accu;
+		}, {});
+
 		if (this.mode === 'new') {
 			this.credentialName = await this.$store.dispatch('credentials/getNewCredentialName', { credentialTypeName: this.credentialTypeName });
+		}
+		else {
+			this.credentialName = this.currentCredential.name;
+			this.currentCredential.nodesAccess.forEach(({ nodeType }: {nodeType: string}) => {
+				this.nodeAccess[nodeType] = true;
+			});
 		}
 
 		this.loading = false;
@@ -120,13 +135,6 @@ export default Vue.extend({
 			}
 
 			return this.activeId;
-		},
-		displayName() {
-			if (this.mode === 'new') {
-				return this.credentialName;
-			}
-
-			return this.currentCredential.name;
 		},
 		credentialType() {
 			return this.$store.getters['credentials/getCredentialTypeByName'](this.credentialTypeName);
