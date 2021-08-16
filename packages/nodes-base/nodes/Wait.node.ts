@@ -95,7 +95,7 @@ export class Wait implements INodeType {
 		],
 		properties: [
 			{
-				displayName: 'Authentication',
+				displayName: 'Webhook authentication',
 				name: 'authentication',
 				type: 'options',
 				displayOptions: {
@@ -361,8 +361,8 @@ export class Wait implements INodeType {
 				description: 'Name of the binary property to return',
 			},
 			{
-				displayName: 'Auto Resume',
-				name: 'autoResume',
+				displayName: 'Limit wait time',
+				name: 'limitWaitTime',
 				type: 'boolean',
 				default: false,
 				description: `If no webhook call is received, the workflow will automatically<br />
@@ -376,27 +376,30 @@ export class Wait implements INodeType {
 				},
 			},
 			{
-				displayName: 'Resume condition',
-				name: 'resumeCondition',
+				displayName: 'Limit type',
+				name: 'limitType',
 				type: 'options',
-				default: 'afterSpecifiedTime',
+				default: 'afterTimeInterval',
 				description: `Sets the condition for the execution to resume.<br />
 							 Can be a specified date or after some time.`,
 				displayOptions: {
 					show: {
-						autoResume: [
+						limitWaitTime: [
 							true,
+						],
+						resume: [
+							'webhook',
 						],
 					},
 				},
 				options: [
 					{
-						name: 'After specified time',
-						value: 'afterSpecifiedTime',
+						name: 'After time interval',
+						value: 'afterTimeInterval',
 					},
 					{
-						name: 'On a specific time',
-						value: 'onSpecificTime',
+						name: 'At specified time',
+						value: 'atSpecifiedTime',
 					},
 				],
 			},
@@ -406,11 +409,14 @@ export class Wait implements INodeType {
 				type: 'number',
 				displayOptions: {
 					show: {
-						resumeCondition: [
-							'afterSpecifiedTime',
+						limitType: [
+							'afterTimeInterval',
 						],
-						autoResume: [
+						limitWaitTime: [
 							true,
+						],
+						resume: [
+							'webhook',
 						],
 					},
 				},
@@ -427,11 +433,14 @@ export class Wait implements INodeType {
 				type: 'options',
 				displayOptions: {
 					show: {
-						resumeCondition: [
-							'afterSpecifiedTime',
+						limitType: [
+							'afterTimeInterval',
 						],
-						autoResume: [
+						limitWaitTime: [
 							true,
+						],
+						resume: [
+							'webhook',
 						],
 					},
 				},
@@ -457,16 +466,19 @@ export class Wait implements INodeType {
 				description: 'Unit of the interval value.',
 			},
 			{
-				displayName: 'Resume on Date and Time',
-				name: 'resumeDateTime',
+				displayName: 'Max Date and Time',
+				name: 'maxDateAndTime',
 				type: 'dateTime',
 				displayOptions: {
 					show: {
-						resumeCondition: [
-							'onSpecificTime',
+						limitType: [
+							'atSpecifiedTime',
 						],
-						autoResume: [
+						limitWaitTime: [
 							true,
+						],
+						resume: [
+							'webhook',
 						],
 					},
 				},
@@ -798,11 +810,11 @@ export class Wait implements INodeType {
 		if (resume === 'webhook') {
 			let sleepTill = new Date(SLEEP_TIME_UNLIMITED);
 
-			const autoResume = this.getNodeParameter('autoResume', 0);
+			const limitWaitTime = this.getNodeParameter('limitWaitTime', 0);
 
-			if (autoResume === true) {
-				const resumeCondition = this.getNodeParameter('resumeCondition', 0);
-				if (resumeCondition === 'afterSpecifiedTime') {
+			if (limitWaitTime === true) {
+				const limitType = this.getNodeParameter('limitType', 0);
+				if (limitType === 'afterTimeInterval') {
 					let sleepAmount = this.getNodeParameter('resumeAmount', 0) as number;
 					const resumeUnit = this.getNodeParameter('resumeUnit', 0);
 					if (resumeUnit === 'minutes') {
@@ -819,7 +831,7 @@ export class Wait implements INodeType {
 
 					sleepTill = new Date(new Date().getTime() + sleepAmount);
 				} else {
-					sleepTill = new Date(this.getNodeParameter('resumeDateTime', 0) as string);
+					sleepTill = new Date(this.getNodeParameter('maxDateAndTime', 0) as string);
 				}
 			}
 
