@@ -2,6 +2,7 @@
 	<Modal
 		:name="modalName"
 		size="lg"
+		:showClose="false"
 	>
 		<template slot="header">
 			<div :class="$style.header">
