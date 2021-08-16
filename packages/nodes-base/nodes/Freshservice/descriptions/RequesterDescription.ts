@@ -124,7 +124,7 @@ export const requesterFields = [
 				type: 'options',
 				default: '',
 				description: 'Language used by the requester',
-				options: Object.entries(LANGUAGES).forEach((key, value) => ({ name: value, id: key }))
+				options: Object.entries(LANGUAGES).forEach((key, value) => ({ name: value, id: key })),
 			},
 			{
 				displayName: 'Last Name',
@@ -288,7 +288,7 @@ export const requesterFields = [
 				type: 'options',
 				default: '',
 				description: 'Language to filter by',
-				options: Object.entries(LANGUAGES).forEach((key, value) => ({ name: value, id: key }))
+				options: Object.entries(LANGUAGES).forEach((key, value) => ({ name: value, id: key })),
 			},
 			{
 				displayName: 'Last Name',

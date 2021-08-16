@@ -102,7 +102,7 @@ export const toOptions = (loadedResources: LoadedResource[]) => {
 	return loadedResources
 		.map(({ id, name }) => ({ value: id, name }))
 		.sort((a, b) => a.name.localeCompare(b.name));
-}
+};
 
 /**
  * Ensure at least one role has been specified.
@@ -143,7 +143,7 @@ export function adjustAgentRoles(roles: RolesParameter) {
 				role_id: role,
 				assignment_scope,
 				groups,
-			}
-		})
-	}
+			};
+		}),
+	};
 }

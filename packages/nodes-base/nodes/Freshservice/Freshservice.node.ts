@@ -198,9 +198,9 @@ export class Freshservice implements INodeType {
 					.map(({ id, last_name, first_name }) => {
 						return {
 							value: id,
-							name: last_name ? `${last_name}, ${first_name}` : `${first_name}` }
+							name: last_name ? `${last_name}, ${first_name}` : `${first_name}` };
 					})
-					.sort((a, b) => a.name.localeCompare(b.name));;
+					.sort((a, b) => a.name.localeCompare(b.name));
 			},
 
 			async getAgentGroups(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
@@ -232,8 +232,8 @@ export class Freshservice implements INodeType {
 				const { requesters } = await freshserviceApiRequest.call(this, 'GET', '/requesters') as { requesters: LoadedResource[] };
 				return toOptions(requesters);
 			},
-		}
-	}
+		},
+	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();

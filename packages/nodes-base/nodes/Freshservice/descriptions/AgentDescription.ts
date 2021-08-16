@@ -4,7 +4,7 @@ import {
 
 import {
 	LANGUAGES
-} from '../constants'
+} from '../constants';
 
 export const agentOperations = [
 	{
@@ -226,7 +226,7 @@ export const agentFields = [
 				type: 'options',
 				default: '',
 				description: 'Language used by the agent',
-				options: Object.entries(LANGUAGES).forEach((key, value) => ({ name: value, id: key }))
+				options: Object.entries(LANGUAGES).forEach((key, value) => ({ name: value, id: key })),
 			},
 			{
 				displayName: 'Last Name',
@@ -446,7 +446,7 @@ export const agentFields = [
 				type: 'options',
 				default: '',
 				description: 'Language used by the agent',
-				options: Object.entries(LANGUAGES).forEach((key, value) => ({ name: value, id: key }))
+				options: Object.entries(LANGUAGES).forEach((key, value) => ({ name: value, id: key })),
 			},
 			{
 				displayName: 'Last Name',
@@ -631,7 +631,7 @@ export const agentFields = [
 				type: 'options',
 				default: '',
 				description: 'Language used by the requester',
-				options: Object.entries(LANGUAGES).forEach((key, value) => ({ name: value, id: key }))
+				options: Object.entries(LANGUAGES).forEach((key, value) => ({ name: value, id: key })),
 			},
 			{
 				displayName: 'Last Name',
