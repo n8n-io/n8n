@@ -7,7 +7,16 @@ import {
 	NodeOperationError,
 } from 'n8n-workflow';
 
-import { Duration, ZBClient, ZBClientOptions, ZeebeJob } from 'zeebe-node';
+import {
+	Duration,
+	ICustomHeaders,
+	IInputVariables,
+	IOutputVariables,
+	ZBClient,
+	ZBClientOptions,
+	ZBWorker,
+	ZeebeJob,
+} from 'zeebe-node';
 
 export class CamundaCloudTrigger implements INodeType {
 	description: INodeTypeDescription = {
@@ -89,8 +98,18 @@ export class CamundaCloudTrigger implements INodeType {
 
 		const self = this;
 
+		let zbWorker: ZBWorker<
+			IInputVariables,
+			ICustomHeaders,
+			IOutputVariables
+		>;
+
 		async function manualTriggerFunction() {
-			const zbWorker = zbc.createWorker({
+			if (zbWorker) {
+				return;
+			}
+
+			zbWorker = zbc.createWorker({
 				taskType: self.getNodeParameter('taskType') as string,
 				timeout: Duration.seconds.of(
 					self.getNodeParameter('timeout') as number,
@@ -100,7 +119,7 @@ export class CamundaCloudTrigger implements INodeType {
 						self.helpers.returnJsonArray({
 							jobKey: job.key,
 							variables: job.variables,
-						}),
+						} as IDataObject),
 					]);
 
 					if (self.getNodeParameter('autoComplete') as boolean) {
