@@ -150,7 +150,7 @@ const config = convict({
 		defaultName: {
 			doc: 'Default name for credentials',
 			format: String,
-			default: 'My credentials',
+			default: 'Unnamed credential',
 			env: 'CREDENTIALS_DEFAULT_NAME',
 		},
 	},
