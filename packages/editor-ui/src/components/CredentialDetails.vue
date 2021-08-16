@@ -84,6 +84,10 @@ import { ICredentialsDecryptedResponse, ICredentialsResponse } from '@/Interface
 import { nodeHelpers } from './mixins/nodeHelpers';
 import { genericHelpers } from './mixins/genericHelpers';
 
+interface NodeAccessMap {
+	[nodeType: string]: ICredentialNodeAccess | null;
+}
+
 export default mixins(
 	genericHelpers,
 	showMessage,
@@ -114,7 +118,7 @@ export default mixins(
 			credentialName: '',
 			credentialData: {} as ICredentialDataDecryptedObject,
 			modalBus: new Vue(),
-			nodeAccess: {} as {[nodeName: string]: ICredentialNodeAccess | null},
+			nodeAccess: {} as NodeAccessMap,
 			activeTab: 'connection',
 			isSaving: false,
 			isDeleting: false,
@@ -126,7 +130,7 @@ export default mixins(
 			this.credentialData[property.name] = property.default as CredentialInformation;
 		}
 
-		this.nodeAccess = this.nodesWithAccess.reduce((accu: any, node: INodeTypeDescription) => {
+		this.nodeAccess = this.nodesWithAccess.reduce((accu: NodeAccessMap, node: {name: string}) => {
 			if (this.mode === 'new') {
 				accu[node.name] = {nodeType: node.name}; // enable all nodes by default
 			}
@@ -147,15 +151,15 @@ export default mixins(
 		this.loading = false;
 	},
 	computed: {
-		currentCredential() {
-			if (this.mode === 'new' && !this.$data.credentialId) {
+		currentCredential(): ICredentialsResponse | null {
+			if (this.mode === 'new' && !this.credentialId) {
 				return null;
 			}
 
-			return this.$store.getters['credentials/getCredentialById'](this.$data.credentialId || this.activeId);
+			return this.$store.getters['credentials/getCredentialById'](this.credentialId || this.activeId);
 		},
-		credentialTypeName() {
-			if (this.mode === 'edit') {
+		credentialTypeName(): string {
+			if (this.mode === 'edit' && this.currentCredential) {
 				return this.currentCredential.type;
 			}
 
@@ -164,10 +168,10 @@ export default mixins(
 		credentialType(): ICredentialType {
 			return this.$store.getters['credentials/getCredentialTypeByName'](this.credentialTypeName);
 		},
-		nodesWithAccess() {
+		nodesWithAccess(): Array<{nodeType: string, name: string}>  {
 			return this.$store.getters['credentials/getNodesWithAccess'](this.credentialTypeName);
 		},
-		parentTypes() {
+		parentTypes(): string[] {
 			return this.getParentTypes(this.credentialTypeName);
 		},
 	},
@@ -193,7 +197,7 @@ export default mixins(
 				this.closeDialog();
 
 				return;
-			};
+			}
 		},
 		onTabSelect(tab: string) {
 			this.activeTab = tab;
@@ -209,7 +213,7 @@ export default mixins(
 			}
 		},
 		convertToDisplayDate,
-		onDataChange({name, value}: {name: string, value: any}) {
+		onDataChange({name, value}: {name: string, value: any}) { // tslint:disable-line:no-any
 			this.credentialData = {
 				...this.credentialData,
 				[name]: value,

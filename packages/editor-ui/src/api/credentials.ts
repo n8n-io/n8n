@@ -22,13 +22,12 @@ export async function createNewCredential(context: IRestApiContext, data: ICrede
 	return makeRestApiRequest(context, 'POST', `/credentials`, data as unknown as IDataObject);
 }
 
-export async function deleteCredential(context: IRestApiContext, id: string): Promise<Boolean> {
+export async function deleteCredential(context: IRestApiContext, id: string): Promise<boolean> {
 	return makeRestApiRequest(context, 'DELETE', `/credentials/${id}`);
 }
 
-export async function updateCredential(context: IRestApiContext, params: {data: ICredentialsDecrypted, id: number}): Promise<ICredentialsResponse> {
-	const { id } = params;
-	return makeRestApiRequest(context, 'PATCH', `/credentials/${id}`, params.data as unknown as IDataObject);
+export async function updateCredential(context: IRestApiContext, id: string, data: ICredentialsDecrypted): Promise<ICredentialsResponse> {
+	return makeRestApiRequest(context, 'PATCH', `/credentials/${id}`, data as unknown as IDataObject);
 }
 
 export async function getCredentialData(context: IRestApiContext, id: string): Promise<ICredentialsDecryptedResponse | ICredentialsResponse | undefined> {

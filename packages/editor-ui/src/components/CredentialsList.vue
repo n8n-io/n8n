@@ -60,7 +60,7 @@ export default mixins(
 	computed: {
 		...mapGetters('credentials', ['allCredentials']),
 		credentialsToDisplay() {
-			return this.allCredentials.reduce((accu: any, cred: ICredentialsResponse) => {
+			return this.allCredentials.reduce((accu: ICredentialsResponse[], cred: ICredentialsResponse) => {
 				const type = this.$store.getters['credentials/getCredentialTypeByName'](cred.type);
 
 				accu.push({

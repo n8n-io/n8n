@@ -55,7 +55,10 @@ export default Vue.extend({
 	},
 	mounted() {
 		setTimeout(() => {
-			this.$refs.select.focus();
+			const element = this.$refs.select as HTMLSelectElement;
+			if (element) {
+				element.focus();
+			}
 		}, 0);
 	},
 	data() {
