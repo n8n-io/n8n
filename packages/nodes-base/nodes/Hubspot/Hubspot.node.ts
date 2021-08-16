@@ -2032,10 +2032,10 @@ export class Hubspot implements INodeType {
 								qs.includeAssociations = filters.includeAssociations as boolean;
 							}
 							if (filters.properties) {
-								qs.properties = filters.properties;
+								qs.properties = (filters.properties as string).split(',');
 							}
 							if (filters.propertiesWithHistory) {
-								qs.propertiesWithHistory = filters.propertiesWithHistory;
+								qs.propertiesWithHistory = (filters.propertiesWithHistory as string).split(',');
 							}
 							const endpoint = `/deals/v1/deal/paged`;
 							if (returnAll) {
@@ -2114,7 +2114,7 @@ export class Hubspot implements INodeType {
 							if (returnAll) {
 
 								responseData = await hubspotApiRequestAllItems.call(this, 'results', 'POST', endpoint, body, qs);
-
+	
 							} else {
 								body.limit = this.getNodeParameter('limit', 0) as number;
 								responseData = await hubspotApiRequest.call(this, 'POST', endpoint, body, qs);
