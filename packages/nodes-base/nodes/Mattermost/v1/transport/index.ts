@@ -5,10 +5,6 @@ import {
 } from 'n8n-core';
 
 import {
-	OptionsWithUri,
-} from 'request';
-
-import {
 	GenericValue,
 	IDataObject,
 	IHttpRequestOptions,
