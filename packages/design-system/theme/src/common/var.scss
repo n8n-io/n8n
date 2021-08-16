@@ -757,7 +757,7 @@ $dialog-content-font-size: 14px;
 /// fontLineHeight||LineHeight|2
 $dialog-font-line-height: $font-line-height-primary;
 /// padding||Spacing|3
-$dialog-padding-primary: 20px;
+$dialog-padding-primary: var(--spacing-l);
 
 /* Table
 -------------------------- */

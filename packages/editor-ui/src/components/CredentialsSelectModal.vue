@@ -5,14 +5,16 @@
 		size="sm"
 	>
 		<template slot="header">
-			<div>Add new credential</div>
+			<h2 :class="$style.title">Add new credential</h2>
 		</template>
 		<template slot="content">
 			<div :class="$style.container">
-				<div>Select an app or service to connect to</div>
+				<div :class="$style.subtitle">Select an app or service to connect to</div>
 				<n8n-select
 					filterable
+					defaultFirstOption
 					placeholder="Search for app..."
+					:value="selected"
 					@change="onSelect"
 				>
 					<font-awesome-icon icon="search" slot="prefix" />
@@ -24,6 +26,16 @@
 						filterable
 					/>
 				</n8n-select>
+			</div>
+		</template>
+		<template slot="footer">
+			<div :class="$style.footer">
+				<n8n-button
+					label="Continue"
+					float="right"
+					:disabled="!selected"
+					@click="openCredentialType"
+				/>
 			</div>
 		</template>
 	</Modal>
@@ -43,6 +55,7 @@ export default Vue.extend({
 	data() {
 		return {
 			modalBus: new Vue(),
+			selected: '',
 		};
 	},
 	computed: {
@@ -55,8 +68,11 @@ export default Vue.extend({
 	},
 	methods: {
 		onSelect(type: string) {
+			this.selected = type;
+		},
+		openCredentialType () {
 			this.modalBus.$emit('close');
-			this.$store.dispatch('ui/openNewCredentialDetails', { type });
+			this.$store.dispatch('ui/openNewCredentialDetails', { type: this.selected });
 		},
 	},
 });
@@ -64,6 +80,14 @@ export default Vue.extend({
 
 <style module lang="scss">
 .container {
+	margin-bottom: var(--spacing-l);
+}
 
+.title {
+	font-size: var(--font-size-xl);
+}
+
+.subtitle {
+	margin-bottom: var(--spacing-s);
 }
 </style>
