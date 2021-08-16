@@ -120,7 +120,7 @@ export class Wait implements INodeType {
 					},
 				],
 				default: 'none',
-				description: 'The way to authenticate.',
+				description: 'The way to authenticate',
 			},
 			{
 				displayName: 'Resume',
@@ -144,7 +144,7 @@ export class Wait implements INodeType {
 					},
 				],
 				default: 'timeInterval',
-				description: 'For what the node should wait for before to continue with the execution.',
+				description: 'For what the node should wait for before to continue with the execution',
 			},
 
 			// ----------------------------------
@@ -162,7 +162,7 @@ export class Wait implements INodeType {
 					},
 				},
 				default: '',
-				description: 'The date and time to wait for before continuing.',
+				description: 'The date and time to wait for before continuing',
 			},
 
 			// ----------------------------------
@@ -184,7 +184,7 @@ export class Wait implements INodeType {
 					numberPrecision: 2,
 				},
 				default: 1,
-				description: 'The time to wait.',
+				description: 'The time to wait',
 			},
 			{
 				displayName: 'Unit',
@@ -216,7 +216,7 @@ export class Wait implements INodeType {
 					},
 				],
 				default: 'hours',
-				description: 'Unit of the interval value.',
+				description: 'Unit of the interval value',
 			},
 
 
@@ -262,7 +262,7 @@ export class Wait implements INodeType {
 					},
 				],
 				default: 'GET',
-				description: 'The HTTP method to liste to.',
+				description: 'The HTTP method to liste to',
 			},
 			{
 				displayName: 'Response Code',
@@ -306,7 +306,7 @@ export class Wait implements INodeType {
 					},
 				],
 				default: 'onReceived',
-				description: 'When and how to respond to the webhook.',
+				description: 'When and how to respond to the webhook',
 			},
 			{
 				displayName: 'Response Data',
@@ -326,21 +326,21 @@ export class Wait implements INodeType {
 					{
 						name: 'All Entries',
 						value: 'allEntries',
-						description: 'Returns all the entries of the last node. Always returns an array.',
+						description: 'Returns all the entries of the last node. Always returns an array',
 					},
 					{
 						name: 'First Entry JSON',
 						value: 'firstEntryJson',
-						description: 'Returns the JSON data of the first entry of the last node. Always returns a JSON object.',
+						description: 'Returns the JSON data of the first entry of the last node. Always returns a JSON object',
 					},
 					{
 						name: 'First Entry Binary',
 						value: 'firstEntryBinary',
-						description: 'Returns the binary data of the first entry of the last node. Always returns a binary file.',
+						description: 'Returns the binary data of the first entry of the last node. Always returns a binary file',
 					},
 				],
 				default: 'firstEntryJson',
-				description: 'What data should be returned. If it should return<br />all the itemsas array or only the first item as object.',
+				description: 'What data should be returned. If it should return<br />all the itemsas array or only the first item as object',
 			},
 			{
 				displayName: 'Property Name',
@@ -425,7 +425,7 @@ export class Wait implements INodeType {
 					numberPrecision: 2,
 				},
 				default: 1,
-				description: 'The time to wait.',
+				description: 'The time to wait',
 			},
 			{
 				displayName: 'Unit',
@@ -463,7 +463,7 @@ export class Wait implements INodeType {
 					},
 				],
 				default: 'hours',
-				description: 'Unit of the interval value.',
+				description: 'Unit of the interval value',
 			},
 			{
 				displayName: 'Max Date and Time',
@@ -483,7 +483,7 @@ export class Wait implements INodeType {
 					},
 				},
 				default: '',
-				description: 'Continue execution on the informed date.',
+				description: 'Continue execution on the informed date',
 			},
 			{
 				displayName: 'Options',
@@ -511,7 +511,7 @@ export class Wait implements INodeType {
 							},
 						},
 						default: false,
-						description: 'Set to true if webhook will receive binary data.',
+						description: 'Set to true if webhook will receive binary data',
 					},
 					{
 						displayName: 'Binary Property',
@@ -543,7 +543,7 @@ export class Wait implements INodeType {
 						},
 						default: '',
 						placeholder: 'success',
-						description: 'Custom response data to send.',
+						description: 'Custom response data to send',
 					},
 					{
 						displayName: 'Response Content-Type',
@@ -561,13 +561,13 @@ export class Wait implements INodeType {
 						},
 						default: '',
 						placeholder: 'application/xml',
-						description: 'Set a custom content-type to return if another one as the "application/json" should be returned.',
+						description: 'Set a custom content-type to return if another one as the "application/json" should be returned',
 					},
 					{
 						displayName: 'Response Headers',
 						name: 'responseHeaders',
 						placeholder: 'Add Response Header',
-						description: 'Add headers to the webhook response.',
+						description: 'Add headers to the webhook response',
 						type: 'fixedCollection',
 						typeOptions: {
 							multipleValues: true,
@@ -583,14 +583,14 @@ export class Wait implements INodeType {
 										name: 'name',
 										type: 'string',
 										default: '',
-										description: 'Name of the header.',
+										description: 'Name of the header',
 									},
 									{
 										displayName: 'Value',
 										name: 'value',
 										type: 'string',
 										default: '',
-										description: 'Value of the header.',
+										description: 'Value of the header',
 									},
 								],
 							},
@@ -611,7 +611,7 @@ export class Wait implements INodeType {
 							},
 						},
 						default: 'data',
-						description: 'Name of the property to return the data of instead of the whole JSON.',
+						description: 'Name of the property to return the data of instead of the whole JSON',
 					},
 					{
 						displayName: 'Webhook Postfix',
@@ -619,7 +619,7 @@ export class Wait implements INodeType {
 						type: 'string',
 						default: '',
 						placeholder: 'webhook',
-						description: 'The webhook postfix path to attach to the restart URL.',
+						description: 'The webhook postfix path to attach to the restart URL',
 					},
 					// {
 					// 	displayName: 'Raw Body',
