@@ -1,4 +1,4 @@
-import { getCredentials } from '@/api/credentials';
+import { getCredentials, getCredentialsNewName } from '@/api/credentials';
 import { ActionContext, Module } from 'vuex';
 import { ICredentialType, INodeTypeDescription } from '../../../workflow/dist/src';
 import {
@@ -73,11 +73,17 @@ const module: Module<ICredentialsState, IRootState> = {
 			}
 
 			const { displayName } = context.getters.getCredentialTypeByName(credentialTypeName);
-			const newName = displayName.split(' ').filter((word: string) => !KEYWORDS_TO_FILTER.includes(word)).join(' ');
+			let newName = displayName.split(' ').filter((word: string) => !KEYWORDS_TO_FILTER.includes(word)).join(' ');
+			newName = newName.length > 0 ? `${newName} ${DEFAULT_CREDENTIAL_POSTFIX}` : DEFAULT_CREDENTIAL_NAME;
 
-			// todo await call endpoint
+			try {
+				const res = await getCredentialsNewName(context.rootGetters.getRestApiContext, newName);
+				newName = res.name;
+			} catch (e) {
+				newName = DEFAULT_CREDENTIAL_NAME;
+			}
 
-			return newName.length > 0 ? `${newName} ${DEFAULT_CREDENTIAL_POSTFIX}` : DEFAULT_CREDENTIAL_NAME;
+			return newName;
 		},
 	},
 };

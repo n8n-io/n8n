@@ -145,7 +145,6 @@ export interface IRestApi {
 	updateCredentials(id: string, data: ICredentialsDecrypted): Promise<ICredentialsResponse>;
 	getAllCredentials(filter?: object): Promise<ICredentialsResponse[]>;
 	getCredentials(id: string, includeData?: boolean): Promise<ICredentialsDecryptedResponse | ICredentialsResponse | undefined>;
-	getCredentialTypes(): Promise<ICredentialType[]>;
 	getExecution(id: string): Promise<IExecutionResponse>;
 	deleteExecutions(sendData: IExecutionDeleteFilter): Promise<void>;
 	retryExecution(id: string, loadWorkflow?: boolean): Promise<boolean>;

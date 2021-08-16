@@ -97,7 +97,7 @@ export default Vue.extend({
 	},
 	async mounted() {
 		if (this.mode === 'new') {
-			this.credentialName = await this.$store.dispatch('credentials/getNewCredentialName', { credentialTypeName: this.$data.credentialTypeName });
+			this.credentialName = await this.$store.dispatch('credentials/getNewCredentialName', { credentialTypeName: this.credentialTypeName });
 		}
 
 		this.loading = false;
@@ -118,10 +118,10 @@ export default Vue.extend({
 			return this.activeId;
 		},
 		credentialType() {
-			return this.$store.getters['credentials/getCredentialTypeByName'](this.$data.credentialTypeName);
+			return this.$store.getters['credentials/getCredentialTypeByName'](this.credentialTypeName);
 		},
 		nodesWithAccess() {
-			return this.$store.getters['credentials/getNodesWithAccess'](this.$data.credentialTypeName);
+			return this.$store.getters['credentials/getNodesWithAccess'](this.credentialTypeName);
 		},
 	},
 	methods: {

@@ -7,3 +7,7 @@ import {
 export async function getCredentials(context: IRestApiContext): Promise<ICredentialType[]> {
 	return await makeRestApiRequest(context, 'GET', '/credential-types');
 }
+
+export async function getCredentialsNewName(context: IRestApiContext, name?: string): Promise<{name: string}> {
+	return await makeRestApiRequest(context, 'GET', '/credentials/new', name ? { name } : {});
+}
