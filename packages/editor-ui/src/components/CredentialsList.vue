@@ -40,7 +40,6 @@ import { externalHooks } from '@/components/mixins/externalHooks';
 import { ICredentialsResponse } from '@/Interface';
 import { nodeHelpers } from '@/components/mixins/nodeHelpers';
 import { showMessage } from '@/components/mixins/showMessage';
-import CredentialsEdit from '@/components/CredentialsEdit.vue';
 import { genericHelpers } from '@/components/mixins/genericHelpers';
 
 import { mapGetters } from "vuex";
@@ -58,9 +57,6 @@ export default mixins(
 	props: [
 		'dialogVisible',
 	],
-	components: {
-		CredentialsEdit,
-	},
 	computed: {
 		...mapGetters('credentials', ['allCredentials']),
 		credentialsToDisplay() {

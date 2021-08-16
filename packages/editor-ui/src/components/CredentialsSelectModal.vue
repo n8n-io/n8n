@@ -14,6 +14,7 @@
 					filterable
 					defaultFirstOption
 					placeholder="Search for app..."
+					ref="select"
 					:value="selected"
 					@change="onSelect"
 				>
@@ -51,6 +52,11 @@ export default Vue.extend({
 	name: 'CredentialsSelectModal',
 	components: {
 		Modal,
+	},
+	mounted() {
+		setTimeout(() => {
+			this.$refs.select.focus();
+		}, 0);
 	},
 	data() {
 		return {

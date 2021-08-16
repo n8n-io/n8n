@@ -74,6 +74,7 @@ export default mixins(
 	props: [
 		'credentialTypeData',	// ICredentialType
 		'credentialData',		// ICredentialsDecryptedResponse
+		'parentTypes',
 	],
 	components: {
 		ParameterInput,
@@ -94,15 +95,13 @@ export default mixins(
 			if (this.credentialTypeData.name === 'googleOAuth2Api') {
 				return true;
 			}
-			const types = this.parentTypes(this.credentialTypeData.name);
-			return types.includes('googleOAuth2Api');
+			return this.parentTypes.includes('googleOAuth2Api');
 		},
 		isOAuthType (): boolean {
 			if (['oAuth1Api', 'oAuth2Api'].includes(this.credentialTypeData.name)) {
 				return true;
 			}
-			const types = this.parentTypes(this.credentialTypeData.name);
-			return types.includes('oAuth1Api') || types.includes('oAuth2Api');
+			return this.parentTypes.includes('oAuth1Api') || this.parentTypes.includes('oAuth2Api');
 		},
 		isOAuthConnected (): boolean {
 			if (this.isOAuthType === false) {
@@ -112,8 +111,7 @@ export default mixins(
 			return this.credentialData.oauthTokenData;
 		},
 		oAuthCallbackUrl (): string {
-			const types = this.parentTypes(this.credentialTypeData.name);
-			const oauthType = (this.credentialTypeData.name === 'oAuth2Api' || types.includes('oAuth2Api')) ? 'oauth2' : 'oauth1';
+			const oauthType = (this.credentialTypeData.name === 'oAuth2Api' || this.parentTypes.includes('oAuth2Api')) ? 'oauth2' : 'oauth1';
 			return this.$store.getters.oauthCallbackUrls[oauthType];
 		},
 		requiredPropertiesFilled (): boolean {
@@ -138,22 +136,6 @@ export default mixins(
 				message: `Callback URL was successfully copied!`,
 				type: 'success',
 			});
-		},
-
-		parentTypes (name: string): string[] {
-			const credentialType = this.$store.getters['credentials/getCredentialTypeByName'](name);
-
-			if (credentialType === undefined || credentialType.extends === undefined) {
-				return [];
-			}
-
-			const types: string[] = [];
-			for (const typeName of credentialType.extends) {
-				types.push(typeName);
-				types.push.apply(types, this.parentTypes(typeName));
-			}
-
-			return types;
 		},
 
 		valueChanged (parameterData: IUpdateInformation) {

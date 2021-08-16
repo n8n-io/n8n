@@ -152,7 +152,6 @@ import {
 } from '../Interface';
 
 import About from '@/components/About.vue';
-import CredentialsEdit from '@/components/CredentialsEdit.vue';
 import CredentialsList from '@/components/CredentialsList.vue';
 import ExecutionsList from '@/components/ExecutionsList.vue';
 import GiftNotificationIcon from './GiftNotificationIcon.vue';
@@ -216,7 +215,6 @@ export default mixins(
 		name: 'MainHeader',
 		components: {
 			About,
-			CredentialsEdit,
 			CredentialsList,
 			ExecutionsList,
 			GiftNotificationIcon,

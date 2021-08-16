@@ -12,7 +12,7 @@
 					<div :class="$style.subtitle">{{ credentialType.displayName }}</div>
 				</div>
 				<div :class="$style.credActions">
-					<n8n-icon-button v-if="currentCredential" size="medium" title="Delete" icon="trash" type="text" :loading="isSaving" @click="deleteCredential" />
+					<n8n-icon-button v-if="currentCredential" size="medium" title="Delete" icon="trash" type="text" :disabled="isSaving" :loading="isDeleting" @click="deleteCredential" />
 					<n8n-button size="medium" label="Save" @click="saveCredential" :loading="isSaving" />
 				</div>
 			</div>
@@ -31,7 +31,9 @@
 					<credentials-input
 						:credentialTypeData="credentialType"
 						:credentialData="credentialData"
+						:parentTypes="parentTypes"
 						@change="onDataChange"
+						@oauth="oAuthCredentialAuthorize"
 					/>
 				</div>
 				<div :class="$style.mainContent" v-if="activeTab === 'info'">
@@ -78,7 +80,7 @@ import { CredentialInformation, ICredentialDataDecryptedObject, ICredentialNodeA
 import { showMessage } from '@/components/mixins/showMessage';
 
 import mixins from 'vue-typed-mixins';
-import { ICredentialsDecryptedResponse } from '@/Interface';
+import { ICredentialsDecryptedResponse, ICredentialsResponse } from '@/Interface';
 import { nodeHelpers } from './mixins/nodeHelpers';
 import { genericHelpers } from './mixins/genericHelpers';
 
@@ -115,6 +117,8 @@ export default mixins(
 			nodeAccess: {} as {[nodeName: string]: ICredentialNodeAccess | null},
 			activeTab: 'connection',
 			isSaving: false,
+			isDeleting: false,
+			credentialId: '',
 		};
 	},
 	async mounted() {
@@ -144,11 +148,11 @@ export default mixins(
 	},
 	computed: {
 		currentCredential() {
-			if (this.mode === 'new') {
+			if (this.mode === 'new' && !this.$data.credentialId) {
 				return null;
 			}
 
-			return this.$store.getters['credentials/getCredentialById'](this.activeId);
+			return this.$store.getters['credentials/getCredentialById'](this.$data.credentialId || this.activeId);
 		},
 		credentialTypeName() {
 			if (this.mode === 'edit') {
@@ -163,9 +167,14 @@ export default mixins(
 		nodesWithAccess() {
 			return this.$store.getters['credentials/getNodesWithAccess'](this.credentialTypeName);
 		},
+		parentTypes() {
+			return this.getParentTypes(this.credentialTypeName);
+		},
 	},
 	methods: {
 		async loadCurrentCredential() {
+			this.credentialId = this.activeId;
+
 			try {
 				const currentCredentials: ICredentialsDecryptedResponse = await this.$store.dispatch('credentials/getCredentialData', { id: this.activeId });
 				if (!currentCredentials) {
@@ -201,13 +210,32 @@ export default mixins(
 		},
 		convertToDisplayDate,
 		onDataChange({name, value}: {name: string, value: any}) {
-			this.credentialData[name] = value;
+			this.credentialData = {
+				...this.credentialData,
+				[name]: value,
+			};
 		},
 		closeDialog() {
 			this.modalBus.$emit('close');
 		},
 
-		async saveCredential() {
+		getParentTypes (name: string): string[] {
+			const credentialType = this.$store.getters['credentials/getCredentialTypeByName'](name);
+
+			if (credentialType === undefined || credentialType.extends === undefined) {
+				return [];
+			}
+
+			const types: string[] = [];
+			for (const typeName of credentialType.extends) {
+				types.push(typeName);
+				types.push.apply(types, this.getParentTypes(typeName));
+			}
+
+			return types;
+		},
+
+		async saveCredential(closeDialog = true): Promise<ICredentialsResponse | null> {
 			this.isSaving = true;
 			const nodesAccess = Object.values(this.nodeAccess)
 				.filter((access) => !!access) as ICredentialNodeAccess[];
@@ -222,42 +250,58 @@ export default mixins(
 				nodesAccess,
 			};
 
-			if (this.mode === 'new') {
-				await this.createCredential(credentialDetails);
+			let credential;
+
+			if (this.mode === 'new' && !this.credentialId) {
+				credential = await this.createCredential(credentialDetails, closeDialog);
 			}
 			else {
-				await this.updateCredential(credentialDetails);
+				credential = await this.updateCredential(credentialDetails, closeDialog);
 			}
 
 			this.isSaving = false;
+
+			return credential;
 		},
 
-		async createCredential(credentialDetails: ICredentialsDecrypted) {
+		async createCredential(credentialDetails: ICredentialsDecrypted, closeDialog: boolean): Promise<ICredentialsResponse | null> {
+			let credential;
+
 			try {
-				await this.$store.dispatch('credentials/createNewCredential', credentialDetails);
+				credential = await this.$store.dispatch('credentials/createNewCredential', credentialDetails) as ICredentialsResponse;
 			} catch (error) {
 				this.$showError(error, 'Problem creating credentials', 'There was a problem creating the credentials:');
 
-				return;
+				return null;
 			}
 
-			this.closeDialog();
+			if (closeDialog) {
+				this.closeDialog();
+			}
 			this.$externalHooks().run('credentials.create', { credentialTypeData: this.credentialData });
+
+			return credential;
 		},
 
-		async updateCredential (credentialDetails: ICredentialsDecrypted) {
+		async updateCredential (credentialDetails: ICredentialsDecrypted, closeDialog: boolean): Promise<ICredentialsResponse | null> {
+			let credential;
 			try {
-				await this.$store.dispatch('credentials/updateCredentialDetails', { id: this.activeId, data: credentialDetails });
+				credential = await this.$store.dispatch('credentials/updateCredentialDetails', { id: this.activeId, data: credentialDetails }) as ICredentialsResponse;
 			} catch (error) {
 				this.$showError(error, 'Problem updating credentials', 'There was a problem updating the credentials:');
 
-				return;
+				return null;
 			}
 
 			// Now that the credentials changed check if any nodes use credentials
 			// which have now a different name
 			this.updateNodesCredentialsIssues();
-			this.closeDialog();
+
+			if (closeDialog) {
+				this.closeDialog();
+			}
+
+			return credential;
 		},
 
 		async deleteCredential () {
@@ -268,16 +312,16 @@ export default mixins(
 			}
 
 			try {
-				this.isSaving = true;
+				this.isDeleting = true;
 				await this.$store.dispatch('credentials/deleteCredential', {id: this.activeId});
 			} catch (error) {
 				this.$showError(error, 'Problem deleting credentials', 'There was a problem deleting the credentials:');
-				this.isSaving = false;
+				this.isDeleting = false;
 
 				return;
 			}
 
-			this.isSaving = false;
+			this.isDeleting = false;
 			// Now that the credentials got removed check if any nodes used them
 			this.updateNodesCredentialsIssues();
 
@@ -289,94 +333,61 @@ export default mixins(
 			this.closeDialog();
 		},
 
-		// async oAuthCredentialAuthorize () {
-		// 	let url;
+		async oAuthCredentialAuthorize () {
+			let url;
 
-		// 	let credentialData = this.credentialDataDynamic;
-		// 	let newCredentials = false;
-		// 	if (!credentialData) {
-		// 		// Credentials did not get created yet. So create first before
-		// 		// doing oauth authorize
-		// 		credentialData = await this.createCredentials(false) as ICredentialsDecryptedResponse;
-		// 		newCredentials = true;
-		// 		if (credentialData === null) {
-		// 			return;
-		// 		}
+			const credential = await this.saveCredential(false);
+			if (!credential) {
+				return;
+			}
 
-		// 		// Set the internal data directly so that even if it fails it displays a "Save" instead
-		// 		// of the "Create" button. If that would not be done, people could not retry after a
-		// 		// connect issue as it woult try to create credentials again which would fail as they
-		// 		// exist already.
-		// 		Vue.set(this, 'credentialDataTemp', credentialData);
-		// 	} else {
-		// 		// Exists already but got maybe changed. So save first
-		// 		credentialData = await this.updateCredentials(false) as ICredentialsDecryptedResponse;
-		// 		if (credentialData === null) {
-		// 			return;
-		// 		}
-		// 	}
+			const types = this.parentTypes;
 
-		// 	const types = this.parentTypes(this.credentialTypeData.name);
+			try {
+				if (this.credentialTypeName === 'oAuth2Api' || types.includes('oAuth2Api')) {
+					url = await this.$store.dispatch('credentials/oAuth2Authorize', {...this.credentialData, id: credential.id}) as string;
+				} else if (this.credentialTypeName === 'oAuth1Api' || types.includes('oAuth1Api')) {
+					url = await this.$store.dispatch('credentials/oAuth1Authorize', {...this.credentialData, id: credential.id}) as string;
+				}
+			} catch (error) {
+				this.$showError(error, 'OAuth Authorization Error', 'Error generating authorization URL:');
 
-		// 	try {
-		// 		if (this.credentialTypeData.name === 'oAuth2Api' || types.includes('oAuth2Api')) {
-		// 			url = await this.restApi().oAuth2CredentialAuthorize(credentialData as ICredentialsResponse) as string;
-		// 		} else if (this.credentialTypeData.name === 'oAuth1Api' || types.includes('oAuth1Api')) {
-		// 			url = await this.restApi().oAuth1CredentialAuthorize(credentialData as ICredentialsResponse) as string;
-		// 		}
-		// 	} catch (error) {
-		// 		this.$showError(error, 'OAuth Authorization Error', 'Error generating authorization URL:');
-		// 		return;
-		// 	}
+				return;
+			}
 
-		// 	const params = `scrollbars=no,resizable=yes,status=no,titlebar=noe,location=no,toolbar=no,menubar=no,width=500,height=700`;
-		// 	const oauthPopup = window.open(url, 'OAuth2 Authorization', params);
+			const params = `scrollbars=no,resizable=yes,status=no,titlebar=noe,location=no,toolbar=no,menubar=no,width=500,height=700`;
+			const oauthPopup = window.open(url, 'OAuth2 Authorization', params);
 
-		// 	const receiveMessage = (event: MessageEvent) => {
-		// 		// // TODO: Add check that it came from n8n
-		// 		// if (event.origin !== 'http://example.org:8080') {
-		// 		// 	return;
-		// 		// }
+			const receiveMessage = (event: MessageEvent) => {
+				// // TODO: Add check that it came from n8n
+				// if (event.origin !== 'http://example.org:8080') {
+				// 	return;
+				// }
 
-		// 		if (event.data === 'success') {
+				if (event.data === 'success') {
 
-		// 			// Set some kind of data that status changes.
-		// 			// As data does not get displayed directly it does not matter what data.
-		// 			if (this.credentialData === null) {
-		// 				// Are new credentials so did not get send via "credentialData"
-		// 				Vue.set(this, 'credentialDataTemp', credentialData);
-		// 				Vue.set(this.credentialDataTemp!.data!, 'oauthTokenData', {});
-		// 			} else {
-		// 				// Credentials did already exist so can be set directly
-		// 				Vue.set(this.credentialData.data, 'oauthTokenData', {});
-		// 			}
+					// Set some kind of data that status changes.
+					// As data does not get displayed directly it does not matter what data.
+					Vue.set(this.credentialData, 'oauthTokenData', {});
 
-		// 			// Save that OAuth got authorized locally
-		// 			this.$store.commit('updateCredentials', this.credentialDataDynamic);
+					// Close the window
+					if (oauthPopup) {
+						oauthPopup.close();
+					}
 
-		// 			// Close the window
-		// 			if (oauthPopup) {
-		// 				oauthPopup.close();
-		// 			}
+					this.$showMessage({
+						title: 'Connected',
+						message: 'Connected successfully!',
+						type: 'success',
+					});
 
-		// 			if (newCredentials === true) {
-		// 				this.$emit('credentialsCreated', {data: credentialData, options: { closeDialog: false }});
-		// 			}
+					window.removeEventListener('message', receiveMessage, false);
+				}
 
-		// 			this.$showMessage({
-		// 				title: 'Connected',
-		// 				message: 'Connected successfully!',
-		// 				type: 'success',
-		// 			});
+			};
 
-		// 			// Make sure that the event gets removed again
-		// 			window.removeEventListener('message', receiveMessage, false);
-		// 		}
-
-		// 	};
-
-		// 	window.addEventListener('message', receiveMessage, false);
-		// },
+			window.addEventListener('message', receiveMessage, false);
+		},
 
 	},
 });

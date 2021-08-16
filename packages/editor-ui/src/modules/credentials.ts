@@ -1,4 +1,4 @@
-import { getCredentialTypes, getCredentialsNewName, getAllCredentials, deleteCredential, getCredentialData, createNewCredential, updateCredential } from '@/api/credentials';
+import { getCredentialTypes, getCredentialsNewName, getAllCredentials, deleteCredential, getCredentialData, createNewCredential, updateCredential, oAuth2CredentialAuthorize, oAuth1CredentialAuthorize } from '@/api/credentials';
 import Vue from 'vue';
 import { ActionContext, Module } from 'vuex';
 import { ICredentialsDecrypted, ICredentialType, INodeTypeDescription } from '../../../workflow/dist/src';
@@ -104,16 +104,26 @@ const module: Module<ICredentialsState, IRootState> = {
 		createNewCredential: async (context: ActionContext<ICredentialsState, IRootState>, data: ICredentialsDecrypted) => {
 			const credential = await createNewCredential(context.rootGetters.getRestApiContext, data);
 			context.commit('upsertCredential', credential);
+
+			return credential;
 		},
 		updateCredentialDetails: async (context: ActionContext<ICredentialsState, IRootState>, data: ICredentialsDecrypted) => {
 			const credential = await updateCredential(context.rootGetters.getRestApiContext, data);
 			context.commit('upsertCredential', credential);
+
+			return credential;
 		},
 		deleteCredential: async (context: ActionContext<ICredentialsState, IRootState>, { id }: {id: string}) => {
 			const deleted = await deleteCredential(context.rootGetters.getRestApiContext, id);
 			if (deleted) {
 				context.commit('deleteCredential', id);
 			}
+		},
+		oAuth2Authorize: async (context: ActionContext<ICredentialsState, IRootState>, data: ICredentialsResponse) => {
+			return oAuth2CredentialAuthorize(context.rootGetters.getRestApiContext, data);
+		},
+		oAuth1Authorize: async (context: ActionContext<ICredentialsState, IRootState>, data: ICredentialsResponse) => {
+			return oAuth1CredentialAuthorize(context.rootGetters.getRestApiContext, data);
 		},
 		getNewCredentialName: async (context: ActionContext<ICredentialsState, IRootState>, params: { credentialTypeName: string }) => {
 			const { credentialTypeName } = params;

@@ -1,7 +1,5 @@
 <template>
 	<div v-if="credentialTypesNodeDescriptionDisplayed.length" class="node-credentials">
-		<credentials-edit :dialogVisible="credentialNewDialogVisible" :editCredentials="editCredentials" :setCredentialType="addType" :nodesInit="nodesInit" :node="node" @closeDialog="closeCredentialNewDialog" @credentialsCreated="credentialsCreated" @credentialsUpdated="credentialsUpdated"></credentials-edit>
-
 		<div class="headline">
 			Credentials
 		</div>
@@ -59,7 +57,6 @@ import {
 	INodeTypeDescription,
 } from 'n8n-workflow';
 
-import CredentialsEdit from '@/components/CredentialsEdit.vue';
 import ParameterInput from '@/components/ParameterInput.vue';
 
 import { genericHelpers } from '@/components/mixins/genericHelpers';
@@ -79,7 +76,6 @@ export default mixins(
 		'node', // INodeUi
 	],
 	components: {
-		CredentialsEdit,
 		ParameterInput,
 	},
 	computed: {

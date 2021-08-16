@@ -37,15 +37,15 @@ export async function getCredentialData(context: IRestApiContext, id: string): P
 	});
 }
 
-// // Get OAuth1 Authorization URL using the stored credentials
-// export async function oAuth1CredentialAuthorize(context: IRestApiContext, sendData: ICredentialsResponse): Promise<string> {
-// 	return makeRestApiRequest(context, 'GET', `/oauth1-credential/auth`, sendData);
-// }
+// Get OAuth1 Authorization URL using the stored credentials
+export async function oAuth1CredentialAuthorize(context: IRestApiContext, data: ICredentialsResponse): Promise<string> {
+	return makeRestApiRequest(context, 'GET', `/oauth1-credential/auth`, data as unknown as IDataObject);
+}
 
-// // Get OAuth2 Authorization URL using the stored credentials
-// export async function oAuth2CredentialAuthorize(context: IRestApiContext, sendData: ICredentialsResponse): Promise<string> {
-// 	return makeRestApiRequest(context, 'GET', `/oauth2-credential/auth`, sendData);
-// }
+// Get OAuth2 Authorization URL using the stored credentials
+export async function oAuth2CredentialAuthorize(context: IRestApiContext, data: ICredentialsResponse): Promise<string> {
+	return makeRestApiRequest(context, 'GET', `/oauth2-credential/auth`, data as unknown as IDataObject);
+}
 
 // // Verify OAuth2 provider callback and kick off token generation
 // export async function oAuth2Callback(context: IRestApiContext, code: string, state: string): Promise<string> {
