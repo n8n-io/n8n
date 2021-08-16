@@ -19,7 +19,7 @@
 				>
 					<font-awesome-icon icon="search" slot="prefix" />
 					<n8n-option
-						v-for="credential in allCredentials"
+						v-for="credential in allCredentialTypes"
 						:value="credential.name"
 						:key="credential.name"
 						:label="credential.displayName"
@@ -59,7 +59,7 @@ export default Vue.extend({
 		};
 	},
 	computed: {
-		...mapGetters('credentials', ['allCredentials']),
+		...mapGetters('credentials', ['allCredentialTypes']),
 	},
 	props: {
 		modalName: {

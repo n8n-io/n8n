@@ -63,6 +63,7 @@ import Modal from '@/components/Modal.vue';
 import TagsContainer from '@/components/TagsContainer.vue';
 import TagsDropdown from '@/components/TagsDropdown.vue';
 import WorkflowActivator from '@/components/WorkflowActivator.vue';
+import { convertToDisplayDate } from './helpers';
 
 export default mixins(
 	genericHelpers,
@@ -176,8 +177,8 @@ export default mixins(
 						this.workflows = data;
 
 						this.workflows.forEach((workflowData: IWorkflowShortResponse) => {
-							workflowData.createdAt = this.convertToDisplayDate(workflowData.createdAt as number);
-							workflowData.updatedAt = this.convertToDisplayDate(workflowData.updatedAt as number);
+							workflowData.createdAt = convertToDisplayDate(workflowData.createdAt as number);
+							workflowData.updatedAt = convertToDisplayDate(workflowData.updatedAt as number);
 						});
 						this.isDataLoading = false;
 					},

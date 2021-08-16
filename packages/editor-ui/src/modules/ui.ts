@@ -69,6 +69,12 @@ const module: Module<IUiState, IRootState> = {
 		closeTopModal: (state: IUiState) => {
 			const name = state.modalStack[0];
 			Vue.set(state.modals[name], 'open', false);
+			if (state.modals.mode) {
+				Vue.set(state.modals[name], 'mode', '');
+			}
+			if (state.modals.activeId) {
+				Vue.set(state.modals[name], 'activeId', '');
+			}
 
 			state.modalStack = state.modalStack.slice(1);
 		},

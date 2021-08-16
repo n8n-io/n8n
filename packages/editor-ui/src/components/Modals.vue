@@ -37,7 +37,6 @@
 		<ModalRoot :name="CREDENTIAL_DETAILS_MODAL_KEY">
 			<template v-slot="{ modalName, activeId, mode }">
 				<CredentialDetails
-					v-if="mode === 'new'"
 					:modalName="modalName"
 					:mode="mode"
 					:activeId="activeId"

@@ -1,7 +1,10 @@
-import { getCredentials, getCredentialsNewName } from '@/api/credentials';
+import { getCredentialTypes, getCredentialsNewName, getAllCredentials, deleteCredential } from '@/api/credentials';
+import Vue from 'vue';
 import { ActionContext, Module } from 'vuex';
 import { ICredentialType, INodeTypeDescription } from '../../../workflow/dist/src';
 import {
+	ICredentialMap,
+	ICredentialsResponse,
 	ICredentialsState,
 	ICredentialTypeMap,
 	IRootState,
@@ -16,10 +19,11 @@ const module: Module<ICredentialsState, IRootState> = {
 	namespaced: true,
 	state: {
 		credentialTypes: {},
+		credentials: {},
 	},
 	mutations: {
-		setCredentialTypes: (state: ICredentialsState, credentials: ICredentialType[]) => {
-			state.credentialTypes = credentials.reduce((accu: ICredentialTypeMap, cred: ICredentialType) => {
+		setCredentialTypes: (state: ICredentialsState, credentialTypes: ICredentialType[]) => {
+			state.credentialTypes = credentialTypes.reduce((accu: ICredentialTypeMap, cred: ICredentialType) => {
 				accu[cred.name] = cred;
 
 				if (cred.documentationUrl !== undefined) {
@@ -31,14 +35,33 @@ const module: Module<ICredentialsState, IRootState> = {
 				return accu;
 			}, {});
 		},
+		setCredentials: (state: ICredentialsState, credentials: ICredentialsResponse[]) => {
+			state.credentials = credentials.reduce((accu: ICredentialMap, cred: ICredentialsResponse) => {
+				if (cred.id) {
+					accu[cred.id] = cred;
+				}
+
+				return accu;
+			}, {});
+		},
+		deleteCredential(state: ICredentialsState, id: string) {
+			Vue.delete(state.credentials, id);
+		},
 	},
 	getters: {
-		allCredentials(state: ICredentialsState): ICredentialType[] {
+		allCredentialTypes(state: ICredentialsState): ICredentialType[] {
 			return Object.values(state.credentialTypes)
 				.sort((a, b) => a.displayName.localeCompare(b.displayName));
 		},
+		allCredentials(state: ICredentialsState): ICredentialsResponse[] {
+			return Object.values(state.credentials)
+				.sort((a, b) => a.name.localeCompare(b.name));
+		},
 		getCredentialTypeByName: (state: ICredentialsState) => {
 			return (type: string) => state.credentialTypes[type];
+		},
+		getCredentialById: (state: ICredentialsState) => {
+			return (id: string) => state.credentials[id];
 		},
 		getNodesWithAccess (state: ICredentialsState, getters: any, rootState: IRootState, rootGetters: any) { // tslint:disable-line:no-any
 			return (credentialTypeName: string): INodeTypeDescription[] => {
@@ -62,8 +85,19 @@ const module: Module<ICredentialsState, IRootState> = {
 	},
 	actions: {
 		fetchCredentialTypes: async (context: ActionContext<ICredentialsState, IRootState>) => {
-			const credentialTypes = await getCredentials(context.rootGetters.getRestApiContext);
+			const credentialTypes = await getCredentialTypes(context.rootGetters.getRestApiContext);
 			context.commit('setCredentialTypes', credentialTypes);
+		},
+		fetchAllCredentials: async (context: ActionContext<ICredentialsState, IRootState>) => {
+			const credentials = await getAllCredentials(context.rootGetters.getRestApiContext);
+			context.commit('setCredentials', credentials);
+		},
+		deleteCredential: async (context: ActionContext<ICredentialsState, IRootState>, params: {id: string}) => {
+			const { id } = params;
+			const deleted = await deleteCredential(context.rootGetters.getRestApiContext, id);
+			if (deleted) {
+				context.commit('deleteCredential', id);
+			}
 		},
 		getNewCredentialName: async (context: ActionContext<ICredentialsState, IRootState>, params: { credentialTypeName: string }) => {
 			const { credentialTypeName } = params;

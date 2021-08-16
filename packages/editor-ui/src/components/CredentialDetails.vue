@@ -7,11 +7,11 @@
 		<template slot="header">
 			<div :class="$style.header">
 				<div :class="$style.credInfo">
-					<div :class="$style.headline">{{ credentialName }}</div>
+					<div :class="$style.headline">{{ displayName }}</div>
 					<div :class="$style.subtitle">{{ credentialType.displayName }}</div>
 				</div>
 				<div :class="$style.credActions">
-					<n8n-icon-button size="medium" title="Delete" icon="trash" type="text" />
+					<n8n-icon-button v-if="currentCredential" size="medium" title="Delete" icon="trash" type="text" />
 					<n8n-button size="medium" label="Save" />
 				</div>
 			</div>
@@ -42,20 +42,20 @@
 							</div>
 						</el-col>
 					</el-row>
-					<el-row v-if="credentialId">
+					<el-row v-if="currentCredential">
 						<el-col :span="8">
 							<span :class="$style.label">Created:</span>
 						</el-col>
 						<el-col :span="16">
-							<span>20 Jan</span>
+							<span>{{ convertToDisplayDate(currentCredential.createdAt) }}</span>
 						</el-col>
 					</el-row>
-					<el-row v-if="credentialId">
+					<el-row v-if="currentCredential">
 						<el-col :span="8">
 							<span :class="$style.label">Last modified:</span>
 						</el-col>
 						<el-col :span="16">
-							<span>15 minutes ago</span>
+							<TimeAgo :date="currentCredential.updatedAt" />
 						</el-col>
 					</el-row>
 				</div>
@@ -69,12 +69,15 @@ import Vue from 'vue';
 
 import Modal from './Modal.vue';
 import CredentialsInput from './CredentialsInput.vue';
+import { convertToDisplayDate } from './helpers';
+import TimeAgo from './TimeAgo.vue';
 
 export default Vue.extend({
 	name: 'CredentialsDetail',
 	components: {
 		Modal,
 		CredentialsInput,
+		TimeAgo,
 	},
 	props: {
 		modalName: {
@@ -104,19 +107,26 @@ export default Vue.extend({
 		this.loading = false;
 	},
 	computed: {
+		currentCredential() {
+			if (this.mode === 'new') {
+				return null;
+			}
+
+			return this.$store.getters['credentials/getCredentialById'](this.activeId);
+		},
 		credentialTypeName() {
 			if (this.mode === 'edit') {
-				return ''; // todo
+				return this.currentCredential.type;
 			}
 
 			return this.activeId;
 		},
-		credentialId() {
+		displayName() {
 			if (this.mode === 'new') {
-				return '';
+				return this.credentialName;
 			}
 
-			return this.activeId;
+			return this.currentCredential.name;
 		},
 		credentialType() {
 			return this.$store.getters['credentials/getCredentialTypeByName'](this.credentialTypeName);
@@ -129,6 +139,7 @@ export default Vue.extend({
 		onTabSelect(tab: string) {
 			this.activeTab = tab;
 		},
+		convertToDisplayDate,
 	},
 });
 </script>

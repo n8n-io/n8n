@@ -15,13 +15,9 @@
 				/>
 			</div>
 
-			<el-table :data="credentials" :default-sort = "{prop: 'name', order: 'ascending'}" stripe max-height="450" v-loading="isDataLoading">
+			<el-table :data="credentialsToDisplay" :default-sort = "{prop: 'name', order: 'ascending'}" stripe max-height="450">
 				<el-table-column property="name" label="Name" class-name="clickable" sortable></el-table-column>
-				<el-table-column property="type" label="Type" class-name="clickable" sortable>
-					<template slot-scope="scope">
-						{{credentialTypeDisplayNames[scope.row.type]}}
-					</template>
-				</el-table-column>
+				<el-table-column property="type" label="Type" class-name="clickable" sortable></el-table-column>
 				<el-table-column property="createdAt" label="Created" class-name="clickable" sortable></el-table-column>
 				<el-table-column property="updatedAt" label="Updated" class-name="clickable" sortable></el-table-column>
 				<el-table-column
@@ -29,7 +25,7 @@
 					width="120">
 					<template slot-scope="scope">
 						<div class="cred-operations">
-							<!-- <n8n-icon-button title="Edit Credentials" @click.stop="editCredential(scope.row)" icon="pen" /> -->
+							<n8n-icon-button title="Edit Credentials" @click.stop="editCredential(scope.row)" icon="pen" />
 							<n8n-icon-button title="Delete Credentials" @click.stop="deleteCredential(scope.row)" icon="trash" />
 						</div>
 					</template>
@@ -41,20 +37,21 @@
 
 <script lang="ts">
 import { externalHooks } from '@/components/mixins/externalHooks';
-import { restApi } from '@/components/mixins/restApi';
 import { ICredentialsResponse } from '@/Interface';
 import { nodeHelpers } from '@/components/mixins/nodeHelpers';
 import { showMessage } from '@/components/mixins/showMessage';
 import CredentialsEdit from '@/components/CredentialsEdit.vue';
 import { genericHelpers } from '@/components/mixins/genericHelpers';
 
+import { mapGetters } from "vuex";
+
 import mixins from 'vue-typed-mixins';
+import { convertToDisplayDate } from './helpers';
 
 export default mixins(
 	externalHooks,
 	genericHelpers,
 	nodeHelpers,
-	restApi,
 	showMessage,
 ).extend({
 	name: 'CredentialsList',
@@ -64,21 +61,25 @@ export default mixins(
 	components: {
 		CredentialsEdit,
 	},
-	data () {
-		return {
-			credentialTypeDisplayNames: {} as { [key: string]: string; },
-			credentials: [] as ICredentialsResponse[],
-			displayAddCredentials: false,
-			// editCredentials: null as ICredentialsResponse | null,
-			isDataLoading: false,
-		};
+	computed: {
+		...mapGetters('credentials', ['allCredentials']),
+		credentialsToDisplay() {
+			return this.allCredentials.reduce((accu: any, cred: ICredentialsResponse) => {
+				const type = this.$store.getters['credentials/getCredentialTypeByName'](cred.type);
+
+				accu.push({
+					...cred,
+					type: type.displayName,
+					createdAt: convertToDisplayDate(cred.createdAt as number),
+					updatedAt: convertToDisplayDate(cred.updatedAt as number),
+				});
+
+				return accu;
+			}, []);
+		},
 	},
 	watch: {
 		dialogVisible (newValue) {
-			if (newValue) {
-				// this.loadCredentials();
-				this.loadCredentialTypes();
-			}
 			this.$externalHooks().run('credentialsList.dialogVisibleChanged', { dialogVisible: newValue });
 		},
 	},
@@ -89,53 +90,14 @@ export default mixins(
 			this.$emit('closeDialog');
 			return false;
 		},
+
 		createCredential () {
 			this.$store.dispatch('ui/openCredentialsSelectModal');
 		},
-		// editCredential (credential: ICredentialsResponse) {
-		// 	const editCredentials = {
-		// 		id: credential.id,
-		// 		name: credential.name,
-		// 		type: credential.type,
-		// 	} as ICredentialsResponse;
 
-		// 	// this.editCredentials = editCredentials;
-		// },
-		// reloadCredentialList () {
-		// 	this.loadCredentials();
-		// },
-		loadCredentialTypes () {
-			if (Object.keys(this.credentialTypeDisplayNames).length !== 0) {
-				// Data is already loaded
-				return;
-			}
-
-			if (this.$store.getters.allCredentialTypes === null) {
-				// Data is not ready yet to be loaded
-				return;
-			}
-
-			for (const credentialType of this.$store.getters.allCredentialTypes) {
-				this.credentialTypeDisplayNames[credentialType.name] = credentialType.displayName;
-			}
+		editCredential (credential: ICredentialsResponse) {
+			this.$store.dispatch('ui/openExisitngCredentialDetails', { id: credential.id});
 		},
-		// loadCredentials () {
-		// 	this.isDataLoading = true;
-		// 	try {
-		// 		this.credentials = JSON.parse(JSON.stringify(this.$store.getters.allCredentials));
-		// 	} catch (error) {
-		// 		this.$showError(error, 'Problem loading credentials', 'There was a problem loading the credentials:');
-		// 		this.isDataLoading = false;
-		// 		return;
-		// 	}
-
-		// 	this.credentials.forEach((credentialData: ICredentialsResponse) => {
-		// 		credentialData.createdAt = this.convertToDisplayDate(credentialData.createdAt as number);
-		// 		credentialData.updatedAt = this.convertToDisplayDate(credentialData.updatedAt as number);
-		// 	});
-
-		// 	this.isDataLoading = false;
-		// },
 
 		async deleteCredential (credential: ICredentialsResponse) {
 			const deleteConfirmed = await this.confirmMessage(`Are you sure you want to delete "${credential.name}" credentials?`, 'Delete Credentials?', 'warning', 'Yes, delete!');
@@ -145,14 +107,12 @@ export default mixins(
 			}
 
 			try {
-				await this.restApi().deleteCredentials(credential.id!);
+				await this.$store.dispatch('credentials/deleteCredential', {id: credential.id});
 			} catch (error) {
 				this.$showError(error, 'Problem deleting credentials', 'There was a problem deleting the credentials:');
+
 				return;
 			}
-
-			// Remove also from local store
-			this.$store.commit('removeCredentials', credential);
 
 			// Now that the credentials got removed check if any nodes used them
 			this.updateNodesCredentialsIssues();
@@ -162,9 +122,6 @@ export default mixins(
 				message: `The credential "${credential.name}" got deleted!`,
 				type: 'success',
 			});
-
-			// Refresh list
-			// this.loadCredentials();
 		},
 	},
 });

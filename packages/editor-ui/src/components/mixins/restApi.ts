@@ -153,64 +153,6 @@ export const restApi = Vue.extend({
 					return self.restApi().makeRestApiRequest('GET', `/workflows/from-url`, { url });
 				},
 
-				// Creates a new workflow
-				createNewCredentials: (sendData: ICredentialsDecrypted): Promise<ICredentialsResponse> => {
-					return self.restApi().makeRestApiRequest('POST', `/credentials`, sendData);
-				},
-
-				// Deletes a credentials
-				deleteCredentials: (id: string): Promise<void> => {
-					return self.restApi().makeRestApiRequest('DELETE', `/credentials/${id}`);
-				},
-
-				// Updates existing credentials
-				updateCredentials: (id: string, data: ICredentialsDecrypted): Promise<ICredentialsResponse> => {
-					return self.restApi().makeRestApiRequest('PATCH', `/credentials/${id}`, data);
-				},
-
-				// Returns the credentials with the given id
-				getCredentials: (id: string, includeData?: boolean): Promise<ICredentialsDecryptedResponse | ICredentialsResponse | undefined> => {
-					let sendData;
-					if (includeData) {
-						sendData = {
-							includeData,
-						};
-					}
-					return self.restApi().makeRestApiRequest('GET', `/credentials/${id}`, sendData);
-				},
-
-				// Returns all saved credentials
-				getAllCredentials: (filter?: object): Promise<ICredentialsResponse[]> => {
-					let sendData;
-					if (filter) {
-						sendData = {
-							filter,
-						};
-					}
-
-					return self.restApi().makeRestApiRequest('GET', `/credentials`, sendData);
-				},
-
-				// Get OAuth1 Authorization URL using the stored credentials
-				oAuth1CredentialAuthorize: (sendData: ICredentialsResponse): Promise<string> => {
-					return self.restApi().makeRestApiRequest('GET', `/oauth1-credential/auth`, sendData);
-				},
-
-				// Get OAuth2 Authorization URL using the stored credentials
-				oAuth2CredentialAuthorize: (sendData: ICredentialsResponse): Promise<string> => {
-					return self.restApi().makeRestApiRequest('GET', `/oauth2-credential/auth`, sendData);
-				},
-
-				// Verify OAuth2 provider callback and kick off token generation
-				oAuth2Callback: (code: string, state: string): Promise<string> => {
-					const sendData = {
-						'code': code,
-						'state': state,
-					};
-
-					return self.restApi().makeRestApiRequest('POST', `/oauth2-credential/callback`, sendData);
-				},
-
 				// Returns the execution with the given name
 				getExecution: async (id: string): Promise<IExecutionResponse> => {
 					const response = await self.restApi().makeRestApiRequest('GET', `/executions/${id}`);
