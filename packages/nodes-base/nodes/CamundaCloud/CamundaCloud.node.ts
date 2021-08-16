@@ -320,15 +320,24 @@ export class CamundaCloud implements INodeType {
 						},
 					} as ZBClientOptions);
 
-					const zbPublishMsgResult: PublishMessageResponse = await zbc.publishStartMessage(
-						{
+					let zbPublishMsgResult: PublishMessageResponse;
+
+					if (!correlationKey) {
+						zbPublishMsgResult = await zbc.publishStartMessage({
+							messageId: uuidv4(),
+							name: messageName,
+							variables,
+							timeToLive: Duration.seconds.of(timeToLive), // seconds
+						});
+					} else {
+						zbPublishMsgResult = await zbc.publishMessage({
 							messageId: uuidv4(),
 							name: messageName,
 							correlationKey,
 							variables,
 							timeToLive: Duration.seconds.of(timeToLive), // seconds
-						},
-					);
+						});
+					}
 
 					// console.log(
 					// 	`zbPublishMsgResult: ${JSON.stringify(zbPublishMsgResult)}`

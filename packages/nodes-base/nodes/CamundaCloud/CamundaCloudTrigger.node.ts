@@ -96,7 +96,6 @@ export class CamundaCloudTrigger implements INodeType {
 					self.getNodeParameter('timeout') as number,
 				),
 				taskHandler: async (job: ZeebeJob) => {
-					console.log('executing taskHandler!', job);
 					self.emit([
 						self.helpers.returnJsonArray({
 							jobKey: job.key,
