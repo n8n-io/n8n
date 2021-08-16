@@ -96,6 +96,11 @@ export class CamundaCloud implements INodeType {
 						value: 'complete',
 						description: 'Complete an activated Zeebe job',
 					},
+					{
+						name: 'Fail',
+						value: 'fail',
+						description: 'Mark an activated Zeebe job as failed',
+					},
 				],
 				default: 'complete',
 				description: 'The operation to perform',
@@ -114,6 +119,35 @@ export class CamundaCloud implements INodeType {
 				default: '',
 				description:
 					'Identifier of an already activated BPMN job, e.g. as returned by the Camunda Cloud Trigger node',
+			},
+			{
+				displayName: 'Job Key',
+				name: 'jobKey',
+				type: 'string',
+				required: true,
+				displayOptions: {
+					show: {
+						operation: ['fail'],
+						resource: ['job'],
+					},
+				},
+				default: '',
+				description:
+					'Identifier of an already activated BPMN job, e.g. as returned by the Camunda Cloud Trigger node',
+			},
+			{
+				displayName: 'Error Message',
+				name: 'errorMessage',
+				type: 'string',
+				required: true,
+				displayOptions: {
+					show: {
+						operation: ['fail'],
+						resource: ['job'],
+					},
+				},
+				default: 'an error occured while executing n8n workflow',
+				description: 'Error Message to return to Camunda Cloud',
 			},
 			{
 				displayName: 'Variables (JSON)',
@@ -347,10 +381,19 @@ export class CamundaCloud implements INodeType {
 					);
 				}
 			} else if (resource === 'job') {
-				if (operation === 'complete') {
-					const jobKey =
-						(this.getNodeParameter('jobKey', i) as string) ?? '';
+				const jobKey =
+					(this.getNodeParameter('jobKey', i) as string) ?? '';
 
+				const zbc = new ZBClient({
+					camundaCloud: {
+						clientId,
+						clientSecret,
+						clusterId,
+						clusterRegion,
+					},
+				} as ZBClientOptions);
+
+				if (operation == 'complete') {
 					let variables =
 						(this.getNodeParameter('variables', i) as unknown) ??
 						{};
@@ -358,20 +401,24 @@ export class CamundaCloud implements INodeType {
 					if ('string' === typeof variables) {
 						variables = JSON.parse(variables);
 					}
-
-					const zbc = new ZBClient({
-						camundaCloud: {
-							clientId,
-							clientSecret,
-							clusterId,
-							clusterRegion,
-						},
-					} as ZBClientOptions);
-
 					//console.log('COMPLETING JOB', jobKey, variables);
 					await zbc.completeJob({
 						jobKey,
 						variables: variables as IProcessVariables,
+					});
+
+					returnData.push({ success: true } as IDataObject);
+				} else if (operation === 'fail') {
+					const errorMessage = this.getNodeParameter(
+						'errorMessage',
+						i,
+					) as string;
+
+					//console.log('FAILING JOB', jobKey);
+					await zbc.failJob({
+						jobKey,
+						retries: 0, //raises an inident
+						errorMessage,
 					});
 
 					returnData.push({ success: true } as IDataObject);
