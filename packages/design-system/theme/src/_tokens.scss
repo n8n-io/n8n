@@ -29,11 +29,18 @@
 		var(--color-primary-tint-3-l)
 	);
 
-	--color-primary-shade-1-l: 23%;
+	--color-primary-shade-1-l: 57.6%;
 	--color-primary-shade-1: hsl(
 		var(--color-primary-h),
 		var(--color-primary-s),
 		var(--color-primary-shade-1-l)
+	);
+
+	--color-primary-shade-2-l: 23%;
+	--color-primary-shade-2: hsl(
+		var(--color-primary-h),
+		var(--color-primary-s),
+		var(--color-primary-shade-2-l)
 	);
 
 	--color-secondary-h: 247.4;
@@ -294,9 +301,6 @@
 	--spacing-3xl: 4rem;
 	--spacing-4xl: 8rem;
 	--spacing-5xl: 16rem;
-
-	--button-radius-default: 20px;
-	--button-shade-active: 10%;
 }
 
 :root {
