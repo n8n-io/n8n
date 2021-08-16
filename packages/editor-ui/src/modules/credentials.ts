@@ -1,7 +1,7 @@
-import { getCredentialTypes, getCredentialsNewName, getAllCredentials, deleteCredential } from '@/api/credentials';
+import { getCredentialTypes, getCredentialsNewName, getAllCredentials, deleteCredential, getCredentialData, createNewCredential, updateCredential } from '@/api/credentials';
 import Vue from 'vue';
 import { ActionContext, Module } from 'vuex';
-import { ICredentialType, INodeTypeDescription } from '../../../workflow/dist/src';
+import { ICredentialsDecrypted, ICredentialType, INodeTypeDescription } from '../../../workflow/dist/src';
 import {
 	ICredentialMap,
 	ICredentialsResponse,
@@ -44,6 +44,11 @@ const module: Module<ICredentialsState, IRootState> = {
 				return accu;
 			}, {});
 		},
+		upsertCredential(state: ICredentialsState, credential: ICredentialsResponse) {
+			if (credential.id) {
+				Vue.set(state.credentials, credential.id, credential);
+			}
+		},
 		deleteCredential(state: ICredentialsState, id: string) {
 			Vue.delete(state.credentials, id);
 		},
@@ -64,7 +69,7 @@ const module: Module<ICredentialsState, IRootState> = {
 			return (id: string) => state.credentials[id];
 		},
 		getNodesWithAccess (state: ICredentialsState, getters: any, rootState: IRootState, rootGetters: any) { // tslint:disable-line:no-any
-			return (credentialTypeName: string): INodeTypeDescription[] => {
+			return (credentialTypeName: string) => {
 				const nodeTypes: INodeTypeDescription[] = rootGetters.allNodeTypes;
 
 				return nodeTypes.filter((nodeType: INodeTypeDescription) => {
@@ -79,7 +84,8 @@ const module: Module<ICredentialsState, IRootState> = {
 					}
 
 					return false;
-				});
+				})
+					.map((nodeType: INodeTypeDescription) => ({ name: nodeType.name, displayName: nodeType.displayName }));
 			};
 		},
 	},
@@ -92,8 +98,18 @@ const module: Module<ICredentialsState, IRootState> = {
 			const credentials = await getAllCredentials(context.rootGetters.getRestApiContext);
 			context.commit('setCredentials', credentials);
 		},
-		deleteCredential: async (context: ActionContext<ICredentialsState, IRootState>, params: {id: string}) => {
-			const { id } = params;
+		getCredentialData: async (context: ActionContext<ICredentialsState, IRootState>, { id }: {id: string}) => {
+			return await getCredentialData(context.rootGetters.getRestApiContext, id);
+		},
+		createNewCredential: async (context: ActionContext<ICredentialsState, IRootState>, data: ICredentialsDecrypted) => {
+			const credential = await createNewCredential(context.rootGetters.getRestApiContext, data);
+			context.commit('upsertCredential', credential);
+		},
+		updateCredentialDetails: async (context: ActionContext<ICredentialsState, IRootState>, data: ICredentialsDecrypted) => {
+			const credential = await updateCredential(context.rootGetters.getRestApiContext, data);
+			context.commit('upsertCredential', credential);
+		},
+		deleteCredential: async (context: ActionContext<ICredentialsState, IRootState>, { id }: {id: string}) => {
 			const deleted = await deleteCredential(context.rootGetters.getRestApiContext, id);
 			if (deleted) {
 				context.commit('deleteCredential', id);

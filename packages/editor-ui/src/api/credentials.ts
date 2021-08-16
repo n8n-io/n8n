@@ -1,8 +1,9 @@
-import { ICredentialsResponse, IRestApiContext } from '@/Interface';
+import { ICredentialsDecryptedResponse, ICredentialsResponse, IRestApiContext } from '@/Interface';
 import { makeRestApiRequest } from './helpers';
 import {
 	ICredentialsDecrypted,
 	ICredentialType,
+	IDataObject,
 } from 'n8n-workflow';
 
 export async function getCredentialTypes(context: IRestApiContext): Promise<ICredentialType[]> {
@@ -17,28 +18,24 @@ export async function getAllCredentials(context: IRestApiContext): Promise<ICred
 	return await makeRestApiRequest(context, 'GET', '/credentials');
 }
 
-// export async function createNewCredentials(context: IRestApiContext, sendData: ICredentialsDecrypted): Promise<ICredentialsResponse> {
-// 	return makeRestApiRequest(context, 'POST', `/credentials`, sendData);
-// }
+export async function createNewCredential(context: IRestApiContext, data: ICredentialsDecrypted): Promise<ICredentialsResponse> {
+	return makeRestApiRequest(context, 'POST', `/credentials`, data as unknown as IDataObject);
+}
 
 export async function deleteCredential(context: IRestApiContext, id: string): Promise<Boolean> {
 	return makeRestApiRequest(context, 'DELETE', `/credentials/${id}`);
 }
 
-// export async function updateCredentials(context: IRestApiContext, id: string, data: ICredentialsDecrypted): Promise<ICredentialsResponse> {
-// 	return makeRestApiRequest(context, 'PATCH', `/credentials/${id}`, data);
-// }
+export async function updateCredential(context: IRestApiContext, params: {data: ICredentialsDecrypted, id: number}): Promise<ICredentialsResponse> {
+	const { id } = params;
+	return makeRestApiRequest(context, 'PATCH', `/credentials/${id}`, params.data as unknown as IDataObject);
+}
 
-// // Returns the credentials with the given id
-// export async function getCredentials(context: IRestApiContext, id: string, includeData?: boolean): Promise<ICredentialsDecryptedResponse | ICredentialsResponse | undefined> {
-// 	let sendData;
-// 	if (includeData) {
-// 		sendData = {
-// 			includeData,
-// 		};
-// 	}
-// 	return makeRestApiRequest(context, 'GET', `/credentials/${id}`, sendData);
-// }
+export async function getCredentialData(context: IRestApiContext, id: string): Promise<ICredentialsDecryptedResponse | ICredentialsResponse | undefined> {
+	return makeRestApiRequest(context, 'GET', `/credentials/${id}`, {
+		includeData: true,
+	});
+}
 
 // // Get OAuth1 Authorization URL using the stored credentials
 // export async function oAuth1CredentialAuthorize(context: IRestApiContext, sendData: ICredentialsResponse): Promise<string> {
