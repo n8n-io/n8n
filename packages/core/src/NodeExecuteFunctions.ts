@@ -320,7 +320,7 @@ export function getAdditionalKeys(additionalData: IWorkflowExecuteAdditionalData
 	const executionId = additionalData.executionId || PLACEHOLDER_EMPTY_EXECUTION_ID;
 	return {
 		$executionId: executionId,
-		$restartWebhookUrl: `${additionalData.webhookSleepingBaseUrl}/${executionId}`,
+		$resumeWebhookUrl: `${additionalData.webhookSleepingBaseUrl}/${executionId}`,
 	};
 }
 

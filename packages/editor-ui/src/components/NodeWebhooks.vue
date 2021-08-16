@@ -100,7 +100,7 @@ export default mixins(
 			},
 			getWebhookUrl (webhookData: IWebhookDescription): string {
 				if (webhookData.restartWebhook === true) {
-					return '$restartWebhookUrl';
+					return '$resumeWebhookUrl';
 				}
 				let baseUrl = this.$store.getters.getWebhookUrl;
 				if (this.showUrlFor === 'test') {

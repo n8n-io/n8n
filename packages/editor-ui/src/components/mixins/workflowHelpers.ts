@@ -373,7 +373,7 @@ export const workflowHelpers = mixins(
 
 				const additionalKeys: IWorkflowDataProxyAdditionalKeys = {
 					$executionId: PLACEHOLDER_FILLED_AT_EXECUTION_TIME,
-					$restartWebhookUrl: PLACEHOLDER_FILLED_AT_EXECUTION_TIME,
+					$resumeWebhookUrl: PLACEHOLDER_FILLED_AT_EXECUTION_TIME,
 				};
 
 				return workflow.expression.getParameterValue(parameter, runExecutionData, runIndex, itemIndex, activeNode.name, connectionInputData, 'manual', additionalKeys, false) as IDataObject;

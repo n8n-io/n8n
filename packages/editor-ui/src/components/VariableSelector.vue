@@ -383,7 +383,7 @@ export default mixins(
 
 				const additionalKeys: IWorkflowDataProxyAdditionalKeys = {
 					$executionId: PLACEHOLDER_FILLED_AT_EXECUTION_TIME,
-					$restartWebhookUrl: PLACEHOLDER_FILLED_AT_EXECUTION_TIME,
+					$resumeWebhookUrl: PLACEHOLDER_FILLED_AT_EXECUTION_TIME,
 				};
 
 				const dataProxy = new WorkflowDataProxy(workflow, runExecutionData, runIndex, itemIndex, nodeName, connectionInputData, {}, 'manual', additionalKeys);

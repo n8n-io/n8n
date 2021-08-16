@@ -100,7 +100,7 @@ export class Wait implements INodeType {
 				type: 'options',
 				displayOptions: {
 					show: {
-						mode: [
+						resume: [
 							'webhook',
 						],
 					},
@@ -123,22 +123,22 @@ export class Wait implements INodeType {
 				description: 'The way to authenticate.',
 			},
 			{
-				displayName: 'Mode',
-				name: 'mode',
+				displayName: 'Resume',
+				name: 'resume',
 				type: 'options',
 				options: [
 					{
-						name: 'Wait for time interval',
+						name: 'After time interval',
 						value: 'timeInterval',
 						description: 'Waits for a certain amount of time',
 					},
 					{
-						name: 'Wait until specified time',
+						name: 'At specified time',
 						value: 'specificTime',
 						description: 'Waits until the set date time to continue',
 					},
 					{
-						name: 'Wait for webhook',
+						name: 'On webhook call',
 						value: 'webhook',
 						description: 'Waits for a webhook call',
 					},
@@ -148,7 +148,7 @@ export class Wait implements INodeType {
 			},
 
 			// ----------------------------------
-			//         mode:specificTime
+			//         resume:specificTime
 			// ----------------------------------
 			{
 				displayName: 'Date and Time',
@@ -156,17 +156,17 @@ export class Wait implements INodeType {
 				type: 'dateTime',
 				displayOptions: {
 					show: {
-						mode: [
+						resume: [
 							'specificTime',
 						],
 					},
 				},
 				default: '',
-				description: 'The date time to wait for before to continue.',
+				description: 'The date and time to wait for before continuing.',
 			},
 
 			// ----------------------------------
-			//         mode:timeInterval
+			//         resume:timeInterval
 			// ----------------------------------
 			{
 				displayName: 'Amount',
@@ -174,7 +174,7 @@ export class Wait implements INodeType {
 				type: 'number',
 				displayOptions: {
 					show: {
-						mode: [
+						resume: [
 							'timeInterval',
 						],
 					},
@@ -192,7 +192,7 @@ export class Wait implements INodeType {
 				type: 'options',
 				displayOptions: {
 					show: {
-						mode: [
+						resume: [
 							'timeInterval',
 						],
 					},
@@ -221,15 +221,15 @@ export class Wait implements INodeType {
 
 
 			// ----------------------------------
-			//         mode:webhook
+			//         resume:webhook
 			// ----------------------------------
 			{
-				displayName: 'The URL to call will be generated at run time, and can be referenced under <strong>$restartWebhookUrl</strong>',
+				displayName: 'The URL to call will be generated at run time, and can be referenced under <strong>$resumeWebhookUrl</strong>. Send it somewhere before getting to this node. <a href="https://docs.n8n.io/nodes/expressions.html#variable-resumeWebhookUrl" target="_blank">More info</a>',
 				name: 'webhookNotice',
 				type: 'notice',
 				displayOptions: {
 					show: {
-						mode: [
+						resume: [
 							'webhook',
 						],
 					},
@@ -242,7 +242,7 @@ export class Wait implements INodeType {
 				type: 'options',
 				displayOptions: {
 					show: {
-						mode: [
+						resume: [
 							'webhook',
 						],
 					},
@@ -270,7 +270,7 @@ export class Wait implements INodeType {
 				type: 'number',
 				displayOptions: {
 					show: {
-						mode: [
+						resume: [
 							'webhook',
 						],
 					},
@@ -288,7 +288,7 @@ export class Wait implements INodeType {
 				type: 'options',
 				displayOptions: {
 					show: {
-						mode: [
+						resume: [
 							'webhook',
 						],
 					},
@@ -314,7 +314,7 @@ export class Wait implements INodeType {
 				type: 'options',
 				displayOptions: {
 					show: {
-						mode: [
+						resume: [
 							'webhook',
 						],
 						responseMode: [
@@ -350,7 +350,7 @@ export class Wait implements INodeType {
 				default: 'data',
 				displayOptions: {
 					show: {
-						mode: [
+						resume: [
 							'webhook',
 						],
 						responseData: [
@@ -369,7 +369,7 @@ export class Wait implements INodeType {
 							 resume execution after specified condition.`,
 				displayOptions: {
 					show: {
-						mode: [
+						resume: [
 							'webhook',
 						],
 					},
@@ -479,7 +479,7 @@ export class Wait implements INodeType {
 				type: 'collection',
 				displayOptions: {
 					show: {
-						mode: [
+						resume: [
 							'webhook',
 						],
 					},
@@ -793,9 +793,9 @@ export class Wait implements INodeType {
 
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
-		const mode = this.getNodeParameter('mode', 0) as string;
+		const resume = this.getNodeParameter('resume', 0) as string;
 
-		if (mode === 'webhook') {
+		if (resume === 'webhook') {
 			let sleepTill = new Date(SLEEP_TIME_UNLIMITED);
 
 			const autoResume = this.getNodeParameter('autoResume', 0);
@@ -829,7 +829,7 @@ export class Wait implements INodeType {
 		}
 
 		let sleepTill: Date;
-		if (mode === 'timeInterval') {
+		if (resume === 'timeInterval') {
 			const unit = this.getNodeParameter('unit', 0) as string;
 
 			let sleepAmount = this.getNodeParameter('amount', 0) as number;
@@ -848,7 +848,7 @@ export class Wait implements INodeType {
 			sleepTill = new Date(new Date().getTime() + sleepAmount);
 
 		} else {
-			// Mode: dateTime
+			// resume: dateTime
 			const dateTime = this.getNodeParameter('dateTime', 0) as string;
 			console.log('dateTime', dateTime);
 
