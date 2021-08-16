@@ -309,7 +309,7 @@ export class Ssh implements INodeType {
 
 				const credentials = this.getCredentials('sshPrivateKey') as IDataObject;
 
-				const { path, } = await file();
+				const { path, } = await file({ prefix: 'n8n-ssh-' });
 				temporaryFiles.push(path);
 				await writeFile(path, credentials.privateKey as string);
 
@@ -320,7 +320,7 @@ export class Ssh implements INodeType {
 					privateKey: path,
 				} as any; // tslint:disable-line: no-any
 
-				if (!credentials.passphrase) {
+				if (credentials.passphrase) {
 					options.passphrase = credentials.passphrase as string;
 				}
 
@@ -346,7 +346,7 @@ export class Ssh implements INodeType {
 							const dataPropertyNameDownload = this.getNodeParameter('binaryPropertyName', i) as string;
 							const parameterPath = this.getNodeParameter('path', i) as string;
 
-							const { path } = await file({ mode: 0x0777, prefix: 'prefix-' });
+							const { path } = await file({ prefix: 'n8n-ssh-' });
 							temporaryFiles.push(path);
 
 							await ssh.getFile(path, parameterPath);
@@ -389,7 +389,7 @@ export class Ssh implements INodeType {
 								throw new Error(`No binary data property "${propertyNameUpload}" does not exists on item!`);
 							}
 
-							const { path } = await file();
+							const { path } = await file({ prefix: 'n8n-ssh-' });
 							temporaryFiles.push(path);
 							await writeFile(path, Buffer.from(binaryData.data, BINARY_ENCODING));
 

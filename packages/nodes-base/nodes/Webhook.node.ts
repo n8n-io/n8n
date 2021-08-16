@@ -41,10 +41,11 @@ function authorizationError(resp: Response, realm: string, responseCode: number,
 export class Webhook implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Webhook',
+		icon: 'file:webhook.svg',
 		name: 'webhook',
 		group: ['trigger'],
 		version: 1,
-		description: 'Starts the workflow when a webhook got called.',
+		description: 'Starts the workflow when a webhook is called',
 		defaults: {
 			name: 'Webhook',
 			color: '#885577',

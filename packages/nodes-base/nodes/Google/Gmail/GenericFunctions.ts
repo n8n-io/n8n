@@ -74,6 +74,10 @@ export async function googleApiRequest(this: IExecuteFunctions | IExecuteSingleF
 		}
 
 	} catch (error) {
+		if (error.code === 'ERR_OSSL_PEM_NO_START_LINE') {
+			error.statusCode = '401';
+		}
+
 		throw new NodeApiError(this.getNode(), error);
 	}
 }
@@ -138,6 +142,7 @@ export async function encodeEmail(email: IEmail) {
 	let mailBody: Buffer;
 
 	const mailOptions = {
+		from: email.from,
 		to: email.to,
 		cc: email.cc,
 		bcc: email.bcc,

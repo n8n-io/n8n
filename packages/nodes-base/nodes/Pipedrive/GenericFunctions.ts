@@ -96,7 +96,7 @@ export async function pipedriveApiRequest(this: IHookFunctions | IExecuteFunctio
 
 		return {
 			additionalData: responseData.additional_data,
-			data: responseData.data,
+			data: (responseData.data === null) ? [] : responseData.data,
 		};
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error);
