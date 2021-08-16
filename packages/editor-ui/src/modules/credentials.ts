@@ -1,6 +1,6 @@
 import { getCredentials } from '@/api/credentials';
 import { ActionContext, Module } from 'vuex';
-import { ICredentialType, INodeCredentialDescription, INodeTypeDescription } from '../../../workflow/dist/src';
+import { ICredentialType, INodeTypeDescription } from '../../../workflow/dist/src';
 import {
 	ICredentialsState,
 	ICredentialTypeMap,
@@ -40,7 +40,7 @@ const module: Module<ICredentialsState, IRootState> = {
 		getCredentialTypeByName: (state: ICredentialsState) => {
 			return (type: string) => state.credentialTypes[type];
 		},
-		getNodesWithAccess (state: ICredentialsState, getters: any, rootState: IRootState, rootGetters: any) {
+		getNodesWithAccess (state: ICredentialsState, getters: any, rootState: IRootState, rootGetters: any) { // tslint:disable-line:no-any
 			return (credentialTypeName: string): INodeTypeDescription[] => {
 				const nodeTypes: INodeTypeDescription[] = rootGetters.allNodeTypes;
 
