@@ -117,7 +117,7 @@ import { Registry } from 'prom-client';
 import * as TagHelpers from './TagHelpers';
 import { TagEntity } from './databases/entities/TagEntity';
 import { WorkflowEntity } from './databases/entities/WorkflowEntity';
-import { WorkflowNameRequest } from './WorkflowHelpers';
+import { NameRequest } from './WorkflowHelpers';
 
 class App {
 
@@ -129,6 +129,7 @@ class App {
 	endpointPresetCredentials: string;
 	externalHooks: IExternalHooksClass;
 	defaultWorkflowName: string;
+	defaultCredentialsName: string;
 	saveDataErrorExecution: string;
 	saveDataSuccessExecution: string;
 	saveManualExecutions: boolean;
@@ -154,6 +155,7 @@ class App {
 		this.endpointWebhookTest = config.get('endpoints.webhookTest') as string;
 
 		this.defaultWorkflowName = config.get('workflows.defaultName') as string;
+		this.defaultCredentialsName = config.get('credentials.defaultName') as string;
 
 		this.saveDataErrorExecution = config.get('executions.saveDataOnError') as string;
 		this.saveDataSuccessExecution = config.get('executions.saveDataOnSuccess') as string;
@@ -584,41 +586,12 @@ class App {
 		}));
 
 
-		this.app.get(`/${this.restEndpoint}/workflows/new`, ResponseHelper.send(async (req: WorkflowNameRequest, res: express.Response): Promise<{ name: string }> => {
-			const nameToReturn = req.query.name && req.query.name !== ''
+		this.app.get(`/${this.restEndpoint}/workflows/new`, ResponseHelper.send(async (req: NameRequest, res: express.Response): Promise<{ name: string }> => {
+			const requestedName = req.query.name && req.query.name !== ''
 				? req.query.name
 				: this.defaultWorkflowName;
 
-			const workflows = await Db.collections.Workflow!.find({
-				select: ['name'],
-				where: { name: Like(`${nameToReturn}%`) },
-			});
-
-			// name is unique
-			if (workflows.length === 0) {
-				return { name: nameToReturn };
-			}
-
-			const maxSuffix = workflows.reduce((acc: number, { name }) => {
-				const parts = name.split(`${nameToReturn} `);
-
-				if (parts.length > 2) return acc;
-
-				const suffix = Number(parts[1]);
-
-				if (!isNaN(suffix) && Math.ceil(suffix) > acc) {
-					acc = Math.ceil(suffix);
-				}
-
-				return acc;
-			}, 0);
-
-			// name is duplicate but no numeric suffixes exist yet
-			if (maxSuffix === 0) {
-				return { name: `${nameToReturn} 2` };
-			}
-
-			return { name: `${nameToReturn} ${maxSuffix + 1}` };
+			return await GenericHelpers.generateUniqueName(requestedName, 'workflow');
 		}));
 
 
@@ -995,6 +968,13 @@ class App {
 		// Credentials
 		// ----------------------------------------
 
+		this.app.get(`/${this.restEndpoint}/credentials/new`, ResponseHelper.send(async (req: NameRequest, res: express.Response): Promise<{ name: string }> => {
+			const requestedName = req.query.name && req.query.name !== ''
+				? req.query.name
+				: this.defaultCredentialsName;
+
+			return await GenericHelpers.generateUniqueName(requestedName, 'credentials');
+		}));
 
 		// Deletes a specific credential
 		this.app.delete(`/${this.restEndpoint}/credentials/:id`, ResponseHelper.send(async (req: express.Request, res: express.Response): Promise<boolean> => {
