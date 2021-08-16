@@ -97,7 +97,7 @@ export default Vue.extend({
 		return {
 			loading: true,
 			credentialName: '',
-			data: {},
+			credentialData: {},
 			nodeAccess: {} as {[nodeName: string]: boolean},
 			activeTab: 'connection',
 		};
@@ -113,6 +113,8 @@ export default Vue.extend({
 			this.credentialName = await this.$store.dispatch('credentials/getNewCredentialName', { credentialTypeName: this.credentialTypeName });
 		}
 		else {
+			// todo request creds
+
 			this.credentialName = this.currentCredential.name;
 			this.currentCredential.nodesAccess.forEach(({ nodeType }: {nodeType: string}) => {
 				this.nodeAccess[nodeType] = true;
