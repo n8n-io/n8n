@@ -89,7 +89,7 @@ export class Wait implements INodeType {
 				responseContentType: '={{$parameter["options"]["responseContentType"]}}',
 				responsePropertyName: '={{$parameter["options"]["responsePropertyName"]}}',
 				responseHeaders: '={{$parameter["options"]["responseHeaders"]}}',
-				path: '={{$parameter["options"]["webhookPostfix"] || ""}}',
+				path: '={{$parameter["options"]["webhookSuffix"] || ""}}',
 				restartWebhook: true,
 			},
 		],
@@ -224,7 +224,7 @@ export class Wait implements INodeType {
 			//         resume:webhook
 			// ----------------------------------
 			{
-				displayName: 'The URL to call will be generated at run time, and can be referenced under <strong>$resumeWebhookUrl</strong>. Send it somewhere before getting to this node. <a href="https://docs.n8n.io/nodes/expressions.html#variable-resumeWebhookUrl" target="_blank">More info</a>',
+				displayName: 'The URL to call will be generated at run time, and can be referenced under <strong>$resumeWebhookUrl</strong>. Send it somewhere before getting to this node. <a href="https://docs.n8n.io/nodes/n8n-nodes-base.wait?utm_source=n8n_app&utm_medium=node_settings_modal-credential_link&utm_campaign=n8n-nodes-base.wait" target="_blank">More info</a>',
 				name: 'webhookNotice',
 				type: 'notice',
 				displayOptions: {
@@ -614,12 +614,12 @@ export class Wait implements INodeType {
 						description: 'Name of the property to return the data of instead of the whole JSON',
 					},
 					{
-						displayName: 'Webhook Postfix',
-						name: 'webhookPostfix',
+						displayName: 'Webhook Suffix',
+						name: 'webhookSuffix',
 						type: 'string',
 						default: '',
 						placeholder: 'webhook',
-						description: 'The webhook postfix path to attach to the restart URL',
+						description: 'The webhook suffix path that will be appended to the restart URL',
 					},
 					// {
 					// 	displayName: 'Raw Body',
