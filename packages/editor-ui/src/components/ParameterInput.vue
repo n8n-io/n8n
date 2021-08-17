@@ -1,7 +1,8 @@
 <template>
 	<div @keydown.stop :class="parameterInputClasses">
 	<expression-edit :dialogVisible="expressionEditDialogVisible" :value="value" :parameter="parameter" :path="path" @closeDialog="closeExpressionEditDialog" @valueChanged="expressionUpdated"></expression-edit>
-	<div class="parameter-input ignore-key-press" :style="parameterInputWrapperStyle">
+	<div class="parameter-input ignore-key-press" :style="parameterInputWrapperStyle" @click="openExpressionEdit">
+
 		<div v-if="['json', 'string'].includes(parameter.type) || remoteParameterOptionsLoadingIssues !== null">
 			<code-edit :dialogVisible="codeEditDialogVisible" :value="value" :parameter="parameter" @closeDialog="closeCodeEditDialog" @valueChanged="expressionUpdated"></code-edit>
 			<text-edit :dialogVisible="textEditDialogVisible" :value="value" :parameter="parameter" @closeDialog="closeTextEditDialog" @valueChanged="expressionUpdated"></text-edit>
@@ -10,12 +11,13 @@
 				<prism-editor v-if="!codeEditDialogVisible" :lineNumbers="true" :readonly="true" :code="displayValue" language="js"></prism-editor>
 			</div>
 
-			<n8n-input v-else v-model="tempValue" ref="inputField" :size="inputSize" :type="getStringInputType" :rows="getArgument('rows')" :value="displayValue" :disabled="!isValueExpression && isReadOnly" @change="valueChanged" @keydown.stop @focus="setFocus" :title="displayTitle" :placeholder="isValueExpression?'':parameter.placeholder">
+			<n8n-input v-else v-model="tempValue" ref="inputField" :size="inputSize" :type="getStringInputType" :rows="getArgument('rows')" :value="displayValue" :disabled="isReadOnly" @change="valueChanged" @keydown.stop @focus="setFocus" :title="displayTitle" :placeholder="isValueExpression?'':parameter.placeholder">
 				<div slot="suffix" class="expand-input-icon-container">
 					<font-awesome-icon v-if="!isValueExpression && !isReadOnly" icon="external-link-alt" class="edit-window-button clickable" title="Open Edit Window" @click="displayEditDialog()" />
 				</div>
 			</n8n-input>
 		</div>
+
 		<div v-else-if="parameter.type === 'dateTime'">
 			<el-date-picker
 				v-model="tempValue"
@@ -88,10 +90,13 @@
 		</div>
 
 		<div v-else-if="parameter.type === 'boolean'">
-			<el-switch ref="inputField" :value="displayValue" @change="valueChanged" active-color="#13ce66" :disabled="isValueExpression || isReadOnly"></el-switch>
-			<div class="expression-info clickable" @click="expressionEditDialogVisible = true">Edit Expression</div>
+			<div v-if="isValueExpression">
+				<n8n-input  :size="inputSize" :value="displayValue" :disabled="isReadOnly" @keydown.stop  :title="displayTitle" />
+			</div>
+			<el-switch v-else ref="inputField" :value="displayValue" @change="valueChanged" active-color="#13ce66" :disabled="isReadOnly"></el-switch>
 		</div>
 	</div>
+
 	<div class="parameter-issues" v-if="getIssues.length">
 		<n8n-tooltip placement="top" >
 			<div slot="content" v-html="'Issues:<br />&nbsp;&nbsp;- ' + getIssues.join('<br />&nbsp;&nbsp;- ')"></div>
@@ -511,6 +516,12 @@ export default mixins(
 			expressionUpdated (value: string) {
 				this.valueChanged(value);
 			},
+			openExpressionEdit() {
+				if (this.isValueExpression) {
+					this.expressionEditDialogVisible = true;
+					return;
+				}
+			},
 			setFocus () {
 				if (this.isValueExpression) {
 					this.expressionEditDialogVisible = true;
@@ -668,7 +679,6 @@ export default mixins(
 		border: none;
 	}
 }
-
 </style>
 
 <style lang="scss">
@@ -679,19 +689,9 @@ export default mixins(
 	background-color: #f0f0f0;
 }
 
-.expression-info {
-	display: none;
-}
 .expression {
-	.expression-info {
-		display: inline-block;
-		background-color: #441133;
-		color: #fff;
-		font-size: 0.7em;
-		padding: 0 0.5em;
-		margin-left: 1em;
-		border-radius: 3px;
-		line-height: 2.5;
+	textarea[disabled], input[disabled] {
+		cursor: pointer !important;
 	}
 
 	.el-switch__core {
@@ -701,6 +701,7 @@ export default mixins(
 	--input-border-color: #{$--custom-expression-text};
 	--input-border-style: dashed;
 	--input-background-color: #{$--custom-expression-background};
+	--disabled-border: #{$--custom-expression-text};
 }
 
 .has-issues {

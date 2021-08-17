@@ -264,9 +264,9 @@ $index-popper: 2000;
 
 /* Disable base
 -------------------------- */
-$disabled-fill-base: var(--color-background-light);
-$disabled-color-base: var(--color-text-base);
-$disabled-border-base: var(--border-color-base);
+$disabled-fill-base: var(--disabled-fill, var(--color-background-light));
+$disabled-color-base: var(--disabled-color, var(--color-text-base));
+$disabled-border-base: var(--disabled-border, var(--border-color-base));
 
 /* Icon
 -------------------------- */
