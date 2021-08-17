@@ -56,5 +56,5 @@ export class ExecutionEntity implements IExecutionFlattedDb {
 
 	@Index()
 	@Column({ type: resolveDataType('datetime') as ColumnOptions['type'], nullable: true })
-	sleepTill: Date;
+	waitTill: Date;
 }

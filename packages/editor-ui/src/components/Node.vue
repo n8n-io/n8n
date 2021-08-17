@@ -9,9 +9,9 @@
 			</div>
 			<el-badge v-else :hidden="workflowDataItems === 0" class="node-info-icon data-count" :value="workflowDataItems"></el-badge>
 
-			<div v-if="sleeping" class="node-info-icon sleeping">
+			<div v-if="waiting" class="node-info-icon waiting">
 				<el-tooltip placement="top" effect="light">
-					<div slot="content" v-html="sleeping"></div>
+					<div slot="content" v-html="waiting"></div>
 					<font-awesome-icon icon="clock" />
 				</el-tooltip>
 			</div>
@@ -134,14 +134,14 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 				return 'play';
 			}
 		},
-		sleeping (): string | undefined {
+		waiting (): string | undefined {
 			const workflowExecution = this.$store.getters.getWorkflowExecution;
 
-			if (workflowExecution && workflowExecution.sleepTill) {
+			if (workflowExecution && workflowExecution.waitTill) {
 				const lastNodeExecuted = get(workflowExecution, 'data.resultData.lastNodeExecuted');
 				if (this.name === lastNodeExecuted) {
-					const sleepDate = new Date(workflowExecution.sleepTill);
-					return `Node is sleeping till ${sleepDate.toLocaleDateString()} ${sleepDate.toLocaleTimeString()}`;
+					const waitDate = new Date(workflowExecution.waitTill);
+					return `Node is waiting till ${waitDate.toLocaleDateString()} ${waitDate.toLocaleTimeString()}`;
 				}
 			}
 
@@ -312,7 +312,7 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 				top: -12px;
 			}
 
-			&.sleeping {
+			&.waiting {
 				left: 10px;
 				top: -12px;
 			}
@@ -325,7 +325,7 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 			color: #ff0000;
 		}
 
-		.sleeping {
+		.waiting {
 			width: 25px;
 			height: 25px;
 			font-size: 20px;

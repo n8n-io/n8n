@@ -223,7 +223,7 @@ export interface IExecuteFunctions {
 	getTimezone(): string;
 	getWorkflow(): IWorkflowMetadata;
 	prepareOutputData(outputData: INodeExecutionData[], outputIndex?: number): Promise<INodeExecutionData[][]>;
-	putExecutionToSleep(sleepTill: Date): Promise<void>;
+	putExecutionToWait(waitTill: Date): Promise<void>;
 	sendMessageToUI(message: any): void; // tslint:disable-line:no-any
 	helpers: {
 		[key: string]: (...args: any[]) => any //tslint:disable-line:no-any
@@ -651,7 +651,7 @@ export interface IRun {
 	data: IRunExecutionData;
 	finished?: boolean;
 	mode: WorkflowExecuteMode;
-	sleepTill?: Date;
+	waitTill?: Date;
 	startedAt: Date;
 	stoppedAt?: Date;
 }
@@ -675,7 +675,7 @@ export interface IRunExecutionData {
 		nodeExecutionStack: IExecuteData[];
 		waitingExecution: IWaitingForExecution;
 	};
-	sleepTill?: Date;
+	waitTill?: Date;
 }
 
 
@@ -757,7 +757,7 @@ export interface IWorkflowExecuteAdditionalData {
 	sendMessageToUI?: (source: string, message: any) => void; // tslint:disable-line:no-any
 	timezone: string;
 	webhookBaseUrl: string;
-	webhookSleepingBaseUrl: string;
+	webhookWaitingBaseUrl: string;
 	webhookTestBaseUrl: string;
 	currentNodeParameters?: INodeParameters;
 	executionTimeoutTimestamp?: number;

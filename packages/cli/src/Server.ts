@@ -63,10 +63,10 @@ import {
 	NodeTypes,
 	Push,
 	ResponseHelper,
-	SleepingWebhooks,
-	SleepTracker,
-	SleepTrackerClass,
 	TestWebhooks,
+	WaitingWebhooks,
+	WaitTracker,
+	WaitTrackerClass,
 	WebhookHelpers,
 	WebhookServer,
 	WorkflowCredentials,
@@ -129,11 +129,11 @@ class App {
 	activeWorkflowRunner: ActiveWorkflowRunner.ActiveWorkflowRunner;
 	testWebhooks: TestWebhooks.TestWebhooks;
 	endpointWebhook: string;
-	endpointWebhookSleeping: string;
+	endpointWebhookWaiting: string;
 	endpointWebhookTest: string;
 	endpointPresetCredentials: string;
 	externalHooks: IExternalHooksClass;
-	sleepTracker: SleepTrackerClass;
+	waitTracker: WaitTrackerClass;
 	defaultWorkflowName: string;
 	saveDataErrorExecution: string;
 	saveDataSuccessExecution: string;
@@ -157,7 +157,7 @@ class App {
 		this.app = express();
 
 		this.endpointWebhook = config.get('endpoints.webhook') as string;
-		this.endpointWebhookSleeping = config.get('endpoints.webhookSleeping') as string;
+		this.endpointWebhookWaiting = config.get('endpoints.webhookWaiting') as string;
 		this.endpointWebhookTest = config.get('endpoints.webhookTest') as string;
 
 		this.defaultWorkflowName = config.get('workflows.defaultName') as string;
@@ -176,7 +176,7 @@ class App {
 		this.push = Push.getInstance();
 
 		this.activeExecutionsInstance = ActiveExecutions.getInstance();
-		this.sleepTracker = SleepTracker();
+		this.waitTracker = WaitTracker();
 
 		this.protocol = config.get('protocol');
 		this.sslKey = config.get('ssl_key');
@@ -1645,8 +1645,8 @@ class App {
 			executingWorkflowIds.push(...this.activeExecutionsInstance.getActiveExecutions().map(execution => execution.id.toString()) as string[]);
 
 			const countFilter = JSON.parse(JSON.stringify(filter));
-			if (countFilter.sleepTill !== undefined) {
-				countFilter.sleepTill = Not(IsNull());
+			if (countFilter.waitTill !== undefined) {
+				countFilter.waitTill = Not(IsNull());
 			}
 			countFilter.id = Not(In(executingWorkflowIds));
 
@@ -1658,7 +1658,7 @@ class App {
 					'execution.mode',
 					'execution.retryOf',
 					'execution.retrySuccessId',
-					'execution.sleepTill',
+					'execution.waitTill',
 					'execution.startedAt',
 					'execution.stoppedAt',
 					'execution.workflowData',
@@ -1667,11 +1667,11 @@ class App {
 				.take(limit);
 
 			Object.keys(filter).forEach((filterField) => {
-				if (filterField === 'sleepTill') {
+				if (filterField === 'waitTill') {
 					resultsQuery.andWhere(`execution.${filterField} is not null`);
 				} else if(filterField === 'finished' && filter[filterField] === false) {
 					resultsQuery.andWhere(`execution.${filterField} = :${filterField}`, {[filterField]: filter[filterField]});
-					resultsQuery.andWhere(`execution.sleepTill is null`);
+					resultsQuery.andWhere(`execution.waitTill is null`);
 				} else {
 					resultsQuery.andWhere(`execution.${filterField} = :${filterField}`, {[filterField]: filter[filterField]});
 				}
@@ -1702,7 +1702,7 @@ class App {
 					mode: result.mode,
 					retryOf: result.retryOf ? result.retryOf.toString() : undefined,
 					retrySuccessId: result.retrySuccessId ? result.retrySuccessId.toString() : undefined,
-					sleepTill: result.sleepTill as Date | undefined,
+					waitTill: result.waitTill as Date | undefined,
 					startedAt: result.startedAt,
 					stoppedAt: result.stoppedAt,
 					workflowId: result.workflowData!.id ? result.workflowData!.id!.toString() : '',
@@ -1934,9 +1934,9 @@ class App {
 				const result = await this.activeExecutionsInstance.stopExecution(req.params.id);
 
 				if (result === undefined) {
-					// If active execution could not be found check if it is a sleeping one
+					// If active execution could not be found check if it is a waiting one
 					try {
-						return await this.sleepTracker.stopExecution(req.params.id);
+						return await this.waitTracker.stopExecution(req.params.id);
 					} catch (error) {
 						// Ignore, if it errors as then it is probably a currently running
 						// execution
@@ -1980,8 +1980,8 @@ class App {
 
 				let returnData: IExecutionsStopData;
 				if (result === undefined) {
-					// If active execution could not be found check if it is a sleeping one
-					returnData = await this.sleepTracker.stopExecution(executionId);
+					// If active execution could not be found check if it is a waiting one
+					returnData = await this.waitTracker.stopExecution(executionId);
 				} else {
 					returnData = {
 						mode: result.mode,
@@ -2037,19 +2037,19 @@ class App {
 		}
 
 		// ----------------------------------------
-		// Sleeping Webhooks
+		// Waiting Webhooks
 		// ----------------------------------------
 
-		const sleepingWebhooks = new SleepingWebhooks();
+		const waitingWebhooks = new WaitingWebhooks();
 
-		// HEAD webhook-sleeping requests
-		this.app.head(`/${this.endpointWebhookSleeping}/*`, async (req: express.Request, res: express.Response) => {
-			// Cut away the "/webhook-sleeping/" to get the registred part of the url
-			const requestUrl = (req as ICustomRequest).parsedUrl!.pathname!.slice(this.endpointWebhookSleeping.length + 2);
+		// HEAD webhook-waiting requests
+		this.app.head(`/${this.endpointWebhookWaiting}/*`, async (req: express.Request, res: express.Response) => {
+			// Cut away the "/webhook-waiting/" to get the registred part of the url
+			const requestUrl = (req as ICustomRequest).parsedUrl!.pathname!.slice(this.endpointWebhookWaiting.length + 2);
 
 			let response;
 			try {
-				response = await sleepingWebhooks.executeWebhook('HEAD', requestUrl, req, res);
+				response = await waitingWebhooks.executeWebhook('HEAD', requestUrl, req, res);
 			} catch (error) {
 				ResponseHelper.sendErrorResponse(res, error);
 				return;
@@ -2063,14 +2063,14 @@ class App {
 			ResponseHelper.sendSuccessResponse(res, response.data, true, response.responseCode);
 		});
 
-		// GET webhook-sleeping requests
-		this.app.get(`/${this.endpointWebhookSleeping}/*`, async (req: express.Request, res: express.Response) => {
-			// Cut away the "/webhook-sleeping/" to get the registred part of the url
-			const requestUrl = (req as ICustomRequest).parsedUrl!.pathname!.slice(this.endpointWebhookSleeping.length + 2);
+		// GET webhook-waiting requests
+		this.app.get(`/${this.endpointWebhookWaiting}/*`, async (req: express.Request, res: express.Response) => {
+			// Cut away the "/webhook-waiting/" to get the registred part of the url
+			const requestUrl = (req as ICustomRequest).parsedUrl!.pathname!.slice(this.endpointWebhookWaiting.length + 2);
 
 			let response;
 			try {
-				response = await sleepingWebhooks.executeWebhook('GET', requestUrl, req, res);
+				response = await waitingWebhooks.executeWebhook('GET', requestUrl, req, res);
 			} catch (error) {
 				ResponseHelper.sendErrorResponse(res, error);
 				return;
@@ -2084,14 +2084,14 @@ class App {
 			ResponseHelper.sendSuccessResponse(res, response.data, true, response.responseCode);
 		});
 
-		// POST webhook-sleeping requests
-		this.app.post(`/${this.endpointWebhookSleeping}/*`, async (req: express.Request, res: express.Response) => {
-			// Cut away the "/webhook-sleeping/" to get the registred part of the url
-			const requestUrl = (req as ICustomRequest).parsedUrl!.pathname!.slice(this.endpointWebhookSleeping.length + 2);
+		// POST webhook-waiting requests
+		this.app.post(`/${this.endpointWebhookWaiting}/*`, async (req: express.Request, res: express.Response) => {
+			// Cut away the "/webhook-waiting/" to get the registred part of the url
+			const requestUrl = (req as ICustomRequest).parsedUrl!.pathname!.slice(this.endpointWebhookWaiting.length + 2);
 
 			let response;
 			try {
-				response = await sleepingWebhooks.executeWebhook('POST', requestUrl, req, res);
+				response = await waitingWebhooks.executeWebhook('POST', requestUrl, req, res);
 			} catch (error) {
 				ResponseHelper.sendErrorResponse(res, error);
 				return;

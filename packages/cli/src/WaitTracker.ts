@@ -9,7 +9,7 @@ import {
 	ResponseHelper,
 	WorkflowCredentials,
 	WorkflowRunner,
-} from './';
+} from '.';
 
 import {
 	IRun,
@@ -26,10 +26,10 @@ import {
 import { DateUtils } from 'typeorm/util/DateUtils';
 
 
-export class SleepTrackerClass {
+export class WaitTrackerClass {
 	activeExecutionsInstance: ActiveExecutions.ActiveExecutions;
 
-	private sleepingExecutions: {
+	private waitingExecutions: {
 		[key: string]: {
 			executionId: string,
 			timer: NodeJS.Timeout,
@@ -44,45 +44,45 @@ export class SleepTrackerClass {
 
 		// Poll every 60 seconds a list of upcoming executions
 		this.mainTimer = setInterval(() => {
-			this.getSleepingExecutions();
+			this.getwaitingExecutions();
 		}, 60000);
 
-		this.getSleepingExecutions();
+		this.getwaitingExecutions();
 	}
 
 
-	async getSleepingExecutions() {
-		Logger.debug('Sleep tracker querying database for sleeping executions...');
+	async getwaitingExecutions() {
+		Logger.debug('Wait tracker querying database for waiting executions...');
 		// Find all the executions which should be triggered in the next 70 seconds
 		const findQuery: FindManyOptions<IExecutionFlattedDb> = {
-			select: ['id', 'sleepTill'],
+			select: ['id', 'waitTill'],
 			where: {
-				sleepTill: LessThanOrEqual(new Date(Date.now() + 70000)),
+				waitTill: LessThanOrEqual(new Date(Date.now() + 70000)),
 			},
 			order: {
-				sleepTill: 'ASC',
+				waitTill: 'ASC',
 			},
 		};
 		const dbType = await GenericHelpers.getConfigValue('database.type') as DatabaseType;
 		if (dbType === 'sqlite') {
 			// This is needed because of issue in TypeORM <> SQLite:
 			// https://github.com/typeorm/typeorm/issues/2286
-			(findQuery.where! as ObjectLiteral).sleepTill = LessThanOrEqual(DateUtils.mixedDateToUtcDatetimeString(new Date(Date.now() + 70000)));
+			(findQuery.where! as ObjectLiteral).waitTill = LessThanOrEqual(DateUtils.mixedDateToUtcDatetimeString(new Date(Date.now() + 70000)));
 		}
 
 		const executions = await Db.collections.Execution!.find(findQuery);
 
 		if (executions.length > 0) {
 			const executionIds = executions.map(execution => execution.id.toString()).join(', ');
-			Logger.debug(`Sleep tracker found ${executions.length} executions. Setting timer for IDs: ${executionIds}`);
+			Logger.debug(`Wait tracker found ${executions.length} executions. Setting timer for IDs: ${executionIds}`);
 		}
 
 		// Add timers for each waiting execution that they get started at the correct time
 		for (const execution of executions) {
 			const executionId = execution.id.toString();
-			if (this.sleepingExecutions[executionId] === undefined) {
-				const triggerTime = execution.sleepTill!.getTime() - new Date().getTime();
-				this.sleepingExecutions[executionId] = {
+			if (this.waitingExecutions[executionId] === undefined) {
+				const triggerTime = execution.waitTill!.getTime() - new Date().getTime();
+				this.waitingExecutions[executionId] = {
 					executionId,
 					timer: setTimeout(() => {
 						this.startExecution(executionId);
@@ -94,23 +94,23 @@ export class SleepTrackerClass {
 
 
 	async stopExecution(executionId: string): Promise<IExecutionsStopData> {
-		if (this.sleepingExecutions[executionId] !== undefined) {
-			// The sleeping execution was already sheduled to execute.
+		if (this.waitingExecutions[executionId] !== undefined) {
+			// The waiting execution was already sheduled to execute.
 			// So stop timer and remove.
-			clearTimeout(this.sleepingExecutions[executionId].timer);
-			delete this.sleepingExecutions[executionId];
+			clearTimeout(this.waitingExecutions[executionId].timer);
+			delete this.waitingExecutions[executionId];
 		}
 
 		// Also check in database
 		const execution = await Db.collections.Execution!.findOne(executionId);
 
-		if (execution === undefined || !execution.sleepTill) {
+		if (execution === undefined || !execution.waitTill) {
 			throw new Error(`The execution ID "${executionId}" could not be found.`);
 		}
 
 		const fullExecutionData = ResponseHelper.unflattenExecutionData(execution);
 
-		// Set in execution in DB as failed and remove sleepTill time
+		// Set in execution in DB as failed and remove waitTill time
 		const error = new WorkflowOperationError('Workflow-Execution has been canceled!');
 
 		fullExecutionData.data.resultData.error = {
@@ -120,7 +120,7 @@ export class SleepTrackerClass {
 		};
 
 		fullExecutionData.stoppedAt = new Date();
-		fullExecutionData.sleepTill = undefined;
+		fullExecutionData.waitTill = undefined;
 
 		await Db.collections.Execution!.update(executionId, ResponseHelper.flattenExecutionData(fullExecutionData));
 
@@ -134,8 +134,8 @@ export class SleepTrackerClass {
 
 
 	startExecution(executionId: string) {
-		Logger.debug(`Sleep tracker resuming execution ${executionId}`, {executionId});
-		delete this.sleepingExecutions[executionId];
+		Logger.debug(`Wait tracker resuming execution ${executionId}`, {executionId});
+		delete this.waitingExecutions[executionId];
 
 		(async () => {
 			try {
@@ -165,7 +165,7 @@ export class SleepTrackerClass {
 				const workflowRunner = new WorkflowRunner();
 				await workflowRunner.run(data, false, false, executionId);
 			} catch (error) {
-				Logger.error(`There was a problem starting the sleeping execution with id "${executionId}": "${error.message}"`, { executionId });
+				Logger.error(`There was a problem starting the waiting execution with id "${executionId}": "${error.message}"`, { executionId });
 			}
 
 		})();
@@ -174,12 +174,12 @@ export class SleepTrackerClass {
 }
 
 
-let sleepTrackerInstance: SleepTrackerClass | undefined;
+let waitTrackerInstance: WaitTrackerClass | undefined;
 
-export function SleepTracker(): SleepTrackerClass {
-	if (sleepTrackerInstance === undefined) {
-		sleepTrackerInstance = new SleepTrackerClass();
+export function WaitTracker(): WaitTrackerClass {
+	if (waitTrackerInstance === undefined) {
+		waitTrackerInstance = new WaitTrackerClass();
 	}
 
-	return sleepTrackerInstance;
+	return waitTrackerInstance;
 }

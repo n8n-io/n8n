@@ -14,8 +14,8 @@
 				<font-awesome-icon
 					icon="clock"
 					class="execution-icon warning"
-					v-else-if="executionSleeping"
-					title="Execution sleeping"
+					v-else-if="executionWaiting"
+					title="Execution waiting"
 				/>
 				<font-awesome-icon
 					icon="times"
@@ -65,10 +65,10 @@ export default mixins(titleChange).extend({
 
 			return !!fullExecution && fullExecution.finished;
 		},
-		executionSleeping(): boolean {
+		executionWaiting(): boolean {
 			const fullExecution = this.$store.getters.getWorkflowExecution;
 
-			return !!fullExecution && !!fullExecution.sleepTill;
+			return !!fullExecution && !!fullExecution.waitTill;
 		},
 		workflowExecution(): IExecutionResponse | null {
 			return this.$store.getters.getWorkflowExecution;

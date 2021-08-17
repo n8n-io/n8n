@@ -1,6 +1,6 @@
 import {
 	IExecuteFunctions,
-	SLEEP_TIME_UNLIMITED,
+	WAIT_TIME_UNLIMITED,
 } from 'n8n-core';
 
 import {
@@ -808,79 +808,79 @@ export class Wait implements INodeType {
 		const resume = this.getNodeParameter('resume', 0) as string;
 
 		if (resume === 'webhook') {
-			let sleepTill = new Date(SLEEP_TIME_UNLIMITED);
+			let waitTill = new Date(WAIT_TIME_UNLIMITED);
 
 			const limitWaitTime = this.getNodeParameter('limitWaitTime', 0);
 
 			if (limitWaitTime === true) {
 				const limitType = this.getNodeParameter('limitType', 0);
 				if (limitType === 'afterTimeInterval') {
-					let sleepAmount = this.getNodeParameter('resumeAmount', 0) as number;
+					let waitAmount = this.getNodeParameter('resumeAmount', 0) as number;
 					const resumeUnit = this.getNodeParameter('resumeUnit', 0);
 					if (resumeUnit === 'minutes') {
-						sleepAmount *= 60;
+						waitAmount *= 60;
 					}
 					if (resumeUnit === 'hours') {
-						sleepAmount *= 60 * 60;
+						waitAmount *= 60 * 60;
 					}
 					if (resumeUnit === 'days') {
-						sleepAmount *= 60 * 60 * 24;
+						waitAmount *= 60 * 60 * 24;
 					}
 
-					sleepAmount *= 1000;
+					waitAmount *= 1000;
 
-					sleepTill = new Date(new Date().getTime() + sleepAmount);
+					waitTill = new Date(new Date().getTime() + waitAmount);
 				} else {
-					sleepTill = new Date(this.getNodeParameter('maxDateAndTime', 0) as string);
+					waitTill = new Date(this.getNodeParameter('maxDateAndTime', 0) as string);
 				}
 			}
 
-			await this.putExecutionToSleep(sleepTill);
+			await this.putExecutionToWait(waitTill);
 
 			return [this.getInputData()];
 		}
 
-		let sleepTill: Date;
+		let waitTill: Date;
 		if (resume === 'timeInterval') {
 			const unit = this.getNodeParameter('unit', 0) as string;
 
-			let sleepAmount = this.getNodeParameter('amount', 0) as number;
+			let waitAmount = this.getNodeParameter('amount', 0) as number;
 			if (unit === 'minutes') {
-				sleepAmount *= 60;
+				waitAmount *= 60;
 			}
 			if (unit === 'hours') {
-				sleepAmount *= 60 * 60;
+				waitAmount *= 60 * 60;
 			}
 			if (unit === 'days') {
-				sleepAmount *= 60 * 60 * 24;
+				waitAmount *= 60 * 60 * 24;
 			}
 
-			sleepAmount *= 1000;
+			waitAmount *= 1000;
 
-			sleepTill = new Date(new Date().getTime() + sleepAmount);
+			waitTill = new Date(new Date().getTime() + waitAmount);
 
 		} else {
 			// resume: dateTime
 			const dateTime = this.getNodeParameter('dateTime', 0) as string;
 			console.log('dateTime', dateTime);
 
-			sleepTill = new Date(dateTime);
+			waitTill = new Date(dateTime);
 		}
 
-		const sleepValue = Math.max(sleepTill.getTime() - new Date().getTime(), 0);
+		const waitValue = Math.max(waitTill.getTime() - new Date().getTime(), 0);
 
-		if (sleepValue < 65000) {
+		if (waitValue < 65000) {
 			// If wait time is shorter than 65 seconds leave execution active because
 			// we just check the database every 60 seconds.
 			return new Promise((resolve, reject) => {
 				setTimeout(() => {
 					resolve([this.getInputData()]);
-				}, sleepValue);
+				}, waitValue);
 			});
 		}
 
-		// If longer than 60 seconds put execution to sleep
-		await this.putExecutionToSleep(sleepTill);
+		// If longer than 60 seconds put execution to wait
+		await this.putExecutionToWait(waitTill);
 
 		return [this.getInputData()];
 	}

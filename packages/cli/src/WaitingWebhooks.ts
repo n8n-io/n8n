@@ -23,10 +23,10 @@ import {
 	LoggerProxy as Logger,
 } from 'n8n-workflow';
 
-export class SleepingWebhooks {
+export class WaitingWebhooks {
 
 	async executeWebhook(httpMethod: WebhookHttpMethod, fullPath: string, req: express.Request, res: express.Response): Promise<IResponseCallbackData> {
-		Logger.debug(`Received sleeping-webhoook "${httpMethod}" for path "${fullPath}"`);
+		Logger.debug(`Received waiting-webhoook "${httpMethod}" for path "${fullPath}"`);
 
 		// Reset request parameters
 		req.params = {};
@@ -67,11 +67,11 @@ export class SleepingWebhooks {
 		const lastNodeExecuted = fullExecutionData!.data.resultData.lastNodeExecuted as string;
 
 		// Set the node as disabled so that the data does not get executed again as it would result
-		// in starting the sleep all over again
+		// in starting the wait all over again
 		fullExecutionData!.data.executionData!.nodeExecutionStack[0].node.disabled = true;
 
-		// Remove sleepTill information else the execution would stop
-		fullExecutionData!.data.sleepTill = undefined;
+		// Remove waitTill information else the execution would stop
+		fullExecutionData!.data.waitTill = undefined;
 
 		// Remove the data of the node execution again else it will display the node as executed twice
 		fullExecutionData!.data.resultData.runData[lastNodeExecuted].pop();
@@ -92,7 +92,7 @@ export class SleepingWebhooks {
 		if (webhookData === undefined) {
 			// If no data got found it means that the execution can not be started via a webhook.
 			// Return 404 because we do not want to give any data if the execution exists or not.
-			const errorMessage = `The execution "${executionId}" with webhook postfix path "${path}" is not known.`;
+			const errorMessage = `The execution "${executionId}" with webhook suffix path "${path}" is not known.`;
 			throw new ResponseHelper.ResponseError(errorMessage, 404, 404);
 		}
 

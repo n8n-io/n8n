@@ -65,7 +65,7 @@ export class ActiveExecutions {
 
 			const execution = {
 				id: executionId,
-				sleepTill: null,
+				waitTill: null,
 			};
 
 			// @ts-ignore

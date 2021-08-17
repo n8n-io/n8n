@@ -511,10 +511,10 @@ export class WorkflowExecute {
 			this.runExecutionData.startData = {};
 		}
 
-		if (this.runExecutionData.sleepTill) {
+		if (this.runExecutionData.waitTill) {
 			const lastNodeExecuted = this.runExecutionData.resultData.lastNodeExecuted as string;
 			this.runExecutionData.executionData!.nodeExecutionStack[0].node.disabled = true;
-			this.runExecutionData.sleepTill = undefined;
+			this.runExecutionData.waitTill = undefined;
 			this.runExecutionData.resultData.runData[lastNodeExecuted].pop();
 		}
 
@@ -699,7 +699,7 @@ export class WorkflowExecute {
 								}
 							}
 
-							if (nodeSuccessData === null && !this.runExecutionData.sleepTill!!) {
+							if (nodeSuccessData === null && !this.runExecutionData.waitTill!!) {
 								// If null gets returned it means that the node did succeed
 								// but did not have any data. So the branch should end
 								// (meaning the nodes afterwards should not be processed)
@@ -773,7 +773,7 @@ export class WorkflowExecute {
 						continue;
 					}
 
-					if (this.runExecutionData.sleepTill!!) {
+					if (this.runExecutionData.waitTill!!) {
 						await this.executeHook('nodeExecuteAfter', [executionNode.name, taskData, this.runExecutionData]);
 
 						// Add the node back to the stack that the workflow can start to execute again from that node
@@ -864,9 +864,9 @@ export class WorkflowExecute {
 				message: executionError.message,
 				stack: executionError.stack,
 			} as ExecutionError;
-		} else if (this.runExecutionData.sleepTill!!) {
-			Logger.verbose(`Workflow execution will sleep until ${this.runExecutionData.sleepTill}`, { workflowId: workflow.id });
-			fullRunData.sleepTill = this.runExecutionData.sleepTill;
+		} else if (this.runExecutionData.waitTill!!) {
+			Logger.verbose(`Workflow execution will wait until ${this.runExecutionData.waitTill}`, { workflowId: workflow.id });
+			fullRunData.waitTill = this.runExecutionData.waitTill;
 		} else {
 			Logger.verbose(`Workflow execution finished successfully`, { workflowId: workflow.id });
 			fullRunData.finished = true;

@@ -1,8 +1,8 @@
 import {MigrationInterface, QueryRunner} from "typeorm";
 import * as config from '../../../../config';
 
-export class AddSleepTill1626176912946 implements MigrationInterface {
-	name = 'AddSleepTill1626176912946';
+export class AddwaitTill1626176912946 implements MigrationInterface {
+	name = 'AddwaitTill1626176912946';
 
 	async up(queryRunner: QueryRunner): Promise<void> {
 		let tablePrefix = config.get('database.tablePrefix');
@@ -12,8 +12,8 @@ export class AddSleepTill1626176912946 implements MigrationInterface {
 			tablePrefix = schema + '.' + tablePrefix;
 		}
 		
-		await queryRunner.query(`ALTER TABLE ${tablePrefix}execution_entity ADD "sleepTill" TIMESTAMP`);
-		await queryRunner.query(`CREATE INDEX IF NOT EXISTS IDX_${tablePrefixPure}ca4a71b47f28ac6ea88293a8e2 ON ${tablePrefix}execution_entity ("sleepTill")`);
+		await queryRunner.query(`ALTER TABLE ${tablePrefix}execution_entity ADD "waitTill" TIMESTAMP`);
+		await queryRunner.query(`CREATE INDEX IF NOT EXISTS IDX_${tablePrefixPure}ca4a71b47f28ac6ea88293a8e2 ON ${tablePrefix}execution_entity ("waitTill")`);
 	}
 
 	async down(queryRunner: QueryRunner): Promise<void> {
@@ -25,7 +25,7 @@ export class AddSleepTill1626176912946 implements MigrationInterface {
 		}
 
 		await queryRunner.query(`DROP INDEX IDX_${tablePrefixPure}ca4a71b47f28ac6ea88293a8e2`);
-		await queryRunner.query(`ALTER TABLE ${tablePrefix}webhook_entity DROP COLUMN "sleepTill"`);
+		await queryRunner.query(`ALTER TABLE ${tablePrefix}webhook_entity DROP COLUMN "waitTill"`);
 	}
 
 }

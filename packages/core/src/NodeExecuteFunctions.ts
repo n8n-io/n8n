@@ -320,7 +320,7 @@ export function getAdditionalKeys(additionalData: IWorkflowExecuteAdditionalData
 	const executionId = additionalData.executionId || PLACEHOLDER_EMPTY_EXECUTION_ID;
 	return {
 		$executionId: executionId,
-		$resumeWebhookUrl: `${additionalData.webhookSleepingBaseUrl}/${executionId}`,
+		$resumeWebhookUrl: `${additionalData.webhookWaitingBaseUrl}/${executionId}`,
 	};
 }
 
@@ -769,8 +769,8 @@ export function getExecuteFunctions(workflow: Workflow, runExecutionData: IRunEx
 				return workflow.getStaticData(type, node);
 			},
 			prepareOutputData: NodeHelpers.prepareOutputData,
-			async putExecutionToSleep(sleepTill: Date): Promise<void> {
-				runExecutionData.sleepTill = sleepTill;
+			async putExecutionToWait(waitTill: Date): Promise<void> {
+				runExecutionData.waitTill = waitTill;
 			},
 			sendMessageToUI(message	: any): void { // tslint:disable-line:no-any
 				if (mode !== 'manual') {

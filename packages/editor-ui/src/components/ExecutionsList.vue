@@ -82,7 +82,7 @@
 						<el-tooltip placement="top" effect="light">
 							<div slot="content" v-html="statusTooltipText(scope.row)"></div>
 
-							<span class="status-badge running" v-if="scope.row.sleepTill">
+							<span class="status-badge running" v-if="scope.row.waitTill">
 								Waiting
 							</span>
 							<span class="status-badge running" v-else-if="scope.row.stoppedAt === undefined">
@@ -101,7 +101,7 @@
 
 						<el-dropdown trigger="click" @command="handleRetryClick">
 							<span class="el-dropdown-link">
-								<el-button class="retry-button" v-bind:class="{ warning: scope.row.stoppedAt === null }" circle v-if="scope.row.stoppedAt !== undefined && !scope.row.finished && scope.row.retryOf === undefined && scope.row.retrySuccessId === undefined && scope.row.sleepTill === undefined" type="text" size="small" title="Retry execution">
+								<el-button class="retry-button" v-bind:class="{ warning: scope.row.stoppedAt === null }" circle v-if="scope.row.stoppedAt !== undefined && !scope.row.finished && scope.row.retryOf === undefined && scope.row.retrySuccessId === undefined && scope.row.waitTill === undefined" type="text" size="small" title="Retry execution">
 									<font-awesome-icon icon="redo" />
 								</el-button>
 							</span>
@@ -131,7 +131,7 @@
 				</el-table-column>
 				<el-table-column label="" width="100" align="center">
 					<template slot-scope="scope">
-						<span v-if="scope.row.stoppedAt === undefined || scope.row.sleepTill" class="execution-actions">
+						<span v-if="scope.row.stoppedAt === undefined || scope.row.waitTill" class="execution-actions">
 							<el-button circle title="Stop Execution" @click.stop="stopExecution(scope.row.id)" :loading="stoppingExecutions.includes(scope.row.id)" size="mini">
 								<font-awesome-icon icon="stop" />
 							</el-button>
@@ -162,7 +162,7 @@ import ExecutionTime from '@/components/ExecutionTime.vue';
 import WorkflowActivator from '@/components/WorkflowActivator.vue';
 
 import { externalHooks } from '@/components/mixins/externalHooks';
-import { SLEEP_TIME_UNLIMITED } from '@/constants';
+import { WAIT_TIME_UNLIMITED } from '@/constants';
 
 import { restApi } from '@/components/mixins/restApi';
 import { genericHelpers } from '@/components/mixins/genericHelpers';
@@ -297,7 +297,7 @@ export default mixins(
 				filter.workflowId = this.filter.workflowId;
 			}
 			if (this.filter.status === 'waiting') {
-				filter.sleepTill = true;
+				filter.waitTill = true;
 			} else if (['error', 'success'].includes(this.filter.status)) {
 				filter.finished = this.filter.status === 'success';
 			}
@@ -620,12 +620,12 @@ export default mixins(
 			this.isDataLoading = false;
 		},
 		statusTooltipText (entry: IExecutionsSummary): string {
-			if (entry.sleepTill) {
-				const sleepDate = new Date(entry.sleepTill);
-				if (sleepDate.toISOString() === SLEEP_TIME_UNLIMITED) {
+			if (entry.waitTill) {
+				const waitDate = new Date(entry.waitTill);
+				if (waitDate.toISOString() === WAIT_TIME_UNLIMITED) {
 					return 'The workflow is waiting indefinitely.';
 				}
-				return `The worklow is waiting till ${sleepDate.toLocaleDateString()} ${sleepDate.toLocaleTimeString()}.`;
+				return `The worklow is waiting till ${waitDate.toLocaleDateString()} ${waitDate.toLocaleTimeString()}.`;
 			} else if (entry.stoppedAt === undefined) {
 				return 'The worklow is currently executing.';
 			} else if (entry.finished === true && entry.retryOf !== undefined) {

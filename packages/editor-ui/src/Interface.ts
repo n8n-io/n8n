@@ -353,7 +353,7 @@ export interface IExecutionsSummary {
 	finished?: boolean;
 	retryOf?: string;
 	retrySuccessId?: string;
-	sleepTill?: Date;
+	waitTill?: Date;
 	startedAt: Date;
 	stoppedAt?: Date;
 	workflowId: string;
