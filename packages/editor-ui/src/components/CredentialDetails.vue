@@ -52,7 +52,7 @@
 							<span :class="$style.label">Created:</span>
 						</el-col>
 						<el-col :span="16">
-							<span>{{ convertToDisplayDate(currentCredential.createdAt) }}</span>
+							<span>{{ convertToHumanReadableDate(currentCredential.createdAt) }}</span>
 						</el-col>
 					</el-row>
 					<el-row v-if="currentCredential">
@@ -74,7 +74,7 @@ import Vue from 'vue';
 
 import Modal from './Modal.vue';
 import CredentialsInput from './CredentialsInput.vue';
-import { convertToDisplayDate } from './helpers';
+import { convertToHumanReadableDate } from './helpers';
 import TimeAgo from './TimeAgo.vue';
 import { CredentialInformation, ICredentialDataDecryptedObject, ICredentialNodeAccess, ICredentialsDecrypted, ICredentialType, INodeParameters, INodeProperties, INodeTypeDescription, NodeHelpers } from 'n8n-workflow';
 import { showMessage } from '@/components/mixins/showMessage';
@@ -152,11 +152,11 @@ export default mixins(
 	},
 	computed: {
 		currentCredential(): ICredentialsResponse | null {
-			if (this.mode === 'new' && !this.credentialId) {
+			if (!this.credentialId) {
 				return null;
 			}
 
-			return this.$store.getters['credentials/getCredentialById'](this.credentialId || this.activeId);
+			return this.$store.getters['credentials/getCredentialById'](this.credentialId);
 		},
 		credentialTypeName(): string {
 			if (this.mode === 'edit' && this.currentCredential) {
@@ -208,9 +208,9 @@ export default mixins(
 			this.credentialId = this.activeId;
 
 			try {
-				const currentCredentials: ICredentialsDecryptedResponse = await this.$store.dispatch('credentials/getCredentialData', { id: this.activeId });
+				const currentCredentials: ICredentialsDecryptedResponse = await this.$store.dispatch('credentials/getCredentialData', { id: this.credentialId });
 				if (!currentCredentials) {
-					throw new Error(`Could not find the credentials with the id: ${this.activeId}`);
+					throw new Error(`Could not find the credentials with the id: ${this.credentialId}`);
 				}
 
 				this.credentialData = currentCredentials.data || {};
@@ -240,7 +240,7 @@ export default mixins(
 				this.nodeAccess[name] = null;
 			}
 		},
-		convertToDisplayDate,
+		convertToHumanReadableDate,
 		onDataChange({name, value}: {name: string, value: any}) { // tslint:disable-line:no-any
 			this.credentialData = {
 				...this.credentialData,
@@ -318,7 +318,7 @@ export default mixins(
 		async updateCredential (credentialDetails: ICredentialsDecrypted, closeDialog: boolean): Promise<ICredentialsResponse | null> {
 			let credential;
 			try {
-				credential = await this.$store.dispatch('credentials/updateCredentialDetails', { id: this.activeId, data: credentialDetails }) as ICredentialsResponse;
+				credential = await this.$store.dispatch('credentials/updateCredentialDetails', { id: this.credentialId, data: credentialDetails }) as ICredentialsResponse;
 			} catch (error) {
 				this.$showError(error, 'Problem updating credentials', 'There was a problem updating the credentials:');
 
@@ -345,7 +345,7 @@ export default mixins(
 
 			try {
 				this.isDeleting = true;
-				await this.$store.dispatch('credentials/deleteCredential', {id: this.activeId});
+				await this.$store.dispatch('credentials/deleteCredential', {id: this.credentialId});
 			} catch (error) {
 				this.$showError(error, 'Problem deleting credentials', 'There was a problem deleting the credentials:');
 				this.isDeleting = false;
@@ -372,6 +372,8 @@ export default mixins(
 			if (!credential) {
 				return;
 			}
+
+			this.credentialId = credential.id as string;
 
 			const types = this.parentTypes;
 
