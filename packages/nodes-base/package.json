@@ -1,6 +1,6 @@
 {
   "name": "n8n-nodes-base",
-  "version": "0.129.1",
+  "version": "0.131.0",
   "description": "Base nodes of n8n",
   "license": "SEE LICENSE IN LICENSE.md",
   "homepage": "https://n8n.io",
@@ -19,6 +19,7 @@
     "build": "tsc && gulp",
     "tslint": "tslint -p tsconfig.json -c tslint.json",
     "tslintfix": "tslint --fix -p tsconfig.json -c tslint.json",
+    "nodelinter": "nodelinter",
     "watch": "tsc --watch",
     "test": "jest"
   },
@@ -172,6 +173,7 @@
       "dist/credentials/MicrosoftToDoOAuth2Api.credentials.js",
       "dist/credentials/MindeeReceiptApi.credentials.js",
       "dist/credentials/MindeeInvoiceApi.credentials.js",
+      "dist/credentials/MonicaCrmApi.credentials.js",
       "dist/credentials/MoceanApi.credentials.js",
       "dist/credentials/MondayComApi.credentials.js",
       "dist/credentials/MondayComOAuth2Api.credentials.js",
@@ -469,6 +471,7 @@
       "dist/nodes/Microsoft/Teams/MicrosoftTeams.node.js",
       "dist/nodes/Microsoft/ToDo/MicrosoftToDo.node.js",
       "dist/nodes/Mindee/Mindee.node.js",
+      "dist/nodes/MonicaCrm/MonicaCrm.node.js",
       "dist/nodes/MoveBinaryData.node.js",
       "dist/nodes/Mocean/Mocean.node.js",
       "dist/nodes/MondayCom/MondayCom.node.js",
@@ -633,6 +636,7 @@
     "gulp": "^4.0.0",
     "jest": "^26.4.2",
     "n8n-workflow": "~0.64.0",
+    "nodelinter": "^0.1.9",
     "ts-jest": "^26.3.0",
     "tslint": "^6.1.2",
     "typescript": "~3.9.7"
@@ -670,7 +674,7 @@
     "mqtt": "4.2.6",
     "mssql": "^6.2.0",
     "mysql2": "~2.2.0",
-    "n8n-core": "~0.78.0",
+    "n8n-core": "~0.79.0",
     "node-ssh": "^11.0.0",
     "nodemailer": "^6.5.0",
     "pdf-parse": "^1.1.1",
