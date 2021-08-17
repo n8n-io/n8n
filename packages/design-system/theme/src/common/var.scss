@@ -264,9 +264,9 @@ $index-popper: 2000;
 
 /* Disable base
 -------------------------- */
-$disabled-fill-base: var(--color-background-light);
-$disabled-color-base: var(--color-text-base);
-$disabled-border-base: var(--border-color-base);
+$disabled-fill-base: var(--disabled-fill, var(--color-background-light));
+$disabled-color-base: var(--disabled-color, var(--color-text-base));
+$disabled-border-base: var(--disabled-border, var(--border-color-base));
 
 /* Icon
 -------------------------- */
@@ -735,7 +735,7 @@ $cascader-height: 200px;
 /// color||Color|0
 $switch-on-color: var(--color-primary);
 /// color||Color|0
-$switch-off-color: var(--border-color-base);
+$switch-off-color: var(--color-text-light);
 /// fontSize||Font|1
 $switch-font-size: $font-size-base;
 $switch-core-border-radius: 10px;

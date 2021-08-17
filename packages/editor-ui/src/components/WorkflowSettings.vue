@@ -127,7 +127,6 @@
 					<el-col :span="14">
 						<div>
 							<el-switch ref="inputField" :value="workflowSettings.executionTimeout > -1" @change="toggleTimeout" active-color="#13ce66"></el-switch>
-							<div class="expression-info clickable" @click="expressionEditDialogVisible = true">Edit Expression</div>
 						</div>
 					</el-col>
 				</el-row>

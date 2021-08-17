@@ -27,6 +27,16 @@ export default {
 				type: 'boolean',
 			},
 		},
+		filterable: {
+			control: {
+				type: 'boolean',
+			},
+		},
+		defaultFirstOption: {
+			control: {
+				type: 'boolean',
+			},
+		},
 	},
 	parameters: {
 		backgrounds: { default: '--color-background-light' },
@@ -53,6 +63,12 @@ const Template = (args, { argTypes }) => ({
 });
 
 export const Input = Template.bind({});
+
+export const Filterable = Template.bind({});
+Filterable.args = {
+	filterable: true,
+	defaultFirstOption: true,
+};
 
 const selects = ['large', 'medium', 'small', 'mini'].map((size) => `<n8n-select style="margin-bottom:10px" v-bind="$props" v-model="val" @input="onInput" size="${size}"><n8n-option value="1">op1</n8n-option><n8n-option value="2">op2</n8n-option></n8n-select>`).join('');
 
