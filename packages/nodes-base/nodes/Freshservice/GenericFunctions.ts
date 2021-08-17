@@ -137,7 +137,7 @@ export function validateAssignmentScopeGroup(
 }
 
 /**
- * Remove the `groups` param when `specified_groups` has been selected.
+ * Remove the `groups` param when `specified_groups` has not been selected.
  */
 export function sanitizeAssignmentScopeGroup(
 	this: IExecuteFunctions,
