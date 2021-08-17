@@ -128,19 +128,22 @@
 
 	.el-tag {
 		box-sizing: border-box;
-		border-color: transparent;
 		margin: 2px 0 2px 6px;
-		background-color: #f0f2f5;
-		color: #333;
+		border-color: var(--color-foreground-base);
+		background-color: var(--color-foreground-base);
+		color: var(--color-text-dark);
+		border-radius: 20px;
+		font-weight: 400;
 
 		&__close.el-icon-close {
-			background-color: var(--color-text-lighter);
+			background-color: var(--color-text-light);
 			right: -7px;
 			top: 0;
 			color: var.$color-white;
+			margin-right: 6px;
 
 			&:hover {
-				background-color: var(--color-text-light);
+				background-color: var(--color-text-base);
 			}
 
 			&::before {

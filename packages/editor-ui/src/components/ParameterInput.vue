@@ -691,6 +691,7 @@ export default mixins(
 		padding: 0 0.5em;
 		margin-left: 1em;
 		border-radius: 3px;
+		line-height: 2.5;
 	}
 
 	.el-switch__core {
@@ -733,6 +734,7 @@ li:not(.selected) .option-description {
 }
 
 .expand-input-icon-container {
+	color: var(--color-text-base);
 	display: flex;
 	height: 100%;
 	align-items: center;
