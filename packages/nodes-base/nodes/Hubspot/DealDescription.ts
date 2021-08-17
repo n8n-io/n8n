@@ -1,6 +1,4 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import {INodeProperties,} from 'n8n-workflow';
 
 export const dealOperations = [
 	{
@@ -443,6 +441,13 @@ export const dealFields = [
 				default: false,
 				description: `Include the IDs of the associated contacts and companies in the results<br/>.
 				This will also automatically include the num_associated_contacts property.`,
+			},
+			{
+				displayName: 'Include Detailed Info',
+				name: 'includeDetails',
+				type: 'boolean',
+				default: false,
+				description: 'Include Deal Owner and Stage objects.',
 			},
 			{
 				displayName: 'Properties',
