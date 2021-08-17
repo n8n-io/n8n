@@ -216,4 +216,3 @@ export function adjustAddress(fixedCollection: IDataObject & AddressFixedCollect
 	return adjusted;
 }
 
-const isNumeric = (n: number) => !isNaN(n);
