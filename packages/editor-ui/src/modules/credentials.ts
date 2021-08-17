@@ -1,7 +1,6 @@
 import { getCredentialTypes, getCredentialsNewName, getAllCredentials, deleteCredential, getCredentialData, createNewCredential, updateCredential, oAuth2CredentialAuthorize, oAuth1CredentialAuthorize } from '@/api/credentials';
 import Vue from 'vue';
 import { ActionContext, Module } from 'vuex';
-import { ICredentialsDecrypted, ICredentialType, INodeTypeDescription } from '../../../workflow/dist/src';
 import {
 	ICredentialMap,
 	ICredentialsResponse,
@@ -9,6 +8,13 @@ import {
 	ICredentialTypeMap,
 	IRootState,
 } from '../Interface';
+import {
+	ICredentialType,
+	ICredentialsDecrypted,
+	NodeHelpers,
+	INodeProperties,
+	INodeTypeDescription,
+} from 'n8n-workflow';
 
 const DEFAULT_CREDENTIAL_NAME = 'Unnamed credential';
 const DEFAULT_CREDENTIAL_POSTFIX = 'account';

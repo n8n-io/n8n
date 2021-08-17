@@ -76,7 +76,7 @@ import Modal from './Modal.vue';
 import CredentialsInput from './CredentialsInput.vue';
 import { convertToDisplayDate } from './helpers';
 import TimeAgo from './TimeAgo.vue';
-import { CredentialInformation, ICredentialDataDecryptedObject, ICredentialNodeAccess, ICredentialsDecrypted, ICredentialType, INodeParameters, INodeTypeDescription, NodeHelpers } from 'n8n-workflow';
+import { CredentialInformation, ICredentialDataDecryptedObject, ICredentialNodeAccess, ICredentialsDecrypted, ICredentialType, INodeParameters, INodeProperties, INodeTypeDescription, NodeHelpers } from 'n8n-workflow';
 import { showMessage } from '@/components/mixins/showMessage';
 
 import mixins from 'vue-typed-mixins';
@@ -126,7 +126,7 @@ export default mixins(
 		};
 	},
 	async mounted() {
-		for (const property of (this.credentialType as ICredentialType).properties) {
+		for (const property of this.credentialType.properties) {
 			this.credentialData[property.name] = property.default as CredentialInformation;
 		}
 
@@ -166,7 +166,12 @@ export default mixins(
 			return this.activeId;
 		},
 		credentialType(): ICredentialType {
-			return this.$store.getters['credentials/getCredentialTypeByName'](this.credentialTypeName);
+			const type = this.$store.getters['credentials/getCredentialTypeByName'](this.credentialTypeName);
+
+			return {
+				...type,
+				properties: this.getCredentialProperties(this.credentialTypeName),
+			};
 		},
 		nodesWithAccess(): Array<{nodeType: string, name: string}>  {
 			return this.$store.getters['credentials/getNodesWithAccess'](this.credentialTypeName);
@@ -176,6 +181,29 @@ export default mixins(
 		},
 	},
 	methods: {
+		getCredentialProperties (name: string): INodeParameters[] { // tslint:disable-line:no-any
+			const credentialsData = this.$store.getters['credentials/getCredentialTypeByName'](name);
+
+			if (credentialsData === null) {
+				throw new Error(`Could not find credentials of type: ${name}`);
+			}
+
+			if (credentialsData.extends === undefined) {
+				return credentialsData.properties;
+			}
+
+			const combineProperties = [] as INodeProperties[];
+			for (const credentialsTypeName of credentialsData.extends) {
+				const mergeCredentialProperties = this.getCredentialProperties(credentialsTypeName);
+				NodeHelpers.mergeNodeProperties(combineProperties, mergeCredentialProperties);
+			}
+
+			// The properties defined on the parent credentials take presidence
+			NodeHelpers.mergeNodeProperties(combineProperties, credentialsData.properties);
+
+			return combineProperties;
+		},
+
 		async loadCurrentCredential() {
 			this.credentialId = this.activeId;
 
