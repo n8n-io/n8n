@@ -22,7 +22,7 @@ export class CamundaCloudTrigger implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Camunda Cloud Trigger',
 		name: 'camundaCloudTrigger',
-		subtitle: '="task: " + {{$parameter["taskType"]',
+		subtitle: '=task: {{$parameter["taskType"]',
 		icon: 'file:camundaCloud.svg',
 		group: ['trigger'],
 		version: 1,
