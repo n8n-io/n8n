@@ -27,7 +27,7 @@
 					</n8n-menu>
 				</div>
 				<div :class="$style.mainContent" v-if="activeTab === 'connection'">
-					<div :class="$style.infotip"><n8n-icon icon="info-circle"/> Need help filling out these fields? <a :href="credentialType.documentationUrl" target="_blank">Open docs</a></div>
+					<div :class="$style.infotip"><n8n-icon icon="info-circle"/> Need help filling out these fields? <a :href="documentationUrl" target="_blank">Open docs</a></div>
 					<credentials-input
 						:credentialTypeData="credentialType"
 						:credentialData="credentialData"
@@ -178,6 +178,19 @@ export default mixins(
 		},
 		parentTypes(): string[] {
 			return this.getParentTypes(this.credentialTypeName);
+		},
+		documentationUrl(): string {
+			const type = this.credentialType;
+
+			if (type.documentationUrl && type.documentationUrl.startsWith('http')) {
+				return type.documentationUrl;
+			}
+
+			if (type.documentationUrl) {
+				return `https://docs.n8n.io/credentials/${type.documentationUrl}/?utm_source=n8n_app&utm_medium=left_nav_menu&utm_campaign=create_new_credentials_modal`;
+			}
+
+			return '';
 		},
 	},
 	methods: {

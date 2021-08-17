@@ -32,12 +32,6 @@ const module: Module<ICredentialsState, IRootState> = {
 			state.credentialTypes = credentialTypes.reduce((accu: ICredentialTypeMap, cred: ICredentialType) => {
 				accu[cred.name] = cred;
 
-				if (cred.documentationUrl !== undefined) {
-					if (!cred.documentationUrl.startsWith('http')) {
-						cred.documentationUrl = 'https://docs.n8n.io/credentials/' + cred.documentationUrl + '/?utm_source=n8n_app&utm_medium=left_nav_menu&utm_campaign=create_new_credentials_modal';
-					}
-				}
-
 				return accu;
 			}, {});
 		},

@@ -3,7 +3,7 @@
 		<div v-if="isOAuthType && credentialProperties.length">
 			<n8n-input-label label="OAuth redirect url">
 				<div :class="$style.copyText" @click="copyCallbackUrl">
-					{{oAuthCallbackUrl}}
+					<span>{{oAuthCallbackUrl}}</span>
 					<div :class="$style.copyButton">Click to copy</div>
 				</div>
 			</n8n-input-label>
@@ -175,13 +175,16 @@ export default mixins(
 }
 
 .copyText {
-	font-family: Monaco;
+	span {
+		font-family: Monaco;
+		line-height: 1.5;
+	}
+
 	padding: var(--spacing-xs);
 	background-color: var(--color-background-light);
 	border: var(--border-base);
 	border-radius: var(--border-radius-base);
 	cursor: pointer;
-	display: inline-block;
 	position: relative;
 
 	&:hover {
