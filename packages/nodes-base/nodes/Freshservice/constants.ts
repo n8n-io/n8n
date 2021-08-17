@@ -1,4 +1,4 @@
-export const LANGUAGES = {
+const RAW_LANGUAGES: { [key: string]: string } = {
 	en: 'English',
 	ar: 'Arabic',
 	ca: 'Catalan',
@@ -36,3 +36,7 @@ export const LANGUAGES = {
 	'zh-CN': 'Chinese (Simplified)',
 	'zh-TW': 'Chinese (Traditional)',
 };
+
+export const LANGUAGES = Object.keys(RAW_LANGUAGES).map((key) => {
+	return ({ value: key, name: RAW_LANGUAGES[key] });
+});

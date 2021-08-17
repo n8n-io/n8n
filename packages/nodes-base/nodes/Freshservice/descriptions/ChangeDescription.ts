@@ -51,9 +51,48 @@ export const changeFields = [
 	// ----------------------------------------
 	{
 		displayName: 'Requester ID',
-		name: 'requester_id',
+		name: 'requesterId',
 		description: 'ID of the initiator of the change',
-		type: 'string',
+		type: 'options',
+		required: true,
+		default: '',
+		typeOptions: {
+			loadOptionsMethod: [
+				'getRequesters',
+			],
+		},
+		displayOptions: {
+			show: {
+				resource: [
+					'change',
+				],
+				operation: [
+					'create',
+				],
+			},
+		},
+	},
+	{
+		displayName: 'Planned Start Date',
+		name: 'planned_start_date',
+		type: 'dateTime',
+		required: true,
+		default: '',
+		displayOptions: {
+			show: {
+				resource: [
+					'change',
+				],
+				operation: [
+					'create',
+				],
+			},
+		},
+	},
+	{
+		displayName: 'Planned End Date',
+		name: 'planned_end_date',
+		type: 'dateTime',
 		required: true,
 		default: '',
 		displayOptions: {
@@ -97,38 +136,6 @@ export const changeFields = [
 				},
 			},
 			{
-				displayName: 'Approval Status',
-				name: 'approval_status',
-				type: 'options',
-				default: 1,
-				options: [
-					{
-						name: 'Open',
-						value: 1,
-					},
-					{
-						name: 'Planning',
-						value: 2,
-					},
-					{
-						name: 'Approval',
-						value: 3,
-					},
-					{
-						name: 'Pending Release',
-						value: 4,
-					},
-					{
-						name: 'Pending Review',
-						value: 5,
-					},
-					{
-						name: 'Closed',
-						value: 6,
-					},
-				],
-			},
-			{
 				displayName: 'Change Type',
 				name: 'change_type',
 				type: 'options',
@@ -155,7 +162,7 @@ export const changeFields = [
 			{
 				displayName: 'Department ID',
 				name: 'department_id',
-				type: 'option',
+				type: 'options',
 				default: '',
 				description: 'ID of the department initiating the change',
 				typeOptions: {
@@ -174,7 +181,7 @@ export const changeFields = [
 			{
 				displayName: 'Group ID',
 				name: 'group_id',
-				type: 'option',
+				type: 'options',
 				default: '',
 				description: 'ID of the agent group to which the change is assigned',
 				typeOptions: {
@@ -345,8 +352,48 @@ export const changeFields = [
 	//              change: getAll
 	// ----------------------------------------
 	{
+		displayName: 'Return All',
+		name: 'returnAll',
+		type: 'boolean',
+		default: false,
+		description: 'Whether to return all results or only up to a given limit',
+		displayOptions: {
+			show: {
+				resource: [
+					'change',
+				],
+				operation: [
+					'getAll',
+				],
+			},
+		},
+	},
+	{
+		displayName: 'Limit',
+		name: 'limit',
+		type: 'number',
+		default: 50,
+		description: 'How many results to return',
+		typeOptions: {
+			minValue: 1,
+		},
+		displayOptions: {
+			show: {
+				resource: [
+					'change',
+				],
+				operation: [
+					'getAll',
+				],
+				returnAll: [
+					false,
+				],
+			},
+		},
+	},
+	{
 		displayName: 'Filters',
-		name: 'Filters',
+		name: 'filters',
 		type: 'collection',
 		placeholder: 'Add Filter',
 		default: {},
@@ -413,46 +460,6 @@ export const changeFields = [
 			},
 		],
 	},
-	{
-		displayName: 'Return All',
-		name: 'returnAll',
-		type: 'boolean',
-		default: false,
-		description: 'Whether to return all results or only up to a given limit',
-		displayOptions: {
-			show: {
-				resource: [
-					'change',
-				],
-				operation: [
-					'getAll',
-				],
-			},
-		},
-	},
-	{
-		displayName: 'Limit',
-		name: 'limit',
-		type: 'number',
-		default: 50,
-		description: 'How many results to return',
-		typeOptions: {
-			minValue: 1,
-		},
-		displayOptions: {
-			show: {
-				resource: [
-					'change',
-				],
-				operation: [
-					'getAll',
-				],
-				returnAll: [
-					false,
-				],
-			},
-		},
-	},
 
 	// ----------------------------------------
 	//              change: update
@@ -477,7 +484,7 @@ export const changeFields = [
 	},
 	{
 		displayName: 'Update Fields',
-		name: 'Update Fields',
+		name: 'updateFields',
 		type: 'collection',
 		placeholder: 'Add Field',
 		default: {},
@@ -503,38 +510,6 @@ export const changeFields = [
 						'getAgents',
 					],
 				},
-			},
-			{
-				displayName: 'Approval Status',
-				name: 'approval_status',
-				type: 'options',
-				default: 1,
-				options: [
-					{
-						name: 'Open',
-						value: 1,
-					},
-					{
-						name: 'Planning',
-						value: 2,
-					},
-					{
-						name: 'Approval',
-						value: 3,
-					},
-					{
-						name: 'Pending Release',
-						value: 4,
-					},
-					{
-						name: 'Pending Review',
-						value: 5,
-					},
-					{
-						name: 'Closed',
-						value: 6,
-					},
-				],
 			},
 			{
 				displayName: 'Change Type',
@@ -609,31 +584,6 @@ export const changeFields = [
 					{
 						name: 'High',
 						value: 3,
-					},
-				],
-			},
-			{
-				displayName: 'Priority',
-				name: 'priority',
-				type: 'options',
-				default: 1,
-				description: 'Priority of the change',
-				options: [
-					{
-						name: 'Low',
-						value: 1,
-					},
-					{
-						name: 'Medium',
-						value: 2,
-					},
-					{
-						name: 'High',
-						value: 3,
-					},
-					{
-						name: 'Urgent',
-						value: 4,
 					},
 				],
 			},

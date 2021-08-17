@@ -50,9 +50,9 @@ export const announcementFields = [
 	//           announcement: create
 	// ----------------------------------------
 	{
-		displayName: 'Body',
-		name: 'body',
-		description: 'Body of the announcement in plain text',
+		displayName: 'Title',
+		name: 'title',
+		description: 'Title of the announcement',
 		type: 'string',
 		required: true,
 		default: '',
@@ -68,10 +68,59 @@ export const announcementFields = [
 		},
 	},
 	{
-		displayName: 'Title',
-		name: 'title',
-		description: 'Title of the announcement',
+		displayName: 'Body in HTML',
+		name: 'body_html',
+		description: 'Body of the announcement in HTML',
 		type: 'string',
+		required: true,
+		default: '',
+		displayOptions: {
+			show: {
+				resource: [
+					'announcement',
+				],
+				operation: [
+					'create',
+				],
+			},
+		},
+	},
+	{
+		displayName: 'Visibility',
+		name: 'visibility',
+		type: 'options',
+		required: true,
+		default: 'everyone',
+		options: [
+			{
+				name: 'Agents Only',
+				value: 'agents_only',
+			},
+			{
+				name: 'Agents and Groups',
+				value: 'grouped_visibility',
+			},
+			{
+				name: 'Everyone',
+				value: 'everyone',
+			},
+		],
+		displayOptions: {
+			show: {
+				resource: [
+					'announcement',
+				],
+				operation: [
+					'create',
+				],
+			},
+		},
+	},
+	{
+		displayName: 'Visible From',
+		name: 'visible_from',
+		description: 'Timestamp at which announcement becomes active',
+		type: 'dateTime',
 		required: true,
 		default: '',
 		displayOptions: {
@@ -108,13 +157,6 @@ export const announcementFields = [
 				type: 'string',
 				default: '',
 				description: 'Comma-separated additional email addresses to which the announcement needs to be sent',
-			},
-			{
-				displayName: 'Body in HTML',
-				name: 'body_html',
-				type: 'string',
-				default: '',
-				description: 'Body of the announcement in HTML',
 			},
 			{
 				displayName: 'Created By',
@@ -161,24 +203,11 @@ export const announcementFields = [
 				],
 			},
 			{
-				displayName: 'Visibility',
-				name: 'visibility',
-				type: 'options',
-				default: 'everyone',
-				options: [
-					{
-						name: 'Agents Only',
-						value: 'agents_only',
-					},
-					{
-						name: 'Agents and Groups',
-						value: 'agents_and_groups',
-					},
-					{
-						name: 'Everyone',
-						value: 'everyone',
-					},
-				],
+				displayName: 'Visible Until',
+				name: 'visible_till',
+				description: 'Timestamp until which announcement is active',
+				type: 'dateTime',
+				default: '',
 			},
 		],
 	},
@@ -294,7 +323,7 @@ export const announcementFields = [
 	},
 	{
 		displayName: 'Update Fields',
-		name: 'Update Fields',
+		name: 'updateFields',
 		type: 'collection',
 		placeholder: 'Add Field',
 		default: {},
@@ -317,30 +346,11 @@ export const announcementFields = [
 				description: 'Comma-separated additional email addresses to which the announcement needs to be sent',
 			},
 			{
-				displayName: 'Body',
-				name: 'body',
-				type: 'string',
-				default: '',
-				description: 'Body of the announcement in plain text',
-			},
-			{
 				displayName: 'Body in HTML',
 				name: 'body_html',
 				type: 'string',
 				default: '',
 				description: 'Body of the announcement in HTML',
-			},
-			{
-				displayName: 'Created By',
-				name: 'created_by',
-				type: 'options',
-				default: '',
-				description: 'ID of the agent who created this announcement',
-				typeOptions: {
-					loadOptionsMethod: [
-						'getAgents',
-					],
-				},
 			},
 			{
 				displayName: 'Departments',
@@ -353,26 +363,6 @@ export const announcementFields = [
 						'getDepartments',
 					],
 				},
-			},
-			{
-				displayName: 'State',
-				name: 'state',
-				type: 'options',
-				default: 'active',
-				options: [
-					{
-						name: 'Active',
-						value: 'active',
-					},
-					{
-						name: 'Archived',
-						value: 'archived',
-					},
-					{
-						name: 'Scheduled',
-						value: 'scheduled',
-					},
-				],
 			},
 			{
 				displayName: 'Title',
@@ -393,7 +383,7 @@ export const announcementFields = [
 					},
 					{
 						name: 'Agents and Groups',
-						value: 'agents_and_groups',
+						value: 'grouped_visibility',
 					},
 					{
 						name: 'Everyone',

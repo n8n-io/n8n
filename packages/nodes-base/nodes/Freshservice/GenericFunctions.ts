@@ -15,7 +15,9 @@ import {
 } from 'request';
 
 import {
-	FreshserviceCredentials, RolesParameter,
+	FreshserviceCredentials,
+	LoadedUser,
+	RolesParameter,
 } from './types';
 
 export async function freshserviceApiRequest(
@@ -49,7 +51,10 @@ export async function freshserviceApiRequest(
 	}
 
 	try {
-		return await this.helpers.request!(options);
+		console.log(options);
+		const responseData = await this.helpers.request!(options);
+		// console.log(responseData);
+		return responseData;
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error);
 	}
@@ -63,14 +68,18 @@ export async function freshserviceApiRequestAllItems(
 	qs: IDataObject = {},
 ) {
 	const returnData: IDataObject[] = [];
-	let responseData: any; // tslint:disable-line:no-any
+	qs.page = 1;
+	let items;
 
 	do {
-		responseData = await freshserviceApiRequest.call(this, method, endpoint, body, qs);
-		// TODO: Get next page
-		returnData.push(...responseData);
+		const responseData = await freshserviceApiRequest.call(this, method, endpoint, body, qs);
+		const key = Object.keys(responseData)[0];
+		items = responseData[key];
+		if (!items.length) return returnData;
+		returnData.push(...items);
+		qs.page++;
 	} while (
-		false // TODO: Add condition for total not yet reached
+		items.length >= 30
 	);
 
 	return returnData;
@@ -99,8 +108,18 @@ export async function handleListing(
  * Transform a loaded resources into load options.
  */
 export const toOptions = (loadedResources: LoadedResource[]) => {
-	return loadedResources
+	return (loadedResources as LoadedResource[])
 		.map(({ id, name }) => ({ value: id, name }))
+		.sort((a, b) => a.name.localeCompare(b.name));
+};
+
+export const toUserOptions = (loadedUsers: LoadedUser[]) => {
+	return loadedUsers
+		.map(({ id, last_name, first_name }) => {
+			return {
+				value: id,
+				name: last_name ? `${last_name}, ${first_name}` : `${first_name}` };
+		})
 		.sort((a, b) => a.name.localeCompare(b.name));
 };
 
@@ -111,7 +130,7 @@ export function validateAssignmentScopeGroup(
 	this: IExecuteFunctions,
 	roles: RolesParameter,
 ) {
-	if (!roles.roleProperties.length) {
+	if (!roles.roleProperties?.length) {
 		throw new NodeOperationError(
 			this.getNode(),
 			'Please specify a role for the agent to create.',
@@ -147,3 +166,34 @@ export function adjustAgentRoles(roles: RolesParameter) {
 		}),
 	};
 }
+
+/**
+ * Convert filters into the filter query string format expected by Freshservice API.
+ */
+export function formatFilters(filters: IDataObject) {
+	return {
+		query: Object.keys(filters).map(key => `${key}:'${filters[key]}'`).join(' AND '),
+	};
+}
+
+export function validateUpdateFields(
+	this: IExecuteFunctions,
+	updateFields: IDataObject,
+	resource: string,
+) {
+	if (!Object.keys(updateFields).length) {
+		const twoWordResources: { [key: string]: string } = {
+			agentGroup: 'agent group',
+			agentRole: 'agent role',
+			assetType: 'asset type',
+			requesterGroup: 'requester group',
+		};
+
+		throw new NodeOperationError(
+			this.getNode(),
+			`Please enter at least one field to update for the ${twoWordResources[resource] ?? resource}.`,
+		);
+	}
+}
+
+export const toArray = (str: string) => str.split(',').map(e => e.trim());

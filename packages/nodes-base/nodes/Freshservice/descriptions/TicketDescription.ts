@@ -132,7 +132,7 @@ export const ticketFields = [
 				description: 'ID of the group to which the ticket has been assigned',
 				typeOptions: {
 					loadOptionsMethod: [
-						'getGroups',
+						'getAgentGroups',
 					],
 				},
 			},
@@ -317,8 +317,48 @@ export const ticketFields = [
 	//              ticket: getAll
 	// ----------------------------------------
 	{
+		displayName: 'Return All',
+		name: 'returnAll',
+		type: 'boolean',
+		default: false,
+		description: 'Whether to return all results or only up to a given limit',
+		displayOptions: {
+			show: {
+				resource: [
+					'ticket',
+				],
+				operation: [
+					'getAll',
+				],
+			},
+		},
+	},
+	{
+		displayName: 'Limit',
+		name: 'limit',
+		type: 'number',
+		default: 50,
+		description: 'How many results to return',
+		typeOptions: {
+			minValue: 1,
+		},
+		displayOptions: {
+			show: {
+				resource: [
+					'ticket',
+				],
+				operation: [
+					'getAll',
+				],
+				returnAll: [
+					false,
+				],
+			},
+		},
+	},
+	{
 		displayName: 'Filters',
-		name: 'Filters',
+		name: 'filters',
 		type: 'collection',
 		placeholder: 'Add Filter',
 		default: {},
@@ -447,46 +487,6 @@ export const ticketFields = [
 			},
 		],
 	},
-	{
-		displayName: 'Return All',
-		name: 'returnAll',
-		type: 'boolean',
-		default: false,
-		description: 'Whether to return all results or only up to a given limit',
-		displayOptions: {
-			show: {
-				resource: [
-					'ticket',
-				],
-				operation: [
-					'getAll',
-				],
-			},
-		},
-	},
-	{
-		displayName: 'Limit',
-		name: 'limit',
-		type: 'number',
-		default: 50,
-		description: 'How many results to return',
-		typeOptions: {
-			minValue: 1,
-		},
-		displayOptions: {
-			show: {
-				resource: [
-					'ticket',
-				],
-				operation: [
-					'getAll',
-				],
-				returnAll: [
-					false,
-				],
-			},
-		},
-	},
 
 	// ----------------------------------------
 	//              ticket: update
@@ -511,7 +511,7 @@ export const ticketFields = [
 	},
 	{
 		displayName: 'Update Fields',
-		name: 'Update Fields',
+		name: 'updateFields',
 		type: 'collection',
 		placeholder: 'Add Field',
 		default: {},

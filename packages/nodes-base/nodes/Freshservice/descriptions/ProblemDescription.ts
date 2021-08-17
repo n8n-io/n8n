@@ -334,7 +334,7 @@ export const problemFields = [
 	},
 	{
 		displayName: 'Update Fields',
-		name: 'Update Fields',
+		name: 'updateFields',
 		type: 'collection',
 		placeholder: 'Add Field',
 		default: {},

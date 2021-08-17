@@ -50,9 +50,8 @@ export const assetFields = [
 	//              asset: create
 	// ----------------------------------------
 	{
-		displayName: 'Asset Type ID',
-		name: 'asset_type_id',
-		description: 'ID of the asset type',
+		displayName: 'Asset Name',
+		name: 'name',
 		type: 'string',
 		required: true,
 		default: '',
@@ -68,12 +67,17 @@ export const assetFields = [
 		},
 	},
 	{
-		displayName: 'Name',
-		name: 'name',
-		description: 'Name of the asset',
-		type: 'string',
+		displayName: 'Asset Type ID',
+		name: 'asset_type_id',
+		description: 'ID of the asset type',
+		type: 'options',
 		required: true,
 		default: '',
+		typeOptions: {
+			loadOptionsMethod: [
+				'getAssetTypes',
+			],
+		},
 		displayOptions: {
 			show: {
 				resource: [
@@ -157,7 +161,7 @@ export const assetFields = [
 			{
 				displayName: 'Location ID',
 				name: 'location_id',
-				type: 'option',
+				type: 'options',
 				default: '',
 				description: 'ID of the associated location',
 				typeOptions: {
@@ -170,15 +174,15 @@ export const assetFields = [
 				displayName: 'Usage Type',
 				name: 'usage_type',
 				type: 'options',
-				default: 'Loaner',
+				default: 'loaner',
 				options: [
 					{
 						name: 'Loaner',
-						value: 'Loaner',
+						value: 'loaner',
 					},
 					{
 						name: 'Permanent',
-						value: 'Permanent',
+						value: 'permanent',
 					},
 				],
 			},
@@ -189,9 +193,9 @@ export const assetFields = [
 	//              asset: delete
 	// ----------------------------------------
 	{
-		displayName: 'Asset ID',
-		name: 'assetId',
-		description: 'ID of the asset to delete',
+		displayName: 'Asset Display ID',
+		name: 'assetDisplayId',
+		description: 'Display ID of the asset to delete',
 		type: 'string',
 		required: true,
 		default: '',
@@ -211,9 +215,9 @@ export const assetFields = [
 	//                asset: get
 	// ----------------------------------------
 	{
-		displayName: 'Asset ID',
-		name: 'assetId',
-		description: 'ID of the asset to retrieve',
+		displayName: 'Asset Display ID',
+		name: 'assetDisplayId',
+		description: 'Display ID of the asset to retrieve',
 		type: 'string',
 		required: true,
 		default: '',
@@ -233,8 +237,48 @@ export const assetFields = [
 	//              asset: getAll
 	// ----------------------------------------
 	{
+		displayName: 'Return All',
+		name: 'returnAll',
+		type: 'boolean',
+		default: false,
+		description: 'Whether to return all results or only up to a given limit',
+		displayOptions: {
+			show: {
+				resource: [
+					'asset',
+				],
+				operation: [
+					'getAll',
+				],
+			},
+		},
+	},
+	{
+		displayName: 'Limit',
+		name: 'limit',
+		type: 'number',
+		default: 50,
+		description: 'How many results to return',
+		typeOptions: {
+			minValue: 1,
+		},
+		displayOptions: {
+			show: {
+				resource: [
+					'asset',
+				],
+				operation: [
+					'getAll',
+				],
+				returnAll: [
+					false,
+				],
+			},
+		},
+	},
+	{
 		displayName: 'Filters',
-		name: 'Filters',
+		name: 'filters',
 		type: 'collection',
 		placeholder: 'Add Filter',
 		default: {},
@@ -266,7 +310,7 @@ export const assetFields = [
 				name: 'asset_state',
 				type: 'string',
 				default: '',
-				description: 'Status of the asset to filter by, e.g. "In use"',
+				description: 'Status of the asset to filter by. For example, "In use".',
 			},
 			{
 				displayName: 'Asset Type ID',
@@ -313,54 +357,14 @@ export const assetFields = [
 			},
 		],
 	},
-	{
-		displayName: 'Return All',
-		name: 'returnAll',
-		type: 'boolean',
-		default: false,
-		description: 'Whether to return all results or only up to a given limit',
-		displayOptions: {
-			show: {
-				resource: [
-					'asset',
-				],
-				operation: [
-					'getAll',
-				],
-			},
-		},
-	},
-	{
-		displayName: 'Limit',
-		name: 'limit',
-		type: 'number',
-		default: 50,
-		description: 'How many results to return',
-		typeOptions: {
-			minValue: 1,
-		},
-		displayOptions: {
-			show: {
-				resource: [
-					'asset',
-				],
-				operation: [
-					'getAll',
-				],
-				returnAll: [
-					false,
-				],
-			},
-		},
-	},
 
 	// ----------------------------------------
 	//              asset: update
 	// ----------------------------------------
 	{
-		displayName: 'Asset ID',
-		name: 'assetId',
-		description: 'ID of the asset to update',
+		displayName: 'Asset Display ID',
+		name: 'assetDisplayId',
+		description: 'Display ID of the asset to update',
 		type: 'string',
 		required: true,
 		default: '',
@@ -377,7 +381,7 @@ export const assetFields = [
 	},
 	{
 		displayName: 'Update Fields',
-		name: 'Update Fields',
+		name: 'updateFields',
 		type: 'collection',
 		placeholder: 'Add Field',
 		default: {},
@@ -469,7 +473,7 @@ export const assetFields = [
 				},
 			},
 			{
-				displayName: 'Name',
+				displayName: 'Asset Name',
 				name: 'name',
 				type: 'string',
 				default: '',
@@ -479,15 +483,15 @@ export const assetFields = [
 				displayName: 'Usage Type',
 				name: 'usage_type',
 				type: 'options',
-				default: 'Loaner',
+				default: 'loaner',
 				options: [
 					{
 						name: 'Loaner',
-						value: 'Loaner',
+						value: 'loaner',
 					},
 					{
 						name: 'Permanent',
-						value: 'Permanent',
+						value: 'permanent',
 					},
 				],
 			},

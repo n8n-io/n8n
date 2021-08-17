@@ -130,6 +130,7 @@ export const agentGroupFields = [
 			{
 				displayName: 'Unassigned For',
 				name: 'unassigned_for',
+				description: 'Time after which an escalation email is sent if a ticket in the group remains unassigned',
 				type: 'options',
 				default: '30m',
 				options: [
@@ -281,7 +282,7 @@ export const agentGroupFields = [
 	},
 	{
 		displayName: 'Update Fields',
-		name: 'Update Fields',
+		name: 'updateFields',
 		type: 'collection',
 		placeholder: 'Add Field',
 		default: {},
@@ -319,7 +320,7 @@ export const agentGroupFields = [
 				displayName: 'Members',
 				name: 'members',
 				type: 'multiOptions',
-				default: '',
+				default: [],
 				description: 'Comma-separated IDs of agent users who are members of this group',
 				typeOptions: {
 					loadOptionsMethod: [
@@ -349,6 +350,7 @@ export const agentGroupFields = [
 			{
 				displayName: 'Unassigned For',
 				name: 'unassigned_for',
+				description: 'Time after which an escalation email is sent if a ticket in the group remains unassigned',
 				type: 'options',
 				default: '30m',
 				options: [

@@ -149,32 +149,6 @@ export const departmentFields = [
 	//            department: getAll
 	// ----------------------------------------
 	{
-		displayName: 'Filters',
-		name: 'Filters',
-		type: 'collection',
-		placeholder: 'Add Filter',
-		default: {},
-		displayOptions: {
-			show: {
-				resource: [
-					'department',
-				],
-				operation: [
-					'getAll',
-				],
-			},
-		},
-		options: [
-			{
-				displayName: 'Name',
-				name: 'name',
-				type: 'string',
-				default: '',
-				description: 'Name of the department',
-			},
-		],
-	},
-	{
 		displayName: 'Return All',
 		name: 'returnAll',
 		type: 'boolean',
@@ -214,6 +188,32 @@ export const departmentFields = [
 			},
 		},
 	},
+	{
+		displayName: 'Filters',
+		name: 'filters',
+		type: 'collection',
+		placeholder: 'Add Filter',
+		default: {},
+		displayOptions: {
+			show: {
+				resource: [
+					'department',
+				],
+				operation: [
+					'getAll',
+				],
+			},
+		},
+		options: [
+			{
+				displayName: 'Name',
+				name: 'name',
+				type: 'string',
+				default: '',
+				description: 'Name of the department',
+			},
+		],
+	},
 
 	// ----------------------------------------
 	//            department: update
@@ -238,7 +238,7 @@ export const departmentFields = [
 	},
 	{
 		displayName: 'Update Fields',
-		name: 'Update Fields',
+		name: 'updateFields',
 		type: 'collection',
 		placeholder: 'Add Field',
 		default: {},

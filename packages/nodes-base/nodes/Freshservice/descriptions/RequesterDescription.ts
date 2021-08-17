@@ -124,7 +124,7 @@ export const requesterFields = [
 				type: 'options',
 				default: '',
 				description: 'Language used by the requester',
-				options: Object.entries(LANGUAGES).forEach((key, value) => ({ name: value, id: key })),
+				options: LANGUAGES,
 			},
 			{
 				displayName: 'Last Name',
@@ -240,8 +240,48 @@ export const requesterFields = [
 	//            requester: getAll
 	// ----------------------------------------
 	{
+		displayName: 'Return All',
+		name: 'returnAll',
+		type: 'boolean',
+		default: false,
+		description: 'Whether to return all results or only up to a given limit',
+		displayOptions: {
+			show: {
+				resource: [
+					'requester',
+				],
+				operation: [
+					'getAll',
+				],
+			},
+		},
+	},
+	{
+		displayName: 'Limit',
+		name: 'limit',
+		type: 'number',
+		default: 50,
+		description: 'How many results to return',
+		typeOptions: {
+			minValue: 1,
+		},
+		displayOptions: {
+			show: {
+				resource: [
+					'requester',
+				],
+				operation: [
+					'getAll',
+				],
+				returnAll: [
+					false,
+				],
+			},
+		},
+	},
+	{
 		displayName: 'Filters',
-		name: 'Filters',
+		name: 'filters',
 		type: 'collection',
 		placeholder: 'Add Filter',
 		default: {},
@@ -288,7 +328,7 @@ export const requesterFields = [
 				type: 'options',
 				default: '',
 				description: 'Language to filter by',
-				options: Object.entries(LANGUAGES).forEach((key, value) => ({ name: value, id: key })),
+				options: LANGUAGES,
 			},
 			{
 				displayName: 'Last Name',
@@ -339,46 +379,6 @@ export const requesterFields = [
 			},
 		],
 	},
-	{
-		displayName: 'Return All',
-		name: 'returnAll',
-		type: 'boolean',
-		default: false,
-		description: 'Whether to return all results or only up to a given limit',
-		displayOptions: {
-			show: {
-				resource: [
-					'requester',
-				],
-				operation: [
-					'getAll',
-				],
-			},
-		},
-	},
-	{
-		displayName: 'Limit',
-		name: 'limit',
-		type: 'number',
-		default: 50,
-		description: 'How many results to return',
-		typeOptions: {
-			minValue: 1,
-		},
-		displayOptions: {
-			show: {
-				resource: [
-					'requester',
-				],
-				operation: [
-					'getAll',
-				],
-				returnAll: [
-					false,
-				],
-			},
-		},
-	},
 
 	// ----------------------------------------
 	//            requester: update
@@ -403,7 +403,7 @@ export const requesterFields = [
 	},
 	{
 		displayName: 'Update Fields',
-		name: 'Update Fields',
+		name: 'updateFields',
 		type: 'collection',
 		placeholder: 'Add Field',
 		default: {},

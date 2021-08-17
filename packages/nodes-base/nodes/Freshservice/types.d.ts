@@ -10,10 +10,10 @@ export type LoadedResource = {
 	name: string;
 };
 
-export type LoadedAgent = {
+export type LoadedUser = {
 	id: string;
 	first_name: string;
-	last_name: string;
+	last_name?: string;
 };
 
 export type RolesParameter = IDataObject & {
