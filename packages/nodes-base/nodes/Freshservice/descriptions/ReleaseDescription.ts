@@ -52,7 +52,6 @@ export const releaseFields = [
 	{
 		displayName: 'Subject',
 		name: 'subject',
-		description: 'Subject of the release',
 		type: 'string',
 		required: true,
 		default: '',
@@ -237,9 +236,9 @@ export const releaseFields = [
 				},
 			},
 			{
-				displayName: 'Description in HTML',
+				displayName: 'Description',
 				name: 'description',
-				description: 'Description of the release in HTML',
+				description: 'HTML supported',
 				type: 'string',
 				default: '',
 			},
@@ -401,7 +400,7 @@ export const releaseFields = [
 				name: 'description',
 				type: 'string',
 				default: '',
-				description: 'Description of the release in HTML',
+				description: 'HTML supported',
 			},
 			{
 				displayName: 'Group ID',
@@ -496,7 +495,6 @@ export const releaseFields = [
 				name: 'subject',
 				type: 'string',
 				default: '',
-				description: 'Subject of the release',
 			},
 		],
 	},

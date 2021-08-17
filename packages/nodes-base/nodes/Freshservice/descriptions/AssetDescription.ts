@@ -69,7 +69,6 @@ export const assetFields = [
 	{
 		displayName: 'Asset Type ID',
 		name: 'asset_type_id',
-		description: 'ID of the asset type',
 		type: 'options',
 		required: true,
 		default: '',
@@ -111,7 +110,7 @@ export const assetFields = [
 				name: 'agent_id',
 				type: 'options',
 				default: '',
-				description: 'ID of the agent by whom the asset is managed',
+				description: 'ID of the agent who manages the asset',
 				typeOptions: {
 					loadOptionsMethod: [
 						'getAgents',
@@ -123,7 +122,6 @@ export const assetFields = [
 				name: 'department_id',
 				type: 'options',
 				default: '',
-				description: 'ID of the associated department',
 				typeOptions: {
 					loadOptionsMethod: [
 						'getDepartments',
@@ -135,14 +133,12 @@ export const assetFields = [
 				name: 'description',
 				type: 'string',
 				default: '',
-				description: 'Description of the asset',
 			},
 			{
 				displayName: 'Impact',
 				name: 'impact',
 				type: 'options',
 				default: 'low',
-				description: 'Impact of the asset',
 				options: [
 					{
 						name: 'Low',
@@ -163,7 +159,6 @@ export const assetFields = [
 				name: 'location_id',
 				type: 'options',
 				default: '',
-				description: 'ID of the associated location',
 				typeOptions: {
 					loadOptionsMethod: [
 						'getLocations',
@@ -401,7 +396,7 @@ export const assetFields = [
 				name: 'agent_id',
 				type: 'options',
 				default: '',
-				description: 'ID of the agent by whom the asset is managed',
+				description: 'ID of the agent who manages the asset',
 				typeOptions: {
 					loadOptionsMethod: [
 						'getAgents',
@@ -425,7 +420,6 @@ export const assetFields = [
 				name: 'department_id',
 				type: 'options',
 				default: '',
-				description: 'ID of the associated department',
 				typeOptions: {
 					loadOptionsMethod: [
 						'getDepartments',
@@ -437,14 +431,12 @@ export const assetFields = [
 				name: 'description',
 				type: 'string',
 				default: '',
-				description: 'Description of the asset',
 			},
 			{
 				displayName: 'Impact',
 				name: 'impact',
 				type: 'options',
 				default: 'low',
-				description: 'Impact of the asset',
 				options: [
 					{
 						name: 'Low',
@@ -465,7 +457,6 @@ export const assetFields = [
 				name: 'location_id',
 				type: 'options',
 				default: '',
-				description: 'ID of the associated location',
 				typeOptions: {
 					loadOptionsMethod: [
 						'getLocations',

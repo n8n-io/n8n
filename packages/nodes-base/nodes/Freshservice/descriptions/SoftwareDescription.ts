@@ -18,27 +18,27 @@ export const softwareOperations = [
 			{
 				name: 'Create',
 				value: 'create',
-				description: 'Create a software',
+				description: 'Create a software application',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
-				description: 'Delete a software',
+				description: 'Delete a software application',
 			},
 			{
 				name: 'Get',
 				value: 'get',
-				description: 'Retrieve a software',
+				description: 'Retrieve a software application',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
-				description: 'Retrieve all softwares',
+				description: 'Retrieve all software applications',
 			},
 			{
 				name: 'Update',
 				value: 'update',
-				description: 'Update a software',
+				description: 'Update a software application',
 			},
 		],
 		default: 'create',
@@ -83,7 +83,6 @@ export const softwareFields = [
 	{
 		displayName: 'Name',
 		name: 'name',
-		description: 'Name of the software',
 		type: 'string',
 		required: true,
 		default: '',
@@ -116,25 +115,16 @@ export const softwareFields = [
 		},
 		options: [
 			{
-				displayName: 'Category',
-				name: 'category',
-				type: 'string',
-				default: '',
-				description: 'Category of the software',
-			},
-			{
 				displayName: 'Description',
 				name: 'description',
 				type: 'string',
 				default: '',
-				description: 'Description of the software',
 			},
 			{
 				displayName: 'Notes',
 				name: 'notes',
 				type: 'string',
 				default: '',
-				description: 'Notes about the software',
 			},
 			{
 				displayName: 'Status',
@@ -165,7 +155,7 @@ export const softwareFields = [
 	{
 		displayName: 'Software ID',
 		name: 'softwareId',
-		description: 'ID of the software to delete',
+		description: 'ID of the software application to delete',
 		type: 'string',
 		required: true,
 		default: '',
@@ -187,7 +177,7 @@ export const softwareFields = [
 	{
 		displayName: 'Software ID',
 		name: 'softwareId',
-		description: 'ID of the software to retrieve',
+		description: 'ID of the software application to retrieve',
 		type: 'string',
 		required: true,
 		default: '',
@@ -253,7 +243,7 @@ export const softwareFields = [
 	{
 		displayName: 'Software ID',
 		name: 'softwareId',
-		description: 'ID of the software to update',
+		description: 'ID of the software application to update',
 		type: 'string',
 		required: true,
 		default: '',
@@ -307,32 +297,22 @@ export const softwareFields = [
 				],
 			},
 			{
-				displayName: 'Category',
-				name: 'category',
-				type: 'string',
-				default: '',
-				description: 'Category of the software',
-			},
-			{
 				displayName: 'Description',
 				name: 'description',
 				type: 'string',
 				default: '',
-				description: 'Description of the software',
 			},
 			{
 				displayName: 'Name',
 				name: 'name',
 				type: 'string',
 				default: '',
-				description: 'Name of the software',
 			},
 			{
 				displayName: 'Notes',
 				name: 'notes',
 				type: 'string',
 				default: '',
-				description: 'Notes about the software',
 			},
 			{
 				displayName: 'Status',

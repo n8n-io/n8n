@@ -53,7 +53,6 @@ export const requesterFields = [
 	{
 		displayName: 'First Name',
 		name: 'first_name',
-		description: 'First name of the requester',
 		type: 'string',
 		required: true,
 		default: '',
@@ -73,7 +72,6 @@ export const requesterFields = [
 		name: 'primary_email',
 		type: 'string',
 		default: '',
-		description: 'Primary email address of the requester',
 		displayOptions: {
 			show: {
 				resource: [
@@ -107,14 +105,12 @@ export const requesterFields = [
 				name: 'address',
 				type: 'string',
 				default: '',
-				description: 'Address of the requester',
 			},
 			{
 				displayName: 'Background Information',
 				name: 'background_information',
 				type: 'string',
 				default: '',
-				description: 'Background information of the requester',
 			},
 			{
 				displayName: 'Department IDs',
@@ -133,14 +129,12 @@ export const requesterFields = [
 				name: 'job_title',
 				type: 'string',
 				default: '',
-				description: 'Job title of the requester',
 			},
 			{
 				displayName: 'Language',
 				name: 'language',
 				type: 'options',
 				default: '',
-				description: 'Language used by the requester',
 				options: LANGUAGES,
 			},
 			{
@@ -148,14 +142,12 @@ export const requesterFields = [
 				name: 'last_name',
 				type: 'string',
 				default: '',
-				description: 'Last name of the requester',
 			},
 			{
 				displayName: 'Location ID',
 				name: 'location_id',
 				type: 'options',
 				default: '',
-				description: 'ID of the location associated with the requester',
 				typeOptions: {
 					loadOptionsMethod: [
 						'getLocations',
@@ -167,7 +159,6 @@ export const requesterFields = [
 				name: 'mobile_phone_number',
 				type: 'string',
 				default: '',
-				description: 'Mobile phone number of the requester',
 			},
 			{
 				displayName: 'Secondary Emails',
@@ -197,7 +188,6 @@ export const requesterFields = [
 				name: 'work_phone_number',
 				type: 'string',
 				default: '',
-				description: 'Work phone number of the requester',
 			},
 		],
 	},
@@ -311,7 +301,6 @@ export const requesterFields = [
 				name: 'department_id',
 				type: 'options',
 				default: '',
-				description: 'ID of the department of the requester to filter by',
 				typeOptions: {
 					loadOptionsMethod: [
 						'getDepartments',
@@ -323,21 +312,18 @@ export const requesterFields = [
 				name: 'first_name',
 				type: 'string',
 				default: '',
-				description: 'First name of the requester to filter by',
 			},
 			{
 				displayName: 'Job Title',
 				name: 'job_title',
 				type: 'string',
 				default: '',
-				description: 'Title of the requester to filter by',
 			},
 			{
 				displayName: 'Language',
 				name: 'language',
 				type: 'options',
 				default: '',
-				description: 'Language to filter by',
 				options: LANGUAGES,
 			},
 			{
@@ -345,14 +331,12 @@ export const requesterFields = [
 				name: 'last_name',
 				type: 'string',
 				default: '',
-				description: 'Last name of the requester to filter by',
 			},
 			{
 				displayName: 'Location ID',
 				name: 'location_id',
 				type: 'options',
 				default: '',
-				description: 'ID of the location to filter by',
 				typeOptions: {
 					loadOptionsMethod: [
 						'getLocations',
@@ -364,28 +348,18 @@ export const requesterFields = [
 				name: 'mobile_phone_number',
 				type: 'string',
 				default: '',
-				description: 'Mobile phone of the requester to filter by',
-			},
-			{
-				displayName: 'Name',
-				name: 'name',
-				type: 'string',
-				default: '',
-				description: 'Full name of the requester to filter by',
 			},
 			{
 				displayName: 'Primary Email',
 				name: 'primary_email',
 				type: 'string',
 				default: '',
-				description: 'Email address of the requester to filter by',
 			},
 			{
 				displayName: 'Work Phone Number',
 				name: 'work_phone_number',
 				type: 'string',
 				default: '',
-				description: 'Work phone of the requester to filter by',
 			},
 		],
 	},
@@ -433,14 +407,12 @@ export const requesterFields = [
 				name: 'address',
 				type: 'string',
 				default: '',
-				description: 'Address of the requester',
 			},
 			{
 				displayName: 'Background Information',
 				name: 'background_information',
 				type: 'string',
 				default: '',
-				description: 'Background information of the requester',
 			},
 			{
 				displayName: 'Department IDs',
@@ -459,21 +431,18 @@ export const requesterFields = [
 				name: 'first_name',
 				type: 'string',
 				default: '',
-				description: 'First name of the requester',
 			},
 			{
 				displayName: 'Job Title',
 				name: 'job_title',
 				type: 'string',
 				default: '',
-				description: 'Job title of the requester',
 			},
 			{
 				displayName: 'Language',
 				name: 'language',
 				type: 'options',
 				default: '',
-				description: 'Language used by the requester',
 				options: LANGUAGES,
 			},
 			{
@@ -481,14 +450,12 @@ export const requesterFields = [
 				name: 'last_name',
 				type: 'string',
 				default: '',
-				description: 'Last name of the requester',
 			},
 			{
 				displayName: 'Location ID',
 				name: 'location_id',
 				type: 'options',
 				default: '',
-				description: 'ID of the location associated with the requester',
 				typeOptions: {
 					loadOptionsMethod: [
 						'getLocations',
@@ -500,14 +467,12 @@ export const requesterFields = [
 				name: 'mobile_phone_number',
 				type: 'string',
 				default: '',
-				description: 'Mobile phone number of the requester',
 			},
 			{
 				displayName: 'Primary Email',
 				name: 'primary_email',
 				type: 'string',
 				default: '',
-				description: 'Primary email address of the requester',
 			},
 			{
 				displayName: 'Secondary Emails',
@@ -537,7 +502,6 @@ export const requesterFields = [
 				name: 'work_phone_number',
 				type: 'string',
 				default: '',
-				description: 'Work phone number of the requester',
 			},
 		],
 	},

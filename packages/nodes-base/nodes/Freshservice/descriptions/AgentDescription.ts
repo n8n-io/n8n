@@ -56,7 +56,6 @@ export const agentFields = [
 	{
 		displayName: 'Email',
 		name: 'email',
-		description: 'Email address of the agent',
 		type: 'string',
 		required: true,
 		default: '',
@@ -74,7 +73,6 @@ export const agentFields = [
 	{
 		displayName: 'First Name',
 		name: 'first_name',
-		description: 'First name of the agent',
 		type: 'string',
 		required: true,
 		default: '',
@@ -192,21 +190,19 @@ export const agentFields = [
 				name: 'address',
 				type: 'string',
 				default: '',
-				description: 'Address of the agent',
 			},
 			{
 				displayName: 'Background Information',
 				name: 'background_information',
 				type: 'string',
 				default: '',
-				description: 'Background information on the agent',
 			},
 			{
 				displayName: 'Department IDs',
 				name: 'department_ids',
 				type: 'multiOptions',
 				default: [],
-				description: 'IDs of the departments associated with the agent',
+				description: 'IDs of the departments to which the agent belongs',
 				typeOptions: {
 					loadOptionsMethod: [
 						'getDepartments',
@@ -218,14 +214,12 @@ export const agentFields = [
 				name: 'job_title',
 				type: 'string',
 				default: '',
-				description: 'Job title of the agent',
 			},
 			{
 				displayName: 'Language',
 				name: 'language',
 				type: 'options',
 				default: '',
-				description: 'Language used by the agent',
 				options: LANGUAGES,
 			},
 			{
@@ -233,14 +227,12 @@ export const agentFields = [
 				name: 'last_name',
 				type: 'string',
 				default: '',
-				description: 'Last name of the agent',
 			},
 			{
 				displayName: 'Location ID',
 				name: 'location_id',
 				type: 'options',
 				default: '',
-				description: 'ID of the location associated with the agent',
 				typeOptions: {
 					loadOptionsMethod: [
 						'getLocations',
@@ -264,7 +256,6 @@ export const agentFields = [
 				name: 'mobile_phone_number',
 				type: 'string',
 				default: '',
-				description: 'Mobile phone number of the agent',
 			},
 			{
 				displayName: 'Observer Of',
@@ -282,6 +273,7 @@ export const agentFields = [
 				displayName: 'Scoreboard Level ID',
 				name: 'scoreboard_level_id',
 				type: 'options',
+				description: 'ID of the level of the agent in the Arcade',
 				default: 1,
 				options: [
 					{
@@ -331,7 +323,6 @@ export const agentFields = [
 				name: 'work_phone_number',
 				type: 'string',
 				default: '',
-				description: 'Work phone number of the agent',
 			},
 		],
 	},
@@ -445,7 +436,7 @@ export const agentFields = [
 				name: 'department_id',
 				type: 'options',
 				default: '',
-				description: 'ID of the department assigned to the agent',
+				description: 'ID of the department to which the agent belongs',
 				typeOptions: {
 					loadOptionsMethod: [
 						'getDepartments',
@@ -457,28 +448,24 @@ export const agentFields = [
 				name: 'email',
 				type: 'string',
 				default: '',
-				description: 'Email address of the agent',
 			},
 			{
 				displayName: 'First Name',
 				name: 'first_name',
 				type: 'string',
 				default: '',
-				description: 'First name of the agent',
 			},
 			{
 				displayName: 'Job Title',
 				name: 'job_title',
 				type: 'string',
 				default: '',
-				description: 'Title of the agent',
 			},
 			{
 				displayName: 'Language',
 				name: 'language',
 				type: 'options',
 				default: '',
-				description: 'Language used by the agent',
 				options: LANGUAGES,
 			},
 			{
@@ -486,14 +473,12 @@ export const agentFields = [
 				name: 'last_name',
 				type: 'string',
 				default: '',
-				description: 'Last name of the agent',
 			},
 			{
 				displayName: 'Location ID',
 				name: 'location_id',
 				type: 'options',
 				default: '',
-				description: 'ID of the location associated with the agent',
 				typeOptions: {
 					loadOptionsMethod: [
 						'getLocations',
@@ -505,21 +490,19 @@ export const agentFields = [
 				name: 'mobile_phone_number',
 				type: 'string',
 				default: '',
-				description: 'Mobile phone of the agent',
 			},
 			{
 				displayName: 'Name',
 				name: 'name',
 				type: 'string',
 				default: '',
-				description: 'Concatenation of <code>first_name</code> and <code>last_name</code> with single space between fields',
+				description: 'Concatenation of <code>first_name</code> and <code>last_name</code> with a single space between fields',
 			},
 			{
 				displayName: 'Work Phone Number',
 				name: 'work_phone_number',
 				type: 'string',
 				default: '',
-				description: 'Work phone of the agent',
 			},
 		],
 	},
@@ -567,21 +550,19 @@ export const agentFields = [
 				name: 'address',
 				type: 'string',
 				default: '',
-				description: 'Address of the agent',
 			},
 			{
 				displayName: 'Background Information',
 				name: 'background_information',
 				type: 'string',
 				default: '',
-				description: 'Background information on the agent',
 			},
 			{
 				displayName: 'Department IDs',
 				name: 'department_ids',
 				type: 'multiOptions',
 				default: [],
-				description: 'IDs of the departments associated with the agent',
+				description: 'IDs of the departments to which the agent belongs',
 				typeOptions: {
 					loadOptionsMethod: [
 						'getDepartments',
@@ -593,28 +574,24 @@ export const agentFields = [
 				name: 'email',
 				type: 'string',
 				default: '',
-				description: 'Email address of the agent',
 			},
 			{
 				displayName: 'First Name',
 				name: 'first_name',
 				type: 'string',
 				default: '',
-				description: 'First name of the agent',
 			},
 			{
 				displayName: 'Job Title',
 				name: 'job_title',
 				type: 'string',
 				default: '',
-				description: 'Job title of the agent',
 			},
 			{
 				displayName: 'Language',
 				name: 'language',
 				type: 'options',
 				default: '',
-				description: 'Language used by the agent',
 				options: LANGUAGES,
 			},
 			{
@@ -622,14 +599,12 @@ export const agentFields = [
 				name: 'last_name',
 				type: 'string',
 				default: '',
-				description: 'Last name of the agent',
 			},
 			{
 				displayName: 'Location ID',
 				name: 'location_id',
 				type: 'options',
 				default: '',
-				description: 'ID of the location associated with the agent',
 				typeOptions: {
 					loadOptionsMethod: [
 						'getLocations',
@@ -653,7 +628,6 @@ export const agentFields = [
 				name: 'mobile_phone_number',
 				type: 'string',
 				default: '',
-				description: 'Mobile phone number of the agent',
 			},
 			{
 				displayName: 'Observer Of',
@@ -671,6 +645,7 @@ export const agentFields = [
 				displayName: 'Scoreboard Level ID',
 				name: 'scoreboard_level_id',
 				type: 'options',
+				description: 'ID of the level of the agent in the Arcade',
 				default: 1,
 				options: [
 					{
@@ -720,7 +695,6 @@ export const agentFields = [
 				name: 'work_phone_number',
 				type: 'string',
 				default: '',
-				description: 'Work phone number of the agent',
 			},
 		],
 	},

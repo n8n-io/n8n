@@ -18,27 +18,27 @@ export const requesterGroupOperations = [
 			{
 				name: 'Create',
 				value: 'create',
-				description: 'Create a requesterGroup',
+				description: 'Create a requester group',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
-				description: 'Delete a requesterGroup',
+				description: 'Delete a requester group',
 			},
 			{
 				name: 'Get',
 				value: 'get',
-				description: 'Retrieve a requesterGroup',
+				description: 'Retrieve a requester group',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
-				description: 'Retrieve all requesterGroups',
+				description: 'Retrieve all requester groups',
 			},
 			{
 				name: 'Update',
 				value: 'update',
-				description: 'Update a requesterGroup',
+				description: 'Update a requester group',
 			},
 		],
 		default: 'create',
@@ -52,7 +52,6 @@ export const requesterGroupFields = [
 	{
 		displayName: 'Name',
 		name: 'name',
-		description: 'Name of the requester group',
 		type: 'string',
 		required: true,
 		default: '',
@@ -89,7 +88,6 @@ export const requesterGroupFields = [
 				name: 'description',
 				type: 'string',
 				default: '',
-				description: 'Description of the requester group',
 			},
 		],
 	},
@@ -100,7 +98,7 @@ export const requesterGroupFields = [
 	{
 		displayName: 'Requester Group ID',
 		name: 'requesterGroupId',
-		description: 'ID of the requesterGroup to delete',
+		description: 'ID of the requester group to delete',
 		type: 'string',
 		required: true,
 		default: '',
@@ -122,7 +120,7 @@ export const requesterGroupFields = [
 	{
 		displayName: 'Requester Group ID',
 		name: 'requesterGroupId',
-		description: 'ID of the requesterGroup to retrieve',
+		description: 'ID of the requester group to retrieve',
 		type: 'string',
 		required: true,
 		default: '',
@@ -188,7 +186,7 @@ export const requesterGroupFields = [
 	{
 		displayName: 'Requester Group ID',
 		name: 'requesterGroupId',
-		description: 'ID of the requesterGroup to update',
+		description: 'ID of the requester group to update',
 		type: 'string',
 		required: true,
 		default: '',

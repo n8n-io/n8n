@@ -52,7 +52,6 @@ export const agentGroupFields = [
 	{
 		displayName: 'Name',
 		name: 'name',
-		description: 'Name of the group',
 		type: 'string',
 		required: true,
 		default: '',
@@ -89,7 +88,6 @@ export const agentGroupFields = [
 				name: 'description',
 				type: 'string',
 				default: '',
-				description: 'Description of the group',
 			},
 			{
 				displayName: 'Escalate To',
@@ -108,7 +106,7 @@ export const agentGroupFields = [
 				name: 'members',
 				type: 'multiOptions',
 				default: [],
-				description: 'Comma-separated IDs of agent users who are members of this group',
+				description: 'Comma-separated IDs of agents who are members of this group',
 				typeOptions: {
 					loadOptionsMethod: [
 						'getAgents',
@@ -120,7 +118,7 @@ export const agentGroupFields = [
 				name: 'observers',
 				type: 'multiOptions',
 				default: [],
-				description: 'Comma-separated agent user IDs who are observers of this group',
+				description: 'Comma-separated agent IDs who are observers of this group',
 				typeOptions: {
 					loadOptionsMethod: [
 						'getAgents',
@@ -302,14 +300,13 @@ export const agentGroupFields = [
 				name: 'description',
 				type: 'string',
 				default: '',
-				description: 'Description of the group',
 			},
 			{
 				displayName: 'Escalate To',
 				name: 'escalate_to',
 				type: 'options',
 				default: '',
-				description: 'ID of the user to whom an escalation email is sent if a ticket in this group is unassigned',
+				description: 'ID of the agent to whom an escalation email is sent if a ticket in this group is unassigned',
 				typeOptions: {
 					loadOptionsMethod: [
 						'getAgents',
@@ -321,7 +318,7 @@ export const agentGroupFields = [
 				name: 'members',
 				type: 'multiOptions',
 				default: [],
-				description: 'Comma-separated IDs of agent users who are members of this group',
+				description: 'Comma-separated IDs of agents who are members of this group',
 				typeOptions: {
 					loadOptionsMethod: [
 						'getAgents',
@@ -333,7 +330,6 @@ export const agentGroupFields = [
 				name: 'name',
 				type: 'string',
 				default: '',
-				description: 'Name of the group',
 			},
 			{
 				displayName: 'Observers',

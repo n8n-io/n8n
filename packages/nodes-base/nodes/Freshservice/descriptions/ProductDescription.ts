@@ -52,7 +52,6 @@ export const productFields = [
 	{
 		displayName: 'Asset Type ID',
 		name: 'asset_type_id',
-		description: 'ID of the asset type',
 		type: 'options',
 		required: true,
 		default: '',
@@ -75,7 +74,6 @@ export const productFields = [
 	{
 		displayName: 'Name',
 		name: 'name',
-		description: 'Name of the product',
 		type: 'string',
 		required: true,
 		default: '',
@@ -108,10 +106,11 @@ export const productFields = [
 		},
 		options: [
 			{
-				displayName: 'Description in HTML',
+				displayName: 'Description',
 				name: 'description',
 				type: 'string',
 				default: '',
+				description: 'HTML supported',
 			},
 			{
 				displayName: 'Manufacturer',
@@ -300,10 +299,11 @@ export const productFields = [
 				},
 			},
 			{
-				displayName: 'Description in HTML',
+				displayName: 'Description',
 				name: 'description',
 				type: 'string',
 				default: '',
+				description: 'HTML supported',
 			},
 			{
 				displayName: 'Manufacturer',
@@ -336,7 +336,6 @@ export const productFields = [
 				name: 'name',
 				type: 'string',
 				default: '',
-				description: 'Name of the product',
 			},
 			{
 				displayName: 'Status',

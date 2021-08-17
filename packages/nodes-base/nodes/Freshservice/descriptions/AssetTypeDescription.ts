@@ -50,7 +50,7 @@ export const assetTypeFields = [
 	//            assetType: create
 	// ----------------------------------------
 	{
-		displayName: 'Asset Type Name',
+		displayName: 'Name',
 		name: 'name',
 		type: 'string',
 		required: true,
@@ -88,14 +88,12 @@ export const assetTypeFields = [
 				name: 'description',
 				type: 'string',
 				default: '',
-				description: 'Short description of the asset type',
 			},
 			{
 				displayName: 'Parent Asset Type ID',
 				name: 'parent_asset_type_id',
 				type: 'options',
 				default: '',
-				description: 'ID of the parent asset type',
 				typeOptions: {
 					loadOptionsMethod: [
 						'getAssetTypes',
@@ -111,7 +109,7 @@ export const assetTypeFields = [
 	{
 		displayName: 'Asset Type ID',
 		name: 'assetTypeId',
-		description: 'ID of the assetType to delete',
+		description: 'ID of the asset type to delete',
 		type: 'string',
 		required: true,
 		default: '',
@@ -133,7 +131,7 @@ export const assetTypeFields = [
 	{
 		displayName: 'Asset Type ID',
 		name: 'assetTypeId',
-		description: 'ID of the assetType to retrieve',
+		description: 'ID of the asset type to retrieve',
 		type: 'string',
 		required: true,
 		default: '',
@@ -236,10 +234,9 @@ export const assetTypeFields = [
 				name: 'description',
 				type: 'string',
 				default: '',
-				description: 'Short description of the asset type',
 			},
 			{
-				displayName: 'Asset Type Name',
+				displayName: 'Name',
 				name: 'name',
 				type: 'string',
 				default: '',

@@ -52,7 +52,6 @@ export const departmentFields = [
 	{
 		displayName: 'Name',
 		name: 'name',
-		description: 'Name of the department',
 		type: 'string',
 		required: true,
 		default: '',
@@ -89,7 +88,6 @@ export const departmentFields = [
 				name: 'description',
 				type: 'string',
 				default: '',
-				description: 'Description about the department',
 			},
 			{
 				displayName: 'Domains',
@@ -258,7 +256,6 @@ export const departmentFields = [
 				name: 'description',
 				type: 'string',
 				default: '',
-				description: 'Description about the department',
 			},
 			{
 				displayName: 'Domains',
@@ -272,7 +269,6 @@ export const departmentFields = [
 				name: 'name',
 				type: 'string',
 				default: '',
-				description: 'Name of the department',
 			},
 		],
 	},

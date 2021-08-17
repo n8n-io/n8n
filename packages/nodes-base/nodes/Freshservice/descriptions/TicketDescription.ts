@@ -88,7 +88,7 @@ export const ticketFields = [
 		name: 'description',
 		type: 'string',
 		default: '',
-		description: 'Description of the ticket in HTML',
+		description: 'HTML supported',
 		displayOptions: {
 			show: {
 				resource: [
@@ -190,7 +190,7 @@ export const ticketFields = [
 				name: 'cc_emails',
 				type: 'string',
 				default: '',
-				description: 'Comma-separated email addresses to add in the CC field of the incoming ticket email',
+				description: 'Comma-separated email addresses to add in the CC field of the ticket email',
 			},
 			{
 				displayName: 'Department ID',
@@ -512,7 +512,7 @@ export const ticketFields = [
 				name: 'department_id',
 				type: 'options',
 				default: '',
-				description: 'ID of the department to which this ticket belongs',
+				description: 'ID of the department to which this ticket has been assigned',
 				typeOptions: {
 					loadOptionsMethod: [
 						'getDepartments',
@@ -524,14 +524,14 @@ export const ticketFields = [
 				name: 'description',
 				type: 'string',
 				default: '',
-				description: 'Content of the ticket in HTML',
+				description: 'HTML supported',
 			},
 			{
 				displayName: 'Email',
 				name: 'email',
 				type: 'string',
 				default: '',
-				description: 'Email address of the requester',
+				description: 'Email address of the ticket author',
 			},
 			{
 				displayName: 'Group ID',
@@ -550,7 +550,6 @@ export const ticketFields = [
 				name: 'impact',
 				type: 'options',
 				default: 1,
-				description: 'Impact of the ticket',
 				options: [
 					{
 						name: 'Low',
@@ -571,14 +570,13 @@ export const ticketFields = [
 				name: 'name',
 				type: 'string',
 				default: '',
-				description: 'Name of the requester',
+				description: 'Name of the ticket author',
 			},
 			{
 				displayName: 'Phone',
 				name: 'phone',
 				type: 'string',
 				default: '',
-				description: 'Phone number of the requester',
 			},
 			{
 				displayName: 'Priority',
@@ -610,7 +608,6 @@ export const ticketFields = [
 				name: 'subject',
 				type: 'string',
 				default: '',
-				description: 'Subject of the ticket',
 			},
 		],
 	},

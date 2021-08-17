@@ -52,7 +52,7 @@ export const changeFields = [
 	{
 		displayName: 'Requester ID',
 		name: 'requesterId',
-		description: 'ID of the initiator of the change',
+		description: 'ID of the requester of the change',
 		type: 'options',
 		required: true,
 		default: '',
@@ -164,7 +164,7 @@ export const changeFields = [
 				name: 'department_id',
 				type: 'options',
 				default: '',
-				description: 'ID of the department initiating the change',
+				description: 'ID of the department requesting the change',
 				typeOptions: {
 					loadOptionsMethod: [
 						'getDepartments',
@@ -176,7 +176,7 @@ export const changeFields = [
 				name: 'description',
 				type: 'string',
 				default: '',
-				description: 'Content of the change in HTML',
+				description: 'HTML supported',
 			},
 			{
 				displayName: 'Group ID',
@@ -194,7 +194,6 @@ export const changeFields = [
 				displayName: 'Impact',
 				name: 'impact',
 				type: 'options',
-				description: 'Impact of the change',
 				default: 1,
 				options: [
 					{
@@ -216,7 +215,6 @@ export const changeFields = [
 				name: 'priority',
 				type: 'options',
 				default: 1,
-				description: 'Priority of the change',
 				options: [
 					{
 						name: 'Low',
@@ -241,7 +239,6 @@ export const changeFields = [
 				name: 'risk',
 				type: 'options',
 				default: 1,
-				description: 'Risk of the change',
 				options: [
 					{
 						name: 'Low',
@@ -264,7 +261,6 @@ export const changeFields = [
 			{
 				displayName: 'Status',
 				name: 'status',
-				description: 'Status of the change',
 				type: 'options',
 				default: 1,
 				options: [
@@ -299,7 +295,6 @@ export const changeFields = [
 				name: 'subject',
 				type: 'string',
 				default: '',
-				description: 'Subject of the change',
 			},
 		],
 	},
@@ -540,7 +535,7 @@ export const changeFields = [
 				name: 'department_id',
 				type: 'options',
 				default: '',
-				description: 'ID of the department initiating the change',
+				description: 'ID of the department requesting the change',
 				typeOptions: {
 					loadOptionsMethod: [
 						'getDepartments',
@@ -552,7 +547,7 @@ export const changeFields = [
 				name: 'description',
 				type: 'string',
 				default: '',
-				description: 'Content of the change in HTML',
+				description: 'HTML supported',
 			},
 			{
 				displayName: 'Group ID',
@@ -592,7 +587,6 @@ export const changeFields = [
 				name: 'priority',
 				type: 'options',
 				default: 1,
-				description: 'Priority of the change',
 				options: [
 					{
 						name: 'Low',
@@ -617,7 +611,7 @@ export const changeFields = [
 				name: 'requester_id',
 				type: 'options',
 				default: '',
-				description: 'ID of the initiator of the change',
+				description: 'ID of the requester of the change',
 				typeOptions: {
 					loadOptionsMethod: [
 						'getRequesters',
@@ -629,7 +623,6 @@ export const changeFields = [
 				name: 'risk',
 				type: 'options',
 				default: 1,
-				description: 'Risk of the change',
 				options: [
 					{
 						name: 'Low',
@@ -653,7 +646,6 @@ export const changeFields = [
 				displayName: 'Status',
 				name: 'status',
 				type: 'options',
-				description: 'Status of the change',
 				default: 1,
 				options: [
 					{
@@ -687,7 +679,6 @@ export const changeFields = [
 				name: 'subject',
 				type: 'string',
 				default: '',
-				description: 'Subject of the change',
 			},
 		],
 	},

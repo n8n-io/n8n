@@ -52,7 +52,6 @@ export const problemFields = [
 	{
 		displayName: 'Subject',
 		name: 'subject',
-		description: 'Subject of the problem',
 		type: 'string',
 		required: true,
 		default: '',
@@ -93,7 +92,7 @@ export const problemFields = [
 	{
 		displayName: 'Due By',
 		name: 'due_by',
-		description: 'Date when the problem is due to be resolved',
+		description: 'Date when the problem is due to be solved',
 		type: 'dateTime',
 		default: '',
 		displayOptions: {
@@ -151,7 +150,7 @@ export const problemFields = [
 			{
 				displayName: 'Description',
 				name: 'description',
-				description: 'Content of the problem in HTML',
+				description: 'HTML supported',
 				type: 'string',
 				default: '',
 			},
@@ -389,12 +388,12 @@ export const problemFields = [
 				name: 'description',
 				type: 'string',
 				default: '',
-				description: 'Content of the problem in HTML',
+				description: 'HTML supported',
 			},
 			{
 				displayName: 'Due By',
 				name: 'due_by',
-				description: 'Date when the problem is due to be resolved',
+				description: 'Date when the problem is due to be solved',
 				type: 'dateTime',
 				default: '',
 			},
@@ -491,7 +490,6 @@ export const problemFields = [
 				name: 'subject',
 				type: 'string',
 				default: '',
-				description: 'Subject of the problem',
 			},
 		],
 	},

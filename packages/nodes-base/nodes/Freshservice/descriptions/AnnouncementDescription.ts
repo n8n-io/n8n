@@ -52,7 +52,6 @@ export const announcementFields = [
 	{
 		displayName: 'Title',
 		name: 'title',
-		description: 'Title of the announcement',
 		type: 'string',
 		required: true,
 		default: '',
@@ -68,9 +67,9 @@ export const announcementFields = [
 		},
 	},
 	{
-		displayName: 'Body in HTML',
+		displayName: 'Body',
 		name: 'body_html',
-		description: 'Body of the announcement in HTML',
+		description: 'HTML supported',
 		type: 'string',
 		required: true,
 		default: '',
@@ -346,11 +345,11 @@ export const announcementFields = [
 				description: 'Comma-separated additional email addresses to which the announcement needs to be sent',
 			},
 			{
-				displayName: 'Body in HTML',
+				displayName: 'Body',
 				name: 'body_html',
 				type: 'string',
 				default: '',
-				description: 'Body of the announcement in HTML',
+				description: 'HTML supported',
 			},
 			{
 				displayName: 'Departments',
@@ -369,7 +368,6 @@ export const announcementFields = [
 				name: 'title',
 				type: 'string',
 				default: '',
-				description: 'Title of the announcement',
 			},
 			{
 				displayName: 'Visibility',
