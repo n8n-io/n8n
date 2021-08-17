@@ -159,7 +159,7 @@ export const agentFields = [
 						type: 'multiOptions',
 						typeOptions: {
 							loadOptionsMethod: [
-								'getAgentGroupsForRoles',
+								'getAgentGroups',
 							],
 						},
 						default: [],

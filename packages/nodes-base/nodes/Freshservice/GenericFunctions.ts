@@ -55,6 +55,7 @@ export async function freshserviceApiRequest(
 	}
 
 	try {
+		console.log(JSON.stringify(options, null, 2));
 		return await this.helpers.request!(options);
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error);
@@ -136,15 +137,20 @@ export function validateAssignmentScopeGroup(
 	}
 }
 
-/**
- * Remove the `groups` param when `specified_groups` has not been selected.
- */
 export function sanitizeAssignmentScopeGroup(
 	this: IExecuteFunctions,
 	roles: RolesParameter,
 ) {
 	roles.roleProperties.forEach(roleProperty => {
-		if (roleProperty.groups && roleProperty.assignment_scope !== 'specified_groups') {
+		if (roleProperty.assignment_scope === 'specified_groups' && !roleProperty?.groups?.length) {
+			throw new NodeOperationError(
+				this.getNode(),
+				'Please specify a group for every role of the agent to create.',
+			);
+		}
+
+		// remove the `groups` param, only needed for scopes other than `specified_groups`
+		if (roleProperty.assignment_scope !== 'specified_groups' && roleProperty.groups) {
 			delete roleProperty.groups;
 		}
 	});

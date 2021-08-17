@@ -216,16 +216,6 @@ export class Freshservice implements INodeType {
 				return toOptions(groups);
 			},
 
-			async getAgentGroupsForRoles(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-				const { groups } = await freshserviceApiRequest.call(this, 'GET', '/groups') as {
-					groups: LoadedResource[];
-				};
-				return [
-					{ name: 'Not Applicable', value: 'n/a' },
-					...toOptions(groups),
-				];
-			},
-
 			async getAgentRoles(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const { roles } = await freshserviceApiRequest.call(this, 'GET', '/roles') as {
 					roles: LoadedResource[];
