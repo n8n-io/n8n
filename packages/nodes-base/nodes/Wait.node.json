@@ -3,7 +3,7 @@
 	"nodeVersion": "1.0",
 	"codexVersion": "1.0",
 	"categories": [
-		"Utility"
+		"Core Nodes"
 	],
 	"resources": {
 		"primaryDocumentation": [
@@ -13,10 +13,12 @@
 		]
 	},
 	"alias": [
-		"wait",
-		"pause"
+		"pause",
+		"sleep",
+		"delay",
+		"timeout"
 	],
 	"subcategories": [
-		"Helpers"
+		"Flow"
 	]
 }
