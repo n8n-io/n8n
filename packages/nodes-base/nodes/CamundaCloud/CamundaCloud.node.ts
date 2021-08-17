@@ -21,6 +21,8 @@ export class CamundaCloud implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Camunda Cloud',
 		name: 'camundaCloud',
+		subtitle:
+			'={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 		icon: 'file:camundaCloud.svg',
 		group: ['transform'],
 		version: 1,
@@ -118,7 +120,7 @@ export class CamundaCloud implements INodeType {
 				},
 				default: '',
 				description:
-					'Identifier of an already activated BPMN job, e.g. as returned by the Camunda Cloud Trigger node',
+					'Identifier of an already activated BPMN job, e.g. as returned by the Camunda Cloud Trigger node.',
 			},
 			{
 				displayName: 'Job Key',
@@ -133,7 +135,7 @@ export class CamundaCloud implements INodeType {
 				},
 				default: '',
 				description:
-					'Identifier of an already activated BPMN job, e.g. as returned by the Camunda Cloud Trigger node',
+					'Identifier of an already activated BPMN job, e.g. as returned by the Camunda Cloud Trigger node.',
 			},
 			{
 				displayName: 'Error Message',
@@ -222,7 +224,7 @@ export class CamundaCloud implements INodeType {
 					},
 				},
 				default: '',
-				description: 'value to correlate with process variable',
+				description: 'Value to correlate with process variable',
 			},
 			{
 				displayName: 'Message Name',
@@ -236,7 +238,7 @@ export class CamundaCloud implements INodeType {
 					},
 				},
 				default: '',
-				description: 'name of the message',
+				description: 'Name of the message',
 			},
 			{
 				displayName: 'Variables (JSON)',
@@ -264,7 +266,7 @@ export class CamundaCloud implements INodeType {
 					},
 				},
 				default: 3600,
-				description: 'time to live in seconds',
+				description: 'Time to live in seconds',
 			},
 		],
 	};
@@ -286,64 +288,108 @@ export class CamundaCloud implements INodeType {
 		} = credentials;
 
 		for (let i = 0; i < items.length; i++) {
-			if (resource === 'processInstance') {
-				if (operation === 'create') {
-					const bpmnProcessId = this.getNodeParameter(
-						'bpmnProcessId',
-						i,
-					) as string;
-
-					let variables =
-						(this.getNodeParameter('variables', i) as unknown) ??
-						{};
-
-					if ('string' === typeof variables) {
-						variables = JSON.parse(variables);
-					}
-
-					const zbc = new ZBClient({
-						camundaCloud: {
-							clientId,
-							clientSecret,
-							clusterId,
-							clusterRegion,
-						},
-					} as ZBClientOptions);
-
-					const zbCreateProcessResult = await zbc.createProcessInstance(
-						bpmnProcessId,
-						variables,
-					);
-
-					//console.log(`zbCreateProcessResult: ${JSON.stringify(zbCreateProcessResult)}`);
-					returnData.push(
-						(zbCreateProcessResult as unknown) as IDataObject,
-					);
-				}
-			} else if (resource === 'message') {
-				if (operation === 'publish') {
-					const correlationKey =
-						(this.getNodeParameter(
-							'correlationKey',
+			try {
+				if (resource === 'processInstance') {
+					if (operation === 'create') {
+						const bpmnProcessId = this.getNodeParameter(
+							'bpmnProcessId',
 							i,
-						) as string) ?? '';
+						) as string;
 
-					let variables =
-						(this.getNodeParameter('variables', i) as unknown) ??
-						{};
+						let variables =
+							(this.getNodeParameter(
+								'variables',
+								i,
+							) as unknown) ?? {};
 
-					if ('string' === typeof variables) {
-						variables = JSON.parse(variables);
+						if ('string' === typeof variables) {
+							variables = JSON.parse(variables);
+						}
+
+						const zbc = new ZBClient({
+							camundaCloud: {
+								clientId,
+								clientSecret,
+								clusterId,
+								clusterRegion,
+							},
+						} as ZBClientOptions);
+
+						const zbCreateProcessResult = await zbc.createProcessInstance(
+							bpmnProcessId,
+							variables,
+						);
+
+						//console.log(`zbCreateProcessResult: ${JSON.stringify(zbCreateProcessResult)}`);
+						returnData.push(
+							(zbCreateProcessResult as unknown) as IDataObject,
+						);
 					}
-					const timeToLive = this.getNodeParameter(
-						'timeToLive',
-						i,
-					) as number;
+				} else if (resource === 'message') {
+					if (operation === 'publish') {
+						const correlationKey =
+							(this.getNodeParameter(
+								'correlationKey',
+								i,
+							) as string) ?? '';
 
-					const messageName = this.getNodeParameter(
-						'messageName',
-						i,
-					) as string;
+						let variables =
+							(this.getNodeParameter(
+								'variables',
+								i,
+							) as unknown) ?? {};
+
+						if ('string' === typeof variables) {
+							variables = JSON.parse(variables);
+						}
+						const timeToLive = this.getNodeParameter(
+							'timeToLive',
+							i,
+						) as number;
+
+						const messageName = this.getNodeParameter(
+							'messageName',
+							i,
+						) as string;
+
+						const zbc = new ZBClient({
+							camundaCloud: {
+								clientId,
+								clientSecret,
+								clusterId,
+								clusterRegion,
+							},
+						} as ZBClientOptions);
+
+						let zbPublishMsgResult: PublishMessageResponse;
+
+						if (!correlationKey) {
+							zbPublishMsgResult = await zbc.publishStartMessage({
+								messageId: uuidv4(),
+								name: messageName,
+								variables,
+								timeToLive: Duration.seconds.of(timeToLive), // seconds
+							});
+						} else {
+							zbPublishMsgResult = await zbc.publishMessage({
+								messageId: uuidv4(),
+								name: messageName,
+								correlationKey,
+								variables,
+								timeToLive: Duration.seconds.of(timeToLive), // seconds
+							});
+						}
+
+						// console.log(
+						// 	`zbPublishMsgResult: ${JSON.stringify(zbPublishMsgResult)}`
+						// );
+						returnData.push(
+							(zbPublishMsgResult as unknown) as IDataObject,
+						);
+					}
+				} else if (resource === 'job') {
+					const jobKey =
+						(this.getNodeParameter('jobKey', i) as string) ?? '';
 
 					const zbc = new ZBClient({
 						camundaCloud: {
@@ -354,75 +400,46 @@ export class CamundaCloud implements INodeType {
 						},
 					} as ZBClientOptions);
 
-					let zbPublishMsgResult: PublishMessageResponse;
+					if (operation == 'complete') {
+						let variables =
+							(this.getNodeParameter(
+								'variables',
+								i,
+							) as unknown) ?? {};
 
-					if (!correlationKey) {
-						zbPublishMsgResult = await zbc.publishStartMessage({
-							messageId: uuidv4(),
-							name: messageName,
-							variables,
-							timeToLive: Duration.seconds.of(timeToLive), // seconds
+						if ('string' === typeof variables) {
+							variables = JSON.parse(variables);
+						}
+						//console.log('COMPLETING JOB', jobKey, variables);
+						await zbc.completeJob({
+							jobKey,
+							variables: variables as IProcessVariables,
 						});
-					} else {
-						zbPublishMsgResult = await zbc.publishMessage({
-							messageId: uuidv4(),
-							name: messageName,
-							correlationKey,
-							variables,
-							timeToLive: Duration.seconds.of(timeToLive), // seconds
+
+						returnData.push({ success: true } as IDataObject);
+					} else if (operation === 'fail') {
+						const errorMessage = this.getNodeParameter(
+							'errorMessage',
+							i,
+						) as string;
+
+						//console.log('FAILING JOB', jobKey);
+						await zbc.failJob({
+							jobKey,
+							retries: 0, //raises an inident
+							errorMessage,
 						});
+
+						returnData.push({ success: true } as IDataObject);
 					}
-
-					// console.log(
-					// 	`zbPublishMsgResult: ${JSON.stringify(zbPublishMsgResult)}`
-					// );
-					returnData.push(
-						(zbPublishMsgResult as unknown) as IDataObject,
-					);
 				}
-			} else if (resource === 'job') {
-				const jobKey =
-					(this.getNodeParameter('jobKey', i) as string) ?? '';
-
-				const zbc = new ZBClient({
-					camundaCloud: {
-						clientId,
-						clientSecret,
-						clusterId,
-						clusterRegion,
-					},
-				} as ZBClientOptions);
-
-				if (operation == 'complete') {
-					let variables =
-						(this.getNodeParameter('variables', i) as unknown) ??
-						{};
-
-					if ('string' === typeof variables) {
-						variables = JSON.parse(variables);
-					}
-					//console.log('COMPLETING JOB', jobKey, variables);
-					await zbc.completeJob({
-						jobKey,
-						variables: variables as IProcessVariables,
-					});
-
-					returnData.push({ success: true } as IDataObject);
-				} else if (operation === 'fail') {
-					const errorMessage = this.getNodeParameter(
-						'errorMessage',
-						i,
-					) as string;
-
-					//console.log('FAILING JOB', jobKey);
-					await zbc.failJob({
-						jobKey,
-						retries: 0, //raises an inident
-						errorMessage,
-					});
-
-					returnData.push({ success: true } as IDataObject);
+			} catch (error) {
+				if (this.continueOnFail()) {
+					returnData.push({ error: error.toString() });
+					continue;
 				}
+
+				throw error;
 			}
 		}
 

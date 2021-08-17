@@ -22,6 +22,7 @@ export class CamundaCloudTrigger implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Camunda Cloud Trigger',
 		name: 'camundaCloudTrigger',
+		subtitle: '="task: " + {{$parameter["taskType"]',
 		icon: 'file:camundaCloud.svg',
 		group: ['trigger'],
 		version: 1,
@@ -56,7 +57,7 @@ export class CamundaCloudTrigger implements INodeType {
 				required: true,
 				default: 60,
 				description:
-					'timeout in seconds before the BPMN task needs to be marked as completed',
+					'Timeout in seconds before the BPMN task needs to be marked as completed',
 			},
 			{
 				displayName: 'Auto Complete',
@@ -65,7 +66,7 @@ export class CamundaCloudTrigger implements INodeType {
 				required: true,
 				default: true,
 				description:
-					'Toggle on if new jobs should automatically be marked as completed. Otherwise you need to explicitly complete the job with another Camunda Cloud node.',
+					'Whether new jobs should automatically be marked as completed. Otherwise you need to explicitly complete the job with another Camunda Cloud node.',
 			},
 		],
 	};
