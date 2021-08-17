@@ -25,12 +25,14 @@
 			append-to-body
 		>
 			<template v-slot:title>
-				<slot name="header" />
+				<div v-if="!loading" >
+					<slot name="header" />
+				</div>
 			</template>
-			<div class="modal-content" @keydown.stop @keydown.enter="handleEnter" @keydown.esc="closeDialog">
+			<div v-if="!loading" class="modal-content" @keydown.stop @keydown.enter="handleEnter" @keydown.esc="closeDialog">
 				<slot name="content"/>
 			</div>
-			<el-row class="modal-footer">
+			<el-row  v-if="!loading" class="modal-footer">
 				<slot name="footer" :close="closeDialog" />
 			</el-row>
 		</el-dialog>
@@ -49,7 +51,7 @@ const sizeMap: {[size: string]: string} = {
 
 export default Vue.extend({
 	name: "Modal",
-	props: ['name', 'title', 'eventBus', 'size', 'drawer', 'drawerDirection', 'drawerWidth', 'visible', 'showClose'],
+	props: ['name', 'title', 'eventBus', 'size', 'drawer', 'drawerDirection', 'drawerWidth', 'visible', 'showClose', 'loading'],
 	data() {
 		return {
 			visibleDrawer: this.drawer,

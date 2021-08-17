@@ -4,11 +4,20 @@
 		size="lg"
 		:showClose="false"
 		:eventBus="modalBus"
+		:loading="loading"
 	>
 		<template slot="header">
-			<div :class="$style.header">
+			<div :class="$style.header" v-if="credentialType">
 				<div :class="$style.credInfo">
-					<div :class="$style.headline">{{ credentialName }}</div>
+					<div :class="$style.headline" @keydown.stop @click="enableNameEdit" v-click-outside="disableNameEdit">
+						<div v-if="!isNameEdit">
+							<span>{{ credentialName }}</span>
+							<i><font-awesome-icon icon="pen" /></i>
+						</div>
+						<div v-else :class="$style.nameInput">
+							<n8n-input v-model="credentialName" size="small" />
+						</div>
+					</div>
 					<div :class="$style.subtitle">{{ credentialType.displayName }}</div>
 				</div>
 				<div :class="$style.credActions">
@@ -123,13 +132,10 @@ export default mixins(
 			isSaving: false,
 			isDeleting: false,
 			credentialId: '',
+			isNameEdit: false,
 		};
 	},
 	async mounted() {
-		for (const property of this.credentialType.properties) {
-			this.credentialData[property.name] = property.default as CredentialInformation;
-		}
-
 		this.nodeAccess = this.nodesWithAccess.reduce((accu: NodeAccessMap, node: {name: string}) => {
 			if (this.mode === 'new') {
 				accu[node.name] = {nodeType: node.name}; // enable all nodes by default
@@ -148,6 +154,14 @@ export default mixins(
 			await this.loadCurrentCredential();
 		}
 
+		if (this.credentialType) {
+			for (const property of this.credentialType.properties) {
+				if (!this.credentialData.hasOwnProperty(property.name)) {
+					this.credentialData[property.name] = property.default as CredentialInformation;
+				}
+			}
+		}
+
 		this.loading = false;
 	},
 	computed: {
@@ -158,14 +172,22 @@ export default mixins(
 
 			return this.$store.getters['credentials/getCredentialById'](this.credentialId);
 		},
-		credentialTypeName(): string {
-			if (this.mode === 'edit' && this.currentCredential) {
-				return this.currentCredential.type;
+		credentialTypeName(): string | null {
+			if (this.mode === 'edit') {
+				if (this.currentCredential) {
+					return this.currentCredential.type;
+				}
+
+				return null;
 			}
 
 			return this.activeId;
 		},
-		credentialType(): ICredentialType {
+		credentialType(): ICredentialType | null {
+			if (!this.credentialTypeName) {
+				return null;
+			}
+
 			const type = this.$store.getters['credentials/getCredentialTypeByName'](this.credentialTypeName);
 
 			return {
@@ -174,13 +196,25 @@ export default mixins(
 			};
 		},
 		nodesWithAccess(): Array<{nodeType: string, name: string}>  {
-			return this.$store.getters['credentials/getNodesWithAccess'](this.credentialTypeName);
+			if (this.credentialTypeName) {
+				return this.$store.getters['credentials/getNodesWithAccess'](this.credentialTypeName);
+			}
+
+			return [];
 		},
 		parentTypes(): string[] {
-			return this.getParentTypes(this.credentialTypeName);
+			if (this.credentialTypeName) {
+				return this.getParentTypes(this.credentialTypeName);
+			}
+
+			return [];
 		},
 		documentationUrl(): string {
 			const type = this.credentialType;
+
+			if (!type) {
+				return '';
+			}
 
 			if (type.documentationUrl && type.documentationUrl.startsWith('http')) {
 				return type.documentationUrl;
@@ -197,7 +231,7 @@ export default mixins(
 		getCredentialProperties (name: string): INodeProperties[] {
 			const credentialsData = this.$store.getters['credentials/getCredentialTypeByName'](name);
 
-			if (credentialsData === null) {
+			if (!credentialsData) {
 				throw new Error(`Could not find credentials of type: ${name}`);
 			}
 
@@ -280,17 +314,25 @@ export default mixins(
 			return types;
 		},
 
+		enableNameEdit() {
+			this.isNameEdit = true;
+		},
+
+		disableNameEdit() {
+			this.isNameEdit = false;
+		},
+
 		async saveCredential(closeDialog = true): Promise<ICredentialsResponse | null> {
 			this.isSaving = true;
 			const nodesAccess = Object.values(this.nodeAccess)
 				.filter((access) => !!access) as ICredentialNodeAccess[];
 
 		 	// Save only the none default data
-			const data = NodeHelpers.getNodeParameters(this.credentialType.properties, this.credentialData as INodeParameters, false, false);
+			const data = NodeHelpers.getNodeParameters(this.credentialType!.properties, this.credentialData as INodeParameters, false, false);
 
 			const credentialDetails: ICredentialsDecrypted = {
 				name: this.credentialName,
-				type: this.credentialTypeName,
+				type: this.credentialTypeName!,
 				data: data as unknown as ICredentialDataDecryptedObject,
 				nodesAccess,
 			};
@@ -444,7 +486,34 @@ export default mixins(
 .headline {
 	font-size: var(--font-size-m);
 	line-height: 1.4;
-	margin-bottom: 2px;
+	margin-bottom: 4px;
+	display: inline-block;
+	cursor: pointer;
+	padding: 0 4px;
+	border-radius: 4px;
+	position: relative;
+	min-height: 22px;
+	max-height: 22px;
+
+	i {
+		display: var(--headline-icon-display, none);
+		font-size: .75em;
+    margin-left: 8px;
+		color: var(--color-text-base);
+	}
+
+	&:hover {
+		background-color: var(--color-foreground-base);
+		--headline-icon-display: inline;
+	}
+}
+
+.nameInput {
+	z-index: 1;
+	position: absolute;
+	top: 0;
+	left: 0;
+	width: 400px;
 }
 
 .mainContent {
@@ -480,6 +549,7 @@ export default mixins(
 .subtitle {
 	font-size: var(--font-size-2xs);
 	color: var(--color-text-light);
+	margin-left: 4px;
 }
 
 .infotip {
