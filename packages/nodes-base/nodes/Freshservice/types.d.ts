@@ -23,3 +23,10 @@ export type RolesParameter = IDataObject & {
 		groups?: number[];
 	}>
 };
+
+export type AddressFixedCollection = {
+	address?: {
+		addressFields: object
+	}
+}
+

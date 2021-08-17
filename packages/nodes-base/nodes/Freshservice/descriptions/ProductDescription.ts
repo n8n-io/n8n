@@ -108,39 +108,56 @@ export const productFields = [
 		},
 		options: [
 			{
-				displayName: 'Description',
+				displayName: 'Description in HTML',
 				name: 'description',
 				type: 'string',
 				default: '',
-				description: 'Description of the product in HTML',
-			},
-			{
-				displayName: 'Description Text',
-				name: 'description_text',
-				type: 'string',
-				default: '',
-				description: 'Description of the product in plain text',
 			},
 			{
 				displayName: 'Manufacturer',
 				name: 'manufacturer',
 				type: 'string',
 				default: '',
-				description: 'Manufacturer of the product',
 			},
 			{
 				displayName: 'Mode of Procurement',
 				name: 'mode_of_procurement',
-				type: 'string',
-				default: '',
-				description: 'Mode of procurement of the product',
+				type: 'options',
+				default: 'Buy',
+				options: [
+					{
+						name: 'Buy',
+						value: 'Buy',
+					},
+					{
+						name: 'Lease',
+						value: 'Lease',
+					},
+					{
+						name: 'Both',
+						value: 'Both',
+					},
+				],
 			},
 			{
 				displayName: 'Status',
 				name: 'status',
-				type: 'string',
-				default: '',
-				description: 'Status of the product',
+				type: 'options',
+				default: 'In Production',
+				options: [
+					{
+						name: 'In Production',
+						value: 'In Production',
+					},
+					{
+						name: 'In Pipeline',
+						value: 'In Pipeline',
+					},
+					{
+						name: 'Retired',
+						value: 'Retired',
+					},
+				],
 			},
 		],
 	},
@@ -276,7 +293,6 @@ export const productFields = [
 				name: 'asset_type_id',
 				type: 'options',
 				default: '',
-				description: 'ID of the asset type',
 				typeOptions: {
 					loadOptionsMethod: [
 						'getAssetTypes',
@@ -284,32 +300,36 @@ export const productFields = [
 				},
 			},
 			{
-				displayName: 'Description',
+				displayName: 'Description in HTML',
 				name: 'description',
 				type: 'string',
 				default: '',
-				description: 'Description of the product in HTML',
-			},
-			{
-				displayName: 'Description Text',
-				name: 'description_text',
-				type: 'string',
-				default: '',
-				description: 'Description of the product in plain text',
 			},
 			{
 				displayName: 'Manufacturer',
 				name: 'manufacturer',
 				type: 'string',
 				default: '',
-				description: 'Manufacturer of the product',
 			},
 			{
 				displayName: 'Mode of Procurement',
 				name: 'mode_of_procurement',
-				type: 'string',
-				default: '',
-				description: 'Mode of procurement of the product',
+				type: 'options',
+				default: 'Buy',
+				options: [
+					{
+						name: 'Buy',
+						value: 'Buy',
+					},
+					{
+						name: 'Lease',
+						value: 'Lease',
+					},
+					{
+						name: 'Both',
+						value: 'Both',
+					},
+				],
 			},
 			{
 				displayName: 'Name',
@@ -321,9 +341,22 @@ export const productFields = [
 			{
 				displayName: 'Status',
 				name: 'status',
-				type: 'string',
-				default: '',
-				description: 'Status of the product',
+				type: 'options',
+				default: 'In Production',
+				options: [
+					{
+						name: 'In Production',
+						value: 'In Production',
+					},
+					{
+						name: 'In Pipeline',
+						value: 'In Pipeline',
+					},
+					{
+						name: 'Retired',
+						value: 'Retired',
+					},
+				],
 			},
 		],
 	},

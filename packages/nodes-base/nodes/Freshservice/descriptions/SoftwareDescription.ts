@@ -52,10 +52,23 @@ export const softwareFields = [
 	{
 		displayName: 'Application Type',
 		name: 'application_type',
-		description: 'Type of the software',
-		type: 'string',
+		type: 'options',
 		required: true,
-		default: '',
+		options: [
+			{
+				name: 'Desktop',
+				value: 'desktop',
+			},
+			{
+				name: 'Mobile',
+				value: 'mobile',
+			},
+			{
+				name: 'SaaS',
+				value: 'saas',
+			},
+		],
+		default: 'desktop',
 		displayOptions: {
 			show: {
 				resource: [
@@ -275,9 +288,23 @@ export const softwareFields = [
 			{
 				displayName: 'Application Type',
 				name: 'application_type',
-				type: 'string',
-				default: '',
+				type: 'options',
+				default: 'desktop',
 				description: 'Type of the software',
+				options: [
+					{
+						name: 'Desktop',
+						value: 'desktop',
+					},
+					{
+						name: 'Mobile',
+						value: 'mobile',
+					},
+					{
+						name: 'SaaS',
+						value: 'saas',
+					},
+				],
 			},
 			{
 				displayName: 'Category',

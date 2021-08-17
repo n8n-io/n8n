@@ -52,7 +52,7 @@ export const ticketFields = [
 	{
 		displayName: 'Email',
 		name: 'email',
-		description: 'Email address of the requester',
+		description: 'Email address of the ticket author',
 		type: 'string',
 		required: true,
 		default: '',
@@ -66,6 +66,107 @@ export const ticketFields = [
 				],
 			},
 		},
+	},
+	{
+		displayName: 'Subject',
+		name: 'subject',
+		type: 'string',
+		default: '',
+		displayOptions: {
+			show: {
+				resource: [
+					'ticket',
+				],
+				operation: [
+					'create',
+				],
+			},
+		},
+	},
+	{
+		displayName: 'Description',
+		name: 'description',
+		type: 'string',
+		default: '',
+		description: 'Description of the ticket in HTML',
+		displayOptions: {
+			show: {
+				resource: [
+					'ticket',
+				],
+				operation: [
+					'create',
+				],
+			},
+		},
+	},
+	{
+		displayName: 'Priority',
+		name: 'priority',
+		type: 'options',
+		default: 1,
+		displayOptions: {
+			show: {
+				resource: [
+					'ticket',
+				],
+				operation: [
+					'create',
+				],
+			},
+		},
+		options: [
+			{
+				name: 'Low',
+				value: 1,
+			},
+			{
+				name: 'Medium',
+				value: 2,
+			},
+			{
+				name: 'High',
+				value: 3,
+			},
+			{
+				name: 'Urgent',
+				value: 4,
+			},
+		],
+	},
+	{
+		displayName: 'Status',
+		name: 'status',
+		type: 'options',
+		default: 2,
+		displayOptions: {
+			show: {
+				resource: [
+					'ticket',
+				],
+				operation: [
+					'create',
+				],
+			},
+		},
+		options: [
+			{
+				name: 'Open',
+				value: 2,
+			},
+			{
+				name: 'Pending',
+				value: 3,
+			},
+			{
+				name: 'Resolved',
+				value: 4,
+			},
+			{
+				name: 'Closed',
+				value: 5,
+			},
+		],
 	},
 	{
 		displayName: 'Additional Fields',
@@ -84,13 +185,6 @@ export const ticketFields = [
 			},
 		},
 		options: [
-			{
-				displayName: 'Category',
-				name: 'category',
-				type: 'number',
-				default: 0,
-				description: 'Category of the ticket',
-			},
 			{
 				displayName: 'CC Emails',
 				name: 'cc_emails',
@@ -111,20 +205,6 @@ export const ticketFields = [
 				},
 			},
 			{
-				displayName: 'Description',
-				name: 'description',
-				type: 'string',
-				default: '',
-				description: 'Content of the ticket in HTML',
-			},
-			{
-				displayName: 'Forward Emails',
-				name: 'fwd_emails',
-				type: 'string',
-				default: '',
-				description: 'Comma-separated email addresses to add while forwarding a ticket',
-			},
-			{
 				displayName: 'Group ID',
 				name: 'group_id',
 				type: 'options',
@@ -141,7 +221,6 @@ export const ticketFields = [
 				name: 'impact',
 				type: 'options',
 				default: 1,
-				description: 'Impact of the ticket',
 				options: [
 					{
 						name: 'Low',
@@ -162,109 +241,18 @@ export const ticketFields = [
 				name: 'name',
 				type: 'string',
 				default: '',
-				description: 'Name of the requester',
-			},
-			{
-				displayName: 'Priority',
-				name: 'priority',
-				type: 'options',
-				default: 1,
-				description: 'Priority of the ticket',
-				options: [
-					{
-						name: 'Low',
-						value: 1,
-					},
-					{
-						name: 'Medium',
-						value: 2,
-					},
-					{
-						name: 'High',
-						value: 3,
-					},
-					{
-						name: 'Urgent',
-						value: 4,
-					},
-				],
-			},
-			{
-				displayName: 'Reply CC Emails',
-				name: 'reply_cc_emails',
-				type: 'string',
-				default: '',
-				description: 'Comma-separated email addresses to add while replying to a ticket',
+				description: 'Name of the ticket author',
 			},
 			{
 				displayName: 'Requester ID',
 				name: 'requester_id',
 				type: 'options',
 				default: '',
-				description: 'ID of the requester',
 				typeOptions: {
 					loadOptionsMethod: [
 						'getRequesters',
 					],
 				},
-			},
-			{
-				displayName: 'Responder ID',
-				name: 'responder_id',
-				type: 'options',
-				default: '',
-				description: 'ID of the agent to whom the ticket has been assigned',
-				typeOptions: {
-					loadOptionsMethod: [
-						'getAgents',
-					],
-				},
-			},
-			{
-				displayName: 'Status',
-				name: 'status',
-				type: 'options',
-				default: 1,
-				description: 'Status of the ticket',
-				options: [
-					{
-						name: 'Open',
-						value: 1,
-					},
-					{
-						name: 'Pending',
-						value: 2,
-					},
-					{
-						name: 'Resolved',
-						value: 3,
-					},
-					{
-						name: 'Closed',
-						value: 4,
-					},
-				],
-			},
-			{
-				displayName: 'Subject',
-				name: 'subject',
-				type: 'string',
-				default: '',
-				description: 'Subject of the ticket',
-			},
-			{
-				displayName: 'Tags',
-				name: 'tags',
-				type: 'string',
-				default: '',
-				description: 'Comma-separated tags associated with the ticket',
-			},
-			{
-				displayName: 'To Emails',
-				name: 'to_emails',
-				type: 'string',
-				default: '',
-				description: 'Comma-separated email addresses to which the ticket was originally sent',
 			},
 		],
 	},
@@ -445,23 +433,23 @@ export const ticketFields = [
 				displayName: 'Status',
 				name: 'status',
 				type: 'options',
-				default: 1,
+				default: 2,
 				options: [
 					{
 						name: 'Open',
-						value: 1,
-					},
-					{
-						name: 'Pending',
 						value: 2,
 					},
 					{
-						name: 'Resolved',
+						name: 'Pending',
 						value: 3,
 					},
 					{
-						name: 'Closed',
+						name: 'Resolved',
 						value: 4,
+					},
+					{
+						name: 'Closed',
+						value: 5,
 					},
 				],
 			},
@@ -475,13 +463,6 @@ export const ticketFields = [
 				displayName: 'Due By',
 				name: 'due_by',
 				description: 'Date when the ticket is due to be resolved',
-				type: 'dateTime',
-				default: '',
-			},
-			{
-				displayName: 'First Response Due By',
-				name: 'fr_due_by',
-				description: 'Date when the first response is due',
 				type: 'dateTime',
 				default: '',
 			},
@@ -527,13 +508,6 @@ export const ticketFields = [
 		},
 		options: [
 			{
-				displayName: 'CC Emails',
-				name: 'cc_emails',
-				type: 'string',
-				default: '',
-				description: 'Comma-separated email addresses to add in the CC field of the incoming ticket email',
-			},
-			{
 				displayName: 'Department ID',
 				name: 'department_id',
 				type: 'options',
@@ -558,20 +532,6 @@ export const ticketFields = [
 				type: 'string',
 				default: '',
 				description: 'Email address of the requester',
-			},
-			{
-				displayName: 'Email Config ID',
-				name: 'email_config_id',
-				type: 'string',
-				default: '',
-				description: 'ID of email config used for this ticket',
-			},
-			{
-				displayName: 'Forward Emails',
-				name: 'fwd_emails',
-				type: 'string',
-				default: '',
-				description: 'Comma-separated email addresses to add while forwarding a ticket',
 			},
 			{
 				displayName: 'Group ID',
@@ -646,49 +606,11 @@ export const ticketFields = [
 				],
 			},
 			{
-				displayName: 'Reply CC Emails',
-				name: 'reply_cc_emails',
-				type: 'string',
-				default: '',
-				description: 'Comma-separated email addresses to add while replying to a ticket',
-			},
-			{
-				displayName: 'Requester ID',
-				name: 'requester_id',
-				type: 'options',
-				default: '',
-				description: 'ID of the requester',
-				typeOptions: {
-					loadOptionsMethod: [
-						'getRequesters',
-					],
-				},
-			},
-			{
-				displayName: 'Responder ID',
-				name: 'responder_id',
-				type: 'options',
-				default: '',
-				description: 'ID of the agent to whom the ticket has been assigned',
-				typeOptions: {
-					loadOptionsMethod: [
-						'getAgents',
-					],
-				},
-			},
-			{
 				displayName: 'Subject',
 				name: 'subject',
 				type: 'string',
 				default: '',
 				description: 'Subject of the ticket',
-			},
-			{
-				displayName: 'To Emails',
-				name: 'to_emails',
-				type: 'string',
-				default: '',
-				description: 'Comma-separated email addresses to which the ticket was originally sent',
 			},
 		],
 	},

@@ -69,6 +69,23 @@ export const requesterFields = [
 		},
 	},
 	{
+		displayName: 'Primary Email',
+		name: 'primary_email',
+		type: 'string',
+		default: '',
+		description: 'Primary email address of the requester',
+		displayOptions: {
+			show: {
+				resource: [
+					'requester',
+				],
+				operation: [
+					'create',
+				],
+			},
+		},
+	},
+	{
 		displayName: 'Additional Fields',
 		name: 'additionalFields',
 		type: 'collection',
@@ -102,7 +119,7 @@ export const requesterFields = [
 			{
 				displayName: 'Department IDs',
 				name: 'department_ids',
-				type: 'options',
+				type: 'multiOptions',
 				default: '',
 				description: 'Comma-separated IDs of the departments associated with the requester',
 				typeOptions: {
@@ -151,13 +168,6 @@ export const requesterFields = [
 				type: 'string',
 				default: '',
 				description: 'Mobile phone number of the requester',
-			},
-			{
-				displayName: 'Primary Email',
-				name: 'primary_email',
-				type: 'string',
-				default: '',
-				description: 'Primary email address of the requester',
 			},
 			{
 				displayName: 'Secondary Emails',
@@ -435,9 +445,14 @@ export const requesterFields = [
 			{
 				displayName: 'Department IDs',
 				name: 'department_ids',
-				type: 'string',
+				type: 'multiOptions',
 				default: '',
 				description: 'Comma-separated IDs of the departments associated with the requester',
+				typeOptions: {
+					loadOptionsMethod: [
+						'getDepartments',
+					],
+				},
 			},
 			{
 				displayName: 'First Name',
@@ -456,9 +471,10 @@ export const requesterFields = [
 			{
 				displayName: 'Language',
 				name: 'language',
-				type: 'string',
+				type: 'options',
 				default: '',
 				description: 'Language used by the requester',
+				options: LANGUAGES,
 			},
 			{
 				displayName: 'Last Name',
@@ -470,9 +486,14 @@ export const requesterFields = [
 			{
 				displayName: 'Location ID',
 				name: 'location_id',
-				type: 'string',
+				type: 'options',
 				default: '',
 				description: 'ID of the location associated with the requester',
+				typeOptions: {
+					loadOptionsMethod: [
+						'getLocations',
+					],
+				},
 			},
 			{
 				displayName: 'Mobile Phone',
@@ -487,13 +508,6 @@ export const requesterFields = [
 				type: 'string',
 				default: '',
 				description: 'Primary email address of the requester',
-			},
-			{
-				displayName: 'Reporting Manager ID',
-				name: 'reporting_manager_id',
-				type: 'string',
-				default: '',
-				description: 'User ID of the requester’s reporting manager',
 			},
 			{
 				displayName: 'Secondary Emails',

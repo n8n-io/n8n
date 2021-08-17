@@ -11,14 +11,19 @@ import {
 } from 'n8n-workflow';
 
 import {
-	OptionsWithUri,
-} from 'request';
-
-import {
+	AddressFixedCollection,
 	FreshserviceCredentials,
 	LoadedUser,
 	RolesParameter,
 } from './types';
+
+import {
+	OptionsWithUri,
+} from 'request';
+
+import {
+	omit,
+} from 'lodash';
 
 export async function freshserviceApiRequest(
 	this: IExecuteFunctions | IHookFunctions | ILoadOptionsFunctions,
@@ -33,7 +38,6 @@ export async function freshserviceApiRequest(
 	const options: OptionsWithUri = {
 		headers: {
 			Authorization: `Basic ${encodedApiKey}`,
-			'Content-Type': 'application/json',
 		},
 		method,
 		body,
@@ -52,10 +56,9 @@ export async function freshserviceApiRequest(
 
 	try {
 		console.log(options);
-		const responseData = await this.helpers.request!(options);
-		// console.log(responseData);
-		return responseData;
+		return await this.helpers.request!(options);
 	} catch (error) {
+		console.log(JSON.stringify(error.error, null, 2));
 		throw new NodeApiError(this.getNode(), error);
 	}
 }
@@ -104,11 +107,8 @@ export async function handleListing(
 	return responseData.slice(0, limit);
 }
 
-/**
- * Transform a loaded resources into load options.
- */
 export const toOptions = (loadedResources: LoadedResource[]) => {
-	return (loadedResources as LoadedResource[])
+	return loadedResources
 		.map(({ id, name }) => ({ value: id, name }))
 		.sort((a, b) => a.name.localeCompare(b.name));
 };
@@ -167,12 +167,23 @@ export function adjustAgentRoles(roles: RolesParameter) {
 	};
 }
 
-/**
- * Convert filters into the filter query string format expected by Freshservice API.
- */
 export function formatFilters(filters: IDataObject) {
+	const query = Object.keys(filters).map(key => {
+		const value = filters[key];
+
+		if (!isNaN(Number(value))) {
+			return `${key}:${filters[key]}`; // number
+		}
+
+		if (typeof value === 'string' && value.endsWith('Z')) {
+			return `${key}:'${value.split('T')[0]}'`; // date
+		}
+
+		return `${key}:'${filters[key]}'`; // string
+	}).join(' AND ');
+
 	return {
-		query: Object.keys(filters).map(key => `${key}:'${filters[key]}'`).join(' AND '),
+		query: `"${query}"`,
 	};
 }
 
@@ -197,3 +208,14 @@ export function validateUpdateFields(
 }
 
 export const toArray = (str: string) => str.split(',').map(e => e.trim());
+
+export function adjustAddress(fixedCollection: IDataObject & AddressFixedCollection) {
+	if (!fixedCollection.address) return fixedCollection;
+
+	const adjusted = omit(fixedCollection, ['address']);
+	adjusted.address = fixedCollection.address.addressFields;
+
+	return adjusted;
+}
+
+const isNumeric = (n: number) => !isNaN(n);

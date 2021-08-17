@@ -50,9 +50,9 @@ export const problemFields = [
 	//             problem: create
 	// ----------------------------------------
 	{
-		displayName: 'Description',
-		name: 'description',
-		description: 'Content of the problem in HTML',
+		displayName: 'Subject',
+		name: 'subject',
+		description: 'Subject of the problem',
 		type: 'string',
 		required: true,
 		default: '',
@@ -71,9 +71,14 @@ export const problemFields = [
 		displayName: 'Requester ID',
 		name: 'requester_id',
 		description: 'ID of the initiator of the problem',
-		type: 'string',
+		type: 'options',
 		required: true,
 		default: '',
+		typeOptions: {
+			loadOptionsMethod: [
+				'getRequesters',
+			],
+		},
 		displayOptions: {
 			show: {
 				resource: [
@@ -86,11 +91,10 @@ export const problemFields = [
 		},
 	},
 	{
-		displayName: 'Subject',
-		name: 'subject',
-		description: 'Subject of the problem',
-		type: 'string',
-		required: true,
+		displayName: 'Due By',
+		name: 'due_by',
+		description: 'Date when the problem is due to be resolved',
+		type: 'dateTime',
 		default: '',
 		displayOptions: {
 			show: {
@@ -145,6 +149,13 @@ export const problemFields = [
 				},
 			},
 			{
+				displayName: 'Description',
+				name: 'description',
+				description: 'Content of the problem in HTML',
+				type: 'string',
+				default: '',
+			},
+			{
 				displayName: 'Group ID',
 				name: 'group_id',
 				type: 'options',
@@ -160,19 +171,19 @@ export const problemFields = [
 				displayName: 'Impact',
 				name: 'impact',
 				type: 'options',
-				default: 'Low',
+				default: 1,
 				options: [
 					{
 						name: 'Low',
-						value: 'Low',
+						value: 1,
 					},
 					{
 						name: 'Medium',
-						value: 'Medium',
+						value: 2,
 					},
 					{
 						name: 'High',
-						value: 'High',
+						value: 3,
 					},
 				],
 			},
@@ -381,6 +392,13 @@ export const problemFields = [
 				description: 'Content of the problem in HTML',
 			},
 			{
+				displayName: 'Due By',
+				name: 'due_by',
+				description: 'Date when the problem is due to be resolved',
+				type: 'dateTime',
+				default: '',
+			},
+			{
 				displayName: 'Group ID',
 				name: 'group_id',
 				type: 'options',
@@ -396,19 +414,19 @@ export const problemFields = [
 				displayName: 'Impact',
 				name: 'impact',
 				type: 'options',
-				default: 'Low',
+				default: 1,
 				options: [
 					{
 						name: 'Low',
-						value: 'Low',
+						value: 1,
 					},
 					{
 						name: 'Medium',
-						value: 'Medium',
+						value: 2,
 					},
 					{
 						name: 'High',
-						value: 'High',
+						value: 3,
 					},
 				],
 			},
@@ -416,30 +434,30 @@ export const problemFields = [
 				displayName: 'Priority',
 				name: 'priority',
 				type: 'options',
-				default: 'Low',
+				default: 1,
 				options: [
 					{
 						name: 'Low',
-						value: 'Low',
+						value: 1,
 					},
 					{
 						name: 'Medium',
-						value: 'Medium',
+						value: 2,
 					},
 					{
 						name: 'High',
-						value: 'High',
+						value: 3,
 					},
 					{
 						name: 'Urgent',
-						value: 'Urgent',
+						value: 4,
 					},
 				],
 			},
 			{
 				displayName: 'Requester ID',
 				name: 'requester_id',
-				type: 'string',
+				type: 'options',
 				default: '',
 				description: 'ID of the initiator of the problem',
 				typeOptions: {

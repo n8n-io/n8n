@@ -186,7 +186,7 @@ export const requesterGroupFields = [
 	//          requesterGroup: update
 	// ----------------------------------------
 	{
-		displayName: 'requesterGroup ID',
+		displayName: 'Requester Group ID',
 		name: 'requesterGroupId',
 		description: 'ID of the requesterGroup to update',
 		type: 'string',

@@ -1,3 +1,5 @@
+// https://support.freshservice.com/support/solutions/articles/232303-list-of-languages-supported-in-freshservice
+
 const RAW_LANGUAGES: { [key: string]: string } = {
 	en: 'English',
 	ar: 'Arabic',

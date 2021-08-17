@@ -50,9 +50,9 @@ export const releaseFields = [
 	//             release: create
 	// ----------------------------------------
 	{
-		displayName: 'Description',
-		name: 'description',
-		description: 'Description of the release in HTML',
+		displayName: 'Subject',
+		name: 'subject',
+		description: 'Subject of the release',
 		type: 'string',
 		required: true,
 		default: '',
@@ -68,10 +68,132 @@ export const releaseFields = [
 		},
 	},
 	{
-		displayName: 'Subject',
-		name: 'subject',
-		description: 'Subject of the release',
-		type: 'string',
+		displayName: 'Release Type',
+		name: 'release_type',
+		type: 'options',
+		default: 1,
+		displayOptions: {
+			show: {
+				resource: [
+					'release',
+				],
+				operation: [
+					'create',
+				],
+			},
+		},
+		options: [
+			{
+				name: 'Minor',
+				value: 1,
+			},
+			{
+				name: 'Standard',
+				value: 2,
+			},
+			{
+				name: 'Major',
+				value: 3,
+			},
+			{
+				name: 'Emergency',
+				value: 4,
+			},
+		],
+	},
+	{
+		displayName: 'Priority',
+		name: 'priority',
+		type: 'options',
+		default: 1,
+		displayOptions: {
+			show: {
+				resource: [
+					'release',
+				],
+				operation: [
+					'create',
+				],
+			},
+		},
+		options: [
+			{
+				name: 'Low',
+				value: 1,
+			},
+			{
+				name: 'Medium',
+				value: 2,
+			},
+			{
+				name: 'High',
+				value: 3,
+			},
+			{
+				name: 'Urgent',
+				value: 4,
+			},
+		],
+	},
+	{
+		displayName: 'Status',
+		name: 'status',
+		type: 'options',
+		default: 1,
+		displayOptions: {
+			show: {
+				resource: [
+					'release',
+				],
+				operation: [
+					'create',
+				],
+			},
+		},
+		options: [
+			{
+				name: 'Open',
+				value: 1,
+			},
+			{
+				name: 'On Hold',
+				value: 2,
+			},
+			{
+				name: 'In Progress',
+				value: 3,
+			},
+			{
+				name: 'Incomplete',
+				value: 4,
+			},
+			{
+				name: 'Completed',
+				value: 5,
+			},
+		],
+	},
+	{
+		displayName: 'Planned Start Date',
+		name: 'planned_start_date',
+		type: 'dateTime',
+		required: true,
+		default: '',
+		displayOptions: {
+			show: {
+				resource: [
+					'release',
+				],
+				operation: [
+					'create',
+				],
+			},
+		},
+	},
+	{
+		displayName: 'Planned End Date',
+		name: 'planned_end_date',
+		type: 'dateTime',
 		required: true,
 		default: '',
 		displayOptions: {
@@ -103,18 +225,6 @@ export const releaseFields = [
 		},
 		options: [
 			{
-				displayName: 'Agent ID',
-				name: 'agent_id',
-				type: 'options',
-				default: '',
-				description: 'ID of the agent to whom the release is assigned',
-				typeOptions: {
-					loadOptionsMethod: [
-						'getAgents',
-					],
-				},
-			},
-			{
 				displayName: 'Department ID',
 				name: 'department_id',
 				type: 'options',
@@ -127,6 +237,13 @@ export const releaseFields = [
 				},
 			},
 			{
+				displayName: 'Description in HTML',
+				name: 'description',
+				description: 'Description of the release in HTML',
+				type: 'string',
+				default: '',
+			},
+			{
 				displayName: 'Group ID',
 				name: 'group_id',
 				type: 'options',
@@ -137,82 +254,6 @@ export const releaseFields = [
 						'getAgentGroups',
 					],
 				},
-			},
-			{
-				displayName: 'Priority',
-				name: 'priority',
-				type: 'options',
-				default: 1,
-				options: [
-					{
-						name: 'Low',
-						value: 1,
-					},
-					{
-						name: 'Medium',
-						value: 2,
-					},
-					{
-						name: 'High',
-						value: 3,
-					},
-					{
-						name: 'Urgent',
-						value: 4,
-					},
-				],
-			},
-			{
-				displayName: 'Release Type',
-				name: 'release_type',
-				type: 'options',
-				default: 1,
-				options: [
-					{
-						name: 'Minor',
-						value: 1,
-					},
-					{
-						name: 'Standard',
-						value: 2,
-					},
-					{
-						name: 'Major',
-						value: 3,
-					},
-					{
-						name: 'Emergency',
-						value: 4,
-					},
-				],
-			},
-			{
-				displayName: 'Status',
-				name: 'status',
-				type: 'options',
-				default: 1,
-				options: [
-					{
-						name: 'Open',
-						value: 1,
-					},
-					{
-						name: 'On Hold',
-						value: 2,
-					},
-					{
-						name: 'In Progress',
-						value: 3,
-					},
-					{
-						name: 'Incomplete',
-						value: 4,
-					},
-					{
-						name: 'Completed',
-						value: 5,
-					},
-				],
 			},
 		],
 	},
@@ -343,18 +384,6 @@ export const releaseFields = [
 			},
 		},
 		options: [
-			{
-				displayName: 'Agent ID',
-				name: 'agent_id',
-				type: 'options',
-				default: '',
-				description: 'ID of the agent to whom the release is assigned',
-				typeOptions: {
-					loadOptionsMethod: [
-						'getAgents',
-					],
-				},
-			},
 			{
 				displayName: 'Department ID',
 				name: 'department_id',

@@ -12,6 +12,7 @@ import {
 } from 'n8n-workflow';
 
 import {
+	adjustAddress,
 	adjustAgentRoles,
 	formatFilters,
 	freshserviceApiRequest,
@@ -60,6 +61,7 @@ import {
 } from './descriptions';
 
 import {
+	AddressFixedCollection,
 	LoadedResource,
 	LoadedUser,
 	RolesParameter,
@@ -881,10 +883,10 @@ export class Freshservice implements INodeType {
 							name: this.getNodeParameter('name', i),
 						} as IDataObject;
 
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject & AddressFixedCollection;
 
 						if (Object.keys(additionalFields).length) {
-							Object.assign(body, additionalFields);
+							Object.assign(body, adjustAddress(additionalFields));
 						}
 
 						responseData = await freshserviceApiRequest.call(this, 'POST', '/locations', body);
@@ -928,7 +930,7 @@ export class Freshservice implements INodeType {
 
 						validateUpdateFields.call(this, updateFields, resource);
 
-						Object.assign(body, updateFields);
+						Object.assign(body, adjustAddress(updateFields));
 
 						const locationId = this.getNodeParameter('locationId', i);
 						const endpoint = `/locations/${locationId}`;
@@ -949,9 +951,9 @@ export class Freshservice implements INodeType {
 						// ----------------------------------------
 
 						const body = {
-							description: this.getNodeParameter('description', i),
-							requester_id: this.getNodeParameter('requester_id', i),
 							subject: this.getNodeParameter('subject', i),
+							requester_id: this.getNodeParameter('requester_id', i),
+							due_by: this.getNodeParameter('due_by', i),
 						} as IDataObject;
 
 						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
@@ -1022,7 +1024,7 @@ export class Freshservice implements INodeType {
 						// ----------------------------------------
 
 						const body = {
-							asset_type_id: this.getNodeParameter('assetTypeId', i),
+							asset_type_id: this.getNodeParameter('asset_type_id', i),
 							name: this.getNodeParameter('name', i),
 						} as IDataObject;
 
@@ -1093,8 +1095,12 @@ export class Freshservice implements INodeType {
 						// ----------------------------------------
 
 						const body = {
-							description: this.getNodeParameter('description', i),
 							subject: this.getNodeParameter('subject', i),
+							release_type: this.getNodeParameter('release_type', i),
+							status: this.getNodeParameter('status', i),
+							priority: this.getNodeParameter('priority', i),
+							planned_start_date: this.getNodeParameter('planned_start_date', i),
+							planned_end_date: this.getNodeParameter('planned_end_date', i),
 						} as IDataObject;
 
 						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
@@ -1164,12 +1170,20 @@ export class Freshservice implements INodeType {
 
 						const body = {
 							first_name: this.getNodeParameter('first_name', i),
+							primary_email: this.getNodeParameter('primary_email', i),
 						} as IDataObject;
 
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject & {
+							secondary_emails?: string;
+						};
 
 						if (Object.keys(additionalFields).length) {
-							Object.assign(body, additionalFields);
+							const { secondary_emails, ...rest } = additionalFields;
+
+							Object.assign(body, {
+								...(secondary_emails && { secondary_emails: toArray(secondary_emails) }),
+								...rest,
+							});
 						}
 
 						responseData = await freshserviceApiRequest.call(this, 'POST', '/requesters', body);
@@ -1216,11 +1230,18 @@ export class Freshservice implements INodeType {
 						// ----------------------------------------
 
 						const body = {} as IDataObject;
-						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject & {
+							secondary_emails?: string;
+						};
 
 						validateUpdateFields.call(this, updateFields, resource);
 
-						Object.assign(body, updateFields);
+						const { secondary_emails, ...rest } = updateFields;
+
+						Object.assign(body, {
+							...(secondary_emails && { secondary_emails: toArray(secondary_emails) }),
+							...rest,
+						});
 
 						const requesterId = this.getNodeParameter('requesterId', i);
 						const endpoint = `/requesters/${requesterId}`;
@@ -1312,17 +1333,19 @@ export class Freshservice implements INodeType {
 						// ----------------------------------------
 
 						const body = {
-							application_type: this.getNodeParameter('application_type', i),
-							name: this.getNodeParameter('name', i),
+							application: {
+								application_type: this.getNodeParameter('application_type', i),
+								name: this.getNodeParameter('name', i),
+							},
 						} as IDataObject;
 
 						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 
 						if (Object.keys(additionalFields).length) {
-							Object.assign(body, additionalFields);
+							Object.assign(body.application, additionalFields);
 						}
 
-						responseData = await freshserviceApiRequest.call(this, 'POST', '/softwares', body);
+						responseData = await freshserviceApiRequest.call(this, 'POST', '/applications', body);
 
 					} else if (operation === 'delete') {
 
@@ -1331,7 +1354,7 @@ export class Freshservice implements INodeType {
 						// ----------------------------------------
 
 						const softwareId = this.getNodeParameter('softwareId', i);
-						const endpoint = `/softwares/${softwareId}`;
+						const endpoint = `/applications/${softwareId}`;
 						responseData = await freshserviceApiRequest.call(this, 'DELETE', endpoint);
 
 					} else if (operation === 'get') {
@@ -1341,7 +1364,7 @@ export class Freshservice implements INodeType {
 						// ----------------------------------------
 
 						const softwareId = this.getNodeParameter('softwareId', i);
-						const endpoint = `/softwares/${softwareId}`;
+						const endpoint = `/applications/${softwareId}`;
 						responseData = await freshserviceApiRequest.call(this, 'GET', endpoint);
 
 					} else if (operation === 'getAll') {
@@ -1350,7 +1373,7 @@ export class Freshservice implements INodeType {
 						//             software: getAll
 						// ----------------------------------------
 
-						responseData = await handleListing.call(this, 'GET', '/softwares');
+						responseData = await handleListing.call(this, 'GET', '/applications');
 
 					} else if (operation === 'update') {
 
@@ -1358,15 +1381,15 @@ export class Freshservice implements INodeType {
 						//             software: update
 						// ----------------------------------------
 
-						const body = {} as IDataObject;
+						const body = { application: {} } as IDataObject;
 						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
 
 						validateUpdateFields.call(this, updateFields, resource);
 
-						Object.assign(body, updateFields);
+						Object.assign(body.application, updateFields);
 
 						const softwareId = this.getNodeParameter('softwareId', i);
-						const endpoint = `/softwares/${softwareId}`;
+						const endpoint = `/applications/${softwareId}`;
 						responseData = await freshserviceApiRequest.call(this, 'PUT', endpoint, body);
 
 					}
@@ -1385,12 +1408,23 @@ export class Freshservice implements INodeType {
 
 						const body = {
 							email: this.getNodeParameter('email', i),
+							subject: this.getNodeParameter('subject', i),
+							description: this.getNodeParameter('description', i),
+							priority: this.getNodeParameter('priority', i),
+							status: this.getNodeParameter('status', i),
 						} as IDataObject;
 
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject & {
+							cc_emails?: string,
+						};
 
 						if (Object.keys(additionalFields).length) {
-							Object.assign(body, additionalFields);
+							const { cc_emails, ...rest } = additionalFields;
+
+							Object.assign(body, {
+								...(cc_emails && { cc_emails: toArray(cc_emails) }),
+								...rest,
+							});
 						}
 
 						responseData = await freshserviceApiRequest.call(this, 'POST', '/tickets', body);
@@ -1421,12 +1455,16 @@ export class Freshservice implements INodeType {
 
 						const qs = {} as IDataObject;
 						const filters = this.getNodeParameter('filters', i) as IDataObject;
+						let endpoint = '';
 
 						if (Object.keys(filters).length) {
 							Object.assign(qs, formatFilters(filters));
+							endpoint = '/tickets/filter';
+						} else {
+							endpoint = '/tickets';
 						}
 
-						responseData = await handleListing.call(this, 'GET', '/tickets', {}, qs);
+						responseData = await handleListing.call(this, 'GET', endpoint, {}, qs);
 
 					} else if (operation === 'update') {
 
@@ -1451,13 +1489,14 @@ export class Freshservice implements INodeType {
 				if (operation === 'delete') {
 					responseData = { success: true };
 				} else if (operation !== 'getAll') {
-					const twoWordResources: { [key: string]: string } = {
+					const special: { [key: string]: string } = {
 						agentGroup: 'group',
 						agentRole: 'role',
 						assetType: 'asset_type',
 						requesterGroup: 'requester_group',
+						software: 'application',
 					};
-					responseData = responseData[twoWordResources[resource]] ?? responseData[resource];
+					responseData = responseData[special[resource]] ?? responseData[resource];
 				}
 
 			} catch (error) {
