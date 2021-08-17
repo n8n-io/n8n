@@ -181,7 +181,7 @@ export default mixins(
 		},
 	},
 	methods: {
-		getCredentialProperties (name: string): INodeParameters[] { // tslint:disable-line:no-any
+		getCredentialProperties (name: string): INodeProperties[] {
 			const credentialsData = this.$store.getters['credentials/getCredentialTypeByName'](name);
 
 			if (credentialsData === null) {
