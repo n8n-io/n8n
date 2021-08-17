@@ -120,7 +120,7 @@ export const requesterFields = [
 				displayName: 'Department IDs',
 				name: 'department_ids',
 				type: 'multiOptions',
-				default: '',
+				default: [],
 				description: 'Comma-separated IDs of the departments associated with the requester',
 				typeOptions: {
 					loadOptionsMethod: [
@@ -446,7 +446,7 @@ export const requesterFields = [
 				displayName: 'Department IDs',
 				name: 'department_ids',
 				type: 'multiOptions',
-				default: '',
+				default: [],
 				description: 'Comma-separated IDs of the departments associated with the requester',
 				typeOptions: {
 					loadOptionsMethod: [

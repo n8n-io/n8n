@@ -282,7 +282,7 @@ export const agentFields = [
 				displayName: 'Scoreboard Level ID',
 				name: 'scoreboard_level_id',
 				type: 'options',
-				default: 'Beginner',
+				default: 1,
 				options: [
 					{
 						name: 'Beginner',
@@ -671,7 +671,7 @@ export const agentFields = [
 				displayName: 'Scoreboard Level ID',
 				name: 'scoreboard_level_id',
 				type: 'options',
-				default: 'Beginner',
+				default: 1,
 				options: [
 					{
 						name: 'Beginner',

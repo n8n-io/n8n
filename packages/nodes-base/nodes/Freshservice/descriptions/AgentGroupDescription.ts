@@ -339,7 +339,7 @@ export const agentGroupFields = [
 				displayName: 'Observers',
 				name: 'observers',
 				type: 'multiOptions',
-				default: '',
+				default: [],
 				description: 'Comma-separated agent user IDs who are observers of this group',
 				typeOptions: {
 					loadOptionsMethod: [
