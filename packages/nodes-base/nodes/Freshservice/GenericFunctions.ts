@@ -55,10 +55,8 @@ export async function freshserviceApiRequest(
 	}
 
 	try {
-		console.log(options);
 		return await this.helpers.request!(options);
 	} catch (error) {
-		console.log(JSON.stringify(error.error, null, 2));
 		throw new NodeApiError(this.getNode(), error);
 	}
 }
