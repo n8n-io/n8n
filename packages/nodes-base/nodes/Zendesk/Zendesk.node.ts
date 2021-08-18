@@ -264,7 +264,7 @@ export class Zendesk implements INodeType {
 			try {
 				const resource = this.getNodeParameter('resource', 0) as string;
 				const operation = this.getNodeParameter('operation', 0) as string;
-				//https://developer.zendesk.com/rest_api/docs/support/introduction
+				//https://developer.zendesk.com/api-reference/ticketing/introduction/
 				if (resource === 'ticket') {
 					//https://developer.zendesk.com/rest_api/docs/support/tickets
 					if (operation === 'create') {
@@ -413,7 +413,7 @@ export class Zendesk implements INodeType {
 						}
 					}
 				}
-				//https://developer.zendesk.com/rest_api/docs/support/ticket_fields
+				//https://developer.zendesk.com/api-reference/ticketing/tickets/ticket_fields/
 				if (resource === 'ticketField') {
 					//https://developer.zendesk.com/rest_api/docs/support/tickets#show-ticket
 					if (operation === 'get') {
@@ -434,9 +434,9 @@ export class Zendesk implements INodeType {
 						}
 					}
 				}
-				//https://developer.zendesk.com/rest_api/docs/support/users
+				//https://developer.zendesk.com/api-reference/ticketing/users/users/
 				if (resource === 'user') {
-					//https://developer.zendesk.com/rest_api/docs/support/users#create-user
+					//https://developer.zendesk.com/api-reference/ticketing/users/users/#create-user
 					if (operation === 'create') {
 						const name = this.getNodeParameter('name', i) as string;
 						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
@@ -462,7 +462,7 @@ export class Zendesk implements INodeType {
 						responseData = await zendeskApiRequest.call(this, 'POST', '/users', { user: body });
 						responseData = responseData.user;
 					}
-					//https://developer.zendesk.com/rest_api/docs/support/tickets#update-ticket
+					//https://developer.zendesk.com/api-reference/ticketing/users/users/#update-user
 					if (operation === 'update') {
 						const userId = this.getNodeParameter('id', i) as string;
 						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
@@ -486,13 +486,13 @@ export class Zendesk implements INodeType {
 						responseData = await zendeskApiRequest.call(this, 'PUT', `/users/${userId}`, { user: body });
 						responseData = responseData.user;
 					}
-					//https://developer.zendesk.com/rest_api/docs/support/users#show-user
+					//https://developer.zendesk.com/api-reference/ticketing/users/users/#show-user
 					if (operation === 'get') {
 						const userId = this.getNodeParameter('id', i) as string;
 						responseData = await zendeskApiRequest.call(this, 'GET', `/users/${userId}`, {});
 						responseData = responseData.user;
 					}
-					//https://developer.zendesk.com/rest_api/docs/support/users#list-users
+					//https://developer.zendesk.com/api-reference/ticketing/users/users/#list-users
 					if (operation === 'getAll') {
 						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
 						const options = this.getNodeParameter('filters', i) as IDataObject;
@@ -508,7 +508,7 @@ export class Zendesk implements INodeType {
 							responseData = responseData.users;
 						}
 					}
-					//https://developer.zendesk.com/rest_api/docs/support/users#search-users
+					//https://developer.zendesk.com/api-reference/ticketing/users/users/#search-users
 					if (operation === 'search') {
 						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
 						const options = this.getNodeParameter('filters', i) as IDataObject;
@@ -524,7 +524,7 @@ export class Zendesk implements INodeType {
 							responseData = responseData.users;
 						}
 					}
-					//https://developer.zendesk.com/rest_api/docs/support/users#delete-user
+					//https://developer.zendesk.com/api-reference/ticketing/users/users/#delete-user
 					if (operation === 'delete') {
 						const userId = this.getNodeParameter('id', i) as string;
 						responseData = await zendeskApiRequest.call(this, 'DELETE', `/users/${userId}`, {});
