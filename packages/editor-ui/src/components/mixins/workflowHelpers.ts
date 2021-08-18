@@ -21,6 +21,7 @@ import {
 	IRunExecutionData,
 	IWorfklowIssues,
 	IWorkflowDataProxyAdditionalKeys,
+	TelemetryHelpers,
 	Workflow,
 	NodeHelpers,
 } from 'n8n-workflow';

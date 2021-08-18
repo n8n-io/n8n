@@ -152,11 +152,23 @@ export default mixins(externalHooks).extend({
 				selectedType: this.selectedType,
 				filteredNodes: this.filteredNodeTypes,
 			});
+			this.$telemetry.trackNodesPanel('nodeCreateList.nodeFilterChanged', {
+				oldValue,
+				newValue,
+				selectedType: this.selectedType,
+				filteredNodes: this.filteredNodeTypes,
+				workflow_id: this.$store.getters.workflowId,
+			});
 		},
 		selectedType(newValue, oldValue) {
 			this.$externalHooks().run('nodeCreateList.selectedTypeChanged', {
 				oldValue,
 				newValue,
+			});
+			this.$telemetry.trackNodesPanel('nodeCreateList.selectedTypeChanged', {
+				old_filter: oldValue,
+				new_filter: newValue,
+				workflow_id: this.$store.getters.workflowId,
 			});
 		},
 	},
@@ -243,6 +255,7 @@ export default mixins(externalHooks).extend({
 				);
 			} else {
 				this.activeCategory = [...this.activeCategory, category];
+				this.$telemetry.trackNodesPanel('nodeCreateList.onCategoryExpanded', { category_name: category, workflow_id: this.$store.getters.workflowId });
 			}
 
 			this.activeIndex = this.categorized.findIndex(
@@ -252,6 +265,7 @@ export default mixins(externalHooks).extend({
 		onSubcategorySelected(selected: INodeCreateElement) {
 			this.activeSubcategoryIndex = 0;
 			this.activeSubcategory = selected;
+			this.$telemetry.trackNodesPanel('nodeCreateList.onSubcategorySelected', { selected, workflow_id: this.$store.getters.workflowId });
 		},
 
 		onSubcategoryClose() {
@@ -273,6 +287,7 @@ export default mixins(externalHooks).extend({
 	},
 	async destroyed() {
 		this.$externalHooks().run('nodeCreateList.destroyed');
+		this.$telemetry.trackNodesPanel('nodeCreateList.destroyed', { workflow_id: this.$store.getters.workflowId });
 	},
 });
 </script>
