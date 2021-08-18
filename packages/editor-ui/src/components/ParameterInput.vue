@@ -140,7 +140,6 @@ import ExpressionEdit from '@/components/ExpressionEdit.vue';
 // @ts-ignore
 import PrismEditor from 'vue-prism-editor';
 import TextEdit from '@/components/TextEdit.vue';
-import { genericHelpers } from '@/components/mixins/genericHelpers';
 import { nodeHelpers } from '@/components/mixins/nodeHelpers';
 import { showMessage } from '@/components/mixins/showMessage';
 import { workflowHelpers } from '@/components/mixins/workflowHelpers';
@@ -148,7 +147,6 @@ import { workflowHelpers } from '@/components/mixins/workflowHelpers';
 import mixins from 'vue-typed-mixins';
 
 export default mixins(
-	genericHelpers,
 	nodeHelpers,
 	showMessage,
 	workflowHelpers,
@@ -167,8 +165,9 @@ export default mixins(
 			'path', // string
 			'value',
 			'isCredential', // boolean
-			'multiline', //boolean
+			'isReadOnly',
 			'inputSize',
+			'multiline', //boolean
 		],
 		data () {
 			return {

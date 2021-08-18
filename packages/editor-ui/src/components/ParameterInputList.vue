@@ -68,6 +68,7 @@
 					:value="getParameterValue(nodeValues, parameter.name, path)"
 					:displayOptions="true"
 					:path="getPath(parameter.name)"
+					:isReadOnly="isReadOnly"
 					@valueChanged="valueChanged"
 				/>
 			</div>
