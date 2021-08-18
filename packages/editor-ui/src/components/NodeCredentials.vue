@@ -157,10 +157,10 @@ export default mixins(
 			if (credentialName=== NEW_CREDENTIALS_TEXT) {
 				this.$store.dispatch('ui/openNewCredentialDetails', { type: credentialType });
 
-				this.credentials[credentialType] = undefined;
+				Vue.set(this.credentials, credentialType, undefined);
 			}
 			else {
-				this.credentials[credentialType] = credentialName;
+				Vue.set(this.credentials, credentialType, credentialName);
 			}
 
 			const node = this.node as INodeUi;
