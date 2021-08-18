@@ -68,7 +68,7 @@
 				<SaveButton
 					:saved="!this.isDirty && !this.isNewWorkflow"
 					:disabled="isWorkflowSaving"
-					@click="saveCurrentWorkflow"
+					@click="onSaveButtonClick"
 				/>
 			</template>
 		</PushConnectionTracker>
@@ -135,11 +135,14 @@ export default mixins(workflowHelpers).extend({
 		isWorkflowSaving(): boolean {
 			return this.$store.getters.isActionActive("workflowSaving");
 		},
-		currentWorkflowId() {
+		currentWorkflowId(): string {
 			return this.$route.params.name;
 		},
 	},
 	methods: {
+		onSaveButtonClick () {
+			this.saveCurrentWorkflow(undefined);
+		},
 		onTagsEditEnable() {
 			this.$data.appliedTagIds = this.currentWorkflowTagIds;
 			this.$data.isTagsEditEnabled = true;
@@ -168,6 +171,8 @@ export default mixins(workflowHelpers).extend({
 			this.$data.tagsSaving = true;
 
 			const saved = await this.saveCurrentWorkflow({ tags });
+			this.$telemetry.track('User edited workflow tags', { workflow_id: this.currentWorkflowId as string, new_tag_count: tags.length });
+			
 			this.$data.tagsSaving = false;
 			if (saved) {
 				this.$data.isTagsEditEnabled = false;

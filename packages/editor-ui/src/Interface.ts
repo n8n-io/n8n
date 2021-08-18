@@ -18,6 +18,7 @@ import {
 	IRun,
 	IRunData,
 	ITaskData,
+	ITelemetrySettings,
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
 
@@ -457,6 +458,7 @@ export interface IN8nUISettings {
 	};
 	versionNotifications: IVersionNotificationSettings;
 	instanceId: string;
+	telemetry: ITelemetrySettings;
 }
 
 export interface IWorkflowSettings extends IWorkflowSettingsWorkflow {
@@ -598,6 +600,7 @@ export interface IRootState {
 	workflow: IWorkflowDb;
 	sidebarMenuItems: IMenuItem[];
 	instanceId: string;
+	telemetry: ITelemetrySettings | null;
 }
 
 export interface ICredentialTypeMap {

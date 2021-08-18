@@ -11,6 +11,7 @@ import {
 	IRunData,
 	IRunExecutionData,
 	ITaskData,
+	ITelemetrySettings,
 	IWorkflowBase as IWorkflowBaseWorkflow,
 	// eslint-disable-next-line @typescript-eslint/no-unused-vars
 	IWorkflowCredentials,
@@ -281,6 +282,38 @@ export interface IExternalHooksClass {
 	run(hookName: string, hookParameters?: any[]): Promise<void>;
 }
 
+export interface IDiagnosticInfo {
+	versionCli: string;
+	databaseType: DatabaseType;
+	notificationsEnabled: boolean;
+	disableProductionWebhooksOnMainProcess: boolean;
+	basicAuthActive: boolean;
+	systemInfo: {
+		os: {
+			type?: string;
+			version?: string;
+		};
+		memory?: number;
+		cpus: {
+			count?: number;
+			model?: string;
+			speed?: number;
+		};
+	};
+	executionVariables: {
+		[key: string]: string | number | undefined;
+	};
+	deploymentType: string;
+}
+
+export interface IInternalHooksClass {
+	onN8nStop(): Promise<void>;
+	onServerStarted(diagnosticInfo: IDiagnosticInfo): Promise<void>;
+	onWorkflowDeleted(workflowId: string): Promise<void>;
+	onWorkflowSaved(workflow: IWorkflowBase): Promise<void>;
+	onWorkflowPostExecute(workflow: IWorkflowBase, runData?: IRun): Promise<void>;
+}
+
 export interface IN8nConfig {
 	database: IN8nConfigDatabase;
 	endpoints: IN8nConfigEndpoints;
@@ -357,6 +390,7 @@ export interface IN8nUISettings {
 	};
 	versionNotifications: IVersionNotificationSettings;
 	instanceId: string;
+	telemetry: ITelemetrySettings;
 }
 
 export interface IPackageVersions {
