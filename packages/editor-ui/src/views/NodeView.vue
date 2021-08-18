@@ -343,6 +343,7 @@ export default mixins(
 			openNodeCreator () {
 				this.createNodeActive = true;
 				this.$externalHooks().run('nodeView.createNodeActiveChanged', { source: 'add_node_button' });
+				this.$telemetry.trackNodesPanel('nodeView.createNodeActiveChanged', { source: 'add_node_button', workflow_id: this.$store.getters.workflowId });
 			},
 			async openExecution (executionId: string) {
 				this.resetWorkspace();
@@ -371,6 +372,7 @@ export default mixins(
 				});
 
 				this.$externalHooks().run('execution.open', { workflowId: data.workflowData.id, workflowName: data.workflowData.name, executionId });
+				this.$telemetry.track('User opened read-only execution', { workflow_id: data.workflowData.id, execution_mode: data.mode, execution_finished: data.finished });
 
 				if (data.finished !== true && data.data.resultData.error) {
 					// Check if any node contains an error
@@ -389,12 +391,14 @@ export default mixins(
 					}
 
 					if (nodeErrorFound === false) {
-						const errorMessage = this.$getExecutionError(data.data.resultData.error);
+						const resultError = data.data.resultData.error;
+						const errorMessage = this.$getExecutionError(resultError);
+						const shouldTrack = resultError && resultError.node && resultError.node.type.startsWith('n8n-nodes-base');
 						this.$showMessage({
 							title: 'Failed execution',
 							message: errorMessage,
 							type: 'error',
-						});
+						}, shouldTrack);
 
 						if (data.data.resultData.error.stack) {
 							// Display some more information for now in console to make debugging easier
@@ -648,7 +652,7 @@ export default mixins(
 						return;
 					}
 
-					this.callDebounced('saveCurrentWorkflow', 1000);
+					this.callDebounced('saveCurrentWorkflow', 1000, undefined, true);
 				} else if (e.key === 'Enter') {
 					// Activate the last selected node
 					const lastSelectedNode = this.$store.getters.lastSelectedNode;
@@ -833,6 +837,12 @@ export default mixins(
 				this.getSelectedNodesToSave().then((data) => {
 					const nodeData = JSON.stringify(data, null, 2);
 					this.copyToClipboard(nodeData);
+					if (data.nodes.length > 0) {
+						this.$telemetry.track('User copied nodes', {
+							node_types: data.nodes.map((node) => node.type),
+							workflow_id: this.$store.getters.workflowId,
+						});
+					}
 				});
 			},
 
@@ -1006,6 +1016,10 @@ export default mixins(
 					}
 				}
 
+				this.$telemetry.track('User pasted nodes', {
+					workflow_id: this.$store.getters.workflowId,
+				});
+
 				return this.importWorkflowData(workflowData!);
 			},
 
@@ -1023,6 +1037,8 @@ export default mixins(
 					return;
 				}
 				this.stopLoading();
+
+				this.$telemetry.track('User imported workflow', { source: 'url', workflow_id: this.$store.getters.workflowId });
 
 				return workflowData;
 			},
@@ -1242,6 +1258,7 @@ export default mixins(
 				this.$store.commit('setStateDirty', true);
 
 				this.$externalHooks().run('nodeView.addNodeButton', { nodeTypeName });
+				this.$telemetry.trackNodesPanel('nodeView.addNodeButton', { node_type: nodeTypeName, workflow_id: this.$store.getters.workflowId });
 
 				// Automatically deselect all nodes and select the current one and also active
 				// current node
@@ -1366,6 +1383,7 @@ export default mixins(
 					// Display the node-creator
 					this.createNodeActive = true;
 					this.$externalHooks().run('nodeView.createNodeActiveChanged', { source: 'node_connection_drop' });
+					this.$telemetry.trackNodesPanel('nodeView.createNodeActiveChanged', { source: 'node_connection_drop', workflow_id: this.$store.getters.workflowId });
 				});
 
 				this.instance.bind('connection', (info: OnConnectionBindInfo) => {
@@ -1747,6 +1765,8 @@ export default mixins(
 				setTimeout(() => {
 					this.nodeSelectedByName(newNodeData.name, true);
 				});
+
+				this.$telemetry.track('User duplicated node', { node_type: node.type, workflow_id: this.$store.getters.workflowId });
 			},
 			removeNode (nodeName: string) {
 				if (this.editAllowedCheck() === false) {
@@ -2205,6 +2225,7 @@ export default mixins(
 				this.$store.commit('setOauthCallbackUrls', settings.oauthCallbackUrls);
 				this.$store.commit('setN8nMetadata', settings.n8nMetadata || {});
 				this.$store.commit('versions/setVersionNotificationSettings', settings.versionNotifications);
+				this.$store.commit('setTelemetry', settings.telemetry);
 			},
 			async loadNodeTypes (): Promise<void> {
 				const nodeTypes = await this.restApi().getNodeTypes();

@@ -113,7 +113,7 @@
 						<span slot="title" class="item-title-root">Help</span>
 					</template>
 
-					<MenuItemsIterator :items="helpMenuItems" />
+					<MenuItemsIterator :items="helpMenuItems" :afterItemClick="trackHelpItemClick" />
 
 					<n8n-menu-item index="help-about">
 						<template slot="title">
@@ -293,6 +293,9 @@ export default mixins(
 			},
 		},
 		methods: {
+			trackHelpItemClick (itemType: string) {
+				this.$telemetry.track('User clicked help resource', { type: itemType, workflow_id: this.$store.getters.workflowId });
+			},
 			toggleCollapse () {
 				this.$store.commit('ui/toggleSidebarMenuCollapse');
 			},
@@ -361,6 +364,7 @@ export default mixins(
 						return;
 					}
 
+					this.$telemetry.track('User imported workflow', { source: 'file', workflow_id: this.$store.getters.workflowId });
 					this.$root.$emit('importWorkflowData', { data: worflowData });
 				};
 
@@ -423,13 +427,16 @@ export default mixins(
 
 					workflowName = workflowName.replace(/[^a-z0-9]/gi, '_');
 
+					this.$telemetry.track('User exported workflow', { workflow_id: workflowData.id });
+
 					saveAs(blob, workflowName + '.json');
 				} else if (key === 'workflow-save') {
-					this.saveCurrentWorkflow();
+					this.saveCurrentWorkflow(undefined);
 				} else if (key === 'workflow-duplicate') {
 					this.$store.dispatch('ui/openDuplicateModal');
 				} else if (key === 'help-about') {
 					this.aboutDialogVisible = true;
+					this.trackHelpItemClick('about');
 				} else if (key === 'workflow-settings') {
 					this.$store.dispatch('ui/openWorkflowSettingsModal');
 				} else if (key === 'workflow-new') {

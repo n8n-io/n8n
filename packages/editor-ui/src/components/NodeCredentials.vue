@@ -165,9 +165,11 @@ export default mixins(
 			if (credentialName === NEW_CREDENTIALS_TEXT) {
 				this.listenForNewCredentials(credentialType);
 				this.$store.dispatch('ui/openNewCredential', { type: credentialType });
+				this.$telemetry.track('User opened Credential modal', { credential_type: credentialType, source: 'node', new_credential: true, workflow_id: this.$store.getters.workflowId });
 			}
 			else {
 				selected = credentialName;
+				this.$telemetry.track('User selected credential from node modal', { credential_type: credentialType, workflow_id: this.$store.getters.workflowId });
 			}
 
 			const node: INodeUi = this.node;
@@ -221,6 +223,7 @@ export default mixins(
 			const options = this.credentialOptions[credentialType];
 			const selected = options.find((option: ICredentialType) => option.name === name);
 			this.$store.dispatch('ui/openExisitngCredential', { id: selected.id });
+			this.$telemetry.track('User opened Credential modal', { credential_type: credentialType, source: 'node', new_credential: false, workflow_id: this.$store.getters.workflowId });
 
 			this.listenForNewCredentials(credentialType);
 		},

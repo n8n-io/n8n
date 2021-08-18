@@ -299,10 +299,12 @@ export default mixins(
 		this.isLoading = false;
 
 		this.$externalHooks().run('workflowSettings.dialogVisibleChanged', { dialogVisible: true });
+		this.$telemetry.track('User opened workflow settings', { workflow_id: this.$store.getters.workflowId });
 	},
 	methods: {
 		closeDialog () {
 			this.modalBus.$emit('close');
+			this.$externalHooks().run('workflowSettings.dialogVisibleChanged', { dialogVisible: false });
 		},
 		setTimeout (key: string, value: string) {
 			const time = value ? parseInt(value, 10) : 0;
@@ -488,6 +490,7 @@ export default mixins(
 			this.closeDialog();
 
 			this.$externalHooks().run('workflowSettings.saveSettings', { oldSettings });
+			this.$telemetry.track('User updated workflow settings', { workflow_id: this.$store.getters.workflowId });
 		},
 		toggleTimeout() {
 			this.workflowSettings.executionTimeout = this.workflowSettings.executionTimeout === -1 ? 0 : -1;

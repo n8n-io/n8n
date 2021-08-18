@@ -48,6 +48,7 @@ import {
 	IExecutionDb,
 	IExecutionFlattedDb,
 	IExecutionResponse,
+	InternalHooksManager,
 	IPushDataExecutionFinished,
 	IWorkflowBase,
 	IWorkflowExecuteProcess,
@@ -903,6 +904,7 @@ export async function executeWorkflow(
 	}
 
 	await externalHooks.run('workflow.postExecute', [data, workflowData]);
+	void InternalHooksManager.getInstance().onWorkflowPostExecute(workflowData, data);
 
 	if (data.finished === true) {
 		// Workflow did finish successfully
