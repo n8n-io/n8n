@@ -489,6 +489,12 @@ export function getCustomerOptionalFields() {
 	return [
 		getAddressesUi(),
 		{
+			displayName: 'Amazon ID',
+			name: 'amazon_id',
+			type: 'string',
+			default: '',
+		},
+		{
 			displayName: 'Confirmation',
 			name: 'confirmation',
 			type: 'string',
@@ -498,6 +504,9 @@ export function getCustomerOptionalFields() {
 			displayName: 'Custom Attributes',
 			name: 'customAttributes',
 			type: 'fixedCollection',
+			typeOptions: {
+				multipleValues: true,
+			},
 			default: '',
 			placeholder: 'Add Custom Attribute',
 			options: [
@@ -557,39 +566,6 @@ export function getCustomerOptionalFields() {
 			description: 'Email Address',
 		},
 		{
-			displayName: 'Extension Attributes',
-			name: 'extensionAttributes',
-			type: 'collection',
-			placeholder: 'Add Extension Attribute',
-			default: {},
-			options: [
-				{
-					displayName: 'Amazon ID',
-					name: 'amazon_id',
-					type: 'string',
-					default: '',
-				},
-				{
-					displayName: 'Is Subscribed',
-					name: 'is_subscribed',
-					type: 'boolean',
-					default: false,
-				},
-				{
-					displayName: 'Vertex Customer Code',
-					name: 'vertex_customer_code',
-					type: 'string',
-					default: '',
-				},
-				{
-					displayName: 'Vertex Customer Country',
-					name: 'vertex_customer_country',
-					type: 'string',
-					default: '',
-				},
-			],
-		},
-		{
 			displayName: 'First Name',
 			name: 'firstname',
 			type: 'string',
@@ -631,6 +607,12 @@ export function getCustomerOptionalFields() {
 				loadOptionsMethod: 'getGroups',
 			},
 			default: '',
+		},
+		{
+			displayName: 'Is Subscribed',
+			name: 'is_subscribed',
+			type: 'boolean',
+			default: false,
 		},
 		{
 			displayName: 'Last Name',
@@ -680,8 +662,20 @@ export function getCustomerOptionalFields() {
 			default: '',
 		},
 		{
-			displayName: 'Tax VAT',
+			displayName: 'Value-Added Tax',
 			name: 'taxvat',
+			type: 'string',
+			default: '',
+		},
+		{
+			displayName: 'Vertex Customer Code',
+			name: 'vertex_customer_code',
+			type: 'string',
+			default: '',
+		},
+		{
+			displayName: 'Vertex Customer Country',
+			name: 'vertex_customer_country',
 			type: 'string',
 			default: '',
 		},

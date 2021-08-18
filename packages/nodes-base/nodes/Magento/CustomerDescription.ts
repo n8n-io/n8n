@@ -107,7 +107,7 @@ export const customerFields = [
 				],
 			},
 		},
-		description: 'First name',
+		description: '',
 	},
 	{
 		displayName: 'Last Name',
@@ -125,7 +125,7 @@ export const customerFields = [
 				],
 			},
 		},
-		description: 'Last name',
+		description: '',
 	},
 	{
 		displayName: 'Additional Fields',

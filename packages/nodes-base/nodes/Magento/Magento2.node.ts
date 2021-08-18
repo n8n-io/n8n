@@ -286,7 +286,6 @@ export class Magento2 implements INodeType {
 						const {
 							addresses,
 							customAttributes,
-							extensionAttributes,
 							password,
 							...rest
 						} = this.getNodeParameter('additionalFields', i) as {
@@ -295,7 +294,6 @@ export class Magento2 implements INodeType {
 									street: string,
 								}
 							],
-							extensionAttributes: AddressExtensionAttributes,
 							customAttributes: {
 								customAttribute: CustomAttribute[],
 							},
@@ -314,7 +312,12 @@ export class Magento2 implements INodeType {
 
 						body.customer!.custom_attributes = customAttributes?.customAttribute || {};
 
-						body.customer!.extension_attributes = extensionAttributes;
+						body.customer!.extension_attributes = ['amazon_id', 'is_subscribed', 'vertex_customer_code', 'vertex_customer_country']
+							// tslint:disable-next-line: no-any
+							.reduce((obj, value: string): any => {
+								Object.assign(obj, { [value]: (rest as IDataObject)[value] });
+								delete (rest as IDataObject)[value];
+							}, {});
 
 						if (password) {
 							body.password = password;
@@ -379,7 +382,6 @@ export class Magento2 implements INodeType {
 						const {
 							addresses,
 							customAttributes,
-							extensionAttributes,
 							password,
 							...rest
 						} = this.getNodeParameter('updateFields', i) as {
@@ -388,7 +390,6 @@ export class Magento2 implements INodeType {
 									street: string,
 								}
 							],
-							extensionAttributes: AddressExtensionAttributes,
 							customAttributes: {
 								customAttribute: CustomAttribute[],
 							},
@@ -404,7 +405,12 @@ export class Magento2 implements INodeType {
 
 						body.customer!.custom_attributes = customAttributes?.customAttribute || {};
 
-						body.customer!.extension_attributes = extensionAttributes;
+						body.customer!.extension_attributes = ['amazon_id', 'is_subscribed', 'vertex_customer_code', 'vertex_customer_country']
+							// tslint:disable-next-line: no-any
+							.reduce((obj, value: string): any => {
+								Object.assign(obj, { [value]: (rest as IDataObject)[value] });
+								delete (rest as IDataObject)[value];
+							}, {});
 
 						if (password) {
 							body.password = password;
