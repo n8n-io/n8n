@@ -15,7 +15,7 @@
 							<i><font-awesome-icon icon="pen" /></i>
 						</div>
 						<div v-else :class="$style.nameInput">
-							<n8n-input v-model="credentialName" size="small" />
+							<n8n-input :value="credentialName" size="small" ref="nameInput" @input="onNameEdit" @change="disableNameEdit" />
 						</div>
 					</div>
 					<div :class="$style.subtitle">{{ credentialType.displayName }}</div>
@@ -315,11 +315,28 @@ export default mixins(
 			return types;
 		},
 
+		onNameEdit(text: string) {
+			this.credentialName = text;
+		},
+
 		enableNameEdit() {
 			this.isNameEdit = true;
+
+			setTimeout(() => {
+				const input = this.$refs.nameInput as HTMLInputElement;
+				if (input) {
+					input.focus();
+				}
+			}, 0);
 		},
 
 		disableNameEdit() {
+			if (!this.credentialName) {
+				this.$showWarning('Error', 'Credential name cannot be empty');
+
+				return;
+			}
+
 			this.isNameEdit = false;
 		},
 
