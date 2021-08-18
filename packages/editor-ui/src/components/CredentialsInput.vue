@@ -10,7 +10,7 @@
 		</div>
 
 		<div v-for="parameter in credentialProperties" :key="parameter.name">
-				<n8n-input-label :label="parameter.displayName" :tooltipText="parameter.description">
+				<n8n-input-label :label="parameter.displayName" :tooltipText="parameter.description" :required="parameter.required">
 					<parameter-input
 						:parameter="parameter"
 						:value="credentialData[parameter.name]"

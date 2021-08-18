@@ -13,6 +13,7 @@ import {
 	faBug,
 	faCalendar,
 	faCheck,
+	faCheckCircle,
 	faChevronDown,
 	faChevronUp,
 	faCode,
@@ -96,6 +97,7 @@ library.add(faBook);
 library.add(faBug);
 library.add(faCalendar);
 library.add(faCheck);
+library.add(faCheckCircle);
 library.add(faChevronDown);
 library.add(faChevronUp);
 library.add(faCode);

@@ -2,7 +2,10 @@
 	<div :class="$style.inputLabel">
 		<label>
 			<div :class="$style.label">
-				<span>{{ props.label }}</span>
+				<span>
+					{{ props.label }}
+					<span v-if="props.required" :class="$style.required">*</span>
+				</span>
 				<span :class="$style.infoIcon" v-if="props.tooltipText">
 					<n8n-tooltip :content="props.tooltipText" placement="top">
 						<n8n-icon icon="info-circle" />
@@ -33,6 +36,9 @@ export default {
 		tooltipText: {
 			type: String,
 		},
+		required: {
+			type: Boolean,
+		},
 	},
 };
 </script>
@@ -48,10 +54,18 @@ export default {
 	font-weight: var(--font-weight-bold);
 	font-size: var(--font-size-s);
 	margin-bottom: var(--spacing-2xs);
+
+	* {
+		margin-right: var(--spacing-4xs);
+	}
 }
 
 .infoIcon {
 	color: var(--color-text-light);
 	display: var(--info-icon-display, none);
+}
+
+.required {
+	color: var(--color-primary);
 }
 </style>
