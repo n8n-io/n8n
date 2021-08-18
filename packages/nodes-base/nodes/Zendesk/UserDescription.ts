@@ -36,14 +36,19 @@ export const userOperations = [
 				description: 'Get all users',
 			},
 			{
-				name: 'Search',
-				value: 'search',
-				description: 'Search users',
+				name: 'Organizations',
+				value: 'organizations',
+				description: 'Get users organizations',
 			},
 			{
 				name: 'Related',
 				value: 'related',
 				description: 'Show user related information',
+			},
+			{
+				name: 'Search',
+				value: 'search',
+				description: 'Search users',
 			},
 			{
 				name: 'Update',
@@ -789,6 +794,27 @@ export const userFields = [
 				],
 				operation: [
 					'related',
+				],
+			},
+		},
+		description: 'User ID',
+	},
+/* -------------------------------------------------------------------------- */
+/*                                 user:organizations                         */
+/* -------------------------------------------------------------------------- */
+	{
+		displayName: 'User ID',
+		name: 'id',
+		type: 'string',
+		default: '',
+		required: true,
+		displayOptions: {
+			show: {
+				resource: [
+					'user',
+				],
+				operation: [
+					'organizations',
 				],
 			},
 		},
