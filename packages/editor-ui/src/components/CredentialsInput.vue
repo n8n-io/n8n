@@ -27,9 +27,9 @@
 			<span v-if="requiredPropertiesFilled === false">
 				<n8n-button title="Connect OAuth Credentials" label="Connect my account"  :disabled="true" size="large" />
 			</span>
-			<span v-else-if="isOAuthConnected === true">
-				<n8n-icon-button title="Reconnect OAuth Credentials" @click.stop="oAuthCredentialAuthorize()" icon="redo" size="large" />
-				Connected
+			<span v-else-if="isOAuthConnected">
+				<n8n-button theme="success" type="light" label="Connected" size="large" />
+				<n8n-button title="Reconnect OAuth Credentials" @click.stop="oAuthCredentialAuthorize()" size="large" label="Reconnect" type="text" />
 			</span>
 			<span v-else>
 				<span v-if="isGoogleOAuthType">
@@ -108,7 +108,7 @@ export default mixins(
 				return false;
 			}
 
-			return this.credentialData.oauthTokenData;
+			return !!this.credentialData.oauthTokenData;
 		},
 		oAuthCallbackUrl (): string {
 			const oauthType = (this.credentialTypeData.name === 'oAuth2Api' || this.parentTypes.includes('oAuth2Api')) ? 'oauth2' : 'oauth1';
