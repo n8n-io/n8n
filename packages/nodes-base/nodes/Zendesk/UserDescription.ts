@@ -93,7 +93,7 @@ export const userFields = [
 		options: [
 			{
 				displayName: 'Alias',
-				name: 'alis',
+				name: 'alias',
 				type: 'string',
 				default: '',
 				description: `An alias displayed to end users`,
@@ -347,7 +347,7 @@ export const userFields = [
 		options: [
 			{
 				displayName: 'Alias',
-				name: 'alis',
+				name: 'alias',
 				type: 'string',
 				default: '',
 				description: `An alias displayed to end users`,
