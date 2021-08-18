@@ -38,6 +38,7 @@
 				<div :class="$style.mainContent" v-if="activeTab === 'connection'">
 					<div :class="$style.infotip"><n8n-icon icon="info-circle"/> Need help filling out these fields? <a :href="documentationUrl" target="_blank">Open docs</a></div>
 					<credentials-input
+						v-if="credentialType"
 						:credentialTypeData="credentialType"
 						:credentialData="credentialData"
 						:parentTypes="parentTypes"

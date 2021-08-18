@@ -148,9 +148,12 @@ export default mixins(
 			this.newCredentialUnsubscribe = this.$store.subscribe((mutation, state) => {
 				if (mutation.type === 'credentials/upsertCredential'){
 					this.credentialSelected(credentialType, mutation.payload.name);
-
-					this.stopListeningForNewCredentials();
 				}
+				if (mutation.type === 'credentials/deleteCredential') {
+					this.credentialSelected(credentialType, mutation.payload.name);
+				}
+
+				this.stopListeningForNewCredentials();
 			});
 		},
 
@@ -214,6 +217,8 @@ export default mixins(
 			const name = this.node.credentials[credentialType];
 			const id = this.$store.getters['credentials/getCredentialByName'](name).id;
 			this.$store.dispatch('ui/openExisitngCredentialDetails', { id });
+
+			this.listenForNewCredentials(credentialType);
 		},
 	},
 	beforeDestroy () {
