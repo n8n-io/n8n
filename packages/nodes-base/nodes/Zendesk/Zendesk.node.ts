@@ -530,6 +530,12 @@ export class Zendesk implements INodeType {
 						responseData = await zendeskApiRequest.call(this, 'DELETE', `/users/${userId}`, {});
 						responseData = responseData.user;
 					}
+					//https://developer.zendesk.com/api-reference/ticketing/users/users/#show-user-related-information
+					if (operation === 'related') {
+						const userId = this.getNodeParameter('id', i) as string;
+						responseData = await zendeskApiRequest.call(this, 'GET', `/users/${userId}/related`, {});
+						responseData = responseData.user_related;
+					}
 				}
 				//https://developer.zendesk.com/api-reference/ticketing/organizations/organizations/
 				if (resource === 'organization') {

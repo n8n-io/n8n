@@ -41,6 +41,11 @@ export const userOperations = [
 				description: 'Search users',
 			},
 			{
+				name: 'Related',
+				value: 'related',
+				description: 'Show user related information',
+			},
+			{
 				name: 'Update',
 				value: 'update',
 				description: 'Update a user',
@@ -763,6 +768,27 @@ export const userFields = [
 				],
 				operation: [
 					'delete',
+				],
+			},
+		},
+		description: 'User ID',
+	},
+/* -------------------------------------------------------------------------- */
+/*                                 user:related                               */
+/* -------------------------------------------------------------------------- */
+	{
+		displayName: 'User ID',
+		name: 'id',
+		type: 'string',
+		default: '',
+		required: true,
+		displayOptions: {
+			show: {
+				resource: [
+					'user',
+				],
+				operation: [
+					'related',
 				],
 			},
 		},
