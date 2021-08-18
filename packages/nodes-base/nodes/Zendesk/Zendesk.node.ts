@@ -35,6 +35,11 @@ import {
 } from './UserDescription';
 
 import {
+	organizationFields,
+	organizationOperations
+} from './OrganizationDescription';
+
+import {
 	IComment,
 	ITicket,
  } from './TicketInterface';
@@ -116,6 +121,11 @@ export class Zendesk implements INodeType {
 						value: 'user',
 						description: 'Manage users',
 					},
+					{
+						name: 'Organization',
+						value: 'organization',
+						description: 'Manage organizations',
+					},
 				],
 				default: 'ticket',
 				description: 'Resource to consume.',
@@ -129,6 +139,9 @@ export class Zendesk implements INodeType {
 			// USER
 			...userOperations,
 			...userFields,
+			// ORGANIZATION
+			...organizationOperations,
+			...organizationFields,
 		],
 	};
 
@@ -213,6 +226,21 @@ export class Zendesk implements INodeType {
 			async getUserFields(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
 				const fields = await zendeskApiRequestAllItems.call(this, 'user_fields', 'GET', '/user_fields');
+				for (const field of fields) {
+					const fieldName = field.title;
+					const fieldId = field.key;
+					returnData.push({
+						name: fieldName,
+						value: fieldId,
+					});
+				}
+				return returnData;
+			},
+
+			// Get all the organization fields to display them to the user for easy selection
+			async getOrganizationFields(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const returnData: INodePropertyOptions[] = [];
+				const fields = await zendeskApiRequestAllItems.call(this, 'organization_fields', 'GET', '/organization_fields');
 				for (const field of fields) {
 					const fieldName = field.title;
 					const fieldId = field.key;
@@ -502,6 +530,93 @@ export class Zendesk implements INodeType {
 						responseData = await zendeskApiRequest.call(this, 'DELETE', `/users/${userId}`, {});
 						responseData = responseData.user;
 					}
+				}
+				//https://developer.zendesk.com/api-reference/ticketing/organizations/organizations/
+				if (resource === 'organization') {
+					//https://developer.zendesk.com/api-reference/ticketing/organizations/organizations/#create-organization
+					if (operation === 'create') {
+						const name = this.getNodeParameter('name', i) as string;
+
+						const body: IDataObject = {
+							name,
+						};
+
+						if (body.organizationFieldsUi) {
+							const organizationFields = (body.organizationFieldsUi as IDataObject).organizationFieldValues as IDataObject[];
+							if (organizationFields) {
+								body.organization_fields = {};
+								for (const organizationField of organizationFields) {
+									//@ts-ignore
+									body.organization_fields[organizationField.field] = organizationField.value;
+								}
+								delete body.organizationFieldsUi;
+							}
+						}
+
+						responseData = await zendeskApiRequest.call(this, 'POST', '/organizations', { organization: body });
+						responseData = responseData.organization;
+					}
+					//https://developer.zendesk.com/api-reference/ticketing/organizations/organizations/#delete-organization
+					if (operation === 'delete') {
+						const organizationId = this.getNodeParameter('id', i) as string;
+						responseData = await zendeskApiRequest.call(this, 'DELETE', `/organizations/${organizationId}`, {});
+						responseData = responseData;
+					}
+					//https://developer.zendesk.com/api-reference/ticketing/organizations/organizations/#count-organizations
+					if (operation === 'count') {
+						responseData = await zendeskApiRequest.call(this, 'GET', `/organizations/count`, {});
+						responseData = responseData.count;
+					}
+					//https://developer.zendesk.com/api-reference/ticketing/organizations/organizations/#show-organization
+					if (operation === 'get') {
+						const organizationId = this.getNodeParameter('id', i) as string;
+						responseData = await zendeskApiRequest.call(this, 'GET', `/organizations/${organizationId}`, {});
+						responseData = responseData.organization;
+					}
+					//https://developer.zendesk.com/api-reference/ticketing/organizations/organizations/#list-organizations
+					if (operation === 'getAll') {
+						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+
+						if (returnAll) {
+							responseData = await zendeskApiRequestAllItems.call(this, 'organizations', 'GET', `/organizations`, {}, qs);
+						} else {
+							const limit = this.getNodeParameter('limit', i) as number;
+							qs.per_page = limit;
+							responseData = await zendeskApiRequest.call(this, 'GET', `/organizations`, {}, qs);
+							responseData = responseData.organizations;
+						}
+					}
+					//https://developer.zendesk.com/api-reference/ticketing/organizations/organizations/#show-organizations-related-information
+					if (operation === 'related') {
+						const organizationId = this.getNodeParameter('id', i) as string;
+						responseData = await zendeskApiRequest.call(this, 'GET', `/organizations/${organizationId}/related`, {});
+						responseData = responseData.organization_related;
+					}
+					//https://developer.zendesk.com/api-reference/ticketing/organizations/organizations/#update-organization
+					if (operation === 'update') {
+						const organizationId = this.getNodeParameter('id', i) as string;
+						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+
+						const body: IDataObject = {};
+
+						Object.assign(body, updateFields);
+
+						if (body.organizationFieldsUi) {
+							const organizationFields = (body.organizationFieldsUi as IDataObject).organizationFieldValues as IDataObject[];
+							if (organizationFields) {
+								body.organization_fields = {};
+								for (const organizationField of organizationFields) {
+									//@ts-ignore
+									body.organization_fields[organizationField.field] = organizationField.value;
+								}
+								delete body.organizationFieldsUi;
+							}
+						}
+
+						responseData = await zendeskApiRequest.call(this, 'PUT', `/organizations/${organizationId}`, { organization: body });
+						responseData = responseData.organization;
+					}
+
 				}
 				if (Array.isArray(responseData)) {
 					returnData.push.apply(returnData, responseData as IDataObject[]);
