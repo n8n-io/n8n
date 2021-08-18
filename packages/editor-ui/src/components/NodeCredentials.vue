@@ -12,12 +12,18 @@
 				<el-col :span="12" class="parameter-value" :class="getIssues(credentialTypeDescription.name).length?'has-issues':''">
 
 					<div :style="credentialInputWrapperStyle(credentialTypeDescription.name)">
-						<n8n-select :value="credentials[credentialTypeDescription.name]" :disabled="isReadOnly" @change="(value) => credentialSelected(credentialTypeDescription.name, value)" placeholder="Select Credential" size="small">
+						<n8n-select :value="selected[credentialTypeDescription.name]" :disabled="isReadOnly" @change="(value) => credentialSelected(credentialTypeDescription.name, value)" placeholder="Select Credential" size="small">
 							<n8n-option
 								v-for="(item) in credentialOptions[credentialTypeDescription.name]"
 								:key="item.id"
 								:label="item.name"
 								:value="item.name">
+							</n8n-option>
+							<n8n-option
+								:key="NEW_CREDENTIALS_TEXT"
+								:value="NEW_CREDENTIALS_TEXT"
+								:label="NEW_CREDENTIALS_TEXT"
+							>
 							</n8n-option>
 						</n8n-select>
 					</div>
@@ -31,7 +37,7 @@
 
 				</el-col>
 				<el-col :span="2" class="parameter-value credential-action">
-					<font-awesome-icon v-if="credentials[credentialTypeDescription.name]" icon="pen" @click="editCredential(credentialTypeDescription.name)" class="update-credentials clickable" title="Update Credentials" />
+					<font-awesome-icon v-if="selected[credentialTypeDescription.name]" icon="pen" @click="editCredential(credentialTypeDescription.name)" class="update-credentials clickable" title="Update Credentials" />
 				</el-col>
 
 			</el-row>
@@ -45,8 +51,6 @@ import Vue from 'vue';
 
 import { restApi } from '@/components/mixins/restApi';
 import {
-	// ICredentialsCreatedEvent,
-	ICredentialsResponse,
 	INodeUi,
 	INodeUpdatePropertiesInformation,
 } from '@/Interface';
@@ -59,6 +63,8 @@ import {
 import { genericHelpers } from '@/components/mixins/genericHelpers';
 import { nodeHelpers } from '@/components/mixins/nodeHelpers';
 import { showMessage } from '@/components/mixins/showMessage';
+
+import { mapGetters } from "vuex";
 
 import mixins from 'vue-typed-mixins';
 
@@ -74,7 +80,16 @@ export default mixins(
 	props: [
 		'node', // INodeUi
 	],
+	data () {
+		return {
+			NEW_CREDENTIALS_TEXT,
+			newCredentialUnsubscribe: null as null | (() => void),
+		};
+	},
 	computed: {
+		...mapGetters('credentials', {
+			credentialOptions: 'allCredentialsByType',
+		}),
 		credentialTypesNode (): string[] {
 			return this.credentialTypesNodeDescription
 				.map((credentialTypeDescription) => credentialTypeDescription.name);
@@ -106,37 +121,11 @@ export default mixins(
 			}
 			return returnData;
 		},
-	},
-	data () {
-		return {
-			addType: undefined as string | undefined,
-			credentialOptions: {} as { [key: string]: ICredentialsResponse[]; },
-			credentials: {} as {
-				[key: string]: string | undefined
-			},
-		};
-	},
-	watch: {
-		node () {
-			this.init();
+		selected(): {[type: string]: string} {
+			return this.node.credentials || {};
 		},
 	},
 	methods: {
-		// async credentialsCreated (eventData: ICredentialsCreatedEvent) {
-		// 	await this.credentialsUpdated(eventData);
-		// },
-		// credentialsUpdated (eventData: ICredentialsCreatedEvent) {
-		// 	if (!this.credentialTypesNode.includes(eventData.data.type)) {
-		// 		return;
-		// 	}
-
-		// 	this.init();
-		// 	Vue.set(this.credentials, eventData.data.type, eventData.data.name);
-
-		// 	// Makes sure that it does also get set correctly on the node not just the UI
-		// 	this.credentialSelected(eventData.data.type);
-		// },
-
 		credentialInputWrapperStyle (credentialType: string) {
 			let deductWidth = 0;
 			const styles = {
@@ -153,22 +142,46 @@ export default mixins(
 			return styles;
 		},
 
+		listenForNewCredentials(credentialType: string) {
+			this.stopListeningForNewCredentials();
+
+			this.newCredentialUnsubscribe = this.$store.subscribe((mutation, state) => {
+				if (mutation.type === 'credentials/upsertCredential'){
+					this.credentialSelected(credentialType, mutation.payload.name);
+
+					this.stopListeningForNewCredentials();
+				}
+			});
+		},
+
+		stopListeningForNewCredentials() {
+			if (this.newCredentialUnsubscribe) {
+				this.newCredentialUnsubscribe();
+			}
+		},
+
 		credentialSelected (credentialType: string, credentialName: string) {
-			if (credentialName=== NEW_CREDENTIALS_TEXT) {
+			let selected = undefined;
+			if (credentialName === NEW_CREDENTIALS_TEXT) {
 				this.$store.dispatch('ui/openNewCredentialDetails', { type: credentialType });
 
-				Vue.set(this.credentials, credentialType, undefined);
+				this.listenForNewCredentials(credentialType);
 			}
 			else {
-				Vue.set(this.credentials, credentialType, credentialName);
+				selected = credentialName;
 			}
 
-			const node = this.node as INodeUi;
+			const node: INodeUi = this.node;
+
+			const credentials = {
+				...(node.credentials || {}),
+				[credentialType]: credentialName,
+			};
 
 			const updateInformation: INodeUpdatePropertiesInformation = {
-				name: node.name,
+				name: this.node.name,
 				properties: {
-					credentials: JSON.parse(JSON.stringify(this.credentials)),
+					credentials,
 				},
 			};
 
@@ -198,40 +211,13 @@ export default mixins(
 		},
 
 		editCredential(credentialType: string): void {
-			const name = this.credentials[credentialType];
-			const credentialData = this.credentialOptions[credentialType].find((optionData: ICredentialsResponse) => optionData.name === name);
-
-			if (credentialData) {
-				this.$store.dispatch('ui/openExisitngCredentialDetails', {id: credentialData.id});
-			}
-		},
-
-		init () {
-			const node = this.node as INodeUi;
-
-			const newOption = {
-				name: NEW_CREDENTIALS_TEXT,
-			};
-
-			let options = [];
-
-			// Get the available credentials for each type
-			for (const credentialType of this.credentialTypesNode) {
-				options = this.$store.getters['credentials/getCredentialsByType'](credentialType);
-				options.push(newOption as ICredentialsResponse);
-				Vue.set(this.credentialOptions, credentialType, options);
-			}
-
-			// Set the current node credentials
-			if (node.credentials) {
-				Vue.set(this, 'credentials', JSON.parse(JSON.stringify(node.credentials)));
-			} else {
-				Vue.set(this, 'credentials', {});
-			}
+			const name = this.node.credentials[credentialType];
+			const id = this.$store.getters['credentials/getCredentialByName'](name).id;
+			this.$store.dispatch('ui/openExisitngCredentialDetails', { id });
 		},
 	},
-	mounted () {
-		this.init();
+	beforeDestroy () {
+		this.stopListeningForNewCredentials();
 	},
 });
 </script>

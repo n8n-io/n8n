@@ -60,11 +60,24 @@ const module: Module<ICredentialsState, IRootState> = {
 			return Object.values(state.credentials)
 				.sort((a, b) => a.name.localeCompare(b.name));
 		},
+		allCredentialsByType(state: ICredentialsState, getters: any): {[type: string]: ICredentialsResponse[]} {
+			const credentials = getters.allCredentials as ICredentialsResponse[];
+			const types = getters.allCredentialTypes as ICredentialType[];
+
+			return types.reduce((accu: {[type: string]: ICredentialsResponse[]}, type: ICredentialType) => {
+				accu[type.name] = credentials.filter((cred: ICredentialsResponse) => cred.type === type.name);
+
+				return accu;
+			}, {});
+		},
 		getCredentialTypeByName: (state: ICredentialsState) => {
 			return (type: string) => state.credentialTypes[type];
 		},
 		getCredentialById: (state: ICredentialsState) => {
 			return (id: string) => state.credentials[id];
+		},
+		getCredentialByName: (state: ICredentialsState, getters: any) => {
+			return (name: string) => getters.allCredentials.find((cred: ICredentialsResponse) => cred.name === name);
 		},
 		getCredentialsByType: (state: ICredentialsState, getters: any) => {
 			return (credentialType: string): ICredentialsResponse[] => {
