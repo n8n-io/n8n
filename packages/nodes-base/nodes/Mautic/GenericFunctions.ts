@@ -13,13 +13,6 @@ import {
 	IDataObject, NodeApiError,
 } from 'n8n-workflow';
 
-interface OMauticErrorResponse {
-	errors: Array<{
-		conde: number;
-		message: string;
-	}>;
-}
-
 export async function mauticApiRequest(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: string, endpoint: string, body: any = {}, query?: IDataObject, uri?: string): Promise<any> { // tslint:disable-line:no-any
 	const authenticationMethod = this.getNodeParameter('authentication', 0, 'credentials') as string;
 

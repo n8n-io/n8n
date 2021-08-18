@@ -22,6 +22,7 @@ export async function wordpressApiRequest(this: IExecuteFunctions | IExecuteSing
 		headers: {
 			Accept: 'application/json',
 			'Content-Type': 'application/json',
+			'User-Agent': 'n8n',
 		},
 		auth: {
 			user: credentials!.username as string,

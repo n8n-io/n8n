@@ -1,6 +1,6 @@
 {
   "name": "n8n-nodes-base",
-  "version": "0.130.0",
+  "version": "0.131.0",
   "description": "Base nodes of n8n",
   "license": "SEE LICENSE IN LICENSE.md",
   "homepage": "https://n8n.io",
@@ -673,7 +673,7 @@
     "mqtt": "4.2.6",
     "mssql": "^6.2.0",
     "mysql2": "~2.2.0",
-    "n8n-core": "~0.78.0",
+    "n8n-core": "~0.79.0",
     "node-ssh": "^11.0.0",
     "nodemailer": "^6.5.0",
     "pdf-parse": "^1.1.1",
