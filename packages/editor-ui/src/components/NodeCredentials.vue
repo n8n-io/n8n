@@ -31,7 +31,7 @@
 
 				</el-col>
 				<el-col :span="2" class="parameter-value credential-action">
-					<font-awesome-icon v-if="credentials[credentialTypeDescription.name]" icon="pen" @click="editCredential" class="update-credentials clickable" title="Update Credentials" />
+					<font-awesome-icon v-if="credentials[credentialTypeDescription.name]" icon="pen" @click="editCredential(credentialTypeDescription.name)" class="update-credentials clickable" title="Update Credentials" />
 				</el-col>
 
 			</el-row>
@@ -136,6 +136,7 @@ export default mixins(
 		// 	// Makes sure that it does also get set correctly on the node not just the UI
 		// 	this.credentialSelected(eventData.data.type);
 		// },
+
 		credentialInputWrapperStyle (credentialType: string) {
 			let deductWidth = 0;
 			const styles = {
@@ -151,6 +152,7 @@ export default mixins(
 
 			return styles;
 		},
+
 		credentialSelected (credentialType: string, credentialName: string) {
 			if (credentialName=== NEW_CREDENTIALS_TEXT) {
 				this.$store.dispatch('ui/openNewCredentialDetails', { type: credentialType });
@@ -172,6 +174,7 @@ export default mixins(
 
 			this.$emit('credentialSelected', updateInformation);
 		},
+
 		displayCredentials (credentialTypeDescription: INodeCredentialDescription): boolean {
 			if (credentialTypeDescription.displayOptions === undefined) {
 				// If it is not defined no need to do a proper check
@@ -179,6 +182,7 @@ export default mixins(
 			}
 			return this.displayParameter(this.node.parameters, credentialTypeDescription, '');
 		},
+
 		getIssues (credentialTypeName: string): string[] {
 			const node = this.node as INodeUi;
 
@@ -192,23 +196,15 @@ export default mixins(
 
 			return node.issues.credentials[credentialTypeName];
 		},
-		editCredential(): void {
 
+		editCredential(credentialType: string): void {
+			const name = this.credentials[credentialType];
+			const credentialData = this.credentialOptions[credentialType].find((optionData: ICredentialsResponse) => optionData.name === name);
+
+			if (credentialData) {
+				this.$store.dispatch('ui/openExisitngCredentialDetails', {id: credentialData.id});
+			}
 		},
-		// updateCredentials (credentialType: string): void {
-		// 	const name = this.credentials[credentialType];
-		// 	const credentialData = this.credentialOptions[credentialType].find((optionData: ICredentialsResponse) => optionData.name === name);
-		// 	if (credentialData === undefined) {
-		// 		this.$showMessage({
-		// 			title: 'Credentials not found',
-		// 			message: `The credentials named "${name}" of type "${credentialType}" could not be found!`,
-		// 			type: 'error',
-		// 		});
-		// 		return;
-		// 	}
-
-		// 	this.addType = credentialType;
-		// },
 
 		init () {
 			const node = this.node as INodeUi;
@@ -290,6 +286,7 @@ export default mixins(
 		display: flex;
 		justify-content: center;
 		align-items: center;
+		color: var(--color-text-base);
 	}
 }
 
