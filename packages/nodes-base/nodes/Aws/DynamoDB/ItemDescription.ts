@@ -674,6 +674,38 @@ export const itemFields = [
 	//              Get All
 	// ----------------------------------
 	{
+		displayName: 'Scan',
+		name: 'scan',
+		type: 'boolean',
+		displayOptions: {
+			show: {
+				resource: [
+					'item',
+				],
+				operation: [
+					'getAll',
+				],
+			},
+		},
+		default: false,
+		description: 'Whether to do an scan or query. Check <a href="https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/bp-query-scan.html" target="_blank" >differences</a>',
+	},
+	{
+		displayName: 'Filter Expression',
+		name: 'filterExpression',
+		type: 'string',
+		required: true,
+		displayOptions: {
+			show: {
+				scan: [
+					true,
+				],
+			},
+		},
+		default: '',
+		description: 'A filter expression determines which items within the Scan results should be returned to you. All of the other results are discarded.',
+	},
+	{
 		displayName: 'Key Condition Expression',
 		name: 'keyConditionExpression',
 		description: 'Condition to determine the items to be retrieved. The condition must perform an equality test<br>on a single partition key value, in this format: <code>partitionKeyName = :partitionkeyval</code>',
@@ -688,6 +720,9 @@ export const itemFields = [
 				],
 				operation: [
 					'getAll',
+				],
+				scan: [
+					false,
 				],
 			},
 		},
@@ -881,6 +916,13 @@ export const itemFields = [
 				displayName: 'Filter Expression',
 				name: 'filterExpression',
 				type: 'string',
+				displayOptions: {
+					show: {
+						'/scan': [
+							false,
+						],
+					},
+				},
 				default: '',
 				description: 'Text that contains conditions that DynamoDB applies after the Query operation,<br>but before the data is returned. Items that do not satisfy the FilterExpression criteria</br>are not returned',
 			},
