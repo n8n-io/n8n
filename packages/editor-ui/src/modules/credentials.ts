@@ -11,8 +11,6 @@ import {
 import {
 	ICredentialType,
 	ICredentialsDecrypted,
-	NodeHelpers,
-	INodeProperties,
 	INodeTypeDescription,
 } from 'n8n-workflow';
 
@@ -67,6 +65,11 @@ const module: Module<ICredentialsState, IRootState> = {
 		},
 		getCredentialById: (state: ICredentialsState) => {
 			return (id: string) => state.credentials[id];
+		},
+		getCredentialsByType: (state: ICredentialsState, getters: any) => {
+			return (credentialType: string): ICredentialsResponse[] => {
+				return getters.allCredentials.filter((credentialData: ICredentialsResponse) => credentialData.type === credentialType);
+			};
 		},
 		getNodesWithAccess (state: ICredentialsState, getters: any, rootState: IRootState, rootGetters: any) { // tslint:disable-line:no-any
 			return (credentialTypeName: string) => {

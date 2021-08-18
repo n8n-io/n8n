@@ -790,32 +790,6 @@ export const store = new Vuex.Store({
 			}
 			return false;
 		},
-		allCredentialTypes: (state): ICredentialType[] | null => {
-			return state.credentialTypes;
-		},
-		allCredentials: (state): ICredentialsResponse[] | null => {
-			return state.credentials;
-		},
-		credentialsByType: (state) => (credentialType: string): ICredentialsResponse[] | null => {
-			if (state.credentials === null) {
-				return null;
-			}
-
-			return state.credentials.filter((credentialData) => credentialData.type === credentialType);
-		},
-		credentialType: (state) => (credentialType: string): ICredentialType | null => {
-			if (state.credentialTypes === null) {
-				return null;
-			}
-			const foundType = state.credentialTypes.find(credentialData => {
-				return credentialData.name === credentialType;
-			});
-
-			if (foundType === undefined) {
-				return null;
-			}
-			return foundType;
-		},
 		allNodeTypes: (state): INodeTypeDescription[] => {
 			return state.nodeTypes;
 		},
