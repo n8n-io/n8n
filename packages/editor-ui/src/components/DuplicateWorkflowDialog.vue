@@ -44,6 +44,8 @@ import { workflowHelpers } from "@/components/mixins/workflowHelpers";
 import { showMessage } from "@/components/mixins/showMessage";
 import TagsDropdown from "@/components/TagsDropdown.vue";
 import Modal from "./Modal.vue";
+import { v4 as uuidv4} from 'uuid';
+import { INodeUi } from "../Interface";
 
 export default mixins(showMessage, workflowHelpers).extend({
 	components: { TagsDropdown, Modal },
@@ -106,6 +108,13 @@ export default mixins(showMessage, workflowHelpers).extend({
 
 				return;
 			}
+
+			const allNodes = this.$store.getters.allNodes;
+			allNodes.forEach((node: INodeUi) => {
+				if (node.webhookId) {
+					node.webhookId = uuidv4();
+				}
+			});
 
 			this.$data.isSaving = true;
 
