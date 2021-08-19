@@ -32,7 +32,7 @@ export class HttpRequest implements INodeType {
 		group: ['input'],
 		version: 1,
 		subtitle: '={{$parameter["requestMethod"] + ": " + $parameter["url"]}}',
-		description: 'Makes a HTTP request and returns the received data',
+		description: 'Makes an HTTP request and returns the response data',
 		defaults: {
 			name: 'HTTP Request',
 			color: '#2200DD',
@@ -308,11 +308,18 @@ export class HttpRequest implements INodeType {
 						description: 'Returns the full reponse data instead of only the body.',
 					},
 					{
-						displayName: 'Follow Redirect',
+						displayName: 'Follow All Redirects',
+						name: 'followAllRedirects',
+						type: 'boolean',
+						default: false,
+						description: 'Follow non-GET HTTP 3xx redirects.',
+					},
+					{
+						displayName: 'Follow GET Redirect',
 						name: 'followRedirect',
 						type: 'boolean',
 						default: true,
-						description: 'Follow HTTP 3xx redirects.',
+						description: 'Follow GET HTTP 3xx redirects.',
 					},
 					{
 						displayName: 'Ignore Response Code',
@@ -695,6 +702,11 @@ export class HttpRequest implements INodeType {
 			if (options.followRedirect !== undefined) {
 				requestOptions.followRedirect = options.followRedirect as boolean;
 			}
+
+			if (options.followAllRedirects !== undefined) {
+				requestOptions.followAllRedirects = options.followAllRedirects as boolean;
+			}
+
 			if (options.ignoreResponseCode === true) {
 				// @ts-ignore
 				requestOptions.simple = false;
@@ -811,8 +823,23 @@ export class HttpRequest implements INodeType {
 						// @ts-ignore
 						requestOptions[optionName] = {};
 						for (const parameterData of setUiParameter!.parameter as IDataObject[]) {
-							// @ts-ignore
-							requestOptions[optionName][parameterData!.name as string] = parameterData!.value;
+							const parameterDataName = parameterData!.name as string;
+							const newValue = parameterData!.value;
+							if (optionName === 'qs') {
+								const computeNewValue = (oldValue: unknown) => {
+									if (typeof oldValue === 'string') {
+										return [oldValue, newValue];
+									} else if (Array.isArray(oldValue)) {
+										return [...oldValue, newValue];
+									} else {
+										return newValue;
+									}
+								};
+								requestOptions[optionName][parameterDataName] = computeNewValue(requestOptions[optionName][parameterDataName]);
+							} else {
+								// @ts-ignore
+								requestOptions[optionName][parameterDataName] = newValue;
+							}
 						}
 					}
 				}

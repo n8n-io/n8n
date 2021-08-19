@@ -142,9 +142,7 @@ export async function prepareBinaryData(binaryData: Buffer, filePath?: string, m
 		}
 	}
 
-	const binaryDataUniqueIdentifier = BinaryDataHelper.getInstance().generateIdentifier();
-	returnData.internalPath = binaryDataUniqueIdentifier;
-	return await BinaryDataHelper.getInstance().storeBinaryData(returnData, binaryData, binaryDataUniqueIdentifier);
+	return await BinaryDataHelper.getInstance().storeBinaryData(returnData, binaryData);
 }
 
 

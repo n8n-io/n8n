@@ -16,7 +16,7 @@ export class Set implements INodeType {
 		icon: 'fa:pen',
 		group: ['input'],
 		version: 1,
-		description: 'Sets values on the items and removes if selected all other values.',
+		description: 'Sets values on items and optionally remove other values',
 		defaults: {
 			name: 'Set',
 			color: '#0000FF',

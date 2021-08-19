@@ -46,6 +46,7 @@ import {
 import * as config from '../config';
 
 import { LessThanOrEqual } from 'typeorm';
+import { DateUtils } from 'typeorm/util/DateUtils';
 
 const ERROR_TRIGGER_TYPE = config.get('nodes.errorTriggerType') as string;
 
@@ -102,7 +103,7 @@ function executeErrorWorkflow(workflowData: IWorkflowBase, fullRunData: IRun, mo
  *
  */
 let throttling = false;
-function pruneExecutionData(): void {
+function pruneExecutionData(this: WorkflowHooks): void {
 	if (!throttling) {
 		Logger.verbose('Pruning execution data from database');
 
@@ -112,13 +113,20 @@ function pruneExecutionData(): void {
 		const date = new Date(); // today
 		date.setHours(date.getHours() - maxAge);
 
+		// date reformatting needed - see https://github.com/typeorm/typeorm/issues/2286
+		const utcDate = DateUtils.mixedDateToUtcDatetimeString(date);
+
 		// throttle just on success to allow for self healing on failure
-		Db.collections.Execution!.delete({ stoppedAt: LessThanOrEqual(date.toISOString()) })
+		Db.collections.Execution!.delete({ stoppedAt: LessThanOrEqual(utcDate) })
 			.then(data =>
 				setTimeout(() => {
 					throttling = false;
 				}, timeout * 1000)
-			).catch(err => throttling = false);
+			).catch(error => {
+				throttling = false;
+
+				Logger.error(`Failed pruning execution data from database for execution ID ${this.executionId} (hookFunctionsSave)`, { ...error, executionId: this.executionId, sessionId: this.sessionId, workflowId: this.workflowData.id });
+			});
 	}
 }
 
@@ -322,7 +330,7 @@ function hookFunctionsSave(parentProcessMode?: string): IWorkflowExecuteHooks {
 
 				// Prune old execution data
 				if (config.get('executions.pruneData')) {
-					pruneExecutionData();
+					pruneExecutionData.call(this);
 				}
 
 				const isManualMode = [this.mode, parentProcessMode].includes('manual');
@@ -387,9 +395,9 @@ function hookFunctionsSave(parentProcessMode?: string): IWorkflowExecuteHooks {
 					}
 
 					// Leave log message before flatten as that operation increased memory usage a lot and the chance of a crash is highest here
-					Logger.debug(`Save execution data to database for execution ID ${this.executionId}`, { 
-						executionId: this.executionId, 
-						workflowId: this.workflowData.id, 
+					Logger.debug(`Save execution data to database for execution ID ${this.executionId}`, {
+						executionId: this.executionId,
+						workflowId: this.workflowData.id,
 						finished: fullExecutionData.finished,
 						stoppedAt: fullExecutionData.stoppedAt,
 					});
@@ -409,12 +417,12 @@ function hookFunctionsSave(parentProcessMode?: string): IWorkflowExecuteHooks {
 						executeErrorWorkflow(this.workflowData, fullRunData, this.mode, this.executionId, this.retryOf);
 					}
 				} catch (error) {
-					Logger.error(`Failed saving execution data to DB on execution ID ${this.executionId}`, { 
-						executionId: this.executionId, 
+					Logger.error(`Failed saving execution data to DB on execution ID ${this.executionId}`, {
+						executionId: this.executionId,
 						workflowId: this.workflowData.id,
 						error,
 					});
-					
+
 					if (!isManualMode) {
 						executeErrorWorkflow(this.workflowData, fullRunData, this.mode, undefined, this.retryOf);
 					}
@@ -608,44 +616,78 @@ export async function executeWorkflow(workflowInfo: IExecuteWorkflowInfo, additi
 		executionId = parentExecutionId !== undefined ? parentExecutionId : await ActiveExecutions.getInstance().add(runData);
 	}
 
-	const runExecutionData = runData.executionData as IRunExecutionData;
+	let data;
+	try {
+		// Get the needed credentials for the current workflow as they will differ to the ones of the
+		// calling workflow.
+		const credentials = await WorkflowCredentials(workflowData!.nodes);
 
-	// Get the needed credentials for the current workflow as they will differ to the ones of the
-	// calling workflow.
-	const credentials = await WorkflowCredentials(workflowData!.nodes);
+		// Create new additionalData to have different workflow loaded and to call
+		// different webooks
+		const additionalDataIntegrated = await getBase(credentials);
+		additionalDataIntegrated.hooks = getWorkflowHooksIntegrated(runData.executionMode, executionId, workflowData!, { parentProcessMode: additionalData.hooks!.mode });
+		// Make sure we pass on the original executeWorkflow function we received
+		// This one already contains changes to talk to parent process
+		// and get executionID from `activeExecutions` running on main process
+		additionalDataIntegrated.executeWorkflow = additionalData.executeWorkflow;
 
+		let subworkflowTimeout = additionalData.executionTimeoutTimestamp;
+		if (workflowData.settings?.executionTimeout !== undefined && workflowData.settings.executionTimeout > 0) {
+			// We might have received a max timeout timestamp from the parent workflow
+			// If we did, then we get the minimum time between the two timeouts
+			// If no timeout was given from the parent, then we use our timeout.
+			subworkflowTimeout = Math.min(additionalData.executionTimeoutTimestamp || Number.MAX_SAFE_INTEGER, Date.now() + (workflowData.settings.executionTimeout as number * 1000));
+		}
 
-	// Create new additionalData to have different workflow loaded and to call
-	// different webooks
-	const additionalDataIntegrated = await getBase(credentials);
-	additionalDataIntegrated.hooks = getWorkflowHooksIntegrated(runData.executionMode, executionId, workflowData!, { parentProcessMode: additionalData.hooks!.mode });
-	// Make sure we pass on the original executeWorkflow function we received
-	// This one already contains changes to talk to parent process
-	// and get executionID from `activeExecutions` running on main process
-	additionalDataIntegrated.executeWorkflow = additionalData.executeWorkflow;
+		additionalDataIntegrated.executionTimeoutTimestamp = subworkflowTimeout;
 
-	let subworkflowTimeout = additionalData.executionTimeoutTimestamp;
-	if (workflowData.settings?.executionTimeout !== undefined && workflowData.settings.executionTimeout > 0) {
-		// We might have received a max timeout timestamp from the parent workflow
-		// If we did, then we get the minimum time between the two timeouts
-		// If no timeout was given from the parent, then we use our timeout.
-		subworkflowTimeout = Math.min(additionalData.executionTimeoutTimestamp || Number.MAX_SAFE_INTEGER, Date.now() + (workflowData.settings.executionTimeout as number * 1000));
-	}
+		const runExecutionData = runData.executionData as IRunExecutionData;
 
-	additionalDataIntegrated.executionTimeoutTimestamp = subworkflowTimeout;
-
-
-	// Execute the workflow
-	const workflowExecute = new WorkflowExecute(additionalDataIntegrated, runData.executionMode, runExecutionData);
-	if (parentExecutionId !== undefined) {
-		// Must be changed to become typed
-		return {
+		// Execute the workflow
+		const workflowExecute = new WorkflowExecute(additionalDataIntegrated, runData.executionMode, runExecutionData);
+		if (parentExecutionId !== undefined) {
+			// Must be changed to become typed
+			return {
+				startedAt: new Date(),
+				workflow,
+				workflowExecute,
+			};
+		}
+		data = await workflowExecute.processRunExecutionData(workflow);
+	} catch (error) {
+		const fullRunData: IRun = {
+			data: {
+				resultData: {
+					error,
+					runData: {},
+				},
+			},
+			finished: false,
+			mode: 'integrated',
 			startedAt: new Date(),
-			workflow,
-			workflowExecute,
+			stoppedAt: new Date(),
+		};
+		// When failing, we might not have finished the execution
+		// Therefore, database might not contain finished errors.
+		// Force an update to db as there should be no harm doing this
+
+		const fullExecutionData: IExecutionDb = {
+			data: fullRunData.data,
+			mode: fullRunData.mode,
+			finished: fullRunData.finished ? fullRunData.finished : false,
+			startedAt: fullRunData.startedAt,
+			stoppedAt: fullRunData.stoppedAt,
+			workflowData,
+		};
+
+		const executionData = ResponseHelper.flattenExecutionData(fullExecutionData);
+
+		await Db.collections.Execution!.update(executionId, executionData as IExecutionFlattedDb);
+		throw {
+			...error,
+			stack: error!.stack,
 		};
 	}
-	const data = await workflowExecute.processRunExecutionData(workflow);
 
 	await externalHooks.run('workflow.postExecute', [data, workflowData]);
 

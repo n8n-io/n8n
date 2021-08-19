@@ -31,9 +31,11 @@ export class BinaryDataHelper {
         return BinaryDataHelper.instance;
     }
 
-    async storeBinaryData(binaryData: IBinaryData, binaryBuffer: Buffer, identifier: string) {
+    async storeBinaryData(binaryData: IBinaryData, binaryBuffer: Buffer) {
         if(this.storageMode === 'LOCAL_STORAGE') {
-            return this.saveToLocalStorage(binaryBuffer, identifier)
+            const binaryDataUniqueIdentifier = this.generateIdentifier();
+            binaryData.internalPath = binaryDataUniqueIdentifier;
+            return this.saveToLocalStorage(binaryBuffer, binaryDataUniqueIdentifier)
                 .then(() => binaryData);
         }
 

@@ -463,6 +463,9 @@ export function getWebhookBaseUrl() {
 		// @ts-ignore
 		urlBaseWebhook = process.env.WEBHOOK_TUNNEL_URL || process.env.WEBHOOK_URL;
 	}
+	if (!urlBaseWebhook.endsWith('/')) {
+		urlBaseWebhook += '/';
+	}
 
 	return urlBaseWebhook;
 }

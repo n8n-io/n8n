@@ -30,7 +30,7 @@
 				</div>
 			</div>
 
-			<NodeIcon class="node-icon" :nodeType="nodeType" size="60" :style="nodeIconStyle" :shrink="true"/>
+			<NodeIcon class="node-icon" :nodeType="nodeType" size="60" :shrink="true" :disabled="this.data.disabled"/>
 		</div>
 		<div class="node-description">
 			<div class="node-name" :title="data.name">
@@ -76,11 +76,6 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 		},
 		isExecuting (): boolean {
 			return this.$store.getters.executingNode === this.data.name;
-		},
-		nodeIconStyle (): object {
-			return {
-				color: this.data.disabled ? '#ccc' : this.data.color,
-			};
 		},
 		nodeType (): INodeTypeDescription | null {
 			return this.$store.getters.nodeType(this.data.type);
@@ -130,22 +125,30 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 				return 'play';
 			}
 		},
-		nodeSubtitle (): string | undefined {
-			return this.getNodeSubtitle(this.data, this.nodeType, this.workflow);
-		},
 		workflowRunning (): boolean {
 			return this.$store.getters.isActionActive('workflowRunning');
 		},
-		workflow () {
-			return this.getWorkflow();
+	},
+	watch: {
+		isActive(newValue, oldValue) {
+			if (!newValue && oldValue) {
+				this.setSubtitle();
+			}
 		},
+	},
+	mounted() {
+		this.setSubtitle();
 	},
 	data () {
 		return {
 			isTouchActive: false,
+			nodeSubtitle: '',
 		};
 	},
 	methods: {
+		setSubtitle() {
+			this.nodeSubtitle = this.getNodeSubtitle(this.data, this.nodeType, this.getWorkflow()) || '';
+		},
 		disableNode () {
 			this.disableNodes([this.data]);
 		},

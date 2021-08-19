@@ -3,7 +3,13 @@
 		<div v-if="isLoading">
 			Loading binary data...
 		</div>
-		<embed v-else :src="embedSource" class="binary-data" :class="embedClass"/>
+		<div>
+			<video v-if="binaryData.mimeType && binaryData.mimeType.startsWith('video/')" controls autoplay>
+				<source :src="embedSource" :type="binaryData.mimeType">
+				Your browser does not support the video element. Kindly update it to latest version.
+			</video>
+			<embed v-else :src="embedSource" class="binary-data" :class="embedClass"/>
+		</div>
 	</div>
 </template>
 
@@ -28,6 +34,8 @@ export default mixins(
 			};
 		},
 		async mounted() {
+			console.log('this.binaryData.internalPath');
+			console.log(this.binaryData.internalPath);
 			if(!this.binaryData.internalPath) {
 				this.embedSource = 'data:' + this.binaryData.mimeType + ';base64,' + this.binaryData.data;
 				this.isLoading = false;

@@ -26,7 +26,7 @@ export class TaigaTrigger implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Taiga Trigger',
 		name: 'taigaTrigger',
-		icon: 'file:taiga.png',
+		icon: 'file:taiga.svg',
 		group: ['trigger'],
 		version: 1,
 		subtitle: '={{"project:" + $parameter["projectSlug"]}}',
@@ -39,25 +39,7 @@ export class TaigaTrigger implements INodeType {
 		outputs: ['main'],
 		credentials: [
 			{
-				name: 'taigaCloudApi',
-				displayOptions: {
-					show: {
-						version: [
-							'cloud',
-						],
-					},
-				},
-				required: true,
-			},
-			{
-				name: 'taigaServerApi',
-				displayOptions: {
-					show: {
-						version: [
-							'server',
-						],
-					},
-				},
+				name: 'taigaApi',
 				required: true,
 			},
 		],
@@ -71,22 +53,6 @@ export class TaigaTrigger implements INodeType {
 		],
 		properties: [
 			{
-				displayName: 'Taiga Version',
-				name: 'version',
-				type: 'options',
-				options: [
-					{
-						name: 'Cloud',
-						value: 'cloud',
-					},
-					{
-						name: 'Server (Self Hosted)',
-						value: 'server',
-					},
-				],
-				default: 'cloud',
-			},
-			{
 				displayName: 'Project ID',
 				name: 'projectId',
 				type: 'options',
@@ -96,6 +62,70 @@ export class TaigaTrigger implements INodeType {
 				default: '',
 				description: 'Project ID',
 				required: true,
+			},
+			{
+				displayName: 'Resources',
+				name: 'resources',
+				type: 'multiOptions',
+				required: true,
+				default: [
+					'all',
+				],
+				options: [
+					{
+						name: 'All',
+						value: 'all',
+					},
+					{
+						name: 'Issue',
+						value: 'issue',
+					},
+					{
+						name: 'Milestone (Sprint)',
+						value: 'milestone',
+					},
+					{
+						name: 'Task',
+						value: 'task',
+					},
+					{
+						name: 'User Story',
+						value: 'userstory',
+					},
+					{
+						name: 'Wikipage',
+						value: 'wikipage',
+					},
+				],
+				description: 'Resources to listen to',
+			},
+			{
+				displayName: 'Operations',
+				name: 'operations',
+				type: 'multiOptions',
+				required: true,
+				default: [
+					'all',
+				],
+				description: 'Operations to listen to',
+				options: [
+					{
+						name: 'All',
+						value: 'all',
+					},
+					{
+						name: 'Create',
+						value: 'create',
+					},
+					{
+						name: 'Delete',
+						value: 'delete',
+					},
+					{
+						name: 'Update',
+						value: 'change',
+					},
+				],
 			},
 		],
 	};
@@ -146,15 +176,7 @@ export class TaigaTrigger implements INodeType {
 				return false;
 			},
 			async create(this: IHookFunctions): Promise<boolean> {
-				const version = this.getNodeParameter('version') as string;
-
-				let credentials;
-
-				if (version === 'server') {
-					credentials = this.getCredentials('taigaServerApi') as ICredentialDataDecryptedObject;
-				} else {
-					credentials = this.getCredentials('taigaCloudApi') as ICredentialDataDecryptedObject;
-				}
+				const credentials = this.getCredentials('taigaApi') as ICredentialDataDecryptedObject;
 
 				const webhookUrl = this.getNodeWebhookUrl('default') as string;
 
@@ -167,7 +189,7 @@ export class TaigaTrigger implements INodeType {
 				const body: IDataObject = {
 					name: `n8n-webhook:${webhookUrl}`,
 					url: webhookUrl,
-					key, //can't validate the secret, see: https://github.com/taigaio/taiga-back/issues/1031
+					key,
 					project: projectId,
 				};
 				const { id } = await taigaApiRequest.call(this, 'POST', '/webhooks', body);
@@ -192,25 +214,34 @@ export class TaigaTrigger implements INodeType {
 	};
 
 	async webhook(this: IWebhookFunctions): Promise<IWebhookResponseData> {
-		//const webhookData = this.getWorkflowStaticData('node');
-		const req = this.getRequestObject();
-		const bodyData = req.body;
-		//const headerData = this.getHeaderData();
+		const body = this.getRequestObject().body as WebhookPayload;
 
+		const operations = this.getNodeParameter('operations', []) as Operations[];
+		const resources = this.getNodeParameter('resources', []) as Resources[];
 
-		// TODO
-		// Validate signature
+		if (!operations.includes('all') && !operations.includes(body.action)) {
+			return {};
+		}
+
+		if (!resources.includes('all') && !resources.includes(body.type)) {
+			return {};
+		}
+
+		// TODO: Signature does not match payload hash
 		// https://github.com/taigaio/taiga-back/issues/1031
 
-		// //@ts-ignore
-		// const requestSignature: string = headerData['x-taiga-webhook-signature'];
+		// const webhookData = this.getWorkflowStaticData('node');
+		// const headerData = this.getHeaderData();
+
+		// // @ts-ignore
+		// const requestSignature = headerData['x-taiga-webhook-signature'];
+		// console.log(requestSignature);
 
 		// if (requestSignature === undefined) {
 		// 	return {};
 		// }
 
-		// //@ts-ignore
-		// const computedSignature = createHmac('sha1', webhookData.key as string).update(JSON.stringify(bodyData)).digest('hex');
+		// const computedSignature = createHmac('sha1', webhookData.key as string).update(JSON.stringify(body)).digest('hex');
 
 		// if (requestSignature !== computedSignature) {
 		// 	return {};
@@ -218,7 +249,7 @@ export class TaigaTrigger implements INodeType {
 
 		return {
 			workflowData: [
-				this.helpers.returnJsonArray(bodyData),
+				this.helpers.returnJsonArray(body),
 			],
 		};
 	}
