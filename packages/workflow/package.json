@@ -17,7 +17,7 @@
   "scripts": {
     "dev": "npm run watch",
     "build": "tsc",
-    "format": "cd ../.. && node_modules/prettier/bin-prettier.js packages/workflow --write",
+    "format": "cd ../.. && node_modules/prettier/bin-prettier.js packages/workflow/**/**.ts --write",
     "lint": "cd ../.. && node_modules/eslint/bin/eslint.js packages/workflow",
     "lintfix": "cd ../.. && node_modules/eslint/bin/eslint.js packages/workflow --fix",
     "tslint": "tslint -p tsconfig.json -c tslint.json",

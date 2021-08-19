@@ -17,7 +17,7 @@
   "scripts": {
     "build": "tsc",
     "dev": "npm run watch",
-    "format": "cd ../.. && node_modules/prettier/bin-prettier.js packages/core --write",
+    "format": "cd ../.. && node_modules/prettier/bin-prettier.js packages/core/**/**.ts --write",
     "lint": "cd ../.. && node_modules/eslint/bin/eslint.js packages/core",
     "lintfix": "cd ../.. && node_modules/eslint/bin/eslint.js packages/core --fix",
     "tslint": "tslint -p tsconfig.json -c tslint.json",
