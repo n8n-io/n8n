@@ -78,6 +78,7 @@ import {
 } from 'n8n-core';
 
 import {
+	ICredentialsEncrypted,
 	ICredentialType,
 	IDataObject,
 	INodeCredentials,
@@ -1336,6 +1337,7 @@ class App {
 					const errorResponse = new ResponseHelper.ResponseError('No encryption key got found to decrypt the credentials!', undefined, 503);
 					return ResponseHelper.sendErrorResponse(res, errorResponse);
 				}
+
 
 				// Decrypt the currently saved credentials
 				const workflowCredentials: IWorkflowCredentials = {

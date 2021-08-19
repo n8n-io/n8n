@@ -52,17 +52,17 @@ export class CredentialsHelper extends ICredentialsHelper {
 
 		const credentialsDb = await Db.collections.Credentials?.find({type});
 
-		console.log(credentialsDb);
-
-		if (!this.workflowCredentials[type]) {
+		if (credentialsDb === undefined || credentialsDb.length === 0) {
 			throw new Error(`No credentials of type "${type}" exist.`);
 		}
-		if (!this.workflowCredentials[type][name]) {
+
+		const credential = credentialsDb.find(credential => credential.name === name);
+
+		if (credential === undefined) {
 			throw new Error(`No credentials with name "${name}" exist for type "${type}".`);
 		}
-		const credentialData = this.workflowCredentials[type][name];
-
-		return new Credentials(credentialData.name, credentialData.type, credentialData.nodesAccess, credentialData.data);
+		
+		return new Credentials(credential.name, credential.type, credential.nodesAccess, credential.data);
 	}
 
 

@@ -613,13 +613,9 @@ export async function executeWorkflow(workflowInfo: IExecuteWorkflowInfo, additi
 
 	let data;
 	try {
-		// Get the needed credentials for the current workflow as they will differ to the ones of the
-		// calling workflow.
-		const credentials = await WorkflowCredentials(workflowData!.nodes);
-
 		// Create new additionalData to have different workflow loaded and to call
 		// different webooks
-		const additionalDataIntegrated = await getBase(credentials);
+		const additionalDataIntegrated = await getBase();
 		additionalDataIntegrated.hooks = getWorkflowHooksIntegrated(runData.executionMode, executionId, workflowData!, { parentProcessMode: additionalData.hooks!.mode });
 		// Make sure we pass on the original executeWorkflow function we received
 		// This one already contains changes to talk to parent process

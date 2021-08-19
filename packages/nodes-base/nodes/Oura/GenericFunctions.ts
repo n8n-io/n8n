@@ -25,7 +25,7 @@ export async function ouraApiRequest(
 	option: IDataObject = {},
 ) {
 
-	const credentials = this.getCredentials('ouraApi');
+	const credentials = await this.getCredentials('ouraApi');
 	if (credentials === undefined) {
 		throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
 	}
