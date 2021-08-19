@@ -280,12 +280,18 @@ export default mixins(
 		},
 		onNodeAccessChange(name: string, value: boolean) {
 			if (value) {
-				this.nodeAccess[name] = {
-					nodeType: name,
+				this.nodeAccess = {
+					...this.nodeAccess,
+					[name]: {
+						nodeType: name,
+					},
 				};
 			}
 			else {
-				this.nodeAccess[name] = null;
+				this.nodeAccess = {
+					...this.nodeAccess,
+					[name]: null,
+				};
 			}
 		},
 		convertToHumanReadableDate,
@@ -542,6 +548,10 @@ export default mixins(
 
 .mainContent {
 	flex-grow: 1;
+
+	> * {
+		margin-bottom: var(--spacing-l);
+	}
 }
 
 .sidebar {
@@ -579,7 +589,6 @@ export default mixins(
 .infotip {
 	color: var(--color-text-light);
 	font-size: var(--font-size-2xs);
-	margin-bottom: var(--spacing-l);
 }
 
 .nodeName {

@@ -277,10 +277,8 @@ $icon-color-base: var(--color-info);
 -------------------------- */
 /// fontSize||Font|1
 $checkbox-font-size: 14px;
-/// fontWeight||Font|1
-$checkbox-font-weight: $font-weight-primary;
 /// color||Color|0
-$checkbox-font-color: var(--color-text-dark);
+$checkbox-font-color: var(--color-text-base);
 $checkbox-input-height: 14px;
 $checkbox-input-width: 14px;
 /// borderRadius||Border|2
