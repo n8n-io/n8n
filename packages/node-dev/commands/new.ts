@@ -7,19 +7,14 @@ import { join } from 'path';
 const { promisify } = require('util');
 const fsAccess = promisify(fs.access);
 
-import {
-	createTemplate
-} from '../src';
+import { createTemplate } from '../src';
 
 export class New extends Command {
 	static description = 'Create new credentials/node';
 
-	static examples = [
-		`$ n8n-node-dev new`,
-	];
+	static examples = [`$ n8n-node-dev new`];
 
 	async run() {
-
 		try {
 			this.log('\nCreate new credentials/node');
 			this.log('=========================');
@@ -30,10 +25,7 @@ export class New extends Command {
 				type: 'list',
 				default: 'Node',
 				message: 'What do you want to create?',
-				choices: [
-					'Credentials',
-					'Node',
-				],
+				choices: ['Credentials', 'Node'],
 			};
 
 			const typeAnswers = await inquirer.prompt(typeQuestion);
@@ -42,7 +34,6 @@ export class New extends Command {
 			const sourceFileName = 'simple.ts';
 			let defaultName = '';
 			let getDescription = false;
-
 
 			if (typeAnswers.type === 'Node') {
 				// Create new node
@@ -54,11 +45,7 @@ export class New extends Command {
 					type: 'list',
 					default: 'Execute',
 					message: 'What kind of node do you want to create?',
-					choices: [
-						'Execute',
-						'Trigger',
-						'Webhook',
-					],
+					choices: ['Execute', 'Trigger', 'Webhook'],
 				};
 
 				const nodeTypeAnswers = await inquirer.prompt(nodeTypeQuestion);
@@ -101,13 +88,18 @@ export class New extends Command {
 				});
 			}
 
-			const additionalAnswers = await inquirer.prompt(additionalQuestions as inquirer.QuestionCollection);
+			const additionalAnswers = await inquirer.prompt(
+				additionalQuestions as inquirer.QuestionCollection,
+			);
 
 			const nodeName = additionalAnswers.name;
 
 			// Define the source file to be used and the location and name of the new
 			// node file
-			const destinationFilePath = join(process.cwd(), `${changeCase.pascalCase(nodeName)}.${typeAnswers.type.toLowerCase()}.ts`);
+			const destinationFilePath = join(
+				process.cwd(),
+				`${changeCase.pascalCase(nodeName)}.${typeAnswers.type.toLowerCase()}.ts`,
+			);
 
 			const sourceFilePath = join(__dirname, '../../templates', sourceFolder, sourceFileName);
 
