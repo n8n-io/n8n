@@ -18,6 +18,7 @@ module.exports = {
 		'**/dist/**',
 		'**/test/**',
 		'**/ormconfig.ts',
+		'**/migrations/**',
 	],
 
 	extends: [
