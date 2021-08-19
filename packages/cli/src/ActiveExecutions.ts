@@ -58,6 +58,7 @@ export class ActiveExecutions {
 		// Save the Execution in DB
 		const executionResult = await Db.collections.Execution!.save(execution as IExecutionFlattedDb);
 
+		// @ts-ignore
 		const executionId = typeof executionResult.id === "object" ? executionResult.id!.toString() : executionResult.id + "";
 
 		this.activeExecutions[executionId] = {

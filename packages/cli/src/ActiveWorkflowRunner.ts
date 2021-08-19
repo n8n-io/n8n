@@ -174,8 +174,10 @@ export class ActiveWorkflowRunner {
 				throw new ResponseHelper.ResponseError(`The requested webhook "${httpMethod} ${path}" is not registered.`, 404, 404, WEBHOOK_PROD_UNREGISTERED_HINT);
 			}
 
+			// @ts-ignore
 			path = webhook!.webhookPath;
 			// extracting params from path
+			// @ts-ignore
 			webhook!.webhookPath.split('/').forEach((ele, index) => {
 				if (ele.startsWith(':')) {
 					// write params to req.params
