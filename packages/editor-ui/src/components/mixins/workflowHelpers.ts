@@ -39,6 +39,7 @@ import { showMessage } from '@/components/mixins/showMessage';
 import { isEqual } from 'lodash';
 
 import mixins from 'vue-typed-mixins';
+import { v4 as uuidv4} from 'uuid';
 
 export const workflowHelpers = mixins(
 	externalHooks,
@@ -435,13 +436,20 @@ export const workflowHelpers = mixins(
 				}
 			},
 
-			async saveAsNewWorkflow ({name, tags}: {name?: string, tags?: string[]} = {}): Promise<boolean> {
+			async saveAsNewWorkflow ({name, tags, updateWebhookUrls}: {name?: string, tags?: string[], updateWebhookUrls?: boolean} = {}): Promise<boolean> {
 				try {
 					this.$store.commit('addActiveAction', 'workflowSaving');
 
 					const workflowDataRequest: IWorkflowDataUpdate = await this.getWorkflowDataToSave();
 					// make sure that the new ones are not active
 					workflowDataRequest.active = false;
+					if (updateWebhookUrls) {
+						workflowDataRequest.nodes!.forEach(node => {
+							if (node.webhookId) {
+								node.webhookId = uuidv4();
+							}
+						});
+					}
 
 					if (name) {
 						workflowDataRequest.name = name.trim();
@@ -452,10 +460,8 @@ export const workflowHelpers = mixins(
 					}
 					const workflowData = await this.restApi().createNewWorkflow(workflowDataRequest);
 
-					this.$store.commit('setActive', workflowData.active || false);
-					this.$store.commit('setWorkflowId', workflowData.id);
+					this.$store.commit('setWorkflow', workflowData);
 					this.$store.commit('setWorkflowName', {newName: workflowData.name, setStateDirty: false});
-					this.$store.commit('setWorkflowSettings', workflowData.settings || {});
 					this.$store.commit('setStateDirty', false);
 
 					const createdTags = (workflowData.tags || []) as ITag[];
