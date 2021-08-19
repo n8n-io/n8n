@@ -148,7 +148,6 @@ export async function getForms(this: ILoadOptionsFunctions): Promise<INodeProper
 	if (responseData.items === undefined) {
 		throw new Error('No data got returned');
 	}
-
 	const returnData: INodePropertyOptions[] = [];
 	for (const baseData of responseData.items) {
 		returnData.push({
@@ -156,7 +155,6 @@ export async function getForms(this: ILoadOptionsFunctions): Promise<INodeProper
 			value: baseData.id,
 		});
 	}
-
 	return returnData;
 }
 

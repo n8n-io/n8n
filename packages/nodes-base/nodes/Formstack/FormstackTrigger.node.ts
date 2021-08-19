@@ -81,10 +81,10 @@ export class FormstackTrigger implements INodeType {
 					},
 				],
 				default: 'accessToken',
-				description: 'The resource to operate on.',
+				description: '',
 			},
 			{
-				displayName: 'Form',
+				displayName: 'Form Name/ID',
 				name: 'formId',
 				type: 'options',
 				typeOptions: {
@@ -92,10 +92,10 @@ export class FormstackTrigger implements INodeType {
 				},
 				default: '',
 				required: true,
-				description: 'Form which should trigger workflow on submission.',
+				description: 'The Formstack form to monitor for new submissions',
 			},
 			{
-				displayName: 'Simple',
+				displayName: 'Simplify Response',
 				name: 'simple',
 				type: 'boolean',
 				default: true,
