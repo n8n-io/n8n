@@ -484,6 +484,85 @@ export default mixins(
 </script>
 
 <style lang="scss">
+#side-menu {
+	// Menu
+	.el-menu--vertical,
+	.el-menu {
+		border: none;
+		font-size: 14px;
+
+		.el-menu--collapse {
+			width: 75px;
+		}
+
+		.el-menu--popup,
+		.el-menu--inline {
+			font-size: 0.9em;
+			li.el-menu-item {
+				height: 35px;
+				line-height: 35px;
+				color: $--custom-dialog-text-color;
+			}
+		}
+
+		.el-menu-item,
+		.el-submenu__title {
+			color: $--color-primary;
+			font-size: 1.2em;
+			.el-submenu__icon-arrow {
+				color: $--color-primary;
+				font-weight: 800;
+				font-size: 1em;
+			}
+			.svg-inline--fa {
+				position: relative;
+				right: -3px;
+			}
+			.item-title {
+				position: absolute;
+				left: 73px;
+			}
+			.item-title-root {
+				position: absolute;
+				left: 60px;
+				top: 1px;
+			}
+		}
+
+	}
+	.el-menu--vertical {
+		.el-menu-item {
+			.item-title {
+				position: absolute;
+				left: 55px;
+			}
+		}
+	}
+
+	.el-menu-item {
+		a {
+			color: #666;
+
+			&.primary-item {
+				color: $--color-primary;
+				vertical-align: baseline;
+			}
+		}
+
+		&.logo-item {
+			background-color: $--color-primary !important;
+			height: $--header-height;
+
+			.icon {
+				position: relative;
+				height: 23px;
+				left: -10px;
+				top: -2px;
+			}
+		}
+	}
+}
+
 .about-icon {
 	padding-left: 5px;
 }
@@ -522,29 +601,6 @@ export default mixins(
 #collapse-change-button:hover {
 	transform: scale(1.1);
 }
-
-// .el-menu-item {
-// 	a {
-// 		color: #666;
-
-// 		&.primary-item {
-// 			color: $--color-primary;
-// 			vertical-align: baseline;
-// 		}
-// 	}
-
-// 	&.logo-item {
-// 		background-color: $--color-primary !important;
-// 		height: $--header-height;
-
-// 		.icon {
-// 			position: relative;
-// 			height: 23px;
-// 			left: -10px;
-// 			top: -2px;
-// 		}
-// 	}
-// }
 
 a.logo {
 	text-decoration: none;
@@ -598,7 +654,7 @@ a.logo {
 }
 
 .el-menu-item.updates {
-	color: $--sidebar-inactive-color;
+	color: $--sidebar-inactive-color !important;
 	.item-title-root {
 		font-size: 13px;
 		top: 0 !important;

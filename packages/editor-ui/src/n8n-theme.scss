@@ -110,67 +110,10 @@ h1, h2, h3, h4, h5, h6 {
 	}
 }
 
-
-// // Menu
-// .el-menu--vertical,
-// .el-menu {
-// 	border: none;
-// 	font-size: 14px;
-
-// 	.el-menu--collapse {
-// 		width: 75px;
-// 	}
-
-// 	.el-menu--popup,
-// 	.el-menu--inline {
-// 		font-size: 0.9em;
-// 		li.el-menu-item {
-// 			height: 35px;
-// 			line-height: 35px;
-// 			color: $--custom-dialog-text-color;
-// 		}
-// 	}
-
-// 	.el-menu-item,
-// 	.el-submenu__title {
-// 		color: $--color-primary;
-// 		font-size: 1.2em;
-// 		.el-submenu__icon-arrow {
-// 			color: $--color-primary;
-// 			font-weight: 800;
-// 			font-size: 1em;
-// 		}
-// 		.svg-inline--fa {
-// 			position: relative;
-// 			right: -3px;
-// 		}
-// 		.item-title {
-// 			position: absolute;
-// 			left: 73px;
-// 		}
-// 		.item-title-root {
-// 			position: absolute;
-// 			left: 60px;
-// 			top: 1px;
-// 		}
-// 	}
-
-// }
-// .el-menu--vertical {
-// 	.el-menu-item {
-// 		.item-title {
-// 			position: absolute;
-// 			left: 55px;
-// 		}
-// 	}
-// }
-
-
 // Notification Message
 .el-message p {
 	line-height: 1.5em;
 }
-
 
 // Table
 .el-table {
