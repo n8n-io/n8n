@@ -178,7 +178,7 @@ export default mixins(
 
 			const credentials = {
 				...(node.credentials || {}),
-				[credentialType]: credentialName,
+				[credentialType]: selected,
 			};
 
 			const updateInformation: INodeUpdatePropertiesInformation = {

@@ -14,6 +14,7 @@
 						<img v-if="isGoogleCredType" :class="$style.defaultCredIcon" src="../assets/Google.svg" />
 						<img v-else-if="isAWSCredType" :class="$style.defaultCredIcon" src="../assets/AWS.svg" />
 						<img v-else-if="isMicrosoftCredType" :class="$style.defaultCredIcon" src="../assets/Microsoft.svg" />
+						<NodeIcon v-else-if="credToNodeIconMap[credentialTypeName]" :nodeType="getNodeByName(credToNodeIconMap[credentialTypeName])" />
 						<NodeIcon v-else :nodeType="nodesWithAccess[0]" />
 					</div>
 					<div>
@@ -108,6 +109,11 @@ interface NodeAccessMap {
 	[nodeType: string]: ICredentialNodeAccess | null;
 }
 
+const credToNodeIconMap = {
+	'httpBasicAuth': 'n8n-nodes-base.httpRequest',
+	'httpHeaderAuth': 'n8n-nodes-base.httpRequest',
+};
+
 export default mixins(
 	genericHelpers,
 	showMessage,
@@ -146,6 +152,7 @@ export default mixins(
 			credentialId: '',
 			isNameEdit: false,
 			hasUnsavedChanges: false,
+			credToNodeIconMap,
 		};
 	},
 	async mounted() {
@@ -289,6 +296,10 @@ export default mixins(
 			NodeHelpers.mergeNodeProperties(combineProperties, credentialsData.properties);
 
 			return combineProperties;
+		},
+
+		getNodeByName (nodeTypeName: string): INodeTypeDescription {
+			return this.$store.getters['nodeType'](nodeTypeName);
 		},
 
 		async loadCurrentCredential() {
