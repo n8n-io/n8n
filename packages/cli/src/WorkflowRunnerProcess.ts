@@ -1,4 +1,3 @@
-
 import {
 	CredentialsOverwrites,
 	CredentialTypes,
@@ -11,10 +10,7 @@ import {
 	WorkflowHelpers,
 } from './';
 
-import {
-	IProcessMessage,
-	WorkflowExecute,
-} from 'n8n-core';
+import { IProcessMessage, WorkflowExecute } from 'n8n-core';
 
 import {
 	ExecutionError,
@@ -35,9 +31,7 @@ import {
 	WorkflowOperationError,
 } from 'n8n-workflow';
 
-import {
-	getLogger,
-} from '../src/Logger';
+import { getLogger } from '../src/Logger';
 
 import * as config from '../config';
 
@@ -49,7 +43,7 @@ export class WorkflowRunnerProcess {
 	workflowExecute: WorkflowExecute | undefined;
 	executionIdCallback: (executionId: string) => void | undefined;
 	childExecutions: {
-		[key: string]: IWorkflowExecuteProcess,
+		[key: string]: IWorkflowExecuteProcess;
 	} = {};
 
 	static async stopProcess() {
@@ -59,17 +53,19 @@ export class WorkflowRunnerProcess {
 		}, 30000);
 	}
 
-
 	async runWorkflow(inputData: IWorkflowExecutionDataProcessWithExecution): Promise<IRun> {
 		process.on('SIGTERM', WorkflowRunnerProcess.stopProcess);
 		process.on('SIGINT', WorkflowRunnerProcess.stopProcess);
 
-		const logger = this.logger = getLogger();
+		const logger = (this.logger = getLogger());
 		LoggerProxy.init(logger);
 
 		this.data = inputData;
 
-		logger.verbose('Initializing n8n sub-process', { pid: process.pid, workflowId: this.data.workflowData.id });
+		logger.verbose('Initializing n8n sub-process', {
+			pid: process.pid,
+			workflowId: this.data.workflowData.id,
+		});
 
 		let className: string;
 		let tempNode: INodeType;
@@ -113,13 +109,23 @@ export class WorkflowRunnerProcess {
 
 		// This code has been split into 3 ifs just to make it easier to understand
 		// Can be made smaller but in the end it will make it impossible to read.
-		if (inputData.workflowData.settings !== undefined && inputData.workflowData.settings.saveExecutionProgress === true) {
+		if (
+			inputData.workflowData.settings !== undefined &&
+			inputData.workflowData.settings.saveExecutionProgress === true
+		) {
 			// Workflow settings specifying it should save
 			await Db.init();
-		} else if (inputData.workflowData.settings !== undefined && inputData.workflowData.settings.saveExecutionProgress !== false && config.get('executions.saveExecutionProgress') as boolean) {
+		} else if (
+			inputData.workflowData.settings !== undefined &&
+			inputData.workflowData.settings.saveExecutionProgress !== false &&
+			(config.get('executions.saveExecutionProgress') as boolean)
+		) {
 			// Workflow settings not saying anything about saving but default settings says so
 			await Db.init();
-		} else if (inputData.workflowData.settings === undefined && config.get('executions.saveExecutionProgress') as boolean) {
+		} else if (
+			inputData.workflowData.settings === undefined &&
+			(config.get('executions.saveExecutionProgress') as boolean)
+		) {
 			// Workflow settings not saying anything about saving but default settings says so
 			await Db.init();
 		}
@@ -134,11 +140,25 @@ export class WorkflowRunnerProcess {
 			workflowTimeout = Math.min(workflowTimeout, config.get('executions.maxTimeout') as number);
 		}
 
-		this.workflow = new Workflow({ id: this.data.workflowData.id as string | undefined, name: this.data.workflowData.name, nodes: this.data.workflowData!.nodes, connections: this.data.workflowData!.connections, active: this.data.workflowData!.active, nodeTypes, staticData: this.data.workflowData!.staticData, settings: this.data.workflowData!.settings });
-		const additionalData = await WorkflowExecuteAdditionalData.getBase(this.data.credentials, undefined, workflowTimeout <= 0 ? undefined : Date.now() + workflowTimeout * 1000);
+		this.workflow = new Workflow({
+			id: this.data.workflowData.id as string | undefined,
+			name: this.data.workflowData.name,
+			nodes: this.data.workflowData!.nodes,
+			connections: this.data.workflowData!.connections,
+			active: this.data.workflowData!.active,
+			nodeTypes,
+			staticData: this.data.workflowData!.staticData,
+			settings: this.data.workflowData!.settings,
+		});
+		const additionalData = await WorkflowExecuteAdditionalData.getBase(
+			this.data.credentials,
+			undefined,
+			workflowTimeout <= 0 ? undefined : Date.now() + workflowTimeout * 1000,
+		);
 		additionalData.hooks = this.getProcessForwardHooks();
 
-		additionalData.sendMessageToUI = async (source: string, message: any) => { // tslint:disable-line:no-any
+		additionalData.sendMessageToUI = async (source: string, message: any) => {
+			// tslint:disable-line:no-any
 			if (workflowRunner.data!.executionMode !== 'manual') {
 				return;
 			}
@@ -146,11 +166,17 @@ export class WorkflowRunnerProcess {
 			try {
 				await sendToParentProcess('sendMessageToUI', { source, message });
 			} catch (error) {
-				this.logger.error(`There was a problem sending UI data to parent process: "${error.message}"`);
+				this.logger.error(
+					`There was a problem sending UI data to parent process: "${error.message}"`,
+				);
 			}
 		};
 		const executeWorkflowFunction = additionalData.executeWorkflow;
-		additionalData.executeWorkflow = async (workflowInfo: IExecuteWorkflowInfo, additionalData: IWorkflowExecuteAdditionalData, inputData?: INodeExecutionData[] | undefined): Promise<Array<INodeExecutionData[] | null> | IRun> => {
+		additionalData.executeWorkflow = async (
+			workflowInfo: IExecuteWorkflowInfo,
+			additionalData: IWorkflowExecuteAdditionalData,
+			inputData?: INodeExecutionData[] | undefined,
+		): Promise<Array<INodeExecutionData[] | null> | IRun> => {
 			const workflowData = await WorkflowExecuteAdditionalData.getWorkflowData(workflowInfo);
 			const runData = await WorkflowExecuteAdditionalData.getRunData(workflowData, inputData);
 			await sendToParentProcess('startExecution', { runData });
@@ -161,11 +187,18 @@ export class WorkflowRunnerProcess {
 			});
 			let result: IRun;
 			try {
-				const executeWorkflowFunctionOutput = await executeWorkflowFunction(workflowInfo, additionalData, inputData, executionId, workflowData, runData) as {workflowExecute: WorkflowExecute, workflow: Workflow} as IWorkflowExecuteProcess;
+				const executeWorkflowFunctionOutput = (await executeWorkflowFunction(
+					workflowInfo,
+					additionalData,
+					inputData,
+					executionId,
+					workflowData,
+					runData,
+				)) as { workflowExecute: WorkflowExecute; workflow: Workflow } as IWorkflowExecuteProcess;
 				const workflowExecute = executeWorkflowFunctionOutput.workflowExecute;
 				this.childExecutions[executionId] = executeWorkflowFunctionOutput;
 				const workflow = executeWorkflowFunctionOutput.workflow;
-				result = await workflowExecute.processRunExecutionData(workflow) as IRun;
+				result = (await workflowExecute.processRunExecutionData(workflow)) as IRun;
 				await externalHooks.run('workflow.postExecute', [result, workflowData]);
 				await sendToParentProcess('finishExecution', { executionId, result });
 				delete this.childExecutions[executionId];
@@ -183,9 +216,18 @@ export class WorkflowRunnerProcess {
 		};
 
 		if (this.data.executionData !== undefined) {
-			this.workflowExecute = new WorkflowExecute(additionalData, this.data.executionMode, this.data.executionData);
+			this.workflowExecute = new WorkflowExecute(
+				additionalData,
+				this.data.executionMode,
+				this.data.executionData,
+			);
 			return this.workflowExecute.processRunExecutionData(this.workflow);
-		} else if (this.data.runData === undefined || this.data.startNodes === undefined || this.data.startNodes.length === 0 || this.data.destinationNode === undefined) {
+		} else if (
+			this.data.runData === undefined ||
+			this.data.startNodes === undefined ||
+			this.data.startNodes.length === 0 ||
+			this.data.destinationNode === undefined
+		) {
 			// Execute all nodes
 
 			// Can execute without webhook so go on
@@ -194,10 +236,14 @@ export class WorkflowRunnerProcess {
 		} else {
 			// Execute only the nodes between start and destination nodes
 			this.workflowExecute = new WorkflowExecute(additionalData, this.data.executionMode);
-			return this.workflowExecute.runPartialWorkflow(this.workflow, this.data.runData, this.data.startNodes, this.data.destinationNode);
+			return this.workflowExecute.runPartialWorkflow(
+				this.workflow,
+				this.data.runData,
+				this.data.startNodes,
+				this.data.destinationNode,
+			);
 		}
 	}
-
 
 	/**
 	 * Sends hook data to the parent process that it executes them
@@ -206,17 +252,17 @@ export class WorkflowRunnerProcess {
 	 * @param {any[]} parameters
 	 * @memberof WorkflowRunnerProcess
 	 */
-	async sendHookToParentProcess(hook: string, parameters: any[]) { // tslint:disable-line:no-any
+	async sendHookToParentProcess(hook: string, parameters: any[]) {
+		// tslint:disable-line:no-any
 		try {
 			await sendToParentProcess('processHook', {
 				hook,
 				parameters,
 			});
 		} catch (error) {
-			this.logger.error(`There was a problem sending hook: "${hook}"`, { parameters, error});
+			this.logger.error(`There was a problem sending hook: "${hook}"`, { parameters, error });
 		}
 	}
-
 
 	/**
 	 * Create a wrapper for hooks which simply forwards the data to
@@ -257,12 +303,15 @@ export class WorkflowRunnerProcess {
 			hookFunctions[key]!.push.apply(hookFunctions[key], preExecuteFunctions[key]);
 		}
 
-		return new WorkflowHooks(hookFunctions, this.data!.executionMode, this.data!.executionId, this.data!.workflowData, { sessionId: this.data!.sessionId, retryOf: this.data!.retryOf as string });
+		return new WorkflowHooks(
+			hookFunctions,
+			this.data!.executionMode,
+			this.data!.executionId,
+			this.data!.workflowData,
+			{ sessionId: this.data!.sessionId, retryOf: this.data!.retryOf as string },
+		);
 	}
-
 }
-
-
 
 /**
  * Sends data to parent process
@@ -271,24 +320,26 @@ export class WorkflowRunnerProcess {
  * @param {*} data The data
  * @returns {Promise<void>}
  */
-async function sendToParentProcess(type: string, data: any): Promise<void> { // tslint:disable-line:no-any
+async function sendToParentProcess(type: string, data: any): Promise<void> {
+	// tslint:disable-line:no-any
 	return new Promise((resolve, reject) => {
-		process.send!({
-			type,
-			data,
-		}, (error: Error) => {
-			if (error) {
-				return reject(error);
-			}
+		process.send!(
+			{
+				type,
+				data,
+			},
+			(error: Error) => {
+				if (error) {
+					return reject(error);
+				}
 
-			resolve();
-		});
+				resolve();
+			},
+		);
 	});
 }
 
-
 const workflowRunner = new WorkflowRunnerProcess();
-
 
 // Listen to messages from parent process which send the data of
 // the worflow to process
@@ -310,25 +361,40 @@ process.on('message', async (message: IProcessMessage) => {
 			let runData: IRun;
 
 			if (workflowRunner.workflowExecute !== undefined) {
-
 				const executionIds = Object.keys(workflowRunner.childExecutions);
 
 				for (const executionId of executionIds) {
 					const childWorkflowExecute = workflowRunner.childExecutions[executionId];
-					runData = childWorkflowExecute.workflowExecute.getFullRunData(workflowRunner.childExecutions[executionId].startedAt);
-					const timeOutError = message.type === 'timeout' ? new WorkflowOperationError('Workflow execution timed out!') : new WorkflowOperationError('Workflow-Execution has been canceled!');
+					runData = childWorkflowExecute.workflowExecute.getFullRunData(
+						workflowRunner.childExecutions[executionId].startedAt,
+					);
+					const timeOutError =
+						message.type === 'timeout'
+							? new WorkflowOperationError('Workflow execution timed out!')
+							: new WorkflowOperationError('Workflow-Execution has been canceled!');
 
 					// If there is any data send it to parent process, if execution timedout add the error
-					await childWorkflowExecute.workflowExecute.processSuccessExecution(workflowRunner.childExecutions[executionId].startedAt, childWorkflowExecute.workflow, timeOutError);
+					await childWorkflowExecute.workflowExecute.processSuccessExecution(
+						workflowRunner.childExecutions[executionId].startedAt,
+						childWorkflowExecute.workflow,
+						timeOutError,
+					);
 				}
 
 				// Workflow started already executing
 				runData = workflowRunner.workflowExecute.getFullRunData(workflowRunner.startedAt);
 
-				const timeOutError = message.type === 'timeout' ? new WorkflowOperationError('Workflow execution timed out!') : new WorkflowOperationError('Workflow-Execution has been canceled!');
+				const timeOutError =
+					message.type === 'timeout'
+						? new WorkflowOperationError('Workflow execution timed out!')
+						: new WorkflowOperationError('Workflow-Execution has been canceled!');
 
 				// If there is any data send it to parent process, if execution timedout add the error
-				await workflowRunner.workflowExecute.processSuccessExecution(workflowRunner.startedAt, workflowRunner.workflow!, timeOutError);
+				await workflowRunner.workflowExecute.processSuccessExecution(
+					workflowRunner.startedAt,
+					workflowRunner.workflow!,
+					timeOutError,
+				);
 			} else {
 				// Workflow did not get started yet
 				runData = {
@@ -338,7 +404,9 @@ process.on('message', async (message: IProcessMessage) => {
 						},
 					},
 					finished: false,
-					mode: workflowRunner.data ? workflowRunner.data!.executionMode : 'own' as WorkflowExecuteMode,
+					mode: workflowRunner.data
+						? workflowRunner.data!.executionMode
+						: ('own' as WorkflowExecuteMode),
 					startedAt: workflowRunner.startedAt,
 					stoppedAt: new Date(),
 				};
@@ -356,7 +424,6 @@ process.on('message', async (message: IProcessMessage) => {
 			workflowRunner.executionIdCallback(message.data.executionId);
 		}
 	} catch (error) {
-
 		// Catch all uncaught errors and forward them to parent process
 		const executionError = {
 			...error,

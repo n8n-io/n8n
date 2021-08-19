@@ -1,20 +1,11 @@
-import {
-	ICredentialDataDecryptedObject,
-} from 'n8n-workflow';
+import { ICredentialDataDecryptedObject } from 'n8n-workflow';
 
-import {
-	CredentialTypes,
-	GenericHelpers,
-	ICredentialsOverwrite,
-} from './';
-
+import { CredentialTypes, GenericHelpers, ICredentialsOverwrite } from './';
 
 class CredentialsOverwritesClass {
-
 	private credentialTypes = CredentialTypes();
 	private overwriteData: ICredentialsOverwrite = {};
 	private resolvedTypes: string[] = [];
-
 
 	async init(overwriteData?: ICredentialsOverwrite) {
 		if (overwriteData !== undefined) {
@@ -24,7 +15,7 @@ class CredentialsOverwritesClass {
 			return;
 		}
 
-		const data = await GenericHelpers.getConfigValue('credentials.overwrite.data') as string;
+		const data = (await GenericHelpers.getConfigValue('credentials.overwrite.data')) as string;
 
 		try {
 			const overwriteData = JSON.parse(data);
@@ -33,7 +24,6 @@ class CredentialsOverwritesClass {
 			throw new Error(`The credentials-overwrite is not valid JSON.`);
 		}
 	}
-
 
 	__setData(overwriteData: ICredentialsOverwrite) {
 		this.overwriteData = overwriteData;
@@ -49,9 +39,7 @@ class CredentialsOverwritesClass {
 		}
 	}
 
-
 	applyOverwrite(type: string, data: ICredentialDataDecryptedObject) {
-
 		const overwrites = this.get(type);
 
 		if (overwrites === undefined) {
@@ -69,9 +57,7 @@ class CredentialsOverwritesClass {
 		return returnData;
 	}
 
-
 	__getExtended(type: string): ICredentialDataDecryptedObject | undefined {
-
 		if (this.resolvedTypes.includes(type)) {
 			// Type got already resolved and can so returned directly
 			return this.overwriteData[type];
@@ -102,17 +88,14 @@ class CredentialsOverwritesClass {
 		return overwrites;
 	}
 
-
 	get(type: string): ICredentialDataDecryptedObject | undefined {
 		return this.overwriteData[type];
 	}
-
 
 	getAll(): ICredentialsOverwrite {
 		return this.overwriteData;
 	}
 }
-
 
 let credentialsOverwritesInstance: CredentialsOverwritesClass | undefined;
 

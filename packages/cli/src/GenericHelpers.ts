@@ -21,12 +21,11 @@ export function getBaseUrl(): string {
 	const port = config.get('port') as number;
 	const path = config.get('path') as string;
 
-	if (protocol === 'http' && port === 80 || protocol === 'https' && port === 443) {
+	if ((protocol === 'http' && port === 80) || (protocol === 'https' && port === 443)) {
 		return `${protocol}://${host}${path}`;
 	}
 	return `${protocol}://${host}:${port}${path}`;
 }
-
 
 /**
  * Returns the session id if one is set
@@ -39,7 +38,6 @@ export function getSessionId(req: express.Request): string | undefined {
 	return req.headers.sessionid as string | undefined;
 }
 
-
 /**
  * Returns information which version of the packages are installed
  *
@@ -51,7 +49,10 @@ export async function getVersions(): Promise<IPackageVersions> {
 		return versionCache;
 	}
 
-	const packageFile = await fsReadFile(pathJoin(__dirname, '../../package.json'), 'utf8') as string;
+	const packageFile = (await fsReadFile(
+		pathJoin(__dirname, '../../package.json'),
+		'utf8',
+	)) as string;
 	const packageData = JSON.parse(packageFile);
 
 	versionCache = {
@@ -90,7 +91,9 @@ function extractSchemaForKey(configKey: string, configSchema: IDataObject): IDat
  * @param {string} configKey The key of the config data to get
  * @returns {(Promise<string | boolean | number | undefined>)}
  */
-export async function getConfigValue(configKey: string): Promise<string | boolean | number | undefined> {
+export async function getConfigValue(
+	configKey: string,
+): Promise<string | boolean | number | undefined> {
 	// Get the environment variable
 	const configSchema = config.getSchema();
 	// @ts-ignore
@@ -110,7 +113,7 @@ export async function getConfigValue(configKey: string): Promise<string | boolea
 
 	let data;
 	try {
-		data = await fsReadFile(fileEnvironmentVariable, 'utf8') as string;
+		data = (await fsReadFile(fileEnvironmentVariable, 'utf8')) as string;
 	} catch (error) {
 		if (error.code === 'ENOENT') {
 			throw new Error(`The file "${fileEnvironmentVariable}" could not be found.`);

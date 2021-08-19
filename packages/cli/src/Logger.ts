@@ -1,11 +1,7 @@
 import config = require('../config');
 import * as winston from 'winston';
 
-import {
-	IDataObject,
-	ILogger,
-	LogTypes,
-} from 'n8n-workflow';
+import { IDataObject, ILogger, LogTypes } from 'n8n-workflow';
 
 import * as callsites from 'callsites';
 import { basename } from 'path';
@@ -15,7 +11,7 @@ class Logger implements ILogger {
 
 	constructor() {
 		const level = config.get('logs.level');
-		const output = (config.get('logs.output') as string).split(',').map(output => output.trim());
+		const output = (config.get('logs.output') as string).split(',').map((output) => output.trim());
 
 		this.logger = winston.createLogger({
 			level,
@@ -29,8 +25,11 @@ class Logger implements ILogger {
 					winston.format.timestamp(),
 					winston.format.colorize({ all: true }),
 					winston.format.printf(({ level, message, timestamp, metadata }) => {
-						return `${timestamp} | ${level.padEnd(18)} | ${message}` + (Object.keys(metadata).length ? ` ${JSON.stringify(metadata)}` : '');
-					}) as winston.Logform.Format
+						return (
+							`${timestamp} | ${level.padEnd(18)} | ${message}` +
+							(Object.keys(metadata).length ? ` ${JSON.stringify(metadata)}` : '')
+						);
+					}) as winston.Logform.Format,
 				);
 			} else {
 				format = winston.format.printf(({ message }) => message) as winston.Logform.Format;
@@ -39,7 +38,7 @@ class Logger implements ILogger {
 			this.logger.add(
 				new winston.transports.Console({
 					format,
-				})
+				}),
 			);
 		}
 
@@ -47,15 +46,15 @@ class Logger implements ILogger {
 			const fileLogFormat = winston.format.combine(
 				winston.format.timestamp(),
 				winston.format.metadata(),
-				winston.format.json()
+				winston.format.json(),
 			);
 			this.logger.add(
 				new winston.transports.File({
 					filename: config.get('logs.file.location'),
 					format: fileLogFormat,
-					maxsize: config.get('logs.file.fileSizeMax') as number * 1048576, // config * 1mb
+					maxsize: (config.get('logs.file.fileSizeMax') as number) * 1048576, // config * 1mb
 					maxFiles: config.get('logs.file.fileCountMax'),
-				})
+				}),
 			);
 		}
 	}
@@ -76,7 +75,7 @@ class Logger implements ILogger {
 				logDetails.function = functionName;
 			}
 		}
-		this.logger.log(type, message, {...meta, ...logDetails});
+		this.logger.log(type, message, { ...meta, ...logDetails });
 	}
 
 	// Convenience methods below
@@ -100,7 +99,6 @@ class Logger implements ILogger {
 	warn(message: string, meta: object = {}) {
 		this.log('warn', message, meta);
 	}
-
 }
 
 let activeLoggerInstance: Logger | undefined;

@@ -1,7 +1,4 @@
-import {
-	CUSTOM_EXTENSION_ENV,
-	UserSettings,
-} from 'n8n-core';
+import { CUSTOM_EXTENSION_ENV, UserSettings } from 'n8n-core';
 import {
 	CodexData,
 	ICredentialType,
@@ -13,27 +10,24 @@ import {
 
 import * as config from '../config';
 
-import {
-	getLogger,
-} from '../src/Logger';
+import { getLogger } from '../src/Logger';
 
 import {
 	access as fsAccess,
 	readdir as fsReaddir,
 	readFile as fsReadFile,
 	stat as fsStat,
- } from 'fs/promises';
+} from 'fs/promises';
 import * as glob from 'glob-promise';
 import * as path from 'path';
 
 const CUSTOM_NODES_CATEGORY = 'Custom Nodes';
 
-
 class LoadNodesAndCredentialsClass {
 	nodeTypes: INodeTypeData = {};
 
 	credentialTypes: {
-		[key: string]: ICredentialType
+		[key: string]: ICredentialType;
 	} = {};
 
 	excludeNodes: string[] | undefined = undefined;
@@ -99,7 +93,6 @@ class LoadNodesAndCredentialsClass {
 		}
 	}
 
-
 	/**
 	 * Returns all the names of the packages which could
 	 * contain n8n nodes
@@ -120,9 +113,11 @@ class LoadNodesAndCredentialsClass {
 				if (!(await fsStat(nodeModulesPath)).isDirectory()) {
 					continue;
 				}
-				if (isN8nNodesPackage) { results.push(`${relativePath}${file}`); }
+				if (isN8nNodesPackage) {
+					results.push(`${relativePath}${file}`);
+				}
 				if (isNpmScopedPackage) {
-					results.push(...await getN8nNodePackagesRecursive(`${relativePath}${file}/`));
+					results.push(...(await getN8nNodePackagesRecursive(`${relativePath}${file}/`)));
 				}
 			}
 			return results;
@@ -145,7 +140,9 @@ class LoadNodesAndCredentialsClass {
 			tempCredential = new tempModule[credentialName]() as ICredentialType;
 		} catch (e) {
 			if (e instanceof TypeError) {
-				throw new Error(`Class with name "${credentialName}" could not be found. Please check if the class is named correctly!`);
+				throw new Error(
+					`Class with name "${credentialName}" could not be found. Please check if the class is named correctly!`,
+				);
 			} else {
 				throw e;
 			}
@@ -153,7 +150,6 @@ class LoadNodesAndCredentialsClass {
 
 		this.credentialTypes[tempCredential.name] = tempCredential;
 	}
-
 
 	/**
 	 * Loads a node from a file
@@ -179,14 +175,17 @@ class LoadNodesAndCredentialsClass {
 		fullNodeName = packageName + '.' + tempNode.description.name;
 		tempNode.description.name = fullNodeName;
 
-		if (tempNode.description.icon !== undefined &&
-			tempNode.description.icon.startsWith('file:')) {
+		if (tempNode.description.icon !== undefined && tempNode.description.icon.startsWith('file:')) {
 			// If a file icon gets used add the full path
-			tempNode.description.icon = 'file:' + path.join(path.dirname(filePath), tempNode.description.icon.substr(5));
+			tempNode.description.icon =
+				'file:' + path.join(path.dirname(filePath), tempNode.description.icon.substr(5));
 		}
 
 		if (tempNode.executeSingle) {
-			this.logger.warn(`"executeSingle" will get deprecated soon. Please update the code of node "${packageName}.${nodeName}" to use "execute" instead!`, { filePath });
+			this.logger.warn(
+				`"executeSingle" will get deprecated soon. Please update the code of node "${packageName}.${nodeName}" to use "execute" instead!`,
+				{ filePath },
+			);
 		}
 
 		if (this.includeNodes !== undefined && !this.includeNodes.includes(fullNodeName)) {
@@ -230,11 +229,7 @@ class LoadNodesAndCredentialsClass {
 	 * @param obj.isCustom Whether the node is custom
 	 * @returns {void}
 	 */
-	addCodex({ node, filePath, isCustom }: {
-		node: INodeType;
-		filePath: string;
-		isCustom: boolean;
-	}) {
+	addCodex({ node, filePath, isCustom }: { node: INodeType; filePath: string; isCustom: boolean }) {
 		try {
 			const codex = this.getCodex(filePath);
 
@@ -264,7 +259,7 @@ class LoadNodesAndCredentialsClass {
 	 * @returns {Promise<void>}
 	 */
 	async loadDataFromDirectory(setPackageName: string, directory: string): Promise<void> {
-		const files = await glob(path.join(directory, '**/*\.@(node|credentials)\.js'));
+		const files = await glob(path.join(directory, '**/*.@(node|credentials).js'));
 
 		let fileName: string;
 		let type: string;
@@ -282,7 +277,6 @@ class LoadNodesAndCredentialsClass {
 
 		await Promise.all(loadPromises);
 	}
-
 
 	/**
 	 * Loads nodes and credentials from the package with the given name
@@ -314,7 +308,10 @@ class LoadNodesAndCredentialsClass {
 		}
 
 		// Read all credential types
-		if (packageFile.n8n.hasOwnProperty('credentials') && Array.isArray(packageFile.n8n.credentials)) {
+		if (
+			packageFile.n8n.hasOwnProperty('credentials') &&
+			Array.isArray(packageFile.n8n.credentials)
+		) {
 			for (filePath of packageFile.n8n.credentials) {
 				tempPath = path.join(packagePath, filePath);
 				[fileName, type] = path.parse(filePath).name.split('.');
@@ -323,8 +320,6 @@ class LoadNodesAndCredentialsClass {
 		}
 	}
 }
-
-
 
 let packagesInformationInstance: LoadNodesAndCredentialsClass | undefined;
 

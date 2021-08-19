@@ -1,15 +1,7 @@
-import {
-	INodeType,
-	INodeTypeData,
-	INodeTypes,
-	NodeHelpers,
-} from 'n8n-workflow';
-
+import { INodeType, INodeTypeData, INodeTypes, NodeHelpers } from 'n8n-workflow';
 
 class NodeTypesClass implements INodeTypes {
-
 	nodeTypes: INodeTypeData = {};
-
 
 	async init(nodeTypes: INodeTypeData): Promise<void> {
 		// Some nodeTypes need to get special parameters applied like the
@@ -18,7 +10,10 @@ class NodeTypesClass implements INodeTypes {
 			const applyParameters = NodeHelpers.getSpecialNodeParameters(nodeTypeData.type);
 
 			if (applyParameters.length) {
-				nodeTypeData.type.description.properties.unshift.apply(nodeTypeData.type.description.properties, applyParameters);
+				nodeTypeData.type.description.properties.unshift.apply(
+					nodeTypeData.type.description.properties,
+					applyParameters,
+				);
 			}
 		}
 		this.nodeTypes = nodeTypes;
@@ -35,8 +30,6 @@ class NodeTypesClass implements INodeTypes {
 		return this.nodeTypes[nodeType].type;
 	}
 }
-
-
 
 let nodeTypesInstance: NodeTypesClass | undefined;
 

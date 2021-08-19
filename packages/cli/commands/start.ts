@@ -1,8 +1,5 @@
 import * as localtunnel from 'localtunnel';
-import {
-	TUNNEL_SUBDOMAIN_ENV,
-	UserSettings,
-} from 'n8n-core';
+import { TUNNEL_SUBDOMAIN_ENV, UserSettings } from 'n8n-core';
 import { Command, flags } from '@oclif/command';
 const open = require('open');
 import * as Redis from 'ioredis';
@@ -25,13 +22,9 @@ import {
 } from '../src';
 import { IDataObject } from 'n8n-workflow';
 
-import { 
-	getLogger,
-} from '../src/Logger';
+import { getLogger } from '../src/Logger';
 
-import {
-	LoggerProxy,
-} from 'n8n-workflow';
+import { LoggerProxy } from 'n8n-workflow';
 
 let activeWorkflowRunner: ActiveWorkflowRunner.ActiveWorkflowRunner | undefined;
 let processExistCode = 0;
@@ -53,10 +46,10 @@ export class Start extends Command {
 			description: 'opens the UI automatically in browser',
 		}),
 		tunnel: flags.boolean({
-			description: 'runs the webhooks via a hooks.n8n.cloud tunnel server. Use only for testing and development!',
+			description:
+				'runs the webhooks via a hooks.n8n.cloud tunnel server. Use only for testing and development!',
 		}),
 	};
-
 
 	/**
 	 * Opens the UI in browser
@@ -64,12 +57,12 @@ export class Start extends Command {
 	static openBrowser() {
 		const editorUrl = GenericHelpers.getBaseUrl();
 
-		open(editorUrl, { wait: true })
-			.catch((error: Error) => {
-				console.log(`\nWas not able to open URL in browser. Please open manually by visiting:\n${editorUrl}\n`);
-			});
+		open(editorUrl, { wait: true }).catch((error: Error) => {
+			console.log(
+				`\nWas not able to open URL in browser. Please open manually by visiting:\n${editorUrl}\n`,
+			);
+		});
 	}
-
 
 	/**
 	 * Stoppes the n8n in a graceful way.
@@ -89,7 +82,9 @@ export class Start extends Command {
 				process.exit(processExistCode);
 			}, 30000);
 
-			const skipWebhookDeregistration = config.get('endpoints.skipWebhoooksDeregistrationOnShutdown') as boolean;
+			const skipWebhookDeregistration = config.get(
+				'endpoints.skipWebhoooksDeregistrationOnShutdown',
+			) as boolean;
 
 			const removePromises = [];
 			if (activeWorkflowRunner !== undefined && skipWebhookDeregistration !== true) {
@@ -104,13 +99,14 @@ export class Start extends Command {
 
 			// Wait for active workflow executions to finish
 			const activeExecutionsInstance = ActiveExecutions.getInstance();
-			let executingWorkflows = activeExecutionsInstance.getActiveExecutions() as IExecutionsCurrentSummary[];
+			let executingWorkflows =
+				activeExecutionsInstance.getActiveExecutions() as IExecutionsCurrentSummary[];
 
 			let count = 0;
 			while (executingWorkflows.length !== 0) {
 				if (count++ % 4 === 0) {
 					console.log(`Waiting for ${executingWorkflows.length} active executions to finish...`);
-					executingWorkflows.map(execution => {
+					executingWorkflows.map((execution) => {
 						console.log(` - Execution ID ${execution.id}, workflow ID: ${execution.workflowId}`);
 					});
 				}
@@ -119,14 +115,12 @@ export class Start extends Command {
 				});
 				executingWorkflows = activeExecutionsInstance.getActiveExecutions();
 			}
-
 		} catch (error) {
 			console.error('There was an error shutting down n8n.', error);
 		}
 
 		process.exit(processExistCode);
 	}
-
 
 	async run() {
 		// Make sure that n8n shuts down gracefully if possible
@@ -143,7 +137,9 @@ export class Start extends Command {
 				logger.info('Initializing n8n process');
 
 				// todo remove a few versions after release
-				logger.info('\nn8n now checks for new versions and security updates. You can turn this off using the environment variable N8N_VERSION_NOTIFICATIONS_ENABLED to "false"\nFor more information, please refer to https://docs.n8n.io/getting-started/installation/advanced/configuration.html\n');
+				logger.info(
+					'\nn8n now checks for new versions and security updates. You can turn this off using the environment variable N8N_VERSION_NOTIFICATIONS_ENABLED to "false"\nFor more information, please refer to https://docs.n8n.io/getting-started/installation/advanced/configuration.html\n',
+				);
 
 				// Start directly with the init of the database to improve startup time
 				const startDbInitPromise = Db.init().catch((error: Error) => {
@@ -185,7 +181,8 @@ export class Start extends Command {
 					const redisPort = config.get('queue.bull.redis.port');
 					const redisDB = config.get('queue.bull.redis.db');
 					const redisConnectionTimeoutLimit = config.get('queue.bull.redis.timeoutThreshold');
-					let lastTimer = 0, cumulativeTimeout = 0;
+					let lastTimer = 0,
+						cumulativeTimeout = 0;
 
 					const settings = {
 						retryStrategy: (times: number): number | null => {
@@ -198,7 +195,11 @@ export class Start extends Command {
 								cumulativeTimeout += now - lastTimer;
 								lastTimer = now;
 								if (cumulativeTimeout > redisConnectionTimeoutLimit) {
-									logger.error('Unable to connect to Redis after ' + redisConnectionTimeoutLimit + ". Exiting process.");
+									logger.error(
+										'Unable to connect to Redis after ' +
+											redisConnectionTimeoutLimit +
+											'. Exiting process.',
+									);
 									process.exit(1);
 								}
 							}
@@ -234,7 +235,7 @@ export class Start extends Command {
 					});
 				}
 
-				const dbType = await GenericHelpers.getConfigValue('database.type') as DatabaseType;
+				const dbType = (await GenericHelpers.getConfigValue('database.type')) as DatabaseType;
 
 				if (dbType === 'sqlite') {
 					const shouldRunVacuum = config.get('database.sqlite.executeVacuumOnStartup') as number;
@@ -247,7 +248,10 @@ export class Start extends Command {
 					this.log('\nWaiting for tunnel ...');
 
 					let tunnelSubdomain;
-					if (process.env[TUNNEL_SUBDOMAIN_ENV] !== undefined && process.env[TUNNEL_SUBDOMAIN_ENV] !== '') {
+					if (
+						process.env[TUNNEL_SUBDOMAIN_ENV] !== undefined &&
+						process.env[TUNNEL_SUBDOMAIN_ENV] !== ''
+					) {
 						tunnelSubdomain = process.env[TUNNEL_SUBDOMAIN_ENV];
 					} else if (userSettings.tunnelSubdomain !== undefined) {
 						tunnelSubdomain = userSettings.tunnelSubdomain;
@@ -256,9 +260,13 @@ export class Start extends Command {
 					if (tunnelSubdomain === undefined) {
 						// When no tunnel subdomain did exist yet create a new random one
 						const availableCharacters = 'abcdefghijklmnopqrstuvwxyz0123456789';
-						userSettings.tunnelSubdomain = Array.from({ length: 24 }).map(() => {
-							return availableCharacters.charAt(Math.floor(Math.random() * availableCharacters.length));
-						}).join('');
+						userSettings.tunnelSubdomain = Array.from({ length: 24 })
+							.map(() => {
+								return availableCharacters.charAt(
+									Math.floor(Math.random() * availableCharacters.length),
+								);
+							})
+							.join('');
 
 						await UserSettings.writeUserSettings(userSettings);
 					}
@@ -275,7 +283,9 @@ export class Start extends Command {
 
 					process.env.WEBHOOK_URL = webhookTunnel.url + '/';
 					this.log(`Tunnel URL: ${process.env.WEBHOOK_URL}\n`);
-					this.log('IMPORTANT! Do not share with anybody as it would give people access to your n8n instance!');
+					this.log(
+						'IMPORTANT! Do not share with anybody as it would give people access to your n8n instance!',
+					);
 				}
 
 				await Server.start();

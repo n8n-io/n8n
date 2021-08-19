@@ -1,18 +1,9 @@
 import * as fs from 'fs';
-import {
-	Command,
-	flags,
-} from '@oclif/command';
+import { Command, flags } from '@oclif/command';
 
-import {
-	UserSettings,
-} from 'n8n-core';
+import { UserSettings } from 'n8n-core';
 
-import {
-	INode,
-	INodeExecutionData,
-	ITaskData,
-} from 'n8n-workflow';
+import { INode, INodeExecutionData, ITaskData } from 'n8n-workflow';
 
 import {
 	ActiveExecutions,
@@ -29,25 +20,15 @@ import {
 	WorkflowRunner,
 } from '../src';
 
-import {
-	sep,
-} from 'path';
+import { sep } from 'path';
 
-import {
-	diff,
-} from 'json-diff';
+import { diff } from 'json-diff';
 
-import {
-	getLogger,
-} from '../src/Logger';
+import { getLogger } from '../src/Logger';
 
-import {
-	LoggerProxy,
-} from 'n8n-workflow';
+import { LoggerProxy } from 'n8n-workflow';
 
-import {
-	pick,
-} from 'lodash';
+import { pick } from 'lodash';
 
 export class ExecuteBatch extends Command {
 	static description = '\nExecutes multiple workflows once';
@@ -87,19 +68,24 @@ export class ExecuteBatch extends Command {
 		}),
 		concurrency: flags.integer({
 			default: 1,
-			description: 'How many workflows can run in parallel. Defaults to 1 which means no concurrency.',
+			description:
+				'How many workflows can run in parallel. Defaults to 1 which means no concurrency.',
 		}),
 		output: flags.string({
-			description: 'Enable execution saving, You must inform an existing folder to save execution via this param',
+			description:
+				'Enable execution saving, You must inform an existing folder to save execution via this param',
 		}),
 		snapshot: flags.string({
-			description: 'Enables snapshot saving. You must inform an existing folder to save snapshots via this param.',
+			description:
+				'Enables snapshot saving. You must inform an existing folder to save snapshots via this param.',
 		}),
 		compare: flags.string({
-			description: 'Compares current execution with an existing snapshot. You must inform an existing folder where the snapshots are saved.',
+			description:
+				'Compares current execution with an existing snapshot. You must inform an existing folder where the snapshots are saved.',
 		}),
 		shallow: flags.boolean({
-			description: 'Compares only if attributes output from node are the same, with no regards to neste JSON objects.',
+			description:
+				'Compares only if attributes output from node are the same, with no regards to neste JSON objects.',
 		}),
 		skipList: flags.string({
 			description: 'File containing a comma separated list of workflow IDs to skip.',
@@ -118,14 +104,13 @@ export class ExecuteBatch extends Command {
 	 * @param {boolean} skipExit Whether to skip exit or number according to received signal
 	 */
 	static async stopProcess(skipExit: boolean | number = false) {
-
 		if (ExecuteBatch.cancelled === true) {
 			process.exit(0);
 		}
 
 		ExecuteBatch.cancelled = true;
 		const activeExecutionsInstance = ActiveExecutions.getInstance();
-		const stopPromises = activeExecutionsInstance.getActiveExecutions().map(async execution => {
+		const stopPromises = activeExecutionsInstance.getActiveExecutions().map(async (execution) => {
 			activeExecutionsInstance.stopExecution(execution.id);
 		});
 
@@ -135,13 +120,14 @@ export class ExecuteBatch extends Command {
 			process.exit(0);
 		}, 30000);
 
-		let executingWorkflows = activeExecutionsInstance.getActiveExecutions() as IExecutionsCurrentSummary[];
+		let executingWorkflows =
+			activeExecutionsInstance.getActiveExecutions() as IExecutionsCurrentSummary[];
 
 		let count = 0;
 		while (executingWorkflows.length !== 0) {
 			if (count++ % 4 === 0) {
 				console.log(`Waiting for ${executingWorkflows.length} active executions to finish...`);
-				executingWorkflows.map(execution => {
+				executingWorkflows.map((execution) => {
 					console.log(` - Execution ID ${execution.id}, workflow ID: ${execution.workflowId}`);
 				});
 			}
@@ -162,7 +148,6 @@ export class ExecuteBatch extends Command {
 	}
 
 	shouldBeConsideredAsWarning(errorMessage: string) {
-
 		const warningStrings = [
 			'refresh token is invalid',
 			'unable to connect to',
@@ -185,9 +170,7 @@ export class ExecuteBatch extends Command {
 		return false;
 	}
 
-
 	async run() {
-
 		process.on('SIGTERM', ExecuteBatch.stopProcess);
 		process.on('SIGINT', ExecuteBatch.stopProcess);
 
@@ -241,7 +224,7 @@ export class ExecuteBatch extends Command {
 		if (flags.ids !== undefined) {
 			const paramIds = flags.ids.split(',');
 			const re = /\d+/;
-			const matchedIds = paramIds.filter(id => id.match(re)).map(id => parseInt(id.trim(), 10));
+			const matchedIds = paramIds.filter((id) => id.match(re)).map((id) => parseInt(id.trim(), 10));
 
 			if (matchedIds.length === 0) {
 				console.log(`The parameter --ids must be a list of numeric IDs separated by a comma.`);
@@ -254,7 +237,7 @@ export class ExecuteBatch extends Command {
 		if (flags.skipList !== undefined) {
 			if (fs.existsSync(flags.skipList)) {
 				const contents = fs.readFileSync(flags.skipList, { encoding: 'utf-8' });
-				skipIds.push(...contents.split(',').map(id => parseInt(id.trim(), 10)));
+				skipIds.push(...contents.split(',').map((id) => parseInt(id.trim(), 10)));
 			} else {
 				console.log('Skip list file not found. Exiting.');
 				return;
@@ -264,7 +247,6 @@ export class ExecuteBatch extends Command {
 		if (flags.shallow === true) {
 			ExecuteBatch.shallow = true;
 		}
-
 
 		// Start directly with the init of the database to improve startup time
 		const startDbInitPromise = Db.init();
@@ -291,7 +273,7 @@ export class ExecuteBatch extends Command {
 			query.andWhere(`workflows.id not in (:...skipIds)`, { skipIds });
 		}
 
-		allWorkflows = await query.getMany() as IWorkflowDb[];
+		allWorkflows = (await query.getMany()) as IWorkflowDb[];
 
 		if (ExecuteBatch.debug === true) {
 			process.stdout.write(`Found ${allWorkflows.length} workflows to execute.\n`);
@@ -318,11 +300,17 @@ export class ExecuteBatch extends Command {
 
 		let { retries } = flags;
 
-		while (retries > 0 && (results.summary.warningExecutions + results.summary.failedExecutions > 0) && ExecuteBatch.cancelled === false) {
-			const failedWorkflowIds = results.summary.errors.map(execution => execution.workflowId);
-			failedWorkflowIds.push(...results.summary.warnings.map(execution => execution.workflowId));
+		while (
+			retries > 0 &&
+			results.summary.warningExecutions + results.summary.failedExecutions > 0 &&
+			ExecuteBatch.cancelled === false
+		) {
+			const failedWorkflowIds = results.summary.errors.map((execution) => execution.workflowId);
+			failedWorkflowIds.push(...results.summary.warnings.map((execution) => execution.workflowId));
 
-			const newWorkflowList = allWorkflows.filter(workflow => failedWorkflowIds.includes(workflow.id));
+			const newWorkflowList = allWorkflows.filter((workflow) =>
+				failedWorkflowIds.includes(workflow.id),
+			);
 
 			const retryResults = await this.runTests(newWorkflowList);
 
@@ -345,7 +333,14 @@ export class ExecuteBatch extends Command {
 			console.log('\nCheck the JSON file for more details.');
 		} else {
 			if (flags.shortOutput === true) {
-				console.log(this.formatJsonOutput({ ...results, executions: results.executions.filter(execution => execution.executionStatus !== 'success') }));
+				console.log(
+					this.formatJsonOutput({
+						...results,
+						executions: results.executions.filter(
+							(execution) => execution.executionStatus !== 'success',
+						),
+					}),
+				);
 			} else {
 				console.log(this.formatJsonOutput(results));
 			}
@@ -357,23 +352,25 @@ export class ExecuteBatch extends Command {
 			this.exit(1);
 		}
 		this.exit(0);
-
 	}
 
 	mergeResults(results: IResult, retryResults: IResult) {
-
 		if (retryResults.summary.successfulExecutions === 0) {
 			// Nothing to replace.
 			return;
 		}
 
 		// Find successful executions and replace them on previous result.
-		retryResults.executions.forEach(newExecution => {
+		retryResults.executions.forEach((newExecution) => {
 			if (newExecution.executionStatus === 'success') {
 				// Remove previous execution from list.
-				results.executions = results.executions.filter(previousExecutions => previousExecutions.workflowId !== newExecution.workflowId);
+				results.executions = results.executions.filter(
+					(previousExecutions) => previousExecutions.workflowId !== newExecution.workflowId,
+				);
 
-				const errorIndex = results.summary.errors.findIndex(summaryInformation => summaryInformation.workflowId === newExecution.workflowId);
+				const errorIndex = results.summary.errors.findIndex(
+					(summaryInformation) => summaryInformation.workflowId === newExecution.workflowId,
+				);
 				if (errorIndex !== -1) {
 					// This workflow errored previously. Decrement error count.
 					results.summary.failedExecutions--;
@@ -381,7 +378,9 @@ export class ExecuteBatch extends Command {
 					results.summary.errors.splice(errorIndex, 1);
 				}
 
-				const warningIndex = results.summary.warnings.findIndex(summaryInformation => summaryInformation.workflowId === newExecution.workflowId);
+				const warningIndex = results.summary.warnings.findIndex(
+					(summaryInformation) => summaryInformation.workflowId === newExecution.workflowId,
+				);
 				if (warningIndex !== -1) {
 					// This workflow errored previously. Decrement error count.
 					results.summary.warningExecutions--;
@@ -456,7 +455,7 @@ export class ExecuteBatch extends Command {
 								result.summary.successfulExecutions++;
 								const nodeNames = Object.keys(executionResult.coveredNodes);
 
-								nodeNames.map(nodeName => {
+								nodeNames.map((nodeName) => {
 									if (result.coveredNodes[nodeName] === undefined) {
 										result.coveredNodes[nodeName] = 0;
 									}
@@ -507,17 +506,15 @@ export class ExecuteBatch extends Command {
 	}
 
 	updateStatus() {
-
 		if (ExecuteBatch.cancelled === true) {
 			return;
 		}
 
 		if (process.stdout.isTTY === true) {
-			process.stdout.moveCursor(0, - (ExecuteBatch.concurrency));
+			process.stdout.moveCursor(0, -ExecuteBatch.concurrency);
 			process.stdout.cursorTo(0);
 			process.stdout.clearLine(0);
 		}
-
 
 		ExecuteBatch.workflowExecutionsProgress.map((concurrentThread, index) => {
 			let message = `${index + 1}: `;
@@ -537,7 +534,8 @@ export class ExecuteBatch extends Command {
 					default:
 						break;
 				}
-				message += (workflowIndex > 0 ? ', ' : '') + `${openColor}${executionItem.workflowId}${closeColor}`;
+				message +=
+					(workflowIndex > 0 ? ', ' : '') + `${openColor}${executionItem.workflowId}${closeColor}`;
 			});
 			if (process.stdout.isTTY === true) {
 				process.stdout.cursorTo(0);
@@ -572,8 +570,6 @@ export class ExecuteBatch extends Command {
 			coveredNodes: {},
 		};
 
-
-
 		const requiredNodeTypes = ['n8n-nodes-base.start'];
 		let startNode: INode | undefined = undefined;
 		for (const node of workflowData.nodes) {
@@ -593,10 +589,10 @@ export class ExecuteBatch extends Command {
 		//    properties from the JSON object (useful for optional properties that can
 		//    cause the comparison to detect changes when not true).
 		const nodeEdgeCases = {} as INodeSpecialCases;
-		workflowData.nodes.forEach(node => {
+		workflowData.nodes.forEach((node) => {
 			executionResult.coveredNodes[node.type] = (executionResult.coveredNodes[node.type] || 0) + 1;
 			if (node.notes !== undefined && node.notes !== '') {
-				node.notes.split('\n').forEach(note => {
+				node.notes.split('\n').forEach((note) => {
 					const parts = note.split('=');
 					if (parts.length === 2) {
 						if (nodeEdgeCases[node.name] === undefined) {
@@ -605,9 +601,13 @@ export class ExecuteBatch extends Command {
 						if (parts[0] === 'CAP_RESULTS_LENGTH') {
 							nodeEdgeCases[node.name].capResults = parseInt(parts[1], 10);
 						} else if (parts[0] === 'IGNORED_PROPERTIES') {
-							nodeEdgeCases[node.name].ignoredProperties = parts[1].split(',').map(property => property.trim());
+							nodeEdgeCases[node.name].ignoredProperties = parts[1]
+								.split(',')
+								.map((property) => property.trim());
 						} else if (parts[0] === 'KEEP_ONLY_PROPERTIES') {
-							nodeEdgeCases[node.name].keepOnlyProperties = parts[1].split(',').map(property => property.trim());
+							nodeEdgeCases[node.name].keepOnlyProperties = parts[1]
+								.split(',')
+								.map((property) => property.trim());
 						}
 					}
 				});
@@ -632,7 +632,6 @@ export class ExecuteBatch extends Command {
 				executionResult.executionStatus = 'warning';
 				resolve(executionResult);
 			}, ExecuteBatch.executionTimeout);
-
 
 			try {
 				const credentials = await WorkflowCredentials(workflowData!.nodes);
@@ -659,14 +658,17 @@ export class ExecuteBatch extends Command {
 					executionResult.error = 'Workflow did not return any data.';
 					executionResult.executionStatus = 'error';
 				} else {
-					executionResult.executionTime = (Date.parse(data.stoppedAt as unknown as string) - Date.parse(data.startedAt as unknown as string)) / 1000;
+					executionResult.executionTime =
+						(Date.parse(data.stoppedAt as unknown as string) -
+							Date.parse(data.startedAt as unknown as string)) /
+						1000;
 					executionResult.finished = (data?.finished !== undefined) as boolean;
 
 					if (data.data.resultData.error) {
-						executionResult.error =
-							data.data.resultData.error.hasOwnProperty('description') ?
-								// @ts-ignore
-								data.data.resultData.error.description : data.data.resultData.error.message;
+						executionResult.error = data.data.resultData.error.hasOwnProperty('description')
+							? // @ts-ignore
+							  data.data.resultData.error.description
+							: data.data.resultData.error.message;
 						if (data.data.resultData.lastNodeExecuted !== undefined) {
 							executionResult.error += ` on node ${data.data.resultData.lastNodeExecuted}`;
 						}
@@ -690,34 +692,50 @@ export class ExecuteBatch extends Command {
 									if (taskData.data === undefined) {
 										return;
 									}
-									Object.keys(taskData.data).map(connectionName => {
-										const connection = taskData.data![connectionName] as Array<INodeExecutionData[] | null>;
-										connection.map(executionDataArray => {
+									Object.keys(taskData.data).map((connectionName) => {
+										const connection = taskData.data![connectionName] as Array<
+											INodeExecutionData[] | null
+										>;
+										connection.map((executionDataArray) => {
 											if (executionDataArray === null) {
 												return;
 											}
 
-											if (nodeEdgeCases[nodeName] !== undefined && nodeEdgeCases[nodeName].capResults !== undefined) {
+											if (
+												nodeEdgeCases[nodeName] !== undefined &&
+												nodeEdgeCases[nodeName].capResults !== undefined
+											) {
 												executionDataArray.splice(nodeEdgeCases[nodeName].capResults!);
 											}
 
-											executionDataArray.map(executionData => {
+											executionDataArray.map((executionData) => {
 												if (executionData.json === undefined) {
 													return;
 												}
-												if (nodeEdgeCases[nodeName] !== undefined && nodeEdgeCases[nodeName].ignoredProperties !== undefined) {
-													nodeEdgeCases[nodeName].ignoredProperties!.forEach(ignoredProperty => delete executionData.json[ignoredProperty]);
+												if (
+													nodeEdgeCases[nodeName] !== undefined &&
+													nodeEdgeCases[nodeName].ignoredProperties !== undefined
+												) {
+													nodeEdgeCases[nodeName].ignoredProperties!.forEach(
+														(ignoredProperty) => delete executionData.json[ignoredProperty],
+													);
 												}
 
 												let keepOnlyFields = [] as string[];
-												if (nodeEdgeCases[nodeName] !== undefined && nodeEdgeCases[nodeName].keepOnlyProperties !== undefined) {
+												if (
+													nodeEdgeCases[nodeName] !== undefined &&
+													nodeEdgeCases[nodeName].keepOnlyProperties !== undefined
+												) {
 													keepOnlyFields = nodeEdgeCases[nodeName].keepOnlyProperties!;
 												}
-												executionData.json = keepOnlyFields.length > 0 ?  pick(executionData.json, keepOnlyFields) : executionData.json;
+												executionData.json =
+													keepOnlyFields.length > 0
+														? pick(executionData.json, keepOnlyFields)
+														: executionData.json;
 												const jsonProperties = executionData.json;
 
 												const nodeOutputAttributes = Object.keys(jsonProperties);
-												nodeOutputAttributes.map(attributeName => {
+												nodeOutputAttributes.map((attributeName) => {
 													if (Array.isArray(jsonProperties[attributeName])) {
 														jsonProperties[attributeName] = ['json array'];
 													} else if (typeof jsonProperties[attributeName] === 'object') {
@@ -726,7 +744,6 @@ export class ExecuteBatch extends Command {
 												});
 											});
 										});
-
 									});
 								});
 							});
@@ -734,14 +751,16 @@ export class ExecuteBatch extends Command {
 							// If not using shallow comparison then we only treat nodeEdgeCases.
 							const specialCases = Object.keys(nodeEdgeCases);
 
-							specialCases.forEach(nodeName => {
+							specialCases.forEach((nodeName) => {
 								data.data.resultData.runData[nodeName].map((taskData: ITaskData) => {
 									if (taskData.data === undefined) {
 										return;
 									}
-									Object.keys(taskData.data).map(connectionName => {
-										const connection = taskData.data![connectionName] as Array<INodeExecutionData[] | null>;
-										connection.map(executionDataArray => {
+									Object.keys(taskData.data).map((connectionName) => {
+										const connection = taskData.data![connectionName] as Array<
+											INodeExecutionData[] | null
+										>;
+										connection.map((executionDataArray) => {
 											if (executionDataArray === null) {
 												return;
 											}
@@ -751,15 +770,16 @@ export class ExecuteBatch extends Command {
 											}
 
 											if (nodeEdgeCases[nodeName].ignoredProperties !== undefined) {
-												executionDataArray.map(executionData => {
+												executionDataArray.map((executionData) => {
 													if (executionData.json === undefined) {
 														return;
 													}
-													nodeEdgeCases[nodeName].ignoredProperties!.forEach(ignoredProperty => delete executionData.json[ignoredProperty]);
+													nodeEdgeCases[nodeName].ignoredProperties!.forEach(
+														(ignoredProperty) => delete executionData.json[ignoredProperty],
+													);
 												});
 											}
 										});
-
 									});
 								});
 							});
@@ -769,9 +789,11 @@ export class ExecuteBatch extends Command {
 						if (ExecuteBatch.compare === undefined) {
 							executionResult.executionStatus = 'success';
 						} else {
-							const fileName = (ExecuteBatch.compare.endsWith(sep) ? ExecuteBatch.compare : ExecuteBatch.compare + sep) + `${workflowData.id}-snapshot.json`;
+							const fileName =
+								(ExecuteBatch.compare.endsWith(sep)
+									? ExecuteBatch.compare
+									: ExecuteBatch.compare + sep) + `${workflowData.id}-snapshot.json`;
 							if (fs.existsSync(fileName) === true) {
-
 								const contents = fs.readFileSync(fileName, { encoding: 'utf-8' });
 
 								const changes = diff(JSON.parse(contents), data, { keysOnly: true });
@@ -792,7 +814,10 @@ export class ExecuteBatch extends Command {
 						// Save snapshots only after comparing - this is to make sure we're updating
 						// After comparing to existing verion.
 						if (ExecuteBatch.snapshot !== undefined) {
-							const fileName = (ExecuteBatch.snapshot.endsWith(sep) ? ExecuteBatch.snapshot : ExecuteBatch.snapshot + sep) + `${workflowData.id}-snapshot.json`;
+							const fileName =
+								(ExecuteBatch.snapshot.endsWith(sep)
+									? ExecuteBatch.snapshot
+									: ExecuteBatch.snapshot + sep) + `${workflowData.id}-snapshot.json`;
 							fs.writeFileSync(fileName, serializedData);
 						}
 					}
@@ -805,5 +830,4 @@ export class ExecuteBatch extends Command {
 			resolve(executionResult);
 		});
 	}
-
 }

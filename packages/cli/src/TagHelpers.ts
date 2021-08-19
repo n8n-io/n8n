@@ -1,18 +1,11 @@
-import { getConnection } from "typeorm";
+import { getConnection } from 'typeorm';
 import { validate } from 'class-validator';
 
-import {
-	ResponseHelper,
-} from ".";
+import { ResponseHelper } from '.';
 
-import {
-	TagEntity,
-} from "./databases/entities/TagEntity";
+import { TagEntity } from './databases/entities/TagEntity';
 
-import {
-	ITagWithCountDb,
-} from "./Interfaces";
-
+import { ITagWithCountDb } from './Interfaces';
 
 // ----------------------------------
 //              utils
@@ -29,7 +22,7 @@ export function sortByRequestOrder(tagsDb: TagEntity[], tagIds: string[]) {
 		return acc;
 	}, {} as { [key: string]: TagEntity });
 
-	return tagIds.map(tagId => tagMap[tagId]);
+	return tagIds.map((tagId) => tagMap[tagId]);
 }
 
 // ----------------------------------
@@ -66,21 +59,25 @@ export function throwDuplicateEntryError(error: Error) {
  */
 export function getTagsWithCountDb(tablePrefix: string): Promise<ITagWithCountDb[]> {
 	return getConnection()
-	.createQueryBuilder()
-	.select(`${tablePrefix}tag_entity.id`, 'id')
-	.addSelect(`${tablePrefix}tag_entity.name`, 'name')
-	.addSelect(`COUNT(${tablePrefix}workflows_tags.workflowId)`, 'usageCount')
-	.from(`${tablePrefix}tag_entity`, 'tag_entity')
-	.leftJoin(`${tablePrefix}workflows_tags`, 'workflows_tags', `${tablePrefix}workflows_tags.tagId = tag_entity.id`)
-	.groupBy(`${tablePrefix}tag_entity.id`)
-	.getRawMany()
-	.then(tagsWithCount => {
-		tagsWithCount.forEach(tag => {
-			tag.id = tag.id.toString();
-			tag.usageCount = Number(tag.usageCount);
+		.createQueryBuilder()
+		.select(`${tablePrefix}tag_entity.id`, 'id')
+		.addSelect(`${tablePrefix}tag_entity.name`, 'name')
+		.addSelect(`COUNT(${tablePrefix}workflows_tags.workflowId)`, 'usageCount')
+		.from(`${tablePrefix}tag_entity`, 'tag_entity')
+		.leftJoin(
+			`${tablePrefix}workflows_tags`,
+			'workflows_tags',
+			`${tablePrefix}workflows_tags.tagId = tag_entity.id`,
+		)
+		.groupBy(`${tablePrefix}tag_entity.id`)
+		.getRawMany()
+		.then((tagsWithCount) => {
+			tagsWithCount.forEach((tag) => {
+				tag.id = tag.id.toString();
+				tag.usageCount = Number(tag.usageCount);
+			});
+			return tagsWithCount;
 		});
-		return tagsWithCount;
-	});
 }
 
 // ----------------------------------
@@ -95,7 +92,7 @@ export function createRelations(workflowId: string, tagIds: string[], tablePrefi
 		.createQueryBuilder()
 		.insert()
 		.into(`${tablePrefix}workflows_tags`)
-		.values(tagIds.map(tagId => ({ workflowId, tagId })))
+		.values(tagIds.map((tagId) => ({ workflowId, tagId })))
 		.execute();
 }
 

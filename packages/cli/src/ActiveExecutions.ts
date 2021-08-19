@@ -1,10 +1,6 @@
-import {
-	IRun,
-} from 'n8n-workflow';
+import { IRun } from 'n8n-workflow';
 
-import {
-	createDeferredPromise,
-} from 'n8n-core';
+import { createDeferredPromise } from 'n8n-core';
 
 import {
 	Db,
@@ -20,12 +16,10 @@ import {
 import { ChildProcess } from 'child_process';
 import * as PCancelable from 'p-cancelable';
 
-
 export class ActiveExecutions {
 	private activeExecutions: {
 		[index: string]: IExecutingWorkflowData;
 	} = {};
-
 
 	/**
 	 * Add a new active execution
@@ -36,7 +30,6 @@ export class ActiveExecutions {
 	 * @memberof ActiveExecutions
 	 */
 	async add(executionData: IWorkflowExecutionDataProcess, process?: ChildProcess): Promise<string> {
-
 		const fullExecutionData: IExecutionDb = {
 			data: executionData.executionData!,
 			mode: executionData.executionMode,
@@ -49,7 +42,10 @@ export class ActiveExecutions {
 			fullExecutionData.retryOf = executionData.retryOf.toString();
 		}
 
-		if (executionData.workflowData.id !== undefined && WorkflowHelpers.isWorkflowIdValid(executionData.workflowData.id.toString()) === true) {
+		if (
+			executionData.workflowData.id !== undefined &&
+			WorkflowHelpers.isWorkflowIdValid(executionData.workflowData.id.toString()) === true
+		) {
 			fullExecutionData.workflowId = executionData.workflowData.id.toString();
 		}
 
@@ -59,7 +55,10 @@ export class ActiveExecutions {
 		const executionResult = await Db.collections.Execution!.save(execution as IExecutionFlattedDb);
 
 		// @ts-ignore
-		const executionId = typeof executionResult.id === "object" ? executionResult.id!.toString() : executionResult.id + "";
+		const executionId =
+			typeof executionResult.id === 'object'
+				? executionResult.id!.toString()
+				: executionResult.id + '';
 
 		this.activeExecutions[executionId] = {
 			executionData,
@@ -71,7 +70,6 @@ export class ActiveExecutions {
 		return executionId;
 	}
 
-
 	/**
 	 * Attaches an execution
 	 *
@@ -81,12 +79,13 @@ export class ActiveExecutions {
 	 */
 	attachWorkflowExecution(executionId: string, workflowExecution: PCancelable<IRun>) {
 		if (this.activeExecutions[executionId] === undefined) {
-			throw new Error(`No active execution with id "${executionId}" got found to attach to workflowExecution to!`);
+			throw new Error(
+				`No active execution with id "${executionId}" got found to attach to workflowExecution to!`,
+			);
 		}
 
 		this.activeExecutions[executionId].workflowExecution = workflowExecution;
 	}
-
 
 	/**
 	 * Remove an active execution
@@ -110,7 +109,6 @@ export class ActiveExecutions {
 		delete this.activeExecutions[executionId];
 	}
 
-
 	/**
 	 * Forces an execution to stop
 	 *
@@ -131,7 +129,7 @@ export class ActiveExecutions {
 			// Workflow is running in subprocess
 			if (this.activeExecutions[executionId].process!.connected) {
 				setTimeout(() => {
-				// execute on next event loop tick;
+					// execute on next event loop tick;
 					this.activeExecutions[executionId].process!.send({
 						type: timeout ? timeout : 'stopExecution',
 					});
@@ -144,7 +142,6 @@ export class ActiveExecutions {
 
 		return this.getPostExecutePromise(executionId);
 	}
-
 
 	/**
 	 * Returns a promise which will resolve with the data of the execution
@@ -167,7 +164,6 @@ export class ActiveExecutions {
 		return waitPromise.promise();
 	}
 
-
 	/**
 	 * Returns all the currently active executions
 	 *
@@ -180,22 +176,18 @@ export class ActiveExecutions {
 		let data;
 		for (const id of Object.keys(this.activeExecutions)) {
 			data = this.activeExecutions[id];
-			returnData.push(
-				{
-					id,
-					retryOf: data.executionData.retryOf as string | undefined,
-					startedAt: data.startedAt,
-					mode: data.executionData.executionMode,
-					workflowId: data.executionData.workflowData.id! as string,
-				}
-			);
+			returnData.push({
+				id,
+				retryOf: data.executionData.retryOf as string | undefined,
+				startedAt: data.startedAt,
+				mode: data.executionData.executionMode,
+				workflowId: data.executionData.workflowData.id! as string,
+			});
 		}
 
 		return returnData;
 	}
 }
-
-
 
 let activeExecutionsInstance: ActiveExecutions | undefined;
 

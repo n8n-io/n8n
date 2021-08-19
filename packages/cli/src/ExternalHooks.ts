@@ -1,20 +1,12 @@
-import {
-	Db,
-	IExternalHooksClass,
-	IExternalHooksFileData,
-	IExternalHooksFunctions,
-} from './';
+import { Db, IExternalHooksClass, IExternalHooksFileData, IExternalHooksFunctions } from './';
 
 import * as config from '../config';
 
-
 class ExternalHooksClass implements IExternalHooksClass {
-
 	externalHooks: {
-		[key: string]: Array<() => {}>
+		[key: string]: Array<() => {}>;
 	} = {};
 	initDidRun = false;
-
 
 	async init(): Promise<void> {
 		if (this.initDidRun === true) {
@@ -26,7 +18,6 @@ class ExternalHooksClass implements IExternalHooksClass {
 		this.initDidRun = true;
 	}
 
-
 	async reload(externalHooks?: IExternalHooksFileData) {
 		this.externalHooks = {};
 
@@ -37,7 +28,6 @@ class ExternalHooksClass implements IExternalHooksClass {
 		}
 	}
 
-
 	async loadHooksFiles(reload = false) {
 		const externalHookFiles = config.get('externalHookFiles').split(':');
 
@@ -46,7 +36,6 @@ class ExternalHooksClass implements IExternalHooksClass {
 			hookFilePath = hookFilePath.trim();
 			if (hookFilePath !== '') {
 				try {
-
 					if (reload === true) {
 						delete require.cache[require.resolve(hookFilePath)];
 					}
@@ -60,7 +49,6 @@ class ExternalHooksClass implements IExternalHooksClass {
 		}
 	}
 
-
 	loadHooks(hookFileData: IExternalHooksFileData) {
 		for (const resource of Object.keys(hookFileData)) {
 			for (const operation of Object.keys(hookFileData[resource])) {
@@ -71,13 +59,16 @@ class ExternalHooksClass implements IExternalHooksClass {
 					this.externalHooks[hookString] = [];
 				}
 
-				this.externalHooks[hookString].push.apply(this.externalHooks[hookString], hookFileData[resource][operation]);
+				this.externalHooks[hookString].push.apply(
+					this.externalHooks[hookString],
+					hookFileData[resource][operation],
+				);
 			}
 		}
 	}
 
-
-	async run(hookName: string, hookParameters?: any[]): Promise<void> { // tslint:disable-line:no-any
+	async run(hookName: string, hookParameters?: any[]): Promise<void> {
+		// tslint:disable-line:no-any
 		const externalHookFunctions: IExternalHooksFunctions = {
 			dbCollections: Db.collections,
 		};
@@ -86,19 +77,15 @@ class ExternalHooksClass implements IExternalHooksClass {
 			return;
 		}
 
-		for(const externalHookFunction of this.externalHooks[hookName]) {
+		for (const externalHookFunction of this.externalHooks[hookName]) {
 			await externalHookFunction.apply(externalHookFunctions, hookParameters);
 		}
 	}
 
-
 	exists(hookName: string): boolean {
 		return !!this.externalHooks[hookName];
 	}
-
 }
-
-
 
 let externalHooksInstance: ExternalHooksClass | undefined;
 

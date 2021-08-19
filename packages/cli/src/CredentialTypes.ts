@@ -1,17 +1,9 @@
-import {
-	ICredentialType,
-	ICredentialTypes as ICredentialTypesInterface,
-} from 'n8n-workflow';
+import { ICredentialType, ICredentialTypes as ICredentialTypesInterface } from 'n8n-workflow';
 
-import {
-	CredentialsOverwrites,
-	ICredentialsTypeData,
-} from './';
+import { CredentialsOverwrites, ICredentialsTypeData } from './';
 
 class CredentialTypesClass implements ICredentialTypesInterface {
-
 	credentialTypes: ICredentialsTypeData = {};
-
 
 	async init(credentialTypes: ICredentialsTypeData): Promise<void> {
 		this.credentialTypes = credentialTypes;
@@ -26,7 +18,9 @@ class CredentialTypesClass implements ICredentialTypesInterface {
 
 			// Add which properties got overwritten that the Editor-UI knows
 			// which properties it should hide
-			credentialTypes[credentialType].__overwrittenProperties = Object.keys(credentialsOverwrites[credentialType]);
+			credentialTypes[credentialType].__overwrittenProperties = Object.keys(
+				credentialsOverwrites[credentialType],
+			);
 		}
 	}
 
@@ -38,8 +32,6 @@ class CredentialTypesClass implements ICredentialTypesInterface {
 		return this.credentialTypes[credentialType];
 	}
 }
-
-
 
 let credentialTypesInstance: CredentialTypesClass | undefined;
 
