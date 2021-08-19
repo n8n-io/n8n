@@ -91,6 +91,17 @@ export function validateJSON(json: string | undefined): any { // tslint:disable-
 	return result;
 }
 
+
+// tslint:disable-next-line: no-any
+export function clean(obj: any) {
+	for (const propName in obj) {
+		if (obj[propName] === null || obj[propName] === undefined || obj[propName] === '') {
+			delete obj[propName];
+		}
+	}
+	return obj;
+}
+
 export const propertyEvents = [
 	'contact.propertyChange',
 	'company.propertyChange',
