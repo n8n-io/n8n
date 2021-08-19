@@ -16,7 +16,7 @@
 							<i><font-awesome-icon icon="pen" /></i>
 						</div>
 						<div v-else :class="$style.nameInput">
-							<n8n-input :value="credentialName" size="small" ref="nameInput" @input="onNameEdit" @change="disableNameEdit" />
+							<n8n-input :value="credentialName" size="small" ref="nameInput" @input="onNameEdit" @change="disableNameEdit" maxlength="100" />
 						</div>
 					</div>
 					<div :class="$style.subtitle">{{ credentialType.displayName }}</div>
@@ -571,6 +571,7 @@ export default mixins(
 
 .mainContent {
 	flex-grow: 1;
+	min-height: 250px;
 
 	> * {
 		margin-bottom: var(--spacing-l);
