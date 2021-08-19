@@ -1,6 +1,6 @@
 <template>
 	<span>
-		<el-dialog :visible="dialogVisible" append-to-body width="80%" :title="`Workflow Executions ${combinedExecutions.length}/${finishedExecutionsCountEstimated === true ? '~' : ''}${combinedExecutionsCount}`" :before-close="closeDialog">
+		<el-dialog custom-class="classic" :visible="dialogVisible" append-to-body width="80%" :title="`Workflow Executions ${combinedExecutions.length}/${finishedExecutionsCountEstimated === true ? '~' : ''}${combinedExecutionsCount}`" :before-close="closeDialog">
 			<div class="filters">
 				<el-row>
 					<el-col :span="2" class="filter-headline">

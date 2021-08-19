@@ -22,6 +22,7 @@
 			:class="{ 'dialog-wrapper': true, [size]: true }"
 			:width="width"
 			:show-close="showClose"
+			:custom-class="{classic: true}"
 			append-to-body
 		>
 			<template v-slot:title>
@@ -51,7 +52,7 @@ const sizeMap: {[size: string]: string} = {
 
 export default Vue.extend({
 	name: "Modal",
-	props: ['name', 'title', 'eventBus', 'size', 'drawer', 'drawerDirection', 'drawerWidth', 'visible', 'showClose', 'loading'],
+	props: ['name', 'title', 'eventBus', 'size', 'drawer', 'drawerDirection', 'drawerWidth', 'visible', 'showClose', 'loading', 'classic'],
 	data() {
 		return {
 			visibleDrawer: this.drawer,

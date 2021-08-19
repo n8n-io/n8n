@@ -1,6 +1,6 @@
 <template>
 	<div v-if="dialogVisible">
-		<el-dialog :visible="dialogVisible" append-to-body width="80%" title="Credentials" :before-close="closeDialog">
+		<el-dialog custom-class="classic" :visible="dialogVisible" append-to-body width="80%" title="Credentials" :before-close="closeDialog">
 			<div class="text-very-light">
 				Your saved credentials:
 			</div>

@@ -1,6 +1,6 @@
 <template>
 	<div v-if="dialogVisible" @keydown.stop>
-		<el-dialog :visible="dialogVisible" custom-class="expression-dialog" append-to-body width="80%" title="Edit Expression" :before-close="closeDialog">
+		<el-dialog :visible="dialogVisible" custom-class="expression-dialog classic" append-to-body width="80%" title="Edit Expression" :before-close="closeDialog">
 			<el-row>
 				<el-col :span="8">
 					<div class="header-side-menu">

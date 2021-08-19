@@ -2,6 +2,7 @@
 	<Modal
 		:name="modalName"
 		size="xl"
+		classic
 	>
 			<template v-slot:header>
 				<div class="workflows-header">
