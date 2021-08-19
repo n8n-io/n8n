@@ -21,7 +21,7 @@
 
 				<MenuItemsIterator :items="sidebarMenuTopItems" :root="true"/>
 
-				<el-submenu index="workflow" title="Workflow">
+				<el-submenu index="workflow" title="Workflow" popperClass="sidebar-popper">
 					<template slot="title">
 						<font-awesome-icon icon="network-wired"/>&nbsp;
 						<span slot="title" class="item-title-root">Workflows</span>
@@ -83,7 +83,7 @@
 					</n8n-menu-item>
 				</el-submenu>
 
-				<el-submenu index="credentials" title="Credentials">
+				<el-submenu index="credentials" title="Credentials" popperClass="sidebar-popper">
 					<template slot="title">
 						<font-awesome-icon icon="key"/>&nbsp;
 						<span slot="title" class="item-title-root">Credentials</span>
@@ -108,7 +108,7 @@
 					<span slot="title" class="item-title-root">Executions</span>
 				</n8n-menu-item>
 
-				<el-submenu index="help" class="help-menu" title="Help">
+				<el-submenu index="help" class="help-menu" title="Help" popperClass="sidebar-popper">
 					<template slot="title">
 						<font-awesome-icon icon="question"/>&nbsp;
 						<span slot="title" class="item-title-root">Help</span>
@@ -484,6 +484,25 @@ export default mixins(
 </script>
 
 <style lang="scss">
+.sidebar-popper{
+	.el-menu-item {
+		font-size: 0.9em;
+		height: 35px;
+		line-height: 35px;
+		color: $--custom-dialog-text-color;
+
+		.item-title {
+			position: absolute;
+			left: 55px;
+		}
+
+		.svg-inline--fa {
+			position: relative;
+			right: -3px;
+		}
+	}
+}
+
 #side-menu {
 	// Menu
 	.el-menu--vertical,
@@ -529,14 +548,6 @@ export default mixins(
 			}
 		}
 
-	}
-	.el-menu--vertical {
-		.el-menu-item {
-			.item-title {
-				position: absolute;
-				left: 55px;
-			}
-		}
 	}
 
 	.el-menu-item {
