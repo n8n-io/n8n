@@ -238,12 +238,12 @@ export const nodeHelpers = mixins(
 
 						const nameMatches = userCredentials.filter((credentialData) => credentialData.name === selectedCredentials.name);
 						if (nameMatches.length > 1) {
-							foundIssues[credentialTypeDescription.name] = [`Credentials with name "${selectedCredentials.name}" exist for "${credentialDisplayName}"`, "Credentials are not clearly identified. Please select the right credentials from the list."];
+							foundIssues[credentialTypeDescription.name] = [`Credentials with name "${selectedCredentials.name}" exist for "${credentialDisplayName}"`, "Credentials are not clearly identified. Please select the correct credentials."];
 							continue;
 						}
 
 						if (nameMatches.length === 0) {
-							foundIssues[credentialTypeDescription.name] = [`Credentials with name "${selectedCredentials.name}" do not exist for "${credentialDisplayName}".`, "You can create credentials with the exact name first and then come back and select them in the list."];
+							foundIssues[credentialTypeDescription.name] = [`Credentials with name "${selectedCredentials.name}" do not exist for "${credentialDisplayName}".`, "You can create credentials with the exact name and then they get auto-selected on refresh."];
 						}
 					}
 				}

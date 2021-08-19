@@ -54,7 +54,6 @@ import {
 	ICredentialType,
 	INodeCredentials,
 	INodeCredentialDescription,
-	INodeCredentialsDetails,
 	INodeTypeDescription,
 } from 'n8n-workflow';
 
@@ -276,66 +275,7 @@ export default mixins(
 			// Set the current node credentials
 			if (node.credentials) {
 				const nodeCredentialType = this.credentialTypesNode.find(type => node.credentials![type]) as string;
-				let nodeCredentials = node.credentials![nodeCredentialType];
-				const updateNode = {
-					name: node.name,
-					properties: {
-						credentials: {} as Record<string, INodeCredentialsDetails>,
-					},
-				};
-				// Check if workflows applies latest credentials type
-				if (typeof nodeCredentials === 'string') {
-					nodeCredentials = {
-						id: null,
-						name: nodeCredentials,
-					};
-				}
-
-				if (nodeCredentials.id) {
-					// Check whether the id is matching with a credential
-					const credentialsForId = this.credentialOptions[nodeCredentialType].find((optionData: ICredentialsResponse) => optionData.id === nodeCredentials.id);
-					if (credentialsForId) {
-						if (credentialsForId.name !== nodeCredentials.name) {
-							updateNode.properties.credentials[nodeCredentialType] = { id: credentialsForId.id, name: credentialsForId.name };
-
-							// update all nodes in the workflow with the same old/invalid credentials
-							this.$store.commit('replaceInvalidWorkflowCredentials', {
-								credentials: updateNode.properties.credentials[nodeCredentialType],
-								invalid: nodeCredentials,
-								type: nodeCredentialType,
-							});
-						}
-						Vue.set(this, 'currentCredentialsId', nodeCredentials.id);
-						return;
-					}
-				}
-
-				// No match for id found or old credentials type used
-
-				updateNode.properties.credentials[nodeCredentialType] = {
-					id: null,
-					name: nodeCredentials.name,
-				};
-
-				// check if only one option with the name would exist
-				const credentialsForName = this.credentialOptions[nodeCredentialType].filter((optionData: ICredentialsResponse) => optionData.name === nodeCredentials.name);
-
-				// only one option exists for the name, take it
-				if (credentialsForName.length === 1) {
-					updateNode.properties.credentials[nodeCredentialType].id = credentialsForName[0].id;
-
-					// update all nodes in the workflow with the same old/invalid credentials
-					this.$store.commit('replaceInvalidWorkflowCredentials', {
-						credentials: updateNode.properties.credentials[nodeCredentialType],
-						invalid: nodeCredentials,
-						type: nodeCredentialType,
-					});
-				}
-
-				if (nodeCredentials.id === null) {
-					this.$store.commit('updateNodeProperties', updateNode);
-				}
-				Vue.set(this, 'currentCredentialsId', updateNode.properties.credentials[nodeCredentialType].id);
+				Vue.set(this, 'currentCredentialsId', node.credentials[nodeCredentialType].id);
 			}
 		},
 

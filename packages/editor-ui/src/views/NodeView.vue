@@ -155,6 +155,7 @@ import {
 } from 'n8n-workflow';
 import {
 	IConnectionsUi,
+	ICredentialsResponse,
 	IExecutionResponse,
 	IN8nUISettings,
 	IWorkflowDb,
@@ -331,6 +332,7 @@ export default mixins(
 				ctrlKeyPressed: false,
 				stopExecutionInProgress: false,
 				blankRedirect: false,
+				credentialsUpdated: false,
 			};
 		},
 		beforeDestroy () {
@@ -490,8 +492,10 @@ export default mixins(
 				this.$store.commit('setWorkflowTagIds', tagIds || []);
 
 				await this.addNodes(data.nodes, data.connections);
+				if (!this.credentialsUpdated) {
+					this.$store.commit('setStateDirty', false);
+				}
 
-				this.$store.commit('setStateDirty', false);
 				this.zoomToFit();
 
 				this.$externalHooks().run('workflow.open', { workflowId, workflowName: data.name });
@@ -1866,6 +1870,52 @@ export default mixins(
 				this.deselectAllNodes();
 				this.nodeSelectedByName(newName);
 			},
+			checkCredentials(node: INodeUi) {
+				const nodeCredentialType = Object.keys(node.credentials!)[0];
+				if (!nodeCredentialType || !node.credentials) {
+					return;
+				}
+				const credentialOptions = this.$store.getters.credentialsByType(nodeCredentialType) as ICredentialsResponse[];
+				let nodeCredentials = node.credentials[nodeCredentialType];
+
+				// Check if workflows applies old credentials style
+				if (typeof nodeCredentials === 'string') {
+					nodeCredentials = {
+						id: null,
+						name: nodeCredentials,
+					};
+				}
+
+				if (nodeCredentials.id) {
+					// Check whether the id is matching with a credential
+					const credentialsForId = credentialOptions.find((optionData: ICredentialsResponse) => optionData.id === nodeCredentials.id);
+					if (credentialsForId) {
+						if (credentialsForId.name !== nodeCredentials.name) {
+							node.credentials[nodeCredentialType] = { id: credentialsForId.id, name: credentialsForId.name };
+							this.credentialsUpdated = true;
+						}
+						return;
+					}
+				}
+
+				// No match for id found or old credentials type used
+				node.credentials[nodeCredentialType] = nodeCredentials;
+
+				// check if only one option with the name would exist
+				const credentialsForName = credentialOptions.filter((optionData: ICredentialsResponse) => optionData.name === nodeCredentials.name);
+
+				// only one option exists for the name, take it
+				if (credentialsForName.length === 1) {
+					node.credentials[nodeCredentialType].id = credentialsForName[0].id;
+					this.credentialsUpdated = true;
+					return;
+				}
+
+				// credentials have been following the old style, so update to new
+				if (nodeCredentials.id === null) {
+					this.credentialsUpdated = true;
+				}
+			},
 			async addNodes (nodes: INodeUi[], connections?: IConnections) {
 				if (!nodes || !nodes.length) {
 					return;
@@ -1913,6 +1963,10 @@ export default mixins(
 						if (node.type === 'n8n-nodes-base.webhook' && node.parameters.path === '') {
 							node.parameters.path = node.webhookId as string;
 						}
+					}
+
+					if (node.credentials) {
+						this.checkCredentials(node);
 					}
 
 					foundNodeIssues = this.getNodeIssues(nodeType, node);
