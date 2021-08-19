@@ -68,19 +68,21 @@ export class TrustApi implements INodeType {
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		function handleProofs(this: IExecuteFunctions, operation: string, i: number) {
 			if (operation === 'saveProofs') {
-				const body: IDataObject = {
+				const proofs = (this.getNodeParameter('proofs', i) as IDataObject)?.keys as IDataObject[];
+				const body: IDataObject[] = proofs.map(p => ({
 					proof: {
-						id: this.getNodeParameter('proofId', i) as string,
-						rootHash: this.getNodeParameter('rootHash', i) as string,
-						signature: this.getNodeParameter('signature', i) as string,
+						id: p.id,
+						rootHash: p.rootHash,
+						signature: p.signature,
 					},
 					proofLocationWithoutKey: {
-						valueMetadataId: this.getNodeParameter('valueMetadataId', i) as string,
-						merkelTreeDepth: this.getNodeParameter('merkelTreeDepth', i) as number,
-						lastTimestamp: this.getNodeParameter('lastTimestamp', i) as string,
+						valueMetadataId: p.valueMetadataId,
+						merkelTreeDepth: p.merkelTreeDepth,
+						lastTimestamp: p.lastTimestamp,
 					},
-				};
-				return trustApiRequest.call(this, 'POST', '/proof', body);
+				}));
+
+				return trustApiRequest.call(this, 'POST', '/proofs', body);
 			} else if (operation === 'getProof') {
 				const qs: IDataObject = {
 					valueMetadataId: this.getNodeParameter('valueMetadataId', i) as string,
