@@ -2,7 +2,6 @@
 	<Modal
 		:name="modalName"
 		:eventBus="modalBus"
-		:classic="true"
 		@enter="save"
 		size="sm"
 		title="Duplicate Workflow"

@@ -5,6 +5,7 @@
 		:showClose="false"
 		:eventBus="modalBus"
 		:loading="loading"
+		:beforeClose="beforeClose"
 	>
 		<template slot="header">
 			<div :class="$style.header" v-if="credentialType">
@@ -134,6 +135,7 @@ export default mixins(
 			isDeleting: false,
 			credentialId: '',
 			isNameEdit: false,
+			hasUnsavedChanges: false,
 		};
 	},
 	async mounted() {
@@ -229,6 +231,21 @@ export default mixins(
 		},
 	},
 	methods: {
+		async beforeClose(done: () => void) {
+			if (!this.hasUnsavedChanges) {
+				done();
+
+				return;
+			}
+
+			const save = await this.confirmMessage('Are you sure to close this dialog?', 'Save changes?', 'warning', 'Save', 'Discard');
+			if (save) {
+				this.saveCredential(true);
+			}
+			else {
+				done();
+			}
+		},
 		getCredentialProperties (name: string): INodeProperties[] {
 			const credentialsData = this.$store.getters['credentials/getCredentialTypeByName'](name);
 
@@ -279,6 +296,7 @@ export default mixins(
 			this.activeTab = tab;
 		},
 		onNodeAccessChange(name: string, value: boolean) {
+			this.hasUnsavedChanges = true;
 			if (value) {
 				this.nodeAccess = {
 					...this.nodeAccess,
@@ -296,6 +314,7 @@ export default mixins(
 		},
 		convertToHumanReadableDate,
 		onDataChange({name, value}: {name: string, value: any}) { // tslint:disable-line:no-any
+			this.hasUnsavedChanges = true;
 			this.credentialData = {
 				...this.credentialData,
 				[name]: value,
@@ -322,6 +341,7 @@ export default mixins(
 		},
 
 		onNameEdit(text: string) {
+			this.hasUnsavedChanges = true;
 			this.credentialName = text;
 		},
 
@@ -380,6 +400,7 @@ export default mixins(
 
 			try {
 				credential = await this.$store.dispatch('credentials/createNewCredential', credentialDetails) as ICredentialsResponse;
+				this.hasUnsavedChanges = false;
 			} catch (error) {
 				this.$showError(error, 'Problem creating credentials', 'There was a problem creating the credentials:');
 
@@ -398,6 +419,7 @@ export default mixins(
 			let credential;
 			try {
 				credential = await this.$store.dispatch('credentials/updateCredentialDetails', { id: this.credentialId, data: credentialDetails }) as ICredentialsResponse;
+				this.hasUnsavedChanges = false;
 			} catch (error) {
 				this.$showError(error, 'Problem updating credentials', 'There was a problem updating the credentials:');
 
@@ -431,6 +453,7 @@ export default mixins(
 			try {
 				this.isDeleting = true;
 				await this.$store.dispatch('credentials/deleteCredential', {id: this.credentialId});
+				this.hasUnsavedChanges = false;
 			} catch (error) {
 				this.$showError(error, 'Problem deleting credentials', 'There was a problem deleting the credentials:');
 				this.isDeleting = false;

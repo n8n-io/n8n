@@ -50,7 +50,7 @@ const sizeMap: {[size: string]: string} = {
 
 export default Vue.extend({
 	name: "Modal",
-	props: ['name', 'title', 'eventBus', 'size', 'drawer', 'drawerDirection', 'drawerWidth', 'visible', 'showClose', 'loading', 'classic'],
+	props: ['name', 'title', 'eventBus', 'size', 'drawer', 'drawerDirection', 'drawerWidth', 'visible', 'showClose', 'loading', 'classic', 'beforeClose'],
 	data() {
 		return {
 			visibleDrawer: this.drawer,
@@ -89,6 +89,17 @@ export default Vue.extend({
 			}
 		},
 		closeDialog(callback?: () => void) {
+			if (this.beforeClose) {
+				this.beforeClose(() => {
+					this.$store.commit('ui/closeTopModal');
+					if (typeof callback === 'function') {
+						callback();
+					}
+				});
+
+				return;
+			}
+
 			this.$store.commit('ui/closeTopModal');
 			if (typeof callback === 'function') {
 				callback();
