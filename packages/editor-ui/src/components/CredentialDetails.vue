@@ -10,12 +10,12 @@
 		<template slot="header">
 			<div :class="$style.header" v-if="credentialType">
 				<div :class="$style.credInfo">
-					<div v-if="nodesWithAccess.length" :class="$style.credIcon">
-						<img v-if="isGoogleCredType" :class="$style.defaultCredIcon" src="../assets/Google.svg" />
+					<div :class="$style.credIcon">
+						<NodeIcon v-if="credToNodeIconMap[credentialTypeName]" :nodeType="getNodeByName(credToNodeIconMap[credentialTypeName])" />
+						<img v-else-if="isGoogleCredType" :class="$style.defaultCredIcon" src="../assets/Google.svg" />
 						<img v-else-if="isAWSCredType" :class="$style.defaultCredIcon" src="../assets/AWS.svg" />
 						<img v-else-if="isMicrosoftCredType" :class="$style.defaultCredIcon" src="../assets/Microsoft.svg" />
-						<NodeIcon v-else-if="credToNodeIconMap[credentialTypeName]" :nodeType="getNodeByName(credToNodeIconMap[credentialTypeName])" />
-						<NodeIcon v-else :nodeType="nodesWithAccess[0]" />
+						<NodeIcon v-else-if="nodesWithAccess.length" :nodeType="nodesWithAccess[0]" />
 					</div>
 					<div>
 						<div :class="$style.headline" @keydown.stop @click="enableNameEdit" v-click-outside="disableNameEdit">
@@ -112,6 +112,7 @@ interface NodeAccessMap {
 const credToNodeIconMap = {
 	'httpBasicAuth': 'n8n-nodes-base.httpRequest',
 	'httpHeaderAuth': 'n8n-nodes-base.httpRequest',
+	'youTubeOAuth2Api': 'n8n-nodes-base.youTube',
 };
 
 export default mixins(
