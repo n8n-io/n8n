@@ -37,7 +37,7 @@
 
 				</el-col>
 				<el-col :span="2" class="parameter-value credential-action">
-					<font-awesome-icon v-if="selected[credentialTypeDescription.name]" icon="pen" @click="editCredential(credentialTypeDescription.name)" class="update-credentials clickable" title="Update Credentials" />
+					<font-awesome-icon v-if="selected[credentialTypeDescription.name] && isCredentialValid(credentialTypeDescription.name)" icon="pen" @click="editCredential(credentialTypeDescription.name)" class="update-credentials clickable" title="Update Credentials" />
 				</el-col>
 
 			</el-row>
@@ -211,6 +211,12 @@ export default mixins(
 			}
 
 			return node.issues.credentials[credentialTypeName];
+		},
+
+		isCredentialValid(credentialType: string): boolean {
+			const name = this.node.credentials[credentialType];
+
+			return !!this.$store.getters['credentials/getCredentialByName'](name);
 		},
 
 		editCredential(credentialType: string): void {

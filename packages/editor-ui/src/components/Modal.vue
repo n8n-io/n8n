@@ -22,7 +22,7 @@
 			:class="{ 'dialog-wrapper': true, [size]: true }"
 			:width="width"
 			:show-close="showClose"
-			:custom-class="{classic: true}"
+			:custom-class="classic ? 'classic' : ''"
 			append-to-body
 		>
 			<template v-slot:title>
