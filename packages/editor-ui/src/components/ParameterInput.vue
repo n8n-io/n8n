@@ -140,6 +140,7 @@ import ExpressionEdit from '@/components/ExpressionEdit.vue';
 // @ts-ignore
 import PrismEditor from 'vue-prism-editor';
 import TextEdit from '@/components/TextEdit.vue';
+import { externalHooks } from '@/components/mixins/externalHooks';
 import { nodeHelpers } from '@/components/mixins/nodeHelpers';
 import { showMessage } from '@/components/mixins/showMessage';
 import { workflowHelpers } from '@/components/mixins/workflowHelpers';
@@ -147,6 +148,7 @@ import { workflowHelpers } from '@/components/mixins/workflowHelpers';
 import mixins from 'vue-typed-mixins';
 
 export default mixins(
+	externalHooks,
 	nodeHelpers,
 	showMessage,
 	workflowHelpers,
@@ -637,6 +639,8 @@ export default mixins(
 					}
 				}
 			}
+
+			this.$externalHooks().run('parameterInput.mount', { parameter: this.parameter, inputFieldRef: this.$refs['inputField'] });
 		},
 	});
 </script>
