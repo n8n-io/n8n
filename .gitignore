@@ -12,6 +12,5 @@ _START_PACKAGE
 .env
 .vscode
 .idea
-.prettierrc.js
 vetur.config.js
 nodelinter.config.json
