@@ -21,6 +21,9 @@
   "scripts": {
     "dev": "npm run watch",
     "build": "tsc",
+    "format": "cd ../.. && node_modules/prettier/bin-prettier.js packages/node-dev --write",
+    "lint": "cd ../.. && node_modules/eslint/bin/eslint.js packages/node-dev",
+    "lintfix": "cd ../.. && node_modules/eslint/bin/eslint.js packages/node-dev --fix",
     "postpack": "rm -f oclif.manifest.json",
     "prepack": "echo \"Building project...\" && rm -rf dist && tsc -b && oclif-dev manifest",
     "tslint": "tslint -p tsconfig.json -c tslint.json",

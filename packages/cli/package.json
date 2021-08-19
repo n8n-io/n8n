@@ -21,6 +21,9 @@
   "scripts": {
     "build": "tsc",
     "dev": "concurrently -k -n \"TypeScript,Node\" -c \"yellow.bold,cyan.bold\" \"npm run watch\" \"nodemon\"",
+    "format": "cd ../.. && node_modules/prettier/bin-prettier.js packages/cli --write",
+    "lint": "cd ../.. && node_modules/eslint/bin/eslint.js packages/cli",
+    "lintfix": "cd ../.. && node_modules/eslint/bin/eslint.js packages/cli --fix",
     "postpack": "rm -f oclif.manifest.json",
     "prepack": "echo \"Building project...\" && rm -rf dist && tsc -b && oclif-dev manifest",
     "start": "run-script-os",

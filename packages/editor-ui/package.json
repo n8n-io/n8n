@@ -16,7 +16,9 @@
   "scripts": {
     "build": "cross-env VUE_APP_PUBLIC_PATH=\"/%BASE_PATH%/\" vue-cli-service build",
     "dev": "npm run serve",
-    "lint": "vue-cli-service lint",
+    "format": "cd ../.. && node_modules/prettier/bin-prettier.js packages/editor-ui --write",
+    "lint": "cd ../.. && node_modules/eslint/bin/eslint.js packages/editor-ui",
+    "lintfix": "cd ../.. && node_modules/eslint/bin/eslint.js packages/editor-ui --fix",
     "serve": "cross-env VUE_APP_URL_BASE_API=http://localhost:5678/ vue-cli-service serve",
     "test": "npm run test:unit",
     "tslint": "tslint -p tsconfig.json -c tslint.json",

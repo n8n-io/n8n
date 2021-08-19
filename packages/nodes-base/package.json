@@ -17,6 +17,9 @@
   "scripts": {
     "dev": "npm run watch",
     "build": "tsc && gulp",
+    "format": "cd ../.. && node_modules/prettier/bin-prettier.js packages/nodes-base --write",
+    "lint": "cd ../.. && node_modules/eslint/bin/eslint.js packages/nodes-base",
+    "lintfix": "cd ../.. && node_modules/eslint/bin/eslint.js packages/nodes-base --fix",
     "tslint": "tslint -p tsconfig.json -c tslint.json",
     "tslintfix": "tslint --fix -p tsconfig.json -c tslint.json",
     "nodelinter": "nodelinter",
