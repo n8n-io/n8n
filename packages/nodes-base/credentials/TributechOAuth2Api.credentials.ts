@@ -68,7 +68,6 @@ export class TributechOAuth2Api implements ICredentialType {
 		{
 			displayName: 'Trust-API Endpoint',
 			name: 'trustApiEndpoint',
-			description: 'Trust-API Endpoint',
 			type: 'hidden',
 			default: '=https://trust-api.{{$self["node"]}}.dataspace-node.com',
 			required: true,
@@ -76,7 +75,6 @@ export class TributechOAuth2Api implements ICredentialType {
 		{
 			displayName: 'Data-API Endpoint',
 			name: 'dataApiEndpoint',
-			description: 'Data-API Endpoint',
 			type: 'hidden',
 			default: '=https://data-api.{{$self["node"]}}.dataspace-node.com',
 			required: true,
@@ -84,7 +82,6 @@ export class TributechOAuth2Api implements ICredentialType {
 		{
 			displayName: 'Twin-API Endpoint',
 			name: 'twinApiEndpoint',
-			description: 'Twin-API Endpoint',
 			type: 'hidden',
 			default: '=https://twin-api.{{$self["node"]}}.dataspace-node.com',
 			required: true,
@@ -92,7 +89,6 @@ export class TributechOAuth2Api implements ICredentialType {
 		{
 			displayName: 'Catalog-API Endpoint',
 			name: 'catalogApiEndpoint',
-			description: 'Catalog-API Endpoint',
 			type: 'hidden',
 			default: '=https://catalog-api.{{$self["node"]}}.dataspace-node.com',
 			required: true,

@@ -76,19 +76,9 @@ export class DataApi implements INodeType {
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		function handleValueGet(this: IExecuteFunctions, operation: string, i: number) {
 			const valueMetadataId = this.getNodeParameter('valueMetadataId', i);
-			const qs: IDataObject = {
-				from: this.getNodeParameter('from', i, undefined) as IDataObject,
-				to: this.getNodeParameter('to', i, undefined) as IDataObject,
-				orderBy: this.getNodeParameter('orderBy', i, undefined) as IDataObject,
-				pageNumber: this.getNodeParameter('pageNumber', i, undefined) as IDataObject,
-				pageSize: this.getNodeParameter('pageSize', i, undefined) as IDataObject,
-			};
+			const qs: IDataObject = this.getNodeParameter('additionalFields', i) as IDataObject;
 
-			if (operation === 'getRawValues') {
-				const endpoint = `/values/${valueMetadataId}`;
-				return dataApiRequest.call(this, 'GET', endpoint, {}, qs);
-
-			} else if (operation === 'getValuesAsByte') {
+			if (operation === 'getValuesAsByte') {
 				const endpoint = `/values/byte/${valueMetadataId}`;
 				return dataApiRequest.call(this, 'GET', endpoint, {}, qs);
 
@@ -103,30 +93,16 @@ export class DataApi implements INodeType {
 		}
 
 		function handleValuePost(this: IExecuteFunctions, operation: string, i: number) {
-			const body: IDataObject = {
-				valueMetadataId: this.getNodeParameter('valueMetadataId', i) as string || '',
-				timestamp: this.getNodeParameter('timestamp', i) as string || '',
-				values: JSON.parse(this.getNodeParameter('values', i) as string),
-			};
+			const body: IDataObject[] = (this.getNodeParameter('values', i) as IDataObject)?.value as IDataObject[];
 
 			switch (operation) {
-				case 'addValueAsByte':
-					return dataApiRequest.call(this, 'POST', '/value/byte', body);
-				case 'addValueAsBase64':
-					return dataApiRequest.call(this, 'POST', '/value/string', body);
-				case 'addValueAsDouble':
-					return dataApiRequest.call(this, 'POST', '/value/double', body);
-				case 'addValues':
-					return dataApiRequest.call(this, 'POST', '/values', body);
-				case 'addValuesAsByte':
-					return dataApiRequest.call(this, 'POST', '/values/byte', body);
 				case 'addValuesAsBase64':
 					return dataApiRequest.call(this, 'POST', '/values/string', body);
 				case 'addValuesAsDouble':
 					return dataApiRequest.call(this, 'POST', '/values/double', body);
 				default:
-				case 'addValue':
-					return dataApiRequest.call(this, 'POST', '/value', body);
+				case 'addValuesAsByte':
+					return dataApiRequest.call(this, 'POST', '/values/byte', body);
 			}
 		}
 
@@ -147,39 +123,13 @@ export class DataApi implements INodeType {
 		}
 
 		function handleProofLocation(this: IExecuteFunctions, operation: string, i: number) {
-			if (operation === 'getProofLocation') {
-
+			if (operation === 'getProofLocations') {
 				const valueMetadataId = this.getNodeParameter('valueMetadataId', i);
-				const nextLastTimestamp = this.getNodeParameter('nextLastTimestamp', i);
-
-				return dataApiRequest.call(this, 'GET', `/prooflocation/${valueMetadataId}/${nextLastTimestamp}`);
-
-			} else if (operation === 'getProofLocations') {
-				const valueMetadataId = this.getNodeParameter('valueMetadataId', i);
-				const qs: IDataObject = {
-					from: this.getNodeParameter('from', i) as IDataObject,
-					to: this.getNodeParameter('to', i) as IDataObject,
-					orderBy: this.getNodeParameter('orderBy', i) as IDataObject,
-					pageNumber: this.getNodeParameter('pageNumber', i) as IDataObject,
-					pageSize: this.getNodeParameter('pageSize', i) as IDataObject,
-				};
+				const qs: IDataObject = this.getNodeParameter('additionalFields', i) as IDataObject;
 				return dataApiRequest.call(this, 'GET', `/prooflocations/${valueMetadataId}`, {}, qs);
-			} else if (operation === 'saveProofLocation') {
-				const body: IDataObject = {
-					valueMetadataId: this.getNodeParameter('valueMetadataId', i) as IDataObject,
-					lastTimestamp: this.getNodeParameter('lastTimestamp', i) as IDataObject,
-					merkleTreeDepth: this.getNodeParameter('merkleTreeDepth', i) as IDataObject,
-					uri: this.getNodeParameter('uri', i) as IDataObject,
-				};
-				return dataApiRequest.call(this, 'POST', '/prooflocation', body);
 			} else if (operation === 'saveProofLocations') {
-				const body: IDataObject = {
-					valueMetadataId: this.getNodeParameter('valueMetadataId', i) as IDataObject,
-					lastTimestamp: this.getNodeParameter('lastTimestamp', i) as IDataObject,
-					merkleTreeDepth: this.getNodeParameter('merkleTreeDepth', i) as IDataObject,
-					uri: this.getNodeParameter('uri', i) as IDataObject,
-				};
-				return dataApiRequest.call(this, 'POST', '/prooflocations', [body]);
+				const body: IDataObject[] = (this.getNodeParameter('proofLocations', i) as IDataObject)?.proofLocation as IDataObject[];
+				return dataApiRequest.call(this, 'POST', '/prooflocations', body);
 			}
 		}
 
