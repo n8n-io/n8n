@@ -10,16 +10,24 @@
 		<template slot="header">
 			<div :class="$style.header" v-if="credentialType">
 				<div :class="$style.credInfo">
-					<div :class="$style.headline" @keydown.stop @click="enableNameEdit" v-click-outside="disableNameEdit">
-						<div v-if="!isNameEdit">
-							<span>{{ credentialName }}</span>
-							<i><font-awesome-icon icon="pen" /></i>
-						</div>
-						<div v-else :class="$style.nameInput">
-							<n8n-input :value="credentialName" size="small" ref="nameInput" @input="onNameEdit" @change="disableNameEdit" maxlength="100" />
-						</div>
+					<div v-if="nodesWithAccess.length" :class="$style.credIcon">
+						<img v-if="isGoogleCredType" :class="$style.googleIcon" src="../assets/Google.svg" />
+						<img v-else-if="isAWSCredType" :class="$style.googleIcon" src="../assets/AWS.svg" />
+						<img v-else-if="isMicrosoftCredType" :class="$style.googleIcon" src="../assets/Microsoft.svg" />
+						<NodeIcon v-else :nodeType="nodesWithAccess[0]" />
 					</div>
-					<div :class="$style.subtitle">{{ credentialType.displayName }}</div>
+					<div>
+						<div :class="$style.headline" @keydown.stop @click="enableNameEdit" v-click-outside="disableNameEdit">
+							<div v-if="!isNameEdit">
+								<span>{{ credentialName }}</span>
+								<i><font-awesome-icon icon="pen" /></i>
+							</div>
+							<div v-else :class="$style.nameInput">
+								<n8n-input :value="credentialName" size="small" ref="nameInput" @input="onNameEdit" @change="disableNameEdit" maxlength="100" />
+							</div>
+						</div>
+						<div :class="$style.subtitle">{{ credentialType.displayName }}</div>
+					</div>
 				</div>
 				<div :class="$style.credActions">
 					<n8n-icon-button v-if="currentCredential" size="medium" title="Delete" icon="trash" type="text" :disabled="isSaving" :loading="isDeleting" @click="deleteCredential" />
@@ -85,6 +93,7 @@ import Vue from 'vue';
 
 import Modal from './Modal.vue';
 import CredentialsInput from './CredentialsInput.vue';
+import NodeIcon from './NodeIcon.vue';
 import { convertToHumanReadableDate } from './helpers';
 import TimeAgo from './TimeAgo.vue';
 import { CredentialInformation, ICredentialDataDecryptedObject, ICredentialNodeAccess, ICredentialsDecrypted, ICredentialType, INodeParameters, INodeProperties, INodeTypeDescription, NodeHelpers } from 'n8n-workflow';
@@ -106,8 +115,9 @@ export default mixins(
 ).extend({
 	name: 'CredentialsDetail',
 	components: {
-		Modal,
 		CredentialsInput,
+		Modal,
+		NodeIcon,
 		TimeAgo,
 	},
 	props: {
@@ -198,7 +208,7 @@ export default mixins(
 				properties: this.getCredentialProperties(this.credentialTypeName),
 			};
 		},
-		nodesWithAccess(): Array<{nodeType: string, name: string}>  {
+		nodesWithAccess(): INodeTypeDescription[]  {
 			if (this.credentialTypeName) {
 				return this.$store.getters['credentials/getNodesWithAccess'](this.credentialTypeName);
 			}
@@ -228,6 +238,18 @@ export default mixins(
 			}
 
 			return '';
+		},
+		isGoogleCredType (): boolean {
+			return this.credentialTypeName === 'googleOAuth2Api' ||
+				this.credentialTypeName === 'googleApi' ||
+				this.parentTypes.includes('googleOAuth2Api');
+		},
+		isAWSCredType (): boolean {
+			return this.credentialTypeName === 'aws';
+		},
+		isMicrosoftCredType (): boolean {
+			return this.credentialTypeName === 'microsoftOAuth2Api' ||
+				this.parentTypes.includes('microsoftOAuth2Api');
 		},
 	},
 	methods: {
@@ -594,6 +616,7 @@ export default mixins(
 }
 
 .credInfo {
+	display: flex;
 	flex-grow: 1;
 	margin-bottom: var(--spacing-s);
 }
@@ -622,4 +645,16 @@ export default mixins(
 .label {
 	font-weight: var(--font-weight-bold);
 }
+
+.credIcon {
+	display: flex;
+	align-items: center;
+	margin-right: var(--spacing-xs);
+}
+
+.googleIcon{
+	height: 26px;
+	width: 26px;
+}
+
 </style>

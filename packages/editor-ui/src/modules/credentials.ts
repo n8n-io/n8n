@@ -100,8 +100,8 @@ const module: Module<ICredentialsState, IRootState> = {
 					}
 
 					return false;
-				})
-					.map((nodeType: INodeTypeDescription) => ({ name: nodeType.name, displayName: nodeType.displayName }));
+				});
+				// .map((nodeType: INodeTypeDescription) => ({ name: nodeType.name, displayName: nodeType.displayName }));
 			};
 		},
 	},
