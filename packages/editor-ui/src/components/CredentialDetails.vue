@@ -494,7 +494,7 @@ export default mixins(
 						oauthPopup.close();
 					}
 
-					this.$showMessage({
+					this.callDebounced('$showMessage', 100, {
 						title: 'Connected',
 						message: 'Connected successfully!',
 						type: 'success',
