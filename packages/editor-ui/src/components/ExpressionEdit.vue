@@ -145,11 +145,14 @@ export default mixins(
 
 	.right-side {
 		background-color: #f9f9f9;
+		border-top-right-radius: 8px;
+		border-bottom-right-radius: 8px;
 	}
 }
 
 .header-side-menu {
 	padding: 1em 0 0.5em 1.8em;
+	border-top-left-radius: 8px;
 
 	background-color: $--custom-window-sidebar-top;
 	color: #555;

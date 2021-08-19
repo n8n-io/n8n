@@ -26,9 +26,7 @@
 			append-to-body
 		>
 			<template v-slot:title>
-				<div v-if="!loading" >
-					<slot name="header" />
-				</div>
+				<slot name="header" v-if="!loading" />
 			</template>
 			<div v-if="!loading" class="modal-content" @keydown.stop @keydown.enter="handleEnter" @keydown.esc="closeDialog">
 				<slot name="content"/>

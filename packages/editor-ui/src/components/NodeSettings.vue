@@ -519,13 +519,14 @@ export default mixins(
 	z-index: 200;
 	font-size: 0.8em;
 	color: #555;
-	border-radius: 2px 0 0 2px;
+	border-radius: 8px 0 0 8px;
 
 	.header-side-menu {
 		padding: 1em 0 1em 1.8em;
 		font-size: 1.35em;
 		background-color: $--custom-window-sidebar-top;
 		color: #555;
+		border-top-left-radius: 8px;
 
 		.node-info {
 			color: #555;

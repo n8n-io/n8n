@@ -1,6 +1,6 @@
 <template>
 	<span>
-		<el-dialog class="workflow-settings" custom-class="classic" :visible="dialogVisible" append-to-body width="65%" title="Workflow Settings" :before-close="closeDialog">
+		<el-dialog class="workflow-settings" :visible="dialogVisible" append-to-body width="65%" title="Workflow Settings" :before-close="closeDialog">
 			<div v-loading="isLoading">
 				<el-row>
 					<el-col :span="10" class="setting-name">

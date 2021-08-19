@@ -642,6 +642,8 @@ export default mixins(
 	color: #555;
 	font-size: 14px;
 	background-color: #f9f9f9;
+	border-bottom-right-radius: 8px;
+	border-top-right-radius: 8px;
 
 	.data-display-content {
 		position: absolute;

@@ -1,10 +1,11 @@
 <template>
 	<transition name="el-fade-in" @after-enter="showDocumentHelp = true">
-		<div class="data-display-wrapper close-on-click" v-show="node" @click="close">
+		<div class="data-display-wrapper" v-show="node" >
+			<div class="v-modal close-on-click" @click="close"></div>
 			<div class="data-display" >
 				<NodeSettings @valueChanged="valueChanged" />
 				<RunData />
-				<div class="close-button clickable close-on-click" title="Close">
+				<div class="close-button clickable close-on-click" title="Close" @click="close">
 					<i class="el-icon-close close-on-click"></i>
 				</div>
 				<transition name="fade">
@@ -128,7 +129,6 @@ export default mixins(externalHooks, nodeHelpers, workflowHelpers).extend({
 	width: 100%;
 	height: 100%;
 	z-index: 20;
-	background-color: #9d8d9dd8;
 
 	.close-button {
 		position: absolute;
@@ -160,7 +160,9 @@ export default mixins(externalHooks, nodeHelpers, workflowHelpers).extend({
 		height: 80%;
 		margin: 3em auto;
 		background-color: #fff;
-		border-radius: 2px;
+		border-radius: 8px;
+		border: var(--border-base);
+
 		@media (max-height: 720px) {
 			margin: 1em auto;
 			height: 95%;

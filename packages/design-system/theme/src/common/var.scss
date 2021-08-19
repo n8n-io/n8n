@@ -798,9 +798,9 @@ $pagination-hover-color: var(--color-primary);
 /* Popup
 -------------------------- */
 /// color||Color|0
-$popup-modal-background-color: $color-black;
+$popup-modal-background-color: hsl(0,0%,97%,65%);
 /// opacity||Other|1
-$popup-modal-opacity: 0.5;
+$popup-modal-opacity: 0.65;
 
 /* Popover
 -------------------------- */
