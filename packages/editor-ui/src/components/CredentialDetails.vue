@@ -410,7 +410,13 @@ export default mixins(
 		},
 
 		async deleteCredential () {
-			const deleteConfirmed = await this.confirmMessage(`Are you sure you want to delete "${this.credentialName}" credentials?`, 'Delete Credentials?', 'warning', 'Yes, delete!');
+			if (!this.currentCredential) {
+				return;
+			}
+
+			const savedCredentialName = this.currentCredential.name;
+
+			const deleteConfirmed = await this.confirmMessage(`Are you sure you want to delete "${savedCredentialName}" credentials?`, 'Delete Credentials?', 'warning', 'Yes, delete!');
 
 			if (deleteConfirmed === false) {
 				return;
@@ -432,7 +438,7 @@ export default mixins(
 
 			this.$showMessage({
 				title: 'Credentials deleted',
-				message: `The credential "${this.credentialName}" got deleted!`,
+				message: `The credential "${savedCredentialName}" got deleted!`,
 				type: 'success',
 			});
 			this.closeDialog();
