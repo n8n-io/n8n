@@ -126,6 +126,10 @@
 	}
 }
 
+@mixin button-round() {
+	--button-border-radius: 20px;
+}
+
 // ignore plain overrides
 @mixin button-just-primary() {
 	@include button-variant(
