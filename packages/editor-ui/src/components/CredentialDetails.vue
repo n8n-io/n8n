@@ -11,9 +11,9 @@
 			<div :class="$style.header" v-if="credentialType">
 				<div :class="$style.credInfo">
 					<div v-if="nodesWithAccess.length" :class="$style.credIcon">
-						<img v-if="isGoogleCredType" :class="$style.googleIcon" src="../assets/Google.svg" />
-						<img v-else-if="isAWSCredType" :class="$style.googleIcon" src="../assets/AWS.svg" />
-						<img v-else-if="isMicrosoftCredType" :class="$style.googleIcon" src="../assets/Microsoft.svg" />
+						<img v-if="isGoogleCredType" :class="$style.defaultCredIcon" src="../assets/Google.svg" />
+						<img v-else-if="isAWSCredType" :class="$style.defaultCredIcon" src="../assets/AWS.svg" />
+						<img v-else-if="isMicrosoftCredType" :class="$style.defaultCredIcon" src="../assets/Microsoft.svg" />
 						<NodeIcon v-else :nodeType="nodesWithAccess[0]" />
 					</div>
 					<div>
@@ -652,7 +652,7 @@ export default mixins(
 	margin-right: var(--spacing-xs);
 }
 
-.googleIcon{
+.defaultCredIcon{
 	height: 26px;
 	width: 26px;
 }
