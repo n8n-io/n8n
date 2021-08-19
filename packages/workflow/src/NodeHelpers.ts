@@ -1,3 +1,17 @@
+/* eslint-disable no-console */
+/* eslint-disable @typescript-eslint/no-non-null-assertion */
+/* eslint-disable @typescript-eslint/no-use-before-define */
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
+/* eslint-disable @typescript-eslint/prefer-nullish-coalescing */
+/* eslint-disable no-param-reassign */
+/* eslint-disable no-continue */
+/* eslint-disable prefer-spread */
+/* eslint-disable no-restricted-syntax */
+/* eslint-disable @typescript-eslint/explicit-module-boundary-types */
+/* eslint-disable import/no-cycle */
+// eslint-disable-next-line import/no-extraneous-dependencies
+import { get, isEqual } from 'lodash';
+
 import {
 	IContextObject,
 	INode,
@@ -18,8 +32,6 @@ import {
 } from './Interfaces';
 
 import { Workflow } from './Workflow';
-
-import { get, isEqual } from 'lodash';
 
 /**
  * Gets special parameters which should be added to nodeTypes depending
@@ -258,7 +270,8 @@ export function displayParameter(
 	nodeValuesRoot = nodeValuesRoot || nodeValues;
 
 	let value;
-	const values: any[] = []; // tslint:disable-line:no-any
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any
+	const values: any[] = [];
 	if (parameter.displayOptions.show) {
 		// All the defined rules have to match to display parameter
 		for (const propertyName of Object.keys(parameter.displayOptions.show)) {
@@ -277,7 +290,7 @@ export function displayParameter(
 				values.push.apply(values, value);
 			}
 
-			if (values.some((v) => typeof v === 'string' && (v as string).charAt(0) === '=')) {
+			if (values.some((v) => typeof v === 'string' && v.charAt(0) === '=')) {
 				return true;
 			}
 
@@ -382,6 +395,7 @@ export function getContext(
 	}
 
 	if (runExecutionData.executionData.contextData[key] === undefined) {
+		// eslint-disable-next-line no-param-reassign
 		runExecutionData.executionData.contextData[key] = {};
 	}
 
@@ -540,7 +554,7 @@ export function getNodeParameters(
 	const nodeParametersFull: INodeParameters = {};
 
 	let nodeValuesDisplayCheck = nodeParametersFull;
-	if (dataIsResolved !== true && returnNoneDisplayed === false) {
+	if (!dataIsResolved && !returnNoneDisplayed) {
 		nodeValuesDisplayCheck = getNodeParameters(
 			nodePropertiesArray,
 			nodeValues,
@@ -566,20 +580,20 @@ export function getNodeParameters(
 		const nodeProperties = nodePropertiesArray[parameterIndex];
 		if (
 			nodeValues[nodeProperties.name] === undefined &&
-			(returnDefaults === false || parentType === 'collection')
+			(!returnDefaults || parentType === 'collection')
 		) {
 			// The value is not defined so go to the next
 			continue;
 		}
 
 		if (
-			returnNoneDisplayed === false &&
+			!returnNoneDisplayed &&
 			!displayParameter(nodeValuesDisplayCheck, nodeProperties, nodeValuesRoot)
 		) {
-			if (returnNoneDisplayed === false) {
+			if (!returnNoneDisplayed) {
 				continue;
 			}
-			if (returnDefaults === false) {
+			if (!returnDefaults) {
 				continue;
 			}
 		}
@@ -593,7 +607,7 @@ export function getNodeParameters(
 				}
 			}
 
-			if (returnDefaults === true) {
+			if (returnDefaults) {
 				// Set also when it has the default value
 				if (['boolean', 'number', 'options'].includes(nodeProperties.type)) {
 					// Boolean, numbers and options are special as false and 0 are valid values
@@ -621,7 +635,7 @@ export function getNodeParameters(
 			}
 		}
 
-		if (onlySimpleTypes === true) {
+		if (onlySimpleTypes) {
 			// It is only supposed to resolve the simple types. So continue.
 			continue;
 		}
@@ -640,7 +654,7 @@ export function getNodeParameters(
 				// Return directly the values like they are
 				if (nodeValues[nodeProperties.name] !== undefined) {
 					nodeParameters[nodeProperties.name] = nodeValues[nodeProperties.name];
-				} else if (returnDefaults === true) {
+				} else if (returnDefaults) {
 					// Does not have values defined but defaults should be returned
 					if (Array.isArray(nodeProperties.default)) {
 						nodeParameters[nodeProperties.name] = JSON.parse(
@@ -653,29 +667,27 @@ export function getNodeParameters(
 					}
 				}
 				nodeParametersFull[nodeProperties.name] = nodeParameters[nodeProperties.name];
-			} else {
-				if (nodeValues[nodeProperties.name] !== undefined) {
-					// Has values defined so get them
-					const tempNodeParameters = getNodeParameters(
-						nodeProperties.options as INodeProperties[],
-						nodeValues[nodeProperties.name] as INodeParameters,
-						returnDefaults,
-						returnNoneDisplayed,
-						false,
-						false,
-						nodeValuesRoot,
-						nodeProperties.type,
-					);
+			} else if (nodeValues[nodeProperties.name] !== undefined) {
+				// Has values defined so get them
+				const tempNodeParameters = getNodeParameters(
+					nodeProperties.options as INodeProperties[],
+					nodeValues[nodeProperties.name] as INodeParameters,
+					returnDefaults,
+					returnNoneDisplayed,
+					false,
+					false,
+					nodeValuesRoot,
+					nodeProperties.type,
+				);
 
-					if (tempNodeParameters !== null) {
-						nodeParameters[nodeProperties.name] = tempNodeParameters;
-						nodeParametersFull[nodeProperties.name] = nodeParameters[nodeProperties.name];
-					}
-				} else if (returnDefaults === true) {
-					// Does not have values defined but defaults should be returned
-					nodeParameters[nodeProperties.name] = JSON.parse(JSON.stringify(nodeProperties.default));
+				if (tempNodeParameters !== null) {
+					nodeParameters[nodeProperties.name] = tempNodeParameters;
 					nodeParametersFull[nodeProperties.name] = nodeParameters[nodeProperties.name];
 				}
+			} else if (returnDefaults) {
+				// Does not have values defined but defaults should be returned
+				nodeParameters[nodeProperties.name] = JSON.parse(JSON.stringify(nodeProperties.default));
+				nodeParametersFull[nodeProperties.name] = nodeParameters[nodeProperties.name];
 			}
 		} else if (nodeProperties.type === 'fixedCollection') {
 			// Is fixedCollection
@@ -686,7 +698,7 @@ export function getNodeParameters(
 			let nodePropertyOptions: INodePropertyCollection | undefined;
 
 			let propertyValues = nodeValues[nodeProperties.name];
-			if (returnDefaults === true) {
+			if (returnDefaults) {
 				if (propertyValues === undefined) {
 					propertyValues = JSON.parse(JSON.stringify(nodeProperties.default));
 				}
@@ -705,7 +717,8 @@ export function getNodeParameters(
 					for (const nodeValue of (propertyValues as INodeParameters)[
 						itemName
 					] as INodeParameters[]) {
-						nodePropertyOptions = nodeProperties!.options!.find(
+						nodePropertyOptions = nodeProperties.options!.find(
+							// eslint-disable-next-line @typescript-eslint/no-shadow
 							(nodePropertyOptions) => nodePropertyOptions.name === itemName,
 						) as INodePropertyCollection;
 
@@ -715,10 +728,10 @@ export function getNodeParameters(
 							);
 						}
 
-						tempNodePropertiesArray = (nodePropertyOptions as INodePropertyCollection).values!;
+						tempNodePropertiesArray = nodePropertyOptions.values!;
 						tempValue = getNodeParameters(
 							tempNodePropertiesArray,
-							nodeValue as INodeParameters,
+							nodeValue,
 							returnDefaults,
 							returnNoneDisplayed,
 							false,
@@ -736,7 +749,8 @@ export function getNodeParameters(
 					tempNodeParameters = {};
 
 					// Get the options of the current item
-					const nodePropertyOptions = nodeProperties!.options!.find(
+					// eslint-disable-next-line @typescript-eslint/no-shadow
+					const nodePropertyOptions = nodeProperties.options!.find(
 						(data) => data.name === itemName,
 					);
 
@@ -763,10 +777,10 @@ export function getNodeParameters(
 				}
 			}
 
-			if (Object.keys(collectionValues).length !== 0 || returnDefaults === true) {
+			if (Object.keys(collectionValues).length !== 0 || returnDefaults) {
 				// Set only if value got found
 
-				if (returnDefaults === true) {
+				if (returnDefaults) {
 					// Set also when it has the default value
 					if (collectionValues === undefined) {
 						nodeParameters[nodeProperties.name] = JSON.parse(
@@ -803,6 +817,7 @@ export async function prepareOutputData(
 	// TODO: Check if node has output with that index
 	const returnData = [];
 
+	// eslint-disable-next-line no-plusplus
 	for (let i = 0; i < outputIndex; i++) {
 		returnData.push([]);
 	}
@@ -844,7 +859,7 @@ export function getNodeWebhooks(
 	for (const webhookDescription of nodeType.description.webhooks) {
 		let nodeWebhookPath = workflow.expression.getSimpleParameterValue(
 			node,
-			webhookDescription['path'],
+			webhookDescription.path,
 			mode,
 		);
 		if (nodeWebhookPath === undefined) {
@@ -866,7 +881,7 @@ export function getNodeWebhooks(
 
 		const isFullPath: boolean = workflow.expression.getSimpleParameterValue(
 			node,
-			webhookDescription['isFullPath'],
+			webhookDescription.isFullPath,
 			'internal',
 			false,
 		) as boolean;
@@ -874,7 +889,7 @@ export function getNodeWebhooks(
 
 		const httpMethod = workflow.expression.getSimpleParameterValue(
 			node,
-			webhookDescription['httpMethod'],
+			webhookDescription.httpMethod,
 			mode,
 			'GET',
 		);
@@ -927,7 +942,7 @@ export function getNodeWebhooksBasic(workflow: Workflow, node: INode): IWebhookD
 	for (const webhookDescription of nodeType.description.webhooks) {
 		let nodeWebhookPath = workflow.expression.getSimpleParameterValue(
 			node,
-			webhookDescription['path'],
+			webhookDescription.path,
 			mode,
 		);
 		if (nodeWebhookPath === undefined) {
@@ -949,7 +964,7 @@ export function getNodeWebhooksBasic(workflow: Workflow, node: INode): IWebhookD
 
 		const isFullPath: boolean = workflow.expression.getSimpleParameterValue(
 			node,
-			webhookDescription['isFullPath'],
+			webhookDescription.isFullPath,
 			mode,
 			false,
 		) as boolean;
@@ -958,7 +973,7 @@ export function getNodeWebhooksBasic(workflow: Workflow, node: INode): IWebhookD
 
 		const httpMethod = workflow.expression.getSimpleParameterValue(
 			node,
-			webhookDescription['httpMethod'],
+			webhookDescription.httpMethod,
 			mode,
 		);
 
@@ -970,7 +985,7 @@ export function getNodeWebhooksBasic(workflow: Workflow, node: INode): IWebhookD
 			continue;
 		}
 
-		//@ts-ignore
+		// @ts-ignore
 		returnData.push({
 			httpMethod: httpMethod.toString() as WebhookHttpMethod,
 			node: node.name,
@@ -1087,7 +1102,8 @@ export function nodeIssuesToString(issues: INodeIssues, node?: INode): string[] 
 
 	const objectProperties = ['parameters', 'credentials'];
 
-	let issueText: string, parameterName: string;
+	let issueText: string;
+	let parameterName: string;
 	for (const propertyName of objectProperties) {
 		if (issues[propertyName] !== undefined) {
 			for (parameterName of Object.keys(issues[propertyName] as object)) {
@@ -1156,7 +1172,7 @@ export function getParameterValueByPath(
 	parameterName: string,
 	path: string,
 ) {
-	return get(nodeValues, path ? path + '.' + parameterName : parameterName);
+	return get(nodeValues, path ? `${path}.${parameterName}` : parameterName);
 }
 
 /**
@@ -1181,13 +1197,14 @@ export function getParameterIssues(
 			value = getParameterValueByPath(nodeValues, nodeProperties.name, path);
 
 			if (
+				// eslint-disable-next-line @typescript-eslint/prefer-optional-chain
 				nodeProperties.typeOptions !== undefined &&
 				nodeProperties.typeOptions.multipleValues !== undefined
 			) {
 				// Multiple can be set so will be an array
 				if (Array.isArray(value)) {
 					for (const singleValue of value as NodeParameterValue[]) {
-						addToIssuesIfMissing(foundIssues, nodeProperties, singleValue as NodeParameterValue);
+						addToIssuesIfMissing(foundIssues, nodeProperties, singleValue);
 					}
 				}
 			} else {
@@ -1227,7 +1244,7 @@ export function getParameterIssues(
 			});
 		}
 	} else if (nodeProperties.type === 'fixedCollection') {
-		basePath = basePath ? `${basePath}.` : '' + nodeProperties.name + '.';
+		basePath = basePath ? `${basePath}.` : `${nodeProperties.name}.`;
 
 		let propertyOptions: INodePropertyCollection;
 		for (propertyOptions of nodeProperties.options as INodePropertyCollection[]) {
@@ -1238,16 +1255,18 @@ export function getParameterIssues(
 			}
 
 			if (
+				// eslint-disable-next-line @typescript-eslint/prefer-optional-chain
 				nodeProperties.typeOptions !== undefined &&
 				nodeProperties.typeOptions.multipleValues !== undefined
 			) {
 				// Multiple can be set so will be an array of objects
 				if (Array.isArray(value)) {
+					// eslint-disable-next-line no-plusplus
 					for (let i = 0; i < (value as INodeParameters[]).length; i++) {
 						for (const option of propertyOptions.values) {
 							checkChildNodeProperties.push({
 								basePath: `${basePath}${propertyOptions.name}[${i}]`,
-								data: option as INodeProperties,
+								data: option,
 							});
 						}
 					}
@@ -1257,7 +1276,7 @@ export function getParameterIssues(
 				for (const option of propertyOptions.values) {
 					checkChildNodeProperties.push({
 						basePath: basePath + propertyOptions.name,
-						data: option as INodeProperties,
+						data: option,
 					});
 				}
 			}
@@ -1270,11 +1289,7 @@ export function getParameterIssues(
 	let propertyIssues;
 
 	for (const optionData of checkChildNodeProperties) {
-		propertyIssues = getParameterIssues(
-			optionData.data as INodeProperties,
-			nodeValues,
-			optionData.basePath,
-		);
+		propertyIssues = getParameterIssues(optionData.data, nodeValues, optionData.basePath);
 		mergeIssues(foundIssues, propertyIssues);
 	}
 

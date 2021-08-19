@@ -1,5 +1,13 @@
-import { INode, IStatusCodeMessages, JsonObject } from '.';
+/* eslint-disable @typescript-eslint/no-shadow */
+/* eslint-disable @typescript-eslint/no-unsafe-call */
+/* eslint-disable no-param-reassign */
+/* eslint-disable @typescript-eslint/no-unsafe-member-access */
+/* eslint-disable @typescript-eslint/no-unsafe-return */
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
+// eslint-disable-next-line max-classes-per-file
 import { parseString } from 'xml2js';
+// eslint-disable-next-line import/no-cycle
+import { INode, IStatusCodeMessages, JsonObject } from '.';
 
 /**
  * Top-level properties where an error message can be found in an API response.
@@ -53,8 +61,11 @@ const ERROR_NESTING_PROPERTIES = ['error', 'err', 'response', 'body', 'data'];
  */
 abstract class NodeError extends Error {
 	description: string | null | undefined;
+
 	cause: Error | JsonObject;
+
 	node: INode;
+
 	timestamp: number;
 
 	constructor(node: INode, error: Error | JsonObject) {
@@ -102,13 +113,16 @@ abstract class NodeError extends Error {
 		potentialKeys: string[],
 		traversalKeys: string[] = [],
 	): string | null {
+		// eslint-disable-next-line no-restricted-syntax
 		for (const key of potentialKeys) {
 			if (error[key]) {
 				if (typeof error[key] === 'string') return error[key] as string;
+				// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
 				if (typeof error[key] === 'number') return error[key]!.toString();
 				if (Array.isArray(error[key])) {
 					// @ts-ignore
 					const resolvedErrors: string[] = error[key]
+						// @ts-ignore
 						.map((error) => {
 							if (typeof error === 'string') return error;
 							if (typeof error === 'number') return error.toString();
@@ -133,6 +147,7 @@ abstract class NodeError extends Error {
 			}
 		}
 
+		// eslint-disable-next-line no-restricted-syntax
 		for (const key of traversalKeys) {
 			if (this.isTraversableObject(error[key])) {
 				const property = this.findProperty(error[key] as JsonObject, potentialKeys, traversalKeys);
@@ -148,8 +163,8 @@ abstract class NodeError extends Error {
 	/**
 	 * Check if a value is an object with at least one key, i.e. it can be traversed.
 	 */
+	// eslint-disable-next-line class-methods-use-this, @typescript-eslint/no-explicit-any
 	protected isTraversableObject(value: any): value is JsonObject {
-		// tslint:disable-line:no-any
 		return (
 			value && typeof value === 'object' && !Array.isArray(value) && !!Object.keys(value).length
 		);
@@ -162,6 +177,7 @@ abstract class NodeError extends Error {
 		seen.add(obj);
 		Object.entries(obj).forEach(([key, value]) => {
 			if (this.isTraversableObject(value)) {
+				// eslint-disable-next-line @typescript-eslint/no-unused-expressions
 				seen.has(value)
 					? (obj[key] = { circularReference: true })
 					: this.removeCircularRefs(value, seen);
@@ -254,11 +270,13 @@ export class NodeApiError extends NodeError {
 	}
 
 	private setDescriptionFromXml(xml: string) {
+		// eslint-disable-next-line @typescript-eslint/naming-convention
 		parseString(xml, { explicitArray: false }, (_, result) => {
 			if (!result) return;
 
 			const topLevelKey = Object.keys(result)[0];
 			this.description = this.findProperty(
+				// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
 				result[topLevelKey],
 				ERROR_MESSAGE_PROPERTIES,
 				['Error'].concat(ERROR_NESTING_PROPERTIES),

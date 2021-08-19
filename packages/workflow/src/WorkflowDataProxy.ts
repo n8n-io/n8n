@@ -1,3 +1,12 @@
+/* eslint-disable @typescript-eslint/prefer-nullish-coalescing */
+/* eslint-disable @typescript-eslint/no-unused-vars */
+/* eslint-disable no-restricted-syntax */
+/* eslint-disable no-param-reassign */
+/* eslint-disable @typescript-eslint/no-this-alias */
+/* eslint-disable @typescript-eslint/no-unsafe-return */
+/* eslint-disable no-prototype-builtins */
+/* eslint-disable @typescript-eslint/no-non-null-assertion */
+// eslint-disable-next-line import/no-cycle
 import {
 	IDataObject,
 	INodeExecutionData,
@@ -8,18 +17,28 @@ import {
 	NodeParameterValue,
 	Workflow,
 	WorkflowExecuteMode,
-} from './';
+} from '.';
 
+// eslint-disable-next-line import/prefer-default-export
 export class WorkflowDataProxy {
 	private workflow: Workflow;
+
 	private runExecutionData: IRunExecutionData | null;
+
 	private defaultReturnRunIndex: number;
+
 	private runIndex: number;
+
 	private itemIndex: number;
+
 	private activeNodeName: string;
+
 	private connectionInputData: INodeExecutionData[];
+
 	private siblingParameters: INodeParameters;
+
 	private mode: WorkflowExecuteMode;
+
 	private selfData: IDataObject;
 
 	constructor(
@@ -70,6 +89,7 @@ export class WorkflowDataProxy {
 					return Reflect.ownKeys(target);
 				},
 				get(target, name, receiver) {
+					// eslint-disable-next-line no-param-reassign
 					name = name.toString();
 					const contextData = NodeHelpers.getContext(that.runExecutionData!, 'node', node);
 
@@ -93,6 +113,7 @@ export class WorkflowDataProxy {
 				ownKeys(target) {
 					return Reflect.ownKeys(target);
 				},
+				// eslint-disable-next-line @typescript-eslint/no-unused-vars
 				get(target, name, receiver) {
 					name = name.toString();
 					return that.selfData[name];
@@ -178,7 +199,7 @@ export class WorkflowDataProxy {
 		const that = this;
 
 		let executionData: INodeExecutionData[];
-		if (shortSyntax === false) {
+		if (!shortSyntax) {
 			// Long syntax got used to return data from node in path
 
 			if (that.runExecutionData === null) {
@@ -208,6 +229,7 @@ export class WorkflowDataProxy {
 			// Depends on how the nodes are connected.
 			// (example "IF" node. If node is connected to "true" or to "false" output)
 			if (outputIndex === undefined) {
+				// eslint-disable-next-line @typescript-eslint/no-shadow
 				const outputIndex = that.workflow.getNodeConnectionOutputIndex(
 					that.activeNodeName,
 					nodeName,
@@ -276,10 +298,11 @@ export class WorkflowDataProxy {
 							throw new Error(`No data found for item-index: "${that.itemIndex}"`);
 						}
 
-						if (['data', 'json'].includes(name as string)) {
+						if (['data', 'json'].includes(name)) {
 							// JSON-Data
 							return executionData[that.itemIndex].json;
-						} else if (name === 'binary') {
+						}
+						if (name === 'binary') {
 							// Binary-Data
 							const returnData: IDataObject = {};
 
@@ -295,6 +318,7 @@ export class WorkflowDataProxy {
 								for (const propertyName in binaryData) {
 									if (propertyName === 'data') {
 										// Skip the data property
+										// eslint-disable-next-line no-continue
 										continue;
 									}
 									(returnData[keyName] as IDataObject)[propertyName] = binaryData[propertyName];
@@ -331,6 +355,7 @@ export class WorkflowDataProxy {
 	 * @returns
 	 * @memberof WorkflowDataGetter
 	 */
+	// eslint-disable-next-line class-methods-use-this
 	private envGetter() {
 		return new Proxy(
 			{},
@@ -403,7 +428,7 @@ export class WorkflowDataProxy {
 			$evaluateExpression: (expression: string, itemIndex?: number) => {
 				itemIndex = itemIndex || that.itemIndex;
 				return that.workflow.expression.getParameterValue(
-					'=' + expression,
+					`=${expression}`,
 					that.runExecutionData,
 					that.runIndex,
 					itemIndex,
@@ -455,7 +480,8 @@ export class WorkflowDataProxy {
 				if (['$data', '$json'].includes(name as string)) {
 					// @ts-ignore
 					return that.nodeDataGetter(that.activeNodeName, true).json;
-				} else if (name === '$binary') {
+				}
+				if (name === '$binary') {
 					// @ts-ignore
 					return that.nodeDataGetter(that.activeNodeName, true).binary;
 				}

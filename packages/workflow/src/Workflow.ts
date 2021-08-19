@@ -1,3 +1,17 @@
+/* eslint-disable no-param-reassign */
+/* eslint-disable no-plusplus */
+/* eslint-disable @typescript-eslint/no-non-null-assertion */
+/* eslint-disable @typescript-eslint/explicit-module-boundary-types */
+/* eslint-disable @typescript-eslint/no-unsafe-return */
+/* eslint-disable @typescript-eslint/no-for-in-array */
+/* eslint-disable no-prototype-builtins */
+/* eslint-disable @typescript-eslint/prefer-nullish-coalescing */
+/* eslint-disable no-underscore-dangle */
+/* eslint-disable no-continue */
+/* eslint-disable no-restricted-syntax */
+/* eslint-disable import/prefer-default-export */
+/* eslint-disable import/no-cycle */
+// eslint-disable-next-line import/no-cycle
 import {
 	Expression,
 	IConnections,
@@ -25,19 +39,27 @@ import {
 	WebhookSetupMethodNames,
 	WorkflowActivateMode,
 	WorkflowExecuteMode,
-} from './';
+} from '.';
 
 import { IConnection, IDataObject, IObservableObject } from './Interfaces';
 
 export class Workflow {
 	id: string | undefined;
+
 	name: string | undefined;
+
 	nodes: INodes = {};
+
 	connectionsBySourceNode: IConnections;
+
 	connectionsByDestinationNode: IConnections;
+
 	nodeTypes: INodeTypes;
+
 	expression: Expression;
+
 	active: boolean;
+
 	settings: IWorkflowSettings;
 
 	// To save workflow specific static data like for example
@@ -109,6 +131,7 @@ export class Workflow {
 	 * @returns {IConnections}
 	 * @memberof Workflow
 	 */
+	// eslint-disable-next-line class-methods-use-this
 	__getConnectionsByDestination(connections: IConnections): IConnections {
 		const returnConnection: IConnections = {};
 
@@ -172,6 +195,7 @@ export class Workflow {
 				continue;
 			}
 
+			// eslint-disable-next-line @typescript-eslint/prefer-optional-chain
 			if (ignoreNodeTypes !== undefined && ignoreNodeTypes.includes(node.type)) {
 				continue;
 			}
@@ -228,7 +252,7 @@ export class Workflow {
 					typeUnknown: true,
 				};
 			} else {
-				nodeIssues = NodeHelpers.getNodeParametersIssues(nodeType.description.properties!, node);
+				nodeIssues = NodeHelpers.getNodeParametersIssues(nodeType.description.properties, node);
 			}
 
 			if (nodeIssues !== null) {
@@ -374,6 +398,7 @@ export class Workflow {
 					const currentNameEscaped = currentName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
 					parameterValue = parameterValue.replace(
+						// eslint-disable-next-line no-useless-escape
 						new RegExp(`(\\$node(\.|\\["|\\[\'))${currentNameEscaped}((\.|"\\]|\'\\]))`, 'g'),
 						`$1${newName}$3`,
 					);
@@ -384,7 +409,8 @@ export class Workflow {
 		}
 
 		if (Array.isArray(parameterValue)) {
-			const returnArray: any[] = []; // tslint:disable-line:no-any
+			// eslint-disable-next-line @typescript-eslint/no-explicit-any
+			const returnArray: any[] = [];
 
 			for (const currentValue of parameterValue) {
 				returnArray.push(this.renameNodeInExpressions(currentValue, currentName, newName));
@@ -393,9 +419,11 @@ export class Workflow {
 			return returnArray;
 		}
 
-		const returnData: any = {}; // tslint:disable-line:no-any
+		// eslint-disable-next-line @typescript-eslint/no-explicit-any
+		const returnData: any = {};
 
 		for (const parameterName of Object.keys(parameterValue || {})) {
+			// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
 			returnData[parameterName] = this.renameNodeInExpressions(
 				parameterValue![parameterName],
 				currentName,
@@ -438,11 +466,11 @@ export class Workflow {
 		}
 
 		// Change all destination connections
-		let sourceNode: string,
-			type: string,
-			sourceIndex: string,
-			connectionIndex: string,
-			connectionData: IConnection;
+		let sourceNode: string;
+		let type: string;
+		let sourceIndex: string;
+		let connectionIndex: string;
+		let connectionData: IConnection;
 		for (sourceNode of Object.keys(this.connectionsBySourceNode)) {
 			for (type of Object.keys(this.connectionsBySourceNode[sourceNode])) {
 				for (sourceIndex of Object.keys(this.connectionsBySourceNode[sourceNode][type])) {
@@ -500,12 +528,12 @@ export class Workflow {
 
 		checkedNodes = checkedNodes || [];
 
-		if (checkedNodes!.includes(nodeName)) {
+		if (checkedNodes.includes(nodeName)) {
 			// Node got checked already before
 			return currentHighest;
 		}
 
-		checkedNodes!.push(nodeName);
+		checkedNodes.push(nodeName);
 
 		const returnNodes: string[] = [];
 		let addNodes: string[];
@@ -521,6 +549,7 @@ export class Workflow {
 				continue;
 			}
 			connectionsByIndex = this.connectionsByDestinationNode[nodeName][type][connectionIndex];
+			// eslint-disable-next-line @typescript-eslint/no-loop-func
 			connectionsByIndex.forEach((connection) => {
 				if (checkedNodes!.includes(connection.node)) {
 					// Node got checked already before
@@ -613,12 +642,12 @@ export class Workflow {
 
 		checkedNodes = checkedNodes || [];
 
-		if (checkedNodes!.includes(nodeName)) {
+		if (checkedNodes.includes(nodeName)) {
 			// Node got checked already before
 			return [];
 		}
 
-		checkedNodes!.push(nodeName);
+		checkedNodes.push(nodeName);
 
 		const returnNodes: string[] = [];
 		let addNodes: string[];
@@ -701,12 +730,12 @@ export class Workflow {
 
 		checkedNodes = checkedNodes || [];
 
-		if (checkedNodes!.includes(nodeName)) {
+		if (checkedNodes.includes(nodeName)) {
 			// Node got checked already before
 			return undefined;
 		}
 
-		checkedNodes!.push(nodeName);
+		checkedNodes.push(nodeName);
 
 		let outputIndex: number | undefined;
 		for (const connectionsByIndex of this.connectionsByDestinationNode[nodeName][type]) {
@@ -715,8 +744,9 @@ export class Workflow {
 					return connection.index;
 				}
 
-				if (checkedNodes!.includes(connection.node)) {
+				if (checkedNodes.includes(connection.node)) {
 					// Node got checked already before
+					// eslint-disable-next-line consistent-return
 					return;
 				}
 
@@ -846,6 +876,7 @@ export class Workflow {
 			isTest,
 			webhookData,
 		);
+		// eslint-disable-next-line consistent-return
 		return nodeType.webhookMethods[webhookData.webhookDescription.name][method]!.call(thisArgs);
 	}
 
@@ -884,20 +915,20 @@ export class Workflow {
 		if (mode === 'manual') {
 			// In manual mode we do not just start the trigger function we also
 			// want to be able to get informed as soon as the first data got emitted
-			const triggerResponse = await nodeType.trigger!.call(triggerFunctions);
+			const triggerResponse = await nodeType.trigger.call(triggerFunctions);
 
 			// Add the manual trigger response which resolves when the first time data got emitted
 			triggerResponse!.manualTriggerResponse = new Promise((resolve) => {
+				// eslint-disable-next-line @typescript-eslint/no-shadow
 				triggerFunctions.emit = ((resolve) => (data: INodeExecutionData[][]) => {
 					resolve(data);
 				})(resolve);
 			});
 
 			return triggerResponse;
-		} else {
-			// In all other modes simply start the trigger
-			return nodeType.trigger!.call(triggerFunctions);
 		}
+		// In all other modes simply start the trigger
+		return nodeType.trigger.call(triggerFunctions);
 	}
 
 	/**
@@ -925,7 +956,7 @@ export class Workflow {
 			);
 		}
 
-		return nodeType.poll!.call(pollFunctions);
+		return nodeType.poll.call(pollFunctions);
 	}
 
 	/**
@@ -993,7 +1024,7 @@ export class Workflow {
 				if (inputData.main[0] === null) {
 					return undefined;
 				}
-				return [inputData.main[0] as INodeExecutionData[]];
+				return [inputData.main[0]];
 			}
 			return undefined;
 		}
@@ -1039,6 +1070,7 @@ export class Workflow {
 			const newInputData: ITaskDataConnections = {};
 			for (const inputName of Object.keys(inputData)) {
 				newInputData[inputName] = inputData[inputName].map((input) => {
+					// eslint-disable-next-line @typescript-eslint/prefer-optional-chain
 					return input && input.slice(0, 1);
 				});
 			}
@@ -1061,7 +1093,7 @@ export class Workflow {
 					mode,
 				);
 
-				returnPromises.push(nodeType.executeSingle!.call(thisArgs));
+				returnPromises.push(nodeType.executeSingle.call(thisArgs));
 			}
 
 			if (returnPromises.length === 0) {
@@ -1101,10 +1133,9 @@ export class Workflow {
 					'manual',
 				);
 				return nodeType.poll.call(thisArgs);
-			} else {
-				// In any other mode pass data through as it already contains the result of the poll
-				return inputData.main as INodeExecutionData[][];
 			}
+			// In any other mode pass data through as it already contains the result of the poll
+			return inputData.main as INodeExecutionData[][];
 		} else if (nodeType.trigger) {
 			if (mode === 'manual') {
 				// In manual mode start the trigger
@@ -1137,10 +1168,9 @@ export class Workflow {
 				}
 
 				return response;
-			} else {
-				// For trigger nodes in any mode except "manual" do we simply pass the data through
-				return inputData.main as INodeExecutionData[][];
 			}
+			// For trigger nodes in any mode except "manual" do we simply pass the data through
+			return inputData.main as INodeExecutionData[][];
 		} else if (nodeType.webhook) {
 			// For webhook nodes always simply pass the data through
 			return inputData.main as INodeExecutionData[][];

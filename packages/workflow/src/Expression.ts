@@ -1,3 +1,6 @@
+// @ts-ignore
+import * as tmpl from 'riot-tmpl';
+// eslint-disable-next-line import/no-cycle
 import {
 	INode,
 	INodeExecutionData,
@@ -7,18 +10,20 @@ import {
 	Workflow,
 	WorkflowDataProxy,
 	WorkflowExecuteMode,
-} from './';
+} from '.';
 
 // @ts-ignore
-import * as tmpl from 'riot-tmpl';
 
 // Set it to use double curly brackets instead of single ones
+// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
 tmpl.brackets.set('{{ }}');
 
 // Make sure that it does not always print an error when it could not resolve
 // a variable
+// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
 tmpl.tmpl.errorHandler = () => {};
 
+// eslint-disable-next-line import/prefer-default-export
 export class Expression {
 	workflow: Workflow;
 
@@ -34,6 +39,7 @@ export class Expression {
 	 * @returns {string}
 	 * @memberof Workflow
 	 */
+	// eslint-disable-next-line class-methods-use-this
 	convertObjectValueToString(value: object): string {
 		const typeName = Array.isArray(value) ? 'Array' : 'Object';
 		return `[${typeName}: ${JSON.stringify(value)}]`;
@@ -74,6 +80,7 @@ export class Expression {
 		// Is an expression
 
 		// Remove the equal sign
+		// eslint-disable-next-line no-param-reassign
 		parameterValue = parameterValue.substr(1);
 
 		// Generate a data proxy which allows to query workflow data
@@ -93,16 +100,19 @@ export class Expression {
 
 		// Execute the expression
 		try {
+			// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
 			const returnValue = tmpl.tmpl(parameterValue, data);
 			if (typeof returnValue === 'function') {
 				throw new Error('Expression resolved to a function. Please add "()"');
 			} else if (returnValue !== null && typeof returnValue === 'object') {
-				if (returnObjectAsString === true) {
+				if (returnObjectAsString) {
 					return this.convertObjectValueToString(returnValue);
 				}
 			}
+			// eslint-disable-next-line @typescript-eslint/no-unsafe-return
 			return returnValue;
 		} catch (e) {
+			// eslint-disable-next-line @typescript-eslint/restrict-template-expressions, @typescript-eslint/no-unsafe-member-access
 			throw new Error(`Expression is not valid: ${e.message}`);
 		}
 	}
@@ -261,20 +271,19 @@ export class Expression {
 					returnObjectAsString,
 					selfData,
 				);
-			} else {
-				return this.resolveSimpleParameterValue(
-					value as NodeParameterValue,
-					siblingParameters,
-					runExecutionData,
-					runIndex,
-					itemIndex,
-					activeNodeName,
-					connectionInputData,
-					mode,
-					returnObjectAsString,
-					selfData,
-				);
 			}
+			return this.resolveSimpleParameterValue(
+				value as NodeParameterValue,
+				siblingParameters,
+				runExecutionData,
+				runIndex,
+				itemIndex,
+				activeNodeName,
+				connectionInputData,
+				mode,
+				returnObjectAsString,
+				selfData,
+			);
 		};
 
 		// Check if it value is a simple one that we can get it resolved directly
@@ -298,31 +307,33 @@ export class Expression {
 		if (Array.isArray(parameterValue)) {
 			// Data is an array
 			const returnData = [];
+			// eslint-disable-next-line no-restricted-syntax
 			for (const item of parameterValue) {
 				returnData.push(resolveParameterValue(item, {}));
 			}
 
-			if (returnObjectAsString === true && typeof returnData === 'object') {
+			if (returnObjectAsString && typeof returnData === 'object') {
 				return this.convertObjectValueToString(returnData);
 			}
 
 			return returnData as NodeParameterValue[] | INodeParameters[];
-		} else if (parameterValue === null || parameterValue === undefined) {
-			return parameterValue;
-		} else {
-			// Data is an object
-			const returnData: INodeParameters = {};
-			for (const key of Object.keys(parameterValue)) {
-				returnData[key] = resolveParameterValue(
-					(parameterValue as INodeParameters)[key],
-					parameterValue as INodeParameters,
-				);
-			}
-
-			if (returnObjectAsString === true && typeof returnData === 'object') {
-				return this.convertObjectValueToString(returnData);
-			}
-			return returnData;
 		}
+		if (parameterValue === null || parameterValue === undefined) {
+			return parameterValue;
+		}
+		// Data is an object
+		const returnData: INodeParameters = {};
+		// eslint-disable-next-line no-restricted-syntax
+		for (const key of Object.keys(parameterValue)) {
+			returnData[key] = resolveParameterValue(
+				(parameterValue as INodeParameters)[key],
+				parameterValue as INodeParameters,
+			);
+		}
+
+		if (returnObjectAsString && typeof returnData === 'object') {
+			return this.convertObjectValueToString(returnData);
+		}
+		return returnData;
 	}
 }

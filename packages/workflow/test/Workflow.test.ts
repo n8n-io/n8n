@@ -1020,6 +1020,7 @@ describe('Workflow', () => {
 						name: 'Node3',
 						// @ts-ignore
 						parameters: testData.input.hasOwnProperty('Node3')
+							// @ts-ignore
 							? testData.input.Node3.parameters
 							: {},
 						type: 'test.set',
@@ -1030,6 +1031,7 @@ describe('Workflow', () => {
 						name: 'Node 4 with spaces',
 						// @ts-ignore
 						parameters: testData.input.hasOwnProperty('Node4')
+							// @ts-ignore
 							? testData.input.Node4.parameters
 							: {},
 						type: 'test.set',

@@ -1,8 +1,13 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
+/* eslint-disable import/no-extraneous-dependencies */
+/* eslint-disable import/no-cycle */
+// eslint-disable-next-line import/no-extraneous-dependencies
+// eslint-disable-next-line max-classes-per-file
+import * as express from 'express';
 import { Workflow } from './Workflow';
 import { WorkflowHooks } from './WorkflowHooks';
 import { WorkflowOperationError } from './WorkflowErrors';
 import { NodeApiError, NodeOperationError } from './NodeErrors';
-import * as express from 'express';
 
 export type IAllExecuteFunctions =
 	| IExecuteFunctions
@@ -50,8 +55,11 @@ export interface IGetCredentials {
 
 export abstract class ICredentials {
 	name: string;
+
 	type: string;
+
 	data: string | undefined;
+
 	nodesAccess: ICredentialNodeAccess[];
 
 	constructor(name: string, type: string, nodesAccess: ICredentialNodeAccess[], data?: string) {
@@ -62,10 +70,15 @@ export abstract class ICredentials {
 	}
 
 	abstract getData(encryptionKey: string, nodeType?: string): ICredentialDataDecryptedObject;
+
 	abstract getDataKey(key: string, encryptionKey: string, nodeType?: string): CredentialInformation;
+
 	abstract getDataToSave(): ICredentialsEncrypted;
+
 	abstract hasNodeAccess(nodeType: string): boolean;
+
 	abstract setData(data: ICredentialDataDecryptedObject, encryptionKey: string): void;
+
 	abstract setDataKey(key: string, data: CredentialInformation, encryptionKey: string): void;
 }
 
@@ -102,6 +115,7 @@ export interface ICredentialsExpressionResolveValues {
 
 export abstract class ICredentialsHelper {
 	encryptionKey: string;
+
 	workflowCredentials: IWorkflowCredentials;
 
 	constructor(workflowCredentials: IWorkflowCredentials, encryptionKey: string) {
@@ -110,6 +124,7 @@ export abstract class ICredentialsHelper {
 	}
 
 	abstract getCredentials(name: string, type: string): ICredentials;
+
 	abstract getDecrypted(
 		name: string,
 		type: string,
@@ -117,6 +132,7 @@ export abstract class ICredentialsHelper {
 		raw?: boolean,
 		expressionResolveValues?: ICredentialsExpressionResolveValues,
 	): ICredentialDataDecryptedObject;
+
 	abstract updateCredentials(
 		name: string,
 		type: string,
@@ -252,7 +268,7 @@ export interface IExecuteData {
 }
 
 export type IContextObject = {
-	[key: string]: any; // tslint:disable-line:no-any
+	[key: string]: any;
 };
 
 export interface IExecuteContextData {
@@ -269,7 +285,7 @@ export interface IExecuteFunctions {
 	executeWorkflow(
 		workflowInfo: IExecuteWorkflowInfo,
 		inputData?: INodeExecutionData[],
-	): Promise<any>; // tslint:disable-line:no-any
+	): Promise<any>;
 	getContext(type: string): IContextObject;
 	getCredentials(type: string, itemIndex?: number): ICredentialDataDecryptedObject | undefined;
 	getInputData(inputIndex?: number, inputName?: string): INodeExecutionData[];
@@ -279,7 +295,7 @@ export interface IExecuteFunctions {
 		parameterName: string,
 		itemIndex: number,
 		fallbackValue?: any,
-	): NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[] | object; //tslint:disable-line:no-any
+	): NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[] | object;
 	getWorkflowDataProxy(itemIndex: number): IWorkflowDataProxyData;
 	getWorkflowStaticData(type: string): IDataObject;
 	getRestApiUrl(): string;
@@ -289,9 +305,9 @@ export interface IExecuteFunctions {
 		outputData: INodeExecutionData[],
 		outputIndex?: number,
 	): Promise<INodeExecutionData[][]>;
-	sendMessageToUI(message: any): void; // tslint:disable-line:no-any
+	sendMessageToUI(message: any): void;
 	helpers: {
-		[key: string]: (...args: any[]) => any; //tslint:disable-line:no-any
+		[key: string]: (...args: any[]) => any;
 	};
 }
 
@@ -309,14 +325,14 @@ export interface IExecuteSingleFunctions {
 	getNodeParameter(
 		parameterName: string,
 		fallbackValue?: any,
-	): NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[] | object; //tslint:disable-line:no-any
+	): NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[] | object;
 	getRestApiUrl(): string;
 	getTimezone(): string;
 	getWorkflow(): IWorkflowMetadata;
 	getWorkflowDataProxy(): IWorkflowDataProxyData;
 	getWorkflowStaticData(type: string): IDataObject;
 	helpers: {
-		[key: string]: (...args: any[]) => any; //tslint:disable-line:no-any
+		[key: string]: (...args: any[]) => any;
 	};
 }
 
@@ -331,7 +347,7 @@ export interface ILoadOptionsFunctions {
 	getNodeParameter(
 		parameterName: string,
 		fallbackValue?: any,
-	): NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[] | object; //tslint:disable-line:no-any
+	): NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[] | object;
 	getCurrentNodeParameter(
 		parameterName: string,
 	):
@@ -345,7 +361,7 @@ export interface ILoadOptionsFunctions {
 	getTimezone(): string;
 	getRestApiUrl(): string;
 	helpers: {
-		[key: string]: ((...args: any[]) => any) | undefined; //tslint:disable-line:no-any
+		[key: string]: ((...args: any[]) => any) | undefined;
 	};
 }
 
@@ -358,14 +374,14 @@ export interface IHookFunctions {
 	getNodeParameter(
 		parameterName: string,
 		fallbackValue?: any,
-	): NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[] | object; //tslint:disable-line:no-any
+	): NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[] | object;
 	getTimezone(): string;
 	getWebhookDescription(name: string): IWebhookDescription | undefined;
 	getWebhookName(): string;
 	getWorkflow(): IWorkflowMetadata;
 	getWorkflowStaticData(type: string): IDataObject;
 	helpers: {
-		[key: string]: (...args: any[]) => any; //tslint:disable-line:no-any
+		[key: string]: (...args: any[]) => any;
 	};
 }
 
@@ -378,13 +394,13 @@ export interface IPollFunctions {
 	getNodeParameter(
 		parameterName: string,
 		fallbackValue?: any,
-	): NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[] | object; //tslint:disable-line:no-any
+	): NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[] | object;
 	getRestApiUrl(): string;
 	getTimezone(): string;
 	getWorkflow(): IWorkflowMetadata;
 	getWorkflowStaticData(type: string): IDataObject;
 	helpers: {
-		[key: string]: (...args: any[]) => any; //tslint:disable-line:no-any
+		[key: string]: (...args: any[]) => any;
 	};
 }
 
@@ -397,13 +413,13 @@ export interface ITriggerFunctions {
 	getNodeParameter(
 		parameterName: string,
 		fallbackValue?: any,
-	): NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[] | object; //tslint:disable-line:no-any
+	): NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[] | object;
 	getRestApiUrl(): string;
 	getTimezone(): string;
 	getWorkflow(): IWorkflowMetadata;
 	getWorkflowStaticData(type: string): IDataObject;
 	helpers: {
-		[key: string]: (...args: any[]) => any; //tslint:disable-line:no-any
+		[key: string]: (...args: any[]) => any;
 	};
 }
 
@@ -416,7 +432,7 @@ export interface IWebhookFunctions {
 	getNodeParameter(
 		parameterName: string,
 		fallbackValue?: any,
-	): NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[] | object; //tslint:disable-line:no-any
+	): NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[] | object;
 	getNodeWebhookUrl: (name: string) => string | undefined;
 	getParamsData(): object;
 	getQueryData(): object;
@@ -431,7 +447,7 @@ export interface IWebhookFunctions {
 		outputIndex?: number,
 	): Promise<INodeExecutionData[][]>;
 	helpers: {
-		[key: string]: (...args: any[]) => any; //tslint:disable-line:no-any
+		[key: string]: (...args: any[]) => any;
 	};
 }
 
@@ -463,7 +479,7 @@ export interface INodes {
 }
 
 export interface IObservableObject {
-	[key: string]: any; // tslint:disable-line:no-any
+	[key: string]: any;
 	__dataChanged: boolean;
 }
 
@@ -697,17 +713,17 @@ export interface IWebhookDescription {
 }
 
 export interface IWorkflowDataProxyData {
-	$binary: any; // tslint:disable-line:no-any
-	$data: any; // tslint:disable-line:no-any
-	$env: any; // tslint:disable-line:no-any
-	$evaluateExpression: any; // tslint:disable-line:no-any
-	$item: any; // tslint:disable-line:no-any
-	$items: any; // tslint:disable-line:no-any
-	$json: any; // tslint:disable-line:no-any
-	$node: any; // tslint:disable-line:no-any
-	$parameter: any; // tslint:disable-line:no-any
-	$position: any; // tslint:disable-line:no-any
-	$workflow: any; // tslint:disable-line:no-any
+	$binary: any;
+	$data: any;
+	$env: any;
+	$evaluateExpression: any;
+	$item: any;
+	$items: any;
+	$json: any;
+	$node: any;
+	$parameter: any;
+	$position: any;
+	$workflow: any;
 }
 
 export interface IWorkflowMetadata {
@@ -720,7 +736,7 @@ export type WebhookHttpMethod = 'GET' | 'POST' | 'HEAD' | 'OPTIONS';
 
 export interface IWebhookResponseData {
 	workflowData?: INodeExecutionData[][];
-	webhookResponse?: any; // tslint:disable-line:no-any
+	webhookResponse?: any;
 	noWebhookResponse?: boolean;
 }
 
@@ -800,7 +816,7 @@ export interface IWaitingForExecution {
 }
 
 export interface IWorkflowBase {
-	id?: number | string | any; // tslint:disable-line:no-any
+	id?: number | string | any;
 	name: string;
 	active: boolean;
 	createdAt: Date;
@@ -820,7 +836,7 @@ export interface IWorkflowCredentials {
 }
 
 export interface IWorkflowExecuteHooks {
-	[key: string]: Array<(...args: any[]) => Promise<void>> | undefined; // tslint:disable-line:no-any
+	[key: string]: Array<(...args: any[]) => Promise<void>> | undefined;
 	nodeExecuteAfter?: Array<
 		(nodeName: string, data: ITaskData, executionData: IRunExecutionData) => Promise<void>
 	>;
@@ -840,13 +856,13 @@ export interface IWorkflowExecuteAdditionalData {
 		parentExecutionId?: string,
 		loadedWorkflowData?: IWorkflowBase,
 		loadedRunData?: any,
-	) => Promise<any>; // tslint:disable-line:no-any
+	) => Promise<any>;
 	// hooks?: IWorkflowExecuteHooks;
 	hooks?: WorkflowHooks;
 	httpResponse?: express.Response;
 	httpRequest?: express.Request;
 	restApiUrl: string;
-	sendMessageToUI?: (source: string, message: any) => void; // tslint:disable-line:no-any
+	sendMessageToUI?: (source: string, message: any) => void;
 	timezone: string;
 	webhookBaseUrl: string;
 	webhookTestBaseUrl: string;
