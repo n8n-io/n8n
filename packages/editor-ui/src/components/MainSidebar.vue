@@ -490,6 +490,7 @@ export default mixins(
 		height: 35px;
 		line-height: 35px;
 		color: $--custom-dialog-text-color;
+		--menu-item-hover-fill: #fff0ef;
 
 		.item-title {
 			position: absolute;
@@ -509,6 +510,7 @@ export default mixins(
 	.el-menu {
 		border: none;
 		font-size: 14px;
+		--menu-item-hover-fill: #fff0ef;
 
 		.el-menu--collapse {
 			width: 75px;
@@ -563,6 +565,7 @@ export default mixins(
 		&.logo-item {
 			background-color: $--color-primary !important;
 			height: $--header-height;
+			line-height: $--header-height;
 
 			.icon {
 				position: relative;

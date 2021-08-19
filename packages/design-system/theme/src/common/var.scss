@@ -924,7 +924,7 @@ $menu-item-font-size: $font-size-base;
 $menu-item-font-color: var(--menu-font-color, var(--color-text-dark));
 /// color||Color|0
 $menu-background-color: var(--menu-background-color, var(--color-background-xlight));
-$menu-item-hover-fill: transparent;
+$menu-item-hover-fill: var(--menu-item-hover-fill, transparent);
 $menu-item-hover-font-color: var(--menu-item-hover-font-color, var(--color-text-dark));
 $menu-item-active-font-color: var(--menu-item-active-font-color, var(--color-primary));
 $menu-item-active-background-color: var(--menu-item-active-background-color, transparent);
