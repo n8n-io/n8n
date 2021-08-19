@@ -3,6 +3,7 @@ import { Command, flags } from '@oclif/command';
 
 import { buildFiles, IBuildOptions } from '../src';
 
+// eslint-disable-next-line import/prefer-default-export
 export class Build extends Command {
 	static description = 'Builds credentials and nodes and copies it to n8n custom extension folder';
 
@@ -24,7 +25,9 @@ export class Build extends Command {
 		}),
 	};
 
+	// eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
 	async run() {
+		// eslint-disable-next-line @typescript-eslint/no-shadow
 		const { flags } = this.parse(Build);
 
 		this.log('\nBuild credentials and nodes');
@@ -44,10 +47,11 @@ export class Build extends Command {
 
 			this.log(`The nodes got build and saved into the following folder:\n${outputDirectory}`);
 		} catch (error) {
+			// eslint-disable-next-line @typescript-eslint/restrict-template-expressions, @typescript-eslint/no-unsafe-member-access
 			this.log(`\nGOT ERROR: "${error.message}"`);
 			this.log('====================================');
+			// eslint-disable-next-line @typescript-eslint/restrict-template-expressions, @typescript-eslint/no-unsafe-member-access
 			this.log(error.stack);
-			return;
 		}
 	}
 }

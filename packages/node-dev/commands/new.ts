@@ -1,19 +1,26 @@
+/* eslint-disable @typescript-eslint/naming-convention */
+/* eslint-disable @typescript-eslint/no-unsafe-call */
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import * as changeCase from 'change-case';
 import * as fs from 'fs';
 import * as inquirer from 'inquirer';
 import { Command } from '@oclif/command';
 import { join } from 'path';
 
-const { promisify } = require('util');
-const fsAccess = promisify(fs.access);
-
 import { createTemplate } from '../src';
 
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const { promisify } = require('util');
+
+const fsAccess = promisify(fs.access);
+
+// eslint-disable-next-line import/prefer-default-export
 export class New extends Command {
 	static description = 'Create new credentials/node';
 
 	static examples = [`$ n8n-node-dev new`];
 
+	// eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
 	async run() {
 		try {
 			this.log('\nCreate new credentials/node');
@@ -78,7 +85,7 @@ export class New extends Command {
 				},
 			];
 
-			if (getDescription === true) {
+			if (getDescription) {
 				// Get also a node description
 				additionalQuestions.push({
 					name: 'description',
@@ -98,6 +105,7 @@ export class New extends Command {
 			// node file
 			const destinationFilePath = join(
 				process.cwd(),
+				// eslint-disable-next-line @typescript-eslint/restrict-template-expressions, @typescript-eslint/no-unsafe-member-access
 				`${changeCase.pascalCase(nodeName)}.${typeAnswers.type.toLowerCase()}.ts`,
 			);
 
@@ -142,12 +150,13 @@ export class New extends Command {
 			this.log('\nExecution was successfull:');
 			this.log('====================================');
 
-			this.log('Node got created: ' + destinationFilePath);
+			this.log(`Node got created: ${destinationFilePath}`);
 		} catch (error) {
+			// eslint-disable-next-line @typescript-eslint/restrict-template-expressions, @typescript-eslint/no-unsafe-member-access
 			this.log(`\nGOT ERROR: "${error.message}"`);
 			this.log('====================================');
+			// eslint-disable-next-line @typescript-eslint/restrict-template-expressions, @typescript-eslint/no-unsafe-member-access
 			this.log(error.stack);
-			return;
 		}
 	}
 }

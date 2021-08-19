@@ -1,7 +1,10 @@
 import * as fs from 'fs';
 import { replaceInFile, ReplaceInFileConfig } from 'replace-in-file';
 
+// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-var-requires
 const { promisify } = require('util');
+
+// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call
 const fsCopyFile = promisify(fs.copyFile);
 
 /**
@@ -13,12 +16,14 @@ const fsCopyFile = promisify(fs.copyFile);
  * @param {object} replaceValues The values to replace in the template file
  * @returns {Promise<void>}
  */
+// eslint-disable-next-line import/prefer-default-export
 export async function createTemplate(
 	sourceFilePath: string,
 	destinationFilePath: string,
 	replaceValues: object,
 ): Promise<void> {
 	// Copy the file to then replace the values in it
+	// eslint-disable-next-line @typescript-eslint/no-unsafe-call
 	await fsCopyFile(sourceFilePath, destinationFilePath);
 
 	// Replace the variables in the template file

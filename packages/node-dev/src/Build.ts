@@ -1,5 +1,5 @@
+/* eslint-disable @typescript-eslint/no-unsafe-member-access */
 import { ChildProcess, spawn } from 'child_process';
-const copyfiles = require('copyfiles');
 
 import { readFile as fsReadFile } from 'fs/promises';
 import { write as fsWrite } from 'fs';
@@ -8,12 +8,16 @@ import { join } from 'path';
 import { file } from 'tmp-promise';
 import { promisify } from 'util';
 
-const fsReadFileAsync = promisify(fsReadFile);
-const fsWriteAsync = promisify(fsWrite);
-
+import { UserSettings } from 'n8n-core';
+// eslint-disable-next-line import/no-cycle
 import { IBuildOptions } from '.';
 
-import { UserSettings } from 'n8n-core';
+// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-var-requires
+const copyfiles = require('copyfiles');
+
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+const fsReadFileAsync = promisify(fsReadFile);
+const fsWriteAsync = promisify(fsWrite);
 
 /**
  * Create a custom tsconfig file as tsc currently has no way to define a base
@@ -23,22 +27,26 @@ import { UserSettings } from 'n8n-core';
  * @export
  * @returns
  */
+// eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
 export async function createCustomTsconfig() {
 	// Get path to simple tsconfig file which should be used for build
 	const tsconfigPath = join(__dirname, '../../src/tsconfig-build.json');
 
 	// Read the tsconfi file
-	const tsConfigString = (await fsReadFile(tsconfigPath, { encoding: 'utf8' })) as string;
+	const tsConfigString = await fsReadFile(tsconfigPath, { encoding: 'utf8' });
+	// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 	const tsConfig = JSON.parse(tsConfigString);
 
 	// Set absolute include paths
 	const newIncludeFiles = [];
+	// eslint-disable-next-line no-restricted-syntax
 	for (const includeFile of tsConfig.include) {
 		newIncludeFiles.push(join(process.cwd(), includeFile));
 	}
 	tsConfig.include = newIncludeFiles;
 
 	// Write new custom tsconfig file
+	// eslint-disable-next-line @typescript-eslint/unbound-method
 	const { fd, path, cleanup } = await file({ dir: process.cwd() });
 	await fsWriteAsync(fd, Buffer.from(JSON.stringify(tsConfig, null, 2), 'utf8'));
 
@@ -56,6 +64,7 @@ export async function createCustomTsconfig() {
  * @returns {Promise<string>}
  */
 export async function buildFiles(options?: IBuildOptions): Promise<string> {
+	// eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing, no-param-reassign
 	options = options || {};
 
 	let typescriptPath;
@@ -71,6 +80,7 @@ export async function buildFiles(options?: IBuildOptions): Promise<string> {
 	const tsconfigData = await createCustomTsconfig();
 
 	const outputDirectory =
+		// eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
 		options.destinationFolder || UserSettings.getUserN8nFolderCustomExtensionPath();
 
 	// Supply a node base path so that it finds n8n-core and n8n-workflow
@@ -91,9 +101,9 @@ export async function buildFiles(options?: IBuildOptions): Promise<string> {
 
 		// Forward the output of the child process to the main one
 		// that the user can see what is happening
-		//@ts-ignore
+		// @ts-ignore
 		buildProcess.stdout.pipe(process.stdout);
-		//@ts-ignore
+		// @ts-ignore
 		buildProcess.stderr.pipe(process.stderr);
 
 		// Make sure that the child process gets also always terminated
@@ -102,26 +112,33 @@ export async function buildFiles(options?: IBuildOptions): Promise<string> {
 			buildProcess.kill();
 		});
 	} catch (error) {
+		// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 		let errorMessage = error.message;
 
 		if (error.stdout !== undefined) {
+			// eslint-disable-next-line @typescript-eslint/restrict-template-expressions
 			errorMessage = `${errorMessage}\nGot following output:\n${error.stdout}`;
 		}
 
 		// Remove the tmp tsconfig file
+		// eslint-disable-next-line @typescript-eslint/no-floating-promises
 		tsconfigData.cleanup();
 
 		throw new Error(errorMessage);
 	}
 
+	// eslint-disable-next-line @typescript-eslint/no-unused-vars
 	return new Promise((resolve, reject) => {
 		['*.png', '*.node.json'].forEach((filenamePattern) => {
+			// eslint-disable-next-line @typescript-eslint/no-unsafe-call
 			copyfiles([join(process.cwd(), `./${filenamePattern}`), outputDirectory], { up: true }, () =>
 				resolve(outputDirectory),
 			);
 		});
+		// eslint-disable-next-line @typescript-eslint/no-unused-vars
 		buildProcess.on('exit', (code) => {
 			// Remove the tmp tsconfig file
+			// eslint-disable-next-line @typescript-eslint/no-floating-promises
 			tsconfigData.cleanup();
 		});
 	});
