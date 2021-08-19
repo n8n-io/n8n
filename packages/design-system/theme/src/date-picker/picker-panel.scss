@@ -98,6 +98,7 @@
 	@include mixins.e(link-btn) {
 		@include button.button-outline();
 		@include button.button-small();
+		@include button.button-round();
 
 		vertical-align: middle;
 		margin-left: var(--spacing-2xs);
