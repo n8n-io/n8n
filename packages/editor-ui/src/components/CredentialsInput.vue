@@ -28,7 +28,7 @@
 				<n8n-button title="Connect OAuth Credentials" label="Connect my account"  :disabled="true" size="large" />
 			</span>
 			<span v-else-if="isOAuthConnected">
-				<n8n-button theme="success" type="light" label="Connected" size="large" />
+				<el-tag type="success"><font-awesome-icon icon="check-circle" :class="$style.successIcon" /><span>Account connected</span></el-tag>
 				<n8n-button title="Reconnect OAuth Credentials" @click.stop="oAuthCredentialAuthorize()" size="large" label="Reconnect" type="text" />
 			</span>
 			<span v-else>
@@ -200,6 +200,10 @@ export default mixins(
 	right: 0;
 	padding: var(--spacing-xs);
 	background-color: var(--color-background-light);
+}
+
+.successIcon {
+	margin-right: var(--spacing-xs);
 }
 
 .googleIcon {
