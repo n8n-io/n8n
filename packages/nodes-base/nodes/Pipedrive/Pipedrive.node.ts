@@ -1861,7 +1861,8 @@ export class Pipedrive implements INodeType {
 				},
 				default: 100,
 				description: 'How many results to return.',
-			}, {
+			},
+			{
 				displayName: 'Additional Fields',
 				name: 'additionalFields',
 				type: 'collection',
@@ -3479,7 +3480,7 @@ export class Pipedrive implements INodeType {
 				default: {},
 				options: [
 					{
-						displayName: 'Filter ID',
+						displayName: 'Predefined Filter',
 						name: 'filterId',
 						type: 'options',
 						typeOptions: {
@@ -3656,9 +3657,12 @@ export class Pipedrive implements INodeType {
 						description: 'Use the Activity due date where you wish to stop fetching Activities from. Insert due date in YYYY-MM-DD format.',
 					},
 					{
-						displayName: 'Filter ID ',
+						displayName: 'Predefined Filter',
 						name: 'filterId',
-						type: 'string',
+						type: 'options',
+						typeOptions: {
+							loadOptionsMethod: 'getFilters',
+						},
 						default: '',
 						description: 'The ID of the Filter to use (will narrow down results if used together with user_id parameter)',
 					},
@@ -3691,6 +3695,87 @@ export class Pipedrive implements INodeType {
 					},
 				],
 			},
+			// ----------------------------------
+			//         deal: getAll
+			// ----------------------------------
+			{
+				displayName: 'Filters',
+				name: 'filters',
+				type: 'collection',
+				placeholder: 'Add Filter',
+				displayOptions: {
+					show: {
+						operation: [
+							'getAll',
+						],
+						resource: [
+							'deal',
+						],
+					},
+				},
+				default: {},
+				options: [
+					{
+						displayName: 'Predefined Filter',
+						name: 'filter_id',
+						type: 'options',
+						typeOptions: {
+							loadOptionsMethod: 'getFilters',
+						},
+						default: '',
+						description: 'Predefined filter to apply to the deals to retrieve',
+					},
+					{
+						displayName: 'Stage ID',
+						name: 'stage_id',
+						type: 'options',
+						typeOptions: {
+							loadOptionsMethod: 'getStageIds',
+						},
+						default: '',
+						description: 'ID of the stage to filter deals by',
+					},
+					{
+						displayName: 'Status',
+						name: 'status',
+						type: 'options',
+						options: [
+							{
+								name: 'All Not Deleted',
+								value: 'all_not_deleted',
+							},
+							{
+								name: 'Deleted',
+								value: 'deleted',
+							},
+							{
+								name: 'Lost',
+								value: 'lost',
+							},
+							{
+								name: 'Open',
+								value: 'open',
+							},
+							{
+								name: 'Won',
+								value: 'won',
+							},
+						],
+						default: 'all_not_deleted',
+						description: 'Status to filter deals by. Defaults to <code>all_not_deleted</code>',
+					},
+					{
+						displayName: 'User ID',
+						name: 'user_id',
+						type: 'options',
+						typeOptions: {
+							loadOptionsMethod: 'getUserIds',
+						},
+						default: '',
+						description: 'ID of the user to filter deals by',
+					},
+				],
+			},
 		],
 	};
 
@@ -3705,6 +3790,35 @@ export class Pipedrive implements INodeType {
 					returnData.push({
 						name: activity.name,
 						value: activity.key_string,
+					});
+				}
+
+				returnData.sort((a, b) => {
+					const aName = a.name.toLowerCase();
+					const bName = b.name.toLowerCase();
+					if (aName < bName) { return -1; }
+					if (aName > bName) { return 1; }
+					return 0;
+				});
+
+				return returnData;
+			},
+			// Get all Filters to display them to user so that he can
+			// select them easily
+			async getFilters(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const returnData: INodePropertyOptions[] = [];
+				const resource = this.getNodeParameter('resource') as string;
+				const type = {
+					'deal': 'deals',
+					'activity': 'activity',
+					'person': 'people',
+				} as { [id: string]: string };
+
+				const { data } = await pipedriveApiRequest.call(this, 'GET', '/filters', {}, { type: type[resource] as string });
+				for (const filter of data) {
+					returnData.push({
+						name: filter.name,
+						value: filter.id,
 					});
 				}
 
@@ -3872,30 +3986,6 @@ export class Pipedrive implements INodeType {
 							value: field.key,
 						});
 					}
-				}
-
-				returnData.sort((a, b) => {
-					const aName = a.name.toLowerCase();
-					const bName = b.name.toLowerCase();
-					if (aName < bName) { return -1; }
-					if (aName > bName) { return 1; }
-					return 0;
-				});
-
-				return returnData;
-			},
-			// Get all the filters to display them to user so that he can
-			// select them easily
-			async getFilters(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-				const returnData: INodePropertyOptions[] = [];
-				const { data } = await pipedriveApiRequest.call(this, 'GET', '/filters', {}, { type: 'people' });
-				for (const filter of data) {
-					const filterName = filter.name;
-					const filterId = filter.id;
-					returnData.push({
-						name: filterName,
-						value: filterId,
-					});
 				}
 
 				returnData.sort((a, b) => {
@@ -4135,6 +4225,11 @@ export class Pipedrive implements INodeType {
 						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 						addAdditionalFields(qs, additionalFields);
 
+						if (qs.filterId) {
+							qs.filter_id = qs.filterId;
+							delete qs.filterId;
+						}
+
 						if (qs.type) {
 							qs.type = (qs.type as string[]).join(',');
 						}
@@ -4218,6 +4313,8 @@ export class Pipedrive implements INodeType {
 						if (returnAll === false) {
 							qs.limit = this.getNodeParameter('limit', i) as number;
 						}
+						const filters = this.getNodeParameter('filters', i) as IDataObject;
+						addAdditionalFields(qs, filters);
 
 						endpoint = `/deals`;
 
@@ -4718,7 +4815,7 @@ export class Pipedrive implements INodeType {
 
 					} else if (operation === 'getAll') {
 						// ----------------------------------
-						//         persons:getAll
+						//         person:getAll
 						// ----------------------------------
 
 						requestMethod = 'GET';
