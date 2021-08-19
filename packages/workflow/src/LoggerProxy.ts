@@ -1,8 +1,4 @@
-import { 
-	ILogger, 
-	LogTypes,
-} from './Interfaces';
-
+import { ILogger, LogTypes } from './Interfaces';
 
 let logger: ILogger | undefined;
 

@@ -7,7 +7,7 @@ export class WorkflowOperationError extends Error {
 	node: INode | undefined;
 	timestamp: number;
 
-	constructor(message: string, node?: INode, ) {
+	constructor(message: string, node?: INode) {
 		super(message);
 		this.name = this.constructor.name;
 		this.node = node;
