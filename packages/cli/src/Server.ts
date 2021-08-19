@@ -1,7 +1,6 @@
 import * as express from 'express';
 import {
 	readFileSync,
-	promises as fsPromises,
 } from 'fs';
 import {
 	dirname as pathDirname,
