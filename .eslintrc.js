@@ -17,6 +17,7 @@ module.exports = {
 		'**/node_modules/**',
 		'**/dist/**',
 		'**/test/**',
+		'**/templates/**',
 		'**/ormconfig.ts',
 	],
 
