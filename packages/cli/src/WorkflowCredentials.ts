@@ -11,7 +11,7 @@ export async function WorkflowCredentials(nodes: INode[]): Promise<IWorkflowCred
 	// Go through all nodes to find which credentials are needed to execute the workflow
 	const returnCredentials: IWorkflowCredentials = {};
 
-	let node, type, name, foundCredentials;
+	let node, type, nodeCredentials, foundCredentials;
 	for (node of nodes) {
 		if (node.disabled === true || !node.credentials) {
 			continue;
@@ -21,14 +21,15 @@ export async function WorkflowCredentials(nodes: INode[]): Promise<IWorkflowCred
 			if (!returnCredentials.hasOwnProperty(type)) {
 				returnCredentials[type] = {};
 			}
-			name = node.credentials[type];
+			nodeCredentials = node.credentials[type];
 
-			if (!returnCredentials[type].hasOwnProperty(name)) {
-				foundCredentials = await Db.collections.Credentials!.find({ name, type });
+			// TODO: if no id check for unique name
+			if (nodeCredentials.id && !returnCredentials[type].hasOwnProperty(nodeCredentials.id)) {
+				foundCredentials = await Db.collections.Credentials!.find({ id: nodeCredentials.id, type });
 				if (!foundCredentials.length) {
-					throw new Error(`Could not find credentials for type "${type}" with name "${name}".`);
+					throw new Error(`Could not find credentials for type "${type}" with name "${nodeCredentials.name}".`);
 				}
-				returnCredentials[type][name] = foundCredentials[0];
+				returnCredentials[type][nodeCredentials.id] = foundCredentials[0];
 			}
 		}
 

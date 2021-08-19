@@ -7,6 +7,7 @@ import {
 	ICredentialsExpressionResolveValues,
 	ICredentialsHelper,
 	INode,
+	INodeCredentialsDetails,
 	INodeParameters,
 	INodeProperties,
 	INodeType,
@@ -43,21 +44,23 @@ export class CredentialsHelper extends ICredentialsHelper {
 	/**
 	 * Returns the credentials instance
 	 *
+	 * @param {string | null} id id of the credentials to return instance of
 	 * @param {string} name Name of the credentials to return instance of
 	 * @param {string} type Type of the credentials to return instance of
 	 * @returns {Credentials}
 	 * @memberof CredentialsHelper
 	 */
-	getCredentials(name: string, type: string): Credentials {
+	getCredentials(nodeCredentials: INodeCredentialsDetails, type: string): Credentials {
 		if (!this.workflowCredentials[type]) {
 			throw new Error(`No credentials of type "${type}" exist.`);
 		}
-		if (!this.workflowCredentials[type][name]) {
+		const { id, name } = nodeCredentials
+		if (!id || !this.workflowCredentials[type][id]) {
 			throw new Error(`No credentials with name "${name}" exist for type "${type}".`);
 		}
-		const credentialData = this.workflowCredentials[type][name];
+		const credentialData = this.workflowCredentials[type][id];
 
-		return new Credentials(credentialData.name, credentialData.type, credentialData.nodesAccess, credentialData.data);
+		return new Credentials(nodeCredentials, credentialData.type, credentialData.nodesAccess, credentialData.data);
 	}
 
 
@@ -96,14 +99,15 @@ export class CredentialsHelper extends ICredentialsHelper {
 	/**
 	 * Returns the decrypted credential data with applied overwrites
 	 *
+	 * @param {string | null} id Id of the credentials to return data of
 	 * @param {string} name Name of the credentials to return data of
 	 * @param {string} type Type of the credentials to return data of
 	 * @param {boolean} [raw] Return the data as supplied without defaults or overwrites
 	 * @returns {ICredentialDataDecryptedObject}
 	 * @memberof CredentialsHelper
 	 */
-	getDecrypted(name: string, type: string, mode: WorkflowExecuteMode, raw?: boolean, expressionResolveValues?: ICredentialsExpressionResolveValues): ICredentialDataDecryptedObject {
-		const credentials = this.getCredentials(name, type);
+	getDecrypted(nodeCredentials: INodeCredentialsDetails, type: string, mode: WorkflowExecuteMode, raw?: boolean, expressionResolveValues?: ICredentialsExpressionResolveValues): ICredentialDataDecryptedObject {
+		const credentials = this.getCredentials(nodeCredentials, type);
 
 		const decryptedDataOriginal = credentials.getData(this.encryptionKey);
 
@@ -173,8 +177,8 @@ export class CredentialsHelper extends ICredentialsHelper {
 	 * @returns {Promise<void>}
 	 * @memberof CredentialsHelper
 	 */
-	async updateCredentials(name: string, type: string, data: ICredentialDataDecryptedObject): Promise<void> {
-		const credentials = await this.getCredentials(name, type);
+	async updateCredentials(nodeCredentials: INodeCredentialsDetails, type: string, data: ICredentialDataDecryptedObject): Promise<void> {
+		const credentials = await this.getCredentials(nodeCredentials, type);
 
 		if (Db.collections!.Credentials === null) {
 			// The first time executeWorkflow gets called the Database has
@@ -192,7 +196,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 
 		// Save the credentials in DB
 		const findQuery = {
-			name,
+			id: nodeCredentials.id!,
 			type,
 		};
 

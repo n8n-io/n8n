@@ -83,6 +83,7 @@ import {
 	ICredentialType,
 	IDataObject,
 	INodeCredentials,
+	INodeCredentialsDetails,
 	INodeParameters,
 	INodePropertyOptions,
 	INodeTypeDescription,
@@ -1041,7 +1042,7 @@ class App {
 			}
 
 			// Encrypt the data
-			const credentials = new Credentials(incomingData.name, incomingData.type, incomingData.nodesAccess);
+			const credentials = new Credentials(incomingData as INodeCredentialsDetails, incomingData.type, incomingData.nodesAccess);
 			credentials.setData(incomingData.data, encryptionKey);
 			const newCredentialsData = credentials.getDataToSave() as ICredentialsDb;
 
@@ -1050,7 +1051,7 @@ class App {
 			// Add special database related data
 
 			// TODO: also add user automatically depending on who is logged in, if anybody is logged in
-
+			console.log('newCredentialsData', newCredentialsData);
 			// Save the credentials in DB
 			const result = await Db.collections.Credentials!.save(newCredentialsData);
 			result.data = incomingData.data;
@@ -1103,7 +1104,7 @@ class App {
 				throw new ResponseHelper.ResponseError(`Credentials with the id "${id}" do not exist.`, undefined, 400);
 			}
 
-			const currentlySavedCredentials = new Credentials(result.name, result.type, result.nodesAccess, result.data);
+			const currentlySavedCredentials = new Credentials(result as INodeCredentialsDetails, result.type, result.nodesAccess, result.data);
 			const decryptedData = currentlySavedCredentials.getData(encryptionKey!);
 
 			// Do not overwrite the oauth data else data like the access or refresh token would get lost
@@ -1167,7 +1168,7 @@ class App {
 					throw new Error('No encryption key got found to decrypt the credentials!');
 				}
 
-				const credentials = new Credentials(result.name, result.type, result.nodesAccess, result.data);
+				const credentials = new Credentials(result as INodeCredentialsDetails, result.type, result.nodesAccess, result.data);
 				(result as ICredentialsDecryptedDb).data = credentials.getData(encryptionKey!);
 			}
 
@@ -1260,12 +1261,12 @@ class App {
 			// Decrypt the currently saved credentials
 			const workflowCredentials: IWorkflowCredentials = {
 				[result.type as string]: {
-					[result.name as string]: result as ICredentialsEncrypted,
+					[result.id as string]: result as ICredentialsEncrypted,
 				},
 			};
 			const mode: WorkflowExecuteMode = 'internal';
 			const credentialsHelper = new CredentialsHelper(workflowCredentials, encryptionKey);
-			const decryptedDataOriginal = credentialsHelper.getDecrypted(result.name, result.type, mode, true);
+			const decryptedDataOriginal = credentialsHelper.getDecrypted(result as INodeCredentialsDetails, result.type, mode, true);
 			const oauthCredentials = credentialsHelper.applyDefaultsAndOverwrites(decryptedDataOriginal, result.type, mode);
 
 			const signatureMethod = _.get(oauthCredentials, 'signatureMethod') as string;
@@ -1312,7 +1313,7 @@ class App {
 			const returnUri = `${_.get(oauthCredentials, 'authUrl')}?oauth_token=${responseJson.oauth_token}`;
 
 			// Encrypt the data
-			const credentials = new Credentials(result.name, result.type, result.nodesAccess);
+			const credentials = new Credentials(result as INodeCredentialsDetails, result.type, result.nodesAccess);
 
 			credentials.setData(decryptedDataOriginal, encryptionKey);
 			const newCredentialsData = credentials.getDataToSave() as unknown as ICredentialsDb;
@@ -1352,12 +1353,12 @@ class App {
 				// Decrypt the currently saved credentials
 				const workflowCredentials: IWorkflowCredentials = {
 					[result.type as string]: {
-						[result.name as string]: result as ICredentialsEncrypted,
+						[result.id as string]: result as ICredentialsEncrypted,
 					},
 				};
 				const mode: WorkflowExecuteMode = 'internal';
 				const credentialsHelper = new CredentialsHelper(workflowCredentials, encryptionKey);
-				const decryptedDataOriginal = credentialsHelper.getDecrypted(result.name, result.type, mode, true);
+				const decryptedDataOriginal = credentialsHelper.getDecrypted(result as INodeCredentialsDetails, result.type, mode, true);
 				const oauthCredentials = credentialsHelper.applyDefaultsAndOverwrites(decryptedDataOriginal, result.type, mode);
 
 				const options: OptionsWithUrl = {
@@ -1384,7 +1385,7 @@ class App {
 
 				decryptedDataOriginal.oauthTokenData = oauthTokenJson;
 
-				const credentials = new Credentials(result.name, result.type, result.nodesAccess);
+				const credentials = new Credentials(result as INodeCredentialsDetails, result.type, result.nodesAccess);
 				credentials.setData(decryptedDataOriginal, encryptionKey);
 				const newCredentialsData = credentials.getDataToSave() as unknown as ICredentialsDb;
 				// Add special database related data
@@ -1428,12 +1429,12 @@ class App {
 			// Decrypt the currently saved credentials
 			const workflowCredentials: IWorkflowCredentials = {
 				[result.type as string]: {
-					[result.name as string]: result as ICredentialsEncrypted,
+					[result.id as string]: result as ICredentialsEncrypted,
 				},
 			};
 			const mode: WorkflowExecuteMode = 'internal';
 			const credentialsHelper = new CredentialsHelper(workflowCredentials, encryptionKey);
-			const decryptedDataOriginal = credentialsHelper.getDecrypted(result.name, result.type, mode, true);
+			const decryptedDataOriginal = credentialsHelper.getDecrypted(result as INodeCredentialsDetails, result.type, mode, true);
 			const oauthCredentials = credentialsHelper.applyDefaultsAndOverwrites(decryptedDataOriginal, result.type, mode);
 
 			const token = new csrf();
@@ -1460,7 +1461,7 @@ class App {
 			const oAuthObj = new clientOAuth2(oAuthOptions);
 
 			// Encrypt the data
-			const credentials = new Credentials(result.name, result.type, result.nodesAccess);
+			const credentials = new Credentials(result as INodeCredentialsDetails, result.type, result.nodesAccess);
 			decryptedDataOriginal.csrfSecret = csrfSecret;
 
 			credentials.setData(decryptedDataOriginal, encryptionKey);
@@ -1534,7 +1535,7 @@ class App {
 				};
 				const mode: WorkflowExecuteMode = 'internal';
 				const credentialsHelper = new CredentialsHelper(workflowCredentials, encryptionKey);
-				const decryptedDataOriginal = credentialsHelper.getDecrypted(result.name, result.type, mode, true);
+				const decryptedDataOriginal = credentialsHelper.getDecrypted(result as INodeCredentialsDetails, result.type, mode, true);
 				const oauthCredentials = credentialsHelper.applyDefaultsAndOverwrites(decryptedDataOriginal, result.type, mode);
 
 				const token = new csrf();
@@ -1592,7 +1593,7 @@ class App {
 
 				_.unset(decryptedDataOriginal, 'csrfSecret');
 
-				const credentials = new Credentials(result.name, result.type, result.nodesAccess);
+				const credentials = new Credentials(result as INodeCredentialsDetails, result.type, result.nodesAccess);
 				credentials.setData(decryptedDataOriginal, encryptionKey);
 				const newCredentialsData = credentials.getDataToSave() as unknown as ICredentialsDb;
 				// Add special database related data

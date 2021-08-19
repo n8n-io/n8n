@@ -12,7 +12,7 @@ import {
 	Db,
 } from '../../src';
 
-import { 
+import {
 	getLogger,
 } from '../../src/Logger';
 
@@ -43,6 +43,7 @@ export class ImportCredentialsCommand extends Command {
 		}),
 	};
 
+	// TODO: check me!!!
 	async run() {
 		const logger = getLogger();
 		LoggerProxy.init(logger);

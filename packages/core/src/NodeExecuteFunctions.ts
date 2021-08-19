@@ -203,10 +203,10 @@ export function requestOAuth2(this: IAllExecuteFunctions, credentialsType: strin
 				if (!node.credentials || !node.credentials[credentialsType]) {
 					throw new Error(`The node "${node.name}" does not have credentials of type "${credentialsType}"!`);
 				}
-				const name = node.credentials[credentialsType];
+				const nodeCredentials = node.credentials[credentialsType];
 
 				// Save the refreshed token
-				await additionalData.credentialsHelper.updateCredentials(name, credentialsType, credentials);
+				await additionalData.credentialsHelper.updateCredentials(nodeCredentials.name, credentialsType, credentials);
 
 				Logger.debug(`OAuth2 token for "${credentialsType}" used by node "${node.name}" has been saved to database successfully.`);
 
@@ -369,9 +369,9 @@ export function getCredentials(workflow: Workflow, node: INode, type: string, ad
 		} as ICredentialsExpressionResolveValues;
 	}
 
-	const name = node.credentials[type];
+	const nodeCredentials = node.credentials[type];
 
-	const decryptedDataObject = additionalData.credentialsHelper.getDecrypted(name, type, mode, false, expressionResolveValues);
+	const decryptedDataObject = additionalData.credentialsHelper.getDecrypted(nodeCredentials, type, mode, false, expressionResolveValues);
 
 	return decryptedDataObject;
 }

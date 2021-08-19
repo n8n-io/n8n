@@ -64,6 +64,7 @@ export class Credentials extends ICredentials {
 		}
 
 		const decryptedData = AES.decrypt(this.data, encryptionKey);
+		console.log(decryptedData);
 
 		try {
 			return JSON.parse(decryptedData.toString(enc.Utf8));
@@ -100,6 +101,7 @@ export class Credentials extends ICredentials {
 		}
 
 		return {
+			id: this.id,
 			name: this.name,
 			type: this.type,
 			data: this.data,

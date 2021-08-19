@@ -38,17 +38,19 @@ export type ExecutionError = WorkflowOperationError | NodeOperationError | NodeA
 
 // Get used to gives nodes access to credentials
 export interface IGetCredentials {
-	get(type: string, name: string): Promise<ICredentialsEncrypted>;
+	get(type: string, id: string | null): Promise<ICredentialsEncrypted>;
 }
 
 export abstract class ICredentials {
+	id?: string;
 	name: string;
 	type: string;
 	data: string | undefined;
 	nodesAccess: ICredentialNodeAccess[];
 
-	constructor(name: string, type: string, nodesAccess: ICredentialNodeAccess[], data?: string) {
-		this.name = name;
+	constructor(nodeCredentials: INodeCredentialsDetails, type: string, nodesAccess: ICredentialNodeAccess[], data?: string) {
+		this.id = nodeCredentials.id || undefined;
+		this.name = nodeCredentials.name;
 		this.type = type;
 		this.nodesAccess = nodesAccess;
 		this.data = data;
@@ -71,6 +73,7 @@ export interface ICredentialNodeAccess {
 }
 
 export interface ICredentialsDecrypted {
+	id: string;
 	name: string;
 	type: string;
 	nodesAccess: ICredentialNodeAccess[];
@@ -78,6 +81,7 @@ export interface ICredentialsDecrypted {
 }
 
 export interface ICredentialsEncrypted {
+	id?: string,
 	name: string;
 	type: string;
 	nodesAccess: ICredentialNodeAccess[];
@@ -102,9 +106,9 @@ export abstract class ICredentialsHelper {
 		this.workflowCredentials = workflowCredentials;
 	}
 
-	abstract getCredentials(name: string, type: string): ICredentials;
-	abstract getDecrypted(name: string, type: string, mode: WorkflowExecuteMode, raw?: boolean, expressionResolveValues?: ICredentialsExpressionResolveValues): ICredentialDataDecryptedObject;
-	abstract updateCredentials(name: string, type: string, data: ICredentialDataDecryptedObject): Promise<void>;
+	abstract getCredentials(nodeCredentials: INodeCredentialsDetails, type: string): ICredentials;
+	abstract getDecrypted(nodeCredentials: INodeCredentialsDetails, type: string, mode: WorkflowExecuteMode, raw?: boolean, expressionResolveValues?: ICredentialsExpressionResolveValues): ICredentialDataDecryptedObject;
+	abstract updateCredentials(nodeCredentials: INodeCredentialsDetails, type: string, data: ICredentialDataDecryptedObject): Promise<void>;
 }
 
 export interface ICredentialType {
@@ -127,6 +131,7 @@ export interface ICredentialTypes {
 
 // The way the credentials get saved in the database (data encrypted)
 export interface ICredentialData {
+	id?: string;
 	name: string;
 	data: string; // Contains the access data as encrypted JSON string
 	nodesAccess: ICredentialNodeAccess[];
@@ -729,7 +734,7 @@ export interface IWorkflowBase {
 export interface IWorkflowCredentials {
 	// Credential type
 	[key: string]: {
-		// Name
+		// Id
 		[key: string]: ICredentialsEncrypted;
 	};
 }
