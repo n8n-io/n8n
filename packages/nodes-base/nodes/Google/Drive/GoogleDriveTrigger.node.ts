@@ -98,7 +98,7 @@
 
 // 				const resourceId = this.getNodeParameter('resourceId') as string;
 
-// 				const credentials = this.getCredentials('googleApi');
+// 				const credentials = await this.getCredentials('googleApi');
 
 // 				if (credentials === undefined) {
 // 					throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
@@ -190,7 +190,7 @@
 
 // 				const resourceId = this.getNodeParameter('resourceId') as string;
 
-// 				const credentials = this.getCredentials('googleApi');
+// 				const credentials = await this.getCredentials('googleApi');
 
 // 				if (credentials === undefined) {
 // 					throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
