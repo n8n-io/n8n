@@ -1,5 +1,4 @@
 import {
-	BINARY_ENCODING,
 	IExecuteFunctions
 } from 'n8n-core';
 
@@ -929,11 +928,12 @@ export class TheHive implements INodeType {
 							}
 
 							const binaryData = item.binary[binaryPropertyName] as IBinaryData;
+							const dataBuffer = await this.helpers.getBinaryDataBuffer(i, binaryPropertyName);
 
 							options = {
 								formData: {
 									attachment: {
-										value: Buffer.from(binaryData.data, BINARY_ENCODING),
+										value: dataBuffer,
 										options: {
 											contentType: binaryData.mimeType,
 											filename: binaryData.fileName,
@@ -1885,11 +1885,12 @@ export class TheHive implements INodeType {
 								}
 
 								const binaryData = item.binary[binaryPropertyName] as IBinaryData;
+								const dataBuffer = await this.helpers.getBinaryDataBuffer(i, binaryPropertyName);
 
 								options = {
 									formData: {
 										attachment: {
-											value: Buffer.from(binaryData.data, BINARY_ENCODING),
+											value: dataBuffer,
 											options: {
 												contentType: binaryData.mimeType,
 												filename: binaryData.fileName,
