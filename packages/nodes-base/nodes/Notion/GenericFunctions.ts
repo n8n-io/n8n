@@ -41,7 +41,7 @@ export async function notionApiRequest(this: IHookFunctions | IExecuteFunctions 
 		};
 
 		options = Object.assign({}, options, option);
-		const credentials = this.getCredentials('notionApi') as IDataObject;
+		const credentials = await this.getCredentials('notionApi') as IDataObject;
 		options!.headers!['Authorization'] = `Bearer ${credentials.apiKey}`;
 		return this.helpers.request!(options);
 

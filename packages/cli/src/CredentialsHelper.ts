@@ -48,16 +48,21 @@ export class CredentialsHelper extends ICredentialsHelper {
 	 * @returns {Credentials}
 	 * @memberof CredentialsHelper
 	 */
-	getCredentials(name: string, type: string): Credentials {
-		if (!this.workflowCredentials[type]) {
+	async getCredentials(name: string, type: string): Promise<Credentials> {
+
+		const credentialsDb = await Db.collections.Credentials?.find({type});
+
+		if (credentialsDb === undefined || credentialsDb.length === 0) {
 			throw new Error(`No credentials of type "${type}" exist.`);
 		}
-		if (!this.workflowCredentials[type][name]) {
+
+		const credential = credentialsDb.find(credential => credential.name === name);
+
+		if (credential === undefined) {
 			throw new Error(`No credentials with name "${name}" exist for type "${type}".`);
 		}
-		const credentialData = this.workflowCredentials[type][name];
-
-		return new Credentials(credentialData.name, credentialData.type, credentialData.nodesAccess, credentialData.data);
+		
+		return new Credentials(credential.name, credential.type, credential.nodesAccess, credential.data);
 	}
 
 
@@ -102,8 +107,8 @@ export class CredentialsHelper extends ICredentialsHelper {
 	 * @returns {ICredentialDataDecryptedObject}
 	 * @memberof CredentialsHelper
 	 */
-	getDecrypted(name: string, type: string, mode: WorkflowExecuteMode, raw?: boolean, expressionResolveValues?: ICredentialsExpressionResolveValues): ICredentialDataDecryptedObject {
-		const credentials = this.getCredentials(name, type);
+	async getDecrypted(name: string, type: string, mode: WorkflowExecuteMode, raw?: boolean, expressionResolveValues?: ICredentialsExpressionResolveValues): Promise<ICredentialDataDecryptedObject> {
+		const credentials = await this.getCredentials(name, type);
 
 		const decryptedDataOriginal = credentials.getData(this.encryptionKey);
 
