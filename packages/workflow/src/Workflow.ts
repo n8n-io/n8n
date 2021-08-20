@@ -194,13 +194,18 @@ export class Workflow {
 	 * @returns {(IWorfklowIssues | null)}
 	 * @memberof Workflow
 	 */
-	checkReadyForExecution(): IWorfklowIssues | null {
+	checkReadyForExecution(startNodeName: string): IWorfklowIssues | null {
 		let node: INode;
 		let nodeType: INodeType | undefined;
 		let nodeIssues: INodeIssues | null = null;
 		const workflowIssues: IWorfklowIssues = {};
 
-		for (const nodeName of Object.keys(this.nodes)) {
+		const childNodes = this.getChildNodes(startNodeName);
+		console.log('childNodes');
+		console.log(childNodes);
+
+		for (const nodeName of childNodes) {
+			console.log('check: ' + nodeName);
 			nodeIssues = null;
 			node = this.nodes[nodeName];
 
@@ -712,7 +717,6 @@ export class Workflow {
 		for (const nodeName of nodeNames) {
 			node = this.nodes[nodeName];
 			nodeType = this.nodeTypes.getByName(node.type) as INodeType;
-
 
 			if (nodeType.trigger !== undefined || nodeType.poll !== undefined) {
 				if (node.disabled === true) {

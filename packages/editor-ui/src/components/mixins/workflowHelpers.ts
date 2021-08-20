@@ -138,13 +138,30 @@ export const workflowHelpers = mixins(
 			},
 
 			// Checks if everything in the workflow is complete and ready to be executed
-			checkReadyForExecution (workflow: Workflow) {
+			checkReadyForExecution (workflow: Workflow, lastNodeName?: string) {
 				let node: INode;
 				let nodeType: INodeType | undefined;
 				let nodeIssues: INodeIssues | null = null;
 				const workflowIssues: IWorfklowIssues = {};
 
-				for (const nodeName of Object.keys(workflow.nodes)) {
+				let checkNodes = Object.keys(workflow.nodes);
+				if (lastNodeName) {
+					console.log('parent');
+					checkNodes = workflow.getParentNodes(lastNodeName);
+				} else {
+					const startNode = workflow.getStartNode();
+					console.log('startNode', startNode!.name);
+					if (startNode !== undefined) {
+						console.log('child');
+						checkNodes = workflow.getChildNodes(startNode.name);
+					}
+				}
+				console.log('checkNodes');
+				console.log(checkNodes);
+
+				for (const nodeName of checkNodes) {
+					console.log('check: ' + nodeName);
+
 					nodeIssues = null;
 					node = workflow.nodes[nodeName];
 

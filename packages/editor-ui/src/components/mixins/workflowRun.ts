@@ -53,7 +53,8 @@ export const workflowRun = mixins(
 
 			return response;
 		},
-		async runWorkflow (nodeName: string, source?: string): Promise<IExecutionPushResponse | undefined> {
+		async runWorkflow (nodeName?: string, source?: string): Promise<IExecutionPushResponse | undefined> {
+			console.log('k0', nodeName);
 			if (this.$store.getters.isActionActive('workflowRunning') === true) {
 				return;
 			}
@@ -66,7 +67,9 @@ export const workflowRun = mixins(
 				const issuesExist = this.$store.getters.nodesIssuesExist;
 				if (issuesExist === true) {
 					// If issues exist get all of the issues of all nodes
-					const workflowIssues = this.checkReadyForExecution(workflow);
+					const workflowIssues = this.checkReadyForExecution(workflow, nodeName);
+					console.log('workflowIssues');
+					console.log(workflowIssues);
 					if (workflowIssues !== null) {
 						const errorMessages = [];
 						let nodeIssues: string[];
@@ -76,6 +79,7 @@ export const workflowRun = mixins(
 								errorMessages.push(`${nodeName}: ${nodeIssue}`);
 							}
 						}
+						console.log('k3');
 
 						this.$showMessage({
 							title: 'Workflow can not be executed',
@@ -89,8 +93,10 @@ export const workflowRun = mixins(
 					}
 				}
 
+				console.log('k4a', nodeName);
 				// Get the direct parents of the node
 				const directParentNodes = workflow.getParentNodes(nodeName, 'main', 1);
+				console.log('k4b', directParentNodes);
 
 				const runData = this.$store.getters.getWorkflowRunData;
 
@@ -100,9 +106,11 @@ export const workflowRun = mixins(
 
 				if (runData !== null && Object.keys(runData).length !== 0) {
 					newRunData = {};
+					console.log('k5');
 
 					// Go over the direct parents of the node
 					for (const directParentNode of directParentNodes) {
+						console.log('k6');
 						// Go over the parents of that node so that we can get a start
 						// node for each of the branches
 						const parentNodes = workflow.getParentNodes(directParentNode, 'main');
@@ -111,6 +119,7 @@ export const workflowRun = mixins(
 						parentNodes.push(directParentNode);
 
 						for (const parentNode of parentNodes) {
+							console.log('k7');
 							if (runData[parentNode] === undefined || runData[parentNode].length === 0) {
 								// When we hit a node which has no data we stop and set it
 								// as a start node the execution from and then go on with other
@@ -129,7 +138,7 @@ export const workflowRun = mixins(
 					}
 				}
 
-				if (startNodes.length === 0) {
+				if (startNodes.length === 0 && nodeName !== undefined) {
 					startNodes.push(nodeName);
 				}
 
