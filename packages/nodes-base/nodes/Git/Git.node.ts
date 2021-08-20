@@ -206,11 +206,11 @@ export class Git implements INodeType {
 		const items = this.getInputData();
 
 
-		const prepareRepository = (repositoryPath: string): string => {
+		const prepareRepository = async (repositoryPath: string): Promise<string> => {
 			const authentication = this.getNodeParameter('authentication', 0) as string;
 
 			if (authentication === 'gitPassword') {
-				const gitCredentials = this.getCredentials('gitPassword') as IDataObject;
+				const gitCredentials = await this.getCredentials('gitPassword') as IDataObject;
 
 				const url = new URL(repositoryPath);
 				url.username = gitCredentials.username as string;
@@ -284,7 +284,7 @@ export class Git implements INodeType {
 					// ----------------------------------
 
 					let sourceRepository = this.getNodeParameter('sourceRepository', itemIndex, '') as string;
-					sourceRepository = prepareRepository(sourceRepository);
+					sourceRepository = await prepareRepository(sourceRepository);
 
 					await git.clone(sourceRepository, '.');
 
@@ -348,7 +348,7 @@ export class Git implements INodeType {
 					// ----------------------------------
 
 					if (options.repository) {
-						const targetRepository = prepareRepository(options.targetRepository as string);
+						const targetRepository = await prepareRepository(options.targetRepository as string);
 						await git.push(targetRepository);
 					} else {
 						const authentication = this.getNodeParameter('authentication', 0) as string;
@@ -364,7 +364,7 @@ export class Git implements INodeType {
 								}
 							}
 
-							targetRepository = prepareRepository(targetRepository as string);
+							targetRepository = await prepareRepository(targetRepository as string);
 							await git.push(targetRepository);
 						} else {
 							await git.push();
