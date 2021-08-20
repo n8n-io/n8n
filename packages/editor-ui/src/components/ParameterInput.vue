@@ -739,7 +739,6 @@ li:not(.selected) .option-description {
 }
 
 .expand-input-icon-container {
-	color: var(--color-text-base);
 	display: flex;
 	height: 100%;
 	align-items: center;
