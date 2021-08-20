@@ -107,7 +107,7 @@ export const eventFields = [
 				],
 			},
 		},
-		description: 'Object of values to set as described <a href="https://customer.io/docs/api-triggered-data-format#basic-data-formatting" target="_blank">here</a>.',
+		description: 'Object of values to set as described <a href="https://customer.io/docs/api-triggered-data-format#basic-data-formatting">here</a>.',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -233,7 +233,7 @@ export const eventFields = [
 				],
 			},
 		},
-		description: 'Object of values to set as described <a href="https://customer.io/docs/api-triggered-data-format#basic-data-formatting" target="_blank">here</a>.',
+		description: 'Object of values to set as described <a href="https://customer.io/docs/api-triggered-data-format#basic-data-formatting">here</a>.',
 	},
 	{
 		displayName: 'Additional Fields',
