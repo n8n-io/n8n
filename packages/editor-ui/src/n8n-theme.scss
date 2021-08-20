@@ -285,36 +285,6 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 
-// Custom scrollbar
-::-webkit-scrollbar {
-	width: 12px;
-	height: 12px;
-}
-::-webkit-scrollbar-track {
-	border-radius: 6px;
-}
-::-webkit-scrollbar-track:hover {
-	background: #ddd;
-}
-::-webkit-scrollbar-thumb {
-	border-radius: 6px;
-	background: $--scrollbar-thumb-color;
-}
-::-webkit-scrollbar-thumb:hover {
-	background: $--color-primary;
-}
-
-.el-dialog__wrapper {
-	&::-webkit-scrollbar-track,
-	&::-webkit-scrollbar-track:hover {
-		background: #fff;
-	}
-	&::-webkit-scrollbar-thumb {
-		background: $--color-primary;
-		border-radius: 6px;
-	}
-}
-
 .tags-container {
 	.el-tag {
 		color: $--tag-text-color;

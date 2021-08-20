@@ -136,7 +136,7 @@
 		right: 5px;
 		top: 0;
 		text-align: center;
-		color: var.$input-icon-color;
+		color: var(--color-text-light);
 		transition: all 0.3s;
 		pointer-events: none;
 	}
