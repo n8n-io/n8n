@@ -1,4 +1,5 @@
 import N8nInput from './Input.vue';
+import N8nIcon from '../N8nIcon';
 import { action } from '@storybook/addon-actions';
 
 export default {
@@ -19,7 +20,7 @@ export default {
 		},
 		size: {
 			control: 'select',
-			options: ['large', 'medium', 'small', 'mini'],
+			options: ['xlarge', 'large', 'medium', 'small', 'mini'],
 		},
 	},
 	parameters: {
@@ -29,6 +30,8 @@ export default {
 
 const methods = {
 	onInput: action('input'),
+	onFocus: action('input'),
+	onChange: action('input'),
 };
 
 const Template = (args, { argTypes }) => ({
@@ -36,7 +39,7 @@ const Template = (args, { argTypes }) => ({
 	components: {
 		N8nInput,
 	},
-	template: '<n8n-input v-bind="$props" v-model="val" @input="onInput" />',
+	template: '<n8n-input v-bind="$props" v-model="val" @input="onInput" @change="onChange" @focus="onFocus" />',
 	data() {
 		return {
 			val: '',
@@ -56,7 +59,7 @@ const ManyTemplate = (args, { argTypes }) => ({
 		N8nInput,
 	},
 	template:
-		'<div> <n8n-input style="margin-bottom:10px" v-bind="$props" v-model="val" @input="onInput" /> <n8n-input style="margin-bottom:10px" v-bind="$props" size="medium" v-model="val" @input="onInput" /> <n8n-input style="margin-bottom:10px" v-bind="$props" size="small" v-model="val" @input="onInput" /> <n8n-input style="margin-bottom:10px" v-bind="$props" v-model="val" size="mini" @input="onInput" /> </div>',
+		'<div class="multi-container"> <n8n-input size="xlarge" v-bind="$props" v-model="val" @input="onInput" @change="onChange" @focus="onFocus" /> <n8n-input v-bind="$props" v-model="val" @input="onInput" @change="onChange" @focus="onFocus" /> <n8n-input v-bind="$props" size="medium" v-model="val" @input="onInput" @change="onChange" @focus="onFocus" /> <n8n-input v-bind="$props" size="small" v-model="val" @input="onInput" @change="onChange" @focus="onFocus" /> <n8n-input v-bind="$props" v-model="val" size="mini" @input="onInput" @change="onChange" @focus="onFocus" /> </div> ',
 	methods,
 	data() {
 		return {
@@ -68,13 +71,52 @@ const ManyTemplate = (args, { argTypes }) => ({
 export const Text = ManyTemplate.bind({});
 Text.args = {
 	type: 'text',
-	label: 'text input:',
 	placeholder: 'placeholder...',
 };
 
 export const TextArea = ManyTemplate.bind({});
 TextArea.args = {
 	type: 'textarea',
-	label: 'text area input:',
+	placeholder: 'placeholder...',
+};
+
+
+const WithPrefix = (args, { argTypes }) => ({
+	props: Object.keys(argTypes),
+	components: {
+		N8nIcon,
+		N8nInput,
+	},
+	template: '<n8n-input v-bind="$props" v-model="val" @input="onInput" @change="onChange" @focus="onFocus"><n8n-icon icon="clock" slot="prefix" /></n8n-input>',
+	data() {
+		return {
+			val: '',
+		};
+	},
+	methods,
+});
+
+export const WithPrefixIcon = WithPrefix.bind({});
+WithPrefixIcon.args = {
+	placeholder: 'placeholder...',
+};
+
+const WithSuffix = (args, { argTypes }) => ({
+	props: Object.keys(argTypes),
+	components: {
+		N8nIcon,
+		N8nInput,
+	},
+	template: '<n8n-input v-bind="$props" v-model="val" @input="onInput" @change="onChange" @focus="onFocus"><n8n-icon icon="clock" slot="suffix" /></n8n-input>',
+	data() {
+		return {
+			val: '',
+		};
+	},
+	methods,
+});
+
+export const WithSuffixIcon = WithSuffix.bind({});
+WithSuffixIcon.args = {
 	placeholder: 'placeholder...',
 };

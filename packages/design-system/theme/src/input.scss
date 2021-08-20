@@ -72,7 +72,7 @@
 
 @include mixins.b(input) {
 	position: relative;
-	font-size: var.$font-size-base;
+	font-size: var.$input-font-size;
 	display: inline-block;
 	width: 100%;
 	@include mixins.scroll-bar;
@@ -133,12 +133,14 @@
 	@include mixins.e(suffix) {
 		position: absolute;
 		height: 100%;
-		right: 5px;
+		right: 10px;
 		top: 0;
 		text-align: center;
 		color: var(--color-text-light);
 		transition: all 0.3s;
 		pointer-events: none;
+		display: flex;
+		align-items: center;
 	}
 
 	@include mixins.e(suffix-inner) {

@@ -551,7 +551,7 @@ $input-border-style: var(--input-border-style, var(--border-style-base));
 $input-border-width: var(--border-width-base);
 $input-border: $input-border-color $input-border-style $input-border-width;
 
-$input-font-size: $font-size-base !default;
+$input-font-size: var(--input-font-size, var(--font-size-s));
 /// color||Color|0
 $input-font-color: var(--input-font-color, var(--color-text-dark));
 /// height||Other|4
