@@ -48,9 +48,9 @@ import { get } from 'lodash';
 import { genericHelpers } from '@/components/mixins/genericHelpers';
 
 import mixins from 'vue-typed-mixins';
-import { targetBlank } from '@/components/mixins/targetBlank';
+import { addTargetBlank } from './helpers';
 
-export default mixins(genericHelpers, targetBlank)
+export default mixins(genericHelpers)
 	.extend({
 		name: 'MultipleParameter',
 		components: {
@@ -91,6 +91,9 @@ export default mixins(genericHelpers, targetBlank)
 				};
 
 				this.$emit('valueChanged', parameterData);
+			},
+			addTargetBlank (html: string) {
+				return addTargetBlank(html);
 			},
 			deleteItem (index: number) {
 				const parameterData = {

@@ -21,10 +21,9 @@ import {
 } from '@/Interface';
 
 import ParameterInput from '@/components/ParameterInput.vue';
-import mixins from 'vue-typed-mixins';
-import { targetBlank } from '@/components/mixins/targetBlank';
+import { addTargetBlank } from './helpers';
 
-export default mixins(targetBlank)
+export default Vue
 	.extend({
 		name: 'ParameterInputFull',
 		components: {
@@ -53,6 +52,9 @@ export default mixins(targetBlank)
 			'value',
 		],
 		methods: {
+			addTargetBlank (html: string) {
+				return addTargetBlank(html);
+			},
 			getArgument (argumentName: string): string | number | boolean | undefined {
 				if (this.parameter.typeOptions === undefined) {
 					return undefined;

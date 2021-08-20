@@ -87,9 +87,10 @@ import { IUpdateInformation } from '@/Interface';
 
 import MultipleParameter from '@/components/MultipleParameter.vue';
 import { genericHelpers } from '@/components/mixins/genericHelpers';
-import { targetBlank } from '@/components/mixins/targetBlank';
 import { workflowHelpers } from '@/components/mixins/workflowHelpers';
 import ParameterInputFull from '@/components/ParameterInputFull.vue';
+
+import { addTargetBlank } from './helpers';
 
 import { get, set } from 'lodash';
 
@@ -97,7 +98,6 @@ import mixins from 'vue-typed-mixins';
 
 export default mixins(
 	genericHelpers,
-	targetBlank,
 	workflowHelpers,
 )
 	.extend({
@@ -121,6 +121,9 @@ export default mixins(
 			},
 		},
 		methods: {
+			addTargetBlank (html: string) {
+				return addTargetBlank(html);
+			},
 			multipleValues (parameter: INodeProperties): boolean {
 				if (this.getArgument('multipleValues', parameter) === true) {
 					return true;

@@ -119,7 +119,6 @@
 import Vue from 'vue';
 
 import { copyPaste } from '@/components/mixins/copyPaste';
-import { targetBlank } from '@/components/mixins/targetBlank';
 import { externalHooks } from '@/components/mixins/externalHooks';
 import { restApi } from '@/components/mixins/restApi';
 import { nodeHelpers } from '@/components/mixins/nodeHelpers';
@@ -147,13 +146,14 @@ import ParameterInput from '@/components/ParameterInput.vue';
 
 import mixins from 'vue-typed-mixins';
 
+import { addTargetBlank } from './helpers';
+
 export default mixins(
 	copyPaste,
 	externalHooks,
 	nodeHelpers,
 	restApi,
 	showMessage,
-	targetBlank,
 ).extend({
 	name: 'CredentialsInput',
 	props: [
@@ -268,6 +268,9 @@ export default mixins(
 		},
 	},
 	methods: {
+		addTargetBlank (html: string) {
+			return addTargetBlank(html);
+		},
 		copyCallbackUrl (): void {
 			this.copyToClipboard(this.oAuthCallbackUrl);
 
