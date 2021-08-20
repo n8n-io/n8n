@@ -366,8 +366,10 @@ export class Pushover implements INodeType {
 									throw new NodeOperationError(this.getNode(), `No binary data property "${binaryPropertyName}" does not exists on item!`);
 								}
 
+								const dataBuffer = await this.helpers.getBinaryDataBuffer(i, binaryPropertyName);
+
 								body.attachment = {
-									value: Buffer.from(binaryData.data, BINARY_ENCODING),
+									value: dataBuffer,
 									options: {
 										filename: binaryData.fileName,
 									},
