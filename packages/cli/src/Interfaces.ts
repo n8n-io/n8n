@@ -457,7 +457,6 @@ export interface IProcessMessageDataHook {
 }
 
 export interface IWorkflowExecutionDataProcess {
-	credentials: IWorkflowCredentials;
 	destinationNode?: string;
 	executionMode: WorkflowExecuteMode;
 	executionData?: IRunExecutionData;
