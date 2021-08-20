@@ -450,6 +450,19 @@ export const dealFields = [
 				description: 'Include Deal Owner and Stage objects.',
 			},
 			{
+				displayName: 'Pipeline',
+				name: 'pipeline',
+				type: 'options',
+				typeOptions: {
+					loadOptionsMethod: 'getDealPipelines',
+				},
+				default: [],
+				description: `Used to choose specific pipeline for which you want to get data.<br/>
+				By default, the results will include Deals from all pipelines.<br/>
+				Including this parameter will only include Deals from the specified pipeline.<br/>
+				You can include this parameter multiple times to request multiple properties separed by ,.`,
+			},
+			{
 				displayName: 'Properties',
 				name: 'properties',
 				type: 'multiOptions',

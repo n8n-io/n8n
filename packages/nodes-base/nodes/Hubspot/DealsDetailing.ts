@@ -1,8 +1,8 @@
 import {IExecuteFunctions} from 'n8n-core';
-import {IParameterDependencies} from 'n8n-workflow';
+import {IDataObject, IParameterDependencies} from 'n8n-workflow';
 
 import {hubspotApiRequest} from './GenericFunctions';
-import {IDetailingMethods, IDetailingProperty} from './DealInterface';
+import {IDetailingMethods, IDetailingProperty, IPipeline} from './DealInterface';
 
 export const detailingProperties: IDetailingProperty[] = [
 	{
@@ -31,7 +31,10 @@ export const detailingMethods: IDetailingMethods = {
 		const dataMap = new Map();
 		const endpoint = '/crm-pipelines/v1/pipelines/deals';
 		let stages = await hubspotApiRequest.call(this, 'GET', endpoint, {});
-		stages = stages.results[0].stages;
+		stages = stages.results.reduce((accumulator: IDataObject[], pipeline: IPipeline) => {
+			accumulator.push(...pipeline.stages);
+			return accumulator;
+		}, []);
 		for (const stage of stages) {
 			dataMap.set(String(stage.stageId), {label: stage.label, stageId: stage.stageId});
 		}

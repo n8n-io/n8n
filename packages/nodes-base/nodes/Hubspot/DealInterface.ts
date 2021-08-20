@@ -5,10 +5,16 @@ export interface IAssociation {
 	associatedVids?: number[];
 }
 
-export interface IDeal {
+export interface INewDeal {
 	associations?: IAssociation;
 	properties?: IDataObject[];
 }
+
+export interface IDeal {
+	associations?: IAssociation;
+	properties?: IDataObject;
+}
+
 
 export interface IDetailingProperty {
 	name: string;
@@ -16,6 +22,14 @@ export interface IDetailingProperty {
 	additionName: string;
 }
 
+export interface IPipeline {
+	label: string;
+	displayOrder: number;
+	active: boolean;
+	stages: IDataObject[];
+	pipelineId: string;
+}
+
 export interface IDetailingMethods {
-	[key: string]: () => Promise<Map<string, IParameterDependencies>>;
+	[key: string]: (data?: IDataObject) => Promise<Map<string, IParameterDependencies>>;
 }

@@ -25,7 +25,7 @@ import {ticketFields, ticketOperations} from './TicketDescription';
 
 import {IForm} from './FormInterface';
 
-import {IAssociation, IDeal} from './DealInterface';
+import {IAssociation, IDeal, INewDeal} from './DealInterface';
 
 import {snakeCase} from 'change-case';
 import {detailingMethods, detailingProperties} from './DealsDetailing';
@@ -534,6 +534,21 @@ export class Hubspot implements INodeType {
 					returnData.push({
 						name: stageName,
 						value: stageId,
+					});
+				}
+				return returnData;
+			},
+
+			// Get all the deal pipelines to display them to user so that he can
+			// select them easily
+			async getDealPipelines(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const returnData: INodePropertyOptions[] = [];
+				const endpoint = '/crm-pipelines/v1/pipelines/deals';
+				const {results: pipelines} = await hubspotApiRequest.call(this, 'GET', endpoint, {});
+				for (const pipeline of pipelines) {
+					returnData.push({
+						name: pipeline.label,
+						value: String(pipeline.pipelineId),
 					});
 				}
 				return returnData;
@@ -1857,7 +1872,7 @@ export class Hubspot implements INodeType {
 					//https://developers.hubspot.com/docs/methods/deals/deals_overview
 					if (resource === 'deal') {
 						if (operation === 'create') {
-							const body: IDeal = {};
+							const body: INewDeal = {};
 							body.properties = [];
 							const association: IAssociation = {};
 							const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
@@ -1926,7 +1941,7 @@ export class Hubspot implements INodeType {
 							responseData = await hubspotApiRequest.call(this, 'POST', endpoint, body);
 						}
 						if (operation === 'update') {
-							const body: IDeal = {};
+							const body: INewDeal = {};
 							body.properties = [];
 							const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
 							const dealId = this.getNodeParameter('dealId', i) as string;
@@ -2007,6 +2022,14 @@ export class Hubspot implements INodeType {
 							if (filters.propertiesWithHistory) {
 								qs.propertiesWithHistory = filters.propertiesWithHistory;
 							}
+							if (filters.pipeline) {
+								if (qs.properties) {
+									qs.properties = new Array(0).concat(qs.properties, ['pipeline']);
+								} else {
+									qs.properties = ['pipeline'];
+								}
+							}
+
 							const endpoint = `/deals/v1/deal/paged`;
 							if (returnAll) {
 								responseData = await hubspotApiRequestAllItems.call(this, 'deals', 'GET', endpoint, {}, qs);
@@ -2015,6 +2038,16 @@ export class Hubspot implements INodeType {
 								responseData = await hubspotApiRequest.call(this, 'GET', endpoint, {}, qs);
 								responseData = responseData.deals;
 							}
+							console.log(filters);
+							if (filters.pipeline) {
+								responseData = responseData.filter((deal: IDeal) => {
+									if (!deal.properties) return;
+									const pipeline = deal.properties['pipeline'] as IDataObject;
+									if (!pipeline) return;
+									return pipeline['value'] === filters.pipeline;
+								});
+							}
+
 							if (filters.includeDetails) {
 								// Get deals details using appropriate api methods
 								const detailingPropsMap = new Map();
