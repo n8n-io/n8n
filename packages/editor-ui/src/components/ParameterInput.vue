@@ -91,7 +91,7 @@
 
 		<div v-else-if="parameter.type === 'boolean'">
 			<div v-if="isValueExpression">
-				<n8n-input  :size="inputSize" :value="displayValue" :disabled="isReadOnly" @keydown.stop  :title="displayTitle" />
+				<n8n-input :size="inputSize" :value="displayValue" :disabled="isReadOnly" @keydown.stop  :title="displayTitle" />
 			</div>
 			<el-switch v-else class="switch-input" ref="inputField" :value="displayValue" @change="valueChanged" active-color="#13ce66" :disabled="isReadOnly"></el-switch>
 		</div>

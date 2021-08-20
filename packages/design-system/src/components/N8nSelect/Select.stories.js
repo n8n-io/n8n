@@ -17,11 +17,6 @@ export default {
 				options: ['large', 'medium', 'small', 'mini'],
 			},
 		},
-		clearable: {
-			control: {
-				type: 'boolean',
-			},
-		},
 		loading: {
 			control: {
 				type: 'boolean',
@@ -70,7 +65,7 @@ Filterable.args = {
 	defaultFirstOption: true,
 };
 
-const selects = ['large', 'medium', 'small', 'mini'].map((size) => `<n8n-select style="margin-bottom:10px" v-bind="$props" v-model="val" @input="onInput" size="${size}"><n8n-option value="1">op1</n8n-option><n8n-option value="2">op2</n8n-option></n8n-select>`).join('');
+const selects = ['large', 'medium', 'small', 'mini'].map((size) => `<n8n-select v-bind="$props" v-model="val" @input="onInput" size="${size}"><n8n-option value="1">op1</n8n-option><n8n-option value="2">op2</n8n-option></n8n-select>`).join('');
 
 const ManyTemplate = (args, { argTypes }) => ({
 	props: Object.keys(argTypes),
@@ -78,7 +73,7 @@ const ManyTemplate = (args, { argTypes }) => ({
 		N8nSelect,
 		N8nOption,
 	},
-	template: `<div>${selects}</div>`,
+	template: `<div class="multi-container">${selects}</div>`,
 	methods,
 	data() {
 		return {
@@ -94,7 +89,7 @@ Sizes.args = {
 	placeholder: 'placeholder...',
 };
 
-const selectsWithIcon = ['large', 'medium', 'small', 'mini'].map((size) => `<n8n-select style="margin-bottom:10px" v-bind="$props" v-model="val" @input="onInput" size="${size}"><n8n-icon icon="search" slot="prefix" /><n8n-option value="1">op1</n8n-option><n8n-option value="2">op2</n8n-option></n8n-select>`).join('');
+const selectsWithIcon = ['xlarge', 'large', 'medium', 'small', 'mini'].map((size) => `<n8n-select v-bind="$props" v-model="val" @input="onInput" size="${size}"><n8n-icon icon="search" slot="prefix" /><n8n-option value="1">op1</n8n-option><n8n-option value="2">op2</n8n-option></n8n-select>`).join('');
 
 const ManyTemplateWithIcon = (args, { argTypes }) => ({
 	props: Object.keys(argTypes),
@@ -102,7 +97,7 @@ const ManyTemplateWithIcon = (args, { argTypes }) => ({
 		N8nSelect,
 		N8nOption,
 	},
-	template: `<div>${selectsWithIcon}</div>`,
+	template: `<div class="multi-container">${selectsWithIcon}</div>`,
 	methods,
 	data() {
 		return {
