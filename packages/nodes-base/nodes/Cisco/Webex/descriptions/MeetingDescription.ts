@@ -79,7 +79,7 @@ export const meetingFields = [
 				],
 			},
 		},
-		description: 'Date and time for the start of meeting. Acceptable <a href="https://datatracker.ietf.org/doc/html/rfc2445"> format</a>',
+		description: 'Date and time for the start of the meeting. Acceptable <a href="https://datatracker.ietf.org/doc/html/rfc2445"> format</a>',
 	},
 	{
 		displayName: 'End',
@@ -97,7 +97,7 @@ export const meetingFields = [
 				],
 			},
 		},
-		description: 'Date and time for the end of meeting. Acceptable <a href="https://datatracker.ietf.org/doc/html/rfc2445"> format</a>',
+		description: 'Date and time for the end of the meeting. Acceptable <a href="https://datatracker.ietf.org/doc/html/rfc2445"> format</a>',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -762,7 +762,7 @@ export const meetingFields = [
 				name: 'end',
 				type: 'dateTime',
 				default: '',
-				description: 'Date and time for the end of meeting. Acceptable <a href="https://datatracker.ietf.org/doc/html/rfc2445"> format</a>',
+				description: 'Date and time for the end of the meeting. Acceptable <a href="https://datatracker.ietf.org/doc/html/rfc2445"> format</a>',
 			},
 			{
 				displayName: 'Exclude Password',
@@ -955,7 +955,7 @@ export const meetingFields = [
 				name: 'start',
 				type: 'dateTime',
 				default: '',
-				description: 'Date and time for the start of meeting. Acceptable <a href="https://datatracker.ietf.org/doc/html/rfc2445"> format</a>',
+				description: 'Date and time for the start of the meeting. Acceptable <a href="https://datatracker.ietf.org/doc/html/rfc2445"> format</a>',
 			},
 			{
 				displayName: 'Title',
