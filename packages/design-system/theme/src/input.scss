@@ -136,7 +136,7 @@
 		right: 5px;
 		top: 0;
 		text-align: center;
-		color: var.$input-icon-color;
+		color: var(--color-text-light);
 		transition: all 0.3s;
 		pointer-events: none;
 	}
@@ -159,7 +159,6 @@
 
 	@include mixins.e(icon) {
 		height: 100%;
-		width: 25px;
 		text-align: center;
 		transition: all 0.3s;
 		line-height: var.$input-height;
@@ -221,7 +220,7 @@
 
 	@include mixins.m(prefix) {
 		.el-input__inner {
-			padding-left: 30px;
+			padding-left: 28px;
 		}
 	}
 

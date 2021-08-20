@@ -37,7 +37,6 @@
 
 	.el-input {
 		& .el-select__caret {
-			color: var.$select-input-color;
 			font-size: var.$select-input-font-size;
 			transition: transform 0.3s;
 			transform: rotateZ(180deg);

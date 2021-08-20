@@ -9,7 +9,7 @@
 				clearable
 				:maxlength="maxLength"
 			>
-				<i slot="prefix" class="el-input__icon el-icon-search"></i>
+				<font-awesome-icon slot="prefix" icon="search" />
 			</n8n-input>
 		</el-col>
 		<el-col :span="14">

@@ -93,7 +93,7 @@
 			<div v-if="isValueExpression">
 				<n8n-input  :size="inputSize" :value="displayValue" :disabled="isReadOnly" @keydown.stop  :title="displayTitle" />
 			</div>
-			<el-switch v-else ref="inputField" :value="displayValue" @change="valueChanged" active-color="#13ce66" :disabled="isReadOnly"></el-switch>
+			<el-switch v-else class="switch-input" ref="inputField" :value="displayValue" @change="valueChanged" active-color="#13ce66" :disabled="isReadOnly"></el-switch>
 		</div>
 	</div>
 
@@ -647,6 +647,10 @@ export default mixins(
 
 <style scoped lang="scss">
 
+.switch-input {
+	margin: 5px 0;
+}
+
 .parameter-value-container {
 	display: flex;
 	align-items: center;
@@ -738,7 +742,6 @@ li:not(.selected) .option-description {
 }
 
 .expand-input-icon-container {
-	color: var(--color-text-base);
 	display: flex;
 	height: 100%;
 	align-items: center;

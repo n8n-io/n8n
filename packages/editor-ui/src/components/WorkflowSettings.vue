@@ -1,6 +1,6 @@
 <template>
 	<span>
-		<el-dialog class="workflow-settings" :visible="dialogVisible" append-to-body width="65%" title="Workflow Settings" :before-close="closeDialog">
+		<el-dialog class="workflow-settings" custom-class="classic" :visible="dialogVisible" append-to-body width="65%" title="Workflow Settings" :before-close="closeDialog">
 			<div v-loading="isLoading">
 				<el-row>
 					<el-col :span="10" class="setting-name">
@@ -140,15 +140,15 @@
 							</n8n-tooltip>
 						</el-col>
 						<el-col :span="4">
-							<n8n-input-number :controls="false" size="medium" v-model="timeoutHMS.hours" :min="0" placeholder="hours" type="number" class="el-input_inner"></n8n-input-number><br />
+							<n8n-input-number :controls="false" size="medium" v-model="timeoutHMS.hours" :min="0" placeholder="hours" type="number"></n8n-input-number><br />
 							<div class="timeout-setting-name">hours</div>
 						</el-col>
 						<el-col :span="4" class="timeout-input">
-							<n8n-input-number :controls="false" size="medium" v-model="timeoutHMS.minutes" :min="0" placeholder="minutes" type="number" class="el-input_inner"></n8n-input-number><br />
+							<n8n-input-number :controls="false" size="medium" v-model="timeoutHMS.minutes" :min="0" placeholder="minutes" type="number"></n8n-input-number><br />
 							<div class="timeout-setting-name">minutes</div>
 						</el-col>
 						<el-col :span="4" class="timeout-input">
-							<n8n-input-number :controls="false" size="medium" v-model="timeoutHMS.seconds" :min="0" placeholder="seconds" type="number" class="el-input_inner"></n8n-input-number><br />
+							<n8n-input-number :controls="false" size="medium" v-model="timeoutHMS.seconds" :min="0" placeholder="seconds" type="number"></n8n-input-number><br />
 							<div class="timeout-setting-name">seconds</div>
 						</el-col>
 					</el-row>
