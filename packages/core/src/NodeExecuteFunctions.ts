@@ -64,12 +64,13 @@ const requestPromiseWithDefaults = requestPromise.defaults({
  *
  * @export
  * @param {ITaskDataConnections} inputData
+ * @param {number} runIndex
  * @param {number} itemIndex
  * @param {string} propertyName
  * @returns {Promise<Buffer>}
  */
-export async function getBinaryDataBuffer(inputData: ITaskDataConnections, itemIndex: number, propertyName: string): Promise<Buffer> {
-	const binaryData = inputData['main']![0]![itemIndex]!.binary![propertyName]!;
+export async function getBinaryDataBuffer(inputData: ITaskDataConnections, runIndex: number, itemIndex: number, propertyName: string): Promise<Buffer> {
+	const binaryData = inputData['main']![runIndex]![itemIndex]!.binary![propertyName]!;
 	return Buffer.from(binaryData.data, BINARY_ENCODING);
 }
 
@@ -778,7 +779,7 @@ export function getExecuteFunctions(workflow: Workflow, runExecutionData: IRunEx
 			helpers: {
 				prepareBinaryData,
 				getBinaryDataBuffer(itemIndex: number, propertyName: string): Promise<Buffer> {
-					return getBinaryDataBuffer.call(this, inputData, itemIndex, propertyName);
+					return getBinaryDataBuffer.call(this, inputData, runIndex, itemIndex, propertyName);
 				},
 				request: requestPromiseWithDefaults,
 				requestOAuth2(this: IAllExecuteFunctions, credentialsType: string, requestOptions: OptionsWithUri | requestPromise.RequestPromiseOptions, oAuth2Options?: IOAuth2Options): Promise<any> { // tslint:disable-line:no-any
