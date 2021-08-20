@@ -14,6 +14,7 @@
 					filterable
 					defaultFirstOption
 					placeholder="Search for app..."
+					size="xlarge"
 					ref="select"
 					:value="selected"
 					@change="onSelect"
