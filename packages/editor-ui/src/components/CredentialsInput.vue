@@ -25,7 +25,7 @@
 				<el-col :span="6" class="parameter-name">
 					{{parameter.displayName}}:
 					<el-tooltip placement="top" class="parameter-info" v-if="parameter.description" effect="light">
-						<div slot="content" v-html="parameter.description"></div>
+						<div slot="content" v-html="addTargetBlank(parameter.description)"></div>
 						<font-awesome-icon icon="question-circle"/>
 					</el-tooltip>
 				</el-col>
@@ -119,6 +119,7 @@
 import Vue from 'vue';
 
 import { copyPaste } from '@/components/mixins/copyPaste';
+import { targetBlank } from '@/components/mixins/targetBlank';
 import { externalHooks } from '@/components/mixins/externalHooks';
 import { restApi } from '@/components/mixins/restApi';
 import { nodeHelpers } from '@/components/mixins/nodeHelpers';
@@ -152,6 +153,7 @@ export default mixins(
 	nodeHelpers,
 	restApi,
 	showMessage,
+	targetBlank,
 ).extend({
 	name: 'CredentialsInput',
 	props: [

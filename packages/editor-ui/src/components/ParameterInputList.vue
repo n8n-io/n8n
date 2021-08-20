@@ -29,7 +29,7 @@
 					</div>
 					{{parameter.displayName}}:
 					<el-tooltip placement="top" class="parameter-info" v-if="parameter.description" effect="light">
-						<div slot="content" v-html="parameter.description"></div>
+						<div slot="content" v-html="addTargetBlank(parameter.description)"></div>
 						<font-awesome-icon icon="question-circle"/>
 					</el-tooltip>
 				</div>
@@ -87,6 +87,7 @@ import { IUpdateInformation } from '@/Interface';
 
 import MultipleParameter from '@/components/MultipleParameter.vue';
 import { genericHelpers } from '@/components/mixins/genericHelpers';
+import { targetBlank } from '@/components/mixins/targetBlank';
 import { workflowHelpers } from '@/components/mixins/workflowHelpers';
 import ParameterInputFull from '@/components/ParameterInputFull.vue';
 
@@ -96,6 +97,7 @@ import mixins from 'vue-typed-mixins';
 
 export default mixins(
 	genericHelpers,
+	targetBlank,
 	workflowHelpers,
 )
 	.extend({
