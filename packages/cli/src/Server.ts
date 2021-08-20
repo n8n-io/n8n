@@ -1,9 +1,39 @@
+/* eslint-disable no-console */
+/* eslint-disable @typescript-eslint/no-unsafe-return */
+/* eslint-disable new-cap */
+/* eslint-disable prefer-const */
+/* eslint-disable @typescript-eslint/restrict-template-expressions */
+/* eslint-disable @typescript-eslint/no-invalid-void-type */
+/* eslint-disable no-return-assign */
+/* eslint-disable no-param-reassign */
+/* eslint-disable @typescript-eslint/no-non-null-assertion */
+/* eslint-disable @typescript-eslint/no-unused-vars */
+/* eslint-disable @typescript-eslint/no-unsafe-call */
+/* eslint-disable id-denylist */
+/* eslint-disable @typescript-eslint/no-throw-literal */
+/* eslint-disable @typescript-eslint/no-unsafe-member-access */
+/* eslint-disable @typescript-eslint/no-explicit-any */
+/* eslint-disable consistent-return */
+/* eslint-disable no-restricted-syntax */
+/* eslint-disable no-useless-escape */
+/* eslint-disable prefer-spread */
+/* eslint-disable @typescript-eslint/no-use-before-define */
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
+/* eslint-disable import/no-cycle */
+/* eslint-disable import/no-extraneous-dependencies */
 import * as express from 'express';
 import { readFileSync } from 'fs';
 import { dirname as pathDirname, join as pathJoin, resolve as pathResolve } from 'path';
-import { getConnectionManager, In, Like } from 'typeorm';
+import {
+	getConnectionManager,
+	In,
+	Like,
+	FindManyOptions,
+	FindOneOptions,
+	LessThanOrEqual,
+	Not,
+} from 'typeorm';
 import * as bodyParser from 'body-parser';
-require('body-parser-xml')(bodyParser);
 import * as history from 'connect-history-api-fallback';
 import * as _ from 'lodash';
 import * as clientOAuth2 from 'client-oauth2';
@@ -17,6 +47,36 @@ import { createHash, createHmac } from 'crypto';
 import { compare } from 'bcryptjs';
 import * as promClient from 'prom-client';
 
+import { Credentials, LoadNodeParameterOptions, UserSettings } from 'n8n-core';
+
+import {
+	ICredentialsEncrypted,
+	ICredentialType,
+	IDataObject,
+	INodeCredentials,
+	INodeParameters,
+	INodePropertyOptions,
+	INodeTypeDescription,
+	// eslint-disable-next-line @typescript-eslint/no-unused-vars
+	IRunData,
+	IWorkflowBase,
+	IWorkflowCredentials,
+	LoggerProxy,
+	Workflow,
+	WorkflowExecuteMode,
+} from 'n8n-workflow';
+
+import * as basicAuth from 'basic-auth';
+import * as compression from 'compression';
+import * as jwt from 'jsonwebtoken';
+import * as jwks from 'jwks-rsa';
+// @ts-ignore
+import * as timezones from 'google-timezones-json';
+import * as parseUrl from 'parseurl';
+import * as querystring from 'querystring';
+import { OptionsWithUrl } from 'request-promise-native';
+import { Registry } from 'prom-client';
+import * as Queue from './Queue';
 import {
 	ActiveExecutions,
 	ActiveWorkflowRunner,
@@ -60,69 +120,62 @@ import {
 	WorkflowExecuteAdditionalData,
 	WorkflowHelpers,
 	WorkflowRunner,
-} from './';
-
-import { Credentials, LoadNodeParameterOptions, UserSettings } from 'n8n-core';
-
-import {
-	ICredentialsEncrypted,
-	ICredentialType,
-	IDataObject,
-	INodeCredentials,
-	INodeParameters,
-	INodePropertyOptions,
-	INodeTypeDescription,
-	IRunData,
-	IWorkflowBase,
-	IWorkflowCredentials,
-	LoggerProxy,
-	Workflow,
-	WorkflowExecuteMode,
-} from 'n8n-workflow';
-
-import { FindManyOptions, FindOneOptions, LessThanOrEqual, Not } from 'typeorm';
-
-import * as basicAuth from 'basic-auth';
-import * as compression from 'compression';
+} from '.';
 import * as config from '../config';
-import * as jwt from 'jsonwebtoken';
-import * as jwks from 'jwks-rsa';
-// @ts-ignore
-import * as timezones from 'google-timezones-json';
-import * as parseUrl from 'parseurl';
-import * as querystring from 'querystring';
-import * as Queue from '../src/Queue';
-import { OptionsWithUrl } from 'request-promise-native';
-import { Registry } from 'prom-client';
 
 import * as TagHelpers from './TagHelpers';
 import { TagEntity } from './databases/entities/TagEntity';
 import { WorkflowEntity } from './databases/entities/WorkflowEntity';
 import { WorkflowNameRequest } from './WorkflowHelpers';
 
+// eslint-disable-next-line @typescript-eslint/no-var-requires, @typescript-eslint/no-unsafe-call
+require('body-parser-xml')(bodyParser);
+
 class App {
 	app: express.Application;
+
 	activeWorkflowRunner: ActiveWorkflowRunner.ActiveWorkflowRunner;
+
 	testWebhooks: TestWebhooks.TestWebhooks;
+
 	endpointWebhook: string;
+
 	endpointWebhookTest: string;
+
 	endpointPresetCredentials: string;
+
 	externalHooks: IExternalHooksClass;
+
 	defaultWorkflowName: string;
+
 	saveDataErrorExecution: string;
+
 	saveDataSuccessExecution: string;
+
 	saveManualExecutions: boolean;
+
 	executionTimeout: number;
+
 	maxExecutionTimeout: number;
+
 	timezone: string;
+
 	activeExecutionsInstance: ActiveExecutions.ActiveExecutions;
+
 	push: Push.Push;
+
 	versions: IPackageVersions | undefined;
+
 	restEndpoint: string;
+
 	frontendSettings: IN8nUISettings;
+
 	protocol: string;
+
 	sslKey: string;
+
 	sslCert: string;
+
 	payloadSizeMax: number;
 
 	presetCredentialsLoaded: boolean;
@@ -173,8 +226,8 @@ class App {
 			urlBaseWebhook,
 			versionCli: '',
 			oauthCallbackUrls: {
-				oauth1: urlBaseWebhook + `${this.restEndpoint}/oauth1-credential/callback`,
-				oauth2: urlBaseWebhook + `${this.restEndpoint}/oauth2-credential/callback`,
+				oauth1: `${urlBaseWebhook}${this.restEndpoint}/oauth1-credential/callback`,
+				oauth2: `${urlBaseWebhook}${this.restEndpoint}/oauth2-credential/callback`,
 			},
 			versionNotifications: {
 				enabled: config.get('versionNotifications.enabled'),
@@ -191,6 +244,7 @@ class App {
 	 * @returns {number}
 	 * @memberof App
 	 */
+	// eslint-disable-next-line class-methods-use-this
 	getCurrentDate(): Date {
 		return new Date();
 	}
@@ -199,7 +253,7 @@ class App {
 		const enableMetrics = config.get('endpoints.metrics.enable') as boolean;
 		let register: Registry;
 
-		if (enableMetrics === true) {
+		if (enableMetrics) {
 			const prefix = config.get('endpoints.metrics.prefix') as string;
 			register = new promClient.Registry();
 			register.setDefaultLabels({ prefix });
@@ -227,7 +281,7 @@ class App {
 
 		// Check for basic auth credentials if activated
 		const basicAuthActive = config.get('security.basicAuth.active') as boolean;
-		if (basicAuthActive === true) {
+		if (basicAuthActive) {
 			const basicAuthUser = (await GenericHelpers.getConfigValue(
 				'security.basicAuth.user',
 			)) as string;
@@ -250,7 +304,7 @@ class App {
 
 			this.app.use(
 				async (req: express.Request, res: express.Response, next: express.NextFunction) => {
-					if (req.url.match(authIgnoreRegex)) {
+					if (authIgnoreRegex.exec(req.url)) {
 						return next();
 					}
 					const realm = 'n8n - Editor UI';
@@ -266,7 +320,7 @@ class App {
 					}
 
 					if (basicAuthData.name === basicAuthUser) {
-						if (basicAuthHashEnabled === true) {
+						if (basicAuthHashEnabled) {
 							if (
 								validPassword === null &&
 								(await compare(basicAuthData.pass, basicAuthPassword))
@@ -279,11 +333,9 @@ class App {
 								// Provided hash is correct
 								return next();
 							}
-						} else {
-							if (basicAuthData.pass === basicAuthPassword) {
-								// Provided password is correct
-								return next();
-							}
+						} else if (basicAuthData.pass === basicAuthPassword) {
+							// Provided password is correct
+							return next();
 						}
 					}
 
@@ -299,7 +351,7 @@ class App {
 
 		// Check for and validate JWT if configured
 		const jwtAuthActive = config.get('security.jwtAuth.active') as boolean;
-		if (jwtAuthActive === true) {
+		if (jwtAuthActive) {
 			const jwtAuthHeader = (await GenericHelpers.getConfigValue(
 				'security.jwtAuth.jwtHeader',
 			)) as string;
@@ -326,25 +378,26 @@ class App {
 				'security.jwtAuth.jwtAllowedTenant',
 			)) as string;
 
+			// eslint-disable-next-line no-inner-declarations
 			function isTenantAllowed(decodedToken: object): boolean {
 				if (jwtNamespace === '' || jwtAllowedTenantKey === '' || jwtAllowedTenant === '')
 					return true;
-				else {
-					for (const [k, v] of Object.entries(decodedToken)) {
-						if (k === jwtNamespace) {
-							for (const [kn, kv] of Object.entries(v)) {
-								if (kn === jwtAllowedTenantKey && kv === jwtAllowedTenant) {
-									return true;
-								}
+
+				for (const [k, v] of Object.entries(decodedToken)) {
+					if (k === jwtNamespace) {
+						for (const [kn, kv] of Object.entries(v)) {
+							if (kn === jwtAllowedTenantKey && kv === jwtAllowedTenant) {
+								return true;
 							}
 						}
 					}
 				}
+
 				return false;
 			}
 
 			this.app.use((req: express.Request, res: express.Response, next: express.NextFunction) => {
-				if (req.url.match(authIgnoreRegex)) {
+				if (authIgnoreRegex.exec(req.url)) {
 					return next();
 				}
 
@@ -353,14 +406,13 @@ class App {
 					return ResponseHelper.jwtAuthAuthorizationError(res, 'Missing token');
 				}
 				if (jwtHeaderValuePrefix !== '' && token.startsWith(jwtHeaderValuePrefix)) {
-					token = token.replace(jwtHeaderValuePrefix + ' ', '').trimLeft();
+					token = token.replace(`${jwtHeaderValuePrefix} `, '').trimLeft();
 				}
 
 				const jwkClient = jwks({ cache: true, jwksUri });
+				// eslint-disable-next-line @typescript-eslint/ban-types
 				function getKey(header: any, callback: Function) {
-					// tslint:disable-line:no-any
 					jwkClient.getSigningKey(header.kid, (err: Error, key: any) => {
-						// tslint:disable-line:no-any
 						if (err) throw ResponseHelper.jwtAuthAuthorizationError(res, err.message);
 
 						const signingKey = key.publicKey || key.rsaPublicKey;
@@ -411,7 +463,7 @@ class App {
 		// Support application/json type post data
 		this.app.use(
 			bodyParser.json({
-				limit: this.payloadSizeMax + 'mb',
+				limit: `${this.payloadSizeMax}mb`,
 				verify: (req, res, buf) => {
 					// @ts-ignore
 					req.rawBody = buf;
@@ -420,10 +472,10 @@ class App {
 		);
 
 		// Support application/xml type post data
-		// @ts-ignore
 		this.app.use(
+			// @ts-ignore
 			bodyParser.xml({
-				limit: this.payloadSizeMax + 'mb',
+				limit: `${this.payloadSizeMax}mb`,
 				xmlParseOptions: {
 					normalize: true, // Trim whitespace inside text nodes
 					normalizeTags: true, // Transform tags to lowercase
@@ -434,7 +486,7 @@ class App {
 
 		this.app.use(
 			bodyParser.text({
-				limit: this.payloadSizeMax + 'mb',
+				limit: `${this.payloadSizeMax}mb`,
 				verify: (req, res, buf) => {
 					// @ts-ignore
 					req.rawBody = buf;
@@ -451,14 +503,14 @@ class App {
 							`^\/(${this.restEndpoint}|healthz|metrics|css|js|${this.endpointWebhook}|${this.endpointWebhookTest})\/?.*$`,
 						),
 						to: (context) => {
-							return context.parsedUrl!.pathname!.toString();
+							return context.parsedUrl.pathname!.toString();
 						},
 					},
 				],
 			}),
 		);
 
-		//support application/x-www-form-urlencoded post data
+		// support application/x-www-form-urlencoded post data
 		this.app.use(
 			bodyParser.urlencoded({
 				extended: false,
@@ -469,7 +521,7 @@ class App {
 			}),
 		);
 
-		if (process.env['NODE_ENV'] !== 'production') {
+		if (process.env.NODE_ENV !== 'production') {
 			this.app.use((req: express.Request, res: express.Response, next: express.NextFunction) => {
 				// Allow access also from frontend when developing
 				res.header('Access-Control-Allow-Origin', 'http://localhost:8080');
@@ -500,7 +552,7 @@ class App {
 			const connection = getConnectionManager().get();
 
 			try {
-				if (connection.isConnected === false) {
+				if (!connection.isConnected) {
 					// Connection is not active
 					throw new Error('No active database connection!');
 				}
@@ -523,7 +575,7 @@ class App {
 		// ----------------------------------------
 		// Metrics
 		// ----------------------------------------
-		if (enableMetrics === true) {
+		if (enableMetrics) {
 			this.app.get('/metrics', async (req: express.Request, res: express.Response) => {
 				const response = await register.metrics();
 				res.setHeader('Content-Type', register.contentType);
@@ -583,7 +635,7 @@ class App {
 							400,
 						);
 					}
-					if (!(req.query.url as string).match(/^http[s]?:\/\/.*\.json$/i)) {
+					if (!/^http[s]?:\/\/.*\.json$/i.exec(req.query.url as string)) {
 						throw new ResponseHelper.ResponseError(
 							`The parameter "url" is not valid! It does not seem to be a URL pointing to a n8n workflow JSON file.`,
 							undefined,
@@ -673,6 +725,7 @@ class App {
 
 						const suffix = Number(parts[1]);
 
+						// eslint-disable-next-line no-restricted-globals
 						if (!isNaN(suffix) && Math.ceil(suffix) > acc) {
 							acc = Math.ceil(suffix);
 						}
@@ -722,7 +775,7 @@ class App {
 				async (req: express.Request, res: express.Response): Promise<WorkflowEntity> => {
 					const { tags, ...updateData } = req.body;
 
-					const id = req.params.id;
+					const { id } = req.params;
 					updateData.id = id;
 
 					await this.externalHooks.run('workflow.update', [updateData]);
@@ -795,7 +848,7 @@ class App {
 
 					await this.externalHooks.run('workflow.afterUpdate', [workflow]);
 
-					if (workflow.active === true) {
+					if (workflow.active) {
 						// When the workflow is supposed to be active add it again
 						try {
 							await this.externalHooks.run('workflow.activate', [workflow]);
@@ -826,7 +879,7 @@ class App {
 		this.app.delete(
 			`/${this.restEndpoint}/workflows/:id`,
 			ResponseHelper.send(async (req: express.Request, res: express.Response): Promise<boolean> => {
-				const id = req.params.id;
+				const { id } = req.params;
 
 				await this.externalHooks.run('workflow.delete', [id]);
 
@@ -848,10 +901,10 @@ class App {
 			`/${this.restEndpoint}/workflows/run`,
 			ResponseHelper.send(
 				async (req: express.Request, res: express.Response): Promise<IExecutionPushResponse> => {
-					const workflowData = req.body.workflowData;
-					const runData: IRunData | undefined = req.body.runData;
-					const startNodes: string[] | undefined = req.body.startNodes;
-					const destinationNode: string | undefined = req.body.destinationNode;
+					const { workflowData } = req.body;
+					const { runData } = req.body;
+					const { startNodes } = req.body;
+					const { destinationNode } = req.body;
 					const executionMode = 'manual';
 					const activationMode = 'manual';
 
@@ -886,7 +939,7 @@ class App {
 							sessionId,
 							destinationNode,
 						);
-						if (needsWebhook === true) {
+						if (needsWebhook) {
 							return {
 								waitingForWebhook: true,
 							};
@@ -1015,9 +1068,9 @@ class App {
 				async (req: express.Request, res: express.Response): Promise<INodePropertyOptions[]> => {
 					const nodeType = req.query.nodeType as string;
 					const path = req.query.path as string;
-					let credentials: INodeCredentials | undefined = undefined;
+					let credentials: INodeCredentials | undefined;
 					const currentNodeParameters = JSON.parse(
-						'' + req.query.currentNodeParameters,
+						`${req.query.currentNodeParameters}`,
 					) as INodeParameters;
 					if (req.query.credentials !== undefined) {
 						credentials = JSON.parse(req.query.credentials as string);
@@ -1031,8 +1084,8 @@ class App {
 						nodeType,
 						nodeTypes,
 						path,
-						JSON.parse('' + req.query.currentNodeParameters),
-						credentials!,
+						JSON.parse(`${req.query.currentNodeParameters}`),
+						credentials,
 					);
 
 					const workflowData = loadDataInstance.getWorkflowData() as IWorkflowBase;
@@ -1154,7 +1207,7 @@ class App {
 			ResponseHelper.send(
 				async (req: express.Request, res: express.Response): Promise<string[]> => {
 					const activeWorkflows = await this.activeWorkflowRunner.getActiveWorkflows();
-					return activeWorkflows.map((workflow) => workflow.id.toString()) as string[];
+					return activeWorkflows.map((workflow) => workflow.id.toString());
 				},
 			),
 		);
@@ -1167,7 +1220,7 @@ class App {
 					req: express.Request,
 					res: express.Response,
 				): Promise<IActivationError | undefined> => {
-					const id = req.params.id;
+					const { id } = req.params;
 					return this.activeWorkflowRunner.getActivationError(id);
 				},
 			),
@@ -1181,7 +1234,7 @@ class App {
 		this.app.delete(
 			`/${this.restEndpoint}/credentials/:id`,
 			ResponseHelper.send(async (req: express.Request, res: express.Response): Promise<boolean> => {
-				const id = req.params.id;
+				const { id } = req.params;
 
 				await this.externalHooks.run('credentials.delete', [id]);
 
@@ -1270,7 +1323,7 @@ class App {
 				async (req: express.Request, res: express.Response): Promise<ICredentialsResponse> => {
 					const incomingData = req.body;
 
-					const id = req.params.id;
+					const { id } = req.params;
 
 					if (incomingData.name === '') {
 						throw new Error('Credentials have to have a name set!');
@@ -1322,7 +1375,7 @@ class App {
 						result.nodesAccess,
 						result.data,
 					);
-					const decryptedData = currentlySavedCredentials.getData(encryptionKey!);
+					const decryptedData = currentlySavedCredentials.getData(encryptionKey);
 
 					// Do not overwrite the oauth data else data like the access or refresh token would get lost
 					// everytime anybody changes anything on the credentials even if it is just the name.
@@ -1382,7 +1435,7 @@ class App {
 					// Make sure the variable has an expected value
 					const includeData = ['true', true].includes(req.query.includeData as string);
 
-					if (includeData !== true) {
+					if (!includeData) {
 						// Return only the fields we need
 						findQuery.select = ['id', 'name', 'type', 'nodesAccess', 'createdAt', 'updatedAt'];
 					}
@@ -1393,8 +1446,8 @@ class App {
 						return result;
 					}
 
-					let encryptionKey = undefined;
-					if (includeData === true) {
+					let encryptionKey;
+					if (includeData) {
 						encryptionKey = await UserSettings.getEncryptionKey();
 						if (encryptionKey === undefined) {
 							throw new Error('No encryption key got found to decrypt the credentials!');
@@ -1406,7 +1459,7 @@ class App {
 							result.nodesAccess,
 							result.data,
 						);
-						(result as ICredentialsDecryptedDb).data = credentials.getData(encryptionKey!);
+						(result as ICredentialsDecryptedDb).data = credentials.getData(encryptionKey);
 					}
 
 					(result as ICredentialsDecryptedResponse).id = result.id.toString();
@@ -1438,10 +1491,10 @@ class App {
 						findQuery,
 					)) as unknown as ICredentialsResponse[];
 
-					let encryptionKey = undefined;
+					let encryptionKey;
 
 					const includeData = ['true', true].includes(req.query.includeData as string);
-					if (includeData === true) {
+					if (includeData) {
 						encryptionKey = await UserSettings.getEncryptionKey();
 						if (encryptionKey === undefined) {
 							throw new Error('No encryption key got found to decrypt the credentials!');
@@ -1499,7 +1552,7 @@ class App {
 					return '';
 				}
 
-				let encryptionKey = undefined;
+				let encryptionKey;
 				encryptionKey = await UserSettings.getEncryptionKey();
 				if (encryptionKey === undefined) {
 					res.status(500).send('No encryption key got found to decrypt the credentials!');
@@ -1508,8 +1561,8 @@ class App {
 
 				// Decrypt the currently saved credentials
 				const workflowCredentials: IWorkflowCredentials = {
-					[result.type as string]: {
-						[result.name as string]: result as ICredentialsEncrypted,
+					[result.type]: {
+						[result.name]: result as ICredentialsEncrypted,
 					},
 				};
 				const mode: WorkflowExecuteMode = 'internal';
@@ -1534,6 +1587,7 @@ class App {
 						secret: _.get(oauthCredentials, 'consumerSecret') as string,
 					},
 					signature_method: signatureMethod,
+					// eslint-disable-next-line @typescript-eslint/naming-convention
 					hash_function(base, key) {
 						const algorithm = signatureMethod === 'HMAC-SHA1' ? 'sha1' : 'sha256';
 						return createHmac(algorithm, key).update(base).digest('base64');
@@ -1556,9 +1610,9 @@ class App {
 					data: oauthRequestData,
 				};
 
-				const data = oauth.toHeader(oauth.authorize(options as RequestOptions));
+				const data = oauth.toHeader(oauth.authorize(options));
 
-				//@ts-ignore
+				// @ts-ignore
 				options.headers = data;
 
 				const response = await requestPromise(options);
@@ -1596,15 +1650,16 @@ class App {
 
 					if (oauth_verifier === undefined || oauth_token === undefined) {
 						const errorResponse = new ResponseHelper.ResponseError(
-							'Insufficient parameters for OAuth1 callback. Received following query parameters: ' +
-								JSON.stringify(req.query),
+							`Insufficient parameters for OAuth1 callback. Received following query parameters: ${JSON.stringify(
+								req.query,
+							)}`,
 							undefined,
 							503,
 						);
 						return ResponseHelper.sendErrorResponse(res, errorResponse);
 					}
 
-					const result = await Db.collections.Credentials!.findOne(cid as any); // tslint:disable-line:no-any
+					const result = await Db.collections.Credentials!.findOne(cid as any);
 					if (result === undefined) {
 						const errorResponse = new ResponseHelper.ResponseError(
 							'The credential is not known.',
@@ -1614,7 +1669,7 @@ class App {
 						return ResponseHelper.sendErrorResponse(res, errorResponse);
 					}
 
-					let encryptionKey = undefined;
+					let encryptionKey;
 					encryptionKey = await UserSettings.getEncryptionKey();
 					if (encryptionKey === undefined) {
 						const errorResponse = new ResponseHelper.ResponseError(
@@ -1627,8 +1682,8 @@ class App {
 
 					// Decrypt the currently saved credentials
 					const workflowCredentials: IWorkflowCredentials = {
-						[result.type as string]: {
-							[result.name as string]: result as ICredentialsEncrypted,
+						[result.type]: {
+							[result.name]: result as ICredentialsEncrypted,
 						},
 					};
 					const mode: WorkflowExecuteMode = 'internal';
@@ -1679,7 +1734,7 @@ class App {
 					// Add special database related data
 					newCredentialsData.updatedAt = this.getCurrentDate();
 					// Save the credentials in DB
-					await Db.collections.Credentials!.update(cid as any, newCredentialsData); // tslint:disable-line:no-any
+					await Db.collections.Credentials!.update(cid as any, newCredentialsData);
 
 					res.sendFile(pathResolve(__dirname, '../../templates/oauth-callback.html'));
 				} catch (error) {
@@ -1708,7 +1763,7 @@ class App {
 					return '';
 				}
 
-				let encryptionKey = undefined;
+				let encryptionKey;
 				encryptionKey = await UserSettings.getEncryptionKey();
 				if (encryptionKey === undefined) {
 					res.status(500).send('No encryption key got found to decrypt the credentials!');
@@ -1717,8 +1772,8 @@ class App {
 
 				// Decrypt the currently saved credentials
 				const workflowCredentials: IWorkflowCredentials = {
-					[result.type as string]: {
-						[result.name as string]: result as ICredentialsEncrypted,
+					[result.type]: {
+						[result.name]: result as ICredentialsEncrypted,
 					},
 				};
 				const mode: WorkflowExecuteMode = 'internal';
@@ -1742,7 +1797,7 @@ class App {
 					token: token.create(csrfSecret),
 					cid: req.query.id,
 				};
-				const stateEncodedStr = Buffer.from(JSON.stringify(state)).toString('base64') as string;
+				const stateEncodedStr = Buffer.from(JSON.stringify(state)).toString('base64');
 
 				const oAuthOptions: clientOAuth2.Options = {
 					clientId: _.get(oauthCredentials, 'clientId') as string,
@@ -1778,13 +1833,13 @@ class App {
 
 				// if scope uses comma, change it as the library always return then with spaces
 				if ((_.get(oauthCredentials, 'scope') as string).includes(',')) {
-					const data = querystring.parse(returnUri.split('?')[1] as string);
+					const data = querystring.parse(returnUri.split('?')[1]);
 					data.scope = _.get(oauthCredentials, 'scope') as string;
 					returnUri = `${_.get(oauthCredentials, 'authUrl', '')}?${querystring.stringify(data)}`;
 				}
 
 				if (authQueryParameters) {
-					returnUri += '&' + authQueryParameters;
+					returnUri += `&${authQueryParameters}`;
 				}
 
 				return returnUri;
@@ -1805,8 +1860,9 @@ class App {
 
 					if (code === undefined || stateEncoded === undefined) {
 						const errorResponse = new ResponseHelper.ResponseError(
-							'Insufficient parameters for OAuth2 callback. Received following query parameters: ' +
-								JSON.stringify(req.query),
+							`Insufficient parameters for OAuth2 callback. Received following query parameters: ${JSON.stringify(
+								req.query,
+							)}`,
 							undefined,
 							503,
 						);
@@ -1835,7 +1891,7 @@ class App {
 						return ResponseHelper.sendErrorResponse(res, errorResponse);
 					}
 
-					let encryptionKey = undefined;
+					let encryptionKey;
 					encryptionKey = await UserSettings.getEncryptionKey();
 					if (encryptionKey === undefined) {
 						const errorResponse = new ResponseHelper.ResponseError(
@@ -1848,8 +1904,8 @@ class App {
 
 					// Decrypt the currently saved credentials
 					const workflowCredentials: IWorkflowCredentials = {
-						[result.type as string]: {
-							[result.name as string]: result as ICredentialsEncrypted,
+						[result.type]: {
+							[result.name]: result as ICredentialsEncrypted,
 						},
 					};
 					const mode: WorkflowExecuteMode = 'internal';
@@ -1962,7 +2018,7 @@ class App {
 			`/${this.restEndpoint}/executions`,
 			ResponseHelper.send(
 				async (req: express.Request, res: express.Response): Promise<IExecutionsListResponse> => {
-					let filter: any = {}; // tslint:disable-line:no-any
+					let filter: any = {};
 
 					if (req.query.filter) {
 						filter = JSON.parse(req.query.filter as string);
@@ -1983,14 +2039,15 @@ class App {
 					}
 					// We may have manual executions even with queue so we must account for these.
 					executingWorkflowIds.push(
-						...(this.activeExecutionsInstance
+						...this.activeExecutionsInstance
 							.getActiveExecutions()
-							.map((execution) => execution.id.toString()) as string[]),
+							.map((execution) => execution.id.toString()),
 					);
 
 					const countFilter = JSON.parse(JSON.stringify(filter));
 					countFilter.id = Not(In(executingWorkflowIds));
 
+					// eslint-disable-next-line @typescript-eslint/await-thenable
 					const resultsQuery = await Db.collections
 						.Execution!.createQueryBuilder('execution')
 						.select([
@@ -2032,15 +2089,15 @@ class App {
 
 					for (const result of results) {
 						returnResults.push({
-							id: result.id!.toString(),
+							id: result.id.toString(),
 							finished: result.finished,
 							mode: result.mode,
 							retryOf: result.retryOf ? result.retryOf.toString() : undefined,
 							retrySuccessId: result.retrySuccessId ? result.retrySuccessId.toString() : undefined,
 							startedAt: result.startedAt,
 							stoppedAt: result.stoppedAt,
-							workflowId: result.workflowData!.id ? result.workflowData!.id!.toString() : '',
-							workflowName: result.workflowData!.name,
+							workflowId: result.workflowData.id ? result.workflowData.id.toString() : '',
+							workflowName: result.workflowData.name,
 						});
 					}
 
@@ -2069,12 +2126,11 @@ class App {
 
 					if (req.query.unflattedResponse === 'true') {
 						const fullExecutionData = ResponseHelper.unflattenExecutionData(result);
-						return fullExecutionData as IExecutionResponse;
-					} else {
-						// Convert to response format in which the id is a string
-						(result as IExecutionFlatted as IExecutionFlattedResponse).id = result.id.toString();
-						return result as IExecutionFlatted as IExecutionFlattedResponse;
+						return fullExecutionData;
 					}
+					// Convert to response format in which the id is a string
+					(result as IExecutionFlatted as IExecutionFlattedResponse).id = result.id.toString();
+					return result as IExecutionFlatted as IExecutionFlattedResponse;
 				},
 			),
 		);
@@ -2096,7 +2152,7 @@ class App {
 
 				const fullExecutionData = ResponseHelper.unflattenExecutionData(fullExecutionDataFlatted);
 
-				if (fullExecutionData.finished === true) {
+				if (fullExecutionData.finished) {
 					throw new Error('The execution did succeed and can so not be retried.');
 				}
 
@@ -2115,22 +2171,19 @@ class App {
 					workflowData: fullExecutionData.workflowData,
 				};
 
-				const lastNodeExecuted = data!.executionData!.resultData.lastNodeExecuted as
-					| string
-					| undefined;
+				const { lastNodeExecuted } = data.executionData!.resultData;
 
 				if (lastNodeExecuted) {
 					// Remove the old error and the data of the last run of the node that it can be replaced
-					delete data!.executionData!.resultData.error;
-					const length = data!.executionData!.resultData.runData[lastNodeExecuted].length;
+					delete data.executionData!.resultData.error;
+					const { length } = data.executionData!.resultData.runData[lastNodeExecuted];
 					if (
 						length > 0 &&
-						data!.executionData!.resultData.runData[lastNodeExecuted][length - 1].error !==
-							undefined
+						data.executionData!.resultData.runData[lastNodeExecuted][length - 1].error !== undefined
 					) {
 						// Remove results only if it is an error.
 						// If we are retrying due to a crash, the information is simply success info from last node
-						data!.executionData!.resultData.runData[lastNodeExecuted].pop();
+						data.executionData!.resultData.runData[lastNodeExecuted].pop();
 						// Stack will determine what to run next
 					}
 				}
@@ -2163,7 +2216,7 @@ class App {
 					});
 
 					// Replace all of the nodes in the execution stack with the ones of the new workflow
-					for (const stack of data!.executionData!.executionData!.nodeExecutionStack) {
+					for (const stack of data.executionData!.executionData!.nodeExecutionStack) {
 						// Find the data of the last executed node in the new workflow
 						const node = workflowInstance.getNode(stack.node.name);
 						if (node === null) {
@@ -2245,6 +2298,7 @@ class App {
 							return [];
 						}
 
+						// eslint-disable-next-line @typescript-eslint/await-thenable
 						const resultsQuery = await Db.collections
 							.Execution!.createQueryBuilder('execution')
 							.select([
@@ -2277,32 +2331,32 @@ class App {
 								startedAt: new Date(result.startedAt),
 							} as IExecutionsSummary;
 						});
-					} else {
-						const executingWorkflows = this.activeExecutionsInstance.getActiveExecutions();
-
-						const returnData: IExecutionsSummary[] = [];
-
-						let filter: any = {}; // tslint:disable-line:no-any
-						if (req.query.filter) {
-							filter = JSON.parse(req.query.filter as string);
-						}
-
-						for (const data of executingWorkflows) {
-							if (filter.workflowId !== undefined && filter.workflowId !== data.workflowId) {
-								continue;
-							}
-							returnData.push({
-								id: data.id.toString(),
-								workflowId: data.workflowId === undefined ? '' : data.workflowId.toString(),
-								mode: data.mode,
-								retryOf: data.retryOf,
-								startedAt: new Date(data.startedAt),
-							});
-						}
-						returnData.sort((a, b) => parseInt(b.id, 10) - parseInt(a.id, 10));
-
-						return returnData;
 					}
+					const executingWorkflows = this.activeExecutionsInstance.getActiveExecutions();
+
+					const returnData: IExecutionsSummary[] = [];
+
+					let filter: any = {};
+					if (req.query.filter) {
+						filter = JSON.parse(req.query.filter as string);
+					}
+
+					for (const data of executingWorkflows) {
+						if (filter.workflowId !== undefined && filter.workflowId !== data.workflowId) {
+							// eslint-disable-next-line no-continue
+							continue;
+						}
+						returnData.push({
+							id: data.id.toString(),
+							workflowId: data.workflowId === undefined ? '' : data.workflowId.toString(),
+							mode: data.mode,
+							retryOf: data.retryOf,
+							startedAt: new Date(data.startedAt),
+						});
+					}
+					returnData.sort((a, b) => parseInt(b.id, 10) - parseInt(a.id, 10));
+
+					return returnData;
 				},
 			),
 		);
@@ -2330,6 +2384,7 @@ class App {
 						const currentJobs = await Queue.getInstance().getJobs(['active', 'waiting']);
 
 						const job = currentJobs.find(
+							// eslint-disable-next-line @typescript-eslint/no-shadow
 							(job) => job.data.executionId.toString() === req.params.id,
 						);
 
@@ -2342,9 +2397,7 @@ class App {
 						const executionDb = (await Db.collections.Execution?.findOne(
 							req.params.id,
 						)) as IExecutionFlattedDb;
-						const fullExecutionData = ResponseHelper.unflattenExecutionData(
-							executionDb,
-						) as IExecutionResponse;
+						const fullExecutionData = ResponseHelper.unflattenExecutionData(executionDb);
 
 						const returnData: IExecutionsStopData = {
 							mode: fullExecutionData.mode,
@@ -2356,25 +2409,24 @@ class App {
 						};
 
 						return returnData;
-					} else {
-						const executionId = req.params.id;
-
-						// Stopt he execution and wait till it is done and we got the data
-						const result = await this.activeExecutionsInstance.stopExecution(executionId);
-
-						if (result === undefined) {
-							throw new Error(`The execution id "${executionId}" could not be found.`);
-						}
-
-						const returnData: IExecutionsStopData = {
-							mode: result.mode,
-							startedAt: new Date(result.startedAt),
-							stoppedAt: result.stoppedAt ? new Date(result.stoppedAt) : undefined,
-							finished: result.finished,
-						};
-
-						return returnData;
 					}
+					const executionId = req.params.id;
+
+					// Stopt he execution and wait till it is done and we got the data
+					const result = await this.activeExecutionsInstance.stopExecution(executionId);
+
+					if (result === undefined) {
+						throw new Error(`The execution id "${executionId}" could not be found.`);
+					}
+
+					const returnData: IExecutionsStopData = {
+						mode: result.mode,
+						startedAt: new Date(result.startedAt),
+						stoppedAt: result.stoppedAt ? new Date(result.stoppedAt) : undefined,
+						finished: result.finished,
+					};
+
+					return returnData;
 				},
 			),
 		);
@@ -2530,7 +2582,7 @@ class App {
 			this.app.post(
 				`/${this.endpointPresetCredentials}`,
 				async (req: express.Request, res: express.Response) => {
-					if (this.presetCredentialsLoaded === false) {
+					if (!this.presetCredentialsLoaded) {
 						const body = req.body as ICredentialsOverwrite;
 
 						if (req.headers['content-type'] !== 'application/json') {
@@ -2596,6 +2648,7 @@ class App {
 	}
 }
 
+// eslint-disable-next-line import/prefer-default-export
 export async function start(): Promise<void> {
 	const PORT = config.get('port');
 	const ADDRESS = config.get('listen_address');
@@ -2607,12 +2660,14 @@ export async function start(): Promise<void> {
 	let server;
 
 	if (app.protocol === 'https' && app.sslKey && app.sslCert) {
+		// eslint-disable-next-line global-require, @typescript-eslint/no-var-requires
 		const https = require('https');
 		const privateKey = readFileSync(app.sslKey, 'utf8');
 		const cert = readFileSync(app.sslCert, 'utf8');
 		const credentials = { key: privateKey, cert };
 		server = https.createServer(credentials, app.app);
 	} else {
+		// eslint-disable-next-line global-require, @typescript-eslint/no-var-requires
 		const http = require('http');
 		server = http.createServer(app.app);
 	}
@@ -2655,7 +2710,7 @@ async function getExecutionsCount(
 			return { count: estimate, estimate: true };
 		}
 	} catch (err) {
-		LoggerProxy.warn('Unable to get executions count from postgres: ' + err);
+		LoggerProxy.warn(`Unable to get executions count from postgres: ${err}`);
 	}
 
 	const count = await Db.collections.Execution!.count(countFilter);

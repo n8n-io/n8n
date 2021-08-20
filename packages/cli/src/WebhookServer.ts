@@ -1,10 +1,22 @@
+/* eslint-disable no-console */
+/* eslint-disable consistent-return */
+/* eslint-disable @typescript-eslint/restrict-plus-operands */
+/* eslint-disable @typescript-eslint/no-non-null-assertion */
+/* eslint-disable @typescript-eslint/restrict-template-expressions */
+/* eslint-disable @typescript-eslint/no-unsafe-call */
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
+/* eslint-disable @typescript-eslint/no-unsafe-member-access */
 import * as express from 'express';
 import { readFileSync } from 'fs';
 import { getConnectionManager } from 'typeorm';
 import * as bodyParser from 'body-parser';
-require('body-parser-xml')(bodyParser);
+// eslint-disable-next-line import/no-extraneous-dependencies, @typescript-eslint/no-unused-vars
 import * as _ from 'lodash';
 
+import * as compression from 'compression';
+// eslint-disable-next-line import/no-extraneous-dependencies
+import * as parseUrl from 'parseurl';
+// eslint-disable-next-line import/no-cycle
 import {
 	ActiveExecutions,
 	ActiveWorkflowRunner,
@@ -15,12 +27,14 @@ import {
 	IExternalHooksClass,
 	IPackageVersions,
 	ResponseHelper,
-} from './';
+} from '.';
 
-import * as compression from 'compression';
 import * as config from '../config';
-import * as parseUrl from 'parseurl';
 
+// eslint-disable-next-line @typescript-eslint/no-var-requires, @typescript-eslint/no-unsafe-call
+require('body-parser-xml')(bodyParser);
+
+// eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
 export function registerProductionWebhooks() {
 	// HEAD webhook requests
 	this.app.head(
@@ -33,6 +47,7 @@ export function registerProductionWebhooks() {
 
 			let response;
 			try {
+				// eslint-disable-next-line @typescript-eslint/no-unsafe-call
 				response = await this.activeWorkflowRunner.executeWebhook('HEAD', requestUrl, req, res);
 			} catch (error) {
 				ResponseHelper.sendErrorResponse(res, error);
@@ -128,21 +143,37 @@ export function registerProductionWebhooks() {
 
 class App {
 	app: express.Application;
+
 	activeWorkflowRunner: ActiveWorkflowRunner.ActiveWorkflowRunner;
+
 	endpointWebhook: string;
+
 	endpointPresetCredentials: string;
+
 	externalHooks: IExternalHooksClass;
+
 	saveDataErrorExecution: string;
+
 	saveDataSuccessExecution: string;
+
 	saveManualExecutions: boolean;
+
 	executionTimeout: number;
+
 	maxExecutionTimeout: number;
+
 	timezone: string;
+
 	activeExecutionsInstance: ActiveExecutions.ActiveExecutions;
+
 	versions: IPackageVersions | undefined;
+
 	restEndpoint: string;
+
 	protocol: string;
+
 	sslKey: string;
+
 	sslCert: string;
 
 	presetCredentialsLoaded: boolean;
@@ -179,6 +210,7 @@ class App {
 	 * @returns {number}
 	 * @memberof App
 	 */
+	// eslint-disable-next-line class-methods-use-this
 	getCurrentDate(): Date {
 		return new Date();
 	}
@@ -209,8 +241,8 @@ class App {
 		);
 
 		// Support application/xml type post data
-		// @ts-ignore
 		this.app.use(
+			// @ts-ignore
 			bodyParser.xml({
 				limit: '16mb',
 				xmlParseOptions: {
@@ -231,7 +263,7 @@ class App {
 			}),
 		);
 
-		//support application/x-www-form-urlencoded post data
+		// support application/x-www-form-urlencoded post data
 		this.app.use(
 			bodyParser.urlencoded({
 				extended: false,
@@ -242,7 +274,7 @@ class App {
 			}),
 		);
 
-		if (process.env['NODE_ENV'] !== 'production') {
+		if (process.env.NODE_ENV !== 'production') {
 			this.app.use((req: express.Request, res: express.Response, next: express.NextFunction) => {
 				// Allow access also from frontend when developing
 				res.header('Access-Control-Allow-Origin', 'http://localhost:8080');
@@ -273,12 +305,13 @@ class App {
 			const connection = getConnectionManager().get();
 
 			try {
-				if (connection.isConnected === false) {
+				if (!connection.isConnected) {
 					// Connection is not active
 					throw new Error('No active database connection!');
 				}
 				// DB ping
 				await connection.query('SELECT 1');
+				// eslint-disable-next-line id-denylist
 			} catch (err) {
 				const error = new ResponseHelper.ResponseError('No Database connection!', undefined, 503);
 				return ResponseHelper.sendErrorResponse(res, error);
@@ -307,12 +340,14 @@ export async function start(): Promise<void> {
 	let server;
 
 	if (app.protocol === 'https' && app.sslKey && app.sslCert) {
+		// eslint-disable-next-line global-require, @typescript-eslint/no-var-requires
 		const https = require('https');
 		const privateKey = readFileSync(app.sslKey, 'utf8');
 		const cert = readFileSync(app.sslCert, 'utf8');
 		const credentials = { key: privateKey, cert };
 		server = https.createServer(credentials, app.app);
 	} else {
+		// eslint-disable-next-line global-require, @typescript-eslint/no-var-requires
 		const http = require('http');
 		server = http.createServer(app.app);
 	}

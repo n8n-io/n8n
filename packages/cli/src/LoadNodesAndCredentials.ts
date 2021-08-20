@@ -1,3 +1,13 @@
+/* eslint-disable @typescript-eslint/naming-convention */
+/* eslint-disable no-prototype-builtins */
+/* eslint-disable no-param-reassign */
+/* eslint-disable @typescript-eslint/prefer-optional-chain */
+/* eslint-disable @typescript-eslint/no-unsafe-member-access */
+/* eslint-disable @typescript-eslint/no-unsafe-call */
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
+/* eslint-disable no-await-in-loop */
+/* eslint-disable no-continue */
+/* eslint-disable no-restricted-syntax */
 import { CUSTOM_EXTENSION_ENV, UserSettings } from 'n8n-core';
 import {
 	CodexData,
@@ -8,10 +18,6 @@ import {
 	LoggerProxy,
 } from 'n8n-workflow';
 
-import * as config from '../config';
-
-import { getLogger } from '../src/Logger';
-
 import {
 	access as fsAccess,
 	readdir as fsReaddir,
@@ -20,6 +26,8 @@ import {
 } from 'fs/promises';
 import * as glob from 'glob-promise';
 import * as path from 'path';
+import { getLogger } from './Logger';
+import * as config from '../config';
 
 const CUSTOM_NODES_CATEGORY = 'Custom Nodes';
 
@@ -31,6 +39,7 @@ class LoadNodesAndCredentialsClass {
 	} = {};
 
 	excludeNodes: string[] | undefined = undefined;
+
 	includeNodes: string[] | undefined = undefined;
 
 	nodeModulesPath = '';
@@ -58,6 +67,7 @@ class LoadNodesAndCredentialsClass {
 				break;
 			} catch (error) {
 				// Folder does not exist so get next one
+				// eslint-disable-next-line no-continue
 				continue;
 			}
 		}
@@ -84,7 +94,9 @@ class LoadNodesAndCredentialsClass {
 
 		// Add folders from special environment variable
 		if (process.env[CUSTOM_EXTENSION_ENV] !== undefined) {
+			// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
 			const customExtensionFolders = process.env[CUSTOM_EXTENSION_ENV]!.split(';');
+			// eslint-disable-next-line prefer-spread
 			customDirectories.push.apply(customDirectories, customExtensionFolders);
 		}
 
@@ -133,6 +145,7 @@ class LoadNodesAndCredentialsClass {
 	 * @returns {Promise<void>}
 	 */
 	async loadCredentialsFromFile(credentialName: string, filePath: string): Promise<void> {
+		// eslint-disable-next-line import/no-dynamic-require, global-require, @typescript-eslint/no-var-requires
 		const tempModule = require(filePath);
 
 		let tempCredential: ICredentialType;
@@ -163,22 +176,27 @@ class LoadNodesAndCredentialsClass {
 		let tempNode: INodeType;
 		let fullNodeName: string;
 
+		// eslint-disable-next-line import/no-dynamic-require, global-require, @typescript-eslint/no-var-requires
 		const tempModule = require(filePath);
 		try {
 			tempNode = new tempModule[nodeName]() as INodeType;
 			this.addCodex({ node: tempNode, filePath, isCustom: packageName === 'CUSTOM' });
 		} catch (error) {
+			// eslint-disable-next-line no-console
 			console.error(`Error loading node "${nodeName}" from: "${filePath}"`);
 			throw error;
 		}
 
-		fullNodeName = packageName + '.' + tempNode.description.name;
+		// eslint-disable-next-line prefer-const
+		fullNodeName = `${packageName}.${tempNode.description.name}`;
 		tempNode.description.name = fullNodeName;
 
 		if (tempNode.description.icon !== undefined && tempNode.description.icon.startsWith('file:')) {
 			// If a file icon gets used add the full path
-			tempNode.description.icon =
-				'file:' + path.join(path.dirname(filePath), tempNode.description.icon.substr(5));
+			tempNode.description.icon = `file:${path.join(
+				path.dirname(filePath),
+				tempNode.description.icon.substr(5),
+			)}`;
 		}
 
 		if (tempNode.executeSingle) {
@@ -210,8 +228,11 @@ class LoadNodesAndCredentialsClass {
 	 * @param {string} filePath The file path to a `*.node.js` file
 	 * @returns {CodexData}
 	 */
+	// eslint-disable-next-line class-methods-use-this
 	getCodex(filePath: string): CodexData {
+		// eslint-disable-next-line global-require, import/no-dynamic-require, @typescript-eslint/no-var-requires
 		const { categories, subcategories, alias } = require(`${filePath}on`); // .js to .json
+		// eslint-disable-next-line @typescript-eslint/no-unsafe-return
 		return {
 			...(categories && { categories }),
 			...(subcategories && { subcategories }),
@@ -241,6 +262,7 @@ class LoadNodesAndCredentialsClass {
 
 			node.description.codex = codex;
 		} catch (_) {
+			// eslint-disable-next-line @typescript-eslint/restrict-template-expressions
 			this.logger.debug(`No codex available for: ${filePath.split('/').pop()}`);
 
 			if (isCustom) {
@@ -295,10 +317,12 @@ class LoadNodesAndCredentialsClass {
 			return;
 		}
 
-		let tempPath: string, filePath: string;
+		let tempPath: string;
+		let filePath: string;
 
 		// Read all node types
-		let fileName: string, type: string;
+		let fileName: string;
+		let type: string;
 		if (packageFile.n8n.hasOwnProperty('nodes') && Array.isArray(packageFile.n8n.nodes)) {
 			for (filePath of packageFile.n8n.nodes) {
 				tempPath = path.join(packagePath, filePath);
@@ -314,7 +338,9 @@ class LoadNodesAndCredentialsClass {
 		) {
 			for (filePath of packageFile.n8n.credentials) {
 				tempPath = path.join(packagePath, filePath);
+				// eslint-disable-next-line @typescript-eslint/no-unused-vars
 				[fileName, type] = path.parse(filePath).name.split('.');
+				// eslint-disable-next-line @typescript-eslint/no-floating-promises
 				this.loadCredentialsFromFile(fileName, tempPath);
 			}
 		}
@@ -323,6 +349,7 @@ class LoadNodesAndCredentialsClass {
 
 let packagesInformationInstance: LoadNodesAndCredentialsClass | undefined;
 
+// eslint-disable-next-line import/prefer-default-export
 export function LoadNodesAndCredentials(): LoadNodesAndCredentialsClass {
 	if (packagesInformationInstance === undefined) {
 		packagesInformationInstance = new LoadNodesAndCredentialsClass();

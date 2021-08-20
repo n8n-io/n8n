@@ -1,3 +1,6 @@
+/* eslint-disable no-console */
+/* eslint-disable no-restricted-syntax */
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import * as convict from 'convict';
 import * as dotenv from 'dotenv';
 import * as path from 'path';

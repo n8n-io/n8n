@@ -1,10 +1,14 @@
+/* eslint-disable no-underscore-dangle */
 import { ICredentialDataDecryptedObject } from 'n8n-workflow';
 
-import { CredentialTypes, GenericHelpers, ICredentialsOverwrite } from './';
+// eslint-disable-next-line import/no-cycle
+import { CredentialTypes, GenericHelpers, ICredentialsOverwrite } from '.';
 
 class CredentialsOverwritesClass {
 	private credentialTypes = CredentialTypes();
+
 	private overwriteData: ICredentialsOverwrite = {};
+
 	private resolvedTypes: string[] = [];
 
 	async init(overwriteData?: ICredentialsOverwrite) {
@@ -18,6 +22,7 @@ class CredentialsOverwritesClass {
 		const data = (await GenericHelpers.getConfigValue('credentials.overwrite.data')) as string;
 
 		try {
+			// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-shadow
 			const overwriteData = JSON.parse(data);
 			this.__setData(overwriteData);
 		} catch (error) {
@@ -28,6 +33,7 @@ class CredentialsOverwritesClass {
 	__setData(overwriteData: ICredentialsOverwrite) {
 		this.overwriteData = overwriteData;
 
+		// eslint-disable-next-line no-restricted-syntax
 		for (const credentialTypeData of this.credentialTypes.getAll()) {
 			const type = credentialTypeData.name;
 
@@ -46,14 +52,19 @@ class CredentialsOverwritesClass {
 			return data;
 		}
 
+		// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 		const returnData = JSON.parse(JSON.stringify(data));
 		// Overwrite only if there is currently no data set
+		// eslint-disable-next-line no-restricted-syntax
 		for (const key of Object.keys(overwrites)) {
+			// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
 			if ([null, undefined, ''].includes(returnData[key])) {
+				// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
 				returnData[key] = overwrites[key];
 			}
 		}
 
+		// eslint-disable-next-line @typescript-eslint/no-unsafe-return
 		return returnData;
 	}
 
@@ -75,6 +86,7 @@ class CredentialsOverwritesClass {
 		}
 
 		const overwrites: ICredentialDataDecryptedObject = {};
+		// eslint-disable-next-line no-restricted-syntax
 		for (const credentialsTypeName of credentialTypeData.extends) {
 			Object.assign(overwrites, this.__getExtended(credentialsTypeName));
 		}
@@ -99,6 +111,7 @@ class CredentialsOverwritesClass {
 
 let credentialsOverwritesInstance: CredentialsOverwritesClass | undefined;
 
+// eslint-disable-next-line import/prefer-default-export, @typescript-eslint/naming-convention
 export function CredentialsOverwrites(): CredentialsOverwritesClass {
 	if (credentialsOverwritesInstance === undefined) {
 		credentialsOverwritesInstance = new CredentialsOverwritesClass();

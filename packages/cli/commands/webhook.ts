@@ -1,7 +1,14 @@
+/* eslint-disable no-console */
+/* eslint-disable @typescript-eslint/no-unsafe-call */
+/* eslint-disable @typescript-eslint/no-unsafe-member-access */
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
+/* eslint-disable @typescript-eslint/unbound-method */
 import { UserSettings } from 'n8n-core';
 import { Command, flags } from '@oclif/command';
+// eslint-disable-next-line import/no-extraneous-dependencies
 import * as Redis from 'ioredis';
 
+import { IDataObject, LoggerProxy } from 'n8n-workflow';
 import * as config from '../config';
 import {
 	ActiveExecutions,
@@ -13,18 +20,17 @@ import {
 	GenericHelpers,
 	LoadNodesAndCredentials,
 	NodeTypes,
+	// eslint-disable-next-line @typescript-eslint/no-unused-vars
 	TestWebhooks,
 	WebhookServer,
 } from '../src';
-import { IDataObject } from 'n8n-workflow';
 
 import { getLogger } from '../src/Logger';
-
-import { LoggerProxy } from 'n8n-workflow';
 
 let activeWorkflowRunner: ActiveWorkflowRunner.ActiveWorkflowRunner | undefined;
 let processExistCode = 0;
 
+// eslint-disable-next-line import/prefer-default-export
 export class Webhook extends Command {
 	static description = 'Starts n8n webhook process. Intercepts only production URLs.';
 
@@ -39,6 +45,7 @@ export class Webhook extends Command {
 	 * Make for example sure that all the webhooks from third party services
 	 * get removed.
 	 */
+	// eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
 	static async stopProcess() {
 		LoggerProxy.info(`\nStopping n8n...`);
 
@@ -58,11 +65,13 @@ export class Webhook extends Command {
 
 			let count = 0;
 			while (executingWorkflows.length !== 0) {
+				// eslint-disable-next-line no-plusplus
 				if (count++ % 4 === 0) {
 					LoggerProxy.info(
 						`Waiting for ${executingWorkflows.length} active executions to finish...`,
 					);
 				}
+				// eslint-disable-next-line no-await-in-loop
 				await new Promise((resolve) => {
 					setTimeout(resolve, 500);
 				});
@@ -75,6 +84,7 @@ export class Webhook extends Command {
 		process.exit(processExistCode);
 	}
 
+	// eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
 	async run() {
 		const logger = getLogger();
 		LoggerProxy.init(logger);
@@ -83,6 +93,7 @@ export class Webhook extends Command {
 		process.on('SIGTERM', Webhook.stopProcess);
 		process.on('SIGINT', Webhook.stopProcess);
 
+		// eslint-disable-next-line @typescript-eslint/no-unused-vars, @typescript-eslint/no-shadow
 		const { flags } = this.parse(Webhook);
 
 		// Wrap that the process does not close but we can still use async
@@ -106,6 +117,7 @@ export class Webhook extends Command {
 			try {
 				// Start directly with the init of the database to improve startup time
 				const startDbInitPromise = Db.init().catch((error) => {
+					// eslint-disable-next-line @typescript-eslint/restrict-template-expressions, @typescript-eslint/no-unsafe-member-access
 					logger.error(`There was an error initializing DB: "${error.message}"`);
 
 					processExistCode = 1;
@@ -115,6 +127,7 @@ export class Webhook extends Command {
 				});
 
 				// Make sure the settings exist
+				// eslint-disable-next-line @typescript-eslint/no-unused-vars
 				const userSettings = await UserSettings.prepareUserSettings();
 
 				// Load all node and credential types
@@ -144,10 +157,11 @@ export class Webhook extends Command {
 					const redisPort = config.get('queue.bull.redis.port');
 					const redisDB = config.get('queue.bull.redis.db');
 					const redisConnectionTimeoutLimit = config.get('queue.bull.redis.timeoutThreshold');
-					let lastTimer = 0,
-						cumulativeTimeout = 0;
+					let lastTimer = 0;
+					let cumulativeTimeout = 0;
 
 					const settings = {
+						// eslint-disable-next-line @typescript-eslint/no-unused-vars
 						retryStrategy: (times: number): number | null => {
 							const now = Date.now();
 							if (now - lastTimer > 30000) {
@@ -159,9 +173,8 @@ export class Webhook extends Command {
 								lastTimer = now;
 								if (cumulativeTimeout > redisConnectionTimeoutLimit) {
 									logger.error(
-										'Unable to connect to Redis after ' +
-											redisConnectionTimeoutLimit +
-											'. Exiting process.',
+										// eslint-disable-next-line @typescript-eslint/restrict-template-expressions
+										`Unable to connect to Redis after ${redisConnectionTimeoutLimit}. Exiting process.`,
 									);
 									process.exit(1);
 								}
@@ -204,10 +217,12 @@ export class Webhook extends Command {
 				activeWorkflowRunner = ActiveWorkflowRunner.getInstance();
 				await activeWorkflowRunner.initWebhooks();
 
+				// eslint-disable-next-line @typescript-eslint/no-unused-vars
 				const editorUrl = GenericHelpers.getBaseUrl();
 				console.info('Webhook listener waiting for requests.');
 			} catch (error) {
 				console.error('Exiting due to error. See log message for details.');
+				// eslint-disable-next-line @typescript-eslint/restrict-template-expressions
 				logger.error(`Webhook process cannot continue. "${error.message}"`);
 
 				processExistCode = 1;

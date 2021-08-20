@@ -15,20 +15,24 @@ import {
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
 
-import { CredentialsOverwrites, CredentialTypes, Db, ICredentialsDb } from './';
+// eslint-disable-next-line import/no-cycle
+import { CredentialsOverwrites, CredentialTypes, Db, ICredentialsDb } from '.';
 
 const mockNodeTypes: INodeTypes = {
 	nodeTypes: {},
+	// eslint-disable-next-line @typescript-eslint/no-unused-vars
 	init: async (nodeTypes?: INodeTypeData): Promise<void> => {},
 	getAll: (): INodeType[] => {
 		// Does not get used in Workflow so no need to return it
 		return [];
 	},
+	// eslint-disable-next-line @typescript-eslint/no-unused-vars
 	getByName: (nodeType: string): INodeType | undefined => {
 		return undefined;
 	},
 };
 
+// eslint-disable-next-line import/prefer-default-export
 export class CredentialsHelper extends ICredentialsHelper {
 	/**
 	 * Returns the credentials instance
@@ -75,6 +79,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 		}
 
 		const combineProperties = [] as INodeProperties[];
+		// eslint-disable-next-line no-restricted-syntax
 		for (const credentialsTypeName of credentialTypeData.extends) {
 			const mergeCredentialProperties = this.getCredentialsProperties(credentialsTypeName);
 			NodeHelpers.mergeNodeProperties(combineProperties, mergeCredentialProperties);
@@ -168,6 +173,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 					decryptedData,
 				) as ICredentialDataDecryptedObject;
 			} catch (e) {
+				// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
 				e.message += ' [Error resolving credentials]';
 				throw e;
 			}
@@ -181,7 +187,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 			} as INode;
 
 			const workflow = new Workflow({
-				nodes: [node!],
+				nodes: [node],
 				connections: {},
 				active: false,
 				nodeTypes: mockNodeTypes,
@@ -189,7 +195,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 
 			// Resolve expressions if any are set
 			decryptedData = workflow.expression.getComplexParameterValue(
-				node!,
+				node,
 				decryptedData as INodeParameters,
 				mode,
 				undefined,
@@ -199,6 +205,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 
 		// Load and apply the credentials overwrites if any exist
 		const credentialsOverwrites = CredentialsOverwrites();
+		// eslint-disable-next-line @typescript-eslint/no-unsafe-return
 		return credentialsOverwrites.applyOverwrite(type, decryptedData);
 	}
 
@@ -216,9 +223,10 @@ export class CredentialsHelper extends ICredentialsHelper {
 		type: string,
 		data: ICredentialDataDecryptedObject,
 	): Promise<void> {
+		// eslint-disable-next-line @typescript-eslint/await-thenable
 		const credentials = await this.getCredentials(name, type);
 
-		if (Db.collections!.Credentials === null) {
+		if (Db.collections.Credentials === null) {
 			// The first time executeWorkflow gets called the Database has
 			// to get initialized first
 			await Db.init();
@@ -238,6 +246,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 			type,
 		};
 
+		// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
 		await Db.collections.Credentials!.update(findQuery, newCredentialsData);
 	}
 }

@@ -1,23 +1,19 @@
-import {
-	ActiveExecutions,
-	CredentialsHelper,
-	Db,
-	ExternalHooks,
-	IExecutionDb,
-	IExecutionFlattedDb,
-	IExecutionResponse,
-	IPushDataExecutionFinished,
-	IWorkflowBase,
-	IWorkflowExecuteProcess,
-	IWorkflowExecutionDataProcess,
-	NodeTypes,
-	Push,
-	ResponseHelper,
-	WebhookHelpers,
-	WorkflowCredentials,
-	WorkflowHelpers,
-} from './';
-
+/* eslint-disable no-restricted-syntax */
+/* eslint-disable @typescript-eslint/restrict-plus-operands */
+/* eslint-disable @typescript-eslint/explicit-module-boundary-types */
+/* eslint-disable @typescript-eslint/await-thenable */
+/* eslint-disable @typescript-eslint/no-non-null-assertion */
+/* eslint-disable @typescript-eslint/no-use-before-define */
+/* eslint-disable @typescript-eslint/prefer-nullish-coalescing */
+/* eslint-disable no-param-reassign */
+/* eslint-disable @typescript-eslint/no-unsafe-call */
+/* eslint-disable @typescript-eslint/prefer-optional-chain */
+/* eslint-disable id-denylist */
+/* eslint-disable @typescript-eslint/restrict-template-expressions */
+/* eslint-disable @typescript-eslint/no-unsafe-member-access */
+/* eslint-disable @typescript-eslint/no-unused-vars */
+/* eslint-disable func-names */
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import { UserSettings, WorkflowExecute } from 'n8n-core';
 
 import {
@@ -40,10 +36,29 @@ import {
 	WorkflowHooks,
 } from 'n8n-workflow';
 
-import * as config from '../config';
-
 import { LessThanOrEqual } from 'typeorm';
 import { DateUtils } from 'typeorm/util/DateUtils';
+import * as config from '../config';
+// eslint-disable-next-line import/no-cycle
+import {
+	ActiveExecutions,
+	CredentialsHelper,
+	Db,
+	ExternalHooks,
+	IExecutionDb,
+	IExecutionFlattedDb,
+	IExecutionResponse,
+	IPushDataExecutionFinished,
+	IWorkflowBase,
+	IWorkflowExecuteProcess,
+	IWorkflowExecutionDataProcess,
+	NodeTypes,
+	Push,
+	ResponseHelper,
+	WebhookHelpers,
+	WorkflowCredentials,
+	WorkflowHelpers,
+} from '.';
 
 const ERROR_TRIGGER_TYPE = config.get('nodes.errorTriggerType') as string;
 
@@ -65,7 +80,7 @@ function executeErrorWorkflow(
 ): void {
 	// Check if there was an error and if so if an errorWorkflow or a trigger is set
 
-	let pastExecutionUrl: string | undefined = undefined;
+	let pastExecutionUrl: string | undefined;
 	if (executionId !== undefined) {
 		pastExecutionUrl = `${WebhookHelpers.getWebhookBaseUrl()}execution/${executionId}`;
 	}
@@ -81,7 +96,7 @@ function executeErrorWorkflow(
 				retryOf,
 			},
 			workflow: {
-				id: workflowData.id !== undefined ? (workflowData.id.toString() as string) : undefined,
+				id: workflowData.id !== undefined ? workflowData.id.toString() : undefined,
 				name: workflowData.name,
 			},
 		};
@@ -89,6 +104,7 @@ function executeErrorWorkflow(
 		// Run the error workflow
 		// To avoid an infinite loop do not run the error workflow again if the error-workflow itself failed and it is its own error-workflow.
 		if (
+			// eslint-disable-next-line @typescript-eslint/prefer-optional-chain
 			workflowData.settings !== undefined &&
 			workflowData.settings.errorWorkflow &&
 			!(
@@ -103,6 +119,7 @@ function executeErrorWorkflow(
 				workflowId: workflowData.id,
 			});
 			// If a specific error workflow is set run only that one
+			// eslint-disable-next-line @typescript-eslint/no-floating-promises
 			WorkflowHelpers.executeErrorWorkflow(
 				workflowData.settings.errorWorkflow as string,
 				workflowErrorData,
@@ -114,6 +131,7 @@ function executeErrorWorkflow(
 		) {
 			Logger.verbose(`Start internal error workflow`, { executionId, workflowId: workflowData.id });
 			// If the workflow contains
+			// eslint-disable-next-line @typescript-eslint/no-floating-promises
 			WorkflowHelpers.executeErrorWorkflow(workflowData.id.toString(), workflowErrorData);
 		}
 	}
@@ -136,9 +154,11 @@ function pruneExecutionData(this: WorkflowHooks): void {
 		date.setHours(date.getHours() - maxAge);
 
 		// date reformatting needed - see https://github.com/typeorm/typeorm/issues/2286
+		// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 		const utcDate = DateUtils.mixedDateToUtcDatetimeString(date);
 
 		// throttle just on success to allow for self healing on failure
+		// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
 		Db.collections
 			.Execution!.delete({ stoppedAt: LessThanOrEqual(utcDate) })
 			.then((data) =>
@@ -237,7 +257,7 @@ function hookFunctionsPush(): IWorkflowExecuteHooks {
 						startedAt: new Date(),
 						retryOf: this.retryOf,
 						workflowId: this.workflowData.id,
-						sessionId: this.sessionId as string,
+						sessionId: this.sessionId,
 						workflowName: this.workflowData.name,
 					},
 					this.sessionId,
@@ -311,13 +331,14 @@ export function hookFunctionsPreExecute(parentProcessMode?: string): IWorkflowEx
 				if (this.workflowData.settings !== undefined) {
 					if (this.workflowData.settings.saveExecutionProgress === false) {
 						return;
-					} else if (
+					}
+					if (
 						this.workflowData.settings.saveExecutionProgress !== true &&
-						(!config.get('executions.saveExecutionProgress') as boolean)
+						!config.get('executions.saveExecutionProgress')
 					) {
 						return;
 					}
-				} else if (!config.get('executions.saveExecutionProgress') as boolean) {
+				} else if (!config.get('executions.saveExecutionProgress')) {
 					return;
 				}
 
@@ -327,11 +348,13 @@ export function hookFunctionsPreExecute(parentProcessMode?: string): IWorkflowEx
 						{ executionId: this.executionId, nodeName },
 					);
 
+					// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
 					const execution = await Db.collections.Execution!.findOne(this.executionId);
 
 					if (execution === undefined) {
 						// Something went badly wrong if this happens.
 						// This check is here mostly to make typescript happy.
+						// eslint-disable-next-line consistent-return
 						return undefined;
 					}
 					const fullExecutionData: IExecutionResponse =
@@ -373,6 +396,7 @@ export function hookFunctionsPreExecute(parentProcessMode?: string): IWorkflowEx
 
 					const flattenedExecutionData = ResponseHelper.flattenExecutionData(fullExecutionData);
 
+					// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
 					await Db.collections.Execution!.update(
 						this.executionId,
 						flattenedExecutionData as IExecutionFlattedDb,
@@ -429,7 +453,7 @@ function hookFunctionsSave(parentProcessMode?: string): IWorkflowExecuteHooks {
 				try {
 					if (
 						!isManualMode &&
-						WorkflowHelpers.isWorkflowIdValid(this.workflowData.id as string) === true &&
+						WorkflowHelpers.isWorkflowIdValid(this.workflowData.id as string) &&
 						newStaticData
 					) {
 						// Workflow is saved so update in database
@@ -455,8 +479,9 @@ function hookFunctionsSave(parentProcessMode?: string): IWorkflowExecuteHooks {
 						saveManualExecutions = this.workflowData.settings.saveManualExecutions as boolean;
 					}
 
-					if (isManualMode && saveManualExecutions === false) {
+					if (isManualMode && !saveManualExecutions) {
 						// Data is always saved, so we remove from database
+						// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
 						await Db.collections.Execution!.delete(this.executionId);
 						return;
 					}
@@ -475,8 +500,8 @@ function hookFunctionsSave(parentProcessMode?: string): IWorkflowExecuteHooks {
 
 					const workflowDidSucceed = !fullRunData.data.resultData.error;
 					if (
-						(workflowDidSucceed === true && saveDataSuccessExecution === 'none') ||
-						(workflowDidSucceed === false && saveDataErrorExecution === 'none')
+						(workflowDidSucceed && saveDataSuccessExecution === 'none') ||
+						(!workflowDidSucceed && saveDataErrorExecution === 'none')
 					) {
 						if (!isManualMode) {
 							executeErrorWorkflow(
@@ -507,7 +532,7 @@ function hookFunctionsSave(parentProcessMode?: string): IWorkflowExecuteHooks {
 
 					if (
 						this.workflowData.id !== undefined &&
-						WorkflowHelpers.isWorkflowIdValid(this.workflowData.id.toString()) === true
+						WorkflowHelpers.isWorkflowIdValid(this.workflowData.id.toString())
 					) {
 						fullExecutionData.workflowId = this.workflowData.id.toString();
 					}
@@ -586,10 +611,7 @@ function hookFunctionsSaveWorker(): IWorkflowExecuteHooks {
 				newStaticData: IDataObject,
 			): Promise<void> {
 				try {
-					if (
-						WorkflowHelpers.isWorkflowIdValid(this.workflowData.id as string) === true &&
-						newStaticData
-					) {
+					if (WorkflowHelpers.isWorkflowIdValid(this.workflowData.id as string) && newStaticData) {
 						// Workflow is saved so update in database
 						try {
 							await WorkflowHelpers.saveStaticDataById(
@@ -605,7 +627,7 @@ function hookFunctionsSaveWorker(): IWorkflowExecuteHooks {
 					}
 
 					const workflowDidSucceed = !fullRunData.data.resultData.error;
-					if (workflowDidSucceed === false) {
+					if (!workflowDidSucceed) {
 						executeErrorWorkflow(
 							this.workflowData,
 							fullRunData,
@@ -630,7 +652,7 @@ function hookFunctionsSaveWorker(): IWorkflowExecuteHooks {
 
 					if (
 						this.workflowData.id !== undefined &&
-						WorkflowHelpers.isWorkflowIdValid(this.workflowData.id.toString()) === true
+						WorkflowHelpers.isWorkflowIdValid(this.workflowData.id.toString())
 					) {
 						fullExecutionData.workflowId = this.workflowData.id.toString();
 					}
@@ -666,7 +688,8 @@ export async function getRunData(
 	// Find Start-Node
 	const requiredNodeTypes = ['n8n-nodes-base.start'];
 	let startNode: INode | undefined;
-	for (const node of workflowData!.nodes) {
+	// eslint-disable-next-line no-restricted-syntax
+	for (const node of workflowData.nodes) {
 		if (requiredNodeTypes.includes(node.type)) {
 			startNode = node;
 			break;
@@ -708,7 +731,7 @@ export async function getRunData(
 
 	// Get the needed credentials for the current workflow as they will differ to the ones of the
 	// calling workflow.
-	const credentials = await WorkflowCredentials(workflowData!.nodes);
+	const credentials = await WorkflowCredentials(workflowData.nodes);
 
 	const runData: IWorkflowExecutionDataProcess = {
 		credentials,
@@ -728,7 +751,7 @@ export async function getWorkflowData(workflowInfo: IExecuteWorkflowInfo): Promi
 		);
 	}
 
-	if (Db.collections!.Workflow === null) {
+	if (Db.collections.Workflow === null) {
 		// The first time executeWorkflow gets called the Database has
 		// to get initialized first
 		await Db.init();
@@ -736,7 +759,7 @@ export async function getWorkflowData(workflowInfo: IExecuteWorkflowInfo): Promi
 
 	let workflowData: IWorkflowBase | undefined;
 	if (workflowInfo.id !== undefined) {
-		workflowData = await Db.collections!.Workflow!.findOne(workflowInfo.id);
+		workflowData = await Db.collections.Workflow!.findOne(workflowInfo.id);
 		if (workflowData === undefined) {
 			throw new Error(`The workflow with the id "${workflowInfo.id}" does not exist.`);
 		}
@@ -776,11 +799,11 @@ export async function executeWorkflow(
 	const workflow = new Workflow({
 		id: workflowInfo.id,
 		name: workflowName,
-		nodes: workflowData!.nodes,
-		connections: workflowData!.connections,
-		active: workflowData!.active,
+		nodes: workflowData.nodes,
+		connections: workflowData.connections,
+		active: workflowData.active,
 		nodeTypes,
-		staticData: workflowData!.staticData,
+		staticData: workflowData.staticData,
 	});
 
 	const runData =
@@ -801,7 +824,7 @@ export async function executeWorkflow(
 	try {
 		// Get the needed credentials for the current workflow as they will differ to the ones of the
 		// calling workflow.
-		const credentials = await WorkflowCredentials(workflowData!.nodes);
+		const credentials = await WorkflowCredentials(workflowData.nodes);
 
 		// Create new additionalData to have different workflow loaded and to call
 		// different webooks
@@ -809,7 +832,7 @@ export async function executeWorkflow(
 		additionalDataIntegrated.hooks = getWorkflowHooksIntegrated(
 			runData.executionMode,
 			executionId,
-			workflowData!,
+			workflowData,
 			{ parentProcessMode: additionalData.hooks!.mode },
 		);
 		// Make sure we pass on the original executeWorkflow function we received
@@ -881,7 +904,7 @@ export async function executeWorkflow(
 		await Db.collections.Execution!.update(executionId, executionData as IExecutionFlattedDb);
 		throw {
 			...error,
-			stack: error!.stack,
+			stack: error.stack,
 		};
 	}
 
@@ -893,19 +916,19 @@ export async function executeWorkflow(
 		await ActiveExecutions.getInstance().remove(executionId, data);
 		const returnData = WorkflowHelpers.getDataLastExecutedNodeData(data);
 		return returnData!.data!.main;
-	} else {
-		await ActiveExecutions.getInstance().remove(executionId, data);
-		// Workflow did fail
-		const { error } = data.data.resultData;
-		throw {
-			...error,
-			stack: error!.stack,
-		};
 	}
+	await ActiveExecutions.getInstance().remove(executionId, data);
+	// Workflow did fail
+	const { error } = data.data.resultData;
+	// eslint-disable-next-line @typescript-eslint/no-throw-literal
+	throw {
+		...error,
+		stack: error!.stack,
+	};
 }
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function sendMessageToUI(source: string, message: any) {
-	// tslint:disable-line:no-any
 	if (this.sessionId === undefined) {
 		return;
 	}
@@ -942,8 +965,8 @@ export async function getBase(
 	const urlBaseWebhook = WebhookHelpers.getWebhookBaseUrl();
 
 	const timezone = config.get('generic.timezone') as string;
-	const webhookBaseUrl = (urlBaseWebhook + config.get('endpoints.webhook')) as string;
-	const webhookTestBaseUrl = (urlBaseWebhook + config.get('endpoints.webhookTest')) as string;
+	const webhookBaseUrl = urlBaseWebhook + config.get('endpoints.webhook');
+	const webhookTestBaseUrl = urlBaseWebhook + config.get('endpoints.webhookTest');
 
 	const encryptionKey = await UserSettings.getEncryptionKey();
 	if (encryptionKey === undefined) {
@@ -955,7 +978,7 @@ export async function getBase(
 		credentialsHelper: new CredentialsHelper(credentials, encryptionKey),
 		encryptionKey,
 		executeWorkflow,
-		restApiUrl: (urlBaseWebhook + config.get('endpoints.rest')) as string,
+		restApiUrl: urlBaseWebhook + config.get('endpoints.rest'),
 		timezone,
 		webhookBaseUrl,
 		webhookTestBaseUrl,

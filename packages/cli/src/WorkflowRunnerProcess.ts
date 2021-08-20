@@ -1,15 +1,10 @@
-import {
-	CredentialsOverwrites,
-	CredentialTypes,
-	Db,
-	ExternalHooks,
-	IWorkflowExecuteProcess,
-	IWorkflowExecutionDataProcessWithExecution,
-	NodeTypes,
-	WorkflowExecuteAdditionalData,
-	WorkflowHelpers,
-} from './';
-
+/* eslint-disable @typescript-eslint/no-unsafe-member-access */
+/* eslint-disable consistent-return */
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
+/* eslint-disable @typescript-eslint/no-shadow */
+/* eslint-disable @typescript-eslint/no-non-null-assertion */
+/* eslint-disable @typescript-eslint/no-use-before-define */
+/* eslint-disable @typescript-eslint/unbound-method */
 import { IProcessMessage, WorkflowExecute } from 'n8n-core';
 
 import {
@@ -30,22 +25,42 @@ import {
 	WorkflowHooks,
 	WorkflowOperationError,
 } from 'n8n-workflow';
+import {
+	CredentialsOverwrites,
+	CredentialTypes,
+	Db,
+	ExternalHooks,
+	IWorkflowExecuteProcess,
+	IWorkflowExecutionDataProcessWithExecution,
+	NodeTypes,
+	WorkflowExecuteAdditionalData,
+	WorkflowHelpers,
+} from '.';
 
-import { getLogger } from '../src/Logger';
+import { getLogger } from './Logger';
 
 import * as config from '../config';
 
+// eslint-disable-next-line import/prefer-default-export
 export class WorkflowRunnerProcess {
 	data: IWorkflowExecutionDataProcessWithExecution | undefined;
+
 	logger: ILogger;
+
 	startedAt = new Date();
+
 	workflow: Workflow | undefined;
+
 	workflowExecute: WorkflowExecute | undefined;
+
+	// eslint-disable-next-line @typescript-eslint/no-invalid-void-type
 	executionIdCallback: (executionId: string) => void | undefined;
+
 	childExecutions: {
 		[key: string]: IWorkflowExecuteProcess;
 	} = {};
 
+	// eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
 	static async stopProcess() {
 		setTimeout(() => {
 			// Attempt a graceful shutdown, giving executions 30 seconds to finish
@@ -57,6 +72,7 @@ export class WorkflowRunnerProcess {
 		process.on('SIGTERM', WorkflowRunnerProcess.stopProcess);
 		process.on('SIGINT', WorkflowRunnerProcess.stopProcess);
 
+		// eslint-disable-next-line no-multi-assign
 		const logger = (this.logger = getLogger());
 		LoggerProxy.init(logger);
 
@@ -74,13 +90,16 @@ export class WorkflowRunnerProcess {
 		this.startedAt = new Date();
 
 		const nodeTypesData: INodeTypeData = {};
+		// eslint-disable-next-line no-restricted-syntax
 		for (const nodeTypeName of Object.keys(this.data.nodeTypeData)) {
 			className = this.data.nodeTypeData[nodeTypeName].className;
 
 			filePath = this.data.nodeTypeData[nodeTypeName].sourcePath;
+			// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, import/no-dynamic-require, global-require, @typescript-eslint/no-var-requires
 			const tempModule = require(filePath);
 
 			try {
+				// eslint-disable-next-line @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
 				tempNode = new tempModule[className]() as INodeType;
 			} catch (error) {
 				throw new Error(`Error loading node "${nodeTypeName}" from: "${filePath}"`);
@@ -132,8 +151,9 @@ export class WorkflowRunnerProcess {
 
 		// Start timeout for the execution
 		let workflowTimeout = config.get('executions.timeout') as number; // initialize with default
+		// eslint-disable-next-line @typescript-eslint/prefer-optional-chain
 		if (this.data.workflowData.settings && this.data.workflowData.settings.executionTimeout) {
-			workflowTimeout = this.data.workflowData.settings!.executionTimeout as number; // preference on workflow setting
+			workflowTimeout = this.data.workflowData.settings.executionTimeout as number; // preference on workflow setting
 		}
 
 		if (workflowTimeout > 0) {
@@ -143,12 +163,12 @@ export class WorkflowRunnerProcess {
 		this.workflow = new Workflow({
 			id: this.data.workflowData.id as string | undefined,
 			name: this.data.workflowData.name,
-			nodes: this.data.workflowData!.nodes,
-			connections: this.data.workflowData!.connections,
-			active: this.data.workflowData!.active,
+			nodes: this.data.workflowData.nodes,
+			connections: this.data.workflowData.connections,
+			active: this.data.workflowData.active,
 			nodeTypes,
-			staticData: this.data.workflowData!.staticData,
-			settings: this.data.workflowData!.settings,
+			staticData: this.data.workflowData.staticData,
+			settings: this.data.workflowData.settings,
 		});
 		const additionalData = await WorkflowExecuteAdditionalData.getBase(
 			this.data.credentials,
@@ -157,16 +177,18 @@ export class WorkflowRunnerProcess {
 		);
 		additionalData.hooks = this.getProcessForwardHooks();
 
+		// eslint-disable-next-line @typescript-eslint/no-explicit-any
 		additionalData.sendMessageToUI = async (source: string, message: any) => {
-			// tslint:disable-line:no-any
 			if (workflowRunner.data!.executionMode !== 'manual') {
 				return;
 			}
 
 			try {
+				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 				await sendToParentProcess('sendMessageToUI', { source, message });
 			} catch (error) {
 				this.logger.error(
+					// eslint-disable-next-line @typescript-eslint/restrict-template-expressions, @typescript-eslint/no-unsafe-member-access
 					`There was a problem sending UI data to parent process: "${error.message}"`,
 				);
 			}
@@ -195,10 +217,10 @@ export class WorkflowRunnerProcess {
 					workflowData,
 					runData,
 				)) as { workflowExecute: WorkflowExecute; workflow: Workflow } as IWorkflowExecuteProcess;
-				const workflowExecute = executeWorkflowFunctionOutput.workflowExecute;
+				const { workflowExecute } = executeWorkflowFunctionOutput;
 				this.childExecutions[executionId] = executeWorkflowFunctionOutput;
-				const workflow = executeWorkflowFunctionOutput.workflow;
-				result = (await workflowExecute.processRunExecutionData(workflow)) as IRun;
+				const { workflow } = executeWorkflowFunctionOutput;
+				result = await workflowExecute.processRunExecutionData(workflow);
 				await externalHooks.run('workflow.postExecute', [result, workflowData]);
 				await sendToParentProcess('finishExecution', { executionId, result });
 				delete this.childExecutions[executionId];
@@ -222,7 +244,8 @@ export class WorkflowRunnerProcess {
 				this.data.executionData,
 			);
 			return this.workflowExecute.processRunExecutionData(this.workflow);
-		} else if (
+		}
+		if (
 			this.data.runData === undefined ||
 			this.data.startNodes === undefined ||
 			this.data.startNodes.length === 0 ||
@@ -233,16 +256,15 @@ export class WorkflowRunnerProcess {
 			// Can execute without webhook so go on
 			this.workflowExecute = new WorkflowExecute(additionalData, this.data.executionMode);
 			return this.workflowExecute.run(this.workflow, undefined, this.data.destinationNode);
-		} else {
-			// Execute only the nodes between start and destination nodes
-			this.workflowExecute = new WorkflowExecute(additionalData, this.data.executionMode);
-			return this.workflowExecute.runPartialWorkflow(
-				this.workflow,
-				this.data.runData,
-				this.data.startNodes,
-				this.data.destinationNode,
-			);
 		}
+		// Execute only the nodes between start and destination nodes
+		this.workflowExecute = new WorkflowExecute(additionalData, this.data.executionMode);
+		return this.workflowExecute.runPartialWorkflow(
+			this.workflow,
+			this.data.runData,
+			this.data.startNodes,
+			this.data.destinationNode,
+		);
 	}
 
 	/**
@@ -252,8 +274,8 @@ export class WorkflowRunnerProcess {
 	 * @param {any[]} parameters
 	 * @memberof WorkflowRunnerProcess
 	 */
+	// eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types, @typescript-eslint/no-explicit-any
 	async sendHookToParentProcess(hook: string, parameters: any[]) {
-		// tslint:disable-line:no-any
 		try {
 			await sendToParentProcess('processHook', {
 				hook,
@@ -296,6 +318,7 @@ export class WorkflowRunnerProcess {
 		};
 
 		const preExecuteFunctions = WorkflowExecuteAdditionalData.hookFunctionsPreExecute();
+		// eslint-disable-next-line no-restricted-syntax
 		for (const key of Object.keys(preExecuteFunctions)) {
 			if (hookFunctions[key] === undefined) {
 				hookFunctions[key] = [];
@@ -320,8 +343,8 @@ export class WorkflowRunnerProcess {
  * @param {*} data The data
  * @returns {Promise<void>}
  */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function sendToParentProcess(type: string, data: any): Promise<void> {
-	// tslint:disable-line:no-any
 	return new Promise((resolve, reject) => {
 		process.send!(
 			{
@@ -363,6 +386,7 @@ process.on('message', async (message: IProcessMessage) => {
 			if (workflowRunner.workflowExecute !== undefined) {
 				const executionIds = Object.keys(workflowRunner.childExecutions);
 
+				// eslint-disable-next-line no-restricted-syntax
 				for (const executionId of executionIds) {
 					const childWorkflowExecute = workflowRunner.childExecutions[executionId];
 					runData = childWorkflowExecute.workflowExecute.getFullRunData(
@@ -374,6 +398,7 @@ process.on('message', async (message: IProcessMessage) => {
 							: new WorkflowOperationError('Workflow-Execution has been canceled!');
 
 					// If there is any data send it to parent process, if execution timedout add the error
+					// eslint-disable-next-line no-await-in-loop
 					await childWorkflowExecute.workflowExecute.processSuccessExecution(
 						workflowRunner.childExecutions[executionId].startedAt,
 						childWorkflowExecute.workflow,
@@ -405,12 +430,13 @@ process.on('message', async (message: IProcessMessage) => {
 					},
 					finished: false,
 					mode: workflowRunner.data
-						? workflowRunner.data!.executionMode
+						? workflowRunner.data.executionMode
 						: ('own' as WorkflowExecuteMode),
 					startedAt: workflowRunner.startedAt,
 					stoppedAt: new Date(),
 				};
 
+				// eslint-disable-next-line @typescript-eslint/no-floating-promises
 				workflowRunner.sendHookToParentProcess('workflowExecuteAfter', [runData]);
 			}
 
@@ -421,15 +447,16 @@ process.on('message', async (message: IProcessMessage) => {
 			// Stop process
 			process.exit();
 		} else if (message.type === 'executionId') {
+			// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
 			workflowRunner.executionIdCallback(message.data.executionId);
 		}
 	} catch (error) {
 		// Catch all uncaught errors and forward them to parent process
 		const executionError = {
 			...error,
-			name: error!.name || 'Error',
-			message: error!.message,
-			stack: error!.stack,
+			name: error.name || 'Error',
+			message: error.message,
+			stack: error.stack,
 		} as ExecutionError;
 
 		await sendToParentProcess('processError', {

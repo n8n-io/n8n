@@ -1,16 +1,10 @@
-import {
-	CredentialTypes,
-	Db,
-	ICredentialsTypeData,
-	ITransferNodeTypes,
-	IWorkflowErrorData,
-	IWorkflowExecutionDataProcess,
-	NodeTypes,
-	ResponseHelper,
-	WorkflowCredentials,
-	WorkflowRunner,
-} from './';
-
+/* eslint-disable @typescript-eslint/no-non-null-assertion */
+/* eslint-disable no-underscore-dangle */
+/* eslint-disable no-continue */
+/* eslint-disable @typescript-eslint/no-unsafe-member-access */
+/* eslint-disable @typescript-eslint/restrict-template-expressions */
+/* eslint-disable no-restricted-syntax */
+/* eslint-disable no-param-reassign */
 import {
 	IDataObject,
 	IExecuteData,
@@ -22,10 +16,24 @@ import {
 	LoggerProxy as Logger,
 	Workflow,
 } from 'n8n-workflow';
+import { validate } from 'class-validator';
+// eslint-disable-next-line import/no-cycle
+import {
+	CredentialTypes,
+	Db,
+	ICredentialsTypeData,
+	ITransferNodeTypes,
+	IWorkflowErrorData,
+	IWorkflowExecutionDataProcess,
+	NodeTypes,
+	ResponseHelper,
+	WorkflowCredentials,
+	WorkflowRunner,
+} from '.';
 
 import * as config from '../config';
+// eslint-disable-next-line import/no-cycle
 import { WorkflowEntity } from './databases/entities/WorkflowEntity';
-import { validate } from 'class-validator';
 
 const ERROR_TRIGGER_TYPE = config.get('nodes.errorTriggerType') as string;
 
@@ -37,8 +45,8 @@ const ERROR_TRIGGER_TYPE = config.get('nodes.errorTriggerType') as string;
  * @returns {(ITaskData | undefined)}
  */
 export function getDataLastExecutedNodeData(inputData: IRun): ITaskData | undefined {
-	const runData = inputData.data.resultData.runData;
-	const lastNodeExecuted = inputData.data.resultData.lastNodeExecuted;
+	const { runData } = inputData.data.resultData;
+	const { lastNodeExecuted } = inputData.data.resultData;
 
 	if (lastNodeExecuted === undefined) {
 		return undefined;
@@ -63,6 +71,7 @@ export function isWorkflowIdValid(id: string | null | undefined | number): boole
 		id = parseInt(id, 10);
 	}
 
+	// eslint-disable-next-line no-restricted-globals
 	if (isNaN(id as number)) {
 		return false;
 	}
@@ -88,6 +97,7 @@ export async function executeErrorWorkflow(
 		if (workflowData === undefined) {
 			// The error workflow could not be found
 			Logger.error(
+				// eslint-disable-next-line @typescript-eslint/restrict-template-expressions
 				`Calling Error Workflow for "${workflowErrorData.workflow.id}". Could not find error workflow "${workflowId}"`,
 				{ workflowId },
 			);
@@ -210,6 +220,7 @@ export function getNodeTypeData(nodes: INode[]): ITransferNodeTypes {
 	const nodeTypes = NodeTypes();
 
 	// Check which node-types have to be loaded
+	// eslint-disable-next-line @typescript-eslint/no-use-before-define
 	const neededNodeTypes = getNeededNodeTypes(nodes);
 
 	// Get all the data of the needed node types that they
@@ -312,9 +323,10 @@ export function getNeededNodeTypes(nodes: INode[]): string[] {
 export async function saveStaticData(workflow: Workflow): Promise<void> {
 	if (workflow.staticData.__dataChanged === true) {
 		// Static data of workflow changed and so has to be saved
-		if (isWorkflowIdValid(workflow.id) === true) {
+		if (isWorkflowIdValid(workflow.id)) {
 			// Workflow is saved so update in database
 			try {
+				// eslint-disable-next-line @typescript-eslint/no-use-before-define
 				await saveStaticDataById(workflow.id!, workflow.staticData);
 				workflow.staticData.__dataChanged = false;
 			} catch (e) {
@@ -351,6 +363,7 @@ export async function saveStaticDataById(
  * @param {(string | number)} workflowId The id of the workflow to get static data of
  * @returns
  */
+// eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
 export async function getStaticDataById(workflowId: string | number) {
 	const workflowData = await Db.collections.Workflow!.findOne(workflowId, {
 		select: ['staticData'],
@@ -360,11 +373,13 @@ export async function getStaticDataById(workflowId: string | number) {
 		return {};
 	}
 
+	// eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
 	return workflowData.staticData || {};
 }
 
 // TODO: Deduplicate `validateWorkflow` and `throwDuplicateEntryError` with TagHelpers?
 
+// eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
 export async function validateWorkflow(newWorkflow: WorkflowEntity) {
 	const errors = await validate(newWorkflow);
 
@@ -374,6 +389,7 @@ export async function validateWorkflow(newWorkflow: WorkflowEntity) {
 	}
 }
 
+// eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
 export function throwDuplicateEntryError(error: Error) {
 	const errorMessage = error.message.toLowerCase();
 	if (errorMessage.includes('unique') || errorMessage.includes('duplicate')) {

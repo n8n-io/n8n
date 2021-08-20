@@ -1,28 +1,30 @@
-import { DatabaseType, GenericHelpers, IDatabaseCollections } from './';
-
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
+/* eslint-disable @typescript-eslint/restrict-template-expressions */
+/* eslint-disable no-case-declarations */
+/* eslint-disable @typescript-eslint/naming-convention */
 import { UserSettings } from 'n8n-core';
-
 import { ConnectionOptions, createConnection, getRepository } from 'typeorm';
-
 import { TlsOptions } from 'tls';
+import * as path from 'path';
+// eslint-disable-next-line import/no-cycle
+import { DatabaseType, GenericHelpers, IDatabaseCollections } from '.';
 
 import * as config from '../config';
 
+// eslint-disable-next-line import/no-cycle
 import { entities } from './databases/entities';
 
-export let collections: IDatabaseCollections = {
+import { postgresMigrations } from './databases/postgresdb/migrations';
+import { mysqlMigrations } from './databases/mysqldb/migrations';
+import { sqliteMigrations } from './databases/sqlite/migrations';
+
+export const collections: IDatabaseCollections = {
 	Credentials: null,
 	Execution: null,
 	Workflow: null,
 	Webhook: null,
 	Tag: null,
 };
-
-import { postgresMigrations } from './databases/postgresdb/migrations';
-import { mysqlMigrations } from './databases/mysqldb/migrations';
-import { sqliteMigrations } from './databases/sqlite/migrations';
-
-import * as path from 'path';
 
 export async function init(): Promise<IDatabaseCollections> {
 	const dbType = (await GenericHelpers.getConfigValue('database.type')) as DatabaseType;
@@ -43,8 +45,8 @@ export async function init(): Promise<IDatabaseCollections> {
 				'database.postgresdb.ssl.rejectUnauthorized',
 			)) as boolean;
 
-			let ssl: TlsOptions | undefined = undefined;
-			if (sslCa !== '' || sslCert !== '' || sslKey !== '' || sslRejectUnauthorized !== true) {
+			let ssl: TlsOptions | undefined;
+			if (sslCa !== '' || sslCert !== '' || sslKey !== '' || !sslRejectUnauthorized) {
 				ssl = {
 					ca: sslCa || undefined,
 					cert: sslCert || undefined,
@@ -129,6 +131,7 @@ export async function init(): Promise<IDatabaseCollections> {
 			transaction: 'none',
 		});
 
+		// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
 		if (migrations.length === 0) {
 			await connection.close();
 			connection = await createConnection(connectionOptions);

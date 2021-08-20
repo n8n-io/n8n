@@ -1,5 +1,6 @@
 import * as Bull from 'bull';
 import * as config from '../config';
+// eslint-disable-next-line import/no-cycle
 import { IBullJobData } from './Interfaces';
 
 export class Queue {
@@ -18,15 +19,15 @@ export class Queue {
 	}
 
 	async add(jobData: IBullJobData, jobOptions: object): Promise<Bull.Job> {
-		return await this.jobQueue.add(jobData, jobOptions);
+		return this.jobQueue.add(jobData, jobOptions);
 	}
 
 	async getJob(jobId: Bull.JobId): Promise<Bull.Job | null> {
-		return await this.jobQueue.getJob(jobId);
+		return this.jobQueue.getJob(jobId);
 	}
 
 	async getJobs(jobTypes: Bull.JobStatus[]): Promise<Bull.Job[]> {
-		return await this.jobQueue.getJobs(jobTypes);
+		return this.jobQueue.getJobs(jobTypes);
 	}
 
 	getBullObjectInstance(): Bull.Queue {
@@ -38,20 +39,21 @@ export class Queue {
 	 * @param job A Bull.Job instance
 	 * @returns boolean true if we were able to securely stop the job
 	 */
+	// eslint-disable-next-line class-methods-use-this
 	async stopJob(job: Bull.Job): Promise<boolean> {
 		if (await job.isActive()) {
 			// Job is already running so tell it to stop
 			await job.progress(-1);
 			return true;
-		} else {
-			// Job did not get started yet so remove from queue
-			try {
-				await job.remove();
-				return true;
-			} catch (e) {
-				await job.progress(-1);
-			}
 		}
+		// Job did not get started yet so remove from queue
+		try {
+			await job.remove();
+			return true;
+		} catch (e) {
+			await job.progress(-1);
+		}
+
 		return false;
 	}
 }

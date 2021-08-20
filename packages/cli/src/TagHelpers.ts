@@ -1,3 +1,6 @@
+/* eslint-disable no-param-reassign */
+/* eslint-disable @typescript-eslint/explicit-module-boundary-types */
+/* eslint-disable import/no-cycle */
 import { getConnection } from 'typeorm';
 import { validate } from 'class-validator';
 
@@ -36,6 +39,7 @@ export async function validateTag(newTag: TagEntity) {
 	const errors = await validate(newTag);
 
 	if (errors.length) {
+		// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
 		const validationErrorMessage = Object.values(errors[0].constraints!)[0];
 		throw new ResponseHelper.ResponseError(validationErrorMessage, undefined, 400);
 	}
@@ -57,7 +61,7 @@ export function throwDuplicateEntryError(error: Error) {
 /**
  * Retrieve all tags and the number of workflows each tag is related to.
  */
-export function getTagsWithCountDb(tablePrefix: string): Promise<ITagWithCountDb[]> {
+export async function getTagsWithCountDb(tablePrefix: string): Promise<ITagWithCountDb[]> {
 	return getConnection()
 		.createQueryBuilder()
 		.select(`${tablePrefix}tag_entity.id`, 'id')
@@ -73,9 +77,12 @@ export function getTagsWithCountDb(tablePrefix: string): Promise<ITagWithCountDb
 		.getRawMany()
 		.then((tagsWithCount) => {
 			tagsWithCount.forEach((tag) => {
+				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
 				tag.id = tag.id.toString();
+				// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
 				tag.usageCount = Number(tag.usageCount);
 			});
+			// eslint-disable-next-line @typescript-eslint/no-unsafe-return
 			return tagsWithCount;
 		});
 }
@@ -87,7 +94,7 @@ export function getTagsWithCountDb(tablePrefix: string): Promise<ITagWithCountDb
 /**
  * Relate a workflow to one or more tags.
  */
-export function createRelations(workflowId: string, tagIds: string[], tablePrefix: string) {
+export async function createRelations(workflowId: string, tagIds: string[], tablePrefix: string) {
 	return getConnection()
 		.createQueryBuilder()
 		.insert()
@@ -99,7 +106,7 @@ export function createRelations(workflowId: string, tagIds: string[], tablePrefi
 /**
  * Remove all tags for a workflow during a tag update operation.
  */
-export function removeRelations(workflowId: string, tablePrefix: string) {
+export async function removeRelations(workflowId: string, tablePrefix: string) {
 	return getConnection()
 		.createQueryBuilder()
 		.delete()

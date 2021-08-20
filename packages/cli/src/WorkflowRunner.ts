@@ -1,3 +1,37 @@
+/* eslint-disable no-restricted-syntax */
+/* eslint-disable no-console */
+/* eslint-disable @typescript-eslint/no-non-null-assertion */
+/* eslint-disable @typescript-eslint/no-unsafe-member-access */
+/* eslint-disable @typescript-eslint/restrict-template-expressions */
+/* eslint-disable @typescript-eslint/no-shadow */
+/* eslint-disable @typescript-eslint/no-floating-promises */
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
+/* eslint-disable @typescript-eslint/prefer-optional-chain */
+/* eslint-disable no-param-reassign */
+/* eslint-disable @typescript-eslint/explicit-module-boundary-types */
+/* eslint-disable import/no-cycle */
+/* eslint-disable @typescript-eslint/no-unused-vars */
+import { IProcessMessage, WorkflowExecute } from 'n8n-core';
+
+import {
+	ExecutionError,
+	IRun,
+	IWorkflowBase,
+	LoggerProxy as Logger,
+	Workflow,
+	WorkflowExecuteMode,
+	WorkflowHooks,
+	WorkflowOperationError,
+} from 'n8n-workflow';
+
+// eslint-disable-next-line import/no-extraneous-dependencies
+import * as PCancelable from 'p-cancelable';
+import { join as pathJoin } from 'path';
+import { fork } from 'child_process';
+
+import * as Bull from 'bull';
+import * as config from '../config';
+// eslint-disable-next-line import/no-cycle
 import {
 	ActiveExecutions,
 	CredentialsOverwrites,
@@ -20,33 +54,17 @@ import {
 	ResponseHelper,
 	WorkflowExecuteAdditionalData,
 	WorkflowHelpers,
-} from './';
-
-import { IProcessMessage, WorkflowExecute } from 'n8n-core';
-
-import {
-	ExecutionError,
-	IRun,
-	IWorkflowBase,
-	LoggerProxy as Logger,
-	Workflow,
-	WorkflowExecuteMode,
-	WorkflowHooks,
-	WorkflowOperationError,
-} from 'n8n-workflow';
-
-import * as config from '../config';
-import * as PCancelable from 'p-cancelable';
-import { join as pathJoin } from 'path';
-import { fork } from 'child_process';
-
-import * as Bull from 'bull';
+} from '.';
 import * as Queue from './Queue';
 
+// eslint-disable-next-line import/prefer-default-export
 export class WorkflowRunner {
 	activeExecutions: ActiveExecutions.ActiveExecutions;
+
 	credentialsOverwrites: ICredentialsOverwrite;
+
 	push: Push.Push;
+
 	jobQueue: Bull.Queue;
 
 	constructor() {
@@ -68,7 +86,9 @@ export class WorkflowRunner {
 	 * @param {IProcessMessageDataHook} hookData
 	 * @memberof WorkflowRunner
 	 */
+	// eslint-disable-next-line class-methods-use-this
 	processHookMessage(workflowHooks: WorkflowHooks, hookData: IProcessMessageDataHook) {
+		// eslint-disable-next-line @typescript-eslint/no-floating-promises
 		workflowHooks.executeHookFunctions(hookData.hook, hookData.parameters);
 	}
 
@@ -184,7 +204,7 @@ export class WorkflowRunner {
 		let executionTimeout: NodeJS.Timeout;
 		let workflowTimeout = config.get('executions.timeout') as number; // initialize with default
 		if (data.workflowData.settings && data.workflowData.settings.executionTimeout) {
-			workflowTimeout = data.workflowData.settings!.executionTimeout as number; // preference on workflow setting
+			workflowTimeout = data.workflowData.settings.executionTimeout as number; // preference on workflow setting
 		}
 
 		if (workflowTimeout > 0) {
@@ -194,11 +214,11 @@ export class WorkflowRunner {
 		const workflow = new Workflow({
 			id: data.workflowData.id as string | undefined,
 			name: data.workflowData.name,
-			nodes: data.workflowData!.nodes,
-			connections: data.workflowData!.connections,
-			active: data.workflowData!.active,
+			nodes: data.workflowData.nodes,
+			connections: data.workflowData.connections,
+			active: data.workflowData.active,
 			nodeTypes,
-			staticData: data.workflowData!.staticData,
+			staticData: data.workflowData.staticData,
 		});
 		const additionalData = await WorkflowExecuteAdditionalData.getBase(
 			data.credentials,
@@ -332,7 +352,7 @@ export class WorkflowRunner {
 		try {
 			job = await this.jobQueue.add(jobData, jobOptions);
 
-			console.log('Started with ID: ' + job.id.toString());
+			console.log(`Started with ID: ${job.id.toString()}`);
 
 			hooks = WorkflowExecuteAdditionalData.getWorkflowHooksWorkerMain(
 				data.executionMode,
@@ -386,7 +406,7 @@ export class WorkflowRunner {
 
 				let clearWatchdogInterval;
 				if (queueRecoveryInterval > 0) {
-					/*************************************************
+					/** ***********************************************
 					 * Long explanation about what this solves:      *
 					 * This only happens in a very specific scenario *
 					 * when Redis crashes and recovers shortly       *
@@ -397,7 +417,7 @@ export class WorkflowRunner {
 					 * the queue that allows us to identify that the *
 					 * execution finished and get information from   *
 					 * the database.                                 *
-					 *************************************************/
+					 ************************************************ */
 					let watchDogInterval: NodeJS.Timeout | undefined;
 
 					const watchDog: Promise<object> = new Promise((res) => {
@@ -447,9 +467,7 @@ export class WorkflowRunner {
 				const executionDb = (await Db.collections.Execution!.findOne(
 					executionId,
 				)) as IExecutionFlattedDb;
-				const fullExecutionData = ResponseHelper.unflattenExecutionData(
-					executionDb,
-				) as IExecutionResponse;
+				const fullExecutionData = ResponseHelper.unflattenExecutionData(executionDb);
 				const runData = {
 					data: fullExecutionData.data,
 					finished: fullExecutionData.finished,
@@ -478,11 +496,12 @@ export class WorkflowRunner {
 
 					const workflowDidSucceed = !runData.data.resultData.error;
 					if (
-						(workflowDidSucceed === true && saveDataSuccessExecution === 'none') ||
-						(workflowDidSucceed === false && saveDataErrorExecution === 'none')
+						(workflowDidSucceed && saveDataSuccessExecution === 'none') ||
+						(!workflowDidSucceed && saveDataErrorExecution === 'none')
 					) {
 						await Db.collections.Execution!.delete(executionId);
 					}
+					// eslint-disable-next-line id-denylist
 				} catch (err) {
 					// We don't want errors here to crash n8n. Just log and proceed.
 					console.log('Error removing saved execution from database. More details: ', err);
@@ -534,9 +553,9 @@ export class WorkflowRunner {
 
 		let nodeTypeData: ITransferNodeTypes;
 		let credentialTypeData: ICredentialsTypeData;
-		let credentialsOverwrites = this.credentialsOverwrites;
+		let { credentialsOverwrites } = this;
 
-		if (loadAllNodeTypes === true) {
+		if (loadAllNodeTypes) {
 			// Supply all nodeTypes and credentialTypes
 			nodeTypeData = WorkflowHelpers.getAllNodeTypeData();
 			const credentialTypes = CredentialTypes();
@@ -575,7 +594,7 @@ export class WorkflowRunner {
 		let executionTimeout: NodeJS.Timeout;
 		let workflowTimeout = config.get('executions.timeout') as number; // initialize with default
 		if (data.workflowData.settings && data.workflowData.settings.executionTimeout) {
-			workflowTimeout = data.workflowData.settings!.executionTimeout as number; // preference on workflow setting
+			workflowTimeout = data.workflowData.settings.executionTimeout as number; // preference on workflow setting
 		}
 
 		const processTimeoutFunction = (timeout: number) => {
@@ -616,8 +635,9 @@ export class WorkflowRunner {
 				}
 			} else if (message.type === 'end') {
 				clearTimeout(executionTimeout);
-				this.activeExecutions.remove(executionId!, message.data.runData);
+				this.activeExecutions.remove(executionId, message.data.runData);
 			} else if (message.type === 'sendMessageToUI') {
+				// eslint-disable-next-line @typescript-eslint/no-unsafe-call
 				WorkflowExecuteAdditionalData.sendMessageToUI.bind({ sessionId: data.sessionId })(
 					message.data.source,
 					message.data.message,
@@ -650,6 +670,7 @@ export class WorkflowRunner {
 					childExecutionIds.splice(executionIdIndex, 1);
 				}
 
+				// eslint-disable-next-line @typescript-eslint/await-thenable
 				await this.activeExecutions.remove(message.data.executionId, message.data.result);
 			}
 		});
@@ -693,6 +714,7 @@ export class WorkflowRunner {
 				// They will display as unknown to the user
 				// Instead of pending forever as executing when it
 				// actually isn't anymore.
+				// eslint-disable-next-line @typescript-eslint/await-thenable, no-await-in-loop
 				await this.activeExecutions.remove(executionId);
 			}
 

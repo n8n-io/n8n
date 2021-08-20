@@ -51,5 +51,6 @@ declare module 'json-diff' {
 	interface IDiffOptions {
 		keysOnly?: boolean;
 	}
+	// eslint-disable-next-line import/prefer-default-export
 	export function diff(obj1: unknown, obj2: unknown, diffOptions: IDiffOptions): string;
 }

@@ -1,7 +1,14 @@
+/* eslint-disable @typescript-eslint/no-unsafe-call */
+/* eslint-disable @typescript-eslint/no-non-null-assertion */
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import { IRun } from 'n8n-workflow';
 
 import { createDeferredPromise } from 'n8n-core';
 
+import { ChildProcess } from 'child_process';
+// eslint-disable-next-line import/no-extraneous-dependencies
+import * as PCancelable from 'p-cancelable';
+// eslint-disable-next-line import/no-cycle
 import {
 	Db,
 	IExecutingWorkflowData,
@@ -12,9 +19,6 @@ import {
 	ResponseHelper,
 	WorkflowHelpers,
 } from '.';
-
-import { ChildProcess } from 'child_process';
-import * as PCancelable from 'p-cancelable';
 
 export class ActiveExecutions {
 	private activeExecutions: {
@@ -44,7 +48,7 @@ export class ActiveExecutions {
 
 		if (
 			executionData.workflowData.id !== undefined &&
-			WorkflowHelpers.isWorkflowIdValid(executionData.workflowData.id.toString()) === true
+			WorkflowHelpers.isWorkflowIdValid(executionData.workflowData.id.toString())
 		) {
 			fullExecutionData.workflowId = executionData.workflowData.id.toString();
 		}
@@ -52,14 +56,16 @@ export class ActiveExecutions {
 		const execution = ResponseHelper.flattenExecutionData(fullExecutionData);
 
 		// Save the Execution in DB
+		// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
 		const executionResult = await Db.collections.Execution!.save(execution as IExecutionFlattedDb);
 
-		// @ts-ignore
 		const executionId =
 			typeof executionResult.id === 'object'
-				? executionResult.id!.toString()
-				: executionResult.id + '';
+				? // @ts-ignore
+				  executionResult.id.toString()
+				: `${executionResult.id}`;
 
+		// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
 		this.activeExecutions[executionId] = {
 			executionData,
 			process,
@@ -67,6 +73,7 @@ export class ActiveExecutions {
 			postExecutePromises: [],
 		};
 
+		// eslint-disable-next-line @typescript-eslint/no-unsafe-return
 		return executionId;
 	}
 
@@ -77,6 +84,7 @@ export class ActiveExecutions {
 	 * @param {PCancelable<IRun>} workflowExecution
 	 * @memberof ActiveExecutions
 	 */
+	// eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
 	attachWorkflowExecution(executionId: string, workflowExecution: PCancelable<IRun>) {
 		if (this.activeExecutions[executionId] === undefined) {
 			throw new Error(
@@ -101,6 +109,7 @@ export class ActiveExecutions {
 		}
 
 		// Resolve all the waiting promises
+		// eslint-disable-next-line no-restricted-syntax
 		for (const promise of this.activeExecutions[executionId].postExecutePromises) {
 			promise.resolve(fullRunData);
 		}
@@ -131,7 +140,8 @@ export class ActiveExecutions {
 				setTimeout(() => {
 					// execute on next event loop tick;
 					this.activeExecutions[executionId].process!.send({
-						type: timeout ? timeout : 'stopExecution',
+						// eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
+						type: timeout || 'stopExecution',
 					});
 				}, 1);
 			}
@@ -140,6 +150,7 @@ export class ActiveExecutions {
 			this.activeExecutions[executionId].workflowExecution!.cancel();
 		}
 
+		// eslint-disable-next-line consistent-return
 		return this.getPostExecutePromise(executionId);
 	}
 
@@ -174,6 +185,7 @@ export class ActiveExecutions {
 		const returnData: IExecutionsCurrentSummary[] = [];
 
 		let data;
+		// eslint-disable-next-line no-restricted-syntax
 		for (const id of Object.keys(this.activeExecutions)) {
 			data = this.activeExecutions[id];
 			returnData.push({

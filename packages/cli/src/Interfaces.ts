@@ -1,3 +1,5 @@
+/* eslint-disable @typescript-eslint/naming-convention */
+/* eslint-disable import/no-cycle */
 import {
 	ExecutionError,
 	ICredentialDataDecryptedObject,
@@ -17,6 +19,7 @@ import {
 
 import { IDeferredPromise, WorkflowExecute } from 'n8n-core';
 
+// eslint-disable-next-line import/no-extraneous-dependencies
 import * as PCancelable from 'p-cancelable';
 import { Repository } from 'typeorm';
 
@@ -257,7 +260,8 @@ export interface IExternalHooks {
 
 export interface IExternalHooksFileData {
 	[key: string]: {
-		[key: string]: Array<(...args: any[]) => Promise<void>>; //tslint:disable-line:no-any
+		// eslint-disable-next-line @typescript-eslint/no-explicit-any
+		[key: string]: Array<(...args: any[]) => Promise<void>>;
 	};
 }
 
@@ -267,7 +271,8 @@ export interface IExternalHooksFunctions {
 
 export interface IExternalHooksClass {
 	init(): Promise<void>;
-	run(hookName: string, hookParameters?: any[]): Promise<void>; // tslint:disable-line:no-any
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any
+	run(hookName: string, hookParameters?: any[]): Promise<void>;
 }
 
 export interface IN8nConfig {
@@ -297,12 +302,14 @@ export interface IN8nConfigEndpoints {
 	webhookTest: string;
 }
 
+// eslint-disable-next-line import/export
 export interface IN8nConfigExecutions {
 	saveDataOnError: SaveExecutionDataType;
 	saveDataOnSuccess: SaveExecutionDataType;
 	saveDataManualExecutions: boolean;
 }
 
+// eslint-disable-next-line import/export
 export interface IN8nConfigExecutions {
 	saveDataOnError: SaveExecutionDataType;
 	saveDataOnSuccess: SaveExecutionDataType;
@@ -455,7 +462,8 @@ export interface IWorkflowErrorData {
 
 export interface IProcessMessageDataHook {
 	hook: string;
-	parameters: any[]; // tslint:disable-line:no-any
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any
+	parameters: any[];
 }
 
 export interface IWorkflowExecutionDataProcess {

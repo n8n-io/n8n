@@ -1,9 +1,17 @@
+/* eslint-disable @typescript-eslint/await-thenable */
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
+/* eslint-disable @typescript-eslint/explicit-module-boundary-types */
+/* eslint-disable @typescript-eslint/unbound-method */
+/* eslint-disable no-console */
+/* eslint-disable @typescript-eslint/no-unsafe-call */
+/* eslint-disable @typescript-eslint/no-unsafe-member-access */
 import * as localtunnel from 'localtunnel';
 import { TUNNEL_SUBDOMAIN_ENV, UserSettings } from 'n8n-core';
 import { Command, flags } from '@oclif/command';
-const open = require('open');
+// eslint-disable-next-line import/no-extraneous-dependencies
 import * as Redis from 'ioredis';
 
+import { IDataObject, LoggerProxy } from 'n8n-workflow';
 import * as config from '../config';
 import {
 	ActiveExecutions,
@@ -14,21 +22,23 @@ import {
 	Db,
 	ExternalHooks,
 	GenericHelpers,
+	// eslint-disable-next-line @typescript-eslint/no-unused-vars
 	IExecutionsCurrentSummary,
 	LoadNodesAndCredentials,
 	NodeTypes,
 	Server,
 	TestWebhooks,
 } from '../src';
-import { IDataObject } from 'n8n-workflow';
 
 import { getLogger } from '../src/Logger';
 
-import { LoggerProxy } from 'n8n-workflow';
+// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-var-requires
+const open = require('open');
 
 let activeWorkflowRunner: ActiveWorkflowRunner.ActiveWorkflowRunner | undefined;
 let processExistCode = 0;
 
+// eslint-disable-next-line import/prefer-default-export
 export class Start extends Command {
 	static description = 'Starts n8n. Makes Web-UI available and starts active workflows';
 
@@ -54,9 +64,11 @@ export class Start extends Command {
 	/**
 	 * Opens the UI in browser
 	 */
+	// eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
 	static openBrowser() {
 		const editorUrl = GenericHelpers.getBaseUrl();
 
+		// eslint-disable-next-line @typescript-eslint/no-unused-vars
 		open(editorUrl, { wait: true }).catch((error: Error) => {
 			console.log(
 				`\nWas not able to open URL in browser. Please open manually by visiting:\n${editorUrl}\n`,
@@ -69,6 +81,7 @@ export class Start extends Command {
 	 * Make for example sure that all the webhooks from third party services
 	 * get removed.
 	 */
+	// eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
 	static async stopProcess() {
 		getLogger().info('\nStopping n8n...');
 
@@ -87,7 +100,7 @@ export class Start extends Command {
 			) as boolean;
 
 			const removePromises = [];
-			if (activeWorkflowRunner !== undefined && skipWebhookDeregistration !== true) {
+			if (activeWorkflowRunner !== undefined && !skipWebhookDeregistration) {
 				removePromises.push(activeWorkflowRunner.removeAll());
 			}
 
@@ -99,17 +112,19 @@ export class Start extends Command {
 
 			// Wait for active workflow executions to finish
 			const activeExecutionsInstance = ActiveExecutions.getInstance();
-			let executingWorkflows =
-				activeExecutionsInstance.getActiveExecutions() as IExecutionsCurrentSummary[];
+			let executingWorkflows = activeExecutionsInstance.getActiveExecutions();
 
 			let count = 0;
 			while (executingWorkflows.length !== 0) {
+				// eslint-disable-next-line no-plusplus
 				if (count++ % 4 === 0) {
 					console.log(`Waiting for ${executingWorkflows.length} active executions to finish...`);
+					// eslint-disable-next-line array-callback-return
 					executingWorkflows.map((execution) => {
 						console.log(` - Execution ID ${execution.id}, workflow ID: ${execution.workflowId}`);
 					});
 				}
+				// eslint-disable-next-line no-await-in-loop
 				await new Promise((resolve) => {
 					setTimeout(resolve, 500);
 				});
@@ -127,6 +142,7 @@ export class Start extends Command {
 		process.on('SIGTERM', Start.stopProcess);
 		process.on('SIGINT', Start.stopProcess);
 
+		// eslint-disable-next-line @typescript-eslint/no-shadow
 		const { flags } = this.parse(Start);
 
 		// Wrap that the process does not close but we can still use async
@@ -181,10 +197,11 @@ export class Start extends Command {
 					const redisPort = config.get('queue.bull.redis.port');
 					const redisDB = config.get('queue.bull.redis.db');
 					const redisConnectionTimeoutLimit = config.get('queue.bull.redis.timeoutThreshold');
-					let lastTimer = 0,
-						cumulativeTimeout = 0;
+					let lastTimer = 0;
+					let cumulativeTimeout = 0;
 
 					const settings = {
+						// eslint-disable-next-line @typescript-eslint/no-unused-vars
 						retryStrategy: (times: number): number | null => {
 							const now = Date.now();
 							if (now - lastTimer > 30000) {
@@ -196,9 +213,8 @@ export class Start extends Command {
 								lastTimer = now;
 								if (cumulativeTimeout > redisConnectionTimeoutLimit) {
 									logger.error(
-										'Unable to connect to Redis after ' +
-											redisConnectionTimeoutLimit +
-											'. Exiting process.',
+										// eslint-disable-next-line @typescript-eslint/restrict-template-expressions
+										`Unable to connect to Redis after ${redisConnectionTimeoutLimit}. Exiting process.`,
 									);
 									process.exit(1);
 								}
@@ -240,11 +256,12 @@ export class Start extends Command {
 				if (dbType === 'sqlite') {
 					const shouldRunVacuum = config.get('database.sqlite.executeVacuumOnStartup') as number;
 					if (shouldRunVacuum) {
+						// eslint-disable-next-line @typescript-eslint/no-floating-promises, @typescript-eslint/no-non-null-assertion
 						Db.collections.Execution!.query('VACUUM;');
 					}
 				}
 
-				if (flags.tunnel === true) {
+				if (flags.tunnel) {
 					this.log('\nWaiting for tunnel ...');
 
 					let tunnelSubdomain;
@@ -276,12 +293,12 @@ export class Start extends Command {
 						subdomain: tunnelSubdomain,
 					};
 
-					const port = config.get('port') as number;
+					const port = config.get('port');
 
 					// @ts-ignore
 					const webhookTunnel = await localtunnel(port, tunnelSettings);
 
-					process.env.WEBHOOK_URL = webhookTunnel.url + '/';
+					process.env.WEBHOOK_URL = `${webhookTunnel.url}/`;
 					this.log(`Tunnel URL: ${process.env.WEBHOOK_URL}\n`);
 					this.log(
 						'IMPORTANT! Do not share with anybody as it would give people access to your n8n instance!',
@@ -304,7 +321,7 @@ export class Start extends Command {
 					process.stdin.setEncoding('utf8');
 					let inputText = '';
 
-					if (flags.open === true) {
+					if (flags.open) {
 						Start.openBrowser();
 					}
 					this.log(`\nPress "o" to open in Browser.`);
@@ -314,15 +331,18 @@ export class Start extends Command {
 							inputText = '';
 						} else if (key.charCodeAt(0) === 3) {
 							// Ctrl + c got pressed
+							// eslint-disable-next-line @typescript-eslint/no-floating-promises
 							Start.stopProcess();
 						} else {
 							// When anything else got pressed, record it and send it on enter into the child process
+							// eslint-disable-next-line no-lonely-if
 							if (key.charCodeAt(0) === 13) {
 								// send to child process and print in terminal
 								process.stdout.write('\n');
 								inputText = '';
 							} else {
 								// record it and write into terminal
+								// eslint-disable-next-line @typescript-eslint/no-unused-vars
 								inputText += key;
 								process.stdout.write(key);
 							}
@@ -330,6 +350,7 @@ export class Start extends Command {
 					});
 				}
 			} catch (error) {
+				// eslint-disable-next-line @typescript-eslint/restrict-template-expressions
 				this.error(`There was an error: ${error.message}`);
 
 				processExistCode = 1;
