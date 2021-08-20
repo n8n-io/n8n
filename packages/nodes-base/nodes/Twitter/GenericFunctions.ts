@@ -3,7 +3,6 @@ import {
 } from 'request';
 
 import {
-	BINARY_ENCODING,
 	IExecuteFunctions,
 	IExecuteSingleFunctions,
 	IHookFunctions,

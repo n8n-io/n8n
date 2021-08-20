@@ -1,7 +1,5 @@
 import {
-	BINARY_ENCODING,
 	IExecuteFunctions,
-	IExecuteSingleFunctions
 } from 'n8n-core';
 import {
 	IDataObject,
@@ -13,7 +11,6 @@ import {
 
 import {
 	writeFile as fsWriteFile,
-	readFile as fsReadFile,
 } from 'fs/promises';
 
 

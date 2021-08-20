@@ -1,11 +1,10 @@
 import {
+	BINARY_ENCODING,
 	IHookFunctions,
 	ILoadOptionsFunctions,
 	IResponseError,
 	IWorkflowSettings,
 } from './';
-
-import { BinaryDataHelper } from './BinaryDataManager';
 
 import {
 	IAllExecuteFunctions,
@@ -70,13 +69,8 @@ const requestPromiseWithDefaults = requestPromise.defaults({
  * @returns {Promise<Buffer>}
  */
 export async function getBinaryDataBuffer(inputData: ITaskDataConnections, itemIndex: number, propertyName: string): Promise<Buffer> {
-	try {
-		const binaryData = inputData['main']![0]![itemIndex]!.binary![propertyName]!;
-		return BinaryDataHelper.getInstance().retrieveBinaryData(binaryData);
-	}
-	catch {
-		throw `Binary data with property name ${propertyName} not found in item ${itemIndex}`;
-	}
+	const binaryData = inputData['main']![0]![itemIndex]!.binary![propertyName]!;
+	return Buffer.from(binaryData.data, BINARY_ENCODING);
 }
 
 /**
@@ -90,8 +84,6 @@ export async function getBinaryDataBuffer(inputData: ITaskDataConnections, itemI
  * @returns {Promise<IBinaryData>}
  */
 export async function prepareBinaryData(binaryData: Buffer, filePath?: string, mimeType?: string): Promise<IBinaryData> {
-	// todo improve internalPath arg name, make it required?
-	
 	if (!mimeType) {
 		// If no mime type is given figure it out
 
@@ -119,7 +111,10 @@ export async function prepareBinaryData(binaryData: Buffer, filePath?: string, m
 
 	const returnData: IBinaryData = {
 		mimeType,
-		data: '',//binaryData.toString(BINARY_ENCODING),// BINARY_ENCODING, // todo cleanup
+		// TODO: Should program it in a way that it does not have to converted to base64
+		//       It should only convert to and from base64 when saved in database because
+		//       of for example an error or when there is a wait node.
+		data: binaryData.toString(BINARY_ENCODING),
 	};
 
 	if (filePath) {
@@ -142,9 +137,7 @@ export async function prepareBinaryData(binaryData: Buffer, filePath?: string, m
 		}
 	}
 
-	// const binaryDataUniqueIdentifier = BinaryDataHelper.getInstance().generateIdentifier();
-	// returnData.internalPath = binaryDataUniqueIdentifier;
-	return await BinaryDataHelper.getInstance().storeBinaryData(returnData, binaryData);
+	return returnData;
 }
 
 

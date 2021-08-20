@@ -31,6 +31,7 @@ export class WorkflowExecute {
 	private additionalData: IWorkflowExecuteAdditionalData;
 	private mode: WorkflowExecuteMode;
 
+
 	constructor(additionalData: IWorkflowExecuteAdditionalData, mode: WorkflowExecuteMode, runExecutionData?: IRunExecutionData) {
 		this.additionalData = additionalData;
 		this.mode = mode;
