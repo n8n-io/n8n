@@ -21,7 +21,7 @@ import {
 } from 'n8n-workflow';
 
 import * as fs from 'fs';
-import * as glob from 'glob-promise';
+import * as glob from 'fast-glob';
 import * as path from 'path';
 
 export class ImportCredentialsCommand extends Command {
