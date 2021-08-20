@@ -60,6 +60,21 @@ const requestPromiseWithDefaults = requestPromise.defaults({
 });
 
 /**
+ * Returns binary data buffer for given item index and property name.
+ *
+ * @export
+ * @param {ITaskDataConnections} inputData
+ * @param {number} itemIndex
+ * @param {string} propertyName
+ * @param {number} inputIndex
+ * @returns {Promise<Buffer>}
+ */
+export async function getBinaryDataBuffer(inputData: ITaskDataConnections, itemIndex: number, propertyName: string, inputIndex: number): Promise<Buffer> {
+	const binaryData = inputData['main']![inputIndex]![itemIndex]!.binary![propertyName]!;
+	return Buffer.from(binaryData.data, BINARY_ENCODING);
+}
+
+/**
  * Takes a buffer and converts it into the format n8n uses. It encodes the binary data as
  * base64 and adds metadata.
  *
@@ -763,6 +778,9 @@ export function getExecuteFunctions(workflow: Workflow, runExecutionData: IRunEx
 			},
 			helpers: {
 				prepareBinaryData,
+				getBinaryDataBuffer(itemIndex: number, propertyName: string, inputIndex = 0): Promise<Buffer> {
+					return getBinaryDataBuffer.call(this, inputData, itemIndex, propertyName, inputIndex);
+				},
 				request: requestPromiseWithDefaults,
 				requestOAuth2(this: IAllExecuteFunctions, credentialsType: string, requestOptions: OptionsWithUri | requestPromise.RequestPromiseOptions, oAuth2Options?: IOAuth2Options): Promise<any> { // tslint:disable-line:no-any
 					return requestOAuth2.call(this, credentialsType, requestOptions, node, additionalData, oAuth2Options);
