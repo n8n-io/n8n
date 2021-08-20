@@ -52,7 +52,7 @@ export class WaitTrackerClass {
 
 
 	async getwaitingExecutions() {
-		Logger.debug('Wait tracker querying database for waiting executions...');
+		Logger.debug('Wait tracker querying database for waiting executions');
 		// Find all the executions which should be triggered in the next 70 seconds
 		const findQuery: FindManyOptions<IExecutionFlattedDb> = {
 			select: ['id', 'waitTill'],
