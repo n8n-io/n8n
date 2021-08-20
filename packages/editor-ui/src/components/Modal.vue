@@ -152,7 +152,7 @@ export default Vue.extend({
 		justify-content: center;
 
 		> div {
-			max-width: 420px;
+			max-width: 460px;
 		}
 	}
 }

@@ -94,9 +94,12 @@ export default Vue.extend({
 
 .title {
 	font-size: var(--font-size-xl);
+	line-height: var(--font-line-height-regular);
 }
 
 .subtitle {
 	margin-bottom: var(--spacing-s);
+	font-size: var(--font-size-m);
+	line-height: var(--font-line-height-xloose);
 }
 </style>

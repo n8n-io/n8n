@@ -24,7 +24,7 @@
 								<i><font-awesome-icon icon="pen" /></i>
 							</div>
 							<div v-else :class="$style.nameInput">
-								<n8n-input :value="credentialName" size="small" ref="nameInput" @input="onNameEdit" @change="disableNameEdit" maxlength="100" />
+								<n8n-input :value="credentialName" size="small" ref="nameInput" @input="onNameEdit" @change="disableNameEdit" maxlength="64" />
 							</div>
 						</div>
 						<div :class="$style.subtitle">{{ credentialType.displayName }}</div>
