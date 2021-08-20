@@ -127,7 +127,6 @@ export class WorkflowRunner {
 		const executionsProcess = config.get('executions.process') as string;
 		const executionsMode = config.get('executions.mode') as string;
 
-		// TODO: Probably have to change behaviour to work on top of an existing execution for all three
 		if (executionsMode === 'queue' && data.executionMode !== 'manual') {
 			// Do not run "manual" executions in bull because sending events to the
 			// frontend would not be possible

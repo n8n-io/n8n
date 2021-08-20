@@ -72,10 +72,12 @@ export class WaitTrackerClass {
 
 		const executions = await Db.collections.Execution!.find(findQuery);
 
-		if (executions.length > 0) {
-			const executionIds = executions.map(execution => execution.id.toString()).join(', ');
-			Logger.debug(`Wait tracker found ${executions.length} executions. Setting timer for IDs: ${executionIds}`);
+		if (executions.length === 0) {
+			return;
 		}
+
+		const executionIds = executions.map(execution => execution.id.toString()).join(', ');
+		Logger.debug(`Wait tracker found ${executions.length} executions. Setting timer for IDs: ${executionIds}`);
 
 		// Add timers for each waiting execution that they get started at the correct time
 		for (const execution of executions) {
@@ -138,37 +140,34 @@ export class WaitTrackerClass {
 		delete this.waitingExecutions[executionId];
 
 		(async () => {
-			try {
-				// Get the data to execute
-				const fullExecutionDataFlatted = await Db.collections.Execution!.findOne(executionId);
+			// Get the data to execute
+			const fullExecutionDataFlatted = await Db.collections.Execution!.findOne(executionId);
 
-				if (fullExecutionDataFlatted === undefined) {
-					throw new Error(`The execution with the id "${executionId}" does not exist.`);
-				}
-
-				const fullExecutionData = ResponseHelper.unflattenExecutionData(fullExecutionDataFlatted);
-
-				if (fullExecutionData.finished === true) {
-					throw new Error('The execution did succeed and can so not be started again.');
-				}
-
-				const credentials = await WorkflowCredentials(fullExecutionData.workflowData.nodes);
-
-				const data: IWorkflowExecutionDataProcess = {
-					credentials,
-					executionMode: fullExecutionData.mode,
-					executionData: fullExecutionData.data,
-					workflowData: fullExecutionData.workflowData,
-				};
-
-				// Start the execution again
-				const workflowRunner = new WorkflowRunner();
-				await workflowRunner.run(data, false, false, executionId);
-			} catch (error) {
-				Logger.error(`There was a problem starting the waiting execution with id "${executionId}": "${error.message}"`, { executionId });
+			if (fullExecutionDataFlatted === undefined) {
+				throw new Error(`The execution with the id "${executionId}" does not exist.`);
 			}
 
-		})();
+			const fullExecutionData = ResponseHelper.unflattenExecutionData(fullExecutionDataFlatted);
+
+			if (fullExecutionData.finished === true) {
+				throw new Error('The execution did succeed and can so not be started again.');
+			}
+
+			const credentials = await WorkflowCredentials(fullExecutionData.workflowData.nodes);
+
+			const data: IWorkflowExecutionDataProcess = {
+				credentials,
+				executionMode: fullExecutionData.mode,
+				executionData: fullExecutionData.data,
+				workflowData: fullExecutionData.workflowData,
+			};
+
+			// Start the execution again
+			const workflowRunner = new WorkflowRunner();
+			await workflowRunner.run(data, false, false, executionId);
+		})().catch((error) => {
+			Logger.error(`There was a problem starting the waiting execution with id "${executionId}": "${error.message}"`, { executionId });
+		});
 
 	}
 }
