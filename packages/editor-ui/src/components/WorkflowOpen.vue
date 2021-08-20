@@ -20,7 +20,7 @@
 					</div>
 					<div class="search-filter">
 						<n8n-input placeholder="Search workflows..." ref="inputFieldFilter" v-model="filterText">
-							<i slot="prefix" class="el-input__icon el-icon-search"></i>
+							<font-awesome-icon slot="prefix" icon="search" class="el-input__icon el-icon-search"></font-awesome-icon>
 						</n8n-input>
 					</div>
 				</div>
