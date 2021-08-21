@@ -301,26 +301,34 @@ export class AwsDynamoDB implements INodeType {
 						const simple = this.getNodeParameter('simple', 0, false) as boolean;
 						const select = this.getNodeParameter('select', 0) as string;
 						const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
+						const scan = this.getNodeParameter('scan', 0) as boolean;
 						const eanUi = this.getNodeParameter('additionalFields.eanUi.eanValues', i, []) as IAttributeNameUi[];
 
 						const body: IRequestBody = {
 							TableName: this.getNodeParameter('tableName', i) as string,
-							KeyConditionExpression: this.getNodeParameter('keyConditionExpression', i) as string,
 							ExpressionAttributeValues: adjustExpressionAttributeValues(eavUi),
 						};
+
+						if (scan === true) {
+							body['FilterExpression'] = this.getNodeParameter('filterExpression', i) as string;
+						} else {
+							body['KeyConditionExpression'] = this.getNodeParameter('KeyConditionExpression', i) as string;
+						}
 
 						const {
 							indexName,
 							projectionExpression,
+							filterExpression,
 						} = this.getNodeParameter('options', i) as {
 							indexName: string;
 							projectionExpression: string;
+							filterExpression: string;
 						};
 
 						const expressionAttributeName = adjustExpressionAttributeName(eanUi);
 
 						if (Object.keys(expressionAttributeName).length) {
-							body.expressionAttributeNames = expressionAttributeName;
+							body.ExpressionAttributeNames = expressionAttributeName;
 						}
 
 						if (indexName) {
@@ -331,13 +339,17 @@ export class AwsDynamoDB implements INodeType {
 							body.ProjectionExpression = projectionExpression;
 						}
 
+						if (filterExpression) {
+							body.FilterExpression = filterExpression;
+						}
+
 						if (select) {
 							body.Select = select;
 						}
 
 						const headers = {
 							'Content-Type': 'application/json',
-							'X-Amz-Target': 'DynamoDB_20120810.Query',
+							'X-Amz-Target': (scan) ? 'DynamoDB_20120810.Scan' : 'DynamoDB_20120810.Query',
 						};
 
 						if (returnAll === true && select !== 'COUNT') {
@@ -352,6 +364,7 @@ export class AwsDynamoDB implements INodeType {
 						if (simple === true) {
 							responseData = responseData.map(simplify);
 						}
+
 					}
 
 					Array.isArray(responseData)

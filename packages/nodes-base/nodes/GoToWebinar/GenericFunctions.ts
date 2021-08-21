@@ -137,7 +137,7 @@ export async function handleGetAll(
 }
 
 export async function loadWebinars(this: ILoadOptionsFunctions) {
-	const { oauthTokenData } = this.getCredentials('goToWebinarOAuth2Api') as {
+	const { oauthTokenData } = await this.getCredentials('goToWebinarOAuth2Api') as {
 		oauthTokenData: { account_key: string }
 	};
 
@@ -163,7 +163,7 @@ export async function loadWebinars(this: ILoadOptionsFunctions) {
 }
 
 export async function loadWebinarSessions(this: ILoadOptionsFunctions) {
-	const { oauthTokenData } = this.getCredentials('goToWebinarOAuth2Api') as {
+	const { oauthTokenData } = await this.getCredentials('goToWebinarOAuth2Api') as {
 		oauthTokenData: { organizer_key: string }
 	};
 
@@ -186,7 +186,7 @@ export async function loadWebinarSessions(this: ILoadOptionsFunctions) {
 }
 
 export async function loadRegistranSimpleQuestions(this: ILoadOptionsFunctions) {
-	const { oauthTokenData } = this.getCredentials('goToWebinarOAuth2Api') as {
+	const { oauthTokenData } = await this.getCredentials('goToWebinarOAuth2Api') as {
 		oauthTokenData: { organizer_key: string }
 	};
 
@@ -211,7 +211,7 @@ export async function loadRegistranSimpleQuestions(this: ILoadOptionsFunctions) 
 }
 
 export async function loadAnswers(this: ILoadOptionsFunctions) {
-	const { oauthTokenData } = this.getCredentials('goToWebinarOAuth2Api') as {
+	const { oauthTokenData } = await this.getCredentials('goToWebinarOAuth2Api') as {
 		oauthTokenData: { organizer_key: string }
 	};
 
@@ -240,7 +240,7 @@ export async function loadAnswers(this: ILoadOptionsFunctions) {
 }
 
 export async function loadRegistranMultiChoiceQuestions(this: ILoadOptionsFunctions) {
-	const { oauthTokenData } = this.getCredentials('goToWebinarOAuth2Api') as {
+	const { oauthTokenData } = await this.getCredentials('goToWebinarOAuth2Api') as {
 		oauthTokenData: { organizer_key: string }
 	};
 
