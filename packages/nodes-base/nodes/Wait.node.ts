@@ -43,7 +43,7 @@ export class Wait implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Wait',
 		name: 'wait',
-		icon: 'fa:hourglass',
+		icon: 'fa:pause-circle',
 		group: ['organization'],
 		version: 1,
 		description: 'Wait before continue with execution',
@@ -59,7 +59,7 @@ export class Wait implements INodeType {
 				required: true,
 				displayOptions: {
 					show: {
-						authentication: [
+						incomingAuthentication: [
 							'basicAuth',
 						],
 					},
@@ -70,7 +70,7 @@ export class Wait implements INodeType {
 				required: true,
 				displayOptions: {
 					show: {
-						authentication: [
+						incomingAuthentication: [
 							'headerAuth',
 						],
 					},
@@ -96,7 +96,7 @@ export class Wait implements INodeType {
 		properties: [
 			{
 				displayName: 'Webhook authentication',
-				name: 'authentication',
+				name: 'incomingAuthentication',
 				type: 'options',
 				displayOptions: {
 					show: {
@@ -120,7 +120,7 @@ export class Wait implements INodeType {
 					},
 				],
 				default: 'none',
-				description: 'The way to authenticate',
+				description: 'If and how incoming resume-webhook-requests to $resumeWebhookUrl should be authenticated for additional security.',
 			},
 			{
 				displayName: 'Resume',
@@ -619,7 +619,7 @@ export class Wait implements INodeType {
 						type: 'string',
 						default: '',
 						placeholder: 'webhook',
-						description: 'The webhook suffix path that will be appended to the restart URL',
+						description: 'The webhook suffix path that will be appended to the restart URL. Important: Does currently not support expressions.',
 					},
 					// {
 					// 	displayName: 'Raw Body',
@@ -643,16 +643,16 @@ export class Wait implements INodeType {
 
 	async webhook(this: IWebhookFunctions): Promise<IWebhookResponseData> {
 		// INFO: Currently (20.06.2021) 100% identical with Webook-Node
-		const authentication = this.getNodeParameter('authentication') as string;
+		const incomingAuthentication = this.getNodeParameter('incomingAuthentication') as string;
 		const options = this.getNodeParameter('options', {}) as IDataObject;
 		const req = this.getRequestObject();
 		const resp = this.getResponseObject();
 		const headers = this.getHeaderData();
 		const realm = 'Webhook';
 
-		if (authentication === 'basicAuth') {
+		if (incomingAuthentication === 'basicAuth') {
 			// Basic authorization is needed to call webhook
-			const httpBasicAuth = this.getCredentials('httpBasicAuth');
+			const httpBasicAuth = await this.getCredentials('httpBasicAuth');
 
 			if (httpBasicAuth === undefined || !httpBasicAuth.user || !httpBasicAuth.password) {
 				// Data is not defined on node so can not authenticate
@@ -670,9 +670,9 @@ export class Wait implements INodeType {
 				// Provided authentication data is wrong
 				return authorizationError(resp, realm, 403);
 			}
-		} else if (authentication === 'headerAuth') {
+		} else if (incomingAuthentication === 'headerAuth') {
 			// Special header with value is needed to call webhook
-			const httpHeaderAuth = this.getCredentials('httpHeaderAuth');
+			const httpHeaderAuth = await this.getCredentials('httpHeaderAuth');
 
 			if (httpHeaderAuth === undefined || !httpHeaderAuth.name || !httpHeaderAuth.value) {
 				// Data is not defined on node so can not authenticate

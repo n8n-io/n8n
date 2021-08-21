@@ -76,6 +76,7 @@ import {
 	faMapSigns,
 	faNetworkWired,
 	faPause,
+	faPauseCircle,
 	faPen,
 	faPlay,
 	faPlayCircle,
@@ -166,6 +167,7 @@ library.add(faKey);
 library.add(faMapSigns);
 library.add(faNetworkWired);
 library.add(faPause);
+library.add(faPauseCircle);
 library.add(faPen);
 library.add(faPlay);
 library.add(faPlayCircle);

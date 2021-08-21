@@ -4,7 +4,6 @@ import {
 } from 'n8n-core';
 
 import {
-	IDataObject,
 	IHookFunctions,
 	IWebhookFunctions,
 	NodeApiError,
@@ -14,8 +13,8 @@ import {
 interface IFormIoCredentials {
 	environment: 'cloudHosted' | ' selfHosted';
 	domain?: string;
-	email: string,
-	password: string,
+	email: string;
+	password: string;
 }
 
 /**

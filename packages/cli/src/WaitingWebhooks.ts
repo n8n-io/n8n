@@ -76,14 +76,12 @@ export class WaitingWebhooks {
 		// Remove the data of the node execution again else it will display the node as executed twice
 		fullExecutionData!.data.resultData.runData[lastNodeExecuted].pop();
 
-		const credentials = await WorkflowCredentials(fullExecutionData.workflowData.nodes);
-
 		const workflowData = fullExecutionData.workflowData;
 
 		const nodeTypes = NodeTypes();
 		const workflow = new Workflow({ id: workflowData.id!.toString(), name: workflowData.name, nodes: workflowData.nodes, connections: workflowData.connections, active: workflowData.active, nodeTypes, staticData: workflowData.staticData, settings: workflowData.settings });
 
-		const additionalData = await WorkflowExecuteAdditionalData.getBase(credentials);
+		const additionalData = await WorkflowExecuteAdditionalData.getBase();
 
 		const webhookData = NodeHelpers.getNodeWebhooks(workflow, workflow.getNode(lastNodeExecuted) as INode, additionalData).filter((webhook) => {
 			return (webhook.httpMethod === httpMethod && webhook.path === path && webhook.webhookDescription.restartWebhook === true);

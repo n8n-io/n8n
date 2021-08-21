@@ -623,7 +623,7 @@ export default mixins(
 			if (entry.waitTill) {
 				const waitDate = new Date(entry.waitTill);
 				if (waitDate.toISOString() === WAIT_TIME_UNLIMITED) {
-					return 'The workflow is waiting indefinitely.';
+					return 'The workflow is waiting indefinitely for an incoming webhook call.';
 				}
 				return `The worklow is waiting till ${waitDate.toLocaleDateString()} ${waitDate.toLocaleTimeString()}.`;
 			} else if (entry.stoppedAt === undefined) {

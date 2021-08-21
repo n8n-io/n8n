@@ -53,6 +53,7 @@
 <script lang="ts">
 
 import Vue from 'vue';
+import { WAIT_TIME_UNLIMITED } from '@/constants';
 import { externalHooks } from '@/components/mixins/externalHooks';
 import { nodeBase } from '@/components/mixins/nodeBase';
 import { nodeHelpers } from '@/components/mixins/nodeHelpers';
@@ -141,6 +142,9 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 				const lastNodeExecuted = get(workflowExecution, 'data.resultData.lastNodeExecuted');
 				if (this.name === lastNodeExecuted) {
 					const waitDate = new Date(workflowExecution.waitTill);
+					if (waitDate.toISOString() === WAIT_TIME_UNLIMITED) {
+						return 'The node is waiting indefinitely for an incoming webhook call.';
+					}
 					return `Node is waiting till ${waitDate.toLocaleDateString()} ${waitDate.toLocaleTimeString()}`;
 				}
 			}

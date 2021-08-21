@@ -153,10 +153,7 @@ export class WaitTrackerClass {
 				throw new Error('The execution did succeed and can so not be started again.');
 			}
 
-			const credentials = await WorkflowCredentials(fullExecutionData.workflowData.nodes);
-
 			const data: IWorkflowExecutionDataProcess = {
-				credentials,
 				executionMode: fullExecutionData.mode,
 				executionData: fullExecutionData.data,
 				workflowData: fullExecutionData.workflowData,
