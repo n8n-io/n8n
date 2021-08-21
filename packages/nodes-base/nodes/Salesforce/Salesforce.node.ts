@@ -692,6 +692,29 @@ export class Salesforce implements INodeType {
 				sortOptions(returnData);
 				return returnData;
 			},
+			// Get all the task types to display them to user so that he can
+			// select them easily
+			async getTaskTypes(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const returnData: INodePropertyOptions[] = [];
+				console.log('in getTaskTypes')
+				// TODO: find a way to filter this object to get just the lead sources instead of the whole object
+				const { fields } = await salesforceApiRequest.call(this, 'GET', '/sobjects/task/describe');
+				for (const field of fields) {
+					if (field.name === 'Type') {
+						for (const pickValue of field.picklistValues) {
+							const pickValueName = pickValue.label;
+							const pickValueId = pickValue.value;
+							returnData.push({
+								name: pickValueName,
+								value: pickValueId,
+							});
+						}
+					}
+				}
+				sortOptions(returnData);
+				console.log('in getTaskTypes',returnData);
+				return returnData;
+			},
 			// Get all the task subjects to display them to user so that he can
 			// select them easily
 			async getTaskSubjects(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
@@ -2331,6 +2354,9 @@ export class Salesforce implements INodeType {
 						const body: ITask = {
 							Status: status,
 						};
+						if (additionalFields.Type !== undefined) {
+							body.Type = additionalFields.Type as string;
+						}
 						if (additionalFields.whoId !== undefined) {
 							body.WhoId = additionalFields.whoId as string;
 						}
@@ -2416,6 +2442,9 @@ export class Salesforce implements INodeType {
 						const taskId = this.getNodeParameter('taskId', i) as string;
 						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
 						const body: ITask = {};
+						if (updateFields.Type !== undefined) {
+							body.Type = updateFields.Type as string;
+						}
 						if (updateFields.whoId !== undefined) {
 							body.WhoId = updateFields.whoId as string;
 						}

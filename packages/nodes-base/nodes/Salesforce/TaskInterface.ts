@@ -1,4 +1,5 @@
 export interface ITask {
+	Type?: string;
 	WhoId?: string;
 	Status?: string;
 	WhatId?: string;

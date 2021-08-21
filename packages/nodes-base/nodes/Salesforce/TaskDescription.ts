@@ -95,6 +95,16 @@ export const taskFields = [
 		},
 		options: [
 			{
+				displayName: 'Type',
+				name: 'Type',
+				type: 'options',
+				default: '',
+				typeOptions: {
+					loadOptionsMethod: 'getTaskTypes',
+				},
+				description: `Represents Type of the task, such as Call or Meeting.`,
+			},
+			{
 				displayName: 'Activity Date',
 				name: 'activityDate',
 				type: 'dateTime',
@@ -446,6 +456,16 @@ export const taskFields = [
 			},
 		},
 		options: [
+			{
+				displayName: 'Type',
+				name: 'Type',
+				type: 'options',
+				default: '',
+				typeOptions: {
+					loadOptionsMethod: 'getTaskTypes',
+				},
+				description: `Represents Type of the task, such as Call or Meeting.`,
+			},
 			{
 				displayName: 'Activity Date',
 				name: 'activityDate',
