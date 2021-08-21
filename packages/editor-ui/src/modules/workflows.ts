@@ -1,24 +1,25 @@
-import { getNewWorkflow } from '@/api/workflows';
+import { getNewWorkflow, getWorkflowTemplate } from '@/api/workflows';
 import { DUPLICATE_POSTFFIX, MAX_WORKFLOW_NAME_LENGTH, DEFAULT_NEW_WORKFLOW_NAME } from '@/constants';
 import { ActionContext, Module } from 'vuex';
 import {
 	IRootState,
 	IWorkflowsState,
+	IWorkflowTemplate,
 } from '../Interface';
 
 const module: Module<IWorkflowsState, IRootState> = {
 	namespaced: true,
 	state: {},
 	actions: {
-		setNewWorkflowName: async (context: ActionContext<IWorkflowsState, IRootState>): Promise<void> => {
+		setNewWorkflowName: async (context: ActionContext<IWorkflowsState, IRootState>, name?: string): Promise<void> => {
 			let newName = '';
 			try {
-				const newWorkflow = await getNewWorkflow(context.rootGetters.getRestApiContext);
+				const newWorkflow = await getNewWorkflow(context.rootGetters.getRestApiContext, name);
 				newName = newWorkflow.name;
 			}
 			catch (e) {
 				// in case of error, default to original name
-				newName = DEFAULT_NEW_WORKFLOW_NAME;
+				newName = name || DEFAULT_NEW_WORKFLOW_NAME;
 			}
 
 			context.commit('setWorkflowName', { newName }, { root: true });
@@ -41,6 +42,9 @@ const module: Module<IWorkflowsState, IRootState> = {
 			}			
 
 			return newName;
+		},
+		getWorkflowTemplate: async (context: ActionContext<IWorkflowsState, IRootState>, templateId: string): Promise<IWorkflowTemplate> => {
+			return await getWorkflowTemplate(templateId);
 		},
 	},
 };

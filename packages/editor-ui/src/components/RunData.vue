@@ -196,20 +196,16 @@
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
 //@ts-ignore
 import VueJsonPretty from 'vue-json-pretty';
 import {
 	GenericValue,
-	IBinaryData,
 	IBinaryKeyData,
 	IDataObject,
 	INodeExecutionData,
-	IRun,
 	IRunData,
 	IRunExecutionData,
 	ITaskData,
-	ITaskDataConnections,
 } from 'n8n-workflow';
 
 import {

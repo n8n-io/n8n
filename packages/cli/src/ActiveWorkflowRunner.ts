@@ -39,6 +39,8 @@ import {
 	LoggerProxy as Logger,
 } from 'n8n-workflow';
 
+const WEBHOOK_PROD_UNREGISTERED_HINT = `The workflow must be active for a production URL to run successfully. You can activate the workflow using the toggle in the top-right of the editor. Note that unlike test URL calls, production URL calls aren't shown on the canvas (only in the executions list)`;
+
 export class ActiveWorkflowRunner {
 	private activeWorkflows: ActiveWorkflows | null = null;
 
@@ -148,7 +150,7 @@ export class ActiveWorkflowRunner {
 			const dynamicWebhooks = await Db.collections.Webhook?.find({ webhookId, method: httpMethod, pathLength: pathElements.length });
 			if (dynamicWebhooks === undefined || dynamicWebhooks.length === 0) {
 				// The requested webhook is not registered
-				throw new ResponseHelper.ResponseError(`The requested webhook "${httpMethod} ${path}" is not registered.`, 404, 404);
+				throw new ResponseHelper.ResponseError(`The requested webhook "${httpMethod} ${path}" is not registered.`, 404, 404, WEBHOOK_PROD_UNREGISTERED_HINT);
 			}
 
 			let maxMatches = 0;
@@ -169,7 +171,7 @@ export class ActiveWorkflowRunner {
 				}
 			});
 			if (webhook === undefined) {
-				throw new ResponseHelper.ResponseError(`The requested webhook "${httpMethod} ${path}" is not registered.`, 404, 404);
+				throw new ResponseHelper.ResponseError(`The requested webhook "${httpMethod} ${path}" is not registered.`, 404, 404, WEBHOOK_PROD_UNREGISTERED_HINT);
 			}
 
 			path = webhook!.webhookPath;
@@ -190,9 +192,7 @@ export class ActiveWorkflowRunner {
 		const nodeTypes = NodeTypes();
 		const workflow = new Workflow({ id: webhook.workflowId.toString(), name: workflowData.name, nodes: workflowData.nodes, connections: workflowData.connections, active: workflowData.active, nodeTypes, staticData: workflowData.staticData, settings: workflowData.settings });
 
-		const credentials = await WorkflowCredentials([workflow.getNode(webhook.node as string) as INode]);
-
-		const additionalData = await WorkflowExecuteAdditionalData.getBase(credentials);
+		const additionalData = await WorkflowExecuteAdditionalData.getBase();
 
 		const webhookData = NodeHelpers.getNodeWebhooks(workflow, workflow.getNode(webhook.node as string) as INode, additionalData).filter((webhook) => {
 			return (webhook.httpMethod === httpMethod && webhook.path === path);
@@ -313,7 +313,6 @@ export class ActiveWorkflowRunner {
 
 			try {
 				await Db.collections.Webhook?.insert(webhook);
-
 				const webhookExists = await workflow.runWebhookMethod('checkExists', webhookData, NodeExecuteFunctions, mode, activation, false);
 				if (webhookExists !== true) {
 					// If webhook does not exist yet create it
@@ -341,7 +340,7 @@ export class ActiveWorkflowRunner {
 					errorMessage = error.message;
 				}
 
-				throw new Error(errorMessage);
+				throw error;
 			}
 		}
 		// Save static data!
@@ -367,8 +366,7 @@ export class ActiveWorkflowRunner {
 
 		const mode = 'internal';
 
-		const credentials = await WorkflowCredentials(workflowData.nodes);
-		const additionalData = await WorkflowExecuteAdditionalData.getBase(credentials);
+		const additionalData = await WorkflowExecuteAdditionalData.getBase();
 
 		const webhooks = WebhookHelpers.getWorkflowWebhooks(workflow, additionalData);
 
@@ -420,7 +418,6 @@ export class ActiveWorkflowRunner {
 
 		// Start the workflow
 		const runData: IWorkflowExecutionDataProcess = {
-			credentials: additionalData.credentials,
 			executionMode: mode,
 			executionData,
 			workflowData,
@@ -507,8 +504,7 @@ export class ActiveWorkflowRunner {
 			}
 
 			const mode = 'trigger';
-			const credentials = await WorkflowCredentials(workflowData.nodes);
-			const additionalData = await WorkflowExecuteAdditionalData.getBase(credentials);
+			const additionalData = await WorkflowExecuteAdditionalData.getBase();
 			const getTriggerFunctions = this.getExecuteTriggerFunctions(workflowData, additionalData, mode, activation);
 			const getPollFunctions = this.getExecutePollFunctions(workflowData, additionalData, mode, activation);
 

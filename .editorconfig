@@ -14,3 +14,7 @@ indent_size = 2
 
 [*.ts]
 quote_type = single
+
+[*.yml]
+indent_style = space
+indent_size = 2

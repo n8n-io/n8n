@@ -25,7 +25,7 @@ export class GithubTrigger implements INodeType {
 		group: ['trigger'],
 		version: 1,
 		subtitle: '={{$parameter["owner"] + "/" + $parameter["repository"] + ": " + $parameter["events"].join(", ")}}',
-		description: 'Starts the workflow when a Github events occurs.',
+		description: 'Starts the workflow when Github events occur',
 		defaults: {
 			name: 'Github Trigger',
 			color: '#000000',

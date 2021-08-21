@@ -28,6 +28,11 @@
 				"url": "https://n8n.io/blog/automate-your-data-processing-pipeline-in-9-steps-with-n8n/"
 			},
 			{
+				"label": "5 tasks you can automate with the new Notion API ",
+				"icon": "⚡️",
+				"url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/"
+			},
+			{
 				"label": "5 workflow automations for Mattermost that we love at n8n",
 				"icon": "🤖",
 				"url": "https://n8n.io/blog/5-workflow-automations-for-mattermost-that-we-love-at-n8n/"
@@ -44,6 +49,9 @@
 			}
 		]
 	},
+	"alias": [
+		"nothing"
+	],
 	"subcategories": {
 		"Core Nodes": [
 			"Helpers"

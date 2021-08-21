@@ -21,7 +21,7 @@ import {
 } from 'n8n-workflow';
 
 import * as fs from 'fs';
-import * as glob from 'glob-promise';
+import * as glob from 'fast-glob';
 import * as path from 'path';
 
 export class ImportCredentialsCommand extends Command {
@@ -65,6 +65,9 @@ export class ImportCredentialsCommand extends Command {
 
 		try {
 			await Db.init();
+
+			// Make sure the settings exist
+			await UserSettings.prepareUserSettings();
 			let i;
 
 			const encryptionKey = await UserSettings.getEncryptionKey();

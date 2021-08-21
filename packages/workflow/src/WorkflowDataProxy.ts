@@ -395,6 +395,7 @@ export class WorkflowDataProxy {
 			$node: this.nodeGetter(),
 			$self: this.selfGetter(),
 			$parameter: this.nodeParameterGetter(this.activeNodeName),
+			$position: this.itemIndex,
 			$runIndex: this.runIndex,
 			$mode: this.mode,
 			$workflow: this.workflowGetter(),

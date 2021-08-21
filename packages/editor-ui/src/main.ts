@@ -21,6 +21,7 @@ import { runExternalHook } from './components/mixins/externalHooks';
 
 // @ts-ignore
 import vClickOutside from 'v-click-outside';
+import Fragment from 'vue-fragment';
 
 import { library } from '@fortawesome/fontawesome-svg-core';
 import {
@@ -28,12 +29,15 @@ import {
 	faAngleDown,
 	faAngleRight,
 	faAngleUp,
+	faArrowLeft,
 	faArrowRight,
 	faAt,
 	faBook,
 	faBug,
 	faCalendar,
 	faCheck,
+	faChevronDown,
+	faChevronUp,
 	faCode,
 	faCodeBranch,
 	faCog,
@@ -48,6 +52,7 @@ import {
 	faEnvelope,
 	faEye,
 	faExclamationTriangle,
+	faExpand,
 	faExternalLinkAlt,
 	faExchangeAlt,
 	faFile,
@@ -58,6 +63,7 @@ import {
 	faFileImport,
 	faFilePdf,
 	faFolderOpen,
+	faGift,
 	faHdd,
 	faHome,
 	faHourglass,
@@ -79,6 +85,7 @@ import {
 	faRedo,
 	faRss,
 	faSave,
+	faSearch,
 	faSearchMinus,
 	faSearchPlus,
 	faServer,
@@ -112,12 +119,15 @@ library.add(faAngleDoubleLeft);
 library.add(faAngleDown);
 library.add(faAngleRight);
 library.add(faAngleUp);
+library.add(faArrowLeft);
 library.add(faArrowRight);
 library.add(faAt);
 library.add(faBook);
 library.add(faBug);
 library.add(faCalendar);
 library.add(faCheck);
+library.add(faChevronDown);
+library.add(faChevronUp);
 library.add(faCode);
 library.add(faCodeBranch);
 library.add(faCog);
@@ -132,6 +142,7 @@ library.add(faEdit);
 library.add(faEnvelope);
 library.add(faEye);
 library.add(faExclamationTriangle);
+library.add(faExpand);
 library.add(faExternalLinkAlt);
 library.add(faExchangeAlt);
 library.add(faFile);
@@ -142,6 +153,7 @@ library.add(faFileExport);
 library.add(faFileImport);
 library.add(faFilePdf);
 library.add(faFolderOpen);
+library.add(faGift);
 library.add(faHdd);
 library.add(faHome);
 library.add(faHourglass);
@@ -163,6 +175,7 @@ library.add(faQuestionCircle);
 library.add(faRedo);
 library.add(faRss);
 library.add(faSave);
+library.add(faSearch);
 library.add(faSearchMinus);
 library.add(faSearchPlus);
 library.add(faServer);
@@ -184,6 +197,7 @@ library.add(faUsers);
 library.add(faClock);
 
 Vue.component('font-awesome-icon', FontAwesomeIcon);
+Vue.use(Fragment.Plugin);
 
 Vue.config.productionTip = false;
 router.afterEach((to, from) => {

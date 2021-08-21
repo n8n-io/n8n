@@ -25,7 +25,7 @@ export class CrateDb implements INodeType {
 		icon: 'file:cratedb.png',
 		group: ['input'],
 		version: 1,
-		description: 'Add and update data in CrateDB.',
+		description: 'Add and update data in CrateDB',
 		defaults: {
 			name: 'CrateDB',
 			color: '#47889f',
@@ -256,7 +256,7 @@ export class CrateDb implements INodeType {
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
-		const credentials = this.getCredentials('crateDb');
+		const credentials = await this.getCredentials('crateDb');
 
 		if (credentials === undefined) {
 			throw new NodeOperationError(this.getNode(), 'No credentials got returned!');

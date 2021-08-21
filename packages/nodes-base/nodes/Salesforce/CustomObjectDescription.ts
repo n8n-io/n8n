@@ -21,6 +21,11 @@ export const customObjectOperations = [
 				description: 'Create a custom object record',
 			},
 			{
+				name: 'Create or Update',
+				value: 'upsert',
+				description: 'Create a new record, or update the current one if it already exists (upsert)',
+			},
+			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get a custom object record',
@@ -67,10 +72,53 @@ export const customObjectFields = [
 				],
 				operation: [
 					'create',
+					'upsert',
 				],
 			},
 		},
 		description: 'Name of the custom object.',
+	},
+	{
+		displayName: 'Match Against',
+		name: 'externalId',
+		type: 'options',
+		typeOptions: {
+			loadOptionsMethod: 'getExternalIdFields',
+			loadOptionsDependsOn: [
+				'customObject',
+			],
+		},
+		required: true,
+		default: '',
+		displayOptions: {
+			show: {
+				resource: [
+					'customObject',
+				],
+				operation: [
+					'upsert',
+				],
+			},
+		},
+		description: `The field to check to see if the object already exists`,
+	},
+	{
+		displayName: 'Value to Match',
+		name: 'externalIdValue',
+		type: 'string',
+		required: true,
+		default: '',
+		displayOptions: {
+			show: {
+				resource: [
+					'customObject',
+				],
+				operation: [
+					'upsert',
+				],
+			},
+		},
+		description: `If this value exists in the 'match against' field, update the object. Otherwise create a new one`,
 	},
 	{
 		displayName: 'Fields',
@@ -87,6 +135,7 @@ export const customObjectFields = [
 				],
 				operation: [
 					'create',
+					'upsert',
 				],
 			},
 		},
@@ -460,6 +509,69 @@ export const customObjectFields = [
 				},
 				default: '',
 				description: 'Fields to include separated by ,',
+			},
+		],
+	},
+	{
+		displayName: 'Additional Fields',
+		name: 'additionalFields',
+		type: 'collection',
+		displayOptions: {
+			show: {
+				operation: [
+					'create',
+					'upsert',
+				],
+				resource: [
+					'customObject',
+				],
+			},
+		},
+		default: {},
+		placeholder: 'Add Field',
+		options: [
+			{
+				displayName: 'Record Type ID',
+				name: 'recordTypeId',
+				type: 'options',
+				typeOptions: {
+					loadOptionsMethod: 'getRecordTypes',
+					loadOptionsDependsOn: [
+						'customObject',
+					],
+				},
+				default: '',
+			},
+		],
+	},
+	{
+		displayName: 'Update Fields',
+		name: 'updateFields',
+		type: 'collection',
+		displayOptions: {
+			show: {
+				operation: [
+					'update',
+				],
+				resource: [
+					'customObject',
+				],
+			},
+		},
+		default: {},
+		placeholder: 'Add Field',
+		options: [
+			{
+				displayName: 'Record Type ID',
+				name: 'recordTypeId',
+				type: 'options',
+				typeOptions: {
+					loadOptionsMethod: 'getRecordTypes',
+					loadOptionsDependsOn: [
+						'customObject',
+					],
+				},
+				default: '',
 			},
 		],
 	},

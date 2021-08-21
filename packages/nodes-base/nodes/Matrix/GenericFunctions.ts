@@ -12,7 +12,7 @@ import {
 } from 'n8n-core';
 
 import * as _ from 'lodash';
-import * as uuid from 'uuid/v4';
+import { v4 as uuid } from 'uuid';
 
 
 interface MessageResponse {
@@ -50,7 +50,7 @@ export async function matrixApiRequest(this: IExecuteFunctions | IExecuteSingleF
 
 		let response: any; // tslint:disable-line:no-any
 
-		const credentials = this.getCredentials('matrixApi');
+		const credentials = await this.getCredentials('matrixApi');
 		if (credentials === undefined) {
 			throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
 		}

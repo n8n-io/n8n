@@ -13,9 +13,10 @@ import {
 } from 'n8n-workflow';
 
 import * as moment from 'moment';
+import { Eq } from './QueryFunctions';
 
 export async function theHiveApiRequest(this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions, method: string, resource: string, body: any = {}, query: IDataObject = {}, uri?: string, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
-	const credentials = this.getCredentials('theHiveApi');
+	const credentials = await this.getCredentials('theHiveApi');
 
 	if (credentials === undefined) {
 		throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
@@ -77,7 +78,10 @@ export function prepareOptional(optionals: IDataObject): IDataObject {
 	const response: IDataObject = {};
 	for (const key in optionals) {
 		if (optionals[key] !== undefined && optionals[key] !== null && optionals[key] !== '') {
-			if (moment(optionals[key] as string, moment.ISO_8601).isValid()) {
+			if (['customFieldsJson', 'customFieldsUi'].indexOf(key) > -1) {
+				continue; // Ignore customFields, they need special treatment
+			}
+			else if (moment(optionals[key] as string, moment.ISO_8601).isValid()) {
 				response[key] = Date.parse(optionals[key] as string);
 			} else if (key === 'artifacts') {
 				response[key] = JSON.parse(optionals[key] as string);
@@ -89,6 +93,77 @@ export function prepareOptional(optionals: IDataObject): IDataObject {
 		}
 	}
 	return response;
+}
+
+export async function prepareCustomFields(this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions, additionalFields: IDataObject, jsonParameters = false): Promise<IDataObject | undefined> {
+	// Check if the additionalFields object contains customFields
+	if (jsonParameters === true) {
+		const customFieldsJson = additionalFields.customFieldsJson;
+		// Delete from additionalFields as some operations (e.g. alert:update) do not run prepareOptional
+		// which would remove the extra fields
+		delete additionalFields.customFieldsJson;
+
+		if (typeof customFieldsJson === 'string') {
+			return JSON.parse(customFieldsJson);
+		} else if (typeof customFieldsJson === 'object') {
+			return customFieldsJson as IDataObject;
+		} else if (customFieldsJson) {
+			throw Error('customFieldsJson value is invalid');
+		}
+	} else if (additionalFields.customFieldsUi) {
+		// Get Custom Field Types from TheHive
+		const credentials = await this.getCredentials('theHiveApi');
+		if (credentials === undefined) {
+			throw new NodeOperationError(this.getNode(), 'Credentials could not be obtained');
+		}
+		const version = credentials.apiVersion;
+		const endpoint = version === 'v1' ? '/customField' : '/list/custom_fields';
+
+		const requestResult = await theHiveApiRequest.call(
+			this,
+			'GET',
+			endpoint as string,
+		);
+
+		// Convert TheHive3 response to the same format as TheHive 4
+		// [{name, reference, type}]
+		const hiveCustomFields = version === 'v1' ? requestResult : Object.keys(requestResult).map(key => requestResult[key]);
+		// Build reference to type mapping object
+		const referenceTypeMapping = hiveCustomFields.reduce((acc: IDataObject, curr: IDataObject) => (acc[curr.reference as string] = curr.type, acc), {});
+
+		// Build "fieldName": {"type": "value"} objects
+		const customFieldsUi = (additionalFields.customFieldsUi as IDataObject);
+		const customFields : IDataObject = (customFieldsUi?.customFields as IDataObject[]).reduce((acc: IDataObject, curr: IDataObject) => {
+			const fieldName = curr.field as string;
+
+			// Might be able to do some type conversions here if needed, TODO
+
+			acc[fieldName] = {
+				[referenceTypeMapping[fieldName]]: curr.value,
+			};
+			return acc;
+		}, {} as IDataObject);
+
+		delete additionalFields.customFieldsUi;
+		return customFields;
+	}
+	return undefined;
+}
+
+export function buildCustomFieldSearch(customFields: IDataObject): IDataObject[] {
+	const customFieldTypes = ['boolean', 'date', 'float', 'integer', 'number', 'string'];
+	const searchQueries: IDataObject[] = [];
+	Object.keys(customFields).forEach(customFieldName => {
+		const customField = customFields[customFieldName] as IDataObject;
+
+		// Figure out the field type from the object's keys
+		const fieldType = Object.keys(customField)
+			.filter(key => customFieldTypes.indexOf(key) > -1)[0];
+		const fieldValue = customField[fieldType];
+
+		searchQueries.push(Eq(`customFields.${customFieldName}.${fieldType}`, fieldValue));
+	});
+	return searchQueries;
 }
 
 export function prepareSortQuery(sort: string, body: { query: [IDataObject] }) {

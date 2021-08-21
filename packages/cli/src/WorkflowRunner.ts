@@ -8,6 +8,7 @@ import {
 	IBullJobResponse,
 	ICredentialsOverwrite,
 	ICredentialsTypeData,
+	IExecutionDb,
 	IExecutionFlattedDb,
 	IExecutionResponse,
 	IProcessMessageDataHook,
@@ -29,6 +30,7 @@ import {
 import {
 	ExecutionError,
 	IRun,
+	IWorkflowBase,
 	LoggerProxy as Logger,
 	Workflow,
 	WorkflowExecuteMode,
@@ -85,11 +87,15 @@ export class WorkflowRunner {
 	 * @param {string} executionId
 	 * @memberof WorkflowRunner
 	 */
-	processError(error: ExecutionError, startedAt: Date, executionMode: WorkflowExecuteMode, executionId: string) {
+	async processError(error: ExecutionError, startedAt: Date, executionMode: WorkflowExecuteMode, executionId: string, hooks?: WorkflowHooks) {
 		const fullRunData: IRun = {
 			data: {
 				resultData: {
-					error,
+					error: {
+						...error,
+						message: error.message,
+						stack: error.stack,
+					},
 					runData: {},
 				},
 			},
@@ -102,6 +108,10 @@ export class WorkflowRunner {
 		// Remove from active execution with empty data. That will
 		// set the execution to failed.
 		this.activeExecutions.remove(executionId, fullRunData);
+
+		if (hooks) {
+			await hooks.executeHookFunctions('workflowExecuteAfter', [fullRunData]);
+		}
 	}
 
 	/**
@@ -159,7 +169,6 @@ export class WorkflowRunner {
 
 		const nodeTypes = NodeTypes();
 
-
 		// Soft timeout to stop workflow execution after current running node
 		// Changes were made by adding the `workflowTimeout` to the `additionalData`
 		// So that the timeout will also work for executions with nested workflows.
@@ -174,51 +183,59 @@ export class WorkflowRunner {
 		}
 
 		const workflow = new Workflow({ id: data.workflowData.id as string | undefined, name: data.workflowData.name, nodes: data.workflowData!.nodes, connections: data.workflowData!.connections, active: data.workflowData!.active, nodeTypes, staticData: data.workflowData!.staticData });
-		const additionalData = await WorkflowExecuteAdditionalData.getBase(data.credentials, undefined, workflowTimeout <= 0 ? undefined : Date.now() + workflowTimeout * 1000);
+		const additionalData = await WorkflowExecuteAdditionalData.getBase(undefined, workflowTimeout <= 0 ? undefined : Date.now() + workflowTimeout * 1000);
 
 		// Register the active execution
 		const executionId = await this.activeExecutions.add(data, undefined);
-		Logger.verbose(`Execution for workflow ${data.workflowData.name} was assigned id ${executionId}`, {executionId});
-
-		additionalData.hooks = WorkflowExecuteAdditionalData.getWorkflowHooksMain(data, executionId, true);
-
-		additionalData.sendMessageToUI = WorkflowExecuteAdditionalData.sendMessageToUI.bind({sessionId: data.sessionId});
-
 		let workflowExecution: PCancelable<IRun>;
-		if (data.executionData !== undefined) {
-			Logger.debug(`Execution ID ${executionId} had Execution data. Running with payload.`, {executionId});
-			const workflowExecute = new WorkflowExecute(additionalData, data.executionMode, data.executionData);
-			workflowExecution = workflowExecute.processRunExecutionData(workflow);
-		} else if (data.runData === undefined || data.startNodes === undefined || data.startNodes.length === 0 || data.destinationNode === undefined) {
-			Logger.debug(`Execution ID ${executionId} will run executing all nodes.`, {executionId});
-			// Execute all nodes
 
-			// Can execute without webhook so go on
-			const workflowExecute = new WorkflowExecute(additionalData, data.executionMode);
-			workflowExecution = workflowExecute.run(workflow, undefined, data.destinationNode);
-		} else {
-			Logger.debug(`Execution ID ${executionId} is a partial execution.`, {executionId});
-			// Execute only the nodes between start and destination nodes
-			const workflowExecute = new WorkflowExecute(additionalData, data.executionMode);
-			workflowExecution = workflowExecute.runPartialWorkflow(workflow, data.runData, data.startNodes, data.destinationNode);
-		}
+		try {
+			Logger.verbose(`Execution for workflow ${data.workflowData.name} was assigned id ${executionId}`, { executionId });
+			additionalData.hooks = WorkflowExecuteAdditionalData.getWorkflowHooksMain(data, executionId, true);
+			additionalData.sendMessageToUI = WorkflowExecuteAdditionalData.sendMessageToUI.bind({sessionId: data.sessionId});
 
-		this.activeExecutions.attachWorkflowExecution(executionId, workflowExecution);
+			if (data.executionData !== undefined) {
+				Logger.debug(`Execution ID ${executionId} had Execution data. Running with payload.`, {executionId});
+				const workflowExecute = new WorkflowExecute(additionalData, data.executionMode, data.executionData);
+				workflowExecution = workflowExecute.processRunExecutionData(workflow);
+			} else if (data.runData === undefined || data.startNodes === undefined || data.startNodes.length === 0 || data.destinationNode === undefined) {
+				Logger.debug(`Execution ID ${executionId} will run executing all nodes.`, {executionId});
+				// Execute all nodes
 
-		if (workflowTimeout > 0) {
-			const timeout = Math.min(workflowTimeout, config.get('executions.maxTimeout') as number) * 1000; // as seconds
-			executionTimeout = setTimeout(() => {
-				this.activeExecutions.stopExecution(executionId, 'timeout');
-			}, timeout);
-		}
-
-		workflowExecution.then((fullRunData) => {
-			clearTimeout(executionTimeout);
-			if (workflowExecution.isCanceled) {
-				fullRunData.finished = false;
+				// Can execute without webhook so go on
+				const workflowExecute = new WorkflowExecute(additionalData, data.executionMode);
+				workflowExecution = workflowExecute.run(workflow, undefined, data.destinationNode);
+			} else {
+				Logger.debug(`Execution ID ${executionId} is a partial execution.`, {executionId});
+				// Execute only the nodes between start and destination nodes
+				const workflowExecute = new WorkflowExecute(additionalData, data.executionMode);
+				workflowExecution = workflowExecute.runPartialWorkflow(workflow, data.runData, data.startNodes, data.destinationNode);
 			}
-			this.activeExecutions.remove(executionId, fullRunData);
-		});
+
+			this.activeExecutions.attachWorkflowExecution(executionId, workflowExecution);
+
+			if (workflowTimeout > 0) {
+				const timeout = Math.min(workflowTimeout, config.get('executions.maxTimeout') as number) * 1000; // as seconds
+				executionTimeout = setTimeout(() => {
+					this.activeExecutions.stopExecution(executionId, 'timeout');
+				}, timeout);
+			}
+
+			workflowExecution.then((fullRunData) => {
+				clearTimeout(executionTimeout);
+				if (workflowExecution.isCanceled) {
+					fullRunData.finished = false;
+				}
+				this.activeExecutions.remove(executionId, fullRunData);
+			}).catch((error) => {
+				this.processError(error, new Date(), data.executionMode, executionId, additionalData.hooks);
+			});
+
+		} catch (error) {
+			await this.processError(error, new Date(), data.executionMode, executionId, additionalData.hooks);
+
+			throw error;
+		}
 
 		return executionId;
 	}
@@ -247,39 +264,48 @@ export class WorkflowRunner {
 			removeOnComplete: true,
 			removeOnFail: true,
 		};
-		const job = await this.jobQueue.add(jobData, jobOptions);
-		console.log('Started with ID: ' + job.id.toString());
+		let job: Bull.Job;
+		let hooks: WorkflowHooks;
+		try {
+			job = await this.jobQueue.add(jobData, jobOptions);
 
-		const hooks = WorkflowExecuteAdditionalData.getWorkflowHooksWorkerMain(data.executionMode, executionId, data.workflowData, { retryOf: data.retryOf ? data.retryOf.toString() : undefined });
+			console.log('Started with ID: ' + job.id.toString());
 
-		// Normally also workflow should be supplied here but as it only used for sending
-		// data to editor-UI is not needed.
-		hooks.executeHookFunctions('workflowExecuteBefore', []);
+			hooks = WorkflowExecuteAdditionalData.getWorkflowHooksWorkerMain(data.executionMode, executionId, data.workflowData, { retryOf: data.retryOf ? data.retryOf.toString() : undefined });
+
+			// Normally also workflow should be supplied here but as it only used for sending
+			// data to editor-UI is not needed.
+			hooks.executeHookFunctions('workflowExecuteBefore', []);
+		} catch (error) {
+			// We use "getWorkflowHooksWorkerExecuter" as "getWorkflowHooksWorkerMain" does not contain the
+			// "workflowExecuteAfter" which we require.
+			const hooks = WorkflowExecuteAdditionalData.getWorkflowHooksWorkerExecuter(data.executionMode, executionId, data.workflowData, { retryOf: data.retryOf ? data.retryOf.toString() : undefined });
+			await this.processError(error, new Date(), data.executionMode, executionId, hooks);
+			throw error;
+		}
 
 		const workflowExecution: PCancelable<IRun> = new PCancelable(async (resolve, reject, onCancel) => {
 			onCancel.shouldReject = false;
 			onCancel(async () => {
 				await Queue.getInstance().stopJob(job);
 
-				const fullRunData :IRun = {
-					data: {
-						resultData: {
-							error: new WorkflowOperationError('Workflow has been canceled!'),
-							runData: {},
-						},
-					},
-					mode: data.executionMode,
-					startedAt: new Date(),
-					stoppedAt: new Date(),
-				};
-				this.activeExecutions.remove(executionId, fullRunData);
-				resolve(fullRunData);
+				// We use "getWorkflowHooksWorkerExecuter" as "getWorkflowHooksWorkerMain" does not contain the
+				// "workflowExecuteAfter" which we require.
+				const hooksWorker = WorkflowExecuteAdditionalData.getWorkflowHooksWorkerExecuter(data.executionMode, executionId, data.workflowData, { retryOf: data.retryOf ? data.retryOf.toString() : undefined });
+
+				const error = new WorkflowOperationError('Workflow-Execution has been canceled!');
+				await this.processError(error, new Date(), data.executionMode, executionId, hooksWorker);
+
+				reject(error);
 			});
 
 			const jobData: Promise<IBullJobResponse> = job.finished();
 
 			const queueRecoveryInterval = config.get('queue.bull.queueRecoveryInterval') as number;
 
+			const racingPromises: Array<Promise<IBullJobResponse | object>> = [jobData];
+
+			let clearWatchdogInterval;
 			if (queueRecoveryInterval > 0) {
 				/*************************************************
 				 * Long explanation about what this solves:      *
@@ -295,7 +321,7 @@ export class WorkflowRunner {
 				*************************************************/
 				let watchDogInterval: NodeJS.Timeout | undefined;
 
-				const watchDog = new Promise((res) => {
+				const watchDog: Promise<object> = new Promise((res) => {
 					watchDogInterval = setInterval(async () => {
 						const currentJob = await this.jobQueue.getJob(job.id);
 						// When null means job is finished (not found in queue)
@@ -306,22 +332,33 @@ export class WorkflowRunner {
 					}, queueRecoveryInterval * 1000);
 				});
 
+				racingPromises.push(watchDog);
 
-				const clearWatchdogInterval = () => {
+				clearWatchdogInterval = () => {
 					if (watchDogInterval) {
 						clearInterval(watchDogInterval);
 						watchDogInterval = undefined;
 					}
 				};
-
-				await Promise.race([jobData, watchDog]);
-				clearWatchdogInterval();
-
-			} else {
-				await jobData;
 			}
 
+			try {
+				await Promise.race(racingPromises);
+				if (clearWatchdogInterval !== undefined) {
+					clearWatchdogInterval();
+				}
+			} catch (error) {
+				// We use "getWorkflowHooksWorkerExecuter" as "getWorkflowHooksWorkerMain" does not contain the
+				// "workflowExecuteAfter" which we require.
+				const hooks = WorkflowExecuteAdditionalData.getWorkflowHooksWorkerExecuter(data.executionMode, executionId, data.workflowData, { retryOf: data.retryOf ? data.retryOf.toString() : undefined });
+				Logger.error(`Problem with execution ${executionId}: ${error.message}. Aborting.`);
+				if (clearWatchdogInterval !== undefined) {
+					clearWatchdogInterval();
+				}
+				await this.processError(error, new Date(), data.executionMode, executionId, hooks);
 
+				reject(error);
+			}
 
 			const executionDb = await Db.collections.Execution!.findOne(executionId) as IExecutionFlattedDb;
 			const fullExecutionData = ResponseHelper.unflattenExecutionData(executionDb) as IExecutionResponse;
@@ -332,7 +369,6 @@ export class WorkflowRunner {
 				startedAt: fullExecutionData.startedAt,
 				stoppedAt: fullExecutionData.stoppedAt,
 			} as IRun;
-
 
 			this.activeExecutions.remove(executionId, runData);
 			// Normally also static data should be supplied here but as it only used for sending
@@ -387,48 +423,24 @@ export class WorkflowRunner {
 		// Register the active execution
 		const executionId = await this.activeExecutions.add(data, subprocess);
 
-		// Check if workflow contains a "executeWorkflow" Node as in this
-		// case we can not know which nodeTypes and credentialTypes will
-		// be needed and so have to load all of them in the workflowRunnerProcess
-		let loadAllNodeTypes = false;
-		for (const node of data.workflowData.nodes) {
-			if (node.type === 'n8n-nodes-base.executeWorkflow') {
-				loadAllNodeTypes = true;
-				break;
-			}
-		}
-
-		let nodeTypeData: ITransferNodeTypes;
-		let credentialTypeData: ICredentialsTypeData;
-		let credentialsOverwrites = this.credentialsOverwrites;
-
-		if (loadAllNodeTypes === true) {
-			// Supply all nodeTypes and credentialTypes
-			nodeTypeData = WorkflowHelpers.getAllNodeTypeData();
-			const credentialTypes = CredentialTypes();
-			credentialTypeData = credentialTypes.credentialTypes;
-		} else {
-			// Supply only nodeTypes, credentialTypes and overwrites that the workflow needs
-			nodeTypeData = WorkflowHelpers.getNodeTypeData(data.workflowData.nodes);
-			credentialTypeData = WorkflowHelpers.getCredentialsData(data.credentials);
-
-			credentialsOverwrites = {};
-			for (const credentialName of Object.keys(credentialTypeData)) {
-				if (this.credentialsOverwrites[credentialName] !== undefined) {
-					credentialsOverwrites[credentialName] = this.credentialsOverwrites[credentialName];
-				}
-			}
-		}
+		// Supply all nodeTypes and credentialTypes
+		const nodeTypeData = WorkflowHelpers.getAllNodeTypeData() as ITransferNodeTypes;
+		const credentialTypes = CredentialTypes();
 
 		(data as unknown as IWorkflowExecutionDataProcessWithExecution).executionId = executionId;
 		(data as unknown as IWorkflowExecutionDataProcessWithExecution).nodeTypeData = nodeTypeData;
-		(data as unknown as IWorkflowExecutionDataProcessWithExecution).credentialsOverwrite = credentialsOverwrites;
-		(data as unknown as IWorkflowExecutionDataProcessWithExecution).credentialsTypeData = credentialTypeData; // TODO: Still needs correct value
+		(data as unknown as IWorkflowExecutionDataProcessWithExecution).credentialsOverwrite = this.credentialsOverwrites;
+		(data as unknown as IWorkflowExecutionDataProcessWithExecution).credentialsTypeData = credentialTypes.credentialTypes;
 
 		const workflowHooks = WorkflowExecuteAdditionalData.getWorkflowHooksMain(data, executionId);
 
-		// Send all data to subprocess it needs to run the workflow
-		subprocess.send({ type: 'startWorkflow', data } as IProcessMessage);
+		try {
+			// Send all data to subprocess it needs to run the workflow
+			subprocess.send({ type: 'startWorkflow', data } as IProcessMessage);
+		} catch (error) {
+			await this.processError(error, new Date(), data.executionMode, executionId, workflowHooks);
+			return executionId;
+		}
 
 		// Start timeout for the execution
 		let executionTimeout: NodeJS.Timeout;
@@ -476,14 +488,14 @@ export class WorkflowRunner {
 			} else if (message.type === 'processError') {
 				clearTimeout(executionTimeout);
 				const executionError = message.data.executionError as ExecutionError;
-				this.processError(executionError, startedAt, data.executionMode, executionId);
-
+				await this.processError(executionError, startedAt, data.executionMode, executionId, workflowHooks);
 			} else if (message.type === 'processHook') {
 				this.processHookMessage(workflowHooks, message.data as IProcessMessageDataHook);
 			} else if (message.type === 'timeout') {
 				// Execution timed out and its process has been terminated
 				const timeoutError = new WorkflowOperationError('Workflow execution timed out!');
 
+				// No need to add hook here as the subprocess takes care of calling the hooks
 				this.processError(timeoutError, startedAt, data.executionMode, executionId);
 			} else if (message.type === 'startExecution') {
 				const executionId = await this.activeExecutions.add(message.data.runData);
@@ -506,13 +518,13 @@ export class WorkflowRunner {
 				// Execution timed out and its process has been terminated
 				const timeoutError = new WorkflowOperationError('Workflow execution timed out!');
 
-				this.processError(timeoutError, startedAt, data.executionMode, executionId);
+				await this.processError(timeoutError, startedAt, data.executionMode, executionId, workflowHooks);
 			} else if (code !== 0) {
 				Logger.debug(`Subprocess for execution ID ${executionId} finished with error code ${code}.`, {executionId});
 				// Process did exit with error code, so something went wrong.
 				const executionError = new WorkflowOperationError('Workflow execution process did crash for an unknown reason!');
 
-				this.processError(executionError, startedAt, data.executionMode, executionId);
+				await this.processError(executionError, startedAt, data.executionMode, executionId, workflowHooks);
 			}
 
 			for(const executionId of childExecutionIds) {

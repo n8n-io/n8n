@@ -22,7 +22,7 @@ import {
 	WorkflowRunner,
 } from '../src';
 
-import { 
+import {
 	getLogger,
 } from '../src/Logger';
 
@@ -45,6 +45,9 @@ export class Execute extends Command {
 		}),
 		id: flags.string({
 			description: 'id of the workflow to execute',
+		}),
+		rawOutput: flags.boolean({
+			description: 'Outputs only JSON data, with no other text',
 		}),
 	};
 
@@ -152,10 +155,7 @@ export class Execute extends Command {
 		}
 
 		try {
-			const credentials = await WorkflowCredentials(workflowData!.nodes);
-
 			const runData: IWorkflowExecutionDataProcess = {
-				credentials,
 				executionMode: 'cli',
 				startNodes: [startNode.name],
 				workflowData: workflowData!,
@@ -183,10 +183,11 @@ export class Execute extends Command {
 					stack: error.stack,
 				};
 			}
-
-			console.info('Execution was successful:');
-			console.info('====================================');
-			console.info(JSON.stringify(data, null, 2));
+			if (flags.rawOutput === undefined) {
+				this.log('Execution was successful:');
+				this.log('====================================');
+			}
+			this.log(JSON.stringify(data, null, 2));
 		} catch (e) {
 			console.error('Error executing workflow. See log messages for details.');
 			logger.error('\nExecution error:');
