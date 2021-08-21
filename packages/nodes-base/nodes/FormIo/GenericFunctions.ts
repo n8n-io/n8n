@@ -40,9 +40,6 @@ async function getToken(this: IExecuteFunctions | IWebhookFunctions | IHookFunct
 		resolveWithFullResponse: true,
 	};
 
-	console.log('options');
-	console.log(JSON.stringify(options, null, 2));
-
 	try {
 		const responseObject = await this.helpers.request!(options);
 		return responseObject.headers['x-jwt-token'];
