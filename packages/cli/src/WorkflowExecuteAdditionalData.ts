@@ -256,7 +256,7 @@ export function hookFunctionsPreExecute(parentProcessMode?: string): IWorkflowEx
 					if (execution === undefined) {
 						// Something went badly wrong if this happens.
 						// This check is here mostly to make typescript happy.
-						return undefined;
+						return;
 					}
 					const fullExecutionData: IExecutionResponse = ResponseHelper.unflattenExecutionData(execution);
 
@@ -267,11 +267,9 @@ export function hookFunctionsPreExecute(parentProcessMode?: string): IWorkflowEx
 						return;
 					}
 
-
 					if (fullExecutionData.data === undefined) {
 						fullExecutionData.data = {
-							startData: {
-							},
+							startData: {},
 							resultData: {
 								runData: {},
 							},
@@ -351,7 +349,7 @@ function hookFunctionsSave(parentProcessMode?: string): IWorkflowExecuteHooks {
 						saveManualExecutions = this.workflowData.settings.saveManualExecutions as boolean;
 					}
 
-					if (isManualMode && saveManualExecutions === false) {
+					if (isManualMode && saveManualExecutions === false && !fullRunData.waitTill) {
 						// Data is always saved, so we remove from database
 						await Db.collections.Execution!.delete(this.executionId);
 						return;
@@ -369,12 +367,14 @@ function hookFunctionsSave(parentProcessMode?: string): IWorkflowExecuteHooks {
 					if (workflowDidSucceed === true && saveDataSuccessExecution === 'none' ||
 						workflowDidSucceed === false && saveDataErrorExecution === 'none'
 					) {
-						if (!isManualMode) {
-							executeErrorWorkflow(this.workflowData, fullRunData, this.mode, undefined, this.retryOf);
+						if (!fullRunData.waitTill) {
+							if (!isManualMode) {
+								executeErrorWorkflow(this.workflowData, fullRunData, this.mode, undefined, this.retryOf);
+							}
+							// Data is always saved, so we remove from database
+							await Db.collections.Execution!.delete(this.executionId);
+							return;
 						}
-						// Data is always saved, so we remove from database
-						await Db.collections.Execution!.delete(this.executionId);
-						return;
 					}
 
 					const fullExecutionData: IExecutionDb = {
@@ -384,6 +384,7 @@ function hookFunctionsSave(parentProcessMode?: string): IWorkflowExecuteHooks {
 						startedAt: fullRunData.startedAt,
 						stoppedAt: fullRunData.stoppedAt,
 						workflowData: this.workflowData,
+						waitTill: fullRunData.waitTill,
 					};
 
 					if (this.retryOf !== undefined) {
@@ -469,6 +470,7 @@ function hookFunctionsSaveWorker(): IWorkflowExecuteHooks {
 						startedAt: fullRunData.startedAt,
 						stoppedAt: fullRunData.stoppedAt,
 						workflowData: this.workflowData,
+						waitTill: fullRunData.data.waitTill,
 					};
 
 					if (this.retryOf !== undefined) {
@@ -731,6 +733,7 @@ export async function getBase(currentNodeParameters?: INodeParameters, execution
 
 	const timezone = config.get('generic.timezone') as string;
 	const webhookBaseUrl = urlBaseWebhook + config.get('endpoints.webhook') as string;
+	const webhookWaitingBaseUrl = urlBaseWebhook + config.get('endpoints.webhookWaiting') as string;
 	const webhookTestBaseUrl = urlBaseWebhook + config.get('endpoints.webhookTest') as string;
 
 	const encryptionKey = await UserSettings.getEncryptionKey();
@@ -745,6 +748,7 @@ export async function getBase(currentNodeParameters?: INodeParameters, execution
 		restApiUrl: urlBaseWebhook + config.get('endpoints.rest') as string,
 		timezone,
 		webhookBaseUrl,
+		webhookWaitingBaseUrl,
 		webhookTestBaseUrl,
 		currentNodeParameters,
 		executionTimeoutTimestamp,

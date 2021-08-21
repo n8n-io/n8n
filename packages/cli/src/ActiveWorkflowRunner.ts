@@ -209,7 +209,7 @@ export class ActiveWorkflowRunner {
 		return new Promise((resolve, reject) => {
 			const executionMode = 'webhook';
 			//@ts-ignore
-			WebhookHelpers.executeWebhook(workflow, webhookData, workflowData, workflowStartNode, executionMode, undefined, req, res, (error: Error | null, data: object) => {
+			WebhookHelpers.executeWebhook(workflow, webhookData, workflowData, workflowStartNode, executionMode, undefined, undefined, undefined, req, res, (error: Error | null, data: object) => {
 				if (error !== null) {
 					return reject(error);
 				}
@@ -282,7 +282,7 @@ export class ActiveWorkflowRunner {
 	 * @memberof ActiveWorkflowRunner
 	 */
 	async addWorkflowWebhooks(workflow: Workflow, additionalData: IWorkflowExecuteAdditionalDataWorkflow, mode: WorkflowExecuteMode, activation: WorkflowActivateMode): Promise<void> {
-		const webhooks = WebhookHelpers.getWorkflowWebhooks(workflow, additionalData);
+		const webhooks = WebhookHelpers.getWorkflowWebhooks(workflow, additionalData, undefined, true);
 		let path = '' as string | undefined;
 
 		for (const webhookData of webhooks) {
@@ -368,7 +368,7 @@ export class ActiveWorkflowRunner {
 
 		const additionalData = await WorkflowExecuteAdditionalData.getBase();
 
-		const webhooks = WebhookHelpers.getWorkflowWebhooks(workflow, additionalData);
+		const webhooks = WebhookHelpers.getWorkflowWebhooks(workflow, additionalData, undefined, true);
 
 		for (const webhookData of webhooks) {
 			await workflow.runWebhookMethod('delete', webhookData, NodeExecuteFunctions, mode, 'update', false);
