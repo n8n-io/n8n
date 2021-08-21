@@ -12,7 +12,7 @@ import {
 } from 'n8n-workflow';
 
 import {
-	formIOApiRequest,
+	formIoApiRequest,
 } from './GenericFunctions';
 
 export class FormIoTrigger implements INodeType {
@@ -100,7 +100,7 @@ export class FormIoTrigger implements INodeType {
 	methods = {
 		loadOptions: {
 			async getProjects(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-				const projects = await formIOApiRequest.call(this, 'GET', '/project', {});
+				const projects = await formIoApiRequest.call(this, 'GET', '/project', {});
 				const returnData: INodePropertyOptions[] = [];
 				for (const project of projects) {
 					returnData.push({
@@ -112,7 +112,7 @@ export class FormIoTrigger implements INodeType {
 			},
 			async getForms(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const projectId = this.getCurrentNodeParameter('projectId') as string;
-				const forms = await formIOApiRequest.call(this, 'GET', `/project/${projectId}/form`, {});
+				const forms = await formIoApiRequest.call(this, 'GET', `/project/${projectId}/form`, {});
 				const returnData: INodePropertyOptions[] = [];
 				for (const form of forms) {
 					returnData.push({
@@ -134,7 +134,7 @@ export class FormIoTrigger implements INodeType {
 				const formId = this.getNodeParameter('formId') as string;
 				const projectId = this.getNodeParameter('projectId') as string;
 				const method = this.getNodeParameter('events') as string[];
-				const actions = await formIOApiRequest.call(this, 'GET', `/project/${projectId}/form/${formId}/action`);
+				const actions = await formIoApiRequest.call(this, 'GET', `/project/${projectId}/form/${formId}/action`);
 				for (const action of actions) {
 					if (action.name === 'webhook') {
 						if (action.settings.url === webhookUrl &&
@@ -173,7 +173,7 @@ export class FormIoTrigger implements INodeType {
 						},
 					},
 				};
-				const webhook = await formIOApiRequest.call(this, 'POST', `/project/${projectId}/form/${formId}/action`, payload);
+				const webhook = await formIoApiRequest.call(this, 'POST', `/project/${projectId}/form/${formId}/action`, payload);
 				webhookData.webhookId = webhook._id;
 				return true;
 			},
@@ -182,7 +182,7 @@ export class FormIoTrigger implements INodeType {
 				const webhookData = this.getWorkflowStaticData('node');
 				const formId = this.getNodeParameter('formId') as string;
 				const projectId = this.getNodeParameter('projectId') as string;
-				await formIOApiRequest.call(this, 'DELETE', `/project/${projectId}/form/${formId}/action/${webhookData.webhookId}`);
+				await formIoApiRequest.call(this, 'DELETE', `/project/${projectId}/form/${formId}/action/${webhookData.webhookId}`);
 				delete webhookData.webhookId;
 				return true;
 			},

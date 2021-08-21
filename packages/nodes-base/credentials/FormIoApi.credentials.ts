@@ -39,8 +39,8 @@ export class FormIoApi implements ICredentialType {
 			},
 		},
 		{
-			displayName: 'Username',
-			name: 'username',
+			displayName: 'Email',
+			name: 'email',
 			type: 'string' as NodePropertyTypes,
 			default: '',
 		},
@@ -48,6 +48,9 @@ export class FormIoApi implements ICredentialType {
 			displayName: 'Password',
 			name: 'password',
 			type: 'string' as NodePropertyTypes,
+			typeOptions: {
+				password: true,
+			},
 			default: '',
 		},
 	];
