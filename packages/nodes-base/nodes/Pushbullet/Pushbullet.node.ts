@@ -1,5 +1,4 @@
 import {
-	BINARY_ENCODING,
 	IExecuteFunctions,
 } from 'n8n-core';
 
@@ -495,6 +494,7 @@ export class Pushbullet implements INodeType {
 							}
 
 							const binaryData = (items[i].binary as IBinaryKeyData)[binaryPropertyName];
+							const dataBuffer = await this.helpers.getBinaryDataBuffer(i, binaryPropertyName);
 
 							//create upload url
 							const {
@@ -523,7 +523,7 @@ export class Pushbullet implements INodeType {
 								{
 									formData: {
 										file: {
-											value: Buffer.from(binaryData.data, BINARY_ENCODING),
+											value: dataBuffer,
 											options: {
 												filename: binaryData.fileName,
 											},

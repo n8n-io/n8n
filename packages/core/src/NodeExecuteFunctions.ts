@@ -62,6 +62,21 @@ const requestPromiseWithDefaults = requestPromise.defaults({
 });
 
 /**
+ * Returns binary data buffer for given item index and property name.
+ *
+ * @export
+ * @param {ITaskDataConnections} inputData
+ * @param {number} itemIndex
+ * @param {string} propertyName
+ * @param {number} inputIndex
+ * @returns {Promise<Buffer>}
+ */
+export async function getBinaryDataBuffer(inputData: ITaskDataConnections, itemIndex: number, propertyName: string, inputIndex: number): Promise<Buffer> {
+	const binaryData = inputData['main']![inputIndex]![itemIndex]!.binary![propertyName]!;
+	return Buffer.from(binaryData.data, BINARY_ENCODING);
+}
+
+/**
  * Takes a buffer and converts it into the format n8n uses. It encodes the binary data as
  * base64 and adds metadata.
  *
@@ -142,8 +157,8 @@ export async function prepareBinaryData(binaryData: Buffer, filePath?: string, m
  *
  * @returns
  */
-export function requestOAuth2(this: IAllExecuteFunctions, credentialsType: string, requestOptions: OptionsWithUri | requestPromise.RequestPromiseOptions, node: INode, additionalData: IWorkflowExecuteAdditionalData, oAuth2Options?: IOAuth2Options) {
-	const credentials = this.getCredentials(credentialsType) as ICredentialDataDecryptedObject;
+export async function requestOAuth2(this: IAllExecuteFunctions, credentialsType: string, requestOptions: OptionsWithUri | requestPromise.RequestPromiseOptions, node: INode, additionalData: IWorkflowExecuteAdditionalData, oAuth2Options?: IOAuth2Options) {
+	const credentials = await this.getCredentials(credentialsType) as ICredentialDataDecryptedObject;
 
 	if (credentials === undefined) {
 		throw new Error('No credentials got returned!');
@@ -231,8 +246,8 @@ export function requestOAuth2(this: IAllExecuteFunctions, credentialsType: strin
 * @param {(OptionsWithUrl | requestPromise.RequestPromiseOptions)} requestOptionså
 * @returns
 */
-export function requestOAuth1(this: IAllExecuteFunctions, credentialsType: string, requestOptions: OptionsWithUrl | OptionsWithUri | requestPromise.RequestPromiseOptions) {
-	const credentials = this.getCredentials(credentialsType) as ICredentialDataDecryptedObject;
+export async function requestOAuth1(this: IAllExecuteFunctions, credentialsType: string, requestOptions: OptionsWithUrl | OptionsWithUri | requestPromise.RequestPromiseOptions) {
+	const credentials = await this.getCredentials(credentialsType) as ICredentialDataDecryptedObject;
 
 	if (credentials === undefined) {
 		throw new Error('No credentials got returned!');
@@ -336,7 +351,7 @@ export function getAdditionalKeys(additionalData: IWorkflowExecuteAdditionalData
  * @param {IWorkflowExecuteAdditionalData} additionalData
  * @returns {(ICredentialDataDecryptedObject | undefined)}
  */
-export function getCredentials(workflow: Workflow, node: INode, type: string, additionalData: IWorkflowExecuteAdditionalData, mode: WorkflowExecuteMode, runExecutionData?: IRunExecutionData | null, runIndex?: number, connectionInputData?: INodeExecutionData[], itemIndex?: number): ICredentialDataDecryptedObject | undefined {
+export async function getCredentials(workflow: Workflow, node: INode, type: string, additionalData: IWorkflowExecuteAdditionalData, mode: WorkflowExecuteMode, runExecutionData?: IRunExecutionData | null, runIndex?: number, connectionInputData?: INodeExecutionData[], itemIndex?: number): Promise<ICredentialDataDecryptedObject | undefined> {
 
 	// Get the NodeType as it has the information if the credentials are required
 	const nodeType = workflow.nodeTypes.getByName(node.type);
@@ -390,7 +405,7 @@ export function getCredentials(workflow: Workflow, node: INode, type: string, ad
 
 	const name = node.credentials[type];
 
-	const decryptedDataObject = additionalData.credentialsHelper.getDecrypted(name, type, mode, false, expressionResolveValues);
+	const decryptedDataObject = await additionalData.credentialsHelper.getDecrypted(name, type, mode, false, expressionResolveValues);
 
 	return decryptedDataObject;
 }
@@ -574,8 +589,8 @@ export function getExecutePollFunctions(workflow: Workflow, node: INode, additio
 			__emit: (data: INodeExecutionData[][]): void => {
 				throw new Error('Overwrite NodeExecuteFunctions.getExecutePullFunctions.__emit function!');
 			},
-			getCredentials(type: string): ICredentialDataDecryptedObject | undefined {
-				return getCredentials(workflow, node, type, additionalData, mode);
+			async getCredentials(type: string): Promise<ICredentialDataDecryptedObject | undefined> {
+				return await getCredentials(workflow, node, type, additionalData, mode);
 			},
 			getMode: (): WorkflowExecuteMode => {
 				return mode;
@@ -640,8 +655,8 @@ export function getExecuteTriggerFunctions(workflow: Workflow, node: INode, addi
 			emit: (data: INodeExecutionData[][]): void => {
 				throw new Error('Overwrite NodeExecuteFunctions.getExecuteTriggerFunctions.emit function!');
 			},
-			getCredentials(type: string): ICredentialDataDecryptedObject | undefined {
-				return getCredentials(workflow, node, type, additionalData, mode);
+			async getCredentials(type: string): Promise<ICredentialDataDecryptedObject | undefined> {
+				return await getCredentials(workflow, node, type, additionalData, mode);
 			},
 			getNode: () => {
 				return getNode(node);
@@ -718,8 +733,8 @@ export function getExecuteFunctions(workflow: Workflow, runExecutionData: IRunEx
 			getContext(type: string): IContextObject {
 				return NodeHelpers.getContext(runExecutionData, type, node);
 			},
-			getCredentials(type: string, itemIndex?: number): ICredentialDataDecryptedObject | undefined {
-				return getCredentials(workflow, node, type, additionalData, mode, runExecutionData, runIndex, connectionInputData, itemIndex);
+			async getCredentials(type: string, itemIndex?: number): Promise<ICredentialDataDecryptedObject | undefined> {
+				return await getCredentials(workflow, node, type, additionalData, mode, runExecutionData, runIndex, connectionInputData, itemIndex);
 			},
 			getExecutionId: (): string => {
 				return additionalData.executionId!;
@@ -786,6 +801,9 @@ export function getExecuteFunctions(workflow: Workflow, runExecutionData: IRunEx
 			},
 			helpers: {
 				prepareBinaryData,
+				getBinaryDataBuffer(itemIndex: number, propertyName: string, inputIndex = 0): Promise<Buffer> {
+					return getBinaryDataBuffer.call(this, inputData, itemIndex, propertyName, inputIndex);
+				},
 				request: requestPromiseWithDefaults,
 				requestOAuth2(this: IAllExecuteFunctions, credentialsType: string, requestOptions: OptionsWithUri | requestPromise.RequestPromiseOptions, oAuth2Options?: IOAuth2Options): Promise<any> { // tslint:disable-line:no-any
 					return requestOAuth2.call(this, credentialsType, requestOptions, node, additionalData, oAuth2Options);
@@ -829,8 +847,8 @@ export function getExecuteSingleFunctions(workflow: Workflow, runExecutionData: 
 			getContext(type: string): IContextObject {
 				return NodeHelpers.getContext(runExecutionData, type, node);
 			},
-			getCredentials(type: string): ICredentialDataDecryptedObject | undefined {
-				return getCredentials(workflow, node, type, additionalData, mode, runExecutionData, runIndex, connectionInputData, itemIndex);
+			async getCredentials(type: string): Promise<ICredentialDataDecryptedObject | undefined> {
+				return await getCredentials(workflow, node, type, additionalData, mode, runExecutionData, runIndex, connectionInputData, itemIndex);
 			},
 			getInputData: (inputIndex = 0, inputName = 'main') => {
 				if (!inputData.hasOwnProperty(inputName)) {
@@ -909,8 +927,8 @@ export function getExecuteSingleFunctions(workflow: Workflow, runExecutionData: 
 export function getLoadOptionsFunctions(workflow: Workflow, node: INode, path: string, additionalData: IWorkflowExecuteAdditionalData): ILoadOptionsFunctions {
 	return ((workflow: Workflow, node: INode, path: string) => {
 		const that = {
-			getCredentials(type: string): ICredentialDataDecryptedObject | undefined {
-				return getCredentials(workflow, node, type, additionalData, 'internal');
+			async getCredentials(type: string): Promise<ICredentialDataDecryptedObject | undefined> {
+				return await getCredentials(workflow, node, type, additionalData, 'internal');
 			},
 			getCurrentNodeParameter: (parameterPath: string): NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[] | object | undefined => {
 				const nodeParameters = additionalData.currentNodeParameters;
@@ -970,8 +988,8 @@ export function getLoadOptionsFunctions(workflow: Workflow, node: INode, path: s
 export function getExecuteHookFunctions(workflow: Workflow, node: INode, additionalData: IWorkflowExecuteAdditionalData, mode: WorkflowExecuteMode, activation: WorkflowActivateMode, isTest?: boolean, webhookData?: IWebhookData): IHookFunctions {
 	return ((workflow: Workflow, node: INode) => {
 		const that = {
-			getCredentials(type: string): ICredentialDataDecryptedObject | undefined {
-				return getCredentials(workflow, node, type, additionalData, mode);
+			async getCredentials(type: string): Promise<ICredentialDataDecryptedObject | undefined> {
+				return await getCredentials(workflow, node, type, additionalData, mode);
 			},
 			getMode: (): WorkflowExecuteMode => {
 				return mode;
@@ -1047,8 +1065,8 @@ export function getExecuteWebhookFunctions(workflow: Workflow, node: INode, addi
 				}
 				return additionalData.httpRequest.body;
 			},
-			getCredentials(type: string): ICredentialDataDecryptedObject | undefined {
-				return getCredentials(workflow, node, type, additionalData, mode);
+			async getCredentials(type: string): Promise<ICredentialDataDecryptedObject | undefined> {
+				return await getCredentials(workflow, node, type, additionalData, mode);
 			},
 			getHeaderData(): object {
 				if (additionalData.httpRequest === undefined) {

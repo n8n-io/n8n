@@ -105,7 +105,7 @@ export class Contentful implements INodeType {
 				if (resource === 'space') {
 					if (operation === 'get') {
 
-						const credentials = this.getCredentials('contentfulApi');
+						const credentials = await this.getCredentials('contentfulApi');
 
 						responseData = await contentfulApiRequest.call(this, 'GET', `/spaces/${credentials?.spaceId}`);
 					}
@@ -113,7 +113,7 @@ export class Contentful implements INodeType {
 				if (resource === 'contentType') {
 					if (operation === 'get') {
 
-						const credentials = this.getCredentials('contentfulApi');
+						const credentials = await this.getCredentials('contentfulApi');
 
 						const env = this.getNodeParameter('environmentId', 0) as string;
 
@@ -132,7 +132,7 @@ export class Contentful implements INodeType {
 
 					if (operation === 'get') {
 
-						const credentials = this.getCredentials('contentfulApi');
+						const credentials = await this.getCredentials('contentfulApi');
 
 						const env = this.getNodeParameter('environmentId', 0) as string;
 
@@ -147,7 +147,7 @@ export class Contentful implements INodeType {
 						}
 
 					} else if (operation === 'getAll') {
-						const credentials = this.getCredentials('contentfulApi');
+						const credentials = await this.getCredentials('contentfulApi');
 
 						const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
 
@@ -214,7 +214,7 @@ export class Contentful implements INodeType {
 				if (resource === 'asset') {
 					if (operation === 'get') {
 
-						const credentials = this.getCredentials('contentfulApi');
+						const credentials = await this.getCredentials('contentfulApi');
 
 						const env = this.getNodeParameter('environmentId', 0) as string;
 
@@ -230,7 +230,7 @@ export class Contentful implements INodeType {
 
 					} else if (operation === 'getAll') {
 
-						const credentials = this.getCredentials('contentfulApi');
+						const credentials = await this.getCredentials('contentfulApi');
 
 						const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
 
@@ -298,7 +298,7 @@ export class Contentful implements INodeType {
 
 					if (operation === 'getAll') {
 
-						const credentials = this.getCredentials('contentfulApi');
+						const credentials = await this.getCredentials('contentfulApi');
 
 						const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
 

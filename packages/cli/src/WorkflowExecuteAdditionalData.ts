@@ -547,12 +547,7 @@ export async function getRunData(workflowData: IWorkflowBase, inputData?: INodeE
 		},
 	};
 
-	// Get the needed credentials for the current workflow as they will differ to the ones of the
-	// calling workflow.
-	const credentials = await WorkflowCredentials(workflowData!.nodes);
-
 	const runData: IWorkflowExecutionDataProcess = {
-		credentials,
 		executionMode: mode,
 		executionData: runExecutionData,
 		// @ts-ignore
@@ -620,13 +615,9 @@ export async function executeWorkflow(workflowInfo: IExecuteWorkflowInfo, additi
 
 	let data;
 	try {
-		// Get the needed credentials for the current workflow as they will differ to the ones of the
-		// calling workflow.
-		const credentials = await WorkflowCredentials(workflowData!.nodes);
-
 		// Create new additionalData to have different workflow loaded and to call
 		// different webooks
-		const additionalDataIntegrated = await getBase(credentials);
+		const additionalDataIntegrated = await getBase();
 		additionalDataIntegrated.hooks = getWorkflowHooksIntegrated(runData.executionMode, executionId, workflowData!, { parentProcessMode: additionalData.hooks!.mode });
 		// Make sure we pass on the original executeWorkflow function we received
 		// This one already contains changes to talk to parent process
@@ -737,7 +728,7 @@ export function sendMessageToUI(source: string, message: any) { // tslint:disabl
  * @param {INodeParameters} currentNodeParameters
  * @returns {Promise<IWorkflowExecuteAdditionalData>}
  */
-export async function getBase(credentials: IWorkflowCredentials, currentNodeParameters?: INodeParameters, executionTimeoutTimestamp?: number): Promise<IWorkflowExecuteAdditionalData> {
+export async function getBase(currentNodeParameters?: INodeParameters, executionTimeoutTimestamp?: number): Promise<IWorkflowExecuteAdditionalData> {
 	const urlBaseWebhook = WebhookHelpers.getWebhookBaseUrl();
 
 	const timezone = config.get('generic.timezone') as string;
@@ -751,8 +742,7 @@ export async function getBase(credentials: IWorkflowCredentials, currentNodePara
 	}
 
 	return {
-		credentials,
-		credentialsHelper: new CredentialsHelper(credentials, encryptionKey),
+		credentialsHelper: new CredentialsHelper(encryptionKey),
 		encryptionKey,
 		executeWorkflow,
 		restApiUrl: urlBaseWebhook + config.get('endpoints.rest') as string,
