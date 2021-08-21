@@ -150,6 +150,7 @@ export interface IExecutionBase {
 // Data in regular format with references
 export interface IExecutionDb extends IExecutionBase {
 	data: IRunExecutionData;
+	waitTill?: Date;
 	workflowData?: IWorkflowBase;
 }
 
@@ -163,6 +164,7 @@ export interface IExecutionResponse extends IExecutionBase {
 	data: IRunExecutionData;
 	retryOf?: string;
 	retrySuccessId?: string;
+	waitTill?: Date;
 	workflowData: IWorkflowBase;
 }
 
@@ -176,6 +178,7 @@ export interface IExecutionFlatted extends IExecutionBase {
 export interface IExecutionFlattedDb extends IExecutionBase {
 	id: number | string;
 	data: string;
+	waitTill?: Date | null;
 	workflowData: IWorkflowBase;
 }
 
@@ -204,6 +207,7 @@ export interface IExecutionsSummary {
 	mode: WorkflowExecuteMode;
 	retryOf?: string;
 	retrySuccessId?: string;
+	waitTill?: Date;
 	startedAt: Date;
 	stoppedAt?: Date;
 	workflowId: string;
@@ -457,7 +461,6 @@ export interface IProcessMessageDataHook {
 }
 
 export interface IWorkflowExecutionDataProcess {
-	credentials: IWorkflowCredentials;
 	destinationNode?: string;
 	executionMode: WorkflowExecuteMode;
 	executionData?: IRunExecutionData;

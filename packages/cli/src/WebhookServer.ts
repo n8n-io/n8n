@@ -26,6 +26,11 @@ import * as config from '../config';
 import * as parseUrl from 'parseurl';
 
 export function registerProductionWebhooks() {
+
+	// ----------------------------------------
+	// Regular Webhooks
+	// ----------------------------------------
+
 	// HEAD webhook requests
 	this.app.head(`/${this.endpointWebhook}/*`, async (req: express.Request, res: express.Response) => {
 		// Cut away the "/webhook/" to get the registred part of the url

@@ -35,30 +35,42 @@ export class ActiveExecutions {
 	 * @returns {string}
 	 * @memberof ActiveExecutions
 	 */
-	async add(executionData: IWorkflowExecutionDataProcess, process?: ChildProcess): Promise<string> {
+	async add(executionData: IWorkflowExecutionDataProcess, process?: ChildProcess, executionId?: string): Promise<string> {
 
-		const fullExecutionData: IExecutionDb = {
-			data: executionData.executionData!,
-			mode: executionData.executionMode,
-			finished: false,
-			startedAt: new Date(),
-			workflowData: executionData.workflowData,
-		};
+		if (executionId === undefined) {
+			// Is a new execution so save in DB
 
-		if (executionData.retryOf !== undefined) {
-			fullExecutionData.retryOf = executionData.retryOf.toString();
+			const fullExecutionData: IExecutionDb = {
+				data: executionData.executionData!,
+				mode: executionData.executionMode,
+				finished: false,
+				startedAt: new Date(),
+				workflowData: executionData.workflowData,
+			};
+
+			if (executionData.retryOf !== undefined) {
+				fullExecutionData.retryOf = executionData.retryOf.toString();
+			}
+
+			if (executionData.workflowData.id !== undefined && WorkflowHelpers.isWorkflowIdValid(executionData.workflowData.id.toString()) === true) {
+				fullExecutionData.workflowId = executionData.workflowData.id.toString();
+			}
+
+			const execution = ResponseHelper.flattenExecutionData(fullExecutionData);
+
+			const executionResult = await Db.collections.Execution!.save(execution as IExecutionFlattedDb);
+			executionId = typeof executionResult.id === "object" ? executionResult.id!.toString() : executionResult.id + "";
+		} else {
+			// Is an existing execution we want to finish so update in DB
+
+			const execution = {
+				id: executionId,
+				waitTill: null,
+			};
+
+			// @ts-ignore
+			await Db.collections.Execution!.update(executionId, execution);
 		}
-
-		if (executionData.workflowData.id !== undefined && WorkflowHelpers.isWorkflowIdValid(executionData.workflowData.id.toString()) === true) {
-			fullExecutionData.workflowId = executionData.workflowData.id.toString();
-		}
-
-		const execution = ResponseHelper.flattenExecutionData(fullExecutionData);
-
-		// Save the Execution in DB
-		const executionResult = await Db.collections.Execution!.save(execution as IExecutionFlattedDb);
-
-		const executionId = typeof executionResult.id === "object" ? executionResult.id!.toString() : executionResult.id + "";
 
 		this.activeExecutions[executionId] = {
 			executionData,

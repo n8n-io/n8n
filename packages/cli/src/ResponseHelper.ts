@@ -163,6 +163,7 @@ export function flattenExecutionData(fullExecutionData: IExecutionDb): IExecutio
 	const returnData: IExecutionFlatted = Object.assign({}, {
 		data: stringify(fullExecutionData.data),
 		mode: fullExecutionData.mode,
+		waitTill: fullExecutionData.waitTill,
 		startedAt: fullExecutionData.startedAt,
 		stoppedAt: fullExecutionData.stoppedAt,
 		finished: fullExecutionData.finished ? fullExecutionData.finished : false,
@@ -200,6 +201,7 @@ export function unflattenExecutionData(fullExecutionData: IExecutionFlattedDb): 
 		workflowData: fullExecutionData.workflowData as IWorkflowDb,
 		data: parse(fullExecutionData.data),
 		mode: fullExecutionData.mode,
+		waitTill: fullExecutionData.waitTill ? fullExecutionData.waitTill : undefined,
 		startedAt: fullExecutionData.startedAt,
 		stoppedAt: fullExecutionData.stoppedAt,
 		finished: fullExecutionData.finished ? fullExecutionData.finished : false,

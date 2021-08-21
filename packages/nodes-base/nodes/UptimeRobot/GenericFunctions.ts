@@ -13,7 +13,7 @@ import {
 } from 'n8n-workflow';
 
 export async function uptimeRobotApiRequest(this: IExecuteFunctions, method: string, resource: string, body: IDataObject = {}, qs: IDataObject = {}, uri?: string, option: IDataObject = {}) {
-	const credentials = this.getCredentials('uptimeRobotApi');
+	const credentials = await this.getCredentials('uptimeRobotApi');
 	if (credentials === undefined) {
 		throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
 	}
