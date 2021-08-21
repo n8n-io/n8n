@@ -64,6 +64,9 @@ import {
 	Push,
 	ResponseHelper,
 	TestWebhooks,
+	WaitingWebhooks,
+	WaitTracker,
+	WaitTrackerClass,
 	WebhookHelpers,
 	WebhookServer,
 	WorkflowExecuteAdditionalData,
@@ -96,6 +99,7 @@ import {
 import {
 	FindManyOptions,
 	FindOneOptions,
+	IsNull,
 	LessThanOrEqual,
 	Not,
 } from 'typeorm';
@@ -124,9 +128,11 @@ class App {
 	activeWorkflowRunner: ActiveWorkflowRunner.ActiveWorkflowRunner;
 	testWebhooks: TestWebhooks.TestWebhooks;
 	endpointWebhook: string;
+	endpointWebhookWaiting: string;
 	endpointWebhookTest: string;
 	endpointPresetCredentials: string;
 	externalHooks: IExternalHooksClass;
+	waitTracker: WaitTrackerClass;
 	defaultWorkflowName: string;
 	saveDataErrorExecution: string;
 	saveDataSuccessExecution: string;
@@ -150,6 +156,7 @@ class App {
 		this.app = express();
 
 		this.endpointWebhook = config.get('endpoints.webhook') as string;
+		this.endpointWebhookWaiting = config.get('endpoints.webhookWaiting') as string;
 		this.endpointWebhookTest = config.get('endpoints.webhookTest') as string;
 
 		this.defaultWorkflowName = config.get('workflows.defaultName') as string;
@@ -168,6 +175,7 @@ class App {
 		this.push = Push.getInstance();
 
 		this.activeExecutionsInstance = ActiveExecutions.getInstance();
+		this.waitTracker = WaitTracker();
 
 		this.protocol = config.get('protocol');
 		this.sslKey = config.get('ssl_key');
@@ -619,7 +627,6 @@ class App {
 
 			return { name: `${nameToReturn} ${maxSuffix + 1}` };
 		}));
-
 
 		// Returns a specific workflow
 		this.app.get(`/${this.restEndpoint}/workflows/:id`, ResponseHelper.send(async (req: express.Request, res: express.Response): Promise<WorkflowEntity | undefined> => {
@@ -1621,6 +1628,9 @@ class App {
 			executingWorkflowIds.push(...this.activeExecutionsInstance.getActiveExecutions().map(execution => execution.id.toString()) as string[]);
 
 			const countFilter = JSON.parse(JSON.stringify(filter));
+			if (countFilter.waitTill !== undefined) {
+				countFilter.waitTill = Not(IsNull());
+			}
 			countFilter.id = Not(In(executingWorkflowIds));
 
 			const resultsQuery = await Db.collections.Execution!
@@ -1631,6 +1641,7 @@ class App {
 					'execution.mode',
 					'execution.retryOf',
 					'execution.retrySuccessId',
+					'execution.waitTill',
 					'execution.startedAt',
 					'execution.stoppedAt',
 					'execution.workflowData',
@@ -1639,7 +1650,14 @@ class App {
 				.take(limit);
 
 			Object.keys(filter).forEach((filterField) => {
-				resultsQuery.andWhere(`execution.${filterField} = :${filterField}`, {[filterField]: filter[filterField]});
+				if (filterField === 'waitTill') {
+					resultsQuery.andWhere(`execution.${filterField} is not null`);
+				} else if(filterField === 'finished' && filter[filterField] === false) {
+					resultsQuery.andWhere(`execution.${filterField} = :${filterField}`, {[filterField]: filter[filterField]});
+					resultsQuery.andWhere(`execution.waitTill is null`);
+				} else {
+					resultsQuery.andWhere(`execution.${filterField} = :${filterField}`, {[filterField]: filter[filterField]});
+				}
 			});
 			if (req.query.lastId) {
 				resultsQuery.andWhere(`execution.id < :lastId`, {lastId: req.query.lastId});
@@ -1667,6 +1685,7 @@ class App {
 					mode: result.mode,
 					retryOf: result.retryOf ? result.retryOf.toString() : undefined,
 					retrySuccessId: result.retrySuccessId ? result.retrySuccessId.toString() : undefined,
+					waitTill: result.waitTill as Date | undefined,
 					startedAt: result.startedAt,
 					stoppedAt: result.stoppedAt,
 					workflowId: result.workflowData!.id ? result.workflowData!.id!.toString() : '',
@@ -1893,15 +1912,22 @@ class App {
 				// Manual executions should still be stoppable, so
 				// try notifying the `activeExecutions` to stop it.
 				const result = await this.activeExecutionsInstance.stopExecution(req.params.id);
-				if (result !== undefined) {
-					const returnData: IExecutionsStopData = {
+
+				if (result === undefined) {
+					// If active execution could not be found check if it is a waiting one
+					try {
+						return await this.waitTracker.stopExecution(req.params.id);
+					} catch (error) {
+						// Ignore, if it errors as then it is probably a currently running
+						// execution
+					}
+				} else {
+					return {
 						mode: result.mode,
 						startedAt: new Date(result.startedAt),
-						stoppedAt: result.stoppedAt ?  new Date(result.stoppedAt) : undefined,
+						stoppedAt: result.stoppedAt ? new Date(result.stoppedAt) : undefined,
 						finished: result.finished,
-					};
-
-					return returnData;
+					} as IExecutionsStopData;
 				}
 
 				const currentJobs = await Queue.getInstance().getJobs(['active', 'waiting']);
@@ -1932,16 +1958,18 @@ class App {
 				// Stopt he execution and wait till it is done and we got the data
 				const result = await this.activeExecutionsInstance.stopExecution(executionId);
 
+				let returnData: IExecutionsStopData;
 				if (result === undefined) {
-					throw new Error(`The execution id "${executionId}" could not be found.`);
+					// If active execution could not be found check if it is a waiting one
+					returnData = await this.waitTracker.stopExecution(executionId);
+				} else {
+					returnData = {
+						mode: result.mode,
+						startedAt: new Date(result.startedAt),
+						stoppedAt: result.stoppedAt ? new Date(result.stoppedAt) : undefined,
+						finished: result.finished,
+					};
 				}
-
-				const returnData: IExecutionsStopData = {
-					mode: result.mode,
-					startedAt: new Date(result.startedAt),
-					stoppedAt: result.stoppedAt ?  new Date(result.stoppedAt) : undefined,
-					finished: result.finished,
-				};
 
 				return returnData;
 			}
@@ -1987,6 +2015,76 @@ class App {
 		if (config.get('endpoints.disableProductionWebhooksOnMainProcess') !== true) {
 			WebhookServer.registerProductionWebhooks.apply(this);
 		}
+
+		// ----------------------------------------
+		// Waiting Webhooks
+		// ----------------------------------------
+
+		const waitingWebhooks = new WaitingWebhooks();
+
+		// HEAD webhook-waiting requests
+		this.app.head(`/${this.endpointWebhookWaiting}/*`, async (req: express.Request, res: express.Response) => {
+			// Cut away the "/webhook-waiting/" to get the registred part of the url
+			const requestUrl = (req as ICustomRequest).parsedUrl!.pathname!.slice(this.endpointWebhookWaiting.length + 2);
+
+			let response;
+			try {
+				response = await waitingWebhooks.executeWebhook('HEAD', requestUrl, req, res);
+			} catch (error) {
+				ResponseHelper.sendErrorResponse(res, error);
+				return;
+			}
+
+			if (response.noWebhookResponse === true) {
+				// Nothing else to do as the response got already sent
+				return;
+			}
+
+			ResponseHelper.sendSuccessResponse(res, response.data, true, response.responseCode);
+		});
+
+		// GET webhook-waiting requests
+		this.app.get(`/${this.endpointWebhookWaiting}/*`, async (req: express.Request, res: express.Response) => {
+			// Cut away the "/webhook-waiting/" to get the registred part of the url
+			const requestUrl = (req as ICustomRequest).parsedUrl!.pathname!.slice(this.endpointWebhookWaiting.length + 2);
+
+			let response;
+			try {
+				response = await waitingWebhooks.executeWebhook('GET', requestUrl, req, res);
+			} catch (error) {
+				ResponseHelper.sendErrorResponse(res, error);
+				return;
+			}
+
+			if (response.noWebhookResponse === true) {
+				// Nothing else to do as the response got already sent
+				return;
+			}
+
+			ResponseHelper.sendSuccessResponse(res, response.data, true, response.responseCode);
+		});
+
+		// POST webhook-waiting requests
+		this.app.post(`/${this.endpointWebhookWaiting}/*`, async (req: express.Request, res: express.Response) => {
+			// Cut away the "/webhook-waiting/" to get the registred part of the url
+			const requestUrl = (req as ICustomRequest).parsedUrl!.pathname!.slice(this.endpointWebhookWaiting.length + 2);
+
+			let response;
+			try {
+				response = await waitingWebhooks.executeWebhook('POST', requestUrl, req, res);
+			} catch (error) {
+				ResponseHelper.sendErrorResponse(res, error);
+				return;
+			}
+
+			if (response.noWebhookResponse === true) {
+				// Nothing else to do as the response got already sent
+				return;
+			}
+
+			ResponseHelper.sendSuccessResponse(res, response.data, true, response.responseCode);
+		});
+
 
 		// HEAD webhook requests (test for UI)
 		this.app.head(`/${this.endpointWebhookTest}/*`, async (req: express.Request, res: express.Response) => {
