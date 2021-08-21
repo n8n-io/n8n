@@ -53,4 +53,8 @@ export class ExecutionEntity implements IExecutionFlattedDb {
 	@Index()
 	@Column({ nullable: true })
 	workflowId: string;
+
+	@Index()
+	@Column({ type: resolveDataType('datetime') as ColumnOptions['type'], nullable: true })
+	waitTill: Date;
 }
