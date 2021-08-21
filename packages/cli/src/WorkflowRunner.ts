@@ -123,19 +123,18 @@ export class WorkflowRunner {
 	 * @returns {Promise<string>}
 	 * @memberof WorkflowRunner
 	 */
-	async run(data: IWorkflowExecutionDataProcess, loadStaticData?: boolean, realtime?: boolean): Promise<string> {
+	async run(data: IWorkflowExecutionDataProcess, loadStaticData?: boolean, realtime?: boolean, executionId?: string): Promise<string> {
 		const executionsProcess = config.get('executions.process') as string;
 		const executionsMode = config.get('executions.mode') as string;
 
-		let executionId: string;
 		if (executionsMode === 'queue' && data.executionMode !== 'manual') {
 			// Do not run "manual" executions in bull because sending events to the
 			// frontend would not be possible
-			executionId = await this.runBull(data, loadStaticData, realtime);
+			executionId = await this.runBull(data, loadStaticData, realtime, executionId);
 		} else if (executionsProcess === 'main') {
-			executionId = await this.runMainProcess(data, loadStaticData);
+			executionId = await this.runMainProcess(data, loadStaticData, executionId);
 		} else {
-			executionId = await this.runSubprocess(data, loadStaticData);
+			executionId = await this.runSubprocess(data, loadStaticData, executionId);
 		}
 
 		const externalHooks = ExternalHooks();
@@ -162,7 +161,7 @@ export class WorkflowRunner {
 	 * @returns {Promise<string>}
 	 * @memberof WorkflowRunner
 	 */
-	async runMainProcess(data: IWorkflowExecutionDataProcess, loadStaticData?: boolean): Promise<string> {
+	async runMainProcess(data: IWorkflowExecutionDataProcess, loadStaticData?: boolean, restartExecutionId?: string): Promise<string> {
 		if (loadStaticData === true && data.workflowData.id) {
 			data.workflowData.staticData = await WorkflowHelpers.getStaticDataById(data.workflowData.id as string);
 		}
@@ -186,7 +185,10 @@ export class WorkflowRunner {
 		const additionalData = await WorkflowExecuteAdditionalData.getBase(undefined, workflowTimeout <= 0 ? undefined : Date.now() + workflowTimeout * 1000);
 
 		// Register the active execution
-		const executionId = await this.activeExecutions.add(data, undefined);
+		const executionId = await this.activeExecutions.add(data, undefined, restartExecutionId) as string;
+		additionalData.executionId = executionId;
+
+		Logger.verbose(`Execution for workflow ${data.workflowData.name} was assigned id ${executionId}`, {executionId});
 		let workflowExecution: PCancelable<IRun>;
 
 		try {
@@ -240,12 +242,12 @@ export class WorkflowRunner {
 		return executionId;
 	}
 
-	async runBull(data: IWorkflowExecutionDataProcess, loadStaticData?: boolean, realtime?: boolean): Promise<string> {
+	async runBull(data: IWorkflowExecutionDataProcess, loadStaticData?: boolean, realtime?: boolean, restartExecutionId?: string): Promise<string> {
 
 		// TODO: If "loadStaticData" is set to true it has to load data new on worker
 
 		// Register the active execution
-		const executionId = await this.activeExecutions.add(data, undefined);
+		const executionId = await this.activeExecutions.add(data, undefined, restartExecutionId);
 
 		const jobData: IBullJobData = {
 			executionId,
@@ -412,7 +414,7 @@ export class WorkflowRunner {
 	 * @returns {Promise<string>}
 	 * @memberof WorkflowRunner
 	 */
-	async runSubprocess(data: IWorkflowExecutionDataProcess, loadStaticData?: boolean): Promise<string> {
+	async runSubprocess(data: IWorkflowExecutionDataProcess, loadStaticData?: boolean, restartExecutionId?: string): Promise<string> {
 		let startedAt = new Date();
 		const subprocess = fork(pathJoin(__dirname, 'WorkflowRunnerProcess.js'));
 
@@ -421,7 +423,7 @@ export class WorkflowRunner {
 		}
 
 		// Register the active execution
-		const executionId = await this.activeExecutions.add(data, subprocess);
+		const executionId = await this.activeExecutions.add(data, subprocess, restartExecutionId);
 
 		// Supply all nodeTypes and credentialTypes
 		const nodeTypeData = WorkflowHelpers.getAllNodeTypeData() as ITransferNodeTypes;

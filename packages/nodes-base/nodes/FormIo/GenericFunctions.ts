@@ -4,7 +4,6 @@ import {
 } from 'n8n-core';
 
 import {
-	IDataObject,
 	IHookFunctions,
 	IWebhookFunctions,
 	NodeApiError,
@@ -14,8 +13,8 @@ import {
 interface IFormIoCredentials {
 	environment: 'cloudHosted' | ' selfHosted';
 	domain?: string;
-	email: string,
-	password: string,
+	email: string;
+	password: string;
 }
 
 /**
@@ -39,9 +38,6 @@ async function getToken(this: IExecuteFunctions | IWebhookFunctions | IHookFunct
 		json: true,
 		resolveWithFullResponse: true,
 	};
-
-	console.log('options');
-	console.log(JSON.stringify(options, null, 2));
 
 	try {
 		const responseObject = await this.helpers.request!(options);
