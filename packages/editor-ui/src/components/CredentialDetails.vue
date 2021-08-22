@@ -63,7 +63,7 @@
 							<span :class="$style.label">Can be used with:</span>
 						</el-col>
 						<el-col :span="16">
-							<div v-for="node in nodesWithAccess" :key="node.name">
+							<div v-for="node in nodesWithAccess" :key="node.name" :class="$style.valueLabel">
 								<el-checkbox :value="!!nodeAccess[node.name]" @change="(val) => onNodeAccessChange(node.name, val)" :label="node.displayName" />
 							</div>
 						</el-col>
@@ -72,7 +72,7 @@
 						<el-col :span="8">
 							<span :class="$style.label">Created:</span>
 						</el-col>
-						<el-col :span="16">
+						<el-col :span="16" :class="$style.valueLabel">
 							<span>{{ convertToHumanReadableDate(currentCredential.createdAt) }}</span>
 						</el-col>
 					</el-row>
@@ -80,7 +80,7 @@
 						<el-col :span="8">
 							<span :class="$style.label">Last modified:</span>
 						</el-col>
-						<el-col :span="16">
+						<el-col :span="16" :class="$style.valueLabel">
 							<TimeAgo :date="currentCredential.updatedAt" />
 						</el-col>
 					</el-row>
@@ -671,6 +671,10 @@ export default mixins(
 .defaultCredIcon{
 	height: 26px;
 	width: 26px;
+}
+
+.valueLabel {
+	font-weight: var(--font-weight-regular);
 }
 
 </style>

@@ -191,6 +191,7 @@ export default mixins(
 	border-radius: var(--border-radius-base);
 	cursor: pointer;
 	position: relative;
+	font-weight: var(--font-weight-regular);
 
 	&:hover {
 		--display-copy-button: block;
@@ -219,6 +220,7 @@ export default mixins(
 .oauthInfo {
 	margin-top: var(--spacing-2xs);
 	line-height: var(--font-line-height-regular);
+	font-weight: var(--font-weight-regular);
 }
 
 </style>
