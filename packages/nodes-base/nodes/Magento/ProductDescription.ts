@@ -72,9 +72,10 @@ export const productFields = [
 				],
 			},
 		},
+		description: 'Stock-keeping unit',
 	},
 	{
-		displayName: 'Attribute Set ID',
+		displayName: 'Attribute Set Name/ID',
 		name: 'attributeSetId',
 		type: 'options',
 		typeOptions: {
@@ -168,6 +169,7 @@ export const productFields = [
 				],
 			},
 		},
+		description: 'Stock-keeping unit',
 	},
 	/* -------------------------------------------------------------------------- */
 	/*                                   product:getAll			                  */
@@ -213,6 +215,10 @@ export const productFields = [
 		default: 5,
 		description: 'How many results to return',
 	},
-	...getSearchFilters('product', 'getProductAttributes'),
+	...getSearchFilters(
+		'product',
+		//'getProductAttributesFields',
+		'getFilterableProductAttributes',
+		'getProductSortableAttributes'),
 
 ] as INodeProperties[];

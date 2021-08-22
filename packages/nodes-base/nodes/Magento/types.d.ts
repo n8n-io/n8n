@@ -181,4 +181,12 @@ export interface Product {
 	custom_attributes?: CustomAttribute[];
 }
 
+export interface ProductAttribute {
+	default_frontend_label: string;
+	attribute_id: string;
+	is_filterable: boolean;
+	used_for_sort_by: boolean;
+}
+
+
 

@@ -16,6 +16,7 @@ import {
 	adjustAddresses,
 	getFilterQuery,
 	getOrderFields,
+	getProductAttributes,
 	magentoApiRequest,
 	magentoApiRequestAllItems,
 	sort,
@@ -47,9 +48,10 @@ import {
 	Search,
 } from './Types';
 
-import { 
+import {
 	capitalCase,
 } from 'change-case';
+import { IData } from '../Google/Analytics/Interfaces';
 
 export class Magento2 implements INodeType {
 	description: INodeTypeDescription = {
@@ -161,7 +163,7 @@ export class Magento2 implements INodeType {
 				const attributes = await magentoApiRequest.call(this, 'GET', `/rest/default/V1/attributeMetadata/${resource}`) as CustomerAttributeMetadata[];
 				const returnData: INodePropertyOptions[] = [];
 				for (const attribute of attributes) {
-					if (attribute.system === false) {
+					if (attribute.system === false && attribute.frontend_label !== '') {
 						returnData.push({
 							name: attribute.frontend_label as string,
 							value: attribute.attribute_code as string,
@@ -243,21 +245,16 @@ export class Magento2 implements INodeType {
 				return returnData;
 			},
 			async getProductAttributes(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-				//https://magento.redoc.ly/2.3.7-admin/tag/productsattribute-setssetslist#operation/catalogAttributeSetRepositoryV1GetListGet
-				const { items: attributes } = await magentoApiRequest.call(this, 'GET', `/rest/default/V1/products/attributes`, {}, {
-					search_criteria: 0,
-				}) as { items: IDataObject[] };
-				const returnData: INodePropertyOptions[] = [];
-				for (const attribute of attributes) {
-					if (attribute.default_frontend_label !== '') {
-						returnData.push({
-							name: attribute.default_frontend_label as string,
-							value: attribute.attribute_id as string,
-						});
-					}
-				}
-				returnData.sort(sort);
-				return returnData;
+				return getProductAttributes.call(this);
+			},
+			// async getProductAttributesFields(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+			// 	return getProductAttributes.call(this, undefined, { name: '*', value: '*', description: 'All properties' });
+			// },
+			async getFilterableProductAttributes(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				return getProductAttributes.call(this, (attribute) => attribute.is_filterable === true);
+			},
+			async getProductSortableAttributes(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				return getProductAttributes.call(this, (attribute) => attribute.used_for_sort_by === true);
 			},
 			async getOrderAttributes(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				return getOrderFields().map(field => ({ name: capitalCase(field), value: field })).sort(sort);
@@ -353,7 +350,7 @@ export class Magento2 implements INodeType {
 						let qs: Search = {};
 
 						if (jsonParameters === false) {
-							qs = getFilterQuery(Object.assign(filters, sort));
+							//qs = getFilterQuery(Object.assign(filters, sort));
 						} else {
 							const filterJson = this.getNodeParameter('filterJson', i) as string;
 							if (validateJSON(filterJson) !== undefined) {
@@ -467,7 +464,7 @@ export class Magento2 implements INodeType {
 						let qs: Search = {};
 
 						if (jsonParameters === false) {
-							qs = getFilterQuery(Object.assign(filters, sort));
+							//qs = getFilterQuery(Object.assign(filters, sort));
 						} else {
 							const filterJson = this.getNodeParameter('filterJson', i) as string;
 							if (validateJSON(filterJson) !== undefined) {
@@ -541,21 +538,26 @@ export class Magento2 implements INodeType {
 
 					if (operation === 'getAll') {
 						//https://magento.redoc.ly/2.3.7-admin/tag/customerssearch
-						const filters = this.getNodeParameter('filters', i) as { and: Filter[], or: Filter[] };
+						const filterType = this.getNodeParameter('filterType', i) as string;
 						const sort = this.getNodeParameter('options.sort', i, {}) as { sort: [{ direction: string, field: string }] };
 						const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
-						const jsonParameters = this.getNodeParameter('jsonParameters', 0) as boolean;
 						let qs: Search = {};
 
-						if (jsonParameters === false) {
-							qs = getFilterQuery(Object.assign(filters, sort));
-						} else {
+						if (filterType === 'manual') {
+							const filters = this.getNodeParameter('filters', i) as { conditions: Filter[] };
+							const matchType = this.getNodeParameter('matchType', i) as string;
+							qs = getFilterQuery(Object.assign(filters, { matchType }, sort));
+						} else if (filterType === 'json'){
 							const filterJson = this.getNodeParameter('filterJson', i) as string;
 							if (validateJSON(filterJson) !== undefined) {
 								qs = JSON.parse(filterJson);
 							} else {
 								throw new NodeApiError(this.getNode(), { message: 'Filter (JSON) must be a valid json' });
 							}
+						} else {
+							qs = {
+								search_criteria: {},
+							};
 						}
 
 						if (returnAll === true) {

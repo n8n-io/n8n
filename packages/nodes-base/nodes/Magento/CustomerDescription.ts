@@ -54,7 +54,7 @@ export const customerOperations = [
 export const customerFields = [
 
 	/* -------------------------------------------------------------------------- */
-	/*                                   customer:create			              */
+	/*                                   customer:create                          */
 	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Customer ID',
@@ -232,7 +232,7 @@ export const customerFields = [
 		default: 5,
 		description: 'How many results to return',
 	},
-	...getSearchFilters('customer', 'getSystemAttributes'),
+	//...getSearchFilters('customer', 'getSystemAttributes'),
 
 
 ] as INodeProperties[];

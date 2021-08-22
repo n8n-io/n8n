@@ -11,6 +11,7 @@ import {
 
 import {
 	IDataObject,
+	INodePropertyOptions,
 	NodeApiError,
 } from 'n8n-workflow';
 
@@ -18,6 +19,7 @@ import {
 	Address,
 	Filter,
 	FilterGroup,
+	ProductAttribute,
 	Search,
 } from './types';
 
@@ -40,6 +42,7 @@ export async function magentoApiRequest(this: IWebhookFunctions | IHookFunctions
 		if (Object.keys(body).length === 0) {
 			delete options.body;
 		}
+		console.log(JSON.stringify(options, undefined, 2));
 		//@ts-ignore
 		return await this.helpers.request.call(this, options);
 	} catch (error) {
@@ -80,14 +83,26 @@ export function getAddressesUi() {
 				name: 'address',
 				values: [
 					{
+						displayName: 'Street',
+						name: 'street',
+						type: 'string',
+						default: '',
+					},
+					{
 						displayName: 'City',
 						name: 'city',
 						type: 'string',
 						default: '',
 					},
 					{
-						displayName: 'Company',
-						name: 'company',
+						displayName: 'Region',
+						name: 'region',
+						type: 'string',
+						default: '',
+					},
+					{
+						displayName: 'Postal Code',
+						name: 'postcode',
 						type: 'string',
 						default: '',
 					},
@@ -101,18 +116,10 @@ export function getAddressesUi() {
 						default: '',
 					},
 					{
-						displayName: 'Default Billing',
-						name: 'default_billing',
-						type: 'boolean',
-						default: false,
-						descrition: 'Weather this address is default billing address',
-					},
-					{
-						displayName: 'Default Shipping',
-						name: 'default_billing',
-						type: 'boolean',
-						default: false,
-						descrition: 'Weather this address is default shipping address',
+						displayName: 'Company',
+						name: 'company',
+						type: 'string',
+						default: '',
 					},
 					{
 						displayName: 'Fax',
@@ -139,26 +146,8 @@ export function getAddressesUi() {
 						default: '',
 					},
 					{
-						displayName: 'Postcode',
-						name: 'postcode',
-						type: 'string',
-						default: '',
-					},
-					{
 						displayName: 'Prefix',
 						name: 'prefix',
-						type: 'string',
-						default: '',
-					},
-					{
-						displayName: 'Region',
-						name: 'region',
-						type: 'string',
-						default: '',
-					},
-					{
-						displayName: 'Street',
-						name: 'street',
 						type: 'string',
 						default: '',
 					},
@@ -173,6 +162,20 @@ export function getAddressesUi() {
 						name: 'telephone',
 						type: 'string',
 						default: '',
+					},
+					{
+						displayName: 'Default Billing',
+						name: 'default_billing',
+						type: 'boolean',
+						default: false,
+						descrition: 'Weather this address is default billing address',
+					},
+					{
+						displayName: 'Default Shipping',
+						name: 'default_billing',
+						type: 'boolean',
+						default: false,
+						descrition: 'Weather this address is default shipping address',
 					},
 				],
 			},
@@ -192,12 +195,26 @@ export function adjustAddresses(addresses: [{ street: string }]): Address[] {
 	return _addresses;
 }
 
-export function getSearchFilters(resource: string, attributeFunction: string) {
+export function getSearchFilters(resource: string, filterableAttributeFunction: string, sortableAttributeFunction: string) {
 	return [
 		{
-			displayName: 'JSON Parameters',
-			name: 'jsonParameters',
-			type: 'boolean',
+			displayName: 'Filter',
+			name: 'filterType',
+			type: 'options',
+			options: [
+				{
+					name: 'None',
+					value: 'none',
+				},
+				{
+					name: 'Build Manually',
+					value: 'manual',
+				},
+				{
+					name: 'JSON',
+					value: 'json',
+				},
+			],
 			displayOptions: {
 				show: {
 					resource: [
@@ -208,7 +225,36 @@ export function getSearchFilters(resource: string, attributeFunction: string) {
 					],
 				},
 			},
-			default: false,
+			default: 'none',
+		},
+		{
+			displayName: 'Must Match',
+			name: 'matchType',
+			type: 'options',
+			options: [
+				{
+					name: 'Any filter',
+					value: 'anyFilter',
+				},
+				{
+					name: 'All Filters',
+					value: 'allFilters',
+				},
+			],
+			displayOptions: {
+				show: {
+					resource: [
+						resource,
+					],
+					operation: [
+						'getAll',
+					],
+					filterType: [
+						'manual',
+					],
+				},
+			},
+			default: 'anyFilter',
 		},
 		{
 			displayName: 'Filters',
@@ -225,26 +271,19 @@ export function getSearchFilters(resource: string, attributeFunction: string) {
 					operation: [
 						'getAll',
 					],
-					jsonParameters: [
-						false,
+					filterType: [
+						'manual',
 					],
 				},
 			},
 			default: '',
-			placeholder: 'Add Filter',
+			placeholder: 'Add Condition',
 			options: [
 				{
-					displayName: 'OR',
-					name: 'or',
+					displayName: 'Conditions',
+					name: 'conditions',
 					values: [
-						...getConditions(attributeFunction),
-					],
-				},
-				{
-					displayName: 'AND',
-					name: 'and',
-					values: [
-						...getConditions(attributeFunction),
+						...getConditions(filterableAttributeFunction),
 					],
 				},
 			],
@@ -264,29 +303,13 @@ export function getSearchFilters(resource: string, attributeFunction: string) {
 					operation: [
 						'getAll',
 					],
-					jsonParameters: [
-						true,
+					filterType: [
+						'json',
 					],
 				},
 			},
-			placeholder: `https://devdocs.magento.com/guides/v2.4/rest/performing-searches.html
-{
-	"search_criteria": {
-		"filter_groups": [
-			{
-				"filters": [
-					{
-						"field": "email",
-						"condition_type": "eq",
-						"value": "jhon@testing.com"
-					}
-				]
-			}
-		],
-		"page_size": 100
-	}
-}`,
 			default: '',
+			description: `<a target="_blank" href="https://devdocs.magento.com/guides/v2.4/rest/performing-searches.html">Magento guide</a> to creating filters`,
 		},
 		{
 			displayName: 'Options',
@@ -305,6 +328,16 @@ export function getSearchFilters(resource: string, attributeFunction: string) {
 				},
 			},
 			options: [
+				// {
+				// 	displayName: 'Properties',
+				// 	name: 'properties',
+				// 	type: 'multiOptions',
+				// 	typeOptions: {
+				// 		loadOptionsMethod: attributeFunction,
+				// 	},
+				// 	default: ['*'],
+				// 	description: 'Properties the response will return. By default all properties are returned',
+				// },
 				{
 					displayName: 'Sort',
 					name: 'sort',
@@ -326,14 +359,14 @@ export function getSearchFilters(resource: string, attributeFunction: string) {
 									options: [
 										{
 											name: 'Ascending',
-											value: 'asc',
+											value: 'ASC',
 										},
 										{
 											name: 'Descending',
 											value: 'DESC',
 										},
 									],
-									default: 'asc',
+									default: 'ASC',
 									description: 'The sorting direction',
 								},
 								{
@@ -341,7 +374,7 @@ export function getSearchFilters(resource: string, attributeFunction: string) {
 									name: 'field',
 									type: 'options',
 									typeOptions: {
-										loadOptionsMethod: attributeFunction,
+										loadOptionsMethod: sortableAttributeFunction,
 									},
 									default: '',
 									description: `The sorting field`,
@@ -446,22 +479,27 @@ function getConditions(attributeFunction: string) {
 	];
 }
 
-export function getFilterQuery(data: { and?: Filter[], or?: Filter[], sort: [{ direction: string, field: string }] }): Search {
-	if (data?.or?.length) {
+export function getFilterQuery(data: { conditions?: Filter[], matchType: string, sort: [{ direction: string, field: string }] }): Search {
+	
+	if (data.conditions?.length === 0) {
+		throw new Error('At least one filter has to be set');
+	}
+
+	if (data.matchType === 'anyFilter') {
 		return {
 			search_criteria: {
 				filter_groups: [
 					{
-						filters: data?.or,
+						filters: data?.conditions,
 					},
 				],
 				sort_orders: data.sort,
 			},
 		};
-	} else if (data?.and?.length) {
+	} else if (data.conditions?.length !== 0) {
 		return {
 			search_criteria: {
-				filter_groups: data?.and.map((filter: Filter) => {
+				filter_groups: data?.conditions?.map((filter: Filter) => {
 					return {
 						filters: [filter],
 					};
@@ -600,7 +638,7 @@ export function getCustomerOptionalFields() {
 			default: '',
 		},
 		{
-			displayName: 'Group ID',
+			displayName: 'Group Name/ID',
 			name: 'group_id',
 			type: 'options',
 			typeOptions: {
@@ -647,7 +685,7 @@ export function getCustomerOptionalFields() {
 			default: '',
 		},
 		{
-			displayName: 'Store ID',
+			displayName: 'Store URL/ID',
 			name: 'store_id',
 			type: 'options',
 			typeOptions: {
@@ -680,7 +718,7 @@ export function getCustomerOptionalFields() {
 			default: '',
 		},
 		{
-			displayName: 'Website ID',
+			displayName: 'Website Name/ID',
 			name: 'website_id',
 			type: 'options',
 			typeOptions: {
@@ -694,7 +732,7 @@ export function getCustomerOptionalFields() {
 export function getProductOptionalFields() {
 	return [
 		{
-			displayName: 'Attribute Set ID',
+			displayName: 'Attribute Set Name/ID',
 			name: 'attribute_set_id',
 			type: 'options',
 			typeOptions: {
@@ -784,11 +822,11 @@ export function getProductOptionalFields() {
 					value: 2,
 				},
 			],
-			default: '',
+			default: 1,
 		},
 		{
 
-			displayName: 'Type ID',
+			displayName: 'Type Name/ID',
 			name: 'type_id',
 			type: 'options',
 			typeOptions: {
@@ -969,3 +1007,31 @@ export const sort = (a: { name: string }, b: { name: string }) => {
 	if (a.name > b.name) { return 1; }
 	return 0;
 };
+
+// tslint:disable-next-line: no-any
+export async function getProductAttributes(this: ILoadOptionsFunctions, filter?: (attribute: ProductAttribute) => any, extraValue?: { name: string, value: string }): Promise<INodePropertyOptions[]>  {
+	//https://magento.redoc.ly/2.3.7-admin/tag/productsattribute-setssetslist#operation/catalogAttributeSetRepositoryV1GetListGet
+
+	let { items: attributes }: { items: ProductAttribute[] } = await magentoApiRequest.call(this, 'GET', `/rest/default/V1/products/attributes`, {}, {
+		search_criteria: 0,
+	});
+	
+	attributes = attributes.filter((attribute) => 
+	attribute.default_frontend_label !== undefined && attribute.default_frontend_label !== '');
+
+	if (filter) {
+		attributes = attributes.filter(filter);
+	}
+
+	const returnData: INodePropertyOptions[] = [];
+	for (const attribute of attributes) {
+		returnData.push({
+			name: attribute.default_frontend_label as string,
+			value: attribute.attribute_id as string,
+		});
+	}
+	if (extraValue) {
+		returnData.unshift(extraValue);
+	}
+	return returnData.sort(sort);
+}

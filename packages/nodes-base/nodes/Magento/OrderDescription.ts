@@ -119,6 +119,6 @@ export const orderFields = [
 		default: 5,
 		description: 'How many results to return',
 	},
-	...getSearchFilters('order', 'getOrderAttributes'),
+	//...getSearchFilters('order', 'getOrderAttributes'),
 
 ] as INodeProperties[];
