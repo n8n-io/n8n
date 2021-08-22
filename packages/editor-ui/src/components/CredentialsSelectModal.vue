@@ -35,6 +35,7 @@
 				<n8n-button
 					label="Continue"
 					float="right"
+					size="large"
 					:disabled="!selected"
 					@click="openCredentialType"
 				/>
