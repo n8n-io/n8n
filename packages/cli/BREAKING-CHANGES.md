@@ -2,6 +2,49 @@
 
 This list shows all the versions which include breaking changes and how to upgrade.
 
+## 0.135.0
+
+### What changed?
+
+The in-node core methods for credentials and binary data changed.
+
+### When is action necessary?
+
+If you are using custom n8n nodes.
+
+### How to upgrade:
+
+1. The method `this.getCredentials(myNodeCredentials)` is now asyn. So `await` has to be added in front of it.
+
+Example:
+
+```typescript
+// Before 0.135.0:
+const credentials = this.getCredentials(credentialTypeName);
+
+// From 0.135.0:
+const credentials = await this.getCredentials(myNodeCredentials);
+```
+
+2. Binary data should not get accessed directly anymore, instead the method `await this.helpers.getBinaryDataBuffer(itemIndex, binaryPropertyName)` has to be used.
+
+Example:
+
+```typescript
+
+const items = this.getInputData();
+
+for (const i = 0; i < items.length; i++) {
+  const item = items[i].binary as IBinaryKeyData;
+  const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i) as string;
+  const binaryData = item[binaryPropertyName] as IBinaryData;
+	// Before 0.135.0:
+  const binaryDataBuffer = Buffer.from(binaryData.data, BINARY_ENCODING);
+	// From 0.135.0:
+	const binaryDataBuffer = await this.helpers.getBinaryDataBuffer(i, binaryPropertyName);
+}
+```
+
 ## 0.131.0
 
 ### What changed?
