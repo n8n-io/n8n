@@ -180,17 +180,14 @@ export class FormstackTrigger implements INodeType {
 		const bodyData = (this.getBodyData() as unknown) as IFormstackWebhookResponseBody;
 		const simple = this.getNodeParameter('simple') as string;
 
-		let response = bodyData as unknown as IDataObject;
-
-		const submission = await getSubmission.call(this, bodyData.UniqueID);
+		const response = bodyData as unknown as IDataObject;
 
 		if (simple) {
-			const data: IDataObject = {};
-			const fields = await getFields.call(this, bodyData.FormID);
-			submission.forEach(formField => {
-				data[fields[formField.field].label] = formField.value;
-			});
-			response = data;
+			for (const key of Object.keys(response)) {
+				if ((response[key] as IDataObject).hasOwnProperty('value')) {
+					response[key] = (response[key] as IDataObject).value;
+				}
+			}
 		}
 
 		return {
