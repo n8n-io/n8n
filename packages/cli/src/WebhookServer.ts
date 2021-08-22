@@ -26,6 +26,11 @@ import * as config from '../config';
 import * as parseUrl from 'parseurl';
 
 export function registerProductionWebhooks() {
+
+	// ----------------------------------------
+	// Regular Webhooks
+	// ----------------------------------------
+
 	// HEAD webhook requests
 	this.app.head(`/${this.endpointWebhook}/*`, async (req: express.Request, res: express.Response) => {
 		// Cut away the "/webhook/" to get the registred part of the url
@@ -111,7 +116,7 @@ export function registerProductionWebhooks() {
 }
 
 class App {
-	
+
 	app: express.Application;
 	activeWorkflowRunner: ActiveWorkflowRunner.ActiveWorkflowRunner;
 	endpointWebhook: string;
@@ -129,12 +134,12 @@ class App {
 	protocol: string;
 	sslKey: string;
 	sslCert: string;
-	
+
 	presetCredentialsLoaded: boolean;
-	
+
 	constructor() {
 		this.app = express();
-		
+
 		this.endpointWebhook = config.get('endpoints.webhook') as string;
 		this.saveDataErrorExecution = config.get('executions.saveDataOnError') as string;
 		this.saveDataSuccessExecution = config.get('executions.saveDataOnSuccess') as string;
@@ -143,22 +148,22 @@ class App {
 		this.maxExecutionTimeout = config.get('executions.maxTimeout') as number;
 		this.timezone = config.get('generic.timezone') as string;
 		this.restEndpoint = config.get('endpoints.rest') as string;
-		
+
 		this.activeWorkflowRunner = ActiveWorkflowRunner.getInstance();
-		
+
 		this.activeExecutionsInstance = ActiveExecutions.getInstance();
-		
+
 		this.protocol = config.get('protocol');
 		this.sslKey = config.get('ssl_key');
 		this.sslCert = config.get('ssl_cert');
-		
+
 		this.externalHooks = ExternalHooks();
-		
+
 		this.presetCredentialsLoaded = false;
 		this.endpointPresetCredentials = config.get('credentials.overwrite.endpoint') as string;
 	}
-	
-	
+
+
 	/**
 	 * Returns the current epoch time
 	 *
@@ -168,15 +173,15 @@ class App {
 	getCurrentDate(): Date {
 		return new Date();
 	}
-	
-	
+
+
 	async config(): Promise<void> {
-		
+
 		this.versions = await GenericHelpers.getVersions();
-		
+
 		// Compress the response data
 		this.app.use(compression());
-		
+
 		// Make sure that each request has the "parsedUrl" parameter
 		this.app.use((req: express.Request, res: express.Response, next: express.NextFunction) => {
 			(req as ICustomRequest).parsedUrl = parseUrl(req);
@@ -184,7 +189,7 @@ class App {
 			req.rawBody = Buffer.from('', 'base64');
 			next();
 		});
-		
+
 		// Support application/json type post data
 		this.app.use(bodyParser.json({
 			limit: '16mb', verify: (req, res, buf) => {
@@ -192,7 +197,7 @@ class App {
 				req.rawBody = buf;
 			},
 		}));
-		
+
 		// Support application/xml type post data
 		// @ts-ignore
 		this.app.use(bodyParser.xml({
@@ -202,14 +207,14 @@ class App {
 				explicitArray: false, // Only put properties in array if length > 1
 			},
 		}));
-		
+
 		this.app.use(bodyParser.text({
 			limit: '16mb', verify: (req, res, buf) => {
 				// @ts-ignore
 				req.rawBody = buf;
 			},
 		}));
-		
+
 		//support application/x-www-form-urlencoded post data
 		this.app.use(bodyParser.urlencoded({ extended: false,
 			verify: (req, res, buf) => {
@@ -217,7 +222,7 @@ class App {
 				req.rawBody = buf;
 			},
 		}));
-		
+
 		if (process.env['NODE_ENV'] !== 'production') {
 			this.app.use((req: express.Request, res: express.Response, next: express.NextFunction) => {
 				// Allow access also from frontend when developing
@@ -227,64 +232,65 @@ class App {
 				next();
 			});
 		}
-		
-		
+
+
 		this.app.use((req: express.Request, res: express.Response, next: express.NextFunction) => {
 			if (Db.collections.Workflow === null) {
 				const error = new ResponseHelper.ResponseError('Database is not ready!', undefined, 503);
 				return ResponseHelper.sendErrorResponse(res, error);
 			}
-			
+
 			next();
 		});
-		
-		
-		
+
+
+
 		// ----------------------------------------
 		// Healthcheck
 		// ----------------------------------------
-		
-		
+
+
 		// Does very basic health check
 		this.app.get('/healthz', async (req: express.Request, res: express.Response) => {
-			
-			const connectionManager = getConnectionManager();
-			
-			if (connectionManager.connections.length === 0) {
-				const error = new ResponseHelper.ResponseError('No Database connection found!', undefined, 503);
+
+			const connection = getConnectionManager().get();
+
+			try {
+				if (connection.isConnected === false) {
+					// Connection is not active
+					throw new Error('No active database connection!');
+				}
+				// DB ping
+				await connection.query('SELECT 1');
+			} catch (err) {
+				const error = new ResponseHelper.ResponseError('No Database connection!', undefined, 503);
 				return ResponseHelper.sendErrorResponse(res, error);
 			}
-			
-			if (connectionManager.connections[0].isConnected === false) {
-				// Connection is not active
-				const error = new ResponseHelper.ResponseError('Database connection not active!', undefined, 503);
-				return ResponseHelper.sendErrorResponse(res, error);
-			}
-			
+
 			// Everything fine
 			const responseData = {
 				status: 'ok',
 			};
-			
+
 			ResponseHelper.sendSuccessResponse(res, responseData, true, 200);
 		});
-		
+
 		registerProductionWebhooks.apply(this);
-		
+
 	}
-	
+
 }
 
 export async function start(): Promise<void> {
 	const PORT = config.get('port');
 	const ADDRESS = config.get('listen_address');
-	
+
 	const app = new App();
-	
+
 	await app.config();
-	
+
 	let server;
-	
+
 	if (app.protocol === 'https' && app.sslKey && app.sslCert) {
 		const https = require('https');
 		const privateKey = readFileSync(app.sslKey, 'utf8');
@@ -295,12 +301,12 @@ export async function start(): Promise<void> {
 		const http = require('http');
 		server = http.createServer(app.app);
 	}
-	
+
 	server.listen(PORT, ADDRESS, async () => {
 		const versions = await GenericHelpers.getVersions();
 		console.log(`n8n ready on ${ADDRESS}, port ${PORT}`);
 		console.log(`Version: ${versions.cli}`);
-		
+
 		await app.externalHooks.run('n8n.ready', [app]);
 	});
 }

@@ -64,9 +64,11 @@ import {
 	Push,
 	ResponseHelper,
 	TestWebhooks,
+	WaitingWebhooks,
+	WaitTracker,
+	WaitTrackerClass,
 	WebhookHelpers,
 	WebhookServer,
-	WorkflowCredentials,
 	WorkflowExecuteAdditionalData,
 	WorkflowHelpers,
 	WorkflowRunner,
@@ -97,6 +99,7 @@ import {
 import {
 	FindManyOptions,
 	FindOneOptions,
+	IsNull,
 	LessThanOrEqual,
 	Not,
 } from 'typeorm';
@@ -125,9 +128,11 @@ class App {
 	activeWorkflowRunner: ActiveWorkflowRunner.ActiveWorkflowRunner;
 	testWebhooks: TestWebhooks.TestWebhooks;
 	endpointWebhook: string;
+	endpointWebhookWaiting: string;
 	endpointWebhookTest: string;
 	endpointPresetCredentials: string;
 	externalHooks: IExternalHooksClass;
+	waitTracker: WaitTrackerClass;
 	defaultWorkflowName: string;
 	saveDataErrorExecution: string;
 	saveDataSuccessExecution: string;
@@ -151,6 +156,7 @@ class App {
 		this.app = express();
 
 		this.endpointWebhook = config.get('endpoints.webhook') as string;
+		this.endpointWebhookWaiting = config.get('endpoints.webhookWaiting') as string;
 		this.endpointWebhookTest = config.get('endpoints.webhookTest') as string;
 
 		this.defaultWorkflowName = config.get('workflows.defaultName') as string;
@@ -169,6 +175,7 @@ class App {
 		this.push = Push.getInstance();
 
 		this.activeExecutionsInstance = ActiveExecutions.getInstance();
+		this.waitTracker = WaitTracker();
 
 		this.protocol = config.get('protocol');
 		this.sslKey = config.get('ssl_key');
@@ -466,16 +473,18 @@ class App {
 		// Does very basic health check
 		this.app.get('/healthz', async (req: express.Request, res: express.Response) => {
 
-			const connectionManager = getConnectionManager();
+			const connection = getConnectionManager().get();
 
-			if (connectionManager.connections.length === 0) {
-				const error = new ResponseHelper.ResponseError('No Database connection found!', undefined, 503);
-				return ResponseHelper.sendErrorResponse(res, error);
-			}
-
-			if (connectionManager.connections[0].isConnected === false) {
-				// Connection is not active
-				const error = new ResponseHelper.ResponseError('Database connection not active!', undefined, 503);
+			try {
+				if (connection.isConnected === false) {
+					// Connection is not active
+					throw new Error('No active database connection!');
+				}
+				// DB ping
+				await connection.query('SELECT 1');
+			} catch (err) {
+				LoggerProxy.error('No Database connection!', err);
+				const error = new ResponseHelper.ResponseError('No Database connection!', undefined, 503);
 				return ResponseHelper.sendErrorResponse(res, error);
 			}
 
@@ -619,7 +628,6 @@ class App {
 			return { name: `${nameToReturn} ${maxSuffix + 1}` };
 		}));
 
-
 		// Returns a specific workflow
 		this.app.get(`/${this.restEndpoint}/workflows/:id`, ResponseHelper.send(async (req: express.Request, res: express.Response): Promise<WorkflowEntity | undefined> => {
 			const workflow = await Db.collections.Workflow!.findOne(req.params.id, { relations: ['tags'] });
@@ -762,8 +770,7 @@ class App {
 
 			// If webhooks nodes exist and are active we have to wait for till we receive a call
 			if (runData === undefined || startNodes === undefined || startNodes.length === 0 || destinationNode === undefined) {
-				const credentials = await WorkflowCredentials(workflowData.nodes);
-				const additionalData = await WorkflowExecuteAdditionalData.getBase(credentials);
+				const additionalData = await WorkflowExecuteAdditionalData.getBase();
 				const nodeTypes = NodeTypes();
 				const workflowInstance = new Workflow({ id: workflowData.id, name: workflowData.name, nodes: workflowData.nodes, connections: workflowData.connections, active: false, nodeTypes, staticData: undefined, settings: workflowData.settings });
 				const needsWebhook = await this.testWebhooks.needsWebhookData(workflowData, workflowInstance, additionalData, executionMode, activationMode, sessionId, destinationNode);
@@ -777,11 +784,8 @@ class App {
 			// For manual testing always set to not active
 			workflowData.active = false;
 
-			const credentials = await WorkflowCredentials(workflowData.nodes);
-
 			// Start the workflow
 			const data: IWorkflowExecutionDataProcess = {
-				credentials,
 				destinationNode,
 				executionMode,
 				runData,
@@ -878,9 +882,7 @@ class App {
 			// @ts-ignore
 			const loadDataInstance = new LoadNodeParameterOptions(nodeType, nodeTypes, path, JSON.parse('' + req.query.currentNodeParameters), credentials!);
 
-			const workflowData = loadDataInstance.getWorkflowData() as IWorkflowBase;
-			const workflowCredentials = await WorkflowCredentials(workflowData.nodes);
-			const additionalData = await WorkflowExecuteAdditionalData.getBase(workflowCredentials, currentNodeParameters);
+			const additionalData = await WorkflowExecuteAdditionalData.getBase(currentNodeParameters);
 
 			return loadDataInstance.getOptions(methodName, additionalData);
 		}));
@@ -1257,15 +1259,9 @@ class App {
 				return '';
 			}
 
-			// Decrypt the currently saved credentials
-			const workflowCredentials: IWorkflowCredentials = {
-				[result.type as string]: {
-					[result.name as string]: result as ICredentialsEncrypted,
-				},
-			};
 			const mode: WorkflowExecuteMode = 'internal';
-			const credentialsHelper = new CredentialsHelper(workflowCredentials, encryptionKey);
-			const decryptedDataOriginal = credentialsHelper.getDecrypted(result.name, result.type, mode, true);
+			const credentialsHelper = new CredentialsHelper(encryptionKey);
+			const decryptedDataOriginal = await credentialsHelper.getDecrypted(result.name, result.type, mode, true);
 			const oauthCredentials = credentialsHelper.applyDefaultsAndOverwrites(decryptedDataOriginal, result.type, mode);
 
 			const signatureMethod = _.get(oauthCredentials, 'signatureMethod') as string;
@@ -1349,6 +1345,7 @@ class App {
 					return ResponseHelper.sendErrorResponse(res, errorResponse);
 				}
 
+
 				// Decrypt the currently saved credentials
 				const workflowCredentials: IWorkflowCredentials = {
 					[result.type as string]: {
@@ -1356,10 +1353,10 @@ class App {
 					},
 				};
 				const mode: WorkflowExecuteMode = 'internal';
-				const credentialsHelper = new CredentialsHelper(workflowCredentials, encryptionKey);
-				const decryptedDataOriginal = credentialsHelper.getDecrypted(result.name, result.type, mode, true);
+				const credentialsHelper = new CredentialsHelper(encryptionKey);
+				const decryptedDataOriginal = await credentialsHelper.getDecrypted(result.name, result.type, mode, true);
 				const oauthCredentials = credentialsHelper.applyDefaultsAndOverwrites(decryptedDataOriginal, result.type, mode);
-
+	
 				const options: OptionsWithUrl = {
 					method: 'POST',
 					url: _.get(oauthCredentials, 'accessTokenUrl') as string,
@@ -1425,15 +1422,9 @@ class App {
 				return '';
 			}
 
-			// Decrypt the currently saved credentials
-			const workflowCredentials: IWorkflowCredentials = {
-				[result.type as string]: {
-					[result.name as string]: result as ICredentialsEncrypted,
-				},
-			};
 			const mode: WorkflowExecuteMode = 'internal';
-			const credentialsHelper = new CredentialsHelper(workflowCredentials, encryptionKey);
-			const decryptedDataOriginal = credentialsHelper.getDecrypted(result.name, result.type, mode, true);
+			const credentialsHelper = new CredentialsHelper(encryptionKey);
+			const decryptedDataOriginal = await credentialsHelper.getDecrypted(result.name, result.type, mode, true);
 			const oauthCredentials = credentialsHelper.applyDefaultsAndOverwrites(decryptedDataOriginal, result.type, mode);
 
 			const token = new csrf();
@@ -1532,11 +1523,12 @@ class App {
 						[result.name as string]: result as ICredentialsEncrypted,
 					},
 				};
+	
 				const mode: WorkflowExecuteMode = 'internal';
-				const credentialsHelper = new CredentialsHelper(workflowCredentials, encryptionKey);
-				const decryptedDataOriginal = credentialsHelper.getDecrypted(result.name, result.type, mode, true);
+				const credentialsHelper = new CredentialsHelper(encryptionKey);
+				const decryptedDataOriginal = await credentialsHelper.getDecrypted(result.name, result.type, mode, true);
 				const oauthCredentials = credentialsHelper.applyDefaultsAndOverwrites(decryptedDataOriginal, result.type, mode);
-
+	
 				const token = new csrf();
 				if (decryptedDataOriginal.csrfSecret === undefined || !token.verify(decryptedDataOriginal.csrfSecret as string, state.token)) {
 					const errorResponse = new ResponseHelper.ResponseError('The OAuth2 callback state is invalid!', undefined, 404);
@@ -1636,6 +1628,9 @@ class App {
 			executingWorkflowIds.push(...this.activeExecutionsInstance.getActiveExecutions().map(execution => execution.id.toString()) as string[]);
 
 			const countFilter = JSON.parse(JSON.stringify(filter));
+			if (countFilter.waitTill !== undefined) {
+				countFilter.waitTill = Not(IsNull());
+			}
 			countFilter.id = Not(In(executingWorkflowIds));
 
 			const resultsQuery = await Db.collections.Execution!
@@ -1646,6 +1641,7 @@ class App {
 					'execution.mode',
 					'execution.retryOf',
 					'execution.retrySuccessId',
+					'execution.waitTill',
 					'execution.startedAt',
 					'execution.stoppedAt',
 					'execution.workflowData',
@@ -1654,7 +1650,14 @@ class App {
 				.take(limit);
 
 			Object.keys(filter).forEach((filterField) => {
-				resultsQuery.andWhere(`execution.${filterField} = :${filterField}`, {[filterField]: filter[filterField]});
+				if (filterField === 'waitTill') {
+					resultsQuery.andWhere(`execution.${filterField} is not null`);
+				} else if(filterField === 'finished' && filter[filterField] === false) {
+					resultsQuery.andWhere(`execution.${filterField} = :${filterField}`, {[filterField]: filter[filterField]});
+					resultsQuery.andWhere(`execution.waitTill is null`);
+				} else {
+					resultsQuery.andWhere(`execution.${filterField} = :${filterField}`, {[filterField]: filter[filterField]});
+				}
 			});
 			if (req.query.lastId) {
 				resultsQuery.andWhere(`execution.id < :lastId`, {lastId: req.query.lastId});
@@ -1682,6 +1685,7 @@ class App {
 					mode: result.mode,
 					retryOf: result.retryOf ? result.retryOf.toString() : undefined,
 					retrySuccessId: result.retrySuccessId ? result.retrySuccessId.toString() : undefined,
+					waitTill: result.waitTill as Date | undefined,
 					startedAt: result.startedAt,
 					stoppedAt: result.stoppedAt,
 					workflowId: result.workflowData!.id ? result.workflowData!.id!.toString() : '',
@@ -1733,13 +1737,10 @@ class App {
 
 			const executionMode = 'retry';
 
-			const credentials = await WorkflowCredentials(fullExecutionData.workflowData.nodes);
-
 			fullExecutionData.workflowData.active = false;
 
 			// Start the workflow
 			const data: IWorkflowExecutionDataProcess = {
-				credentials,
 				executionMode,
 				executionData: fullExecutionData.data,
 				retryOf: req.params.id,
@@ -1911,15 +1912,22 @@ class App {
 				// Manual executions should still be stoppable, so
 				// try notifying the `activeExecutions` to stop it.
 				const result = await this.activeExecutionsInstance.stopExecution(req.params.id);
-				if (result !== undefined) {
-					const returnData: IExecutionsStopData = {
+
+				if (result === undefined) {
+					// If active execution could not be found check if it is a waiting one
+					try {
+						return await this.waitTracker.stopExecution(req.params.id);
+					} catch (error) {
+						// Ignore, if it errors as then it is probably a currently running
+						// execution
+					}
+				} else {
+					return {
 						mode: result.mode,
 						startedAt: new Date(result.startedAt),
-						stoppedAt: result.stoppedAt ?  new Date(result.stoppedAt) : undefined,
+						stoppedAt: result.stoppedAt ? new Date(result.stoppedAt) : undefined,
 						finished: result.finished,
-					};
-
-					return returnData;
+					} as IExecutionsStopData;
 				}
 
 				const currentJobs = await Queue.getInstance().getJobs(['active', 'waiting']);
@@ -1950,16 +1958,18 @@ class App {
 				// Stopt he execution and wait till it is done and we got the data
 				const result = await this.activeExecutionsInstance.stopExecution(executionId);
 
+				let returnData: IExecutionsStopData;
 				if (result === undefined) {
-					throw new Error(`The execution id "${executionId}" could not be found.`);
+					// If active execution could not be found check if it is a waiting one
+					returnData = await this.waitTracker.stopExecution(executionId);
+				} else {
+					returnData = {
+						mode: result.mode,
+						startedAt: new Date(result.startedAt),
+						stoppedAt: result.stoppedAt ? new Date(result.stoppedAt) : undefined,
+						finished: result.finished,
+					};
 				}
-
-				const returnData: IExecutionsStopData = {
-					mode: result.mode,
-					startedAt: new Date(result.startedAt),
-					stoppedAt: result.stoppedAt ?  new Date(result.stoppedAt) : undefined,
-					finished: result.finished,
-				};
 
 				return returnData;
 			}
@@ -2005,6 +2015,76 @@ class App {
 		if (config.get('endpoints.disableProductionWebhooksOnMainProcess') !== true) {
 			WebhookServer.registerProductionWebhooks.apply(this);
 		}
+
+		// ----------------------------------------
+		// Waiting Webhooks
+		// ----------------------------------------
+
+		const waitingWebhooks = new WaitingWebhooks();
+
+		// HEAD webhook-waiting requests
+		this.app.head(`/${this.endpointWebhookWaiting}/*`, async (req: express.Request, res: express.Response) => {
+			// Cut away the "/webhook-waiting/" to get the registred part of the url
+			const requestUrl = (req as ICustomRequest).parsedUrl!.pathname!.slice(this.endpointWebhookWaiting.length + 2);
+
+			let response;
+			try {
+				response = await waitingWebhooks.executeWebhook('HEAD', requestUrl, req, res);
+			} catch (error) {
+				ResponseHelper.sendErrorResponse(res, error);
+				return;
+			}
+
+			if (response.noWebhookResponse === true) {
+				// Nothing else to do as the response got already sent
+				return;
+			}
+
+			ResponseHelper.sendSuccessResponse(res, response.data, true, response.responseCode);
+		});
+
+		// GET webhook-waiting requests
+		this.app.get(`/${this.endpointWebhookWaiting}/*`, async (req: express.Request, res: express.Response) => {
+			// Cut away the "/webhook-waiting/" to get the registred part of the url
+			const requestUrl = (req as ICustomRequest).parsedUrl!.pathname!.slice(this.endpointWebhookWaiting.length + 2);
+
+			let response;
+			try {
+				response = await waitingWebhooks.executeWebhook('GET', requestUrl, req, res);
+			} catch (error) {
+				ResponseHelper.sendErrorResponse(res, error);
+				return;
+			}
+
+			if (response.noWebhookResponse === true) {
+				// Nothing else to do as the response got already sent
+				return;
+			}
+
+			ResponseHelper.sendSuccessResponse(res, response.data, true, response.responseCode);
+		});
+
+		// POST webhook-waiting requests
+		this.app.post(`/${this.endpointWebhookWaiting}/*`, async (req: express.Request, res: express.Response) => {
+			// Cut away the "/webhook-waiting/" to get the registred part of the url
+			const requestUrl = (req as ICustomRequest).parsedUrl!.pathname!.slice(this.endpointWebhookWaiting.length + 2);
+
+			let response;
+			try {
+				response = await waitingWebhooks.executeWebhook('POST', requestUrl, req, res);
+			} catch (error) {
+				ResponseHelper.sendErrorResponse(res, error);
+				return;
+			}
+
+			if (response.noWebhookResponse === true) {
+				// Nothing else to do as the response got already sent
+				return;
+			}
+
+			ResponseHelper.sendSuccessResponse(res, response.data, true, response.responseCode);
+		});
+
 
 		// HEAD webhook requests (test for UI)
 		this.app.head(`/${this.endpointWebhookTest}/*`, async (req: express.Request, res: express.Response) => {

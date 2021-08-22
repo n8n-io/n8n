@@ -785,9 +785,9 @@ export class NextCloud implements INodeType {
 		let credentials;
 
 		if (authenticationMethod === 'accessToken') {
-			credentials = this.getCredentials('nextCloudApi');
+			credentials = await this.getCredentials('nextCloudApi');
 		} else {
-			credentials = this.getCredentials('nextCloudOAuth2Api');
+			credentials = await this.getCredentials('nextCloudOAuth2Api');
 		}
 
 		if (credentials === undefined) {
@@ -1104,34 +1104,38 @@ export class NextCloud implements INodeType {
 						let skippedFirst = false;
 
 						// @ts-ignore
-						for (const item of jsonResponseData['d:multistatus']['d:response']) {
-							if (skippedFirst === false) {
-								skippedFirst = true;
-								continue;
-							}
-							const newItem: IDataObject = {};
-
-							newItem.path = item['d:href'].slice(19);
-
-							const props = item['d:propstat'][0]['d:prop'];
-
-							// Get the props and save them under a proper name
-							for (const propName of Object.keys(propNames)) {
-								if (props[propName] !== undefined) {
-									newItem[propNames[propName]] = props[propName];
+						if (Array.isArray(jsonResponseData['d:multistatus']['d:response'])) {
+							// @ts-ignore
+							for (const item of jsonResponseData['d:multistatus']['d:response']) {
+								if (skippedFirst === false) {
+									skippedFirst = true;
+									continue;
 								}
-							}
+								const newItem: IDataObject = {};
 
-							if (props['d:resourcetype'] === '') {
-								newItem.type = 'file';
-							} else {
-								newItem.type = 'folder';
-							}
-							newItem.eTag = props['d:getetag'].slice(1, -1);
+								newItem.path = item['d:href'].slice(19);
 
-							returnData.push(newItem as IDataObject);
+								const props = item['d:propstat'][0]['d:prop'];
+
+								// Get the props and save them under a proper name
+								for (const propName of Object.keys(propNames)) {
+									if (props[propName] !== undefined) {
+										newItem[propNames[propName]] = props[propName];
+									}
+								}
+
+								if (props['d:resourcetype'] === '') {
+									newItem.type = 'file';
+								} else {
+									newItem.type = 'folder';
+								}
+								newItem.eTag = props['d:getetag'].slice(1, -1);
+
+								returnData.push(newItem as IDataObject);
+							}
 						}
 					}
+
 				} else {
 					returnData.push(responseData as IDataObject);
 				}
