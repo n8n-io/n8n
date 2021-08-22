@@ -19,12 +19,13 @@
 					</div>
 					<div>
 						<div :class="$style.headline" @keydown.stop @click="enableNameEdit" v-click-outside="disableNameEdit">
+							<span v-if="isNameEdit">...</span>
 							<div v-if="!isNameEdit">
 								<span>{{ credentialName }}</span>
 								<i><font-awesome-icon icon="pen" /></i>
 							</div>
 							<div v-else :class="$style.nameInput">
-								<n8n-input :value="credentialName" size="small" ref="nameInput" @input="onNameEdit" @change="disableNameEdit" maxlength="64" />
+								<n8n-input :value="credentialName" size="medium" ref="nameInput" @input="onNameEdit" @change="disableNameEdit" maxlength="64" />
 							</div>
 						</div>
 						<div :class="$style.subtitle">{{ credentialType.displayName }}</div>
@@ -581,6 +582,7 @@ export default mixins(
 	position: relative;
 	min-height: 22px;
 	max-height: 22px;
+	font-weight: 400;
 
 	i {
 		display: var(--headline-icon-display, none);
@@ -598,8 +600,8 @@ export default mixins(
 .nameInput {
 	z-index: 1;
 	position: absolute;
-	top: 0;
-	left: 0;
+	top: -4px;
+	left: -10px;
 	width: 400px;
 }
 
@@ -643,6 +645,7 @@ export default mixins(
 	font-size: var(--font-size-2xs);
 	color: var(--color-text-light);
 	margin-left: 4px;
+	font-weight: 400;
 }
 
 .infotip {

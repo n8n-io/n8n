@@ -18,7 +18,7 @@
 						:isCredential="true"
 						:displayOptions="true"
 						@valueChanged="valueChanged"
-						inputSize="medium"
+						inputSize="large"
 					/>
 				</n8n-input-label>
 		</div>
