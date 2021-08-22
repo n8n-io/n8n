@@ -13,11 +13,11 @@ import {
 	ICredentialsDecrypted,
 	INodeTypeDescription,
 } from 'n8n-workflow';
+import { getAppNameFromCredType } from '@/components/helpers';
 
 const DEFAULT_CREDENTIAL_NAME = 'Unnamed credential';
 const DEFAULT_CREDENTIAL_POSTFIX = 'account';
 const TYPES_WITH_DEFAULT_NAME = ['httpBasicAuth', 'oAuth2Api', 'httpDigestAuth', 'oAuth1Api'];
-const KEYWORDS_TO_FILTER = ['API', 'OAuth1', 'OAuth2'];
 
 const module: Module<ICredentialsState, IRootState> = {
 	namespaced: true,
@@ -150,7 +150,7 @@ const module: Module<ICredentialsState, IRootState> = {
 			}
 
 			const { displayName } = context.getters.getCredentialTypeByName(credentialTypeName);
-			let newName = displayName.split(' ').filter((word: string) => !KEYWORDS_TO_FILTER.includes(word)).join(' ');
+			let newName = getAppNameFromCredType(displayName);
 			newName = newName.length > 0 ? `${newName} ${DEFAULT_CREDENTIAL_POSTFIX}` : DEFAULT_CREDENTIAL_NAME;
 
 			try {

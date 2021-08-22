@@ -7,6 +7,7 @@
 					<div :class="$style.copyButton">Click to copy</div>
 				</div>
 			</n8n-input-label>
+			<div :class="$style.oauthInfo">In {{ appName }}, use the URL above when prompted to enter an OAuth callback or redirect URL</div>
 		</div>
 
 		<div v-for="parameter in credentialProperties" :key="parameter.name">
@@ -23,7 +24,7 @@
 				</n8n-input-label>
 		</div>
 
-		<div v-if="isOAuthType" class="oauth-information">
+		<div v-if="isOAuthType">
 			<span v-if="requiredPropertiesFilled === false">
 				<n8n-button title="Connect OAuth Credentials" label="Connect my account"  :disabled="true" size="large" />
 			</span>
@@ -63,6 +64,7 @@ import {
 import ParameterInput from '@/components/ParameterInput.vue';
 
 import mixins from 'vue-typed-mixins';
+import { getAppNameFromCredType } from './helpers';
 
 export default mixins(
 	copyPaste,
@@ -82,6 +84,9 @@ export default mixins(
 	computed: {
 		basePath(): string {
 			return this.$store.getters.getBaseUrl;
+		},
+		appName(): string {
+			return getAppNameFromCredType(this.credentialTypeData.displayName);
 		},
 		credentialProperties (): INodeProperties[] {
 			return this.credentialTypeData.properties.filter((propertyData: INodeProperties) => {
@@ -210,4 +215,10 @@ export default mixins(
 	width: 191px;
 	cursor: pointer;
 }
+
+.oauthInfo {
+	margin-top: var(--spacing-2xs);
+	line-height: var(--font-line-height-regular);
+}
+
 </style>

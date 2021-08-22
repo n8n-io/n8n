@@ -651,6 +651,7 @@ export default mixins(
 .infotip {
 	color: var(--color-text-light);
 	font-size: var(--font-size-2xs);
+	font-weight: var(--font-weight-bold);
 }
 
 .nodeName {
