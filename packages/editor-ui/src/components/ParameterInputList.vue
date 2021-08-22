@@ -121,9 +121,7 @@ export default mixins(
 			},
 		},
 		methods: {
-			addTargetBlank (html: string) {
-				return addTargetBlank(html);
-			},
+			addTargetBlank,
 			multipleValues (parameter: INodeProperties): boolean {
 				if (this.getArgument('multipleValues', parameter) === true) {
 					return true;

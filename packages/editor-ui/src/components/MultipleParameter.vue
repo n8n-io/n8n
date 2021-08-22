@@ -92,9 +92,7 @@ export default mixins(genericHelpers)
 
 				this.$emit('valueChanged', parameterData);
 			},
-			addTargetBlank (html: string) {
-				return addTargetBlank(html);
-			},
+			addTargetBlank,
 			deleteItem (index: number) {
 				const parameterData = {
 					name: this.getPath(index),

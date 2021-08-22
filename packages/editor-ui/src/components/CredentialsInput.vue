@@ -268,9 +268,7 @@ export default mixins(
 		},
 	},
 	methods: {
-		addTargetBlank (html: string) {
-			return addTargetBlank(html);
-		},
+		addTargetBlank,
 		copyCallbackUrl (): void {
 			this.copyToClipboard(this.oAuthCallbackUrl);
 

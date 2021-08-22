@@ -52,9 +52,7 @@ export default Vue
 			'value',
 		],
 		methods: {
-			addTargetBlank (html: string) {
-				return addTargetBlank(html);
-			},
+			addTargetBlank,
 			getArgument (argumentName: string): string | number | boolean | undefined {
 				if (this.parameter.typeOptions === undefined) {
 					return undefined;
