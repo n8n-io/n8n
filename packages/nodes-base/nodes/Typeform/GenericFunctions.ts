@@ -115,6 +115,12 @@ export async function apiRequestAllItems(this: IHookFunctions | IExecuteFunction
 
 		responseData = await apiRequest.call(this, method, endpoint, body, query);
 
+		console.log({
+			endpoint,
+			method,
+			responseData,
+		});
+
 		returnData.items.push.apply(returnData.items, responseData.items);
 	} while (
 		responseData.page_count !== undefined &&
