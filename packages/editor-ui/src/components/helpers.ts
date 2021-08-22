@@ -12,4 +12,4 @@ export function convertToHumanReadableDate (epochTime: number) {
 
 export function getAppNameFromCredType(name: string) {
 	return name.split(' ').filter((word: string) => !KEYWORDS_TO_FILTER.includes(word)).join(' ');
-};
+}
