@@ -80,7 +80,8 @@ export class Interval implements INodeType {
 
 		intervalValue *= 1000;
 
-		if (intervalValue > Number.MAX_SAFE_INTEGER) {
+		// Reference: https://nodejs.org/api/timers.html#timers_setinterval_callback_delay_args
+		if (intervalValue > 2147483647) {
 			throw new Error('The interval value is too large.');
 		}
 
