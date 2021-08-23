@@ -215,11 +215,11 @@ export class WorkflowRunner {
 		const workflow = new Workflow({
 			id: data.workflowData.id as string | undefined,
 			name: data.workflowData.name,
-			nodes: data.workflowData!.nodes,
-			connections: data.workflowData!.connections,
-			active: data.workflowData!.active,
+			nodes: data.workflowData.nodes,
+			connections: data.workflowData.connections,
+			active: data.workflowData.active,
 			nodeTypes,
-			staticData: data.workflowData!.staticData,
+			staticData: data.workflowData.staticData,
 		});
 		const additionalData = await WorkflowExecuteAdditionalData.getBase(
 			undefined,
@@ -227,11 +227,7 @@ export class WorkflowRunner {
 		);
 
 		// Register the active execution
-		const executionId = (await this.activeExecutions.add(
-			data,
-			undefined,
-			restartExecutionId,
-		)) as string;
+		const executionId = await this.activeExecutions.add(data, undefined, restartExecutionId);
 		additionalData.executionId = executionId;
 
 		Logger.verbose(
@@ -553,7 +549,7 @@ export class WorkflowRunner {
 		const executionId = await this.activeExecutions.add(data, subprocess, restartExecutionId);
 
 		// Supply all nodeTypes and credentialTypes
-		const nodeTypeData = WorkflowHelpers.getAllNodeTypeData() as ITransferNodeTypes;
+		const nodeTypeData = WorkflowHelpers.getAllNodeTypeData();
 		const credentialTypes = CredentialTypes();
 
 		(data as unknown as IWorkflowExecutionDataProcessWithExecution).executionId = executionId;

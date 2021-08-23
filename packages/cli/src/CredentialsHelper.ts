@@ -42,6 +42,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 	 * @returns {Credentials}
 	 * @memberof CredentialsHelper
 	 */
+	// eslint-disable-next-line class-methods-use-this
 	async getCredentials(name: string, type: string): Promise<Credentials> {
 		const credentialsDb = await Db.collections.Credentials?.find({ type });
 
@@ -49,6 +50,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 			throw new Error(`No credentials of type "${type}" exist.`);
 		}
 
+		// eslint-disable-next-line @typescript-eslint/no-shadow
 		const credential = credentialsDb.find((credential) => credential.name === name);
 
 		if (credential === undefined) {
@@ -200,7 +202,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 
 			// Resolve expressions if any are set
 			decryptedData = workflow.expression.getComplexParameterValue(
-				node!,
+				node,
 				decryptedData as INodeParameters,
 				mode,
 				{},

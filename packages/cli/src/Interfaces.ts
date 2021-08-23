@@ -12,6 +12,7 @@ import {
 	IRunExecutionData,
 	ITaskData,
 	IWorkflowBase as IWorkflowBaseWorkflow,
+	// eslint-disable-next-line @typescript-eslint/no-unused-vars
 	IWorkflowCredentials,
 	Workflow,
 	WorkflowExecuteMode,

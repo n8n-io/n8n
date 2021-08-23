@@ -41,6 +41,7 @@ import {
 	NodeTypes,
 	ResponseHelper,
 	WebhookHelpers,
+	// eslint-disable-next-line @typescript-eslint/no-unused-vars
 	WorkflowCredentials,
 	WorkflowExecuteAdditionalData,
 	WorkflowHelpers,
@@ -279,7 +280,7 @@ export class ActiveWorkflowRunner {
 
 		return new Promise((resolve, reject) => {
 			const executionMode = 'webhook';
-			//@ts-ignore
+			// @ts-ignore
 			WebhookHelpers.executeWebhook(
 				workflow,
 				webhookData,
@@ -291,6 +292,7 @@ export class ActiveWorkflowRunner {
 				undefined,
 				req,
 				res,
+				// eslint-disable-next-line consistent-return
 				(error: Error | null, data: object) => {
 					if (error !== null) {
 						return reject(error);

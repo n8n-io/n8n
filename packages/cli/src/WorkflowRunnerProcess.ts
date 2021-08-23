@@ -130,6 +130,7 @@ export class WorkflowRunnerProcess {
 		// We check if any node uses credentials. If it does, then
 		// init database.
 		let shouldInitializaDb = false;
+		// eslint-disable-next-line array-callback-return
 		inputData.workflowData.nodes.map((node) => {
 			if (Object.keys(node.credentials === undefined ? {} : node.credentials).length > 0) {
 				shouldInitializaDb = true;
@@ -176,12 +177,12 @@ export class WorkflowRunnerProcess {
 		this.workflow = new Workflow({
 			id: this.data.workflowData.id as string | undefined,
 			name: this.data.workflowData.name,
-			nodes: this.data.workflowData!.nodes,
-			connections: this.data.workflowData!.connections,
-			active: this.data.workflowData!.active,
+			nodes: this.data.workflowData.nodes,
+			connections: this.data.workflowData.connections,
+			active: this.data.workflowData.active,
 			nodeTypes,
-			staticData: this.data.workflowData!.staticData,
-			settings: this.data.workflowData!.settings,
+			staticData: this.data.workflowData.staticData,
+			settings: this.data.workflowData.settings,
 		});
 		const additionalData = await WorkflowExecuteAdditionalData.getBase(
 			undefined,

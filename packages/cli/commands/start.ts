@@ -312,6 +312,7 @@ export class Start extends Command {
 				activeWorkflowRunner = ActiveWorkflowRunner.getInstance();
 				await activeWorkflowRunner.init();
 
+				// eslint-disable-next-line @typescript-eslint/no-unused-vars
 				const waitTracker = WaitTracker();
 
 				const editorUrl = GenericHelpers.getBaseUrl();

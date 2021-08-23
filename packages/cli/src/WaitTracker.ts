@@ -1,3 +1,16 @@
+/* eslint-disable import/no-cycle */
+/* eslint-disable @typescript-eslint/no-non-null-assertion */
+/* eslint-disable @typescript-eslint/explicit-module-boundary-types */
+/* eslint-disable @typescript-eslint/naming-convention */
+/* eslint-disable @typescript-eslint/no-unsafe-member-access */
+/* eslint-disable @typescript-eslint/restrict-template-expressions */
+/* eslint-disable @typescript-eslint/no-floating-promises */
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+import { IRun, LoggerProxy as Logger, WorkflowOperationError } from 'n8n-workflow';
+
+import { FindManyOptions, LessThanOrEqual, ObjectLiteral } from 'typeorm';
+
+import { DateUtils } from 'typeorm/util/DateUtils';
 import {
 	ActiveExecutions,
 	DatabaseType,
@@ -7,15 +20,10 @@ import {
 	IExecutionsStopData,
 	IWorkflowExecutionDataProcess,
 	ResponseHelper,
+	// eslint-disable-next-line @typescript-eslint/no-unused-vars
 	WorkflowCredentials,
 	WorkflowRunner,
 } from '.';
-
-import { IRun, LoggerProxy as Logger, WorkflowOperationError } from 'n8n-workflow';
-
-import { FindManyOptions, LessThanOrEqual, ObjectLiteral } from 'typeorm';
-
-import { DateUtils } from 'typeorm/util/DateUtils';
 
 export class WaitTrackerClass {
 	activeExecutionsInstance: ActiveExecutions.ActiveExecutions;
@@ -40,6 +48,7 @@ export class WaitTrackerClass {
 		this.getwaitingExecutions();
 	}
 
+	// eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
 	async getwaitingExecutions() {
 		Logger.debug('Wait tracker querying database for waiting executions');
 		// Find all the executions which should be triggered in the next 70 seconds
@@ -73,6 +82,7 @@ export class WaitTrackerClass {
 		);
 
 		// Add timers for each waiting execution that they get started at the correct time
+		// eslint-disable-next-line no-restricted-syntax
 		for (const execution of executions) {
 			const executionId = execution.id.toString();
 			if (this.waitingExecutions[executionId] === undefined) {
@@ -143,7 +153,7 @@ export class WaitTrackerClass {
 
 			const fullExecutionData = ResponseHelper.unflattenExecutionData(fullExecutionDataFlatted);
 
-			if (fullExecutionData.finished === true) {
+			if (fullExecutionData.finished) {
 				throw new Error('The execution did succeed and can so not be started again.');
 			}
 

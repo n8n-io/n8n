@@ -478,7 +478,7 @@ function hookFunctionsSave(parentProcessMode?: string): IWorkflowExecuteHooks {
 						saveManualExecutions = this.workflowData.settings.saveManualExecutions as boolean;
 					}
 
-					if (isManualMode && saveManualExecutions === false && !fullRunData.waitTill) {
+					if (isManualMode && !saveManualExecutions && !fullRunData.waitTill) {
 						// Data is always saved, so we remove from database
 						// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
 						await Db.collections.Execution!.delete(this.executionId);
@@ -826,7 +826,7 @@ export async function executeWorkflow(
 		additionalDataIntegrated.hooks = getWorkflowHooksIntegrated(
 			runData.executionMode,
 			executionId,
-			workflowData!,
+			workflowData,
 			{ parentProcessMode: additionalData.hooks!.mode },
 		);
 		// Make sure we pass on the original executeWorkflow function we received
@@ -958,9 +958,9 @@ export async function getBase(
 	const urlBaseWebhook = WebhookHelpers.getWebhookBaseUrl();
 
 	const timezone = config.get('generic.timezone') as string;
-	const webhookBaseUrl = (urlBaseWebhook + config.get('endpoints.webhook')) as string;
-	const webhookWaitingBaseUrl = (urlBaseWebhook + config.get('endpoints.webhookWaiting')) as string;
-	const webhookTestBaseUrl = (urlBaseWebhook + config.get('endpoints.webhookTest')) as string;
+	const webhookBaseUrl = urlBaseWebhook + config.get('endpoints.webhook');
+	const webhookWaitingBaseUrl = urlBaseWebhook + config.get('endpoints.webhookWaiting');
+	const webhookTestBaseUrl = urlBaseWebhook + config.get('endpoints.webhookTest');
 
 	const encryptionKey = await UserSettings.getEncryptionKey();
 	if (encryptionKey === undefined) {

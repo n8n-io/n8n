@@ -55,7 +55,7 @@ export class ActiveExecutions {
 
 			if (
 				executionData.workflowData.id !== undefined &&
-				WorkflowHelpers.isWorkflowIdValid(executionData.workflowData.id.toString()) === true
+				WorkflowHelpers.isWorkflowIdValid(executionData.workflowData.id.toString())
 			) {
 				fullExecutionData.workflowId = executionData.workflowData.id.toString();
 			}
@@ -65,10 +65,12 @@ export class ActiveExecutions {
 			const executionResult = await Db.collections.Execution!.save(
 				execution as IExecutionFlattedDb,
 			);
+			// eslint-disable-next-line no-param-reassign
 			executionId =
 				typeof executionResult.id === 'object'
-					? executionResult.id!.toString()
-					: executionResult.id + '';
+					? // @ts-ignore
+					  executionResult.id.toString()
+					: `${executionResult.id}`;
 		} else {
 			// Is an existing execution we want to finish so update in DB
 
@@ -81,7 +83,7 @@ export class ActiveExecutions {
 			await Db.collections.Execution!.update(executionId, execution);
 		}
 
-		// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+		// @ts-ignore
 		this.activeExecutions[executionId] = {
 			executionData,
 			process,
@@ -89,7 +91,7 @@ export class ActiveExecutions {
 			postExecutePromises: [],
 		};
 
-		// eslint-disable-next-line @typescript-eslint/no-unsafe-return
+		// @ts-ignore
 		return executionId;
 	}
 

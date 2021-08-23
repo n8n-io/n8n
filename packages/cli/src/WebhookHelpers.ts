@@ -1,19 +1,19 @@
+/* eslint-disable no-param-reassign */
+/* eslint-disable @typescript-eslint/prefer-optional-chain */
+/* eslint-disable @typescript-eslint/no-shadow */
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
+/* eslint-disable id-denylist */
+/* eslint-disable prefer-spread */
+/* eslint-disable @typescript-eslint/explicit-module-boundary-types */
+/* eslint-disable @typescript-eslint/prefer-nullish-coalescing */
+/* eslint-disable @typescript-eslint/no-unsafe-member-access */
+/* eslint-disable no-restricted-syntax */
+/* eslint-disable @typescript-eslint/restrict-template-expressions */
+/* eslint-disable @typescript-eslint/no-non-null-assertion */
+/* eslint-disable prefer-destructuring */
 import * as express from 'express';
+// eslint-disable-next-line import/no-extraneous-dependencies
 import { get } from 'lodash';
-
-import {
-	ActiveExecutions,
-	GenericHelpers,
-	IExecutionDb,
-	IResponseCallbackData,
-	IWorkflowDb,
-	IWorkflowExecutionDataProcess,
-	ResponseHelper,
-	WorkflowCredentials,
-	WorkflowExecuteAdditionalData,
-	WorkflowHelpers,
-	WorkflowRunner,
-} from './';
 
 import { BINARY_ENCODING, NodeExecuteFunctions } from 'n8n-core';
 
@@ -32,6 +32,21 @@ import {
 	Workflow,
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
+// eslint-disable-next-line import/no-cycle
+import {
+	ActiveExecutions,
+	GenericHelpers,
+	IExecutionDb,
+	IResponseCallbackData,
+	IWorkflowDb,
+	IWorkflowExecutionDataProcess,
+	ResponseHelper,
+	// eslint-disable-next-line @typescript-eslint/no-unused-vars
+	WorkflowCredentials,
+	WorkflowExecuteAdditionalData,
+	WorkflowHelpers,
+	WorkflowRunner,
+} from '.';
 
 const activeExecutions = ActiveExecutions.getInstance();
 
@@ -64,6 +79,7 @@ export function getWorkflowWebhooks(
 		if (parentNodes !== undefined && !parentNodes.includes(node.name)) {
 			// If parentNodes are given check only them if they have webhooks
 			// and no other ones
+			// eslint-disable-next-line no-continue
 			continue;
 		}
 		returnData.push.apply(
@@ -137,14 +153,14 @@ export async function executeWebhook(
 	// Get the responseMode
 	const responseMode = workflow.expression.getSimpleParameterValue(
 		workflowStartNode,
-		webhookData.webhookDescription['responseMode'],
+		webhookData.webhookDescription.responseMode,
 		executionMode,
 		additionalKeys,
 		'onReceived',
 	);
 	const responseCode = workflow.expression.getSimpleParameterValue(
 		workflowStartNode,
-		webhookData.webhookDescription['responseCode'],
+		webhookData.webhookDescription.responseCode,
 		executionMode,
 		additionalKeys,
 		200,
@@ -215,10 +231,10 @@ export async function executeWebhook(
 			$executionId: executionId,
 		};
 
-		if (webhookData.webhookDescription['responseHeaders'] !== undefined) {
+		if (webhookData.webhookDescription.responseHeaders !== undefined) {
 			const responseHeaders = workflow.expression.getComplexParameterValue(
 				workflowStartNode,
-				webhookData.webhookDescription['responseHeaders'],
+				webhookData.webhookDescription.responseHeaders,
 				executionMode,
 				additionalKeys,
 				undefined,
@@ -231,14 +247,14 @@ export async function executeWebhook(
 					| undefined;
 			};
 
-			if (responseHeaders !== undefined && responseHeaders['entries'] !== undefined) {
-				for (const item of responseHeaders['entries']) {
-					res.setHeader(item['name'], item['value']);
+			if (responseHeaders !== undefined && responseHeaders.entries !== undefined) {
+				for (const item of responseHeaders.entries) {
+					res.setHeader(item.name, item.value);
 				}
 			}
 		}
 
-		if (webhookResultData.noWebhookResponse === true && didSendResponse === false) {
+		if (webhookResultData.noWebhookResponse === true && !didSendResponse) {
 			// The response got already send
 			responseCallback(null, {
 				noWebhookResponse: true,
@@ -250,7 +266,7 @@ export async function executeWebhook(
 			// Workflow should not run
 			if (webhookResultData.webhookResponse !== undefined) {
 				// Data to respond with is given
-				if (didSendResponse === false) {
+				if (!didSendResponse) {
 					responseCallback(null, {
 						data: webhookResultData.webhookResponse,
 						responseCode,
@@ -259,7 +275,8 @@ export async function executeWebhook(
 				}
 			} else {
 				// Send default response
-				if (didSendResponse === false) {
+				// eslint-disable-next-line no-lonely-if
+				if (!didSendResponse) {
 					responseCallback(null, {
 						data: {
 							message: 'Webhook call got received.',
@@ -274,7 +291,7 @@ export async function executeWebhook(
 
 		// Now that we know that the workflow should run we can return the default response
 		// directly if responseMode it set to "onReceived" and a respone should be sent
-		if (responseMode === 'onReceived' && didSendResponse === false) {
+		if (responseMode === 'onReceived' && !didSendResponse) {
 			// Return response directly and do not wait for the workflow to finish
 			if (webhookResultData.webhookResponse !== undefined) {
 				// Data to respond with is given
@@ -352,7 +369,7 @@ export async function executeWebhook(
 		executePromise
 			.then((data) => {
 				if (data === undefined) {
-					if (didSendResponse === false) {
+					if (!didSendResponse) {
 						responseCallback(null, {
 							data: {
 								message: 'Workflow did execute sucessfully but no data got returned.',
@@ -366,7 +383,7 @@ export async function executeWebhook(
 
 				const returnData = WorkflowHelpers.getDataLastExecutedNodeData(data);
 				if (data.data.resultData.error || returnData?.error !== undefined) {
-					if (didSendResponse === false) {
+					if (!didSendResponse) {
 						responseCallback(null, {
 							data: {
 								message: 'Workflow did error.',
@@ -379,7 +396,7 @@ export async function executeWebhook(
 				}
 
 				if (returnData === undefined) {
-					if (didSendResponse === false) {
+					if (!didSendResponse) {
 						responseCallback(null, {
 							data: {
 								message:
@@ -398,13 +415,13 @@ export async function executeWebhook(
 
 				const responseData = workflow.expression.getSimpleParameterValue(
 					workflowStartNode,
-					webhookData.webhookDescription['responseData'],
+					webhookData.webhookDescription.responseData,
 					executionMode,
 					additionalKeys,
 					'firstEntryJson',
 				);
 
-				if (didSendResponse === false) {
+				if (!didSendResponse) {
 					let data: IDataObject | IDataObject[];
 
 					if (responseData === 'firstEntryJson') {
@@ -419,7 +436,7 @@ export async function executeWebhook(
 
 						const responsePropertyName = workflow.expression.getSimpleParameterValue(
 							workflowStartNode,
-							webhookData.webhookDescription['responsePropertyName'],
+							webhookData.webhookDescription.responsePropertyName,
 							executionMode,
 							additionalKeys,
 							undefined,
@@ -431,7 +448,7 @@ export async function executeWebhook(
 
 						const responseContentType = workflow.expression.getSimpleParameterValue(
 							workflowStartNode,
-							webhookData.webhookDescription['responseContentType'],
+							webhookData.webhookDescription.responseContentType,
 							executionMode,
 							additionalKeys,
 							undefined,
@@ -473,13 +490,13 @@ export async function executeWebhook(
 
 						const responseBinaryPropertyName = workflow.expression.getSimpleParameterValue(
 							workflowStartNode,
-							webhookData.webhookDescription['responseBinaryPropertyName'],
+							webhookData.webhookDescription.responseBinaryPropertyName,
 							executionMode,
 							additionalKeys,
 							'data',
 						);
 
-						if (responseBinaryPropertyName === undefined && didSendResponse === false) {
+						if (responseBinaryPropertyName === undefined && !didSendResponse) {
 							responseCallback(new Error('No "responseBinaryPropertyName" is set.'), {});
 							didSendResponse = true;
 						}
@@ -487,7 +504,7 @@ export async function executeWebhook(
 						const binaryData = (data.binary as IBinaryKeyData)[
 							responseBinaryPropertyName as string
 						];
-						if (binaryData === undefined && didSendResponse === false) {
+						if (binaryData === undefined && !didSendResponse) {
 							responseCallback(
 								new Error(
 									`The binary property "${responseBinaryPropertyName}" which should be returned does not exist.`,
@@ -497,7 +514,7 @@ export async function executeWebhook(
 							didSendResponse = true;
 						}
 
-						if (didSendResponse === false) {
+						if (!didSendResponse) {
 							// Send the webhook response manually
 							res.setHeader('Content-Type', binaryData.mimeType);
 							res.end(Buffer.from(binaryData.data, BINARY_ENCODING));
@@ -514,7 +531,7 @@ export async function executeWebhook(
 						}
 					}
 
-					if (didSendResponse === false) {
+					if (!didSendResponse) {
 						responseCallback(null, {
 							data,
 							responseCode,
@@ -526,16 +543,17 @@ export async function executeWebhook(
 				return data;
 			})
 			.catch((e) => {
-				if (didSendResponse === false) {
+				if (!didSendResponse) {
 					responseCallback(new Error('There was a problem executing the workflow.'), {});
 				}
 
 				throw new ResponseHelper.ResponseError(e.message, 500, 500);
 			});
 
+		// eslint-disable-next-line consistent-return
 		return executionId;
 	} catch (e) {
-		if (didSendResponse === false) {
+		if (!didSendResponse) {
 			responseCallback(new Error('There was a problem executing the workflow.'), {});
 		}
 

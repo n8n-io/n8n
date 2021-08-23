@@ -1,3 +1,20 @@
+/* eslint-disable import/no-cycle */
+/* eslint-disable @typescript-eslint/no-non-null-assertion */
+/* eslint-disable class-methods-use-this */
+/* eslint-disable @typescript-eslint/restrict-template-expressions */
+/* eslint-disable no-param-reassign */
+import {
+	INode,
+	// eslint-disable-next-line @typescript-eslint/no-unused-vars
+	IRunExecutionData,
+	NodeHelpers,
+	WebhookHttpMethod,
+	Workflow,
+	LoggerProxy as Logger,
+} from 'n8n-workflow';
+
+import * as express from 'express';
+
 import {
 	Db,
 	IExecutionResponse,
@@ -6,15 +23,12 @@ import {
 	NodeTypes,
 	ResponseHelper,
 	WebhookHelpers,
+	// eslint-disable-next-line @typescript-eslint/no-unused-vars
 	WorkflowCredentials,
 	WorkflowExecuteAdditionalData,
 } from '.';
 
-import { INode, IRunExecutionData, NodeHelpers, WebhookHttpMethod, Workflow } from 'n8n-workflow';
-
-import * as express from 'express';
-import { LoggerProxy as Logger } from 'n8n-workflow';
-
+// eslint-disable-next-line import/prefer-default-export
 export class WaitingWebhooks {
 	async executeWebhook(
 		httpMethod: WebhookHttpMethod,
@@ -49,7 +63,7 @@ export class WaitingWebhooks {
 
 		const fullExecutionData = ResponseHelper.unflattenExecutionData(execution);
 
-		if (fullExecutionData.finished === true || fullExecutionData.data.resultData.error) {
+		if (fullExecutionData.finished || fullExecutionData.data.resultData.error) {
 			throw new ResponseHelper.ResponseError(
 				`The execution "${executionId} has finished already.`,
 				409,
@@ -69,23 +83,23 @@ export class WaitingWebhooks {
 	): Promise<IResponseCallbackData> {
 		const executionId = fullExecutionData.id;
 
-		if (fullExecutionData.finished === true) {
+		if (fullExecutionData.finished) {
 			throw new Error('The execution did succeed and can so not be started again.');
 		}
 
-		const lastNodeExecuted = fullExecutionData!.data.resultData.lastNodeExecuted as string;
+		const lastNodeExecuted = fullExecutionData.data.resultData.lastNodeExecuted as string;
 
 		// Set the node as disabled so that the data does not get executed again as it would result
 		// in starting the wait all over again
-		fullExecutionData!.data.executionData!.nodeExecutionStack[0].node.disabled = true;
+		fullExecutionData.data.executionData!.nodeExecutionStack[0].node.disabled = true;
 
 		// Remove waitTill information else the execution would stop
-		fullExecutionData!.data.waitTill = undefined;
+		fullExecutionData.data.waitTill = undefined;
 
 		// Remove the data of the node execution again else it will display the node as executed twice
-		fullExecutionData!.data.resultData.runData[lastNodeExecuted].pop();
+		fullExecutionData.data.resultData.runData[lastNodeExecuted].pop();
 
-		const workflowData = fullExecutionData.workflowData;
+		const { workflowData } = fullExecutionData;
 
 		const nodeTypes = NodeTypes();
 		const workflow = new Workflow({
@@ -126,10 +140,11 @@ export class WaitingWebhooks {
 			throw new ResponseHelper.ResponseError('Could not find node to process webhook.', 404, 404);
 		}
 
-		const runExecutionData = fullExecutionData.data as IRunExecutionData;
+		const runExecutionData = fullExecutionData.data;
 
 		return new Promise((resolve, reject) => {
 			const executionMode = 'webhook';
+			// eslint-disable-next-line @typescript-eslint/no-floating-promises
 			WebhookHelpers.executeWebhook(
 				workflow,
 				webhookData,
@@ -141,6 +156,7 @@ export class WaitingWebhooks {
 				fullExecutionData.id,
 				req,
 				res,
+				// eslint-disable-next-line consistent-return
 				(error: Error | null, data: object) => {
 					if (error !== null) {
 						return reject(error);
