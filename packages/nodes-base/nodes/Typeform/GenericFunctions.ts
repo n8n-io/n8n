@@ -65,7 +65,7 @@ export async function apiRequest(this: IHookFunctions | IExecuteFunctions | ILoa
 	try {
 		if (authenticationMethod === 'accessToken') {
 
-			const credentials = this.getCredentials('typeformApi');
+			const credentials = await this.getCredentials('typeformApi');
 
 			if (credentials === undefined) {
 				throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
@@ -114,6 +114,12 @@ export async function apiRequestAllItems(this: IHookFunctions | IExecuteFunction
 		query.page += 1;
 
 		responseData = await apiRequest.call(this, method, endpoint, body, query);
+
+		console.log({
+			endpoint,
+			method,
+			responseData,
+		});
 
 		returnData.items.push.apply(returnData.items, responseData.items);
 	} while (

@@ -26,7 +26,7 @@ export async function elasticsearchApiRequest(
 		username,
 		password,
 		baseUrl,
-	} = this.getCredentials('elasticsearchApi') as ElasticsearchApiCredentials;
+	} = await this.getCredentials('elasticsearchApi') as ElasticsearchApiCredentials;
 
 	const token = Buffer.from(`${username}:${password}`).toString('base64');
 

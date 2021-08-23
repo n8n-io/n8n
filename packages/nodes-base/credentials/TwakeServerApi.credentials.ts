@@ -5,7 +5,7 @@ import {
 
 export class TwakeServerApi implements ICredentialType {
 	name = 'twakeServerApi';
-	displayName = 'Twake API';
+	displayName = 'Twake Server API';
 	documentationUrl = 'twake';
 	properties: INodeProperties[] = [
 		{
