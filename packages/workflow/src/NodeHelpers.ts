@@ -858,13 +858,13 @@ export function getNodeWebhooks(
 
 	const returnData: IWebhookData[] = [];
 	for (const webhookDescription of nodeType.description.webhooks) {
-		if (ignoreRestartWehbooks === true && webhookDescription.restartWebhook === true) {
+		if (ignoreRestartWehbooks && webhookDescription.restartWebhook === true) {
 			continue;
 		}
 
 		let nodeWebhookPath = workflow.expression.getSimpleParameterValue(
 			node,
-			webhookDescription['path'],
+			webhookDescription.path,
 			mode,
 			{},
 		);
@@ -887,14 +887,14 @@ export function getNodeWebhooks(
 
 		const isFullPath: boolean = workflow.expression.getSimpleParameterValue(
 			node,
-			webhookDescription['isFullPath'],
+			webhookDescription.isFullPath,
 			'internal',
 			{},
 			false,
 		) as boolean;
 		const restartWebhook: boolean = workflow.expression.getSimpleParameterValue(
 			node,
-			webhookDescription['restartWebhook'],
+			webhookDescription.restartWebhook,
 			'internal',
 			{},
 			false,
@@ -903,7 +903,7 @@ export function getNodeWebhooks(
 
 		const httpMethod = workflow.expression.getSimpleParameterValue(
 			node,
-			webhookDescription['httpMethod'],
+			webhookDescription.httpMethod,
 			mode,
 			{},
 			'GET',
@@ -957,7 +957,7 @@ export function getNodeWebhooksBasic(workflow: Workflow, node: INode): IWebhookD
 	for (const webhookDescription of nodeType.description.webhooks) {
 		let nodeWebhookPath = workflow.expression.getSimpleParameterValue(
 			node,
-			webhookDescription['path'],
+			webhookDescription.path,
 			mode,
 			{},
 		);
@@ -980,7 +980,7 @@ export function getNodeWebhooksBasic(workflow: Workflow, node: INode): IWebhookD
 
 		const isFullPath: boolean = workflow.expression.getSimpleParameterValue(
 			node,
-			webhookDescription['isFullPath'],
+			webhookDescription.isFullPath,
 			mode,
 			{},
 			false,
@@ -990,7 +990,7 @@ export function getNodeWebhooksBasic(workflow: Workflow, node: INode): IWebhookD
 
 		const httpMethod = workflow.expression.getSimpleParameterValue(
 			node,
-			webhookDescription['httpMethod'],
+			webhookDescription.httpMethod,
 			mode,
 			{},
 		);
@@ -1035,7 +1035,8 @@ export function getNodeWebhookPath(
 	let webhookPath = '';
 	if (restartWebhook === true) {
 		return path;
-	} else if (node.webhookId === undefined) {
+	}
+	if (node.webhookId === undefined) {
 		webhookPath = `${workflowId}/${encodeURIComponent(node.name.toLowerCase())}/${path}`;
 	} else {
 		if (isFullPath === true) {

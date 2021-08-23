@@ -281,21 +281,20 @@ export class Expression {
 					returnObjectAsString,
 					selfData,
 				);
-			} else {
-				return this.resolveSimpleParameterValue(
-					value as NodeParameterValue,
-					siblingParameters,
-					runExecutionData,
-					runIndex,
-					itemIndex,
-					activeNodeName,
-					connectionInputData,
-					mode,
-					additionalKeys,
-					returnObjectAsString,
-					selfData,
-				);
 			}
+			return this.resolveSimpleParameterValue(
+				value as NodeParameterValue,
+				siblingParameters,
+				runExecutionData,
+				runIndex,
+				itemIndex,
+				activeNodeName,
+				connectionInputData,
+				mode,
+				additionalKeys,
+				returnObjectAsString,
+				selfData,
+			);
 		};
 
 		// Check if it value is a simple one that we can get it resolved directly

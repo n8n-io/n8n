@@ -37,8 +37,11 @@ export class WorkflowDataProxy {
 	private connectionInputData: INodeExecutionData[];
 
 	private siblingParameters: INodeParameters;
+
 	private mode: WorkflowExecuteMode;
+
 	private selfData: IDataObject;
+
 	private additionalKeys: IWorkflowDataProxyAdditionalKeys;
 
 	constructor(
@@ -431,7 +434,7 @@ export class WorkflowDataProxy {
 			$evaluateExpression: (expression: string, itemIndex?: number) => {
 				itemIndex = itemIndex || that.itemIndex;
 				return that.workflow.expression.getParameterValue(
-					'=' + expression,
+					`=${expression}`,
 					that.runExecutionData,
 					that.runIndex,
 					itemIndex,

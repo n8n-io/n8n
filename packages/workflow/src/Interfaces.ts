@@ -121,6 +121,7 @@ export abstract class ICredentialsHelper {
 	}
 
 	abstract getCredentials(name: string, type: string): Promise<ICredentials>;
+
 	abstract getDecrypted(
 		name: string,
 		type: string,
@@ -128,6 +129,7 @@ export abstract class ICredentialsHelper {
 		raw?: boolean,
 		expressionResolveValues?: ICredentialsExpressionResolveValues,
 	): Promise<ICredentialDataDecryptedObject>;
+
 	abstract updateCredentials(
 		name: string,
 		type: string,

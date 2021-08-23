@@ -755,7 +755,7 @@ export class Workflow {
 					return connection.index;
 				}
 
-				if (checkedNodes!.includes(connection.node)) {
+				if (checkedNodes.includes(connection.node)) {
 					// Node got checked already before so continue with the next one
 					continue;
 				}
