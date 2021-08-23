@@ -1,3 +1,11 @@
+/* eslint-disable no-param-reassign */
+/* eslint-disable @typescript-eslint/no-use-before-define */
+/* eslint-disable @typescript-eslint/no-unsafe-call */
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
+import * as fs from 'fs';
+import * as path from 'path';
+import { randomBytes } from 'crypto';
+// eslint-disable-next-line import/no-cycle
 import {
 	ENCRYPTION_KEY_ENV_OVERWRITE,
 	EXTENSIONS_SUBDIRECTORY,
@@ -7,16 +15,15 @@ import {
 	USER_SETTINGS_SUBFOLDER,
 } from '.';
 
-import * as fs from 'fs';
-import * as path from 'path';
-import { randomBytes } from 'crypto';
+// eslint-disable-next-line @typescript-eslint/no-var-requires
 const { promisify } = require('util');
+
 const fsAccess = promisify(fs.access);
 const fsReadFile = promisify(fs.readFile);
 const fsMkdir = promisify(fs.mkdir);
 const fsWriteFile = promisify(fs.writeFile);
 
-let settingsCache: IUserSettings | undefined = undefined;
+let settingsCache: IUserSettings | undefined;
 
 /**
  * Creates the user settings if they do not exist yet
@@ -45,6 +52,7 @@ export async function prepareUserSettings(): Promise<IUserSettings> {
 		userSettings.encryptionKey = randomBytes(24).toString('base64');
 	}
 
+	// eslint-disable-next-line no-console
 	console.log(`UserSettings got generated and saved to: ${settingsPath}`);
 
 	return writeUserSettings(userSettings, settingsPath);
@@ -57,6 +65,7 @@ export async function prepareUserSettings(): Promise<IUserSettings> {
  * @export
  * @returns
  */
+// eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
 export async function getEncryptionKey() {
 	if (process.env[ENCRYPTION_KEY_ENV_OVERWRITE] !== undefined) {
 		return process.env[ENCRYPTION_KEY_ENV_OVERWRITE];

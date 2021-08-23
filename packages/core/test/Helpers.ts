@@ -767,7 +767,7 @@ export function WorkflowExecuteAdditionalData(
 		credentials: {},
 		credentialsHelper: new CredentialsHelper({}, ''),
 		hooks: new WorkflowHooks(hookFunctions, 'trigger', '1', workflowData),
-		executeWorkflow: async (workflowInfo: IExecuteWorkflowInfo): Promise<any> => {}, // tslint:disable-line:no-any
+		executeWorkflow: async (workflowInfo: IExecuteWorkflowInfo): Promise<any> => {},
 		sendMessageToUI: (message: string) => {},
 		restApiUrl: '',
 		encryptionKey: 'test',

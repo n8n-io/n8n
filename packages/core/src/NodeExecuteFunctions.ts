@@ -1,11 +1,13 @@
-import {
-	BINARY_ENCODING,
-	IHookFunctions,
-	ILoadOptionsFunctions,
-	IResponseError,
-	IWorkflowSettings,
-} from './';
-
+/* eslint-disable @typescript-eslint/explicit-module-boundary-types */
+/* eslint-disable @typescript-eslint/no-explicit-any */
+/* eslint-disable no-prototype-builtins */
+/* eslint-disable @typescript-eslint/no-shadow */
+/* eslint-disable @typescript-eslint/no-non-null-assertion */
+/* eslint-disable @typescript-eslint/no-unsafe-return */
+/* eslint-disable @typescript-eslint/no-unsafe-call */
+/* eslint-disable @typescript-eslint/no-unsafe-member-access */
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
+/* eslint-disable no-param-reassign */
 import {
 	IAllExecuteFunctions,
 	IBinaryData,
@@ -38,12 +40,15 @@ import {
 	WorkflowActivateMode,
 	WorkflowDataProxy,
 	WorkflowExecuteMode,
+	LoggerProxy as Logger,
 } from 'n8n-workflow';
 
 import * as clientOAuth1 from 'oauth-1.0a';
 import { Token } from 'oauth-1.0a';
 import * as clientOAuth2 from 'client-oauth2';
+// eslint-disable-next-line import/no-extraneous-dependencies
 import { get } from 'lodash';
+// eslint-disable-next-line import/no-extraneous-dependencies
 import * as express from 'express';
 import * as path from 'path';
 import { OptionsWithUri, OptionsWithUrl } from 'request';
@@ -51,7 +56,15 @@ import * as requestPromise from 'request-promise-native';
 import { createHmac } from 'crypto';
 import { fromBuffer } from 'file-type';
 import { lookup } from 'mime-types';
-import { LoggerProxy as Logger } from 'n8n-workflow';
+
+// eslint-disable-next-line import/no-cycle
+import {
+	BINARY_ENCODING,
+	IHookFunctions,
+	ILoadOptionsFunctions,
+	IResponseError,
+	IWorkflowSettings,
+} from '.';
 
 const requestPromiseWithDefaults = requestPromise.defaults({
 	timeout: 300000, // 5 minutes
@@ -158,6 +171,7 @@ export function requestOAuth2(
 		throw new Error('OAuth credentials not connected!');
 	}
 
+	// eslint-disable-next-line new-cap
 	const oAuthClient = new clientOAuth2({
 		clientId: credentials.clientId as string,
 		clientSecret: credentials.clientSecret as string,
@@ -169,6 +183,7 @@ export function requestOAuth2(
 	const token = oAuthClient.createToken(
 		get(oauthTokenData, oAuth2Options?.property as string) || oauthTokenData.accessToken,
 		oauthTokenData.refreshToken,
+		// eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
 		oAuth2Options?.tokenType || oauthTokenData.tokenType,
 		oauthTokenData,
 	);
@@ -178,8 +193,9 @@ export function requestOAuth2(
 
 	// If keep bearer is false remove the it from the authorization header
 	if (oAuth2Options?.keepBearer === false) {
-		//@ts-ignore
+		// @ts-ignore
 		newRequestOptions?.headers?.Authorization =
+			// @ts-ignore
 			newRequestOptions?.headers?.Authorization.split(' ')[1];
 	}
 
@@ -202,6 +218,7 @@ export function requestOAuth2(
 				tokenRefreshOptions.body = body;
 				// Override authorization property so the credentails are not included in it
 				tokenRefreshOptions.headers = {
+					// eslint-disable-next-line @typescript-eslint/naming-convention
 					Authorization: '',
 				};
 			}
@@ -234,6 +251,7 @@ export function requestOAuth2(
 			);
 
 			// Make the request again with the new token
+			// eslint-disable-next-line @typescript-eslint/no-shadow
 			const newRequestOptions = newToken.sign(requestOptions as clientOAuth2.RequestObject);
 
 			return this.helpers.request!(newRequestOptions);
@@ -267,12 +285,14 @@ export function requestOAuth1(
 		throw new Error('OAuth credentials not connected!');
 	}
 
+	// eslint-disable-next-line new-cap
 	const oauth = new clientOAuth1({
 		consumer: {
 			key: credentials.consumerKey as string,
 			secret: credentials.consumerSecret as string,
 		},
 		signature_method: credentials.signatureMethod as string,
+		// eslint-disable-next-line @typescript-eslint/naming-convention
 		hash_function(base, key) {
 			const algorithm = credentials.signatureMethod === 'HMAC-SHA1' ? 'sha1' : 'sha256';
 			return createHmac(algorithm, key).update(base).digest('base64');
@@ -286,7 +306,7 @@ export function requestOAuth1(
 		secret: oauthTokenData.oauth_token_secret as string,
 	};
 
-	//@ts-ignore
+	// @ts-ignore
 	requestOptions.data = { ...requestOptions.qs, ...requestOptions.form };
 
 	// Fixes issue that OAuth1 library only works with "url" property and not with "uri"
@@ -298,7 +318,7 @@ export function requestOAuth1(
 		delete requestOptions.uri;
 	}
 
-	//@ts-ignore
+	// @ts-ignore
 	requestOptions.headers = oauth.toHeader(oauth.authorize(requestOptions, token));
 
 	return this.helpers.request!(requestOptions).catch(async (error: IResponseError) => {
@@ -376,11 +396,11 @@ export function getCredentials(
 	}
 
 	if (
-		NodeHelpers.displayParameter(
+		!NodeHelpers.displayParameter(
 			additionalData.currentNodeParameters || node.parameters,
 			nodeCredentialDescription,
 			node.parameters,
-		) === false
+		)
 	) {
 		// Credentials should not be displayed so return undefined even if they would be defined
 		return undefined;
@@ -408,6 +428,7 @@ export function getCredentials(
 	if (connectionInputData && runExecutionData && runIndex !== undefined) {
 		expressionResolveValues = {
 			connectionInputData,
+			// eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
 			itemIndex: itemIndex || 0,
 			node,
 			runExecutionData,
@@ -465,7 +486,6 @@ export function getNodeParameter(
 	mode: WorkflowExecuteMode,
 	fallbackValue?: any,
 ): NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[] | object {
-	//tslint:disable-line:no-any
 	const nodeType = workflow.nodeTypes.getByName(node.type);
 	if (nodeType === undefined) {
 		throw new Error(`Node type "${node.type}" is not known so can not return paramter value!`);
@@ -531,19 +551,20 @@ export function getNodeWebhookUrl(
 		baseUrl = additionalData.webhookTestBaseUrl;
 	}
 
+	// eslint-disable-next-line @typescript-eslint/no-use-before-define
 	const webhookDescription = getWebhookDescription(name, workflow, node);
 	if (webhookDescription === undefined) {
 		return undefined;
 	}
 
-	const path = workflow.expression.getSimpleParameterValue(node, webhookDescription['path'], mode);
+	const path = workflow.expression.getSimpleParameterValue(node, webhookDescription.path, mode);
 	if (path === undefined) {
 		return undefined;
 	}
 
 	const isFullPath: boolean = workflow.expression.getSimpleParameterValue(
 		node,
-		webhookDescription['isFullPath'],
+		webhookDescription.isFullPath,
 		mode,
 		false,
 	) as boolean;
@@ -562,6 +583,7 @@ export function getTimezone(
 	workflow: Workflow,
 	additionalData: IWorkflowExecuteAdditionalData,
 ): string {
+	// eslint-disable-next-line @typescript-eslint/prefer-optional-chain
 	if (workflow.settings !== undefined && workflow.settings.timezone !== undefined) {
 		return (workflow.settings as IWorkflowSettings).timezone as string;
 	}
@@ -589,6 +611,7 @@ export function getWebhookDescription(
 		return undefined;
 	}
 
+	// eslint-disable-next-line no-restricted-syntax
 	for (const webhookDescription of nodeType.description.webhooks) {
 		if (webhookDescription.name === name) {
 			return webhookDescription;
@@ -633,6 +656,7 @@ export function getExecutePollFunctions(
 ): IPollFunctions {
 	return ((workflow: Workflow, node: INode) => {
 		return {
+			// eslint-disable-next-line @typescript-eslint/no-unused-vars
 			__emit: (data: INodeExecutionData[][]): void => {
 				throw new Error('Overwrite NodeExecuteFunctions.getExecutePullFunctions.__emit function!');
 			},
@@ -657,7 +681,6 @@ export function getExecutePollFunctions(
 				| NodeParameterValue[]
 				| INodeParameters[]
 				| object => {
-				//tslint:disable-line:no-any
 				const runExecutionData: IRunExecutionData | null = null;
 				const itemIndex = 0;
 				const runIndex = 0;
@@ -690,13 +713,12 @@ export function getExecutePollFunctions(
 			helpers: {
 				prepareBinaryData,
 				request: requestPromiseWithDefaults,
-				requestOAuth2(
+				async requestOAuth2(
 					this: IAllExecuteFunctions,
 					credentialsType: string,
 					requestOptions: OptionsWithUri | requestPromise.RequestPromiseOptions,
 					oAuth2Options?: IOAuth2Options,
 				): Promise<any> {
-					// tslint:disable-line:no-any
 					return requestOAuth2.call(
 						this,
 						credentialsType,
@@ -706,12 +728,11 @@ export function getExecutePollFunctions(
 						oAuth2Options,
 					);
 				},
-				requestOAuth1(
+				async requestOAuth1(
 					this: IAllExecuteFunctions,
 					credentialsType: string,
 					requestOptions: OptionsWithUrl | requestPromise.RequestPromiseOptions,
 				): Promise<any> {
-					// tslint:disable-line:no-any
 					return requestOAuth1.call(this, credentialsType, requestOptions);
 				},
 				returnJsonArray,
@@ -740,6 +761,7 @@ export function getExecuteTriggerFunctions(
 ): ITriggerFunctions {
 	return ((workflow: Workflow, node: INode) => {
 		return {
+			// eslint-disable-next-line @typescript-eslint/no-unused-vars
 			emit: (data: INodeExecutionData[][]): void => {
 				throw new Error('Overwrite NodeExecuteFunctions.getExecuteTriggerFunctions.emit function!');
 			},
@@ -764,7 +786,6 @@ export function getExecuteTriggerFunctions(
 				| NodeParameterValue[]
 				| INodeParameters[]
 				| object => {
-				//tslint:disable-line:no-any
 				const runExecutionData: IRunExecutionData | null = null;
 				const itemIndex = 0;
 				const runIndex = 0;
@@ -797,13 +818,12 @@ export function getExecuteTriggerFunctions(
 			helpers: {
 				prepareBinaryData,
 				request: requestPromiseWithDefaults,
-				requestOAuth2(
+				async requestOAuth2(
 					this: IAllExecuteFunctions,
 					credentialsType: string,
 					requestOptions: OptionsWithUri | requestPromise.RequestPromiseOptions,
 					oAuth2Options?: IOAuth2Options,
 				): Promise<any> {
-					// tslint:disable-line:no-any
 					return requestOAuth2.call(
 						this,
 						credentialsType,
@@ -813,12 +833,11 @@ export function getExecuteTriggerFunctions(
 						oAuth2Options,
 					);
 				},
-				requestOAuth1(
+				async requestOAuth1(
 					this: IAllExecuteFunctions,
 					credentialsType: string,
 					requestOptions: OptionsWithUrl | requestPromise.RequestPromiseOptions,
 				): Promise<any> {
-					// tslint:disable-line:no-any
 					return requestOAuth1.call(this, credentialsType, requestOptions);
 				},
 				returnJsonArray,
@@ -858,7 +877,7 @@ export function getExecuteFunctions(
 			},
 			evaluateExpression: (expression: string, itemIndex: number) => {
 				return workflow.expression.resolveSimpleParameterValue(
-					'=' + expression,
+					`=${expression}`,
 					{},
 					runExecutionData,
 					runIndex,
@@ -872,7 +891,6 @@ export function getExecuteFunctions(
 				workflowInfo: IExecuteWorkflowInfo,
 				inputData?: INodeExecutionData[],
 			): Promise<any> {
-				// tslint:disable-line:no-any
 				return additionalData.executeWorkflow(workflowInfo, additionalData, inputData);
 			},
 			getContext(type: string): IContextObject {
@@ -920,7 +938,6 @@ export function getExecuteFunctions(
 				| NodeParameterValue[]
 				| INodeParameters[]
 				| object => {
-				//tslint:disable-line:no-any
 				return getNodeParameter(
 					workflow,
 					runExecutionData,
@@ -966,7 +983,6 @@ export function getExecuteFunctions(
 			},
 			prepareOutputData: NodeHelpers.prepareOutputData,
 			sendMessageToUI(message: any): void {
-				// tslint:disable-line:no-any
 				if (mode !== 'manual') {
 					return;
 				}
@@ -975,19 +991,19 @@ export function getExecuteFunctions(
 						additionalData.sendMessageToUI(node.name, message);
 					}
 				} catch (error) {
+					// eslint-disable-next-line @typescript-eslint/restrict-template-expressions
 					Logger.warn(`There was a problem sending messsage to UI: ${error.message}`);
 				}
 			},
 			helpers: {
 				prepareBinaryData,
 				request: requestPromiseWithDefaults,
-				requestOAuth2(
+				async requestOAuth2(
 					this: IAllExecuteFunctions,
 					credentialsType: string,
 					requestOptions: OptionsWithUri | requestPromise.RequestPromiseOptions,
 					oAuth2Options?: IOAuth2Options,
 				): Promise<any> {
-					// tslint:disable-line:no-any
 					return requestOAuth2.call(
 						this,
 						credentialsType,
@@ -997,12 +1013,11 @@ export function getExecuteFunctions(
 						oAuth2Options,
 					);
 				},
-				requestOAuth1(
+				async requestOAuth1(
 					this: IAllExecuteFunctions,
 					credentialsType: string,
 					requestOptions: OptionsWithUrl | requestPromise.RequestPromiseOptions,
 				): Promise<any> {
-					// tslint:disable-line:no-any
 					return requestOAuth1.call(this, credentialsType, requestOptions);
 				},
 				returnJsonArray,
@@ -1045,7 +1060,7 @@ export function getExecuteSingleFunctions(
 			evaluateExpression: (expression: string, evaluateItemIndex: number | undefined) => {
 				evaluateItemIndex = evaluateItemIndex === undefined ? itemIndex : evaluateItemIndex;
 				return workflow.expression.resolveSimpleParameterValue(
-					'=' + expression,
+					`=${expression}`,
 					{},
 					runExecutionData,
 					runIndex,
@@ -1096,7 +1111,7 @@ export function getExecuteSingleFunctions(
 					);
 				}
 
-				return allItems[itemIndex] as INodeExecutionData;
+				return allItems[itemIndex];
 			},
 			getMode: (): WorkflowExecuteMode => {
 				return mode;
@@ -1119,7 +1134,6 @@ export function getExecuteSingleFunctions(
 				| NodeParameterValue[]
 				| INodeParameters[]
 				| object => {
-				//tslint:disable-line:no-any
 				return getNodeParameter(
 					workflow,
 					runExecutionData,
@@ -1154,13 +1168,12 @@ export function getExecuteSingleFunctions(
 			helpers: {
 				prepareBinaryData,
 				request: requestPromiseWithDefaults,
-				requestOAuth2(
+				async requestOAuth2(
 					this: IAllExecuteFunctions,
 					credentialsType: string,
 					requestOptions: OptionsWithUri | requestPromise.RequestPromiseOptions,
 					oAuth2Options?: IOAuth2Options,
 				): Promise<any> {
-					// tslint:disable-line:no-any
 					return requestOAuth2.call(
 						this,
 						credentialsType,
@@ -1170,12 +1183,11 @@ export function getExecuteSingleFunctions(
 						oAuth2Options,
 					);
 				},
-				requestOAuth1(
+				async requestOAuth1(
 					this: IAllExecuteFunctions,
 					credentialsType: string,
 					requestOptions: OptionsWithUrl | requestPromise.RequestPromiseOptions,
 				): Promise<any> {
-					// tslint:disable-line:no-any
 					return requestOAuth1.call(this, credentialsType, requestOptions);
 				},
 			},
@@ -1235,7 +1247,6 @@ export function getLoadOptionsFunctions(
 				| NodeParameterValue[]
 				| INodeParameters[]
 				| object => {
-				//tslint:disable-line:no-any
 				const runExecutionData: IRunExecutionData | null = null;
 				const itemIndex = 0;
 				const runIndex = 0;
@@ -1261,13 +1272,12 @@ export function getLoadOptionsFunctions(
 			},
 			helpers: {
 				request: requestPromiseWithDefaults,
-				requestOAuth2(
+				async requestOAuth2(
 					this: IAllExecuteFunctions,
 					credentialsType: string,
 					requestOptions: OptionsWithUri | requestPromise.RequestPromiseOptions,
 					oAuth2Options?: IOAuth2Options,
 				): Promise<any> {
-					// tslint:disable-line:no-any
 					return requestOAuth2.call(
 						this,
 						credentialsType,
@@ -1277,12 +1287,11 @@ export function getLoadOptionsFunctions(
 						oAuth2Options,
 					);
 				},
-				requestOAuth1(
+				async requestOAuth1(
 					this: IAllExecuteFunctions,
 					credentialsType: string,
 					requestOptions: OptionsWithUrl | requestPromise.RequestPromiseOptions,
 				): Promise<any> {
-					// tslint:disable-line:no-any
 					return requestOAuth1.call(this, credentialsType, requestOptions);
 				},
 			},
@@ -1333,7 +1342,6 @@ export function getExecuteHookFunctions(
 				| NodeParameterValue[]
 				| INodeParameters[]
 				| object => {
-				//tslint:disable-line:no-any
 				const runExecutionData: IRunExecutionData | null = null;
 				const itemIndex = 0;
 				const runIndex = 0;
@@ -1374,13 +1382,12 @@ export function getExecuteHookFunctions(
 			},
 			helpers: {
 				request: requestPromiseWithDefaults,
-				requestOAuth2(
+				async requestOAuth2(
 					this: IAllExecuteFunctions,
 					credentialsType: string,
 					requestOptions: OptionsWithUri | requestPromise.RequestPromiseOptions,
 					oAuth2Options?: IOAuth2Options,
 				): Promise<any> {
-					// tslint:disable-line:no-any
 					return requestOAuth2.call(
 						this,
 						credentialsType,
@@ -1390,12 +1397,11 @@ export function getExecuteHookFunctions(
 						oAuth2Options,
 					);
 				},
-				requestOAuth1(
+				async requestOAuth1(
 					this: IAllExecuteFunctions,
 					credentialsType: string,
 					requestOptions: OptionsWithUrl | requestPromise.RequestPromiseOptions,
 				): Promise<any> {
-					// tslint:disable-line:no-any
 					return requestOAuth1.call(this, credentialsType, requestOptions);
 				},
 			},
@@ -1454,7 +1460,6 @@ export function getExecuteWebhookFunctions(
 				| NodeParameterValue[]
 				| INodeParameters[]
 				| object => {
-				//tslint:disable-line:no-any
 				const runExecutionData: IRunExecutionData | null = null;
 				const itemIndex = 0;
 				const runIndex = 0;
@@ -1515,13 +1520,12 @@ export function getExecuteWebhookFunctions(
 			helpers: {
 				prepareBinaryData,
 				request: requestPromiseWithDefaults,
-				requestOAuth2(
+				async requestOAuth2(
 					this: IAllExecuteFunctions,
 					credentialsType: string,
 					requestOptions: OptionsWithUri | requestPromise.RequestPromiseOptions,
 					oAuth2Options?: IOAuth2Options,
 				): Promise<any> {
-					// tslint:disable-line:no-any
 					return requestOAuth2.call(
 						this,
 						credentialsType,
@@ -1531,12 +1535,11 @@ export function getExecuteWebhookFunctions(
 						oAuth2Options,
 					);
 				},
-				requestOAuth1(
+				async requestOAuth1(
 					this: IAllExecuteFunctions,
 					credentialsType: string,
 					requestOptions: OptionsWithUrl | requestPromise.RequestPromiseOptions,
 				): Promise<any> {
-					// tslint:disable-line:no-any
 					return requestOAuth1.call(this, credentialsType, requestOptions);
 				},
 				returnJsonArray,

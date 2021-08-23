@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-non-null-assertion */
 import {
 	INode,
 	INodeCredentials,
@@ -8,13 +9,16 @@ import {
 	Workflow,
 } from 'n8n-workflow';
 
-import { NodeExecuteFunctions } from './';
+// eslint-disable-next-line import/no-cycle
+import { NodeExecuteFunctions } from '.';
 
 const TEMP_NODE_NAME = 'Temp-Node';
 const TEMP_WORKFLOW_NAME = 'Temp-Workflow';
 
+// eslint-disable-next-line import/prefer-default-export
 export class LoadNodeParameterOptions {
 	path: string;
+
 	workflow: Workflow;
 
 	constructor(
@@ -62,6 +66,7 @@ export class LoadNodeParameterOptions {
 	 * @returns
 	 * @memberof LoadNodeParameterOptions
 	 */
+	// eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
 	getWorkflowData() {
 		return {
 			name: TEMP_WORKFLOW_NAME,
@@ -81,7 +86,7 @@ export class LoadNodeParameterOptions {
 	 * @returns {Promise<INodePropertyOptions[]>}
 	 * @memberof LoadNodeParameterOptions
 	 */
-	getOptions(
+	async getOptions(
 		methodName: string,
 		additionalData: IWorkflowExecuteAdditionalData,
 	): Promise<INodePropertyOptions[]> {

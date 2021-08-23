@@ -1,3 +1,6 @@
+/* eslint-disable no-continue */
+/* eslint-disable no-await-in-loop */
+/* eslint-disable no-restricted-syntax */
 import { CronJob } from 'cron';
 
 import {
@@ -13,8 +16,10 @@ import {
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
 
-import { ITriggerTime, IWorkflowData } from './';
+// eslint-disable-next-line import/no-cycle
+import { ITriggerTime, IWorkflowData } from '.';
 
+// eslint-disable-next-line import/prefer-default-export
 export class ActiveWorkflows {
 	private workflowData: {
 		[key: string]: IWorkflowData;
@@ -28,6 +33,7 @@ export class ActiveWorkflows {
 	 * @memberof ActiveWorkflows
 	 */
 	isActive(id: string): boolean {
+		// eslint-disable-next-line no-prototype-builtins
 		return this.workflowData.hasOwnProperty(id);
 	}
 
@@ -86,6 +92,7 @@ export class ActiveWorkflows {
 			);
 			if (triggerResponse !== undefined) {
 				// If a response was given save it
+				// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
 				this.workflowData[id].triggerResponses!.push(triggerResponse);
 			}
 		}
@@ -94,6 +101,7 @@ export class ActiveWorkflows {
 		if (pollNodes.length) {
 			this.workflowData[id].pollResponses = [];
 			for (const pollNode of pollNodes) {
+				// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
 				this.workflowData[id].pollResponses!.push(
 					await this.activatePolling(
 						pollNode,
@@ -118,6 +126,7 @@ export class ActiveWorkflows {
 	 * @returns {Promise<IPollResponse>}
 	 * @memberof ActiveWorkflows
 	 */
+	// eslint-disable-next-line class-methods-use-this
 	async activatePolling(
 		node: INode,
 		workflow: Workflow,
@@ -186,6 +195,7 @@ export class ActiveWorkflows {
 
 		// The trigger function to execute when the cron-time got reached
 		const executeTrigger = async () => {
+			// eslint-disable-next-line @typescript-eslint/restrict-template-expressions
 			Logger.info(`Polling trigger initiated for workflow "${workflow.name}"`, {
 				workflowName: workflow.name,
 				workflowId: workflow.id,
@@ -193,6 +203,7 @@ export class ActiveWorkflows {
 			const pollResponse = await workflow.runPoll(node, pollFunctions);
 
 			if (pollResponse !== null) {
+				// eslint-disable-next-line no-underscore-dangle
 				pollFunctions.__emit(pollResponse);
 			}
 		};
@@ -204,6 +215,7 @@ export class ActiveWorkflows {
 
 		// Start the cron-jobs
 		const cronJobs: CronJob[] = [];
+		// eslint-disable-next-line @typescript-eslint/no-shadow
 		for (const cronTime of cronTimes) {
 			const cronTimeParts = cronTime.split(' ');
 			if (cronTimeParts.length > 0 && cronTimeParts[0].includes('*')) {

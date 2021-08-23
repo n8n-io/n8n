@@ -7,11 +7,13 @@ import {
 
 import { AES, enc } from 'crypto-js';
 
+// eslint-disable-next-line import/prefer-default-export
 export class Credentials extends ICredentials {
 	/**
 	 * Returns if the given nodeType has access to data
 	 */
 	hasNodeAccess(nodeType: string): boolean {
+		// eslint-disable-next-line no-restricted-syntax
 		for (const accessData of this.nodesAccess) {
 			if (accessData.nodeType === nodeType) {
 				return true;
@@ -61,6 +63,7 @@ export class Credentials extends ICredentials {
 		const decryptedData = AES.decrypt(this.data, encryptionKey);
 
 		try {
+			// eslint-disable-next-line @typescript-eslint/no-unsafe-return
 			return JSON.parse(decryptedData.toString(enc.Utf8));
 		} catch (e) {
 			throw new Error(
@@ -79,6 +82,7 @@ export class Credentials extends ICredentials {
 			throw new Error(`No data got set.`);
 		}
 
+		// eslint-disable-next-line no-prototype-builtins
 		if (!fullData.hasOwnProperty(key)) {
 			throw new Error(`No data for key "${key}" exists.`);
 		}
