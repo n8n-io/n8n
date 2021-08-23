@@ -1,4 +1,8 @@
 import {
+	PLACEHOLDER_FILLED_AT_EXECUTION_TIME,
+} from '@/constants';
+
+import {
 	IBinaryKeyData,
 	ICredentialType,
 	INodeCredentialDescription,
@@ -328,35 +332,35 @@ export const nodeHelpers = mixins(
 				if (data.notesInFlow) {
 					return data.notes;
 				}
-	
+
 				if (nodeType !== null && nodeType.subtitle !== undefined) {
-					return workflow.expression.getSimpleParameterValue(data as INode, nodeType.subtitle, 'internal') as string | undefined;
+					return workflow.expression.getSimpleParameterValue(data as INode, nodeType.subtitle, 'internal', PLACEHOLDER_FILLED_AT_EXECUTION_TIME) as string | undefined;
 				}
-	
+
 				if (data.parameters.operation !== undefined) {
 					const operation = data.parameters.operation as string;
 					if (nodeType === null) {
 						return operation;
 					}
-	
+
 					const operationData:INodeProperties = nodeType.properties.find((property: INodeProperties) => {
 						return property.name === 'operation';
 					});
 					if (operationData === undefined) {
 						return operation;
 					}
-	
+
 					if (operationData.options === undefined) {
 						return operation;
 					}
-	
+
 					const optionData = operationData.options.find((option) => {
 						return (option as INodePropertyOptions).value === data.parameters.operation;
 					});
 					if (optionData === undefined) {
 						return operation;
 					}
-	
+
 					return optionData.name;
 				}
 				return undefined;

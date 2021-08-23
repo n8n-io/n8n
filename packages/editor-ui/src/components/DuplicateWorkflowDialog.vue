@@ -4,7 +4,7 @@
 		:eventBus="modalBus"
 		@enter="save"
 		size="sm"
-		title="Duplicate Workflow"	
+		title="Duplicate Workflow"
 	>
 		<template v-slot:content>
 			<el-row>

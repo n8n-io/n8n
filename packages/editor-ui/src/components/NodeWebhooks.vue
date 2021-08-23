@@ -26,7 +26,7 @@
 							</div>
 							<div class="url-field">
 								<div class="webhook-url left-ellipsis clickable" @click="copyWebhookUrl(webhook)">
-									{{getWebhookUrl(webhook, 'path')}}<br />
+									{{getWebhookUrlDisplay(webhook)}}<br />
 								</div>
 							</div>
 					</div>
@@ -39,6 +39,7 @@
 
 <script lang="ts">
 import {
+	INodeTypeDescription,
 	IWebhookDescription,
 	NodeHelpers,
 } from 'n8n-workflow';
@@ -59,7 +60,7 @@ export default mixins(
 		name: 'NodeWebhooks',
 		props: [
 			'node', // NodeUi
-			'nodeType', // NodeTypeDescription
+			'nodeType', // INodeTypeDescription
 		],
 		data () {
 			return {
@@ -73,7 +74,7 @@ export default mixins(
 					return [];
 				}
 
-				return this.nodeType.webhooks;
+				return (this.nodeType as INodeTypeDescription).webhooks!.filter(webhookData => webhookData.restartWebhook !== true);
 			},
 		},
 		methods: {
@@ -98,6 +99,9 @@ export default mixins(
 				}
 			},
 			getWebhookUrl (webhookData: IWebhookDescription): string {
+				if (webhookData.restartWebhook === true) {
+					return '$resumeWebhookUrl';
+				}
 				let baseUrl = this.$store.getters.getWebhookUrl;
 				if (this.showUrlFor === 'test') {
 					baseUrl = this.$store.getters.getWebhookTestUrl;
@@ -108,6 +112,9 @@ export default mixins(
 				const isFullPath = this.getValue(webhookData, 'isFullPath') as unknown as boolean || false;
 
 				return NodeHelpers.getNodeWebhookUrl(baseUrl, workflowId, this.node, path, isFullPath);
+			},
+			getWebhookUrlDisplay (webhookData: IWebhookDescription): string {
+				return this.getWebhookUrl(webhookData);
 			},
 		},
 		watch: {
