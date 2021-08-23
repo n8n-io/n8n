@@ -7,16 +7,12 @@ import {
 
 import { AES, enc } from 'crypto-js';
 
-
 export class Credentials extends ICredentials {
-
-
 	/**
 	 * Returns if the given nodeType has access to data
 	 */
 	hasNodeAccess(nodeType: string): boolean {
 		for (const accessData of this.nodesAccess) {
-
 			if (accessData.nodeType === nodeType) {
 				return true;
 			}
@@ -25,14 +21,12 @@ export class Credentials extends ICredentials {
 		return false;
 	}
 
-
 	/**
 	 * Sets new credential object
 	 */
 	setData(data: ICredentialDataDecryptedObject, encryptionKey: string): void {
 		this.data = AES.encrypt(JSON.stringify(data), encryptionKey).toString();
 	}
-
 
 	/**
 	 * Sets new credentials for given key
@@ -50,13 +44,14 @@ export class Credentials extends ICredentials {
 		return this.setData(fullData, encryptionKey);
 	}
 
-
 	/**
 	 * Returns the decrypted credential object
 	 */
 	getData(encryptionKey: string, nodeType?: string): ICredentialDataDecryptedObject {
 		if (nodeType && !this.hasNodeAccess(nodeType)) {
-			throw new Error(`The node of type "${nodeType}" does not have access to credentials "${this.name}" of type "${this.type}".`);
+			throw new Error(
+				`The node of type "${nodeType}" does not have access to credentials "${this.name}" of type "${this.type}".`,
+			);
 		}
 
 		if (this.data === undefined) {
@@ -68,10 +63,11 @@ export class Credentials extends ICredentials {
 		try {
 			return JSON.parse(decryptedData.toString(enc.Utf8));
 		} catch (e) {
-			throw new Error('Credentials could not be decrypted. The reason is that probably a different "encryptionKey" got used to encrypt the data than now to decrypt it.');
+			throw new Error(
+				'Credentials could not be decrypted. The reason is that probably a different "encryptionKey" got used to encrypt the data than now to decrypt it.',
+			);
 		}
 	}
-
 
 	/**
 	 * Returns the decrypted credentials for given key
@@ -89,7 +85,6 @@ export class Credentials extends ICredentials {
 
 		return fullData[key];
 	}
-
 
 	/**
 	 * Returns the encrypted credentials to be saved

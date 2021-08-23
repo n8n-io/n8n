@@ -1,8 +1,6 @@
 try {
 	require('source-map-support').install();
-} catch (error) {
-
-}
+} catch (error) {}
 
 export * from './ActiveWorkflows';
 export * from './ActiveWebhooks';
@@ -16,7 +14,4 @@ export * from './WorkflowExecute';
 
 import * as NodeExecuteFunctions from './NodeExecuteFunctions';
 import * as UserSettings from './UserSettings';
-export {
-	NodeExecuteFunctions,
-	UserSettings,
-};
+export { NodeExecuteFunctions, UserSettings };

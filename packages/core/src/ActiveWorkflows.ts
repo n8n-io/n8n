@@ -13,17 +13,12 @@ import {
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
 
-import {
-	ITriggerTime,
-	IWorkflowData,
-} from './';
-
+import { ITriggerTime, IWorkflowData } from './';
 
 export class ActiveWorkflows {
 	private workflowData: {
 		[key: string]: IWorkflowData;
 	} = {};
-
 
 	/**
 	 * Returns if the workflow is active
@@ -36,7 +31,6 @@ export class ActiveWorkflows {
 		return this.workflowData.hasOwnProperty(id);
 	}
 
-
 	/**
 	 * Returns the ids of the currently active workflows
 	 *
@@ -46,7 +40,6 @@ export class ActiveWorkflows {
 	allActiveWorkflows(): string[] {
 		return Object.keys(this.workflowData);
 	}
-
 
 	/**
 	 * Returns the Workflow data for the workflow with
@@ -60,7 +53,6 @@ export class ActiveWorkflows {
 		return this.workflowData[id];
 	}
 
-
 	/**
 	 * Makes a workflow active
 	 *
@@ -70,14 +62,28 @@ export class ActiveWorkflows {
 	 * @returns {Promise<void>}
 	 * @memberof ActiveWorkflows
 	 */
-	async add(id: string, workflow: Workflow, additionalData: IWorkflowExecuteAdditionalData, mode: WorkflowExecuteMode, activation: WorkflowActivateMode, getTriggerFunctions: IGetExecuteTriggerFunctions, getPollFunctions: IGetExecutePollFunctions): Promise<void> {
+	async add(
+		id: string,
+		workflow: Workflow,
+		additionalData: IWorkflowExecuteAdditionalData,
+		mode: WorkflowExecuteMode,
+		activation: WorkflowActivateMode,
+		getTriggerFunctions: IGetExecuteTriggerFunctions,
+		getPollFunctions: IGetExecutePollFunctions,
+	): Promise<void> {
 		this.workflowData[id] = {};
 		const triggerNodes = workflow.getTriggerNodes();
 
 		let triggerResponse: ITriggerResponse | undefined;
 		this.workflowData[id].triggerResponses = [];
 		for (const triggerNode of triggerNodes) {
-			triggerResponse = await workflow.runTrigger(triggerNode, getTriggerFunctions, additionalData, mode, activation);
+			triggerResponse = await workflow.runTrigger(
+				triggerNode,
+				getTriggerFunctions,
+				additionalData,
+				mode,
+				activation,
+			);
 			if (triggerResponse !== undefined) {
 				// If a response was given save it
 				this.workflowData[id].triggerResponses!.push(triggerResponse);
@@ -88,11 +94,19 @@ export class ActiveWorkflows {
 		if (pollNodes.length) {
 			this.workflowData[id].pollResponses = [];
 			for (const pollNode of pollNodes) {
-				this.workflowData[id].pollResponses!.push(await this.activatePolling(pollNode, workflow, additionalData, getPollFunctions, mode, activation));
+				this.workflowData[id].pollResponses!.push(
+					await this.activatePolling(
+						pollNode,
+						workflow,
+						additionalData,
+						getPollFunctions,
+						mode,
+						activation,
+					),
+				);
 			}
 		}
 	}
-
 
 	/**
 	 * Activates polling for the given node
@@ -104,7 +118,14 @@ export class ActiveWorkflows {
 	 * @returns {Promise<IPollResponse>}
 	 * @memberof ActiveWorkflows
 	 */
-	async activatePolling(node: INode, workflow: Workflow, additionalData: IWorkflowExecuteAdditionalData, getPollFunctions: IGetExecutePollFunctions, mode: WorkflowExecuteMode, activation: WorkflowActivateMode): Promise<IPollResponse> {
+	async activatePolling(
+		node: INode,
+		workflow: Workflow,
+		additionalData: IWorkflowExecuteAdditionalData,
+		getPollFunctions: IGetExecutePollFunctions,
+		mode: WorkflowExecuteMode,
+		activation: WorkflowActivateMode,
+	): Promise<IPollResponse> {
 		const pollFunctions = getPollFunctions(workflow, node, additionalData, mode, activation);
 
 		const pollTimes = pollFunctions.getNodeParameter('pollTimes') as unknown as {
@@ -113,12 +134,12 @@ export class ActiveWorkflows {
 
 		// Define the order the cron-time-parameter appear
 		const parameterOrder = [
-			'second',     // 0 - 59
-			'minute',     // 0 - 59
-			'hour',       // 0 - 23
+			'second', // 0 - 59
+			'minute', // 0 - 59
+			'hour', // 0 - 23
 			'dayOfMonth', // 1 - 31
-			'month',      // 0 - 11(Jan - Dec)
-			'weekday',    // 0 - 6(Sun - Sat)
+			'month', // 0 - 11(Jan - Dec)
+			'weekday', // 0 - 6(Sun - Sat)
 		];
 
 		// Get all the trigger times
@@ -165,7 +186,10 @@ export class ActiveWorkflows {
 
 		// The trigger function to execute when the cron-time got reached
 		const executeTrigger = async () => {
-			Logger.info(`Polling trigger initiated for workflow "${workflow.name}"`, {workflowName: workflow.name, workflowId: workflow.id});
+			Logger.info(`Polling trigger initiated for workflow "${workflow.name}"`, {
+				workflowName: workflow.name,
+				workflowId: workflow.id,
+			});
 			const pollResponse = await workflow.runPoll(node, pollFunctions);
 
 			if (pollResponse !== null) {
@@ -201,7 +225,6 @@ export class ActiveWorkflows {
 		};
 	}
 
-
 	/**
 	 * Makes a workflow inactive
 	 *
@@ -212,7 +235,9 @@ export class ActiveWorkflows {
 	async remove(id: string): Promise<void> {
 		if (!this.isActive(id)) {
 			// Workflow is currently not registered
-			throw new Error(`The workflow with the id "${id}" is currently not active and can so not be removed`);
+			throw new Error(
+				`The workflow with the id "${id}" is currently not active and can so not be removed`,
+			);
 		}
 
 		const workflowData = this.workflowData[id];
@@ -235,5 +260,4 @@ export class ActiveWorkflows {
 
 		delete this.workflowData[id];
 	}
-
 }
