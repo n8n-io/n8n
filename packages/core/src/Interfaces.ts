@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import {
 	IAllExecuteFunctions,
 	IBinaryData,
@@ -26,7 +27,7 @@ interface Constructable<T> {
 }
 
 export interface IProcessMessage {
-	data?: any; // tslint:disable-line:no-any
+	data?: any;
 	type: string;
 }
 

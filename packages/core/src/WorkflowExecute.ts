@@ -1,3 +1,15 @@
+/* eslint-disable @typescript-eslint/prefer-optional-chain */
+/* eslint-disable no-await-in-loop */
+/* eslint-disable no-labels */
+/* eslint-disable @typescript-eslint/no-non-null-assertion */
+/* eslint-disable @typescript-eslint/no-unsafe-member-access */
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
+/* eslint-disable no-continue */
+/* eslint-disable no-prototype-builtins */
+/* eslint-disable no-plusplus */
+/* eslint-disable no-restricted-syntax */
+/* eslint-disable no-param-reassign */
+/* eslint-disable @typescript-eslint/prefer-nullish-coalescing */
 import * as PCancelable from 'p-cancelable';
 
 import {
@@ -20,13 +32,17 @@ import {
 	WorkflowExecuteMode,
 	WorkflowOperationError,
 } from 'n8n-workflow';
-import { NodeExecuteFunctions } from './';
-
+// eslint-disable-next-line import/no-extraneous-dependencies
 import { get } from 'lodash';
+// eslint-disable-next-line import/no-cycle
+import { NodeExecuteFunctions } from '.';
 
+// eslint-disable-next-line import/prefer-default-export
 export class WorkflowExecute {
 	runExecutionData: IRunExecutionData;
+
 	private additionalData: IWorkflowExecuteAdditionalData;
+
 	private mode: WorkflowExecuteMode;
 
 	constructor(
@@ -58,7 +74,8 @@ export class WorkflowExecute {
 	 * @returns {(Promise<string>)}
 	 * @memberof WorkflowExecute
 	 */
-	run(workflow: Workflow, startNode?: INode, destinationNode?: string): PCancelable<IRun> {
+	// @ts-ignore
+	async run(workflow: Workflow, startNode?: INode, destinationNode?: string): PCancelable<IRun> {
 		// Get the nodes to start workflow execution from
 		startNode = startNode || workflow.getStartNode(destinationNode);
 
@@ -67,7 +84,7 @@ export class WorkflowExecute {
 		}
 
 		// If a destination node is given we only run the direct parent nodes and no others
-		let runNodeFilter: string[] | undefined = undefined;
+		let runNodeFilter: string[] | undefined;
 		if (destinationNode) {
 			runNodeFilter = workflow.getParentNodes(destinationNode);
 			runNodeFilter.push(destinationNode);
@@ -123,6 +140,7 @@ export class WorkflowExecute {
 		runData: IRunData,
 		startNodes: string[],
 		destinationNode: string,
+		// @ts-ignore
 	): PCancelable<IRun> {
 		let incomingNodeConnections: INodeConnections | undefined;
 		let connection: IConnection;
@@ -151,7 +169,8 @@ export class WorkflowExecute {
 					for (let inputIndex = 0; inputIndex < connections.length; inputIndex++) {
 						connection = connections[inputIndex];
 						incomingData.push(
-							runData[connection.node!][runIndex].data![connection.type][connection.index]!,
+							// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+							runData[connection.node][runIndex].data![connection.type][connection.index]!,
 						);
 					}
 				}
@@ -184,11 +203,11 @@ export class WorkflowExecute {
 							waitingExecution[destinationNode][runIndex][connection.type] = [];
 						}
 
-						if (runData[connection.node!] !== undefined) {
+						if (runData[connection.node] !== undefined) {
 							// Input data exists so add as waiting
 							// incomingDataDestination.push(runData[connection.node!][runIndex].data![connection.type][connection.index]);
 							waitingExecution[destinationNode][runIndex][connection.type].push(
-								runData[connection.node!][runIndex].data![connection.type][connection.index],
+								runData[connection.node][runIndex].data![connection.type][connection.index],
 							);
 						} else {
 							waitingExecution[destinationNode][runIndex][connection.type].push(null);
@@ -199,7 +218,8 @@ export class WorkflowExecute {
 		}
 
 		// Only run the parent nodes and no others
-		let runNodeFilter: string[] | undefined = undefined;
+		let runNodeFilter: string[] | undefined;
+		// eslint-disable-next-line prefer-const
 		runNodeFilter = workflow.getParentNodes(destinationNode);
 		runNodeFilter.push(destinationNode);
 
@@ -229,18 +249,21 @@ export class WorkflowExecute {
 	 * @returns {Promise<IRun>}
 	 * @memberof WorkflowExecute
 	 */
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	async executeHook(hookName: string, parameters: any[]): Promise<void> {
 		// tslint:disable-line:no-any
 		if (this.additionalData.hooks === undefined) {
 			return;
 		}
 
+		// eslint-disable-next-line consistent-return
 		return this.additionalData.hooks.executeHookFunctions(hookName, parameters);
 	}
 
 	/**
 	 * Checks the incoming connection does not receive any data
 	 */
+	// eslint-disable-next-line class-methods-use-this
 	incomingConnectionIsEmpty(
 		runData: IRunData,
 		inputConnections: IConnection[],
@@ -271,7 +294,7 @@ export class WorkflowExecute {
 
 		// Check if node has multiple inputs as then we have to wait for all input data
 		// to be present before we can add it to the node-execution-stack
-		if (workflow.connectionsByDestinationNode[connectionData.node]['main'].length > 1) {
+		if (workflow.connectionsByDestinationNode[connectionData.node].main.length > 1) {
 			// Node has multiple inputs
 			let nodeWasWaiting = true;
 
@@ -293,7 +316,7 @@ export class WorkflowExecute {
 				};
 				for (
 					let i = 0;
-					i < workflow.connectionsByDestinationNode[connectionData.node]['main'].length;
+					i < workflow.connectionsByDestinationNode[connectionData.node].main.length;
 					i++
 				) {
 					this.runExecutionData.executionData!.waitingExecution[connectionData.node][
@@ -333,7 +356,7 @@ export class WorkflowExecute {
 				}
 			}
 
-			if (allDataFound === true) {
+			if (allDataFound) {
 				// All data exists for node to be executed
 				// So add it to the execution stack
 				this.runExecutionData.executionData!.nodeExecutionStack.push({
@@ -354,13 +377,13 @@ export class WorkflowExecute {
 					delete this.runExecutionData.executionData!.waitingExecution[connectionData.node];
 				}
 				return;
-			} else {
-				stillDataMissing = true;
 			}
+			stillDataMissing = true;
 
-			if (nodeWasWaiting === false) {
+			if (!nodeWasWaiting) {
 				// Get a list of all the output nodes that we can check for siblings easier
 				const checkOutputNodes = [];
+				// eslint-disable-next-line @typescript-eslint/no-for-in-array
 				for (const outputIndexParent in workflow.connectionsBySourceNode[parentNodeName].main) {
 					if (
 						!workflow.connectionsBySourceNode[parentNodeName].main.hasOwnProperty(outputIndexParent)
@@ -380,12 +403,12 @@ export class WorkflowExecute {
 				// If that is not the case add it.
 				for (
 					let inputIndex = 0;
-					inputIndex < workflow.connectionsByDestinationNode[connectionData.node]['main'].length;
+					inputIndex < workflow.connectionsByDestinationNode[connectionData.node].main.length;
 					inputIndex++
 				) {
-					for (const inputData of workflow.connectionsByDestinationNode[connectionData.node][
-						'main'
-					][inputIndex]) {
+					for (const inputData of workflow.connectionsByDestinationNode[connectionData.node].main[
+						inputIndex
+					]) {
 						if (inputData.node === parentNodeName) {
 							// Is the node we come from so its data will be available for sure
 							continue;
@@ -481,20 +504,18 @@ export class WorkflowExecute {
 						if (workflow.connectionsByDestinationNode[nodeToAdd] === undefined) {
 							// Add empty item if the node does not have any input connections
 							addEmptyItem = true;
-						} else {
-							if (
-								this.incomingConnectionIsEmpty(
-									this.runExecutionData.resultData.runData,
-									workflow.connectionsByDestinationNode[nodeToAdd].main[0],
-									runIndex,
-								)
-							) {
-								// Add empty item also if the input data is empty
-								addEmptyItem = true;
-							}
+						} else if (
+							this.incomingConnectionIsEmpty(
+								this.runExecutionData.resultData.runData,
+								workflow.connectionsByDestinationNode[nodeToAdd].main[0],
+								runIndex,
+							)
+						) {
+							// Add empty item also if the input data is empty
+							addEmptyItem = true;
 						}
 
-						if (addEmptyItem === true) {
+						if (addEmptyItem) {
 							// Add only node if it does not have any inputs because else it will
 							// be added by its input node later anyway.
 							this.runExecutionData.executionData!.nodeExecutionStack.push({
@@ -528,7 +549,7 @@ export class WorkflowExecute {
 			connectionDataArray[connectionData.index] = nodeSuccessData[outputIndex];
 		}
 
-		if (stillDataMissing === true) {
+		if (stillDataMissing) {
 			// Additional data is needed to run node so add it to waiting
 			if (
 				!this.runExecutionData.executionData!.waitingExecution.hasOwnProperty(connectionData.node)
@@ -556,7 +577,8 @@ export class WorkflowExecute {
 	 * @returns {Promise<string>}
 	 * @memberof WorkflowExecute
 	 */
-	processRunExecutionData(workflow: Workflow): PCancelable<IRun> {
+	// @ts-ignore
+	async processRunExecutionData(workflow: Workflow): PCancelable<IRun> {
 		Logger.verbose('Workflow execution started', { workflowId: workflow.id });
 
 		const startedAt = new Date();
@@ -591,7 +613,7 @@ export class WorkflowExecute {
 		let currentExecutionTry = '';
 		let lastExecutionTry = '';
 
-		return new PCancelable((resolve, reject, onCancel) => {
+		return new PCancelable(async (resolve, reject, onCancel) => {
 			let gotCancel = false;
 
 			onCancel.shouldReject = false;
@@ -611,8 +633,8 @@ export class WorkflowExecute {
 					};
 
 					// Set the incoming data of the node that it can be saved correctly
-					executionData = this.runExecutionData.executionData!
-						.nodeExecutionStack[0] as IExecuteData;
+					// eslint-disable-next-line prefer-destructuring
+					executionData = this.runExecutionData.executionData!.nodeExecutionStack[0];
 					this.runExecutionData.resultData = {
 						runData: {
 							[executionData.node.name]: [
@@ -643,7 +665,7 @@ export class WorkflowExecute {
 					}
 
 					// @ts-ignore
-					if (gotCancel === true) {
+					if (gotCancel) {
 						return Promise.resolve();
 					}
 
@@ -673,7 +695,7 @@ export class WorkflowExecute {
 
 					if (
 						this.runExecutionData.startData!.runNodeFilter !== undefined &&
-						this.runExecutionData.startData!.runNodeFilter!.indexOf(executionNode.name) === -1
+						this.runExecutionData.startData!.runNodeFilter.indexOf(executionNode.name) === -1
 					) {
 						// If filter is set and node is not on filter skip it, that avoids the problem that it executes
 						// leafs that are parallel to a selected destinationNode. Normally it would execute them because
@@ -688,7 +710,8 @@ export class WorkflowExecute {
 							let inputConnections: IConnection[][];
 							let connectionIndex: number;
 
-							inputConnections = workflow.connectionsByDestinationNode[executionNode.name]['main'];
+							// eslint-disable-next-line prefer-const
+							inputConnections = workflow.connectionsByDestinationNode[executionNode.name].main;
 
 							for (
 								connectionIndex = 0;
@@ -704,7 +727,7 @@ export class WorkflowExecute {
 									continue;
 								}
 
-								if (!executionData.data!.hasOwnProperty('main')) {
+								if (!executionData.data.hasOwnProperty('main')) {
 									// ExecutionData does not even have the connection set up so can
 									// not have that data, so add it again to be executed later
 									this.runExecutionData.executionData!.nodeExecutionStack.push(executionData);
@@ -716,8 +739,8 @@ export class WorkflowExecute {
 								// The most nodes just have one but merge node for example has two and data
 								// of both inputs has to be available to be able to process the node.
 								if (
-									executionData.data!.main!.length < connectionIndex ||
-									executionData.data!.main![connectionIndex] === null
+									executionData.data.main!.length < connectionIndex ||
+									executionData.data.main![connectionIndex] === null
 								) {
 									// Does not have the data of the connections so add back to stack
 									this.runExecutionData.executionData!.nodeExecutionStack.push(executionData);
@@ -750,7 +773,7 @@ export class WorkflowExecute {
 
 					for (let tryIndex = 0; tryIndex < maxTries; tryIndex++) {
 						// @ts-ignore
-						if (gotCancel === true) {
+						if (gotCancel) {
 							return Promise.resolve();
 						}
 						try {
@@ -760,6 +783,7 @@ export class WorkflowExecute {
 								if (waitBetweenTries !== 0) {
 									// TODO: Improve that in the future and check if other nodes can
 									//       be executed in the meantime
+									// eslint-disable-next-line @typescript-eslint/no-shadow
 									await new Promise((resolve) => {
 										setTimeout(() => {
 											resolve(undefined);
@@ -804,7 +828,7 @@ export class WorkflowExecute {
 								}
 							}
 
-							if (nodeSuccessData === null && !this.runExecutionData.waitTill!!) {
+							if (nodeSuccessData === null && !this.runExecutionData.waitTill!) {
 								// If null gets returned it means that the node did succeed
 								// but did not have any data. So the branch should end
 								// (meaning the nodes afterwards should not be processed)
@@ -848,7 +872,7 @@ export class WorkflowExecute {
 								// Simply get the input data of the node if it has any and pass it through
 								// to the next node
 								if (executionData.data.main[0] !== null) {
-									nodeSuccessData = [executionData.data.main[0] as INodeExecutionData[]];
+									nodeSuccessData = [executionData.data.main[0]];
 								}
 							}
 						} else {
@@ -892,7 +916,7 @@ export class WorkflowExecute {
 						continue;
 					}
 
-					if (this.runExecutionData.waitTill!!) {
+					if (this.runExecutionData.waitTill!) {
 						await this.executeHook('nodeExecuteAfter', [
 							executionNode.name,
 							taskData,
@@ -909,13 +933,15 @@ export class WorkflowExecute {
 					// be executed next
 					if (workflow.connectionsBySourceNode.hasOwnProperty(executionNode.name)) {
 						if (workflow.connectionsBySourceNode[executionNode.name].hasOwnProperty('main')) {
-							let outputIndex: string, connectionData: IConnection;
+							let outputIndex: string;
+							let connectionData: IConnection;
 							// Iterate over all the outputs
 
 							// Add the nodes to be executed
-							for (outputIndex in workflow.connectionsBySourceNode[executionNode.name]['main']) {
+							// eslint-disable-next-line @typescript-eslint/no-for-in-array
+							for (outputIndex in workflow.connectionsBySourceNode[executionNode.name].main) {
 								if (
-									!workflow.connectionsBySourceNode[executionNode.name]['main'].hasOwnProperty(
+									!workflow.connectionsBySourceNode[executionNode.name].main.hasOwnProperty(
 										outputIndex,
 									)
 								) {
@@ -923,7 +949,7 @@ export class WorkflowExecute {
 								}
 
 								// Iterate over all the different connections of this output
-								for (connectionData of workflow.connectionsBySourceNode[executionNode.name]['main'][
+								for (connectionData of workflow.connectionsBySourceNode[executionNode.name].main[
 									outputIndex
 								]) {
 									if (!workflow.nodes.hasOwnProperty(connectionData.node)) {
@@ -987,12 +1013,15 @@ export class WorkflowExecute {
 
 					// Check if static data changed
 					let newStaticData: IDataObject | undefined;
+					// eslint-disable-next-line no-underscore-dangle
 					if (workflow.staticData.__dataChanged === true) {
 						// Static data of workflow changed
 						newStaticData = workflow.staticData;
 					}
 					await this.executeHook('workflowExecuteAfter', [fullRunData, newStaticData]).catch(
+						// eslint-disable-next-line @typescript-eslint/no-shadow
 						(error) => {
+							// eslint-disable-next-line no-console
 							console.error('There was a problem running hook "workflowExecuteAfter"', error);
 						},
 					);
@@ -1004,11 +1033,11 @@ export class WorkflowExecute {
 		});
 	}
 
-	// @ts-ignore
 	async processSuccessExecution(
 		startedAt: Date,
 		workflow: Workflow,
 		executionError?: ExecutionError,
+		// @ts-ignore
 	): PCancelable<IRun> {
 		const fullRunData = this.getFullRunData(startedAt);
 
@@ -1022,7 +1051,8 @@ export class WorkflowExecute {
 				message: executionError.message,
 				stack: executionError.stack,
 			} as ExecutionError;
-		} else if (this.runExecutionData.waitTill!!) {
+		} else if (this.runExecutionData.waitTill!) {
+			// eslint-disable-next-line @typescript-eslint/restrict-template-expressions
 			Logger.verbose(`Workflow execution will wait until ${this.runExecutionData.waitTill}`, {
 				workflowId: workflow.id,
 			});
@@ -1034,6 +1064,7 @@ export class WorkflowExecute {
 
 		// Check if static data changed
 		let newStaticData: IDataObject | undefined;
+		// eslint-disable-next-line no-underscore-dangle
 		if (workflow.staticData.__dataChanged === true) {
 			// Static data of workflow changed
 			newStaticData = workflow.staticData;
