@@ -573,7 +573,7 @@ export default mixins(
 			i.el-select__caret {
 				color: var(--color-foreground-xlight);
 			}
-			> .el-input .el-input__inner {
+			.el-input .el-input__inner {
 				&,
 				&::placeholder,
 				&:hover,
