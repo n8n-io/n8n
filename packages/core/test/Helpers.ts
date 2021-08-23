@@ -22,11 +22,11 @@ import { Credentials, IDeferredPromise, IExecuteFunctions } from '../src';
 
 export class CredentialsHelper extends ICredentialsHelper {
 	getDecrypted(name: string, type: string): Promise<ICredentialDataDecryptedObject> {
-		return new Promise(res => res({}));
+		return new Promise((res) => res({}));
 	}
 
 	getCredentials(name: string, type: string): Promise<Credentials> {
-		return new Promise(res => {
+		return new Promise((res) => {
 			res(new Credentials('', '', [], ''));
 		});
 	}
