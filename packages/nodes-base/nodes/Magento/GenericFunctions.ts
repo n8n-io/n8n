@@ -24,7 +24,7 @@ import {
 } from './types';
 
 export async function magentoApiRequest(this: IWebhookFunctions | IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions, method: string, resource: string, body: any = {}, qs: IDataObject = {}, uri?: string, headers: IDataObject = {}, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
-	const credentials = this.getCredentials('magento2Api') as IDataObject;
+	const credentials = await this.getCredentials('magento2Api') as IDataObject;
 
 	let options: OptionsWithUri = {
 		headers: {
@@ -42,7 +42,6 @@ export async function magentoApiRequest(this: IWebhookFunctions | IHookFunctions
 		if (Object.keys(body).length === 0) {
 			delete options.body;
 		}
-		console.log(JSON.stringify(options, undefined, 2));
 		//@ts-ignore
 		return await this.helpers.request.call(this, options);
 	} catch (error) {
@@ -289,6 +288,25 @@ export function getSearchFilters(resource: string, filterableAttributeFunction: 
 			],
 		},
 		{
+			displayName: 'See <a href="https://devdocs.magento.com/guides/v2.4/rest/performing-searches.html">Magento guide</a> to creating filters',
+			name: 'jsonNotice',
+			type: 'notice',
+			displayOptions: {
+				show: {
+					resource: [
+						resource,
+					],
+					operation: [
+						'getAll',
+					],
+					filterType: [
+						'json',
+					],
+				},
+			},
+			default: '',
+		},
+		{
 			displayName: 'Filters (JSON)',
 			name: 'filterJson',
 			type: 'string',
@@ -309,7 +327,7 @@ export function getSearchFilters(resource: string, filterableAttributeFunction: 
 				},
 			},
 			default: '',
-			description: `<a target="_blank" href="https://devdocs.magento.com/guides/v2.4/rest/performing-searches.html">Magento guide</a> to creating filters`,
+			description: '',
 		},
 		{
 			displayName: 'Options',
@@ -480,8 +498,8 @@ function getConditions(attributeFunction: string) {
 }
 
 export function getFilterQuery(data: { conditions?: Filter[], matchType: string, sort: [{ direction: string, field: string }] }): Search {
-	
-	if (data.conditions?.length === 0) {
+
+	if (!data.hasOwnProperty('conditions') || data.conditions?.length === 0) {
 		throw new Error('At least one filter has to be set');
 	}
 
@@ -1009,15 +1027,15 @@ export const sort = (a: { name: string }, b: { name: string }) => {
 };
 
 // tslint:disable-next-line: no-any
-export async function getProductAttributes(this: ILoadOptionsFunctions, filter?: (attribute: ProductAttribute) => any, extraValue?: { name: string, value: string }): Promise<INodePropertyOptions[]>  {
+export async function getProductAttributes(this: ILoadOptionsFunctions, filter?: (attribute: ProductAttribute) => any, extraValue?: { name: string, value: string }): Promise<INodePropertyOptions[]> {
 	//https://magento.redoc.ly/2.3.7-admin/tag/productsattribute-setssetslist#operation/catalogAttributeSetRepositoryV1GetListGet
 
 	let { items: attributes }: { items: ProductAttribute[] } = await magentoApiRequest.call(this, 'GET', `/rest/default/V1/products/attributes`, {}, {
 		search_criteria: 0,
 	});
-	
-	attributes = attributes.filter((attribute) => 
-	attribute.default_frontend_label !== undefined && attribute.default_frontend_label !== '');
+
+	attributes = attributes.filter((attribute) =>
+		attribute.default_frontend_label !== undefined && attribute.default_frontend_label !== '');
 
 	if (filter) {
 		attributes = attributes.filter(filter);

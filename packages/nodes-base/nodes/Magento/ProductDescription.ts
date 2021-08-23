@@ -219,6 +219,6 @@ export const productFields = [
 		'product',
 		//'getProductAttributesFields',
 		'getFilterableProductAttributes',
-		'getProductSortableAttributes'),
+		'getSortableProductAttributes'),
 
 ] as INodeProperties[];

@@ -232,7 +232,9 @@ export const customerFields = [
 		default: 5,
 		description: 'How many results to return',
 	},
-	//...getSearchFilters('customer', 'getSystemAttributes'),
-
-
+	...getSearchFilters(
+		'customer',
+		'getSystemAttributes',
+		'getSystemAttributes',
+	),
 ] as INodeProperties[];
