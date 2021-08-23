@@ -4,7 +4,7 @@
 		:eventBus="modalBus"
 		@enter="save"
 		size="sm"
-		title="Duplicate Workflow"	
+		title="Duplicate Workflow"
 	>
 		<template v-slot:content>
 			<el-row>
@@ -109,7 +109,7 @@ export default mixins(showMessage, workflowHelpers).extend({
 
 			this.$data.isSaving = true;
 
-			const saved = await this.saveAsNewWorkflow({name, tags: this.currentTagIds});
+			const saved = await this.saveAsNewWorkflow({name, tags: this.currentTagIds, resetWebhookUrls: true});
 
 			if (saved) {
 				this.closeDialog();

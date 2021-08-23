@@ -29,7 +29,7 @@ export default Vue.extend({
 $--horiz-padding: 15px;
 
 *,
-*::after { 
+*::after {
 	box-sizing: border-box;
 }
 

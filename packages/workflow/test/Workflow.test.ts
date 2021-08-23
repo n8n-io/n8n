@@ -1099,18 +1099,8 @@ describe('Workflow', () => {
 					runExecutionData.resultData.runData!['Node1']![0]!.data!.main[0]!;
 
 				for (const parameterName of Object.keys(testData.output)) {
-					const parameterValue = nodes.find((node) => node.name === activeNodeName)!.parameters[
-						parameterName
-					];
-					const result = workflow.expression.getParameterValue(
-						parameterValue,
-						runExecutionData,
-						runIndex,
-						itemIndex,
-						activeNodeName,
-						connectionInputData,
-						'manual',
-					);
+					const parameterValue = nodes.find((node) => node.name === activeNodeName)!.parameters[parameterName];
+					const result = workflow.expression.getParameterValue(parameterValue, runExecutionData, runIndex, itemIndex, activeNodeName, connectionInputData, 'manual', {});
 					// @ts-ignore
 					expect(result).toEqual(testData.output[parameterName]);
 				}
@@ -1252,18 +1242,8 @@ describe('Workflow', () => {
 				runExecutionData.resultData.runData!['Node1']![0]!.data!.main[0]!;
 			const parameterName = 'values';
 
-			const parameterValue = nodes.find((node) => node.name === activeNodeName)!.parameters[
-				parameterName
-			];
-			const result = workflow.expression.getParameterValue(
-				parameterValue,
-				runExecutionData,
-				runIndex,
-				itemIndex,
-				activeNodeName,
-				connectionInputData,
-				'manual',
-			);
+			const parameterValue = nodes.find((node) => node.name === activeNodeName)!.parameters[parameterName];
+			const result = workflow.expression.getParameterValue(parameterValue, runExecutionData, runIndex, itemIndex, activeNodeName, connectionInputData, 'manual', {});
 
 			expect(result).toEqual({
 				string: [

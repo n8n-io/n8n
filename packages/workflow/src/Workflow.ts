@@ -704,13 +704,18 @@ export class Workflow {
 	 * @returns {(number | undefined)}
 	 * @memberof Workflow
 	 */
-	getNodeConnectionOutputIndex(
-		nodeName: string,
-		parentNodeName: string,
-		type = 'main',
-		depth = -1,
-		checkedNodes?: string[],
-	): number | undefined {
+	getNodeConnectionOutputIndex(nodeName: string, parentNodeName: string, type = 'main', depth = -1, checkedNodes?: string[]): number | undefined {
+		const node = this.getNode(parentNodeName);
+		if (node === null) {
+			return undefined;
+		}
+		const nodeType = this.nodeTypes.getByName(node.type) as INodeType;
+		if (nodeType.description.outputs.length === 1) {
+			// If the parent node has only one output, it can only be connected
+			// to that one. So no further checking is required.
+			return 0;
+		}
+
 		depth = depth === -1 ? -1 : depth;
 		const newDepth = depth === -1 ? depth : depth - 1;
 		if (depth === 0) {
@@ -744,10 +749,9 @@ export class Workflow {
 					return connection.index;
 				}
 
-				if (checkedNodes.includes(connection.node)) {
-					// Node got checked already before
-					// eslint-disable-next-line consistent-return
-					return;
+				if (checkedNodes!.includes(connection.node)) {
+					// Node got checked already before so continue with the next one
+					continue;
 				}
 
 				outputIndex = this.getNodeConnectionOutputIndex(
