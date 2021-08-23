@@ -21,12 +21,14 @@ import {
 import { Credentials, IDeferredPromise, IExecuteFunctions } from '../src';
 
 export class CredentialsHelper extends ICredentialsHelper {
-	getDecrypted(name: string, type: string): ICredentialDataDecryptedObject {
-		return {};
+	getDecrypted(name: string, type: string): Promise<ICredentialDataDecryptedObject> {
+		return new Promise(res => res({}));
 	}
 
-	getCredentials(name: string, type: string): Credentials {
-		return new Credentials('', '', [], '');
+	getCredentials(name: string, type: string): Promise<Credentials> {
+		return new Promise(res => {
+			res(new Credentials('', '', [], ''));
+		});
 	}
 
 	async updateCredentials(
@@ -764,8 +766,7 @@ export function WorkflowExecuteAdditionalData(
 	};
 
 	return {
-		credentials: {},
-		credentialsHelper: new CredentialsHelper({}, ''),
+		credentialsHelper: new CredentialsHelper(''),
 		hooks: new WorkflowHooks(hookFunctions, 'trigger', '1', workflowData),
 		executeWorkflow: async (workflowInfo: IExecuteWorkflowInfo): Promise<any> => {},
 		sendMessageToUI: (message: string) => {},
@@ -773,6 +774,7 @@ export function WorkflowExecuteAdditionalData(
 		encryptionKey: 'test',
 		timezone: 'America/New_York',
 		webhookBaseUrl: 'webhook',
+		webhookWaitingBaseUrl: 'webhook-waiting',
 		webhookTestBaseUrl: 'webhook-test',
 	};
 }

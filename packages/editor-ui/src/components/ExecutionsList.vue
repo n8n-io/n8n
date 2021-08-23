@@ -82,7 +82,10 @@
 						<el-tooltip placement="top" effect="light">
 							<div slot="content" v-html="statusTooltipText(scope.row)"></div>
 
-							<span class="status-badge running" v-if="scope.row.stoppedAt === undefined">
+							<span class="status-badge running" v-if="scope.row.waitTill">
+								Waiting
+							</span>
+							<span class="status-badge running" v-else-if="scope.row.stoppedAt === undefined">
 								Running
 							</span>
 							<span class="status-badge success" v-else-if="scope.row.finished">
@@ -98,7 +101,7 @@
 
 						<el-dropdown trigger="click" @command="handleRetryClick">
 							<span class="el-dropdown-link">
-								<el-button class="retry-button" v-bind:class="{ warning: scope.row.stoppedAt === null }" circle v-if="scope.row.stoppedAt !== undefined && !scope.row.finished && scope.row.retryOf === undefined && scope.row.retrySuccessId === undefined" type="text" size="small" title="Retry execution">
+								<el-button class="retry-button" v-bind:class="{ warning: scope.row.stoppedAt === null }" circle v-if="scope.row.stoppedAt !== undefined && !scope.row.finished && scope.row.retryOf === undefined && scope.row.retrySuccessId === undefined && scope.row.waitTill === undefined" type="text" size="small" title="Retry execution">
 									<font-awesome-icon icon="redo" />
 								</el-button>
 							</span>
@@ -128,12 +131,12 @@
 				</el-table-column>
 				<el-table-column label="" width="100" align="center">
 					<template slot-scope="scope">
-						<span v-if="scope.row.stoppedAt === undefined">
+						<span v-if="scope.row.stoppedAt === undefined || scope.row.waitTill" class="execution-actions">
 							<el-button circle title="Stop Execution" @click.stop="stopExecution(scope.row.id)" :loading="stoppingExecutions.includes(scope.row.id)" size="mini">
 								<font-awesome-icon icon="stop" />
 							</el-button>
 						</span>
-						<span v-else-if="scope.row.id">
+						<span v-if="scope.row.stoppedAt !== undefined && scope.row.id" class="execution-actions">
 							<el-button circle title="Open Past Execution" @click.stop="displayExecution(scope.row)" size="mini">
 								<font-awesome-icon icon="folder-open" />
 							</el-button>
@@ -159,6 +162,8 @@ import ExecutionTime from '@/components/ExecutionTime.vue';
 import WorkflowActivator from '@/components/WorkflowActivator.vue';
 
 import { externalHooks } from '@/components/mixins/externalHooks';
+import { WAIT_TIME_UNLIMITED } from '@/constants';
+
 import { restApi } from '@/components/mixins/restApi';
 import { genericHelpers } from '@/components/mixins/genericHelpers';
 import { showMessage } from '@/components/mixins/showMessage';
@@ -235,6 +240,10 @@ export default mixins(
 					id: 'success',
 					name: 'Success',
 				},
+				{
+					id: 'waiting',
+					name: 'Waiting',
+				},
 			],
 
 		};
@@ -249,7 +258,7 @@ export default mixins(
 			if (['ALL', 'running'].includes(this.filter.status)) {
 				returnData.push.apply(returnData, this.activeExecutions);
 			}
-			if (['ALL', 'error', 'success'].includes(this.filter.status)) {
+			if (['ALL', 'error', 'success', 'waiting'].includes(this.filter.status)) {
 				returnData.push.apply(returnData, this.finishedExecutions);
 			}
 
@@ -287,7 +296,9 @@ export default mixins(
 			if (this.filter.workflowId !== 'ALL') {
 				filter.workflowId = this.filter.workflowId;
 			}
-			if (['error', 'success'].includes(this.filter.status)) {
+			if (this.filter.status === 'waiting') {
+				filter.waitTill = true;
+			} else if (['error', 'success'].includes(this.filter.status)) {
 				filter.finished = this.filter.status === 'success';
 			}
 			return filter;
@@ -609,7 +620,13 @@ export default mixins(
 			this.isDataLoading = false;
 		},
 		statusTooltipText (entry: IExecutionsSummary): string {
-			if (entry.stoppedAt === undefined) {
+			if (entry.waitTill) {
+				const waitDate = new Date(entry.waitTill);
+				if (waitDate.toISOString() === WAIT_TIME_UNLIMITED) {
+					return 'The workflow is waiting indefinitely for an incoming webhook call.';
+				}
+				return `The worklow is waiting till ${waitDate.toLocaleDateString()} ${waitDate.toLocaleTimeString()}.`;
+			} else if (entry.stoppedAt === undefined) {
 				return 'The worklow is currently executing.';
 			} else if (entry.finished === true && entry.retryOf !== undefined) {
 				return `The workflow execution was a retry of "${entry.retryOf}" and it was successful.`;
@@ -657,6 +674,12 @@ export default mixins(
 .autorefresh {
 	padding-right: 0.5em;
 	text-align: right;
+}
+
+.execution-actions {
+	button {
+		margin: 0 0.25em;
+	}
 }
 
 .filters {
