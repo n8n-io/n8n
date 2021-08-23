@@ -40,6 +40,7 @@ export default {
 
 const methods = {
 	onInput: action('input'),
+	onChange: action('change'),
 };
 
 const Template = (args, { argTypes }) => ({
@@ -48,7 +49,7 @@ const Template = (args, { argTypes }) => ({
 		N8nSelect,
 		N8nOption,
 	},
-	template: '<n8n-select v-bind="$props" v-model="val" @input="onInput"><n8n-option value="1">op1</n8n-option><n8n-option value="2">op2</n8n-option></n8n-select>',
+	template: '<n8n-select v-bind="$props" v-model="val" @input="onInput" @change="onChange"><n8n-option value="1">op1</n8n-option><n8n-option value="2">op2</n8n-option></n8n-select>',
 	data() {
 		return {
 			val: '',
@@ -65,7 +66,7 @@ Filterable.args = {
 	defaultFirstOption: true,
 };
 
-const selects = ['large', 'medium', 'small', 'mini'].map((size) => `<n8n-select v-bind="$props" v-model="val" @input="onInput" size="${size}"><n8n-option value="1">op1</n8n-option><n8n-option value="2">op2</n8n-option></n8n-select>`).join('');
+const selects = ['large', 'medium', 'small', 'mini'].map((size) => `<n8n-select v-bind="$props" v-model="val" @input="onInput" @change="onChange" size="${size}"><n8n-option value="1">op1</n8n-option><n8n-option value="2">op2</n8n-option></n8n-select>`).join('');
 
 const ManyTemplate = (args, { argTypes }) => ({
 	props: Object.keys(argTypes),

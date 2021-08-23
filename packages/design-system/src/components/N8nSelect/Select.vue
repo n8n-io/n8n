@@ -2,14 +2,10 @@
 	<component
 		:is="$options.components.ElSelect"
 		v-bind="props"
+		:value="props.value"
 		:size="$options.methods.getSize(props.size)"
 		:class="$style[$options.methods.getClass(props)]"
-		@input="listeners.input"
-		@focus="(e) => listeners.focus && listeners.focus(e)"
-		@change="(e) => listeners.change && listeners.change(e)"
-		@blur="(e) => listeners.blur && listeners.blur(e)"
-		@remove-tag="(e) => listeners.removeTag && listeners.removeTag(e)"
-		@visible-change="(e) => listeners.visibleChange && listeners.visibleChange(e)"
+		v-on="listeners"
 		:ref="data.ref"
 	>
 		<template v-slot:prefix>

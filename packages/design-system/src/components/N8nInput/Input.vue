@@ -4,10 +4,8 @@
 		v-bind="props"
 		:size="$options.methods.getSize(props.size)"
 		:class="$style[$options.methods.getClass(props)]"
-		@input="listeners.input"
-		@focus="(e) => listeners.focus && listeners.focus(e)"
-		@change="(e) => listeners.change && listeners.change(e)"
 		:ref="data.ref"
+		v-on="listeners"
 	>
 		<template v-slot:prefix>
 			<slot name="prefix" />

@@ -22,9 +22,11 @@
 				</strong>
 				<div v-else class="title-text">
 					<strong>Items:</strong>
-					<n8n-select class="opts" size="mini" v-model="maxDisplayItems" @click.stop>
-						<n8n-option v-for="option in maxDisplayItemsOptions" :label="option" :value="option" :key="option" />
-					</n8n-select>&nbsp;/
+					<span class="opts">
+						<n8n-select size="mini" v-model="maxDisplayItems" @click.stop>
+							<n8n-option v-for="option in maxDisplayItemsOptions" :label="option" :value="option" :key="option" />
+						</n8n-select>
+					</span>&nbsp;/
 					<strong>{{ dataCount }}</strong>
 				</div>
 				&nbsp;
@@ -41,18 +43,22 @@
 				<span v-if="maxOutputIndex > 0">
 					| Output:&nbsp;
 				</span>
-				<n8n-select v-if="maxOutputIndex > 0" class="opts" size="mini" v-model="outputIndex" @click.stop>
-					<n8n-option v-for="option in (maxOutputIndex + 1)" :label="getOutputName(option-1)" :value="option -1" :key="option">
-					</n8n-option>
-				</n8n-select>
+				<span class="opts" v-if="maxOutputIndex > 0" >
+					<n8n-select size="mini" v-model="outputIndex" @click.stop>
+						<n8n-option v-for="option in (maxOutputIndex + 1)" :label="getOutputName(option-1)" :value="option -1" :key="option">
+						</n8n-option>
+					</n8n-select>
+				</span>
 
 				<span v-if="maxRunIndex > 0">
 					| Data of Execution:&nbsp;
 				</span>
-				<n8n-select v-if="maxRunIndex > 0" class="opts" size="mini" v-model="runIndex" @click.stop>
-					<n8n-option v-for="option in (maxRunIndex + 1)" :label="option + '/' + (maxRunIndex+1)" :value="option-1" :key="option">
-					</n8n-option>
-				</n8n-select>
+				<span class="opts">
+					<n8n-select v-if="maxRunIndex > 0" size="mini" v-model="runIndex" @click.stop>
+						<n8n-option v-for="option in (maxRunIndex + 1)" :label="option + '/' + (maxRunIndex+1)" :value="option-1" :key="option">
+						</n8n-option>
+					</n8n-select>
+				</span>
 
 			</div>
 			<div v-if="hasNodeRun && !hasRunError" class="title-data-display-selector" @click.stop>
