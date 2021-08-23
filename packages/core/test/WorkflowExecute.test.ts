@@ -1348,7 +1348,7 @@ describe('WorkflowExecute', () => {
 
 				const workflowExecute = new WorkflowExecute(additionalData, executionMode);
 
-				const executionData = await workflowExecute.run(workflowInstance, undefined);
+				const executionData = await workflowExecute.run(workflowInstance);
 
 				const result = await waitPromise.promise();
 
