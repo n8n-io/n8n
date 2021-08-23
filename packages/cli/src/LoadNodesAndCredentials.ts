@@ -24,7 +24,7 @@ import {
 	readFile as fsReadFile,
 	stat as fsStat,
 } from 'fs/promises';
-import * as glob from 'glob-promise';
+import * as glob from 'fast-glob';
 import * as path from 'path';
 import { getLogger } from './Logger';
 import * as config from '../config';

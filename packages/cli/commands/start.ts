@@ -28,9 +28,12 @@ import {
 	NodeTypes,
 	Server,
 	TestWebhooks,
+	WaitTracker,
 } from '../src';
 
-import { getLogger } from '../src/Logger';
+import {
+	getLogger,
+} from '../src/Logger';
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-var-requires
 const open = require('open');
@@ -310,6 +313,8 @@ export class Start extends Command {
 				// Start to get active workflows and run their triggers
 				activeWorkflowRunner = ActiveWorkflowRunner.getInstance();
 				await activeWorkflowRunner.init();
+
+				const waitTracker = WaitTracker();
 
 				const editorUrl = GenericHelpers.getBaseUrl();
 				this.log(`\nEditor is now accessible via:\n${editorUrl}`);

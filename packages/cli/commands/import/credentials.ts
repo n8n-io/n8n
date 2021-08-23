@@ -8,7 +8,7 @@ import { Credentials, UserSettings } from 'n8n-core';
 import { LoggerProxy } from 'n8n-workflow';
 
 import * as fs from 'fs';
-import * as glob from 'glob-promise';
+import * as glob from 'fast-glob';
 import * as path from 'path';
 import { getLogger } from '../../src/Logger';
 import { Db } from '../../src';

@@ -489,6 +489,12 @@ const config = convict({
 			env: 'N8N_ENDPOINT_WEBHOOK',
 			doc: 'Path for webhook endpoint',
 		},
+		webhookWaiting: {
+			format: String,
+			default: 'webhook-waiting',
+			env: 'N8N_ENDPOINT_WEBHOOK_WAIT',
+			doc: 'Path for waiting-webhook endpoint',
+		},
 		webhookTest: {
 			format: String,
 			default: 'webhook-test',

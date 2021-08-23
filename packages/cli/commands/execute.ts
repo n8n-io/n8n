@@ -156,11 +156,7 @@ export class Execute extends Command {
 		}
 
 		try {
-			// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-			const credentials = await WorkflowCredentials(workflowData!.nodes);
-
 			const runData: IWorkflowExecutionDataProcess = {
-				credentials,
 				executionMode: 'cli',
 				startNodes: [startNode.name],
 				// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
