@@ -12,6 +12,12 @@
 					title="Execution was successful"
 				/>
 				<font-awesome-icon
+					icon="clock"
+					class="execution-icon warning"
+					v-else-if="executionWaiting"
+					title="Execution waiting"
+				/>
+				<font-awesome-icon
 					icon="times"
 					class="execution-icon error"
 					v-else
@@ -59,6 +65,11 @@ export default mixins(titleChange).extend({
 
 			return !!fullExecution && fullExecution.finished;
 		},
+		executionWaiting(): boolean {
+			const fullExecution = this.$store.getters.getWorkflowExecution;
+
+			return !!fullExecution && !!fullExecution.waitTill;
+		},
 		workflowExecution(): IExecutionResponse | null {
 			return this.$store.getters.getWorkflowExecution;
 		},
@@ -84,8 +95,13 @@ export default mixins(titleChange).extend({
 	box-sizing: border-box;
 }
 
-.execution-icon.success {
+.execution-icon {
+ &.success {
 	color: $--custom-success-text-light;
+ }
+ &.warning {
+	 color: $--custom-running-text;
+ }
 }
 
 .container {

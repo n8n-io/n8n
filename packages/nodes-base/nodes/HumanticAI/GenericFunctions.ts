@@ -15,7 +15,7 @@ import {
 
 export async function humanticAiApiRequest(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: string, resource: string, body: any = {}, qs: IDataObject = {}, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
 	try {
-		const credentials = this.getCredentials('humanticAiApi');
+		const credentials = await this.getCredentials('humanticAiApi');
 		if (credentials === undefined) {
 			throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
 		}

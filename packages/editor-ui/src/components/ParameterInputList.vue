@@ -14,6 +14,8 @@
 				/>
 			</div>
 
+			<div v-else-if="parameter.type === 'notice'" v-html="parameter.displayName" class="parameter-item parameter-notice"></div>
+
 			<div
 				v-else-if="['collection', 'fixedCollection'].includes(parameter.type)"
 				class="multi-parameter"
@@ -298,6 +300,17 @@ export default mixins(
 	.parameter-item:hover > .delete-option,
 	.parameter-name:hover > .delete-option {
 		display: block;
+	}
+
+	.parameter-notice {
+		background-color: #fff5d3;
+		color: $--custom-font-black;
+		margin: 0.3em 0;
+		padding: 0.8em;
+
+		& a {
+			color: $--color-primary;
+		}
 	}
 }
 
