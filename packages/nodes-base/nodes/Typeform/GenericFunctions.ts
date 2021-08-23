@@ -5,7 +5,7 @@ import {
 } from 'n8n-core';
 
 import {
-	INodePropertyOptions,
+	INodePropertyOptions, NodeApiError, NodeOperationError,
 } from 'n8n-workflow';
 
 import {
@@ -65,10 +65,10 @@ export async function apiRequest(this: IHookFunctions | IExecuteFunctions | ILoa
 	try {
 		if (authenticationMethod === 'accessToken') {
 
-			const credentials = this.getCredentials('typeformApi');
+			const credentials = await this.getCredentials('typeformApi');
 
 			if (credentials === undefined) {
-				throw new Error('No credentials got returned!');
+				throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
 			}
 
 			options.headers!['Authorization'] = `bearer ${credentials.accessToken}`;
@@ -78,19 +78,7 @@ export async function apiRequest(this: IHookFunctions | IExecuteFunctions | ILoa
 			return await this.helpers.requestOAuth2!.call(this, 'typeformOAuth2Api', options);
 		}
 	} catch (error) {
-		if (error.statusCode === 401) {
-			// Return a clear error
-			throw new Error('The Typeform credentials are not valid!');
-		}
-
-		if (error.response && error.response.body && error.response.body.description) {
-			// Try to return the error prettier
-			const errorBody = error.response.body;
-			throw new Error(`Typeform error response [${error.statusCode} - errorBody.code]: ${errorBody.description}`);
-		}
-
-		// Expected error data did not get returned so throw the actual error
-		throw error;
+		throw new NodeApiError(this.getNode(), error);
 	}
 }
 
@@ -127,6 +115,12 @@ export async function apiRequestAllItems(this: IHookFunctions | IExecuteFunction
 
 		responseData = await apiRequest.call(this, method, endpoint, body, query);
 
+		console.log({
+			endpoint,
+			method,
+			responseData,
+		});
+
 		returnData.items.push.apply(returnData.items, responseData.items);
 	} while (
 		responseData.page_count !== undefined &&
@@ -149,7 +143,7 @@ export async function getForms(this: ILoadOptionsFunctions): Promise<INodeProper
 	const responseData = await apiRequestAllItems.call(this, 'GET', endpoint, {});
 
 	if (responseData.items === undefined) {
-		throw new Error('No data got returned');
+		throw new NodeOperationError(this.getNode(), 'No data got returned');
 	}
 
 	const returnData: INodePropertyOptions[] = [];

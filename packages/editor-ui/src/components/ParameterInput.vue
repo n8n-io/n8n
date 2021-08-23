@@ -10,7 +10,7 @@
 				<prism-editor v-if="!codeEditDialogVisible" :lineNumbers="true" :readonly="true" :code="displayValue" language="js"></prism-editor>
 			</div>
 
-			<el-input v-else v-model="tempValue" ref="inputField" size="small" :type="getStringInputType" :rows="getArgument('rows')" :value="displayValue" :disabled="isReadOnly" @change="valueChanged" @keydown.stop @focus="setFocus" :title="displayTitle" :placeholder="isValueExpression?'':parameter.placeholder">
+			<el-input v-else v-model="tempValue" ref="inputField" size="small" :type="getStringInputType" :rows="getArgument('rows')" :value="displayValue" :disabled="!isValueExpression && isReadOnly" @change="valueChanged" @keydown.stop @focus="setFocus" :title="displayTitle" :placeholder="isValueExpression?'':parameter.placeholder">
 				<font-awesome-icon v-if="!isValueExpression && !isReadOnly" slot="suffix" icon="external-link-alt" class="edit-window-button clickable" title="Open Edit Window" @click="displayEditDialog()" />
 			</el-input>
 		</div>
@@ -99,6 +99,7 @@
 				<el-dropdown-menu slot="dropdown">
 					<el-dropdown-item command="addExpression" v-if="parameter.noDataExpression !== true && !isValueExpression">Add Expression</el-dropdown-item>
 					<el-dropdown-item command="removeExpression" v-if="parameter.noDataExpression !== true && isValueExpression">Remove Expression</el-dropdown-item>
+					<el-dropdown-item command="refreshOptions" v-if="Boolean(remoteMethod)">Refresh List</el-dropdown-item>
 					<el-dropdown-item command="resetValue" :disabled="isDefault" divided>Reset Value</el-dropdown-item>
 				</el-dropdown-menu>
 			</el-dropdown>
@@ -115,13 +116,10 @@
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
 import { get } from 'lodash';
 
 import {
 	INodeUi,
-	IVariableItemSelected,
-	IVariableSelectorOption,
 } from '@/Interface';
 import {
 	NodeHelpers,
@@ -136,6 +134,7 @@ import ExpressionEdit from '@/components/ExpressionEdit.vue';
 // @ts-ignore
 import PrismEditor from 'vue-prism-editor';
 import TextEdit from '@/components/TextEdit.vue';
+import { externalHooks } from '@/components/mixins/externalHooks';
 import { genericHelpers } from '@/components/mixins/genericHelpers';
 import { nodeHelpers } from '@/components/mixins/nodeHelpers';
 import { showMessage } from '@/components/mixins/showMessage';
@@ -144,6 +143,7 @@ import { workflowHelpers } from '@/components/mixins/workflowHelpers';
 import mixins from 'vue-typed-mixins';
 
 export default mixins(
+	externalHooks,
 	genericHelpers,
 	nodeHelpers,
 	showMessage,
@@ -230,7 +230,7 @@ export default mixins(
 
 				// Get the resolved parameter values of the current node
 				const currentNodeParameters = this.$store.getters.activeNode.parameters;
-				const resolvedNodeParameters = this.getResolveNodeParameters(currentNodeParameters);
+				const resolvedNodeParameters = this.resolveParameter(currentNodeParameters);
 
 				const returnValues: string[] = [];
 				for (const parameterPath of loadOptionsDependsOn) {
@@ -456,21 +456,6 @@ export default mixins(
 			},
 		},
 		methods: {
-			getResolveNodeParameters (nodeParameters: INodeParameters): INodeParameters {
-				const returnData: INodeParameters = {};
-				for (const key of Object.keys(nodeParameters)) {
-					if (Array.isArray(nodeParameters[key])) {
-						returnData[key] = (nodeParameters[key] as string[]).map(value => {
-							return this.resolveExpression(value as string) as string;
-						});
-					} else if (typeof nodeParameters[key] === 'object') {
-						returnData[key] = this.getResolveNodeParameters(nodeParameters[key] as INodeParameters);
-					} else {
-						returnData[key] = this.resolveExpression(nodeParameters[key] as string);
-					}
-				}
-				return returnData;
-			},
 			async loadRemoteParameterOptions () {
 				if (this.node === null || this.remoteMethod === undefined || this.remoteParameterOptionsLoading) {
 					return;
@@ -481,10 +466,10 @@ export default mixins(
 
 				// Get the resolved parameter values of the current node
 				const currentNodeParameters = this.$store.getters.activeNode.parameters;
-				const resolvedNodeParameters = this.getResolveNodeParameters(currentNodeParameters);
+				const resolvedNodeParameters = this.resolveParameter(currentNodeParameters) as INodeParameters;
 
 				try {
-					const options = await this.restApi().getNodeParameterOptions(this.node.type, this.remoteMethod, resolvedNodeParameters, this.node.credentials);
+					const options = await this.restApi().getNodeParameterOptions(this.node.type, this.path, this.remoteMethod, resolvedNodeParameters, this.node.credentials);
 					this.remoteParameterOptions.push.apply(this.remoteParameterOptions, options);
 				} catch (error) {
 					this.remoteParameterOptionsLoadingIssues = error.message;
@@ -523,9 +508,6 @@ export default mixins(
 				this.valueChanged(value);
 			},
 			setFocus () {
-				if (this.isReadOnly === true) {
-					return;
-				}
 				if (this.isValueExpression) {
 					this.expressionEditDialogVisible = true;
 					return;
@@ -551,7 +533,7 @@ export default mixins(
 					// @ts-ignore
 					if (this.$refs.inputField.$el) {
 						// @ts-ignore
-						(this.$refs.inputField.$el.querySelector('input') as HTMLInputElement).focus();
+						(this.$refs.inputField.$el.querySelector(this.getStringInputType === 'textarea' ? 'textarea' : 'input') as HTMLInputElement).focus();
 					}
 				});
 			},
@@ -594,6 +576,8 @@ export default mixins(
 					this.expressionEditDialogVisible = true;
 				} else if (command === 'removeExpression') {
 					this.valueChanged(this.expressionValueComputed || null);
+				} else if (command === 'refreshOptions') {
+					this.loadRemoteParameterOptions();	
 				}
 			},
 		},
@@ -639,6 +623,8 @@ export default mixins(
 					}
 				}
 			}
+
+			this.$externalHooks().run('parameterInput.mount', { parameter: this.parameter, inputFieldRef: this.$refs['inputField'] });
 		},
 	});
 </script>

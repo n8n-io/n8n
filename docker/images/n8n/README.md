@@ -49,6 +49,7 @@ Additional information and example workflows on the n8n.io website: [https://n8n
 docker run -it --rm \
 	--name n8n \
 	-p 5678:5678 \
+	-v ~/.n8n:/home/node/.n8n \
 	n8nio/n8n
 ```
 
@@ -226,10 +227,10 @@ docker run -it --rm \
 ## Build Docker-Image
 
 ```
-docker build --build-arg N8N_VERSION=<VERSION> -t n8nio/n8n:<VERSION> .
+docker buildx build --platform linux/amd64,linux/arm64,linux/arm/v7 --build-arg N8N_VERSION=<VERSION> -t n8nio/n8n:<VERSION> .
 
 # For example:
-docker build --build-arg N8N_VERSION=0.18.1 -t n8nio/n8n:0.18.1 .
+docker buildx build --platform linux/amd64,linux/arm64,linux/arm/v7 --build-arg N8N_VERSION=0.114.0 -t n8nio/n8n:0.114.0 .
 ```
 
 
@@ -262,9 +263,7 @@ If you have problems or questions go to our forum, we will then try to help you 
 ## Jobs
 
 If you are interested in working for n8n and so shape the future of the project
-check out our job posts:
-
-[https://n8n.join.com](https://n8n.join.com)
+check out our [job posts](https://apply.workable.com/n8n/)
 
 
 

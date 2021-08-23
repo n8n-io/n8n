@@ -18,17 +18,14 @@ import { TlsOptions } from 'tls';
 
 import * as config from '../config';
 
-import {
-	MySQLDb,
-	PostgresDb,
-	SQLite,
-} from './databases';
+import { entities } from './databases/entities';
 
 export let collections: IDatabaseCollections = {
 	Credentials: null,
 	Execution: null,
 	Workflow: null,
 	Webhook: null,
+	Tag: null,
 };
 
 import { postgresMigrations } from './databases/postgresdb/migrations';
@@ -41,15 +38,12 @@ export async function init(): Promise<IDatabaseCollections> {
 	const dbType = await GenericHelpers.getConfigValue('database.type') as DatabaseType;
 	const n8nFolder = UserSettings.getUserN8nFolderPath();
 
-	let entities;
 	let connectionOptions: ConnectionOptions;
 
 	const entityPrefix = config.get('database.tablePrefix');
 
 	switch (dbType) {
 		case 'postgresdb':
-			entities = PostgresDb;
-
 			const sslCa = await GenericHelpers.getConfigValue('database.postgresdb.ssl.ca') as string;
 			const sslCert = await GenericHelpers.getConfigValue('database.postgresdb.ssl.cert') as string;
 			const sslKey = await GenericHelpers.getConfigValue('database.postgresdb.ssl.key') as string;
@@ -84,7 +78,6 @@ export async function init(): Promise<IDatabaseCollections> {
 
 		case 'mariadb':
 		case 'mysqldb':
-			entities = MySQLDb;
 			connectionOptions = {
 				type: dbType === 'mysqldb' ? 'mysql' : 'mariadb',
 				database: await GenericHelpers.getConfigValue('database.mysqldb.database') as string,
@@ -96,14 +89,14 @@ export async function init(): Promise<IDatabaseCollections> {
 				migrations: mysqlMigrations,
 				migrationsRun: true,
 				migrationsTableName: `${entityPrefix}migrations`,
+				timezone: 'Z', // set UTC as default
 			};
 			break;
 
 		case 'sqlite':
-			entities = SQLite;
 			connectionOptions = {
 				type: 'sqlite',
-				database:  path.join(n8nFolder, 'database.sqlite'),
+				database: path.join(n8nFolder, 'database.sqlite'),
 				entityPrefix,
 				migrations: sqliteMigrations,
 				migrationsRun: false, // migrations for sqlite will be ran manually for now; see below
@@ -113,7 +106,7 @@ export async function init(): Promise<IDatabaseCollections> {
 
 		default:
 			throw new Error(`The database "${dbType}" is currently not supported!`);
-	}
+		}
 
 	Object.assign(connectionOptions, {
 		entities: Object.values(entities),
@@ -150,6 +143,7 @@ export async function init(): Promise<IDatabaseCollections> {
 	collections.Execution = getRepository(entities.ExecutionEntity);
 	collections.Workflow = getRepository(entities.WorkflowEntity);
 	collections.Webhook = getRepository(entities.WebhookEntity);
+	collections.Tag = getRepository(entities.TagEntity);
 
 	return collections;
 }

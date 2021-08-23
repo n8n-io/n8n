@@ -167,6 +167,7 @@
 <script lang="ts">
 import Vue from 'vue';
 
+import { externalHooks } from '@/components/mixins/externalHooks';
 import { restApi } from '@/components/mixins/restApi';
 import { genericHelpers } from '@/components/mixins/genericHelpers';
 import { showMessage } from '@/components/mixins/showMessage';
@@ -180,6 +181,7 @@ import {
 import mixins from 'vue-typed-mixins';
 
 export default mixins(
+	externalHooks,
 	genericHelpers,
 	restApi,
 	showMessage,
@@ -225,6 +227,7 @@ export default mixins(
 			if (newValue) {
 				this.openDialog();
 			}
+			this.$externalHooks().run('workflowSettings.dialogVisibleChanged', { dialogVisible: newValue });
 		},
 	},
 	methods: {
@@ -352,7 +355,6 @@ export default mixins(
 			Vue.set(this, 'workflows', workflows);
 		},
 		async openDialog () {
-			const workflowId = this.$route.params.name;
 			if (this.$route.params.name === undefined) {
 				this.$showMessage({
 					title: 'No workflow active',
@@ -456,6 +458,8 @@ export default mixins(
 				}
 			}
 
+			const oldSettings = JSON.parse(JSON.stringify(this.$store.getters.workflowSettings));
+
 			this.$store.commit('setWorkflowSettings', localWorkflowSettings);
 
 			this.isLoading = false;
@@ -467,6 +471,8 @@ export default mixins(
 			});
 
 			this.closeDialog();
+			
+			this.$externalHooks().run('workflowSettings.saveSettings', { oldSettings });
 		},
 		toggleTimeout() {
 			this.workflowSettings.executionTimeout = this.workflowSettings.executionTimeout === -1 ? 0 : -1;

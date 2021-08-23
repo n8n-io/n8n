@@ -26,12 +26,14 @@ import {
 
 
 export class CredentialsHelper extends ICredentialsHelper {
-	getDecrypted(name: string, type: string): ICredentialDataDecryptedObject {
-		return {};
+	getDecrypted(name: string, type: string): Promise<ICredentialDataDecryptedObject> {
+		return new Promise(res => res({}));
 	}
 
-	getCredentials(name: string, type: string): Credentials {
-		return new Credentials('', '', [], '');
+	getCredentials(name: string, type: string): Promise<Credentials> {
+		return new Promise(res => {
+			res(new Credentials('', '', [], ''));
+		});
 	}
 
 	async updateCredentials(name: string, type: string, data: ICredentialDataDecryptedObject): Promise<void> {}
@@ -465,6 +467,30 @@ class NodeTypesClass implements INodeTypes {
 				},
 			},
 		},
+		'n8n-nodes-base.noOp': {
+			sourcePath: '',
+			type: {
+				description: {
+					displayName: 'No Operation, do nothing',
+					name: 'noOp',
+					icon: 'fa:arrow-right',
+					group: ['organization'],
+					version: 1,
+					description: 'No Operation',
+					defaults: {
+						name: 'NoOp',
+						color: '#b0b0b0',
+					},
+					inputs: ['main'],
+					outputs: ['main'],
+					properties: [],
+				},
+				execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
+					const items = this.getInputData();
+					return this.prepareOutputData(items);
+				},
+			},
+		},
 		'n8n-nodes-base.set': {
 			sourcePath: '',
 			type: {
@@ -596,7 +622,7 @@ class NodeTypesClass implements INodeTypes {
 					let item: INodeExecutionData;
 					let keepOnlySet: boolean;
 					for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
-						keepOnlySet = this.getNodeParameter('keepOnlySet', itemIndex, []) as boolean;
+						keepOnlySet = this.getNodeParameter('keepOnlySet', itemIndex, false) as boolean;
 						item = items[itemIndex];
 						const options = this.getNodeParameter('options', itemIndex, {}) as IDataObject;
 
@@ -724,14 +750,15 @@ export function WorkflowExecuteAdditionalData(waitPromise: IDeferredPromise<IRun
 	};
 
 	return {
-		credentials: {},
-		credentialsHelper: new CredentialsHelper({}, ''),
+		credentialsHelper: new CredentialsHelper(''),
 		hooks: new WorkflowHooks(hookFunctions, 'trigger', '1', workflowData),
 		executeWorkflow: async (workflowInfo: IExecuteWorkflowInfo): Promise<any> => {}, // tslint:disable-line:no-any
+		sendMessageToUI: (message: string) => {},
 		restApiUrl: '',
 		encryptionKey: 'test',
 		timezone: 'America/New_York',
 		webhookBaseUrl: 'webhook',
+		webhookWaitingBaseUrl: 'webhook-waiting',
 		webhookTestBaseUrl: 'webhook-test',
 	};
 }

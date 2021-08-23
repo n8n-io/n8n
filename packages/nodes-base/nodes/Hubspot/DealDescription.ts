@@ -171,6 +171,12 @@ export const dealFields = [
 				],
 			},
 			{
+				displayName: 'Deal Description',
+				name: 'description',
+				type: 'string',
+				default: '',
+			},
+			{
 				displayName: 'Deal Name',
 				name: 'dealName',
 				type: 'string',
@@ -278,6 +284,12 @@ export const dealFields = [
 						],
 					},
 				],
+			},
+			{
+				displayName: 'Deal Description',
+				name: 'description',
+				type: 'string',
+				default: '',
 			},
 			{
 				displayName: 'Deal Name',

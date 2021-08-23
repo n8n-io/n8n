@@ -13,10 +13,25 @@
 		],
 		"generic": [
 			{
-				"label": "Smart Factory Automation using IoT and Sensor Data with n8n",
+				"label": "Learn to Automate Your Factory's Incident Reporting: A Step by Step Guide",
 				"icon": "🏭",
-				"url": "https://medium.com/n8n-io/smart-factory-automation-using-iot-and-sensor-data-with-n8n-27675de9943b"
+				"url": "https://n8n.io/blog/learn-to-automate-your-factorys-incident-reporting-a-step-by-step-guide/"
+			},
+			{
+				"label": "Creating triggers for n8n workflows using polling",
+				"icon": "⏲",
+				"url": "https://n8n.io/blog/creating-triggers-for-n8n-workflows-using-polling/"
 			}
+		]
+	},
+	"alias": [
+		"Time",
+		"Scheduler",
+		"Polling"
+	],
+	"subcategories": {
+		"Core Nodes": [
+			"Flow"
 		]
 	}
 }

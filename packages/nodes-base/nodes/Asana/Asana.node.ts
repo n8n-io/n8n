@@ -9,6 +9,8 @@ import {
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
+	NodeApiError,
+	NodeOperationError,
 } from 'n8n-workflow';
 
 import {
@@ -28,7 +30,7 @@ export class Asana implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Asana',
 		name: 'asana',
-		icon: 'file:asana.png',
+		icon: 'file:asana.svg',
 		group: ['input'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
@@ -1639,7 +1641,7 @@ export class Asana implements INodeType {
 				const responseData = await asanaApiRequest.call(this, 'GET', endpoint, {});
 
 				if (responseData.data === undefined) {
-					throw new Error('No data got returned');
+					throw new NodeApiError(this.getNode(), responseData, { message: 'No data got returned' });
 				}
 
 				const returnData: INodePropertyOptions[] = [];
@@ -1674,7 +1676,7 @@ export class Asana implements INodeType {
 				const responseData = await asanaApiRequest.call(this, 'GET', endpoint, {});
 
 				if (responseData.data === undefined) {
-					throw new Error('No data got returned');
+					throw new NodeApiError(this.getNode(), responseData, { message: 'No data got returned' });
 				}
 
 				const returnData: INodePropertyOptions[] = [];
@@ -1711,7 +1713,7 @@ export class Asana implements INodeType {
 				// to retrieve the teams from an organization just work with workspaces that are an organization
 
 				if (workspace.is_organization === false) {
-					throw Error('To filter by team, the workspace selected has to be an organization');
+					throw new NodeOperationError(this.getNode(), 'To filter by team, the workspace selected has to be an organization');
 				}
 
 				const endpoint = `/organizations/${workspaceId}/teams`;
@@ -1750,15 +1752,15 @@ export class Asana implements INodeType {
 				let taskData;
 				try {
 					taskData = await asanaApiRequest.call(this, 'GET', `/tasks/${taskId}`, {});
-				} catch (e) {
-					throw new Error(`Could not find task with id "${taskId}" so tags could not be loaded.`);
+				} catch (error) {
+					throw new NodeApiError(this.getNode(), error, { message: `Could not find task with id "${taskId}" so tags could not be loaded.` });
 				}
 
 				const workspace = taskData.data.workspace.gid;
 				const responseData = await asanaApiRequest.call(this, 'GET', endpoint, {}, { workspace });
 
 				if (responseData.data === undefined) {
-					throw new Error('No data got returned');
+					throw new NodeApiError(this.getNode(), responseData, { message: 'No data got returned' });
 				}
 
 				const returnData: INodePropertyOptions[] = [];
@@ -1790,7 +1792,7 @@ export class Asana implements INodeType {
 				const responseData = await asanaApiRequest.call(this, 'GET', endpoint, {});
 
 				if (responseData.data === undefined) {
-					throw new Error('No data got returned');
+					throw new NodeApiError(this.getNode(), responseData, { message: 'No data got returned' });
 				}
 
 				const returnData: INodePropertyOptions[] = [];
@@ -1840,417 +1842,425 @@ export class Asana implements INodeType {
 		let responseData;
 
 		for (let i = 0; i < items.length; i++) {
-			body = {};
-			qs = {};
+			try {
+				body = {};
+				qs = {};
 
-			if (resource === 'subtask') {
-				if (operation === 'create') {
-					// ----------------------------------
-					//         subtask:create
-					// ----------------------------------
+				if (resource === 'subtask') {
+					if (operation === 'create') {
+						// ----------------------------------
+						//         subtask:create
+						// ----------------------------------
 
-					const taskId = this.getNodeParameter('taskId', i) as string;
+						const taskId = this.getNodeParameter('taskId', i) as string;
 
-					requestMethod = 'POST';
-					endpoint = `/tasks/${taskId}/subtasks`;
+						requestMethod = 'POST';
+						endpoint = `/tasks/${taskId}/subtasks`;
 
-					body.name = this.getNodeParameter('name', i) as string;
+						body.name = this.getNodeParameter('name', i) as string;
 
-					const otherProperties = this.getNodeParameter('otherProperties', i) as IDataObject;
-					Object.assign(body, otherProperties);
-
-					responseData = await asanaApiRequest.call(this, requestMethod, endpoint, body, qs);
-
-					responseData = responseData.data;
-				}
-
-				if (operation === 'getAll') {
-					// ----------------------------------
-					//        subtask:getAll
-					// ----------------------------------
-					const taskId = this.getNodeParameter('taskId', i) as string;
-
-					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
-
-					const options = this.getNodeParameter('options', i) as IDataObject;
-
-					requestMethod = 'GET';
-					endpoint = `/tasks/${taskId}/subtasks`;
-
-					Object.assign(qs, options);
-
-					if (qs.opt_fields) {
-						const fields = qs.opt_fields as string[];
-						if (fields.includes('*')) {
-							qs.opt_fields = getTaskFields().map((e) => snakeCase(e)).join(',');
-						} else {
-							qs.opt_fields = (qs.opt_fields as string[]).join(',');
-						}
-					}
-
-					responseData = await asanaApiRequest.call(this, requestMethod, endpoint, body, qs);
-
-					responseData = responseData.data;
-
-					if (returnAll === false) {
-						const limit = this.getNodeParameter('limit', i) as boolean;
-						responseData = responseData.splice(0, limit);
-					}
-				}
-			}
-			if (resource === 'task') {
-				if (operation === 'create') {
-					// ----------------------------------
-					//         task:create
-					// ----------------------------------
-
-					requestMethod = 'POST';
-					endpoint = '/tasks';
-
-					body.name = this.getNodeParameter('name', i) as string;
-					// body.notes = this.getNodeParameter('taskNotes', 0) as string;
-					body.workspace = this.getNodeParameter('workspace', i) as string;
-
-					const otherProperties = this.getNodeParameter('otherProperties', i) as IDataObject;
-					Object.assign(body, otherProperties);
-
-					responseData = await asanaApiRequest.call(this, requestMethod, endpoint, body, qs);
-
-					responseData = responseData.data;
-
-				} else if (operation === 'delete') {
-					// ----------------------------------
-					//         task:delete
-					// ----------------------------------
-
-					requestMethod = 'DELETE';
-
-					endpoint = '/tasks/' + this.getNodeParameter('id', i) as string;
-
-					responseData = await asanaApiRequest.call(this, requestMethod, endpoint, body, qs);
-
-					responseData = responseData.data;
-
-				} else if (operation === 'get') {
-					// ----------------------------------
-					//         task:get
-					// ----------------------------------
-
-					requestMethod = 'GET';
-
-					endpoint = '/tasks/' + this.getNodeParameter('id', i) as string;
-
-					responseData = await asanaApiRequest.call(this, requestMethod, endpoint, body, qs);
-
-					responseData = responseData.data;
-
-				} else if (operation === 'getAll') {
-					// ----------------------------------
-					//        task:getAll
-					// ----------------------------------
-
-					const filters = this.getNodeParameter('filters', i) as IDataObject;
-					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
-
-					requestMethod = 'GET';
-					endpoint = `/tasks`;
-
-					Object.assign(qs, filters);
-
-					if (qs.opt_fields) {
-						const fields = qs.opt_fields as string[];
-						if (fields.includes('*')) {
-							qs.opt_fields = getTaskFields().map((e) => snakeCase(e)).join(',');
-						} else {
-							qs.opt_fields = (qs.opt_fields as string[]).join(',');
-						}
-					}
-
-					if (qs.modified_since) {
-						qs.modified_since = moment.tz(qs.modified_since as string, timezone).format();
-					}
-
-					if (qs.completed_since) {
-						qs.completed_since = moment.tz(qs.completed_since as string, timezone).format();
-					}
-
-					if (returnAll) {
-						responseData = await asanaApiRequestAllItems.call(this, requestMethod, endpoint, body, qs);
-
-					} else {
-						qs.limit = this.getNodeParameter('limit', i) as boolean;
+						const otherProperties = this.getNodeParameter('otherProperties', i) as IDataObject;
+						Object.assign(body, otherProperties);
 
 						responseData = await asanaApiRequest.call(this, requestMethod, endpoint, body, qs);
 
 						responseData = responseData.data;
 					}
 
-				} else if (operation === 'move') {
-					// ----------------------------------
-					//         task:move
-					// ----------------------------------
+					if (operation === 'getAll') {
+						// ----------------------------------
+						//        subtask:getAll
+						// ----------------------------------
+						const taskId = this.getNodeParameter('taskId', i) as string;
 
-					const sectionId = this.getNodeParameter('section', i) as string;
+						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
 
-					requestMethod = 'POST';
+						const options = this.getNodeParameter('options', i) as IDataObject;
 
-					endpoint = `/sections/${sectionId}/addTask`;
+						requestMethod = 'GET';
+						endpoint = `/tasks/${taskId}/subtasks`;
 
-					body.task = this.getNodeParameter('id', i) as string;
+						Object.assign(qs, options);
 
-					Object.assign(body);
+						if (qs.opt_fields) {
+							const fields = qs.opt_fields as string[];
+							if (fields.includes('*')) {
+								qs.opt_fields = getTaskFields().map((e) => snakeCase(e)).join(',');
+							} else {
+								qs.opt_fields = (qs.opt_fields as string[]).join(',');
+							}
+						}
 
-					responseData = await asanaApiRequest.call(this, requestMethod, endpoint, body, qs);
+						responseData = await asanaApiRequest.call(this, requestMethod, endpoint, body, qs);
 
-					responseData = { success: true };
+						responseData = responseData.data;
 
-				} else if (operation === 'update') {
-					// ----------------------------------
-					//         task:update
-					// ----------------------------------
-
-					requestMethod = 'PUT';
-					endpoint = '/tasks/' + this.getNodeParameter('id', i) as string;
-
-					const otherProperties = this.getNodeParameter('otherProperties', i) as IDataObject;
-					Object.assign(body, otherProperties);
-
-					responseData = await asanaApiRequest.call(this, requestMethod, endpoint, body, qs);
-
-					responseData = responseData.data;
-
-				} else if (operation === 'search') {
-					// ----------------------------------
-					//         tasksearch
-					// ----------------------------------
-
-					const workspaceId = this.getNodeParameter('workspace', i) as string;
-
-					requestMethod = 'GET';
-					endpoint = `/workspaces/${workspaceId}/tasks/search`;
-
-					const searchTaskProperties = this.getNodeParameter('searchTaskProperties', i) as IDataObject;
-					Object.assign(qs, searchTaskProperties);
-
-					responseData = await asanaApiRequest.call(this, requestMethod, endpoint, body, qs);
-
-					responseData = responseData.data;
-				}
-			}
-			if (resource === 'taskComment') {
-				if (operation === 'add') {
-					// ----------------------------------
-					//         taskComment:add
-					// ----------------------------------
-
-					const taskId = this.getNodeParameter('id', i) as string;
-
-					const isTextHtml = this.getNodeParameter('isTextHtml', i) as boolean;
-
-					if (!isTextHtml) {
-						body.text = this.getNodeParameter('text', i) as string;
-					} else {
-						body.html_text = this.getNodeParameter('text', i) as string;
+						if (returnAll === false) {
+							const limit = this.getNodeParameter('limit', i) as boolean;
+							responseData = responseData.splice(0, limit);
+						}
 					}
-
-					requestMethod = 'POST';
-
-					endpoint = `/tasks/${taskId}/stories`;
-
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
-
-					Object.assign(body, additionalFields);
-
-					responseData = await asanaApiRequest.call(this, requestMethod, endpoint, body, qs);
-
-					responseData = responseData.data;
 				}
+				if (resource === 'task') {
+					if (operation === 'create') {
+						// ----------------------------------
+						//         task:create
+						// ----------------------------------
 
-				if (operation === 'remove') {
-					// ----------------------------------
-					//         taskComment:remove
-					// ----------------------------------
+						requestMethod = 'POST';
+						endpoint = '/tasks';
 
-					const commentId = this.getNodeParameter('id', i) as string;
+						body.name = this.getNodeParameter('name', i) as string;
+						// body.notes = this.getNodeParameter('taskNotes', 0) as string;
+						body.workspace = this.getNodeParameter('workspace', i) as string;
 
-					requestMethod = 'DELETE';
+						const otherProperties = this.getNodeParameter('otherProperties', i) as IDataObject;
+						Object.assign(body, otherProperties);
 
-					endpoint = `/stories/${commentId}`;
+						responseData = await asanaApiRequest.call(this, requestMethod, endpoint, body, qs);
 
-					responseData = await asanaApiRequest.call(this, requestMethod, endpoint, body, qs);
+						responseData = responseData.data;
 
-					responseData = { success: true };
-				}
-			}
-			if (resource === 'taskTag') {
-				if (operation === 'add') {
+					} else if (operation === 'delete') {
+						// ----------------------------------
+						//         task:delete
+						// ----------------------------------
 
-					// ----------------------------------
-					//         taskTag:add
-					// ----------------------------------
+						requestMethod = 'DELETE';
 
-					const taskId = this.getNodeParameter('id', i) as string;
+						endpoint = '/tasks/' + this.getNodeParameter('id', i) as string;
 
-					requestMethod = 'POST';
+						responseData = await asanaApiRequest.call(this, requestMethod, endpoint, body, qs);
 
-					endpoint = `/tasks/${taskId}/addTag`;
+						responseData = responseData.data;
 
-					body.tag = this.getNodeParameter('tag', i) as string;
+					} else if (operation === 'get') {
+						// ----------------------------------
+						//         task:get
+						// ----------------------------------
 
-					responseData = await asanaApiRequest.call(this, requestMethod, endpoint, body, qs);
+						requestMethod = 'GET';
 
-					responseData = { success: true };
-				}
+						endpoint = '/tasks/' + this.getNodeParameter('id', i) as string;
 
-				if (operation === 'remove') {
+						responseData = await asanaApiRequest.call(this, requestMethod, endpoint, body, qs);
 
-					// ----------------------------------
-					//         taskTag:remove
-					// ----------------------------------
+						responseData = responseData.data;
 
-					const taskId = this.getNodeParameter('id', i) as string;
+					} else if (operation === 'getAll') {
+						// ----------------------------------
+						//        task:getAll
+						// ----------------------------------
 
-					requestMethod = 'POST';
+						const filters = this.getNodeParameter('filters', i) as IDataObject;
+						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
 
-					endpoint = `/tasks/${taskId}/removeTag`;
+						requestMethod = 'GET';
+						endpoint = `/tasks`;
 
-					body.tag = this.getNodeParameter('tag', i) as string;
+						Object.assign(qs, filters);
 
-					responseData = await asanaApiRequest.call(this, requestMethod, endpoint, body, qs);
+						if (qs.opt_fields) {
+							const fields = qs.opt_fields as string[];
+							if (fields.includes('*')) {
+								qs.opt_fields = getTaskFields().map((e) => snakeCase(e)).join(',');
+							} else {
+								qs.opt_fields = (qs.opt_fields as string[]).join(',');
+							}
+						}
 
-					responseData = { success: true };
-				}
-			}
-			if (resource === 'taskProject') {
-				if (operation === 'add') {
+						if (qs.modified_since) {
+							qs.modified_since = moment.tz(qs.modified_since as string, timezone).format();
+						}
 
-					// ----------------------------------
-					//         taskProject:add
-					// ----------------------------------
+						if (qs.completed_since) {
+							qs.completed_since = moment.tz(qs.completed_since as string, timezone).format();
+						}
 
-					const taskId = this.getNodeParameter('id', i) as string;
+						if (returnAll) {
+							responseData = await asanaApiRequestAllItems.call(this, requestMethod, endpoint, body, qs);
 
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						} else {
+							qs.limit = this.getNodeParameter('limit', i) as boolean;
 
-					requestMethod = 'POST';
+							responseData = await asanaApiRequest.call(this, requestMethod, endpoint, body, qs);
 
-					endpoint = `/tasks/${taskId}/addProject`;
+							responseData = responseData.data;
+						}
 
-					body.project = this.getNodeParameter('project', i) as string;
+					} else if (operation === 'move') {
+						// ----------------------------------
+						//         task:move
+						// ----------------------------------
 
-					Object.assign(body, additionalFields);
+						const sectionId = this.getNodeParameter('section', i) as string;
 
-					responseData = await asanaApiRequest.call(this, requestMethod, endpoint, body, qs);
+						requestMethod = 'POST';
 
-					responseData = { success: true };
-				}
+						endpoint = `/sections/${sectionId}/addTask`;
 
-				if (operation === 'remove') {
+						body.task = this.getNodeParameter('id', i) as string;
 
-					// ----------------------------------
-					//         taskProject:remove
-					// ----------------------------------
+						Object.assign(body);
 
-					const taskId = this.getNodeParameter('id', i) as string;
+						responseData = await asanaApiRequest.call(this, requestMethod, endpoint, body, qs);
 
-					requestMethod = 'POST';
+						responseData = { success: true };
 
-					endpoint = `/tasks/${taskId}/removeProject`;
+					} else if (operation === 'update') {
+						// ----------------------------------
+						//         task:update
+						// ----------------------------------
 
-					body.project = this.getNodeParameter('project', i) as string;
+						requestMethod = 'PUT';
+						endpoint = '/tasks/' + this.getNodeParameter('id', i) as string;
 
-					responseData = await asanaApiRequest.call(this, requestMethod, endpoint, body, qs);
+						const otherProperties = this.getNodeParameter('otherProperties', i) as IDataObject;
+						Object.assign(body, otherProperties);
 
-					responseData = { success: true };
-				}
-			}
-			if (resource === 'user') {
-				if (operation === 'get') {
-					// ----------------------------------
-					//         get
-					// ----------------------------------
+						responseData = await asanaApiRequest.call(this, requestMethod, endpoint, body, qs);
 
-					const userId = this.getNodeParameter('userId', i) as string;
+						responseData = responseData.data;
 
-					requestMethod = 'GET';
-					endpoint = `/users/${userId}`;
+					} else if (operation === 'search') {
+						// ----------------------------------
+						//         tasksearch
+						// ----------------------------------
 
-					responseData = await asanaApiRequest.call(this, requestMethod, endpoint, body, qs);
-					responseData = responseData.data;
+						const workspaceId = this.getNodeParameter('workspace', i) as string;
 
-				} else if (operation === 'getAll') {
-					// ----------------------------------
-					//         getAll
-					// ----------------------------------
+						requestMethod = 'GET';
+						endpoint = `/workspaces/${workspaceId}/tasks/search`;
 
-					const workspaceId = this.getNodeParameter('workspace', i) as string;
-
-					requestMethod = 'GET';
-					endpoint = `/workspaces/${workspaceId}/users`;
-
-					responseData = await asanaApiRequest.call(this, requestMethod, endpoint, body, qs);
-					responseData = responseData.data;
-
-				}
-			}
-			if (resource === 'project') {
-
-				if (operation === 'get') {
-					// ----------------------------------
-					//         project:get
-					// ----------------------------------
-					const projectId = this.getNodeParameter('id', i) as string;
-
-					requestMethod = 'GET';
-
-					endpoint = `/projects/${projectId}`;
-
-					responseData = await asanaApiRequest.call(this, requestMethod, endpoint, body, qs);
-
-					responseData = responseData.data;
-
-				}
-
-				if (operation === 'getAll') {
-					// ----------------------------------
-					//        project:getAll
-					// ----------------------------------
-					const workspaceId = this.getNodeParameter('workspace', i) as string;
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
-					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
-
-					requestMethod = 'GET';
-					endpoint = `/projects`;
-
-					if (additionalFields.team) {
-						qs.team = additionalFields.team;
-					} else {
-						qs.workspace = workspaceId;
-					}
-
-					if (additionalFields.archived) {
-						qs.archived = additionalFields.archived as boolean;
-					}
-
-					if (returnAll) {
-
-						responseData = await asanaApiRequestAllItems.call(this, requestMethod, endpoint, body, qs);
-
-					} else {
-
-						qs.limit = this.getNodeParameter('limit', i) as boolean;
+						const searchTaskProperties = this.getNodeParameter('searchTaskProperties', i) as IDataObject;
+						Object.assign(qs, searchTaskProperties);
 
 						responseData = await asanaApiRequest.call(this, requestMethod, endpoint, body, qs);
 
 						responseData = responseData.data;
 					}
 				}
-			}
+				if (resource === 'taskComment') {
+					if (operation === 'add') {
+						// ----------------------------------
+						//         taskComment:add
+						// ----------------------------------
 
-			if (Array.isArray(responseData)) {
-				returnData.push.apply(returnData, responseData as IDataObject[]);
-			} else {
-				returnData.push(responseData);
+						const taskId = this.getNodeParameter('id', i) as string;
+
+						const isTextHtml = this.getNodeParameter('isTextHtml', i) as boolean;
+
+						if (!isTextHtml) {
+							body.text = this.getNodeParameter('text', i) as string;
+						} else {
+							body.html_text = this.getNodeParameter('text', i) as string;
+						}
+
+						requestMethod = 'POST';
+
+						endpoint = `/tasks/${taskId}/stories`;
+
+						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+
+						Object.assign(body, additionalFields);
+
+						responseData = await asanaApiRequest.call(this, requestMethod, endpoint, body, qs);
+
+						responseData = responseData.data;
+					}
+
+					if (operation === 'remove') {
+						// ----------------------------------
+						//         taskComment:remove
+						// ----------------------------------
+
+						const commentId = this.getNodeParameter('id', i) as string;
+
+						requestMethod = 'DELETE';
+
+						endpoint = `/stories/${commentId}`;
+
+						responseData = await asanaApiRequest.call(this, requestMethod, endpoint, body, qs);
+
+						responseData = { success: true };
+					}
+				}
+				if (resource === 'taskTag') {
+					if (operation === 'add') {
+
+						// ----------------------------------
+						//         taskTag:add
+						// ----------------------------------
+
+						const taskId = this.getNodeParameter('id', i) as string;
+
+						requestMethod = 'POST';
+
+						endpoint = `/tasks/${taskId}/addTag`;
+
+						body.tag = this.getNodeParameter('tag', i) as string;
+
+						responseData = await asanaApiRequest.call(this, requestMethod, endpoint, body, qs);
+
+						responseData = { success: true };
+					}
+
+					if (operation === 'remove') {
+
+						// ----------------------------------
+						//         taskTag:remove
+						// ----------------------------------
+
+						const taskId = this.getNodeParameter('id', i) as string;
+
+						requestMethod = 'POST';
+
+						endpoint = `/tasks/${taskId}/removeTag`;
+
+						body.tag = this.getNodeParameter('tag', i) as string;
+
+						responseData = await asanaApiRequest.call(this, requestMethod, endpoint, body, qs);
+
+						responseData = { success: true };
+					}
+				}
+				if (resource === 'taskProject') {
+					if (operation === 'add') {
+
+						// ----------------------------------
+						//         taskProject:add
+						// ----------------------------------
+
+						const taskId = this.getNodeParameter('id', i) as string;
+
+						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+
+						requestMethod = 'POST';
+
+						endpoint = `/tasks/${taskId}/addProject`;
+
+						body.project = this.getNodeParameter('project', i) as string;
+
+						Object.assign(body, additionalFields);
+
+						responseData = await asanaApiRequest.call(this, requestMethod, endpoint, body, qs);
+
+						responseData = { success: true };
+					}
+
+					if (operation === 'remove') {
+
+						// ----------------------------------
+						//         taskProject:remove
+						// ----------------------------------
+
+						const taskId = this.getNodeParameter('id', i) as string;
+
+						requestMethod = 'POST';
+
+						endpoint = `/tasks/${taskId}/removeProject`;
+
+						body.project = this.getNodeParameter('project', i) as string;
+
+						responseData = await asanaApiRequest.call(this, requestMethod, endpoint, body, qs);
+
+						responseData = { success: true };
+					}
+				}
+				if (resource === 'user') {
+					if (operation === 'get') {
+						// ----------------------------------
+						//         get
+						// ----------------------------------
+
+						const userId = this.getNodeParameter('userId', i) as string;
+
+						requestMethod = 'GET';
+						endpoint = `/users/${userId}`;
+
+						responseData = await asanaApiRequest.call(this, requestMethod, endpoint, body, qs);
+						responseData = responseData.data;
+
+					} else if (operation === 'getAll') {
+						// ----------------------------------
+						//         getAll
+						// ----------------------------------
+
+						const workspaceId = this.getNodeParameter('workspace', i) as string;
+
+						requestMethod = 'GET';
+						endpoint = `/workspaces/${workspaceId}/users`;
+
+						responseData = await asanaApiRequest.call(this, requestMethod, endpoint, body, qs);
+						responseData = responseData.data;
+
+					}
+				}
+				if (resource === 'project') {
+
+					if (operation === 'get') {
+						// ----------------------------------
+						//         project:get
+						// ----------------------------------
+						const projectId = this.getNodeParameter('id', i) as string;
+
+						requestMethod = 'GET';
+
+						endpoint = `/projects/${projectId}`;
+
+						responseData = await asanaApiRequest.call(this, requestMethod, endpoint, body, qs);
+
+						responseData = responseData.data;
+
+					}
+
+					if (operation === 'getAll') {
+						// ----------------------------------
+						//        project:getAll
+						// ----------------------------------
+						const workspaceId = this.getNodeParameter('workspace', i) as string;
+						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+
+						requestMethod = 'GET';
+						endpoint = `/projects`;
+
+						if (additionalFields.team) {
+							qs.team = additionalFields.team;
+						} else {
+							qs.workspace = workspaceId;
+						}
+
+						if (additionalFields.archived) {
+							qs.archived = additionalFields.archived as boolean;
+						}
+
+						if (returnAll) {
+
+							responseData = await asanaApiRequestAllItems.call(this, requestMethod, endpoint, body, qs);
+
+						} else {
+
+							qs.limit = this.getNodeParameter('limit', i) as boolean;
+
+							responseData = await asanaApiRequest.call(this, requestMethod, endpoint, body, qs);
+
+							responseData = responseData.data;
+						}
+					}
+				}
+
+				if (Array.isArray(responseData)) {
+					returnData.push.apply(returnData, responseData as IDataObject[]);
+				} else {
+					returnData.push(responseData);
+				}
+			} catch (error) {
+				if (this.continueOnFail()) {
+					returnData.push({ error: error.message });
+					continue;
+				}
+				throw error;
 			}
 		}
 

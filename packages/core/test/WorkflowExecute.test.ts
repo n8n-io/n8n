@@ -1,8 +1,10 @@
 
 import {
 	IConnections,
+	ILogger,
 	INode,
 	IRun,
+	LoggerProxy,
 	Workflow,
 } from 'n8n-workflow';
 
@@ -986,11 +988,354 @@ describe('WorkflowExecute', () => {
 					},
 				},
 			},
+			{
+				description: 'should use empty data if input of sibling does not receive any data from parent',
+				input: {
+					// Leave the workflowData in regular JSON to be able to easily
+					// copy it from/in the UI
+					workflowData: {
+						"nodes": [
+							{
+								"parameters": {},
+								"name": "Start",
+								"type": "n8n-nodes-base.start",
+								"typeVersion": 1,
+								"position": [
+									250,
+									300,
+								],
+							},
+							{
+								"parameters": {
+									"conditions": {
+										"number": [
+											{
+												"value1": "={{$json[\"value1\"]}}",
+												"operation": "equal",
+												"value2": 1,
+											},
+										],
+									},
+								},
+								"name": "IF",
+								"type": "n8n-nodes-base.if",
+								"typeVersion": 1,
+								"position": [
+									650,
+									300,
+								],
+							},
+							{
+								"parameters": {
+									"values": {
+										"string": [],
+										"number": [
+											{
+												"name": "value2",
+												"value": 2,
+											},
+										],
+									},
+									"options": {},
+								},
+								"name": "Set2",
+								"type": "n8n-nodes-base.set",
+								"typeVersion": 1,
+								"position": [
+									850,
+									450,
+								],
+							},
+							{
+								"parameters": {
+									"values": {
+										"number": [
+											{
+												"name": "value1",
+												"value": 1,
+											},
+										],
+									},
+									"options": {},
+								},
+								"name": "Set1",
+								"type": "n8n-nodes-base.set",
+								"typeVersion": 1,
+								"position": [
+									450,
+									300,
+								],
+							},
+							{
+								"parameters": {},
+								"name": "Merge",
+								"type": "n8n-nodes-base.merge",
+								"typeVersion": 1,
+								"position": [
+									1050,
+									300,
+								],
+							},
+						],
+						"connections": {
+							"Start": {
+								"main": [
+									[
+										{
+											"node": "Set1",
+											"type": "main",
+											"index": 0,
+										},
+									],
+								],
+							},
+							"IF": {
+								"main": [
+									[
+										{
+											"node": "Merge",
+											"type": "main",
+											"index": 0,
+										},
+									],
+									[
+										{
+											"node": "Set2",
+											"type": "main",
+											"index": 0,
+										},
+									],
+								],
+							},
+							"Set2": {
+								"main": [
+									[
+										{
+											"node": "Merge",
+											"type": "main",
+											"index": 1,
+										},
+									],
+								],
+							},
+							"Set1": {
+								"main": [
+									[
+										{
+											"node": "IF",
+											"type": "main",
+											"index": 0,
+										},
+									],
+								],
+							},
+						},
+					},
+				},
+				output: {
+					nodeExecutionOrder: [
+						'Start',
+						'Set1',
+						'IF',
+						'Set2',
+						'Merge',
+					],
+					nodeData: {
+						Merge: [
+							[
+								{
+									value1: 1,
+								},
+								{
+									value2: 2,
+								},
+							],
+						],
+					},
+				},
+			},
+			{
+				description: 'should not use empty data in sibling if parent did not send any data',
+				input: {
+					// Leave the workflowData in regular JSON to be able to easily
+					// copy it from/in the UI
+					workflowData: {
+						"nodes": [
+							{
+								"parameters": {},
+								"name": "Start",
+								"type": "n8n-nodes-base.start",
+								"typeVersion": 1,
+								"position": [
+									250,
+									300,
+								],
+							},
+							{
+								"parameters": {
+									"values": {
+										"number": [
+											{
+												"name": "value1",
+											},
+										],
+									},
+									"options": {},
+								},
+								"name": "Set",
+								"type": "n8n-nodes-base.set",
+								"typeVersion": 1,
+								"position": [
+									450,
+									300,
+								],
+							},
+							{
+								"parameters": {},
+								"name": "Merge",
+								"type": "n8n-nodes-base.merge",
+								"typeVersion": 1,
+								"position": [
+									1050,
+									250,
+								],
+							},
+							{
+								"parameters": {
+									"conditions": {
+										"number": [
+											{
+												"value1": "={{$json[\"value1\"]}}",
+												"operation": "equal",
+												"value2": 1,
+											},
+										],
+									},
+								},
+								"name": "IF",
+								"type": "n8n-nodes-base.if",
+								"typeVersion": 1,
+								"position": [
+									650,
+									300,
+								],
+							},
+							{
+								"parameters": {},
+								"name": "NoOpTrue",
+								"type": "n8n-nodes-base.noOp",
+								"typeVersion": 1,
+								"position": [
+									850,
+									150,
+								],
+							},
+							{
+								"parameters": {},
+								"name": "NoOpFalse",
+								"type": "n8n-nodes-base.noOp",
+								"typeVersion": 1,
+								"position": [
+									850,
+									400,
+								],
+							},
+						],
+						"connections": {
+							"Start": {
+								"main": [
+									[
+										{
+											"node": "Set",
+											"type": "main",
+											"index": 0,
+										},
+									],
+								],
+							},
+							"Set": {
+								"main": [
+									[
+										{
+											"node": "IF",
+											"type": "main",
+											"index": 0,
+										},
+									],
+								],
+							},
+							"IF": {
+								"main": [
+									[
+										{
+											"node": "NoOpTrue",
+											"type": "main",
+											"index": 0,
+										},
+										{
+											"node": "Merge",
+											"type": "main",
+											"index": 1,
+										},
+									],
+									[
+										{
+											"node": "NoOpFalse",
+											"type": "main",
+											"index": 0,
+										},
+									],
+								],
+							},
+							"NoOpTrue": {
+								"main": [
+									[
+										{
+											"node": "Merge",
+											"type": "main",
+											"index": 0,
+										},
+									],
+								],
+							},
+						},
+					},
+				},
+				output: {
+					nodeExecutionOrder: [
+						'Start',
+						'Set',
+						'IF',
+						'NoOpFalse',
+					],
+					nodeData: {
+						IF: [
+							[],
+						],
+						NoOpFalse: [
+							[
+								{
+									value1: 0,
+								},
+							],
+						],
+					},
+				},
+			},
 		];
 
+		const fakeLogger = {
+			log: () => {},
+			debug:  () => {},
+			verbose:  () => {},
+			info:  () => {},
+			warn:  () => {},
+			error:  () => {},
+		} as ILogger;
 
 		const executionMode = 'manual';
 		const nodeTypes = Helpers.NodeTypes();
+		LoggerProxy.init(fakeLogger);
 
 		for (const testData of tests) {
 			test(testData.description, async () => {
@@ -1003,7 +1348,7 @@ describe('WorkflowExecute', () => {
 
 				const workflowExecute = new WorkflowExecute(additionalData, executionMode);
 
-				const executionData = await workflowExecute.run(workflowInstance, undefined);
+				const executionData = await workflowExecute.run(workflowInstance);
 
 				const result = await waitPromise.promise();
 
@@ -1035,7 +1380,6 @@ describe('WorkflowExecute', () => {
 				expect(result.finished).toEqual(true);
 				expect(result.data.executionData!.contextData).toEqual({});
 				expect(result.data.executionData!.nodeExecutionStack).toEqual([]);
-				expect(result.data.executionData!.waitingExecution).toEqual({});
 			});
 		}
 

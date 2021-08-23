@@ -1,5 +1,7 @@
 import * as convict from 'convict';
 import * as dotenv from 'dotenv';
+import * as path from 'path';
+import * as core from 'n8n-core';
 
 dotenv.config();
 
@@ -144,6 +146,15 @@ const config = convict({
 				default: '',
 				env: 'CREDENTIALS_OVERWRITE_ENDPOINT',
 			},
+		},
+	},
+
+	workflows: {
+		defaultName: {
+			doc: 'Default name for workflow',
+			format: String,
+			default: 'My workflow',
+			env: 'WORKFLOWS_DEFAULT_NAME',
 		},
 	},
 
@@ -446,6 +457,26 @@ const config = convict({
 	},
 
 	endpoints: {
+		payloadSizeMax: {
+			format: Number,
+			default: 16,
+			env: 'N8N_PAYLOAD_SIZE_MAX',
+			doc: 'Maximum payload size in MB.',
+		},
+		metrics: {
+			enable: {
+				format: 'Boolean',
+				default: false,
+				env: 'N8N_METRICS',
+				doc: 'Enable metrics endpoint',
+			},
+			prefix: {
+				format: String,
+				default: 'n8n_',
+				env: 'N8N_METRICS_PREFIX',
+				doc: 'An optional prefix for metric names. Default: n8n_',
+			},
+		},
 		rest: {
 			format: String,
 			default: 'rest',
@@ -458,11 +489,41 @@ const config = convict({
 			env: 'N8N_ENDPOINT_WEBHOOK',
 			doc: 'Path for webhook endpoint',
 		},
+		webhookWaiting: {
+			format: String,
+			default: 'webhook-waiting',
+			env: 'N8N_ENDPOINT_WEBHOOK_WAIT',
+			doc: 'Path for waiting-webhook endpoint',
+		},
 		webhookTest: {
 			format: String,
 			default: 'webhook-test',
 			env: 'N8N_ENDPOINT_WEBHOOK_TEST',
 			doc: 'Path for test-webhook endpoint',
+		},
+		disableProductionWebhooksOnMainProcess: {
+			format: Boolean,
+			default: false,
+			env: 'N8N_DISABLE_PRODUCTION_MAIN_PROCESS',
+			doc: 'Disable production webhooks from main process. This helps ensures no http traffic load to main process when using webhook-specific processes.',
+		},
+		skipWebhoooksDeregistrationOnShutdown: {
+			/**
+			 * Longer explanation: n8n deregisters webhooks on shutdown / deactivation
+			 * and registers on startup / activation. If we skip
+			 * deactivation on shutdown, webhooks will remain active on 3rd party services.
+			 * We don't have to worry about startup as it always
+			 * checks if webhooks already exist.
+			 * If users want to upgrade n8n, it is possible to run
+			 * two instances simultaneously without downtime, similar
+			 * to blue/green deployment.
+			 * WARNING: Trigger nodes (like Cron) will cause duplication
+			 * of work, so be aware when using.
+			 */
+			doc: 'Deregister webhooks on external services only when workflows are deactivated.',
+			format: Boolean,
+			default: false,
+			env: 'N8N_SKIP_WEBHOOK_DEREGISTRATION_SHUTDOWN',
 		},
 	},
 
@@ -525,6 +586,62 @@ const config = convict({
 			format: String,
 			default: 'n8n-nodes-base.errorTrigger',
 			env: 'NODES_ERROR_TRIGGER_TYPE',
+		},
+	},
+
+	logs: {
+		level: {
+			doc: 'Log output level. Options are error, warn, info, verbose and debug.',
+			format: String,
+			default: 'info',
+			env: 'N8N_LOG_LEVEL',
+		},
+		output: {
+			doc: 'Where to output logs. Options are: console, file. Multiple can be separated by comma (",")',
+			format: String,
+			default: 'console',
+			env: 'N8N_LOG_OUTPUT',
+		},
+		file: {
+			fileCountMax: {
+				doc: 'Maximum number of files to keep.',
+				format: Number,
+				default: 100,
+				env: 'N8N_LOG_FILE_COUNT_MAX',
+			},
+			fileSizeMax: {
+				doc: 'Maximum size for each log file in MB.',
+				format: Number,
+				default: 16,
+				env: 'N8N_LOG_FILE_SIZE_MAX',
+			},
+			location: {
+				doc: 'Log file location; only used if log output is set to file.',
+				format: String,
+				default: path.join(core.UserSettings.getUserN8nFolderPath(), 'logs/n8n.log'),
+				env: 'N8N_LOG_FILE_LOCATION',
+			},
+		},
+	},
+
+	versionNotifications: {
+		enabled: {
+			doc: 'Whether feature is enabled to request notifications about new versions and security updates.',
+			format: Boolean,
+			default: true,
+			env: 'N8N_VERSION_NOTIFICATIONS_ENABLED',
+		},
+		endpoint: {
+			doc: 'Endpoint to retrieve version information from.',
+			format: String,
+			default: 'https://api.n8n.io/versions/',
+			env: 'N8N_VERSION_NOTIFICATIONS_ENDPOINT',
+		},
+		infoUrl: {
+			doc: `Url in New Versions Panel with more information on updating one's instance.`,
+			format: String,
+			default: 'https://docs.n8n.io/getting-started/installation/updating.html',
+			env: 'N8N_VERSION_NOTIFICATIONS_INFO_URL',
 		},
 	},
 

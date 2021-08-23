@@ -10,7 +10,7 @@ import {
 } from 'request';
 
 import {
-	IDataObject,
+	IDataObject, NodeApiError, NodeOperationError,
 } from 'n8n-workflow';
 
 // Interface in n8n
@@ -143,10 +143,10 @@ export function addAdditionalFields(this: IExecuteFunctions, body: IDataObject, 
  * @returns {Promise<any>}
  */
 export async function apiRequest(this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions | IWebhookFunctions, method: string, endpoint: string, body: object, query?: IDataObject, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
-	const credentials = this.getCredentials('telegramApi');
+	const credentials = await this.getCredentials('telegramApi');
 
 	if (credentials === undefined) {
-		throw new Error('No credentials got returned!');
+		throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
 	}
 
 	query = query || {};
@@ -176,20 +176,7 @@ export async function apiRequest(this: IHookFunctions | IExecuteFunctions | ILoa
 	try {
 		return await this.helpers.request!(options);
 	} catch (error) {
-
-		if (error.statusCode === 401) {
-			// Return a clear error
-			throw new Error('The Telegram credentials are not valid!');
-		}
-
-		if (error.response && error.response.body && error.response.body.error_code) {
-			// Try to return the error prettier
-			const errorBody = error.response.body;
-			throw new Error(`Telegram error response [${errorBody.error_code}]: ${errorBody.description}`);
-		}
-
-		// Expected error data did not get returned so throw the actual error
-		throw error;
+		throw new NodeApiError(this.getNode(), error);
 	}
 }
 

@@ -26,7 +26,7 @@
 								</svg>
 
 							<div v-if="showDocumentHelp && nodeType" class="text">
-								Need help? <a id="doc-hyperlink" v-if="showDocumentHelp && nodeType" :href="documentationUrl" target="_blank">Open {{nodeType.displayName}} documentation</a>
+								Need help? <a id="doc-hyperlink" v-if="showDocumentHelp && nodeType" :href="documentationUrl" target="_blank" @click="onDocumentationUrlClick">Open {{nodeType.displayName}} documentation</a>
 							</div>
 					</div>
 				</transition>
@@ -37,11 +37,7 @@
 </template>
 
 <script lang="ts">
-
-import Vue from 'vue';
-
 import {
-	IRunData,
 	INodeTypeDescription,
 } from 'n8n-workflow';
 import {
@@ -49,10 +45,16 @@ import {
 	IUpdateInformation,
 } from '../Interface';
 
+import { externalHooks } from '@/components/mixins/externalHooks';
+import { nodeHelpers } from '@/components/mixins/nodeHelpers';
+import { workflowHelpers } from '@/components/mixins/workflowHelpers';
+
 import NodeSettings from '@/components/NodeSettings.vue';
 import RunData from '@/components/RunData.vue';
 
-export default Vue.extend({
+import mixins from 'vue-typed-mixins';
+
+export default mixins(externalHooks, nodeHelpers, workflowHelpers).extend({
 	name: 'DataDisplay',
 	components: {
 		NodeSettings,
@@ -80,12 +82,17 @@ export default Vue.extend({
 			return this.$store.getters.activeNode;
 		},
 		nodeType (): INodeTypeDescription | null {
-			const activeNode = this.node;
 			if (this.node) {
 				return this.$store.getters.nodeType(this.node.type);
 			}
-
 			return null;
+		},
+	},
+	watch: {
+		node (node, oldNode) {
+			if(node && !oldNode) {
+				this.$externalHooks().run('dataDisplay.nodeTypeChanged', { nodeSubtitle: this.getNodeSubtitle(node, this.nodeType, this.getWorkflow()) });
+			}
 		},
 	},
 	methods: {
@@ -98,9 +105,13 @@ export default Vue.extend({
 		close (e: MouseEvent) {
 			// @ts-ignore
 			if (e.target.className && e.target.className.includes && e.target.className.includes('close-on-click')) {
+				this.$externalHooks().run('dataDisplay.nodeEditingFinished');
 				this.showDocumentHelp = false;
 				this.$store.commit('setActiveNode', null);
 			}
+		},
+		onDocumentationUrlClick () {
+			this.$externalHooks().run('dataDisplay.onDocumentationUrlClick', { nodeType: this.nodeType, documentationUrl: this.documentationUrl });
 		},
 	},
 });

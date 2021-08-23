@@ -3,6 +3,7 @@ import {
 	INodeType,
 	INodeTypeDescription,
 	ITriggerResponse,
+	NodeOperationError,
 } from 'n8n-workflow';
 
 
@@ -62,7 +63,7 @@ export class Interval implements INodeType {
 		const unit = this.getNodeParameter('unit') as string;
 
 		if (interval <= 0) {
-			throw new Error('The interval has to be set to at least 1 or higher!');
+			throw new NodeOperationError(this.getNode(), 'The interval has to be set to at least 1 or higher!');
 		}
 
 		let intervalValue = interval;
@@ -77,7 +78,14 @@ export class Interval implements INodeType {
 			this.emit([this.helpers.returnJsonArray([{}])]);
 		};
 
-		const intervalObj = setInterval(executeTrigger, intervalValue * 1000);
+		intervalValue *= 1000;
+
+		// Reference: https://nodejs.org/api/timers.html#timers_setinterval_callback_delay_args
+		if (intervalValue > 2147483647) {
+			throw new Error('The interval value is too large.');
+		}
+
+		const intervalObj = setInterval(executeTrigger, intervalValue);
 
 		async function closeFunction() {
 			clearInterval(intervalObj);

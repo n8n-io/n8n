@@ -9,7 +9,7 @@ import {
 } from 'n8n-core';
 
 import {
-	IDataObject,
+	IDataObject, NodeApiError,
 } from 'n8n-workflow';
 
 export async function mindeeApiRequest(this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: string, path: string, body: any = {}, qs: IDataObject = {}, option = {}): Promise<any> { // tslint:disable-line:no-any
@@ -19,9 +19,9 @@ export async function mindeeApiRequest(this: IExecuteFunctions | IExecuteSingleF
 	let credentials;
 
 	if (resource === 'receipt') {
-		credentials = this.getCredentials('mindeeReceiptApi') as IDataObject;
+		credentials = await this.getCredentials('mindeeReceiptApi') as IDataObject;
 	} else {
-		credentials = this.getCredentials('mindeeInvoiceApi') as IDataObject;
+		credentials = await this.getCredentials('mindeeInvoiceApi') as IDataObject;
 	}
 
 	const options: OptionsWithUri = {
@@ -47,17 +47,7 @@ export async function mindeeApiRequest(this: IExecuteFunctions | IExecuteSingleF
 		//@ts-ignore
 		return await this.helpers.request.call(this, options);
 	} catch (error) {
-		if (error.response && error.response.body && error.response.body.error) {
-
-			let errors = error.response.body.error.errors;
-
-			errors = errors.map((e: IDataObject) => e.message);
-			// Try to return the error prettier
-			throw new Error(
-				`Mindee error response [${error.statusCode}]: ${errors.join('|')}`,
-			);
-		}
-		throw error;
+		throw new NodeApiError(this.getNode(), error);
 	}
 }
 

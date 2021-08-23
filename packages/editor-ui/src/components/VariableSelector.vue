@@ -12,15 +12,17 @@
 
 <script lang="ts">
 
-import Vue from 'vue';
+import {
+	PLACEHOLDER_FILLED_AT_EXECUTION_TIME,
+} from '@/constants';
 
 import {
 	GenericValue,
 	IContextObject,
 	IDataObject,
-	IRun,
 	IRunData,
 	IRunExecutionData,
+	IWorkflowDataProxyAdditionalKeys,
 	Workflow,
 	WorkflowDataProxy,
 } from 'n8n-workflow';
@@ -113,6 +115,9 @@ export default mixins(
 					if (Array.isArray(newOptions) && newOptions.length) {
 						// Has still options left so return
 						inputData.options = this.sortOptions(newOptions);
+						return inputData;
+					} else if (Array.isArray(newOptions) && newOptions.length === 0) {
+						delete inputData.options;
 						return inputData;
 					}
 					// Has no options left so remove
@@ -376,7 +381,12 @@ export default mixins(
 					return returnData;
 				}
 
-				const dataProxy = new WorkflowDataProxy(workflow, runExecutionData, runIndex, itemIndex, nodeName, connectionInputData, 'manual');
+				const additionalKeys: IWorkflowDataProxyAdditionalKeys = {
+					$executionId: PLACEHOLDER_FILLED_AT_EXECUTION_TIME,
+					$resumeWebhookUrl: PLACEHOLDER_FILLED_AT_EXECUTION_TIME,
+				};
+
+				const dataProxy = new WorkflowDataProxy(workflow, runExecutionData, runIndex, itemIndex, nodeName, connectionInputData, {}, 'manual', additionalKeys);
 				const proxy = dataProxy.getDataProxy();
 
 				// @ts-ignore

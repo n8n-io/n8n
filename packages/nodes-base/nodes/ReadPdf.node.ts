@@ -1,6 +1,6 @@
 import {
 	BINARY_ENCODING,
-	IExecuteSingleFunctions,
+	IExecuteFunctions,
 } from 'n8n-core';
 
 import {
@@ -37,22 +37,39 @@ export class ReadPdf implements INodeType {
 		],
 	};
 
+	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
+		const items = this.getInputData();
 
-	async executeSingle(this: IExecuteSingleFunctions): Promise<INodeExecutionData> {
+		const returnData: INodeExecutionData[] = [];
+		const length = items.length as unknown as number;
+		let item: INodeExecutionData;
 
-		const binaryPropertyName = this.getNodeParameter('binaryPropertyName') as string;
+		for (let itemIndex = 0; itemIndex < length; itemIndex++) {
 
-		const item = this.getInputData();
+			try{
 
-		if (item.binary === undefined) {
-			item.binary = {};
+				item = items[itemIndex];
+				const binaryPropertyName = this.getNodeParameter('binaryPropertyName', itemIndex) as string;
+
+				if (item.binary === undefined) {
+					item.binary = {};
+				}
+
+				const binaryData = Buffer.from(item.binary[binaryPropertyName].data, BINARY_ENCODING);
+				returnData.push({
+					binary: item.binary,
+					json: await pdf(binaryData),
+				});
+
+			} catch (error) {
+				if (this.continueOnFail()) {
+					returnData.push({json:{ error: error.message }});
+					continue;
+				}
+				throw error;
+			}
 		}
-
-		const binaryData = Buffer.from(item.binary[binaryPropertyName].data, BINARY_ENCODING);
-
-		return {
-			binary: item.binary,
-			json: await pdf(binaryData),
-		};
+		return this.prepareOutputData(returnData);
 	}
+
 }

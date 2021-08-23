@@ -4,15 +4,12 @@ import {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import * as glob from 'glob-promise';
+import * as glob from 'fast-glob';
 import * as path from 'path';
 
 import {
 	readFile as fsReadFile,
-} from 'fs';
-import { promisify } from 'util';
-
-const fsReadFileAsync = promisify(fsReadFile);
+} from 'fs/promises';
 
 
 export class ReadBinaryFiles implements INodeType {
@@ -60,14 +57,12 @@ export class ReadBinaryFiles implements INodeType {
 		const items: INodeExecutionData[] = [];
 		let item: INodeExecutionData;
 		let data: Buffer;
-		let fileName: string;
 		for (const filePath of files) {
-			data = await fsReadFileAsync(filePath) as Buffer;
+			data = await fsReadFile(filePath) as Buffer;
 
-			fileName = path.parse(filePath).base;
 			item = {
 				binary: {
-					[dataPropertyName]: await this.helpers.prepareBinaryData(data, fileName),
+					[dataPropertyName]: await this.helpers.prepareBinaryData(data, filePath),
 				},
 				json: {},
 			};

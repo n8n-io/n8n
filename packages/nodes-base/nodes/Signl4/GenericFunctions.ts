@@ -3,7 +3,7 @@ import {
 } from 'n8n-core';
 
 import {
-	IDataObject,
+	IDataObject, NodeApiError,
 } from 'n8n-workflow';
 
 import {
@@ -25,7 +25,7 @@ import {
  */
 
 export async function SIGNL4ApiRequest(this: IExecuteFunctions, method: string, body: string, query: IDataObject = {}, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
-	const credentials = this.getCredentials('signl4Api');
+	const credentials = await this.getCredentials('signl4Api');
 
 	const teamSecret = credentials?.teamSecret as string;
 
@@ -51,11 +51,6 @@ export async function SIGNL4ApiRequest(this: IExecuteFunctions, method: string, 
 	try {
 		return await this.helpers.request!(options);
 	} catch (error) {
-
-		if (error.response && error.response.body && error.response.body.details) {
-			throw new Error(`SIGNL4 error response [${error.statusCode}]: ${error.response.body.details}`);
-		}
-
-		throw error;
+		throw new NodeApiError(this.getNode(), error);
 	}
 }

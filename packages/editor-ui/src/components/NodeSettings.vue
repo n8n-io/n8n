@@ -37,9 +37,6 @@
 <script lang="ts">
 import Vue from 'vue';
 import {
-	INodeIssues,
-	INodeIssueData,
-	INodeIssueObjectProperty,
 	INodeTypeDescription,
 	INodeParameters,
 	INodeProperties,
@@ -59,12 +56,14 @@ import NodeCredentials from '@/components/NodeCredentials.vue';
 import NodeWebhooks from '@/components/NodeWebhooks.vue';
 import { get, set, unset } from 'lodash';
 
+import { externalHooks } from '@/components/mixins/externalHooks';
 import { genericHelpers } from '@/components/mixins/genericHelpers';
 import { nodeHelpers } from '@/components/mixins/nodeHelpers';
 
 import mixins from 'vue-typed-mixins';
 
 export default mixins(
+	externalHooks,
 	genericHelpers,
 	nodeHelpers,
 )
@@ -80,8 +79,6 @@ export default mixins(
 		},
 		computed: {
 			nodeType (): INodeTypeDescription | null {
-				const activeNode = this.node;
-
 				if (this.node) {
 					return this.$store.getters.nodeType(this.node.type);
 				}
@@ -323,6 +320,8 @@ export default mixins(
 
 				// Update the issues
 				this.updateNodeCredentialIssues(node);
+
+				this.$externalHooks().run('nodeSettings.credentialSelected', { updateInformation });
 			},
 			valueChanged (parameterData: IUpdateInformation) {
 				let newValue: NodeParameterValue;
@@ -357,6 +356,7 @@ export default mixins(
 
 					// Get only the parameters which are different to the defaults
 					let nodeParameters = NodeHelpers.getNodeParameters(nodeType.properties, node.parameters, false, false);
+					const oldNodeParameters = Object.assign({}, nodeParameters);
 
 					// Copy the data because it is the data of vuex so make sure that
 					// we do not edit it directly
@@ -404,7 +404,10 @@ export default mixins(
 						name: node.name,
 						value: nodeParameters,
 					};
+
 					this.$store.commit('setNodeParameters', updateInformation);
+
+					this.$externalHooks().run('nodeSettings.valueChanged', { parameterPath, newValue, parameters: this.parameters, oldNodeParameters });
 
 					this.updateNodeParameterIssues(node, nodeType);
 					this.updateNodeCredentialIssues(node);

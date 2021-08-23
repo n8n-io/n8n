@@ -18,9 +18,14 @@
 		],
 		"generic": [
 			{
-				"label": "Why this Product Manager loves n8n",
+				"label": "Hey founders! Your business doesn't need you to operate",
+				"icon": " 🖥️",
+				"url": "https://n8n.io/blog/your-business-doesnt-need-you-to-operate/"
+			},
+			{
+				"label": "Why this Product Manager loves workflow automation with n8n",
 				"icon": "🧠",
-				"url": "https://medium.com/n8n-io/why-this-product-manager-loves-n8n-215dc273d86a"
+				"url": "https://n8n.io/blog/why-this-product-manager-loves-workflow-automation-with-n8n/"
 			}
 		]
 	}

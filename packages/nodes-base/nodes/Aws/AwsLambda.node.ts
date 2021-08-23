@@ -6,6 +6,8 @@ import {
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
+	NodeApiError,
+	NodeOperationError,
 } from 'n8n-workflow';
 
 import { awsApiRequestREST } from './GenericFunctions';
@@ -14,7 +16,7 @@ export class AwsLambda implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'AWS Lambda',
 		name: 'awsLambda',
-		icon: 'file:lambda.png',
+		icon: 'file:lambda.svg',
 		group: ['output'],
 		version: 1,
 		subtitle: '={{$parameter["function"]}}',
@@ -130,13 +132,7 @@ export class AwsLambda implements INodeType {
 		loadOptions: {
 			async getFunctions(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-
-				let data;
-				try {
-					data = await awsApiRequestREST.call(this, 'lambda', 'GET', '/2015-03-31/functions/');
-				} catch (err) {
-					throw new Error(`AWS Error: ${err}`);
-				}
+				const data = await awsApiRequestREST.call(this, 'lambda', 'GET', '/2015-03-31/functions/');
 
 				for (const func of data.Functions!) {
 					returnData.push({
@@ -144,6 +140,27 @@ export class AwsLambda implements INodeType {
 						value: func.FunctionArn as string,
 					});
 				}
+
+				if (data.NextMarker) {
+					let marker: string = data.NextMarker;
+					while (true) {
+						const dataLoop = await awsApiRequestREST.call(this, 'lambda', 'GET', `/2015-03-31/functions/?MaxItems=50&Marker=${encodeURIComponent(marker)}`);
+
+						for (const func of dataLoop.Functions!) {
+							returnData.push({
+								name: func.FunctionName as string,
+								value: func.FunctionArn as string,
+							});
+						}
+
+						if (dataLoop.NextMarker) {
+							marker = dataLoop.NextMarker;
+						} else {
+							break;
+						}
+					}
+				}
+
 				return returnData;
 			},
 		},
@@ -155,16 +172,15 @@ export class AwsLambda implements INodeType {
 		const returnData: IDataObject[] = [];
 
 		for (let i = 0; i < items.length; i++) {
-			const params = {
-				FunctionName: this.getNodeParameter('function', i) as string,
-				InvocationType: this.getNodeParameter('invocationType', i) as string,
-				Payload: this.getNodeParameter('payload', i) as string,
-				Qualifier: this.getNodeParameter('qualifier', i) as string,
-			};
-
-			let responseData;
 			try {
-				responseData = await awsApiRequestREST.call(
+				const params = {
+					FunctionName: this.getNodeParameter('function', i) as string,
+					InvocationType: this.getNodeParameter('invocationType', i) as string,
+					Payload: this.getNodeParameter('payload', i) as string,
+					Qualifier: this.getNodeParameter('qualifier', i) as string,
+				};
+
+				const responseData = await awsApiRequestREST.call(
 					this,
 					'lambda',
 					'POST',
@@ -175,24 +191,27 @@ export class AwsLambda implements INodeType {
 						'Content-Type': 'application/x-amz-json-1.0',
 					},
 				);
-			} catch (err) {
-				throw new Error(`AWS Error: ${err}`);
-			}
 
-			if (responseData !== null && responseData.errorMessage !== undefined) {
-				let errorMessage = responseData.errorMessage;
+				if (responseData !== null && responseData.errorMessage !== undefined) {
+					let errorMessage = responseData.errorMessage;
 
-				if (responseData.stackTrace) {
-					errorMessage += `\n\nStack trace:\n${responseData.stackTrace}`;
+					if (responseData.stackTrace) {
+						errorMessage += `\n\nStack trace:\n${responseData.stackTrace}`;
+					}
+
+					throw new NodeApiError(this.getNode(), responseData);
+				} else {
+					returnData.push({
+						result: responseData,
+					} as IDataObject);
 				}
-
-				throw new Error(errorMessage);
-			} else {
-				returnData.push({
-					result: responseData,
-				} as IDataObject);
+			} catch (error) {
+				if (this.continueOnFail()) {
+					returnData.push({ error: error.message });
+					continue;
+				}
+				throw error;
 			}
-
 		}
 
 		return [this.helpers.returnJsonArray(returnData)];

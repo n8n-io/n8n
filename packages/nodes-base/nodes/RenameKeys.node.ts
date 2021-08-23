@@ -23,7 +23,7 @@ export class RenameKeys implements INodeType {
 		icon: 'fa:edit',
 		group: ['transform'],
 		version: 1,
-		description: 'Renames keys.',
+		description: 'Renames keys',
 		defaults: {
 			name: 'Rename Keys',
 			color: '#772244',
@@ -39,6 +39,7 @@ export class RenameKeys implements INodeType {
 				type: 'fixedCollection',
 				typeOptions: {
 					multipleValues: true,
+					sortable: true,
 				},
 				default: {},
 				options: [

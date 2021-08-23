@@ -9,6 +9,8 @@ import {
 	INodeType,
 	INodeTypeDescription,
 	IWebhookResponseData,
+	NodeApiError,
+	NodeOperationError,
 } from 'n8n-workflow';
 
 import * as basicAuth from 'basic-auth';
@@ -39,10 +41,11 @@ function authorizationError(resp: Response, realm: string, responseCode: number,
 export class Webhook implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Webhook',
+		icon: 'file:webhook.svg',
 		name: 'webhook',
 		group: ['trigger'],
 		version: 1,
-		description: 'Starts the workflow when a webhook got called.',
+		description: 'Starts the workflow when a webhook is called',
 		defaults: {
 			name: 'Webhook',
 			color: '#885577',
@@ -366,7 +369,7 @@ export class Webhook implements INodeType {
 
 		if (authentication === 'basicAuth') {
 			// Basic authorization is needed to call webhook
-			const httpBasicAuth = this.getCredentials('httpBasicAuth');
+			const httpBasicAuth = await this.getCredentials('httpBasicAuth');
 
 			if (httpBasicAuth === undefined || !httpBasicAuth.user || !httpBasicAuth.password) {
 				// Data is not defined on node so can not authenticate
@@ -386,7 +389,7 @@ export class Webhook implements INodeType {
 			}
 		} else if (authentication === 'headerAuth') {
 			// Special header with value is needed to call webhook
-			const httpHeaderAuth = this.getCredentials('httpHeaderAuth');
+			const httpHeaderAuth = await this.getCredentials('httpHeaderAuth');
 
 			if (httpHeaderAuth === undefined || !httpHeaderAuth.name || !httpHeaderAuth.value) {
 				// Data is not defined on node so can not authenticate
@@ -404,7 +407,7 @@ export class Webhook implements INodeType {
 		// @ts-ignore
 		const mimeType = headers['content-type'] || 'application/json';
 		if (mimeType.includes('multipart/form-data')) {
-			const form = new formidable.IncomingForm();
+			const form = new formidable.IncomingForm({});
 
 			return new Promise((resolve, reject) => {
 
@@ -427,7 +430,7 @@ export class Webhook implements INodeType {
 							binaryPropertyName = `${options.binaryPropertyName}${count}`;
 						}
 
-						const fileJson = (files[file] as formidable.File).toJSON() as IDataObject;
+						const fileJson = (files[file] as formidable.File).toJSON() as unknown as IDataObject;
 						const fileContent = await fs.promises.readFile((files[file] as formidable.File).path);
 
 						returnItem.binary![binaryPropertyName] = await this.helpers.prepareBinaryData(Buffer.from(fileContent), fileJson.name as string, fileJson.type as string);
@@ -477,8 +480,8 @@ export class Webhook implements INodeType {
 					});
 				});
 
-				req.on('error', (err) => {
-					throw new Error(err.message);
+				req.on('error', (error) => {
+					throw new NodeOperationError(this.getNode(), error);
 				});
 			});
 		}

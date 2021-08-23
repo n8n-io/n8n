@@ -47,8 +47,6 @@
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
-
 import {
 	IUpdateInformation,
 } from '@/Interface';
@@ -177,7 +175,11 @@ export default mixins(genericHelpers)
 					} else if (optionParameter.typeOptions !== undefined && optionParameter.typeOptions.multipleValues === true) {
 						// Multiple values are allowed so append option to array
 						newParameterValue[optionParameter.name] = get(this.nodeValues, `${this.path}.${optionParameter.name}`, []);
-						(newParameterValue[optionParameter.name] as INodeParameters[]).push(JSON.parse(JSON.stringify(optionParameter.default)));
+						if (Array.isArray(optionParameter.default)) {
+							(newParameterValue[optionParameter.name] as INodeParameters[]).push(...JSON.parse(JSON.stringify(optionParameter.default)));
+						} else if (optionParameter.default !== '' && typeof optionParameter.default !== 'object') {
+							(newParameterValue[optionParameter.name] as INodeParameters[]).push(JSON.parse(JSON.stringify(optionParameter.default)));
+						}
 					} else {
 						// Add a new option
 						newParameterValue[optionParameter.name] = JSON.parse(JSON.stringify(optionParameter.default));
