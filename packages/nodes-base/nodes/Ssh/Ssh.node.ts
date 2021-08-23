@@ -1,5 +1,4 @@
 import {
-	BINARY_ENCODING,
 	IExecuteFunctions,
 } from 'n8n-core';
 
@@ -296,7 +295,7 @@ export class Ssh implements INodeType {
 		try {
 			if (authentication === 'password') {
 
-				const credentials = this.getCredentials('sshPassword') as IDataObject;
+				const credentials = await this.getCredentials('sshPassword') as IDataObject;
 
 				await ssh.connect({
 					host: credentials.host as string,
@@ -307,7 +306,7 @@ export class Ssh implements INodeType {
 
 			} else if (authentication === 'privateKey') {
 
-				const credentials = this.getCredentials('sshPrivateKey') as IDataObject;
+				const credentials = await this.getCredentials('sshPrivateKey') as IDataObject;
 
 				const { path, } = await file({ prefix: 'n8n-ssh-' });
 				temporaryFiles.push(path);
@@ -389,9 +388,11 @@ export class Ssh implements INodeType {
 								throw new Error(`No binary data property "${propertyNameUpload}" does not exists on item!`);
 							}
 
+							const dataBuffer = await this.helpers.getBinaryDataBuffer(i, propertyNameUpload);
+
 							const { path } = await file({ prefix: 'n8n-ssh-' });
 							temporaryFiles.push(path);
-							await writeFile(path, Buffer.from(binaryData.data, BINARY_ENCODING));
+							await writeFile(path, dataBuffer);
 
 							await ssh.putFile(path, `${parameterPath}${(parameterPath.charAt(parameterPath.length - 1) === '/') ? '' : '/'}${fileName || binaryData.fileName}`);
 

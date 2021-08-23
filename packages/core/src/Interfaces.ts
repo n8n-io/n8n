@@ -39,6 +39,7 @@ export interface IExecuteFunctions extends IExecuteFunctionsBase {
 		request: (uriOrObject: string | IDataObject | any, options?: IDataObject) => Promise<any>, // tslint:disable-line:no-any
 		requestOAuth2(this: IAllExecuteFunctions, credentialsType: string, requestOptions: OptionsWithUri | requestPromise.RequestPromiseOptions, oAuth2Options?: IOAuth2Options): Promise<any>, // tslint:disable-line:no-any
 		requestOAuth1(this: IAllExecuteFunctions, credentialsType: string, requestOptions: OptionsWithUrl | requestPromise.RequestPromiseOptions): Promise<any>, // tslint:disable-line:no-any
+		getBinaryDataBuffer(itemIndex: number, propertyName: string): Promise<Buffer>;
 		returnJsonArray(jsonData: IDataObject | IDataObject[]): INodeExecutionData[];
 	};
 }

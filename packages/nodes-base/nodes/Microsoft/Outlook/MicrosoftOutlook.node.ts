@@ -648,7 +648,7 @@ export class MicrosoftOutlook implements INodeType {
 						}
 
 						const binaryData = (items[i].binary as IBinaryKeyData)[binaryPropertyName];
-						const dataBuffer = Buffer.from(binaryData.data, 'base64');
+						const dataBuffer = await this.helpers.getBinaryDataBuffer(i, binaryPropertyName);
 
 						const fileName = additionalFields.fileName === undefined ? binaryData.fileName : additionalFields.fileName;
 

@@ -36,7 +36,7 @@ export async function zendeskApiRequest(this: IHookFunctions | IExecuteFunctions
 
 	try {
 		if (authenticationMethod === 'apiToken') {
-			const credentials = this.getCredentials('zendeskApi');
+			const credentials = await this.getCredentials('zendeskApi');
 
 			if (credentials === undefined) {
 				throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
@@ -48,7 +48,7 @@ export async function zendeskApiRequest(this: IHookFunctions | IExecuteFunctions
 
 			return await this.helpers.request!(options);
 		} else {
-			const credentials = this.getCredentials('zendeskOAuth2Api');
+			const credentials = await this.getCredentials('zendeskOAuth2Api');
 
 			if (credentials === undefined) {
 				throw new NodeOperationError(this.getNode(), 'No credentials got returned!');

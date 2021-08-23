@@ -22,7 +22,7 @@ export async function apiRequest(
 	body: IDataObject | GenericValue | GenericValue[] = {},
 	query: IDataObject = {},
 ) {
-	const credentials = this.getCredentials('mattermostApi');
+	const credentials = await this.getCredentials('mattermostApi');
 
 	if (credentials === undefined) {
 		throw new NodeOperationError(this.getNode(), 'No credentials returned!');

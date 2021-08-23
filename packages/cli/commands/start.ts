@@ -22,10 +22,11 @@ import {
 	NodeTypes,
 	Server,
 	TestWebhooks,
+	WaitTracker,
 } from '../src';
 import { IDataObject } from 'n8n-workflow';
 
-import { 
+import {
 	getLogger,
 } from '../src/Logger';
 
@@ -283,6 +284,8 @@ export class Start extends Command {
 				// Start to get active workflows and run their triggers
 				activeWorkflowRunner = ActiveWorkflowRunner.getInstance();
 				await activeWorkflowRunner.init();
+
+				const waitTracker = WaitTracker();
 
 				const editorUrl = GenericHelpers.getBaseUrl();
 				this.log(`\nEditor is now accessible via:\n${editorUrl}`);

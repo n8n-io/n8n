@@ -33,7 +33,6 @@ export class WorkflowExecute {
 	private additionalData: IWorkflowExecuteAdditionalData;
 	private mode: WorkflowExecuteMode;
 
-
 	constructor(additionalData: IWorkflowExecuteAdditionalData, mode: WorkflowExecuteMode, runExecutionData?: IRunExecutionData) {
 		this.additionalData = additionalData;
 		this.mode = mode;
@@ -514,6 +513,13 @@ export class WorkflowExecute {
 			this.runExecutionData.startData = {};
 		}
 
+		if (this.runExecutionData.waitTill) {
+			const lastNodeExecuted = this.runExecutionData.resultData.lastNodeExecuted as string;
+			this.runExecutionData.executionData!.nodeExecutionStack[0].node.disabled = true;
+			this.runExecutionData.waitTill = undefined;
+			this.runExecutionData.resultData.runData[lastNodeExecuted].pop();
+		}
+
 		let currentExecutionTry = '';
 		let lastExecutionTry = '';
 
@@ -695,7 +701,7 @@ export class WorkflowExecute {
 								}
 							}
 
-							if (nodeSuccessData === null) {
+							if (nodeSuccessData === null && !this.runExecutionData.waitTill!!) {
 								// If null gets returned it means that the node did succeed
 								// but did not have any data. So the branch should end
 								// (meaning the nodes afterwards should not be processed)
@@ -783,6 +789,15 @@ export class WorkflowExecute {
 						continue;
 					}
 
+					if (this.runExecutionData.waitTill!!) {
+						await this.executeHook('nodeExecuteAfter', [executionNode.name, taskData, this.runExecutionData]);
+
+						// Add the node back to the stack that the workflow can start to execute again from that node
+						this.runExecutionData.executionData!.nodeExecutionStack.unshift(executionData);
+
+						break;
+					}
+
 					// Add the nodes to which the current node has an output connection to that they can
 					// be executed next
 					if (workflow.connectionsBySourceNode.hasOwnProperty(executionNode.name)) {
@@ -865,6 +880,9 @@ export class WorkflowExecute {
 				message: executionError.message,
 				stack: executionError.stack,
 			} as ExecutionError;
+		} else if (this.runExecutionData.waitTill!!) {
+			Logger.verbose(`Workflow execution will wait until ${this.runExecutionData.waitTill}`, { workflowId: workflow.id });
+			fullRunData.waitTill = this.runExecutionData.waitTill;
 		} else {
 			Logger.verbose(`Workflow execution finished successfully`, { workflowId: workflow.id });
 			fullRunData.finished = true;
