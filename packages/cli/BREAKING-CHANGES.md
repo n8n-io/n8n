@@ -6,7 +6,7 @@ This list shows all the versions which include breaking changes and how to upgra
 
 ### What changed?
 
-The in-node core methods for credentials and binary data changed.
+The in-node core methods for credentials and binary data have changed.
 
 ### When is action necessary?
 
@@ -14,7 +14,7 @@ If you are using custom n8n nodes.
 
 ### How to upgrade:
 
-1. The method `this.getCredentials(myNodeCredentials)` is now asyn. So `await` has to be added in front of it.
+1. The method `this.getCredentials(myNodeCredentials)` is now async. So `await` has to be added in front of it.
 
 Example:
 
