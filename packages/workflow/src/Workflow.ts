@@ -704,7 +704,13 @@ export class Workflow {
 	 * @returns {(number | undefined)}
 	 * @memberof Workflow
 	 */
-	getNodeConnectionOutputIndex(nodeName: string, parentNodeName: string, type = 'main', depth = -1, checkedNodes?: string[]): number | undefined {
+	getNodeConnectionOutputIndex(
+		nodeName: string,
+		parentNodeName: string,
+		type = 'main',
+		depth = -1,
+		checkedNodes?: string[],
+	): number | undefined {
 		const node = this.getNode(parentNodeName);
 		if (node === null) {
 			return undefined;

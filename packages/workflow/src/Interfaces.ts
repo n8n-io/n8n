@@ -121,8 +121,18 @@ export abstract class ICredentialsHelper {
 	}
 
 	abstract getCredentials(name: string, type: string): Promise<ICredentials>;
-	abstract getDecrypted(name: string, type: string, mode: WorkflowExecuteMode, raw?: boolean, expressionResolveValues?: ICredentialsExpressionResolveValues): Promise<ICredentialDataDecryptedObject>;
-	abstract updateCredentials(name: string, type: string, data: ICredentialDataDecryptedObject): Promise<void>;
+	abstract getDecrypted(
+		name: string,
+		type: string,
+		mode: WorkflowExecuteMode,
+		raw?: boolean,
+		expressionResolveValues?: ICredentialsExpressionResolveValues,
+	): Promise<ICredentialDataDecryptedObject>;
+	abstract updateCredentials(
+		name: string,
+		type: string,
+		data: ICredentialDataDecryptedObject,
+	): Promise<void>;
 }
 
 export interface ICredentialType {
@@ -272,7 +282,10 @@ export interface IExecuteFunctions {
 		inputData?: INodeExecutionData[],
 	): Promise<any>;
 	getContext(type: string): IContextObject;
-	getCredentials(type: string, itemIndex?: number): Promise<ICredentialDataDecryptedObject | undefined>;
+	getCredentials(
+		type: string,
+		itemIndex?: number,
+	): Promise<ICredentialDataDecryptedObject | undefined>;
 	getInputData(inputIndex?: number, inputName?: string): INodeExecutionData[];
 	getMode(): WorkflowExecuteMode;
 	getNode(): INode;
@@ -286,7 +299,10 @@ export interface IExecuteFunctions {
 	getRestApiUrl(): string;
 	getTimezone(): string;
 	getWorkflow(): IWorkflowMetadata;
-	prepareOutputData(outputData: INodeExecutionData[], outputIndex?: number): Promise<INodeExecutionData[][]>;
+	prepareOutputData(
+		outputData: INodeExecutionData[],
+		outputIndex?: number,
+	): Promise<INodeExecutionData[][]>;
 	putExecutionToWait(waitTill: Date): Promise<void>;
 	sendMessageToUI(message: any): void; // tslint:disable-line:no-any
 	helpers: {
@@ -496,7 +512,19 @@ export interface INodeParameters {
 	[key: string]: NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[];
 }
 
-export type NodePropertyTypes = 'boolean' | 'collection' | 'color' | 'dateTime' | 'fixedCollection' | 'hidden' | 'json' | 'notice' | 'multiOptions' | 'number' | 'options' | 'string';
+export type NodePropertyTypes =
+	| 'boolean'
+	| 'collection'
+	| 'color'
+	| 'dateTime'
+	| 'fixedCollection'
+	| 'hidden'
+	| 'json'
+	| 'notice'
+	| 'multiOptions'
+	| 'number'
+	| 'options'
+	| 'string';
 
 export type EditorTypes = 'code';
 

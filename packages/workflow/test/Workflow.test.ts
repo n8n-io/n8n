@@ -1020,8 +1020,8 @@ describe('Workflow', () => {
 						name: 'Node3',
 						// @ts-ignore
 						parameters: testData.input.hasOwnProperty('Node3')
-							// @ts-ignore
-							? testData.input.Node3.parameters
+							? // @ts-ignore
+							  testData.input.Node3.parameters
 							: {},
 						type: 'test.set',
 						typeVersion: 1,
@@ -1031,8 +1031,8 @@ describe('Workflow', () => {
 						name: 'Node 4 with spaces',
 						// @ts-ignore
 						parameters: testData.input.hasOwnProperty('Node4')
-							// @ts-ignore
-							? testData.input.Node4.parameters
+							? // @ts-ignore
+							  testData.input.Node4.parameters
 							: {},
 						type: 'test.set',
 						typeVersion: 1,
@@ -1099,8 +1099,19 @@ describe('Workflow', () => {
 					runExecutionData.resultData.runData!['Node1']![0]!.data!.main[0]!;
 
 				for (const parameterName of Object.keys(testData.output)) {
-					const parameterValue = nodes.find((node) => node.name === activeNodeName)!.parameters[parameterName];
-					const result = workflow.expression.getParameterValue(parameterValue, runExecutionData, runIndex, itemIndex, activeNodeName, connectionInputData, 'manual', {});
+					const parameterValue = nodes.find((node) => node.name === activeNodeName)!.parameters[
+						parameterName
+					];
+					const result = workflow.expression.getParameterValue(
+						parameterValue,
+						runExecutionData,
+						runIndex,
+						itemIndex,
+						activeNodeName,
+						connectionInputData,
+						'manual',
+						{},
+					);
 					// @ts-ignore
 					expect(result).toEqual(testData.output[parameterName]);
 				}
@@ -1242,8 +1253,19 @@ describe('Workflow', () => {
 				runExecutionData.resultData.runData!['Node1']![0]!.data!.main[0]!;
 			const parameterName = 'values';
 
-			const parameterValue = nodes.find((node) => node.name === activeNodeName)!.parameters[parameterName];
-			const result = workflow.expression.getParameterValue(parameterValue, runExecutionData, runIndex, itemIndex, activeNodeName, connectionInputData, 'manual', {});
+			const parameterValue = nodes.find((node) => node.name === activeNodeName)!.parameters[
+				parameterName
+			];
+			const result = workflow.expression.getParameterValue(
+				parameterValue,
+				runExecutionData,
+				runIndex,
+				itemIndex,
+				activeNodeName,
+				connectionInputData,
+				'manual',
+				{},
+			);
 
 			expect(result).toEqual({
 				string: [
