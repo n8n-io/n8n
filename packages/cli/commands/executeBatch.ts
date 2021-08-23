@@ -659,7 +659,6 @@ export class ExecuteBatch extends Command {
 			}, ExecuteBatch.executionTimeout);
 
 			try {
-
 				const runData: IWorkflowExecutionDataProcess = {
 					executionMode: 'cli',
 					startNodes: [startNode!.name],

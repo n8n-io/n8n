@@ -143,7 +143,12 @@ export class WorkflowRunner {
 	 * @returns {Promise<string>}
 	 * @memberof WorkflowRunner
 	 */
-	async run(data: IWorkflowExecutionDataProcess, loadStaticData?: boolean, realtime?: boolean, executionId?: string): Promise<string> {
+	async run(
+		data: IWorkflowExecutionDataProcess,
+		loadStaticData?: boolean,
+		realtime?: boolean,
+		executionId?: string,
+	): Promise<string> {
 		const executionsProcess = config.get('executions.process') as string;
 		const executionsMode = config.get('executions.mode') as string;
 
@@ -181,7 +186,11 @@ export class WorkflowRunner {
 	 * @returns {Promise<string>}
 	 * @memberof WorkflowRunner
 	 */
-	async runMainProcess(data: IWorkflowExecutionDataProcess, loadStaticData?: boolean, restartExecutionId?: string): Promise<string> {
+	async runMainProcess(
+		data: IWorkflowExecutionDataProcess,
+		loadStaticData?: boolean,
+		restartExecutionId?: string,
+	): Promise<string> {
 		if (loadStaticData === true && data.workflowData.id) {
 			data.workflowData.staticData = await WorkflowHelpers.getStaticDataById(
 				data.workflowData.id as string,
@@ -203,14 +212,32 @@ export class WorkflowRunner {
 			workflowTimeout = Math.min(workflowTimeout, config.get('executions.maxTimeout') as number);
 		}
 
-		const workflow = new Workflow({ id: data.workflowData.id as string | undefined, name: data.workflowData.name, nodes: data.workflowData!.nodes, connections: data.workflowData!.connections, active: data.workflowData!.active, nodeTypes, staticData: data.workflowData!.staticData });
-		const additionalData = await WorkflowExecuteAdditionalData.getBase(undefined, workflowTimeout <= 0 ? undefined : Date.now() + workflowTimeout * 1000);
+		const workflow = new Workflow({
+			id: data.workflowData.id as string | undefined,
+			name: data.workflowData.name,
+			nodes: data.workflowData!.nodes,
+			connections: data.workflowData!.connections,
+			active: data.workflowData!.active,
+			nodeTypes,
+			staticData: data.workflowData!.staticData,
+		});
+		const additionalData = await WorkflowExecuteAdditionalData.getBase(
+			undefined,
+			workflowTimeout <= 0 ? undefined : Date.now() + workflowTimeout * 1000,
+		);
 
 		// Register the active execution
-		const executionId = await this.activeExecutions.add(data, undefined, restartExecutionId) as string;
+		const executionId = (await this.activeExecutions.add(
+			data,
+			undefined,
+			restartExecutionId,
+		)) as string;
 		additionalData.executionId = executionId;
 
-		Logger.verbose(`Execution for workflow ${data.workflowData.name} was assigned id ${executionId}`, {executionId});
+		Logger.verbose(
+			`Execution for workflow ${data.workflowData.name} was assigned id ${executionId}`,
+			{ executionId },
+		);
 		let workflowExecution: PCancelable<IRun>;
 
 		try {
@@ -303,8 +330,12 @@ export class WorkflowRunner {
 		return executionId;
 	}
 
-	async runBull(data: IWorkflowExecutionDataProcess, loadStaticData?: boolean, realtime?: boolean, restartExecutionId?: string): Promise<string> {
-
+	async runBull(
+		data: IWorkflowExecutionDataProcess,
+		loadStaticData?: boolean,
+		realtime?: boolean,
+		restartExecutionId?: string,
+	): Promise<string> {
 		// TODO: If "loadStaticData" is set to true it has to load data new on worker
 
 		// Register the active execution
@@ -504,7 +535,11 @@ export class WorkflowRunner {
 	 * @returns {Promise<string>}
 	 * @memberof WorkflowRunner
 	 */
-	async runSubprocess(data: IWorkflowExecutionDataProcess, loadStaticData?: boolean, restartExecutionId?: string): Promise<string> {
+	async runSubprocess(
+		data: IWorkflowExecutionDataProcess,
+		loadStaticData?: boolean,
+		restartExecutionId?: string,
+	): Promise<string> {
 		let startedAt = new Date();
 		const subprocess = fork(pathJoin(__dirname, 'WorkflowRunnerProcess.js'));
 
@@ -523,8 +558,10 @@ export class WorkflowRunner {
 
 		(data as unknown as IWorkflowExecutionDataProcessWithExecution).executionId = executionId;
 		(data as unknown as IWorkflowExecutionDataProcessWithExecution).nodeTypeData = nodeTypeData;
-		(data as unknown as IWorkflowExecutionDataProcessWithExecution).credentialsOverwrite = this.credentialsOverwrites;
-		(data as unknown as IWorkflowExecutionDataProcessWithExecution).credentialsTypeData = credentialTypes.credentialTypes;
+		(data as unknown as IWorkflowExecutionDataProcessWithExecution).credentialsOverwrite =
+			this.credentialsOverwrites;
+		(data as unknown as IWorkflowExecutionDataProcessWithExecution).credentialsTypeData =
+			credentialTypes.credentialTypes;
 
 		const workflowHooks = WorkflowExecuteAdditionalData.getWorkflowHooksMain(data, executionId);
 

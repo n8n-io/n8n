@@ -119,12 +119,24 @@ export class TestWebhooks {
 		return new Promise(async (resolve, reject) => {
 			try {
 				const executionMode = 'manual';
-				const executionId = await WebhookHelpers.executeWebhook(workflow, webhookData!, this.testWebhookData[webhookKey].workflowData, workflowStartNode, executionMode, this.testWebhookData[webhookKey].sessionId, undefined, undefined, request, response, (error: Error | null, data: IResponseCallbackData) => {
-					if (error !== null) {
-						return reject(error);
-					}
-					resolve(data);
-				});
+				const executionId = await WebhookHelpers.executeWebhook(
+					workflow,
+					webhookData!,
+					this.testWebhookData[webhookKey].workflowData,
+					workflowStartNode,
+					executionMode,
+					this.testWebhookData[webhookKey].sessionId,
+					undefined,
+					undefined,
+					request,
+					response,
+					(error: Error | null, data: IResponseCallbackData) => {
+						if (error !== null) {
+							return reject(error);
+						}
+						resolve(data);
+					},
+				);
 
 				if (executionId === undefined) {
 					// The workflow did not run as the request was probably setup related
@@ -184,9 +196,22 @@ export class TestWebhooks {
 	 * @returns {(Promise<IExecutionDb | undefined>)}
 	 * @memberof TestWebhooks
 	 */
-	async needsWebhookData(workflowData: IWorkflowDb, workflow: Workflow, additionalData: IWorkflowExecuteAdditionalData, mode: WorkflowExecuteMode, activation: WorkflowActivateMode, sessionId?: string, destinationNode?: string): Promise<boolean> {
-		const webhooks = WebhookHelpers.getWorkflowWebhooks(workflow, additionalData, destinationNode, true);
-		if (!webhooks.find(webhook => webhook.webhookDescription.restartWebhook !== true)) {
+	async needsWebhookData(
+		workflowData: IWorkflowDb,
+		workflow: Workflow,
+		additionalData: IWorkflowExecuteAdditionalData,
+		mode: WorkflowExecuteMode,
+		activation: WorkflowActivateMode,
+		sessionId?: string,
+		destinationNode?: string,
+	): Promise<boolean> {
+		const webhooks = WebhookHelpers.getWorkflowWebhooks(
+			workflow,
+			additionalData,
+			destinationNode,
+			true,
+		);
+		if (!webhooks.find((webhook) => webhook.webhookDescription.restartWebhook !== true)) {
 			// No webhooks found to start a workflow
 			return false;
 		}

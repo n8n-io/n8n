@@ -1,10 +1,7 @@
 import * as PCancelable from 'p-cancelable';
 
 import { Command, flags } from '@oclif/command';
-import {
-	UserSettings,
-	WorkflowExecute,
-} from 'n8n-core';
+import { UserSettings, WorkflowExecute } from 'n8n-core';
 
 import {
 	IDataObject,
@@ -15,9 +12,7 @@ import {
 	WorkflowHooks,
 } from 'n8n-workflow';
 
-import {
-	FindOneOptions,
-} from 'typeorm';
+import { FindOneOptions } from 'typeorm';
 
 import {
 	ActiveExecutions,
@@ -37,13 +32,9 @@ import {
 	WorkflowExecuteAdditionalData,
 } from '../src';
 
-import {
-	getLogger,
-} from '../src/Logger';
+import { getLogger } from '../src/Logger';
 
-import {
-	LoggerProxy,
-} from 'n8n-workflow';
+import { LoggerProxy } from 'n8n-workflow';
 
 import * as config from '../config';
 import * as Bull from 'bull';
@@ -52,9 +43,7 @@ import * as Queue from '../src/Queue';
 export class Worker extends Command {
 	static description = '\nStarts a n8n worker';
 
-	static examples = [
-		`$ n8n worker --concurrency=5`,
-	];
+	static examples = [`$ n8n worker --concurrency=5`];
 
 	static flags = {
 		help: flags.help({ char: 'h' }),
@@ -103,13 +92,16 @@ export class Worker extends Command {
 			while (Object.keys(Worker.runningJobs).length !== 0) {
 				if (count++ % 4 === 0) {
 					const waitLeft = Math.ceil((stopTime - new Date().getTime()) / 1000);
-					LoggerProxy.info(`Waiting for ${Object.keys(Worker.runningJobs).length} active executions to finish... (wait ${waitLeft} more seconds)`);
+					LoggerProxy.info(
+						`Waiting for ${
+							Object.keys(Worker.runningJobs).length
+						} active executions to finish... (wait ${waitLeft} more seconds)`,
+					);
 				}
 				await new Promise((resolve) => {
 					setTimeout(resolve, 500);
 				});
 			}
-
 		} catch (error) {
 			LoggerProxy.error('There was an error shutting down n8n.', error);
 		}
@@ -119,24 +111,38 @@ export class Worker extends Command {
 
 	async runJob(job: Bull.Job, nodeTypes: INodeTypes): Promise<IBullJobResponse> {
 		const jobData = job.data as IBullJobData;
-		const executionDb = await Db.collections.Execution!.findOne(jobData.executionId) as IExecutionFlattedDb;
-		const currentExecutionDb = ResponseHelper.unflattenExecutionData(executionDb) as IExecutionResponse;
-		LoggerProxy.info(`Start job: ${job.id} (Workflow ID: ${currentExecutionDb.workflowData.id} | Execution: ${jobData.executionId})`);
+		const executionDb = (await Db.collections.Execution!.findOne(
+			jobData.executionId,
+		)) as IExecutionFlattedDb;
+		const currentExecutionDb = ResponseHelper.unflattenExecutionData(
+			executionDb,
+		) as IExecutionResponse;
+		LoggerProxy.info(
+			`Start job: ${job.id} (Workflow ID: ${currentExecutionDb.workflowData.id} | Execution: ${jobData.executionId})`,
+		);
 
 		let staticData = currentExecutionDb.workflowData!.staticData;
 		if (jobData.loadStaticData === true) {
 			const findOptions = {
 				select: ['id', 'staticData'],
 			} as FindOneOptions;
-			const workflowData = await Db.collections!.Workflow!.findOne(currentExecutionDb.workflowData.id, findOptions);
+			const workflowData = await Db.collections!.Workflow!.findOne(
+				currentExecutionDb.workflowData.id,
+				findOptions,
+			);
 			if (workflowData === undefined) {
-				throw new Error(`The workflow with the ID "${currentExecutionDb.workflowData.id}" could not be found`);
+				throw new Error(
+					`The workflow with the ID "${currentExecutionDb.workflowData.id}" could not be found`,
+				);
 			}
 			staticData = workflowData.staticData;
 		}
 
 		let workflowTimeout = config.get('executions.timeout') as number; // initialize with default
-		if (currentExecutionDb.workflowData.settings && currentExecutionDb.workflowData.settings.executionTimeout) {
+		if (
+			currentExecutionDb.workflowData.settings &&
+			currentExecutionDb.workflowData.settings.executionTimeout
+		) {
 			workflowTimeout = currentExecutionDb.workflowData.settings!.executionTimeout as number; // preference on workflow setting
 		}
 
@@ -146,16 +152,37 @@ export class Worker extends Command {
 			executionTimeoutTimestamp = Date.now() + workflowTimeout * 1000;
 		}
 
-		const workflow = new Workflow({ id: currentExecutionDb.workflowData.id as string, name: currentExecutionDb.workflowData.name, nodes: currentExecutionDb.workflowData!.nodes, connections: currentExecutionDb.workflowData!.connections, active: currentExecutionDb.workflowData!.active, nodeTypes, staticData, settings: currentExecutionDb.workflowData!.settings });
+		const workflow = new Workflow({
+			id: currentExecutionDb.workflowData.id as string,
+			name: currentExecutionDb.workflowData.name,
+			nodes: currentExecutionDb.workflowData!.nodes,
+			connections: currentExecutionDb.workflowData!.connections,
+			active: currentExecutionDb.workflowData!.active,
+			nodeTypes,
+			staticData,
+			settings: currentExecutionDb.workflowData!.settings,
+		});
 
-		const additionalData = await WorkflowExecuteAdditionalData.getBase(undefined, executionTimeoutTimestamp);
-		additionalData.hooks = WorkflowExecuteAdditionalData.getWorkflowHooksWorkerExecuter(currentExecutionDb.mode, job.data.executionId, currentExecutionDb.workflowData, { retryOf: currentExecutionDb.retryOf as string });
+		const additionalData = await WorkflowExecuteAdditionalData.getBase(
+			undefined,
+			executionTimeoutTimestamp,
+		);
+		additionalData.hooks = WorkflowExecuteAdditionalData.getWorkflowHooksWorkerExecuter(
+			currentExecutionDb.mode,
+			job.data.executionId,
+			currentExecutionDb.workflowData,
+			{ retryOf: currentExecutionDb.retryOf as string },
+		);
 		additionalData.executionId = jobData.executionId;
 
 		let workflowExecute: WorkflowExecute;
 		let workflowRun: PCancelable<IRun>;
 		if (currentExecutionDb.data !== undefined) {
-			workflowExecute = new WorkflowExecute(additionalData, currentExecutionDb.mode, currentExecutionDb.data);
+			workflowExecute = new WorkflowExecute(
+				additionalData,
+				currentExecutionDb.mode,
+				currentExecutionDb.data,
+			);
 			workflowRun = workflowExecute.processRunExecutionData(workflow);
 		} else {
 			// Execute all nodes
@@ -192,7 +219,7 @@ export class Worker extends Command {
 				const { flags } = this.parse(Worker);
 
 				// Start directly with the init of the database to improve startup time
-				const startDbInitPromise = Db.init().catch(error => {
+				const startDbInitPromise = Db.init().catch((error) => {
 					logger.error(`There was an error initializing DB: "${error.message}"`);
 
 					Worker.processExistCode = 1;
@@ -251,7 +278,8 @@ export class Worker extends Command {
 					}
 				});
 
-				let lastTimer = 0, cumulativeTimeout = 0;
+				let lastTimer = 0,
+					cumulativeTimeout = 0;
 				Worker.jobQueue.on('error', (error: Error) => {
 					if (error.toString().includes('ECONNREFUSED') === true) {
 						const now = Date.now();
@@ -263,7 +291,11 @@ export class Worker extends Command {
 							cumulativeTimeout += now - lastTimer;
 							lastTimer = now;
 							if (cumulativeTimeout > redisConnectionTimeoutLimit) {
-								logger.error('Unable to connect to Redis after ' + redisConnectionTimeoutLimit + ". Exiting process.");
+								logger.error(
+									'Unable to connect to Redis after ' +
+										redisConnectionTimeoutLimit +
+										'. Exiting process.',
+								);
 								process.exit(1);
 							}
 						}
@@ -287,6 +319,5 @@ export class Worker extends Command {
 				process.exit(1);
 			}
 		})();
-
 	}
 }

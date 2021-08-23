@@ -11,33 +11,23 @@ import {
 	WorkflowRunner,
 } from '.';
 
-import {
-	IRun,
-	LoggerProxy as Logger,
-	WorkflowOperationError,
-} from 'n8n-workflow';
+import { IRun, LoggerProxy as Logger, WorkflowOperationError } from 'n8n-workflow';
 
-import {
-	FindManyOptions,
-	LessThanOrEqual,
-	ObjectLiteral,
-} from 'typeorm';
+import { FindManyOptions, LessThanOrEqual, ObjectLiteral } from 'typeorm';
 
 import { DateUtils } from 'typeorm/util/DateUtils';
-
 
 export class WaitTrackerClass {
 	activeExecutionsInstance: ActiveExecutions.ActiveExecutions;
 
 	private waitingExecutions: {
 		[key: string]: {
-			executionId: string,
-			timer: NodeJS.Timeout,
+			executionId: string;
+			timer: NodeJS.Timeout;
 		};
 	} = {};
 
 	mainTimer: NodeJS.Timeout;
-
 
 	constructor() {
 		this.activeExecutionsInstance = ActiveExecutions.getInstance();
@@ -49,7 +39,6 @@ export class WaitTrackerClass {
 
 		this.getwaitingExecutions();
 	}
-
 
 	async getwaitingExecutions() {
 		Logger.debug('Wait tracker querying database for waiting executions');
@@ -63,11 +52,13 @@ export class WaitTrackerClass {
 				waitTill: 'ASC',
 			},
 		};
-		const dbType = await GenericHelpers.getConfigValue('database.type') as DatabaseType;
+		const dbType = (await GenericHelpers.getConfigValue('database.type')) as DatabaseType;
 		if (dbType === 'sqlite') {
 			// This is needed because of issue in TypeORM <> SQLite:
 			// https://github.com/typeorm/typeorm/issues/2286
-			(findQuery.where! as ObjectLiteral).waitTill = LessThanOrEqual(DateUtils.mixedDateToUtcDatetimeString(new Date(Date.now() + 70000)));
+			(findQuery.where! as ObjectLiteral).waitTill = LessThanOrEqual(
+				DateUtils.mixedDateToUtcDatetimeString(new Date(Date.now() + 70000)),
+			);
 		}
 
 		const executions = await Db.collections.Execution!.find(findQuery);
@@ -76,8 +67,10 @@ export class WaitTrackerClass {
 			return;
 		}
 
-		const executionIds = executions.map(execution => execution.id.toString()).join(', ');
-		Logger.debug(`Wait tracker found ${executions.length} executions. Setting timer for IDs: ${executionIds}`);
+		const executionIds = executions.map((execution) => execution.id.toString()).join(', ');
+		Logger.debug(
+			`Wait tracker found ${executions.length} executions. Setting timer for IDs: ${executionIds}`,
+		);
 
 		// Add timers for each waiting execution that they get started at the correct time
 		for (const execution of executions) {
@@ -93,7 +86,6 @@ export class WaitTrackerClass {
 			}
 		}
 	}
-
 
 	async stopExecution(executionId: string): Promise<IExecutionsStopData> {
 		if (this.waitingExecutions[executionId] !== undefined) {
@@ -124,7 +116,10 @@ export class WaitTrackerClass {
 		fullExecutionData.stoppedAt = new Date();
 		fullExecutionData.waitTill = undefined;
 
-		await Db.collections.Execution!.update(executionId, ResponseHelper.flattenExecutionData(fullExecutionData));
+		await Db.collections.Execution!.update(
+			executionId,
+			ResponseHelper.flattenExecutionData(fullExecutionData),
+		);
 
 		return {
 			mode: fullExecutionData.mode,
@@ -134,9 +129,8 @@ export class WaitTrackerClass {
 		};
 	}
 
-
 	startExecution(executionId: string) {
-		Logger.debug(`Wait tracker resuming execution ${executionId}`, {executionId});
+		Logger.debug(`Wait tracker resuming execution ${executionId}`, { executionId });
 		delete this.waitingExecutions[executionId];
 
 		(async () => {
@@ -163,12 +157,13 @@ export class WaitTrackerClass {
 			const workflowRunner = new WorkflowRunner();
 			await workflowRunner.run(data, false, false, executionId);
 		})().catch((error) => {
-			Logger.error(`There was a problem starting the waiting execution with id "${executionId}": "${error.message}"`, { executionId });
+			Logger.error(
+				`There was a problem starting the waiting execution with id "${executionId}": "${error.message}"`,
+				{ executionId },
+			);
 		});
-
 	}
 }
-
 
 let waitTrackerInstance: WaitTrackerClass | undefined;
 

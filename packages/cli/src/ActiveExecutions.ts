@@ -33,8 +33,11 @@ export class ActiveExecutions {
 	 * @returns {string}
 	 * @memberof ActiveExecutions
 	 */
-	async add(executionData: IWorkflowExecutionDataProcess, process?: ChildProcess, executionId?: string): Promise<string> {
-
+	async add(
+		executionData: IWorkflowExecutionDataProcess,
+		process?: ChildProcess,
+		executionId?: string,
+	): Promise<string> {
 		if (executionId === undefined) {
 			// Is a new execution so save in DB
 
@@ -50,14 +53,22 @@ export class ActiveExecutions {
 				fullExecutionData.retryOf = executionData.retryOf.toString();
 			}
 
-			if (executionData.workflowData.id !== undefined && WorkflowHelpers.isWorkflowIdValid(executionData.workflowData.id.toString()) === true) {
+			if (
+				executionData.workflowData.id !== undefined &&
+				WorkflowHelpers.isWorkflowIdValid(executionData.workflowData.id.toString()) === true
+			) {
 				fullExecutionData.workflowId = executionData.workflowData.id.toString();
 			}
 
 			const execution = ResponseHelper.flattenExecutionData(fullExecutionData);
 
-			const executionResult = await Db.collections.Execution!.save(execution as IExecutionFlattedDb);
-			executionId = typeof executionResult.id === "object" ? executionResult.id!.toString() : executionResult.id + "";
+			const executionResult = await Db.collections.Execution!.save(
+				execution as IExecutionFlattedDb,
+			);
+			executionId =
+				typeof executionResult.id === 'object'
+					? executionResult.id!.toString()
+					: executionResult.id + '';
 		} else {
 			// Is an existing execution we want to finish so update in DB
 

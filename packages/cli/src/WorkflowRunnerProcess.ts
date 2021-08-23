@@ -130,7 +130,7 @@ export class WorkflowRunnerProcess {
 		// We check if any node uses credentials. If it does, then
 		// init database.
 		let shouldInitializaDb = false;
-		inputData.workflowData.nodes.map(node => {
+		inputData.workflowData.nodes.map((node) => {
 			if (Object.keys(node.credentials === undefined ? {} : node.credentials).length > 0) {
 				shouldInitializaDb = true;
 			}
@@ -141,7 +141,10 @@ export class WorkflowRunnerProcess {
 		if (shouldInitializaDb) {
 			// initialize db as we need to load credentials
 			await Db.init();
-		} else if (inputData.workflowData.settings !== undefined && inputData.workflowData.settings.saveExecutionProgress === true) {
+		} else if (
+			inputData.workflowData.settings !== undefined &&
+			inputData.workflowData.settings.saveExecutionProgress === true
+		) {
 			// Workflow settings specifying it should save
 			await Db.init();
 		} else if (
@@ -170,8 +173,20 @@ export class WorkflowRunnerProcess {
 			workflowTimeout = Math.min(workflowTimeout, config.get('executions.maxTimeout') as number);
 		}
 
-		this.workflow = new Workflow({ id: this.data.workflowData.id as string | undefined, name: this.data.workflowData.name, nodes: this.data.workflowData!.nodes, connections: this.data.workflowData!.connections, active: this.data.workflowData!.active, nodeTypes, staticData: this.data.workflowData!.staticData, settings: this.data.workflowData!.settings });
-		const additionalData = await WorkflowExecuteAdditionalData.getBase(undefined, workflowTimeout <= 0 ? undefined : Date.now() + workflowTimeout * 1000);
+		this.workflow = new Workflow({
+			id: this.data.workflowData.id as string | undefined,
+			name: this.data.workflowData.name,
+			nodes: this.data.workflowData!.nodes,
+			connections: this.data.workflowData!.connections,
+			active: this.data.workflowData!.active,
+			nodeTypes,
+			staticData: this.data.workflowData!.staticData,
+			settings: this.data.workflowData!.settings,
+		});
+		const additionalData = await WorkflowExecuteAdditionalData.getBase(
+			undefined,
+			workflowTimeout <= 0 ? undefined : Date.now() + workflowTimeout * 1000,
+		);
 		additionalData.hooks = this.getProcessForwardHooks();
 		additionalData.executionId = inputData.executionId;
 

@@ -504,7 +504,13 @@ function hookFunctionsSave(parentProcessMode?: string): IWorkflowExecuteHooks {
 					) {
 						if (!fullRunData.waitTill) {
 							if (!isManualMode) {
-								executeErrorWorkflow(this.workflowData, fullRunData, this.mode, undefined, this.retryOf);
+								executeErrorWorkflow(
+									this.workflowData,
+									fullRunData,
+									this.mode,
+									undefined,
+									this.retryOf,
+								);
 							}
 							// Data is always saved, so we remove from database
 							await Db.collections.Execution!.delete(this.executionId);
@@ -817,7 +823,12 @@ export async function executeWorkflow(
 		// Create new additionalData to have different workflow loaded and to call
 		// different webooks
 		const additionalDataIntegrated = await getBase();
-		additionalDataIntegrated.hooks = getWorkflowHooksIntegrated(runData.executionMode, executionId, workflowData!, { parentProcessMode: additionalData.hooks!.mode });
+		additionalDataIntegrated.hooks = getWorkflowHooksIntegrated(
+			runData.executionMode,
+			executionId,
+			workflowData!,
+			{ parentProcessMode: additionalData.hooks!.mode },
+		);
 		// Make sure we pass on the original executeWorkflow function we received
 		// This one already contains changes to talk to parent process
 		// and get executionID from `activeExecutions` running on main process
@@ -940,13 +951,16 @@ export function sendMessageToUI(source: string, message: any) {
  * @param {INodeParameters} currentNodeParameters
  * @returns {Promise<IWorkflowExecuteAdditionalData>}
  */
-export async function getBase(currentNodeParameters?: INodeParameters, executionTimeoutTimestamp?: number): Promise<IWorkflowExecuteAdditionalData> {
+export async function getBase(
+	currentNodeParameters?: INodeParameters,
+	executionTimeoutTimestamp?: number,
+): Promise<IWorkflowExecuteAdditionalData> {
 	const urlBaseWebhook = WebhookHelpers.getWebhookBaseUrl();
 
 	const timezone = config.get('generic.timezone') as string;
-	const webhookBaseUrl = urlBaseWebhook + config.get('endpoints.webhook') as string;
-	const webhookWaitingBaseUrl = urlBaseWebhook + config.get('endpoints.webhookWaiting') as string;
-	const webhookTestBaseUrl = urlBaseWebhook + config.get('endpoints.webhookTest') as string;
+	const webhookBaseUrl = (urlBaseWebhook + config.get('endpoints.webhook')) as string;
+	const webhookWaitingBaseUrl = (urlBaseWebhook + config.get('endpoints.webhookWaiting')) as string;
+	const webhookTestBaseUrl = (urlBaseWebhook + config.get('endpoints.webhookTest')) as string;
 
 	const encryptionKey = await UserSettings.getEncryptionKey();
 	if (encryptionKey === undefined) {

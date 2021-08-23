@@ -10,22 +10,18 @@ import {
 	WorkflowExecuteAdditionalData,
 } from '.';
 
-import {
-	INode,
-	IRunExecutionData,
-	NodeHelpers,
-	WebhookHttpMethod,
-	Workflow,
-} from 'n8n-workflow';
+import { INode, IRunExecutionData, NodeHelpers, WebhookHttpMethod, Workflow } from 'n8n-workflow';
 
 import * as express from 'express';
-import {
-	LoggerProxy as Logger,
-} from 'n8n-workflow';
+import { LoggerProxy as Logger } from 'n8n-workflow';
 
 export class WaitingWebhooks {
-
-	async executeWebhook(httpMethod: WebhookHttpMethod, fullPath: string, req: express.Request, res: express.Response): Promise<IResponseCallbackData> {
+	async executeWebhook(
+		httpMethod: WebhookHttpMethod,
+		fullPath: string,
+		req: express.Request,
+		res: express.Response,
+	): Promise<IResponseCallbackData> {
 		Logger.debug(`Received waiting-webhoook "${httpMethod}" for path "${fullPath}"`);
 
 		// Reset request parameters
@@ -44,20 +40,33 @@ export class WaitingWebhooks {
 		const execution = await Db.collections.Execution?.findOne(executionId);
 
 		if (execution === undefined) {
-			throw new ResponseHelper.ResponseError(`The execution "${executionId} does not exist.`, 404, 404);
+			throw new ResponseHelper.ResponseError(
+				`The execution "${executionId} does not exist.`,
+				404,
+				404,
+			);
 		}
 
 		const fullExecutionData = ResponseHelper.unflattenExecutionData(execution);
 
 		if (fullExecutionData.finished === true || fullExecutionData.data.resultData.error) {
-			throw new ResponseHelper.ResponseError(`The execution "${executionId} has finished already.`, 409, 409);
+			throw new ResponseHelper.ResponseError(
+				`The execution "${executionId} has finished already.`,
+				409,
+				409,
+			);
 		}
 
 		return this.startExecution(httpMethod, path, fullExecutionData, req, res);
 	}
 
-
-	async startExecution(httpMethod: WebhookHttpMethod, path: string, fullExecutionData: IExecutionResponse, req: express.Request, res: express.Response): Promise<IResponseCallbackData> {
+	async startExecution(
+		httpMethod: WebhookHttpMethod,
+		path: string,
+		fullExecutionData: IExecutionResponse,
+		req: express.Request,
+		res: express.Response,
+	): Promise<IResponseCallbackData> {
 		const executionId = fullExecutionData.id;
 
 		if (fullExecutionData.finished === true) {
@@ -79,12 +88,29 @@ export class WaitingWebhooks {
 		const workflowData = fullExecutionData.workflowData;
 
 		const nodeTypes = NodeTypes();
-		const workflow = new Workflow({ id: workflowData.id!.toString(), name: workflowData.name, nodes: workflowData.nodes, connections: workflowData.connections, active: workflowData.active, nodeTypes, staticData: workflowData.staticData, settings: workflowData.settings });
+		const workflow = new Workflow({
+			id: workflowData.id!.toString(),
+			name: workflowData.name,
+			nodes: workflowData.nodes,
+			connections: workflowData.connections,
+			active: workflowData.active,
+			nodeTypes,
+			staticData: workflowData.staticData,
+			settings: workflowData.settings,
+		});
 
 		const additionalData = await WorkflowExecuteAdditionalData.getBase();
 
-		const webhookData = NodeHelpers.getNodeWebhooks(workflow, workflow.getNode(lastNodeExecuted) as INode, additionalData).filter((webhook) => {
-			return (webhook.httpMethod === httpMethod && webhook.path === path && webhook.webhookDescription.restartWebhook === true);
+		const webhookData = NodeHelpers.getNodeWebhooks(
+			workflow,
+			workflow.getNode(lastNodeExecuted) as INode,
+			additionalData,
+		).filter((webhook) => {
+			return (
+				webhook.httpMethod === httpMethod &&
+				webhook.path === path &&
+				webhook.webhookDescription.restartWebhook === true
+			);
 		})[0];
 
 		if (webhookData === undefined) {
@@ -104,14 +130,24 @@ export class WaitingWebhooks {
 
 		return new Promise((resolve, reject) => {
 			const executionMode = 'webhook';
-			WebhookHelpers.executeWebhook(workflow, webhookData, workflowData as IWorkflowDb, workflowStartNode, executionMode, undefined, runExecutionData, fullExecutionData.id, req, res, (error: Error | null, data: object) => {
-				if (error !== null) {
-					return reject(error);
-				}
-				resolve(data);
-			});
+			WebhookHelpers.executeWebhook(
+				workflow,
+				webhookData,
+				workflowData as IWorkflowDb,
+				workflowStartNode,
+				executionMode,
+				undefined,
+				runExecutionData,
+				fullExecutionData.id,
+				req,
+				res,
+				(error: Error | null, data: object) => {
+					if (error !== null) {
+						return reject(error);
+					}
+					resolve(data);
+				},
+			);
 		});
-
 	}
-
 }

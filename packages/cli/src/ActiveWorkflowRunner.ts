@@ -280,12 +280,24 @@ export class ActiveWorkflowRunner {
 		return new Promise((resolve, reject) => {
 			const executionMode = 'webhook';
 			//@ts-ignore
-			WebhookHelpers.executeWebhook(workflow, webhookData, workflowData, workflowStartNode, executionMode, undefined, undefined, undefined, req, res, (error: Error | null, data: object) => {
-				if (error !== null) {
-					return reject(error);
-				}
-				resolve(data);
-			});
+			WebhookHelpers.executeWebhook(
+				workflow,
+				webhookData,
+				workflowData,
+				workflowStartNode,
+				executionMode,
+				undefined,
+				undefined,
+				undefined,
+				req,
+				res,
+				(error: Error | null, data: object) => {
+					if (error !== null) {
+						return reject(error);
+					}
+					resolve(data);
+				},
+			);
 		});
 	}
 
@@ -357,7 +369,12 @@ export class ActiveWorkflowRunner {
 	 * @returns {Promise<void>}
 	 * @memberof ActiveWorkflowRunner
 	 */
-	async addWorkflowWebhooks(workflow: Workflow, additionalData: IWorkflowExecuteAdditionalDataWorkflow, mode: WorkflowExecuteMode, activation: WorkflowActivateMode): Promise<void> {
+	async addWorkflowWebhooks(
+		workflow: Workflow,
+		additionalData: IWorkflowExecuteAdditionalDataWorkflow,
+		mode: WorkflowExecuteMode,
+		activation: WorkflowActivateMode,
+	): Promise<void> {
 		const webhooks = WebhookHelpers.getWorkflowWebhooks(workflow, additionalData, undefined, true);
 		let path = '' as string | undefined;
 
@@ -663,8 +680,18 @@ export class ActiveWorkflowRunner {
 
 			const mode = 'trigger';
 			const additionalData = await WorkflowExecuteAdditionalData.getBase();
-			const getTriggerFunctions = this.getExecuteTriggerFunctions(workflowData, additionalData, mode, activation);
-			const getPollFunctions = this.getExecutePollFunctions(workflowData, additionalData, mode, activation);
+			const getTriggerFunctions = this.getExecuteTriggerFunctions(
+				workflowData,
+				additionalData,
+				mode,
+				activation,
+			);
+			const getPollFunctions = this.getExecutePollFunctions(
+				workflowData,
+				additionalData,
+				mode,
+				activation,
+			);
 
 			// Add the workflows which have webhooks defined
 			await this.addWorkflowWebhooks(workflowInstance, additionalData, mode, activation);

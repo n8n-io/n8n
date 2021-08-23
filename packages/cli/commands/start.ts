@@ -31,9 +31,7 @@ import {
 	WaitTracker,
 } from '../src';
 
-import {
-	getLogger,
-} from '../src/Logger';
+import { getLogger } from '../src/Logger';
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-var-requires
 const open = require('open');
