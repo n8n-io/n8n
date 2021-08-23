@@ -258,7 +258,7 @@ export interface IExecuteFunctions {
 	getMode(): WorkflowExecuteMode;
 	getNode(): INode;
 	getNodeParameter<T extends { resource: string }>(parameterName: 'resource', itemIndex?: number): T['resource'];
-	getNodeParameter(parameterName: 'operation', itemIndex?: number): string;
+	// getNodeParameter(parameterName: 'operation', itemIndex?: number): string;
 	getNodeParameter(parameterName: string, itemIndex: number, fallbackValue?: any): NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[] | object; //tslint:disable-line:no-any
 	getWorkflowDataProxy(itemIndex: number): IWorkflowDataProxyData;
 	getWorkflowStaticData(type: string): IDataObject;
