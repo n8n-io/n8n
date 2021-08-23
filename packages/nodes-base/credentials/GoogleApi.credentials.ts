@@ -7,6 +7,7 @@ import {
 export class GoogleApi implements ICredentialType {
 	name = 'googleApi';
 	displayName = 'Google API';
+	icon = 'file:Google.svg';
 	documentationUrl = 'google';
 	properties: INodeProperties[] = [
 		{

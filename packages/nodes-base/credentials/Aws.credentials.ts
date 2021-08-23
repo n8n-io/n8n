@@ -7,6 +7,7 @@ import {
 export class Aws implements ICredentialType {
 	name = 'aws';
 	displayName = 'AWS';
+	icon = 'file:AWS.svg';
 	documentationUrl = 'aws';
 	properties: INodeProperties[] = [
 		{

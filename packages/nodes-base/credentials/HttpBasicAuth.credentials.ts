@@ -7,6 +7,7 @@ import {
 export class HttpBasicAuth implements ICredentialType {
 	name = 'httpBasicAuth';
 	displayName = 'Basic Auth';
+	icon = 'icon:n8n-nodes-base.httpRequest';
 	documentationUrl = 'httpRequest';
 	properties: INodeProperties[] = [
 		{

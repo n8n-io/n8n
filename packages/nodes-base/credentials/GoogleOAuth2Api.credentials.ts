@@ -5,6 +5,7 @@ import {
 
 export class GoogleOAuth2Api implements ICredentialType {
 	name = 'googleOAuth2Api';
+	icon = 'file:Google.svg';
 	extends = [
 		'oAuth2Api',
 	];

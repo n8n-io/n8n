@@ -7,6 +7,7 @@ import {
 export class HttpHeaderAuth implements ICredentialType {
 	name = 'httpHeaderAuth';
 	displayName = 'Header Auth';
+	icon = 'node:n8n-nodes-base.httpRequest';
 	documentationUrl = 'httpRequest';
 	properties: INodeProperties[] = [
 		{

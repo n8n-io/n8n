@@ -11,11 +11,7 @@
 			<div :class="$style.header" v-if="credentialType">
 				<div :class="$style.credInfo">
 					<div :class="$style.credIcon">
-						<NodeIcon v-if="credToNodeIconMap[credentialTypeName]" :nodeType="getNodeByName(credToNodeIconMap[credentialTypeName])" />
-						<img v-else-if="isGoogleCredType" :class="$style.defaultCredIcon" src="../assets/Google.svg" />
-						<img v-else-if="isAWSCredType" :class="$style.defaultCredIcon" src="../assets/AWS.svg" />
-						<img v-else-if="isMicrosoftCredType" :class="$style.defaultCredIcon" src="../assets/Microsoft.svg" />
-						<NodeIcon v-else-if="nodesWithAccess.length" :nodeType="nodesWithAccess[0]" />
+						<CredentialIcon :credentialTypeName="credentialTypeName" />
 					</div>
 					<div>
 						<div :class="$style.headline" @keydown.stop @click="enableNameEdit" v-click-outside="disableNameEdit">
@@ -105,6 +101,7 @@ import mixins from 'vue-typed-mixins';
 import { ICredentialsDecryptedResponse, ICredentialsResponse } from '@/Interface';
 import { nodeHelpers } from './mixins/nodeHelpers';
 import { genericHelpers } from './mixins/genericHelpers';
+import CredentialIcon from './CredentialIcon.vue';
 
 interface NodeAccessMap {
 	[nodeType: string]: ICredentialNodeAccess | null;
@@ -127,6 +124,7 @@ export default mixins(
 		Modal,
 		NodeIcon,
 		TimeAgo,
+		CredentialIcon,
 	},
 	props: {
 		modalName: {
