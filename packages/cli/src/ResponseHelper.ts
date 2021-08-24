@@ -166,6 +166,7 @@ export function flattenExecutionData(fullExecutionData: IExecutionDb): IExecutio
 	const returnData: IExecutionFlatted = {
 		data: stringify(fullExecutionData.data),
 		mode: fullExecutionData.mode,
+		// @ts-ignore
 		waitTill: fullExecutionData.waitTill,
 		startedAt: fullExecutionData.startedAt,
 		stoppedAt: fullExecutionData.stoppedAt,
