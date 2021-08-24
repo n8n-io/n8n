@@ -284,9 +284,10 @@
 		position: relative;
 		border: var(--border-base);
 		border-radius: var.$input-border-radius;
-		padding: 0 20px;
+		padding: 0 10px;
 		width: 1px;
 		white-space: nowrap;
+		font-weight: var(--font-weight-regular);
 
 		&:focus {
 			outline: none;
