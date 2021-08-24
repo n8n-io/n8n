@@ -403,7 +403,13 @@ export async function getCredentials(workflow: Workflow, node: INode, type: stri
 		} as ICredentialsExpressionResolveValues;
 	}
 
-	const name = node.credentials[type];
+	let name = node.credentials[type];
+
+	if (name.charAt(0) === '=') {
+		// If the credential name is an expression resolve it
+		const additionalKeys = getAdditionalKeys(additionalData)
+		name = workflow.expression.getParameterValue(name, runExecutionData || null, runIndex || 0, itemIndex || 0, node.name, connectionInputData || [], mode, additionalKeys) as string;
+	}
 
 	const decryptedDataObject = await additionalData.credentialsHelper.getDecrypted(name, type, mode, false, expressionResolveValues);
 
