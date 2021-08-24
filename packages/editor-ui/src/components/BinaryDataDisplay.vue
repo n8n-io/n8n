@@ -5,7 +5,7 @@
 			size="small"
 			class="binary-data-window-back"
 			title="Back to overview page"
-			icon="el-icon-arrow-left"
+			icon="arrow-left"
 			label="Back to list"
 		/>
 
