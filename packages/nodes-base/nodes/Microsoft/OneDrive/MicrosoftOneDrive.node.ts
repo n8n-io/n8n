@@ -1,5 +1,4 @@
 import {
-	BINARY_ENCODING,
 	IExecuteFunctions,
 } from 'n8n-core';
 
@@ -192,8 +191,8 @@ export class MicrosoftOneDrive implements INodeType {
 							}
 
 							const binaryData = (items[i].binary as IBinaryKeyData)[binaryPropertyName];
+							const body = await this.helpers.getBinaryDataBuffer(i, binaryPropertyName);
 
-							const body = Buffer.from(binaryData.data, BINARY_ENCODING);
 							responseData = await microsoftApiRequest.call(this, 'PUT', `/drive/items/${parentId}:/${fileName || binaryData.fileName}:/content`, body, {}, undefined, { 'Content-Type': binaryData.mimeType, 'Content-length': body.length }, {} );
 
 							returnData.push(JSON.parse(responseData) as IDataObject);
