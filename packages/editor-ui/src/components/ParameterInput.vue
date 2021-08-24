@@ -6,7 +6,7 @@
 		<n8n-input
 			v-if="isValueExpression && showExpressionAsTextInput"
 			:size="inputSize"
-			:value="displayValue"
+			:value="expressionDisplayValue"
 			:disabled="isReadOnly"
 			:title="displayTitle"
 			@keydown.stop
@@ -363,6 +363,20 @@ export default mixins(
 				}
 
 				return returnValue;
+			},
+			expressionDisplayValue (): string {
+				const value = this.displayValue;
+
+				// address type errors for text input
+				if (typeof value === 'number' || typeof value === 'boolean') {
+					return JSON.stringify(value);
+				}
+
+				if (value === null) {
+					return '';
+				}
+
+				return value;
 			},
 			displayOptionsComputed (): boolean {
 				if (this.isReadOnly === true) {
