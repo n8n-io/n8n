@@ -78,7 +78,7 @@ export class CatalogApi implements INodeType {
 			if (operation === 'getEntity') {
 				const dtmi = this.getNodeParameter('dtmi', i);
 				const endpoint = `/manage/entity/${dtmi}`;
-				return  catalogApiRequest.call(this, 'GET', endpoint);
+				return catalogApiRequest.call(this, 'GET', endpoint);
 			} else if (operation === 'getAllEntities') {
 
 				const qs: IDataObject = {
@@ -90,7 +90,7 @@ export class CatalogApi implements INodeType {
 			} else if (operation === 'addNewModels') {
 				const modelArray = (this.getNodeParameter('models', i) as IDataObject)?.model as IDataObject[];
 				console.log(modelArray);
- 				const body: IDataObject[] = modelArray.map(model => model.models) as IDataObject[];
+				const body: IDataObject[] = modelArray.map(model => model.models) as IDataObject[];
 				return catalogApiRequest.call(this, 'POST', '/manage/models', body);
 			} else if (operation === 'revokeModel') {
 				const dtmi = this.getNodeParameter('dtmi', i);

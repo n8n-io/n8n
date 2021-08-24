@@ -95,9 +95,10 @@ export class TrustApi implements INodeType {
 				let body: IDataObject = {};
 
 				if (useCustomKey) {
-				body = {
-					publicKey: this.getNodeParameter('publicKey', i) as string,
-				};                 }
+					body = {
+						publicKey: this.getNodeParameter('publicKey', i) as string,
+					};
+				}
 
 				const query: IDataObject = {
 					precision: this.getNodeParameter('precision', i) as string,

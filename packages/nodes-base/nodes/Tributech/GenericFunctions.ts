@@ -17,7 +17,7 @@ async function executeApiRequest(
 	this: IHookFunctions | IExecuteFunctions,
 	method: string,
 	endpoint: string,
-	body: IDataObject|IDataObject[],
+	body: IDataObject | IDataObject[],
 	qs: IDataObject,
 	uri: string,
 ) {
@@ -49,7 +49,7 @@ export async function trustApiRequest(
 	this: IHookFunctions | IExecuteFunctions,
 	method: string,
 	endpoint: string,
-	body: IDataObject|IDataObject[] = {},
+	body: IDataObject | IDataObject[] = {},
 	qs: IDataObject = {},
 ) {
 	const credentials = this.getCredentials('tributechOAuth2Api') || {};
@@ -60,7 +60,7 @@ export async function dataApiRequest(
 	this: IHookFunctions | IExecuteFunctions,
 	method: string,
 	endpoint: string,
-	body: IDataObject|IDataObject[] = {},
+	body: IDataObject | IDataObject[] = {},
 	qs: IDataObject = {},
 ) {
 	const credentials = this.getCredentials('tributechOAuth2Api') || {};
@@ -71,7 +71,7 @@ export async function twinApiRequest(
 	this: IHookFunctions | IExecuteFunctions,
 	method: string,
 	endpoint: string,
-	body: IDataObject|IDataObject[] = {},
+	body: IDataObject | IDataObject[] = {},
 	qs: IDataObject = {},
 ) {
 	const credentials = this.getCredentials('tributechOAuth2Api') || {};
@@ -82,7 +82,7 @@ export async function catalogApiRequest(
 	this: IHookFunctions | IExecuteFunctions,
 	method: string,
 	endpoint: string,
-	body: IDataObject|IDataObject[] = {},
+	body: IDataObject | IDataObject[] = {},
 	qs: IDataObject = {},
 ) {
 	const credentials = this.getCredentials('tributechOAuth2Api') || {};
