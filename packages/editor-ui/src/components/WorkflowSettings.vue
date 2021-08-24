@@ -140,17 +140,17 @@
 							</n8n-tooltip>
 						</el-col>
 						<el-col :span="4">
-							<n8n-input type="number" size="medium" v-model="timeoutHMS.hours" :min="0" placeholder="hours">
+							<n8n-input size="medium" :value="timeoutHMS.hours" @input="(value) => setTimeout('hours', value)" :min="0">
 								<template slot="append">hours</template>
 							</n8n-input>
 						</el-col>
 						<el-col :span="4" class="timeout-input">
-							<n8n-input type="number" size="medium" v-model="timeoutHMS.minutes" :min="0" placeholder="minutes">
+							<n8n-input size="medium" :value="timeoutHMS.minutes" @input="(value) => setTimeout('minutes', value)" :min="0" :max="60">
 								<template slot="append">minutes</template>
 							</n8n-input>
 						</el-col>
 						<el-col :span="4" class="timeout-input">
-							<n8n-input type="number" size="medium" v-model="timeoutHMS.seconds" :min="0" placeholder="seconds">
+							<n8n-input size="medium" :value="timeoutHMS.seconds" @input="(value) => setTimeout('seconds', value)" :min="0" :max="60">
 								<template slot="append">seconds</template>
 							</n8n-input>
 						</el-col>
@@ -236,6 +236,14 @@ export default mixins(
 			// and is so not allowed to be changed here.
 			this.$emit('closeDialog');
 			return false;
+		},
+		setTimeout (key: string, value: string) {
+			const time = value ? parseInt(value, 10) : 0;
+
+			this.timeoutHMS = {
+				...this.timeoutHMS,
+				[key]: time,
+			};
 		},
 		async loadSaveDataErrorExecutionOptions () {
 			this.saveDataErrorExecutionOptions.length = 0;

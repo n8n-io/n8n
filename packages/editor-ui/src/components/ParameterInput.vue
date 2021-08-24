@@ -664,7 +664,13 @@ export default mixins(
 				if (command === 'resetValue') {
 					this.valueChanged(this.parameter.default);
 				} else if (command === 'addExpression') {
-					this.valueChanged(`=${this.value}`);
+					if (this.parameter.type === 'number' || this.parameter.type === 'boolean') {
+						this.valueChanged(`={{${this.value}}}`);
+					}
+					else {
+						this.valueChanged(`=${this.value}`);
+					}
+
 					this.expressionEditDialogVisible = true;
 				} else if (command === 'removeExpression') {
 					this.valueChanged(this.expressionValueComputed || null);

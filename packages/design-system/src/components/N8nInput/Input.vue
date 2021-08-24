@@ -32,12 +32,11 @@ export default {
 	},
 	props: {
 		value: {
-			type: String,
 		},
 		type: {
 			type: String,
 			validator: (value: string): boolean =>
-				['text', 'textarea'].indexOf(value) !== -1,
+				['text', 'textarea', 'number'].indexOf(value) !== -1,
 		},
 		size: {
 			type: String,
