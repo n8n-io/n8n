@@ -15,14 +15,14 @@ export class TributechOAuth2Api implements ICredentialType {
 			displayName: 'Node',
 			name: 'node',
 			type: 'string',
-			default: 'dev-node-a',
+			default: '',
 			required: true,
 		},
 		{
 			displayName: 'Hub',
 			name: 'hub',
 			type: 'string',
-			default: 'dev',
+			default: '',
 			required: true,
 		},
 		{

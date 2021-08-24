@@ -1,0 +1,22 @@
+{
+	"node": "n8n-nodes-base.tributechDataApi",
+	"nodeVersion": "1.0",
+	"codexVersion": "1.0",
+	"categories": [
+		"Productivity",
+		"Development",
+		"Data & Storage"
+	],
+	"resources": {
+		"credentialDocumentation": [
+			{
+				"url": "https://docs.n8n.io/credentials/tributech"
+			}
+		],
+		"primaryDocumentation": [
+			{
+				"url": "https://docs.n8n.io/nodes/n8n-nodes-base.tributechDataApi/"
+			}
+		]
+	}
+}
