@@ -66,3 +66,14 @@ export async function dataApiRequest(
 	const credentials = this.getCredentials('tributechOAuth2Api') || {};
 	return executeApiRequest.call(this, method, endpoint, body, qs, credentials.dataApiEndpoint as string);
 }
+
+export async function twinApiRequest(
+	this: IHookFunctions | IExecuteFunctions,
+	method: string,
+	endpoint: string,
+	body: IDataObject|IDataObject[] = {},
+	qs: IDataObject = {},
+) {
+	const credentials = this.getCredentials('tributechOAuth2Api') || {};
+	return executeApiRequest.call(this, method, endpoint, body, qs, credentials.twinApiEndpoint as string);
+}

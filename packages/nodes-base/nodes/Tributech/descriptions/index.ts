@@ -3,3 +3,7 @@ export * from './trust-api/ValueDescription';
 export * from './data-api/ProofLocationDescription';
 export * from './data-api/StatusDescription';
 export * from './data-api/ValuesDescription';
+export * from './twin-api/TwinsDescription';
+export * from './twin-api/RelationshipsDescription';
+export * from './twin-api/QueryDescription';
+export * from './twin-api/GraphDescription';
