@@ -59,6 +59,7 @@ export class ActiveExecutions {
 			const execution = ResponseHelper.flattenExecutionData(fullExecutionData);
 
 			const executionResult = await Db.collections.Execution!.save(execution as IExecutionFlattedDb);
+			// @ts-ignore
 			executionId = typeof executionResult.id === "object" ? executionResult.id!.toString() : executionResult.id + "";
 		} else {
 			// Is an existing execution we want to finish so update in DB
@@ -72,6 +73,7 @@ export class ActiveExecutions {
 			await Db.collections.Execution!.update(executionId, execution);
 		}
 
+		// @ts-ignore
 		this.activeExecutions[executionId] = {
 			executionData,
 			process,
@@ -79,6 +81,7 @@ export class ActiveExecutions {
 			postExecutePromises: [],
 		};
 
+		// @ts-ignore
 		return executionId;
 	}
 
