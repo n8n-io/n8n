@@ -136,12 +136,14 @@
 				</el-table-column>
 				<el-table-column label="" width="100" align="center">
 					<template slot-scope="scope">
-						<span v-if="scope.row.stoppedAt === undefined || scope.row.waitTill">
-							<n8n-icon-button icon="stop" title="Stop Execution" @click.stop="stopExecution(scope.row.id)" :loading="stoppingExecutions.includes(scope.row.id)" />
-						</span>
-						<span v-if="scope.row.stoppedAt !== undefined && scope.row.id" >
-							<n8n-icon-button icon="folder-open" title="Open Past Execution" @click.stop="displayExecution(scope.row)" />
-						</span>
+						<div class="actions-container">
+							<span v-if="scope.row.stoppedAt === undefined || scope.row.waitTill">
+								<n8n-icon-button icon="stop" title="Stop Execution" @click.stop="stopExecution(scope.row.id)" :loading="stoppingExecutions.includes(scope.row.id)" />
+							</span>
+							<span v-if="scope.row.stoppedAt !== undefined && scope.row.id" >
+								<n8n-icon-button icon="folder-open" title="Open Past Execution" @click.stop="displayExecution(scope.row)" />
+							</span>
+						</div>
 					</template>
 				</el-table-column>
 			</el-table>
@@ -732,6 +734,10 @@ export default mixins(
 
 .workflow-name {
 	font-weight: bold;
+}
+
+.actions-container > * {
+	margin-left: 5px;
 }
 
 </style>

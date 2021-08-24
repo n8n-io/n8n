@@ -3,27 +3,7 @@
 @import "~n8n-design-system/theme/dist/index.css";
 
 body {
-	font-family: 'Open Sans', sans-serif;
-	font-weight: 300;
-	-webkit-font-smoothing: antialiased;
-	-moz-osx-font-smoothing: grayscale;
 	background-color: $--custom-node-view-background;
-	margin: 0;
-	overscroll-behavior-x: none;
-	padding: 0;
-}
-
-input {
-	font-family: 'Open Sans', sans-serif;
-	font-weight: 400;
-}
-button {
-	font-family: 'Open Sans', sans-serif;
-	font-weight: 600;
-}
-
-h1, h2, h3, h4, h5, h6 {
-	color: #555;
 }
 
 .clickable {

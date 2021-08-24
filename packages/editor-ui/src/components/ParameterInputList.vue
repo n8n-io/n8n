@@ -307,10 +307,7 @@ export default mixins(
 		color: $--custom-font-black;
 		margin: 0.3em 0;
 		padding: 0.8em;
-
-		& a {
-			color: $--color-primary;
-		}
+		line-height: 1.5;
 	}
 }
 
