@@ -140,16 +140,19 @@
 							</n8n-tooltip>
 						</el-col>
 						<el-col :span="4">
-							<n8n-input-number :controls="false" size="medium" v-model="timeoutHMS.hours" :min="0" placeholder="hours" type="number"></n8n-input-number><br />
-							<div class="timeout-setting-name">hours</div>
+							<n8n-input type="number" size="medium" v-model="timeoutHMS.hours" :min="0" placeholder="hours">
+								<template slot="append">hours</template>
+							</n8n-input>
 						</el-col>
 						<el-col :span="4" class="timeout-input">
-							<n8n-input-number :controls="false" size="medium" v-model="timeoutHMS.minutes" :min="0" placeholder="minutes" type="number"></n8n-input-number><br />
-							<div class="timeout-setting-name">minutes</div>
+							<n8n-input type="number" size="medium" v-model="timeoutHMS.minutes" :min="0" placeholder="minutes">
+								<template slot="append">minutes</template>
+							</n8n-input>
 						</el-col>
 						<el-col :span="4" class="timeout-input">
-							<n8n-input-number :controls="false" size="medium" v-model="timeoutHMS.seconds" :min="0" placeholder="seconds" type="number"></n8n-input-number><br />
-							<div class="timeout-setting-name">seconds</div>
+							<n8n-input type="number" size="medium" v-model="timeoutHMS.seconds" :min="0" placeholder="seconds">
+								<template slot="append">seconds</template>
+							</n8n-input>
 						</el-col>
 					</el-row>
 				</div>
@@ -513,11 +516,6 @@ export default mixins(
 	.setting-info {
 		display: inline;
 	}
-}
-
-.timeout-setting-name {
-	line-height: 1.5;
-	text-align: center;
 }
 
 .timeout-input {

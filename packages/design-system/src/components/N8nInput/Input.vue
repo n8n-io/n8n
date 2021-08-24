@@ -7,6 +7,12 @@
 		:ref="data.ref"
 		v-on="listeners"
 	>
+		<template v-slot:prepend>
+			<slot name="prepend" />
+		</template>
+		<template v-slot:append>
+			<slot name="append" />
+		</template>
 		<template v-slot:prefix>
 			<slot name="prefix" />
 		</template>
