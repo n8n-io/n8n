@@ -22,7 +22,7 @@ import {
 
 export class TrustApi implements INodeType {
 	description: INodeTypeDescription = {
-		displayName: 'Trust-Api',
+		displayName: 'Tributech Trust-Api',
 		name: 'trustApi',
 		icon: 'file:tributech.svg',
 		group: ['transform'],

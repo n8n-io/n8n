@@ -641,6 +641,7 @@
       "dist/nodes/TravisCi/TravisCi.node.js",
       "dist/nodes/Trello/Trello.node.js",
       "dist/nodes/Trello/TrelloTrigger.node.js",
+      "dist/nodes/Tributech/CatalogApi.node.js",
       "dist/nodes/Tributech/DataApi.node.js",
       "dist/nodes/Tributech/TrustApi.node.js",
       "dist/nodes/Tributech/TwinApi.node.js",

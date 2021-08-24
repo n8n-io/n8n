@@ -7,3 +7,6 @@ export * from './twin-api/TwinsDescription';
 export * from './twin-api/RelationshipsDescription';
 export * from './twin-api/QueryDescription';
 export * from './twin-api/GraphDescription';
+export * from './catalog-api/ManageModelsDescription';
+export * from './catalog-api/ValidationDescription';
+export * from './catalog-api/DtdlModelsDescription';
