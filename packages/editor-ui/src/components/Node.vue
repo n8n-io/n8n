@@ -10,10 +10,10 @@
 			<el-badge v-else :hidden="workflowDataItems === 0" class="node-info-icon data-count" :value="workflowDataItems"></el-badge>
 
 			<div v-if="waiting" class="node-info-icon waiting">
-				<el-tooltip placement="top" effect="light">
+				<n8n-tooltip placement="top">
 					<div slot="content" v-html="waiting"></div>
 					<font-awesome-icon icon="clock" />
-				</el-tooltip>
+				</n8n-tooltip>
 			</div>
 
 			<div class="node-executing-info" title="Node is executing">
