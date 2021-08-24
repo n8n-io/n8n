@@ -6,6 +6,7 @@ export const twinsOperations = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
+		description: 'The operation that should be executed',
 		type: 'options',
 		displayOptions: {
 			show: {
@@ -16,28 +17,34 @@ export const twinsOperations = [
 		},
 		options: [
 			{
-				name: 'Get All Twins',
-				value: 'getAllTwins',
-			},
-			{
-				name: 'Get Twins By Model Id',
-				value: 'getTwinsByModelId',
-			},
-			{
-				name: 'Get Twin By Id',
-				value: 'getTwinById',
-			},
-			{
 				name: 'Add Twin',
 				value: 'postTwin',
-			},
-			{
-				name: 'Update Twin by Id',
-				value: 'updateTwinById',
+				description: 'Add a new twin',
 			},
 			{
 				name: 'Delete Twin by Id',
 				value: 'deleteTwinById',
+				description: 'Delete a twin',
+			},
+			{
+				name: 'Get All Twins',
+				value: 'getAllTwins',
+				description: 'Get all stored twins',
+			},
+			{
+				name: 'Get Twin By Id',
+				value: 'getTwinById',
+				description: 'Get a twin by id',
+			},
+			{
+				name: 'Get Twins By Model Id',
+				value: 'getTwinsByModelId',
+				description: 'Get all stored twins of model',
+			},
+			{
+				name: 'Update Twin by Id',
+				value: 'updateTwinById',
+				description: 'Update a twin',
 			},
 		],
 		default: 'getAllTwins',
@@ -81,6 +88,7 @@ export const twinsFields = [
 	},
 	{
 		displayName: 'DTID',
+		// nodelinter-ignore-next-line
 		name: 'dtid',
 		description: 'The digital twin identifier.',
 		type: 'string',
@@ -120,6 +128,7 @@ export const twinsFields = [
 	{
 		displayName: 'Twin (JSON)',
 		name: 'twin',
+		description: 'Twin passed as JSON-Object',
 		type: 'json',
 		required: true,
 		default: '',

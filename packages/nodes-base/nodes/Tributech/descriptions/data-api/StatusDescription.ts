@@ -6,6 +6,7 @@ export const statusOperations = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
+		description: 'The operation that should be executed',
 		type: 'options',
 		displayOptions: {
 			show: {
@@ -17,14 +18,17 @@ export const statusOperations = [
 		options: [
 			{
 				name: 'Get Request Status',
+				description: 'Get Request Status',
 				value: 'getRequestStatus',
 			},
 			{
 				name: 'Get Stream Status',
+				description: 'Get Stream Status',
 				value: 'getStreamStatus',
 			},
 			{
 				name: 'Get Subscription Status',
+				description: 'Get Subscription Status',
 				value: 'getSubscriptionStatus',
 			},
 		],

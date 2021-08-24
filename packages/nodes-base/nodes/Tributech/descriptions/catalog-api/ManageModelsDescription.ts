@@ -5,6 +5,7 @@ import {
 export const manageModelsOperations = [
 	{
 		displayName: 'Operation',
+		description: 'The operation that should be executed',
 		name: 'operation',
 		type: 'options',
 		displayOptions: {
@@ -17,18 +18,22 @@ export const manageModelsOperations = [
 		options: [
 			{
 				name: 'Add New Model(s)',
+				description: 'Add New Model(s)',
 				value: 'addNewModels',
 			},
 			{
 				name: 'Get All Entities',
+				description: 'Get All Entities',
 				value: 'getAllEntities',
 			},
 			{
 				name: 'Get Entity',
+				description: 'Get Entity',
 				value: 'getEntity',
 			},
 			{
 				name: 'Revoke Model',
+				description: 'Revoke Model',
 				value: 'revokeModel',
 			},
 		],
@@ -40,7 +45,7 @@ export const manageModelsFields = [
 	{
 		displayName: 'Size',
 		name: 'size',
-		description: '',
+		description: 'Page Size',
 		type: 'number',
 		required: true,
 		default: 0,
@@ -58,7 +63,7 @@ export const manageModelsFields = [
 	{
 		displayName: 'Page',
 		name: 'page',
-		description: '',
+		description: 'Page number',
 		type: 'number',
 		required: true,
 		default: 0,
@@ -76,7 +81,7 @@ export const manageModelsFields = [
 	{
 		displayName: 'DTMI',
 		name: 'dtmi',
-		description: '',
+		description: 'The DTMI of the model',
 		type: 'string',
 		required: true,
 		default: '',
@@ -95,6 +100,7 @@ export const manageModelsFields = [
 	{
 		displayName: 'Standard',
 		name: 'models',
+		description: 'Collection of models',
 		type: 'fixedCollection',
 		placeholder: 'Add Model',
 		default: {},
@@ -119,6 +125,7 @@ export const manageModelsFields = [
 					{
 						displayName: 'Body (JSON)',
 						name: 'models',
+						description: 'JSON object representing request body.',
 						type: 'json',
 						required: true,
 						default: '',

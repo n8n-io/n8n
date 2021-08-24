@@ -33,6 +33,7 @@ export class CatalogApi implements INodeType {
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 		defaults: {
 			name: 'Catalog-Api',
+			description: 'Consume the Tributech Catalog-API',
 			color: '#ff6600',
 		},
 		inputs: ['main'],
@@ -48,6 +49,7 @@ export class CatalogApi implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				description: 'The resource type',
 				options: [
 					{
 						name: 'Manage-Models',
@@ -89,7 +91,6 @@ export class CatalogApi implements INodeType {
 				return catalogApiRequest.call(this, 'GET', '/manage/entities', {}, qs);
 			} else if (operation === 'addNewModels') {
 				const modelArray = (this.getNodeParameter('models', i) as IDataObject)?.model as IDataObject[];
-				console.log(modelArray);
 				const body: IDataObject[] = modelArray.map(model => model.models) as IDataObject[];
 				return catalogApiRequest.call(this, 'POST', '/manage/models', body);
 			} else if (operation === 'revokeModel') {
@@ -131,14 +132,14 @@ export class CatalogApi implements INodeType {
 		}
 
 		function handleValidation(this: IExecuteFunctions, operation: string, i: number) {
-			if (operation === 'validationControllerGetSchema') {
+			if (operation === 'getSchema') {
 				const dtmi = this.getNodeParameter('dtmi', i);
 				const endpoint = `/validate/schema/${dtmi}`;
 				return catalogApiRequest.call(this, 'GET', endpoint);
-			} else if (operation === 'validationControllerValidateInstance') {
+			} else if (operation === 'validateGraph') {
 				const body = this.getNodeParameter('body', i) as IDataObject;
 				return catalogApiRequest.call(this, 'POST', '/validate', body);
-			} else if (operation === 'validationControllerValidateGraph') {
+			} else if (operation === 'validateInstance') {
 				const body = this.getNodeParameter('body', i) as IDataObject;
 				return catalogApiRequest.call(this, 'POST', '/validate/graph', body);
 			}
@@ -153,24 +154,34 @@ export class CatalogApi implements INodeType {
 		let responseData;
 
 		for (let i = 0; i < items.length; i++) {
-			switch (resource) {
-				case 'manageModels':
-					responseData = await handleModelEntities.call(this, operation, i);
-					break;
-				case 'dtdlModels':
-					responseData = await handleDTDLModels.call(this, operation, i);
-					break;
-				case 'validation':
-					responseData = await handleValidation.call(this, operation, i);
-					break;
-				default:
-					throw new NodeOperationError(this.getNode(), `The resource "${resource}" is not known!`);
+			try {
+
+
+				switch (resource) {
+					case 'manageModels':
+						responseData = await handleModelEntities.call(this, operation, i);
+						break;
+					case 'dtdlModels':
+						responseData = await handleDTDLModels.call(this, operation, i);
+						break;
+					case 'validation':
+						responseData = await handleValidation.call(this, operation, i);
+						break;
+					default:
+						throw new NodeOperationError(this.getNode(), `The resource "${resource}" is not known!`);
+				}
+
+				Array.isArray(responseData)
+					? returnData.push(...responseData)
+					: returnData.push(responseData);
+			} catch (error) {
+				if (this.continueOnFail()) {
+					returnData.push({error: error.message});
+					continue;
+				}
+
+				throw error;
 			}
-
-			Array.isArray(responseData)
-				? returnData.push(...responseData)
-				: returnData.push(responseData);
-
 		}
 
 		return [this.helpers.returnJsonArray(returnData)];

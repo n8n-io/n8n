@@ -48,6 +48,7 @@ export class DataApi implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				description: 'The resource type',
 				options: [
 					{
 						name: 'ProofLocation',

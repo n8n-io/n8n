@@ -5,6 +5,7 @@ import {
 export const validationOperations = [
 	{
 		displayName: 'Operation',
+		description: 'The operation that should be executed',
 		name: 'operation',
 		type: 'options',
 		displayOptions: {
@@ -16,19 +17,22 @@ export const validationOperations = [
 		},
 		options: [
 			{
-				name: 'Validation Controller Get Schema',
-				value: 'validationControllerGetSchema',
+				name: 'Get Schema',
+				description: 'Get Schema',
+				value: 'getSchema',
 			},
 			{
-				name: 'Validation Controller Validate Graph',
-				value: 'validationControllerValidateGraph',
+				name: 'Validate Graph',
+				description: 'Validate Graph',
+				value: 'validateGraph',
 			},
 			{
-				name: 'Validation Controller Validate Instance',
-				value: 'validationControllerValidateInstance',
+				name: 'Validate Instance',
+				description: 'Validate Instance',
+				value: 'validateInstance',
 			},
 		],
-		default: 'validationControllerGetSchema',
+		default: 'getSchema',
 	},
 ] as INodeProperties[];
 
@@ -37,7 +41,7 @@ export const validationFields = [
 	{
 		displayName: 'DTMI',
 		name: 'dtmi',
-		description: '',
+		description: 'The digital twin model identifier.',
 		type: 'string',
 		required: true,
 		default: '',
@@ -47,7 +51,7 @@ export const validationFields = [
 					'validation',
 				],
 				operation: [
-					'validationControllerGetSchema',
+					'getSchema',
 				],
 			},
 		},
@@ -55,6 +59,7 @@ export const validationFields = [
 	{
 		displayName: 'Body (JSON)',
 		name: 'body',
+		description: 'The payload of the request.',
 		type: 'json',
 		required: true,
 		default: '',
@@ -64,8 +69,8 @@ export const validationFields = [
 					'validation',
 				],
 				operation: [
-					'validationControllerValidateGraph',
-					'validationControllerValidateInstance',
+					'validateGraph',
+					'validateInstance',
 				],
 			},
 		},

@@ -6,6 +6,7 @@ export const relationshipsOperations = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
+		description: 'The operation that should be executed',
 		type: 'options',
 		displayOptions: {
 			show: {
@@ -16,32 +17,39 @@ export const relationshipsOperations = [
 		},
 		options: [
 			{
+				name: 'Create Relationship',
+				description: 'Create Relationship',
+				value: 'postRelationship',
+			},
+			{
+				name: 'Delete Relationship By Id',
+				description: 'Delete Relationship By Id',
+				value: 'deleteRelationshipById',
+			},
+			{
 				name: 'Get All Relationships',
+				description: 'Get All Relationships',
 				value: 'getAllRelationships',
 			},
 			{
 				name: 'Get Incoming Relationships',
+				description: 'Get Incoming Relationships',
 				value: 'getIncomingRelationships',
 			},
 			{
 				name: 'Get Outgoing Relationships',
+				description: 'Get Outgoing Relationships',
 				value: 'getOutgoingRelationships',
 			},
 			{
-				name: 'Create Relationship',
-				value: 'postRelationship',
-			},
-			{
-				name: 'Update Relationship',
-				value: 'updateRelationship',
-			},
-			{
 				name: 'Get Relationship By Id',
+				description: 'Get Relationship By Id',
 				value: 'getRelationshipById',
 			},
 			{
-				name: 'Delete Relationship By Id',
-				value: 'deleteRelationshipById',
+				name: 'Update Relationship',
+				description: 'Update Relationship',
+				value: 'updateRelationship',
 			},
 		],
 		default: 'getOutgoingRelationships',
@@ -104,6 +112,7 @@ export const relationshipsFields = [
 	{
 		displayName: 'Relationship (JSON)',
 		name: 'relationship',
+		description: 'Add a new relationship',
 		type: 'json',
 		required: true,
 		default: '',

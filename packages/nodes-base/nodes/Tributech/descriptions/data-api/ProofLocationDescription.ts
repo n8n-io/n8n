@@ -6,6 +6,7 @@ export const proofLocationOperations = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
+		description: 'The operation that should be executed',
 		type: 'options',
 		displayOptions: {
 			show: {
@@ -17,10 +18,12 @@ export const proofLocationOperations = [
 		options: [
 			{
 				name: 'Get Proof Locations',
+				description: 'Get Proof Locations',
 				value: 'getProofLocations',
 			},
 			{
 				name: 'Save Proof Locations',
+				description: 'Save Proof Locations',
 				value: 'saveProofLocations',
 			},
 		],
@@ -65,6 +68,20 @@ export const proofLocationFields = [
 		},
 		options: [
 			{
+				displayName: 'From',
+				name: 'from',
+				description: 'Filter result by \'Timestamp\', only include \'Values\' with a \'Timestamp\' equal or after the given filter <br /> (format: ISO 8601, default: No filtering occurs, behavior: Timestamp >= From)',
+				type: 'dateTime',
+				default: '',
+			},
+			{
+				displayName: 'OrderBy',
+				name: 'orderBy',
+				description: 'Sort order of the returned \'Values\' (default: "asc", alternative: "desc") Values are ordered by Timestamp',
+				type: 'string',
+				default: 'asc',
+			},
+			{
 				displayName: 'PageNumber',
 				name: 'pageNumber',
 				description: 'Page number (first page is 1, default: 1, min: 1, max: 2147483647)',
@@ -74,13 +91,6 @@ export const proofLocationFields = [
 					maxValue: 2147483647,
 				},
 				default: 1,
-			},
-			{
-				displayName: 'OrderBy',
-				name: 'orderBy',
-				description: 'Sort order of the returned \'Values\' (default: "asc", alternative: "desc") Values are ordered by Timestamp',
-				type: 'string',
-				default: 'asc',
 			},
 			{
 				displayName: 'PageSize',
@@ -100,18 +110,12 @@ export const proofLocationFields = [
 				type: 'dateTime',
 				default: '',
 			},
-			{
-				displayName: 'From',
-				name: 'from',
-				description: 'Filter result by \'Timestamp\', only include \'Values\' with a \'Timestamp\' equal or after the given filter <br /> (format: ISO 8601, default: No filtering occurs, behavior: Timestamp >= From)',
-				type: 'dateTime',
-				default: '',
-			},
 		],
 	},
 	{
 		displayName: 'Standard',
 		name: 'proofLocations',
+		description: 'Collection of proofs to store',
 		type: 'fixedCollection',
 		placeholder: 'Add Proof Location',
 		default: {},
@@ -132,9 +136,11 @@ export const proofLocationFields = [
 			{
 				displayName: 'Proof Location',
 				name: 'proofLocation',
+				description: 'Proof Location',
 				values: [
 					{
 						displayName: 'ValueMetadata ID',
+						description: 'ValueMetadata ID',
 						name: 'valueMetadataId',
 						type: 'string',
 						required: true,
@@ -142,6 +148,7 @@ export const proofLocationFields = [
 					},
 					{
 						displayName: 'Last Timestamp',
+						description: 'Last Timestamp',
 						name: 'lastTimestamp',
 						type: 'string',
 						required: true,
@@ -150,13 +157,15 @@ export const proofLocationFields = [
 					{
 						displayName: 'Merkel Tree Depth',
 						name: 'merkelTreeDepth',
+						description: 'Merkel Tree Depth',
 						type: 'number',
 						required: true,
-						default: '',
+						default: 4,
 					},
 					{
 						displayName: 'URI',
 						name: 'uri',
+						description: 'URI',
 						type: 'string',
 						required: true,
 						default: '',

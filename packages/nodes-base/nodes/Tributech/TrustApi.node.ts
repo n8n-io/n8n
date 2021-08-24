@@ -45,6 +45,7 @@ export class TrustApi implements INodeType {
 			{
 				displayName: 'Resource',
 				name: 'resource',
+				description: 'The resource type',
 				type: 'options',
 				options: [
 					{

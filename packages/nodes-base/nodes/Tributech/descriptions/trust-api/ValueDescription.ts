@@ -6,6 +6,7 @@ export const valueOperations = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
+		description: 'The operation that should be executed',
 		type: 'options',
 		displayOptions: {
 			show: {
@@ -17,14 +18,17 @@ export const valueOperations = [
 		options: [
 			{
 				name: 'Save Values As Byte Array',
+				description: 'Save Values As Byte Array',
 				value: 'saveValuesAsByte',
 			},
 			{
 				name: 'Save Values As Double',
+				description: 'Save Values As Double',
 				value: 'saveValuesAsDouble',
 			},
 			{
 				name: 'Save Values As String',
+				description: 'Save Values As String',
 				value: 'saveValuesAsString',
 			},
 		],
@@ -74,6 +78,7 @@ export const valueFields = [
 	{
 		displayName: 'Values',
 		name: 'values',
+		description: 'Collection of values to add',
 		type: 'fixedCollection',
 		placeholder: 'Add Value',
 		default: {},
@@ -100,6 +105,7 @@ export const valueFields = [
 					{
 						displayName: 'ValueMetadata ID',
 						name: 'valueMetadataId',
+						description: 'ValueMetadata ID',
 						type: 'string',
 						required: true,
 						default: '',

@@ -6,6 +6,7 @@ export const proofOperations = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
+		description: 'The operation that should be executed',
 		type: 'options',
 		displayOptions: {
 			show: {
@@ -16,20 +17,24 @@ export const proofOperations = [
 		},
 		options: [
 			{
-				name: 'Get Proof With Values',
-				value: 'getProofWithValues',
-			},
-			{
 				name: 'Get Proof',
+				description: 'Get Proof',
 				value: 'getProof',
 			},
 			{
-				name: 'Validate Proof',
-				value: 'validateProofs',
+				name: 'Get Proof With Values',
+				description: 'Get Proof With Values',
+				value: 'getProofWithValues',
 			},
 			{
 				name: 'Save Proofs',
+				description: 'Save Proofs',
 				value: 'saveProofs',
+			},
+			{
+				name: 'Validate Proof',
+				description: 'Validate Proof',
+				value: 'validateProofs',
 			},
 		],
 		default: 'validateProofs',
@@ -40,6 +45,7 @@ export const proofFields = [
 	{
 		displayName: 'ValueMetadata ID',
 		name: 'valueMetadataId',
+		description: 'ValueMetadata ID',
 		type: 'string',
 		default: '',
 		displayOptions: {
@@ -110,6 +116,7 @@ export const proofFields = [
 	{
 		displayName: 'Custom Public Key',
 		name: 'customKey',
+		description: 'Custom Public Key',
 		type: 'boolean',
 		default: false,
 		displayOptions: {
@@ -126,7 +133,9 @@ export const proofFields = [
 	{
 		displayName: 'Public Key',
 		name: 'publicKey',
+		description: 'Public Key',
 		type: 'string',
+		default: '',
 		displayOptions: {
 			show: {
 				resource: [
@@ -146,6 +155,7 @@ export const proofFields = [
 		name: 'proofs',
 		type: 'fixedCollection',
 		placeholder: 'Add Proof',
+		description: 'Collection of proofs to validate.',
 		default: {},
 		typeOptions: {
 			multipleValues: true,
@@ -168,6 +178,7 @@ export const proofFields = [
 					{
 						displayName: 'ValueMetadata ID',
 						name: 'valueMetadataId',
+						description: 'ValueMetadata ID',
 						type: 'string',
 						required: true,
 						default: '',
@@ -188,6 +199,7 @@ export const proofFields = [
 		name: 'proofs',
 		type: 'fixedCollection',
 		placeholder: 'Add Proof',
+		description: 'Collection of proofs to save.',
 		default: {},
 		typeOptions: {
 			multipleValues: true,
@@ -207,16 +219,11 @@ export const proofFields = [
 				displayName: 'Proof',
 				name: 'keys',
 				values: [
-					{
-						displayName: 'ValueMetadata ID',
-						name: 'valueMetadataId',
-						type: 'string',
-						required: true,
-						default: '',
-					},
+
 					{
 						displayName: 'Last Timestamp',
 						name: 'lastTimestamp',
+						description: 'Last Timestamp',
 						type: 'string',
 						required: true,
 						default: '',
@@ -224,13 +231,15 @@ export const proofFields = [
 					{
 						displayName: 'Merkel Tree Depth',
 						name: 'merkelTreeDepth',
+						description: 'Merkel Tree Depth',
 						type: 'string',
 						required: true,
 						default: '',
 					},
 					{
-						displayName: 'Proof Id',
+						displayName: 'Proof ID',
 						name: 'id',
+						description: 'Proof ID',
 						type: 'string',
 						required: true,
 						default: '',
@@ -238,6 +247,7 @@ export const proofFields = [
 					{
 						displayName: 'Root Hash',
 						name: 'rootHash',
+						description: 'Root Hash',
 						type: 'string',
 						required: true,
 						default: '',
@@ -245,6 +255,15 @@ export const proofFields = [
 					{
 						displayName: 'Signature',
 						name: 'signature',
+						description: 'Signature',
+						type: 'string',
+						required: true,
+						default: '',
+					},
+					{
+						displayName: 'ValueMetadata ID',
+						name: 'valueMetadataId',
+						description: 'ValueMetadata ID',
 						type: 'string',
 						required: true,
 						default: '',

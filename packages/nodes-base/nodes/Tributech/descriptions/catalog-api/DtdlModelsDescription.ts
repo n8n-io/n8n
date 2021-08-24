@@ -6,6 +6,7 @@ export const dtdlModelsOperations = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
+		description: 'The operation that should be executed',
 		type: 'options',
 		displayOptions: {
 			show: {
@@ -18,30 +19,37 @@ export const dtdlModelsOperations = [
 			{
 				name: 'Get Bases',
 				value: 'getBases',
+				description: 'Get Bases',
 			},
 			{
 				name: 'Get DTDL Model',
 				value: 'getDtdlModel',
+				description: 'Get DTDL Model',
 			},
 			{
 				name: 'Get Expanded',
 				value: 'getExpanded',
+				description: 'Get Expanded',
 			},
 			{
 				name: 'Get Expanded Models',
 				value: 'getExpandedModels',
+				description: 'Get Expanded Models',
 			},
 			{
 				name: 'Get Outgoing Relationships',
 				value: 'getOutgoingRelationships',
+				description: 'Get Outgoing Relationships',
 			},
 			{
 				name: 'Get Relationships',
 				value: 'getRelationships',
+				description: 'Get Relationships',
 			},
 			{
 				name: 'Get Roots',
 				value: 'getRoots',
+				description: 'Get Roots',
 			},
 		],
 		default: 'getDtdlModel',
@@ -52,7 +60,7 @@ export const dtdlModelsFields = [
 	{
 		displayName: 'Dtmi',
 		name: 'dtmi',
-		description: '',
+		description: 'The DTMI of the requested model.',
 		type: 'string',
 		required: true,
 		default: '',
@@ -72,7 +80,7 @@ export const dtdlModelsFields = [
 	{
 		displayName: 'Size',
 		name: 'size',
-		description: '',
+		description: 'The page size to load.',
 		type: 'number',
 		required: true,
 		default: 0,
@@ -90,7 +98,7 @@ export const dtdlModelsFields = [
 	{
 		displayName: 'Page',
 		name: 'page',
-		description: '',
+		description: 'The page to load',
 		type: 'number',
 		required: true,
 		default: 0,
@@ -108,7 +116,7 @@ export const dtdlModelsFields = [
 	{
 		displayName: 'sourceDtmi',
 		name: 'sourceDtmi',
-		description: '',
+		description: 'The DTMI of the source model',
 		type: 'string',
 		required: true,
 		default: '',
@@ -127,7 +135,7 @@ export const dtdlModelsFields = [
 	{
 		displayName: 'targetDtmi',
 		name: 'targetDtmi',
-		description: '',
+		description: 'The DTMI of the target model',
 		type: 'string',
 		required: true,
 		default: '',

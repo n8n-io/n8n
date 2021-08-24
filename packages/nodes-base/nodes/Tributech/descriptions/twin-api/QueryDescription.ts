@@ -6,6 +6,7 @@ export const queryOperations = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
+		description: 'The operation that should be executed',
 		type: 'options',
 		displayOptions: {
 			show: {
@@ -17,10 +18,12 @@ export const queryOperations = [
 		options: [
 			{
 				name: 'Get Twin Graph By Cypher Query',
+				description: 'Get Twin Graph By Cypher Query',
 				value: 'getTwinGraphByCypherQuery',
 			},
 			{
 				name: 'Get Twin Graph By Subgraph Query',
+				description: 'Get Twin Graph By Subgraph Query',
 				value: 'getTwinGraphBySubgraphQuery',
 			},
 		],
@@ -87,8 +90,9 @@ export const queryFields = [
 	//        Query: GetTwinGraphByQuery
 	// ----------------------------------------
 	{
-		displayName: 'Root Node DtId',
+		displayName: 'Root Node ID',
 		name: 'startNodeDtId',
+		description: 'The start node identified by its DT ID.',
 		type: 'string',
 		required: true,
 		default: '',
@@ -106,6 +110,7 @@ export const queryFields = [
 	{
 		displayName: 'Relationship Filter',
 		name: 'relationshipFilter',
+		description: 'Filter used for relationships.',
 		type: 'string',
 		required: true,
 		default: '',
@@ -123,6 +128,7 @@ export const queryFields = [
 	{
 		displayName: 'Label Filter',
 		name: 'labelFilter',
+		description: 'Filter used for labels.',
 		type: 'string',
 		required: true,
 		default: '',
@@ -140,6 +146,7 @@ export const queryFields = [
 	{
 		displayName: 'Max Depth',
 		name: 'maxDepth',
+		description: 'The max depth of the subgraph.',
 		type: 'string',
 		required: true,
 		default: '',

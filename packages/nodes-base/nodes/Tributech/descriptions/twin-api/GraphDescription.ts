@@ -6,6 +6,7 @@ export const graphOperations = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
+		description: 'The operation that should be executed',
 		type: 'options',
 		displayOptions: {
 			show: {
@@ -17,6 +18,7 @@ export const graphOperations = [
 		options: [
 			{
 				name: 'Upsert Twin Graph',
+				description: 'Upsert Twin Graph',
 				value: 'upsertTwinGraph',
 			},
 		],
@@ -28,6 +30,7 @@ export const graphFields = [
 	{
 		displayName: 'Twin Graph Description (JSON)',
 		name: 'twinGraph',
+		description: 'The operation that should be executed',
 		type: 'json',
 		required: true,
 		default: '',
