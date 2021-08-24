@@ -62,15 +62,9 @@ export class ActiveExecutions {
 
 			const execution = ResponseHelper.flattenExecutionData(fullExecutionData);
 
-			const executionResult = await Db.collections.Execution!.save(
-				execution as IExecutionFlattedDb,
-			);
-			// eslint-disable-next-line no-param-reassign
-			executionId =
-				typeof executionResult.id === 'object'
-					? // @ts-ignore
-					  executionResult.id.toString()
-					: `${executionResult.id}`;
+			const executionResult = await Db.collections.Execution!.save(execution as IExecutionFlattedDb);
+			// @ts-ignore
+			executionId = typeof executionResult.id === "object" ? executionResult.id!.toString() : executionResult.id + "";
 		} else {
 			// Is an existing execution we want to finish so update in DB
 
