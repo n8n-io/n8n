@@ -478,18 +478,15 @@ export const workflowHelpers = mixins(
 					this.$store.commit('setWorkflowName', {newName: workflowData.name, setStateDirty: false});
 					this.$store.commit('setWorkflowSettings', workflowData.settings || {});
 					this.$store.commit('setStateDirty', false);
-					if (Object.keys(changedNodes).length > 0) {
-						Object.keys(changedNodes).forEach((nodeName) => {
-							const changes = {
-								key: 'webhookId',
-								value: changedNodes[nodeName],
-								name: nodeName,
-							} as IUpdateInformation;
-
-							this.$store.commit('setNodeValue', changes);
-						});
-					}
-
+					Object.keys(changedNodes).forEach((nodeName) => {
+						const changes = {
+							key: 'webhookId',
+							value: changedNodes[nodeName],
+							name: nodeName,
+						} as IUpdateInformation;
+						this.$store.commit('setNodeValue', changes);
+					});
+					
 					const createdTags = (workflowData.tags || []) as ITag[];
 					const tagIds = createdTags.map((tag: ITag): string => tag.id);
 					this.$store.commit('setWorkflowTagIds', tagIds);
