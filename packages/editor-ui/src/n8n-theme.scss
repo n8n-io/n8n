@@ -133,8 +133,11 @@ body {
 			left: 60px;
 			top: 1px;
 		}
-	}
 
+		&:hover, &:focus {
+			background-color: #fff0ef;
+		}
+	}
 }
 .el-menu--vertical {
 	.el-menu-item {
