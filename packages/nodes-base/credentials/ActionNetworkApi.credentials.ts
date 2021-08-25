@@ -13,12 +13,6 @@ export class ActionNetworkApi implements ICredentialType {
 			name: 'apiKey',
 			type: 'string' as NodePropertyTypes,
 			default: '',
-		},
-		{
-			displayName: 'API Key2',
-			name: 'apiKey2',
-			type: 'string' as NodePropertyTypes,
-			default: '',
-		},
+		}
 	];
 }
