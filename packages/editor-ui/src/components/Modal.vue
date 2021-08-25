@@ -137,13 +137,22 @@ export default Vue.extend({
 	overflow: hidden;
 }
 
-.dialog-wrapper {
-	* {
-		box-sizing: border-box;
-	}
+.el-dialog__body {
+	height: 100%;
+}
 
+.dialog-wrapper {
 	&.xl > div, &.md > div {
 		min-width: 620px;
+	}
+
+	&.lg > div {
+		height: 80%;
+		overflow: hidden;
+
+		.modal-content {
+			height: 100%;
+		}
 	}
 
 	&.sm {

@@ -749,7 +749,8 @@ export default mixins(genericHelpers, showMessage, nodeHelpers).extend({
 
 .mainContent {
 	flex-grow: 1;
-	min-height: 250px;
+	overflow: scroll;
+	padding-bottom: 60px;
 
 	> * {
 		margin-bottom: var(--spacing-l);
@@ -769,6 +770,7 @@ export default mixins(genericHelpers, showMessage, nodeHelpers).extend({
 
 .container {
 	display: flex;
+	height: 100%;
 }
 
 .credInfo {
