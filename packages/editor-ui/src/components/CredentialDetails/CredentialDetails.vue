@@ -427,8 +427,7 @@ export default mixins(genericHelpers, showMessage, nodeHelpers).extend({
 			}
 		},
 		convertToHumanReadableDate,
-		onDataChange({ name, value }: { name: string; value: any }) {
-			// tslint:disable-line:no-any
+		onDataChange({ name, value }: { name: string; value: any }) { // tslint:disable-line:no-any
 			this.hasUnsavedChanges = true;
 			this.credentialData = {
 				...this.credentialData,
