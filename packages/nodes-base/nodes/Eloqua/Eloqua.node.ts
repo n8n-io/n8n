@@ -205,6 +205,27 @@ export class Eloqua implements INodeType {
 				default: {},
 				options: [
 					{
+						displayName: 'Name',
+						name: 'name',
+						default: '',
+						type: 'string',
+						description: 'Name of the Custom Object Field'
+					},
+					{
+						displayName: 'Data Type',
+						name: 'dataType',
+						default: '',
+						type: 'string',
+						description: 'Data Type of the Custom Object Field'
+					},
+					{
+						displayName: 'Display Type',
+						name: 'displayType',
+						default: '',
+						type: 'string',
+						description: 'Display Type of the Custom Object Field'
+					},
+					{
 						displayName: 'Custom Key Value Pairs',
 						name: 'keyValuePair',
 						placeholder: 'Add custom key/value pair',
@@ -212,7 +233,7 @@ export class Eloqua implements INodeType {
 							'Adds a custom key value pair to set also values which have not been predefined.',
 						type: 'fixedCollection',
 						typeOptions: {
-							multipleValues: true
+							multipleValues: false
 						},
 						default: {},
 						options: [
@@ -235,28 +256,7 @@ export class Eloqua implements INodeType {
 										description: 'Value of the field to set.'
 									}
 								]
-							},
-                            {
-                                displayName: 'Name',
-                                name: 'name',
-                                type: 'string',
-                                default: '',
-                                description: 'Key of the field to set.'
-                            },
-                            {
-                                displayName: 'Display Type',
-                                name: 'displayType',
-                                type: 'string',
-                                default: '',
-                                description: 'Key of the field to set.'
-                            },
-                            {
-                                displayName: 'Data Type',
-                                name: 'dataType',
-                                type: 'string',
-                                default: '',
-                                description: 'Key of the field to set.'
-                            },
+							}
 						]
 					}
 				]
@@ -371,7 +371,6 @@ export class Eloqua implements INodeType {
 						requestMethod = 'GET';
 						endpoint = '/api/REST/1.0/data/contacts';
 						qs = {} as IDataObject;
-						console.log(body);
 
 						responseData = await eloquaApiRequest.call(
 							this,
@@ -388,26 +387,45 @@ export class Eloqua implements INodeType {
 					if (operation === 'create') {
 						requestMethod = 'POST';
 						endpoint = '/api/REST/2.0/assets/customObject';
-                        body = this.getNodeParameter('optionalFields', i) as IDataObject;
+						body = this.getNodeParameter('optionalFields', i) as IDataObject;
 						body.name = this.getNodeParameter('name', i) as string;
-						body.fields = [];
 						qs = {} as IDataObject;
+						body.fields = [];
 						const customAdditionalFields = this.getNodeParameter(
 							'customAdditionalFields',
 							i
-						) as any
+						) as any;
 						for (let j = 0; j < customAdditionalFields.length; j++) {
-                            const keyValuePair = customAdditionalFields[j].keyValuePair;
-                            if (keyValuePair !== {}){body.fields[j]= {}
-                            }
-                            const property = keyValuePair.property;
-                            for (let i = 0; i< property.length; i++){
-                                if(property[i].key && property[i].value){
-                                    body.fields[j][property[i].key] = property[i].value;
-                                }
-                            }
-						},
-                        console.log(JSON.stringify(body.fields));
+							body.fields[j] = {};
+							const name = customAdditionalFields[j].name;
+							if (name) {
+								body.fields[j].name = name;
+							}
+							const dataType = customAdditionalFields[j].dataType;
+							if (dataType) {
+								body.fields[j].dataType = dataType;
+							}
+							const displayType = customAdditionalFields[j].displayType;
+							if (displayType) {
+								body.fields[j].displayType = displayType;
+							}
+							const keyValuePair = customAdditionalFields[j].keyValuePair;
+							if (keyValuePair && keyValuePair.property) {
+                                let property = null;
+								if (Array.isArray(keyValuePair.property)) {
+									property = keyValuePair.property[0];
+								} else {
+									property = keyValuePair.property;
+								}
+								body.fields[j][property.key] = property.value;
+								// Just in case many entries become posssible, if so set multiplyValues to true and uncomment code
+								// for (let i = 0; i < property.length; i++){
+								//     if(property[i].key && property[i].value){
+								//         body.fields[j][property[i].key] = property[i].value;
+								//     }
+								// }
+							}
+						}
 
 						responseData = await eloquaApiRequest.call(
 							this,
@@ -421,7 +439,6 @@ export class Eloqua implements INodeType {
 					//         customObject:update
 					// ----------------------------------
 					else if (operation === 'update') {
-						console.log('update');
 						requestMethod = 'PUT';
 						const objectId = this.getNodeParameter('id', i) as string;
 						endpoint = `/api/REST/2.0/assets/customObject/${objectId}`;
@@ -430,6 +447,25 @@ export class Eloqua implements INodeType {
 						body.id = objectId;
 						body.name = this.getNodeParameter('name', i) as string;
 						qs = {} as IDataObject;
+						body.fields = [];
+						const customAdditionalFields = this.getNodeParameter(
+							'customAdditionalFields',
+							i
+						) as any;
+						for (let j = 0; j < customAdditionalFields.length; j++) {
+							const keyValuePair = customAdditionalFields[j].keyValuePair;
+							if (keyValuePair !== {}) {
+								body.fields[j] = {};
+							}
+							const property = keyValuePair.property;
+							if (property) {
+								for (let i = 0; i < property.length; i++) {
+									if (property[i].key && property[i].value) {
+										body.fields[j][property[i].key] = property[i].value;
+									}
+								}
+							}
+						}
 
 						responseData = await eloquaApiRequest.call(
 							this,
@@ -443,7 +479,6 @@ export class Eloqua implements INodeType {
 					//         customObject:delete
 					// ----------------------------------
 					else if (operation === 'delete') {
-						console.log('delete');
 						requestMethod = 'DELETE';
 						const objectId = this.getNodeParameter('id', i) as string;
 						endpoint = `/api/REST/2.0/assets/customObject/${objectId}`;
@@ -461,7 +496,6 @@ export class Eloqua implements INodeType {
 					//         customObject:get
 					// ----------------------------------
 					else if (operation === 'get') {
-						console.log('get');
 						requestMethod = 'GET';
 						const objectId = this.getNodeParameter('id', i) as string;
 						endpoint = `/api/REST/2.0/assets/customObject/${objectId}`;
