@@ -1,5 +1,10 @@
 <template>
 	<div @keydown.stop :class="$style.container">
+		<div :class="$style.infotip">
+			<n8n-icon icon="info-circle" /> Need help filling out these fields?
+			<a :href="documentationUrl" target="_blank">Open docs</a>
+		</div>
+
 		<div v-if="isOAuthType && credentialProperties.length">
 			<n8n-input-label label="OAuth redirect url">
 				<div :class="$style.copyText" @click="copyCallbackUrl">
@@ -7,7 +12,7 @@
 					<div :class="$style.copyButton">Click to copy</div>
 				</div>
 			</n8n-input-label>
-			<div :class="$style.oauthInfo">{{ oauthMessage }}</div>
+			<div :class="$style.oauthInfo">In {{ appName }}, use the URL above when prompted to enter an OAuth callback or redirect URL</div>
 		</div>
 
 		<div v-for="parameter in credentialProperties" :key="parameter.name">
@@ -104,15 +109,12 @@ export default mixins(copyPaste, nodeHelpers, restApi, showMessage).extend({
 		basePath(): string {
 			return this.$store.getters.getBaseUrl;
 		},
-		oauthMessage(): string {
+		appName(): string {
 			const appName = getAppNameFromCredType(
 				this.credentialTypeData.displayName,
 			);
-			if (appName) {
-				return `In ${appName}, use the URL above when prompted to enter an OAuth callback or redirect URL`;
-			}
 
-			return `Use the URL above when prompted to enter an OAuth callback or redirect URL`;
+			return appName || 'app';
 		},
 		credentialProperties(): INodeProperties[] {
 			return this.credentialTypeData.properties.filter(
@@ -265,5 +267,12 @@ export default mixins(copyPaste, nodeHelpers, restApi, showMessage).extend({
 	margin-top: var(--spacing-2xs);
 	line-height: var(--font-line-height-regular);
 	font-weight: var(--font-weight-regular);
+}
+
+
+.infotip {
+	color: var(--color-text-light);
+	font-size: var(--font-size-2xs);
+	font-weight: var(--font-weight-bold);
 }
 </style>

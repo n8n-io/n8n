@@ -77,10 +77,6 @@
 					</n8n-menu>
 				</div>
 				<div :class="$style.mainContent" v-if="activeTab === 'connection'">
-					<div :class="$style.infotip">
-						<n8n-icon icon="info-circle" /> Need help filling out these fields?
-						<a :href="documentationUrl" target="_blank">Open docs</a>
-					</div>
 					<credentials-input
 						v-if="credentialType"
 						:credentialTypeData="credentialType"
@@ -793,12 +789,6 @@ export default mixins(genericHelpers, showMessage, nodeHelpers).extend({
 	color: var(--color-text-light);
 	margin-left: 4px;
 	font-weight: 400;
-}
-
-.infotip {
-	color: var(--color-text-light);
-	font-size: var(--font-size-2xs);
-	font-weight: var(--font-weight-bold);
 }
 
 .nodeName {
