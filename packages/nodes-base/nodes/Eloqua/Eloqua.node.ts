@@ -356,7 +356,10 @@ export class Eloqua implements INodeType {
 		]
 	};
 
+<<<<<<< HEAD
 
+=======
+>>>>>>> d2ffc25e1e35e91c1a23c922674d2426b39a85d0
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
 		const returnData: IDataObject[] = [];
