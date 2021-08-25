@@ -206,7 +206,7 @@ export class Freshservice implements INodeType {
 				const { agents } = await freshserviceApiRequest.call(this, 'GET', '/agents') as {
 					agents: LoadedUser[];
 				};
-				return toUserOptions(agents);
+				return toUserOptions(agents.filter((agent) => agent.active));
 			},
 
 			async getAgentGroups(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
@@ -1473,10 +1473,9 @@ export class Freshservice implements INodeType {
 						responseData = await freshserviceApiRequest.call(this, 'PUT', `/tickets/${ticketId}`, body);
 
 					}
-
 				}
 
-				if (operation === 'delete') {
+				if (operation === 'delete' && resource !== 'agent') {
 					responseData = { success: true };
 				} else if (operation !== 'getAll') {
 					const special: { [key: string]: string } = {

@@ -11,6 +11,7 @@ export type LoadedResource = {
 };
 
 export type LoadedUser = {
+	active: boolean;
 	id: string;
 	first_name: string;
 	last_name?: string;
