@@ -7,7 +7,7 @@
 					<div :class="$style.copyButton">Click to copy</div>
 				</div>
 			</n8n-input-label>
-			<div :class="$style.oauthInfo">In {{ appName }}, use the URL above when prompted to enter an OAuth callback or redirect URL</div>
+			<div :class="$style.oauthInfo" v-if="appName">In {{ appName }}, use the URL above when prompted to enter an OAuth callback or redirect URL</div>
 		</div>
 
 		<div v-for="parameter in credentialProperties" :key="parameter.name">
