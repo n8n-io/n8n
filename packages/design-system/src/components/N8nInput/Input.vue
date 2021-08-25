@@ -7,6 +7,12 @@
 		:ref="data.ref"
 		v-on="listeners"
 	>
+		<template v-slot:prepend>
+			<slot name="prepend" />
+		</template>
+		<template v-slot:append>
+			<slot name="append" />
+		</template>
 		<template v-slot:prefix>
 			<slot name="prefix" />
 		</template>
@@ -26,12 +32,11 @@ export default {
 	},
 	props: {
 		value: {
-			type: String,
 		},
 		type: {
 			type: String,
 			validator: (value: string): boolean =>
-				['text', 'textarea'].indexOf(value) !== -1,
+				['text', 'textarea', 'number', 'password'].indexOf(value) !== -1,
 		},
 		size: {
 			type: String,

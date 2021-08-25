@@ -20,6 +20,7 @@ import {
 	faCodeBranch,
 	faCog,
 	faCogs,
+	faClock,
 	faClone,
 	faCloud,
 	faCloudDownloadAlt,
@@ -53,6 +54,7 @@ import {
 	faMapSigns,
 	faNetworkWired,
 	faPause,
+	faPauseCircle,
 	faPen,
 	faPlay,
 	faPlayCircle,
@@ -82,7 +84,6 @@ import {
 	faTrash,
 	faUndo,
 	faUsers,
-	faClock,
 } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
 
@@ -104,6 +105,7 @@ library.add(faCode);
 library.add(faCodeBranch);
 library.add(faCog);
 library.add(faCogs);
+library.add(faClock);
 library.add(faClone);
 library.add(faCloud);
 library.add(faCloudDownloadAlt);
@@ -137,6 +139,7 @@ library.add(faKey);
 library.add(faMapSigns);
 library.add(faNetworkWired);
 library.add(faPause);
+library.add(faPauseCircle);
 library.add(faPen);
 library.add(faPlay);
 library.add(faPlayCircle);
@@ -166,7 +169,6 @@ library.add(faTimes);
 library.add(faTrash);
 library.add(faUndo);
 library.add(faUsers);
-library.add(faClock);
 
 Vue.component('font-awesome-icon', FontAwesomeIcon);
 

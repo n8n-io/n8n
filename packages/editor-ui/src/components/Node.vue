@@ -9,6 +9,13 @@
 			</div>
 			<el-badge v-else :hidden="workflowDataItems === 0" class="node-info-icon data-count" :value="workflowDataItems"></el-badge>
 
+			<div v-if="waiting" class="node-info-icon waiting">
+				<n8n-tooltip placement="top">
+					<div slot="content" v-html="waiting"></div>
+					<font-awesome-icon icon="clock" />
+				</n8n-tooltip>
+			</div>
+
 			<div class="node-executing-info" title="Node is executing">
 				<font-awesome-icon icon="sync-alt" spin />
 			</div>
@@ -46,6 +53,7 @@
 <script lang="ts">
 
 import Vue from 'vue';
+import { WAIT_TIME_UNLIMITED } from '@/constants';
 import { externalHooks } from '@/components/mixins/externalHooks';
 import { nodeBase } from '@/components/mixins/nodeBase';
 import { nodeHelpers } from '@/components/mixins/nodeHelpers';
@@ -59,6 +67,8 @@ import {
 import NodeIcon from '@/components/NodeIcon.vue';
 
 import mixins from 'vue-typed-mixins';
+
+import { get } from 'lodash';
 
 export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).extend({
 	name: 'Node',
@@ -124,6 +134,22 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 			} else {
 				return 'play';
 			}
+		},
+		waiting (): string | undefined {
+			const workflowExecution = this.$store.getters.getWorkflowExecution;
+
+			if (workflowExecution && workflowExecution.waitTill) {
+				const lastNodeExecuted = get(workflowExecution, 'data.resultData.lastNodeExecuted');
+				if (this.name === lastNodeExecuted) {
+					const waitDate = new Date(workflowExecution.waitTill);
+					if (waitDate.toISOString() === WAIT_TIME_UNLIMITED) {
+						return 'The node is waiting indefinitely for an incoming webhook call.';
+					}
+					return `Node is waiting till ${waitDate.toLocaleDateString()} ${waitDate.toLocaleTimeString()}`;
+				}
+			}
+
+			return;
 		},
 		workflowRunning (): boolean {
 			return this.$store.getters.isActionActive('workflowRunning');
@@ -284,10 +310,15 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 			position: absolute;
 			top: -14px;
 			right: 12px;
-			z-index: 10;
+			z-index: 11;
 
 			&.data-count {
 				font-weight: 600;
+				top: -12px;
+			}
+
+			&.waiting {
+				left: 10px;
 				top: -12px;
 			}
 		}
@@ -297,6 +328,13 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 			height: 25px;
 			font-size: 20px;
 			color: #ff0000;
+		}
+
+		.waiting {
+			width: 25px;
+			height: 25px;
+			font-size: 20px;
+			color: #5e5efa;
 		}
 
 		.node-options {

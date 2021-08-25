@@ -22,8 +22,8 @@ import {
 	readdir as fsReaddir,
 	readFile as fsReadFile,
 	stat as fsStat,
- } from 'fs/promises';
-import * as glob from 'glob-promise';
+} from 'fs/promises';
+import * as glob from 'fast-glob';
 import * as path from 'path';
 
 const CUSTOM_NODES_CATEGORY = 'Custom Nodes';

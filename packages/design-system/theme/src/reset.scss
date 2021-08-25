@@ -11,6 +11,7 @@ body {
 	overscroll-behavior-x: none;
 	line-height: 1;
 	font-size: var(--font-size-m);
+	font-weight: 300;
 	color: var(--color-text-dark);
 	-webkit-font-smoothing: antialiased;
 	-moz-osx-font-smoothing: grayscale;
@@ -20,6 +21,11 @@ body,
 button,
 input {
 	font-family: var(--font-family);
+	-webkit-font-smoothing: antialiased;
+	-moz-osx-font-smoothing: grayscale;
+}
+
+input {
 	font-weight: var(--font-weight-regular);
 }
 

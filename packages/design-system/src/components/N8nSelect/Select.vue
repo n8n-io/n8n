@@ -64,6 +64,9 @@ export default {
 		popperClass: {
 			type: String,
 		},
+		popperAppendToBody: {
+			type: Boolean,
+		},
 	},
 	methods: {
 		getSize(size: string): string | undefined {

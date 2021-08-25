@@ -3,7 +3,16 @@
 	<expression-edit :dialogVisible="expressionEditDialogVisible" :value="value" :parameter="parameter" :path="path" @closeDialog="closeExpressionEditDialog" @valueChanged="expressionUpdated"></expression-edit>
 	<div class="parameter-input ignore-key-press" :style="parameterInputWrapperStyle" @click="openExpressionEdit">
 
-		<div v-if="['json', 'string'].includes(parameter.type) || remoteParameterOptionsLoadingIssues !== null">
+		<n8n-input
+			v-if="isValueExpression && showExpressionAsTextInput"
+			:size="inputSize"
+			:value="expressionDisplayValue"
+			:disabled="isReadOnly"
+			:title="displayTitle"
+			@keydown.stop
+		/>
+
+		<div v-else-if="['json', 'string'].includes(parameter.type) || remoteParameterOptionsLoadingIssues !== null">
 			<code-edit :dialogVisible="codeEditDialogVisible" :value="value" :parameter="parameter" @closeDialog="closeCodeEditDialog" @valueChanged="expressionUpdated"></code-edit>
 			<text-edit :dialogVisible="textEditDialogVisible" :value="value" :parameter="parameter" @closeDialog="closeTextEditDialog" @valueChanged="expressionUpdated"></text-edit>
 
@@ -11,34 +20,83 @@
 				<prism-editor v-if="!codeEditDialogVisible" :lineNumbers="true" :readonly="true" :code="displayValue" language="js"></prism-editor>
 			</div>
 
-			<n8n-input v-else v-model="tempValue" ref="inputField" :size="inputSize" :type="getStringInputType" :rows="getArgument('rows')" :value="displayValue" :disabled="isReadOnly" @change="valueChanged" @keydown.stop @focus="setFocus" :title="displayTitle" :placeholder="isValueExpression?'':parameter.placeholder">
+			<n8n-input
+				v-else
+				v-model="tempValue"
+				ref="inputField"
+				:size="inputSize"
+				:type="getStringInputType"
+				:rows="getArgument('rows')"
+				:value="displayValue"
+				:disabled="isReadOnly"
+				@change="valueChanged"
+				@keydown.stop
+				@focus="setFocus"
+				:title="displayTitle"
+				:placeholder="isValueExpression?'':parameter.placeholder"
+			>
 				<div slot="suffix" class="expand-input-icon-container">
 					<font-awesome-icon v-if="!isValueExpression && !isReadOnly" icon="external-link-alt" class="edit-window-button clickable" title="Open Edit Window" @click="displayEditDialog()" />
 				</div>
 			</n8n-input>
 		</div>
 
-		<div v-else-if="parameter.type === 'dateTime'">
-			<el-date-picker
-				v-model="tempValue"
-				ref="inputField"
-				type="datetime"
-				:size="inputSize"
+		<div v-else-if="parameter.type === 'color'" ref="inputField" class="color-input">
+			<el-color-picker
+				size="small"
+				class="color-picker"
 				:value="displayValue"
-				:title="displayTitle"
 				:disabled="isReadOnly"
-				:placeholder="parameter.placeholder?parameter.placeholder:'Select date and time'"
-				:picker-options="dateTimePickerOptions"
-				@change="valueChanged"
 				@focus="setFocus"
+				@change="valueChanged"
+				:title="displayTitle"
+				:show-alpha="getArgument('showAlpha')"
+			/>
+			<n8n-input
+				v-model="tempValue"
+				:size="inputSize"
+				type="text"
+				:value="tempValue"
+				:disabled="isReadOnly"
+				@change="valueChanged"
 				@keydown.stop
-			>
-			</el-date-picker>
+				@focus="setFocus"
+				:title="displayTitle"
+			/>
 		</div>
 
-		<div v-else-if="parameter.type === 'number'">
-			<n8n-input-number ref="inputField" :size="inputSize" :value="displayValue" :controls="false" :max="getArgument('maxValue')" :min="getArgument('minValue')" :precision="getArgument('numberPrecision')" :step="getArgument('numberStepSize')" :disabled="isReadOnly" @change="valueChanged" @focus="setFocus" @keydown.stop :title="displayTitle" :placeholder="parameter.placeholder"></n8n-input-number>
-		</div>
+		<el-date-picker
+			v-else-if="parameter.type === 'dateTime'"
+			v-model="tempValue"
+			ref="inputField"
+			type="datetime"
+			:size="inputSize"
+			:value="displayValue"
+			:title="displayTitle"
+			:disabled="isReadOnly"
+			:placeholder="parameter.placeholder?parameter.placeholder:'Select date and time'"
+			:picker-options="dateTimePickerOptions"
+			@change="valueChanged"
+			@focus="setFocus"
+			@keydown.stop
+		/>
+
+		<n8n-input-number
+			v-else-if="parameter.type === 'number'"
+			ref="inputField" :size="inputSize"
+			:value="displayValue"
+			:controls="false"
+			:max="getArgument('maxValue')"
+			:min="getArgument('minValue')"
+			:precision="getArgument('numberPrecision')"
+			:step="getArgument('numberStepSize')"
+			:disabled="isReadOnly"
+			@change="valueChanged"
+			@focus="setFocus"
+			@keydown.stop
+			:title="displayTitle"
+			:placeholder="parameter.placeholder"
+		/>
 
 		<n8n-select
 			v-else-if="parameter.type === 'options'"
@@ -84,17 +142,15 @@
 			</n8n-option>
 		</n8n-select>
 
-		<div v-else-if="parameter.type === 'color'" ref="inputField" class="color-input">
-			<el-color-picker :value="displayValue" :disabled="isReadOnly" @change="valueChanged" size="small" class="color-picker" @focus="setFocus" :title="displayTitle" :show-alpha="getArgument('showAlpha')"></el-color-picker>
-			<n8n-input v-model="tempValue" :size="inputSize" type="text" :value="tempValue" :disabled="isReadOnly" @change="valueChanged" @keydown.stop @focus="setFocus" :title="displayTitle" ></n8n-input>
-		</div>
-
-		<div v-else-if="parameter.type === 'boolean'">
-			<div v-if="isValueExpression">
-				<n8n-input :size="inputSize" :value="displayValue" :disabled="isReadOnly" @keydown.stop  :title="displayTitle" />
-			</div>
-			<el-switch v-else class="switch-input" ref="inputField" :value="displayValue" @change="valueChanged" active-color="#13ce66" :disabled="isReadOnly"></el-switch>
-		</div>
+		<el-switch
+			v-else-if="parameter.type === 'boolean'"
+			class="switch-input"
+			ref="inputField"
+			active-color="#13ce66"
+			:value="displayValue"
+			:disabled="isReadOnly"
+			@change="valueChanged"
+		/>
 	</div>
 
 	<div class="parameter-issues" v-if="getIssues.length">
@@ -228,6 +284,11 @@ export default mixins(
 			},
 		},
 		computed: {
+			showExpressionAsTextInput(): boolean {
+				const types = ['number', 'boolean', 'dateTime', 'options', 'multiOptions'];
+
+				return types.includes(this.parameter.type);
+			},
 			dependentParametersValues (): string | null {
 				const loadOptionsDependsOn = this.getArgument('loadOptionsDependsOn') as string[] | undefined;
 
@@ -301,6 +362,20 @@ export default mixins(
 				}
 
 				return returnValue;
+			},
+			expressionDisplayValue (): string {
+				const value = this.displayValue;
+
+				// address type errors for text input
+				if (typeof value === 'number' || typeof value === 'boolean') {
+					return JSON.stringify(value);
+				}
+
+				if (value === null) {
+					return '';
+				}
+
+				return value;
 			},
 			displayOptionsComputed (): boolean {
 				if (this.isReadOnly === true) {
@@ -588,7 +663,13 @@ export default mixins(
 				if (command === 'resetValue') {
 					this.valueChanged(this.parameter.default);
 				} else if (command === 'addExpression') {
-					this.valueChanged(`=${this.value}`);
+					if (this.parameter.type === 'number' || this.parameter.type === 'boolean') {
+						this.valueChanged(`={{${this.value}}}`);
+					}
+					else {
+						this.valueChanged(`=${this.value}`);
+					}
+
 					this.expressionEditDialogVisible = true;
 				} else if (command === 'removeExpression') {
 					this.valueChanged(this.expressionValueComputed || null);
