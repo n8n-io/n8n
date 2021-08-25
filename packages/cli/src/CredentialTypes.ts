@@ -35,7 +35,6 @@ class CredentialTypesClass implements ICredentialTypesInterface {
 	}
 
 	getByName(credentialType: string): ICredentialType {
-		console.log(Object.keys(this.credentialTypes));
 		return this.credentialTypes[credentialType];
 	}
 }
