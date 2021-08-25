@@ -640,7 +640,7 @@ export class Workflow {
 		if (node === null) {
 			return undefined;
 		}
-		const nodeType = this.nodeTypes.getByName(node.type) as INodeType;
+		const nodeType = this.nodeTypes.getByNameAndVersion(node.type, node.typeVersion) as INodeType;
 		if (nodeType.description.outputs.length === 1) {
 			// If the parent node has only one output, it can only be connected
 			// to that one. So no further checking is required.

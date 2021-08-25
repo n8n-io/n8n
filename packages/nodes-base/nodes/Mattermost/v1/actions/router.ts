@@ -32,13 +32,13 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 
 		try {
 			if (mattermost.resource === 'channel') {
-				operationResult.push(...await channel[mattermost.operation].call(this, i));
+				operationResult.push(...await channel[mattermost.operation].execute.call(this, i));
 			} else if (mattermost.resource === 'message') {
-				operationResult.push(...await message[mattermost.operation].call(this, i));
+				operationResult.push(...await message[mattermost.operation].execute.call(this, i));
 			} else if (mattermost.resource === 'reaction') {
-				operationResult.push(...await reaction[mattermost.operation].call(this, i));
+				operationResult.push(...await reaction[mattermost.operation].execute.call(this, i));
 			} else if (mattermost.resource === 'user') {
-				operationResult.push(...await user[mattermost.operation].call(this, i));
+				operationResult.push(...await user[mattermost.operation].execute.call(this, i));
 			}
 		} catch (err) {
 			if (this.continueOnFail()) {

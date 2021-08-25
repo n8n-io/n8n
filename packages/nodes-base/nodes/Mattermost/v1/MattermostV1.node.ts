@@ -8,7 +8,7 @@ import {
 	INodeTypeDescription,
 } from 'n8n-workflow';
 
-import { versionDescription } from './description';
+import { versionDescription } from './actions/versionDescription';
 import { loadOptions } from './methods';
 import { router } from './actions/router';
 
