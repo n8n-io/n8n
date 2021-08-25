@@ -104,7 +104,7 @@ export async function eloquaApiRequest(
   }
   try {
     const responseData = await this.helpers.request!(options);
-    if (responseData.success === false) {
+    if (responseData && responseData.success === false) {
       throw new NodeApiError(this.getNode(), responseData);
     }
     return responseData;

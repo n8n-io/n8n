@@ -1,6 +1,5 @@
-import {
-	IExecuteFunctions,
-} from 'n8n-core';
+import { customerAdditionalFieldsOptions } from './../QuickBooks/descriptions/Customer/CustomerAdditionalFieldsOptions';
+import { IExecuteFunctions } from 'n8n-core';
 
 import {
 	IDataObject,
@@ -10,13 +9,10 @@ import {
 	INodeType,
 	INodeTypeDescription,
 	NodeApiError,
-	NodeOperationError,
+	NodeOperationError
 } from 'n8n-workflow';
 
-import {
-    eloquaApiRequest
-} from "./GenericFunctions"
-
+import { eloquaApiRequest } from './GenericFunctions';
 
 export class Eloqua implements INodeType {
 	description: INodeTypeDescription = {
@@ -29,17 +25,17 @@ export class Eloqua implements INodeType {
 		description: 'Consume Oracle Eloqua REST API',
 		defaults: {
 			name: 'Oracle Eloqua',
-			color: '#FC636B',
+			color: '#FC636B'
 		},
-        inputs: ['main'],
+		inputs: ['main'],
 		outputs: ['main'],
-        credentials: [
+		credentials: [
 			{
 				name: 'eloqua',
-				required: true,
-			},
+				required: true
+			}
 		],
-        properties: [
+		properties: [
 			// ----------------------------------
 			//         resources
 			// ----------------------------------
@@ -151,14 +147,6 @@ export class Eloqua implements INodeType {
 				description: 'Additional optional Fields of the custom Object',
 				placeholder: 'Add Field',
 				options: [
-					{
-						displayName: 'Type',
-						name: 'type',
-						type: 'string',
-						default: '',
-						description:
-							"The asset's type in Eloqua. This is a read-only property."
-					},
 					{
 						displayName: 'Description',
 						name: 'description',
@@ -322,7 +310,7 @@ export class Eloqua implements INodeType {
 		]
 	};
 
-    async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
+	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
 		const returnData: IDataObject[] = [];
 		const resource = this.getNodeParameter('resource', 0) as string;
@@ -372,18 +360,52 @@ export class Eloqua implements INodeType {
 							qs
 						);
 					}
-				}
-				if (resource === 'customObject') {
+				} else if (resource === 'customObject') {
 					// ----------------------------------
 					//         customObject:create
 					// ----------------------------------
 					if (operation === 'create') {
-						console.log('here');
 						requestMethod = 'POST';
 						endpoint = '/api/REST/2.0/assets/customObject';
-						// body.address1 = 'P.O.Box 72202 - 00200';
+                        body = this.getNodeParameter('optionalFields', i) as IDataObject;
 						body.name = this.getNodeParameter('name', i) as string;
-						// body.emailAddress ="asdghiufjahksdfklasdjkf@asdfasdfgasdfasf.com"
+						body.fields = [];
+						qs = {} as IDataObject;
+						const customAdditionalFields = this.getNodeParameter(
+							'customAdditionalFields',
+							i
+						) as any
+						for (let j = 0; j < customAdditionalFields.length; j++) {
+                            const keyValuePair = customAdditionalFields[j].keyValuePair;
+                            if (keyValuePair !== {}){body.fields[j]= {}
+                            }
+                            const property = keyValuePair.property;
+                            for (let i = 0; i< property.length; i++){
+                                body.fields[j][property[i].key]= property[i].value;
+                            }
+						},
+                        console.log(Json.stringify(body.fields));
+
+						responseData = await eloquaApiRequest.call(
+							this,
+							requestMethod,
+							endpoint,
+							body,
+							qs
+						);
+					}
+					// ----------------------------------
+					//         customObject:update
+					// ----------------------------------
+					else if (operation === 'update') {
+						console.log('update');
+						requestMethod = 'PUT';
+						const objectId = this.getNodeParameter('id', i) as string;
+						endpoint = `/api/REST/2.0/assets/customObject/${objectId}`;
+						body = this.getNodeParameter('optionalFields', i) as IDataObject;
+
+						body.id = objectId;
+						body.name = this.getNodeParameter('name', i) as string;
 						qs = {} as IDataObject;
 
 						responseData = await eloquaApiRequest.call(
@@ -395,13 +417,48 @@ export class Eloqua implements INodeType {
 						);
 					}
 					// ----------------------------------
-					//         customObjectGetALL
+					//         customObject:delete
 					// ----------------------------------
-					if (operation === 'getAll') {
+					else if (operation === 'delete') {
+						console.log('delete');
+						requestMethod = 'DELETE';
+						const objectId = this.getNodeParameter('id', i) as string;
+						endpoint = `/api/REST/2.0/assets/customObject/${objectId}`;
+						qs = {} as IDataObject;
+
+						responseData = await eloquaApiRequest.call(
+							this,
+							requestMethod,
+							endpoint,
+							body,
+							qs
+						);
+					}
+					// ----------------------------------
+					//         customObject:get
+					// ----------------------------------
+					else if (operation === 'get') {
+						console.log('get');
+						requestMethod = 'GET';
+						const objectId = this.getNodeParameter('id', i) as string;
+						endpoint = `/api/REST/2.0/assets/customObject/${objectId}`;
+						qs = {} as IDataObject;
+
+						responseData = await eloquaApiRequest.call(
+							this,
+							requestMethod,
+							endpoint,
+							body,
+							qs
+						);
+					}
+					// ----------------------------------
+					//         customObject:getALL
+					// ----------------------------------
+					else if (operation === 'getAll') {
 						requestMethod = 'GET';
 						endpoint = '/api/REST/2.0/assets/customObjects';
 						qs = this.getNodeParameter('queryParameters', i) as IDataObject;
-						console.log(qs);
 
 						responseData = await eloquaApiRequest.call(
 							this,
