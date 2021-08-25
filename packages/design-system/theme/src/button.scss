@@ -14,7 +14,8 @@ $loading-overlay-background-color: rgba(255, 255, 255, 0.35);
 	white-space: nowrap;
 	cursor: pointer;
 
-	border: var(--border-width-base) var.$button-border-color var(--border-style-base);
+	border: var(--border-width-base) var.$button-border-color
+		var(--border-style-base);
 	color: var.$button-font-color;
 	background-color: var.$button-background-color;
 	font-weight: var(--font-weight-bold);
@@ -74,7 +75,7 @@ $loading-overlay-background-color: rgba(255, 255, 255, 0.35);
 
 	@include mixins.when(round) {
 		--button-border-radius: 20px;
-  }
+	}
 
 	@include mixins.when(circle) {
 		--button-padding-vertical: var(--spacing-xs);
