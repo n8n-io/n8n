@@ -14,22 +14,48 @@
 						<CredentialIcon :credentialTypeName="credentialTypeName" />
 					</div>
 					<div>
-						<div :class="$style.headline" @keydown.stop @click="enableNameEdit" v-click-outside="disableNameEdit">
+						<div
+							:class="$style.headline"
+							@keydown.stop
+							@click="enableNameEdit"
+							v-click-outside="disableNameEdit"
+						>
 							<span v-if="isNameEdit">...</span>
 							<div v-if="!isNameEdit">
 								<span>{{ credentialName }}</span>
 								<i><font-awesome-icon icon="pen" /></i>
 							</div>
 							<div v-else :class="$style.nameInput">
-								<n8n-input :value="credentialName" size="medium" ref="nameInput" @input="onNameEdit" @change="disableNameEdit" maxlength="64" />
+								<n8n-input
+									:value="credentialName"
+									size="medium"
+									ref="nameInput"
+									@input="onNameEdit"
+									@change="disableNameEdit"
+									maxlength="64"
+								/>
 							</div>
 						</div>
 						<div :class="$style.subtitle">{{ credentialType.displayName }}</div>
 					</div>
 				</div>
 				<div :class="$style.credActions">
-					<n8n-icon-button v-if="currentCredential" size="medium" title="Delete" icon="trash" type="text" :disabled="isSaving" :loading="isDeleting" @click="deleteCredential" />
-					<n8n-button size="medium" label="Save" @click="saveCredential" :loading="isSaving" />
+					<n8n-icon-button
+						v-if="currentCredential"
+						size="medium"
+						title="Delete"
+						icon="trash"
+						type="text"
+						:disabled="isSaving"
+						:loading="isDeleting"
+						@click="deleteCredential"
+					/>
+					<n8n-button
+						size="medium"
+						label="Save"
+						@click="saveCredential"
+						:loading="isSaving"
+					/>
 				</div>
 			</div>
 			<hr />
@@ -37,13 +63,24 @@
 		<template slot="content">
 			<div :class="$style.container">
 				<div :class="$style.sidebar">
-					<n8n-menu type="secondary" @select="onTabSelect" defaultActive="connection">
-						<n8n-menu-item index="connection"><span slot="title">Connection</span></n8n-menu-item>
-						<n8n-menu-item index="info"><span slot="title">Info</span></n8n-menu-item>
+					<n8n-menu
+						type="secondary"
+						@select="onTabSelect"
+						defaultActive="connection"
+					>
+						<n8n-menu-item index="connection"
+							><span slot="title">Connection</span></n8n-menu-item
+						>
+						<n8n-menu-item index="info"
+							><span slot="title">Info</span></n8n-menu-item
+						>
 					</n8n-menu>
 				</div>
 				<div :class="$style.mainContent" v-if="activeTab === 'connection'">
-					<div :class="$style.infotip"><n8n-icon icon="info-circle"/> Need help filling out these fields? <a :href="documentationUrl" target="_blank">Open docs</a></div>
+					<div :class="$style.infotip">
+						<n8n-icon icon="info-circle" /> Need help filling out these fields?
+						<a :href="documentationUrl" target="_blank">Open docs</a>
+					</div>
 					<credentials-input
 						v-if="credentialType"
 						:credentialTypeData="credentialType"
@@ -59,8 +96,16 @@
 							<span :class="$style.label">Can be used with:</span>
 						</el-col>
 						<el-col :span="16">
-							<div v-for="node in nodesWithAccess" :key="node.name" :class="$style.valueLabel">
-								<el-checkbox :value="!!nodeAccess[node.name]" @change="(val) => onNodeAccessChange(node.name, val)" :label="node.displayName" />
+							<div
+								v-for="node in nodesWithAccess"
+								:key="node.name"
+								:class="$style.valueLabel"
+							>
+								<el-checkbox
+									:value="!!nodeAccess[node.name]"
+									@change="(val) => onNodeAccessChange(node.name, val)"
+									:label="node.displayName"
+								/>
 							</div>
 						</el-col>
 					</el-row>
@@ -69,7 +114,9 @@
 							<span :class="$style.label">Created:</span>
 						</el-col>
 						<el-col :span="16" :class="$style.valueLabel">
-							<span>{{ convertToHumanReadableDate(currentCredential.createdAt) }}</span>
+							<span>{{
+								convertToHumanReadableDate(currentCredential.createdAt)
+							}}</span>
 						</el-col>
 					</el-row>
 					<el-row v-if="currentCredential">
@@ -89,40 +136,42 @@
 <script lang="ts">
 import Vue from 'vue';
 
-import Modal from './Modal.vue';
+import {
+	ICredentialsDecryptedResponse,
+	ICredentialsResponse,
+} from '@/Interface';
+
+import Modal from '../Modal.vue';
 import CredentialsInput from './CredentialsInput.vue';
-import NodeIcon from './NodeIcon.vue';
-import { convertToHumanReadableDate } from './helpers';
-import TimeAgo from './TimeAgo.vue';
-import { CredentialInformation, ICredentialDataDecryptedObject, ICredentialNodeAccess, ICredentialsDecrypted, ICredentialType, INodeParameters, INodeProperties, INodeTypeDescription, NodeHelpers } from 'n8n-workflow';
-import { showMessage } from '@/components/mixins/showMessage';
+import TimeAgo from '../TimeAgo.vue';
+import {
+	CredentialInformation,
+	ICredentialDataDecryptedObject,
+	ICredentialNodeAccess,
+	ICredentialsDecrypted,
+	ICredentialType,
+	INodeParameters,
+	INodeProperties,
+	INodeTypeDescription,
+	NodeHelpers,
+} from 'n8n-workflow';
+import CredentialIcon from '../CredentialIcon.vue';
 
 import mixins from 'vue-typed-mixins';
-import { ICredentialsDecryptedResponse, ICredentialsResponse } from '@/Interface';
-import { nodeHelpers } from './mixins/nodeHelpers';
-import { genericHelpers } from './mixins/genericHelpers';
-import CredentialIcon from './CredentialIcon.vue';
+import { nodeHelpers } from '../mixins/nodeHelpers';
+import { genericHelpers } from '../mixins/genericHelpers';
+import { convertToHumanReadableDate } from '../helpers';
+import { showMessage } from '../mixins/showMessage';
 
 interface NodeAccessMap {
 	[nodeType: string]: ICredentialNodeAccess | null;
 }
 
-const credToNodeIconMap = {
-	'httpBasicAuth': 'n8n-nodes-base.httpRequest',
-	'httpHeaderAuth': 'n8n-nodes-base.httpRequest',
-	'youTubeOAuth2Api': 'n8n-nodes-base.youTube',
-};
-
-export default mixins(
-	genericHelpers,
-	showMessage,
-	nodeHelpers,
-).extend({
+export default mixins(genericHelpers, showMessage, nodeHelpers).extend({
 	name: 'CredentialsDetail',
 	components: {
 		CredentialsInput,
 		Modal,
-		NodeIcon,
 		TimeAgo,
 		CredentialIcon,
 	},
@@ -152,32 +201,36 @@ export default mixins(
 			credentialId: '',
 			isNameEdit: false,
 			hasUnsavedChanges: false,
-			credToNodeIconMap,
 		};
 	},
 	async mounted() {
-		this.nodeAccess = this.nodesWithAccess.reduce((accu: NodeAccessMap, node: {name: string}) => {
-			if (this.mode === 'new') {
-				accu[node.name] = {nodeType: node.name}; // enable all nodes by default
-			}
-			else {
-				accu[node.name] = null;
-			}
+		this.nodeAccess = this.nodesWithAccess.reduce(
+			(accu: NodeAccessMap, node: { name: string }) => {
+				if (this.mode === 'new') {
+					accu[node.name] = { nodeType: node.name }; // enable all nodes by default
+				} else {
+					accu[node.name] = null;
+				}
 
-			return accu;
-		}, {});
+				return accu;
+			},
+			{},
+		);
 
 		if (this.mode === 'new') {
-			this.credentialName = await this.$store.dispatch('credentials/getNewCredentialName', { credentialTypeName: this.credentialTypeName });
-		}
-		else {
+			this.credentialName = await this.$store.dispatch(
+				'credentials/getNewCredentialName',
+				{ credentialTypeName: this.credentialTypeName },
+			);
+		} else {
 			await this.loadCurrentCredential();
 		}
 
 		if (this.credentialType) {
 			for (const property of this.credentialType.properties) {
 				if (!this.credentialData.hasOwnProperty(property.name)) {
-					this.credentialData[property.name] = property.default as CredentialInformation;
+					this.credentialData[property.name] =
+						property.default as CredentialInformation;
 				}
 			}
 		}
@@ -190,7 +243,9 @@ export default mixins(
 				return null;
 			}
 
-			return this.$store.getters['credentials/getCredentialById'](this.credentialId);
+			return this.$store.getters['credentials/getCredentialById'](
+				this.credentialId,
+			);
 		},
 		credentialTypeName(): string | null {
 			if (this.mode === 'edit') {
@@ -208,16 +263,20 @@ export default mixins(
 				return null;
 			}
 
-			const type = this.$store.getters['credentials/getCredentialTypeByName'](this.credentialTypeName);
+			const type = this.$store.getters['credentials/getCredentialTypeByName'](
+				this.credentialTypeName,
+			);
 
 			return {
 				...type,
 				properties: this.getCredentialProperties(this.credentialTypeName),
 			};
 		},
-		nodesWithAccess(): INodeTypeDescription[]  {
+		nodesWithAccess(): INodeTypeDescription[] {
 			if (this.credentialTypeName) {
-				return this.$store.getters['credentials/getNodesWithAccess'](this.credentialTypeName);
+				return this.$store.getters['credentials/getNodesWithAccess'](
+					this.credentialTypeName,
+				);
 			}
 
 			return [];
@@ -246,17 +305,21 @@ export default mixins(
 
 			return '';
 		},
-		isGoogleCredType (): boolean {
-			return this.credentialTypeName === 'googleOAuth2Api' ||
+		isGoogleCredType(): boolean {
+			return (
+				this.credentialTypeName === 'googleOAuth2Api' ||
 				this.credentialTypeName === 'googleApi' ||
-				this.parentTypes.includes('googleOAuth2Api');
+				this.parentTypes.includes('googleOAuth2Api')
+			);
 		},
-		isAWSCredType (): boolean {
+		isAWSCredType(): boolean {
 			return this.credentialTypeName === 'aws';
 		},
-		isMicrosoftCredType (): boolean {
-			return this.credentialTypeName === 'microsoftOAuth2Api' ||
-				this.parentTypes.includes('microsoftOAuth2Api');
+		isMicrosoftCredType(): boolean {
+			return (
+				this.credentialTypeName === 'microsoftOAuth2Api' ||
+				this.parentTypes.includes('microsoftOAuth2Api')
+			);
 		},
 	},
 	methods: {
@@ -267,16 +330,22 @@ export default mixins(
 				return;
 			}
 
-			const save = await this.confirmMessage('Are you sure to close this dialog?', 'Save changes?', 'warning', 'Save', 'Discard');
+			const save = await this.confirmMessage(
+				'Are you sure to close this dialog?',
+				'Save changes?',
+				'warning',
+				'Save',
+				'Discard',
+			);
 			if (save) {
 				this.saveCredential(true);
-			}
-			else {
+			} else {
 				done();
 			}
 		},
-		getCredentialProperties (name: string): INodeProperties[] {
-			const credentialsData = this.$store.getters['credentials/getCredentialTypeByName'](name);
+		getCredentialProperties(name: string): INodeProperties[] {
+			const credentialsData =
+				this.$store.getters['credentials/getCredentialTypeByName'](name);
 
 			if (!credentialsData) {
 				throw new Error(`Could not find credentials of type: ${name}`);
@@ -288,17 +357,24 @@ export default mixins(
 
 			const combineProperties = [] as INodeProperties[];
 			for (const credentialsTypeName of credentialsData.extends) {
-				const mergeCredentialProperties = this.getCredentialProperties(credentialsTypeName);
-				NodeHelpers.mergeNodeProperties(combineProperties, mergeCredentialProperties);
+				const mergeCredentialProperties =
+					this.getCredentialProperties(credentialsTypeName);
+				NodeHelpers.mergeNodeProperties(
+					combineProperties,
+					mergeCredentialProperties,
+				);
 			}
 
 			// The properties defined on the parent credentials take presidence
-			NodeHelpers.mergeNodeProperties(combineProperties, credentialsData.properties);
+			NodeHelpers.mergeNodeProperties(
+				combineProperties,
+				credentialsData.properties,
+			);
 
 			return combineProperties;
 		},
 
-		getNodeByName (nodeTypeName: string): INodeTypeDescription {
+		getNodeByName(nodeTypeName: string): INodeTypeDescription {
 			return this.$store.getters['nodeType'](nodeTypeName);
 		},
 
@@ -306,20 +382,30 @@ export default mixins(
 			this.credentialId = this.activeId;
 
 			try {
-				const currentCredentials: ICredentialsDecryptedResponse = await this.$store.dispatch('credentials/getCredentialData', { id: this.credentialId });
+				const currentCredentials: ICredentialsDecryptedResponse =
+					await this.$store.dispatch('credentials/getCredentialData', {
+						id: this.credentialId,
+					});
 				if (!currentCredentials) {
-					throw new Error(`Could not find the credentials with the id: ${this.credentialId}`);
+					throw new Error(
+						`Could not find the credentials with the id: ${this.credentialId}`,
+					);
 				}
 
 				this.credentialData = currentCredentials.data || {};
 				this.credentialName = currentCredentials.name;
-				currentCredentials.nodesAccess.forEach((access: {nodeType: string}) => {
-					// keep node access structure to keep dates when updating
-					this.nodeAccess[access.nodeType] = access;
-				});
-			}
-			catch (e) {
-				this.$showError(e, 'Problem loading credentials', 'There was a problem loading the credentials:');
+				currentCredentials.nodesAccess.forEach(
+					(access: { nodeType: string }) => {
+						// keep node access structure to keep dates when updating
+						this.nodeAccess[access.nodeType] = access;
+					},
+				);
+			} catch (e) {
+				this.$showError(
+					e,
+					'Problem loading credentials',
+					'There was a problem loading the credentials:',
+				);
 				this.closeDialog();
 
 				return;
@@ -337,8 +423,7 @@ export default mixins(
 						nodeType: name,
 					},
 				};
-			}
-			else {
+			} else {
 				this.nodeAccess = {
 					...this.nodeAccess,
 					[name]: null,
@@ -346,7 +431,8 @@ export default mixins(
 			}
 		},
 		convertToHumanReadableDate,
-		onDataChange({name, value}: {name: string, value: any}) { // tslint:disable-line:no-any
+		onDataChange({ name, value }: { name: string; value: any }) {
+			// tslint:disable-line:no-any
 			this.hasUnsavedChanges = true;
 			this.credentialData = {
 				...this.credentialData,
@@ -357,10 +443,14 @@ export default mixins(
 			this.modalBus.$emit('close');
 		},
 
-		getParentTypes (name: string): string[] {
-			const credentialType = this.$store.getters['credentials/getCredentialTypeByName'](name);
+		getParentTypes(name: string): string[] {
+			const credentialType =
+				this.$store.getters['credentials/getCredentialTypeByName'](name);
 
-			if (credentialType === undefined || credentialType.extends === undefined) {
+			if (
+				credentialType === undefined ||
+				credentialType.extends === undefined
+			) {
 				return [];
 			}
 
@@ -399,13 +489,21 @@ export default mixins(
 			this.isNameEdit = false;
 		},
 
-		async saveCredential(closeDialog = true): Promise<ICredentialsResponse | null> {
+		async saveCredential(
+			closeDialog = true,
+		): Promise<ICredentialsResponse | null> {
 			this.isSaving = true;
-			const nodesAccess = Object.values(this.nodeAccess)
-				.filter((access) => !!access) as ICredentialNodeAccess[];
+			const nodesAccess = Object.values(this.nodeAccess).filter(
+				(access) => !!access,
+			) as ICredentialNodeAccess[];
 
-		 	// Save only the none default data
-			const data = NodeHelpers.getNodeParameters(this.credentialType!.properties, this.credentialData as INodeParameters, false, false);
+			// Save only the none default data
+			const data = NodeHelpers.getNodeParameters(
+				this.credentialType!.properties,
+				this.credentialData as INodeParameters,
+				false,
+				false,
+			);
 
 			const credentialDetails: ICredentialsDecrypted = {
 				name: this.credentialName,
@@ -417,10 +515,15 @@ export default mixins(
 			let credential;
 
 			if (this.mode === 'new' && !this.credentialId) {
-				credential = await this.createCredential(credentialDetails, closeDialog);
-			}
-			else {
-				credential = await this.updateCredential(credentialDetails, closeDialog);
+				credential = await this.createCredential(
+					credentialDetails,
+					closeDialog,
+				);
+			} else {
+				credential = await this.updateCredential(
+					credentialDetails,
+					closeDialog,
+				);
 			}
 
 			this.isSaving = false;
@@ -428,14 +531,24 @@ export default mixins(
 			return credential;
 		},
 
-		async createCredential(credentialDetails: ICredentialsDecrypted, closeDialog: boolean): Promise<ICredentialsResponse | null> {
+		async createCredential(
+			credentialDetails: ICredentialsDecrypted,
+			closeDialog: boolean,
+		): Promise<ICredentialsResponse | null> {
 			let credential;
 
 			try {
-				credential = await this.$store.dispatch('credentials/createNewCredential', credentialDetails) as ICredentialsResponse;
+				credential = (await this.$store.dispatch(
+					'credentials/createNewCredential',
+					credentialDetails,
+				)) as ICredentialsResponse;
 				this.hasUnsavedChanges = false;
 			} catch (error) {
-				this.$showError(error, 'Problem creating credentials', 'There was a problem creating the credentials:');
+				this.$showError(
+					error,
+					'Problem creating credentials',
+					'There was a problem creating the credentials:',
+				);
 
 				return null;
 			}
@@ -443,18 +556,30 @@ export default mixins(
 			if (closeDialog) {
 				this.closeDialog();
 			}
-			this.$externalHooks().run('credentials.create', { credentialTypeData: this.credentialData });
+			this.$externalHooks().run('credentials.create', {
+				credentialTypeData: this.credentialData,
+			});
 
 			return credential;
 		},
 
-		async updateCredential (credentialDetails: ICredentialsDecrypted, closeDialog: boolean): Promise<ICredentialsResponse | null> {
+		async updateCredential(
+			credentialDetails: ICredentialsDecrypted,
+			closeDialog: boolean,
+		): Promise<ICredentialsResponse | null> {
 			let credential;
 			try {
-				credential = await this.$store.dispatch('credentials/updateCredentialDetails', { id: this.credentialId, data: credentialDetails }) as ICredentialsResponse;
+				credential = (await this.$store.dispatch(
+					'credentials/updateCredentialDetails',
+					{ id: this.credentialId, data: credentialDetails },
+				)) as ICredentialsResponse;
 				this.hasUnsavedChanges = false;
 			} catch (error) {
-				this.$showError(error, 'Problem updating credentials', 'There was a problem updating the credentials:');
+				this.$showError(
+					error,
+					'Problem updating credentials',
+					'There was a problem updating the credentials:',
+				);
 
 				return null;
 			}
@@ -470,14 +595,19 @@ export default mixins(
 			return credential;
 		},
 
-		async deleteCredential () {
+		async deleteCredential() {
 			if (!this.currentCredential) {
 				return;
 			}
 
 			const savedCredentialName = this.currentCredential.name;
 
-			const deleteConfirmed = await this.confirmMessage(`Are you sure you want to delete "${savedCredentialName}" credentials?`, 'Delete Credentials?', 'warning', 'Yes, delete!');
+			const deleteConfirmed = await this.confirmMessage(
+				`Are you sure you want to delete "${savedCredentialName}" credentials?`,
+				'Delete Credentials?',
+				'warning',
+				'Yes, delete!',
+			);
 
 			if (deleteConfirmed === false) {
 				return;
@@ -485,10 +615,16 @@ export default mixins(
 
 			try {
 				this.isDeleting = true;
-				await this.$store.dispatch('credentials/deleteCredential', {id: this.credentialId});
+				await this.$store.dispatch('credentials/deleteCredential', {
+					id: this.credentialId,
+				});
 				this.hasUnsavedChanges = false;
 			} catch (error) {
-				this.$showError(error, 'Problem deleting credentials', 'There was a problem deleting the credentials:');
+				this.$showError(
+					error,
+					'Problem deleting credentials',
+					'There was a problem deleting the credentials:',
+				);
 				this.isDeleting = false;
 
 				return;
@@ -506,7 +642,7 @@ export default mixins(
 			this.closeDialog();
 		},
 
-		async oAuthCredentialAuthorize () {
+		async oAuthCredentialAuthorize() {
 			let url;
 
 			const credential = await this.saveCredential(false);
@@ -519,13 +655,29 @@ export default mixins(
 			const types = this.parentTypes;
 
 			try {
-				if (this.credentialTypeName === 'oAuth2Api' || types.includes('oAuth2Api')) {
-					url = await this.$store.dispatch('credentials/oAuth2Authorize', {...this.credentialData, id: credential.id}) as string;
-				} else if (this.credentialTypeName === 'oAuth1Api' || types.includes('oAuth1Api')) {
-					url = await this.$store.dispatch('credentials/oAuth1Authorize', {...this.credentialData, id: credential.id}) as string;
+				if (
+					this.credentialTypeName === 'oAuth2Api' ||
+					types.includes('oAuth2Api')
+				) {
+					url = (await this.$store.dispatch('credentials/oAuth2Authorize', {
+						...this.credentialData,
+						id: credential.id,
+					})) as string;
+				} else if (
+					this.credentialTypeName === 'oAuth1Api' ||
+					types.includes('oAuth1Api')
+				) {
+					url = (await this.$store.dispatch('credentials/oAuth1Authorize', {
+						...this.credentialData,
+						id: credential.id,
+					})) as string;
 				}
 			} catch (error) {
-				this.$showError(error, 'OAuth Authorization Error', 'Error generating authorization URL:');
+				this.$showError(
+					error,
+					'OAuth Authorization Error',
+					'Error generating authorization URL:',
+				);
 
 				return;
 			}
@@ -540,7 +692,6 @@ export default mixins(
 				// }
 
 				if (event.data === 'success') {
-
 					// Set some kind of data that status changes.
 					// As data does not get displayed directly it does not matter what data.
 					Vue.set(this.credentialData, 'oauthTokenData', {});
@@ -558,12 +709,10 @@ export default mixins(
 
 					window.removeEventListener('message', receiveMessage, false);
 				}
-
 			};
 
 			window.addEventListener('message', receiveMessage, false);
 		},
-
 	},
 });
 </script>
@@ -584,8 +733,8 @@ export default mixins(
 
 	i {
 		display: var(--headline-icon-display, none);
-		font-size: .75em;
-    margin-left: 8px;
+		font-size: 0.75em;
+		margin-left: 8px;
 		color: var(--color-text-base);
 	}
 
@@ -666,7 +815,7 @@ export default mixins(
 	margin-right: var(--spacing-xs);
 }
 
-.defaultCredIcon{
+.defaultCredIcon {
 	height: 26px;
 	width: 26px;
 }
@@ -674,5 +823,4 @@ export default mixins(
 .valueLabel {
 	font-weight: var(--font-weight-regular);
 }
-
 </style>

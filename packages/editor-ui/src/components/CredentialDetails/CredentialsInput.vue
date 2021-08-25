@@ -3,79 +3,98 @@
 		<div v-if="isOAuthType && credentialProperties.length">
 			<n8n-input-label label="OAuth redirect url">
 				<div :class="$style.copyText" @click="copyCallbackUrl">
-					<span>{{oAuthCallbackUrl}}</span>
+					<span>{{ oAuthCallbackUrl }}</span>
 					<div :class="$style.copyButton">Click to copy</div>
 				</div>
 			</n8n-input-label>
-			<div :class="$style.oauthInfo">{{oauthMessage}}</div>
+			<div :class="$style.oauthInfo">{{ oauthMessage }}</div>
 		</div>
 
 		<div v-for="parameter in credentialProperties" :key="parameter.name">
-				<n8n-input-label :label="parameter.displayName" :tooltipText="parameter.description" :required="parameter.required">
-					<parameter-input
-						:parameter="parameter"
-						:value="credentialData[parameter.name]"
-						:path="parameter.name"
-						:isCredential="true"
-						:displayOptions="true"
-						@valueChanged="valueChanged"
-						inputSize="large"
-					/>
-				</n8n-input-label>
+			<n8n-input-label
+				:label="parameter.displayName"
+				:tooltipText="parameter.description"
+				:required="parameter.required"
+			>
+				<parameter-input
+					:parameter="parameter"
+					:value="credentialData[parameter.name]"
+					:path="parameter.name"
+					:isCredential="true"
+					:displayOptions="true"
+					@valueChanged="valueChanged"
+					inputSize="large"
+				/>
+			</n8n-input-label>
 		</div>
 
 		<div v-if="isOAuthType">
 			<span v-if="requiredPropertiesFilled === false">
-				<n8n-button title="Connect OAuth Credentials" label="Connect my account"  :disabled="true" size="large" />
+				<n8n-button
+					title="Connect OAuth Credentials"
+					label="Connect my account"
+					:disabled="true"
+					size="large"
+				/>
 			</span>
 			<span v-else-if="isOAuthConnected">
-				<el-tag type="success"><font-awesome-icon icon="check-circle" :class="$style.successIcon" /><span>Account connected</span></el-tag>
-				<n8n-button title="Reconnect OAuth Credentials" @click.stop="oAuthCredentialAuthorize()" size="large" label="Reconnect" type="text" />
+				<el-tag type="success"
+					><font-awesome-icon
+						icon="check-circle"
+						:class="$style.successIcon"
+					/><span>Account connected</span></el-tag
+				>
+				<n8n-button
+					title="Reconnect OAuth Credentials"
+					@click.stop="oAuthCredentialAuthorize()"
+					size="large"
+					label="Reconnect"
+					type="text"
+				/>
 			</span>
 			<span v-else>
 				<span v-if="isGoogleOAuthType">
-					<img :src="basePath + 'google-signin.png'" :class="$style.googleIcon" alt="Sign in with Google" @click.stop="oAuthCredentialAuthorize()" />
+					<img
+						:src="basePath + 'google-signin.png'"
+						:class="$style.googleIcon"
+						alt="Sign in with Google"
+						@click.stop="oAuthCredentialAuthorize()"
+					/>
 				</span>
 				<span v-else>
-					<n8n-button title="Connect OAuth Credentials" label="Connect my account"  size="large" @click.stop="oAuthCredentialAuthorize()" />
+					<n8n-button
+						title="Connect OAuth Credentials"
+						label="Connect my account"
+						size="large"
+						@click.stop="oAuthCredentialAuthorize()"
+					/>
 				</span>
 			</span>
 		</div>
-
 	</div>
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
+import { IUpdateInformation } from '../../Interface';
 
-import { copyPaste } from '@/components/mixins/copyPaste';
-import { restApi } from '@/components/mixins/restApi';
-import { nodeHelpers } from '@/components/mixins/nodeHelpers';
-import { showMessage } from '@/components/mixins/showMessage';
+import { INodeParameters, INodeProperties } from 'n8n-workflow';
 
-import {
-	IUpdateInformation,
-} from '@/Interface';
-import {
-	INodeParameters,
-	INodeProperties,
-} from 'n8n-workflow';
-
-import ParameterInput from '@/components/ParameterInput.vue';
+import ParameterInput from '../ParameterInput.vue';
 
 import mixins from 'vue-typed-mixins';
-import { getAppNameFromCredType } from './helpers';
 
-export default mixins(
-	copyPaste,
-	nodeHelpers,
-	restApi,
-	showMessage,
-).extend({
+import { copyPaste } from '../mixins/copyPaste';
+import { restApi } from '../mixins/restApi';
+import { nodeHelpers } from '../mixins/nodeHelpers';
+import { showMessage } from '../mixins/showMessage';
+
+import { getAppNameFromCredType } from '../helpers';
+
+export default mixins(copyPaste, nodeHelpers, restApi, showMessage).extend({
 	name: 'CredentialsInput',
 	props: [
-		'credentialTypeData',	// ICredentialType
-		'credentialData',		// ICredentialsDecryptedResponse
+		'credentialTypeData', // ICredentialType
+		'credentialData', // ICredentialsDecryptedResponse
 		'parentTypes',
 	],
 	components: {
@@ -86,45 +105,61 @@ export default mixins(
 			return this.$store.getters.getBaseUrl;
 		},
 		oauthMessage(): string {
-			const appName = getAppNameFromCredType(this.credentialTypeData.displayName);
+			const appName = getAppNameFromCredType(
+				this.credentialTypeData.displayName,
+			);
 			if (appName) {
 				return `In ${appName}, use the URL above when prompted to enter an OAuth callback or redirect URL`;
 			}
 
 			return `Use the URL above when prompted to enter an OAuth callback or redirect URL`;
 		},
-		credentialProperties (): INodeProperties[] {
-			return this.credentialTypeData.properties.filter((propertyData: INodeProperties) => {
-				if (!this.displayCredentialParameter(propertyData)) {
-					return false;
-				}
-				return !this.credentialTypeData.__overwrittenProperties || !this.credentialTypeData.__overwrittenProperties.includes(propertyData.name);
-			});
+		credentialProperties(): INodeProperties[] {
+			return this.credentialTypeData.properties.filter(
+				(propertyData: INodeProperties) => {
+					if (!this.displayCredentialParameter(propertyData)) {
+						return false;
+					}
+					return (
+						!this.credentialTypeData.__overwrittenProperties ||
+						!this.credentialTypeData.__overwrittenProperties.includes(
+							propertyData.name,
+						)
+					);
+				},
+			);
 		},
-		isGoogleOAuthType (): boolean {
+		isGoogleOAuthType(): boolean {
 			if (this.credentialTypeData.name === 'googleOAuth2Api') {
 				return true;
 			}
 			return this.parentTypes.includes('googleOAuth2Api');
 		},
-		isOAuthType (): boolean {
+		isOAuthType(): boolean {
 			if (['oAuth1Api', 'oAuth2Api'].includes(this.credentialTypeData.name)) {
 				return true;
 			}
-			return this.parentTypes.includes('oAuth1Api') || this.parentTypes.includes('oAuth2Api');
+			return (
+				this.parentTypes.includes('oAuth1Api') ||
+				this.parentTypes.includes('oAuth2Api')
+			);
 		},
-		isOAuthConnected (): boolean {
+		isOAuthConnected(): boolean {
 			if (this.isOAuthType === false) {
 				return false;
 			}
 
 			return !!this.credentialData.oauthTokenData;
 		},
-		oAuthCallbackUrl (): string {
-			const oauthType = (this.credentialTypeData.name === 'oAuth2Api' || this.parentTypes.includes('oAuth2Api')) ? 'oauth2' : 'oauth1';
+		oAuthCallbackUrl(): string {
+			const oauthType =
+				this.credentialTypeData.name === 'oAuth2Api' ||
+				this.parentTypes.includes('oAuth2Api')
+					? 'oauth2'
+					: 'oauth1';
 			return this.$store.getters.oauthCallbackUrls[oauthType];
 		},
-		requiredPropertiesFilled (): boolean {
+		requiredPropertiesFilled(): boolean {
 			for (const property of this.credentialProperties) {
 				if (property.required !== true) {
 					continue;
@@ -138,7 +173,7 @@ export default mixins(
 		},
 	},
 	methods: {
-		copyCallbackUrl (): void {
+		copyCallbackUrl(): void {
 			this.copyToClipboard(this.oAuthCallbackUrl);
 
 			this.$showMessage({
@@ -148,7 +183,7 @@ export default mixins(
 			});
 		},
 
-		valueChanged (parameterData: IUpdateInformation) {
+		valueChanged(parameterData: IUpdateInformation) {
 			const name = parameterData.name.split('.').pop();
 
 			this.$emit('change', {
@@ -161,7 +196,7 @@ export default mixins(
 			this.$emit('oauth');
 		},
 
-		displayCredentialParameter (parameter: INodeProperties): boolean {
+		displayCredentialParameter(parameter: INodeProperties): boolean {
 			if (parameter.type === 'hidden') {
 				return false;
 			}
@@ -171,7 +206,11 @@ export default mixins(
 				return true;
 			}
 
-			return this.displayParameter(this.credentialData as INodeParameters, parameter, '');
+			return this.displayParameter(
+				this.credentialData as INodeParameters,
+				parameter,
+				'',
+			);
 		},
 	},
 });
@@ -227,5 +266,4 @@ export default mixins(
 	line-height: var(--font-line-height-regular);
 	font-weight: var(--font-weight-regular);
 }
-
 </style>

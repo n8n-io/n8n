@@ -58,7 +58,7 @@
 import Vue from "vue";
 import { DUPLICATE_MODAL_KEY, TAGS_MANAGER_MODAL_KEY, WORKLOW_OPEN_MODAL_KEY, VERSIONS_MODAL_KEY, CREDENTIAL_DETAILS_MODAL_KEY, NEW_CREDENTIAL_MODAL_KEY } from '@/constants';
 
-import CredentialDetails from "./CredentialDetails.vue";
+import CredentialDetails from "./CredentialDetails/CredentialDetails.vue";
 import DuplicateWorkflowDialog from "@/components/DuplicateWorkflowDialog.vue";
 import WorkflowOpen from "@/components/WorkflowOpen.vue";
 import ModalRoot from "./ModalRoot.vue";
