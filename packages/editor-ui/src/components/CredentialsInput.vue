@@ -7,7 +7,7 @@
 					<div :class="$style.copyButton">Click to copy</div>
 				</div>
 			</n8n-input-label>
-			<div :class="$style.oauthInfo" v-if="appName">In {{ appName }}, use the URL above when prompted to enter an OAuth callback or redirect URL</div>
+			<div :class="$style.oauthInfo">{{oauthMessage}}</div>
 		</div>
 
 		<div v-for="parameter in credentialProperties" :key="parameter.name">
@@ -85,8 +85,13 @@ export default mixins(
 		basePath(): string {
 			return this.$store.getters.getBaseUrl;
 		},
-		appName(): string {
-			return getAppNameFromCredType(this.credentialTypeData.displayName);
+		oauthMessage(): string {
+			const appName = getAppNameFromCredType(this.credentialTypeData.displayName);
+			if (appName) {
+				return `In ${appName}, use the URL above when prompted to enter an OAuth callback or redirect URL`;
+			}
+
+			return `Use the URL above when prompted to enter an OAuth callback or redirect URL`;
 		},
 		credentialProperties (): INodeProperties[] {
 			return this.credentialTypeData.properties.filter((propertyData: INodeProperties) => {
