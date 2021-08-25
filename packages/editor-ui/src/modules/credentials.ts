@@ -145,13 +145,12 @@ const module: Module<ICredentialsState, IRootState> = {
 		getNewCredentialName: async (context: ActionContext<ICredentialsState, IRootState>, params: { credentialTypeName: string }) => {
 			const { credentialTypeName } = params;
 
-			if (TYPES_WITH_DEFAULT_NAME.includes(credentialTypeName)) {
-				return DEFAULT_CREDENTIAL_NAME;
+			let newName = DEFAULT_CREDENTIAL_NAME;
+			if (!TYPES_WITH_DEFAULT_NAME.includes(credentialTypeName)) {
+				const { displayName } = context.getters.getCredentialTypeByName(credentialTypeName);
+				newName = getAppNameFromCredType(displayName);
+				newName = newName.length > 0 ? `${newName} ${DEFAULT_CREDENTIAL_POSTFIX}` : DEFAULT_CREDENTIAL_NAME;
 			}
-
-			const { displayName } = context.getters.getCredentialTypeByName(credentialTypeName);
-			let newName = getAppNameFromCredType(displayName);
-			newName = newName.length > 0 ? `${newName} ${DEFAULT_CREDENTIAL_POSTFIX}` : DEFAULT_CREDENTIAL_NAME;
 
 			try {
 				const res = await getCredentialsNewName(context.rootGetters.getRestApiContext, newName);
