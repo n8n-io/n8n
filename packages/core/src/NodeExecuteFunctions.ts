@@ -407,7 +407,7 @@ export async function getCredentials(workflow: Workflow, node: INode, type: stri
 
 	if (name.charAt(0) === '=') {
 		// If the credential name is an expression resolve it
-		const additionalKeys = getAdditionalKeys(additionalData)
+		const additionalKeys = getAdditionalKeys(additionalData);
 		name = workflow.expression.getParameterValue(name, runExecutionData || null, runIndex || 0, itemIndex || 0, node.name, connectionInputData || [], mode, additionalKeys) as string;
 	}
 
