@@ -235,7 +235,28 @@ export class Eloqua implements INodeType {
 										description: 'Value of the field to set.'
 									}
 								]
-							}
+							},
+                            {
+                                displayName: 'Name',
+                                name: 'name',
+                                type: 'string',
+                                default: '',
+                                description: 'Key of the field to set.'
+                            },
+                            {
+                                displayName: 'Display Type',
+                                name: 'displayType',
+                                type: 'string',
+                                default: '',
+                                description: 'Key of the field to set.'
+                            },
+                            {
+                                displayName: 'Data Type',
+                                name: 'dataType',
+                                type: 'string',
+                                default: '',
+                                description: 'Key of the field to set.'
+                            },
 						]
 					}
 				]
@@ -381,10 +402,12 @@ export class Eloqua implements INodeType {
                             }
                             const property = keyValuePair.property;
                             for (let i = 0; i< property.length; i++){
-                                body.fields[j][property[i].key]= property[i].value;
+                                if(property[i].key && property[i].value){
+                                    body.fields[j][property[i].key] = property[i].value;
+                                }
                             }
 						},
-                        console.log(Json.stringify(body.fields));
+                        console.log(JSON.stringify(body.fields));
 
 						responseData = await eloquaApiRequest.call(
 							this,
