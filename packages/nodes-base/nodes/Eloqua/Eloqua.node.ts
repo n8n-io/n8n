@@ -411,7 +411,7 @@ export class Eloqua implements INodeType {
 							}
 							const keyValuePair = customAdditionalFields[j].keyValuePair;
 							if (keyValuePair && keyValuePair.property) {
-                                let property = null;
+								let property = null;
 								if (Array.isArray(keyValuePair.property)) {
 									property = keyValuePair.property[0];
 								} else {
@@ -453,17 +453,34 @@ export class Eloqua implements INodeType {
 							i
 						) as any;
 						for (let j = 0; j < customAdditionalFields.length; j++) {
-							const keyValuePair = customAdditionalFields[j].keyValuePair;
-							if (keyValuePair !== {}) {
-								body.fields[j] = {};
+							body.fields[j] = {};
+							const name = customAdditionalFields[j].name;
+							if (name) {
+								body.fields[j].name = name;
 							}
-							const property = keyValuePair.property;
-							if (property) {
-								for (let i = 0; i < property.length; i++) {
-									if (property[i].key && property[i].value) {
-										body.fields[j][property[i].key] = property[i].value;
-									}
+							const dataType = customAdditionalFields[j].dataType;
+							if (dataType) {
+								body.fields[j].dataType = dataType;
+							}
+							const displayType = customAdditionalFields[j].displayType;
+							if (displayType) {
+								body.fields[j].displayType = displayType;
+							}
+							const keyValuePair = customAdditionalFields[j].keyValuePair;
+							if (keyValuePair && keyValuePair.property) {
+								let property = null;
+								if (Array.isArray(keyValuePair.property)) {
+									property = keyValuePair.property[0];
+								} else {
+									property = keyValuePair.property;
 								}
+								body.fields[j][property.key] = property.value;
+								// Just in case many entries become posssible, if so set multiplyValues to true and uncomment code
+								// for (let i = 0; i < property.length; i++){
+								//     if(property[i].key && property[i].value){
+								//         body.fields[j][property[i].key] = property[i].value;
+								//     }
+								// }
 							}
 						}
 
