@@ -18,9 +18,20 @@ export interface IProduct {
 }
 
 async function requestBaseUrlFromServer(
-  this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
-  base64Creds: string
+  this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions
 ) {
+  const credentials = await this.getCredentials("eloqua");
+
+  if (credentials === undefined) {
+    throw new NodeOperationError(
+      this.getNode(),
+      "No credentials got returned!"
+    );
+  }
+
+  const base64Creds = Buffer.from(
+    `${credentials.companyName}\\${credentials.userName}:${credentials.password}`
+  ).toString("base64");
 
   const options: OptionsWithUri = {
     headers: { Authorization: `Basic ${base64Creds}` },
@@ -41,7 +52,6 @@ async function requestBaseUrlFromServer(
 
 async function getBaseUrl(
   this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
-  base64Creds: string,
   skipCache: boolean = false
 ): Promise<string> {
   let baseUrl = "";
@@ -49,10 +59,10 @@ async function getBaseUrl(
     try {
       baseUrl = fs.readFileSync("./eloquaBaseUrl.txt").toString();
     } catch (err) {
-      baseUrl = await requestBaseUrlFromServer.call(this ,base64Creds);
+      baseUrl = await requestBaseUrlFromServer.call(this);
     }
   } else {
-    baseUrl = await requestBaseUrlFromServer.call(this, base64Creds);
+    baseUrl = await requestBaseUrlFromServer.call(this);
   }
   return baseUrl;
 }
@@ -73,21 +83,20 @@ export async function eloquaApiRequest(
   body: IDataObject,
   query?: IDataObject
 ): Promise<any> {
-    //tslint:disable-line:no-any
-    const credentials = await this.getCredentials("eloqua");
-    
-    if (credentials === undefined) {
-        throw new NodeOperationError(
-            this.getNode(),
-            "No credentials got returned!"
-            );
-        }
-        
-        const base64Creds = Buffer.from(
-            `${credentials.companyName}\\${credentials.userName}:${credentials.password}`
-            ).toString("base64");
-        
-            const baseUrl = await getBaseUrl.call(this, base64Creds);
+  const baseUrl = await getBaseUrl.call(this);
+  //tslint:disable-line:no-any
+  const credentials = await this.getCredentials("eloqua");
+
+  if (credentials === undefined) {
+    throw new NodeOperationError(
+      this.getNode(),
+      "No credentials got returned!"
+    );
+  }
+
+  const base64Creds = Buffer.from(
+    `${credentials.companyName}\\${credentials.userName}:${credentials.password}`
+  ).toString("base64");
 
   if (query === undefined) {
     query = {};

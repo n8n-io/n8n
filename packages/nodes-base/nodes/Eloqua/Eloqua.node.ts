@@ -1,5 +1,6 @@
-import { INodeParameters } from './../../../workflow/src/Interfaces';
-import { IExecuteFunctions } from 'n8n-core';
+import {
+	IExecuteFunctions,
+} from 'n8n-core';
 
 import {
 	IDataObject,
@@ -9,70 +10,36 @@ import {
 	INodeType,
 	INodeTypeDescription,
 	NodeApiError,
-	NodeOperationError
+	NodeOperationError,
 } from 'n8n-workflow';
 
-import { eloquaApiRequest, IProduct } from './GenericFunctions';
+import {
+    eloquaApiRequest
+} from "./GenericFunctions"
 
-interface CustomProperty {
-	name: string;
-	value: string;
-}
-
-/**
- * Add the additional fields to the body
- *
- * @param {IDataObject} body The body object to add fields to
- * @param {IDataObject} additionalFields The fields to add
- */
-/* function addAdditionalFields(body: IDataObject, additionalFields: IDataObject) {
-	for (const key of Object.keys(additionalFields)) {
-		if (
-			key === 'customProperties' &&
-			(additionalFields.customProperties as IDataObject).property !== undefined
-		) {
-			for (const customProperty of (additionalFields.customProperties as IDataObject)!
-				.property! as CustomProperty[]) {
-				body[customProperty.name] = customProperty.value;
-			}
-		} else if (
-			key === 'fieldValues' &&
-			(additionalFields.fieldValues as IDataObject).property !== undefined
-		) {
-			body.fieldValues = (additionalFields.fieldValues as IDataObject).property;
-		} else if (
-			key === 'fields' &&
-			(additionalFields.fields as IDataObject).property !== undefined
-		) {
-			body.fields = (additionalFields.fields as IDataObject).property;
-		} else {
-			body[key] = additionalFields[key];
-		}
-	}
-} */
 
 export class Eloqua implements INodeType {
 	description: INodeTypeDescription = {
-		displayName: 'Eloqua',
-		name: 'Eloqua',
-		icon: 'file:eloqua.svg',
-		group: ['transform'],
+		displayName: 'Oracle Eloqua',
+		name: 'eloqua',
+		icon: 'file:oracle-logo.svg',
+		group: ['input'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
-		description: 'Create and edit data in Eloqua',
+		description: 'Consume Oracle Eloqua REST API',
 		defaults: {
-			name: 'Eloqua',
-			color: '#f80000'
+			name: 'Oracle Eloqua',
+			color: '#FC636B',
 		},
-		inputs: ['main'],
+        inputs: ['main'],
 		outputs: ['main'],
-		credentials: [
+        credentials: [
 			{
 				name: 'eloqua',
-				required: true
-			}
+				required: true,
+			},
 		],
-		properties: [
+        properties: [
 			// ----------------------------------
 			//         resources
 			// ----------------------------------
@@ -233,7 +200,6 @@ export class Eloqua implements INodeType {
 					}
 				]
 			},
-
 			{
 				displayName: 'Custom Additional Object Fields',
 				name: 'customAdditionalFields',
@@ -356,11 +322,7 @@ export class Eloqua implements INodeType {
 		]
 	};
 
-<<<<<<< HEAD
-
-=======
->>>>>>> d2ffc25e1e35e91c1a23c922674d2426b39a85d0
-	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
+    async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
 		const returnData: IDataObject[] = [];
 		const resource = this.getNodeParameter('resource', 0) as string;
@@ -382,9 +344,8 @@ export class Eloqua implements INodeType {
 						requestMethod = 'POST';
 						endpoint = '/api/REST/1.0/data/contact';
 						body.address1 = 'P.O.Box 72202 - 00200';
-						body.emailAddress = 'asdghiufjahksdfklasdjkf@asdfasdfasf.com';
+						body.email = this.getNodeParameter('email', i) as string;
 						qs = {} as IDataObject;
-						console.log(body);
 
 						responseData = await eloquaApiRequest.call(
 							this,
@@ -398,7 +359,7 @@ export class Eloqua implements INodeType {
 					//         contact:getAll
 					// ----------------------------------
 					if (operation === 'getAll') {
-						requestMethod = 'POST';
+						requestMethod = 'GET';
 						endpoint = '/api/REST/1.0/data/contacts';
 						qs = {} as IDataObject;
 						console.log(body);
@@ -421,7 +382,7 @@ export class Eloqua implements INodeType {
 						requestMethod = 'POST';
 						endpoint = '/api/REST/2.0/assets/customObject';
 						// body.address1 = 'P.O.Box 72202 - 00200';
-						body.name = 'jerry' + Math.random().toString();
+						body.name = this.getNodeParameter('name', i) as string;
 						// body.emailAddress ="asdghiufjahksdfklasdjkf@asdfasdfgasdfasf.com"
 						qs = {} as IDataObject;
 

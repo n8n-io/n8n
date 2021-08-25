@@ -5,7 +5,7 @@ import {
 
 export class Eloqua implements ICredentialType {
 	name = 'eloqua';
-	displayName = 'Eloqua Oracle';
+	displayName = 'Oracle Eloqua';
 	documentationUrl = 'eloqua';
 	properties: INodeProperties[] = [
 		{
