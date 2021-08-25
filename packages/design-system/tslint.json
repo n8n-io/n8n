@@ -1,17 +1,11 @@
 {
 	"linterOptions": {
-		"exclude": [
-			"node_modules/**/*",
-			"../../node_modules/**/*"
-		]
+		"exclude": ["node_modules/**/*", "../../node_modules/**/*"]
 	},
 	"defaultSeverity": "error",
 	"jsRules": {},
 	"rules": {
-		"array-type": [
-			true,
-			"array-simple"
-		],
+		"array-type": [true, "array-simple"],
 		"arrow-return-shorthand": true,
 		"ban": [
 			true,
@@ -22,36 +16,18 @@
 		],
 		"ban-types": [
 			true,
-			[
-				"Object",
-				"Use {} instead."
-			],
-			[
-				"String",
-				"Use 'string' instead."
-			],
-			[
-				"Number",
-				"Use 'number' instead."
-			],
-			[
-				"Boolean",
-				"Use 'boolean' instead."
-			]
+			["Object", "Use {} instead."],
+			["String", "Use 'string' instead."],
+			["Number", "Use 'number' instead."],
+			["Boolean", "Use 'boolean' instead."]
 		],
 		"class-name": true,
-		"curly": [
-			true,
-			"ignore-same-line"
-		],
+		"curly": [true, "ignore-same-line"],
 		"forin": true,
 		"jsdoc-format": true,
 		"label-position": true,
 		"indent": [true, "tabs", 2],
-		"member-access": [
-			true,
-			"no-public"
-		],
+		"member-access": [true, "no-public"],
 		"new-parens": true,
 		"no-angle-bracket-type-assertion": true,
 		"no-any": true,
@@ -62,10 +38,7 @@
 		// "no-default-export": true,
 		"no-duplicate-variable": true,
 		"no-inferrable-types": true,
-		"no-namespace": [
-			true,
-			"allow-declarations"
-		],
+		"no-namespace": [true, "allow-declarations"],
 		"no-reference": true,
 		"no-string-throw": true,
 		"no-unused-expression": true,
@@ -78,11 +51,7 @@
 		],
 		"prefer-const": true,
 		"radix": true,
-		"semicolon": [
-			true,
-			"always",
-			"ignore-bound-class-methods"
-		],
+		"semicolon": [true, "always", "ignore-bound-class-methods"],
 		"switch-default": true,
 		"trailing-comma": [
 			true,
@@ -96,15 +65,9 @@
 				"esSpecCompliant": true
 			}
 		],
-		"triple-equals": [
-			true,
-			"allow-null-check"
-		],
+		"triple-equals": [true, "allow-null-check"],
 		"use-isnan": true,
-		"quotes": [
-			"error",
-			"single"
-		],
+		"quotes": ["error", "single"],
 		"variable-name": [
 			true,
 			"check-format",
