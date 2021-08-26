@@ -41,7 +41,7 @@
     "typescript": "~3.9.7"
   },
   "dependencies": {
-	"axios": "^0.21.1",
+    "axios": "^0.21.1",
     "client-oauth2": "^4.2.5",
     "cron": "^1.7.2",
     "crypto-js": "~4.1.1",
