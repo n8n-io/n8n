@@ -17,8 +17,6 @@ export async function create(this: IExecuteFunctions, index: number): Promise<IN
 	const requestMethod = 'POST';
 	const endpoint = 'channels';
 
-	const returnData: IDataObject[] = [];
-
 	const type = this.getNodeParameter('type', index) as string;
 
 	body.team_id = this.getNodeParameter('teamId', index) as string;
@@ -28,11 +26,5 @@ export async function create(this: IExecuteFunctions, index: number): Promise<IN
 
 	const responseData = await apiRequest.call(this, requestMethod, endpoint, body, qs);
 
-	if (Array.isArray(responseData)) {
-		returnData.push.apply(returnData, responseData);
-	} else {
-		returnData.push(responseData);
-	}
-
-	return this.helpers.returnJsonArray(returnData);
+	return this.helpers.returnJsonArray(responseData);
 }

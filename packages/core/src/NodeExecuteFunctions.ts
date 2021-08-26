@@ -1519,7 +1519,16 @@ function convertN8nRequestToAxios(n8nRequest: IHttpRequestOptions): AxiosRequest
 				axiosRequest.headers['content-type'] = 'application/x-www-form-urlencoded';
 			}
 		}
-		
+	}
+
+	if (n8nRequest.json) {
+		const key = searchForHeader(axiosRequest.headers, 'accept');
+		// If key exists, then the user has set both accept
+		// header and the json flag. Header should take precedence.
+		if(!key) {
+			axiosRequest.headers = axiosRequest.headers ?? {};
+			axiosRequest.headers.accept = 'application/json';
+		}
 	}
 
 	return axiosRequest;

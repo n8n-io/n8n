@@ -21,14 +21,7 @@ export async function del(this: IExecuteFunctions, index: number): Promise<INode
 	const endpoint = `users/${userId}/posts/${postId}/reactions/${emojiName}`;
 	const body = {} as IDataObject;
 
-	const returnData: IDataObject[] = [];
 	const responseData = await apiRequest.call(this, requestMethod, endpoint, body, qs);
 
-	if (Array.isArray(responseData)) {
-		returnData.push.apply(returnData, responseData);
-	} else {
-		returnData.push(responseData);
-	}
-
-	return this.helpers.returnJsonArray(returnData);
+	return this.helpers.returnJsonArray(responseData);
 }

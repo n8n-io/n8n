@@ -37,14 +37,7 @@ export async function create(this: IExecuteFunctions, index: number): Promise<IN
 		body.auth_data = this.getNodeParameter('authData', index) as string;
 	}
 
-	const returnData: IDataObject[] = [];
 	const responseData = await apiRequest.call(this, requestMethod, endpoint, body, qs);
 
-	if (Array.isArray(responseData)) {
-		returnData.push(...responseData);
-	} else {
-		returnData.push(responseData);
-	}
-
-	return this.helpers.returnJsonArray(returnData);
+	return this.helpers.returnJsonArray(responseData);
 }

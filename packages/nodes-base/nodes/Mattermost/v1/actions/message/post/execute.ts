@@ -92,15 +92,7 @@ export async function post(this: IExecuteFunctions, index: number): Promise<INod
 	const otherOptions = this.getNodeParameter('otherOptions', index) as IDataObject;
 	Object.assign(body, otherOptions);
 
-	const returnData: IDataObject[] = [];
-
 	const responseData = await apiRequest.call(this, requestMethod, endpoint, body, qs);
 
-	if (Array.isArray(responseData)) {
-		returnData.push.apply(returnData, responseData);
-	} else {
-		returnData.push(responseData);
-	}
-
-	return this.helpers.returnJsonArray(returnData);
+	return this.helpers.returnJsonArray(responseData);
 }

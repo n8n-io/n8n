@@ -20,17 +20,9 @@ export async function getAll(this: IExecuteFunctions, index: number): Promise<IN
 	const endpoint = `posts/${postId}/reactions`;
 	const body = {} as IDataObject;
 
-	const returnData: IDataObject[] = [];
 	let responseData = await apiRequest.call(this, requestMethod, endpoint, body, qs);
 	if (limit > 0) {
 		responseData = responseData.slice(0, limit);
 	}
-
-	if (Array.isArray(responseData)) {
-		returnData.push.apply(returnData, responseData);
-	} else {
-		returnData.push(responseData);
-	}
-
-	return this.helpers.returnJsonArray(returnData);
+	return this.helpers.returnJsonArray(responseData);
 }

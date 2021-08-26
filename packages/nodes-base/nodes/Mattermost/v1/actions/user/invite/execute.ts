@@ -22,14 +22,7 @@ export async function invite(this: IExecuteFunctions, index: number): Promise<IN
 	const endpoint = `teams/${teamId}/invite/email`;
 	const body = emails;
 
-	const returnData: IDataObject[] = [];
 	const responseData = await apiRequest.call(this, requestMethod, endpoint, body, qs);
 
-	if (Array.isArray(responseData)) {
-		returnData.push.apply(returnData, responseData);
-	} else {
-		returnData.push(responseData);
-	}
-
-	return this.helpers.returnJsonArray(returnData);
+	return this.helpers.returnJsonArray(responseData);
 }

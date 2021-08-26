@@ -235,6 +235,7 @@ export interface IHttpRequestOptions {
 		protocol?: string;
 	};
 	timeout?: number;
+	json?: boolean;
 }
 
 export type IN8nHttpResponse = IDataObject | Buffer | GenericValue | GenericValue[];

@@ -23,14 +23,7 @@ export async function getById(this: IExecuteFunctions, index: number): Promise<I
 		qs.since = new Date(additionalFields.since as string).getTime();
 	}
 
-	const returnData: IDataObject[] = [];
 	const responseData = await apiRequest.call(this, requestMethod, endpoint, body, qs);
 
-	if (Array.isArray(responseData)) {
-		returnData.push.apply(returnData, responseData);
-	} else {
-		returnData.push(responseData);
-	}
-
-	return this.helpers.returnJsonArray(returnData);
+	return this.helpers.returnJsonArray(responseData);
 }
