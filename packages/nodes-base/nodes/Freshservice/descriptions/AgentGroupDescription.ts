@@ -90,7 +90,7 @@ export const agentGroupFields = [
 				default: '',
 			},
 			{
-				displayName: 'Escalate To',
+				displayName: 'Escalate to Agent Name/ID',
 				name: 'escalate_to',
 				type: 'options',
 				default: '',
@@ -99,14 +99,14 @@ export const agentGroupFields = [
 						'getAgents',
 					],
 				},
-				description: 'ID of the user to whom an escalation email is sent if a ticket in this group is unassigned',
+				description: 'ID of the user to whom an escalation email is sent if a ticket in this group is unassigned. Choose from the list or specify an ID. You can also specify the ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
-				displayName: 'Members',
+				displayName: 'Member Names/IDs',
 				name: 'members',
 				type: 'multiOptions',
 				default: [],
-				description: 'Comma-separated IDs of agents who are members of this group',
+				description: 'Comma-separated IDs of agents who are members of this group. Choose from the list or specify an ID. You can also specify the ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 				typeOptions: {
 					loadOptionsMethod: [
 						'getAgents',
@@ -114,11 +114,11 @@ export const agentGroupFields = [
 				},
 			},
 			{
-				displayName: 'Observers',
+				displayName: 'Observer Names/IDs',
 				name: 'observers',
 				type: 'multiOptions',
 				default: [],
-				description: 'Comma-separated agent IDs who are observers of this group',
+				description: 'Comma-separated agent IDs who are observers of this group. Choose from the list or specify an ID. You can also specify the ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 				typeOptions: {
 					loadOptionsMethod: [
 						'getAgents',
@@ -302,11 +302,11 @@ export const agentGroupFields = [
 				default: '',
 			},
 			{
-				displayName: 'Escalate To',
+				displayName: 'Escalate to Agent Names/IDs',
 				name: 'escalate_to',
 				type: 'options',
 				default: '',
-				description: 'ID of the agent to whom an escalation email is sent if a ticket in this group is unassigned',
+				description: 'ID of the agent to whom an escalation email is sent if a ticket in this group is unassigned. Choose from the list or specify an ID. You can also specify the ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 				typeOptions: {
 					loadOptionsMethod: [
 						'getAgents',
@@ -314,11 +314,11 @@ export const agentGroupFields = [
 				},
 			},
 			{
-				displayName: 'Members',
+				displayName: 'Member Names/IDs',
 				name: 'members',
 				type: 'multiOptions',
 				default: [],
-				description: 'Comma-separated IDs of agents who are members of this group',
+				description: 'Comma-separated IDs of agents who are members of this group. Choose from the list or specify an ID. You can also specify the ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 				typeOptions: {
 					loadOptionsMethod: [
 						'getAgents',
@@ -332,11 +332,11 @@ export const agentGroupFields = [
 				default: '',
 			},
 			{
-				displayName: 'Observers',
+				displayName: 'Observer Names/IDs',
 				name: 'observers',
 				type: 'multiOptions',
 				default: [],
-				description: 'Comma-separated agent user IDs who are observers of this group',
+				description: 'Comma-separated agent user IDs who are observers of this group. Choose from the list or specify an ID. You can also specify the ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 				typeOptions: {
 					loadOptionsMethod: [
 						'getAgents',

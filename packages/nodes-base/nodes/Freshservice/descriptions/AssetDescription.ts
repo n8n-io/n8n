@@ -67,9 +67,10 @@ export const assetFields = [
 		},
 	},
 	{
-		displayName: 'Asset Type ID',
+		displayName: 'Asset Type Name/ID',
 		name: 'asset_type_id',
 		type: 'options',
+		description: 'Choose from the list or specify an ID. You can also specify the ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 		required: true,
 		default: '',
 		typeOptions: {
@@ -106,11 +107,11 @@ export const assetFields = [
 		},
 		options: [
 			{
-				displayName: 'Agent ID',
+				displayName: 'Agent Name/ID',
 				name: 'agent_id',
 				type: 'options',
 				default: '',
-				description: 'ID of the agent who manages the asset',
+				description: 'ID of the agent who manages the asset. Choose from the list or specify an ID. You can also specify the ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 				typeOptions: {
 					loadOptionsMethod: [
 						'getAgents',
@@ -118,10 +119,11 @@ export const assetFields = [
 				},
 			},
 			{
-				displayName: 'Department ID',
+				displayName: 'Department Name/ID',
 				name: 'department_id',
 				type: 'options',
 				default: '',
+				description: 'Choose from the list or specify an ID. You can also specify the ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 				typeOptions: {
 					loadOptionsMethod: [
 						'getDepartments',
@@ -158,6 +160,7 @@ export const assetFields = [
 				displayName: 'Location ID',
 				name: 'location_id',
 				type: 'options',
+				description: 'Choose from the list or specify an ID. You can also specify the ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 				default: '',
 				typeOptions: {
 					loadOptionsMethod: [
@@ -289,11 +292,11 @@ export const assetFields = [
 		},
 		options: [
 			{
-				displayName: 'Agent ID',
+				displayName: 'Agent Name/ID',
 				name: 'agent_id',
 				type: 'options',
 				default: '',
-				description: 'ID of the agent by whom the asset is managed',
+				description: 'ID of the agent by whom the asset is managed. Choose from the list or specify an ID. You can also specify the ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 				typeOptions: {
 					loadOptionsMethod: [
 						'getAgents',
@@ -308,11 +311,11 @@ export const assetFields = [
 				description: 'Status of the asset to filter by. For example, "In use".',
 			},
 			{
-				displayName: 'Asset Type ID',
+				displayName: 'Asset Type Name/ID',
 				name: 'asset_type_id',
 				type: 'options',
 				default: '',
-				description: 'ID of the asset type to filter by',
+				description: 'ID of the asset type to filter by. Choose from the list or specify an ID. You can also specify the ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 				typeOptions: {
 					loadOptionsMethod: [
 						'getAssetTypes',
@@ -320,11 +323,11 @@ export const assetFields = [
 				},
 			},
 			{
-				displayName: 'Department ID',
+				displayName: 'Department Name/ID',
 				name: 'department_id',
 				type: 'options',
 				default: '',
-				description: 'ID of the department to which the asset belongs',
+				description: 'ID of the department to which the asset belongs. Choose from the list or specify an ID. You can also specify the ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 				typeOptions: {
 					loadOptionsMethod: [
 						'getDepartments',
@@ -332,11 +335,11 @@ export const assetFields = [
 				},
 			},
 			{
-				displayName: 'Location ID',
+				displayName: 'Location Name/ID',
 				name: 'location_id',
 				type: 'options',
 				default: '',
-				description: 'ID of the location to filter by',
+				description: 'ID of the location to filter by. Choose from the list or specify an ID. You can also specify the ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 				typeOptions: {
 					loadOptionsMethod: [
 						'getLocations',
@@ -392,11 +395,11 @@ export const assetFields = [
 		},
 		options: [
 			{
-				displayName: 'Agent ID',
+				displayName: 'Agent Name/ID',
 				name: 'agent_id',
 				type: 'options',
 				default: '',
-				description: 'ID of the agent who manages the asset',
+				description: 'ID of the agent who manages the asset. Choose from the list or specify an ID. You can also specify the ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 				typeOptions: {
 					loadOptionsMethod: [
 						'getAgents',
@@ -404,11 +407,11 @@ export const assetFields = [
 				},
 			},
 			{
-				displayName: 'Asset Type ID',
+				displayName: 'Asset Type Name/ID',
 				name: 'asset_type_id',
 				type: 'options',
 				default: '',
-				description: 'ID of the asset type',
+				description: 'ID of the asset type. Choose from the list or specify an ID. You can also specify the ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 				typeOptions: {
 					loadOptionsMethod: [
 						'getAssetTypes',
@@ -416,9 +419,10 @@ export const assetFields = [
 				},
 			},
 			{
-				displayName: 'Department ID',
+				displayName: 'Department Name/ID',
 				name: 'department_id',
 				type: 'options',
+				description: 'Choose from the list or specify an ID. You can also specify the ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 				default: '',
 				typeOptions: {
 					loadOptionsMethod: [
@@ -453,9 +457,10 @@ export const assetFields = [
 				],
 			},
 			{
-				displayName: 'Location ID',
+				displayName: 'Location Name/ID',
 				name: 'location_id',
 				type: 'options',
+				description: 'Choose from the list or specify an ID. You can also specify the ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 				default: '',
 				typeOptions: {
 					loadOptionsMethod: [

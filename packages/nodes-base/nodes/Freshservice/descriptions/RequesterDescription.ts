@@ -113,11 +113,11 @@ export const requesterFields = [
 				default: '',
 			},
 			{
-				displayName: 'Department IDs',
+				displayName: 'Department Names/IDs',
 				name: 'department_ids',
 				type: 'multiOptions',
 				default: [],
-				description: 'Comma-separated IDs of the departments associated with the requester',
+				description: 'Comma-separated IDs of the departments associated with the requester. Choose from the list or specify an ID. You can also specify the ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 				typeOptions: {
 					loadOptionsMethod: [
 						'getDepartments',
@@ -146,6 +146,7 @@ export const requesterFields = [
 			{
 				displayName: 'Location ID',
 				name: 'location_id',
+				description: 'Choose from the list or specify an ID. You can also specify the ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 				type: 'options',
 				default: '',
 				typeOptions: {
@@ -297,8 +298,9 @@ export const requesterFields = [
 		},
 		options: [
 			{
-				displayName: 'Department ID',
+				displayName: 'Department Name/ID',
 				name: 'department_id',
+				description: 'Choose from the list or specify an ID. You can also specify the ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 				type: 'options',
 				default: '',
 				typeOptions: {
@@ -333,9 +335,10 @@ export const requesterFields = [
 				default: '',
 			},
 			{
-				displayName: 'Location ID',
+				displayName: 'Location Name/ID',
 				name: 'location_id',
 				type: 'options',
+				description: 'Choose from the list or specify an ID. You can also specify the ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 				default: '',
 				typeOptions: {
 					loadOptionsMethod: [
@@ -415,11 +418,11 @@ export const requesterFields = [
 				default: '',
 			},
 			{
-				displayName: 'Department IDs',
+				displayName: 'Department Names/IDs',
 				name: 'department_ids',
 				type: 'multiOptions',
 				default: [],
-				description: 'Comma-separated IDs of the departments associated with the requester',
+				description: 'Comma-separated IDs of the departments associated with the requester. Choose from the list or specify an ID. You can also specify the ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 				typeOptions: {
 					loadOptionsMethod: [
 						'getDepartments',
@@ -452,10 +455,11 @@ export const requesterFields = [
 				default: '',
 			},
 			{
-				displayName: 'Location ID',
+				displayName: 'Location Name/ID',
 				name: 'location_id',
 				type: 'options',
 				default: '',
+				description: 'Choose from the list or specify an ID. You can also specify the ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 				typeOptions: {
 					loadOptionsMethod: [
 						'getLocations',

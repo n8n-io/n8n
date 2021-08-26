@@ -50,9 +50,9 @@ export const changeFields = [
 	//              change: create
 	// ----------------------------------------
 	{
-		displayName: 'Requester ID',
+		displayName: 'Requester Name/ID',
 		name: 'requesterId',
-		description: 'ID of the requester of the change',
+		description: 'ID of the requester of the change. Choose from the list or specify an ID. You can also specify the ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 		type: 'options',
 		required: true,
 		default: '',
@@ -124,11 +124,11 @@ export const changeFields = [
 		},
 		options: [
 			{
-				displayName: 'Agent ID',
+				displayName: 'Agent Name/ID',
 				name: 'agent_id',
 				type: 'options',
 				default: '',
-				description: 'ID of the agent to whom the change is assigned',
+				description: 'ID of the agent to whom the change is assigned. Choose from the list or specify an ID. You can also specify the ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 				typeOptions: {
 					loadOptionsMethod: [
 						'getAgents',
@@ -160,11 +160,11 @@ export const changeFields = [
 				],
 			},
 			{
-				displayName: 'Department ID',
+				displayName: 'Department Name/ID',
 				name: 'department_id',
 				type: 'options',
 				default: '',
-				description: 'ID of the department requesting the change',
+				description: 'ID of the department requesting the change. Choose from the list or specify an ID. You can also specify the ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 				typeOptions: {
 					loadOptionsMethod: [
 						'getDepartments',
@@ -179,11 +179,11 @@ export const changeFields = [
 				description: 'HTML supported',
 			},
 			{
-				displayName: 'Group ID',
+				displayName: 'Group Name/ID',
 				name: 'group_id',
 				type: 'options',
 				default: '',
-				description: 'ID of the agent group to which the change is assigned',
+				description: 'ID of the agent group to which the change is assigned. Choose from the list or specify an ID. You can also specify the ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 				typeOptions: {
 					loadOptionsMethod: [
 						'getAgentGroups',
@@ -495,11 +495,11 @@ export const changeFields = [
 		},
 		options: [
 			{
-				displayName: 'Agent ID',
+				displayName: 'Agent Name/ID',
 				name: 'agent_id',
 				type: 'options',
 				default: '',
-				description: 'ID of the agent to whom the change is assigned',
+				description: 'ID of the agent to whom the change is assigned. Choose from the list or specify an ID. You can also specify the ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 				typeOptions: {
 					loadOptionsMethod: [
 						'getAgents',
@@ -531,11 +531,11 @@ export const changeFields = [
 				],
 			},
 			{
-				displayName: 'Department ID',
+				displayName: 'Department Name/ID',
 				name: 'department_id',
 				type: 'options',
 				default: '',
-				description: 'ID of the department requesting the change',
+				description: 'ID of the department requesting the change. Choose from the list or specify an ID. You can also specify the ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 				typeOptions: {
 					loadOptionsMethod: [
 						'getDepartments',
@@ -550,11 +550,11 @@ export const changeFields = [
 				description: 'HTML supported',
 			},
 			{
-				displayName: 'Group ID',
+				displayName: 'Group Name/ID',
 				name: 'group_id',
 				type: 'options',
 				default: '',
-				description: 'ID of the agent group to which the change is assigned',
+				description: 'ID of the agent group to which the change is assigned. Choose from the list or specify an ID. You can also specify the ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 				typeOptions: {
 					loadOptionsMethod: [
 						'getAgentGroups',
@@ -607,11 +607,11 @@ export const changeFields = [
 				],
 			},
 			{
-				displayName: 'Requester ID',
+				displayName: 'Requester Name/ID',
 				name: 'requester_id',
 				type: 'options',
 				default: '',
-				description: 'ID of the requester of the change',
+				description: 'ID of the requester of the change. Choose from the list or specify an ID. You can also specify the ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 				typeOptions: {
 					loadOptionsMethod: [
 						'getRequesters',

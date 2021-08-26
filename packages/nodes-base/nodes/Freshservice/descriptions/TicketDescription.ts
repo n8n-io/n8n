@@ -193,11 +193,11 @@ export const ticketFields = [
 				description: 'Comma-separated email addresses to add in the CC field of the ticket email',
 			},
 			{
-				displayName: 'Department ID',
+				displayName: 'Department Name/ID',
 				name: 'department_id',
 				type: 'options',
 				default: '',
-				description: 'ID of the department to which this ticket belongs',
+				description: 'ID of the department to which this ticket belongs. Choose from the list or specify an ID. You can also specify the ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 				typeOptions: {
 					loadOptionsMethod: [
 						'getDepartments',
@@ -205,11 +205,11 @@ export const ticketFields = [
 				},
 			},
 			{
-				displayName: 'Group ID',
+				displayName: 'Group Name/ID',
 				name: 'group_id',
 				type: 'options',
 				default: '',
-				description: 'ID of the group to which the ticket has been assigned',
+				description: 'ID of the group to which the ticket has been assigned. Choose from the list or specify an ID. You can also specify the ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 				typeOptions: {
 					loadOptionsMethod: [
 						'getAgentGroups',
@@ -244,9 +244,10 @@ export const ticketFields = [
 				description: 'Name of the ticket author',
 			},
 			{
-				displayName: 'Requester ID',
+				displayName: 'Requester Name/ID',
 				name: 'requester_id',
 				type: 'options',
+				description: 'Choose from the list or specify an ID. You can also specify the ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 				default: '',
 				typeOptions: {
 					loadOptionsMethod: [
@@ -362,11 +363,11 @@ export const ticketFields = [
 		},
 		options: [
 			{
-				displayName: 'Agent ID',
+				displayName: 'Agent Name/ID',
 				name: 'agent_id',
 				type: 'options',
 				default: '',
-				description: 'ID of the agent to whom the tickets have been assigned',
+				description: 'ID of the agent to whom the tickets have been assigned. Choose from the list or specify an ID. You can also specify the ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 				typeOptions: {
 					loadOptionsMethod: [
 						'getAgents',
@@ -374,11 +375,11 @@ export const ticketFields = [
 				},
 			},
 			{
-				displayName: 'Group ID',
+				displayName: 'Group Name/ID',
 				name: 'group_id',
 				type: 'options',
 				default: '',
-				description: 'ID of the group to which the tickets have been assigned',
+				description: 'ID of the group to which the tickets have been assigned. Choose from the list or specify an ID. You can also specify the ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 				typeOptions: {
 					loadOptionsMethod: [
 						'getAgentGroups',
@@ -508,11 +509,11 @@ export const ticketFields = [
 		},
 		options: [
 			{
-				displayName: 'Department ID',
+				displayName: 'Department Name/ID',
 				name: 'department_id',
 				type: 'options',
 				default: '',
-				description: 'ID of the department to which this ticket has been assigned',
+				description: 'ID of the department to which this ticket has been assigned. Choose from the list or specify an ID. You can also specify the ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 				typeOptions: {
 					loadOptionsMethod: [
 						'getDepartments',
@@ -534,11 +535,11 @@ export const ticketFields = [
 				description: 'Email address of the ticket author',
 			},
 			{
-				displayName: 'Group ID',
+				displayName: 'Group Name/ID',
 				name: 'group_id',
 				type: 'options',
 				default: '',
-				description: 'ID of the group to which the ticket has been assigned',
+				description: 'ID of the group to which the ticket has been assigned. Choose from the list or specify an ID. You can also specify the ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 				typeOptions: {
 					loadOptionsMethod: [
 						'getAgentGroups',

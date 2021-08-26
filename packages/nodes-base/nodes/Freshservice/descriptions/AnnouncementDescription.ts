@@ -158,11 +158,11 @@ export const announcementFields = [
 				description: 'Comma-separated additional email addresses to which the announcement needs to be sent',
 			},
 			{
-				displayName: 'Created By',
+				displayName: 'Created By Agent Name/ID',
 				name: 'created_by',
 				type: 'options',
 				default: '',
-				description: 'ID of the agent who created this announcement',
+				description: 'ID of the agent who created this announcement. Choose from the list or specify an ID. You can also specify the ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 				typeOptions: {
 					loadOptionsMethod: [
 						'getAgents',
@@ -170,11 +170,11 @@ export const announcementFields = [
 				},
 			},
 			{
-				displayName: 'Departments',
+				displayName: 'Department Names/IDs',
 				name: 'departments',
 				type: 'multiOptions',
 				default: [],
-				description: 'Comma-separated IDs of departments that may view this announcement',
+				description: 'Comma-separated IDs of departments that may view this announcement. Choose from the list or specify an ID. You can also specify the ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 				typeOptions: {
 					loadOptionsMethod: [
 						'getDepartments',
@@ -352,11 +352,11 @@ export const announcementFields = [
 				description: 'HTML supported',
 			},
 			{
-				displayName: 'Departments',
+				displayName: 'Department Names/IDs',
 				name: 'departments',
 				type: 'multiOptions',
 				default: [],
-				description: 'Comma-separated IDs of departments that may view this announcement',
+				description: 'Comma-separated IDs of departments that may view this announcement. Choose from the list or specify an ID. You can also specify the ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 				typeOptions: {
 					loadOptionsMethod: [
 						'getDepartments',
