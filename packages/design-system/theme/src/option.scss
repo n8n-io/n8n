@@ -10,7 +10,8 @@
 		overflow: hidden;
 		text-overflow: ellipsis;
 		color: var.$select-option-color;
-		height: var.$select-option-height;
+		min-height: var.$select-option-height;
+		height: auto;
 		line-height: var.$select-option-height;
 		box-sizing: border-box;
 		cursor: pointer;

@@ -117,8 +117,10 @@
 				:key="option.value"
 				:label="option.name"
 			>
-				<div class="option-headline">{{ option.name }}</div>
-				<div v-if="option.description" class="option-description" v-html="option.description"></div>
+				<div class="list-option">
+					<div class="option-headline">{{ option.name }}</div>
+					<div v-if="option.description" class="option-description" v-html="option.description"></div>
+				</div>
 			</n8n-option>
 		</n8n-select>
 
@@ -137,8 +139,10 @@
 			:title="displayTitle"
 		>
 			<n8n-option v-for="option in parameterOptions" :value="option.value" :key="option.value" :label="option.name" >
-				<div class="option-headline">{{ option.name }}</div>
-				<div v-if="option.description" class="option-description" v-html="option.description"></div>
+				<div class="list-option">
+					<div class="option-headline">{{ option.name }}</div>
+					<div v-if="option.description" class="option-description" v-html="option.description"></div>
+				</div>
 			</n8n-option>
 		</n8n-select>
 
@@ -801,18 +805,25 @@ export default mixins(
 	color: #999;
 }
 
-.option-headline {
-	font-weight: 600;
-}
-li:not(.selected) .option-description {
-	color: $--custom-font-very-light;
+.list-option {
+	max-width: 350px;
+	margin: 6px 0;
+
+	.option-headline {
+		font-weight: 600;
+		line-height: 1;
+		margin-bottom: 2px;
+	}
+
+	.option-description {
+		font-weight: 400;
+		white-space: normal;
+		line-height: 1.5;
+	}
 }
 
-.option-description {
-	font-weight: 400;
-	white-space: normal;
-	max-width: 350px;
-	margin-top: -4px;
+li:not(.selected) .option-description {
+	color: $--custom-font-very-light;
 }
 
 .edit-window-button {
