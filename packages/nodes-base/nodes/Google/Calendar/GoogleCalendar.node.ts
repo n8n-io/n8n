@@ -14,6 +14,7 @@ import {
 } from 'n8n-workflow';
 
 import {
+	getDate,
 	googleApiRequest,
 	googleApiRequestAllItems,
 } from './GenericFunctions';
@@ -247,16 +248,18 @@ export class GoogleCalendar implements INodeType {
 						if (additionalFields.sendUpdates) {
 							qs.sendUpdates = additionalFields.sendUpdates as string;
 						}
+
+						const selectedTimezone = (additionalFields.timezone || this.getTimezone()) as string;
+
 						const body: IEvent = {
 							start: {
-								dateTime: start,
-								timeZone: additionalFields.timeZone || this.getTimezone(),
+								dateTime: getDate(start, this.getTimezone(), selectedTimezone),
 							},
 							end: {
-								dateTime: end,
-								timeZone: additionalFields.timeZone || this.getTimezone(),
+								dateTime: getDate(end, this.getTimezone(), selectedTimezone),
 							},
 						};
+
 						if (additionalFields.attendees) {
 							body.attendees = [];
 							(additionalFields.attendees as string[]).forEach(attendee => {
@@ -493,16 +496,17 @@ export class GoogleCalendar implements INodeType {
 							qs.sendUpdates = updateFields.sendUpdates as string;
 						}
 						const body: IEvent = {};
+						
+						const selectedTimezone = (updateFields.timezone || this.getTimezone()) as string;
+
 						if (updateFields.start) {
 							body.start = {
-								dateTime: updateFields.start,
-								timeZone: updateFields.timeZone || this.getTimezone(),
+								dateTime: getDate(updateFields.start as string, this.getTimezone(), selectedTimezone),
 							};
 						}
 						if (updateFields.end) {
 							body.end = {
-								dateTime: updateFields.end,
-								timeZone: updateFields.timeZone || this.getTimezone(),
+								dateTime: getDate(updateFields.end as string, this.getTimezone(), selectedTimezone),
 							};
 						}
 						if (updateFields.attendees) {

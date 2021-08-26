@@ -9,8 +9,11 @@ import {
 } from 'n8n-core';
 
 import {
-	IDataObject, NodeApiError,
+	IDataObject,
+	NodeApiError,
 } from 'n8n-workflow';
+
+import * as moment from 'moment-timezone';
 
 export async function googleApiRequest(this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: string, resource: string, body: any = {}, qs: IDataObject = {}, uri?: string, headers: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
 	const options: OptionsWithUri = {
@@ -55,3 +58,9 @@ export async function googleApiRequestAllItems(this: IExecuteFunctions | ILoadOp
 
 	return returnData;
 }
+
+export function getDate(date: string, systemTimezone: string, selectedTimezone: string) {
+	return moment.tz(moment.tz(date, systemTimezone).format('YYYY-MM-DDTHH:mm:ss'), selectedTimezone).format();
+
+}
+
