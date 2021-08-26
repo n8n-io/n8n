@@ -31,7 +31,7 @@
 					</div>
 					{{parameter.displayName}}:
 					<el-tooltip placement="top" class="parameter-info" v-if="parameter.description" effect="light">
-						<div slot="content" v-html="parameter.description"></div>
+						<div slot="content" v-html="addTargetBlank(parameter.description)"></div>
 						<font-awesome-icon icon="question-circle"/>
 					</el-tooltip>
 				</div>
@@ -92,6 +92,8 @@ import { genericHelpers } from '@/components/mixins/genericHelpers';
 import { workflowHelpers } from '@/components/mixins/workflowHelpers';
 import ParameterInputFull from '@/components/ParameterInputFull.vue';
 
+import { addTargetBlank } from './helpers';
+
 import { get, set } from 'lodash';
 
 import mixins from 'vue-typed-mixins';
@@ -121,6 +123,7 @@ export default mixins(
 			},
 		},
 		methods: {
+			addTargetBlank,
 			multipleValues (parameter: INodeProperties): boolean {
 				if (this.getArgument('multipleValues', parameter) === true) {
 					return true;
