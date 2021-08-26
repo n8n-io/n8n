@@ -4,7 +4,7 @@
 		<div class="parameter-name">
 			{{parameter.displayName}}:
 			<el-tooltip class="parameter-info" placement="top" v-if="parameter.description" effect="light">
-				<div slot="content" v-html="parameter.description"></div>
+				<div slot="content" v-html="addTargetBlank(parameter.description)"></div>
 				<font-awesome-icon icon="question-circle" />
 			</el-tooltip>
 		</div>
@@ -48,6 +48,7 @@ import { get } from 'lodash';
 import { genericHelpers } from '@/components/mixins/genericHelpers';
 
 import mixins from 'vue-typed-mixins';
+import { addTargetBlank } from './helpers';
 
 export default mixins(genericHelpers)
 	.extend({
@@ -91,6 +92,7 @@ export default mixins(genericHelpers)
 
 				this.$emit('valueChanged', parameterData);
 			},
+			addTargetBlank,
 			deleteItem (index: number) {
 				const parameterData = {
 					name: this.getPath(index),
