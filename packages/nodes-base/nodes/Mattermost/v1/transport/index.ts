@@ -31,7 +31,7 @@ export async function apiRequest(
 	const options: IHttpRequestOptions = {
 		method,
 		body,
-		queryString: query,
+		qs: query,
 		url: `${credentials.baseUrl}/api/v4/${endpoint}`,
 		headers: {
 			authorization: `Bearer ${credentials.accessToken}`,

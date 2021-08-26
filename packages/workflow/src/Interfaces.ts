@@ -214,7 +214,7 @@ export interface IHttpRequestOptions {
 	headers?: IDataObject;
 	method?: 'GET' | 'POST' | 'PUT' | 'DELETE' | 'HEAD';
 	body?: FormData | GenericValue | GenericValue[] | Buffer | URLSearchParams;
-	queryString?: IDataObject;
+	qs?: IDataObject;
 	url: string;
 	arrayFormat?: 'indices' | 'brackets' | 'repeat' | 'comma';
 	auth?: {

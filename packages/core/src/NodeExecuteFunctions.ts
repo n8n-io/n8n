@@ -1481,7 +1481,7 @@ function convertN8nRequestToAxios(n8nRequest: IHttpRequestOptions): AxiosRequest
 		url,
 	} as AxiosRequestConfig;
 
-	axiosRequest.params = n8nRequest.queryString;
+	axiosRequest.params = n8nRequest.qs;
 
 	if (n8nRequest.disableFollowRedirect === true) {
 		axiosRequest.maxRedirects = 0;

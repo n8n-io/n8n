@@ -26,6 +26,9 @@ export class MattermostV1 implements INodeType {
 	methods = { loadOptions };
 
 	async execute(this: IExecuteFunctions) {
-		return await router.call(this);
+		// Router returns INodeExecutionData[]
+		// We need to output INodeExecutionData[][]
+		// So we wrap in []
+		return [await router.call(this)];
 	}
 }
