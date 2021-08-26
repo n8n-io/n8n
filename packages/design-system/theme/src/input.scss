@@ -78,7 +78,7 @@
 	@include mixins.scroll-bar;
 
 	& .el-input__clear {
-		color: var.$input-icon-color;
+		color: var.$input-clear-color;
 		font-size: var.$input-font-size;
 		cursor: pointer;
 		transition: var.$color-transition-base;

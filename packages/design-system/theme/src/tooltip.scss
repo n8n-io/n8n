@@ -6,6 +6,11 @@
 	&:focus:hover {
 		outline-width: 0;
 	}
+
+	a {
+		font-weight: var(--font-weight-bold);
+	}
+
 	@include mixins.e(popper) {
 		position: absolute;
 		border-radius: 4px;
