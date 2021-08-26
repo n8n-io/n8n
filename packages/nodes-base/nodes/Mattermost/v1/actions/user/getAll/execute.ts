@@ -62,14 +62,12 @@ export async function getAll(this: IExecuteFunctions, index: number): Promise<IN
 				&& !validRules.inChannel.includes(snakeCase(additionalFields.sort as string))) {
 				throw new NodeOperationError(this.getNode(), `When In Channel is set the only valid values for sorting are ${validRules.inChannel.join(',')}`);
 			}
-			if (additionalFields.inChannel !== undefined
-				&& additionalFields.inChannel === ''
+			if (additionalFields.inChannel === ''
 				&& additionalFields.sort !== 'username') {
 				throw new NodeOperationError(this.getNode(), 'When sort is different than username In Channel must be set');
 			}
 
-			if (additionalFields.inTeam !== undefined
-				&& additionalFields.inTeam === ''
+			if (additionalFields.inTeam === ''
 				&& additionalFields.sort !== 'username') {
 				throw new NodeOperationError(this.getNode(), 'When sort is different than username In Team must be set');
 			}
