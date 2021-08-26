@@ -576,7 +576,6 @@ export default mixins(
 			}
 			.el-input .el-input__inner {
 				&,
-				&::placeholder,
 				&:hover,
 				&:focus {
 					border-radius: 20px;
@@ -585,6 +584,11 @@ export default mixins(
 					background-color: var(--color-primary);
 					border-color: var(--color-primary);
 					text-align: center;
+				}
+
+				&::placeholder {
+					color: var(--color-foreground-xlight);
+					opacity: 1; /** Firefox */
 				}
 			}
 		}
