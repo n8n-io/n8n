@@ -103,6 +103,314 @@ export class Eloqua implements INodeType {
 				description: 'The operation to perform.'
 			},
 			// ----------------------------------
+			//         fields - Contacts
+			// ----------------------------------
+			{
+				displayName: 'Email Address',
+				name: 'emailAddress',
+				type: 'string',
+				default: '',
+				required: true,
+				displayOptions: {
+					show: {
+						operation: ['create', 'update'],
+						resource: ['contact']
+					}
+				},
+				description: 'The name of the custom object.'
+			},
+			{
+				displayName: 'ID',
+				name: 'id',
+				type: 'string',
+				default: '',
+				required: true,
+				displayOptions: {
+					show: {
+						operation: ['update', 'get', 'delete'],
+						resource: ['contact']
+					}
+				},
+				description: 'The name of the custom object.'
+			},
+			{
+				displayName: 'Additional Fields',
+				name: 'optionalFields',
+				type: 'collection',
+				displayOptions: {
+					show: {
+						operation: ['create', 'update'],
+						resource: ['conctact']
+					}
+				},
+				default: {},
+				description: 'Additional optional Fields of the contact',
+				placeholder: 'Add Field',
+				options: [
+					{
+						displayName: 'Current Status',
+						name: 'currentStatus',
+						type: 'string',
+						default: '',
+						description: "The contact's current status."
+					},
+					{
+						displayName: 'Name',
+						name: 'name',
+						type: 'string',
+						default: '',
+						description: 'The name of the contact.'
+					},
+					{
+						displayName: 'Description',
+						name: 'description',
+						type: 'string',
+						default: '',
+						description: 'The description of the contact.'
+					},
+					{
+						displayName: 'First Name',
+						name: 'firstName',
+						type: 'string',
+						default: '',
+						description: "The contact's first name."
+					},
+					{
+						displayName: 'Last Name',
+						name: 'lastName',
+						type: 'string',
+						default: '',
+						description: "The contact's last name."
+					},
+					{
+						displayName: 'Email Format Preference',
+						name: 'emailFormatPreference',
+						type: 'string',
+						default: '',
+						description: "The contact's email format preference."
+					},
+					{
+						displayName: 'Is subscribed?',
+						name: 'isSubscribed',
+						type: 'string',
+						default: '',
+						description: 'Whether or not the contact is subscribed.'
+					},
+					{
+						displayName: 'Has bouncebacks?',
+						name: 'isBounceback',
+						type: 'string',
+						default: '',
+						description:
+							'Whether or not the contact has any associated bouncebacks.'
+					},
+					{
+						displayName: 'Account Name',
+						name: 'accountName',
+						type: 'string',
+						default: '',
+						description: 'The account name in which the contact belongs.'
+					},
+					{
+						displayName: 'Title',
+						name: 'title',
+						type: 'string',
+						default: '',
+						description: "The contact's title."
+					},
+					{
+						displayName: 'Subscription Date',
+						name: 'subscriptionDate',
+						type: 'string',
+						default: '',
+						description: "The contact's subscription date."
+					},
+					{
+						displayName: 'Unsubscription Date',
+						name: 'unsubscriptionDate',
+						type: 'string',
+						default: '',
+						description: "The contact's unsubscription date."
+					},
+					{
+						displayName: 'Bounceback Date',
+						name: 'bouncebackDate',
+						type: 'string',
+						default: '',
+						description: "The contact's bounceback date."
+					},
+					{
+						displayName: 'Address 1',
+						name: 'address1',
+						type: 'string',
+						default: '',
+						description: "The contact's first address."
+					},
+					{
+						displayName: 'Address 2',
+						name: 'address2',
+						type: 'string',
+						default: '',
+						description: "The contact's second address."
+					},
+					{
+						displayName: 'Address 3',
+						name: 'address3',
+						type: 'string',
+						default: '',
+						description: "The contact's third address."
+					},
+					{
+						displayName: 'City',
+						name: 'city',
+						type: 'string',
+						default: '',
+						description: "The contact's city."
+					},
+					{
+						displayName: 'Province',
+						name: 'province',
+						type: 'string',
+						default: '',
+						description: "The contact's province."
+					},
+					{
+						displayName: 'Postal Code',
+						name: 'postalCode',
+						type: 'string',
+						default: '',
+						description: "The contact's postal code."
+					},
+					{
+						displayName: 'Country',
+						name: 'country',
+						type: 'string',
+						default: '',
+						description: "The contact's country."
+					},
+					{
+						displayName: 'Business Phone',
+						name: 'businessPhone',
+						type: 'string',
+						default: '',
+						description: "The contact's business phone number."
+					},
+					{
+						displayName: 'Mobile Phone',
+						name: 'mobilePhone',
+						type: 'string',
+						default: '',
+						description: "The contact's mobile phone number."
+					},
+					{
+						displayName: 'Fax',
+						name: 'fax',
+						type: 'string',
+						default: '',
+						description: "The contact's fax number."
+					},
+					{
+						displayName: 'Sales Person',
+						name: 'salesPerson',
+						type: 'string',
+						default: '',
+						description: "The contact's account representative."
+					}
+				]
+			},
+			{
+				displayName: 'Custom Additional Object Fields',
+				name: 'customAdditionalFields',
+				type: 'collection',
+				typeOptions: {
+					multipleValues: true
+				},
+				placeholder: 'Add Custom Object Field',
+				displayOptions: {
+					show: {
+						operation: ['create', 'update'],
+						resource: ['customObject']
+					}
+				},
+				default: {},
+				options: []
+			},
+			// ----------------------------------
+			//         QueryParameters - Contacts - getAll
+			// ----------------------------------
+			{
+				displayName: 'Query Parameters',
+				name: 'queryParameters',
+				type: 'collection',
+				displayOptions: {
+					show: {
+						operation: ['getAll'],
+						resource: ['customObject']
+					}
+				},
+				default: {},
+				description: 'Query parameters to filter the results by',
+				placeholder: 'Add Parameter',
+				options: [
+					{
+						displayName: 'Count',
+						name: 'count',
+						type: 'number',
+						default: 100,
+						description:
+							'Maximum number of entities to return. Must be less than or equal to 1000 and greater than or equal to 1.'
+					},
+					{
+						displayName: 'Depth',
+						name: 'depth',
+						type: 'string',
+						default: '',
+						description:
+							'Level of detail returned by the request. Eloqua APIs can retrieve entities at three different levels of depth: minimal, partial, and complete. Any other values passed are reset to minimal by default.'
+					},
+					{
+						displayName: 'lastUpdatedAt',
+						name: 'lastUpdatedAt',
+						type: 'number',
+						default: 0,
+						description:
+							'Unix timestamp for the date and time the custom object was last updated.'
+					},
+					{
+						displayName: 'Order By',
+						name: 'orderBy',
+						type: 'string',
+						default: '',
+						description:
+							'Specifies the field by which list results are ordered.'
+					},
+					{
+						displayName: 'Page',
+						name: 'page',
+						type: 'number',
+						default: 1,
+						description:
+							'Specifies which page of entities to return (the count parameter defines the number of entities per page). If the page parameter is not supplied, 1 will be used by default.'
+					},
+					{
+						displayName: 'Search',
+						name: 'search',
+						type: 'string',
+						default: '',
+						description:
+							'Specifies the search criteria used to retrieve entities. See the tutorial for information about using this parameter.'
+					},
+					{
+						displayName: 'View ID',
+						name: 'viewId',
+						type: 'number',
+						default: '',
+						description:
+							'Id of the contact view to filter results. Must be a valid contact view id. Example: ?viewId=100006.'
+					}
+				]
+			},
+			// ----------------------------------
 			//         fields - Custom Object
 			// ----------------------------------
 			{
