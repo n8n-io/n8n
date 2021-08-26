@@ -72,7 +72,7 @@ export const productFields = [
 				],
 			},
 		},
-		description: 'Stock-keeping unit',
+		description: 'Stock-keeping unit of the product',
 	},
 	{
 		displayName: 'Attribute Set Name/ID',
@@ -149,6 +149,7 @@ export const productFields = [
 			...getProductOptionalFields(),
 		],
 	},
+
 	/* -------------------------------------------------------------------------- */
 	/*                                   product:delete			                  */
 	/* -------------------------------------------------------------------------- */
@@ -169,8 +170,9 @@ export const productFields = [
 				],
 			},
 		},
-		description: 'Stock-keeping unit',
+		description: 'Stock-keeping unit of the product',
 	},
+
 	/* -------------------------------------------------------------------------- */
 	/*                                   product:getAll			                  */
 	/* -------------------------------------------------------------------------- */

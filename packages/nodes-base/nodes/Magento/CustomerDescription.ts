@@ -57,23 +57,6 @@ export const customerFields = [
 	/*                                   customer:create                          */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Customer ID',
-		name: 'customerId',
-		type: 'string',
-		default: '',
-		displayOptions: {
-			show: {
-				resource: [
-					'customer',
-				],
-				operation: [
-					'update',
-				],
-			},
-		},
-		description: 'Email Address',
-	},
-	{
 		displayName: 'Email',
 		name: 'email',
 		type: 'string',
@@ -89,7 +72,7 @@ export const customerFields = [
 				],
 			},
 		},
-		description: 'Email Address',
+		description: 'Email address of the user to create',
 	},
 	{
 		displayName: 'First Name',
@@ -107,7 +90,7 @@ export const customerFields = [
 				],
 			},
 		},
-		description: '',
+		description: 'First name of the user to create',
 	},
 	{
 		displayName: 'Last Name',
@@ -125,7 +108,7 @@ export const customerFields = [
 				],
 			},
 		},
-		description: '',
+		description: 'Last name of the user to create',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -147,6 +130,27 @@ export const customerFields = [
 			...getCustomerOptionalFields(),
 		],
 	},
+
+	/* -------------------------------------------------------------------------- */
+	/*                                   customer:update                          */
+	/* -------------------------------------------------------------------------- */
+	{
+		displayName: 'Customer ID',
+		name: 'customerId',
+		type: 'string',
+		default: '',
+		displayOptions: {
+			show: {
+				resource: [
+					'customer',
+				],
+				operation: [
+					'update',
+				],
+			},
+		},
+		description: 'ID of the customer to update',
+	},
 	{
 		displayName: 'Update Fields',
 		name: 'updateFields',
@@ -167,6 +171,7 @@ export const customerFields = [
 			...getCustomerOptionalFields(),
 		],
 	},
+
 	/* -------------------------------------------------------------------------- */
 	/*                                   customer:delete			              */
 	/* -------------------------------------------------------------------------- */
@@ -188,6 +193,7 @@ export const customerFields = [
 			},
 		},
 	},
+
 	/* -------------------------------------------------------------------------- */
 	/*                                   customer:getAll			              */
 	/* -------------------------------------------------------------------------- */

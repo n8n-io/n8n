@@ -39,7 +39,6 @@ import {
 } from './ProductDescription';
 
 import {
-	AddressExtensionAttributes,
 	CustomAttribute,
 	CustomerAttributeMetadata,
 	Filter,

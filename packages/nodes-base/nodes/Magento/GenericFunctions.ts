@@ -21,7 +21,7 @@ import {
 	FilterGroup,
 	ProductAttribute,
 	Search,
-} from './types';
+} from './Types';
 
 export async function magentoApiRequest(this: IWebhookFunctions | IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions, method: string, resource: string, body: any = {}, qs: IDataObject = {}, uri?: string, headers: IDataObject = {}, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
 	const credentials = await this.getCredentials('magento2Api') as IDataObject;
@@ -619,7 +619,6 @@ export function getCustomerOptionalFields() {
 					],
 				},
 			},
-			description: 'Email Address',
 		},
 		{
 			displayName: 'First Name',
@@ -633,7 +632,6 @@ export function getCustomerOptionalFields() {
 					],
 				},
 			},
-			description: 'First name',
 		},
 		{
 			displayName: 'Gender',
@@ -682,7 +680,6 @@ export function getCustomerOptionalFields() {
 					],
 				},
 			},
-			description: 'Last name',
 		},
 		{
 			displayName: 'Middle Name',
