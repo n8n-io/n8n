@@ -704,8 +704,14 @@ export class Freshservice implements INodeType {
 
 						const body = {
 							requester_id: this.getNodeParameter('requesterId', i),
+							subject: this.getNodeParameter('subject', i),
 							planned_start_date: this.getNodeParameter('planned_start_date', i),
 							planned_end_date: this.getNodeParameter('planned_end_date', i),
+							status: 1,
+							priority: 1,
+							impact: 1,
+							risk: 1,
+							change_type: 1,
 						} as IDataObject;
 
 						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;

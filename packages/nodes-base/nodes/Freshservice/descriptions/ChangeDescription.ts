@@ -73,6 +73,23 @@ export const changeFields = [
 		},
 	},
 	{
+		displayName: 'Subject',
+		name: 'subject',
+		type: 'string',
+		required: true,
+		default: '',
+		displayOptions: {
+			show: {
+				resource: [
+					'change',
+				],
+				operation: [
+					'create',
+				],
+			},
+		},
+	},
+	{
 		displayName: 'Planned Start Date',
 		name: 'planned_start_date',
 		type: 'dateTime',
