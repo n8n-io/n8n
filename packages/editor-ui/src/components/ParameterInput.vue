@@ -229,7 +229,6 @@ export default mixins(
 			'path', // string
 			'value',
 			'isCredential', // boolean
-			'multiline', //boolean
 			'inputSize',
 		],
 		data () {
@@ -504,7 +503,10 @@ export default mixins(
 			},
 			parameterInputClasses () {
 				const classes = [];
-				if (!this.multiline) {
+				const rows = this.getArgument('rows');
+				const isTextarea = this.parameter.type === 'string' && rows !== undefined;
+
+				if (!isTextarea) {
 					classes.push('parameter-value-container');
 				}
 				if (this.isValueExpression) {
