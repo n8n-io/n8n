@@ -1237,10 +1237,10 @@ async function parseRequestObject(requestObject: IDataObject) {
 				// remove possibly existing content-type headers
 				const headers = Object.keys(axiosConfig.headers);
 				headers.forEach(header => header.toLowerCase() === 'content-type' ? delete axiosConfig.headers[header] : null);
-				axiosConfig.headers['content-type'] = 'application/x-www-form-urlencoded';
+				axiosConfig.headers['Content-Type'] = 'application/x-www-form-urlencoded';
 			} else {
 				axiosConfig.headers = {
-					'content-type': 'application/x-www-form-urlencoded',
+					'Content-Type': 'application/x-www-form-urlencoded',
 				};
 			}
 		} else if (requestObject.formData !== undefined) {
@@ -1337,7 +1337,7 @@ async function parseRequestObject(requestObject: IDataObject) {
 			Object.keys(axiosConfig.headers).map(headerKey => headerKey.toLowerCase()).includes('accept');
 		if (acceptHeaderExists === false) {
 			axiosConfig.headers = Object.assign(axiosConfig.headers || {}, {
-				'accept': 'application/json',
+				'Accept': 'application/json',
 			});
 		}
 	}
@@ -1513,10 +1513,10 @@ function convertN8nRequestToAxios(n8nRequest: IHttpRequestOptions): AxiosRequest
 			// not set it already manually. We're not overriding, even if it's wrong.
 			if (axiosRequest.data instanceof FormData) {
 				axiosRequest.headers = axiosRequest.headers || {};
-				axiosRequest.headers['content-type'] = 'multipart/form-data';
+				axiosRequest.headers['Content-Type'] = 'multipart/form-data';
 			} else if (axiosRequest.data instanceof URLSearchParams) {
 				axiosRequest.headers = axiosRequest.headers || {};
-				axiosRequest.headers['content-type'] = 'application/x-www-form-urlencoded';
+				axiosRequest.headers['Content-Type'] = 'application/x-www-form-urlencoded';
 			}
 		}
 	}
@@ -1527,7 +1527,7 @@ function convertN8nRequestToAxios(n8nRequest: IHttpRequestOptions): AxiosRequest
 		// header and the json flag. Header should take precedence.
 		if(!key) {
 			axiosRequest.headers = axiosRequest.headers ?? {};
-			axiosRequest.headers.accept = 'application/json';
+			axiosRequest.headers.Accept = 'application/json';
 		}
 	}
 
