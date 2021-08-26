@@ -944,6 +944,9 @@ export class Freshservice implements INodeType {
 							subject: this.getNodeParameter('subject', i),
 							requester_id: this.getNodeParameter('requester_id', i),
 							due_by: this.getNodeParameter('due_by', i),
+							status: 1,
+							priority: 1,
+							impact: 1,
 						} as IDataObject;
 
 						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
