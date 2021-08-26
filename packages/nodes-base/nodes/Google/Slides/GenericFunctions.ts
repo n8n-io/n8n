@@ -10,6 +10,7 @@ import {
 import {
 	IDataObject,
 	NodeApiError,
+	NodeOperationError,
 } from 'n8n-workflow';
 
 import * as moment from 'moment-timezone';
@@ -45,7 +46,21 @@ export async function googleApiRequest(
 
 	try {
 		if (authenticationMethod === 'serviceAccount') {
-			const credentials = await this.getCredentials('googleApi') as { access_token: string, email: string, privateKey: string };
+			const credentials = await this.getCredentials('googleApi') as {
+				email: string;
+				privateKey: string;
+			};
+
+			if (credentials === undefined) {
+				throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
+			}
+
+			credentials.email = credentials.email.trim();
+
+			if (credentials.privateKey.startsWith('-----BEGIN PRIVATE KEY-----\\n')) {
+				credentials.privateKey = credentials.privateKey.replace(/\\n/g, '\n').trim();
+			}
+
 			const { access_token } = await getAccessToken.call(this, credentials);
 			options.headers.Authorization = `Bearer ${access_token}`;
 			return await this.helpers.request!(options);

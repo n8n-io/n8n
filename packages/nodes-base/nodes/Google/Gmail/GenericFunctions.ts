@@ -57,10 +57,19 @@ export async function googleApiRequest(this: IExecuteFunctions | IExecuteSingleF
 		}
 
 		if (authenticationMethod === 'serviceAccount') {
-			const credentials = await this.getCredentials('googleApi');
+			const credentials = await this.getCredentials('googleApi') as {
+				email: string;
+				privateKey: string;
+			};
 
 			if (credentials === undefined) {
 				throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
+			}
+
+			credentials.email = credentials.email.trim();
+
+			if (credentials.privateKey.startsWith('-----BEGIN PRIVATE KEY-----\\n')) {
+				credentials.privateKey = credentials.privateKey.replace(/\\n/g, '\n').trim();
 			}
 
 			const { access_token } = await getAccessToken.call(this, credentials as IDataObject);
