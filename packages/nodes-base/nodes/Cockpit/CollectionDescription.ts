@@ -133,7 +133,7 @@ export const collectionFields = [
 					alwaysOpenEditWindow: true,
 				},
 				placeholder: '{"name": "Jim"}',
-				description: 'Filter query in <a href="https://jeroen.github.io/mongolite/query-data.html" target="_blank">Mongolite format</a>.',
+				description: 'Filter query in <a href="https://jeroen.github.io/mongolite/query-data.html">Mongolite format</a>.',
 			},
 			{
 				displayName: 'Language',
@@ -170,7 +170,7 @@ export const collectionFields = [
 				type: 'json',
 				default: '',
 				placeholder: '{"price": -1}',
-				description: 'Sort query in <a href="https://jeroen.github.io/mongolite/query-data.html" target="_blank">Mongolite format</a>.',
+				description: 'Sort query in <a href="https://jeroen.github.io/mongolite/query-data.html">Mongolite format</a>.',
 			},
 		],
 	},
