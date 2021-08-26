@@ -1484,7 +1484,7 @@ export class Freshservice implements INodeType {
 					}
 				}
 
-				if (operation === 'delete' && resource !== 'agent') {
+				if (operation === 'delete' && !responseData) {
 					responseData = { success: true };
 				} else if (operation !== 'getAll') {
 					const special: { [key: string]: string } = {
