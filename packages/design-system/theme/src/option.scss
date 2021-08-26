@@ -15,6 +15,8 @@
 		line-height: var.$select-option-height;
 		box-sizing: border-box;
 		cursor: pointer;
+		display: flex;
+		align-items: center;
 
 		@include mixins.when(disabled) {
 			color: var.$select-option-disabled-color;

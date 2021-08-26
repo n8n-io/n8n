@@ -813,8 +813,7 @@ export default mixins(
 
 	.option-headline {
 		font-weight: 600;
-		line-height: 1;
-		margin-bottom: 2px;
+		line-height: 1.3;
 	}
 
 	.option-description {
