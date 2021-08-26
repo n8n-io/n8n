@@ -128,7 +128,7 @@ export const customerFields = [
 							{
 								displayName: 'Country',
 								name: 'country',
-								description: 'Two-letter country code (<a target="_blank" href="https://en.wikipedia.org/wiki/ISO_3166-1_alpha-2">ISO 3166-1 alpha-2</a>)',
+								description: 'Two-letter country code (<a href="https://en.wikipedia.org/wiki/ISO_3166-1_alpha-2">ISO 3166-1 alpha-2</a>)',
 								type: 'string',
 								default: '',
 							},
@@ -257,7 +257,7 @@ export const customerFields = [
 											{
 												displayName: 'Country',
 												name: 'country',
-												description: 'Two-letter country code (<a target="_blank" href="https://en.wikipedia.org/wiki/ISO_3166-1_alpha-2">ISO 3166-1 alpha-2</a>)',
+												description: 'Two-letter country code (<a href="https://en.wikipedia.org/wiki/ISO_3166-1_alpha-2">ISO 3166-1 alpha-2</a>)',
 												type: 'string',
 												default: '',
 											},
@@ -481,7 +481,7 @@ export const customerFields = [
 							{
 								displayName: 'Country',
 								name: 'country',
-								description: 'Two-letter country code (<a target="_blank" href="https://en.wikipedia.org/wiki/ISO_3166-1_alpha-2">ISO 3166-1 alpha-2</a>)',
+								description: 'Two-letter country code (<a href="https://en.wikipedia.org/wiki/ISO_3166-1_alpha-2">ISO 3166-1 alpha-2</a>)',
 								type: 'string',
 								default: '',
 							},
@@ -618,7 +618,7 @@ export const customerFields = [
 											{
 												displayName: 'Country',
 												name: 'country',
-												description: 'Two-letter country code (<a target="_blank" href="https://en.wikipedia.org/wiki/ISO_3166-1_alpha-2">ISO 3166-1 alpha-2</a>)',
+												description: 'Two-letter country code (<a href="https://en.wikipedia.org/wiki/ISO_3166-1_alpha-2">ISO 3166-1 alpha-2</a>)',
 												type: 'string',
 												default: '',
 											},
