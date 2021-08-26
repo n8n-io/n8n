@@ -677,7 +677,7 @@ export default mixins(
 
 					this.expressionEditDialogVisible = true;
 				} else if (command === 'removeExpression') {
-					this.valueChanged(this.expressionValueComputed || null);
+					this.valueChanged(this.expressionValueComputed !== undefined ? this.expressionValueComputed : null);
 				} else if (command === 'refreshOptions') {
 					this.loadRemoteParameterOptions();
 				}
