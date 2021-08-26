@@ -1454,7 +1454,6 @@ async function httpRequest(requestParams: IHttpRequestOptions): Promise<IN8nHttp
 			headers: result.headers,
 			statusCode: result.status,
 			statusMessage: result.statusText,
-			request: result.request,
 		};
 	}
 	return result.data;
@@ -1473,7 +1472,7 @@ function convertN8nRequestToAxios(n8nRequest: IHttpRequestOptions): AxiosRequest
 	 } = n8nRequest;
 
 	const axiosRequest = {
-		headers,
+		headers: headers ?? {},
 		method,
 		timeout,
 		auth,
@@ -1526,9 +1525,15 @@ function convertN8nRequestToAxios(n8nRequest: IHttpRequestOptions): AxiosRequest
 		// If key exists, then the user has set both accept
 		// header and the json flag. Header should take precedence.
 		if(!key) {
-			axiosRequest.headers = axiosRequest.headers ?? {};
 			axiosRequest.headers.Accept = 'application/json';
 		}
+	}
+
+	const userAgentHeader = searchForHeader(axiosRequest.headers, 'user-agent');
+	// If key exists, then the user has set both accept
+	// header and the json flag. Header should take precedence.
+	if(!userAgentHeader) {
+		axiosRequest.headers['User-Agent'] = 'n8n';
 	}
 
 	return axiosRequest;

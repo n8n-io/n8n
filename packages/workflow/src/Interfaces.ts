@@ -211,11 +211,11 @@ export interface IExecuteContextData {
 }
 
 export interface IHttpRequestOptions {
+	url: string;
 	headers?: IDataObject;
-	method?: 'GET' | 'POST' | 'PUT' | 'DELETE' | 'HEAD';
+	method?: 'DELETE' | 'GET' | 'HEAD' | 'PATCH' | 'POST' | 'PUT';
 	body?: FormData | GenericValue | GenericValue[] | Buffer | URLSearchParams;
 	qs?: IDataObject;
-	url: string;
 	arrayFormat?: 'indices' | 'brackets' | 'repeat' | 'comma';
 	auth?: {
 		username: string,
@@ -227,7 +227,7 @@ export interface IHttpRequestOptions {
 	returnFullResponse?: boolean;
 	proxy?: {
 		host: string;
-		port: string | number;
+		port: number;
 		auth?: {
 			username: string;
 			password: string;
@@ -245,7 +245,6 @@ export interface IN8nHttpFullResponse {
 	headers: IDataObject;
 	statusCode: number;
 	statusMessage: string;
-	request: IDataObject;
 }
 
 
