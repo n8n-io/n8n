@@ -15,7 +15,6 @@ import { NodeExecuteFunctions } from '.';
 const TEMP_NODE_NAME = 'Temp-Node';
 const TEMP_WORKFLOW_NAME = 'Temp-Workflow';
 
-// eslint-disable-next-line import/prefer-default-export
 export class LoadNodeParameterOptions {
 	path: string;
 

@@ -19,7 +19,6 @@ import {
 // eslint-disable-next-line import/no-cycle
 import { ITriggerTime, IWorkflowData } from '.';
 
-// eslint-disable-next-line import/prefer-default-export
 export class ActiveWorkflows {
 	private workflowData: {
 		[key: string]: IWorkflowData;

@@ -7,7 +7,6 @@ import {
 
 import { AES, enc } from 'crypto-js';
 
-// eslint-disable-next-line import/prefer-default-export
 export class Credentials extends ICredentials {
 	/**
 	 * Returns if the given nodeType has access to data

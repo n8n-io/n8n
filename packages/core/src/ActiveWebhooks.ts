@@ -9,7 +9,6 @@ import {
 // eslint-disable-next-line import/no-cycle
 import { NodeExecuteFunctions } from '.';
 
-// eslint-disable-next-line import/prefer-default-export
 export class ActiveWebhooks {
 	private workflowWebhooks: {
 		[key: string]: IWebhookData[];
