@@ -117,8 +117,10 @@
 				:key="option.value"
 				:label="option.name"
 			>
-				<div class="option-headline">{{ option.name }}</div>
-				<div v-if="option.description" class="option-description" v-html="option.description"></div>
+				<div class="list-option">
+					<div class="option-headline">{{ option.name }}</div>
+					<div v-if="option.description" class="option-description" v-html="option.description"></div>
+				</div>
 			</n8n-option>
 		</n8n-select>
 
@@ -137,8 +139,10 @@
 			:title="displayTitle"
 		>
 			<n8n-option v-for="option in parameterOptions" :value="option.value" :key="option.value" :label="option.name" >
-				<div class="option-headline">{{ option.name }}</div>
-				<div v-if="option.description" class="option-description" v-html="option.description"></div>
+				<div class="list-option">
+					<div class="option-headline">{{ option.name }}</div>
+					<div v-if="option.description" class="option-description" v-html="option.description"></div>
+				</div>
 			</n8n-option>
 		</n8n-select>
 
@@ -499,7 +503,10 @@ export default mixins(
 			},
 			parameterInputClasses () {
 				const classes = [];
-				if (!this.multiline) {
+				const rows = this.getArgument('rows');
+				const isTextarea = this.parameter.type === 'string' && rows !== undefined;
+
+				if (!isTextarea) {
 					classes.push('parameter-value-container');
 				}
 				if (this.isValueExpression) {
@@ -672,7 +679,7 @@ export default mixins(
 
 					this.expressionEditDialogVisible = true;
 				} else if (command === 'removeExpression') {
-					this.valueChanged(this.expressionValueComputed || null);
+					this.valueChanged(this.expressionValueComputed !== undefined ? this.expressionValueComputed : null);
 				} else if (command === 'refreshOptions') {
 					this.loadRemoteParameterOptions();
 				}
@@ -800,18 +807,24 @@ export default mixins(
 	color: #999;
 }
 
-.option-headline {
-	font-weight: 600;
-}
-li:not(.selected) .option-description {
-	color: $--custom-font-very-light;
-}
-
-.option-description {
-	font-weight: 400;
+.list-option {
+	max-width: 340px;
+	margin: 6px 0;
 	white-space: normal;
-	max-width: 350px;
-	margin-top: -4px;
+
+	.option-headline {
+		font-weight: var(--font-weight-bold);
+		line-height: var(--font-line-height-regular);
+		overflow-wrap: break-word;
+	}
+
+	.option-description {
+		margin-top: 2px;
+		font-size: var(--font-size-2xs);
+		font-weight: var(--font-weight-regular);
+		line-height: var(--font-line-height-xloose);
+		color: $--custom-font-very-light;
+	}
 }
 
 .edit-window-button {

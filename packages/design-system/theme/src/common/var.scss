@@ -570,7 +570,8 @@ $input-icon-color: var(--color-text-lighter);
 /// color||Color|0
 
 $input-hover-border: $border-color-hover;
-$input-clear-hover-color: var(--color-text-light);
+$input-clear-color: var(--color-text-light);
+$input-clear-hover-color: var(--color-text-base);
 
 $input-disabled-fill: $disabled-fill-base;
 $input-disabled-border: $disabled-border-base;

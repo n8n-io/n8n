@@ -13,6 +13,10 @@
 	position: relative;
 	width: 100%;
 
+	.el-select__tags {
+		overflow-x: scroll;
+	}
+
 	.el-select__tags > span {
 		display: contents;
 	}
