@@ -2,6 +2,7 @@
 	<Modal
 		:name="modalName"
 		size="lg"
+		:customClass="$style.credentialModal"
 		:showClose="false"
 		:eventBus="modalBus"
 		:loading="loading"
@@ -814,4 +815,9 @@ export default mixins(genericHelpers, showMessage, nodeHelpers).extend({
 .valueLabel {
 	font-weight: var(--font-weight-regular);
 }
+
+.credentialModal {
+	max-width: 900px;
+}
+
 </style>

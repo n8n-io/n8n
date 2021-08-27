@@ -22,7 +22,7 @@
 			:class="{ 'dialog-wrapper': true, [size]: true }"
 			:width="width"
 			:show-close="showClose"
-			:custom-class="classic ? 'classic' : ''"
+			:custom-class="getCustomClass()"
 			append-to-body
 		>
 			<template v-slot:title>
@@ -50,7 +50,7 @@ const sizeMap: {[size: string]: string} = {
 
 export default Vue.extend({
 	name: "Modal",
-	props: ['name', 'title', 'eventBus', 'size', 'drawer', 'drawerDirection', 'drawerWidth', 'visible', 'showClose', 'loading', 'classic', 'beforeClose'],
+	props: ['name', 'title', 'eventBus', 'size', 'drawer', 'drawerDirection', 'drawerWidth', 'visible', 'showClose', 'loading', 'classic', 'beforeClose', 'customClass'],
 	data() {
 		return {
 			visibleDrawer: this.drawer,
@@ -111,6 +111,16 @@ export default Vue.extend({
 				this.$store.commit('ui/closeTopModal');
 				this.visibleDrawer = true;
 			}, 300); // delayed for closing animation to take effect
+		},
+		getCustomClass() {
+			console.log(this.$props);
+			let classes = this.$props.customClass || '';
+
+			if (this.$props.classic) {
+				classes = `${classes} classic`;
+			}
+
+			return classes;
 		},
 	},
 	computed: {

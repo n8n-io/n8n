@@ -40,7 +40,8 @@
 		content: '';
 		height: 100%;
 		width: 100%;
-		backdrop-filter: blur(4px);
+		backdrop-filter: blur(4px) opacity(1);
+		transition: backdrop-filter 300ms;
 	}
 }
 
