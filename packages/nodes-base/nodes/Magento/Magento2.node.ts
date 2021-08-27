@@ -39,6 +39,11 @@ import {
 } from './ProductDescription';
 
 import {
+	invoiceFields,
+	invoiceOperations,
+} from './InvoiceDescription';
+
+import {
 	CustomAttribute,
 	CustomerAttributeMetadata,
 	Filter,
@@ -50,7 +55,6 @@ import {
 import {
 	capitalCase,
 } from 'change-case';
-import { IData } from '../Google/Analytics/Interfaces';
 
 export class Magento2 implements INodeType {
 	description: INodeTypeDescription = {
@@ -84,6 +88,10 @@ export class Magento2 implements INodeType {
 						value: 'customer',
 					},
 					{
+						name: 'Invoice',
+						value: 'invoice',
+					},
+					{
 						name: 'Order',
 						value: 'order',
 					},
@@ -97,6 +105,8 @@ export class Magento2 implements INodeType {
 			},
 			...customerOperations,
 			...customerFields,
+			...invoiceOperations,
+			...invoiceFields,
 			...orderOperations,
 			...orderFields,
 			...productOperations,
@@ -431,6 +441,17 @@ export class Magento2 implements INodeType {
 					}
 				}
 
+				if (resource === 'invoice') {
+					if (operation === 'create') {
+						///https://magento.redoc.ly/2.3.7-admin/tag/orderorderIdinvoice
+						const orderId = this.getNodeParameter('orderId', i) as string;
+
+						responseData = await magentoApiRequest.call(this, 'POST', `/rest/default/V1/order/${orderId}/invoice`);
+
+						responseData = { success: true };
+					}
+				}
+
 				if (resource === 'order') {
 
 					if (operation === 'cancel') {
@@ -454,15 +475,6 @@ export class Magento2 implements INodeType {
 						const orderId = this.getNodeParameter('orderId', i) as string;
 
 						responseData = await magentoApiRequest.call(this, 'POST', `/rest/default/V1/order/${orderId}/ship`);
-
-						responseData = { success: true };
-					}
-
-					if (operation === 'createInvoice') {
-						///https://magento.redoc.ly/2.3.7-admin/tag/orderorderIdinvoice
-						const orderId = this.getNodeParameter('orderId', i) as string;
-
-						responseData = await magentoApiRequest.call(this, 'POST', `/rest/default/V1/order/${orderId}/invoice`);
 
 						responseData = { success: true };
 					}

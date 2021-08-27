@@ -25,11 +25,6 @@ export const orderOperations = [
 				description: 'Cancel an order',
 			},
 			{
-				name: 'Create Invoice',
-				value: 'createInvoice',
-				description: 'Create a sales order invoice',
-			},
-			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get an order',
@@ -70,7 +65,6 @@ export const orderFields = [
 					'cancel',
 					'get',
 					'ship',
-					'createInvoice',
 				],
 			},
 		},

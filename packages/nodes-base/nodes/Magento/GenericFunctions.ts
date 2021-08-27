@@ -37,6 +37,7 @@ export async function magentoApiRequest(this: IWebhookFunctions | IHookFunctions
 		uri: uri || `${credentials.host}${resource}`,
 		json: true,
 	};
+
 	try {
 		options = Object.assign({}, options, option);
 		if (Object.keys(body).length === 0) {
