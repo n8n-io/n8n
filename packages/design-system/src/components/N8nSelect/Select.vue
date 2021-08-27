@@ -5,6 +5,7 @@
 		:value="props.value"
 		:size="$options.methods.getSize(props.size)"
 		:class="$style[$options.methods.getClass(props)]"
+		:popper-class="$options.methods.getPopperClass(props, $style)"
 		v-on="listeners"
 		:ref="data.ref"
 	>
@@ -22,6 +23,12 @@
 
 <script lang="ts">
 import ElSelect from 'element-ui/lib/select';
+
+interface IProps {
+	size?: string;
+	limitPopperWidth?: string;
+	popperClass?: string;
+}
 
 export default {
 	name: 'n8n-select',
@@ -67,6 +74,9 @@ export default {
 		popperAppendToBody: {
 			type: Boolean,
 		},
+		limitPopperWidth: {
+			type: Boolean,
+		},
 	},
 	methods: {
 		getSize(size: string): string | undefined {
@@ -76,12 +86,20 @@ export default {
 
 			return size;
 		},
-		getClass(props: { size: string }): string {
+		getClass(props: IProps): string {
 			if (props.size === 'xlarge') {
 				return 'xlarge';
 			}
 
 			return '';
+		},
+		getPopperClass(props: IProps, $style: any): string {
+			let classes = props.popperClass || '';
+			if (props.limitPopperWidth) {
+				classes = `${classes} ${$style.limitPopperWidth}`;
+			}
+
+			return classes;
 		},
 	},
 };
@@ -92,6 +110,15 @@ export default {
 	--input-font-size: var(--font-size-m);
 	input {
 		height: 48px;
+	}
+}
+
+.limitPopperWidth {
+	width: 0;
+
+	li > span {
+		text-overflow: ellipsis;
+		overflow-x: hidden;
 	}
 }
 </style>

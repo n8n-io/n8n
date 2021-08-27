@@ -11,7 +11,7 @@
 						</n8n-tooltip>
 					</el-col>
 					<el-col :span="14" class="ignore-key-press">
-						<n8n-select v-model="workflowSettings.errorWorkflow" placeholder="Select Workflow" size="medium" filterable popper-class="settings-dropdown">
+						<n8n-select v-model="workflowSettings.errorWorkflow" placeholder="Select Workflow" size="medium" filterable :limit-popper-width="true">
 							<n8n-option
 								v-for="item in workflows"
 								:key="item.id"
@@ -30,7 +30,7 @@
 						</n8n-tooltip>
 					</el-col>
 					<el-col :span="14" class="ignore-key-press">
-						<n8n-select v-model="workflowSettings.timezone" placeholder="Select Timezone" size="medium" filterable popper-class="settings-dropdown">
+						<n8n-select v-model="workflowSettings.timezone" placeholder="Select Timezone" size="medium" filterable :limit-popper-width="true">
 							<n8n-option
 								v-for="timezone of timezones"
 								:key="timezone.key"
@@ -49,7 +49,7 @@
 						</n8n-tooltip>
 					</el-col>
 					<el-col :span="14" class="ignore-key-press">
-						<n8n-select v-model="workflowSettings.saveDataErrorExecution" placeholder="Select Option" size="medium" filterable popper-class="settings-dropdown">
+						<n8n-select v-model="workflowSettings.saveDataErrorExecution" placeholder="Select Option" size="medium" filterable :limit-popper-width="true">
 							<n8n-option
 								v-for="option of saveDataErrorExecutionOptions"
 								:key="option.key"
@@ -68,7 +68,7 @@
 						</n8n-tooltip>
 					</el-col>
 					<el-col :span="14" class="ignore-key-press">
-						<n8n-select v-model="workflowSettings.saveDataSuccessExecution" placeholder="Select Option" size="medium" filterable popper-class="settings-dropdown">
+						<n8n-select v-model="workflowSettings.saveDataSuccessExecution" placeholder="Select Option" size="medium" filterable :limit-popper-width="true">
 							<n8n-option
 								v-for="option of saveDataSuccessExecutionOptions"
 								:key="option.key"
@@ -87,7 +87,7 @@
 						</n8n-tooltip>
 					</el-col>
 					<el-col :span="14" class="ignore-key-press">
-						<n8n-select v-model="workflowSettings.saveManualExecutions" placeholder="Select Option" size="medium" filterable popper-class="settings-dropdown">
+						<n8n-select v-model="workflowSettings.saveManualExecutions" placeholder="Select Option" size="medium" filterable :limit-popper-width="true">
 							<n8n-option
 								v-for="option of saveManualOptions"
 								:key="option.key"
@@ -106,7 +106,7 @@
 						</n8n-tooltip>
 					</el-col>
 					<el-col :span="14" class="ignore-key-press">
-						<n8n-select v-model="workflowSettings.saveExecutionProgress" placeholder="Select Option" size="medium" filterable popper-class="settings-dropdown">
+						<n8n-select v-model="workflowSettings.saveExecutionProgress" placeholder="Select Option" size="medium" filterable :limit-popper-width="true">
 							<n8n-option
 								v-for="option of saveExecutionProgressOptions"
 								:key="option.key"
@@ -528,10 +528,6 @@ export default mixins(
 
 .timeout-input {
 	margin-left: 5px;
-}
-
-::v-deep .settings-dropdown {
-	width: 0;
 }
 
 </style>
