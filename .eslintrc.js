@@ -330,6 +330,10 @@ module.exports = {
 		 */
 		'prefer-spread': 'error',
 
+		// ----------------------------------
+		//              import
+		// ----------------------------------
+
 		/**
 		 * https://github.com/import-js/eslint-plugin-import/blob/main/docs/rules/prefer-default-export.md
 		 */
