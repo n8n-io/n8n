@@ -312,9 +312,19 @@ module.exports = {
 		// ----------------------------------
 
 		/**
+		 * https://eslint.org/docs/rules/class-methods-use-this
+		 */
+		'class-methods-use-this': 'off',
+
+		/**
 		 * https://eslint.org/docs/rules/eqeqeq
 		 */
 		eqeqeq: 'error',
+
+		/**
+		 * https://eslint.org/docs/rules/no-plusplus
+		 */
+		'no-plusplus': 'off',
 
 		/**
 		 * https://eslint.org/docs/rules/object-shorthand
@@ -330,6 +340,10 @@ module.exports = {
 		 * https://eslint.org/docs/rules/prefer-spread
 		 */
 		'prefer-spread': 'error',
+
+		// ----------------------------------
+		//              import
+		// ----------------------------------
 
 		/**
 		 * https://github.com/import-js/eslint-plugin-import/blob/main/docs/rules/prefer-default-export.md
