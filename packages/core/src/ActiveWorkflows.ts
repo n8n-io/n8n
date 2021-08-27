@@ -125,7 +125,6 @@ export class ActiveWorkflows {
 	 * @returns {Promise<IPollResponse>}
 	 * @memberof ActiveWorkflows
 	 */
-	// eslint-disable-next-line class-methods-use-this
 	async activatePolling(
 		node: INode,
 		workflow: Workflow,

@@ -261,7 +261,6 @@ export class WorkflowExecute {
 	/**
 	 * Checks the incoming connection does not receive any data
 	 */
-	// eslint-disable-next-line class-methods-use-this
 	incomingConnectionIsEmpty(
 		runData: IRunData,
 		inputConnections: IConnection[],

@@ -174,7 +174,6 @@ export class ActiveWebhooks {
 	 * @returns {string}
 	 * @memberof ActiveWebhooks
 	 */
-	// eslint-disable-next-line class-methods-use-this
 	getWebhookKey(httpMethod: WebhookHttpMethod, path: string, webhookId?: string): string {
 		if (webhookId) {
 			if (path.startsWith(webhookId)) {
