@@ -316,6 +316,11 @@ module.exports = {
 		'no-plusplus': 'off',
 
 		/**
+		 * https://eslint.org/docs/rules/class-methods-use-this
+		 */
+		'class-methods-use-this': 'off',
+
+		/**
 		 * https://eslint.org/docs/rules/eqeqeq
 		 */
 		eqeqeq: 'error',
