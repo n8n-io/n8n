@@ -37,7 +37,6 @@ export class ClassNameReplace implements INodeType {
 		// Itterates over all input items and add the key "myString" with the
 		// value the parameter "myString" resolves to.
 		// (This could be a different value for each item in case it contains an expression)
-		// eslint-disable-next-line no-plusplus
 		for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
 			myString = this.getNodeParameter('myString', itemIndex, '') as string;
 			item = items[itemIndex];
