@@ -161,7 +161,7 @@ export async function requestOAuth2(this: IAllExecuteFunctions, credentialsType:
 	const credentials = await this.getCredentials(credentialsType) as ICredentialDataDecryptedObject;
 
 	if (credentials === undefined) {
-		throw new Error('No credentials got returned!');
+		throw new Error('No credentials were returned!');
 	}
 
 	if (credentials.oauthTokenData === undefined) {
@@ -250,7 +250,7 @@ export async function requestOAuth1(this: IAllExecuteFunctions, credentialsType:
 	const credentials = await this.getCredentials(credentialsType) as ICredentialDataDecryptedObject;
 
 	if (credentials === undefined) {
-		throw new Error('No credentials got returned!');
+		throw new Error('No credentials were returned!');
 	}
 
 	if (credentials.oauthTokenData === undefined) {
