@@ -12,7 +12,6 @@ import { UserSettings } from 'n8n-core';
 import { getLogger } from '../../src/Logger';
 import { Db } from '../../src';
 
-// eslint-disable-next-line import/prefer-default-export
 export class ImportWorkflowsCommand extends Command {
 	static description = 'Import workflows';
 

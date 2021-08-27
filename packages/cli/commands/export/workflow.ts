@@ -10,7 +10,6 @@ import * as path from 'path';
 import { getLogger } from '../../src/Logger';
 import { Db } from '../../src';
 
-// eslint-disable-next-line import/prefer-default-export
 export class ExportWorkflowsCommand extends Command {
 	static description = 'Export workflows';
 

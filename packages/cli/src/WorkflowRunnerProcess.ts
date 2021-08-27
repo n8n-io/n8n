@@ -41,7 +41,6 @@ import { getLogger } from './Logger';
 
 import * as config from '../config';
 
-// eslint-disable-next-line import/prefer-default-export
 export class WorkflowRunnerProcess {
 	data: IWorkflowExecutionDataProcessWithExecution | undefined;
 

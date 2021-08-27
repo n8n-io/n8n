@@ -2746,7 +2746,6 @@ class App {
 	}
 }
 
-// eslint-disable-next-line import/prefer-default-export
 export async function start(): Promise<void> {
 	const PORT = config.get('port');
 	const ADDRESS = config.get('listen_address');

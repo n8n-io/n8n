@@ -7,7 +7,6 @@ import { IExecutionFlattedDb, IWorkflowDb } from '../..';
 import { resolveDataType } from '../utils';
 
 @Entity()
-// eslint-disable-next-line import/prefer-default-export
 export class ExecutionEntity implements IExecutionFlattedDb {
 	@PrimaryGeneratedColumn()
 	id: number;

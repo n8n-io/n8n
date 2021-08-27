@@ -39,7 +39,7 @@ class CredentialTypesClass implements ICredentialTypesInterface {
 
 let credentialTypesInstance: CredentialTypesClass | undefined;
 
-// eslint-disable-next-line import/prefer-default-export, @typescript-eslint/naming-convention
+// eslint-disable-next-line @typescript-eslint/naming-convention
 export function CredentialTypes(): CredentialTypesClass {
 	if (credentialTypesInstance === undefined) {
 		credentialTypesInstance = new CredentialTypesClass();

@@ -16,7 +16,6 @@ import { getTimestampSyntax, resolveDataType } from '../utils';
 import { ICredentialsDb } from '../..';
 
 @Entity()
-// eslint-disable-next-line import/prefer-default-export
 export class CredentialsEntity implements ICredentialsDb {
 	@PrimaryGeneratedColumn()
 	id: number;

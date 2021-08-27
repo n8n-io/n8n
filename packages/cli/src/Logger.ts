@@ -109,7 +109,7 @@ class Logger implements ILogger {
 
 let activeLoggerInstance: Logger | undefined;
 
-// eslint-disable-next-line import/prefer-default-export, @typescript-eslint/explicit-module-boundary-types
+// eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
 export function getLogger() {
 	if (activeLoggerInstance === undefined) {
 		activeLoggerInstance = new Logger();

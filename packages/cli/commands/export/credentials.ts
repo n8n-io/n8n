@@ -13,7 +13,6 @@ import * as path from 'path';
 import { getLogger } from '../../src/Logger';
 import { Db, ICredentialsDecryptedDb } from '../../src';
 
-// eslint-disable-next-line import/prefer-default-export
 export class ExportCredentialsCommand extends Command {
 	static description = 'Export credentials';
 

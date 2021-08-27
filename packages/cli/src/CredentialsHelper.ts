@@ -32,7 +32,6 @@ const mockNodeTypes: INodeTypes = {
 	},
 };
 
-// eslint-disable-next-line import/prefer-default-export
 export class CredentialsHelper extends ICredentialsHelper {
 	/**
 	 * Returns the credentials instance

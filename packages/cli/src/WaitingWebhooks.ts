@@ -28,7 +28,6 @@ import {
 	WorkflowExecuteAdditionalData,
 } from '.';
 
-// eslint-disable-next-line import/prefer-default-export
 export class WaitingWebhooks {
 	async executeWebhook(
 		httpMethod: WebhookHttpMethod,

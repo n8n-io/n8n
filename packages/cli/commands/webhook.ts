@@ -30,7 +30,6 @@ import { getLogger } from '../src/Logger';
 let activeWorkflowRunner: ActiveWorkflowRunner.ActiveWorkflowRunner | undefined;
 let processExistCode = 0;
 
-// eslint-disable-next-line import/prefer-default-export
 export class Webhook extends Command {
 	static description = 'Starts n8n webhook process. Intercepts only production URLs.';
 

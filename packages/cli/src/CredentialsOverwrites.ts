@@ -111,7 +111,7 @@ class CredentialsOverwritesClass {
 
 let credentialsOverwritesInstance: CredentialsOverwritesClass | undefined;
 
-// eslint-disable-next-line import/prefer-default-export, @typescript-eslint/naming-convention
+// eslint-disable-next-line @typescript-eslint/naming-convention
 export function CredentialsOverwrites(): CredentialsOverwritesClass {
 	if (credentialsOverwritesInstance === undefined) {
 		credentialsOverwritesInstance = new CredentialsOverwritesClass();

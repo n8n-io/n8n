@@ -349,7 +349,6 @@ class LoadNodesAndCredentialsClass {
 
 let packagesInformationInstance: LoadNodesAndCredentialsClass | undefined;
 
-// eslint-disable-next-line import/prefer-default-export
 export function LoadNodesAndCredentials(): LoadNodesAndCredentialsClass {
 	if (packagesInformationInstance === undefined) {
 		packagesInformationInstance = new LoadNodesAndCredentialsClass();

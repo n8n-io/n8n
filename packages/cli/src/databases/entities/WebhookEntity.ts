@@ -5,7 +5,6 @@ import { IWebhookDb } from '../../Interfaces';
 
 @Entity()
 @Index(['webhookId', 'method', 'pathLength'])
-// eslint-disable-next-line import/prefer-default-export
 export class WebhookEntity implements IWebhookDb {
 	@Column()
 	workflowId: number;

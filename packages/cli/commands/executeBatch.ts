@@ -41,7 +41,6 @@ import {
 	WorkflowRunner,
 } from '../src';
 
-// eslint-disable-next-line import/prefer-default-export
 export class ExecuteBatch extends Command {
 	static description = '\nExecutes multiple workflows once';
 

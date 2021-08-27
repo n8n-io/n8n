@@ -35,7 +35,7 @@ class NodeTypesClass implements INodeTypes {
 
 let nodeTypesInstance: NodeTypesClass | undefined;
 
-// eslint-disable-next-line import/prefer-default-export, @typescript-eslint/naming-convention
+// eslint-disable-next-line @typescript-eslint/naming-convention
 export function NodeTypes(): NodeTypesClass {
 	if (nodeTypesInstance === undefined) {
 		nodeTypesInstance = new NodeTypesClass();

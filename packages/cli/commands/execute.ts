@@ -23,7 +23,6 @@ import {
 
 import { getLogger } from '../src/Logger';
 
-// eslint-disable-next-line import/prefer-default-export
 export class Execute extends Command {
 	static description = '\nExecutes a given workflow';
 

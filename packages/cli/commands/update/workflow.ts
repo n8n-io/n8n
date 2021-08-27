@@ -9,7 +9,6 @@ import { Db, GenericHelpers } from '../../src';
 
 import { getLogger } from '../../src/Logger';
 
-// eslint-disable-next-line import/prefer-default-export
 export class UpdateWorkflowCommand extends Command {
 	static description = 'Update workflows';
 

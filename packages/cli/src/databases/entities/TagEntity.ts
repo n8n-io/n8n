@@ -17,7 +17,6 @@ import { WorkflowEntity } from './WorkflowEntity';
 import { getTimestampSyntax } from '../utils';
 
 @Entity()
-// eslint-disable-next-line import/prefer-default-export
 export class TagEntity implements ITagDb {
 	@PrimaryGeneratedColumn()
 	id: number;

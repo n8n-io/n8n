@@ -6,7 +6,6 @@ import { IDataObject } from 'n8n-workflow';
 
 import { Db } from '../../src';
 
-// eslint-disable-next-line import/prefer-default-export
 export class ListWorkflowCommand extends Command {
 	static description = '\nList workflows';
 

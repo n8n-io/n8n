@@ -39,7 +39,6 @@ const open = require('open');
 let activeWorkflowRunner: ActiveWorkflowRunner.ActiveWorkflowRunner | undefined;
 let processExistCode = 0;
 
-// eslint-disable-next-line import/prefer-default-export
 export class Start extends Command {
 	static description = 'Starts n8n. Makes Web-UI available and starts active workflows';
 

@@ -57,7 +57,6 @@ import {
 } from '.';
 import * as Queue from './Queue';
 
-// eslint-disable-next-line import/prefer-default-export
 export class WorkflowRunner {
 	activeExecutions: ActiveExecutions.ActiveExecutions;
 

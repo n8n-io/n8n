@@ -3,7 +3,7 @@ import { INode, IWorkflowCredentials } from 'n8n-workflow';
 // eslint-disable-next-line import/no-cycle
 import { Db } from '.';
 
-// eslint-disable-next-line import/prefer-default-export, @typescript-eslint/naming-convention
+// eslint-disable-next-line @typescript-eslint/naming-convention
 export async function WorkflowCredentials(nodes: INode[]): Promise<IWorkflowCredentials> {
 	// Go through all nodes to find which credentials are needed to execute the workflow
 	const returnCredentials: IWorkflowCredentials = {};

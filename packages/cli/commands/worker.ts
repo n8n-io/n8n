@@ -48,7 +48,6 @@ import { getLogger } from '../src/Logger';
 import * as config from '../config';
 import * as Queue from '../src/Queue';
 
-// eslint-disable-next-line import/prefer-default-export
 export class Worker extends Command {
 	static description = '\nStarts a n8n worker';
 
