@@ -1,5 +1,4 @@
 import {
-	BINARY_ENCODING,
 	IExecuteFunctions,
 } from 'n8n-core';
 
@@ -1686,6 +1685,8 @@ export class Salesforce implements INodeType {
 						}
 						if (items[i].binary && items[i].binary![binaryPropertyName]) {
 							const binaryData = items[i].binary![binaryPropertyName];
+							const dataBuffer = await this.helpers.getBinaryDataBuffer(i, binaryPropertyName);
+
 							body.entity_content['PathOnClient'] = `${title}.${binaryData.fileExtension}`;
 							data = {
 								entity_content: {
@@ -1695,7 +1696,7 @@ export class Salesforce implements INodeType {
 									},
 								},
 								VersionData: {
-									value: Buffer.from(binaryData.data, BINARY_ENCODING),
+									value: dataBuffer,
 									options: {
 										filename: binaryData.fileName,
 										contentType: binaryData.mimeType,

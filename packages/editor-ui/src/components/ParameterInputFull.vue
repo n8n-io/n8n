@@ -3,7 +3,7 @@
 		<el-col :span="isMultiLineParameter ? 24 : 10" class="parameter-name" :class="{'multi-line': isMultiLineParameter}">
 			<span class="title" :title="parameter.displayName">{{parameter.displayName}}</span>:
 			<el-tooltip class="parameter-info" placement="top" v-if="parameter.description" effect="light">
-				<div slot="content" v-html="parameter.description"></div>
+				<div slot="content" v-html="addTargetBlank(parameter.description)"></div>
 				<font-awesome-icon icon="question-circle" />
 			</el-tooltip>
 		</el-col>
@@ -21,6 +21,7 @@ import {
 } from '@/Interface';
 
 import ParameterInput from '@/components/ParameterInput.vue';
+import { addTargetBlank } from './helpers';
 
 export default Vue
 	.extend({
@@ -51,6 +52,7 @@ export default Vue
 			'value',
 		],
 		methods: {
+			addTargetBlank,
 			getArgument (argumentName: string): string | number | boolean | undefined {
 				if (this.parameter.typeOptions === undefined) {
 					return undefined;

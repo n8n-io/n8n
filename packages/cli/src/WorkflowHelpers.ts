@@ -144,10 +144,7 @@ export async function executeErrorWorkflow(workflowId: string, workflowErrorData
 			},
 		};
 
-		const credentials = await WorkflowCredentials(workflowData.nodes);
-
 		const runData: IWorkflowExecutionDataProcess = {
-			credentials,
 			executionMode,
 			executionData: runExecutionData,
 			workflowData,
@@ -264,15 +261,23 @@ export function getCredentialsDataWithParents(type: string): ICredentialsTypeDat
  * @param {IWorkflowCredentials} credentials The credentials which have to be able to be resolved
  * @returns {ICredentialsTypeData}
  */
-export function getCredentialsData(credentials: IWorkflowCredentials): ICredentialsTypeData {
+export function getCredentialsDataByNodes(nodes: INode[]): ICredentialsTypeData {
+
 	const credentialTypeData: ICredentialsTypeData = {};
 
-	for (const credentialType of Object.keys(credentials)) {
-		if (credentialTypeData[credentialType] !== undefined) {
-			continue;
-		}
+	for (const node of nodes) {
+		const credentialsUsedByThisNode = node.credentials;
+		if (credentialsUsedByThisNode) {
+			// const credentialTypesUsedByThisNode = Object.keys(credentialsUsedByThisNode!);
+			for (const credentialType of Object.keys(credentialsUsedByThisNode!)) {
+				if (credentialTypeData[credentialType] !== undefined) {
+					continue;
+				}
 
-		Object.assign(credentialTypeData, getCredentialsDataWithParents(credentialType));
+				Object.assign(credentialTypeData, getCredentialsDataWithParents(credentialType));
+			}
+		}
+		
 	}
 
 	return credentialTypeData;
