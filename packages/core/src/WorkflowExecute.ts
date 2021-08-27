@@ -6,7 +6,6 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 /* eslint-disable no-continue */
 /* eslint-disable no-prototype-builtins */
-/* eslint-disable no-plusplus */
 /* eslint-disable no-restricted-syntax */
 /* eslint-disable no-param-reassign */
 /* eslint-disable @typescript-eslint/prefer-nullish-coalescing */
