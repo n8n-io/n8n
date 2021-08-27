@@ -49,7 +49,7 @@ export async function prepareUserSettings(): Promise<IUserSettings> {
 		userSettings.encryptionKey = randomBytes(24).toString('base64');
 	}
 
-	console.log(`UserSettings got generated and saved to: ${settingsPath}`);
+	console.log(`UserSettings were generated and saved to: ${settingsPath}`);
 
 	return writeUserSettings(userSettings, settingsPath);
 }
