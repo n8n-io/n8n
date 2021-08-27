@@ -814,7 +814,6 @@ export async function prepareOutputData(
 	// TODO: Check if node has output with that index
 	const returnData = [];
 
-	// eslint-disable-next-line no-plusplus
 	for (let i = 0; i < outputIndex; i++) {
 		returnData.push([]);
 	}
@@ -1280,7 +1279,6 @@ export function getParameterIssues(
 			) {
 				// Multiple can be set so will be an array of objects
 				if (Array.isArray(value)) {
-					// eslint-disable-next-line no-plusplus
 					for (let i = 0; i < (value as INodeParameters[]).length; i++) {
 						for (const option of propertyOptions.values) {
 							checkChildNodeProperties.push({
