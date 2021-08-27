@@ -116,7 +116,6 @@ export class Start extends Command {
 
 			let count = 0;
 			while (executingWorkflows.length !== 0) {
-				// eslint-disable-next-line no-plusplus
 				if (count++ % 4 === 0) {
 					console.log(`Waiting for ${executingWorkflows.length} active executions to finish...`);
 					// eslint-disable-next-line array-callback-return

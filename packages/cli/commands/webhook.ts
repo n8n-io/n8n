@@ -64,7 +64,6 @@ export class Webhook extends Command {
 
 			let count = 0;
 			while (executingWorkflows.length !== 0) {
-				// eslint-disable-next-line no-plusplus
 				if (count++ % 4 === 0) {
 					LoggerProxy.info(
 						`Waiting for ${executingWorkflows.length} active executions to finish...`,

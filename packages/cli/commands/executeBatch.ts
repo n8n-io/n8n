@@ -6,7 +6,6 @@
 /* eslint-disable no-param-reassign */
 /* eslint-disable class-methods-use-this */
 /* eslint-disable @typescript-eslint/unbound-method */
-/* eslint-disable no-plusplus */
 /* eslint-disable no-console */
 import * as fs from 'fs';
 import { Command, flags } from '@oclif/command';
@@ -137,7 +136,6 @@ export class ExecuteBatch extends Command {
 
 		let count = 0;
 		while (executingWorkflows.length !== 0) {
-			// eslint-disable-next-line no-plusplus
 			if (count++ % 4 === 0) {
 				console.log(`Waiting for ${executingWorkflows.length} active executions to finish...`);
 				executingWorkflows.map((execution) => {

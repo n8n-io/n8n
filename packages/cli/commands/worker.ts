@@ -99,7 +99,6 @@ export class Worker extends Command {
 			// Wait for active workflow executions to finish
 			let count = 0;
 			while (Object.keys(Worker.runningJobs).length !== 0) {
-				// eslint-disable-next-line no-plusplus
 				if (count++ % 4 === 0) {
 					const waitLeft = Math.ceil((stopTime - new Date().getTime()) / 1000);
 					LoggerProxy.info(

@@ -1,6 +1,5 @@
 /* eslint-disable no-console */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
-/* eslint-disable no-plusplus */
 import { Command, flags } from '@oclif/command';
 
 import { LoggerProxy } from 'n8n-workflow';

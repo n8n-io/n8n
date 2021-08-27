@@ -1,5 +1,4 @@
 /* eslint-disable @typescript-eslint/restrict-plus-operands */
-/* eslint-disable no-plusplus */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable no-console */
 import { Command, flags } from '@oclif/command';
