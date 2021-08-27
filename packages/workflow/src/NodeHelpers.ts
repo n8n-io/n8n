@@ -461,10 +461,10 @@ export function getParamterResolveOrder(
 	let lastIndexLength = indexToResolve.length;
 	let lastIndexReduction = -1;
 
-	let itterations = 0;
+	let iterations = 0;
 
 	while (indexToResolve.length !== 0) {
-		itterations += 1;
+		iterations += 1;
 
 		index = indexToResolve.shift() as number;
 		property = nodePropertiesArray[index];
@@ -495,11 +495,11 @@ export function getParamterResolveOrder(
 		resolvedParamters.push(property.name);
 
 		if (indexToResolve.length < lastIndexLength) {
-			lastIndexReduction = itterations;
+			lastIndexReduction = iterations;
 		}
 
-		if (itterations > lastIndexReduction + nodePropertiesArray.length) {
-			throw new Error('Could not resolve parameter depenencies. Max itterations got reached!');
+		if (iterations > lastIndexReduction + nodePropertiesArray.length) {
+			throw new Error('Could not resolve parameter depenencies. Max iterations got reached!');
 		}
 		lastIndexLength = indexToResolve.length;
 	}
