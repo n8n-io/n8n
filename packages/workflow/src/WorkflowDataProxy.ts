@@ -360,7 +360,6 @@ export class WorkflowDataProxy {
 	 * @returns
 	 * @memberof WorkflowDataGetter
 	 */
-	// eslint-disable-next-line class-methods-use-this
 	private envGetter() {
 		return new Proxy(
 			{},

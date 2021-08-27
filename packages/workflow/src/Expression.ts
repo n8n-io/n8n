@@ -39,7 +39,6 @@ export class Expression {
 	 * @returns {string}
 	 * @memberof Workflow
 	 */
-	// eslint-disable-next-line class-methods-use-this
 	convertObjectValueToString(value: object): string {
 		const typeName = Array.isArray(value) ? 'Array' : 'Object';
 		return `[${typeName}: ${JSON.stringify(value)}]`;

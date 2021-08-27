@@ -129,7 +129,6 @@ export class Workflow {
 	 * @returns {IConnections}
 	 * @memberof Workflow
 	 */
-	// eslint-disable-next-line class-methods-use-this
 	__getConnectionsByDestination(connections: IConnections): IConnections {
 		const returnConnection: IConnections = {};
 

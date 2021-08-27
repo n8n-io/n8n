@@ -163,7 +163,7 @@ abstract class NodeError extends Error {
 	/**
 	 * Check if a value is an object with at least one key, i.e. it can be traversed.
 	 */
-	// eslint-disable-next-line class-methods-use-this, @typescript-eslint/no-explicit-any
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	protected isTraversableObject(value: any): value is JsonObject {
 		return (
 			value && typeof value === 'object' && !Array.isArray(value) && !!Object.keys(value).length
