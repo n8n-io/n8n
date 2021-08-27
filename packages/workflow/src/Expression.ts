@@ -24,7 +24,6 @@ tmpl.brackets.set('{{ }}');
 // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
 tmpl.tmpl.errorHandler = () => {};
 
-// eslint-disable-next-line import/prefer-default-export
 export class Expression {
 	workflow: Workflow;
 

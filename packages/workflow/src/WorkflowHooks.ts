@@ -6,7 +6,6 @@ import {
 	WorkflowExecuteMode,
 } from './Interfaces';
 
-// eslint-disable-next-line import/prefer-default-export
 export class WorkflowHooks {
 	mode: WorkflowExecuteMode;
 

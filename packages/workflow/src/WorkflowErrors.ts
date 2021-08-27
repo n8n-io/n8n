@@ -4,7 +4,6 @@ import { INode } from '.';
 /**
  * Class for instantiating an operational error, e.g. a timeout error.
  */
-// eslint-disable-next-line import/prefer-default-export
 export class WorkflowOperationError extends Error {
 	node: INode | undefined;
 

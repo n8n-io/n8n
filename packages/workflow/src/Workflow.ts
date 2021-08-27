@@ -9,7 +9,6 @@
 /* eslint-disable no-underscore-dangle */
 /* eslint-disable no-continue */
 /* eslint-disable no-restricted-syntax */
-/* eslint-disable import/prefer-default-export */
 /* eslint-disable import/no-cycle */
 // eslint-disable-next-line import/no-cycle
 import {
