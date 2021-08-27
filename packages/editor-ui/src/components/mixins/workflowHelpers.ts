@@ -33,6 +33,7 @@ import {
 	IWorkflowDataUpdate,
 	XYPositon,
 	ITag,
+	IUpdateInformation,
 } from '../../Interface';
 
 import { externalHooks } from '@/components/mixins/externalHooks';
@@ -452,10 +453,12 @@ export const workflowHelpers = mixins(
 					const workflowDataRequest: IWorkflowDataUpdate = await this.getWorkflowDataToSave();
 					// make sure that the new ones are not active
 					workflowDataRequest.active = false;
+					const changedNodes = {} as IDataObject;
 					if (resetWebhookUrls) {
 						workflowDataRequest.nodes = workflowDataRequest.nodes!.map(node => {
 							if (node.webhookId) {
 								node.webhookId = uuidv4();
+								changedNodes[node.name] = node.webhookId;
 							}
 							return node;
 						});
@@ -470,10 +473,20 @@ export const workflowHelpers = mixins(
 					}
 					const workflowData = await this.restApi().createNewWorkflow(workflowDataRequest);
 
-					this.$store.commit('setWorkflow', workflowData);
+					this.$store.commit('setActive', workflowData.active || false);
+					this.$store.commit('setWorkflowId', workflowData.id);
 					this.$store.commit('setWorkflowName', {newName: workflowData.name, setStateDirty: false});
+					this.$store.commit('setWorkflowSettings', workflowData.settings || {});
 					this.$store.commit('setStateDirty', false);
-
+					Object.keys(changedNodes).forEach((nodeName) => {
+						const changes = {
+							key: 'webhookId',
+							value: changedNodes[nodeName],
+							name: nodeName,
+						} as IUpdateInformation;
+						this.$store.commit('setNodeValue', changes);
+					});
+					
 					const createdTags = (workflowData.tags || []) as ITag[];
 					const tagIds = createdTags.map((tag: ITag): string => tag.id);
 					this.$store.commit('setWorkflowTagIds', tagIds);
