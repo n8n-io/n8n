@@ -329,5 +329,10 @@ module.exports = {
 		 * https://eslint.org/docs/rules/prefer-spread
 		 */
 		'prefer-spread': 'error',
+
+		/**
+		 * https://github.com/import-js/eslint-plugin-import/blob/main/docs/rules/prefer-default-export.md
+		 */
+		'import/prefer-default-export': 'off',
 	},
 };
