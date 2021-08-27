@@ -311,6 +311,11 @@ module.exports = {
 		// ----------------------------------
 
 		/**
+		 * https://eslint.org/docs/rules/no-plusplus
+		 */
+		'no-plusplus': 'off',
+
+		/**
 		 * https://eslint.org/docs/rules/eqeqeq
 		 */
 		eqeqeq: 'error',
