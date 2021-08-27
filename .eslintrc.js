@@ -9,7 +9,6 @@ module.exports = {
 	parserOptions: {
 		project: ['./packages/*/tsconfig.json'],
 		sourceType: 'module',
-		extraFileExtensions: ['.vue'],
 	},
 	ignorePatterns: [
 		'.eslintrc.js',
