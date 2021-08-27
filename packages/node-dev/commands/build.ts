@@ -3,7 +3,6 @@ import { Command, flags } from '@oclif/command';
 
 import { buildFiles, IBuildOptions } from '../src';
 
-// eslint-disable-next-line import/prefer-default-export
 export class Build extends Command {
 	static description = 'Builds credentials and nodes and copies it to n8n custom extension folder';
 

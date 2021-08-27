@@ -16,7 +16,6 @@ const fsCopyFile = promisify(fs.copyFile);
  * @param {object} replaceValues The values to replace in the template file
  * @returns {Promise<void>}
  */
-// eslint-disable-next-line import/prefer-default-export
 export async function createTemplate(
 	sourceFilePath: string,
 	destinationFilePath: string,

@@ -14,7 +14,6 @@ const { promisify } = require('util');
 
 const fsAccess = promisify(fs.access);
 
-// eslint-disable-next-line import/prefer-default-export
 export class New extends Command {
 	static description = 'Create new credentials/node';
 
