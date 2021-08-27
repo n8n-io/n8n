@@ -39,7 +39,6 @@ export class Queue {
 	 * @param job A Bull.Job instance
 	 * @returns boolean true if we were able to securely stop the job
 	 */
-	// eslint-disable-next-line class-methods-use-this
 	async stopJob(job: Bull.Job): Promise<boolean> {
 		if (await job.isActive()) {
 			// Job is already running so tell it to stop

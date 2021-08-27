@@ -4,7 +4,6 @@
 /* eslint-disable no-console */
 /* eslint-disable no-await-in-loop */
 /* eslint-disable no-restricted-syntax */
-/* eslint-disable class-methods-use-this */
 /* eslint-disable @typescript-eslint/no-floating-promises */
 /* eslint-disable @typescript-eslint/no-shadow */
 /* eslint-disable @typescript-eslint/no-unsafe-call */
@@ -310,7 +309,6 @@ export class ActiveWorkflowRunner {
 	 * @returns {Promise<string[]>}
 	 * @memberof ActiveWorkflowRunner
 	 */
-	// eslint-disable-next-line class-methods-use-this
 	async getWebhookMethods(path: string): Promise<string[]> {
 		const webhooks = (await Db.collections.Webhook?.find({ webhookPath: path })) as IWebhookDb[];
 

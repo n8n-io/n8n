@@ -41,7 +41,6 @@ export class CredentialsHelper extends ICredentialsHelper {
 	 * @returns {Credentials}
 	 * @memberof CredentialsHelper
 	 */
-	// eslint-disable-next-line class-methods-use-this
 	async getCredentials(name: string, type: string): Promise<Credentials> {
 		const credentialsDb = await Db.collections.Credentials?.find({ type });
 

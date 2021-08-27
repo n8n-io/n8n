@@ -4,7 +4,6 @@
 /* eslint-disable no-await-in-loop */
 /* eslint-disable no-async-promise-executor */
 /* eslint-disable no-param-reassign */
-/* eslint-disable class-methods-use-this */
 /* eslint-disable @typescript-eslint/unbound-method */
 /* eslint-disable no-console */
 import * as fs from 'fs';
@@ -160,7 +159,7 @@ export class ExecuteBatch extends Command {
 		return JSON.stringify(data, null, 2);
 	}
 
-	// eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types, class-methods-use-this
+	// eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
 	shouldBeConsideredAsWarning(errorMessage: string) {
 		const warningStrings = [
 			'refresh token is invalid',

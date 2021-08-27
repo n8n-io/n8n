@@ -119,7 +119,6 @@ export class Worker extends Command {
 		process.exit(Worker.processExistCode);
 	}
 
-	// eslint-disable-next-line class-methods-use-this
 	async runJob(job: Bull.Job, nodeTypes: INodeTypes): Promise<IBullJobResponse> {
 		const jobData = job.data as IBullJobData;
 		const executionDb = (await Db.collections.Execution!.findOne(

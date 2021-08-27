@@ -228,7 +228,6 @@ class LoadNodesAndCredentialsClass {
 	 * @param {string} filePath The file path to a `*.node.js` file
 	 * @returns {CodexData}
 	 */
-	// eslint-disable-next-line class-methods-use-this
 	getCodex(filePath: string): CodexData {
 		// eslint-disable-next-line global-require, import/no-dynamic-require, @typescript-eslint/no-var-requires
 		const { categories, subcategories, alias } = require(`${filePath}on`); // .js to .json

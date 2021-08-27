@@ -85,7 +85,6 @@ export class WorkflowRunner {
 	 * @param {IProcessMessageDataHook} hookData
 	 * @memberof WorkflowRunner
 	 */
-	// eslint-disable-next-line class-methods-use-this
 	processHookMessage(workflowHooks: WorkflowHooks, hookData: IProcessMessageDataHook) {
 		// eslint-disable-next-line @typescript-eslint/no-floating-promises
 		workflowHooks.executeHookFunctions(hookData.hook, hookData.parameters);

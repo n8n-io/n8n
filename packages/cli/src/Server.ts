@@ -255,7 +255,6 @@ class App {
 	 * @returns {number}
 	 * @memberof App
 	 */
-	// eslint-disable-next-line class-methods-use-this
 	getCurrentDate(): Date {
 		return new Date();
 	}
