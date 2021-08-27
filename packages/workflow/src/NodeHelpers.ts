@@ -590,10 +590,7 @@ export function getNodeParameters(
 			!returnNoneDisplayed &&
 			!displayParameter(nodeValuesDisplayCheck, nodeProperties, nodeValuesRoot)
 		) {
-			if (!returnNoneDisplayed) {
-				continue;
-			}
-			if (!returnDefaults) {
+			if (!returnNoneDisplayed || !returnDefaults) {
 				continue;
 			}
 		}
