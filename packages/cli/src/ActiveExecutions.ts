@@ -1,3 +1,7 @@
+/* eslint-disable prefer-template */
+/* eslint-disable @typescript-eslint/restrict-plus-operands */
+/* eslint-disable @typescript-eslint/no-unnecessary-type-assertion */
+/* eslint-disable no-param-reassign */
 /* eslint-disable @typescript-eslint/no-unsafe-call */
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
@@ -62,9 +66,13 @@ export class ActiveExecutions {
 
 			const execution = ResponseHelper.flattenExecutionData(fullExecutionData);
 
-			const executionResult = await Db.collections.Execution!.save(execution as IExecutionFlattedDb);
-			// @ts-ignore
-			executionId = typeof executionResult.id === "object" ? executionResult.id!.toString() : executionResult.id + "";
+			const executionResult = await Db.collections.Execution!.save(
+				execution as IExecutionFlattedDb,
+			);
+			executionId =
+				typeof executionResult.id === 'object'
+					? executionResult.id!.toString()
+					: executionResult.id + '';
 		} else {
 			// Is an existing execution we want to finish so update in DB
 
