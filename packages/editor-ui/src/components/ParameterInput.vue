@@ -808,23 +808,23 @@ export default mixins(
 }
 
 .list-option {
-	max-width: 350px;
+	max-width: 340px;
 	margin: 6px 0;
+	white-space: normal;
 
 	.option-headline {
-		font-weight: 600;
-		line-height: 1.3;
+		font-weight: var(--font-weight-bold);
+		line-height: var(--font-line-height-regular);
+		overflow-wrap: break-word;
 	}
 
 	.option-description {
-		font-weight: 400;
-		white-space: normal;
-		line-height: 1.5;
+		margin-top: 2px;
+		font-size: var(--font-size-2xs);
+		font-weight: var(--font-weight-regular);
+		line-height: var(--font-line-height-xloose);
+		color: $--custom-font-very-light;
 	}
-}
-
-li:not(.selected) .option-description {
-	color: $--custom-font-very-light;
 }
 
 .edit-window-button {
