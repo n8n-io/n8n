@@ -331,11 +331,6 @@ module.exports = {
 		'object-shorthand': 'error',
 
 		/**
-		 * https://eslint.org/docs/rules/one-var
-		 */
-		'one-var': [ 'error', 'consecutive' ],
-
-		/**
 		 * https://eslint.org/docs/rules/prefer-const
 		 */
 		'prefer-const': 'error',
