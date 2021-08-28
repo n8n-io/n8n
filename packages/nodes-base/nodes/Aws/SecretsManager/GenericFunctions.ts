@@ -48,7 +48,6 @@ export async function awsApiRequest(this: IHookFunctions | IExecuteFunctions | I
 		uri: endpoint.href,
 		body: signOpts.body,
 	};
-	console.log(options.body)
 
 	try {
 		return await this.helpers.request!(options);
