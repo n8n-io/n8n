@@ -379,6 +379,7 @@
       "dist/nodes/ErrorTrigger.node.js",
       "dist/nodes/ERPNext/ERPNext.node.js",
       "dist/nodes/Eventbrite/EventbriteTrigger.node.js",
+      "dist/nodes/Eventbrite/Eventbrite.node.js",
       "dist/nodes/ExecuteCommand.node.js",
       "dist/nodes/ExecuteWorkflow.node.js",
       "dist/nodes/Facebook/FacebookGraphApi.node.js",
