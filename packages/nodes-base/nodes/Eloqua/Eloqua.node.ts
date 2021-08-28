@@ -1,4 +1,3 @@
-import { customerAdditionalFieldsOptions } from './../QuickBooks/descriptions/Customer/CustomerAdditionalFieldsOptions';
 import { IExecuteFunctions } from 'n8n-core';
 
 import {
@@ -7,9 +6,7 @@ import {
 	INodeExecutionData,
 	INodePropertyOptions,
 	INodeType,
-	INodeTypeDescription,
-	NodeApiError,
-	NodeOperationError
+	INodeTypeDescription
 } from 'n8n-workflow';
 
 import { eloquaApiRequest } from './GenericFunctions';
@@ -69,7 +66,7 @@ export class Eloqua implements INodeType {
 				type: 'options',
 				displayOptions: {
 					show: {
-						resource: ['contact', 'customObject']
+						resource: ['contact', 'customObject', 'customObjectData']
 					}
 				},
 				options: [
@@ -117,7 +114,7 @@ export class Eloqua implements INodeType {
 						resource: ['contact']
 					}
 				},
-				description: 'The name of the custom object.'
+				description: 'The email address of the contact.'
 			},
 			{
 				displayName: 'ID',
@@ -131,7 +128,7 @@ export class Eloqua implements INodeType {
 						resource: ['contact']
 					}
 				},
-				description: 'The name of the custom object.'
+				description: 'The ID of the contact.'
 			},
 			{
 				displayName: 'Additional Fields',
@@ -140,7 +137,7 @@ export class Eloqua implements INodeType {
 				displayOptions: {
 					show: {
 						operation: ['create', 'update'],
-						resource: ['conctact']
+						resource: ['contact']
 					}
 				},
 				default: {},
@@ -319,24 +316,49 @@ export class Eloqua implements INodeType {
 				]
 			},
 			{
-				displayName: 'Custom Additional Object Fields',
-				name: 'customAdditionalFields',
-				type: 'collection',
+				displayName: 'Custom Contact Fields',
+				name: 'customFields',
+				placeholder: 'Add Custom Field',
+				description: 'Adds a custom field to set the value of.',
+				type: 'fixedCollection',
 				typeOptions: {
 					multipleValues: true
 				},
-				placeholder: 'Add Custom Object Field',
 				displayOptions: {
 					show: {
 						operation: ['create', 'update'],
-						resource: ['customObject']
+						resource: ['contact']
 					}
 				},
 				default: {},
-				options: []
+				options: [
+					{
+						name: 'property',
+						displayName: 'Field',
+						values: [
+							{
+								displayName: 'Field ID',
+								name: 'id',
+								type: 'options',
+								typeOptions: {
+									loadOptionsMethod: 'getContactFields'
+								},
+								default: '',
+								description: 'ID of the field to set.'
+							},
+							{
+								displayName: 'Field Value',
+								name: 'value',
+								type: 'string',
+								default: '',
+								description: 'Value of the field to set.'
+							}
+						]
+					}
+				]
 			},
 			// ----------------------------------
-			//         QueryParameters - Contacts - getAll
+			//         QueryParameters - contacts - getAll
 			// ----------------------------------
 			{
 				displayName: 'Query Parameters',
@@ -345,7 +367,7 @@ export class Eloqua implements INodeType {
 				displayOptions: {
 					show: {
 						operation: ['getAll'],
-						resource: ['customObject']
+						resource: ['contact']
 					}
 				},
 				default: {},
@@ -439,7 +461,7 @@ export class Eloqua implements INodeType {
 						resource: ['customObject']
 					}
 				},
-				description: 'The name of the custom object.'
+				description: 'The ID of the custom object.'
 			},
 			{
 				displayName: 'Additional Fields',
@@ -497,13 +519,14 @@ export class Eloqua implements INodeType {
 				]
 			},
 			{
-				displayName: 'Custom Additional Object Fields',
-				name: 'customAdditionalFields',
-				type: 'collection',
+				displayName: 'Custom custom Object Fields',
+				name: 'customFields',
+				placeholder: 'Add Custom Field',
+				description: 'Adds a custom field to set the value of.',
+				type: 'fixedCollection',
 				typeOptions: {
 					multipleValues: true
 				},
-				placeholder: 'Add Custom Object Field',
 				displayOptions: {
 					show: {
 						operation: ['create', 'update'],
@@ -513,57 +536,104 @@ export class Eloqua implements INodeType {
 				default: {},
 				options: [
 					{
-						displayName: 'Name',
-						name: 'name',
-						default: '',
-						type: 'string',
-						description: 'Name of the Custom Object Field'
-					},
-					{
-						displayName: 'Data Type',
-						name: 'dataType',
-						default: '',
-						type: 'string',
-						description: 'Data Type of the Custom Object Field'
-					},
-					{
-						displayName: 'Display Type',
-						name: 'displayType',
-						default: '',
-						type: 'string',
-						description: 'Display Type of the Custom Object Field'
-					},
-					{
-						displayName: 'Custom Key Value Pairs',
-						name: 'keyValuePair',
-						placeholder: 'Add custom key/value pair',
-						description:
-							'Adds a custom key value pair to set also values which have not been predefined.',
-						type: 'fixedCollection',
-						typeOptions: {
-							multipleValues: false
-						},
-						default: {},
-						options: [
+						displayName: 'Field',
+						name: 'fields',
+						values: [
 							{
-								name: 'property',
-								displayName: 'Custom Field',
-								values: [
+								displayName: 'Name',
+								name: 'name',
+								default: '',
+								required: true,
+								type: 'string',
+								description: 'Name of the Custom Object Field'
+							},
+							{
+								displayName: 'Data Type',
+								name: 'dataType',
+								default: 'text',
+								required: true,
+								type: 'options',
+								options: [
 									{
-										displayName: 'Key',
-										name: 'key',
-										type: 'string',
-										default: '',
-										description: 'Key of the field to set.'
+										name: 'Text',
+										value: 'text'
 									},
 									{
-										displayName: 'Value',
-										name: 'value',
-										type: 'string',
-										default: '',
-										description: 'Value of the field to set.'
+										name: 'Large Text',
+										value: 'largeText'
+									},
+									{
+										name: 'Number',
+										value: 'number'
+									},
+									{
+										name: 'numeric',
+										value: 'numeric'
+									},
+									{
+										name: 'Date',
+										value: 'date'
 									}
-								]
+								],
+								description: 'Data Type of the Custom Object Field'
+							},
+							{
+								displayName: 'Display Type',
+								name: 'displayType',
+								default: 'text',
+								required: true,
+								type: 'options',
+								options: [
+									{
+										name: 'Text',
+										value: 'text'
+									},
+									{
+										name: 'Text Area',
+										value: 'textArea'
+									},
+									{
+										name: 'Single Select',
+										value: 'singleSelect'
+									},
+									{
+										name: 'Multi Select',
+										value: 'multiSelect'
+									},
+									{
+										name: 'Radio Button',
+										value: 'radio'
+									},
+									{
+										name: 'Checkbox',
+										value: 'checkbox'
+									},
+									{
+										name: 'Hidden',
+										value: 'hidden'
+									},
+									{
+										name: 'Submit',
+										value: 'submit'
+									}
+								],
+								description: 'Display Type of the Custom Object Field'
+							},
+							{
+								displayName: 'Field Key',
+								name: 'key',
+								type: 'string',
+								required: true,
+								default: '',
+								description: 'Key of the field to set.'
+							},
+							{
+								displayName: 'Field Value',
+								name: 'value',
+								type: 'string',
+								required: true,
+								default: '',
+								description: 'Value of the field to set.'
 							}
 						]
 					}
@@ -635,8 +705,240 @@ export class Eloqua implements INodeType {
 							'Specifies the search criteria used to retrieve entities. See the tutorial for information about using this parameter.'
 					}
 				]
+			},
+			// ----------------------------------
+			//         fields - Custom Object Data
+			// ----------------------------------
+			{
+				displayName: 'Parent ID',
+				name: 'parentId',
+				type: 'string',
+				default: '',
+				required: true,
+				displayOptions: {
+					show: {
+						operation: ['create', 'update', 'delete', 'get', 'getAll'],
+						resource: ['customObjectData']
+					}
+				},
+				description: 'The Id of the custom object data parent.'
+			},
+			{
+				displayName: 'ID',
+				name: 'id',
+				type: 'string',
+				default: '',
+				required: true,
+				displayOptions: {
+					show: {
+						operation: ['update', 'get', 'delete'],
+						resource: ['customObjectData']
+					}
+				},
+				description: 'The ID of the custom object data entry.'
+			},
+			{
+				displayName: 'Additional Fields',
+				name: 'optionalFields',
+				type: 'collection',
+				displayOptions: {
+					show: {
+						operation: ['create', 'update'],
+						resource: ['customObjectData']
+					}
+				},
+				default: {},
+				description: 'Additional optional Fields of the custom Object',
+				placeholder: 'Add Field',
+				options: [
+					{
+						displayName: 'Current Status',
+						name: 'currentStatus',
+						type: 'string',
+						default: '',
+						description: 'The description of the custom object.'
+					},
+					{
+						displayName: 'Name',
+						name: 'name',
+						type: 'string',
+						default: '',
+						description: 'The name of the custom object data.'
+					},
+					{
+						displayName: 'Description',
+						name: 'description',
+						type: 'string',
+						default: '',
+						description: 'The description of the custom object.'
+					},
+					{
+						displayName: 'Source Template ID',
+						name: 'sourceTemplateId',
+						type: 'string',
+						default: '',
+						description: 'Id of the template used to create the asset.'
+					},
+					{
+						displayName: 'Contact ID',
+						name: 'contactId',
+						type: 'string',
+						default: '',
+						description:
+							'The contact record Id associated to this custom object data.'
+					},
+					{
+						displayName: 'Unique Code',
+						name: 'uniqueCode',
+						type: 'string',
+						default: '',
+						description: 'The unique code associated to the custom object data.'
+					},
+					{
+						displayName: 'Custom Object Record Status',
+						name: 'customObjectRecordStatus',
+						type: 'string',
+						default: '',
+						description: 'The record status of the custom object data.'
+					},
+					{
+						displayName: 'Is Mapped?',
+						name: 'isMapped',
+						type: 'string',
+						default: '',
+						description:
+							'Whether or not the custom object data is mapped to a custom object.'
+					}
+				]
+			},
+			{
+				displayName: 'Custom custom Object Fields',
+				name: 'customObjectDataCustomFields',
+				placeholder: 'Add Custom Field',
+				description: 'Adds a custom field to set the value of.',
+				type: 'fixedCollection',
+				typeOptions: {
+					multipleValues: true
+				},
+				displayOptions: {
+					show: {
+						operation: ['create', 'update'],
+						resource: ['customObjectData']
+					}
+				},
+				default: {},
+				options: [
+					{
+						displayName: 'Field',
+						name: 'fields',
+						values: [
+							{
+								displayName: 'Field ID',
+								name: 'id',
+								type: 'string',
+								required: true,
+								default: '',
+								description: 'ID of the field to set.'
+							},
+							{
+								displayName: 'Field Value',
+								name: 'value',
+								type: 'string',
+								required: true,
+								default: '',
+								description: 'Value of the field to set.'
+							}
+						]
+					}
+				]
+			},
+			// ----------------------------------
+			//         QueryParameters - Custom Object Data - getAll
+			// ----------------------------------
+			{
+				displayName: 'Query Parameters',
+				name: 'queryParameters',
+				type: 'collection',
+				displayOptions: {
+					show: {
+						operation: ['getAll'],
+						resource: ['customObjectData']
+					}
+				},
+				default: {},
+				description: 'Query parameters to filter the results by',
+				placeholder: 'Add Parameter',
+				options: [
+					{
+						displayName: 'Count',
+						name: 'count',
+						type: 'number',
+						default: 100,
+						description:
+							'Maximum number of entities to return. Must be less than or equal to 1000 and greater than or equal to 1.'
+					},
+					{
+						displayName: 'Depth',
+						name: 'depth',
+						type: 'string',
+						default: '',
+						description:
+							'Level of detail returned by the request. Eloqua APIs can retrieve entities at three different levels of depth: minimal, partial, and complete. Any other values passed are reset to minimal by default.'
+					},
+					{
+						displayName: 'Order By',
+						name: 'orderBy',
+						type: 'string',
+						default: '',
+						description:
+							'Specifies the field by which list results are ordered.'
+					},
+					{
+						displayName: 'Page',
+						name: 'page',
+						type: 'number',
+						default: 1,
+						description:
+							'Specifies which page of entities to return (the count parameter defines the number of entities per page). If the page parameter is not supplied, 1 will be used by default.'
+					},
+					{
+						displayName: 'Search',
+						name: 'search',
+						type: 'string',
+						default: '',
+						description:
+							'Specifies the search criteria used to retrieve entities. See the tutorial for information about using this parameter.'
+					}
+				]
 			}
 		]
+	};
+
+	methods = {
+		loadOptions: {
+			// Get all the available custom fields to display them to user so that he can
+			// select them easily
+			async getContactFields(
+				this: ILoadOptionsFunctions
+			): Promise<INodePropertyOptions[]> {
+				const returnData: INodePropertyOptions[] = [];
+				const response = await eloquaApiRequest.call(
+					this,
+					'GET',
+					'/api/REST/1.0/assets/contact/fields',
+					{}
+				);
+				for (const element of response.elements) {
+					const fieldName = element.name;
+					const fieldId = element.id;
+					returnData.push({
+						name: fieldName,
+						value: fieldId
+					});
+				}
+				return returnData;
+			}
+		}
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
@@ -647,7 +949,7 @@ export class Eloqua implements INodeType {
 		let endpoint = '';
 		let requestMethod = '';
 
-		let body: IDataObject = {};
+		let body: any = {};
 		let qs: IDataObject = {};
 		let responseData;
 
@@ -660,8 +962,78 @@ export class Eloqua implements INodeType {
 					if (operation === 'create') {
 						requestMethod = 'POST';
 						endpoint = '/api/REST/1.0/data/contact';
-						body.address1 = 'P.O.Box 72202 - 00200';
-						body.email = this.getNodeParameter('email', i) as string;
+						body = this.getNodeParameter('optionalFields', i) as IDataObject;
+						body.emailAddress = this.getNodeParameter(
+							'emailAddress',
+							i
+						) as string;
+						const { property } = this.getNodeParameter(
+							'customFields',
+							i
+						) as IDataObject;
+						body.fieldValues = property;
+						qs = {} as IDataObject;
+
+						responseData = await eloquaApiRequest.call(
+							this,
+							requestMethod,
+							endpoint,
+							body,
+							qs
+						);
+					}
+					// ----------------------------------
+					//         contact:update
+					// ----------------------------------
+					else if (operation === 'update') {
+						requestMethod = 'PUT';
+						const contactId = this.getNodeParameter('id', i) as string;
+						endpoint = `/api/REST/1.0/data/contact/${contactId}`;
+						body = this.getNodeParameter('optionalFields', i) as IDataObject;
+						body.id = contactId;
+						body.emailAddress = this.getNodeParameter(
+							'emailAddress',
+							i
+						) as string;
+						const { property } = this.getNodeParameter(
+							'customFields',
+							i
+						) as IDataObject;
+						body.fieldValues = property;
+						qs = {} as IDataObject;
+
+						responseData = await eloquaApiRequest.call(
+							this,
+							requestMethod,
+							endpoint,
+							body,
+							qs
+						);
+					}
+					// ----------------------------------
+					//         contact:delete
+					// ----------------------------------
+					else if (operation === 'delete') {
+						requestMethod = 'DELETE';
+						const contactId = this.getNodeParameter('id', i) as string;
+						endpoint = `/api/REST/1.0/data/contact/${contactId}`;
+						qs = {} as IDataObject;
+
+						responseData = await eloquaApiRequest.call(
+							this,
+							requestMethod,
+							endpoint,
+							body,
+							qs
+						);
+					}
+					// ----------------------------------
+					//         contact:get
+					// ----------------------------------
+					else if (operation === 'get') {
+						requestMethod = 'GET';
+						const contactId = this.getNodeParameter('id', i) as string;
+						endpoint = `/api/REST/1.0/data/contact/${contactId}`;
 						qs = {} as IDataObject;
 
 						responseData = await eloquaApiRequest.call(
@@ -675,7 +1047,7 @@ export class Eloqua implements INodeType {
 					// ----------------------------------
 					//         contact:getAll
 					// ----------------------------------
-					if (operation === 'getAll') {
+					else if (operation === 'getAll') {
 						requestMethod = 'GET';
 						endpoint = '/api/REST/1.0/data/contacts';
 						qs = {} as IDataObject;
@@ -695,45 +1067,14 @@ export class Eloqua implements INodeType {
 					if (operation === 'create') {
 						requestMethod = 'POST';
 						endpoint = '/api/REST/2.0/assets/customObject';
+
 						body = this.getNodeParameter('optionalFields', i) as IDataObject;
 						body.name = this.getNodeParameter('name', i) as string;
+						const { fields } = this.getNodeParameter('customFields', i) as any;
+						body.fields = fields;
+
 						qs = {} as IDataObject;
-						body.fields = [];
-						const customAdditionalFields = this.getNodeParameter(
-							'customAdditionalFields',
-							i
-						) as any;
-						for (let j = 0; j < customAdditionalFields.length; j++) {
-							body.fields[j] = {};
-							const name = customAdditionalFields[j].name;
-							if (name) {
-								body.fields[j].name = name;
-							}
-							const dataType = customAdditionalFields[j].dataType;
-							if (dataType) {
-								body.fields[j].dataType = dataType;
-							}
-							const displayType = customAdditionalFields[j].displayType;
-							if (displayType) {
-								body.fields[j].displayType = displayType;
-							}
-							const keyValuePair = customAdditionalFields[j].keyValuePair;
-							if (keyValuePair && keyValuePair.property) {
-								let property = null;
-								if (Array.isArray(keyValuePair.property)) {
-									property = keyValuePair.property[0];
-								} else {
-									property = keyValuePair.property;
-								}
-								body.fields[j][property.key] = property.value;
-								// Just in case many entries become posssible, if so set multiplyValues to true and uncomment code
-								// for (let i = 0; i < property.length; i++){
-								//     if(property[i].key && property[i].value){
-								//         body.fields[j][property[i].key] = property[i].value;
-								//     }
-								// }
-							}
-						}
+						console.log(JSON.stringify(body));
 
 						responseData = await eloquaApiRequest.call(
 							this,
@@ -755,42 +1096,8 @@ export class Eloqua implements INodeType {
 						body.id = objectId;
 						body.name = this.getNodeParameter('name', i) as string;
 						qs = {} as IDataObject;
-						body.fields = [];
-						const customAdditionalFields = this.getNodeParameter(
-							'customAdditionalFields',
-							i
-						) as any;
-						for (let j = 0; j < customAdditionalFields.length; j++) {
-							body.fields[j] = {};
-							const name = customAdditionalFields[j].name;
-							if (name) {
-								body.fields[j].name = name;
-							}
-							const dataType = customAdditionalFields[j].dataType;
-							if (dataType) {
-								body.fields[j].dataType = dataType;
-							}
-							const displayType = customAdditionalFields[j].displayType;
-							if (displayType) {
-								body.fields[j].displayType = displayType;
-							}
-							const keyValuePair = customAdditionalFields[j].keyValuePair;
-							if (keyValuePair && keyValuePair.property) {
-								let property = null;
-								if (Array.isArray(keyValuePair.property)) {
-									property = keyValuePair.property[0];
-								} else {
-									property = keyValuePair.property;
-								}
-								body.fields[j][property.key] = property.value;
-								// Just in case many entries become posssible, if so set multiplyValues to true and uncomment code
-								// for (let i = 0; i < property.length; i++){
-								//     if(property[i].key && property[i].value){
-								//         body.fields[j][property[i].key] = property[i].value;
-								//     }
-								// }
-							}
-						}
+						const { fields } = this.getNodeParameter('customFields', i) as any;
+						body.fields = fields;
 
 						responseData = await eloquaApiRequest.call(
 							this,
@@ -840,6 +1147,109 @@ export class Eloqua implements INodeType {
 					else if (operation === 'getAll') {
 						requestMethod = 'GET';
 						endpoint = '/api/REST/2.0/assets/customObjects';
+						qs = this.getNodeParameter('queryParameters', i) as IDataObject;
+
+						responseData = await eloquaApiRequest.call(
+							this,
+							requestMethod,
+							endpoint,
+							body,
+							qs
+						);
+					}
+				} else if (resource === 'customObjectData') {
+					// ----------------------------------
+					//         customObjectData:create
+					// ----------------------------------
+					if (operation === 'create') {
+						requestMethod = 'POST';
+						const parentId = this.getNodeParameter('parentId', i) as string;
+						endpoint = `/api/REST/2.0/data/customObject/${parentId}/instance`;
+						console.log(endpoint);
+
+						body = this.getNodeParameter('optionalFields', i) as IDataObject;
+						// body.accountId = '12345'; TODO: Check if Read Only
+						const { fields } = this.getNodeParameter('customObjectDataCustomFields', i) as any;
+						body.fieldValues = fields;
+
+						qs = {} as IDataObject;
+						console.log(JSON.stringify(body));
+
+						responseData = await eloquaApiRequest.call(
+							this,
+							requestMethod,
+							endpoint,
+							body,
+							qs
+						);
+					}
+					// ----------------------------------
+					//         customObjectData:update
+					// ----------------------------------
+					else if (operation === 'update') {
+						requestMethod = 'PUT';
+						const parentId = this.getNodeParameter('parentId', i) as string;
+						const objectDataId = this.getNodeParameter('id', i) as string;
+						endpoint = `/api/REST/2.0/data/customObject/${parentId}/instance/${objectDataId}`;
+
+						body = this.getNodeParameter('optionalFields', i) as IDataObject;
+						body.id = objectDataId;
+						qs = {} as IDataObject;
+						const { fields } = this.getNodeParameter('customFields', i) as any;
+						body.fieldValues = fields;
+
+						responseData = await eloquaApiRequest.call(
+							this,
+							requestMethod,
+							endpoint,
+							body,
+							qs
+						);
+					}
+					// ----------------------------------
+					//         customObject:delete
+					// ----------------------------------
+					else if (operation === 'delete') {
+						requestMethod = 'DELETE';
+						const parentId = this.getNodeParameter('parentId', i) as string;
+						const objectDataId = this.getNodeParameter('id', i) as string;
+						endpoint = `/api/REST/2.0/data/customObject/${parentId}/instance/${objectDataId}`;
+						qs = {} as IDataObject;
+
+						responseData = await eloquaApiRequest.call(
+							this,
+							requestMethod,
+							endpoint,
+							body,
+							qs
+						);
+					}
+					// ----------------------------------
+					//         customObjectData:get
+					// ----------------------------------
+					else if (operation === 'get') {
+						requestMethod = 'GET';
+						const parentId = this.getNodeParameter('parentId', i) as string;
+						const objectDataId = this.getNodeParameter('id', i) as string;
+						endpoint = `/api/REST/2.0/data/customObject/${parentId}/instance/${objectDataId}`;
+						qs = {} as IDataObject;
+
+						responseData = await eloquaApiRequest.call(
+							this,
+							requestMethod,
+							endpoint,
+							body,
+							qs
+						);
+					}
+					// ----------------------------------
+					//         customObjectData:getALL
+					// ----------------------------------
+					else if (operation === 'getAll') {
+						requestMethod = 'GET';
+						const parentId = this.getNodeParameter('parentId', i) as string;
+						endpoint = `/api/REST/2.0/data/customObject/${parentId}/instances`;
+						console.log(endpoint);
 						qs = this.getNodeParameter('queryParameters', i) as IDataObject;
 
 						responseData = await eloquaApiRequest.call(
