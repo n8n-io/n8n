@@ -9,7 +9,10 @@ import {
 	INodeTypeDescription
 } from 'n8n-workflow';
 
-import { eventbriteApiRequest, eventbriteApiRequestAllItems } from './GenericFunctions';
+import {
+	eventbriteApiRequest,
+	eventbriteApiRequestAllItems
+} from './GenericFunctions';
 
 export class Eventbrite implements INodeType {
 	description: INodeTypeDescription = {
@@ -47,7 +50,7 @@ export class Eventbrite implements INodeType {
 			}
 		],
 		properties: [
-            // ----------------------------------
+			// ----------------------------------
 			//         Authentication select
 			// ----------------------------------
 			{
@@ -159,14 +162,12 @@ export class Eventbrite implements INodeType {
 			{
 				displayName: 'Event ID',
 				name: 'eventId',
-			    type: 'options',
+				type: 'options',
 				typeOptions: {
-					loadOptionsDependsOn: [
-						'organizationIdForEventsQuery',
-					],
-					loadOptionsMethod: 'getEvents',
+					loadOptionsDependsOn: ['organizationIdForEventsQuery'],
+					loadOptionsMethod: 'getEvents'
 				},
-			    default: '',
+				default: '',
 				required: true,
 				displayOptions: {
 					show: {
@@ -225,7 +226,7 @@ export class Eventbrite implements INodeType {
 				for (const organization of organizations) {
 					const organizationName = organization.name;
 					const organizationId = organization.id;
-					if (organizationName !== "") {
+					if (organizationName !== '') {
 						returnData.push({
 							name: organizationName,
 							value: organizationId
@@ -246,7 +247,9 @@ export class Eventbrite implements INodeType {
 				this: ILoadOptionsFunctions
 			): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-				const organization = this.getCurrentNodeParameter('organizationIdForEventsQuery');
+				const organization = this.getCurrentNodeParameter(
+					'organizationIdForEventsQuery'
+				);
 				const events = await eventbriteApiRequestAllItems.call(
 					this,
 					'events',
@@ -256,7 +259,7 @@ export class Eventbrite implements INodeType {
 				for (const event of events) {
 					const eventName = event.name.text;
 					const eventId = event.id;
-					if (eventName !== "") {
+					if (eventName !== '') {
 						returnData.push({
 							name: eventName,
 							value: eventId
@@ -287,311 +290,90 @@ export class Eventbrite implements INodeType {
 
 		for (let i = 0; i < items.length; i++) {
 			try {
-				if (resource === 'contact') {
+				if (resource === 'attendee') {
 					// ----------------------------------
-					//         contact:create
+					//         attendee: Retrieve
 					// ----------------------------------
-					if (operation === 'create') {
-						requestMethod = 'POST';
-						endpoint = '/api/REST/1.0/data/contact';
-						body = this.getNodeParameter('optionalFields', i) as IDataObject;
-						body.emailAddress = this.getNodeParameter(
-							'emailAddress',
+					if (operation === 'retrieve') {
+						requestMethod = 'GET';
+						const eventId = this.getNodeParameter('eventId', i) as string;
+						const attendeeId = this.getNodeParameter('attendeeId', i) as string;
+						endpoint = `/events/${eventId}/attendees/${attendeeId}/`;
+
+						qs = {} as IDataObject;
+
+						responseData = await eventbriteApiRequest.call(
+							this,
+							requestMethod,
+							endpoint,
+							body,
+							qs
+						);
+					}
+					// ----------------------------------
+					//         attendee:listByEvent
+					// ----------------------------------
+					else if (operation === 'listByEvent') {
+						requestMethod = 'GET';
+						const eventId = this.getNodeParameter('eventId', i) as string;
+                        const propertyName = "attendees";
+						endpoint = `/events/${eventId}/attendees/`;
+
+						qs = {} as IDataObject;
+
+						const getAll = this.getNodeParameter('getAll', i) as boolean;
+						if (getAll) {
+							responseData = await eventbriteApiRequestAllItems.call(
+								this,
+                                propertyName,
+								requestMethod,
+								endpoint,
+								body,
+								qs
+							);
+						} else {
+							responseData = await eventbriteApiRequest.call(
+								this,
+								requestMethod,
+								endpoint,
+								body,
+								qs
+							);
+						}
+					}
+					// ----------------------------------
+					//         attendee:listByOrganization
+					// ----------------------------------
+					else if (operation === 'listByOrganization') {
+						requestMethod = 'GET';
+						const organizationId = this.getNodeParameter(
+							'organizationId',
 							i
 						) as string;
-						const { property } = this.getNodeParameter(
-							'customFields',
-							i
-						) as IDataObject;
-						body.fieldValues = property;
-						qs = {} as IDataObject;
-
-						responseData = await eventbriteApiRequest.call(
-							this,
-							requestMethod,
-							endpoint,
-							body,
-							qs
-						);
-					}
-					// ----------------------------------
-					//         contact:update
-					// ----------------------------------
-					else if (operation === 'update') {
-						requestMethod = 'PUT';
-						const contactId = this.getNodeParameter('id', i) as string;
-						endpoint = `/api/REST/1.0/data/contact/${contactId}`;
-						body = this.getNodeParameter('optionalFields', i) as IDataObject;
-						body.id = contactId;
-						body.emailAddress = this.getNodeParameter(
-							'emailAddress',
-							i
-						) as string;
-						const { property } = this.getNodeParameter(
-							'customFields',
-							i
-						) as IDataObject;
-						body.fieldValues = property;
-						qs = {} as IDataObject;
-
-						responseData = await eventbriteApiRequest.call(
-							this,
-							requestMethod,
-							endpoint,
-							body,
-							qs
-						);
-					}
-					// ----------------------------------
-					//         contact:delete
-					// ----------------------------------
-					else if (operation === 'delete') {
-						requestMethod = 'DELETE';
-						const contactId = this.getNodeParameter('id', i) as string;
-						endpoint = `/api/REST/1.0/data/contact/${contactId}`;
-						qs = {} as IDataObject;
-
-						responseData = await eventbriteApiRequest.call(
-							this,
-							requestMethod,
-							endpoint,
-							body,
-							qs
-						);
-					}
-					// ----------------------------------
-					//         contact:get
-					// ----------------------------------
-					else if (operation === 'get') {
-						requestMethod = 'GET';
-						const contactId = this.getNodeParameter('id', i) as string;
-						endpoint = `/api/REST/1.0/data/contact/${contactId}`;
-						qs = {} as IDataObject;
-
-						responseData = await eventbriteApiRequest.call(
-							this,
-							requestMethod,
-							endpoint,
-							body,
-							qs
-						);
-					}
-					// ----------------------------------
-					//         contact:getAll
-					// ----------------------------------
-					else if (operation === 'getAll') {
-						requestMethod = 'GET';
-						endpoint = '/api/REST/1.0/data/contacts';
-						qs = {} as IDataObject;
-
-						responseData = await eventbriteApiRequest.call(
-							this,
-							requestMethod,
-							endpoint,
-							body,
-							qs
-						);
-					}
-				} else if (resource === 'customObject') {
-					// ----------------------------------
-					//         customObject:create
-					// ----------------------------------
-					if (operation === 'create') {
-						requestMethod = 'POST';
-						endpoint = '/api/REST/2.0/assets/customObject';
-
-						body = this.getNodeParameter('optionalFields', i) as IDataObject;
-						body.name = this.getNodeParameter('name', i) as string;
-						const { fields } = this.getNodeParameter('customFields', i) as any;
-						body.fields = fields;
+                        const propertyName = "attendees";
+						endpoint = `/organizations/${organizationId}/attendees/`;
 
 						qs = {} as IDataObject;
 
-						responseData = await eventbriteApiRequest.call(
-							this,
-							requestMethod,
-							endpoint,
-							body,
-							qs
-						);
-					}
-					// ----------------------------------
-					//         customObject:update
-					// ----------------------------------
-					else if (operation === 'update') {
-						requestMethod = 'PUT';
-						const objectId = this.getNodeParameter('id', i) as string;
-						endpoint = `/api/REST/2.0/assets/customObject/${objectId}`;
-
-						body = this.getNodeParameter('optionalFields', i) as IDataObject;
-						body.id = objectId;
-						body.name = this.getNodeParameter('name', i) as string;
-						const { fields } = this.getNodeParameter('customFields', i) as any;
-						body.fields = fields;
-
-						qs = {} as IDataObject;
-
-						responseData = await eventbriteApiRequest.call(
-							this,
-							requestMethod,
-							endpoint,
-							body,
-							qs
-						);
-					}
-					// ----------------------------------
-					//         customObject:delete
-					// ----------------------------------
-					else if (operation === 'delete') {
-						requestMethod = 'DELETE';
-						const objectId = this.getNodeParameter('id', i) as string;
-						endpoint = `/api/REST/2.0/assets/customObject/${objectId}`;
-						qs = {} as IDataObject;
-
-						responseData = await eventbriteApiRequest.call(
-							this,
-							requestMethod,
-							endpoint,
-							body,
-							qs
-						);
-					}
-					// ----------------------------------
-					//         customObject:get
-					// ----------------------------------
-					else if (operation === 'get') {
-						requestMethod = 'GET';
-						const objectId = this.getNodeParameter('id', i) as string;
-						endpoint = `/api/REST/2.0/assets/customObject/${objectId}`;
-						qs = {} as IDataObject;
-
-						responseData = await eventbriteApiRequest.call(
-							this,
-							requestMethod,
-							endpoint,
-							body,
-							qs
-						);
-					}
-					// ----------------------------------
-					//         customObject:getALL
-					// ----------------------------------
-					else if (operation === 'getAll') {
-						requestMethod = 'GET';
-						endpoint = '/api/REST/2.0/assets/customObjects';
-						qs = this.getNodeParameter('queryParameters', i) as IDataObject;
-
-						responseData = await eventbriteApiRequest.call(
-							this,
-							requestMethod,
-							endpoint,
-							body,
-							qs
-						);
-					}
-				} else if (resource === 'customObjectData') {
-					// ----------------------------------
-					//         customObjectData:create
-					// ----------------------------------
-					if (operation === 'create') {
-						requestMethod = 'POST';
-						const parentId = this.getNodeParameter('parentId', i) as string;
-						endpoint = `/api/REST/2.0/data/customObject/${parentId}/instance`;
-
-						body = this.getNodeParameter('optionalFields', i) as IDataObject;
-						// body.accountId = '12345'; TODO: Check if Read Only
-						const { fields } = this.getNodeParameter('customObjectDataCustomFields', i) as any;
-						body.fieldValues = fields;
-
-						qs = {} as IDataObject;
-
-						responseData = await eventbriteApiRequest.call(
-							this,
-							requestMethod,
-							endpoint,
-							body,
-							qs
-						);
-					}
-					// ----------------------------------
-					//         customObjectData:update
-					// ----------------------------------
-					else if (operation === 'update') {
-						requestMethod = 'PUT';
-						const parentId = this.getNodeParameter('parentId', i) as string;
-						const objectDataId = this.getNodeParameter('id', i) as string;
-						endpoint = `/api/REST/2.0/data/customObject/${parentId}/instance/${objectDataId}`;
-
-						body = this.getNodeParameter('optionalFields', i) as IDataObject;
-						body.id = objectDataId;
-						const { fields } = this.getNodeParameter('customFields', i) as any;
-						body.fieldValues = fields;
-
-						qs = {} as IDataObject;
-
-						responseData = await eventbriteApiRequest.call(
-							this,
-							requestMethod,
-							endpoint,
-							body,
-							qs
-						);
-					}
-					// ----------------------------------
-					//         customObject:delete
-					// ----------------------------------
-					else if (operation === 'delete') {
-						requestMethod = 'DELETE';
-						const parentId = this.getNodeParameter('parentId', i) as string;
-						const objectDataId = this.getNodeParameter('id', i) as string;
-						endpoint = `/api/REST/2.0/data/customObject/${parentId}/instance/${objectDataId}`;
-
-						qs = {} as IDataObject;
-
-						responseData = await eventbriteApiRequest.call(
-							this,
-							requestMethod,
-							endpoint,
-							body,
-							qs
-						);
-					}
-					// ----------------------------------
-					//         customObjectData:get
-					// ----------------------------------
-					else if (operation === 'get') {
-						requestMethod = 'GET';
-						const parentId = this.getNodeParameter('parentId', i) as string;
-						const objectDataId = this.getNodeParameter('id', i) as string;
-						endpoint = `/api/REST/2.0/data/customObject/${parentId}/instance/${objectDataId}`;
-						
-						qs = {} as IDataObject;
-
-						responseData = await eventbriteApiRequest.call(
-							this,
-							requestMethod,
-							endpoint,
-							body,
-							qs
-						);
-					}
-					// ----------------------------------
-					//         customObjectData:getALL
-					// ----------------------------------
-					else if (operation === 'getAll') {
-						requestMethod = 'GET';
-						const parentId = this.getNodeParameter('parentId', i) as string;
-						endpoint = `/api/REST/2.0/data/customObject/${parentId}/instances`;
-
-						qs = this.getNodeParameter('queryParameters', i) as IDataObject;
-
-						responseData = await eventbriteApiRequest.call(
-							this,
-							requestMethod,
-							endpoint,
-							body,
-							qs
-						);
+						const getAll = this.getNodeParameter('getAll', i) as boolean;
+						if (getAll) {
+							responseData = await eventbriteApiRequestAllItems.call(
+								this,
+                                propertyName,
+								requestMethod,
+								endpoint,
+								body,
+								qs
+							);
+						} else {
+							responseData = await eventbriteApiRequest.call(
+								this,
+								requestMethod,
+								endpoint,
+								body,
+								qs
+							);
+						}
 					}
 				}
 				if (Array.isArray(responseData)) {
@@ -607,6 +389,7 @@ export class Eventbrite implements INodeType {
 				throw error;
 			}
 		}
+		// const returnData = [{ name: 'test' }, { name2: 'test2' }];
 		return [this.helpers.returnJsonArray(returnData)];
 	}
 }
