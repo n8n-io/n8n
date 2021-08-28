@@ -11,7 +11,7 @@ import {
 } from 'n8n-core';
 
 import {
-	ICredentialDataDecryptedObject, NodeApiError, NodeOperationError,
+	ICredentialDataDecryptedObject, NodeApiError, NodeOperationError, IDataObject
 } from 'n8n-workflow';
 
 import {
