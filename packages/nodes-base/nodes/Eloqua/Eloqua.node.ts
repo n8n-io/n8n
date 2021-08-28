@@ -1074,7 +1074,6 @@ export class Eloqua implements INodeType {
 						body.fields = fields;
 
 						qs = {} as IDataObject;
-						console.log(JSON.stringify(body));
 
 						responseData = await eloquaApiRequest.call(
 							this,
@@ -1091,13 +1090,14 @@ export class Eloqua implements INodeType {
 						requestMethod = 'PUT';
 						const objectId = this.getNodeParameter('id', i) as string;
 						endpoint = `/api/REST/2.0/assets/customObject/${objectId}`;
-						body = this.getNodeParameter('optionalFields', i) as IDataObject;
 
+						body = this.getNodeParameter('optionalFields', i) as IDataObject;
 						body.id = objectId;
 						body.name = this.getNodeParameter('name', i) as string;
-						qs = {} as IDataObject;
 						const { fields } = this.getNodeParameter('customFields', i) as any;
 						body.fields = fields;
+
+						qs = {} as IDataObject;
 
 						responseData = await eloquaApiRequest.call(
 							this,
@@ -1165,7 +1165,6 @@ export class Eloqua implements INodeType {
 						requestMethod = 'POST';
 						const parentId = this.getNodeParameter('parentId', i) as string;
 						endpoint = `/api/REST/2.0/data/customObject/${parentId}/instance`;
-						console.log(endpoint);
 
 						body = this.getNodeParameter('optionalFields', i) as IDataObject;
 						// body.accountId = '12345'; TODO: Check if Read Only
@@ -1173,7 +1172,6 @@ export class Eloqua implements INodeType {
 						body.fieldValues = fields;
 
 						qs = {} as IDataObject;
-						console.log(JSON.stringify(body));
 
 						responseData = await eloquaApiRequest.call(
 							this,
@@ -1194,9 +1192,10 @@ export class Eloqua implements INodeType {
 
 						body = this.getNodeParameter('optionalFields', i) as IDataObject;
 						body.id = objectDataId;
-						qs = {} as IDataObject;
 						const { fields } = this.getNodeParameter('customFields', i) as any;
 						body.fieldValues = fields;
+
+						qs = {} as IDataObject;
 
 						responseData = await eloquaApiRequest.call(
 							this,
@@ -1214,6 +1213,7 @@ export class Eloqua implements INodeType {
 						const parentId = this.getNodeParameter('parentId', i) as string;
 						const objectDataId = this.getNodeParameter('id', i) as string;
 						endpoint = `/api/REST/2.0/data/customObject/${parentId}/instance/${objectDataId}`;
+
 						qs = {} as IDataObject;
 
 						responseData = await eloquaApiRequest.call(
@@ -1232,6 +1232,7 @@ export class Eloqua implements INodeType {
 						const parentId = this.getNodeParameter('parentId', i) as string;
 						const objectDataId = this.getNodeParameter('id', i) as string;
 						endpoint = `/api/REST/2.0/data/customObject/${parentId}/instance/${objectDataId}`;
+						
 						qs = {} as IDataObject;
 
 						responseData = await eloquaApiRequest.call(
@@ -1249,7 +1250,7 @@ export class Eloqua implements INodeType {
 						requestMethod = 'GET';
 						const parentId = this.getNodeParameter('parentId', i) as string;
 						endpoint = `/api/REST/2.0/data/customObject/${parentId}/instances`;
-						console.log(endpoint);
+
 						qs = this.getNodeParameter('queryParameters', i) as IDataObject;
 
 						responseData = await eloquaApiRequest.call(
