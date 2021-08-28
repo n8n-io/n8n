@@ -316,7 +316,7 @@ export class Eventbrite implements INodeType {
 					else if (operation === 'listByEvent') {
 						requestMethod = 'GET';
 						const eventId = this.getNodeParameter('eventId', i) as string;
-                        const propertyName = "attendees";
+						const propertyName = 'attendees';
 						endpoint = `/events/${eventId}/attendees/`;
 
 						qs = {} as IDataObject;
@@ -325,7 +325,7 @@ export class Eventbrite implements INodeType {
 						if (getAll) {
 							responseData = await eventbriteApiRequestAllItems.call(
 								this,
-                                propertyName,
+								propertyName,
 								requestMethod,
 								endpoint,
 								body,
@@ -350,7 +350,7 @@ export class Eventbrite implements INodeType {
 							'organizationId',
 							i
 						) as string;
-                        const propertyName = "attendees";
+						const propertyName = 'attendees';
 						endpoint = `/organizations/${organizationId}/attendees/`;
 
 						qs = {} as IDataObject;
@@ -359,7 +359,7 @@ export class Eventbrite implements INodeType {
 						if (getAll) {
 							responseData = await eventbriteApiRequestAllItems.call(
 								this,
-                                propertyName,
+								propertyName,
 								requestMethod,
 								endpoint,
 								body,
