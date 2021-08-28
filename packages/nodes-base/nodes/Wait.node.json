@@ -18,7 +18,9 @@
 		"delay",
 		"timeout"
 	],
-	"subcategories": [
-		"Flow"
-	]
+	"subcategories": {
+		"Core Nodes": [
+			"Flow"
+		]
+	}
 }
