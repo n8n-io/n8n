@@ -14,6 +14,10 @@ import {
 	ICredentialDataDecryptedObject, NodeApiError, NodeOperationError,
 } from 'n8n-workflow';
 
+import {
+	get,
+} from 'lodash';
+
 function getEndpointForService(service: string, credentials: ICredentialDataDecryptedObject): string {
 	let endpoint;
 	if (service === 'lambda' && credentials.lambdaEndpoint) {
@@ -79,4 +83,33 @@ export async function awsApiRequestSOAP(this: IHookFunctions | IExecuteFunctions
 	} catch (error) {
 		return response;
 	}
+}
+
+
+export async function awsApiRequestSOAPAllItems(this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions | IWebhookFunctions, propertyName: string, service: string, method: string, path: string, body?: string, query: IDataObject = {}, headers: IDataObject = {},  option: IDataObject = {}, region?: string): Promise<any> { // tslint:disable-line:no-any
+
+	const returnData: IDataObject[] = [];
+
+	let responseData;
+
+	const propertyNameArray = propertyName.split('.');
+
+	do {
+		responseData = await awsApiRequestSOAP.call(this, service, method, path, body, query);
+
+		if (get(responseData, `${propertyNameArray[0]}.${propertyNameArray[1]}.NextToken`)) {
+			query['NextToken'] = get(responseData, `${propertyNameArray[0]}.${propertyNameArray[1]}.NextToken`);
+		}
+		if (get(responseData, propertyName)) {
+			if (Array.isArray(get(responseData, propertyName))) {
+				returnData.push.apply(returnData, get(responseData, propertyName));
+			} else {
+				returnData.push(get(responseData, propertyName));
+			}
+		}
+	} while (
+		get(responseData, `${propertyNameArray[0]}.${propertyNameArray[1]}.NextToken`) !== undefined
+	);
+
+	return returnData;
 }

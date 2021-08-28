@@ -48,6 +48,7 @@ export async function awsApiRequest(this: IHookFunctions | IExecuteFunctions | I
 		uri: endpoint.href,
 		body: signOpts.body,
 	};
+	console.log(options.body)
 
 	try {
 		return await this.helpers.request!(options);
@@ -60,22 +61,6 @@ export async function awsApiRequestREST(this: IHookFunctions | IExecuteFunctions
 	const response = await awsApiRequest.call(this, service, method, path, body, headers);
 	try {
 		return JSON.parse(response);
-	} catch (error) {
-		return response;
-	}
-}
-
-export async function awsApiRequestSOAP(this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions | IWebhookFunctions, service: string, method: string, path: string, body?: string, headers?: object): Promise<any> { // tslint:disable-line:no-any
-	const response = await awsApiRequest.call(this, service, method, path, body, headers);
-	try {
-		return await new Promise((resolve, reject) => {
-			parseXml(response, { explicitArray: false }, (err, data) => {
-				if (err) {
-					return reject(err);
-				}
-				resolve(data);
-			});
-		});
 	} catch (error) {
 		return response;
 	}
