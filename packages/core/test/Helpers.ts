@@ -18,30 +18,27 @@ import {
 	WorkflowHooks,
 } from 'n8n-workflow';
 
-import {
-	Credentials,
-	IDeferredPromise,
-	IExecuteFunctions,
-} from '../src';
-
+import { Credentials, IDeferredPromise, IExecuteFunctions } from '../src';
 
 export class CredentialsHelper extends ICredentialsHelper {
 	getDecrypted(name: string, type: string): Promise<ICredentialDataDecryptedObject> {
-		return new Promise(res => res({}));
+		return new Promise((res) => res({}));
 	}
 
 	getCredentials(name: string, type: string): Promise<Credentials> {
-		return new Promise(res => {
+		return new Promise((res) => {
 			res(new Credentials('', '', [], ''));
 		});
 	}
 
-	async updateCredentials(name: string, type: string, data: ICredentialDataDecryptedObject): Promise<void> {}
+	async updateCredentials(
+		name: string,
+		type: string,
+		data: ICredentialDataDecryptedObject,
+	): Promise<void> {}
 }
 
-
 class NodeTypesClass implements INodeTypes {
-
 	nodeTypes: INodeTypeData = {
 		'n8n-nodes-base.if': {
 			sourcePath: '',
@@ -161,9 +158,7 @@ class NodeTypesClass implements INodeTypes {
 											type: 'number',
 											displayOptions: {
 												hide: {
-													operation: [
-														'isEmpty',
-													],
+													operation: ['isEmpty'],
 												},
 											},
 											default: 0,
@@ -229,10 +224,7 @@ class NodeTypesClass implements INodeTypes {
 											type: 'string',
 											displayOptions: {
 												hide: {
-													operation: [
-														'isEmpty',
-														'regex',
-													],
+													operation: ['isEmpty', 'regex'],
 												},
 											},
 											default: '',
@@ -244,9 +236,7 @@ class NodeTypesClass implements INodeTypes {
 											type: 'string',
 											displayOptions: {
 												show: {
-													operation: [
-														'regex',
-													],
+													operation: ['regex'],
 												},
 											},
 											default: '',
@@ -274,7 +264,8 @@ class NodeTypesClass implements INodeTypes {
 								},
 							],
 							default: 'all',
-							description: 'If multiple rules got set this settings decides if it is true as soon as ANY condition matches or only if ALL get meet.',
+							description:
+								'If multiple rules got set this settings decides if it is true as soon as ANY condition matches or only if ALL get meet.',
 						},
 					],
 				},
@@ -291,19 +282,30 @@ class NodeTypesClass implements INodeTypes {
 					const compareOperationFunctions: {
 						[key: string]: (value1: NodeParameterValue, value2: NodeParameterValue) => boolean;
 					} = {
-						contains: (value1: NodeParameterValue, value2: NodeParameterValue) => (value1 || '').toString().includes((value2 || '').toString()),
-						notContains: (value1: NodeParameterValue, value2: NodeParameterValue) => !(value1 || '').toString().includes((value2 || '').toString()),
-						endsWith: (value1: NodeParameterValue, value2: NodeParameterValue) => (value1 as string).endsWith(value2 as string),
+						contains: (value1: NodeParameterValue, value2: NodeParameterValue) =>
+							(value1 || '').toString().includes((value2 || '').toString()),
+						notContains: (value1: NodeParameterValue, value2: NodeParameterValue) =>
+							!(value1 || '').toString().includes((value2 || '').toString()),
+						endsWith: (value1: NodeParameterValue, value2: NodeParameterValue) =>
+							(value1 as string).endsWith(value2 as string),
 						equal: (value1: NodeParameterValue, value2: NodeParameterValue) => value1 === value2,
 						notEqual: (value1: NodeParameterValue, value2: NodeParameterValue) => value1 !== value2,
-						larger: (value1: NodeParameterValue, value2: NodeParameterValue) => (value1 || 0) > (value2 || 0),
-						largerEqual: (value1: NodeParameterValue, value2: NodeParameterValue) => (value1 || 0) >= (value2 || 0),
-						smaller: (value1: NodeParameterValue, value2: NodeParameterValue) => (value1 || 0) < (value2 || 0),
-						smallerEqual: (value1: NodeParameterValue, value2: NodeParameterValue) => (value1 || 0) <= (value2 || 0),
-						startsWith: (value1: NodeParameterValue, value2: NodeParameterValue) => (value1 as string).startsWith(value2 as string),
-						isEmpty: (value1: NodeParameterValue) => [undefined, null, ''].includes(value1 as string),
+						larger: (value1: NodeParameterValue, value2: NodeParameterValue) =>
+							(value1 || 0) > (value2 || 0),
+						largerEqual: (value1: NodeParameterValue, value2: NodeParameterValue) =>
+							(value1 || 0) >= (value2 || 0),
+						smaller: (value1: NodeParameterValue, value2: NodeParameterValue) =>
+							(value1 || 0) < (value2 || 0),
+						smallerEqual: (value1: NodeParameterValue, value2: NodeParameterValue) =>
+							(value1 || 0) <= (value2 || 0),
+						startsWith: (value1: NodeParameterValue, value2: NodeParameterValue) =>
+							(value1 as string).startsWith(value2 as string),
+						isEmpty: (value1: NodeParameterValue) =>
+							[undefined, null, ''].includes(value1 as string),
 						regex: (value1: NodeParameterValue, value2: NodeParameterValue) => {
-							const regexMatch = (value2 || '').toString().match(new RegExp('^/(.*?)/([gimusy]*)$'));
+							const regexMatch = (value2 || '')
+								.toString()
+								.match(new RegExp('^/(.*?)/([gimusy]*)$'));
 
 							let regex: RegExp;
 							if (!regexMatch) {
@@ -319,18 +321,13 @@ class NodeTypesClass implements INodeTypes {
 					};
 
 					// The different dataTypes to check the values in
-					const dataTypes = [
-						'boolean',
-						'number',
-						'string',
-					];
+					const dataTypes = ['boolean', 'number', 'string'];
 
 					// Itterate over all items to check which ones should be output as via output "true" and
 					// which ones via output "false"
 					let dataType: string;
 					let compareOperationResult: boolean;
-					itemLoop:
-					for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
+					itemLoop: for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
 						item = items[itemIndex];
 
 						let compareData: INodeParameters;
@@ -340,9 +337,16 @@ class NodeTypesClass implements INodeTypes {
 						// Check all the values of the different dataTypes
 						for (dataType of dataTypes) {
 							// Check all the values of the current dataType
-							for (compareData of this.getNodeParameter(`conditions.${dataType}`, itemIndex, []) as INodeParameters[]) {
+							for (compareData of this.getNodeParameter(
+								`conditions.${dataType}`,
+								itemIndex,
+								[],
+							) as INodeParameters[]) {
 								// Check if the values passes
-								compareOperationResult = compareOperationFunctions[compareData.operation as string](compareData.value1 as NodeParameterValue, compareData.value2 as NodeParameterValue);
+								compareOperationResult = compareOperationFunctions[compareData.operation as string](
+									compareData.value1 as NodeParameterValue,
+									compareData.value2 as NodeParameterValue,
+								);
 
 								if (compareOperationResult === true && combineOperation === 'any') {
 									// If it passes and the operation is "any" we do not have to check any
@@ -397,21 +401,25 @@ class NodeTypesClass implements INodeTypes {
 								{
 									name: 'Append',
 									value: 'append',
-									description: 'Combines data of both inputs. The output will contain items of input 1 and input 2.',
+									description:
+										'Combines data of both inputs. The output will contain items of input 1 and input 2.',
 								},
 								{
 									name: 'Pass-through',
 									value: 'passThrough',
-									description: 'Passes through data of one input. The output will conain only items of the defined input.',
+									description:
+										'Passes through data of one input. The output will conain only items of the defined input.',
 								},
 								{
 									name: 'Wait',
 									value: 'wait',
-									description: 'Waits till data of both inputs is available and will then output a single empty item.',
+									description:
+										'Waits till data of both inputs is available and will then output a single empty item.',
 								},
 							],
 							default: 'append',
-							description: 'How data should be merged. If it should simply<br />be appended or merged depending on a property.',
+							description:
+								'How data should be merged. If it should simply<br />be appended or merged depending on a property.',
 						},
 						{
 							displayName: 'Output Data',
@@ -419,9 +427,7 @@ class NodeTypesClass implements INodeTypes {
 							type: 'options',
 							displayOptions: {
 								show: {
-									mode: [
-										'passThrough',
-									],
+									mode: ['passThrough'],
 								},
 							},
 							options: [
@@ -512,7 +518,8 @@ class NodeTypesClass implements INodeTypes {
 							name: 'keepOnlySet',
 							type: 'boolean',
 							default: false,
-							description: 'If only the values set on this node should be<br />kept and all others removed.',
+							description:
+								'If only the values set on this node should be<br />kept and all others removed.',
 						},
 						{
 							displayName: 'Values to Set',
@@ -534,7 +541,8 @@ class NodeTypesClass implements INodeTypes {
 											name: 'name',
 											type: 'string',
 											default: 'propertyName',
-											description: 'Name of the property to write data to.<br />Supports dot-notation.<br />Example: "data.person[0].name"',
+											description:
+												'Name of the property to write data to.<br />Supports dot-notation.<br />Example: "data.person[0].name"',
 										},
 										{
 											displayName: 'Value',
@@ -554,7 +562,8 @@ class NodeTypesClass implements INodeTypes {
 											name: 'name',
 											type: 'string',
 											default: 'propertyName',
-											description: 'Name of the property to write data to.<br />Supports dot-notation.<br />Example: "data.person[0].name"',
+											description:
+												'Name of the property to write data to.<br />Supports dot-notation.<br />Example: "data.person[0].name"',
 										},
 										{
 											displayName: 'Value',
@@ -574,7 +583,8 @@ class NodeTypesClass implements INodeTypes {
 											name: 'name',
 											type: 'string',
 											default: 'propertyName',
-											description: 'Name of the property to write data to.<br />Supports dot-notation.<br />Example: "data.person[0].name"',
+											description:
+												'Name of the property to write data to.<br />Supports dot-notation.<br />Example: "data.person[0].name"',
 										},
 										{
 											displayName: 'Value',
@@ -610,7 +620,6 @@ class NodeTypesClass implements INodeTypes {
 					],
 				},
 				execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
-
 					const items = this.getInputData();
 
 					if (items.length === 0) {
@@ -643,31 +652,37 @@ class NodeTypesClass implements INodeTypes {
 						}
 
 						// Add boolean values
-						(this.getNodeParameter('values.boolean', itemIndex, []) as INodeParameters[]).forEach((setItem) => {
-							if (options.dotNotation === false) {
-								newItem.json[setItem.name as string] = !!setItem.value;
-							} else {
-								set(newItem.json, setItem.name as string, !!setItem.value);
-							}
-						});
+						(this.getNodeParameter('values.boolean', itemIndex, []) as INodeParameters[]).forEach(
+							(setItem) => {
+								if (options.dotNotation === false) {
+									newItem.json[setItem.name as string] = !!setItem.value;
+								} else {
+									set(newItem.json, setItem.name as string, !!setItem.value);
+								}
+							},
+						);
 
 						// Add number values
-						(this.getNodeParameter('values.number', itemIndex, []) as INodeParameters[]).forEach((setItem) => {
-							if (options.dotNotation === false) {
-								newItem.json[setItem.name as string] = setItem.value;
-							} else {
-								set(newItem.json, setItem.name as string, setItem.value);
-							}
-						});
+						(this.getNodeParameter('values.number', itemIndex, []) as INodeParameters[]).forEach(
+							(setItem) => {
+								if (options.dotNotation === false) {
+									newItem.json[setItem.name as string] = setItem.value;
+								} else {
+									set(newItem.json, setItem.name as string, setItem.value);
+								}
+							},
+						);
 
 						// Add string values
-						(this.getNodeParameter('values.string', itemIndex, []) as INodeParameters[]).forEach((setItem) => {
-							if (options.dotNotation === false) {
-								newItem.json[setItem.name as string] = setItem.value;
-							} else {
-								set(newItem.json, setItem.name as string, setItem.value);
-							}
-						});
+						(this.getNodeParameter('values.string', itemIndex, []) as INodeParameters[]).forEach(
+							(setItem) => {
+								if (options.dotNotation === false) {
+									newItem.json[setItem.name as string] = setItem.value;
+								} else {
+									set(newItem.json, setItem.name as string, setItem.value);
+								}
+							},
+						);
 
 						returnData.push(newItem);
 					}
@@ -702,7 +717,7 @@ class NodeTypesClass implements INodeTypes {
 		},
 	};
 
-	async init(nodeTypes: INodeTypeData): Promise<void> { }
+	async init(nodeTypes: INodeTypeData): Promise<void> {}
 
 	getAll(): INodeType[] {
 		return Object.values(this.nodeTypes).map((data) => data.type);
@@ -715,7 +730,6 @@ class NodeTypesClass implements INodeTypes {
 
 let nodeTypesInstance: NodeTypesClass | undefined;
 
-
 export function NodeTypes(): NodeTypesClass {
 	if (nodeTypesInstance === undefined) {
 		nodeTypesInstance = new NodeTypesClass();
@@ -725,8 +739,10 @@ export function NodeTypes(): NodeTypesClass {
 	return nodeTypesInstance;
 }
 
-
-export function WorkflowExecuteAdditionalData(waitPromise: IDeferredPromise<IRun>, nodeExecutionOrder: string[]): IWorkflowExecuteAdditionalData {
+export function WorkflowExecuteAdditionalData(
+	waitPromise: IDeferredPromise<IRun>,
+	nodeExecutionOrder: string[],
+): IWorkflowExecuteAdditionalData {
 	const hookFunctions = {
 		nodeExecuteAfter: [
 			async (nodeName: string, data: ITaskData): Promise<void> => {
@@ -752,7 +768,7 @@ export function WorkflowExecuteAdditionalData(waitPromise: IDeferredPromise<IRun
 	return {
 		credentialsHelper: new CredentialsHelper(''),
 		hooks: new WorkflowHooks(hookFunctions, 'trigger', '1', workflowData),
-		executeWorkflow: async (workflowInfo: IExecuteWorkflowInfo): Promise<any> => {}, // tslint:disable-line:no-any
+		executeWorkflow: async (workflowInfo: IExecuteWorkflowInfo): Promise<any> => {},
 		sendMessageToUI: (message: string) => {},
 		restApiUrl: '',
 		encryptionKey: 'test',

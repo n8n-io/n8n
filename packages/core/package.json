@@ -17,8 +17,9 @@
   "scripts": {
     "build": "tsc",
     "dev": "npm run watch",
-    "tslint": "tslint -p tsconfig.json -c tslint.json",
-    "tslintfix": "tslint --fix -p tsconfig.json -c tslint.json",
+    "format": "cd ../.. && node_modules/prettier/bin-prettier.js packages/core/**/**.ts --write",
+    "lint": "cd ../.. && node_modules/eslint/bin/eslint.js packages/core",
+    "lintfix": "cd ../.. && node_modules/eslint/bin/eslint.js packages/core --fix",
     "watch": "tsc --watch",
     "test": "jest"
   },
@@ -38,7 +39,7 @@
     "source-map-support": "^0.5.9",
     "ts-jest": "^26.3.0",
     "tslint": "^6.1.2",
-    "typescript": "~3.9.7"
+    "typescript": "~4.3.5"
   },
   "dependencies": {
     "client-oauth2": "^4.2.5",

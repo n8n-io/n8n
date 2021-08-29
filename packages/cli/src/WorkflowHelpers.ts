@@ -1,3 +1,24 @@
+/* eslint-disable @typescript-eslint/no-non-null-assertion */
+/* eslint-disable no-underscore-dangle */
+/* eslint-disable no-continue */
+/* eslint-disable @typescript-eslint/no-unsafe-member-access */
+/* eslint-disable @typescript-eslint/restrict-template-expressions */
+/* eslint-disable no-restricted-syntax */
+/* eslint-disable no-param-reassign */
+import {
+	IDataObject,
+	IExecuteData,
+	INode,
+	IRun,
+	IRunExecutionData,
+	ITaskData,
+	// eslint-disable-next-line @typescript-eslint/no-unused-vars
+	IWorkflowCredentials,
+	LoggerProxy as Logger,
+	Workflow,
+} from 'n8n-workflow';
+import { validate } from 'class-validator';
+// eslint-disable-next-line import/no-cycle
 import {
 	CredentialTypes,
 	Db,
@@ -7,27 +28,16 @@ import {
 	IWorkflowExecutionDataProcess,
 	NodeTypes,
 	ResponseHelper,
+	// eslint-disable-next-line @typescript-eslint/no-unused-vars
 	WorkflowCredentials,
 	WorkflowRunner,
-} from './';
-
-import {
-	IDataObject,
-	IExecuteData,
-	INode,
-	IRun,
-	IRunExecutionData,
-	ITaskData,
-	IWorkflowCredentials,
-	LoggerProxy as Logger,
-	Workflow,} from 'n8n-workflow';
+} from '.';
 
 import * as config from '../config';
+// eslint-disable-next-line import/no-cycle
 import { WorkflowEntity } from './databases/entities/WorkflowEntity';
-import { validate } from 'class-validator';
 
 const ERROR_TRIGGER_TYPE = config.get('nodes.errorTriggerType') as string;
-
 
 /**
  * Returns the data of the last executed node
@@ -37,8 +47,8 @@ const ERROR_TRIGGER_TYPE = config.get('nodes.errorTriggerType') as string;
  * @returns {(ITaskData | undefined)}
  */
 export function getDataLastExecutedNodeData(inputData: IRun): ITaskData | undefined {
-	const runData = inputData.data.resultData.runData;
-	const lastNodeExecuted = inputData.data.resultData.lastNodeExecuted;
+	const { runData } = inputData.data.resultData;
+	const { lastNodeExecuted } = inputData.data.resultData;
 
 	if (lastNodeExecuted === undefined) {
 		return undefined;
@@ -51,8 +61,6 @@ export function getDataLastExecutedNodeData(inputData: IRun): ITaskData | undefi
 	return runData[lastNodeExecuted][runData[lastNodeExecuted].length - 1];
 }
 
-
-
 /**
  * Returns if the given id is a valid workflow id
  *
@@ -60,19 +68,17 @@ export function getDataLastExecutedNodeData(inputData: IRun): ITaskData | undefi
  * @returns {boolean}
  * @memberof App
  */
-export function isWorkflowIdValid (id: string | null | undefined | number): boolean {
+export function isWorkflowIdValid(id: string | null | undefined | number): boolean {
 	if (typeof id === 'string') {
 		id = parseInt(id, 10);
 	}
 
+	// eslint-disable-next-line no-restricted-globals
 	if (isNaN(id as number)) {
 		return false;
-
 	}
 	return true;
 }
-
-
 
 /**
  * Executes the error workflow
@@ -82,21 +88,37 @@ export function isWorkflowIdValid (id: string | null | undefined | number): bool
  * @param {IWorkflowErrorData} workflowErrorData The error data
  * @returns {Promise<void>}
  */
-export async function executeErrorWorkflow(workflowId: string, workflowErrorData: IWorkflowErrorData): Promise<void> {
+export async function executeErrorWorkflow(
+	workflowId: string,
+	workflowErrorData: IWorkflowErrorData,
+): Promise<void> {
 	// Wrap everything in try/catch to make sure that no errors bubble up and all get caught here
 	try {
 		const workflowData = await Db.collections.Workflow!.findOne({ id: Number(workflowId) });
 
 		if (workflowData === undefined) {
 			// The error workflow could not be found
-			Logger.error(`Calling Error Workflow for "${workflowErrorData.workflow.id}". Could not find error workflow "${workflowId}"`, { workflowId });
+			Logger.error(
+				// eslint-disable-next-line @typescript-eslint/restrict-template-expressions
+				`Calling Error Workflow for "${workflowErrorData.workflow.id}". Could not find error workflow "${workflowId}"`,
+				{ workflowId },
+			);
 			return;
 		}
 
 		const executionMode = 'error';
 		const nodeTypes = NodeTypes();
 
-		const workflowInstance = new Workflow({ id: workflowId, name: workflowData.name, nodeTypes, nodes: workflowData.nodes, connections: workflowData.connections, active: workflowData.active, staticData: workflowData.staticData, settings: workflowData.settings});
+		const workflowInstance = new Workflow({
+			id: workflowId,
+			name: workflowData.name,
+			nodeTypes,
+			nodes: workflowData.nodes,
+			connections: workflowData.connections,
+			active: workflowData.active,
+			staticData: workflowData.staticData,
+			settings: workflowData.settings,
+		});
 
 		let node: INode;
 		let workflowStartNode: INode | undefined;
@@ -108,7 +130,9 @@ export async function executeErrorWorkflow(workflowId: string, workflowErrorData
 		}
 
 		if (workflowStartNode === undefined) {
-			Logger.error(`Calling Error Workflow for "${workflowErrorData.workflow.id}". Could not find "${ERROR_TRIGGER_TYPE}" in workflow "${workflowId}"`);
+			Logger.error(
+				`Calling Error Workflow for "${workflowErrorData.workflow.id}". Could not find "${ERROR_TRIGGER_TYPE}" in workflow "${workflowId}"`,
+			);
 			return;
 		}
 
@@ -116,24 +140,21 @@ export async function executeErrorWorkflow(workflowId: string, workflowErrorData
 
 		// Initialize the data of the webhook node
 		const nodeExecutionStack: IExecuteData[] = [];
-		nodeExecutionStack.push(
-			{
-				node: workflowStartNode,
-				data: {
-					main: [
-						[
-							{
-								json: workflowErrorData,
-							},
-						],
+		nodeExecutionStack.push({
+			node: workflowStartNode,
+			data: {
+				main: [
+					[
+						{
+							json: workflowErrorData,
+						},
 					],
-				},
-			}
-		);
+				],
+			},
+		});
 
 		const runExecutionData: IRunExecutionData = {
-			startData: {
-			},
+			startData: {},
 			resultData: {
 				runData: {},
 			},
@@ -153,11 +174,12 @@ export async function executeErrorWorkflow(workflowId: string, workflowErrorData
 		const workflowRunner = new WorkflowRunner();
 		await workflowRunner.run(runData);
 	} catch (error) {
-		Logger.error(`Calling Error Workflow for "${workflowErrorData.workflow.id}": "${error.message}"`, { workflowId: workflowErrorData.workflow.id });
+		Logger.error(
+			`Calling Error Workflow for "${workflowErrorData.workflow.id}": "${error.message}"`,
+			{ workflowId: workflowErrorData.workflow.id },
+		);
 	}
 }
-
-
 
 /**
  * Returns all the defined NodeTypes
@@ -185,8 +207,6 @@ export function getAllNodeTypeData(): ITransferNodeTypes {
 	return returnData;
 }
 
-
-
 /**
  * Returns the data of the node types that are needed
  * to execute the given nodes
@@ -199,6 +219,7 @@ export function getNodeTypeData(nodes: INode[]): ITransferNodeTypes {
 	const nodeTypes = NodeTypes();
 
 	// Check which node-types have to be loaded
+	// eslint-disable-next-line @typescript-eslint/no-use-before-define
 	const neededNodeTypes = getNeededNodeTypes(nodes);
 
 	// Get all the data of the needed node types that they
@@ -217,8 +238,6 @@ export function getNodeTypeData(nodes: INode[]): ITransferNodeTypes {
 
 	return returnData;
 }
-
-
 
 /**
  * Returns the credentials data of the given type and its parent types
@@ -251,8 +270,6 @@ export function getCredentialsDataWithParents(type: string): ICredentialsTypeDat
 	return credentialTypeData;
 }
 
-
-
 /**
  * Returns all the credentialTypes which are needed to resolve
  * the given workflow credentials
@@ -262,14 +279,13 @@ export function getCredentialsDataWithParents(type: string): ICredentialsTypeDat
  * @returns {ICredentialsTypeData}
  */
 export function getCredentialsDataByNodes(nodes: INode[]): ICredentialsTypeData {
-
 	const credentialTypeData: ICredentialsTypeData = {};
 
 	for (const node of nodes) {
 		const credentialsUsedByThisNode = node.credentials;
 		if (credentialsUsedByThisNode) {
 			// const credentialTypesUsedByThisNode = Object.keys(credentialsUsedByThisNode!);
-			for (const credentialType of Object.keys(credentialsUsedByThisNode!)) {
+			for (const credentialType of Object.keys(credentialsUsedByThisNode)) {
 				if (credentialTypeData[credentialType] !== undefined) {
 					continue;
 				}
@@ -277,13 +293,10 @@ export function getCredentialsDataByNodes(nodes: INode[]): ICredentialsTypeData 
 				Object.assign(credentialTypeData, getCredentialsDataWithParents(credentialType));
 			}
 		}
-		
 	}
 
 	return credentialTypeData;
 }
-
-
 
 /**
  * Returns the names of the NodeTypes which are are needed
@@ -305,8 +318,6 @@ export function getNeededNodeTypes(nodes: INode[]): string[] {
 	return neededNodeTypes;
 }
 
-
-
 /**
  * Saves the static data if it changed
  *
@@ -314,22 +325,24 @@ export function getNeededNodeTypes(nodes: INode[]): string[] {
  * @param {Workflow} workflow
  * @returns {Promise <void>}
  */
-export async function saveStaticData(workflow: Workflow): Promise <void> {
+export async function saveStaticData(workflow: Workflow): Promise<void> {
 	if (workflow.staticData.__dataChanged === true) {
 		// Static data of workflow changed and so has to be saved
-		if (isWorkflowIdValid(workflow.id) === true) {
+		if (isWorkflowIdValid(workflow.id)) {
 			// Workflow is saved so update in database
 			try {
+				// eslint-disable-next-line @typescript-eslint/no-use-before-define
 				await saveStaticDataById(workflow.id!, workflow.staticData);
 				workflow.staticData.__dataChanged = false;
 			} catch (e) {
-				Logger.error(`There was a problem saving the workflow with id "${workflow.id}" to save changed staticData: "${e.message}"`, { workflowId: workflow.id });
+				Logger.error(
+					`There was a problem saving the workflow with id "${workflow.id}" to save changed staticData: "${e.message}"`,
+					{ workflowId: workflow.id },
+				);
 			}
 		}
 	}
 }
-
-
 
 /**
  * Saves the given static data on workflow
@@ -339,14 +352,14 @@ export async function saveStaticData(workflow: Workflow): Promise <void> {
  * @param {IDataObject} newStaticData The static data to save
  * @returns {Promise<void>}
  */
-export async function saveStaticDataById(workflowId: string | number, newStaticData: IDataObject): Promise<void> {
-	await Db.collections.Workflow!
-		.update(workflowId, {
-			staticData: newStaticData,
-		});
+export async function saveStaticDataById(
+	workflowId: string | number,
+	newStaticData: IDataObject,
+): Promise<void> {
+	await Db.collections.Workflow!.update(workflowId, {
+		staticData: newStaticData,
+	});
 }
-
-
 
 /**
  * Returns the static data of workflow
@@ -355,20 +368,23 @@ export async function saveStaticDataById(workflowId: string | number, newStaticD
  * @param {(string | number)} workflowId The id of the workflow to get static data of
  * @returns
  */
+// eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
 export async function getStaticDataById(workflowId: string | number) {
-	const workflowData = await Db.collections.Workflow!
-		.findOne(workflowId, { select: ['staticData']});
+	const workflowData = await Db.collections.Workflow!.findOne(workflowId, {
+		select: ['staticData'],
+	});
 
 	if (workflowData === undefined) {
 		return {};
 	}
 
+	// eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
 	return workflowData.staticData || {};
 }
 
-
 // TODO: Deduplicate `validateWorkflow` and `throwDuplicateEntryError` with TagHelpers?
 
+// eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
 export async function validateWorkflow(newWorkflow: WorkflowEntity) {
 	const errors = await validate(newWorkflow);
 
@@ -378,10 +394,15 @@ export async function validateWorkflow(newWorkflow: WorkflowEntity) {
 	}
 }
 
+// eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
 export function throwDuplicateEntryError(error: Error) {
 	const errorMessage = error.message.toLowerCase();
 	if (errorMessage.includes('unique') || errorMessage.includes('duplicate')) {
-		throw new ResponseHelper.ResponseError('There is already a workflow with this name', undefined, 400);
+		throw new ResponseHelper.ResponseError(
+			'There is already a workflow with this name',
+			undefined,
+			400,
+		);
 	}
 
 	throw new ResponseHelper.ResponseError(errorMessage, undefined, 400);
@@ -391,6 +412,5 @@ export type WorkflowNameRequest = Express.Request & {
 	query: {
 		name?: string;
 		offset?: string;
-	}
+	};
 };
-
