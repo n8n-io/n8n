@@ -12,6 +12,7 @@ import {
 	IRun,
 	IRunExecutionData,
 	ITaskData,
+	// eslint-disable-next-line @typescript-eslint/no-unused-vars
 	IWorkflowCredentials,
 	LoggerProxy as Logger,
 	Workflow,
@@ -278,14 +279,13 @@ export function getCredentialsDataWithParents(type: string): ICredentialsTypeDat
  * @returns {ICredentialsTypeData}
  */
 export function getCredentialsDataByNodes(nodes: INode[]): ICredentialsTypeData {
-
 	const credentialTypeData: ICredentialsTypeData = {};
 
 	for (const node of nodes) {
 		const credentialsUsedByThisNode = node.credentials;
 		if (credentialsUsedByThisNode) {
 			// const credentialTypesUsedByThisNode = Object.keys(credentialsUsedByThisNode!);
-			for (const credentialType of Object.keys(credentialsUsedByThisNode!)) {
+			for (const credentialType of Object.keys(credentialsUsedByThisNode)) {
 				if (credentialTypeData[credentialType] !== undefined) {
 					continue;
 				}
@@ -293,7 +293,6 @@ export function getCredentialsDataByNodes(nodes: INode[]): ICredentialsTypeData 
 				Object.assign(credentialTypeData, getCredentialsDataWithParents(credentialType));
 			}
 		}
-		
 	}
 
 	return credentialTypeData;

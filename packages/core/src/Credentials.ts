@@ -65,7 +65,9 @@ export class Credentials extends ICredentials {
 			// eslint-disable-next-line @typescript-eslint/no-unsafe-return
 			return JSON.parse(decryptedData.toString(enc.Utf8));
 		} catch (e) {
-			throw new Error('Credentials could not be decrypted. The likely reason is that a different "encryptionKey" was used to encrypt the data.');
+			throw new Error(
+				'Credentials could not be decrypted. The likely reason is that a different "encryptionKey" was used to encrypt the data.',
+			);
 		}
 	}
 

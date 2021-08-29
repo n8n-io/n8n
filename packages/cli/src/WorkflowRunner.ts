@@ -558,8 +558,9 @@ export class WorkflowRunner {
 		}
 		let nodeTypeData: ITransferNodeTypes;
 		let credentialTypeData: ICredentialsTypeData;
+		// eslint-disable-next-line prefer-destructuring
 		let credentialsOverwrites = this.credentialsOverwrites;
-		if (loadAllNodeTypes === true) {
+		if (loadAllNodeTypes) {
 			// Supply all nodeTypes and credentialTypes
 			nodeTypeData = WorkflowHelpers.getAllNodeTypeData();
 			const credentialTypes = CredentialTypes();
@@ -579,8 +580,10 @@ export class WorkflowRunner {
 
 		(data as unknown as IWorkflowExecutionDataProcessWithExecution).executionId = executionId;
 		(data as unknown as IWorkflowExecutionDataProcessWithExecution).nodeTypeData = nodeTypeData;
-		(data as unknown as IWorkflowExecutionDataProcessWithExecution).credentialsOverwrite = this.credentialsOverwrites;
-		(data as unknown as IWorkflowExecutionDataProcessWithExecution).credentialsTypeData = credentialTypeData;
+		(data as unknown as IWorkflowExecutionDataProcessWithExecution).credentialsOverwrite =
+			this.credentialsOverwrites;
+		(data as unknown as IWorkflowExecutionDataProcessWithExecution).credentialsTypeData =
+			credentialTypeData;
 
 		const workflowHooks = WorkflowExecuteAdditionalData.getWorkflowHooksMain(data, executionId);
 

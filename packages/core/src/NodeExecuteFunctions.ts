@@ -482,7 +482,16 @@ export async function getCredentials(
 	if (name.charAt(0) === '=') {
 		// If the credential name is an expression resolve it
 		const additionalKeys = getAdditionalKeys(additionalData);
-		name = workflow.expression.getParameterValue(name, runExecutionData || null, runIndex || 0, itemIndex || 0, node.name, connectionInputData || [], mode, additionalKeys) as string;
+		name = workflow.expression.getParameterValue(
+			name,
+			runExecutionData || null,
+			runIndex || 0,
+			itemIndex || 0,
+			node.name,
+			connectionInputData || [],
+			mode,
+			additionalKeys,
+		) as string;
 	}
 
 	const decryptedDataObject = await additionalData.credentialsHelper.getDecrypted(
