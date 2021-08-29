@@ -307,7 +307,7 @@ export function displayParameter(nodeValues: INodeParameters, parameter: INodePr
 	}
 
 	if (parameter.displayOptions.hide) {
-		// Any of the defined hide rules have to match to hide the paramter
+		// Any of the defined hide rules have to match to hide the parameter
 		for (const propertyName of Object.keys(parameter.displayOptions.hide)) {
 			if (propertyName.charAt(0) === '/') {
 				// Get the value from the root of the node
@@ -439,14 +439,14 @@ export function getParamterDependencies(nodePropertiesArray: INodeProperties[]):
 
 /**
  * Returns in which order the parameters should be resolved
- * to have the paramters available they are depent on
+ * to have the parameters available they depend on
  *
  * @export
  * @param {INodeProperties[]} nodePropertiesArray
  * @param {IParameterDependencies} parameterDependencies
  * @returns {number[]}
  */
-export function getParamterResolveOrder(nodePropertiesArray: INodeProperties[], parameterDependencies: IParameterDependencies): number[] {
+export function getParameterResolveOrder(nodePropertiesArray: INodeProperties[], parameterDependencies: IParameterDependencies): number[] {
 	const executionOrder: number[] = [];
 	const indexToResolve = Array.from({ length: nodePropertiesArray.length }, (v, k) => k);
 	const resolvedParamters: string[] = [];
@@ -495,7 +495,7 @@ export function getParamterResolveOrder(nodePropertiesArray: INodeProperties[], 
 		}
 
 		if (itterations > lastIndexReduction + nodePropertiesArray.length) {
-			throw new Error('Could not resolve parameter depenencies. Max itterations got reached!');
+			throw new Error('Could not resolve parameter depenencies. Max iterations reached! Hint: If `displayOptions` are specified in any child parameter of a parent `collection` or `fixedCollection`, remove the `displayOptions` from the child parameter.');
 		}
 		lastIndexLength = indexToResolve.length;
 	}
@@ -548,7 +548,7 @@ export function getNodeParameters(nodePropertiesArray: INodeProperties[], nodeVa
 	nodeValuesRoot = nodeValuesRoot || nodeValuesDisplayCheck;
 
 	// Go through the parameters in order of their dependencies
-	const parameterItterationOrderIndex = getParamterResolveOrder(nodePropertiesArray, parameterDependencies);
+	const parameterItterationOrderIndex = getParameterResolveOrder(nodePropertiesArray, parameterDependencies);
 
 	for (const parameterIndex of parameterItterationOrderIndex) {
 		const nodeProperties = nodePropertiesArray[parameterIndex];
