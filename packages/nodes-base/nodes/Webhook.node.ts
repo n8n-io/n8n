@@ -424,17 +424,17 @@ export class Webhook implements INodeType {
 
 					let count = 0;
 					for (const xfile of Object.keys(files)) {
-						const processFiles = [];
+						const processFiles: formidable.File[] = [];
 						let multiFile = false;
 						if (Array.isArray(files[xfile])) {
 							processFiles.push(...files[xfile] as formidable.File[]);
 							multiFile = true;
 						} else {
-							processFiles.push(files[xfile]);
+							processFiles.push(files[xfile] as formidable.File);
 						}
 
 						let fileCount = 0;
-						for (const file in processFiles) {
+						for (const file of processFiles) {
 							let binaryPropertyName = xfile;
 							if (binaryPropertyName.endsWith('[]')) {
 								binaryPropertyName = binaryPropertyName.slice(0, -2);
@@ -446,8 +446,8 @@ export class Webhook implements INodeType {
 								binaryPropertyName = `${options.binaryPropertyName}${count}`;
 							}
 
-							const fileJson = (processFiles[file] as formidable.File).toJSON() as unknown as IDataObject;
-							const fileContent = await fs.promises.readFile((processFiles[file] as formidable.File).path);
+							const fileJson = file.toJSON() as unknown as IDataObject;
+							const fileContent = await fs.promises.readFile(file.path);
 
 							returnItem.binary![binaryPropertyName] = await this.helpers.prepareBinaryData(Buffer.from(fileContent), fileJson.name as string, fileJson.type as string);
 
