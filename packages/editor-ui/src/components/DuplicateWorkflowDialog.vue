@@ -8,7 +8,7 @@
 	>
 		<template v-slot:content>
 			<el-row>
-				<el-input
+				<n8n-input
 					v-model="name"
 					ref="nameInput"
 					placeholder="Enter workflow name"
@@ -29,8 +29,10 @@
 			</el-row>
 		</template>
 		<template v-slot:footer="{ close }">
-			<el-button size="small" @click="save" :loading="isSaving">Save</el-button>
-			<el-button size="small" @click="close" :disabled="isSaving">Cancel</el-button>
+			<div :class="$style.footer">
+				<n8n-button @click="save" :loading="isSaving" label="Save" float="right" />
+				<n8n-button type="outline" @click="close" :disabled="isSaving" label="Cancel" float="right" />
+			</div>
 		</template>
 	</Modal>
 </template>
@@ -123,3 +125,11 @@ export default mixins(showMessage, workflowHelpers).extend({
 	},
 });
 </script>
+
+<style lang="scss" module>
+.footer {
+	> * {
+		margin-left: var(--spacing-3xs);
+	}
+}
+</style>
