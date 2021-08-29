@@ -18,16 +18,6 @@ $--custom-expression-background: #f7f5ff;
 
 $--custom-window-sidebar-top : #fff5f2;
 
-$--custom-error-background : #ffe5e5;
-$--custom-error-text : #eb2222;
-$--custom-running-background : #ffffe5;
-$--custom-running-text : #eb9422;
-$--custom-success-background : #e3f0e4;
-$--custom-success-text-light: #2f4;
-$--custom-success-text : #40c351;
-$--custom-warning-background : #ffffe5;
-$--custom-warning-text : #eb9422;
-
 // Badge
 $--badge-danger-color: #f45959;
 $--badge-danger-background-color: #fef0f0;
@@ -73,9 +63,6 @@ $--breakpoint-xs: 768px;
 $--breakpoint-sm: 992px;
 $--breakpoint-md: 1200px;
 $--breakpoint-lg: 1920px;
-
-// scrollbars
-$--scrollbar-thumb-color: lighten($--color-primary, 20%);
 
 // tags
 $--tag-background-color: #dce1e9;

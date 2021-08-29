@@ -77,10 +77,6 @@ export default mixins(
 	&.expanded {
 		padding-left: $--sidebar-expanded-width;
 	}
-
-	* {
-		box-sizing: border-box;
-	}
 }
 
 .top-menu {
