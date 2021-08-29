@@ -17,8 +17,9 @@
   "scripts": {
     "dev": "npm run watch",
     "build": "tsc && gulp",
-    "tslint": "tslint -p tsconfig.json -c tslint.json",
-    "tslintfix": "tslint --fix -p tsconfig.json -c tslint.json",
+    "format": "cd ../.. && node_modules/prettier/bin-prettier.js packages/nodes-base/**/**.ts --write",
+    "lint": "tslint -p tsconfig.json -c tslint.json",
+    "lintfix": "tslint --fix -p tsconfig.json -c tslint.json",
     "nodelinter": "nodelinter",
     "watch": "tsc --watch",
     "test": "jest"
@@ -644,7 +645,7 @@
     "nodelinter": "^0.1.9",
     "ts-jest": "^26.3.0",
     "tslint": "^6.1.2",
-    "typescript": "~3.9.7"
+    "typescript": "~4.3.5"
   },
   "dependencies": {
     "@types/lossless-json": "^1.0.0",
