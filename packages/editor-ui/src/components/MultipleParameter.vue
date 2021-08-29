@@ -3,10 +3,10 @@
 
 		<div class="parameter-name">
 			{{parameter.displayName}}:
-			<el-tooltip class="parameter-info" placement="top" v-if="parameter.description" effect="light">
-				<div slot="content" v-html="addTargetBlank(parameter.description)"></div>
+			<n8n-tooltip v-if="parameter.description" class="parameter-info" placement="top" >
+				<div slot="content" v-html="parameter.description"></div>
 				<font-awesome-icon icon="question-circle" />
-			</el-tooltip>
+			</n8n-tooltip>
 		</div>
 
 		<div v-for="(value, index) in values" :key="index" class="duplicate-parameter-item" :class="parameter.type">
@@ -21,7 +21,7 @@
 				<collection-parameter :parameter="parameter" :values="value" :nodeValues="nodeValues" :path="getPath(index)" :hideDelete="hideDelete" @valueChanged="valueChanged" />
 			</div>
 			<div v-else>
-				<parameter-input class="duplicate-parameter-input-item" :parameter="parameter" :value="value" :displayOptions="true" :path="getPath(index)" @valueChanged="valueChanged" />
+				<parameter-input class="duplicate-parameter-input-item" :parameter="parameter" :value="value" :displayOptions="true" :path="getPath(index)" @valueChanged="valueChanged" inputSize="small" />
 			</div>
 		</div>
 
@@ -29,7 +29,7 @@
 			<div v-if="values && Object.keys(values).length === 0 || isReadOnly" class="no-items-exist">
 				Currently no items exist
 			</div>
-			<el-button v-if="!isReadOnly" size="small" class="add-item" @click="addItem()">{{ addButtonText }}</el-button>
+			<n8n-button v-if="!isReadOnly" fullWidth @click="addItem()" :label="addButtonText" />
 		</div>
 
 	</div>
@@ -139,10 +139,6 @@ export default mixins(genericHelpers)
 
 .add-item-wrapper {
 	margin: 0.5em 0 0em 2em;
-}
-
-.add-item {
-	width: 100%;
 }
 
 .delete-item {

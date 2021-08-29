@@ -546,8 +546,7 @@ export const workflowHelpers = mixins(
 			async dataHasChanged(id: string) {
 				const currentData = await this.getWorkflowDataToSave();
 
-				let data: IWorkflowDb;
-				data = await this.restApi().getWorkflow(id);
+				const data: IWorkflowDb = await this.restApi().getWorkflow(id);
 
 				if(data !== undefined) {
 					const x = {
