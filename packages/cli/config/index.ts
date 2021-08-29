@@ -1,3 +1,6 @@
+/* eslint-disable no-console */
+/* eslint-disable no-restricted-syntax */
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import * as convict from 'convict';
 import * as dotenv from 'dotenv';
 import * as path from 'path';
@@ -6,7 +9,6 @@ import * as core from 'n8n-core';
 dotenv.config();
 
 const config = convict({
-
 	database: {
 		type: {
 			doc: 'Type of database to use',
@@ -84,7 +86,6 @@ const config = convict({
 					env: 'DB_POSTGRESDB_SSL_REJECT_UNAUTHORIZED',
 				},
 			},
-
 		},
 		mysqldb: {
 			database: {
@@ -159,7 +160,6 @@ const config = convict({
 	},
 
 	executions: {
-
 		// By default workflows get always executed in their own process.
 		// If this option gets set to "main" it will run them in the
 		// main-process instead.
@@ -573,7 +573,6 @@ const config = convict({
 							throw new Error();
 						}
 					}
-
 				} catch (error) {
 					throw new TypeError(`The Nodes to exclude is not a valid Array of strings.`);
 				}
@@ -644,7 +643,6 @@ const config = convict({
 			env: 'N8N_VERSION_NOTIFICATIONS_INFO_URL',
 		},
 	},
-
 });
 
 // Overwrite default configuration with settings which got defined in
