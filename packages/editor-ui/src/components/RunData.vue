@@ -60,7 +60,7 @@
 					<el-radio-button label="Binary" v-if="binaryData.length !== 0"></el-radio-button>
 				</el-radio-group>
 			</div>
-			<div class="select-button" v-if="hasNodeRun && !hasRunError && displayMode === 'JSON' && state.path !== deselectedPlaceholder">
+			<div v-if="hasNodeRun && !hasRunError && displayMode === 'JSON' && state.path !== deselectedPlaceholder" class="select-button">
 				<el-dropdown trigger="click" @command="handleCopyClick">
 					<span class="el-dropdown-link">
 						<n8n-icon-button title="Copy to Clipboard" icon="copy" />
