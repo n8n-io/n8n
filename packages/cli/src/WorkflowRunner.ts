@@ -425,14 +425,41 @@ export class WorkflowRunner {
 		// Register the active execution
 		const executionId = await this.activeExecutions.add(data, subprocess, restartExecutionId);
 
-		// Supply all nodeTypes and credentialTypes
-		const nodeTypeData = WorkflowHelpers.getAllNodeTypeData() as ITransferNodeTypes;
-		const credentialTypes = CredentialTypes();
+		// Check if workflow contains a "executeWorkflow" Node as in this
+		// case we can not know which nodeTypes and credentialTypes will
+		// be needed and so have to load all of them in the workflowRunnerProcess
+		let loadAllNodeTypes = false;
+		for (const node of data.workflowData.nodes) {
+			if (node.type === 'n8n-nodes-base.executeWorkflow') {
+				loadAllNodeTypes = true;
+				break;
+			}
+		}
+		let nodeTypeData: ITransferNodeTypes;
+		let credentialTypeData: ICredentialsTypeData;
+		let credentialsOverwrites = this.credentialsOverwrites;
+		if (loadAllNodeTypes === true) {
+			// Supply all nodeTypes and credentialTypes
+			nodeTypeData = WorkflowHelpers.getAllNodeTypeData();
+			const credentialTypes = CredentialTypes();
+			credentialTypeData = credentialTypes.credentialTypes;
+		} else {
+			// Supply only nodeTypes, credentialTypes and overwrites that the workflow needs
+			nodeTypeData = WorkflowHelpers.getNodeTypeData(data.workflowData.nodes);
+			credentialTypeData = WorkflowHelpers.getCredentialsDataByNodes(data.workflowData.nodes);
+
+			credentialsOverwrites = {};
+			for (const credentialName of Object.keys(credentialTypeData)) {
+				if (this.credentialsOverwrites[credentialName] !== undefined) {
+					credentialsOverwrites[credentialName] = this.credentialsOverwrites[credentialName];
+				}
+			}
+		}
 
 		(data as unknown as IWorkflowExecutionDataProcessWithExecution).executionId = executionId;
 		(data as unknown as IWorkflowExecutionDataProcessWithExecution).nodeTypeData = nodeTypeData;
 		(data as unknown as IWorkflowExecutionDataProcessWithExecution).credentialsOverwrite = this.credentialsOverwrites;
-		(data as unknown as IWorkflowExecutionDataProcessWithExecution).credentialsTypeData = credentialTypes.credentialTypes;
+		(data as unknown as IWorkflowExecutionDataProcessWithExecution).credentialsTypeData = credentialTypeData;
 
 		const workflowHooks = WorkflowExecuteAdditionalData.getWorkflowHooksMain(data, executionId);
 

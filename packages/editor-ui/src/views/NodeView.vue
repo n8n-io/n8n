@@ -624,7 +624,7 @@ export default mixins(
 
 					this.$showMessage({
 						title: 'Workflow created',
-						message: 'A new workflow got created!',
+						message: 'A new workflow was successfully created!',
 						type: 'success',
 					});
 				} else if ((e.key === 's') && (this.isCtrlKeyPressed(e) === true)) {
@@ -904,7 +904,7 @@ export default mixins(
 					await this.restApi().stopCurrentExecution(executionId);
 					this.$showMessage({
 						title: 'Execution stopped',
-						message: `The execution with the id "${executionId}" got stopped!`,
+						message: `The execution with the id "${executionId}" was stopped!`,
 						type: 'success',
 					});
 				} catch (error) {
@@ -949,8 +949,8 @@ export default mixins(
 				}
 
 				this.$showMessage({
-					title: 'Webhook got deleted',
-					message: `The webhook got deleted!`,
+					title: 'Webhook deleted',
+					message: `The webhook was deleted successfully`,
 					type: 'success',
 				});
 			},

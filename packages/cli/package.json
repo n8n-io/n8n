@@ -1,6 +1,6 @@
 {
   "name": "n8n",
-  "version": "0.135.1",
+  "version": "0.135.3",
   "description": "n8n Workflow Automation Tool",
   "license": "SEE LICENSE IN LICENSE.md",
   "homepage": "https://n8n.io",
@@ -109,8 +109,8 @@
     "lodash.get": "^4.4.2",
     "mysql2": "~2.2.0",
     "n8n-core": "~0.80.0",
-    "n8n-editor-ui": "~0.103.0",
-    "n8n-nodes-base": "~0.132.0",
+    "n8n-editor-ui": "~0.103.1",
+    "n8n-nodes-base": "~0.132.1",
     "n8n-workflow": "~0.65.0",
     "oauth-1.0a": "^2.2.6",
     "open": "^7.0.0",

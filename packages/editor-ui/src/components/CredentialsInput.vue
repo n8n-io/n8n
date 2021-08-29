@@ -136,6 +136,8 @@ import ParameterInput from '@/components/ParameterInput.vue';
 
 import mixins from 'vue-typed-mixins';
 
+import { addTargetBlank } from './helpers';
+
 export default mixins(
 	copyPaste,
 	externalHooks,
@@ -256,6 +258,7 @@ export default mixins(
 		},
 	},
 	methods: {
+		addTargetBlank,
 		copyCallbackUrl (): void {
 			this.copyToClipboard(this.oAuthCallbackUrl);
 
