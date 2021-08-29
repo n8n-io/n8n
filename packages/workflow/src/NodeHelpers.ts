@@ -457,10 +457,10 @@ export function getParameterResolveOrder(nodePropertiesArray: INodeProperties[],
 	let lastIndexLength = indexToResolve.length;
 	let lastIndexReduction = -1;
 
-	let itterations = 0 ;
+	let iterations = 0 ;
 
 	while (indexToResolve.length !== 0) {
-		itterations += 1;
+		iterations += 1;
 
 		index = indexToResolve.shift() as number;
 		property = nodePropertiesArray[index];
@@ -491,10 +491,10 @@ export function getParameterResolveOrder(nodePropertiesArray: INodeProperties[],
 		resolvedParamters.push(property.name);
 
 		if (indexToResolve.length < lastIndexLength) {
-			lastIndexReduction = itterations;
+			lastIndexReduction = iterations;
 		}
 
-		if (itterations > lastIndexReduction + nodePropertiesArray.length) {
+		if (iterations > lastIndexReduction + nodePropertiesArray.length) {
 			throw new Error('Could not resolve parameter depenencies. Max iterations reached! Hint: If `displayOptions` are specified in any child parameter of a parent `collection` or `fixedCollection`, remove the `displayOptions` from the child parameter.');
 		}
 		lastIndexLength = indexToResolve.length;
