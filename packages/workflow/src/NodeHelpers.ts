@@ -304,7 +304,7 @@ export function displayParameter(
 	}
 
 	if (parameter.displayOptions.hide) {
-		// Any of the defined hide rules have to match to hide the paramter
+		// Any of the defined hide rules have to match to hide the parameter
 		for (const propertyName of Object.keys(parameter.displayOptions.hide)) {
 			if (propertyName.charAt(0) === '/') {
 				// Get the value from the root of the node
@@ -440,7 +440,7 @@ export function getParamterDependencies(
 
 /**
  * Returns in which order the parameters should be resolved
- * to have the paramters available they are depent on
+ * to have the parameters available they depend on
  *
  * @export
  * @param {INodeProperties[]} nodePropertiesArray
@@ -499,7 +499,9 @@ export function getParamterResolveOrder(
 		}
 
 		if (iterations > lastIndexReduction + nodePropertiesArray.length) {
-			throw new Error('Could not resolve parameter depenencies. Max iterations got reached!');
+			throw new Error(
+				'Could not resolve parameter depenencies. Max iterations reached! Hint: If `displayOptions` are specified in any child parameter of a parent `collection` or `fixedCollection`, remove the `displayOptions` from the child parameter.',
+			);
 		}
 		lastIndexLength = indexToResolve.length;
 	}
