@@ -602,7 +602,6 @@ export default mixins(
 			openExpressionEdit() {
 				if (this.isValueExpression) {
 					this.expressionEditDialogVisible = true;
-					return;
 				}
 			},
 			setFocus () {

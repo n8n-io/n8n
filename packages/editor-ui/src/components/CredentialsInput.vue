@@ -9,7 +9,7 @@
 				</n8n-tooltip>
 			</el-col>
 			<el-col :span="18">
-				<n8n-input size="medium" type="text" v-model="name"></n8n-input>
+				<n8n-input v-model="name" type="text" size="medium"></n8n-input>
 			</el-col>
 		</el-row>
 		<br />
