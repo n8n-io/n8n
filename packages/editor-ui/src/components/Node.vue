@@ -2,18 +2,18 @@
 	<div class="node-wrapper" :style="nodePosition">
 		<div class="node-default" :ref="data.name" :style="nodeStyle" :class="nodeClass" @dblclick="setNodeActive" @click.left="mouseLeftClick" v-touch:start="touchStart" v-touch:end="touchEnd">
 			<div v-if="hasIssues" class="node-info-icon node-issues">
-				<el-tooltip placement="top" effect="light">
+				<n8n-tooltip placement="top" >
 					<div slot="content" v-html="nodeIssues"></div>
 					<font-awesome-icon icon="exclamation-triangle" />
-				</el-tooltip>
+				</n8n-tooltip>
 			</div>
 			<el-badge v-else :hidden="workflowDataItems === 0" class="node-info-icon data-count" :value="workflowDataItems"></el-badge>
 
 			<div v-if="waiting" class="node-info-icon waiting">
-				<el-tooltip placement="top" effect="light">
+				<n8n-tooltip placement="top">
 					<div slot="content" v-html="waiting"></div>
 					<font-awesome-icon icon="clock" />
-				</el-tooltip>
+				</n8n-tooltip>
 			</div>
 
 			<div class="node-executing-info" title="Node is executing">
@@ -218,6 +218,7 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 	height: 100px;
 
 	.node-description {
+		line-height: 1.5;
 		position: absolute;
 		bottom: -55px;
 		left: -50px;
@@ -307,7 +308,7 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 
 		.node-info-icon {
 			position: absolute;
-			top: -18px;
+			top: -14px;
 			right: 12px;
 			z-index: 11;
 
@@ -350,9 +351,8 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 			text-align: center;
 
 			.option {
-				width: 20px;
+				width: 28px;
 				display: inline-block;
-				padding: 0 0.3em;
 
 				&.touch {
 					display: none;
