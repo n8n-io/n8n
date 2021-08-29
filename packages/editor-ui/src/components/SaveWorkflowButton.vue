@@ -1,13 +1,9 @@
 <template>
-	<el-button :disabled="isWorkflowSaving" :class="{saved: isSaved}" size="small" @click="save">
-		<font-awesome-icon v-if="isWorkflowSaving" icon="spinner" spin />
-		<span v-else-if="isDirty || isNewWorkflow">
-			Save
-		</span>
-		<span v-else>Saved</span>
-	</el-button>
+	<span :class="$style.container">
+		<n8n-button v-if="isDirty || isNewWorkflow" label="Save" :disabled="isWorkflowSaving" @click="save" />
+		<span :class="$style.saved" v-else>Saved</span>
+	</span>
 </template>
-
 
 <script lang="ts">
 import mixins from "vue-typed-mixins";
@@ -39,27 +35,17 @@ export default mixins(workflowHelpers).extend({
 });
 </script>
 
-<style lang="scss" scoped>
-.el-button {
+<style lang="scss" module>
+.container {
 	width: 65px;
+}
 
-	// override disabled colors
-	color: white;
-	background-color: $--color-primary;
-
-	&:hover:not(.saved) {
-		color: white;
-		background-color: $--color-primary;
-	}
-
-	&.saved {
-		color: $--custom-font-very-light;
-		font-size: 12px;
-		font-weight: 600;
-		line-height: 12px;
-		text-align: center;
-		background-color: unset;
-		pointer-events: none;
-	}
+.saved {
+	color: $--custom-font-very-light;
+	font-size: 12px;
+	font-weight: 600;
+	line-height: 12px;
+	text-align: center;
+	padding: var(--spacing-2xs) var(--spacing-xs);
 }
 </style>
