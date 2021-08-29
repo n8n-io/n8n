@@ -64,7 +64,6 @@ export class Credentials extends ICredentials {
 		}
 
 		const decryptedData = AES.decrypt(this.data, encryptionKey);
-		console.log(decryptedData);
 
 		try {
 			return JSON.parse(decryptedData.toString(enc.Utf8));

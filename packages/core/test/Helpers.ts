@@ -5,6 +5,7 @@ import {
 	ICredentialsHelper,
 	IDataObject,
 	IExecuteWorkflowInfo,
+	INodeCredentialsDetails,
 	INodeExecutionData,
 	INodeParameters,
 	INodeType,
@@ -26,15 +27,15 @@ import {
 
 
 export class CredentialsHelper extends ICredentialsHelper {
-	getDecrypted(name: string, type: string): ICredentialDataDecryptedObject {
+	getDecrypted(nodeCredentials: INodeCredentialsDetails, type: string): ICredentialDataDecryptedObject {
 		return {};
 	}
 
-	getCredentials(name: string, type: string): Credentials {
-		return new Credentials('', '', [], '');
+	getCredentials(nodeCredentials: INodeCredentialsDetails, type: string): Credentials {
+		return new Credentials({ id: null, name: '' }, '', [], '');
 	}
 
-	async updateCredentials(name: string, type: string, data: ICredentialDataDecryptedObject): Promise<void> {}
+	async updateCredentials(nodeCredentials: INodeCredentialsDetails, type: string, data: ICredentialDataDecryptedObject): Promise<void> {}
 }
 
 

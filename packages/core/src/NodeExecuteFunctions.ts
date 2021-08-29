@@ -206,7 +206,7 @@ export function requestOAuth2(this: IAllExecuteFunctions, credentialsType: strin
 				const nodeCredentials = node.credentials[credentialsType];
 
 				// Save the refreshed token
-				await additionalData.credentialsHelper.updateCredentials(nodeCredentials.name, credentialsType, credentials);
+				await additionalData.credentialsHelper.updateCredentials(nodeCredentials, credentialsType, credentials);
 
 				Logger.debug(`OAuth2 token for "${credentialsType}" used by node "${node.name}" has been saved to database successfully.`);
 

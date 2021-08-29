@@ -1042,7 +1042,7 @@ class App {
 			}
 
 			// Encrypt the data
-			const credentials = new Credentials(incomingData as INodeCredentialsDetails, incomingData.type, incomingData.nodesAccess);
+			const credentials = new Credentials({ id: null, name: incomingData.name}, incomingData.type, incomingData.nodesAccess);
 			credentials.setData(incomingData.data, encryptionKey);
 			const newCredentialsData = credentials.getDataToSave() as ICredentialsDb;
 
@@ -1114,7 +1114,7 @@ class App {
 			}
 
 			// Encrypt the data
-			const credentials = new Credentials(incomingData.name, incomingData.type, incomingData.nodesAccess);
+			const credentials = new Credentials({id, name: incomingData.name}, incomingData.type, incomingData.nodesAccess);
 			credentials.setData(incomingData.data, encryptionKey);
 			const newCredentialsData = credentials.getDataToSave() as unknown as ICredentialsDb;
 

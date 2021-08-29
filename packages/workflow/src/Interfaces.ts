@@ -73,7 +73,7 @@ export interface ICredentialNodeAccess {
 }
 
 export interface ICredentialsDecrypted {
-	id: string;
+	id: string | number;
 	name: string;
 	type: string;
 	nodesAccess: ICredentialNodeAccess[];
@@ -81,7 +81,7 @@ export interface ICredentialsDecrypted {
 }
 
 export interface ICredentialsEncrypted {
-	id?: string,
+	id?: string | number,
 	name: string;
 	type: string;
 	nodesAccess: ICredentialNodeAccess[];
