@@ -1,12 +1,17 @@
-import {
-	BINARY_ENCODING,
-	IHookFunctions,
-	ILoadOptionsFunctions,
-	IResponseError,
-	IWorkflowSettings,
-	PLACEHOLDER_EMPTY_EXECUTION_ID,
-} from './';
-
+/* eslint-disable @typescript-eslint/no-explicit-any */
+/* eslint-disable no-prototype-builtins */
+/* eslint-disable @typescript-eslint/no-unused-vars */
+/* eslint-disable @typescript-eslint/prefer-nullish-coalescing */
+/* eslint-disable @typescript-eslint/naming-convention */
+/* eslint-disable new-cap */
+/* eslint-disable @typescript-eslint/no-unsafe-call */
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
+/* eslint-disable @typescript-eslint/no-unsafe-return */
+/* eslint-disable @typescript-eslint/no-unsafe-member-access */
+/* eslint-disable @typescript-eslint/explicit-module-boundary-types */
+/* eslint-disable @typescript-eslint/no-non-null-assertion */
+/* eslint-disable @typescript-eslint/no-shadow */
+/* eslint-disable no-param-reassign */
 import {
 	IAllExecuteFunctions,
 	IBinaryData,
@@ -40,12 +45,15 @@ import {
 	WorkflowActivateMode,
 	WorkflowDataProxy,
 	WorkflowExecuteMode,
+	LoggerProxy as Logger,
 } from 'n8n-workflow';
 
 import * as clientOAuth1 from 'oauth-1.0a';
 import { Token } from 'oauth-1.0a';
 import * as clientOAuth2 from 'client-oauth2';
+// eslint-disable-next-line import/no-extraneous-dependencies
 import { get } from 'lodash';
+// eslint-disable-next-line import/no-extraneous-dependencies
 import * as express from 'express';
 import * as path from 'path';
 import { OptionsWithUri, OptionsWithUrl } from 'request';
@@ -53,9 +61,16 @@ import * as requestPromise from 'request-promise-native';
 import { createHmac } from 'crypto';
 import { fromBuffer } from 'file-type';
 import { lookup } from 'mime-types';
+
+// eslint-disable-next-line import/no-cycle
 import {
-	LoggerProxy as Logger,
-} from 'n8n-workflow';
+	BINARY_ENCODING,
+	IHookFunctions,
+	ILoadOptionsFunctions,
+	IResponseError,
+	IWorkflowSettings,
+	PLACEHOLDER_EMPTY_EXECUTION_ID,
+} from '.';
 
 const requestPromiseWithDefaults = requestPromise.defaults({
 	timeout: 300000, // 5 minutes
@@ -71,8 +86,13 @@ const requestPromiseWithDefaults = requestPromise.defaults({
  * @param {number} inputIndex
  * @returns {Promise<Buffer>}
  */
-export async function getBinaryDataBuffer(inputData: ITaskDataConnections, itemIndex: number, propertyName: string, inputIndex: number): Promise<Buffer> {
-	const binaryData = inputData['main']![inputIndex]![itemIndex]!.binary![propertyName]!;
+export async function getBinaryDataBuffer(
+	inputData: ITaskDataConnections,
+	itemIndex: number,
+	propertyName: string,
+	inputIndex: number,
+): Promise<Buffer> {
+	const binaryData = inputData.main![inputIndex]![itemIndex]!.binary![propertyName]!;
 	return Buffer.from(binaryData.data, BINARY_ENCODING);
 }
 
@@ -86,7 +106,11 @@ export async function getBinaryDataBuffer(inputData: ITaskDataConnections, itemI
  * @param {string} [mimeType]
  * @returns {Promise<IBinaryData>}
  */
-export async function prepareBinaryData(binaryData: Buffer, filePath?: string, mimeType?: string): Promise<IBinaryData> {
+export async function prepareBinaryData(
+	binaryData: Buffer,
+	filePath?: string,
+	mimeType?: string,
+): Promise<IBinaryData> {
 	if (!mimeType) {
 		// If no mime type is given figure it out
 
@@ -143,8 +167,6 @@ export async function prepareBinaryData(binaryData: Buffer, filePath?: string, m
 	return returnData;
 }
 
-
-
 /**
  * Makes a request using OAuth data for authentication
  *
@@ -157,8 +179,17 @@ export async function prepareBinaryData(binaryData: Buffer, filePath?: string, m
  *
  * @returns
  */
-export async function requestOAuth2(this: IAllExecuteFunctions, credentialsType: string, requestOptions: OptionsWithUri | requestPromise.RequestPromiseOptions, node: INode, additionalData: IWorkflowExecuteAdditionalData, oAuth2Options?: IOAuth2Options) {
-	const credentials = await this.getCredentials(credentialsType) as ICredentialDataDecryptedObject;
+export async function requestOAuth2(
+	this: IAllExecuteFunctions,
+	credentialsType: string,
+	requestOptions: OptionsWithUri | requestPromise.RequestPromiseOptions,
+	node: INode,
+	additionalData: IWorkflowExecuteAdditionalData,
+	oAuth2Options?: IOAuth2Options,
+) {
+	const credentials = (await this.getCredentials(
+		credentialsType,
+	)) as ICredentialDataDecryptedObject;
 
 	if (credentials === undefined) {
 		throw new Error('No credentials were returned!');
@@ -176,78 +207,101 @@ export async function requestOAuth2(this: IAllExecuteFunctions, credentialsType:
 
 	const oauthTokenData = credentials.oauthTokenData as clientOAuth2.Data;
 
-	const token = oAuthClient.createToken(get(oauthTokenData, oAuth2Options?.property as string) || oauthTokenData.accessToken, oauthTokenData.refreshToken, oAuth2Options?.tokenType || oauthTokenData.tokenType, oauthTokenData);
+	const token = oAuthClient.createToken(
+		get(oauthTokenData, oAuth2Options?.property as string) || oauthTokenData.accessToken,
+		oauthTokenData.refreshToken,
+		oAuth2Options?.tokenType || oauthTokenData.tokenType,
+		oauthTokenData,
+	);
 	// Signs the request by adding authorization headers or query parameters depending
 	// on the token-type used.
 	const newRequestOptions = token.sign(requestOptions as clientOAuth2.RequestObject);
 
 	// If keep bearer is false remove the it from the authorization header
 	if (oAuth2Options?.keepBearer === false) {
-		//@ts-ignore
-		newRequestOptions?.headers?.Authorization = newRequestOptions?.headers?.Authorization.split(' ')[1];
+		// @ts-ignore
+		newRequestOptions?.headers?.Authorization =
+			// @ts-ignore
+			newRequestOptions?.headers?.Authorization.split(' ')[1];
 	}
 
-	return this.helpers.request!(newRequestOptions)
-		.catch(async (error: IResponseError) => {
-			const statusCodeReturned = oAuth2Options?.tokenExpiredStatusCode === undefined ? 401 : oAuth2Options?.tokenExpiredStatusCode;
+	return this.helpers.request!(newRequestOptions).catch(async (error: IResponseError) => {
+		const statusCodeReturned =
+			oAuth2Options?.tokenExpiredStatusCode === undefined
+				? 401
+				: oAuth2Options?.tokenExpiredStatusCode;
 
-			if (error.statusCode === statusCodeReturned) {
-				// Token is probably not valid anymore. So try refresh it.
+		if (error.statusCode === statusCodeReturned) {
+			// Token is probably not valid anymore. So try refresh it.
 
-				const tokenRefreshOptions: IDataObject = {};
+			const tokenRefreshOptions: IDataObject = {};
 
-				if (oAuth2Options?.includeCredentialsOnRefreshOnBody) {
-					const body: IDataObject = {
-						client_id: credentials.clientId as string,
-						client_secret: credentials.clientSecret as string,
-					};
-					tokenRefreshOptions.body = body;
-					// Override authorization property so the credentails are not included in it
-					tokenRefreshOptions.headers = {
-						Authorization: '',
-					};
-				}
-
-				Logger.debug(`OAuth2 token for "${credentialsType}" used by node "${node.name}" expired. Should revalidate.`);
-
-				const newToken = await token.refresh(tokenRefreshOptions);
-
-				Logger.debug(`OAuth2 token for "${credentialsType}" used by node "${node.name}" has been renewed.`);
-
-				credentials.oauthTokenData = newToken.data;
-
-				// Find the name of the credentials
-				if (!node.credentials || !node.credentials[credentialsType]) {
-					throw new Error(`The node "${node.name}" does not have credentials of type "${credentialsType}"!`);
-				}
-				const name = node.credentials[credentialsType];
-
-				// Save the refreshed token
-				await additionalData.credentialsHelper.updateCredentials(name, credentialsType, credentials);
-
-				Logger.debug(`OAuth2 token for "${credentialsType}" used by node "${node.name}" has been saved to database successfully.`);
-
-				// Make the request again with the new token
-				const newRequestOptions = newToken.sign(requestOptions as clientOAuth2.RequestObject);
-
-				return this.helpers.request!(newRequestOptions);
+			if (oAuth2Options?.includeCredentialsOnRefreshOnBody) {
+				const body: IDataObject = {
+					client_id: credentials.clientId as string,
+					client_secret: credentials.clientSecret as string,
+				};
+				tokenRefreshOptions.body = body;
+				// Override authorization property so the credentails are not included in it
+				tokenRefreshOptions.headers = {
+					Authorization: '',
+				};
 			}
 
-			// Unknown error so simply throw it
-			throw error;
-		});
+			Logger.debug(
+				`OAuth2 token for "${credentialsType}" used by node "${node.name}" expired. Should revalidate.`,
+			);
+
+			const newToken = await token.refresh(tokenRefreshOptions);
+
+			Logger.debug(
+				`OAuth2 token for "${credentialsType}" used by node "${node.name}" has been renewed.`,
+			);
+
+			credentials.oauthTokenData = newToken.data;
+
+			// Find the name of the credentials
+			if (!node.credentials || !node.credentials[credentialsType]) {
+				throw new Error(
+					`The node "${node.name}" does not have credentials of type "${credentialsType}"!`,
+				);
+			}
+			const name = node.credentials[credentialsType];
+
+			// Save the refreshed token
+			await additionalData.credentialsHelper.updateCredentials(name, credentialsType, credentials);
+
+			Logger.debug(
+				`OAuth2 token for "${credentialsType}" used by node "${node.name}" has been saved to database successfully.`,
+			);
+
+			// Make the request again with the new token
+			const newRequestOptions = newToken.sign(requestOptions as clientOAuth2.RequestObject);
+
+			return this.helpers.request!(newRequestOptions);
+		}
+
+		// Unknown error so simply throw it
+		throw error;
+	});
 }
 
 /* Makes a request using OAuth1 data for authentication
-*
-* @export
-* @param {IAllExecuteFunctions} this
-* @param {string} credentialsType
-* @param {(OptionsWithUrl | requestPromise.RequestPromiseOptions)} requestOptionså
-* @returns
-*/
-export async function requestOAuth1(this: IAllExecuteFunctions, credentialsType: string, requestOptions: OptionsWithUrl | OptionsWithUri | requestPromise.RequestPromiseOptions) {
-	const credentials = await this.getCredentials(credentialsType) as ICredentialDataDecryptedObject;
+ *
+ * @export
+ * @param {IAllExecuteFunctions} this
+ * @param {string} credentialsType
+ * @param {(OptionsWithUrl | requestPromise.RequestPromiseOptions)} requestOptionså
+ * @returns
+ */
+export async function requestOAuth1(
+	this: IAllExecuteFunctions,
+	credentialsType: string,
+	requestOptions: OptionsWithUrl | OptionsWithUri | requestPromise.RequestPromiseOptions,
+) {
+	const credentials = (await this.getCredentials(
+		credentialsType,
+	)) as ICredentialDataDecryptedObject;
 
 	if (credentials === undefined) {
 		throw new Error('No credentials were returned!');
@@ -264,10 +318,8 @@ export async function requestOAuth1(this: IAllExecuteFunctions, credentialsType:
 		},
 		signature_method: credentials.signatureMethod as string,
 		hash_function(base, key) {
-		const algorithm = (credentials.signatureMethod === 'HMAC-SHA1') ? 'sha1' : 'sha256';
-			return createHmac(algorithm, key)
-					.update(base)
-					.digest('base64');
+			const algorithm = credentials.signatureMethod === 'HMAC-SHA1' ? 'sha1' : 'sha256';
+			return createHmac(algorithm, key).update(base).digest('base64');
 		},
 	});
 
@@ -278,7 +330,7 @@ export async function requestOAuth1(this: IAllExecuteFunctions, credentialsType:
 		secret: oauthTokenData.oauth_token_secret as string,
 	};
 
-	//@ts-ignore
+	// @ts-ignore
 	requestOptions.data = { ...requestOptions.qs, ...requestOptions.form };
 
 	// Fixes issue that OAuth1 library only works with "url" property and not with "uri"
@@ -290,16 +342,14 @@ export async function requestOAuth1(this: IAllExecuteFunctions, credentialsType:
 		delete requestOptions.uri;
 	}
 
-	//@ts-ignore
+	// @ts-ignore
 	requestOptions.headers = oauth.toHeader(oauth.authorize(requestOptions, token));
 
-	return this.helpers.request!(requestOptions)
-		.catch(async (error: IResponseError) => {
-			// Unknown error so simply throw it
-			throw error;
-		});
+	return this.helpers.request!(requestOptions).catch(async (error: IResponseError) => {
+		// Unknown error so simply throw it
+		throw error;
+	});
 }
-
 
 /**
  * Takes generic input data and brings it into the json format n8n uses.
@@ -322,8 +372,6 @@ export function returnJsonArray(jsonData: IDataObject | IDataObject[]): INodeExe
 	return returnData;
 }
 
-
-
 /**
  * Returns the additional keys for Expressions and Function-Nodes
  *
@@ -331,15 +379,15 @@ export function returnJsonArray(jsonData: IDataObject | IDataObject[]): INodeExe
  * @param {IWorkflowExecuteAdditionalData} additionalData
  * @returns {(IWorkflowDataProxyAdditionalKeys)}
  */
-export function getAdditionalKeys(additionalData: IWorkflowExecuteAdditionalData): IWorkflowDataProxyAdditionalKeys {
+export function getAdditionalKeys(
+	additionalData: IWorkflowExecuteAdditionalData,
+): IWorkflowDataProxyAdditionalKeys {
 	const executionId = additionalData.executionId || PLACEHOLDER_EMPTY_EXECUTION_ID;
 	return {
 		$executionId: executionId,
 		$resumeWebhookUrl: `${additionalData.webhookWaitingBaseUrl}/${executionId}`,
 	};
 }
-
-
 
 /**
  * Returns the requested decrypted credentials if the node has access to them.
@@ -351,24 +399,50 @@ export function getAdditionalKeys(additionalData: IWorkflowExecuteAdditionalData
  * @param {IWorkflowExecuteAdditionalData} additionalData
  * @returns {(ICredentialDataDecryptedObject | undefined)}
  */
-export async function getCredentials(workflow: Workflow, node: INode, type: string, additionalData: IWorkflowExecuteAdditionalData, mode: WorkflowExecuteMode, runExecutionData?: IRunExecutionData | null, runIndex?: number, connectionInputData?: INodeExecutionData[], itemIndex?: number): Promise<ICredentialDataDecryptedObject | undefined> {
-
+export async function getCredentials(
+	workflow: Workflow,
+	node: INode,
+	type: string,
+	additionalData: IWorkflowExecuteAdditionalData,
+	mode: WorkflowExecuteMode,
+	runExecutionData?: IRunExecutionData | null,
+	runIndex?: number,
+	connectionInputData?: INodeExecutionData[],
+	itemIndex?: number,
+): Promise<ICredentialDataDecryptedObject | undefined> {
 	// Get the NodeType as it has the information if the credentials are required
 	const nodeType = workflow.nodeTypes.getByName(node.type);
 	if (nodeType === undefined) {
-		throw new NodeOperationError(node, `Node type "${node.type}" is not known so can not get credentials!`);
+		throw new NodeOperationError(
+			node,
+			`Node type "${node.type}" is not known so can not get credentials!`,
+		);
 	}
 
 	if (nodeType.description.credentials === undefined) {
-		throw new NodeOperationError(node, `Node type "${node.type}" does not have any credentials defined!`);
+		throw new NodeOperationError(
+			node,
+			`Node type "${node.type}" does not have any credentials defined!`,
+		);
 	}
 
-	const nodeCredentialDescription = nodeType.description.credentials.find((credentialTypeDescription) => credentialTypeDescription.name === type);
+	const nodeCredentialDescription = nodeType.description.credentials.find(
+		(credentialTypeDescription) => credentialTypeDescription.name === type,
+	);
 	if (nodeCredentialDescription === undefined) {
-		throw new NodeOperationError(node, `Node type "${node.type}" does not have any credentials of type "${type}" defined!`);
+		throw new NodeOperationError(
+			node,
+			`Node type "${node.type}" does not have any credentials of type "${type}" defined!`,
+		);
 	}
 
-	if (NodeHelpers.displayParameter(additionalData.currentNodeParameters || node.parameters, nodeCredentialDescription, node.parameters) === false) {
+	if (
+		!NodeHelpers.displayParameter(
+			additionalData.currentNodeParameters || node.parameters,
+			nodeCredentialDescription,
+			node.parameters,
+		)
+	) {
 		// Credentials should not be displayed so return undefined even if they would be defined
 		return undefined;
 	}
@@ -380,10 +454,10 @@ export async function getCredentials(workflow: Workflow, node: INode, type: stri
 		if (nodeCredentialDescription.required === true) {
 			// Credentials are required so error
 			if (!node.credentials) {
-				throw new NodeOperationError(node,'Node does not have any credentials set!');
+				throw new NodeOperationError(node, 'Node does not have any credentials set!');
 			}
 			if (!node.credentials[type]) {
-				throw new NodeOperationError(node,`Node does not have any credentials set for "${type}"!`);
+				throw new NodeOperationError(node, `Node does not have any credentials set for "${type}"!`);
 			}
 		} else {
 			// Credentials are not required so resolve with undefined
@@ -408,15 +482,28 @@ export async function getCredentials(workflow: Workflow, node: INode, type: stri
 	if (name.charAt(0) === '=') {
 		// If the credential name is an expression resolve it
 		const additionalKeys = getAdditionalKeys(additionalData);
-		name = workflow.expression.getParameterValue(name, runExecutionData || null, runIndex || 0, itemIndex || 0, node.name, connectionInputData || [], mode, additionalKeys) as string;
+		name = workflow.expression.getParameterValue(
+			name,
+			runExecutionData || null,
+			runIndex || 0,
+			itemIndex || 0,
+			node.name,
+			connectionInputData || [],
+			mode,
+			additionalKeys,
+		) as string;
 	}
 
-	const decryptedDataObject = await additionalData.credentialsHelper.getDecrypted(name, type, mode, false, expressionResolveValues);
+	const decryptedDataObject = await additionalData.credentialsHelper.getDecrypted(
+		name,
+		type,
+		mode,
+		false,
+		expressionResolveValues,
+	);
 
 	return decryptedDataObject;
 }
-
-
 
 /**
  * Returns a copy of the node
@@ -428,8 +515,6 @@ export async function getCredentials(workflow: Workflow, node: INode, type: stri
 export function getNode(node: INode): INode {
 	return JSON.parse(JSON.stringify(node));
 }
-
-
 
 /**
  * Returns the requested resolved (all expressions replaced) node parameters.
@@ -445,7 +530,18 @@ export function getNode(node: INode): INode {
  * @param {*} [fallbackValue]
  * @returns {(NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[] | object)}
  */
-export function getNodeParameter(workflow: Workflow, runExecutionData: IRunExecutionData | null, runIndex: number, connectionInputData: INodeExecutionData[], node: INode, parameterName: string, itemIndex: number, mode: WorkflowExecuteMode, additionalKeys: IWorkflowDataProxyAdditionalKeys, fallbackValue?: any): NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[] | object { //tslint:disable-line:no-any
+export function getNodeParameter(
+	workflow: Workflow,
+	runExecutionData: IRunExecutionData | null,
+	runIndex: number,
+	connectionInputData: INodeExecutionData[],
+	node: INode,
+	parameterName: string,
+	itemIndex: number,
+	mode: WorkflowExecuteMode,
+	additionalKeys: IWorkflowDataProxyAdditionalKeys,
+	fallbackValue?: any,
+): NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[] | object {
 	const nodeType = workflow.nodeTypes.getByName(node.type);
 	if (nodeType === undefined) {
 		throw new Error(`Node type "${node.type}" is not known so can not return paramter value!`);
@@ -459,7 +555,16 @@ export function getNodeParameter(workflow: Workflow, runExecutionData: IRunExecu
 
 	let returnData;
 	try {
-		returnData = workflow.expression.getParameterValue(value, runExecutionData, runIndex, itemIndex, node.name, connectionInputData, mode, additionalKeys);
+		returnData = workflow.expression.getParameterValue(
+			value,
+			runExecutionData,
+			runIndex,
+			itemIndex,
+			node.name,
+			connectionInputData,
+			mode,
+			additionalKeys,
+		);
 	} catch (e) {
 		e.message += ` [Error in parameter: "${parameterName}"]`;
 		throw e;
@@ -467,8 +572,6 @@ export function getNodeParameter(workflow: Workflow, runExecutionData: IRunExecu
 
 	return returnData;
 }
-
-
 
 /**
  * Returns if execution should be continued even if there was an error.
@@ -481,8 +584,6 @@ export function continueOnFail(node: INode): boolean {
 	return get(node, 'continueOnFail', false);
 }
 
-
-
 /**
  * Returns the webhook URL of the webhook with the given name
  *
@@ -494,27 +595,45 @@ export function continueOnFail(node: INode): boolean {
  * @param {boolean} [isTest]
  * @returns {(string | undefined)}
  */
-export function getNodeWebhookUrl(name: string, workflow: Workflow, node: INode, additionalData: IWorkflowExecuteAdditionalData, mode: WorkflowExecuteMode, additionalKeys: IWorkflowDataProxyAdditionalKeys, isTest?: boolean): string | undefined {
+export function getNodeWebhookUrl(
+	name: string,
+	workflow: Workflow,
+	node: INode,
+	additionalData: IWorkflowExecuteAdditionalData,
+	mode: WorkflowExecuteMode,
+	additionalKeys: IWorkflowDataProxyAdditionalKeys,
+	isTest?: boolean,
+): string | undefined {
 	let baseUrl = additionalData.webhookBaseUrl;
 	if (isTest === true) {
 		baseUrl = additionalData.webhookTestBaseUrl;
 	}
 
+	// eslint-disable-next-line @typescript-eslint/no-use-before-define
 	const webhookDescription = getWebhookDescription(name, workflow, node);
 	if (webhookDescription === undefined) {
 		return undefined;
 	}
 
-	const path = workflow.expression.getSimpleParameterValue(node, webhookDescription['path'], mode, additionalKeys);
+	const path = workflow.expression.getSimpleParameterValue(
+		node,
+		webhookDescription.path,
+		mode,
+		additionalKeys,
+	);
 	if (path === undefined) {
 		return undefined;
 	}
 
-	const isFullPath: boolean = workflow.expression.getSimpleParameterValue(node, webhookDescription['isFullPath'], mode, additionalKeys, false) as boolean;
+	const isFullPath: boolean = workflow.expression.getSimpleParameterValue(
+		node,
+		webhookDescription.isFullPath,
+		mode,
+		additionalKeys,
+		false,
+	) as boolean;
 	return NodeHelpers.getNodeWebhookUrl(baseUrl, workflow.id!, node, path.toString(), isFullPath);
 }
-
-
 
 /**
  * Returns the timezone for the workflow
@@ -524,14 +643,16 @@ export function getNodeWebhookUrl(name: string, workflow: Workflow, node: INode,
  * @param {IWorkflowExecuteAdditionalData} additionalData
  * @returns {string}
  */
-export function getTimezone(workflow: Workflow, additionalData: IWorkflowExecuteAdditionalData):string {
+export function getTimezone(
+	workflow: Workflow,
+	additionalData: IWorkflowExecuteAdditionalData,
+): string {
+	// eslint-disable-next-line @typescript-eslint/prefer-optional-chain
 	if (workflow.settings !== undefined && workflow.settings.timezone !== undefined) {
 		return (workflow.settings as IWorkflowSettings).timezone as string;
 	}
 	return additionalData.timezone;
 }
-
-
 
 /**
  * Returns the full webhook description of the webhook with the given name
@@ -542,7 +663,11 @@ export function getTimezone(workflow: Workflow, additionalData: IWorkflowExecute
  * @param {INode} node
  * @returns {(IWebhookDescription | undefined)}
  */
-export function getWebhookDescription(name: string, workflow: Workflow, node: INode): IWebhookDescription | undefined {
+export function getWebhookDescription(
+	name: string,
+	workflow: Workflow,
+	node: INode,
+): IWebhookDescription | undefined {
 	const nodeType = workflow.nodeTypes.getByName(node.type) as INodeType;
 
 	if (nodeType.description.webhooks === undefined) {
@@ -550,6 +675,7 @@ export function getWebhookDescription(name: string, workflow: Workflow, node: IN
 		return undefined;
 	}
 
+	// eslint-disable-next-line no-restricted-syntax
 	for (const webhookDescription of nodeType.description.webhooks) {
 		if (webhookDescription.name === name) {
 			return webhookDescription;
@@ -558,8 +684,6 @@ export function getWebhookDescription(name: string, workflow: Workflow, node: IN
 
 	return undefined;
 }
-
-
 
 /**
  * Returns the workflow metadata
@@ -576,8 +700,6 @@ export function getWorkflowMetadata(workflow: Workflow): IWorkflowMetadata {
 	};
 }
 
-
-
 /**
  * Returns the execute functions the poll nodes have access to.
  *
@@ -589,14 +711,20 @@ export function getWorkflowMetadata(workflow: Workflow): IWorkflowMetadata {
  * @returns {ITriggerFunctions}
  */
 // TODO: Check if I can get rid of: additionalData, and so then maybe also at ActiveWorkflowRunner.add
-export function getExecutePollFunctions(workflow: Workflow, node: INode, additionalData: IWorkflowExecuteAdditionalData, mode: WorkflowExecuteMode, activation: WorkflowActivateMode): IPollFunctions {
+export function getExecutePollFunctions(
+	workflow: Workflow,
+	node: INode,
+	additionalData: IWorkflowExecuteAdditionalData,
+	mode: WorkflowExecuteMode,
+	activation: WorkflowActivateMode,
+): IPollFunctions {
 	return ((workflow: Workflow, node: INode) => {
 		return {
 			__emit: (data: INodeExecutionData[][]): void => {
 				throw new Error('Overwrite NodeExecuteFunctions.getExecutePullFunctions.__emit function!');
 			},
 			async getCredentials(type: string): Promise<ICredentialDataDecryptedObject | undefined> {
-				return await getCredentials(workflow, node, type, additionalData, mode);
+				return getCredentials(workflow, node, type, additionalData, mode);
 			},
 			getMode: (): WorkflowExecuteMode => {
 				return mode;
@@ -607,13 +735,32 @@ export function getExecutePollFunctions(workflow: Workflow, node: INode, additio
 			getNode: () => {
 				return getNode(node);
 			},
-			getNodeParameter: (parameterName: string, fallbackValue?: any): NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[] | object => { //tslint:disable-line:no-any
+			getNodeParameter: (
+				parameterName: string,
+				fallbackValue?: any,
+			):
+				| NodeParameterValue
+				| INodeParameters
+				| NodeParameterValue[]
+				| INodeParameters[]
+				| object => {
 				const runExecutionData: IRunExecutionData | null = null;
 				const itemIndex = 0;
 				const runIndex = 0;
 				const connectionInputData: INodeExecutionData[] = [];
 
-				return getNodeParameter(workflow, runExecutionData, runIndex, connectionInputData, node, parameterName, itemIndex, mode, getAdditionalKeys(additionalData), fallbackValue);
+				return getNodeParameter(
+					workflow,
+					runExecutionData,
+					runIndex,
+					connectionInputData,
+					node,
+					parameterName,
+					itemIndex,
+					mode,
+					getAdditionalKeys(additionalData),
+					fallbackValue,
+				);
 			},
 			getRestApiUrl: (): string => {
 				return additionalData.restApiUrl;
@@ -630,10 +777,26 @@ export function getExecutePollFunctions(workflow: Workflow, node: INode, additio
 			helpers: {
 				prepareBinaryData,
 				request: requestPromiseWithDefaults,
-				requestOAuth2(this: IAllExecuteFunctions, credentialsType: string, requestOptions: OptionsWithUri | requestPromise.RequestPromiseOptions, oAuth2Options?: IOAuth2Options): Promise<any> { // tslint:disable-line:no-any
-					return requestOAuth2.call(this, credentialsType, requestOptions, node, additionalData, oAuth2Options);
+				async requestOAuth2(
+					this: IAllExecuteFunctions,
+					credentialsType: string,
+					requestOptions: OptionsWithUri | requestPromise.RequestPromiseOptions,
+					oAuth2Options?: IOAuth2Options,
+				): Promise<any> {
+					return requestOAuth2.call(
+						this,
+						credentialsType,
+						requestOptions,
+						node,
+						additionalData,
+						oAuth2Options,
+					);
 				},
-				requestOAuth1(this: IAllExecuteFunctions, credentialsType: string, requestOptions: OptionsWithUrl | requestPromise.RequestPromiseOptions): Promise<any> { // tslint:disable-line:no-any
+				async requestOAuth1(
+					this: IAllExecuteFunctions,
+					credentialsType: string,
+					requestOptions: OptionsWithUrl | requestPromise.RequestPromiseOptions,
+				): Promise<any> {
 					return requestOAuth1.call(this, credentialsType, requestOptions);
 				},
 				returnJsonArray,
@@ -641,8 +804,6 @@ export function getExecutePollFunctions(workflow: Workflow, node: INode, additio
 		};
 	})(workflow, node);
 }
-
-
 
 /**
  * Returns the execute functions the trigger nodes have access to.
@@ -655,14 +816,20 @@ export function getExecutePollFunctions(workflow: Workflow, node: INode, additio
  * @returns {ITriggerFunctions}
  */
 // TODO: Check if I can get rid of: additionalData, and so then maybe also at ActiveWorkflowRunner.add
-export function getExecuteTriggerFunctions(workflow: Workflow, node: INode, additionalData: IWorkflowExecuteAdditionalData, mode: WorkflowExecuteMode, activation: WorkflowActivateMode): ITriggerFunctions {
+export function getExecuteTriggerFunctions(
+	workflow: Workflow,
+	node: INode,
+	additionalData: IWorkflowExecuteAdditionalData,
+	mode: WorkflowExecuteMode,
+	activation: WorkflowActivateMode,
+): ITriggerFunctions {
 	return ((workflow: Workflow, node: INode) => {
 		return {
 			emit: (data: INodeExecutionData[][]): void => {
 				throw new Error('Overwrite NodeExecuteFunctions.getExecuteTriggerFunctions.emit function!');
 			},
 			async getCredentials(type: string): Promise<ICredentialDataDecryptedObject | undefined> {
-				return await getCredentials(workflow, node, type, additionalData, mode);
+				return getCredentials(workflow, node, type, additionalData, mode);
 			},
 			getNode: () => {
 				return getNode(node);
@@ -673,13 +840,32 @@ export function getExecuteTriggerFunctions(workflow: Workflow, node: INode, addi
 			getActivationMode: (): WorkflowActivateMode => {
 				return activation;
 			},
-			getNodeParameter: (parameterName: string, fallbackValue?: any): NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[] | object => { //tslint:disable-line:no-any
+			getNodeParameter: (
+				parameterName: string,
+				fallbackValue?: any,
+			):
+				| NodeParameterValue
+				| INodeParameters
+				| NodeParameterValue[]
+				| INodeParameters[]
+				| object => {
 				const runExecutionData: IRunExecutionData | null = null;
 				const itemIndex = 0;
 				const runIndex = 0;
 				const connectionInputData: INodeExecutionData[] = [];
 
-				return getNodeParameter(workflow, runExecutionData, runIndex, connectionInputData, node, parameterName, itemIndex, mode, getAdditionalKeys(additionalData), fallbackValue);
+				return getNodeParameter(
+					workflow,
+					runExecutionData,
+					runIndex,
+					connectionInputData,
+					node,
+					parameterName,
+					itemIndex,
+					mode,
+					getAdditionalKeys(additionalData),
+					fallbackValue,
+				);
 			},
 			getRestApiUrl: (): string => {
 				return additionalData.restApiUrl;
@@ -696,19 +882,33 @@ export function getExecuteTriggerFunctions(workflow: Workflow, node: INode, addi
 			helpers: {
 				prepareBinaryData,
 				request: requestPromiseWithDefaults,
-				requestOAuth2(this: IAllExecuteFunctions, credentialsType: string, requestOptions: OptionsWithUri | requestPromise.RequestPromiseOptions, oAuth2Options?: IOAuth2Options): Promise<any> { // tslint:disable-line:no-any
-					return requestOAuth2.call(this, credentialsType, requestOptions, node, additionalData, oAuth2Options);
+				async requestOAuth2(
+					this: IAllExecuteFunctions,
+					credentialsType: string,
+					requestOptions: OptionsWithUri | requestPromise.RequestPromiseOptions,
+					oAuth2Options?: IOAuth2Options,
+				): Promise<any> {
+					return requestOAuth2.call(
+						this,
+						credentialsType,
+						requestOptions,
+						node,
+						additionalData,
+						oAuth2Options,
+					);
 				},
-				requestOAuth1(this: IAllExecuteFunctions, credentialsType: string, requestOptions: OptionsWithUrl | requestPromise.RequestPromiseOptions): Promise<any> { // tslint:disable-line:no-any
+				async requestOAuth1(
+					this: IAllExecuteFunctions,
+					credentialsType: string,
+					requestOptions: OptionsWithUrl | requestPromise.RequestPromiseOptions,
+				): Promise<any> {
 					return requestOAuth1.call(this, credentialsType, requestOptions);
 				},
 				returnJsonArray,
 			},
 		};
-	}) (workflow, node);
+	})(workflow, node);
 }
-
-
 
 /**
  * Returns the execute functions regular nodes have access to.
@@ -724,29 +924,63 @@ export function getExecuteTriggerFunctions(workflow: Workflow, node: INode, addi
  * @param {WorkflowExecuteMode} mode
  * @returns {IExecuteFunctions}
  */
-export function getExecuteFunctions(workflow: Workflow, runExecutionData: IRunExecutionData, runIndex: number, connectionInputData: INodeExecutionData[], inputData: ITaskDataConnections, node: INode, additionalData: IWorkflowExecuteAdditionalData, mode: WorkflowExecuteMode): IExecuteFunctions {
+export function getExecuteFunctions(
+	workflow: Workflow,
+	runExecutionData: IRunExecutionData,
+	runIndex: number,
+	connectionInputData: INodeExecutionData[],
+	inputData: ITaskDataConnections,
+	node: INode,
+	additionalData: IWorkflowExecuteAdditionalData,
+	mode: WorkflowExecuteMode,
+): IExecuteFunctions {
 	return ((workflow, runExecutionData, connectionInputData, inputData, node) => {
 		return {
 			continueOnFail: () => {
 				return continueOnFail(node);
 			},
 			evaluateExpression: (expression: string, itemIndex: number) => {
-				return workflow.expression.resolveSimpleParameterValue('=' + expression, {}, runExecutionData, runIndex, itemIndex, node.name, connectionInputData, mode, getAdditionalKeys(additionalData));
+				return workflow.expression.resolveSimpleParameterValue(
+					`=${expression}`,
+					{},
+					runExecutionData,
+					runIndex,
+					itemIndex,
+					node.name,
+					connectionInputData,
+					mode,
+					getAdditionalKeys(additionalData),
+				);
 			},
-			async executeWorkflow(workflowInfo: IExecuteWorkflowInfo, inputData?: INodeExecutionData[]): Promise<any> { // tslint:disable-line:no-any
+			async executeWorkflow(
+				workflowInfo: IExecuteWorkflowInfo,
+				inputData?: INodeExecutionData[],
+			): Promise<any> {
 				return additionalData.executeWorkflow(workflowInfo, additionalData, inputData);
 			},
 			getContext(type: string): IContextObject {
 				return NodeHelpers.getContext(runExecutionData, type, node);
 			},
-			async getCredentials(type: string, itemIndex?: number): Promise<ICredentialDataDecryptedObject | undefined> {
-				return await getCredentials(workflow, node, type, additionalData, mode, runExecutionData, runIndex, connectionInputData, itemIndex);
+			async getCredentials(
+				type: string,
+				itemIndex?: number,
+			): Promise<ICredentialDataDecryptedObject | undefined> {
+				return getCredentials(
+					workflow,
+					node,
+					type,
+					additionalData,
+					mode,
+					runExecutionData,
+					runIndex,
+					connectionInputData,
+					itemIndex,
+				);
 			},
 			getExecutionId: (): string => {
 				return additionalData.executionId!;
 			},
 			getInputData: (inputIndex = 0, inputName = 'main') => {
-
 				if (!inputData.hasOwnProperty(inputName)) {
 					// Return empty array because else it would throw error when nothing is connected to input
 					return [];
@@ -764,8 +998,28 @@ export function getExecuteFunctions(workflow: Workflow, runExecutionData: IRunEx
 
 				return inputData[inputName][inputIndex] as INodeExecutionData[];
 			},
-			getNodeParameter: (parameterName: string, itemIndex: number, fallbackValue?: any): NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[] | object => { //tslint:disable-line:no-any
-				return getNodeParameter(workflow, runExecutionData, runIndex, connectionInputData, node, parameterName, itemIndex, mode, getAdditionalKeys(additionalData), fallbackValue);
+			getNodeParameter: (
+				parameterName: string,
+				itemIndex: number,
+				fallbackValue?: any,
+			):
+				| NodeParameterValue
+				| INodeParameters
+				| NodeParameterValue[]
+				| INodeParameters[]
+				| object => {
+				return getNodeParameter(
+					workflow,
+					runExecutionData,
+					runIndex,
+					connectionInputData,
+					node,
+					parameterName,
+					itemIndex,
+					mode,
+					getAdditionalKeys(additionalData),
+					fallbackValue,
+				);
 			},
 			getMode: (): WorkflowExecuteMode => {
 				return mode;
@@ -783,7 +1037,17 @@ export function getExecuteFunctions(workflow: Workflow, runExecutionData: IRunEx
 				return getWorkflowMetadata(workflow);
 			},
 			getWorkflowDataProxy: (itemIndex: number): IWorkflowDataProxyData => {
-				const dataProxy = new WorkflowDataProxy(workflow, runExecutionData, runIndex, itemIndex, node.name, connectionInputData, {}, mode, getAdditionalKeys(additionalData));
+				const dataProxy = new WorkflowDataProxy(
+					workflow,
+					runExecutionData,
+					runIndex,
+					itemIndex,
+					node.name,
+					connectionInputData,
+					{},
+					mode,
+					getAdditionalKeys(additionalData),
+				);
 				return dataProxy.getDataProxy();
 			},
 			getWorkflowStaticData(type: string): IDataObject {
@@ -793,7 +1057,7 @@ export function getExecuteFunctions(workflow: Workflow, runExecutionData: IRunEx
 			async putExecutionToWait(waitTill: Date): Promise<void> {
 				runExecutionData.waitTill = waitTill;
 			},
-			sendMessageToUI(message	: any): void { // tslint:disable-line:no-any
+			sendMessageToUI(message: any): void {
 				if (mode !== 'manual') {
 					return;
 				}
@@ -802,19 +1066,40 @@ export function getExecuteFunctions(workflow: Workflow, runExecutionData: IRunEx
 						additionalData.sendMessageToUI(node.name, message);
 					}
 				} catch (error) {
+					// eslint-disable-next-line @typescript-eslint/restrict-template-expressions
 					Logger.warn(`There was a problem sending messsage to UI: ${error.message}`);
 				}
 			},
 			helpers: {
 				prepareBinaryData,
-				getBinaryDataBuffer(itemIndex: number, propertyName: string, inputIndex = 0): Promise<Buffer> {
+				async getBinaryDataBuffer(
+					itemIndex: number,
+					propertyName: string,
+					inputIndex = 0,
+				): Promise<Buffer> {
 					return getBinaryDataBuffer.call(this, inputData, itemIndex, propertyName, inputIndex);
 				},
 				request: requestPromiseWithDefaults,
-				requestOAuth2(this: IAllExecuteFunctions, credentialsType: string, requestOptions: OptionsWithUri | requestPromise.RequestPromiseOptions, oAuth2Options?: IOAuth2Options): Promise<any> { // tslint:disable-line:no-any
-					return requestOAuth2.call(this, credentialsType, requestOptions, node, additionalData, oAuth2Options);
+				async requestOAuth2(
+					this: IAllExecuteFunctions,
+					credentialsType: string,
+					requestOptions: OptionsWithUri | requestPromise.RequestPromiseOptions,
+					oAuth2Options?: IOAuth2Options,
+				): Promise<any> {
+					return requestOAuth2.call(
+						this,
+						credentialsType,
+						requestOptions,
+						node,
+						additionalData,
+						oAuth2Options,
+					);
 				},
-				requestOAuth1(this: IAllExecuteFunctions, credentialsType: string, requestOptions: OptionsWithUrl | requestPromise.RequestPromiseOptions): Promise<any> { // tslint:disable-line:no-any
+				async requestOAuth1(
+					this: IAllExecuteFunctions,
+					credentialsType: string,
+					requestOptions: OptionsWithUrl | requestPromise.RequestPromiseOptions,
+				): Promise<any> {
 					return requestOAuth1.call(this, credentialsType, requestOptions);
 				},
 				returnJsonArray,
@@ -822,8 +1107,6 @@ export function getExecuteFunctions(workflow: Workflow, runExecutionData: IRunEx
 		};
 	})(workflow, runExecutionData, connectionInputData, inputData, node);
 }
-
-
 
 /**
  * Returns the execute functions regular nodes have access to when single-function is defined.
@@ -840,7 +1123,17 @@ export function getExecuteFunctions(workflow: Workflow, runExecutionData: IRunEx
  * @param {WorkflowExecuteMode} mode
  * @returns {IExecuteSingleFunctions}
  */
-export function getExecuteSingleFunctions(workflow: Workflow, runExecutionData: IRunExecutionData, runIndex: number, connectionInputData: INodeExecutionData[], inputData: ITaskDataConnections, node: INode, itemIndex: number, additionalData: IWorkflowExecuteAdditionalData, mode: WorkflowExecuteMode): IExecuteSingleFunctions {
+export function getExecuteSingleFunctions(
+	workflow: Workflow,
+	runExecutionData: IRunExecutionData,
+	runIndex: number,
+	connectionInputData: INodeExecutionData[],
+	inputData: ITaskDataConnections,
+	node: INode,
+	itemIndex: number,
+	additionalData: IWorkflowExecuteAdditionalData,
+	mode: WorkflowExecuteMode,
+): IExecuteSingleFunctions {
 	return ((workflow, runExecutionData, connectionInputData, inputData, node, itemIndex) => {
 		return {
 			continueOnFail: () => {
@@ -848,18 +1141,38 @@ export function getExecuteSingleFunctions(workflow: Workflow, runExecutionData: 
 			},
 			evaluateExpression: (expression: string, evaluateItemIndex: number | undefined) => {
 				evaluateItemIndex = evaluateItemIndex === undefined ? itemIndex : evaluateItemIndex;
-				return workflow.expression.resolveSimpleParameterValue('=' + expression, {}, runExecutionData, runIndex, evaluateItemIndex, node.name, connectionInputData, mode, getAdditionalKeys(additionalData));
+				return workflow.expression.resolveSimpleParameterValue(
+					`=${expression}`,
+					{},
+					runExecutionData,
+					runIndex,
+					evaluateItemIndex,
+					node.name,
+					connectionInputData,
+					mode,
+					getAdditionalKeys(additionalData),
+				);
 			},
 			getContext(type: string): IContextObject {
 				return NodeHelpers.getContext(runExecutionData, type, node);
 			},
 			async getCredentials(type: string): Promise<ICredentialDataDecryptedObject | undefined> {
-				return await getCredentials(workflow, node, type, additionalData, mode, runExecutionData, runIndex, connectionInputData, itemIndex);
+				return getCredentials(
+					workflow,
+					node,
+					type,
+					additionalData,
+					mode,
+					runExecutionData,
+					runIndex,
+					connectionInputData,
+					itemIndex,
+				);
 			},
 			getInputData: (inputIndex = 0, inputName = 'main') => {
 				if (!inputData.hasOwnProperty(inputName)) {
 					// Return empty array because else it would throw error when nothing is connected to input
-					return {json: {}};
+					return { json: {} };
 				}
 
 				// TODO: Check if nodeType has input with that index defined
@@ -876,10 +1189,12 @@ export function getExecuteSingleFunctions(workflow: Workflow, runExecutionData: 
 
 				if (allItems[itemIndex] === null) {
 					// return [];
-					throw new Error(`Value "${inputIndex}" of input "${inputName}" with itemIndex "${itemIndex}" did not get set!`);
+					throw new Error(
+						`Value "${inputIndex}" of input "${inputName}" with itemIndex "${itemIndex}" did not get set!`,
+					);
 				}
 
-				return allItems[itemIndex] as INodeExecutionData;
+				return allItems[itemIndex];
 			},
 			getMode: (): WorkflowExecuteMode => {
 				return mode;
@@ -893,14 +1208,43 @@ export function getExecuteSingleFunctions(workflow: Workflow, runExecutionData: 
 			getTimezone: (): string => {
 				return getTimezone(workflow, additionalData);
 			},
-			getNodeParameter: (parameterName: string, fallbackValue?: any): NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[] | object => { //tslint:disable-line:no-any
-				return getNodeParameter(workflow, runExecutionData, runIndex, connectionInputData, node, parameterName, itemIndex, mode, getAdditionalKeys(additionalData), fallbackValue);
+			getNodeParameter: (
+				parameterName: string,
+				fallbackValue?: any,
+			):
+				| NodeParameterValue
+				| INodeParameters
+				| NodeParameterValue[]
+				| INodeParameters[]
+				| object => {
+				return getNodeParameter(
+					workflow,
+					runExecutionData,
+					runIndex,
+					connectionInputData,
+					node,
+					parameterName,
+					itemIndex,
+					mode,
+					getAdditionalKeys(additionalData),
+					fallbackValue,
+				);
 			},
 			getWorkflow: () => {
 				return getWorkflowMetadata(workflow);
 			},
 			getWorkflowDataProxy: (): IWorkflowDataProxyData => {
-				const dataProxy = new WorkflowDataProxy(workflow, runExecutionData, runIndex, itemIndex, node.name, connectionInputData, {}, mode, getAdditionalKeys(additionalData));
+				const dataProxy = new WorkflowDataProxy(
+					workflow,
+					runExecutionData,
+					runIndex,
+					itemIndex,
+					node.name,
+					connectionInputData,
+					{},
+					mode,
+					getAdditionalKeys(additionalData),
+				);
 				return dataProxy.getDataProxy();
 			},
 			getWorkflowStaticData(type: string): IDataObject {
@@ -909,17 +1253,32 @@ export function getExecuteSingleFunctions(workflow: Workflow, runExecutionData: 
 			helpers: {
 				prepareBinaryData,
 				request: requestPromiseWithDefaults,
-				requestOAuth2(this: IAllExecuteFunctions, credentialsType: string, requestOptions: OptionsWithUri | requestPromise.RequestPromiseOptions, oAuth2Options?: IOAuth2Options): Promise<any> { // tslint:disable-line:no-any
-					return requestOAuth2.call(this, credentialsType, requestOptions, node, additionalData, oAuth2Options);
+				async requestOAuth2(
+					this: IAllExecuteFunctions,
+					credentialsType: string,
+					requestOptions: OptionsWithUri | requestPromise.RequestPromiseOptions,
+					oAuth2Options?: IOAuth2Options,
+				): Promise<any> {
+					return requestOAuth2.call(
+						this,
+						credentialsType,
+						requestOptions,
+						node,
+						additionalData,
+						oAuth2Options,
+					);
 				},
-				requestOAuth1(this: IAllExecuteFunctions, credentialsType: string, requestOptions: OptionsWithUrl | requestPromise.RequestPromiseOptions): Promise<any> { // tslint:disable-line:no-any
+				async requestOAuth1(
+					this: IAllExecuteFunctions,
+					credentialsType: string,
+					requestOptions: OptionsWithUrl | requestPromise.RequestPromiseOptions,
+				): Promise<any> {
 					return requestOAuth1.call(this, credentialsType, requestOptions);
 				},
 			},
 		};
 	})(workflow, runExecutionData, connectionInputData, inputData, node, itemIndex);
 }
-
 
 /**
  * Returns the execute functions regular nodes have access to in load-options-function.
@@ -930,13 +1289,26 @@ export function getExecuteSingleFunctions(workflow: Workflow, runExecutionData: 
  * @param {IWorkflowExecuteAdditionalData} additionalData
  * @returns {ILoadOptionsFunctions}
  */
-export function getLoadOptionsFunctions(workflow: Workflow, node: INode, path: string, additionalData: IWorkflowExecuteAdditionalData): ILoadOptionsFunctions {
+export function getLoadOptionsFunctions(
+	workflow: Workflow,
+	node: INode,
+	path: string,
+	additionalData: IWorkflowExecuteAdditionalData,
+): ILoadOptionsFunctions {
 	return ((workflow: Workflow, node: INode, path: string) => {
 		const that = {
 			async getCredentials(type: string): Promise<ICredentialDataDecryptedObject | undefined> {
-				return await getCredentials(workflow, node, type, additionalData, 'internal');
+				return getCredentials(workflow, node, type, additionalData, 'internal');
 			},
-			getCurrentNodeParameter: (parameterPath: string): NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[] | object | undefined => {
+			getCurrentNodeParameter: (
+				parameterPath: string,
+			):
+				| NodeParameterValue
+				| INodeParameters
+				| NodeParameterValue[]
+				| INodeParameters[]
+				| object
+				| undefined => {
 				const nodeParameters = additionalData.currentNodeParameters;
 
 				if (parameterPath.charAt(0) === '&') {
@@ -951,13 +1323,32 @@ export function getLoadOptionsFunctions(workflow: Workflow, node: INode, path: s
 			getNode: () => {
 				return getNode(node);
 			},
-			getNodeParameter: (parameterName: string, fallbackValue?: any): NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[] | object => { //tslint:disable-line:no-any
+			getNodeParameter: (
+				parameterName: string,
+				fallbackValue?: any,
+			):
+				| NodeParameterValue
+				| INodeParameters
+				| NodeParameterValue[]
+				| INodeParameters[]
+				| object => {
 				const runExecutionData: IRunExecutionData | null = null;
 				const itemIndex = 0;
 				const runIndex = 0;
 				const connectionInputData: INodeExecutionData[] = [];
 
-				return getNodeParameter(workflow, runExecutionData, runIndex, connectionInputData, node, parameterName, itemIndex, 'internal' as WorkflowExecuteMode, getAdditionalKeys(additionalData), fallbackValue);
+				return getNodeParameter(
+					workflow,
+					runExecutionData,
+					runIndex,
+					connectionInputData,
+					node,
+					parameterName,
+					itemIndex,
+					'internal' as WorkflowExecuteMode,
+					getAdditionalKeys(additionalData),
+					fallbackValue,
+				);
 			},
 			getTimezone: (): string => {
 				return getTimezone(workflow, additionalData);
@@ -967,19 +1358,33 @@ export function getLoadOptionsFunctions(workflow: Workflow, node: INode, path: s
 			},
 			helpers: {
 				request: requestPromiseWithDefaults,
-				requestOAuth2(this: IAllExecuteFunctions, credentialsType: string, requestOptions: OptionsWithUri | requestPromise.RequestPromiseOptions, oAuth2Options?: IOAuth2Options): Promise<any> { // tslint:disable-line:no-any
-					return requestOAuth2.call(this, credentialsType, requestOptions, node, additionalData, oAuth2Options);
+				async requestOAuth2(
+					this: IAllExecuteFunctions,
+					credentialsType: string,
+					requestOptions: OptionsWithUri | requestPromise.RequestPromiseOptions,
+					oAuth2Options?: IOAuth2Options,
+				): Promise<any> {
+					return requestOAuth2.call(
+						this,
+						credentialsType,
+						requestOptions,
+						node,
+						additionalData,
+						oAuth2Options,
+					);
 				},
-				requestOAuth1(this: IAllExecuteFunctions, credentialsType: string, requestOptions: OptionsWithUrl | requestPromise.RequestPromiseOptions): Promise<any> { // tslint:disable-line:no-any
+				async requestOAuth1(
+					this: IAllExecuteFunctions,
+					credentialsType: string,
+					requestOptions: OptionsWithUrl | requestPromise.RequestPromiseOptions,
+				): Promise<any> {
 					return requestOAuth1.call(this, credentialsType, requestOptions);
 				},
 			},
 		};
 		return that;
 	})(workflow, node, path);
-
 }
-
 
 /**
  * Returns the execute functions regular nodes have access to in hook-function.
@@ -991,11 +1396,19 @@ export function getLoadOptionsFunctions(workflow: Workflow, node: INode, path: s
  * @param {WorkflowExecuteMode} mode
  * @returns {IHookFunctions}
  */
-export function getExecuteHookFunctions(workflow: Workflow, node: INode, additionalData: IWorkflowExecuteAdditionalData, mode: WorkflowExecuteMode, activation: WorkflowActivateMode, isTest?: boolean, webhookData?: IWebhookData): IHookFunctions {
+export function getExecuteHookFunctions(
+	workflow: Workflow,
+	node: INode,
+	additionalData: IWorkflowExecuteAdditionalData,
+	mode: WorkflowExecuteMode,
+	activation: WorkflowActivateMode,
+	isTest?: boolean,
+	webhookData?: IWebhookData,
+): IHookFunctions {
 	return ((workflow: Workflow, node: INode) => {
 		const that = {
 			async getCredentials(type: string): Promise<ICredentialDataDecryptedObject | undefined> {
-				return await getCredentials(workflow, node, type, additionalData, mode);
+				return getCredentials(workflow, node, type, additionalData, mode);
 			},
 			getMode: (): WorkflowExecuteMode => {
 				return mode;
@@ -1006,16 +1419,43 @@ export function getExecuteHookFunctions(workflow: Workflow, node: INode, additio
 			getNode: () => {
 				return getNode(node);
 			},
-			getNodeParameter: (parameterName: string, fallbackValue?: any): NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[] | object => { //tslint:disable-line:no-any
+			getNodeParameter: (
+				parameterName: string,
+				fallbackValue?: any,
+			):
+				| NodeParameterValue
+				| INodeParameters
+				| NodeParameterValue[]
+				| INodeParameters[]
+				| object => {
 				const runExecutionData: IRunExecutionData | null = null;
 				const itemIndex = 0;
 				const runIndex = 0;
 				const connectionInputData: INodeExecutionData[] = [];
 
-				return getNodeParameter(workflow, runExecutionData, runIndex, connectionInputData, node, parameterName, itemIndex, mode, getAdditionalKeys(additionalData), fallbackValue);
+				return getNodeParameter(
+					workflow,
+					runExecutionData,
+					runIndex,
+					connectionInputData,
+					node,
+					parameterName,
+					itemIndex,
+					mode,
+					getAdditionalKeys(additionalData),
+					fallbackValue,
+				);
 			},
 			getNodeWebhookUrl: (name: string): string | undefined => {
-				return getNodeWebhookUrl(name, workflow, node, additionalData, mode, getAdditionalKeys(additionalData), isTest);
+				return getNodeWebhookUrl(
+					name,
+					workflow,
+					node,
+					additionalData,
+					mode,
+					getAdditionalKeys(additionalData),
+					isTest,
+				);
 			},
 			getTimezone: (): string => {
 				return getTimezone(workflow, additionalData);
@@ -1037,19 +1477,33 @@ export function getExecuteHookFunctions(workflow: Workflow, node: INode, additio
 			},
 			helpers: {
 				request: requestPromiseWithDefaults,
-				requestOAuth2(this: IAllExecuteFunctions, credentialsType: string, requestOptions: OptionsWithUri | requestPromise.RequestPromiseOptions, oAuth2Options?: IOAuth2Options): Promise<any> { // tslint:disable-line:no-any
-					return requestOAuth2.call(this, credentialsType, requestOptions, node, additionalData, oAuth2Options);
+				async requestOAuth2(
+					this: IAllExecuteFunctions,
+					credentialsType: string,
+					requestOptions: OptionsWithUri | requestPromise.RequestPromiseOptions,
+					oAuth2Options?: IOAuth2Options,
+				): Promise<any> {
+					return requestOAuth2.call(
+						this,
+						credentialsType,
+						requestOptions,
+						node,
+						additionalData,
+						oAuth2Options,
+					);
 				},
-				requestOAuth1(this: IAllExecuteFunctions, credentialsType: string, requestOptions: OptionsWithUrl | requestPromise.RequestPromiseOptions): Promise<any> { // tslint:disable-line:no-any
+				async requestOAuth1(
+					this: IAllExecuteFunctions,
+					credentialsType: string,
+					requestOptions: OptionsWithUrl | requestPromise.RequestPromiseOptions,
+				): Promise<any> {
 					return requestOAuth1.call(this, credentialsType, requestOptions);
 				},
 			},
 		};
 		return that;
 	})(workflow, node);
-
 }
-
 
 /**
  * Returns the execute functions regular nodes have access to when webhook-function is defined.
@@ -1062,7 +1516,13 @@ export function getExecuteHookFunctions(workflow: Workflow, node: INode, additio
  * @param {WorkflowExecuteMode} mode
  * @returns {IWebhookFunctions}
  */
-export function getExecuteWebhookFunctions(workflow: Workflow, node: INode, additionalData: IWorkflowExecuteAdditionalData, mode: WorkflowExecuteMode, webhookData: IWebhookData): IWebhookFunctions {
+export function getExecuteWebhookFunctions(
+	workflow: Workflow,
+	node: INode,
+	additionalData: IWorkflowExecuteAdditionalData,
+	mode: WorkflowExecuteMode,
+	webhookData: IWebhookData,
+): IWebhookFunctions {
 	return ((workflow: Workflow, node: INode) => {
 		return {
 			getBodyData(): IDataObject {
@@ -1072,7 +1532,7 @@ export function getExecuteWebhookFunctions(workflow: Workflow, node: INode, addi
 				return additionalData.httpRequest.body;
 			},
 			async getCredentials(type: string): Promise<ICredentialDataDecryptedObject | undefined> {
-				return await getCredentials(workflow, node, type, additionalData, mode);
+				return getCredentials(workflow, node, type, additionalData, mode);
 			},
 			getHeaderData(): object {
 				if (additionalData.httpRequest === undefined) {
@@ -1086,13 +1546,32 @@ export function getExecuteWebhookFunctions(workflow: Workflow, node: INode, addi
 			getNode: () => {
 				return getNode(node);
 			},
-			getNodeParameter: (parameterName: string, fallbackValue?: any): NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[] | object => { //tslint:disable-line:no-any
+			getNodeParameter: (
+				parameterName: string,
+				fallbackValue?: any,
+			):
+				| NodeParameterValue
+				| INodeParameters
+				| NodeParameterValue[]
+				| INodeParameters[]
+				| object => {
 				const runExecutionData: IRunExecutionData | null = null;
 				const itemIndex = 0;
 				const runIndex = 0;
 				const connectionInputData: INodeExecutionData[] = [];
 
-				return getNodeParameter(workflow, runExecutionData, runIndex, connectionInputData, node, parameterName, itemIndex, mode, getAdditionalKeys(additionalData), fallbackValue);
+				return getNodeParameter(
+					workflow,
+					runExecutionData,
+					runIndex,
+					connectionInputData,
+					node,
+					parameterName,
+					itemIndex,
+					mode,
+					getAdditionalKeys(additionalData),
+					fallbackValue,
+				);
 			},
 			getParamsData(): object {
 				if (additionalData.httpRequest === undefined) {
@@ -1119,7 +1598,14 @@ export function getExecuteWebhookFunctions(workflow: Workflow, node: INode, addi
 				return additionalData.httpResponse;
 			},
 			getNodeWebhookUrl: (name: string): string | undefined => {
-				return getNodeWebhookUrl(name, workflow, node, additionalData, mode, getAdditionalKeys(additionalData));
+				return getNodeWebhookUrl(
+					name,
+					workflow,
+					node,
+					additionalData,
+					mode,
+					getAdditionalKeys(additionalData),
+				);
 			},
 			getTimezone: (): string => {
 				return getTimezone(workflow, additionalData);
@@ -1137,15 +1623,30 @@ export function getExecuteWebhookFunctions(workflow: Workflow, node: INode, addi
 			helpers: {
 				prepareBinaryData,
 				request: requestPromiseWithDefaults,
-				requestOAuth2(this: IAllExecuteFunctions, credentialsType: string, requestOptions: OptionsWithUri | requestPromise.RequestPromiseOptions, oAuth2Options?: IOAuth2Options): Promise<any> { // tslint:disable-line:no-any
-					return requestOAuth2.call(this, credentialsType, requestOptions, node, additionalData, oAuth2Options);
+				async requestOAuth2(
+					this: IAllExecuteFunctions,
+					credentialsType: string,
+					requestOptions: OptionsWithUri | requestPromise.RequestPromiseOptions,
+					oAuth2Options?: IOAuth2Options,
+				): Promise<any> {
+					return requestOAuth2.call(
+						this,
+						credentialsType,
+						requestOptions,
+						node,
+						additionalData,
+						oAuth2Options,
+					);
 				},
-				requestOAuth1(this: IAllExecuteFunctions, credentialsType: string, requestOptions: OptionsWithUrl | requestPromise.RequestPromiseOptions): Promise<any> { // tslint:disable-line:no-any
+				async requestOAuth1(
+					this: IAllExecuteFunctions,
+					credentialsType: string,
+					requestOptions: OptionsWithUrl | requestPromise.RequestPromiseOptions,
+				): Promise<any> {
 					return requestOAuth1.call(this, credentialsType, requestOptions);
 				},
 				returnJsonArray,
 			},
 		};
 	})(workflow, node);
-
 }
