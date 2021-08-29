@@ -1,6 +1,6 @@
 <template>
 	<span :class="$style.container">
-		<n8n-button label="Save" :disabled="isWorkflowSaving" @click="save" v-if="isDirty || isNewWorkflow" />
+		<n8n-button v-if="isDirty || isNewWorkflow" label="Save" :disabled="isWorkflowSaving" @click="save" />
 		<span :class="$style.saved" v-else>Saved</span>
 	</span>
 </template>
