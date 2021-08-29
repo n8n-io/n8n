@@ -144,8 +144,8 @@ export class Misp implements INodeType {
 			},
 
 			async getTags(this: ILoadOptionsFunctions) {
-				const responseData = await mispApiRequest.call(this, 'GET', '/tags/tagStatistics') as LoadedTags;
-				return Object.keys(responseData.tags).map((tagId) => ({ name: tagId, value: tagId }));
+				const responseData = await mispApiRequest.call(this, 'GET', '/tags') as { Tag: [{ id: string, name: string }] };
+				return responseData.Tag.map((tag) => ({ name: tag.name, value: tag.id }));
 			},
 		},
 	};
@@ -457,8 +457,7 @@ export class Misp implements INodeType {
 
 						const galaxyId = this.getNodeParameter('galaxyId', i);
 						const endpoint = `/galaxies/delete/${galaxyId}`;
-						await mispApiRequest.call(this, 'DELETE', endpoint);
-						responseData = { success: true };
+						responseData = await mispApiRequest.call(this, 'DELETE', endpoint);
 
 					} else if (operation === 'get') {
 
@@ -628,8 +627,8 @@ export class Misp implements INodeType {
 						//               tag: getAll
 						// ----------------------------------------
 
-						responseData = await mispApiRequest.call(this, 'GET', '/tags/tagStatistics') as LoadedTags;
-						responseData = Object.keys(responseData.tags).map(tag => ({ tag }));
+						responseData = await mispApiRequest.call(this, 'GET', '/tags') as { Tag: [{ id: string, name: string }] };
+						responseData = responseData.Tag;
 
 						const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
 
