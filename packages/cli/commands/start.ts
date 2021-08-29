@@ -1,12 +1,17 @@
+/* eslint-disable @typescript-eslint/await-thenable */
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
+/* eslint-disable @typescript-eslint/explicit-module-boundary-types */
+/* eslint-disable @typescript-eslint/unbound-method */
+/* eslint-disable no-console */
+/* eslint-disable @typescript-eslint/no-unsafe-call */
+/* eslint-disable @typescript-eslint/no-unsafe-member-access */
 import * as localtunnel from 'localtunnel';
-import {
-	TUNNEL_SUBDOMAIN_ENV,
-	UserSettings,
-} from 'n8n-core';
+import { TUNNEL_SUBDOMAIN_ENV, UserSettings } from 'n8n-core';
 import { Command, flags } from '@oclif/command';
-const open = require('open');
+// eslint-disable-next-line import/no-extraneous-dependencies
 import * as Redis from 'ioredis';
 
+import { IDataObject, LoggerProxy } from 'n8n-workflow';
 import * as config from '../config';
 import {
 	ActiveExecutions,
@@ -17,6 +22,7 @@ import {
 	Db,
 	ExternalHooks,
 	GenericHelpers,
+	// eslint-disable-next-line @typescript-eslint/no-unused-vars
 	IExecutionsCurrentSummary,
 	LoadNodesAndCredentials,
 	NodeTypes,
@@ -24,15 +30,11 @@ import {
 	TestWebhooks,
 	WaitTracker,
 } from '../src';
-import { IDataObject } from 'n8n-workflow';
 
-import {
-	getLogger,
-} from '../src/Logger';
+import { getLogger } from '../src/Logger';
 
-import {
-	LoggerProxy,
-} from 'n8n-workflow';
+// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-var-requires
+const open = require('open');
 
 let activeWorkflowRunner: ActiveWorkflowRunner.ActiveWorkflowRunner | undefined;
 let processExistCode = 0;
@@ -54,29 +56,32 @@ export class Start extends Command {
 			description: 'opens the UI automatically in browser',
 		}),
 		tunnel: flags.boolean({
-			description: 'runs the webhooks via a hooks.n8n.cloud tunnel server. Use only for testing and development!',
+			description:
+				'runs the webhooks via a hooks.n8n.cloud tunnel server. Use only for testing and development!',
 		}),
 	};
-
 
 	/**
 	 * Opens the UI in browser
 	 */
+	// eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
 	static openBrowser() {
 		const editorUrl = GenericHelpers.getBaseUrl();
 
-		open(editorUrl, { wait: true })
-			.catch((error: Error) => {
-				console.log(`\nWas not able to open URL in browser. Please open manually by visiting:\n${editorUrl}\n`);
-			});
+		// eslint-disable-next-line @typescript-eslint/no-unused-vars
+		open(editorUrl, { wait: true }).catch((error: Error) => {
+			console.log(
+				`\nWas not able to open URL in browser. Please open manually by visiting:\n${editorUrl}\n`,
+			);
+		});
 	}
-
 
 	/**
 	 * Stoppes the n8n in a graceful way.
 	 * Make for example sure that all the webhooks from third party services
 	 * get removed.
 	 */
+	// eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
 	static async stopProcess() {
 		getLogger().info('\nStopping n8n...');
 
@@ -90,10 +95,12 @@ export class Start extends Command {
 				process.exit(processExistCode);
 			}, 30000);
 
-			const skipWebhookDeregistration = config.get('endpoints.skipWebhoooksDeregistrationOnShutdown') as boolean;
+			const skipWebhookDeregistration = config.get(
+				'endpoints.skipWebhoooksDeregistrationOnShutdown',
+			) as boolean;
 
 			const removePromises = [];
-			if (activeWorkflowRunner !== undefined && skipWebhookDeregistration !== true) {
+			if (activeWorkflowRunner !== undefined && !skipWebhookDeregistration) {
 				removePromises.push(activeWorkflowRunner.removeAll());
 			}
 
@@ -105,22 +112,23 @@ export class Start extends Command {
 
 			// Wait for active workflow executions to finish
 			const activeExecutionsInstance = ActiveExecutions.getInstance();
-			let executingWorkflows = activeExecutionsInstance.getActiveExecutions() as IExecutionsCurrentSummary[];
+			let executingWorkflows = activeExecutionsInstance.getActiveExecutions();
 
 			let count = 0;
 			while (executingWorkflows.length !== 0) {
 				if (count++ % 4 === 0) {
 					console.log(`Waiting for ${executingWorkflows.length} active executions to finish...`);
-					executingWorkflows.map(execution => {
+					// eslint-disable-next-line array-callback-return
+					executingWorkflows.map((execution) => {
 						console.log(` - Execution ID ${execution.id}, workflow ID: ${execution.workflowId}`);
 					});
 				}
+				// eslint-disable-next-line no-await-in-loop
 				await new Promise((resolve) => {
 					setTimeout(resolve, 500);
 				});
 				executingWorkflows = activeExecutionsInstance.getActiveExecutions();
 			}
-
 		} catch (error) {
 			console.error('There was an error shutting down n8n.', error);
 		}
@@ -128,12 +136,12 @@ export class Start extends Command {
 		process.exit(processExistCode);
 	}
 
-
 	async run() {
 		// Make sure that n8n shuts down gracefully if possible
 		process.on('SIGTERM', Start.stopProcess);
 		process.on('SIGINT', Start.stopProcess);
 
+		// eslint-disable-next-line @typescript-eslint/no-shadow
 		const { flags } = this.parse(Start);
 
 		// Wrap that the process does not close but we can still use async
@@ -144,7 +152,9 @@ export class Start extends Command {
 				logger.info('Initializing n8n process');
 
 				// todo remove a few versions after release
-				logger.info('\nn8n now checks for new versions and security updates. You can turn this off using the environment variable N8N_VERSION_NOTIFICATIONS_ENABLED to "false"\nFor more information, please refer to https://docs.n8n.io/getting-started/installation/advanced/configuration.html\n');
+				logger.info(
+					'\nn8n now checks for new versions and security updates. You can turn this off using the environment variable N8N_VERSION_NOTIFICATIONS_ENABLED to "false"\nFor more information, please refer to https://docs.n8n.io/getting-started/installation/advanced/configuration.html\n',
+				);
 
 				// Start directly with the init of the database to improve startup time
 				const startDbInitPromise = Db.init().catch((error: Error) => {
@@ -186,9 +196,11 @@ export class Start extends Command {
 					const redisPort = config.get('queue.bull.redis.port');
 					const redisDB = config.get('queue.bull.redis.db');
 					const redisConnectionTimeoutLimit = config.get('queue.bull.redis.timeoutThreshold');
-					let lastTimer = 0, cumulativeTimeout = 0;
+					let lastTimer = 0;
+					let cumulativeTimeout = 0;
 
 					const settings = {
+						// eslint-disable-next-line @typescript-eslint/no-unused-vars
 						retryStrategy: (times: number): number | null => {
 							const now = Date.now();
 							if (now - lastTimer > 30000) {
@@ -199,7 +211,10 @@ export class Start extends Command {
 								cumulativeTimeout += now - lastTimer;
 								lastTimer = now;
 								if (cumulativeTimeout > redisConnectionTimeoutLimit) {
-									logger.error('Unable to connect to Redis after ' + redisConnectionTimeoutLimit + ". Exiting process.");
+									logger.error(
+										// eslint-disable-next-line @typescript-eslint/restrict-template-expressions
+										`Unable to connect to Redis after ${redisConnectionTimeoutLimit}. Exiting process.`,
+									);
 									process.exit(1);
 								}
 							}
@@ -235,20 +250,24 @@ export class Start extends Command {
 					});
 				}
 
-				const dbType = await GenericHelpers.getConfigValue('database.type') as DatabaseType;
+				const dbType = (await GenericHelpers.getConfigValue('database.type')) as DatabaseType;
 
 				if (dbType === 'sqlite') {
 					const shouldRunVacuum = config.get('database.sqlite.executeVacuumOnStartup') as number;
 					if (shouldRunVacuum) {
+						// eslint-disable-next-line @typescript-eslint/no-floating-promises, @typescript-eslint/no-non-null-assertion
 						await Db.collections.Execution!.query('VACUUM;');
 					}
 				}
 
-				if (flags.tunnel === true) {
+				if (flags.tunnel) {
 					this.log('\nWaiting for tunnel ...');
 
 					let tunnelSubdomain;
-					if (process.env[TUNNEL_SUBDOMAIN_ENV] !== undefined && process.env[TUNNEL_SUBDOMAIN_ENV] !== '') {
+					if (
+						process.env[TUNNEL_SUBDOMAIN_ENV] !== undefined &&
+						process.env[TUNNEL_SUBDOMAIN_ENV] !== ''
+					) {
 						tunnelSubdomain = process.env[TUNNEL_SUBDOMAIN_ENV];
 					} else if (userSettings.tunnelSubdomain !== undefined) {
 						tunnelSubdomain = userSettings.tunnelSubdomain;
@@ -257,9 +276,13 @@ export class Start extends Command {
 					if (tunnelSubdomain === undefined) {
 						// When no tunnel subdomain did exist yet create a new random one
 						const availableCharacters = 'abcdefghijklmnopqrstuvwxyz0123456789';
-						userSettings.tunnelSubdomain = Array.from({ length: 24 }).map(() => {
-							return availableCharacters.charAt(Math.floor(Math.random() * availableCharacters.length));
-						}).join('');
+						userSettings.tunnelSubdomain = Array.from({ length: 24 })
+							.map(() => {
+								return availableCharacters.charAt(
+									Math.floor(Math.random() * availableCharacters.length),
+								);
+							})
+							.join('');
 
 						await UserSettings.writeUserSettings(userSettings);
 					}
@@ -269,14 +292,16 @@ export class Start extends Command {
 						subdomain: tunnelSubdomain,
 					};
 
-					const port = config.get('port') as number;
+					const port = config.get('port');
 
 					// @ts-ignore
 					const webhookTunnel = await localtunnel(port, tunnelSettings);
 
-					process.env.WEBHOOK_URL = webhookTunnel.url + '/';
+					process.env.WEBHOOK_URL = `${webhookTunnel.url}/`;
 					this.log(`Tunnel URL: ${process.env.WEBHOOK_URL}\n`);
-					this.log('IMPORTANT! Do not share with anybody as it would give people access to your n8n instance!');
+					this.log(
+						'IMPORTANT! Do not share with anybody as it would give people access to your n8n instance!',
+					);
 				}
 
 				await Server.start();
@@ -285,6 +310,7 @@ export class Start extends Command {
 				activeWorkflowRunner = ActiveWorkflowRunner.getInstance();
 				await activeWorkflowRunner.init();
 
+				// eslint-disable-next-line @typescript-eslint/no-unused-vars
 				const waitTracker = WaitTracker();
 
 				const editorUrl = GenericHelpers.getBaseUrl();
@@ -297,7 +323,7 @@ export class Start extends Command {
 					process.stdin.setEncoding('utf8');
 					let inputText = '';
 
-					if (flags.open === true) {
+					if (flags.open) {
 						Start.openBrowser();
 					}
 					this.log(`\nPress "o" to open in Browser.`);
@@ -307,15 +333,18 @@ export class Start extends Command {
 							inputText = '';
 						} else if (key.charCodeAt(0) === 3) {
 							// Ctrl + c got pressed
+							// eslint-disable-next-line @typescript-eslint/no-floating-promises
 							Start.stopProcess();
 						} else {
 							// When anything else got pressed, record it and send it on enter into the child process
+							// eslint-disable-next-line no-lonely-if
 							if (key.charCodeAt(0) === 13) {
 								// send to child process and print in terminal
 								process.stdout.write('\n');
 								inputText = '';
 							} else {
 								// record it and write into terminal
+								// eslint-disable-next-line @typescript-eslint/no-unused-vars
 								inputText += key;
 								process.stdout.write(key);
 							}
@@ -323,6 +352,7 @@ export class Start extends Command {
 					});
 				}
 			} catch (error) {
+				// eslint-disable-next-line @typescript-eslint/restrict-template-expressions
 				this.error(`There was an error: ${error.message}`);
 
 				processExistCode = 1;

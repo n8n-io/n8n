@@ -21,14 +21,15 @@
   "scripts": {
     "build": "tsc",
     "dev": "concurrently -k -n \"TypeScript,Node\" -c \"yellow.bold,cyan.bold\" \"npm run watch\" \"nodemon\"",
+    "format": "cd ../.. && node_modules/prettier/bin-prettier.js packages/cli/**/**.ts --write",
+    "lint": "cd ../.. && node_modules/eslint/bin/eslint.js packages/cli",
+    "lintfix": "cd ../.. && node_modules/eslint/bin/eslint.js packages/cli --fix",
     "postpack": "rm -f oclif.manifest.json",
     "prepack": "echo \"Building project...\" && rm -rf dist && tsc -b && oclif-dev manifest",
     "start": "run-script-os",
     "start:default": "cd bin && ./n8n",
     "start:windows": "cd bin && n8n",
     "test": "jest",
-    "tslint": "tslint -p tsconfig.json -c tslint.json",
-    "tslintfix": "tslint --fix -p tsconfig.json -c tslint.json",
     "watch": "tsc --watch",
     "typeorm": "ts-node ./node_modules/typeorm/cli.js"
   },
@@ -77,7 +78,7 @@
     "ts-jest": "^26.3.0",
     "ts-node": "^8.9.1",
     "tslint": "^6.1.2",
-    "typescript": "~3.9.7"
+    "typescript": "~4.3.5"
   },
   "dependencies": {
     "@oclif/command": "^1.5.18",

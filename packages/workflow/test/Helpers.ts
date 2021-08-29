@@ -1,15 +1,10 @@
-import {
-	INodeType,
-	INodeTypeData,
-	INodeTypes,
-} from '../src';
+import { INodeType, INodeTypeData, INodeTypes } from '../src';
 
 export interface INodeTypesObject {
 	[key: string]: INodeType;
 }
 
 class NodeTypesClass implements INodeTypes {
-
 	nodeTypes: INodeTypeData = {
 		'test.set': {
 			sourcePath: '',
@@ -96,7 +91,7 @@ class NodeTypesClass implements INodeTypes {
 		},
 	};
 
-	async init(nodeTypes: INodeTypeData): Promise<void> { }
+	async init(nodeTypes: INodeTypeData): Promise<void> {}
 
 	getAll(): INodeType[] {
 		return Object.values(this.nodeTypes).map((data) => data.type);
