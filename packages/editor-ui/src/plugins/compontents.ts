@@ -13,8 +13,6 @@ import DropdownItem from 'element-ui/lib/dropdown-item';
 import Menu from 'element-ui/lib/menu';
 import Submenu from 'element-ui/lib/submenu';
 import MenuItem from 'element-ui/lib/menu-item';
-import Input from 'element-ui/lib/input';
-import InputNumber from 'element-ui/lib/input-number';
 import Radio from 'element-ui/lib/radio';
 import RadioGroup from 'element-ui/lib/radio-group';
 import RadioButton from 'element-ui/lib/radio-button';
@@ -27,10 +25,6 @@ import ButtonGroup from 'element-ui/lib/button-group';
 import Table from 'element-ui/lib/table';
 import TableColumn from 'element-ui/lib/table-column';
 import DatePicker from 'element-ui/lib/date-picker';
-import Popover from 'element-ui/lib/popover';
-import Tooltip from 'element-ui/lib/tooltip';
-import Form from 'element-ui/lib/form';
-import FormItem from 'element-ui/lib/form-item';
 import Tabs from 'element-ui/lib/tabs';
 import TabPane from 'element-ui/lib/tab-pane';
 import Tag from 'element-ui/lib/tag';
@@ -55,6 +49,11 @@ import locale from 'element-ui/lib/locale';
 import {
 	N8nIconButton,
 	N8nButton,
+	N8nInput,
+	N8nInputLabel,
+	N8nInputNumber,
+	N8nSelect,
+	N8nOption,
 } from 'n8n-design-system';
 import { ElMessageBoxOptions } from "element-ui/types/message-box";
 
@@ -63,6 +62,11 @@ Vue.use(Fragment.Plugin);
 // n8n design system
 Vue.use(N8nButton);
 Vue.use(N8nIconButton);
+Vue.use(N8nInput);
+Vue.use(N8nInputLabel);
+Vue.use(N8nInputNumber);
+Vue.use(N8nSelect);
+Vue.use(N8nOption);
 
 // element io
 locale.use(lang);
@@ -75,8 +79,6 @@ Vue.use(DropdownItem);
 Vue.use(Menu);
 Vue.use(Submenu);
 Vue.use(MenuItem);
-Vue.use(Input);
-Vue.use(InputNumber);
 Vue.use(Radio);
 Vue.use(RadioGroup);
 Vue.use(RadioButton);
@@ -89,10 +91,6 @@ Vue.use(ButtonGroup);
 Vue.use(Table);
 Vue.use(TableColumn);
 Vue.use(DatePicker);
-Vue.use(Popover);
-Vue.use(Tooltip);
-Vue.use(Form);
-Vue.use(FormItem);
 Vue.use(Tabs);
 Vue.use(TabPane);
 Vue.use(Tag);

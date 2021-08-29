@@ -20,38 +20,46 @@
 				<strong v-if="dataCount < maxDisplayItems">
 					Items: {{ dataCount }}
 				</strong>
-				<strong v-else>Items:
-					<el-select v-model="maxDisplayItems" @click.stop>
-						<el-option v-for="option in maxDisplayItemsOptions" :label="option" :value="option" :key="option" />
-					</el-select>&nbsp;/
-					{{ dataCount }}
-				</strong>
+				<div v-else class="title-text">
+					<strong>Items:</strong>
+					<span class="opts">
+						<n8n-select size="mini" v-model="maxDisplayItems" @click.stop>
+							<n8n-option v-for="option in maxDisplayItemsOptions" :label="option" :value="option" :key="option" />
+						</n8n-select>
+					</span>&nbsp;/
+					<strong>{{ dataCount }}</strong>
+				</div>
 				&nbsp;
-				<el-popover
+				<n8n-tooltip
 					v-if="runMetadata"
 					placement="right"
-					width="400"
-					trigger="hover"
 				>
-					<strong>Start Time:</strong> {{runMetadata.startTime}}<br/>
-					<strong>Execution Time:</strong> {{runMetadata.executionTime}} ms
-					<font-awesome-icon icon="info-circle" class="primary-color" slot="reference" />
-				</el-popover>
+					<div slot="content">
+						<strong>Start Time:</strong> {{runMetadata.startTime}}<br/>
+						<strong>Execution Time:</strong> {{runMetadata.executionTime}} ms
+					</div>
+					<font-awesome-icon icon="info-circle" class="primary-color" />
+				</n8n-tooltip>
 				<span v-if="maxOutputIndex > 0">
-					| Output:
-					<el-select v-model="outputIndex" @click.stop>
-						<el-option v-for="option in (maxOutputIndex + 1)" :label="getOutputName(option-1)" :value="option -1" :key="option">
-						</el-option>
-					</el-select>
+					| Output:&nbsp;
 				</span>
-				<span v-if="maxRunIndex > 0">
-					| Data of Execution:
-					<el-select v-model="runIndex" @click.stop>
-						<el-option v-for="option in (maxRunIndex + 1)" :label="option + '/' + (maxRunIndex+1)" :value="option-1" :key="option">
-						</el-option>
-					</el-select>
+				<span class="opts" v-if="maxOutputIndex > 0" >
+					<n8n-select size="mini" v-model="outputIndex" @click.stop>
+						<n8n-option v-for="option in (maxOutputIndex + 1)" :label="getOutputName(option-1)" :value="option -1" :key="option">
+						</n8n-option>
+					</n8n-select>
+				</span>
 
+				<span v-if="maxRunIndex > 0">
+					| Data of Execution:&nbsp;
 				</span>
+				<span class="opts">
+					<n8n-select v-if="maxRunIndex > 0" size="mini" v-model="runIndex" @click.stop>
+						<n8n-option v-for="option in (maxRunIndex + 1)" :label="option + '/' + (maxRunIndex+1)" :value="option-1" :key="option">
+						</n8n-option>
+					</n8n-select>
+				</span>
+
 			</div>
 			<div v-if="hasNodeRun && !hasRunError" class="title-data-display-selector" @click.stop>
 				<el-radio-group v-model="displayMode" size="mini">
@@ -770,6 +778,10 @@ export default mixins(
 		padding-top: 10px;
 		padding-left: 10px;
 
+		display: flex;
+		align-items: center;
+		height: 40px;
+
 		.select-button {
 			height: 30px;
 			top: 50px;
@@ -781,8 +793,8 @@ export default mixins(
 		}
 
 		.title-text {
-			display: inline-block;
-			line-height: 30px;
+			display: inline-flex;
+			align-items: center;
 		}
 
 		.title-data-display-selector {
@@ -790,7 +802,6 @@ export default mixins(
 			left: calc(50% - 105px);
 			width: 210px;
 			display: inline-block;
-			line-height: 30px;
 			text-align: center;
 
 			.entry.active {
@@ -798,22 +809,9 @@ export default mixins(
 			}
 		}
 
-		.el-select {
+		.opts {
 			width: 80px;
 			z-index: 1;
-
-			.el-input__suffix-inner {
-				// TODO: Not sure why I have to do that. Invesigate when I have some time
-				position: absolute;
-				top: -5px;
-				right: 0;
-			}
-
-			input.el-input__inner {
-				border: 1px solid $--color-primary;
-				height: 25px;
-				line-height: 25px;
-			}
 		}
 	}
 }

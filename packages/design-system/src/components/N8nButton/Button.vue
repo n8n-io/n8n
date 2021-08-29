@@ -32,7 +32,7 @@
 <script lang="ts">
 import N8nIcon from '../N8nIcon';
 import N8nSpinner from '../N8nSpinner';
-import ElButton from 'element-ui/packages/button';
+import ElButton from 'element-ui/lib/button';
 
 export default {
 	name: 'n8n-button',

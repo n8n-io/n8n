@@ -5,8 +5,8 @@
 @include mixins.b(input-number) {
 	position: relative;
 	display: inline-block;
-	width: 180px;
 	line-height: #{var.$input-height - 2};
+	width: 100%;
 
 	.el-input {
 		display: block;
@@ -70,7 +70,6 @@
 	}
 
 	@include mixins.m(medium) {
-		width: 200px;
 		line-height: #{var.$input-medium-height - 2};
 
 		@include mixins.e((increase, decrease)) {
@@ -85,7 +84,6 @@
 	}
 
 	@include mixins.m(small) {
-		width: 130px;
 		line-height: #{var.$input-small-height - 2};
 
 		@include mixins.e((increase, decrease)) {
@@ -104,7 +102,6 @@
 	}
 
 	@include mixins.m(mini) {
-		width: 130px;
 		line-height: #{var.$input-mini-height - 2};
 
 		@include mixins.e((increase, decrease)) {
@@ -124,8 +121,9 @@
 
 	@include mixins.when(without-controls) {
 		.el-input__inner {
-			padding-left: 15px;
-			padding-right: 15px;
+			text-align: left;
+			padding-left: 12px;
+			padding-right: 12px;
 		}
 	}
 

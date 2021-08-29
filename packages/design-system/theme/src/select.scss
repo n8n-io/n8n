@@ -11,14 +11,22 @@
 @include mixins.b(select) {
 	display: inline-block;
 	position: relative;
+	width: 100%;
+
+	.el-select__tags {
+		overflow-x: scroll;
+	}
 
 	.el-select__tags > span {
 		display: contents;
 	}
 
-	&:hover {
-		.el-input__inner {
-			border-color: var.$select-border-color-hover;
+	.el-select__tags + .el-input {
+		input {
+			box-sizing: content-box;
+			padding: 0;
+			text-indent: var(--spacing-xs);
+			width: calc(100% - 2px);
 		}
 	}
 
@@ -33,7 +41,6 @@
 
 	.el-input {
 		& .el-select__caret {
-			color: var.$select-input-color;
 			font-size: var.$select-input-font-size;
 			transition: transform 0.3s;
 			transform: rotateZ(180deg);
@@ -124,18 +131,22 @@
 
 	.el-tag {
 		box-sizing: border-box;
-		border-color: transparent;
 		margin: 2px 0 2px 6px;
-		background-color: #f0f2f5;
+		border-color: var(--color-foreground-base);
+		background-color: var(--color-foreground-base);
+		color: var(--color-text-dark);
+		border-radius: 20px;
+		font-weight: 400;
 
 		&__close.el-icon-close {
-			background-color: var(--color-text-lighter);
+			background-color: var(--color-text-light);
 			right: -7px;
 			top: 0;
 			color: var.$color-white;
+			margin-right: 6px;
 
 			&:hover {
-				background-color: var(--color-text-light);
+				background-color: var(--color-text-base);
 			}
 
 			&::before {

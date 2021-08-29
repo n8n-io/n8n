@@ -9,7 +9,7 @@
 
 	&.el-input,
 	&.el-input__inner {
-		width: 220px;
+		width: 100%;
 	}
 
 	@include mixins.m((monthrange)) {

@@ -14,14 +14,16 @@
 					@click="optionSelected(parameter.options[0].name)"
 					:label="getPlaceholderText"
 				/>
-				<el-select v-else v-model="selectedOption" :placeholder="getPlaceholderText" size="small" class="add-option" @change="optionSelected" filterable>
-					<el-option
-						v-for="item in parameterOptions"
-						:key="item.name"
-						:label="item.displayName"
-						:value="item.name">
-					</el-option>
-				</el-select>
+				<div v-else class="add-option">
+					<n8n-select v-model="selectedOption" :placeholder="getPlaceholderText" size="small"  @change="optionSelected" filterable>
+						<n8n-option
+							v-for="item in parameterOptions"
+							:key="item.name"
+							:label="item.displayName"
+							:value="item.name">
+						</n8n-option>
+					</n8n-select>
+				</div>
 			</div>
 
 		</div>

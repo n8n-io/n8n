@@ -1,36 +1,36 @@
 <template>
 	<div @keydown.stop class="credentials-input-wrapper">
-		<el-row>
+		<el-row class="credential-name-wrapper">
 			<el-col :span="6" class="headline-regular">
 				Credentials Name:
-				<el-tooltip class="credentials-info" placement="top" effect="light">
+				<n8n-tooltip class="credentials-info" placement="top" >
 					<div slot="content" v-html="helpTexts.credentialsName"></div>
 					<font-awesome-icon icon="question-circle" />
-				</el-tooltip>
+				</n8n-tooltip>
 			</el-col>
 			<el-col :span="18">
-				<el-input size="small" type="text" v-model="name"></el-input>
+				<n8n-input v-model="name" type="text" size="medium"></n8n-input>
 			</el-col>
 		</el-row>
 		<br />
 		<div class="headline" v-if="credentialProperties.length">
 			Credential Data:
-			<el-tooltip class="credentials-info" placement="top" effect="light">
+			<n8n-tooltip class="credentials-info" placement="top" >
 				<div slot="content" v-html="helpTexts.credentialsData"></div>
 				<font-awesome-icon icon="question-circle" />
-			</el-tooltip>
+			</n8n-tooltip>
 		</div>
 		<div v-for="parameter in credentialProperties" :key="parameter.name">
 			<el-row class="parameter-wrapper">
 				<el-col :span="6" class="parameter-name">
 					{{parameter.displayName}}:
-					<el-tooltip placement="top" class="parameter-info" v-if="parameter.description" effect="light">
+					<n8n-tooltip placement="top" class="parameter-info" v-if="parameter.description" >
 						<div slot="content" v-html="parameter.description"></div>
 						<font-awesome-icon icon="question-circle"/>
-					</el-tooltip>
+					</n8n-tooltip>
 				</el-col>
 				<el-col :span="18">
-					<parameter-input :parameter="parameter" :value="propertyValue[parameter.name]" :path="parameter.name" :isCredential="true" :displayOptions="true" @valueChanged="valueChanged" />
+					<parameter-input :parameter="parameter" :value="propertyValue[parameter.name]" :path="parameter.name" :isCredential="true" :displayOptions="true" @valueChanged="valueChanged" inputSize="medium" />
 				</el-col>
 			</el-row>
 		</div>
@@ -63,11 +63,11 @@
 						<font-awesome-icon icon="angle-up" class="minimize-button minimize-icon" />
 						OAuth Callback URL
 					</div>
-					<el-tooltip v-if="!isMinimized" class="item" effect="light" content="Click to copy Callback URL" placement="right">
+					<n8n-tooltip v-if="!isMinimized" class="item"  content="Click to copy Callback URL" placement="right">
 						<div class="callback-url left-ellipsis clickable" @click="copyCallbackUrl">
 							{{oAuthCallbackUrl}}
 						</div>
-					</el-tooltip>
+					</n8n-tooltip>
 				</div>
 
 			</el-col>
@@ -76,10 +76,10 @@
 		<el-row class="nodes-access-wrapper">
 			<el-col :span="6" class="headline">
 				Nodes with access:
-				<el-tooltip class="credentials-info" placement="top" effect="light">
+				<n8n-tooltip class="credentials-info" placement="top" >
 					<div slot="content" v-html="helpTexts.nodesWithAccess"></div>
 					<font-awesome-icon icon="question-circle" />
-				</el-tooltip>
+				</n8n-tooltip>
 			</el-col>
 			<el-col :span="18">
 				<el-transfer
@@ -514,6 +514,11 @@ export default mixins(
 <style lang="scss">
 
 .credentials-input-wrapper {
+	.credential-name-wrapper {
+		display: flex;
+		align-items: center;
+	}
+
 	.action-buttons {
 		margin-top: 2em;
 		text-align: right;
@@ -550,7 +555,9 @@ export default mixins(
 	}
 
 	.parameter-wrapper {
-		line-height: 3em;
+		display: flex;
+		align-items: center;
+		margin: 8px 0;
 
 		.parameter-name {
 			position: relative;

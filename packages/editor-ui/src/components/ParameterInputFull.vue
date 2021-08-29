@@ -1,14 +1,14 @@
 <template>
-	<el-row class="parameter-wrapper">
+	<el-row class="parameter-wrapper" :class="{'multi-line': isMultiLineParameter}">
 		<el-col :span="isMultiLineParameter ? 24 : 10" class="parameter-name" :class="{'multi-line': isMultiLineParameter}">
 			<span class="title" :title="parameter.displayName">{{parameter.displayName}}</span>:
-			<el-tooltip class="parameter-info" placement="top" v-if="parameter.description" effect="light">
+			<n8n-tooltip class="parameter-info" placement="top" v-if="parameter.description" >
 				<div slot="content" v-html="parameter.description"></div>
 				<font-awesome-icon icon="question-circle" />
-			</el-tooltip>
+			</n8n-tooltip>
 		</el-col>
 		<el-col :span="isMultiLineParameter ? 24 : 14" class="parameter-value">
-			<parameter-input :parameter="parameter" :value="value" :displayOptions="displayOptions" :path="path" @valueChanged="valueChanged" />
+			<parameter-input :parameter="parameter" :value="value" :displayOptions="displayOptions" :path="path" @valueChanged="valueChanged" inputSize="small" />
 		</el-col>
 	</el-row>
 </template>
@@ -72,7 +72,12 @@ export default Vue
 <style lang="scss">
 
 .parameter-wrapper {
-	line-height: 2.5em;
+	display: flex;
+	align-items: center;
+
+	&.multi-line {
+		flex-direction: column;
+	}
 
 	.option {
 		margin: 1em;
@@ -83,7 +88,7 @@ export default Vue
 		display: none;
 		position: absolute;
 		right: 2px;
-		top: 10px;
+		top: 1px;
 	}
 
 	.parameter-name {

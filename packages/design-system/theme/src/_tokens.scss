@@ -43,9 +43,9 @@
 		var(--color-primary-shade-2-l)
 	);
 
-	--color-secondary-h: 247.4;
-	--color-secondary-s: 100%;
-	--color-secondary-l: 65.1%;
+	--color-secondary-h: 247;
+	--color-secondary-s: 49%;
+	--color-secondary-l: 53%;
 	--color-secondary: hsl(
 		var(--color-secondary-h),
 		var(--color-secondary-s),
@@ -169,10 +169,9 @@
 		var(--color-text-light-l)
 	);
 
-	// todo placeholder color - hsl(222,16.7%,88.2%) - change after roll out inputs
-	--color-text-lighter-h: 220;
-	--color-text-lighter-s: 10.5%;
-	--color-text-lighter-l: 77.6%;
+	--color-text-lighter-h: 222;
+	--color-text-lighter-s: 16.7%;
+	--color-text-lighter-l: 88.2%;
 	--color-text-lighter: hsl(
 		var(--color-text-lighter-h),
 		var(--color-text-lighter-s),

@@ -30,10 +30,10 @@
 						/>
 					</div>
 					{{parameter.displayName}}:
-					<el-tooltip placement="top" class="parameter-info" v-if="parameter.description" effect="light">
+					<n8n-tooltip placement="top" class="parameter-info" v-if="parameter.description" >
 						<div slot="content" v-html="parameter.description"></div>
 						<font-awesome-icon icon="question-circle"/>
-					</el-tooltip>
+					</n8n-tooltip>
 				</div>
 				<div>
 					<collection-parameter
@@ -291,6 +291,7 @@ export default mixins(
 
 	.parameter-item {
 		position: relative;
+		margin: 8px 0;
 
 		>.delete-option {
 			left: -0.9em;

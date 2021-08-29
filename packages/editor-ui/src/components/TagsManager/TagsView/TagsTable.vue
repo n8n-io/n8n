@@ -13,13 +13,13 @@
 			<template slot-scope="scope">
 				<div class="name" :key="scope.row.id" @keydown.stop>
 					<transition name="fade" mode="out-in">
-						<el-input
+						<n8n-input
 							v-if="scope.row.create || scope.row.update"
 							:value="newName"
 							:maxlength="maxLength"
 							@input="onNewNameChange"
 							ref="nameInput"
-						></el-input>
+						></n8n-input>
 						<span v-else-if="scope.row.delete">
 							<span>Are you sure you want to delete this tag?</span>
 							<input ref="deleteHiddenInput" class="hidden" />
@@ -168,11 +168,6 @@ export default Vue.extend({
 	min-height: 45px;
 	display: flex;
 	align-items: center;
-
-	::v-deep input {
-		border: 1px solid $--color-primary;
-		background: white;
-	}
 }
 
 .ops {
@@ -209,10 +204,6 @@ export default Vue.extend({
 
 tr:hover .ops:not(.disabled) {
 	display: flex;
-}
-
-::v-deep .el-input.is-disabled > input {
-	border: none;
 }
 
 .fade-enter-active,

@@ -8,7 +8,7 @@
 	>
 		<template v-slot:content>
 			<el-row>
-				<el-input
+				<n8n-input
 					v-model="name"
 					ref="nameInput"
 					placeholder="Enter workflow name"

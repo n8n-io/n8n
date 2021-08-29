@@ -6,3 +6,7 @@
 
 @use "~/theme/src/reset.scss";
 @use "~/theme/src/index.scss";
+
+.multi-container > * {
+	margin-bottom: 10px;
+}

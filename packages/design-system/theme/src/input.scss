@@ -11,7 +11,7 @@
 	@include mixins.e(inner) {
 		display: block;
 		resize: vertical;
-		padding: 5px 15px;
+		padding: 8px 12px 5px 12px;
 		line-height: 1.5;
 		box-sizing: border-box;
 		width: 100%;
@@ -19,16 +19,16 @@
 		color: var.$input-font-color;
 		background-color: var.$input-background-color;
 		background-image: none;
-		border: var.$input-border;
 		border-radius: var.$input-border-radius;
 		transition: var.$border-transition-base;
 
-		&::placeholder {
-			color: var.$input-placeholder-color;
+		&,
+		&:hover {
+			border: var.$input-border;
 		}
 
-		&:hover {
-			border-color: var.$input-hover-border;
+		&::placeholder {
+			color: var.$input-placeholder-color;
 		}
 
 		&:focus {
@@ -72,13 +72,13 @@
 
 @include mixins.b(input) {
 	position: relative;
-	font-size: var.$font-size-base;
+	font-size: var.$input-font-size;
 	display: inline-block;
 	width: 100%;
 	@include mixins.scroll-bar;
 
 	& .el-input__clear {
-		color: var.$input-icon-color;
+		color: var.$input-clear-color;
 		font-size: var.$input-font-size;
 		cursor: pointer;
 		transition: var.$color-transition-base;
@@ -116,16 +116,12 @@
 		height: var.$input-height;
 		line-height: var.$input-height;
 		outline: none;
-		padding: 0 15px;
+		padding: 0 var(--spacing-xs);
 		transition: var.$border-transition-base;
 		width: 100%;
 
 		&::placeholder {
 			color: var.$input-placeholder-color;
-		}
-
-		&:hover {
-			border-color: var.$input-hover-border;
 		}
 
 		&:focus {
@@ -137,12 +133,14 @@
 	@include mixins.e(suffix) {
 		position: absolute;
 		height: 100%;
-		right: 5px;
+		right: 10px;
 		top: 0;
 		text-align: center;
-		color: var.$input-icon-color;
+		color: var(--color-text-light);
 		transition: all 0.3s;
 		pointer-events: none;
+		display: flex;
+		align-items: center;
 	}
 
 	@include mixins.e(suffix-inner) {
@@ -152,16 +150,17 @@
 	@include mixins.e(prefix) {
 		position: absolute;
 		height: 100%;
-		left: 5px;
+		left: 14px;
 		top: 0;
 		text-align: center;
 		color: var.$input-icon-color;
 		transition: all 0.3s;
+		display: flex;
+		align-items: center;
 	}
 
 	@include mixins.e(icon) {
 		height: 100%;
-		width: 25px;
 		text-align: center;
 		transition: all 0.3s;
 		line-height: var.$input-height;
@@ -223,7 +222,7 @@
 
 	@include mixins.m(prefix) {
 		.el-input__inner {
-			padding-left: 30px;
+			padding-left: 37px;
 		}
 	}
 
@@ -285,9 +284,10 @@
 		position: relative;
 		border: var(--border-base);
 		border-radius: var.$input-border-radius;
-		padding: 0 20px;
+		padding: 0 10px;
 		width: 1px;
 		white-space: nowrap;
+		font-weight: var(--font-weight-regular);
 
 		&:focus {
 			outline: none;
