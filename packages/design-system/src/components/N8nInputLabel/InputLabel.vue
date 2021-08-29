@@ -3,7 +3,7 @@
 		<label>
 			<div :class="$style.label">
 				<span>{{ props.label }}</span>
-				<span :class="$style.infoIcon" v-if="props.tooltipText">
+				<span v-if="props.tooltipText" :class="$style.infoIcon">
 					<n8n-tooltip :content="props.tooltipText" placement="top">
 						<n8n-icon icon="info-circle" />
 					</n8n-tooltip>
