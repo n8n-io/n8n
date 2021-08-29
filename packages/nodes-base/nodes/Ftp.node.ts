@@ -648,23 +648,22 @@ export class Ftp implements INodeType {
 }
 
 
-function normalizeFtpItem(input: ftpClient.ListingElement, path: string) {
+function normalizeFtpItem(input: ftpClient.ListingElement, path: string, recursive = false) {
 	const item = input as unknown as ReturnFtpItem;
 	item.modifyTime = input.date;
-	item.path = `${path}${path.endsWith('/') ? '' : '/'}${item.name}`;
-	// @ts-ignore
+	item.path = (!recursive) ? `${path}${path.endsWith('/') ? '' : '/'}${item.name}` : path;
+	//@ts-ignore
 	item.date = undefined;
 }
 
-
-function normalizeSFtpItem(input: sftpClient.FileInfo, path: string) {
+function normalizeSFtpItem(input: sftpClient.FileInfo, path: string, recursive = false) {
 	const item = input as unknown as ReturnFtpItem;
 	item.accessTime = new Date(input.accessTime);
 	item.modifyTime = new Date(input.modifyTime);
-	item.path = `${path}${path.endsWith('/') ? '' : '/'}${item.name}`;
+	item.path = (!recursive) ? `${path}${path.endsWith('/') ? '' : '/'}${item.name}` : path;
 }
 
-async function callRecursiveList(path: string, client: sftpClient | ftpClient, normalizeFunction: (input: ftpClient.ListingElement & sftpClient.FileInfo, path: string) => void) {
+async function callRecursiveList(path: string, client: sftpClient | ftpClient, normalizeFunction: (input: ftpClient.ListingElement & sftpClient.FileInfo, path: string, recursive?: boolean) => void) {
 	const pathArray : string[] = [path];
 	let currentPath = path;
 	const directoryItems : sftpClient.FileInfo[] = [];
@@ -687,7 +686,7 @@ async function callRecursiveList(path: string, client: sftpClient | ftpClient, n
 				pathArray.push(currentPath);
 			}
 
-			normalizeFunction(item as ftpClient.ListingElement & sftpClient.FileInfo, currentPath);
+			normalizeFunction(item as ftpClient.ListingElement & sftpClient.FileInfo, currentPath, true);
 			directoryItems.push(item);
 		});
 		index++;
