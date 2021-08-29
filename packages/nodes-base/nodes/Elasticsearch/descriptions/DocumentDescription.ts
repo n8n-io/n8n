@@ -389,7 +389,7 @@ export const documentFields = [
 			{
 				displayName: 'Query',
 				name: 'query',
-				description: 'Query in the <a href="https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl.html" target="_blank">Elasticsearch Query DSL</a>',
+				description: 'Query in the <a href="https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl.html">Elasticsearch Query DSL</a>',
 				type: 'json',
 				typeOptions: {
 					alwaysOpenEditWindow: true,
@@ -400,7 +400,7 @@ export const documentFields = [
 			{
 				displayName: 'Request Cache',
 				name: 'request_cache',
-				description: 'If true, the caching of search results is enabled for requests where size is 0. See <a href="https://www.elastic.co/guide/en/elasticsearch/reference/current/shard-request-cache.html" target="_blank">Elasticsearch shard request cache settings</a>',
+				description: 'If true, the caching of search results is enabled for requests where size is 0. See <a href="https://www.elastic.co/guide/en/elasticsearch/reference/current/shard-request-cache.html">Elasticsearch shard request cache settings</a>',
 				type: 'boolean',
 				default: false,
 			},
@@ -431,7 +431,7 @@ export const documentFields = [
 			{
 				displayName: 'Sequence Number and Primary Term',
 				name: 'seq_no_primary_term',
-				description: 'If true, return the sequence number and primary term of the last modification of each hit. See <a href="https://www.elastic.co/guide/en/elasticsearch/reference/current/optimistic-concurrency-control.html" target="_blank">Optimistic concurrency control</a>',
+				description: 'If true, return the sequence number and primary term of the last modification of each hit. See <a href="https://www.elastic.co/guide/en/elasticsearch/reference/current/optimistic-concurrency-control.html">Optimistic concurrency control</a>',
 				type: 'boolean',
 				default: false,
 			},
@@ -466,7 +466,7 @@ export const documentFields = [
 			{
 				displayName: 'Timeout',
 				name: 'timeout',
-				description: 'Period to wait for active shards. Defaults to <code>1m</code> (one minute). See the <a href="https://www.elastic.co/guide/en/elasticsearch/reference/current/common-options.html#time-units" target="_blank">Elasticsearch time units reference</a>',
+				description: 'Period to wait for active shards. Defaults to <code>1m</code> (one minute). See the <a href="https://www.elastic.co/guide/en/elasticsearch/reference/current/common-options.html#time-units">Elasticsearch time units reference</a>',
 				type: 'string',
 				default: '1m',
 			},
@@ -644,7 +644,7 @@ export const documentFields = [
 			{
 				displayName: 'Timeout',
 				name: 'timeout',
-				description: 'Period to wait for active shards. Defaults to <code>1m</code> (one minute). See the <a href="https://www.elastic.co/guide/en/elasticsearch/reference/current/common-options.html#time-units" target="_blank">Elasticsearch time units reference</a>',
+				description: 'Period to wait for active shards. Defaults to <code>1m</code> (one minute). See the <a href="https://www.elastic.co/guide/en/elasticsearch/reference/current/common-options.html#time-units">Elasticsearch time units reference</a>',
 				type: 'string',
 				default: '1m',
 			},

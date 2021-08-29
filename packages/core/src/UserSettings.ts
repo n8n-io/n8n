@@ -53,7 +53,7 @@ export async function prepareUserSettings(): Promise<IUserSettings> {
 	}
 
 	// eslint-disable-next-line no-console
-	console.log(`UserSettings got generated and saved to: ${settingsPath}`);
+	console.log(`UserSettings were generated and saved to: ${settingsPath}`);
 
 	return writeUserSettings(userSettings, settingsPath);
 }

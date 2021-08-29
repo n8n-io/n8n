@@ -192,7 +192,7 @@ export async function requestOAuth2(
 	)) as ICredentialDataDecryptedObject;
 
 	if (credentials === undefined) {
-		throw new Error('No credentials got returned!');
+		throw new Error('No credentials were returned!');
 	}
 
 	if (credentials.oauthTokenData === undefined) {
@@ -304,7 +304,7 @@ export async function requestOAuth1(
 	)) as ICredentialDataDecryptedObject;
 
 	if (credentials === undefined) {
-		throw new Error('No credentials got returned!');
+		throw new Error('No credentials were returned!');
 	}
 
 	if (credentials.oauthTokenData === undefined) {
@@ -477,7 +477,13 @@ export async function getCredentials(
 		} as ICredentialsExpressionResolveValues;
 	}
 
-	const name = node.credentials[type];
+	let name = node.credentials[type];
+
+	if (name.charAt(0) === '=') {
+		// If the credential name is an expression resolve it
+		const additionalKeys = getAdditionalKeys(additionalData);
+		name = workflow.expression.getParameterValue(name, runExecutionData || null, runIndex || 0, itemIndex || 0, node.name, connectionInputData || [], mode, additionalKeys) as string;
+	}
 
 	const decryptedDataObject = await additionalData.credentialsHelper.getDecrypted(
 		name,

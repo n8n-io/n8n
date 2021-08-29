@@ -135,16 +135,16 @@ export class Wait implements INodeType {
 					{
 						name: 'At specified time',
 						value: 'specificTime',
-						description: 'Waits until the set date time to continue',
+						description: 'Waits until a specific date and time to continue',
 					},
 					{
 						name: 'On webhook call',
 						value: 'webhook',
-						description: 'Waits for a webhook call',
+						description: 'Waits for a webhook call before continuing',
 					},
 				],
 				default: 'timeInterval',
-				description: 'For what the node should wait for before to continue with the execution',
+				description: 'Determines the waiting mode to use before the workflow continues',
 			},
 
 			// ----------------------------------
@@ -169,7 +169,7 @@ export class Wait implements INodeType {
 			//         resume:timeInterval
 			// ----------------------------------
 			{
-				displayName: 'Amount',
+				displayName: 'Wait Amount',
 				name: 'amount',
 				type: 'number',
 				displayOptions: {
@@ -187,7 +187,7 @@ export class Wait implements INodeType {
 				description: 'The time to wait',
 			},
 			{
-				displayName: 'Unit',
+				displayName: 'Wait Unit',
 				name: 'unit',
 				type: 'options',
 				displayOptions: {
@@ -216,7 +216,7 @@ export class Wait implements INodeType {
 					},
 				],
 				default: 'hours',
-				description: 'Unit of the interval value',
+				description: 'The time unit of the Wait Amount value',
 			},
 
 
@@ -224,7 +224,7 @@ export class Wait implements INodeType {
 			//         resume:webhook
 			// ----------------------------------
 			{
-				displayName: 'The URL to call will be generated at run time, and can be referenced under <strong>$resumeWebhookUrl</strong>. Send it somewhere before getting to this node. <a href="https://docs.n8n.io/nodes/n8n-nodes-base.wait?utm_source=n8n_app&utm_medium=node_settings_modal-credential_link&utm_campaign=n8n-nodes-base.wait" target="_blank">More info</a>',
+				displayName: 'The webhook URL will be generated at run time. It can be referenced with the <strong>$resumeWebhookUrl</strong> variable. Send it somewhere before getting to this node. <a href="https://docs.n8n.io/nodes/n8n-nodes-base.wait?utm_source=n8n_app&utm_medium=node_settings_modal-credential_link&utm_campaign=n8n-nodes-base.wait" target="_blank">More info</a>',
 				name: 'webhookNotice',
 				type: 'notice',
 				displayOptions: {
@@ -262,7 +262,7 @@ export class Wait implements INodeType {
 					},
 				],
 				default: 'GET',
-				description: 'The HTTP method to liste to',
+				description: 'The HTTP method of the Webhook call',
 			},
 			{
 				displayName: 'Response Code',
@@ -340,7 +340,7 @@ export class Wait implements INodeType {
 					},
 				],
 				default: 'firstEntryJson',
-				description: 'What data should be returned. If it should return<br />all the itemsas array or only the first item as object',
+				description: 'What data should be returned. If it should return<br />all the items as array or only the first item as object',
 			},
 			{
 				displayName: 'Property Name',
@@ -366,7 +366,7 @@ export class Wait implements INodeType {
 				type: 'boolean',
 				default: false,
 				description: `If no webhook call is received, the workflow will automatically<br />
-							 resume execution after specified condition.`,
+							 resume execution after the specified limit type`,
 				displayOptions: {
 					show: {
 						resume: [
@@ -395,10 +395,12 @@ export class Wait implements INodeType {
 				options: [
 					{
 						name: 'After time interval',
+						description: 'Waits for a certain amount of time',
 						value: 'afterTimeInterval',
 					},
 					{
 						name: 'At specified time',
+						description: 'Waits until the set date and time to continue',
 						value: 'atSpecifiedTime',
 					},
 				],
@@ -483,7 +485,7 @@ export class Wait implements INodeType {
 					},
 				},
 				default: '',
-				description: 'Continue execution on the informed date',
+				description: 'Continue execution after the specified date and time',
 			},
 			{
 				displayName: 'Options',
@@ -619,7 +621,7 @@ export class Wait implements INodeType {
 						type: 'string',
 						default: '',
 						placeholder: 'webhook',
-						description: 'The webhook suffix path that will be appended to the restart URL. Important: Does currently not support expressions.',
+						description: 'This suffix path will be appended to the restart URL. Helpful when using multiple wait nodes. Note: Does not support expressions.',
 					},
 					// {
 					// 	displayName: 'Raw Body',

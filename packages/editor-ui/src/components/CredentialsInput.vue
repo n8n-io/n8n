@@ -25,7 +25,7 @@
 				<el-col :span="6" class="parameter-name">
 					{{parameter.displayName}}:
 					<el-tooltip placement="top" class="parameter-info" v-if="parameter.description" effect="light">
-						<div slot="content" v-html="parameter.description"></div>
+						<div slot="content" v-html="addTargetBlank(parameter.description)"></div>
 						<font-awesome-icon icon="question-circle"/>
 					</el-tooltip>
 				</el-col>
@@ -145,6 +145,8 @@ import {
 import ParameterInput from '@/components/ParameterInput.vue';
 
 import mixins from 'vue-typed-mixins';
+
+import { addTargetBlank } from './helpers';
 
 export default mixins(
 	copyPaste,
@@ -266,6 +268,7 @@ export default mixins(
 		},
 	},
 	methods: {
+		addTargetBlank,
 		copyCallbackUrl (): void {
 			this.copyToClipboard(this.oAuthCallbackUrl);
 

@@ -71,7 +71,8 @@ export class ActiveExecutions {
 			);
 			executionId =
 				typeof executionResult.id === 'object'
-					? executionResult.id!.toString()
+					? // @ts-ignore
+					  executionResult.id!.toString()
 					: executionResult.id + '';
 		} else {
 			// Is an existing execution we want to finish so update in DB

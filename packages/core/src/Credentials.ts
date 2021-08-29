@@ -65,9 +65,7 @@ export class Credentials extends ICredentials {
 			// eslint-disable-next-line @typescript-eslint/no-unsafe-return
 			return JSON.parse(decryptedData.toString(enc.Utf8));
 		} catch (e) {
-			throw new Error(
-				'Credentials could not be decrypted. The reason is that probably a different "encryptionKey" got used to encrypt the data than now to decrypt it.',
-			);
+			throw new Error('Credentials could not be decrypted. The likely reason is that a different "encryptionKey" was used to encrypt the data.');
 		}
 	}
 
@@ -78,7 +76,7 @@ export class Credentials extends ICredentials {
 		const fullData = this.getData(encryptionKey, nodeType);
 
 		if (fullData === null) {
-			throw new Error(`No data got set.`);
+			throw new Error(`No data was set.`);
 		}
 
 		// eslint-disable-next-line no-prototype-builtins
@@ -94,7 +92,7 @@ export class Credentials extends ICredentials {
 	 */
 	getDataToSave(): ICredentialsEncrypted {
 		if (this.data === undefined) {
-			throw new Error(`No credentials got set to save.`);
+			throw new Error(`No credentials were set to save.`);
 		}
 
 		return {
