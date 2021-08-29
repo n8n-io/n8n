@@ -692,7 +692,7 @@ export class Wait implements INodeType {
 		// @ts-ignore
 		const mimeType = headers['content-type'] || 'application/json';
 		if (mimeType.includes('multipart/form-data')) {
-			const form = new formidable.IncomingForm({});
+			const form = new formidable.IncomingForm({ multiples: true });
 
 			return new Promise((resolve, reject) => {
 
@@ -708,19 +708,36 @@ export class Wait implements INodeType {
 					};
 
 					let count = 0;
-					for (const file of Object.keys(files)) {
-
-						let binaryPropertyName = file;
-						if (options.binaryPropertyName) {
-							binaryPropertyName = `${options.binaryPropertyName}${count}`;
+					for (const xfile of Object.keys(files)) {
+						const processFiles = [];
+						let multiFile = false;
+						if (Array.isArray(files[xfile])) {
+							processFiles.push(...files[xfile] as formidable.File[]);
+							multiFile = true;
+						} else {
+							processFiles.push(files[xfile]);
 						}
 
-						const fileJson = (files[file] as formidable.File).toJSON() as unknown as IDataObject;
-						const fileContent = await fs.promises.readFile((files[file] as formidable.File).path);
+						let fileCount = 0;
+						for (const file in processFiles) {
+							let binaryPropertyName = xfile;
+							if (binaryPropertyName.endsWith('[]')) {
+								binaryPropertyName = binaryPropertyName.slice(0, -2);
+							}
+							if (multiFile === true) {
+								binaryPropertyName += fileCount++;
+							}
+							if (options.binaryPropertyName) {
+								binaryPropertyName = `${options.binaryPropertyName}${count}`;
+							}
 
-						returnItem.binary![binaryPropertyName] = await this.helpers.prepareBinaryData(Buffer.from(fileContent), fileJson.name as string, fileJson.type as string);
+							const fileJson = (processFiles[file] as formidable.File).toJSON() as unknown as IDataObject;
+							const fileContent = await fs.promises.readFile((processFiles[file] as formidable.File).path);
 
-						count += 1;
+							returnItem.binary![binaryPropertyName] = await this.helpers.prepareBinaryData(Buffer.from(fileContent), fileJson.name as string, fileJson.type as string);
+
+							count += 1;
+						}
 					}
 					resolve({
 						workflowData: [
