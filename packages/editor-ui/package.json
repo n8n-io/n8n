@@ -61,7 +61,7 @@
     "dateformat": "^3.0.3",
     "element-ui": "~2.13.0",
     "eslint": "^7.32.0",
-    "eslint-plugin-import": "^2.19.1",
+    "eslint-plugin-import": "^2.23.4",
     "eslint-plugin-vue": "^7.16.0",
     "file-saver": "^2.0.2",
     "flatted": "^2.0.0",
