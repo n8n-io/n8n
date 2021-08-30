@@ -7,12 +7,15 @@
 				Your saved credentials:
 			</div>
 
-			<el-button title="Create New Credentials" class="new-credentials-button" @click="createCredential()">
-				<font-awesome-icon icon="plus" />
-				<div class="next-icon-text">
-					Add New
-				</div>
-			</el-button>
+			<div class="new-credentials-button">
+				<n8n-button
+					title="Create New Credentials"
+					icon="plus"
+					label="Add New"
+					size="large"
+					@click="createCredential()"
+				/>
+			</div>
 
 			<el-table :data="credentials" :default-sort = "{prop: 'name', order: 'ascending'}" stripe @row-click="editCredential" max-height="450" v-loading="isDataLoading">
 				<el-table-column property="name" label="Name" class-name="clickable" sortable></el-table-column>
@@ -27,8 +30,10 @@
 					label="Operations"
 					width="120">
 					<template slot-scope="scope">
-						<el-button title="Edit Credentials" @click.stop="editCredential(scope.row)" icon="el-icon-edit" circle></el-button>
-						<el-button title="Delete Credentials" @click.stop="deleteCredential(scope.row)" type="danger" icon="el-icon-delete" circle></el-button>
+						<div class="cred-operations">
+							<n8n-icon-button title="Edit Credentials" @click.stop="editCredential(scope.row)" icon="pen" />
+							<n8n-icon-button title="Delete Credentials" @click.stop="deleteCredential(scope.row)" icon="trash" />
+						</div>
 					</template>
 				</el-table-column>
 			</el-table>
@@ -173,12 +178,18 @@ export default mixins(
 });
 </script>
 
-<style lang="scss">
+<style lang="scss" scoped>
 
 .new-credentials-button {
 	float: right;
 	position: relative;
 	top: -15px;
+}
+
+.cred-operations {
+	> * {
+		margin-left: 10px;
+	}
 }
 
 </style>

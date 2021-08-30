@@ -321,6 +321,15 @@ export const leadFields = [
 				description: 'Postal code for the address of the lead. Label is Zip/Postal Code.',
 			},
 			{
+				displayName: 'Record Type ID',
+				name: 'recordTypeId',
+				type: 'options',
+				typeOptions: {
+					loadOptionsMethod: 'getRecordTypes',
+				},
+				default: '',
+			},
+			{
 				displayName: 'Rating',
 				name: 'rating',
 				type: 'string',
@@ -577,6 +586,15 @@ export const leadFields = [
 				type: 'string',
 				default: '',
 				description: 'Phone number for the lead.',
+			},
+			{
+				displayName: 'Record Type ID',
+				name: 'recordTypeId',
+				type: 'options',
+				typeOptions: {
+					loadOptionsMethod: 'getRecordTypes',
+				},
+				default: '',
 			},
 			{
 				displayName: 'Rating',

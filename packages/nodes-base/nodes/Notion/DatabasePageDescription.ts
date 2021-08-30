@@ -405,6 +405,23 @@ export const databasePageFields = [
 						description: `
 						An ISO 8601 formatted date, with optional time. Represents the end of a date range.`,
 					},
+					{
+						displayName: 'Timezone',
+						name: 'timezone',
+						type: 'options',
+						displayOptions: {
+							show: {
+								type: [
+									'date',
+								],
+							},
+						},
+						typeOptions: {
+							loadOptionsMethod: 'getTimezones',
+						},
+						default: 'default',
+						description: 'Time zone to use. By default n8n timezone is used.',
+					},
 				],
 			},
 		],
@@ -764,6 +781,23 @@ export const databasePageFields = [
 						default: '',
 						description: `
 						An ISO 8601 formatted date, with optional time. Represents the end of a date range.`,
+					},
+					{
+						displayName: 'Timezone',
+						name: 'timezone',
+						type: 'options',
+						displayOptions: {
+							show: {
+								type: [
+									'date',
+								],
+							},
+						},
+						typeOptions: {
+							loadOptionsMethod: 'getTimezones',
+						},
+						default: 'default',
+						description: 'Time zone to use. By default n8n timezone is used.',
 					},
 				],
 			},

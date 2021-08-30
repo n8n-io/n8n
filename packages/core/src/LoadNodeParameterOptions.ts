@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-non-null-assertion */
 import {
 	INode,
 	INodeCredentials,
@@ -8,21 +9,24 @@ import {
 	Workflow,
 } from 'n8n-workflow';
 
-import {
-	NodeExecuteFunctions,
-} from './';
-
+// eslint-disable-next-line import/no-cycle
+import { NodeExecuteFunctions } from '.';
 
 const TEMP_NODE_NAME = 'Temp-Node';
 const TEMP_WORKFLOW_NAME = 'Temp-Workflow';
 
-
 export class LoadNodeParameterOptions {
 	path: string;
+
 	workflow: Workflow;
 
-
-	constructor(nodeTypeName: string, nodeTypes: INodeTypes, path: string, currentNodeParameters: INodeParameters, credentials?: INodeCredentials) {
+	constructor(
+		nodeTypeName: string,
+		nodeTypes: INodeTypes,
+		path: string,
+		currentNodeParameters: INodeParameters,
+		credentials?: INodeCredentials,
+	) {
 		this.path = path;
 		const nodeType = nodeTypes.getByName(nodeTypeName);
 
@@ -35,10 +39,7 @@ export class LoadNodeParameterOptions {
 			name: TEMP_NODE_NAME,
 			type: nodeTypeName,
 			typeVersion: 1,
-			position: [
-				0,
-				0,
-			],
+			position: [0, 0],
 		};
 
 		if (credentials) {
@@ -46,15 +47,17 @@ export class LoadNodeParameterOptions {
 		}
 
 		const workflowData = {
-			nodes: [
-				nodeData,
-			],
+			nodes: [nodeData],
 			connections: {},
 		};
 
-		this.workflow = new Workflow({ nodes: workflowData.nodes, connections: workflowData.connections, active: false, nodeTypes });
+		this.workflow = new Workflow({
+			nodes: workflowData.nodes,
+			connections: workflowData.connections,
+			active: false,
+			nodeTypes,
+		});
 	}
-
 
 	/**
 	 * Returns data of a fake workflow
@@ -62,6 +65,7 @@ export class LoadNodeParameterOptions {
 	 * @returns
 	 * @memberof LoadNodeParameterOptions
 	 */
+	// eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
 	getWorkflowData() {
 		return {
 			name: TEMP_WORKFLOW_NAME,
@@ -73,7 +77,6 @@ export class LoadNodeParameterOptions {
 		};
 	}
 
-
 	/**
 	 * Returns the available options
 	 *
@@ -82,18 +85,31 @@ export class LoadNodeParameterOptions {
 	 * @returns {Promise<INodePropertyOptions[]>}
 	 * @memberof LoadNodeParameterOptions
 	 */
-	getOptions(methodName: string, additionalData: IWorkflowExecuteAdditionalData): Promise<INodePropertyOptions[]> {
+	async getOptions(
+		methodName: string,
+		additionalData: IWorkflowExecuteAdditionalData,
+	): Promise<INodePropertyOptions[]> {
 		const node = this.workflow.getNode(TEMP_NODE_NAME);
 
 		const nodeType = this.workflow.nodeTypes.getByName(node!.type);
 
-		if (nodeType!.methods === undefined || nodeType!.methods.loadOptions === undefined || nodeType!.methods.loadOptions[methodName] === undefined) {
-			throw new Error(`The node-type "${node!.type}" does not have the method "${methodName}" defined!`);
+		if (
+			nodeType!.methods === undefined ||
+			nodeType!.methods.loadOptions === undefined ||
+			nodeType!.methods.loadOptions[methodName] === undefined
+		) {
+			throw new Error(
+				`The node-type "${node!.type}" does not have the method "${methodName}" defined!`,
+			);
 		}
 
-		const thisArgs = NodeExecuteFunctions.getLoadOptionsFunctions(this.workflow, node!, this.path, additionalData);
+		const thisArgs = NodeExecuteFunctions.getLoadOptionsFunctions(
+			this.workflow,
+			node!,
+			this.path,
+			additionalData,
+		);
 
 		return nodeType!.methods.loadOptions[methodName].call(thisArgs);
 	}
-
 }

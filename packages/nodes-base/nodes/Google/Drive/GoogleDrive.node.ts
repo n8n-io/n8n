@@ -628,7 +628,7 @@ export class GoogleDrive implements INodeType {
 									},
 								],
 								default: '',
-								description: 'Information about the different types can be found <a href="https://developers.google.com/drive/api/v3/ref-roles" target="_blank">here</a>.',
+								description: 'Information about the different types can be found <a href="https://developers.google.com/drive/api/v3/ref-roles">here</a>.',
 							},
 							{
 								displayName: 'Email Address',
@@ -780,6 +780,13 @@ export class GoogleDrive implements INodeType {
 					},
 				},
 				options: [
+					{
+						displayName: 'File Name',
+						name: 'fileName',
+						type: 'string',
+						default: '',
+						description: `The name of the file`,
+					},
 					{
 						displayName: 'Keep Revision Forever',
 						name: 'keepRevisionForever',
@@ -1791,7 +1798,7 @@ export class GoogleDrive implements INodeType {
 						name: 'q',
 						type: 'string',
 						default: '',
-						description: 'Query string for searching shared drives. See the <a href="https://developers.google.com/drive/api/v3/search-shareddrives" target="_blank">"Search for shared drives"</a> guide for supported syntax.',
+						description: 'Query string for searching shared drives. See the <a href="https://developers.google.com/drive/api/v3/search-shareddrives">"Search for shared drives"</a> guide for supported syntax.',
 					},
 					{
 						displayName: 'Use Domain Admin Access',
@@ -2318,7 +2325,7 @@ export class GoogleDrive implements INodeType {
 						const properties = this.getNodeParameter('options.propertiesUi.propertyValues', i, []) as IDataObject[];
 
 						if (properties.length) {
-							Object.assign(body, { properties: properties.reduce((obj, value) => Object.assign(obj, { [`${value.key}`]: value.value }), {}) } );	
+							Object.assign(body, { properties: properties.reduce((obj, value) => Object.assign(obj, { [`${value.key}`]: value.value }), {}) } );
 						}
 
 						const appProperties = this.getNodeParameter('options.appPropertiesUi.appPropertyValues', i, []) as IDataObject[];
@@ -2356,11 +2363,17 @@ export class GoogleDrive implements INodeType {
 
 						qs.fields = queryFields;
 
+						const body: IDataObject = {};
+
+						if (updateFields.fileName) {
+							body.name = updateFields.fileName;
+						}
+
 						if (updateFields.parentId && updateFields.parentId !== '') {
 							qs.addParents = updateFields.parentId;
 						}
 
-						const responseData = await googleApiRequest.call(this, 'PATCH', `/drive/v3/files/${id}`, {}, qs);
+						const responseData = await googleApiRequest.call(this, 'PATCH', `/drive/v3/files/${id}`, body, qs);
 						returnData.push(responseData as IDataObject);
 					}
 

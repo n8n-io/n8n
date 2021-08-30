@@ -189,7 +189,7 @@ export const boardItemFields = [
 				],
 			},
 		},
-		description: 'The column value in JSON format. Documentation can be found <a href="https://monday.com/developers/v2#mutations-section-columns-change-column-value" target="_blank">here</a>.',
+		description: 'The column value in JSON format. Documentation can be found <a href="https://monday.com/developers/v2#mutations-section-columns-change-column-value">here</a>.',
 	},
 	/* -------------------------------------------------------------------------- */
 	/*                                 boardItem:changeMultipleColumnValues       */
@@ -249,7 +249,7 @@ export const boardItemFields = [
 				],
 			},
 		},
-		description: 'The column fields and values in JSON format. Documentation can be found <a href="https://monday.com/developers/v2#mutations-section-columns-change-multiple-column-values" target="_blank">here</a>.',
+		description: 'The column fields and values in JSON format. Documentation can be found <a href="https://monday.com/developers/v2#mutations-section-columns-change-multiple-column-values">here</a>.',
 		typeOptions: {
 			alwaysOpenEditWindow: true,
 		},

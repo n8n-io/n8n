@@ -32,7 +32,7 @@ export async function stravaApiRequest(this: IExecuteFunctions | IExecuteSingleF
 		}
 
 		if (this.getNode().type.includes('Trigger') && resource.includes('/push_subscriptions')) {
-			const credentials = this.getCredentials('stravaOAuth2Api') as IDataObject;
+			const credentials = await this.getCredentials('stravaOAuth2Api') as IDataObject;
 			if (method === 'GET') {
 				qs.client_id = credentials.clientId;
 				qs.client_secret = credentials.clientSecret;

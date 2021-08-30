@@ -1,15 +1,6 @@
-import {
-	ICredentialNodeAccess,
-} from 'n8n-workflow';
-
-import {
-	getTimestampSyntax,
-	resolveDataType
-} from '../utils';
-
-import {
-	ICredentialsDb,
-} from '../..';
+/* eslint-disable @typescript-eslint/explicit-module-boundary-types */
+/* eslint-disable import/no-cycle */
+import { ICredentialNodeAccess } from 'n8n-workflow';
 
 import {
 	BeforeUpdate,
@@ -20,10 +11,12 @@ import {
 	PrimaryGeneratedColumn,
 	UpdateDateColumn,
 } from 'typeorm';
+import { getTimestampSyntax, resolveDataType } from '../utils';
+
+import { ICredentialsDb } from '../..';
 
 @Entity()
 export class CredentialsEntity implements ICredentialsDb {
-
 	@PrimaryGeneratedColumn()
 	id: number;
 
@@ -47,7 +40,11 @@ export class CredentialsEntity implements ICredentialsDb {
 	@CreateDateColumn({ precision: 3, default: () => getTimestampSyntax() })
 	createdAt: Date;
 
-	@UpdateDateColumn({ precision: 3, default: () => getTimestampSyntax(), onUpdate: getTimestampSyntax() })
+	@UpdateDateColumn({
+		precision: 3,
+		default: () => getTimestampSyntax(),
+		onUpdate: getTimestampSyntax(),
+	})
 	updatedAt: Date;
 
 	@BeforeUpdate()
