@@ -7,8 +7,9 @@
 					<span v-if="props.required" :class="$style.required">*</span>
 				</span>
 				<span :class="$style.infoIcon" v-if="props.tooltipText">
-					<n8n-tooltip :content="props.tooltipText" placement="top">
+					<n8n-tooltip placement="top" :popper-class="$style.tooltipPopper">
 						<n8n-icon icon="info-circle" />
+						<div slot="content" v-html="props.tooltipText"></div>
 					</n8n-tooltip>
 				</span>
 			</div>
@@ -67,5 +68,9 @@ export default {
 
 .required {
 	color: var(--color-primary);
+}
+
+.tooltipPopper {
+	max-width: 400px;
 }
 </style>
