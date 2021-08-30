@@ -12,16 +12,20 @@
 @keyframes v-modal-in {
 	0% {
 		opacity: 0;
+		backdrop-filter: blur(4px) opacity(0);
 	}
 	100% {
+		backdrop-filter: blur(4px) opacity(1);
 	}
 }
 
 @keyframes v-modal-out {
 	0% {
+		backdrop-filter: blur(4px) opacity(1);
 	}
 	100% {
 		opacity: 0;
+		backdrop-filter: blur(4px) opacity(0);
 	}
 }
 
