@@ -387,6 +387,8 @@ export class Misp implements INodeType {
 
 						const body = {
 							name: this.getNodeParameter('name', i),
+							provider: this.getNodeParameter('provider', i),
+							url: this.getNodeParameter('url', i),
 						};
 
 						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;

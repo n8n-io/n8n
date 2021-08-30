@@ -67,6 +67,41 @@ export const feedFields = [
 		},
 	},
 	{
+		displayName: 'Provider',
+		name: 'provider',
+		type: 'string',
+		default: '',
+		required: true,
+		displayOptions: {
+			show: {
+				resource: [
+					'feed',
+				],
+				operation: [
+					'create',
+				],
+			},
+		},
+	},
+	{
+		displayName: 'URL',
+		name: 'url',
+		type: 'string',
+		default: '',
+		placeholder: 'https://example.com',
+		required: true,
+		displayOptions: {
+			show: {
+				resource: [
+					'feed',
+				],
+				operation: [
+					'create',
+				],
+			},
+		},
+	},
+	{
 		displayName: 'Additional Fields',
 		name: 'additionalFields',
 		type: 'collection',
@@ -117,23 +152,11 @@ export const feedFields = [
 				],
 			},
 			{
-				displayName: 'Provider',
-				name: 'provider',
-				type: 'string',
-				default: '',
-			},
-			{
 				displayName: 'Rules',
 				name: 'json',
 				type: 'string',
 				default: '',
 				description: 'Filter rules for the feed',
-			},
-			{
-				displayName: 'URL',
-				name: 'url',
-				type: 'string',
-				default: '',
 			},
 		],
 	},
