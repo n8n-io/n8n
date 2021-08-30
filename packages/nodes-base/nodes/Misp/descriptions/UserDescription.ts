@@ -66,6 +66,7 @@ export const userFields = [
 		displayName: 'Role ID',
 		name: 'role_id',
 		type: 'string',
+		description: 'Role IDs are available in the MISP dashboard at /roles/index',
 		required: true,
 		default: '',
 		displayOptions: {
