@@ -37,16 +37,8 @@ export const eventOperations = [
 				value: 'publish',
 			},
 			{
-				name: 'Tag',
-				value: 'tag',
-			},
-			{
 				name: 'Unpublish',
 				value: 'unpublish',
-			},
-			{
-				name: 'Untag',
-				value: 'untag',
 			},
 			{
 				name: 'Update',
@@ -313,51 +305,6 @@ export const eventFields = [
 	},
 
 	// ----------------------------------------
-	//                event: tag
-	// ----------------------------------------
-	{
-		displayName: 'Event ID',
-		name: 'eventId',
-		description: 'UUID or numeric ID of the event',
-		type: 'string',
-		required: true,
-		default: '',
-		displayOptions: {
-			show: {
-				resource: [
-					'event',
-				],
-				operation: [
-					'tag',
-				],
-			},
-		},
-	},
-	{
-		displayName: 'Tag Name/ID',
-		name: 'tagId',
-		description: 'Choose from the list or specify an ID. You can also specify the ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
-		type: 'options',
-		required: true,
-		default: '',
-		typeOptions: {
-			loadOptionsMethod: [
-				'getTags',
-			],
-		},
-		displayOptions: {
-			show: {
-				resource: [
-					'event',
-				],
-				operation: [
-					'tag',
-				],
-			},
-		},
-	},
-
-	// ----------------------------------------
 	//             event: unpublish
 	// ----------------------------------------
 	{
@@ -374,51 +321,6 @@ export const eventFields = [
 				],
 				operation: [
 					'unpublish',
-				],
-			},
-		},
-	},
-
-	// ----------------------------------------
-	//               event: untag
-	// ----------------------------------------
-	{
-		displayName: 'Event ID',
-		name: 'eventId',
-		description: 'UUID or numeric ID of the event',
-		type: 'string',
-		required: true,
-		default: '',
-		displayOptions: {
-			show: {
-				resource: [
-					'event',
-				],
-				operation: [
-					'untag',
-				],
-			},
-		},
-	},
-	{
-		displayName: 'Tag Name/ID',
-		name: 'tagId',
-		description: 'Choose from the list or specify an ID. You can also specify the ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
-		type: 'options',
-		required: true,
-		default: '',
-		typeOptions: {
-			loadOptionsMethod: [
-				'getTags',
-			],
-		},
-		displayOptions: {
-			show: {
-				resource: [
-					'event',
-				],
-				operation: [
-					'untag',
 				],
 			},
 		},

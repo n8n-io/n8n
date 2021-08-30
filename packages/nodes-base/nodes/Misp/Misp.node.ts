@@ -21,6 +21,8 @@ import {
 	attributeOperations,
 	eventFields,
 	eventOperations,
+	eventTagFields,
+	eventTagOperations,
 	feedFields,
 	feedOperations,
 	galaxyFields,
@@ -80,6 +82,10 @@ export class Misp implements INodeType {
 						value: 'event',
 					},
 					{
+						name: 'Event Tag',
+						value: 'eventTag',
+					},
+					{
 						name: 'Feed',
 						value: 'feed',
 					},
@@ -114,6 +120,8 @@ export class Misp implements INodeType {
 			...attributeFields,
 			...eventOperations,
 			...eventFields,
+			...eventTagOperations,
+			...eventTagFields,
 			...feedOperations,
 			...feedFields,
 			...galaxyOperations,
@@ -305,20 +313,6 @@ export class Misp implements INodeType {
 						const endpoint = `/events/publish/${eventId}`;
 						responseData = await mispApiRequest.call(this, 'POST', endpoint);
 
-					} else if (operation === 'tag') {
-
-						// ----------------------------------------
-						//                event: tag
-						// ----------------------------------------
-
-						const body = {
-							event: this.getNodeParameter('eventId', i),
-							tag: this.getNodeParameter('tagId', i),
-						};
-
-						const endpoint = `/events/addTag`;
-						responseData = await mispApiRequest.call(this, 'POST', endpoint, body);
-
 					} else if (operation === 'unpublish') {
 
 						// ----------------------------------------
@@ -328,18 +322,6 @@ export class Misp implements INodeType {
 						const eventId = this.getNodeParameter('eventId', i);
 
 						const endpoint = `/events/unpublish/${eventId}`;
-						responseData = await mispApiRequest.call(this, 'POST', endpoint);
-
-					} else if (operation === 'untag') {
-
-						// ----------------------------------------
-						//               event: untag
-						// ----------------------------------------
-
-						const eventId = this.getNodeParameter('eventId', i);
-						const tagId = this.getNodeParameter('tagId', i);
-
-						const endpoint = `/events/removeTag/${eventId}/${tagId}`;
 						responseData = await mispApiRequest.call(this, 'POST', endpoint);
 
 					} else if (operation === 'update') {
@@ -358,6 +340,36 @@ export class Misp implements INodeType {
 						responseData = await mispApiRequest.call(this, 'PUT', endpoint, body);
 						responseData = responseData.Event;
 						delete responseData.Attribute; // prevent excessive payload size
+
+					}
+
+				} else if (resource === 'eventTag') {
+
+					if (operation === 'add') {
+
+						// ----------------------------------------
+						//             eventTag: add
+						// ----------------------------------------
+
+						const body = {
+							event: this.getNodeParameter('eventId', i),
+							tag: this.getNodeParameter('tagId', i),
+						};
+
+						const endpoint = `/events/addTag`;
+						responseData = await mispApiRequest.call(this, 'POST', endpoint, body);
+
+					} else if (operation === 'remove') {
+
+						// ----------------------------------------
+						//             eventTag: remove
+						// ----------------------------------------
+
+						const eventId = this.getNodeParameter('eventId', i);
+						const tagId = this.getNodeParameter('tagId', i);
+
+						const endpoint = `/events/removeTag/${eventId}/${tagId}`;
+						responseData = await mispApiRequest.call(this, 'POST', endpoint);
 
 					}
 

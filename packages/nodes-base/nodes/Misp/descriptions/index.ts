@@ -1,5 +1,6 @@
 export * from './AttributeDescription';
 export * from './EventDescription';
+export * from './EventTagDescription';
 export * from './FeedDescription';
 export * from './GalaxyDescription';
 export * from './NoticelistDescription';
