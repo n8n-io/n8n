@@ -5,13 +5,13 @@ export type MispCredentials = {
 };
 
 export type LoadedOrgs = Array<{
-	Organisation: { id: string; name: string; }
+	Organisation: { id: string; name: string };
 }>;
 
 export type LoadedTags = {
-	tags: { [key: string]: string }
+	Tag: Array<{ id: string; name: string }>;
 };
 
 export type LoadedUsers = Array<{
-	User: { id: string; email: string; }
+	User: { id: string; email: string };
 }>;

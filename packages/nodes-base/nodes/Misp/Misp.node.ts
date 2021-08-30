@@ -144,8 +144,8 @@ export class Misp implements INodeType {
 			},
 
 			async getTags(this: ILoadOptionsFunctions) {
-				const responseData = await mispApiRequest.call(this, 'GET', '/tags') as { Tag: [{ id: string, name: string }] };
-				return responseData.Tag.map((tag) => ({ name: tag.name, value: tag.id }));
+				const responseData = await mispApiRequest.call(this, 'GET', '/tags') as LoadedTags;
+				return responseData.Tag.map((i) => ({ name: i.name, value: i.id }));
 			},
 		},
 	};
