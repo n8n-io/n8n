@@ -45,13 +45,3 @@ export async function oAuth1CredentialAuthorize(context: IRestApiContext, data: 
 export async function oAuth2CredentialAuthorize(context: IRestApiContext, data: ICredentialsResponse): Promise<string> {
 	return makeRestApiRequest(context, 'GET', `/oauth2-credential/auth`, data as unknown as IDataObject);
 }
-
-// // Verify OAuth2 provider callback and kick off token generation
-// export async function oAuth2Callback(context: IRestApiContext, code: string, state: string): Promise<string> {
-// 	const sendData = {
-// 		'code': code,
-// 		'state': state,
-// 	};
-
-// 	return makeRestApiRequest(context, 'POST', `/oauth2-credential/callback`, sendData);
-// }
