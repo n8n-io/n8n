@@ -32,17 +32,7 @@
 	width: 100%;
 	height: 100%;
 	background-color: var.$popup-modal-background-color;
-
-	&::after {
-		position: fixed;
-		top: 0;
-		left: 0;
-		content: '';
-		height: 100%;
-		width: 100%;
-		backdrop-filter: blur(4px) opacity(1);
-		transition: backdrop-filter 300ms;
-	}
+	backdrop-filter: blur(4px) opacity(1);
 }
 
 @include mixins.b(popup-parent) {
