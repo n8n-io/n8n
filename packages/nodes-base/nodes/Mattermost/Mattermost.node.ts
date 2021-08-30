@@ -612,7 +612,7 @@ export class Mattermost implements INodeType {
 						displayName: 'Actions',
 						name: 'actions',
 						placeholder: 'Add Actions',
-						description: 'Actions to add to message. More information can be found <a href="https://docs.mattermost.com/developer/interactive-messages.html" target="_blank">here</a>',
+						description: 'Actions to add to message. More information can be found <a href="https://docs.mattermost.com/developer/interactive-messages.html">here</a>',
 						type: 'fixedCollection',
 						typeOptions: {
 							multipleValues: true,

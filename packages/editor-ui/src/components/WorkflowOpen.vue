@@ -19,9 +19,9 @@
 						/>
 					</div>
 					<div class="search-filter">
-						<el-input placeholder="Search workflows..." ref="inputFieldFilter" v-model="filterText">
-							<i slot="prefix" class="el-input__icon el-icon-search"></i>
-						</el-input>
+						<n8n-input placeholder="Search workflows..." ref="inputFieldFilter" v-model="filterText">
+							<font-awesome-icon slot="prefix" icon="search"></font-awesome-icon>
+						</n8n-input>
 					</div>
 				</div>
 			</template>
