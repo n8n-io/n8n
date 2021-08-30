@@ -113,7 +113,6 @@ export default Vue.extend({
 			}, 300); // delayed for closing animation to take effect
 		},
 		getCustomClass() {
-			console.log(this.$props);
 			let classes = this.$props.customClass || '';
 
 			if (this.$props.classic) {
