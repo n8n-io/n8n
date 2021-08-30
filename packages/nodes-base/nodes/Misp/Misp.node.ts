@@ -641,14 +641,13 @@ export class Misp implements INodeType {
 						//               tag: getAll
 						// ----------------------------------------
 
-						responseData = await mispApiRequest.call(this, 'GET', '/tags') as { Tag: [{ id: string, name: string }] };
-						responseData = responseData.Tag;
+						responseData = await mispApiRequest.call(this, 'GET', '/tags') as LoadedTags;
 
 						const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
 
 						if (!returnAll) {
 							const limit = this.getNodeParameter('limit', 0) as number;
-							responseData = responseData.slice(0, limit);
+							responseData = responseData.Tag.slice(0, limit);
 						}
 
 					} else if (operation === 'update') {
