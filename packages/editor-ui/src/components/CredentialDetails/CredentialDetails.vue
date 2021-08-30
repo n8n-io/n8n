@@ -285,23 +285,6 @@ export default mixins(genericHelpers, showMessage, nodeHelpers).extend({
 
 			return [];
 		},
-		documentationUrl(): string {
-			const type = this.credentialType;
-
-			if (!type) {
-				return '';
-			}
-
-			if (type.documentationUrl && type.documentationUrl.startsWith('http')) {
-				return type.documentationUrl;
-			}
-
-			if (type.documentationUrl) {
-				return `https://docs.n8n.io/credentials/${type.documentationUrl}/?utm_source=n8n_app&utm_medium=left_nav_menu&utm_campaign=create_new_credentials_modal`;
-			}
-
-			return '';
-		},
 		isGoogleCredType(): boolean {
 			return (
 				this.credentialTypeName === 'googleOAuth2Api' ||
@@ -751,7 +734,7 @@ export default mixins(genericHelpers, showMessage, nodeHelpers).extend({
 .mainContent {
 	flex-grow: 1;
 	overflow: scroll;
-	padding-bottom: 60px;
+	padding-bottom: 100px;
 
 	> * {
 		margin-bottom: var(--spacing-l);

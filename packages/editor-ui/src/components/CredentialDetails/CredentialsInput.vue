@@ -173,6 +173,23 @@ export default mixins(copyPaste, nodeHelpers, restApi, showMessage).extend({
 			}
 			return true;
 		},
+		documentationUrl(): string {
+			const type = this.credentialTypeData;
+
+			if (!type) {
+				return '';
+			}
+
+			if (type.documentationUrl && type.documentationUrl.startsWith('http')) {
+				return type.documentationUrl;
+			}
+
+			if (type.documentationUrl) {
+				return `https://docs.n8n.io/credentials/${type.documentationUrl}/?utm_source=n8n_app&utm_medium=left_nav_menu&utm_campaign=create_new_credentials_modal`;
+			}
+
+			return '';
+		},
 	},
 	methods: {
 		copyCallbackUrl(): void {
