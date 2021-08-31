@@ -342,6 +342,12 @@ export interface IExecuteWorkflowInfo {
 	id?: string;
 }
 
+export interface ICredentialTestFunctions {
+	helpers: {
+		[key: string]: (...args: any[]) => any;
+	};
+}
+
 export interface ILoadOptionsFunctions {
 	getCredentials(type: string): Promise<ICredentialDataDecryptedObject | undefined>;
 	getNode(): INode;
@@ -617,6 +623,7 @@ export interface INodeType {
 		credentialTest?: {
 			// Contains a group of functins that test credentials.
 			[functionName: string]: (
+				this: ICredentialTestFunctions,
 				credential: ICredentialsDecrypted,
 			) => Promise<NodeCredentialTestResult>;
 		};

@@ -52,7 +52,12 @@ import { createHash, createHmac } from 'crypto';
 import { compare } from 'bcryptjs';
 import * as promClient from 'prom-client';
 
-import { Credentials, LoadNodeParameterOptions, UserSettings } from 'n8n-core';
+import {
+	Credentials,
+	ICredentialTestFunctions,
+	LoadNodeParameterOptions,
+	UserSettings,
+} from 'n8n-core';
 
 import {
 	ICredentialsDecrypted,
@@ -134,6 +139,7 @@ import * as TagHelpers from './TagHelpers';
 import { TagEntity } from './databases/entities/TagEntity';
 import { WorkflowEntity } from './databases/entities/WorkflowEntity';
 import { WorkflowNameRequest } from './WorkflowHelpers';
+import { NodeExecuteFunctions } from 'n8n-core';
 
 require('body-parser-xml')(bodyParser);
 
@@ -1324,7 +1330,7 @@ class App {
 			),
 		);
 
-		// Creates new credentials
+		// Test credentials
 		this.app.post(
 			`/${this.restEndpoint}/credentials-test`,
 			ResponseHelper.send(
@@ -1341,7 +1347,10 @@ class App {
 					const allNodes = nodeTypes.getAll();
 
 					let foundTestFunction:
-						| ((credential: ICredentialsDecrypted) => Promise<NodeCredentialTestResult>)
+						| ((
+								this: ICredentialTestFunctions,
+								credential: ICredentialsDecrypted,
+						  ) => Promise<NodeCredentialTestResult>)
 						| undefined;
 
 					const nodeThatCanTestThisCredential = allNodes.find((node) => {
@@ -1376,7 +1385,9 @@ class App {
 						});
 					}
 
-					const output = await foundTestFunction(incomingData);
+					const credentialTestFunctions = NodeExecuteFunctions.getCredentialTestFunctions();
+
+					const output = await foundTestFunction.call(credentialTestFunctions, incomingData);
 					return Promise.resolve(output);
 				},
 			),
