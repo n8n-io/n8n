@@ -1,12 +1,21 @@
 import * as config from '../config';
+/* eslint-disable @typescript-eslint/no-non-null-assertion */
+/* eslint-disable @typescript-eslint/restrict-template-expressions */
+/* eslint-disable @typescript-eslint/no-unsafe-return */
+/* eslint-disable no-param-reassign */
+/* eslint-disable no-underscore-dangle */
+/* eslint-disable @typescript-eslint/no-unsafe-member-access */
 import * as express from 'express';
 import { join as pathJoin } from 'path';
 import { readFile as fsReadFile } from 'fs/promises';
 import { readFileSync as fsReadFileSync } from 'fs';
 import { IDataObject } from 'n8n-workflow';
 
-import { Db, ICredentialsDb, IPackageVersions } from './';
+// eslint-disable-next-line import/no-cycle
+import { Db, ICredentialsDb, IPackageVersions } from '.';
+// eslint-disable-next-line import/order
 import { Like } from 'typeorm';
+// eslint-disable-next-line import/no-cycle
 import { WorkflowEntity } from './databases/entities/WorkflowEntity';
 
 let versionCache: IPackageVersions | undefined;
@@ -171,9 +180,10 @@ export function getConfigValueSync(configKey: string): string | boolean | number
  * - If the name already exists more than once with suffixes, it looks for the max suffix
  * and returns the requested name with max suffix + 1.
  */
+// eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
 export async function generateUniqueName(
 	requestedName: string,
-	entityType: 'workflow' | 'credentials'
+	entityType: 'workflow' | 'credentials',
 ) {
 	const findConditions = {
 		select: ['name' as const],
@@ -182,9 +192,10 @@ export async function generateUniqueName(
 		},
 	};
 
-	const found: Array<WorkflowEntity | ICredentialsDb> = entityType === 'workflow'
-		? await Db.collections.Workflow!.find(findConditions)
-		: await Db.collections.Credentials!.find(findConditions);
+	const found: Array<WorkflowEntity | ICredentialsDb> =
+		entityType === 'workflow'
+			? await Db.collections.Workflow!.find(findConditions)
+			: await Db.collections.Credentials!.find(findConditions);
 
 	// name is unique
 	if (found.length === 0) {
@@ -198,6 +209,7 @@ export async function generateUniqueName(
 
 		const suffix = Number(parts[1]);
 
+		// eslint-disable-next-line no-restricted-globals
 		if (!isNaN(suffix) && Math.ceil(suffix) > acc) {
 			acc = Math.ceil(suffix);
 		}

@@ -968,13 +968,17 @@ class App {
 		// Credentials
 		// ----------------------------------------
 
-		this.app.get(`/${this.restEndpoint}/credentials/new`, ResponseHelper.send(async (req: NameRequest, res: express.Response): Promise<{ name: string }> => {
-			const requestedName = req.query.name && req.query.name !== ''
-				? req.query.name
-				: this.defaultCredentialsName;
+		this.app.get(
+			`/${this.restEndpoint}/credentials/new`,
+			ResponseHelper.send(
+				async (req: NameRequest, res: express.Response): Promise<{ name: string }> => {
+					const requestedName =
+						req.query.name && req.query.name !== '' ? req.query.name : this.defaultCredentialsName;
 
-			return await GenericHelpers.generateUniqueName(requestedName, 'credentials');
-		}));
+					return await GenericHelpers.generateUniqueName(requestedName, 'credentials');
+				},
+			),
+		);
 
 		// Deletes a specific credential
 		this.app.delete(`/${this.restEndpoint}/credentials/:id`, ResponseHelper.send(async (req: express.Request, res: express.Response): Promise<boolean> => {
@@ -1372,7 +1376,7 @@ class App {
 				const credentialsHelper = new CredentialsHelper(encryptionKey);
 				const decryptedDataOriginal = await credentialsHelper.getDecrypted(result.name, result.type, mode, true);
 				const oauthCredentials = credentialsHelper.applyDefaultsAndOverwrites(decryptedDataOriginal, result.type, mode);
-	
+
 				const options: OptionsWithUrl = {
 					method: 'POST',
 					url: _.get(oauthCredentials, 'accessTokenUrl') as string,
@@ -1539,12 +1543,12 @@ class App {
 						[result.name as string]: result as ICredentialsEncrypted,
 					},
 				};
-	
+
 				const mode: WorkflowExecuteMode = 'internal';
 				const credentialsHelper = new CredentialsHelper(encryptionKey);
 				const decryptedDataOriginal = await credentialsHelper.getDecrypted(result.name, result.type, mode, true);
 				const oauthCredentials = credentialsHelper.applyDefaultsAndOverwrites(decryptedDataOriginal, result.type, mode);
-	
+
 				const token = new csrf();
 				if (decryptedDataOriginal.csrfSecret === undefined || !token.verify(decryptedDataOriginal.csrfSecret as string, state.token)) {
 					const errorResponse = new ResponseHelper.ResponseError('The OAuth2 callback state is invalid!', undefined, 404);
