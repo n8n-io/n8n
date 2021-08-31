@@ -726,6 +726,7 @@ return 0;`,
 				const allowDotNotation = this.getNodeParameter('options.allowDotNotation', 0, false) as boolean;
 				let keys = Object.keys(items[0].json);
 
+				//TODO check if this work with . notation
 				for (const item of items) {
 					for (const key of Object.keys(item.json)) {
 						if (!keys.includes(key)) {
