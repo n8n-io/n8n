@@ -15,7 +15,7 @@
 				/>
 			</div>
 
-			<el-table :data="credentialsToDisplay" :default-sort = "{prop: 'name', order: 'ascending'}" stripe max-height="450">
+			<el-table :data="credentialsToDisplay" :default-sort = "{prop: 'name', order: 'ascending'}" stripe max-height="450" @row-click="editCredential">
 				<el-table-column property="name" label="Name" class-name="clickable" sortable></el-table-column>
 				<el-table-column property="type" label="Type" class-name="clickable" sortable></el-table-column>
 				<el-table-column property="createdAt" label="Created" class-name="clickable" sortable></el-table-column>
@@ -115,7 +115,7 @@ export default mixins(
 
 			this.$showMessage({
 				title: 'Credentials deleted',
-				message: `The credential "${credential.name}" got deleted!`,
+				message: `The credential "${credential.name}" was deleted!`,
 				type: 'success',
 			});
 		},

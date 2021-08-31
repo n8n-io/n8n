@@ -21,6 +21,7 @@ import {
 } from '@/Interface';
 
 import ParameterInput from '@/components/ParameterInput.vue';
+import { addTargetBlank } from './helpers';
 
 export default Vue
 	.extend({
@@ -52,6 +53,7 @@ export default Vue
 			'value',
 		],
 		methods: {
+			addTargetBlank,
 			getArgument (argumentName: string): string | number | boolean | undefined {
 				if (this.parameter.typeOptions === undefined) {
 					return undefined;

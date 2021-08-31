@@ -385,7 +385,7 @@ export default mixins(
 
 			this.$showMessage({
 				title: 'Execution deleted',
-				message: 'The executions got deleted!',
+				message: 'The executions were deleted!',
 				type: 'success',
 			});
 

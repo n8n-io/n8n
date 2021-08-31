@@ -610,12 +610,12 @@ export default mixins(genericHelpers, showMessage, nodeHelpers).extend({
 			}
 
 			this.isDeleting = false;
-			// Now that the credentials got removed check if any nodes used them
+			// Now that the credentials were removed check if any nodes used them
 			this.updateNodesCredentialsIssues();
 
 			this.$showMessage({
 				title: 'Credentials deleted',
-				message: `The credential "${savedCredentialName}" got deleted!`,
+				message: `The credential "${savedCredentialName}" was deleted!`,
 				type: 'success',
 			});
 			this.closeDialog();

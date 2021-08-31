@@ -407,8 +407,8 @@ export default mixins(
 					// Reset tab title since workflow is deleted.
 					this.$titleReset();
 					this.$showMessage({
-						title: 'Workflow got deleted',
-						message: `The workflow "${this.workflowName}" got deleted!`,
+						title: 'Workflow was deleted',
+						message: `The workflow "${this.workflowName}" was deleted!`,
 						type: 'success',
 					});
 
