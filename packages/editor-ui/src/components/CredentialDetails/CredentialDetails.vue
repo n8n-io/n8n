@@ -69,10 +69,10 @@
 						@select="onTabSelect"
 						defaultActive="connection"
 					>
-						<n8n-menu-item index="connection" class="credTab"
+						<n8n-menu-item index="connection" :class="$style.credTab"
 							><span slot="title">Connection</span></n8n-menu-item
 						>
-						<n8n-menu-item index="info" class="credTab"
+						<n8n-menu-item index="info" :class="$style.credTab"
 							><span slot="title">Info</span></n8n-menu-item
 						>
 					</n8n-menu>
