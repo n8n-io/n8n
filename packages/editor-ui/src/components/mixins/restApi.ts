@@ -158,6 +158,10 @@ export const restApi = Vue.extend({
 					return self.restApi().makeRestApiRequest('POST', `/credentials`, sendData);
 				},
 
+				testCredential: (sendData: ICredentialsDecrypted): Promise<ICredentialsResponse> => {
+					return self.restApi().makeRestApiRequest('POST', `/credentials-test`, sendData);
+				},
+
 				// Deletes a credentials
 				deleteCredentials: (id: string): Promise<void> => {
 					return self.restApi().makeRestApiRequest('DELETE', `/credentials/${id}`);

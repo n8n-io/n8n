@@ -141,6 +141,7 @@ export interface IRestApi {
 	getWorkflows(filter?: object): Promise<IWorkflowShortResponse[]>;
 	getWorkflowFromUrl(url: string): Promise<IWorkflowDb>;
 	createNewCredentials(sendData: ICredentialsDecrypted): Promise<ICredentialsResponse>;
+	testCredential(sendData: ICredentialsDecrypted): Promise<ICredentialsResponse>;
 	deleteCredentials(id: string): Promise<void>;
 	updateCredentials(id: string, data: ICredentialsDecrypted): Promise<ICredentialsResponse>;
 	getAllCredentials(filter?: object): Promise<ICredentialsResponse[]>;
