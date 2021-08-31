@@ -37,6 +37,7 @@ The most important directories:
  - [/packages/core](/packages/core) - Core code which handles workflow
                                       execution, active webhooks and
                                       workflows
+ - [/packages/design-system](/packages/design-system) - Vue frontend components
  - [/packages/editor-ui](/packages/editor-ui) - Vue frontend workflow editor
  - [/packages/node-dev](/packages/node-dev) - CLI to create new n8n-nodes
  - [/packages/nodes-base](/packages/nodes-base) - Base n8n nodes
