@@ -202,11 +202,15 @@ abstract class NodeError extends Error {
  * Class for instantiating an operational error, e.g. an invalid credentials error.
  */
 export class NodeOperationError extends NodeError {
-	constructor(node: INode, error: Error | string) {
+	constructor(node: INode, error: Error | string, options?: { description: string }) {
 		if (typeof error === 'string') {
 			error = new Error(error);
 		}
 		super(node, error);
+
+		if (options?.description) {
+			this.description = options.description;
+		}
 	}
 }
 
