@@ -291,5 +291,11 @@ export default mixins(copyPaste, nodeHelpers, restApi, showMessage).extend({
 	color: var(--color-text-light);
 	font-size: var(--font-size-2xs);
 	font-weight: var(--font-weight-bold);
+	line-height: var(--font-size-s);
+
+	svg {
+		font-size: var(--font-size-s);
+		margin-right: var(--spacing-4xs);
+	}
 }
 </style>
