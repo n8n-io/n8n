@@ -59,6 +59,7 @@ export const genericHelpers = mixins(showMessage).extend({
 				return;
 			}
 
+			// @ts-ignore
 			this.loadingService = this.$loading(
 				{
 					lock: true,

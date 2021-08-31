@@ -715,6 +715,7 @@ export class Spotify implements INodeType {
 							'myData',
 							'playlist',
 							'track',
+							'player',
 						],
 						operation: [
 							'getTracks',
@@ -724,6 +725,7 @@ export class Spotify implements INodeType {
 							'getLikedTracks',
 							'getFollowingArtists',
 							'search',
+							'recentlyPlayed',
 						],
 					},
 				},
@@ -778,6 +780,9 @@ export class Spotify implements INodeType {
 						operation: [
 							'getFollowingArtists',
 							'recentlyPlayed',
+						],
+						returnAll: [
+							false,
 						],
 					},
 				},
@@ -908,6 +913,7 @@ export class Spotify implements INodeType {
 
 						endpoint = `/me/player/pause`;
 
+
 						responseData = await spotifyApiRequest.call(this, requestMethod, endpoint, body, qs);
 
 						responseData = { success: true };
@@ -917,15 +923,22 @@ export class Spotify implements INodeType {
 
 						endpoint = `/me/player/recently-played`;
 
-						const limit = this.getNodeParameter('limit', i) as number;
+						returnAll = this.getNodeParameter('returnAll', i) as boolean;
 
-						qs = {
-							limit,
-						};
+						propertyName = 'items';
 
-						responseData = await spotifyApiRequest.call(this, requestMethod, endpoint, body, qs);
+						if (!returnAll) {
 
-						responseData = responseData.items;
+							const limit = this.getNodeParameter('limit', i) as number;
+
+							qs = {
+								limit,
+							};
+
+							responseData = await spotifyApiRequest.call(this, requestMethod, endpoint, body, qs);
+
+							responseData = responseData.items;
+						}
 
 					} else if (operation === 'currentlyPlaying') {
 						requestMethod = 'GET';
@@ -1384,7 +1397,13 @@ export class Spotify implements INodeType {
 
 						endpoint = `/me/following`;
 
+						returnAll = this.getNodeParameter('returnAll', i) as boolean;
+
 						propertyName = 'artists.items';
+
+						qs = {
+							type: 'artist',
+						};
 
 						if (!returnAll) {
 							const limit = this.getNodeParameter('limit', i) as number;

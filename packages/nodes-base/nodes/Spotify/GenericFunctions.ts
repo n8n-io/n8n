@@ -71,7 +71,7 @@ export async function spotifyApiRequestAllItems(this: IHookFunctions | IExecuteF
 		}
 	} while (
 		(responseData['next'] !== null && responseData['next'] !== undefined) ||
-		responseData[propertyName.split('.')[0]].next !== null
+		(responseData[propertyName.split('.')[0]].next !== null && responseData[propertyName.split('.')[0]].next !== undefined)
 	);
 
 	return returnData;
