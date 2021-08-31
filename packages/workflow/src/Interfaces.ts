@@ -614,10 +614,21 @@ export interface INodeType {
 		loadOptions?: {
 			[key: string]: (this: ILoadOptionsFunctions) => Promise<INodePropertyOptions[]>;
 		};
+		credentialTest?: {
+			// Contains a group of functins that test credentials.
+			[functionName: string]: (
+				credential: ICredentialsDecrypted,
+			) => Promise<NodeCredentialTestResult>;
+		};
 	};
 	webhookMethods?: {
 		[key: string]: IWebhookSetupMethods;
 	};
+}
+
+export interface NodeCredentialTestResult {
+	status: 'OK' | 'Error';
+	message: string;
 }
 
 export type WebhookSetupMethodNames = 'checkExists' | 'create' | 'delete';
@@ -633,6 +644,7 @@ export interface INodeCredentialDescription {
 	name: string;
 	required?: boolean;
 	displayOptions?: IDisplayOptions;
+	testedBy?: string; // Name of a function inside `loadOptions.credentialTest`
 }
 
 export type INodeIssueTypes = 'credentials' | 'execution' | 'parameters' | 'typeUnknown';

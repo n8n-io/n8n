@@ -4,12 +4,14 @@ import {
 } from 'n8n-core';
 
 import {
+	ICredentialsDecrypted,
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
+	NodeCredentialTestResult,
 	NodeOperationError,
 } from 'n8n-workflow';
 
@@ -126,6 +128,7 @@ export class Slack implements INodeType {
 						],
 					},
 				},
+				testedBy: 'testSlackTokenAuth',
 			},
 			{
 				name: 'slackOAuth2Api',
@@ -276,6 +279,15 @@ export class Slack implements INodeType {
 				return returnData;
 			},
 		},
+		credentialTest: {
+			testSlackTokenAuth: async (credential: ICredentialsDecrypted): Promise<NodeCredentialTestResult> => {
+				const result = {
+					status: 'OK',
+					message: 'Connection successful!',
+				} as NodeCredentialTestResult;
+				return Promise.resolve(result);
+			}
+		}
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
