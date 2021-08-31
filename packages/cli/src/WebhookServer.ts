@@ -27,6 +27,7 @@ import {
 	IExternalHooksClass,
 	IPackageVersions,
 	ResponseHelper,
+	WaitingWebhooks,
 } from '.';
 
 import * as config from '../config';
@@ -143,6 +144,90 @@ export function registerProductionWebhooks() {
 			ResponseHelper.sendSuccessResponse(res, response.data, true, response.responseCode);
 		},
 	);
+
+	// ----------------------------------------
+	// Waiting Webhooks
+	// ----------------------------------------
+
+	const waitingWebhooks = new WaitingWebhooks();
+
+	// HEAD webhook-waiting requests
+	this.app.head(
+		`/${this.endpointWebhookWaiting}/*`,
+		async (req: express.Request, res: express.Response) => {
+			// Cut away the "/webhook-waiting/" to get the registred part of the url
+			const requestUrl = (req as ICustomRequest).parsedUrl!.pathname!.slice(
+				this.endpointWebhookWaiting.length + 2,
+			);
+
+			let response;
+			try {
+				response = await waitingWebhooks.executeWebhook('HEAD', requestUrl, req, res);
+			} catch (error) {
+				ResponseHelper.sendErrorResponse(res, error);
+				return;
+			}
+
+			if (response.noWebhookResponse === true) {
+				// Nothing else to do as the response got already sent
+				return;
+			}
+
+			ResponseHelper.sendSuccessResponse(res, response.data, true, response.responseCode);
+		},
+	);
+
+	// GET webhook-waiting requests
+	this.app.get(
+		`/${this.endpointWebhookWaiting}/*`,
+		async (req: express.Request, res: express.Response) => {
+			// Cut away the "/webhook-waiting/" to get the registred part of the url
+			const requestUrl = (req as ICustomRequest).parsedUrl!.pathname!.slice(
+				this.endpointWebhookWaiting.length + 2,
+			);
+
+			let response;
+			try {
+				response = await waitingWebhooks.executeWebhook('GET', requestUrl, req, res);
+			} catch (error) {
+				ResponseHelper.sendErrorResponse(res, error);
+				return;
+			}
+
+			if (response.noWebhookResponse === true) {
+				// Nothing else to do as the response got already sent
+				return;
+			}
+
+			ResponseHelper.sendSuccessResponse(res, response.data, true, response.responseCode);
+		},
+	);
+
+	// POST webhook-waiting requests
+	this.app.post(
+		`/${this.endpointWebhookWaiting}/*`,
+		async (req: express.Request, res: express.Response) => {
+			// Cut away the "/webhook-waiting/" to get the registred part of the url
+			const requestUrl = (req as ICustomRequest).parsedUrl!.pathname!.slice(
+				this.endpointWebhookWaiting.length + 2,
+			);
+
+			let response;
+			try {
+				response = await waitingWebhooks.executeWebhook('POST', requestUrl, req, res);
+			} catch (error) {
+				ResponseHelper.sendErrorResponse(res, error);
+				return;
+			}
+
+			if (response.noWebhookResponse === true) {
+				// Nothing else to do as the response got already sent
+				return;
+			}
+
+			ResponseHelper.sendSuccessResponse(res, response.data, true, response.responseCode);
+		},
+	);
 }
 
 class App {
@@ -151,6 +236,8 @@ class App {
 	activeWorkflowRunner: ActiveWorkflowRunner.ActiveWorkflowRunner;
 
 	endpointWebhook: string;
+
+	endpointWebhookWaiting: string;
 
 	endpointPresetCredentials: string;
 
@@ -186,6 +273,7 @@ class App {
 		this.app = express();
 
 		this.endpointWebhook = config.get('endpoints.webhook') as string;
+		this.endpointWebhookWaiting = config.get('endpoints.webhookWaiting') as string;
 		this.saveDataErrorExecution = config.get('executions.saveDataOnError') as string;
 		this.saveDataSuccessExecution = config.get('executions.saveDataOnSuccess') as string;
 		this.saveManualExecutions = config.get('executions.saveDataManualExecutions') as boolean;
