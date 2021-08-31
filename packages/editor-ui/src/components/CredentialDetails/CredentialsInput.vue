@@ -9,7 +9,7 @@
 			<n8n-input-label label="OAuth redirect url">
 				<div :class="$style.copyText" @click="copyCallbackUrl">
 					<span>{{ oAuthCallbackUrl }}</span>
-					<div :class="$style.copyButton">Click to copy</div>
+					<div :class="$style.copyButton"><span>Click to copy</span></div>
 				</div>
 			</n8n-input-label>
 			<div :class="$style.oauthInfo">In {{ appName }}, use the URL above when prompted to enter an OAuth callback or redirect URL</div>
@@ -257,7 +257,7 @@ export default mixins(copyPaste, nodeHelpers, restApi, showMessage).extend({
 	font-weight: var(--font-weight-regular);
 
 	&:hover {
-		--display-copy-button: block;
+		--display-copy-button: flex;
 		width: 100%;
 	}
 }
@@ -269,6 +269,9 @@ export default mixins(copyPaste, nodeHelpers, restApi, showMessage).extend({
 	right: 0;
 	padding: var(--spacing-xs);
 	background-color: var(--color-background-light);
+	height: 100%;
+	align-items: center;
+	border-radius: var(--border-radius-base);
 }
 
 .successIcon {
@@ -282,7 +285,8 @@ export default mixins(copyPaste, nodeHelpers, restApi, showMessage).extend({
 
 .oauthInfo {
 	margin-top: var(--spacing-2xs);
-	line-height: var(--font-line-height-regular);
+	font-size: var(--font-size-2xs);
+	line-height: var(--font-line-height-loose);
 	font-weight: var(--font-weight-regular);
 }
 
