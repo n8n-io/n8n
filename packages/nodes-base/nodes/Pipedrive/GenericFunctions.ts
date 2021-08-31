@@ -71,7 +71,7 @@ export async function pipedriveApiRequest(this: IHookFunctions | IExecuteFunctio
 	try {
 		if (authenticationMethod === 'basicAuth' || authenticationMethod === 'apiToken' || authenticationMethod === 'none') {
 
-			const credentials = this.getCredentials('pipedriveApi');
+			const credentials = await this.getCredentials('pipedriveApi');
 			if (credentials === undefined) {
 				throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
 			}

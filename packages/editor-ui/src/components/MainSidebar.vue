@@ -492,7 +492,7 @@ export default mixins(
 
 <style lang="scss">
 .about-icon {
-	padding-left: 5px;
+	margin-left: 5px;
 }
 
 #collapse-change-button {
@@ -605,7 +605,7 @@ a.logo {
 }
 
 .el-menu-item.updates {
-	color: $--sidebar-inactive-color;	
+	color: $--sidebar-inactive-color;
 	.item-title-root {
 		font-size: 13px;
 		top: 0 !important;

@@ -266,7 +266,7 @@ export const dealFields = [
 				],
 			},
 		},
-		description: `Object of values to set as described <a href="https://github.com/agilecrm/rest-api#1-deals---companies-api" target="_blank">here</a>.`,
+		description: `Object of values to set as described <a href="https://github.com/agilecrm/rest-api#1-deals---companies-api">here</a>.`,
 	},
 	{
 		displayName: 'Additional Fields',
@@ -416,7 +416,7 @@ export const dealFields = [
 			},
 		},
 
-		description: `Object of values to set as described <a href="https://github.com/agilecrm/rest-api#1-deals---companies-api" target="_blank">here</a>.`,
+		description: `Object of values to set as described <a href="https://github.com/agilecrm/rest-api#1-deals---companies-api">here</a>.`,
 	},
 	{
 		displayName: 'Additional Fields',
