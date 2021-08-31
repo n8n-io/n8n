@@ -119,7 +119,7 @@ export default mixins(externalHooks, nodeHelpers, workflowHelpers).extend({
 
 <style lang="scss">
 .data-display-wrapper {
-	height: 80%;
+	height: 85%;
 
 	.el-dialog__header {
 		padding: 0 !important;
