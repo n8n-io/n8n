@@ -18,13 +18,13 @@
 					@delete="onDelete"
 					@disableCreate="onDisableCreate"
 				/>
-				<NoTagsView 
+				<NoTagsView
 					@enableCreate="onEnableCreate"
 					v-else />
 			</el-row>
 		</template>
 		<template v-slot:footer="{ close }">
-				<el-button size="small" @click="close">Done</el-button>
+			<n8n-button label="Done" @click="close" float="right" />
 		</template>
 	</Modal>
 </template>
@@ -114,10 +114,10 @@ export default mixins(showMessage).extend({
 					cb(true);
 					return;
 				}
-				
+
 				const updatedTag = await this.$store.dispatch("tags/rename", { id, name });
 				cb(!!updatedTag);
-			
+
 				const escapedName = escape(name);
 				const escapedOldName = escape(oldName);
 
@@ -183,7 +183,7 @@ export default mixins(showMessage).extend({
 });
 </script>
 
-<style lang="scss" scoped>	
+<style lang="scss" scoped>
 .el-row {
 	min-height: $--tags-manager-min-height;
 }

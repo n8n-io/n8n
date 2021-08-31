@@ -12,10 +12,10 @@
 		</el-switch>
 
 		<div class="could-not-be-started" v-if="couldNotBeStarted">
-			<el-tooltip placement="top">
+			<n8n-tooltip placement="top">
 				<div @click="displayActivationError" slot="content">The workflow is set to be active but could not be started.<br />Click to display error message.</div>
 				<font-awesome-icon @click="displayActivationError" icon="exclamation-triangle" />
-			</el-tooltip>
+			</n8n-tooltip>
 		</div>
 	</div>
 </template>
@@ -185,7 +185,7 @@ export default mixins(
 	margin-left: 0.5em;
 }
 
-/deep/ .el-loading-spinner {
+::v-deep .el-loading-spinner {
 	margin-top: -10px;
 }
 </style>

@@ -1,0 +1,316 @@
+@use "mixins/mixins";
+@use "./common/var";
+
+@include mixins.b(step) {
+	position: relative;
+	flex-shrink: 1;
+
+	@include mixins.pseudo(last-of-type) {
+		@include mixins.e(line) {
+			display: none;
+		}
+
+		// 只有未设置 space 的情况下才自适应宽度
+		@include mixins.when(flex) {
+			flex-basis: auto !important;
+			flex-shrink: 0;
+			flex-grow: 0;
+		}
+
+		@include mixins.e((main, description)) {
+			padding-right: 0;
+		}
+	}
+
+	@include mixins.e(head) {
+		position: relative;
+		width: 100%;
+
+		@include mixins.when(process) {
+			color: var(--color-text-dark);
+			border-color: var(--color-text-dark);
+		}
+
+		@include mixins.when(wait) {
+			color: var(--color-text-lighter);
+			border-color: var(--color-text-lighter);
+		}
+
+		@include mixins.when(success) {
+			color: var(--color-success);
+			border-color: var(--color-success);
+		}
+
+		@include mixins.when(error) {
+			color: var(--color-danger);
+			border-color: var(--color-danger);
+		}
+
+		@include mixins.when(finish) {
+			color: var(--color-primary);
+			border-color: var(--color-primary);
+		}
+	}
+
+	@include mixins.e(icon) {
+		position: relative;
+		z-index: 1;
+		display: inline-flex;
+		justify-content: center;
+		align-items: center;
+		width: 24px;
+		height: 24px;
+		font-size: 14px;
+		box-sizing: border-box;
+		background: var.$color-white;
+		transition: 0.15s ease-out;
+
+		@include mixins.when(text) {
+			border-radius: 50%;
+			border: 2px solid;
+			border-color: inherit;
+		}
+
+		@include mixins.when(icon) {
+			width: 40px;
+		}
+	}
+
+	@include mixins.e(icon-inner) {
+		display: inline-block;
+		user-select: none;
+		text-align: center;
+		font-weight: bold;
+		line-height: 1;
+		color: inherit;
+
+		&[class*='el-icon']:not(.is-status) {
+			font-size: 25px;
+			font-weight: normal;
+		}
+
+		// 组件自身表示状态的图标
+		@include mixins.when(status) {
+			transform: translateY(1px);
+		}
+	}
+
+	@include mixins.e(line) {
+		position: absolute;
+		border-color: inherit;
+		background-color: var(--color-text-lighter);
+	}
+
+	@include mixins.e(line-inner) {
+		display: block;
+		border-width: 1px;
+		border-style: solid;
+		border-color: inherit;
+		transition: 0.15s ease-out;
+		box-sizing: border-box;
+		width: 0;
+		height: 0;
+	}
+
+	@include mixins.e(main) {
+		white-space: normal;
+		text-align: left;
+	}
+
+	@include mixins.e(title) {
+		font-size: 16px;
+		line-height: 38px;
+
+		@include mixins.when(process) {
+			font-weight: bold;
+			color: var(--color-text-dark);
+		}
+
+		@include mixins.when(wait) {
+			color: var(--color-text-lighter);
+		}
+
+		@include mixins.when(success) {
+			color: var(--color-success);
+		}
+
+		@include mixins.when(error) {
+			color: var(--color-danger);
+		}
+
+		@include mixins.when(finish) {
+			color: var(--color-primary);
+		}
+	}
+
+	@include mixins.e(description) {
+		padding-right: 10%;
+		margin-top: -5px;
+		font-size: 12px;
+		line-height: 20px;
+		font-weight: normal;
+
+		@include mixins.when(process) {
+			color: var(--color-text-dark);
+		}
+
+		@include mixins.when(wait) {
+			color: var(--color-text-lighter);
+		}
+
+		@include mixins.when(success) {
+			color: var(--color-success);
+		}
+
+		@include mixins.when(error) {
+			color: var(--color-danger);
+		}
+
+		@include mixins.when(finish) {
+			color: var(--color-primary);
+		}
+	}
+
+	@include mixins.when(horizontal) {
+		display: inline-block;
+
+		@include mixins.e(line) {
+			height: 2px;
+			top: 11px;
+			left: 0;
+			right: 0;
+		}
+	}
+
+	@include mixins.when(vertical) {
+		display: flex;
+
+		@include mixins.e(head) {
+			flex-grow: 0;
+			width: 24px;
+		}
+
+		@include mixins.e(main) {
+			padding-left: 10px;
+			flex-grow: 1;
+		}
+
+		@include mixins.e(title) {
+			line-height: 24px;
+			padding-bottom: 8px;
+		}
+
+		@include mixins.e(line) {
+			width: 2px;
+			top: 0;
+			bottom: 0;
+			left: 11px;
+		}
+
+		@include mixins.e(icon) {
+			@include mixins.when(icon) {
+				width: 24px;
+			}
+		}
+	}
+
+	@include mixins.when(center) {
+		@include mixins.e(head) {
+			text-align: center;
+		}
+
+		@include mixins.e(main) {
+			text-align: center;
+		}
+
+		@include mixins.e(description) {
+			padding-left: 20%;
+			padding-right: 20%;
+		}
+
+		@include mixins.e(line) {
+			left: 50%;
+			right: -50%;
+		}
+	}
+
+	@include mixins.when(simple) {
+		display: flex;
+		align-items: center;
+
+		@include mixins.e(head) {
+			width: auto;
+			font-size: 0;
+			padding-right: 10px;
+		}
+
+		@include mixins.e(icon) {
+			background: transparent;
+			width: 16px;
+			height: 16px;
+			font-size: 12px;
+		}
+
+		@include mixins.e(icon-inner) {
+			&[class*='el-icon']:not(.is-status) {
+				font-size: 18px;
+			}
+
+			&.is-status {
+				transform: scale(0.8) translateY(1px);
+			}
+		}
+
+		@include mixins.e(main) {
+			position: relative;
+			display: flex;
+			align-items: stretch;
+			flex-grow: 1;
+		}
+
+		@include mixins.e(title) {
+			font-size: 16px;
+			line-height: 20px;
+		}
+
+		@include mixins.pseudo('not(:last-of-type)') {
+			@include mixins.e(title) {
+				max-width: 50%;
+				word-break: break-all;
+			}
+		}
+
+		@include mixins.e(arrow) {
+			flex-grow: 1;
+			display: flex;
+			align-items: center;
+			justify-content: center;
+
+			&::before,
+			&::after {
+				content: '';
+				display: inline-block;
+				position: absolute;
+				height: 15px;
+				width: 1px;
+				background: var(--color-text-lighter);
+			}
+
+			&::before {
+				transform: rotate(-45deg) translateY(-4px);
+				transform-origin: 0 0;
+			}
+
+			&::after {
+				transform: rotate(45deg) translateY(4px);
+				transform-origin: 100% 100%;
+			}
+		}
+
+		@include mixins.pseudo(last-of-type) {
+			@include mixins.e(arrow) {
+				display: none;
+			}
+		}
+	}
+}

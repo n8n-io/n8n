@@ -221,7 +221,7 @@ export class BitbucketTrigger implements INodeType {
 			// Get all the repositories to display them to user so that he can
 			// select them easily
 			async getRepositories(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-				const credentials = this.getCredentials('bitbucketApi');
+				const credentials = await this.getCredentials('bitbucketApi');
 				const returnData: INodePropertyOptions[] = [];
 				const repositories = await bitbucketApiRequestAllItems.call(this, 'values', 'GET', `/repositories/${credentials!.username}`);
 				for (const repository of repositories) {
@@ -261,7 +261,7 @@ export class BitbucketTrigger implements INodeType {
 		default: {
 			async checkExists(this: IHookFunctions): Promise<boolean> {
 				let endpoint = '';
-				const credentials = this.getCredentials('bitbucketApi');
+				const credentials = await this.getCredentials('bitbucketApi');
 				const resource = this.getNodeParameter('resource', 0) as string;
 				const webhookData = this.getWorkflowStaticData('node');
 				if (webhookData.webhookId === undefined) {
@@ -292,7 +292,7 @@ export class BitbucketTrigger implements INodeType {
 				const webhookData = this.getWorkflowStaticData('node');
 				const events = this.getNodeParameter('events') as string[];
 				const resource = this.getNodeParameter('resource', 0) as string;
-				const credentials = this.getCredentials('bitbucketApi');
+				const credentials = await this.getCredentials('bitbucketApi');
 
 				if (resource === 'user') {
 					endpoint = `/users/${credentials!.username}/hooks`;
@@ -318,7 +318,7 @@ export class BitbucketTrigger implements INodeType {
 			async delete(this: IHookFunctions): Promise<boolean> {
 				let endpoint = '';
 				const webhookData = this.getWorkflowStaticData('node');
-				const credentials = this.getCredentials('bitbucketApi');
+				const credentials = await this.getCredentials('bitbucketApi');
 				const resource = this.getNodeParameter('resource', 0) as string;
 				if (resource === 'user') {
 					endpoint = `/users/${credentials!.username}/hooks/${webhookData.webhookId}`;

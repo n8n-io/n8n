@@ -17,7 +17,7 @@
 					</el-row>
 				</div>
 
-				<el-tooltip v-for="(webhook, index) in webhooksNode" :key="index" class="item" effect="light" content="Click to copy Webhook URL" placement="left">
+				<n8n-tooltip v-for="(webhook, index) in webhooksNode" :key="index" class="item"  content="Click to copy Webhook URL" placement="left">
 					<div class="webhook-wrapper">
 							<div class="http-field">
 								<div class="http-method">
@@ -26,11 +26,11 @@
 							</div>
 							<div class="url-field">
 								<div class="webhook-url left-ellipsis clickable" @click="copyWebhookUrl(webhook)">
-									{{getWebhookUrl(webhook, 'path')}}<br />
+									{{getWebhookUrlDisplay(webhook)}}<br />
 								</div>
 							</div>
 					</div>
-				</el-tooltip>
+				</n8n-tooltip>
 
 			</div>
 		</el-collapse-transition>
@@ -39,6 +39,7 @@
 
 <script lang="ts">
 import {
+	INodeTypeDescription,
 	IWebhookDescription,
 	NodeHelpers,
 } from 'n8n-workflow';
@@ -59,7 +60,7 @@ export default mixins(
 		name: 'NodeWebhooks',
 		props: [
 			'node', // NodeUi
-			'nodeType', // NodeTypeDescription
+			'nodeType', // INodeTypeDescription
 		],
 		data () {
 			return {
@@ -73,7 +74,7 @@ export default mixins(
 					return [];
 				}
 
-				return this.nodeType.webhooks;
+				return (this.nodeType as INodeTypeDescription).webhooks!.filter(webhookData => webhookData.restartWebhook !== true);
 			},
 		},
 		methods: {
@@ -98,6 +99,9 @@ export default mixins(
 				}
 			},
 			getWebhookUrl (webhookData: IWebhookDescription): string {
+				if (webhookData.restartWebhook === true) {
+					return '$resumeWebhookUrl';
+				}
 				let baseUrl = this.$store.getters.getWebhookUrl;
 				if (this.showUrlFor === 'test') {
 					baseUrl = this.$store.getters.getWebhookTestUrl;
@@ -108,6 +112,9 @@ export default mixins(
 				const isFullPath = this.getValue(webhookData, 'isFullPath') as unknown as boolean || false;
 
 				return NodeHelpers.getNodeWebhookUrl(baseUrl, workflowId, this.node, path, isFullPath);
+			},
+			getWebhookUrlDisplay (webhookData: IWebhookDescription): string {
+				return this.getWebhookUrl(webhookData);
 			},
 		},
 		watch: {
@@ -210,6 +217,7 @@ export default mixins(
 }
 
 .webhook-wrapper {
+	line-height: 1.5;
 	position: relative;
 	margin: 1em 0 0.5em 0;
 	background-color: #fff;
