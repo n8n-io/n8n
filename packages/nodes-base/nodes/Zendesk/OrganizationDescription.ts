@@ -41,9 +41,9 @@ export const organizationOperations = [
 				description: 'Get all organizations',
 			},
 			{
-				name: 'Related',
-				value: 'related',
-				description: 'Show organizations related information',
+				name: 'Get Related Data',
+				value: 'getRelatedData',
+				description: 'Get data related to the organization',
 			},
 			{
 				name: 'Update',
@@ -59,7 +59,7 @@ export const organizationOperations = [
 export const organizationFields = [
 
 /* -------------------------------------------------------------------------- */
-/*                                organization:create                                 */
+/*                                organization:create                         */
 /* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Name',
@@ -77,7 +77,89 @@ export const organizationFields = [
 			},
 		},
 		required: true,
-		description: `The organization's name`,
+	},
+	{
+		displayName: 'Additional Fields',
+		name: 'additionalFields',
+		type: 'collection',
+		placeholder: 'Add Field',
+		default: {},
+		displayOptions: {
+			show: {
+				resource: [
+					'organization',
+				],
+				operation: [
+					'create',
+				],
+			},
+		},
+		options: [
+			{
+				displayName: 'Details',
+				name: 'details',
+				type: 'string',
+				default: '',
+				description: 'Details obout the organization, such as the address',
+			},
+			{
+				displayName: 'Domain Names',
+				name: 'domain_names',
+				type: 'string',
+				default: '',
+				description: 'Comma-separated domain names associated with this organization',
+			},
+			{
+				displayName: 'Notes',
+				name: 'notes',
+				type: 'string',
+				default: '',
+			},
+			{
+				displayName: 'Organization Fields',
+				name: 'organizationFieldsUi',
+				placeholder: 'Add Organization Field',
+				description: 'Values of custom fields in the organization\'s profile',
+				type: 'fixedCollection',
+				typeOptions: {
+					multipleValues: true,
+				},
+				default: {},
+				options: [
+					{
+						name: 'organizationFieldValues',
+						displayName: 'Field',
+						values: [
+							{
+								displayName: 'Field',
+								name: 'field',
+								type: 'options',
+								typeOptions: {
+									loadOptionsMethod: 'getOrganizationFields',
+								},
+								default: '',
+							},
+							{
+								displayName: 'Value',
+								name: 'value',
+								type: 'string',
+								default: '',
+							},
+						],
+					},
+				],
+			},
+			{
+				displayName: 'Tags',
+				name: 'tags',
+				type: 'multiOptions',
+				typeOptions: {
+					loadOptionsMethod: 'getTags',
+				},
+				default: [],
+				description: 'IDs of tags applied to this organization',
+			},
+		],
 	},
 /* -------------------------------------------------------------------------- */
 /*                                organization:update                         */
@@ -98,7 +180,6 @@ export const organizationFields = [
 				],
 			},
 		},
-		description: 'Organization ID',
 	},
 	{
 		displayName: 'Update Fields',
@@ -122,34 +203,32 @@ export const organizationFields = [
 				name: 'details',
 				type: 'string',
 				default: '',
-				description: `Any details obout the organization, such as the address`,
+				description: 'Details obout the organization, such as the address',
 			},
 			{
 				displayName: 'Domain Names',
 				name: 'domain_names',
 				type: 'string',
-				default: [],
-				description: `An array of domain names associated with this organization`,
+				default: '',
+				description: 'Comma-separated domain names associated with this organization',
 			},
 			{
 				displayName: 'Name',
 				name: 'name',
 				type: 'string',
 				default: '',
-				description: 'A unique name for the organization',
 			},
 			{
 				displayName: 'Notes',
 				name: 'notes',
 				type: 'string',
 				default: '',
-				description: `Any notes you have about the organization`,
 			},
 			{
 				displayName: 'Organization Fields',
 				name: 'organizationFieldsUi',
 				placeholder: 'Add Organization Field',
-				description: `Values of custom fields in the organization's profile.`,
+				description: 'Values of custom fields in the organization\'s profile',
 				type: 'fixedCollection',
 				typeOptions: {
 					multipleValues: true,
@@ -168,14 +247,12 @@ export const organizationFields = [
 									loadOptionsMethod: 'getOrganizationFields',
 								},
 								default: '',
-								description: 'Name of the field to sort on.',
 							},
 							{
 								displayName: 'Value',
 								name: 'value',
 								type: 'string',
 								default: '',
-								description: 'Value of the field.',
 							},
 						],
 					},
@@ -189,7 +266,7 @@ export const organizationFields = [
 					loadOptionsMethod: 'getTags',
 				},
 				default: [],
-				description: 'The array of tags applied to this organization',
+				description: 'IDs of tags applied to this organization',
 			},
 		],
 	},
@@ -232,7 +309,7 @@ export const organizationFields = [
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'If all results should be returned or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -256,7 +333,7 @@ export const organizationFields = [
 			maxValue: 100,
 		},
 		default: 100,
-		description: 'How many results to return.',
+		description: 'How many results to return',
 	},
 /* -------------------------------------------------------------------------- */
 /*                                organization:delete                         */
@@ -277,42 +354,25 @@ export const organizationFields = [
 				],
 			},
 		},
-		description: 'Organization ID',
 	},
 /* -------------------------------------------------------------------------- */
-/*                                organization:count                          */
+/*                      organization:getRelatedData                           */
 /* -------------------------------------------------------------------------- */
-{
-	displayOptions: {
-		show: {
-			resource: [
-				'organization',
-			],
-			operation: [
-				'count',
-			],
+	{
+		displayName: 'Organization ID',
+		name: 'id',
+		type: 'string',
+		default: '',
+		required: true,
+		displayOptions: {
+			show: {
+				resource: [
+					'organization',
+				],
+				operation: [
+					'getRelatedData',
+				],
+			},
 		},
 	},
-},
-/* -------------------------------------------------------------------------- */
-/*                                 organization:related                           */
-/* -------------------------------------------------------------------------- */
-{
-	displayName: 'Organization ID',
-	name: 'id',
-	type: 'string',
-	default: '',
-	required: true,
-	displayOptions: {
-		show: {
-			resource: [
-				'organization',
-			],
-			operation: [
-				'related',
-			],
-		},
-	},
-	description: 'Organization ID',
-},
 ] as INodeProperties[];

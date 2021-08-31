@@ -509,7 +509,7 @@ export class Zendesk implements INodeType {
 						}
 					}
 					//https://developer.zendesk.com/api-reference/ticketing/organizations/organizations/#list-organizations
-					if (operation === 'organizations') {
+					if (operation === 'getOrganizations') {
 						const userId = this.getNodeParameter('id', i) as string;
 						responseData = await zendeskApiRequest.call(this, 'GET', `/users/${userId}/organizations`, {});
 						responseData = responseData.organizations;
@@ -537,7 +537,7 @@ export class Zendesk implements INodeType {
 						responseData = responseData.user;
 					}
 					//https://developer.zendesk.com/api-reference/ticketing/users/users/#show-user-related-information
-					if (operation === 'related') {
+					if (operation === 'getRelatedData') {
 						const userId = this.getNodeParameter('id', i) as string;
 						responseData = await zendeskApiRequest.call(this, 'GET', `/users/${userId}/related`, {});
 						responseData = responseData.user_related;
@@ -549,19 +549,21 @@ export class Zendesk implements INodeType {
 					if (operation === 'create') {
 						const name = this.getNodeParameter('name', i) as string;
 
-						const body: IDataObject = {
+						const body: IDataObject & { name: string; organization_fields?: { [key: string]: object | string } } = {
 							name,
 						};
 
-						if (body.organizationFieldsUi) {
-							const organizationFields = (body.organizationFieldsUi as IDataObject).organizationFieldValues as IDataObject[];
-							if (organizationFields) {
+						const { organizationFieldsUi, ...rest } = this.getNodeParameter('additionalFields', i) as IDataObject & { organizationFieldsUi?: { organizationFieldValues: Array<{ field: string; value: string; }> } };
+
+						Object.assign(body, rest);
+
+						if (organizationFieldsUi?.organizationFieldValues.length) {
+							const organizationFields = organizationFieldsUi.organizationFieldValues;
+							if (organizationFields.length) {
 								body.organization_fields = {};
 								for (const organizationField of organizationFields) {
-									//@ts-ignore
 									body.organization_fields[organizationField.field] = organizationField.value;
 								}
-								delete body.organizationFieldsUi;
 							}
 						}
 
@@ -571,8 +573,8 @@ export class Zendesk implements INodeType {
 					//https://developer.zendesk.com/api-reference/ticketing/organizations/organizations/#delete-organization
 					if (operation === 'delete') {
 						const organizationId = this.getNodeParameter('id', i) as string;
-						responseData = await zendeskApiRequest.call(this, 'DELETE', `/organizations/${organizationId}`, {});
-						responseData = responseData;
+						await zendeskApiRequest.call(this, 'DELETE', `/organizations/${organizationId}`, {});
+						responseData = { success: true };
 					}
 					//https://developer.zendesk.com/api-reference/ticketing/organizations/organizations/#count-organizations
 					if (operation === 'count') {
@@ -599,7 +601,7 @@ export class Zendesk implements INodeType {
 						}
 					}
 					//https://developer.zendesk.com/api-reference/ticketing/organizations/organizations/#show-organizations-related-information
-					if (operation === 'related') {
+					if (operation === 'getRelatedData') {
 						const organizationId = this.getNodeParameter('id', i) as string;
 						responseData = await zendeskApiRequest.call(this, 'GET', `/organizations/${organizationId}/related`, {});
 						responseData = responseData.organization_related;
@@ -607,21 +609,20 @@ export class Zendesk implements INodeType {
 					//https://developer.zendesk.com/api-reference/ticketing/organizations/organizations/#update-organization
 					if (operation === 'update') {
 						const organizationId = this.getNodeParameter('id', i) as string;
-						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
 
-						const body: IDataObject = {};
+						const body: IDataObject & { organization_fields?: { [key: string]: object | string } } = {};
 
-						Object.assign(body, updateFields);
+						const { organizationFieldsUi, ...rest } = this.getNodeParameter('updateFields', i) as IDataObject & { organizationFieldsUi?: { organizationFieldValues: Array<{ field: string; value: string; }> } };
 
-						if (body.organizationFieldsUi) {
-							const organizationFields = (body.organizationFieldsUi as IDataObject).organizationFieldValues as IDataObject[];
-							if (organizationFields) {
+						Object.assign(body, rest);
+
+						if (organizationFieldsUi?.organizationFieldValues.length) {
+							const organizationFields = organizationFieldsUi.organizationFieldValues;
+							if (organizationFields.length) {
 								body.organization_fields = {};
 								for (const organizationField of organizationFields) {
-									//@ts-ignore
 									body.organization_fields[organizationField.field] = organizationField.value;
 								}
-								delete body.organizationFieldsUi;
 							}
 						}
 

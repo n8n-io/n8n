@@ -36,14 +36,14 @@ export const userOperations = [
 				description: 'Get all users',
 			},
 			{
-				name: 'Organizations',
-				value: 'organizations',
-				description: 'Get users organizations',
+				name: 'Get Organizations',
+				value: 'getOrganizations',
+				description: 'Get a user\'s organizations',
 			},
 			{
-				name: 'Related',
-				value: 'related',
-				description: 'Show user related information',
+				name: 'Get Related Data',
+				value: 'getRelatedData',
+				description: 'Get data related to the user',
 			},
 			{
 				name: 'Search',
@@ -57,7 +57,6 @@ export const userOperations = [
 			},
 		],
 		default: 'create',
-		description: 'The operation to perform.',
 	},
 ] as INodeProperties[];
 
@@ -779,7 +778,7 @@ export const userFields = [
 		description: 'User ID',
 	},
 /* -------------------------------------------------------------------------- */
-/*                                 user:related                               */
+/*                             user:getRelatedData                            */
 /* -------------------------------------------------------------------------- */
 	{
 		displayName: 'User ID',
@@ -793,14 +792,13 @@ export const userFields = [
 					'user',
 				],
 				operation: [
-					'related',
+					'getRelatedData',
 				],
 			},
 		},
-		description: 'User ID',
 	},
 /* -------------------------------------------------------------------------- */
-/*                                 user:organizations                         */
+/*                              user:getOrganizations                         */
 /* -------------------------------------------------------------------------- */
 	{
 		displayName: 'User ID',
@@ -814,10 +812,9 @@ export const userFields = [
 					'user',
 				],
 				operation: [
-					'organizations',
+					'getOrganizations',
 				],
 			},
 		},
-		description: 'User ID',
 	},
 ] as INodeProperties[];
