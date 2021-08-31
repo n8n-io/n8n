@@ -33,7 +33,7 @@
 									ref="nameInput"
 									@input="onNameEdit"
 									@change="disableNameEdit"
-									maxlength="64"
+									:maxlength="64"
 								/>
 							</div>
 						</div>
@@ -69,10 +69,10 @@
 						@select="onTabSelect"
 						defaultActive="connection"
 					>
-						<n8n-menu-item index="connection"
+						<n8n-menu-item index="connection" class="credTab"
 							><span slot="title">Connection</span></n8n-menu-item
 						>
-						<n8n-menu-item index="info"
+						<n8n-menu-item index="info" class="credTab"
 							><span slot="title">Info</span></n8n-menu-item
 						>
 					</n8n-menu>
@@ -766,6 +766,10 @@ export default mixins(genericHelpers, showMessage, nodeHelpers).extend({
 	display: flex;
 	flex-grow: 1;
 	margin-bottom: var(--spacing-s);
+}
+
+.credTab {
+	padding-left: 12px !important;
 }
 
 .credActions {
