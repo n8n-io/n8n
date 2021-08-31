@@ -174,6 +174,10 @@ import {
 } from '@/Interface';
 
 import {
+	convertToDisplayDate,
+} from './helpers';
+
+import {
 	IDataObject,
 } from 'n8n-workflow';
 
@@ -319,6 +323,7 @@ export default mixins(
 			}
 			return false;
 		},
+		convertToDisplayDate,
 		displayExecution (execution: IExecutionShortResponse) {
 			this.$router.push({
 				name: 'ExecutionById',

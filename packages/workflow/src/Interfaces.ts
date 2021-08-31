@@ -140,6 +140,7 @@ export abstract class ICredentialsHelper {
 export interface ICredentialType {
 	name: string;
 	displayName: string;
+	icon?: string;
 	extends?: string[];
 	properties: INodeProperties[];
 	documentationUrl?: string;

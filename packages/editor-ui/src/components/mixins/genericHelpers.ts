@@ -1,5 +1,3 @@
-import dateformat from 'dateformat';
-
 import { showMessage } from '@/components/mixins/showMessage';
 import { MessageType } from '@/Interface';
 import { debounce } from 'lodash';
@@ -22,9 +20,6 @@ export const genericHelpers = mixins(showMessage).extend({
 		},
 	},
 	methods: {
-		convertToDisplayDate (epochTime: number) {
-			return dateformat(epochTime, 'yyyy-mm-dd HH:MM:ss');
-		},
 		displayTimer (msPassed: number, showMs = false): string {
 			if (msPassed < 60000) {
 				if (showMs === false) {

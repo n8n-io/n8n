@@ -32,7 +32,7 @@
 
 	@include mixins.e(header) {
 		padding: var.$dialog-padding-primary;
-		padding-bottom: 10px;
+		padding-bottom: 0px;
 	}
 
 	@include mixins.e(headerbtn) {
@@ -65,8 +65,8 @@
 	}
 
 	@include mixins.e(body) {
-		padding: (var.$dialog-padding-primary + 10px) var.$dialog-padding-primary;
-		color: var(--color-text-dark);
+		padding: var.$dialog-padding-primary;
+		color: var(--color-text-base);
 		font-size: var.$dialog-content-font-size;
 		word-break: break-all;
 	}

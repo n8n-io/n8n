@@ -2,10 +2,14 @@
 	<div :class="$style.inputLabel">
 		<label>
 			<div :class="$style.label">
-				<span>{{ props.label }}</span>
-				<span v-if="props.tooltipText" :class="$style.infoIcon">
-					<n8n-tooltip :content="props.tooltipText" placement="top">
+				<span>
+					{{ props.label }}
+					<span v-if="props.required" :class="$style.required">*</span>
+				</span>
+				<span :class="$style.infoIcon" v-if="props.tooltipText">
+					<n8n-tooltip placement="top" :popper-class="$style.tooltipPopper">
 						<n8n-icon icon="info-circle" />
+						<div slot="content" v-html="props.tooltipText"></div>
 					</n8n-tooltip>
 				</span>
 			</div>
@@ -33,6 +37,9 @@ export default {
 		tooltipText: {
 			type: String,
 		},
+		required: {
+			type: Boolean,
+		},
 	},
 };
 </script>
@@ -48,10 +55,22 @@ export default {
 	font-weight: var(--font-weight-bold);
 	font-size: var(--font-size-s);
 	margin-bottom: var(--spacing-2xs);
+
+	* {
+		margin-right: var(--spacing-4xs);
+	}
 }
 
 .infoIcon {
 	color: var(--color-text-light);
 	display: var(--info-icon-display, none);
+}
+
+.required {
+	color: var(--color-primary);
+}
+
+.tooltipPopper {
+	max-width: 400px;
 }
 </style>

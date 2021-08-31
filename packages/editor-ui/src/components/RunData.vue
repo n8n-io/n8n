@@ -68,7 +68,7 @@
 					<el-radio-button label="Binary" v-if="binaryData.length !== 0"></el-radio-button>
 				</el-radio-group>
 			</div>
-			<div v-if="hasNodeRun && !hasRunError && displayMode === 'JSON' && state.path !== deselectedPlaceholder" class="select-button">
+			<div class="select-button" v-if="hasNodeRun && !hasRunError && displayMode === 'JSON' && state.path !== deselectedPlaceholder">
 				<el-dropdown trigger="click" @command="handleCopyClick">
 					<span class="el-dropdown-link">
 						<n8n-icon-button title="Copy to Clipboard" icon="copy" />
@@ -639,24 +639,20 @@ export default mixins(
 
 .run-data-view {
 	position: relative;
-	bottom: 0;
-	left: 0;
-	margin-left: 350px;
-	width: calc(100% - 350px);
 	height: 100%;
-	z-index: 100;
-	color: #555;
-	font-size: 14px;
+	width: 100%;
 	background-color: #f9f9f9;
+	overflow: hidden;
 
 	.data-display-content {
-		position: absolute;
-		bottom: 0;
-		top: 50px;
-		left: 0;
-		right: 0;
-		overflow-y: auto;
+		overflow: scroll;
+		height: 100%;
+		width: 100%;
 		line-height: 1.5;
+		padding-bottom: 100px;
+		position: relative;
+		margin-top: 5px;
+		word-break: normal;
 
 		.binary-data-row {
 			display: inline-flex;
@@ -747,9 +743,8 @@ export default mixins(
 		table {
 			border-collapse: collapse;
 			text-align: left;
-			width: calc(100% - 1px);
-			border-left: 25px solid #00000000;
-			border-right: 25px solid #00000000;
+			width: 100%;
+			margin-left: 10px;
 
 			th {
 				background-color: $--custom-table-background-main;

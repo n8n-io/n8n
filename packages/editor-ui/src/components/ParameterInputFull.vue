@@ -8,7 +8,7 @@
 			</n8n-tooltip>
 		</el-col>
 		<el-col :span="isMultiLineParameter ? 24 : 14" class="parameter-value">
-			<parameter-input :parameter="parameter" :value="value" :displayOptions="displayOptions" :path="path" @valueChanged="valueChanged" inputSize="small" />
+			<parameter-input :parameter="parameter" :value="value" :displayOptions="displayOptions" :path="path" :isReadOnly="isReadOnly" @valueChanged="valueChanged" inputSize="small" />
 		</el-col>
 	</el-row>
 </template>
@@ -21,7 +21,6 @@ import {
 } from '@/Interface';
 
 import ParameterInput from '@/components/ParameterInput.vue';
-import { addTargetBlank } from './helpers';
 
 export default Vue
 	.extend({
@@ -47,12 +46,12 @@ export default Vue
 		},
 		props: [
 			'displayOptions',
+			'isReadOnly',
 			'parameter',
 			'path',
 			'value',
 		],
 		methods: {
-			addTargetBlank,
 			getArgument (argumentName: string): string | number | boolean | undefined {
 				if (this.parameter.typeOptions === undefined) {
 					return undefined;

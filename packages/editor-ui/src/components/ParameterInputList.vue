@@ -70,6 +70,7 @@
 					:value="getParameterValue(nodeValues, parameter.name, path)"
 					:displayOptions="true"
 					:path="getPath(parameter.name)"
+					:isReadOnly="isReadOnly"
 					@valueChanged="valueChanged"
 				/>
 			</div>
@@ -91,8 +92,6 @@ import MultipleParameter from '@/components/MultipleParameter.vue';
 import { genericHelpers } from '@/components/mixins/genericHelpers';
 import { workflowHelpers } from '@/components/mixins/workflowHelpers';
 import ParameterInputFull from '@/components/ParameterInputFull.vue';
-
-import { addTargetBlank } from './helpers';
 
 import { get, set } from 'lodash';
 
@@ -123,7 +122,6 @@ export default mixins(
 			},
 		},
 		methods: {
-			addTargetBlank,
 			multipleValues (parameter: INodeProperties): boolean {
 				if (this.getArgument('multipleValues', parameter) === true) {
 					return true;

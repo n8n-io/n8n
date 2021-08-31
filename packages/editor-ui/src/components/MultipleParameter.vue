@@ -3,7 +3,7 @@
 
 		<div class="parameter-name">
 			{{parameter.displayName}}:
-			<n8n-tooltip v-if="parameter.description" class="parameter-info" placement="top" >
+			<n8n-tooltip class="parameter-info" placement="top" v-if="parameter.description" >
 				<div slot="content" v-html="parameter.description"></div>
 				<font-awesome-icon icon="question-circle" />
 			</n8n-tooltip>
@@ -21,7 +21,7 @@
 				<collection-parameter :parameter="parameter" :values="value" :nodeValues="nodeValues" :path="getPath(index)" :hideDelete="hideDelete" @valueChanged="valueChanged" />
 			</div>
 			<div v-else>
-				<parameter-input class="duplicate-parameter-input-item" :parameter="parameter" :value="value" :displayOptions="true" :path="getPath(index)" @valueChanged="valueChanged" inputSize="small" />
+				<parameter-input class="duplicate-parameter-input-item" :parameter="parameter" :value="value" :displayOptions="true" :path="getPath(index)" @valueChanged="valueChanged" inputSize="small" :isReadOnly="isReadOnly" />
 			</div>
 		</div>
 
@@ -48,7 +48,6 @@ import { get } from 'lodash';
 import { genericHelpers } from '@/components/mixins/genericHelpers';
 
 import mixins from 'vue-typed-mixins';
-import { addTargetBlank } from './helpers';
 
 export default mixins(genericHelpers)
 	.extend({
@@ -92,7 +91,6 @@ export default mixins(genericHelpers)
 
 				this.$emit('valueChanged', parameterData);
 			},
-			addTargetBlank,
 			deleteItem (index: number) {
 				const parameterData = {
 					name: this.getPath(index),
