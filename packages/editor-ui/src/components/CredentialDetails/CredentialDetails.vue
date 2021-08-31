@@ -87,10 +87,10 @@
 						@oauth="oAuthCredentialAuthorize"
 					/>
 				</div>
-				<div v-if="activeTab === 'info'" :class="$style.mainContent">
+				<div v-if="activeTab === 'info'" :class="$style.infoContent">
 					<el-row>
-						<el-col :span="8">
-							<span :class="$style.label">Can be used with:</span>
+						<el-col :span="8" :class="$style.accessLabel">
+							<span >Can be used with:</span>
 						</el-col>
 						<el-col :span="16">
 							<div
@@ -107,8 +107,8 @@
 						</el-col>
 					</el-row>
 					<el-row v-if="currentCredential">
-						<el-col :span="8">
-							<span :class="$style.label">Created:</span>
+						<el-col :span="8" :class="$style.label">
+							<span>Created:</span>
 						</el-col>
 						<el-col :span="16" :class="$style.valueLabel">
 							<span>{{
@@ -117,8 +117,8 @@
 						</el-col>
 					</el-row>
 					<el-row v-if="currentCredential">
-						<el-col :span="8">
-							<span :class="$style.label">Last modified:</span>
+						<el-col :span="8" :class="$style.label">
+							<span>Last modified:</span>
 						</el-col>
 						<el-col :span="16" :class="$style.valueLabel">
 							<TimeAgo :date="currentCredential.updatedAt" />
@@ -741,6 +741,11 @@ export default mixins(genericHelpers, showMessage, nodeHelpers).extend({
 	}
 }
 
+.infoContent {
+	composes: mainContent;
+	margin-top: var(--spacing-xs);
+}
+
 .sidebar {
 	max-width: 170px;
 	min-width: 170px;
@@ -782,6 +787,12 @@ export default mixins(genericHelpers, showMessage, nodeHelpers).extend({
 
 .label {
 	font-weight: var(--font-weight-bold);
+	max-width: 230px;
+}
+
+.accessLabel {
+	composes: label;
+	margin-top: var(--spacing-5xs);
 }
 
 .credIcon {
