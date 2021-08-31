@@ -643,6 +643,7 @@ export default mixins(
 	width: 100%;
 	background-color: #f9f9f9;
 	overflow: hidden;
+	padding-right: 12px;;
 
 	.data-display-content {
 		overflow: scroll;
