@@ -700,11 +700,11 @@ export default mixins(genericHelpers, showMessage, nodeHelpers).extend({
 .headline {
 	font-size: var(--font-size-m);
 	line-height: 1.4;
-	margin-bottom: 4px;
+	margin-bottom: var(--spacing-5xs);
 	display: inline-block;
 	cursor: pointer;
-	padding: 0 4px;
-	border-radius: 4px;
+	padding: 0 var(--spacing-4xs);
+	border-radius: var(--border-radius-base);
 	position: relative;
 	min-height: 22px;
 	max-height: 22px;
@@ -718,8 +718,8 @@ export default mixins(genericHelpers, showMessage, nodeHelpers).extend({
 	}
 
 	&:hover {
-		background-color: var(--color-foreground-base);
-		--headline-icon-display: inline;
+		background-color: var(--color-background-base);
+		--headline-icon-display: inline-flex;
 	}
 }
 
@@ -765,7 +765,7 @@ export default mixins(genericHelpers, showMessage, nodeHelpers).extend({
 
 .credActions {
 	> * {
-		margin-left: var(--spacing-xs);
+		margin-left: var(--spacing-2xs);
 	}
 }
 
@@ -787,7 +787,7 @@ export default mixins(genericHelpers, showMessage, nodeHelpers).extend({
 .credIcon {
 	display: flex;
 	align-items: center;
-	margin-right: var(--spacing-xs);
+	margin-right: var(--spacing-2xs);
 }
 
 .valueLabel {
