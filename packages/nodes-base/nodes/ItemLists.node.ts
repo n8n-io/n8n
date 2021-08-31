@@ -27,15 +27,15 @@ const {
 
 export class ItemLists implements INodeType {
 	description: INodeTypeDescription = {
-		displayName: 'Item lists',
+		displayName: 'Item Lists',
 		name: 'itemLists',
 		icon: 'file:itemLists.svg',
 		group: ['input'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
-		description: 'Helpers for working with lists of items',
+		description: 'Helper for working with lists of items and transforming arrays',
 		defaults: {
-			name: 'Item lists',
+			name: 'Item Lists',
 			color: '#ff6d5a',
 		},
 		inputs: ['main'],
@@ -45,7 +45,7 @@ export class ItemLists implements INodeType {
 			{
 				displayName: 'Resource',
 				name: 'resource',
-				type: 'options',
+				type: 'hidden',
 				options: [
 					{
 						name: 'Item List',
@@ -88,9 +88,10 @@ export class ItemLists implements INodeType {
 				default: 'splitOutItems',
 			},
 			// Split out items - Fields
+
 			{
-				displayName: 'Field To Split By',
-				name: 'fieldToSplitBy',
+				displayName: 'Field To Split Out',
+				name: 'fieldToSplitOut',
 				type: 'string',
 				default: '',
 				required: true,
@@ -124,7 +125,7 @@ export class ItemLists implements INodeType {
 						value: 'selectedOtherFields',
 					},
 				],
-				default: '',
+				default: 'noOtherFields',
 				description: 'Whether to copy any other fields into the new items',
 				displayOptions: {
 					show: {
@@ -142,7 +143,6 @@ export class ItemLists implements INodeType {
 				name: 'fieldsToInclude',
 				type: 'string',
 				default: '',
-				required: true,
 				description: 'A list of input field names to copy over to the new items, separated by commas',
 				displayOptions: {
 					show: {
@@ -190,11 +190,25 @@ export class ItemLists implements INodeType {
 								description: 'A field in the input items to aggregate together',
 							},
 							{
+								displayName: 'Rename Field',
+								name: 'renameField',
+								type: 'boolean',
+								default: false,
+								description: 'The name of the field to put the aggregated data in',
+							},
+							{
 								displayName: 'Output Field Name',
 								name: 'outputFieldName',
+								displayOptions: {
+									show: {
+										renameField: [
+											true,
+										],
+									},
+								},
 								type: 'string',
-								default: 'data',
-								description: 'The name of the field to put the aggregated data in',
+								default: '',
+								description: 'The name of the field to put the aggregated data in. Leave blank to use the input field name',
 							},
 						],
 					},
@@ -258,7 +272,6 @@ export class ItemLists implements INodeType {
 				name: 'fieldsToCompare',
 				type: 'string',
 				default: '',
-				description: 'A list of input field names to compare on, separated by commas. You can use dot notation to drill down, e.g. parent_field.child_field',
 				displayOptions: {
 					show: {
 						resource: [
@@ -272,6 +285,7 @@ export class ItemLists implements INodeType {
 						],
 					},
 				},
+				description: 'A list of input field names to compare on, separated by commas. You can use dot notation to drill down, e.g. parent_field.child_field. if you enable it in the optional fields below',
 			},
 			// Sort - Fields
 			{
@@ -373,10 +387,12 @@ export class ItemLists implements INodeType {
 // Return 1 if b should go before a
 // Return 0 if there's no difference
 
-if (a.json.fieldName < b.json.fieldName) {
+fieldName = 'myField';
+
+if (a.json[fieldName] < b.json[fieldName]) {
 		return -1;
 }
-if (a.json.fieldName > b.json.fieldName) {
+if (a.json[fieldName] > b.json[fieldName]) {
 		return 1;
 }
 return 0;`,
@@ -457,6 +473,10 @@ return 0;`,
 						operation: [
 							'removeDuplicates',
 						],
+						compare: [
+							'allFieldsExcept',
+							'selectedFields',
+						],
 					},
 				},
 				options: [
@@ -464,14 +484,6 @@ return 0;`,
 						displayName: 'Allow Dot Notation',
 						name: 'allowDotNotation',
 						type: 'boolean',
-						displayOptions: {
-							show: {
-								'/compare': [
-									'allFieldsExcept',
-									'selectedFields',
-								],
-							},
-						},
 						default: false,
 						description: 'Whether to allow referencing child fields using `parent.child` in the field name',
 					},
@@ -522,8 +534,23 @@ return 0;`,
 							},
 						},
 						default: '',
-						description: 'The field in the output to put the split field contents under',
+						description: 'The field in the output under which to put the split field contents',
 					},
+					{
+						displayName: 'Preserve Aggregated Lists',
+						name: 'preserveAggregatedLists',
+						type: 'boolean',
+						displayOptions: {
+							show: {
+								'/operation': [
+									'aggregateItems',
+								],
+							},
+						},
+						default: true,
+						description: 'If a field to aggregate is a list, whether to output a list of lists (instead of merging into a single list)',
+					},
+
 				],
 			},
 		],
@@ -539,70 +566,51 @@ return 0;`,
 			if (operation === 'splitOutItems') {
 
 				for (let i = 0; i < length; i++) {
-					const fieldToSplitBy = this.getNodeParameter('fieldToSplitBy', i) as string;
+					const fieldToSplitOut = this.getNodeParameter('fieldToSplitOut', i) as string;
 
 					const allowDotNotation = this.getNodeParameter('options.allowDotNotation', 0, false) as boolean;
 					const destinationFieldName = this.getNodeParameter('options.destinationFieldName', i, '') as string;
 					const include = this.getNodeParameter('include', i) as string;
 					let arrayToSplit;
 					if (allowDotNotation) {
-						arrayToSplit = get(items[i].json, fieldToSplitBy);
+						arrayToSplit = get(items[i].json, fieldToSplitOut);
 					} else {
-						arrayToSplit = items[i].json[fieldToSplitBy as string];
+						arrayToSplit = items[i].json[fieldToSplitOut as string];
 					}
+					console.log(arrayToSplit);
+
+					if (arrayToSplit === undefined) {
+						if (fieldToSplitOut.includes('.') && allowDotNotation === false) {
+							throw new NodeOperationError(this.getNode(), `If you're trying to use a nested field, make sure you turn on 'allow dot notation' in the node options`);
+						} else {
+							throw new NodeOperationError(this.getNode(), `Couldn't find the field ${fieldToSplitOut} in the input data`);
+						}
+					}
+
 					if (!Array.isArray(arrayToSplit)) {
-						throw new NodeOperationError(this.getNode(), `The provided field "${fieldToSplitBy}" is not an array`);
+						throw new NodeOperationError(this.getNode(), `The provided field "${fieldToSplitOut}" is not an array`);
 					} else {
 
 						for (const element of arrayToSplit) {
 
 							let newItem = {};
 
-							if (typeof element === 'object' && include === 'noOtherFields') {
-								newItem = { ...element };
-							} else {
-								newItem = { [destinationFieldName as string || fieldToSplitBy as string]: element };
-							}
-
 							// let newItem = {
-							// 	...(typeof element === 'object') ? element : { [fieldToSplitBy as string]: element },
+							// 	...(typeof element === 'object') ? element : { [fieldToSplitOut as string]: element },
 							// };
 
 							if (include === 'selectedOtherFields') {
 
 								const fieldsToInclude = (this.getNodeParameter('fieldsToInclude', i) as string).split(',');
-								newItem = {
-									...newItem,
-									...fieldsToInclude.reduce((prev, field) => {
-										if (field === fieldToSplitBy) {
-											return prev;
-										}
-										let value;
-										if (allowDotNotation) {
-											value = get(items[i].json, field);
-										} else {
-											value = items[i].json[field as string];
-										}
-										prev = { ...prev, [field as string]: value, };
-										return prev;
-									}, {}),
-								};
 
-							} else if (include === 'allOtherFields') {
-
-								let keys;
-								if (allowDotNotation) {
-									keys = Object.keys(flattenKeys(items[i].json));
-									
-								} else {
-									keys = Object.keys(items[i].json);
+								//if array the array to split is withim an object, and has other properties
+								if (fieldToSplitOut.includes('.') && allowDotNotation) {
+									fieldsToInclude.push(fieldToSplitOut.split('.')[0]);
 								}
 
 								newItem = {
-									...newItem,
-									...keys.reduce((prev, field) => {
-
-										if (field.startsWith(fieldToSplitBy)) {
+									...fieldsToInclude.reduce((prev, field) => {
+										if (field === fieldToSplitOut) {
 											return prev;
 										}
 										let value;
@@ -616,7 +624,34 @@ return 0;`,
 									}, {}),
 								};
 
+								unset(newItem, fieldToSplitOut);
+
+							} else if (include === 'allOtherFields') {
+
+								const keys = Object.keys(items[i].json);
+
+								newItem = {
+									...keys.reduce((prev, field) => {
+										let value;
+										if (allowDotNotation) {
+											value = get(items[i].json, field);
+										} else {
+											value = items[i].json[field as string];
+										}
+										prev = { ...prev, [field as string]: value, };
+										return prev;
+									}, {}),
+								};
+
+								unset(newItem, fieldToSplitOut);
 							}
+
+							if (typeof element === 'object' && include === 'noOtherFields' && destinationFieldName === '') {
+								newItem = { ...newItem, ...element };
+							} else {
+								newItem = { ...newItem, [destinationFieldName as string || fieldToSplitOut as string]: element };
+							}
+
 							returnData.push({ json: newItem });
 						}
 					}
@@ -627,7 +662,8 @@ return 0;`,
 			} else if (operation === 'aggregateItems') {
 
 				const allowDotNotation = this.getNodeParameter('options.allowDotNotation', 0, false) as boolean;
-				const fieldsToAggregate = this.getNodeParameter('fieldsToAggregate.fieldToAggregate', 0) as [{ fieldToAggregate: string, outputFieldName: string }];
+				const preserveAggregatedLists = this.getNodeParameter('options.preserveAggregatedLists', 0, true) as boolean;
+				const fieldsToAggregate = this.getNodeParameter('fieldsToAggregate.fieldToAggregate', 0) as [{ fieldToAggregate: string, renameField: boolean, outputFieldName: string }];
 
 				if (!fieldsToAggregate.length) {
 					throw new NodeOperationError(this.getNode(), 'No fields specified. Please add a field to aggregate');
@@ -637,18 +673,35 @@ return 0;`,
 				newItem = { json: {} };
 				// tslint:disable-next-line: no-any
 				const values: { [key: string]: any } = {};
+				const outputFields: string[] = [];
 
 				for (const { fieldToAggregate, outputFieldName } of fieldsToAggregate) {
+					if (outputFieldName !== '' && outputFields.includes(outputFieldName)) {
+						throw new NodeOperationError(this.getNode(), `The ${outputFieldName} output field is used more than once`);
+					} else {
+						outputFields.push(outputFieldName);
+					}
+					const _outputFieldName = (outputFieldName) ? outputFieldName : fieldToAggregate;
 					if (fieldToAggregate !== '') {
-						values[outputFieldName] = [];
+						values[_outputFieldName] = [];
 						for (let i = 0; i < length; i++) {
 							if (allowDotNotation) {
+								const value = get(items[i].json, fieldToAggregate);
 								if (get(items[i].json, fieldToAggregate) !== undefined) {
-									values[outputFieldName].push(get(items[i].json, fieldToAggregate));
+									if (Array.isArray(value) && preserveAggregatedLists) {
+										values[_outputFieldName].push(...value);
+									} else {
+										values[_outputFieldName].push(value);
+									}
 								}
 							} else {
+								const value = items[i].json[fieldToAggregate];
 								if (items[i].json[fieldToAggregate] !== undefined) {
-									values[outputFieldName].push(items[i].json[fieldToAggregate]);
+									if (Array.isArray(value) && preserveAggregatedLists) {
+										values[_outputFieldName].push(...value);
+									} else {
+										values[_outputFieldName].push(value);
+									}
 								}
 							}
 						}
@@ -673,15 +726,27 @@ return 0;`,
 				const allowDotNotation = this.getNodeParameter('options.allowDotNotation', 0, false) as boolean;
 				let keys = Object.keys(items[0].json);
 
+				for (const item of items) {
+					for (const key of Object.keys(item.json)) {
+						if (!keys.includes(key)) {
+							keys.push(key);
+						}
+					}
+				}
+
 				if (compare === 'allFieldsExcept') {
 					const fieldsToExclude = (this.getNodeParameter('fieldsToExclude', 0) as string).split(',');
+					if (Array.isArray(fieldsToExclude) && fieldsToExclude[0] === '') {
+						throw new NodeOperationError(this.getNode(), 'No fields specified. Please add a field to compare on');
+					}
 					if (allowDotNotation) {
 						keys = Object.keys(flattenKeys(items[0].json));
 					}
 					keys = keys.filter(key => !fieldsToExclude.includes(key));
+
 				} if (compare === 'selectedFields') {
 					const fieldsToCompare = (this.getNodeParameter('fieldsToCompare', 0) as string).split(',');
-					if (fieldsToCompare.length === 0) {
+					if (Array.isArray(fieldsToCompare) && fieldsToCompare[0] === '') {
 						throw new NodeOperationError(this.getNode(), 'No fields specified. Please add a field to compare on');
 					}
 					if (allowDotNotation) {
@@ -692,7 +757,7 @@ return 0;`,
 				// This solution is O(nlogn)
 				// add original index to the items
 				const newItems = items.map((item, index) => ({ json: { ...item['json'], INDEX: index, }, } as INodeExecutionData));
-				// sort items using the compare keys				
+				// sort items using the compare keys
 				newItems.sort((a, b) => {
 					let result = 0;
 
@@ -801,7 +866,7 @@ return 0;`,
 				const keep = this.getNodeParameter('keep', 0) as string;
 
 				if (maxItems > items.length) {
-					throw new NodeOperationError(this.getNode(), 'The provided max items number is larger than the input items number');
+					return this.prepareOutputData(newItems);
 				}
 
 				if (keep === 'firstItems') {
@@ -827,7 +892,11 @@ const compareItems = (obj: INodeExecutionData, obj2: INodeExecutionData, keys: s
 	for (const key of keys) {
 
 		if (!keys1.includes(key) || !keys2.includes(key)) {
-			throw new Error(`Key "${key}" does not exist in one of the input items`);
+			if (allowDotNotation === false && key.includes('.')) {
+				throw new Error(`If you're trying to use a nested field, make sure you turn on 'allow dot notation' in the node options`);
+			} else {
+				throw new Error(`${key}' field is missing from some input items`);
+			}
 		}
 		if (allowDotNotation) {
 			if (!isEqual(get(obj.json, key), get(obj2.json, key))) {
