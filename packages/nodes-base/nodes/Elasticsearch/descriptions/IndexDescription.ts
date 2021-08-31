@@ -81,7 +81,7 @@ export const indexFields = [
 			{
 				displayName: 'Aliases',
 				name: 'aliases',
-				description: 'Index aliases which include the index, as an <a href="https://www.elastic.co/guide/en/elasticsearch/reference/current/indices-aliases.html" target="_blank">alias object</a>',
+				description: 'Index aliases which include the index, as an <a href="https://www.elastic.co/guide/en/elasticsearch/reference/current/indices-aliases.html">alias object</a>',
 				type: 'json',
 				typeOptions: {
 					alwaysOpenEditWindow: true,
@@ -99,7 +99,7 @@ export const indexFields = [
 			{
 				displayName: 'Mappings',
 				name: 'mappings',
-				description: 'Mapping for fields in the index, as <a href="https://www.elastic.co/guide/en/elasticsearch/reference/current/mapping.html" target="_blank">mapping object</a>',
+				description: 'Mapping for fields in the index, as <a href="https://www.elastic.co/guide/en/elasticsearch/reference/current/mapping.html">mapping object</a>',
 				type: 'json',
 				typeOptions: {
 					alwaysOpenEditWindow: true,
@@ -110,14 +110,14 @@ export const indexFields = [
 			{
 				displayName: 'Master Timeout',
 				name: 'master_timeout',
-				description: 'Period to wait for a connection to the master node. If no response is received before the timeout expires,<br>the request fails and returns an error. Defaults to <code>1m</code>. See the <a href="https://www.elastic.co/guide/en/elasticsearch/reference/current/common-options.html#time-units" target="_blank">Elasticsearch time units reference</a>',
+				description: 'Period to wait for a connection to the master node. If no response is received before the timeout expires,<br>the request fails and returns an error. Defaults to <code>1m</code>. See the <a href="https://www.elastic.co/guide/en/elasticsearch/reference/current/common-options.html#time-units">Elasticsearch time units reference</a>',
 				type: 'string',
 				default: '1m',
 			},
 			{
 				displayName: 'Settings',
 				name: 'settings',
-				description: 'Configuration options for the index, as an <a href="https://www.elastic.co/guide/en/elasticsearch/reference/current/index-modules.html#index-modules-settings" target="_blank">index settings object</a>',
+				description: 'Configuration options for the index, as an <a href="https://www.elastic.co/guide/en/elasticsearch/reference/current/index-modules.html#index-modules-settings">index settings object</a>',
 				type: 'json',
 				typeOptions: {
 					alwaysOpenEditWindow: true,
@@ -128,7 +128,7 @@ export const indexFields = [
 			{
 				displayName: 'Timeout',
 				name: 'timeout',
-				description: 'Period to wait for a response. If no response is received before the timeout expires, the request<br>fails and returns an error. Defaults to <code>30s</code>. See the <a href="https://www.elastic.co/guide/en/elasticsearch/reference/current/common-options.html#time-units" target="_blank">Elasticsearch time units reference</a>',
+				description: 'Period to wait for a response. If no response is received before the timeout expires, the request<br>fails and returns an error. Defaults to <code>30s</code>. See the <a href="https://www.elastic.co/guide/en/elasticsearch/reference/current/common-options.html#time-units">Elasticsearch time units reference</a>',
 				type: 'string',
 				default: '30s',
 			},
@@ -269,7 +269,7 @@ export const indexFields = [
 			{
 				displayName: 'Master Timeout',
 				name: 'master_timeout',
-				description: 'Period to wait for a connection to the master node. If no response is received before the timeout expires,<br>the request fails and returns an error. Defaults to <code>1m</code>. See the <a href="https://www.elastic.co/guide/en/elasticsearch/reference/current/common-options.html#time-units" target="_blank">Elasticsearch time units reference</a>',
+				description: 'Period to wait for a connection to the master node. If no response is received before the timeout expires,<br>the request fails and returns an error. Defaults to <code>1m</code>. See the <a href="https://www.elastic.co/guide/en/elasticsearch/reference/current/common-options.html#time-units">Elasticsearch time units reference</a>',
 				type: 'string',
 				default: '1m',
 			},
