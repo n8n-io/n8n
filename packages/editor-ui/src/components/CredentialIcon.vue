@@ -1,7 +1,7 @@
 <template>
 	<div>
 		<img v-if="filePath" :class="$style.credIcon" :src="filePath" />
-		<NodeIcon v-else-if="relevantNode" :nodeType="relevantNode" />
+		<NodeIcon v-else-if="relevantNode" :nodeType="relevantNode" :size="28" />
 	</div>
 </template>
 

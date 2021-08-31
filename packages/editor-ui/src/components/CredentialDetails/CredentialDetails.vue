@@ -790,11 +790,6 @@ export default mixins(genericHelpers, showMessage, nodeHelpers).extend({
 	margin-right: var(--spacing-xs);
 }
 
-.defaultCredIcon {
-	height: 26px;
-	width: 26px;
-}
-
 .valueLabel {
 	font-weight: var(--font-weight-regular);
 }
