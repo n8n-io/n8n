@@ -13,7 +13,7 @@ export class AwsSecretsManager implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'AWS Secrets Manager',
 		name: 'awsSecretsManager',
-		icon: 'file:secrets-mananger.png',
+		icon: 'file:secrets-manager.png',
 		group: ['output'],
 		version: 1,
 		subtitle: '={{$parameter["operation"]}}',
