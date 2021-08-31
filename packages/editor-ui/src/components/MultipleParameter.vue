@@ -3,7 +3,7 @@
 
 		<div class="parameter-name">
 			{{parameter.displayName}}:
-			<n8n-tooltip class="parameter-info" placement="top" v-if="parameter.description" >
+			<n8n-tooltip v-if="parameter.description"  class="parameter-info" placement="top">
 				<div slot="content" v-html="parameter.description"></div>
 				<font-awesome-icon icon="question-circle" />
 			</n8n-tooltip>

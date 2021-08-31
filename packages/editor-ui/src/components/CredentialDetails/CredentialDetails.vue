@@ -9,7 +9,7 @@
 		:beforeClose="beforeClose"
 	>
 		<template slot="header">
-			<div :class="$style.header" v-if="credentialType">
+			<div v-if="credentialType" :class="$style.header">
 				<div :class="$style.credInfo">
 					<div :class="$style.credIcon">
 						<CredentialIcon :credentialTypeName="credentialTypeName" />
@@ -77,7 +77,7 @@
 						>
 					</n8n-menu>
 				</div>
-				<div :class="$style.mainContent" v-if="activeTab === 'connection'">
+				<div v-if="activeTab === 'connection'" :class="$style.mainContent">
 					<credentials-input
 						v-if="credentialType"
 						:credentialTypeData="credentialType"
@@ -87,7 +87,7 @@
 						@oauth="oAuthCredentialAuthorize"
 					/>
 				</div>
-				<div :class="$style.mainContent" v-if="activeTab === 'info'">
+				<div v-if="activeTab === 'info'" :class="$style.mainContent">
 					<el-row>
 						<el-col :span="8">
 							<span :class="$style.label">Can be used with:</span>
