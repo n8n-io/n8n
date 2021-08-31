@@ -35,7 +35,14 @@
 
 		<div v-if="isOAuthType">
 			<span v-if="requiredPropertiesFilled === false">
+				<img
+					v-if="isGoogleOAuthType"
+					:src="basePath + 'google-signin-light-disabled.png'"
+					:class="$style.googleIconDisabled"
+					alt="Sign in with Google"
+				/>
 				<n8n-button
+					v-else
 					title="Connect OAuth Credentials"
 					label="Connect my account"
 					:disabled="true"
@@ -60,8 +67,8 @@
 			<span v-else>
 				<span v-if="isGoogleOAuthType">
 					<img
-						:src="basePath + 'google-signin.png'"
-						:class="$style.googleIcon"
+						:src="basePath + 'google-signin-light.png'"
+						:class="$style.googleIconClickable"
 						alt="Sign in with Google"
 						@click.stop="oAuthCredentialAuthorize()"
 					/>
@@ -280,6 +287,15 @@ export default mixins(copyPaste, nodeHelpers, restApi, showMessage).extend({
 
 .googleIcon {
 	width: 191px;
+}
+
+.googleIconDisabled {
+	composes: googleIcon;
+	cursor: not-allowed
+}
+
+.googleIconClickable {
+	composes: googleIcon;
 	cursor: pointer;
 }
 
