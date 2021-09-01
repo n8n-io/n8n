@@ -1,6 +1,5 @@
 import {
 	IExecuteFunctions,
-	IHookFunctions,
 	ILoadOptionsFunctions,
 } from 'n8n-core';
 
@@ -10,36 +9,49 @@ import {
 
 import {
 	IDataObject,
-	IPollFunctions,
 	NodeApiError,
-	NodeOperationError,
 } from 'n8n-workflow';
 
-import * as _ from 'lodash';
+import {
+	GristCredentials,
+	GristDefinedData,
+	GristFilterProperties,
+	GristSortProperties,
+} from './types';
 
-type RequestResponse = any;  // tslint:disable-line:no-any
+export async function gristApiRequest(
+	this: IExecuteFunctions | ILoadOptionsFunctions,
+	method: string,
+	endpoint: string,
+	body: IDataObject | number[] = {},
+	qs: IDataObject = {},
+) {
+	const {
+		apiKey,
+		planType,
+		customSubdomain,
+	} = await this.getCredentials('gristApi') as GristCredentials;
 
-/**
- * Make an API request to Grist
- */
-export async function apiRequest(
-	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions | IPollFunctions,
-	options: OptionsWithUri,
-): Promise<RequestResponse> {
-	const apiKey = (await this.getCredentials('gristApi'))?.apiKey;
+	const subdomain = planType === 'free' ? 'docs' : customSubdomain;
 
-	if (!apiKey) {
-		throw new NodeOperationError(this.getNode(), 'No Grist API key found!');
-	}
-
-	options = {
+	const options: OptionsWithUri = {
 		headers: {
 			Authorization: `Bearer ${apiKey}`,
 		},
-		useQuerystring: false,
+		method,
+		uri: `https://${subdomain}.getgrist.com/api${endpoint}`,
+		qs,
+		body,
 		json: true,
-		...options,
 	};
+
+	if (!Object.keys(body).length) {
+		delete options.body;
+	}
+
+	if (!Object.keys(qs).length) {
+		delete options.qs;
+	}
 
 	try {
 		return await this.helpers.request!(options);
@@ -48,102 +60,27 @@ export async function apiRequest(
 	}
 }
 
-
-export interface SortProperty {
-	field: string;
-	direction: 'asc' | 'desc';
+export function parseSortProperties(sortProperties: GristSortProperties) {
+	return sortProperties.reduce((acc, cur, curIdx) => {
+		if (cur.direction === 'desc') acc += '-';
+		acc += cur.field;
+		if (curIdx !== sortProperties.length - 1) acc += ',';
+		return acc;
+	}, '');
 }
 
-export interface Filter {
-	field: string;
-	values: string[];
+export function parseFilterProperties(filterProperties: GristFilterProperties) {
+ return filterProperties.reduce<{ [key: string]: string[]; }>((acc, cur) => {
+		acc[cur.field] = acc[cur.field] ?? [];
+		const values = cur.values.split(',').map(v => v.trim());
+		acc[cur.field].push(...values);
+		return acc;
+	}, {});
 }
 
-export interface RawListOptions {
-	limit?: number;
-	sort?: { property: SortProperty[] };
-	filter?: { filter: Filter[] };
-}
-
-type FilterValues = Array<boolean | number | string>;
-
-export function filterValues(values: string[]): FilterValues {
-	const result: FilterValues = [...values];
-	values.forEach(value => {
-		const asFloat = parseFloat(value);
-		if (!isNaN(asFloat)) {
-			result.push(asFloat);
-		} else if (value.toLowerCase() === 'true') {
-			result.push(true);
-		} else if (value.toLowerCase() === 'false') {
-			result.push(false);
-		}
-	});
-	return result;
-}
-
-export function parseListOptions(additionalOptions: RawListOptions) {
-	const qs = {} as IDataObject;
-
-	const sort = additionalOptions.sort?.property || [];
-	if (sort.length) {
-		qs.sort = sort
-			.map(({field, direction}) => (direction === 'asc' ? '' : '-') + field)
-			.join(',');
-	}
-
-	const filter = additionalOptions.filter?.filter || [];
-	if (filter.length) {
-		const pairs = filter.map(({field, values}) => [field, filterValues(values)]);
-		qs.filter = JSON.stringify(_.fromPairs(pairs));
-	}
-
-	qs.limit = additionalOptions.limit || 100;
-	return qs;
-}
-
-export function parseRecordId(id: string): number {
-	const result = Number(id);
-	if (parseInt(id, 10) !== result) {
-		throw new Error(`Invalid record ID: '${id}' (must be an integer)`);
-	}
-	return result;
-}
-
-export interface ProcessedInputData<Record> {
-	records: Record[];
-	responses: RequestResponse[];
-}
-
-export async function processInputData<Record>(
-		this: IExecuteFunctions,
-		bulkSize: number,
-		onError: (error: Error, data: IDataObject) => void,
-		options: OptionsWithUri,
-		bodyMapper: (records: Record[]) => any,	// tslint:disable-line:no-any
-		itemMapper: (item: IDataObject, index: number) => Record,
-): Promise<ProcessedInputData<Record>> {
-
-	const records: Record[] = [];
-	this.getInputData().forEach((item, index) => {
-		try {
-			records.push(itemMapper(item.json, index));
-		} catch (error) {
-			onError(error, {item});
-		}
-	});
-
-	const result: ProcessedInputData<Record> = {records: [], responses: []};
-	for (const batch of _.chunk(records, bulkSize)) {
-		const body = bodyMapper(batch);
-		try {
-			const response = await apiRequest.call(this, {body, ...options});
-			result.responses.push(response);
-			result.records.push(...batch);  // only return successful records
-		} catch (error) {
-			onError(error, {body});
-		}
-	}
-
-	return result;
+export function parseFieldsToSend(fieldsToSendProperties: GristDefinedData) {
+	return fieldsToSendProperties.reduce<{ [key: string]: string; }>((acc, cur) => {
+		acc[cur.fieldId] = cur.fieldValue;
+		return acc;
+	}, {});
 }
