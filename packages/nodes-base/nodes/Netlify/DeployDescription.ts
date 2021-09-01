@@ -1,4 +1,6 @@
-import { INodeProperties } from 'n8n-workflow';
+import { 
+	INodeProperties,
+} from 'n8n-workflow';
 
 export const deployOperations = [
 	{
@@ -15,36 +17,26 @@ export const deployOperations = [
 		options: [
 			{
 				name: 'Cancel',
-				value: 'cancelSiteDeploy',
-				description: 'Cancel a deploy'
+				value: 'cancel',
+				description: 'Cancel a deployment',
 			},
 			{
 				name: 'Create',
-				value: 'createSiteDeploy',
-				description: 'Create a new deploy'
+				value: 'create',
+				description: 'Create a new deployment',
 			},
 			{
 				name: 'Get',
-				value: 'getSiteDeploy',
-				description: 'Returns the specified deploy',
+				value: 'get',
+				description: 'Get a deployment',
 			},
 			{
 				name: 'Get All',
-				value: 'listSiteDeploys',
-				description: 'Returns all deploys of a site',
+				value: 'getAll',
+				description: 'Get all deployments',
 			},
-			{
-				name: 'Rollback',
-				value: 'rollbackSiteDeploy',
-				description: 'Rollback site deploy'
-			}
-			// {
-			// 	name: 'Update',
-			// 	value: 'updateSiteDeploys',
-			// 	description: 'Updates a site deploy',
-			// },
 		],
-		default: 'listSiteDeploys',
+		default: 'getAll',
 		description: 'The operation to perform.',
 	},
 ] as INodeProperties[];
@@ -62,16 +54,15 @@ export const deployFields = [
 		displayOptions:{
 			show: {
 				resource: [
-					'deploy'
+					'deploy',
 				],
 				operation: [
-					'getSiteDeploy',
-					'createSiteDeploy',
-					'listSiteDeploys',
-					'rollbackSiteDeploy'
+					'get',
+					'create',
+					'getAll',
 				],
-			}
-		}
+			},
+		},
 	},
 	{
 		displayName: 'Deploy ID',
@@ -81,14 +72,14 @@ export const deployFields = [
 		displayOptions:{
 			show: {
 				resource: [
-					'deploy'
+					'deploy',
 				],
 				operation: [
-					'getSiteDeploy',
-					'cancelSiteDeploy'
+					'get',
+					'cancel',
 				],
-			}
-		}
+			},
+		},
 	},
 		// ----- Get All Deploys ------ //
 	{
@@ -98,7 +89,7 @@ export const deployFields = [
 		displayOptions: {
 			show: {
 				operation: [
-					'listSiteDeploys',
+					'getAll',
 				],
 				resource: [
 					'deploy',
@@ -106,7 +97,7 @@ export const deployFields = [
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -115,7 +106,7 @@ export const deployFields = [
 		displayOptions: {
 			show: {
 				operation: [
-					'listSiteDeploys',
+					'getAll',
 				],
 				resource: [
 					'deploy',
@@ -130,7 +121,7 @@ export const deployFields = [
 			maxValue: 200,
 		},
 		default: 50,
-		description: 'How many results to return.',
+		description: 'How many results to return',
 	},
 	// ---- Create Site Deploy ---- //
 	{
@@ -145,7 +136,7 @@ export const deployFields = [
 					'deploy',
 				],
 				operation: [
-					'createSiteDeploy',
+					'create',
 				],
 			},
 		},

@@ -13,9 +13,7 @@ import {
 	IDataObject, NodeApiError, NodeOperationError,
 } from 'n8n-workflow';
 
-export async function netlifyApiRequest(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: string, endpoint: string, body: any = {}, query: IDataObject = {}, uri?: string): Promise<any> { // tslint:disable-line:no-any
-
-	// const authenticationMethod = this.getNodeParameter('authentication', 0);
+export async function netlifyApiRequest(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: string, endpoint: string, body: any = {}, query: IDataObject = {}, uri?: string, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
 
 	const options: OptionsWithUri = {
 		method,
@@ -32,22 +30,40 @@ export async function netlifyApiRequest(this: IHookFunctions | IExecuteFunctions
 		delete options.body;
 	}
 
+	if (Object.keys(option)) {
+		Object.assign(options, option);
+	}
+
 	try {
-		// if (authenticationMethod === 'accessToken') {
-			const credentials = this.getCredentials('netlifyApi');
+		const credentials = await this.getCredentials('netlifyApi');
 
-			if (credentials === undefined) {
-				throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
-			}
+		if (credentials === undefined) {
+			throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
+		}
 
-			options.headers!['Authorization'] = `Bearer ${credentials.accessToken}`;
+		options.headers!['Authorization'] = `Bearer ${credentials.accessToken}`;
 
-			return await this.helpers.request!(options);
-		// }
-		// else {
-		// 	return await this.helpers.requestOAuth2!.call(this, 'netlifyOAuth2Api', options);
-		// }
+		return await this.helpers.request!(options);
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error);
 	}
+}
+
+export async function netlifyRequestAllItems(this: IExecuteFunctions | ILoadOptionsFunctions, method: string, endpoint: string, body: any = {}, query: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
+
+	const returnData: IDataObject[] = [];
+
+	let responseData;
+	query.page = 0;
+	query.per_page = 100;
+
+	do {
+		responseData = await netlifyApiRequest.call(this, method, endpoint, body, query, undefined, { resolveWithFullResponse: true });
+		query.page++;
+		returnData.push.apply(returnData, responseData.body);
+	} while (
+		responseData.headers.link.includes('next')
+	);
+
+	return returnData;
 }

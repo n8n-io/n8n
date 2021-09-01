@@ -1,4 +1,6 @@
-import { INodeProperties } from 'n8n-workflow';
+import { 
+	INodeProperties,
+} from 'n8n-workflow';
 
 export const siteOperations = [
 	{
@@ -14,32 +16,44 @@ export const siteOperations = [
 		},
 		options: [
 			{
-				name: 'Create',
-				value: 'createSite',
-				description: 'Create a new site'
-			},
-			{
 				name: 'Delete',
-				value: 'deleteSite',
-				description: 'Delete a site'
+				value: 'delete',
+				description: 'Delete a site',
 			},
 			{
-				name: 'Get Site',
-				value: 'getSite',
-				description: 'Returns the specified site',
+				name: 'Get',
+				value: 'get',
+				description: 'Get a site',
 			},
 			{
-				name: 'Get All Sites',
-				value: 'getAllSites',
-				description: 'Returns all sites you have access to',
+				name: 'Get All',
+				value: 'getAll',
+				description: 'Returns all sites',
 			},
 		],
-		default: 'getAllSites',
+		default: 'delete',
 		description: 'The operation to perform.',
 	},
 ] as INodeProperties[];
 
 export const siteFields = [
+	{
+		displayName: 'Site ID',
+		name: 'siteId',
+		required: true,
+		type: 'string',
+		displayOptions: {
+			show: {
+				resource: [
+					'site',
+				],
+				operation: [
+					'get',
+					'delete',
+				],
+			},
+		},
+	},
 	{
 		displayName: 'Return All',
 		name: 'returnAll',
@@ -47,7 +61,7 @@ export const siteFields = [
 		displayOptions: {
 			show: {
 				operation: [
-					'getAllSites',
+					'getAll',
 				],
 				resource: [
 					'site',
@@ -55,7 +69,7 @@ export const siteFields = [
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -64,7 +78,7 @@ export const siteFields = [
 		displayOptions: {
 			show: {
 				operation: [
-					'getAllSites',
+					'getAll',
 				],
 				resource: [
 					'site',
@@ -79,6 +93,6 @@ export const siteFields = [
 			maxValue: 200,
 		},
 		default: 50,
-		description: 'How many results to return.',
+		description: 'How many results to return',
 	},
 ] as INodeProperties[];
