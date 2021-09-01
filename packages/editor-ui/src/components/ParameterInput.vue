@@ -229,7 +229,6 @@ export default mixins(
 			'hideIssues', // boolean
 			'isReadOnly',
 			'inputSize',
-			'multiline', //boolean
 		],
 		data () {
 			return {
