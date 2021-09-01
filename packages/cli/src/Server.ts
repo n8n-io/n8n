@@ -921,7 +921,7 @@ class App {
 					const { type, sourcePath } = nodeTypes.getByName(name, true);
 
 					if (sourcePath && name !== 'n8n-nodes-base.start') {
-						const translation = path.join(path.dirname(sourcePath), 'translations', `${language}.js`);
+						const translation = path.join(path.dirname(sourcePath), 'translations', `${language}.${type.description.name}.js`);
 						if (existsSync(translation)) {
 							type.description.translation = require(translation);
 						}
