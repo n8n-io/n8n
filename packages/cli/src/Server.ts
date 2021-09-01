@@ -1525,40 +1525,43 @@ class App {
 			),
 		);
 
-		this.app.get([`/${this.restEndpoint}/credential-icon/:credentialType`], async (req: express.Request, res: express.Response): Promise<void> => {
-			try {
-				const credentialName = req.params.credentialType;
+		this.app.get(
+			[`/${this.restEndpoint}/credential-icon/:credentialType`],
+			async (req: express.Request, res: express.Response): Promise<void> => {
+				try {
+					const credentialName = req.params.credentialType;
 
-				const credentialTypes = CredentialTypes();
+					const credentialTypes = CredentialTypes();
 
-				const credentialType = credentialTypes.getByName(credentialName);
+					const credentialType = credentialTypes.getByName(credentialName);
 
-				if (credentialType === undefined) {
-					res.status(404).send('The credentialType is not known.');
-					return;
+					if (credentialType === undefined) {
+						res.status(404).send('The credentialType is not known.');
+						return;
+					}
+
+					if (credentialType.icon === undefined) {
+						res.status(404).send('No icon found for credential.');
+						return;
+					}
+
+					if (!credentialType.icon.startsWith('file:')) {
+						res.status(404).send('Credential does not have a file icon.');
+						return;
+					}
+
+					const filepath = credentialType.icon.substr(5);
+
+					const maxAge = 7 * 24 * 60 * 60 * 1000; // 7 days
+					res.setHeader('Cache-control', `private max-age=${maxAge}`);
+
+					res.sendFile(filepath);
+				} catch (error) {
+					// Error response
+					return ResponseHelper.sendErrorResponse(res, error);
 				}
-
-				if (credentialType.icon === undefined) {
-					res.status(404).send('No icon found for credential.');
-					return;
-				}
-
-				if (!credentialType.icon.startsWith('file:')) {
-					res.status(404).send('Credential does not have a file icon.');
-					return;
-				}
-
-				const filepath = credentialType.icon.substr(5);
-
-				const maxAge = 7 * 24 * 60 * 60 * 1000; // 7 days
-				res.setHeader('Cache-control', `private max-age=${maxAge}`);
-
-				res.sendFile(filepath);
-			} catch (error) {
-				// Error response
-				return ResponseHelper.sendErrorResponse(res, error);
-			}
-		});
+			},
+		);
 
 		// ----------------------------------------
 		// OAuth1-Credential/Auth
