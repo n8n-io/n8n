@@ -148,12 +148,12 @@ export default mixins(
 			this.newCredentialUnsubscribe = this.$store.subscribe((mutation, state) => {
 				if (mutation.type === 'credentials/upsertCredential'){
 					this.credentialSelected(credentialType, mutation.payload.name);
+					this.stopListeningForNewCredentials();
 				}
 				if (mutation.type === 'credentials/deleteCredential') {
 					this.credentialSelected(credentialType, mutation.payload.name);
+					this.stopListeningForNewCredentials();
 				}
-
-				this.stopListeningForNewCredentials();
 			});
 		},
 
@@ -166,9 +166,8 @@ export default mixins(
 		credentialSelected (credentialType: string, credentialName: string) {
 			let selected = undefined;
 			if (credentialName === NEW_CREDENTIALS_TEXT) {
-				this.$store.dispatch('ui/openNewCredentialDetails', { type: credentialType });
-
 				this.listenForNewCredentials(credentialType);
+				this.$store.dispatch('ui/openNewCredentialDetails', { type: credentialType });
 			}
 			else {
 				selected = credentialName;
