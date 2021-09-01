@@ -107,6 +107,7 @@
 			:loading="remoteParameterOptionsLoading"
 			:disabled="isReadOnly || remoteParameterOptionsLoading"
 			:title="displayTitle"
+			:popper-append-to-body="true"
 			@change="valueChanged"
 			@keydown.stop
 			@focus="setFocus"
