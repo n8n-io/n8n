@@ -10,7 +10,7 @@ module.exports = [
         "entities": Object.values(entities),
         "database": path.join(UserSettings.getUserN8nFolderPath(), 'database.sqlite'),
         "migrations": [
-           "./src/databases/sqlite/migrations/*.ts"
+           "./src/databases/sqlite/migrations/index.ts"
         ],
         "subscribers": [
             "./src/databases/sqlite/subscribers/*.ts"
@@ -33,7 +33,7 @@ module.exports = [
         "schema": "public",
         "entities": Object.values(entities),
         "migrations": [
-           "./src/databases/postgresdb/migrations/*.ts"
+           "./src/databases/postgresdb/migrations/index.ts"
         ],
         "subscribers": [
            "src/subscriber/**/*.ts"
@@ -55,7 +55,7 @@ module.exports = [
         "logging": false,
         "entities": Object.values(entities),
         "migrations": [
-           "./src/databases/mysqldb/migrations/*.ts"
+           "./src/databases/mysqldb/migrations/index.ts"
         ],
         "subscribers": [
            "src/subscriber/**/*.ts"
