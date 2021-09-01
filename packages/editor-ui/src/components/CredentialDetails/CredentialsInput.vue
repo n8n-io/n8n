@@ -304,6 +304,7 @@ export default mixins(copyPaste, nodeHelpers, restApi, showMessage).extend({
 	font-size: var(--font-size-2xs);
 	line-height: var(--font-line-height-loose);
 	font-weight: var(--font-weight-regular);
+	word-break: normal;
 }
 
 
@@ -312,6 +313,7 @@ export default mixins(copyPaste, nodeHelpers, restApi, showMessage).extend({
 	font-size: var(--font-size-2xs);
 	font-weight: var(--font-weight-bold);
 	line-height: var(--font-size-s);
+	word-break: normal;
 
 	svg {
 		font-size: var(--font-size-s);
