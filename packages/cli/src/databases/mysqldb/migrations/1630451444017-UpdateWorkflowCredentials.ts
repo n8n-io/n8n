@@ -1,6 +1,9 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 import config = require('../../../../config');
 
+// replacing the credentials in workflows and execution
+// `nodeType: name` changes to `nodeType: { id, name }`
+
 export class UpdateWorkflowCredentials1630451444017 implements MigrationInterface {
 	name = 'UpdateWorkflowCredentials1630451444017';
 
