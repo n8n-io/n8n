@@ -17,6 +17,7 @@ import {
 	IRun,
 	IRunData,
 	ITaskData,
+	NodeCredentialTestRequest,
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
 
@@ -141,7 +142,7 @@ export interface IRestApi {
 	getWorkflows(filter?: object): Promise<IWorkflowShortResponse[]>;
 	getWorkflowFromUrl(url: string): Promise<IWorkflowDb>;
 	createNewCredentials(sendData: ICredentialsDecrypted): Promise<ICredentialsResponse>;
-	testCredential(sendData: ICredentialsDecrypted): Promise<ICredentialsResponse>;
+	testCredential(sendData: NodeCredentialTestRequest): Promise<ICredentialsResponse>;
 	deleteCredentials(id: string): Promise<void>;
 	updateCredentials(id: string, data: ICredentialsDecrypted): Promise<ICredentialsResponse>;
 	getAllCredentials(filter?: object): Promise<ICredentialsResponse[]>;

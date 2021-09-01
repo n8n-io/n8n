@@ -144,6 +144,7 @@ import {
 	INodeParameters,
 	INodeProperties,
 	INodeTypeDescription,
+	NodeCredentialTestRequest,
 	NodeHelpers,
 } from 'n8n-workflow';
 
@@ -237,6 +238,10 @@ export default mixins(
 			// eslint-disable-next-line no-console
 			console.log(this.credentialTypeData.name);
 			if (['oAuth1Api', 'oAuth2Api'].includes(this.credentialTypeData.name)) {
+				return false;
+			}
+			const types = this.parentTypes(this.credentialTypeData.name);
+			if(types.includes('oAuth1Api') || types.includes('oAuth2Api')) {
 				return false;
 			}
 			// TODO: Properly detect if credential is testable.
@@ -462,9 +467,13 @@ export default mixins(
 				data: NodeHelpers.getNodeParameters(this.credentialTypeData.properties as INodeProperties[], this.propertyValue as INodeParameters, false, false),
 			} as ICredentialsDecrypted;
 
+			const testRequest = {
+				credentials: newCredentials,
+			} as NodeCredentialTestRequest;
+
 			let result;
 			try {
-				result = await this.restApi().testCredential(newCredentials);
+				result = await this.restApi().testCredential(testRequest);
 			} catch (error) {
 				this.$showError(error, 'Problem Creating Credentials', 'There was a problem creating the credentials:');
 				return 'null';

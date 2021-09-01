@@ -638,6 +638,11 @@ export interface NodeCredentialTestResult {
 	message: string;
 }
 
+export interface NodeCredentialTestRequest {
+	testWithNode?: string; // node name i.e. slack
+	credentials: ICredentialsDecrypted;
+}
+
 export type WebhookSetupMethodNames = 'checkExists' | 'create' | 'delete';
 
 export interface IWebhookSetupMethods {

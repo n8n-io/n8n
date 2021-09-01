@@ -72,6 +72,7 @@ import {
 	IWorkflowBase,
 	IWorkflowCredentials,
 	LoggerProxy,
+	NodeCredentialTestRequest,
 	NodeCredentialTestResult,
 	Workflow,
 	WorkflowExecuteMode,
@@ -1335,12 +1336,8 @@ class App {
 			`/${this.restEndpoint}/credentials-test`,
 			ResponseHelper.send(
 				async (req: express.Request, res: express.Response): Promise<NodeCredentialTestResult> => {
-					const incomingData = req.body as ICredentialsDecrypted;
-					const credentialType = incomingData.type;
-
-					// TODO: Make this dynamic. If name is given, select specific node.
-					// If no name is given, use first node that can test this
-					const testCredentialWithNodeType = '';
+					const incomingData = req.body as NodeCredentialTestRequest;
+					const credentialType = incomingData.credentials.type;
 
 					// Find nodes that can test this credential.
 					const nodeTypes = NodeTypes();
@@ -1354,10 +1351,7 @@ class App {
 						| undefined;
 
 					const nodeThatCanTestThisCredential = allNodes.find((node) => {
-						if (
-							testCredentialWithNodeType &&
-							node.description.name !== testCredentialWithNodeType
-						) {
+						if (incomingData.testWithNode && node.description.name !== incomingData.testWithNode) {
 							return false;
 						}
 						const credentialTestable = node.description.credentials?.find((credential) => {
@@ -1387,7 +1381,10 @@ class App {
 
 					const credentialTestFunctions = NodeExecuteFunctions.getCredentialTestFunctions();
 
-					const output = await foundTestFunction.call(credentialTestFunctions, incomingData);
+					const output = await foundTestFunction.call(
+						credentialTestFunctions,
+						incomingData.credentials,
+					);
 					return Promise.resolve(output);
 				},
 			),
