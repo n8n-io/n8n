@@ -28,8 +28,11 @@
 			<template v-slot:title>
 				<slot name="header" v-if="!loading" />
 			</template>
-			<div v-if="!loading" class="modal-content" @keydown.stop @keydown.enter="handleEnter" @keydown.esc="closeDialog">
-				<slot name="content"/>
+			<div class="modal-content" @keydown.stop @keydown.enter="handleEnter" @keydown.esc="closeDialog">
+				<slot v-if="!loading"  name="content"/>
+				<div class="loader" v-else>
+					<n8n-spinner />
+				</div>
 			</div>
 			<el-row  v-if="!loading" class="modal-footer">
 				<slot name="footer" :close="closeDialog" />
@@ -177,5 +180,14 @@ export default Vue.extend({
 
 .modal-content > .el-row {
 	margin-bottom: 15px;
+}
+
+.loader {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	color: var(--color-primary-tint-1);
+	font-size: 30px;
+	height: 80%;
 }
 </style>

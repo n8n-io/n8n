@@ -10,9 +10,7 @@ import Dialog from 'element-ui/lib/dialog';
 import Dropdown from 'element-ui/lib/dropdown';
 import DropdownMenu from 'element-ui/lib/dropdown-menu';
 import DropdownItem from 'element-ui/lib/dropdown-item';
-import Menu from 'element-ui/lib/menu';
 import Submenu from 'element-ui/lib/submenu';
-import MenuItem from 'element-ui/lib/menu-item';
 import Radio from 'element-ui/lib/radio';
 import RadioGroup from 'element-ui/lib/radio-group';
 import RadioButton from 'element-ui/lib/radio-button';
@@ -55,6 +53,7 @@ import {
 	N8nMenu,
 	N8nMenuItem,
 	N8nSelect,
+	N8nSpinner,
 	N8nOption,
 } from 'n8n-design-system';
 import { ElMessageBoxOptions } from "element-ui/types/message-box";
@@ -67,7 +66,10 @@ Vue.use(N8nIconButton);
 Vue.use(N8nInput);
 Vue.use(N8nInputLabel);
 Vue.use(N8nInputNumber);
+Vue.use(N8nMenu);
+Vue.use(N8nMenuItem);
 Vue.use(N8nSelect);
+Vue.use(N8nSpinner);
 Vue.use(N8nOption);
 
 // element io
@@ -97,8 +99,6 @@ Vue.use(Tag);
 Vue.use(Row);
 Vue.use(Col);
 Vue.use(Badge);
-Vue.use(N8nMenu);
-Vue.use(N8nMenuItem);
 Vue.use(Card);
 Vue.use(ColorPicker);
 Vue.use(Transfer);
