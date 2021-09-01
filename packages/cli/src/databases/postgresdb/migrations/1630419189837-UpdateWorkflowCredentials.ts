@@ -34,7 +34,7 @@ export class UpdateWorkflowCredentials1630419189837 implements MigrationInterfac
 					if (typeof name === 'string') {
 						// @ts-ignore
 						const matchingCredentials = credentialsEntities.find(credentials => credentials.name === name && credentials.type === type);
-						node.credentials[type] = { id: matchingCredentials?.id || null, name };
+						node.credentials[type] = { id: matchingCredentials?.id.toString() || null, name };
 						credentialsUpdated = true;
 					}
 				}
@@ -68,7 +68,7 @@ export class UpdateWorkflowCredentials1630419189837 implements MigrationInterfac
 					if (typeof name === 'string') {
 						// @ts-ignore
 						const matchingCredentials = credentialsEntities.find(credentials => credentials.name === name && credentials.type === type);
-						node.credentials[type] = { id: matchingCredentials?.id || null, name };
+						node.credentials[type] = { id: matchingCredentials?.id.toString() || null, name };
 						credentialsUpdated = true;
 					}
 				}

@@ -23,7 +23,6 @@ export async function WorkflowCredentials(nodes: INode[]): Promise<IWorkflowCred
 			}
 			nodeCredentials = node.credentials[type];
 
-			// TODO: if no id check for unique name
 			if (nodeCredentials.id && !returnCredentials[type].hasOwnProperty(nodeCredentials.id)) {
 				foundCredentials = await Db.collections.Credentials!.find({ id: nodeCredentials.id, type });
 				if (!foundCredentials.length) {

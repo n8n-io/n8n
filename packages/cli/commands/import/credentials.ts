@@ -43,7 +43,6 @@ export class ImportCredentialsCommand extends Command {
 		}),
 	};
 
-	// TODO: check me!!!
 	async run() {
 		const logger = getLogger();
 		LoggerProxy.init(logger);
