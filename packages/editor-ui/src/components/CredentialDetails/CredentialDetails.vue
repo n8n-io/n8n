@@ -29,7 +29,7 @@
 							<div v-else :class="$style.nameInput">
 								<n8n-input
 									:value="credentialName"
-									size="medium"
+									size="xlarge"
 									ref="nameInput"
 									@input="onNameEdit"
 									@change="disableNameEdit"
@@ -87,7 +87,7 @@
 						@oauth="oAuthCredentialAuthorize"
 					/>
 				</div>
-				<div v-if="activeTab === 'info'" :class="$style.infoContent">
+				<div v-if="activeTab === 'info'" :class="$style.mainContent">
 					<el-row>
 						<el-col :span="8" :class="$style.accessLabel">
 							<span >Can be used with:</span>
@@ -726,8 +726,8 @@ export default mixins(genericHelpers, showMessage, nodeHelpers).extend({
 .nameInput {
 	z-index: 1;
 	position: absolute;
-	top: -4px;
-	left: -10px;
+	top: -13px;
+	left: -9px;
 	width: 400px;
 }
 
@@ -739,11 +739,6 @@ export default mixins(genericHelpers, showMessage, nodeHelpers).extend({
 	> * {
 		margin-bottom: var(--spacing-l);
 	}
-}
-
-.infoContent {
-	composes: mainContent;
-	margin-top: var(--spacing-xs);
 }
 
 .sidebar {
@@ -802,7 +797,7 @@ export default mixins(genericHelpers, showMessage, nodeHelpers).extend({
 .credIcon {
 	display: flex;
 	align-items: center;
-	margin-right: var(--spacing-2xs);
+	margin-right: var(--spacing-xs);
 }
 
 .valueLabel {
