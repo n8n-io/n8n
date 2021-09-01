@@ -37,7 +37,7 @@
 								/>
 							</div>
 						</div>
-						<div :class="$style.subtitle">{{ credentialType.displayName }}</div>
+						<div :class="$style.subtitle">{{ isNameEdit ? '...' : credentialType.displayName }}</div>
 					</div>
 				</div>
 				<div :class="$style.credActions">

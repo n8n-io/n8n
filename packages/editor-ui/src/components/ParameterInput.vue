@@ -226,7 +226,7 @@ export default mixins(
 			'parameter', // NodeProperties
 			'path', // string
 			'value',
-			'isCredential', // boolean
+			'hideIssues', // boolean
 			'isReadOnly',
 			'inputSize',
 			'multiline', //boolean
@@ -431,7 +431,7 @@ export default mixins(
 				return 'text';
 			},
 			getIssues (): string[] {
-				if (this.isCredential === true || this.node === null) {
+				if (this.hideIssues === true || this.node === null) {
 					return [];
 				}
 

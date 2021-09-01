@@ -25,7 +25,7 @@
 					:parameter="parameter"
 					:value="credentialData[parameter.name]"
 					:path="parameter.name"
-					:isCredential="true"
+					:hideIssues="true"
 					:displayOptions="true"
 					@valueChanged="valueChanged"
 					inputSize="large"
