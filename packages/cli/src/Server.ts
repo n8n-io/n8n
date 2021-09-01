@@ -904,7 +904,7 @@ class App {
 		}));
 
 
-		// Returns node information baesd on namese
+		// Returns node information based on names
 		this.app.post(`/${this.restEndpoint}/node-types`, ResponseHelper.send(async (req: express.Request, res: express.Response): Promise<INodeTypeDescription[]> => {
 			const nodeNames = _.get(req, 'body.nodeNames', []) as string[];
 			const nodeTypes = NodeTypes();
