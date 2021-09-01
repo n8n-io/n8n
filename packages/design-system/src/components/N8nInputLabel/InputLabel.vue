@@ -1,20 +1,18 @@
 <template functional>
 	<div :class="$style.inputLabel">
-		<label>
-			<div :class="$style.label">
-				<span>
-					{{ props.label }}
-					<span v-if="props.required" :class="$style.required">*</span>
-				</span>
-				<span :class="$style.infoIcon" v-if="props.tooltipText">
-					<n8n-tooltip placement="top" :popper-class="$style.tooltipPopper">
-						<n8n-icon icon="info-circle" />
-						<div slot="content" v-html="props.tooltipText"></div>
-					</n8n-tooltip>
-				</span>
-			</div>
-			<slot></slot>
-		</label>
+		<div :class="$style.label">
+			<span>
+				{{ props.label }}
+				<span v-if="props.required" :class="$style.required">*</span>
+			</span>
+			<span :class="$style.infoIcon" v-if="props.tooltipText">
+				<n8n-tooltip placement="top" :popper-class="$style.tooltipPopper">
+					<n8n-icon icon="info-circle" />
+					<div slot="content" v-html="props.tooltipText"></div>
+				</n8n-tooltip>
+			</span>
+		</div>
+		<slot></slot>
 	</div>
 </template>
 
