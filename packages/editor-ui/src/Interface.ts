@@ -569,8 +569,6 @@ export interface IRootState {
 	activeActions: string[];
 	activeNode: string | null;
 	baseUrl: string;
-	credentials: ICredentialsResponse[] | null;
-	credentialTypes: ICredentialType[] | null;
 	endpointWebhook: string;
 	endpointWebhookTest: string;
 	executionId: string | null;

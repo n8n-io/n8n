@@ -48,8 +48,6 @@ const state: IRootState = {
 	activeNode: null,
 	// @ts-ignore
 	baseUrl: process.env.VUE_APP_URL_BASE_API ? process.env.VUE_APP_URL_BASE_API : (window.BASE_PATH === '/%BASE_PATH%/' ? '/' : window.BASE_PATH),
-	credentials: null,
-	credentialTypes: null,
 	endpointWebhook: 'webhook',
 	endpointWebhookTest: 'webhook-test',
 	executionId: null,
@@ -309,43 +307,6 @@ export const store = new Vuex.Store({
 					}
 				}
 			}
-		},
-
-		// Credentials
-		addCredentials (state, credentialData: ICredentialsResponse) {
-			if (state.credentials !== null) {
-				state.credentials.push(credentialData);
-			}
-		},
-		removeCredentials (state, credentialData: ICredentialsResponse) {
-			if (state.credentials === null) {
-				return;
-			}
-
-			for (let i = 0; i < state.credentials.length; i++) {
-				if (state.credentials[i].id === credentialData.id) {
-					state.credentials.splice(i, 1);
-					return;
-				}
-			}
-		},
-		updateCredentials (state, credentialData: ICredentialsResponse) {
-			if (state.credentials === null) {
-				return;
-			}
-
-			for (let i = 0; i < state.credentials.length; i++) {
-				if (state.credentials[i].id === credentialData.id) {
-					state.credentials[i] = credentialData;
-					return;
-				}
-			}
-		},
-		setCredentials (state, credentials: ICredentialsResponse[]) {
-			Vue.set(state, 'credentials', credentials);
-		},
-		setCredentialTypes (state, credentialTypes: ICredentialType[]) {
-			Vue.set(state, 'credentialTypes', credentialTypes);
 		},
 
 		renameNodeSelectedAndExecution (state, nameData) {
