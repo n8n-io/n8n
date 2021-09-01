@@ -1,7 +1,6 @@
 #!/usr/bin/env node
-var alias = require('module-alias');
+
 var path = require('path'); // tslint:disable-line:no-var-keyword
-alias(path.resolve(__dirname, "../"));
 
 // Make sure that it also find the config folder when it
 // did get started from another folder that the root one.

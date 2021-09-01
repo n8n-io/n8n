@@ -7,7 +7,7 @@
 					{{parameter.displayName}}:
 				</div>
 				<div class="text-editor" @keydown.stop @keydown.esc="closeDialog()">
-					<el-input v-model="tempValue" type="textarea" ref="inputField" :value="value" :placeholder="parameter.placeholder" @change="valueChanged" @keydown.stop="noOp" rows="15" />
+					<n8n-input v-model="tempValue" type="textarea" ref="inputField" :value="value" :placeholder="parameter.placeholder" @change="valueChanged" @keydown.stop="noOp" :rows="15" />
 				</div>
 			</div>
 
@@ -17,10 +17,6 @@
 
 <script lang="ts">
 import Vue from 'vue';
-
-import {
-	Workflow,
-} from 'n8n-workflow';
 
 export default Vue.extend({
 

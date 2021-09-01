@@ -12,10 +12,10 @@
 		</el-switch>
 
 		<div class="could-not-be-started" v-if="couldNotBeStarted">
-			<el-tooltip placement="top">
+			<n8n-tooltip placement="top">
 				<div @click="displayActivationError" slot="content">The workflow is set to be active but could not be started.<br />Click to display error message.</div>
 				<font-awesome-icon @click="displayActivationError" icon="exclamation-triangle" />
-			</el-tooltip>
+			</n8n-tooltip>
 		</div>
 	</div>
 </template>
@@ -32,6 +32,7 @@ import {
 } from '../Interface';
 
 import mixins from 'vue-typed-mixins';
+import { mapGetters } from "vuex";
 
 export default mixins(
 	externalHooks,
@@ -54,6 +55,9 @@ export default mixins(
 				};
 			},
 			computed: {
+				...mapGetters({
+					dirtyState: "getStateIsDirty",
+				}),
 				nodesIssuesExist (): boolean {
 					return this.$store.getters.nodesIssuesExist;
 				},
@@ -100,9 +104,11 @@ export default mixins(
 						// workflow. If that would not happen then it could be quite confusing
 						// for people because it would activate a different version of the workflow
 						// than the one they can currently see.
-						const importConfirm = await this.confirmMessage(`When you activate the workflow all currently unsaved changes of the workflow will be saved.`, 'Activate and save?', 'warning', 'Yes, activate and save!');
-						if (importConfirm === false) {
-							return;
+						if (this.dirtyState) {
+							const importConfirm = await this.confirmMessage(`When you activate the workflow all currently unsaved changes of the workflow will be saved.`, 'Activate and save?', 'warning', 'Yes, activate and save!');
+							if (importConfirm === false) {
+								return;
+							}
 						}
 
 						// Get the current workflow data that it gets saved together with the activation
@@ -179,7 +185,7 @@ export default mixins(
 	margin-left: 0.5em;
 }
 
-/deep/ .el-loading-spinner {
+::v-deep .el-loading-spinner {
 	margin-top: -10px;
 }
 </style>

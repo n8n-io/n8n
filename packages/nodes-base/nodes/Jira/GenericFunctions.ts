@@ -23,9 +23,9 @@ export async function jiraSoftwareCloudApiRequest(this: IHookFunctions | IExecut
 
 	let jiraCredentials: ICredentialDataDecryptedObject | undefined;
 	if (jiraVersion === 'server') {
-		jiraCredentials = this.getCredentials('jiraSoftwareServerApi');
+		jiraCredentials = await this.getCredentials('jiraSoftwareServerApi');
 	} else {
-		jiraCredentials = this.getCredentials('jiraSoftwareCloudApi');
+		jiraCredentials = await this.getCredentials('jiraSoftwareCloudApi');
 	}
 
 	if (jiraCredentials === undefined) {

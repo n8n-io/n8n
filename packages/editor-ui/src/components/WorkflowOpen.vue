@@ -19,9 +19,9 @@
 						/>
 					</div>
 					<div class="search-filter">
-						<el-input placeholder="Search workflows..." ref="inputFieldFilter" v-model="filterText">
-							<i slot="prefix" class="el-input__icon el-icon-search"></i>
-						</el-input>
+						<n8n-input placeholder="Search workflows..." ref="inputFieldFilter" v-model="filterText">
+							<font-awesome-icon slot="prefix" icon="search"></font-awesome-icon>
+						</n8n-input>
 					</div>
 				</div>
 			</template>
@@ -32,7 +32,7 @@
 						<template slot-scope="scope">
 							<div :key="scope.row.id">
 								<span class="name">{{scope.row.name}}</span>
-								<TagsContainer class="hidden-sm-and-down" :tagIds="getIds(scope.row.tags)" :limit="3" />
+								<TagsContainer class="hidden-sm-and-down" :tagIds="getIds(scope.row.tags)" :limit="3" @click="onTagClick" :clickable="true" :hoverable="true" />
 							</div>
 						</template>
 					</el-table-column>
@@ -123,6 +123,11 @@ export default mixins(
 		},
 		updateTagsFilter(tags: string[]) {
 			this.filterTagIds = tags;
+		},
+		onTagClick(tagId: string) {
+			if (tagId !== 'count' && !this.filterTagIds.includes(tagId)) {
+				this.filterTagIds.push(tagId);
+			}
 		},
 		async openWorkflow (data: IWorkflowShortResponse, column: any) { // tslint:disable-line:no-any
 			if (column.label !== 'Active') {

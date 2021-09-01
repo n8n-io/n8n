@@ -24,7 +24,7 @@
 // 		group: ['trigger'],
 // 		version: 1,
 // 		subtitle: '={{$parameter["owner"] + "/" + $parameter["repository"] + ": " + $parameter["events"].join(", ")}}',
-// 		description: 'Starts the workflow when a file on Google Drive got changed.',
+// 		description: 'Starts the workflow when a file on Google Drive is changed',
 // 		defaults: {
 // 			name: 'Google Drive Trigger',
 // 			color: '#3f87f2',
@@ -98,7 +98,7 @@
 
 // 				const resourceId = this.getNodeParameter('resourceId') as string;
 
-// 				const credentials = this.getCredentials('googleApi');
+// 				const credentials = await this.getCredentials('googleApi');
 
 // 				if (credentials === undefined) {
 // 					throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
@@ -190,7 +190,7 @@
 
 // 				const resourceId = this.getNodeParameter('resourceId') as string;
 
-// 				const credentials = this.getCredentials('googleApi');
+// 				const credentials = await this.getCredentials('googleApi');
 
 // 				if (credentials === undefined) {
 // 					throw new NodeOperationError(this.getNode(), 'No credentials got returned!');

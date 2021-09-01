@@ -213,33 +213,24 @@ export const pushConnection = mixins(
 
 					const runDataExecuted = pushData.data;
 
-					let runDataExecutedErrorMessage;
+					const runDataExecutedErrorMessage = this.$getExecutionError(runDataExecuted.data.resultData.error);
+
 					// @ts-ignore
 					const workflow = this.getWorkflow();
-					if (runDataExecuted.finished !== true) {
-						// There was a problem with executing the workflow
-						let errorMessage = 'There was a problem executing the workflow!';
-
-						if (runDataExecuted.data.resultData.error && runDataExecuted.data.resultData.error.message) {
-							let nodeName: string | undefined;
-							if (runDataExecuted.data.resultData.error.node) {
-								nodeName = typeof runDataExecuted.data.resultData.error.node === 'string'
-									? runDataExecuted.data.resultData.error.node
-									: runDataExecuted.data.resultData.error.node.name;
-							}
-
-							const receivedError = nodeName
-								? `${nodeName}: ${runDataExecuted.data.resultData.error.message}`
-								: runDataExecuted.data.resultData.error.message;
-							errorMessage = `There was a problem executing the workflow:<br /><strong>"${receivedError}"</strong>`;
-						}
-
-						runDataExecutedErrorMessage = errorMessage;
-
+					if (runDataExecuted.waitTill !== undefined) {
+						// Workflow did start but had been put to wait
+						this.$titleSet(workflow.name as string, 'IDLE');
+						this.$showMessage({
+							title: 'Workflow got started',
+							message: 'Workflow execution has started and is now waiting!',
+							type: 'success',
+						});
+					} else if (runDataExecuted.finished !== true) {
 						this.$titleSet(workflow.name as string, 'ERROR');
+
 						this.$showMessage({
 							title: 'Problem executing workflow',
-							message: errorMessage,
+							message: runDataExecutedErrorMessage,
 							type: 'error',
 						});
 					} else {

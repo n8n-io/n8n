@@ -28,9 +28,7 @@
 				</el-row>
 
 				<div class="action-buttons">
-					<el-button type="success" @click="closeDialog">
-						Close
-					</el-button>
+					<n8n-button @click="closeDialog" label="Close" />
 				</div>
 			</div>
 		</el-dialog>
@@ -38,8 +36,6 @@
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
-
 import { genericHelpers } from '@/components/mixins/genericHelpers';
 import { showMessage } from '@/components/mixins/showMessage';
 

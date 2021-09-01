@@ -18,7 +18,7 @@ export class Postgres implements INodeType {
 		icon: 'file:postgres.svg',
 		group: ['input'],
 		version: 1,
-		description: 'Gets, add and update data in Postgres.',
+		description: 'Get, add and update data in Postgres',
 		defaults: {
 			name: 'Postgres',
 			color: '#336791',
@@ -253,7 +253,7 @@ export class Postgres implements INodeType {
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
-		const credentials = this.getCredentials('postgres');
+		const credentials = await this.getCredentials('postgres');
 
 		if (credentials === undefined) {
 			throw new NodeOperationError(this.getNode(), 'No credentials got returned!');

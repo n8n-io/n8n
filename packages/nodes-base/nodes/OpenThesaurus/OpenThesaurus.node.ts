@@ -145,21 +145,29 @@ export class OpenThesaurus implements INodeType {
 		const operation = this.getNodeParameter('operation', 0) as string;
 
 		for (let i = 0; i < length; i++) {
-			if (operation === 'getSynonyms') {
-				const text = this.getNodeParameter('text', i) as string;
-				const options = this.getNodeParameter('options', i) as IDataObject;
+			try {
+				if (operation === 'getSynonyms') {
+					const text = this.getNodeParameter('text', i) as string;
+					const options = this.getNodeParameter('options', i) as IDataObject;
 
-				qs.q = text;
+					qs.q = text;
 
-				Object.assign(qs, options);
+					Object.assign(qs, options);
 
-				responseData = await openThesaurusApiRequest.call(this, 'GET', `/synonyme/search`, {}, qs);
-				responseData = responseData.synsets;
-			}
-			if (Array.isArray(responseData)) {
-				returnData.push.apply(returnData, responseData as IDataObject[]);
-			} else {
-				returnData.push(responseData as IDataObject);
+					responseData = await openThesaurusApiRequest.call(this, 'GET', `/synonyme/search`, {}, qs);
+					responseData = responseData.synsets;
+				}
+				if (Array.isArray(responseData)) {
+					returnData.push.apply(returnData, responseData as IDataObject[]);
+				} else {
+					returnData.push(responseData as IDataObject);
+				}
+			} catch (error) {
+				if (this.continueOnFail()) {
+					returnData.push({ error: error.message });
+					continue;
+				}
+				throw error;
 			}
 		}
 		return [this.helpers.returnJsonArray(returnData)];
