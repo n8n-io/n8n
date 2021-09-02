@@ -664,14 +664,24 @@ export default mixins(genericHelpers, showMessage, nodeHelpers).extend({
 
 			const params = `scrollbars=no,resizable=yes,status=no,titlebar=noe,location=no,toolbar=no,menubar=no,width=500,height=700`;
 			const oauthPopup = window.open(url, 'OAuth2 Authorization', params);
+			Vue.set(this.credentialData, 'oauthTokenData', null);
 
 			const receiveMessage = (event: MessageEvent) => {
 				// // TODO: Add check that it came from n8n
 				// if (event.origin !== 'http://example.org:8080') {
 				// 	return;
 				// }
-
 				if (event.data === 'success') {
+					window.removeEventListener('message', receiveMessage, false);
+
+					if (!this.credentialData.oauthTokenData) {
+						this.callDebounced('$showMessage', 1000, {
+							title: 'Connected',
+							message: 'Credentials connected successfully',
+							type: 'success',
+						});
+					}
+
 					// Set some kind of data that status changes.
 					// As data does not get displayed directly it does not matter what data.
 					Vue.set(this.credentialData, 'oauthTokenData', {});
@@ -680,14 +690,6 @@ export default mixins(genericHelpers, showMessage, nodeHelpers).extend({
 					if (oauthPopup) {
 						oauthPopup.close();
 					}
-
-					this.callDebounced('$showMessage', 1000, {
-						title: 'Connected',
-						message: 'Credentials connected successfully',
-						type: 'success',
-					});
-
-					window.removeEventListener('message', receiveMessage, false);
 				}
 			};
 
