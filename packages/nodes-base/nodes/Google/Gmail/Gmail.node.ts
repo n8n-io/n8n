@@ -90,7 +90,7 @@ export class Gmail implements INodeType {
 				},
 			},
 			{
-				name: 'gmailOAuth2Api',
+				name: 'gmailOAuth2',
 				required: true,
 				displayOptions: {
 					show: {

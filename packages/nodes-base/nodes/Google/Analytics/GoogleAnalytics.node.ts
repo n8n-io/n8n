@@ -51,7 +51,7 @@ export class GoogleAnalytics implements INodeType {
 		outputs: ['main'],
 		credentials: [
 			{
-				name: 'googleAnalyticsOAuth2Api',
+				name: 'googleAnalyticsOAuth2',
 				required: true,
 			},
 		],
