@@ -21,10 +21,10 @@ To translate node-specific params:
   1. Select a node to translate.
   2. Navigate to `/packages/nodes-base/nodes/{node}`.
   3. Create a dir called `translations`.
-  4. Create a `{localeIdentifier}.ts` file containing the translations, e.g. `de.ts`.
-  5. Populate the `{localeIdentifier}.ts` file - see below.
+  4. Create a `{localeIdentifier}.{nodeName}.ts` file containing the translations, e.g. `de.github.ts`.
+  5. Populate the `{localeIdentifier}.{nodeName}.ts` file - see below.
 
-To populate the `{localeIdentifier}.ts` file, you will need:
+To populate the `{localeIdentifier}.{nodeName}.ts` file, you will need:
 
 - the name of the node to translate (`nodeName` below), located in `/packages/nodes-base/nodes/{node}/{node}.node.ts`, in the class field `name`, e.g. for the GitHub node it is `github`, and
 - the names of the node params to translate (`parameterName` below), located in `/packages/nodes-base/nodes/{node}/{node}.node.ts`, in the class field `properties`, and, if present, located in `/packages/nodes-base/nodes/{node}/**/{node}Description.ts`, in the `*Operations` and `*Fields` constants.
@@ -45,7 +45,7 @@ module.exports = {
 };
 ```
 
-The square brackets `[]` indicate a value to enter and should _not_ be included. For larger examples, see the GitHub node translations at `/packages/nodes-base/nodes/GitHub/translations/de.ts` and the Bitwarden node translations at `/packages/nodes-base/nodes/Bitwarden/translations/de.ts`.
+The square brackets `[]` indicate a value to enter and should _not_ be included. For larger examples, see the GitHub node translations at `/packages/nodes-base/nodes/GitHub/translations/de.github.ts` and the Bitwarden node translations at `/packages/nodes-base/nodes/Bitwarden/translations/de.bitwarden.ts`.
 
 Inside `[parameterName]`, translatable keys may be:
 
@@ -127,12 +127,12 @@ To translate credentials-specific params:
  1. Select a node's credentials to translate.
  2. Navigate to `/packages/nodes-base/nodes/{node}`.
  3. Create a dir called `translations`.
- 4. Create a `{localeIdentifier}.ts` file containing the translations, e.g. `de.ts`.
- 5. Populate the `{localeIdentifier}.ts` file - see below.
+ 4. Create a `{localeIdentifier}.{nodeName}.ts` file containing the translations, e.g. `de.github.ts`.
+ 5. Populate the `{localeIdentifier}.{nodeName}.ts` file - see below.
 
 > If you already have a `.ts` file for node-specific params, use that one. There should be only one locale identifier file per language.
 
-To populate the `{localeIdentifier}.ts` file, you will need:
+To populate the `{localeIdentifier}.{nodeName}.ts` file, you will need:
 
   - the name of the node to translate (`nodeName` below), located in `/packages/nodes-base/nodes/{node}/{node}.node.ts`, in the class field `name`, e.g. for the GitHub node it is `github`,
   - the name of the credentials type(s) to translate (`credentialsType1` and `credentialsType2` below), located in `/packages/nodes-base/nodes/{node}/{node}.node.ts`, in the class field `credentials`, in the key `name`, and
@@ -163,7 +163,7 @@ module.exports = {
 };
 ```
 
-For a larger example, see the GitHub node translations at `/packages/nodes-base/nodes/GitHub/translations/de.ts`
+For a larger example, see the GitHub node translations at `/packages/nodes-base/nodes/GitHub/translations/de.github.ts`
 
 The properties in the class field `properties` with `type: "hidden"` are not user-visible and need no translation. The properties `Client ID` and `Client Secret` for OAuth2 are not editable via credentials specific params. Since these two properties are shared by all OAuth2 credentials, they are translated as base UI strings - see the next section.
 
