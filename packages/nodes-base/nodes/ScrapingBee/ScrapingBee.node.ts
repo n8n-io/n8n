@@ -22,6 +22,7 @@ export class ScrapingBee implements INodeType {
         group: ['input'],
         version: 1,
         description: 'Consume ScrapingBee API',
+        subtitle: 'A simple subtitle',
         defaults: {
             name: 'ScrapingBee',
             color: '#f26c23',
@@ -31,7 +32,7 @@ export class ScrapingBee implements INodeType {
         credentials: [
             {
                 name: 'scrapingBeeApi',
-                required: true,
+                required: true
             }
         ],
         properties: [
@@ -43,7 +44,7 @@ export class ScrapingBee implements INodeType {
                 type: 'string',
                 default: '',
                 required: true,
-                description: 'The URL of the page you want to scrape',
+                description: 'The URL of the page you want to scrape'
             },
             {
                 displayName: 'Additional Fields',
@@ -53,176 +54,185 @@ export class ScrapingBee implements INodeType {
                 default: {},
                 options: [
                     {
-                        displayName: 'Block ads',
-                        name: 'block_ads',
+                        displayName: 'Block Ads',
+                        name: 'blockAds',
                         type: 'boolean',
                         default: false,
-                        description: 'Block ads on the page you want to scrape',        
+                        description: 'Block ads on the page you want to scrape'
                     },
                     {
-                        displayName: 'Block resources',
-                        name: 'block_resources',
+                        displayName: 'Block Resources',
+                        name: 'blockResources',
                         type: 'boolean',
                         default: true,
-                        description: 'Block images and CSS on the page you want to scrape',        
+                        description: 'Block images and CSS on the page you want to scrape'
                     },
                     {
                         displayName: 'Cookies',
                         name: 'cookies',
                         type: 'string',
                         default: '',
-                        description: 'Pass custom cookies to the webpage you want to scrape',        
+                        description: 'Pass custom cookies to the webpage you want to scrape'
                     },
                     {
-                        displayName: 'Country code',
-                        name: 'country_code',
+                        displayName: 'Country Code',
+                        name: 'countryCode',
                         type: 'string',
                         default: '',
-                        description: 'Premium proxy geolocation',        
+                        description: 'Premium proxy geolocation'
                     },
                     {
                         displayName: 'Custom Google',
-                        name: 'custom_google',
+                        name: 'customGoogle',
                         type: 'boolean',
                         default: false,
-                        description: 'Set to true to scrape Google',        
+                        description: 'Set to true to scrape Google'
                     },
                     {
                         displayName: 'Device',
                         name: 'device',
                         type: 'string',
                         default: 'desktop',
-                        description: 'Control the device the request will be sent from',        
+                        description: 'Control the device the request will be sent from'
                     },
                     {
-                        displayName: 'Extract rules',
-                        name: 'extract_rules',
+                        displayName: 'Extract Rules',
+                        name: 'extractRules',
                         type: 'string',
                         default: '',
-                        description: 'Data extraction from CSS selectors',        
+                        description: 'Data extraction from CSS selectors'
                     },
                     {
-                        displayName: 'Forward headers',
-                        name: 'forward_headers',
+                        displayName: 'Forward Headers',
+                        name: 'forwardHeaders',
                         type: 'boolean',
                         default: false,
-                        description: 'Forward particular headers to the webpage',        
+                        description: 'Forward particular headers to the webpage'
                     },
                     {
-                        displayName: 'JSON response',
-                        name: 'json_response',
+                        displayName: 'JS Scroll',
+                        name: 'jsScroll',
                         type: 'boolean',
                         default: false,
-                        description: 'Wrap response in JSON',        
+                        description: 'Scrolling to the end of the page before returning your results'
                     },
                     {
-                        displayName: 'JS snippet',
-                        name: 'js_snippet',
-                        type: 'string',
-                        default: '',
-                        description: 'JavaScript snippet to execute (clicking on a button, scrolling ...)',        
-                    },
-                    {
-                        displayName: 'JS scroll',
-                        name: 'js_scroll',
-                        type: 'boolean',
-                        default: false,
-                        description: 'Scrolling to the end of the page before returning your results',        
-                    },
-                    {
-                        displayName: 'JS scroll wait',
-                        name: 'js_scroll_wait',
-                        type: 'number',
-                        default: 1000,
-                        description: 'The time to wait between each scroll',        
-                    },
-                    {
-                        displayName: 'JS scroll count',
-                        name: 'js_scroll_count',
+                        displayName: 'JS Scroll Count',
+                        name: 'jsScrollCount',
                         type: 'number',
                         default: 1,
-                        description: 'The number of scrolls you want to make',        
+                        description: 'The number of scrolls you want to make'
                     },
                     {
-                        displayName: 'Premium proxy',
-                        name: 'premium_proxy',
+                        displayName: 'JS Scroll Wait',
+                        name: 'jsScrollWait',
+                        type: 'number',
+                        default: 1000,
+                        description: 'The time to wait between each scroll'
+                    },
+                    {
+                        displayName: 'JS Snippet',
+                        name: 'jsSnippet',
+                        type: 'string',
+                        default: '',
+                        description: 'JavaScript snippet to execute (clicking on a button, scrolling ...)'
+                    },
+                    {
+                        displayName: 'JSON Response',
+                        name: 'jsonResponse',
                         type: 'boolean',
                         default: false,
-                        description: 'Use premium proxies to bypass difficult to scrape websites (10-25 credits/request)',        
+                        description: 'Wrap response in JSON'
+                    },
+                    {
+                        displayName: 'Premium Proxy',
+                        name: 'premiumProxy',
+                        type: 'boolean',
+                        default: false,
+                        description: 'Use premium proxies to bypass difficult to scrape websites (10-25 credits/request)'
                     },
                     {
                         displayName: 'Render JS',
-                        name: 'render_js',
+                        name: 'renderJs',
                         type: 'boolean',
                         default: true,
-                        description: 'Render the JavaScript on the page with a headless browser (5 credits/request)',        
+                        description: 'Render the JavaScript on the page with a headless browser (5 credits/request)'
                     },
                     {
-                        displayName: 'Return page source',
-                        name: 'return_page_source',
+                        displayName: 'Return Page Source',
+                        name: 'returnPageSource',
                         type: 'boolean',
                         default: false,
-                        description: 'Return the original HTML before the JavaScript rendering',        
+                        description: 'Return the original HTML before the JavaScript rendering'
                     },
                     {
                         displayName: 'Screenshot',
                         name: 'screenshot',
                         type: 'boolean',
                         default: false,
-                        description: 'Return a screenshot of the page you want to scrape',        
+                        description: 'Return a screenshot of the page you want to scrape'
                     },
                     {
-                        displayName: 'Screenshot full page',
-                        name: 'screenshot_full_page',
+                        displayName: 'Screenshot Full Page',
+                        name: 'screenshotFullPage',
                         type: 'boolean',
                         default: false,
-                        description: 'Return a screenshot of the full page you want to scrape',        
+                        description: 'Return a screenshot of the full page you want to scrape'
                     },
                     {
-                        displayName: 'Transparent status code',
-                        name: 'transparent_status_code',
+                        displayName: 'Transparent Status Code',
+                        name: 'transparentStatusCode',
                         type: 'boolean',
                         default: false,
-                        description: 'Transparently return the same HTTP code of the page requested',        
+                        description: 'Transparently return the same HTTP code of the page requested'
                     },
                     {
                         displayName: 'Wait',
                         name: 'wait',
                         type: 'number',
                         default: 0,
-                        description: 'Additional time in ms for JavaScript to render',        
+                        description: 'Additional time in ms for JavaScript to render'
                     },
                     {
-                        displayName: 'Wait for',
-                        name: 'wait_for',
+                        displayName: 'Wait For',
+                        name: 'waitFor',
                         type: 'string',
                         default: '',
-                        description: 'CSS selector to wait for in the DOM',        
+                        description: 'CSS selector to wait for in the DOM'
                     },
                     {
-                        displayName: 'Window height',
-                        name: 'window_height',
+                        displayName: 'Window Height',
+                        name: 'windowHeight',
                         type: 'number',
                         default: 1080,
-                        description: 'Height, in pixel, of the viewport used to render the page you want to scrape',        
+                        description: 'Height, in pixel, of the viewport used to render the page you want to scrape'
                     },
                     {
-                        displayName: 'Window width',
-                        name: 'window_width',
+                        displayName: 'Window Width',
+                        name: 'windowWidth',
                         type: 'number',
                         default: 1920,
-                        description: 'Width, in pixel, of the viewport used to render the page you want to scrape',        
-                    },
+                        description: 'Width, in pixel, of the viewport used to render the page you want to scrape'
+                    }
                 ]
-            },
-        ],
+            }
+        ]
     };
 
     async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
         //Get credentials the user provided for this node
-    	const credentials = await this.getCredentials('scrapingBeeApi') as IDataObject;
+        const credentials = await this.getCredentials('scrapingBeeApi') as IDataObject;
         const url = this.getNodeParameter('url', 0) as string;
+        const returnData: INodeExecutionData[] = [];
+        try {
+            returnData.push(...this.helpers.returnJsonArray(credentials))
+        } catch (error) {
+            if (this.continueOnFail()) {
+                returnData.push({json:{ error: error.message }});
+            }
+            throw error;
+        }
 
-        return [this.helpers.returnJsonArray(credentials)];
+        return this.prepareOutputData(returnData);
     }
 }
