@@ -38,7 +38,7 @@ export async function nextCloudApiRequest(this: IHookFunctions | IExecuteFunctio
 
 	try {
 		if (authenticationMethod === 'accessToken') {
-			const credentials = this.getCredentials('nextCloudApi');
+			const credentials = await this.getCredentials('nextCloudApi');
 			if (credentials === undefined) {
 				throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
 			}
@@ -55,7 +55,7 @@ export async function nextCloudApiRequest(this: IHookFunctions | IExecuteFunctio
 			}
 			return await this.helpers.request(options);
 		} else {
-			const credentials = this.getCredentials('nextCloudOAuth2Api');
+			const credentials = await this.getCredentials('nextCloudOAuth2Api');
 			if (credentials === undefined) {
 				throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
 			}

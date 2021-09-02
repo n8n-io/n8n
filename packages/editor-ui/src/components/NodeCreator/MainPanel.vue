@@ -279,15 +279,15 @@ export default mixins(externalHooks).extend({
 </script>
 
 <style lang="scss" scoped>
-/deep/ .el-tabs__item {
+::v-deep .el-tabs__item {
 	padding: 0;
 }
 
-/deep/ .el-tabs__active-bar {
+::v-deep .el-tabs__active-bar {
 	height: 1px;
 }
 
-/deep/ .el-tabs__nav-wrap::after {
+::v-deep .el-tabs__nav-wrap::after {
 	height: 1px;
 }
 
@@ -321,7 +321,7 @@ export default mixins(externalHooks).extend({
 	text-align: center;
 	background-color: $--node-creator-select-background-color;
 
-	/deep/ .el-tabs > div {
+	::v-deep .el-tabs > div {
 		margin-bottom: 0;
 
 		.el-tabs__nav {

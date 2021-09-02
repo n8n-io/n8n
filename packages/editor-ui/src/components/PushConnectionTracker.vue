@@ -1,7 +1,7 @@
 <template>
 	<span>
 		<div class="push-connection-lost primary-color" v-if="!pushConnectionActive">
-			<el-tooltip placement="bottom-end" effect="light">
+			<n8n-tooltip placement="bottom-end" >
 				<div slot="content">
 					Cannot connect to server.<br />
 					It is either down or you have a connection issue. <br />
@@ -10,7 +10,7 @@
 				<span>
 					<font-awesome-icon icon="exclamation-triangle" />&nbsp; Connection lost
 				</span>
-			</el-tooltip>
+			</n8n-tooltip>
 		</div>
 		<slot v-else />
 	</span>
