@@ -117,6 +117,7 @@ export default mixins(
 
 <style scoped lang="scss">
 .editor-description {
+	line-height: 1.5;
 	font-weight: bold;
 	padding: 0 0 0.5em 0.2em;;
 }
@@ -158,12 +159,14 @@ export default mixins(
 	.headline {
 		font-size: 1.35em;
 		font-weight: 600;
+		line-height: 1.5;
 	}
 
 	.sub-headline {
 		font-weight: 600;
 		font-size: 1.1em;
 		text-align: center;
+		line-height: 1.5;
 		padding-top: 1.5em;
 		color: $--color-primary;
 	}

@@ -121,7 +121,7 @@ export const issueCommentFields = [
 				],
 			},
 		},
-		description: `The Atlassian Document Format (ADF). Online builder can be found <a href="https://developer.atlassian.com/cloud/jira/platform/apis/document/playground/" target="_blank">here</a>.`,
+		description: `The Atlassian Document Format (ADF). Online builder can be found <a href="https://developer.atlassian.com/cloud/jira/platform/apis/document/playground/">here</a>.`,
 	},
 	{
 		displayName: 'Options',
@@ -451,7 +451,7 @@ export const issueCommentFields = [
 				],
 			},
 		},
-		description: `The Atlassian Document Format (ADF). Online builder can be found <a href="https://developer.atlassian.com/cloud/jira/platform/apis/document/playground/" target="_blank">here</a>.`,
+		description: `The Atlassian Document Format (ADF). Online builder can be found <a href="https://developer.atlassian.com/cloud/jira/platform/apis/document/playground/">here</a>.`,
 	},
 	{
 		displayName: 'Options',
