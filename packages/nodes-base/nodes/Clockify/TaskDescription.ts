@@ -246,7 +246,7 @@ export const taskFields = [
 						value: 'NAME',
 					},
 				],
-				default: '',
+				default: 'NAME',
 			},
 			{
 				displayName: 'Sort Order',
@@ -262,7 +262,7 @@ export const taskFields = [
 						value: 'DESCENDING',
 					},
 				],
-				default: '',
+				default: 'ASCENDING',
 			},
 		],
 	},
