@@ -148,6 +148,11 @@ export class Webhook implements INodeType {
 				type: 'options',
 				options: [
 					{
+						name: 'Empty body response',
+						value: 'noBodyResponse',
+						description: 'Responds with empty body',
+					},
+					{
 						name: 'Immediately',
 						value: 'onReceived',
 						description: 'As soon as this node executes',
@@ -161,11 +166,6 @@ export class Webhook implements INodeType {
 						name: 'Using \'Respond to Webhook\' node',
 						value: 'responseNode',
 						description: 'Response defined in that node',
-					},
-					{
-						name: 'No Body Response',
-						value: 'noBodyResponse',
-						description: 'Returns data without a body',
 					},
 				],
 				default: 'onReceived',
