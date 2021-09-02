@@ -278,6 +278,10 @@ export default mixins(copyPaste, nodeHelpers, restApi, showMessage).extend({
 	height: 100%;
 	align-items: center;
 	border-radius: var(--border-radius-base);
+
+	span {
+		font-family: unset;
+	}
 }
 
 .successIcon {
