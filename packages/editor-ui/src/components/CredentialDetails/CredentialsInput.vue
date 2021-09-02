@@ -5,7 +5,7 @@
 		</n8n-info-tip>
 
 		<div v-if="isOAuthType && credentialProperties.length">
-			<n8n-input-label label="OAuth redirect url">
+			<n8n-input-label label="OAuth Redirect URL">
 				<div :class="$style.copyText" @click="copyCallbackUrl">
 					<span>{{ oAuthCallbackUrl }}</span>
 					<div :class="$style.copyButton"><span>Click to copy</span></div>
