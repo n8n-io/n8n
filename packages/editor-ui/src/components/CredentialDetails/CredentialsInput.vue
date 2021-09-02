@@ -1,9 +1,8 @@
 <template>
 	<div @keydown.stop :class="$style.container">
-		<div :class="$style.infotip">
-			<n8n-icon icon="info-circle" /> Need help filling out these fields?
+		<n8n-info-tip>Need help filling out these fields?
 			<a :href="documentationUrl" target="_blank">Open docs</a>
-		</div>
+		</n8n-info-tip>
 
 		<div v-if="isOAuthType && credentialProperties.length">
 			<n8n-input-label label="OAuth redirect url">
@@ -305,19 +304,5 @@ export default mixins(copyPaste, nodeHelpers, restApi, showMessage).extend({
 	line-height: var(--font-line-height-loose);
 	font-weight: var(--font-weight-regular);
 	word-break: normal;
-}
-
-
-.infotip {
-	color: var(--color-text-light);
-	font-size: var(--font-size-2xs);
-	font-weight: var(--font-weight-bold);
-	line-height: var(--font-size-s);
-	word-break: normal;
-
-	svg {
-		font-size: var(--font-size-s);
-		margin-right: var(--spacing-4xs);
-	}
 }
 </style>

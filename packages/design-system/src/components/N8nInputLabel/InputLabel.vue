@@ -7,7 +7,7 @@
 			</span>
 			<span :class="$style.infoIcon" v-if="props.tooltipText">
 				<n8n-tooltip placement="top" :popper-class="$style.tooltipPopper">
-					<n8n-icon icon="info-circle" />
+					<n8n-icon icon="question-circle" />
 					<div slot="content" v-html="props.tooltipText"></div>
 				</n8n-tooltip>
 			</span>
