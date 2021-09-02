@@ -3,7 +3,7 @@
 		:is="$options.components.ElMenu"
 		:defaultActive="props.defaultActive"
 		:collapse="props.collapse"
-		:class="$style[props.type]"
+		:class="$style[props.type + (props.light ? '-light' : '')]"
 		@select="listeners.select"
 	>
 		<slot></slot>
@@ -19,13 +19,15 @@ export default {
 		type: {
 			type: String,
 			default: 'primary',
-			validator: (value: string): boolean =>
-				['primary', 'secondary'].indexOf(value) !== -1,
+			validator: (value: string): boolean => ['primary', 'secondary'].indexOf(value) !== -1,
 		},
 		defaultActive: {
 			type: String,
 		},
 		collapse: {
+			type: Boolean,
+		},
+		light: {
 			type: Boolean,
 		},
 	},
@@ -54,5 +56,15 @@ export default {
 	--menu-item-active-background-color: var(--color-foreground-base);
 	--menu-item-border-radius: 4px;
 	--menu-item-height: 38px;
+}
+
+.secondary-light {
+	composes: secondary;
+	--menu-item-active-background-color: hsl(
+		var(--color-foreground-base-h),
+		var(--color-foreground-base-s),
+		var(--color-foreground-base-l),
+		0.7
+	);
 }
 </style>

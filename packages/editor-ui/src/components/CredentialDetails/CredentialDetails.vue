@@ -68,6 +68,7 @@
 						type="secondary"
 						@select="onTabSelect"
 						defaultActive="connection"
+						:light="true"
 					>
 						<n8n-menu-item index="connection" :class="$style.credTab"
 							><span slot="title">Connection</span></n8n-menu-item
