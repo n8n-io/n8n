@@ -17,7 +17,7 @@
 					</el-row>
 				</div>
 
-				<el-tooltip v-for="(webhook, index) in webhooksNode" :key="index" class="item" effect="light" content="Click to copy Webhook URL" placement="left">
+				<n8n-tooltip v-for="(webhook, index) in webhooksNode" :key="index" class="item"  content="Click to copy Webhook URL" placement="left">
 					<div class="webhook-wrapper">
 							<div class="http-field">
 								<div class="http-method">
@@ -30,7 +30,7 @@
 								</div>
 							</div>
 					</div>
-				</el-tooltip>
+				</n8n-tooltip>
 
 			</div>
 		</el-collapse-transition>
@@ -217,6 +217,7 @@ export default mixins(
 }
 
 .webhook-wrapper {
+	line-height: 1.5;
 	position: relative;
 	margin: 1em 0 0.5em 0;
 	background-color: #fff;
