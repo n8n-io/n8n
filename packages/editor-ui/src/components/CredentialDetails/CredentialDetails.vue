@@ -91,7 +91,7 @@
 				<div v-if="activeTab === 'info'" :class="$style.mainContent">
 					<el-row>
 						<el-col :span="8" :class="$style.accessLabel">
-							<span >Can be used with:</span>
+							<span>Allow use by</span>
 						</el-col>
 						<el-col :span="16">
 							<div
@@ -109,7 +109,7 @@
 					</el-row>
 					<el-row v-if="currentCredential">
 						<el-col :span="8" :class="$style.label">
-							<span>Created:</span>
+							<span>Created</span>
 						</el-col>
 						<el-col :span="16" :class="$style.valueLabel">
 							<span>{{
@@ -119,7 +119,7 @@
 					</el-row>
 					<el-row v-if="currentCredential">
 						<el-col :span="8" :class="$style.label">
-							<span>Last modified:</span>
+							<span>Last modified</span>
 						</el-col>
 						<el-col :span="16" :class="$style.valueLabel">
 							<TimeAgo :date="currentCredential.updatedAt" />
@@ -681,9 +681,9 @@ export default mixins(genericHelpers, showMessage, nodeHelpers).extend({
 						oauthPopup.close();
 					}
 
-					this.callDebounced('$showMessage', 100, {
+					this.callDebounced('$showMessage', 1000, {
 						title: 'Connected',
-						message: 'Connected successfully!',
+						message: 'Credentials connected successfully',
 						type: 'success',
 					});
 

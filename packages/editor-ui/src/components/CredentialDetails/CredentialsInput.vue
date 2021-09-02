@@ -120,7 +120,7 @@ export default mixins(copyPaste, nodeHelpers, restApi, showMessage).extend({
 				this.credentialTypeData.displayName,
 			);
 
-			return appName || 'app';
+			return appName || "the service you're connecting to";
 		},
 		credentialProperties(): INodeProperties[] {
 			return this.credentialTypeData.properties.filter(
