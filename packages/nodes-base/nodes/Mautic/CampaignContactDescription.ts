@@ -2,7 +2,7 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const contactCampaignOperations = [
+export const campaignContactOperations = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -10,7 +10,7 @@ export const contactCampaignOperations = [
 		displayOptions: {
 			show: {
 				resource: [
-					'contactCampaign',
+					'campaignContact',
 				],
 			},
 		},
@@ -31,10 +31,10 @@ export const contactCampaignOperations = [
 	},
 ] as INodeProperties[];
 
-export const contactCampaignFields = [
+export const campaignContactFields = [
 
 	/* -------------------------------------------------------------------------- */
-	/*                               contactCampaign:add                           */
+	/*                               campaignContact:add                           */
 	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Contact ID',
@@ -44,7 +44,7 @@ export const contactCampaignFields = [
 		displayOptions: {
 			show: {
 				resource: [
-					'contactCampaign',
+					'campaignContact',
 				],
 				operation: [
 					'add',
@@ -64,7 +64,7 @@ export const contactCampaignFields = [
 		displayOptions: {
 			show: {
 				resource: [
-					'contactCampaign',
+					'campaignContact',
 				],
 				operation: [
 					'add',
