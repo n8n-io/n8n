@@ -118,7 +118,6 @@ import {
 	Push,
 	ResponseHelper,
 	TestWebhooks,
-	WaitingWebhooks,
 	WaitTracker,
 	WaitTrackerClass,
 	WebhookHelpers,
@@ -2486,90 +2485,6 @@ class App {
 		if (config.get('endpoints.disableProductionWebhooksOnMainProcess') !== true) {
 			WebhookServer.registerProductionWebhooks.apply(this);
 		}
-
-		// ----------------------------------------
-		// Waiting Webhooks
-		// ----------------------------------------
-
-		const waitingWebhooks = new WaitingWebhooks();
-
-		// HEAD webhook-waiting requests
-		this.app.head(
-			`/${this.endpointWebhookWaiting}/*`,
-			async (req: express.Request, res: express.Response) => {
-				// Cut away the "/webhook-waiting/" to get the registred part of the url
-				const requestUrl = (req as ICustomRequest).parsedUrl!.pathname!.slice(
-					this.endpointWebhookWaiting.length + 2,
-				);
-
-				let response;
-				try {
-					response = await waitingWebhooks.executeWebhook('HEAD', requestUrl, req, res);
-				} catch (error) {
-					ResponseHelper.sendErrorResponse(res, error);
-					return;
-				}
-
-				if (response.noWebhookResponse === true) {
-					// Nothing else to do as the response got already sent
-					return;
-				}
-
-				ResponseHelper.sendSuccessResponse(res, response.data, true, response.responseCode);
-			},
-		);
-
-		// GET webhook-waiting requests
-		this.app.get(
-			`/${this.endpointWebhookWaiting}/*`,
-			async (req: express.Request, res: express.Response) => {
-				// Cut away the "/webhook-waiting/" to get the registred part of the url
-				const requestUrl = (req as ICustomRequest).parsedUrl!.pathname!.slice(
-					this.endpointWebhookWaiting.length + 2,
-				);
-
-				let response;
-				try {
-					response = await waitingWebhooks.executeWebhook('GET', requestUrl, req, res);
-				} catch (error) {
-					ResponseHelper.sendErrorResponse(res, error);
-					return;
-				}
-
-				if (response.noWebhookResponse === true) {
-					// Nothing else to do as the response got already sent
-					return;
-				}
-
-				ResponseHelper.sendSuccessResponse(res, response.data, true, response.responseCode);
-			},
-		);
-
-		// POST webhook-waiting requests
-		this.app.post(
-			`/${this.endpointWebhookWaiting}/*`,
-			async (req: express.Request, res: express.Response) => {
-				// Cut away the "/webhook-waiting/" to get the registred part of the url
-				const requestUrl = (req as ICustomRequest).parsedUrl!.pathname!.slice(
-					this.endpointWebhookWaiting.length + 2,
-				);
-
-				let response;
-				try {
-					response = await waitingWebhooks.executeWebhook('POST', requestUrl, req, res);
-				} catch (error) {
-					ResponseHelper.sendErrorResponse(res, error);
-					return;
-				}
-
-				if (response.noWebhookResponse === true) {
-					// Nothing else to do as the response got already sent
-					return;
-				}
-
-				ResponseHelper.sendSuccessResponse(res, response.data, true, response.responseCode);
-			},
-		);
 
 		// HEAD webhook requests (test for UI)
 		this.app.head(
