@@ -32,23 +32,8 @@
 			</n8n-input-label>
 		</div>
 
-		<div v-if="isOAuthType">
-			<span v-if="requiredPropertiesFilled === false">
-				<img
-					v-if="isGoogleOAuthType"
-					:src="basePath + 'google-signin-light-disabled.png'"
-					:class="$style.googleIconDisabled"
-					alt="Sign in with Google"
-				/>
-				<n8n-button
-					v-else
-					title="Connect OAuth Credentials"
-					label="Connect my account"
-					:disabled="true"
-					size="large"
-				/>
-			</span>
-			<span v-else-if="isOAuthConnected">
+		<div v-if="isOAuthType && requiredPropertiesFilled">
+			<span v-if="isOAuthConnected">
 				<el-tag type="success"
 					><font-awesome-icon
 						icon="check-circle"
