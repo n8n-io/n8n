@@ -203,7 +203,7 @@ export default mixins(copyPaste, nodeHelpers, restApi, showMessage).extend({
 
 			this.$showMessage({
 				title: 'Copied',
-				message: `Callback URL was successfully copied!`,
+				message: `Redirect URL copied to clipboard`,
 				type: 'success',
 			});
 		},
