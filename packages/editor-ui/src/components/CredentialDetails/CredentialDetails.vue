@@ -3,7 +3,6 @@
 		:name="modalName"
 		size="lg"
 		:customClass="$style.credentialModal"
-		:showClose="false"
 		:eventBus="modalBus"
 		:loading="loading"
 		:beforeClose="beforeClose"
@@ -302,6 +301,22 @@ export default mixins(genericHelpers, showMessage, nodeHelpers).extend({
 				this.parentTypes.includes('microsoftOAuth2Api')
 			);
 		},
+		isOAuthType(): boolean {
+			return !!this.credentialTypeName && (
+				['oAuth1Api', 'oAuth2Api'].includes(this.credentialTypeName) ||
+				this.parentTypes.includes('oAuth1Api') ||
+				this.parentTypes.includes('oAuth2Api')
+			);
+		},
+		isOAuthConnected(): boolean {
+			return this.isOAuthType && !!this.credentialData.oauthTokenData;
+		},
+		isGoogleOAuthType(): boolean {
+			if (this.credentialTypeName === 'googleOAuth2Api') {
+				return true;
+			}
+			return this.parentTypes.includes('googleOAuth2Api');
+		},
 	},
 	methods: {
 		async beforeClose(done: () => void) {
@@ -318,10 +333,24 @@ export default mixins(genericHelpers, showMessage, nodeHelpers).extend({
 				'Save',
 				'Discard',
 			);
+
 			if (save) {
 				this.saveCredential(true);
 			} else {
 				done();
+			}
+		},
+		validateOauth(id: string) {
+			if (this.isOAuthType && !this.isOAuthConnected) {
+				this.$showWarning(
+					'Credential not connected',
+					`You must click the ${this.isGoogleOAuthType ? 'Sign in with Google' : 'connect'} button to connect. <a>Go there</a>`,
+					{
+						onClick: () => {
+							this.$store.dispatch('ui/openExisitngCredentialDetails', { id });
+						},
+					},
+				);
 			}
 		},
 		getCredentialProperties(name: string): INodeProperties[] {
@@ -504,6 +533,10 @@ export default mixins(genericHelpers, showMessage, nodeHelpers).extend({
 					credentialDetails,
 					closeDialog,
 				);
+			}
+
+			if (closeDialog && credential && credential.id) {
+				this.validateOauth(credential.id);
 			}
 
 			this.isSaving = false;
@@ -771,6 +804,7 @@ export default mixins(genericHelpers, showMessage, nodeHelpers).extend({
 }
 
 .credActions {
+	margin-right: var(--spacing-l);
 	> * {
 		margin-left: var(--spacing-2xs);
 	}
