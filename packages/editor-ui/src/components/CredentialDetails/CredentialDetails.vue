@@ -285,22 +285,6 @@ export default mixins(genericHelpers, showMessage, nodeHelpers).extend({
 
 			return [];
 		},
-		isGoogleCredType(): boolean {
-			return (
-				this.credentialTypeName === 'googleOAuth2Api' ||
-				this.credentialTypeName === 'googleApi' ||
-				this.parentTypes.includes('googleOAuth2Api')
-			);
-		},
-		isAWSCredType(): boolean {
-			return this.credentialTypeName === 'aws';
-		},
-		isMicrosoftCredType(): boolean {
-			return (
-				this.credentialTypeName === 'microsoftOAuth2Api' ||
-				this.parentTypes.includes('microsoftOAuth2Api')
-			);
-		},
 		isOAuthType(): boolean {
 			return !!this.credentialTypeName && (
 				['oAuth1Api', 'oAuth2Api'].includes(this.credentialTypeName) ||
@@ -312,10 +296,7 @@ export default mixins(genericHelpers, showMessage, nodeHelpers).extend({
 			return this.isOAuthType && !!this.credentialData.oauthTokenData;
 		},
 		isGoogleOAuthType(): boolean {
-			if (this.credentialTypeName === 'googleOAuth2Api') {
-				return true;
-			}
-			return this.parentTypes.includes('googleOAuth2Api');
+			return this.credentialTypeName === 'googleOAuth2Api' || this.parentTypes.includes('googleOAuth2Api');
 		},
 	},
 	methods: {
