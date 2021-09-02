@@ -283,7 +283,7 @@ export class Slack implements INodeType {
 		credentialTest: {
 			async testSlackTokenAuth(this: ICredentialTestFunctions, credential: ICredentialsDecrypted): Promise<NodeCredentialTestResult> {
 
-				let options = {
+				const options = {
 					method: 'POST',
 					headers: {
 						'Content-Type': 'application/json; charset=utf-8',
@@ -312,8 +312,8 @@ export class Slack implements INodeType {
 					status: 'OK',
 					message: 'Connection successful!',
 				};
-			}
-		}
+			},
+		},
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {

@@ -56,6 +56,7 @@ import {
 	Credentials,
 	ICredentialTestFunctions,
 	LoadNodeParameterOptions,
+	NodeExecuteFunctions,
 	UserSettings,
 } from 'n8n-core';
 
@@ -140,7 +141,6 @@ import * as TagHelpers from './TagHelpers';
 import { TagEntity } from './databases/entities/TagEntity';
 import { WorkflowEntity } from './databases/entities/WorkflowEntity';
 import { WorkflowNameRequest } from './WorkflowHelpers';
-import { NodeExecuteFunctions } from 'n8n-core';
 
 require('body-parser-xml')(bodyParser);
 

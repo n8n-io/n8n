@@ -235,8 +235,6 @@ export default mixins(
 			return this.credentialDataTemp;
 		},
 		isCredentialTestable (): boolean {
-			// eslint-disable-next-line no-console
-			console.log(this.credentialTypeData.name);
 			if (['oAuth1Api', 'oAuth2Api'].includes(this.credentialTypeData.name)) {
 				return false;
 			}
@@ -244,8 +242,27 @@ export default mixins(
 			if(types.includes('oAuth1Api') || types.includes('oAuth2Api')) {
 				return false;
 			}
-			// TODO: Properly detect if credential is testable.
-			return true;
+
+			// Find all nodes that use this credential.
+			const allNodes = this.$store.getters.allNodeTypes as INodeTypeDescription[];
+			const nodesThatCanTest = allNodes.filter(node => {
+				if (node.credentials) {
+					// Returns a list of nodes that can test this credentials
+					const eligibleTesters = node.credentials.filter(credential => {
+						if (credential.name === this.credentialTypeData.name && credential.testedBy) {
+							return true;
+						}
+						return false;
+					});
+					// If we have any node that can test, return true.
+					if (eligibleTesters.length) {
+						return true;
+					}
+				}
+				return false;
+			});
+			// Means we found at least one node that could test this credential
+			return !!nodesThatCanTest.length;
 			
 		},
 		isGoogleOAuthType (): boolean {
