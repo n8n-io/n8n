@@ -1,6 +1,6 @@
 {
   "name": "n8n-nodes-base",
-  "version": "0.132.0",
+  "version": "0.133.0",
   "description": "Base nodes of n8n",
   "license": "SEE LICENSE IN LICENSE.md",
   "homepage": "https://n8n.io",
@@ -17,8 +17,9 @@
   "scripts": {
     "dev": "npm run watch",
     "build": "tsc && gulp",
-    "tslint": "tslint -p tsconfig.json -c tslint.json",
-    "tslintfix": "tslint --fix -p tsconfig.json -c tslint.json",
+    "format": "cd ../.. && node_modules/prettier/bin-prettier.js packages/nodes-base/**/**.ts --write",
+    "lint": "tslint -p tsconfig.json -c tslint.json",
+    "lintfix": "tslint --fix -p tsconfig.json -c tslint.json",
     "nodelinter": "nodelinter",
     "watch": "tsc --watch",
     "test": "jest"
@@ -640,11 +641,11 @@
     "@types/xml2js": "^0.4.3",
     "gulp": "^4.0.0",
     "jest": "^26.4.2",
-    "n8n-workflow": "~0.65.0",
+    "n8n-workflow": "~0.66.0",
     "nodelinter": "^0.1.9",
     "ts-jest": "^26.3.0",
     "tslint": "^6.1.2",
-    "typescript": "~3.9.7"
+    "typescript": "~4.3.5"
   },
   "dependencies": {
     "@types/lossless-json": "^1.0.0",
@@ -678,8 +679,8 @@
     "mongodb": "^3.6.9",
     "mqtt": "4.2.6",
     "mssql": "^6.2.0",
-    "mysql2": "~2.2.0",
-    "n8n-core": "~0.80.0",
+    "mysql2": "~2.3.0",
+    "n8n-core": "~0.81.0",
     "node-ssh": "^11.0.0",
     "nodemailer": "^6.5.0",
     "pdf-parse": "^1.1.1",

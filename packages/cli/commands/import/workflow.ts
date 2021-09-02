@@ -1,26 +1,15 @@
-import {
-	Command,
-	flags,
-} from '@oclif/command';
+/* eslint-disable no-console */
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
+import { Command, flags } from '@oclif/command';
 
-import {
-	Db,
-} from '../../src';
-
-import { 
-	getLogger,
-} from '../../src/Logger';
-
-import {
-	LoggerProxy,
-} from 'n8n-workflow';
+import { LoggerProxy } from 'n8n-workflow';
 
 import * as fs from 'fs';
 import * as glob from 'fast-glob';
 import * as path from 'path';
-import { 
-	UserSettings,
-} from 'n8n-core';
+import { UserSettings } from 'n8n-core';
+import { getLogger } from '../../src/Logger';
+import { Db } from '../../src';
 
 export class ImportWorkflowsCommand extends Command {
 	static description = 'Import workflows';
@@ -41,10 +30,12 @@ export class ImportWorkflowsCommand extends Command {
 		}),
 	};
 
+	// eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
 	async run() {
 		const logger = getLogger();
 		LoggerProxy.init(logger);
 
+		// eslint-disable-next-line @typescript-eslint/no-shadow
 		const { flags } = this.parse(ImportWorkflowsCommand);
 
 		if (!flags.input) {
@@ -68,9 +59,12 @@ export class ImportWorkflowsCommand extends Command {
 			await UserSettings.prepareUserSettings();
 			let i;
 			if (flags.separate) {
-				const files = await glob((flags.input.endsWith(path.sep) ? flags.input : flags.input + path.sep) + '*.json');
+				const files = await glob(
+					`${flags.input.endsWith(path.sep) ? flags.input : flags.input + path.sep}*.json`,
+				);
 				for (i = 0; i < files.length; i++) {
 					const workflow = JSON.parse(fs.readFileSync(files[i], { encoding: 'utf8' }));
+					// eslint-disable-next-line no-await-in-loop, @typescript-eslint/no-non-null-assertion
 					await Db.collections.Workflow!.save(workflow);
 				}
 			} else {
@@ -81,6 +75,7 @@ export class ImportWorkflowsCommand extends Command {
 				}
 
 				for (i = 0; i < fileContents.length; i++) {
+					// eslint-disable-next-line no-await-in-loop, @typescript-eslint/no-non-null-assertion
 					await Db.collections.Workflow!.save(fileContents[i]);
 				}
 			}
@@ -89,6 +84,7 @@ export class ImportWorkflowsCommand extends Command {
 			process.exit(0);
 		} catch (error) {
 			console.error('An error occurred while exporting workflows. See log messages for details.');
+			// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
 			logger.error(error.message);
 			this.exit(1);
 		}

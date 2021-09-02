@@ -552,6 +552,7 @@ export class Slack implements INodeType {
 										attachment.fields = attachment.fields.item;
 									} else {
 										// If it does not have any items set remove it
+										// @ts-ignore
 										delete attachment.fields;
 									}
 								}
@@ -786,6 +787,7 @@ export class Slack implements INodeType {
 									attachment.fields = attachment.fields.item;
 								} else {
 									// If it does not have any items set remove it
+									// @ts-ignore
 									delete attachment.fields;
 								}
 							}
@@ -1037,11 +1039,11 @@ export class Slack implements INodeType {
 						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 
 						const qs: IDataObject = {};
-	
+
 						Object.assign(qs, additionalFields);
-	
+
 						responseData = await slackApiRequest.call(this, 'POST', '/users.profile.get', undefined, qs);
-	
+
 						responseData = responseData.profile;
 					}
 				}

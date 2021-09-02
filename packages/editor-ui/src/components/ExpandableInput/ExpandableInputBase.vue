@@ -28,11 +28,6 @@ export default Vue.extend({
 <style lang="scss" scoped>
 $--horiz-padding: 15px;
 
-*,
-*::after {
-	box-sizing: border-box;
-}
-
 input {
 	border: 1px solid transparent;
 	padding: 0 $--horiz-padding - 2px; // -2px for borders
@@ -62,7 +57,7 @@ div.el-input {
 	}
 
 	&:hover {
-		input {
+		input:not(:focus) {
 			border: $--custom-input-border-shadow
 		}
 	}

@@ -87,7 +87,7 @@ export default Vue.extend({
 		},
 		closeDialog(callback?: () => void) {
 			this.$store.commit('ui/closeTopModal');
-			if (callback) {
+			if (typeof callback === 'function') {
 				callback();
 			}
 		},
@@ -145,10 +145,5 @@ export default Vue.extend({
 
 .modal-content > .el-row {
 	margin-bottom: 15px;
-}
-
-.modal-footer > .el-button {
-	float: right;
-	margin-left: 5px;
 }
 </style>
