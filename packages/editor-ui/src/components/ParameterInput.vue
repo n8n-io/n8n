@@ -3,6 +3,10 @@
 	<expression-edit :dialogVisible="expressionEditDialogVisible" :value="value" :parameter="parameter" :path="path" @closeDialog="closeExpressionEditDialog" @valueChanged="expressionUpdated"></expression-edit>
 	<div class="parameter-input ignore-key-press" :style="parameterInputWrapperStyle" @click="openExpressionEdit">
 
+		<div class="errors" v-if="showRequiredErrors">
+			This field is required. <a v-if="documentationUrl" :href="documentationUrl" target="_blank">Open docs</a>
+		</div>
+
 		<n8n-input
 			v-if="isValueExpression && showExpressionAsTextInput"
 			:size="inputSize"
@@ -33,6 +37,7 @@
 				@change="valueChanged"
 				@keydown.stop
 				@focus="setFocus"
+				@blur="onBlur"
 				:title="displayTitle"
 				:placeholder="isValueExpression?'':parameter.placeholder"
 			>
@@ -49,6 +54,7 @@
 				:value="displayValue"
 				:disabled="isReadOnly"
 				@focus="setFocus"
+				@blur="onBlur"
 				@change="valueChanged"
 				:title="displayTitle"
 				:show-alpha="getArgument('showAlpha')"
@@ -62,6 +68,7 @@
 				@change="valueChanged"
 				@keydown.stop
 				@focus="setFocus"
+				@blur="onBlur"
 				:title="displayTitle"
 			/>
 		</div>
@@ -79,6 +86,7 @@
 			:picker-options="dateTimePickerOptions"
 			@change="valueChanged"
 			@focus="setFocus"
+			@blur="onBlur"
 			@keydown.stop
 		/>
 
@@ -95,6 +103,7 @@
 			@change="valueChanged"
 			@input="onTextInputChange"
 			@focus="setFocus"
+			@blur="onBlur"
 			@keydown.stop
 			:title="displayTitle"
 			:placeholder="parameter.placeholder"
@@ -113,6 +122,7 @@
 			@change="valueChanged"
 			@keydown.stop
 			@focus="setFocus"
+			@blur="onBlur"
 		>
 			<n8n-option
 				v-for="option in parameterOptions"
@@ -139,6 +149,7 @@
 			@change="valueChanged"
 			@keydown.stop
 			@focus="setFocus"
+			@blur="onBlur"
 			:title="displayTitle"
 		>
 			<n8n-option v-for="option in parameterOptions" :value="option.value" :key="option.value" :label="option.name" >
@@ -232,11 +243,14 @@ export default mixins(
 			'hideIssues', // boolean
 			'isReadOnly',
 			'inputSize',
+			'documentationUrl',
+			'validateRequired',
 		],
 		data () {
 			return {
 				codeEditDialogVisible: false,
 				nodeName: '',
+				blurred: false,
 				expressionAddOperation: 'set' as 'add' | 'set',
 				expressionEditDialogVisible: false,
 				remoteParameterOptions: [] as INodePropertyOptions[],
@@ -514,7 +528,7 @@ export default mixins(
 				if (this.isValueExpression) {
 					classes.push('expression');
 				}
-				if (this.getIssues.length) {
+				if (this.getIssues.length || this.showRequiredErrors) {
 					classes.push('has-issues');
 				}
 				return classes;
@@ -544,6 +558,9 @@ export default mixins(
 				const shortPath = this.path.split('.');
 				shortPath.shift();
 				return shortPath.join('.');
+			},
+			showRequiredErrors(): boolean {
+				return this.$props.validateRequired && this.$props.parameter.type !== 'boolean' && !this.value && this.parameter.required && this.blurred;
 			},
 			workflow (): Workflow {
 				return this.getWorkflow();
@@ -607,7 +624,12 @@ export default mixins(
 					return;
 				}
 			},
+			onBlur () {
+				this.blurred = true;
+			},
 			setFocus () {
+				this.blurred = false;
+
 				if (this.isValueExpression) {
 					this.expressionEditDialogVisible = true;
 					return;
@@ -762,6 +784,7 @@ export default mixins(
 
 .parameter-input {
 	display: inline-block;
+	position: relative;
 }
 
 .parameter-options {
@@ -850,6 +873,18 @@ export default mixins(
 	display: flex;
 	height: 100%;
 	align-items: center;
+}
+
+.errors {
+	position: absolute;
+	top: calc(100% + 4px);
+	color: var(--color-danger);
+	font-size: var(--font-size-2xs);
+
+	a {
+		color: var(--color-danger);
+		text-decoration: underline;
+	}
 }
 
 </style>

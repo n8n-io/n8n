@@ -26,6 +26,8 @@
 					:path="parameter.name"
 					:hideIssues="true"
 					:displayOptions="true"
+					:documentationUrl="documentationUrl"
+					:validateRequired="true"
 					@textInput="valueChanged"
 					@valueChanged="valueChanged"
 					inputSize="large"
