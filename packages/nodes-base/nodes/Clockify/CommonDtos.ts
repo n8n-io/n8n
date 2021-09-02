@@ -7,12 +7,12 @@ enum MembershipStatusEnum {
 	PENDING = 'PENDING',
 	ACTIVE = 'ACTIVE',
 	DECLINED = 'DECLINED',
-	INACTIVE = 'INACTIVE'
+	INACTIVE = 'INACTIVE',
 }
 
 enum TaskStatusEnum {
 	ACTIVE = 'ACTIVE',
-	DONE = 'DONE'
+	DONE = 'DONE',
 }
 
 export interface IMembershipDto {

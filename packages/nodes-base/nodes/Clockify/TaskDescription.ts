@@ -1,4 +1,6 @@
-import { INodeProperties } from 'n8n-workflow';
+import {
+	INodeProperties,
+} from 'n8n-workflow';
 
 export const taskOperations = [
 	{
@@ -7,39 +9,41 @@ export const taskOperations = [
 		type: 'options',
 		displayOptions: {
 			show: {
-				resource: ['task']
-			}
+				resource: [
+					'task',
+				],
+			},
 		},
 		options: [
 			{
 				name: 'Create',
 				value: 'create',
-				description: 'Create a task'
+				description: 'Create a task',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
-				description: 'Delete a task'
+				description: 'Delete a task',
 			},
 			{
 				name: 'Get',
 				value: 'get',
-				description: 'Get a task'
+				description: 'Get a task',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
-				description: 'Get all tasks'
+				description: 'Get all tasks',
 			},
 			{
 				name: 'Update',
 				value: 'update',
-				description: 'Update a task'
-			}
+				description: 'Update a task',
+			},
 		],
 		default: 'create',
-		description: 'The operation to perform.'
-	}
+		description: 'The operation to perform.',
+	},
 ] as INodeProperties[];
 
 export const taskFields = [
@@ -48,16 +52,20 @@ export const taskFields = [
 		name: 'projectId',
 		type: 'options',
 		typeOptions: {
-			loadOptionsDependsOn: ['workspaceId'],
-			loadOptionsMethod: 'loadProjectsForWorkspace'
+			loadOptionsDependsOn: [
+				'workspaceId',
+			],
+			loadOptionsMethod: 'loadProjectsForWorkspace',
 		},
 		displayOptions: {
 			show: {
-				resource: ['task']
-			}
+				resource: [
+					'task',
+				],
+			},
 		},
 		required: true,
-		default: ''
+		default: '',
 	},
 	/* -------------------------------------------------------------------------- */
 	/*                                 task:create                             */
@@ -71,10 +79,14 @@ export const taskFields = [
 		description: 'Name of task being created.',
 		displayOptions: {
 			show: {
-				resource: ['task'],
-				operation: ['create']
-			}
-		}
+				resource: [
+					'task',
+				],
+				operation: [
+					'create',
+				],
+			},
+		},
 	},
 	{
 		displayName: 'Additional Fields',
@@ -83,9 +95,13 @@ export const taskFields = [
 		placeholder: 'Add Field',
 		displayOptions: {
 			show: {
-				operation: ['create'],
-				resource: ['task']
-			}
+				operation: [
+					'create',
+				],
+				resource: [
+					'task',
+				],
+			},
 		},
 		default: {},
 		options: [
@@ -93,31 +109,18 @@ export const taskFields = [
 				displayName: 'Assignee IDs',
 				name: 'assigneeIds',
 				type: 'multiOptions',
-				default: []
+				default: [],
+				typeOptions: {
+					loadOptionsMethod: 'loadUsersForWorkspace',
+				},
 			},
 			{
 				displayName: 'Estimate',
 				name: 'estimate',
-				type: 'number',
-				default: 0
+				type: 'string',
+				default: '',
 			},
-			{
-				displayName: 'Status',
-				name: 'status',
-				type: 'options',
-				options: [
-					{
-						name: 'Active',
-						value: 'ACTIVE'
-					},
-					{
-						name: 'Done',
-						value: 'DONE'
-					}
-				],
-				default: 'ACTIVE'
-			}
-		]
+		],
 	},
 	/* -------------------------------------------------------------------------- */
 	/*                                 task:delete                             */
@@ -130,10 +133,14 @@ export const taskFields = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: ['task'],
-				operation: ['delete']
-			}
-		}
+				resource: [
+					'task',
+				],
+				operation: [
+					'delete',
+				],
+			},
+		},
 	},
 	/* -------------------------------------------------------------------------- */
 	/*                                 task:get                                */
@@ -146,10 +153,14 @@ export const taskFields = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: ['task'],
-				operation: ['get']
-			}
-		}
+				resource: [
+					'task',
+				],
+				operation: [
+					'get',
+				],
+			},
+		},
 	},
 	/* -------------------------------------------------------------------------- */
 	/*                                 task:getAll                             */
@@ -160,13 +171,16 @@ export const taskFields = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				operation: ['getAll'],
-				resource: ['task']
-			}
+				operation: [
+					'getAll',
+				],
+				resource: [
+					'task',
+				],
+			},
 		},
 		default: false,
-		description:
-			'If all results should be returned or only up to a given limit.'
+		description: 'If all results should be returned or only up to a given limit.',
 	},
 	{
 		displayName: 'Limit',
@@ -174,42 +188,53 @@ export const taskFields = [
 		type: 'number',
 		displayOptions: {
 			show: {
-				operation: ['getAll'],
-				resource: ['task'],
-				returnAll: [false]
-			}
+				operation: [
+					'getAll',
+				],
+				resource: [
+					'task',
+				],
+				returnAll: [
+					false,
+				],
+			},
 		},
 		typeOptions: {
 			minValue: 1,
-			maxValue: 500
+			maxValue: 500,
 		},
 		default: 100,
-		description: 'How many results to return.'
+		description: 'How many results to return.',
 	},
 	{
-		displayName: 'Additional Fields',
-		name: 'additionalFields',
+		displayName: 'Filters',
+		name: 'filters',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add Filter',
 		displayOptions: {
 			show: {
-				operation: ['getAll'],
-				resource: ['task']
-			}
+				operation: [
+					'getAll',
+				],
+				resource: [
+					'task',
+				],
+			},
 		},
 		default: {},
 		options: [
 			{
-				displayName: 'Is active',
+				displayName: 'Is Active',
 				name: 'is-active',
 				type: 'boolean',
-				default: false
+				default: false,
 			},
 			{
 				displayName: 'Name',
 				name: 'name',
 				type: 'string',
-				default: ''
+				default: '',
+				description: 'Text to match in the task name',
 			},
 			{
 				displayName: 'Sort Column',
@@ -218,10 +243,10 @@ export const taskFields = [
 				options: [
 					{
 						name: 'Name',
-						value: 'NAME'
-					}
+						value: 'NAME',
+					},
 				],
-				default: ''
+				default: '',
 			},
 			{
 				displayName: 'Sort Order',
@@ -230,16 +255,16 @@ export const taskFields = [
 				options: [
 					{
 						name: 'Ascending',
-						value: 'ASCENDING'
+						value: 'ASCENDING',
 					},
 					{
 						name: 'Descending',
-						value: 'DESCENDING'
-					}
+						value: 'DESCENDING',
+					},
 				],
-				default: ''
-			}
-		]
+				default: '',
+			},
+		],
 	},
 
 	/* -------------------------------------------------------------------------- */
@@ -253,10 +278,14 @@ export const taskFields = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: ['task'],
-				operation: ['update']
-			}
-		}
+				resource: [
+					'task',
+				],
+				operation: [
+					'update',
+				],
+			},
+		},
 	},
 	{
 		displayName: 'Update Fields',
@@ -265,24 +294,53 @@ export const taskFields = [
 		placeholder: 'Add Field',
 		displayOptions: {
 			show: {
-				operation: ['update'],
-				resource: ['task']
-			}
+				operation: [
+					'update',
+				],
+				resource: [
+					'task',
+				],
+			},
 		},
 		default: {},
 		options: [
 			{
-				displayName: 'Is active',
-				name: 'is-active',
-				type: 'boolean',
-				default: false
+				displayName: 'Assignee IDs',
+				name: 'assigneeIds',
+				type: 'multiOptions',
+				default: [],
+				typeOptions: {
+					loadOptionsMethod: 'loadUsersForWorkspace',
+				},
+			},
+			{
+				displayName: 'Estimate',
+				name: 'estimate',
+				type: 'string',
+				default: '',
 			},
 			{
 				displayName: 'Name',
 				name: 'name',
 				type: 'string',
-				default: ''
-			}
-		]
-	}
+				default: '',
+			},
+			{
+				displayName: 'Status',
+				name: 'status',
+				type: 'options',
+				options: [
+					{
+						name: 'Active',
+						value: 'ACTIVE',
+					},
+					{
+						name: 'Done',
+						value: 'DONE',
+					},
+				],
+				default: 'ACTIVE',
+			},
+		],
+	},
 ] as INodeProperties[];

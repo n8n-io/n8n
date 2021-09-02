@@ -1,4 +1,6 @@
-import { IExecuteFunctions } from 'n8n-core';
+import {
+	IExecuteFunctions,
+} from 'n8n-core';
 
 import {
 	IDataObject,
@@ -6,27 +8,46 @@ import {
 	INodeExecutionData,
 	INodePropertyOptions,
 	INodeType,
-	INodeTypeDescription
+	INodeTypeDescription,
 } from 'n8n-workflow';
 
 import {
 	clockifyApiRequest,
-	clockifyApiRequestAllItems
+	clockifyApiRequestAllItems,
 } from './GenericFunctions';
 
-import { IClientDto, IWorkspaceDto } from './WorkpaceInterfaces';
+import {
+	IClientDto,
+	IWorkspaceDto,
+} from './WorkpaceInterfaces';
 
-import { IUserDto } from './UserDtos';
+import {
+	IUserDto,
+} from './UserDtos';
 
-import { IProjectDto } from './ProjectInterfaces';
+import {
+	IProjectDto,
+} from './ProjectInterfaces';
 
-import { projectFields, projectOperations } from './ProjectDescription';
+import {
+	projectFields,
+	projectOperations,
+} from './ProjectDescription';
 
-import { tagFields, tagOperations } from './TagDescription';
+import {
+	tagFields,
+	tagOperations,
+} from './TagDescription';
 
-import { taskFields, taskOperations } from './TaskDescription';
+import {
+	taskFields,
+	taskOperations,
+} from './TaskDescription';
 
-import { timeEntryFields, timeEntryOperations } from './TimeEntryDescription';
+import {
+	timeEntryFields,
+	timeEntryOperations,
+} from './TimeEntryDescription';
 
 import * as moment from 'moment-timezone';
 
@@ -41,15 +62,15 @@ export class Clockify implements INodeType {
 		description: 'Consume Clockify REST API',
 		defaults: {
 			name: 'Clockify',
-			color: '#000000'
+			color: '#000000',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
 		credentials: [
 			{
 				name: 'clockifyApi',
-				required: true
-			}
+				required: true,
+			},
 		],
 		properties: [
 			{
@@ -59,23 +80,23 @@ export class Clockify implements INodeType {
 				options: [
 					{
 						name: 'Project',
-						value: 'project'
+						value: 'project',
 					},
 					{
 						name: 'Tag',
-						value: 'tag'
+						value: 'tag',
 					},
 					{
 						name: 'Task',
-						value: 'task'
+						value: 'task',
 					},
 					{
 						name: 'Time Entry',
-						value: 'timeEntry'
-					}
+						value: 'timeEntry',
+					},
 				],
 				default: 'project',
-				description: 'The resource to operate on.'
+				description: 'The resource to operate on.',
 			},
 			...projectOperations,
 			...tagOperations,
@@ -86,156 +107,127 @@ export class Clockify implements INodeType {
 				name: 'workspaceId',
 				type: 'options',
 				typeOptions: {
-					loadOptionsMethod: 'listWorkspaces'
+					loadOptionsMethod: 'listWorkspaces',
 				},
 				required: true,
-				default: []
+				default: [],
 			},
 			...projectFields,
 			...tagFields,
 			...taskFields,
-			...timeEntryFields
-		]
+			...timeEntryFields,
+		],
 	};
 
 	methods = {
 		loadOptions: {
-			async listWorkspaces(
-				this: ILoadOptionsFunctions
-			): Promise<INodePropertyOptions[]> {
+			async listWorkspaces(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const rtv: INodePropertyOptions[] = [];
-				const workspaces: IWorkspaceDto[] = await clockifyApiRequest.call(
-					this,
-					'GET',
-					'workspaces'
-				);
+				const workspaces: IWorkspaceDto[] = await clockifyApiRequest.call(this, 'GET', 'workspaces');
 				if (undefined !== workspaces) {
 					workspaces.forEach(value => {
-						rtv.push({
-							name: value.name,
-							value: value.id
-						});
+						rtv.push(
+							{
+								name: value.name,
+								value: value.id,
+							});
 					});
 				}
 				return rtv;
 			},
-			async loadUsersForWorkspace(
-				this: ILoadOptionsFunctions
-			): Promise<INodePropertyOptions[]> {
+			async loadUsersForWorkspace(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const rtv: INodePropertyOptions[] = [];
 				const workspaceId = this.getCurrentNodeParameter('workspaceId');
 				if (undefined !== workspaceId) {
 					const resource = `workspaces/${workspaceId}/users`;
-					const users: IUserDto[] = await clockifyApiRequest.call(
-						this,
-						'GET',
-						resource
-					);
+					const users: IUserDto[] = await clockifyApiRequest.call(this, 'GET', resource);
 					if (undefined !== users) {
 						users.forEach(value => {
-							rtv.push({
-								name: value.name,
-								value: value.id
-							});
+							rtv.push(
+								{
+									name: value.name,
+									value: value.id,
+								});
 						});
 					}
 				}
 				return rtv;
 			},
-			async loadClientsForWorkspace(
-				this: ILoadOptionsFunctions
-			): Promise<INodePropertyOptions[]> {
+			async loadClientsForWorkspace(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const rtv: INodePropertyOptions[] = [];
 				const workspaceId = this.getCurrentNodeParameter('workspaceId');
 				if (undefined !== workspaceId) {
 					const resource = `workspaces/${workspaceId}/clients`;
-					const clients: IClientDto[] = await clockifyApiRequest.call(
-						this,
-						'GET',
-						resource
-					);
+					const clients: IClientDto[] = await clockifyApiRequest.call(this, 'GET', resource);
 					if (undefined !== clients) {
 						clients.forEach(value => {
-							rtv.push({
-								name: value.name,
-								value: value.id
-							});
+							rtv.push(
+								{
+									name: value.name,
+									value: value.id,
+								});
 						});
 					}
 				}
 				return rtv;
 			},
-			async loadProjectsForWorkspace(
-				this: ILoadOptionsFunctions
-			): Promise<INodePropertyOptions[]> {
+			async loadProjectsForWorkspace(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const rtv: INodePropertyOptions[] = [];
 				const workspaceId = this.getCurrentNodeParameter('workspaceId');
 				if (undefined !== workspaceId) {
 					const resource = `workspaces/${workspaceId}/projects`;
-					const users: IProjectDto[] = await clockifyApiRequest.call(
-						this,
-						'GET',
-						resource
-					);
+					const users: IProjectDto[] = await clockifyApiRequest.call(this, 'GET', resource);
 					if (undefined !== users) {
 						users.forEach(value => {
-							rtv.push({
-								name: value.name,
-								value: value.id
-							});
+							rtv.push(
+								{
+									name: value.name,
+									value: value.id,
+								});
 						});
 					}
 				}
 				return rtv;
 			},
-			async loadTagsForWorkspace(
-				this: ILoadOptionsFunctions
-			): Promise<INodePropertyOptions[]> {
+			async loadTagsForWorkspace(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const rtv: INodePropertyOptions[] = [];
 				const workspaceId = this.getCurrentNodeParameter('workspaceId');
 				if (undefined !== workspaceId) {
 					const resource = `workspaces/${workspaceId}/tags`;
-					const users: IProjectDto[] = await clockifyApiRequest.call(
-						this,
-						'GET',
-						resource
-					);
+					const users: IProjectDto[] = await clockifyApiRequest.call(this, 'GET', resource);
 					if (undefined !== users) {
 						users.forEach(value => {
-							rtv.push({
-								name: value.name,
-								value: value.id
-							});
+							rtv.push(
+								{
+									name: value.name,
+									value: value.id,
+								});
 						});
 					}
 				}
 				return rtv;
 			},
-			async loadCustomFieldsForWorkspace(
-				this: ILoadOptionsFunctions
-			): Promise<INodePropertyOptions[]> {
+			async loadCustomFieldsForWorkspace(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const rtv: INodePropertyOptions[] = [];
 				const workspaceId = this.getCurrentNodeParameter('workspaceId');
 				if (undefined !== workspaceId) {
 					const resource = `workspaces/${workspaceId}/custom-fields`;
-					const customFields = await clockifyApiRequest.call(
-						this,
-						'GET',
-						resource
-					);
+					const customFields = await clockifyApiRequest.call(this, 'GET', resource);
 					for (const customField of customFields) {
-						rtv.push({
-							name: customField.name,
-							value: customField.id
-						});
+						rtv.push(
+							{
+								name: customField.name,
+								value: customField.id,
+							});
 					}
 				}
 				return rtv;
-			}
-		}
+			},
+		},
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
+
 		const items = this.getInputData();
 
 		const returnData: IDataObject[] = [];
@@ -251,28 +243,26 @@ export class Clockify implements INodeType {
 		const operation = this.getNodeParameter('operation', 0) as string;
 
 		for (let i = 0; i < length; i++) {
+
 			try {
 				if (resource === 'project') {
+
 					if (operation === 'create') {
-						const workspaceId = this.getNodeParameter(
-							'workspaceId',
-							i
-						) as string;
+
+						const workspaceId = this.getNodeParameter('workspaceId', i) as string;
 
 						const name = this.getNodeParameter('name', i) as string;
 
-						const additionalFields = this.getNodeParameter(
-							'additionalFields',
-							i
-						) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 
 						const body: IDataObject = {
-							name
+							name,
 						};
 
 						Object.assign(body, additionalFields);
 
 						if (body.estimateUi) {
+
 							body.estimate = (body.estimateUi as IDataObject).estimateValues;
 
 							delete body.estimateUi;
@@ -283,15 +273,13 @@ export class Clockify implements INodeType {
 							'POST',
 							`/workspaces/${workspaceId}/projects`,
 							body,
-							qs
+							qs,
 						);
 					}
 
 					if (operation === 'delete') {
-						const workspaceId = this.getNodeParameter(
-							'workspaceId',
-							i
-						) as string;
+
+						const workspaceId = this.getNodeParameter('workspaceId', i) as string;
 
 						const projectId = this.getNodeParameter('projectId', i) as string;
 
@@ -300,17 +288,15 @@ export class Clockify implements INodeType {
 							'DELETE',
 							`/workspaces/${workspaceId}/projects/${projectId}`,
 							{},
-							qs
+							qs,
 						);
 
 						responseData = { success: true };
 					}
 
 					if (operation === 'get') {
-						const workspaceId = this.getNodeParameter(
-							'workspaceId',
-							i
-						) as string;
+
+						const workspaceId = this.getNodeParameter('workspaceId', i) as string;
 
 						const projectId = this.getNodeParameter('projectId', i) as string;
 
@@ -319,22 +305,17 @@ export class Clockify implements INodeType {
 							'GET',
 							`/workspaces/${workspaceId}/projects/${projectId}`,
 							{},
-							qs
+							qs,
 						);
 					}
 
 					if (operation === 'getAll') {
+
 						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
 
-						const workspaceId = this.getNodeParameter(
-							'workspaceId',
-							i
-						) as string;
+						const workspaceId = this.getNodeParameter('workspaceId', i) as string;
 
-						const additionalFields = this.getNodeParameter(
-							'additionalFields',
-							i
-						) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 
 						Object.assign(qs, additionalFields);
 
@@ -344,9 +325,11 @@ export class Clockify implements INodeType {
 								'GET',
 								`/workspaces/${workspaceId}/projects`,
 								{},
-								qs
+								qs,
 							);
+
 						} else {
+
 							qs.limit = this.getNodeParameter('limit', i) as number;
 
 							responseData = await clockifyApiRequestAllItems.call(
@@ -354,7 +337,7 @@ export class Clockify implements INodeType {
 								'GET',
 								`/workspaces/${workspaceId}/projects`,
 								{},
-								qs
+								qs,
 							);
 
 							responseData = responseData.splice(0, qs.limit);
@@ -362,23 +345,19 @@ export class Clockify implements INodeType {
 					}
 
 					if (operation === 'update') {
-						const workspaceId = this.getNodeParameter(
-							'workspaceId',
-							i
-						) as string;
+
+						const workspaceId = this.getNodeParameter('workspaceId', i) as string;
 
 						const projectId = this.getNodeParameter('projectId', i) as string;
 
-						const updateFields = this.getNodeParameter(
-							'updateFields',
-							i
-						) as IDataObject;
+						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
 
 						const body: IDataObject = {};
 
 						Object.assign(body, updateFields);
 
 						if (body.estimateUi) {
+
 							body.estimate = (body.estimateUi as IDataObject).estimateValues;
 
 							delete body.estimateUi;
@@ -389,22 +368,21 @@ export class Clockify implements INodeType {
 							'PUT',
 							`/workspaces/${workspaceId}/projects/${projectId}`,
 							body,
-							qs
+							qs,
 						);
 					}
 				}
 
 				if (resource === 'tag') {
+
 					if (operation === 'create') {
-						const workspaceId = this.getNodeParameter(
-							'workspaceId',
-							i
-						) as string;
+
+						const workspaceId = this.getNodeParameter('workspaceId', i) as string;
 
 						const name = this.getNodeParameter('name', i) as string;
 
 						const body: IDataObject = {
-							name
+							name,
 						};
 
 						responseData = await clockifyApiRequest.call(
@@ -412,15 +390,13 @@ export class Clockify implements INodeType {
 							'POST',
 							`/workspaces/${workspaceId}/tags`,
 							body,
-							qs
+							qs,
 						);
 					}
 
 					if (operation === 'delete') {
-						const workspaceId = this.getNodeParameter(
-							'workspaceId',
-							i
-						) as string;
+
+						const workspaceId = this.getNodeParameter('workspaceId', i) as string;
 
 						const tagId = this.getNodeParameter('tagId', i) as string;
 
@@ -429,24 +405,19 @@ export class Clockify implements INodeType {
 							'DELETE',
 							`/workspaces/${workspaceId}/tags/${tagId}`,
 							{},
-							qs
+							qs,
 						);
 
 						responseData = { success: true };
 					}
 
 					if (operation === 'getAll') {
+
 						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
 
-						const workspaceId = this.getNodeParameter(
-							'workspaceId',
-							i
-						) as string;
+						const workspaceId = this.getNodeParameter('workspaceId', i) as string;
 
-						const additionalFields = this.getNodeParameter(
-							'additionalFields',
-							i
-						) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 
 						Object.assign(qs, additionalFields);
 
@@ -456,9 +427,11 @@ export class Clockify implements INodeType {
 								'GET',
 								`/workspaces/${workspaceId}/tags`,
 								{},
-								qs
+								qs,
 							);
+
 						} else {
+
 							qs.limit = this.getNodeParameter('limit', i) as number;
 
 							responseData = await clockifyApiRequestAllItems.call(
@@ -466,7 +439,7 @@ export class Clockify implements INodeType {
 								'GET',
 								`/workspaces/${workspaceId}/tags`,
 								{},
-								qs
+								qs,
 							);
 
 							responseData = responseData.splice(0, qs.limit);
@@ -474,17 +447,12 @@ export class Clockify implements INodeType {
 					}
 
 					if (operation === 'update') {
-						const workspaceId = this.getNodeParameter(
-							'workspaceId',
-							i
-						) as string;
+
+						const workspaceId = this.getNodeParameter('workspaceId', i) as string;
 
 						const tagId = this.getNodeParameter('tagId', i) as string;
 
-						const updateFields = this.getNodeParameter(
-							'updateFields',
-							i
-						) as IDataObject;
+						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
 
 						const body: IDataObject = {};
 
@@ -495,7 +463,7 @@ export class Clockify implements INodeType {
 							'PUT',
 							`/workspaces/${workspaceId}/tags/${tagId}`,
 							body,
-							qs
+							qs,
 						);
 					}
 				}
@@ -504,7 +472,7 @@ export class Clockify implements INodeType {
 					if (operation === 'create') {
 						const workspaceId = this.getNodeParameter(
 							'workspaceId',
-							i
+							i,
 						) as string;
 
 						const projectId = this.getNodeParameter('projectId', i) as string;
@@ -513,11 +481,11 @@ export class Clockify implements INodeType {
 
 						const additionalFields = this.getNodeParameter(
 							'additionalFields',
-							i
+							i,
 						) as IDataObject;
 
 						const body: IDataObject = {
-							name
+							name,
 						};
 
 						Object.assign(body, additionalFields);
@@ -527,14 +495,14 @@ export class Clockify implements INodeType {
 							'POST',
 							`/workspaces/${workspaceId}/projects/${projectId}/tasks`,
 							body,
-							qs
+							qs,
 						);
 					}
 
 					if (operation === 'delete') {
 						const workspaceId = this.getNodeParameter(
 							'workspaceId',
-							i
+							i,
 						) as string;
 
 						const projectId = this.getNodeParameter('projectId', i) as string;
@@ -546,7 +514,7 @@ export class Clockify implements INodeType {
 							'DELETE',
 							`/workspaces/${workspaceId}/projects/${projectId}/tasks/${taskId}`,
 							{},
-							qs
+							qs,
 						);
 
 						responseData = { success: true };
@@ -555,7 +523,7 @@ export class Clockify implements INodeType {
 					if (operation === 'get') {
 						const workspaceId = this.getNodeParameter(
 							'workspaceId',
-							i
+							i,
 						) as string;
 
 						const projectId = this.getNodeParameter('projectId', i) as string;
@@ -567,7 +535,7 @@ export class Clockify implements INodeType {
 							'GET',
 							`/workspaces/${workspaceId}/projects/${projectId}/tasks/${taskId}`,
 							{},
-							qs
+							qs,
 						);
 					}
 
@@ -576,17 +544,17 @@ export class Clockify implements INodeType {
 
 						const workspaceId = this.getNodeParameter(
 							'workspaceId',
-							i
+							i,
 						) as string;
 
 						const projectId = this.getNodeParameter('projectId', i) as string;
 
-						const additionalFields = this.getNodeParameter(
-							'additionalFields',
-							i
+						const filters = this.getNodeParameter(
+							'filters',
+							i,
 						) as IDataObject;
 
-						Object.assign(qs, additionalFields);
+						Object.assign(qs, filters);
 
 						if (returnAll) {
 							responseData = await clockifyApiRequestAllItems.call(
@@ -594,7 +562,7 @@ export class Clockify implements INodeType {
 								'GET',
 								`/workspaces/${workspaceId}/projects/${projectId}/tasks`,
 								{},
-								qs
+								qs,
 							);
 						} else {
 							qs.limit = this.getNodeParameter('limit', i) as number;
@@ -604,7 +572,7 @@ export class Clockify implements INodeType {
 								'GET',
 								`/workspaces/${workspaceId}/projects/${projectId}/tasks`,
 								{},
-								qs
+								qs,
 							);
 
 							responseData = responseData.splice(0, qs.limit);
@@ -614,7 +582,7 @@ export class Clockify implements INodeType {
 					if (operation === 'update') {
 						const workspaceId = this.getNodeParameter(
 							'workspaceId',
-							i
+							i,
 						) as string;
 
 						const projectId = this.getNodeParameter('projectId', i) as string;
@@ -623,7 +591,7 @@ export class Clockify implements INodeType {
 
 						const updateFields = this.getNodeParameter(
 							'updateFields',
-							i
+							i,
 						) as IDataObject;
 
 						const body: IDataObject = {};
@@ -635,46 +603,36 @@ export class Clockify implements INodeType {
 							'PUT',
 							`/workspaces/${workspaceId}/projects/${projectId}/tasks/${taskId}`,
 							body,
-							qs
+							qs,
 						);
 					}
 				}
 
 				if (resource === 'timeEntry') {
+
 					if (operation === 'create') {
+
 						const timezone = this.getTimezone();
 
-						const workspaceId = this.getNodeParameter(
-							'workspaceId',
-							i
-						) as string;
+						const workspaceId = this.getNodeParameter('workspaceId', i) as string;
 
 						const start = this.getNodeParameter('start', i) as string;
 
-						const additionalFields = this.getNodeParameter(
-							'additionalFields',
-							i
-						) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 
 						const body: IDataObject = {
-							start: moment
-								.tz(start, timezone)
-								.utc()
-								.format()
+							start: moment.tz(start, timezone).utc().format(),
 						};
 
 						Object.assign(body, additionalFields);
 
 						if (body.end) {
-							body.end = moment
-								.tz(body.end, timezone)
-								.utc()
-								.format();
+							body.end = moment.tz(body.end, timezone).utc().format();
 						}
 
 						if (body.customFieldsUi) {
-							const customFields = (body.customFieldsUi as IDataObject)
-								.customFieldsValues as IDataObject[];
+
+							const customFields = (body.customFieldsUi as IDataObject).customFieldsValues as IDataObject[];
 
 							body.customFields = customFields;
 						}
@@ -684,98 +642,72 @@ export class Clockify implements INodeType {
 							'POST',
 							`/workspaces/${workspaceId}/time-entries`,
 							body,
-							qs
+							qs,
 						);
 					}
 
 					if (operation === 'delete') {
-						const workspaceId = this.getNodeParameter(
-							'workspaceId',
-							i
-						) as string;
 
-						const timeEntryId = this.getNodeParameter(
-							'timeEntryId',
-							i
-						) as string;
+						const workspaceId = this.getNodeParameter('workspaceId', i) as string;
+
+						const timeEntryId = this.getNodeParameter('timeEntryId', i) as string;
 
 						responseData = await clockifyApiRequest.call(
 							this,
 							'DELETE',
 							`/workspaces/${workspaceId}/time-entries/${timeEntryId}`,
 							{},
-							qs
+							qs,
 						);
 
 						responseData = { success: true };
 					}
 
 					if (operation === 'get') {
-						const workspaceId = this.getNodeParameter(
-							'workspaceId',
-							i
-						) as string;
 
-						const timeEntryId = this.getNodeParameter(
-							'timeEntryId',
-							i
-						) as string;
+						const workspaceId = this.getNodeParameter('workspaceId', i) as string;
+
+						const timeEntryId = this.getNodeParameter('timeEntryId', i) as string;
 
 						responseData = await clockifyApiRequest.call(
 							this,
 							'GET',
 							`/workspaces/${workspaceId}/time-entries/${timeEntryId}`,
 							{},
-							qs
+							qs,
 						);
 					}
 
 					if (operation === 'update') {
+
 						const timezone = this.getTimezone();
 
-						const workspaceId = this.getNodeParameter(
-							'workspaceId',
-							i
-						) as string;
+						const workspaceId = this.getNodeParameter('workspaceId', i) as string;
 
-						const timeEntryId = this.getNodeParameter(
-							'timeEntryId',
-							i
-						) as string;
+						const timeEntryId = this.getNodeParameter('timeEntryId', i) as string;
 
-						const updateFields = this.getNodeParameter(
-							'updateFields',
-							i
-						) as IDataObject;
+						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
 
 						const body: IDataObject = {};
 
 						Object.assign(body, updateFields);
 
 						if (body.end) {
-							body.end = moment
-								.tz(body.end, timezone)
-								.utc()
-								.format();
+							body.end = moment.tz(body.end, timezone).utc().format();
 						}
 
 						if (body.start) {
-							body.start = moment
-								.tz(body.start, timezone)
-								.utc()
-								.format();
+							body.start = moment.tz(body.start, timezone).utc().format();
 						} else {
 							// even if you do not want to update the start time, it always has to be set
 							// to make it more simple to the user, if he did not set a start time look for the current start time
 							// and set it
-							const {
-								timeInterval: { start }
-							} = await clockifyApiRequest.call(
+							const { timeInterval: { start } } = await clockifyApiRequest.call(
 								this,
 								'GET',
 								`/workspaces/${workspaceId}/time-entries/${timeEntryId}`,
 								{},
-								qs
+								qs,
 							);
 
 							body.start = start;
@@ -786,14 +718,17 @@ export class Clockify implements INodeType {
 							'PUT',
 							`/workspaces/${workspaceId}/time-entries/${timeEntryId}`,
 							body,
-							qs
+							qs,
 						);
 					}
 				}
 
 				if (Array.isArray(responseData)) {
+
 					returnData.push.apply(returnData, responseData as IDataObject[]);
+
 				} else if (responseData !== undefined) {
+
 					returnData.push(responseData as IDataObject);
 				}
 			} catch (error) {
