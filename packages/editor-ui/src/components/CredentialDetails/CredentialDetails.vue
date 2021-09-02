@@ -326,17 +326,16 @@ export default mixins(genericHelpers, showMessage, nodeHelpers).extend({
 				return;
 			}
 
-			const save = await this.confirmMessage(
-				'Are you sure to close this dialog?',
-				'Save changes?',
-				'warning',
-				'Save',
+			const displayName = this.credentialType ? this.credentialType.displayName : '';
+			const discard = await this.confirmMessage(
+				`Throw away the changes you made to the ${displayName} credential?`,
+				'Discard changes?',
+				 null,
 				'Discard',
+				'Go back',
 			);
 
-			if (save) {
-				this.saveCredential(true);
-			} else {
+			if (discard) {
 				done();
 			}
 		},

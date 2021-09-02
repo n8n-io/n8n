@@ -1,5 +1,6 @@
 import { showMessage } from '@/components/mixins/showMessage';
 import { MessageType } from '@/Interface';
+import { ElMessageBoxOptions } from 'element-ui/types/message-box';
 import { debounce } from 'lodash';
 
 import mixins from 'vue-typed-mixins';
@@ -87,14 +88,17 @@ export const genericHelpers = mixins(showMessage).extend({
 			await this.debouncedFunctions[functionName].apply(this, inputParameters);
 		},
 
-		async confirmMessage (message: string, headline: string, type = 'warning' as MessageType, confirmButtonText = 'OK', cancelButtonText = 'Cancel'): Promise<boolean> {
+		async confirmMessage (message: string, headline: string, type = 'warning' as MessageType | null, confirmButtonText = 'OK', cancelButtonText = 'Cancel'): Promise<boolean> {
 			try {
-				await this.$confirm(message, headline, {
+				const options: ElMessageBoxOptions  = {
 					confirmButtonText,
 					cancelButtonText,
-					type,
 					dangerouslyUseHTMLString: true,
-				});
+				};
+				if (type) {
+					options.type = type;
+				}
+				await this.$confirm(message, headline, options);
 				return true;
 			} catch (e) {
 				return false;
