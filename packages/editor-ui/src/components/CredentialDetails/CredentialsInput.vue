@@ -26,6 +26,7 @@
 					:path="parameter.name"
 					:hideIssues="true"
 					:displayOptions="true"
+					@textInput="valueChanged"
 					@valueChanged="valueChanged"
 					inputSize="large"
 				/>

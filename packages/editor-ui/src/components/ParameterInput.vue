@@ -29,6 +29,7 @@
 				:rows="getArgument('rows')"
 				:value="displayValue"
 				:disabled="isReadOnly"
+				@input="onTextInputChange"
 				@change="valueChanged"
 				@keydown.stop
 				@focus="setFocus"
@@ -92,6 +93,7 @@
 			:step="getArgument('numberStepSize')"
 			:disabled="isReadOnly"
 			@change="valueChanged"
+			@input="onTextInputChange"
 			@focus="setFocus"
 			@keydown.stop
 			:title="displayTitle"
@@ -644,6 +646,15 @@ export default mixins(
 				}
 				const [r, g, b, a] = valueMatch.splice(1, 4).map(v => Number(v));
 				return "#" + ((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1) + ((1 << 8) + Math.floor((1-a)*255)).toString(16).slice(1);
+			},
+			onTextInputChange (value: string) {
+				const parameterData = {
+					node: this.node !== null ? this.node.name : this.nodeName,
+					name: this.path,
+					value,
+				};
+
+				this.$emit('textInput', parameterData);
 			},
 			valueChanged (value: string | number | boolean | Date | null) {
 				if (value instanceof Date) {
