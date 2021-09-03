@@ -422,7 +422,7 @@ export const changeFields = [
 		options: [
 			{
 				displayName: 'Predefined Filters',
-				name: 'type',
+				name: 'filter',
 				type: 'options',
 				default: 'my_open',
 				options: [
