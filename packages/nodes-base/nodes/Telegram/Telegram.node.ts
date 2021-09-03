@@ -1754,23 +1754,23 @@ export class Telegram implements INodeType {
 						return {
 							status: 'Error',
 							message: 'Token is not valid.',
-						}
+						};
 					}
 				} catch(err) {
 					return {
 						status: 'Error',
 						message: `Token is not valid; ${err.message}`,
-					}
+					};
 				}
 
 				return {
 					status: 'OK',
 					message: 'Authentication successful!',
-				}
+				};
 				
-			}
-		}
-	}
+			},
+		},
+	};
 
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
