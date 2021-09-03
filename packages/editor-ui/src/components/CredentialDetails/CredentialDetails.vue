@@ -328,19 +328,6 @@ export default mixins(genericHelpers, showMessage, nodeHelpers).extend({
 				done();
 			}
 		},
-		validateOauth(id: string) {
-			if (this.isOAuthType && !this.isOAuthConnected) {
-				this.$showWarning(
-					'Credential not connected',
-					`You must click the ${this.isGoogleOAuthType ? 'Sign in with Google' : 'connect'} button to connect. <a>Go there</a>`,
-					{
-						onClick: () => {
-							this.$store.dispatch('ui/openExisitngCredentialDetails', { id });
-						},
-					},
-				);
-			}
-		},
 		getCredentialProperties(name: string): INodeProperties[] {
 			const credentialsData =
 				this.$store.getters['credentials/getCredentialTypeByName'](name);
@@ -523,10 +510,6 @@ export default mixins(genericHelpers, showMessage, nodeHelpers).extend({
 					credentialDetails,
 					closeDialog,
 				);
-			}
-
-			if (closeDialog && credential && credential.id) {
-				this.validateOauth(credential.id);
 			}
 
 			this.isSaving = false;
