@@ -193,7 +193,7 @@ export const assetFields = [
 	{
 		displayName: 'Asset Display ID',
 		name: 'assetDisplayId',
-		description: 'Display ID of the asset to delete',
+		description: 'Display ID of the asset to delete. Do not confuse with asset ID.',
 		type: 'string',
 		required: true,
 		default: '',
@@ -215,7 +215,7 @@ export const assetFields = [
 	{
 		displayName: 'Asset Display ID',
 		name: 'assetDisplayId',
-		description: 'Display ID of the asset to retrieve',
+		description: 'Display ID of the asset to retrieve. Do not confuse with asset ID.',
 		type: 'string',
 		required: true,
 		default: '',
@@ -362,7 +362,7 @@ export const assetFields = [
 	{
 		displayName: 'Asset Display ID',
 		name: 'assetDisplayId',
-		description: 'Display ID of the asset to update',
+		description: 'Display ID of the asset to update. Do not confuse with asset ID.',
 		type: 'string',
 		required: true,
 		default: '',
