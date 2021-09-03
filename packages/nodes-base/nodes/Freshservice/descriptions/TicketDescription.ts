@@ -459,7 +459,7 @@ export const ticketFields = [
 				name: 'created_at',
 				type: 'dateTime',
 				default: '',
-				description: 'Date when the ticket was created'
+				description: 'Date when the ticket was created',
 			},
 			{
 				displayName: 'Due By',
