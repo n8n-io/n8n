@@ -158,18 +158,6 @@ export const announcementFields = [
 				description: 'Comma-separated additional email addresses to which the announcement needs to be sent',
 			},
 			{
-				displayName: 'Created By Agent Name/ID',
-				name: 'created_by',
-				type: 'options',
-				default: '',
-				description: 'ID of the agent who created this announcement. Choose from the list or specify an ID. You can also specify the ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
-				typeOptions: {
-					loadOptionsMethod: [
-						'getAgents',
-					],
-				},
-			},
-			{
 				displayName: 'Department Names/IDs',
 				name: 'departments',
 				type: 'multiOptions',
@@ -182,24 +170,11 @@ export const announcementFields = [
 				},
 			},
 			{
-				displayName: 'State',
-				name: 'state',
-				type: 'options',
-				default: 'active',
-				options: [
-					{
-						name: 'Active',
-						value: 'active',
-					},
-					{
-						name: 'Archived',
-						value: 'archived',
-					},
-					{
-						name: 'Scheduled',
-						value: 'scheduled',
-					},
-				],
+				displayName: 'Visible From',
+				name: 'visible_from',
+				description: 'Timestamp at which announcement is active',
+				type: 'dateTime',
+				default: '',
 			},
 			{
 				displayName: 'Visible Until',
