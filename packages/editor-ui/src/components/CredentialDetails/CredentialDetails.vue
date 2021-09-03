@@ -77,7 +77,7 @@
 						>
 					</n8n-menu>
 				</div>
-				<div v-if="activeTab === 'connection'" :class="$style.mainContent">
+				<div v-if="activeTab === 'connection'" :class="$style.mainContent" ref="content">
 					<credentials-input
 						v-if="credentialType"
 						:credentialTypeData="credentialType"
@@ -85,6 +85,7 @@
 						:parentTypes="parentTypes"
 						@change="onDataChange"
 						@oauth="oAuthCredentialAuthorize"
+						@scrollToTop="scrollToTop"
 					/>
 				</div>
 				<div v-if="activeTab === 'info'" :class="$style.mainContent">
@@ -473,6 +474,15 @@ export default mixins(genericHelpers, showMessage, nodeHelpers).extend({
 			}
 
 			this.isNameEdit = false;
+		},
+
+		scrollToTop() {
+			setTimeout(() => {
+				const content = this.$refs.content as Element;
+				if (content) {
+					content.scrollTop = 0;
+				}
+			}, 0);
 		},
 
 		async saveCredential(

@@ -1,6 +1,6 @@
 <template>
 	<div @keydown.stop :class="$style.container">
-		<div v-if="isOAuthType && requiredPropertiesFilled && isOAuthConnected">
+		<div v-if="showSuccessBanner">
 			<el-tag
 				type="success"
 				size="medium"
@@ -174,6 +174,9 @@ export default mixins(copyPaste, nodeHelpers, restApi, showMessage).extend({
 			}
 			return true;
 		},
+		showSuccessBanner(): boolean {
+			return this.isOAuthType && this.requiredPropertiesFilled && this.isOAuthConnected;
+		},
 		documentationUrl(): string {
 			const type = this.credentialTypeData;
 
@@ -231,6 +234,13 @@ export default mixins(copyPaste, nodeHelpers, restApi, showMessage).extend({
 				parameter,
 				'',
 			);
+		},
+	},
+	watch: {
+		showSuccessBanner(newValue, oldValue) {
+			if (newValue && !oldValue) {
+				this.$emit('scrollToTop');
+			}
 		},
 	},
 });
