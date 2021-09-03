@@ -31,7 +31,7 @@
 					</div>
 					{{parameter.displayName}}:
 					<n8n-tooltip placement="top" class="parameter-info" v-if="parameter.description" >
-						<div slot="content" v-html="parameter.description"></div>
+						<div slot="content" v-html="addTargetBlank(parameter.description)"></div>
 						<font-awesome-icon icon="question-circle"/>
 					</n8n-tooltip>
 				</div>
