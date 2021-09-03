@@ -7,7 +7,7 @@
 		>
 			<div>
 				<font-awesome-icon
-					icon="check-circle"
+					:icon="theme === 'success' ? 'check-circle' : 'exclamation-triangle'"
 					:class="$style.icon"
 				/>
 				<span>{{ message }}</span>

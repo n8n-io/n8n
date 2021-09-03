@@ -391,6 +391,26 @@ export default mixins(genericHelpers, showMessage, nodeHelpers).extend({
 				return;
 			}
 
+			if (this.isOAuthType && !this.isOAuthConnected) {
+				const goBack = await this.confirmMessage(
+					`You need to connect your credential for it to work`,
+					'Close without connecting?',
+					null,
+					'No, go back',
+					'Ignore',
+				);
+
+				if (goBack) {
+					this.scrollToBottom();
+
+					return;
+				}
+				else {
+					done();
+					return;
+				}
+			}
+
 			const displayName = this.credentialType ? this.credentialType.displayName : '';
 			const discard = await this.confirmMessage(
 				`Are you sure you want to throw away the changes you made to the ${displayName} credential?`,
@@ -573,6 +593,15 @@ export default mixins(genericHelpers, showMessage, nodeHelpers).extend({
 				const content = this.$refs.content as Element;
 				if (content) {
 					content.scrollTop = 0;
+				}
+			}, 0);
+		},
+
+		scrollToBottom() {
+			setTimeout(() => {
+				const content = this.$refs.content as Element;
+				if (content) {
+					content.scrollTop = content.scrollHeight;
 				}
 			}, 0);
 		},
