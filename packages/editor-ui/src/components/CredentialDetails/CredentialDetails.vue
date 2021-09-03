@@ -124,6 +124,14 @@
 							<TimeAgo :date="currentCredential.updatedAt" />
 						</el-col>
 					</el-row>
+					<el-row v-if="currentCredential">
+						<el-col :span="8" :class="$style.label">
+							<span>ID</span>
+						</el-col>
+						<el-col :span="16" :class="$style.valueLabel">
+							<span>{{currentCredential.id}}</span>
+						</el-col>
+					</el-row>
 				</div>
 			</div>
 		</template>
@@ -423,8 +431,10 @@ export default mixins(genericHelpers, showMessage, nodeHelpers).extend({
 		convertToHumanReadableDate,
 		onDataChange({ name, value }: { name: string; value: any }) { // tslint:disable-line:no-any
 			this.hasUnsavedChanges = true;
+			const { oauthTokenData, ...credData } = this.credentialData;
+
 			this.credentialData = {
-				...this.credentialData,
+				...credData,
 				[name]: value,
 			};
 		},
@@ -598,7 +608,7 @@ export default mixins(genericHelpers, showMessage, nodeHelpers).extend({
 			const deleteConfirmed = await this.confirmMessage(
 				`Are you sure you want to delete "${savedCredentialName}" credentials?`,
 				'Delete Credentials?',
-				'warning',
+				null,
 				'Yes, delete!',
 			);
 
