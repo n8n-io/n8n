@@ -309,7 +309,7 @@ export default mixins(genericHelpers, showMessage, nodeHelpers).extend({
 
 			const displayName = this.credentialType ? this.credentialType.displayName : '';
 			const discard = await this.confirmMessage(
-				`Throw away the changes you made to the ${displayName} credential?`,
+				`Are you sure you want to throw away the changes you made to the ${displayName} credential?`,
 				'Discard changes?',
 				 null,
 				'Discard',
