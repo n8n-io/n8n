@@ -57,6 +57,26 @@ export async function freshserviceApiRequest(
 	try {
 		return await this.helpers.request!(options);
 	} catch (error) {
+		if (error.error.description === 'Validation failed') {
+
+			const numberOfErrors = error.error.errors.length;
+			const message = 'Please check your parameters';
+
+			if (numberOfErrors === 1) {
+				const [validationError] = error.error.errors;
+				throw new NodeApiError(this.getNode(), error, {
+					message,
+					description: `For ${validationError.field}: ${validationError.message}`,
+				});
+
+			} else if (numberOfErrors > 1) {
+				throw new NodeApiError(this.getNode(), error, {
+					message,
+					description: 'For more information, expand \'details\' below and look at \'cause\' section',
+				});
+			}
+		}
+
 		throw new NodeApiError(this.getNode(), error);
 	}
 }
