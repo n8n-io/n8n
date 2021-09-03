@@ -50,11 +50,11 @@
 						:loading="isDeleting"
 						@click="deleteCredential"
 					/>
-					<n8n-button
-						size="medium"
-						label="Save"
+					<SaveButton
+						v-if="hasUnsavedChanges || credentialId"
+						:saved="!hasUnsavedChanges"
+						:isSaving="isSaving"
 						@click="saveCredential"
-						:loading="isSaving"
 					/>
 				</div>
 			</div>
@@ -168,6 +168,7 @@ import Banner from '../Banner.vue';
 import CopyInput from '../CopyInput.vue';
 import CredentialInfo from './CredentialInfo.vue';
 import OauthButton from './OauthButton.vue';
+import SaveButton from '../SaveButton.vue';
 
 interface NodeAccessMap {
 	[nodeType: string]: ICredentialNodeAccess | null;
@@ -183,6 +184,7 @@ export default mixins(genericHelpers, showMessage, nodeHelpers).extend({
 		Banner,
 		Modal,
 		OauthButton,
+		SaveButton,
 	},
 	props: {
 		modalName: {
@@ -385,12 +387,6 @@ export default mixins(genericHelpers, showMessage, nodeHelpers).extend({
 	},
 	methods: {
 		async beforeClose(done: () => void) {
-			if (!this.hasUnsavedChanges) {
-				done();
-
-				return;
-			}
-
 			if (this.isOAuthType && !this.isOAuthConnected) {
 				const goBack = await this.confirmMessage(
 					`You need to connect your credential for it to work`,
@@ -409,6 +405,12 @@ export default mixins(genericHelpers, showMessage, nodeHelpers).extend({
 					done();
 					return;
 				}
+			}
+
+			if (!this.hasUnsavedChanges) {
+				done();
+
+				return;
 			}
 
 			const displayName = this.credentialType ? this.credentialType.displayName : '';
@@ -653,6 +655,9 @@ export default mixins(genericHelpers, showMessage, nodeHelpers).extend({
 			}
 
 			this.isSaving = false;
+			if (credential) {
+				this.credentialId = credential.id as string;
+			}
 
 			return credential;
 		},
@@ -775,8 +780,6 @@ export default mixins(genericHelpers, showMessage, nodeHelpers).extend({
 			if (!credential) {
 				return;
 			}
-
-			this.credentialId = credential.id as string;
 
 			const types = this.parentTypes;
 
