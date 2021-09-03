@@ -606,6 +606,30 @@ export const ticketFields = [
 				],
 			},
 			{
+				displayName: 'Status',
+				name: 'status',
+				type: 'options',
+				default: 2,
+				options: [
+					{
+						name: 'Open',
+						value: 2,
+					},
+					{
+						name: 'Pending',
+						value: 3,
+					},
+					{
+						name: 'Resolved',
+						value: 4,
+					},
+					{
+						name: 'Closed',
+						value: 5,
+					},
+				],
+			},
+			{
 				displayName: 'Subject',
 				name: 'subject',
 				type: 'string',
