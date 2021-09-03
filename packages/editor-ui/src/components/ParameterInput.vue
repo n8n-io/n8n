@@ -628,8 +628,6 @@ export default mixins(
 				this.blurred = true;
 			},
 			setFocus () {
-				this.blurred = false;
-
 				if (this.isValueExpression) {
 					this.expressionEditDialogVisible = true;
 					return;
