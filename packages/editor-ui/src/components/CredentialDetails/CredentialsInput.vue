@@ -102,6 +102,9 @@ export default mixins(copyPaste, nodeHelpers, restApi, showMessage).extend({
 		'credentialTypeData', // ICredentialType
 		'credentialData', // ICredentialsDecryptedResponse
 		'parentTypes',
+		'isGoogleOAuthType',
+		'isOAuthType',
+		'isOAuthConnected',
 	],
 	components: {
 		ParameterInput,
@@ -131,28 +134,6 @@ export default mixins(copyPaste, nodeHelpers, restApi, showMessage).extend({
 					);
 				},
 			);
-		},
-		isGoogleOAuthType(): boolean {
-			if (this.credentialTypeData.name === 'googleOAuth2Api') {
-				return true;
-			}
-			return this.parentTypes.includes('googleOAuth2Api');
-		},
-		isOAuthType(): boolean {
-			if (['oAuth1Api', 'oAuth2Api'].includes(this.credentialTypeData.name)) {
-				return true;
-			}
-			return (
-				this.parentTypes.includes('oAuth1Api') ||
-				this.parentTypes.includes('oAuth2Api')
-			);
-		},
-		isOAuthConnected(): boolean {
-			if (this.isOAuthType === false) {
-				return false;
-			}
-
-			return !!this.credentialData.oauthTokenData;
 		},
 		oAuthCallbackUrl(): string {
 			const oauthType =
