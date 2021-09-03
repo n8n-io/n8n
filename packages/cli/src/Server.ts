@@ -1349,9 +1349,11 @@ class App {
 								credential: ICredentialsDecrypted,
 						  ) => Promise<NodeCredentialTestResult>)
 						| undefined;
-
 					const nodeThatCanTestThisCredential = allNodes.find((node) => {
-						if (node.description.name !== incomingData?.nodeToTestWith) {
+						if (
+							incomingData.nodeToTestWith &&
+							node.description.name !== incomingData.nodeToTestWith
+						) {
 							return false;
 						}
 						const credentialTestable = node.description.credentials?.find((credential) => {
