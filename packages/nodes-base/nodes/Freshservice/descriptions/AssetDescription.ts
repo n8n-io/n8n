@@ -152,7 +152,7 @@ export const assetFields = [
 					},
 					{
 						name: 'High',
-						value: 'hihg',
+						value: 'high',
 					},
 				],
 			},
@@ -452,7 +452,7 @@ export const assetFields = [
 					},
 					{
 						name: 'High',
-						value: 'hihg',
+						value: 'high',
 					},
 				],
 			},
