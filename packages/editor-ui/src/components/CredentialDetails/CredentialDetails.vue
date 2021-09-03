@@ -616,8 +616,6 @@ export default mixins(genericHelpers, showMessage, nodeHelpers).extend({
 			if (!this.requiredPropertiesFilled) {
 				this.showValidationWarnings = true;
 				this.scrollToTop();
-
-				return null;
 			}
 
 			this.isSaving = true;
