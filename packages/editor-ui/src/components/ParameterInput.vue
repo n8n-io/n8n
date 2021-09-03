@@ -878,6 +878,7 @@ export default mixins(
 	top: calc(100% + 4px);
 	color: var(--color-danger);
 	font-size: var(--font-size-2xs);
+	font-weight: var(--font-weight-regular);
 
 	a {
 		color: var(--color-danger);
