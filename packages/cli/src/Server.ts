@@ -1881,7 +1881,7 @@ class App {
 					const mode: WorkflowExecuteMode = 'internal';
 					const credentialsHelper = new CredentialsHelper(encryptionKey);
 					const decryptedDataOriginal = await credentialsHelper.getDecrypted(
-						result,
+						result as INodeCredentialsDetails,
 						result.type,
 						mode,
 						true,

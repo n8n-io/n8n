@@ -55,6 +55,7 @@ export interface IGetCredentials {
 
 export abstract class ICredentials {
 	id?: string;
+
 	name: string;
 
 	type: string;
@@ -69,6 +70,7 @@ export abstract class ICredentials {
 		nodesAccess: ICredentialNodeAccess[],
 		data?: string,
 	) {
+		// eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
 		this.id = nodeCredentials.id || undefined;
 		this.name = nodeCredentials.name;
 		this.type = type;
@@ -319,7 +321,7 @@ export interface IExecuteFunctions {
 		outputIndex?: number,
 	): Promise<INodeExecutionData[][]>;
 	putExecutionToWait(waitTill: Date): Promise<void>;
-	sendMessageToUI(message: any): void; // tslint:disable-line:no-any
+	sendMessageToUI(message: any): void;
 	helpers: {
 		[key: string]: (...args: any[]) => any;
 	};

@@ -48,7 +48,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 		type: string,
 	): Promise<Credentials> {
 		if (!nodeCredentials.id) {
-			throw new Error(`Credentials "${nodeCredentials.name}" miss an ID.`);
+			throw new Error(`Credentials "${nodeCredentials.name}" for type "${type}" don't have an ID.`);
 		}
 
 		const credentials = await Db.collections.Credentials?.findOne({ id: nodeCredentials.id, type });
@@ -60,7 +60,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 		}
 
 		return new Credentials(
-			{ id: credentials.id, name: credentials.name },
+			{ id: credentials.id.toString(), name: credentials.name },
 			credentials.type,
 			credentials.nodesAccess,
 			credentials.data,

@@ -10,7 +10,6 @@ import {
 	ICredentialType,
 	IDataObject,
 	INodeConnections,
-	INodeCredentialsDetails,
 	INodeIssueData,
 	INodeTypeDescription,
 	IRunData,

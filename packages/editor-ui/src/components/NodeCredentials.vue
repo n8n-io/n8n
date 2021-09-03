@@ -196,7 +196,7 @@ export default mixins(
 			const node = this.node as INodeUi;
 			const nodeCredentials = node.credentials![credentialType];
 
-			// if credentials has been string or neither id nor name matched uniquely
+			// if credentials has been string or neither id matched nor name matched uniquely
 			if (nodeCredentials.id === null || !this.credentialOptions[credentialType].find((optionData: ICredentialsResponse) => optionData.id === nodeCredentials.id)) {
 				// update all nodes in the workflow with the same old/invalid credentials
 				this.$store.commit('replaceInvalidWorkflowCredentials', {
@@ -205,6 +205,11 @@ export default mixins(
 					type: credentialType,
 				});
 				this.updateNodesCredentialsIssues();
+				this.$showMessage({
+					title: 'Node credentials updated',
+					message: `Nodes that used credentials "${nodeCredentials.name}" have been updated to use "${newCredentialData.name}"`,
+					type: 'success',
+				});
 			}
 
 			const updateInformation: INodeUpdatePropertiesInformation = {

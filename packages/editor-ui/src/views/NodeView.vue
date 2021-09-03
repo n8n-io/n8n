@@ -1884,7 +1884,7 @@ export default mixins(
 					const credentialsForId = credentialOptions.find((optionData: ICredentialsResponse) => optionData.id === nodeCredentials.id);
 					if (credentialsForId) {
 						if (credentialsForId.name !== nodeCredentials.name) {
-							node.credentials[nodeCredentialType] = { id: credentialsForId.id, name: credentialsForId.name };
+							node.credentials[nodeCredentialType].name = credentialsForId.name;
 							this.credentialsUpdated = true;
 						}
 						return;

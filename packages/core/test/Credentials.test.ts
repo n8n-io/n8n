@@ -3,7 +3,7 @@ import { Credentials } from '../src';
 describe('Credentials', () => {
 	describe('without nodeType set', () => {
 		test('should be able to set and read key data without initial data set', () => {
-			const credentials = new Credentials('testName', 'testType', []);
+			const credentials = new Credentials({ id: null, name: 'testName' }, 'testType', []);
 
 			const key = 'key1';
 			const password = 'password';
