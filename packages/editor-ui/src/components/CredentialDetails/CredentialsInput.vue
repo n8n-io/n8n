@@ -1,43 +1,5 @@
 <template>
 	<div @keydown.stop :class="$style.container">
-		<div v-if="showSuccessBanner">
-			<el-tag
-				type="success"
-				size="medium"
-				:class="$style.banner"
-			>
-				<div>
-					<font-awesome-icon
-						icon="check-circle"
-						:class="$style.successIcon"
-					/>
-					<span>Account connected</span>
-				</div>
-				<n8n-button
-					title="Reconnect OAuth Credentials"
-					@click.stop="oAuthCredentialAuthorize()"
-					size="small"
-					label="Reconnect"
-					theme="success"
-					type="outline"
-					:transparentBackground="true"
-				/>
-			</el-tag>
-		</div>
-		<n8n-info-tip>Need help filling out these fields?
-			<a :href="documentationUrl" target="_blank">Open docs</a>
-		</n8n-info-tip>
-
-		<div v-if="isOAuthType && credentialProperties.length">
-			<n8n-input-label label="OAuth Redirect URL">
-				<div :class="$style.copyText" @click="copyCallbackUrl">
-					<span>{{ oAuthCallbackUrl }}</span>
-					<div :class="$style.copyButton"><span>Click to copy</span></div>
-				</div>
-			</n8n-input-label>
-			<div :class="$style.oauthInfo">In {{ appName }}, use the URL above when prompted to enter an OAuth callback or redirect URL</div>
-		</div>
-
 		<div v-for="parameter in credentialProperties" :key="parameter.name">
 			<n8n-input-label
 				:label="parameter.displayName"
@@ -58,135 +20,27 @@
 				/>
 			</n8n-input-label>
 		</div>
-
-		<div v-if="isOAuthType && requiredPropertiesFilled && !isOAuthConnected">
-			<span v-if="isGoogleOAuthType">
-				<img
-					:src="basePath + 'google-signin-light.png'"
-					:class="$style.googleIconClickable"
-					alt="Sign in with Google"
-					@click.stop="oAuthCredentialAuthorize()"
-				/>
-			</span>
-			<span v-else>
-				<n8n-button
-					title="Connect OAuth Credentials"
-					label="Connect my account"
-					size="large"
-					@click.stop="oAuthCredentialAuthorize()"
-				/>
-			</span>
-		</div>
 	</div>
 </template>
 
 <script lang="ts">
-import { IUpdateInformation } from '../../Interface';
+import Vue from 'vue';
 
-import { INodeParameters, INodeProperties } from 'n8n-workflow';
+import { IUpdateInformation } from '../../Interface';
 
 import ParameterInput from '../ParameterInput.vue';
 
-import mixins from 'vue-typed-mixins';
-
-import { copyPaste } from '../mixins/copyPaste';
-import { restApi } from '../mixins/restApi';
-import { nodeHelpers } from '../mixins/nodeHelpers';
-import { showMessage } from '../mixins/showMessage';
-
-import { getAppNameFromCredType } from '../helpers';
-
-export default mixins(copyPaste, nodeHelpers, restApi, showMessage).extend({
+export default Vue.extend({
 	name: 'CredentialsInput',
 	props: [
-		'credentialTypeData', // ICredentialType
+		'credentialProperties',
 		'credentialData', // ICredentialsDecryptedResponse
-		'parentTypes',
-		'isGoogleOAuthType',
-		'isOAuthType',
-		'isOAuthConnected',
+		'documentationUrl',
 	],
 	components: {
 		ParameterInput,
 	},
-	computed: {
-		basePath(): string {
-			return this.$store.getters.getBaseUrl;
-		},
-		appName(): string {
-			const appName = getAppNameFromCredType(
-				this.credentialTypeData.displayName,
-			);
-
-			return appName || "the service you're connecting to";
-		},
-		credentialProperties(): INodeProperties[] {
-			return this.credentialTypeData.properties.filter(
-				(propertyData: INodeProperties) => {
-					if (!this.displayCredentialParameter(propertyData)) {
-						return false;
-					}
-					return (
-						!this.credentialTypeData.__overwrittenProperties ||
-						!this.credentialTypeData.__overwrittenProperties.includes(
-							propertyData.name,
-						)
-					);
-				},
-			);
-		},
-		oAuthCallbackUrl(): string {
-			const oauthType =
-				this.credentialTypeData.name === 'oAuth2Api' ||
-				this.parentTypes.includes('oAuth2Api')
-					? 'oauth2'
-					: 'oauth1';
-			return this.$store.getters.oauthCallbackUrls[oauthType];
-		},
-		requiredPropertiesFilled(): boolean {
-			for (const property of this.credentialProperties) {
-				if (property.required !== true) {
-					continue;
-				}
-
-				if (!this.credentialData[property.name]) {
-					return false;
-				}
-			}
-			return true;
-		},
-		showSuccessBanner(): boolean {
-			return this.isOAuthType && this.requiredPropertiesFilled && this.isOAuthConnected;
-		},
-		documentationUrl(): string {
-			const type = this.credentialTypeData;
-
-			if (!type) {
-				return '';
-			}
-
-			if (type.documentationUrl && type.documentationUrl.startsWith('http')) {
-				return type.documentationUrl;
-			}
-
-			if (type.documentationUrl) {
-				return `https://docs.n8n.io/credentials/${type.documentationUrl}/?utm_source=n8n_app&utm_medium=left_nav_menu&utm_campaign=create_new_credentials_modal`;
-			}
-
-			return '';
-		},
-	},
 	methods: {
-		copyCallbackUrl(): void {
-			this.copyToClipboard(this.oAuthCallbackUrl);
-
-			this.$showMessage({
-				title: 'Copied',
-				message: `Redirect URL copied to clipboard`,
-				type: 'success',
-			});
-		},
-
 		valueChanged(parameterData: IUpdateInformation) {
 			const name = parameterData.name.split('.').pop();
 
@@ -194,34 +48,6 @@ export default mixins(copyPaste, nodeHelpers, restApi, showMessage).extend({
 				name,
 				value: parameterData.value,
 			});
-		},
-
-		oAuthCredentialAuthorize(): void {
-			this.$emit('oauth');
-		},
-
-		displayCredentialParameter(parameter: INodeProperties): boolean {
-			if (parameter.type === 'hidden') {
-				return false;
-			}
-
-			if (parameter.displayOptions === undefined) {
-				// If it is not defined no need to do a proper check
-				return true;
-			}
-
-			return this.displayParameter(
-				this.credentialData as INodeParameters,
-				parameter,
-				'',
-			);
-		},
-	},
-	watch: {
-		showSuccessBanner(newValue, oldValue) {
-			if (newValue && !oldValue) {
-				this.$emit('scrollToTop');
-			}
 		},
 	},
 });
@@ -232,77 +58,5 @@ export default mixins(copyPaste, nodeHelpers, restApi, showMessage).extend({
 	> * {
 		margin-bottom: var(--spacing-l);
 	}
-}
-
-.copyText {
-	span {
-		font-family: Monaco;
-		line-height: 1.5;
-	}
-
-	padding: var(--spacing-xs);
-	background-color: var(--color-background-light);
-	border: var(--border-base);
-	border-radius: var(--border-radius-base);
-	cursor: pointer;
-	position: relative;
-	font-weight: var(--font-weight-regular);
-
-	&:hover {
-		--display-copy-button: flex;
-		width: 100%;
-	}
-}
-
-.banner {
-	width: 100%;
-	display: flex;
-	align-items: center;
-
-	> *:first-child {
-		flex-grow: 1;
-	}
-}
-
-.copyButton {
-	display: var(--display-copy-button, none);
-	position: absolute;
-	top: 0;
-	right: 0;
-	padding: var(--spacing-xs);
-	background-color: var(--color-background-light);
-	height: 100%;
-	align-items: center;
-	border-radius: var(--border-radius-base);
-
-	span {
-		font-family: unset;
-	}
-}
-
-.successIcon {
-	margin-right: var(--spacing-xs);
-}
-
-.googleIcon {
-	width: 191px;
-}
-
-.googleIconDisabled {
-	composes: googleIcon;
-	cursor: not-allowed
-}
-
-.googleIconClickable {
-	composes: googleIcon;
-	cursor: pointer;
-}
-
-.oauthInfo {
-	margin-top: var(--spacing-2xs);
-	font-size: var(--font-size-2xs);
-	line-height: var(--font-line-height-loose);
-	font-weight: var(--font-weight-regular);
-	word-break: normal;
 }
 </style>

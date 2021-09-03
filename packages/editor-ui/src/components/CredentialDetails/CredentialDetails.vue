@@ -78,17 +78,58 @@
 					</n8n-menu>
 				</div>
 				<div v-if="activeTab === 'connection'" :class="$style.mainContent" ref="content">
+					<success-banner
+						v-if="showSuccessBanner"
+						message="Account connected"
+						buttonLabel="Reconnect"
+						buttonTitle="Reconnect OAuth Credentials"
+						@click="oAuthCredentialAuthorize"
+					/>
+					<!-- <div v-if="errorMessage">
+						<el-tag
+							type="danger"
+							size="medium"
+							:class="$style.banner"
+						>
+							<div>
+								<font-awesome-icon
+									icon="exclamation-triangle"
+									:class="$style.successIcon"
+								/>
+								<span>{{errorMessage}}</span>
+								<span v-if="errorDetails">More details</span>
+							</div>
+							<div>
+								{{errorDetails}}
+							</div>
+						</el-tag>
+					</div> -->
+					<n8n-info-tip>
+						Need help filling out these fields?
+						<a :href="documentationUrl" target="_blank">Open docs</a>
+					</n8n-info-tip>
+
+					<CopyInput
+						v-if="isOAuthType && credentialProperties.length"
+						label="Oauth Redirect URL"
+						:copyContent="oAuthCallbackUrl"
+						copyButtonText="Click to copy"
+						:subtitle="`In ${appName}, use the URL above when prompted to enter an OAuth callback or redirect URL`"
+						successMessage="Redirect URL copied to clipboard"
+					/>
+
 					<credentials-input
 						v-if="credentialType"
-						:credentialTypeData="credentialType"
 						:credentialData="credentialData"
-						:parentTypes="parentTypes"
-						:isGoogleOAuthType="isGoogleOAuthType"
-						:isOAuthType="isOAuthType"
-						:isOAuthConnected="isOAuthConnected"
+						:credentialProperties="credentialProperties"
+						:documentationUrl="documentationUrl"
 						@change="onDataChange"
-						@oauth="oAuthCredentialAuthorize"
-						@scrollToTop="scrollToTop"
+					/>
+
+					<OauthButton
+						v-if="isOAuthType && requiredPropertiesFilled && !isOAuthConnected"
+						:isGoogleOAuthType="isGoogleOAuthType"
+						@click="oAuthCredentialAuthorize"
 					/>
 				</div>
 				<div v-if="activeTab === 'info'" :class="$style.mainContent">
@@ -172,6 +213,11 @@ import { genericHelpers } from '../mixins/genericHelpers';
 import { convertToHumanReadableDate } from '../helpers';
 import { showMessage } from '../mixins/showMessage';
 
+import { getAppNameFromCredType } from '../helpers';
+import SuccessBanner from '../SuccessBanner.vue';
+import CopyInput from '../CopyInput.vue';
+import OauthButton from './OauthButton.vue';
+
 interface NodeAccessMap {
 	[nodeType: string]: ICredentialNodeAccess | null;
 }
@@ -180,9 +226,12 @@ export default mixins(genericHelpers, showMessage, nodeHelpers).extend({
 	name: 'CredentialsDetail',
 	components: {
 		CredentialsInput,
-		Modal,
-		TimeAgo,
 		CredentialIcon,
+		CopyInput,
+		SuccessBanner,
+		Modal,
+		OauthButton,
+		TimeAgo,
 	},
 	props: {
 		modalName: {
@@ -247,6 +296,17 @@ export default mixins(genericHelpers, showMessage, nodeHelpers).extend({
 		this.loading = false;
 	},
 	computed: {
+		appName(): string {
+			if (!this.credentialType) {
+				return '';
+			}
+
+			const appName = getAppNameFromCredType(
+				this.credentialType.displayName,
+			);
+
+			return appName || "the service you're connecting to";
+		},
 		currentCredential(): ICredentialsResponse | null {
 			if (!this.credentialId) {
 				return null;
@@ -281,6 +341,26 @@ export default mixins(genericHelpers, showMessage, nodeHelpers).extend({
 				properties: this.getCredentialProperties(this.credentialTypeName),
 			};
 		},
+		documentationUrl(): string {
+			const type = this.credentialType;
+
+			if (!type) {
+				return '';
+			}
+
+			if (type.documentationUrl && type.documentationUrl.startsWith('http')) {
+				return type.documentationUrl;
+			}
+
+			if (type.documentationUrl) {
+				return `https://docs.n8n.io/credentials/${type.documentationUrl}/?utm_source=n8n_app&utm_medium=left_nav_menu&utm_campaign=create_new_credentials_modal`;
+			}
+
+			return '';
+		},
+		showSuccessBanner(): boolean {
+			return this.isOAuthType && this.requiredPropertiesFilled && this.isOAuthConnected;
+		},
 		nodesWithAccess(): INodeTypeDescription[] {
 			if (this.credentialTypeName) {
 				return this.$store.getters['credentials/getNodesWithAccess'](
@@ -310,6 +390,46 @@ export default mixins(genericHelpers, showMessage, nodeHelpers).extend({
 		isGoogleOAuthType(): boolean {
 			return this.credentialTypeName === 'googleOAuth2Api' || this.parentTypes.includes('googleOAuth2Api');
 		},
+		// todo move to store
+		credentialProperties(): INodeProperties[] {
+			if (!this.credentialType) {
+				return [];
+			}
+
+			return this.credentialType.properties.filter(
+				(propertyData: INodeProperties) => {
+					if (!this.displayCredentialParameter(propertyData)) {
+						return false;
+					}
+					return (
+						!this.credentialType!.__overwrittenProperties ||
+						!this.credentialType!.__overwrittenProperties.includes(
+							propertyData.name,
+						)
+					);
+				},
+			);
+		},
+		requiredPropertiesFilled(): boolean {
+			for (const property of this.credentialProperties) {
+				if (property.required !== true) {
+					continue;
+				}
+
+				if (!this.credentialData[property.name]) {
+					return false;
+				}
+			}
+			return true;
+		},
+		oAuthCallbackUrl(): string {
+			const oauthType =
+				this.credentialTypeName === 'oAuth2Api' ||
+				this.parentTypes.includes('oAuth2Api')
+					? 'oauth2'
+					: 'oauth1';
+			return this.$store.getters.oauthCallbackUrls[oauthType];
+		},
 	},
 	methods: {
 		async beforeClose(done: () => void) {
@@ -331,6 +451,23 @@ export default mixins(genericHelpers, showMessage, nodeHelpers).extend({
 			if (discard) {
 				done();
 			}
+		},
+
+		displayCredentialParameter(parameter: INodeProperties): boolean {
+			if (parameter.type === 'hidden') {
+				return false;
+			}
+
+			if (parameter.displayOptions === undefined) {
+				// If it is not defined no need to do a proper check
+				return true;
+			}
+
+			return this.displayParameter(
+				this.credentialData as INodeParameters,
+				parameter,
+				'',
+			);
 		},
 		getCredentialProperties(name: string): INodeProperties[] {
 			const credentialsData =
@@ -433,6 +570,7 @@ export default mixins(genericHelpers, showMessage, nodeHelpers).extend({
 			this.modalBus.$emit('close');
 		},
 
+		// todo move to store
 		getParentTypes(name: string): string[] {
 			const credentialType =
 				this.$store.getters['credentials/getCredentialTypeByName'](name);
@@ -713,6 +851,13 @@ export default mixins(genericHelpers, showMessage, nodeHelpers).extend({
 			};
 
 			window.addEventListener('message', receiveMessage, false);
+		},
+	},
+	watch: {
+		showSuccessBanner(newValue, oldValue) {
+			if (newValue && !oldValue) {
+				this.scrollToTop();
+			}
 		},
 	},
 });
