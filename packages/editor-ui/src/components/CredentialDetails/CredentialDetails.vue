@@ -396,6 +396,11 @@ export default mixins(genericHelpers, showMessage, nodeHelpers).extend({
 					'Ignore',
 				);
 
+				if (!this.requiredPropertiesFilled) {
+					this.scrollToTop();
+
+					return;
+				}
 				if (goBack) {
 					this.scrollToBottom();
 
