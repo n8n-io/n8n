@@ -78,32 +78,21 @@
 					</n8n-menu>
 				</div>
 				<div v-if="activeTab === 'connection'" :class="$style.mainContent" ref="content">
-					<success-banner
+					<banner
+						v-show="showValidationWarnings"
+						theme="danger"
+						message="Please check the errors below"
+					/>
+
+					<banner
 						v-if="showSuccessBanner"
+						theme="success"
 						message="Account connected"
 						buttonLabel="Reconnect"
 						buttonTitle="Reconnect OAuth Credentials"
 						@click="oAuthCredentialAuthorize"
 					/>
-					<!-- <div v-if="errorMessage">
-						<el-tag
-							type="danger"
-							size="medium"
-							:class="$style.banner"
-						>
-							<div>
-								<font-awesome-icon
-									icon="exclamation-triangle"
-									:class="$style.successIcon"
-								/>
-								<span>{{errorMessage}}</span>
-								<span v-if="errorDetails">More details</span>
-							</div>
-							<div>
-								{{errorDetails}}
-							</div>
-						</el-tag>
-					</div> -->
+
 					<n8n-info-tip>
 						Need help filling out these fields?
 						<a :href="documentationUrl" target="_blank">Open docs</a>
@@ -123,6 +112,7 @@
 						:credentialData="credentialData"
 						:credentialProperties="credentialProperties"
 						:documentationUrl="documentationUrl"
+						:showValidationWarnings="showValidationWarnings"
 						@change="onDataChange"
 					/>
 
@@ -214,7 +204,7 @@ import { convertToHumanReadableDate } from '../helpers';
 import { showMessage } from '../mixins/showMessage';
 
 import { getAppNameFromCredType } from '../helpers';
-import SuccessBanner from '../SuccessBanner.vue';
+import Banner from '../Banner.vue';
 import CopyInput from '../CopyInput.vue';
 import OauthButton from './OauthButton.vue';
 
@@ -228,7 +218,7 @@ export default mixins(genericHelpers, showMessage, nodeHelpers).extend({
 		CredentialsInput,
 		CredentialIcon,
 		CopyInput,
-		SuccessBanner,
+		Banner,
 		Modal,
 		OauthButton,
 		TimeAgo,
@@ -259,6 +249,7 @@ export default mixins(genericHelpers, showMessage, nodeHelpers).extend({
 			credentialId: '',
 			isNameEdit: false,
 			hasUnsavedChanges: false,
+			showValidationWarnings: false,
 		};
 	},
 	async mounted() {
@@ -629,6 +620,15 @@ export default mixins(genericHelpers, showMessage, nodeHelpers).extend({
 		async saveCredential(
 			closeDialog = true,
 		): Promise<ICredentialsResponse | null> {
+			this.showValidationWarnings = false;
+
+			if (!this.requiredPropertiesFilled) {
+				this.showValidationWarnings = true;
+				this.scrollToTop();
+
+				return null;
+			}
+
 			this.isSaving = true;
 			const nodesAccess = Object.values(this.nodeAccess).filter(
 				(access) => !!access,

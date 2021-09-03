@@ -14,6 +14,8 @@
 					:displayOptions="true"
 					:documentationUrl="documentationUrl"
 					:validateRequired="true"
+					:showValidationWarnings="showValidationWarnings"
+
 					@textInput="valueChanged"
 					@valueChanged="valueChanged"
 					inputSize="large"
@@ -36,6 +38,7 @@ export default Vue.extend({
 		'credentialProperties',
 		'credentialData', // ICredentialsDecryptedResponse
 		'documentationUrl',
+		'showValidationWarnings',
 	],
 	components: {
 		ParameterInput,

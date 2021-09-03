@@ -237,13 +237,14 @@ export default mixins(
 		},
 		props: [
 			'displayOptions', // boolean
+			'inputSize',
+			'isReadOnly',
+			'documentationUrl',
 			'parameter', // NodeProperties
 			'path', // string
 			'value',
 			'hideIssues', // boolean
-			'isReadOnly',
-			'inputSize',
-			'documentationUrl',
+			'showValidationWarnings',
 			'validateRequired',
 		],
 		data () {
@@ -560,7 +561,7 @@ export default mixins(
 				return shortPath.join('.');
 			},
 			showRequiredErrors(): boolean {
-				return this.$props.validateRequired && this.$props.parameter.type !== 'boolean' && !this.value && this.parameter.required && this.blurred;
+				return this.$props.validateRequired && this.$props.parameter.type !== 'boolean' && !this.value && this.parameter.required && (this.blurred || this.showValidationWarnings);
 			},
 			workflow (): Workflow {
 				return this.getWorkflow();
