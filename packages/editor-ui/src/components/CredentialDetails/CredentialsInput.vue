@@ -1,5 +1,29 @@
 <template>
 	<div @keydown.stop :class="$style.container">
+		<div v-if="isOAuthType && requiredPropertiesFilled && isOAuthConnected">
+			<el-tag
+				type="success"
+				size="medium"
+				:class="$style.banner"
+			>
+				<div>
+					<font-awesome-icon
+						icon="check-circle"
+						:class="$style.successIcon"
+					/>
+					<span>Account connected</span>
+				</div>
+				<n8n-button
+					title="Reconnect OAuth Credentials"
+					@click.stop="oAuthCredentialAuthorize()"
+					size="small"
+					label="Reconnect"
+					theme="success"
+					type="outline"
+					:transparentBackground="true"
+				/>
+			</el-tag>
+		</div>
 		<n8n-info-tip>Need help filling out these fields?
 			<a :href="documentationUrl" target="_blank">Open docs</a>
 		</n8n-info-tip>
@@ -35,39 +59,22 @@
 			</n8n-input-label>
 		</div>
 
-		<div v-if="isOAuthType && requiredPropertiesFilled">
-			<span v-if="isOAuthConnected">
-				<el-tag type="success"
-					><font-awesome-icon
-						icon="check-circle"
-						:class="$style.successIcon"
-					/><span>Account connected</span></el-tag
-				>
-				<n8n-button
-					title="Reconnect OAuth Credentials"
+		<div v-if="isOAuthType && requiredPropertiesFilled && !isOAuthConnected">
+			<span v-if="isGoogleOAuthType">
+				<img
+					:src="basePath + 'google-signin-light.png'"
+					:class="$style.googleIconClickable"
+					alt="Sign in with Google"
 					@click.stop="oAuthCredentialAuthorize()"
-					size="large"
-					label="Reconnect"
-					type="text"
 				/>
 			</span>
 			<span v-else>
-				<span v-if="isGoogleOAuthType">
-					<img
-						:src="basePath + 'google-signin-light.png'"
-						:class="$style.googleIconClickable"
-						alt="Sign in with Google"
-						@click.stop="oAuthCredentialAuthorize()"
-					/>
-				</span>
-				<span v-else>
-					<n8n-button
-						title="Connect OAuth Credentials"
-						label="Connect my account"
-						size="large"
-						@click.stop="oAuthCredentialAuthorize()"
-					/>
-				</span>
+				<n8n-button
+					title="Connect OAuth Credentials"
+					label="Connect my account"
+					size="large"
+					@click.stop="oAuthCredentialAuthorize()"
+				/>
 			</span>
 		</div>
 	</div>
@@ -253,6 +260,16 @@ export default mixins(copyPaste, nodeHelpers, restApi, showMessage).extend({
 	&:hover {
 		--display-copy-button: flex;
 		width: 100%;
+	}
+}
+
+.banner {
+	width: 100%;
+	display: flex;
+	align-items: center;
+
+	> *:first-child {
+		flex-grow: 1;
 	}
 }
 

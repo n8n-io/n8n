@@ -5,6 +5,7 @@
 	background-color: var.$color-primary-lighter;
 	border-color: var.$color-primary-light-5;
 	color: var.$color-primary-light-1;
+	font-weight: var(--font-weight-regular);
 
 	@include mixins.when(hit) {
 		border-color: var.$tag-primary-color;
@@ -130,8 +131,7 @@
 	}
 
 	@include mixins.m(medium) {
-		height: 28px;
-		line-height: 26px;
+		padding: 12px;
 
 		.el-icon-close {
 			transform: scale(0.8);
