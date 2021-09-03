@@ -155,7 +155,7 @@ export const agentFields = [
 					{
 						displayName: 'Group Names/IDs',
 						name: 'groups',
-						description: 'Groups in which the permissions granted by the role apply. Required only when Scope is Specified Groups - ignored otherwise. Choose from the list or specify an ID. You can also specify the ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+						description: 'Groups in which the permissions granted by the role apply. Required only when Scope is Specified Groups - ignored otherwise. Choose from the list or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 						type: 'multiOptions',
 						typeOptions: {
 							loadOptionsMethod: [
@@ -202,7 +202,7 @@ export const agentFields = [
 				name: 'department_ids',
 				type: 'multiOptions',
 				default: [],
-				description: 'IDs of the departments to which the agent belongs. Choose from the list or specify an ID. You can also specify the ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description: 'IDs of the departments to which the agent belongs. Choose from the list or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 				typeOptions: {
 					loadOptionsMethod: [
 						'getDepartments',
@@ -245,7 +245,7 @@ export const agentFields = [
 				name: 'member_of',
 				type: 'multiOptions',
 				default: [],
-				description: 'Comma-separated IDs of the groups that the agent is a member of. Choose from the list or specify an ID. You can also specify the ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description: 'Comma-separated IDs of the groups that the agent is a member of. Choose from the list or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 				typeOptions: {
 					loadOptionsMethod: [
 						'getAgentGroups',
@@ -263,7 +263,7 @@ export const agentFields = [
 				name: 'observer_of',
 				type: 'multiOptions',
 				default: [],
-				description: 'Comma-separated IDs of the groups that the agent is an observer of. Choose from the list or specify an ID. You can also specify the ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description: 'Comma-separated IDs of the groups that the agent is an observer of. Choose from the list or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 				typeOptions: {
 					loadOptionsMethod: [
 						'getAgentGroups',
@@ -564,7 +564,7 @@ export const agentFields = [
 				name: 'department_ids',
 				type: 'multiOptions',
 				default: [],
-				description: 'IDs of the departments to which the agent belongs. Choose from the list or specify an ID. You can also specify the ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description: 'IDs of the departments to which the agent belongs. Choose from the list or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 				typeOptions: {
 					loadOptionsMethod: [
 						'getDepartments',
@@ -619,7 +619,7 @@ export const agentFields = [
 				name: 'member_of',
 				type: 'multiOptions',
 				default: [],
-				description: 'Comma-separated IDs of the groups that the agent is a member of. Choose from the list or specify an ID. You can also specify the ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description: 'Comma-separated IDs of the groups that the agent is a member of. Choose from the list or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 				typeOptions: {
 					loadOptionsMethod: [
 						'getAgentGroups',
@@ -637,7 +637,7 @@ export const agentFields = [
 				name: 'observer_of',
 				type: 'multiOptions',
 				default: [],
-				description: 'Comma-separated IDs of the groups that the agent is an observer of. Choose from the list or specify an ID. You can also specify the ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description: 'Comma-separated IDs of the groups that the agent is an observer of. Choose from the list or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 				typeOptions: {
 					loadOptionsMethod: [
 						'getAgentGroups',
