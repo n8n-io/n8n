@@ -68,7 +68,7 @@ export const taskFields = [
 		default: '',
 	},
 	/* -------------------------------------------------------------------------- */
-	/*                                 task:create                             */
+	/*                                 task:create                                */
 	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Task Name',
@@ -119,11 +119,13 @@ export const taskFields = [
 				name: 'estimate',
 				type: 'string',
 				default: '',
+				placeholder: '2:30',
+				description: 'Estimate time the task will take, e.x: 2:30 (2 hours and 30 minutes)',
 			},
 		],
 	},
 	/* -------------------------------------------------------------------------- */
-	/*                                 task:delete                             */
+	/*                                 task:delete                                */
 	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Task ID',
@@ -143,7 +145,7 @@ export const taskFields = [
 		},
 	},
 	/* -------------------------------------------------------------------------- */
-	/*                                 task:get                                */
+	/*                                 task:get                                   */
 	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Task ID',
@@ -163,7 +165,7 @@ export const taskFields = [
 		},
 	},
 	/* -------------------------------------------------------------------------- */
-	/*                                 task:getAll                             */
+	/*                                 task:getAll                                */
 	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Return All',
@@ -268,7 +270,7 @@ export const taskFields = [
 	},
 
 	/* -------------------------------------------------------------------------- */
-	/*                                 task:update                             */
+	/*                                 task:update                                */
 	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Task ID',
@@ -318,6 +320,8 @@ export const taskFields = [
 				name: 'estimate',
 				type: 'string',
 				default: '',
+				placeholder: '2:30',
+				description: 'Estimate time the task will take, e.x: 2:30 (2 hours and 30 minutes)',
 			},
 			{
 				displayName: 'Name',

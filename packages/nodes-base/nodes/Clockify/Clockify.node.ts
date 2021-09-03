@@ -490,6 +490,11 @@ export class Clockify implements INodeType {
 
 						Object.assign(body, additionalFields);
 
+						if (body.estimate) {
+							const [hour, minute] = (body.estimate as string).split(':');
+							body.estimate = `PT${hour}H${minute}M`;
+						}
+
 						responseData = await clockifyApiRequest.call(
 							this,
 							'POST',
@@ -516,8 +521,6 @@ export class Clockify implements INodeType {
 							{},
 							qs,
 						);
-
-						responseData = { success: true };
 					}
 
 					if (operation === 'get') {
@@ -565,17 +568,15 @@ export class Clockify implements INodeType {
 								qs,
 							);
 						} else {
-							qs.limit = this.getNodeParameter('limit', i) as number;
+							qs['page-size'] = this.getNodeParameter('limit', i) as number;
 
-							responseData = await clockifyApiRequestAllItems.call(
+							responseData = await clockifyApiRequest.call(
 								this,
 								'GET',
 								`/workspaces/${workspaceId}/projects/${projectId}/tasks`,
 								{},
 								qs,
 							);
-
-							responseData = responseData.splice(0, qs.limit);
 						}
 					}
 
@@ -597,6 +598,11 @@ export class Clockify implements INodeType {
 						const body: IDataObject = {};
 
 						Object.assign(body, updateFields);
+
+						if (body.estimate) {
+							const [hour, minute] = (body.estimate as string).split(':');
+							body.estimate = `PT${hour}H${minute}M`;
+						}
 
 						responseData = await clockifyApiRequest.call(
 							this,
