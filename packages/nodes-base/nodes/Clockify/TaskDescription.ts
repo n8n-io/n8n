@@ -76,7 +76,7 @@ export const taskFields = [
 		type: 'string',
 		required: true,
 		default: '',
-		description: 'Name of task being created.',
+		description: 'Name of task to create',
 		displayOptions: {
 			show: {
 				resource: [
@@ -124,6 +124,7 @@ export const taskFields = [
 			},
 		],
 	},
+
 	/* -------------------------------------------------------------------------- */
 	/*                                 task:delete                                */
 	/* -------------------------------------------------------------------------- */
@@ -143,7 +144,9 @@ export const taskFields = [
 				],
 			},
 		},
+		description: 'ID of task to delete',
 	},
+
 	/* -------------------------------------------------------------------------- */
 	/*                                 task:get                                   */
 	/* -------------------------------------------------------------------------- */
@@ -163,7 +166,9 @@ export const taskFields = [
 				],
 			},
 		},
+		description: 'ID of task to get',
 	},
+
 	/* -------------------------------------------------------------------------- */
 	/*                                 task:getAll                                */
 	/* -------------------------------------------------------------------------- */
@@ -288,6 +293,7 @@ export const taskFields = [
 				],
 			},
 		},
+		description: 'ID of task to update',
 	},
 	{
 		displayName: 'Update Fields',
