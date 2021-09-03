@@ -133,16 +133,20 @@ export const softwareFields = [
 				default: 'managed',
 				options: [
 					{
-						name: 'Blacklisted',
-						value: 'blacklisted',
+						name: 'Disabled',
+						value: 'disabled',
 					},
 					{
 						name: 'Ignored',
 						value: 'ignored',
 					},
 					{
-						name: 'Managed',
-						value: 'managed',
+						name: 'Needs Review',
+						value: 'needs review',
+					},
+					{
+						name: 'Restricted',
+						value: 'restricted',
 					},
 				],
 			},
@@ -321,16 +325,20 @@ export const softwareFields = [
 				default: 'managed',
 				options: [
 					{
-						name: 'Blacklisted',
-						value: 'blacklisted',
+						name: 'Disabled',
+						value: 'disabled',
 					},
 					{
 						name: 'Ignored',
 						value: 'ignored',
 					},
 					{
-						name: 'Managed',
-						value: 'managed',
+						name: 'Needs Review',
+						value: 'needs review',
+					},
+					{
+						name: 'Restricted',
+						value: 'restricted',
 					},
 				],
 			},
