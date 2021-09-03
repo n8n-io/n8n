@@ -32,7 +32,7 @@ export async function freshserviceApiRequest(
 	body: IDataObject = {},
 	qs: IDataObject = {},
 ) {
-	const { apiKey, domain } = this.getCredentials('freshserviceApi') as FreshserviceCredentials;
+	const { apiKey, domain } = await this.getCredentials('freshserviceApi') as FreshserviceCredentials;
 	const encodedApiKey = Buffer.from(`${apiKey}:X`).toString('base64');
 
 	const options: OptionsWithUri = {
