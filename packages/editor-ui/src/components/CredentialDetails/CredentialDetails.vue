@@ -107,7 +107,7 @@
 						successMessage="Redirect URL copied to clipboard"
 					/>
 
-					<credentials-input
+					<CredentialInputs
 						v-if="credentialType"
 						:credentialData="credentialData"
 						:credentialProperties="credentialProperties"
@@ -123,50 +123,12 @@
 					/>
 				</div>
 				<div v-if="activeTab === 'info'" :class="$style.mainContent">
-					<el-row>
-						<el-col :span="8" :class="$style.accessLabel">
-							<span>Allow use by</span>
-						</el-col>
-						<el-col :span="16">
-							<div
-								v-for="node in nodesWithAccess"
-								:key="node.name"
-								:class="$style.valueLabel"
-							>
-								<el-checkbox
-									:value="!!nodeAccess[node.name]"
-									@change="(val) => onNodeAccessChange(node.name, val)"
-									:label="node.displayName"
-								/>
-							</div>
-						</el-col>
-					</el-row>
-					<el-row v-if="currentCredential">
-						<el-col :span="8" :class="$style.label">
-							<span>Created</span>
-						</el-col>
-						<el-col :span="16" :class="$style.valueLabel">
-							<span>{{
-								convertToHumanReadableDate(currentCredential.createdAt)
-							}}</span>
-						</el-col>
-					</el-row>
-					<el-row v-if="currentCredential">
-						<el-col :span="8" :class="$style.label">
-							<span>Last modified</span>
-						</el-col>
-						<el-col :span="16" :class="$style.valueLabel">
-							<TimeAgo :date="currentCredential.updatedAt" />
-						</el-col>
-					</el-row>
-					<el-row v-if="currentCredential">
-						<el-col :span="8" :class="$style.label">
-							<span>ID</span>
-						</el-col>
-						<el-col :span="16" :class="$style.valueLabel">
-							<span>{{currentCredential.id}}</span>
-						</el-col>
-					</el-row>
+					<CredentialInfo
+						:nodeAccess="nodeAccess"
+						:nodesWithAccess="nodesWithAccess"
+						:currentCredential="currentCredential"
+						@accessChange="onNodeAccessChange"
+					/>
 				</div>
 			</div>
 		</template>
@@ -182,8 +144,7 @@ import {
 } from '@/Interface';
 
 import Modal from '../Modal.vue';
-import CredentialsInput from './CredentialsInput.vue';
-import TimeAgo from '../TimeAgo.vue';
+import CredentialInputs from './CredentialInputs.vue';
 import {
 	CredentialInformation,
 	ICredentialDataDecryptedObject,
@@ -200,12 +161,12 @@ import CredentialIcon from '../CredentialIcon.vue';
 import mixins from 'vue-typed-mixins';
 import { nodeHelpers } from '../mixins/nodeHelpers';
 import { genericHelpers } from '../mixins/genericHelpers';
-import { convertToHumanReadableDate } from '../helpers';
 import { showMessage } from '../mixins/showMessage';
 
 import { getAppNameFromCredType } from '../helpers';
 import Banner from '../Banner.vue';
 import CopyInput from '../CopyInput.vue';
+import CredentialInfo from './CredentialInfo.vue';
 import OauthButton from './OauthButton.vue';
 
 interface NodeAccessMap {
@@ -215,13 +176,13 @@ interface NodeAccessMap {
 export default mixins(genericHelpers, showMessage, nodeHelpers).extend({
 	name: 'CredentialsDetail',
 	components: {
-		CredentialsInput,
+		CredentialInputs,
 		CredentialIcon,
+		CredentialInfo,
 		CopyInput,
 		Banner,
 		Modal,
 		OauthButton,
-		TimeAgo,
 	},
 	props: {
 		modalName: {
@@ -531,7 +492,7 @@ export default mixins(genericHelpers, showMessage, nodeHelpers).extend({
 		onTabSelect(tab: string) {
 			this.activeTab = tab;
 		},
-		onNodeAccessChange(name: string, value: boolean) {
+		onNodeAccessChange({name, value}: {name: string, value: boolean}) {
 			this.hasUnsavedChanges = true;
 			if (value) {
 				this.nodeAccess = {
@@ -547,7 +508,6 @@ export default mixins(genericHelpers, showMessage, nodeHelpers).extend({
 				};
 			}
 		},
-		convertToHumanReadableDate,
 		onDataChange({ name, value }: { name: string; value: any }) { // tslint:disable-line:no-any
 			this.hasUnsavedChanges = true;
 			const { oauthTokenData, ...credData } = this.credentialData;
@@ -948,28 +908,10 @@ export default mixins(genericHelpers, showMessage, nodeHelpers).extend({
 	font-weight: 400;
 }
 
-.nodeName {
-	margin-left: var(--spacing-2xs);
-}
-
-.label {
-	font-weight: var(--font-weight-bold);
-	max-width: 230px;
-}
-
-.accessLabel {
-	composes: label;
-	margin-top: var(--spacing-5xs);
-}
-
 .credIcon {
 	display: flex;
 	align-items: center;
 	margin-right: var(--spacing-xs);
-}
-
-.valueLabel {
-	font-weight: var(--font-weight-regular);
 }
 
 .credentialModal {
