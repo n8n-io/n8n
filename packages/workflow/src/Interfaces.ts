@@ -639,7 +639,7 @@ export interface NodeCredentialTestResult {
 }
 
 export interface NodeCredentialTestRequest {
-	testWithNode?: string; // node name i.e. slack
+	nodeToTestWith?: string; // node name i.e. slack
 	credentials: ICredentialsDecrypted;
 }
 

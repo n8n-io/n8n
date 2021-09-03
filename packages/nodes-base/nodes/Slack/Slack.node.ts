@@ -298,13 +298,13 @@ export class Slack implements INodeType {
 					if (!response.ok) {
 						return {
 							status: 'Error',
-							message: `Unable to authenticate: ${response.error}`,
+							message: `${response.error}`,
 						};
 					}
 				} catch(err) {
 					return {
 						status: 'Error',
-						message: `Unable to authenticate: ${err.message}`,
+						message: `${err.message}`,
 					};
 				}
 

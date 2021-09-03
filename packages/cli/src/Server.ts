@@ -1351,7 +1351,7 @@ class App {
 						| undefined;
 
 					const nodeThatCanTestThisCredential = allNodes.find((node) => {
-						if (incomingData.testWithNode && node.description.name !== incomingData.testWithNode) {
+						if (node.description.name !== incomingData?.nodeToTestWith) {
 							return false;
 						}
 						const credentialTestable = node.description.credentials?.find((credential) => {

@@ -249,10 +249,7 @@ export default mixins(
 				if (node.credentials) {
 					// Returns a list of nodes that can test this credentials
 					const eligibleTesters = node.credentials.filter(credential => {
-						if (credential.name === this.credentialTypeData.name && credential.testedBy) {
-							return true;
-						}
-						return false;
+						return credential.name === this.credentialTypeData.name && credential.testedBy;
 					});
 					// If we have any node that can test, return true.
 					if (eligibleTesters.length) {
