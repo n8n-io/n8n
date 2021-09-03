@@ -2460,6 +2460,7 @@ class App {
 		this.app.get(
 			`/${this.restEndpoint}/options/timezones`,
 			ResponseHelper.send(async (req: express.Request, res: express.Response): Promise<object> => {
+				timezones['Europe/Istanbul'] = '(GMT+03:00) Istanbul';
 				return timezones;
 			}),
 		);
