@@ -494,13 +494,6 @@ export const agentFields = [
 				default: '',
 			},
 			{
-				displayName: 'Name',
-				name: 'name',
-				type: 'string',
-				default: '',
-				description: 'Concatenation of <code>first_name</code> and <code>last_name</code> with a single space between fields',
-			},
-			{
 				displayName: 'Work Phone Number',
 				name: 'work_phone_number',
 				type: 'string',
