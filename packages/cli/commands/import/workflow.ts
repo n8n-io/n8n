@@ -1,5 +1,6 @@
 /* eslint-disable no-console */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import { Command, flags } from '@oclif/command';
 
 import { INode, INodeCredentialsDetails, LoggerProxy } from 'n8n-workflow';
@@ -34,8 +35,14 @@ export class ImportWorkflowsCommand extends Command {
 		if (node.credentials) {
 			const [type, name] = Object.entries(node.credentials)[0];
 			if (typeof name === 'string') {
-				const matchingCredentials = credentialsEntities.find(credentials => credentials.name === name && credentials.type === type);
-				node.credentials[type] = { id: matchingCredentials?.id.toString() || null, name } as INodeCredentialsDetails;
+				const matchingCredentials = credentialsEntities.find(
+					(credentials) => credentials.name === name && credentials.type === type,
+				);
+				// eslint-disable-next-line no-param-reassign
+				node.credentials[type] = {
+					id: matchingCredentials?.id.toString() ?? null,
+					name,
+				} as INodeCredentialsDetails;
 			}
 		}
 	}
@@ -67,7 +74,7 @@ export class ImportWorkflowsCommand extends Command {
 
 			// Make sure the settings exist
 			await UserSettings.prepareUserSettings();
-			const credentialsEntities = await Db.collections.Credentials?.find() ?? [];
+			const credentialsEntities = (await Db.collections.Credentials?.find()) ?? [];
 			let i;
 			if (flags.separate) {
 				const files = await glob(
@@ -76,6 +83,7 @@ export class ImportWorkflowsCommand extends Command {
 				for (i = 0; i < files.length; i++) {
 					const workflow = JSON.parse(fs.readFileSync(files[i], { encoding: 'utf8' }));
 					if (credentialsEntities.length > 0) {
+						// eslint-disable-next-line
 						workflow.nodes.forEach((node: INode) => {
 							this.checkCredentials(node, credentialsEntities);
 						});
@@ -92,6 +100,7 @@ export class ImportWorkflowsCommand extends Command {
 
 				for (i = 0; i < fileContents.length; i++) {
 					if (credentialsEntities.length > 0) {
+						// eslint-disable-next-line
 						fileContents[i].nodes.forEach((node: INode) => {
 							this.checkCredentials(node, credentialsEntities);
 						});

@@ -252,7 +252,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 
 		// Save the credentials in DB
 		const findQuery = {
-			id: nodeCredentials.id!,
+			id: nodeCredentials.id,
 			type,
 		};
 
