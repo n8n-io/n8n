@@ -1,0 +1,181 @@
+@use "mixins/mixins";
+@use "./common/var";
+@use "input";
+
+@include mixins.b(input-number) {
+	position: relative;
+	display: inline-block;
+	line-height: #{var.$input-height - 2};
+	width: 100%;
+
+	.el-input {
+		display: block;
+
+		&__inner {
+			-webkit-appearance: none;
+			padding-left: #{var.$input-height + 10};
+			padding-right: #{var.$input-height + 10};
+			text-align: center;
+		}
+	}
+
+	@include mixins.e((increase, decrease)) {
+		position: absolute;
+		z-index: 1;
+		top: 1px;
+		width: var.$input-height;
+		height: auto;
+		text-align: center;
+		background: var.$background-color-base;
+		color: var(--color-text-dark);
+		cursor: pointer;
+		font-size: 13px;
+
+		&:hover {
+			color: var(--color-primary);
+
+			&:not(.is-disabled) ~ .el-input .el-input__inner:not(.is-disabled) {
+				border-color: var.$input-focus-border;
+			}
+		}
+
+		&.is-disabled {
+			color: var.$disabled-color-base;
+			cursor: not-allowed;
+		}
+	}
+
+	@include mixins.e(increase) {
+		right: 1px;
+		border-radius: 0 var(--border-radius-base) var(--border-radius-base) 0;
+		border-left: var(--border-base);
+	}
+
+	@include mixins.e(decrease) {
+		left: 1px;
+		border-radius: var(--border-radius-base) 0 0 var(--border-radius-base);
+		border-right: var(--border-base);
+	}
+
+	@include mixins.when(disabled) {
+		@include mixins.e((increase, decrease)) {
+			border-color: var.$disabled-border-base;
+			color: var.$disabled-border-base;
+
+			&:hover {
+				color: var.$disabled-border-base;
+				cursor: not-allowed;
+			}
+		}
+	}
+
+	@include mixins.m(medium) {
+		line-height: #{var.$input-medium-height - 2};
+
+		@include mixins.e((increase, decrease)) {
+			width: var.$input-medium-height;
+			font-size: var.$input-medium-font-size;
+		}
+
+		.el-input__inner {
+			padding-left: #{var.$input-medium-height + 7};
+			padding-right: #{var.$input-medium-height + 7};
+		}
+	}
+
+	@include mixins.m(small) {
+		line-height: #{var.$input-small-height - 2};
+
+		@include mixins.e((increase, decrease)) {
+			width: var.$input-small-height;
+			font-size: var.$input-small-font-size;
+
+			[class*='el-icon'] {
+				transform: scale(0.9);
+			}
+		}
+
+		.el-input__inner {
+			padding-left: #{var.$input-small-height + 7};
+			padding-right: #{var.$input-small-height + 7};
+		}
+	}
+
+	@include mixins.m(mini) {
+		line-height: #{var.$input-mini-height - 2};
+
+		@include mixins.e((increase, decrease)) {
+			width: var.$input-mini-height;
+			font-size: var.$input-mini-font-size;
+
+			[class*='el-icon'] {
+				transform: scale(0.8);
+			}
+		}
+
+		.el-input__inner {
+			padding-left: #{var.$input-mini-height + 7};
+			padding-right: #{var.$input-mini-height + 7};
+		}
+	}
+
+	@include mixins.when(without-controls) {
+		.el-input__inner {
+			text-align: left;
+			padding-left: 12px;
+			padding-right: 12px;
+		}
+	}
+
+	@include mixins.when(controls-right) {
+		.el-input__inner {
+			padding-left: 15px;
+			padding-right: #{var.$input-height + 10};
+		}
+
+		@include mixins.e((increase, decrease)) {
+			height: auto;
+			line-height: #{(var.$input-height - 2) * 0.5};
+
+			[class*='el-icon'] {
+				transform: scale(0.8);
+			}
+		}
+
+		@include mixins.e(increase) {
+			border-radius: 0 var(--border-radius-base) 0 0;
+			border-bottom: var(--border-base);
+		}
+
+		@include mixins.e(decrease) {
+			right: 1px;
+			bottom: 1px;
+			top: auto;
+			left: auto;
+			border-right: none;
+			border-left: var(--border-base);
+			border-radius: 0 0 var(--border-radius-base) 0;
+		}
+
+		&[class*='medium'] {
+			[class*='increase'],
+			[class*='decrease'] {
+				line-height: #{(var.$input-medium-height - 2) * 0.5};
+			}
+		}
+
+		&[class*='small'] {
+			[class*='increase'],
+			[class*='decrease'] {
+				line-height: #{(var.$input-small-height - 2) * 0.5};
+			}
+		}
+
+		&[class*='mini'] {
+			[class*='increase'],
+			[class*='decrease'] {
+				line-height: #{(var.$input-mini-height - 2) * 0.5};
+			}
+		}
+	}
+}

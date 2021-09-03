@@ -165,7 +165,7 @@ export const affiliateFields = [
 								name: 'country',
 								type: 'string',
 								default: '',
-								description: `The country’s ISO_3166-1 code. <a target="_blank" href="https://en.wikipedia.org/wiki/ISO_3166-1">Codes</a>.`,
+								description: `The country’s ISO_3166-1 code. <a href="https://en.wikipedia.org/wiki/ISO_3166-1">Codes</a>.`,
 							},
 						],
 					},

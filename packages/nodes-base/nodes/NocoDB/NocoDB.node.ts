@@ -1,5 +1,4 @@
 import {
-	BINARY_ENCODING,
 	IExecuteFunctions,
 } from 'n8n-core';
 
@@ -160,10 +159,11 @@ export class NocoDB implements INodeType {
 									throw new NodeOperationError(this.getNode(), `Binary property ${binaryPropertyName} does not exist on item!`);
 								}
 								const binaryData = items[i].binary![binaryPropertyName] as IBinaryData;
+								const dataBuffer = await this.helpers.getBinaryDataBuffer(i, binaryPropertyName);
 
 								const formData = {
 									file: {
-										value: Buffer.from(binaryData.data, BINARY_ENCODING),
+										value: dataBuffer,
 										options: {
 											filename: binaryData.fileName,
 											contentType: binaryData.mimeType,
@@ -338,10 +338,11 @@ export class NocoDB implements INodeType {
 									throw new NodeOperationError(this.getNode(), `Binary property ${binaryPropertyName} does not exist on item!`);
 								}
 								const binaryData = items[i].binary![binaryPropertyName] as IBinaryData;
+								const dataBuffer = await this.helpers.getBinaryDataBuffer(i, binaryPropertyName);
 
 								const formData = {
 									file: {
-										value: Buffer.from(binaryData.data, BINARY_ENCODING),
+										value: dataBuffer,
 										options: {
 											filename: binaryData.fileName,
 											contentType: binaryData.mimeType,

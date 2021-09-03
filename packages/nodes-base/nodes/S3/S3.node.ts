@@ -1,4 +1,3 @@
-
 import {
 	paramCase,
 	snakeCase,
@@ -120,7 +119,7 @@ export class S3 implements INodeType {
 						let credentials;
 
 						try {
-							credentials = this.getCredentials('s3');
+							credentials = await this.getCredentials('s3');
 						} catch (error) {
 							throw new NodeApiError(this.getNode(), error);
 						}
@@ -608,8 +607,7 @@ export class S3 implements INodeType {
 							}
 
 							const binaryData = (items[i].binary as IBinaryKeyData)[binaryPropertyName];
-
-							body = Buffer.from(binaryData.data, BINARY_ENCODING) as Buffer;
+							body = await this.helpers.getBinaryDataBuffer(i, binaryPropertyName);
 
 							headers['Content-Type'] = binaryData.mimeType;
 

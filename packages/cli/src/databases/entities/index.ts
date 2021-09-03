@@ -1,3 +1,5 @@
+/* eslint-disable @typescript-eslint/naming-convention */
+/* eslint-disable import/no-cycle */
 import { CredentialsEntity } from './CredentialsEntity';
 import { ExecutionEntity } from './ExecutionEntity';
 import { WorkflowEntity } from './WorkflowEntity';

@@ -7,30 +7,33 @@
 		</div>
 
 		<div v-for="credentialTypeDescription in credentialTypesNodeDescriptionDisplayed" :key="credentialTypeDescription.name" class="credential-data">
-			<el-row v-if="displayCredentials(credentialTypeDescription)">
+			<el-row v-if="displayCredentials(credentialTypeDescription)" class="credential-parameter-wrapper">
 
 				<el-col :span="10" class="parameter-name">
 					{{credentialTypeNames[credentialTypeDescription.name]}}:
 				</el-col>
 				<el-col :span="12" class="parameter-value" :class="getIssues(credentialTypeDescription.name).length?'has-issues':''">
-					<div class="credential-issues">
-						<el-tooltip placement="top" effect="light">
-							<div slot="content" v-html="'Issues:<br />&nbsp;&nbsp;- ' + getIssues(credentialTypeDescription.name).join('<br />&nbsp;&nbsp;- ')"></div>
-							<font-awesome-icon icon="exclamation-triangle" />
-						</el-tooltip>
-					</div>
+
 					<div :style="credentialInputWrapperStyle(credentialTypeDescription.name)">
-						<el-select v-model="currentCredentialsId" :disabled="isReadOnly" @change="credentialSelected(credentialTypeDescription.name)" placeholder="Select Credential" size="small">
-							<el-option
+						<n8n-select v-model="currentCredentialsId" :disabled="isReadOnly" @change="credentialSelected(credentialTypeDescription.name)" placeholder="Select Credential" size="small">
+							<n8n-option
 								v-for="(item, index) in credentialOptions[credentialTypeDescription.name]"
 								:key="item.name + '_' + index"
 								:label="item.name"
 								:value="item.id">
-							</el-option>
-						</el-select>
+							</n8n-option>
+						</n8n-select>
 					</div>
+
+					<div class="credential-issues">
+						<n8n-tooltip placement="top" >
+							<div slot="content" v-html="'Issues:<br />&nbsp;&nbsp;- ' + getIssues(credentialTypeDescription.name).join('<br />&nbsp;&nbsp;- ')"></div>
+							<font-awesome-icon icon="exclamation-triangle" />
+						</n8n-tooltip>
+					</div>
+
 				</el-col>
-				<el-col :span="2" class="parameter-value">
+				<el-col :span="2" class="parameter-value credential-action">
 					<font-awesome-icon v-if="!!currentCredentialsId" icon="pen" @click="updateCredentials(credentialTypeDescription.name)" class="update-credentials clickable" title="Update Credentials" />
 				</el-col>
 
@@ -311,11 +314,6 @@ export default mixins(
 		.credential-issues {
 			display: inline-block;
 		}
-		.el-input input:hover {
-			border-width: 1px;
-			border-color: #ff8080;
-			border-style: solid;
-		}
 	}
 
 	.headline {
@@ -323,15 +321,24 @@ export default mixins(
 		margin-bottom: 0.7em;
 	}
 
+	.credential-parameter-wrapper {
+		display: flex;
+		align-items: center;
+	}
+
 	.parameter-name {
-		line-height: 2em;
 		font-weight: 400;
 	}
 
-	.update-credentials {
-		position: absolute;
-		top: 7px;
-		right: 3px;
+	.parameter-value {
+		display: flex;
+		align-items: center;
+	}
+
+	.credential-action {
+		display: flex;
+		justify-content: center;
+		align-items: center;
 	}
 }
 

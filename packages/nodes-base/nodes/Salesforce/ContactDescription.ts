@@ -385,6 +385,15 @@ export const contactFields = [
 				description: 'Phone number for the contact.',
 			},
 			{
+				displayName: 'Record Type ID',
+				name: 'recordTypeId',
+				type: 'options',
+				typeOptions: {
+					loadOptionsMethod: 'getRecordTypes',
+				},
+				default: '',
+			},
+			{
 				displayName: 'Salutation',
 				name: 'salutation',
 				type: 'string',
@@ -679,6 +688,15 @@ export const contactFields = [
 				type: 'string',
 				default: '',
 				description: 'Phone number for the contact.',
+			},
+			{
+				displayName: 'Record Type ID',
+				name: 'recordTypeId',
+				type: 'options',
+				typeOptions: {
+					loadOptionsMethod: 'getRecordTypes',
+				},
+				default: '',
 			},
 			{
 				displayName: 'Salutation',
