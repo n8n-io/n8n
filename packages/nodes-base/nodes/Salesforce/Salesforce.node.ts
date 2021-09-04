@@ -120,7 +120,6 @@ import {
 import {
 	LoggerProxy as Logger,
 } from 'n8n-workflow';
-import { query } from '../Elasticsearch/descriptions/placeholders';
 
 export class Salesforce implements INodeType {
 	description: INodeTypeDescription = {
@@ -695,11 +694,10 @@ export class Salesforce implements INodeType {
 			// select them easily
 			async getTaskTypes(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-				console.log('in getTaskTypes')
 				// TODO: find a way to filter this object to get just the lead sources instead of the whole object
 				const { fields } = await salesforceApiRequest.call(this, 'GET', '/sobjects/task/describe');
 				for (const field of fields) {
-					if (field.name === 'Type') {
+					if (field.name === 'TaskSubtype') {
 						for (const pickValue of field.picklistValues) {
 							const pickValueName = pickValue.label;
 							const pickValueId = pickValue.value;
@@ -711,7 +709,6 @@ export class Salesforce implements INodeType {
 					}
 				}
 				sortOptions(returnData);
-				console.log('in getTaskTypes',returnData);
 				return returnData;
 			},
 			// Get all the task subjects to display them to user so that he can
@@ -2355,8 +2352,8 @@ export class Salesforce implements INodeType {
 						const body: ITask = {
 							Status: status,
 						};
-						if (additionalFields.Type !== undefined) {
-							body.Type = additionalFields.Type as string;
+						if (additionalFields.type !== undefined) {
+							body.TaskSubtype = additionalFields.type as string;
 						}
 						if (additionalFields.whoId !== undefined) {
 							body.WhoId = additionalFields.whoId as string;
@@ -2443,8 +2440,8 @@ export class Salesforce implements INodeType {
 						const taskId = this.getNodeParameter('taskId', i) as string;
 						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
 						const body: ITask = {};
-						if (updateFields.Type !== undefined) {
-							body.Type = updateFields.Type as string;
+						if (updateFields.type !== undefined) {
+							body.TaskSubtype = updateFields.type as string;
 						}
 						if (updateFields.whoId !== undefined) {
 							body.WhoId = updateFields.whoId as string;

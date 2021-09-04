@@ -1,5 +1,5 @@
 export interface ITask {
-	Type?: string;
+	TaskSubtype?: string;
 	WhoId?: string;
 	Status?: string;
 	WhatId?: string;

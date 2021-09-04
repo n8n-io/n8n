@@ -95,16 +95,6 @@ export const taskFields = [
 		},
 		options: [
 			{
-				displayName: 'Type',
-				name: 'Type',
-				type: 'options',
-				default: '',
-				typeOptions: {
-					loadOptionsMethod: 'getTaskTypes',
-				},
-				description: `Represents Type of the task, such as Call or Meeting.`,
-			},
-			{
 				displayName: 'Activity Date',
 				name: 'activityDate',
 				type: 'dateTime',
@@ -399,6 +389,16 @@ export const taskFields = [
 				description: 'The subject line of the task, such as “Call” or “Send Quote.” Limit: 255 characters.',
 			},
 			{
+				displayName: 'Type',
+				name: 'type',
+				type: 'options',
+				default: '',
+				typeOptions: {
+					loadOptionsMethod: 'getTaskTypes',
+				},
+				description: `Represents Type of the task, such as Call or Meeting.`,
+			},
+			{
 				displayName: 'What Id',
 				name: 'whatId',
 				type: 'string',
@@ -456,16 +456,6 @@ export const taskFields = [
 			},
 		},
 		options: [
-			{
-				displayName: 'Type',
-				name: 'Type',
-				type: 'options',
-				default: '',
-				typeOptions: {
-					loadOptionsMethod: 'getTaskTypes',
-				},
-				description: `Represents Type of the task, such as Call or Meeting.`,
-			},
 			{
 				displayName: 'Activity Date',
 				name: 'activityDate',
@@ -769,6 +759,16 @@ export const taskFields = [
 				if IsReminderSet is set to true. If IsReminderSet is set to false, then the<br/>
 				 user may have deselected the reminder checkbox in the Salesforce user interface,<br/>
 				 or the reminder has already fired at the time indicated by the value.`,
+			},
+			{
+				displayName: 'Type',
+				name: 'type',
+				type: 'options',
+				default: '',
+				typeOptions: {
+					loadOptionsMethod: 'getTaskTypes',
+				},
+				description: `Represents Type of the task, such as Call or Meeting.`,
 			},
 			{
 				displayName: 'What Id',
