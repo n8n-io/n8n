@@ -423,12 +423,17 @@ export class Magento2 implements INodeType {
 						body.customer!.addresses = adjustAddresses(addresses || []);
 
 						body.customer!.custom_attributes = customAttributes?.customAttribute || {};
-
+						
 						body.customer!.extension_attributes = ['amazon_id', 'is_subscribed', 'vertex_customer_code', 'vertex_customer_country']
 							// tslint:disable-next-line: no-any
 							.reduce((obj, value: string): any => {
-								Object.assign(obj, { [value]: (rest as IDataObject)[value] });
-								delete (rest as IDataObject)[value];
+								if ((rest as IDataObject).hasOwnProperty(value)) {
+									const data = Object.assign(obj, { [value]: (rest as IDataObject)[value] });
+									delete (rest as IDataObject)[value];
+									return data;
+								} else {
+									return obj;
+								}
 							}, {});
 
 						if (password) {
