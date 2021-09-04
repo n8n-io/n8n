@@ -249,6 +249,11 @@ export default {
 				title: 'Deutsch',
 			},
 		},
+		mainPanel: {
+			filters: {
+				all: 'All in Deutsch',
+			},
+		},
 		mainSideBar: {
 			aboutN8n: 'Deutsch',
 			confirmMessage: {

@@ -887,12 +887,24 @@ class App {
 			const nodeTypes = NodeTypes();
 
 			const allNodes = nodeTypes.getAll();
+			const language = req.headers['accept-language'] ?? '';
+			const translations = await Promise.all(allNodes.map(async node => {
+				const nodeName = node.description.name.split('.')[1];
+				const {sourcePath} = nodeTypes.getByName(node.description.name, true);
+				const translationPath = path.join(path.dirname(sourcePath), 'translations', `${language}.${nodeName}.js`);
+				try {
+					const {[language]: {[nodeName]: {displayName, description}}} = await import(translationPath);
+					return {[language]: {[nodeName]: {displayName, description}}};
+				} catch (e) {
+					return undefined;
+				}
+			}));
 
-			allNodes.forEach((nodeData) => {
+			allNodes.forEach((nodeData, idx) => {
 				// Make a copy of the object. If we don't do this, then when
 				// The method below is called the properties are removed for good
 				// This happens because nodes are returned as reference.
-				const nodeInfo: INodeTypeDescription = { ...nodeData.description };
+				const nodeInfo: INodeTypeDescription = {...nodeData.description, translation: translations[idx]};
 				if (req.query.includeProperties !== 'true') {
 					// @ts-ignore
 					delete nodeInfo.properties;

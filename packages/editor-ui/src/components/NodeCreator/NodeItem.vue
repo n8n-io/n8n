@@ -1,15 +1,23 @@
-<template functional>
-	<div :class="{[$style['node-item']]: true, [$style.bordered]: props.bordered}">
-		<NodeIcon :class="$style['node-icon']" :nodeType="props.nodeType" :style="{color: props.nodeType.defaults.color}" />
+<template>
+	<div :class="{[$style['node-item']]: true, [$style.bordered]: bordered}">
+		<NodeIcon :class="$style['node-icon']" :nodeType="nodeType" :style="{color: nodeType.defaults.color}" />
 		<div>
 			<div :class="$style.details">
-				<span :class="$style.name">{{props.nodeType.displayName}}</span>
+				<span :class="$style.name">
+          {{translateSpecific({
+              key: `${nodeType.name}.displayName`,
+              fallback: nodeType.displayName,
+          })}}
+        </span>
 				<span :class="$style['trigger-icon']">
-					<TriggerIcon v-if="$options.isTrigger(props.nodeType)" />
+					<TriggerIcon v-if="nodeType.group.includes('trigger')" />
 				</span>
 			</div>
 			<div :class="$style.description">
-				{{props.nodeType.description}}
+				{{translateSpecific({
+            key: `${nodeType.name}.description`,
+            fallback: nodeType.description,
+        })}}
 			</div>
 		</div>
 	</div>
@@ -18,25 +26,30 @@
 <script lang="ts">
 
 import Vue from 'vue';
-import { INodeTypeDescription } from 'n8n-workflow';
 
 import NodeIcon from '../NodeIcon.vue';
 import TriggerIcon from '../TriggerIcon.vue';
+import {addNodeTranslations} from "@/i18n/i18n";
+import mixins from 'vue-typed-mixins';
+import {translate} from "@/components/mixins/translate";
 
 Vue.component('NodeIcon', NodeIcon);
 Vue.component('TriggerIcon', TriggerIcon);
 
-export default {
+export default mixins(translate).extend({
+	name: 'NodeItem',
 	props: [
 		'active',
 		'filter',
 		'nodeType',
 		'bordered',
 	],
-	isTrigger (nodeType: INodeTypeDescription): boolean {
-		return nodeType.group.includes('trigger');
+	async mounted() {
+		if(this.nodeType.translation) {
+			addNodeTranslations(this.nodeType.translation);
+		}
 	},
-};
+});
 </script>
 
 <style lang="scss" module>

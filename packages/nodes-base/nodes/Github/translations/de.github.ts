@@ -2,6 +2,9 @@ module.exports = {
 	de: {
 		github: {
 
+			displayName: 'Deutsch Github',
+			description: 'DE Consume GitHub API.',
+
 			// ----------------------------------
 			//       credentials params
 			// ----------------------------------

@@ -11,7 +11,7 @@
 			/>
 			<div class="type-selector">
 				<el-tabs v-model="selectedType" stretch>
-					<el-tab-pane label="All" :name="ALL_NODE_FILTER"></el-tab-pane>
+					<el-tab-pane :label="$translateBase(`mainPanel.filters.${ALL_NODE_FILTER.toLocaleLowerCase()}`)" :name="ALL_NODE_FILTER"></el-tab-pane>
 					<el-tab-pane label="Regular" :name="REGULAR_NODE_FILTER"></el-tab-pane>
 					<el-tab-pane label="Trigger" :name="TRIGGER_NODE_FILTER"></el-tab-pane>
 				</el-tabs>
@@ -55,9 +55,10 @@ import { INodeCreateElement, INodeItemProps, ISubcategoryItemProps } from '@/Int
 import { ALL_NODE_FILTER, CORE_NODES_CATEGORY, REGULAR_NODE_FILTER, TRIGGER_NODE_FILTER } from '@/constants';
 import SlideTransition from '../transitions/SlideTransition.vue';
 import { matchesNodeType, matchesSelectType } from './helpers';
+import {translate} from "@/components/mixins/translate";
 
 
-export default mixins(externalHooks).extend({
+export default mixins(externalHooks, translate).extend({
 	name: 'NodeCreateList',
 	components: {
 		ItemIterator,
@@ -89,10 +90,8 @@ export default mixins(externalHooks).extend({
 			const nodeTypes: INodeCreateElement[] = this.searchItems;
 			const filter = this.searchFilter;
 
-			const returnData = nodeTypes.filter((el: INodeCreateElement) => {
-				const nodeType = (el.properties as INodeItemProps).nodeType;
-				return filter && matchesSelectType(el, this.selectedType) && matchesNodeType(el, filter);
-			});
+			const returnData = nodeTypes.filter((el: INodeCreateElement) =>
+				filter && matchesSelectType(el, this.selectedType) && matchesNodeType(el, filter));
 
 			setTimeout(() => {
 				this.$externalHooks().run('nodeCreateList.filteredNodeTypesComputed', {
