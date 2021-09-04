@@ -168,9 +168,12 @@ export const userFields = [
 			},
 			{
 				displayName: 'Organization ID',
-				name: 'organizationId',
-				type: 'number',
-				default: 0,
+				name: 'organization_id',
+				typeOptions: {
+					loadOptionsMethod: 'getOrganizations',
+				},
+				type: 'options',
+				default: '',
 				description: `The id of the user's organization. If the user has more than one organization memberships, the id of the user's default organization`,
 			},
 			{
@@ -429,9 +432,12 @@ export const userFields = [
 			},
 			{
 				displayName: 'Organization ID',
-				name: 'organizationId',
-				type: 'number',
-				default: 0,
+				name: 'organization_id',
+				typeOptions: {
+					loadOptionsMethod: 'getOrganizations',
+				},
+				type: 'options',
+				default: '',
 				description: `The id of the user's organization. If the user has more than one organization memberships, the id of the user's default organization`,
 			},
 			{

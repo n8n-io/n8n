@@ -48,7 +48,7 @@ export class Zendesk implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Zendesk',
 		name: 'zendesk',
-		icon: 'file:zendesk.png',
+		icon: 'file:zendesk.svg',
 		group: ['output'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
@@ -247,6 +247,18 @@ export class Zendesk implements INodeType {
 					returnData.push({
 						name: fieldName,
 						value: fieldId,
+					});
+				}
+				return returnData;
+			},
+
+			async getOrganizations(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const returnData: INodePropertyOptions[] = [];
+				const fields = await zendeskApiRequestAllItems.call(this, 'organizations', 'GET', `/organizations`, {}, {});
+				for (const field of fields) {
+					returnData.push({
+						name: field.name,
+						value: field.id,
 					});
 				}
 				return returnData;
@@ -458,7 +470,6 @@ export class Zendesk implements INodeType {
 								delete body.userFieldsUi;
 							}
 						}
-
 						responseData = await zendeskApiRequest.call(this, 'POST', '/users', { user: body });
 						responseData = responseData.user;
 					}
