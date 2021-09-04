@@ -68,7 +68,7 @@ export const problemFields = [
 	},
 	{
 		displayName: 'Requester Name/ID',
-		name: 'requester_id',
+		name: 'requesterId',
 		description: 'ID of the initiator of the problem. Choose from the list or specify an ID. You can also specify the ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 		type: 'options',
 		required: true,
@@ -91,7 +91,7 @@ export const problemFields = [
 	},
 	{
 		displayName: 'Due By',
-		name: 'due_by',
+		name: 'dueBy',
 		description: 'Date when the problem is due to be solved',
 		type: 'dateTime',
 		default: '',

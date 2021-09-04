@@ -53,7 +53,7 @@ export async function freshserviceApiRequest(
 	if (!Object.keys(qs).length) {
 		delete options.qs;
 	}
-
+	
 	try {
 		return await this.helpers.request!(options);
 	} catch (error) {

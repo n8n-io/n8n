@@ -68,7 +68,7 @@ export const assetFields = [
 	},
 	{
 		displayName: 'Asset Type Name/ID',
-		name: 'asset_type_id',
+		name: 'assetTypeId',
 		type: 'options',
 		description: 'Choose from the list or specify an ID. You can also specify the ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 		required: true,
@@ -90,11 +90,13 @@ export const assetFields = [
 		},
 	},
 	{
-		displayName: 'Additional Fields',
-		name: 'additionalFields',
-		type: 'collection',
-		placeholder: 'Add Field',
-		default: {},
+		displayName: 'Asset Fields',
+		name: 'assetFieldsUi',
+		placeholder: 'Add Asset Field',
+		type: 'fixedCollection',
+		typeOptions: {
+			multipleValues: true,
+		},
 		displayOptions: {
 			show: {
 				resource: [
@@ -105,88 +107,36 @@ export const assetFields = [
 				],
 			},
 		},
+		default: {},
 		options: [
 			{
-				displayName: 'Agent Name/ID',
-				name: 'agent_id',
-				type: 'options',
-				default: '',
-				description: 'ID of the agent who manages the asset. Choose from the list or specify an ID. You can also specify the ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
-				typeOptions: {
-					loadOptionsMethod: [
-						'getAgents',
-					],
-				},
-			},
-			{
-				displayName: 'Department Name/ID',
-				name: 'department_id',
-				type: 'options',
-				default: '',
-				description: 'Choose from the list or specify an ID. You can also specify the ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
-				typeOptions: {
-					loadOptionsMethod: [
-						'getDepartments',
-					],
-				},
-			},
-			{
-				displayName: 'Description',
-				name: 'description',
-				type: 'string',
-				default: '',
-			},
-			{
-				displayName: 'Impact',
-				name: 'impact',
-				type: 'options',
-				default: 'low',
-				options: [
+				name: 'assetFieldValue',
+				displayName: 'Asset Field',
+				values: [
 					{
-						name: 'Low',
-						value: 'low',
+						displayName: 'Name/ID',
+						name: 'name',
+						type: 'options',
+						typeOptions: {
+							loadOptionsDependsOn: [
+								'assetTypeId',
+							],
+							loadOptionsMethod: 'getAssetTypeFields',
+						},
+						default: '',
+						description: 'The ID of the field to add custom field to.',
 					},
 					{
-						name: 'Medium',
-						value: 'medium',
-					},
-					{
-						name: 'High',
-						value: 'high',
-					},
-				],
-			},
-			{
-				displayName: 'Location ID',
-				name: 'location_id',
-				type: 'options',
-				description: 'Choose from the list or specify an ID. You can also specify the ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
-				default: '',
-				typeOptions: {
-					loadOptionsMethod: [
-						'getLocations',
-					],
-				},
-			},
-			{
-				displayName: 'Usage Type',
-				name: 'usage_type',
-				type: 'options',
-				default: 'loaner',
-				options: [
-					{
-						name: 'Loaner',
-						value: 'loaner',
-					},
-					{
-						name: 'Permanent',
-						value: 'permanent',
+						displayName: 'Value',
+						name: 'value',
+						type: 'string',
+						default: '',
+						description: 'The value to set on custom field.',
 					},
 				],
 			},
 		],
 	},
-
 	// ----------------------------------------
 	//              asset: delete
 	// ----------------------------------------
@@ -378,11 +328,13 @@ export const assetFields = [
 		},
 	},
 	{
-		displayName: 'Update Fields',
-		name: 'updateFields',
-		type: 'collection',
-		placeholder: 'Add Field',
-		default: {},
+		displayName: 'Asset Fields',
+		name: 'assetFieldsUi',
+		placeholder: 'Add Asset Field',
+		type: 'fixedCollection',
+		typeOptions: {
+			multipleValues: true,
+		},
 		displayOptions: {
 			show: {
 				resource: [
@@ -393,101 +345,31 @@ export const assetFields = [
 				],
 			},
 		},
+		default: {},
 		options: [
 			{
-				displayName: 'Agent Name/ID',
-				name: 'agent_id',
-				type: 'options',
-				default: '',
-				description: 'ID of the agent who manages the asset. Choose from the list or specify an ID. You can also specify the ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
-				typeOptions: {
-					loadOptionsMethod: [
-						'getAgents',
-					],
-				},
-			},
-			{
-				displayName: 'Asset Type Name/ID',
-				name: 'asset_type_id',
-				type: 'options',
-				default: '',
-				description: 'ID of the asset type. Choose from the list or specify an ID. You can also specify the ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
-				typeOptions: {
-					loadOptionsMethod: [
-						'getAssetTypes',
-					],
-				},
-			},
-			{
-				displayName: 'Department Name/ID',
-				name: 'department_id',
-				type: 'options',
-				description: 'Choose from the list or specify an ID. You can also specify the ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
-				default: '',
-				typeOptions: {
-					loadOptionsMethod: [
-						'getDepartments',
-					],
-				},
-			},
-			{
-				displayName: 'Description',
-				name: 'description',
-				type: 'string',
-				default: '',
-			},
-			{
-				displayName: 'Impact',
-				name: 'impact',
-				type: 'options',
-				default: 'low',
-				options: [
+				name: 'assetFieldValue',
+				displayName: 'Asset Field',
+				values: [
 					{
-						name: 'Low',
-						value: 'low',
+						displayName: 'Name/ID',
+						name: 'name',
+						type: 'options',
+						typeOptions: {
+							loadOptionsDependsOn: [
+								'assetTypeId',
+							],
+							loadOptionsMethod: 'getAssetTypeFields',
+						},
+						default: '',
+						description: 'The ID of the field to add custom field to.',
 					},
 					{
-						name: 'Medium',
-						value: 'medium',
-					},
-					{
-						name: 'High',
-						value: 'high',
-					},
-				],
-			},
-			{
-				displayName: 'Location Name/ID',
-				name: 'location_id',
-				type: 'options',
-				description: 'Choose from the list or specify an ID. You can also specify the ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
-				default: '',
-				typeOptions: {
-					loadOptionsMethod: [
-						'getLocations',
-					],
-				},
-			},
-			{
-				displayName: 'Asset Name',
-				name: 'name',
-				type: 'string',
-				default: '',
-				description: 'Name of the asset',
-			},
-			{
-				displayName: 'Usage Type',
-				name: 'usage_type',
-				type: 'options',
-				default: 'loaner',
-				options: [
-					{
-						name: 'Loaner',
-						value: 'loaner',
-					},
-					{
-						name: 'Permanent',
-						value: 'permanent',
+						displayName: 'Value',
+						name: 'value',
+						type: 'string',
+						default: '',
+						description: 'The value to set on custom field.',
 					},
 				],
 			},

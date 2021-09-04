@@ -52,7 +52,7 @@ export const requesterFields = [
 	// ----------------------------------------
 	{
 		displayName: 'First Name',
-		name: 'first_name',
+		name: 'firstName',
 		type: 'string',
 		required: true,
 		default: '',
@@ -69,7 +69,7 @@ export const requesterFields = [
 	},
 	{
 		displayName: 'Primary Email',
-		name: 'primary_email',
+		name: 'primaryEmail',
 		type: 'string',
 		default: '',
 		displayOptions: {

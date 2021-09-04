@@ -114,10 +114,10 @@ export class Freshservice implements INodeType {
 						name: 'Announcement',
 						value: 'announcement',
 					},
-					{
-						name: 'Asset',
-						value: 'asset',
-					},
+					// {
+					// 	name: 'Asset',
+					// 	value: 'asset',
+					// },
 					{
 						name: 'Asset Type',
 						value: 'assetType',
@@ -173,8 +173,8 @@ export class Freshservice implements INodeType {
 			...agentRoleFields,
 			...announcementOperations,
 			...announcementFields,
-			...assetOperations,
-			...assetFields,
+			// ...assetOperations,
+			// ...assetFields,
 			...assetTypeOperations,
 			...assetTypeFields,
 			...changeOperations,
@@ -229,6 +229,17 @@ export class Freshservice implements INodeType {
 				};
 				return toOptions(asset_types);
 			},
+			
+			async getAssetTypeFields(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const assetType = this.getCurrentNodeParameter('assetTypeId');
+				const { asset_type_fields } = await freshserviceApiRequest.call(this, 'GET', `/asset_types/${assetType}/fields`) as {
+					asset_type_fields: [{ fields: LoadedResource[] } ];
+				};
+				// tslint:disable-next-line: no-any
+				let fields: any[] = [];
+				fields = fields.concat(...asset_type_fields.map((data) => data.fields)).map(data => ({ name: data.label, id: data.name }));
+				return toOptions(fields);
+			},
 
 			async getDepartments(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const { departments } = await freshserviceApiRequest.call(this, 'GET', '/departments') as {
@@ -282,7 +293,7 @@ export class Freshservice implements INodeType {
 
 						const body = {
 							email: this.getNodeParameter('email', i),
-							first_name: this.getNodeParameter('first_name', i),
+							first_name: this.getNodeParameter('firstName', i),
 						} as IDataObject;
 
 						const roles = this.getNodeParameter('roles', i) as RolesParameter;
@@ -459,11 +470,11 @@ export class Freshservice implements INodeType {
 						//           announcement: create
 						// ----------------------------------------
 
-						const visibleFrom = this.getNodeParameter('visible_from', i) as string;
+						const visibleFrom = this.getNodeParameter('visibleFrom', i) as string;
 
 						const body = {
 							title: this.getNodeParameter('title', i),
-							body_html: this.getNodeParameter('body_html', i),
+							body_html: this.getNodeParameter('bodyHtml', i),
 							visibility: this.getNodeParameter('visibility', i),
 							visible_from: tz(visibleFrom, defaultTimezone),
 						} as IDataObject;
@@ -555,16 +566,14 @@ export class Freshservice implements INodeType {
 						// ----------------------------------------
 
 						const body = {
-							asset_type_id: this.getNodeParameter('asset_type_id', i),
+							asset_type_id: this.getNodeParameter('assetTypeId', i),
 							name: this.getNodeParameter('name', i),
 						} as IDataObject;
 
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const assetFields = this.getNodeParameter('assetFieldsUi.assetFieldValue', i, []) as IDataObject[];
 
-						if (Object.keys(additionalFields).length) {
-							Object.assign(body, additionalFields);
-						}
-
+						Object.assign(body, { type_fields: assetFields.reduce((obj, value) => Object.assign(obj, { [`${value.name}`]: value.value }), {})});
+						console.log(body);
 						responseData = await freshserviceApiRequest.call(this, 'POST', '/assets', body);
 
 					} else if (operation === 'delete') {
@@ -705,8 +714,8 @@ export class Freshservice implements INodeType {
 						const body = {
 							requester_id: this.getNodeParameter('requesterId', i),
 							subject: this.getNodeParameter('subject', i),
-							planned_start_date: this.getNodeParameter('planned_start_date', i),
-							planned_end_date: this.getNodeParameter('planned_end_date', i),
+							planned_start_date: this.getNodeParameter('plannedStartDate', i),
+							planned_end_date: this.getNodeParameter('plannedEndDate', i),
 							status: 1,
 							priority: 1,
 							impact: 1,
@@ -948,8 +957,8 @@ export class Freshservice implements INodeType {
 
 						const body = {
 							subject: this.getNodeParameter('subject', i),
-							requester_id: this.getNodeParameter('requester_id', i),
-							due_by: this.getNodeParameter('due_by', i),
+							requester_id: this.getNodeParameter('requesterId', i),
+							due_by: this.getNodeParameter('dueBy', i),
 							status: 1,
 							priority: 1,
 							impact: 1,
@@ -1023,7 +1032,7 @@ export class Freshservice implements INodeType {
 						// ----------------------------------------
 
 						const body = {
-							asset_type_id: this.getNodeParameter('asset_type_id', i),
+							asset_type_id: this.getNodeParameter('assetTypeId', i),
 							name: this.getNodeParameter('name', i),
 						} as IDataObject;
 
@@ -1095,11 +1104,11 @@ export class Freshservice implements INodeType {
 
 						const body = {
 							subject: this.getNodeParameter('subject', i),
-							release_type: this.getNodeParameter('release_type', i),
+							release_type: this.getNodeParameter('releaseType', i),
 							status: this.getNodeParameter('status', i),
 							priority: this.getNodeParameter('priority', i),
-							planned_start_date: this.getNodeParameter('planned_start_date', i),
-							planned_end_date: this.getNodeParameter('planned_end_date', i),
+							planned_start_date: this.getNodeParameter('plannedStartDate', i),
+							planned_end_date: this.getNodeParameter('plannedEndDate', i),
 						} as IDataObject;
 
 						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
@@ -1168,8 +1177,8 @@ export class Freshservice implements INodeType {
 						// ----------------------------------------
 
 						const body = {
-							first_name: this.getNodeParameter('first_name', i),
-							primary_email: this.getNodeParameter('primary_email', i),
+							first_name: this.getNodeParameter('firstName', i),
+							primary_email: this.getNodeParameter('primaryEmail', i),
 						} as IDataObject;
 
 						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject & {
@@ -1333,7 +1342,7 @@ export class Freshservice implements INodeType {
 
 						const body = {
 							application: {
-								application_type: this.getNodeParameter('application_type', i),
+								application_type: this.getNodeParameter('applicationType', i),
 								name: this.getNodeParameter('name', i),
 							},
 						} as IDataObject;

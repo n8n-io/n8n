@@ -91,7 +91,7 @@ export const changeFields = [
 	},
 	{
 		displayName: 'Planned Start Date',
-		name: 'planned_start_date',
+		name: 'plannedStartDate',
 		type: 'dateTime',
 		required: true,
 		default: '',
@@ -108,7 +108,7 @@ export const changeFields = [
 	},
 	{
 		displayName: 'Planned End Date',
-		name: 'planned_end_date',
+		name: 'plannedEndDate',
 		type: 'dateTime',
 		required: true,
 		default: '',

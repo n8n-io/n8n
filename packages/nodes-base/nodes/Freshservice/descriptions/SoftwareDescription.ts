@@ -51,7 +51,7 @@ export const softwareFields = [
 	// ----------------------------------------
 	{
 		displayName: 'Application Type',
-		name: 'application_type',
+		name: 'applicationType',
 		type: 'options',
 		required: true,
 		options: [

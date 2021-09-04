@@ -72,7 +72,7 @@ export const agentFields = [
 	},
 	{
 		displayName: 'First Name',
-		name: 'first_name',
+		name: 'firstName',
 		type: 'string',
 		required: true,
 		default: '',

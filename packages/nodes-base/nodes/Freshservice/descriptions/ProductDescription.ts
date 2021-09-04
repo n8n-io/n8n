@@ -51,7 +51,7 @@ export const productFields = [
 	// ----------------------------------------
 	{
 		displayName: 'Asset Type Name/ID',
-		name: 'asset_type_id',
+		name: 'assetTypeId',
 		type: 'options',
 		description: 'Choose from the list or specify an ID. You can also specify the ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 		required: true,

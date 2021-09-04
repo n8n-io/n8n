@@ -68,7 +68,7 @@ export const announcementFields = [
 	},
 	{
 		displayName: 'Body',
-		name: 'body_html',
+		name: 'bodyHtml',
 		description: 'HTML supported',
 		type: 'string',
 		required: true,
@@ -117,7 +117,7 @@ export const announcementFields = [
 	},
 	{
 		displayName: 'Visible From',
-		name: 'visible_from',
+		name: 'visibleFrom',
 		description: 'Timestamp at which announcement becomes active',
 		type: 'dateTime',
 		required: true,

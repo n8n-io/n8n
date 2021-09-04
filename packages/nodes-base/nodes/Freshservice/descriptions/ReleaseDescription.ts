@@ -68,7 +68,7 @@ export const releaseFields = [
 	},
 	{
 		displayName: 'Release Type',
-		name: 'release_type',
+		name: 'releaseType',
 		type: 'options',
 		default: 1,
 		displayOptions: {
@@ -174,7 +174,7 @@ export const releaseFields = [
 	},
 	{
 		displayName: 'Planned Start Date',
-		name: 'planned_start_date',
+		name: 'plannedStartDate',
 		type: 'dateTime',
 		required: true,
 		default: '',
@@ -191,7 +191,7 @@ export const releaseFields = [
 	},
 	{
 		displayName: 'Planned End Date',
-		name: 'planned_end_date',
+		name: 'plannedEndDate',
 		type: 'dateTime',
 		required: true,
 		default: '',
