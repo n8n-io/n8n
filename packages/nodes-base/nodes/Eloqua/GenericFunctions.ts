@@ -15,7 +15,7 @@ export interface IProduct {
 	};
 }
 
-export async function getBaseUrl(
+async function getBaseUrl(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
 	authMethod: string,
 	base64Creds?: string

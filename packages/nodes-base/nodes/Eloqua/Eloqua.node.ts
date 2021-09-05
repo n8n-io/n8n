@@ -1,4 +1,3 @@
-import { IData } from './../Orbit/Interfaces';
 import { IExecuteFunctions } from 'n8n-core';
 
 import {
@@ -10,7 +9,7 @@ import {
 	INodeTypeDescription
 } from 'n8n-workflow';
 
-import { eloquaApiRequest, getBaseUrl } from './GenericFunctions';
+import { eloquaApiRequest } from './GenericFunctions';
 
 export class Eloqua implements INodeType {
 	description: INodeTypeDescription = {
