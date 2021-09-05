@@ -25,7 +25,7 @@
     "test:unit": "vue-cli-service test:unit"
   },
   "dependencies": {
-    "n8n-design-system": "~0.1.0",
+    "n8n-design-system": "~0.2.0",
     "timeago.js": "^4.0.2",
     "v-click-outside": "^3.1.2",
     "vue-fragment": "^1.5.2"
@@ -71,7 +71,7 @@
     "lodash.debounce": "^4.0.8",
     "lodash.get": "^4.4.2",
     "lodash.set": "^4.3.2",
-    "n8n-workflow": "~0.66.0",
+    "n8n-workflow": "~0.67.0",
     "sass": "^1.26.5",
     "normalize-wheel": "^1.0.1",
     "prismjs": "^1.17.1",
