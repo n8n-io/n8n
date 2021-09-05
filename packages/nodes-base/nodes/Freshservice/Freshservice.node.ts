@@ -229,11 +229,11 @@ export class Freshservice implements INodeType {
 				};
 				return toOptions(asset_types);
 			},
-			
+
 			async getAssetTypeFields(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const assetType = this.getCurrentNodeParameter('assetTypeId');
 				const { asset_type_fields } = await freshserviceApiRequest.call(this, 'GET', `/asset_types/${assetType}/fields`) as {
-					asset_type_fields: [{ fields: LoadedResource[] } ];
+					asset_type_fields: [{ fields: LoadedResource[] }];
 				};
 				// tslint:disable-next-line: no-any
 				let fields: any[] = [];
@@ -572,7 +572,7 @@ export class Freshservice implements INodeType {
 
 						const assetFields = this.getNodeParameter('assetFieldsUi.assetFieldValue', i, []) as IDataObject[];
 
-						Object.assign(body, { type_fields: assetFields.reduce((obj, value) => Object.assign(obj, { [`${value.name}`]: value.value }), {})});
+						Object.assign(body, { type_fields: assetFields.reduce((obj, value) => Object.assign(obj, { [`${value.name}`]: value.value }), {}) });
 						console.log(body);
 						responseData = await freshserviceApiRequest.call(this, 'POST', '/assets', body);
 
@@ -861,10 +861,10 @@ export class Freshservice implements INodeType {
 						validateUpdateFields.call(this, updateFields, resource);
 
 						const { domains, ...rest } = updateFields;
-							Object.assign(body, {
-								...(domains && { domains: toArray(domains) }),
-								...rest,
-							});
+						Object.assign(body, {
+							...(domains && { domains: toArray(domains) }),
+							...rest,
+						});
 
 						const departmentId = this.getNodeParameter('departmentId', i);
 						const endpoint = `/departments/${departmentId}`;

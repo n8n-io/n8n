@@ -53,7 +53,7 @@ export async function freshserviceApiRequest(
 	if (!Object.keys(qs).length) {
 		delete options.qs;
 	}
-	
+
 	try {
 		return await this.helpers.request!(options);
 	} catch (error) {
@@ -136,7 +136,8 @@ export const toUserOptions = (loadedUsers: LoadedUser[]) => {
 		.map(({ id, last_name, first_name }) => {
 			return {
 				value: id,
-				name: last_name ? `${last_name}, ${first_name}` : `${first_name}` };
+				name: last_name ? `${last_name}, ${first_name}` : `${first_name}`,
+			};
 		})
 		.sort((a, b) => a.name.localeCompare(b.name));
 };
@@ -240,4 +241,3 @@ export function adjustAddress(fixedCollection: IDataObject & AddressFixedCollect
 
 	return adjusted;
 }
-

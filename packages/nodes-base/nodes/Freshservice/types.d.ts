@@ -1,4 +1,4 @@
-import { IDataObject } from "n8n-workflow";
+import { IDataObject } from 'n8n-workflow';
 
 export type FreshserviceCredentials = {
 	apiKey: string;
@@ -30,4 +30,3 @@ export type AddressFixedCollection = {
 		addressFields: object
 	}
 }
-
