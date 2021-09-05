@@ -22,7 +22,7 @@ import {
  * @param {object | undefined} data
  * @returns {Promise<any>}
  */
-export async function sms77ApiRequest(this: IHookFunctions | IExecuteFunctions, method: string, endpoint: string, form: IDataObject, qs?: IDataObject): Promise<any> { // tslint:disable-line:no-any
+export async function sms77ApiRequest(this: IHookFunctions | IExecuteFunctions, method: string, endpoint: string, body: IDataObject, qs: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
 	const credentials = await this.getCredentials('sms77Api');
 	if (credentials === undefined) {
 		throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
@@ -33,6 +33,7 @@ export async function sms77ApiRequest(this: IHookFunctions | IExecuteFunctions, 
 			SentWith: 'n8n',
 			'X-Api-Key': credentials.apiKey,
 		},
+		qs,
 		uri: `https://gateway.sms77.io/api${endpoint}`,
 		json: true,
 		method,
