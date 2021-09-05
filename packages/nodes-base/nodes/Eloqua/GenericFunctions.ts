@@ -60,20 +60,35 @@ export interface IProduct {
 
 async function getBaseUrl(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
-	base64Creds: string
+	authMethod: string
+	base64Creds?: string,
 ): Promise<string> {
 	const options: OptionsWithUri = {
-		headers: { Authorization: `Basic ${base64Creds}` },
 		method: 'GET',
 		uri: 'https://login.eloqua.com/id',
 		json: true
 	};
-	try {
-		const responseData = await this.helpers.request!.call(this, options);
-		
-		return responseData.urls.base;
-	} catch (error) {
-		throw new NodeApiError(this.getNode(), error);
+	if (authMethod === 'httpBasicAuth') {
+		options.headers!['Authorization'] = `Basic ${base64Creds}`;
+		try {
+			const responseData = await this.helpers.request!.call(this, options);
+
+			return responseData.urls.base;
+		} catch (error) {
+			throw new NodeApiError(this.getNode(), error);
+		}
+	} else {
+		try {
+			const responseData = await this.helpers.requestOAuth2!.call(
+				this,
+				'eloquaOAuth2Api',
+				options
+			);
+
+			return responseData.urls.base;
+		} catch (error) {
+			throw new NodeApiError(this.getNode(), error);
+		}
 	}
 }
 
@@ -93,42 +108,77 @@ export async function eloquaApiRequest(
 	body: IDataObject,
 	query?: IDataObject
 ): Promise<any> {
-	//tslint:disable-line:no-any
-	const credentials = await this.getCredentials('eloqua');
+	const authenticationMethod = this.getNodeParameter(
+		'authentication',
+		0
+	) as string;
 
-	if (credentials === undefined) {
-		throw new NodeOperationError(
-			this.getNode(),
-			'No credentials got returned!'
-		);
-	}
+	if (authenticationMethod === 'httpBasicAuth') {
+		//tslint:disable-line:no-any
+		const credentials = await this.getCredentials('eloquaApi');
 
-	const base64Creds = Buffer.from(
-		`${credentials.companyName}\\${credentials.userName}:${credentials.password}`
-	).toString('base64');
-
-	const baseUrl = await getBaseUrl.call(this, base64Creds);
-
-	if (query === undefined) {
-		query = {};
-	}
-	const options: OptionsWithUri = {
-		headers: { Authorization: `Basic ${base64Creds}` },
-		method,
-		qs: query,
-		uri: `${baseUrl}${endpoint}`,
-		json: true
-	};
-	if (Object.keys(body).length !== 0) {
-		options.body = body;
-	}
-	try {
-		const responseData = await this.helpers.request!(options);
-		if (responseData && responseData.success === false) {
-			throw new NodeApiError(this.getNode(), responseData);
+		if (credentials === undefined) {
+			throw new NodeOperationError(
+				this.getNode(),
+				'No credentials got returned!'
+			);
 		}
-		return responseData;
-	} catch (error) {
-		throw new NodeApiError(this.getNode(), error);
+
+		const base64Creds = Buffer.from(
+			`${credentials.companyName}\\${credentials.userName}:${credentials.password}`
+		).toString('base64');
+
+		const baseUrl = await getBaseUrl.call(this, authenticationMethod, base64Creds);
+
+		if (query === undefined) {
+			query = {};
+		}
+		const options: OptionsWithUri = {
+			headers: { Authorization: `Basic ${base64Creds}` },
+			method,
+			qs: query,
+			uri: `${baseUrl}${endpoint}`,
+			json: true
+		};
+		if (Object.keys(body).length !== 0) {
+			options.body = body;
+		}
+		try {
+			const responseData = await this.helpers.request!(options);
+			if (responseData && responseData.success === false) {
+				throw new NodeApiError(this.getNode(), responseData);
+			}
+			return responseData;
+		} catch (error) {
+			throw new NodeApiError(this.getNode(), error);
+		}
+	} else {
+		const baseUrl = await getBaseUrl.call(this, authenticationMethod);
+
+		if (query === undefined) {
+			query = {};
+		}
+		const options: OptionsWithUri = {
+			method,
+			qs: query,
+			uri: `${baseUrl}${endpoint}`,
+			json: true
+		};
+		if (Object.keys(body).length !== 0) {
+			options.body = body;
+		}
+		try {
+			const responseData = await this.helpers.requestOAuth2!.call(
+				this,
+				'eloquaOAuth2Api',
+				options
+			);
+			if (responseData && responseData.success === false) {
+				throw new NodeApiError(this.getNode(), responseData);
+			}
+			return responseData;
+		} catch (error) {
+			throw new NodeApiError(this.getNode(), error);
+		}
 	}
 }

@@ -4,8 +4,8 @@ import {
 } from 'n8n-workflow';
 
 export class Eloqua implements ICredentialType {
-	name = 'eloqua';
-	displayName = 'Oracle Eloqua';
+	name = 'eloquaApi';
+	displayName = 'Oracle Eloqua API';
 	documentationUrl = 'eloqua';
 	properties: INodeProperties[] = [
 		{

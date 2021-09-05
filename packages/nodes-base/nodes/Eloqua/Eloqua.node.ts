@@ -15,7 +15,7 @@ export class Eloqua implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Oracle Eloqua',
 		name: 'eloqua',
-		icon: 'file:oracle-logo.svg',
+		icon: 'file:eloqua.png',
 		group: ['input'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
@@ -28,11 +28,49 @@ export class Eloqua implements INodeType {
 		outputs: ['main'],
 		credentials: [
 			{
-				name: 'eloqua',
-				required: true
-			}
+				name: 'eloquaApi',
+				required: true,
+				displayOptions: {
+					show: {
+						authentication: [
+							'httpBasicAuth',
+						],
+					},
+				},
+			},
+			{
+				name: 'eloquaOAuth2Api',
+				required: true,
+				displayOptions: {
+					show: {
+						authentication: [
+							'oAuth2',
+						],
+					},
+				},
+			},
 		],
 		properties: [
+			// ----------------------------------
+			//         Authentication
+			// ----------------------------------
+			{
+				displayName: 'Authentication',
+				name: 'authentication',
+				type: 'options',
+				options: [
+					{
+						name: 'Basic Authentication',
+						value: 'httpBasicAuth',
+					},
+					{
+						name: 'OAuth2',
+						value: 'oAuth2',
+					},
+				],
+				default: 'httpBasicAuth',
+				description: 'The resource to operate on.',
+			},
 			// ----------------------------------
 			//         resources
 			// ----------------------------------
