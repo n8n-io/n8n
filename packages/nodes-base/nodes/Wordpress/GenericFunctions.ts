@@ -51,7 +51,7 @@ export async function wordpressApiRequestAllItems(this: IExecuteFunctions | ILoa
 
 	let responseData;
 
-	query.per_page = 1;
+	query.per_page = 10;
 	query.page = 0;
 
 	do {
