@@ -3,7 +3,7 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export class Eloqua implements ICredentialType {
+export class EloquaApi implements ICredentialType {
 	name = 'eloquaApi';
 	displayName = 'Oracle Eloqua API';
 	documentationUrl = 'eloqua';
@@ -24,6 +24,9 @@ export class Eloqua implements ICredentialType {
 			displayName: 'Password',
 			name: 'password',
 			type: 'string',
+			typeOptions: {
+				password: true,
+			},
 			default: '',
 		},
 	];

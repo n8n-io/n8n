@@ -3,7 +3,7 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export class OracleEloquaOAuth2Api implements ICredentialType {
+export class EloquaOAuth2Api implements ICredentialType {
 	name = 'eloquaOAuth2Api';
 	extends = [
 		'oAuth2Api',

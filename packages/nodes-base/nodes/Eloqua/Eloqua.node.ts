@@ -69,7 +69,7 @@ export class Eloqua implements INodeType {
 					},
 				],
 				default: 'httpBasicAuth',
-				description: 'The resource to operate on.',
+				description: 'The authentication method to use.',
 			},
 			// ----------------------------------
 			//         resources

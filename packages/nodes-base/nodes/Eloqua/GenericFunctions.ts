@@ -60,8 +60,8 @@ export interface IProduct {
 
 async function getBaseUrl(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
-	authMethod: string
-	base64Creds?: string,
+	authMethod: string,
+	base64Creds?: string
 ): Promise<string> {
 	const options: OptionsWithUri = {
 		method: 'GET',
@@ -128,7 +128,11 @@ export async function eloquaApiRequest(
 			`${credentials.companyName}\\${credentials.userName}:${credentials.password}`
 		).toString('base64');
 
-		const baseUrl = await getBaseUrl.call(this, authenticationMethod, base64Creds);
+		const baseUrl = await getBaseUrl.call(
+			this,
+			authenticationMethod,
+			base64Creds
+		);
 
 		if (query === undefined) {
 			query = {};
