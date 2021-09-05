@@ -1687,7 +1687,7 @@ export class Salesforce implements INodeType {
 							const binaryData = items[i].binary![binaryPropertyName];
 							const dataBuffer = await this.helpers.getBinaryDataBuffer(i, binaryPropertyName);
 
-							body.entity_content['PathOnClient'] = `${title}.${binaryData.fileExtension}`;
+							body.entity_content['PathOnClient'] = `${title}.${additionalFields.fileExtension || binaryData.fileExtension}`;
 							data = {
 								entity_content: {
 									value: JSON.stringify(body.entity_content),
@@ -1698,11 +1698,11 @@ export class Salesforce implements INodeType {
 								VersionData: {
 									value: dataBuffer,
 									options: {
-										filename: binaryData.fileName,
-										contentType: binaryData.mimeType,
+										filename: body.entity_content['PathOnClient'],
 									},
 								},
 							};
+
 						} else {
 							throw new NodeOperationError(this.getNode(), `The property ${binaryPropertyName} does not exist`);
 						}
