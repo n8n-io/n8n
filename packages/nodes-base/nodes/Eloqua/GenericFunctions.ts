@@ -69,7 +69,6 @@ export async function eloquaApiRequest(
 		'authentication',
 		0
 	) as string;
-	console.log(authenticationMethod);
 
 	if (authenticationMethod === 'httpBasicAuth') {
 		//tslint:disable-line:no-any
@@ -87,7 +86,6 @@ export async function eloquaApiRequest(
 		).toString('base64');
 
 		if (!staticData.baseUrl) {
-			console.log('get base URl first time');
 			staticData.baseUrl = await getBaseUrl.call(
 				this,
 				authenticationMethod,
@@ -110,7 +108,6 @@ export async function eloquaApiRequest(
 			if (responseData && responseData.success === false) {
 				throw new NodeApiError(this.getNode(), responseData);
 			}
-			console.log('got response Data');
 			return responseData;
 		} catch (error) {
 			const newBaseUrl = await getBaseUrl.call(
