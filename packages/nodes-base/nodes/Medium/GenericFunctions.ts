@@ -32,7 +32,7 @@ export async function mediumApiRequest(this: IHookFunctions | IExecuteFunctions 
 
 	try {
 		if (authenticationMethod === 'accessToken') {
-			const credentials = this.getCredentials('mediumApi');
+			const credentials = await this.getCredentials('mediumApi');
 
 			if (credentials === undefined) {
 				throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
