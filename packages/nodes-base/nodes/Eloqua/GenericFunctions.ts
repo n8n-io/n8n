@@ -3,13 +3,11 @@ import { IExecuteFunctions, IHookFunctions } from 'n8n-core';
 import {
 	IDataObject,
 	ILoadOptionsFunctions,
-	INodeProperties,
 	NodeApiError,
 	NodeOperationError
 } from 'n8n-workflow';
 
 import { OptionsWithUri } from 'request';
-const fs = require('fs');
 
 export interface IProduct {
 	fields: {
@@ -17,53 +15,13 @@ export interface IProduct {
 	};
 }
 
-// Get Caching Mechanism to work
-// async function requestBaseUrlFromServer(
-//   this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
-//   base64Creds: string
-// ) {
-
-//   const options: OptionsWithUri = {
-//     headers: { Authorization: `Basic ${base64Creds}` },
-//     method: "GET",
-//     uri: "https://login.eloqua.com/id",
-//     json: true,
-//   };
-//   try {
-//     const responseData = await this.helpers.request!.call(this, options);
-//     const baseUrl = responseData.urls.base;
-//     fs.writeFileSync("./eloquaBaseUrl.txt", baseUrl);
-
-//     return baseUrl;
-//   } catch (error) {
-//     throw new NodeApiError(this.getNode(), error);
-//   }
-// }
-
-// async function getBaseUrl(
-//   this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
-//   base64Creds: string,
-//   skipCache: boolean = false
-// ): Promise<string> {
-//   let baseUrl = "";
-//   if (!skipCache) {
-//     try {
-//       baseUrl = fs.readFileSync("./eloquaBaseUrl.txt").toString();
-//     } catch (err) {
-//       baseUrl = await requestBaseUrlFromServer.call(this ,base64Creds);
-//     }
-//   } else {
-//     baseUrl = await requestBaseUrlFromServer.call(this, base64Creds);
-//   }
-//   return baseUrl;
-// }
-
-async function getBaseUrl(
+export async function getBaseUrl(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
 	authMethod: string,
 	base64Creds?: string
 ): Promise<string> {
 	const options: OptionsWithUri = {
+		headers: {},
 		method: 'GET',
 		uri: 'https://login.eloqua.com/id',
 		json: true
@@ -72,7 +30,6 @@ async function getBaseUrl(
 		options.headers!['Authorization'] = `Basic ${base64Creds}`;
 		try {
 			const responseData = await this.helpers.request!.call(this, options);
-
 			return responseData.urls.base;
 		} catch (error) {
 			throw new NodeApiError(this.getNode(), error);
@@ -84,7 +41,6 @@ async function getBaseUrl(
 				'eloquaOAuth2Api',
 				options
 			);
-
 			return responseData.urls.base;
 		} catch (error) {
 			throw new NodeApiError(this.getNode(), error);
@@ -106,12 +62,14 @@ export async function eloquaApiRequest(
 	method: string,
 	endpoint: string,
 	body: IDataObject,
-	query?: IDataObject
+	staticData: IDataObject = {},
+	query: IDataObject = {}
 ): Promise<any> {
 	const authenticationMethod = this.getNodeParameter(
 		'authentication',
 		0
 	) as string;
+	console.log(authenticationMethod);
 
 	if (authenticationMethod === 'httpBasicAuth') {
 		//tslint:disable-line:no-any
@@ -128,20 +86,20 @@ export async function eloquaApiRequest(
 			`${credentials.companyName}\\${credentials.userName}:${credentials.password}`
 		).toString('base64');
 
-		const baseUrl = await getBaseUrl.call(
-			this,
-			authenticationMethod,
-			base64Creds
-		);
-
-		if (query === undefined) {
-			query = {};
+		if (!staticData.baseUrl) {
+			console.log('get base URl first time');
+			staticData.baseUrl = await getBaseUrl.call(
+				this,
+				authenticationMethod,
+				base64Creds
+			);
 		}
+
 		const options: OptionsWithUri = {
 			headers: { Authorization: `Basic ${base64Creds}` },
 			method,
 			qs: query,
-			uri: `${baseUrl}${endpoint}`,
+			uri: `${staticData.baseUrl}${endpoint}`,
 			json: true
 		};
 		if (Object.keys(body).length !== 0) {
@@ -152,20 +110,36 @@ export async function eloquaApiRequest(
 			if (responseData && responseData.success === false) {
 				throw new NodeApiError(this.getNode(), responseData);
 			}
+			console.log('got response Data');
 			return responseData;
 		} catch (error) {
+			const newBaseUrl = await getBaseUrl.call(
+				this,
+				authenticationMethod,
+				base64Creds
+			);
+			if (newBaseUrl && newBaseUrl !== staticData.baseUrl) {
+				staticData.baseUrl = newBaseUrl;
+				return await eloquaApiRequest.call(
+					this,
+					method,
+					endpoint,
+					body,
+					staticData,
+					query
+				);
+			}
 			throw new NodeApiError(this.getNode(), error);
 		}
 	} else {
-		const baseUrl = await getBaseUrl.call(this, authenticationMethod);
-
-		if (query === undefined) {
-			query = {};
+		if (!staticData.baseUrl) {
+			staticData.baseUrl = await getBaseUrl.call(this, authenticationMethod);
 		}
+
 		const options: OptionsWithUri = {
 			method,
 			qs: query,
-			uri: `${baseUrl}${endpoint}`,
+			uri: `${staticData.baseUrl}${endpoint}`,
 			json: true
 		};
 		if (Object.keys(body).length !== 0) {
@@ -182,6 +156,18 @@ export async function eloquaApiRequest(
 			}
 			return responseData;
 		} catch (error) {
+			const newBaseUrl = await getBaseUrl.call(this, authenticationMethod);
+			if (newBaseUrl && newBaseUrl !== staticData.baseUrl) {
+				staticData.baseUrl = newBaseUrl;
+				return await eloquaApiRequest.call(
+					this,
+					method,
+					endpoint,
+					body,
+					staticData,
+					query
+				);
+			}
 			throw new NodeApiError(this.getNode(), error);
 		}
 	}
