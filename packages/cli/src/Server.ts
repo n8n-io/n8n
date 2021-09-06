@@ -52,9 +52,16 @@ import { createHash, createHmac } from 'crypto';
 import { compare } from 'bcryptjs';
 import * as promClient from 'prom-client';
 
-import { Credentials, LoadNodeParameterOptions, UserSettings } from 'n8n-core';
+import {
+	Credentials,
+	ICredentialTestFunctions,
+	LoadNodeParameterOptions,
+	NodeExecuteFunctions,
+	UserSettings,
+} from 'n8n-core';
 
 import {
+	ICredentialsDecrypted,
 	ICredentialsEncrypted,
 	ICredentialType,
 	IDataObject,
@@ -66,6 +73,8 @@ import {
 	IWorkflowBase,
 	IWorkflowCredentials,
 	LoggerProxy,
+	NodeCredentialTestRequest,
+	NodeCredentialTestResult,
 	Workflow,
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
@@ -1303,6 +1312,67 @@ class App {
 					// Convert to response format in which the id is a string
 					(result as unknown as ICredentialsResponse).id = result.id.toString();
 					return result as unknown as ICredentialsResponse;
+				},
+			),
+		);
+
+		// Test credentials
+		this.app.post(
+			`/${this.restEndpoint}/credentials-test`,
+			ResponseHelper.send(
+				async (req: express.Request, res: express.Response): Promise<NodeCredentialTestResult> => {
+					const incomingData = req.body as NodeCredentialTestRequest;
+					const credentialType = incomingData.credentials.type;
+
+					// Find nodes that can test this credential.
+					const nodeTypes = NodeTypes();
+					const allNodes = nodeTypes.getAll();
+
+					let foundTestFunction:
+						| ((
+								this: ICredentialTestFunctions,
+								credential: ICredentialsDecrypted,
+						  ) => Promise<NodeCredentialTestResult>)
+						| undefined;
+					const nodeThatCanTestThisCredential = allNodes.find((node) => {
+						if (
+							incomingData.nodeToTestWith &&
+							node.description.name !== incomingData.nodeToTestWith
+						) {
+							return false;
+						}
+						const credentialTestable = node.description.credentials?.find((credential) => {
+							const testFunctionSearch =
+								credential.name === credentialType && !!credential.testedBy;
+							if (testFunctionSearch) {
+								foundTestFunction = node.methods!.credentialTest![credential.testedBy!];
+							}
+							return testFunctionSearch;
+						});
+						return !!credentialTestable;
+					});
+
+					if (!nodeThatCanTestThisCredential) {
+						return Promise.resolve({
+							status: 'Error',
+							message: 'There are no nodes that can test this credential.',
+						});
+					}
+
+					if (foundTestFunction === undefined) {
+						return Promise.resolve({
+							status: 'Error',
+							message: 'No testing function found for this credential.',
+						});
+					}
+
+					const credentialTestFunctions = NodeExecuteFunctions.getCredentialTestFunctions();
+
+					const output = await foundTestFunction.call(
+						credentialTestFunctions,
+						incomingData.credentials,
+					);
+					return Promise.resolve(output);
 				},
 			),
 		);
