@@ -80,13 +80,13 @@
 				</div>
 				<div v-if="activeTab === 'connection'" :class="$style.mainContent" ref="content">
 					<banner
-						v-if="showValidationWarnings && !requiredPropertiesFilled"
+						v-show="showValidationWarnings && !requiredPropertiesFilled"
 						theme="danger"
 						message="Please check the errors below"
 					/>
 
 					<banner
-						v-else-if="authError"
+						v-if="authError"
 						theme="danger"
 						message="Couldn’t connect with these settings."
 						:details="authError"
@@ -568,6 +568,7 @@ export default mixins(genericHelpers, showMessage, nodeHelpers).extend({
 		onDataChange({ name, value }: { name: string; value: any }) { // tslint:disable-line:no-any
 			this.hasUnsavedChanges = true;
 			this.authError = '';
+			this.showValidationWarnings = false;
 
 			const { oauthTokenData, ...credData } = this.credentialData;
 
