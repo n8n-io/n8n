@@ -52,8 +52,8 @@
 					/>
 					<SaveButton
 						v-if="hasUnsavedChanges || credentialId"
-						:saved="!hasUnsavedChanges"
-						:isSaving="isSaving"
+						:saved="!hasUnsavedChanges && !isTesting"
+						:isSaving="isSaving || isTesting"
 						:savingLabel="isTesting? 'Testing' : 'Saving'"
 						@click="saveCredential"
 					/>
