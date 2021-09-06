@@ -67,7 +67,7 @@
 				</span>
 				<SaveButton
 					:saved="!this.isDirty && !this.isNewWorkflow"
-					:isSaving="isWorkflowSaving"
+					:disabled="isWorkflowSaving"
 					@click="saveCurrentWorkflow"
 				/>
 			</template>

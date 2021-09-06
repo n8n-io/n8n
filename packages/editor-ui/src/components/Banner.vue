@@ -1,33 +1,36 @@
 <template>
-	<div>
-		<el-tag
-			:type="theme"
-			size="medium"
-			:class="$style.banner"
-		>
+	<el-tag
+		:type="theme"
+		size="medium"
+		:class="$style.banner"
+	>
+		<div>
+			<font-awesome-icon
+				:icon="theme === 'success' ? 'check-circle' : 'exclamation-triangle'"
+				:class="$style.icon"
+			/>
+		</div>
+		<div :class="$style.content">
 			<div>
-				<font-awesome-icon
-					:icon="theme === 'success' ? 'check-circle' : 'exclamation-triangle'"
-					:class="$style.icon"
-				/>
-				<span>{{ message }}</span>
-				<span v-if="details">More details</span>
+				<span>{{ message }}&nbsp;</span>
+				<a v-if="details && !expanded" @click="expand">More details</a>
 			</div>
-			<div>
+			<div v-if="expanded" :class="$style.details">
 				{{details}}
 			</div>
-			<n8n-button
-				v-if="buttonLabel"
-				:label="$props.buttonLabel"
-				:title="$props.buttonTitle"
-				:theme="theme"
-				size="small"
-				type="outline"
-				:transparentBackground="true"
-				@click.stop="$emit('click')"
-			/>
-		</el-tag>
-	</div>
+		</div>
+
+		<n8n-button
+			v-if="buttonLabel"
+			:label="$props.buttonLabel"
+			:title="$props.buttonTitle"
+			:theme="theme"
+			size="small"
+			type="outline"
+			:transparentBackground="true"
+			@click.stop="$emit('click')"
+		/>
+	</el-tag>
 </template>
 
 <script lang="ts">
@@ -59,6 +62,11 @@ export default Vue.extend({
 			type: String,
 		},
 	},
+	methods: {
+		expand() {
+			this.expanded = true;
+		},
+	},
 });
 </script>
 
@@ -68,13 +76,18 @@ export default Vue.extend({
 }
 
 .banner {
-	width: 100%;
 	display: flex;
 	align-items: center;
+	width: 100%;
+}
 
-	> *:first-child {
-		flex-grow: 1;
-	}
+.content {
+	flex-grow: 1;
+}
+
+.details {
+	margin-top: var(--spacing-5xs);
+	color: var(--color-text-base);
 }
 
 </style>

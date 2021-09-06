@@ -4,6 +4,8 @@ import {
 	ICredentialsDecrypted,
 	ICredentialType,
 	IDataObject,
+	NodeCredentialTestRequest,
+	NodeCredentialTestResult,
 } from 'n8n-workflow';
 
 export async function getCredentialTypes(context: IRestApiContext): Promise<ICredentialType[]> {
@@ -44,4 +46,8 @@ export async function oAuth1CredentialAuthorize(context: IRestApiContext, data: 
 // Get OAuth2 Authorization URL using the stored credentials
 export async function oAuth2CredentialAuthorize(context: IRestApiContext, data: ICredentialsResponse): Promise<string> {
 	return makeRestApiRequest(context, 'GET', `/oauth2-credential/auth`, data as unknown as IDataObject);
+}
+
+export async function testCredential(context: IRestApiContext, data: NodeCredentialTestRequest): Promise<NodeCredentialTestResult> {
+	return makeRestApiRequest(context, 'POST', '/credentials-test', data as unknown as IDataObject);
 }

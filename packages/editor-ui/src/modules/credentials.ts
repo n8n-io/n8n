@@ -1,4 +1,14 @@
-import { getCredentialTypes, getCredentialsNewName, getAllCredentials, deleteCredential, getCredentialData, createNewCredential, updateCredential, oAuth2CredentialAuthorize, oAuth1CredentialAuthorize } from '@/api/credentials';
+import { getCredentialTypes,
+	getCredentialsNewName,
+	getAllCredentials,
+	deleteCredential,
+	getCredentialData,
+	createNewCredential,
+	updateCredential,
+	oAuth2CredentialAuthorize,
+	oAuth1CredentialAuthorize,
+	testCredential,
+} from '@/api/credentials';
 import Vue from 'vue';
 import { ActionContext, Module } from 'vuex';
 import {
@@ -11,6 +21,8 @@ import {
 import {
 	ICredentialType,
 	ICredentialsDecrypted,
+	NodeCredentialTestRequest,
+	NodeCredentialTestResult,
 	INodeTypeDescription,
 } from 'n8n-workflow';
 import { getAppNameFromCredType } from '@/components/helpers';
@@ -141,6 +153,9 @@ const module: Module<ICredentialsState, IRootState> = {
 		},
 		oAuth1Authorize: async (context: ActionContext<ICredentialsState, IRootState>, data: ICredentialsResponse) => {
 			return oAuth1CredentialAuthorize(context.rootGetters.getRestApiContext, data);
+		},
+		testCredential: async (context: ActionContext<ICredentialsState, IRootState>, data: ICredentialsDecrypted): Promise<NodeCredentialTestResult> => {
+			return testCredential(context.rootGetters.getRestApiContext, { credentials: data });
 		},
 		getNewCredentialName: async (context: ActionContext<ICredentialsState, IRootState>, params: { credentialTypeName: string }) => {
 			const { credentialTypeName } = params;

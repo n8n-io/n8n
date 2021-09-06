@@ -1,7 +1,13 @@
 <template>
 	<span :class="$style.container">
-		<n8n-button v-if="!saved || isSaving" label="Save" :disabled="isSaving" @click="$emit('click')" />
-		<span :class="$style.saved" v-else>Saved</span>
+		<span :class="$style.saved" v-if="saved">{{ savedLabel }}</span>
+		<n8n-button
+			v-else
+			:label="isSaving ? savingLabel : saveLabel"
+			:loading="isSaving"
+			:disabled="disabled"
+			@click="$emit('click')"
+		/>
 	</span>
 </template>
 
@@ -16,6 +22,21 @@ export default Vue.extend({
 		},
 		isSaving: {
 			type: Boolean,
+		},
+		disabled: {
+			type: Boolean,
+		},
+		saveLabel: {
+			type: String,
+			default: 'Save',
+		},
+		savingLabel: {
+			type: String,
+			default: 'Saving',
+		},
+		savedLabel: {
+			type: String,
+			default: 'Saved',
 		},
 	},
 });

@@ -54,6 +54,7 @@
 						v-if="hasUnsavedChanges || credentialId"
 						:saved="!hasUnsavedChanges"
 						:isSaving="isSaving"
+						:savingLabel="isTesting? 'Testing' : 'Saving'"
 						@click="saveCredential"
 					/>
 				</div>
@@ -79,13 +80,20 @@
 				</div>
 				<div v-if="activeTab === 'connection'" :class="$style.mainContent" ref="content">
 					<banner
-						v-show="showValidationWarnings"
+						v-if="showValidationWarnings && !requiredPropertiesFilled"
 						theme="danger"
 						message="Please check the errors below"
 					/>
 
 					<banner
-						v-if="showSuccessBanner"
+						v-else-if="authError"
+						theme="danger"
+						message="Couldn’t connect with these settings."
+						:details="authError"
+					/>
+
+					<banner
+						v-else-if="showSuccessBanner"
 						theme="success"
 						message="Account connected"
 						buttonLabel="Reconnect"
@@ -154,6 +162,7 @@ import {
 	INodeParameters,
 	INodeProperties,
 	INodeTypeDescription,
+	NodeCredentialTestResult,
 	NodeHelpers,
 } from 'n8n-workflow';
 import CredentialIcon from '../CredentialIcon.vue';
@@ -201,17 +210,19 @@ export default mixins(genericHelpers, showMessage, nodeHelpers).extend({
 	},
 	data() {
 		return {
-			loading: true,
+			activeTab: 'connection',
+			authError: '',
+			credentialId: '',
 			credentialName: '',
 			credentialData: {} as ICredentialDataDecryptedObject,
 			modalBus: new Vue(),
 			nodeAccess: {} as NodeAccessMap,
-			activeTab: 'connection',
-			isSaving: false,
 			isDeleting: false,
-			credentialId: '',
+			isSaving: false,
+			isTesting: false,
 			isNameEdit: false,
 			hasUnsavedChanges: false,
+			loading: true,
 			showValidationWarnings: false,
 		};
 	},
@@ -311,6 +322,25 @@ export default mixins(genericHelpers, showMessage, nodeHelpers).extend({
 			}
 
 			return '';
+		},
+		isCredentialTestable (): boolean {
+			if (this.isOAuthType) {
+				return false;
+			}
+
+			const nodesThatCanTest = this.nodesWithAccess.filter(node => {
+				if (node.credentials) {
+					// Returns a list of nodes that can test this credentials
+					const eligibleTesters = node.credentials.filter(credential => {
+						return credential.name === this.credentialTypeName && credential.testedBy;
+					});
+					// If we have any node that can test, return true.
+					return !!eligibleTesters.length;
+				}
+				return false;
+			});
+
+			return !!nodesThatCanTest.length;
 		},
 		showSuccessBanner(): boolean {
 			return this.isOAuthType && this.requiredPropertiesFilled && this.isOAuthConnected;
@@ -613,10 +643,25 @@ export default mixins(genericHelpers, showMessage, nodeHelpers).extend({
 			}, 0);
 		},
 
+		async testCredential(credentialDetails: ICredentialsDecrypted) {
+			if (this.isCredentialTestable) {
+				this.isTesting = true;
+				const result: NodeCredentialTestResult = await this.$store.dispatch('credentials/testCredential', credentialDetails);
+				this.isTesting = false;
+
+				if (result.status === 'Error') {
+					this.authError = result.message;
+
+					this.scrollToTop();
+				}
+			}
+		},
+
 		async saveCredential(
 			closeDialog = true,
 		): Promise<ICredentialsResponse | null> {
 			this.showValidationWarnings = false;
+			this.authError = '';
 
 			if (!this.requiredPropertiesFilled) {
 				this.showValidationWarnings = true;
@@ -648,18 +693,22 @@ export default mixins(genericHelpers, showMessage, nodeHelpers).extend({
 			if (this.mode === 'new' && !this.credentialId) {
 				credential = await this.createCredential(
 					credentialDetails,
-					closeDialog,
 				);
 			} else {
 				credential = await this.updateCredential(
 					credentialDetails,
-					closeDialog,
 				);
 			}
 
 			this.isSaving = false;
 			if (credential) {
 				this.credentialId = credential.id as string;
+
+				await this.testCredential(credentialDetails);
+			}
+
+			if (closeDialog && !this.authError) {
+				this.closeDialog();
 			}
 
 			return credential;
@@ -667,7 +716,6 @@ export default mixins(genericHelpers, showMessage, nodeHelpers).extend({
 
 		async createCredential(
 			credentialDetails: ICredentialsDecrypted,
-			closeDialog: boolean,
 		): Promise<ICredentialsResponse | null> {
 			let credential;
 
@@ -687,9 +735,6 @@ export default mixins(genericHelpers, showMessage, nodeHelpers).extend({
 				return null;
 			}
 
-			if (closeDialog) {
-				this.closeDialog();
-			}
 			this.$externalHooks().run('credentials.create', {
 				credentialTypeData: this.credentialData,
 			});
@@ -699,7 +744,6 @@ export default mixins(genericHelpers, showMessage, nodeHelpers).extend({
 
 		async updateCredential(
 			credentialDetails: ICredentialsDecrypted,
-			closeDialog: boolean,
 		): Promise<ICredentialsResponse | null> {
 			let credential;
 			try {
@@ -721,10 +765,6 @@ export default mixins(genericHelpers, showMessage, nodeHelpers).extend({
 			// Now that the credentials changed check if any nodes use credentials
 			// which have now a different name
 			this.updateNodesCredentialsIssues();
-
-			if (closeDialog) {
-				this.closeDialog();
-			}
 
 			return credential;
 		},
