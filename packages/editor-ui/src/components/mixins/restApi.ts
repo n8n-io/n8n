@@ -16,12 +16,9 @@ import {
 	IWorkflowDb,
 	IWorkflowShortResponse,
 	IRestApi,
-	IWorkflowData,
 	IWorkflowDataUpdate,
 } from '@/Interface';
 import {
-	ICredentialsDecrypted,
-	ICredentialType,
 	IDataObject,
 	INodeCredentials,
 	INodeParameters,
