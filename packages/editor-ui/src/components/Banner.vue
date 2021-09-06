@@ -2,7 +2,7 @@
 	<el-tag
 		:type="theme"
 		size="medium"
-		:class="$style.banner"
+		:class="buttonLabel? $style.centerBanner: $style.banner"
 	>
 		<div>
 			<font-awesome-icon
@@ -77,8 +77,12 @@ export default Vue.extend({
 
 .banner {
 	display: flex;
-	align-items: center;
 	width: 100%;
+}
+
+.centerBanner {
+	composes: banner;
+	align-items: center;
 }
 
 .content {
