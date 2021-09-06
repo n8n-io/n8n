@@ -624,6 +624,9 @@ class App {
 						});
 					}
 
+					// check credentials for old format
+					await WorkflowHelpers.replaceInvalidCredentials(newWorkflow);
+
 					await this.externalHooks.run('workflow.create', [newWorkflow]);
 
 					await WorkflowHelpers.validateWorkflow(newWorkflow);
@@ -793,6 +796,9 @@ class App {
 
 					const { id } = req.params;
 					updateData.id = id;
+
+					// check credentials for old format
+					await WorkflowHelpers.replaceInvalidCredentials(updateData as WorkflowEntity);
 
 					await this.externalHooks.run('workflow.update', [updateData]);
 
