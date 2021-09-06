@@ -190,7 +190,7 @@ export class Eloqua implements INodeType {
 						name: 'name',
 						type: 'string',
 						default: '',
-						description: 'The name of the contact.'
+						description: 'The name of the contact. Name is ignored by the API and overwritten with the Email Address value.'
 					},
 					{
 						displayName: 'Description',
