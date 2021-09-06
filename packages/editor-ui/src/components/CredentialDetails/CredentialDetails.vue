@@ -417,15 +417,12 @@ export default mixins(genericHelpers, showMessage, nodeHelpers).extend({
 	},
 	methods: {
 		async beforeClose(done: () => void) {
-			if (!this.hasUnsavedChanges) {
-				done();
+			let close = false;
 
-				return;
+			if (this.isOAuthConnected) {
+				close = true;
 			}
-
-			let discard = false;
-
-			if (this.isOAuthType && !this.isOAuthConnected) {
+			else if (this.isOAuthType) {
 				const goBack = await this.confirmMessage(
 					`You need to connect your credential for it to work`,
 					'Close without connecting?',
@@ -434,11 +431,14 @@ export default mixins(genericHelpers, showMessage, nodeHelpers).extend({
 					'Ignore',
 				);
 
-				discard = !goBack;
+				close = !goBack;
+			}
+			else if (!this.hasUnsavedChanges) {
+				close = true;
 			}
 			else {
 				const displayName = this.credentialType ? this.credentialType.displayName : '';
-				discard = await this.confirmMessage(
+				close = await this.confirmMessage(
 					`Are you sure you want to throw away the changes you made to the ${displayName} credential?`,
 					'Discard changes?',
 					null,
@@ -447,7 +447,7 @@ export default mixins(genericHelpers, showMessage, nodeHelpers).extend({
 				);
 			}
 
-			if (discard) {
+			if (close) {
 				done();
 				return;
 			}
@@ -710,7 +710,7 @@ export default mixins(genericHelpers, showMessage, nodeHelpers).extend({
 				await this.testCredential(credentialDetails);
 			}
 
-			if (closeDialog && !this.authError && !this.requiredPropertiesFilled) {
+			if (closeDialog && !this.authError && this.requiredPropertiesFilled) {
 				this.closeDialog();
 			}
 
