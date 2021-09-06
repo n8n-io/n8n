@@ -41,8 +41,7 @@ export class EloquaOAuth2Api implements ICredentialType {
 			displayName: 'Authentication',
 			name: 'authentication',
 			type: 'hidden',
-			default: 'body',
-			description: 'Resource to consume.',
+			default: 'header',
 		},
 	];
 }
