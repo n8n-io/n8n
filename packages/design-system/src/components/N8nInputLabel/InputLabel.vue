@@ -2,7 +2,7 @@
 	<div :class="$style.inputLabel">
 		<div :class="$style.label">
 			<span>
-				{{ props.label }}
+				{{ $options.methods.addTargetBlank(props.label) }}
 				<span v-if="props.required" :class="$style.required">*</span>
 			</span>
 			<span :class="$style.infoIcon" v-if="props.tooltipText">
@@ -22,6 +22,8 @@ import Vue from 'vue';
 import N8nTooltip from '../N8nTooltip';
 import N8nIcon from '../N8nIcon';
 
+import { addTargetBlank } from '../utils/helpers';
+
 Vue.component('N8nIcon', N8nIcon);
 Vue.component('N8nTooltip', N8nTooltip);
 
@@ -38,6 +40,9 @@ export default {
 		required: {
 			type: Boolean,
 		},
+	},
+	methods: {
+		addTargetBlank,
 	},
 };
 </script>
