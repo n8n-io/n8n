@@ -37,7 +37,7 @@
 
 	@include mixins.e(headerbtn) {
 		position: absolute;
-		top: var.$dialog-padding-primary;
+		top: var.$dialog-close-top;
 		right: var.$dialog-padding-primary;
 		padding: 0;
 		background: transparent;

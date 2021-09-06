@@ -993,6 +993,7 @@ export default mixins(genericHelpers, showMessage, nodeHelpers).extend({
 
 .credentialModal {
 	max-width: 900px;
+	--dialog-close-top: 28px;
 }
 
 </style>
