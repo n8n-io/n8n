@@ -3,10 +3,6 @@
 	<expression-edit :dialogVisible="expressionEditDialogVisible" :value="value" :parameter="parameter" :path="path" @closeDialog="closeExpressionEditDialog" @valueChanged="expressionUpdated"></expression-edit>
 	<div class="parameter-input ignore-key-press" :style="parameterInputWrapperStyle" @click="openExpressionEdit">
 
-		<div class="errors" v-if="showRequiredErrors">
-			This field is required. <a v-if="documentationUrl" :href="documentationUrl" target="_blank">Open docs</a>
-		</div>
-
 		<n8n-input
 			v-if="isValueExpression && showExpressionAsTextInput"
 			:size="inputSize"
@@ -169,6 +165,11 @@
 			:disabled="isReadOnly"
 			@change="valueChanged"
 		/>
+
+		<div class="errors" v-if="showRequiredErrors">
+			This field is required. <a v-if="documentationUrl" :href="documentationUrl" target="_blank">Open docs</a>
+		</div>
+
 	</div>
 
 	<div class="parameter-issues" v-if="getIssues.length">
@@ -875,8 +876,7 @@ export default mixins(
 }
 
 .errors {
-	position: absolute;
-	top: calc(100% + 4px);
+	margin-top: var(--spacing-4xs);
 	color: var(--color-danger);
 	font-size: var(--font-size-2xs);
 	font-weight: var(--font-weight-regular);
