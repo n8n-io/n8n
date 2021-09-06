@@ -140,7 +140,7 @@ export class AwsSecretsManager implements INodeType {
 					const decode = this.getNodeParameter('decode', i) as boolean;
 
 					if(decode){
-						responseData.decodedValue = JSON.parse(responseData.SecretString);
+						responseData.SecretString = JSON.parse(responseData.SecretString);
 					}
 				}
 
