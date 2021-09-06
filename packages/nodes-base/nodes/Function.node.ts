@@ -1,5 +1,6 @@
 import { IExecuteFunctions } from 'n8n-core';
 import {
+	Expression,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
@@ -101,7 +102,7 @@ return items;`,
 
 		try {
 			// Execute the function code
-			items = (await vm.run(`module.exports = async function() {${functionCode}}()`, __dirname));
+			items = (await vm.run(`module.exports = async function() {(function ${Expression.extendTypes.toString()})()\n${functionCode}}()`, __dirname));
 			// Do very basic validation of the data
 			if (items === undefined) {
 				throw new NodeOperationError(this.getNode(), 'No data got returned. Always return an Array of items!');

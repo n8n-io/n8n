@@ -135,6 +135,7 @@ import { getLeftmostTopNode, getWorkflowCorners, scaleSmaller, scaleBigger, scal
 import mixins from 'vue-typed-mixins';
 import { v4 as uuidv4} from 'uuid';
 import {
+	Expression,
 	IConnection,
 	IConnections,
 	IDataObject,
@@ -2300,6 +2301,9 @@ export default mixins(
 
 
 		async mounted () {
+			// Add support for custom n8n functionality to standard JavaScript types
+			Expression.extendTypes();
+
 			this.$root.$on('importWorkflowData', async (data: IDataObject) => {
 				await this.importWorkflowData(data.data as IWorkflowDataUpdate);
 			});

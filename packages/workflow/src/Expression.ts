@@ -1,3 +1,4 @@
+/* eslint-disable no-extend-native */
 // @ts-ignore
 import * as tmpl from 'riot-tmpl';
 // eslint-disable-next-line import/no-cycle
@@ -29,6 +30,28 @@ export class Expression {
 
 	constructor(workflow: Workflow) {
 		this.workflow = workflow;
+	}
+
+	static extendTypes(): void {
+		// @ts-ignore
+		// eslint-disable-next-line func-names
+		Date.prototype.add = function (value: number, unit: 'minute' | 'hour' | 'day' | 'week') {
+			const currentTime = this.getTime();
+
+			let calculatedValue = value;
+
+			if (unit === 'minute') {
+				calculatedValue *= 60;
+			} else if (unit === 'hour') {
+				calculatedValue *= 60 * 60;
+			} else if (unit === 'day') {
+				calculatedValue *= 60 * 60 * 24;
+			} else if (unit === 'week') {
+				calculatedValue *= 60 * 60 * 24 * 7;
+			}
+
+			return new Date(currentTime + calculatedValue * 1000);
+		};
 	}
 
 	/**
@@ -101,8 +124,14 @@ export class Expression {
 
 		// Execute the expression
 		try {
+			// eslint-disable-next-line no-param-reassign
+			parameterValue = `{{ __extendTypes() }}${parameterValue}`;
 			// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
-			const returnValue = tmpl.tmpl(parameterValue, data);
+			const returnValue = tmpl.tmpl(parameterValue, {
+				...data,
+				// eslint-disable-next-line @typescript-eslint/unbound-method
+				__extendTypes: Expression.extendTypes,
+			});
 			if (typeof returnValue === 'function') {
 				throw new Error('Expression resolved to a function. Please add "()"');
 			} else if (returnValue !== null && typeof returnValue === 'object') {
