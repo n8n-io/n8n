@@ -86,14 +86,14 @@
 					/>
 
 					<banner
-						v-if="authError"
+						v-show="authError"
 						theme="danger"
 						message="Couldn’t connect with these settings."
 						:details="authError"
 					/>
 
 					<banner
-						v-else-if="showSuccessBanner"
+						v-show="showSuccessBanner"
 						theme="success"
 						message="Account connected"
 						buttonLabel="Reconnect"
@@ -324,7 +324,7 @@ export default mixins(genericHelpers, showMessage, nodeHelpers).extend({
 			return '';
 		},
 		isCredentialTestable (): boolean {
-			if (this.isOAuthType) {
+			if (this.isOAuthType || !this.requiredPropertiesFilled) {
 				return false;
 			}
 
@@ -343,7 +343,7 @@ export default mixins(genericHelpers, showMessage, nodeHelpers).extend({
 			return !!nodesThatCanTest.length;
 		},
 		showSuccessBanner(): boolean {
-			return this.isOAuthType && this.requiredPropertiesFilled && this.isOAuthConnected;
+			return this.isOAuthType && this.requiredPropertiesFilled && this.isOAuthConnected && !this.authError;
 		},
 		nodesWithAccess(): INodeTypeDescription[] {
 			if (this.credentialTypeName) {
@@ -710,7 +710,7 @@ export default mixins(genericHelpers, showMessage, nodeHelpers).extend({
 				await this.testCredential(credentialDetails);
 			}
 
-			if (closeDialog && !this.authError) {
+			if (closeDialog && !this.authError && !this.requiredPropertiesFilled) {
 				this.closeDialog();
 			}
 
