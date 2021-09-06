@@ -387,6 +387,14 @@ export default mixins(genericHelpers, showMessage, nodeHelpers).extend({
 	},
 	methods: {
 		async beforeClose(done: () => void) {
+			if (!this.hasUnsavedChanges) {
+				done();
+
+				return;
+			}
+
+			let discard = false;
+
 			if (this.isOAuthType && !this.isOAuthConnected) {
 				const goBack = await this.confirmMessage(
 					`You need to connect your credential for it to work`,
@@ -396,39 +404,31 @@ export default mixins(genericHelpers, showMessage, nodeHelpers).extend({
 					'Ignore',
 				);
 
-				if (!this.requiredPropertiesFilled) {
-					this.scrollToTop();
-
-					return;
-				}
-				if (goBack) {
-					this.scrollToBottom();
-
-					return;
-				}
-				else {
-					done();
-					return;
-				}
+				discard = !goBack;
 			}
-
-			if (!this.hasUnsavedChanges) {
-				done();
-
-				return;
+			else {
+				const displayName = this.credentialType ? this.credentialType.displayName : '';
+				discard = await this.confirmMessage(
+					`Are you sure you want to throw away the changes you made to the ${displayName} credential?`,
+					'Discard changes?',
+					null,
+					'Discard',
+					'Go back',
+				);
 			}
-
-			const displayName = this.credentialType ? this.credentialType.displayName : '';
-			const discard = await this.confirmMessage(
-				`Are you sure you want to throw away the changes you made to the ${displayName} credential?`,
-				'Discard changes?',
-				 null,
-				'Discard',
-				'Go back',
-			);
 
 			if (discard) {
 				done();
+				return;
+			}
+			else if (!this.requiredPropertiesFilled) {
+				this.showValidationWarnings = true;
+				this.scrollToTop();
+
+				return;
+			}
+			else if (this.isOAuthType) {
+				this.scrollToBottom();
 			}
 		},
 
