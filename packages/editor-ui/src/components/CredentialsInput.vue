@@ -73,21 +73,6 @@
 			</el-col>
 		</el-row>
 
-		<el-row v-if="isCredentialTestable === true">
-			<el-col :span="6" class="headline">
-				Test if it works
-			</el-col>
-			<el-col :span="18">
-				<span v-if="requiredPropertiesFilled === false">
-					<n8n-icon-button title="Fill all required properties" icon="hand-point-up" :disabled="true" size="large" />
-					Enter all required properties
-				</span>
-				<span v-else>
-					<n8n-icon-button title="Test it!" @click.stop="testCredentials()" icon="bolt" size="large" />
-				</span>
-			</el-col>
-		</el-row>
-
 		<el-row class="nodes-access-wrapper">
 			<el-col :span="6" class="headline">
 				Nodes with access:
@@ -144,7 +129,6 @@ import {
 	INodeParameters,
 	INodeProperties,
 	INodeTypeDescription,
-	NodeCredentialTestRequest,
 	NodeHelpers,
 } from 'n8n-workflow';
 
@@ -233,34 +217,6 @@ export default mixins(
 			}
 
 			return this.credentialDataTemp;
-		},
-		isCredentialTestable (): boolean {
-			if (['oAuth1Api', 'oAuth2Api'].includes(this.credentialTypeData.name)) {
-				return false;
-			}
-			const types = this.parentTypes(this.credentialTypeData.name);
-			if(types.includes('oAuth1Api') || types.includes('oAuth2Api')) {
-				return false;
-			}
-
-			// Find all nodes that use this credential.
-			const allNodes = this.$store.getters.allNodeTypes as INodeTypeDescription[];
-			const nodesThatCanTest = allNodes.filter(node => {
-				if (node.credentials) {
-					// Returns a list of nodes that can test this credentials
-					const eligibleTesters = node.credentials.filter(credential => {
-						return credential.name === this.credentialTypeData.name && credential.testedBy;
-					});
-					// If we have any node that can test, return true.
-					if (eligibleTesters.length) {
-						return true;
-					}
-				}
-				return false;
-			});
-			// Means we found at least one node that could test this credential
-			return !!nodesThatCanTest.length;
-			
 		},
 		isGoogleOAuthType (): boolean {
 			if (this.credentialTypeData.name === 'googleOAuth2Api') {
@@ -466,41 +422,6 @@ export default mixins(
 			};
 
 			window.addEventListener('message', receiveMessage, false);
-		},
-		async testCredentials (): Promise<string> {
-			const nodesAccess = this.nodesAccess.map((nodeType) => {
-				return {
-					nodeType,
-				};
-			});
-
-			const newCredentials = {
-				name: this.name,
-				type: (this.credentialTypeData as ICredentialType).name,
-				// Save only the none default data
-				data: NodeHelpers.getNodeParameters(this.credentialTypeData.properties as INodeProperties[], this.propertyValue as INodeParameters, false, false),
-			} as ICredentialsDecrypted;
-
-			const testRequest = {
-				credentials: newCredentials,
-			} as NodeCredentialTestRequest;
-
-			let result;
-			try {
-				result = await this.restApi().testCredential(testRequest);
-			} catch (error) {
-				this.$showError(error, 'Problem Creating Credentials', 'There was a problem creating the credentials:');
-				return 'null';
-			}
-			return 'null';
-			// // Add also to local store
-			// this.$store.commit('addCredentials', result);
-
-			// this.$emit('credentialsCreated', {data: result, options: { closeDialog }});
-
-			// this.$externalHooks().run('credentials.create', { credentialTypeData: this.credentialTypeData });
-
-			// return result;
 		},
 		async updateCredentials (closeDialog: boolean): Promise<ICredentialsResponse | null> {
 			const nodesAccess: ICredentialNodeAccess[] = [];

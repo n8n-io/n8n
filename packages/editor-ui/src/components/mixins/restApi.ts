@@ -29,7 +29,6 @@ import {
 	INodeParameters,
 	INodePropertyOptions,
 	INodeTypeDescription,
-	NodeCredentialTestRequest,
 } from 'n8n-workflow';
 import { makeRestApiRequest } from '@/api/helpers';
 
@@ -157,10 +156,6 @@ export const restApi = Vue.extend({
 				// Creates a new workflow
 				createNewCredentials: (sendData: ICredentialsDecrypted): Promise<ICredentialsResponse> => {
 					return self.restApi().makeRestApiRequest('POST', `/credentials`, sendData);
-				},
-
-				testCredential: (sendData: NodeCredentialTestRequest): Promise<ICredentialsResponse> => {
-					return self.restApi().makeRestApiRequest('POST', `/credentials-test`, sendData);
 				},
 
 				// Deletes a credentials

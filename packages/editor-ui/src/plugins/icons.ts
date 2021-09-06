@@ -9,7 +9,6 @@ import {
 	faArrowLeft,
 	faArrowRight,
 	faAt,
-	faBolt,
 	faBook,
 	faBug,
 	faCalendar,
@@ -43,7 +42,6 @@ import {
 	faFilePdf,
 	faFolderOpen,
 	faGift,
-	faHandPointUp,
 	faHdd,
 	faHome,
 	faHourglass,
@@ -95,7 +93,6 @@ library.add(faAngleUp);
 library.add(faArrowLeft);
 library.add(faArrowRight);
 library.add(faAt);
-library.add(faBolt);
 library.add(faBook);
 library.add(faBug);
 library.add(faCalendar);
@@ -129,7 +126,6 @@ library.add(faFileImport);
 library.add(faFilePdf);
 library.add(faFolderOpen);
 library.add(faGift);
-library.add(faHandPointUp);
 library.add(faHdd);
 library.add(faHome);
 library.add(faHourglass);
