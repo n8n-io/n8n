@@ -14,6 +14,10 @@ import {
     OptionsWithUri,
 } from 'request';
 
+import {
+    scrapingBeeApiRequest,
+} from './GenericFunctions';
+
 export class ScrapingBee implements INodeType {
     description: INodeTypeDescription = {
         displayName: 'ScrapingBee',
@@ -220,19 +224,19 @@ export class ScrapingBee implements INodeType {
     };
 
     async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
-        //Get credentials the user provided for this node
-        const credentials = await this.getCredentials('scrapingBeeApi') as IDataObject;
         const url = this.getNodeParameter('url', 0) as string;
-        const returnData: INodeExecutionData[] = [];
+        let returnData: INodeExecutionData[] = [];
         try {
-            returnData.push(...this.helpers.returnJsonArray(credentials))
+            let queryString: IDataObject = {};
+            queryString['url'] = url;
+            returnData = await scrapingBeeApiRequest.call(this, 'GET', queryString);
         } catch (error) {
             if (this.continueOnFail()) {
-                returnData.push({json:{ error: error.message }});
+                returnData.push({json:{ error: error}});
             }
             throw error;
         }
 
-        return this.prepareOutputData(returnData);
+        return [this.helpers.returnJsonArray(returnData)];
     }
 }
