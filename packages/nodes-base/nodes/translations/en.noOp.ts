@@ -1,0 +1,1 @@
+module.exports = {'en':{'noOp':{'displayName':'No Operation, do nothing','description':'No Operation','parameters':{},'credentials':{}}}};

@@ -44,7 +44,7 @@ export default mixins(translate).extend({
 		'nodeType',
 		'bordered',
 	],
-	async mounted() {
+	mounted() {
 		if(this.nodeType.translation) {
 			addNodeTranslations(this.nodeType.translation);
 		}

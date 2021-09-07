@@ -1,0 +1,1 @@
+module.exports = {'en':{'errorTrigger':{'displayName':'Error Trigger','description':'Triggers the workflow when another workflow has an error','parameters':{},'credentials':{}}}};

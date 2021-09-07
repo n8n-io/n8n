@@ -1,0 +1,1 @@
+module.exports = {'en':{'renameKeys':{'displayName':'Rename Keys','description':'Renames keys.','parameters':{'keys':{'name':'keys','displayName':'Keys','description':'Adds a key which should be renamed.','placeholder':'Add new key','options':{'key':{'displayName':'Key'}}}},'credentials':{}}}};

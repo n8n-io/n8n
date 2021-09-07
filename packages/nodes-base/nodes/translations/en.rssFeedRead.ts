@@ -1,0 +1,1 @@
+module.exports = {'en':{'rssFeedRead':{'displayName':'RSS Read','description':'Reads data from an RSS Feed','parameters':{'url':{'name':'url','displayName':'URL','description':'URL of the RSS feed.','options':{}}},'credentials':{}}}};

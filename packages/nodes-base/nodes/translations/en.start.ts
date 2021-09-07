@@ -1,0 +1,1 @@
+module.exports = {'en':{'start':{'displayName':'Start','description':'Starts the workflow execution from this node','parameters':{},'credentials':{}}}};

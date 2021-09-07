@@ -1,0 +1,1 @@
+module.exports = {'en':{'functionItem':{'displayName':'Function Item','description':'Run custom function code which gets executed once per item.','parameters':{'functionCode':{'name':'functionCode','displayName':'JavaScript Code','description':'The JavaScript code to execute for each item.','options':{}}},'credentials':{}}}};
