@@ -222,6 +222,7 @@ export default mixins(genericHelpers, showMessage, nodeHelpers).extend({
 			isTesting: false,
 			isNameEdit: false,
 			hasUnsavedChanges: false,
+			hasMadeAnyChanges: false,
 			loading: true,
 			showValidationWarnings: false,
 		};
@@ -417,45 +418,40 @@ export default mixins(genericHelpers, showMessage, nodeHelpers).extend({
 	},
 	methods: {
 		async beforeClose(done: () => void) {
-			let close = false;
-
-			if (this.isOAuthConnected) {
-				close = true;
+			if (!this.hasMadeAnyChanges) {
+				done();
+				return;
 			}
-			else if (this.isOAuthType) {
-				const goBack = await this.confirmMessage(
+
+			let keepEditing = false;
+
+			if (this.isOAuthType && !this.isOAuthConnected) {
+				keepEditing = await this.confirmMessage(
 					`You need to connect your credential for it to work`,
 					'Close without connecting?',
 					null,
 					'Keep editing',
 					'Close',
 				);
-
-				close = !goBack;
 			}
-			else if (!this.hasUnsavedChanges) {
-				close = true;
-			}
-			else {
+			else if (this.hasUnsavedChanges) {
 				const displayName = this.credentialType ? this.credentialType.displayName : '';
-				close = await this.confirmMessage(
+				keepEditing = await this.confirmMessage(
 					`Are you sure you want to throw away the changes you made to the ${displayName} credential?`,
-					'Discard changes?',
+					'Close without saving?',
 					null,
-					'Discard',
 					'Keep editing',
+					'Close',
 				);
 			}
 
-			if (close) {
+			if (!keepEditing) {
 				done();
 				return;
 			}
 			else if (!this.requiredPropertiesFilled) {
 				this.showValidationWarnings = true;
 				this.scrollToTop();
-
-				return;
 			}
 			else if (this.isOAuthType) {
 				this.scrollToBottom();
@@ -551,6 +547,8 @@ export default mixins(genericHelpers, showMessage, nodeHelpers).extend({
 		},
 		onNodeAccessChange({name, value}: {name: string, value: boolean}) {
 			this.hasUnsavedChanges = true;
+			this.hasMadeAnyChanges = true;
+
 			if (value) {
 				this.nodeAccess = {
 					...this.nodeAccess,
@@ -567,8 +565,7 @@ export default mixins(genericHelpers, showMessage, nodeHelpers).extend({
 		},
 		onDataChange({ name, value }: { name: string; value: any }) { // tslint:disable-line:no-any
 			this.hasUnsavedChanges = true;
-			this.authError = '';
-			this.showValidationWarnings = false;
+			this.hasMadeAnyChanges = true;
 
 			const { oauthTokenData, ...credData } = this.credentialData;
 
