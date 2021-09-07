@@ -856,10 +856,8 @@ export interface IWorkflowBase {
 }
 
 export interface IWorkflowCredentials {
-	// Credential type
-	[key: string]: {
-		// Id
-		[key: string]: ICredentialsEncrypted;
+	[credentialType: string]: {
+		[id: string]: ICredentialsEncrypted;
 	};
 }
 
