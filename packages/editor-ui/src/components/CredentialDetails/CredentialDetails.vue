@@ -425,20 +425,20 @@ export default mixins(genericHelpers, showMessage, nodeHelpers).extend({
 
 			let keepEditing = false;
 
-			if (this.isOAuthType && !this.isOAuthConnected) {
+			if (this.hasUnsavedChanges) {
+				const displayName = this.credentialType ? this.credentialType.displayName : '';
 				keepEditing = await this.confirmMessage(
-					`You need to connect your credential for it to work`,
-					'Close without connecting?',
+					`Are you sure you want to throw away the changes you made to the ${displayName} credential?`,
+					'Close without saving?',
 					null,
 					'Keep editing',
 					'Close',
 				);
 			}
-			else if (this.hasUnsavedChanges) {
-				const displayName = this.credentialType ? this.credentialType.displayName : '';
+			else if (this.isOAuthType && !this.isOAuthConnected) {
 				keepEditing = await this.confirmMessage(
-					`Are you sure you want to throw away the changes you made to the ${displayName} credential?`,
-					'Close without saving?',
+					`You need to connect your credential for it to work`,
+					'Close without connecting?',
 					null,
 					'Keep editing',
 					'Close',
