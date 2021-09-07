@@ -7,13 +7,13 @@
 		<div>
 			<font-awesome-icon
 				:icon="theme === 'success' ? 'check-circle' : 'exclamation-triangle'"
-				:class="$style.icon"
+				:class="theme === 'success' ? $style.icon : $style.dangerIcon"
 			/>
 		</div>
 		<div :class="$style.content">
 			<div>
 				<span>{{ message }}&nbsp;</span>
-				<a v-if="details && !expanded" @click="expand">More details</a>
+				<a v-if="details && !expanded" :class="$style.expandButton" @click="expand">More details</a>
 			</div>
 			<div v-if="expanded" :class="$style.details">
 				{{details}}
@@ -75,9 +75,15 @@ export default Vue.extend({
 	margin-right: var(--spacing-xs);
 }
 
+.dangerIcon {
+	composes: icon;
+	color: var(--color-danger);
+}
+
 .banner {
 	display: flex;
 	width: 100%;
+	border: none;
 }
 
 .centerBanner {
@@ -89,8 +95,12 @@ export default Vue.extend({
 	flex-grow: 1;
 }
 
+.expandButton {
+	font-weight: var(--font-weight-bold);
+}
+
 .details {
-	margin-top: var(--spacing-5xs);
+	margin-top: var(--spacing-3xs);
 	color: var(--color-text-base);
 }
 
