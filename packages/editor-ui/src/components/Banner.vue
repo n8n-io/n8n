@@ -25,7 +25,7 @@
 
 			<n8n-button
 				v-if="buttonLabel"
-				:label="buttonLabel"
+				:label="buttonLoading && buttonLoadingLabel ? buttonLoadingLabel : buttonLabel"
 				:title="buttonTitle"
 				:theme="theme"
 				:loading="buttonLoading"
@@ -62,6 +62,9 @@ export default Vue.extend({
 			type: String,
 		},
 		buttonLabel: {
+			type: String,
+		},
+		buttonLoadingLabel: {
 			type: String,
 		},
 		buttonTitle: {
