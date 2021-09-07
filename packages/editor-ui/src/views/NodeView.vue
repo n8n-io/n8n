@@ -39,10 +39,10 @@
 			@closeNodeCreator="closeNodeCreator"
 			></node-creator>
 		<div :class="{ 'zoom-menu': true, expanded: !sidebarMenuCollapsed }">
-			<button @click="setZoom('in')" class="button-white" title="Zoom In">
+			<button @click="setZoom('in')" class="button-white" :title="$translateBase('nodeView.zoomIn')">
 				<font-awesome-icon icon="search-plus"/>
 			</button>
-			<button @click="setZoom('out')" class="button-white" title="Zoom Out">
+			<button @click="setZoom('out')" class="button-white" :title="$translateBase('nodeView.zoomIn')">
 				<font-awesome-icon icon="search-minus"/>
 			</button>
 			<button
@@ -1208,7 +1208,7 @@ export default mixins(
 							'Label',
 							{
 								id: 'drop-add-node',
-								label: 'Drop connection<br />to create node',
+								label: this.$translateBase('nodeView.arrowLabel'),
 								cssClass: 'drop-add-node-label',
 								location: 0.5,
 							},

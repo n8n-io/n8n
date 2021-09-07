@@ -5,7 +5,7 @@
 		</div>
 		<div class="text">
 			<input
-				placeholder="Search nodes..."
+				:placeholder="$translateBase('mainPanel.search')"
 				ref="input"
 				:value="value"
 				@input="onInput"
@@ -18,9 +18,10 @@
 </template>
 
 <script lang="ts">
-import Vue from "vue";
+import mixins from 'vue-typed-mixins';
+import {translate} from "@/components/mixins/translate";
 
-export default Vue.extend({
+export default mixins(translate).extend({
 	name: "SearchBar",
 	props: ["value", "eventBus"],
 	mounted() {

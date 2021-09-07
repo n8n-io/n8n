@@ -34,7 +34,7 @@
 		</div>
 		<div class="node-description">
 			<div class="node-name" :title="data.name">
-				{{data.name}}
+        {{translateSpecific({key: `${data.type}.displayName`, fallback: data.name})}}
 			</div>
 			<div v-if="nodeSubtitle !== undefined" class="node-subtitle" :title="nodeSubtitle">
 				{{nodeSubtitle}}
@@ -58,8 +58,9 @@ import {
 import NodeIcon from '@/components/NodeIcon.vue';
 
 import mixins from 'vue-typed-mixins';
+import {translate} from "@/components/mixins/translate";
 
-export default mixins(nodeBase, nodeHelpers, workflowHelpers).extend({
+export default mixins(nodeBase, nodeHelpers, workflowHelpers, translate).extend({
 	name: 'Node',
 	components: {
 		NodeIcon,

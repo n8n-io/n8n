@@ -11,9 +11,9 @@
 			/>
 			<div class="type-selector">
 				<el-tabs v-model="selectedType" stretch>
-					<el-tab-pane :label="$translateBase(`mainPanel.filters.${ALL_NODE_FILTER.toLocaleLowerCase()}`)" :name="ALL_NODE_FILTER"></el-tab-pane>
-					<el-tab-pane label="Regular" :name="REGULAR_NODE_FILTER"></el-tab-pane>
-					<el-tab-pane label="Trigger" :name="TRIGGER_NODE_FILTER"></el-tab-pane>
+					<el-tab-pane :label="$translateBaseWithDynamicParam({base: 'mainPanel.filters', param: ALL_NODE_FILTER})" :name="ALL_NODE_FILTER"></el-tab-pane>
+					<el-tab-pane :label="$translateBaseWithDynamicParam({base: 'mainPanel.filters', param: REGULAR_NODE_FILTER})" :name="REGULAR_NODE_FILTER"></el-tab-pane>
+					<el-tab-pane :label="$translateBaseWithDynamicParam({base: 'mainPanel.filters', param: TRIGGER_NODE_FILTER})" :name="TRIGGER_NODE_FILTER"></el-tab-pane>
 				</el-tabs>
 			</div>
 			<div v-if="searchFilter.length === 0" class="scrollable">

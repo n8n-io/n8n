@@ -249,6 +249,17 @@ const baseStrings = {
 				title: 'Workflow can not be changed!',
 			},
 		},
+		mainPanel: {
+			filters: {
+				all: 'All',
+				regular: 'Regular',
+				trigger: 'Trigger',
+			},
+			categories: {
+				core_nodes: 'Core Nodes',
+			},
+			search: 'Search nodes...',
+		},
 		mainSideBar: {
 			aboutN8n: 'About n8n',
 			confirmMessage: {
@@ -403,6 +414,9 @@ const baseStrings = {
 				},
 			},
 			executesTheWorkflowFromTheStartOrWebhookNode: 'Executes the Workflow from the Start or Webhook Node.',
+			arrowLabel: 'Drop connection<br />to create node',
+			zoomIn: 'Zoom In',
+			zoomOut: 'Zoom Out',
 			prompt: {
 				cancel: 'Cancel',
 				invalidName: 'Invalid Name',

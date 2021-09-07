@@ -1,19 +1,24 @@
-<template functional>
+<template>
 	<div :class="$style.category">
-		<span :class="$style.name">{{ props.item.category }}</span>
+		<span :class="$style.name">{{ $translateBaseWithDynamicParam({base: 'mainPanel.categories', param: item.category}) }}</span>
 		<font-awesome-icon
 			:class="$style.arrow"
 			icon="chevron-down"
-			v-if="props.item.properties.expanded"
+			v-if="item.properties.expanded"
 		/>
 		<font-awesome-icon :class="$style.arrow" icon="chevron-up" v-else />
 	</div>
 </template>
 
 <script lang="ts">
-export default {
+
+import mixins from 'vue-typed-mixins';
+import {translate} from "@/components/mixins/translate";
+
+export default mixins(translate).extend({
+	name: 'CategoryItem',
 	props: ['item'],
-};
+});
 </script>
 
 

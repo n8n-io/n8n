@@ -39,6 +39,19 @@ export const translate = Vue.extend({
 		},
 
 		/**
+		 * Translate a base string with additional part that changes dynamically. Called directly in Vue templates.
+		 */
+		$translateBaseWithDynamicParam(
+			{ base, param }: { base: string, param: string },
+		): string {
+			const sanitizedParam = param.split(' ').map((part, idx) => {
+				part = part.toLowerCase();
+				return idx === 0 ? part : `${part[0].toUpperCase()}${part.slice(1)}`;
+			}).join('');
+			return this.$t(`${base}.${sanitizedParam}` as TranslationPath).toString();
+		},
+
+		/**
 		 * Translate a node- or credentials-specific string.
 		 * Called in-mixin by node- or credentials-specific methods,
 		 * which are called directly in Vue templates.

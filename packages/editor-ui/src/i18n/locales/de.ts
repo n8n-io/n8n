@@ -252,7 +252,13 @@ export default {
 		mainPanel: {
 			filters: {
 				all: 'All in Deutsch',
+				regular: 'Regular in Deutsch',
+				trigger: 'Trigger in Deutsch',
 			},
+			categories: {
+				core_nodes: 'Core Nodes in Deutsch',
+			},
+			search: 'Search nodes... in Deutsch',
 		},
 		mainSideBar: {
 			aboutN8n: 'Deutsch',
@@ -409,6 +415,9 @@ export default {
 				},
 			},
 			executesTheWorkflowFromTheStartOrWebhookNode: 'Deutsch',
+			arrowLabel: 'De — drop<br/>connection',
+			zoomIn: 'De — Zoom In',
+			zoomOut: 'De — Zoom Out',
 			prompt: {
 				cancel: 'Deutsch',
 				invalidName: 'Deutsch',
