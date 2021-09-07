@@ -660,9 +660,7 @@ export default mixins(genericHelpers, showMessage, nodeHelpers).extend({
 			}
 		},
 
-		async saveCredential(
-			closeDialog = true,
-		): Promise<ICredentialsResponse | null> {
+		async saveCredential(): Promise<ICredentialsResponse | null> {
 			this.showValidationWarnings = false;
 			this.authError = '';
 
@@ -708,10 +706,6 @@ export default mixins(genericHelpers, showMessage, nodeHelpers).extend({
 				this.credentialId = credential.id as string;
 
 				await this.testCredential(credentialDetails);
-			}
-
-			if (closeDialog && !this.authError && this.requiredPropertiesFilled) {
-				this.closeDialog();
 			}
 
 			return credential;
@@ -822,7 +816,7 @@ export default mixins(genericHelpers, showMessage, nodeHelpers).extend({
 		async oAuthCredentialAuthorize() {
 			let url;
 
-			const credential = await this.saveCredential(false);
+			const credential = await this.saveCredential();
 			if (!credential) {
 				return;
 			}
