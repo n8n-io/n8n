@@ -280,8 +280,9 @@ export default mixins(showMessage, nodeHelpers).extend({
 			if (!this.requiredPropertiesFilled) {
 				this.showValidationWarning = true;
 			}
-
-			this.retestCredential();
+			else {
+				this.retestCredential();
+			}
 		}
 
 		this.loading = false;
