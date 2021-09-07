@@ -2,36 +2,43 @@
 	<el-tag
 		:type="theme"
 		size="medium"
-		:class="buttonLabel? $style.centerBanner: $style.banner"
 		:disable-transitions="true"
+		:class="$style.container"
 	>
-		<div>
-			<font-awesome-icon
+		<font-awesome-icon
 				:icon="theme === 'success' ? 'check-circle' : 'exclamation-triangle'"
 				:class="theme === 'success' ? $style.icon : $style.dangerIcon"
+		/>
+		<div
+			:class="$style.banner"
+		>
+			<div :class="$style.content">
+				<div>
+					<span
+						:class="theme === 'success' ? '' : $style.dangerMessage"
+					>
+						{{ message }}&nbsp;
+					</span>
+					<a v-if="details && !expanded" :class="$style.expandButton" @click="expand">More details</a>
+				</div>
+			</div>
+
+			<n8n-button
+				v-if="buttonLabel"
+				:label="buttonLabel"
+				:title="buttonTitle"
+				:theme="theme"
+				:loading="buttonLoading"
+				size="small"
+				type="outline"
+				:transparentBackground="true"
+				@click.stop="onClick"
 			/>
 		</div>
-		<div :class="$style.content">
-			<div>
-				<span>{{ message }}&nbsp;</span>
-				<a v-if="details && !expanded" :class="$style.expandButton" @click="expand">More details</a>
-			</div>
-			<div v-if="expanded" :class="$style.details">
-				{{details}}
-			</div>
-		</div>
 
-		<n8n-button
-			v-if="buttonLabel"
-			:label="buttonLabel"
-			:title="buttonTitle"
-			:theme="theme"
-			:loading="buttonLoading"
-			size="small"
-			type="outline"
-			:transparentBackground="true"
-			@click.stop="onClick"
-		/>
+		<div v-if="expanded" :class="$style.details">
+			{{details}}
+		</div>
 	</el-tag>
 </template>
 
@@ -82,7 +89,9 @@ export default Vue.extend({
 
 <style module lang="scss">
 .icon {
-	margin-right: var(--spacing-xs);
+	position: absolute;
+	left: 14px;
+	top: 18px;
 }
 
 .dangerIcon {
@@ -90,14 +99,19 @@ export default Vue.extend({
 	color: var(--color-danger);
 }
 
-.banner {
-	display: flex;
+.container {
 	width: 100%;
+	position: relative;
+	padding-left: 40px;
 	border: none;
 }
 
-.centerBanner {
-	composes: banner;
+.dangerMessage {
+	color: var(--color-danger);
+}
+
+.banner {
+	display: flex;
 	align-items: center;
 }
 
