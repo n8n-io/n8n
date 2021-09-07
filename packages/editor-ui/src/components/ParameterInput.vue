@@ -876,7 +876,7 @@ export default mixins(
 }
 
 .errors {
-	margin-top: var(--spacing-4xs);
+	margin-top: var(--spacing-2xs);
 	color: var(--color-danger);
 	font-size: var(--font-size-2xs);
 	font-weight: var(--font-weight-regular);
