@@ -105,6 +105,10 @@
 						v-show="testedSuccessfully && !showRequiredErrorBanner"
 						theme="success"
 						message="Connection tested successfully"
+						buttonLabel="Retry"
+						buttonTitle="Retry credentials test"
+						:buttonLoading="isRetesting"
+						@click="retestCredential"
 					/>
 
 					<n8n-info-tip>
@@ -231,6 +235,7 @@ export default mixins(showMessage, nodeHelpers).extend({
 			loading: true,
 			showValidationWarnings: false,
 			testedSuccessfully: false,
+			isRetesting: false,
 		};
 	},
 	async mounted() {
@@ -263,6 +268,10 @@ export default mixins(showMessage, nodeHelpers).extend({
 						property.default as CredentialInformation;
 				}
 			}
+		}
+
+		if (this.credentialId) {
+			this.retestCredential();
 		}
 
 		this.loading = false;
@@ -652,22 +661,46 @@ export default mixins(showMessage, nodeHelpers).extend({
 			}, 0);
 		},
 
-		async testCredential(credentialDetails: ICredentialsDecrypted) {
-			if (this.isCredentialTestable) {
-				this.isTesting = true;
-				const result: NodeCredentialTestResult = await this.$store.dispatch('credentials/testCredential', credentialDetails);
-				this.isTesting = false;
-
-				if (result.status === 'Error') {
-					this.authError = result.message;
-					this.testedSuccessfully = false;
-				}
-				else {
-					this.testedSuccessfully = true;
-				}
-
-				this.scrollToTop();
+		async retestCredential() {
+			if (!this.isCredentialTestable) {
+				return;
 			}
+
+			const nodesAccess = Object.values(this.nodeAccess).filter(
+				(access) => !!access,
+			) as ICredentialNodeAccess[];
+
+			// Save only the none default data
+			const data = NodeHelpers.getNodeParameters(
+				this.credentialType!.properties,
+				this.credentialData as INodeParameters,
+				false,
+				false,
+			);
+
+			const details: ICredentialsDecrypted = {
+				name: this.credentialName,
+				type: this.credentialTypeName!,
+				data: data as unknown as ICredentialDataDecryptedObject,
+				nodesAccess,
+			};
+
+			this.isRetesting = true;
+			await this.testCredential(details);
+			this.isRetesting = false;
+		},
+
+		async testCredential(credentialDetails: ICredentialsDecrypted) {
+			const result: NodeCredentialTestResult = await this.$store.dispatch('credentials/testCredential', credentialDetails);
+			if (result.status === 'Error') {
+				this.authError = result.message;
+				this.testedSuccessfully = false;
+			}
+			else {
+				this.testedSuccessfully = true;
+			}
+
+			this.scrollToTop();
 		},
 
 		async saveCredential(): Promise<ICredentialsResponse | null> {
@@ -716,7 +749,11 @@ export default mixins(showMessage, nodeHelpers).extend({
 			if (credential) {
 				this.credentialId = credential.id as string;
 
-				await this.testCredential(credentialDetails);
+				if (this.isCredentialTestable) {
+					this.isTesting = true;
+					await this.testCredential(credentialDetails);
+					this.isTesting = false;
+				}
 			}
 
 			return credential;

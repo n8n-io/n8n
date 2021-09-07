@@ -23,9 +23,10 @@
 
 		<n8n-button
 			v-if="buttonLabel"
-			:label="$props.buttonLabel"
-			:title="$props.buttonTitle"
+			:label="buttonLabel"
+			:title="buttonTitle"
 			:theme="theme"
+			:loading="buttonLoading"
 			size="small"
 			type="outline"
 			:transparentBackground="true"
@@ -61,6 +62,10 @@ export default Vue.extend({
 		},
 		details: {
 			type: String,
+		},
+		buttonLoading: {
+			type: Boolean,
+			default: false,
 		},
 	},
 	methods: {
