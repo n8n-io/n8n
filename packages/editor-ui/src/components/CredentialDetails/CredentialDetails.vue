@@ -427,8 +427,8 @@ export default mixins(genericHelpers, showMessage, nodeHelpers).extend({
 					`You need to connect your credential for it to work`,
 					'Close without connecting?',
 					null,
-					'No, go back',
-					'Ignore',
+					'Keep editing',
+					'Close',
 				);
 
 				close = !goBack;
@@ -443,7 +443,7 @@ export default mixins(genericHelpers, showMessage, nodeHelpers).extend({
 					'Discard changes?',
 					null,
 					'Discard',
-					'Go back',
+					'Keep editing',
 				);
 			}
 
