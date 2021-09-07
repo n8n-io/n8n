@@ -80,25 +80,31 @@
 				</div>
 				<div v-if="activeTab === 'connection'" :class="$style.mainContent" ref="content">
 					<banner
-						v-show="showValidationWarnings && !requiredPropertiesFilled"
+						v-show="showRequiredErrorBanner"
 						theme="danger"
 						message="Please check the errors below"
 					/>
 
 					<banner
-						v-show="authError"
+						v-show="authError && !showRequiredErrorBanner"
 						theme="danger"
 						message="Couldn’t connect with these settings."
 						:details="authError"
 					/>
 
 					<banner
-						v-show="showSuccessBanner"
+						v-show="showOAuthSuccessBanner && !showRequiredErrorBanner"
 						theme="success"
 						message="Account connected"
 						buttonLabel="Reconnect"
 						buttonTitle="Reconnect OAuth Credentials"
 						@click="oAuthCredentialAuthorize"
+					/>
+
+					<banner
+						v-show="testedSuccessfully && !showRequiredErrorBanner"
+						theme="success"
+						message="Connection tested successfully"
 					/>
 
 					<n8n-info-tip>
@@ -169,7 +175,6 @@ import CredentialIcon from '../CredentialIcon.vue';
 
 import mixins from 'vue-typed-mixins';
 import { nodeHelpers } from '../mixins/nodeHelpers';
-import { genericHelpers } from '../mixins/genericHelpers';
 import { showMessage } from '../mixins/showMessage';
 
 import { getAppNameFromCredType } from '../helpers';
@@ -183,7 +188,7 @@ interface NodeAccessMap {
 	[nodeType: string]: ICredentialNodeAccess | null;
 }
 
-export default mixins(genericHelpers, showMessage, nodeHelpers).extend({
+export default mixins(showMessage, nodeHelpers).extend({
 	name: 'CredentialsDetail',
 	components: {
 		CredentialInputs,
@@ -225,6 +230,7 @@ export default mixins(genericHelpers, showMessage, nodeHelpers).extend({
 			hasMadeAnyChanges: false,
 			loading: true,
 			showValidationWarnings: false,
+			testedSuccessfully: false,
 		};
 	},
 	async mounted() {
@@ -343,7 +349,10 @@ export default mixins(genericHelpers, showMessage, nodeHelpers).extend({
 
 			return !!nodesThatCanTest.length;
 		},
-		showSuccessBanner(): boolean {
+		showRequiredErrorBanner(): boolean {
+			return this.showValidationWarnings && !this.requiredPropertiesFilled;
+		},
+		showOAuthSuccessBanner(): boolean {
 			return this.isOAuthType && this.requiredPropertiesFilled && this.isOAuthConnected && !this.authError;
 		},
 		nodesWithAccess(): INodeTypeDescription[] {
@@ -651,14 +660,19 @@ export default mixins(genericHelpers, showMessage, nodeHelpers).extend({
 
 				if (result.status === 'Error') {
 					this.authError = result.message;
-
-					this.scrollToTop();
+					this.testedSuccessfully = false;
 				}
+				else {
+					this.testedSuccessfully = true;
+				}
+
+				this.scrollToTop();
 			}
 		},
 
 		async saveCredential(): Promise<ICredentialsResponse | null> {
 			this.showValidationWarnings = false;
+			this.testedSuccessfully = false;
 			this.authError = '';
 
 			if (!this.requiredPropertiesFilled) {
@@ -875,7 +889,7 @@ export default mixins(genericHelpers, showMessage, nodeHelpers).extend({
 		},
 	},
 	watch: {
-		showSuccessBanner(newValue, oldValue) {
+		showOAuthSuccessBanner(newValue, oldValue) {
 			if (newValue && !oldValue) {
 				this.scrollToTop();
 			}
