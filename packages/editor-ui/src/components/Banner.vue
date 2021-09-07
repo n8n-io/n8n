@@ -30,7 +30,7 @@
 			size="small"
 			type="outline"
 			:transparentBackground="true"
-			@click.stop="$emit('click')"
+			@click.stop="onClick"
 		/>
 	</el-tag>
 </template>
@@ -72,6 +72,10 @@ export default Vue.extend({
 		expand() {
 			this.expanded = true;
 		},
+		onClick() {
+			this.expanded = false;
+			this.$emit('click');
+		},
 	},
 });
 </script>
@@ -108,6 +112,7 @@ export default Vue.extend({
 .details {
 	margin-top: var(--spacing-3xs);
 	color: var(--color-text-base);
+	font-size: var(--font-size-2xs);
 }
 
 </style>

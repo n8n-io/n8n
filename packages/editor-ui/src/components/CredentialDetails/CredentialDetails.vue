@@ -86,10 +86,14 @@
 					/>
 
 					<banner
-						v-show="authError && !showRequiredErrorBanner"
+						v-if="authError && !showRequiredErrorBanner"
 						theme="danger"
 						message="Couldn’t connect with these settings."
 						:details="authError"
+						buttonLabel="Retry"
+						buttonTitle="Retry credentials test"
+						:buttonLoading="isRetesting"
+						@click="retestCredential"
 					/>
 
 					<banner
@@ -697,6 +701,7 @@ export default mixins(showMessage, nodeHelpers).extend({
 				this.testedSuccessfully = false;
 			}
 			else {
+				this.authError = '';
 				this.testedSuccessfully = true;
 			}
 
