@@ -23,9 +23,7 @@
 				<span>Created</span>
 			</el-col>
 			<el-col :span="16" :class="$style.valueLabel">
-				<span>{{
-					convertToHumanReadableDate(currentCredential.createdAt)
-				}}</span>
+				<TimeAgo :date="currentCredential.createdAt" />
 			</el-col>
 		</el-row>
 		<el-row v-if="currentCredential">
@@ -51,7 +49,6 @@
 import Vue from 'vue';
 
 import TimeAgo from '../TimeAgo.vue';
-import { convertToHumanReadableDate } from '../helpers';
 
 export default Vue.extend({
 	name: 'CredentialInfo',
@@ -66,7 +63,6 @@ export default Vue.extend({
 				value,
 			});
 		},
-		convertToHumanReadableDate,
 	},
 });
 </script>
