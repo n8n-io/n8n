@@ -706,13 +706,12 @@ export default mixins(showMessage, nodeHelpers).extend({
 		},
 
 		async saveCredential(): Promise<ICredentialsResponse | null> {
-			this.showValidationWarnings = false;
-			this.testedSuccessfully = false;
-			this.authError = '';
-
 			if (!this.requiredPropertiesFilled) {
 				this.showValidationWarnings = true;
 				this.scrollToTop();
+			}
+			else {
+				this.showValidationWarnings = false;
 			}
 
 			this.isSaving = true;
