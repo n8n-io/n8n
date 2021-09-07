@@ -80,13 +80,13 @@
 				</div>
 				<div v-if="activeTab === 'connection'" :class="$style.mainContent" ref="content">
 					<banner
-						v-show="showValidationWarnings"
+						v-show="showValidationWarning"
 						theme="danger"
 						message="Please check the errors below"
 					/>
 
 					<banner
-						v-if="authError && !showValidationWarnings"
+						v-if="authError && !showValidationWarning"
 						theme="danger"
 						message="Couldn’t connect with these settings."
 						:details="authError"
@@ -98,7 +98,7 @@
 					/>
 
 					<banner
-						v-show="showOAuthSuccessBanner && !showValidationWarnings"
+						v-show="showOAuthSuccessBanner && !showValidationWarning"
 						theme="success"
 						message="Account connected"
 						buttonLabel="Reconnect"
@@ -107,7 +107,7 @@
 					/>
 
 					<banner
-						v-show="testedSuccessfully && !showValidationWarnings"
+						v-show="testedSuccessfully && !showValidationWarning"
 						theme="success"
 						message="Connection tested successfully"
 						buttonLabel="Retry"
@@ -136,7 +136,7 @@
 						:credentialData="credentialData"
 						:credentialProperties="credentialProperties"
 						:documentationUrl="documentationUrl"
-						:showValidationWarnings="showValidationWarnings"
+						:showValidationWarnings="showValidationWarning"
 						@change="onDataChange"
 					/>
 
@@ -239,7 +239,7 @@ export default mixins(showMessage, nodeHelpers).extend({
 			hasUnsavedChanges: false,
 			hasMadeAnyChanges: false,
 			loading: true,
-			showValidationWarnings: false,
+			showValidationWarning: false,
 			testedSuccessfully: false,
 			isRetesting: false,
 		};
@@ -277,6 +277,10 @@ export default mixins(showMessage, nodeHelpers).extend({
 		}
 
 		if (this.credentialId) {
+			if (!this.requiredPropertiesFilled) {
+				this.showValidationWarning = true;
+			}
+
 			this.retestCredential();
 		}
 
@@ -471,7 +475,7 @@ export default mixins(showMessage, nodeHelpers).extend({
 				return;
 			}
 			else if (!this.requiredPropertiesFilled) {
-				this.showValidationWarnings = true;
+				this.showValidationWarning = true;
 				this.scrollToTop();
 			}
 			else if (this.isOAuthType) {
@@ -709,11 +713,11 @@ export default mixins(showMessage, nodeHelpers).extend({
 
 		async saveCredential(): Promise<ICredentialsResponse | null> {
 			if (!this.requiredPropertiesFilled) {
-				this.showValidationWarnings = true;
+				this.showValidationWarning = true;
 				this.scrollToTop();
 			}
 			else {
-				this.showValidationWarnings = false;
+				this.showValidationWarning = false;
 			}
 
 			this.isSaving = true;
