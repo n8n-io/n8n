@@ -15,7 +15,7 @@
 			<div :class="$style.content">
 				<div>
 					<span
-						:class="theme === 'success' ? '' : $style.dangerMessage"
+						:class="theme === 'success' ? $style.message : $style.dangerMessage"
 					>
 						{{ message }}&nbsp;
 					</span>
@@ -106,7 +106,15 @@ export default Vue.extend({
 	border: none;
 }
 
+.message {
+	white-space: normal;
+	line-height: var(--font-line-height-regular);
+	overflow: hidden;
+	word-break: break-word;
+}
+
 .dangerMessage {
+	composes: message;
 	color: var(--color-danger);
 }
 
@@ -117,6 +125,9 @@ export default Vue.extend({
 
 .content {
 	flex-grow: 1;
+	min-height: 26px;
+	display: flex;
+	align-items: center;
 }
 
 .expandButton {
@@ -124,6 +135,7 @@ export default Vue.extend({
 }
 
 .details {
+	composes: message;
 	margin-top: var(--spacing-3xs);
 	color: var(--color-text-base);
 	font-size: var(--font-size-2xs);

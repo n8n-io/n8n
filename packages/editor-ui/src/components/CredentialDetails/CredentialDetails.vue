@@ -80,13 +80,13 @@
 				</div>
 				<div v-if="activeTab === 'connection'" :class="$style.mainContent" ref="content">
 					<banner
-						v-show="showRequiredErrorBanner"
+						v-show="showValidationWarnings"
 						theme="danger"
 						message="Please check the errors below"
 					/>
 
 					<banner
-						v-if="authError && !showRequiredErrorBanner"
+						v-if="authError && !showValidationWarnings"
 						theme="danger"
 						message="Couldn’t connect with these settings."
 						:details="authError"
@@ -97,7 +97,7 @@
 					/>
 
 					<banner
-						v-show="showOAuthSuccessBanner && !showRequiredErrorBanner"
+						v-show="showOAuthSuccessBanner && !showValidationWarnings"
 						theme="success"
 						message="Account connected"
 						buttonLabel="Reconnect"
@@ -106,7 +106,7 @@
 					/>
 
 					<banner
-						v-show="testedSuccessfully && !showRequiredErrorBanner"
+						v-show="testedSuccessfully && !showValidationWarnings"
 						theme="success"
 						message="Connection tested successfully"
 						buttonLabel="Retry"
@@ -361,9 +361,6 @@ export default mixins(showMessage, nodeHelpers).extend({
 			});
 
 			return !!nodesThatCanTest.length;
-		},
-		showRequiredErrorBanner(): boolean {
-			return this.showValidationWarnings && !this.requiredPropertiesFilled;
 		},
 		showOAuthSuccessBanner(): boolean {
 			return this.isOAuthType && this.requiredPropertiesFilled && this.isOAuthConnected && !this.authError;
