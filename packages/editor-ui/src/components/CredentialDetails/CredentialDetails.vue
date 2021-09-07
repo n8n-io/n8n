@@ -860,14 +860,6 @@ export default mixins(genericHelpers, showMessage, nodeHelpers).extend({
 				if (event.data === 'success') {
 					window.removeEventListener('message', receiveMessage, false);
 
-					if (!this.credentialData.oauthTokenData) {
-						this.callDebounced('$showMessage', 1000, {
-							title: 'Connected',
-							message: 'Credentials connected successfully',
-							type: 'success',
-						});
-					}
-
 					// Set some kind of data that status changes.
 					// As data does not get displayed directly it does not matter what data.
 					Vue.set(this.credentialData, 'oauthTokenData', {});
