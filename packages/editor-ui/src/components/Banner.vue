@@ -3,6 +3,7 @@
 		:type="theme"
 		size="medium"
 		:class="buttonLabel? $style.centerBanner: $style.banner"
+		:disable-transitions="true"
 	>
 		<div>
 			<font-awesome-icon
