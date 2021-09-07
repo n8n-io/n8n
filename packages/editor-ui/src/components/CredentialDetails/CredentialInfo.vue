@@ -23,7 +23,7 @@
 				<span>Created</span>
 			</el-col>
 			<el-col :span="16" :class="$style.valueLabel">
-				<TimeAgo :date="currentCredential.createdAt" />
+				<TimeAgo :date="currentCredential.createdAt" :capitalize="true" />
 			</el-col>
 		</el-row>
 		<el-row v-if="currentCredential">
@@ -31,7 +31,7 @@
 				<span>Last modified</span>
 			</el-col>
 			<el-col :span="16" :class="$style.valueLabel">
-				<TimeAgo :date="currentCredential.updatedAt" />
+				<TimeAgo :date="currentCredential.updatedAt" :capitalize="true" />
 			</el-col>
 		</el-row>
 		<el-row v-if="currentCredential">

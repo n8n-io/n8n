@@ -1,6 +1,6 @@
 <template functional>
-	<span :title="$options.methods.convertToHumanReadableDate(date)">
-		{{$options.methods.format(props.date)}}
+	<span :title="$options.methods.convertToHumanReadableDate($props)">
+		{{$options.methods.format(props)}}
 	</span>
 </template>
 
@@ -14,9 +14,22 @@ export default {
 		date: {
 			type: String,
 		},
+		capitalize: {
+			type: Boolean,
+			default: false,
+		},
 	},
 	methods: {
-		format,
+		format(props: {date: string, capitalize: boolean}) {
+			const text = format(props.date);
+			if (props.capitalize) {
+				const parts = text.split(' ');
+				parts[0] = parts[0].charAt(0).toUpperCase() + parts[0].slice(1);
+				return parts.join(' ');
+			}
+
+			return text;
+		},
 		convertToHumanReadableDate,
 	},
 };
