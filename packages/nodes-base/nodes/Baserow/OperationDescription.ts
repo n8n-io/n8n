@@ -310,6 +310,16 @@ export const operationFields = [
 										description: 'Field in this year. Format: string',
 									},
 									{
+										name: 'Date After Date',
+										value: 'date_before',
+										description: 'Field before date. Format: \'YYYY-MM-DD\'',
+									},
+									{
+										name: 'Date After Date',
+										value: 'date_after',
+										description: 'Field after date. Format: \'YYYY-MM-DD\'',
+									},
+									{
 										name: 'Contains',
 										value: 'contains',
 										description: 'Field contains value',
@@ -348,6 +358,16 @@ export const operationFields = [
 										name: 'Is True',
 										value: 'boolean',
 										description: 'Boolean field is true',
+									},
+									{
+										name: 'link row has',
+										value: 'link_row_has',
+										description: 'Field selected option has value',
+									},
+									{
+										name: 'link row does not have',
+										value: 'link_row_has_not',
+										description: 'Field selected option does not have value',
 									},
 									{
 										name: 'Is Empty',
