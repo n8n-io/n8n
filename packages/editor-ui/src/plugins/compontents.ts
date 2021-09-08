@@ -136,6 +136,7 @@ Vue.prototype.$confirm = async (message: string, configOrTitle: string | ElMessa
 		cancelButtonClass: 'btn--cancel',
 		confirmButtonClass: 'btn--confirm',
 		showClose: false,
+		closeOnClickModal: false,
 	};
 
 	if (typeof configOrTitle === 'string') {
