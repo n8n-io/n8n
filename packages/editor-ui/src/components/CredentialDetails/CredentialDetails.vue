@@ -980,7 +980,7 @@ export default mixins(showMessage, nodeHelpers).extend({
 
 .mainContent {
 	flex-grow: 1;
-	overflow: scroll;
+	overflow: auto;
 	padding-bottom: 100px;
 
 	> * {
