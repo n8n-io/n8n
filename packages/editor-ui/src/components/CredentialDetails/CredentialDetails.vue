@@ -355,6 +355,11 @@ export default mixins(showMessage, nodeHelpers).extend({
 				return false;
 			}
 
+			const hasExpressions = Object.values(this.credentialData).reduce((accu: boolean, value: CredentialInformation) => accu || (typeof value === 'string' && value.startsWith('=')), false);
+			if (hasExpressions) {
+				return false;
+			}
+
 			const nodesThatCanTest = this.nodesWithAccess.filter(node => {
 				if (node.credentials) {
 					// Returns a list of nodes that can test this credentials
@@ -670,6 +675,9 @@ export default mixins(showMessage, nodeHelpers).extend({
 
 		async retestCredential() {
 			if (!this.isCredentialTestable) {
+				this.authError = '';
+				this.testedSuccessfully = false;
+
 				return;
 			}
 
@@ -760,6 +768,10 @@ export default mixins(showMessage, nodeHelpers).extend({
 					this.isTesting = true;
 					await this.testCredential(credentialDetails);
 					this.isTesting = false;
+				}
+				else {
+					this.authError = '';
+					this.testedSuccessfully = false;
 				}
 			}
 
