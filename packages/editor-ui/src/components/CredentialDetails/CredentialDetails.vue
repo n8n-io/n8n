@@ -237,7 +237,6 @@ export default mixins(showMessage, nodeHelpers).extend({
 			isTesting: false,
 			isNameEdit: false,
 			hasUnsavedChanges: false,
-			hasMadeAnyChanges: false,
 			loading: true,
 			showValidationWarning: false,
 			testedSuccessfully: false,
@@ -449,11 +448,6 @@ export default mixins(showMessage, nodeHelpers).extend({
 	},
 	methods: {
 		async beforeClose(done: () => void) {
-			if (!this.hasMadeAnyChanges) {
-				done();
-				return;
-			}
-
 			let keepEditing = false;
 
 			if (this.hasUnsavedChanges) {
@@ -578,7 +572,6 @@ export default mixins(showMessage, nodeHelpers).extend({
 		},
 		onNodeAccessChange({name, value}: {name: string, value: boolean}) {
 			this.hasUnsavedChanges = true;
-			this.hasMadeAnyChanges = true;
 
 			if (value) {
 				this.nodeAccess = {
@@ -596,7 +589,6 @@ export default mixins(showMessage, nodeHelpers).extend({
 		},
 		onDataChange({ name, value }: { name: string; value: any }) { // tslint:disable-line:no-any
 			this.hasUnsavedChanges = true;
-			this.hasMadeAnyChanges = true;
 
 			const { oauthTokenData, ...credData } = this.credentialData;
 
