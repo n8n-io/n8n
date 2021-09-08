@@ -9,7 +9,6 @@
 		/>
 		<n8n-button
 			v-else
-			title="Connect OAuth Credentials"
 			label="Connect my account"
 			size="large"
 			@click.stop="$emit('click')"
