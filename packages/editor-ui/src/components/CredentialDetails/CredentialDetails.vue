@@ -73,8 +73,8 @@
 						<n8n-menu-item index="connection" :class="$style.credTab"
 							><span slot="title">Connection</span></n8n-menu-item
 						>
-						<n8n-menu-item index="info" :class="$style.credTab"
-							><span slot="title">Info</span></n8n-menu-item
+						<n8n-menu-item index="details" :class="$style.credTab"
+							><span slot="title">Details</span></n8n-menu-item
 						>
 					</n8n-menu>
 				</div>
@@ -146,7 +146,7 @@
 						@click="oAuthCredentialAuthorize"
 					/>
 				</div>
-				<div v-if="activeTab === 'info'" :class="$style.mainContent">
+				<div v-if="activeTab === 'details'" :class="$style.mainContent">
 					<CredentialInfo
 						:nodeAccess="nodeAccess"
 						:nodesWithAccess="nodesWithAccess"
