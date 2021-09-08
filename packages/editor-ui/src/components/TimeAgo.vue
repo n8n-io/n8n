@@ -5,8 +5,32 @@
 </template>
 
 <script lang="ts">
-import { format } from 'timeago.js';
+import { format, register } from 'timeago.js';
 import { convertToHumanReadableDate } from './helpers';
+
+const localeFunc = (number: number, index: number, totalSec: number): [string, string] => {
+	// number: the timeago / timein number;
+	// index: the index of array below;
+	// totalSec: total seconds between date to be formatted and today's date;
+	return [
+		['Just now', 'Right now'],
+		['Just now', 'Right now'], // ['%s seconds ago', 'in %s seconds'],
+		['1 minute ago', 'in 1 minute'],
+		['%s minutes ago', 'in %s minutes'],
+		['1 hour ago', 'in 1 hour'],
+		['%s hours ago', 'in %s hours'],
+		['1 day ago', 'in 1 day'],
+		['%s days ago', 'in %s days'],
+		['1 week ago', 'in 1 week'],
+		['%s weeks ago', 'in %s weeks'],
+		['1 month ago', 'in 1 month'],
+		['%s months ago', 'in %s months'],
+		['1 year ago', 'in 1 year'],
+		['%s years ago', 'in %s years'],
+	][index] as [string, string];
+};
+
+register('main', localeFunc);
 
 export default {
 	name: 'UpdatesPanel',
@@ -21,11 +45,10 @@ export default {
 	},
 	methods: {
 		format(props: {date: string, capitalize: boolean}) {
-			const text = format(props.date);
-			if (props.capitalize) {
-				const parts = text.split(' ');
-				parts[0] = parts[0].charAt(0).toUpperCase() + parts[0].slice(1);
-				return parts.join(' ');
+			let text = format(props.date, 'main');
+
+			if (!props.capitalize) {
+				return text.toLowerCase();
 			}
 
 			return text;
