@@ -1,3 +1,4 @@
+import { kebabCase } from 'lodash';
 import {
     IExecuteFunctions,
 } from 'n8n-core';
@@ -9,6 +10,7 @@ import {
     INodeTypeDescription,
     NodePropertyTypes,
 } from 'n8n-workflow';
+import { type } from 'os';
 
 import {
     OptionsWithUri,
@@ -16,6 +18,7 @@ import {
 
 import {
     scrapingBeeApiRequest,
+    camelToSnake
 } from './GenericFunctions';
 
 export class ScrapingBee implements INodeType {
@@ -42,6 +45,24 @@ export class ScrapingBee implements INodeType {
         properties: [
             // Node properties which the user gets displayed and
             // can change on the node.
+            {
+                displayName: 'Method',
+                name: 'method',
+                type: 'options',
+                options: [
+                    {
+                        name: 'GET',
+                        value: 'GET',
+                    },
+                    {
+                        name: 'POST',
+                        value: 'POST',
+                    },
+                ],
+                default: 'GET',
+                required: true,
+                description: 'Method to use',
+            },
             {
                 displayName: 'Target URL',
                 name: 'url',
@@ -224,15 +245,29 @@ export class ScrapingBee implements INodeType {
     };
 
     async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
-        const url = this.getNodeParameter('url', 0) as string;
+        const method: string = this.getNodeParameter('method', 0) as string;
+        const url: string = this.getNodeParameter('url', 0) as string;
+        let options: IDataObject = this.getNodeParameter('additionalFields', 0) as IDataObject;
+
+        // Snake case all parameters
+        let snake_key: string;
+        for (let key in options) {
+            snake_key = camelToSnake(key);
+            if (snake_key !== key) {
+                options[snake_key] = options[key]
+                delete options[key];
+            }
+        }
+
         let returnData: INodeExecutionData[] = [];
         try {
-            let queryString: IDataObject = {};
+            let queryString: IDataObject = options;
             queryString['url'] = url;
-            returnData = await scrapingBeeApiRequest.call(this, 'GET', queryString);
-        } catch (error) {
+            console.log(queryString);
+            returnData = await scrapingBeeApiRequest.call(this, method, queryString);
+        } catch (error: any) {
             if (this.continueOnFail()) {
-                returnData.push({json:{ error: error}});
+                returnData.push({json:{ error: error.message }});
             }
             throw error;
         }
