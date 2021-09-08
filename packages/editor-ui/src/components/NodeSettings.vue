@@ -549,7 +549,7 @@ export default mixins(
 		.el-tabs {
 			height: 100%;
 			.el-tabs__content {
-				overflow-y: scroll;
+				overflow-y: auto;
 				height: 100%;
 				padding-bottom: 180px;
 
