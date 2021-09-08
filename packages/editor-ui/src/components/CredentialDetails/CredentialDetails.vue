@@ -124,7 +124,7 @@
 
 					<CopyInput
 						v-if="isOAuthType && credentialProperties.length"
-						label="Oauth Redirect URL"
+						label="OAuth Redirect URL"
 						:copyContent="oAuthCallbackUrl"
 						copyButtonText="Click to copy"
 						:subtitle="`In ${appName}, use the URL above when prompted to enter an OAuth callback or redirect URL`"
