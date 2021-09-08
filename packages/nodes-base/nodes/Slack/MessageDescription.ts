@@ -582,7 +582,7 @@ export const messageFields: INodeProperties[] = [
 				],
 				operation: [
 					'update',
-				]
+				],
 			},
 		},
 		description: 'The blocks to add',
