@@ -487,7 +487,7 @@ export const messageFields = [
 		displayName: 'Text',
 		name: 'text',
 		type: 'string',
-		required: true,
+		required: false,
 		default: '',
 		displayOptions: {
 			show: {
@@ -565,6 +565,27 @@ export const messageFields = [
 				description: 'Change how messages are treated',
 			},
 		],
+	},
+	{
+		displayName: 'Blocks',
+		name: 'blocksJson',
+		type: 'json',
+		default: '',
+		required: false,
+		typeOptions: {
+			alwaysOpenEditWindow: true,
+		},
+		displayOptions: {
+			show: {
+				resource: [
+					'message',
+				],
+				operation: [
+					'update',
+				]
+			},
+		},
+		description: 'The blocks to add',
 	},
 	{
 		displayName: 'Blocks',
