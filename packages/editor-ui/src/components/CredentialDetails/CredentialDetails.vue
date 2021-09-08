@@ -1027,7 +1027,7 @@ export default mixins(showMessage, nodeHelpers).extend({
 }
 
 .credActions {
-	margin-right: var(--spacing-l);
+	margin-right: var(--spacing-xl);
 	> * {
 		margin-left: var(--spacing-2xs);
 	}
