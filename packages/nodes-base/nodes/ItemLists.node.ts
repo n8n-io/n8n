@@ -164,7 +164,7 @@ export class ItemLists implements INodeType {
 				},
 				options: [
 					{
-						displayName: 'Fields',
+						displayName: '',
 						name: 'fields',
 						values: [
 							{
@@ -291,7 +291,7 @@ export class ItemLists implements INodeType {
 				},
 				options: [
 					{
-						displayName: 'Fields',
+						displayName: '',
 						name: 'fields',
 						values: [
 							{
@@ -329,7 +329,7 @@ export class ItemLists implements INodeType {
 				},
 				options: [
 					{
-						displayName: 'Fields',
+						displayName: '',
 						name: 'fields',
 						values: [
 							{
@@ -352,6 +352,10 @@ export class ItemLists implements INodeType {
 					{
 						name: 'Simple',
 						value: 'simple',
+					},
+					{
+						name: 'Random',
+						value: 'random',
 					},
 					{
 						name: 'Code',
@@ -916,6 +920,25 @@ return 0;`,
 					}
 					return result;
 				});
+
+				for (const key of keys) {
+					// tslint:disable-next-line: no-any
+					let type: any = undefined;
+					for (const item of newItems) {
+						const value = ((!disableDotNotation) ? get(item.json, key) : item.json[key]);
+						if (value === undefined && disableDotNotation && key.includes('.')) {
+							throw new NodeOperationError(this.getNode(), `'${key}' field is missing from some input items`, { description: `If you're trying to use a nested field, make sure you turn off 'disable dot notation' in the node options` });
+						} else if (value === undefined) {
+							throw new NodeOperationError(this.getNode(), `'${key}' field is missing from some input items`);
+						}
+						if (type !== undefined && value !== undefined && type !== typeof value) {
+							throw new NodeOperationError(this.getNode(), `'${key}' isn't always the same type`, { description: 'The type of this field varies between items' });
+						} else {
+							type = typeof value;
+						}
+					}
+				}
+			
 				// collect the original indexes of items to be removed
 				const removedIndexes: number[] = [];
 				let temp = newItems[0];
@@ -942,13 +965,32 @@ return 0;`,
 				const type = this.getNodeParameter('type', 0) as string;
 				const disableDotNotation = this.getNodeParameter('options.disableDotNotation', 0, false) as boolean;
 
-				if (type === 'simple') {
+				if (type === 'simple' || type === 'random') {
 
-					const sortFieldsUi = this.getNodeParameter('sortFieldsUi', 0) as IDataObject;
-					const sortFields = sortFieldsUi.sortField as Array<{
-						fieldName: string;
-						order: 'ascending' | 'descending'
-					}>;
+					let sortFieldsUi;
+					let sortFields;
+
+					if (type === 'random') {
+
+						const keys = Object.keys(items[0].json);
+
+						const fieldNameIndex = Math.floor(Math.random() * keys.length);
+						const orderIndex = Math.floor(Math.random() * 2);
+
+						sortFields = [
+							{
+								fieldName: keys[fieldNameIndex],
+								order: ['ascending', 'descending'][orderIndex],
+							},
+						];
+
+					} else {
+						sortFieldsUi = this.getNodeParameter('sortFieldsUi', 0) as IDataObject;
+						sortFields = sortFieldsUi.sortField as Array<{
+							fieldName: string;
+							order: 'ascending' | 'descending'
+						}>;
+					}
 
 					if (!sortFields.length) {
 						throw new NodeOperationError(this.getNode(), 'No sorting specified. Please add a field to sort by');
@@ -1067,17 +1109,17 @@ return 0;`,
 
 const compareItems = (obj: INodeExecutionData, obj2: INodeExecutionData, keys: string[], disableDotNotation: boolean, node: INode) => {
 	let result = true;
-	const keys1 = !disableDotNotation ? Object.keys(flattenKeys(obj.json)) : Object.keys(obj.json);
-	const keys2 = !disableDotNotation ? Object.keys(flattenKeys(obj2.json)) : Object.keys(obj2.json);
+	// const keys1 = !disableDotNotation ? Object.keys(flattenKeys(obj.json)) : Object.keys(obj.json);
+	// const keys2 = !disableDotNotation ? Object.keys(flattenKeys(obj2.json)) : Object.keys(obj2.json);
 	for (const key of keys) {
 
-		if (!keys1.includes(key) || !keys2.includes(key)) {
-			if (disableDotNotation === true && key.includes('.')) {
-				throw new NodeOperationError(node, `'${key}' field is missing from some input items`, { description: `If you're trying to use a nested field, make sure you turn off 'disable dot notation' in the node options` });
-			} else {
-				throw new NodeOperationError(node, `'${key}' field is missing from some input items`);
-			}
-		}
+		// if (!keys1.includes(key) || !keys2.includes(key)) {
+		// 	if (disableDotNotation === true && key.includes('.')) {
+		// 		throw new NodeOperationError(node, `'${key}' field is missing from some input items`, { description: `If you're trying to use a nested field, make sure you turn off 'disable dot notation' in the node options` });
+		// 	} else {
+		// 		throw new NodeOperationError(node, `'${key}' field is missing from some input items`);
+		// 	}
+		// }
 		if (disableDotNotation === false) {
 			if (!isEqual(get(obj.json, key), get(obj2.json, key))) {
 				result = false;
