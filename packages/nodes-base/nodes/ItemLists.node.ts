@@ -4,6 +4,7 @@ import {
 
 import {
 	IDataObject,
+	INode,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
@@ -16,6 +17,7 @@ import {
 	isObject,
 	lt,
 	merge,
+	pick,
 	reduce,
 	set,
 	unset,
@@ -95,7 +97,6 @@ export class ItemLists implements INodeType {
 				type: 'string',
 				default: '',
 				required: true,
-				description: 'The field to break out into separate items',
 				displayOptions: {
 					show: {
 						resource: [
@@ -106,6 +107,7 @@ export class ItemLists implements INodeType {
 						],
 					},
 				},
+				description: 'The name of the input field to break out into separate items',
 			},
 			{
 				displayName: 'Include',
@@ -113,12 +115,12 @@ export class ItemLists implements INodeType {
 				type: 'options',
 				options: [
 					{
-						name: 'All Other Fields',
-						value: 'allOtherFields',
-					},
-					{
 						name: 'No Other Fields',
 						value: 'noOtherFields',
+					},
+					{
+						name: 'All Other Fields',
+						value: 'allOtherFields',
 					},
 					{
 						name: 'Selected Other Fields',
@@ -141,9 +143,12 @@ export class ItemLists implements INodeType {
 			{
 				displayName: 'Fields To Include',
 				name: 'fieldsToInclude',
-				type: 'string',
-				default: '',
-				description: 'A list of input field names to copy over to the new items, separated by commas',
+				type: 'fixedCollection',
+				typeOptions: {
+					multipleValues: true,
+				},
+				placeholder: 'Add Field To Include',
+				default: {},
 				displayOptions: {
 					show: {
 						resource: [
@@ -157,6 +162,21 @@ export class ItemLists implements INodeType {
 						],
 					},
 				},
+				options: [
+					{
+						displayName: 'Fields',
+						name: 'fields',
+						values: [
+							{
+								displayName: 'Field Name',
+								name: 'fieldName',
+								type: 'string',
+								default: '',
+								description: 'A field in the input items to aggregate together',
+							},
+						],
+					},
+				],
 			},
 			{
 				displayName: 'Fields To Aggregate',
@@ -183,18 +203,18 @@ export class ItemLists implements INodeType {
 						name: 'fieldToAggregate',
 						values: [
 							{
-								displayName: 'Field To Aggregate',
+								displayName: 'Input Field Name',
 								name: 'fieldToAggregate',
 								type: 'string',
 								default: '',
-								description: 'A field in the input items to aggregate together',
+								description: 'The name of a field in the input items to aggregate together',
 							},
 							{
 								displayName: 'Rename Field',
 								name: 'renameField',
 								type: 'boolean',
 								default: false,
-								description: 'The name of the field to put the aggregated data in',
+								description: 'Whether to give the field a different name in the output',
 							},
 							{
 								displayName: 'Output Field Name',
@@ -250,9 +270,12 @@ export class ItemLists implements INodeType {
 			{
 				displayName: 'Fields To Exclude',
 				name: 'fieldsToExclude',
-				type: 'string',
-				default: '',
-				description: 'A list of input field names to exclude from the comparison, separated by commas. You can use dot notation to drill down, e.g. parent_field.child_field',
+				type: 'fixedCollection',
+				typeOptions: {
+					multipleValues: true,
+				},
+				placeholder: 'Add Field To Exclude',
+				default: {},
 				displayOptions: {
 					show: {
 						resource: [
@@ -266,12 +289,31 @@ export class ItemLists implements INodeType {
 						],
 					},
 				},
+				options: [
+					{
+						displayName: 'Fields',
+						name: 'fields',
+						values: [
+							{
+								displayName: 'Field Name',
+								name: 'fieldName',
+								type: 'string',
+								default: '',
+								description: 'A field in the input to exclude from the comparison',
+							},
+						],
+					},
+				],
 			},
 			{
 				displayName: 'Fields To Compare',
 				name: 'fieldsToCompare',
-				type: 'string',
-				default: '',
+				type: 'fixedCollection',
+				typeOptions: {
+					multipleValues: true,
+				},
+				placeholder: 'Add Field To Exclude',
+				default: {},
 				displayOptions: {
 					show: {
 						resource: [
@@ -285,7 +327,21 @@ export class ItemLists implements INodeType {
 						],
 					},
 				},
-				description: 'A list of input field names to compare on, separated by commas. You can use dot notation to drill down, e.g. parent_field.child_field. if you enable it in the optional fields below',
+				options: [
+					{
+						displayName: 'Fields',
+						name: 'fields',
+						values: [
+							{
+								displayName: 'Field Name',
+								name: 'fieldName',
+								type: 'string',
+								default: '',
+								description: 'A field in the input to add to the comparison',
+							},
+						],
+					},
+				],
 			},
 			// Sort - Fields
 			{
@@ -294,12 +350,12 @@ export class ItemLists implements INodeType {
 				type: 'options',
 				options: [
 					{
-						name: 'Code',
-						value: 'code',
-					},
-					{
 						name: 'Simple',
 						value: 'simple',
+					},
+					{
+						name: 'Code',
+						value: 'code',
 					},
 				],
 				default: 'simple',
@@ -481,11 +537,47 @@ return 0;`,
 				},
 				options: [
 					{
-						displayName: 'Allow Dot Notation',
-						name: 'allowDotNotation',
+						displayName: 'Remove Other Fields',
+						name: 'removeOtherFields',
 						type: 'boolean',
 						default: false,
-						description: 'Whether to allow referencing child fields using `parent.child` in the field name',
+						description: 'Whether to remove any fields that are not being compared. If disabled, will keep the values from the first of the duplicates',
+					},
+					{
+						displayName: 'Disable Dot Notation',
+						name: 'disableDotNotation',
+						type: 'boolean',
+						default: false,
+						description: 'Whether to disallow referencing child fields using `parent.child` in the field name',
+					},
+				],
+			},
+			{
+				displayName: 'Options',
+				name: 'options',
+				type: 'collection',
+				placeholder: 'Add Field',
+				default: {},
+				displayOptions: {
+					show: {
+						resource: [
+							'itemList',
+						],
+						operation: [
+							'sort',
+						],
+						type: [
+							'simple',
+						],
+					},
+				},
+				options: [
+					{
+						displayName: 'Disable Dot Notation',
+						name: 'disableDotNotation',
+						type: 'boolean',
+						default: false,
+						description: 'Whether to disallow referencing child fields using `parent.child` in the field name',
 					},
 				],
 			},
@@ -508,8 +600,8 @@ return 0;`,
 				},
 				options: [
 					{
-						displayName: 'Allow Dot Notation',
-						name: 'allowDotNotation',
+						displayName: 'Disable Dot Notation',
+						name: 'disableDotNotation',
 						type: 'boolean',
 						displayOptions: {
 							show: {
@@ -520,7 +612,7 @@ return 0;`,
 							},
 						},
 						default: false,
-						description: 'Whether to allow referencing child fields using `parent.child` in the field name',
+						description: 'Whether to disallow referencing child fields using `parent.child` in the field name',
 					},
 					{
 						displayName: 'Destination Field Name',
@@ -537,8 +629,8 @@ return 0;`,
 						description: 'The field in the output under which to put the split field contents',
 					},
 					{
-						displayName: 'Preserve Aggregated Lists',
-						name: 'preserveAggregatedLists',
+						displayName: 'Merge Lists',
+						name: 'mergeLists',
 						type: 'boolean',
 						displayOptions: {
 							show: {
@@ -547,15 +639,28 @@ return 0;`,
 								],
 							},
 						},
-						default: true,
-						description: 'If a field to aggregate is a list, whether to output a list of lists (instead of merging into a single list)',
+						default: false,
+						description: 'If the field to aggregate is a list, whether to merge the output into a single flat list (rather than a list of lists)',
 					},
-
+					{
+						displayName: 'Keep Missing And Null Values',
+						name: 'keepMissing',
+						type: 'boolean',
+						displayOptions: {
+							show: {
+								'/operation': [
+									'aggregateItems',
+								],
+							},
+						},
+						default: false,
+						description: 'Whether to add a null entry to the aggregated list when there is a missing or null value',
+					},
 				],
 			},
 		],
 	};
-	// TODO: change the errors
+
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
 		const length = (items.length as unknown) as number;
@@ -567,23 +672,22 @@ return 0;`,
 
 				for (let i = 0; i < length; i++) {
 					const fieldToSplitOut = this.getNodeParameter('fieldToSplitOut', i) as string;
-
-					const allowDotNotation = this.getNodeParameter('options.allowDotNotation', 0, false) as boolean;
+					const disableDotNotation = this.getNodeParameter('options.disableDotNotation', 0, false) as boolean;
 					const destinationFieldName = this.getNodeParameter('options.destinationFieldName', i, '') as string;
 					const include = this.getNodeParameter('include', i) as string;
+
 					let arrayToSplit;
-					if (allowDotNotation) {
+					if (disableDotNotation === false) {
 						arrayToSplit = get(items[i].json, fieldToSplitOut);
 					} else {
 						arrayToSplit = items[i].json[fieldToSplitOut as string];
 					}
-					console.log(arrayToSplit);
 
 					if (arrayToSplit === undefined) {
-						if (fieldToSplitOut.includes('.') && allowDotNotation === false) {
-							throw new NodeOperationError(this.getNode(), `If you're trying to use a nested field, make sure you turn on 'allow dot notation' in the node options`);
+						if (fieldToSplitOut.includes('.') && disableDotNotation === true) {
+							throw new NodeOperationError(this.getNode(), `Couldn't find the field "${fieldToSplitOut}" in the input data`, { description: `If you're trying to use a nested field, make sure you turn off 'disable dot notation' in the node options` });
 						} else {
-							throw new NodeOperationError(this.getNode(), `Couldn't find the field ${fieldToSplitOut} in the input data`);
+							throw new NodeOperationError(this.getNode(), `Couldn't find the field "${fieldToSplitOut}" in the input data`);
 						}
 					}
 
@@ -592,20 +696,14 @@ return 0;`,
 					} else {
 
 						for (const element of arrayToSplit) {
-
 							let newItem = {};
-
-							// let newItem = {
-							// 	...(typeof element === 'object') ? element : { [fieldToSplitOut as string]: element },
-							// };
 
 							if (include === 'selectedOtherFields') {
 
-								const fieldsToInclude = (this.getNodeParameter('fieldsToInclude', i) as string).split(',');
+								const fieldsToInclude = (this.getNodeParameter('fieldsToInclude.fields', i, []) as [{ fieldName: string }]).map(field => field.fieldName);
 
-								//if array the array to split is withim an object, and has other properties
-								if (fieldToSplitOut.includes('.') && allowDotNotation) {
-									fieldsToInclude.push(fieldToSplitOut.split('.')[0]);
+								if (!fieldsToInclude.length) {
+									throw new NodeOperationError(this.getNode(), 'No fields specified', { description: 'Please add a field to include' });
 								}
 
 								newItem = {
@@ -614,7 +712,7 @@ return 0;`,
 											return prev;
 										}
 										let value;
-										if (allowDotNotation) {
+										if (disableDotNotation === false) {
 											value = get(items[i].json, field);
 										} else {
 											value = items[i].json[field as string];
@@ -624,8 +722,6 @@ return 0;`,
 									}, {}),
 								};
 
-								unset(newItem, fieldToSplitOut);
-
 							} else if (include === 'allOtherFields') {
 
 								const keys = Object.keys(items[i].json);
@@ -633,7 +729,7 @@ return 0;`,
 								newItem = {
 									...keys.reduce((prev, field) => {
 										let value;
-										if (allowDotNotation) {
+										if (disableDotNotation === false) {
 											value = get(items[i].json, field);
 										} else {
 											value = items[i].json[field as string];
@@ -661,12 +757,13 @@ return 0;`,
 
 			} else if (operation === 'aggregateItems') {
 
-				const allowDotNotation = this.getNodeParameter('options.allowDotNotation', 0, false) as boolean;
-				const preserveAggregatedLists = this.getNodeParameter('options.preserveAggregatedLists', 0, true) as boolean;
-				const fieldsToAggregate = this.getNodeParameter('fieldsToAggregate.fieldToAggregate', 0) as [{ fieldToAggregate: string, renameField: boolean, outputFieldName: string }];
+				const disableDotNotation = this.getNodeParameter('options.disableDotNotation', 0, false) as boolean;
+				const mergeLists = this.getNodeParameter('options.mergeLists', 0, false) as boolean;
+				const fieldsToAggregate = this.getNodeParameter('fieldsToAggregate.fieldToAggregate', 0, []) as [{ fieldToAggregate: string, renameField: boolean, outputFieldName: string }];
+				const keepMissing = this.getNodeParameter('options.keepMissing', 0, false) as boolean;
 
 				if (!fieldsToAggregate.length) {
-					throw new NodeOperationError(this.getNode(), 'No fields specified. Please add a field to aggregate');
+					throw new NodeOperationError(this.getNode(), 'No fields specified', { description: 'Please add a field to aggregate' });
 				}
 
 				let newItem: INodeExecutionData;
@@ -675,33 +772,69 @@ return 0;`,
 				const values: { [key: string]: any } = {};
 				const outputFields: string[] = [];
 
-				for (const { fieldToAggregate, outputFieldName } of fieldsToAggregate) {
-					if (outputFieldName !== '' && outputFields.includes(outputFieldName)) {
-						throw new NodeOperationError(this.getNode(), `The ${outputFieldName} output field is used more than once`);
-					} else {
-						outputFields.push(outputFieldName);
+				for (const { fieldToAggregate, outputFieldName, renameField } of fieldsToAggregate) {
+
+					if (fieldToAggregate === '') {
+						throw new NodeOperationError(this.getNode(), 'No fields specified', { description: 'Please add a field to aggregate' });
 					}
-					const _outputFieldName = (outputFieldName) ? outputFieldName : fieldToAggregate;
+
+					const field = (renameField) ? outputFieldName : fieldToAggregate;
+
+					if (outputFields.includes(field)) {
+						throw new NodeOperationError(this.getNode(), `The "${field}" output field is used more than once`, { description: `Please make sure each output field name is unique` });
+					} else {
+						outputFields.push(field);
+					}
+
+					const getFieldToAggregate = () => ((disableDotNotation === false && fieldToAggregate.includes('.')) ? fieldToAggregate.split('.').pop() : fieldToAggregate);
+
+					const _outputFieldName = (outputFieldName) ? (outputFieldName) : getFieldToAggregate() as string;
+
 					if (fieldToAggregate !== '') {
 						values[_outputFieldName] = [];
 						for (let i = 0; i < length; i++) {
-							if (allowDotNotation) {
-								const value = get(items[i].json, fieldToAggregate);
-								if (get(items[i].json, fieldToAggregate) !== undefined) {
-									if (Array.isArray(value) && preserveAggregatedLists) {
-										values[_outputFieldName].push(...value);
-									} else {
-										values[_outputFieldName].push(value);
+							if (disableDotNotation === false) {
+								let value = get(items[i].json, fieldToAggregate);
+
+								if (value === undefined && keepMissing === false) {
+									throw new NodeOperationError(this.getNode(), `Couldn't find the field "${fieldToAggregate}" in the input data`);
+								}
+
+								if (!keepMissing) {
+									if (Array.isArray(value)) {
+										value = value.filter(value => value !== null);
+									} else if (value === null) {
+										continue;
 									}
 								}
+
+								if (Array.isArray(value) && mergeLists) {
+									values[_outputFieldName].push(...value);
+								} else {
+									values[_outputFieldName].push(value);
+								}
+
 							} else {
-								const value = items[i].json[fieldToAggregate];
-								if (items[i].json[fieldToAggregate] !== undefined) {
-									if (Array.isArray(value) && preserveAggregatedLists) {
-										values[_outputFieldName].push(...value);
-									} else {
-										values[_outputFieldName].push(value);
+								let value = items[i].json[fieldToAggregate];
+
+								if (value === undefined && disableDotNotation && fieldToAggregate.includes('.')) {
+									throw new NodeOperationError(this.getNode(), `Couldn't find the field "${fieldToAggregate}" in the input data`, { description: `If you're trying to use a nested field, make sure you turn off 'disable dot notation' in the node options` });
+								} else if (value === undefined && keepMissing === false) {
+									throw new NodeOperationError(this.getNode(), `Couldn't find the field "${fieldToAggregate}" in the input data`);
+								}
+
+								if (!keepMissing) {
+									if (Array.isArray(value)) {
+										value = value.filter(value => value !== null);
+									} else if (value === null) {
+										continue;
 									}
+								}
+
+								if (Array.isArray(value) && mergeLists) {
+									values[_outputFieldName].push(...value);
+								} else {
+									values[_outputFieldName].push(value);
 								}
 							}
 						}
@@ -709,7 +842,7 @@ return 0;`,
 				}
 
 				for (const key of Object.keys(values)) {
-					if (allowDotNotation) {
+					if (disableDotNotation === false) {
 						set(newItem.json, key, values[key]);
 					} else {
 						newItem.json[key] = values[key];
@@ -723,12 +856,13 @@ return 0;`,
 			} else if (operation === 'removeDuplicates') {
 
 				const compare = this.getNodeParameter('compare', 0) as string;
-				const allowDotNotation = this.getNodeParameter('options.allowDotNotation', 0, false) as boolean;
-				let keys = Object.keys(items[0].json);
+				const disableDotNotation = this.getNodeParameter('options.disableDotNotation', 0, false) as boolean;
+				const removeOtherFields = this.getNodeParameter('options.removeOtherFields', 0, false) as boolean;
 
-				//TODO check if this work with . notation
+				let keys = (disableDotNotation) ? Object.keys(items[0].json) : Object.keys(flattenKeys(items[0].json));
+
 				for (const item of items) {
-					for (const key of Object.keys(item.json)) {
+					for (const key of (disableDotNotation) ? Object.keys(item.json) : Object.keys(flattenKeys(item.json))) {
 						if (!keys.includes(key)) {
 							keys.push(key);
 						}
@@ -736,42 +870,42 @@ return 0;`,
 				}
 
 				if (compare === 'allFieldsExcept') {
-					const fieldsToExclude = (this.getNodeParameter('fieldsToExclude', 0) as string).split(',');
-					if (Array.isArray(fieldsToExclude) && fieldsToExclude[0] === '') {
-						throw new NodeOperationError(this.getNode(), 'No fields specified. Please add a field to compare on');
+					const fieldsToExclude = (this.getNodeParameter('fieldsToExclude.fields', 0, []) as [{ fieldName: string }]).map(field => field.fieldName);
+					if (!fieldsToExclude.length) {
+						throw new NodeOperationError(this.getNode(), 'No fields specified. Please add a field to exclude from comparison');
 					}
-					if (allowDotNotation) {
+					if (disableDotNotation === false) {
 						keys = Object.keys(flattenKeys(items[0].json));
 					}
 					keys = keys.filter(key => !fieldsToExclude.includes(key));
 
 				} if (compare === 'selectedFields') {
-					const fieldsToCompare = (this.getNodeParameter('fieldsToCompare', 0) as string).split(',');
-					if (Array.isArray(fieldsToCompare) && fieldsToCompare[0] === '') {
+					const fieldsToCompare = (this.getNodeParameter('fieldsToCompare.fields', 0, []) as [{ fieldName: string }]).map(field => field.fieldName);
+					if (!fieldsToCompare.length) {
 						throw new NodeOperationError(this.getNode(), 'No fields specified. Please add a field to compare on');
 					}
-					if (allowDotNotation) {
+					if (disableDotNotation === false) {
 						keys = Object.keys(flattenKeys(items[0].json));
 					}
 					keys = fieldsToCompare.map(key => (key.trim()));
 				}
 				// This solution is O(nlogn)
 				// add original index to the items
-				const newItems = items.map((item, index) => ({ json: { ...item['json'], INDEX: index, }, } as INodeExecutionData));
-				// sort items using the compare keys
+				const newItems = items.map((item, index) => ({ json: { ...item['json'], __INDEX: index, }, } as INodeExecutionData));
+				//sort items using the compare keys
 				newItems.sort((a, b) => {
 					let result = 0;
 
 					for (const key of keys) {
 						let equal;
-						if (allowDotNotation) {
+						if (disableDotNotation === false) {
 							equal = isEqual(get(a.json, key), get(b.json, key));
 						} else {
 							equal = isEqual(a.json[key], b.json[key]);
 						}
 						if (!equal) {
 							let lessThan;
-							if (allowDotNotation) {
+							if (disableDotNotation === false) {
 								lessThan = lt(get(a.json, key), get(b.json, key));
 							} else {
 								lessThan = lt(a.json[key], b.json[key]);
@@ -786,21 +920,30 @@ return 0;`,
 				const removedIndexes: number[] = [];
 				let temp = newItems[0];
 				for (let index = 1; index < newItems.length; index++) {
-					if (compareItems(newItems[index], temp, keys, allowDotNotation)) {
-						removedIndexes.push(newItems[index].json.INDEX as unknown as number);
+					if (compareItems(newItems[index], temp, keys, disableDotNotation, this.getNode())) {
+						removedIndexes.push(newItems[index].json.__INDEX as unknown as number);
 					} else {
 						temp = newItems[index];
 					}
 				}
+
+				let data = items.filter((_, index) => !removedIndexes.includes(index));
+
+				if (removeOtherFields) {
+					data = data.map(item => ({ json: pick(item.json, ...keys) }));
+				}
+
 				// return the filtered items
-				return this.prepareOutputData(items.filter((_, index) => !removedIndexes.includes(index)));
+				return this.prepareOutputData(data);
 
 			} else if (operation === 'sort') {
 
 				let newItems = [...items];
 				const type = this.getNodeParameter('type', 0) as string;
+				const disableDotNotation = this.getNodeParameter('options.disableDotNotation', 0, false) as boolean;
 
 				if (type === 'simple') {
+
 					const sortFieldsUi = this.getNodeParameter('sortFieldsUi', 0) as IDataObject;
 					const sortFields = sortFieldsUi.sortField as Array<{
 						fieldName: string;
@@ -811,15 +954,51 @@ return 0;`,
 						throw new NodeOperationError(this.getNode(), 'No sorting specified. Please add a field to sort by');
 					}
 
+					for (const { fieldName } of sortFields) {
+						let found = false;
+						for (const item of items) {
+							if (disableDotNotation === false) {
+								if (get(item.json, fieldName) !== undefined) {
+									found = true;
+								}
+							} else if (item.json.hasOwnProperty(fieldName)) {
+								found = true;
+							}
+						}
+						if (found === false && disableDotNotation && fieldName.includes('.')) {
+							throw new NodeOperationError(this.getNode(), `Couldn't find the field "${fieldName}" in the input data`, { description: `If you're trying to use a nested field, make sure you turn off 'disable dot notation' in the node options` });
+						} else if (found === false) {
+							throw new NodeOperationError(this.getNode(), `Couldn't find the field "${fieldName}" in the input data`);
+						}
+					}
+
 					const sortFieldsWithDirection = sortFields.map(field => ({ name: field.fieldName, dir: field.order === 'ascending' ? 1 : -1 }));
 
 					newItems.sort((a, b) => {
 						let result = 0;
-
 						for (const field of sortFieldsWithDirection) {
-							const equal = isEqual(a.json[field.name as string], b.json[field.name as string]);
+							let equal;
+							if (disableDotNotation === false) {
+								const _a = (typeof get(a.json, field.name) === 'string') ? (get(a.json, field.name) as string).toLowerCase() : get(a.json, field.name);
+								const _b = (typeof get(b.json, field.name) === 'string') ? (get(b.json, field.name) as string).toLowerCase() : get(b.json, field.name);
+								equal = isEqual(_a, _b);
+							} else {
+								const _a = (typeof a.json[field.name as string] === 'string') ? (a.json[field.name as string] as string).toLowerCase() : a.json[field.name as string];
+								const _b = (typeof b.json[field.name as string] === 'string') ? (b.json[field.name as string] as string).toLowerCase() : b.json[field.name as string];
+								equal = isEqual(_a, _b);
+							}
+
 							if (!equal) {
-								const lessThan = lt(a.json[field.name as string], b.json[field.name as string]);
+								let lessThan;
+								if (disableDotNotation === false) {
+									const _a = (typeof get(a.json, field.name) === 'string') ? (get(a.json, field.name) as string).toLowerCase() : get(a.json, field.name);
+									const _b = (typeof get(b.json, field.name) === 'string') ? (get(b.json, field.name) as string).toLowerCase() : get(b.json, field.name);
+									lessThan = lt(_a, _b);
+								} else {
+									const _a = (typeof a.json[field.name as string] === 'string') ? (a.json[field.name as string] as string).toLowerCase() : a.json[field.name as string];
+									const _b = (typeof b.json[field.name as string] === 'string') ? (b.json[field.name as string] as string).toLowerCase() : b.json[field.name as string];
+									lessThan = lt(_a, _b);
+								}
 								if (lessThan) {
 									result = -1 * field.dir;
 								} else {
@@ -886,20 +1065,20 @@ return 0;`,
 	}
 }
 
-const compareItems = (obj: INodeExecutionData, obj2: INodeExecutionData, keys: string[], allowDotNotation: boolean) => {
+const compareItems = (obj: INodeExecutionData, obj2: INodeExecutionData, keys: string[], disableDotNotation: boolean, node: INode) => {
 	let result = true;
-	const keys1 = allowDotNotation ? Object.keys(flattenKeys(obj.json)) : Object.keys(obj.json);
-	const keys2 = allowDotNotation ? Object.keys(flattenKeys(obj2.json)) : Object.keys(obj2.json);
+	const keys1 = !disableDotNotation ? Object.keys(flattenKeys(obj.json)) : Object.keys(obj.json);
+	const keys2 = !disableDotNotation ? Object.keys(flattenKeys(obj2.json)) : Object.keys(obj2.json);
 	for (const key of keys) {
 
 		if (!keys1.includes(key) || !keys2.includes(key)) {
-			if (allowDotNotation === false && key.includes('.')) {
-				throw new Error(`If you're trying to use a nested field, make sure you turn on 'allow dot notation' in the node options`);
+			if (disableDotNotation === true && key.includes('.')) {
+				throw new NodeOperationError(node, `'${key}' field is missing from some input items`, { description: `If you're trying to use a nested field, make sure you turn off 'disable dot notation' in the node options` });
 			} else {
-				throw new Error(`${key}' field is missing from some input items`);
+				throw new NodeOperationError(node, `'${key}' field is missing from some input items`);
 			}
 		}
-		if (allowDotNotation) {
+		if (disableDotNotation === false) {
 			if (!isEqual(get(obj.json, key), get(obj2.json, key))) {
 				result = false;
 				break;
