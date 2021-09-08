@@ -146,7 +146,7 @@ export default mixins(
 			this.stopListeningForNewCredentials();
 
 			this.newCredentialUnsubscribe = this.$store.subscribe((mutation, state) => {
-				if (mutation.type === 'credentials/upsertCredential'){
+				if (mutation.type === 'credentials/upsertCredential' || mutation.type === 'credentials/enableOAuthCredential'){
 					this.credentialSelected(credentialType, mutation.payload.name);
 				}
 				if (mutation.type === 'credentials/deleteCredential') {

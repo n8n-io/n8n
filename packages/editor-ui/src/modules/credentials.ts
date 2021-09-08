@@ -62,6 +62,9 @@ const module: Module<ICredentialsState, IRootState> = {
 		deleteCredential(state: ICredentialsState, id: string) {
 			Vue.delete(state.credentials, id);
 		},
+		enableOAuthCredential(state: ICredentialsState, credential: ICredentialsResponse) {
+			// enable oauth event to track change between modals
+		},
 	},
 	getters: {
 		allCredentialTypes(state: ICredentialsState): ICredentialType[] {
@@ -113,7 +116,6 @@ const module: Module<ICredentialsState, IRootState> = {
 
 					return false;
 				});
-				// .map((nodeType: INodeTypeDescription) => ({ name: nodeType.name, displayName: nodeType.displayName }));
 			};
 		},
 	},

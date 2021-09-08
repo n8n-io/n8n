@@ -604,7 +604,6 @@ export default mixins(showMessage, nodeHelpers).extend({
 			this.modalBus.$emit('close');
 		},
 
-		// todo move to store
 		getParentTypes(name: string): string[] {
 			const credentialType =
 				this.$store.getters['credentials/getCredentialTypeByName'](name);
@@ -922,6 +921,7 @@ export default mixins(showMessage, nodeHelpers).extend({
 					// Set some kind of data that status changes.
 					// As data does not get displayed directly it does not matter what data.
 					Vue.set(this.credentialData, 'oauthTokenData', {});
+					this.$store.commit('credentials/enableOAuthCredential', credential);
 
 					// Close the window
 					if (oauthPopup) {
