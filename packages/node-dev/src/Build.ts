@@ -46,8 +46,8 @@ export async function createCustomTsconfig() {
 	tsConfig.include = newIncludeFiles;
 
 	// Write new custom tsconfig file
-	// eslint-disable-next-line @typescript-eslint/unbound-method
-	const { fd, path, cleanup } = await file({ dir: process.cwd() });
+	// eslint-disable-next-line @typescript-eslint/no-unsafe-call @typescript-eslint/no-unsafe-any
+	const { fd, path, cleanup } = await file();
 	await fsWriteAsync(fd, Buffer.from(JSON.stringify(tsConfig, null, 2), 'utf8'));
 
 	return {
