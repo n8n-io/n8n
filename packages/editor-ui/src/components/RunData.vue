@@ -646,7 +646,6 @@ export default mixins(
 	padding-right: 12px;;
 
 	.data-display-content {
-		overflow: auto;
 		height: 100%;
 		width: 100%;
 		line-height: 1.5;

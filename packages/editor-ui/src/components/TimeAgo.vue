@@ -5,10 +5,10 @@
 </template>
 
 <script lang="ts">
-import { format, register } from 'timeago.js';
+import { format, LocaleFunc, register } from 'timeago.js';
 import { convertToHumanReadableDate } from './helpers';
 
-const localeFunc = (number: number, index: number, totalSec: number): [string, string] => {
+const localeFunc = (num: number, index: number, totalSec: number): [string, string] => {
 	// number: the timeago / timein number;
 	// index: the index of array below;
 	// totalSec: total seconds between date to be formatted and today's date;
@@ -30,7 +30,7 @@ const localeFunc = (number: number, index: number, totalSec: number): [string, s
 	][index] as [string, string];
 };
 
-register('main', localeFunc);
+register('main', localeFunc as LocaleFunc);
 
 export default {
 	name: 'UpdatesPanel',
@@ -45,7 +45,7 @@ export default {
 	},
 	methods: {
 		format(props: {date: string, capitalize: boolean}) {
-			let text = format(props.date, 'main');
+			const text = format(props.date, 'main');
 
 			if (!props.capitalize) {
 				return text.toLowerCase();
