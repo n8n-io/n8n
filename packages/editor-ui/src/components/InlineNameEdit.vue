@@ -1,12 +1,11 @@
 <template>
-	<div>
+	<div :class="$style.container">
 		<div
 			:class="$style.headline"
 			@keydown.stop
 			@click="enableNameEdit"
 			v-click-outside="disableNameEdit"
 		>
-			<span v-if="isNameEdit">...</span>
 			<div v-if="!isNameEdit">
 				<span>{{ name }}</span>
 				<i><font-awesome-icon icon="pen" /></i>
@@ -22,7 +21,7 @@
 				/>
 			</div>
 		</div>
-		<div :class="$style.subtitle">{{ isNameEdit ? '...' : subtitle }}</div>
+		<div :class="$style.subtitle" v-if="!isNameEdit">{{ subtitle }}</div>
 	</div>
 </template>
 
@@ -77,6 +76,10 @@ export default mixins(showMessage).extend({
 
 
 <style module lang="scss">
+.container {
+	min-height: 36px;
+}
+
 .headline {
 	font-size: var(--font-size-m);
 	line-height: 1.4;
