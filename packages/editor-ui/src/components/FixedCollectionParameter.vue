@@ -79,6 +79,11 @@ export default mixins(genericHelpers)
 				selectedOption: undefined,
 			};
 		},
+		mounted() {
+			this.$nextTick(function () {
+				this.optionSelected(this.parameter.options[0].name);
+			});
+		},
 		computed: {
 			getPlaceholderText (): string {
 				return this.parameter.placeholder ? this.parameter.placeholder : 'Choose Option To Add';
