@@ -51,7 +51,7 @@ export default mixins(copyPaste, showMessage).extend({
 
 .copyText {
 	span {
-		font-family: Monaco;
+		font-family: Monaco, Consolas;
 		line-height: 1.5;
 	}
 
