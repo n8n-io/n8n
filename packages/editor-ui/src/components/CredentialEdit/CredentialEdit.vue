@@ -13,31 +13,12 @@
 					<div :class="$style.credIcon">
 						<CredentialIcon :credentialTypeName="credentialTypeName" />
 					</div>
-					<div>
-						<div
-							:class="$style.headline"
-							@keydown.stop
-							@click="enableNameEdit"
-							v-click-outside="disableNameEdit"
-						>
-							<span v-if="isNameEdit">...</span>
-							<div v-if="!isNameEdit">
-								<span>{{ credentialName }}</span>
-								<i><font-awesome-icon icon="pen" /></i>
-							</div>
-							<div v-else :class="$style.nameInput">
-								<n8n-input
-									:value="credentialName"
-									size="xlarge"
-									ref="nameInput"
-									@input="onNameEdit"
-									@change="disableNameEdit"
-									:maxlength="64"
-								/>
-							</div>
-						</div>
-						<div :class="$style.subtitle">{{ isNameEdit ? '...' : credentialType.displayName }}</div>
-					</div>
+					<InlineNameEdit
+						:name="credentialName"
+						:subtitle="credentialType.displayName"
+						type="Credential"
+						@input="onNameEdit"
+					/>
 				</div>
 				<div :class="$style.credActions">
 					<n8n-icon-button
@@ -140,6 +121,7 @@ import CredentialConfig from './CredentialConfig.vue';
 import CredentialInfo from './CredentialInfo.vue';
 import SaveButton from '../SaveButton.vue';
 import Modal from '../Modal.vue';
+import InlineNameEdit from '../InlineNameEdit.vue';
 
 interface NodeAccessMap {
 	[nodeType: string]: ICredentialNodeAccess | null;
@@ -151,6 +133,7 @@ export default mixins(showMessage, nodeHelpers).extend({
 		CredentialConfig,
 		CredentialIcon,
 		CredentialInfo,
+		InlineNameEdit,
 		Modal,
 		SaveButton,
 	},
@@ -179,7 +162,6 @@ export default mixins(showMessage, nodeHelpers).extend({
 			isDeleting: false,
 			isSaving: false,
 			isTesting: false,
-			isNameEdit: false,
 			hasUnsavedChanges: false,
 			loading: true,
 			showValidationWarning: false,
@@ -524,27 +506,6 @@ export default mixins(showMessage, nodeHelpers).extend({
 			this.credentialName = text;
 		},
 
-		enableNameEdit() {
-			this.isNameEdit = true;
-
-			setTimeout(() => {
-				const input = this.$refs.nameInput as HTMLInputElement;
-				if (input) {
-					input.focus();
-				}
-			}, 0);
-		},
-
-		disableNameEdit() {
-			if (!this.credentialName) {
-				this.$showWarning('Error', 'Credential name cannot be empty');
-
-				return;
-			}
-
-			this.isNameEdit = false;
-		},
-
 		scrollToTop() {
 			setTimeout(() => {
 				const content = this.$refs.content as Element;
@@ -845,40 +806,6 @@ export default mixins(showMessage, nodeHelpers).extend({
 	--dialog-close-top: 28px;
 }
 
-.headline {
-	font-size: var(--font-size-m);
-	line-height: 1.4;
-	margin-bottom: var(--spacing-5xs);
-	display: inline-block;
-	cursor: pointer;
-	padding: 0 var(--spacing-4xs);
-	border-radius: var(--border-radius-base);
-	position: relative;
-	min-height: 22px;
-	max-height: 22px;
-	font-weight: 400;
-
-	i {
-		display: var(--headline-icon-display, none);
-		font-size: 0.75em;
-		margin-left: 8px;
-		color: var(--color-text-base);
-	}
-
-	&:hover {
-		background-color: var(--color-background-base);
-		--headline-icon-display: inline-flex;
-	}
-}
-
-.nameInput {
-	z-index: 1;
-	position: absolute;
-	top: -13px;
-	left: -9px;
-	width: 400px;
-}
-
 .mainContent {
 	flex-grow: 1;
 	overflow: auto;
@@ -916,13 +843,6 @@ export default mixins(showMessage, nodeHelpers).extend({
 	> * {
 		margin-left: var(--spacing-2xs);
 	}
-}
-
-.subtitle {
-	font-size: var(--font-size-2xs);
-	color: var(--color-text-light);
-	margin-left: 4px;
-	font-weight: 400;
 }
 
 .credIcon {
