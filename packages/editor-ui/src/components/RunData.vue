@@ -639,19 +639,18 @@ export default mixins(
 
 .run-data-view {
 	position: relative;
-	height: 100%;
 	width: 100%;
+	height: 100%;
 	background-color: #f9f9f9;
-	overflow: hidden;
-	padding-right: 12px;;
 
 	.data-display-content {
-		overflow: auto;
-		height: 100%;
-		width: 100%;
+		position: absolute;
+		bottom: 0;
+		top: 50px;
+		left: 0;
+		right: 0;
+		overflow-y: auto;
 		line-height: 1.5;
-		padding-bottom: 100px;
-		margin-top: 5px;
 		word-break: normal;
 
 		.binary-data-row {
@@ -743,8 +742,9 @@ export default mixins(
 		table {
 			border-collapse: collapse;
 			text-align: left;
-			width: 100%;
-			margin-left: 10px;
+			width: calc(100% - 1px);
+			border-left: 25px solid #00000000;
+			border-right: 25px solid #00000000;
 
 			th {
 				background-color: $--custom-table-background-main;
