@@ -29,8 +29,8 @@ export class ScrapingBee implements INodeType {
         icon: 'file:logo.svg',
         group: ['input'],
         version: 1,
-        description: 'Consume ScrapingBee API',
-        subtitle: 'A simple subtitle',
+        description: 'Consume the ScrapingBee API',
+        subtitle: '={{$parameter["method"] + ": app.scrapingbee.com/api/v1"}}',
         defaults: {
             name: 'ScrapingBee',
             color: '#f26c23',
@@ -40,7 +40,7 @@ export class ScrapingBee implements INodeType {
         credentials: [
             {
                 name: 'scrapingBeeApi',
-                required: true
+                required: true,
             }
         ],
         properties: [
@@ -53,14 +53,16 @@ export class ScrapingBee implements INodeType {
                 options: [
                     {
                         name: 'GET',
-                        value: 'GET',
+                        value: 'get',
+                        description: 'Execute a GET request',
                     },
                     {
                         name: 'POST',
-                        value: 'POST',
+                        value: 'post',
+                        description: 'Execute a POST request',
                     },
                 ],
-                default: 'GET',
+                default: 'get',
                 required: true,
                 description: 'Method to use',
             },
@@ -92,14 +94,14 @@ export class ScrapingBee implements INodeType {
                                 name: 'key',
                                 type: 'string',
                                 default: '',
-                                description: 'Key of the header to add.',
+                                description: 'Key of the header to add',
                             },
                             {
                                 displayName: 'Value',
                                 name: 'value',
                                 type: 'string',
                                 default: '',
-                                description: 'Value to set for the header key.',
+                                description: 'Value to set for the header key',
                             },
                         ],
                     },
