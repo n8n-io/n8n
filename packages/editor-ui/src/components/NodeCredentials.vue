@@ -166,7 +166,7 @@ export default mixins(
 			let selected = undefined;
 			if (credentialName === NEW_CREDENTIALS_TEXT) {
 				this.listenForNewCredentials(credentialType);
-				this.$store.dispatch('ui/openNewCredentialDetails', { type: credentialType });
+				this.$store.dispatch('ui/openNewCredential', { type: credentialType });
 			}
 			else {
 				selected = credentialName;
@@ -220,7 +220,7 @@ export default mixins(
 		editCredential(credentialType: string): void {
 			const name = this.node.credentials[credentialType];
 			const id = this.$store.getters['credentials/getCredentialByName'](name).id;
-			this.$store.dispatch('ui/openExisitngCredentialDetails', { id });
+			this.$store.dispatch('ui/openExisitngCredential', { id });
 
 			this.listenForNewCredentials(credentialType);
 		},

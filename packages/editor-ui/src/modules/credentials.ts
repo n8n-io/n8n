@@ -137,7 +137,7 @@ const module: Module<ICredentialsState, IRootState> = {
 
 			return credential;
 		},
-		updateCredentialDetails: async (context: ActionContext<ICredentialsState, IRootState>, params: {data: ICredentialsDecrypted, id: string}) => {
+		updateCredential: async (context: ActionContext<ICredentialsState, IRootState>, params: {data: ICredentialsDecrypted, id: string}) => {
 			const { id, data } = params;
 			const credential = await updateCredential(context.rootGetters.getRestApiContext, id, data);
 			context.commit('upsertCredential', credential);

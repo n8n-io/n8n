@@ -83,7 +83,7 @@ export default Vue.extend({
 		},
 		openCredentialType () {
 			this.modalBus.$emit('close');
-			this.$store.dispatch('ui/openNewCredentialDetails', { type: this.selected });
+			this.$store.dispatch('ui/openNewCredential', { type: this.selected });
 		},
 	},
 });

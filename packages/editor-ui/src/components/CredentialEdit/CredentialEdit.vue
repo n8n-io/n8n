@@ -804,7 +804,7 @@ export default mixins(showMessage, nodeHelpers).extend({
 			let credential;
 			try {
 				credential = (await this.$store.dispatch(
-					'credentials/updateCredentialDetails',
+					'credentials/updateCredential',
 					{ id: this.credentialId, data: credentialDetails },
 				)) as ICredentialsResponse;
 				this.hasUnsavedChanges = false;

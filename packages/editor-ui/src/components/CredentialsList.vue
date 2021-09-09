@@ -92,7 +92,7 @@ export default mixins(
 		},
 
 		editCredential (credential: ICredentialsResponse) {
-			this.$store.dispatch('ui/openExisitngCredentialDetails', { id: credential.id});
+			this.$store.dispatch('ui/openExisitngCredential', { id: credential.id});
 		},
 
 		async deleteCredential (credential: ICredentialsResponse) {
