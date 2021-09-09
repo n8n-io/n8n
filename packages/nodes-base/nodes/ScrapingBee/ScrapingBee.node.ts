@@ -17,8 +17,9 @@ import {
 } from 'request';
 
 import {
+    processHeaders,
+    processParams,
     scrapingBeeApiRequest,
-    camelToSnake
 } from './GenericFunctions';
 
 export class ScrapingBee implements INodeType {
@@ -72,6 +73,39 @@ export class ScrapingBee implements INodeType {
                 description: 'The URL of the page you want to scrape'
             },
             {
+                displayName: 'Headers',
+                name: 'headers',
+                placeholder: 'Add Header',
+                type: 'fixedCollection',
+                default: '',
+                typeOptions: {
+                    multipleValues: true,
+                },
+                description: 'Headers to forward',
+                options: [
+                    {
+                        name: 'headerValues',
+                        displayName: 'Header',
+                        values: [
+                            {
+                                displayName: 'Key',
+                                name: 'key',
+                                type: 'string',
+                                default: '',
+                                description: 'Key of the header to add.',
+                            },
+                            {
+                                displayName: 'Value',
+                                name: 'value',
+                                type: 'string',
+                                default: '',
+                                description: 'Value to set for the header key.',
+                            },
+                        ],
+                    },
+                ],
+            },            
+            {
                 displayName: 'Additional Fields',
                 name: 'additionalFields',
                 type: 'collection',
@@ -121,18 +155,11 @@ export class ScrapingBee implements INodeType {
                         description: 'Control the device the request will be sent from'
                     },
                     {
-                        displayName: 'Extract Rules',
+                        displayName: 'Extract Rules (JSON)',
                         name: 'extractRules',
-                        type: 'string',
+                        type: 'json',
                         default: '',
                         description: 'Data extraction from CSS selectors'
-                    },
-                    {
-                        displayName: 'Forward Headers',
-                        name: 'forwardHeaders',
-                        type: 'boolean',
-                        default: false,
-                        description: 'Forward particular headers to the webpage'
                     },
                     {
                         displayName: 'JS Scroll',
@@ -245,31 +272,29 @@ export class ScrapingBee implements INodeType {
     };
 
     async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
-        const method: string = this.getNodeParameter('method', 0) as string;
-        const url: string = this.getNodeParameter('url', 0) as string;
-        let options: IDataObject = this.getNodeParameter('additionalFields', 0) as IDataObject;
-
-        // Snake case all parameters
-        let snake_key: string;
-        for (let key in options) {
-            snake_key = camelToSnake(key);
-            if (snake_key !== key) {
-                options[snake_key] = options[key]
-                delete options[key];
-            }
-        }
-
+        const items = this.getInputData();
         let returnData: INodeExecutionData[] = [];
-        try {
-            let queryString: IDataObject = options;
-            queryString['url'] = url;
-            console.log(queryString);
-            returnData = await scrapingBeeApiRequest.call(this, method, queryString);
-        } catch (error: any) {
-            if (this.continueOnFail()) {
-                returnData.push({json:{ error: error.message }});
+
+        for (let i = 0; i < items.length; i++) {
+            const method: string = this.getNodeParameter('method', i) as string;
+            const url: string = this.getNodeParameter('url', i) as string;
+            let headers: IDataObject = processHeaders(this.getNodeParameter('headers', i) as IDataObject);
+            let queryString: IDataObject = processParams(this.getNodeParameter('additionalFields', i) as IDataObject);
+
+            if (Object.keys(headers).length > 1) {
+                queryString['forward_headers'] = true;
             }
-            throw error;
+            queryString['url'] = url;
+
+            try {
+                returnData.push(await scrapingBeeApiRequest.call(this, method, headers, queryString));            
+            } catch (error: any) {
+                if (this.continueOnFail()) {
+                    returnData.push({json:{ error: error.message }});
+                    continue;
+                }
+                throw error;
+            }
         }
 
         return [this.helpers.returnJsonArray(returnData)];
