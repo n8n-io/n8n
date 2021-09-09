@@ -169,7 +169,6 @@ export default Vue.extend({
 		},
 	},
 	methods: {
-		// @ts-ignore
 		onDataChange(event: { name: string; value: string | number | boolean | Date | null }): void {
 			this.$emit('change', event);
 		},
