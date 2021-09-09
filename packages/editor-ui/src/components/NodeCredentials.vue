@@ -213,13 +213,13 @@ export default mixins(
 			const name = this.node.credentials[credentialType];
 			const options = this.credentialOptions[credentialType];
 
-			return options.find((option) => option.name === name);
+			return options.find((option: ICredentialType) => option.name === name);
 		},
 
 		editCredential(credentialType: string): void {
 			const name = this.node.credentials[credentialType];
 			const options = this.credentialOptions[credentialType];
-			const selected = options.find((option) => option.name === name);
+			const selected = options.find((option: ICredentialType) => option.name === name);
 			this.$store.dispatch('ui/openExisitngCredential', { id: selected.id });
 
 			this.listenForNewCredentials(credentialType);

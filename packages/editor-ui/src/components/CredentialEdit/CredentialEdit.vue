@@ -79,71 +79,22 @@
 					</n8n-menu>
 				</div>
 				<div v-if="activeTab === 'connection'" :class="$style.mainContent" ref="content">
-					<banner
-						v-show="showValidationWarning"
-						theme="danger"
-						message="Please check the errors below"
-					/>
-
-					<banner
-						v-if="authError && !showValidationWarning"
-						theme="danger"
-						message="Couldn’t connect with these settings."
-						:details="authError"
-						buttonLabel="Retry"
-						buttonLoadingLabel="Retrying"
-						buttonTitle="Retry credentials test"
-						:buttonLoading="isRetesting"
-						@click="retestCredential"
-					/>
-
-					<banner
-						v-show="showOAuthSuccessBanner && !showValidationWarning"
-						theme="success"
-						message="Account connected"
-						buttonLabel="Reconnect"
-						buttonTitle="Reconnect OAuth Credentials"
-						@click="oAuthCredentialAuthorize"
-					/>
-
-					<banner
-						v-show="testedSuccessfully && !showValidationWarning"
-						theme="success"
-						message="Connection tested successfully"
-						buttonLabel="Retry"
-						buttonLoadingLabel="Retrying"
-						buttonTitle="Retry credentials test"
-						:buttonLoading="isRetesting"
-						@click="retestCredential"
-					/>
-
-					<n8n-info-tip>
-						Need help filling out these fields?
-						<a :href="documentationUrl" target="_blank">Open docs</a>
-					</n8n-info-tip>
-
-					<CopyInput
-						v-if="isOAuthType && credentialProperties.length"
-						label="OAuth Redirect URL"
-						:copyContent="oAuthCallbackUrl"
-						copyButtonText="Click to copy"
-						:subtitle="`In ${appName}, use the URL above when prompted to enter an OAuth callback or redirect URL`"
-						successMessage="Redirect URL copied to clipboard"
-					/>
-
-					<CredentialInputs
-						v-if="credentialType"
-						:credentialData="credentialData"
+					<CredentialConfig
+						:credentialType="credentialType"
 						:credentialProperties="credentialProperties"
-						:documentationUrl="documentationUrl"
-						:showValidationWarnings="showValidationWarning"
+						:credentialData="credentialData"
+						:showValidationWarning="showValidationWarning"
+						:authError="authError"
+						:testedSuccessfully="testedSuccessfully"
+						:isOAuthType="isOAuthType"
+						:isOAuthConnected="isOAuthConnected"
+						:isRetesting="isRetesting"
+						:parentTypes="parentTypes"
+						:requiredPropertiesFilled="requiredPropertiesFilled"
 						@change="onDataChange"
-					/>
-
-					<OauthButton
-						v-if="isOAuthType && requiredPropertiesFilled && !isOAuthConnected"
-						:isGoogleOAuthType="isGoogleOAuthType"
-						@click="oAuthCredentialAuthorize"
+						@oauth="oAuthCredentialAuthorize"
+						@retest="retestCredential"
+						@scrollToTop="scrollToTop"
 					/>
 				</div>
 				<div v-if="activeTab === 'details'" :class="$style.mainContent">
@@ -167,8 +118,6 @@ import {
 	ICredentialsResponse,
 } from '@/Interface';
 
-import Modal from '../Modal.vue';
-import CredentialInputs from './CredentialInputs.vue';
 import {
 	CredentialInformation,
 	ICredentialDataDecryptedObject,
@@ -187,12 +136,10 @@ import mixins from 'vue-typed-mixins';
 import { nodeHelpers } from '../mixins/nodeHelpers';
 import { showMessage } from '../mixins/showMessage';
 
-import { getAppNameFromCredType } from '../helpers';
-import Banner from '../Banner.vue';
-import CopyInput from '../CopyInput.vue';
+import CredentialConfig from './CredentialConfig.vue';
 import CredentialInfo from './CredentialInfo.vue';
-import OauthButton from './OauthButton.vue';
 import SaveButton from '../SaveButton.vue';
+import Modal from '../Modal.vue';
 
 interface NodeAccessMap {
 	[nodeType: string]: ICredentialNodeAccess | null;
@@ -201,13 +148,10 @@ interface NodeAccessMap {
 export default mixins(showMessage, nodeHelpers).extend({
 	name: 'CredentialsDetail',
 	components: {
-		CredentialInputs,
+		CredentialConfig,
 		CredentialIcon,
 		CredentialInfo,
-		CopyInput,
-		Banner,
 		Modal,
-		OauthButton,
 		SaveButton,
 	},
 	props: {
@@ -287,17 +231,6 @@ export default mixins(showMessage, nodeHelpers).extend({
 		this.loading = false;
 	},
 	computed: {
-		appName(): string {
-			if (!this.credentialType) {
-				return '';
-			}
-
-			const appName = getAppNameFromCredType(
-				this.credentialType.displayName,
-			);
-
-			return appName || "the service you're connecting to";
-		},
 		currentCredential(): ICredentialsResponse | null {
 			if (!this.credentialId) {
 				return null;
@@ -332,23 +265,6 @@ export default mixins(showMessage, nodeHelpers).extend({
 				properties: this.getCredentialProperties(this.credentialTypeName),
 			};
 		},
-		documentationUrl(): string {
-			const type = this.credentialType;
-
-			if (!type) {
-				return '';
-			}
-
-			if (type.documentationUrl && type.documentationUrl.startsWith('http')) {
-				return type.documentationUrl;
-			}
-
-			if (type.documentationUrl) {
-				return `https://docs.n8n.io/credentials/${type.documentationUrl}/?utm_source=n8n_app&utm_medium=left_nav_menu&utm_campaign=create_new_credentials_modal`;
-			}
-
-			return '';
-		},
 		isCredentialTestable (): boolean {
 			if (this.isOAuthType || !this.requiredPropertiesFilled) {
 				return false;
@@ -372,9 +288,6 @@ export default mixins(showMessage, nodeHelpers).extend({
 			});
 
 			return !!nodesThatCanTest.length;
-		},
-		showOAuthSuccessBanner(): boolean {
-			return this.isOAuthType && this.requiredPropertiesFilled && this.isOAuthConnected && !this.authError;
 		},
 		nodesWithAccess(): INodeTypeDescription[] {
 			if (this.credentialTypeName) {
@@ -401,9 +314,6 @@ export default mixins(showMessage, nodeHelpers).extend({
 		},
 		isOAuthConnected(): boolean {
 			return this.isOAuthType && !!this.credentialData.oauthTokenData;
-		},
-		isGoogleOAuthType(): boolean {
-			return this.credentialTypeName === 'googleOAuth2Api' || this.parentTypes.includes('googleOAuth2Api');
 		},
 		// todo move to store
 		credentialProperties(): INodeProperties[] {
@@ -436,14 +346,6 @@ export default mixins(showMessage, nodeHelpers).extend({
 				}
 			}
 			return true;
-		},
-		oAuthCallbackUrl(): string {
-			const oauthType =
-				this.credentialTypeName === 'oAuth2Api' ||
-				this.parentTypes.includes('oAuth2Api')
-					? 'oauth2'
-					: 'oauth1';
-			return this.$store.getters.oauthCallbackUrls[oauthType];
 		},
 	},
 	methods: {
@@ -528,10 +430,6 @@ export default mixins(showMessage, nodeHelpers).extend({
 			);
 
 			return combineProperties;
-		},
-
-		getNodeByName(nodeTypeName: string): INodeTypeDescription {
-			return this.$store.getters['nodeType'](nodeTypeName);
 		},
 
 		async loadCurrentCredential() {
@@ -937,17 +835,16 @@ export default mixins(showMessage, nodeHelpers).extend({
 			window.addEventListener('message', receiveMessage, false);
 		},
 	},
-	watch: {
-		showOAuthSuccessBanner(newValue, oldValue) {
-			if (newValue && !oldValue) {
-				this.scrollToTop();
-			}
-		},
-	},
+
 });
 </script>
 
 <style module lang="scss">
+.credentialModal {
+	max-width: 900px;
+	--dialog-close-top: 28px;
+}
+
 .headline {
 	font-size: var(--font-size-m);
 	line-height: 1.4;
@@ -986,10 +883,6 @@ export default mixins(showMessage, nodeHelpers).extend({
 	flex-grow: 1;
 	overflow: auto;
 	padding-bottom: 100px;
-
-	> * {
-		margin-bottom: var(--spacing-l);
-	}
 }
 
 .sidebar {
@@ -1036,11 +929,6 @@ export default mixins(showMessage, nodeHelpers).extend({
 	display: flex;
 	align-items: center;
 	margin-right: var(--spacing-xs);
-}
-
-.credentialModal {
-	max-width: 900px;
-	--dialog-close-top: 28px;
 }
 
 </style>
