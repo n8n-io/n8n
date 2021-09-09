@@ -47,8 +47,6 @@
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
-
 import { restApi } from '@/components/mixins/restApi';
 import {
 	INodeUi,
@@ -213,14 +211,16 @@ export default mixins(
 
 		isCredentialValid(credentialType: string): boolean {
 			const name = this.node.credentials[credentialType];
+			const options = this.credentialOptions[credentialType];
 
-			return !!this.$store.getters['credentials/getCredentialByName'](name);
+			return options.find((option) => option.name === name);
 		},
 
 		editCredential(credentialType: string): void {
 			const name = this.node.credentials[credentialType];
-			const id = this.$store.getters['credentials/getCredentialByName'](name).id;
-			this.$store.dispatch('ui/openExisitngCredential', { id });
+			const options = this.credentialOptions[credentialType];
+			const selected = options.find((option) => option.name === name);
+			this.$store.dispatch('ui/openExisitngCredential', { id: selected.id });
 
 			this.listenForNewCredentials(credentialType);
 		},
