@@ -385,7 +385,7 @@ export class ItemLists implements INodeType {
 				placeholder: 'Add Field To Sort By',
 				options: [
 					{
-						displayName: 'Sort Field',
+						displayName: '',
 						name: 'sortField',
 						values: [
 							{
@@ -689,14 +689,14 @@ return 0;`,
 
 					if (arrayToSplit === undefined) {
 						if (fieldToSplitOut.includes('.') && disableDotNotation === true) {
-							throw new NodeOperationError(this.getNode(), `Couldn't find the field "${fieldToSplitOut}" in the input data`, { description: `If you're trying to use a nested field, make sure you turn off 'disable dot notation' in the node options` });
+							throw new NodeOperationError(this.getNode(), `Couldn't find the field '${fieldToSplitOut}' in the input data`, { description: `If you're trying to use a nested field, make sure you turn off 'disable dot notation' in the node options` });
 						} else {
-							throw new NodeOperationError(this.getNode(), `Couldn't find the field "${fieldToSplitOut}" in the input data`);
+							throw new NodeOperationError(this.getNode(), `Couldn't find the field '${fieldToSplitOut}' in the input data`);
 						}
 					}
 
 					if (!Array.isArray(arrayToSplit)) {
-						throw new NodeOperationError(this.getNode(), `The provided field "${fieldToSplitOut}" is not an array`);
+						throw new NodeOperationError(this.getNode(), `The provided field '${fieldToSplitOut}' is not an array`);
 					} else {
 
 						for (const element of arrayToSplit) {
@@ -779,13 +779,13 @@ return 0;`,
 				for (const { fieldToAggregate, outputFieldName, renameField } of fieldsToAggregate) {
 
 					if (fieldToAggregate === '') {
-						throw new NodeOperationError(this.getNode(), 'No fields specified', { description: 'Please add a field to aggregate' });
+						throw new NodeOperationError(this.getNode(), 'Field to aggregate is blank', { description: 'Please add a field to aggregate' });
 					}
 
 					const field = (renameField) ? outputFieldName : fieldToAggregate;
 
 					if (outputFields.includes(field)) {
-						throw new NodeOperationError(this.getNode(), `The "${field}" output field is used more than once`, { description: `Please make sure each output field name is unique` });
+						throw new NodeOperationError(this.getNode(), `The '${field}' output field is used more than once`, { description: `Please make sure each output field name is unique` });
 					} else {
 						outputFields.push(field);
 					}
@@ -801,7 +801,7 @@ return 0;`,
 								let value = get(items[i].json, fieldToAggregate);
 
 								if (value === undefined && keepMissing === false) {
-									throw new NodeOperationError(this.getNode(), `Couldn't find the field "${fieldToAggregate}" in the input data`);
+									throw new NodeOperationError(this.getNode(), `Couldn't find the field '${fieldToAggregate}' in the input data`);
 								}
 
 								if (!keepMissing) {
@@ -822,9 +822,9 @@ return 0;`,
 								let value = items[i].json[fieldToAggregate];
 
 								if (value === undefined && disableDotNotation && fieldToAggregate.includes('.')) {
-									throw new NodeOperationError(this.getNode(), `Couldn't find the field "${fieldToAggregate}" in the input data`, { description: `If you're trying to use a nested field, make sure you turn off 'disable dot notation' in the node options` });
+									throw new NodeOperationError(this.getNode(), `Couldn't find the field '${fieldToAggregate}' in the input data`, { description: `If you're trying to use a nested field, make sure you turn off 'disable dot notation' in the node options` });
 								} else if (value === undefined && keepMissing === false) {
-									throw new NodeOperationError(this.getNode(), `Couldn't find the field "${fieldToAggregate}" in the input data`);
+									throw new NodeOperationError(this.getNode(), `Couldn't find the field '${fieldToAggregate}' in the input data`);
 								}
 
 								if (!keepMissing) {
@@ -925,6 +925,9 @@ return 0;`,
 					// tslint:disable-next-line: no-any
 					let type: any = undefined;
 					for (const item of newItems) {
+						if (key === '') {
+							throw new NodeOperationError(this.getNode(), `Name of field to compare is blank`);
+						}
 						const value = ((!disableDotNotation) ? get(item.json, key) : item.json[key]);
 						if (value === undefined && disableDotNotation && key.includes('.')) {
 							throw new NodeOperationError(this.getNode(), `'${key}' field is missing from some input items`, { description: `If you're trying to use a nested field, make sure you turn off 'disable dot notation' in the node options` });
@@ -1008,9 +1011,9 @@ return 0;`,
 							}
 						}
 						if (found === false && disableDotNotation && fieldName.includes('.')) {
-							throw new NodeOperationError(this.getNode(), `Couldn't find the field "${fieldName}" in the input data`, { description: `If you're trying to use a nested field, make sure you turn off 'disable dot notation' in the node options` });
+							throw new NodeOperationError(this.getNode(), `Couldn't find the field '${fieldName}' in the input data`, { description: `If you're trying to use a nested field, make sure you turn off 'disable dot notation' in the node options` });
 						} else if (found === false) {
-							throw new NodeOperationError(this.getNode(), `Couldn't find the field "${fieldName}" in the input data`);
+							throw new NodeOperationError(this.getNode(), `Couldn't find the field '${fieldName}' in the input data`);
 						}
 					}
 
@@ -1099,27 +1102,17 @@ return 0;`,
 				return this.prepareOutputData(newItems);
 
 			} else {
-				throw new NodeOperationError(this.getNode(), `Operation "${operation}" is not recognized`);
+				throw new NodeOperationError(this.getNode(), `Operation '${operation}' is not recognized`);
 			}
 		} else {
-			throw new NodeOperationError(this.getNode(), `Resource "${resource}" is not recognized`);
+			throw new NodeOperationError(this.getNode(), `Resource '${resource}' is not recognized`);
 		}
 	}
 }
 
 const compareItems = (obj: INodeExecutionData, obj2: INodeExecutionData, keys: string[], disableDotNotation: boolean, node: INode) => {
 	let result = true;
-	// const keys1 = !disableDotNotation ? Object.keys(flattenKeys(obj.json)) : Object.keys(obj.json);
-	// const keys2 = !disableDotNotation ? Object.keys(flattenKeys(obj2.json)) : Object.keys(obj2.json);
 	for (const key of keys) {
-
-		// if (!keys1.includes(key) || !keys2.includes(key)) {
-		// 	if (disableDotNotation === true && key.includes('.')) {
-		// 		throw new NodeOperationError(node, `'${key}' field is missing from some input items`, { description: `If you're trying to use a nested field, make sure you turn off 'disable dot notation' in the node options` });
-		// 	} else {
-		// 		throw new NodeOperationError(node, `'${key}' field is missing from some input items`);
-		// 	}
-		// }
 		if (disableDotNotation === false) {
 			if (!isEqual(get(obj.json, key), get(obj2.json, key))) {
 				result = false;
