@@ -38,7 +38,7 @@
 			@click="$emit('retest')"
 		/>
 
-		<n8n-info-tip>
+		<n8n-info-tip v-if="documentationUrl">
 			Need help filling out these fields?
 			<a :href="documentationUrl" target="_blank">Open docs</a>
 		</n8n-info-tip>
@@ -143,7 +143,7 @@ export default Vue.extend({
 				return '';
 			}
 
-			if (type.documentationUrl && type.documentationUrl.startsWith('http')) {
+			if (type.documentationUrl && (type.documentationUrl.startsWith('https://') || type.documentationUrl.startsWith('http://'))) {
 				return type.documentationUrl;
 			}
 
