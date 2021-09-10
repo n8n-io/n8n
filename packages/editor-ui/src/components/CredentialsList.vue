@@ -63,12 +63,14 @@ export default mixins(
 			return this.allCredentials.reduce((accu: ICredentialsResponse[], cred: ICredentialsResponse) => {
 				const type = this.$store.getters['credentials/getCredentialTypeByName'](cred.type);
 
-				accu.push({
-					...cred,
-					type: type.displayName,
-					createdAt: convertToDisplayDate(cred.createdAt as number),
-					updatedAt: convertToDisplayDate(cred.updatedAt as number),
-				});
+				if (type) {
+					accu.push({
+						...cred,
+						type: type.displayName,
+						createdAt: convertToDisplayDate(cred.createdAt as number),
+						updatedAt: convertToDisplayDate(cred.updatedAt as number),
+					});
+				}
 
 				return accu;
 			}, []);

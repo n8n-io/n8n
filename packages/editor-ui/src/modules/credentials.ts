@@ -21,7 +21,6 @@ import {
 import {
 	ICredentialType,
 	ICredentialsDecrypted,
-	NodeCredentialTestRequest,
 	NodeCredentialTestResult,
 	INodeTypeDescription,
 } from 'n8n-workflow';
@@ -85,7 +84,7 @@ const module: Module<ICredentialsState, IRootState> = {
 				return accu;
 			}, {});
 		},
-		getCredentialTypeByName: (state: ICredentialsState) => {
+		getCredentialTypeByName: (state: ICredentialsState): ICredentialType | null => {
 			return (type: string) => state.credentialTypes[type];
 		},
 		getCredentialById: (state: ICredentialsState) => {
