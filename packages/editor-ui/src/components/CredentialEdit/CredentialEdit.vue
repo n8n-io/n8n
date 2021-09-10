@@ -297,7 +297,6 @@ export default mixins(showMessage, nodeHelpers).extend({
 		isOAuthConnected(): boolean {
 			return this.isOAuthType && !!this.credentialData.oauthTokenData;
 		},
-		// todo move to store
 		credentialProperties(): INodeProperties[] {
 			if (!this.credentialType) {
 				return [];
