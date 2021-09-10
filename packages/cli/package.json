@@ -106,6 +106,7 @@
     "json-diff": "^0.5.4",
     "jsonwebtoken": "^8.5.1",
     "jwks-rsa": "~1.12.1",
+    "libphonenumber-js": "1.9.7",
     "localtunnel": "^2.0.0",
     "lodash.get": "^4.4.2",
     "mysql2": "~2.3.0",
