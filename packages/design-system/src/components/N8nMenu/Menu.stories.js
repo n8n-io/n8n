@@ -28,7 +28,10 @@ const Template = (args, { argTypes }) => ({
 		N8nMenuItem,
 	},
 	template:
-		'<n8n-menu v-bind="$props" @select="onSelect"> <n8n-menu-item index="1"> <span slot="title">Item 1</span> </n8n-menu-item> <n8n-menu-item index="2"> <span slot="title">Item 2</span> </n8n-menu-item> </n8n-menu>',
+		`<n8n-menu v-bind="$props" @select="onSelect">
+			<n8n-menu-item index="1"> <span slot="title">Item 1</span> </n8n-menu-item>
+			<n8n-menu-item index="2"> <span slot="title">Item 2</span> </n8n-menu-item>
+		</n8n-menu>`,
 	methods,
 });
 

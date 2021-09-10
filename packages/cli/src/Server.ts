@@ -1595,14 +1595,12 @@ class App {
 		);
 
 		this.app.get(
-			[`/${this.restEndpoint}/credential-icon/:credentialType`],
+			`/${this.restEndpoint}/credential-icon/:credentialType`,
 			async (req: express.Request, res: express.Response): Promise<void> => {
 				try {
 					const credentialName = req.params.credentialType;
 
-					const credentialTypes = CredentialTypes();
-
-					const credentialType = credentialTypes.getByName(credentialName);
+					const credentialType = CredentialTypes().getByName(credentialName);
 
 					if (credentialType === undefined) {
 						res.status(404).send('The credentialType is not known.');

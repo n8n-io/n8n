@@ -83,16 +83,15 @@ export const showMessage = mixins(externalHooks).extend({
 			});
 		},
 
-		async confirmMessage (message: string, headline: string, type = 'warning' as MessageType | null, confirmButtonText = 'OK', cancelButtonText = 'Cancel'): Promise<boolean> {
+		async confirmMessage (message: string, headline: string, type: MessageType | null = 'warning', confirmButtonText = 'OK', cancelButtonText = 'Cancel'): Promise<boolean> {
 			try {
 				const options: ElMessageBoxOptions  = {
 					confirmButtonText,
 					cancelButtonText,
 					dangerouslyUseHTMLString: true,
+					...(type && { type }),
 				};
-				if (type) {
-					options.type = type;
-				}
+
 				await this.$confirm(message, headline, options);
 				return true;
 			} catch (e) {

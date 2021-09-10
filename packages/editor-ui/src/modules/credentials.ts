@@ -157,23 +157,20 @@ const module: Module<ICredentialsState, IRootState> = {
 			return testCredential(context.rootGetters.getRestApiContext, { credentials: data });
 		},
 		getNewCredentialName: async (context: ActionContext<ICredentialsState, IRootState>, params: { credentialTypeName: string }) => {
-			const { credentialTypeName } = params;
-
-			let newName = DEFAULT_CREDENTIAL_NAME;
-			if (!TYPES_WITH_DEFAULT_NAME.includes(credentialTypeName)) {
-				const { displayName } = context.getters.getCredentialTypeByName(credentialTypeName);
-				newName = getAppNameFromCredType(displayName);
-				newName = newName.length > 0 ? `${newName} ${DEFAULT_CREDENTIAL_POSTFIX}` : DEFAULT_CREDENTIAL_NAME;
-			}
-
 			try {
-				const res = await getCredentialsNewName(context.rootGetters.getRestApiContext, newName);
-				newName = res.name;
-			} catch (e) {
-				newName = DEFAULT_CREDENTIAL_NAME;
-			}
+				const { credentialTypeName } = params;
+				let newName = DEFAULT_CREDENTIAL_NAME;
+				if (!TYPES_WITH_DEFAULT_NAME.includes(credentialTypeName)) {
+					const { displayName } = context.getters.getCredentialTypeByName(credentialTypeName);
+					newName = getAppNameFromCredType(displayName);
+					newName = newName.length > 0 ? `${newName} ${DEFAULT_CREDENTIAL_POSTFIX}` : DEFAULT_CREDENTIAL_NAME;
+				}
 
-			return newName;
+				const res = await getCredentialsNewName(context.rootGetters.getRestApiContext, newName);
+				return res.name;
+			} catch (e) {
+				return DEFAULT_CREDENTIAL_NAME;
+			}
 		},
 	},
 };

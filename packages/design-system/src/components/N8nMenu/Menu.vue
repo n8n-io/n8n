@@ -19,7 +19,7 @@ export default {
 		type: {
 			type: String,
 			default: 'primary',
-			validator: (value: string): boolean => ['primary', 'secondary'].indexOf(value) !== -1,
+			validator: (value: string): boolean => ['primary', 'secondary'].includes(value),
 		},
 		defaultActive: {
 			type: String,

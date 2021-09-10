@@ -9,7 +9,7 @@
 		<banner
 			v-if="authError && !showValidationWarning"
 			theme="danger"
-			message="Couldn’t connect with these settings."
+			message="Couldn’t connect with these settings"
 			:details="authError"
 			buttonLabel="Retry"
 			buttonLoadingLabel="Retrying"
@@ -139,19 +139,15 @@ export default Vue.extend({
 		documentationUrl(): string {
 			const type = this.credentialType as ICredentialType;
 
-			if (!type) {
+			if (!type || !type.documentationUrl) {
 				return '';
 			}
 
-			if (type.documentationUrl && (type.documentationUrl.startsWith('https://') || type.documentationUrl.startsWith('http://'))) {
+			if (type.documentationUrl.startsWith('https://') || type.documentationUrl.startsWith('http://')) {
 				return type.documentationUrl;
 			}
 
-			if (type.documentationUrl) {
-				return `https://docs.n8n.io/credentials/${type.documentationUrl}/?utm_source=n8n_app&utm_medium=left_nav_menu&utm_campaign=create_new_credentials_modal`;
-			}
-
-			return '';
+			return `https://docs.n8n.io/credentials/${type.documentationUrl}/?utm_source=n8n_app&utm_medium=left_nav_menu&utm_campaign=create_new_credentials_modal`;
 		},
 		isGoogleOAuthType(): boolean {
 			return this.credentialTypeName === 'googleOAuth2Api' || this.parentTypes.includes('googleOAuth2Api');
