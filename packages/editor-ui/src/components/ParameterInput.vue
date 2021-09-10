@@ -1,192 +1,192 @@
 <template>
 	<div @keydown.stop :class="parameterInputClasses">
-		<expression-edit :dialogVisible="expressionEditDialogVisible" :value="value" :parameter="parameter" :path="path" @closeDialog="closeExpressionEditDialog" @valueChanged="expressionUpdated"></expression-edit>
-		<div class="parameter-input ignore-key-press" :style="parameterInputWrapperStyle" @click="openExpressionEdit">
+	<expression-edit :dialogVisible="expressionEditDialogVisible" :value="value" :parameter="parameter" :path="path" @closeDialog="closeExpressionEditDialog" @valueChanged="expressionUpdated"></expression-edit>
+	<div class="parameter-input ignore-key-press" :style="parameterInputWrapperStyle" @click="openExpressionEdit">
+
+		<n8n-input
+			v-if="isValueExpression && showExpressionAsTextInput"
+			:size="inputSize"
+			:value="expressionDisplayValue"
+			:disabled="isReadOnly"
+			:title="displayTitle"
+			@keydown.stop
+		/>
+
+		<div v-else-if="['json', 'string'].includes(parameter.type) || remoteParameterOptionsLoadingIssues !== null">
+			<code-edit :dialogVisible="codeEditDialogVisible" :value="value" :parameter="parameter" @closeDialog="closeCodeEditDialog" @valueChanged="expressionUpdated"></code-edit>
+			<text-edit :dialogVisible="textEditDialogVisible" :value="value" :parameter="parameter" @closeDialog="closeTextEditDialog" @valueChanged="expressionUpdated"></text-edit>
+
+			<div v-if="isEditor === true" class="clickable" @click="displayEditDialog()">
+				<prism-editor v-if="!codeEditDialogVisible" :lineNumbers="true" :readonly="true" :code="displayValue" language="js"></prism-editor>
+			</div>
 
 			<n8n-input
-				v-if="isValueExpression && showExpressionAsTextInput"
-				:size="inputSize"
-				:value="expressionDisplayValue"
-				:disabled="isReadOnly"
-				:title="displayTitle"
-				@keydown.stop
-			/>
-
-			<div v-else-if="['json', 'string'].includes(parameter.type) || remoteParameterOptionsLoadingIssues !== null">
-				<code-edit :dialogVisible="codeEditDialogVisible" :value="value" :parameter="parameter" @closeDialog="closeCodeEditDialog" @valueChanged="expressionUpdated"></code-edit>
-				<text-edit :dialogVisible="textEditDialogVisible" :value="value" :parameter="parameter" @closeDialog="closeTextEditDialog" @valueChanged="expressionUpdated"></text-edit>
-
-				<div v-if="isEditor === true" class="clickable" @click="displayEditDialog()">
-					<prism-editor v-if="!codeEditDialogVisible" :lineNumbers="true" :readonly="true" :code="displayValue" language="js"></prism-editor>
-				</div>
-
-				<n8n-input
-					v-else
-					v-model="tempValue"
-					ref="inputField"
-					:size="inputSize"
-					:type="getStringInputType"
-					:rows="getArgument('rows')"
-					:value="displayValue"
-					:disabled="isReadOnly"
-					@input="onTextInputChange"
-					@change="valueChanged"
-					@keydown.stop
-					@focus="setFocus"
-					@blur="onBlur"
-					:title="displayTitle"
-					:placeholder="isValueExpression?'':parameter.placeholder"
-				>
-					<div slot="suffix" class="expand-input-icon-container">
-						<font-awesome-icon v-if="!isValueExpression && !isReadOnly" icon="external-link-alt" class="edit-window-button clickable" title="Open Edit Window" @click="displayEditDialog()" />
-					</div>
-				</n8n-input>
-			</div>
-
-			<div v-else-if="parameter.type === 'color'" ref="inputField" class="color-input">
-				<el-color-picker
-					size="small"
-					class="color-picker"
-					:value="displayValue"
-					:disabled="isReadOnly"
-					@focus="setFocus"
-					@blur="onBlur"
-					@change="valueChanged"
-					:title="displayTitle"
-					:show-alpha="getArgument('showAlpha')"
-				/>
-				<n8n-input
-					v-model="tempValue"
-					:size="inputSize"
-					type="text"
-					:value="tempValue"
-					:disabled="isReadOnly"
-					@change="valueChanged"
-					@keydown.stop
-					@focus="setFocus"
-					@blur="onBlur"
-					:title="displayTitle"
-				/>
-			</div>
-
-			<el-date-picker
-				v-else-if="parameter.type === 'dateTime'"
+				v-else
 				v-model="tempValue"
 				ref="inputField"
-				type="datetime"
 				:size="inputSize"
+				:type="getStringInputType"
+				:rows="getArgument('rows')"
 				:value="displayValue"
-				:title="displayTitle"
 				:disabled="isReadOnly"
-				:placeholder="parameter.placeholder?parameter.placeholder:'Select date and time'"
-				:picker-options="dateTimePickerOptions"
-				@change="valueChanged"
-				@focus="setFocus"
-				@blur="onBlur"
-				@keydown.stop
-			/>
-
-			<n8n-input-number
-				v-else-if="parameter.type === 'number'"
-				ref="inputField" :size="inputSize"
-				:value="displayValue"
-				:controls="false"
-				:max="getArgument('maxValue')"
-				:min="getArgument('minValue')"
-				:precision="getArgument('numberPrecision')"
-				:step="getArgument('numberStepSize')"
-				:disabled="isReadOnly"
-				@change="valueChanged"
 				@input="onTextInputChange"
-				@focus="setFocus"
-				@blur="onBlur"
-				@keydown.stop
-				:title="displayTitle"
-				:placeholder="parameter.placeholder"
-			/>
-
-			<n8n-select
-				v-else-if="parameter.type === 'options'"
-				ref="inputField"
-				:size="inputSize"
-				filterable
-				:value="displayValue"
-				:loading="remoteParameterOptionsLoading"
-				:disabled="isReadOnly || remoteParameterOptionsLoading"
-				:title="displayTitle"
-				:popper-append-to-body="true"
-				@change="valueChanged"
-				@keydown.stop
-				@focus="setFocus"
-				@blur="onBlur"
-			>
-				<n8n-option
-					v-for="option in parameterOptions"
-					:value="option.value"
-					:key="option.value"
-					:label="option.name"
-				>
-					<div class="list-option">
-						<div class="option-headline">{{ option.name }}</div>
-						<div v-if="option.description" class="option-description" v-html="option.description"></div>
-					</div>
-				</n8n-option>
-			</n8n-select>
-
-			<n8n-select
-				v-else-if="parameter.type === 'multiOptions'"
-				ref="inputField"
-				:size="inputSize"
-				filterable
-				multiple
-				:value="displayValue"
-				:loading="remoteParameterOptionsLoading"
-				:disabled="isReadOnly || remoteParameterOptionsLoading"
 				@change="valueChanged"
 				@keydown.stop
 				@focus="setFocus"
 				@blur="onBlur"
 				:title="displayTitle"
+				:placeholder="isValueExpression?'':parameter.placeholder"
 			>
-				<n8n-option v-for="option in parameterOptions" :value="option.value" :key="option.value" :label="option.name" >
-					<div class="list-option">
-						<div class="option-headline">{{ option.name }}</div>
-						<div v-if="option.description" class="option-description" v-html="option.description"></div>
-					</div>
-				</n8n-option>
-			</n8n-select>
+				<div slot="suffix" class="expand-input-icon-container">
+					<font-awesome-icon v-if="!isValueExpression && !isReadOnly" icon="external-link-alt" class="edit-window-button clickable" title="Open Edit Window" @click="displayEditDialog()" />
+				</div>
+			</n8n-input>
+		</div>
 
-			<el-switch
-				v-else-if="parameter.type === 'boolean'"
-				class="switch-input"
-				ref="inputField"
-				active-color="#13ce66"
+		<div v-else-if="parameter.type === 'color'" ref="inputField" class="color-input">
+			<el-color-picker
+				size="small"
+				class="color-picker"
 				:value="displayValue"
 				:disabled="isReadOnly"
+				@focus="setFocus"
+				@blur="onBlur"
 				@change="valueChanged"
+				:title="displayTitle"
+				:show-alpha="getArgument('showAlpha')"
+			/>
+			<n8n-input
+				v-model="tempValue"
+				:size="inputSize"
+				type="text"
+				:value="tempValue"
+				:disabled="isReadOnly"
+				@change="valueChanged"
+				@keydown.stop
+				@focus="setFocus"
+				@blur="onBlur"
+				:title="displayTitle"
 			/>
 		</div>
 
-		<div class="parameter-issues" v-if="getIssues.length">
-			<n8n-tooltip placement="top" >
-				<div slot="content" v-html="'Issues:<br />&nbsp;&nbsp;- ' + getIssues.join('<br />&nbsp;&nbsp;- ')"></div>
-				<font-awesome-icon icon="exclamation-triangle" />
-			</n8n-tooltip>
-		</div>
+		<el-date-picker
+			v-else-if="parameter.type === 'dateTime'"
+			v-model="tempValue"
+			ref="inputField"
+			type="datetime"
+			:size="inputSize"
+			:value="displayValue"
+			:title="displayTitle"
+			:disabled="isReadOnly"
+			:placeholder="parameter.placeholder?parameter.placeholder:'Select date and time'"
+			:picker-options="dateTimePickerOptions"
+			@change="valueChanged"
+			@focus="setFocus"
+			@blur="onBlur"
+			@keydown.stop
+		/>
 
-		<div class="parameter-options" v-if="displayOptionsComputed">
-				<el-dropdown trigger="click" @command="optionSelected" size="mini">
-					<span class="el-dropdown-link">
-						<font-awesome-icon icon="cogs" class="reset-icon clickable" title="Parameter Options"/>
-					</span>
-					<el-dropdown-menu slot="dropdown">
-						<el-dropdown-item command="addExpression" v-if="parameter.noDataExpression !== true && !isValueExpression">Add Expression</el-dropdown-item>
-						<el-dropdown-item command="removeExpression" v-if="parameter.noDataExpression !== true && isValueExpression">Remove Expression</el-dropdown-item>
-						<el-dropdown-item command="refreshOptions" v-if="Boolean(remoteMethod)">Refresh List</el-dropdown-item>
-						<el-dropdown-item command="resetValue" :disabled="isDefault" divided>Reset Value</el-dropdown-item>
-					</el-dropdown-menu>
-				</el-dropdown>
-		</div>
+		<n8n-input-number
+			v-else-if="parameter.type === 'number'"
+			ref="inputField" :size="inputSize"
+			:value="displayValue"
+			:controls="false"
+			:max="getArgument('maxValue')"
+			:min="getArgument('minValue')"
+			:precision="getArgument('numberPrecision')"
+			:step="getArgument('numberStepSize')"
+			:disabled="isReadOnly"
+			@change="valueChanged"
+			@input="onTextInputChange"
+			@focus="setFocus"
+			@blur="onBlur"
+			@keydown.stop
+			:title="displayTitle"
+			:placeholder="parameter.placeholder"
+		/>
+
+		<n8n-select
+			v-else-if="parameter.type === 'options'"
+			ref="inputField"
+			:size="inputSize"
+			filterable
+			:value="displayValue"
+			:loading="remoteParameterOptionsLoading"
+			:disabled="isReadOnly || remoteParameterOptionsLoading"
+			:title="displayTitle"
+			:popper-append-to-body="true"
+			@change="valueChanged"
+			@keydown.stop
+			@focus="setFocus"
+			@blur="onBlur"
+		>
+			<n8n-option
+				v-for="option in parameterOptions"
+				:value="option.value"
+				:key="option.value"
+				:label="option.name"
+			>
+				<div class="list-option">
+					<div class="option-headline">{{ option.name }}</div>
+					<div v-if="option.description" class="option-description" v-html="option.description"></div>
+				</div>
+			</n8n-option>
+		</n8n-select>
+
+		<n8n-select
+			v-else-if="parameter.type === 'multiOptions'"
+			ref="inputField"
+			:size="inputSize"
+			filterable
+			multiple
+			:value="displayValue"
+			:loading="remoteParameterOptionsLoading"
+			:disabled="isReadOnly || remoteParameterOptionsLoading"
+			@change="valueChanged"
+			@keydown.stop
+			@focus="setFocus"
+			@blur="onBlur"
+			:title="displayTitle"
+		>
+			<n8n-option v-for="option in parameterOptions" :value="option.value" :key="option.value" :label="option.name" >
+				<div class="list-option">
+					<div class="option-headline">{{ option.name }}</div>
+					<div v-if="option.description" class="option-description" v-html="option.description"></div>
+				</div>
+			</n8n-option>
+		</n8n-select>
+
+		<el-switch
+			v-else-if="parameter.type === 'boolean'"
+			class="switch-input"
+			ref="inputField"
+			active-color="#13ce66"
+			:value="displayValue"
+			:disabled="isReadOnly"
+			@change="valueChanged"
+		/>
+	</div>
+
+	<div class="parameter-issues" v-if="getIssues.length">
+		<n8n-tooltip placement="top" >
+			<div slot="content" v-html="'Issues:<br />&nbsp;&nbsp;- ' + getIssues.join('<br />&nbsp;&nbsp;- ')"></div>
+			<font-awesome-icon icon="exclamation-triangle" />
+		</n8n-tooltip>
+	</div>
+
+	<div class="parameter-options" v-if="displayOptionsComputed">
+			<el-dropdown trigger="click" @command="optionSelected" size="mini">
+				<span class="el-dropdown-link">
+					<font-awesome-icon icon="cogs" class="reset-icon clickable" title="Parameter Options"/>
+				</span>
+				<el-dropdown-menu slot="dropdown">
+					<el-dropdown-item command="addExpression" v-if="parameter.noDataExpression !== true && !isValueExpression">Add Expression</el-dropdown-item>
+					<el-dropdown-item command="removeExpression" v-if="parameter.noDataExpression !== true && isValueExpression">Remove Expression</el-dropdown-item>
+					<el-dropdown-item command="refreshOptions" v-if="Boolean(remoteMethod)">Refresh List</el-dropdown-item>
+					<el-dropdown-item command="resetValue" :disabled="isDefault" divided>Reset Value</el-dropdown-item>
+				</el-dropdown-menu>
+			</el-dropdown>
+	</div>
 	</div>
 </template>
 
