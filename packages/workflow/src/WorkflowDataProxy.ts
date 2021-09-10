@@ -299,6 +299,10 @@ export class WorkflowDataProxy {
 					if (['binary', 'data', 'json'].includes(name)) {
 						const executionData = that.getNodeExecutionData(nodeName, shortSyntax, undefined);
 
+						if (executionData.length === 0) {
+							return {};
+						}
+
 						if (executionData.length <= that.itemIndex) {
 							throw new Error(`No data found for item-index: "${that.itemIndex}"`);
 						}
