@@ -34,6 +34,7 @@ export class Xentral implements INodeType {
 		icon: 'file:xentral.png',
 		group: ['transform'],
 		version: 1,
+		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 		description: 'Xentral ERP Node',
 		defaults: {
 			name: 'Xentral',
@@ -978,7 +979,7 @@ export class Xentral implements INodeType {
 					usesOldApi = true;
 					body = this.getNodeParameter('data', i) as IDataObject;
 					body = prepareBodyOldApi(body);
-					
+
 				} else if (operation === 'update') {
 					// ----------------------------------
 					//         update
@@ -990,7 +991,7 @@ export class Xentral implements INodeType {
 					usesOldApi = true;
 					body = this.getNodeParameter('data', i) as IDataObject;
 					body = prepareBodyOldApi(body);
-					
+
 				}
 			} else if (resource === 'rechnungen') {
 				// ----------------------------------
@@ -1012,9 +1013,9 @@ export class Xentral implements INodeType {
 						//         delete
 						// ----------------------------------
 						requestMethod = 'DELETE';
-	
+
 						const id = this.getNodeParameter('id', i) as number;
-	
+
 						endpoint = `/api/v1/belege/rechnungen/${id}`;
 	 				*/
 				} else if (operation === 'getAll') {
