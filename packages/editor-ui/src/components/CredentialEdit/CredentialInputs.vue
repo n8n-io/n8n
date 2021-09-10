@@ -5,6 +5,7 @@
 				:parameter="parameter"
 				:value="credentialData[parameter.name]"
 				:documentationUrl="documentationUrl"
+				:showValidationWarnings="showValidationWarnings"
 				@change="valueChanged"
 			/>
 		</div>

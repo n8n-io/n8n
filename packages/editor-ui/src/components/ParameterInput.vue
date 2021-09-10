@@ -1,6 +1,5 @@
 <template>
-	<div>
-		<div @keydown.stop :class="parameterInputClasses">
+	<div @keydown.stop :class="parameterInputClasses">
 		<expression-edit :dialogVisible="expressionEditDialogVisible" :value="value" :parameter="parameter" :path="path" @closeDialog="closeExpressionEditDialog" @valueChanged="expressionUpdated"></expression-edit>
 		<div class="parameter-input ignore-key-press" :style="parameterInputWrapperStyle" @click="openExpressionEdit">
 
@@ -188,11 +187,6 @@
 					</el-dropdown-menu>
 				</el-dropdown>
 		</div>
-
-		</div>
-			<div class="errors" v-if="showRequiredErrors">
-			This field is required. <a v-if="documentationUrl" :href="documentationUrl" target="_blank">Open docs</a>
-		</div>
 	</div>
 </template>
 
@@ -245,14 +239,12 @@ export default mixins(
 			'path', // string
 			'value',
 			'hideIssues', // boolean
-			'showValidationWarnings',
-			'validateRequired',
+			'errorHighlight',
 		],
 		data () {
 			return {
 				codeEditDialogVisible: false,
 				nodeName: '',
-				blurred: false,
 				expressionAddOperation: 'set' as 'add' | 'set',
 				expressionEditDialogVisible: false,
 				remoteParameterOptions: [] as INodePropertyOptions[],
@@ -530,7 +522,7 @@ export default mixins(
 				if (this.isValueExpression) {
 					classes.push('expression');
 				}
-				if (this.getIssues.length || this.showRequiredErrors) {
+				if (this.getIssues.length || this.errorHighlight) {
 					classes.push('has-issues');
 				}
 				return classes;
@@ -560,9 +552,6 @@ export default mixins(
 				const shortPath = this.path.split('.');
 				shortPath.shift();
 				return shortPath.join('.');
-			},
-			showRequiredErrors(): boolean {
-				return this.$props.validateRequired && this.$props.parameter.type !== 'boolean' && !this.value && this.parameter.required && (this.blurred || this.showValidationWarnings);
 			},
 			workflow (): Workflow {
 				return this.getWorkflow();
@@ -627,7 +616,7 @@ export default mixins(
 				}
 			},
 			onBlur () {
-				this.blurred = true;
+				this.$emit('blur');
 			},
 			setFocus () {
 				if (this.isValueExpression) {

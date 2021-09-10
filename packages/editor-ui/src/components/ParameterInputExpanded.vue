@@ -11,13 +11,16 @@
 			:hideIssues="true"
 			:displayOptions="true"
 			:documentationUrl="documentationUrl"
-			:validateRequired="true"
-			:showValidationWarnings="showValidationWarnings"
+			:errorHighlight="showRequiredErrors"
 
+			@blur="onBlur"
 			@textInput="valueChanged"
 			@valueChanged="valueChanged"
 			inputSize="large"
 		/>
+		<div class="errors" v-if="showRequiredErrors">
+			This field is required. <a v-if="documentationUrl" :href="documentationUrl" target="_blank">Open docs</a>
+		</div>
 	</n8n-input-label>
 </template>
 
@@ -43,7 +46,20 @@ export default Vue.extend({
 			type: String,
 		},
 	},
+	data() {
+		return {
+			blurred: false,
+		};
+	},
+	computed: {
+		showRequiredErrors(): boolean {
+			return this.$props.parameter.type !== 'boolean' && !this.value && this.$props.parameter.required && (this.blurred || this.showValidationWarnings);
+		},
+	},
 	methods: {
+		onBlur() {
+			this.blurred = true;
+		},
 		valueChanged(parameterData: IUpdateInformation) {
 			this.$emit('change', parameterData);
 		},
