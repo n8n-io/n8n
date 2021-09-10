@@ -83,8 +83,9 @@ export default mixins(genericHelpers)
 			const sectionKeys = Object.keys(this.values);
 
 			if (
-				sectionKeys.length === 0 ||
-				(sectionKeys.length === 1 && this.values[sectionKeys[0]].length === 0)
+				this.parameter.required &&
+				(sectionKeys.length === 0 ||
+				(sectionKeys.length === 1 && this.values[sectionKeys[0]].length === 0))
 			) {
 				this.$nextTick(function () {
 					this.optionSelected(this.parameter.options[0].name);
