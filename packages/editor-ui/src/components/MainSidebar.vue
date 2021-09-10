@@ -566,6 +566,10 @@ export default mixins(
 			background-color: $--color-primary !important;
 			height: $--header-height;
 			line-height: $--header-height;
+			* {
+				vertical-align: middle;
+			}
+
 
 			.icon {
 				position: relative;
