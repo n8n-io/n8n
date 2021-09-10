@@ -1,26 +1,12 @@
 <template>
 	<div @keydown.stop :class="$style.container">
 		<div v-for="parameter in credentialProperties" :key="parameter.name">
-			<n8n-input-label
-				:label="parameter.displayName"
-				:tooltipText="parameter.description"
-				:required="parameter.required"
-			>
-				<parameter-input
-					:parameter="parameter"
-					:value="credentialData[parameter.name]"
-					:path="parameter.name"
-					:hideIssues="true"
-					:displayOptions="true"
-					:documentationUrl="documentationUrl"
-					:validateRequired="true"
-					:showValidationWarnings="showValidationWarnings"
-
-					@textInput="valueChanged"
-					@valueChanged="valueChanged"
-					inputSize="large"
-				/>
-			</n8n-input-label>
+			<ParameterInputExpanded
+				:parameter="parameter"
+				:value="credentialData[parameter.name]"
+				:documentationUrl="documentationUrl"
+				@change="valueChanged"
+			/>
 		</div>
 	</div>
 </template>
@@ -30,7 +16,7 @@ import Vue from 'vue';
 
 import { IUpdateInformation } from '../../Interface';
 
-import ParameterInput from '../ParameterInput.vue';
+import ParameterInputExpanded from '../ParameterInputExpanded.vue';
 
 export default Vue.extend({
 	name: 'CredentialsInput',
@@ -41,7 +27,7 @@ export default Vue.extend({
 		'showValidationWarnings',
 	],
 	components: {
-		ParameterInput,
+		ParameterInputExpanded,
 	},
 	methods: {
 		valueChanged(parameterData: IUpdateInformation) {
