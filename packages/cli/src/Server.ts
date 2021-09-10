@@ -527,6 +527,7 @@ class App {
 		// support application/x-www-form-urlencoded post data
 		this.app.use(
 			bodyParser.urlencoded({
+				limit: `${this.payloadSizeMax}mb`,
 				extended: false,
 				verify: (req, res, buf) => {
 					// @ts-ignore
