@@ -1,4 +1,4 @@
-import { DUPLICATE_MODAL_KEY, TAGS_MANAGER_MODAL_KEY, VERSIONS_MODAL_KEY, WORKLOW_OPEN_MODAL_KEY } from '@/constants';
+import { DUPLICATE_MODAL_KEY, TAGS_MANAGER_MODAL_KEY, VERSIONS_MODAL_KEY, WORKFLOW_SETTINGS_MODAL_KEY, WORKLOW_OPEN_MODAL_KEY } from '@/constants';
 import Vue from 'vue';
 import { ActionContext, Module } from 'vuex';
 import {
@@ -20,6 +20,9 @@ const module: Module<IUiState, IRootState> = {
 				open: false,
 			},
 			[VERSIONS_MODAL_KEY]: {
+				open: false,
+			},
+			[WORKFLOW_SETTINGS_MODAL_KEY]: {
 				open: false,
 			},
 		},
@@ -66,6 +69,9 @@ const module: Module<IUiState, IRootState> = {
 		},
 		openUpdatesPanel: async (context: ActionContext<IUiState, IRootState>) => {
 			context.commit('openModal', VERSIONS_MODAL_KEY);
+		},
+		openWorkflowSettingsModal: async (context: ActionContext<IUiState, IRootState>) => {
+			context.commit('openModal', WORKFLOW_SETTINGS_MODAL_KEY);
 		},
 	},
 };

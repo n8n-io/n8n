@@ -233,8 +233,9 @@ export const pushConnection = mixins(
 							message: `${action} <a href="https://docs.n8n.io/nodes/n8n-nodes-base.wait/" target="_blank">More info</a>`,
 							type: 'success',
 							duration: 0,
-							onLinkClick(e: HTMLLinkElement) {
+							onLinkClick: (e: HTMLLinkElement) => {
 								if (e.classList.contains('open-settings')) {
+									this.$store.dispatch('ui/openWorkflowSettingsModal');
 								}
 							},
 						});
