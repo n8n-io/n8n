@@ -342,6 +342,12 @@ export interface IExecuteWorkflowInfo {
 	id?: string;
 }
 
+export interface ICredentialTestFunctions {
+	helpers: {
+		[key: string]: (...args: any[]) => any;
+	};
+}
+
 export interface ILoadOptionsFunctions {
 	getCredentials(type: string): Promise<ICredentialDataDecryptedObject | undefined>;
 	getNode(): INode;
@@ -614,10 +620,27 @@ export interface INodeType {
 		loadOptions?: {
 			[key: string]: (this: ILoadOptionsFunctions) => Promise<INodePropertyOptions[]>;
 		};
+		credentialTest?: {
+			// Contains a group of functins that test credentials.
+			[functionName: string]: (
+				this: ICredentialTestFunctions,
+				credential: ICredentialsDecrypted,
+			) => Promise<NodeCredentialTestResult>;
+		};
 	};
 	webhookMethods?: {
 		[key: string]: IWebhookSetupMethods;
 	};
+}
+
+export interface NodeCredentialTestResult {
+	status: 'OK' | 'Error';
+	message: string;
+}
+
+export interface NodeCredentialTestRequest {
+	nodeToTestWith?: string; // node name i.e. slack
+	credentials: ICredentialsDecrypted;
 }
 
 export type WebhookSetupMethodNames = 'checkExists' | 'create' | 'delete';
@@ -633,6 +656,7 @@ export interface INodeCredentialDescription {
 	name: string;
 	required?: boolean;
 	displayOptions?: IDisplayOptions;
+	testedBy?: string; // Name of a function inside `loadOptions.credentialTest`
 }
 
 export type INodeIssueTypes = 'credentials' | 'execution' | 'parameters' | 'typeUnknown';
