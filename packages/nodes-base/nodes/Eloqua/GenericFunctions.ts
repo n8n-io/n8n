@@ -3,6 +3,7 @@ import { IExecuteFunctions, IHookFunctions } from 'n8n-core';
 import {
 	IDataObject,
 	ILoadOptionsFunctions,
+	JsonObject,
 	NodeApiError,
 	NodeOperationError
 } from 'n8n-workflow';
@@ -32,7 +33,7 @@ async function getBaseUrl(
 			const responseData = await this.helpers.request!.call(this, options);
 			return responseData.urls.base;
 		} catch (error) {
-			throw new NodeApiError(this.getNode(), error);
+			throw new NodeApiError(this.getNode(), error as JsonObject);
 		}
 	} else {
 		try {
@@ -43,7 +44,7 @@ async function getBaseUrl(
 			);
 			return responseData.urls.base;
 		} catch (error) {
-			throw new NodeApiError(this.getNode(), error);
+			throw new NodeApiError(this.getNode(), error as JsonObject);
 		}
 	}
 }
@@ -108,6 +109,9 @@ export async function eloquaApiRequest(
 			if (responseData && responseData.success === false) {
 				throw new NodeApiError(this.getNode(), responseData);
 			}
+			if(!responseData){
+				return {success: true};
+			}
 			return responseData;
 		} catch (error) {
 			const newBaseUrl = await getBaseUrl.call(
@@ -126,7 +130,7 @@ export async function eloquaApiRequest(
 					query
 				);
 			}
-			throw new NodeApiError(this.getNode(), error);
+			throw new NodeApiError(this.getNode(), error as JsonObject);
 		}
 	} else {
 		if (!staticData.baseUrl) {
@@ -151,6 +155,9 @@ export async function eloquaApiRequest(
 			if (responseData && responseData.success === false) {
 				throw new NodeApiError(this.getNode(), responseData);
 			}
+			if(!responseData){
+				return {success: true};
+			}
 			return responseData;
 		} catch (error) {
 			const newBaseUrl = await getBaseUrl.call(this, authenticationMethod);
@@ -165,7 +172,7 @@ export async function eloquaApiRequest(
 					query
 				);
 			}
-			throw new NodeApiError(this.getNode(), error);
+			throw new NodeApiError(this.getNode(), error as JsonObject);
 		}
 	}
 }

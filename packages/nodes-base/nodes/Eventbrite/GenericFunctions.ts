@@ -43,7 +43,7 @@ export async function eventbriteApiRequest(this: IHookFunctions | IExecuteFuncti
 		} else {
 			return await this.helpers.requestOAuth2!.call(this, 'eventbriteOAuth2Api', options);
 		}
-	} catch (error) {
+	} catch (error: any) {
 		throw new NodeApiError(this.getNode(), error);
 	}
 }

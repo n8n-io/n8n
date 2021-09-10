@@ -381,7 +381,7 @@ export class Eventbrite implements INodeType {
 				} else {
 					returnData.push(responseData);
 				}
-			} catch (error) {
+			} catch (error: any) {
 				if (this.continueOnFail()) {
 					returnData.push({ error: error.message });
 					continue;
@@ -389,7 +389,6 @@ export class Eventbrite implements INodeType {
 				throw error;
 			}
 		}
-		// const returnData = [{ name: 'test' }, { name2: 'test2' }];
 		return [this.helpers.returnJsonArray(returnData)];
 	}
 }

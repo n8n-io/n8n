@@ -51,7 +51,7 @@ export async function awsApiRequest(this: IHookFunctions | IExecuteFunctions | I
 
 	try {
 		return await this.helpers.request!(options);
-	} catch (error) {
+	} catch (error: any) {
 		throw new NodeApiError(this.getNode(), error, { parseXml: true });
 	}
 }
