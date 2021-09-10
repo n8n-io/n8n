@@ -243,7 +243,7 @@ export class Misp implements INodeType {
 						const attributeId = this.getNodeParameter('attributeId', i);
 						const endpoint = `/attributes/edit/${attributeId}`;
 						responseData = await mispApiRequest.call(this, 'PUT', endpoint, body);
-
+						responseData = responseData.Attribute;
 					}
 
 				} else if (resource === 'event') {

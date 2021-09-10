@@ -66,7 +66,21 @@ export const attributeFields = [
 	{
 		displayName: 'Type',
 		name: 'type',
-		type: 'string',
+		type: 'options',
+		options: [
+			{
+				name: 'Text',
+				value: 'text',
+			},
+			{
+				name: 'URL',
+				value: 'url',
+			},
+			{
+				name: 'Comment',
+				value: 'comment',
+			},
+		],
 		required: true,
 		default: '',
 		displayOptions: {
