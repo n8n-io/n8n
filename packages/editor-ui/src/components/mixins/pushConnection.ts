@@ -221,7 +221,7 @@ export const pushConnection = mixins(
 						// Workflow did start but had been put to wait
 						this.$titleSet(workflow.name as string, 'IDLE');
 						this.$showMessage({
-							title: 'Workflow got started',
+							title: 'Workflow has started',
 							message: 'Workflow execution has started and is now waiting!',
 							type: 'success',
 						});
@@ -237,8 +237,8 @@ export const pushConnection = mixins(
 						// Workflow did execute without a problem
 						this.$titleSet(workflow.name as string, 'IDLE');
 						this.$showMessage({
-							title: 'Workflow got executed',
-							message: 'Workflow did get executed successfully!',
+							title: 'Workflow was executed',
+							message: 'Workflow was executed successfully!',
 							type: 'success',
 						});
 					}
