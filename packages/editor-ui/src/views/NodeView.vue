@@ -159,6 +159,7 @@ import {
 	IPushDataExecutionFinished,
 	ITag,
 	IWorkflowTemplate,
+	IExecutionsSummary,
 } from '../Interface';
 import { mapGetters } from 'vuex';
 
@@ -344,7 +345,7 @@ export default mixins(
 			async openExecution (executionId: string) {
 				this.resetWorkspace();
 
-				let data: IExecutionResponse | undefined;
+				let data: IExecutionsSummary | undefined;
 				try {
 					data = await this.restApi().getExecution(executionId);
 				} catch (error) {
@@ -400,6 +401,15 @@ export default mixins(
 							console.error(data.data.resultData.error.stack); // eslint-disable-line no-console
 						}
 					}
+				}
+
+				if (data.waitTill) {
+					this.$showMessage({
+						title: `This execution hasn't finished yet`,
+						message: `<a onclick="window.location.reload(false);">Refresh</a> to see the latest status. <a href="https://docs.n8n.io/nodes/n8n-nodes-base.wait/" target="_blank">More info</a>`,
+						type: 'warning',
+						duration: 9000,
+					});
 				}
 			},
 			async openWorkflowTemplate (templateId: string) {
@@ -909,7 +919,7 @@ export default mixins(
 					});
 				} catch (error) {
 					// Execution stop might fail when the execution has already finished. Let's treat this here.
-					const execution = await this.restApi().getExecution(executionId) as IExecutionResponse;
+					const execution = await this.restApi().getExecution(executionId);
 					if (execution.finished) {
 						const executedData = {
 							data: execution.data,
