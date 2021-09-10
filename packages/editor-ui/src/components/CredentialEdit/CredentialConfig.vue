@@ -38,7 +38,7 @@
 			@click="$emit('retest')"
 		/>
 
-		<n8n-info-tip v-if="documentationUrl">
+		<n8n-info-tip v-if="documentationUrl && credentialProperties.length">
 			Need help filling out these fields?
 			<a :href="documentationUrl" target="_blank">Open docs</a>
 		</n8n-info-tip>
