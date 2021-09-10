@@ -34,6 +34,7 @@ export async function splunkApiRequest(
 	const {
 		authToken,
 		baseUrl,
+		allowUnauthorizedCerts,
 	} = await this.getCredentials('splunkApi') as SplunkCredentials;
 
 	const options: OptionsWithUri = {
@@ -46,7 +47,7 @@ export async function splunkApiRequest(
 		qs,
 		uri: `${baseUrl}${endpoint}`,
 		json: true,
-		rejectUnauthorized: false,
+		rejectUnauthorized: !allowUnauthorizedCerts,
 	};
 
 	if (!Object.keys(body).length) {

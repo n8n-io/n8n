@@ -1,6 +1,7 @@
 export type SplunkCredentials = {
 	authToken: string;
 	baseUrl: string;
+	allowUnauthorizedCerts: boolean;
 };
 
 export type SplunkFeedResponse = {

@@ -22,5 +22,11 @@ export class SplunkApi implements ICredentialType {
 			placeholder: 'https://localhost:8089/',
 			default: '',
 		},
+		{
+			displayName: 'Allow Unauthorized Certificates',
+			name: 'allowUnauthorizedCerts',
+			type: 'boolean',
+			default: false,
+		},
 	];
 }
