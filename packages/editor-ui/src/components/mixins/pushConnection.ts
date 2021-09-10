@@ -218,12 +218,25 @@ export const pushConnection = mixins(
 					// @ts-ignore
 					const workflow = this.getWorkflow();
 					if (runDataExecuted.waitTill !== undefined) {
+						const executionId = this.$store.getters.activeExecutionId;
+						const saveManualExecutions = this.$store.getters.saveManualExecutions;
+
+						let action = `<a href="/execution/${executionId}" target="_blank">View the execution</a> to see what happened after this node.`;
+						if (!saveManualExecutions) {
+							action = '<a class="open-settings">Turn on saving manual executions</a> and run again to see what happened after this node.';
+						}
+
 						// Workflow did start but had been put to wait
 						this.$titleSet(workflow.name as string, 'IDLE');
-						this.$showMessage({
-							title: 'Workflow has started',
-							message: 'Workflow execution has started and is now waiting!',
+						this.$showToast({
+							title: 'Workflow started waiting',
+							message: `${action} <a href="https://docs.n8n.io/nodes/n8n-nodes-base.wait/" target="_blank">More info</a>`,
 							type: 'success',
+							duration: 0,
+							onLinkClick(e: HTMLLinkElement) {
+								if (e.classList.contains('open-settings')) {
+								}
+							},
 						});
 					} else if (runDataExecuted.finished !== true) {
 						this.$titleSet(workflow.name as string, 'ERROR');

@@ -406,9 +406,9 @@ export default mixins(
 				if (data.waitTill) {
 					this.$showMessage({
 						title: `This execution hasn't finished yet`,
-						message: `<a onclick="window.location.reload(false);">Refresh</a> to see the latest status. <a href="https://docs.n8n.io/nodes/n8n-nodes-base.wait/" target="_blank">More info</a>`,
+						message: `<a onclick="window.location.reload(false);">Refresh</a> to see the latest status.<br/> <a href="https://docs.n8n.io/nodes/n8n-nodes-base.wait/" target="_blank">More info</a>`,
 						type: 'warning',
-						duration: 9000,
+						duration: 0,
 					});
 				}
 			},
@@ -2190,13 +2190,11 @@ export default mixins(
 			},
 			async loadSettings (): Promise<void> {
 				const settings = await this.restApi().getSettings() as IN8nUISettings;
-
 				this.$store.commit('setUrlBaseWebhook', settings.urlBaseWebhook);
 				this.$store.commit('setEndpointWebhook', settings.endpointWebhook);
 				this.$store.commit('setEndpointWebhookTest', settings.endpointWebhookTest);
 				this.$store.commit('setSaveDataErrorExecution', settings.saveDataErrorExecution);
 				this.$store.commit('setSaveDataSuccessExecution', settings.saveDataSuccessExecution);
-				this.$store.commit('setSaveManualExecutions', settings.saveManualExecutions);
 				this.$store.commit('setTimezone', settings.timezone);
 				this.$store.commit('setExecutionTimeout', settings.executionTimeout);
 				this.$store.commit('setMaxExecutionTimeout', settings.maxExecutionTimeout);

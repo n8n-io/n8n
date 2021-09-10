@@ -57,7 +57,6 @@ const state: IRootState = {
 	pushConnectionActive: true,
 	saveDataErrorExecution: 'all',
 	saveDataSuccessExecution: 'all',
-	saveManualExecutions: false,
 	timezone: 'America/New_York',
 	stateIsDirty: false,
 	executionTimeout: -1,
@@ -534,9 +533,6 @@ export const store = new Vuex.Store({
 		setSaveDataSuccessExecution (state, newValue: string) {
 			Vue.set(state, 'saveDataSuccessExecution', newValue);
 		},
-		setSaveManualExecutions (state, saveManualExecutions: boolean) {
-			Vue.set(state, 'saveManualExecutions', saveManualExecutions);
-		},
 		setTimezone (state, timezone: string) {
 			Vue.set(state, 'timezone', timezone);
 		},
@@ -688,8 +684,8 @@ export const store = new Vuex.Store({
 		saveDataSuccessExecution: (state): string => {
 			return state.saveDataSuccessExecution;
 		},
-		saveManualExecutions: (state): boolean => {
-			return state.saveManualExecutions;
+		saveManualExecutions: (state, getters): boolean => {
+			return !!getters.workflowSettings.saveManualExecutions;
 		},
 		timezone: (state): string => {
 			return state.timezone;

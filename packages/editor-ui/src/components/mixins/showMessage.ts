@@ -4,6 +4,7 @@ import mixins from 'vue-typed-mixins';
 
 import { externalHooks } from '@/components/mixins/externalHooks';
 import { ExecutionError } from 'n8n-workflow';
+import { MessageType } from '@/Interface';
 
 export const showMessage = mixins(externalHooks).extend({
 	methods: {
@@ -16,10 +17,20 @@ export const showMessage = mixins(externalHooks).extend({
 			return this.$notify(messageData);
 		},
 
-		$showWarning(title: string, message: string,  config?: {onClick?: () => void, duration?: number, customClass?: string, closeOnClick?: boolean}) {
+		$showToast(config: {
+				title: string,
+				message: string,
+				onClick?: () => void,
+				onClose?: () => void,
+				duration?: number,
+				customClass?: string,
+				closeOnClick?: boolean,
+				onLinkClick?: (e: HTMLLinkElement) => void,
+				type?: MessageType,
+			}) {
 			// eslint-disable-next-line prefer-const
 			let notification: ElNotificationComponent;
-			if (config && config.closeOnClick) {
+			if (config.closeOnClick) {
 				const cb = config.onClick;
 				config.onClick = () => {
 					if (notification) {
@@ -31,12 +42,38 @@ export const showMessage = mixins(externalHooks).extend({
 				};
 			}
 
-			notification = this.$showMessage({
-				title,
-				message,
-				type: 'warning',
-				...(config || {}),
-			});
+			function isChildOf(parent: Element, child: Element): boolean {
+				if (child.parentElement === null) {
+					return false;
+				}
+				if (child.parentElement === parent) {
+					return true;
+				}
+
+				return isChildOf(parent, child.parentElement);
+			}
+
+			if (config.onLinkClick) {
+				const onLinkClick = (e: MouseEvent) => {
+					if (e && e.target && config.onLinkClick && isChildOf(notification.$el, e.target as Element)) {
+						const target = e.target as HTMLElement;
+						if (target && target.tagName === 'A') {
+							config.onLinkClick(e.target as HTMLLinkElement);
+						}
+					}
+				};
+				window.addEventListener('click', onLinkClick);
+
+				const cb = config.onClose;
+				config.onClose = () => {
+					window.removeEventListener('click', onLinkClick);
+					if (cb) {
+						cb();
+					}
+				};
+			}
+
+			notification = this.$showMessage(config);
 
 			return notification;
 		},
