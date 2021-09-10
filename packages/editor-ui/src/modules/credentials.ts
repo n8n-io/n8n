@@ -84,7 +84,7 @@ const module: Module<ICredentialsState, IRootState> = {
 				return accu;
 			}, {});
 		},
-		getCredentialTypeByName: (state: ICredentialsState): ICredentialType | null => {
+		getCredentialTypeByName: (state: ICredentialsState) => {
 			return (type: string) => state.credentialTypes[type];
 		},
 		getCredentialById: (state: ICredentialsState) => {
