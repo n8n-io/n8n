@@ -769,6 +769,26 @@ return 0;`,
 				if (!fieldsToAggregate.length) {
 					throw new NodeOperationError(this.getNode(), 'No fields specified', { description: 'Please add a field to aggregate' });
 				}
+				for (const { fieldToAggregate } of fieldsToAggregate) {
+					let found = false;
+					for (const item of items) {
+						if (fieldToAggregate === '') {
+							throw new NodeOperationError(this.getNode(), 'Field to aggregate is blank', { description: 'Please add a field to aggregate' });
+						}
+						if (disableDotNotation === false) {
+							if (get(item.json, fieldToAggregate) !== undefined) {
+								found = true;
+							}
+						} else if (item.json.hasOwnProperty(fieldToAggregate)) {
+							found = true;
+						}
+					}
+					if (found === false && disableDotNotation && fieldToAggregate.includes('.')) {
+						throw new NodeOperationError(this.getNode(), `Couldn't find the field '${fieldToAggregate}' in the input data`, { description: `If you're trying to use a nested field, make sure you turn off 'disable dot notation' in the node options` });
+					} else if (found === false && keepMissing === false) {
+						throw new NodeOperationError(this.getNode(), `Couldn't find the field '${fieldToAggregate}' in the input data`);
+					}
+				}
 
 				let newItem: INodeExecutionData;
 				newItem = { json: {} };
@@ -777,10 +797,6 @@ return 0;`,
 				const outputFields: string[] = [];
 
 				for (const { fieldToAggregate, outputFieldName, renameField } of fieldsToAggregate) {
-
-					if (fieldToAggregate === '') {
-						throw new NodeOperationError(this.getNode(), 'Field to aggregate is blank', { description: 'Please add a field to aggregate' });
-					}
 
 					const field = (renameField) ? outputFieldName : fieldToAggregate;
 
@@ -800,14 +816,10 @@ return 0;`,
 							if (disableDotNotation === false) {
 								let value = get(items[i].json, fieldToAggregate);
 
-								if (value === undefined && keepMissing === false) {
-									throw new NodeOperationError(this.getNode(), `Couldn't find the field '${fieldToAggregate}' in the input data`);
-								}
-
 								if (!keepMissing) {
 									if (Array.isArray(value)) {
 										value = value.filter(value => value !== null);
-									} else if (value === null) {
+									} else if (value === null || value === undefined) {
 										continue;
 									}
 								}
@@ -821,16 +833,10 @@ return 0;`,
 							} else {
 								let value = items[i].json[fieldToAggregate];
 
-								if (value === undefined && disableDotNotation && fieldToAggregate.includes('.')) {
-									throw new NodeOperationError(this.getNode(), `Couldn't find the field '${fieldToAggregate}' in the input data`, { description: `If you're trying to use a nested field, make sure you turn off 'disable dot notation' in the node options` });
-								} else if (value === undefined && keepMissing === false) {
-									throw new NodeOperationError(this.getNode(), `Couldn't find the field '${fieldToAggregate}' in the input data`);
-								}
-
 								if (!keepMissing) {
 									if (Array.isArray(value)) {
 										value = value.filter(value => value !== null);
-									} else if (value === null) {
+									} else if (value === null || value === undefined) {
 										continue;
 									}
 								}
@@ -941,7 +947,7 @@ return 0;`,
 						}
 					}
 				}
-			
+
 				// collect the original indexes of items to be removed
 				const removedIndexes: number[] = [];
 				let temp = newItems[0];
