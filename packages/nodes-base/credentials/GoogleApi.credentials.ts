@@ -25,7 +25,7 @@ export class GoogleApi implements ICredentialType {
 			description: 'Use the multiline editor. Make sure there are exactly 3 lines.<br />-----BEGIN PRIVATE KEY-----<br />KEY IN A SINGLE LINE<br />-----END PRIVATE KEY-----',
 		},
 		{
-			displayName: ' Impersonate a User',
+			displayName: 'Impersonate a User',
 			name: 'inpersonate',
 			type: 'boolean',
 			default: false,

@@ -6,7 +6,7 @@ import {
 	INodeExecutionData,
 	INodePropertyOptions,
 	INodeType,
-	INodeTypeDescription,
+	INodeTypeDescription
 } from 'n8n-workflow';
 
 import { eloquaApiRequest } from './GenericFunctions';

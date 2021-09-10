@@ -3,8 +3,8 @@ import { IExecuteFunctions, IHookFunctions } from 'n8n-core';
 import {
 	IDataObject,
 	ILoadOptionsFunctions,
-	JsonObject,
 	NodeApiError,
+	JsonObject,
 	NodeOperationError
 } from 'n8n-workflow';
 
