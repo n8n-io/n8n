@@ -1,3 +1,4 @@
+/* eslint-disable func-names */
 /* eslint-disable no-extend-native */
 // @ts-ignore
 import * as tmpl from 'riot-tmpl';
@@ -34,8 +35,10 @@ export class Expression {
 
 	static extendTypes(): void {
 		// @ts-ignore
-		// eslint-disable-next-line func-names
-		Date.prototype.add = function (value: number, unit: 'minute' | 'hour' | 'day' | 'week') {
+		Date.prototype.plus = function (
+			value: number,
+			unit: 'minute' | 'hour' | 'day' | 'week' | 'month' | 'year',
+		) {
 			const currentTime = this.getTime();
 
 			let calculatedValue = value;
@@ -48,10 +51,147 @@ export class Expression {
 				calculatedValue *= 60 * 60 * 24;
 			} else if (unit === 'week') {
 				calculatedValue *= 60 * 60 * 24 * 7;
+			} else if (unit === 'month') {
+				return new Date(this.getTime()).setMonth(this.getMonth() + value);
+			} else if (unit === 'year') {
+				return new Date(this.getTime()).setFullYear(this.getFullYear() + value);
 			}
 
 			return new Date(currentTime + calculatedValue * 1000);
 		};
+
+		// @ts-ignore
+		Date.prototype.isDst = function () {
+			const jan = new Date(this.getFullYear(), 0, 1).getTimezoneOffset();
+			const jul = new Date(this.getFullYear(), 6, 1).getTimezoneOffset();
+			return Math.max(jan, jul) !== this.getTimezoneOffset();
+		};
+
+		// @ts-ignore
+		Date.prototype.isInLast = function (
+			value: number,
+			unit: 'minute' | 'hour' | 'day' | 'week' | 'month' | 'year',
+		) {
+			const referenceDate = new Date();
+
+			if (unit === 'minute') {
+				referenceDate.setMinutes(referenceDate.getMinutes() - value);
+			} else if (unit === 'hour') {
+				referenceDate.setHours(referenceDate.getHours() - value);
+			} else if (unit === 'day') {
+				referenceDate.setDate(referenceDate.getDate() - value);
+			} else if (unit === 'week') {
+				referenceDate.setMinutes(referenceDate.getDate() - value * 7);
+			} else if (unit === 'month') {
+				referenceDate.setMonth(referenceDate.getMonth() - value);
+			} else if (unit === 'year') {
+				referenceDate.setFullYear(referenceDate.getFullYear() - value);
+			}
+
+			return referenceDate < this;
+		};
+
+		// @ts-ignore
+		Date.prototype.isBetween = function (firstDate: date, secondDate: date) {
+			if (firstDate > secondDate) {
+				return secondDate < this && this < firstDate;
+			}
+			return secondDate > this && this > firstDate;
+		};
+
+		// @ts-ignore
+		Date.prototype.minus = function (
+			value: number,
+			unit: 'minute' | 'hour' | 'day' | 'week' | 'month' | 'year',
+		) {
+			const currentTime = this.getTime();
+
+			let calculatedValue = value;
+
+			if (unit === 'minute') {
+				calculatedValue *= 60;
+			} else if (unit === 'hour') {
+				calculatedValue *= 60 * 60;
+			} else if (unit === 'day') {
+				calculatedValue *= 60 * 60 * 24;
+			} else if (unit === 'week') {
+				calculatedValue *= 60 * 60 * 24 * 7;
+			} else if (unit === 'month') {
+				return new Date(this.getTime()).setMonth(this.getMonth() + value);
+			} else if (unit === 'year') {
+				return new Date(this.getTime()).setFullYear(this.getFullYear() + value);
+			}
+
+			return new Date(currentTime - calculatedValue * 1000);
+		};
+
+		// @ts-ignore
+		Date.prototype.begginingOf = function (unit: 'hour' | 'day' | 'week' | 'month' | 'year') {
+			const newDate = new Date(this.getTime());
+
+			newDate.setHours(unit === 'hour' ? this.getHours() : 0, 0, 0, 0);
+			// beginning of day is given for free.
+
+			if (unit === 'week') {
+				newDate.setDate(newDate.getDate() - newDate.getDay()); // Goes back to sunday
+			} else if (unit === 'month') {
+				newDate.setDate(1);
+			} else if (unit === 'year') {
+				newDate.setDate(1);
+				newDate.setMonth(0);
+			}
+
+			return newDate;
+		};
+
+		// @ts-ignore
+		Date.prototype.endOfMonth = function () {
+			return new Date(this.getFullYear(), this.getMonth() + 1, 0, 23, 59, 59);
+		};
+
+		// @ts-ignore
+		Date.prototype.extract = function (
+			part:
+				| 'day'
+				| 'month'
+				| 'year'
+				| 'hour'
+				| 'minute'
+				| 'second'
+				| 'weekNumber'
+				| 'yearDayNumber'
+				| 'weekday',
+		) {
+			switch (part) {
+				case 'day':
+					return this.getDate();
+				case 'month':
+					return this.getMonth();
+				case 'year':
+					return this.getFullYear();
+				case 'hour':
+					return this.getHours();
+				case 'minute':
+					return this.getMinutes();
+				case 'second':
+					return this.getSeconds();
+				case 'weekNumber':
+					return this.getDay();
+				case 'yearDayNumber':
+					// eslint-disable-next-line no-case-declarations
+					const firstDayOfTheYear = new Date(this.getFullYear(), 0, 0);
+					// eslint-disable-next-line no-case-declarations
+					const diff =
+						this.getTime() -
+						firstDayOfTheYear.getTime() +
+						(firstDayOfTheYear.getTimezoneOffset() - this.getTimezoneOffset()) * 60 * 1000;
+					return Math.floor(diff / (1000 * 60 * 60 * 24));
+				default:
+					return this;
+			}
+		};
+
+
 	}
 
 	/**
