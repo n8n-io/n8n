@@ -639,14 +639,8 @@ export default mixins(
 
 .run-data-view {
 	position: relative;
-	bottom: 0;
-	left: 0;
-	margin-left: 350px;
-	width: calc(100% - 350px);
+	width: 100%;
 	height: 100%;
-	z-index: 100;
-	color: #555;
-	font-size: 14px;
 	background-color: #f9f9f9;
 
 	.data-display-content {
@@ -657,6 +651,7 @@ export default mixins(
 		right: 0;
 		overflow-y: auto;
 		line-height: 1.5;
+		word-break: normal;
 
 		.binary-data-row {
 			display: inline-flex;

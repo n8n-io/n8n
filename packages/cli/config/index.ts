@@ -148,6 +148,12 @@ const config = convict({
 				env: 'CREDENTIALS_OVERWRITE_ENDPOINT',
 			},
 		},
+		defaultName: {
+			doc: 'Default name for credentials',
+			format: String,
+			default: 'My credentials',
+			env: 'CREDENTIALS_DEFAULT_NAME',
+		},
 	},
 
 	workflows: {

@@ -8,6 +8,7 @@ export class GoogleApi implements ICredentialType {
 	name = 'googleApi';
 	displayName = 'Google API';
 	documentationUrl = 'google';
+	icon = 'file:Google.svg';
 	properties: INodeProperties[] = [
 		{
 			displayName: 'Service Account Email',
@@ -15,6 +16,7 @@ export class GoogleApi implements ICredentialType {
 			type: 'string',
 			default: '',
 			description: 'The Google Service account similar to user-808@project.iam.gserviceaccount.com.',
+			required: true,
 
 		},
 		{
@@ -23,6 +25,7 @@ export class GoogleApi implements ICredentialType {
 			type: 'string',
 			default: '',
 			description: 'Use the multiline editor. Make sure there are exactly 3 lines.<br />-----BEGIN PRIVATE KEY-----<br />KEY IN A SINGLE LINE<br />-----END PRIVATE KEY-----',
+			required: true,
 		},
 		{
 			displayName: ' Impersonate a User',

@@ -151,6 +151,14 @@ class LoadNodesAndCredentialsClass {
 		let tempCredential: ICredentialType;
 		try {
 			tempCredential = new tempModule[credentialName]() as ICredentialType;
+
+			if (tempCredential.icon && tempCredential.icon.startsWith('file:')) {
+				// If a file icon gets used add the full path
+				tempCredential.icon = `file:${path.join(
+					path.dirname(filePath),
+					tempCredential.icon.substr(5),
+				)}`;
+			}
 		} catch (e) {
 			if (e instanceof TypeError) {
 				throw new Error(
