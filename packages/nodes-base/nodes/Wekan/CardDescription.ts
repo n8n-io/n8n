@@ -832,6 +832,13 @@ export const cardFields = [
 				default: '',
 				description: 'The new title of the card.',
 			},
+			{
+				displayName: 'Sort',
+				name: 'sort',
+				type: 'number',
+				default: '',
+				description: 'The internally used sort value of a card.',
+			},
 		],
 	},
 ] as INodeProperties[];
