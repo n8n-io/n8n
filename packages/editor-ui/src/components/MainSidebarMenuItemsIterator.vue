@@ -1,6 +1,6 @@
 <template>
 	<div>
-		<el-menu-item
+		<n8n-menu-item
 			v-for="item in items"
 			:key="item.id"
 			:index="item.id"
@@ -8,7 +8,7 @@
 		>
 			<font-awesome-icon :icon="item.properties.icon" />
 			<span slot="title" :class="{'item-title-root': root, 'item-title': !root}">{{ item.properties.title }}</span>
-		</el-menu-item>
+		</n8n-menu-item>
 	</div>
 </template>
 
