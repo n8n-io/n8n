@@ -408,9 +408,8 @@ export function throwDuplicateEntryError(error: Error) {
 	throw new ResponseHelper.ResponseError(errorMessage, undefined, 400);
 }
 
-export type WorkflowNameRequest = Express.Request & {
+export type NameRequest = Express.Request & {
 	query: {
 		name?: string;
-		offset?: string;
 	};
 };
