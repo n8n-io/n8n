@@ -61,6 +61,10 @@ export async function splunkApiRequest(
 	try {
 		return await this.helpers.request!(options).then(parseXml);
 	} catch (error) {
+		if (error.cause.code === 'ECONNREFUSED') {
+			throw new NodeApiError(this.getNode(), { ...error, code: 401 });
+		}
+
 		const rawError = await parseXml(error.error) as SplunkError;
 		error = extractErrorDescription(rawError);
 
