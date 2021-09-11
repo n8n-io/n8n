@@ -796,6 +796,13 @@ export const cardFields = [
 				description: 'The new received at field of the card.',
 			},
 			{
+				displayName: 'Sort',
+				name: 'sort',
+				type: 'number',
+				default: 0,
+				description: 'The internally used sort value of a card.',
+			},
+			{
 				displayName: 'Spent Time',
 				name: 'spentTime',
 				type: 'number',
@@ -831,13 +838,6 @@ export const cardFields = [
 				type: 'string',
 				default: '',
 				description: 'The new title of the card.',
-			},
-			{
-				displayName: 'Sort',
-				name: 'sort',
-				type: 'number',
-				default: '',
-				description: 'The internally used sort value of a card.',
 			},
 		],
 	},
