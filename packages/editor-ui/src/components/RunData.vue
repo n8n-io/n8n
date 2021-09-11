@@ -26,10 +26,9 @@
 						<n8n-select size="mini" v-model="maxDisplayItems" @click.stop>
 							<n8n-option v-for="option in maxDisplayItemsOptions" :label="option" :value="option" :key="option" />
 						</n8n-select>
-					</span>&nbsp;/
+					</span>/
 					<strong>{{ dataCount }}</strong>
 				</div>
-				&nbsp;
 				<n8n-tooltip
 					v-if="runMetadata"
 					placement="right"
@@ -41,7 +40,7 @@
 					<font-awesome-icon icon="info-circle" class="primary-color" />
 				</n8n-tooltip>
 				<span v-if="maxOutputIndex > 0">
-					| Output:&nbsp;
+					| Output:
 				</span>
 				<span class="opts" v-if="maxOutputIndex > 0" >
 					<n8n-select size="mini" v-model="outputIndex" @click.stop>
@@ -51,7 +50,7 @@
 				</span>
 
 				<span v-if="maxRunIndex > 0">
-					| Data of Execution:&nbsp;
+					| Data of Execution:
 				</span>
 				<span class="opts">
 					<n8n-select v-if="maxRunIndex > 0" size="mini" v-model="runIndex" @click.stop>
@@ -790,6 +789,10 @@ export default mixins(
 		.title-text {
 			display: inline-flex;
 			align-items: center;
+
+			> * {
+				margin-right: 2px;
+			}
 		}
 
 		.title-data-display-selector {
