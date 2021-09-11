@@ -10,9 +10,7 @@ import Dialog from 'element-ui/lib/dialog';
 import Dropdown from 'element-ui/lib/dropdown';
 import DropdownMenu from 'element-ui/lib/dropdown-menu';
 import DropdownItem from 'element-ui/lib/dropdown-item';
-import Menu from 'element-ui/lib/menu';
 import Submenu from 'element-ui/lib/submenu';
-import MenuItem from 'element-ui/lib/menu-item';
 import Radio from 'element-ui/lib/radio';
 import RadioGroup from 'element-ui/lib/radio-group';
 import RadioButton from 'element-ui/lib/radio-button';
@@ -49,10 +47,14 @@ import locale from 'element-ui/lib/locale';
 import {
 	N8nIconButton,
 	N8nButton,
+	N8nInfoTip,
 	N8nInput,
 	N8nInputLabel,
 	N8nInputNumber,
+	N8nMenu,
+	N8nMenuItem,
 	N8nSelect,
+	N8nSpinner,
 	N8nOption,
 } from 'n8n-design-system';
 import { ElMessageBoxOptions } from "element-ui/types/message-box";
@@ -62,10 +64,14 @@ Vue.use(Fragment.Plugin);
 // n8n design system
 Vue.use(N8nButton);
 Vue.use(N8nIconButton);
+Vue.use(N8nInfoTip);
 Vue.use(N8nInput);
 Vue.use(N8nInputLabel);
 Vue.use(N8nInputNumber);
+Vue.use(N8nMenu);
+Vue.use(N8nMenuItem);
 Vue.use(N8nSelect);
+Vue.use(N8nSpinner);
 Vue.use(N8nOption);
 
 // element io
@@ -76,9 +82,7 @@ Vue.use(Drawer);
 Vue.use(Dropdown);
 Vue.use(DropdownMenu);
 Vue.use(DropdownItem);
-Vue.use(Menu);
 Vue.use(Submenu);
-Vue.use(MenuItem);
 Vue.use(Radio);
 Vue.use(RadioGroup);
 Vue.use(RadioButton);
@@ -131,6 +135,8 @@ Vue.prototype.$confirm = async (message: string, configOrTitle: string | ElMessa
 		roundButton: true,
 		cancelButtonClass: 'btn--cancel',
 		confirmButtonClass: 'btn--confirm',
+		showClose: false,
+		closeOnClickModal: false,
 	};
 
 	if (typeof configOrTitle === 'string') {

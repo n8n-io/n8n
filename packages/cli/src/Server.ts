@@ -52,9 +52,16 @@ import { createHash, createHmac } from 'crypto';
 import { compare } from 'bcryptjs';
 import * as promClient from 'prom-client';
 
-import { Credentials, LoadNodeParameterOptions, UserSettings } from 'n8n-core';
+import {
+	Credentials,
+	ICredentialTestFunctions,
+	LoadNodeParameterOptions,
+	NodeExecuteFunctions,
+	UserSettings,
+} from 'n8n-core';
 
 import {
+	ICredentialsDecrypted,
 	ICredentialsEncrypted,
 	ICredentialType,
 	IDataObject,
@@ -66,6 +73,8 @@ import {
 	IWorkflowBase,
 	IWorkflowCredentials,
 	LoggerProxy,
+	NodeCredentialTestRequest,
+	NodeCredentialTestResult,
 	Workflow,
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
@@ -131,7 +140,7 @@ import * as config from '../config';
 import * as TagHelpers from './TagHelpers';
 import { TagEntity } from './databases/entities/TagEntity';
 import { WorkflowEntity } from './databases/entities/WorkflowEntity';
-import { WorkflowNameRequest } from './WorkflowHelpers';
+import { NameRequest } from './WorkflowHelpers';
 
 require('body-parser-xml')(bodyParser);
 
@@ -155,6 +164,8 @@ class App {
 	waitTracker: WaitTrackerClass;
 
 	defaultWorkflowName: string;
+
+	defaultCredentialsName: string;
 
 	saveDataErrorExecution: string;
 
@@ -196,6 +207,7 @@ class App {
 		this.endpointWebhookTest = config.get('endpoints.webhookTest') as string;
 
 		this.defaultWorkflowName = config.get('workflows.defaultName') as string;
+		this.defaultCredentialsName = config.get('credentials.defaultName') as string;
 
 		this.saveDataErrorExecution = config.get('executions.saveDataOnError') as string;
 		this.saveDataSuccessExecution = config.get('executions.saveDataOnSuccess') as string;
@@ -720,41 +732,11 @@ class App {
 		this.app.get(
 			`/${this.restEndpoint}/workflows/new`,
 			ResponseHelper.send(
-				async (req: WorkflowNameRequest, res: express.Response): Promise<{ name: string }> => {
-					const nameToReturn =
+				async (req: NameRequest, res: express.Response): Promise<{ name: string }> => {
+					const requestedName =
 						req.query.name && req.query.name !== '' ? req.query.name : this.defaultWorkflowName;
 
-					const workflows = await Db.collections.Workflow!.find({
-						select: ['name'],
-						where: { name: Like(`${nameToReturn}%`) },
-					});
-
-					// name is unique
-					if (workflows.length === 0) {
-						return { name: nameToReturn };
-					}
-
-					const maxSuffix = workflows.reduce((acc: number, { name }) => {
-						const parts = name.split(`${nameToReturn} `);
-
-						if (parts.length > 2) return acc;
-
-						const suffix = Number(parts[1]);
-
-						// eslint-disable-next-line no-restricted-globals
-						if (!isNaN(suffix) && Math.ceil(suffix) > acc) {
-							acc = Math.ceil(suffix);
-						}
-
-						return acc;
-					}, 0);
-
-					// name is duplicate but no numeric suffixes exist yet
-					if (maxSuffix === 0) {
-						return { name: `${nameToReturn} 2` };
-					}
-
-					return { name: `${nameToReturn} ${maxSuffix + 1}` };
+					return await GenericHelpers.generateUniqueName(requestedName, 'workflow');
 				},
 			),
 		);
@@ -1237,6 +1219,18 @@ class App {
 		// Credentials
 		// ----------------------------------------
 
+		this.app.get(
+			`/${this.restEndpoint}/credentials/new`,
+			ResponseHelper.send(
+				async (req: NameRequest, res: express.Response): Promise<{ name: string }> => {
+					const requestedName =
+						req.query.name && req.query.name !== '' ? req.query.name : this.defaultCredentialsName;
+
+					return await GenericHelpers.generateUniqueName(requestedName, 'credentials');
+				},
+			),
+		);
+
 		// Deletes a specific credential
 		this.app.delete(
 			`/${this.restEndpoint}/credentials/:id`,
@@ -1319,6 +1313,67 @@ class App {
 					// Convert to response format in which the id is a string
 					(result as unknown as ICredentialsResponse).id = result.id.toString();
 					return result as unknown as ICredentialsResponse;
+				},
+			),
+		);
+
+		// Test credentials
+		this.app.post(
+			`/${this.restEndpoint}/credentials-test`,
+			ResponseHelper.send(
+				async (req: express.Request, res: express.Response): Promise<NodeCredentialTestResult> => {
+					const incomingData = req.body as NodeCredentialTestRequest;
+					const credentialType = incomingData.credentials.type;
+
+					// Find nodes that can test this credential.
+					const nodeTypes = NodeTypes();
+					const allNodes = nodeTypes.getAll();
+
+					let foundTestFunction:
+						| ((
+								this: ICredentialTestFunctions,
+								credential: ICredentialsDecrypted,
+						  ) => Promise<NodeCredentialTestResult>)
+						| undefined;
+					const nodeThatCanTestThisCredential = allNodes.find((node) => {
+						if (
+							incomingData.nodeToTestWith &&
+							node.description.name !== incomingData.nodeToTestWith
+						) {
+							return false;
+						}
+						const credentialTestable = node.description.credentials?.find((credential) => {
+							const testFunctionSearch =
+								credential.name === credentialType && !!credential.testedBy;
+							if (testFunctionSearch) {
+								foundTestFunction = node.methods!.credentialTest![credential.testedBy!];
+							}
+							return testFunctionSearch;
+						});
+						return !!credentialTestable;
+					});
+
+					if (!nodeThatCanTestThisCredential) {
+						return Promise.resolve({
+							status: 'Error',
+							message: 'There are no nodes that can test this credential.',
+						});
+					}
+
+					if (foundTestFunction === undefined) {
+						return Promise.resolve({
+							status: 'Error',
+							message: 'No testing function found for this credential.',
+						});
+					}
+
+					const credentialTestFunctions = NodeExecuteFunctions.getCredentialTestFunctions();
+
+					const output = await foundTestFunction.call(
+						credentialTestFunctions,
+						incomingData.credentials,
+					);
+					return Promise.resolve(output);
 				},
 			),
 		);
@@ -1538,6 +1593,42 @@ class App {
 					return returnData;
 				},
 			),
+		);
+
+		this.app.get(
+			`/${this.restEndpoint}/credential-icon/:credentialType`,
+			async (req: express.Request, res: express.Response): Promise<void> => {
+				try {
+					const credentialName = req.params.credentialType;
+
+					const credentialType = CredentialTypes().getByName(credentialName);
+
+					if (credentialType === undefined) {
+						res.status(404).send('The credentialType is not known.');
+						return;
+					}
+
+					if (credentialType.icon === undefined) {
+						res.status(404).send('No icon found for credential.');
+						return;
+					}
+
+					if (!credentialType.icon.startsWith('file:')) {
+						res.status(404).send('Credential does not have a file icon.');
+						return;
+					}
+
+					const filepath = credentialType.icon.substr(5);
+
+					const maxAge = 7 * 24 * 60 * 60 * 1000; // 7 days
+					res.setHeader('Cache-control', `private max-age=${maxAge}`);
+
+					res.sendFile(filepath);
+				} catch (error) {
+					// Error response
+					return ResponseHelper.sendErrorResponse(res, error);
+				}
+			},
 		);
 
 		// ----------------------------------------
