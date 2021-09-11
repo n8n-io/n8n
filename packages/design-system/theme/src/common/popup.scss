@@ -12,16 +12,20 @@
 @keyframes v-modal-in {
 	0% {
 		opacity: 0;
+		backdrop-filter: blur(4px) opacity(0);
 	}
 	100% {
+		backdrop-filter: blur(4px) opacity(1);
 	}
 }
 
 @keyframes v-modal-out {
 	0% {
+		backdrop-filter: blur(4px) opacity(1);
 	}
 	100% {
 		opacity: 0;
+		backdrop-filter: blur(4px) opacity(0);
 	}
 }
 
@@ -31,8 +35,8 @@
 	top: 0;
 	width: 100%;
 	height: 100%;
-	opacity: var.$popup-modal-opacity;
-	background: var.$popup-modal-background-color;
+	background-color: var.$popup-modal-background-color;
+	backdrop-filter: blur(4px) opacity(1);
 }
 
 @include mixins.b(popup-parent) {

@@ -4,10 +4,11 @@
 @use "common/transition";
 
 @mixin menu-item {
-	height: 56px;
-	line-height: 56px;
+	height: var.$menu-item-height;
+	line-height: var.$menu-item-height;
 	font-size: var.$menu-item-font-size;
 	color: var.$menu-item-font-color;
+	font-weight: var.$menu-item-font-weight;
 	padding: 0 20px;
 	list-style: none;
 	cursor: pointer;
@@ -15,10 +16,7 @@
 	transition: border-color 0.3s, background-color 0.3s, color 0.3s;
 	box-sizing: border-box;
 	white-space: nowrap;
-
-	* {
-		vertical-align: middle;
-	}
+	border-radius: var.$menu-item-border-radius;
 
 	i {
 		color: var(--color-text-light);
@@ -28,6 +26,7 @@
 	&:focus {
 		outline: none;
 		background-color: var.$menu-item-hover-fill;
+		color: var.$menu-item-hover-font-color;
 	}
 
 	@include mixins.when(disabled) {
@@ -38,7 +37,6 @@
 }
 
 @include mixins.b(menu) {
-	border-right: solid 1px #e6e6e6;
 	list-style: none;
 	position: relative;
 	margin: 0;
@@ -208,7 +206,9 @@
 		vertical-align: middle;
 	}
 	@include mixins.when(active) {
-		color: var(--color-primary);
+		color: var.$menu-item-active-font-color;
+		background-color: var.$menu-item-active-background-color;
+
 		i {
 			color: inherit;
 		}
