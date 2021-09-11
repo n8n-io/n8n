@@ -86,12 +86,14 @@ export function getAddressesUi() {
 						displayName: 'Street',
 						name: 'street',
 						type: 'string',
+						required: true,
 						default: '',
 					},
 					{
 						displayName: 'City',
 						name: 'city',
 						type: 'string',
+						required: true,
 						default: '',
 					},
 					{
@@ -104,6 +106,7 @@ export function getAddressesUi() {
 						displayName: 'Postal Code',
 						name: 'postcode',
 						type: 'string',
+						required: true,
 						default: '',
 					},
 					{
@@ -113,6 +116,7 @@ export function getAddressesUi() {
 						typeOptions: {
 							loadOptionsMethod: 'getCountries',
 						},
+						required: true,
 						default: '',
 					},
 					{
@@ -131,12 +135,14 @@ export function getAddressesUi() {
 						displayName: 'First Name',
 						name: 'firstname',
 						type: 'string',
+						required: true,
 						default: '',
 					},
 					{
 						displayName: 'Last Name',
 						name: 'lastname',
 						type: 'string',
+						required: true,
 						default: '',
 					},
 					{
@@ -161,6 +167,7 @@ export function getAddressesUi() {
 						displayName: 'Telephone',
 						name: 'telephone',
 						type: 'string',
+						required: true,
 						default: '',
 					},
 					{
@@ -172,7 +179,7 @@ export function getAddressesUi() {
 					},
 					{
 						displayName: 'Default Shipping',
-						name: 'default_billing',
+						name: 'default_shipping',
 						type: 'boolean',
 						default: false,
 						descrition: 'Weather this address is default shipping address',
@@ -184,9 +191,12 @@ export function getAddressesUi() {
 }
 
 // tslint:disable-next-line: no-any
-export function adjustAddresses(addresses: [{ street: string }]): Address[] {
+export function adjustAddresses(addresses: [{ street: string, [key: string]: string }]): Address[] {
 	const _addresses: Address[] = [];
 	for (let i = 0; i < addresses.length; i++) {
+		if (addresses[i]?.region === '') {
+			delete addresses[i].region;
+		}
 		_addresses.push({
 			...addresses[i],
 			street: [addresses[i].street],
@@ -289,7 +299,7 @@ export function getSearchFilters(resource: string, filterableAttributeFunction: 
 			],
 		},
 		{
-			displayName: 'See <a href="https://devdocs.magento.com/guides/v2.4/rest/performing-searches.html">Magento guide</a> to creating filters',
+			displayName: 'See <a href="https://devdocs.magento.com/guides/v2.4/rest/performing-searches.html" target="_blank">Magento guide</a> to creating filters',
 			name: 'jsonNotice',
 			type: 'notice',
 			displayOptions: {
@@ -609,32 +619,6 @@ export function getCustomerOptionalFields() {
 			default: '',
 		},
 		{
-			displayName: 'Email',
-			name: 'email',
-			type: 'string',
-			default: '',
-			displayOptions: {
-				show: {
-					'/operation': [
-						'update',
-					],
-				},
-			},
-		},
-		{
-			displayName: 'First Name',
-			name: 'firstname',
-			type: 'string',
-			default: '',
-			displayOptions: {
-				show: {
-					'/operation': [
-						'update',
-					],
-				},
-			},
-		},
-		{
 			displayName: 'Gender',
 			name: 'gender',
 			type: 'options',
@@ -668,19 +652,6 @@ export function getCustomerOptionalFields() {
 			name: 'is_subscribed',
 			type: 'boolean',
 			default: false,
-		},
-		{
-			displayName: 'Last Name',
-			name: 'lastname',
-			type: 'string',
-			default: '',
-			displayOptions: {
-				show: {
-					'/operation': [
-						'update',
-					],
-				},
-			},
 		},
 		{
 			displayName: 'Middle Name',
@@ -737,6 +708,13 @@ export function getCustomerOptionalFields() {
 			displayName: 'Website Name/ID',
 			name: 'website_id',
 			type: 'options',
+			displayOptions: {
+				show: {
+					'/operation': [
+						'create',
+					],
+				},
+			},
 			typeOptions: {
 				loadOptionsMethod: 'getWebsites',
 			},
@@ -755,13 +733,6 @@ export function getProductOptionalFields() {
 				loadOptionsMethod: 'getAttributeSets',
 			},
 			default: '',
-			displayOptions: {
-				show: {
-					'/operation': [
-						'update',
-					],
-				},
-			},
 		},
 		{
 			displayName: 'Name',
@@ -776,39 +747,39 @@ export function getProductOptionalFields() {
 			},
 			default: '',
 		},
-		{
-			displayName: 'Custom Attributes',
-			name: 'customAttributes',
-			type: 'fixedCollection',
-			typeOptions: {
-				multipleValues: true,
-			},
-			default: '',
-			placeholder: 'Add Custom Attribute',
-			options: [
-				{
-					displayName: 'Custom Attribute',
-					name: 'customAttribute',
-					values: [
-						{
-							displayName: 'Attribute Code',
-							name: 'attribute_code',
-							type: 'options',
-							typeOptions: {
-								loadOptionsMethod: 'getProductAttributes',
-							},
-							default: '',
-						},
-						{
-							displayName: 'Value',
-							name: 'value',
-							type: 'string',
-							default: '',
-						},
-					],
-				},
-			],
-		},
+		// {
+		// 	displayName: 'Custom Attributes',
+		// 	name: 'customAttributes',
+		// 	type: 'fixedCollection',
+		// 	typeOptions: {
+		// 		multipleValues: true,
+		// 	},
+		// 	default: '',
+		// 	placeholder: 'Add Custom Attribute',
+		// 	options: [
+		// 		{
+		// 			displayName: 'Custom Attribute',
+		// 			name: 'customAttribute',
+		// 			values: [
+		// 				{
+		// 					displayName: 'Attribute Code',
+		// 					name: 'attribute_code',
+		// 					type: 'options',
+		// 					typeOptions: {
+		// 						loadOptionsMethod: 'getProductAttributes',
+		// 					},
+		// 					default: '',
+		// 				},
+		// 				{
+		// 					displayName: 'Value',
+		// 					name: 'value',
+		// 					type: 'string',
+		// 					default: '',
+		// 				},
+		// 			],
+		// 		},
+		// 	],
+		// },
 		// {
 		// 	displayName: 'Parent Category ID',
 		// 	name: 'category',

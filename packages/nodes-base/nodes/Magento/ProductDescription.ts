@@ -61,6 +61,7 @@ export const productFields = [
 		name: 'sku',
 		type: 'string',
 		default: '',
+		required: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -75,28 +76,10 @@ export const productFields = [
 		description: 'Stock-keeping unit of the product',
 	},
 	{
-		displayName: 'Attribute Set Name/ID',
-		name: 'attributeSetId',
-		type: 'options',
-		typeOptions: {
-			loadOptionsMethod: 'getAttributeSets',
-		},
-		default: '',
-		displayOptions: {
-			show: {
-				resource: [
-					'product',
-				],
-				operation: [
-					'create',
-				],
-			},
-		},
-	},
-	{
 		displayName: 'Name',
 		name: 'name',
 		type: 'string',
+		required: true,
 		displayOptions: {
 			show: {
 				resource: [

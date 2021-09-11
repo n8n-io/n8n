@@ -152,6 +152,73 @@ export const customerFields = [
 		description: 'ID of the customer to update',
 	},
 	{
+		displayName: 'Email',
+		name: 'email',
+		type: 'string',
+		default: '',
+		displayOptions: {
+			show: {
+				resource: [
+					'customer',
+				],
+				operation: [
+					'update',
+				],
+			},
+		},
+	},
+	{
+		displayName: 'First Name',
+		name: 'firstName',
+		type: 'string',
+		default: '',
+		displayOptions: {
+			show: {
+				resource: [
+					'customer',
+				],
+				operation: [
+					'update',
+				],
+			},
+		},
+	},
+	{
+		displayName: 'Last Name',
+		name: 'lastName',
+		type: 'string',
+		default: '',
+		displayOptions: {
+			show: {
+				resource: [
+					'customer',
+				],
+				operation: [
+					'update',
+				],
+			},
+		},
+	},
+	{
+		displayName: 'Website Name/ID',
+		name: 'website_id',
+		type: 'options',
+		displayOptions: {
+			show: {
+				resource: [
+					'customer',
+				],
+				operation: [
+					'update',
+				],
+			},
+		},
+		typeOptions: {
+			loadOptionsMethod: 'getWebsites',
+		},
+		default: '',
+	},
+	{
 		displayName: 'Update Fields',
 		name: 'updateFields',
 		type: 'collection',

@@ -298,11 +298,11 @@ export class Magento2 implements INodeType {
 							password,
 							...rest
 						} = this.getNodeParameter('additionalFields', i) as {
-							addresses: [
-								{
+							addresses: {
+								address: [{
 									street: string,
-								}
-							],
+								}]
+							};
 							customAttributes: {
 								customAttribute: CustomAttribute[],
 							},
@@ -317,7 +317,7 @@ export class Magento2 implements INodeType {
 							},
 						};
 
-						body.customer!.addresses = adjustAddresses(addresses || []);
+						body.customer!.addresses = adjustAddresses(addresses.address || []);
 
 						body.customer!.custom_attributes = customAttributes?.customAttribute || {};
 
@@ -380,6 +380,12 @@ export class Magento2 implements INodeType {
 							qs = {
 								search_criteria: {},
 							};
+
+							if (Object.keys(sort).length !== 0) {
+								qs.search_criteria = {
+									sort_orders: sort.sort,
+								};
+							}
 						}
 
 						if (returnAll === true) {
@@ -397,6 +403,9 @@ export class Magento2 implements INodeType {
 					if (operation === 'update') {
 						//https://magento.redoc.ly/2.3.7-admin/tag/customerscustomerId#operation/customerCustomerRepositoryV1SavePut
 						const customerId = this.getNodeParameter('customerId', i) as string;
+						const firstName = this.getNodeParameter('firstName', i) as string;
+						const lastName = this.getNodeParameter('lastName', i) as string;
+						const email = this.getNodeParameter('email', i) as string;
 
 						const {
 							addresses,
@@ -404,11 +413,11 @@ export class Magento2 implements INodeType {
 							password,
 							...rest
 						} = this.getNodeParameter('updateFields', i) as {
-							addresses: [
-								{
+							addresses: {
+								address: [{
 									street: string,
-								}
-							],
+								}]
+							};
 							customAttributes: {
 								customAttribute: CustomAttribute[],
 							},
@@ -417,13 +426,18 @@ export class Magento2 implements INodeType {
 
 						const body: NewCustomer = {
 							customer: {
+								email,
+								firstname: firstName,
+								lastname: lastName,
+								id: parseInt(customerId, 10),
+								website_id: 0,
 							},
 						};
 
-						body.customer!.addresses = adjustAddresses(addresses || []);
+						body.customer!.addresses = adjustAddresses(addresses.address || []);
 
 						body.customer!.custom_attributes = customAttributes?.customAttribute || {};
-						
+
 						body.customer!.extension_attributes = ['amazon_id', 'is_subscribed', 'vertex_customer_code', 'vertex_customer_country']
 							// tslint:disable-next-line: no-any
 							.reduce((obj, value: string): any => {
@@ -506,6 +520,11 @@ export class Magento2 implements INodeType {
 							qs = {
 								search_criteria: {},
 							};
+							if (Object.keys(sort).length !== 0) {
+								qs.search_criteria = {
+									sort_orders: sort.sort,
+								};
+							}
 						}
 
 						if (returnAll === true) {
@@ -525,7 +544,6 @@ export class Magento2 implements INodeType {
 					if (operation === 'create') {
 						// https://magento.redoc.ly/2.3.7-admin/tag/products#operation/catalogProductRepositoryV1SavePost
 						const sku = this.getNodeParameter('sku', i) as string;
-						const attributeSetId = this.getNodeParameter('attributeSetId', i) as number;
 						const name = this.getNodeParameter('name', i) as string;
 
 						const {
@@ -542,7 +560,6 @@ export class Magento2 implements INodeType {
 						const body: NewProduct = {
 							product: {
 								sku,
-								attribute_set_id: attributeSetId,
 								name,
 							},
 						};
@@ -592,6 +609,11 @@ export class Magento2 implements INodeType {
 							qs = {
 								search_criteria: {},
 							};
+							if (Object.keys(sort).length !== 0) {
+								qs.search_criteria = {
+									sort_orders: sort.sort,
+								};
+							}
 						}
 
 						if (returnAll === true) {
