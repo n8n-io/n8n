@@ -199,7 +199,7 @@ export class ItemLists implements INodeType {
 				},
 				options: [
 					{
-						displayName: 'Field To Aggregate',
+						displayName: '',
 						name: 'fieldToAggregate',
 						values: [
 							{
@@ -1001,7 +1001,7 @@ return 0;`,
 						}>;
 					}
 
-					if (!sortFields.length) {
+					if (!sortFields || !sortFields.length) {
 						throw new NodeOperationError(this.getNode(), 'No sorting specified. Please add a field to sort by');
 					}
 
