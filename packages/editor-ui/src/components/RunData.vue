@@ -270,16 +270,7 @@ export default mixins(
 			};
 		},
 		mounted() {
-			// Reset the selected output index every time another node gets selected
-			this.outputIndex = 0;
-			this.maxDisplayItems = 25;
-			this.refreshDataSize();
-			if (this.displayMode === 'Binary') {
-				this.closeBinaryDataDisplay();
-				if (this.binaryData.length === 0) {
-					this.displayMode = 'Table';
-				}
-			}
+			this.init();
 		},
 		computed: {
 			hasNodeRun(): boolean {
@@ -434,6 +425,18 @@ export default mixins(
 			},
 		},
 		methods: {
+			init() {
+				// Reset the selected output index every time another node gets selected
+				this.outputIndex = 0;
+				this.maxDisplayItems = 25;
+				this.refreshDataSize();
+				if (this.displayMode === 'Binary') {
+					this.closeBinaryDataDisplay();
+					if (this.binaryData.length === 0) {
+						this.displayMode = 'Table';
+					}
+				}
+			},
 			closeBinaryDataDisplay () {
 				this.binaryDataDisplayVisible = false;
 				this.binaryDataDisplayData = null;
@@ -618,6 +621,9 @@ export default mixins(
 			},
 		},
 		watch: {
+			node() {
+				this.init();
+			},
 			jsonData () {
 				this.refreshDataSize();
 			},
