@@ -72,6 +72,9 @@ export default Vue.extend({
 		height: {
 			type: String,
 		},
+		maxHeight: {
+			type: String,
+		},
 	},
 	mounted() {
 		window.addEventListener('keydown', this.onWindowKeydown);
@@ -144,6 +147,9 @@ export default Vue.extend({
 			if (this.height) {
 				styles['--dialog-height'] = this.height;
 			}
+			if (this.maxHeight) {
+				styles['--dialog-max-height'] = this.maxHeight;
+			}
 			if (this.maxWidth) {
 				styles['--dialog-max-width'] = this.maxWidth;
 			}
@@ -164,6 +170,7 @@ export default Vue.extend({
 		max-width: var(--dialog-max-width, 80%);
 		min-width: var(--dialog-min-width, 420px);
 		height: var(--dialog-height);
+		max-height: var(--dialog-max-height);
 	}
 
 	.el-dialog__body {
@@ -174,7 +181,7 @@ export default Vue.extend({
 	}
 
 	.modal-content {
-		overflow: hidden;
+		overflow: auto;
 		flex-grow: 1;
 	}
 }

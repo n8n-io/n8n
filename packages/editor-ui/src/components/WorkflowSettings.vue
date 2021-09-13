@@ -2,6 +2,7 @@
 	<Modal
 		:name="modalName"
 		width="65%"
+		maxHeight="80%"
 		title="Workflow Settings"
 		:eventBus="modalBus"
 	>
