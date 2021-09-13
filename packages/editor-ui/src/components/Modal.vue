@@ -181,7 +181,8 @@ export default Vue.extend({
 	}
 
 	.modal-content {
-		overflow: auto;
+		overflow-y: auto;
+		overflow-x: hidden;
 		flex-grow: 1;
 	}
 }
