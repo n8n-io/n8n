@@ -77,6 +77,9 @@ export default mixins(
 			ParameterInputList,
 			NodeWebhooks,
 		},
+		mounted() {
+			this.setNodeValues();
+		},
 		computed: {
 			nodeType (): INodeTypeDescription | null {
 				if (this.node) {
@@ -501,9 +504,6 @@ export default mixins(
 					this.nodeValid = false;
 				}
 			},
-		},
-		mounted () {
-			this.setNodeValues();
 		},
 	});
 </script>
