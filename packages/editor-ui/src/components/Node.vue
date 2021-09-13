@@ -207,6 +207,12 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 			}
 		},
 		onTouchTap (e: MouseEvent | TouchEvent) {
+			if (this.isTouchDevice) {
+				if (this.$store.getters.isActionActive('dragActive')) {
+					this.$store.commit('removeActiveAction', 'dragActive');
+				}
+			}
+
 			if (e.type !== 'touchend') {
 				return;
 			}
