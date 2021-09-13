@@ -26,10 +26,9 @@
 		</ModalRoot>
 
 		<ModalRoot :name="VERSIONS_MODAL_KEY" :keepAlive="true">
-			<template v-slot="{ modalName, open }">
+			<template v-slot="{ modalName }">
 				<UpdatesPanel
 					:modalName="modalName"
-					:visible="open"
 				/>
 			</template>
 		</ModalRoot>

@@ -4,7 +4,7 @@
 		:name="modalName"
 		:eventBus="modalBus"
 		@enter="onEnter"
-		size="md"
+		minWidth="620px"
 	>
 		<template v-slot:content>
 			<el-row>

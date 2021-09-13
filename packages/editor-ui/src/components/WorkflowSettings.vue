@@ -1,7 +1,7 @@
 <template>
 	<Modal
 		:name="modalName"
-		size="lg"
+		width="65%"
 		title="Workflow Settings"
 		:eventBus="modalBus"
 	>
@@ -161,9 +161,11 @@
 						</el-col>
 					</el-row>
 				</div>
-				<div class="action-buttons">
-					<n8n-button label="Save" size="large" @click="saveSettings" />
-				</div>
+			</div>
+		</template>
+		<template v-slot:footer>
+			<div class="action-buttons">
+				<n8n-button label="Save" size="large" @click="saveSettings" />
 			</div>
 		</template>
 	</Modal>
