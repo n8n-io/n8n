@@ -5,6 +5,7 @@
 		maxHeight="80%"
 		title="Workflow Settings"
 		:eventBus="modalBus"
+		:scrollable="true"
 	>
 		<template v-slot:content>
 			<div v-loading="isLoading" class="workflow-settings">

@@ -5,6 +5,7 @@
 		:eventBus="modalBus"
 		@enter="onEnter"
 		minWidth="620px"
+		maxHeight="80%"
 	>
 		<template v-slot:content>
 			<el-row>
@@ -186,5 +187,6 @@ export default mixins(showMessage).extend({
 <style lang="scss" scoped>
 .el-row {
 	min-height: $--tags-manager-min-height;
+	margin-bottom: 15px;
 }
 </style>

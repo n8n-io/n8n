@@ -3,7 +3,7 @@
 		:visible="visible"
 		:before-close="closeDialog"
 		:title="title"
-		:class="{'dialog-wrapper': true, 'center': center}"
+		:class="{'dialog-wrapper': true, 'center': center, 'scrollable': scrollable}"
 		:width="width"
 		:show-close="showClose"
 		:custom-class="getCustomClass()"
@@ -74,6 +74,10 @@ export default Vue.extend({
 		},
 		maxHeight: {
 			type: String,
+		},
+		scrollable: {
+			type: Boolean,
+			default: false,
 		},
 	},
 	mounted() {
@@ -181,10 +185,13 @@ export default Vue.extend({
 	}
 
 	.modal-content {
-		overflow-y: auto;
-		overflow-x: hidden;
+		overflow: hidden;
 		flex-grow: 1;
 	}
+}
+
+.scrollable .modal-content {
+	overflow-y: auto;
 }
 
 .center {
