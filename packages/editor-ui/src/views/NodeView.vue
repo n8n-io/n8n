@@ -345,7 +345,7 @@ export default mixins(
 			async openExecution (executionId: string) {
 				this.resetWorkspace();
 
-				let data: IExecutionsSummary | undefined;
+				let data: IExecutionResponse | undefined;
 				try {
 					data = await this.restApi().getExecution(executionId);
 				} catch (error) {
@@ -403,7 +403,7 @@ export default mixins(
 					}
 				}
 
-				if (data.waitTill) {
+				if ((data as IExecutionsSummary).waitTill) {
 					this.$showMessage({
 						title: `This execution hasn't finished yet`,
 						message: `<a onclick="window.location.reload(false);">Refresh</a> to see the latest status.<br/> <a href="https://docs.n8n.io/nodes/n8n-nodes-base.wait/" target="_blank">More info</a>`,

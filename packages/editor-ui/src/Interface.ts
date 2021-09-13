@@ -141,7 +141,6 @@ export interface IRestApi {
 	getWorkflows(filter?: object): Promise<IWorkflowShortResponse[]>;
 	getWorkflowFromUrl(url: string): Promise<IWorkflowDb>;
 	getExecution(id: string): Promise<IExecutionResponse>;
-	getExecution(id: string): Promise<IExecutionsSummary>;
 	deleteExecutions(sendData: IExecutionDeleteFilter): Promise<void>;
 	retryExecution(id: string, loadWorkflow?: boolean): Promise<boolean>;
 	getTimezones(): Promise<IDataObject>;
@@ -332,9 +331,10 @@ export interface IExecutionsStopData {
 	stoppedAt: Date;
 }
 
-export interface IExecutionsSummary extends IExecutionResponse {
+export interface IExecutionsSummary {
 	id: string;
 	mode: WorkflowExecuteMode;
+	finished?: boolean;
 	retryOf?: string;
 	retrySuccessId?: string;
 	waitTill?: Date;
