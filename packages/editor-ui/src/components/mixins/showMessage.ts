@@ -74,7 +74,15 @@ export const showMessage = mixins(externalHooks).extend({
 				};
 			}
 
-			notification = this.$showMessage(config);
+			notification = this.$showMessage({
+				title: config.title,
+				message: config.message,
+				onClick: config.onClick,
+				onClose: config.onClose,
+				duration: config.duration,
+				customClass: config.customClass,
+				type: config.type,
+			});
 
 			return notification;
 		},
