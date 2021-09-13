@@ -8,6 +8,7 @@ import {
 	INodeType,
 	INodeTypeDescription,
 	IWebhookResponseData,
+	NodeOperationError,
 } from 'n8n-workflow';
 
 import {
@@ -24,15 +25,15 @@ import {
 
 export class CiscoWebexTrigger implements INodeType {
 	description: INodeTypeDescription = {
-		displayName: 'Cisco Webex Trigger',
+		displayName: 'Webex by Cisco Trigger',
 		name: 'ciscoWebexTrigger',
-		icon: 'file:ciscoWebex.svg',
+		icon: 'file:ciscoWebex.png',
 		group: ['trigger'],
 		version: 1,
 		subtitle: '={{$parameter["resource"] + ":" + $parameter["event"]}}',
 		description: 'Starts the workflow when Cisco Webex events occur.',
 		defaults: {
-			name: 'Cisco Webex Trigger',
+			name: 'Webex Trigger',
 			color: '#29b6f6',
 		},
 		inputs: [],
@@ -600,7 +601,11 @@ export class CiscoWebexTrigger implements INodeType {
 				const event = this.getNodeParameter('event') as string;
 				const resource = this.getNodeParameter('resource') as string;
 				const filters = this.getNodeParameter('filters', {}) as IDataObject;
-				const secret = getAutomaticSecret(this.getCredentials('ciscoWebexOAuth2Api')!);
+				const credentials = await this.getCredentials('ciscoWebexOAuth2Api');
+				if (credentials === undefined) {
+					throw new NodeOperationError(this.getNode(), 'Credentials could not be obtained');
+				}
+				const secret = getAutomaticSecret(credentials);
 				const filter = [];
 				for (const key of Object.keys(filters)) {
 					if (key !== 'ownedBy') {
@@ -662,7 +667,7 @@ export class CiscoWebexTrigger implements INodeType {
 		const headers = this.getHeaderData() as IDataObject;
 		const req = this.getRequestObject();
 		const resolveData = this.getNodeParameter('resolveData', false) as boolean;
-		
+
 		//@ts-ignore
 		const computedSignature = createHmac('sha1', webhookData.secret).update(req.rawBody).digest('hex');
 		if (headers['x-spark-signature'] !== computedSignature) {

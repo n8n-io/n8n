@@ -223,7 +223,7 @@ export const itemFields = [
 				name: 'conditionExpression',
 				type: 'string',
 				default: '',
-				description: 'A condition that must be satisfied in order for a conditional upsert to succeed. <a target="_blank" href="https://docs.aws.amazon.com/amazondynamodb/latest/APIReference/API_PutItem.html">View details</a>',
+				description: 'A condition that must be satisfied in order for a conditional upsert to succeed. <a href="https://docs.aws.amazon.com/amazondynamodb/latest/APIReference/API_PutItem.html">View details</a>',
 			},
 			{
 				displayName: 'Expression Attribute Names',
@@ -254,7 +254,7 @@ export const itemFields = [
 						],
 					},
 				],
-				description: 'One or more substitution tokens for attribute names in an expression. <a target="_blank" href="https://docs.aws.amazon.com/amazondynamodb/latest/APIReference/API_PutItem.html">View details</a>',
+				description: 'One or more substitution tokens for attribute names in an expression. <a href="https://docs.aws.amazon.com/amazondynamodb/latest/APIReference/API_PutItem.html">View details</a>',
 			},
 		],
 	},
@@ -425,7 +425,7 @@ export const itemFields = [
 						],
 					},
 				],
-				description: 'One or more substitution tokens for attribute names in an expression. Check <a href="https://docs.aws.amazon.com/amazondynamodb/latest/APIReference/API_PutItem.html" target="_blank">Info</a>',
+				description: 'One or more substitution tokens for attribute names in an expression. Check <a href="https://docs.aws.amazon.com/amazondynamodb/latest/APIReference/API_PutItem.html">Info</a>',
 			},
 			{
 				displayName: 'Expression Attribute Values',
@@ -648,7 +648,7 @@ export const itemFields = [
 						],
 					},
 				],
-				description: 'One or more substitution tokens for attribute names in an expression. <a href="https://docs.aws.amazon.com/amazondynamodb/latest/APIReference/API_PutItem.html" target="_blank">View details</a>',
+				description: 'One or more substitution tokens for attribute names in an expression. <a href="https://docs.aws.amazon.com/amazondynamodb/latest/APIReference/API_PutItem.html">View details</a>',
 			},
 			{
 				displayName: 'Read Type',
@@ -665,7 +665,7 @@ export const itemFields = [
 					},
 				],
 				default: 'eventuallyConsistentRead',
-				description: 'Type of read to perform on the table. <a href="https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/HowItWorks.ReadConsistency.html" target="_blank">View details</a>',
+				description: 'Type of read to perform on the table. <a href="https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/HowItWorks.ReadConsistency.html">View details</a>',
 			},
 		],
 	},
@@ -673,6 +673,38 @@ export const itemFields = [
 	// ----------------------------------
 	//              Get All
 	// ----------------------------------
+	{
+		displayName: 'Scan',
+		name: 'scan',
+		type: 'boolean',
+		displayOptions: {
+			show: {
+				resource: [
+					'item',
+				],
+				operation: [
+					'getAll',
+				],
+			},
+		},
+		default: false,
+		description: 'Whether to do an scan or query. Check <a href="https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/bp-query-scan.html" >differences</a>',
+	},
+	{
+		displayName: 'Filter Expression',
+		name: 'filterExpression',
+		type: 'string',
+		required: true,
+		displayOptions: {
+			show: {
+				scan: [
+					true,
+				],
+			},
+		},
+		default: '',
+		description: 'A filter expression determines which items within the Scan results should be returned to you. All of the other results are discarded.',
+	},
 	{
 		displayName: 'Key Condition Expression',
 		name: 'keyConditionExpression',
@@ -688,6 +720,9 @@ export const itemFields = [
 				],
 				operation: [
 					'getAll',
+				],
+				scan: [
+					false,
 				],
 			},
 		},
@@ -881,6 +916,13 @@ export const itemFields = [
 				displayName: 'Filter Expression',
 				name: 'filterExpression',
 				type: 'string',
+				displayOptions: {
+					show: {
+						'/scan': [
+							false,
+						],
+					},
+				},
 				default: '',
 				description: 'Text that contains conditions that DynamoDB applies after the Query operation,<br>but before the data is returned. Items that do not satisfy the FilterExpression criteria</br>are not returned',
 			},
@@ -913,7 +955,7 @@ export const itemFields = [
 						],
 					},
 				],
-				description: 'One or more substitution tokens for attribute names in an expression. Check <a target="_blank" href="https://docs.aws.amazon.com/amazondynamodb/latest/APIReference/API_PutItem.html">Info</a>',
+				description: 'One or more substitution tokens for attribute names in an expression. Check <a href="https://docs.aws.amazon.com/amazondynamodb/latest/APIReference/API_PutItem.html">Info</a>',
 			},
 		],
 	},

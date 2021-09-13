@@ -12,7 +12,7 @@
 					<div class="parameter-item-wrapper">
 						<div class="delete-option" v-if="!isReadOnly">
 							<font-awesome-icon icon="trash" class="reset-icon clickable" title="Delete Item" @click="deleteOption(property.name, index)" />
-							<div v-if="sortable">
+							<div v-if="sortable" class="sort-icon">
 								<font-awesome-icon v-if="index !== 0" icon="angle-up" class="clickable" title="Move up" @click="moveOptionUp(property.name, index)" />
 								<font-awesome-icon v-if="index !== (values[property.name].length -1)" icon="angle-down" class="clickable" title="Move down" @click="moveOptionDown(property.name, index)" />
 							</div>
@@ -32,15 +32,17 @@
 		</div>
 
 		<div v-if="parameterOptions.length > 0 && !isReadOnly">
-			<el-button v-if="parameter.options.length === 1" size="small" class="add-option" @click="optionSelected(parameter.options[0].name)">{{ getPlaceholderText }}</el-button>
-			<el-select v-else v-model="selectedOption" :placeholder="getPlaceholderText" size="small" class="add-option" @change="optionSelected" filterable>
-				<el-option
-					v-for="item in parameterOptions"
-					:key="item.name"
-					:label="item.displayName"
-					:value="item.name">
-				</el-option>
-			</el-select>
+			<n8n-button v-if="parameter.options.length === 1" fullWidth @click="optionSelected(parameter.options[0].name)" :label="getPlaceholderText" />
+			<div v-else class="add-option">
+				<n8n-select v-model="selectedOption" :placeholder="getPlaceholderText" size="small" @change="optionSelected" filterable>
+					<n8n-option
+						v-for="item in parameterOptions"
+						:key="item.name"
+						:label="item.displayName"
+						:value="item.name">
+					</n8n-option>
+				</n8n-select>
+			</div>
 		</div>
 
 	</div>
@@ -217,10 +219,6 @@ export default mixins(genericHelpers)
 
 <style scoped lang="scss">
 
-.add-option {
-	width: 100%;
-}
-
 .fixed-collection-parameter {
 	padding: 0 0 0 1em;
 }
@@ -240,7 +238,7 @@ export default mixins(genericHelpers)
 	z-index: 999;
 	color: #f56c6c;
 	left: 0;
-	top: 0;
+	top: .5em;
 	width: 15px;
 	height: 100%;
 }
@@ -264,5 +262,9 @@ export default mixins(genericHelpers)
 
 .no-items-exist {
 	margin: 0.8em 0;
+}
+
+.sort-icon {
+	margin-top: .5em;
 }
 </style>

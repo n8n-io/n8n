@@ -217,7 +217,15 @@ export const pushConnection = mixins(
 
 					// @ts-ignore
 					const workflow = this.getWorkflow();
-					if (runDataExecuted.finished !== true) {
+					if (runDataExecuted.waitTill !== undefined) {
+						// Workflow did start but had been put to wait
+						this.$titleSet(workflow.name as string, 'IDLE');
+						this.$showMessage({
+							title: 'Workflow got started',
+							message: 'Workflow execution has started and is now waiting!',
+							type: 'success',
+						});
+					} else if (runDataExecuted.finished !== true) {
 						this.$titleSet(workflow.name as string, 'ERROR');
 
 						this.$showMessage({
@@ -284,7 +292,7 @@ export const pushConnection = mixins(
 					const pushData = receivedData.data;
 					this.$store.commit('setExecutingNode', pushData.nodeName);
 				} else if (receivedData.type === 'testWebhookDeleted') {
-					// A test-webhook got deleted
+					// A test-webhook was deleted
 					const pushData = receivedData.data;
 
 					if (pushData.workflowId === this.$store.getters.workflowId) {

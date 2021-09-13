@@ -57,6 +57,7 @@ export const nodeBase = mixins(
 		'nodeId',
 		'instance',
 		'isReadOnly',
+		'isActive',
 	],
 	methods: {
 		__addNode (node: INodeUi) {

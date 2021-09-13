@@ -1,5 +1,4 @@
 import {
-	BINARY_ENCODING,
 	IExecuteFunctions,
 } from 'n8n-core';
 
@@ -33,15 +32,15 @@ import * as moment from 'moment-timezone';
 
 export class CiscoWebex implements INodeType {
 	description: INodeTypeDescription = {
-		displayName: 'Cisco Webex',
+		displayName: 'Webex by Cisco',
 		name: 'ciscoWebex',
-		icon: 'file:ciscoWebex.svg',
+		icon: 'file:ciscoWebex.png',
 		group: ['transform'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 		description: 'Consume the Cisco Webex API',
 		defaults: {
-			name: 'Cisco Webex',
+			name: 'Webex',
 			color: '#29b6f6',
 		},
 		credentials: [
@@ -174,10 +173,11 @@ export class CiscoWebex implements INodeType {
 								const binaryPropertyName = file.binaryPropertyName as string;
 
 								const binaryData = items[i].binary![binaryPropertyName] as IBinaryData;
+								const binaryDataBuffer = await this.helpers.getBinaryDataBuffer(i, binaryPropertyName);
 
 								const formData = {
 									files: {
-										value: Buffer.from(binaryData.data, BINARY_ENCODING),
+										value: binaryDataBuffer,
 										options: {
 											filename: binaryData.fileName,
 											contentType: binaryData.mimeType,

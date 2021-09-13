@@ -63,7 +63,7 @@ export class QuestDb implements INodeType {
 				name: 'query',
 				type: 'string',
 				typeOptions: {
-					rows: 5,
+					alwaysOpenEditWindow: true,
 				},
 				displayOptions: {
 					show: {
@@ -210,7 +210,7 @@ export class QuestDb implements INodeType {
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
-		const credentials = this.getCredentials('questDb');
+		const credentials = await this.getCredentials('questDb');
 
 		if (credentials === undefined) {
 			throw new NodeOperationError(this.getNode(), 'No credentials got returned!');

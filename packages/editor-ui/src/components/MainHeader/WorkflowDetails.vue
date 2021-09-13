@@ -8,7 +8,7 @@
 					:custom="true"
 				>
 					<template v-slot="{ shortenedName }">
-						<InlineTextEdit 
+						<InlineTextEdit
 							:value="workflowName"
 							:previewValue="shortenedName"
 							:isEditEnabled="isNameEditEnabled"
@@ -45,7 +45,7 @@
 			<span
 				class="add-tag clickable"
 				@click="onTagsEditEnable"
-			>	
+			>
 				+ Add tag
 			</span>
 		</div>
@@ -65,7 +65,11 @@
 					<span>Active:</span>
 					<WorkflowActivator :workflow-active="isWorkflowActive" :workflow-id="currentWorkflowId" :disabled="!currentWorkflowId"/>
 				</span>
-				<SaveWorkflowButton />
+				<SaveButton
+					:saved="!this.isDirty && !this.isNewWorkflow"
+					:disabled="isWorkflowSaving"
+					@click="saveCurrentWorkflow"
+				/>
 			</template>
 		</PushConnectionTracker>
 	</div>
@@ -82,7 +86,7 @@ import TagsContainer from "@/components/TagsContainer.vue";
 import PushConnectionTracker from "@/components/PushConnectionTracker.vue";
 import WorkflowActivator from "@/components/WorkflowActivator.vue";
 import { workflowHelpers } from "@/components/mixins/workflowHelpers";
-import SaveWorkflowButton from "@/components/SaveWorkflowButton.vue";
+import SaveButton from "@/components/SaveButton.vue";
 import TagsDropdown from "@/components/TagsDropdown.vue";
 import InlineTextEdit from "@/components/InlineTextEdit.vue";
 import BreakpointsObserver from "@/components/BreakpointsObserver.vue";
@@ -103,7 +107,7 @@ export default mixins(workflowHelpers).extend({
 		PushConnectionTracker,
 		WorkflowNameShort,
 		WorkflowActivator,
-		SaveWorkflowButton,
+		SaveButton,
 		TagsDropdown,
 		InlineTextEdit,
 		BreakpointsObserver,
@@ -120,11 +124,14 @@ export default mixins(workflowHelpers).extend({
 	},
 	computed: {
 		...mapGetters({
-			isWorkflowActive: "isActive", 
+			isWorkflowActive: "isActive",
 			workflowName: "workflowName",
 			isDirty: "getStateIsDirty",
 			currentWorkflowTagIds: "workflowTags",
 		}),
+		isNewWorkflow(): boolean {
+			return !this.$route.params.name;
+		},
 		isWorkflowSaving(): boolean {
 			return this.$store.getters.isActionActive("workflowSaving");
 		},

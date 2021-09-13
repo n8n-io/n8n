@@ -21,15 +21,20 @@
 			:title="title"
 			:class="{ 'dialog-wrapper': true, [size]: true }"
 			:width="width"
+			:show-close="showClose"
+			:custom-class="getCustomClass()"
 			append-to-body
 		>
 			<template v-slot:title>
-				<slot name="header" />
+				<slot name="header" v-if="!loading" />
 			</template>
 			<div class="modal-content" @keydown.stop @keydown.enter="handleEnter" @keydown.esc="closeDialog">
-				<slot name="content"/>
+				<slot v-if="!loading"  name="content"/>
+				<div class="loader" v-else>
+					<n8n-spinner />
+				</div>
 			</div>
-			<el-row class="modal-footer">
+			<el-row  v-if="!loading" class="modal-footer">
 				<slot name="footer" :close="closeDialog" />
 			</el-row>
 		</el-dialog>
@@ -41,13 +46,14 @@ import Vue from "vue";
 
 const sizeMap: {[size: string]: string} = {
 	xl: '80%',
+	lg: '70%',
 	m: '50%',
 	default: '50%',
 };
 
 export default Vue.extend({
 	name: "Modal",
-	props: ['name', 'title', 'eventBus', 'size', 'drawer', 'drawerDirection', 'drawerWidth', 'visible'],
+	props: ['name', 'title', 'eventBus', 'size', 'drawer', 'drawerDirection', 'drawerWidth', 'visible', 'showClose', 'loading', 'classic', 'beforeClose', 'customClass'],
 	data() {
 		return {
 			visibleDrawer: this.drawer,
@@ -86,8 +92,19 @@ export default Vue.extend({
 			}
 		},
 		closeDialog(callback?: () => void) {
+			if (this.beforeClose) {
+				this.beforeClose(() => {
+					this.$store.commit('ui/closeTopModal');
+					if (typeof callback === 'function') {
+						callback();
+					}
+				});
+
+				return;
+			}
+
 			this.$store.commit('ui/closeTopModal');
-			if (callback) {
+			if (typeof callback === 'function') {
 				callback();
 			}
 		},
@@ -97,6 +114,15 @@ export default Vue.extend({
 				this.$store.commit('ui/closeTopModal');
 				this.visibleDrawer = true;
 			}, 300); // delayed for closing animation to take effect
+		},
+		getCustomClass() {
+			let classes = this.$props.customClass || '';
+
+			if (this.$props.classic) {
+				classes = `${classes} classic`;
+			}
+
+			return classes;
 		},
 	},
 	computed: {
@@ -123,13 +149,22 @@ export default Vue.extend({
 	overflow: hidden;
 }
 
-.dialog-wrapper {
-	* {
-		box-sizing: border-box;
-	}
+.el-dialog__body {
+	height: 100%;
+}
 
+.dialog-wrapper {
 	&.xl > div, &.md > div {
 		min-width: 620px;
+	}
+
+	&.lg > div {
+		height: 80%;
+		overflow: hidden;
+
+		.modal-content {
+			height: 100%;
+		}
 	}
 
 	&.sm {
@@ -138,7 +173,7 @@ export default Vue.extend({
 		justify-content: center;
 
 		> div {
-			max-width: 420px;
+			max-width: 460px;
 		}
 	}
 }
@@ -147,8 +182,12 @@ export default Vue.extend({
 	margin-bottom: 15px;
 }
 
-.modal-footer > .el-button {
-	float: right;
-	margin-left: 5px;
+.loader {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	color: var(--color-primary-tint-1);
+	font-size: 30px;
+	height: 80%;
 }
 </style>
