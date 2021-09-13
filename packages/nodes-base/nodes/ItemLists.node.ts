@@ -974,32 +974,19 @@ return 0;`,
 				const type = this.getNodeParameter('type', 0) as string;
 				const disableDotNotation = this.getNodeParameter('options.disableDotNotation', 0, false) as boolean;
 
-				if (type === 'simple' || type === 'random') {
+				if (type === 'random') {
+					shuffleArray(newItems);
+					return this.prepareOutputData(newItems);
+				}
 
-					let sortFieldsUi;
-					let sortFields;
+				if (type === 'simple') {
 
-					if (type === 'random') {
-
-						const keys = Object.keys(items[0].json);
-
-						const fieldNameIndex = Math.floor(Math.random() * keys.length);
-						const orderIndex = Math.floor(Math.random() * 2);
-
-						sortFields = [
-							{
-								fieldName: keys[fieldNameIndex],
-								order: ['ascending', 'descending'][orderIndex],
-							},
-						];
-
-					} else {
-						sortFieldsUi = this.getNodeParameter('sortFieldsUi', 0) as IDataObject;
-						sortFields = sortFieldsUi.sortField as Array<{
-							fieldName: string;
-							order: 'ascending' | 'descending'
-						}>;
-					}
+					const sortFieldsUi = this.getNodeParameter('sortFieldsUi', 0) as IDataObject;
+					const sortFields = sortFieldsUi.sortField as Array<{
+						fieldName: string;
+						order: 'ascending' | 'descending'
+					}>;
+				
 
 					if (!sortFields || !sortFields.length) {
 						throw new NodeOperationError(this.getNode(), 'No sorting specified. Please add a field to sort by');
@@ -1138,4 +1125,12 @@ const flattenKeys = (obj: {}, path: string[] = []): {} => {
 	return !isObject(obj)
 		? { [path.join('.')]: obj }
 		: reduce(obj, (cum, next, key) => merge(cum, flattenKeys(next, [...path, key])), {});
+};
+
+// tslint:disable-next-line: no-any
+const shuffleArray = (array: any[]) => {
+	for (let i = array.length - 1; i > 0; i--) {
+		const j = Math.floor(Math.random() * (i + 1));
+		[array[i], array[j]] = [array[j], array[i]];
+	}
 };
