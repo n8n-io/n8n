@@ -502,7 +502,7 @@ export default mixins(
 				}
 			},
 		},
-		mounted() {
+		mounted () {
 			this.setNodeValues();
 		},
 	});
