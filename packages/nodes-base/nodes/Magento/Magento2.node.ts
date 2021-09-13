@@ -263,7 +263,7 @@ export class Magento2 implements INodeType {
 			// 	return getProductAttributes.call(this, undefined, { name: '*', value: '*', description: 'All properties' });
 			// },
 			async getFilterableProductAttributes(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-				return getProductAttributes.call(this, (attribute) => attribute.is_filterable === true);
+				return getProductAttributes.call(this, (attribute) => attribute.is_searchable === '1');
 			},
 			async getSortableProductAttributes(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				return getProductAttributes.call(this, (attribute) => attribute.used_for_sort_by === true);
@@ -317,7 +317,7 @@ export class Magento2 implements INodeType {
 							},
 						};
 
-						body.customer!.addresses = adjustAddresses(addresses.address || []);
+						body.customer!.addresses = adjustAddresses(addresses?.address || []);
 
 						body.customer!.custom_attributes = customAttributes?.customAttribute || {};
 
@@ -434,7 +434,7 @@ export class Magento2 implements INodeType {
 							},
 						};
 
-						body.customer!.addresses = adjustAddresses(addresses.address || []);
+						body.customer!.addresses = adjustAddresses(addresses?.address || []);
 
 						body.customer!.custom_attributes = customAttributes?.customAttribute || {};
 
@@ -545,6 +545,8 @@ export class Magento2 implements INodeType {
 						// https://magento.redoc.ly/2.3.7-admin/tag/products#operation/catalogProductRepositoryV1SavePost
 						const sku = this.getNodeParameter('sku', i) as string;
 						const name = this.getNodeParameter('name', i) as string;
+						const attributeSetId = this.getNodeParameter('attributeSetId', i) as string;
+						const price = this.getNodeParameter('price', i) as number;
 
 						const {
 							customAttributes,
@@ -561,6 +563,8 @@ export class Magento2 implements INodeType {
 							product: {
 								sku,
 								name,
+								attribute_set_id: parseInt(attributeSetId, 10),
+								price, 
 							},
 						};
 

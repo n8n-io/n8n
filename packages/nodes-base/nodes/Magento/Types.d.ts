@@ -182,8 +182,11 @@ export interface Product {
 }
 
 export interface ProductAttribute {
+	is_filterable_in_search: boolean,
 	default_frontend_label: string;
 	attribute_id: string;
 	is_filterable: boolean;
 	used_for_sort_by: boolean;
+	is_searchable: string,
+	attribute_code: string,
 }

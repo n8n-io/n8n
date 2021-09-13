@@ -687,12 +687,6 @@ export function getCustomerOptionalFields() {
 			default: '',
 		},
 		{
-			displayName: 'Value-Added Tax',
-			name: 'taxvat',
-			type: 'string',
-			default: '',
-		},
-		{
 			displayName: 'Vertex Customer Code',
 			name: 'vertex_customer_code',
 			type: 'string',
@@ -729,6 +723,13 @@ export function getProductOptionalFields() {
 			displayName: 'Attribute Set Name/ID',
 			name: 'attribute_set_id',
 			type: 'options',
+			displayOptions: {
+				show: {
+					'/operation': [
+						'update',
+					],
+				},
+			},
 			typeOptions: {
 				loadOptionsMethod: 'getAttributeSets',
 			},
@@ -793,6 +794,13 @@ export function getProductOptionalFields() {
 			displayName: 'Price',
 			name: 'price',
 			type: 'number',
+			displayOptions: {
+				show: {
+					'/operation': [
+						'update',
+					],
+				},
+			},
 			default: 0,
 		},
 		{
@@ -812,7 +820,6 @@ export function getProductOptionalFields() {
 			default: 1,
 		},
 		{
-
 			displayName: 'Type Name/ID',
 			name: 'type_id',
 			type: 'options',
@@ -999,7 +1006,7 @@ export const sort = (a: { name: string }, b: { name: string }) => {
 export async function getProductAttributes(this: ILoadOptionsFunctions, filter?: (attribute: ProductAttribute) => any, extraValue?: { name: string, value: string }): Promise<INodePropertyOptions[]> {
 	//https://magento.redoc.ly/2.3.7-admin/tag/productsattribute-setssetslist#operation/catalogAttributeSetRepositoryV1GetListGet
 
-	let { items: attributes }: { items: ProductAttribute[] } = await magentoApiRequest.call(this, 'GET', `/rest/default/V1/products/attributes`, {}, {
+	let attributes: ProductAttribute[] = await magentoApiRequestAllItems.call(this, 'items', 'GET', `/rest/default/V1/products/attributes`, {}, {
 		search_criteria: 0,
 	});
 
@@ -1014,7 +1021,7 @@ export async function getProductAttributes(this: ILoadOptionsFunctions, filter?:
 	for (const attribute of attributes) {
 		returnData.push({
 			name: attribute.default_frontend_label as string,
-			value: attribute.attribute_id as string,
+			value: attribute.attribute_code as string,
 		});
 	}
 	if (extraValue) {

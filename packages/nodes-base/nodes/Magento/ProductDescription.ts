@@ -93,6 +93,41 @@ export const productFields = [
 		default: '',
 	},
 	{
+		displayName: 'Attribute Set Name/ID',
+		name: 'attributeSetId',
+		type: 'options',
+		displayOptions: {
+			show: {
+				resource: [
+					'product',
+				],
+				operation: [
+					'create',
+				],
+			},
+		},
+		typeOptions: {
+			loadOptionsMethod: 'getAttributeSets',
+		},
+		default: '',
+	},
+	{
+		displayName: 'Price',
+		name: 'price',
+		type: 'number',
+		displayOptions: {
+			show: {
+				resource: [
+					'product',
+				],
+				operation: [
+					'create',
+				],
+			},
+		},
+		default: 0,
+	},
+	{
 		displayName: 'Additional Fields',
 		name: 'additionalFields',
 		type: 'collection',
