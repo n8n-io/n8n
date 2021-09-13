@@ -1,0 +1,20 @@
+{
+	"node": "n8n-nodes-base.fakturBoxArchive",
+	"nodeVersion": "21.09",
+	"codexVersion": "21.09",
+	"categories": [
+		"Data & Storage"
+	],
+	"resources": {
+		"credentialDocumentation": [
+			{
+				"url": "https://docs.n8n.io/credentials/fakturBoxArchive"
+			}
+		],
+		"primaryDocumentation": [
+			{
+				"url": "https://docs.n8n.io/nodes/n8n-nodes-base.fakturboxarchive/"
+			}
+		]
+	}
+}
