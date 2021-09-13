@@ -218,12 +218,19 @@ export const pushConnection = mixins(
 					// @ts-ignore
 					const workflow = this.getWorkflow();
 					if (runDataExecuted.waitTill !== undefined) {
+						const isNewWorkflow = this.$store.getters.isNewWorkflow;
 						const executionId = this.$store.getters.activeExecutionId;
 						const saveManualExecutions = this.$store.getters.saveManualExecutions;
 
-						let action = `<a href="/execution/${executionId}" target="_blank">View the execution</a> to see what happened after this node.`;
-						if (!saveManualExecutions) {
+						let action;
+						if (isNewWorkflow) {
+							action = '<a class="save open-settings">Save and turn on saving manual executions</a> and run again to see what happened after this node.';
+						}
+						else if (!saveManualExecutions) {
 							action = '<a class="open-settings">Turn on saving manual executions</a> and run again to see what happened after this node.';
+						}
+						else {
+							action = `<a href="/execution/${executionId}" target="_blank">View the execution</a> to see what happened after this node.`;
 						}
 
 						// Workflow did start but had been put to wait
@@ -233,7 +240,10 @@ export const pushConnection = mixins(
 							message: `${action} <a href="https://docs.n8n.io/nodes/n8n-nodes-base.wait/" target="_blank">More info</a>`,
 							type: 'success',
 							duration: 0,
-							onLinkClick: (e: HTMLLinkElement) => {
+							onLinkClick: async (e: HTMLLinkElement) => {
+								if (e.classList.contains('save')) {
+									await this.saveAsNewWorkflow();
+								}
 								if (e.classList.contains('open-settings')) {
 									this.$store.dispatch('ui/openWorkflowSettingsModal');
 								}
