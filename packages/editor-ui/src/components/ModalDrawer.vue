@@ -1,7 +1,7 @@
 <template>
 	<el-drawer
 		:direction="direction"
-		:visible="visibleDrawer"
+		:visible="visible"
 		:size="width"
 		:before-close="close"
 		>
@@ -73,7 +73,7 @@ export default Vue.extend({
 		isActive(): boolean {
 			return this.$store.getters['ui/isModalActive'](this.$props.name);
 		},
-		visibleDrawer(): boolean {
+		visible(): boolean {
 			return this.$store.getters['ui/isModalOpen'](this.$props.name);
 		},
 	},
