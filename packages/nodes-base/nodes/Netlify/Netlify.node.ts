@@ -117,7 +117,7 @@ export class Netlify implements INodeType {
 						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 
 						Object.assign(body, additionalFields);
-
+						
 						if (body.title) {
 							qs.title = body.title;
 							delete body.title;

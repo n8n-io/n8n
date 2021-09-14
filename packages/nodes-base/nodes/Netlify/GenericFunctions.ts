@@ -33,6 +33,7 @@ export async function netlifyApiRequest(this: IHookFunctions | IExecuteFunctions
 	if (Object.keys(option)) {
 		Object.assign(options, option);
 	}
+	console.log(options);
 
 	try {
 		const credentials = await this.getCredentials('netlifyApi');

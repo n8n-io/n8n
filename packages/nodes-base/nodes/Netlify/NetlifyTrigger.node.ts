@@ -52,7 +52,7 @@ export class NetlifyTrigger implements INodeType {
 		],
 		properties: [
 			{
-				displayName: 'Site ID',
+				displayName: 'Site Name/ID',
 				name: 'siteId',
 				required: true,
 				type: 'options',
@@ -106,7 +106,7 @@ export class NetlifyTrigger implements INodeType {
 				description: 'Select a form',
 			},
 			{
-				displayName: 'Simple',
+				displayName: 'Simplify Response',
 				name: 'simple',
 				type: 'boolean',
 				displayOptions: {
@@ -208,7 +208,7 @@ export class NetlifyTrigger implements INodeType {
 						value: form.id,
 					});
 				}
-				returnData.unshift({ name: '*', value: '*' });
+				returnData.unshift({ name: '[All Forms]', value: '*' });
 				return returnData;
 			},
 		},

@@ -142,26 +142,8 @@ export const deployFields = [
 		},
 		options: [
 			{
-				displayName: 'Async',
-				name: 'async',
-				type: 'boolean',
-				default: false,
-			},
-			{
 				displayName: 'Branch',
 				name: 'branch',
-				type: 'string',
-				default: '',
-			},
-			{
-				displayName: 'Draft',
-				name: 'draft',
-				type: 'boolean',
-				default: false,
-			},
-			{
-				displayName: 'Framework',
-				name: 'framework',
 				type: 'string',
 				default: '',
 			},
