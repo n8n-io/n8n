@@ -6,7 +6,8 @@
 		<div :style="formStyles">
 			<n8n-form-box
 				v-bind="form"
-				@action="onAction"
+				:buttonLoading="formLoading"
+				@submit="onSubmit"
 			/>
 		</div>
 	</div>
@@ -29,6 +30,10 @@ export default Vue.extend({
 	props: {
 		form: {
 		},
+		formLoading: {
+			type: Boolean,
+			default: false,
+		},
 		formWidth: {
 			type: String,
 		},
@@ -45,8 +50,8 @@ export default Vue.extend({
 		},
 	},
 	methods: {
-		onAction(values: {[key: string]: string}) {
-			this.$emit('action', values);
+		onSubmit(values: {[key: string]: string}) {
+			this.$emit('submit', values);
 		},
 	},
 });

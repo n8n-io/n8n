@@ -12,7 +12,7 @@ export default {
 };
 
 const methods = {
-	onAction: action('action'),
+	onSubmit: action('submit'),
 };
 
 const Template = (args, { argTypes }) => ({
@@ -20,7 +20,7 @@ const Template = (args, { argTypes }) => ({
 	components: {
 		N8nFormBox,
 	},
-	template: '<n8n-form-box v-bind="$props" @action="onAction" />',
+	template: '<n8n-form-box v-bind="$props" @submit="onSubmit" />',
 	methods,
 });
 
