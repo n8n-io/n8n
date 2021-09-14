@@ -223,10 +223,7 @@ export const pushConnection = mixins(
 						const saveManualExecutions = this.$store.getters.saveManualExecutions;
 
 						let action;
-						if (isNewWorkflow) {
-							action = '<a class="save open-settings">Save and turn on saving manual executions</a> and run again to see what happened after this node.';
-						}
-						else if (!saveManualExecutions) {
+						if (isNewWorkflow || !saveManualExecutions) {
 							action = '<a class="open-settings">Turn on saving manual executions</a> and run again to see what happened after this node.';
 						}
 						else {
@@ -241,10 +238,10 @@ export const pushConnection = mixins(
 							type: 'success',
 							duration: 0,
 							onLinkClick: async (e: HTMLLinkElement) => {
-								if (e.classList.contains('save')) {
-									await this.saveAsNewWorkflow();
-								}
 								if (e.classList.contains('open-settings')) {
+									if (this.$store.getters.isNewWorkflow) {
+										await this.saveAsNewWorkflow();
+									}
 									this.$store.dispatch('ui/openWorkflowSettingsModal');
 								}
 							},
