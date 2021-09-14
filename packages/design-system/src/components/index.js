@@ -1,5 +1,4 @@
 import N8nButton from './N8nButton';
-import N8nComponents from './N8nComponents';
 import N8nFormBox from './N8nFormBox';
 import N8nFormInput from './N8nFormInput';
 import N8nIcon from './N8nIcon';
@@ -13,11 +12,11 @@ import N8nMenuItem from './N8nMenuItem';
 import N8nOption from './N8nOption';
 import N8nSelect from './N8nSelect';
 import N8nSpinner from './N8nSpinner';
+import N8nText from './N8nText';
 import N8nTooltip from './N8nTooltip';
 
 export {
 	N8nButton,
-	N8nComponents,
 	N8nFormBox,
 	N8nFormInput,
 	N8nIcon,
@@ -31,5 +30,6 @@ export {
 	N8nOption,
 	N8nSelect,
 	N8nSpinner,
+	N8nText,
 	N8nTooltip,
 };
