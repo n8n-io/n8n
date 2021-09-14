@@ -97,10 +97,10 @@ export default mixins(titleChange).extend({
 
 .execution-icon {
  &.success {
-	color: $--custom-success-text-light;
+	color: var(--color-success);
  }
  &.warning {
-	 color: $--custom-running-text;
+	 color: var(--color-warning);
  }
 }
 

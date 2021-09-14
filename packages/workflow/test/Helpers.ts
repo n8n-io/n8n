@@ -10,7 +10,6 @@ export interface INodeTypesObject {
 }
 
 class NodeTypesClass implements INodeTypes {
-
 	nodeTypes: INodeTypeData = {
 		'test.set': {
 			sourcePath: '',
@@ -97,7 +96,7 @@ class NodeTypesClass implements INodeTypes {
 		},
 	};
 
-	async init(nodeTypes: INodeTypeData): Promise<void> { }
+	async init(nodeTypes: INodeTypeData): Promise<void> {}
 
 	getAll(): INodeType[] {
 		return Object.values(this.nodeTypes).map((data) => NodeHelpers.getVersionedTypeNode(data.type));

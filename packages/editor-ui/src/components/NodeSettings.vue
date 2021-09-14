@@ -4,10 +4,10 @@
 			<span v-if="node">
 				<display-with-change :key-name="'name'" @valueChanged="valueChanged"></display-with-change>
 				<a v-if="nodeType" :href="'http://n8n.io/nodes/' + nodeType.name" target="_blank" class="node-info">
-					<el-tooltip class="clickable" placement="top" effect="light">
+					<n8n-tooltip class="clickable" placement="top" >
 						<div slot="content" v-html="'<strong>Node Description:</strong><br />' + nodeTypeDescription + '<br /><br /><strong>Click the \'?\' icon to open this node on n8n.io </strong>'"></div>
 						<font-awesome-icon icon="question-circle" />
-					</el-tooltip>
+					</n8n-tooltip>
 				</a>
 			</span>
 			<span v-else>No node active</span>
@@ -521,16 +521,6 @@ export default mixins(
 	color: #555;
 	border-radius: 2px 0 0 2px;
 
-	textarea {
-		font-size: 0.9em;
-		line-height: 1.5em;
-		margin: 0.2em 0;
-
-	}
-	textarea:hover {
-		line-height: 1.5em;
-	}
-
 	.header-side-menu {
 		padding: 1em 0 1em 1.8em;
 		font-size: 1.35em;
@@ -579,51 +569,28 @@ export default mixins(
 			padding-bottom: 1em;
 		}
 
-		.add-option > .el-input input::placeholder {
-			color: #fff;
-			font-weight: 600;
+		.add-option {
+			i.el-select__caret {
+				color: var(--color-foreground-xlight);
+			}
+			.el-input .el-input__inner {
+				&,
+				&:hover,
+				&:focus {
+					border-radius: 20px;
+					color: var(--color-foreground-xlight);
+					font-weight: 600;
+					background-color: var(--color-primary);
+					border-color: var(--color-primary);
+					text-align: center;
+				}
+
+				&::placeholder {
+					color: var(--color-foreground-xlight);
+					opacity: 1; /** Firefox */
+				}
+			}
 		}
-
-		.el-button,
-		.add-option > .el-input .el-input__inner,
-		.add-option > .el-input .el-input__inner:hover
-		{
-			background-color: $--color-primary;
-			color: #fff;
-			text-align: center;
-			height: 38px;
-		}
-
-		.el-button,
-		.add-option > .el-input .el-input__inner
-		{
-			border: 1px solid $--color-primary;
-			border-radius: 17px;
-			height: 38px;
-		}
-	}
-
-	.el-input-number,
-	input.el-input__inner {
-		font-size: 0.9em;
-		line-height: 28px;
-		height: 28px;
-	}
-	.el-input-number {
-		padding: 0 10px;
-	}
-
-	.el-input--prefix .el-input__inner {
-		padding: 0 28px;
-	}
-
-	.el-input__prefix {
-		left: 2px;
-		top: 1px;
-	}
-
-	.el-select.add-option .el-input .el-select__caret {
-		color: #fff;
 	}
 }
 
@@ -650,14 +617,15 @@ export default mixins(
 }
 
 .parameter-wrapper {
-	line-height: 2.7em;
 	padding: 0 1em;
 }
+
 .parameter-name {
-	line-height: 2.7em;
+	line-height: 1.5;
 	white-space: nowrap;
 	overflow: hidden;
 	text-overflow: ellipsis;
+	align-self: center;
 }
 
 .color-reset-button-wrapper {

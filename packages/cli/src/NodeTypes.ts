@@ -6,21 +6,19 @@ import {
 	NodeHelpers,
 } from 'n8n-workflow';
 
-
 class NodeTypesClass implements INodeTypes {
-
 	nodeTypes: INodeTypeData = {};
-
 
 	async init(nodeTypes: INodeTypeData): Promise<void> {
 		// Some nodeTypes need to get special parameters applied like the
 		// polling nodes the polling times
+		// eslint-disable-next-line no-restricted-syntax
 		for (const nodeTypeData of Object.values(nodeTypes)) {
 			const nodeType = NodeHelpers.getVersionedTypeNode(nodeTypeData.type);
 			const applyParameters = NodeHelpers.getSpecialNodeParameters(nodeType);
 
 			if (applyParameters.length) {
-				nodeType.description.properties.unshift.apply(nodeType.description.properties, applyParameters);
+				nodeType.description.properties.unshift(...applyParameters);
 			}
 		}
 		this.nodeTypes = nodeTypes;
@@ -42,9 +40,9 @@ class NodeTypesClass implements INodeTypes {
 	}
 }
 
-
 let nodeTypesInstance: NodeTypesClass | undefined;
 
+// eslint-disable-next-line @typescript-eslint/naming-convention
 export function NodeTypes(): NodeTypesClass {
 	if (nodeTypesInstance === undefined) {
 		nodeTypesInstance = new NodeTypesClass();

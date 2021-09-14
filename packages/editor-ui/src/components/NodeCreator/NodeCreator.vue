@@ -104,7 +104,7 @@ export default Vue.extend({
 </script>
 
 <style scoped lang="scss">
-/deep/ *, *:before, *:after {
+::v-deep *, *:before, *:after {
 	box-sizing: border-box;
 }
 
