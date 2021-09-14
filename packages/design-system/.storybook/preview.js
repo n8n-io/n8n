@@ -59,7 +59,7 @@ export const parameters = {
 	},
 	options: {
 		storySort: {
-			order: ['Docs', 'Styleguide', 'Atoms'],
+			order: ['Docs', 'Styleguide', 'Atoms', 'Modules'],
 		},
 	},
 };

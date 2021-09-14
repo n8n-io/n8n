@@ -36,7 +36,7 @@ export default {
 		type: {
 			type: String,
 			validator: (value: string): boolean =>
-				['text', 'textarea', 'number', 'password'].indexOf(value) !== -1,
+				['text', 'textarea', 'number', 'password', 'email'].indexOf(value) !== -1,
 		},
 		size: {
 			type: String,
