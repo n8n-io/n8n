@@ -13,15 +13,21 @@ import { showMessage } from '@/components/mixins/showMessage';
 import mixins from 'vue-typed-mixins';
 
 const FORM_CONFIG = {
-	title: 'Recover password',
-	buttonText: 'Email me a recovery link',
+	title: 'Change Password',
+	buttonText: 'Change Password',
 	redirectText: 'Sign in',
 	redirectLink: '/login',
 	inputs: [
 		{
-			name: 'email',
-			placeholder: 'Email',
-			type: 'email',
+			name: 'password',
+			placeholder: 'New password',
+			type: 'password',
+			required: true,
+		},
+		{
+			name: 'password2',
+			placeholder: 'Re-enter new password',
+			type: 'password',
 			required: true,
 		},
 	],
@@ -30,7 +36,7 @@ const FORM_CONFIG = {
 export default mixins(
 	showMessage,
 ).extend({
-	name: 'ForgotMyPassword',
+	name: 'ChangePassword',
 	components: {
 		AuthView,
 	},
@@ -44,15 +50,17 @@ export default mixins(
 		async onSetup(values: {[key: string]: string}) {
 			try {
 				this.loading = true;
-				await this.$store.dispatch('auth/sendForgotPasswordEmail', values);
+				await this.$store.dispatch('auth/changePassword', values);
 
 				this.$showMessage({
 					type: 'success',
-					title: 'Recovery email sent',
-					message: 'Please click the link when you receive the email',
+					title: 'Password reset successfully',
+					message: 'You can now sign in with your new password',
 				});
+
+				await this.$router.push({ name: 'LoginView' });
 			} catch (error) {
-				this.$showError(error, 'Problem sending email', 'There was a problem while trying to send the email:');
+				this.$showError(error, 'Problem changing the password', 'There was a problem while trying to change the password:');
 			}
 			this.loading = false;
 		},

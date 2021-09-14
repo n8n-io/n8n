@@ -1,7 +1,6 @@
 <template>
 	<AuthView
 		:form="FORM_CONFIG"
-		formWidth="352px"
 		:formLoading="loading"
 		@submit="onSetup"
 	/>
