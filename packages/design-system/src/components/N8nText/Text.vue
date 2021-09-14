@@ -76,7 +76,6 @@ export default Vue.extend({
 	composes: body-xlarge;
 }
 
-
 .body-large {
 	font-size: var(--font-size-m);
 	line-height: var(--font-line-height-xloose);

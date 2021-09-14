@@ -6,7 +6,11 @@
 			v-if="title"
 			:class="$style.heading"
 		>
-			{{ title }}
+			<n8n-text
+				:text="title"
+				type="heading"
+				size="large"
+			/>
 		</div>
 		<div
 			:class="$style.inputsContainer"
@@ -45,10 +49,12 @@
 <script lang="ts">
 import Vue from 'vue';
 import N8nFormInput from '../N8nFormInput';
+import N8nText from '../N8nText';
 
 export default Vue.extend({
 	name: 'FormBox',
 	components: {
+		N8nText,
 		N8nFormInput,
 	},
 	props: {
@@ -93,10 +99,7 @@ export default Vue.extend({
 </script>
 
 <style lang="scss" module>
-@use "~/theme/src/common/typography.scss";
-
 .heading {
-	composes: heading2;
 	display: flex;
 	justify-content: center;
 }
