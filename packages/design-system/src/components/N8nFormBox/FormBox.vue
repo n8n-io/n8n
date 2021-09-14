@@ -31,6 +31,7 @@
 			<n8n-button
 				v-if="buttonText"
 				:label="buttonText"
+				:buttonLoading="buttonLoading"
 				size="large"
 				@click="onAction"
 			/>
@@ -52,7 +53,7 @@ import N8nFormInput from '../N8nFormInput';
 import N8nText from '../N8nText';
 
 export default Vue.extend({
-	name: 'FormBox',
+	name: 'N8nFormBox',
 	components: {
 		N8nText,
 		N8nFormInput,
@@ -69,6 +70,10 @@ export default Vue.extend({
 		},
 		buttonText: {
 			type: String,
+		},
+		buttonLoading: {
+			type: Boolean,
+			default: false,
 		},
 		redirectText: {
 			type: String,
@@ -90,9 +95,21 @@ export default Vue.extend({
 				[name]: value,
 			};
 		},
+		isReadyToSubmit(): boolean {
+			for (let i = 0; i < this.inputs.length; i++) {
+				const input = this.inputs[i] as {name: string, type: string, required: boolean};
+				if (input.required && input.type !== 'boolean' && !this.values[input.name]) {
+					return false;
+				}
+			}
+
+			return true;
+		},
 		onAction() {
 			this.showValidationWarnings = true;
-			this.$emit('action', this.values);
+			if (this.isReadyToSubmit()) {
+				this.$emit('action', this.values);
+			}
 		},
 	},
 });
@@ -102,6 +119,7 @@ export default Vue.extend({
 .heading {
 	display: flex;
 	justify-content: center;
+	margin-bottom: var(--spacing-xl);
 }
 
 .container {
