@@ -6,7 +6,7 @@
 		:size="props.size"
 		:loading="props.loading"
 		:title="props.title || props.label"
-		:class="$style[$options.getClass(props)]"
+		:class="$options.getClass(props, $style)"
 		:round="!props.circle && props.round"
 		:circle="props.circle"
 		:style="$options.styles(props)"
@@ -91,6 +91,10 @@ export default {
 			type: Boolean,
 			default: false,
 		},
+		transparentBackground: {
+			type: Boolean,
+			default: false,
+		},
 	},
 	components: {
 		ElButton,
@@ -106,10 +110,16 @@ export default {
 			...(props.fullWidth ? { width: '100%' } : {}),
 		};
 	},
-	getClass(props: { type: string; theme?: string }): string {
-		return props.type === 'text'
+	getClass(props: { type: string; theme?: string, transparentBackground: boolean }, $style: any): string {
+		const theme = props.type === 'text'
 			? 'text'
 			: `${props.type}-${props.theme || 'primary'}`;
+
+		if (props.transparentBackground) {
+			return `${$style[theme]} ${$style['transparent']}`;
+		}
+
+		return $style[theme];
 	},
 };
 </script>
@@ -287,6 +297,11 @@ $color-danger-shade: lightness(
 	--button-active-background-color: transparent;
 	--button-active-color: var(--color-primary);
 	--button-active-border-color: transparent;
+}
+
+.transparent {
+	--button-background-color: transparent;
+	--button-active-background-color: transparent;
 }
 
 .icon {

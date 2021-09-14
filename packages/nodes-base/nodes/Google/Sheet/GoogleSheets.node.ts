@@ -4,12 +4,15 @@ import {
 } from 'n8n-core';
 
 import {
+	ICredentialsDecrypted,
+	ICredentialTestFunctions,
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
+	NodeCredentialTestResult,
 	NodeOperationError,
 } from 'n8n-workflow';
 
@@ -23,6 +26,7 @@ import {
 } from './GoogleSheet';
 
 import {
+	getAccessToken,
 	googleApiRequest,
 	hexToRgb,
 } from './GenericFunctions';
@@ -53,6 +57,7 @@ export class GoogleSheets implements INodeType {
 						],
 					},
 				},
+				testedBy: 'googleApiCredentialTest',
 			},
 			{
 				name: 'googleSheetsOAuth2Api',
@@ -1004,6 +1009,30 @@ export class GoogleSheets implements INodeType {
 				}
 
 				return returnData;
+			},
+		},
+		credentialTest: {
+			async googleApiCredentialTest(this: ICredentialTestFunctions, credential: ICredentialsDecrypted): Promise<NodeCredentialTestResult> {
+				try {
+					const tokenRequest = await getAccessToken.call(this, credential.data!);
+					if (!tokenRequest.access_token) {
+						return {
+							status: 'Error',
+							message: 'Could not generate a token from your private key.',
+						};
+					}
+				} catch(err) {
+					return {
+						status: 'Error',
+						message: `Private key validation failed: ${err.message}`,
+					};
+				}
+
+				return {
+					status: 'OK',
+					message: 'Connection successful!',
+				};
+				
 			},
 		},
 	};

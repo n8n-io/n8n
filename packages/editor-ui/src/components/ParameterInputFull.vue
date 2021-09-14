@@ -8,7 +8,7 @@
 			</n8n-tooltip>
 		</el-col>
 		<el-col :span="isMultiLineParameter ? 24 : 14" class="parameter-value">
-			<parameter-input :parameter="parameter" :value="value" :displayOptions="displayOptions" :path="path" @valueChanged="valueChanged" inputSize="small" />
+			<parameter-input :parameter="parameter" :value="value" :displayOptions="displayOptions" :path="path" :isReadOnly="isReadOnly" @valueChanged="valueChanged" inputSize="small" />
 		</el-col>
 	</el-row>
 </template>
@@ -47,6 +47,7 @@ export default Vue
 		},
 		props: [
 			'displayOptions',
+			'isReadOnly',
 			'parameter',
 			'path',
 			'value',
