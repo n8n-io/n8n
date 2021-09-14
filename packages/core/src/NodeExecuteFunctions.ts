@@ -75,6 +75,7 @@ import { URLSearchParams } from 'url';
 // eslint-disable-next-line import/no-cycle
 import {
 	BINARY_ENCODING,
+	ICredentialTestFunctions,
 	IHookFunctions,
 	ILoadOptionsFunctions,
 	IResponseError,
@@ -1708,6 +1709,14 @@ export function getExecuteSingleFunctions(
 			},
 		};
 	})(workflow, runExecutionData, connectionInputData, inputData, node, itemIndex);
+}
+
+export function getCredentialTestFunctions(): ICredentialTestFunctions {
+	return {
+		helpers: {
+			request: requestPromiseWithDefaults,
+		},
+	};
 }
 
 /**
