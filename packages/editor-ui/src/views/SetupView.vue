@@ -2,7 +2,8 @@
 	<AuthView
 		:form="FORM_CONFIG"
 		formWidth="352px"
-		@action="onSetup"
+		:formLoading="loading"
+		@submit="onSetup"
 	/>
 </template>
 
@@ -56,17 +57,20 @@ export default mixins(
 	data() {
 		return {
 			FORM_CONFIG,
+			loading: false,
 		};
 	},
 	methods: {
 		async onSetup(values: {[key: string]: string}) {
 			try {
+				this.loading = true;
 				await this.$store.dispatch('auth/setup', values);
 
 				await this.$router.push({ name: 'LoginView' });
 			} catch (error) {
 				this.$showError(error, 'Problem setting up instance', 'There was a problem setting up the instance:');
 			}
+			this.loading = false;
 		},
 	},
 });

@@ -31,9 +31,9 @@
 			<n8n-button
 				v-if="buttonText"
 				:label="buttonText"
-				:buttonLoading="buttonLoading"
+				:loading="buttonLoading"
 				size="large"
-				@click="onAction"
+				@click="onSubmit"
 			/>
 		</div>
 		<div :class="$style.actionContainer">
@@ -105,10 +105,10 @@ export default Vue.extend({
 
 			return true;
 		},
-		onAction() {
+		onSubmit() {
 			this.showValidationWarnings = true;
 			if (this.isReadyToSubmit()) {
-				this.$emit('action', this.values);
+				this.$emit('submit', this.values);
 			}
 		},
 	},
