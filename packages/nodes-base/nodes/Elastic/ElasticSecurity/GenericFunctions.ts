@@ -16,7 +16,10 @@ import {
 import {
 	ElasticsearchApiCredentials,
 } from '../Elasticsearch/types';
-import { ConnectorType, GetConnectorResponse } from './types';
+
+import {
+	GetConnectorResponse,
+} from './types';
 
 export async function elasticSecurityApiRequest(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
@@ -54,7 +57,6 @@ export async function elasticSecurityApiRequest(
 	}
 
 	try {
-		console.log(JSON.stringify(options, null, 2));
 		return await this.helpers.request!(options);
 	} catch (error) {
 		if (error?.error?.error === 'Not Acceptable' && error?.error?.message) {
@@ -114,7 +116,7 @@ export async function handleListing(
 }
 
 /**
- * Retrieve a connector name from a connector ID.
+ * Retrieve a connector name and type from a connector ID.
  *
  * https://www.elastic.co/guide/en/kibana/master/get-connector-api.html
  */
