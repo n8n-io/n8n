@@ -45,17 +45,19 @@ import lang from 'element-ui/lib/locale/lang/en';
 import locale from 'element-ui/lib/locale';
 
 import {
-	N8nIconButton,
 	N8nButton,
+	N8nFormInput,
+	N8nIconButton,
 	N8nInfoTip,
 	N8nInput,
 	N8nInputLabel,
 	N8nInputNumber,
 	N8nMenu,
 	N8nMenuItem,
+	N8nOption,
 	N8nSelect,
 	N8nSpinner,
-	N8nOption,
+	N8nText,
 } from 'n8n-design-system';
 import { ElMessageBoxOptions } from "element-ui/types/message-box";
 
@@ -63,6 +65,7 @@ Vue.use(Fragment.Plugin);
 
 // n8n design system
 Vue.use(N8nButton);
+Vue.use(N8nFormInput);
 Vue.use(N8nIconButton);
 Vue.use(N8nInfoTip);
 Vue.use(N8nInput);
@@ -70,9 +73,10 @@ Vue.use(N8nInputLabel);
 Vue.use(N8nInputNumber);
 Vue.use(N8nMenu);
 Vue.use(N8nMenuItem);
+Vue.use(N8nOption);
 Vue.use(N8nSelect);
 Vue.use(N8nSpinner);
-Vue.use(N8nOption);
+Vue.use(N8nText);
 
 // element io
 locale.use(lang);

@@ -7,6 +7,7 @@
 <script lang="ts">
 import Vue from 'vue';
 export default Vue.extend({
+	name: 'N8nText',
 	props: {
 		text: {
 			type: String,
