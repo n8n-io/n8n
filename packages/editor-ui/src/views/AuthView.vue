@@ -3,7 +3,7 @@
 		<!-- <div>
 				<Logo />
 		</div> -->
-		<div :style="formStyles">
+		<div :class="$style.formContainer">
 			<n8n-form-box
 				v-bind="form"
 				:buttonLoading="formLoading"
@@ -34,20 +34,6 @@ export default Vue.extend({
 			type: Boolean,
 			default: false,
 		},
-		formWidth: {
-			type: String,
-		},
-	},
-	computed: {
-		formStyles() {
-			const styles: {[key: string]: string} = {};
-
-			if (this.formWidth) {
-				styles.width = this.formWidth;
-			}
-
-			return styles;
-		},
 	},
 	methods: {
 		onSubmit(values: {[key: string]: string}) {
@@ -64,6 +50,10 @@ export default Vue.extend({
 	display: flex;
 	justify-content: center;
 	padding-top: var(--spacing-2xl);
+}
+
+.formContainer {
+	width: 352px;
 }
 </style>
 

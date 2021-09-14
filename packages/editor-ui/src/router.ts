@@ -7,6 +7,7 @@ import LoginView from './views/LoginView.vue';
 import SetupView from './views/SetupView.vue';
 import SignupView from './views/SignupView.vue';
 import ForgotMyPasswordView from './views/ForgotMyPasswordView.vue';
+import ChangePasswordView from './views/ChangePasswordView.vue';
 
 Vue.use(Router);
 
@@ -81,6 +82,13 @@ export default new Router({
 			name: 'ForgotMyPasswordView',
 			components: {
 				default: ForgotMyPasswordView,
+			},
+		},
+		{
+			path: '/change-password',
+			name: 'ChangePasswordView',
+			components: {
+				default: ChangePasswordView,
 			},
 		},
 	],

@@ -1,6 +1,6 @@
 <template functional>
 	<div :class="$style.inputLabel">
-		<div :class="$style.label">
+		<div :class="$style.label" v-if="props.label">
 			<span>
 				{{ $options.methods.addTargetBlank(props.label) }}
 				<span v-if="props.required" :class="$style.required">*</span>
@@ -32,7 +32,6 @@ export default {
 	props: {
 		label: {
 			type: String,
-			required: true,
 		},
 		tooltipText: {
 			type: String,
