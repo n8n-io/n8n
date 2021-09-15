@@ -86,7 +86,7 @@ export class ERPNext implements INodeType {
 					return ({ name: label, value: fieldname });
 				});
 
-				docFields.unshift({ name: '*', value: '*' });
+				docFields.unshift({ name: '[All]', value: '*' });
 
 				return processNames(docFields);
 			},

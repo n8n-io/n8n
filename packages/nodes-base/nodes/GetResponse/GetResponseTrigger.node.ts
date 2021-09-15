@@ -152,7 +152,7 @@ export class GetResponseTrigger implements INodeType {
 			async getLists(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
 				const lists = await getResponseApiRequestAllItems.call(this, 'GET', '/campaigns');
-				returnData.push({ name: '*', value: '*' });
+				returnData.push({ name: '[All]', value: '*' });
 				for (const list of lists) {
 					returnData.push({
 						name: list.name,

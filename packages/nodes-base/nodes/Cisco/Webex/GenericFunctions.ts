@@ -91,7 +91,7 @@ export function getEvents() {
 			displayOptions: {
 				show: {
 					resource: [
-						(resource === '*') ? 'all' : resource,
+						(resource === '*') ? '[All]' : resource,
 					],
 				},
 			},

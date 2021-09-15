@@ -88,7 +88,7 @@ export class JiraTrigger implements INodeType {
 				type: 'multiOptions',
 				options: [
 					{
-						name: '*',
+						name: '[All]',
 						value: '*',
 					},
 					{

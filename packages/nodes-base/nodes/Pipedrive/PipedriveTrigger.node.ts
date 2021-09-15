@@ -134,7 +134,7 @@ export class PipedriveTrigger implements INodeType {
 				type: 'options',
 				options: [
 					{
-						name: 'All',
+						name: '[All]',
 						value: '*',
 						description: 'Any change',
 					},
@@ -168,7 +168,7 @@ export class PipedriveTrigger implements INodeType {
 				type: 'options',
 				options: [
 					{
-						name: 'All',
+						name: '[All]',
 						value: '*',
 					},
 					{

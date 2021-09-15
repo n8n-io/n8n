@@ -105,7 +105,7 @@ export class GitlabTrigger implements INodeType {
 				type: 'multiOptions',
 				options: [
 					{
-						name: '*',
+						name: '[All]',
 						value: '*',
 						description: 'Any time any event is triggered (Wildcard Event).',
 					},

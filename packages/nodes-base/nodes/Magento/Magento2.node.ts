@@ -260,7 +260,7 @@ export class Magento2 implements INodeType {
 				return getProductAttributes.call(this);
 			},
 			// async getProductAttributesFields(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-			// 	return getProductAttributes.call(this, undefined, { name: '*', value: '*', description: 'All properties' });
+			// 	return getProductAttributes.call(this, undefined, { name: '[All]', value: '*', description: 'All properties' });
 			// },
 			async getFilterableProductAttributes(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				return getProductAttributes.call(this, (attribute) => attribute.is_searchable === '1');
@@ -564,7 +564,7 @@ export class Magento2 implements INodeType {
 								sku,
 								name,
 								attribute_set_id: parseInt(attributeSetId, 10),
-								price, 
+								price,
 							},
 						};
 

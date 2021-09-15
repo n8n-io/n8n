@@ -166,7 +166,7 @@ export const playlistItemFields = [
 		type: 'multiOptions',
 		options: [
 			{
-				name: '*',
+				name: '[All]',
 				value: '*',
 			},
 			{
@@ -303,7 +303,7 @@ export const playlistItemFields = [
 		type: 'multiOptions',
 		options: [
 			{
-				name: '*',
+				name: '[All]',
 				value: '*',
 			},
 			{

@@ -108,7 +108,7 @@ export async function getWorkspaces(this: ILoadOptionsFunctions): Promise<INodeP
 
 export function getTaskFields() {
 	return [
-		'*',
+		'[All]',
 		'GID',
 		'Resource Type',
 		'name',

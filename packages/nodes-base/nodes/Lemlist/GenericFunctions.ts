@@ -108,5 +108,5 @@ export function getEvents() {
 		'emailsUnsubscribed',
 	];
 
-	return events.map((event: string) => ({ name: (event === '*') ? '*' : capitalCase(event), value: event }));
+	return events.map((event: string) => ({ name: (event === '*') ? '[All]' : capitalCase(event), value: event }));
 }

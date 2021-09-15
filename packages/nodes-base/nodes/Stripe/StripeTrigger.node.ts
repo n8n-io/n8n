@@ -54,7 +54,7 @@ export class StripeTrigger implements INodeType {
 				description: 'The event to listen to.',
 				options: [
 					{
-						name: '*',
+						name: '[All]',
 						value: '*',
 						description: 'Any time any event is triggered (Wildcard Event).',
 					},

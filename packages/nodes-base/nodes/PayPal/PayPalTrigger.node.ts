@@ -69,7 +69,7 @@ export class PayPalTrigger implements INodeType {
 			async getEvents(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [
 					{
-						name: '*',
+						name: '[All]',
 						value: '*',
 						description: 'Any time any event is triggered (Wildcard Event).',
 					},

@@ -101,7 +101,7 @@ export class ClickUpTrigger implements INodeType {
 				default: [],
 				options: [
 					{
-						name: '*',
+						name: '[All]',
 						value: '*',
 					},
 					{

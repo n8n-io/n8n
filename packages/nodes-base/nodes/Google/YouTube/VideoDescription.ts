@@ -327,7 +327,7 @@ export const videoFields = [
 		type: 'multiOptions',
 		options: [
 			{
-				name: '*',
+				name: '[All]',
 				value: '*',
 			},
 			{

@@ -594,7 +594,7 @@ export const contactFields = [
 		type: 'multiOptions',
 		options: [
 			{
-				name: '*',
+				name: '[All]',
 				value: '*',
 			},
 			{
@@ -774,7 +774,7 @@ export const contactFields = [
 		type: 'multiOptions',
 		options: [
 			{
-				name: '*',
+				name: '[All]',
 				value: '*',
 			},
 			{
@@ -978,7 +978,7 @@ export const contactFields = [
 		type: 'multiOptions',
 		options: [
 			{
-				name: '*',
+				name: '[All]',
 				value: '*',
 			},
 			{

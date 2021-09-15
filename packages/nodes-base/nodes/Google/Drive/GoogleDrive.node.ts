@@ -842,7 +842,7 @@ export class GoogleDrive implements INodeType {
 						type: 'multiOptions',
 						options: [
 							{
-								name: '*',
+								name: '[All]',
 								value: '*',
 								description: 'All fields.',
 							},
@@ -1076,7 +1076,7 @@ export class GoogleDrive implements INodeType {
 						},
 						options: [
 							{
-								name: '*',
+								name: '[All]',
 								value: '*',
 								description: 'All fields.',
 							},
@@ -1297,7 +1297,7 @@ export class GoogleDrive implements INodeType {
 						},
 						options: [
 							{
-								name: '*',
+								name: '[All]',
 								value: '*',
 								description: 'All spaces.',
 							},

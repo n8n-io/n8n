@@ -42,7 +42,7 @@ export class ChargebeeTrigger implements INodeType {
 				description: 'The operation to perform.',
 				options: [
 					{
-						name: '*',
+						name: '[All]',
 						value: '*',
 						description: 'Any time any event is triggered (Wildcard Event).',
 					},

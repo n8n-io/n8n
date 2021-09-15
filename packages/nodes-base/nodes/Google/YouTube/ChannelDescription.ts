@@ -51,7 +51,7 @@ export const channelFields = [
 		type: 'multiOptions',
 		options: [
 			{
-				name: '*',
+				name: '[All]',
 				value: '*',
 			},
 			{
@@ -256,7 +256,7 @@ export const channelFields = [
 		type: 'multiOptions',
 		options: [
 			{
-				name: '*',
+				name: '[All]',
 				value: '*',
 			},
 			{

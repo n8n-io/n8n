@@ -543,7 +543,7 @@ export function getFields(object: string) {
 	// tslint:disable-next-line: no-any
 	} as { [key: string]: any };
 
-	return [{ name: '*', value: '*' }].concat(data[object as string] || [])
+	return [{ name: '[All]', value: '*' }].concat(data[object as string] || [])
 		.map((fieldObject: IDataObject) =>
 			({ ...fieldObject, name: (fieldObject.value !== '*') ? capitalCase(fieldObject.value as string) : fieldObject.value }));
 }
