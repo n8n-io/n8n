@@ -2,7 +2,7 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const userOperations = [
+export const userOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -39,9 +39,9 @@ export const userOperations = [
 		],
 		default: 'create',
 	},
-] as INodeProperties[];
+];
 
-export const userFields = [
+export const userFields: INodeProperties[] = [
 	// ----------------------------------------
 	//               user: create
 	// ----------------------------------------
@@ -108,7 +108,7 @@ export const userFields = [
 				name: 'invited_by',
 				type: 'options',
 				default: '',
-				description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 				typeOptions: {
 					loadOptionsMethod: 'getUsers',
 				},
@@ -117,7 +117,7 @@ export const userFields = [
 				displayName: 'Organization Name/ID',
 				name: 'org_id',
 				type: 'options',
-				description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 				default: '',
 				typeOptions: {
 					loadOptionsMethod: 'getOrgs',
@@ -191,7 +191,7 @@ export const userFields = [
 		name: 'limit',
 		type: 'number',
 		default: 50,
-		description: 'How many results to return',
+		description: 'Max number of results to return',
 		typeOptions: {
 			minValue: 1,
 		},
@@ -264,7 +264,7 @@ export const userFields = [
 				displayName: 'Inviter Name/ID',
 				name: 'invited_by',
 				type: 'options',
-				description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 				default: '',
 				typeOptions: {
 					loadOptionsMethod: 'getUsers',
@@ -274,7 +274,7 @@ export const userFields = [
 				displayName: 'Organization Name/ID',
 				name: 'org_id',
 				type: 'options',
-				description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 				default: '',
 				typeOptions: {
 					loadOptionsMethod: 'getOrgs',
@@ -282,4 +282,4 @@ export const userFields = [
 			},
 		],
 	},
-] as INodeProperties[];
+];

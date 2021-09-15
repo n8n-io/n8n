@@ -2,7 +2,7 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const noticelistOperations = [
+export const noticelistOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -27,9 +27,9 @@ export const noticelistOperations = [
 		],
 		default: 'get',
 	},
-] as INodeProperties[];
+];
 
-export const noticelistFields = [
+export const noticelistFields: INodeProperties[] = [
 	// ----------------------------------------
 	//             noticelist: get
 	// ----------------------------------------
@@ -73,7 +73,7 @@ export const noticelistFields = [
 		name: 'limit',
 		type: 'number',
 		default: 50,
-		description: 'How many results to return',
+		description: 'Max number of results to return',
 		typeOptions: {
 			minValue: 1,
 		},
@@ -91,4 +91,4 @@ export const noticelistFields = [
 			},
 		},
 	},
-] as INodeProperties[];
+];

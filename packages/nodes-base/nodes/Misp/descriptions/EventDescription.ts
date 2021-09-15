@@ -2,7 +2,7 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const eventOperations = [
+export const eventOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -47,9 +47,9 @@ export const eventOperations = [
 		],
 		default: 'create',
 	},
-] as INodeProperties[];
+];
 
-export const eventFields = [
+export const eventFields: INodeProperties[] = [
 	// ----------------------------------------
 	//              event: create
 	// ----------------------------------------
@@ -59,11 +59,9 @@ export const eventFields = [
 		type: 'options',
 		default: '',
 		required: true,
-		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 		typeOptions: {
-			loadOptionsMethod: [
-				'getOrgs',
-			],
+			loadOptionsMethod: 'getOrgs',
 		},
 		displayOptions: {
 			show: {
@@ -170,7 +168,7 @@ export const eventFields = [
 				name: 'sharing_group_id',
 				type: 'options',
 				default: '',
-				description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>. Use only for when <code>Sharing Group</code> is selected in <code>Distribution</code>.',
+				description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>. Use only for when <code>Sharing Group</code> is selected in <code>Distribution</code>',
 				typeOptions: {
 					loadOptionsMethod: 'getSharingGroups',
 				},
@@ -267,7 +265,7 @@ export const eventFields = [
 		name: 'limit',
 		type: 'number',
 		default: 50,
-		description: 'How many results to return',
+		description: 'Max number of results to return',
 		typeOptions: {
 			minValue: 1,
 		},
@@ -434,7 +432,7 @@ export const eventFields = [
 				name: 'sharing_group_id',
 				type: 'options',
 				default: '',
-				description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>. Use only for when <code>Sharing Group</code> is selected in <code>Distribution</code>.',
+				description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>. Use only for when <code>Sharing Group</code> is selected in <code>Distribution</code>',
 				typeOptions: {
 					loadOptionsMethod: 'getSharingGroups',
 				},
@@ -465,4 +463,4 @@ export const eventFields = [
 			},
 		],
 	},
-] as INodeProperties[];
+];

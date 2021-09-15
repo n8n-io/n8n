@@ -2,7 +2,7 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const eventTagOperations = [
+export const eventTagOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -27,9 +27,9 @@ export const eventTagOperations = [
 		],
 		default: 'add',
 	},
-] as INodeProperties[];
+];
 
-export const eventTagFields = [
+export const eventTagFields: INodeProperties[] = [
 	// ----------------------------------------
 	//             eventTag: add
 	// ----------------------------------------
@@ -54,14 +54,12 @@ export const eventTagFields = [
 	{
 		displayName: 'Tag Name/ID',
 		name: 'tagId',
-		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 		type: 'options',
 		required: true,
 		default: '',
 		typeOptions: {
-			loadOptionsMethod: [
-				'getTags',
-			],
+			loadOptionsMethod: 'getTags',
 		},
 		displayOptions: {
 			show: {
@@ -99,14 +97,12 @@ export const eventTagFields = [
 	{
 		displayName: 'Tag Name/ID',
 		name: 'tagId',
-		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 		type: 'options',
 		required: true,
 		default: '',
 		typeOptions: {
-			loadOptionsMethod: [
-				'getTags',
-			],
+			loadOptionsMethod: 'getTags',
 		},
 		displayOptions: {
 			show: {
@@ -119,4 +115,4 @@ export const eventTagFields = [
 			},
 		},
 	},
-] as INodeProperties[];
+];

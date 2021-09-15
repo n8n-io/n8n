@@ -2,7 +2,7 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const organisationOperations = [
+export const organisationOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -39,9 +39,9 @@ export const organisationOperations = [
 		],
 		default: 'create',
 	},
-] as INodeProperties[];
+];
 
-export const organisationFields = [
+export const organisationFields: INodeProperties[] = [
 	// ----------------------------------------
 	//           organisation: create
 	// ----------------------------------------
@@ -186,7 +186,7 @@ export const organisationFields = [
 		name: 'limit',
 		type: 'number',
 		default: 50,
-		description: 'How many results to return',
+		description: 'Max number of results to return',
 		typeOptions: {
 			minValue: 1,
 		},
@@ -275,4 +275,4 @@ export const organisationFields = [
 			},
 		],
 	},
-] as INodeProperties[];
+];

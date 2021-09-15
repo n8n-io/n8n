@@ -2,7 +2,7 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const feedOperations = [
+export const feedOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -43,9 +43,9 @@ export const feedOperations = [
 		],
 		default: 'create',
 	},
-] as INodeProperties[];
+];
 
-export const feedFields = [
+export const feedFields: INodeProperties[] = [
 	// ----------------------------------------
 	//               feed: create
 	// ----------------------------------------
@@ -248,7 +248,7 @@ export const feedFields = [
 		name: 'limit',
 		type: 'number',
 		default: 50,
-		description: 'How many results to return',
+		description: 'Max number of results to return',
 		typeOptions: {
 			minValue: 1,
 		},
@@ -365,4 +365,4 @@ export const feedFields = [
 			},
 		],
 	},
-] as INodeProperties[];
+];

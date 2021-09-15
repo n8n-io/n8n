@@ -2,7 +2,7 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const galaxyOperations = [
+export const galaxyOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -31,9 +31,9 @@ export const galaxyOperations = [
 		],
 		default: 'get',
 	},
-] as INodeProperties[];
+];
 
-export const galaxyFields = [
+export const galaxyFields: INodeProperties[] = [
 	// ----------------------------------------
 	//              galaxy: delete
 	// ----------------------------------------
@@ -103,7 +103,7 @@ export const galaxyFields = [
 		name: 'limit',
 		type: 'number',
 		default: 50,
-		description: 'How many results to return',
+		description: 'Max number of results to return',
 		typeOptions: {
 			minValue: 1,
 		},
@@ -121,4 +121,4 @@ export const galaxyFields = [
 			},
 		},
 	},
-] as INodeProperties[];
+];
