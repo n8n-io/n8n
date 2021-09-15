@@ -26,10 +26,9 @@
 						<n8n-select size="mini" v-model="maxDisplayItems" @click.stop>
 							<n8n-option v-for="option in maxDisplayItemsOptions" :label="option" :value="option" :key="option" />
 						</n8n-select>
-					</span>&nbsp;/
+					</span>/
 					<strong>{{ dataCount }}</strong>
 				</div>
-				&nbsp;
 				<n8n-tooltip
 					v-if="runMetadata"
 					placement="right"
@@ -41,7 +40,7 @@
 					<font-awesome-icon icon="info-circle" class="primary-color" />
 				</n8n-tooltip>
 				<span v-if="maxOutputIndex > 0">
-					| Output:&nbsp;
+					| Output:
 				</span>
 				<span class="opts" v-if="maxOutputIndex > 0" >
 					<n8n-select size="mini" v-model="outputIndex" @click.stop>
@@ -51,7 +50,7 @@
 				</span>
 
 				<span v-if="maxRunIndex > 0">
-					| Data of Execution:&nbsp;
+					| Data of Execution:
 				</span>
 				<span class="opts">
 					<n8n-select v-if="maxRunIndex > 0" size="mini" v-model="runIndex" @click.stop>
@@ -270,6 +269,9 @@ export default mixins(
 				MAX_DISPLAY_ITEMS_AUTO_ALL,
 			};
 		},
+		mounted() {
+			this.init();
+		},
 		computed: {
 			hasNodeRun(): boolean {
 				return Boolean(this.node && this.workflowRunData && this.workflowRunData.hasOwnProperty(this.node.name));
@@ -423,6 +425,18 @@ export default mixins(
 			},
 		},
 		methods: {
+			init() {
+				// Reset the selected output index every time another node gets selected
+				this.outputIndex = 0;
+				this.maxDisplayItems = 25;
+				this.refreshDataSize();
+				if (this.displayMode === 'Binary') {
+					this.closeBinaryDataDisplay();
+					if (this.binaryData.length === 0) {
+						this.displayMode = 'Table';
+					}
+				}
+			},
 			closeBinaryDataDisplay () {
 				this.binaryDataDisplayVisible = false;
 				this.binaryDataDisplayData = null;
@@ -607,17 +621,8 @@ export default mixins(
 			},
 		},
 		watch: {
-			node (newNode, oldNode) {
-				// Reset the selected output index every time another node gets selected
-				this.outputIndex = 0;
-				this.maxDisplayItems = 25;
-				this.refreshDataSize();
-				if (this.displayMode === 'Binary') {
-					this.closeBinaryDataDisplay();
-					if (this.binaryData.length === 0) {
-						this.displayMode = 'Table';
-					}
-				}
+			node() {
+				this.init();
 			},
 			jsonData () {
 				this.refreshDataSize();
@@ -630,8 +635,6 @@ export default mixins(
 				this.runIndex = Math.min(this.runIndex, this.maxRunIndex);
 			},
 		},
-		mounted () {
-		},
 	});
 </script>
 
@@ -639,14 +642,8 @@ export default mixins(
 
 .run-data-view {
 	position: relative;
-	bottom: 0;
-	left: 0;
-	margin-left: 350px;
-	width: calc(100% - 350px);
+	width: 100%;
 	height: 100%;
-	z-index: 100;
-	color: #555;
-	font-size: 14px;
 	background-color: #f9f9f9;
 
 	.data-display-content {
@@ -657,6 +654,7 @@ export default mixins(
 		right: 0;
 		overflow-y: auto;
 		line-height: 1.5;
+		word-break: normal;
 
 		.binary-data-row {
 			display: inline-flex;
@@ -795,6 +793,10 @@ export default mixins(
 		.title-text {
 			display: inline-flex;
 			align-items: center;
+
+			> * {
+				margin-right: 2px;
+			}
 		}
 
 		.title-data-display-selector {
