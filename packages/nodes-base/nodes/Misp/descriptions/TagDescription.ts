@@ -78,9 +78,8 @@ export const tagFields: INodeProperties[] = [
 			{
 				displayName: 'Color',
 				description: 'Hex color code for the tag',
-				placeholder: 'b5b5b0',
 				name: 'colour',
-				type: 'string',
+				type: 'color',
 				default: '',
 			},
 		],
@@ -193,9 +192,8 @@ export const tagFields: INodeProperties[] = [
 			{
 				displayName: 'Color',
 				description: 'Hex color code for the tag',
-				placeholder: 'b5b5b0',
 				name: 'colour',
-				type: 'string',
+				type: 'color',
 				default: '',
 			},
 			{
