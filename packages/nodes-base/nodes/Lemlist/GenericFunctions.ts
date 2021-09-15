@@ -13,6 +13,10 @@ import {
 	OptionsWithUri,
 } from 'request';
 
+import {
+	capitalCase,
+} from 'change-case';
+
 /**
  * Make an authenticated API request to Lemlist.
  */
@@ -86,4 +90,23 @@ export async function lemlistApiRequestAllItems(
 		responseData.length !== 0
 	);
 	return returnData;
+}
+
+export function getEvents() {
+
+	const events = [
+		'*',
+		'emailsBounced',
+		'emailsClicked',
+		'emailsFailed',
+		'emailsInterested',
+		'emailsNotInterested',
+		'emailsOpened',
+		'emailsReplied',
+		'emailsSendFailed',
+		'emailsSent',
+		'emailsUnsubscribed',
+	];
+
+	return events.map((event: string) => ({ name: (event === '*') ? '*' : capitalCase(event), value: event }));
 }
