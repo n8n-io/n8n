@@ -164,7 +164,7 @@ tests of all packages.
 
 ## Create custom nodes
 
-> **IMPORTANT**: Avoid use of external libraries to ensure you custom nodes can be reviewed and merged quickly.
+> **IMPORTANT**: Avoid use of external libraries to ensure your custom nodes can be reviewed and merged quickly.
 
 Learn about [using the node dev CLI](https://docs.n8n.io/nodes/creating-nodes/node-dev-cli.html) to create custom nodes for n8n.
 
