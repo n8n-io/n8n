@@ -1,7 +1,4 @@
-import dateformat from 'dateformat';
-
 import { showMessage } from '@/components/mixins/showMessage';
-import { MessageType } from '@/Interface';
 import { debounce } from 'lodash';
 
 import mixins from 'vue-typed-mixins';
@@ -22,9 +19,6 @@ export const genericHelpers = mixins(showMessage).extend({
 		},
 	},
 	methods: {
-		convertToDisplayDate (epochTime: number) {
-			return dateformat(epochTime, 'yyyy-mm-dd HH:MM:ss');
-		},
 		displayTimer (msPassed: number, showMs = false): string {
 			if (msPassed < 60000) {
 				if (showMs === false) {
@@ -91,20 +85,5 @@ export const genericHelpers = mixins(showMessage).extend({
 			// @ts-ignore
 			await this.debouncedFunctions[functionName].apply(this, inputParameters);
 		},
-
-		async confirmMessage (message: string, headline: string, type = 'warning' as MessageType, confirmButtonText = 'OK', cancelButtonText = 'Cancel'): Promise<boolean> {
-			try {
-				await this.$confirm(message, headline, {
-					confirmButtonText,
-					cancelButtonText,
-					type,
-					dangerouslyUseHTMLString: true,
-				});
-				return true;
-			} catch (e) {
-				return false;
-			}
-		},
-
 	},
 });
