@@ -5,7 +5,6 @@
 
 @include mixins.b(checkbox) {
 	color: var.$checkbox-font-color;
-	font-weight: var.$checkbox-font-weight;
 	font-size: var.$font-size-base;
 	position: relative;
 	cursor: pointer;
@@ -156,10 +155,6 @@
 					transform: rotate(45deg) scaleY(1);
 				}
 			}
-
-			& + .el-checkbox__label {
-				color: var.$checkbox-checked-font-color;
-			}
 		}
 		@include mixins.when(focus) {
 			/*focus时 视觉上区分*/
@@ -253,7 +248,6 @@
 	@include mixins.e(inner) {
 		display: inline-block;
 		line-height: 1;
-		font-weight: var.$checkbox-font-weight;
 		white-space: nowrap;
 		vertical-align: middle;
 		cursor: pointer;

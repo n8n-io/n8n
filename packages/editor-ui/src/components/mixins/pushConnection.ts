@@ -292,7 +292,7 @@ export const pushConnection = mixins(
 					const pushData = receivedData.data;
 					this.$store.commit('setExecutingNode', pushData.nodeName);
 				} else if (receivedData.type === 'testWebhookDeleted') {
-					// A test-webhook got deleted
+					// A test-webhook was deleted
 					const pushData = receivedData.data;
 
 					if (pushData.workflowId === this.$store.getters.workflowId) {

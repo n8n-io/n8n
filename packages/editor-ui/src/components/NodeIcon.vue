@@ -27,6 +27,7 @@ export default Vue.extend({
 		'size',
 		'shrink',
 		'disabled',
+		'circle',
 	],
 	computed: {
 		iconStyleData (): object {
@@ -43,7 +44,7 @@ export default Vue.extend({
 				height: size + 'px',
 				'font-size': Math.floor(parseInt(this.size, 10) * 0.6) + 'px',
 				'line-height': size + 'px',
-				'border-radius': Math.ceil(size / 2) + 'px',
+				'border-radius': this.circle ? '50%': '4px',
 			};
 		},
 		isSvgIcon (): boolean {
