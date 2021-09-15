@@ -166,12 +166,6 @@ export const eventFields = [
 				],
 			},
 			{
-				displayName: 'Event Creator Email',
-				name: 'event_creator_email',
-				type: 'string',
-				default: '',
-			},
-			{
 				displayName: 'Sharing Group Name/ID',
 				name: 'sharing_group_id',
 				type: 'options',
@@ -427,12 +421,6 @@ export const eventFields = [
 						value: 5,
 					},
 				],
-			},
-			{
-				displayName: 'Event Creator Email',
-				name: 'event_creator_email',
-				type: 'string',
-				default: '',
 			},
 			{
 				displayName: 'Information',
