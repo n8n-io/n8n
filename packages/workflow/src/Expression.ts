@@ -2,7 +2,7 @@
 /* eslint-disable no-extend-native */
 // @ts-ignore
 import * as tmpl from 'riot-tmpl';
-import { DateTime, DurationObjectUnits } from 'luxon';
+import { DateTime, DateTimeFormatOptions, DurationObjectUnits, DurationUnits } from 'luxon';
 // eslint-disable-next-line import/no-cycle
 import {
 	INode,
@@ -128,6 +128,78 @@ export class Expression {
 
 			return DateTime.fromJSDate(this)[part];
 		};
+
+		// @ts-ignore
+		Date.prototype.isWeekend = function () {
+			return [6, 7].includes(DateTime.fromJSDate(this).weekday);
+		};
+
+		// @ts-ignore
+		Date.prototype.timeTo = function (date: Date, unit: DurationUnits = 'seconds') {
+			return DateTime.fromJSDate(this).diff(DateTime.fromJSDate(date), unit);
+		};
+
+		// @ts-ignore
+		Date.prototype.toLocaleString = function (format: DateTimeFormatOptions) {
+			return DateTime.fromJSDate(this).toLocaleString(format);
+		};
+
+		// @ts-ignore
+		Date.prototype.format = function (format: string) {
+			return DateTime.fromJSDate(this).toFormat(format);
+		};
+
+		// @ts-ignore
+		Date.prototype.toTimeFromNow = function () {
+			const diffObj = DateTime.fromJSDate(this).diffNow().toObject();
+
+			if (diffObj.years) {
+				return `${diffObj.years} years ago`;
+			}
+			if (diffObj.months) {
+				return `${diffObj.months} months ago`;
+			}
+			if (diffObj.weeks) {
+				return `${diffObj.weeks} weeks ago`;
+			}
+			if (diffObj.days) {
+				return `${diffObj.days} days ago`;
+			}
+			if (diffObj.hours) {
+				return `${diffObj.hours} hours ago`;
+			}
+			if (diffObj.minutes) {
+				return `${diffObj.minutes} minutes ago`;
+			}
+			if (diffObj.seconds && diffObj.seconds > 10) {
+				return `${diffObj.seconds} seconds ago`;
+			}
+			return 'just now';
+		};
+
+		// @ts-ignore
+		Object.prototype.isBlank = function () {
+			if (this instanceof String) {
+				return this === '';
+			}
+			if (this instanceof Number) {
+				return this === 0;
+			}
+			if (this instanceof Array) {
+				return this.length === 0;
+			}
+			if (this instanceof Object) {
+				return Object.keys(this).length === 0;
+			}
+			return false;
+		};
+
+		// @ts-ignore
+		Object.prototype.isPresent = function () {
+			// @ts-ignore
+			// eslint-disable-next-line @typescript-eslint/no-unsafe-call
+			return !this.isBlank();
+		};
 	}
 
 	/**
@@ -207,6 +279,8 @@ export class Expression {
 				...data,
 				// eslint-disable-next-line @typescript-eslint/unbound-method
 				__extendTypes: Expression.extendTypes,
+				now: new Date(),
+				today: new DateTime().startOf('day').toJSDate(),
 			});
 			if (typeof returnValue === 'function') {
 				throw new Error('Expression resolved to a function. Please add "()"');
