@@ -8,11 +8,13 @@ import {
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
+	NodeOperationError,
 } from 'n8n-workflow';
 
 import {
 	mispApiRequest,
 	mispApiRequestAllItems,
+	SHARING_GROUP_OPTION_ID,
 	throwOnEmptyUpdate,
 } from './GenericFunctions';
 
@@ -41,6 +43,7 @@ import {
 
 import {
 	LoadedOrgs,
+	LoadedSharingGroups,
 	LoadedTags,
 	LoadedUsers,
 } from './types';
@@ -146,14 +149,19 @@ export class Misp implements INodeType {
 				return responseData.map((i) => ({ name: i.Organisation.name, value: i.Organisation.id }));
 			},
 
-			async getUsers(this: ILoadOptionsFunctions) {
-				const responseData = await mispApiRequest.call(this, 'GET', '/admin/users') as LoadedUsers;
-				return responseData.map((i) => ({ name: i.User.email, value: i.User.id }));
+			async getSharingGroups(this: ILoadOptionsFunctions) {
+				const responseData = await mispApiRequest.call(this, 'GET', '/sharing_groups') as LoadedSharingGroups;
+				return responseData.response.map((i) => ({ name: i.SharingGroup.name, value: i.SharingGroup.id }));
 			},
 
 			async getTags(this: ILoadOptionsFunctions) {
 				const responseData = await mispApiRequest.call(this, 'GET', '/tags') as LoadedTags;
 				return responseData.Tag.map((i) => ({ name: i.name, value: i.id }));
+			},
+
+			async getUsers(this: ILoadOptionsFunctions) {
+				const responseData = await mispApiRequest.call(this, 'GET', '/admin/users') as LoadedUsers;
+				return responseData.map((i) => ({ name: i.User.email, value: i.User.id }));
 			},
 		},
 	};
@@ -192,6 +200,13 @@ export class Misp implements INodeType {
 
 						if (Object.keys(additionalFields)) {
 							Object.assign(body, additionalFields);
+						}
+
+						if (
+							additionalFields.distribution === SHARING_GROUP_OPTION_ID &&
+							!additionalFields.sharing_group_id
+						) {
+							throw new NodeOperationError(this.getNode(), 'Please specify a sharing group');
 						}
 
 						const eventId = this.getNodeParameter('eventId', i);
@@ -238,6 +253,14 @@ export class Misp implements INodeType {
 						const body = {};
 						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
 						throwOnEmptyUpdate.call(this, resource, updateFields);
+
+						if (
+							updateFields.distribution === SHARING_GROUP_OPTION_ID &&
+							!updateFields.sharing_group_id
+						) {
+							throw new NodeOperationError(this.getNode(), 'Please specify a sharing group');
+						}
+
 						Object.assign(body, updateFields);
 
 						const attributeId = this.getNodeParameter('attributeId', i);

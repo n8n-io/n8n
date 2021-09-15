@@ -15,3 +15,9 @@ export type LoadedTags = {
 export type LoadedUsers = Array<{
 	User: { id: string; email: string };
 }>;
+
+export type LoadedSharingGroups = {
+	response: Array<{
+		SharingGroup: { id: string; name: string };
+	}>;
+}

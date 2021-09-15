@@ -46,9 +46,9 @@ export const attributeFields = [
 	//            attribute: create
 	// ----------------------------------------
 	{
-		displayName: 'Event ID',
+		displayName: 'Event UUID',
 		name: 'eventId',
-		description: 'ID of the event to attach the attribute to',
+		description: 'UUID of the event to attach the attribute to',
 		type: 'string',
 		required: true,
 		default: '',
@@ -160,6 +160,16 @@ export const attributeFields = [
 						value: 5,
 					},
 				],
+			},
+			{
+				displayName: 'Sharing Group Name/ID',
+				name: 'sharing_group_id',
+				type: 'options',
+				default: '',
+				description: 'Choose from the list or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>. Use only for when <code>Sharing Group</code> is selected in <code>Distribution</code>.',
+				typeOptions: {
+					loadOptionsMethod: 'getSharingGroups',
+				},
 			},
 		],
 	},
@@ -320,11 +330,21 @@ export const attributeFields = [
 				],
 			},
 			{
-				displayName: 'Event ID',
+				displayName: 'Event UUID',
 				name: 'eventId',
 				type: 'string',
 				default: '',
-				description: 'ID of the event to attach the attribute to',
+				description: 'UUID of the event to attach the attribute to',
+			},
+			{
+				displayName: 'Sharing Group Name/ID',
+				name: 'sharing_group_id',
+				type: 'options',
+				default: '',
+				description: 'Choose from the list or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>. Use only for when <code>Sharing Group</code> is selected in <code>Distribution</code>.',
+				typeOptions: {
+					loadOptionsMethod: 'getSharingGroups',
+				},
 			},
 		],
 	},

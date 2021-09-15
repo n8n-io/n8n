@@ -84,3 +84,5 @@ export function throwOnEmptyUpdate(
 		);
 	}
 }
+
+export const SHARING_GROUP_OPTION_ID = 4;
