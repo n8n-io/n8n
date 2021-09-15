@@ -6,40 +6,29 @@ n8n is an extendable workflow automation tool. With a [fair-code](http://faircod
 
 <a href="https://raw.githubusercontent.com/n8n-io/n8n/master/assets/n8n-screenshot.png"><img src="https://raw.githubusercontent.com/n8n-io/n8n/master/assets/n8n-screenshot.png" width="550" alt="n8n.io - Screenshot"></a>
 
-
-
 ## Demo
 
-[:tv: A short demo (< 3 min)](https://www.youtube.com/watch?v=3w7xIMKLVAg) which shows how to create a simple workflow which
-automatically sends a new Slack notification every time a Github repository
-received or lost a star.
+[:tv: Watch a short demo (< 3 min)](https://www.youtube.com/watch?v=3w7xIMKLVAg) which shows how to create a simple workflow that automatically sends a new Slack notification every time a Github repository receives or loses a star.
 
 ## Available integrations
 
-n8n has 200+ different nodes to automate workflows. The list can be found on: [https://n8n.io/nodes](https://n8n.io/nodes)
-
+n8n has 300+ different [nodes](https://n8n.io/nodes) to automate workflows.
 
 ## Documentation
 
-The official n8n documentation can be found under: [https://docs.n8n.io](https://docs.n8n.io)
+The following official n8n resources are available:
 
-Additional information and example workflows on the n8n.io website: [https://n8n.io](https://n8n.io)
-
-The changelog can be found [here](https://docs.n8n.io/reference/changelog.html) and the list of breaking changes [here](https://github.com/n8n-io/n8n/blob/master/packages/cli/BREAKING-CHANGES.md).
-
+* Website: [https://n8n.io](https://n8n.io)
+* Documentation: [https://docs.n8n.io](https://docs.n8n.io)
+* Community Forum: [https://community.n8n.io/](https://community.n8n.io/)
+* Discord [https://discord.gg/vWwMVThRta](https://discord.gg/vWwMVThRta)
+* Changelog: [https://docs.n8n.io/reference/changelog.html](https://docs.n8n.io/reference/changelog.html)
+* Breaking Changes: [https://github.com/n8n-io/n8n/blob/master/packages/cli/BREAKING-CHANGES.md](https://github.com/n8n-io/n8n/blob/master/packages/cli/BREAKING-CHANGES.md).
 
 ## Usage
 
 - :books: Learn [how to **install** and **use** it from the command line](https://github.com/n8n-io/n8n/tree/master/packages/cli/README.md)
 - :whale: Learn [how to run n8n in **Docker**](https://github.com/n8n-io/n8n/tree/master/docker/images/n8n/README.md)
-
-
-
-## Start
-
-Execute: `npm run start`
-
-
 
 ## n8n.cloud
 
@@ -48,26 +37,20 @@ Sign-up for an [n8n.cloud](https://www.n8n.cloud/) account.
 While n8n.cloud and n8n are the same in terms of features, n8n.cloud provides certain conveniences such as:
 - Not having to set up and maintain your n8n instance
 - Managed OAuth for authentication
-- Easily upgrading to the newer n8n versions
-
-
+- Easily upgrading to the newest n8n versions
 
 ## Support
 
-If you have problems or questions go to our forum, we will then try to help you asap:
-
-[https://community.n8n.io](https://community.n8n.io)
-
-
+If you have problems or questions, the fastest method it to go to our [forum](https://community.n8n.io).
 
 ## Jobs
 
-If you are interested in working for n8n and so shape the future of the project
-check out our [job posts](https://apply.workable.com/n8n/)
+If you are interested in working for n8n and shaping the future of the project
+check out our [job posts](https://apply.workable.com/n8n/).
 
+### FAQs
 
-
-## What does n8n mean and how do you pronounce it?
+### What does n8n mean and how do you pronounce it?
 
 **Short answer:** It means "nodemation" and it is pronounced as n-eight-n.
 
@@ -81,16 +64,12 @@ However, I did not like how long the name was and I could not imagine writing
 something that long every time in the CLI. That is when I then ended up on
 'n8n'." - **Jan Oberhauser, Founder and CEO, n8n.io**
 
-
-
-## Development Setup
+### Development Setup
 
 Have you found a bug :bug: ? Or maybe you have a nice feature :sparkles: to contribute ? The [CONTRIBUTING guide](https://github.com/n8n-io/n8n/blob/master/CONTRIBUTING.md) will help you get your development environment ready in minutes.
 
-
-
-## License
+### License
 
 n8n is [fair-code](http://faircode.io) distributed under [**Apache 2.0 with Commons Clause**](https://github.com/n8n-io/n8n/blob/master/packages/cli/LICENSE.md) license.
 
-Additional information about license can be found in the [FAQ](https://docs.n8n.io/#/faq?id=license).
+Additional information about license can be found in the [docs](https://docs.n8n.io/#/faq?id=license).

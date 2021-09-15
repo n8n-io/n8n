@@ -26,22 +26,22 @@ n8n is a free and open [fair-code](http://faircode.io) distributed node based Wo
 
 ## Demo
 
-[:tv: A short demo (< 3 min)](https://www.youtube.com/watch?v=3w7xIMKLVAg)
-which shows how to create a simple workflow which automatically sends a new
-Slack notification every time a Github repository received or lost a star.
+📺  Watch a [short demo (<3 min)](https://www.youtube.com/watch?v=3w7xIMKLVAg) that shows how to create a simple workflow to automatically send a notification on Slack every time a GitHub repository gets starred or un-starred.
 
+## Available Integrations
 
-## Available integrations
-
-n8n has 200+ different nodes to automate workflows. The list can be found on: [https://n8n.io/nodes](https://n8n.io/nodes)
-
+n8n has 300+ different nodes that allow you to connect various services and build your automation workflows. See the list of all the [integrations](https://n8n.io/integrations).
 
 ## Documentation
 
-The official n8n documentation can be found under: [https://docs.n8n.io](https://docs.n8n.io)
+The following official n8n resources are available:
 
-Additional information and example workflows on the n8n.io website: [https://n8n.io](https://n8n.io)
-
+* Website: [https://n8n.io](https://n8n.io)
+* Documentation: [https://docs.n8n.io](https://docs.n8n.io)
+* Community Forum: [https://community.n8n.io/](https://community.n8n.io/)
+* Discord [https://discord.gg/vWwMVThRta](https://discord.gg/vWwMVThRta)
+* Changelog: [https://docs.n8n.io/reference/changelog.html](https://docs.n8n.io/reference/changelog.html)
+* Breaking Changes: [https://github.com/n8n-io/n8n/blob/master/packages/cli/BREAKING-CHANGES.md](https://github.com/n8n-io/n8n/blob/master/packages/cli/BREAKING-CHANGES.md).
 
 ## Start n8n in Docker
 
@@ -223,7 +223,6 @@ docker run -it --rm \
 	n8nio/n8n
 ```
 
-
 ## Build Docker-Image
 
 ```
@@ -232,7 +231,6 @@ docker buildx build --platform linux/amd64,linux/arm64,linux/arm/v7 --build-arg 
 # For example:
 docker buildx build --platform linux/amd64,linux/arm64,linux/arm/v7 --build-arg N8N_VERSION=0.114.0 -t n8nio/n8n:0.114.0 .
 ```
-
 
 ## What does n8n mean and how do you pronounce it?
 
@@ -249,34 +247,21 @@ something that long every time in the CLI. That is when I then ended up on
 "n8n". Sure does not work perfectly but does neither for Kubernetes (k8s) and
 did not hear anybody complain there. So I guess it should be ok.
 
-
-
 ## Support
 
-If you have problems or questions go to our forum, we will then try to help you asap:
-
-[https://community.n8n.io](https://community.n8n.io)
-
-
-
+If you run into issues or have any questions reach out to us via our [community forum](https://community.n8n.io).
 
 ## Jobs
 
 If you are interested in working for n8n and so shape the future of the project
-check out our [job posts](https://apply.workable.com/n8n/)
-
-
-
+check out our [job posts](https://apply.workable.com/n8n/).
 
 ## Upgrading
 
-Before you upgrade to the latest version make sure to check here if there are any breaking changes which concern you:
-[Breaking Changes](https://github.com/n8n-io/n8n/blob/master/packages/cli/BREAKING-CHANGES.md)
-
-
+Before you upgrade to the latest version, make sure to check the [Changelog](https://docs.n8n.io/reference/changelog.html) and any [Breaking Changes](https://github.com/n8n-io/n8n/blob/master/packages/cli/BREAKING-CHANGES.md).
 
 ## License
 
 n8n is [fair-code](http://faircode.io) distributed under [**Apache 2.0 with Commons Clause**](https://github.com/n8n-io/n8n/blob/master/packages/cli/LICENSE.md) license
 
-Additional information about license can be found in the [FAQ](https://docs.n8n.io/#/faq?id=license)
+Additional information about license can be found in the [FAQ](https://docs.n8n.io/#/faq?id=license).

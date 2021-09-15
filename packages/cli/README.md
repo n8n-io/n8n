@@ -29,11 +29,11 @@ n8n is a free and open [fair-code](http://faircode.io) distributed node-based Wo
 
 ## Demo
 
-📺  Here's a [short demo (<3 min)](https://www.youtube.com/watch?v=3w7xIMKLVAg) that shows how to create a simple workflow to automatically sends a notification on Slack every time a GitHub repository gets starred or un-starred.
+📺  Watch a [short demo (<3 min)](https://www.youtube.com/watch?v=3w7xIMKLVAg) that shows how to create a simple workflow to automatically send a notification on Slack every time a GitHub repository gets starred or un-starred.
 
 ## Getting Started
 
-There are a couple of ways to get started with n8n.
+There are several options available to get started with n8n.
 
 ### Use npx
 
@@ -73,7 +73,7 @@ docker run -it --rm \
 
 n8n also offers a Docker image for Raspberry Pi: `n8nio/n8n:latest-rpi`.
 
-Refer to the [documentation](https://github.com/n8n-io/n8n/blob/master/docker/images/n8n/README.md) for more information on the Docker setup.
+Refer to the [documentation](https://github.com/n8n-io/n8n/blob/master/docker/images/n8n/README.md) for more information on Docker setup.
 
 ### Install with npm
 
@@ -83,7 +83,7 @@ To install n8n globally using npm:
 npm install n8n -g
 ```
 
-After the installation, start n8n running the following command:
+After the installation, start n8n by running the following command:
 
 ```bash
 n8n
@@ -100,20 +100,28 @@ While n8n.cloud and n8n are the same in terms of features, n8n.cloud provides ce
 - Managed OAuth for authentication
 - Easily upgrading to the newer n8n versions
 
-## Available integrations
+## Available Integrations
 
-n8n has 280+ different nodes that allow you to connect various services and build your automation workflows. You can find the list of all the integrations at [https://n8n.io/integrations](https://n8n.io/integrations)
+n8n has 300+ different nodes that allow you to connect various services and build your automation workflows. See the list of all the [integrations](https://n8n.io/integrations).
 
 ## Documentation
 
-To learn more about n8n, refer to the official documentation here: [https://docs.n8n.io](https://docs.n8n.io)
+The following official n8n resources are available:
 
-You can find additional information and example workflows on the [n8n.io](https://n8n.io) website.
-
+* Website: [https://n8n.io](https://n8n.io)
+* Documentation: [https://docs.n8n.io](https://docs.n8n.io)
+* Community Forum: [https://community.n8n.io/](https://community.n8n.io/)
+* Discord [https://discord.gg/vWwMVThRta](https://discord.gg/vWwMVThRta)
+* Changelog: [https://docs.n8n.io/reference/changelog.html](https://docs.n8n.io/reference/changelog.html)
+* Breaking Changes: [https://github.com/n8n-io/n8n/blob/master/packages/cli/BREAKING-CHANGES.md](https://github.com/n8n-io/n8n/blob/master/packages/cli/BREAKING-CHANGES.md).
 
 ## Create Custom Nodes
 
-You can create custom nodes for n8n. Follow the instructions mentioned in the documentation to create your node: [Creating nodes](https://docs.n8n.io/nodes/creating-nodes/create-node.html)
+You can create custom nodes for n8n. Follow the instructions mentioned in the [Creating nodes](https://docs.n8n.io/nodes/creating-nodes/create-node.html) documentation.
+
+## Upgrading
+
+Before you upgrade to the latest version, make sure to check the [Changelog](https://docs.n8n.io/reference/changelog.html) and any [Breaking Changes](./BREAKING-CHANGES.md).
 
 ## Contributing
 
@@ -123,7 +131,7 @@ You can create custom nodes for n8n. Follow the instructions mentioned in the do
 
 The [CONTRIBUTING guide](https://github.com/n8n-io/n8n/blob/master/CONTRIBUTING.md) will help you set up your development environment.
 
-You can find more information on how you can contribute to the project on our documentation: [How can I contribute?](https://docs.n8n.io/reference/contributing.html)
+You can find more information on how you can contribute to the project in our [documentation].
 
 ## What does n8n mean, and how do you pronounce it?
 
@@ -135,18 +143,11 @@ However, the name was long, and it wouldn't be a good idea to use such a long na
 
 ## Support
 
-If you run into issues or have any questions reach out to us via our community forum: [https://community.n8n.io](https://community.n8n.io).
+If you run into issues or have any questions reach out to us via our [community forum](https://community.n8n.io).
 
 ## Jobs
 
 If you are interested in working at n8n and building the project, check out the [job openings](https://apply.workable.com/n8n/).
-
-
-## Upgrading
-
-Before you upgrade to the latest version, make sure to check the changelogs: [Changelog](https://docs.n8n.io/reference/changelog.html)
-
-You can also find breaking changes here: [Breaking Changes](./BREAKING-CHANGES.md)
 
 ## License
 
