@@ -5,7 +5,8 @@
 		</div>
 
 		<div v-for="property in getProperties" :key="property.name" class="fixed-collection-parameter-property">
-			<div v-if="property.displayName" class="parameter-name" :title="property.displayName">{{property.displayName}}:</div>
+			<div v-if="property.displayName === '' || parameter.options.length === 1"></div>
+			<div v-else class="parameter-name" :title="property.displayName">{{property.displayName}}:</div>
 
 			<div v-if="multipleValues === true">
 				<div v-for="(value, index) in values[property.name]" :key="property.name + index" class="parameter-item">
@@ -77,6 +78,19 @@ export default mixins(genericHelpers)
 			return {
 				selectedOption: undefined,
 			};
+		},
+		mounted() {
+			const sectionKeys = Object.keys(this.values);
+
+			if (
+				this.parameter.required &&
+				(sectionKeys.length === 0 ||
+				(sectionKeys.length === 1 && this.values[sectionKeys[0]].length === 0))
+			) {
+				this.$nextTick(function () {
+					this.optionSelected(this.parameter.options[0].name);
+				});
+			}
 		},
 		computed: {
 			getPlaceholderText (): string {
