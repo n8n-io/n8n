@@ -5,6 +5,7 @@ import { ExecutionEntity } from './ExecutionEntity';
 import { WorkflowEntity } from './WorkflowEntity';
 import { WebhookEntity } from './WebhookEntity';
 import { TagEntity } from './TagEntity';
+import { User } from './User';
 
 export const entities = {
 	CredentialsEntity,
@@ -12,4 +13,5 @@ export const entities = {
 	WorkflowEntity,
 	WebhookEntity,
 	TagEntity,
+	User,
 };
