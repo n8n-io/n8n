@@ -88,7 +88,7 @@
     "basic-auth": "^2.0.1",
     "bcryptjs": "^2.4.3",
     "body-parser": "^1.18.3",
-    "body-parser-xml": "^1.1.0",
+    "body-parser-xml": "^2.0.3",
     "bull": "^3.19.0",
     "callsites": "^3.1.0",
     "class-validator": "^0.13.1",
