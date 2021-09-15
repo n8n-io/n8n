@@ -7,10 +7,6 @@
 		outline-width: 0;
 	}
 
-	a {
-		font-weight: var(--font-weight-bold);
-	}
-
 	@include mixins.e(popper) {
 		position: absolute;
 		border-radius: 4px;
@@ -20,6 +16,11 @@
 		line-height: 1.2;
 		min-width: 10px;
 		word-wrap: break-word;
+		font-weight: var(--font-weight-regular);
+
+		a {
+			font-weight: var(--font-weight-bold);
+		}
 
 		.popper__arrow,
 		.popper__arrow::after {
