@@ -55,6 +55,25 @@ export async function mispApiRequest(
 	try {
 		return await this.helpers.request!(options);
 	} catch (error) {
+
+		// MISP API wrongly returns 403 for malformed requests
+		if (error.statusCode === 403) {
+			error.statusCode = 400;
+		}
+
+		const errors = error?.error?.errors;
+
+		if (errors) {
+			const key = Object.keys(errors)[0];
+			let message = errors[key].join();
+
+			if (message.includes(' nter')) {
+				message = message.replace(' nter', ' enter');
+			}
+
+			error.error.message = `${error.error.message}: ${message}`;
+		}
+
 		throw new NodeApiError(this.getNode(), error);
 	}
 }
