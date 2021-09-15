@@ -7,6 +7,8 @@ import { ExecutionError } from 'n8n-workflow';
 import { ElMessageBoxOptions } from 'element-ui/types/message-box';
 import { MessageType } from 'element-ui/types/message';
 
+let stickyNotificationQueue: ElNotificationComponent[] = [];
+
 export const showMessage = mixins(externalHooks).extend({
 	methods: {
 		$showMessage(messageData: ElNotificationOptions) {
@@ -15,7 +17,13 @@ export const showMessage = mixins(externalHooks).extend({
 				messageData.position = 'bottom-right';
 			}
 
-			return this.$notify(messageData);
+			const notification = this.$notify(messageData);
+
+			if (messageData.duration === 0) {
+				stickyNotificationQueue.push(notification);
+			}
+
+			return notification;
 		},
 
 		$showToast(config: {
@@ -141,6 +149,16 @@ export const showMessage = mixins(externalHooks).extend({
 			} catch (e) {
 				return false;
 			}
+		},
+
+		clearAllStickyNotifications() {
+			stickyNotificationQueue.map((notification: ElNotificationComponent) => {
+				if (notification) {
+					notification.close();
+				}
+			});
+
+			stickyNotificationQueue = [];
 		},
 
 		// @ts-ignore
