@@ -416,6 +416,8 @@ export class ElasticSecurity implements INodeType {
 
 						// https://www.elastic.co/guide/en/security/current/cases-api-add-comment.html
 
+						const simple = this.getNodeParameter('simple', i) as boolean;
+
 						const body = {
 							comment: this.getNodeParameter('comment', i),
 							type: 'user',
@@ -432,6 +434,11 @@ export class ElasticSecurity implements INodeType {
 						const endpoint = `/cases/${caseId}/comments`;
 						responseData = await elasticSecurityApiRequest.call(this, 'POST', endpoint, body);
 
+						if (simple === true) {
+							const { comments } = responseData;
+							responseData = comments[comments.length - 1];
+						}
+						
 					} else if (operation === 'get') {
 
 						// ----------------------------------------
@@ -482,6 +489,7 @@ export class ElasticSecurity implements INodeType {
 
 						// https://www.elastic.co/guide/en/security/current/cases-api-update-comment.html
 
+						const simple = this.getNodeParameter('simple', i) as boolean;
 						const caseId = this.getNodeParameter('caseId', i);
 						const commentId = this.getNodeParameter('commentId', i);
 
@@ -495,6 +503,11 @@ export class ElasticSecurity implements INodeType {
 
 						const patchEndpoint = `/cases/${caseId}/comments`;
 						responseData = await elasticSecurityApiRequest.call(this, 'PATCH', patchEndpoint, body);
+
+						if (simple === true) {
+							const { comments } = responseData;
+							responseData = comments[comments.length - 1];
+						}
 
 					}
 
