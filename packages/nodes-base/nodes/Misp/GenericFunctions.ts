@@ -17,6 +17,8 @@ import {
 	MispCredentials,
 } from './types';
 
+import { URL } from 'url';
+
 export async function mispApiRequest(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
 	method: string,
@@ -85,6 +87,8 @@ export function throwOnEmptyUpdate(
 	}
 }
 
+const SHARING_GROUP_OPTION_ID = 4;
+
 export function throwOnMissingSharingGroup(
 	this: IExecuteFunctions,
 	fields: IDataObject,
@@ -97,4 +101,23 @@ export function throwOnMissingSharingGroup(
 	}
 }
 
-const SHARING_GROUP_OPTION_ID = 4;
+const isValidUrl = (str: string) => {
+	try {
+		new URL(str); // tslint:disable-line: no-unused-expression
+		return true;
+	} catch (error) {
+		return false;
+	}
+};
+
+export function throwOnInvalidUrl(
+	this: IExecuteFunctions,
+	str: string,
+) {
+	if (!isValidUrl(str)) {
+		throw new NodeOperationError(
+			this.getNode(),
+			'Please specify a valid URL, protocol included. Example: https://site.com',
+		);
+	}
+}

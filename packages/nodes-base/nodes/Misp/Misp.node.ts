@@ -15,6 +15,7 @@ import {
 	mispApiRequest,
 	mispApiRequestAllItems,
 	throwOnEmptyUpdate,
+	throwOnInvalidUrl,
 	throwOnMissingSharingGroup,
 } from './GenericFunctions';
 
@@ -403,10 +404,14 @@ export class Misp implements INodeType {
 						//               feed: create
 						// ----------------------------------------
 
+						const url = this.getNodeParameter('url', i) as string;
+
+						throwOnInvalidUrl.call(this, url);
+
 						const body = {
 							name: this.getNodeParameter('name', i),
 							provider: this.getNodeParameter('provider', i),
-							url: this.getNodeParameter('url', i),
+							url,
 						};
 
 						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
@@ -465,8 +470,14 @@ export class Misp implements INodeType {
 						// ----------------------------------------
 
 						const body = {};
-						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject & { url: string };
+
 						throwOnEmptyUpdate.call(this, resource, updateFields);
+
+						if (updateFields.url) {
+							throwOnInvalidUrl.call(this, updateFields.url);
+						}
+
 						Object.assign(body, updateFields);
 
 						const feedId = this.getNodeParameter('feedId', i);
