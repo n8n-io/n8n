@@ -5,7 +5,7 @@
 		</div>
 
 		<div v-for="property in getProperties" :key="property.name" class="fixed-collection-parameter-property">
-			<div class="parameter-name" :title="property.displayName">{{property.displayName}}:</div>
+			<div v-if="property.displayName" class="parameter-name" :title="property.displayName">{{property.displayName}}:</div>
 
 			<div v-if="multipleValues === true">
 				<div v-for="(value, index) in values[property.name]" :key="property.name + index" class="parameter-item">

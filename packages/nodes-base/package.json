@@ -440,6 +440,7 @@
       "dist/nodes/Iterable/Iterable.node.js",
       "dist/nodes/Intercom/Intercom.node.js",
       "dist/nodes/Interval.node.js",
+      "dist/nodes/ItemLists.node.js",
       "dist/nodes/InvoiceNinja/InvoiceNinja.node.js",
       "dist/nodes/InvoiceNinja/InvoiceNinjaTrigger.node.js",
       "dist/nodes/Jira/Jira.node.js",
