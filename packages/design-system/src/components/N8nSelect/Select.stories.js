@@ -121,7 +121,7 @@ const LimitedWidthTemplate = (args, { argTypes }) => ({
 		N8nSelect,
 		N8nOption,
 	},
-	template: '<div style="width:100px;"><n8n-select v-bind="$props" v-model="val" @input="onInput" @change="onChange"><n8n-option value="1">op1</n8n-option><n8n-option value="2">op2 test very long ipsum lipsum test jskdfjsld kjfdslk jfdslkfj lksdjf</n8n-option></n8n-select></div>',
+	template: '<div style="width:100px;"><n8n-select v-bind="$props" v-model="val" @input="onInput" @change="onChange"><n8n-option value="1" label="opt1 11 1111" /><n8n-option value="2" label="opt2 test very long ipsum"/></n8n-select></div>',
 	data() {
 		return {
 			val: '',

@@ -4,7 +4,7 @@
 		<div class="parameter-name">
 			{{parameter.displayName}}:
 			<n8n-tooltip v-if="parameter.description" class="parameter-info" placement="top" >
-				<div slot="content" v-html="parameter.description"></div>
+				<div slot="content" v-html="addTargetBlank(parameter.description)"></div>
 				<font-awesome-icon icon="question-circle" />
 			</n8n-tooltip>
 		</div>
@@ -21,7 +21,7 @@
 				<collection-parameter :parameter="parameter" :values="value" :nodeValues="nodeValues" :path="getPath(index)" :hideDelete="hideDelete" @valueChanged="valueChanged" />
 			</div>
 			<div v-else>
-				<parameter-input class="duplicate-parameter-input-item" :parameter="parameter" :value="value" :displayOptions="true" :path="getPath(index)" @valueChanged="valueChanged" inputSize="small" />
+				<parameter-input class="duplicate-parameter-input-item" :parameter="parameter" :value="value" :displayOptions="true" :path="getPath(index)" @valueChanged="valueChanged" inputSize="small" :isReadOnly="isReadOnly" />
 			</div>
 		</div>
 
@@ -75,6 +75,7 @@ export default mixins(genericHelpers)
 			},
 		},
 		methods: {
+			addTargetBlank,
 			addItem () {
 				const name = this.getPath();
 				let currentValue = get(this.nodeValues, name);
@@ -92,7 +93,6 @@ export default mixins(genericHelpers)
 
 				this.$emit('valueChanged', parameterData);
 			},
-			addTargetBlank,
 			deleteItem (index: number) {
 				const parameterData = {
 					name: this.getPath(index),

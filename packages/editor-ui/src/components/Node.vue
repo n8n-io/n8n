@@ -37,7 +37,7 @@
 				</div>
 			</div>
 
-			<NodeIcon class="node-icon" :nodeType="nodeType" size="60" :shrink="true" :disabled="this.data.disabled"/>
+			<NodeIcon class="node-icon" :nodeType="nodeType" size="60" :circle="true" :shrink="true" :disabled="this.data.disabled"/>
 		</div>
 		<div class="node-description">
 			<div class="node-name" :title="data.name">
