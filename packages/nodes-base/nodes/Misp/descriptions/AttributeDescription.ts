@@ -330,13 +330,6 @@ export const attributeFields = [
 				],
 			},
 			{
-				displayName: 'Event UUID',
-				name: 'eventId',
-				type: 'string',
-				default: '',
-				description: 'UUID of the event to attach the attribute to',
-			},
-			{
 				displayName: 'Sharing Group Name/ID',
 				name: 'sharing_group_id',
 				type: 'options',
