@@ -65,13 +65,16 @@ export async function mispApiRequest(
 
 		if (errors) {
 			const key = Object.keys(errors)[0];
-			let message = errors[key].join();
 
-			if (message.includes(' nter')) {
-				message = message.replace(' nter', ' enter');
+			if (key !== undefined) {
+				let message = errors[key].join();
+
+				if (message.includes(' nter')) {
+					message = message.replace(' nter', ' enter');
+				}
+
+				error.error.message = `${error.error.message}: ${message}`;
 			}
-
-			error.error.message = `${error.error.message}: ${message}`;
 		}
 
 		throw new NodeApiError(this.getNode(), error);

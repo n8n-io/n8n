@@ -217,8 +217,7 @@ export class Misp implements INodeType {
 
 						const attributeId = this.getNodeParameter('attributeId', i);
 						const endpoint = `/attributes/delete/${attributeId}`;
-						await mispApiRequest.call(this, 'DELETE', endpoint);
-						responseData = { success: true };
+						responseData = await mispApiRequest.call(this, 'DELETE', endpoint);
 
 					} else if (operation === 'get') {
 
@@ -295,8 +294,7 @@ export class Misp implements INodeType {
 
 						const eventId = this.getNodeParameter('eventId', i);
 						const endpoint = `/events/delete/${eventId}`;
-						await mispApiRequest.call(this, 'DELETE', endpoint);
-						responseData = { success: true };
+						responseData = await mispApiRequest.call(this, 'DELETE', endpoint);
 
 					} else if (operation === 'get') {
 
@@ -585,8 +583,7 @@ export class Misp implements INodeType {
 
 						const organisationId = this.getNodeParameter('organisationId', i);
 						const endpoint = `/admin/organisations/delete/${organisationId}`;
-						await mispApiRequest.call(this, 'DELETE', endpoint);
-						responseData = { success: true };
+						responseData = await mispApiRequest.call(this, 'DELETE', endpoint);
 
 					} else if (operation === 'get') {
 
@@ -660,8 +657,7 @@ export class Misp implements INodeType {
 						// ----------------------------------------
 
 						const tagId = this.getNodeParameter('tagId', i);
-						await mispApiRequest.call(this, 'POST', `/tags/delete/${tagId}`);
-						responseData = { success: true };
+						responseData = await mispApiRequest.call(this, 'POST', `/tags/delete/${tagId}`);
 
 					} else if (operation === 'getAll') {
 
@@ -736,8 +732,7 @@ export class Misp implements INodeType {
 
 						const userId = this.getNodeParameter('userId', i);
 						const endpoint = `/admin/users/delete/${userId}`;
-						await mispApiRequest.call(this, 'DELETE', endpoint);
-						responseData = { success: true };
+						responseData = await mispApiRequest.call(this, 'DELETE', endpoint);
 
 					} else if (operation === 'get') {
 
