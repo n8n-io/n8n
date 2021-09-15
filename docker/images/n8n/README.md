@@ -61,7 +61,7 @@ You can then access n8n by opening:
 
 > **WARNING**: This is only meant for local development and testing. Should not be used in production!
 
-To be able to use webhooks which all triggers of external services like Github
+To be able to use webhooks which all triggers of external services like GitHub
 rely on n8n has to be reachable from the web. To make that easy n8n has a
 special tunnel service (uses this code: [https://github.com/localtunnel/localtunnel](https://github.com/localtunnel/localtunnel)) which redirects requests from our servers to your local
 n8n instance.

@@ -8,7 +8,7 @@ n8n is an extendable workflow automation tool. With a [fair-code](http://faircod
 
 ## Demo
 
-[:tv: Watch a short demo (< 3 min)](https://www.youtube.com/watch?v=3w7xIMKLVAg) which shows how to create a simple workflow that automatically sends a new Slack notification every time a Github repository receives or loses a star.
+[:tv: Watch a short demo (< 3 min)](https://www.youtube.com/watch?v=3w7xIMKLVAg) which shows how to create a simple workflow that automatically sends a new Slack notification every time a GitHub repository receives or loses a star.
 
 ## Available integrations
 
@@ -41,7 +41,7 @@ While n8n.cloud and n8n are the same in terms of features, n8n.cloud provides ce
 
 ## Support
 
-If you have problems or questions, the fastest method it to go to our [forum](https://community.n8n.io).
+If you have problems or questions, the fastest method is to go to our [forum](https://community.n8n.io).
 
 ## Jobs
 
