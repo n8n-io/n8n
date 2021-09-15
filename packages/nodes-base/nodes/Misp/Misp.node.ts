@@ -14,8 +14,8 @@ import {
 import {
 	mispApiRequest,
 	mispApiRequestAllItems,
-	SHARING_GROUP_OPTION_ID,
 	throwOnEmptyUpdate,
+	throwOnMissingSharingGroup,
 } from './GenericFunctions';
 
 import {
@@ -198,15 +198,10 @@ export class Misp implements INodeType {
 
 						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 
+						throwOnMissingSharingGroup.call(this, additionalFields);
+
 						if (Object.keys(additionalFields)) {
 							Object.assign(body, additionalFields);
-						}
-
-						if (
-							additionalFields.distribution === SHARING_GROUP_OPTION_ID &&
-							!additionalFields.sharing_group_id
-						) {
-							throw new NodeOperationError(this.getNode(), 'Please specify a sharing group');
 						}
 
 						const eventId = this.getNodeParameter('eventId', i);
@@ -252,14 +247,9 @@ export class Misp implements INodeType {
 
 						const body = {};
 						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
-						throwOnEmptyUpdate.call(this, resource, updateFields);
 
-						if (
-							updateFields.distribution === SHARING_GROUP_OPTION_ID &&
-							!updateFields.sharing_group_id
-						) {
-							throw new NodeOperationError(this.getNode(), 'Please specify a sharing group');
-						}
+						throwOnEmptyUpdate.call(this, resource, updateFields);
+						throwOnMissingSharingGroup.call(this, updateFields);
 
 						Object.assign(body, updateFields);
 
@@ -287,6 +277,8 @@ export class Misp implements INodeType {
 						};
 
 						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+
+						throwOnMissingSharingGroup.call(this, additionalFields);
 
 						if (Object.keys(additionalFields)) {
 							Object.assign(body, additionalFields);
@@ -355,7 +347,10 @@ export class Misp implements INodeType {
 
 						const body = {};
 						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+
 						throwOnEmptyUpdate.call(this, resource, updateFields);
+						throwOnMissingSharingGroup.call(this, updateFields);
+
 						Object.assign(body, updateFields);
 
 						const eventId = this.getNodeParameter('eventId', i);

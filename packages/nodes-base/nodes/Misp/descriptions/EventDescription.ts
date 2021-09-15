@@ -172,6 +172,16 @@ export const eventFields = [
 				default: '',
 			},
 			{
+				displayName: 'Sharing Group Name/ID',
+				name: 'sharing_group_id',
+				type: 'options',
+				default: '',
+				description: 'Choose from the list or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>. Use only for when <code>Sharing Group</code> is selected in <code>Distribution</code>.',
+				typeOptions: {
+					loadOptionsMethod: 'getSharingGroups',
+				},
+			},
+			{
 				displayName: 'Threat Level ID',
 				name: 'threat_level_id',
 				type: 'options',
@@ -430,6 +440,16 @@ export const eventFields = [
 				type: 'string',
 				default: '',
 				description: 'Information on the event - max 65535 characters',
+			},
+			{
+				displayName: 'Sharing Group Name/ID',
+				name: 'sharing_group_id',
+				type: 'options',
+				default: '',
+				description: 'Choose from the list or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>. Use only for when <code>Sharing Group</code> is selected in <code>Distribution</code>.',
+				typeOptions: {
+					loadOptionsMethod: 'getSharingGroups',
+				},
 			},
 			{
 				displayName: 'Threat Level ID',

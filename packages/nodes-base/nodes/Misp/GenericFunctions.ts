@@ -85,4 +85,16 @@ export function throwOnEmptyUpdate(
 	}
 }
 
-export const SHARING_GROUP_OPTION_ID = 4;
+export function throwOnMissingSharingGroup(
+	this: IExecuteFunctions,
+	fields: IDataObject,
+) {
+	if (
+		fields.distribution === SHARING_GROUP_OPTION_ID &&
+		!fields.sharing_group_id
+	) {
+		throw new NodeOperationError(this.getNode(), 'Please specify a sharing group');
+	}
+}
+
+const SHARING_GROUP_OPTION_ID = 4;
