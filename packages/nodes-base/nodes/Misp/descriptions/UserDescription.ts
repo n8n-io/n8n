@@ -104,7 +104,7 @@ export const userFields = [
 				default: '',
 			},
 			{
-				displayName: 'Inviter Name/ID',
+				displayName: 'Inviter Email/ID',
 				name: 'invited_by',
 				type: 'options',
 				default: '',
