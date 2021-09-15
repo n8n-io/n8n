@@ -149,7 +149,7 @@ automatically build your code, restart the backend and refresh the frontend
 	```
 	npm run test
 	```
-1. Commit code and [create pull request](https://docs.github.com/en/github/collaborating-with-pull-requests/proposing-changes-to-your-work-with-pull-requests/creating-a-pull-request-from-a-fork)
+1. Commit code and [create a pull request](https://docs.github.com/en/github/collaborating-with-pull-requests/proposing-changes-to-your-work-with-pull-requests/creating-a-pull-request-from-a-fork)
 
 ### Test suite
 
