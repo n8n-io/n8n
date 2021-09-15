@@ -277,10 +277,8 @@ $icon-color-base: var(--color-info);
 -------------------------- */
 /// fontSize||Font|1
 $checkbox-font-size: 14px;
-/// fontWeight||Font|1
-$checkbox-font-weight: $font-weight-primary;
 /// color||Color|0
-$checkbox-font-color: var(--color-text-dark);
+$checkbox-font-color: var(--color-text-base);
 $checkbox-input-height: 14px;
 $checkbox-input-width: 14px;
 /// borderRadius||Border|2
@@ -761,7 +759,8 @@ $dialog-content-font-size: 14px;
 /// fontLineHeight||LineHeight|2
 $dialog-font-line-height: $font-line-height-primary;
 /// padding||Spacing|3
-$dialog-padding-primary: 20px;
+$dialog-padding-primary: var(--spacing-l);
+$dialog-close-top: var(--dialog-close-top, var(--spacing-l));
 
 /* Table
 -------------------------- */
@@ -804,9 +803,9 @@ $pagination-hover-color: var(--color-primary);
 /* Popup
 -------------------------- */
 /// color||Color|0
-$popup-modal-background-color: $color-black;
+$popup-modal-background-color: hsla(247,14%, 70%, 0.75);
 /// opacity||Other|1
-$popup-modal-opacity: 0.5;
+$popup-modal-opacity: 0.65;
 
 /* Popover
 -------------------------- */
@@ -852,9 +851,9 @@ $tag-warning-color: var(--color-warning);
 /// color||Color|0
 $tag-danger-color: var(--color-danger);
 /// fontSize||Font|1
-$tag-font-size: 12px;
+$tag-font-size: var(--font-size-s);
 $tag-border-radius: 4px;
-$tag-padding: 0 10px;
+$tag-padding: 16px;
 
 /* Tree
 -------------------------- */
@@ -924,11 +923,17 @@ $steps-padding: 20px;
 --------------------------*/
 /// fontSize||Font|1
 $menu-item-font-size: $font-size-base;
+$menu-item-font-weight: var(--menu-item-font-color, 300);
 /// color||Color|0
-$menu-item-font-color: var(--color-text-dark);
+$menu-item-font-color: var(--menu-font-color, var(--color-text-dark));
 /// color||Color|0
-$menu-background-color: $color-white;
-$menu-item-hover-fill: $color-primary-light-9;
+$menu-background-color: var(--menu-background-color, var(--color-background-xlight));
+$menu-item-hover-fill: var(--menu-item-hover-fill, transparent);
+$menu-item-hover-font-color: var(--menu-item-hover-font-color, var(--color-text-dark));
+$menu-item-active-font-color: var(--menu-item-active-font-color, var(--color-primary));
+$menu-item-active-background-color: var(--menu-item-active-background-color, transparent);
+$menu-item-border-radius: var(--menu-item-border-radius, 0);
+$menu-item-height: var(--menu-item-height, 56px);
 
 /* Rate
 --------------------------*/

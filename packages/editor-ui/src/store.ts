@@ -33,6 +33,7 @@ import {
 	IRestApiContext,
 } from './Interface';
 
+import credentials from './modules/credentials';
 import tags from './modules/tags';
 import ui from './modules/ui';
 import workflows from './modules/workflows';
@@ -47,8 +48,6 @@ const state: IRootState = {
 	activeNode: null,
 	// @ts-ignore
 	baseUrl: process.env.VUE_APP_URL_BASE_API ? process.env.VUE_APP_URL_BASE_API : (window.BASE_PATH === '/%BASE_PATH%/' ? '/' : window.BASE_PATH),
-	credentials: null,
-	credentialTypes: null,
 	endpointWebhook: 'webhook',
 	endpointWebhookTest: 'webhook-test',
 	executionId: null,
@@ -91,10 +90,11 @@ const state: IRootState = {
 };
 
 const modules = {
+	credentials,
 	tags,
-	ui,
 	workflows,
 	versions,
+	ui,
 };
 
 export const store = new Vuex.Store({
@@ -307,43 +307,6 @@ export const store = new Vuex.Store({
 					}
 				}
 			}
-		},
-
-		// Credentials
-		addCredentials (state, credentialData: ICredentialsResponse) {
-			if (state.credentials !== null) {
-				state.credentials.push(credentialData);
-			}
-		},
-		removeCredentials (state, credentialData: ICredentialsResponse) {
-			if (state.credentials === null) {
-				return;
-			}
-
-			for (let i = 0; i < state.credentials.length; i++) {
-				if (state.credentials[i].id === credentialData.id) {
-					state.credentials.splice(i, 1);
-					return;
-				}
-			}
-		},
-		updateCredentials (state, credentialData: ICredentialsResponse) {
-			if (state.credentials === null) {
-				return;
-			}
-
-			for (let i = 0; i < state.credentials.length; i++) {
-				if (state.credentials[i].id === credentialData.id) {
-					state.credentials[i] = credentialData;
-					return;
-				}
-			}
-		},
-		setCredentials (state, credentials: ICredentialsResponse[]) {
-			Vue.set(state, 'credentials', credentials);
-		},
-		setCredentialTypes (state, credentialTypes: ICredentialType[]) {
-			Vue.set(state, 'credentialTypes', credentialTypes);
 		},
 
 		renameNodeSelectedAndExecution (state, nameData) {
@@ -787,32 +750,6 @@ export const store = new Vuex.Store({
 				return true;
 			}
 			return false;
-		},
-		allCredentialTypes: (state): ICredentialType[] | null => {
-			return state.credentialTypes;
-		},
-		allCredentials: (state): ICredentialsResponse[] | null => {
-			return state.credentials;
-		},
-		credentialsByType: (state) => (credentialType: string): ICredentialsResponse[] | null => {
-			if (state.credentials === null) {
-				return null;
-			}
-
-			return state.credentials.filter((credentialData) => credentialData.type === credentialType);
-		},
-		credentialType: (state) => (credentialType: string): ICredentialType | null => {
-			if (state.credentialTypes === null) {
-				return null;
-			}
-			const foundType = state.credentialTypes.find(credentialData => {
-				return credentialData.name === credentialType;
-			});
-
-			if (foundType === undefined) {
-				return null;
-			}
-			return foundType;
 		},
 		allNodeTypes: (state): INodeTypeDescription[] => {
 			return state.nodeTypes;
