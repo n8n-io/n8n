@@ -44,7 +44,7 @@ export default mixins(
 		async onSetup(values: {[key: string]: string}) {
 			try {
 				this.loading = true;
-				await this.$store.dispatch('auth/sendForgotPasswordEmail', values);
+				await this.$store.dispatch('users/sendForgotPasswordEmail', values);
 
 				this.$showMessage({
 					type: 'success',

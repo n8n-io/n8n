@@ -50,7 +50,7 @@ export default mixins(
 		async onSetup(values: {[key: string]: string}) {
 			try {
 				this.loading = true;
-				await this.$store.dispatch('auth/changePassword', values);
+				await this.$store.dispatch('users/changePassword', values);
 
 				this.$showMessage({
 					type: 'success',
