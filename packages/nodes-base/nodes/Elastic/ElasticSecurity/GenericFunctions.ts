@@ -14,11 +14,8 @@ import {
 } from 'request';
 
 import {
-	ElasticsearchApiCredentials,
-} from '../Elasticsearch/types';
-
-import {
-	GetConnectorResponse,
+	Connector,
+	ElasticSecurityApiCredentials,
 } from './types';
 
 export async function elasticSecurityApiRequest(
@@ -32,7 +29,7 @@ export async function elasticSecurityApiRequest(
 		username,
 		password,
 		baseUrl,
-	} = await this.getCredentials('elasticsearchApi') as ElasticsearchApiCredentials;
+	} = await this.getCredentials('elasticSecurityApi') as ElasticSecurityApiCredentials;
 
 	const token = Buffer.from(`${username}:${password}`).toString('base64');
 
@@ -129,7 +126,7 @@ export async function getConnector(
 		id,
 		name,
 		connector_type_id: type,
-	} = await elasticSecurityApiRequest.call(this, 'GET', endpoint) as GetConnectorResponse;
+	} = await elasticSecurityApiRequest.call(this, 'GET', endpoint) as Connector;
 
 	return { id, name, type };
 }

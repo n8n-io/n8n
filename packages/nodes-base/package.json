@@ -80,6 +80,7 @@
       "dist/credentials/DropboxOAuth2Api.credentials.js",
       "dist/credentials/EgoiApi.credentials.js",
       "dist/credentials/ElasticsearchApi.credentials.js",
+      "dist/credentials/ElasticSecurityApi.credentials.js",
       "dist/credentials/EmeliaApi.credentials.js",
       "dist/credentials/ERPNextApi.credentials.js",
       "dist/credentials/EventbriteApi.credentials.js",

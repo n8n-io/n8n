@@ -32,6 +32,7 @@ import {
 } from './descriptions';
 
 import {
+	Connector,
 	ConnectorCreatePayload,
 	ConnectorType,
 } from './types';
@@ -53,7 +54,7 @@ export class ElasticSecurity implements INodeType {
 		outputs: ['main'],
 		credentials: [
 			{
-				name: 'elasticsearchApi',
+				name: 'elasticSecurityApi',
 				required: true,
 			},
 		],
@@ -103,7 +104,7 @@ export class ElasticSecurity implements INodeType {
 
 			async getConnectors(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const endpoint = '/cases/configure/connectors/_find';
-				const connectors = await elasticSecurityApiRequest.call(this, 'GET', endpoint) as Array<{ id: string; name: string }>;
+				const connectors = await elasticSecurityApiRequest.call(this, 'GET', endpoint) as Connector[];
 				return connectors.map(({ name, id }) => ({ name, value: id }));
 			},
 		},
