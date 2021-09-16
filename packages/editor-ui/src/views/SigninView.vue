@@ -13,7 +13,7 @@ import { showMessage } from '@/components/mixins/showMessage';
 import mixins from 'vue-typed-mixins';
 
 const FORM_CONFIG = {
-	title: 'Sign in to ACME Corp',
+	title: 'Sign in',
 	buttonText: 'Sign in',
 	redirectText: 'Forgot my password',
 	redirectLink: '/forgot-password',
