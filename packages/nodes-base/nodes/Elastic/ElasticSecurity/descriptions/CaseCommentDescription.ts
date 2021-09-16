@@ -84,7 +84,24 @@ export const caseCommentFields: INodeProperties[] = [
 			},
 		},
 	},
-{
+	{
+		displayName: 'Simplify Response',
+		name: 'simple',
+		type: 'boolean',
+		displayOptions: {
+			show: {
+				resource: [
+					'caseComment',
+				],
+				operation: [
+					'add',
+				],
+			},
+		},
+		default: true,
+		description: 'Return a simplified version of the response instead of the raw data.',
+	},
+	{
 		displayName: 'Additional Fields',
 		name: 'additionalFields',
 		type: 'collection',
@@ -305,5 +322,22 @@ export const caseCommentFields: INodeProperties[] = [
 				],
 			},
 		},
+	},
+	{
+		displayName: 'Simplify Response',
+		name: 'simple',
+		type: 'boolean',
+		displayOptions: {
+			show: {
+				resource: [
+					'caseComment',
+				],
+				operation: [
+					'update',
+				],
+			},
+		},
+		default: true,
+		description: 'Return a simplified version of the response instead of the raw data.',
 	},
 ];
