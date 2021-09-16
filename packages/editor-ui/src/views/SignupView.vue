@@ -52,7 +52,7 @@ export default mixins(
 		async onSetup(values: {[key: string]: string}) {
 			try {
 				this.loading = true;
-				await this.$store.dispatch('auth/signup', values);
+				await this.$store.dispatch('users/signup', values);
 
 				await this.$router.push({ name: 'LoginView' });
 			} catch (error) {
