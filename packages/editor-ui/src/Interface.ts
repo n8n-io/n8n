@@ -140,19 +140,10 @@ export interface IRestApi {
 	getWorkflow(id: string): Promise<IWorkflowDb>;
 	getWorkflows(filter?: object): Promise<IWorkflowShortResponse[]>;
 	getWorkflowFromUrl(url: string): Promise<IWorkflowDb>;
-	createNewCredentials(sendData: ICredentialsDecrypted): Promise<ICredentialsResponse>;
-	deleteCredentials(id: string): Promise<void>;
-	updateCredentials(id: string, data: ICredentialsDecrypted): Promise<ICredentialsResponse>;
-	getAllCredentials(filter?: object): Promise<ICredentialsResponse[]>;
-	getCredentials(id: string, includeData?: boolean): Promise<ICredentialsDecryptedResponse | ICredentialsResponse | undefined>;
-	getCredentialTypes(): Promise<ICredentialType[]>;
 	getExecution(id: string): Promise<IExecutionResponse>;
 	deleteExecutions(sendData: IExecutionDeleteFilter): Promise<void>;
 	retryExecution(id: string, loadWorkflow?: boolean): Promise<boolean>;
 	getTimezones(): Promise<IDataObject>;
-	oAuth1CredentialAuthorize(sendData: ICredentialsResponse): Promise<string>;
-	oAuth2CredentialAuthorize(sendData: ICredentialsResponse): Promise<string>;
-	oAuth2Callback(code: string, state: string): Promise<string>;
 }
 
 export interface IBinaryDisplayData {
@@ -161,13 +152,6 @@ export interface IBinaryDisplayData {
 	node: string;
 	outputIndex: number;
 	runIndex: number;
-}
-
-export interface ICredentialsCreatedEvent {
-	data: ICredentialsDecryptedResponse;
-	options: {
-		closeDialog: boolean,
-	};
 }
 
 export interface IStartRunData {
@@ -585,8 +569,6 @@ export interface IRootState {
 	activeActions: string[];
 	activeNode: string | null;
 	baseUrl: string;
-	credentials: ICredentialsResponse[] | null;
-	credentialTypes: ICredentialType[] | null;
 	endpointWebhook: string;
 	endpointWebhookTest: string;
 	executionId: string | null;
@@ -618,6 +600,19 @@ export interface IRootState {
 	instanceId: string;
 }
 
+export interface ICredentialTypeMap {
+	[name: string]: ICredentialType;
+}
+
+export interface ICredentialMap {
+	[name: string]: ICredentialsResponse;
+}
+
+export interface ICredentialsState {
+	credentialTypes: ICredentialTypeMap;
+	credentials: ICredentialMap;
+}
+
 export interface ITagsState {
 	tags: { [id: string]: ITag };
 	isLoading: boolean;
@@ -627,6 +622,8 @@ export interface ITagsState {
 
 export interface IModalState {
 	open: boolean;
+	mode?: string | null;
+	activeId?: string | null;
 }
 
 export interface IUiState {
