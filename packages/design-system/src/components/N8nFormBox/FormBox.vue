@@ -19,6 +19,7 @@
 			<div
 				v-for="input in inputs"
 				:key="input.name"
+				:class="input.label ? $style.withLabel : ''"
 			>
 				<n8n-form-input
 					v-bind="input"
@@ -135,7 +136,7 @@ export default Vue.extend({
 .inputsContainer {
 	margin-bottom: var(--spacing-xl);
 	> * {
-		margin-bottom: var(--spacing-s);
+		margin-bottom: var(--spacing-2xs);
 	}
 }
 
@@ -146,6 +147,10 @@ export default Vue.extend({
 
 .buttonContainer {
 	composes: actionContainer;
+	margin-bottom: var(--spacing-s);
+}
+
+.withLabel {
 	margin-bottom: var(--spacing-s);
 }
 </style>
