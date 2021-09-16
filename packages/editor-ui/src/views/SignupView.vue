@@ -38,7 +38,7 @@ const FORM_CONFIG = {
 export default mixins(
 	showMessage,
 ).extend({
-	name: 'SetupView',
+	name: 'SignupView',
 	components: {
 		AuthView,
 	},

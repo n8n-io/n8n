@@ -30,7 +30,7 @@ const FORM_CONFIG = {
 export default mixins(
 	showMessage,
 ).extend({
-	name: 'ForgotMyPassword',
+	name: 'ForgotMyPasswordView',
 	components: {
 		AuthView,
 	},
