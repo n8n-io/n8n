@@ -3,7 +3,7 @@ import Router from 'vue-router';
 import MainHeader from '@/components/MainHeader/MainHeader.vue';
 import MainSidebar from '@/components/MainSidebar.vue';
 import NodeView from '@/views/NodeView.vue';
-import LoginView from './views/LoginView.vue';
+import SigninView from './views/SigninView.vue';
 import SetupView from './views/SetupView.vue';
 import SignupView from './views/SignupView.vue';
 import ForgotMyPasswordView from './views/ForgotMyPasswordView.vue';
@@ -57,10 +57,10 @@ export default new Router({
 			},
 		},
 		{
-			path: '/login',
-			name: 'LoginView',
+			path: '/signin',
+			name: 'SigninView',
 			components: {
-				default: LoginView,
+				default: SigninView,
 			},
 		},
 		{
