@@ -6,6 +6,7 @@ import { externalHooks } from '@/components/mixins/externalHooks';
 import { ExecutionError } from 'n8n-workflow';
 import { ElMessageBoxOptions } from 'element-ui/types/message-box';
 import { MessageType } from 'element-ui/types/message';
+import { isChildOf } from './helpers';
 
 let stickyNotificationQueue: ElNotificationComponent[] = [];
 
@@ -49,17 +50,6 @@ export const showMessage = mixins(externalHooks).extend({
 						cb();
 					}
 				};
-			}
-
-			function isChildOf(parent: Element, child: Element): boolean {
-				if (child.parentElement === null) {
-					return false;
-				}
-				if (child.parentElement === parent) {
-					return true;
-				}
-
-				return isChildOf(parent, child.parentElement);
 			}
 
 			if (config.onLinkClick) {
