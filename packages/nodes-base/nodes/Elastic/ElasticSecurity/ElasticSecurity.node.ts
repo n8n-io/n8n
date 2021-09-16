@@ -340,7 +340,10 @@ export class ElasticSecurity implements INodeType {
 						const tagToAdd = this.getNodeParameter('tag', i);
 
 						if (tags.includes(tagToAdd)) {
-							throw new NodeOperationError(this.getNode(), `Cannot add tag "${tagToAdd}" to case ID ${caseId} because this case already has this tag.`);
+							throw new NodeOperationError(
+								this.getNode(),
+								`Cannot add tag "${tagToAdd}" to case ID ${caseId} because this case already has this tag.`,
+							);
 						}
 
 						const body = {};

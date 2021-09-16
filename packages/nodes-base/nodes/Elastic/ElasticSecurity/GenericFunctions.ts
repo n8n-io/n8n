@@ -86,9 +86,7 @@ export async function elasticSecurityApiRequestAllItems(
 			: responseData;
 
 		returnData.push(...items);
-	} while (
-		returnData.length < responseData.total
-	);
+	} while (returnData.length < responseData.total);
 
 	return returnData;
 }
