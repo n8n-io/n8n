@@ -7,10 +7,11 @@
 			:class="$style.heading"
 		>
 			<n8n-text
-				:text="title"
 				type="heading"
 				size="large"
-			/>
+			>
+			{{title}}
+			</n8n-text>
 		</div>
 		<div
 			:class="$style.inputsContainer"
@@ -39,9 +40,10 @@
 		<div :class="$style.actionContainer">
 			<a
 				v-if="redirectText && redirectLink"
+				:class="$style.redirectLink"
 				:href="redirectLink"
 			>
-				{{redirectText}}
+				<n8n-text size="medium">{{redirectText}}</n8n-text>
 			</a>
 		</div>
 	</div>
