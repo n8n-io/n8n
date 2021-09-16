@@ -54,7 +54,7 @@ export default mixins(
 				this.loading = true;
 				await this.$store.dispatch('users/signup', values);
 
-				await this.$router.push({ name: 'LoginView' });
+				await this.$router.push({ name: 'SigninView' });
 			} catch (error) {
 				this.$showError(error, 'Problem setting up your account', 'There was a problem setting up your account:');
 			}

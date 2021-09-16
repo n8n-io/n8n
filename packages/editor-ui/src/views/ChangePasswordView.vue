@@ -1,8 +1,9 @@
 <template>
 	<AuthView
-		:form="FORM_CONFIG"
+		:form="config"
 		:formLoading="loading"
 		@submit="onSetup"
+		@input="onInput"
 	/>
 </template>
 
@@ -23,12 +24,15 @@ const FORM_CONFIG = {
 			placeholder: 'New password',
 			type: 'password',
 			required: true,
+			validationRules: [{name: 'DEFAULT_PASSWORD_RULES'}],
 		},
 		{
 			name: 'password2',
 			placeholder: 'Re-enter new password',
 			type: 'password',
 			required: true,
+			validators: {},
+			validationRules: [{name: 'TWO_PASSWORDS_MATCH'}],
 		},
 	],
 };
@@ -42,11 +46,30 @@ export default mixins(
 	},
 	data() {
 		return {
-			FORM_CONFIG,
+			password: '',
 			loading: false,
+			config: {
+				...FORM_CONFIG,
+			},
+		};
+	},
+	mounted() {
+		this.config.inputs[1].validators = {
+			TWO_PASSWORDS_MATCH: {
+				isValid: this.passwordsMatch,
+				defaultError: 'Two passwords must match',
+			},
 		};
 	},
 	methods: {
+		passwordsMatch(value: string) {
+			return value === this.password;
+		},
+		onInput(e: {name: string, value: string}) {
+			if (e.name === 'password') {
+				this.password = e.value;
+			}
+		},
 		async onSetup(values: {[key: string]: string}) {
 			try {
 				this.loading = true;
@@ -58,7 +81,7 @@ export default mixins(
 					message: 'You can now sign in with your new password',
 				});
 
-				await this.$router.push({ name: 'LoginView' });
+				await this.$router.push({ name: 'SigninView' });
 			} catch (error) {
 				this.$showError(error, 'Problem changing the password', 'There was a problem while trying to change the password:');
 			}

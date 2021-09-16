@@ -26,6 +26,7 @@
 					:value="values[input.name]"
 					:showValidationWarnings="showValidationWarnings"
 					@input="(value) => onInput(input.name, value)"
+					@validate="(value) => onValidate(input.name, value)"
 				/>
 			</div>
 		</div>
@@ -89,6 +90,7 @@ export default Vue.extend({
 		return {
 			showValidationWarnings: false,
 			values: {} as {[key: string]: string},
+			validity: {} as {[key: string]: boolean},
 		};
 	},
 	methods: {
@@ -97,16 +99,19 @@ export default Vue.extend({
 				...this.values,
 				[name]: value,
 			};
+			this.$emit('input', {name, value});
 		},
 		isReadyToSubmit(): boolean {
-			for (let i = 0; i < this.inputs.length; i++) {
-				const input = this.inputs[i] as {name: string, type: string, required: boolean};
-				if (input.required && input.type !== 'boolean' && !this.values[input.name]) {
+			for (let key in this.validity) {
+				if (!this.validity[key]) {
 					return false;
 				}
 			}
 
 			return true;
+		},
+		onValidate(name: string, valid: boolean) {
+			this.validity[name] = valid;
 		},
 		onSubmit() {
 			this.showValidationWarnings = true;
@@ -151,6 +156,6 @@ export default Vue.extend({
 }
 
 .withLabel {
-	margin-bottom: var(--spacing-s);
+margin-bottom: var(--spacing-s);
 }
 </style>
