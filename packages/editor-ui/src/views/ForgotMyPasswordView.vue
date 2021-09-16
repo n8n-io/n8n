@@ -23,6 +23,7 @@ const FORM_CONFIG = {
 			placeholder: 'Email',
 			type: 'email',
 			required: true,
+			validationRules: [{name: 'VALID_EMAIL'}],
 		},
 	],
 };

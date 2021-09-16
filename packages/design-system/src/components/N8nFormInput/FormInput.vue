@@ -12,6 +12,7 @@
 				:placeholder="placeholder"
 				:value="value"
 				:name="name"
+				:maxlength="maxlength"
 				@input="onInput"
 				@blur="onBlur"
 				@focus="onFocus"
@@ -62,7 +63,7 @@ const VALIDATORS: {[key: string]: Validator | ValidatationGroup} = {
 			return value.length >= config.minimum;
 		},
 		generateError: (config: {minimum: number}) => {
-			return `At least ${config.minimum} characters`;
+			return `Must be at least ${config.minimum} characters`;
 		},
 	},
 	MAX_LENGTH: {
@@ -70,7 +71,7 @@ const VALIDATORS: {[key: string]: Validator | ValidatationGroup} = {
 			return value.length <= config.maximum;
 		},
 		generateError: (config: {minimum: number}) => {
-			return `At most ${config.minimum} characters`;
+			return `Must be at most ${config.minimum} characters`;
 		},
 	},
 	CONTAINS_NUMBER: {
@@ -80,7 +81,7 @@ const VALIDATORS: {[key: string]: Validator | ValidatationGroup} = {
 			return numberCount >= config.minimum;
 		},
 		generateError: (config: {minimum: number}) => {
-			return `At least ${config.minimum} numbers`;
+			return `Must have at least ${config.minimum} numbers`;
 		},
 	},
 	VALID_EMAIL: {
@@ -96,7 +97,7 @@ const VALIDATORS: {[key: string]: Validator | ValidatationGroup} = {
 			return uppercaseCount >= config.minimum;
 		},
 		generateError: (config: {minimum: number}) => {
-			return `At least ${config.minimum} uppercase`;
+			return `Must have at least ${config.minimum} uppercase`;
 		},
 	},
 	DEFAULT_PASSWORD_RULES: {
@@ -185,6 +186,12 @@ export default Vue.extend({
 		validators: {
 			type: Object,
 		},
+		maxlength: {
+			type: Number,
+		},
+	},
+	mounted() {
+		this.$emit('validate', !this.getValidationError());
 	},
 	computed: {
 		hasDefaultSlot(): boolean {
@@ -198,6 +205,11 @@ export default Vue.extend({
 				return null;
 			}
 
+			return this.getValidationError();
+		},
+	},
+	methods: {
+		getValidationError() {
 			const rules = (this.validationRules || []) as RuleSet;
 			const validators = {
 				...VALIDATORS,
@@ -223,8 +235,6 @@ export default Vue.extend({
 
 			return null;
 		},
-	},
-	methods: {
 		onBlur() {
 			this.hasBlurred = true;
 			this.isTyping = false;
@@ -236,6 +246,11 @@ export default Vue.extend({
 		},
 		onFocus() {
 			this.$emit('focus');
+		},
+	},
+	watch: {
+		validationError(newValue: string | null) {
+			this.$emit('validate', !newValue);
 		},
 	},
 });

@@ -23,12 +23,15 @@ const FORM_CONFIG = {
 			placeholder: 'Email',
 			type: 'email',
 			required: true,
+			validationRules: [{name: 'VALID_EMAIL'}],
 		},
 		{
 			name: 'password',
 			placeholder: 'Password',
 			type: 'password',
 			required: true,
+			maxlength: 64,
+			validationRules: [{name: 'MIN_LENGTH', config: {minimum: 8}}],
 		},
 	],
 };
