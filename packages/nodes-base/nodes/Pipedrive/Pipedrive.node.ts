@@ -119,6 +119,10 @@ export class Pipedrive implements INodeType {
 						value: 'deal',
 					},
 					{
+						name: 'Deal Activity',
+						value: 'dealActivity',
+					},
+					{
 						name: 'Deal Product',
 						value: 'dealProduct',
 					},
@@ -248,6 +252,27 @@ export class Pipedrive implements INodeType {
 				],
 				default: 'create',
 				description: 'The operation to perform.',
+			},
+
+			{
+				displayName: 'Operation',
+				name: 'operation',
+				type: 'options',
+				displayOptions: {
+					show: {
+						resource: [
+							'dealActivity',
+						],
+					},
+				},
+				options: [
+					{
+						name: 'Get All',
+						value: 'getAll',
+						description: 'Get all products in a deal',
+					},
+				],
+				default: 'getAll',
 			},
 
 			{
@@ -3423,6 +3448,76 @@ export class Pipedrive implements INodeType {
 				description: 'How many results to return.',
 			},
 
+			// ----------------------------------
+			//        dealActivities:getAll
+			// ----------------------------------
+			{
+				displayName: 'Deal ID',
+				name: 'dealId',
+				type: 'options',
+				default: '',
+				typeOptions: {
+					loadOptionsMethod: 'getDeals',
+				},
+				required: true,
+				displayOptions: {
+					show: {
+						operation: [
+							'getAll',
+						],
+						resource: [
+							'dealActivity',
+						],
+					},
+				},
+				description: 'The ID of the deal whose products to retrieve',
+			},
+			{
+				displayName: 'Additional Fields',
+				name: 'additionalFields',
+				type: 'collection',
+				placeholder: 'Add Field',
+				displayOptions: {
+					show: {
+						operation: [
+							'getAll',
+						],
+						resource: [
+							'dealActivity',
+						],
+					},
+				},
+				default: {},
+				options: [
+					{
+						displayName: 'Done',
+						name: 'done',
+						type: 'options',
+						options: [
+							{
+								name: 'Not done',
+								value: '0',
+							},
+							{
+								name: 'Done',
+								value: '1',
+							},
+						],
+						default: '0',
+						description: 'Whether the activity is done or not.',
+					},
+					{
+						displayName: 'Exclude Activity Ids',
+						name: 'exclude',
+						type: 'string',
+						typeOptions: {
+							rows: 3,
+						},
+						default: '',
+						description: 'A comma separated Activity Ids, to exclude from result. Ex. 4, 9, 11, ...',
+					},
+				],
+			},
 			// ----------------------------------------
 			//               lead: getAll
 			// ----------------------------------------
@@ -4387,6 +4482,35 @@ export class Pipedrive implements INodeType {
 
 					}
 
+				} else if (resource === 'dealActivity') {
+
+					 if (operation === 'getAll') {
+						// ----------------------------------
+						//        dealActivity: getAll
+						// ----------------------------------
+
+						requestMethod = 'GET';
+						const dealId = this.getNodeParameter('dealId', i) as string;
+
+						returnAll = this.getNodeParameter('returnAll', i) as boolean;
+
+						if (returnAll === false) {
+							qs.limit = this.getNodeParameter('limit', i) as number;
+						}
+
+						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+
+						if (additionalFields.exclude) {
+							qs.exclude = (additionalFields.exclude as string);
+						}
+
+						if (additionalFields.done) {
+							qs.done = parseInt(additionalFields.done as string);
+						}
+
+						endpoint = `/deals/${dealId}/activities`;
+
+					}
 				} else if (resource === 'dealProduct') {
 
 					if (operation === 'add') {
@@ -4982,7 +5106,7 @@ export class Pipedrive implements INodeType {
 						returnData.push(responseData.data as IDataObject);
 					}
 				}
-			} catch (error) {
+			} catch (error: any) {
 				if (this.continueOnFail()) {
 					if (resource === 'file' && operation === 'download') {
 						items[i].json = { error: error.message };
