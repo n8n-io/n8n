@@ -140,30 +140,6 @@ export default mixins(
 
 			return styles;
 		},
-		credentialSelected (credentialType: string) {
-			const newCredentials: INodeCredentials = {};
-			const newCredentialData: ICredentialsResponse | undefined = this.credentialOptions[credentialType].find((optionData: ICredentialsResponse) => optionData.id === this.currentCredentialsId);
-			if (!newCredentialData) {
-				this.$showMessage({
-					title: 'Credentials not found',
-					message: `The selected credentials of type "${credentialType}" could not be found!`,
-					type: 'error',
-				});
-				return;
-			}
-			newCredentials[credentialType] = { id: newCredentialData.id, name: newCredentialData.name };
-
-			if (newCredentialData!.name === this.newCredentialText) {
-				// New credentials should be created
-				this.addType = credentialType;
-				this.editCredentials = null;
-				this.nodesInit = [ (this.node as INodeUi).type ];
-				this.credentialNewDialogVisible = true;
-
-				this.currentCredentialsId = undefined;
-				return;
-			}
-		},
 
 		credentialSelected (credentialType: string, credentialName: string) {
 			let selected = undefined;
