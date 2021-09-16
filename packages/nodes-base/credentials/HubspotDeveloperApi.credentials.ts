@@ -5,8 +5,6 @@ import {
 
 const scopes = [
 	'contacts',
-	'forms',
-	'tickets',
 ];
 
 export class HubspotDeveloperApi implements ICredentialType {
@@ -51,12 +49,12 @@ export class HubspotDeveloperApi implements ICredentialType {
 			default: '',
 		},
 		{
-			displayName: 'App ID',
+			displayName: 'APP ID',
 			name: 'appId',
 			type: 'string',
 			required: true,
 			default: '',
-			description: 'The App ID',
+			description: 'The APP ID',
 		},
 		{
 			displayName: 'Scope',
