@@ -29,6 +29,8 @@ import Vue from 'vue';
 import N8nInput from '../N8nInput';
 import N8nInputLabel from '../N8nInputLabel';
 
+type RuleSet = {name: string, config?: any}[];
+
 type Validator = {
 	isValid: (value: string, config?: any) => boolean,
 	generateError?: (config: any) => string,
@@ -36,7 +38,7 @@ type Validator = {
 }
 
 type ValidatationGroup = {
-	rules: {name: string, config?: any}[],
+	rules: RuleSet,
 	generateError?: (config: any) => string,
 	defaultError?: string,
 }
@@ -81,7 +83,7 @@ const VALIDATORS: {[key: string]: Validator | ValidatationGroup} = {
 			return `At least ${config.minimum} numbers`;
 		},
 	},
-	isValidEmail: {
+	VALID_EMAIL: {
 		isValid: (value: string) => {
   	  return emailRegex.test(String(value).toLowerCase());
 		},
@@ -101,14 +103,34 @@ const VALIDATORS: {[key: string]: Validator | ValidatationGroup} = {
 		rules: [{name: 'CONTAINS_NUMBER', config: {minimum: 1}}, {name: 'CONTAINS_UPPERCASE', config: {minimum: 1}}, {name: 'MIN_LENGTH', config: {minimum: 8}}],
 		defaultError: 'At least 8 characters with 1 number and 1 uppercase',
 	},
-	MUST_MATCH_PASSWORD: {
-		isValid: (value: string, config: {password: string}) => {
-			return value === config.password;
-		},
-		generateError: (config: {minimum: number}) => {
-			return `Two passwords must match`;
-		},
-	},
+};
+
+const getErrorMessage = (validator: Validator | ValidatationGroup, config? :any): string | null => {
+	if (validator.generateError) {
+		return validator.generateError(config);
+	}
+
+	return validator.defaultError? validator.defaultError : null;
+};
+
+const getValidationError = (value: any, validators: {[key: string]: Validator | ValidatationGroup}, validator: Validator | ValidatationGroup, config?: any): string | null => {
+	if (validator.hasOwnProperty('rules')) {
+		const rules = (validator as ValidatationGroup).rules;
+		for (let i = 0; i < rules.length; i++) {
+			const rule = rules[i];
+			if (validators[rule.name]) {
+				const error = getValidationError(value, validators, validators[rule.name] as Validator, rule.config);
+				if (error) {
+					return getErrorMessage(validator, rule.config) || error;
+				}
+			}
+		}
+	}
+	else if (validator.hasOwnProperty('isValid') && !(validator as Validator).isValid(value, config)) {
+		return getErrorMessage(validator, config);
+	}
+
+	return null;
 };
 
 export default Vue.extend({
@@ -119,7 +141,8 @@ export default Vue.extend({
 	},
 	data() {
 		return {
-			blurred: false,
+			hasBlurred: false,
+			isTyping: false,
 		};
 	},
 	props: {
@@ -159,21 +182,43 @@ export default Vue.extend({
 		validationRules: {
 			type: Array,
 		},
+		validators: {
+			type: Object,
+		},
 	},
 	computed: {
 		hasDefaultSlot(): boolean {
   		return !!this.$slots.default;
   	},
 		showAnyErrors(): boolean {
-			return this.blurred || this.showValidationWarnings;
+			return (this.hasBlurred && !this.isTyping)|| this.showValidationWarnings;
 		},
 		validationError(): string | null {
 			if (!this.showAnyErrors) {
 				return null;
 			}
 
-			if (this.required && !(VALIDATORS.REQUIRED as Validator).isValid(this.value)) {
-				return VALIDATORS.REQUIRED.defaultError as string;
+			const rules = (this.validationRules || []) as RuleSet;
+			const validators = {
+				...VALIDATORS,
+				...(this.validators || {}),
+			} as {[key: string]: Validator | ValidatationGroup};
+
+			if (this.required) {
+				const error = getValidationError(this.value, validators, validators.REQUIRED as Validator);
+				if (error) {
+					return error;
+				}
+			}
+
+			for (let i = 0; i < rules.length; i++) {
+				const rule = rules[i];
+				if (validators[rule.name]) {
+					const error = getValidationError(this.value, validators, validators[rule.name] as Validator, rule.config);
+					if (error) {
+						return error;
+					}
+				}
 			}
 
 			return null;
@@ -181,10 +226,12 @@ export default Vue.extend({
 	},
 	methods: {
 		onBlur() {
-			this.blurred = true;
+			this.hasBlurred = true;
+			this.isTyping = false;
 			this.$emit('blur');
 		},
 		onInput(value: any) {
+			this.isTyping = true;
 			this.$emit('input', value);
 		},
 		onFocus() {

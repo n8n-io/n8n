@@ -21,6 +21,7 @@ const FORM_CONFIG = {
 			label: 'Owner Email',
 			type: 'email',
 			required: true,
+			validationRules: [{name: 'VALID_EMAIL'}],
 		},
 		{
 			name: 'firstName',
@@ -37,6 +38,7 @@ const FORM_CONFIG = {
 			label: 'Owner password',
 			type: 'password',
 			required: true,
+			validationRules: [{name: 'DEFAULT_PASSWORD_RULES'}],
 		},
 	],
 };
