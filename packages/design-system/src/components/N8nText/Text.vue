@@ -1,6 +1,6 @@
 <template functional>
 	<span :class="$style[$options.methods.getClass(props)]">
-		{{props.text}}
+		<slot></slot>
 	</span>
 </template>
 
@@ -9,9 +9,6 @@ import Vue from 'vue';
 export default Vue.extend({
 	name: 'N8nText',
 	props: {
-		text: {
-			type: String,
-		},
 		type: {
 			type: String,
 			default: 'body',

@@ -24,10 +24,7 @@ const Template = (args, { argTypes }) => ({
 	components: {
 		N8nText,
 	},
-	template: '<n8n-text v-bind="$props" />',
+	template: '<n8n-text v-bind="$props">hello world</n8n-text>',
 });
 
 export const Text = Template.bind({});
-Text.args = {
-	text: 'hello world',
-};
