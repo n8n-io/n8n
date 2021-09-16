@@ -38,11 +38,6 @@ const FORM_CONFIG = {
 			type: 'password',
 			required: true,
 		},
-		{
-			name: 'orgName',
-			label: 'Organization name',
-			required: true,
-		},
 	],
 };
 

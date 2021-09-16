@@ -4,7 +4,7 @@
 		:tooltipText="tooltipText"
 		:required="required"
 	>
-		<div>
+		<div :class="hasErrors ? $style.errorInput : ''">
 			<slot v-if="hasDefaultSlot"></slot>
 			<n8n-input
 				v-else
@@ -93,6 +93,9 @@ export default Vue.extend({
 		showRequiredErrors(): boolean {
 			return this.type !== 'boolean' && !this.value && this.required && this.showAnyErrors;
 		},
+		hasErrors(): boolean {
+			return this.showRequiredErrors;
+		},
 	},
 	methods: {
 		onBlur() {
@@ -120,5 +123,9 @@ export default Vue.extend({
 		color: var(--color-danger);
 		text-decoration: underline;
 	}
+}
+
+.errorInput {
+	--input-border-color: var(--color-danger);
 }
 </style>
