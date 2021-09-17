@@ -33,6 +33,7 @@ import {
 } from './Interface';
 
 import credentials from './modules/credentials';
+import settings from './modules/settings';
 import tags from './modules/tags';
 import settings from './modules/settings';
 import ui from './modules/ui';
@@ -92,6 +93,7 @@ const state: IRootState = {
 
 const modules = {
 	credentials,
+	settings,
 	tags,
 	settings,
 	workflows,

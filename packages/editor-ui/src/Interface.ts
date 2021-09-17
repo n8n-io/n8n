@@ -693,6 +693,12 @@ export interface IVersionsState {
 	currentVersion: IVersion | undefined;
 }
 
+export interface ISettingsState {
+}
+
+export interface IUsersState {
+}
+
 export interface IWorkflowsState {
 }
 

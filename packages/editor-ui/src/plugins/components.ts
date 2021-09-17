@@ -57,6 +57,7 @@ import {
 	N8nOption,
 	N8nSelect,
 	N8nSpinner,
+	N8nFormBox,
 	N8nText,
 	N8nTooltip,
 	N8nOption,
@@ -67,6 +68,7 @@ Vue.use(Fragment.Plugin);
 
 // n8n design system
 Vue.use(N8nButton);
+Vue.component('n8n-form-box', N8nFormBox);
 Vue.use(N8nFormInput);
 Vue.use(N8nIconButton);
 Vue.use(N8nInfoTip);

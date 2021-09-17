@@ -7,7 +7,14 @@
 	box-sizing: border-box;
 }
 
+html {
+	height: 100%;
+	width: 100%;
+}
+
 body {
+	height: 100%;
+	width: 100%;
 	overscroll-behavior-x: none;
 	line-height: 1;
 	font-size: var(--font-size-m);
