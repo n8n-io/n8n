@@ -305,7 +305,7 @@ export const searchJobFields: INodeProperties[] = [
 	// ----------------------------------------
 	//            searchJob: getAll
 	// ----------------------------------------
-{
+	{
 		displayName: 'Return All',
 		name: 'returnAll',
 		type: 'boolean',
@@ -344,39 +344,6 @@ export const searchJobFields: INodeProperties[] = [
 				],
 			},
 		},
-	},
-	{
-		displayName: 'Filters',
-		name: 'filters',
-		type: 'collection',
-		placeholder: 'Add Filter',
-		default: {},
-		displayOptions: {
-			show: {
-				resource: [
-					'searchJob',
-				],
-				operation: [
-					'getAll',
-				],
-			},
-		},
-		options: [
-			{
-				displayName: 'Filter Expression',
-				name: 'f',
-				description: 'Expression to include only the named values. Examples: <code>f=s*</code> returns all the values that have names beginning with <code>s</code>. <code>f=qualifiedSearch&f=is_visible</code> returns the values for <code>qualifiedSearch</code> as well as <code>is_visible</code>.',
-				type: 'string',
-				default: '',
-			},
-			{
-				displayName: 'Search Expression',
-				name: 'search',
-				description: 'Expression to match the queried results against. Examples: <code>search=foo</code> matches on any field with the string <code>foo</code> in the name. <code>search=field_name%3Dfield_value</code> restricts the match to a single field.',
-				type: 'string',
-				default: '',
-			},
-		],
 	},
 	{
 		displayName: 'Options',
