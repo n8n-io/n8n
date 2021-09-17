@@ -14,6 +14,7 @@ module.exports = {
 	configureWebpack: {
 		plugins: [
 			new GoogleFontsPlugin({
+				apiUrl: 'https://n8n-google-fonts-helper.herokuapp.com/api/fonts',
 				fonts: [
 					{ family: 'Open Sans', variants: ['300', '400', '600', '700'] },
 				],
