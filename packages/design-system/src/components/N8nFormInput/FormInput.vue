@@ -55,7 +55,7 @@ const VALIDATORS: {[key: string]: Validator | ValidatationGroup} = {
 	REQUIRED: {
 		isValid: (value: string | number | boolean | null | undefined) => {
 			if (typeof value === 'string') {
-				return !!value;
+				return !!value.trim();
 			}
 
 			return typeof value === 'boolean' || typeof value === 'number';

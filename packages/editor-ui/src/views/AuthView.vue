@@ -1,8 +1,8 @@
 <template>
 	<div :class="$style.container">
-		<!-- <div>
+		<div>
 				<Logo />
-		</div> -->
+		</div>
 		<div :class="$style.formContainer">
 			<n8n-form-box
 				v-bind="form"
@@ -17,12 +17,12 @@
 <script lang="ts">
 import Vue from 'vue';
 
-// import Logo from '../components/Logo.vue';
+import Logo from '../components/Logo.vue';
 
 export default Vue.extend({
 	name: 'AuthView',
 	components: {
-		// Logo,
+		Logo,
 	},
 	props: {
 		form: {
@@ -49,6 +49,7 @@ export default Vue.extend({
 	width: 100%;
 	display: flex;
 	justify-content: center;
+	flex-direction: column;
 	padding-top: var(--spacing-2xl);
 }
 
