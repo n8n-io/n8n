@@ -292,10 +292,8 @@ export class Splunk implements INodeType {
 						// https://docs.splunk.com/Documentation/Splunk/8.2.2/RESTREF/RESTsearch#search.2Fjobs
 
 						const qs = {} as IDataObject;
-						const filters = this.getNodeParameter('filters', i) as IDataObject;
 						const options = this.getNodeParameter('options', i) as IDataObject;
 
-						populate(filters, qs);
 						populate(options, qs);
 						setCount.call(this, qs);
 
