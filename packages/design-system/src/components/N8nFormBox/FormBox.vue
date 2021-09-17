@@ -57,7 +57,7 @@ import N8nFormInput from '../N8nFormInput';
 import N8nText from '../N8nText';
 
 export default Vue.extend({
-	name: 'N8nFormBox',
+	name: 'n8n-form-box',
 	components: {
 		N8nText,
 		N8nFormInput,

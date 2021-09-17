@@ -135,7 +135,7 @@ const getValidationError = (value: any, validators: {[key: string]: Validator | 
 };
 
 export default Vue.extend({
-	name: 'FormInput',
+	name: 'n8n-form-input',
 	components: {
 		N8nInput,
 		N8nInputLabel,

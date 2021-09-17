@@ -16,16 +16,12 @@
 
 <script lang="ts">
 import Vue from 'vue';
-import {
-	N8nFormBox,
-} from 'n8n-design-system';
 
 // import Logo from '../components/Logo.vue';
 
 export default Vue.extend({
 	name: 'AuthView',
 	components: {
-		N8nFormBox,
 		// Logo,
 	},
 	props: {

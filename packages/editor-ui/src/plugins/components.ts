@@ -57,6 +57,7 @@ import {
 	N8nOption,
 	N8nSelect,
 	N8nSpinner,
+	N8nFormBox,
 	N8nText,
 } from 'n8n-design-system';
 import { ElMessageBoxOptions } from "element-ui/types/message-box";
@@ -65,6 +66,7 @@ Vue.use(Fragment.Plugin);
 
 // n8n design system
 Vue.use(N8nButton);
+Vue.component('n8n-form-box', N8nFormBox);
 Vue.use(N8nFormInput);
 Vue.use(N8nIconButton);
 Vue.use(N8nInfoTip);
@@ -76,7 +78,7 @@ Vue.use(N8nMenuItem);
 Vue.use(N8nOption);
 Vue.use(N8nSelect);
 Vue.use(N8nSpinner);
-Vue.use(N8nText);
+Vue.component('n8n-text', N8nText);
 
 // element io
 locale.use(lang);

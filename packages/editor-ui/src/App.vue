@@ -1,47 +1,57 @@
 <template>
-	<div id="app">
-		<div id="header">
-			<router-view name="header"></router-view>
-		</div>
-		<div id="sidebar">
-			<router-view name="sidebar"></router-view>
-		</div>
-		<div id="content">
-			<router-view />
+	<div :class="$style.container">
+		<LoadingView v-if="loading" />
+		<div id="app" :class="$style.app" v-else>
+			<div id="header" :class="$style.header">
+				<router-view name="header"></router-view>
+			</div>
+			<div id="sidebar" :class="$style.sidebar">
+				<router-view name="sidebar"></router-view>
+			</div>
+			<div id="content" :class="$style.container">
+				<router-view />
+			</div>
 		</div>
 	</div>
 </template>
 
 <script lang="ts">
-export default {
+import Vue from 'vue';
+import LoadingView from './views/LoadingView.vue';
+
+export default Vue.extend({
 	name: 'App',
-};
+	components: {
+		LoadingView,
+	},
+	data() {
+		return {
+			loading: true,
+		};
+	},
+	async mounted() {
+		await this.$store.dispatch('settings/fetchSettings');
+		// await this.$store.dispatch('users/getCurrentUser');
+		this.loading = false;
+	},
+});
 </script>
 
-<style lang="scss">
-
-#app {
-	padding: 0;
-	margin: 0 auto;
-}
-
-#content {
-	position: relative;
-	top: 0;
-	left: 0;
-	width: 100%;
+<style lang="scss" module>
+.container {
 	height: 100%;
+	width: 100%;
 }
 
-#header {
+.header {
 	z-index: 10;
 	position: fixed;
-	width: 100%;
+	width: 100;
 }
 
-#sidebar {
+.sidebar {
 	z-index: 15;
 	position: fixed;
 }
-
 </style>
+
