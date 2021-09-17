@@ -320,10 +320,17 @@ export class Splunk implements INodeType {
 						const searchJobId = this.getNodeParameter('searchJobId', i);
 
 						const qs = {} as IDataObject;
-						const filters = this.getNodeParameter('filters', i) as IDataObject;
+						const filters = this.getNodeParameter('filters', i) as IDataObject & {
+							keyValueMatch?: { keyValuePair?: { key: string; value: string; } }
+						};
 						const options = this.getNodeParameter('options', i) as IDataObject;
 
-						populate(filters, qs);
+						const keyValuePair = filters?.keyValueMatch?.keyValuePair;
+
+						if (keyValuePair?.key && keyValuePair?.value) {
+							qs.search = `search ${keyValuePair.key}=${keyValuePair.value}`;
+						}
+
 						populate(options, qs);
 						setCount.call(this, qs);
 

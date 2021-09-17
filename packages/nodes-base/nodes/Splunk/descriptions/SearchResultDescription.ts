@@ -106,18 +106,34 @@ export const searchResultFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Filter Expression',
-				name: 'f',
-				description: 'Expression to include only the named values. Examples: <code>f=s*</code> returns all the values that have names beginning with <code>s</code>. <code>f=qualifiedSearch&f=is_visible</code> returns the values for <code>qualifiedSearch</code> as well as <code>is_visible</code>.',
-				type: 'string',
-				default: '',
-			},
-			{
-				displayName: 'Search Expression',
-				name: 'search',
-				description: 'Expression to match the queried results against. Examples: <code>search=foo</code> matches on any field with the string <code>foo</code> in the name. <code>search=field_name%3Dfield_value</code> restricts the match to a single field.',
-				type: 'string',
-				default: '',
+				displayName: 'Key-Value Match',
+				name: 'keyValueMatch',
+				description: 'Key-value pair to match against. Example: if "Key" is set to <code>user</code> and "Field" is set to <code>john</code>, only the results where <code>user</code> is <code>john</code> will be returned. ',
+				type: 'fixedCollection',
+				default: {},
+				placeholder: 'Add Key-Value Pair',
+				options: [
+					{
+						displayName: 'Key-Value Pair',
+						name: 'keyValuePair',
+						values: [
+							{
+								displayName: 'Key',
+								name: 'key',
+								description: 'Key to match against',
+								type: 'string',
+								default: '',
+							},
+							{
+								displayName: 'Value',
+								name: 'value',
+								description: 'value to match against',
+								type: 'string',
+								default: '',
+							},
+						],
+					},
+				],
 			},
 		],
 	},
