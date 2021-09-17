@@ -61,7 +61,7 @@ export async function splunkApiRequest(
 	try {
 		return await this.helpers.request!(options).then(parseXml);
 	} catch (error) {
-		if (error.cause.code === 'ECONNREFUSED') {
+		if (error?.cause?.code === 'ECONNREFUSED') {
 			throw new NodeApiError(this.getNode(), { ...error, code: 401 });
 		}
 
@@ -133,7 +133,6 @@ export function formatFeed(responseData: SplunkFeedResponse) {
 
 export function formatResults(responseData: SplunkResultResponse) {
 	const results = responseData.results.result;
-
 	if (!results) return [];
 
 	return Array.isArray(results)
