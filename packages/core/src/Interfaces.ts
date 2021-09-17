@@ -2,6 +2,7 @@
 import {
 	IAllExecuteFunctions,
 	IBinaryData,
+	ICredentialTestFunctions as ICredentialTestFunctionsBase,
 	ICredentialType,
 	IDataObject,
 	IExecuteFunctions as IExecuteFunctionsBase,
@@ -155,6 +156,12 @@ export interface ILoadOptionsFunctions extends ILoadOptionsFunctionsBase {
 			credentialsType: string,
 			requestOptions: OptionsWithUrl | requestPromise.RequestPromiseOptions,
 		): Promise<any>; // tslint:disable-line:no-any
+	};
+}
+
+export interface ICredentialTestFunctions extends ICredentialTestFunctionsBase {
+	helpers: {
+		request: requestPromise.RequestPromiseAPI;
 	};
 }
 
