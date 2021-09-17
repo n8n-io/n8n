@@ -45,7 +45,7 @@
 				:class="$style.redirectLink"
 				:href="redirectLink"
 			>
-				<n8n-text size="medium">{{redirectText}}</n8n-text>
+				<span>{{redirectText}}</span>
 			</a>
 		</div>
 	</div>
