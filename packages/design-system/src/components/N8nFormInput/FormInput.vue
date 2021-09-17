@@ -18,9 +18,12 @@
 				@focus="onFocus"
 			/>
 		</div>
-		<div :class="$style.errors">
+		<div :class="$style.errors" v-if="validationError">
 			<span v-if="validationError">{{validationError}}</span>
 			<a v-if="documentationUrl && documentationText" :href="documentationUrl" target="_blank">{{ documentationText }}</a>
+		</div>
+		<div :class="$style.infoText" v-else-if="infoText">
+				<span size="small">{{infoText}}</span>
 		</div>
 	</n8n-input-label>
 </template>
@@ -29,6 +32,7 @@
 import Vue from 'vue';
 import N8nInput from '../N8nInput';
 import N8nInputLabel from '../N8nInputLabel';
+import N8nText from '../N8nText';
 
 type RuleSet = {name: string, config?: any}[];
 
@@ -81,7 +85,7 @@ const VALIDATORS: {[key: string]: Validator | ValidatationGroup} = {
 			return numberCount >= config.minimum;
 		},
 		generateError: (config: {minimum: number}) => {
-			return `Must have at least ${config.minimum} numbers`;
+			return `Must have at least ${config.minimum} number${config.minimum > 1 ? 's' : ''}`;
 		},
 	},
 	VALID_EMAIL: {
@@ -97,12 +101,11 @@ const VALIDATORS: {[key: string]: Validator | ValidatationGroup} = {
 			return uppercaseCount >= config.minimum;
 		},
 		generateError: (config: {minimum: number}) => {
-			return `Must have at least ${config.minimum} uppercase`;
+			return `Must have at least ${config.minimum} uppercase character${config.minimum > 1 ? 's' : ''}`;
 		},
 	},
 	DEFAULT_PASSWORD_RULES: {
-		rules: [{name: 'CONTAINS_NUMBER', config: {minimum: 1}}, {name: 'CONTAINS_UPPERCASE', config: {minimum: 1}}, {name: 'MIN_LENGTH', config: {minimum: 8}}],
-		defaultError: 'At least 8 characters with 1 number and 1 uppercase',
+		rules: [{name: 'MIN_LENGTH', config: {minimum: 8}}, {name: 'CONTAINS_NUMBER', config: {minimum: 1}}, {name: 'CONTAINS_UPPERCASE', config: {minimum: 1}}],
 	},
 };
 
@@ -139,6 +142,7 @@ export default Vue.extend({
 	components: {
 		N8nInput,
 		N8nInputLabel,
+		N8nText,
 	},
 	data() {
 		return {
@@ -155,6 +159,9 @@ export default Vue.extend({
 			type: String,
 		},
 		label: {
+			type: String,
+		},
+		infoText: {
 			type: String,
 		},
 		required: {
@@ -257,11 +264,16 @@ export default Vue.extend({
 </script>
 
 <style lang="scss" module>
-.errors {
+.infoText {
 	margin-top: var(--spacing-2xs);
-	color: var(--color-danger);
 	font-size: var(--font-size-2xs);
 	font-weight: var(--font-weight-regular);
+	color: var(--color-text-base);
+}
+
+.errors {
+	composes: infoText;
+	color: var(--color-danger);
 
 	a {
 		color: var(--color-danger);
