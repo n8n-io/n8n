@@ -1,7 +1,7 @@
 <template>
 	<div :class="$style.container">
 		<LoadingView v-if="loading" />
-		<div id="app" :class="$style.app" v-else>
+		<div id="app" :class="$style.container" v-else>
 			<div id="header" :class="$style.header">
 				<router-view name="header"></router-view>
 			</div>

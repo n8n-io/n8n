@@ -3,6 +3,7 @@ import Router from 'vue-router';
 import MainHeader from '@/components/MainHeader/MainHeader.vue';
 import MainSidebar from '@/components/MainSidebar.vue';
 import NodeView from '@/views/NodeView.vue';
+import ErrorView from './views/ErrorView.vue';
 import SigninView from './views/SigninView.vue';
 import SetupView from './views/SetupView.vue';
 import SignupView from './views/SignupView.vue';
@@ -89,6 +90,15 @@ export default new Router({
 			name: 'ChangePasswordView',
 			components: {
 				default: ChangePasswordView,
+			},
+		},
+		{
+			path: '*',
+			name: 'NotFoundView',
+			component: ErrorView,
+			props: {
+				message: 'Oops, couldn’t find that',
+				errorCode: '404',
 			},
 		},
 	],
