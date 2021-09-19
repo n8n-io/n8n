@@ -45,6 +45,11 @@ import {
 } from './ContactPointDescription';
 
 import {
+	contactDncFields,
+	contactDncOperations,
+} from './ContactDncDescription';
+
+import {
 	campaignContactFields,
 	campaignContactOperations,
 } from './CampaignContactDescription';
@@ -144,6 +149,11 @@ export class Mautic implements INodeType {
 						value: 'contactPoint',
 						description: 'Add/remove points to/from a contact',
 					},
+					{
+						name: 'Contact Do Not Contact',
+						value: 'contactDnc',
+						description: 'Add/remove Contact to/from Do Not Contact',
+					},
 				],
 				default: 'contact',
 				description: 'Resource to consume.',
@@ -156,6 +166,8 @@ export class Mautic implements INodeType {
 			...contactSegmentFields,
 			...contactPointOperations,
 			...contactPointFields,
+			...contactDncOperations,
+			...contactDncFields,
 			...campaignContactOperations,
 			...campaignContactFields,
 			...companyContactOperations,
@@ -823,6 +835,26 @@ export class Mautic implements INodeType {
 						const contactId = this.getNodeParameter('contactId', i) as string;
 						const points = this.getNodeParameter('points', i) as string;
 						responseData = await mauticApiRequest.call(this, 'POST', `/contacts/${contactId}/points/minus/${points}`);
+					}
+				}
+
+				if (resource === 'contactDnc') {
+					//https://developer.mautic.org/#add-do-not-contact
+					if (operation === 'add') {
+						const contactId = this.getNodeParameter('contactId', i) as string;
+						const channel = this.getNodeParameter('channel', i) as string;
+						const reason = this.getNodeParameter('reason', i) as string;
+						const comments = this.getNodeParameter('comments', i) as string;
+						let body: IDataObject = {};
+						body.comments = comments;
+						body.reason = reason;
+						responseData = await mauticApiRequest.call(this, 'POST', `/contacts/${contactId}/dnc/${channel}/add`, body);
+					}
+					//https://developer.mautic.org/#remove-from-do-not-contact
+					if (operation === 'remove') {
+						const contactId = this.getNodeParameter('contactId', i) as string;
+						const channel = this.getNodeParameter('channel', i) as string;
+						responseData = await mauticApiRequest.call(this, 'POST', `/contacts/${contactId}/dnc/${channel}/remove`);
 					}
 				}
 

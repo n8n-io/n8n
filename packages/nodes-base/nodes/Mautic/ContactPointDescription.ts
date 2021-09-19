@@ -56,7 +56,6 @@ export const contactPointFields = [
 		description: 'Contact ID',
 	},
 	{
-
 		displayName: 'Points',
 		name: 'points',
 		type: 'string',
@@ -74,6 +73,5 @@ export const contactPointFields = [
 		},
 		default: '0',
 		description: 'Points',
-
 	},
 ] as INodeProperties[];
