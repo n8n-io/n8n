@@ -18,12 +18,12 @@ export const contactDncOperations = [
 			{
 				name: 'Add',
 				value: 'add',
-				description: 'Add a Contact to Do not Contact',
+				description: 'Add contact to Do not Contact',
 			},
 			{
 				name: 'Remove',
 				value: 'remove',
-				description: 'Remove a Contact from Do Not Contact',
+				description: 'Remove contact from Do Not Contact',
 			},
 		],
 		default: 'add',
