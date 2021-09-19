@@ -56,7 +56,6 @@ export const contactSegmentFields = [
 		description: 'Contact ID',
 	},
 	{
-
 		displayName: 'Segment ID',
 		name: 'segmentId',
 		type: 'options',
@@ -77,6 +76,5 @@ export const contactSegmentFields = [
 		},
 		default: '',
 		description: 'Segment ID',
-
 	},
 ] as INodeProperties[];
