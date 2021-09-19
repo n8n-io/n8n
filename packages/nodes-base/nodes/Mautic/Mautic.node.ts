@@ -40,6 +40,11 @@ import {
 } from './ContactSegmentDescription';
 
 import {
+	contactPointFields,
+	contactPointOperations,
+} from './ContactPointDescription';
+
+import {
 	campaignContactFields,
 	campaignContactOperations,
 } from './CampaignContactDescription';
@@ -134,6 +139,11 @@ export class Mautic implements INodeType {
 						value: 'contactSegment',
 						description: 'Add/remove contacts to/from a segment',
 					},
+					{
+						name: 'Contact Points',
+						value: 'contactPoint',
+						description: 'Add/remove points to/from a contact',
+					},
 				],
 				default: 'contact',
 				description: 'Resource to consume.',
@@ -144,6 +154,8 @@ export class Mautic implements INodeType {
 			...contactFields,
 			...contactSegmentOperations,
 			...contactSegmentFields,
+			...contactPointOperations,
+			...contactPointFields,
 			...campaignContactOperations,
 			...campaignContactFields,
 			...companyContactOperations,
@@ -796,6 +808,21 @@ export class Mautic implements INodeType {
 						const contactId = this.getNodeParameter('contactId', i) as string;
 						const segmentId = this.getNodeParameter('segmentId', i) as string;
 						responseData = await mauticApiRequest.call(this, 'POST', `/segments/${segmentId}/contact/${contactId}/remove`);
+					}
+				}
+
+				if (resource === 'contactPoint') {
+					//https://developer.mautic.org/#add-points
+					if (operation === 'add') {
+						const contactId = this.getNodeParameter('contactId', i) as string;
+						const points = this.getNodeParameter('points', i) as string;
+						responseData = await mauticApiRequest.call(this, 'POST', `/contacts/${contactId}/points/plus/${points}`);
+					}
+					//https://developer.mautic.org/#subtract-points
+					if (operation === 'remove') {
+						const contactId = this.getNodeParameter('contactId', i) as string;
+						const points = this.getNodeParameter('points', i) as string;
+						responseData = await mauticApiRequest.call(this, 'POST', `/contacts/${contactId}/points/minus/${points}`);
 					}
 				}
 
