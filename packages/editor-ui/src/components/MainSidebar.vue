@@ -1,6 +1,5 @@
 <template>
 	<div id="side-menu">
-		<about :dialogVisible="aboutDialogVisible" @closeDialog="closeAboutDialog"></about>
 		<executions-list :dialogVisible="executionsListDialogVisible" @closeDialog="closeExecutionsListOpenDialog"></executions-list>
 		<input type="file" ref="importFile" style="display: none" v-on:change="handleFileImport()">
 
@@ -106,6 +105,11 @@
 					<span slot="title" class="item-title-root">Executions</span>
 				</n8n-menu-item>
 
+				<n8n-menu-item index="settings">
+					<font-awesome-icon icon="cog"/>&nbsp;
+					<span slot="title" class="item-title-root">Settings</span>
+				</n8n-menu-item>
+
 				<el-submenu index="help" class="help-menu" title="Help" popperClass="sidebar-popper">
 					<template slot="title">
 						<font-awesome-icon icon="question"/>&nbsp;
@@ -149,7 +153,6 @@ import {
 	IMenuItem,
 } from '../Interface';
 
-import About from '@/components/About.vue';
 import ExecutionsList from '@/components/ExecutionsList.vue';
 import GiftNotificationIcon from './GiftNotificationIcon.vue';
 import WorkflowSettings from '@/components/WorkflowSettings.vue';
@@ -212,7 +215,6 @@ export default mixins(
 	.extend({
 		name: 'MainHeader',
 		components: {
-			About,
 			ExecutionsList,
 			GiftNotificationIcon,
 			WorkflowSettings,
@@ -220,7 +222,6 @@ export default mixins(
 		},
 		data () {
 			return {
-				aboutDialogVisible: false,
 				// @ts-ignore
 				basePath: this.$store.getters.getBaseUrl,
 				executionsListDialogVisible: false,
@@ -299,9 +300,6 @@ export default mixins(
 			clearExecutionData () {
 				this.$store.commit('setWorkflowExecutionData', null);
 				this.updateNodesExecutionIssues();
-			},
-			closeAboutDialog () {
-				this.aboutDialogVisible = false;
 			},
 			closeExecutionsListOpenDialog () {
 				this.executionsListDialogVisible = false;
@@ -429,8 +427,8 @@ export default mixins(
 				} else if (key === 'workflow-duplicate') {
 					this.$store.dispatch('ui/openModal', DUPLICATE_MODAL_KEY);
 				} else if (key === 'help-about') {
-					this.aboutDialogVisible = true;
 					this.trackHelpItemClick('about');
+					this.$store.dispatch('ui/openAboutModal');
 				} else if (key === 'workflow-settings') {
 					this.$store.dispatch('ui/openModal', WORKFLOW_SETTINGS_MODAL_KEY);
 				} else if (key === 'workflow-new') {
@@ -473,6 +471,8 @@ export default mixins(
 					}
 				} else if (key === 'executions') {
 					this.executionsListDialogVisible = true;
+				} else if (key === 'settings') {
+					this.$router.push('/settings');
 				}
 			},
 		},

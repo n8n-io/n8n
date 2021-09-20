@@ -17,6 +17,7 @@ export const NODE_OUTPUT_DEFAULT_KEY = '_NODE_OUTPUT_DEFAULT_KEY_';
 export const MAX_TAG_NAME_LENGTH = 24;
 
 // modals
+export const ABOUT_MODAL_KEY = 'about';
 export const DUPLICATE_MODAL_KEY = 'duplicate';
 export const TAGS_MANAGER_MODAL_KEY = 'tagsManager';
 export const WORKFLOW_OPEN_MODAL_KEY = 'workflowOpen';

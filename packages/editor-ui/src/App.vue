@@ -11,6 +11,7 @@
 			<div id="content" :class="$style.container">
 				<router-view />
 			</div>
+			<RootModals />
 		</div>
 		<Telemetry />
 	</div>
@@ -18,6 +19,7 @@
 
 <script lang="ts">
 import Vue from 'vue';
+import RootModals from './components/RootModals.vue';
 import LoadingView from './views/LoadingView.vue';
 import Telemetry from './components/Telemetry.vue';
 
@@ -26,6 +28,7 @@ export default Vue.extend({
 	components: {
 		LoadingView,
 		Telemetry,
+		RootModals,
 	},
 	data() {
 		return {

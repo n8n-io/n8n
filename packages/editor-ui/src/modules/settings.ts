@@ -24,6 +24,9 @@ const module: Module<ISettingsState, IRootState> = {
 
 			return getPersonalizedNodeTypes(answers);
 		},
+		versionCli(state: ISettingsState) {
+			return state.settings.versionCli;
+		},
 	},
 	mutations: {
 		setSettings(state: ISettingsState, settings: IN8nUISettings) {

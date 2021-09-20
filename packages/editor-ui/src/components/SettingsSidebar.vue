@@ -20,17 +20,31 @@
 				<span slot="title">Users</span>
 			</n8n-menu-item>
 		</n8n-menu>
+		<div :class="$style.versionContainer">
+			<a @click="onVersionClick">
+				<n8n-text size="small">Version {{versionCli}}</n8n-text>
+			</a>
+		</div>
 	</div>
 </template>
 
 <script lang="ts">
 import Vue from 'vue';
+import { mapGetters } from 'vuex';
 
 export default Vue.extend({
 	name: 'SettingsSidebar',
 	props: {
 		selected: {
 			type: String,
+		},
+	},
+	computed: {
+		...mapGetters('settings', ['versionCli']),
+	},
+	methods: {
+		onVersionClick() {
+			this.$store.dispatch('ui/openAboutModal');
 		},
 	},
 });
@@ -42,6 +56,7 @@ export default Vue.extend({
 	height: 100%;
 	background-color: var(--color-background-xlight);
 	border-right: var(--border-base);
+	position: relative;
 }
 
 .icon {
@@ -49,5 +64,11 @@ export default Vue.extend({
 	display: inline-flex;
 	justify-content: center;
 	margin-right: 10px;
+}
+
+.versionContainer {
+	position: absolute;
+	left: 20px;
+	bottom: 20px;
 }
 </style>

@@ -1,7 +1,7 @@
 <template>
-	<span>
-		<el-dialog class="n8n-about" :visible="dialogVisible" append-to-body width="50%" title="About n8n" :before-close="closeDialog">
-			<div>
+	<Modal width="50%" title="About n8n" :eventBus="modalBus" :name="modalName">
+		<template slot="content">
+			<div class="n8n-about">
 				<el-row>
 					<el-col :span="8" class="info-name">
 						n8n Version:
@@ -31,35 +31,37 @@
 					<n8n-button @click="closeDialog" label="Close" />
 				</div>
 			</div>
-		</el-dialog>
-	</span>
+		</template>
+	</Modal>
 </template>
 
 <script lang="ts">
-import { genericHelpers } from '@/components/mixins/genericHelpers';
-import { showMessage } from '@/components/mixins/showMessage';
+import Vue from 'vue';
+import { mapGetters } from 'vuex';
 
-import mixins from 'vue-typed-mixins';
+import Modal from './Modal.vue';
 
-export default mixins(
-	genericHelpers,
-	showMessage,
-).extend({
+export default Vue.extend({
 	name: 'About',
-	props: [
-		'dialogVisible',
-	],
-	computed: {
-		versionCli (): string {
-			return this.$store.getters.versionCli;
+	props: {
+		modalName: {
+			type: String,
 		},
+	},
+	components: {
+		Modal,
+	},
+	data() {
+		return {
+			modalBus: new Vue(),
+		};
+	},
+	computed: {
+		...mapGetters('settings', ['versionCli']),
 	},
 	methods: {
 		closeDialog () {
-			// Handle the close externally as the visible parameter is an external prop
-			// and is so not allowed to be changed here.
-			this.$emit('closeDialog');
-			return false;
+			this.modalBus.$emit('close');
 		},
 	},
 });
