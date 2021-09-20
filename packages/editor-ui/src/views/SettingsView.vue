@@ -1,9 +1,11 @@
 <template>
 	<div :class="$style.container">
 		<SettingsSidebar :selected="selected" />
-		<div>
-			<slot>
-			</slot>
+		<div :class="$style.contentContainer">
+			<div :class="$style.content">
+				<slot>
+				</slot>
+			</div>
 		</div>
 	</div>
 </template>
@@ -31,5 +33,16 @@ export default Vue.extend({
 	height: 100%;
 	width: 100%;
 	display: flex;
+}
+
+.contentContainer {
+	composes: container;
+	justify-content: center;
+	padding-top: 70.5px;
+}
+
+.content {
+	min-width: 360px;
+	max-width: 728px;
 }
 </style>

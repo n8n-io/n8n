@@ -20,14 +20,14 @@ const FORM_CONFIG = {
 	inputs: [
 		{
 			name: 'email',
-			placeholder: 'Email',
+			label: 'Email',
 			type: 'email',
 			required: true,
 			validationRules: [{name: 'VALID_EMAIL'}],
 		},
 		{
 			name: 'password',
-			placeholder: 'Password',
+			label: 'Password',
 			type: 'password',
 			required: true,
 			maxlength: 64,

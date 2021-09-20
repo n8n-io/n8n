@@ -20,7 +20,7 @@ const FORM_CONFIG = {
 	inputs: [
 		{
 			name: 'email',
-			placeholder: 'Email',
+			label: 'Email',
 			type: 'email',
 			required: true,
 			validationRules: [{name: 'VALID_EMAIL'}],

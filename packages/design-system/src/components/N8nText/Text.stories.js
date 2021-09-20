@@ -13,7 +13,7 @@ export default {
 		size: {
 			control: {
 				type: 'select',
-				options: ['small', 'medium', 'large', 'xlarge'],
+				options: ['small', 'medium', 'large', 'xlarge', '2xlarge'],
 			},
 		},
 	},
