@@ -71,11 +71,12 @@ export const contactFields = [
 	/* -------------------------------------------------------------------------- */
 	/*                                  contact:get all                           */
 	/* -------------------------------------------------------------------------- */
+
 	{
-		displayName: 'Limit',
-		name: 'limit',
-		type: 'number',
-		default: 20,
+		displayName: 'Search Conditions',
+		name: 'searchConditions',
+		placeholder: 'Add Condition',
+		type: 'fixedCollection',
 		displayOptions: {
 			show: {
 				resource: [
@@ -89,6 +90,157 @@ export const contactFields = [
 				],
 			},
 		},
+		typeOptions: {
+			multipleValues: true,
+			sortable: true,
+		},
+		description: 'The conditions to search by.',
+		default: { conditions:[] },
+		options: [
+			{
+				displayName: 'Conditions',
+				name: 'conditions',
+				values: [
+					{
+						displayName: 'Filter Type',
+						name: 'filterType',
+						type: 'options',
+							options: [
+								{
+									name: 'Email',
+									value: 'email',
+								},
+								{
+									name: 'First Name',
+									value: 'first_name',
+								},
+								{
+									name: 'Tags',
+									value: 'tags',
+								},
+							],
+						default: 'email',
+						description: 'The field to search by. You can use the names of system fields like last_name or any other field that is searchable.',
+					},
+					{
+						displayName: 'Search Operation',
+						name: 'searchOperation',
+						type: 'options',
+						options: [
+							{
+								name: 'Equals',
+								value: 'EQUALS',
+								description: 'Equal to the value.',
+							},
+							{
+								name: 'Not equal',
+								value: 'NOTEQUALS',
+								description: 'Not equal to the value.',
+							},
+						],
+						default: 'EQUALS',
+						description: 'Operation to decide how the data should be searched.',
+					},
+					{
+						displayName: 'Value',
+						name: 'value',
+						type: 'string',
+						default: '',
+						description: '',
+					},
+				],
+			},
+		],
+	},
+	{
+		displayName: 'Combine',
+		name: 'combineOperation',
+		type: 'options',
+		displayOptions: {
+			show: {
+				resource: [
+					'contact',
+				],
+				operation: [
+					'getAll',
+				],
+				returnAll: [
+					false,
+				],
+			},
+		},
+		options: [
+			{
+				name: 'ALL',
+				description: 'If all conditions are met it goes into "true" branch.',
+				value: 'all',
+			},
+			{
+				name: 'ANY',
+				description: 'If any of the conditions is met it goes into "true" branch.',
+				value: 'any',
+			},
+		],
+		default: 'all',
+		description: 'If multiple rules got set this settings decides if it is true as soon as ANY condition matches or only if ALL get met.',
+	},
+	{
+		displayName: 'Sort Criteria',
+		name: 'sortCriteria',
+		type: 'options',
+		displayOptions: {
+			show: {
+				resource: [
+					'contact',
+				],
+				operation: [
+					'getAll',
+				],
+				returnAll: [
+					false,
+				],
+			},
+		},
+		options: [
+			{
+				name: 'Time of edit ascending',
+				value: 'updated_time',
+			},
+			{
+				name: 'Time of edit descending',
+				value: '-updated_time',
+			},
+			{
+				name: 'Time of creation ascending',
+				value: 'created_time',
+			},
+			{
+				name: 'Time of creation descending',
+				value: '-created_time',
+			},
+		],
+		default: '-updated_time',
+		description: 'The criteria to sort by.',
+	},
+	{
+		displayName: 'Limit',
+		name: 'limit',
+		type: 'number',
+		displayOptions: {
+			show: {
+				resource: [
+					'contact',
+				],
+				operation: [
+					'getAll',
+				],
+				returnAll: [
+					false,
+				],
+			},
+		},
+		default: 20,
+		description: 'Number of results to fetch.',
 	},
 	{
 		displayName: 'Return All',
@@ -988,4 +1140,5 @@ export const contactFields = [
 			},
 		],
 	},
+
 ] as INodeProperties[];

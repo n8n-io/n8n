@@ -22,9 +22,20 @@ import {
 	dealOperations
 } from './DealDescription';
 
-import { IContact, IContactUpdate } from './ContactInterface';
-import { agileCrmApiRequest, agileCrmApiRequestUpdate, validateJSON } from './GenericFunctions';
+import {
+	IContact,
+	IContactUpdate,
+} from './ContactInterface';
+
+import {
+	agileCrmApiRequest,
+	agileCrmApiRequestUpdate,
+	getRules,
+	validateJSON
+} from './GenericFunctions';
+
 import { IDeal } from './DealInterface';
+import { IFilter } from './FilterInterface';
 
 
 export class AgileCrm implements INodeType {
@@ -115,22 +126,65 @@ export class AgileCrm implements INodeType {
 				} else if (operation === 'getAll') {
 					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
 
-					if (resource === 'contact') {
-						if (returnAll) {
+					if(!returnAll) {
+						// If search conditions are added build the rules json according to: <https://github.com/agilecrm/rest-api#devapifiltersfilterdynamic-filter>
+						const conditions = this.getNodeParameter('searchConditions.conditions', i) as IDataObject;
+
+						if (conditions) {
+
+							let contactType = '';
+							if (resource === 'contact') {
+								contactType = 'PERSON';
+							} else { // resource === 'company'
+								contactType = 'COMPANY';
+							}
+
+							const filter: IFilter = { contact_type: contactType };
+
+							const combineOperation: string = this.getNodeParameter('combineOperation', i) as string;
+							const rules: IDataObject = getRules(conditions);
+							if (combineOperation === 'any') {
+								filter.or_rules = rules;
+							} else { // if === "all"
+								filter.rules = rules;
+							}
+
+							const filterJson = JSON.stringify(filter);
+							const endpoint = `api/filters/filter/dynamic-filter`;
+							const limit = this.getNodeParameter('limit', i) as number;
+							const sortCriteria = this.getNodeParameter('sortCriteria', i) as IDataObject;
+							const body: IDataObject = {
+								filterJson,
+								page_size: limit,
+								global_sort_key: sortCriteria,
+							};
+
+							// Send request with sendAsForm set to true
+							responseData = await agileCrmApiRequest.call(this, 'POST', endpoint, body, undefined, undefined, true);
+
+						}
+						// If no search conditions are added use the get all endpoint
+						else {
+							if (resource === 'contact') {
+								const limit = this.getNodeParameter('limit', i) as number;
+								const endpoint = `api/contacts?page_size=${limit}`;
+								responseData = await agileCrmApiRequest.call(this, 'GET', endpoint, {});
+
+							} else { // resource === 'company'
+								const limit = this.getNodeParameter('limit', i) as number;
+								const endpoint = `api/contacts/companies/list?page_size=${limit}`;
+								responseData = await agileCrmApiRequest.call(this, 'POST', endpoint, {});
+							}
+						}
+					}
+					else { // if returnAll send the request with no params
+
+						if (resource === 'contact') {
 							const endpoint = 'api/contacts';
 							responseData = await agileCrmApiRequest.call(this, 'GET', endpoint, {});
+
 						} else {
-							const limit = this.getNodeParameter('limit', i) as number;
-							const endpoint = `api/contacts?page_size=${limit}`;
-							responseData = await agileCrmApiRequest.call(this, 'GET', endpoint, {});
-						}
-					} else {
-						if (returnAll) {
 							const endpoint = 'api/contacts/companies/list';
-							responseData = await agileCrmApiRequest.call(this, 'POST', endpoint, {});
-						} else {
-							const limit = this.getNodeParameter('limit', i) as number;
-							const endpoint = `api/contacts/companies/list?page_size=${limit}`;
 							responseData = await agileCrmApiRequest.call(this, 'POST', endpoint, {});
 						}
 					}
