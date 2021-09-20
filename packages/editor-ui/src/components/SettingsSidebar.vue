@@ -52,7 +52,7 @@ export default Vue.extend({
 
 <style lang="scss" module>
 .container {
-	width: 200px;
+	min-width: 200px;
 	height: 100%;
 	background-color: var(--color-background-xlight);
 	border-right: var(--border-base);

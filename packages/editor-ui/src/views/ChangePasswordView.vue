@@ -21,14 +21,15 @@ const FORM_CONFIG = {
 	inputs: [
 		{
 			name: 'password',
-			placeholder: 'New password',
+			label: 'New password',
 			type: 'password',
 			required: true,
 			validationRules: [{name: 'DEFAULT_PASSWORD_RULES'}],
+			infoText: 'At least 8 characters with 1 number and 1 uppercase',
 		},
 		{
 			name: 'password2',
-			placeholder: 'Re-enter new password',
+			label: 'Re-enter new password',
 			type: 'password',
 			required: true,
 			validators: {},
