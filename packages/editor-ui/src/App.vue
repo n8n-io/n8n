@@ -1,5 +1,5 @@
 <template>
-	<div :class="$style.rootContainer">
+	<div :class="$style.container">
 		<LoadingView v-if="loading" />
 		<div id="app" :class="$style.container" v-else>
 			<div id="header" :class="$style.header">
@@ -42,12 +42,6 @@ export default Vue.extend({
 	height: 100%;
 	width: 100%;
 }
-
-.rootContainer {
-	composes: container;
-	background-color: var(--color-background-light);
-}
-
 .header {
 	z-index: 10;
 	position: fixed;

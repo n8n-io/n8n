@@ -13,29 +13,29 @@ import { showMessage } from '@/components/mixins/showMessage';
 import mixins from 'vue-typed-mixins';
 
 const FORM_CONFIG = {
-	title: 'Set up n8n',
+	title: 'Set up owner account',
 	buttonText: 'Finish setup',
 	inputs: [
 		{
 			name: 'email',
-			label: 'Owner Email',
+			label: 'Email',
 			type: 'email',
 			required: true,
 			validationRules: [{name: 'VALID_EMAIL'}],
 		},
 		{
 			name: 'firstName',
-			label: 'Owner first name',
+			label: 'First name',
 			required: true,
 		},
 		{
 			name: 'lastName',
-			label: 'Owner last name',
+			label: 'Last name',
 			required: true,
 		},
 		{
 			name: 'password',
-			label: 'Owner password',
+			label: 'Password',
 			type: 'password',
 			required: true,
 			validationRules: [{name: 'DEFAULT_PASSWORD_RULES'}],

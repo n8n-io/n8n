@@ -83,6 +83,7 @@ import {
 	faTimes,
 	faTrash,
 	faUndo,
+	faUserAstronaut,
 	faUsers,
 } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
@@ -168,6 +169,7 @@ library.add(faThLarge);
 library.add(faTimes);
 library.add(faTrash);
 library.add(faUndo);
+library.add(faUserAstronaut);
 library.add(faUsers);
 
 Vue.component('font-awesome-icon', FontAwesomeIcon);

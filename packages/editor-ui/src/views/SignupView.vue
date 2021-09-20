@@ -2,6 +2,7 @@
 	<AuthView
 		:form="FORM_CONFIG"
 		:formLoading="loading"
+		subtitle="Ricardo Villalobos has invited you to n8n"
 		@submit="onSetup"
 	/>
 </template>
@@ -30,7 +31,10 @@ const FORM_CONFIG = {
 			name: 'password',
 			label: 'Password',
 			type: 'password',
+			validationRules: [{name: 'DEFAULT_PASSWORD_RULES'}],
 			required: true,
+			maxlength: 64,
+			infoText: 'At least 8 characters with 1 number and 1 uppercase',
 		},
 	],
 };

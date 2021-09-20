@@ -1,14 +1,17 @@
 import Vue from 'vue';
 import Router from 'vue-router';
+
+import ChangePasswordView from './views/ChangePasswordView.vue';
+import ErrorView from './views/ErrorView.vue';
+import ForgotMyPasswordView from './views/ForgotMyPasswordView.vue';
 import MainHeader from '@/components/MainHeader/MainHeader.vue';
 import MainSidebar from '@/components/MainSidebar.vue';
 import NodeView from '@/views/NodeView.vue';
-import ErrorView from './views/ErrorView.vue';
-import SigninView from './views/SigninView.vue';
+import SettingsPersonalView from './views/SettingsPersonalView.vue';
+import SettingsUsersView from './views/SettingsPersonalView.vue';
 import SetupView from './views/SetupView.vue';
+import SigninView from './views/SigninView.vue';
 import SignupView from './views/SignupView.vue';
-import ForgotMyPasswordView from './views/ForgotMyPasswordView.vue';
-import ChangePasswordView from './views/ChangePasswordView.vue';
 
 Vue.use(Router);
 
@@ -90,6 +93,24 @@ export default new Router({
 			name: 'ChangePasswordView',
 			components: {
 				default: ChangePasswordView,
+			},
+		},
+		{
+			path: '/settings',
+			redirect: '/settings/personal',
+		},
+		{
+			path: '/settings/personal',
+			name: 'PersonalSettings',
+			components: {
+				default: SettingsPersonalView,
+			},
+		},
+		{
+			path: '/settings/users',
+			name: 'UsersSettings',
+			components: {
+				default: SettingsUsersView,
 			},
 		},
 		{

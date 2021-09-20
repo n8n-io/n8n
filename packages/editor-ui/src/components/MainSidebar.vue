@@ -168,7 +168,7 @@ import { saveAs } from 'file-saver';
 
 import mixins from 'vue-typed-mixins';
 import { mapGetters } from 'vuex';
-import MenuItemsIterator from './MainSidebarMenuItemsIterator.vue';
+import MenuItemsIterator from './MenuItemsIterator.vue';
 
 const helpMenuItems: IMenuItem[] = [
 	{
