@@ -358,7 +358,9 @@ export interface IExecuteFunctions {
 	putExecutionToWait(waitTill: Date): Promise<void>;
 	sendMessageToUI(message: any): void; // tslint:disable-line:no-any
 	helpers: {
-		httpRequest(requestOptions: IHttpRequestOptions): Promise<any>; // tslint:disable-line:no-any
+		httpRequest(
+			requestOptions: IHttpRequestOptions,
+		): Promise<IN8nHttpResponse | IN8nHttpFullResponse>;
 		[key: string]: (...args: any[]) => any; // tslint:disable-line:no-any
 	};
 }
@@ -384,7 +386,9 @@ export interface IExecuteSingleFunctions {
 	getWorkflowDataProxy(): IWorkflowDataProxyData;
 	getWorkflowStaticData(type: string): IDataObject;
 	helpers: {
-		httpRequest(requestOptions: IHttpRequestOptions): Promise<any>; // tslint:disable-line:no-any
+		httpRequest(
+			requestOptions: IHttpRequestOptions,
+		): Promise<IN8nHttpResponse | IN8nHttpFullResponse>;
 		[key: string]: (...args: any[]) => any; // tslint:disable-line:no-any
 	};
 }
@@ -420,7 +424,9 @@ export interface ILoadOptionsFunctions {
 	getTimezone(): string;
 	getRestApiUrl(): string;
 	helpers: {
-		httpRequest(requestOptions: IHttpRequestOptions): Promise<any>; // tslint:disable-line:no-any
+		httpRequest(
+			requestOptions: IHttpRequestOptions,
+		): Promise<IN8nHttpResponse | IN8nHttpFullResponse>;
 		[key: string]: ((...args: any[]) => any) | undefined; // tslint:disable-line:no-any
 	};
 }
@@ -441,7 +447,9 @@ export interface IHookFunctions {
 	getWorkflow(): IWorkflowMetadata;
 	getWorkflowStaticData(type: string): IDataObject;
 	helpers: {
-		httpRequest(requestOptions: IHttpRequestOptions): Promise<any>; // tslint:disable-line:no-any
+		httpRequest(
+			requestOptions: IHttpRequestOptions,
+		): Promise<IN8nHttpResponse | IN8nHttpFullResponse>;
 		[key: string]: (...args: any[]) => any; // tslint:disable-line:no-any
 	};
 }
@@ -461,7 +469,9 @@ export interface IPollFunctions {
 	getWorkflow(): IWorkflowMetadata;
 	getWorkflowStaticData(type: string): IDataObject;
 	helpers: {
-		httpRequest(requestOptions: IHttpRequestOptions): Promise<any>; // tslint:disable-line:no-any
+		httpRequest(
+			requestOptions: IHttpRequestOptions,
+		): Promise<IN8nHttpResponse | IN8nHttpFullResponse>;
 		[key: string]: (...args: any[]) => any; // tslint:disable-line:no-any
 	};
 }
@@ -481,7 +491,9 @@ export interface ITriggerFunctions {
 	getWorkflow(): IWorkflowMetadata;
 	getWorkflowStaticData(type: string): IDataObject;
 	helpers: {
-		httpRequest(requestOptions: IHttpRequestOptions): Promise<any>; // tslint:disable-line:no-any
+		httpRequest(
+			requestOptions: IHttpRequestOptions,
+		): Promise<IN8nHttpResponse | IN8nHttpFullResponse>;
 		[key: string]: (...args: any[]) => any; // tslint:disable-line:no-any
 	};
 }
@@ -510,7 +522,9 @@ export interface IWebhookFunctions {
 		outputIndex?: number,
 	): Promise<INodeExecutionData[][]>;
 	helpers: {
-		httpRequest(requestOptions: IHttpRequestOptions): Promise<any>; // tslint:disable-line:no-any
+		httpRequest(
+			requestOptions: IHttpRequestOptions,
+		): Promise<IN8nHttpResponse | IN8nHttpFullResponse>;
 		[key: string]: (...args: any[]) => any; // tslint:disable-line:no-any
 	};
 }
