@@ -2,21 +2,21 @@
 	<div :class="$style.container">
 		<n8n-menu :router="true" :default-active="$route.path">
 			<n8n-menu-item index="/workflow">
-				<span :class="$style.icon">
+				<i :class="$style.icon">
 					<font-awesome-icon icon="arrow-left" />
-				</span>
+				</i>
 				<n8n-text slot="title" type="heading" size="large" bold>Settings</n8n-text>
 			</n8n-menu-item>
 			<n8n-menu-item index="/settings/personal">
-				<span :class="$style.icon">
+				<i :class="$style.icon">
 					<font-awesome-icon icon="user-astronaut" />
-				</span>
+				</i>
 				<span slot="title">Personal</span>
 			</n8n-menu-item>
 			<n8n-menu-item index="/settings/users">
-				<span :class="$style.icon">
+				<i :class="$style.icon">
 					<font-awesome-icon icon="users" />
-				</span>
+				</i>
 				<span slot="title">Users</span>
 			</n8n-menu-item>
 		</n8n-menu>
