@@ -488,6 +488,7 @@ export default mixins(
 		color: $--custom-dialog-text-color;
 		--menu-item-hover-fill: #fff0ef;
 		--menu-item-font-weight: 300;
+		--menu-item-active-font-weight: 300;
 
 		.item-title {
 			position: absolute;
@@ -537,11 +538,13 @@ export default mixins(
 				right: -3px;
 			}
 			.item-title {
+				font-weight: 300;
 				position: absolute;
 				left: 73px;
 			}
 			.item-title-root {
 				position: absolute;
+				font-weight: 300;
 				left: 60px;
 				top: 1px;
 			}
