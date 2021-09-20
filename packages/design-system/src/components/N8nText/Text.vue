@@ -37,12 +37,23 @@ export default Vue.extend({
 	font-weight: var(--font-weight-bold);
 }
 
+.regular {
+	font-weight: var(--font-weight-regular);
+}
+
 .heading-2xlarge {
+	composes: regular;
 	font-size: var(--font-size-2xl);
 	line-height: var(--font-line-height-compact);
 }
 
+.heading-xlarge-bold {
+	composes: bold;
+	composes: heading-2xlarge;
+}
+
 .heading-xlarge {
+	composes: regular;
 	font-size: var(--font-size-xl);
 	line-height: var(--font-line-height-compact);
 }
@@ -53,6 +64,7 @@ export default Vue.extend({
 }
 
 .heading-large {
+	composes: regular;
 	font-size: var(--font-size-l);
 	line-height: var(--font-line-height-loose);
 }
@@ -63,6 +75,7 @@ export default Vue.extend({
 }
 
 .heading-medium {
+	composes: regular;
 	font-size: var(--font-size-m);
 	line-height: var(--font-line-height-loose);
 }
@@ -73,6 +86,7 @@ export default Vue.extend({
 }
 
 .heading-small {
+	composes: regular;
 	font-size: var(--font-size-s);
 	line-height: var(--font-line-height-regular);
 }
@@ -83,6 +97,7 @@ export default Vue.extend({
 }
 
 .body-xlarge {
+	composes: regular;
 	font-size: var(--font-size-lg);
 	line-height: var(--font-line-height-xloose);
 }
@@ -93,6 +108,7 @@ export default Vue.extend({
 }
 
 .body-large {
+	composes: regular;
 	font-size: var(--font-size-m);
 	line-height: var(--font-line-height-xloose);
 }
@@ -103,6 +119,7 @@ export default Vue.extend({
 }
 
 .body-medium {
+	composes: regular;
 	font-size: var(--font-size-s);
 	line-height: var(--font-line-height-loose);
 }
@@ -113,6 +130,7 @@ export default Vue.extend({
 }
 
 .body-small {
+	composes: regular;
 	font-size: var(--font-size-2xs);
 	line-height: var(--font-line-height-loose);
 }
