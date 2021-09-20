@@ -53,7 +53,7 @@ export default {
 .secondary {
 	composes: menu;
 	--menu-font-color: var(--color-text-base);
-	--menu-item-font-color: var(--font-weight-regular);
+	--menu-item-font-weight: var(--font-weight-regular);
 	--menu-background-color: transparent;
 	--menu-item-hover-font-color: var(--color-primary);
 	--menu-item-active-font-color: var(--color-text-dark);

@@ -487,6 +487,7 @@ export default mixins(
 		line-height: 35px;
 		color: $--custom-dialog-text-color;
 		--menu-item-hover-fill: #fff0ef;
+		--menu-item-font-weight: 300;
 
 		.item-title {
 			position: absolute;
@@ -549,6 +550,7 @@ export default mixins(
 	}
 
 	.el-menu-item {
+		--menu-item-font-weight: 300;
 		a {
 			color: #666;
 

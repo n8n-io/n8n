@@ -919,7 +919,7 @@ $steps-padding: 20px;
 --------------------------*/
 /// fontSize||Font|1
 $menu-item-font-size: $font-size-base;
-$menu-item-font-weight: var(--menu-item-font-color, 300);
+$menu-item-font-weight: var(--menu-item-font-weight, 400);
 /// color||Color|0
 $menu-item-font-color: var(--menu-font-color, var(--color-text-dark));
 /// color||Color|0
