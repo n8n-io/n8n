@@ -100,7 +100,7 @@ export class LoadNodeParameterOptions {
 	): Promise<INodePropertyOptions[]> {
 		const node = this.workflow.getNode(TEMP_NODE_NAME);
 
-		const nodeType = this.workflow.nodeTypes.getByNameAndVersion(node!.type, node!.typeVersion);
+		const nodeType = this.workflow.nodeTypes.getByNameAndVersion(node!.type, node?.typeVersion);
 
 		if (
 			!nodeType ||
