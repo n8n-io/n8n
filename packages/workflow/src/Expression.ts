@@ -2,7 +2,7 @@
 /* eslint-disable no-extend-native */
 // @ts-ignore
 import * as tmpl from 'riot-tmpl';
-import { DateTime, DateTimeFormatOptions, DurationObjectUnits, DurationUnits } from 'luxon';
+import { DateTime,/*DateTimeFormatOptions,*/ DurationObjectUnits, /*DurationUnits */} from 'luxon';
 // eslint-disable-next-line import/no-cycle
 import {
 	INode,
@@ -178,28 +178,28 @@ export class Expression {
 		};
 
 		// @ts-ignore
-		Object.prototype.isBlank = function () {
-			if (this instanceof String) {
-				return this === '';
-			}
-			if (this instanceof Number) {
-				return this === 0;
-			}
-			if (this instanceof Array) {
-				return this.length === 0;
-			}
-			if (this instanceof Object) {
-				return Object.keys(this).length === 0;
-			}
-			return false;
-		};
+		// Object.prototype.isBlank = function () {
+		// 	if (this instanceof String) {
+		// 		return this === '';
+		// 	}
+		// 	if (this instanceof Number) {
+		// 		return this === 0;
+		// 	}
+		// 	if (this instanceof Array) {
+		// 		return this.length === 0;
+		// 	}
+		// 	if (this instanceof Object) {
+		// 		return Object.keys(this).length === 0;
+		// 	}
+		// 	return false;
+		// };
 
-		// @ts-ignore
-		Object.prototype.isPresent = function () {
-			// @ts-ignore
-			// eslint-disable-next-line @typescript-eslint/no-unsafe-call
-			return !this.isBlank();
-		};
+		// // @ts-ignore
+		// Object.prototype.isPresent = function () {
+		// 	// @ts-ignore
+		// 	// eslint-disable-next-line @typescript-eslint/no-unsafe-call
+		// 	return !this.isBlank();
+		// };
 	}
 
 	/**
@@ -274,14 +274,19 @@ export class Expression {
 		try {
 			// eslint-disable-next-line no-param-reassign
 			parameterValue = `{{ __extendTypes() }}${parameterValue}`;
+			// @ts-ignore
+			data.__extendTypes = Expression.extendTypes;
+			// @ts-ignore
+			data.now = new Date();
+			// TODO: Investigate why this won't work with Luxon
+			const dateToday = new Date();
+			dateToday.setHours(0);
+			dateToday.setMinutes(0);
+			dateToday.setSeconds(0);
+			// @ts-ignore
+			data.today = dateToday;
 			// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
-			const returnValue = tmpl.tmpl(parameterValue, {
-				...data,
-				// eslint-disable-next-line @typescript-eslint/unbound-method
-				__extendTypes: Expression.extendTypes,
-				now: new Date(),
-				today: new DateTime().startOf('day').toJSDate(),
-			});
+			const returnValue = tmpl.tmpl(parameterValue, data);
 			if (typeof returnValue === 'function') {
 				throw new Error('Expression resolved to a function. Please add "()"');
 			} else if (returnValue !== null && typeof returnValue === 'object') {
