@@ -2,6 +2,20 @@
 
 This list shows all the versions which include breaking changes and how to upgrade.
 
+## 0.139.0
+
+### What changed?
+
+For the HubSpot Trigger node, the authentication process has changed to OAuth2.
+
+### When is action necessary?
+
+If you are using the Hubspot Trigger.
+
+### How to upgrade:
+
+Create an app in HubSpot, use the Client ID, Client Secret, App ID, and the Developer Key, and complete the OAuth2 flow. 
+
 ## 0.135.0
 
 ### What changed?
