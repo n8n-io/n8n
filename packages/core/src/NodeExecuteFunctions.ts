@@ -130,10 +130,10 @@ async function parseRequestObject(requestObject: IDataObject) {
 			typeof requestObject.body === 'string'
 				? requestObject.body
 				: new URLSearchParams(
-						Object.assign(
-							requestObject.body || {},
-							requestObject.form || {},
-						) as unknown as NodeJS.Dict<string | readonly string[]>,
+						Object.assign(requestObject.body || {}, requestObject.form || {}) as Record<
+							string,
+							string
+						>,
 				  );
 	} else if (contentType && contentType.includes('multipart/form-data') !== false) {
 		if (requestObject.formData !== undefined && requestObject.formData instanceof FormData) {
@@ -172,7 +172,7 @@ async function parseRequestObject(requestObject: IDataObject) {
 		// When using the `form` property it means the content should be x-www-form-urlencoded.
 		if (requestObject.form !== undefined && requestObject.body === undefined) {
 			// If we have only form
-			axiosConfig.data = new URLSearchParams(requestObject.form as NodeJS.Dict<string>);
+			axiosConfig.data = new URLSearchParams(requestObject.form as Record<string, string>);
 			if (axiosConfig.headers !== undefined) {
 				// remove possibly existing content-type headers
 				const headers = Object.keys(axiosConfig.headers);
