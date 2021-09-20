@@ -4,7 +4,7 @@
 		:defaultActive="props.defaultActive"
 		:collapse="props.collapse"
 		:class="$style[props.type + (props.light ? '-light' : '')]"
-		@select="listeners.select"
+		@select="(e) => listeners.select && listeners.select(e)"
 	>
 		<slot></slot>
 	</component>
@@ -28,6 +28,9 @@ export default {
 			type: Boolean,
 		},
 		light: {
+			type: Boolean,
+		},
+		router: {
 			type: Boolean,
 		},
 	},

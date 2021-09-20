@@ -1,7 +1,10 @@
 <template>
 	<div :class="$style.container">
-		<div>
+		<div :class="$style.logoContainer">
 				<Logo />
+		</div>
+		<div v-if="subtitle" :class="$style.textContainer">
+			<n8n-text size="large">{{subtitle}}</n8n-text>
 		</div>
 		<div :class="$style.formContainer">
 			<n8n-form-box
@@ -31,6 +34,9 @@ export default Vue.extend({
 			type: Boolean,
 			default: false,
 		},
+		subtitle: {
+			type: String,
+		},
 	},
 	methods: {
 		onInput(e: {name: string, value: string}) {
@@ -54,11 +60,21 @@ export default Vue.extend({
 
 	> * {
 		margin-bottom: var(--spacing-l);
+		width: 352px;
 	}
 }
 
+.logoContainer {
+	display: flex;
+	justify-content: center;
+}
+
+.textContainer {
+	text-align: center;
+}
+
 .formContainer {
-	width: 352px;
+	padding-bottom: var(--spacing-xl);
 }
 </style>
 
