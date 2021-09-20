@@ -159,6 +159,11 @@ export class Mautic implements INodeType {
 						value: 'contactDnc',
 						description: 'Add/remove Contact to/from Do Not Contact',
 					},
+					{
+						name: 'Send Email',
+						value: 'sendEmail',
+						description: 'Send Email to a Contact or Segment',
+					},
 				],
 				default: 'contact',
 				description: 'Resource to consume.',
