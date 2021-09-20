@@ -3,6 +3,7 @@
 		:is="$options.components.ElMenu"
 		:defaultActive="props.defaultActive"
 		:collapse="props.collapse"
+		:router="props.router"
 		:class="$style[props.type + (props.light ? '-light' : '')]"
 		@select="(e) => listeners.select && listeners.select(e)"
 	>

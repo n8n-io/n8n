@@ -3,7 +3,7 @@
 		<font-awesome-icon icon="exclamation-triangle" :class="$style.icon" />
 		<div :class="$style.message">
 			<div>
-				<n8n-text type="heading" size="xlarge">
+				<n8n-text type="heading" size="2xlarge">
 					{{message}}
 				</n8n-text>
 			</div>

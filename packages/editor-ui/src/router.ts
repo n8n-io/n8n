@@ -8,7 +8,7 @@ import MainHeader from '@/components/MainHeader/MainHeader.vue';
 import MainSidebar from '@/components/MainSidebar.vue';
 import NodeView from '@/views/NodeView.vue';
 import SettingsPersonalView from './views/SettingsPersonalView.vue';
-import SettingsUsersView from './views/SettingsPersonalView.vue';
+import SettingsUsersView from './views/SettingsUsersView.vue';
 import SetupView from './views/SetupView.vue';
 import SigninView from './views/SigninView.vue';
 import SignupView from './views/SignupView.vue';
@@ -100,17 +100,17 @@ export default new Router({
 			redirect: '/settings/personal',
 		},
 		{
-			path: '/settings/personal',
-			name: 'PersonalSettings',
-			components: {
-				default: SettingsPersonalView,
-			},
-		},
-		{
 			path: '/settings/users',
 			name: 'UsersSettings',
 			components: {
 				default: SettingsUsersView,
+			},
+		},
+		{
+			path: '/settings/personal',
+			name: 'PersonalSettings',
+			components: {
+				default: SettingsPersonalView,
 			},
 		},
 		{
