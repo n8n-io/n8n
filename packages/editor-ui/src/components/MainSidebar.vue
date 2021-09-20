@@ -1,6 +1,5 @@
 <template>
 	<div id="side-menu">
-		<about :dialogVisible="aboutDialogVisible" @closeDialog="closeAboutDialog"></about>
 		<executions-list :dialogVisible="executionsListDialogVisible" @closeDialog="closeExecutionsListOpenDialog"></executions-list>
 		<credentials-list :dialogVisible="credentialOpenDialogVisible" @closeDialog="closeCredentialOpenDialog"></credentials-list>
 		<workflow-settings :dialogVisible="workflowSettingsDialogVisible" @closeDialog="closeWorkflowSettingsDialog"></workflow-settings>
@@ -108,6 +107,11 @@
 					<span slot="title" class="item-title-root">Executions</span>
 				</n8n-menu-item>
 
+				<n8n-menu-item index="settings">
+					<font-awesome-icon icon="cog"/>&nbsp;
+					<span slot="title" class="item-title-root">Settings</span>
+				</n8n-menu-item>
+
 				<el-submenu index="help" class="help-menu" title="Help" popperClass="sidebar-popper">
 					<template slot="title">
 						<font-awesome-icon icon="question"/>&nbsp;
@@ -151,7 +155,6 @@ import {
 	IMenuItem,
 } from '../Interface';
 
-import About from '@/components/About.vue';
 import CredentialsList from '@/components/CredentialsList.vue';
 import ExecutionsList from '@/components/ExecutionsList.vue';
 import GiftNotificationIcon from './GiftNotificationIcon.vue';
@@ -214,7 +217,6 @@ export default mixins(
 	.extend({
 		name: 'MainHeader',
 		components: {
-			About,
 			CredentialsList,
 			ExecutionsList,
 			GiftNotificationIcon,
@@ -223,7 +225,6 @@ export default mixins(
 		},
 		data () {
 			return {
-				aboutDialogVisible: false,
 				// @ts-ignore
 				basePath: this.$store.getters.getBaseUrl,
 				credentialOpenDialogVisible: false,
@@ -301,9 +302,6 @@ export default mixins(
 			clearExecutionData () {
 				this.$store.commit('setWorkflowExecutionData', null);
 				this.updateNodesExecutionIssues();
-			},
-			closeAboutDialog () {
-				this.aboutDialogVisible = false;
 			},
 			closeWorkflowSettingsDialog () {
 				this.workflowSettingsDialogVisible = false;
@@ -434,7 +432,7 @@ export default mixins(
 				} else if (key === 'workflow-duplicate') {
 					this.$store.dispatch('ui/openDuplicateModal');
 				} else if (key === 'help-about') {
-					this.aboutDialogVisible = true;
+					this.$store.dispatch('ui/openAboutModal');
 				} else if (key === 'workflow-settings') {
 					this.workflowSettingsDialogVisible = true;
 				} else if (key === 'workflow-new') {
@@ -477,6 +475,8 @@ export default mixins(
 					}
 				} else if (key === 'executions') {
 					this.executionsListDialogVisible = true;
+				} else if (key === 'settings') {
+					this.$router.push('/settings');
 				}
 			},
 		},

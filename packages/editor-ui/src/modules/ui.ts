@@ -1,4 +1,4 @@
-import { CREDENTIAL_EDIT_MODAL_KEY, DUPLICATE_MODAL_KEY, TAGS_MANAGER_MODAL_KEY, VERSIONS_MODAL_KEY, WORKLOW_OPEN_MODAL_KEY, CREDENTIAL_SELECT_MODAL_KEY } from '@/constants';
+import { CREDENTIAL_EDIT_MODAL_KEY, DUPLICATE_MODAL_KEY, TAGS_MANAGER_MODAL_KEY, VERSIONS_MODAL_KEY, WORKLOW_OPEN_MODAL_KEY, CREDENTIAL_SELECT_MODAL_KEY, ABOUT_MODAL_KEY } from '@/constants';
 import Vue from 'vue';
 import { ActionContext, Module } from 'vuex';
 import {
@@ -10,6 +10,9 @@ const module: Module<IUiState, IRootState> = {
 	namespaced: true,
 	state: {
 		modals: {
+			[ABOUT_MODAL_KEY]: {
+				open: false,
+			},
 			[CREDENTIAL_EDIT_MODAL_KEY]: {
 				open: false,
 				mode: '',
@@ -83,6 +86,9 @@ const module: Module<IUiState, IRootState> = {
 		},
 	},
 	actions: {
+		openAboutModal: async (context: ActionContext<IUiState, IRootState>) => {
+			context.commit('openModal', ABOUT_MODAL_KEY);
+		},
 		openTagsManagerModal: async (context: ActionContext<IUiState, IRootState>) => {
 			context.commit('openModal', TAGS_MANAGER_MODAL_KEY);
 		},

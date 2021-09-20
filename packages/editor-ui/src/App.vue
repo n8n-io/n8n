@@ -11,18 +11,21 @@
 			<div id="content" :class="$style.container">
 				<router-view />
 			</div>
+			<RootModals />
 		</div>
 	</div>
 </template>
 
 <script lang="ts">
 import Vue from 'vue';
+import RootModals from './components/RootModals.vue';
 import LoadingView from './views/LoadingView.vue';
 
 export default Vue.extend({
 	name: 'App',
 	components: {
 		LoadingView,
+		RootModals,
 	},
 	data() {
 		return {

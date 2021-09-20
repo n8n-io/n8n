@@ -642,6 +642,7 @@ export interface IVersionsState {
 }
 
 export interface ISettingsState {
+	settings: IN8nUISettings;
 }
 
 export interface IUsersState {
