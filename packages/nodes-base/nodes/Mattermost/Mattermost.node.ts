@@ -9,7 +9,7 @@ import { NodeVersionedType } from '../../src/NodeVersionedType';
 export class Mattermost extends NodeVersionedType {
 	constructor() {
 		const baseDescription: INodeTypeBaseDescription = {
-			displayName: 'Mattermost V1',
+			displayName: 'Mattermost',
 			name: 'mattermost',
 			icon: 'file:mattermost.svg',
 			group: ['output'],
