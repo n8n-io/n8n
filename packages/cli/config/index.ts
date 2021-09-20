@@ -364,6 +364,12 @@ const config = convict({
 		env: 'N8N_PROTOCOL',
 		doc: 'HTTP Protocol via which n8n can be reached',
 	},
+	virtualHost: {
+		doc: 'N8N host override',
+		format: String,
+		default: '',
+		env: 'N8N_VIRTUAL_HOST',
+	},
 	ssl_key: {
 		format: String,
 		default: '',

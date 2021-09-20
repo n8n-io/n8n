@@ -27,10 +27,16 @@ let versionCache: IPackageVersions | undefined;
  * @returns {string}
  */
 export function getBaseUrl(): string {
+	const virtualHost = config.get('virtualHost');
+	const path = config.get('path');
+
+	if (virtualHost) {
+		return `${virtualHost}${path}`;
+	}
+
 	const protocol = config.get('protocol');
 	const host = config.get('host');
 	const port = config.get('port');
-	const path = config.get('path');
 
 	if ((protocol === 'http' && port === 80) || (protocol === 'https' && port === 443)) {
 		return `${protocol}://${host}${path}`;
