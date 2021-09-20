@@ -932,13 +932,13 @@ export class Mautic implements INodeType {
 					//https://developer.mautic.org/#send-email-to-contact
 					if (operation === 'contact') {
 						const contactId = this.getNodeParameter('contactId', i) as string;
-						const segmentEmailId = this.getNodeParameter('segmentEmailId', i) as string;
-						responseData = await mauticApiRequest.call(this, 'POST', `/emails/${segmentEmailId}/contact/${contactId}/send`);
+						const campaignEmailId = this.getNodeParameter('campaignEmailId', i) as string;
+						responseData = await mauticApiRequest.call(this, 'POST', `/emails/${campaignEmailId}/contact/${contactId}/send`);
 					}
 					//hhttps://developer.mautic.org/#send-email-to-segment
 					if (operation === 'segment') {
-						const campaignEmailId = this.getNodeParameter('campaignEmailId', i) as string;
-						responseData = await mauticApiRequest.call(this, 'POST', `/emails/${campaignEmailId}/send`);
+						const segmentEmailId = this.getNodeParameter('segmentEmailId', i) as string;
+						responseData = await mauticApiRequest.call(this, 'POST', `/emails/${segmentEmailId}/send`);
 					}
 				}
 

@@ -16,12 +16,12 @@ export const sendEmailOperations = [
 		},
 		options: [
 			{
-				name: 'Send Email to Contact',
+				name: 'Send to Contact',
 				value: 'contact',
 				description: 'Send email to contact',
 			},
 			{
-				name: 'Send Email to Segment',
+				name: 'Send to Segment',
 				value: 'segment',
 				description: 'Send email to segment',
 			},
