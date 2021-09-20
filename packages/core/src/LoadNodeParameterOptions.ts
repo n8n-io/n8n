@@ -1,3 +1,8 @@
+/* eslint-disable @typescript-eslint/no-unsafe-return */
+/* eslint-disable @typescript-eslint/no-unsafe-member-access */
+/* eslint-disable @typescript-eslint/restrict-template-expressions */
+/* eslint-disable @typescript-eslint/no-unsafe-call */
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 import {
 	INode,
@@ -98,9 +103,10 @@ export class LoadNodeParameterOptions {
 		const nodeType = this.workflow.nodeTypes.getByNameAndVersion(node!.type, node!.typeVersion);
 
 		if (
-			nodeType!.methods === undefined ||
-			nodeType!.methods.loadOptions === undefined ||
-			nodeType!.methods.loadOptions[methodName] === undefined
+			!nodeType ||
+			nodeType.methods === undefined ||
+			nodeType.methods.loadOptions === undefined ||
+			nodeType.methods.loadOptions[methodName] === undefined
 		) {
 			throw new Error(
 				`The node-type "${node!.type}" does not have the method "${methodName}" defined!`,
@@ -114,6 +120,6 @@ export class LoadNodeParameterOptions {
 			additionalData,
 		);
 
-		return nodeType!.methods.loadOptions[methodName].call(thisArgs);
+		return nodeType.methods.loadOptions[methodName].call(thisArgs);
 	}
 }
