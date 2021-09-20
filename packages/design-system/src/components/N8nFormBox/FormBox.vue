@@ -8,7 +8,7 @@
 		>
 			<n8n-text
 				type="heading"
-				size="large"
+				size="xlarge"
 			>
 			{{title}}
 			</n8n-text>

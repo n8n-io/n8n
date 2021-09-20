@@ -21,7 +21,7 @@ export default Vue.extend({
 		size: {
 			type: String,
 			default: 'medium',
-			validator: (value: string): boolean => ['xlarge', 'large', 'medium', 'small'].includes(value),
+			validator: (value: string): boolean => ['2xlarge', 'xlarge', 'large', 'medium', 'small'].includes(value),
 		},
 	},
 	methods: {
@@ -37,8 +37,13 @@ export default Vue.extend({
 	font-weight: var(--font-weight-bold);
 }
 
-.heading-xlarge {
+.heading-2xlarge {
 	font-size: var(--font-size-2xl);
+	line-height: var(--font-line-height-compact);
+}
+
+.heading-xlarge {
+	font-size: var(--font-size-xl);
 	line-height: var(--font-line-height-compact);
 }
 
@@ -48,7 +53,7 @@ export default Vue.extend({
 }
 
 .heading-large {
-	font-size: var(--font-size-xl);
+	font-size: var(--font-size-l);
 	line-height: var(--font-line-height-loose);
 }
 
