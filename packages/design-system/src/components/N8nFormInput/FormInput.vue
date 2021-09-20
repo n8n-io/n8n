@@ -4,7 +4,10 @@
 		:tooltipText="tooltipText"
 		:required="required"
 	>
-		<div :class="validationError ? $style.errorInput : ''">
+		<div :class="validationError ? $style.errorInput : ''"
+			@keydown.stop
+			@keydown.enter="onEnter"
+		>
 			<slot v-if="hasDefaultSlot"></slot>
 			<n8n-input
 				v-else
@@ -254,6 +257,9 @@ export default Vue.extend({
 		},
 		onFocus() {
 			this.$emit('focus');
+		},
+		onEnter() {
+			this.$emit('enter');
 		},
 	},
 	watch: {
