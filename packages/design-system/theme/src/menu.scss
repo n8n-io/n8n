@@ -208,6 +208,7 @@
 	@include mixins.when(active) {
 		color: var.$menu-item-active-font-color;
 		background-color: var.$menu-item-active-background-color;
+		font-weight: var(--font-weight-bold);
 
 		i {
 			color: inherit;
