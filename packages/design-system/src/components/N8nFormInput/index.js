@@ -1,3 +1,3 @@
-import FormInput from './FormInput.vue';
+import N8nFormInput from './FormInput.vue';
 
-export default FormInput;
+export default N8nFormInput;
