@@ -1,36 +1,38 @@
 <template>
 	<Modal width="50%" title="About n8n" :eventBus="modalBus" :name="modalName">
 		<template slot="content">
-			<div class="n8n-about">
+			<div :class="$style.container">
 				<el-row>
 					<el-col :span="8" class="info-name">
-						n8n Version:
+						<n8n-text>n8n Version:</n8n-text>
 					</el-col>
 					<el-col :span="16">
-						{{versionCli}}
+						<n8n-text>{{versionCli}}</n8n-text>
 					</el-col>
 				</el-row>
 				<el-row>
 					<el-col :span="8" class="info-name">
-						Source Code:
+						<n8n-text>Source code:</n8n-text>
 					</el-col>
 					<el-col :span="16">
-						<a href="https://github.com/n8n-io/n8n" target="_blank">https://github.com/n8n-io/n8n</a>
+						<n8n-link href="https://github.com/n8n-io/n8n" target="_blank">https://github.com/n8n-io/n8n</n8n-link>
 					</el-col>
 				</el-row>
 				<el-row>
 					<el-col :span="8" class="info-name">
-						License:
+						<n8n-text>License:</n8n-text>
 					</el-col>
 					<el-col :span="16">
-						<a href="https://github.com/n8n-io/n8n/blob/master/packages/cli/LICENSE.md" target="_blank">Apache 2.0 with Commons Clause</a>
+						<n8n-link href="https://github.com/n8n-io/n8n/blob/master/packages/cli/LICENSE.md" target="_blank">Apache 2.0 with Commons Clause</n8n-link>
 					</el-col>
 				</el-row>
-
-				<div class="action-buttons">
-					<n8n-button @click="closeDialog" label="Close" />
-				</div>
 			</div>
+		</template>
+
+		<template slot="footer">
+				<div class="action-buttons">
+					<n8n-button @click="closeDialog" float="right" label="Close" />
+				</div>
 		</template>
 	</Modal>
 </template>
@@ -67,21 +69,10 @@ export default Vue.extend({
 });
 </script>
 
-<style scoped lang="scss">
-.n8n-about {
-	font-size: var(--font-size-s);
-	.el-row {
-		padding: 0.25em 0;
+<style module lang="scss">
+.container {
+	> * {
+		margin-bottom: var(--spacing-s);
 	}
 }
-
-.action-buttons {
-	margin-top: 1em;
-	text-align: right;
-}
-
-.info-name {
-	line-height: 32px;
-}
-
 </style>
