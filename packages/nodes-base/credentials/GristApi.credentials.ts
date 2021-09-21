@@ -13,6 +13,7 @@ export class GristApi implements ICredentialType {
 			name: 'apiKey',
 			type: 'string',
 			default: '',
+			required: true,
 		},
 		{
 			displayName: 'Plan Type',
