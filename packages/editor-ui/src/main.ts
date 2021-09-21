@@ -12,6 +12,7 @@ import './n8n-theme.scss';
 import "@fontsource/open-sans/latin-300.css";
 import "@fontsource/open-sans/latin-400.css";
 import "@fontsource/open-sans/latin-600.css";
+import "@fontsource/open-sans/latin-700.css";
 
 import App from '@/App.vue';
 import router from './router';
