@@ -21,9 +21,9 @@
 			</n8n-menu-item>
 		</n8n-menu>
 		<div :class="$style.versionContainer">
-			<a @click="onVersionClick">
-				<n8n-text size="small">Version {{versionCli}}</n8n-text>
-			</a>
+			<n8n-link @click="onVersionClick" size="small">
+				Version {{versionCli}}
+			</n8n-link>
 		</div>
 	</div>
 </template>

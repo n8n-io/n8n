@@ -1,6 +1,6 @@
 <template functional>
 	<a
-		:class="$style[`${props.underline ? 'underline' : 'link'}`]"
+		:class="$style[`${props.underline ? `${props.theme}-underline` : props.theme}`]"
 		:href="props.href"
 		@click="(e) => listeners.click && listeners.click(e)"
 		:target="props.newWindow ? '_blank': '_self'"
@@ -38,6 +38,12 @@ export default {
 			type: Boolean,
 			default: false,
 		},
+		theme: {
+			type: String,
+			default: 'primary',
+			validator: (value: string): boolean =>
+				['primary', 'danger'].indexOf(value) !== -1,
+		},
 	},
 };
 </script>
@@ -48,7 +54,7 @@ export default {
 	@return hsl(var(#{$h}), calc(var(#{$s}) + #{$saturation}), var(#{$l}));
 }
 
-.link {
+.primary {
 	color: var(--color-primary);
 
 	&:active {
@@ -61,9 +67,28 @@ export default {
 	}
 }
 
-.underline {
-	text-decoration: underline;
-	composes: link;
+.danger {
+	color: var(--color-danger);
+
+	&:active {
+		color: saturation(
+			--color-danger-h,
+			--color-danger-s,
+			--color-danger-l,
+			-(10%)
+		);
+	}
 }
+
+.primary-underline {
+	composes: primary;
+	text-decoration: underline;
+}
+
+.danger-underline {
+	composes: danger;
+	text-decoration: underline;
+}
+
 
 </style>

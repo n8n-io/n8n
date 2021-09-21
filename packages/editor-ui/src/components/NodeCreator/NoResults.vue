@@ -7,17 +7,17 @@
 			<div>We didn't make that... yet</div>
 			<div class="action">
 				Don’t worry, you can probably do it with the
-				<a @click="selectHttpRequest">HTTP Request</a> or
-				<a @click="selectWebhook">Webhook</a> node
+				<n8n-link @click="selectHttpRequest">HTTP Request</n8n-link> or
+				<n8n-link @click="selectWebhook">Webhook</n8n-link> node
 			</div>
 		</div>
 
 		<div class="request">
 			<div>Want us to make it faster?</div>
 			<div>
-				<a
+				<n8n-link
 					:href="REQUEST_NODE_FORM_URL"
-					target="_blank"
+					:newWindow="true"
 				>
 					<span>Request the node</span>&nbsp;
 					<span>
@@ -27,7 +27,7 @@
 							title="Request the node"
 						/>
 					</span>
-				</a>
+				</n8n-link>
 			</div>
 		</div>
 	</div>
@@ -104,13 +104,6 @@ export default Vue.extend({
 	@media (min-height: 550px) {
 		display: block;
 	}
-}
-
-a {
-	color: $--color-primary;
-	text-decoration: none;
-	cursor: pointer;
-	font-weight: 500;
 }
 
 .icon {

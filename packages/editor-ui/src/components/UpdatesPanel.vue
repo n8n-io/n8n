@@ -17,15 +17,15 @@
 					behind the latest and greatest n8n
 				</p>
 
-				<a
-					:class="$style['info-url']"
-					:href="infoUrl"
+				<n8n-link
 					v-if="infoUrl"
-					target="_blank"
+					:href="infoUrl"
+					:newWindow="true"
+					:bold="true"
 				>
-					<font-awesome-icon icon="info-circle"></font-awesome-icon>
-					<span>How to update your n8n version</span>
-				</a>
+					<font-awesome-icon icon="info-circle" :class="$style.infoIcon"></font-awesome-icon>
+					<n8n-text>How to update your n8n version</n8n-text>
+				</n8n-link>
 
 			</section>
 			<section :class="$style.versions">
@@ -108,18 +108,8 @@ export default Vue.extend({
 	margin-block-end: 15px;
 }
 
-.info-url {
-	text-decoration: none;
-	font-size: 14px;
-
-	svg {
-		color: $--updates-panel-info-icon-color;
-		margin-right: 5px;
-	}
-
-	span {
-		color: $--updates-panel-info-url-color;
-		font-weight: 600;
-	}
+.infoIcon {
+	color: $--updates-panel-info-icon-color;
+	margin-right: 5px;
 }
 </style>
