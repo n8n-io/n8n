@@ -149,20 +149,6 @@ export const searchConfigurationFields: INodeProperties[] = [
 				default: false,
 			},
 			{
-				displayName: 'Earliest Time',
-				name: 'earliest_time',
-				description: 'For scheduled searches, display all the scheduled times starting from this time (not just the next run time)',
-				type: 'dateTime',
-				default: '',
-			},
-			{
-				displayName: 'Latest Time',
-				name: 'latest_time',
-				description: 'For scheduled searches, display all the scheduled times until this time (not just the next run time)',
-				type: 'dateTime',
-				default: '',
-			},
-			{
 				displayName: 'List Default Actions',
 				name: 'listDefaultActionArgs',
 				type: 'boolean',

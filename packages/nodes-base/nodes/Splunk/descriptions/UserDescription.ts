@@ -227,39 +227,6 @@ export const userFields: INodeProperties[] = [
 			},
 		},
 	},
-	{
-		displayName: 'Options',
-		name: 'options',
-		type: 'collection',
-		placeholder: 'Add Option',
-		default: {},
-		displayOptions: {
-			show: {
-				resource: [
-					'user',
-				],
-				operation: [
-					'getAll',
-				],
-			},
-		},
-		options: [
-			{
-				displayName: 'Earliest Time',
-				name: 'earliest_time',
-				description: 'For scheduled searches, display all the scheduled times starting from this time (not just the next run time). See <a href="https://docs.splunk.com/Documentation/Splunk/8.2.2/SearchReference/SearchTimeModifiers">Search Time Modifiers</a>.',
-				type: 'string',
-				default: '',
-			},
-			{
-				displayName: 'Latest Time',
-				name: 'latest_time',
-				description: 'For scheduled searches, display all the scheduled times until this time (not just the next run time). See <a href="https://docs.splunk.com/Documentation/Splunk/8.2.2/SearchReference/SearchTimeModifiers">Search Time Modifiers</a>.',
-				type: 'string',
-				default: '',
-			},
-		],
-	},
 
 	// ----------------------------------------
 	//               user: update

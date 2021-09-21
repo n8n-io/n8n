@@ -193,20 +193,9 @@ export class Splunk implements INodeType {
 						// https://docs.splunk.com/Documentation/Splunk/8.2.2/RESTREF/RESTsearch#saved.2Fsearches
 
 						const qs = {} as IDataObject;
-						const {
-							earliest_time,
-							latest_time,
-							...rest
-						} = this.getNodeParameter('options', i) as IDataObject & {
-							earliest_time?: string;
-							latest_time?: string;
-						};
+						const options = this.getNodeParameter('options', i) as IDataObject;
 
-						populate({
-							...earliest_time && { earliest_time: toUnixEpoch(earliest_time) },
-							...latest_time && { latest_time: toUnixEpoch(latest_time) },
-							...rest,
-						}, qs);
+						populate(options, qs);
 						setCount.call(this, qs);
 
 						const endpoint = '/services/saved/searches';
@@ -405,9 +394,6 @@ export class Splunk implements INodeType {
 						// https://docs.splunk.com/Documentation/Splunk/8.2.2/RESTREF/RESTaccess#authentication.2Fusers
 
 						const qs = {} as IDataObject;
-						const options = this.getNodeParameter('options', i) as IDataObject;
-
-						populate(options, qs);
 						setCount.call(this, qs);
 
 						const endpoint = '/services/authentication/users';
