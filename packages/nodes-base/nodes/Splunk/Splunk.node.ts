@@ -346,7 +346,7 @@ export class Splunk implements INodeType {
 
 						const body = {
 							name: this.getNodeParameter('name', i),
-							roles: roles.map(encodeURIComponent).join('&'),
+							roles,
 							password: this.getNodeParameter('password', i),
 						} as IDataObject;
 
@@ -408,15 +408,16 @@ export class Splunk implements INodeType {
 						// https://docs.splunk.com/Documentation/Splunk/8.2.2/RESTREF/RESTaccess#authentication.2Fusers.2F.7Bname.7D
 
 						const body = {} as IDataObject;
-						const {
-							roles: rawRoles,
-							...rest
-						} = this.getNodeParameter('updateFields', i) as IDataObject & {
+						const { roles, ...rest } = this.getNodeParameter('updateFields', i) as IDataObject & {
 							roles: string[];
 						};
-						const roles = rawRoles.map(encodeURIComponent).join('&');
 
-						populate({ roles, ...rest }, body);
+						populate({
+							...roles && { roles },
+							...rest
+						}, body);
+
+						console.log(body);
 
 						const partialEndpoint = '/services/authentication/users/';
 						const userId = getId.call(this, i, 'userId', partialEndpoint);

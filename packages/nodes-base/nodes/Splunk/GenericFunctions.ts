@@ -48,6 +48,7 @@ export async function splunkApiRequest(
 		uri: `${baseUrl}${endpoint}`,
 		json: true,
 		rejectUnauthorized: !allowUnauthorizedCerts,
+		useQuerystring: true, // serialize roles array as `roles=A&roles=B`
 	};
 
 	if (!Object.keys(body).length) {
