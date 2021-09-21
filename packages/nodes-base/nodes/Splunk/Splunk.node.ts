@@ -414,7 +414,7 @@ export class Splunk implements INodeType {
 
 						populate({
 							...roles && { roles },
-							...rest
+							...rest,
 						}, body);
 
 						const partialEndpoint = '/services/authentication/users/';
