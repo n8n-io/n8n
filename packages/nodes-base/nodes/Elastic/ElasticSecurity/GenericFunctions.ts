@@ -25,11 +25,13 @@ export async function elasticSecurityApiRequest(
 	body: IDataObject = {},
 	qs: IDataObject = {},
 ) {
-	const {
+	let {
 		username,
 		password,
 		baseUrl,
 	} = await this.getCredentials('elasticSecurityApi') as ElasticSecurityApiCredentials;
+
+	baseUrl = tolerateTrailingSlash(baseUrl)
 
 	const token = Buffer.from(`${username}:${password}`).toString('base64');
 
@@ -152,4 +154,10 @@ export async function getVersion(
 	}
 
 	return version;
+}
+
+function tolerateTrailingSlash(baseUrl: string) {
+	return baseUrl.endsWith('/')
+		? baseUrl.substr(0, baseUrl.length - 1)
+		: baseUrl;
 }
