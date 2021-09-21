@@ -423,17 +423,13 @@ export class ElasticSecurity implements INodeType {
 
 						const simple = this.getNodeParameter('simple', i) as boolean;
 
+						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+
 						const body = {
 							comment: this.getNodeParameter('comment', i),
 							type: 'user',
-							owner: 'securitySolution',
+							owner: additionalFields.owner || 'securitySolution',
 						} as IDataObject;
-
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
-
-						if (Object.keys(additionalFields).length) {
-							Object.assign(body, additionalFields);
-						}
 
 						const caseId = this.getNodeParameter('caseId', i);
 						const endpoint = `/cases/${caseId}/comments`;
