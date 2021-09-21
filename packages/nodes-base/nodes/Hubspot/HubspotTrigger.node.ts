@@ -370,15 +370,11 @@ export class HubspotTrigger implements INodeType {
 			return {};
 		}
 
-		// check signare if client secret is defined
-
-		if (credentials.clientSecret !== '') {
-			const hash = `${credentials!.clientSecret}${JSON.stringify(bodyData)}`;
-			const signature = createHash('sha256').update(hash).digest('hex');
-			//@ts-ignore
-			if (signature !== headerData['x-hubspot-signature']) {
-				return {};
-			}
+		const hash = `${credentials!.clientSecret}${JSON.stringify(bodyData)}`;
+		const signature = createHash('sha256').update(hash).digest('hex');
+		//@ts-ignore
+		if (signature !== headerData['x-hubspot-signature']) {
+			return {};
 		}
 
 		for (let i = 0; i < bodyData.length; i++) {
