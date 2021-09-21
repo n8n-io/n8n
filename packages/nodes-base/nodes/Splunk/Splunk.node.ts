@@ -417,8 +417,6 @@ export class Splunk implements INodeType {
 							...rest
 						}, body);
 
-						console.log(body);
-
 						const partialEndpoint = '/services/authentication/users/';
 						const userId = getId.call(this, i, 'userId', partialEndpoint);
 						const endpoint = `${partialEndpoint}/${userId}`;
