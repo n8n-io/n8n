@@ -25,13 +25,13 @@
     "test:unit": "vue-cli-service test:unit"
   },
   "dependencies": {
+    "@fontsource/open-sans": "^4.5.0",
     "n8n-design-system": "~0.3.0",
     "timeago.js": "^4.0.2",
     "v-click-outside": "^3.1.2",
     "vue-fragment": "^1.5.2"
   },
   "devDependencies": {
-    "@beyonk/google-fonts-webpack-plugin": "^1.5.0",
     "@fortawesome/fontawesome-svg-core": "^1.2.35",
     "@fortawesome/free-solid-svg-icons": "^5.15.3",
     "@fortawesome/vue-fontawesome": "^2.0.2",
