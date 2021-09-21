@@ -44,7 +44,7 @@ export const caseOperations: INodeProperties[] = [
 			{
 				name: 'Get Summary',
 				value: 'getCaseActivity',
-				description: 'Retrieve a summary of case activity',
+				description: 'Retrieve a summary of all case activity',
 			},
 			{
 				name: 'Update',

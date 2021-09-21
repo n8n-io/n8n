@@ -137,7 +137,7 @@ export function throwOnEmptyUpdate(
 ) {
 	throw new NodeOperationError(
 		this.getNode(),
-		`Please enter at least one field to update for the ${resource}.`,
+		`Please enter at least one field to update for the ${resource}`,
 	);
 }
 
