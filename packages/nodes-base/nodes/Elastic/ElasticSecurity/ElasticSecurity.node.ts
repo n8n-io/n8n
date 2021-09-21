@@ -250,7 +250,10 @@ export class ElasticSecurity implements INodeType {
 						// https://www.elastic.co/guide/en/security/current/cases-api-find-cases.html
 
 						const qs = {} as IDataObject;
-						const { tags, ...rest } = this.getNodeParameter('filters', i) as IDataObject & { tags: string[] };
+						const {
+							tags,
+							...rest
+						} = this.getNodeParameter('filters', i) as IDataObject & { tags: string[] };
 						const options = this.getNodeParameter('options', i) as IDataObject;
 
 						[rest, options].forEach(obj => {
@@ -259,7 +262,7 @@ export class ElasticSecurity implements INodeType {
 							}
 						});
 
-						if (tags) {
+						if (tags.length) {
 							qs.tags = tags.join(',');
 						}
 
@@ -442,7 +445,7 @@ export class ElasticSecurity implements INodeType {
 							const { comments } = responseData;
 							responseData = comments[comments.length - 1];
 						}
-						
+
 					} else if (operation === 'get') {
 
 						// ----------------------------------------
