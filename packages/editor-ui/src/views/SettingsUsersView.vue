@@ -1,7 +1,9 @@
 <template>
-	<SettingsView selected="users">
+	<SettingsView>
+		<div :class="$style.header">
+			<n8n-text type="heading" size="2xlarge">Users Settings</n8n-text>
+		</div>
 		<div>
-			Users Settings
 		</div>
 	</SettingsView>
 </template>
@@ -19,3 +21,8 @@ export default Vue.extend({
 });
 </script>
 
+<style lang="scss" module>
+.header {
+	margin-bottom: var(--spacing-2xl);
+}
+</style>

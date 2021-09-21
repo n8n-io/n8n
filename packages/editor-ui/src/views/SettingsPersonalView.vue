@@ -1,5 +1,5 @@
 <template>
-	<SettingsView selected="personal">
+	<SettingsView>
 		<div :class="$style.header">
 			<n8n-text type="heading" size="2xlarge">Personal Settings</n8n-text>
 		</div>
