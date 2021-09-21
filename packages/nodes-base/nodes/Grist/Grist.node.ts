@@ -109,8 +109,8 @@ export class Grist implements INodeType {
 
 					}
 
-					const docId = this.getNodeParameter('docId', i) as string;
-					const tableId = this.getNodeParameter('tableId', i) as string;
+					const docId = this.getNodeParameter('docId', 0) as string;
+					const tableId = this.getNodeParameter('tableId', 0) as string;
 					const endpoint = `/docs/${docId}/tables/${tableId}/records`;
 
 					responseData = await gristApiRequest.call(this, 'POST', endpoint, body);
@@ -124,8 +124,8 @@ export class Grist implements INodeType {
 
 					// https://support.getgrist.com/api/#tag/data/paths/~1docs~1{docId}~1tables~1{tableId}~1data~1delete/post
 
-					const docId = this.getNodeParameter('docId', i) as string;
-					const tableId = this.getNodeParameter('tableId', i) as string;
+					const docId = this.getNodeParameter('docId', 0) as string;
+					const tableId = this.getNodeParameter('tableId', 0) as string;
 					const endpoint = `/docs/${docId}/tables/${tableId}/data/delete`;
 
 					const rawRowId = this.getNodeParameter('rowId', i) as string;
@@ -165,8 +165,8 @@ export class Grist implements INodeType {
 
 					}
 
-					const docId = this.getNodeParameter('docId', i) as string;
-					const tableId = this.getNodeParameter('tableId', i) as string;
+					const docId = this.getNodeParameter('docId', 0) as string;
+					const tableId = this.getNodeParameter('tableId', 0) as string;
 					const endpoint = `/docs/${docId}/tables/${tableId}/records`;
 
 					await gristApiRequest.call(this, 'PATCH', endpoint, body);
@@ -180,8 +180,8 @@ export class Grist implements INodeType {
 
 					// https://support.getgrist.com/api/#tag/records
 
-					const docId = this.getNodeParameter('docId', i) as string;
-					const tableId = this.getNodeParameter('tableId', i) as string;
+					const docId = this.getNodeParameter('docId', 0) as string;
+					const tableId = this.getNodeParameter('tableId', 0) as string;
 					const endpoint = `/docs/${docId}/tables/${tableId}/records`;
 
 					const qs: IDataObject = {};
