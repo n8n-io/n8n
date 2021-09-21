@@ -97,6 +97,7 @@ export const connectorFields: INodeProperties[] = [
 	{
 		displayName: 'Email',
 		name: 'email',
+		description: 'Jira-registered email',
 		type: 'string',
 		required: true,
 		default: '',
@@ -117,6 +118,7 @@ export const connectorFields: INodeProperties[] = [
 	{
 		displayName: 'API Token',
 		name: 'apiToken',
+		description: 'Jira API token',
 		type: 'string',
 		required: true,
 		default: '',
@@ -137,6 +139,7 @@ export const connectorFields: INodeProperties[] = [
 	{
 		displayName: 'Project Key',
 		name: 'projectKey',
+		description: 'Jira Project Key',
 		type: 'string',
 		required: true,
 		default: '',
@@ -157,6 +160,7 @@ export const connectorFields: INodeProperties[] = [
 	{
 		displayName: 'Username',
 		name: 'username',
+		description: 'ServiceNow ITSM username',
 		type: 'string',
 		required: true,
 		default: '',
@@ -177,6 +181,7 @@ export const connectorFields: INodeProperties[] = [
 	{
 		displayName: 'Password',
 		name: 'password',
+		description: 'ServiceNow ITSM password',
 		type: 'string',
 		required: true,
 		default: '',
@@ -197,6 +202,7 @@ export const connectorFields: INodeProperties[] = [
 	{
 		displayName: 'API Key ID',
 		name: 'apiKeyId',
+		description: 'IBM Resilient API key ID',
 		type: 'string',
 		required: true,
 		default: '',
@@ -217,6 +223,7 @@ export const connectorFields: INodeProperties[] = [
 	{
 		displayName: 'API Key Secret',
 		name: 'apiKeySecret',
+		description: 'IBM Resilient API key secret',
 		type: 'string',
 		required: true,
 		default: '',
@@ -237,6 +244,7 @@ export const connectorFields: INodeProperties[] = [
 	{
 		displayName: 'Organization ID',
 		name: 'orgId',
+		description: 'IBM Resilient organization ID',
 		type: 'string',
 		required: true,
 		default: '',
