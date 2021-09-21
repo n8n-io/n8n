@@ -7,7 +7,7 @@ import {
 export class FormstackApi implements ICredentialType {
 	name = 'formstackApi';
 	displayName = 'Formstack API';
-	documentationUrl = 'formstack';
+	documentationUrl = 'formstackTrigger';
 	properties = [
 		{
 			displayName: 'Access Token',
