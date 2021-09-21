@@ -25,13 +25,13 @@ export async function elasticSecurityApiRequest(
 	body: IDataObject = {},
 	qs: IDataObject = {},
 ) {
-	let {
+	const {
 		username,
 		password,
-		baseUrl,
+		baseUrl: rawBaseUrl,
 	} = await this.getCredentials('elasticSecurityApi') as ElasticSecurityApiCredentials;
 
-	baseUrl = tolerateTrailingSlash(baseUrl)
+	const baseUrl = tolerateTrailingSlash(rawBaseUrl)
 
 	const token = Buffer.from(`${username}:${password}`).toString('base64');
 
