@@ -6,12 +6,11 @@
 			v-if="title"
 			:class="$style.heading"
 		>
-			<n8n-text
-				type="heading"
+			<n8n-heading
 				size="xlarge"
 			>
 			{{title}}
-			</n8n-text>
+			</n8n-heading>
 		</div>
 		<div
 			:class="$style.inputsContainer"
@@ -41,12 +40,12 @@
 			/>
 		</div>
 		<div :class="$style.actionContainer">
-			<a
+			<n8n-link
 				v-if="redirectText && redirectLink"
 				:href="redirectLink"
 			>
 				<span>{{redirectText}}</span>
-			</a>
+			</n8n-link>
 		</div>
 	</div>
 </template>
@@ -54,13 +53,15 @@
 <script lang="ts">
 import Vue from 'vue';
 import N8nFormInput from '../N8nFormInput';
-import N8nText from '../N8nText';
+import N8nHeading from '../N8nHeading';
+import N8nLink from '../N8nLink';
 
 export default Vue.extend({
 	name: 'n8n-form-box',
 	components: {
-		N8nText,
+		N8nHeading,
 		N8nFormInput,
+		N8nLink,
 	},
 	props: {
 		title: {

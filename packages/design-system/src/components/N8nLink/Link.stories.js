@@ -8,7 +8,7 @@ export default {
 		size: {
 			control: {
 				type: 'select',
-				options: ['small', 'medium', 'large', 'xlarge', '2xlarge'],
+				options: ['small', 'medium', 'large'],
 			},
 		},
 	},
@@ -27,7 +27,7 @@ const Template = (args, { argTypes }) => ({
 	methods,
 });
 
-export const Text = Template.bind({});
-Text.args = {
+export const Link = Template.bind({});
+Link.args = {
 	href: 'https://n8n.io/',
 };

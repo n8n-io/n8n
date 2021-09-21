@@ -1,6 +1,6 @@
 <template functional>
 	<a
-		:class="$style.link"
+		:class="$style[`${props.bold? 'bold' : 'regular'}-${props.underline ? 'underline' : 'clear'}`]"
 		:href="props.href"
 		@click="(e) => listeners.click && listeners.click(e)"
 		:target="props.newWindow ? '_blank': '_self'"
@@ -30,6 +30,14 @@ export default {
 			type: Boolean,
 			default: false,
 		},
+		bold: {
+			type: Boolean,
+			default: false,
+		},
+		underline: {
+			type: Boolean,
+			default: false,
+		},
 	},
 };
 </script>
@@ -51,5 +59,39 @@ export default {
 			-(10%)
 		);
 	}
+}
+
+.regular {
+	font-weight: var(--font-weight-regular);
+}
+
+.bold {
+	font-weight: var(--font-weight-bold);
+}
+
+.underline {
+	text-decoration: underline;
+}
+
+.regular-clear {
+	composes: regular;
+	composes: link;
+}
+
+.bold-clear {
+	composes: regular;
+	composes: link;
+}
+
+.regular-underline {
+	composes: bold;
+	composes: link;
+	composes: underline;
+}
+
+.bold-underline {
+	composes: bold;
+	composes: link;
+	composes: underline;
 }
 </style>

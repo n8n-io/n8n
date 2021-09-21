@@ -16,7 +16,7 @@ export default Vue.extend({
 		size: {
 			type: String,
 			default: 'medium',
-			validator: (value: string): boolean => ['2xlarge', 'xlarge', 'large', 'medium', 'small'].includes(value),
+			validator: (value: string): boolean => ['large', 'medium', 'small'].includes(value),
 		},
 	},
 	methods: {
@@ -34,17 +34,6 @@ export default Vue.extend({
 
 .regular {
 	font-weight: var(--font-weight-regular);
-}
-
-.body-xlarge {
-	composes: regular;
-	font-size: var(--font-size-lg);
-	line-height: var(--font-line-height-xloose);
-}
-
-.body-xlarge-bold {
-	composes: bold;
-	composes: body-xlarge;
 }
 
 .body-large {

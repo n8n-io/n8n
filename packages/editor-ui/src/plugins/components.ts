@@ -52,6 +52,7 @@ import {
 	N8nInput,
 	N8nInputLabel,
 	N8nInputNumber,
+	N8nLink,
 	N8nMenu,
 	N8nMenuItem,
 	N8nOption,
@@ -73,6 +74,7 @@ Vue.use(N8nInfoTip);
 Vue.use(N8nInput);
 Vue.use(N8nInputLabel);
 Vue.use(N8nInputNumber);
+Vue.use(N8nLink);
 Vue.use(N8nMenu);
 Vue.use(N8nMenuItem);
 Vue.use(N8nOption);

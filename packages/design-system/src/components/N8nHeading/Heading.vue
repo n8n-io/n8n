@@ -42,7 +42,7 @@ export default Vue.extend({
 	line-height: var(--font-line-height-compact);
 }
 
-.heading-xlarge-bold {
+.heading-2xlarge-bold {
 	composes: bold;
 	composes: heading-2xlarge;
 }
