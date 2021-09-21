@@ -118,6 +118,19 @@ video {
 	background: transparent;
 }
 
+body {
+	height: 100%;
+	width: 100%;
+	overscroll-behavior-x: none;
+	line-height: 1;
+	font-size: var(--font-size-m);
+	font-weight: 300;
+	color: var(--color-text-dark);
+	background-color: var(--color-background-light);
+	-webkit-font-smoothing: antialiased;
+	-moz-osx-font-smoothing: grayscale;
+}
+
 article,
 aside,
 details,
