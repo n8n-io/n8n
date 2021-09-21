@@ -280,13 +280,6 @@ export const userFields: INodeProperties[] = [
 				description: 'Full name of the user',
 			},
 			{
-				displayName: 'Name',
-				name: 'name',
-				type: 'string',
-				default: '',
-				description: 'Login name of the user',
-			},
-			{
 				displayName: 'Password',
 				name: 'password',
 				type: 'string',
