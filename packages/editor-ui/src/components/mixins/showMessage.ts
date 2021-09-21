@@ -1,9 +1,11 @@
-import { Notification } from 'element-ui';
+// @ts-ignore
 import { ElNotificationComponent, ElNotificationOptions } from 'element-ui/types/notification';
 import mixins from 'vue-typed-mixins';
 
 import { externalHooks } from '@/components/mixins/externalHooks';
 import { ExecutionError } from 'n8n-workflow';
+import { ElMessageBoxOptions } from 'element-ui/types/message-box';
+import { MessageType } from 'element-ui/types/message';
 
 export const showMessage = mixins(externalHooks).extend({
 	methods: {
@@ -13,10 +15,11 @@ export const showMessage = mixins(externalHooks).extend({
 				messageData.position = 'bottom-right';
 			}
 
-			return Notification(messageData);
+			return this.$notify(messageData);
 		},
 
 		$showWarning(title: string, message: string,  config?: {onClick?: () => void, duration?: number, customClass?: string, closeOnClick?: boolean}) {
+			// eslint-disable-next-line prefer-const
 			let notification: ElNotificationComponent;
 			if (config && config.closeOnClick) {
 				const cb = config.onClick;
@@ -78,6 +81,22 @@ export const showMessage = mixins(externalHooks).extend({
 				message,
 				errorMessage: error.message,
 			});
+		},
+
+		async confirmMessage (message: string, headline: string, type: MessageType | null = 'warning', confirmButtonText = 'OK', cancelButtonText = 'Cancel'): Promise<boolean> {
+			try {
+				const options: ElMessageBoxOptions  = {
+					confirmButtonText,
+					cancelButtonText,
+					dangerouslyUseHTMLString: true,
+					...(type && { type }),
+				};
+
+				await this.$confirm(message, headline, options);
+				return true;
+			} catch (e) {
+				return false;
+			}
 		},
 
 		// @ts-ignore

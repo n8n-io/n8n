@@ -4,12 +4,15 @@ import {
 } from 'n8n-core';
 
 import {
+	ICredentialsDecrypted,
+	ICredentialTestFunctions,
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
+	NodeCredentialTestResult,
 	NodeOperationError,
 } from 'n8n-workflow';
 
@@ -126,6 +129,7 @@ export class Slack implements INodeType {
 						],
 					},
 				},
+				testedBy: 'testSlackTokenAuth',
 			},
 			{
 				name: 'slackOAuth2Api',
@@ -274,6 +278,40 @@ export class Slack implements INodeType {
 					});
 				}
 				return returnData;
+			},
+		},
+		credentialTest: {
+			async testSlackTokenAuth(this: ICredentialTestFunctions, credential: ICredentialsDecrypted): Promise<NodeCredentialTestResult> {
+
+				const options = {
+					method: 'POST',
+					headers: {
+						'Content-Type': 'application/json; charset=utf-8',
+						Authorization: `Bearer ${credential.data!.accessToken}`,
+					},
+					uri: 'https://slack.com/api/users.profile.get',
+					json: true,
+				};
+
+				try {
+					const response = await this.helpers.request(options);
+					if (!response.ok) {
+						return {
+							status: 'Error',
+							message: `${response.error}`,
+						};
+					}
+				} catch(err) {
+					return {
+						status: 'Error',
+						message: `${err.message}`,
+					};
+				}
+
+				return {
+					status: 'OK',
+					message: 'Connection successful!',
+				};
 			},
 		},
 	};
@@ -552,6 +590,7 @@ export class Slack implements INodeType {
 										attachment.fields = attachment.fields.item;
 									} else {
 										// If it does not have any items set remove it
+										// @ts-ignore
 										delete attachment.fields;
 									}
 								}
@@ -786,6 +825,7 @@ export class Slack implements INodeType {
 									attachment.fields = attachment.fields.item;
 								} else {
 									// If it does not have any items set remove it
+									// @ts-ignore
 									delete attachment.fields;
 								}
 							}
@@ -1037,11 +1077,11 @@ export class Slack implements INodeType {
 						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 
 						const qs: IDataObject = {};
-	
+
 						Object.assign(qs, additionalFields);
-	
+
 						responseData = await slackApiRequest.call(this, 'POST', '/users.profile.get', undefined, qs);
-	
+
 						responseData = responseData.profile;
 					}
 				}

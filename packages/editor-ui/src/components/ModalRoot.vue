@@ -2,7 +2,13 @@
 	<div
 			v-if="isOpen(name) || keepAlive"
 	>
-		<slot :modalName="name" :active="isActive(name)" :open="isOpen(name)"></slot>	
+		<slot
+			:modalName="name"
+			:active="isActive(name)"
+			:open="isOpen(name)"
+			:activeId="getActiveId(name)"
+			:mode="getMode(name)"
+		></slot>
 	</div>
 </template>
 
@@ -18,6 +24,12 @@ export default Vue.extend({
 		},
 		isOpen(name: string) {
 			return this.$store.getters['ui/isModalOpen'](name);
+		},
+		getMode(name: string) {
+			return this.$store.getters['ui/getModalMode'](name);
+		},
+		getActiveId(name: string) {
+			return this.$store.getters['ui/getModalActiveId'](name);
 		},
 	},
 });
