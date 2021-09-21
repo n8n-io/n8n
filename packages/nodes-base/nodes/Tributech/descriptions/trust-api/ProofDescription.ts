@@ -36,6 +36,11 @@ export const proofOperations = [
 				description: 'Validate Proof',
 				value: 'validateProofs',
 			},
+			{
+				name: 'Validate Stream',
+				description: 'Validate Stream',
+				value: 'validateStream',
+			},
 		],
 		default: 'validateProofs',
 	},
@@ -56,6 +61,7 @@ export const proofFields = [
 				operation: [
 					'getProofWithValues',
 					'getProof',
+					'validateStream',
 				],
 			},
 		},
@@ -79,6 +85,40 @@ export const proofFields = [
 		},
 	},
 	{
+		displayName: 'From',
+		name: 'from',
+		description: 'The point in time starting the validation',
+		type: 'string',
+		default: '',
+		displayOptions: {
+			show: {
+				resource: [
+					'proof',
+				],
+				operation: [
+					'validateStream',
+				],
+			},
+		},
+	},
+	{
+		displayName: 'To',
+		name: 'to',
+		description: 'The point in time ending the validation',
+		type: 'string',
+		default: '',
+		displayOptions: {
+			show: {
+				resource: [
+					'proof',
+				],
+				operation: [
+					'validateStream',
+				],
+			},
+		},
+	},
+	{
 		displayName: 'Precision',
 		name: 'precision',
 		description: 'Precision of DateTime. Default = MicroSeconds. Available Values: 1 (=Microseconds), 2 (=Nanoseconds).',
@@ -92,6 +132,7 @@ export const proofFields = [
 				operation: [
 					'getProofWithValues',
 					'validateProofs',
+					'validateStream',
 				],
 			},
 		},
@@ -109,6 +150,7 @@ export const proofFields = [
 				],
 				operation: [
 					'validateProofs',
+					'validateStream',
 				],
 			},
 		},
@@ -126,6 +168,7 @@ export const proofFields = [
 				],
 				operation: [
 					'validateProofs',
+					'validateStream',
 				],
 			},
 		},
@@ -143,6 +186,7 @@ export const proofFields = [
 				],
 				operation: [
 					'validateProofs',
+					'validateStream',
 				],
 				customKey: [
 					true,

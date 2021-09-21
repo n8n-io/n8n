@@ -90,7 +90,7 @@ export class TrustApi implements INodeType {
 					timestamp: this.getNodeParameter('timestamp', i) as string,
 				};
 				return trustApiRequest.call(this, 'GET', '/proof', {}, qs);
-			} else if (operation === 'validateProof') {
+			} else if (operation === 'validateProofs') {
 
 				const useCustomKey: boolean = this.getNodeParameter('customKey', i) as boolean;
 				let body: IDataObject = {};
@@ -109,6 +109,30 @@ export class TrustApi implements INodeType {
 				};
 
 				return trustApiRequest.call(this, 'POST', '/validate/proof', body, query);
+			} else if (operation === 'validateStream') {
+
+				const useCustomKey: boolean = this.getNodeParameter('customKey', i) as boolean;
+				let body: IDataObject = {};
+
+				if (useCustomKey) {
+					body = {
+						publicKey: this.getNodeParameter('publicKey', i) as string,
+					};
+				}
+
+				body = {
+					...body,
+					from: this.getNodeParameter('from', i) as string,
+					to: this.getNodeParameter('to', i) as string,
+				};
+
+				const query: IDataObject = {
+					precision: this.getNodeParameter('precision', i) as string,
+					proofKind: this.getNodeParameter('proofKind', i) as string,
+				};
+
+				const valueMetadataId = this.getNodeParameter('valueMetadataId', i) as string;
+				return trustApiRequest.call(this, 'POST', `/validate/${valueMetadataId}`, body, query);
 			} else if (operation === 'getProofWithValues') {
 				const query: IDataObject = {
 					precision: this.getNodeParameter('precision', i) as string,
