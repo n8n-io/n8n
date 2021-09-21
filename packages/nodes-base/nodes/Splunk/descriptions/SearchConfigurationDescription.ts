@@ -165,7 +165,6 @@ export const searchConfigurationFields: INodeProperties[] = [
 			{
 				displayName: 'List Default Actions',
 				name: 'listDefaultActionArgs',
-				description: 'Whether to list default actions',
 				type: 'boolean',
 				default: false,
 			},
