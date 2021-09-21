@@ -1864,50 +1864,51 @@ export default mixins(
 				this.nodeSelectedByName(newName);
 			},
 			checkCredentials(node: INodeUi) {
-				const nodeCredentialType = Object.keys(node.credentials!)[0];
-				if (!nodeCredentialType || !node.credentials) {
+				if (!node.credentials) {
 					return;
 				}
-				const credentialOptions = this.$store.getters.credentialsByType(nodeCredentialType) as ICredentialsResponse[];
-				let nodeCredentials = node.credentials[nodeCredentialType];
+				Object.keys(node.credentials).forEach((nodeCredentialType: string) => {
+					const credentialOptions = this.$store.getters['credentials/getCredentialsByType'](nodeCredentialType) as ICredentialsResponse[];
+					let nodeCredentials = node.credentials![nodeCredentialType];
 
-				// Check if workflows applies old credentials style
-				if (typeof nodeCredentials === 'string') {
-					nodeCredentials = {
-						id: null,
-						name: nodeCredentials,
-					};
-				}
+					// Check if workflows applies old credentials style
+					if (typeof nodeCredentials === 'string') {
+						nodeCredentials = {
+							id: null,
+							name: nodeCredentials,
+						};
+					}
 
-				if (nodeCredentials.id) {
-					// Check whether the id is matching with a credential
-					const credentialsForId = credentialOptions.find((optionData: ICredentialsResponse) => optionData.id === nodeCredentials.id);
-					if (credentialsForId) {
-						if (credentialsForId.name !== nodeCredentials.name) {
-							node.credentials[nodeCredentialType].name = credentialsForId.name;
-							this.credentialsUpdated = true;
+					if (nodeCredentials.id) {
+						// Check whether the id is matching with a credential
+						const credentialsForId = credentialOptions.find((optionData: ICredentialsResponse) => optionData.id === nodeCredentials.id);
+						if (credentialsForId) {
+							if (credentialsForId.name !== nodeCredentials.name) {
+								node.credentials![nodeCredentialType].name = credentialsForId.name;
+								this.credentialsUpdated = true;
+							}
+							return;
 						}
+					}
+
+					// No match for id found or old credentials type used
+					node.credentials![nodeCredentialType] = nodeCredentials;
+
+					// check if only one option with the name would exist
+					const credentialsForName = credentialOptions.filter((optionData: ICredentialsResponse) => optionData.name === nodeCredentials.name);
+
+					// only one option exists for the name, take it
+					if (credentialsForName.length === 1) {
+						node.credentials![nodeCredentialType].id = credentialsForName[0].id;
+						this.credentialsUpdated = true;
 						return;
 					}
-				}
 
-				// No match for id found or old credentials type used
-				node.credentials[nodeCredentialType] = nodeCredentials;
-
-				// check if only one option with the name would exist
-				const credentialsForName = credentialOptions.filter((optionData: ICredentialsResponse) => optionData.name === nodeCredentials.name);
-
-				// only one option exists for the name, take it
-				if (credentialsForName.length === 1) {
-					node.credentials[nodeCredentialType].id = credentialsForName[0].id;
-					this.credentialsUpdated = true;
-					return;
-				}
-
-				// credentials have been following the old style, so update to new
-				if (nodeCredentials.id === null) {
-					this.credentialsUpdated = true;
-				}
+					// credentials have been following the old style, so update to new
+					if (nodeCredentials.id === null) {
+						this.credentialsUpdated = true;
+					}
+				});
 			},
 			async addNodes (nodes: INodeUi[], connections?: IConnections) {
 				if (!nodes || !nodes.length) {

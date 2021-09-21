@@ -30,21 +30,30 @@ export class UpdateWorkflowCredentials1630419189837 implements MigrationInterfac
 			// @ts-ignore
 			nodes.forEach((node) => {
 				if (node.credentials) {
-					const [type, name] = Object.entries(node.credentials)[0];
-					if (typeof name === 'string') {
-						// @ts-ignore
-						const matchingCredentials = credentialsEntities.find(credentials => credentials.name === name && credentials.type === type);
-						node.credentials[type] = { id: matchingCredentials?.id.toString() || null, name };
-						credentialsUpdated = true;
+					const allNodeCredentials = Object.entries(node.credentials);
+					for (const [type, name] of allNodeCredentials) {
+						if (typeof name === 'string') {
+							// @ts-ignore
+							const matchingCredentials = credentialsEntities.find(
+								// @ts-ignore
+								(credentials) => credentials.name === name && credentials.type === type,
+							);
+							node.credentials[type] = { id: matchingCredentials?.id.toString() || null, name };
+							credentialsUpdated = true;
+						}
 					}
 				}
 			});
 			if (credentialsUpdated) {
-				const [updateQuery, updateParams] = queryRunner.connection.driver.escapeQueryWithParameters(`
+				const [updateQuery, updateParams] = queryRunner.connection.driver.escapeQueryWithParameters(
+					`
 				UPDATE ${tablePrefix}workflow_entity
 				SET nodes = :nodes
 				WHERE id = '${workflow.id}'
-				`, { nodes: JSON.stringify(nodes) }, {});
+				`,
+					{ nodes: JSON.stringify(nodes) },
+					{},
+				);
 
 				await queryRunner.query(updateQuery, updateParams);
 			}
@@ -64,21 +73,30 @@ export class UpdateWorkflowCredentials1630419189837 implements MigrationInterfac
 			// @ts-ignore
 			data.nodes.forEach((node) => {
 				if (node.credentials) {
-					const [type, name] = Object.entries(node.credentials)[0];
-					if (typeof name === 'string') {
-						// @ts-ignore
-						const matchingCredentials = credentialsEntities.find(credentials => credentials.name === name && credentials.type === type);
-						node.credentials[type] = { id: matchingCredentials?.id.toString() || null, name };
-						credentialsUpdated = true;
+					const allNodeCredentials = Object.entries(node.credentials);
+					for (const [type, name] of allNodeCredentials) {
+						if (typeof name === 'string') {
+							// @ts-ignore
+							const matchingCredentials = credentialsEntities.find(
+								// @ts-ignore
+								(credentials) => credentials.name === name && credentials.type === type,
+							);
+							node.credentials[type] = { id: matchingCredentials?.id.toString() || null, name };
+							credentialsUpdated = true;
+						}
 					}
 				}
-			})
+			});
 			if (credentialsUpdated) {
-				const [updateQuery, updateParams] = queryRunner.connection.driver.escapeQueryWithParameters(`
+				const [updateQuery, updateParams] = queryRunner.connection.driver.escapeQueryWithParameters(
+					`
 				UPDATE ${tablePrefix}execution_entity
 				SET "workflowData" = :data
 				WHERE id = '${execution.id}'
-				`, { data: JSON.stringify(data) }, {});
+				`,
+					{ data: JSON.stringify(data) },
+					{},
+				);
 
 				await queryRunner.query(updateQuery, updateParams);
 			}
@@ -108,26 +126,35 @@ export class UpdateWorkflowCredentials1630419189837 implements MigrationInterfac
 			// @ts-ignore
 			nodes.forEach((node) => {
 				if (node.credentials) {
-					const [type, creds] = Object.entries(node.credentials)[0];
-					if (typeof creds === 'object') {
-						// @ts-ignore
-						const matchingCredentials = credentialsEntities.find(credentials => credentials.id === creds.id && credentials.type === type);
-						if (matchingCredentials) {
-							node.credentials[type] = matchingCredentials.name;
-						} else {
+					const allNodeCredentials = Object.entries(node.credentials);
+					for (const [type, creds] of allNodeCredentials) {
+						if (typeof creds === 'object') {
 							// @ts-ignore
-							node.credentials[type] = creds.name;
+							const matchingCredentials = credentialsEntities.find(
+								// @ts-ignore
+								(credentials) => credentials.id === creds.id && credentials.type === type,
+							);
+							if (matchingCredentials) {
+								node.credentials[type] = matchingCredentials.name;
+							} else {
+								// @ts-ignore
+								node.credentials[type] = creds.name;
+							}
+							credentialsUpdated = true;
 						}
-						credentialsUpdated = true;
 					}
 				}
 			});
 			if (credentialsUpdated) {
-				const [updateQuery, updateParams] = queryRunner.connection.driver.escapeQueryWithParameters(`
+				const [updateQuery, updateParams] = queryRunner.connection.driver.escapeQueryWithParameters(
+					`
 				UPDATE ${tablePrefix}workflow_entity
 				SET nodes = :nodes
 				WHERE id = '${workflow.id}'
-				`, { nodes: JSON.stringify(nodes) }, {});
+				`,
+					{ nodes: JSON.stringify(nodes) },
+					{},
+				);
 
 				await queryRunner.query(updateQuery, updateParams);
 			}
@@ -147,30 +174,38 @@ export class UpdateWorkflowCredentials1630419189837 implements MigrationInterfac
 			// @ts-ignore
 			data.nodes.forEach((node) => {
 				if (node.credentials) {
-					const [type, creds] = Object.entries(node.credentials)[0];
-					if (typeof creds === 'object') {
-						// @ts-ignore
-						const matchingCredentials = credentialsEntities.find(credentials => credentials.id === creds.id && credentials.type === type);
-						if (matchingCredentials) {
-							node.credentials[type] = matchingCredentials.name;
-						} else {
+					const allNodeCredentials = Object.entries(node.credentials);
+					for (const [type, creds] of allNodeCredentials) {
+						if (typeof creds === 'object') {
 							// @ts-ignore
-							node.credentials[type] = creds.name;
+							const matchingCredentials = credentialsEntities.find(
+								// @ts-ignore
+								(credentials) => credentials.id === creds.id && credentials.type === type,
+							);
+							if (matchingCredentials) {
+								node.credentials[type] = matchingCredentials.name;
+							} else {
+								// @ts-ignore
+								node.credentials[type] = creds.name;
+							}
+							credentialsUpdated = true;
 						}
-						credentialsUpdated = true;
 					}
 				}
-			})
+			});
 			if (credentialsUpdated) {
-				const [updateQuery, updateParams] = queryRunner.connection.driver.escapeQueryWithParameters(`
+				const [updateQuery, updateParams] = queryRunner.connection.driver.escapeQueryWithParameters(
+					`
 				UPDATE ${tablePrefix}execution_entity
 				SET "workflowData" = :data
 				WHERE id = '${execution.id}'
-				`, { data: JSON.stringify(data) }, {});
+				`,
+					{ data: JSON.stringify(data) },
+					{},
+				);
 
 				await queryRunner.query(updateQuery, updateParams);
 			}
 		});
 	}
-
 }

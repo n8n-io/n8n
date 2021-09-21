@@ -33,16 +33,26 @@ export class ImportWorkflowsCommand extends Command {
 
 	private checkCredentials(node: INode, credentialsEntities: ICredentialsDb[]) {
 		if (node.credentials) {
-			const [type, name] = Object.entries(node.credentials)[0];
-			if (typeof name === 'string') {
-				const matchingCredentials = credentialsEntities.find(
-					(credentials) => credentials.name === name && credentials.type === type,
-				);
-				// eslint-disable-next-line no-param-reassign
-				node.credentials[type] = {
-					id: matchingCredentials?.id.toString() ?? null,
-					name,
-				} as INodeCredentialsDetails;
+			const allNodeCredentials = Object.entries(node.credentials);
+			// eslint-disable-next-line no-restricted-syntax
+			for (const [type, name] of allNodeCredentials) {
+				if (typeof name === 'string') {
+					const nodeCredentials: INodeCredentialsDetails = {
+						id: null,
+						name,
+					};
+
+					const matchingCredentials = credentialsEntities.filter(
+						(credentials) => credentials.name === name && credentials.type === type,
+					);
+
+					if (matchingCredentials.length === 1) {
+						nodeCredentials.id = matchingCredentials[0].id.toString();
+					}
+
+					// eslint-disable-next-line no-param-reassign
+					node.credentials[type] = nodeCredentials;
+				}
 			}
 		}
 	}
