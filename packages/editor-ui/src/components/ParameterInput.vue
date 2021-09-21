@@ -833,6 +833,7 @@ export default mixins(
 	max-width: 340px;
 	margin: 6px 0;
 	white-space: normal;
+	padding-right: 20px;
 
 	.option-headline {
 		font-weight: var(--font-weight-bold);
