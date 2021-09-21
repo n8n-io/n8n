@@ -55,7 +55,6 @@ export async function gristApiRequest(
 	}
 
 	try {
-		// console.log(JSON.stringify(options, null, 2));
 		return await this.helpers.request!(options);
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error);
@@ -72,10 +71,10 @@ export function parseSortProperties(sortProperties: GristSortProperties) {
 }
 
 export function parseFilterProperties(filterProperties: GristFilterProperties) {
- return filterProperties.reduce<{ [key: string]: string[]; }>((acc, cur) => {
+	return filterProperties.reduce<{ [key: string]: string[]; }>((acc, cur) => {
 		acc[cur.field] = acc[cur.field] ?? [];
-		const values = cur.values.split(',').map(v => v.trim());
-		acc[cur.field].push(...values);
+		const values = cur.values;
+		acc[cur.field].push(values);
 		return acc;
 	}, {});
 }
@@ -100,7 +99,7 @@ export function parseAutoMappedInputs(
 }
 
 export function throwOnZeroDefinedFields(this: IExecuteFunctions, fields: GristDefinedFields) {
-	if (!fields.length) {
+	if (!fields || !fields.length) {
 		throw new NodeOperationError(
 			this.getNode(),
 			'No defined data found. Please specify the data to send in \'Fields to Send\'.',

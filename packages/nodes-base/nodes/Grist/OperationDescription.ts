@@ -10,22 +10,22 @@ export const operationFields: INodeProperties[] = [
 		noDataExpression: true,
 		options: [
 			{
-				name: 'Create',
+				name: 'Create Row',
 				value: 'create',
 				description: 'Create rows in a table',
 			},
 			{
-				name: 'Delete',
+				name: 'Delete Row',
 				value: 'delete',
 				description: 'Delete rows from a table',
 			},
 			{
-				name: 'Get All',
+				name: 'Get All Rows',
 				value: 'getAll',
 				description: 'Read rows from a table',
 			},
 			{
-				name: 'Update',
+				name: 'Update Row',
 				value: 'update',
 				description: 'Update rows in a table',
 			},

@@ -128,7 +128,7 @@ export class Grist implements INodeType {
 					const tableId = this.getNodeParameter('tableId', 0) as string;
 					const endpoint = `/docs/${docId}/tables/${tableId}/data/delete`;
 
-					const rawRowId = this.getNodeParameter('rowId', i) as string;
+					const rawRowId = (this.getNodeParameter('rowId', i))?.toString() as string;
 					const body = rawRowId.split(',').map(v => Number(v));
 
 					await gristApiRequest.call(this, 'POST', endpoint, body);
