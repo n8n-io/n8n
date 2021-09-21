@@ -1,3 +1,4 @@
+/* eslint-disable no-lonely-if */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 /* eslint-disable no-prototype-builtins */
 /* eslint-disable @typescript-eslint/no-unused-vars */
@@ -13,6 +14,7 @@
 /* eslint-disable @typescript-eslint/no-shadow */
 /* eslint-disable no-param-reassign */
 import {
+	GenericValue,
 	IAllExecuteFunctions,
 	IBinaryData,
 	IContextObject,
@@ -22,6 +24,9 @@ import {
 	IExecuteFunctions,
 	IExecuteSingleFunctions,
 	IExecuteWorkflowInfo,
+	IHttpRequestOptions,
+	IN8nHttpFullResponse,
+	IN8nHttpResponse,
 	INode,
 	INodeExecutionData,
 	INodeParameters,
@@ -48,6 +53,8 @@ import {
 	LoggerProxy as Logger,
 } from 'n8n-workflow';
 
+import { Agent } from 'https';
+import { stringify } from 'qs';
 import * as clientOAuth1 from 'oauth-1.0a';
 import { Token } from 'oauth-1.0a';
 import * as clientOAuth2 from 'client-oauth2';
@@ -55,6 +62,7 @@ import * as clientOAuth2 from 'client-oauth2';
 import { get } from 'lodash';
 // eslint-disable-next-line import/no-extraneous-dependencies
 import * as express from 'express';
+import * as FormData from 'form-data';
 import * as path from 'path';
 import { OptionsWithUri, OptionsWithUrl } from 'request';
 import * as requestPromise from 'request-promise-native';
@@ -62,6 +70,8 @@ import { createHmac } from 'crypto';
 import { fromBuffer } from 'file-type';
 import { lookup } from 'mime-types';
 
+import axios, { AxiosProxyConfig, AxiosRequestConfig, Method } from 'axios';
+import { URLSearchParams } from 'url';
 // eslint-disable-next-line import/no-cycle
 import {
 	BINARY_ENCODING,
@@ -73,9 +83,424 @@ import {
 	PLACEHOLDER_EMPTY_EXECUTION_ID,
 } from '.';
 
+axios.defaults.timeout = 300000;
+// Prevent axios from adding x-form-www-urlencoded headers by default
+axios.defaults.headers.post = {};
+
 const requestPromiseWithDefaults = requestPromise.defaults({
 	timeout: 300000, // 5 minutes
 });
+
+async function parseRequestObject(requestObject: IDataObject) {
+	// This function is a temporary implementation
+	// That translates all http requests done via
+	// the request library to axios directly
+	// We are not using n8n's interface as it would
+	// an unnecessary step, considering the `request`
+	// helper can be deprecated and removed.
+	const axiosConfig: AxiosRequestConfig = {};
+
+	if (requestObject.headers !== undefined) {
+		axiosConfig.headers = requestObject.headers as string;
+	}
+
+	// Let's start parsing the hardest part, which is the request body.
+	// The process here is as following?
+	// - Check if we have a `content-type` header. If this was set,
+	//   we will follow
+	// - Check if the `form` property was set. If yes, then it's x-www-form-urlencoded
+	// - Check if the `formData` property exists. If yes, then it's multipart/form-data
+	// - Lastly, we should have a regular `body` that is probably a JSON.
+
+	const contentTypeHeaderKeyName =
+		axiosConfig.headers &&
+		Object.keys(axiosConfig.headers).find(
+			(headerName) => headerName.toLowerCase() === 'content-type',
+		);
+	const contentType =
+		contentTypeHeaderKeyName &&
+		(axiosConfig.headers[contentTypeHeaderKeyName] as string | undefined);
+	if (contentType === 'application/x-www-form-urlencoded' && requestObject.formData === undefined) {
+		// there are nodes incorrectly created, informing the content type header
+		// and also using formData. Request lib takes precedence for the formData.
+		// We will do the same.
+		// Merge body and form properties.
+		// @ts-ignore
+		axiosConfig.data =
+			typeof requestObject.body === 'string'
+				? requestObject.body
+				: new URLSearchParams(
+						Object.assign(requestObject.body || {}, requestObject.form || {}) as Record<
+							string,
+							string
+						>,
+				  );
+	} else if (contentType && contentType.includes('multipart/form-data') !== false) {
+		if (requestObject.formData !== undefined && requestObject.formData instanceof FormData) {
+			axiosConfig.data = requestObject.formData;
+		} else {
+			const allData = Object.assign(requestObject.body || {}, requestObject.formData || {});
+
+			const objectKeys = Object.keys(allData);
+			if (objectKeys.length > 0) {
+				// Should be a standard object. We must convert to formdata
+				const form = new FormData();
+
+				objectKeys.forEach((key) => {
+					const formField = (allData as IDataObject)[key] as IDataObject;
+					if (formField.hasOwnProperty('value') && formField.value instanceof Buffer) {
+						let filename;
+						// @ts-ignore
+						if (!!formField.options && formField.options.filename !== undefined) {
+							filename = (formField.options as IDataObject).filename as string;
+						}
+						form.append(key, formField.value, filename);
+					} else {
+						form.append(key, formField);
+					}
+				});
+				axiosConfig.data = form;
+			}
+		}
+		// replace the existing header with a new one that
+		// contains the boundary property.
+		// @ts-ignore
+		delete axiosConfig.headers[contentTypeHeaderKeyName];
+		const headers = axiosConfig.data.getHeaders();
+		axiosConfig.headers = Object.assign(axiosConfig.headers || {}, headers);
+	} else {
+		// When using the `form` property it means the content should be x-www-form-urlencoded.
+		if (requestObject.form !== undefined && requestObject.body === undefined) {
+			// If we have only form
+			axiosConfig.data = new URLSearchParams(requestObject.form as Record<string, string>);
+			if (axiosConfig.headers !== undefined) {
+				// remove possibly existing content-type headers
+				const headers = Object.keys(axiosConfig.headers);
+				headers.forEach((header) =>
+					header.toLowerCase() === 'content-type' ? delete axiosConfig.headers[header] : null,
+				);
+				axiosConfig.headers['Content-Type'] = 'application/x-www-form-urlencoded';
+			} else {
+				axiosConfig.headers = {
+					'Content-Type': 'application/x-www-form-urlencoded',
+				};
+			}
+		} else if (requestObject.formData !== undefined) {
+			// remove any "content-type" that might exist.
+			if (axiosConfig.headers !== undefined) {
+				const headers = Object.keys(axiosConfig.headers);
+				headers.forEach((header) =>
+					header.toLowerCase() === 'content-type' ? delete axiosConfig.headers[header] : null,
+				);
+			}
+
+			if (requestObject.formData instanceof FormData) {
+				axiosConfig.data = requestObject.formData;
+			} else {
+				const objectKeys = Object.keys(requestObject.formData as object);
+				if (objectKeys.length > 0) {
+					// Should be a standard object. We must convert to formdata
+					const form = new FormData();
+
+					objectKeys.forEach((key) => {
+						const formField = (requestObject.formData as IDataObject)[key] as IDataObject;
+						if (formField.hasOwnProperty('value') && formField.value instanceof Buffer) {
+							let filename;
+							// @ts-ignore
+							if (!!formField.options && formField.options.filename !== undefined) {
+								filename = (formField.options as IDataObject).filename as string;
+							}
+							form.append(key, formField.value, filename);
+						} else {
+							form.append(key, formField);
+						}
+					});
+					axiosConfig.data = form;
+				}
+			}
+			// Mix in headers as FormData creates the boundary.
+			const headers = axiosConfig.data.getHeaders();
+			axiosConfig.headers = Object.assign(axiosConfig.headers || {}, headers);
+		} else if (requestObject.body !== undefined) {
+			// If we have body and possibly form
+			if (requestObject.form !== undefined) {
+				// merge both objects when exist.
+				requestObject.body = Object.assign(requestObject.body, requestObject.form);
+			}
+			axiosConfig.data = requestObject.body as FormData | GenericValue | GenericValue[];
+		}
+	}
+
+	if (requestObject.uri !== undefined) {
+		axiosConfig.url = requestObject.uri as string;
+	}
+
+	if (requestObject.url !== undefined) {
+		axiosConfig.url = requestObject.url as string;
+	}
+
+	if (requestObject.method !== undefined) {
+		axiosConfig.method = requestObject.method as Method;
+	}
+
+	if (requestObject.qs !== undefined && Object.keys(requestObject.qs as object).length > 0) {
+		axiosConfig.params = requestObject.qs as IDataObject;
+	}
+
+	if (requestObject.useQuerystring === true) {
+		axiosConfig.paramsSerializer = (params) => {
+			return stringify(params, { arrayFormat: 'repeat' });
+		};
+	}
+
+	if (requestObject.auth !== undefined) {
+		// Check support for sendImmediately
+		if ((requestObject.auth as IDataObject).bearer !== undefined) {
+			axiosConfig.headers = Object.assign(axiosConfig.headers || {}, {
+				// eslint-disable-next-line @typescript-eslint/restrict-template-expressions
+				Authorization: `Bearer ${(requestObject.auth as IDataObject).bearer}`,
+			});
+		} else {
+			const authObj = requestObject.auth as IDataObject;
+			// Request accepts both user/username and pass/password
+			axiosConfig.auth = {
+				username: (authObj.user || authObj.username) as string,
+				password: (authObj.password || authObj.pass) as string,
+			};
+		}
+	}
+
+	// Only set header if we have a body, otherwise it may fail
+	if (requestObject.json === true) {
+		// Add application/json headers - do not set charset as it breaks a lot of stuff
+		// only add if no other accept headers was sent.
+		const acceptHeaderExists =
+			axiosConfig.headers === undefined
+				? false
+				: Object.keys(axiosConfig.headers)
+						.map((headerKey) => headerKey.toLowerCase())
+						.includes('accept');
+		if (!acceptHeaderExists) {
+			axiosConfig.headers = Object.assign(axiosConfig.headers || {}, {
+				Accept: 'application/json',
+			});
+		}
+	}
+	if (requestObject.json === false) {
+		// Prevent json parsing
+		axiosConfig.transformResponse = (res) => res;
+	}
+
+	// Axios will follow redirects by default, so we simply tell it otherwise if needed.
+	if (
+		requestObject.followRedirect === false &&
+		((requestObject.method as string | undefined) || 'get').toLowerCase() === 'get'
+	) {
+		axiosConfig.maxRedirects = 0;
+	}
+	if (
+		requestObject.followAllRedirect === false &&
+		((requestObject.method as string | undefined) || 'get').toLowerCase() !== 'get'
+	) {
+		axiosConfig.maxRedirects = 0;
+	}
+
+	if (requestObject.rejectUnauthorized === false) {
+		axiosConfig.httpsAgent = new Agent({
+			rejectUnauthorized: false,
+		});
+	}
+
+	if (requestObject.timeout !== undefined) {
+		axiosConfig.timeout = requestObject.timeout as number;
+	}
+
+	if (requestObject.proxy !== undefined) {
+		axiosConfig.proxy = requestObject.proxy as AxiosProxyConfig;
+	}
+
+	if (requestObject.encoding === null) {
+		// When downloading files, return an arrayBuffer.
+		axiosConfig.responseType = 'arraybuffer';
+	}
+
+	// If we don't set an accept header
+	// Axios forces "application/json, text/plan, */*"
+	// Which causes some nodes like NextCloud to break
+	// as the service returns XML unless requested otherwise.
+	const allHeaders = axiosConfig.headers ? Object.keys(axiosConfig.headers) : [];
+	if (!allHeaders.some((headerKey) => headerKey.toLowerCase() === 'accept')) {
+		axiosConfig.headers = Object.assign(axiosConfig.headers || {}, { accept: '*/*' });
+	}
+	if (
+		axiosConfig.data !== undefined &&
+		!(axiosConfig.data instanceof Buffer) &&
+		!allHeaders.some((headerKey) => headerKey.toLowerCase() === 'content-type')
+	) {
+		// Use default header for application/json
+		// If we don't specify this here, axios will add
+		// application/json; charset=utf-8
+		// and this breaks a lot of stuff
+		axiosConfig.headers = Object.assign(axiosConfig.headers || {}, {
+			'content-type': 'application/json',
+		});
+	}
+
+	/**
+	 * Missing properties:
+	 * encoding (need testing)
+	 * gzip (ignored - default already works)
+	 * resolveWithFullResponse (implemented elsewhere)
+	 * simple (???)
+	 */
+
+	return axiosConfig;
+}
+
+async function proxyRequestToAxios(
+	uriOrObject: string | IDataObject,
+	options?: IDataObject,
+): Promise<any> {
+	// tslint:disable-line:no-any
+
+	// Check if there's a better way of getting this config here
+	if (process.env.N8N_USE_DEPRECATED_REQUEST_LIB) {
+		// @ts-ignore
+		return requestPromiseWithDefaults.call(null, uriOrObject, options);
+	}
+
+	let axiosConfig: AxiosRequestConfig = {};
+
+	let configObject: IDataObject;
+	if (uriOrObject !== undefined && typeof uriOrObject === 'string') {
+		axiosConfig.url = uriOrObject;
+	}
+	if (uriOrObject !== undefined && typeof uriOrObject === 'object') {
+		configObject = uriOrObject;
+	} else {
+		configObject = options || {};
+	}
+
+	axiosConfig = Object.assign(axiosConfig, await parseRequestObject(configObject));
+
+	return new Promise((resolve, reject) => {
+		axios(axiosConfig)
+			.then((response) => {
+				if (configObject.resolveWithFullResponse === true) {
+					resolve({
+						body: response.data,
+						headers: response.headers,
+						statusCode: response.status,
+						statusMessage: response.statusText,
+						request: response.request,
+					});
+				} else {
+					resolve(response.data);
+				}
+			})
+			.catch((error) => {
+				reject(error);
+			});
+	});
+}
+
+function searchForHeader(headers: IDataObject, headerName: string) {
+	if (headers === undefined) {
+		return undefined;
+	}
+
+	const headerNames = Object.keys(headers);
+	headerName = headerName.toLowerCase();
+	return headerNames.find((thisHeader) => thisHeader.toLowerCase() === headerName);
+}
+
+function convertN8nRequestToAxios(n8nRequest: IHttpRequestOptions): AxiosRequestConfig {
+	// Destructure properties with the same name first.
+	const { headers, method, timeout, auth, proxy, url } = n8nRequest;
+
+	const axiosRequest = {
+		headers: headers ?? {},
+		method,
+		timeout,
+		auth,
+		proxy,
+		url,
+	} as AxiosRequestConfig;
+
+	axiosRequest.params = n8nRequest.qs;
+
+	if (n8nRequest.disableFollowRedirect === true) {
+		axiosRequest.maxRedirects = 0;
+	}
+
+	if (n8nRequest.encoding !== undefined) {
+		axiosRequest.responseType = n8nRequest.encoding;
+	}
+
+	if (n8nRequest.skipSslCertificateValidation === true) {
+		axiosRequest.httpsAgent = new Agent({
+			rejectUnauthorized: false,
+		});
+	}
+
+	if (n8nRequest.arrayFormat !== undefined) {
+		axiosRequest.paramsSerializer = (params) => {
+			return stringify(params, { arrayFormat: n8nRequest.arrayFormat });
+		};
+	}
+
+	if (n8nRequest.body) {
+		axiosRequest.data = n8nRequest.body;
+		// Let's add some useful header standards here.
+		const existingContentTypeHeaderKey = searchForHeader(axiosRequest.headers, 'content-type');
+		if (existingContentTypeHeaderKey === undefined) {
+			// We are only setting content type headers if the user did
+			// not set it already manually. We're not overriding, even if it's wrong.
+			if (axiosRequest.data instanceof FormData) {
+				axiosRequest.headers = axiosRequest.headers || {};
+				axiosRequest.headers['Content-Type'] = 'multipart/form-data';
+			} else if (axiosRequest.data instanceof URLSearchParams) {
+				axiosRequest.headers = axiosRequest.headers || {};
+				axiosRequest.headers['Content-Type'] = 'application/x-www-form-urlencoded';
+			}
+		}
+	}
+
+	if (n8nRequest.json) {
+		const key = searchForHeader(axiosRequest.headers, 'accept');
+		// If key exists, then the user has set both accept
+		// header and the json flag. Header should take precedence.
+		if (!key) {
+			axiosRequest.headers.Accept = 'application/json';
+		}
+	}
+
+	const userAgentHeader = searchForHeader(axiosRequest.headers, 'user-agent');
+	// If key exists, then the user has set both accept
+	// header and the json flag. Header should take precedence.
+	if (!userAgentHeader) {
+		axiosRequest.headers['User-Agent'] = 'n8n';
+	}
+
+	return axiosRequest;
+}
+
+async function httpRequest(
+	requestParams: IHttpRequestOptions,
+): Promise<IN8nHttpFullResponse | IN8nHttpResponse> {
+	// tslint:disable-line:no-any
+	const axiosRequest = convertN8nRequestToAxios(requestParams);
+	const result = await axios(axiosRequest);
+	if (requestParams.returnFullResponse) {
+		return {
+			body: result.data,
+			headers: result.headers,
+			statusCode: result.status,
+			statusMessage: result.statusText,
+		};
+	}
+	return result.data;
+}
 
 /**
  * Returns binary data buffer for given item index and property name.
@@ -412,7 +837,7 @@ export async function getCredentials(
 	itemIndex?: number,
 ): Promise<ICredentialDataDecryptedObject | undefined> {
 	// Get the NodeType as it has the information if the credentials are required
-	const nodeType = workflow.nodeTypes.getByName(node.type);
+	const nodeType = workflow.nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
 	if (nodeType === undefined) {
 		throw new NodeOperationError(
 			node,
@@ -543,7 +968,7 @@ export function getNodeParameter(
 	additionalKeys: IWorkflowDataProxyAdditionalKeys,
 	fallbackValue?: any,
 ): NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[] | object {
-	const nodeType = workflow.nodeTypes.getByName(node.type);
+	const nodeType = workflow.nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
 	if (nodeType === undefined) {
 		throw new Error(`Node type "${node.type}" is not known so can not return paramter value!`);
 	}
@@ -669,7 +1094,7 @@ export function getWebhookDescription(
 	workflow: Workflow,
 	node: INode,
 ): IWebhookDescription | undefined {
-	const nodeType = workflow.nodeTypes.getByName(node.type) as INodeType;
+	const nodeType = workflow.nodeTypes.getByNameAndVersion(node.type, node.typeVersion) as INodeType;
 
 	if (nodeType.description.webhooks === undefined) {
 		// Node does not have any webhooks so return
@@ -776,8 +1201,9 @@ export function getExecutePollFunctions(
 				return workflow.getStaticData(type, node);
 			},
 			helpers: {
+				httpRequest,
 				prepareBinaryData,
-				request: requestPromiseWithDefaults,
+				request: proxyRequestToAxios,
 				async requestOAuth2(
 					this: IAllExecuteFunctions,
 					credentialsType: string,
@@ -881,8 +1307,10 @@ export function getExecuteTriggerFunctions(
 				return workflow.getStaticData(type, node);
 			},
 			helpers: {
+				httpRequest,
 				prepareBinaryData,
-				request: requestPromiseWithDefaults,
+
+				request: proxyRequestToAxios,
 				async requestOAuth2(
 					this: IAllExecuteFunctions,
 					credentialsType: string,
@@ -1072,6 +1500,7 @@ export function getExecuteFunctions(
 				}
 			},
 			helpers: {
+				httpRequest,
 				prepareBinaryData,
 				async getBinaryDataBuffer(
 					itemIndex: number,
@@ -1080,7 +1509,7 @@ export function getExecuteFunctions(
 				): Promise<Buffer> {
 					return getBinaryDataBuffer.call(this, inputData, itemIndex, propertyName, inputIndex);
 				},
-				request: requestPromiseWithDefaults,
+				request: proxyRequestToAxios,
 				async requestOAuth2(
 					this: IAllExecuteFunctions,
 					credentialsType: string,
@@ -1252,8 +1681,9 @@ export function getExecuteSingleFunctions(
 				return workflow.getStaticData(type, node);
 			},
 			helpers: {
+				httpRequest,
 				prepareBinaryData,
-				request: requestPromiseWithDefaults,
+				request: proxyRequestToAxios,
 				async requestOAuth2(
 					this: IAllExecuteFunctions,
 					credentialsType: string,
@@ -1366,7 +1796,8 @@ export function getLoadOptionsFunctions(
 				return additionalData.restApiUrl;
 			},
 			helpers: {
-				request: requestPromiseWithDefaults,
+				httpRequest,
+				request: proxyRequestToAxios,
 				async requestOAuth2(
 					this: IAllExecuteFunctions,
 					credentialsType: string,
@@ -1485,7 +1916,8 @@ export function getExecuteHookFunctions(
 				return workflow.getStaticData(type, node);
 			},
 			helpers: {
-				request: requestPromiseWithDefaults,
+				httpRequest,
+				request: proxyRequestToAxios,
 				async requestOAuth2(
 					this: IAllExecuteFunctions,
 					credentialsType: string,
@@ -1630,8 +2062,9 @@ export function getExecuteWebhookFunctions(
 			},
 			prepareOutputData: NodeHelpers.prepareOutputData,
 			helpers: {
+				httpRequest,
 				prepareBinaryData,
-				request: requestPromiseWithDefaults,
+				request: proxyRequestToAxios,
 				async requestOAuth2(
 					this: IAllExecuteFunctions,
 					credentialsType: string,
