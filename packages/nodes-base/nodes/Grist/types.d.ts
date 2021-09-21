@@ -23,7 +23,7 @@ export type GristGetAllOptions = {
 	filter?: { filterProperties: GristFilterProperties };
 };
 
-export type GristDefinedData = Array<{
+export type GristDefinedFields = Array<{
 	fieldId: string;
 	fieldValue: string;
 }>;
@@ -34,4 +34,13 @@ export type GristCreateRowPayload = {
 	}>
 };
 
-export type GristUpdateRowPayload = GristCreateRowPayload;
+export type GristUpdateRowPayload = {
+	records: Array<{
+		id: number;
+		fields: { [key: string]: any };
+	}>
+}
+
+export type SendingOptions = 'defineInNode' | 'autoMapInputs';
+
+export type FieldsToSend = { properties: GristDefinedFields; };

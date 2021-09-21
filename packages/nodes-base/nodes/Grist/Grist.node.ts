@@ -8,14 +8,16 @@ import {
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
-	NodeOperationError,
 } from 'n8n-workflow';
 
 import {
 	gristApiRequest,
-	parseFieldsToSend,
+	parseAutoMappedInputs,
+	parseDefinedFields,
 	parseFilterProperties,
 	parseSortProperties,
+	throwOnExcessItems,
+	throwOnZeroDefinedFields,
 } from './GenericFunctions';
 
 import {
@@ -23,11 +25,12 @@ import {
 } from './OperationDescription';
 
 import {
+	SendingOptions,
 	GristColumns,
 	GristCreateRowPayload,
-	GristDefinedData,
 	GristGetAllOptions,
 	GristUpdateRowPayload,
+	FieldsToSend,
 } from './types';
 
 export class Grist implements INodeType {
@@ -88,30 +91,22 @@ export class Grist implements INodeType {
 
 					const body = { records: [] } as GristCreateRowPayload;
 
-					const dataToSend = this.getNodeParameter('dataToSend', 0) as 'defineBelow' | 'autoMapInputData';
+					const dataToSend = this.getNodeParameter('dataToSend', 0) as SendingOptions;
 
-					if (dataToSend === 'autoMapInputData') {
+					if (dataToSend === 'autoMapInputs') {
+
 						const incomingKeys = Object.keys(items[i].json);
 						const rawInputsToIgnore = this.getNodeParameter('inputsToIgnore', i) as string;
-						const inputDataToIgnore = rawInputsToIgnore.split(',').map(c => c.trim());
+						const inputsToIgnore = rawInputsToIgnore.split(',').map(c => c.trim());
+						const fields = parseAutoMappedInputs(incomingKeys, inputsToIgnore, items[i].json);
+						body.records.push({ fields });
 
-						for (const key of incomingKeys) {
-							if (inputDataToIgnore.includes(key)) continue;
-							body.records[i] = { fields: { [key]: items[i].json[key] } };
-						}
+					} else if (dataToSend === 'defineInNode') {
 
-					} else if (dataToSend === 'defineBelow') {
-						const { properties } = this.getNodeParameter('fieldsToSend', i, []) as {
-							properties: GristDefinedData;
-						};
+						const { properties } = this.getNodeParameter('fieldsToSend', i, []) as FieldsToSend;
+						throwOnZeroDefinedFields.call(this, properties);
+						body.records.push({ fields: parseDefinedFields(properties) });
 
-						if (!properties.length) {
-							throw new NodeOperationError(this.getNode(), 'Please enter data to send');
-						}
-
-						body.records = [
-							{ fields: parseFieldsToSend(properties) },
-						];
 					}
 
 					const docId = this.getNodeParameter('docId', i) as string;
@@ -147,45 +142,28 @@ export class Grist implements INodeType {
 
 					// https://support.getgrist.com/api/#tag/records/paths/~1docs~1{docId}~1tables~1{tableId}~1records/patch
 
-					const body = { records: [ { fields: {} } ] } as GristUpdateRowPayload;
+					const body = { records: [] } as GristUpdateRowPayload;
 
 					const rowId = this.getNodeParameter('rowId', i) as string;
-					const dataToSend = this.getNodeParameter('dataToSend', 0) as 'defineBelow' | 'autoMapInputData';
+					const dataToSend = this.getNodeParameter('dataToSend', 0) as SendingOptions;
 
-					if (dataToSend === 'autoMapInputData') {
+					if (dataToSend === 'autoMapInputs') {
+
+						throwOnExcessItems.call(this, i);
 						const incomingKeys = Object.keys(items[i].json);
 						const rawInputsToIgnore = this.getNodeParameter('inputsToIgnore', i) as string;
-						const inputDataToIgnore = rawInputsToIgnore.split(',').map(c => c.trim());
+						const inputsToIgnore = rawInputsToIgnore.split(',').map(c => c.trim());
+						const fields = parseAutoMappedInputs(incomingKeys, inputsToIgnore, items[i].json);
+						body.records.push({ id: Number(rowId), fields });
 
-						const acc: IDataObject = {};
+					} else if (dataToSend === 'defineInNode') {
 
-						for (const key of incomingKeys) {
-							if (inputDataToIgnore.includes(key)) continue;
-							acc[key] = items[i].json[key];
-						}
+						const { properties } = this.getNodeParameter('fieldsToSend', i, []) as FieldsToSend;
+						throwOnZeroDefinedFields.call(this, properties);
+						const fields = parseDefinedFields(properties);
+						body.records.push({ id: Number(rowId), fields });
 
-						body.records[0].fields = acc;
-
-					} else if (dataToSend === 'defineBelow') {
-						const { properties } = this.getNodeParameter('fieldsToSend', i, []) as {
-							properties: GristDefinedData;
-						};
-
-						if (!properties.length) {
-							throw new NodeOperationError(this.getNode(), 'Please enter data to send');
-						}
-
-						body.records = [
-							{ fields: parseFieldsToSend(properties) },
-						];
 					}
-
-					body.records = body.records.map(record => {
-						return {
-							id: Number(rowId),
-							...record,
-						};
-					});
 
 					const docId = this.getNodeParameter('docId', i) as string;
 					const tableId = this.getNodeParameter('tableId', i) as string;

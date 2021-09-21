@@ -10,11 +10,12 @@ import {
 import {
 	IDataObject,
 	NodeApiError,
+	NodeOperationError,
 } from 'n8n-workflow';
 
 import {
 	GristCredentials,
-	GristDefinedData,
+	GristDefinedFields,
 	GristFilterProperties,
 	GristSortProperties,
 } from './types';
@@ -54,6 +55,7 @@ export async function gristApiRequest(
 	}
 
 	try {
+		// console.log(JSON.stringify(options, null, 2));
 		return await this.helpers.request!(options);
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error);
@@ -78,9 +80,39 @@ export function parseFilterProperties(filterProperties: GristFilterProperties) {
 	}, {});
 }
 
-export function parseFieldsToSend(fieldsToSendProperties: GristDefinedData) {
+export function parseDefinedFields(fieldsToSendProperties: GristDefinedFields) {
 	return fieldsToSendProperties.reduce<{ [key: string]: string; }>((acc, cur) => {
 		acc[cur.fieldId] = cur.fieldValue;
 		return acc;
 	}, {});
+}
+
+export function parseAutoMappedInputs(
+	incomingKeys: string[],
+	inputsToIgnore: string[],
+	item: any,
+) {
+	return incomingKeys.reduce<{ [key: string]: any; }>((acc, curKey) => {
+		if (inputsToIgnore.includes(curKey)) return acc;
+		acc = { ...acc, [curKey]: item[curKey] }
+		return acc;
+	}, {});
+}
+
+export function throwOnZeroDefinedFields(this: IExecuteFunctions, fields: GristDefinedFields) {
+	if (!fields.length) {
+		throw new NodeOperationError(
+			this.getNode(),
+			'No defined data found. Please specify the data to send in \'Fields to Send\'.',
+		);
+	}
+}
+
+export function throwOnExcessItems(this: IExecuteFunctions, i: number) {
+	if (i > 0) {
+		throw new NodeOperationError(
+			this.getNode(),
+			'Excess input items found in update operation in automap mode. Please ensure this node receives a single input item.',
+		);
+	}
 }

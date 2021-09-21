@@ -244,12 +244,12 @@ export const operationFields: INodeProperties[] = [
 		options: [
 			{
 				name: 'Auto-map Input Data to Columns',
-				value: 'autoMapInputData',
+				value: 'autoMapInputs',
 				description: 'Use when node input properties match destination column names',
 			},
 			{
 				name: 'Define Below for Each Column',
-				value: 'defineBelow',
+				value: 'defineInNode',
 				description: 'Set the value for each destination column',
 			},
 		],
@@ -261,7 +261,7 @@ export const operationFields: INodeProperties[] = [
 				],
 			},
 		},
-		default: 'defineBelow',
+		default: 'defineInNode',
 		description: 'Whether to insert the input data this node receives in the new row',
 	},
 	{
@@ -275,7 +275,7 @@ export const operationFields: INodeProperties[] = [
 					'update',
 				],
 				dataToSend: [
-					'autoMapInputData',
+					'autoMapInputs',
 				],
 			},
 		},
@@ -300,7 +300,7 @@ export const operationFields: INodeProperties[] = [
 					'update',
 				],
 				dataToSend: [
-					'defineBelow',
+					'defineInNode',
 				],
 			},
 		},
