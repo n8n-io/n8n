@@ -25,12 +25,12 @@ import {
 } from './OperationDescription';
 
 import {
-	SendingOptions,
+	FieldsToSend,
 	GristColumns,
 	GristCreateRowPayload,
 	GristGetAllOptions,
 	GristUpdateRowPayload,
-	FieldsToSend,
+	SendingOptions,
 } from './types';
 
 export class Grist implements INodeType {
