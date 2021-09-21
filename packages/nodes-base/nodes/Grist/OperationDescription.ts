@@ -7,6 +7,7 @@ export const operationFields: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		options: [
 			{
 				name: 'Create',
@@ -79,7 +80,7 @@ export const operationFields: INodeProperties[] = [
 		name: 'returnAll',
 		type: 'boolean',
 		default: false,
-		description: 'Whether to return all results',
+		description: 'Whether to return all results or only up to a given limit',
 		displayOptions: {
 			show: {
 				operation: [
@@ -96,7 +97,7 @@ export const operationFields: INodeProperties[] = [
 			minValue: 1,
 		},
 		default: 50,
-		description: 'How many results to return',
+		description: 'Max number of results to return',
 		displayOptions: {
 			show: {
 				operation: [
@@ -243,7 +244,7 @@ export const operationFields: INodeProperties[] = [
 		type: 'options',
 		options: [
 			{
-				name: 'Auto-map Input Data to Columns',
+				name: 'Auto-Map Input Data to Columns',
 				value: 'autoMapInputs',
 				description: 'Use when node input properties match destination column names',
 			},
