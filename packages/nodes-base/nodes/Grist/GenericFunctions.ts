@@ -90,11 +90,11 @@ export function parseDefinedFields(fieldsToSendProperties: GristDefinedFields) {
 export function parseAutoMappedInputs(
 	incomingKeys: string[],
 	inputsToIgnore: string[],
-	item: any,
+	item: any, // tslint:disable-line:no-any
 ) {
-	return incomingKeys.reduce<{ [key: string]: any; }>((acc, curKey) => {
+	return incomingKeys.reduce<{ [key: string]: any; }>((acc, curKey) => { // tslint:disable-line:no-any
 		if (inputsToIgnore.includes(curKey)) return acc;
-		acc = { ...acc, [curKey]: item[curKey] }
+		acc = { ...acc, [curKey]: item[curKey] };
 		return acc;
 	}, {});
 }
