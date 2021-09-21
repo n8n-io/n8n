@@ -19,7 +19,7 @@
 			inputSize="large"
 		/>
 		<div :class="$style.errors" v-if="showRequiredErrors">
-			This field is required. <n8n-link v-if="documentationUrl" size="small" :href="documentationUrl" :newWindow="true" :underline="true">Open docs</n8n-link>
+			This field is required. <n8n-link v-if="documentationUrl" size="small" theme="danger" :href="documentationUrl" :newWindow="true" :underline="true">Open docs</n8n-link>
 		</div>
 	</n8n-input-label>
 </template>
@@ -73,10 +73,5 @@ export default Vue.extend({
 	color: var(--color-danger);
 	font-size: var(--font-size-2xs);
 	font-weight: var(--font-weight-regular);
-
-	a {
-		color: var(--color-danger);
-		text-decoration: underline;
-	}
 }
 </style>

@@ -15,7 +15,7 @@
 						<n8n-text>Source code:</n8n-text>
 					</el-col>
 					<el-col :span="16">
-						<n8n-link href="https://github.com/n8n-io/n8n" target="_blank">https://github.com/n8n-io/n8n</n8n-link>
+						<n8n-link href="https://github.com/n8n-io/n8n" :newWindow="true">https://github.com/n8n-io/n8n</n8n-link>
 					</el-col>
 				</el-row>
 				<el-row>
@@ -23,7 +23,7 @@
 						<n8n-text>License:</n8n-text>
 					</el-col>
 					<el-col :span="16">
-						<n8n-link href="https://github.com/n8n-io/n8n/blob/master/packages/cli/LICENSE.md" target="_blank">Apache 2.0 with Commons Clause</n8n-link>
+						<n8n-link href="https://github.com/n8n-io/n8n/blob/master/packages/cli/LICENSE.md" :newWindow="true">Apache 2.0 with Commons Clause</n8n-link>
 					</el-col>
 				</el-row>
 			</div>
