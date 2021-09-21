@@ -1,3 +1,6 @@
+/* eslint-disable @typescript-eslint/no-unsafe-call */
+/* eslint-disable @typescript-eslint/no-unsafe-return */
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 /* eslint-disable no-underscore-dangle */
 /* eslint-disable no-continue */
@@ -226,13 +229,13 @@ export function getNodeTypeData(nodes: INode[]): ITransferNodeTypes {
 	// can be loaded again in the process
 	const returnData: ITransferNodeTypes = {};
 	for (const nodeTypeName of neededNodeTypes) {
-		if (nodeTypes.nodeTypes[nodeTypeName] === undefined) {
-			throw new Error(`The NodeType "${nodeTypeName}" could not be found!`);
+		if (nodeTypes.nodeTypes[nodeTypeName.type] === undefined) {
+			throw new Error(`The NodeType "${nodeTypeName.type}" could not be found!`);
 		}
 
-		returnData[nodeTypeName] = {
-			className: nodeTypes.nodeTypes[nodeTypeName].type.constructor.name,
-			sourcePath: nodeTypes.nodeTypes[nodeTypeName].sourcePath,
+		returnData[nodeTypeName.type] = {
+			className: nodeTypes.nodeTypes[nodeTypeName.type].type.constructor.name,
+			sourcePath: nodeTypes.nodeTypes[nodeTypeName.type].sourcePath,
 		};
 	}
 
@@ -306,12 +309,12 @@ export function getCredentialsDataByNodes(nodes: INode[]): ICredentialsTypeData 
  * @param {INode[]} nodes
  * @returns {string[]}
  */
-export function getNeededNodeTypes(nodes: INode[]): string[] {
+export function getNeededNodeTypes(nodes: INode[]): Array<{ type: string; version: number }> {
 	// Check which node-types have to be loaded
-	const neededNodeTypes: string[] = [];
+	const neededNodeTypes: Array<{ type: string; version: number }> = [];
 	for (const node of nodes) {
-		if (!neededNodeTypes.includes(node.type)) {
-			neededNodeTypes.push(node.type);
+		if (neededNodeTypes.find((neededNodes) => node.type === neededNodes.type) === undefined) {
+			neededNodeTypes.push({ type: node.type, version: node.typeVersion });
 		}
 	}
 
