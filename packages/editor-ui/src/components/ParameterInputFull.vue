@@ -8,7 +8,7 @@
 			</n8n-tooltip>
 		</el-col>
 		<el-col :span="isMultiLineParameter ? 24 : 14" class="parameter-value">
-			<parameter-input :parameter="parameter" :value="value" :displayOptions="displayOptions" :path="path" :isReadOnly="isReadOnly" @valueChanged="valueChanged" inputSize="small" />
+			<parameter-input :parameter="parameter" :value="hasEmptyLoadOptions ? '' : value" :displayOptions="displayOptions" :path="path" :isReadOnly="isReadOnly" @valueChanged="valueChanged" inputSize="small" />
 		</el-col>
 	</el-row>
 </template>
@@ -30,6 +30,9 @@ export default Vue
 			ParameterInput,
 		},
 		computed: {
+			hasEmptyLoadOptions(){
+				return Array.isArray(this.value) && this.value.length === 0;
+			},
 			isMultiLineParameter () {
 				if (this.level > 4) {
 					return true;
