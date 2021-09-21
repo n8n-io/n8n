@@ -252,17 +252,18 @@ export class ElasticSecurity implements INodeType {
 						const qs = {} as IDataObject;
 						const {
 							tags,
-							...rest
-						} = this.getNodeParameter('filters', i) as IDataObject & { tags: string[] };
-						const options = this.getNodeParameter('options', i) as IDataObject;
+							status,
+						} = this.getNodeParameter('filters', i) as IDataObject & { tags: string[], status: string };
+						const sortOptions = this.getNodeParameter('sortOptions', i) as IDataObject;
 
-						[rest, options].forEach(obj => {
-							if (Object.keys(obj).length) {
-								Object.assign(qs, obj);
-							}
-						});
+						qs.sortField = sortOptions.sortField ?? 'createdAt'
+						qs.sortOrder = sortOptions.sortOrder ?? 'asc'
 
-						if (tags.length) {
+						if (status) {
+							qs.status = status;
+						}
+
+						if (tags?.length) {
 							qs.tags = tags.join(',');
 						}
 

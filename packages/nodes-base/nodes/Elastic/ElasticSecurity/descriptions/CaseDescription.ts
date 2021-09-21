@@ -473,10 +473,10 @@ export const caseFields: INodeProperties[] = [
 		],
 	},
 	{
-		displayName: 'Options',
-		name: 'options',
-		type: 'collection',
-		placeholder: 'Add Option',
+		displayName: 'Sort',
+		name: 'sortOptions',
+		type: 'fixedCollection',
+		placeholder: 'Add Sort Options',
 		default: {},
 		displayOptions: {
 			show: {
@@ -490,37 +490,42 @@ export const caseFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Sort Key',
-				name: 'sortField',
-				description: 'Key to sort by',
-				type: 'options',
-				options: [
+				displayName: 'Sort Options',
+				name: 'sortOptionsProperties',
+				values: [
 					{
-						name: 'Created At',
-						value: 'createdAt',
+						displayName: 'Sort Key',
+						name: 'sortField',
+						type: 'options',
+						options: [
+							{
+								name: 'Created At',
+								value: 'createdAt',
+							},
+							{
+								name: 'Updated At',
+								value: 'updatedAt',
+							},
+						],
+						default: 'createdAt',
 					},
 					{
-						name: 'Updated At',
-						value: 'updatedAt',
+						displayName: 'Sort Order',
+						name: 'sortOrder',
+						type: 'options',
+						options: [
+							{
+								name: 'Ascending',
+								value: 'asc',
+							},
+							{
+								name: 'Descending',
+								value: 'desc',
+							},
+						],
+						default: 'asc',
 					},
 				],
-				default: 'createdAt',
-			},
-			{
-				displayName: 'Sort Order',
-				name: 'sortOrder',
-				type: 'options',
-				options: [
-					{
-						name: 'Ascending',
-						value: 'asc',
-					},
-					{
-						name: 'Descending',
-						value: 'desc',
-					},
-				],
-				default: 'asc',
 			},
 		],
 	},
