@@ -1,3 +1,3 @@
-import Text from './Text.vue';
+import N8nText from './Text.vue';
 
-export default Text;
+export default N8nText;

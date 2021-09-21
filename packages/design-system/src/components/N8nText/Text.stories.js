@@ -4,16 +4,10 @@ export default {
 	title: 'Atoms/Text',
 	component: N8nText,
 	argTypes: {
-		type: {
-			control: {
-				type: 'select',
-				options: ['heading', 'body'],
-			},
-		},
 		size: {
 			control: {
 				type: 'select',
-				options: ['small', 'medium', 'large', 'xlarge', '2xlarge'],
+				options: ['small', 'medium', 'large', 'xlarge'],
 			},
 		},
 	},

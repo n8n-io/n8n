@@ -1,3 +1,3 @@
-import FormBox from './FormBox.vue';
+import N8nFormBox from './FormBox.vue';
 
-export default FormBox;
+export default N8nFormBox;

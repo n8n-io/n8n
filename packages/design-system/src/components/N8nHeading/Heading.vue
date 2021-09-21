@@ -21,7 +21,7 @@ export default Vue.extend({
 	},
 	methods: {
 		getClass(props: {size: string, bold: boolean}) {
-			return `body-${props.size}${props.bold ? '-bold' : ''}`;
+			return `heading-${props.size}${props.bold ? '-bold' : ''}`;
 		},
 	},
 });
@@ -36,48 +36,59 @@ export default Vue.extend({
 	font-weight: var(--font-weight-regular);
 }
 
-.body-xlarge {
+.heading-2xlarge {
 	composes: regular;
-	font-size: var(--font-size-lg);
-	line-height: var(--font-line-height-xloose);
+	font-size: var(--font-size-2xl);
+	line-height: var(--font-line-height-compact);
 }
 
-.body-xlarge-bold {
+.heading-xlarge-bold {
 	composes: bold;
-	composes: body-xlarge;
+	composes: heading-2xlarge;
 }
 
-.body-large {
+.heading-xlarge {
+	composes: regular;
+	font-size: var(--font-size-xl);
+	line-height: var(--font-line-height-compact);
+}
+
+.heading-xlarge-bold {
+	composes: bold;
+	composes: heading-xlarge;
+}
+
+.heading-large {
+	composes: regular;
+	font-size: var(--font-size-l);
+	line-height: var(--font-line-height-loose);
+}
+
+.heading-large-bold {
+	composes: bold;
+	composes: heading-large;
+}
+
+.heading-medium {
 	composes: regular;
 	font-size: var(--font-size-m);
-	line-height: var(--font-line-height-xloose);
+	line-height: var(--font-line-height-loose);
 }
 
-.body-large-bold {
+.heading-medium-bold {
 	composes: bold;
-	composes: body-large;
+	composes: heading-medium;
 }
 
-.body-medium {
+.heading-small {
 	composes: regular;
 	font-size: var(--font-size-s);
-	line-height: var(--font-line-height-loose);
+	line-height: var(--font-line-height-regular);
 }
 
-.body-medium-bold {
+.heading-small-bold {
 	composes: bold;
-	composes: body-medium;
-}
-
-.body-small {
-	composes: regular;
-	font-size: var(--font-size-2xs);
-	line-height: var(--font-line-height-loose);
-}
-
-.body-small-bold {
-	composes: bold;
-	composes: body-small;
+	composes: heading-small;
 }
 
 </style>

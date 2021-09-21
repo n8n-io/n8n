@@ -9,6 +9,7 @@ import N8nInputNumber from './N8nInputNumber';
 import N8nInputLabel from './N8nInputLabel';
 import N8nMenu from './N8nMenu';
 import N8nMenuItem from './N8nMenuItem';
+import N8nLink from './N8nLink';
 import N8nOption from './N8nOption';
 import N8nSelect from './N8nSelect';
 import N8nSpinner from './N8nSpinner';
@@ -27,6 +28,7 @@ export {
 	N8nInputNumber,
 	N8nMenu,
 	N8nMenuItem,
+	N8nLink,
 	N8nOption,
 	N8nSelect,
 	N8nSpinner,
