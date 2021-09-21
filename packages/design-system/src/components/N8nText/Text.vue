@@ -37,9 +37,13 @@ export default Vue.extend({
 }
 
 .body-large {
-	composes: regular;
 	font-size: var(--font-size-m);
 	line-height: var(--font-line-height-xloose);
+}
+
+.body-large-regular {
+	composes: regular;
+	composes: body-large;
 }
 
 .body-large-bold {
@@ -48,9 +52,13 @@ export default Vue.extend({
 }
 
 .body-medium {
-	composes: regular;
 	font-size: var(--font-size-s);
 	line-height: var(--font-line-height-loose);
+}
+
+.body-medium-regular {
+	composes: regular;
+	composes: body-medium;
 }
 
 .body-medium-bold {
@@ -59,9 +67,13 @@ export default Vue.extend({
 }
 
 .body-small {
-	composes: regular;
 	font-size: var(--font-size-2xs);
 	line-height: var(--font-line-height-loose);
+}
+
+.body-small-regular {
+	composes: regular;
+	composes: body-small;
 }
 
 .body-small-bold {

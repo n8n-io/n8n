@@ -1,11 +1,11 @@
 <template functional>
 	<a
-		:class="$style[`${props.bold? 'bold' : 'regular'}-${props.underline ? 'underline' : 'clear'}`]"
+		:class="$style[`${props.underline ? 'underline' : 'link'}`]"
 		:href="props.href"
 		@click="(e) => listeners.click && listeners.click(e)"
 		:target="props.newWindow ? '_blank': '_self'"
 	>
-		<n8n-text :size="props.size">
+		<n8n-text :size="props.size" :bold="props.bold">
 			<slot></slot>
 		</n8n-text>
 	</a>
@@ -61,37 +61,9 @@ export default {
 	}
 }
 
-.regular {
-	font-weight: var(--font-weight-regular);
-}
-
-.bold {
-	font-weight: var(--font-weight-bold);
-}
-
 .underline {
 	text-decoration: underline;
-}
-
-.regular-clear {
-	composes: regular;
 	composes: link;
 }
 
-.bold-clear {
-	composes: regular;
-	composes: link;
-}
-
-.regular-underline {
-	composes: bold;
-	composes: link;
-	composes: underline;
-}
-
-.bold-underline {
-	composes: bold;
-	composes: link;
-	composes: underline;
-}
 </style>
