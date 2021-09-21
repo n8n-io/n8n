@@ -77,7 +77,6 @@ export default Vue.extend({
 }
 
 .body-large {
-	composes: regular;
 	font-size: var(--font-size-m);
 	line-height: var(--font-line-height-xloose);
 }
@@ -93,7 +92,6 @@ export default Vue.extend({
 }
 
 .body-medium {
-	composes: regular;
 	font-size: var(--font-size-s);
 	line-height: var(--font-line-height-loose);
 }
@@ -109,7 +107,6 @@ export default Vue.extend({
 }
 
 .body-small {
-	composes: regular;
 	font-size: var(--font-size-2xs);
 	line-height: var(--font-line-height-loose);
 }
