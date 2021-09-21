@@ -1,6 +1,6 @@
 <template>
 	<div :class="$style.container">
-		<SettingsSidebar :selected="selected" />
+		<SettingsSidebar />
 		<div :class="$style.contentContainer">
 			<div :class="$style.content">
 				<slot>
@@ -19,11 +19,6 @@ export default Vue.extend({
 	name: 'SettingsView',
 	components: {
 		SettingsSidebar,
-	},
-	props: {
-		selected: {
-			type: String,
-		},
 	},
 });
 </script>

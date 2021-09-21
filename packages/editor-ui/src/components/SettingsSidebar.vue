@@ -34,11 +34,6 @@ import { mapGetters } from 'vuex';
 
 export default Vue.extend({
 	name: 'SettingsSidebar',
-	props: {
-		selected: {
-			type: String,
-		},
-	},
 	computed: {
 		...mapGetters('settings', ['versionCli']),
 	},

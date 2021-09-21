@@ -43,7 +43,6 @@
 		<div :class="$style.actionContainer">
 			<a
 				v-if="redirectText && redirectLink"
-				:class="$style.redirectLink"
 				:href="redirectLink"
 			>
 				<span>{{redirectText}}</span>
@@ -157,6 +156,6 @@ export default Vue.extend({
 }
 
 .withLabel {
-margin-bottom: var(--spacing-s);
+	margin-bottom: var(--spacing-s);
 }
 </style>
