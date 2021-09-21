@@ -9,7 +9,6 @@ import {
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
-	NodeOperationError,
 } from 'n8n-workflow';
 
 import {
@@ -108,7 +107,6 @@ export class GoogleDriveTrigger implements INodeType {
 				type: 'options',
 				required: true,
 				default: 'drive',
-				description: 'The resource whose events trigger the webhook.',
 				options: [
 					{
 						name: 'Drive',
@@ -136,6 +134,7 @@ export class GoogleDriveTrigger implements INodeType {
 				},
 				default: 'root',
 				required: true,
+				description: 'The drive to monitor',
 			},
 			{
 				displayName: 'Folder ID',
@@ -149,6 +148,7 @@ export class GoogleDriveTrigger implements INodeType {
 					},
 				},
 				default: '',
+				description: 'The folder to monitor',
 				required: true,
 			},
 			{
