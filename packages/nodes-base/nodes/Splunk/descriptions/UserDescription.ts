@@ -245,13 +245,6 @@ export const userFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Add Orphan Field',
-				name: 'add_orphan_field',
-				description: 'Whether to include a boolean value for each saved search to show whether the search is orphaned, meaning that it has no valid owner',
-				type: 'boolean',
-				default: false,
-			},
-			{
 				displayName: 'Earliest Time',
 				name: 'earliest_time',
 				description: 'For scheduled searches, display all the scheduled times starting from this time (not just the next run time). See <a href="https://docs.splunk.com/Documentation/Splunk/8.2.2/SearchReference/SearchTimeModifiers">Search Time Modifiers</a>.',
@@ -264,13 +257,6 @@ export const userFields: INodeProperties[] = [
 				description: 'For scheduled searches, display all the scheduled times until this time (not just the next run time). See <a href="https://docs.splunk.com/Documentation/Splunk/8.2.2/SearchReference/SearchTimeModifiers">Search Time Modifiers</a>.',
 				type: 'string',
 				default: '',
-			},
-			{
-				displayName: 'List Default Actions',
-				name: 'listDefaultActionArgs',
-				description: 'Whether to list default actions',
-				type: 'boolean',
-				default: false,
 			},
 		],
 	},
