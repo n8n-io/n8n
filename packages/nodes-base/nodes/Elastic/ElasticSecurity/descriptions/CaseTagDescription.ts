@@ -81,7 +81,6 @@ export const caseTagFields: INodeProperties[] = [
 		displayName: 'Case ID',
 		name: 'caseId',
 		type: 'string',
-		description: 'Tag to remove from the case',
 		required: true,
 		default: '',
 		displayOptions: {

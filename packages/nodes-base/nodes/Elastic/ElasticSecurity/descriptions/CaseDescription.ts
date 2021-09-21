@@ -343,7 +343,6 @@ export const caseFields: INodeProperties[] = [
 	{
 		displayName: 'Case ID',
 		name: 'caseId',
-		description: 'ID of the case to delete',
 		type: 'string',
 		required: true,
 		default: '',
@@ -365,7 +364,6 @@ export const caseFields: INodeProperties[] = [
 	{
 		displayName: 'Case ID',
 		name: 'caseId',
-		description: 'ID of the case to retrieve',
 		type: 'string',
 		required: true,
 		default: '',

@@ -134,7 +134,6 @@ export const caseCommentFields: INodeProperties[] = [
 	{
 		displayName: 'Case ID',
 		name: 'caseId',
-		description: 'ID of the case comment to retrieve',
 		type: 'string',
 		required: true,
 		default: '',
@@ -273,7 +272,6 @@ export const caseCommentFields: INodeProperties[] = [
 	{
 		displayName: 'Case ID',
 		name: 'caseId',
-		description: 'ID of the case whose comment to update',
 		type: 'string',
 		required: true,
 		default: '',
