@@ -33,7 +33,7 @@ export const searchResultFields: INodeProperties[] = [
 	{
 		displayName: 'Search ID',
 		name: 'searchJobId',
-		description: 'ID of the search whose results to retrieve, available after the final slash in the <code>id</code> field in API responses',
+		description: 'ID of the search whose results to retrieve',
 		type: 'string',
 		required: true,
 		default: '',

@@ -43,7 +43,7 @@ export const searchConfigurationFields: INodeProperties[] = [
 	{
 		displayName: 'Search Configuration ID',
 		name: 'searchConfigurationId',
-		description: 'ID of the search configuration to delete, available after the final slash in the <code>id</code> field in API responses',
+		description: 'ID of the search configuration to delete',
 		type: 'string',
 		required: true,
 		default: '',
@@ -65,7 +65,7 @@ export const searchConfigurationFields: INodeProperties[] = [
 	{
 		displayName: 'Search Configuration ID',
 		name: 'searchConfigurationId',
-		description: 'ID of the search configuration to retrieve, available after the final slash in the <code>id</code> field in API responses',
+		description: 'ID of the search configuration to retrieve',
 		type: 'string',
 		required: true,
 		default: '',

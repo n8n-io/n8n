@@ -146,7 +146,7 @@ export const userFields: INodeProperties[] = [
 	{
 		displayName: 'User ID',
 		name: 'userId',
-		description: 'ID of the user to delete, available after the final slash in the <code>id</code> field in API responses',
+		description: 'ID of the user to delete',
 		type: 'string',
 		required: true,
 		default: '',
@@ -168,7 +168,7 @@ export const userFields: INodeProperties[] = [
 	{
 		displayName: 'User ID',
 		name: 'userId',
-		description: 'ID of the user to retrieve, available after the final slash in the <code>id</code> field in API responses',
+		description: 'ID of the user to retrieve',
 		type: 'string',
 		required: true,
 		default: '',
@@ -234,7 +234,7 @@ export const userFields: INodeProperties[] = [
 	{
 		displayName: 'User ID',
 		name: 'userId',
-		description: 'ID of the user to update, available after the final slash in the <code>id</code> field in API responses',
+		description: 'ID of the user to update',
 		type: 'string',
 		required: true,
 		default: '',

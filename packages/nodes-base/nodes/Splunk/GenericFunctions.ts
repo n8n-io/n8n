@@ -181,7 +181,14 @@ function compactResult(splunkObject: any): any {
 
 function formatEntry(entry: any): any {
 	const { content, link, ...rest } = entry;
-	return { ...rest, ...formatEntryContent(content) };
+	const formattedEntry = { ...rest, ...formatEntryContent(content) };
+
+	if (formattedEntry.id) {
+		formattedEntry.entryUrl = formattedEntry.id;
+		formattedEntry.id = formattedEntry.id.split('/').pop();
+	}
+
+	return formattedEntry;
 }
 
 function formatEntryContent(content: any): any {

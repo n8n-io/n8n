@@ -264,7 +264,7 @@ export const searchJobFields: INodeProperties[] = [
 	{
 		displayName: 'Search ID',
 		name: 'searchJobId',
-		description: 'ID of the search job to delete, available after the final slash in the <code>id</code> field in API responses',
+		description: 'ID of the search job to delete',
 		type: 'string',
 		required: true,
 		default: '',
@@ -286,7 +286,7 @@ export const searchJobFields: INodeProperties[] = [
 	{
 		displayName: 'Search ID',
 		name: 'searchJobId',
-		description: 'ID of the search job to retrieve, available after the final slash in the <code>id</code> field in API responses',
+		description: 'ID of the search job to retrieve',
 		type: 'string',
 		required: true,
 		default: '',
