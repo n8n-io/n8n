@@ -30,6 +30,7 @@ export const connectorFields: INodeProperties[] = [
 	{
 		displayName: 'Connector Name',
 		name: 'name',
+		description: 'Connectors allow you to send Elastic Security cases into other systems (only ServiceNow, Jira, or IBM Resilient)',
 		type: 'string',
 		required: true,
 		default: '',
