@@ -80,7 +80,7 @@ export class GoogleDriveTrigger implements INodeType {
 				name: 'triggerOn',
 				type: 'options',
 				required: true,
-				default: 'triggerOnFile',
+				default: 'fileCreated',
 				description: 'The resource whose events trigger the webhook.',
 				options: [
 					{
