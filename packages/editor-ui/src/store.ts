@@ -2,7 +2,7 @@
 import Vue from 'vue';
 import Vuex from 'vuex';
 
-import { PLACEHOLDER_EMPTY_WORKFLOW_ID } from '@/constants';
+import { PLACEHOLDER_EMPTY_WORKFLOW_ID, DEFAULT_NODETYPE_VERSION } from '@/constants';
 
 import {
 	IConnection,
@@ -56,7 +56,6 @@ const state: IRootState = {
 	pushConnectionActive: true,
 	saveDataErrorExecution: 'all',
 	saveDataSuccessExecution: 'all',
-	saveManualExecutions: false,
 	timezone: 'America/New_York',
 	stateIsDirty: false,
 	executionTimeout: -1,
@@ -497,9 +496,6 @@ export const store = new Vuex.Store({
 		setSaveDataSuccessExecution (state, newValue: string) {
 			Vue.set(state, 'saveDataSuccessExecution', newValue);
 		},
-		setSaveManualExecutions (state, saveManualExecutions: boolean) {
-			Vue.set(state, 'saveManualExecutions', saveManualExecutions);
-		},
 		setTimezone (state, timezone: string) {
 			Vue.set(state, 'timezone', timezone);
 		},
@@ -589,11 +585,10 @@ export const store = new Vuex.Store({
 		},
 
 		updateNodeTypes (state, nodeTypes: INodeTypeDescription[]) {
-			const updatedNodeNames = nodeTypes.map(node => node.name) as string[];
-			const oldNodesNotChanged = state.nodeTypes.filter(node => !updatedNodeNames.includes(node.name));
-			const updatedNodes = [...oldNodesNotChanged, ...nodeTypes];
-			Vue.set(state, 'nodeTypes', updatedNodes);
-			state.nodeTypes = updatedNodes;
+			const oldNodesToKeep = state.nodeTypes.filter(node => !nodeTypes.find(n => n.name === node.name && n.version === node.version));
+			const newNodesState = [...oldNodesToKeep, ...nodeTypes];
+			Vue.set(state, 'nodeTypes', newNodesState);
+			state.nodeTypes = newNodesState;
 		},
 
 		addSidebarMenuItems (state, menuItems: IMenuItem[]) {
@@ -605,6 +600,10 @@ export const store = new Vuex.Store({
 
 		isActionActive: (state) => (action: string): boolean => {
 			return state.activeActions.includes(action);
+		},
+
+		isNewWorkflow: (state) => {
+			return state.workflow.id === PLACEHOLDER_EMPTY_WORKFLOW_ID;
 		},
 
 		getActiveExecutions: (state): IExecutionsCurrentSummaryExtended[] => {
@@ -651,8 +650,8 @@ export const store = new Vuex.Store({
 		saveDataSuccessExecution: (state): string => {
 			return state.saveDataSuccessExecution;
 		},
-		saveManualExecutions: (state): boolean => {
-			return state.saveManualExecutions;
+		saveManualExecutions: (state, getters): boolean => {
+			return !!getters.workflowSettings.saveManualExecutions;
 		},
 		timezone: (state): string => {
 			return state.timezone;
@@ -754,9 +753,9 @@ export const store = new Vuex.Store({
 		allNodeTypes: (state): INodeTypeDescription[] => {
 			return state.nodeTypes;
 		},
-		nodeType: (state) => (nodeType: string): INodeTypeDescription | null => {
+		nodeType: (state, getters) => (nodeType: string, typeVersion?: number): INodeTypeDescription | null => {
 			const foundType = state.nodeTypes.find(typeData => {
-				return typeData.name === nodeType;
+				return typeData.name === nodeType && typeData.version === (typeVersion || typeData.defaultVersion || DEFAULT_NODETYPE_VERSION);
 			});
 
 			if (foundType === undefined) {

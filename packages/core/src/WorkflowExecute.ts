@@ -27,6 +27,8 @@ import {
 	IWaitingForExecution,
 	IWorkflowExecuteAdditionalData,
 	LoggerProxy as Logger,
+	NodeApiError,
+	NodeOperationError,
 	Workflow,
 	WorkflowExecuteMode,
 	WorkflowOperationError,
@@ -624,9 +626,9 @@ export class WorkflowExecute {
 				} catch (error) {
 					// Set the error that it can be saved correctly
 					executionError = {
-						...error,
-						message: error.message,
-						stack: error.stack,
+						...(error as NodeOperationError | NodeApiError),
+						message: (error as NodeOperationError | NodeApiError).message,
+						stack: (error as NodeOperationError | NodeApiError).stack,
 					};
 
 					// Set the incoming data of the node that it can be saved correctly
@@ -837,9 +839,9 @@ export class WorkflowExecute {
 							this.runExecutionData.resultData.lastNodeExecuted = executionData.node.name;
 
 							executionError = {
-								...error,
-								message: error.message,
-								stack: error.stack,
+								...(error as NodeOperationError | NodeApiError),
+								message: (error as NodeOperationError | NodeApiError).message,
+								stack: (error as NodeOperationError | NodeApiError).stack,
 							};
 
 							Logger.debug(`Running node "${executionNode.name}" finished with error`, {
@@ -886,6 +888,22 @@ export class WorkflowExecute {
 							]);
 
 							break;
+						}
+					}
+
+					// Merge error information to default output for now
+					// As the new nodes can report the errors in
+					// the `error` property.
+					for (const execution of nodeSuccessData!) {
+						for (const lineResult of execution) {
+							if (lineResult.json.$error !== undefined && lineResult.json.$json !== undefined) {
+								lineResult.error = lineResult.json.$error as NodeApiError | NodeOperationError;
+								lineResult.json = {
+									error: (lineResult.json.$error as NodeApiError | NodeOperationError).message,
+								};
+							} else if (lineResult.error !== undefined) {
+								lineResult.json = { error: lineResult.error.message };
+							}
 						}
 					}
 
