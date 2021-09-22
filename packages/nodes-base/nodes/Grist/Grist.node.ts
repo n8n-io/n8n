@@ -23,7 +23,6 @@ import {
 	parseDefinedFields,
 	parseFilterProperties,
 	parseSortProperties,
-	throwOnExcessItems,
 	throwOnZeroDefinedFields,
 } from './GenericFunctions';
 
@@ -199,7 +198,6 @@ export class Grist implements INodeType {
 
 					if (dataToSend === 'autoMapInputs') {
 
-						throwOnExcessItems.call(this, i);
 						const incomingKeys = Object.keys(items[i].json);
 						const rawInputsToIgnore = this.getNodeParameter('inputsToIgnore', i) as string;
 						const inputsToIgnore = rawInputsToIgnore.split(',').map(c => c.trim());

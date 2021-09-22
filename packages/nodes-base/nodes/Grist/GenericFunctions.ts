@@ -107,11 +107,3 @@ export function throwOnZeroDefinedFields(this: IExecuteFunctions, fields: GristD
 	}
 }
 
-export function throwOnExcessItems(this: IExecuteFunctions, i: number) {
-	if (i > 0) {
-		throw new NodeOperationError(
-			this.getNode(),
-			'Excess input items found in update operation in automap mode. Please ensure this node receives a single input item.',
-		);
-	}
-}
