@@ -440,7 +440,7 @@ export async function replaceInvalidCredentials(workflow: WorkflowEntity): Promi
 			// Node has credentials with an ID
 
 			// init cache for type
-			if (credentialsById[nodeCredentialType]) {
+			if (!credentialsById[nodeCredentialType]) {
 				credentialsById[nodeCredentialType] = {};
 			}
 
