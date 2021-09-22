@@ -6,6 +6,7 @@ import {
 export class ActionNetworkApi implements ICredentialType {
 	name = 'actionNetworkApi';
 	displayName = 'Action Network API';
+	documentationUrl = 'actionNetwork';
 	properties = [
 		{
 			displayName: 'API Key',

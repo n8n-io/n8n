@@ -1,0 +1,218 @@
+@use "mixins/mixins";
+@use "./common/var";
+
+@keyframes el-drawer-fade-in {
+	0% {
+		opacity: 0;
+	}
+	100% {
+		opacity: 1;
+	}
+}
+
+@mixin drawer-animation($direction) {
+	@keyframes #{$direction}-drawer-in {
+		0% {
+			@if $direction == ltr {
+				transform: translate(-100%, 0px);
+			}
+
+			@if $direction == rtl {
+				transform: translate(100%, 0px);
+			}
+
+			@if $direction == ttb {
+				transform: translate(0px, -100%);
+			}
+
+			@if $direction == btt {
+				transform: translate(0px, 100%);
+			}
+		}
+
+		100% {
+			@if $direction == ltr {
+				transform: translate(0px, 0px);
+			}
+
+			@if $direction == rtl {
+				transform: translate(0px, 0px);
+			}
+
+			@if $direction == ttb {
+				transform: translate(0px, 0px);
+			}
+
+			@if $direction == btt {
+				transform: translate(0px, 0px);
+			}
+		}
+	}
+
+	@keyframes #{$direction}-drawer-out {
+		0% {
+			@if $direction == ltr {
+				transform: translate(0px, 0px);
+			}
+
+			@if $direction == rtl {
+				transform: translate(0px, 0px);
+			}
+
+			@if $direction == ttb {
+				transform: translate(0px, 0px);
+			}
+
+			@if $direction == btt {
+				transform: translate(0px, 0);
+			}
+		}
+
+		100% {
+			@if $direction == ltr {
+				transform: translate(-100%, 0px);
+			}
+
+			@if $direction == rtl {
+				transform: translate(100%, 0px);
+			}
+
+			@if $direction == ttb {
+				transform: translate(0px, -100%);
+			}
+
+			@if $direction == btt {
+				transform: translate(0px, 100%);
+			}
+		}
+	}
+}
+
+@mixin animation-in($direction) {
+	.el-drawer__open &.#{$direction} {
+		animation: #{$direction}-drawer-in 0.3s 1ms;
+	}
+}
+
+@mixin animation-out($direction) {
+	&.#{$direction} {
+		animation: #{$direction}-drawer-out 0.3s;
+	}
+}
+
+@include drawer-animation(rtl);
+@include drawer-animation(ltr);
+@include drawer-animation(ttb);
+@include drawer-animation(btt);
+
+$directions: rtl, ltr, ttb, btt;
+
+@include mixins.b(drawer) {
+	position: absolute;
+	box-sizing: border-box;
+	background-color: var.$dialog-background-color;
+	display: flex;
+	flex-direction: column;
+	box-shadow: 0px 6px 16px rgb(68 28 23 / 6%);
+	overflow: hidden;
+	outline: 0;
+
+	@each $direction in $directions {
+		@include animation-out($direction);
+		@include animation-in($direction);
+	}
+
+	&__wrapper {
+		position: fixed;
+		top: 0;
+		right: 0;
+		bottom: 0;
+		left: 0;
+		overflow: hidden;
+		margin: 0;
+	}
+
+	&__header {
+		align-items: center;
+		color: rgb(114, 118, 123);
+		display: flex;
+		margin-bottom: 32px;
+		padding: var.$dialog-padding-primary;
+		padding-bottom: 0;
+		& > :first-child {
+			flex: 1;
+		}
+	}
+
+	&__title {
+		margin: 0;
+		flex: 1;
+		line-height: inherit;
+		font-size: 1rem;
+	}
+
+	&__close-btn {
+		border: none;
+		cursor: pointer;
+		font-size: var.$font-size-extra-large;
+		color: inherit;
+		background-color: transparent;
+	}
+
+	&__body {
+		flex: 1;
+		& > * {
+			box-sizing: border-box;
+		}
+	}
+
+	&.ltr,
+	&.rtl {
+		height: 100%;
+		top: 0;
+		bottom: 0;
+	}
+
+	&.ttb,
+	&.btt {
+		width: 100%;
+		left: 0;
+		right: 0;
+	}
+
+	&.ltr {
+		left: 0;
+		border-right: var(--border-base);
+	}
+
+	&.rtl {
+		right: 0;
+		border-left: var(--border-base);
+	}
+
+	&.ttb {
+		top: 0;
+	}
+
+	&.btt {
+		bottom: 0;
+	}
+}
+
+.el-drawer__container {
+	position: relative;
+	left: 0;
+	right: 0;
+	top: 0;
+	bottom: 0;
+	height: 100%;
+	width: 100%;
+}
+
+.el-drawer-fade-enter-active {
+	animation: el-drawer-fade-in 0.3s;
+}
+
+.el-drawer-fade-leave-active {
+	animation: el-drawer-fade-in 0.3s reverse;
+}

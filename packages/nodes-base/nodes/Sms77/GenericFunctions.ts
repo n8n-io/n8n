@@ -4,57 +4,51 @@ import {
 } from 'n8n-core';
 
 import {
-	ICredentialDataDecryptedObject,
 	IDataObject,
 	NodeApiError,
 	NodeOperationError,
 } from 'n8n-workflow';
 
+import {
+	OptionsWithUri,
+} from 'request';
+
 /**
- * Make an API request to MSG91
+ * Make an API request to Sms77
  *
  * @param {IHookFunctions | IExecuteFunctions} this
  * @param {string} method
- * @param {string} endpoint
- * @param {object} form
- * @param {object | undefined} qs
+ * @param {Endpoint} endpoint
+ * @param {object | undefined} data
  * @returns {Promise<any>}
  */
-export async function sms77ApiRequest(this: IHookFunctions | IExecuteFunctions, method: string, endpoint: string, form: IDataObject, qs?: IDataObject): Promise<any> { // tslint:disable-line:no-any
-	const credentials = this.getCredentials('sms77Api');
+export async function sms77ApiRequest(this: IHookFunctions | IExecuteFunctions, method: string, endpoint: string, body: IDataObject, qs: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
+	const credentials = await this.getCredentials('sms77Api');
 	if (credentials === undefined) {
 		throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
 	}
 
-	if ('GET' === method) {
-		qs = setPayload(credentials, qs);
-	} else {
-		form = setPayload(credentials, form);
-	}
-	const response = await this.helpers.request({
-		form,
+	const options: OptionsWithUri = {
+		headers: {
+			SentWith: 'n8n',
+			'X-Api-Key': credentials.apiKey,
+		},
+		qs,
+		uri: `https://gateway.sms77.io/api${endpoint}`,
 		json: true,
 		method,
-		qs,
-		uri: `https://gateway.sms77.io/api/${endpoint}`,
-	});
+	};
 
-	if ('100' !== response.success) {
+	if (Object.keys(body).length) {
+		options.form = body;
+		body.json = 1;
+	}
+
+	const response = await this.helpers.request(options);
+
+	if (response.success !== '100') {
 		throw new NodeApiError(this.getNode(), response, { message: 'Invalid sms77 credentials or API error!' });
 	}
 
 	return response;
-}
-
-
-function setPayload(credentials: ICredentialDataDecryptedObject, o?: IDataObject) {
-	if (!o) {
-		o = {};
-	}
-
-	o.p = credentials!.apiKey as string;
-	o.json = 1;
-	o.sendwith = 'n8n';
-
-	return o;
 }

@@ -256,7 +256,7 @@ export const reportFields = [
 								type: 'string',
 								default: '',
 								placeholder: 'ga:newUsers',
-								description: `String or <a href="https://support.google.com/analytics/answer/1034324?hl=en" target="_blank">regular expression</a> to match against.`,
+								description: `String or <a href="https://support.google.com/analytics/answer/1034324?hl=en">regular expression</a> to match against.`,
 							},
 						],
 					},
