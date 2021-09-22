@@ -9,10 +9,10 @@
 				<el-col :span="10" class="parameter-name">
 					{{credentialTypeNames[credentialTypeDescription.name]}}:
 				</el-col>
-				<el-col :span="12" class="parameter-value" :class="getIssues(credentialTypeDescription.name).length?'has-issues':''">
 
+				<el-col v-if="!isReadOnly" :span="12" class="parameter-value" :class="getIssues(credentialTypeDescription.name).length?'has-issues':''">
 					<div :style="credentialInputWrapperStyle(credentialTypeDescription.name)">
-						<n8n-select :value="getSelectedId(credentialTypeDescription.name)" :disabled="isReadOnly" @change="(value) => credentialSelected(credentialTypeDescription.name, value)" placeholder="Select Credential" size="small">
+						<n8n-select :value="getSelectedId(credentialTypeDescription.name)" @change="(value) => credentialSelected(credentialTypeDescription.name, value)" placeholder="Select Credential" size="small">
 							<n8n-option
 								v-for="(item) in credentialOptions[credentialTypeDescription.name]"
 								:key="item.id"
@@ -34,10 +34,13 @@
 							<font-awesome-icon icon="exclamation-triangle" />
 						</n8n-tooltip>
 					</div>
-
 				</el-col>
-				<el-col :span="2" class="parameter-value credential-action">
-					<font-awesome-icon v-if="isCredentialValid(credentialTypeDescription.name) && !isReadOnly" icon="pen" @click="editCredential(credentialTypeDescription.name)" class="update-credentials clickable" title="Update Credentials" />
+				<el-col v-if="!isReadOnly" :span="2" class="parameter-value credential-action">
+					<font-awesome-icon v-if="isCredentialValid(credentialTypeDescription.name)" icon="pen" @click="editCredential(credentialTypeDescription.name)" class="update-credentials clickable" title="Update Credentials" />
+				</el-col>
+
+				<el-col v-if="isReadOnly" class="readonly-container" >
+					<n8n-input disabled :value="selected && selected[credentialTypeDescription.name] && selected[credentialTypeDescription.name].name" size="small" />
 				</el-col>
 
 			</el-row>
@@ -329,6 +332,10 @@ export default mixins(
 		justify-content: center;
 		align-items: center;
 		color: var(--color-text-base);
+	}
+
+	.readonly-container {
+		padding-right: 0.5em;
 	}
 }
 
