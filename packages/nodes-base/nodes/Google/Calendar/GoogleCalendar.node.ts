@@ -238,6 +238,8 @@ export class GoogleCalendar implements INodeType {
 							'additionalFields',
 							i,
 						) as IDataObject;
+						const timezone = (additionalFields.timezone as string) || this.getTimezone();
+
 						if (additionalFields.maxAttendees) {
 							qs.maxAttendees = additionalFields.maxAttendees as number;
 						}
@@ -250,11 +252,11 @@ export class GoogleCalendar implements INodeType {
 						const body: IEvent = {
 							start: {
 								dateTime: start,
-								timeZone: additionalFields.timeZone || this.getTimezone(),
+								timeZone: timezone,
 							},
 							end: {
 								dateTime: end,
-								timeZone: additionalFields.timeZone || this.getTimezone(),
+								timeZone: timezone,
 							},
 						};
 						if (additionalFields.attendees) {
@@ -308,12 +310,12 @@ export class GoogleCalendar implements INodeType {
 						if (additionalFields.allday) {
 							body.start = {
 								date: moment(start)
-									.utc()
+									.tz(timezone)
 									.format('YYYY-MM-DD'),
 							};
 							body.end = {
 								date: moment(end)
-									.utc()
+									.tz(timezone)
 									.format('YYYY-MM-DD'),
 							};
 						}
@@ -344,7 +346,7 @@ export class GoogleCalendar implements INodeType {
 							if (additionalFields.repeatUntil) {
 								body.recurrence?.push(
 									`UNTIL=${moment(additionalFields.repeatUntil as string)
-										.utc()
+										.tz(timezone)
 										.format('YYYYMMDDTHHmmss')}Z`,
 								);
 							}
@@ -483,6 +485,8 @@ export class GoogleCalendar implements INodeType {
 							'updateFields',
 							i,
 						) as IDataObject;
+						const timezone = (updateFields.timezone as string) || this.getTimezone();
+
 						if (updateFields.maxAttendees) {
 							qs.maxAttendees = updateFields.maxAttendees as number;
 						}
@@ -496,13 +500,13 @@ export class GoogleCalendar implements INodeType {
 						if (updateFields.start) {
 							body.start = {
 								dateTime: updateFields.start,
-								timeZone: updateFields.timeZone || this.getTimezone(),
+								timeZone: timezone,
 							};
 						}
 						if (updateFields.end) {
 							body.end = {
 								dateTime: updateFields.end,
-								timeZone: updateFields.timeZone || this.getTimezone(),
+								timeZone: timezone,
 							};
 						}
 						if (updateFields.attendees) {
@@ -556,12 +560,12 @@ export class GoogleCalendar implements INodeType {
 						if (updateFields.allday && updateFields.start && updateFields.end) {
 							body.start = {
 								date: moment(updateFields.start as string)
-									.utc()
+									.tz(timezone)
 									.format('YYYY-MM-DD'),
 							};
 							body.end = {
 								date: moment(updateFields.end as string)
-									.utc()
+									.tz(timezone)
 									.format('YYYY-MM-DD'),
 							};
 						}
@@ -587,7 +591,7 @@ export class GoogleCalendar implements INodeType {
 							if (updateFields.repeatUntil) {
 								body.recurrence?.push(
 									`UNTIL=${moment(updateFields.repeatUntil as string)
-										.utc()
+										.tz(timezone)
 										.format('YYYYMMDDTHHmmss')}Z`,
 								);
 							}
