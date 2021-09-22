@@ -1,9 +1,15 @@
+/* eslint-disable @typescript-eslint/no-unsafe-return */
+/* eslint-disable @typescript-eslint/no-unsafe-member-access */
+/* eslint-disable @typescript-eslint/restrict-template-expressions */
+/* eslint-disable @typescript-eslint/no-unsafe-call */
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 import {
 	INode,
 	INodeCredentials,
 	INodeParameters,
 	INodePropertyOptions,
+	INodeTypeNameVersion,
 	INodeTypes,
 	IWorkflowExecuteAdditionalData,
 	Workflow,
@@ -21,27 +27,30 @@ export class LoadNodeParameterOptions {
 	workflow: Workflow;
 
 	constructor(
-		nodeTypeName: string,
+		nodeTypeNameAndVersion: INodeTypeNameVersion,
 		nodeTypes: INodeTypes,
 		path: string,
 		currentNodeParameters: INodeParameters,
 		credentials?: INodeCredentials,
 	) {
+		const nodeType = nodeTypes.getByNameAndVersion(
+			nodeTypeNameAndVersion.name,
+			nodeTypeNameAndVersion.version,
+		);
 		this.path = path;
-		const nodeType = nodeTypes.getByName(nodeTypeName);
-
 		if (nodeType === undefined) {
-			throw new Error(`The node-type "${nodeTypeName}"  is not known!`);
+			throw new Error(
+				`The node-type "${nodeTypeNameAndVersion.name} v${nodeTypeNameAndVersion.version}"  is not known!`,
+			);
 		}
 
 		const nodeData: INode = {
 			parameters: currentNodeParameters,
 			name: TEMP_NODE_NAME,
-			type: nodeTypeName,
-			typeVersion: 1,
+			type: nodeTypeNameAndVersion.name,
+			typeVersion: nodeTypeNameAndVersion.version,
 			position: [0, 0],
 		};
-
 		if (credentials) {
 			nodeData.credentials = credentials;
 		}
@@ -91,12 +100,13 @@ export class LoadNodeParameterOptions {
 	): Promise<INodePropertyOptions[]> {
 		const node = this.workflow.getNode(TEMP_NODE_NAME);
 
-		const nodeType = this.workflow.nodeTypes.getByName(node!.type);
+		const nodeType = this.workflow.nodeTypes.getByNameAndVersion(node!.type, node?.typeVersion);
 
 		if (
-			nodeType!.methods === undefined ||
-			nodeType!.methods.loadOptions === undefined ||
-			nodeType!.methods.loadOptions[methodName] === undefined
+			!nodeType ||
+			nodeType.methods === undefined ||
+			nodeType.methods.loadOptions === undefined ||
+			nodeType.methods.loadOptions[methodName] === undefined
 		) {
 			throw new Error(
 				`The node-type "${node!.type}" does not have the method "${methodName}" defined!`,
@@ -110,6 +120,6 @@ export class LoadNodeParameterOptions {
 			additionalData,
 		);
 
-		return nodeType!.methods.loadOptions[methodName].call(thisArgs);
+		return nodeType.methods.loadOptions[methodName].call(thisArgs);
 	}
 }

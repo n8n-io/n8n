@@ -571,7 +571,7 @@ export default mixins(
 				const resolvedNodeParameters = this.resolveParameter(currentNodeParameters) as INodeParameters;
 
 				try {
-					const options = await this.restApi().getNodeParameterOptions(this.node.type, this.path, this.remoteMethod, resolvedNodeParameters, this.node.credentials);
+					const options = await this.restApi().getNodeParameterOptions({name: this.node.type, version: this.node.typeVersion}, this.path, this.remoteMethod, resolvedNodeParameters, this.node.credentials);
 					this.remoteParameterOptions.push.apply(this.remoteParameterOptions, options);
 				} catch (error) {
 					this.remoteParameterOptionsLoadingIssues = error.message;
