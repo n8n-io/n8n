@@ -137,6 +137,11 @@ export const workflowRun = mixins(
 					startNodes.push(nodeName);
 				}
 
+				const isNewWorkflow = !this.$route.params.name;
+				if (isNewWorkflow) {
+					await this.saveCurrentWorkflow();
+				}
+
 				const workflowData = await this.getWorkflowDataToSave();
 
 				const startRunData: IStartRunData = {
