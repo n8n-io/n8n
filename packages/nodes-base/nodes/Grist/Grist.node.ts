@@ -60,8 +60,7 @@ export class Grist implements INodeType {
 			{
 				name: 'gristApi',
 				required: true,
-				// TODO: `getNodeParameter` needs to be implemented for `ICredentialTestFunctions`
-				// testedBy: 'gristApiTest',
+				testedBy: 'gristApiTest',
 			},
 		],
 		properties: operationFields,
@@ -79,48 +78,46 @@ export class Grist implements INodeType {
 			},
 		},
 
-		// credentialTest: {
-		// 	async gristApiTest(
-		// 		this: ICredentialTestFunctions,
-		// 		credential: ICredentialsDecrypted,
-		// 	): Promise<NodeCredentialTestResult> {
-		// 		const {
-		// 			apiKey,
-		// 			planType,
-		// 			customSubdomain,
-		// 		} = credential.data as GristCredentials;
+		credentialTest: {
+			async gristApiTest(
+				this: ICredentialTestFunctions,
+				credential: ICredentialsDecrypted,
+			): Promise<NodeCredentialTestResult> {
+				const {
+					apiKey,
+					planType,
+					customSubdomain,
+				} = credential.data as GristCredentials;
 
-		// 		const subdomain = planType === 'free' ? 'docs' : customSubdomain;
+				const subdomain = planType === 'free' ? 'docs' : customSubdomain;
 
-		// 		const docId = this.getNodeParameter('docId', 0) as string;
-		// 		const tableId = this.getNodeParameter('tableId', 0) as string;
-		// 		const endpoint = `/docs/${docId}/tables/${tableId}/records`;
+				const endpoint = '/orgs';
 
-		// 		const options: OptionsWithUri = {
-		// 			headers: {
-		// 				Authorization: `Bearer ${apiKey}`,
-		// 			},
-		// 			method: 'GET',
-		// 			uri: `https://${subdomain}.getgrist.com/api${endpoint}`,
-		// 			qs: { limit: 1 },
-		// 			body: {},
-		// 			json: true,
-		// 		};
+				const options: OptionsWithUri = {
+					headers: {
+						Authorization: `Bearer ${apiKey}`,
+					},
+					method: 'GET',
+					uri: `https://${subdomain}.getgrist.com/api${endpoint}`,
+					qs: { limit: 1 },
+					body: {},
+					json: true,
+				};
 
-		// 		try {
-		// 			await this.helpers.request(options);
-		// 			return {
-		// 				status: 'OK',
-		// 				message: 'Authentication successful',
-		// 			};
-		// 		} catch (error) {
-		// 			return {
-		// 				status: 'Error',
-		// 				message: error.message,
-		// 			};
-		// 		}
-		// 	},
-		// },
+				try {
+					await this.helpers.request(options);
+					return {
+						status: 'OK',
+						message: 'Authentication successful',
+					};
+				} catch (error) {
+					return {
+						status: 'Error',
+						message: error.message,
+					};
+				}
+			},
+		},
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
