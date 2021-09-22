@@ -1,7 +1,7 @@
 <template>
 	<SettingsView>
 		<div :class="$style.header">
-			<n8n-text type="heading" size="2xlarge">Users Settings</n8n-text>
+			<n8n-heading size="2xlarge">Users Settings</n8n-heading>
 		</div>
 		<div>
 		</div>

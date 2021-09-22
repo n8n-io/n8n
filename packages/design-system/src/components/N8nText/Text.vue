@@ -21,7 +21,7 @@ export default Vue.extend({
 	},
 	methods: {
 		getClass(props: {size: string, bold: boolean}) {
-			return `body-${props.size}${props.bold ? '-bold' : ''}`;
+			return `body-${props.size}${props.bold ? '-bold' : '-regular'}`;
 		},
 	},
 });

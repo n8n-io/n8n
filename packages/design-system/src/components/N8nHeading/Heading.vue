@@ -6,8 +6,8 @@
 
 <script lang="ts">
 import Vue from 'vue';
-export default Vue.extend({
-	name: 'n8n-text',
+export default {
+	name: 'n8n-heading',
 	props: {
 		bold: {
 			type: Boolean,
@@ -21,10 +21,10 @@ export default Vue.extend({
 	},
 	methods: {
 		getClass(props: {size: string, bold: boolean}) {
-			return `heading-${props.size}${props.bold ? '-bold' : ''}`;
+			return `heading-${props.size}${props.bold ? '-bold' : '-regular'}`;
 		},
 	},
-});
+};
 </script>
 
 <style lang="scss" module>
@@ -37,9 +37,13 @@ export default Vue.extend({
 }
 
 .heading-2xlarge {
-	composes: regular;
 	font-size: var(--font-size-2xl);
 	line-height: var(--font-line-height-compact);
+}
+
+.heading-2xlarge-regular {
+	composes: regular;
+	composes: heading-2xlarge;
 }
 
 .heading-2xlarge-bold {
@@ -48,9 +52,13 @@ export default Vue.extend({
 }
 
 .heading-xlarge {
-	composes: regular;
 	font-size: var(--font-size-xl);
 	line-height: var(--font-line-height-compact);
+}
+
+.heading-xlarge-regular {
+	composes: regular;
+	composes: heading-xlarge;
 }
 
 .heading-xlarge-bold {
@@ -59,9 +67,13 @@ export default Vue.extend({
 }
 
 .heading-large {
-	composes: regular;
 	font-size: var(--font-size-l);
 	line-height: var(--font-line-height-loose);
+}
+
+.heading-large-regular {
+	composes: regular;
+	composes: heading-large;
 }
 
 .heading-large-bold {
@@ -70,9 +82,13 @@ export default Vue.extend({
 }
 
 .heading-medium {
-	composes: regular;
 	font-size: var(--font-size-m);
 	line-height: var(--font-line-height-loose);
+}
+
+.heading-medium-regular {
+	composes: regular;
+	composes: heading-medium;
 }
 
 .heading-medium-bold {
@@ -81,9 +97,13 @@ export default Vue.extend({
 }
 
 .heading-small {
-	composes: regular;
 	font-size: var(--font-size-s);
 	line-height: var(--font-line-height-regular);
+}
+
+.heading-small-regular {
+	composes: regular;
+	composes: heading-small;
 }
 
 .heading-small-bold {

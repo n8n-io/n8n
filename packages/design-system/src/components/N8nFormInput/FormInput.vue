@@ -23,7 +23,14 @@
 		</div>
 		<div :class="$style.errors" v-if="validationError">
 			<span v-if="validationError">{{validationError}}</span>
-			<a v-if="documentationUrl && documentationText" :href="documentationUrl" target="_blank">{{ documentationText }}</a>
+			<n8n-link
+				v-if="documentationUrl && documentationText"
+				:href="documentationUrl"
+				:newWindow="true"
+				size="small"
+				theme="danger">
+					{{ documentationText }}
+			</n8n-link>
 		</div>
 		<div :class="$style.infoText" v-else-if="infoText">
 				<span size="small">{{infoText}}</span>

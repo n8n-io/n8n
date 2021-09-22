@@ -119,7 +119,7 @@ export default new Router({
 			component: ErrorView,
 			props: {
 				message: 'Oops, couldn’t find that',
-				errorCode: '404',
+				errorCode: 404,
 			},
 		},
 	],
