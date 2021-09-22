@@ -3,12 +3,19 @@ import {
 } from 'n8n-core';
 
 import {
+	ICredentialsDecrypted,
+	ICredentialTestFunctions,
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
+	NodeCredentialTestResult,
 } from 'n8n-workflow';
+
+import {
+	OptionsWithUri,
+} from 'request';
 
 import {
 	gristApiRequest,
@@ -28,6 +35,7 @@ import {
 	FieldsToSend,
 	GristColumns,
 	GristCreateRowPayload,
+	GristCredentials,
 	GristGetAllOptions,
 	GristUpdateRowPayload,
 	SendingOptions,
@@ -52,6 +60,8 @@ export class Grist implements INodeType {
 			{
 				name: 'gristApi',
 				required: true,
+				// TODO: `getNodeParameter` needs to be implemented for `ICredentialTestFunctions`
+				// testedBy: 'gristApiTest',
 			},
 		],
 		properties: operationFields,
@@ -68,6 +78,49 @@ export class Grist implements INodeType {
 				return columns.map(({ id }) => ({ name: id, value: id }));
 			},
 		},
+
+		// credentialTest: {
+		// 	async gristApiTest(
+		// 		this: ICredentialTestFunctions,
+		// 		credential: ICredentialsDecrypted,
+		// 	): Promise<NodeCredentialTestResult> {
+		// 		const {
+		// 			apiKey,
+		// 			planType,
+		// 			customSubdomain,
+		// 		} = credential.data as GristCredentials;
+
+		// 		const subdomain = planType === 'free' ? 'docs' : customSubdomain;
+
+		// 		const docId = this.getNodeParameter('docId', 0) as string;
+		// 		const tableId = this.getNodeParameter('tableId', 0) as string;
+		// 		const endpoint = `/docs/${docId}/tables/${tableId}/records`;
+
+		// 		const options: OptionsWithUri = {
+		// 			headers: {
+		// 				Authorization: `Bearer ${apiKey}`,
+		// 			},
+		// 			method: 'GET',
+		// 			uri: `https://${subdomain}.getgrist.com/api${endpoint}`,
+		// 			qs: { limit: 1 },
+		// 			body: {},
+		// 			json: true,
+		// 		};
+
+		// 		try {
+		// 			await this.helpers.request(options);
+		// 			return {
+		// 				status: 'OK',
+		// 				message: 'Authentication successful',
+		// 			};
+		// 		} catch (error) {
+		// 			return {
+		// 				status: 'Error',
+		// 				message: error.message,
+		// 			};
+		// 		}
+		// 	},
+		// },
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
