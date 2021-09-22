@@ -610,9 +610,6 @@ export const store = new Vuex.Store({
 			return state.activeExecutions;
 		},
 
-		getBaseUrl: (state): string => {
-			return state.baseUrl;
-		},
 		getRestUrl: (state): string => {
 			let endpoint = 'rest';
 			if (process.env.VUE_APP_ENDPOINT_REST) {

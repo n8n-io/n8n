@@ -1,3 +1,5 @@
+export const PUBLIC_RESOURCES_PATH = process.env.VUE_APP_PUBLIC_PATH || '/';
+
 export const MAX_DISPLAY_DATA_SIZE = 204800;
 export const MAX_DISPLAY_ITEMS_AUTO_ALL = 250;
 export const NODE_NAME_PREFIX = 'node-';

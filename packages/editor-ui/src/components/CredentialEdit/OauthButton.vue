@@ -2,7 +2,7 @@
 	<span>
 		<img
 			v-if="isGoogleOAuthType"
-			:src="basePath + 'google-signin-light.png'"
+			:src="PUBLIC_RESOURCES_PATH + 'google-signin-light.png'"
 			:class="$style.googleIcon"
 			alt="Sign in with Google"
 			@click.stop="$emit('click')"
@@ -19,16 +19,18 @@
 <script lang="ts">
 import Vue from 'vue';
 
+import { PUBLIC_RESOURCES_PATH } from '../../constants';
+
 export default Vue.extend({
 	props: {
 		isGoogleOAuthType: {
 			type: Boolean,
 		},
 	},
-	computed: {
-		basePath(): string {
-			return this.$store.getters.getBaseUrl;
-		},
+	data() {
+		return {
+			PUBLIC_RESOURCES_PATH,
+		};
 	},
 });
 </script>
