@@ -24,7 +24,7 @@
 					:bold="true"
 				>
 					<font-awesome-icon icon="info-circle" :class="$style.infoIcon"></font-awesome-icon>
-					<n8n-text>How to update your n8n version</n8n-text>
+					<span>How to update your n8n version</span>
 				</n8n-link>
 
 			</section>

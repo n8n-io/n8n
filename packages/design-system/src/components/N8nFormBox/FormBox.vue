@@ -44,7 +44,7 @@
 				v-if="redirectText && redirectLink"
 				:href="redirectLink"
 			>
-				<span>{{redirectText}}</span>
+				{{redirectText}}
 			</n8n-link>
 		</div>
 	</div>

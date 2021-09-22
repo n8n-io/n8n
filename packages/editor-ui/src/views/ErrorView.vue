@@ -3,12 +3,12 @@
 		<font-awesome-icon icon="exclamation-triangle" :class="$style.icon" />
 		<div :class="$style.message">
 			<div>
-				<n8n-text type="heading" size="2xlarge">
+				<n8n-heading size="2xlarge">
 					{{message}}
-				</n8n-text>
+				</n8n-heading>
 			</div>
 			<div>
-				<n8n-text type="body" size="large" v-if="errorCode">
+				<n8n-text size="large" v-if="errorCode">
 					{{errorCode}} error
 				</n8n-text>
 			</div>

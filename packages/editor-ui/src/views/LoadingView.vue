@@ -3,9 +3,9 @@
 		<div :class="$style.spinner">
 			<n8n-spinner />
 		</div>
-		<n8n-text type="heading">
+		<n8n-heading>
 			Loading
-		</n8n-text>
+		</n8n-heading>
 	</div>
 </template>
 

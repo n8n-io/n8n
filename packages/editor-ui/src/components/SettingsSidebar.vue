@@ -5,7 +5,7 @@
 				<i :class="$style.icon">
 					<font-awesome-icon icon="arrow-left" />
 				</i>
-				<n8n-text slot="title" type="heading" size="large" bold>Settings</n8n-text>
+				<n8n-heading slot="title" size="large" :bold="true">Settings</n8n-heading>
 			</n8n-menu-item>
 			<n8n-menu-item index="/settings/personal">
 				<i :class="$style.icon">

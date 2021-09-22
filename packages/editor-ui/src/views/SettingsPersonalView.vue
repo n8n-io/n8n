@@ -1,20 +1,20 @@
 <template>
 	<SettingsView>
 		<div :class="$style.header">
-			<n8n-text type="heading" size="2xlarge">Personal Settings</n8n-text>
+			<n8n-heading size="2xlarge">Personal Settings</n8n-heading>
 		</div>
 		<div>
 			<div :class="$style.sectionTitle">
-				<n8n-text type="heading" size="large">Basic information</n8n-text>
+				<n8n-heading size="large">Basic information</n8n-heading>
 			</div>
 		</div>
 		<div>
 			<div :class="$style.sectionTitle">
-				<n8n-text type="heading" size="large">Security</n8n-text>
+				<n8n-heading size="large">Security</n8n-heading>
 			</div>
 			<div>
 				<n8n-input-label label="Password">
-					<a><n8n-text size="medium">Change password</n8n-text></a>
+					<n8n-link>Change password</n8n-link>
 				</n8n-input-label>
 			</div>
 		</div>
