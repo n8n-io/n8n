@@ -133,7 +133,7 @@ export class DeepL implements INodeType {
 				}
 			} catch (error) {
 				if (this.continueOnFail()) {
-					responseData.push({ error: error.message });
+					responseData.push({ $error: error, $json: this.getInputData(i)});
 					continue;
 				}
 				throw error;
