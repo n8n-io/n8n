@@ -3,11 +3,14 @@ import {
 } from 'n8n-core';
 
 import {
+	ICredentialsDecrypted,
+	ICredentialTestFunctions,
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
+	NodeCredentialTestResult,
 } from 'n8n-workflow';
 
 import {
@@ -34,8 +37,10 @@ import {
 } from './descriptions';
 
 import {
+	SplunkCredentials,
 	SplunkFeedResponse,
 } from './types';
+import { OptionsWithUri } from 'request';
 
 export class Splunk implements INodeType {
 	description: INodeTypeDescription = {
@@ -56,6 +61,7 @@ export class Splunk implements INodeType {
 			{
 				name: 'splunkApi',
 				required: true,
+				testedBy: 'splunkApiTest',
 			},
 		],
 		properties: [
@@ -110,6 +116,46 @@ export class Splunk implements INodeType {
 				return Array.isArray(entries)
 					? entries.map(entry => ({ name: entry.title, value: entry.title }))
 					: [{ name: entries.title, value: entries.title }];
+			},
+		},
+		credentialTest: {
+			async splunkApiTest(
+				this: ICredentialTestFunctions,
+				credential: ICredentialsDecrypted,
+			): Promise<NodeCredentialTestResult> {
+				const {
+					authToken,
+					baseUrl,
+					allowUnauthorizedCerts,
+				} = credential.data as SplunkCredentials;
+
+				const endpoint = '/services/alerts/fired_alerts';
+
+				const options: OptionsWithUri = {
+					headers: {
+						'Authorization': `Bearer ${authToken}`,
+						'Content-Type': 'application/x-www-form-urlencoded',
+					},
+					method: 'GET',
+					form: {},
+					qs: {},
+					uri: `${baseUrl}${endpoint}`,
+					json: true,
+					rejectUnauthorized: !allowUnauthorizedCerts,
+				};
+
+				try {
+					await this.helpers.request(options);
+					return {
+						status: 'OK',
+						message: 'Authentication successful',
+					};
+				} catch (error) {
+					return {
+						status: 'Error',
+						message: error.message,
+					};
+				}
 			},
 		},
 	};
