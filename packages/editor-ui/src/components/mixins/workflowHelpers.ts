@@ -487,6 +487,7 @@ export const workflowHelpers = mixins(
 					if (openInNewWindow) {
 						const routeData = this.$router.resolve({name: 'NodeViewExisting', params: {name: workflowData.id}});
 						window.open(routeData.href, '_blank');
+						this.$store.commit('removeActiveAction', 'workflowSaving');
 						return true;
 					}
 
