@@ -156,7 +156,7 @@ export default mixins(
 					this.credentialSelected(credentialType, mutation.payload.id);
 				}
 				if (mutation.type === 'credentials/deleteCredential') {
-					this.credentialSelected(credentialType, mutation.payload.id);
+					this.clearSelectedCredential(credentialType);
 					this.stopListeningForNewCredentials();
 				}
 			});
@@ -166,6 +166,25 @@ export default mixins(
 			if (this.newCredentialUnsubscribe) {
 				this.newCredentialUnsubscribe();
 			}
+		},
+
+		clearSelectedCredential(credentialType: string) {
+			const node: INodeUi = this.node;
+
+			const credentials = {
+				...(node.credentials || {}),
+			};
+
+			delete credentials[credentialType];
+
+			const updateInformation: INodeUpdatePropertiesInformation = {
+				name: this.node.name,
+				properties: {
+					credentials,
+				},
+			};
+
+			this.$emit('credentialSelected', updateInformation);
 		},
 
 		credentialSelected (credentialType: string, credentialId: string | null | undefined) {
