@@ -99,7 +99,7 @@ export function parseAutoMappedInputs(
 }
 
 export function throwOnZeroDefinedFields(this: IExecuteFunctions, fields: GristDefinedFields) {
-	if (!fields || !fields.length) {
+	if (!fields?.length) {
 		throw new NodeOperationError(
 			this.getNode(),
 			'No defined data found. Please specify the data to send in \'Fields to Send\'.',
