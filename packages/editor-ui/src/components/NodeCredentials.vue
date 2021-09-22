@@ -177,7 +177,7 @@ export default mixins(
 			}
 
 			const selectedCredentials = this.$store.getters['credentials/getCredentialById'](credentialId);
-			const oldCredentials = this.node.credentials ? this.node.credentials[credentialType] : {};
+			const oldCredentials = this.node.credentials && this.node.credentials[credentialType] ? this.node.credentials[credentialType] : {};
 
 			selected = { id: selectedCredentials.id, name: selectedCredentials.name };
 
