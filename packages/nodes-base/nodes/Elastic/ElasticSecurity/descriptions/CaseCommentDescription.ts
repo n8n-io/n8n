@@ -310,6 +310,7 @@ export const caseCommentFields: INodeProperties[] = [
 	{
 		displayName: 'Comment',
 		name: 'comment',
+		description: 'Text to replace current comment message',
 		type: 'string',
 		required: true,
 		default: '',
