@@ -6,6 +6,7 @@ import {
 export class Magento2Api implements ICredentialType {
 	name = 'magento2Api';
 	displayName = 'Magento 2 API';
+	documentationUrl = 'magento2';
 	properties = [
 		{
 			displayName: 'Host',
