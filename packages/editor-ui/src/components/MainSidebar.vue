@@ -168,6 +168,7 @@ import { saveAs } from 'file-saver';
 import mixins from 'vue-typed-mixins';
 import { mapGetters } from 'vuex';
 import MenuItemsIterator from './MainSidebarMenuItemsIterator.vue';
+import { PUBLIC_RESOURCES_PATH } from '@/constants';
 
 const helpMenuItems: IMenuItem[] = [
 	{
@@ -223,7 +224,7 @@ export default mixins(
 		data () {
 			return {
 				aboutDialogVisible: false,
-				publicPath: process.env.VUE_APP_PUBLIC_PATH || '/',
+				publicPath: PUBLIC_RESOURCES_PATH,
 				credentialOpenDialogVisible: false,
 				executionsListDialogVisible: false,
 				stopExecutionInProgress: false,
