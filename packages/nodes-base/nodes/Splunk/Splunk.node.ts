@@ -40,7 +40,10 @@ import {
 	SplunkCredentials,
 	SplunkFeedResponse,
 } from './types';
-import { OptionsWithUri } from 'request';
+
+import {
+	OptionsWithUri,
+} from 'request';
 
 export class Splunk implements INodeType {
 	description: INodeTypeDescription = {
