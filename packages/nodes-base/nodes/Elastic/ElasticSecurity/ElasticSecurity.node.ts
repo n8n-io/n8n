@@ -3,12 +3,15 @@ import {
 } from 'n8n-core';
 
 import {
+	ICredentialsDecrypted,
+	ICredentialTestFunctions,
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
+	NodeCredentialTestResult,
 	NodeOperationError,
 } from 'n8n-workflow';
 
@@ -18,6 +21,7 @@ import {
 	getVersion,
 	handleListing,
 	throwOnEmptyUpdate,
+	tolerateTrailingSlash,
 } from './GenericFunctions';
 
 import {
@@ -35,7 +39,12 @@ import {
 	Connector,
 	ConnectorCreatePayload,
 	ConnectorType,
+	ElasticSecurityApiCredentials,
 } from './types';
+
+import {
+	OptionsWithUri,
+} from 'request';
 
 export class ElasticSecurity implements INodeType {
 	description: INodeTypeDescription = {
@@ -56,6 +65,7 @@ export class ElasticSecurity implements INodeType {
 			{
 				name: 'elasticSecurityApi',
 				required: true,
+				testedBy: 'elasticSecurityApiTest',
 			},
 		],
 		properties: [
@@ -106,6 +116,49 @@ export class ElasticSecurity implements INodeType {
 				const endpoint = '/cases/configure/connectors/_find';
 				const connectors = await elasticSecurityApiRequest.call(this, 'GET', endpoint) as Connector[];
 				return connectors.map(({ name, id }) => ({ name, value: id }));
+			},
+		},
+		credentialTest: {
+			async elasticSecurityApiTest(
+				this: ICredentialTestFunctions,
+				credential: ICredentialsDecrypted,
+			): Promise<NodeCredentialTestResult> {
+				const {
+					username,
+					password,
+					baseUrl: rawBaseUrl,
+				} = credential.data as ElasticSecurityApiCredentials;
+
+				const baseUrl = tolerateTrailingSlash(rawBaseUrl);
+
+				const token = Buffer.from(`${username}:${password}`).toString('base64');
+
+				const endpoint = '/cases/status';
+
+				const options: OptionsWithUri = {
+					headers: {
+						Authorization: `Basic ${token}`,
+						'kbn-xsrf': true,
+					},
+					method: 'GET',
+					body: {},
+					qs: {},
+					uri: `${baseUrl}/api${endpoint}`,
+					json: true,
+				};
+
+				try {
+					await this.helpers.request(options);
+					return {
+						status: 'OK',
+						message: 'Authentication successful',
+					};
+				} catch (error) {
+					return {
+						status: 'Error',
+						message: error.message,
+					};
+				}
 			},
 		},
 	};
@@ -256,8 +309,8 @@ export class ElasticSecurity implements INodeType {
 						} = this.getNodeParameter('filters', i) as IDataObject & { tags: string[], status: string };
 						const sortOptions = this.getNodeParameter('sortOptions', i) as IDataObject;
 
-						qs.sortField = sortOptions.sortField ?? 'createdAt'
-						qs.sortOrder = sortOptions.sortOrder ?? 'asc'
+						qs.sortField = sortOptions.sortField ?? 'createdAt';
+						qs.sortOrder = sortOptions.sortOrder ?? 'asc';
 
 						if (status) {
 							qs.status = status;

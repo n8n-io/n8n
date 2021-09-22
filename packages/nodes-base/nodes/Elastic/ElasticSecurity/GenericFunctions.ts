@@ -156,7 +156,7 @@ export async function getVersion(
 	return version;
 }
 
-function tolerateTrailingSlash(baseUrl: string) {
+export function tolerateTrailingSlash(baseUrl: string) {
 	return baseUrl.endsWith('/')
 		? baseUrl.substr(0, baseUrl.length - 1)
 		: baseUrl;
