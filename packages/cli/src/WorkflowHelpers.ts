@@ -389,6 +389,8 @@ export async function getStaticDataById(workflowId: string | number) {
 // Checking if credentials of old format are in use and run a DB check if they might exist uniquely
 export async function replaceInvalidCredentials(workflow: WorkflowEntity): Promise<WorkflowEntity> {
 	const { nodes } = workflow;
+	if (!nodes) return workflow;
+
 	// caching
 	const credentialsByName: Record<string, Record<string, INodeCredentialsDetails>> = {};
 	const credentialsById: Record<string, Record<string, INodeCredentialsDetails>> = {};
@@ -415,7 +417,7 @@ export async function replaceInvalidCredentials(workflow: WorkflowEntity): Promi
 						name,
 						type: nodeCredentialType,
 					});
-					// if credential name-type combination is unique, take it
+					// if credential name-type combination is unique, use it
 					if (credentials?.length === 1) {
 						credentialsByName[nodeCredentialType][name] = {
 							id: credentials[0].id.toString(),

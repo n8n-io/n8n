@@ -1971,9 +1971,7 @@ export default mixins(
 						}
 					}
 
-					if (node.credentials) {
-						this.checkCredentials(node);
-					}
+					this.checkCredentials(node);
 
 					foundNodeIssues = this.getNodeIssues(nodeType, node);
 
