@@ -1,4 +1,5 @@
-export const PUBLIC_RESOURCES_PATH = process.env.VUE_APP_PUBLIC_PATH || '/';
+const publicPath = process.env.VUE_APP_PUBLIC_PATH;
+export const PUBLIC_RESOURCES_PATH = publicPath && publicPath !== '/%BASE_PATH%/' ? publicPath : '/';
 
 export const MAX_DISPLAY_DATA_SIZE = 204800;
 export const MAX_DISPLAY_ITEMS_AUTO_ALL = 250;
