@@ -27,6 +27,9 @@ export const connectorOperations: INodeProperties[] = [
 ];
 
 export const connectorFields: INodeProperties[] = [
+	// ----------------------------------------
+	//           connector: create
+	// ----------------------------------------
 	{
 		displayName: 'Connector Name',
 		name: 'name',

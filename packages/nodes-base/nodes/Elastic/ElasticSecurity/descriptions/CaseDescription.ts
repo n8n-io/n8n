@@ -57,6 +57,9 @@ export const caseOperations: INodeProperties[] = [
 ];
 
 export const caseFields: INodeProperties[] = [
+	// ----------------------------------------
+	//             case: create
+	// ----------------------------------------
 	{
 		displayName: 'Title',
 		name: 'title',
