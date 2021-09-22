@@ -43,7 +43,7 @@ export const caseOperations: INodeProperties[] = [
 			},
 			{
 				name: 'Get Summary',
-				value: 'getCaseActivity',
+				value: 'getStatus',
 				description: 'Retrieve a summary of all case activity',
 			},
 			{
@@ -575,27 +575,6 @@ export const caseFields: INodeProperties[] = [
 				],
 			},
 		],
-	},
-
-	// ----------------------------------------
-	//             case: getStatus
-	// ----------------------------------------
-	{
-		displayName: 'Case ID',
-		name: 'caseId',
-		type: 'string',
-		required: true,
-		default: '',
-		displayOptions: {
-			show: {
-				resource: [
-					'case',
-				],
-				operation: [
-					'getStatus',
-				],
-			},
-		},
 	},
 
 	// ----------------------------------------

@@ -284,13 +284,13 @@ export class ElasticSecurity implements INodeType {
 						const caseId = this.getNodeParameter('caseId', i);
 						responseData = await elasticSecurityApiRequest.call(this, 'GET', `/cases/${caseId}`);
 
-					} else if (operation === 'getCaseActivity') {
+					} else if (operation === 'getStatus') {
 
 						// ----------------------------------------
-						//          case: getCaseActivity
+						//            case: getStatus
 						// ----------------------------------------
 
-						// https://www.elastic.co/guide/en/security/current/cases-api-get-case-activity.html
+						// https://www.elastic.co/guide/en/security/current/cases-api-get-status.html
 
 						responseData = await elasticSecurityApiRequest.call(this, 'GET', '/cases/status');
 
