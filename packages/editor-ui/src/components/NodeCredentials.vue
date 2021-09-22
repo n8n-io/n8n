@@ -37,7 +37,7 @@
 
 				</el-col>
 				<el-col :span="2" class="parameter-value credential-action">
-					<font-awesome-icon v-if="isCredentialValid(credentialTypeDescription.name)" icon="pen" @click="editCredential(credentialTypeDescription.name)" class="update-credentials clickable" title="Update Credentials" />
+					<font-awesome-icon v-if="isCredentialValid(credentialTypeDescription.name) && !isReadOnly" icon="pen" @click="editCredential(credentialTypeDescription.name)" class="update-credentials clickable" title="Update Credentials" />
 				</el-col>
 
 			</el-row>
