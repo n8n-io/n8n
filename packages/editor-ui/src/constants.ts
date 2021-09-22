@@ -20,6 +20,7 @@ export const DUPLICATE_MODAL_KEY = 'duplicate';
 export const TAGS_MANAGER_MODAL_KEY = 'tagsManager';
 export const WORKLOW_OPEN_MODAL_KEY = 'workflowOpen';
 export const VERSIONS_MODAL_KEY = 'versions';
+export const WORKFLOW_SETTINGS_MODAL_KEY = 'settings';
 export const CREDENTIAL_EDIT_MODAL_KEY = 'editCredential';
 export const CREDENTIAL_SELECT_MODAL_KEY = 'selectCredential';
 
