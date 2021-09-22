@@ -1,6 +1,6 @@
 import {
 	ICredentialType,
-	NodePropertyTypes,
+	INodeProperties,
 } from 'n8n-workflow';
 
 export class MicrosoftTeamsOAuth2Api implements ICredentialType {
@@ -10,12 +10,12 @@ export class MicrosoftTeamsOAuth2Api implements ICredentialType {
 	];
 	displayName = 'Microsoft Teams OAuth2 API';
 	documentationUrl = 'microsoft';
-	properties = [
+	properties: INodeProperties[] = [
 		//https://docs.microsoft.com/en-us/azure/active-directory/develop/v2-permissions-and-consent
 		{
 			displayName: 'Scope',
 			name: 'scope',
-			type: 'hidden' as NodePropertyTypes,
+			type: 'hidden',
 			default: 'openid offline_access User.ReadWrite.All Group.ReadWrite.All',
 		},
 	];

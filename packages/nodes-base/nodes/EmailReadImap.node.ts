@@ -35,7 +35,7 @@ export class EmailReadImap implements INodeType {
 		icon: 'fa:inbox',
 		group: ['trigger'],
 		version: 1,
-		description: 'Triggers the workflow when a new email gets received',
+		description: 'Triggers the workflow when a new email is received',
 		defaults: {
 			name: 'IMAP Email',
 			color: '#44AA22',
@@ -177,7 +177,7 @@ export class EmailReadImap implements INodeType {
 
 
 	async trigger(this: ITriggerFunctions): Promise<ITriggerResponse> {
-		const credentials = this.getCredentials('imap');
+		const credentials = await this.getCredentials('imap');
 
 		if (credentials === undefined) {
 			throw new NodeOperationError(this.getNode(), 'No credentials got returned!');

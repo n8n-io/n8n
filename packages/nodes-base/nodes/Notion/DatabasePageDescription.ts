@@ -340,6 +340,20 @@ export const databasePageFields = [
 						description: 'Weather or not you want to define a date range.',
 					},
 					{
+						displayName: 'Include Time',
+						name: 'includeTime',
+						displayOptions: {
+							show: {
+								type: [
+									'date',
+								],
+							},
+						},
+						type: 'boolean',
+						default: true,
+						description: 'Weather or not to include the time in the date.',
+					},
+					{
 						displayName: 'Date',
 						name: 'date',
 						displayOptions: {
@@ -391,6 +405,23 @@ export const databasePageFields = [
 						description: `
 						An ISO 8601 formatted date, with optional time. Represents the end of a date range.`,
 					},
+					{
+						displayName: 'Timezone',
+						name: 'timezone',
+						type: 'options',
+						displayOptions: {
+							show: {
+								type: [
+									'date',
+								],
+							},
+						},
+						typeOptions: {
+							loadOptionsMethod: 'getTimezones',
+						},
+						default: 'default',
+						description: 'Time zone to use. By default n8n timezone is used.',
+					},
 				],
 			},
 		],
@@ -418,7 +449,7 @@ export const databasePageFields = [
 		description: 'The ID of the databasePage to update.',
 	},
 	{
-		displayName: 'Simple',
+		displayName: 'Simplify Response',
 		name: 'simple',
 		type: 'boolean',
 		displayOptions: {
@@ -432,7 +463,7 @@ export const databasePageFields = [
 			},
 		},
 		default: true,
-		description: 'When set to true a simplify version of the response will be used else the raw data.',
+		description: 'Return a simplified version of the response instead of the raw data.',
 	},
 	{
 		displayName: 'Properties',
@@ -686,6 +717,20 @@ export const databasePageFields = [
 						description: 'Weather or not you want to define a date range.',
 					},
 					{
+						displayName: 'Include Time',
+						name: 'includeTime',
+						displayOptions: {
+							show: {
+								type: [
+									'date',
+								],
+							},
+						},
+						type: 'boolean',
+						default: true,
+						description: 'Weather or not to include the time in the date.',
+					},
+					{
 						displayName: 'Date',
 						name: 'date',
 						displayOptions: {
@@ -736,6 +781,23 @@ export const databasePageFields = [
 						default: '',
 						description: `
 						An ISO 8601 formatted date, with optional time. Represents the end of a date range.`,
+					},
+					{
+						displayName: 'Timezone',
+						name: 'timezone',
+						type: 'options',
+						displayOptions: {
+							show: {
+								type: [
+									'date',
+								],
+							},
+						},
+						typeOptions: {
+							loadOptionsMethod: 'getTimezones',
+						},
+						default: 'default',
+						description: 'Time zone to use. By default n8n timezone is used.',
 					},
 				],
 			},

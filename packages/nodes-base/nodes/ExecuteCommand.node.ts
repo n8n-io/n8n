@@ -3,6 +3,7 @@ import {
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
+	NodeOperationError
 } from 'n8n-workflow';
 
 import { exec } from 'child_process';
@@ -24,6 +25,7 @@ export interface IExecReturnData {
  */
 function execPromise(command: string): Promise<IExecReturnData> {
 	const returnData: IExecReturnData = {
+		error: undefined,
 		exitCode: 0,
 		stderr: '',
 		stdout: '',
@@ -51,7 +53,7 @@ export class ExecuteCommand implements INodeType {
 		icon: 'fa:terminal',
 		group: ['transform'],
 		version: 1,
-		description: 'Executes a command on the host.',
+		description: 'Executes a command on the host',
 		defaults: {
 			name: 'Execute Command',
 			color: '#886644',
@@ -94,24 +96,39 @@ export class ExecuteCommand implements INodeType {
 
 		const returnItems: INodeExecutionData[] = [];
 		for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
-			command = this.getNodeParameter('command', itemIndex) as string;
 
-			const {
-				// error, TODO: Later make it possible to select if it should fail on error or not
-				exitCode,
-				stdout,
-				stderr,
-			} = await execPromise(command);
+			try{
 
-			returnItems.push(
-				{
-					json: {
-						exitCode,
-						stderr,
-						stdout,
+				command = this.getNodeParameter('command', itemIndex) as string;
+
+				const {
+					error,
+					exitCode,
+					stdout,
+					stderr,
+				} = await execPromise(command);
+
+				if (error !== undefined) {
+					throw new NodeOperationError(this.getNode(), error.message);
+				}
+
+				returnItems.push(
+					{
+						json: {
+							exitCode,
+							stderr,
+							stdout,
+						},
 					},
-				},
-			);
+				);
+
+			} catch (error) {
+				if (this.continueOnFail()) {
+					returnItems.push({json:{ error: error.message }});
+					continue;
+				}
+				throw error;
+			}
 		}
 
 		return this.prepareOutputData(returnItems);

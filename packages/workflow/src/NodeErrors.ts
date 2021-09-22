@@ -1,5 +1,13 @@
-import { INode, IRawErrorObject, IStatusCodeMessages} from '.';
+/* eslint-disable @typescript-eslint/no-shadow */
+/* eslint-disable @typescript-eslint/no-unsafe-call */
+/* eslint-disable no-param-reassign */
+/* eslint-disable @typescript-eslint/no-unsafe-member-access */
+/* eslint-disable @typescript-eslint/no-unsafe-return */
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
+// eslint-disable-next-line max-classes-per-file
 import { parseString } from 'xml2js';
+// eslint-disable-next-line import/no-cycle
+import { INode, IStatusCodeMessages, JsonObject } from '.';
 
 /**
  * Top-level properties where an error message can be found in an API response.
@@ -33,7 +41,14 @@ const ERROR_MESSAGE_PROPERTIES = [
 /**
  * Top-level properties where an HTTP error code can be found in an API response.
  */
-const ERROR_STATUS_PROPERTIES = ['statusCode', 'status', 'code', 'status_code', 'errorCode', 'error_code'];
+const ERROR_STATUS_PROPERTIES = [
+	'statusCode',
+	'status',
+	'code',
+	'status_code',
+	'errorCode',
+	'error_code',
+];
 
 /**
  * Properties where a nested object can be found in an API response.
@@ -46,11 +61,14 @@ const ERROR_NESTING_PROPERTIES = ['error', 'err', 'response', 'body', 'data'];
  */
 abstract class NodeError extends Error {
 	description: string | null | undefined;
-	cause: Error | IRawErrorObject;
+
+	cause: Error | JsonObject;
+
 	node: INode;
+
 	timestamp: number;
 
-	constructor(node: INode, error: Error | IRawErrorObject) {
+	constructor(node: INode, error: Error | JsonObject) {
 		super();
 		this.name = this.constructor.name;
 		this.cause = error;
@@ -72,7 +90,9 @@ abstract class NodeError extends Error {
 	 * (2) if an array,
 	 * 		its string or number elements are collected as a long string,
 	 * 		its object elements are traversed recursively (restart this function
-	 *    with each object as a starting point)
+	 *    with each object as a starting point), or
+	 * (3) if it is an object, it traverses the object and nested ones recursively
+	 * 		based on the `potentialKeys` and returns a string if found.
 	 *
 	 * If nothing found via `potentialKeys` this method iterates over `traversalKeys` and
 	 * if the value at the key is a traversable object, it restarts with the object as the
@@ -83,27 +103,31 @@ abstract class NodeError extends Error {
 	 * Otherwise, if all the paths have been exhausted and no value is eligible, `null` is
 	 * returned.
 	 *
-	 * @param {IRawErrorObject} error
+	 * @param {JsonObject} error
 	 * @param {string[]} potentialKeys
 	 * @param {string[]} traversalKeys
 	 * @returns {string | null}
 	 */
 	protected findProperty(
-		error: IRawErrorObject,
+		error: JsonObject,
 		potentialKeys: string[],
-		traversalKeys: string[],
+		traversalKeys: string[] = [],
 	): string | null {
-		for(const key of potentialKeys) {
+		// eslint-disable-next-line no-restricted-syntax
+		for (const key of potentialKeys) {
 			if (error[key]) {
 				if (typeof error[key] === 'string') return error[key] as string;
+				// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
 				if (typeof error[key] === 'number') return error[key]!.toString();
 				if (Array.isArray(error[key])) {
 					// @ts-ignore
-					const resolvedErrors: string[] = error[key].map((error) => {
+					const resolvedErrors: string[] = error[key]
+						// @ts-ignore
+						.map((error) => {
 							if (typeof error === 'string') return error;
 							if (typeof error === 'number') return error.toString();
 							if (this.isTraversableObject(error)) {
-								return this.findProperty(error, potentialKeys, traversalKeys);
+								return this.findProperty(error, potentialKeys);
 							}
 							return null;
 						})
@@ -114,12 +138,19 @@ abstract class NodeError extends Error {
 					}
 					return resolvedErrors.join(' | ');
 				}
+				if (this.isTraversableObject(error[key])) {
+					const property = this.findProperty(error[key] as JsonObject, potentialKeys);
+					if (property) {
+						return property;
+					}
+				}
 			}
 		}
 
+		// eslint-disable-next-line no-restricted-syntax
 		for (const key of traversalKeys) {
 			if (this.isTraversableObject(error[key])) {
-				const property = this.findProperty(error[key] as IRawErrorObject, potentialKeys, traversalKeys);
+				const property = this.findProperty(error[key] as JsonObject, potentialKeys, traversalKeys);
 				if (property) {
 					return property;
 				}
@@ -132,8 +163,38 @@ abstract class NodeError extends Error {
 	/**
 	 * Check if a value is an object with at least one key, i.e. it can be traversed.
 	 */
-	private isTraversableObject(value: any): value is IRawErrorObject { // tslint:disable-line:no-any
-		return value && typeof value === 'object' && !Array.isArray(value) && !!Object.keys(value).length;
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any
+	protected isTraversableObject(value: any): value is JsonObject {
+		return (
+			value && typeof value === 'object' && !Array.isArray(value) && !!Object.keys(value).length
+		);
+	}
+
+	/**
+	 * Remove circular references from objects.
+	 */
+	protected removeCircularRefs(obj: JsonObject, seen = new Set()) {
+		seen.add(obj);
+		Object.entries(obj).forEach(([key, value]) => {
+			if (this.isTraversableObject(value)) {
+				// eslint-disable-next-line @typescript-eslint/no-unused-expressions
+				seen.has(value)
+					? (obj[key] = { circularReference: true })
+					: this.removeCircularRefs(value, seen);
+				return;
+			}
+			if (Array.isArray(value)) {
+				value.forEach((val, index) => {
+					if (seen.has(val)) {
+						value[index] = { circularReference: true };
+						return;
+					}
+					if (this.isTraversableObject(val)) {
+						this.removeCircularRefs(val, seen);
+					}
+				});
+			}
+		});
 	}
 }
 
@@ -141,12 +202,15 @@ abstract class NodeError extends Error {
  * Class for instantiating an operational error, e.g. an invalid credentials error.
  */
 export class NodeOperationError extends NodeError {
-
-	constructor(node: INode, error: Error | string) {
+	constructor(node: INode, error: Error | string, options?: { description: string }) {
 		if (typeof error === 'string') {
 			error = new Error(error);
 		}
 		super(node, error);
+
+		if (options?.description) {
+			this.description = options.description;
+		}
 	}
 }
 
@@ -178,10 +242,19 @@ export class NodeApiError extends NodeError {
 
 	constructor(
 		node: INode,
-		error: IRawErrorObject,
-		{ message, description, httpCode, parseXml }: { message?: string, description?: string, httpCode?: string, parseXml?: boolean } = {},
+		error: JsonObject,
+		{
+			message,
+			description,
+			httpCode,
+			parseXml,
+		}: { message?: string; description?: string; httpCode?: string; parseXml?: boolean } = {},
 	) {
 		super(node, error);
+		if (error.error) {
+			// only for request library error
+			this.removeCircularRefs(error.error as JsonObject);
+		}
 		if (message) {
 			this.message = message;
 			this.description = description;
@@ -201,11 +274,17 @@ export class NodeApiError extends NodeError {
 	}
 
 	private setDescriptionFromXml(xml: string) {
+		// eslint-disable-next-line @typescript-eslint/naming-convention
 		parseString(xml, { explicitArray: false }, (_, result) => {
 			if (!result) return;
 
 			const topLevelKey = Object.keys(result)[0];
-			this.description = this.findProperty(result[topLevelKey], ERROR_MESSAGE_PROPERTIES, ['Error'].concat(ERROR_NESTING_PROPERTIES));
+			this.description = this.findProperty(
+				// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+				result[topLevelKey],
+				ERROR_MESSAGE_PROPERTIES,
+				['Error'].concat(ERROR_NESTING_PROPERTIES),
+			);
 		});
 	}
 
@@ -215,7 +294,6 @@ export class NodeApiError extends NodeError {
 	 * @returns {void}
 	 */
 	private setMessage() {
-
 		if (!this.httpCode) {
 			this.httpCode = null;
 			this.message = UNKNOWN_ERROR_MESSAGE;

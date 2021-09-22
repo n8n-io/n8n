@@ -233,12 +233,14 @@ export default mixins(
 					this.update();
 				} else {
 					// If no position got found add it to end
-					let newValue = this.value;
-					if (newValue !== '=') {
-						newValue += ` `;
+					let newValue = this.getValue();
+					if (newValue === '=' || newValue === '=0') {
+						newValue = `{{${eventData.variable}}}\n`;
+					} else {
+						newValue += ` {{${eventData.variable}}}\n`;
 					}
-					newValue += `{{${eventData.variable}}}\n`;
-					this.$emit('change', newValue);
+
+					this.$emit('change', newValue, true);
 					if (!this.resolvedValue) {
 						Vue.nextTick(() => {
 							this.initValue();
@@ -260,9 +262,7 @@ export default mixins(
 				// Convert the expression string into a Quill Operations
 				const editorOperations: DeltaOperation[] = [];
 				currentValue.replace(/\{\{(.*?)\}\}/ig, '*%%#_@^$1*%%#_@').split('*%%#_@').forEach((value: string) => {
-					if (!value) {
-
-					} else if (value.charAt(0) === '^') {
+					if (value && value.charAt(0) === '^') {
 						// Is variable
 						let displayValue = `{{${value.slice(1)}}}` as string | number | boolean | null | undefined;
 						if (this.resolvedValue) {

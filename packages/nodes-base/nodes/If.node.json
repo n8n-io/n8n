@@ -29,6 +29,26 @@
 				"url": "https://n8n.io/blog/why-business-process-automation-with-n8n-can-change-your-daily-life/"
 			},
 			{
+				"label": "How to build a low-code, self-hosted URL shortener in 3 steps",
+				"icon": "🔗",
+				"url": "https://n8n.io/blog/how-to-build-a-low-code-self-hosted-url-shortener/"
+			},
+			{
+				"label": "Automate your data processing pipeline in 9 steps",
+				"icon": "⚙️",
+				"url": "https://n8n.io/blog/automate-your-data-processing-pipeline-in-9-steps-with-n8n/"
+			},
+			{
+				"label": "5 tasks you can automate with the new Notion API ",
+				"icon": "⚡️",
+				"url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/"
+			},
+			{
+				"label": "15 Google apps you can combine and automate to increase productivity",
+				"icon": "💡",
+				"url": "https://n8n.io/blog/automate-google-apps-for-productivity/"
+			},
+			{
 				"label": "5 workflow automations for Mattermost that we love at n8n",
 				"icon": "🤖",
 				"url": "https://n8n.io/blog/5-workflow-automations-for-mattermost-that-we-love-at-n8n/"
@@ -48,6 +68,19 @@
 				"icon": "🎖",
 				"url": "https://n8n.io/blog/benefits-of-automation-and-n8n-an-interview-with-hubspots-hugh-durkin/"
 			}
+		]
+	},
+	"alias": [
+		"Router",
+		"Filter",
+		"Condition",
+		"Logic",
+		"Boolean",
+		"Branch"
+	],
+	"subcategories": {
+		"Core Nodes": [
+			"Flow"
 		]
 	}
 }

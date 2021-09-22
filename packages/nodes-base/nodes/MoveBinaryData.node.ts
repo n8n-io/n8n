@@ -49,7 +49,7 @@ export class MoveBinaryData implements INodeType {
 		group: ['transform'],
 		version: 1,
 		subtitle: '={{$parameter["mode"]==="binaryToJson" ? "Binary to JSON" : "JSON to Binary"}}',
-		description: 'Move data between binary and JSON properties.',
+		description: 'Move data between binary and JSON properties',
 		defaults: {
 			name: 'Move Binary Data',
 			color: '#7722CC',
@@ -299,7 +299,7 @@ export class MoveBinaryData implements INodeType {
 						name: 'keepSource',
 						type: 'boolean',
 						default: false,
-						description: 'If the source key should be kept. By default does it get deleted.',
+						description: 'If the source key should be kept. By default it will be deleted.',
 					},
 					{
 						displayName: 'Keep As Base64',

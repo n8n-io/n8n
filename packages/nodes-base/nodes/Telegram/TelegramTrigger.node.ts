@@ -27,7 +27,7 @@ export class TelegramTrigger implements INodeType {
 		group: ['trigger'],
 		version: 1,
 		subtitle: '=Updates: {{$parameter["updates"].join(", ")}}',
-		description: 'Starts the workflow on a Telegram update.',
+		description: 'Starts the workflow on a Telegram update',
 		defaults: {
 			name: 'Telegram Trigger',
 			color: '#0088cc',
@@ -210,7 +210,7 @@ export class TelegramTrigger implements INodeType {
 
 	async webhook(this: IWebhookFunctions): Promise<IWebhookResponseData> {
 
-		const credentials = this.getCredentials('telegramApi') as IDataObject;
+		const credentials = await this.getCredentials('telegramApi') as IDataObject;
 
 		const bodyData = this.getBodyData() as IEvent;
 

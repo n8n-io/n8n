@@ -31,7 +31,7 @@ export class MongoDb implements INodeType {
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const { database, connectionString } = validateAndResolveMongoCredentials(
 			this,
-			this.getCredentials('mongoDb'),
+			await this.getCredentials('mongoDb'),
 		);
 
 		const client: MongoClient = await MongoClient.connect(connectionString, {
@@ -51,67 +51,96 @@ export class MongoDb implements INodeType {
 			//         delete
 			// ----------------------------------
 
-			const { deletedCount } = await mdb
-				.collection(this.getNodeParameter('collection', 0) as string)
-				.deleteMany(JSON.parse(this.getNodeParameter('query', 0) as string));
+			try {
+				const { deletedCount } = await mdb
+					.collection(this.getNodeParameter('collection', 0) as string)
+					.deleteMany(JSON.parse(this.getNodeParameter('query', 0) as string));
 
-			returnItems = this.helpers.returnJsonArray([{ deletedCount }]);
+				returnItems = this.helpers.returnJsonArray([{ deletedCount }]);
+			} catch (error) {
+				if (this.continueOnFail()) {
+					returnItems = this.helpers.returnJsonArray({ error: error.message });
+				} else {
+					throw error;
+				}
+			}
 
 		} else if (operation === 'find') {
 			// ----------------------------------
 			//         find
 			// ----------------------------------
 
-			let query = mdb
-				.collection(this.getNodeParameter('collection', 0) as string)
-				.find(JSON.parse(this.getNodeParameter('query', 0) as string));
+			try {
+				const queryParameter = JSON.parse(this.getNodeParameter('query', 0) as string);
 
-			const options = this.getNodeParameter('options', 0) as IDataObject;
-			const limit = options.limit as number;
-			const skip = options.skip as number;
-			const sort = options.sort && JSON.parse(options.sort as string);
-			if (skip > 0) {
-				query = query.skip(skip);
-			}
-			if (limit > 0) {
-				query = query.limit(limit);
-			}
-			if (sort && Object.keys(sort).length !== 0 && sort.constructor === Object) {
-				query = query.sort(sort);
-			}
-			const queryResult = await query.toArray();
+				if (queryParameter._id && typeof queryParameter._id === 'string') {
+					queryParameter._id = new ObjectID(queryParameter._id);
+				}
 
-			returnItems = this.helpers.returnJsonArray(queryResult as IDataObject[]);
+				let query = mdb
+					.collection(this.getNodeParameter('collection', 0) as string)
+					.find(queryParameter);
+
+				const options = this.getNodeParameter('options', 0) as IDataObject;
+				const limit = options.limit as number;
+				const skip = options.skip as number;
+				const sort = options.sort && JSON.parse(options.sort as string);
+				if (skip > 0) {
+					query = query.skip(skip);
+				}
+				if (limit > 0) {
+					query = query.limit(limit);
+				}
+				if (sort && Object.keys(sort).length !== 0 && sort.constructor === Object) {
+					query = query.sort(sort);
+				}
+				const queryResult = await query.toArray();
+
+				returnItems = this.helpers.returnJsonArray(queryResult as IDataObject[]);
+			} catch (error) {
+				if (this.continueOnFail()) {
+					returnItems = this.helpers.returnJsonArray({ error: error.message } );
+				} else {
+					throw error;
+				}
+			}
 		} else if (operation === 'insert') {
 			// ----------------------------------
 			//         insert
 			// ----------------------------------
+			try {
+				// Prepare the data to insert and copy it to be returned
+				const fields = (this.getNodeParameter('fields', 0) as string)
+					.split(',')
+					.map(f => f.trim())
+					.filter(f => !!f);
 
-			// Prepare the data to insert and copy it to be returned
-			const fields = (this.getNodeParameter('fields', 0) as string)
-				.split(',')
-				.map(f => f.trim())
-				.filter(f => !!f);
+				const options = this.getNodeParameter('options', 0) as IDataObject;
+				const insertItems = getItemCopy(items, fields);
 
-			const options = this.getNodeParameter('options', 0) as IDataObject;
-			const insertItems = getItemCopy(items, fields);
+				if (options.dateFields) {
+					handleDateFields(insertItems, options.dateFields as string);
+				}
 
-			if (options.dateFields) {
-				handleDateFields(insertItems, options.dateFields as string);
-			}
+				const { insertedIds } = await mdb
+					.collection(this.getNodeParameter('collection', 0) as string)
+					.insertMany(insertItems);
 
-			const { insertedIds } = await mdb
-				.collection(this.getNodeParameter('collection', 0) as string)
-				.insertMany(insertItems);
-
-			// Add the id to the data
-			for (const i of Object.keys(insertedIds)) {
-				returnItems.push({
-					json: {
-						...insertItems[parseInt(i, 10)],
-						id: insertedIds[parseInt(i, 10)] as string,
-					},
-				});
+				// Add the id to the data
+				for (const i of Object.keys(insertedIds)) {
+					returnItems.push({
+						json: {
+							...insertItems[parseInt(i, 10)],
+							id: insertedIds[parseInt(i, 10)] as string,
+						},
+					});
+				}
+			} catch (error) {
+				if (this.continueOnFail()) {
+					returnItems = this.helpers.returnJsonArray({ error: error.message });
+				} else {
+					throw error;
+				}
 			}
 		} else if (operation === 'update') {
 			// ----------------------------------
@@ -143,23 +172,35 @@ export class MongoDb implements INodeType {
 			}
 
 			for (const item of updateItems) {
-				if (item[updateKey] === undefined) {
-					continue;
-				}
+				try {
+					if (item[updateKey] === undefined) {
+						continue;
+					}
 
-				const filter: { [key: string]: string | ObjectID } = {};
-				filter[updateKey] = item[updateKey] as string;
-				if (updateKey === '_id') {
-					filter[updateKey] = new ObjectID(filter[updateKey]);
-					delete item['_id'];
+					const filter: { [key: string]: string | ObjectID } = {};
+					filter[updateKey] = item[updateKey] as string;
+					if (updateKey === '_id') {
+						filter[updateKey] = new ObjectID(filter[updateKey]);
+						delete item['_id'];
+					}
+					await mdb
+						.collection(this.getNodeParameter('collection', 0) as string)
+						.updateOne(filter, { $set: item }, updateOptions);
+				} catch (error) {
+					if (this.continueOnFail()) {
+						item.json = { error: error.message };
+						continue;
+					}
+					throw error;
 				}
-				await mdb
-					.collection(this.getNodeParameter('collection', 0) as string)
-					.updateOne(filter, { $set: item }, updateOptions);
 			}
 			returnItems = this.helpers.returnJsonArray(updateItems as IDataObject[]);
 		} else {
-			throw new NodeOperationError(this.getNode(), `The operation "${operation}" is not supported!`);
+			if (this.continueOnFail()) {
+				returnItems = this.helpers.returnJsonArray({ json: { error: `The operation "${operation}" is not supported!` } });
+			} else {
+				throw new NodeOperationError(this.getNode(), `The operation "${operation}" is not supported!`);
+			}
 		}
 
 		client.close();

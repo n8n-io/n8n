@@ -1,3 +1,6 @@
+/* eslint-disable no-console */
+/* eslint-disable no-restricted-syntax */
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import * as convict from 'convict';
 import * as dotenv from 'dotenv';
 import * as path from 'path';
@@ -6,7 +9,6 @@ import * as core from 'n8n-core';
 dotenv.config();
 
 const config = convict({
-
 	database: {
 		type: {
 			doc: 'Type of database to use',
@@ -84,7 +86,6 @@ const config = convict({
 					env: 'DB_POSTGRESDB_SSL_REJECT_UNAUTHORIZED',
 				},
 			},
-
 		},
 		mysqldb: {
 			database: {
@@ -147,10 +148,24 @@ const config = convict({
 				env: 'CREDENTIALS_OVERWRITE_ENDPOINT',
 			},
 		},
+		defaultName: {
+			doc: 'Default name for credentials',
+			format: String,
+			default: 'My credentials',
+			env: 'CREDENTIALS_DEFAULT_NAME',
+		},
+	},
+
+	workflows: {
+		defaultName: {
+			doc: 'Default name for workflow',
+			format: String,
+			default: 'My workflow',
+			env: 'WORKFLOWS_DEFAULT_NAME',
+		},
 	},
 
 	executions: {
-
 		// By default workflows get always executed in their own process.
 		// If this option gets set to "main" it will run them in the
 		// main-process instead.
@@ -480,6 +495,12 @@ const config = convict({
 			env: 'N8N_ENDPOINT_WEBHOOK',
 			doc: 'Path for webhook endpoint',
 		},
+		webhookWaiting: {
+			format: String,
+			default: 'webhook-waiting',
+			env: 'N8N_ENDPOINT_WEBHOOK_WAIT',
+			doc: 'Path for waiting-webhook endpoint',
+		},
 		webhookTest: {
 			format: String,
 			default: 'webhook-test',
@@ -558,7 +579,6 @@ const config = convict({
 							throw new Error();
 						}
 					}
-
 				} catch (error) {
 					throw new TypeError(`The Nodes to exclude is not a valid Array of strings.`);
 				}
@@ -609,6 +629,26 @@ const config = convict({
 		},
 	},
 
+	versionNotifications: {
+		enabled: {
+			doc: 'Whether feature is enabled to request notifications about new versions and security updates.',
+			format: Boolean,
+			default: true,
+			env: 'N8N_VERSION_NOTIFICATIONS_ENABLED',
+		},
+		endpoint: {
+			doc: 'Endpoint to retrieve version information from.',
+			format: String,
+			default: 'https://api.n8n.io/versions/',
+			env: 'N8N_VERSION_NOTIFICATIONS_ENDPOINT',
+		},
+		infoUrl: {
+			doc: `Url in New Versions Panel with more information on updating one's instance.`,
+			format: String,
+			default: 'https://docs.n8n.io/getting-started/installation/updating.html',
+			env: 'N8N_VERSION_NOTIFICATIONS_INFO_URL',
+		},
+	},
 });
 
 // Overwrite default configuration with settings which got defined in

@@ -30,7 +30,7 @@ export class FileMaker implements INodeType {
 		icon: 'file:filemaker.png',
 		group: ['input'],
 		version: 1,
-		description: 'Retrieve data from FileMaker data API.',
+		description: 'Retrieve data from the FileMaker data API',
 		defaults: {
 			name: 'FileMaker',
 			color: '#665533',
@@ -773,7 +773,7 @@ export class FileMaker implements INodeType {
 		const items = this.getInputData();
 		const returnData: INodeExecutionData[] = [];
 
-		const credentials = this.getCredentials('fileMaker');
+		const credentials = await this.getCredentials('fileMaker');
 
 		if (credentials === undefined) {
 			throw new NodeOperationError(this.getNode(), 'No credentials got returned!');

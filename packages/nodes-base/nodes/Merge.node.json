@@ -33,5 +33,14 @@
 				"url": "https://n8n.io/blog/sending-automated-congratulations-with-google-sheets-twilio-and-n8n/"
 			}
 		]
+	},
+	"alias": [
+		"Join",
+		"Concatenate"
+	],
+	"subcategories": {
+		"Core Nodes": [
+			"Flow"
+		]
 	}
 }

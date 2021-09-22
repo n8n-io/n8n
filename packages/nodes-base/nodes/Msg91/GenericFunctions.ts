@@ -17,7 +17,7 @@ import {
  * @returns {Promise<any>}
  */
 export async function msg91ApiRequest(this: IHookFunctions | IExecuteFunctions, method: string, endpoint: string, body: IDataObject, query?: IDataObject): Promise<any> { // tslint:disable-line:no-any
-	const credentials = this.getCredentials('msg91Api');
+	const credentials = await this.getCredentials('msg91Api');
 	if (credentials === undefined) {
 		throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
 	}

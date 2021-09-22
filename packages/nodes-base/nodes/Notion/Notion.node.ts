@@ -48,6 +48,8 @@ import {
 	databasePageOperations,
 } from './DatabasePageDescription';
 
+import * as moment from 'moment-timezone';
+
 export class Notion implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Notion (Beta)',
@@ -158,7 +160,7 @@ export class Notion implements INodeType {
 				const databases = await notionApiRequestAllItems.call(this, 'results', 'POST', `/search`, body);
 				for (const database of databases) {
 					returnData.push({
-						name: database.title[0].plain_text,
+						name: database.title[0]?.plain_text || database.id,
 						value: database.id,
 					});
 				}
@@ -215,8 +217,16 @@ export class Notion implements INodeType {
 				const resource = this.getCurrentNodeParameter('resource') as string;
 				const operation = this.getCurrentNodeParameter('operation') as string;
 				const { properties } = await notionApiRequest.call(this, 'GET', `/databases/${databaseId}`);
-				const useNames = (resource === 'databasePage' && operation === 'getAll');
-				return (properties[name][type].options).map((option: IDataObject) => ({ name: option.name, value: (['select', 'multi_select'].includes(type) && useNames) ? option.name : option.id }));
+				if (resource === 'databasePage') {
+					if (['multi_select', 'select'].includes(type) && operation === 'getAll') {
+						return (properties[name][type].options)
+							.map((option: IDataObject) => ({ name: option.name, value: option.name }));
+					} else if (['multi_select'].includes(type) && ['create', 'update'].includes(operation)) {
+						return (properties[name][type].options)
+							.map((option: IDataObject) => ({ name: option.name, value: option.name }));
+					}
+				}
+				return (properties[name][type].options).map((option: IDataObject) => ({ name: option.name, value: option.id }));
 			},
 			async getUsers(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -257,6 +267,28 @@ export class Notion implements INodeType {
 				const { parent: { database_id: databaseId } } = await notionApiRequest.call(this, 'GET', `/pages/${pageId}`);
 				const { properties } = await notionApiRequest.call(this, 'GET', `/databases/${databaseId}`);
 				return (properties[name][type].options).map((option: IDataObject) => ({ name: option.name, value: option.id }));
+			},
+
+			// Get all the timezones to display them to user so that he can
+			// select them easily
+			async getTimezones(
+				this: ILoadOptionsFunctions,
+			): Promise<INodePropertyOptions[]> {
+				const returnData: INodePropertyOptions[] = [];
+				for (const timezone of moment.tz.names()) {
+					const timezoneName = timezone;
+					const timezoneId = timezone;
+					returnData.push({
+						name: timezoneName,
+						value: timezoneId,
+					});
+				}
+				returnData.unshift({
+					name: 'Default',
+					value: 'default',
+					description: 'Timezone set in n8n',
+				});
+				return returnData;
 			},
 		},
 	};
@@ -314,7 +346,6 @@ export class Notion implements INodeType {
 			if (operation === 'getAll') {
 				for (let i = 0; i < length; i++) {
 					const body: IDataObject = {
-						page_size: 100,
 						filter: { property: 'object', value: 'database' },
 					};
 					const returnAll = this.getNodeParameter('returnAll', i) as boolean;

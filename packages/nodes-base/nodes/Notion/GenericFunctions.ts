@@ -24,6 +24,8 @@ import {
 
 import * as moment from 'moment-timezone';
 
+import { validate as uuidValidate } from 'uuid';
+
 export async function notionApiRequest(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions | IPollFunctions, method: string, resource: string, body: any = {}, qs: IDataObject = {}, uri?: string, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
 
 	try {
@@ -39,7 +41,7 @@ export async function notionApiRequest(this: IHookFunctions | IExecuteFunctions 
 		};
 
 		options = Object.assign({}, options, option);
-		const credentials = this.getCredentials('notionApi') as IDataObject;
+		const credentials = await this.getCredentials('notionApi') as IDataObject;
 		options!.headers!['Authorization'] = `Bearer ${credentials.apiKey}`;
 		return this.helpers.request!(options);
 
@@ -50,6 +52,8 @@ export async function notionApiRequest(this: IHookFunctions | IExecuteFunctions 
 
 export async function notionApiRequestAllItems(this: IExecuteFunctions | ILoadOptionsFunctions | IPollFunctions, propertyName: string, method: string, endpoint: string, body: any = {}, query: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
 
+	const resource = this.getNodeParameter('resource', 0) as string;
+
 	const returnData: IDataObject[] = [];
 
 	let responseData;
@@ -57,8 +61,11 @@ export async function notionApiRequestAllItems(this: IExecuteFunctions | ILoadOp
 	do {
 		responseData = await notionApiRequest.call(this, method, endpoint, body, query);
 		const { next_cursor } = responseData;
-		query['start_cursor'] = next_cursor;
-		body['start_cursor'] = next_cursor;
+		if (resource === 'block' || resource === 'user') {
+			query['start_cursor'] = next_cursor;
+		} else {
+			body['start_cursor'] = next_cursor;
+		}
 		returnData.push.apply(returnData, responseData[propertyName]);
 		if (query.limit && query.limit <= returnData.length) {
 			return returnData;
@@ -244,9 +251,15 @@ function getPropertyKeyValue(value: any, type: string, timezone: string) {
 			};
 			break;
 		case 'multi_select':
+			const multiSelectValue = value.multiSelectValue;
 			result = {
+				type: 'multi_select',
 				// tslint:disable-next-line: no-any
-				type: 'multi_select', multi_select: value.multiSelectValue.filter((id: any) => id !== null).map((option: string) => ({ id: option })),
+				multi_select: (Array.isArray(multiSelectValue) ? multiSelectValue : multiSelectValue.split(',').map((v: string) => v.trim()))
+					// tslint:disable-next-line: no-any
+					.filter((value: any) => value !== null)
+					.map((option: string) =>
+						((!uuidValidate(option)) ? { name: option } : { id: option })),
 			};
 			break;
 		case 'email':
@@ -270,21 +283,36 @@ function getPropertyKeyValue(value: any, type: string, timezone: string) {
 			};
 			break;
 		case 'date':
-			//&& value.dateStart !== 'Invalid date' && value.dateEnd !== 'Invalid date'
+			const format = getDateFormat(value.includeTime);
+			const timezoneValue = (value.timezone === 'default') ? timezone : value.timezone;
 			if (value.range === true) {
 				result = {
-					type: 'date', date: { start: moment.tz(value.dateStart, timezone).utc().format(), end: moment.tz(value.dateEnd, timezone).utc().format() },
+					type: 'date',
+					date: {
+						start: moment.tz(value.dateStart, timezoneValue).format(format),
+						end: moment.tz(value.dateEnd, timezoneValue).format(format),
+					},
 				};
-				//if (value.date !== 'Invalid date')
 			} else {
 				result = {
-					type: 'date', date: { start: moment.tz(value.date, timezone).utc().format(), end: null },
+					type: 'date',
+					date: {
+						start: moment.tz(value.date, timezoneValue).format(format),
+						end: null,
+					},
 				};
 			}
 			break;
 		default:
 	}
 	return result;
+}
+
+function getDateFormat(includeTime: boolean) {
+	if (includeTime === false) {
+		return 'yyyy-MM-DD';
+	}
+	return '';
 }
 
 function getNameAndType(key: string) {
@@ -314,7 +342,11 @@ export function mapFilters(filters: IDataObject[], timezone: string) {
 	// tslint:disable-next-line: no-any
 	return filters.reduce((obj, value: { [key: string]: any }) => {
 		let key = getNameAndType(value.key).type;
-		let valuePropertyName = value[`${camelCase(key)}Value`];
+
+		let valuePropertyName = key === 'last_edited_time'
+			? value[camelCase(key)]
+			: value[`${camelCase(key)}Value`];
+
 		if (['is_empty', 'is_not_empty'].includes(value.condition as string)) {
 			valuePropertyName = true;
 		} else if (['past_week', 'past_month', 'past_year', 'next_week', 'next_month', 'next_year'].includes(value.condition as string)) {
@@ -324,9 +356,10 @@ export function mapFilters(filters: IDataObject[], timezone: string) {
 			key = 'text';
 		} else if (key === 'phone_number') {
 			key = 'phone';
-		} else if (key === 'date') {
+		} else if (key === 'date' && !['is_empty', 'is_not_empty'].includes(value.condition as string)) {
 			valuePropertyName = (valuePropertyName !== undefined && !Object.keys(valuePropertyName).length) ? {} : moment.tz(value.date, timezone).utc().format();
 		}
+
 		return Object.assign(obj, {
 			['property']: getNameAndType(value.key).name,
 			[key]: { [`${value.condition}`]: valuePropertyName },
@@ -342,6 +375,9 @@ export function simplifyProperties(properties: any) {
 		const type = (properties[key] as IDataObject).type as string;
 		if (['text'].includes(properties[key].type)) {
 			const texts = properties[key].text.map((e: { plain_text: string }) => e.plain_text || {}).join('');
+			results[`${key}`] = texts;
+		} else if (['rich_text'].includes(properties[key].type)) {
+			const texts = properties[key].rich_text.map((e: { plain_text: string }) => e.plain_text || {}).join('');
 			results[`${key}`] = texts;
 		} else if (['url', 'created_time', 'checkbox', 'number', 'last_edited_time', 'email', 'phone_number', 'date'].includes(properties[key].type)) {
 			// tslint:disable-next-line: no-any

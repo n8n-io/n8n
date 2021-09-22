@@ -32,7 +32,7 @@ export class HttpRequest implements INodeType {
 		group: ['input'],
 		version: 1,
 		subtitle: '={{$parameter["requestMethod"] + ": " + $parameter["url"]}}',
-		description: 'Makes a HTTP request and returns the received data',
+		description: 'Makes an HTTP request and returns the response data',
 		defaults: {
 			name: 'HTTP Request',
 			color: '#2200DD',
@@ -308,11 +308,18 @@ export class HttpRequest implements INodeType {
 						description: 'Returns the full reponse data instead of only the body.',
 					},
 					{
-						displayName: 'Follow Redirect',
+						displayName: 'Follow All Redirects',
+						name: 'followAllRedirects',
+						type: 'boolean',
+						default: false,
+						description: 'Follow non-GET HTTP 3xx redirects.',
+					},
+					{
+						displayName: 'Follow GET Redirect',
 						name: 'followRedirect',
 						type: 'boolean',
 						default: true,
-						description: 'Follow HTTP 3xx redirects.',
+						description: 'Follow GET HTTP 3xx redirects.',
 					},
 					{
 						displayName: 'Ignore Response Code',
@@ -346,6 +353,20 @@ export class HttpRequest implements INodeType {
 						default: '',
 						placeholder: 'http://myproxy:3128',
 						description: 'HTTP proxy to use.',
+					},
+					{
+						displayName: 'Split Into Items',
+						name: 'splitIntoItems',
+						type: 'boolean',
+						default: false,
+						description: 'Outputs each element of an array as own item.',
+						displayOptions: {
+							show: {
+								'/responseFormat': [
+									'json',
+								],
+							},
+						},
 					},
 					{
 						displayName: 'Timeout',
@@ -619,11 +640,11 @@ export class HttpRequest implements INodeType {
 		const parametersAreJson = this.getNodeParameter('jsonParameters', 0) as boolean;
 		const responseFormat = this.getNodeParameter('responseFormat', 0) as string;
 
-		const httpBasicAuth = this.getCredentials('httpBasicAuth');
-		const httpDigestAuth = this.getCredentials('httpDigestAuth');
-		const httpHeaderAuth = this.getCredentials('httpHeaderAuth');
-		const oAuth1Api = this.getCredentials('oAuth1Api');
-		const oAuth2Api = this.getCredentials('oAuth2Api');
+		const httpBasicAuth = await this.getCredentials('httpBasicAuth');
+		const httpDigestAuth = await this.getCredentials('httpDigestAuth');
+		const httpHeaderAuth = await this.getCredentials('httpHeaderAuth');
+		const oAuth1Api = await this.getCredentials('oAuth1Api');
+		const oAuth2Api = await this.getCredentials('oAuth2Api');
 
 		let requestOptions: OptionsWithUri;
 		let setUiParameter: IDataObject;
@@ -681,6 +702,11 @@ export class HttpRequest implements INodeType {
 			if (options.followRedirect !== undefined) {
 				requestOptions.followRedirect = options.followRedirect as boolean;
 			}
+
+			if (options.followAllRedirects !== undefined) {
+				requestOptions.followAllRedirects = options.followAllRedirects as boolean;
+			}
+
 			if (options.ignoreResponseCode === true) {
 				// @ts-ignore
 				requestOptions.simple = false;
@@ -797,8 +823,23 @@ export class HttpRequest implements INodeType {
 						// @ts-ignore
 						requestOptions[optionName] = {};
 						for (const parameterData of setUiParameter!.parameter as IDataObject[]) {
-							// @ts-ignore
-							requestOptions[optionName][parameterData!.name as string] = parameterData!.value;
+							const parameterDataName = parameterData!.name as string;
+							const newValue = parameterData!.value;
+							if (optionName === 'qs') {
+								const computeNewValue = (oldValue: unknown) => {
+									if (typeof oldValue === 'string') {
+										return [oldValue, newValue];
+									} else if (Array.isArray(oldValue)) {
+										return [...oldValue, newValue];
+									} else {
+										return newValue;
+									}
+								};
+								requestOptions[optionName][parameterDataName] = computeNewValue(requestOptions[optionName][parameterDataName]);
+							} else {
+								// @ts-ignore
+								requestOptions[optionName][parameterDataName] = newValue;
+							}
 						}
 					}
 				}
@@ -866,6 +907,18 @@ export class HttpRequest implements INodeType {
 					requestOptions.headers!['accept'] = 'application/json,text/html,application/xhtml+xml,application/xml,text/*;q=0.9, image/*;q=0.8, */*;q=0.7';
 				}
 			}
+
+			try {
+				let sendRequest: any = requestOptions; // tslint:disable-line:no-any
+				// Protect browser from sending large binary data
+				if (Buffer.isBuffer(sendRequest.body) && sendRequest.body.length > 250000) {
+					sendRequest = {
+						...requestOptions,
+						body: `Binary data got replaced with this text. Original was a Buffer with a size of ${requestOptions.body.length} byte.`,
+					};
+				}
+				this.sendMessageToUI(sendRequest);
+			} catch (e) {}
 
 			// Now that the options are all set make the actual http request
 			if (oAuth1Api !== undefined) {
@@ -993,7 +1046,11 @@ export class HttpRequest implements INodeType {
 						}
 					}
 
-					returnItems.push({ json: response });
+					if (options.splitIntoItems === true && Array.isArray(response)) {
+						response.forEach(item => returnItems.push({ json: item }));
+					} else {
+						returnItems.push({ json: response });
+					}
 				}
 			}
 		}

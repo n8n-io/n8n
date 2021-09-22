@@ -238,7 +238,7 @@ export const groupFields = [
 				name: 'query',
 				type: 'string',
 				default: '',
-				description: `Query string search. Complete documentation is <a href="https://developers.google.com/admin-sdk/directory/v1/guides/search-groups" target="_blank">at</a>`,
+				description: `Query string search. Complete documentation is <a href="https://developers.google.com/admin-sdk/directory/v1/guides/search-groups">at</a>`,
 			},
 			{
 				displayName: 'Sort Order',
