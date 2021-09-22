@@ -3,7 +3,6 @@
 		<about :dialogVisible="aboutDialogVisible" @closeDialog="closeAboutDialog"></about>
 		<executions-list :dialogVisible="executionsListDialogVisible" @closeDialog="closeExecutionsListOpenDialog"></executions-list>
 		<credentials-list :dialogVisible="credentialOpenDialogVisible" @closeDialog="closeCredentialOpenDialog"></credentials-list>
-		<workflow-settings :dialogVisible="workflowSettingsDialogVisible" @closeDialog="closeWorkflowSettingsDialog"></workflow-settings>
 		<input type="file" ref="importFile" style="display: none" v-on:change="handleFileImport()">
 
 		<div class="side-menu-wrapper" :class="{expanded: !isCollapsed}">
@@ -229,7 +228,6 @@ export default mixins(
 				credentialOpenDialogVisible: false,
 				executionsListDialogVisible: false,
 				stopExecutionInProgress: false,
-				workflowSettingsDialogVisible: false,
 				helpMenuItems,
 			};
 		},
@@ -304,9 +302,6 @@ export default mixins(
 			},
 			closeAboutDialog () {
 				this.aboutDialogVisible = false;
-			},
-			closeWorkflowSettingsDialog () {
-				this.workflowSettingsDialogVisible = false;
 			},
 			closeExecutionsListOpenDialog () {
 				this.executionsListDialogVisible = false;
@@ -436,7 +431,7 @@ export default mixins(
 				} else if (key === 'help-about') {
 					this.aboutDialogVisible = true;
 				} else if (key === 'workflow-settings') {
-					this.workflowSettingsDialogVisible = true;
+					this.$store.dispatch('ui/openWorkflowSettingsModal');
 				} else if (key === 'workflow-new') {
 					const result = this.$store.getters.getStateIsDirty;
 					if(result) {

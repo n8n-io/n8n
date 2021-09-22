@@ -283,7 +283,7 @@ export class Wait implements INodeType {
 				description: 'The HTTP Response code to return',
 			},
 			{
-				displayName: 'Response Mode',
+				displayName: 'Respond when',
 				name: 'responseMode',
 				type: 'options',
 				displayOptions: {
@@ -295,12 +295,12 @@ export class Wait implements INodeType {
 				},
 				options: [
 					{
-						name: 'On Received',
+						name: 'Webhook received',
 						value: 'onReceived',
 						description: 'Returns directly with defined Response Code',
 					},
 					{
-						name: 'Last Node',
+						name: 'Last node finishes',
 						value: 'lastNode',
 						description: 'Returns data of the last executed node',
 					},
