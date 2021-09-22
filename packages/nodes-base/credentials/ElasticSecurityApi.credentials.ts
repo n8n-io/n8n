@@ -13,6 +13,7 @@ export class ElasticSecurityApi implements ICredentialType {
 			name: 'username',
 			type: 'string',
 			default: '',
+			required: true,
 		},
 		{
 			displayName: 'Password',
@@ -22,14 +23,16 @@ export class ElasticSecurityApi implements ICredentialType {
 				password: true,
 			},
 			default: '',
+			required: true,
 		},
 		{
 			displayName: 'Base URL',
 			name: 'baseUrl',
 			type: 'string',
 			default: '',
-			placeholder: 'https://mydeployment.kb.us-central1.gcp.cloud.es.io:9243',
+			placeholder: 'e.g. https://mydeployment.kb.us-central1.gcp.cloud.es.io:9243',
 			description: 'Referred to as Kibana \'endpoint\' in the Elastic deployment dashboard',
+			required: true,
 		},
 	];
 }
