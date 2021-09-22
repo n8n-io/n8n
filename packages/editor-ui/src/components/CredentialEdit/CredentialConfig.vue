@@ -53,7 +53,7 @@
 		/>
 
 		<CredentialInputs
-			v-if="credentialType && credentialProperties.length"
+			v-if="credentialType"
 			:credentialData="credentialData"
 			:credentialProperties="credentialProperties"
 			:documentationUrl="documentationUrl"
