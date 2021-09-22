@@ -134,6 +134,7 @@ export const caseFields: INodeProperties[] = [
 		name: 'issueType',
 		description: 'Type of the Jira issue to create for this case',
 		type: 'string',
+		placeholder: 'Task',
 		required: true,
 		default: '',
 		displayOptions: {
@@ -155,6 +156,7 @@ export const caseFields: INodeProperties[] = [
 		name: 'priority',
 		description: 'Priority of the Jira issue to create for this case',
 		type: 'string',
+		placeholder: 'High',
 		required: true,
 		default: '',
 		displayOptions: {
@@ -175,9 +177,23 @@ export const caseFields: INodeProperties[] = [
 		displayName: 'Urgency',
 		name: 'urgency',
 		description: 'Urgency of the ServiceNow ITSM issue to create for this case',
-		type: 'string',
+		type: 'options',
 		required: true,
-		default: '',
+		default: 1,
+		options: [
+			{
+				name: 'Low',
+				value: 1,
+			},
+			{
+				name: 'Medium',
+				value: 2,
+			},
+			{
+				name: 'High',
+				value: 3,
+			},
+		],
 		displayOptions: {
 			show: {
 				resource: [
@@ -196,9 +212,23 @@ export const caseFields: INodeProperties[] = [
 		displayName: 'Severity',
 		name: 'severity',
 		description: 'Severity of the ServiceNow ITSM issue to create for this case',
-		type: 'string',
+		type: 'options',
 		required: true,
-		default: '',
+		default: 1,
+		options: [
+			{
+				name: 'Low',
+				value: 1,
+			},
+			{
+				name: 'Medium',
+				value: 2,
+			},
+			{
+				name: 'High',
+				value: 3,
+			},
+		],
 		displayOptions: {
 			show: {
 				resource: [
@@ -217,9 +247,23 @@ export const caseFields: INodeProperties[] = [
 		displayName: 'Impact',
 		name: 'impact',
 		description: 'Impact of the ServiceNow ITSM issue to create for this case',
-		type: 'string',
+		type: 'options',
 		required: true,
-		default: '',
+		default: 1,
+		options: [
+			{
+				name: 'Low',
+				value: 1,
+			},
+			{
+				name: 'Medium',
+				value: 2,
+			},
+			{
+				name: 'High',
+				value: 3,
+			},
+		],
 		displayOptions: {
 			show: {
 				resource: [
@@ -241,6 +285,7 @@ export const caseFields: INodeProperties[] = [
 		description: 'Category of the ServiceNow ITSM issue to create for this case',
 		required: true,
 		default: '',
+		placeholder: 'Helpdesk',
 		displayOptions: {
 			show: {
 				resource: [
@@ -260,6 +305,7 @@ export const caseFields: INodeProperties[] = [
 		name: 'issueTypes',
 		description: 'Comma-separated list of numerical types of the IBM Resilient issue to create for this case',
 		type: 'string',
+		placeholder: '123,456',
 		required: true,
 		default: '',
 		displayOptions: {
