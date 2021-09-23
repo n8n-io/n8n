@@ -1,13 +1,7 @@
-import { IRestApiContext, IUser } from '@/Interface';
+import { IRestApiContext, IUser, INewUser } from '@/Interface';
 import { IDataObject } from 'n8n-workflow';
 import { makeRestApiRequest } from './helpers';
 
-interface INewUser {
-	firstName: string;
-	lastName: string;
-	email: string;
-	password: string;
-}
 
 export async function getCurrentUser(context: IRestApiContext): Promise<IUser | null> {
 	return await makeRestApiRequest(context, 'GET', '/user');
@@ -49,7 +43,7 @@ export async function updateUser(context: IRestApiContext, params: IUser): Promi
 	return await makeRestApiRequest(context, 'PATCH', `/user/${params.id}`, params as unknown as IDataObject);
 }
 
-export async function updateUserPasswrod(context: IRestApiContext, params: {id: string, password: string}): Promise<IUser> {
+export async function updateUserPassword(context: IRestApiContext, params: {id: string, password: string}): Promise<IUser> {
 	return await makeRestApiRequest(context, 'PATCH', `/user/${params.id}/password`, params);
 }
 
