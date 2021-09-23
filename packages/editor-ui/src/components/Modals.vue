@@ -34,6 +34,13 @@
 		<ModalRoot :name="TAGS_MANAGER_MODAL_KEY">
 			<TagsManager />
 		</ModalRoot>
+		<ModalRoot :name="WORKFLOW_OPEN_MODAL_KEY">
+			<template v-slot="{ modalName }">
+				<WorkflowOpen
+					:modalName="modalName"
+				/>
+			</template>
+		</ModalRoot>
 
 		<ModalRoot :name="VERSIONS_MODAL_KEY" :keepAlive="true">
 			<UpdatesPanel />

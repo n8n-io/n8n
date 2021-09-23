@@ -98,8 +98,12 @@ const module: Module<IUiState, IRootState> = {
 		openModal: async (context: ActionContext<IUiState, IRootState>, modalKey: string) => {
 			context.commit('openModal', modalKey);
 		},
+		// todo remove these
 		openAboutModal: async (context: ActionContext<IUiState, IRootState>) => {
 			context.commit('openModal', ABOUT_MODAL_KEY);
+		},
+		openWorklfowOpenModal: async (context: ActionContext<IUiState, IRootState>) => {
+			context.commit('openModal', WORKFLOW_OPEN_MODAL_KEY);
 		},
 		openExisitngCredential: async (context: ActionContext<IUiState, IRootState>, { id }: {id: string}) => {
 			context.commit('setActiveId', {name: CREDENTIAL_EDIT_MODAL_KEY, id});
