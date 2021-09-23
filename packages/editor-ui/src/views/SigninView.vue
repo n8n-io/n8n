@@ -2,7 +2,7 @@
 	<AuthView
 		:form="FORM_CONFIG"
 		:formLoading="loading"
-		@submit="onSetup"
+		@submit="onSubmit"
 	/>
 </template>
 
@@ -50,7 +50,7 @@ export default mixins(
 		};
 	},
 	methods: {
-		async onSetup(values: {[key: string]: string}) {
+		async onSubmit(values: {[key: string]: string}) {
 			try {
 				this.loading = true;
 				await this.$store.dispatch('users/login', values);

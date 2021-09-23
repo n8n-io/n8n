@@ -2,7 +2,7 @@
 	<AuthView
 		:form="config"
 		:formLoading="loading"
-		@submit="onSetup"
+		@submit="onSubmit"
 		@input="onInput"
 	/>
 </template>
@@ -71,7 +71,7 @@ export default mixins(
 				this.password = e.value;
 			}
 		},
-		async onSetup(values: {[key: string]: string}) {
+		async onSubmit(values: {[key: string]: string}) {
 			try {
 				this.loading = true;
 				await this.$store.dispatch('users/changePassword', values);
