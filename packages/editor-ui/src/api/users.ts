@@ -28,7 +28,7 @@ export async function signup(context: IRestApiContext, params: INewUser): Promis
 }
 
 export async function sendForgotPasswordEmail(context: IRestApiContext, params: {email: string}): Promise<void> {
-	await makeRestApiRequest(context, 'POST', '/user', params);
+	await makeRestApiRequest(context, 'POST', '/forgot-password', params);
 }
 
 export async function validatePasswordToken(context: IRestApiContext, params: {token: string}): Promise<void> {
