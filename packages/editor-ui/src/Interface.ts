@@ -724,6 +724,13 @@ export interface IBounds {
 
 export type IRole = 'Owner' | 'Member';
 
+export interface INewUser {
+	firstName: string;
+	lastName: string;
+	email: string;
+	password: string;
+}
+
 export interface IUser {
 	id: string;
 	firstName?: string;
