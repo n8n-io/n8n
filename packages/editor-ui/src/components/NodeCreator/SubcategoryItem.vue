@@ -1,9 +1,9 @@
 <template>
 	<div :class="$style.subcategory">
 		<div :class="$style.details">
-			<div :class="$style.title">{{ $translateBaseWithDynamicParam({base: 'mainPanel.categories', param: item.properties.subcategory}) }}</div>
+			<div :class="$style.title">{{ $translateBaseWithDynamicParam({base: 'mainPanel.subcategories', param: item.properties.subcategory}) }}</div>
 			<div v-if="item.properties.description" :class="$style.description">
-        {{ $translateBaseWithDynamicParam({base: 'mainPanel.categories', param: `${item.properties.subcategory}Description`}) }}
+        {{ $translateBaseWithDynamicParam({base: 'mainPanel.subcategories', param: `${item.properties.subcategory} Description`}) }}
 			</div>
 		</div>
 		<div :class="$style.action">

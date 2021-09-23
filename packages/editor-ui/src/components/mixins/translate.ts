@@ -69,6 +69,15 @@ export const translate = Vue.extend({
 		/**
 		 * Translate a top-level node parameter name, i.e. leftmost parameter in `NodeView.vue`.
 		 */
+		$translateNodeBaseInfo(
+			{ node, param, fallback }: { node: string; param: string; fallback: string; },
+		) {
+			return this.translateSpecific({key: `${node}.${param}`, fallback});
+		},
+
+		/**
+		 * Translate a top-level node parameter name, i.e. leftmost parameter in `NodeView.vue`.
+		 */
 		$translateNodeParameterName(
 			{ name: parameterName, displayName }: { name: string; displayName: string; },
 		) {

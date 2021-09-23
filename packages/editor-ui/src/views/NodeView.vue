@@ -42,7 +42,7 @@
 			<button @click="setZoom('in')" class="button-white" :title="$translateBase('nodeView.zoomIn')">
 				<font-awesome-icon icon="search-plus"/>
 			</button>
-			<button @click="setZoom('out')" class="button-white" :title="$translateBase('nodeView.zoomIn')">
+			<button @click="setZoom('out')" class="button-white" :title="$translateBase('nodeView.zoomOut')">
 				<font-awesome-icon icon="search-minus"/>
 			</button>
 			<button

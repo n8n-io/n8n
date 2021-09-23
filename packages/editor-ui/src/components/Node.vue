@@ -34,7 +34,7 @@
 		</div>
 		<div class="node-description">
 			<div class="node-name" :title="data.name">
-        {{translateSpecific({key: `${data.type}.displayName`, fallback: data.name})}}
+        {{$translateNodeBaseInfo({node: data.type, param: 'displayName', fallback: data.name})}}
 			</div>
 			<div v-if="nodeSubtitle !== undefined" class="node-subtitle" :title="nodeSubtitle">
 				{{nodeSubtitle}}

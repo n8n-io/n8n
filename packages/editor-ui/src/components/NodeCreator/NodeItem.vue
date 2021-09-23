@@ -4,20 +4,14 @@
 		<div>
 			<div :class="$style.details">
 				<span :class="$style.name">
-          {{translateSpecific({
-              key: `${nodeType.name}.displayName`,
-              fallback: nodeType.displayName,
-          })}}
+          {{$translateNodeBaseInfo({node: nodeType.name, param: 'displayName', fallback: nodeType.displayName})}}
         </span>
 				<span :class="$style['trigger-icon']">
 					<TriggerIcon v-if="nodeType.group.includes('trigger')" />
 				</span>
 			</div>
 			<div :class="$style.description">
-				{{translateSpecific({
-            key: `${nodeType.name}.description`,
-            fallback: nodeType.description,
-        })}}
+        {{$translateNodeBaseInfo({node: nodeType.name, param: 'description', fallback: nodeType.description})}}
 			</div>
 		</div>
 	</div>

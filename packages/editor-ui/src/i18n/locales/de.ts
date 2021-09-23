@@ -256,7 +256,11 @@ export default {
 				trigger: 'Trigger in Deutsch',
 			},
 			categories: {
-				core_nodes: 'Core Nodes in Deutsch',
+				coreNodes: 'Core Nodes in Deutsch',
+			},
+			subcategories: {
+				dataTransformation: 'Data Transformation in Deutsch',
+				dataTransformationDescription: 'Manipulate data fields, run code in Deutsch',
 			},
 			search: 'Search nodes... in Deutsch',
 		},
