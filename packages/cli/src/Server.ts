@@ -556,7 +556,7 @@ class App {
 					{
 						from: new RegExp(
 							// eslint-disable-next-line no-useless-escape
-							`^\/(${this.restEndpoint}|healthz|metrics|css|js|${this.endpointWebhook}|${this.endpointWebhookTest})\/?.*$`,
+							`^\/(${this.restEndpoint}|healthz|metrics|expressions|css|js|${this.endpointWebhook}|${this.endpointWebhookTest})\/?.*$`,
 						),
 						to: (context) => {
 							return context.parsedUrl.pathname!.toString();
@@ -2780,6 +2780,10 @@ class App {
 				},
 			);
 		}
+		console.log('registering expression parser endpoint.');
+		this.app.get(`/expressions`, async (req: express.Request, res: express.Response) => {
+			res.send('<script>function calculateStuff() { return "omg it works"; }</script>');
+		});
 
 		// Read the index file and replace the path placeholder
 		const editorUiPath = require.resolve('n8n-editor-ui');

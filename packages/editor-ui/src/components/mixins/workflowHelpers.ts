@@ -428,7 +428,8 @@ export const workflowHelpers = mixins(
 			},
 
 			resolveExpression(expression: string, siblingParameters: INodeParameters = {}) {
-
+				// eslint-disable-next-line no-console
+				console.log('expression to resolve: ', expression, siblingParameters);
 				const parameters = {
 					'__xxxxxxx__': expression,
 					...siblingParameters,
