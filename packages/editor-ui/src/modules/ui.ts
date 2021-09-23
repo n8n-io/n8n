@@ -6,7 +6,7 @@ import {
 	TAGS_MANAGER_MODAL_KEY,
 	VERSIONS_MODAL_KEY,
 	WORKFLOW_OPEN_MODAL_KEY,
-	WORKFLOW_SETTINGS_MODAL_KEY
+	WORKFLOW_SETTINGS_MODAL_KEY,
 } from '@/constants';
 import Vue from 'vue';
 import { ActionContext, Module } from 'vuex';
