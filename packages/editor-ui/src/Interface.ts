@@ -725,8 +725,9 @@ export interface IBounds {
 export type IRole = 'Owner' | 'Member';
 
 export interface IUser {
-	firstName: string;
-	lastName: string;
+	id: string;
+	firstName?: string;
+	lastName?: string;
 	email: string;
 	role: IRole;
 }

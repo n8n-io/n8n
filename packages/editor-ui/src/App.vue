@@ -70,9 +70,6 @@ export default mixins(
 					message: 'Could not log user in',
 					type: 'error',
 				});
-
-				this.$router.push({name: 'SigninView'});
-				return false;
 			}
 
 			return true;

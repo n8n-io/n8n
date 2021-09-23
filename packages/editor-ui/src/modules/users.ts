@@ -1,3 +1,4 @@
+import { getCurrentUser } from '@/api/users';
 import {  ActionContext, Module } from 'vuex';
 import {
 	IRootState,
@@ -11,6 +12,16 @@ const module: Module<IUsersState, IRootState> = {
 		currentUserId: null,
 		users: {},
 	},
+	mutations: {
+		addUsers: (state: IUsersState, users: IUser[]) => {
+			users.forEach((user: IUser) => {
+				state.users[user.id] = user;
+			});
+		},
+		setCurrentUserId: (state: IUsersState, userId: string) => {
+			state.currentUserId = userId;
+		},
+	},
 	getters: {
 		currentUser(state: IUsersState): IUser | null {
 			return state.currentUserId ? state.users[state.currentUserId] : null;
@@ -18,7 +29,11 @@ const module: Module<IUsersState, IRootState> = {
 	},
 	actions: {
 		async fetchCurrentUser(context: ActionContext<IUsersState, IRootState>) {
-			return null;
+			const user = await getCurrentUser(context.rootGetters.getRestApiContext);
+			if (user) {
+				context.commit('addUsers', [user]);
+				context.commit('setCurrntUserId', user.id);
+			}
 		},
 	},
 };
