@@ -127,6 +127,7 @@ export default mixins(externalHooks, nodeHelpers, workflowHelpers).extend({
 
 	.el-dialog__body {
 		padding: 0 !important;
+		height: 100%;
 		min-height: 400px;
 		overflow: hidden;
 		border-radius: 8px;

@@ -13,6 +13,7 @@ import {
 import { externalHooks } from '@/components/mixins/externalHooks';
 import { restApi } from '@/components/mixins/restApi';
 import { workflowHelpers } from '@/components/mixins/workflowHelpers';
+import { showMessage } from '@/components/mixins/showMessage';
 
 import mixins from 'vue-typed-mixins';
 import { titleChange } from './titleChange';
@@ -21,6 +22,7 @@ export const workflowRun = mixins(
 	externalHooks,
 	restApi,
 	workflowHelpers,
+	showMessage,
 	titleChange,
 ).extend({
 	methods: {
@@ -60,6 +62,8 @@ export const workflowRun = mixins(
 
 			const workflow = this.getWorkflow();
 			this.$titleSet(workflow.name as string, 'EXECUTING');
+
+			this.clearAllStickyNotifications();
 
 			try {
 				// Check first if the workflow has any issues before execute it

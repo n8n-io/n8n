@@ -1,4 +1,13 @@
-import { CREDENTIAL_EDIT_MODAL_KEY, DUPLICATE_MODAL_KEY, TAGS_MANAGER_MODAL_KEY, VERSIONS_MODAL_KEY, WORKLOW_OPEN_MODAL_KEY, CREDENTIAL_SELECT_MODAL_KEY, ABOUT_MODAL_KEY } from '@/constants';
+import {
+	ABOUT_MODAL_KEY,
+	CREDENTIAL_EDIT_MODAL_KEY,
+	CREDENTIAL_SELECT_MODAL_KEY,
+	DUPLICATE_MODAL_KEY,
+	TAGS_MANAGER_MODAL_KEY,
+	VERSIONS_MODAL_KEY,
+	WORKLOW_OPEN_MODAL_KEY,
+	WORKFLOW_SETTINGS_MODAL_KEY
+} from '@/constants';
 import Vue from 'vue';
 import { ActionContext, Module } from 'vuex';
 import {
@@ -28,6 +37,9 @@ const module: Module<IUiState, IRootState> = {
 				open: false,
 			},
 			[VERSIONS_MODAL_KEY]: {
+				open: false,
+			},
+			[WORKFLOW_SETTINGS_MODAL_KEY]: {
 				open: false,
 			},
 			[CREDENTIAL_SELECT_MODAL_KEY]: {
@@ -100,6 +112,9 @@ const module: Module<IUiState, IRootState> = {
 		},
 		openUpdatesPanel: async (context: ActionContext<IUiState, IRootState>) => {
 			context.commit('openModal', VERSIONS_MODAL_KEY);
+		},
+		openWorkflowSettingsModal: async (context: ActionContext<IUiState, IRootState>) => {
+			context.commit('openModal', WORKFLOW_SETTINGS_MODAL_KEY);
 		},
 		openExisitngCredential: async (context: ActionContext<IUiState, IRootState>, { id }: {id: string}) => {
 			context.commit('setActiveId', {name: CREDENTIAL_EDIT_MODAL_KEY, id});
