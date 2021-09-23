@@ -17,7 +17,7 @@
 			</template>
 		</ModalRoot>
 
-		<ModalRoot :name="WORKLOW_OPEN_MODAL_KEY">
+		<ModalRoot :name="WORKFLOW_OPEN_MODAL_KEY">
 			<template v-slot="{ modalName }">
 				<WorkflowOpen
 					:modalName="modalName"
@@ -62,7 +62,7 @@
 
 <script lang="ts">
 import Vue from "vue";
-import { DUPLICATE_MODAL_KEY, TAGS_MANAGER_MODAL_KEY, WORKLOW_OPEN_MODAL_KEY, VERSIONS_MODAL_KEY, CREDENTIAL_EDIT_MODAL_KEY, CREDENTIAL_SELECT_MODAL_KEY, WORKFLOW_SETTINGS_MODAL_KEY } from '@/constants';
+import { DUPLICATE_MODAL_KEY, TAGS_MANAGER_MODAL_KEY, WORKFLOW_OPEN_MODAL_KEY, VERSIONS_MODAL_KEY, CREDENTIAL_EDIT_MODAL_KEY, CREDENTIAL_SELECT_MODAL_KEY, WORKFLOW_SETTINGS_MODAL_KEY } from '@/constants';
 
 import CredentialEdit from "./CredentialEdit/CredentialEdit.vue";
 import DuplicateWorkflowDialog from "@/components/DuplicateWorkflowDialog.vue";
@@ -88,7 +88,7 @@ export default Vue.extend({
 	data: () => ({
 		DUPLICATE_MODAL_KEY,
 		TAGS_MANAGER_MODAL_KEY,
-		WORKLOW_OPEN_MODAL_KEY,
+		WORKFLOW_OPEN_MODAL_KEY,
 		WORKFLOW_SETTINGS_MODAL_KEY,
 		VERSIONS_MODAL_KEY,
 		CREDENTIAL_EDIT_MODAL_KEY,

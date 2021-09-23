@@ -5,7 +5,7 @@ import {
 	DUPLICATE_MODAL_KEY,
 	TAGS_MANAGER_MODAL_KEY,
 	VERSIONS_MODAL_KEY,
-	WORKLOW_OPEN_MODAL_KEY,
+	WORKFLOW_OPEN_MODAL_KEY,
 	WORKFLOW_SETTINGS_MODAL_KEY
 } from '@/constants';
 import Vue from 'vue';
@@ -33,7 +33,7 @@ const module: Module<IUiState, IRootState> = {
 			[TAGS_MANAGER_MODAL_KEY]: {
 				open: false,
 			},
-			[WORKLOW_OPEN_MODAL_KEY]: {
+			[WORKFLOW_OPEN_MODAL_KEY]: {
 				open: false,
 			},
 			[VERSIONS_MODAL_KEY]: {
@@ -105,7 +105,7 @@ const module: Module<IUiState, IRootState> = {
 			context.commit('openModal', TAGS_MANAGER_MODAL_KEY);
 		},
 		openWorklfowOpenModal: async (context: ActionContext<IUiState, IRootState>) => {
-			context.commit('openModal', WORKLOW_OPEN_MODAL_KEY);
+			context.commit('openModal', WORKFLOW_OPEN_MODAL_KEY);
 		},
 		openDuplicateModal: async (context: ActionContext<IUiState, IRootState>) => {
 			context.commit('openModal', DUPLICATE_MODAL_KEY);
