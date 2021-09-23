@@ -4,7 +4,7 @@
 		:tooltipText="tooltipText"
 		:required="required"
 	>
-		<div :class="validationError ? $style.errorInput : ''"
+		<div :class="showErrors ? $style.errorInput : ''"
 			@keydown.stop
 			@keydown.enter="onEnter"
 		>
@@ -21,8 +21,8 @@
 				@focus="onFocus"
 			/>
 		</div>
-		<div :class="$style.errors" v-if="validationError">
-			<span v-if="validationError">{{validationError}}</span>
+		<div :class="$style.errors" v-if="showErrors">
+			<span>{{validationError}}</span>
 			<n8n-link
 				v-if="documentationUrl && documentationText"
 				:href="documentationUrl"
@@ -215,15 +215,11 @@ export default Vue.extend({
 		hasDefaultSlot(): boolean {
   		return !!this.$slots.default;
   	},
-		showAnyErrors(): boolean {
-			return (this.hasBlurred && !this.isTyping)|| this.showValidationWarnings;
-		},
 		validationError(): string | null {
-			if (!this.showAnyErrors) {
-				return null;
-			}
-
 			return this.getValidationError();
+		},
+		showErrors(): boolean {
+			return !!this.validationError && ((this.hasBlurred && !this.isTyping) || this.showValidationWarnings);
 		},
 	},
 	methods: {
@@ -270,7 +266,7 @@ export default Vue.extend({
 		},
 	},
 	watch: {
-		validationError(newValue: string | null) {
+		validationError(newValue: string | null, oldValue: string | null) {
 			this.$emit('validate', !newValue);
 		},
 	},
@@ -288,11 +284,6 @@ export default Vue.extend({
 .errors {
 	composes: infoText;
 	color: var(--color-danger);
-
-	a {
-		color: var(--color-danger);
-		text-decoration: underline;
-	}
 }
 
 .errorInput {
