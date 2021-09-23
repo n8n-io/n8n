@@ -19,7 +19,7 @@
 
 				<n8n-link
 					v-if="infoUrl"
-					:href="infoUrl"
+					:to="infoUrl"
 					:newWindow="true"
 					:bold="true"
 				>

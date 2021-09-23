@@ -17,7 +17,7 @@ const FORM_CONFIG = {
 	title: 'Change Password',
 	buttonText: 'Change Password',
 	redirectText: 'Sign in',
-	redirectLink: '/login',
+	redirectLink: '/signin',
 	inputs: [
 		{
 			name: 'password',

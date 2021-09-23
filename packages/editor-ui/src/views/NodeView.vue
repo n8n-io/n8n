@@ -399,7 +399,7 @@ export default mixins(
 				if ((data as IExecutionsSummary).waitTill) {
 					this.$showMessage({
 						title: `This execution hasn't finished yet`,
-						message: `<a onclick="window.location.reload(false);">Refresh</a> to see the latest status.<br/> <a href="https://docs.n8n.io/nodes/n8n-nodes-base.wait/" target="_blank">More info</a>`,
+						message: `<a onclick="window.location.reload(false);" class="primary-color">Refresh</a> to see the latest status.<br/> <a href="https://docs.n8n.io/nodes/n8n-nodes-base.wait/" target="_blank">More info</a>`,
 						type: 'warning',
 						duration: 0,
 					});

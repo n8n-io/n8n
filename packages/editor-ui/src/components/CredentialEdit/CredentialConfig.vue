@@ -40,7 +40,7 @@
 
 		<n8n-info-tip v-if="documentationUrl && credentialProperties.length">
 			Need help filling out these fields?
-			<n8n-link :href="documentationUrl" :newWindow="true" size="small" :bold="true" @click="onDocumentationUrlClick">Open docs</n8n-link>
+			<n8n-link :to="documentationUrl" :newWindow="true" size="small" :bold="true" @click="onDocumentationUrlClick">Open docs</n8n-link>
 		</n8n-info-tip>
 
 		<CopyInput

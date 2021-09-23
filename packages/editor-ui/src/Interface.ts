@@ -698,6 +698,8 @@ export interface ISettingsState {
 }
 
 export interface IUsersState {
+	currentUserId: null | string;
+	users: {[userId: string]: IUser};
 }
 
 export interface IWorkflowsState {
@@ -718,4 +720,13 @@ export interface IBounds {
 	minY: number;
 	maxX: number;
 	maxY: number;
+}
+
+export type IRole = 'Owner' | 'Member';
+
+export interface IUser {
+	firstName: string;
+	lastName: string;
+	email: string;
+	role: IRole;
 }

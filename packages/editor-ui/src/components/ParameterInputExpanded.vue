@@ -20,7 +20,7 @@
 			inputSize="large"
 		/>
 		<div :class="$style.errors" v-if="showRequiredErrors">
-			This field is required. <n8n-link v-if="documentationUrl" size="small" theme="danger" :href="documentationUrl" :newWindow="true" :underline="true" @click="onDocumentationUrlClick">Open docs</n8n-link>
+			This field is required. <n8n-link v-if="documentationUrl" size="small" theme="danger" :to="documentationUrl" :newWindow="true" :underline="true" @click="onDocumentationUrlClick">Open docs</n8n-link>
 		</div>
 	</n8n-input-label>
 </template>

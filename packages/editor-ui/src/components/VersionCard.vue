@@ -1,5 +1,5 @@
 <template functional>
-	<n8n-link v-if="props.version" :href="props.version.documentationUrl" :newWindow="true">
+	<n8n-link v-if="props.version" :to="props.version.documentationUrl" :newWindow="true">
 		<!-- eslint-disable-next-line vue/no-mutating-props -->
 		<div :set="version = props.version" :class="$style.card">
 			<div :class="$style.header">

@@ -1,3 +1,5 @@
+import { IRole } from "./Interface";
+
 export const MAX_DISPLAY_DATA_SIZE = 204800;
 export const MAX_DISPLAY_ITEMS_AUTO_ALL = 250;
 export const NODE_NAME_PREFIX = 'node-';
@@ -133,3 +135,12 @@ export const CODING_SKILL_KEY = 'codingSkill';
 export const OTHER_WORK_AREA_KEY = 'otherWorkArea';
 export const OTHER_COMPANY_INDUSTRY_KEY = 'otherCompanyIndustry';
 
+export const ROLE: {Owner: IRole, Member: IRole} = {
+	Owner: 'Owner',
+	Member: 'Member',
+};
+
+export const LOGIN_STATUS: {LoggedIn: string, LoggedOut: string} = {
+	LoggedIn: 'LoggedIn',
+	LoggedOut: 'LoggedOut',
+};
