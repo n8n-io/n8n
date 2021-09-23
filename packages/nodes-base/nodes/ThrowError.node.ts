@@ -17,7 +17,7 @@ const errorObjectPlaceholder = `{
 export class ThrowError implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Throw Error',
-		name: 'throw',
+		name: 'throwError',
 		icon: 'fa:exclamation-triangle',
 		group: ['input'],
 		version: 1,
