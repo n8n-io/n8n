@@ -65,11 +65,6 @@ export default mixins(
 			try {
 				await this.$store.dispatch('users/fetchCurrentUser');
 			} catch (e) {
-				this.$showToast({
-					title: 'Error on log in',
-					message: 'Could not log user in',
-					type: 'error',
-				});
 			}
 
 			return true;
@@ -81,7 +76,7 @@ export default mixins(
 				if (!user && !authorize.includes(LOGIN_STATUS.LoggedOut)) {
 					this.$router.push({name: 'SigninView'});
 				}
-				if (user && (!authorize.includes(LOGIN_STATUS.LoggedIn) || !authorize.includes(user.role))) {
+				if (user && (!authorize.includes(LOGIN_STATUS.LoggedIn) && !authorize.includes(user.role))) {
 					this.$router.push({name: 'NodeViewNew'});
 				}
 			}

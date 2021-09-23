@@ -25,8 +25,8 @@ export async function setupOwner(context: IRestApiContext, params: INewUser): Pr
 	return await makeRestApiRequest(context, 'POST', '/owner-setup', params as unknown as IDataObject);
 }
 
-export async function validateSignupToken(context: IRestApiContext, params: {token: string}): Promise<void> {
-	 await makeRestApiRequest(context, 'GET', '/resolve-signup-token', params);
+export async function validateSignupToken(context: IRestApiContext, params: {token: string}): Promise<{inviter: string}> {
+	 return await makeRestApiRequest(context, 'GET', '/resolve-signup-token', params);
 }
 
 export async function signup(context: IRestApiContext, params: INewUser): Promise<IUser> {
