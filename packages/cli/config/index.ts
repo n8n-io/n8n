@@ -129,7 +129,6 @@ const config = convict({
 		},
 	},
 
-	// TODO: check me
 	credentials: {
 		overwrite: {
 			data: {
