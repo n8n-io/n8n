@@ -35,6 +35,7 @@ import credentials from './modules/credentials';
 import settings from './modules/settings';
 import tags from './modules/tags';
 import ui from './modules/ui';
+import users from './modules/users';
 import workflows from './modules/workflows';
 import versions from './modules/versions';
 
@@ -93,6 +94,7 @@ const modules = {
 	tags,
 	workflows,
 	versions,
+	users,
 	ui,
 };
 

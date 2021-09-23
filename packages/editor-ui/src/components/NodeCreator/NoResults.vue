@@ -16,7 +16,7 @@
 			<div>Want us to make it faster?</div>
 			<div>
 				<n8n-link
-					:href="REQUEST_NODE_FORM_URL"
+					:to="REQUEST_NODE_FORM_URL"
 					:newWindow="true"
 				>
 					<span>Request the node</span>&nbsp;

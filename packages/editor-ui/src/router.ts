@@ -12,10 +12,11 @@ import SettingsUsersView from './views/SettingsUsersView.vue';
 import SetupView from './views/SetupView.vue';
 import SigninView from './views/SigninView.vue';
 import SignupView from './views/SignupView.vue';
+import { LOGIN_STATUS, ROLE } from './constants';
 
 Vue.use(Router);
 
-export default new Router({
+const router = new Router({
 	mode: 'history',
 	// @ts-ignore
 	base: window.BASE_PATH === '/%BASE_PATH%/' ? '/' : window.BASE_PATH,
@@ -28,6 +29,9 @@ export default new Router({
 				header: MainHeader,
 				sidebar: MainSidebar,
 			},
+			meta: {
+				authorize: [LOGIN_STATUS.LoggedIn],
+			},
 		},
 		{
 			path: '/workflow',
@@ -37,6 +41,9 @@ export default new Router({
 				header: MainHeader,
 				sidebar: MainSidebar,
 			},
+			meta: {
+				authorize: [LOGIN_STATUS.LoggedIn],
+			},
 		},
 		{
 			path: '/workflow/:name',
@@ -45,6 +52,9 @@ export default new Router({
 				default: NodeView,
 				header: MainHeader,
 				sidebar: MainSidebar,
+			},
+			meta: {
+				authorize: [LOGIN_STATUS.LoggedIn],
 			},
 		},
 		{
@@ -59,12 +69,18 @@ export default new Router({
 				header: MainHeader,
 				sidebar: MainSidebar,
 			},
+			meta: {
+				authorize: [LOGIN_STATUS.LoggedIn],
+			},
 		},
 		{
 			path: '/signin',
 			name: 'SigninView',
 			components: {
 				default: SigninView,
+			},
+			meta: {
+				authorize: [LOGIN_STATUS.LoggedOut],
 			},
 		},
 		{
@@ -73,12 +89,18 @@ export default new Router({
 			components: {
 				default: SignupView,
 			},
+			meta: {
+				authorize: [LOGIN_STATUS.LoggedOut],
+			},
 		},
 		{
 			path: '/setup',
 			name: 'SetupView',
 			components: {
 				default: SetupView,
+			},
+			meta: {
+				authorize: [ROLE.Owner],
 			},
 		},
 		{
@@ -87,12 +109,18 @@ export default new Router({
 			components: {
 				default: ForgotMyPasswordView,
 			},
+			meta: {
+				authorize: [LOGIN_STATUS.LoggedOut],
+			},
 		},
 		{
 			path: '/change-password',
 			name: 'ChangePasswordView',
 			components: {
 				default: ChangePasswordView,
+			},
+			meta: {
+				authorize: [LOGIN_STATUS.LoggedOut],
 			},
 		},
 		{
@@ -105,12 +133,18 @@ export default new Router({
 			components: {
 				default: SettingsUsersView,
 			},
+			meta: {
+				authorize: [ROLE.Owner],
+			},
 		},
 		{
 			path: '/settings/personal',
 			name: 'PersonalSettings',
 			components: {
 				default: SettingsPersonalView,
+			},
+			meta: {
+				authorize: [LOGIN_STATUS.LoggedIn],
 			},
 		},
 		{
@@ -120,7 +154,14 @@ export default new Router({
 			props: {
 				message: 'Oops, couldn’t find that',
 				errorCode: 404,
+				redirectText: 'Go to editor',
+				redirectLink: '/',
+			},
+			meta: {
+				authorize: [LOGIN_STATUS.LoggedIn, LOGIN_STATUS.LoggedOut],
 			},
 		},
 	],
 });
+
+export default router;

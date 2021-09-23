@@ -31,7 +31,7 @@
 						</svg>
 
 					<div class="text">
-						Need help? <n8n-link size="small" :href="documentationUrl" :newWindow="true" :bold="true" @click="onDocumentationUrlClick">Open {{nodeType.displayName}} documentation</n8n-link>
+						Need help? <n8n-link size="small" :to="documentationUrl" :newWindow="true" :bold="true" @click="onDocumentationUrlClick">Open {{nodeType.displayName}} documentation</n8n-link>
 					</div>
 			</div>
 		</transition>

@@ -1,14 +1,28 @@
 <template functional>
-	<a
-		:class="$style[`${props.underline ? `${props.theme}-underline` : props.theme}`]"
-		:href="props.href"
-		@click="(e) => listeners.click && listeners.click(e)"
-		:target="props.newWindow ? '_blank': '_self'"
-	>
-		<n8n-text :size="props.size" :bold="props.bold">
-			<slot></slot>
-		</n8n-text>
-	</a>
+	<span>
+		<router-link
+			v-if="typeof props.to === 'Object' || (typeof props.to === 'string' && !props.newWindow && props.to.startsWith('/'))"
+			:to="props.to"
+			@click="(e) => listeners.click && listeners.click(e)"
+			:class="$style[`${props.underline ? `${props.theme}-underline` : props.theme}`]"
+		>
+			<n8n-text :size="props.size" :bold="props.bold">
+				<slot></slot>
+			</n8n-text>
+		</router-link>
+		<a
+			v-else
+			:href="props.to"
+			@click="(e) => listeners.click && listeners.click(e)"
+			:target="props.newWindow ? '_blank': '_self'"
+			:class="$style[`${props.underline ? `${props.theme}-underline` : props.theme}`]"
+		>
+			<n8n-text :size="props.size" :bold="props.bold">
+				<slot></slot>
+			</n8n-text>
+		</a>
+
+	</span>
 </template>
 
 <script lang="ts">
@@ -23,8 +37,8 @@ export default {
 		size: {
 			type: String,
 		},
-		href: {
-			type: String,
+		to: {
+			type: String || Object,
 		},
 		newWindow: {
 			type: Boolean,

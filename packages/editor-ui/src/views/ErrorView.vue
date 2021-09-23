@@ -14,7 +14,7 @@
 			</div>
 		</div>
 		<n8n-button
-			label="Go to editor"
+			:label="redirectText"
 			@click="onButtonClick"
 		/>
 	</div>
@@ -33,10 +33,25 @@ export default Vue.extend({
 		errorCode: {
 			type: Number,
 		},
+		redirectText: {
+			type: String,
+		},
+		redirectLink: {
+			type: String,
+		},
+		pageRedirect: {
+			type: Boolean,
+			default: false,
+		},
 	},
 	methods: {
 		onButtonClick() {
-			this.$router.push('/');
+			if (this.pageRedirect) {
+				window.location.assign(this.redirectLink);
+			}
+			else {
+				this.$router.push(this.redirectLink);
+			}
 		},
 	},
 });

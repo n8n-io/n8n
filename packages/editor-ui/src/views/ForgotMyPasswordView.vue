@@ -16,7 +16,7 @@ const FORM_CONFIG = {
 	title: 'Recover password',
 	buttonText: 'Email me a recovery link',
 	redirectText: 'Sign in',
-	redirectLink: '/login',
+	redirectLink: '/signin',
 	inputs: [
 		{
 			name: 'email',

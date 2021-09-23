@@ -42,7 +42,7 @@
 		<div :class="$style.actionContainer">
 			<n8n-link
 				v-if="redirectText && redirectLink"
-				:href="redirectLink"
+				:to="redirectLink"
 			>
 				{{redirectText}}
 			</n8n-link>

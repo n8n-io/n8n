@@ -25,7 +25,7 @@
 			<span>{{validationError}}</span>
 			<n8n-link
 				v-if="documentationUrl && documentationText"
-				:href="documentationUrl"
+				:to="documentationUrl"
 				:newWindow="true"
 				size="small"
 				theme="danger">

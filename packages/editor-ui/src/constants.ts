@@ -1,3 +1,5 @@
+import { IRole } from "./Interface";
+
 export const MAX_DISPLAY_DATA_SIZE = 204800;
 export const MAX_DISPLAY_ITEMS_AUTO_ALL = 250;
 export const NODE_NAME_PREFIX = 'node-';
@@ -62,3 +64,13 @@ export const REQUEST_NODE_FORM_URL = 'https://n8n-community.typeform.com/to/K1fB
 // General
 export const INSTANCE_ID_HEADER = 'n8n-instance-id';
 export const WAIT_TIME_UNLIMITED = '3000-01-01T00:00:00.000Z';
+
+export const ROLE: {Owner: IRole, Member: IRole} = {
+	Owner: 'Owner',
+	Member: 'Member',
+};
+
+export const LOGIN_STATUS: {LoggedIn: string, LoggedOut: string} = {
+	LoggedIn: 'LoggedIn',
+	LoggedOut: 'LoggedOut',
+};
