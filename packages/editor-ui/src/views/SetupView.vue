@@ -64,7 +64,7 @@ export default mixins(
 				this.loading = true;
 				await this.$store.dispatch('users/setup', values);
 
-				await this.$router.push({ name: 'SigninView' });
+				await this.$router.push({ name: 'NodeViewNew' });
 			} catch (error) {
 				this.$showError(error, 'Problem setting up instance', 'There was a problem setting up the instance:');
 			}
