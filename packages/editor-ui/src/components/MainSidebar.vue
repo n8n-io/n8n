@@ -301,9 +301,6 @@ export default mixins(
 				this.$store.commit('setWorkflowExecutionData', null);
 				this.updateNodesExecutionIssues();
 			},
-			closeWorkflowSettingsDialog () {
-				this.workflowSettingsDialogVisible = false;
-			},
 			closeExecutionsListOpenDialog () {
 				this.executionsListDialogVisible = false;
 			},
