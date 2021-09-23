@@ -1,4 +1,4 @@
-import { getCurrentUser } from '@/api/users';
+import { getCurrentUser, login } from '@/api/users';
 import {  ActionContext, Module } from 'vuex';
 import {
 	IRootState,
@@ -24,12 +24,24 @@ const module: Module<IUsersState, IRootState> = {
 	},
 	getters: {
 		currentUser(state: IUsersState): IUser | null {
+			// return {
+			// 	id: '1',
+			// 	email: 'test@gmail.com',
+			// 	role: 'Owner',
+			// };
 			return state.currentUserId ? state.users[state.currentUserId] : null;
 		},
 	},
 	actions: {
 		async fetchCurrentUser(context: ActionContext<IUsersState, IRootState>) {
 			const user = await getCurrentUser(context.rootGetters.getRestApiContext);
+			if (user) {
+				context.commit('addUsers', [user]);
+				context.commit('setCurrntUserId', user.id);
+			}
+		},
+		async login(context: ActionContext<IUsersState, IRootState>, params: {email: string, password: string}) {
+			const user = await login(context.rootGetters.getRestApiContext, params);
 			if (user) {
 				context.commit('addUsers', [user]);
 				context.commit('setCurrntUserId', user.id);
