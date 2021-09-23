@@ -50,11 +50,6 @@ export default Vue.extend({
 			REQUEST_NODE_FORM_URL,
 		};
 	},
-	computed: {
-		basePath(): string {
-			return this.$store.getters.getBaseUrl;
-		},
-	},
 	methods: {
 		selectWebhook() {
 			this.$emit('nodeTypeSelected', WEBHOOK_NODE_TYPE);
