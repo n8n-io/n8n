@@ -99,7 +99,6 @@ export class Grist implements INodeType {
 					method: 'GET',
 					uri: `https://${subdomain}.getgrist.com/api${endpoint}`,
 					qs: { limit: 1 },
-					body: {},
 					json: true,
 				};
 
