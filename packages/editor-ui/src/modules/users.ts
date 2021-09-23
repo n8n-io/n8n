@@ -63,7 +63,7 @@ const module: Module<IUsersState, IRootState> = {
 			await logout(context.rootGetters.getRestApiContext);
 			context.commit('clearCurrentUserId');
 		},
-		async setupOwner(context: ActionContext<IUsersState, IRootState>, params: INewUser) {
+		async createOwner(context: ActionContext<IUsersState, IRootState>, params: INewUser) {
 			const user = await setupOwner(context.rootGetters.getRestApiContext, params);
 			if (user) {
 				context.commit('addUsers', [user]);
