@@ -62,7 +62,7 @@ export default mixins(
 		async onSubmit(values: {[key: string]: string}) {
 			try {
 				this.loading = true;
-				await this.$store.dispatch('users/setup', values);
+				await this.$store.dispatch('users/createOwner', values);
 
 				await this.$router.push({ name: 'NodeViewNew' });
 			} catch (error) {
