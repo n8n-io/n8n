@@ -43,7 +43,7 @@ export default Vue.extend({
 				{
 					name: 'firstName',
 					initialValue: user.firstName,
-					sm: 12,
+					sm: 11,
 					properties: {
 						label: 'First name',
 						maxlength: 32,
@@ -55,7 +55,7 @@ export default Vue.extend({
 					initialValue: user.lastName,
 					sm: {
 						span: 11,
-						offset: 1,
+						offset: 2,
 					},
 					properties: {
 						label: 'Last name',
@@ -68,7 +68,7 @@ export default Vue.extend({
 				{
 					name: 'email',
 					initialValue: user.email,
-					sm: 12,
+					sm: 11,
 					properties: {
 						label: 'Email',
 						type: 'email',
