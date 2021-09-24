@@ -99,9 +99,6 @@ const router = new Router({
 			components: {
 				default: SetupView,
 			},
-			meta: {
-				authorize: [ROLE.Owner],
-			},
 		},
 		{
 			path: '/forgot-password',

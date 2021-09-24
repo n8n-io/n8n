@@ -1,5 +1,7 @@
 import { changePassword, deleteUser, getCurrentUser, getUsers, inviteUsers, login, logout, reinvite, sendForgotPasswordEmail, setupOwner, signup, updateUser, updateUserPassword, validatePasswordToken, validateSignupToken } from '@/api/users';
+import { LOGIN_STATUS } from '@/constants';
 import Vue from 'vue';
+import { RouteRecordPublic } from 'vue-router';
 import {  ActionContext, Module } from 'vuex';
 import {
 	INewUser,
@@ -8,6 +10,7 @@ import {
 	IUser,
 	IUsersState,
 } from '../Interface';
+import router from '../router';
 
 const module: Module<IUsersState, IRootState> = {
 	namespaced: true,
@@ -39,9 +42,28 @@ const module: Module<IUsersState, IRootState> = {
 			// return {
 			// 	id: '1',
 			// 	email: 'test@gmail.com',
-			// 	role: 'Owner',
+			// 	role: 'Member',
 			// };
 			return state.currentUserId ? state.users[state.currentUserId] : null;
+		},
+		canCurrentUserAccessView(state: IUsersState, getters: any) { // tslint:disable-line:no-any
+			return (viewName: string): boolean => {
+				const user = getters.currentUser as IUser | null;
+				const route = router.getRoutes().find((item: RouteRecordPublic) => item.name === viewName);
+
+				const authorize: string[] | null = route && route.meta ? route.meta.authorize : null;
+
+				if (authorize) {
+					if (!user && !authorize.includes(LOGIN_STATUS.LoggedOut)) {
+						return false;
+					}
+					if (user && (!authorize.includes(LOGIN_STATUS.LoggedIn) && !authorize.includes(user.role))) {
+						return false;
+					}
+				}
+
+				return true;
+			};
 		},
 	},
 	actions: {
