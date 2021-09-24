@@ -35,7 +35,7 @@ export default Vue.extend({
 	composes: container;
 	justify-content: center;
 	padding-top: 70.5px;
-	margin: 0 64px 0 64px;
+	margin: 0 var(--spacing-3xl) 0 var(--spacing-3xl);
 	height: 100%;
 	overflow: auto;
 }

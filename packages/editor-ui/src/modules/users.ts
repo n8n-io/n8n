@@ -39,15 +39,15 @@ const module: Module<IUsersState, IRootState> = {
 			return state.currentUserId;
 		},
 		currentUser(state: IUsersState): IUser | null {
-			// return {
-			// 	id: '1',
-			// 	firstName: 'Monts',
-			// 	lastName: 'Sexy',
-			// 	email: 'test@gmail.com',
-			// 	// role: 'Owner',
-			// 	role: 'Member',
-			// };
-			return state.currentUserId ? state.users[state.currentUserId] : null;
+			return {
+				id: '1',
+				firstName: 'Monts',
+				lastName: 'Sexy',
+				email: 'test@gmail.com',
+				// role: 'Owner',
+				role: 'Member',
+			};
+			// return state.currentUserId ? state.users[state.currentUserId] : null;
 		},
 		canCurrentUserAccessView(state: IUsersState, getters: any) { // tslint:disable-line:no-any
 			return (viewName: string): boolean => {
