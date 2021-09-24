@@ -72,9 +72,11 @@ export default mixins(
 		authenticate() {
 			const user = this.$store.getters['users/currentUser'] as IUser | null;
 			const authorize: string[] = this.$router.currentRoute.meta ? this.$router.currentRoute.meta.authorize : null;
+
 			if (authorize) {
 				if (!user && !authorize.includes(LOGIN_STATUS.LoggedOut)) {
-					this.$router.push({name: 'SigninView'});
+					const redirect = this.$route.query.redirect || encodeURIComponent(`${window.location.pathname}${window.location.search}`);
+					this.$router.push({name: 'SigninView', query: { redirect }});
 				}
 				if (user && (!authorize.includes(LOGIN_STATUS.LoggedIn) && !authorize.includes(user.role))) {
 					this.$router.push({name: 'NodeViewNew'});

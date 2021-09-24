@@ -54,12 +54,22 @@ export default mixins(
 			try {
 				this.loading = true;
 				await this.$store.dispatch('users/login', values);
+				this.loading = false;
 
-				await this.$router.push({ name: 'NodeViewNew' });
+				if (typeof this.$route.query.redirect === 'string') {
+					const redirect = decodeURIComponent(this.$route.query.redirect);
+					if (redirect.startsWith('/')) { // protect against phishing
+						this.$router.push(redirect);
+
+						return;
+					}
+				}
+
+				this.$router.push({ name: 'NodeViewNew' });
 			} catch (error) {
 				this.$showError(error, 'Problem loging in', 'There was a problem while trying to login:');
+				this.loading = false;
 			}
-			this.loading = false;
 		},
 	},
 });
