@@ -2,7 +2,7 @@
 	<AuthView
 		:form="FORM_CONFIG"
 		:formLoading="loading"
-		subtitle="Ricardo Villalobos has invited you to n8n"
+		:subtitle="inviteMessage"
 		@submit="onSubmit"
 	/>
 </template>
@@ -50,7 +50,30 @@ export default mixins(
 		return {
 			FORM_CONFIG,
 			loading: false,
+			inviter: null as null | {firstName: string, lastName: string},
 		};
+	},
+	async mounted() {
+		const token = this.$route.query.token;
+		try {
+			if (!token) {
+				throw new Error('Missing invite token');
+			}
+
+			const invite = await this.$store.dispatch('users/validateSignupToken', {token});
+			this.inviter = invite.inviter;
+		} catch (e) {
+			this.$showError(e, 'Issue validating invite token');
+		}
+	},
+	computed: {
+		inviteMessage(): null | string {
+			if (!this.inviter) {
+				return null;
+			}
+
+			return `${this.inviter.firstName} ${this.inviter.lastName} has invited you to n8n`;
+		},
 	},
 	methods: {
 		async onSubmit(values: {[key: string]: string}) {
