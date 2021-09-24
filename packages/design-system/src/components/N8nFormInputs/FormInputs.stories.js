@@ -1,53 +1,59 @@
-// import N8nFormBox from './FormBox.vue';
-// import { action } from '@storybook/addon-actions';
+import N8nFormInputs from './FormInputs.vue';
+import { action } from '@storybook/addon-actions';
 
-// export default {
-// 	title: 'Modules/FormBox',
-// 	component: N8nFormBox,
-// 	argTypes: {
-// 	},
-// 	parameters: {
-// 		backgrounds: { default: '--color-background-light' },
-// 	},
-// };
+export default {
+	title: 'Modules/FormInputs',
+	component: N8nFormInputs,
+	argTypes: {
+	},
+	parameters: {
+		backgrounds: { default: '--color-background-light' },
+	},
+};
 
-// const methods = {
-// 	onSubmit: action('submit'),
-// };
+const methods = {
+	onInput: action('input'),
+	onSubmit: action('submit'),
+};
 
-// const Template = (args, { argTypes }) => ({
-// 	props: Object.keys(argTypes),
-// 	components: {
-// 		N8nFormBox,
-// 	},
-// 	template: '<n8n-form-box v-bind="$props" @submit="onSubmit" />',
-// 	methods,
-// });
+const Template = (args, { argTypes }) => ({
+	props: Object.keys(argTypes),
+	components: {
+		N8nFormInputs,
+	},
+	template: '<n8n-form-inputs v-bind="$props" @submit="onSubmit" @input="onInput" />',
+	methods,
+});
 
-// export const FormBox = Template.bind({});
-// FormBox.args = {
-// 	title: 'Form title',
-// 	inputs: [
-// 		{
-// 			name: 'email',
-// 			label: 'Your Email',
-// 			type: 'email',
-// 			required: true,
-// 		},
-// 		{
-// 			name: 'password',
-// 			label: 'Your Password',
-// 			type: 'password',
-// 			required: true,
-// 		},
-// 		{
-// 			name: 'nickname',
-// 			label: 'Your Nickname',
-// 			placeholder: 'Monty',
-// 		},
-// 	],
-// 	buttonText: 'Action',
-// 	redirectText: 'Go somewhere',
-// 	redirectLink: 'https://n8n.io',
-// };
+export const FormInputs = Template.bind({});
+FormInputs.args = {
+	inputs: [
+		[
+			{
+				name: 'email',
+				properties: {
+					label: 'Your Email',
+					type: 'email',
+					required: true,
+					initialValue: 'test@test.com',
+				},
+			},
+			{
+				name: 'password',
+				properties: {
+					label: 'Your Password',
+					type: 'password',
+					required: true,
+				},
+			},
+			{
+				name: 'nickname',
+				properties: {
+					label: 'Your Nickname',
+					placeholder: 'Monty',
+				},
+			},
+		],
+	],
+};
 
