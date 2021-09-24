@@ -19,11 +19,11 @@ export class SplunkApi implements ICredentialType {
 			name: 'baseUrl',
 			type: 'string',
 			description: 'Protocol, domain and port',
-			placeholder: 'https://localhost:8089',
+			placeholder: 'e.g. https://localhost:8089',
 			default: '',
 		},
 		{
-			displayName: 'Allow Unauthorized Certificates',
+			displayName: 'Allow Self-Signed Certificates',
 			name: 'allowUnauthorizedCerts',
 			type: 'boolean',
 			default: false,

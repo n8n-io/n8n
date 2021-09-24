@@ -293,7 +293,9 @@ export class Splunk implements INodeType {
 
 						const endpoint = '/services/search/jobs';
 						responseData = await splunkApiRequest.call(this, 'POST', endpoint, body);
-						responseData = responseData.response;
+
+						const getEndpoint = `/services/search/jobs/${responseData.response.sid}`;
+						responseData = await splunkApiRequest.call(this, 'GET', getEndpoint).then(formatSearch);
 
 					} else if (operation === 'delete') {
 

@@ -92,7 +92,6 @@ export const userFields: INodeProperties[] = [
 	{
 		displayName: 'Password',
 		name: 'password',
-		placeholder: 'changeme',
 		type: 'string',
 		required: true,
 		default: '',
