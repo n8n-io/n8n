@@ -84,7 +84,15 @@ export default mixins(
 				this.$router.push({name: 'SigninView', query: { redirect }});
 			}
 			else {
-				this.$router.push({name: 'NodeViewNew'});
+				if (typeof this.$route.query.redirect === 'string') {
+					const redirect = decodeURIComponent(this.$route.query.redirect);
+					if (redirect.startsWith('/')) { // protect against phishing
+						this.$router.push(redirect);
+					}
+				}
+				else {
+					this.$router.push({name: 'NodeViewNew'});
+				}
 			}
 
 			this.loading = false;
