@@ -388,14 +388,14 @@ async function proxyRequestToAxios(
 			.then((response) => {
 				if (configObject.resolveWithFullResponse === true) {
 					resolve({
-						body: response.data,
+						body: response.data === '' ? undefined : response.data,
 						headers: response.headers,
 						statusCode: response.status,
 						statusMessage: response.statusText,
 						request: response.request,
 					});
 				} else {
-					resolve(response.data);
+					resolve(response.data === '' ? undefined : response.data);
 				}
 			})
 			.catch((error) => {

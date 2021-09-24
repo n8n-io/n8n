@@ -896,7 +896,11 @@ export class WorkflowExecute {
 					// the `error` property.
 					for (const execution of nodeSuccessData!) {
 						for (const lineResult of execution) {
-							if (lineResult.json.$error !== undefined && lineResult.json.$json !== undefined) {
+							if (
+								lineResult.json !== undefined &&
+								lineResult.json.$error !== undefined &&
+								lineResult.json.$json !== undefined
+							) {
 								lineResult.error = lineResult.json.$error as NodeApiError | NodeOperationError;
 								lineResult.json = {
 									error: (lineResult.json.$error as NodeApiError | NodeOperationError).message,
