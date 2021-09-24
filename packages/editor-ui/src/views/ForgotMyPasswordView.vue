@@ -17,15 +17,17 @@ const FORM_CONFIG = {
 	buttonText: 'Email me a recovery link',
 	redirectText: 'Sign in',
 	redirectLink: '/signin',
-	inputs: [
+	inputs: [[
 		{
 			name: 'email',
-			label: 'Email',
-			type: 'email',
-			required: true,
-			validationRules: [{name: 'VALID_EMAIL'}],
+			properties: {
+				label: 'Email',
+				type: 'email',
+				required: true,
+				validationRules: [{name: 'VALID_EMAIL'}],
+			},
 		},
-	],
+	]],
 };
 
 export default mixins(

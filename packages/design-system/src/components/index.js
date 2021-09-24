@@ -1,6 +1,7 @@
 import N8nButton from './N8nButton';
 import N8nFormBox from './N8nFormBox';
 import N8nFormInput from './N8nFormInput';
+import N8nFormInputs from './N8nFormInputs';
 import N8nHeading from './N8nHeading';
 import N8nIcon from './N8nIcon';
 import N8nIconButton from './N8nIconButton';
@@ -23,6 +24,7 @@ export {
 	N8nHeading,
 	N8nFormBox,
 	N8nFormInput,
+	N8nFormInputs,
 	N8nIcon,
 	N8nIconButton,
 	N8nInfoTip,

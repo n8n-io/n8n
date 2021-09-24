@@ -16,27 +16,35 @@ import mixins from 'vue-typed-mixins';
 const FORM_CONFIG = {
 	title: 'Set up your account',
 	buttonText: 'Finish account setup',
-	inputs: [
+	inputs: [[
 		{
 			name: 'firstName',
-			label: 'First name',
-			required: true,
+			properties: {
+				label: 'First name',
+				maxlength: 32,
+				required: true,
+			},
 		},
 		{
 			name: 'lastName',
-			label: 'Last name',
-			required: true,
+			properties: {
+				label: 'Last name',
+				maxlength: 32,
+				required: true,
+			},
 		},
 		{
 			name: 'password',
-			label: 'Password',
-			type: 'password',
-			validationRules: [{name: 'DEFAULT_PASSWORD_RULES'}],
-			required: true,
-			maxlength: 64,
-			infoText: 'At least 8 characters with 1 number and 1 uppercase',
+			properties: {
+				label: 'Password',
+				type: 'password',
+				validationRules: [{name: 'DEFAULT_PASSWORD_RULES'}],
+				required: true,
+				maxlength: 64,
+				infoText: 'At least 8 characters with 1 number and 1 uppercase',
+			},
 		},
-	],
+	]],
 };
 
 export default mixins(

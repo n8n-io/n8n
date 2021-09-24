@@ -18,24 +18,28 @@ const FORM_CONFIG = {
 	buttonText: 'Change Password',
 	redirectText: 'Sign in',
 	redirectLink: '/signin',
-	inputs: [
+	inputs: [[
 		{
 			name: 'password',
-			label: 'New password',
-			type: 'password',
-			required: true,
-			validationRules: [{name: 'DEFAULT_PASSWORD_RULES'}],
-			infoText: 'At least 8 characters with 1 number and 1 uppercase',
+			properties: {
+				label: 'New password',
+				type: 'password',
+				required: true,
+				validationRules: [{name: 'DEFAULT_PASSWORD_RULES'}],
+				infoText: 'At least 8 characters with 1 number and 1 uppercase',
+			},
 		},
 		{
 			name: 'password2',
-			label: 'Re-enter new password',
-			type: 'password',
-			required: true,
-			validators: {},
-			validationRules: [{name: 'TWO_PASSWORDS_MATCH'}],
+			properties: {
+				label: 'Re-enter new password',
+				type: 'password',
+				required: true,
+				validators: {},
+				validationRules: [{name: 'TWO_PASSWORDS_MATCH'}],
+			},
 		},
-	],
+	]],
 };
 
 export default mixins(
@@ -55,7 +59,7 @@ export default mixins(
 		};
 	},
 	async mounted() {
-		this.config.inputs[1].validators = {
+		this.config.inputs[1].properties.validators = {
 			TWO_PASSWORDS_MATCH: {
 				isValid: this.passwordsMatch,
 				defaultError: 'Two passwords must match',

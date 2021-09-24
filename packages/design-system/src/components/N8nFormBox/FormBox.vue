@@ -15,20 +15,11 @@
 		<div
 			:class="$style.inputsContainer"
 		>
-			<div
-				v-for="input in inputs"
-				:key="input.name"
-				:class="input.label ? $style.withLabel : ''"
-			>
-				<n8n-form-input
-					v-bind="input"
-					:value="values[input.name]"
-					:showValidationWarnings="showValidationWarnings"
-					@input="(value) => onInput(input.name, value)"
-					@validate="(value) => onValidate(input.name, value)"
-					@enter="onSubmit"
-				/>
-			</div>
+			<n8n-form-inputs
+				:inputs="inputs"
+				@input="onInput"
+				@submit="onSubmit"
+			/>
 		</div>
 		<div :class="$style.buttonContainer">
 			<n8n-button
@@ -52,7 +43,7 @@
 
 <script lang="ts">
 import Vue from 'vue';
-import N8nFormInput from '../N8nFormInput';
+import N8nFormInputs from '../N8nFormInputs';
 import N8nHeading from '../N8nHeading';
 import N8nLink from '../N8nLink';
 
@@ -60,7 +51,7 @@ export default Vue.extend({
 	name: 'n8n-form-box',
 	components: {
 		N8nHeading,
-		N8nFormInput,
+		N8nFormInputs,
 		N8nLink,
 	},
 	props: {
@@ -87,38 +78,12 @@ export default Vue.extend({
 			type: String,
 		},
 	},
-	data() {
-		return {
-			showValidationWarnings: false,
-			values: {} as {[key: string]: string},
-			validity: {} as {[key: string]: boolean},
-		};
-	},
 	methods: {
-		onInput(name: string, value: string) {
-			this.values = {
-				...this.values,
-				[name]: value,
-			};
-			this.$emit('input', {name, value});
-		},
-		isReadyToSubmit(): boolean {
-			for (let key in this.validity) {
-				if (!this.validity[key]) {
-					return false;
-				}
-			}
-
-			return true;
-		},
-		onValidate(name: string, valid: boolean) {
-			this.validity[name] = valid;
+		onInput(e: {name: string, value: string}) {
+			this.$emit('input', e);
 		},
 		onSubmit() {
-			this.showValidationWarnings = true;
-			if (this.isReadyToSubmit()) {
-				this.$emit('submit', this.values);
-			}
+			this.$emit('submit');
 		},
 	},
 });
@@ -141,9 +106,6 @@ export default Vue.extend({
 
 .inputsContainer {
 	margin-bottom: var(--spacing-xl);
-	> * {
-		margin-bottom: var(--spacing-2xs);
-	}
 }
 
 .actionContainer {

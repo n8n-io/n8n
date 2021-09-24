@@ -28,16 +28,20 @@ export default Vue.extend({
 	height: 100%;
 	width: 100%;
 	display: flex;
+	overflow: hidden;
 }
 
 .contentContainer {
 	composes: container;
 	justify-content: center;
 	padding-top: 70.5px;
+	margin: 0 64px 0 64px;
+	height: 100%;
+	overflow: auto;
 }
 
 .content {
-	min-width: 360px;
-	max-width: 728px;
+	width: 100%;
+	max-width: 800px;
 }
 </style>
