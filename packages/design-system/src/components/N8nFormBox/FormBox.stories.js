@@ -27,27 +27,33 @@ const Template = (args, { argTypes }) => ({
 export const FormBox = Template.bind({});
 FormBox.args = {
 	title: 'Form title',
-	inputs: [
+	inputs: [[
 		{
 			name: 'email',
-			label: 'Your Email',
-			type: 'email',
-			required: true,
-			validationRules: [{name: 'VALID_EMAIL'}],
+			properties: {
+				label: 'Your Email',
+				type: 'email',
+				required: true,
+				validationRules: [{name: 'VALID_EMAIL'}],
+			},
 		},
 		{
 			name: 'password',
-			label: 'Your Password',
-			type: 'password',
-			required: true,
-			validationRules: [{name: 'DEFAULT_PASSWORD_RULES'}],
+			properties: {
+				label: 'Your Password',
+				type: 'password',
+				required: true,
+				validationRules: [{name: 'DEFAULT_PASSWORD_RULES'}],
+			},
 		},
 		{
 			name: 'nickname',
-			label: 'Your Nickname',
-			placeholder: 'Monty',
+			properties: {
+				label: 'Your Nickname',
+				placeholder: 'Monty',
+			},
 		},
-	],
+	]],
 	buttonText: 'Action',
 	redirectText: 'Go somewhere',
 	redirectLink: 'https://n8n.io',
