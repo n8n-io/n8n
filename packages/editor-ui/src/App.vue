@@ -70,17 +70,21 @@ export default mixins(
 			return true;
 		},
 		authenticate() {
-			const user = this.$store.getters['users/currentUser'] as IUser | null;
-			const authorize: string[] = this.$router.currentRoute.meta ? this.$router.currentRoute.meta.authorize : null;
+			const isAuthorized = this.$store.getters['users/canCurrentUserAccessView'];
 
-			if (authorize) {
-				if (!user && !authorize.includes(LOGIN_STATUS.LoggedOut)) {
-					const redirect = this.$route.query.redirect || encodeURIComponent(`${window.location.pathname}${window.location.search}`);
-					this.$router.push({name: 'SigninView', query: { redirect }});
-				}
-				if (user && (!authorize.includes(LOGIN_STATUS.LoggedIn) && !authorize.includes(user.role))) {
-					this.$router.push({name: 'NodeViewNew'});
-				}
+			if (isAuthorized(this.$router.currentRoute.name)) {
+				this.loading = false;
+
+				return;
+			}
+
+			const user = this.$store.getters['users/currentUser'] as IUser | null;
+			if (!user) {
+				const redirect = this.$route.query.redirect || encodeURIComponent(`${window.location.pathname}${window.location.search}`);
+				this.$router.push({name: 'SigninView', query: { redirect }});
+			}
+			else {
+				this.$router.push({name: 'NodeViewNew'});
 			}
 
 			this.loading = false;
