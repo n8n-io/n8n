@@ -13,7 +13,7 @@
 				</i>
 				<span slot="title">Personal</span>
 			</n8n-menu-item>
-			<n8n-menu-item index="/settings/users">
+			<n8n-menu-item index="/settings/users" v-if="canAccessUsersView">
 				<i :class="$style.icon">
 					<font-awesome-icon icon="users" />
 				</i>
@@ -36,6 +36,11 @@ export default Vue.extend({
 	name: 'SettingsSidebar',
 	computed: {
 		...mapGetters('settings', ['versionCli']),
+		canAccessUsersView(): boolean {
+			const isAuthorized = this.$store.getters['users/canCurrentUserAccessView'];
+
+			return isAuthorized('UsersSettings');
+		},
 	},
 	methods: {
 		onVersionClick() {
