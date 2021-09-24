@@ -38,7 +38,7 @@ export default Vue.extend({
 	data() {
 		const user = this.$store.getters['users/currentUser'] as IUser;
 
-		const FORM_INPUTS = [[
+		const FORM_INPUTS = [
 			[
 				{
 					name: 'firstName',
@@ -53,7 +53,10 @@ export default Vue.extend({
 				{
 					name: 'lastName',
 					initialValue: user.lastName,
-					sm: 12,
+					sm: {
+						span: 11,
+						offset: 1,
+					},
 					properties: {
 						label: 'Last name',
 						maxlength: 32,
@@ -75,7 +78,7 @@ export default Vue.extend({
 					},
 				},
 			],
-		]];
+		];
 
 		return {
 			FORM_INPUTS,

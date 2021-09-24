@@ -9,6 +9,7 @@
 				v-for="input in row"
 				:key="input.name"
 				:sm="input.sm"
+				:offset="input.offset"
 				:class="$style.inputContainer"
 			>
 				<n8n-form-input
@@ -51,6 +52,7 @@ export default Vue.extend({
 			showValidationWarnings: false,
 			values: {} as {[key: string]: string},
 			validity: {} as {[key: string]: boolean},
+			multiColumn: false,
 		};
 	},
 	mounted() {
@@ -95,6 +97,10 @@ export default Vue.extend({
 <style lang="scss" module>
 .inputContainer {
 	margin-bottom: var(--spacing-s);
-	// padding-right: var(--spacing-2xs);
+}
+
+.multiInputContianer {
+	composes: inputContainer;
+	padding-right: var(--spacing-2xs);
 }
 </style>
