@@ -14,7 +14,6 @@
 				:type="type"
 				:placeholder="placeholder"
 				:value="value"
-				:name="name"
 				:maxlength="maxlength"
 				@input="onInput"
 				@blur="onBlur"
@@ -42,7 +41,6 @@
 import Vue from 'vue';
 import N8nInput from '../N8nInput';
 import N8nInputLabel from '../N8nInputLabel';
-import N8nText from '../N8nText';
 
 type RuleSet = {name: string, config?: any}[];
 
@@ -153,7 +151,6 @@ export default Vue.extend({
 	components: {
 		N8nInput,
 		N8nInputLabel,
-		N8nText,
 	},
 	data() {
 		return {
@@ -162,10 +159,6 @@ export default Vue.extend({
 		};
 	},
 	props: {
-		name: {
-			type: String,
-			required: true,
-		},
 		value: {
 			type: String,
 		},
@@ -205,6 +198,13 @@ export default Vue.extend({
 			type: Object,
 		},
 		maxlength: {
+			type: Number,
+		},
+		span: {
+			type: Number,
+			default: 24,
+		},
+		md: {
 			type: Number,
 		},
 	},

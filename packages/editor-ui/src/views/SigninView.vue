@@ -17,23 +17,27 @@ const FORM_CONFIG = {
 	buttonText: 'Sign in',
 	redirectText: 'Forgot my password',
 	redirectLink: '/forgot-password',
-	inputs: [
+	inputs: [[
 		{
 			name: 'email',
-			label: 'Email',
-			type: 'email',
-			required: true,
-			validationRules: [{name: 'VALID_EMAIL'}],
+			properties: {
+				label: 'Email',
+				type: 'email',
+				required: true,
+				validationRules: [{name: 'VALID_EMAIL'}],
+			},
 		},
 		{
 			name: 'password',
-			label: 'Password',
-			type: 'password',
-			required: true,
-			maxlength: 64,
-			validationRules: [{name: 'MIN_LENGTH', config: {minimum: 8}}],
+			properties: {
+				label: 'Password',
+				type: 'password',
+				required: true,
+				maxlength: 64,
+				validationRules: [{name: 'MIN_LENGTH', config: {minimum: 8}}],
+			},
 		},
-	],
+	]],
 };
 
 export default mixins(

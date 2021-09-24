@@ -33,12 +33,14 @@ FormBox.args = {
 			label: 'Your Email',
 			type: 'email',
 			required: true,
+			validationRules: [{name: 'VALID_EMAIL'}],
 		},
 		{
 			name: 'password',
 			label: 'Your Password',
 			type: 'password',
 			required: true,
+			validationRules: [{name: 'DEFAULT_PASSWORD_RULES'}],
 		},
 		{
 			name: 'nickname',
