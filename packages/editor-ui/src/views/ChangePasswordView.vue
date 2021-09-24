@@ -54,13 +54,24 @@ export default mixins(
 			},
 		};
 	},
-	mounted() {
+	async mounted() {
 		this.config.inputs[1].validators = {
 			TWO_PASSWORDS_MATCH: {
 				isValid: this.passwordsMatch,
 				defaultError: 'Two passwords must match',
 			},
 		};
+
+		const token = this.$route.query.token;
+		try {
+			if (!token) {
+				throw new Error('Missing token');
+			}
+
+			await this.$store.dispatch('users/validatePasswordToken', {token});
+		} catch (e) {
+			this.$showError(e, 'Issue validating token');
+		}
 	},
 	methods: {
 		passwordsMatch(value: string) {
