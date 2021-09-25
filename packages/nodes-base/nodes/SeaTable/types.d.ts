@@ -9,7 +9,7 @@ type TSeaTableServerEdition = 'enterprise edition';
 //         dtable
 // ----------------------------------
 
-import {IDtableMetadataColumn, IDtableMetadataTable} from './Interfaces';
+import {IDtableMetadataColumn, IDtableMetadataTable, TDtableViewColumn} from './Interfaces';
 import {ICredentialDataDecryptedObject} from 'n8n-workflow';
 
 type TInheritColumnTypeTime = 'ctime' | 'mtime';
@@ -29,6 +29,7 @@ type TColumnKey = TInheritColumnKey | string;
 
 export type TDtableMetadataTables = ReadonlyArray<IDtableMetadataTable>;
 export type TDtableMetadataColumns = ReadonlyArray<IDtableMetadataColumn>;
+export type TDtableViewColumns = ReadonlyArray<TDtableViewColumn>;
 
 // ----------------------------------
 //         api
