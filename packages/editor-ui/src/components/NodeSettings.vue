@@ -347,8 +347,7 @@ export default mixins(
 						name: parameterData.name,
 					};
 					this.$emit('valueChanged', sendData);
-
-					this.$store.commit('setActiveNode', newValue);
+					
 				} else if (parameterData.name.startsWith('parameters.')) {
 					// A node parameter changed
 

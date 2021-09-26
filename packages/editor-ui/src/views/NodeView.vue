@@ -1869,7 +1869,7 @@ export default mixins(
 
 				// Make sure that the node is selected again
 				this.deselectAllNodes();
-				this.nodeSelectedByName(newName);
+				this.nodeSelectedByName(newName, true);
 			},
 			async addNodes (nodes: INodeUi[], connections?: IConnections) {
 				if (!nodes || !nodes.length) {
