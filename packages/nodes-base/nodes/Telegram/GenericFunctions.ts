@@ -156,30 +156,10 @@ export async function apiRequest(this: IHookFunctions | IExecuteFunctions | ILoa
 		headers: {},
 		method,
 		uri: `https://api.telegram.org/bot${credentials.accessToken}/${endpoint}`,
+		body,
+		qs: query,
 		json: true,
 	};
-
-	// If we have binary data, we have to use the multipart/form-data content type
-	if ('binaryProperty' in body) {
-		const binaryType = body.binaryType as string;
-		delete body.binaryType;
-		const binaryProperty = body.binaryProperty as IBinaryData;
-		delete body.binaryProperty;
-		// Move body parameters to query parameters
-		query = body;
-		options.formData = {};
-		options.formData[binaryType] = {
-			value: Buffer.from(binaryProperty.data, BINARY_ENCODING),
-			options: {
-				filename: binaryProperty.fileName,
-				contentType: binaryProperty.mimeType,
-			},
-		};
-	} else {
-		options.body = body;
-	}
-
-	options.qs = query;
 
 	if (Object.keys(option).length > 0) {
 		Object.assign(options, option);
@@ -211,4 +191,8 @@ export function getImageBySize(photos: IDataObject[], size: string): IDataObject
 	const index = sizes[size] as number;
 
 	return photos[index];
+}
+
+export function getPropertyName(operation: string) {
+	return operation.replace('send', '').toLowerCase();
 }
