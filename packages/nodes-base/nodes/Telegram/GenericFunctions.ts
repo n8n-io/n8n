@@ -1,4 +1,5 @@
 import {
+	BINARY_ENCODING,
 	IExecuteFunctions,
 	IHookFunctions,
 	ILoadOptionsFunctions,
@@ -10,7 +11,7 @@ import {
 } from 'request';
 
 import {
-	IDataObject, NodeApiError, NodeOperationError,
+	IBinaryData, IDataObject, NodeApiError, NodeOperationError,
 } from 'n8n-workflow';
 
 // Interface in n8n
@@ -142,7 +143,7 @@ export function addAdditionalFields(this: IExecuteFunctions, body: IDataObject, 
  * @param {object} body
  * @returns {Promise<any>}
  */
-export async function apiRequest(this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions | IWebhookFunctions, method: string, endpoint: string, body: object, query?: IDataObject, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
+export async function apiRequest(this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions | IWebhookFunctions, method: string, endpoint: string, body: IDataObject, query?: IDataObject, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
 	const credentials = await this.getCredentials('telegramApi');
 
 	if (credentials === undefined) {
@@ -152,14 +153,33 @@ export async function apiRequest(this: IHookFunctions | IExecuteFunctions | ILoa
 	query = query || {};
 
 	const options: OptionsWithUri = {
-		headers: {
-		},
+		headers: {},
 		method,
-		body,
-		qs: query,
 		uri: `https://api.telegram.org/bot${credentials.accessToken}/${endpoint}`,
 		json: true,
 	};
+
+	// If we have binary data, we have to use the multipart/form-data content type
+	if ('binaryProperty' in body) {
+		const binaryType = body.binaryType as string;
+		delete body.binaryType;
+		const binaryProperty = body.binaryProperty as IBinaryData;
+		delete body.binaryProperty;
+		// Move body parameters to query parameters
+		query = body;
+		options.formData = {};
+		options.formData[binaryType] = {
+			value: Buffer.from(binaryProperty.data, BINARY_ENCODING),
+			options: {
+				filename: binaryProperty.fileName,
+				contentType: binaryProperty.mimeType,
+			},
+		};
+	} else {
+		options.body = body;
+	}
+
+	options.qs = query;
 
 	if (Object.keys(option).length > 0) {
 		Object.assign(options, option);

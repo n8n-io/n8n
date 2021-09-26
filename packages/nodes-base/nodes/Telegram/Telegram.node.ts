@@ -3,6 +3,7 @@ import {
 } from 'n8n-core';
 
 import {
+	IBinaryData,
 	ICredentialsDecrypted,
 	ICredentialTestFunctions,
 	IDataObject,
@@ -830,7 +831,7 @@ export class Telegram implements INodeType {
 						],
 					},
 				},
-				description: 'Animation to send. Pass a file_id to send an animation that exists on the Telegram servers (recommended)<br />or pass an HTTP URL for Telegram to get an animation from the Internet.',
+				description: 'Animation to send. Pass a file_id to send an animation that exists on the Telegram servers (recommended)<br />, an HTTP URL for Telegram to get an animation from the Internet, or a binary property name if <br />Send Binary Data is true.',
 			},
 
 
@@ -853,7 +854,7 @@ export class Telegram implements INodeType {
 						],
 					},
 				},
-				description: 'Audio file to send. Pass a file_id to send a file that exists on the Telegram servers (recommended)<br />or pass an HTTP URL for Telegram to get a file from the Internet.',
+				description: 'Audio file to send. Pass a file_id to send a file that exists on the Telegram servers (recommended)<br />, an HTTP URL for Telegram to get a file from the Internet, or a binary property name if <br />Send Binary Data is true.',
 			},
 
 
@@ -941,7 +942,7 @@ export class Telegram implements INodeType {
 						],
 					},
 				},
-				description: 'Document to send. Pass a file_id to send a file that exists on the Telegram servers (recommended)<br />or pass an HTTP URL for Telegram to get a file from the Internet.',
+				description: 'Document to send. Pass a file_id to send a file that exists on the Telegram servers (recommended)<br />, an HTTP URL for Telegram to get a file from the Internet, or a binary property name if <br />Send Binary Data is true.',
 			},
 
 
@@ -1133,7 +1134,7 @@ export class Telegram implements INodeType {
 						],
 					},
 				},
-				description: 'Photo to send. Pass a file_id to send a photo that exists on the Telegram servers (recommended)<br />or pass an HTTP URL for Telegram to get a photo from the Internet.',
+				description: 'Photo to send. Pass a file_id to send a photo that exists on the Telegram servers (recommended)<br />, an HTTP URL for Telegram to get a photo from the Internet, or a binary property name if <br />Send Binary Data is true.',
 			},
 
 
@@ -1155,7 +1156,7 @@ export class Telegram implements INodeType {
 						],
 					},
 				},
-				description: 'Sticker to send. Pass a file_id to send a file that exists on the Telegram servers (recommended)<br />or pass an HTTP URL for Telegram to get a .webp file from the Internet.',
+				description: 'Sticker to send. Pass a file_id to send a file that exists on the Telegram servers (recommended)<br />, an HTTP URL for Telegram to get a .webp file from the Internet, or a binary property name if <br />Send Binary Data is true.',
 			},
 
 
@@ -1177,7 +1178,34 @@ export class Telegram implements INodeType {
 						],
 					},
 				},
-				description: 'Video file to send. Pass a file_id to send a file that exists on the Telegram servers (recommended)<br />or pass an HTTP URL for Telegram to get a file from the Internet.',
+				description: 'Video file to send. Pass a file_id to send a file that exists on the Telegram servers (recommended)<br />, an HTTP URL for Telegram to get a file from the Internet, or a binary property name if <br />Send Binary Data is true.',
+			},
+
+
+			// ----------------------------------
+			//         message:sendAnimation/sendAudio/sendDocument/sendPhoto/sendSticker/sendVideo
+			// ----------------------------------
+			{
+				displayName: 'Send Binary Data',
+				name: 'sendBinaryData',
+				type: 'boolean',
+				default: false,
+				displayOptions: {
+					show: {
+						operation: [
+							'sendAnimation',
+							'sendAudio',
+							'sendDocument',
+							'sendPhoto',
+							'sendSticker',
+							'sendVideo',
+						],
+						resource: [
+							'message',
+						],
+					},
+				},
+				description: 'If binary data should be sent instead of a link.',
 			},
 
 
@@ -1961,7 +1989,17 @@ export class Telegram implements INodeType {
 	
 						// Add additional fields and replyMarkup
 						addAdditionalFields.call(this, body, i);
-	
+
+						const sendBinaryData = this.getNodeParameter('sendBinaryData', i) as boolean;
+						if (sendBinaryData === true ) {
+							const item = items[i];
+							if (item.binary === undefined) {
+								throw new NodeOperationError(this.getNode(), 'No binary data exists on item!');
+							}
+							body.binaryProperty = item.binary[body.animation] as IBinaryData;
+							body.binaryType = 'animation';
+							delete body.animation;
+						}
 	
 					} else if (operation === 'sendAudio') {
 						// ----------------------------------
@@ -1976,6 +2014,17 @@ export class Telegram implements INodeType {
 						// Add additional fields and replyMarkup
 						addAdditionalFields.call(this, body, i);
 	
+						const sendBinaryData = this.getNodeParameter('sendBinaryData', i) as boolean;
+						if (sendBinaryData === true ) {
+							const item = items[i];
+							if (item.binary === undefined) {
+								throw new NodeOperationError(this.getNode(), 'No binary data exists on item!');
+							}
+							body.binaryProperty = item.binary[body.audio] as IBinaryData;
+							body.binaryType = 'audio';
+							delete body.audio;
+						}
+
 					} else if (operation === 'sendChatAction') {
 						// ----------------------------------
 						//         message:sendChatAction
@@ -1999,6 +2048,17 @@ export class Telegram implements INodeType {
 						// Add additional fields and replyMarkup
 						addAdditionalFields.call(this, body, i);
 	
+						const sendBinaryData = this.getNodeParameter('sendBinaryData', i) as boolean;
+						if (sendBinaryData === true ) {
+							const item = items[i];
+							if (item.binary === undefined) {
+								throw new NodeOperationError(this.getNode(), 'No binary data exists on item!');
+							}
+							body.binaryProperty = item.binary[body.document] as IBinaryData;
+							body.binaryType = 'document';
+							delete body.document;
+						}
+
 					} else if (operation === 'sendLocation') {
 						// ----------------------------------
 						//         message:sendLocation
@@ -2061,6 +2121,17 @@ export class Telegram implements INodeType {
 						// Add additional fields and replyMarkup
 						addAdditionalFields.call(this, body, i);
 	
+						const sendBinaryData = this.getNodeParameter('sendBinaryData', i) as boolean;
+						if (sendBinaryData === true ) {
+							const item = items[i];
+							if (item.binary === undefined) {
+								throw new NodeOperationError(this.getNode(), 'No binary data exists on item!');
+							}
+							body.binaryProperty = item.binary[body.photo] as IBinaryData;
+							body.binaryType = 'photo';
+							delete body.photo;
+						}
+
 					} else if (operation === 'sendSticker') {
 						// ----------------------------------
 						//         message:sendSticker
@@ -2074,6 +2145,17 @@ export class Telegram implements INodeType {
 						// Add additional fields and replyMarkup
 						addAdditionalFields.call(this, body, i);
 	
+						const sendBinaryData = this.getNodeParameter('sendBinaryData', i) as boolean;
+						if (sendBinaryData === true ) {
+							const item = items[i];
+							if (item.binary === undefined) {
+								throw new NodeOperationError(this.getNode(), 'No binary data exists on item!');
+							}
+							body.binaryProperty = item.binary[body.sticker] as IBinaryData;
+							body.binaryType = 'sticker';
+							delete body.sticker;
+						}
+
 					} else if (operation === 'sendVideo') {
 						// ----------------------------------
 						//         message:sendVideo
@@ -2087,6 +2169,17 @@ export class Telegram implements INodeType {
 						// Add additional fields and replyMarkup
 						addAdditionalFields.call(this, body, i);
 	
+						const sendBinaryData = this.getNodeParameter('sendBinaryData', i) as boolean;
+						if (sendBinaryData === true ) {
+							const item = items[i];
+							if (item.binary === undefined) {
+								throw new NodeOperationError(this.getNode(), 'No binary data exists on item!');
+							}
+							body.binaryProperty = item.binary[body.video] as IBinaryData;
+							body.binaryType = 'video';
+							delete body.video;
+						}
+
 					}
 				} else {
 					throw new NodeOperationError(this.getNode(), `The resource "${resource}" is not known!`);
