@@ -11,13 +11,13 @@
 			<div id="content" :class="$style.container">
 				<router-view />
 			</div>
-			<RootModals />
+			<Modals />
 		</div>
 	</div>
 </template>
 
 <script lang="ts">
-import RootModals from './components/RootModals.vue';
+import Modals from './components/Modals.vue';
 import LoadingView from './views/LoadingView.vue';
 
 import mixins from 'vue-typed-mixins';
@@ -30,7 +30,7 @@ export default mixins(
 	name: 'App',
 	components: {
 		LoadingView,
-		RootModals,
+		Modals,
 	},
 	data() {
 		return {

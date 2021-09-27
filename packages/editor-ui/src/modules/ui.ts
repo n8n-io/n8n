@@ -1,5 +1,6 @@
 import {
 	ABOUT_MODAL_KEY,
+	CHANGE_PASSWORD_MODAL_KEY,
 	CREDENTIAL_EDIT_MODAL_KEY,
 	CREDENTIAL_SELECT_MODAL_KEY,
 	DUPLICATE_MODAL_KEY,
@@ -20,6 +21,9 @@ const module: Module<IUiState, IRootState> = {
 	state: {
 		modals: {
 			[ABOUT_MODAL_KEY]: {
+				open: false,
+			},
+			[CHANGE_PASSWORD_MODAL_KEY]: {
 				open: false,
 			},
 			[CREDENTIAL_EDIT_MODAL_KEY]: {
@@ -98,23 +102,8 @@ const module: Module<IUiState, IRootState> = {
 		},
 	},
 	actions: {
-		openAboutModal: async (context: ActionContext<IUiState, IRootState>) => {
-			context.commit('openModal', ABOUT_MODAL_KEY);
-		},
-		openTagsManagerModal: async (context: ActionContext<IUiState, IRootState>) => {
-			context.commit('openModal', TAGS_MANAGER_MODAL_KEY);
-		},
-		openWorklfowOpenModal: async (context: ActionContext<IUiState, IRootState>) => {
-			context.commit('openModal', WORKFLOW_OPEN_MODAL_KEY);
-		},
-		openDuplicateModal: async (context: ActionContext<IUiState, IRootState>) => {
-			context.commit('openModal', DUPLICATE_MODAL_KEY);
-		},
-		openUpdatesPanel: async (context: ActionContext<IUiState, IRootState>) => {
-			context.commit('openModal', VERSIONS_MODAL_KEY);
-		},
-		openWorkflowSettingsModal: async (context: ActionContext<IUiState, IRootState>) => {
-			context.commit('openModal', WORKFLOW_SETTINGS_MODAL_KEY);
+		openModal: async (context: ActionContext<IUiState, IRootState>, modalKey: string) => {
+			context.commit('openModal', modalKey);
 		},
 		openExisitngCredential: async (context: ActionContext<IUiState, IRootState>, { id }: {id: string}) => {
 			context.commit('setActiveId', {name: CREDENTIAL_EDIT_MODAL_KEY, id});
@@ -125,9 +114,6 @@ const module: Module<IUiState, IRootState> = {
 			context.commit('setActiveId', {name: CREDENTIAL_EDIT_MODAL_KEY, id: type});
 			context.commit('setMode', {name: CREDENTIAL_EDIT_MODAL_KEY, mode: 'new'});
 			context.commit('openModal', CREDENTIAL_EDIT_MODAL_KEY);
-		},
-		openCredentialsSelectModal: async (context: ActionContext<IUiState, IRootState>) => {
-			context.commit('openModal', CREDENTIAL_SELECT_MODAL_KEY);
 		},
 	},
 };

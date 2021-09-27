@@ -46,6 +46,7 @@ import { mapGetters } from "vuex";
 
 import mixins from 'vue-typed-mixins';
 import { convertToDisplayDate } from './helpers';
+import { CREDENTIAL_SELECT_MODAL_KEY } from '@/constants';
 
 export default mixins(
 	externalHooks,
@@ -90,7 +91,7 @@ export default mixins(
 		},
 
 		createCredential () {
-			this.$store.dispatch('ui/openCredentialsSelectModal');
+			this.$store.dispatch('ui/openModal', CREDENTIAL_SELECT_MODAL_KEY);
 		},
 
 		editCredential (credential: ICredentialsResponse) {

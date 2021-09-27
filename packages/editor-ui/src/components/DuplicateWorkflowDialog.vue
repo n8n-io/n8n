@@ -54,7 +54,7 @@ import Modal from "./Modal.vue";
 export default mixins(showMessage, workflowHelpers).extend({
 	components: { TagsDropdown, Modal },
 	name: "DuplicateWorkflow",
-	props: ["dialogVisible", "modalName", "isActive"],
+	props: ["modalName", "isActive"],
 	data() {
 		const currentTagIds = this.$store.getters[
 			"workflowTags"

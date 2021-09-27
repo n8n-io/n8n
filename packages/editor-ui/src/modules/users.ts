@@ -119,7 +119,6 @@ const module: Module<IUsersState, IRootState> = {
 		},
 		async updateUser(context: ActionContext<IUsersState, IRootState>, params: IUser) {
 			const user = await updateUser(context.rootGetters.getRestApiContext, params);
-			console.log('got user', user);
 			context.commit('addUsers', [user]);
 		},
 		async updateCurrentUserPassword(context: ActionContext<IUsersState, IRootState>, params: {password: string}) {

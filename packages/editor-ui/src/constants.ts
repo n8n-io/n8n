@@ -26,6 +26,7 @@ export const VERSIONS_MODAL_KEY = 'versions';
 export const WORKFLOW_SETTINGS_MODAL_KEY = 'settings';
 export const CREDENTIAL_EDIT_MODAL_KEY = 'editCredential';
 export const CREDENTIAL_SELECT_MODAL_KEY = 'selectCredential';
+export const CHANGE_PASSWORD_MODAL_KEY = 'changePassword';
 
 // breakpoints
 export const BREAKPOINT_SM = 768;

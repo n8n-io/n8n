@@ -29,6 +29,7 @@
 </template>
 
 <script lang="ts">
+import { ABOUT_MODAL_KEY } from '@/constants';
 import Vue from 'vue';
 import { mapGetters } from 'vuex';
 
@@ -44,7 +45,7 @@ export default Vue.extend({
 	},
 	methods: {
 		onVersionClick() {
-			this.$store.dispatch('ui/openAboutModal');
+			this.$store.dispatch('ui/openModal', ABOUT_MODAL_KEY);
 		},
 	},
 });

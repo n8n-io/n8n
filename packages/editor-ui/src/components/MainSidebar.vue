@@ -171,6 +171,7 @@ import { saveAs } from 'file-saver';
 import mixins from 'vue-typed-mixins';
 import { mapGetters } from 'vuex';
 import MenuItemsIterator from './MenuItemsIterator.vue';
+import { ABOUT_MODAL_KEY, CREDENTIAL_SELECT_MODAL_KEY, DUPLICATE_MODAL_KEY, TAGS_MANAGER_MODAL_KEY, VERSIONS_MODAL_KEY, WORKFLOW_OPEN_MODAL_KEY, WORKFLOW_SETTINGS_MODAL_KEY } from '@/constants';
 
 const helpMenuItems: IMenuItem[] = [
 	{
@@ -308,10 +309,10 @@ export default mixins(
 				this.credentialOpenDialogVisible = false;
 			},
 			openTagManager() {
-				this.$store.dispatch('ui/openTagsManagerModal');
+				this.$store.dispatch('ui/openModal', TAGS_MANAGER_MODAL_KEY);
 			},
 			openUpdatesPanel() {
-				this.$store.dispatch('ui/openUpdatesPanel');
+				this.$store.dispatch('ui/openModal', VERSIONS_MODAL_KEY);
 			},
 			async stopExecution () {
 				const executionId = this.$store.getters.activeExecutionId;
@@ -369,7 +370,7 @@ export default mixins(
 			},
 			async handleSelect (key: string, keyPath: string) {
 				if (key === 'workflow-open') {
-					this.$store.dispatch('ui/openWorklfowOpenModal');
+					this.$store.dispatch('ui/openModal', WORKFLOW_OPEN_MODAL_KEY);
 				} else if (key === 'workflow-import-file') {
 					(this.$refs.importFile as HTMLInputElement).click();
 				} else if (key === 'workflow-import-url') {
@@ -425,11 +426,11 @@ export default mixins(
 				} else if (key === 'workflow-save') {
 					this.saveCurrentWorkflow();
 				} else if (key === 'workflow-duplicate') {
-					this.$store.dispatch('ui/openDuplicateModal');
+					this.$store.dispatch('ui/openModal', DUPLICATE_MODAL_KEY);
 				} else if (key === 'help-about') {
-					this.$store.dispatch('ui/openAboutModal');
+					this.$store.dispatch('ui/openModal', ABOUT_MODAL_KEY);
 				} else if (key === 'workflow-settings') {
-					this.$store.dispatch('ui/openWorkflowSettingsModal');
+					this.$store.dispatch('ui/openModal', WORKFLOW_SETTINGS_MODAL_KEY);
 				} else if (key === 'workflow-new') {
 					const result = this.$store.getters.getStateIsDirty;
 					if(result) {
@@ -463,7 +464,7 @@ export default mixins(
 				} else if (key === 'credentials-open') {
 					this.credentialOpenDialogVisible = true;
 				} else if (key === 'credentials-new') {
-					this.$store.dispatch('ui/openCredentialsSelectModal');
+					this.$store.dispatch('ui/openModal', CREDENTIAL_SELECT_MODAL_KEY);
 				} else if (key === 'execution-open-workflow') {
 					if (this.workflowExecution !== null) {
 						this.openWorkflow(this.workflowExecution.workflowId as string);

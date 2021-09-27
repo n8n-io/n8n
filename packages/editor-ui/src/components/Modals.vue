@@ -1,5 +1,13 @@
 <template>
 	<div>
+		<ModalRoot :name="ABOUT_MODAL_KEY">
+			<template v-slot:default="{ modalName }">
+				<AboutModal
+					:modalName="modalName"
+				/>
+			</template>
+		</ModalRoot>
+
 		<ModalRoot :name="DUPLICATE_MODAL_KEY">
 			<template v-slot:default="{ modalName, active }">
 				<DuplicateWorkflowDialog
@@ -57,13 +65,23 @@
 				/>
 			</template>
 		</ModalRoot>
+
+		<ModalRoot :name="CHANGE_PASSWORD_MODAL_KEY">
+			<template v-slot="{ modalName }">
+				<ChangePasswordModal
+					:modalName="modalName"
+				/>
+			</template>
+		</ModalRoot>
 	</div>
 </template>
 
 <script lang="ts">
 import Vue from "vue";
-import { DUPLICATE_MODAL_KEY, TAGS_MANAGER_MODAL_KEY, WORKFLOW_OPEN_MODAL_KEY, VERSIONS_MODAL_KEY, CREDENTIAL_EDIT_MODAL_KEY, CREDENTIAL_SELECT_MODAL_KEY, WORKFLOW_SETTINGS_MODAL_KEY } from '@/constants';
+import { ABOUT_MODAL_KEY, CHANGE_PASSWORD_MODAL_KEY, DUPLICATE_MODAL_KEY, TAGS_MANAGER_MODAL_KEY, WORKFLOW_OPEN_MODAL_KEY, VERSIONS_MODAL_KEY, CREDENTIAL_EDIT_MODAL_KEY, CREDENTIAL_SELECT_MODAL_KEY, WORKFLOW_SETTINGS_MODAL_KEY } from '@/constants';
 
+import AboutModal from './AboutModal.vue';
+import ChangePasswordModal from "./ChangePasswordModal.vue";
 import CredentialEdit from "./CredentialEdit/CredentialEdit.vue";
 import DuplicateWorkflowDialog from "@/components/DuplicateWorkflowDialog.vue";
 import WorkflowOpen from "@/components/WorkflowOpen.vue";
@@ -76,6 +94,8 @@ import TagsManager from "@/components/TagsManager/TagsManager.vue";
 export default Vue.extend({
 	name: "Modals",
 	components: {
+		AboutModal,
+		ChangePasswordModal,
 		CredentialEdit,
 		DuplicateWorkflowDialog,
 		ModalRoot,
@@ -86,6 +106,8 @@ export default Vue.extend({
 		WorkflowOpen,
 	},
 	data: () => ({
+		ABOUT_MODAL_KEY,
+		CHANGE_PASSWORD_MODAL_KEY,
 		DUPLICATE_MODAL_KEY,
 		TAGS_MANAGER_MODAL_KEY,
 		WORKFLOW_OPEN_MODAL_KEY,

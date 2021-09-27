@@ -26,7 +26,7 @@
 				</div>
 				<div>
 					<n8n-input-label label="Password">
-						<n8n-link>Change password</n8n-link>
+						<n8n-link @click="openPasswordModal">Change password</n8n-link>
 					</n8n-input-label>
 				</div>
 			</div>
@@ -39,6 +39,7 @@
 
 <script lang="ts">
 import { showMessage } from '@/components/mixins/showMessage';
+import { CHANGE_PASSWORD_MODAL_KEY } from '@/constants';
 import { IUser } from '@/Interface';
 import Vue from 'vue';
 import mixins from 'vue-typed-mixins';
@@ -125,6 +126,9 @@ export default mixins(
 		},
 		onSaveClick() {
 			this.formBus.$emit('submit');
+		},
+		openPasswordModal() {
+			this.$store.dispatch('ui/openModal', CHANGE_PASSWORD_MODAL_KEY);
 		},
 	},
 });
