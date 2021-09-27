@@ -49,7 +49,7 @@ export async function updateUser(context: IRestApiContext, params: IUser): Promi
 	return await makeRestApiRequest(context, 'PATCH', `/user/${params.id}`, params as unknown as IDataObject);
 }
 
-export async function updateUserPassword(context: IRestApiContext, params: {id: string, password: string}): Promise<IUser> {
+export async function updateUserPassword(context: IRestApiContext, params: {id: string, password: string}): Promise<void> {
 	return await makeRestApiRequest(context, 'PATCH', `/user/${params.id}/password`, params);
 }
 
