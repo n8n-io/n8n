@@ -3,6 +3,7 @@ import {
 } from 'n8n-core';
 
 import {
+	IBinaryData,
 	ICredentialsDecrypted,
 	ICredentialTestFunctions,
 	IDataObject,
@@ -16,6 +17,7 @@ import {
 import {
 	addAdditionalFields,
 	apiRequest,
+	getPropertyName,
 } from './GenericFunctions';
 
 
@@ -740,6 +742,61 @@ export class Telegram implements INodeType {
 				required: true,
 				description: 'Unique identifier for the target chat or username of the target<br />channel (in the format @channelusername). To find your chat id ask @get_id_bot.',
 			},
+			// ----------------------------------
+			//         message:sendAnimation/sendAudio/sendDocument/sendPhoto/sendSticker/sendVideo
+			// ----------------------------------
+
+			{
+				displayName: 'Binary Data',
+				name: 'binaryData',
+				type: 'boolean',
+				default: false,
+				required: true,
+				displayOptions: {
+					show: {
+						operation: [
+							'sendAnimation',
+							'sendAudio',
+							'sendDocument',
+							'sendPhoto',
+							'sendVideo',
+							'sendSticker',
+						],
+						resource: [
+							'message',
+						],
+					},
+				},
+				description: 'If the data to upload should be taken from binary field.',
+			},
+			{
+				displayName: 'Binary Property',
+				name: 'binaryPropertyName',
+				type: 'string',
+				default: 'data',
+				required: true,
+				displayOptions: {
+					show: {
+						operation: [
+							'sendAnimation',
+							'sendAudio',
+							'sendDocument',
+							'sendPhoto',
+							'sendVideo',
+							'sendSticker',
+						],
+						resource: [
+							'message',
+						],
+						binaryData: [
+							true,
+						],
+					},
+				},
+				placeholder: '',
+				description: 'Name of the binary property that contains the data to upload',
+			},
+
 			{
 				displayName: 'Message ID',
 				name: 'messageId',
@@ -828,9 +885,12 @@ export class Telegram implements INodeType {
 						resource: [
 							'message',
 						],
+						binaryData: [
+							false,
+						],
 					},
 				},
-				description: 'Animation to send. Pass a file_id to send an animation that exists on the Telegram servers (recommended)<br />or pass an HTTP URL for Telegram to get an animation from the Internet.',
+				description: 'Animation to send. Pass a file_id to send an animation that exists on the Telegram servers (recommended)<br />, an HTTP URL for Telegram to get an animation from the Internet',
 			},
 
 
@@ -851,9 +911,12 @@ export class Telegram implements INodeType {
 						resource: [
 							'message',
 						],
+						binaryData: [
+							false,
+						],
 					},
 				},
-				description: 'Audio file to send. Pass a file_id to send a file that exists on the Telegram servers (recommended)<br />or pass an HTTP URL for Telegram to get a file from the Internet.',
+				description: 'Audio file to send. Pass a file_id to send a file that exists on the Telegram servers (recommended)<br />, an HTTP URL for Telegram to get a file from the Internet',
 			},
 
 
@@ -939,9 +1002,12 @@ export class Telegram implements INodeType {
 						resource: [
 							'message',
 						],
+						binaryData: [
+							false,
+						],
 					},
 				},
-				description: 'Document to send. Pass a file_id to send a file that exists on the Telegram servers (recommended)<br />or pass an HTTP URL for Telegram to get a file from the Internet.',
+				description: 'Document to send. Pass a file_id to send a file that exists on the Telegram servers (recommended)<br />, an HTTP URL for Telegram to get a file from the Internet',
 			},
 
 
@@ -1131,9 +1197,12 @@ export class Telegram implements INodeType {
 						resource: [
 							'message',
 						],
+						binaryData: [
+							false,
+						],
 					},
 				},
-				description: 'Photo to send. Pass a file_id to send a photo that exists on the Telegram servers (recommended)<br />or pass an HTTP URL for Telegram to get a photo from the Internet.',
+				description: 'Photo to send. Pass a file_id to send a photo that exists on the Telegram servers (recommended)<br />, an HTTP URL for Telegram to get a photo from the Internet',
 			},
 
 
@@ -1153,9 +1222,12 @@ export class Telegram implements INodeType {
 						resource: [
 							'message',
 						],
+						binaryData: [
+							false,
+						],
 					},
 				},
-				description: 'Sticker to send. Pass a file_id to send a file that exists on the Telegram servers (recommended)<br />or pass an HTTP URL for Telegram to get a .webp file from the Internet.',
+				description: 'Sticker to send. Pass a file_id to send a file that exists on the Telegram servers (recommended)<br />, an HTTP URL for Telegram to get a .webp file from the Internet',
 			},
 
 
@@ -1175,11 +1247,13 @@ export class Telegram implements INodeType {
 						resource: [
 							'message',
 						],
+						binaryData: [
+							false,
+						],
 					},
 				},
-				description: 'Video file to send. Pass a file_id to send a file that exists on the Telegram servers (recommended)<br />or pass an HTTP URL for Telegram to get a file from the Internet.',
+				description: 'Video file to send. Pass a file_id to send a file that exists on the Telegram servers (recommended)<br />, an HTTP URL for Telegram to get a file from the Internet',
 			},
-
 
 			// ----------------------------------
 			//         message:editMessageText/sendAnimation/sendAudio/sendLocation/sendMessage/sendPhoto/sendSticker/sendVideo
@@ -1756,7 +1830,7 @@ export class Telegram implements INodeType {
 							message: 'Token is not valid.',
 						};
 					}
-				} catch(err) {
+				} catch (err) {
 					return {
 						status: 'Error',
 						message: `Token is not valid; ${err.message}`,
@@ -1767,7 +1841,7 @@ export class Telegram implements INodeType {
 					status: 'OK',
 					message: 'Authentication successful!',
 				};
-				
+
 			},
 		},
 	};
@@ -1787,6 +1861,7 @@ export class Telegram implements INodeType {
 
 		const operation = this.getNodeParameter('operation', 0) as string;
 		const resource = this.getNodeParameter('resource', 0) as string;
+		const binaryData = this.getNodeParameter('binaryData', 0, false) as boolean;
 
 		for (let i = 0; i < items.length; i++) {
 			try {
@@ -1897,147 +1972,146 @@ export class Telegram implements INodeType {
 						// ----------------------------------
 						//         message:editMessageText
 						// ----------------------------------
-	
+
 						endpoint = 'editMessageText';
-	
+
 						const messageType = this.getNodeParameter('messageType', i) as string;
-	
+
 						if (messageType === 'inlineMessage') {
 							body.inline_message_id = this.getNodeParameter('inlineMessageId', i) as string;
 						} else {
 							body.chat_id = this.getNodeParameter('chatId', i) as string;
 							body.message_id = this.getNodeParameter('messageId', i) as string;
 						}
-	
+
 						body.text = this.getNodeParameter('text', i) as string;
-	
+
 						// Add additional fields and replyMarkup
 						addAdditionalFields.call(this, body, i);
-	
+
 					} else if (operation === 'deleteMessage') {
 						// ----------------------------------
 						//       message:deleteMessage
 						// ----------------------------------
-	
+
 						endpoint = 'deleteMessage';
-	
+
 						body.chat_id = this.getNodeParameter('chatId', i) as string;
 						body.message_id = this.getNodeParameter('messageId', i) as string;
-	
+
 					} else if (operation === 'pinChatMessage') {
 						// ----------------------------------
 						//        message:pinChatMessage
 						// ----------------------------------
-	
+
 						endpoint = 'pinChatMessage';
-	
+
 						body.chat_id = this.getNodeParameter('chatId', i) as string;
 						body.message_id = this.getNodeParameter('messageId', i) as string;
-	
+
 						const { disable_notification } = this.getNodeParameter('additionalFields', i) as IDataObject;
 						if (disable_notification) {
 							body.disable_notification = true;
 						}
-	
+
 					} else if (operation === 'unpinChatMessage') {
 						// ----------------------------------
 						//        message:unpinChatMessage
 						// ----------------------------------
-	
+
 						endpoint = 'unpinChatMessage';
-	
+
 						body.chat_id = this.getNodeParameter('chatId', i) as string;
 						body.message_id = this.getNodeParameter('messageId', i) as string;
-	
+
 					} else if (operation === 'sendAnimation') {
 						// ----------------------------------
 						//         message:sendAnimation
 						// ----------------------------------
-	
+
 						endpoint = 'sendAnimation';
-	
+
 						body.chat_id = this.getNodeParameter('chatId', i) as string;
-						body.animation = this.getNodeParameter('file', i) as string;
-	
+						body.animation = this.getNodeParameter('file', i, '') as string;
+
 						// Add additional fields and replyMarkup
 						addAdditionalFields.call(this, body, i);
-	
-	
+
 					} else if (operation === 'sendAudio') {
 						// ----------------------------------
 						//         message:sendAudio
 						// ----------------------------------
-	
+
 						endpoint = 'sendAudio';
-	
+
 						body.chat_id = this.getNodeParameter('chatId', i) as string;
-						body.audio = this.getNodeParameter('file', i) as string;
-	
+						body.audio = this.getNodeParameter('file', i, '') as string;
+
 						// Add additional fields and replyMarkup
 						addAdditionalFields.call(this, body, i);
-	
+
 					} else if (operation === 'sendChatAction') {
 						// ----------------------------------
 						//         message:sendChatAction
 						// ----------------------------------
-	
+
 						endpoint = 'sendChatAction';
-	
+
 						body.chat_id = this.getNodeParameter('chatId', i) as string;
 						body.action = this.getNodeParameter('action', i) as string;
-	
+
 					} else if (operation === 'sendDocument') {
 						// ----------------------------------
 						//         message:sendDocument
 						// ----------------------------------
-	
+
 						endpoint = 'sendDocument';
-	
+
 						body.chat_id = this.getNodeParameter('chatId', i) as string;
-						body.document = this.getNodeParameter('file', i) as string;
-	
+						body.document = this.getNodeParameter('file', i, '') as string;
+
 						// Add additional fields and replyMarkup
 						addAdditionalFields.call(this, body, i);
-	
+
 					} else if (operation === 'sendLocation') {
 						// ----------------------------------
 						//         message:sendLocation
 						// ----------------------------------
-	
+
 						endpoint = 'sendLocation';
-	
+
 						body.chat_id = this.getNodeParameter('chatId', i) as string;
 						body.latitude = this.getNodeParameter('latitude', i) as string;
 						body.longitude = this.getNodeParameter('longitude', i) as string;
-	
+
 						// Add additional fields and replyMarkup
 						addAdditionalFields.call(this, body, i);
-	
+
 					} else if (operation === 'sendMessage') {
 						// ----------------------------------
 						//         message:sendMessage
 						// ----------------------------------
-	
+
 						endpoint = 'sendMessage';
-	
+
 						body.chat_id = this.getNodeParameter('chatId', i) as string;
 						body.text = this.getNodeParameter('text', i) as string;
-	
+
 						// Add additional fields and replyMarkup
 						addAdditionalFields.call(this, body, i);
-	
+
 					} else if (operation === 'sendMediaGroup') {
 						// ----------------------------------
 						//         message:sendMediaGroup
 						// ----------------------------------
-	
+
 						endpoint = 'sendMediaGroup';
-	
+
 						body.chat_id = this.getNodeParameter('chatId', i) as string;
-	
+
 						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 						Object.assign(body, additionalFields);
-	
+
 						const mediaItems = this.getNodeParameter('media', i) as IDataObject;
 						body.media = [];
 						for (const mediaItem of mediaItems.media as IDataObject[]) {
@@ -2047,52 +2121,72 @@ export class Telegram implements INodeType {
 							}
 							(body.media as IDataObject[]).push(mediaItem);
 						}
-	
+
 					} else if (operation === 'sendPhoto') {
 						// ----------------------------------
 						//         message:sendPhoto
 						// ----------------------------------
-	
+
 						endpoint = 'sendPhoto';
-	
+
 						body.chat_id = this.getNodeParameter('chatId', i) as string;
-						body.photo = this.getNodeParameter('file', i) as string;
-	
+						body.photo = this.getNodeParameter('file', i, '') as string;
+
 						// Add additional fields and replyMarkup
 						addAdditionalFields.call(this, body, i);
-	
+
 					} else if (operation === 'sendSticker') {
 						// ----------------------------------
 						//         message:sendSticker
 						// ----------------------------------
-	
+
 						endpoint = 'sendSticker';
-	
+
 						body.chat_id = this.getNodeParameter('chatId', i) as string;
-						body.sticker = this.getNodeParameter('file', i) as string;
-	
+						body.sticker = this.getNodeParameter('file', i, '') as string;
+
 						// Add additional fields and replyMarkup
 						addAdditionalFields.call(this, body, i);
-	
+
 					} else if (operation === 'sendVideo') {
 						// ----------------------------------
 						//         message:sendVideo
 						// ----------------------------------
-	
+
 						endpoint = 'sendVideo';
-	
+
 						body.chat_id = this.getNodeParameter('chatId', i) as string;
-						body.video = this.getNodeParameter('file', i) as string;
-	
+						body.video = this.getNodeParameter('file', i, '') as string;
+
 						// Add additional fields and replyMarkup
 						addAdditionalFields.call(this, body, i);
-	
 					}
 				} else {
 					throw new NodeOperationError(this.getNode(), `The resource "${resource}" is not known!`);
 				}
 
-				const responseData = await apiRequest.call(this, requestMethod, endpoint, body, qs);
+				let responseData;
+
+				if (binaryData === true) {
+					const binaryPropertyName = this.getNodeParameter('binaryPropertyName', 0) as string;
+					const binaryData = items[i].binary![binaryPropertyName] as IBinaryData;
+					const dataBuffer = await this.helpers.getBinaryDataBuffer(i, binaryPropertyName);
+					const propertyName = getPropertyName(operation);
+
+					const formData = {
+						...body,
+						[propertyName]: {
+							value: dataBuffer,
+							options: {
+								filename: binaryData.fileName,
+								contentType: binaryData.mimeType,
+							},
+						},
+					};
+					responseData = await apiRequest.call(this, requestMethod, endpoint, {}, qs, { formData });
+				} else {
+					responseData = await apiRequest.call(this, requestMethod, endpoint, body, qs);
+				}
 
 				if (resource === 'file' && operation === 'get') {
 					if (this.getNodeParameter('download', i, false) as boolean === true) {
