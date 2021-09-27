@@ -46,6 +46,9 @@ export default Vue.extend({
 				return [[]];
 			},
 		},
+		eventBus: {
+			type: Vue,
+		},
 	},
 	data() {
 		return {
@@ -63,6 +66,10 @@ export default Vue.extend({
 				}
 			});
 		});
+
+		if (this.eventBus) {
+			this.eventBus.$on('submit', this.onSubmit);
+		}
 	},
 	methods: {
 		onInput(name: string, value: string) {
