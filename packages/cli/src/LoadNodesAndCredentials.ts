@@ -15,6 +15,7 @@ import {
 	ILogger,
 	INodeType,
 	INodeTypeData,
+	INodeVersionedType,
 	LoggerProxy,
 } from 'n8n-workflow';
 
@@ -151,6 +152,14 @@ class LoadNodesAndCredentialsClass {
 		let tempCredential: ICredentialType;
 		try {
 			tempCredential = new tempModule[credentialName]() as ICredentialType;
+
+			if (tempCredential.icon && tempCredential.icon.startsWith('file:')) {
+				// If a file icon gets used add the full path
+				tempCredential.icon = `file:${path.join(
+					path.dirname(filePath),
+					tempCredential.icon.substr(5),
+				)}`;
+			}
 		} catch (e) {
 			if (e instanceof TypeError) {
 				throw new Error(
@@ -173,13 +182,14 @@ class LoadNodesAndCredentialsClass {
 	 * @returns {Promise<void>}
 	 */
 	async loadNodeFromFile(packageName: string, nodeName: string, filePath: string): Promise<void> {
-		let tempNode: INodeType;
+		let tempNode: INodeType | INodeVersionedType;
 		let fullNodeName: string;
 
 		// eslint-disable-next-line import/no-dynamic-require, global-require, @typescript-eslint/no-var-requires
 		const tempModule = require(filePath);
+
 		try {
-			tempNode = new tempModule[nodeName]() as INodeType;
+			tempNode = new tempModule[nodeName]();
 			this.addCodex({ node: tempNode, filePath, isCustom: packageName === 'CUSTOM' });
 		} catch (error) {
 			// eslint-disable-next-line no-console
@@ -199,11 +209,34 @@ class LoadNodesAndCredentialsClass {
 			)}`;
 		}
 
-		if (tempNode.executeSingle) {
+		if (tempNode.hasOwnProperty('executeSingle')) {
 			this.logger.warn(
 				`"executeSingle" will get deprecated soon. Please update the code of node "${packageName}.${nodeName}" to use "execute" instead!`,
 				{ filePath },
 			);
+		}
+
+		if (tempNode.hasOwnProperty('nodeVersions')) {
+			const versionedNodeType = (tempNode as INodeVersionedType).getNodeType();
+			this.addCodex({ node: versionedNodeType, filePath, isCustom: packageName === 'CUSTOM' });
+
+			if (
+				versionedNodeType.description.icon !== undefined &&
+				versionedNodeType.description.icon.startsWith('file:')
+			) {
+				// If a file icon gets used add the full path
+				versionedNodeType.description.icon = `file:${path.join(
+					path.dirname(filePath),
+					versionedNodeType.description.icon.substr(5),
+				)}`;
+			}
+
+			if (versionedNodeType.hasOwnProperty('executeSingle')) {
+				this.logger.warn(
+					`"executeSingle" will get deprecated soon. Please update the code of node "${packageName}.${nodeName}" to use "execute" instead!`,
+					{ filePath },
+				);
+			}
 		}
 
 		if (this.includeNodes !== undefined && !this.includeNodes.includes(fullNodeName)) {
@@ -249,7 +282,15 @@ class LoadNodesAndCredentialsClass {
 	 * @param obj.isCustom Whether the node is custom
 	 * @returns {void}
 	 */
-	addCodex({ node, filePath, isCustom }: { node: INodeType; filePath: string; isCustom: boolean }) {
+	addCodex({
+		node,
+		filePath,
+		isCustom,
+	}: {
+		node: INodeType | INodeVersionedType;
+		filePath: string;
+		isCustom: boolean;
+	}) {
 		try {
 			const codex = this.getCodex(filePath);
 

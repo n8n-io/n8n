@@ -31,7 +31,7 @@
 					</div>
 					{{parameter.displayName}}:
 					<n8n-tooltip placement="top" class="parameter-info" v-if="parameter.description" >
-						<div slot="content" v-html="parameter.description"></div>
+						<div slot="content" v-html="addTargetBlank(parameter.description)"></div>
 						<font-awesome-icon icon="question-circle"/>
 					</n8n-tooltip>
 				</div>
@@ -70,6 +70,7 @@
 					:value="getParameterValue(nodeValues, parameter.name, path)"
 					:displayOptions="true"
 					:path="getPath(parameter.name)"
+					:isReadOnly="isReadOnly"
 					@valueChanged="valueChanged"
 				/>
 			</div>
@@ -312,6 +313,7 @@ export default mixins(
 		margin: 0.3em 0;
 		padding: 0.8em;
 		line-height: 1.5;
+		word-break: normal;
 
 		a {
 			font-weight: var(--font-weight-bold);

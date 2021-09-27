@@ -200,6 +200,7 @@ export class SendGrid implements INodeType {
 			if (operation === 'upsert') {
 				try {
 					const contacts = [];
+					let lists;
 					for (let i = 0; i < length; i++) {
 						const email = this.getNodeParameter('email', i) as string;
 						const additionalFields = this.getNodeParameter(
@@ -251,7 +252,7 @@ export class SendGrid implements INodeType {
 						if (additionalFields.listIdsUi) {
 							const listIdValues = (additionalFields.listIdsUi as IDataObject).listIdValues as IDataObject;
 							const listIds = listIdValues.listIds as IDataObject[];
-							Object.assign(contact, { list_ids: listIds });
+							lists = listIds;
 						}
 						if (additionalFields.customFieldsUi) {
 							const customFields = (additionalFields.customFieldsUi as IDataObject).customFieldValues as IDataObject[];
@@ -262,8 +263,7 @@ export class SendGrid implements INodeType {
 						}
 						contacts.push(contact);
 					}
-					responseData = await sendGridApiRequest.call(this, '/marketing/contacts', 'PUT', { contacts }, qs);
-
+					responseData = await sendGridApiRequest.call(this, '/marketing/contacts', 'PUT', { list_ids: lists, contacts }, qs);
 					returnData.push(responseData);
 				} catch (error) {
 					if (this.continueOnFail()) {
