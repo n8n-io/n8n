@@ -3,6 +3,7 @@ import {
 	CREDENTIAL_EDIT_MODAL_KEY,
 	DUPLICATE_MODAL_KEY,
 	PERSONALIZATION_MODAL_KEY,
+	INVITE_USER_MODAL_KEY,
 	TAGS_MANAGER_MODAL_KEY,
 	VERSIONS_MODAL_KEY,
 	WORKFLOW_OPEN_MODAL_KEY,
@@ -42,6 +43,9 @@ const module: Module<IUiState, IRootState> = {
 				open: false,
 			},
 			[PERSONALIZATION_MODAL_KEY]: {
+				open: false,
+			},
+			[INVITE_USER_MODAL_KEY]: {
 				open: false,
 			},
 			[TAGS_MANAGER_MODAL_KEY]: {
