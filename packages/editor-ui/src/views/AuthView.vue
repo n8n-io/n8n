@@ -4,7 +4,7 @@
 				<Logo />
 		</div>
 		<div v-if="subtitle" :class="$style.textContainer">
-			<n8n-text size="xlarge">{{subtitle}}</n8n-text>
+			<n8n-text size="large">{{subtitle}}</n8n-text>
 		</div>
 		<div :class="$style.formContainer">
 			<n8n-form-box

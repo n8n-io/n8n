@@ -15,19 +15,19 @@ import router from '../router';
 const module: Module<IUsersState, IRootState> = {
 	namespaced: true,
 	state: {
-		// currentUserId: null,
-		// users: {},
-		currentUserId: "1",
-		users: {
-			"1": {
-				id: '1',
-				firstName: 'xi',
-				lastName: 'Aldmour',
-				email: 'test@gmail.com',
-				role: 'Owner',
-				// role: 'Member',
-			},
-		},
+		currentUserId: null,
+		users: {},
+		// currentUserId: "1",
+		// users: {
+		// 	"1": {
+		// 		id: '1',
+		// 		firstName: 'xi',
+		// 		lastName: 'Aldmour',
+		// 		email: 'test@gmail.com',
+		// 		role: 'Owner',
+		// 		// role: 'Member',
+		// 	},
+		// },
 	},
 	mutations: {
 		addUsers: (state: IUsersState, users: IUser[]) => {
