@@ -76,5 +76,8 @@
     "gulp-dart-sass": "^1.0.2",
     "node-notifier": ">=8.0.1",
     "trim": ">=0.0.3"
+  },
+  "dependencies": {
+    "vue2-boring-avatars": "^0.3.3"
   }
 }
