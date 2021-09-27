@@ -30,6 +30,10 @@ export default Vue.extend({
 			type: Boolean,
 			default: false,
 		},
+		color: {
+			type: String,
+			validator: (value: string): boolean => ['dark', 'base', 'light', 'lighter', 'xlight'].includes(value),
+		},
 	},
 	methods: {
 		getClass(props: {size: string, bold: boolean}) {

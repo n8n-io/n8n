@@ -2,6 +2,10 @@
 	<SettingsView>
 		<div :class="$style.header">
 			<n8n-heading size="2xlarge">Personal Settings</n8n-heading>
+			<div :class="$style.user">
+				<n8n-text :class="$style.username" color="light">{{user.firstName}} {{user.lastName}}</n8n-text>
+				<n8n-avatar :firstName="user.firstName" :lastName="user.lastName" size="large" />
+			</div>
 		</div>
 		<div>
 			<div :class="$style.sectionTitle">
@@ -81,6 +85,7 @@ export default Vue.extend({
 		];
 
 		return {
+			user,
 			FORM_INPUTS,
 		};
 	},
@@ -90,6 +95,20 @@ export default Vue.extend({
 <style lang="scss" module>
 .header {
 	margin-bottom: var(--spacing-2xl);
+	display: flex;
+	align-items: center;
+
+	*:first-child {
+		flex-grow: 1;
+	}
+}
+
+.user {
+	display: flex;
+	align-items: center;
+	* {
+		margin-left: var(--spacing-s);
+	}
 }
 
 .sectionTitle {

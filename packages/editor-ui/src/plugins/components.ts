@@ -44,6 +44,7 @@ import lang from 'element-ui/lib/locale/lang/en';
 import locale from 'element-ui/lib/locale';
 
 import {
+	N8nAvatar,
 	N8nButton,
 	N8nHeading,
 	N8nIconButton,
@@ -69,6 +70,7 @@ import { ElMessageBoxOptions } from "element-ui/types/message-box";
 Vue.use(Fragment.Plugin);
 
 // n8n design system
+Vue.use(N8nAvatar);
 Vue.use(N8nButton);
 Vue.component('n8n-heading', N8nHeading);
 Vue.component('n8n-form-box', N8nFormBox);
