@@ -17,6 +17,7 @@
 		>
 			<n8n-form-inputs
 				:inputs="inputs"
+				:eventBus="formBus"
 				@input="onInput"
 				@submit="onSubmit"
 			/>
@@ -27,7 +28,7 @@
 				:label="buttonText"
 				:loading="buttonLoading"
 				size="large"
-				@click="onSubmit"
+				@click="onButtonClick"
 			/>
 		</div>
 		<div :class="$style.actionContainer">
@@ -78,12 +79,20 @@ export default Vue.extend({
 			type: String,
 		},
 	},
+	data() {
+		return {
+			formBus: new Vue(),
+		};
+	},
 	methods: {
 		onInput(e: {name: string, value: string}) {
 			this.$emit('input', e);
 		},
 		onSubmit() {
 			this.$emit('submit');
+		},
+		onButtonClick() {
+			this.formBus.$emit('submit');
 		},
 	},
 });
