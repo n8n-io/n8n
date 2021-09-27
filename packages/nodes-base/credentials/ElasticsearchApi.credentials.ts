@@ -1,23 +1,23 @@
 import {
 	ICredentialType,
-	NodePropertyTypes,
+	INodeProperties,
 } from 'n8n-workflow';
 
 export class ElasticsearchApi implements ICredentialType {
 	name = 'elasticsearchApi';
 	displayName = 'Elasticsearch API';
 	documentationUrl = 'elasticsearch';
-	properties = [
+	properties: INodeProperties[] = [
 		{
 			displayName: 'Username',
 			name: 'username',
-			type: 'string' as NodePropertyTypes,
+			type: 'string',
 			default: '',
 		},
 		{
 			displayName: 'Password',
 			name: 'password',
-			type: 'string' as NodePropertyTypes,
+			type: 'string',
 			typeOptions: {
 				password: true,
 			},
@@ -26,10 +26,10 @@ export class ElasticsearchApi implements ICredentialType {
 		{
 			displayName: 'Base URL',
 			name: 'baseUrl',
-			type: 'string' as NodePropertyTypes,
+			type: 'string',
 			default: '',
-			placeholder: 'https://abc.elastic-cloud.com:9243',
-			description: 'Referred to as \'endpoint\' in the Elasticsearch dashboard.',
+			placeholder: 'https://mydeployment.es.us-central1.gcp.cloud.es.io:9243',
+			description: 'Referred to as Elasticsearch \'endpoint\' in the Elastic deployment dashboard',
 		},
 	];
 }

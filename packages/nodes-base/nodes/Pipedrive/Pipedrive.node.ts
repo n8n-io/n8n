@@ -2645,6 +2645,13 @@ export class Pipedrive implements INodeType {
 						description: 'ID of the deal this note will be associated with',
 					},
 					{
+						displayName: 'Lead ID',
+						name: 'lead_id',
+						type: 'number',
+						default: 0,
+						description: 'ID of the lead this note will be associated with',
+					},
+					{
 						displayName: 'Organization ID',
 						name: 'org_id',
 						type: 'options',
@@ -3602,6 +3609,13 @@ export class Pipedrive implements INodeType {
 						type: 'number',
 						default: 0,
 						description: 'ID of the deal this note will be associated with',
+					},
+					{
+						displayName: 'Lead ID',
+						name: 'lead_id',
+						type: 'number',
+						default: 0,
+						description: 'ID of the lead this note will be associated with',
 					},
 					{
 						displayName: 'Organization ID',

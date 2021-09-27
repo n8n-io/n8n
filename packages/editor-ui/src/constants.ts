@@ -6,6 +6,7 @@ export const PLACEHOLDER_FILLED_AT_EXECUTION_TIME = '[filled at execution time]'
 
 // workflows
 export const PLACEHOLDER_EMPTY_WORKFLOW_ID = '__EMPTY__';
+export const DEFAULT_NODETYPE_VERSION = 1;
 export const DEFAULT_NEW_WORKFLOW_NAME = 'My workflow';
 export const MIN_WORKFLOW_NAME_LENGTH = 1;
 export const MAX_WORKFLOW_NAME_LENGTH = 128;
@@ -13,10 +14,15 @@ export const DUPLICATE_POSTFFIX = ' copy';
 
 // tags
 export const MAX_TAG_NAME_LENGTH = 24;
+
+// modals
 export const DUPLICATE_MODAL_KEY = 'duplicate';
 export const TAGS_MANAGER_MODAL_KEY = 'tagsManager';
 export const WORKLOW_OPEN_MODAL_KEY = 'workflowOpen';
 export const VERSIONS_MODAL_KEY = 'versions';
+export const WORKFLOW_SETTINGS_MODAL_KEY = 'settings';
+export const CREDENTIAL_EDIT_MODAL_KEY = 'editCredential';
+export const CREDENTIAL_SELECT_MODAL_KEY = 'selectCredential';
 
 // breakpoints
 export const BREAKPOINT_SM = 768;

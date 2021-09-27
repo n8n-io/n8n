@@ -46,6 +46,7 @@ import {
 	WorkflowHelpers,
 	WorkflowRunner,
 } from '.';
+import config = require('../config');
 
 const WEBHOOK_PROD_UNREGISTERED_HINT = `The workflow must be active for a production URL to run successfully. You can activate the workflow using the toggle in the top-right of the editor. Note that unlike test URL calls, production URL calls aren't shown on the canvas (only in the executions list)`;
 
@@ -67,8 +68,17 @@ export class ActiveWorkflowRunner {
 			active: true,
 		})) as IWorkflowDb[];
 
-		// Clear up active workflow table
-		await Db.collections.Webhook?.clear();
+		if (!config.get('endpoints.skipWebhoooksDeregistrationOnShutdown')) {
+			// Do not clean up database when skip registration is done.
+			// This flag is set when n8n is running in scaled mode.
+			// Impact is minimal, but for a short while, n8n will stop accepting requests.
+			// Also, users had issues when running multiple "main process"
+			// instances if many of them start at the same time
+			// This is not officially supported but there is no reason
+			// it should not work.
+			// Clear up active workflow table
+			await Db.collections.Webhook?.clear();
+		}
 
 		this.activeWorkflows = new ActiveWorkflows();
 
@@ -426,6 +436,20 @@ export class ActiveWorkflowRunner {
 					);
 				}
 			} catch (error) {
+				if (
+					activation === 'init' &&
+					config.get('endpoints.skipWebhoooksDeregistrationOnShutdown') &&
+					error.name === 'QueryFailedError'
+				) {
+					// When skipWebhoooksDeregistrationOnShutdown is enabled,
+					// n8n does not remove the registered webhooks on exit.
+					// This means that further initializations will always fail
+					// when inserting to database. This is why we ignore this error
+					// as it's expected to happen.
+					// eslint-disable-next-line no-continue
+					continue;
+				}
+
 				try {
 					await this.removeWorkflowWebhooks(workflow.id as string);
 				} catch (error) {

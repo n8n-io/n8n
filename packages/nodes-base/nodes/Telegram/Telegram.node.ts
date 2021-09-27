@@ -3,10 +3,13 @@ import {
 } from 'n8n-core';
 
 import {
+	ICredentialsDecrypted,
+	ICredentialTestFunctions,
 	IDataObject,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
+	NodeCredentialTestResult,
 	NodeOperationError,
 } from 'n8n-workflow';
 
@@ -35,6 +38,7 @@ export class Telegram implements INodeType {
 			{
 				name: 'telegramApi',
 				required: true,
+				testedBy: 'telegramBotTest',
 			},
 		],
 		properties: [
@@ -1734,6 +1738,38 @@ export class Telegram implements INodeType {
 			},
 
 		],
+	};
+
+	methods = {
+		credentialTest: {
+			async telegramBotTest(this: ICredentialTestFunctions, credential: ICredentialsDecrypted): Promise<NodeCredentialTestResult> {
+				const credentials = credential.data;
+				const options = {
+					uri: `https://api.telegram.org/bot${credentials!.accessToken}/getMe`,
+					json: true,
+				};
+				try {
+					const response = await this.helpers.request(options);
+					if (!response.ok) {
+						return {
+							status: 'Error',
+							message: 'Token is not valid.',
+						};
+					}
+				} catch(err) {
+					return {
+						status: 'Error',
+						message: `Token is not valid; ${err.message}`,
+					};
+				}
+
+				return {
+					status: 'OK',
+					message: 'Authentication successful!',
+				};
+				
+			},
+		},
 	};
 
 

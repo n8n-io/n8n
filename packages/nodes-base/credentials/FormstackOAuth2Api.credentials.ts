@@ -11,7 +11,7 @@ export class FormstackOAuth2Api implements ICredentialType {
 		'oAuth2Api',
 	];
 	displayName = 'Formstack OAuth2 API';
-	documentationUrl = 'formstack';
+	documentationUrl = 'formstackTrigger';
 	properties = [
 		{
 			displayName: 'Authorization URL',
