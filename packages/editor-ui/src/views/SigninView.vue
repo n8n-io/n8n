@@ -33,7 +33,6 @@ const FORM_CONFIG = {
 				label: 'Password',
 				type: 'password',
 				required: true,
-				maxlength: 64,
 				validationRules: [{name: 'MIN_LENGTH', config: {minimum: 8}}],
 			},
 		},

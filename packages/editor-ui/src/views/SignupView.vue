@@ -40,7 +40,6 @@ const FORM_CONFIG = {
 				type: 'password',
 				validationRules: [{name: 'DEFAULT_PASSWORD_RULES'}],
 				required: true,
-				maxlength: 64,
 				infoText: 'At least 8 characters with 1 number and 1 uppercase',
 			},
 		},

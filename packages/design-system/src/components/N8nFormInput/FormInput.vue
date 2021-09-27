@@ -1,13 +1,6 @@
 <template>
-	<n8n-input-label
-		:label="label"
-		:tooltipText="tooltipText"
-		:required="required"
-	>
-		<div :class="showErrors ? $style.errorInput : ''"
-			@keydown.stop
-			@keydown.enter="onEnter"
-		>
+	<n8n-input-label :label="label" :tooltipText="tooltipText" :required="required">
+		<div :class="showErrors ? $style.errorInput : ''" @keydown.stop @keydown.enter="onEnter">
 			<slot v-if="hasDefaultSlot"></slot>
 			<n8n-input
 				v-else
@@ -21,18 +14,19 @@
 			/>
 		</div>
 		<div :class="$style.errors" v-if="showErrors">
-			<span>{{validationError}}</span>
+			<span>{{ validationError }}</span>
 			<n8n-link
 				v-if="documentationUrl && documentationText"
 				:to="documentationUrl"
 				:newWindow="true"
 				size="small"
-				theme="danger">
-					{{ documentationText }}
+				theme="danger"
+			>
+				{{ documentationText }}
 			</n8n-link>
 		</div>
 		<div :class="$style.infoText" v-else-if="infoText">
-				<span size="small">{{infoText}}</span>
+			<span size="small">{{ infoText }}</span>
 		</div>
 	</n8n-input-label>
 </template>
@@ -42,24 +36,25 @@ import Vue from 'vue';
 import N8nInput from '../N8nInput';
 import N8nInputLabel from '../N8nInputLabel';
 
-type RuleSet = {name: string, config?: any}[];
+type RuleSet = ({ name: string; config?: any;} | ValidatationGroup)[];
 
 type Validator = {
-	isValid: (value: string, config?: any) => boolean,
-	generateError?: (config: any) => string,
-	defaultError?: string,
-}
+	isValid: (value: string, config?: any) => boolean;
+	generateError?: (config: any) => string;
+	defaultError?: string;
+};
 
 type ValidatationGroup = {
-	rules: RuleSet,
-	generateError?: (config: any) => string,
-	defaultError?: string,
-}
+	rules: RuleSet;
+	generateError?: (config: any) => string;
+	defaultError?: string;
+};
 
 // https://stackoverflow.com/a/1373724
-const emailRegex = /[a-z0-9!#$%&'*+/=?^_`{|}~-]+(?:\.[a-z0-9!#$%&'*+/=?^_`{|}~-]+)*@(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+[a-z0-9](?:[a-z0-9-]*[a-z0-9])?/;
+const emailRegex =
+	/[a-z0-9!#$%&'*+/=?^_`{|}~-]+(?:\.[a-z0-9!#$%&'*+/=?^_`{|}~-]+)*@(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+[a-z0-9](?:[a-z0-9-]*[a-z0-9])?/;
 
-const VALIDATORS: {[key: string]: Validator | ValidatationGroup} = {
+const VALIDATORS: { [key: string]: Validator | ValidatationGroup } = {
 	REQUIRED: {
 		isValid: (value: string | number | boolean | null | undefined) => {
 			if (typeof value === 'string') {
@@ -71,75 +66,114 @@ const VALIDATORS: {[key: string]: Validator | ValidatationGroup} = {
 		defaultError: 'This field is required',
 	},
 	MIN_LENGTH: {
-		isValid: (value: string, config: {minimum: number}) => {
+		isValid: (value: string, config: { minimum: number }) => {
 			return value.length >= config.minimum;
 		},
-		generateError: (config: {minimum: number}) => {
+		generateError: (config: { minimum: number }) => {
 			return `Must be at least ${config.minimum} characters`;
 		},
 	},
 	MAX_LENGTH: {
-		isValid: (value: string, config: {maximum: number}) => {
+		isValid: (value: string, config: { maximum: number }) => {
 			return value.length <= config.maximum;
 		},
-		generateError: (config: {minimum: number}) => {
-			return `Must be at most ${config.minimum} characters`;
+		generateError: (config: { maximum: number }) => {
+			return `Must be at most ${config.maximum} characters`;
 		},
 	},
 	CONTAINS_NUMBER: {
-		isValid: (value: string, config: {minimum: number}) => {
+		isValid: (value: string, config: { minimum: number }) => {
 			const numberCount = (value.match(/\d/g) || []).length;
 
 			return numberCount >= config.minimum;
 		},
-		generateError: (config: {minimum: number}) => {
+		generateError: (config: { minimum: number }) => {
 			return `Must have at least ${config.minimum} number${config.minimum > 1 ? 's' : ''}`;
 		},
 	},
 	VALID_EMAIL: {
 		isValid: (value: string) => {
-  	  return emailRegex.test(String(value).toLowerCase());
+			return emailRegex.test(String(value).toLowerCase());
 		},
 		defaultError: 'Must be a valid email',
 	},
 	CONTAINS_UPPERCASE: {
-		isValid: (value: string, config: {minimum: number}) => {
+		isValid: (value: string, config: { minimum: number }) => {
 			const uppercaseCount = (value.match(/[A-Z]/g) || []).length;
 
 			return uppercaseCount >= config.minimum;
 		},
-		generateError: (config: {minimum: number}) => {
-			return `Must have at least ${config.minimum} uppercase character${config.minimum > 1 ? 's' : ''}`;
+		generateError: (config: { minimum: number }) => {
+			return `Must have at least ${config.minimum} uppercase character${
+				config.minimum > 1 ? 's' : ''
+			}`;
 		},
 	},
 	DEFAULT_PASSWORD_RULES: {
-		rules: [{name: 'MIN_LENGTH', config: {minimum: 8}}, {name: 'CONTAINS_NUMBER', config: {minimum: 1}}, {name: 'CONTAINS_UPPERCASE', config: {minimum: 1}}],
-		defaultError: 'At least 8 characters with 1 number and 1 uppercase',
+		rules: [
+			{
+				rules: [
+					{ name: 'MIN_LENGTH', config: { minimum: 8 } },
+					{ name: 'CONTAINS_NUMBER', config: { minimum: 1 } },
+					{ name: 'CONTAINS_UPPERCASE', config: { minimum: 1 } },
+				],
+				defaultError: 'At least 8 characters with 1 number and 1 uppercase',
+			},
+			{ name: 'MAX_LENGTH', config: {maximum: 64} },
+		],
 	},
 };
 
-const getErrorMessage = (validator: Validator | ValidatationGroup, config? :any): string | null => {
+const getErrorMessage = (validator: Validator | ValidatationGroup, config?: any): string | null => {
 	if (validator.generateError) {
 		return validator.generateError(config);
 	}
 
-	return validator.defaultError? validator.defaultError : null;
+	return validator.defaultError ? validator.defaultError : null;
 };
 
-const getValidationError = (value: any, validators: {[key: string]: Validator | ValidatationGroup}, validator: Validator | ValidatationGroup, config?: any): string | null => {
+const getValidationError = (
+	value: any,
+	validators: { [key: string]: Validator | ValidatationGroup },
+	validator: Validator | ValidatationGroup,
+	config?: any,
+): string | null => {
 	if (validator.hasOwnProperty('rules')) {
 		const rules = (validator as ValidatationGroup).rules;
 		for (let i = 0; i < rules.length; i++) {
-			const rule = rules[i];
-			if (validators[rule.name]) {
-				const error = getValidationError(value, validators, validators[rule.name] as Validator, rule.config);
+			if (rules[i].hasOwnProperty('rules')) {
+				const error = getValidationError(
+					value,
+					validators,
+					rules[i] as ValidatationGroup,
+					config,
+				);
+
+				if (error) {
+					return error;
+				}
+			}
+
+			if (rules[i].hasOwnProperty('name') ) {
+				const rule = rules[i] as {name: string, config?: any};
+				if (!validators[rule.name]) {
+					continue;
+				}
+				const error = getValidationError(
+					value,
+					validators,
+					validators[rule.name] as Validator,
+					rule.config,
+				);
 				if (error) {
 					return getErrorMessage(validator, rule.config) || error;
 				}
 			}
 		}
-	}
-	else if (validator.hasOwnProperty('isValid') && !(validator as Validator).isValid(value, config)) {
+	} else if (
+		validator.hasOwnProperty('isValid') &&
+		!(validator as Validator).isValid(value, config)
+	) {
 		return getErrorMessage(validator, config);
 	}
 
@@ -213,13 +247,16 @@ export default Vue.extend({
 	},
 	computed: {
 		hasDefaultSlot(): boolean {
-  		return !!this.$slots.default;
-  	},
+			return !!this.$slots.default;
+		},
 		validationError(): string | null {
 			return this.getValidationError();
 		},
 		showErrors(): boolean {
-			return !!this.validationError && ((this.hasBlurred && !this.isTyping) || this.showValidationWarnings);
+			return (
+				!!this.validationError &&
+				((this.hasBlurred && !this.isTyping) || this.showValidationWarnings)
+			);
 		},
 	},
 	methods: {
@@ -228,7 +265,7 @@ export default Vue.extend({
 			const validators = {
 				...VALIDATORS,
 				...(this.validators || {}),
-			} as {[key: string]: Validator | ValidatationGroup};
+			} as { [key: string]: Validator | ValidatationGroup };
 
 			if (this.required) {
 				const error = getValidationError(this.value, validators, validators.REQUIRED as Validator);
@@ -240,7 +277,12 @@ export default Vue.extend({
 			for (let i = 0; i < rules.length; i++) {
 				const rule = rules[i];
 				if (validators[rule.name]) {
-					const error = getValidationError(this.value, validators, validators[rule.name] as Validator, rule.config);
+					const error = getValidationError(
+						this.value,
+						validators,
+						validators[rule.name] as Validator,
+						rule.config,
+					);
 					if (error) {
 						return error;
 					}
