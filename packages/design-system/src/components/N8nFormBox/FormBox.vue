@@ -88,8 +88,8 @@ export default Vue.extend({
 		onInput(e: {name: string, value: string}) {
 			this.$emit('input', e);
 		},
-		onSubmit() {
-			this.$emit('submit');
+		onSubmit(e: {[key: string]: string}) {
+			this.$emit('submit', e);
 		},
 		onButtonClick() {
 			this.formBus.$emit('submit');
