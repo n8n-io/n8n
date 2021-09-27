@@ -304,6 +304,11 @@ export class Wait implements INodeType {
 						value: 'lastNode',
 						description: 'Returns data of the last executed node',
 					},
+					{
+						name: 'Response Node finishes',
+						value: 'responseNode',
+						description: 'Returns data the response node did set',
+					},
 				],
 				default: 'onReceived',
 				description: 'When and how to respond to the webhook',

@@ -5,9 +5,9 @@
 /* eslint-disable @typescript-eslint/no-unsafe-call */
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
-import { IRun } from 'n8n-workflow';
+import { IN8nHttpFullResponse, IRun } from 'n8n-workflow';
 
-import { createDeferredPromise } from 'n8n-core';
+import { createDeferredPromise, IDeferredPromise } from 'n8n-core';
 
 import { ChildProcess } from 'child_process';
 // eslint-disable-next-line import/no-extraneous-dependencies

@@ -72,9 +72,14 @@ export function sendSuccessResponse(
 	data: any,
 	raw?: boolean,
 	responseCode?: number,
+	responseHeader?: object,
 ) {
 	if (responseCode !== undefined) {
 		res.status(responseCode);
+	}
+
+	if (responseHeader) {
+		res.header(responseHeader);
 	}
 
 	if (raw === true) {

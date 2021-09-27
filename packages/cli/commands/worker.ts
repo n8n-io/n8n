@@ -14,6 +14,7 @@ import { UserSettings, WorkflowExecute } from 'n8n-core';
 
 import {
 	IDataObject,
+	IN8nHttpFullResponse,
 	INodeTypes,
 	IRun,
 	IWorkflowExecuteHooks,

@@ -7,6 +7,7 @@ import {
 	ICredentialsEncrypted,
 	ICredentialType,
 	IDataObject,
+	IN8nHttpFullResponse,
 	IRun,
 	IRunData,
 	IRunExecutionData,
@@ -441,9 +442,12 @@ export interface IPushDataConsoleMessage {
 
 export interface IResponseCallbackData {
 	data?: IDataObject | IDataObject[];
+	headers?: object;
 	noWebhookResponse?: boolean;
 	responseCode?: number;
 }
+
+export type HttpWebhookCallback = (response: IN8nHttpFullResponse) => void;
 
 export interface ITransferNodeTypes {
 	[key: string]: {

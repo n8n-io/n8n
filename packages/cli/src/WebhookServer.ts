@@ -64,7 +64,13 @@ export function registerProductionWebhooks() {
 				return;
 			}
 
-			ResponseHelper.sendSuccessResponse(res, response.data, true, response.responseCode);
+			ResponseHelper.sendSuccessResponse(
+				res,
+				response.data,
+				true,
+				response.responseCode,
+				response.headers,
+			);
 		},
 	);
 
@@ -115,7 +121,14 @@ export function registerProductionWebhooks() {
 				return;
 			}
 
-			ResponseHelper.sendSuccessResponse(res, response.data, true, response.responseCode);
+			// TODO: Still needed for all test routes!
+			ResponseHelper.sendSuccessResponse(
+				res,
+				response.data,
+				true,
+				response.responseCode,
+				response.headers,
+			);
 		},
 	);
 
@@ -141,7 +154,13 @@ export function registerProductionWebhooks() {
 				return;
 			}
 
-			ResponseHelper.sendSuccessResponse(res, response.data, true, response.responseCode);
+			ResponseHelper.sendSuccessResponse(
+				res,
+				response.data,
+				true,
+				response.responseCode,
+				response.headers,
+			);
 		},
 	);
 
@@ -173,7 +192,13 @@ export function registerProductionWebhooks() {
 				return;
 			}
 
-			ResponseHelper.sendSuccessResponse(res, response.data, true, response.responseCode);
+			ResponseHelper.sendSuccessResponse(
+				res,
+				response.data,
+				true,
+				response.responseCode,
+				response.headers,
+			);
 		},
 	);
 
@@ -199,7 +224,13 @@ export function registerProductionWebhooks() {
 				return;
 			}
 
-			ResponseHelper.sendSuccessResponse(res, response.data, true, response.responseCode);
+			ResponseHelper.sendSuccessResponse(
+				res,
+				response.data,
+				true,
+				response.responseCode,
+				response.headers,
+			);
 		},
 	);
 
@@ -225,7 +256,13 @@ export function registerProductionWebhooks() {
 				return;
 			}
 
-			ResponseHelper.sendSuccessResponse(res, response.data, true, response.responseCode);
+			ResponseHelper.sendSuccessResponse(
+				res,
+				response.data,
+				true,
+				response.responseCode,
+				response.headers,
+			);
 		},
 	);
 }

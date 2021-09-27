@@ -21,6 +21,7 @@ import {
 	IBinaryKeyData,
 	IDataObject,
 	IExecuteData,
+	IN8nHttpFullResponse,
 	INode,
 	IRunExecutionData,
 	IWebhookData,
@@ -36,6 +37,7 @@ import {
 import {
 	ActiveExecutions,
 	GenericHelpers,
+	HttpWebhookCallback,
 	IExecutionDb,
 	IResponseCallbackData,
 	IWorkflowDb,
@@ -169,7 +171,7 @@ export async function executeWebhook(
 		200,
 	) as number;
 
-	if (!['onReceived', 'lastNode'].includes(responseMode as string)) {
+	if (!['onReceived', 'lastNode', 'responseNode'].includes(responseMode as string)) {
 		// If the mode is not known we error. Is probably best like that instead of using
 		// the default that people know as early as possible (probably already testing phase)
 		// that something does not resolve properly.
@@ -356,9 +358,30 @@ export async function executeWebhook(
 			workflowData,
 		};
 
+		let cbFunction: HttpWebhookCallback | undefined;
+		if (responseMode === 'responseNode') {
+			cbFunction = (response: IN8nHttpFullResponse) => {
+				if (didSendResponse) {
+					throw new Error('Did already send webhook response');
+				}
+				responseCallback(null, {
+					data: response.body as IDataObject,
+					headers: response.headers,
+					responseCode: response.statusCode,
+				});
+				didSendResponse = true;
+			};
+		}
+
 		// Start now to run the workflow
 		const workflowRunner = new WorkflowRunner();
-		executionId = await workflowRunner.run(runData, true, !didSendResponse, executionId);
+		executionId = await workflowRunner.run(
+			runData,
+			true,
+			!didSendResponse,
+			executionId,
+			cbFunction,
+		);
 
 		Logger.verbose(
 			`Started execution of workflow "${workflow.name}" from webhook with execution ID ${executionId}`,

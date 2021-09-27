@@ -2647,7 +2647,13 @@ class App {
 					return;
 				}
 
-				ResponseHelper.sendSuccessResponse(res, response.data, true, response.responseCode);
+				ResponseHelper.sendSuccessResponse(
+					res,
+					response.data,
+					true,
+					response.responseCode,
+					response.headers,
+				);
 			},
 		);
 
@@ -2698,7 +2704,13 @@ class App {
 					return;
 				}
 
-				ResponseHelper.sendSuccessResponse(res, response.data, true, response.responseCode);
+				ResponseHelper.sendSuccessResponse(
+					res,
+					response.data,
+					true,
+					response.responseCode,
+					response.headers,
+				);
 			},
 		);
 
@@ -2724,7 +2736,13 @@ class App {
 					return;
 				}
 
-				ResponseHelper.sendSuccessResponse(res, response.data, true, response.responseCode);
+				ResponseHelper.sendSuccessResponse(
+					res,
+					response.data,
+					true,
+					response.responseCode,
+					response.headers,
+				);
 			},
 		);
 

@@ -12,6 +12,7 @@ import {
 	IDataObject,
 	IExecuteWorkflowInfo,
 	ILogger,
+	IN8nHttpFullResponse,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeData,
@@ -196,6 +197,13 @@ export class WorkflowRunnerProcess {
 			workflowTimeout <= 0 ? undefined : Date.now() + workflowTimeout * 1000,
 		);
 		additionalData.hooks = this.getProcessForwardHooks();
+
+		additionalData.hooks.hookFunctions.sendWebhookReponse = [
+			async function (response: IN8nHttpFullResponse): Promise<void> {
+				await sendToParentProcess('sendWebhookReponse', { response });
+			},
+		];
+
 		additionalData.executionId = inputData.executionId;
 
 		// eslint-disable-next-line @typescript-eslint/no-explicit-any

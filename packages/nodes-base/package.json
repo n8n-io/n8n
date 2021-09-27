@@ -605,6 +605,7 @@
       "dist/nodes/Webflow/Webflow.node.js",
       "dist/nodes/Webflow/WebflowTrigger.node.js",
       "dist/nodes/Webhook.node.js",
+      "dist/nodes/WebhookResponse.node.js",
       "dist/nodes/Wekan/Wekan.node.js",
       "dist/nodes/Wordpress/Wordpress.node.js",
       "dist/nodes/WorkflowTrigger.node.js",
