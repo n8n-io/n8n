@@ -22,7 +22,6 @@ import LoadingView from './views/LoadingView.vue';
 
 import mixins from 'vue-typed-mixins';
 import { showMessage } from './components/mixins/showMessage';
-import { LOGIN_STATUS } from './constants';
 import { IUser } from './Interface';
 
 export default mixins(

@@ -15,13 +15,24 @@ import router from '../router';
 const module: Module<IUsersState, IRootState> = {
 	namespaced: true,
 	state: {
-		currentUserId: null,
-		users: {},
+		// currentUserId: null,
+		// users: {},
+		currentUserId: "1",
+		users: {
+			"1": {
+				id: '1',
+				firstName: 'xi',
+				lastName: 'Aldmour',
+				email: 'test@gmail.com',
+				role: 'Owner',
+				// role: 'Member',
+			},
+		},
 	},
 	mutations: {
 		addUsers: (state: IUsersState, users: IUser[]) => {
 			users.forEach((user: IUser) => {
-				state.users[user.id] = user;
+				Vue.set(state.users, user.id, user);
 			});
 		},
 		setCurrentUserId: (state: IUsersState, userId: string) => {
@@ -39,15 +50,7 @@ const module: Module<IUsersState, IRootState> = {
 			return state.currentUserId;
 		},
 		currentUser(state: IUsersState): IUser | null {
-			return {
-				id: '1',
-				firstName: 'Mutasem',
-				lastName: 'Aldmour',
-				email: 'test@gmail.com',
-				// role: 'Owner',
-				role: 'Member',
-			};
-			// return state.currentUserId ? state.users[state.currentUserId] : null;
+			return state.currentUserId ? state.users[state.currentUserId] : null;
 		},
 		canCurrentUserAccessView(state: IUsersState, getters: any) { // tslint:disable-line:no-any
 			return (viewName: string): boolean => {
@@ -116,6 +119,7 @@ const module: Module<IUsersState, IRootState> = {
 		},
 		async updateUser(context: ActionContext<IUsersState, IRootState>, params: IUser) {
 			const user = await updateUser(context.rootGetters.getRestApiContext, params);
+			console.log('got user', user);
 			context.commit('addUsers', [user]);
 		},
 		async updateCurrentUserPassword(context: ActionContext<IUsersState, IRootState>, params: {password: string}) {
