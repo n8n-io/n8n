@@ -4,7 +4,7 @@
 		:size="$options.methods.getSize(props.size)"
 		:name="props.firstName + ' ' + props.lastName"
 		variant="marble"
-		:colors="['#264653', '#2a9d8f', '#e9c46a', '#f4a261', '#e76f51']"
+		:colors="$options.methods.getColors()"
 	/>
 </template>
 
@@ -35,6 +35,14 @@ export default {
 		Avatar,
 	},
 	methods: {
+		getColors(): string[] {
+			const style = getComputedStyle(document.body);
+			const primary = style.getPropertyValue('--color-primary');
+			const secondary = style.getPropertyValue('--color-secondary');
+			console.log(primary, secondary);
+
+			return [primary, secondary, '#e9c46a', '#f4a261', '#e76f51'];
+		},
 		getSize(size: string): number {
 			return sizes[size];
 		},
