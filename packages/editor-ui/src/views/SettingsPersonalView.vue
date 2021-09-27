@@ -111,9 +111,9 @@ export default mixins(
 		onInput() {
 			this.hasAnyChanges = true;
 		},
-		onSubmit(form: {firstName: string, lastName: string, email: string}) {
+		async onSubmit(form: {firstName: string, lastName: string, email: string}) {
 			try {
-				this.$store.dispatch('users/updateUser', {
+				await this.$store.dispatch('users/updateUser', {
 					id: this.currentUser.id,
 					firstName: form.firstName,
 					lastName: form.lastName,
