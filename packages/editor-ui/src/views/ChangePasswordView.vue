@@ -13,35 +13,6 @@ import { showMessage } from '@/components/mixins/showMessage';
 
 import mixins from 'vue-typed-mixins';
 
-const FORM_CONFIG = {
-	title: 'Change Password',
-	buttonText: 'Change Password',
-	redirectText: 'Sign in',
-	redirectLink: '/signin',
-	inputs: [[
-		{
-			name: 'password',
-			properties: {
-				label: 'New password',
-				type: 'password',
-				required: true,
-				validationRules: [{name: 'DEFAULT_PASSWORD_RULES'}],
-				infoText: 'At least 8 characters with 1 number and 1 uppercase',
-			},
-		},
-		{
-			name: 'password2',
-			properties: {
-				label: 'Re-enter new password',
-				type: 'password',
-				required: true,
-				validators: {},
-				validationRules: [{name: 'TWO_PASSWORDS_MATCH'}],
-			},
-		},
-	]],
-};
-
 export default mixins(
 	showMessage,
 ).extend({
@@ -53,17 +24,42 @@ export default mixins(
 		return {
 			password: '',
 			loading: false,
-			config: {
-				...FORM_CONFIG,
-			},
+			config: null as any,
 		};
 	},
 	async mounted() {
-		this.config.inputs[1].properties.validators = {
-			TWO_PASSWORDS_MATCH: {
-				isValid: this.passwordsMatch,
-				defaultError: 'Two passwords must match',
-			},
+		this.config = {
+			title: 'Change Password',
+			buttonText: 'Change Password',
+			redirectText: 'Sign in',
+			redirectLink: '/signin',
+			inputs: [[
+				{
+					name: 'password',
+					properties: {
+						label: 'New password',
+						type: 'password',
+						required: true,
+						validationRules: [{name: 'DEFAULT_PASSWORD_RULES'}],
+						infoText: 'At least 8 characters with 1 number and 1 uppercase',
+					},
+				},
+				{
+					name: 'password2',
+					properties: {
+						label: 'Re-enter new password',
+						type: 'password',
+						required: true,
+						validators: {
+							TWO_PASSWORDS_MATCH: {
+								isValid: this.passwordsMatch,
+								defaultError: 'Two passwords must match',
+							},
+						},
+						validationRules: [{name: 'TWO_PASSWORDS_MATCH'}],
+					},
+				},
+			]],
 		};
 
 		const token = this.$route.query.token;

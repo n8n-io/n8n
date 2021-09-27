@@ -27,8 +27,12 @@ export const VERSIONS_MODAL_KEY = 'versions';
 export const WORKFLOW_SETTINGS_MODAL_KEY = 'settings';
 export const CREDENTIAL_EDIT_MODAL_KEY = 'editCredential';
 export const CREDENTIAL_SELECT_MODAL_KEY = 'selectCredential';
+<<<<<<< HEAD
 export const CREDENTIAL_LIST_MODAL_KEY = 'credentialsList';
 export const PERSONALIZATION_MODAL_KEY = 'personalization';
+=======
+export const CHANGE_PASSWORD_MODAL_KEY = 'changePassword';
+>>>>>>> 40d3b3cf3 (add change password modals)
 
 // breakpoints
 export const BREAKPOINT_SM = 768;

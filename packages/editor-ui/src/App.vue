@@ -11,14 +11,14 @@
 			<div id="content" :class="$style.container">
 				<router-view />
 			</div>
-			<RootModals />
+			<Modals />
 		</div>
 		<Telemetry />
 	</div>
 </template>
 
 <script lang="ts">
-import RootModals from './components/RootModals.vue';
+import Modals from './components/Modals.vue';
 import LoadingView from './views/LoadingView.vue';
 import Telemetry from './components/Telemetry.vue';
 
@@ -33,7 +33,7 @@ export default mixins(
 	components: {
 		LoadingView,
 		Telemetry,
-		RootModals,
+		Modals,
 	},
 	data() {
 		return {

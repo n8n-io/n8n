@@ -6,6 +6,13 @@
 					:modalName="modalName"
 					:mode="mode"
 					:activeId="activeId"
+					/>
+			</template>
+		</ModalRoot>
+		<ModalRoot :name="ABOUT_MODAL_KEY">
+			<template v-slot:default="{ modalName }">
+				<AboutModal
+					:modalName="modalName"
 				/>
 			</template>
 		</ModalRoot>
@@ -53,13 +60,23 @@
 		<ModalRoot :name="WORKFLOW_SETTINGS_MODAL_KEY">
 			<WorkflowSettings />
 		</ModalRoot>
+
+		<ModalRoot :name="CHANGE_PASSWORD_MODAL_KEY">
+			<template v-slot="{ modalName }">
+				<ChangePasswordModal
+					:modalName="modalName"
+				/>
+			</template>
+		</ModalRoot>
 	</div>
 </template>
 
 <script lang="ts">
 import Vue from "vue";
-import { CREDENTIAL_LIST_MODAL_KEY, DUPLICATE_MODAL_KEY, TAGS_MANAGER_MODAL_KEY, PERSONALIZATION_MODAL_KEY, WORKFLOW_OPEN_MODAL_KEY, VERSIONS_MODAL_KEY, CREDENTIAL_EDIT_MODAL_KEY, CREDENTIAL_SELECT_MODAL_KEY, WORKFLOW_SETTINGS_MODAL_KEY } from '@/constants';
+import { ABOUT_MODAL_KEY, CHANGE_PASSWORD_MODAL_KEY, CREDENTIAL_LIST_MODAL_KEY, DUPLICATE_MODAL_KEY, TAGS_MANAGER_MODAL_KEY, PERSONALIZATION_MODAL_KEY, WORKFLOW_OPEN_MODAL_KEY, VERSIONS_MODAL_KEY, CREDENTIAL_EDIT_MODAL_KEY, CREDENTIAL_SELECT_MODAL_KEY, WORKFLOW_SETTINGS_MODAL_KEY } from '@/constants';
 
+import AboutModal from './AboutModal.vue';
+import ChangePasswordModal from "./ChangePasswordModal.vue";
 import CredentialEdit from "./CredentialEdit/CredentialEdit.vue";
 import CredentialsList from "./CredentialsList.vue";
 import CredentialsSelectModal from "./CredentialsSelectModal.vue";
@@ -74,6 +91,8 @@ import WorkflowOpen from "./WorkflowOpen.vue";
 export default Vue.extend({
 	name: "Modals",
 	components: {
+		AboutModal,
+		ChangePasswordModal,
 		CredentialEdit,
 		CredentialsList,
 		CredentialsSelectModal,
@@ -89,6 +108,8 @@ export default Vue.extend({
 		CREDENTIAL_EDIT_MODAL_KEY,
 		CREDENTIAL_LIST_MODAL_KEY,
 		CREDENTIAL_SELECT_MODAL_KEY,
+		ABOUT_MODAL_KEY,
+		CHANGE_PASSWORD_MODAL_KEY,
 		DUPLICATE_MODAL_KEY,
 		PERSONALIZATION_MODAL_KEY,
 		TAGS_MANAGER_MODAL_KEY,

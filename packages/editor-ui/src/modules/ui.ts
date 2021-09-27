@@ -1,4 +1,15 @@
-import { ABOUT_MODAL_KEY, CREDENTIAL_EDIT_MODAL_KEY, DUPLICATE_MODAL_KEY, PERSONALIZATION_MODAL_KEY, TAGS_MANAGER_MODAL_KEY, VERSIONS_MODAL_KEY, WORKFLOW_OPEN_MODAL_KEY, CREDENTIAL_SELECT_MODAL_KEY, WORKFLOW_SETTINGS_MODAL_KEY, CREDENTIAL_LIST_MODAL_KEY } from '@/constants';
+import {
+	ABOUT_MODAL_KEY,
+	CREDENTIAL_EDIT_MODAL_KEY,
+	DUPLICATE_MODAL_KEY,
+	PERSONALIZATION_MODAL_KEY,
+	TAGS_MANAGER_MODAL_KEY,
+	VERSIONS_MODAL_KEY,
+	WORKFLOW_OPEN_MODAL_KEY,
+	CREDENTIAL_SELECT_MODAL_KEY,
+	WORKFLOW_SETTINGS_MODAL_KEY,
+	CREDENTIAL_LIST_MODAL_KEY }
+from '@/constants';
 import Vue from 'vue';
 import { ActionContext, Module } from 'vuex';
 import {
@@ -11,6 +22,9 @@ const module: Module<IUiState, IRootState> = {
 	state: {
 		modals: {
 			[ABOUT_MODAL_KEY]: {
+				open: false,
+			},
+			[CHANGE_PASSWORD_MODAL_KEY]: {
 				open: false,
 			},
 			[CREDENTIAL_EDIT_MODAL_KEY]: {
@@ -97,13 +111,6 @@ const module: Module<IUiState, IRootState> = {
 	actions: {
 		openModal: async (context: ActionContext<IUiState, IRootState>, modalKey: string) => {
 			context.commit('openModal', modalKey);
-		},
-		// todo remove these
-		openAboutModal: async (context: ActionContext<IUiState, IRootState>) => {
-			context.commit('openModal', ABOUT_MODAL_KEY);
-		},
-		openWorklfowOpenModal: async (context: ActionContext<IUiState, IRootState>) => {
-			context.commit('openModal', WORKFLOW_OPEN_MODAL_KEY);
 		},
 		openExisitngCredential: async (context: ActionContext<IUiState, IRootState>, { id }: {id: string}) => {
 			context.commit('setActiveId', {name: CREDENTIAL_EDIT_MODAL_KEY, id});

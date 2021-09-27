@@ -5,10 +5,6 @@
 </template>
 
 <script lang="ts">
-<<<<<<< HEAD
-=======
-import Vue from 'vue';
->>>>>>> bfff76f33 (refactor links)
 export default {
 	name: 'n8n-heading',
 	props: {

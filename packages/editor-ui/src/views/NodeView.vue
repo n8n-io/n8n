@@ -101,7 +101,6 @@
 				@click.stop="clearExecutionData()"
 			/>
 		</div>
-		<Modals />
 	</div>
 </template>
 
@@ -127,7 +126,6 @@ import { workflowHelpers } from '@/components/mixins/workflowHelpers';
 import { workflowRun } from '@/components/mixins/workflowRun';
 
 import DataDisplay from '@/components/DataDisplay.vue';
-import Modals from '@/components/Modals.vue';
 import Node from '@/components/Node.vue';
 import NodeCreator from '@/components/NodeCreator/NodeCreator.vue';
 import NodeSettings from '@/components/NodeSettings.vue';
@@ -187,7 +185,6 @@ export default mixins(
 		name: 'NodeView',
 		components: {
 			DataDisplay,
-			Modals,
 			Node,
 			NodeCreator,
 			NodeSettings,
