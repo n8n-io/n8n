@@ -387,15 +387,31 @@ async function proxyRequestToAxios(
 		axios(axiosConfig)
 			.then((response) => {
 				if (configObject.resolveWithFullResponse === true) {
+					let body = response.data;
+					if (response.data === '') {
+						if (axiosConfig.responseType === 'arraybuffer') {
+							body = Buffer.alloc(0);
+						} else {
+							body = undefined;
+						}
+					}
 					resolve({
-						body: response.data,
+						body,
 						headers: response.headers,
 						statusCode: response.status,
 						statusMessage: response.statusText,
 						request: response.request,
 					});
 				} else {
-					resolve(response.data);
+					let body = response.data;
+					if (response.data === '') {
+						if (axiosConfig.responseType === 'arraybuffer') {
+							body = Buffer.alloc(0);
+						} else {
+							body = undefined;
+						}
+					}
+					resolve(body);
 				}
 			})
 			.catch((error) => {
