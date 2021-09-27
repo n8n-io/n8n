@@ -15,7 +15,12 @@ import * as express from 'express';
 // eslint-disable-next-line import/no-extraneous-dependencies
 import { get } from 'lodash';
 
-import { BINARY_ENCODING, NodeExecuteFunctions } from 'n8n-core';
+import {
+	createDeferredPromise,
+	BINARY_ENCODING,
+	IDeferredPromise,
+	NodeExecuteFunctions,
+} from 'n8n-core';
 
 import {
 	IBinaryKeyData,
@@ -358,19 +363,28 @@ export async function executeWebhook(
 			workflowData,
 		};
 
-		let cbFunction: HttpWebhookCallback | undefined;
+		let webhookResponsePromise: IDeferredPromise<IN8nHttpFullResponse> | undefined;
 		if (responseMode === 'responseNode') {
-			cbFunction = (response: IN8nHttpFullResponse) => {
-				if (didSendResponse) {
-					throw new Error('Did already send webhook response');
-				}
-				responseCallback(null, {
-					data: response.body as IDataObject,
-					headers: response.headers,
-					responseCode: response.statusCode,
+			webhookResponsePromise = await createDeferredPromise<IN8nHttpFullResponse>();
+			webhookResponsePromise
+				.promise()
+				.then((response: IN8nHttpFullResponse) => {
+					if (didSendResponse) {
+						throw new Error('Did already send webhook response');
+					}
+					responseCallback(null, {
+						data: response.body as IDataObject,
+						headers: response.headers,
+						responseCode: response.statusCode,
+					});
+					didSendResponse = true;
+				})
+				.catch(async (error) => {
+					Logger.error(
+						`Error with Webhook-Response for execution "${executionId}": "${error.message}"`,
+						{ executionId, workflowId: workflow.id },
+					);
 				});
-				didSendResponse = true;
-			};
 		}
 
 		// Start now to run the workflow
@@ -380,7 +394,7 @@ export async function executeWebhook(
 			true,
 			!didSendResponse,
 			executionId,
-			cbFunction,
+			webhookResponsePromise,
 		);
 
 		Logger.verbose(
