@@ -1,57 +1,84 @@
 <template>
-	<div>
-		<el-drawer
-			v-if="drawer"
-			:direction="drawerDirection"
-			:visible="visible && visibleDrawer"
-			:size="drawerWidth"
-			:before-close="closeDrawer"
-			>
-			<template v-slot:title>
-				<slot name="header" />
-			</template>
-			<template>
-				<slot name="content"/>
-			</template>
-		</el-drawer>
-		<el-dialog
-			v-else
-			:visible="dialogVisible"
-			:before-close="closeDialog"
-			:title="title"
-			:class="{ 'dialog-wrapper': true, [size]: true }"
-			:width="width"
-			append-to-body
-		>
-			<template v-slot:title>
-				<slot name="header" />
-			</template>
-			<div class="modal-content" @keydown.stop @keydown.enter="handleEnter" @keydown.esc="closeDialog">
-				<slot name="content"/>
+	<el-dialog
+		:visible="visible"
+		:before-close="closeDialog"
+		:title="title"
+		:class="{'dialog-wrapper': true, 'center': center, 'scrollable': scrollable}"
+		:width="width"
+		:show-close="showClose"
+		:custom-class="getCustomClass()"
+		:style="styles"
+		append-to-body
+	>
+		<template v-slot:title>
+			<slot name="header" v-if="!loading" />
+		</template>
+		<div class="modal-content" @keydown.stop @keydown.enter="handleEnter" @keydown.esc="closeDialog">
+			<slot v-if="!loading"  name="content"/>
+			<div class="loader" v-else>
+				<n8n-spinner />
 			</div>
-			<el-row class="modal-footer">
-				<slot name="footer" :close="closeDialog" />
-			</el-row>
-		</el-dialog>
-	</div>
+		</div>
+		<el-row  v-if="!loading" class="modal-footer">
+			<slot name="footer" :close="closeDialog" />
+		</el-row>
+	</el-dialog>
 </template>
 
 <script lang="ts">
 import Vue from "vue";
 
-const sizeMap: {[size: string]: string} = {
-	xl: '80%',
-	m: '50%',
-	default: '50%',
-};
-
 export default Vue.extend({
 	name: "Modal",
-	props: ['name', 'title', 'eventBus', 'size', 'drawer', 'drawerDirection', 'drawerWidth', 'visible'],
-	data() {
-		return {
-			visibleDrawer: this.drawer,
-		};
+	props: {
+		name: {
+			type: String,
+		},
+		title: {
+			type: String,
+		},
+		eventBus: {
+			type: Vue,
+		},
+		showClose: {
+			type: Boolean,
+			default: true,
+		},
+		loading: {
+			type: Boolean,
+		},
+		classic: {
+			type: Boolean,
+		},
+		beforeClose: {
+			type: Function,
+		},
+		customClass: {
+			type: String,
+		},
+		center: {
+			type: Boolean,
+		},
+		width: {
+			type: String,
+			default: '50%',
+		},
+		minWidth: {
+			type: String,
+		},
+		maxWidth: {
+			type: String,
+		},
+		height: {
+			type: String,
+		},
+		maxHeight: {
+			type: String,
+		},
+		scrollable: {
+			type: Boolean,
+			default: false,
+		},
 	},
 	mounted() {
 		window.addEventListener('keydown', this.onWindowKeydown);
@@ -86,64 +113,99 @@ export default Vue.extend({
 			}
 		},
 		closeDialog(callback?: () => void) {
+			if (this.beforeClose) {
+				this.beforeClose(() => {
+					this.$store.commit('ui/closeTopModal');
+					if (typeof callback === 'function') {
+						callback();
+					}
+				});
+
+				return;
+			}
+
 			this.$store.commit('ui/closeTopModal');
 			if (typeof callback === 'function') {
 				callback();
 			}
 		},
-		closeDrawer() {
-			this.visibleDrawer = false;
-			setTimeout(() =>{
-				this.$store.commit('ui/closeTopModal');
-				this.visibleDrawer = true;
-			}, 300); // delayed for closing animation to take effect
+		getCustomClass() {
+			let classes = this.$props.customClass || '';
+
+			if (this.$props.classic) {
+				classes = `${classes} classic`;
+			}
+
+			return classes;
 		},
 	},
 	computed: {
-		width(): string {
-			return this.$props.size ? sizeMap[this.$props.size] : sizeMap.default;
-		},
 		isActive(): boolean {
 			return this.$store.getters['ui/isModalActive'](this.$props.name);
 		},
-		dialogVisible(): boolean {
+		visible(): boolean {
 			return this.$store.getters['ui/isModalOpen'](this.$props.name);
+		},
+		styles() {
+			const styles: {[prop: string]: string} = {};
+			if (this.height) {
+				styles['--dialog-height'] = this.height;
+			}
+			if (this.maxHeight) {
+				styles['--dialog-max-height'] = this.maxHeight;
+			}
+			if (this.maxWidth) {
+				styles['--dialog-max-width'] = this.maxWidth;
+			}
+			if (this.minWidth) {
+				styles['--dialog-min-width'] = this.minWidth;
+			}
+			return styles;
 		},
 	},
 });
 </script>
 
 <style lang="scss">
-.el-drawer__header {
-	margin: 0;
-	padding: 30px 30px 0 30px;
-}
-
-.el-drawer__body {
-	overflow: hidden;
-}
-
 .dialog-wrapper {
-	* {
-		box-sizing: border-box;
+	.el-dialog {
+		display: flex;
+		flex-direction: column;
+		max-width: var(--dialog-max-width, 80%);
+		min-width: var(--dialog-min-width, 420px);
+		height: var(--dialog-height);
+		max-height: var(--dialog-max-height);
 	}
 
-	&.xl > div, &.md > div {
-		min-width: 620px;
+	.el-dialog__body {
+		overflow: hidden;
+		display: flex;
+		flex-direction: column;
+		flex-grow: 1;
 	}
 
-	&.sm {
+	.modal-content {
+		overflow: hidden;
+		flex-grow: 1;
+	}
+}
+
+.scrollable .modal-content {
+	overflow-y: auto;
+}
+
+.center {
 		display: flex;
 		align-items: center;
 		justify-content: center;
-
-		> div {
-			max-width: 420px;
-		}
-	}
 }
 
-.modal-content > .el-row {
-	margin-bottom: 15px;
+.loader {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	color: var(--color-primary-tint-1);
+	font-size: 30px;
+	height: 80%;
 }
 </style>

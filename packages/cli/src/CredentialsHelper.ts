@@ -30,6 +30,9 @@ const mockNodeTypes: INodeTypes = {
 	getByName: (nodeType: string): INodeType | undefined => {
 		return undefined;
 	},
+	getByNameAndVersion: (): INodeType | undefined => {
+		return undefined;
+	},
 };
 
 export class CredentialsHelper extends ICredentialsHelper {

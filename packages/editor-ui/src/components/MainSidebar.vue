@@ -3,113 +3,111 @@
 		<about :dialogVisible="aboutDialogVisible" @closeDialog="closeAboutDialog"></about>
 		<executions-list :dialogVisible="executionsListDialogVisible" @closeDialog="closeExecutionsListOpenDialog"></executions-list>
 		<credentials-list :dialogVisible="credentialOpenDialogVisible" @closeDialog="closeCredentialOpenDialog"></credentials-list>
-		<credentials-edit :dialogVisible="credentialNewDialogVisible" @closeDialog="closeCredentialNewDialog"></credentials-edit>
-		<workflow-settings :dialogVisible="workflowSettingsDialogVisible" @closeDialog="closeWorkflowSettingsDialog"></workflow-settings>
 		<input type="file" ref="importFile" style="display: none" v-on:change="handleFileImport()">
 
 		<div class="side-menu-wrapper" :class="{expanded: !isCollapsed}">
 			<div id="collapse-change-button" class="clickable" @click="toggleCollapse">
 				<font-awesome-icon icon="angle-right" class="icon" />
 			</div>
-			<el-menu default-active="workflow" @select="handleSelect" :collapse="isCollapsed">
+			<n8n-menu default-active="workflow" @select="handleSelect" :collapse="isCollapsed">
 
-				<el-menu-item index="logo" class="logo-item">
+				<n8n-menu-item index="logo" class="logo-item">
 					<a href="https://n8n.io" target="_blank" class="logo">
 						<img :src="basePath + 'n8n-icon-small.png'" class="icon" alt="n8n.io"/>
 						<span class="logo-text" slot="title">n8n.io</span>
 					</a>
-				</el-menu-item>
+				</n8n-menu-item>
 
 				<MenuItemsIterator :items="sidebarMenuTopItems" :root="true"/>
 
-				<el-submenu index="workflow" title="Workflow">
+				<el-submenu index="workflow" title="Workflow" popperClass="sidebar-popper">
 					<template slot="title">
 						<font-awesome-icon icon="network-wired"/>&nbsp;
 						<span slot="title" class="item-title-root">Workflows</span>
 					</template>
 
-					<el-menu-item index="workflow-new">
+					<n8n-menu-item index="workflow-new">
 						<template slot="title">
 							<font-awesome-icon icon="file"/>&nbsp;
 							<span slot="title" class="item-title">New</span>
 						</template>
-					</el-menu-item>
-					<el-menu-item index="workflow-open">
+					</n8n-menu-item>
+					<n8n-menu-item index="workflow-open">
 						<template slot="title">
 							<font-awesome-icon icon="folder-open"/>&nbsp;
 							<span slot="title" class="item-title">Open</span>
 						</template>
-					</el-menu-item>
-					<el-menu-item index="workflow-save">
+					</n8n-menu-item>
+					<n8n-menu-item index="workflow-save">
 						<template slot="title">
 							<font-awesome-icon icon="save"/>
 							<span slot="title" class="item-title">Save</span>
 						</template>
-					</el-menu-item>
-					<el-menu-item index="workflow-duplicate" :disabled="!currentWorkflow">
+					</n8n-menu-item>
+					<n8n-menu-item index="workflow-duplicate" :disabled="!currentWorkflow">
 						<template slot="title">
 							<font-awesome-icon icon="copy"/>
 							<span slot="title" class="item-title">Duplicate</span>
 						</template>
-					</el-menu-item>
-					<el-menu-item index="workflow-delete" :disabled="!currentWorkflow">
+					</n8n-menu-item>
+					<n8n-menu-item index="workflow-delete" :disabled="!currentWorkflow">
 						<template slot="title">
 							<font-awesome-icon icon="trash"/>
 							<span slot="title" class="item-title">Delete</span>
 						</template>
-					</el-menu-item>
-					<el-menu-item index="workflow-download">
+					</n8n-menu-item>
+					<n8n-menu-item index="workflow-download">
 						<template slot="title">
 							<font-awesome-icon icon="file-download"/>
 							<span slot="title" class="item-title">Download</span>
 						</template>
-					</el-menu-item>
-					<el-menu-item index="workflow-import-url">
+					</n8n-menu-item>
+					<n8n-menu-item index="workflow-import-url">
 						<template slot="title">
 							<font-awesome-icon icon="cloud"/>
 							<span slot="title" class="item-title">Import from URL</span>
 						</template>
-					</el-menu-item>
-					<el-menu-item index="workflow-import-file">
+					</n8n-menu-item>
+					<n8n-menu-item index="workflow-import-file">
 						<template slot="title">
 							<font-awesome-icon icon="hdd"/>
 							<span slot="title" class="item-title">Import from File</span>
 						</template>
-					</el-menu-item>
-					<el-menu-item index="workflow-settings" :disabled="!currentWorkflow">
+					</n8n-menu-item>
+					<n8n-menu-item index="workflow-settings" :disabled="!currentWorkflow">
 						<template slot="title">
 							<font-awesome-icon icon="cog"/>
 							<span slot="title" class="item-title">Settings</span>
 						</template>
-					</el-menu-item>
+					</n8n-menu-item>
 				</el-submenu>
 
-				<el-submenu index="credentials" title="Credentials">
+				<el-submenu index="credentials" title="Credentials" popperClass="sidebar-popper">
 					<template slot="title">
 						<font-awesome-icon icon="key"/>&nbsp;
 						<span slot="title" class="item-title-root">Credentials</span>
 					</template>
 
-					<el-menu-item index="credentials-new">
+					<n8n-menu-item index="credentials-new">
 						<template slot="title">
 							<font-awesome-icon icon="file"/>
 							<span slot="title" class="item-title">New</span>
 						</template>
-					</el-menu-item>
-					<el-menu-item index="credentials-open">
+					</n8n-menu-item>
+					<n8n-menu-item index="credentials-open">
 						<template slot="title">
 							<font-awesome-icon icon="folder-open"/>
 							<span slot="title" class="item-title">Open</span>
 						</template>
-					</el-menu-item>
+					</n8n-menu-item>
 				</el-submenu>
 
-				<el-menu-item index="executions">
+				<n8n-menu-item index="executions">
 					<font-awesome-icon icon="tasks"/>&nbsp;
 					<span slot="title" class="item-title-root">Executions</span>
-				</el-menu-item>
+				</n8n-menu-item>
 
-				<el-submenu index="help" class="help-menu" title="Help">
+				<el-submenu index="help" class="help-menu" title="Help" popperClass="sidebar-popper">
 					<template slot="title">
 						<font-awesome-icon icon="question"/>&nbsp;
 						<span slot="title" class="item-title-root">Help</span>
@@ -117,25 +115,25 @@
 
 					<MenuItemsIterator :items="helpMenuItems" />
 
-					<el-menu-item index="help-about">
+					<n8n-menu-item index="help-about">
 						<template slot="title">
 							<font-awesome-icon class="about-icon" icon="info"/>
 							<span slot="title" class="item-title">About n8n</span>
 						</template>
-					</el-menu-item>
+					</n8n-menu-item>
 				</el-submenu>
 
 				<MenuItemsIterator :items="sidebarMenuBottomItems" :root="true"/>
 
 				<div class="footer-menu-items">
-					<el-menu-item index="updates" class="updates" v-if="hasVersionUpdates" @click="openUpdatesPanel">
+					<n8n-menu-item index="updates" class="updates" v-if="hasVersionUpdates" @click="openUpdatesPanel">
 						<div class="gift-container">
 							<GiftNotificationIcon />
 						</div>
 						<span slot="title" class="item-title-root">{{nextVersions.length > 99 ? '99+' : nextVersions.length}} update{{nextVersions.length > 1 ? 's' : ''}} available</span>
-					</el-menu-item>
+					</n8n-menu-item>
 				</div>
-			</el-menu>
+			</n8n-menu>
 
 		</div>
 	</div>
@@ -153,7 +151,6 @@ import {
 } from '../Interface';
 
 import About from '@/components/About.vue';
-import CredentialsEdit from '@/components/CredentialsEdit.vue';
 import CredentialsList from '@/components/CredentialsList.vue';
 import ExecutionsList from '@/components/ExecutionsList.vue';
 import GiftNotificationIcon from './GiftNotificationIcon.vue';
@@ -217,7 +214,6 @@ export default mixins(
 		name: 'MainHeader',
 		components: {
 			About,
-			CredentialsEdit,
 			CredentialsList,
 			ExecutionsList,
 			GiftNotificationIcon,
@@ -229,11 +225,9 @@ export default mixins(
 				aboutDialogVisible: false,
 				// @ts-ignore
 				basePath: this.$store.getters.getBaseUrl,
-				credentialNewDialogVisible: false,
 				credentialOpenDialogVisible: false,
 				executionsListDialogVisible: false,
 				stopExecutionInProgress: false,
-				workflowSettingsDialogVisible: false,
 				helpMenuItems,
 			};
 		},
@@ -309,17 +303,11 @@ export default mixins(
 			closeAboutDialog () {
 				this.aboutDialogVisible = false;
 			},
-			closeWorkflowSettingsDialog () {
-				this.workflowSettingsDialogVisible = false;
-			},
 			closeExecutionsListOpenDialog () {
 				this.executionsListDialogVisible = false;
 			},
 			closeCredentialOpenDialog () {
 				this.credentialOpenDialogVisible = false;
-			},
-			closeCredentialNewDialog () {
-				this.credentialNewDialogVisible = false;
 			},
 			openTagManager() {
 				this.$store.dispatch('ui/openTagsManagerModal');
@@ -414,8 +402,8 @@ export default mixins(
 					// Reset tab title since workflow is deleted.
 					this.$titleReset();
 					this.$showMessage({
-						title: 'Workflow got deleted',
-						message: `The workflow "${this.workflowName}" got deleted!`,
+						title: 'Workflow was deleted',
+						message: `The workflow "${this.workflowName}" was deleted!`,
 						type: 'success',
 					});
 
@@ -443,7 +431,7 @@ export default mixins(
 				} else if (key === 'help-about') {
 					this.aboutDialogVisible = true;
 				} else if (key === 'workflow-settings') {
-					this.workflowSettingsDialogVisible = true;
+					this.$store.dispatch('ui/openWorkflowSettingsModal');
 				} else if (key === 'workflow-new') {
 					const result = this.$store.getters.getStateIsDirty;
 					if(result) {
@@ -477,7 +465,7 @@ export default mixins(
 				} else if (key === 'credentials-open') {
 					this.credentialOpenDialogVisible = true;
 				} else if (key === 'credentials-new') {
-					this.credentialNewDialogVisible = true;
+					this.$store.dispatch('ui/openCredentialsSelectModal');
 				} else if (key === 'execution-open-workflow') {
 					if (this.workflowExecution !== null) {
 						this.openWorkflow(this.workflowExecution.workflowId as string);
@@ -491,6 +479,103 @@ export default mixins(
 </script>
 
 <style lang="scss">
+.sidebar-popper{
+	.el-menu-item {
+		font-size: 0.9em;
+		height: 35px;
+		line-height: 35px;
+		color: $--custom-dialog-text-color;
+		--menu-item-hover-fill: #fff0ef;
+
+		.item-title {
+			position: absolute;
+			left: 55px;
+		}
+
+		.svg-inline--fa {
+			position: relative;
+			right: -3px;
+		}
+	}
+}
+
+#side-menu {
+	// Menu
+	.el-menu--vertical,
+	.el-menu {
+		border: none;
+		font-size: 14px;
+		--menu-item-hover-fill: #fff0ef;
+
+		.el-menu--collapse {
+			width: 75px;
+		}
+
+		.el-menu--popup,
+		.el-menu--inline {
+			font-size: 0.9em;
+			li.el-menu-item {
+				height: 35px;
+				line-height: 35px;
+				color: $--custom-dialog-text-color;
+			}
+		}
+
+		.el-menu-item,
+		.el-submenu__title {
+			color: $--color-primary;
+			font-size: 1.2em;
+			.el-submenu__icon-arrow {
+				color: $--color-primary;
+				font-weight: 800;
+				font-size: 1em;
+			}
+			.svg-inline--fa {
+				position: relative;
+				right: -3px;
+			}
+			.item-title {
+				position: absolute;
+				left: 73px;
+			}
+			.item-title-root {
+				position: absolute;
+				left: 60px;
+				top: 1px;
+			}
+		}
+
+	}
+
+	.el-menu-item {
+		a {
+			color: #666;
+
+			&.primary-item {
+				color: $--color-primary;
+				vertical-align: baseline;
+			}
+		}
+
+		&.logo-item {
+			background-color: $--color-primary !important;
+			height: $--header-height;
+			line-height: $--header-height;
+			* {
+				vertical-align: middle;
+			}
+
+
+			.icon {
+				position: relative;
+				height: 23px;
+				left: -10px;
+				top: -2px;
+			}
+		}
+	}
+}
+
 .about-icon {
 	margin-left: 5px;
 }
@@ -528,29 +613,6 @@ export default mixins(
 }
 #collapse-change-button:hover {
 	transform: scale(1.1);
-}
-
-.el-menu-item {
-	a {
-		color: #666;
-
-		&.primary-item {
-			color: $--color-primary;
-			vertical-align: baseline;
-		}
-	}
-
-	&.logo-item {
-		background-color: $--color-primary !important;
-		height: $--header-height;
-
-		.icon {
-			position: relative;
-			height: 23px;
-			left: -10px;
-			top: -2px;
-		}
-	}
 }
 
 a.logo {
@@ -605,7 +667,7 @@ a.logo {
 }
 
 .el-menu-item.updates {
-	color: $--sidebar-inactive-color;
+	color: $--sidebar-inactive-color !important;
 	.item-title-root {
 		font-size: 13px;
 		top: 0 !important;
