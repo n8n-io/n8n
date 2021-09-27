@@ -2,7 +2,7 @@
 	<Modal
 		:name="modalName"
 		@enter="onSubmit"
-		title="Change Password"
+		title="Invite new users"
 		:center="true"
 		minWidth="460px"
 		maxWidth="460px"
@@ -18,7 +18,7 @@
 			/>
 		</template>
 		<template slot="footer">
-			<n8n-button :loading="loading" label="Change password" @click="onSubmitClick" float="right" />
+			<n8n-button :loading="loading" :label="buttonLabel" @click="onSubmitClick" float="right" />
 		</template>
 	</Modal>
 </template>
@@ -45,45 +45,37 @@ export default mixins(showMessage).extend({
 			formBus: new Vue(),
 			modalBus: new Vue(),
 			password: '',
+			emails: '',
 			loading: false,
 		};
 	},
 	mounted() {
 		this.config = [[
 			{
-				name: 'password',
+				name: 'emails',
 				properties: {
-					label: 'New password',
-					type: 'password',
+					label: 'New user email address(es)',
 					required: true,
-					validationRules: [{name: 'DEFAULT_PASSWORD_RULES'}],
-					infoText: 'At least 8 characters with 1 number and 1 uppercase',
-				},
-			},
-			{
-				name: 'password2',
-				properties: {
-					label: 'Re-enter new password',
-					type: 'password',
-					required: true,
-					validators: {
-						TWO_PASSWORDS_MATCH: {
-							isValid: this.passwordsMatch,
-							defaultError: 'Two passwords must match',
-						},
-					},
-					validationRules: [{name: 'TWO_PASSWORDS_MATCH'}],
+					validationRules: [{name: 'VALID_EMAILS'}],
+					placeholder: 'name1@email.com, name2@email.com, ...',
 				},
 			},
 		]];
 	},
-	methods: {
-		passwordsMatch(value: string) {
-			return value === this.password;
+	computed: {
+		buttonLabel(): string {
+			const emailsCount = this.emails.split(',').filter((email: string) => !!email.trim());
+			if (emailsCount.length > 1) {
+				return `Invite ${emailsCount.length} users`;
+			}
+
+			return 'Invite user';
 		},
+	},
+	methods: {
 		onInput(e: {name: string, value: string}) {
-			if (e.name === 'password') {
-				this.password = e.value;
+			if (e.name === 'emails') {
+				this.emails = e.value;
 			}
 		},
 		async onSubmit(values: {[key: string]: string}) {

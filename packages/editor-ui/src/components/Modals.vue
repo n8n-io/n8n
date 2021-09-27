@@ -73,17 +73,26 @@
 				/>
 			</template>
 		</ModalRoot>
+
+		<ModalRoot :name="INVITE_USER_MODAL_KEY">
+			<template v-slot="{ modalName }">
+				<InviteUsersModal
+					:modalName="modalName"
+				/>
+			</template>
+		</ModalRoot>
 	</div>
 </template>
 
 <script lang="ts">
 import Vue from "vue";
-import { ABOUT_MODAL_KEY, CHANGE_PASSWORD_MODAL_KEY, DUPLICATE_MODAL_KEY, TAGS_MANAGER_MODAL_KEY, WORKFLOW_OPEN_MODAL_KEY, VERSIONS_MODAL_KEY, CREDENTIAL_EDIT_MODAL_KEY, CREDENTIAL_SELECT_MODAL_KEY, WORKFLOW_SETTINGS_MODAL_KEY } from '@/constants';
+import { ABOUT_MODAL_KEY, CHANGE_PASSWORD_MODAL_KEY, DUPLICATE_MODAL_KEY, INVITE_USER_MODAL_KEY, TAGS_MANAGER_MODAL_KEY, WORKFLOW_OPEN_MODAL_KEY, VERSIONS_MODAL_KEY, CREDENTIAL_EDIT_MODAL_KEY, CREDENTIAL_SELECT_MODAL_KEY, WORKFLOW_SETTINGS_MODAL_KEY } from '@/constants';
 
 import AboutModal from './AboutModal.vue';
 import ChangePasswordModal from "./ChangePasswordModal.vue";
 import CredentialEdit from "./CredentialEdit/CredentialEdit.vue";
 import DuplicateWorkflowDialog from "@/components/DuplicateWorkflowDialog.vue";
+import InviteUsersModal from "./InviteUsersModal.vue";
 import WorkflowOpen from "@/components/WorkflowOpen.vue";
 import ModalRoot from "./ModalRoot.vue";
 import CredentialsSelectModal from "./CredentialsSelectModal.vue";
@@ -98,6 +107,7 @@ export default Vue.extend({
 		ChangePasswordModal,
 		CredentialEdit,
 		DuplicateWorkflowDialog,
+		InviteUsersModal,
 		ModalRoot,
 		CredentialsSelectModal,
 		UpdatesPanel,
@@ -109,6 +119,7 @@ export default Vue.extend({
 		ABOUT_MODAL_KEY,
 		CHANGE_PASSWORD_MODAL_KEY,
 		DUPLICATE_MODAL_KEY,
+		INVITE_USER_MODAL_KEY,
 		TAGS_MANAGER_MODAL_KEY,
 		WORKFLOW_OPEN_MODAL_KEY,
 		WORKFLOW_SETTINGS_MODAL_KEY,
