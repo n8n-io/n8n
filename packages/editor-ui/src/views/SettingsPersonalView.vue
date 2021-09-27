@@ -65,7 +65,6 @@ export default mixins(
 				{
 					name: 'firstName',
 					initialValue: this.currentUser.firstName,
-					sm: 11,
 					properties: {
 						label: 'First name',
 						maxlength: 32,
@@ -75,10 +74,6 @@ export default mixins(
 				{
 					name: 'lastName',
 					initialValue: this.currentUser.lastName,
-					sm: {
-						span: 11,
-						offset: 2,
-					},
 					properties: {
 						label: 'Last name',
 						maxlength: 32,
@@ -90,13 +85,11 @@ export default mixins(
 				{
 					name: 'email',
 					initialValue: this.currentUser.email,
-					sm: 11,
 					properties: {
 						label: 'Email',
 						type: 'email',
 						required: true,
 						validationRules: [{name: 'VALID_EMAIL'}],
-						md: 12,
 					},
 				},
 			],

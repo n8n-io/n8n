@@ -1,16 +1,14 @@
 <template>
 	<fragment>
-		<el-row
-			:class="$style.container"
+		<div
+			:class="columnView ? $style.columnView : $style.container"
 			v-for="(row, i) in inputs"
 			:key="i"
 			>
-			<el-col
-				v-for="input in row"
+			<div
+				v-for="(input, j) in row"
 				:key="input.name"
-				:sm="input.sm"
-				:offset="input.offset"
-				:class="$style.inputContainer"
+				:class="multiColumn && j < row.length - 1? $style.multiContainer : $style.inputContainer"
 			>
 				<n8n-form-input
 					v-bind="input.properties"
@@ -20,8 +18,8 @@
 					@validate="(value) => onValidate(input.name, value)"
 					@enter="onSubmit"
 				/>
-			</el-col>
-		</el-row>
+			</div>
+		</div>
 	</fragment>
 </template>
 
@@ -29,15 +27,10 @@
 import Vue from 'vue';
 import N8nFormInput from '../N8nFormInput';
 
-import ElRow from 'element-ui/lib/row';
-import ElCol from 'element-ui/lib/col';
-
 export default Vue.extend({
 	name: 'n8n-form-inputs',
 	components: {
 		N8nFormInput,
-		ElRow,
-		ElCol,
 	},
 	props: {
 		inputs: {
@@ -48,6 +41,9 @@ export default Vue.extend({
 		},
 		eventBus: {
 			type: Vue,
+		},
+		columnView: {
+			type: Boolean,
 		},
 	},
 	data() {
@@ -63,6 +59,10 @@ export default Vue.extend({
 			row.forEach((input: any) => {
 				if (input.hasOwnProperty('initialValue')) {
 					Vue.set(this.values, input.name, input.initialValue);
+				}
+
+				if (row.length > 1 && !this.columnView) {
+					this.multiColumn = true;
 				}
 			});
 		});
@@ -102,12 +102,25 @@ export default Vue.extend({
 </script>
 
 <style lang="scss" module>
+.container {
+	display: flex;
+	width: 100%;
+}
+
+.columnView {
+	composes: container;
+	flex-direction: column;
+}
+
 .inputContainer {
+	flex-grow: 1;
 	margin-bottom: var(--spacing-s);
 }
 
-.multiInputContianer {
+.multiContainer {
 	composes: inputContainer;
+	max-width: 50%;
 	padding-right: var(--spacing-2xs);
 }
+
 </style>

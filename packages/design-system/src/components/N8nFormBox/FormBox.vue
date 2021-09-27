@@ -18,6 +18,7 @@
 			<n8n-form-inputs
 				:inputs="inputs"
 				:eventBus="formBus"
+				:columnView="true"
 				@input="onInput"
 				@submit="onSubmit"
 			/>
