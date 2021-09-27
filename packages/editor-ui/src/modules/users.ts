@@ -41,8 +41,8 @@ const module: Module<IUsersState, IRootState> = {
 		currentUser(state: IUsersState): IUser | null {
 			return {
 				id: '1',
-				firstName: 'Monts',
-				lastName: 'Sexy',
+				firstName: 'Mutasem',
+				lastName: 'Aldmour',
 				email: 'test@gmail.com',
 				// role: 'Owner',
 				role: 'Member',

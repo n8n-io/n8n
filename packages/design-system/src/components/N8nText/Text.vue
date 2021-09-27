@@ -1,5 +1,5 @@
 <template functional>
-	<span :class="$style[$options.methods.getClass(props)]">
+	<span :class="$style[$options.methods.getClass(props)]" :style="$options.methods.getStyles(props)">
 		<slot></slot>
 	</span>
 </template>
@@ -18,10 +18,22 @@ export default Vue.extend({
 			default: 'medium',
 			validator: (value: string): boolean => ['large', 'medium', 'small'].includes(value),
 		},
+		color: {
+			type: String,
+			validator: (value: string): boolean => ['dark', 'base', 'light', 'lighter', 'xlight'].includes(value),
+		},
 	},
 	methods: {
 		getClass(props: {size: string, bold: boolean}) {
 			return `body-${props.size}${props.bold ? '-bold' : '-regular'}`;
+		},
+		getStyles(props: {color: string}) {
+			if (!props.color) {
+				return {};
+			}
+			return {
+				'color': `var(--color-text-${props.color})`,
+			};
 		},
 	},
 });
