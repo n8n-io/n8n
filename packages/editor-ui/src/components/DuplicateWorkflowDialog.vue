@@ -3,30 +3,34 @@
 		:name="modalName"
 		:eventBus="modalBus"
 		@enter="save"
-		size="sm"
 		title="Duplicate Workflow"
+		:center="true"
+		minWidth="420px"
+		maxWidth="420px"
 	>
 		<template v-slot:content>
-			<el-row>
-				<n8n-input
-					v-model="name"
-					ref="nameInput"
-					placeholder="Enter workflow name"
-					:maxlength="MAX_WORKFLOW_NAME_LENGTH"
-				/>
-			</el-row>
-			<el-row>
-				<TagsDropdown
-					:createEnabled="true"
-					:currentTagIds="currentTagIds"
-					:eventBus="dropdownBus"
-					@blur="onTagsBlur"
-					@esc="onTagsEsc"
-					@update="onTagsUpdate"
-					placeholder="Choose or create a tag"
-					ref="dropdown"
-				/>
-			</el-row>
+			<div :class="$style.content">
+				<el-row>
+					<n8n-input
+						v-model="name"
+						ref="nameInput"
+						placeholder="Enter workflow name"
+						:maxlength="MAX_WORKFLOW_NAME_LENGTH"
+					/>
+				</el-row>
+				<el-row>
+					<TagsDropdown
+						:createEnabled="true"
+						:currentTagIds="currentTagIds"
+						:eventBus="dropdownBus"
+						@blur="onTagsBlur"
+						@esc="onTagsEsc"
+						@update="onTagsUpdate"
+						placeholder="Choose or create a tag"
+						ref="dropdown"
+					/>
+				</el-row>
+			</div>
 		</template>
 		<template v-slot:footer="{ close }">
 			<div :class="$style.footer">
@@ -127,6 +131,12 @@ export default mixins(showMessage, workflowHelpers).extend({
 </script>
 
 <style lang="scss" module>
+.content {
+	> div {
+		margin-bottom: 15px;
+	}
+}
+
 .footer {
 	> * {
 		margin-left: var(--spacing-3xs);

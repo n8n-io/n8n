@@ -1,26 +1,29 @@
 <template>
 	<div v-if="credentialTypesNodeDescriptionDisplayed.length" class="node-credentials">
-		<credentials-edit :dialogVisible="credentialNewDialogVisible" :editCredentials="editCredentials" :setCredentialType="addType" :nodesInit="nodesInit" :node="node" @closeDialog="closeCredentialNewDialog" @credentialsCreated="credentialsCreated" @credentialsUpdated="credentialsUpdated"></credentials-edit>
-
 		<div class="headline">
 			Credentials
 		</div>
 
 		<div v-for="credentialTypeDescription in credentialTypesNodeDescriptionDisplayed" :key="credentialTypeDescription.name" class="credential-data">
-			<el-row v-if="displayCredentials(credentialTypeDescription)" class="credential-parameter-wrapper">
-
+			<el-row class="credential-parameter-wrapper">
 				<el-col :span="10" class="parameter-name">
 					{{credentialTypeNames[credentialTypeDescription.name]}}:
 				</el-col>
 				<el-col :span="12" class="parameter-value" :class="getIssues(credentialTypeDescription.name).length?'has-issues':''">
 
 					<div :style="credentialInputWrapperStyle(credentialTypeDescription.name)">
-						<n8n-select v-model="credentials[credentialTypeDescription.name]" :disabled="isReadOnly" @change="credentialSelected(credentialTypeDescription.name)" placeholder="Select Credential" size="small">
+						<n8n-select :value="selected[credentialTypeDescription.name]" :disabled="isReadOnly" @change="(value) => credentialSelected(credentialTypeDescription.name, value)" placeholder="Select Credential" size="small">
 							<n8n-option
-								v-for="(item, index) in credentialOptions[credentialTypeDescription.name]"
-								:key="item.name + '_' + index"
+								v-for="(item) in credentialOptions[credentialTypeDescription.name]"
+								:key="item.id"
 								:label="item.name"
 								:value="item.name">
+							</n8n-option>
+							<n8n-option
+								:key="NEW_CREDENTIALS_TEXT"
+								:value="NEW_CREDENTIALS_TEXT"
+								:label="NEW_CREDENTIALS_TEXT"
+							>
 							</n8n-option>
 						</n8n-select>
 					</div>
@@ -34,7 +37,7 @@
 
 				</el-col>
 				<el-col :span="2" class="parameter-value credential-action">
-					<font-awesome-icon v-if="credentials[credentialTypeDescription.name]" icon="pen" @click="updateCredentials(credentialTypeDescription.name)" class="update-credentials clickable" title="Update Credentials" />
+					<font-awesome-icon v-if="selected[credentialTypeDescription.name] && isCredentialValid(credentialTypeDescription.name)" icon="pen" @click="editCredential(credentialTypeDescription.name)" class="update-credentials clickable" title="Update Credentials" />
 				</el-col>
 
 			</el-row>
@@ -44,12 +47,8 @@
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
-
 import { restApi } from '@/components/mixins/restApi';
 import {
-	ICredentialsCreatedEvent,
-	ICredentialsResponse,
 	INodeUi,
 	INodeUpdatePropertiesInformation,
 } from '@/Interface';
@@ -59,14 +58,15 @@ import {
 	INodeTypeDescription,
 } from 'n8n-workflow';
 
-import CredentialsEdit from '@/components/CredentialsEdit.vue';
-import ParameterInput from '@/components/ParameterInput.vue';
-
 import { genericHelpers } from '@/components/mixins/genericHelpers';
 import { nodeHelpers } from '@/components/mixins/nodeHelpers';
 import { showMessage } from '@/components/mixins/showMessage';
 
+import { mapGetters } from "vuex";
+
 import mixins from 'vue-typed-mixins';
+
+const NEW_CREDENTIALS_TEXT = '- Create New -';
 
 export default mixins(
 	genericHelpers,
@@ -78,11 +78,16 @@ export default mixins(
 	props: [
 		'node', // INodeUi
 	],
-	components: {
-		CredentialsEdit,
-		ParameterInput,
+	data () {
+		return {
+			NEW_CREDENTIALS_TEXT,
+			newCredentialUnsubscribe: null as null | (() => void),
+		};
 	},
 	computed: {
+		...mapGetters('credentials', {
+			credentialOptions: 'allCredentialsByType',
+		}),
 		credentialTypesNode (): string[] {
 			return this.credentialTypesNodeDescription
 				.map((credentialTypeDescription) => credentialTypeDescription.name);
@@ -109,52 +114,16 @@ export default mixins(
 			} = {};
 			let credentialType: ICredentialType | null;
 			for (const credentialTypeName of this.credentialTypesNode) {
-				credentialType = this.$store.getters.credentialType(credentialTypeName);
+				credentialType = this.$store.getters['credentials/getCredentialTypeByName'](credentialTypeName);
 				returnData[credentialTypeName] = credentialType !== null ? credentialType.displayName : credentialTypeName;
 			}
 			return returnData;
 		},
-	},
-	data () {
-		return {
-			addType: undefined as string | undefined,
-			credentialNewDialogVisible: false,
-			credentialOptions: {} as { [key: string]: ICredentialsResponse[]; },
-			credentials: {} as {
-				[key: string]: string | undefined
-			},
-			editCredentials: null as object | null, // Credentials filter
-			newCredentialText: '- Create New -',
-			nodesInit: undefined as string[] | undefined,
-		};
-	},
-	watch: {
-		node () {
-			this.init();
+		selected(): {[type: string]: string} {
+			return this.node.credentials || {};
 		},
 	},
 	methods: {
-		closeCredentialNewDialog () {
-			this.credentialNewDialogVisible = false;
-		},
-		async credentialsCreated (eventData: ICredentialsCreatedEvent) {
-			await this.credentialsUpdated(eventData);
-		},
-		credentialsUpdated (eventData: ICredentialsCreatedEvent) {
-			if (!this.credentialTypesNode.includes(eventData.data.type)) {
-				return;
-			}
-
-			this.init();
-			Vue.set(this.credentials, eventData.data.type, eventData.data.name);
-
-			// Makes sure that it does also get set correctly on the node not just the UI
-			this.credentialSelected(eventData.data.type);
-
-			if (eventData.options.closeDialog === true) {
-				this.closeCredentialNewDialog();
-			}
-		},
 		credentialInputWrapperStyle (credentialType: string) {
 			let deductWidth = 0;
 			const styles = {
@@ -170,29 +139,54 @@ export default mixins(
 
 			return styles;
 		},
-		credentialSelected (credentialType: string) {
-			const credential = this.credentials[credentialType];
-			if (credential === this.newCredentialText) {
-				// New credentials should be created
-				this.addType = credentialType;
-				this.editCredentials = null;
-				this.nodesInit = [ (this.node as INodeUi).type ];
-				this.credentialNewDialogVisible = true;
 
-				this.credentials[credentialType] = undefined;
+		listenForNewCredentials(credentialType: string) {
+			this.stopListeningForNewCredentials();
+
+			this.newCredentialUnsubscribe = this.$store.subscribe((mutation, state) => {
+				if (mutation.type === 'credentials/upsertCredential' || mutation.type === 'credentials/enableOAuthCredential'){
+					this.credentialSelected(credentialType, mutation.payload.name);
+				}
+				if (mutation.type === 'credentials/deleteCredential') {
+					this.credentialSelected(credentialType, mutation.payload.name);
+					this.stopListeningForNewCredentials();
+				}
+			});
+		},
+
+		stopListeningForNewCredentials() {
+			if (this.newCredentialUnsubscribe) {
+				this.newCredentialUnsubscribe();
+			}
+		},
+
+		credentialSelected (credentialType: string, credentialName: string) {
+			let selected = undefined;
+			if (credentialName === NEW_CREDENTIALS_TEXT) {
+				this.listenForNewCredentials(credentialType);
+				this.$store.dispatch('ui/openNewCredential', { type: credentialType });
+			}
+			else {
+				selected = credentialName;
 			}
 
-			const node = this.node as INodeUi;
+			const node: INodeUi = this.node;
+
+			const credentials = {
+				...(node.credentials || {}),
+				[credentialType]: selected,
+			};
 
 			const updateInformation: INodeUpdatePropertiesInformation = {
-				name: node.name,
+				name: this.node.name,
 				properties: {
-					credentials: JSON.parse(JSON.stringify(this.credentials)),
+					credentials,
 				},
 			};
 
 			this.$emit('credentialSelected', updateInformation);
 		},
+
 		displayCredentials (credentialTypeDescription: INodeCredentialDescription): boolean {
 			if (credentialTypeDescription.displayOptions === undefined) {
 				// If it is not defined no need to do a proper check
@@ -200,6 +194,7 @@ export default mixins(
 			}
 			return this.displayParameter(this.node.parameters, credentialTypeDescription, '');
 		},
+
 		getIssues (credentialTypeName: string): string[] {
 			const node = this.node as INodeUi;
 
@@ -213,56 +208,25 @@ export default mixins(
 
 			return node.issues.credentials[credentialTypeName];
 		},
-		updateCredentials (credentialType: string): void {
-			const name = this.credentials[credentialType];
-			const credentialData = this.credentialOptions[credentialType].find((optionData: ICredentialsResponse) => optionData.name === name);
-			if (credentialData === undefined) {
-				this.$showMessage({
-					title: 'Credentials not found',
-					message: `The credentials named "${name}" of type "${credentialType}" could not be found!`,
-					type: 'error',
-				});
-				return;
-			}
 
-			const editCredentials = {
-				id: credentialData.id,
-				name,
-				type: credentialType,
-			};
+		isCredentialValid(credentialType: string): boolean {
+			const name = this.node.credentials[credentialType];
+			const options = this.credentialOptions[credentialType];
 
-			this.editCredentials = editCredentials;
-			this.addType = credentialType;
-			this.credentialNewDialogVisible = true;
+			return options.find((option: ICredentialType) => option.name === name);
 		},
 
-		init () {
-			const node = this.node as INodeUi;
+		editCredential(credentialType: string): void {
+			const name = this.node.credentials[credentialType];
+			const options = this.credentialOptions[credentialType];
+			const selected = options.find((option: ICredentialType) => option.name === name);
+			this.$store.dispatch('ui/openExisitngCredential', { id: selected.id });
 
-			const newOption = {
-				name: this.newCredentialText,
-			};
-
-			let options = [];
-
-			// Get the available credentials for each type
-			for (const credentialType of this.credentialTypesNode) {
-				options = this.$store.getters.credentialsByType(credentialType);
-				options.push(newOption as ICredentialsResponse);
-				Vue.set(this.credentialOptions, credentialType, options);
-			}
-
-			// Set the current node credentials
-			if (node.credentials) {
-				Vue.set(this, 'credentials', JSON.parse(JSON.stringify(node.credentials)));
-			} else {
-				Vue.set(this, 'credentials', {});
-			}
+			this.listenForNewCredentials(credentialType);
 		},
-
 	},
-	mounted () {
-		this.init();
+	beforeDestroy () {
+		this.stopListeningForNewCredentials();
 	},
 });
 </script>
@@ -317,6 +281,7 @@ export default mixins(
 		display: flex;
 		justify-content: center;
 		align-items: center;
+		color: var(--color-text-base);
 	}
 }
 

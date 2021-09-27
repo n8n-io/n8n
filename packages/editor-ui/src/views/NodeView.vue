@@ -142,6 +142,8 @@ import {
 	INodeConnections,
 	INodeIssues,
 	INodeTypeDescription,
+	INodeTypeNameVersion,
+	NodeInputConnections,
 	NodeHelpers,
 	Workflow,
 	IRun,
@@ -159,6 +161,7 @@ import {
 	IPushDataExecutionFinished,
 	ITag,
 	IWorkflowTemplate,
+	IExecutionsSummary,
 } from '../Interface';
 import { mapGetters } from 'vuex';
 
@@ -400,6 +403,15 @@ export default mixins(
 							console.error(data.data.resultData.error.stack); // eslint-disable-line no-console
 						}
 					}
+				}
+
+				if ((data as IExecutionsSummary).waitTill) {
+					this.$showMessage({
+						title: `This execution hasn't finished yet`,
+						message: `<a onclick="window.location.reload(false);">Refresh</a> to see the latest status.<br/> <a href="https://docs.n8n.io/nodes/n8n-nodes-base.wait/" target="_blank">More info</a>`,
+						type: 'warning',
+						duration: 0,
+					});
 				}
 			},
 			async openWorkflowTemplate (templateId: string) {
@@ -909,7 +921,7 @@ export default mixins(
 					});
 				} catch (error) {
 					// Execution stop might fail when the execution has already finished. Let's treat this here.
-					const execution = await this.restApi().getExecution(executionId) as IExecutionResponse;
+					const execution = await this.restApi().getExecution(executionId);
 					if (execution.finished) {
 						const executedData = {
 							data: execution.data,
@@ -1867,13 +1879,13 @@ export default mixins(
 				// Before proceeding we must check if all nodes contain the `properties` attribute.
 				// Nodes are loaded without this information so we must make sure that all nodes
 				// being added have this information.
-				await this.loadNodesProperties(nodes.map(node => node.type));
+				await this.loadNodesProperties(nodes.map(node => ({name: node.type, version: node.typeVersion})));
 
 				// Add the node to the node-list
 				let nodeType: INodeTypeDescription | null;
 				let foundNodeIssues: INodeIssues | null;
 				nodes.forEach((node) => {
-					nodeType = this.$store.getters.nodeType(node.type);
+					nodeType = this.$store.getters.nodeType(node.type, node.typeVersion);
 
 					// Make sure that some properties always exist
 					if (!node.hasOwnProperty('disabled')) {
@@ -1980,7 +1992,7 @@ export default mixins(
 				let newName: string;
 				const createNodes: INode[] = [];
 
-				await this.loadNodesProperties(data.nodes.map(node => node.type));
+				await this.loadNodesProperties(data.nodes.map(node => ({name: node.type, version: node.typeVersion})));
 
 				data.nodes.forEach(node => {
 					if (nodeTypesCount[node.type] !== undefined) {
@@ -2180,13 +2192,11 @@ export default mixins(
 			},
 			async loadSettings (): Promise<void> {
 				const settings = await this.restApi().getSettings() as IN8nUISettings;
-
 				this.$store.commit('setUrlBaseWebhook', settings.urlBaseWebhook);
 				this.$store.commit('setEndpointWebhook', settings.endpointWebhook);
 				this.$store.commit('setEndpointWebhookTest', settings.endpointWebhookTest);
 				this.$store.commit('setSaveDataErrorExecution', settings.saveDataErrorExecution);
 				this.$store.commit('setSaveDataSuccessExecution', settings.saveDataSuccessExecution);
-				this.$store.commit('setSaveManualExecutions', settings.saveManualExecutions);
 				this.$store.commit('setTimezone', settings.timezone);
 				this.$store.commit('setExecutionTimeout', settings.executionTimeout);
 				this.$store.commit('setMaxExecutionTimeout', settings.maxExecutionTimeout);
@@ -2201,16 +2211,24 @@ export default mixins(
 				this.$store.commit('setNodeTypes', nodeTypes);
 			},
 			async loadCredentialTypes (): Promise<void> {
-				const credentialTypes = await this.restApi().getCredentialTypes();
-				this.$store.commit('setCredentialTypes', credentialTypes);
+				await this.$store.dispatch('credentials/fetchCredentialTypes');
 			},
 			async loadCredentials (): Promise<void> {
-				const credentials = await this.restApi().getAllCredentials();
-				this.$store.commit('setCredentials', credentials);
+				await this.$store.dispatch('credentials/fetchAllCredentials');
 			},
-			async loadNodesProperties(nodeNames: string[]): Promise<void> {
-				const allNodes = this.$store.getters.allNodeTypes;
-				const nodesToBeFetched = allNodes.filter((node: INodeTypeDescription) => nodeNames.includes(node.name) && !node.hasOwnProperty('properties')).map((node: INodeTypeDescription) => node.name) as string[];
+			async loadNodesProperties(nodeInfos: INodeTypeNameVersion[]): Promise<void> {
+				const allNodes:INodeTypeDescription[] = this.$store.getters.allNodeTypes;
+
+				const nodesToBeFetched:INodeTypeNameVersion[] = [];
+				allNodes.forEach(node => {
+					if(!!nodeInfos.find(n => n.name === node.name && n.version === node.version) && !node.hasOwnProperty('properties')) {
+						nodesToBeFetched.push({
+							name: node.name,
+							version: node.version,
+						});
+					}
+				});
+
 				if (nodesToBeFetched.length > 0) {
 					// Only call API if node information is actually missing
 					this.startLoading();
