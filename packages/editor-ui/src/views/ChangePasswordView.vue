@@ -12,6 +12,7 @@ import AuthView from './AuthView.vue';
 import { showMessage } from '@/components/mixins/showMessage';
 
 import mixins from 'vue-typed-mixins';
+import { IFormBoxConfig } from '@/Interface';
 
 export default mixins(
 	showMessage,
@@ -24,7 +25,7 @@ export default mixins(
 		return {
 			password: '',
 			loading: false,
-			config: null as any,
+			config: null as null | IFormBoxConfig,
 		};
 	},
 	async mounted() {
