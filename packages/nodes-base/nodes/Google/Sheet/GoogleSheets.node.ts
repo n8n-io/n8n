@@ -86,7 +86,7 @@ export class GoogleSheets implements INodeType {
 						value: 'oAuth2',
 					},
 				],
-				default: 'serviceAccount',
+				default: 'oAuth2',
 			},
 			{
 				displayName: 'Resource',
@@ -1032,7 +1032,7 @@ export class GoogleSheets implements INodeType {
 					status: 'OK',
 					message: 'Connection successful!',
 				};
-				
+
 			},
 		},
 	};

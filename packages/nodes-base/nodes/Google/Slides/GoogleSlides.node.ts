@@ -69,7 +69,7 @@ export class GoogleSlides implements INodeType {
 						value: 'serviceAccount',
 					},
 				],
-				default: 'serviceAccount',
+				default: 'oAuth2',
 			},
 			{
 				displayName: 'Resource',

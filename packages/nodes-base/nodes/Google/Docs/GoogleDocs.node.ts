@@ -84,7 +84,7 @@ export class GoogleDocs implements INodeType {
 						value: 'oAuth2',
 					},
 				],
-				default: 'serviceAccount',
+				default: 'oAuth2',
 			},
 			{
 				displayName: 'Resource',

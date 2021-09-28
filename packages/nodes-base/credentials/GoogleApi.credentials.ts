@@ -17,7 +17,6 @@ export class GoogleApi implements ICredentialType {
 			default: '',
 			description: 'The Google Service account similar to user-808@project.iam.gserviceaccount.com.',
 			required: true,
-
 		},
 		{
 			displayName: 'Private Key',
@@ -28,7 +27,7 @@ export class GoogleApi implements ICredentialType {
 			required: true,
 		},
 		{
-			displayName: ' Impersonate a User',
+			displayName: 'Impersonate a User',
 			name: 'inpersonate',
 			type: 'boolean',
 			default: false,
