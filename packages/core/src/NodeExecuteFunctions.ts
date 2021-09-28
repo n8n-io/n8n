@@ -415,6 +415,7 @@ async function proxyRequestToAxios(
 				}
 			})
 			.catch((error) => {
+				error.statusCode = error.response.status;
 				reject(error);
 			});
 	});
@@ -673,7 +674,7 @@ export async function requestOAuth2(
 				? 401
 				: oAuth2Options?.tokenExpiredStatusCode;
 
-		if (error.response?.status === statusCodeReturned || error.status === statusCodeReturned) {
+		if (error.statusCode === statusCodeReturned) {
 			// Token is probably not valid anymore. So try refresh it.
 
 			const tokenRefreshOptions: IDataObject = {};
