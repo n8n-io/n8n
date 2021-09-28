@@ -106,11 +106,7 @@ export interface IPollFunctions extends IPollFunctionsBase {
 }
 
 export interface IResponseError extends Error {
-	status?: number; // this is how the request library returns
-	response?: {
-		// this is how Axios returns
-		status: number;
-	};
+	statusCode?: number;
 }
 
 export interface ITriggerFunctions extends ITriggerFunctionsBase {
