@@ -418,6 +418,7 @@ async function proxyRequestToAxios(
 				// The error-data was made available with request library via "error" but now on
 				// axios via "response.data" so copy information over to keep it compatible
 				error.error = error.response.data;
+				error.statusCode = error.response.status;
 				reject(error);
 			});
 	});
