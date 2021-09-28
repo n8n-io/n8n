@@ -11,8 +11,9 @@ import AuthView from './AuthView.vue';
 import { showMessage } from '@/components/mixins/showMessage';
 
 import mixins from 'vue-typed-mixins';
+import { IFormBoxConfig } from '@/Interface';
 
-const FORM_CONFIG = {
+const FORM_CONFIG: IFormBoxConfig = {
 	title: 'Recover password',
 	buttonText: 'Email me a recovery link',
 	redirectText: 'Sign in',

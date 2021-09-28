@@ -40,11 +40,13 @@
 <script lang="ts">
 import { showMessage } from '@/components/mixins/showMessage';
 import { CHANGE_PASSWORD_MODAL_KEY } from '@/constants';
-import { IUser } from '@/Interface';
+import { IFormInputs, IUser } from '@/Interface';
 import Vue from 'vue';
 import mixins from 'vue-typed-mixins';
 
 import SettingsView from './SettingsView.vue';
+
+
 
 export default mixins(
 	showMessage,
@@ -56,7 +58,7 @@ export default mixins(
 	data() {
 		return {
 			hasAnyChanges: false,
-			formInputs: null as any,
+			formInputs: null as null | IFormInputs,
 			formBus: new Vue(),
 		};
 	},

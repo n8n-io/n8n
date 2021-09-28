@@ -738,3 +738,41 @@ export interface IUser {
 	email: string;
 	role: IRole;
 }
+
+type IValidationRule = {
+	name: string;
+	config?: any;
+};
+
+type IFormInputsCol = {
+	name: string;
+	initialValue?: string | number | boolean | null;
+	properties: {
+		label: string;
+		type?: "text" | "email" | "password";
+		maxlength?: number;
+		required?: boolean;
+		validators?: {
+			[name: string]: IValidator;
+		};
+		validationRules?: IValidationRule[];
+		infoText?: string;
+	}
+};
+
+type IFormInputsRow = IFormInputsCol[];
+
+type IValidator = {
+	isValid: Function;
+	defaultError?: string;
+};
+
+export type IFormInputs = IFormInputsRow[];
+
+export type IFormBoxConfig = {
+	title: string;
+	buttonText: string;
+	inputs: IFormInputs;
+	redirectLink?: string;
+	redirectText?: string;
+};
