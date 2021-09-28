@@ -3,6 +3,7 @@ import {
 } from 'n8n-core';
 
 import {
+	IDataObject,
 	IExecuteFunctions,
 	IN8nHttpFullResponse,
 	IN8nHttpResponse,
@@ -35,17 +36,21 @@ export class WebhookResponse implements INodeType {
 				type: 'options',
 				options: [
 					{
+						name: 'Binary',
+						value: 'binary',
+						description: 'Return binary data',
+					},
+					{
 						name: 'JSON',
 						value: 'json',
 						description: 'Return JSON data',
 					},
 					{
-						name: 'Binary',
-						value: 'binary',
-						description: 'Return binary data',
+						name: 'String',
+						value: 'string',
+						description: 'Return string data',
 					},
 				],
-				// TODO: Add string option?
 				default: 'json',
 				description: 'If binary or JSON data should be returned.',
 			},
@@ -61,7 +66,23 @@ export class WebhookResponse implements INodeType {
 					},
 				},
 				default: '',
-				description: 'The HTTP Response data',
+				placeholder: '{ "key": "value" }',
+				description: 'The HTTP Response JSON data',
+			},
+			{
+				displayName: 'Response Body',
+				name: 'responseBody',
+				type: 'string',
+				displayOptions: {
+					show: {
+						responseData: [
+							'string',
+						],
+					},
+				},
+				default: '',
+				placeholder: 'Workflow started',
+				description: 'The HTTP Response string data',
 			},
 			{
 				displayName: 'Property Name',
@@ -107,11 +128,16 @@ export class WebhookResponse implements INodeType {
 		const responseData = this.getNodeParameter('responseData', 0) as string;
 
 		// TODO: Check if it works with empty, should also allow setting one key at a time
-		let headers = JSON.parse(responseHeaders);
+		let headers = {} as IDataObject;
+		if (responseHeaders) {
+			headers = JSON.parse(responseHeaders);
+		}
 
 		let responseBody: IN8nHttpResponse;
 		if (responseData === 'json') {
 			responseBody = JSON.parse(this.getNodeParameter('responseBody', 0) as string);
+		} else if (responseData === 'string') {
+			responseBody = this.getNodeParameter('responseBody', 0) as string;
 		} else if (responseData === 'binary') {
 			const item = this.getInputData()[0];
 
