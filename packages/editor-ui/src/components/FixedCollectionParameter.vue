@@ -24,9 +24,6 @@
 			</div>
 			<div v-else class="parameter-item">
 				<div class="parameter-item-wrapper">
-					<div class="delete-option" v-if="!isReadOnly">
-						<font-awesome-icon icon="trash" class="reset-icon clickable" title="Delete Item" @click="deleteOption(property.name)" />
-					</div>
 					<parameter-input-list :parameters="property.values" :nodeValues="nodeValues" :path="getPropertyPath(property.name)" class="parameter-item" @valueChanged="valueChanged" :hideDelete="true" />
 				</div>
 			</div>

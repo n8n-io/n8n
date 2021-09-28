@@ -799,10 +799,39 @@ export function getNodeParameters(
 					nodeParametersFull[nodeProperties.name] = nodeParameters[nodeProperties.name];
 				}
 			}
+
+			const isEmptyOptional =
+				Object.keys(collectionValues).length === 0 && !nodeProperties.required;
+
+			const { values } = nodeProperties.options![0] as INodePropertyCollection;
+			const isFlat = values.every((v) => v.type !== 'fixedCollection');
+
+			if (isEmptyOptional && isFlat) {
+				nodeParameters[nodeProperties.name] = createSectionToAdd(nodeProperties);
+				nodeParametersFull[nodeProperties.name] = nodeParameters[nodeProperties.name];
+			}
 		}
 	}
 
 	return nodeParameters;
+}
+
+/**
+ * Create a section to be auto-added to a fixed collection.
+ */
+function createSectionToAdd(fixedCollection: INodeProperties) {
+	const { name, values } = fixedCollection.options![0] as INodePropertyCollection;
+
+	type SectionToAdd = { [key: string]: INodeProperties['default'] };
+
+	const sectionToAdd = values.reduce<SectionToAdd>((acc, cur) => {
+		acc[cur.name] = cur.default;
+		return acc;
+	}, {});
+
+	return {
+		[name]: fixedCollection.typeOptions?.multipleValues ? [sectionToAdd] : sectionToAdd,
+	};
 }
 
 /**
