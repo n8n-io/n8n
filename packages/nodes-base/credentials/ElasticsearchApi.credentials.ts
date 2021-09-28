@@ -28,8 +28,8 @@ export class ElasticsearchApi implements ICredentialType {
 			name: 'baseUrl',
 			type: 'string',
 			default: '',
-			placeholder: 'https://abc.elastic-cloud.com:9243',
-			description: 'Referred to as \'endpoint\' in the Elasticsearch dashboard.',
+			placeholder: 'https://mydeployment.es.us-central1.gcp.cloud.es.io:9243',
+			description: 'Referred to as Elasticsearch \'endpoint\' in the Elastic deployment dashboard',
 		},
 	];
 }

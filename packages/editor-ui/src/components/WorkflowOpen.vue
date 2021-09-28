@@ -1,7 +1,8 @@
 <template>
 	<Modal
 		:name="modalName"
-		size="xl"
+		width="80%"
+		minWidth="620px"
 		:classic="true"
 	>
 			<template v-slot:header>
