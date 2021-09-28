@@ -1499,9 +1499,8 @@ export function getExecuteFunctions(
 					Logger.warn(`There was a problem sending messsage to UI: ${error.message}`);
 				}
 			},
-			async sendWebhookReponse(response: IN8nHttpFullResponse): Promise<void> {
-				console.log('in NodeExecutionFunction.sendWebhookReponse');
-				await additionalData.hooks?.executeHookFunctions('sendWebhookReponse', [response]);
+			async sendWebhookResponse(response: IN8nHttpFullResponse): Promise<void> {
+				await additionalData.hooks?.executeHookFunctions('sendWebhookResponse', [response]);
 			},
 			helpers: {
 				httpRequest,

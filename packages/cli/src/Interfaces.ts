@@ -47,6 +47,11 @@ export interface IBullJobResponse {
 	success: boolean;
 }
 
+export interface IBullWebhookResponse {
+	executionId: string;
+	response: IN8nHttpFullResponse;
+}
+
 export interface ICustomRequest extends Request {
 	parsedUrl: Url | undefined;
 }
@@ -237,6 +242,7 @@ export interface IExecutingWorkflowData {
 	process?: ChildProcess;
 	startedAt: Date;
 	postExecutePromises: Array<IDeferredPromise<IRun | undefined>>;
+	webhookResponsePromise?: IDeferredPromise<IN8nHttpFullResponse>;
 	workflowExecution?: PCancelable<IRun>;
 }
 

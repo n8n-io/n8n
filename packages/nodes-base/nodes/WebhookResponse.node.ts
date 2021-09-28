@@ -3,20 +3,14 @@ import {
 } from 'n8n-core';
 
 import {
-	IDataObject,
 	IExecuteFunctions,
 	IN8nHttpFullResponse,
 	IN8nHttpResponse,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
-	IWebhookResponseData,
 	NodeOperationError,
 } from 'n8n-workflow';
-
-import * as basicAuth from 'basic-auth';
-import { json } from 'express';
-
 
 export class WebhookResponse implements INodeType {
 	description: INodeTypeDescription = {
@@ -106,14 +100,7 @@ export class WebhookResponse implements INodeType {
 	};
 
 	execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
-		console.log('ccc1');
 		const items = this.getInputData();
-
-		// TODO: Currently works only with "queue" mode yet
-		// TODO: Return binary data does still not work great
-
-		//  curl http://localhost:5678/webhook/webhook-return-node
-		//  curl -v http://localhost:5678/webhook/webhook-return-node
 
 		const responseCode = this.getNodeParameter('responseCode', 0) as number;
 		const responseHeaders = this.getNodeParameter('responseHeaders', 0) as string;
@@ -134,11 +121,14 @@ export class WebhookResponse implements INodeType {
 
 			const responseBinaryPropertyName = this.getNodeParameter('responseBinaryPropertyName', 0) as string;
 
-			if (item.binary[responseBinaryPropertyName] === undefined) {
+			const binaryData = item.binary[responseBinaryPropertyName];
+
+			if (binaryData === undefined) {
 				throw new NodeOperationError(this.getNode(), `No binary data property "${responseBinaryPropertyName}" does not exists on item!`);
 			}
 
-			responseBody = Buffer.from(item.binary[responseBinaryPropertyName].data, BINARY_ENCODING);
+			headers['content-type'] = binaryData.mimeType;
+			responseBody = Buffer.from(binaryData.data, BINARY_ENCODING);
 		} else {
 			throw new NodeOperationError(this.getNode(), `The Response Data option "${responseData}" is not supported!`);
 		}
@@ -151,7 +141,7 @@ export class WebhookResponse implements INodeType {
 			statusMessage: 'blub',
 		};
 
-		this.sendWebhookReponse(response);
+		this.sendWebhookResponse(response);
 
 		return this.prepareOutputData(items);
 	}

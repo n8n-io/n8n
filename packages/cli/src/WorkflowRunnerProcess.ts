@@ -34,6 +34,7 @@ import {
 	IWorkflowExecuteProcess,
 	IWorkflowExecutionDataProcessWithExecution,
 	NodeTypes,
+	WebhookHelpers,
 	WorkflowExecuteAdditionalData,
 	WorkflowHelpers,
 } from '.';
@@ -198,9 +199,11 @@ export class WorkflowRunnerProcess {
 		);
 		additionalData.hooks = this.getProcessForwardHooks();
 
-		additionalData.hooks.hookFunctions.sendWebhookReponse = [
-			async function (response: IN8nHttpFullResponse): Promise<void> {
-				await sendToParentProcess('sendWebhookReponse', { response });
+		additionalData.hooks.hookFunctions.sendWebhookResponse = [
+			async (response: IN8nHttpFullResponse): Promise<void> => {
+				await sendToParentProcess('sendWebhookResponse', {
+					response: WebhookHelpers.encodeWebhookResponse(response),
+				});
 			},
 		];
 

@@ -357,7 +357,7 @@ export interface IExecuteFunctions {
 	): Promise<INodeExecutionData[][]>;
 	putExecutionToWait(waitTill: Date): Promise<void>;
 	sendMessageToUI(message: any): void; // tslint:disable-line:no-any
-	sendWebhookReponse(response: IN8nHttpFullResponse): void; // tslint:disable-line:no-any
+	sendWebhookResponse(response: IN8nHttpFullResponse): void; // tslint:disable-line:no-any
 	helpers: {
 		httpRequest(
 			requestOptions: IHttpRequestOptions,
@@ -958,7 +958,7 @@ export interface IWorkflowExecuteHooks {
 	nodeExecuteBefore?: Array<(nodeName: string) => Promise<void>>;
 	workflowExecuteAfter?: Array<(data: IRun, newStaticData: IDataObject) => Promise<void>>;
 	workflowExecuteBefore?: Array<(workflow: Workflow, data: IRunExecutionData) => Promise<void>>;
-	sendWebhookReponse?: Array<(response: IN8nHttpFullResponse) => Promise<void>>;
+	sendWebhookResponse?: Array<(response: IN8nHttpFullResponse) => Promise<void>>;
 }
 
 export interface IWorkflowExecuteAdditionalData {

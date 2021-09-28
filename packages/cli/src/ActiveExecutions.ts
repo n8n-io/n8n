@@ -116,6 +116,28 @@ export class ActiveExecutions {
 		this.activeExecutions[executionId].workflowExecution = workflowExecution;
 	}
 
+	attachWebhookResponsePromise(
+		executionId: string,
+		webhookResponsePromise: IDeferredPromise<IN8nHttpFullResponse>,
+	): void {
+		if (this.activeExecutions[executionId] === undefined) {
+			throw new Error(
+				`No active execution with id "${executionId}" got found to attach to workflowExecution to!`,
+			);
+		}
+
+		this.activeExecutions[executionId].webhookResponsePromise = webhookResponsePromise;
+	}
+
+	resolveWebhookResponsePromise(executionId: string, response: IN8nHttpFullResponse): void {
+		if (this.activeExecutions[executionId] === undefined) {
+			return;
+		}
+
+		// Resolve all the waiting promises
+		this.activeExecutions[executionId].webhookResponsePromise?.resolve(response);
+	}
+
 	/**
 	 * Remove an active execution
 	 *

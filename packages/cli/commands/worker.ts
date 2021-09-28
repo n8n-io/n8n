@@ -27,7 +27,6 @@ import { FindOneOptions } from 'typeorm';
 
 import * as Bull from 'bull';
 import {
-	ActiveExecutions,
 	CredentialsOverwrites,
 	CredentialTypes,
 	Db,
@@ -35,12 +34,12 @@ import {
 	GenericHelpers,
 	IBullJobData,
 	IBullJobResponse,
+	IBullWebhookResponse,
 	IExecutionFlattedDb,
-	IExecutionResponse,
 	LoadNodesAndCredentials,
 	NodeTypes,
 	ResponseHelper,
-	WorkflowCredentials,
+	WebhookHelpers,
 	WorkflowExecuteAdditionalData,
 } from '../src';
 
@@ -183,6 +182,16 @@ export class Worker extends Command {
 			currentExecutionDb.workflowData,
 			{ retryOf: currentExecutionDb.retryOf as string },
 		);
+
+		additionalData.hooks.hookFunctions.sendWebhookResponse = [
+			async (response: IN8nHttpFullResponse): Promise<void> => {
+				await job.progress({
+					executionId: job.data.executionId as string,
+					response: WebhookHelpers.encodeWebhookResponse(response),
+				} as IBullWebhookResponse);
+			},
+		];
+
 		additionalData.executionId = jobData.executionId;
 
 		let workflowExecute: WorkflowExecute;

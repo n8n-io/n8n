@@ -40,6 +40,7 @@ import {
 	ExternalHooks,
 	IBullJobData,
 	IBullJobResponse,
+	IBullWebhookResponse,
 	ICredentialsOverwrite,
 	ICredentialsTypeData,
 	IExecutionFlattedDb,
@@ -50,6 +51,7 @@ import {
 	NodeTypes,
 	Push,
 	ResponseHelper,
+	WebhookHelpers,
 	WorkflowExecuteAdditionalData,
 	WorkflowHelpers,
 } from '.';
@@ -73,6 +75,14 @@ export class WorkflowRunner {
 
 		if (executionsMode === 'queue') {
 			this.jobQueue = Queue.getInstance().getBullObjectInstance();
+
+			this.jobQueue.on('global:progress', (jobId, progress: IBullWebhookResponse) => {
+				console.log(`Job ${jobId} did send ${JSON.stringify(progress)}`);
+				this.activeExecutions.resolveWebhookResponsePromise(
+					progress.executionId,
+					WebhookHelpers.decodeWebhookResponse(progress.response),
+				);
+			});
 		}
 	}
 
@@ -261,7 +271,7 @@ export class WorkflowRunner {
 				true,
 			);
 
-			additionalData.hooks.hookFunctions.sendWebhookReponse = [
+			additionalData.hooks.hookFunctions.sendWebhookResponse = [
 				async (response: IN8nHttpFullResponse): Promise<void> => {
 					if (webhookResponsePromise) {
 						webhookResponsePromise.resolve(response);
@@ -360,6 +370,9 @@ export class WorkflowRunner {
 
 		// Register the active execution
 		const executionId = await this.activeExecutions.add(data, undefined, restartExecutionId);
+		if (webhookResponsePromise) {
+			this.activeExecutions.attachWebhookResponsePromise(executionId, webhookResponsePromise);
+		}
 
 		const jobData: IBullJobData = {
 			executionId,
@@ -668,9 +681,11 @@ export class WorkflowRunner {
 			} else if (message.type === 'end') {
 				clearTimeout(executionTimeout);
 				this.activeExecutions.remove(executionId, message.data.runData);
-			} else if (message.type === 'sendWebhookReponse') {
+			} else if (message.type === 'sendWebhookResponse') {
 				if (webhookResponsePromise) {
-					webhookResponsePromise.resolve(message.data.response);
+					webhookResponsePromise.resolve(
+						WebhookHelpers.decodeWebhookResponse(message.data.response),
+					);
 				}
 			} else if (message.type === 'sendMessageToUI') {
 				// eslint-disable-next-line @typescript-eslint/no-unsafe-call

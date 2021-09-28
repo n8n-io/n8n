@@ -42,7 +42,6 @@ import {
 import {
 	ActiveExecutions,
 	GenericHelpers,
-	HttpWebhookCallback,
 	IExecutionDb,
 	IResponseCallbackData,
 	IWorkflowDb,
@@ -96,6 +95,30 @@ export function getWorkflowWebhooks(
 	}
 
 	return returnData;
+}
+
+export function decodeWebhookResponse(response: IN8nHttpFullResponse): IN8nHttpFullResponse {
+	if (
+		typeof response.body === 'object' &&
+		(response.body as IDataObject)['__@N8nEncodedBuffer@__']
+	) {
+		response.body = Buffer.from(
+			(response.body as IDataObject)['__@N8nEncodedBuffer@__'] as string,
+			BINARY_ENCODING,
+		);
+	}
+
+	return response;
+}
+
+export function encodeWebhookResponse(response: IN8nHttpFullResponse): IN8nHttpFullResponse {
+	if (Buffer.isBuffer(response.body)) {
+		response.body = {
+			'__@N8nEncodedBuffer@__': response.body.toString(BINARY_ENCODING),
+		};
+	}
+
+	return response;
 }
 
 /**
@@ -372,11 +395,24 @@ export async function executeWebhook(
 					if (didSendResponse) {
 						throw new Error('Did already send webhook response');
 					}
-					responseCallback(null, {
-						data: response.body as IDataObject,
-						headers: response.headers,
-						responseCode: response.statusCode,
-					});
+
+					if (Buffer.isBuffer(response.body)) {
+						res.header(response.headers);
+						res.end(response.body);
+
+						responseCallback(null, {
+							noWebhookResponse: true,
+						});
+					} else {
+						// TODO: This probably needs some more changes depending on the options on the
+						//       Webhook Response node
+						responseCallback(null, {
+							data: response.body as IDataObject,
+							headers: response.headers,
+							responseCode: response.statusCode,
+						});
+					}
+
 					didSendResponse = true;
 				})
 				.catch(async (error) => {
@@ -408,6 +444,20 @@ export async function executeWebhook(
 		>;
 		executePromise
 			.then((data) => {
+				if (responseMode === 'responseNode') {
+					if (!didSendResponse) {
+						// Return an error if no Webhook-Response node did send any data
+						responseCallback(null, {
+							data: {
+								message: 'Workflow did execute sucessfully but no data got returned.',
+							},
+							responseCode,
+						});
+						didSendResponse = true;
+					}
+					return undefined;
+				}
+
 				if (data === undefined) {
 					if (!didSendResponse) {
 						responseCallback(null, {
