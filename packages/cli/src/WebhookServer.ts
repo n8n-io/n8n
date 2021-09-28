@@ -121,7 +121,6 @@ export function registerProductionWebhooks() {
 				return;
 			}
 
-			// TODO: Still needed for all test routes!
 			ResponseHelper.sendSuccessResponse(
 				res,
 				response.data,

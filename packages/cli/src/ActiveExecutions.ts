@@ -134,7 +134,6 @@ export class ActiveExecutions {
 			return;
 		}
 
-		// Resolve all the waiting promises
 		this.activeExecutions[executionId].webhookResponsePromise?.resolve(response);
 	}
 

@@ -127,7 +127,6 @@ export class WebhookResponse implements INodeType {
 		const responseHeaders = this.getNodeParameter('responseHeaders', 0) as string;
 		const responseData = this.getNodeParameter('responseData', 0) as string;
 
-		// TODO: Check if it works with empty, should also allow setting one key at a time
 		let headers = {} as IDataObject;
 		if (responseHeaders) {
 			headers = JSON.parse(responseHeaders);
