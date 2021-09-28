@@ -1,6 +1,5 @@
 /* eslint-disable no-console */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
-/* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import { Command, flags } from '@oclif/command';
 
 import { INode, INodeCredentialsDetails, LoggerProxy } from 'n8n-workflow';
@@ -31,7 +30,7 @@ export class ImportWorkflowsCommand extends Command {
 		}),
 	};
 
-	private checkCredentials(node: INode, credentialsEntities: ICredentialsDb[]) {
+	private transformCredentials(node: INode, credentialsEntities: ICredentialsDb[]) {
 		if (node.credentials) {
 			const allNodeCredentials = Object.entries(node.credentials);
 			// eslint-disable-next-line no-restricted-syntax
@@ -95,7 +94,7 @@ export class ImportWorkflowsCommand extends Command {
 					if (credentialsEntities.length > 0) {
 						// eslint-disable-next-line
 						workflow.nodes.forEach((node: INode) => {
-							this.checkCredentials(node, credentialsEntities);
+							this.transformCredentials(node, credentialsEntities);
 						});
 					}
 					// eslint-disable-next-line no-await-in-loop, @typescript-eslint/no-non-null-assertion
@@ -112,7 +111,7 @@ export class ImportWorkflowsCommand extends Command {
 					if (credentialsEntities.length > 0) {
 						// eslint-disable-next-line
 						fileContents[i].nodes.forEach((node: INode) => {
-							this.checkCredentials(node, credentialsEntities);
+							this.transformCredentials(node, credentialsEntities);
 						});
 					}
 					// eslint-disable-next-line no-await-in-loop, @typescript-eslint/no-non-null-assertion

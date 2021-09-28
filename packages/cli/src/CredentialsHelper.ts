@@ -40,8 +40,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 	/**
 	 * Returns the credentials instance
 	 *
-	 * @param {string | null} id id of the credentials to return instance of
-	 * @param {string} name Name of the credentials to return instance of
+	 * @param {INodeCredentialsDetails} nodeCredentials id and name to return instance of
 	 * @param {string} type Type of the credentials to return instance of
 	 * @returns {Credentials}
 	 * @memberof CredentialsHelper
@@ -105,8 +104,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 	/**
 	 * Returns the decrypted credential data with applied overwrites
 	 *
-	 * @param {string | null} id Id of the credentials to return data of
-	 * @param {string} name Name of the credentials to return data of
+	 * @param {INodeCredentialsDetails} nodeCredentials id and name to return instance of
 	 * @param {string} type Type of the credentials to return data of
 	 * @param {boolean} [raw] Return the data as supplied without defaults or overwrites
 	 * @returns {ICredentialDataDecryptedObject}

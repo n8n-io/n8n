@@ -12,7 +12,7 @@
 
 				<el-col v-if="!isReadOnly" :span="12" class="parameter-value" :class="getIssues(credentialTypeDescription.name).length?'has-issues':''">
 					<div :style="credentialInputWrapperStyle(credentialTypeDescription.name)">
-						<n8n-select :value="getSelectedId(credentialTypeDescription.name)" @change="(value) => credentialSelected(credentialTypeDescription.name, value)" placeholder="Select Credential" size="small">
+						<n8n-select :value="getSelectedId(credentialTypeDescription.name)" @change="(value) => onCredentialSelected(credentialTypeDescription.name, value)" placeholder="Select Credential" size="small">
 							<n8n-option
 								v-for="(item) in credentialOptions[credentialTypeDescription.name]"
 								:key="item.id"
@@ -36,10 +36,10 @@
 					</div>
 				</el-col>
 				<el-col v-if="!isReadOnly" :span="2" class="parameter-value credential-action">
-					<font-awesome-icon v-if="isCredentialValid(credentialTypeDescription.name)" icon="pen" @click="editCredential(credentialTypeDescription.name)" class="update-credentials clickable" title="Update Credentials" />
+					<font-awesome-icon v-if="isCredentialExisting(credentialTypeDescription.name)" icon="pen" @click="editCredential(credentialTypeDescription.name)" class="update-credentials clickable" title="Update Credentials" />
 				</el-col>
 
-				<el-col v-if="isReadOnly" class="readonly-container" >
+				<el-col v-if="isReadOnly" :span="14" class="readonly-container" >
 					<n8n-input disabled :value="selected && selected[credentialTypeDescription.name] && selected[credentialTypeDescription.name].name" size="small" />
 				</el-col>
 
@@ -130,7 +130,7 @@ export default mixins(
 	},
 	methods: {
 		getSelectedId(type: string) {
-			if (this.isCredentialValid(type)) {
+			if (this.isCredentialExisting(type)) {
 				return this.selected[type].id;
 			}
 			return undefined;
@@ -156,7 +156,7 @@ export default mixins(
 
 			this.newCredentialUnsubscribe = this.$store.subscribe((mutation, state) => {
 				if (mutation.type === 'credentials/upsertCredential' || mutation.type === 'credentials/enableOAuthCredential'){
-					this.credentialSelected(credentialType, mutation.payload.id);
+					this.onCredentialSelected(credentialType, mutation.payload.id);
 				}
 				if (mutation.type === 'credentials/deleteCredential') {
 					this.clearSelectedCredential(credentialType);
@@ -190,7 +190,7 @@ export default mixins(
 			this.$emit('credentialSelected', updateInformation);
 		},
 
-		credentialSelected (credentialType: string, credentialId: string | null | undefined) {
+		onCredentialSelected (credentialType: string, credentialId: string | null | undefined) {
 			let selected = undefined;
 			if (credentialId === NEW_CREDENTIALS_TEXT) {
 				this.listenForNewCredentials(credentialType);
@@ -258,7 +258,7 @@ export default mixins(
 			return node.issues.credentials[credentialTypeName];
 		},
 
-		isCredentialValid(credentialType: string): boolean {
+		isCredentialExisting(credentialType: string): boolean {
 			if (!this.node.credentials || !this.node.credentials[credentialType] || !this.node.credentials[credentialType].id) {
 				return false;
 			}

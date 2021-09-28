@@ -1875,7 +1875,7 @@ export default mixins(
 				this.deselectAllNodes();
 				this.nodeSelectedByName(newName);
 			},
-			checkCredentials(node: INodeUi) {
+			matchCredentials(node: INodeUi) {
 				if (!node.credentials) {
 					return;
 				}
@@ -1889,6 +1889,7 @@ export default mixins(
 							id: null,
 							name: nodeCredentials,
 						};
+						this.credentialsUpdated = true;
 					}
 
 					if (nodeCredentials.id) {
@@ -1912,12 +1913,6 @@ export default mixins(
 					// only one option exists for the name, take it
 					if (credentialsForName.length === 1) {
 						node.credentials![nodeCredentialType].id = credentialsForName[0].id;
-						this.credentialsUpdated = true;
-						return;
-					}
-
-					// credentials have been following the old style, so update to new
-					if (nodeCredentials.id === null) {
 						this.credentialsUpdated = true;
 					}
 				});
@@ -1971,7 +1966,7 @@ export default mixins(
 						}
 					}
 
-					this.checkCredentials(node);
+					this.matchCredentials(node);
 
 					foundNodeIssues = this.getNodeIssues(nodeType, node);
 
