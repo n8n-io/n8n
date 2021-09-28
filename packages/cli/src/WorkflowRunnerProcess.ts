@@ -98,7 +98,15 @@ export class WorkflowRunnerProcess {
 			const tempModule = require(filePath);
 
 			try {
-				// eslint-disable-next-line @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
+				// eslint-disable-next-line @typescript-eslint/no-unsafe-call
+				const nodeObject = new tempModule[className]();
+				if (nodeObject.getNodeType !== undefined) {
+					// eslint-disable-next-line @typescript-eslint/no-unsafe-call
+					tempNode = nodeObject.getNodeType();
+				} else {
+					tempNode = nodeObject;
+				}
+				// eslint-disable-next-line @typescript-eslint/no-unsafe-call
 				tempNode = new tempModule[className]() as INodeType;
 			} catch (error) {
 				throw new Error(`Error loading node "${nodeTypeName}" from: "${filePath}"`);
