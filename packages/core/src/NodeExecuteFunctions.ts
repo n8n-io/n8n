@@ -673,7 +673,7 @@ export async function requestOAuth2(
 				? 401
 				: oAuth2Options?.tokenExpiredStatusCode;
 
-		if (error.statusCode === statusCodeReturned) {
+		if (error.response?.status === statusCodeReturned || error.status === statusCodeReturned) {
 			// Token is probably not valid anymore. So try refresh it.
 
 			const tokenRefreshOptions: IDataObject = {};
