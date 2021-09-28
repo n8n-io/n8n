@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="256px" height="256px" viewBox="0 0 256 256" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" preserveAspectRatio="xMidYMid">
+    <g>
+        <g>
+            <polyline fill="#5E60BA" points="0 0 0 256 256 256 256 0 0 0"></polyline>
+            <polyline fill="#FFFFFF" points="191.970909 212.450909 64.1309091 212.450909 64.1309091 181.352727 148.32 74.3272727 65.9345455 74.3272727 65.9345455 43.4909091 190.167273 43.4909091 190.167273 74.3272727 105.701818 181.352727 191.970909 181.352727 191.970909 212.450909"></polyline>
+        </g>
+    </g>
+</svg>
