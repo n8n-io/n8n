@@ -61,6 +61,21 @@ export default mixins(showMessage).extend({
 					placeholder: 'name1@email.com, name2@email.com, ...',
 				},
 			},
+			{
+				name: 'role',
+				initialValue: 'member',
+				properties: {
+					label: 'Role',
+					required: true,
+					type: 'select',
+					options: [
+						{
+							value: 'member',
+							label: 'Member',
+						},
+					],
+				},
+			},
 		]];
 	},
 	computed: {

@@ -690,7 +690,7 @@ type IFormInputsCol = {
 	initialValue?: string | number | boolean | null;
 	properties: {
 		label: string;
-		type?: "text" | "email" | "password";
+		type?: "text" | "email" | "password" | 'select';
 		maxlength?: number;
 		required?: boolean;
 		validators?: {
@@ -699,14 +699,14 @@ type IFormInputsCol = {
 		validationRules?: IValidationRule[];
 		infoText?: string;
 		placeholder?: string;
+		options?: {label: string; value: string}[];
 	}
 };
 
 type IFormInputsRow = IFormInputsCol[];
 
 type IValidator = {
-	isValid: Function;
-	defaultError?: string;
+	validate: Function;
 };
 
 export type IFormInputs = IFormInputsRow[];
