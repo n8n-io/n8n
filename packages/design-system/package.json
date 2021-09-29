@@ -30,7 +30,8 @@
     "@fortawesome/free-solid-svg-icons": "5.x",
     "@fortawesome/vue-fontawesome": "2.x",
     "core-js": "3.x",
-    "element-ui": "2.13.x"
+    "element-ui": "2.13.x",
+    "vue2-boring-avatars": "^0.3.4"
   },
   "devDependencies": {
     "@fortawesome/fontawesome-svg-core": "^1.2.35",
@@ -76,8 +77,5 @@
     "gulp-dart-sass": "^1.0.2",
     "node-notifier": ">=8.0.1",
     "trim": ">=0.0.3"
-  },
-  "dependencies": {
-    "vue2-boring-avatars": "^0.3.3"
   }
 }
