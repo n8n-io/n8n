@@ -102,7 +102,7 @@ export default mixins(showMessage).extend({
 				this.modalBus.$emit('close');
 
 			} catch (error) {
-				this.$showError(error, 'Problem changing the password', 'There was a problem while trying to change the password:');
+				this.$showError(error, 'Problem changing the password');
 			}
 			this.loading = false;
 		},

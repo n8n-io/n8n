@@ -45,7 +45,6 @@ export default mixins(showMessage).extend({
 			config: null as IFormInputs | null,
 			formBus: new Vue(),
 			modalBus: new Vue(),
-			password: '',
 			emails: '',
 			loading: false,
 		};
@@ -97,18 +96,27 @@ export default mixins(showMessage).extend({
 		async onSubmit(values: {[key: string]: string}) {
 			try {
 				this.loading = true;
-				await this.$store.dispatch('users/updateCurrentUserPassword', values);
+
+				const emails = values.emails.split(',')
+					.map((email) => email.trim())
+					.filter((email) => !!email);
+
+				if (emails.length === 0) {
+					throw new Error('No users to invite');
+				}
+
+				await this.$store.dispatch('users/inviteUsers', {emails, role: values.role});
 
 				this.$showMessage({
 					type: 'success',
-					title: 'Password updated successfully',
-					message: 'You can now sign in with your new password',
+					title: `User${emails.length > 1 ? 's' : ''} invited successfully`,
+					message: `An invite email was sent to ${emails.join(',')}`,
 				});
 
 				this.modalBus.$emit('close');
 
 			} catch (error) {
-				this.$showError(error, 'Problem changing the password', 'There was a problem while trying to change the password:');
+				this.$showError(error, 'Problem while inviting users');
 			}
 			this.loading = false;
 		},
