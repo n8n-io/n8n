@@ -28,6 +28,10 @@ export class ZenHub implements INodeType {
 			inputs: ['main'],
 			outputs: ['main'],
 			credentials: [
+				{
+					name: 'zenHubApi',
+					required: true,
+				},
 			],
 			properties: [
 				{
@@ -35,8 +39,9 @@ export class ZenHub implements INodeType {
 					name: 'repoId',
 					type: 'string',
 					required: true,
-					description: ''
-				}
+					description: '',
+					default: ''
+				},
 			],
 	};
 

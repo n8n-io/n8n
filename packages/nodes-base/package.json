@@ -296,6 +296,7 @@
       "dist/credentials/YourlsApi.credentials.js",
       "dist/credentials/ZendeskApi.credentials.js",
       "dist/credentials/ZendeskOAuth2Api.credentials.js",
+      "dist/credentials/ZenHubApi.credentials.js",
       "dist/credentials/ZohoOAuth2Api.credentials.js",
       "dist/credentials/ZoomApi.credentials.js",
       "dist/credentials/ZoomOAuth2Api.credentials.js",
