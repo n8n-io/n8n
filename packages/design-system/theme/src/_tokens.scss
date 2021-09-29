@@ -43,6 +43,24 @@
 		var(--color-primary-shade-2-l)
 	);
 
+	--color-avatar-accent-1-h: 40;
+	--color-avatar-accent-1-s: 15.3%;
+	--color-avatar-accent-1-l: 88.4%;
+	--color-avatar-accent-1: hsl(
+		var(--color-avatar-accent-1-h),
+		var(--color-avatar-accent-1-s),
+		var(--color-avatar-accent-1-l)
+	);
+
+	--color-avatar-accent-2-h: 212;
+	--color-avatar-accent-2-s: 71%;
+	--color-avatar-accent-2-l: 48.6%;
+	--color-avatar-accent-2: hsl(
+		var(--color-avatar-accent-2-h),
+		var(--color-avatar-accent-2-s),
+		var(--color-avatar-accent-2-l)
+	);
+
 	--color-secondary-h: 247;
 	--color-secondary-s: 49%;
 	--color-secondary-l: 53%;
