@@ -207,7 +207,6 @@ export default Vue.extend({
 		return {
 			hasBlurred: false,
 			isTyping: false,
-			validationError: null as null | string,
 		};
 	},
 	props: {
@@ -260,6 +259,9 @@ export default Vue.extend({
 		this.$emit('validate', !this.validationError);
 	},
 	computed: {
+		validationError(): string | null {
+			return this.getValidationError();
+		},
 		hasDefaultSlot(): boolean {
 			return !!this.$slots.default;
 		},
@@ -271,7 +273,7 @@ export default Vue.extend({
 		},
 	},
 	methods: {
-		setValidationError(): void {
+		getValidationError(): string | null {
 			const rules = (this.validationRules || []) as RuleSet;
 			const validators = {
 				...VALIDATORS,
@@ -281,8 +283,7 @@ export default Vue.extend({
 			if (this.required) {
 				const error = getValidationError(this.value, validators, validators.REQUIRED as Validator);
 				if (error) {
-					this.validationError = error;
-					return;
+					return error;
 				}
 			}
 
@@ -297,8 +298,7 @@ export default Vue.extend({
 							rule.config,
 						);
 						if (error) {
-							this.validationError = error;
-							return;
+							return error;
 						}
 					}
 				}
@@ -311,16 +311,14 @@ export default Vue.extend({
 						rule,
 					);
 					if (error) {
-						this.validationError = error;
-						return;
+						return error;
 					}
 				}
 			}
 
-			this.validationError = null;
+			return null;
 		},
 		onBlur() {
-			this.setValidationError();
 			this.hasBlurred = true;
 			this.isTyping = false;
 			this.$emit('blur');
