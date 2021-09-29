@@ -99,7 +99,7 @@
 			/>
 		</div>
 		<Modals />
-		<iframe src="/expressions" id="expressions-iframe" style="position: absolute;width:0;height:0;border:0;"></iframe>
+		<iframe src="/expressions-iframe.html" id="expressions-iframe" style="position: absolute;width:0;height:0;border:0;"></iframe>
 	</div>
 </template>
 

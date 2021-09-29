@@ -413,9 +413,7 @@ export default mixins(
 				let computedValue: NodeParameterValue;
 
 				// @ts-ignore
-				const stuff = document.getElementById('expressions-iframe').contentWindow.calculateStuff();
-
-				alert(stuff);
+				const stuff = document.getElementById('expressions-iframe').contentWindow.potato();
 
 				try {
 					computedValue = this.resolveExpression(this.value) as NodeParameterValue;

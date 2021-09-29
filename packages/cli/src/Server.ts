@@ -556,7 +556,7 @@ class App {
 					{
 						from: new RegExp(
 							// eslint-disable-next-line no-useless-escape
-							`^\/(${this.restEndpoint}|healthz|metrics|expressions|css|js|${this.endpointWebhook}|${this.endpointWebhookTest})\/?.*$`,
+							`^\/(${this.restEndpoint}|healthz|metrics|css|js|${this.endpointWebhook}|${this.endpointWebhookTest})\/?.*$`,
 						),
 						to: (context) => {
 							return context.parsedUrl.pathname!.toString();
@@ -2780,24 +2780,36 @@ class App {
 				},
 			);
 		}
-		console.log('registering expression parser endpoint.');
-		this.app.get(`/expressions`, async (req: express.Request, res: express.Response) => {
-			res.send('<script>function calculateStuff() { return "omg it works"; }</script>');
-		});
 
 		// Read the index file and replace the path placeholder
 		const editorUiPath = require.resolve('n8n-editor-ui');
 		const filePath = pathJoin(pathDirname(editorUiPath), 'dist', 'index.html');
+		const expressionFilePath = pathJoin(
+			pathDirname(editorUiPath),
+			'dist',
+			'expressions-iframe.html',
+		);
 		const n8nPath = config.get('path');
 
 		let readIndexFile = readFileSync(filePath, 'utf8');
 		readIndexFile = readIndexFile.replace(/\/%BASE_PATH%\//g, n8nPath);
 		readIndexFile = readIndexFile.replace(/\/favicon.ico/g, `${n8nPath}favicon.ico`);
 
+		let readExpressionIndexFile = readFileSync(expressionFilePath, 'utf8');
+		readExpressionIndexFile = readExpressionIndexFile.replace(/\/%BASE_PATH%\//g, n8nPath);
+
 		// Serve the altered index.html file separately
 		this.app.get(`/index.html`, async (req: express.Request, res: express.Response) => {
 			res.send(readIndexFile);
 		});
+
+		// Serve the altered index.html file separately
+		this.app.get(
+			`/expressions-iframe.html`,
+			async (req: express.Request, res: express.Response) => {
+				res.send(readExpressionIndexFile);
+			},
+		);
 
 		// Serve the website
 		const startTime = new Date().toUTCString();
