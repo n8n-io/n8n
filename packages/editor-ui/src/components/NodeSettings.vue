@@ -80,7 +80,7 @@ export default mixins(
 		computed: {
 			nodeType (): INodeTypeDescription | null {
 				if (this.node) {
-					return this.$store.getters.nodeType(this.node.type);
+					return this.$store.getters.nodeType(this.node.type, this.node.typeVersion);
 				}
 
 				return null;
@@ -511,24 +511,17 @@ export default mixins(
 <style lang="scss">
 
 .node-settings {
-	position: absolute;
-	left: 0;
-	width: 350px;
-	height: 100%;
-	border: none;
-	z-index: 200;
-	font-size: 0.8em;
-	color: #555;
-	border-radius: 2px 0 0 2px;
+	overflow: hidden;
+	min-width: 350px;
+	max-width: 350px;
+	font-size: var(--font-size-s);
 
 	.header-side-menu {
 		padding: 1em 0 1em 1.8em;
-		font-size: 1.35em;
+		font-size: var(--font-size-l);
 		background-color: $--custom-window-sidebar-top;
-		color: #555;
 
 		.node-info {
-			color: #555;
 			display: none;
 			padding-left: 0.5em;
 			font-size: 0.8em;
@@ -546,18 +539,19 @@ export default mixins(
 	}
 
 	.node-parameters-wrapper {
-		height: calc(100% - 110px);
+		height: 100%;
+		font-size: .9em;
 
 		.el-tabs__header {
 			background-color: #fff5f2;
-			line-height: 2em;
 		}
 
 		.el-tabs {
 			height: 100%;
 			.el-tabs__content {
-				height: calc(100% - 17px);
 				overflow-y: auto;
+				height: 100%;
+				padding-bottom: 180px;
 
 				.el-tab-pane {
 					margin: 0 1em;

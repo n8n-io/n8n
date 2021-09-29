@@ -204,7 +204,7 @@ export const nodeHelpers = mixins(
 					}
 
 					// Get the display name of the credential type
-					credentialType = this.$store.getters.credentialType(credentialTypeDescription.name);
+					credentialType = this.$store.getters['credentials/getCredentialTypeByName'](credentialTypeDescription.name);
 					if (credentialType === null) {
 						credentialDisplayName = credentialTypeDescription.name;
 					} else {
@@ -219,7 +219,7 @@ export const nodeHelpers = mixins(
 					} else {
 						// If they are set check if the value is valid
 						selectedCredentials = node.credentials[credentialTypeDescription.name];
-						userCredentials = this.$store.getters.credentialsByType(credentialTypeDescription.name);
+						userCredentials = this.$store.getters['credentials/getCredentialsByType'](credentialTypeDescription.name);
 
 						if (userCredentials === null) {
 							userCredentials = [];

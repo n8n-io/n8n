@@ -218,12 +218,35 @@ export const pushConnection = mixins(
 					// @ts-ignore
 					const workflow = this.getWorkflow();
 					if (runDataExecuted.waitTill !== undefined) {
+						const {
+							isNewWorkflow,
+							activeExecutionId,
+							saveManualExecutions,
+						} = this.$store.getters;
+
+						let action;
+						if (isNewWorkflow || !saveManualExecutions) {
+							action = '<a class="open-settings">Turn on saving manual executions</a> and run again to see what happened after this node.';
+						}
+						else {
+							action = `<a href="/execution/${activeExecutionId}" target="_blank">View the execution</a> to see what happened after this node.`;
+						}
+
 						// Workflow did start but had been put to wait
 						this.$titleSet(workflow.name as string, 'IDLE');
-						this.$showMessage({
-							title: 'Workflow got started',
-							message: 'Workflow execution has started and is now waiting!',
+						this.$showToast({
+							title: 'Workflow started waiting',
+							message: `${action} <a href="https://docs.n8n.io/nodes/n8n-nodes-base.wait/" target="_blank">More info</a>`,
 							type: 'success',
+							duration: 0,
+							onLinkClick: async (e: HTMLLinkElement) => {
+								if (e.classList.contains('open-settings')) {
+									if (this.$store.getters.isNewWorkflow) {
+										await this.saveAsNewWorkflow();
+									}
+									this.$store.dispatch('ui/openWorkflowSettingsModal');
+								}
+							},
 						});
 					} else if (runDataExecuted.finished !== true) {
 						this.$titleSet(workflow.name as string, 'ERROR');
@@ -237,8 +260,8 @@ export const pushConnection = mixins(
 						// Workflow did execute without a problem
 						this.$titleSet(workflow.name as string, 'IDLE');
 						this.$showMessage({
-							title: 'Workflow got executed',
-							message: 'Workflow did get executed successfully!',
+							title: 'Workflow was executed',
+							message: 'Workflow was executed successfully!',
 							type: 'success',
 						});
 					}
@@ -292,7 +315,7 @@ export const pushConnection = mixins(
 					const pushData = receivedData.data;
 					this.$store.commit('setExecutingNode', pushData.nodeName);
 				} else if (receivedData.type === 'testWebhookDeleted') {
-					// A test-webhook got deleted
+					// A test-webhook was deleted
 					const pushData = receivedData.data;
 
 					if (pushData.workflowId === this.$store.getters.workflowId) {

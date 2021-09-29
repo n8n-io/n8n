@@ -170,6 +170,7 @@ export class ExecuteBatch extends Command {
 			'missing a required parameter',
 			'insufficient credit balance',
 			'request timed out',
+			'status code 401',
 		];
 
 		// eslint-disable-next-line no-param-reassign

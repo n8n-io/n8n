@@ -29,9 +29,11 @@
 				:rows="getArgument('rows')"
 				:value="displayValue"
 				:disabled="isReadOnly"
+				@input="onTextInputChange"
 				@change="valueChanged"
 				@keydown.stop
 				@focus="setFocus"
+				@blur="onBlur"
 				:title="displayTitle"
 				:placeholder="isValueExpression?'':parameter.placeholder"
 			>
@@ -48,6 +50,7 @@
 				:value="displayValue"
 				:disabled="isReadOnly"
 				@focus="setFocus"
+				@blur="onBlur"
 				@change="valueChanged"
 				:title="displayTitle"
 				:show-alpha="getArgument('showAlpha')"
@@ -61,6 +64,7 @@
 				@change="valueChanged"
 				@keydown.stop
 				@focus="setFocus"
+				@blur="onBlur"
 				:title="displayTitle"
 			/>
 		</div>
@@ -78,6 +82,7 @@
 			:picker-options="dateTimePickerOptions"
 			@change="valueChanged"
 			@focus="setFocus"
+			@blur="onBlur"
 			@keydown.stop
 		/>
 
@@ -92,7 +97,9 @@
 			:step="getArgument('numberStepSize')"
 			:disabled="isReadOnly"
 			@change="valueChanged"
+			@input="onTextInputChange"
 			@focus="setFocus"
+			@blur="onBlur"
 			@keydown.stop
 			:title="displayTitle"
 			:placeholder="parameter.placeholder"
@@ -107,9 +114,11 @@
 			:loading="remoteParameterOptionsLoading"
 			:disabled="isReadOnly || remoteParameterOptionsLoading"
 			:title="displayTitle"
+			:popper-append-to-body="true"
 			@change="valueChanged"
 			@keydown.stop
 			@focus="setFocus"
+			@blur="onBlur"
 		>
 			<n8n-option
 				v-for="option in parameterOptions"
@@ -136,6 +145,7 @@
 			@change="valueChanged"
 			@keydown.stop
 			@focus="setFocus"
+			@blur="onBlur"
 			:title="displayTitle"
 		>
 			<n8n-option v-for="option in parameterOptions" :value="option.value" :key="option.value" :label="option.name" >
@@ -177,7 +187,6 @@
 				</el-dropdown-menu>
 			</el-dropdown>
 	</div>
-
 	</div>
 </template>
 
@@ -201,7 +210,6 @@ import ExpressionEdit from '@/components/ExpressionEdit.vue';
 import PrismEditor from 'vue-prism-editor';
 import TextEdit from '@/components/TextEdit.vue';
 import { externalHooks } from '@/components/mixins/externalHooks';
-import { genericHelpers } from '@/components/mixins/genericHelpers';
 import { nodeHelpers } from '@/components/mixins/nodeHelpers';
 import { showMessage } from '@/components/mixins/showMessage';
 import { workflowHelpers } from '@/components/mixins/workflowHelpers';
@@ -210,7 +218,6 @@ import mixins from 'vue-typed-mixins';
 
 export default mixins(
 	externalHooks,
-	genericHelpers,
 	nodeHelpers,
 	showMessage,
 	workflowHelpers,
@@ -225,11 +232,14 @@ export default mixins(
 		},
 		props: [
 			'displayOptions', // boolean
+			'inputSize',
+			'isReadOnly',
+			'documentationUrl',
 			'parameter', // NodeProperties
 			'path', // string
 			'value',
-			'isCredential', // boolean
-			'inputSize',
+			'hideIssues', // boolean
+			'errorHighlight',
 		],
 		data () {
 			return {
@@ -431,7 +441,7 @@ export default mixins(
 				return 'text';
 			},
 			getIssues (): string[] {
-				if (this.isCredential === true || this.node === null) {
+				if (this.hideIssues === true || this.node === null) {
 					return [];
 				}
 
@@ -512,7 +522,7 @@ export default mixins(
 				if (this.isValueExpression) {
 					classes.push('expression');
 				}
-				if (this.getIssues.length) {
+				if (this.getIssues.length || this.errorHighlight) {
 					classes.push('has-issues');
 				}
 				return classes;
@@ -561,7 +571,7 @@ export default mixins(
 				const resolvedNodeParameters = this.resolveParameter(currentNodeParameters) as INodeParameters;
 
 				try {
-					const options = await this.restApi().getNodeParameterOptions(this.node.type, this.path, this.remoteMethod, resolvedNodeParameters, this.node.credentials);
+					const options = await this.restApi().getNodeParameterOptions({name: this.node.type, version: this.node.typeVersion}, this.path, this.remoteMethod, resolvedNodeParameters, this.node.credentials);
 					this.remoteParameterOptions.push.apply(this.remoteParameterOptions, options);
 				} catch (error) {
 					this.remoteParameterOptionsLoadingIssues = error.message;
@@ -602,7 +612,11 @@ export default mixins(
 			openExpressionEdit() {
 				if (this.isValueExpression) {
 					this.expressionEditDialogVisible = true;
+					return;
 				}
+			},
+			onBlur () {
+				this.$emit('blur');
 			},
 			setFocus () {
 				if (this.isValueExpression) {
@@ -643,6 +657,15 @@ export default mixins(
 				}
 				const [r, g, b, a] = valueMatch.splice(1, 4).map(v => Number(v));
 				return "#" + ((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1) + ((1 << 8) + Math.floor((1-a)*255)).toString(16).slice(1);
+			},
+			onTextInputChange (value: string) {
+				const parameterData = {
+					node: this.node !== null ? this.node.name : this.nodeName,
+					name: this.path,
+					value,
+				};
+
+				this.$emit('textInput', parameterData);
 			},
 			valueChanged (value: string | number | boolean | Date | null) {
 				if (value instanceof Date) {
@@ -810,6 +833,7 @@ export default mixins(
 	max-width: 340px;
 	margin: 6px 0;
 	white-space: normal;
+	padding-right: 20px;
 
 	.option-headline {
 		font-weight: var(--font-weight-bold);
@@ -838,6 +862,18 @@ export default mixins(
 	display: flex;
 	height: 100%;
 	align-items: center;
+}
+
+.errors {
+	margin-top: var(--spacing-2xs);
+	color: var(--color-danger);
+	font-size: var(--font-size-2xs);
+	font-weight: var(--font-weight-regular);
+
+	a {
+		color: var(--color-danger);
+		text-decoration: underline;
+	}
 }
 
 </style>
