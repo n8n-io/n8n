@@ -45,7 +45,7 @@ export const rowFields = [
 	// ----------------------------------
 
 	{
-		displayName: 'Table Name',
+		displayName: 'Table Name/ID',
 		name: 'tableName',
 		type: 'options',
 		placeholder: 'Name of table',
@@ -64,10 +64,10 @@ export const rowFields = [
 		description: 'The name of SeaTable table to access',
 	},
 	{
-		displayName: 'Table ID',
+		displayName: 'Table Name/ID',
 		name: 'tableId',
 		type: 'options',
-		placeholder: 'ID of table',
+		placeholder: 'Name of table',
 		required: true,
 		typeOptions: {
 			loadOptionsMethod: 'getTableIds',
