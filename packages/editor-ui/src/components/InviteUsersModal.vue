@@ -30,6 +30,7 @@ import mixins from "vue-typed-mixins";
 import { showMessage } from "@/components/mixins/showMessage";
 import Modal from "./Modal.vue";
 import Vue from "vue";
+import { IFormInputs } from "@/Interface";
 
 export default mixins(showMessage).extend({
 	components: { Modal },
@@ -41,7 +42,7 @@ export default mixins(showMessage).extend({
 	},
 	data() {
 		return {
-			config: null as any,
+			config: null as IFormInputs | null,
 			formBus: new Vue(),
 			modalBus: new Vue(),
 			password: '',
