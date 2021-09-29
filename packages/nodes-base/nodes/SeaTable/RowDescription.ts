@@ -103,7 +103,7 @@ export const rowFields = [
 	//             create
 	// ----------------------------------
 	{
-		displayName: 'Fields to Send',
+		displayName: 'Data to Send',
 		name: 'fieldsToSend',
 		type: 'options',
 		options: [
@@ -173,14 +173,12 @@ export const rowFields = [
 							loadOptionsMethod: 'getTableUpdateAbleColumns',
 						},
 						default: '',
-						description: 'Name of the column',
 					},
 					{
 						displayName: 'Column Value',
 						name: 'columnValue',
 						type: 'string',
 						default: '',
-						description: 'Value of the column',
 					},
 				],
 			},
@@ -323,11 +321,11 @@ export const rowFields = [
 				type: 'options',
 				options: [
 					{
-						name: 'ASC',
+						name: 'Ascending',
 						value: 'asc',
 					},
 					{
-						name: 'DESC',
+						name: 'Descending',
 						value: 'desc',
 					},
 				],
@@ -339,7 +337,7 @@ export const rowFields = [
 				name: 'order_by',
 				type: 'options',
 				typeOptions: {
-					loadOptionsMethod: 'getAllColumns',
+					loadOptionsMethod: 'getAllSortableColumns',
 				},
 				default: '',
 				description: `A column's name or ID, use this column to sort the rows`,

@@ -73,7 +73,7 @@ export class SeaTable implements INodeType {
 					},
 				],
 				default: 'row',
-				description: 'The operation being performed',
+				description: 'The resource to operate on',
 			},
 			...rowOperations,
 			...rowFields,
@@ -110,10 +110,10 @@ export class SeaTable implements INodeType {
 				const columns = await getTableColumns.call(this, tableName,);
 				return columns.filter(column => column.editable).map(column => ({ name: column.name, value: column.name }));
 			},
-			async getAllColumns(this: ILoadOptionsFunctions) {
+			async getAllSortableColumns(this: ILoadOptionsFunctions) {
 				const tableName = this.getNodeParameter('tableName') as string;
 				const columns = await getTableColumns.call(this, tableName);
-				return columns.map(column => ({ name: column.name, value: column.name }));
+				return columns.filter(column => !['file', 'image', 'url', 'collaborator', 'long-text'].includes(column.type)).map(column => ({ name: column.name, value: column.name }));
 			},
 			async getViews(this: ILoadOptionsFunctions) {
 				const tableName = this.getNodeParameter('tableName') as string;
