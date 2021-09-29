@@ -69,8 +69,7 @@ export default mixins(showMessage).extend({
 					required: true,
 					validators: {
 						TWO_PASSWORDS_MATCH: {
-							isValid: this.passwordsMatch,
-							defaultError: 'Two passwords must match',
+							validate: this.passwordsMatch,
 						},
 					},
 					validationRules: [{name: 'TWO_PASSWORDS_MATCH'}],
@@ -80,7 +79,9 @@ export default mixins(showMessage).extend({
 	},
 	methods: {
 		passwordsMatch(value: string) {
-			return value === this.password;
+			if (value !== this.password) {
+				throw new Error('Two passwords must match');
+			}
 		},
 		onInput(e: {name: string, value: string}) {
 			if (e.name === 'password') {

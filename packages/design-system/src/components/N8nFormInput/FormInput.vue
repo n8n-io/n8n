@@ -2,6 +2,20 @@
 	<n8n-input-label :label="label" :tooltipText="tooltipText" :required="required">
 		<div :class="showErrors ? $style.errorInput : ''" @keydown.stop @keydown.enter="onEnter">
 			<slot v-if="hasDefaultSlot"></slot>
+			<n8n-select
+				v-else-if="type === 'select'"
+				:value="value"
+			>
+				<n8n-option
+					v-for="option in (options || [])"
+					:key="option.value"
+					:value="option.value"
+					:label="option.label"
+					@change="onInput"
+					@focus="onFocus"
+					@blur="onBlur"
+				/>
+			</n8n-select>
 			<n8n-input
 				v-else
 				:type="type"
@@ -39,14 +53,11 @@ import N8nInputLabel from '../N8nInputLabel';
 type RuleSet = ({ name: string; config?: any;} | ValidatationGroup)[];
 
 type Validator = {
-	isValid: (value: string, config?: any) => boolean;
-	generateError?: (config: any) => string;
-	defaultError?: string;
+	validate: (value: string, config?: any) => void;
 };
 
 type ValidatationGroup = {
 	rules: RuleSet;
-	generateError?: (config: any) => string;
 	defaultError?: string;
 };
 
@@ -56,57 +67,65 @@ const emailRegex =
 
 const VALIDATORS: { [key: string]: Validator | ValidatationGroup } = {
 	REQUIRED: {
-		isValid: (value: string | number | boolean | null | undefined) => {
-			if (typeof value === 'string') {
-				return !!value.trim();
+		validate: (value: string | number | boolean | null | undefined) => {
+			if (typeof value === 'string' && !!value.trim()) {
+				return;
 			}
 
-			return typeof value === 'boolean' || typeof value === 'number';
+			if (typeof value === 'boolean' || typeof value === 'number') {
+				return;
+			}
+			throw new Error('This field is required');
 		},
-		defaultError: 'This field is required',
 	},
 	MIN_LENGTH: {
-		isValid: (value: string, config: { minimum: number }) => {
-			return value.length >= config.minimum;
-		},
-		generateError: (config: { minimum: number }) => {
-			return `Must be at least ${config.minimum} characters`;
+		validate: (value: string, config: { minimum: number }) => {
+			if (value.length < config.minimum) {
+				throw new Error(`Must be at least ${config.minimum} characters`);
+			}
 		},
 	},
 	MAX_LENGTH: {
-		isValid: (value: string, config: { maximum: number }) => {
-			return value.length <= config.maximum;
-		},
-		generateError: (config: { maximum: number }) => {
-			return `Must be at most ${config.maximum} characters`;
+		validate: (value: string, config: { maximum: number }) => {
+			if (value.length > config.maximum) {
+			 throw new Error(`Must be at most ${config.maximum} characters`);
+			}
 		},
 	},
 	CONTAINS_NUMBER: {
-		isValid: (value: string, config: { minimum: number }) => {
+		validate: (value: string, config: { minimum: number }) => {
 			const numberCount = (value.match(/\d/g) || []).length;
 
-			return numberCount >= config.minimum;
-		},
-		generateError: (config: { minimum: number }) => {
-			return `Must have at least ${config.minimum} number${config.minimum > 1 ? 's' : ''}`;
+			if (numberCount < config.minimum) {
+				throw new Error(`Must have at least ${config.minimum} number${config.minimum > 1 ? 's' : ''}`);
+			}
 		},
 	},
 	VALID_EMAIL: {
-		isValid: (value: string) => {
-			return emailRegex.test(String(value).toLowerCase());
+		validate: (value: string) => {
+			if (!emailRegex.test(String(value).toLowerCase())) {
+				throw new Error('Must be a valid email');
+			}
 		},
-		defaultError: 'Must be a valid email',
+	},
+	VALID_EMAILS: {
+		validate: (value: string) => {
+			value.split(',').forEach((email: string) => {
+				if (!!email.trim() && !emailRegex.test(String(email).toLowerCase())) {
+					throw new Error(`"${email.trim()}" is not a valid email`);
+				}
+			});
+		},
 	},
 	CONTAINS_UPPERCASE: {
-		isValid: (value: string, config: { minimum: number }) => {
+		validate: (value: string, config: { minimum: number }) => {
 			const uppercaseCount = (value.match(/[A-Z]/g) || []).length;
 
-			return uppercaseCount >= config.minimum;
-		},
-		generateError: (config: { minimum: number }) => {
-			return `Must have at least ${config.minimum} uppercase character${
-				config.minimum > 1 ? 's' : ''
-			}`;
+			if (uppercaseCount < config.minimum) {
+				throw new Error(`Must have at least ${config.minimum} uppercase character${
+					config.minimum > 1 ? 's' : ''
+				}`);
+			}
 		},
 	},
 	DEFAULT_PASSWORD_RULES: {
@@ -122,14 +141,6 @@ const VALIDATORS: { [key: string]: Validator | ValidatationGroup } = {
 			{ name: 'MAX_LENGTH', config: {maximum: 64} },
 		],
 	},
-};
-
-const getErrorMessage = (validator: Validator | ValidatationGroup, config?: any): string | null => {
-	if (validator.generateError) {
-		return validator.generateError(config);
-	}
-
-	return validator.defaultError ? validator.defaultError : null;
 };
 
 const getValidationError = (
@@ -159,6 +170,7 @@ const getValidationError = (
 				if (!validators[rule.name]) {
 					continue;
 				}
+
 				const error = getValidationError(
 					value,
 					validators,
@@ -166,15 +178,18 @@ const getValidationError = (
 					rule.config,
 				);
 				if (error) {
-					return getErrorMessage(validator, rule.config) || error;
+					return (validator as ValidatationGroup).defaultError || error;
 				}
 			}
 		}
 	} else if (
-		validator.hasOwnProperty('isValid') &&
-		!(validator as Validator).isValid(value, config)
+		validator.hasOwnProperty('validate')
 	) {
-		return getErrorMessage(validator, config);
+		try {
+			(validator as Validator).validate(value, config);
+		} catch (e) {
+			return e.message;
+		}
 	}
 
 	return null;
@@ -234,12 +249,8 @@ export default Vue.extend({
 		maxlength: {
 			type: Number,
 		},
-		span: {
-			type: Number,
-			default: 24,
-		},
-		md: {
-			type: Number,
+		options: {
+			type: Array,
 		},
 	},
 	mounted() {
