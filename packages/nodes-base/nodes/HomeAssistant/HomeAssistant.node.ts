@@ -3,10 +3,13 @@ import {
 } from 'n8n-core';
 
 import {
+	ICredentialsDecrypted,
+	ICredentialTestFunctions,
 	IDataObject,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
+	NodeCredentialTestResult,
 } from 'n8n-workflow';
 
 import {
@@ -71,6 +74,7 @@ export class HomeAssistant implements INodeType {
 			{
 				name: 'homeAssistantApi',
 				required: true,
+				testedBy: 'homeAssistantApiTest',
 			},
 		],
 		properties: [
@@ -131,6 +135,43 @@ export class HomeAssistant implements INodeType {
 			...templateOperations,
 			...templateFields,
 		],
+	};
+
+	methods = {
+		credentialTest: {
+			async homeAssistantApiTest(this: ICredentialTestFunctions, credential: ICredentialsDecrypted): Promise<NodeCredentialTestResult> {
+				const credentials = credential.data;
+				const options = {
+					method: 'GET',
+					headers: {
+						Authorization: `Bearer ${credentials!.accessToken}`,
+					},
+					uri: `${credentials!.ssl === true ? 'https' : 'http'}://${credentials!.host}:${ credentials!.port || '8123' }/api/`,
+					json: true,
+					timeout: 5000,
+				};
+				try {
+					const response = await this.helpers.request(options);
+					if (!response.message) {
+						return {
+							status: 'Error',
+							message: `Token is not valid: ${response.error}`,
+						};
+					}
+				} catch (error) {
+					return {
+						status: 'Error',
+						message: `${error.statusCode === 401 ? 'Token is' : 'Settings are'} not valid: ${error}`,
+					};
+				}
+
+				return {
+					status: 'OK',
+					message: 'Authentication successful!',
+				};
+
+			},
+		},
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {

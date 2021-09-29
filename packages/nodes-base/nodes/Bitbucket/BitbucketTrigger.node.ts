@@ -1,15 +1,20 @@
+import { OptionsWithUri } from 'request';
+
 import {
 	IHookFunctions,
 	IWebhookFunctions,
 } from 'n8n-core';
 
 import {
+	ICredentialsDecrypted,
+	ICredentialTestFunctions,
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
 	IWebhookResponseData,
+	NodeCredentialTestResult,
 } from 'n8n-workflow';
 
 import {
@@ -35,6 +40,7 @@ export class BitbucketTrigger implements INodeType {
 			{
 				name: 'bitbucketApi',
 				required: true,
+				testedBy: 'bitbucketApiTest',
 			},
 		],
 		webhooks: [
@@ -166,6 +172,41 @@ export class BitbucketTrigger implements INodeType {
 	};
 
 	methods = {
+		credentialTest: {
+			async bitbucketApiTest(this: ICredentialTestFunctions, credential: ICredentialsDecrypted): Promise<NodeCredentialTestResult> {
+				const credentials = credential.data;
+
+				const options: OptionsWithUri = {
+					method: 'GET',
+					auth: {
+						user: credentials!.username as string,
+						password: credentials!.appPassword as string,
+					},
+					uri: 'https://api.bitbucket.org/2.0/user',
+					json: true,
+					timeout: 5000,
+				};
+
+				try {
+					const response = await this.helpers.request(options);
+					if (!response.username) {
+						return {
+							status: 'Error',
+							message: `Token is not valid: ${response.error}`,
+						};
+					}
+				} catch (error) {
+					return {
+						status: 'Error',
+						message: `Settings are not valid: ${error}`,
+					};
+				}
+				return {
+					status: 'OK',
+					message: 'Authentication successful!',
+				};
+			},
+		},
 		loadOptions: {
 			// Get all the events to display them to user so that he can
 			// select them easily
