@@ -415,10 +415,15 @@ async function proxyRequestToAxios(
 				}
 			})
 			.catch((error) => {
-				// The error-data was made available with request library via "error" but now on
-				// axios via "response.data" so copy information over to keep it compatible
-				error.error = error.response.data;
-				error.statusCode = error.response.status;
+				Logger.debug('Request proxied to Axios failed', { error });
+				// Axios hydrates the original error with more data. We extract them.
+				// https://github.com/axios/axios/blob/master/lib/core/enhanceError.js
+				// Note: `code` is ignored as it's an expected part of the errorData.
+				const { request, response, isAxiosError, toJSON, config, ...errorData } = error;
+				error.cause = errorData;
+				error.error = error.response?.data || errorData;
+				error.statusCode = error.response?.status;
+				error.options = config;
 				reject(error);
 			});
 	});
