@@ -37,7 +37,7 @@ export default {
 	methods: {
 		getColors(): string[] {
 			const style = getComputedStyle(document.body);
-			const colors = ['--color-primary', '--color-secondary', '--color-avatar-accent-1', '--color-avatar-accent-2'];
+			const colors = ['--color-primary', '--color-secondary', '--color-avatar-accent-1', '--color-avatar-accent-2', '--color-primary-tint-1'];
 
 			return colors.map((color: string) => style.getPropertyValue(color));
 		},
