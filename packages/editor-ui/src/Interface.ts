@@ -741,7 +741,7 @@ export interface IUser {
 
 type IValidationRule = {
 	name: string;
-	config?: any;
+	config?: any; // tslint:disable-line:no-any
 };
 
 type IFormInputsCol = {
@@ -757,6 +757,7 @@ type IFormInputsCol = {
 		};
 		validationRules?: IValidationRule[];
 		infoText?: string;
+		placeholder?: string;
 	}
 };
 
