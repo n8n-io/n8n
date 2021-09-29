@@ -18,7 +18,7 @@
 			/>
 		</template>
 		<template slot="footer">
-			<n8n-button :loading="loading" :label="buttonLabel" @click="onSubmitClick" float="right" />
+			<n8n-button :loading="loading" :disabled="!enabledButton" :label="buttonLabel" @click="onSubmitClick" float="right" />
 		</template>
 	</Modal>
 </template>
@@ -78,13 +78,18 @@ export default mixins(showMessage).extend({
 		]];
 	},
 	computed: {
+		emailsCount(): number {
+			return this.emails.split(',').filter((email: string) => !!email.trim()).length;
+		},
 		buttonLabel(): string {
-			const emailsCount = this.emails.split(',').filter((email: string) => !!email.trim());
-			if (emailsCount.length > 1) {
-				return `Invite ${emailsCount.length} users`;
+			if (this.emailsCount > 1) {
+				return `Invite ${this.emailsCount} users`;
 			}
 
 			return 'Invite user';
+		},
+		enabledButton(): boolean {
+			return this.emailsCount >= 1;
 		},
 	},
 	methods: {
