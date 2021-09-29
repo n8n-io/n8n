@@ -50,22 +50,24 @@ import Vue from 'vue';
 import N8nInput from '../N8nInput';
 import N8nInputLabel from '../N8nInputLabel';
 
-type RuleSet = ({ name: string; config?: any;} | ValidatationGroup)[];
+type Rule = { name: string; config?: any;};
+
+type RuleSet = (Rule | RuleGroup)[];
+
+type RuleGroup = {
+	rules: RuleSet;
+	defaultError?: string;
+};
 
 type Validator = {
 	validate: (value: string, config?: any) => void;
-};
-
-type ValidatationGroup = {
-	rules: RuleSet;
-	defaultError?: string;
 };
 
 // https://stackoverflow.com/a/1373724
 const emailRegex =
 	/[a-z0-9!#$%&'*+/=?^_`{|}~-]+(?:\.[a-z0-9!#$%&'*+/=?^_`{|}~-]+)*@(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+[a-z0-9](?:[a-z0-9-]*[a-z0-9])?/;
 
-const VALIDATORS: { [key: string]: Validator | ValidatationGroup } = {
+const VALIDATORS: { [key: string]: Validator | RuleGroup } = {
 	REQUIRED: {
 		validate: (value: string | number | boolean | null | undefined) => {
 			if (typeof value === 'string' && !!value.trim()) {
@@ -145,18 +147,18 @@ const VALIDATORS: { [key: string]: Validator | ValidatationGroup } = {
 
 const getValidationError = (
 	value: any,
-	validators: { [key: string]: Validator | ValidatationGroup },
-	validator: Validator | ValidatationGroup,
+	validators: { [key: string]: Validator | RuleGroup },
+	validator: Validator | RuleGroup,
 	config?: any,
 ): string | null => {
 	if (validator.hasOwnProperty('rules')) {
-		const rules = (validator as ValidatationGroup).rules;
+		const rules = (validator as RuleGroup).rules;
 		for (let i = 0; i < rules.length; i++) {
 			if (rules[i].hasOwnProperty('rules')) {
 				const error = getValidationError(
 					value,
 					validators,
-					rules[i] as ValidatationGroup,
+					rules[i] as RuleGroup,
 					config,
 				);
 
@@ -178,7 +180,7 @@ const getValidationError = (
 					rule.config,
 				);
 				if (error) {
-					return (validator as ValidatationGroup).defaultError || error;
+					return (validator as RuleGroup).defaultError || error;
 				}
 			}
 		}
@@ -205,6 +207,7 @@ export default Vue.extend({
 		return {
 			hasBlurred: false,
 			isTyping: false,
+			validationError: null as null | string,
 		};
 	},
 	props: {
@@ -254,14 +257,11 @@ export default Vue.extend({
 		},
 	},
 	mounted() {
-		this.$emit('validate', !this.getValidationError());
+		this.$emit('validate', !this.validationError);
 	},
 	computed: {
 		hasDefaultSlot(): boolean {
 			return !!this.$slots.default;
-		},
-		validationError(): string | null {
-			return this.getValidationError();
 		},
 		showErrors(): boolean {
 			return (
@@ -271,38 +271,56 @@ export default Vue.extend({
 		},
 	},
 	methods: {
-		getValidationError() {
+		setValidationError(): void {
 			const rules = (this.validationRules || []) as RuleSet;
 			const validators = {
 				...VALIDATORS,
 				...(this.validators || {}),
-			} as { [key: string]: Validator | ValidatationGroup };
+			} as { [key: string]: Validator | RuleGroup };
 
 			if (this.required) {
 				const error = getValidationError(this.value, validators, validators.REQUIRED as Validator);
 				if (error) {
-					return error;
+					this.validationError = error;
+					return;
 				}
 			}
 
 			for (let i = 0; i < rules.length; i++) {
-				const rule = rules[i];
-				if (validators[rule.name]) {
+				if (rules[i].hasOwnProperty('name')) {
+					const rule = rules[i] as Rule;
+					if (validators[rule.name]) {
+						const error = getValidationError(
+							this.value,
+							validators,
+							validators[rule.name] as Validator,
+							rule.config,
+						);
+						if (error) {
+							this.validationError = error;
+							return;
+						}
+					}
+				}
+
+				if (rules[i].hasOwnProperty('rules')) {
+					const rule = rules[i] as RuleGroup;
 					const error = getValidationError(
 						this.value,
 						validators,
-						validators[rule.name] as Validator,
-						rule.config,
+						rule,
 					);
 					if (error) {
-						return error;
+						this.validationError = error;
+						return;
 					}
 				}
 			}
 
-			return null;
+			this.validationError = null;
 		},
 		onBlur() {
+			this.setValidationError();
 			this.hasBlurred = true;
 			this.isTyping = false;
 			this.$emit('blur');
