@@ -36,9 +36,9 @@ import {
 
 import * as _ from 'lodash';
 
-export async function seatableApiRequest(this: IExecuteFunctions | ILoadOptionsFunctions | IPollFunctions, ctx: ICtx, method: string, endpoint: string, body: any = {}, qs: IDataObject = {}, url: string | undefined = undefined, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
+export async function seaTableApiRequest(this: IExecuteFunctions | ILoadOptionsFunctions | IPollFunctions, ctx: ICtx, method: string, endpoint: string, body: any = {}, qs: IDataObject = {}, url: string | undefined = undefined, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
 
-	const credentials = await this.getCredentials('seatableApi');
+	const credentials = await this.getCredentials('seaTableApi');
 
 	ctx.credentials = credentials as unknown as ICredential;
 
@@ -85,7 +85,7 @@ export async function setableApiRequestAllItems(this: IExecuteFunctions | IPollF
 	let responseData;
 
 	do {
-		responseData = await seatableApiRequest.call(this, ctx, method, endpoint, body, query) as unknown as IRow[];
+		responseData = await seaTableApiRequest.call(this, ctx, method, endpoint, body, query) as unknown as IRow[];
 		//@ts-ignore
 		returnData.push.apply(returnData, responseData[propertyName]);
 		query.start = +query.start + segment;
@@ -96,7 +96,7 @@ export async function setableApiRequestAllItems(this: IExecuteFunctions | IPollF
 
 
 export async function getTableColumns(this: ILoadOptionsFunctions | IExecuteFunctions | IPollFunctions, tableName: string, ctx: ICtx = {}): Promise<TDtableMetadataColumns> {
-	const { metadata: { tables } } = await seatableApiRequest.call(this, ctx, 'GET', `/dtable-server/api/v1/dtables/{{dtable_uuid}}/metadata`);
+	const { metadata: { tables } } = await seaTableApiRequest.call(this, ctx, 'GET', `/dtable-server/api/v1/dtables/{{dtable_uuid}}/metadata`);
 	for (const table of tables) {
 		if (table.name === tableName) {
 			return table.columns;
@@ -106,7 +106,7 @@ export async function getTableColumns(this: ILoadOptionsFunctions | IExecuteFunc
 }
 
 export async function getTableViews(this: ILoadOptionsFunctions | IExecuteFunctions, tableName: string, ctx: ICtx = {}): Promise<TDtableViewColumns> {
-	const { views } = await seatableApiRequest.call(this, ctx, 'GET', `/dtable-server/api/v1/dtables/{{dtable_uuid}}/views`, {}, { table_name: tableName });
+	const { views } = await seaTableApiRequest.call(this, ctx, 'GET', `/dtable-server/api/v1/dtables/{{dtable_uuid}}/views`, {}, { table_name: tableName });
 	return views;
 }
 

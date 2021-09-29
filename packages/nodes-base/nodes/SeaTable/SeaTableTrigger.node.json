@@ -1,5 +1,5 @@
 {
-	"node": "n8n-nodes-base.seatableTrigger",
+	"node": "n8n-nodes-base.seaTableTrigger",
 	"nodeVersion": "1.0",
 	"codexVersion": "1.0",
 	"categories": [
@@ -8,12 +8,12 @@
 	"resources": {
 		"credentialDocumentation": [
 			{
-				"url": "https://docs.n8n.io/credentials/seatable"
+				"url": "https://docs.n8n.io/credentials/seaTable"
 			}
 		],
 		"primaryDocumentation": [
 			{
-				"url": "https://docs.n8n.io/nodes/n8n-nodes-base.seatableTrigger/"
+				"url": "https://docs.n8n.io/nodes/n8n-nodes-base.seaTableTrigger/"
 			}
 		]
 	}

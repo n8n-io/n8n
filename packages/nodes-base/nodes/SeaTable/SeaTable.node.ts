@@ -18,7 +18,7 @@ import {
 	rowExport,
 	rowFormatColumns,
 	rowMapKeyToName,
-	seatableApiRequest,
+	seaTableApiRequest,
 	setableApiRequestAllItems,
 	split,
 	updateAble,
@@ -43,7 +43,7 @@ import {
 export class SeaTable implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'SeaTable',
-		name: 'seatable',
+		name: 'seaTable',
 		icon: 'file:seaTable.svg',
 		group: ['input'],
 		version: 1,
@@ -57,7 +57,7 @@ export class SeaTable implements INodeType {
 		outputs: ['main'],
 		credentials: [
 			{
-				name: 'seatableApi',
+				name: 'seaTableApi',
 				required: true,
 			},
 		],
@@ -84,7 +84,7 @@ export class SeaTable implements INodeType {
 		loadOptions: {
 			async getTableNames(this: ILoadOptionsFunctions) {
 				const returnData: INodePropertyOptions[] = [];
-				const { metadata: { tables } } = await seatableApiRequest.call(this, {}, 'GET', `/dtable-server/api/v1/dtables/{{dtable_uuid}}/metadata`);
+				const { metadata: { tables } } = await seaTableApiRequest.call(this, {}, 'GET', `/dtable-server/api/v1/dtables/{{dtable_uuid}}/metadata`);
 				for (const table of tables) {
 					returnData.push({
 						name: table.name,
@@ -95,7 +95,7 @@ export class SeaTable implements INodeType {
 			},
 			async getTableIds(this: ILoadOptionsFunctions) {
 				const returnData: INodePropertyOptions[] = [];
-				const { metadata: { tables } } = await seatableApiRequest.call(this, {}, 'GET', `/dtable-server/api/v1/dtables/{{dtable_uuid}}/metadata`);
+				const { metadata: { tables } } = await seaTableApiRequest.call(this, {}, 'GET', `/dtable-server/api/v1/dtables/{{dtable_uuid}}/metadata`);
 				for (const table of tables) {
 					returnData.push({
 						name: table.name,
@@ -167,7 +167,7 @@ export class SeaTable implements INodeType {
 						}
 						body.row = rowExport(rowInput, updateAble(tableColumns));
 
-						responseData = await seatableApiRequest.call(this, ctx, 'POST', `/dtable-server/api/v1/dtables/{{dtable_uuid}}/rows/`, body);
+						responseData = await seaTableApiRequest.call(this, ctx, 'POST', `/dtable-server/api/v1/dtables/{{dtable_uuid}}/rows/`, body);
 
 						const { _id: insertId } = responseData;
 						if (insertId === undefined) {
@@ -178,7 +178,7 @@ export class SeaTable implements INodeType {
 
 						qs.table_name = tableName;
 						qs.convert = true;
-						const newRow = await seatableApiRequest.call(this, ctx, 'GET', `/dtable-server/api/v1/dtables/{{dtable_uuid}}/rows/${encodeURIComponent(insertId)}/`, body, qs);
+						const newRow = await seaTableApiRequest.call(this, ctx, 'GET', `/dtable-server/api/v1/dtables/{{dtable_uuid}}/rows/${encodeURIComponent(insertId)}/`, body, qs);
 
 						if (newRow._id === undefined) {
 							throw new NodeOperationError(this.getNode(), 'SeaTable: No identity for appended row.');
@@ -198,9 +198,9 @@ export class SeaTable implements INodeType {
 			} else if (operation === 'get') {
 				for (let i = 0; i < items.length; i++) {
 					try {
-						const tableName = this.getNodeParameter('tableName', 0) as string;
+						const tableId = this.getNodeParameter('tableId', 0) as string;
 						const rowId = this.getNodeParameter('rowId', i) as string;
-						const response = await seatableApiRequest.call(this, ctx, 'GET', `/dtable-server/api/v1/dtables/{{dtable_uuid}}/rows/${rowId}`, {}, { table_id: tableName, convert: true }) as IDataObject;
+						const response = await seaTableApiRequest.call(this, ctx, 'GET', `/dtable-server/api/v1/dtables/{{dtable_uuid}}/rows/${rowId}`, {}, { table_id: tableId, convert: true }) as IDataObject;
 						returnData.push(response);
 
 					} catch (error) {
@@ -233,7 +233,7 @@ export class SeaTable implements INodeType {
 							responseData = await setableApiRequestAllItems.call(this, ctx, 'rows', 'GET', endpoint, body, qs);
 						} else {
 							qs.limit = this.getNodeParameter('limit', 0) as number;
-							responseData = await seatableApiRequest.call(this, ctx, 'GET', endpoint, body, qs);
+							responseData = await seaTableApiRequest.call(this, ctx, 'GET', endpoint, body, qs);
 							responseData = responseData.rows;
 						}
 
@@ -256,7 +256,7 @@ export class SeaTable implements INodeType {
 							table_name: tableName,
 							row_id: rowId,
 						};
-						const response = await seatableApiRequest.call(this, ctx, 'DELETE', `/dtable-server/api/v1/dtables/{{dtable_uuid}}/rows/`, body, qs) as IDataObject;
+						const response = await seaTableApiRequest.call(this, ctx, 'DELETE', `/dtable-server/api/v1/dtables/{{dtable_uuid}}/rows/`, body, qs) as IDataObject;
 						returnData.push(response);
 					} catch (error) {
 						if (this.continueOnFail()) {
@@ -299,7 +299,7 @@ export class SeaTable implements INodeType {
 						body.row = rowExport(rowInput, updateAble(tableColumns));
 						body.table_name = tableName;
 						body.row_id = rowId;
-						responseData = await seatableApiRequest.call(this, ctx, 'PUT', `/dtable-server/api/v1/dtables/{{dtable_uuid}}/rows/`, body);
+						responseData = await seaTableApiRequest.call(this, ctx, 'PUT', `/dtable-server/api/v1/dtables/{{dtable_uuid}}/rows/`, body);
 
 						returnData.push(responseData);
 					} catch (error) {

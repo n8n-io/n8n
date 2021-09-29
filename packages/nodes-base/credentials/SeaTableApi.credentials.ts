@@ -1,12 +1,12 @@
-import { 
+import {
 	ICredentialType,
 	INodeProperties,
 } from 'n8n-workflow';
 
 export class SeaTableApi implements ICredentialType {
-	name = 'seatableApi';
+	name = 'seaTableApi';
 	displayName = 'SeaTable API';
-	documentationUrl = 'seatable';
+	documentationUrl = 'seaTable';
 	properties: INodeProperties[] = [
 		{
 			displayName: 'Environment',

@@ -13,11 +13,11 @@ import {
 import {
 	getColumns,
 	rowFormatColumns,
-	seatableApiRequest,
+	seaTableApiRequest,
 	simplify,
 } from './GenericFunctions';
 
-import { 
+import {
 	ICtx,
 	IRow,
 	IRowResponse,
@@ -28,7 +28,7 @@ import * as moment from 'moment';
 export class SeaTableTrigger implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'SeaTable Trigger',
-		name: 'seatableTrigger',
+		name: 'seaTableTrigger',
 		icon: 'file:seaTable.svg',
 		group: ['trigger'],
 		version: 1,
@@ -40,7 +40,7 @@ export class SeaTableTrigger implements INodeType {
 		},
 		credentials: [
 			{
-				name: 'seatableApi',
+				name: 'seaTableApi',
 				required: true,
 			},
 		],
@@ -91,7 +91,7 @@ export class SeaTableTrigger implements INodeType {
 		loadOptions: {
 			async getTableNames(this: ILoadOptionsFunctions) {
 				const returnData: INodePropertyOptions[] = [];
-				const { metadata: { tables } } = await seatableApiRequest.call(this, {}, 'GET', `/dtable-server/api/v1/dtables/{{dtable_uuid}}/metadata`);
+				const { metadata: { tables } } = await seaTableApiRequest.call(this, {}, 'GET', `/dtable-server/api/v1/dtables/{{dtable_uuid}}/metadata`);
 				for (const table of tables) {
 					returnData.push({
 						name: table.name,
@@ -125,12 +125,12 @@ export class SeaTableTrigger implements INodeType {
 		const endpoint = `/dtable-db/api/v1/query/{{dtable_uuid}}/`;
 
 		if (this.getMode() === 'manual') {
-			rows = await seatableApiRequest.call(this, ctx, 'POST', endpoint, { sql: `SELECT * FROM ${tableName} LIMIT 1` }) as IRowResponse;
+			rows = await seaTableApiRequest.call(this, ctx, 'POST', endpoint, { sql: `SELECT * FROM ${tableName} LIMIT 1` }) as IRowResponse;
 		} else {
-			rows = await seatableApiRequest.call(this, ctx, 'POST', endpoint,
+			rows = await seaTableApiRequest.call(this, ctx, 'POST', endpoint,
 				{ sql: `SELECT * FROM ${tableName} WHERE ${filterField} BETWEEN "${moment(startDate).utc().format('YYYY-MM-D HH:mm:ss')}" AND "${moment(endDate).utc().format('YYYY-MM-D HH:mm:ss')}"` }) as IRowResponse;
 		}
-		
+
 		let response;
 
 		if (rows.metadata && rows.results) {
