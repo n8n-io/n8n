@@ -2,7 +2,7 @@ import N8nUserSelect from './UserSelect.vue';
 import { action } from '@storybook/addon-actions';
 
 export default {
-	title: 'Modules/UsersSelect',
+	title: 'Modules/UserSelect',
 	component: N8nUserSelect,
 	argTypes: {
 	},
@@ -23,8 +23,13 @@ const Template = (args, { argTypes }) => ({
 		N8nUserSelect,
 	},
 	template:
-		'<n8n-user-select v-bind="$props" @change="onChange" @blur="onBlur" @focus="onFocus" />',
+		'<n8n-user-select v-bind="$props" v-model="val" @change="onChange" @blur="onBlur" @focus="onFocus" />',
 	methods,
+	data() {
+		return {
+			val: '',
+		};
+	},
 });
 
 export const UserSelect = Template.bind({});
