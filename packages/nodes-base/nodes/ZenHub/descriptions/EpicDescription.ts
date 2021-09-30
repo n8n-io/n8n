@@ -2,7 +2,7 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const epicOperations = [
+export const epicOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -18,20 +18,21 @@ export const epicOperations = [
 			{
 				name: 'Get',
 				value: 'get',
-				description: 'Get all Epics for a repository.',
+				description: 'Get all Epics for a repository',
 			},
 			{
 				name: 'Get Epic',
 				value: 'getEpic',
-				description: 'Get the data for an Epic issue.',
+				description: 'Get the data for an Epic issue',
 			},
 		],
 		default: 'get',
-		description: 'The operation to perform.',
+		description: 'The operation to perform',
+		noDataExpression: true,
 	},
-] as INodeProperties[];
+];
 
-export const epicFields = [
+export const epicFields: INodeProperties[] = [
 
 /* -------------------------------------------------------------------------- */
 /*                                epic:get                                    */
@@ -44,7 +45,7 @@ export const epicFields = [
 /* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Epic ID',
-		name: 'epicID',
+		name: 'epicId',
 		type: 'string',
 		default: '',
 		displayOptions: {
@@ -59,4 +60,4 @@ export const epicFields = [
 		},
 		required: true
 	},
-] as INodeProperties[];
+];

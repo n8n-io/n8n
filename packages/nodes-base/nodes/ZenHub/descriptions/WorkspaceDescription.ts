@@ -2,7 +2,7 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const issueOperations: INodeProperties[] = [
+export const workspaceOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -10,7 +10,7 @@ export const issueOperations: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				resource: [
-					'issue',
+					'workspace',
 				],
 			},
 		},
@@ -18,12 +18,12 @@ export const issueOperations: INodeProperties[] = [
 			{
 				name: 'Get',
 				value: 'get',
-				description: 'Get the data for a specific issue',
+				description: 'Gets all Workspaces containing a given repository',
 			},
 			{
-				name: 'Get Events',
-				value: 'getEvents',
-				description: 'Get the events for an issue',
+				name: 'Get Board',
+				value: 'getBoard',
+				description: 'Get ZenHub Board data for a repository within a Workspace',
 			},
 		],
 		default: 'get',
@@ -32,44 +32,29 @@ export const issueOperations: INodeProperties[] = [
 	},
 ];
 
-export const issueFields: INodeProperties[] = [
+export const workspaceFields: INodeProperties[] = [
 
 /* -------------------------------------------------------------------------- */
-/*                                issue:get                                   */
+/*                                workspace:get                               */
+/* -------------------------------------------------------------------------- */
+
+	// Uses repoID
+
+/* -------------------------------------------------------------------------- */
+/*                                workspace:getBoard                          */
 /* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Issue Number',
-		name: 'issueNumber',
+		displayName: 'Workspace ID',
+		name: 'workspaceId',
 		type: 'string',
 		default: '',
 		displayOptions: {
 			show: {
 				resource: [
-					'issue',
+					'workspace',
 				],
 				operation: [
-					'get',
-				],
-			}
-		},
-		required: true
-	},
-
-/* -------------------------------------------------------------------------- */
-/*                                issue:getEvents                             */
-/* -------------------------------------------------------------------------- */
-	{
-		displayName: 'Issue Number',
-		name: 'issueNumber',
-		type: 'string',
-		default: '',
-		displayOptions: {
-			show: {
-				resource: [
-					'issue',
-				],
-				operation: [
-					'getEvents',
+					'getBoard',
 				],
 			}
 		},

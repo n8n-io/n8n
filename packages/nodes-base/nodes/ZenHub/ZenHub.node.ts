@@ -17,7 +17,9 @@ import {
 	issueOperations,
 	issueFields,
 	epicOperations,
-	epicFields
+	epicFields,
+	workspaceOperations,
+	workspaceFields,
 } from './descriptions'
 
 export class ZenHub implements INodeType {
@@ -43,10 +45,10 @@ export class ZenHub implements INodeType {
 			properties: [
 				{
 					displayName: 'Repository ID',
-					name: 'repoID',
+					name: 'repoId',
 					type: 'string',
 					required: true,
-					description: '',
+					description: 'GitHub Repository ID',
 					default: ''
 				},
 				{
@@ -74,6 +76,7 @@ export class ZenHub implements INodeType {
 					default: 'issue',
 					required: true,
 					description: 'Resource to consume',
+					noDataExpression: true,
 				},
 				// ISSUE
 				...issueOperations,
@@ -81,6 +84,9 @@ export class ZenHub implements INodeType {
 				// EPIC
 				...epicOperations,
 				...epicFields,
+				// WORKSPACE
+				...workspaceOperations,
+				...workspaceFields,
 			],
 	};
 
@@ -88,7 +94,7 @@ export class ZenHub implements INodeType {
 		let responseData;
 		const returnData = [];
 
-		const repoID = this.getNodeParameter('repoID', 0) as string;
+		const repoId = this.getNodeParameter('repoId', 0) as string;
 		const resource = this.getNodeParameter('resource', 0) as string;
 		const operation = this.getNodeParameter('operation', 0) as string;
 
@@ -105,12 +111,12 @@ export class ZenHub implements INodeType {
 
 				switch (operation) {
 					case 'get':
-						uri = `https://api.zenhub.com/p1/repositories/${repoID}/issues/${issueNumber}`;
+						uri = `https://api.zenhub.com/p1/repositories/${repoId}/issues/${issueNumber}`;
 						method = 'GET';
 						break;
 
 					case 'getEvents':
-						uri = `https://api.zenhub.com/p1/repositories/${repoID}/issues/${issueNumber}/events`;
+						uri = `https://api.zenhub.com/p1/repositories/${repoId}/issues/${issueNumber}/events`;
 						method = 'GET';
 						break;
 				}
@@ -120,13 +126,29 @@ export class ZenHub implements INodeType {
 			case 'epic':
 				switch (operation) {
 					case 'get':
-						uri = `https://api.zenhub.com/p1/repositories/${repoID}/epics`;
+						uri = `https://api.zenhub.com/p1/repositories/${repoId}/epics`;
 						method = 'GET';
 						break;
 
 					case 'getEpic':
-						const epicID = this.getNodeParameter('epicID', 0) as string;
-						uri = `https://api.zenhub.com/p1/repositories/${repoID}/epics/${epicID}`;
+						const epicID = this.getNodeParameter('epicId', 0) as string;
+						uri = `https://api.zenhub.com/p1/repositories/${repoId}/epics/${epicID}`;
+						method = 'GET';
+						break;
+				}
+				break;
+
+			// WORKSPACE
+			case 'workspace':
+				switch (operation) {
+					case 'get':
+						uri = `https://api.zenhub.com/p2/repositories/${repoId}/workspaces`;
+						method = 'GET';
+						break;
+
+					case 'getBoard':
+						const workspaceId = this.getNodeParameter('workspaceId', 0) as string;
+						uri = `https://api.zenhub.com/p2/workspaces/${workspaceId}/repositories/${repoId}/board`;
 						method = 'GET';
 						break;
 				}
