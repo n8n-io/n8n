@@ -197,7 +197,7 @@ export const scanFields: INodeProperties[] = [
 				displayName: 'Visibility',
 				name: 'visibility',
 				type: 'options',
-				default: 'public',
+				default: 'private',
 				options: [
 					{
 						name: 'Private',
