@@ -2,13 +2,15 @@
 	<span
 		:class="$style[props.theme]"
 	>
-		<n8n-text :size="props.size" :bold="props.bold">
+		<component :is="$options.components.N8nText" :size="props.size" :bold="props.bold">
 			<slot></slot>
-		</n8n-text>
+		</component>
 	</span>
 </template>
 
 <script lang="ts">
+import N8nText from '../N8nText';
+
 export default {
 	props: {
 		theme: {
@@ -24,6 +26,9 @@ export default {
 			type: Boolean,
 			default: false,
 		},
+	},
+	components: {
+		N8nText,
 	},
 };
 </script>

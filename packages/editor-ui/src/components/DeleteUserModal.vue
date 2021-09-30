@@ -16,6 +16,12 @@
 						<n8n-text color="dark">Transfer their workflows and credentials to another user</n8n-text>
 					</el-radio>
 					<n8n-input-label label="User to transfer to" v-if="operation === 'transfer'">
+						<n8n-user-select
+							:users="allUsers"
+							:currentUserId="currentUserId"
+							:ignoreInvited="true"
+							:value="transferId"
+						/>
 					</n8n-input-label>
 					<el-radio :value="operation" label="delete" @change="() => setOperation('delete')">
 						<n8n-text color="dark">Delete their workflows and credentials</n8n-text>
@@ -40,9 +46,14 @@ import { showMessage } from "@/components/mixins/showMessage";
 import Modal from "./Modal.vue";
 import Vue from "vue";
 import { IUser } from "../Interface";
+import { N8nUserSelect } from 'n8n-design-system';
+import { mapGetters } from "vuex";
 
 export default mixins(showMessage).extend({
-	components: { Modal },
+	components: {
+		Modal,
+		N8nUserSelect,
+	},
 	name: "DuplicateWorkflow",
 	props: {
 		modalName: {
@@ -62,6 +73,7 @@ export default mixins(showMessage).extend({
 		};
 	},
 	computed: {
+		...mapGetters('users', ['allUsers', 'currentUserId']),
 		userToDelete(): IUser {
 			const getUserById = this.$store.getters['users/getUserById'];
 			return getUserById(this.activeId);
