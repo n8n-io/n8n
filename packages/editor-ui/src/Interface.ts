@@ -737,6 +737,7 @@ export interface IUser {
 	lastName?: string;
 	email: string;
 	role: IRole;
+	isOwner?: boolean;
 }
 
 type IValidationRule = {
@@ -758,7 +759,7 @@ type IFormInputsCol = {
 		validationRules?: IValidationRule[];
 		infoText?: string;
 		placeholder?: string;
-		options?: {label: string; value: string}[];
+		options?: Array<{label: string; value: string}>;
 	}
 };
 

@@ -1,3 +1,3 @@
-import Icon from './Icon.vue';
+import N8nIcon from './Icon.vue';
 
-export default Icon;
+export default N8nIcon;

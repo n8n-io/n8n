@@ -22,10 +22,61 @@ const module: Module<IUsersState, IRootState> = {
 			"1": {
 				id: '1',
 				firstName: 'xi',
-				lastName: 'Aldmour',
-				email: 'test@gmail.com',
+				lastName: 'fff',
+				email: 'test9@gmail.com',
+				isOwner: true,
 				role: 'Owner',
 				// role: 'Member',
+			},
+			"2": {
+				id: '2',
+				email: 'test2@gmail.com',
+				role: 'Member',
+			},
+			"3": {
+				id: '3',
+				firstName: 'sup',
+				lastName: 'yo',
+				email: 'test3@gmail.com',
+				role: 'Member',
+			},
+			"4": {
+				id: '4',
+				firstName: 'xx',
+				lastName: 'aaaa',
+				email: 'test4@gmail.com',
+				role: 'Member',
+			},
+			"5": {
+				id: '5',
+				firstName: 'gg',
+				lastName: 'kk',
+				email: 'test5@gmail.com',
+				role: 'Member',
+			},
+			"6": {
+				id: '6',
+				email: 'test6@gmail.com',
+				role: 'Member',
+			},
+			"7": {
+				id: '7',
+				email: 'test7@gmail.com',
+				role: 'Member',
+			},
+			"8": {
+				id: '8',
+				firstName: 'sup',
+				lastName: 'yo',
+				email: 'test8@gmail.com',
+				role: 'Member',
+			},
+			"9": {
+				id: '9',
+				firstName: 'aaa',
+				lastName: 'yo',
+				email: 'test88@gmail.com',
+				role: 'Member',
 			},
 		},
 	},
@@ -46,6 +97,9 @@ const module: Module<IUsersState, IRootState> = {
 		},
 	},
 	getters: {
+		allUsers(state: IUsersState): IUser[] {
+			return Object.values(state.users);
+		},
 		currentUserId(state: IUsersState): string | null {
 			return state.currentUserId;
 		},

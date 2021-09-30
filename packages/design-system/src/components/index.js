@@ -1,4 +1,5 @@
 import N8nAvatar from './N8nAvatar';
+import N8nBadge from './N8nBadge';
 import N8nButton from './N8nButton';
 import N8nFormBox from './N8nFormBox';
 import N8nFormInput from './N8nFormInput';
@@ -19,9 +20,11 @@ import N8nSelect from './N8nSelect';
 import N8nSpinner from './N8nSpinner';
 import N8nText from './N8nText';
 import N8nTooltip from './N8nTooltip';
+import N8nUsersList from './N8nUsersList';
 
 export {
 	N8nAvatar,
+	N8nBadge,
 	N8nButton,
 	N8nHeading,
 	N8nFormBox,
@@ -42,4 +45,5 @@ export {
 	N8nSpinner,
 	N8nText,
 	N8nTooltip,
+	N8nUsersList,
 };

@@ -47,6 +47,7 @@ import {
 	N8nAvatar,
 	N8nButton,
 	N8nHeading,
+	N8nIcon,
 	N8nIconButton,
 	N8nInfoTip,
 	N8nInput,
@@ -75,6 +76,7 @@ Vue.use(N8nButton);
 Vue.component('n8n-heading', N8nHeading);
 Vue.component('n8n-form-box', N8nFormBox);
 Vue.component('n8n-form-inputs', N8nFormInputs);
+Vue.use('n8n-icon', N8nIcon);
 Vue.use(N8nIconButton);
 Vue.use(N8nInfoTip);
 Vue.use(N8nInput);

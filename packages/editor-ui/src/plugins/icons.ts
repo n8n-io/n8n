@@ -28,6 +28,7 @@ import {
 	faCut,
 	faDotCircle,
 	faEdit,
+	faEllipsisV,
 	faEnvelope,
 	faEye,
 	faExclamationTriangle,
@@ -85,6 +86,7 @@ import {
 	faTrash,
 	faUndo,
 	faUserAstronaut,
+	faUserClock,
 	faUsers,
 } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
@@ -115,6 +117,7 @@ library.add(faCopy);
 library.add(faCut);
 library.add(faDotCircle);
 library.add(faEdit);
+library.add(faEllipsisV);
 library.add(faEnvelope);
 library.add(faEye);
 library.add(faExclamationTriangle);
@@ -172,6 +175,7 @@ library.add(faTimes);
 library.add(faTrash);
 library.add(faUndo);
 library.add(faUserAstronaut);
+library.add(faUserClock);
 library.add(faUsers);
 
 Vue.component('font-awesome-icon', FontAwesomeIcon);
