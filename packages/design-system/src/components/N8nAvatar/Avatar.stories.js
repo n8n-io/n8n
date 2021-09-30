@@ -21,6 +21,6 @@ const Template = (args, { argTypes }) => ({
 
 export const Avatar = Template.bind({});
 Avatar.args = {
-	firstName: 'Mutasem',
-	lastName: 'Aldmour',
+	firstName: 'Sunny',
+	lastName: 'Side',
 };
