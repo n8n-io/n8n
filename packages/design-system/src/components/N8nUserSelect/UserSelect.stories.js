@@ -1,9 +1,9 @@
-import N8nUsersList from './UsersList.vue';
+import N8nUserSelect from './UserSelect.vue';
 import { action } from '@storybook/addon-actions';
 
 export default {
-	title: 'Modules/UsersList',
-	component: N8nUsersList,
+	title: 'Modules/UsersSelect',
+	component: N8nUserSelect,
 	argTypes: {
 	},
 	parameters: {
@@ -12,22 +12,23 @@ export default {
 };
 
 const methods = {
-	onReinvite: action('reinvite'),
-	onDelete: action('delete'),
+	onChange: action('change'),
+	onBlur: action('blur'),
+	onFocus: action('focus'),
 };
 
 const Template = (args, { argTypes }) => ({
 	props: Object.keys(argTypes),
 	components: {
-		N8nUsersList,
+		N8nUserSelect,
 	},
 	template:
-		'<n8n-users-list v-bind="$props" @reinvite="onReinvite" @delete="onDelete" />',
+		'<n8n-user-select v-bind="$props" @change="onChange" @blur="onBlur" @focus="onFocus" />',
 	methods,
 });
 
-export const UsersList = Template.bind({});
-UsersList.args = {
+export const UserSelect = Template.bind({});
+UserSelect.args = {
 	users: [
 		{
 			id: "1",
@@ -49,5 +50,5 @@ UsersList.args = {
 			role: 'member',
 		},
 	],
-	currentUserId: "1",
+	placeholder: 'Select user to transfer to',
 };

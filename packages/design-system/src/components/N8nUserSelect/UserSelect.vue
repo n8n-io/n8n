@@ -1,11 +1,27 @@
 <template>
-	<div>
-		<div
+	<n8n-select>
+		<n8n-option
 			v-for="user in sortedUsers"
 			:key="user.id"
 			:class="$style.itemContainer"
 		>
-			<n8n-user-info :user="user" :currentUserId="currentUserId" />
+			<div :class="$style.avatarContainer">
+				<n8n-avatar v-if="user.firstName" :firstName="user.firstName" :lastName="user.lastName" />
+				<div v-else>
+					<n8n-icon icon="user-clock" size="large" />
+				</div>
+			</div>
+			<div v-if="user.firstName" :class="$style.infoContainer">
+				<div>
+					<n8n-text :bold="true">{{user.firstName}} {{user.lastName}} {{currentUserId === user.id ? '(you)' : ''}}</n8n-text>
+				</div>
+				<div>
+					<n8n-text color="light">{{user.email}}</n8n-text>
+				</div>
+			</div>
+			<div v-else :class="$style.infoContainer">
+				<n8n-text :bold="true">{{user.email}}</n8n-text>
+			</div>
 			<div :class="$style.badgeContainer">
 				<n8n-badge v-if="user.isOwner">Owner</n8n-badge>
 				<n8n-badge v-if="!user.firstName">Pending</n8n-badge>
@@ -15,17 +31,17 @@
 					@action="(action) => onUserAction(user, action)"
 				/>
 			</div>
-		</div>
-	</div>
+		</n8n-option>
+	</n8n-select>
 </template>
 
 <script lang="ts">
 import Vue from 'vue';
-import N8nActionToggle from '../N8nActionToggle';
 import N8nAvatar from '../N8nAvatar';
 import N8nBadge from '../N8nBadge';
-import N8nIcon from '../N8nIcon';
-import N8nUserInfo from '../N8nUserInfo';
+import N8nIcon from '../N8nIcon/Icon.vue';
+import N8nText from '../N8nText';
+import N8nActionToggle from '../N8nActionToggle';
 
 export type IRole = 'Owner' | 'Member';
 
@@ -43,8 +59,8 @@ export default Vue.extend({
 		N8nActionToggle,
 		N8nAvatar,
 		N8nBadge,
-		N8nIcon,
-		N8nUserInfo,
+		'n8n-icon': N8nIcon,
+		N8nText,
 	},
 	props: {
 		users: {
@@ -137,10 +153,23 @@ export default Vue.extend({
 	display: flex;
 	border-bottom: var(--border-base);
 	padding: var(--spacing-2xs) 0 vaR(--spacing-2xs) 0;
+}
 
-	> *:first-child {
-		flex-grow: 1;
-	}
+.avatarContainer {
+	min-height: 40px;
+	min-width: 40px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	color: var(--color-text-light);
+}
+
+.infoContainer {
+	flex-grow: 1;
+	display: flex;
+	flex-direction: column;;
+	justify-content: center;
+	margin-left: var(--spacing-xs);
 }
 
 .badgeContainer {
