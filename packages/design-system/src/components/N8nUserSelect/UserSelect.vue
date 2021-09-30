@@ -35,7 +35,6 @@ export default Vue.extend({
 	props: {
 		users: {
 			type: Array,
-			required: true,
 			default() {
 				return [];
 			},
@@ -46,6 +45,10 @@ export default Vue.extend({
 		value: {
 			type: String,
 			default: '',
+		},
+		ignoreInvited: {
+			type: Boolean,
+			default: false,
 		},
 	},
 	data() {
@@ -91,6 +94,10 @@ export default Vue.extend({
 		fitleredUsers(): IUser[] {
 			return this.sortedUsers
 				.filter((user: IUser) => {
+					if (this.ignoreInvited && !user.firstName) {
+						return false;
+					}
+
 					if (user.firstName && user.lastName) {
 						const match = `${user.firstName} ${user.lastName}`.toLowerCase().includes(this.filter.toLowerCase());
 						if (match) {

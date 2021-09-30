@@ -23,7 +23,8 @@
 
 <script lang="ts">
 import Vue from 'vue';
-import N8nIcon from '../N8nIcon/Icon.vue';
+import N8nIcon from '../N8nIcon';
+import N8nText from '../N8nText';
 import N8nAvatar from '../N8nAvatar';
 
 export default Vue.extend({
@@ -31,6 +32,7 @@ export default Vue.extend({
 	components: {
 		N8nAvatar,
 		N8nIcon,
+		N8nText,
 	},
 	props: {
 		user: {

@@ -21,6 +21,7 @@ import N8nSpinner from './N8nSpinner';
 import N8nText from './N8nText';
 import N8nTooltip from './N8nTooltip';
 import N8nUsersList from './N8nUsersList';
+import N8nUserSelect from './N8nUserSelect';
 
 export {
 	N8nAvatar,
@@ -46,4 +47,5 @@ export {
 	N8nText,
 	N8nTooltip,
 	N8nUsersList,
+	N8nUserSelect,
 };
