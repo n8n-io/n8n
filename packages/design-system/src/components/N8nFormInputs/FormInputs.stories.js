@@ -46,11 +46,30 @@ FormInputs.args = {
 					required: true,
 				},
 			},
+		],
+		[
 			{
 				name: 'nickname',
 				properties: {
 					label: 'Your Nickname',
 					placeholder: 'Monty',
+				},
+			},
+			{
+				name: 'opts',
+				properties: {
+					type: 'select',
+					label: 'Opts',
+					options: [
+						{
+							label: 'Opt1',
+							value: 'opt1',
+						},
+						{
+							label: 'Opt2',
+							value: 'opt2',
+						},
+					],
 				},
 			},
 		],

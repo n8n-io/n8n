@@ -19,8 +19,9 @@
 						<n8n-user-select
 							:users="allUsers"
 							:currentUserId="currentUserId"
-							:ignoreInvited="true"
 							:value="transferId"
+							:ignoreIds="ignoreIds"
+							@input="setTransferId"
 						/>
 					</n8n-input-label>
 					<el-radio :value="operation" label="delete" @change="() => setOperation('delete')">
@@ -46,8 +47,8 @@ import { showMessage } from "@/components/mixins/showMessage";
 import Modal from "./Modal.vue";
 import Vue from "vue";
 import { IUser } from "../Interface";
-import { N8nUserSelect } from 'n8n-design-system';
 import { mapGetters } from "vuex";
+import { N8nUserSelect } from 'n8n-design-system';
 
 export default mixins(showMessage).extend({
 	components: {
@@ -70,6 +71,7 @@ export default mixins(showMessage).extend({
 			operation: '',
 			deleteConfirmText: '',
 			transferId: '',
+			ignoreIds: [this.activeId],
 		};
 	},
 	computed: {
@@ -99,6 +101,9 @@ export default mixins(showMessage).extend({
 		},
 		setConfirmText(text: string) {
 			this.deleteConfirmText = text;
+		},
+		setTransferId(id: string) {
+			this.transferId = id;
 		},
 		async onSubmit() {
 			try {

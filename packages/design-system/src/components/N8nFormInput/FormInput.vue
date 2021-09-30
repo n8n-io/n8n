@@ -48,6 +48,8 @@
 <script lang="ts">
 import Vue from 'vue';
 import N8nInput from '../N8nInput';
+import N8nSelect from '../N8nSelect';
+import N8nOption from '../N8nOption';
 import N8nInputLabel from '../N8nInputLabel';
 
 type Rule = { name: string; config?: any;};
@@ -202,6 +204,8 @@ export default Vue.extend({
 	components: {
 		N8nInput,
 		N8nInputLabel,
+		N8nOption,
+		N8nSelect,
 	},
 	data() {
 		return {

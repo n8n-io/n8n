@@ -1,12 +1,18 @@
 <template>
-	<n8n-select
+	<el-select
 		:value="value"
-		:popperAppendToBody="true"
 		:filterable="true"
 		:filterMethod="setFilter"
+		:placeholder="placeholder"
+		:default-first-option="true"
+		:popper-append-to-body="true"
+		noMatchText="No matches found"
+		noDataText="No users"
 		@change="onChange"
+		@blur="onBlur"
+		@focus="onFocus"
 	>
-		<n8n-option
+		<el-option
 			v-for="user in fitleredUsers"
 			:key="user.id"
 			:value="user.id"
@@ -14,23 +20,23 @@
 			:label="getLabel(user)"
 		>
 			<n8n-user-info :user="user" :currentUserId="currentUserId" />
-		</n8n-option>
-	</n8n-select>
+		</el-option>
+	</el-select>
 </template>
 
 <script lang="ts">
 import Vue from 'vue';
 import N8nUserInfo from '../N8nUserInfo';
-import N8nSelect from '../N8nSelect';
-import N8nOption from '../N8nOption';
 import { IUser } from '../../Interface';
+import ElSelect from 'element-ui/lib/select';
+import ElOption from 'element-ui/lib/option';
 
 export default Vue.extend({
 	name: 'n8n-user-select',
 	components: {
-		N8nSelect,
-		N8nOption,
 		N8nUserInfo,
+		ElSelect,
+		ElOption,
 	},
 	props: {
 		users: {
@@ -48,7 +54,18 @@ export default Vue.extend({
 		},
 		ignoreInvited: {
 			type: Boolean,
-			default: false,
+			default: true,
+		},
+		ignoreIds: {
+			type: Array,
+			default() {
+				return [];
+			},
+			validator: (ids: string[]) => !ids.find((id) => typeof id !== 'string'),
+		},
+		placeholder: {
+			type: String,
+			default: 'Select user',
 		},
 	},
 	data() {
@@ -98,6 +115,10 @@ export default Vue.extend({
 						return false;
 					}
 
+					if (this.ignoreIds && this.ignoreIds.includes(user.id)) {
+						return false;
+					}
+
 					if (user.firstName && user.lastName) {
 						const match = `${user.firstName} ${user.lastName}`.toLowerCase().includes(this.filter.toLowerCase());
 						if (match) {
@@ -116,6 +137,12 @@ export default Vue.extend({
 		onChange(value: string) {
 			this.$emit('input', value);
 		},
+		onBlur() {
+			this.$emit('blur');
+		},
+		onFocus() {
+			this.$emit('focus');
+		},
 		getLabel(user: IUser) {
 			if (!user.firstName) {
 				return user.email;
@@ -130,10 +157,7 @@ export default Vue.extend({
 
 <style lang="scss" module>
 .itemContainer {
-	display: flex;
-	border-bottom: var(--border-base);
-	padding: var(--spacing-2xs) 0 vaR(--spacing-2xs) 0;
-	line-height: 1;
-	padding-left: var(--spacing-s);
+	padding: var(--spacing-2xs) var(--spacing-s) var(--spacing-2xs) var(--spacing-s) !important;
+	line-height: 1 !important;
 }
 </style>
