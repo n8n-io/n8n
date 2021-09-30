@@ -71,7 +71,7 @@ export default mixins(
 
 				this.$router.push({ name: 'NodeViewNew' });
 			} catch (error) {
-				this.$showError(error, 'Problem loging in', 'There was a problem while trying to login:');
+				this.$showError(error, 'Problem logging in');
 				this.loading = false;
 			}
 		},

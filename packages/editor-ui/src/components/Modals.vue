@@ -81,24 +81,34 @@
 				/>
 			</template>
 		</ModalRoot>
+
+		<ModalRoot :name="DELETE_USER_MODAL_KEY">
+			<template v-slot="{ modalName, activeId }">
+				<DeleteUserModal
+					:modalName="modalName"
+					:activeId="activeId"
+				/>
+			</template>
+		</ModalRoot>
 	</div>
 </template>
 
 <script lang="ts">
 import Vue from "vue";
-import { ABOUT_MODAL_KEY, CHANGE_PASSWORD_MODAL_KEY, DUPLICATE_MODAL_KEY, INVITE_USER_MODAL_KEY, TAGS_MANAGER_MODAL_KEY, WORKFLOW_OPEN_MODAL_KEY, VERSIONS_MODAL_KEY, CREDENTIAL_EDIT_MODAL_KEY, CREDENTIAL_SELECT_MODAL_KEY, WORKFLOW_SETTINGS_MODAL_KEY } from '@/constants';
+import { ABOUT_MODAL_KEY, DELETE_USER_MODAL_KEY, CHANGE_PASSWORD_MODAL_KEY, DUPLICATE_MODAL_KEY, INVITE_USER_MODAL_KEY, TAGS_MANAGER_MODAL_KEY, WORKFLOW_OPEN_MODAL_KEY, VERSIONS_MODAL_KEY, CREDENTIAL_EDIT_MODAL_KEY, CREDENTIAL_SELECT_MODAL_KEY, WORKFLOW_SETTINGS_MODAL_KEY } from '@/constants';
 
 import AboutModal from './AboutModal.vue';
 import ChangePasswordModal from "./ChangePasswordModal.vue";
 import CredentialEdit from "./CredentialEdit/CredentialEdit.vue";
+import CredentialsSelectModal from "./CredentialsSelectModal.vue";
+import DeleteUserModal from "./DeleteUserModal.vue";
 import DuplicateWorkflowDialog from "@/components/DuplicateWorkflowDialog.vue";
 import InviteUsersModal from "./InviteUsersModal.vue";
 import WorkflowOpen from "@/components/WorkflowOpen.vue";
 import ModalRoot from "./ModalRoot.vue";
-import CredentialsSelectModal from "./CredentialsSelectModal.vue";
+import TagsManager from './TagsManager/TagsManager.vue';
 import UpdatesPanel from "./UpdatesPanel.vue";
 import WorkflowSettings from "./WorkflowSettings.vue";
-import TagsManager from "@/components/TagsManager/TagsManager.vue";
 
 export default Vue.extend({
 	name: "Modals",
@@ -106,6 +116,7 @@ export default Vue.extend({
 		AboutModal,
 		ChangePasswordModal,
 		CredentialEdit,
+		DeleteUserModal,
 		DuplicateWorkflowDialog,
 		InviteUsersModal,
 		ModalRoot,
@@ -118,6 +129,7 @@ export default Vue.extend({
 	data: () => ({
 		ABOUT_MODAL_KEY,
 		CHANGE_PASSWORD_MODAL_KEY,
+		DELETE_USER_MODAL_KEY,
 		DUPLICATE_MODAL_KEY,
 		INVITE_USER_MODAL_KEY,
 		TAGS_MANAGER_MODAL_KEY,
