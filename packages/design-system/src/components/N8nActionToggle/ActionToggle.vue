@@ -53,7 +53,7 @@ export default {
 	border-radius: var(--border-radius-base);
 	align-items: center;
 	justify-content: center;
-	color: var(--color-text-base);
+	color: var(--color-text-dark);
 
 	&:focus {
 		background-color: var(--color-background-xlight);
