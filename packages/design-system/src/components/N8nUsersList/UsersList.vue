@@ -20,28 +20,17 @@
 </template>
 
 <script lang="ts">
+import { IUser } from '../../Interface';
 import Vue from 'vue';
 import N8nActionToggle from '../N8nActionToggle';
-import N8nAvatar from '../N8nAvatar';
 import N8nBadge from '../N8nBadge';
 import N8nIcon from '../N8nIcon';
 import N8nUserInfo from '../N8nUserInfo';
-
-export type IRole = 'Owner' | 'Member';
-
-export interface IUser {
-	id: string;
-	firstName?: string;
-	lastName?: string;
-	email: string;
-	isOwner: boolean;
-}
 
 export default Vue.extend({
 	name: 'n8n-users-list',
 	components: {
 		N8nActionToggle,
-		N8nAvatar,
 		N8nBadge,
 		N8nIcon,
 		N8nUserInfo,

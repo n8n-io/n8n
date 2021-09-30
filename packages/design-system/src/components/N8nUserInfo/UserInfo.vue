@@ -26,14 +26,6 @@ import Vue from 'vue';
 import N8nIcon from '../N8nIcon/Icon.vue';
 import N8nAvatar from '../N8nAvatar';
 
-export interface IUser {
-	id: string;
-	firstName?: string;
-	lastName?: string;
-	email: string;
-	isOwner: boolean;
-}
-
 export default Vue.extend({
 	name: 'n8n-users-info',
 	components: {
