@@ -22,7 +22,6 @@ export class ThrowError implements INodeType {
 		group: ['input'],
 		version: 1,
 		description: 'Throw an error in the workflow',
-		maxNodes: 1,
 		defaults: {
 			name: 'Throw Error',
 			color: '#ff0000',
