@@ -416,6 +416,17 @@ async function proxyRequestToAxios(
 				error.error = error.response?.data || errorData;
 				error.statusCode = error.response?.status;
 				error.options = config;
+
+				// Remove not needed data and so also remove circular references
+				error.request = undefined;
+				error.config = undefined;
+				error.options.adapter = undefined;
+				error.options.httpsAgent = undefined;
+				error.options.paramsSerializer = undefined;
+				error.options.transformRequest = undefined;
+				error.options.transformResponse = undefined;
+				error.options.validateStatus = undefined;
+
 				reject(error);
 			});
 	});
