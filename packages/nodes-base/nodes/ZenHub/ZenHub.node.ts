@@ -15,7 +15,9 @@ import {
 
 import {
 	issueOperations,
-	issueFields
+	issueFields,
+	epicOperations,
+	epicFields
 } from './descriptions'
 
 export class ZenHub implements INodeType {
@@ -73,8 +75,12 @@ export class ZenHub implements INodeType {
 					required: true,
 					description: 'Resource to consume',
 				},
+				// ISSUE
 				...issueOperations,
-				...issueFields
+				...issueFields,
+				// EPIC
+				...epicOperations,
+				...epicFields,
 			],
 	};
 
@@ -88,31 +94,55 @@ export class ZenHub implements INodeType {
 
 		const credentials = await this.getCredentials('zenHubApi') as IDataObject;
 
-		if (resource === 'issue') {
-			const issueNumber = this.getNodeParameter('issueNumber', 0) as string;
-			if (operation === 'get') {
-				const options: OptionsWithUri = {
-					uri: `https://api.zenhub.com/p1/repositories/${repoID}/issues/${issueNumber}`,
-					method: 'GET',
-					headers: {
-						'X-Authentication-Token': `${credentials.apiKey}`
-					}
-				};
+		let uri: string | undefined;
+		let method: string | undefined;
+		let body: string | undefined;
 
-				responseData = await this.helpers.request(options);
-				returnData.push(responseData);
-			} else if (operation === 'getEvents') {
-				const options: OptionsWithUri = {
-					uri: `https://api.zenhub.com/p1/repositories/${repoID}/issues/${issueNumber}/events`,
-					method: 'GET',
-					headers: {
-						'X-Authentication-Token': `${credentials.apiKey}`
-					}
-				};
+		switch (resource) {
+			// ISSUE
+			case 'issue':
+				const issueNumber = this.getNodeParameter('issueNumber', 0) as string;
 
-				responseData = await this.helpers.request(options);
-				returnData.push(responseData);
-			}
+				switch (operation) {
+					case 'get':
+						uri = `https://api.zenhub.com/p1/repositories/${repoID}/issues/${issueNumber}`;
+						method = 'GET';
+						break;
+
+					case 'getEvents':
+						uri = `https://api.zenhub.com/p1/repositories/${repoID}/issues/${issueNumber}/events`;
+						method = 'GET';
+						break;
+				}
+				break;
+
+			// EPIC
+			case 'epic':
+				switch (operation) {
+					case 'get':
+						uri = `https://api.zenhub.com/p1/repositories/${repoID}/epics`;
+						method = 'GET';
+						break;
+
+					case 'getEpic':
+						const epicID = this.getNodeParameter('epicID', 0) as string;
+						uri = `https://api.zenhub.com/p1/repositories/${repoID}/epics/${epicID}`;
+						method = 'GET';
+						break;
+				}
+				break;
+		}
+
+		if (uri !== undefined && method !== undefined) {
+			const options: OptionsWithUri = {
+				uri: uri,
+				method: method,
+				headers: {
+					'X-Authentication-Token': `${credentials.apiKey}`
+				}
+			};
+			responseData = await this.helpers.request(options);
+			returnData.push(responseData);
 		}
 
 		return [this.helpers.returnJsonArray(returnData)];
