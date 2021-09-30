@@ -45,7 +45,7 @@ export class Grist implements INodeType {
 		displayName: 'Grist',
 		name: 'grist',
 		icon: 'file:grist.svg',
-		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
+		subtitle: '={{$parameter["operation"]}}',
 		group: ['input'],
 		version: 1,
 		description: 'Consume the Grist API',
@@ -162,7 +162,10 @@ export class Grist implements INodeType {
 					const endpoint = `/docs/${docId}/tables/${tableId}/records`;
 
 					responseData = await gristApiRequest.call(this, 'POST', endpoint, body);
-					responseData = responseData.records;
+					responseData = {
+						id: responseData.records[0].id,
+						...body.records[0].fields,
+					};
 
 				} else if (operation === 'delete') {
 
@@ -217,7 +220,10 @@ export class Grist implements INodeType {
 					const endpoint = `/docs/${docId}/tables/${tableId}/records`;
 
 					await gristApiRequest.call(this, 'PATCH', endpoint, body);
-					responseData = { success: true };
+					responseData = {
+						id: rowId,
+						...body.records[0].fields,
+					};
 
 				} else if (operation === 'getAll') {
 
@@ -251,7 +257,9 @@ export class Grist implements INodeType {
 					}
 
 					responseData = await gristApiRequest.call(this, 'GET', endpoint, {}, qs);
-					responseData = responseData.records;
+					responseData = responseData.records.map((data: IDataObject) => {
+						return { id: data.id, ...(data.fields as object) };
+					});
 				}
 
 			} catch (error) {

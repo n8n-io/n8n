@@ -57,7 +57,7 @@ export const operationFields: INodeProperties[] = [
 	//              delete
 	// ----------------------------------
 	{
-		displayName: 'Row Number',
+		displayName: 'Row ID',
 		name: 'rowId',
 		type: 'string',
 		displayOptions: {
@@ -221,7 +221,7 @@ export const operationFields: INodeProperties[] = [
 	//            update
 	// ----------------------------------
 	{
-		displayName: 'Row Number',
+		displayName: 'Row ID',
 		name: 'rowId',
 		type: 'string',
 		displayOptions: {
@@ -232,6 +232,7 @@ export const operationFields: INodeProperties[] = [
 			},
 		},
 		default: '',
+		description: 'ID of the row to update',
 		required: true,
 	},
 
