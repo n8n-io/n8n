@@ -125,6 +125,9 @@ const module: Module<IUsersState, IRootState> = {
 				return true;
 			};
 		},
+		getUserById(state: IUsersState): (userId: string) => IUser | null {
+			return (userId: string): IUser | null => state.users[userId];
+		},
 	},
 	actions: {
 		async fetchCurrentUser(context: ActionContext<IUsersState, IRootState>) {

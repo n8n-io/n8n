@@ -1,10 +1,10 @@
 <template>
 	<el-dropdown placement="bottom-end" trigger="click" @command="onCommand">
-		<span :class="$style.button">
+		<a :class="$style.button">
 			<component :is="$options.components.N8nIcon"
 				icon="ellipsis-v"
 			/>
-		</span>
+		</a>
 		<el-dropdown-menu slot="dropdown">
 			<el-dropdown-item
 				v-for="action in actions"

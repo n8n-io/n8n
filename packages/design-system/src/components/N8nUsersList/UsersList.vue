@@ -132,10 +132,10 @@ export default Vue.extend({
 				];
 			}
 			else {
-				return {
+				return [
 					REINVITE,
 					DELETE,
-				};
+				];
 			}
 		},
 		onUserAction(user: IUser, action: string) {
