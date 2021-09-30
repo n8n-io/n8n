@@ -132,7 +132,7 @@ export class Webhook implements INodeType {
 					},
 				],
 				default: 'GET',
-				description: 'The HTTP method to liste to.',
+				description: 'The HTTP method to listen to.',
 			},
 			{
 				displayName: 'Path',
@@ -155,7 +155,7 @@ export class Webhook implements INodeType {
 				description: 'The HTTP Response code to return',
 			},
 			{
-				displayName: 'Respond when',
+				displayName: 'Respond When',
 				name: 'responseMode',
 				type: 'options',
 				options: [
@@ -202,7 +202,7 @@ export class Webhook implements INodeType {
 					},
 				],
 				default: 'firstEntryJson',
-				description: 'What data should be returned. If it should return<br />all the itemsas array or only the first item as object.',
+				description: 'What data should be returned. If it should return<br />all items as an array or only the first item as object.',
 			},
 			{
 				displayName: 'Property Name',
@@ -253,8 +253,8 @@ export class Webhook implements INodeType {
 								],
 							},
 						},
-						description: `Name of the binary property to which to write the data of<br />
-									the received file. If the data gets received via "Form-Data Multipart"<br />
+						description: `Name of the binary property to write the data of<br />
+									the received file to. If the data gets received via "Form-Data Multipart"<br />
 									it will be the prefix and a number starting with 0 will be attached to it.`,
 					},
 					{

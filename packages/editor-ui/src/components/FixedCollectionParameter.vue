@@ -79,19 +79,6 @@ export default mixins(genericHelpers)
 				selectedOption: undefined,
 			};
 		},
-		mounted() {
-			const sectionKeys = Object.keys(this.values);
-
-			if (
-				this.parameter.required &&
-				(sectionKeys.length === 0 ||
-				(sectionKeys.length === 1 && this.values[sectionKeys[0]].length === 0))
-			) {
-				this.$nextTick(function () {
-					this.optionSelected(this.parameter.options[0].name);
-				});
-			}
-		},
 		computed: {
 			getPlaceholderText (): string {
 				return this.parameter.placeholder ? this.parameter.placeholder : 'Choose Option To Add';

@@ -283,7 +283,7 @@ export class Wait implements INodeType {
 				description: 'The HTTP Response code to return',
 			},
 			{
-				displayName: 'Respond when',
+				displayName: 'Respond When',
 				name: 'responseMode',
 				type: 'options',
 				displayOptions: {
