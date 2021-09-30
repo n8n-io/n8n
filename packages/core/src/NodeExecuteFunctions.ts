@@ -91,6 +91,33 @@ const requestPromiseWithDefaults = requestPromise.defaults({
 	timeout: 300000, // 5 minutes
 });
 
+const pushFormDataValue = (form: FormData, key: string, value: any) => {
+	if (value?.hasOwnProperty('value') && value.hasOwnProperty('options')) {
+		// @ts-ignore
+		form.append(key, value.value, value.options);
+	} else {
+		form.append(key, value);
+	}
+};
+
+const createFormDataObject = (data: object) => {
+	const formData = new FormData();
+	const keys = Object.keys(data);
+	keys.forEach((key) => {
+		// @ts-ignore
+		const formField = data[key];
+
+		if (formField instanceof Array) {
+			formField.forEach((item) => {
+				pushFormDataValue(formData, key, item);
+			});
+		} else {
+			pushFormDataValue(formData, key, formField);
+		}
+	});
+	return formData;
+};
+
 async function parseRequestObject(requestObject: IDataObject) {
 	// This function is a temporary implementation
 	// That translates all http requests done via
@@ -139,28 +166,12 @@ async function parseRequestObject(requestObject: IDataObject) {
 		if (requestObject.formData !== undefined && requestObject.formData instanceof FormData) {
 			axiosConfig.data = requestObject.formData;
 		} else {
-			const allData = Object.assign(requestObject.body || {}, requestObject.formData || {});
+			const allData = {
+				...(requestObject.body as object | undefined),
+				...(requestObject.formData as object | undefined),
+			};
 
-			const objectKeys = Object.keys(allData);
-			if (objectKeys.length > 0) {
-				// Should be a standard object. We must convert to formdata
-				const form = new FormData();
-
-				objectKeys.forEach((key) => {
-					const formField = (allData as IDataObject)[key] as IDataObject;
-					if (formField.hasOwnProperty('value') && formField.value instanceof Buffer) {
-						let filename;
-						// @ts-ignore
-						if (!!formField.options && formField.options.filename !== undefined) {
-							filename = (formField.options as IDataObject).filename as string;
-						}
-						form.append(key, formField.value, filename);
-					} else {
-						form.append(key, formField);
-					}
-				});
-				axiosConfig.data = form;
-			}
+			axiosConfig.data = createFormDataObject(allData);
 		}
 		// replace the existing header with a new one that
 		// contains the boundary property.
@@ -197,26 +208,7 @@ async function parseRequestObject(requestObject: IDataObject) {
 			if (requestObject.formData instanceof FormData) {
 				axiosConfig.data = requestObject.formData;
 			} else {
-				const objectKeys = Object.keys(requestObject.formData as object);
-				if (objectKeys.length > 0) {
-					// Should be a standard object. We must convert to formdata
-					const form = new FormData();
-
-					objectKeys.forEach((key) => {
-						const formField = (requestObject.formData as IDataObject)[key] as IDataObject;
-						if (formField.hasOwnProperty('value') && formField.value instanceof Buffer) {
-							let filename;
-							// @ts-ignore
-							if (!!formField.options && formField.options.filename !== undefined) {
-								filename = (formField.options as IDataObject).filename as string;
-							}
-							form.append(key, formField.value, filename);
-						} else {
-							form.append(key, formField);
-						}
-					});
-					axiosConfig.data = form;
-				}
+				axiosConfig.data = createFormDataObject(requestObject.formData as object);
 			}
 			// Mix in headers as FormData creates the boundary.
 			const headers = axiosConfig.data.getHeaders();
@@ -415,10 +407,26 @@ async function proxyRequestToAxios(
 				}
 			})
 			.catch((error) => {
-				// The error-data was made available with request library via "error" but now on
-				// axios via "response.data" so copy information over to keep it compatible
-				error.error = error.response.data;
-				error.statusCode = error.response.status;
+				Logger.debug('Request proxied to Axios failed', { error });
+				// Axios hydrates the original error with more data. We extract them.
+				// https://github.com/axios/axios/blob/master/lib/core/enhanceError.js
+				// Note: `code` is ignored as it's an expected part of the errorData.
+				const { request, response, isAxiosError, toJSON, config, ...errorData } = error;
+				error.cause = errorData;
+				error.error = error.response?.data || errorData;
+				error.statusCode = error.response?.status;
+				error.options = config;
+
+				// Remove not needed data and so also remove circular references
+				error.request = undefined;
+				error.config = undefined;
+				error.options.adapter = undefined;
+				error.options.httpsAgent = undefined;
+				error.options.paramsSerializer = undefined;
+				error.options.transformRequest = undefined;
+				error.options.transformResponse = undefined;
+				error.options.validateStatus = undefined;
+
 				reject(error);
 			});
 	});
