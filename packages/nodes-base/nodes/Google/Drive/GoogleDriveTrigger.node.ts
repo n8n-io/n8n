@@ -84,48 +84,126 @@ export class GoogleDriveTrigger implements INodeType {
 				description: 'The resource whose events trigger the webhook.',
 				options: [
 					{
+						name: 'Changes To a Specific File',
+						value: 'specificFile',
+					},
+					{
+						name: 'Changes To/In a Specific Folder',
+						value: 'specificFolder',
+					},
+					{
+						name: 'Changes To Any File/Folder',
+						value: 'anyFileFolder',
+					},
+				],
+			},
+			{
+				displayName: 'File To Watch',
+				name: 'fileToWatch',
+				type: 'string',
+				displayOptions: {
+					show: {
+						triggerOn: [
+							'specificFile',
+						],
+					},
+				},
+				default: '',
+				required: true,
+			},
+			{
+				displayName: 'Event to Watch',
+				name: 'event',
+				type: 'options',
+				displayOptions: {
+					show: {
+						triggerOn: [
+							'specificFile',
+						],
+					},
+				},
+				required: true,
+				default: 'fileCreated',
+				description: 'The resource whose events trigger the webhook.',
+				options: [
+					{
+						name: 'File Updated',
+						value: 'fileUpdated',
+					},
+				],
+			},
+			{
+				displayName: 'Folder To Watch',
+				name: 'folderToWatch',
+				type: 'string',
+				displayOptions: {
+					show: {
+						triggerOn: [
+							'specificFolder',
+						],
+					},
+				},
+				default: '',
+				required: true,
+			},
+			{
+				displayName: 'Event to Watch',
+				name: 'event',
+				type: 'options',
+				displayOptions: {
+					show: {
+						triggerOn: [
+							'specificFolder',
+						],
+					},
+				},
+				required: true,
+				default: 'fileCreated',
+				description: 'The resource whose events trigger the webhook.',
+				options: [
+					{
 						name: 'File Created',
 						value: 'fileCreated',
+						description: 'When a file is created in the watched folder',
 					},
 					{
-						name: 'File Modified',
-						value: 'fileModified',
-					},
-					{
-						name: 'Folder Created',
-						value: 'folderCreated',
+						name: 'File Updated',
+						value: 'fileUpdated',
+						description: 'When a file is updated in the watched folder',
 					},
 					{
 						name: 'Folder Updated',
 						value: 'folderUpdated',
+						description: 'When a watch folder itself is updated',
 					},
 				],
 			},
 			{
-				displayName: 'Within',
-				name: 'within',
-				type: 'options',
-				required: true,
-				default: 'drive',
-				options: [
-					{
-						name: 'Drive',
-						value: 'drive',
+				displayName: 'Changes within subfolder won\'t trigger this node',
+				name: 'asas',
+				type: 'notice',
+				displayOptions: {
+					show: {
+						triggerOn: [
+							'specificFolder',
+						],
 					},
-					{
-						name: 'Folder',
-						value: 'folder',
+					hide: {
+						event: [
+							'folderUpdated',
+						],
 					},
-				],
+				},
+				default: '',
 			},
 			{
-				displayName: 'Drive Name/ID',
-				name: 'driveId',
+				displayName: 'Drive To Watch',
+				name: 'driveToWatch',
 				type: 'options',
 				displayOptions: {
 					show: {
-						within: [
-							'drive',
+						triggerOn: [
+							'anyFileFolder',
 						],
 					},
 				},
@@ -137,19 +215,41 @@ export class GoogleDriveTrigger implements INodeType {
 				description: 'The drive to monitor',
 			},
 			{
-				displayName: 'Folder ID',
-				name: 'folderId',
-				type: 'string',
+				displayName: 'Event to Watch',
+				name: 'event',
+				type: 'options',
 				displayOptions: {
 					show: {
-						within: [
-							'folder',
+						triggerOn: [
+							'anyFileFolder',
 						],
 					},
 				},
-				default: '',
-				description: 'The folder to monitor',
 				required: true,
+				default: 'fileCreated',
+				description: 'The resource whose events trigger the webhook.',
+				options: [
+					{
+						name: 'File Created',
+						value: 'fileCreated',
+						description: 'When a file is created in the watched drive',
+					},
+					{
+						name: 'File Updated',
+						value: 'fileUpdated',
+						description: 'When a file is updated in the watched drive',
+					},
+					{
+						name: 'Folder Created',
+						value: 'folderCreated',
+						description: 'When a folder is created in the watched drive',
+					},
+					{
+						name: 'Folder Updated',
+						value: 'folderUpdated',
+						description: 'When a folder is updated in the watched drive',
+					},
+				],
 			},
 			{
 				displayName: 'Options',
@@ -157,9 +257,14 @@ export class GoogleDriveTrigger implements INodeType {
 				type: 'collection',
 				displayOptions: {
 					show: {
-						triggerOn: [
+						event: [
 							'fileCreated',
-							'fileModified',
+							'fileUpdated',
+						],
+					},
+					hide: {
+						triggerOn: [
+							'specificFile',
 						],
 					},
 				},
@@ -226,7 +331,7 @@ export class GoogleDriveTrigger implements INodeType {
 
 	async poll(this: IPollFunctions): Promise<INodeExecutionData[][] | null> {
 		const triggerOn = this.getNodeParameter('triggerOn') as string;
-		const within = this.getNodeParameter('within') as string;
+		const event = this.getNodeParameter('event') as string;
 		const webhookData = this.getWorkflowStaticData('node');
 		const options = this.getNodeParameter('options', {}) as IDataObject;
 		const qs: IDataObject = {};
@@ -237,20 +342,27 @@ export class GoogleDriveTrigger implements INodeType {
 
 		const endDate = now;
 
-		const parent = (within === 'drive') ? this.getNodeParameter('driveId') : this.getNodeParameter('folderId');
-
 		const query = [
 			'trashed = false',
-			`'${parent}' in parents`,
 		];
 
-		if (triggerOn.startsWith('file')) {
+		if (triggerOn === 'specificFolder') {
+			const folderToWatch = this.getNodeParameter('folderToWatch');
+			query.push(`'${folderToWatch}' in parents`);
+		}
+
+		if (triggerOn === 'anyFileFolder') {
+			const driveToWatch = this.getNodeParameter('driveToWatch');
+			query.push(`'${driveToWatch}' in parents`);
+		}
+
+		if (event.startsWith('file')) {
 			query.push(`mimeType != 'application/vnd.google-apps.folder'`);
 		} else {
 			query.push(`mimeType = 'application/vnd.google-apps.folder'`);
 		}
 
-		if (triggerOn.includes('Created')) {
+		if (event.includes('Created')) {
 			query.push(`createdTime > '${startDate}'`);
 		} else {
 			query.push(`modifiedTime > '${startDate}'`);
@@ -273,6 +385,11 @@ export class GoogleDriveTrigger implements INodeType {
 			files = files.files;
 		} else {
 			files = await googleApiRequestAllItems.call(this, 'files', 'GET', `/drive/v3/files`, {}, qs);
+		}
+
+		if (triggerOn === 'specificFile') {
+			const fileToWatch = this.getNodeParameter('fieldToWatch') as string;
+			files = files.filter((file: { id: string }) => file.id === fileToWatch);
 		}
 
 		webhookData.lastTimeChecked = endDate;
