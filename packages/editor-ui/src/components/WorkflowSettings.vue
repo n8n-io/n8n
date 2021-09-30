@@ -1,7 +1,14 @@
 <template>
-	<span>
-		<el-dialog class="workflow-settings" :visible="dialogVisible" append-to-body width="65%" title="Workflow Settings" :before-close="closeDialog">
-			<div v-loading="isLoading">
+	<Modal
+		:name="modalName"
+		width="65%"
+		maxHeight="80%"
+		title="Workflow Settings"
+		:eventBus="modalBus"
+		:scrollable="true"
+	>
+		<template v-slot:content>
+			<div v-loading="isLoading" class="workflow-settings">
 				<el-row>
 					<el-col :span="10" class="setting-name">
 						Error Workflow:
@@ -156,12 +163,14 @@
 						</el-col>
 					</el-row>
 				</div>
-				<div class="action-buttons">
-					<n8n-button label="Save" size="large" @click="saveSettings" />
-				</div>
 			</div>
-		</el-dialog>
-	</span>
+		</template>
+		<template v-slot:footer>
+			<div class="action-buttons">
+				<n8n-button label="Save" size="large" @click="saveSettings" />
+			</div>
+		</template>
+	</Modal>
 </template>
 
 <script lang="ts">
@@ -177,6 +186,7 @@ import {
 	IWorkflowSettings,
 	IWorkflowShortResponse,
 } from '@/Interface';
+import Modal from './Modal.vue';
 
 import mixins from 'vue-typed-mixins';
 
@@ -187,9 +197,14 @@ export default mixins(
 	showMessage,
 ).extend({
 	name: 'WorkflowSettings',
-	props: [
-		'dialogVisible',
-	],
+	props: {
+		modalName: {
+			type: String,
+		},
+	},
+	components: {
+		Modal,
+	},
 	data () {
 		return {
 			isLoading: true,
@@ -220,22 +235,74 @@ export default mixins(
 			executionTimeout: this.$store.getters.executionTimeout,
 			maxExecutionTimeout: this.$store.getters.maxExecutionTimeout,
 			timeoutHMS: { hours: 0, minutes: 0, seconds: 0 } as ITimeoutHMS,
+			modalBus: new Vue(),
 		};
 	},
-	watch: {
-		dialogVisible (newValue, oldValue) {
-			if (newValue) {
-				this.openDialog();
-			}
-			this.$externalHooks().run('workflowSettings.dialogVisibleChanged', { dialogVisible: newValue });
-		},
+	async mounted () {
+		if (this.$route.params.name === undefined) {
+			this.$showMessage({
+				title: 'No workflow active',
+				message: `No workflow active to display settings of.`,
+				type: 'error',
+				duration: 0,
+			});
+			this.closeDialog();
+			return;
+		}
+
+		this.defaultValues.saveDataErrorExecution = this.$store.getters.saveDataErrorExecution;
+		this.defaultValues.saveDataSuccessExecution = this.$store.getters.saveDataSuccessExecution;
+		this.defaultValues.saveManualExecutions = this.$store.getters.saveManualExecutions;
+		this.defaultValues.timezone = this.$store.getters.timezone;
+
+		this.isLoading = true;
+		const promises = [];
+		promises.push(this.loadWorkflows());
+		promises.push(this.loadSaveDataErrorExecutionOptions());
+		promises.push(this.loadSaveDataSuccessExecutionOptions());
+		promises.push(this.loadSaveExecutionProgressOptions());
+		promises.push(this.loadSaveManualOptions());
+		promises.push(this.loadTimezones());
+
+		try {
+			await Promise.all(promises);
+		} catch (error) {
+			this.$showError(error, 'Problem loading settings', 'The following error occurred loading the data:');
+		}
+
+		const workflowSettings = JSON.parse(JSON.stringify(this.$store.getters.workflowSettings));
+
+		if (workflowSettings.timezone === undefined) {
+			workflowSettings.timezone = 'DEFAULT';
+		}
+		if (workflowSettings.saveDataErrorExecution === undefined) {
+			workflowSettings.saveDataErrorExecution = 'DEFAULT';
+		}
+		if (workflowSettings.saveDataSuccessExecution === undefined) {
+			workflowSettings.saveDataSuccessExecution = 'DEFAULT';
+		}
+		if (workflowSettings.saveExecutionProgress === undefined) {
+			workflowSettings.saveExecutionProgress = 'DEFAULT';
+		}
+		if (workflowSettings.saveManualExecutions === undefined) {
+			workflowSettings.saveManualExecutions = 'DEFAULT';
+		}
+		if (workflowSettings.executionTimeout === undefined) {
+			workflowSettings.executionTimeout = this.$store.getters.executionTimeout;
+		}
+		if (workflowSettings.maxExecutionTimeout === undefined) {
+			workflowSettings.maxExecutionTimeout = this.$store.getters.maxExecutionTimeout;
+		}
+
+		Vue.set(this, 'workflowSettings', workflowSettings);
+		this.timeoutHMS = this.convertToHMS(workflowSettings.executionTimeout);
+		this.isLoading = false;
+
+		this.$externalHooks().run('workflowSettings.dialogVisibleChanged', { dialogVisible: true });
 	},
 	methods: {
 		closeDialog () {
-			// Handle the close externally as the visible parameter is an external prop
-			// and is so not allowed to be changed here.
-			this.$emit('closeDialog');
-			return false;
+			this.modalBus.$emit('close');
 		},
 		setTimeout (key: string, value: string) {
 			const time = value ? parseInt(value, 10) : 0;
@@ -361,66 +428,6 @@ export default mixins(
 			});
 
 			Vue.set(this, 'workflows', workflows);
-		},
-		async openDialog () {
-			if (this.$route.params.name === undefined) {
-				this.$showMessage({
-					title: 'No workflow active',
-					message: `No workflow active to display settings of.`,
-					type: 'error',
-					duration: 0,
-				});
-				this.closeDialog();
-				return;
-			}
-
-			this.defaultValues.saveDataErrorExecution = this.$store.getters.saveDataErrorExecution;
-			this.defaultValues.saveDataSuccessExecution = this.$store.getters.saveDataSuccessExecution;
-			this.defaultValues.saveManualExecutions = this.$store.getters.saveManualExecutions;
-			this.defaultValues.timezone = this.$store.getters.timezone;
-
-			this.isLoading = true;
-			const promises = [];
-			promises.push(this.loadWorkflows());
-			promises.push(this.loadSaveDataErrorExecutionOptions());
-			promises.push(this.loadSaveDataSuccessExecutionOptions());
-			promises.push(this.loadSaveExecutionProgressOptions());
-			promises.push(this.loadSaveManualOptions());
-			promises.push(this.loadTimezones());
-
-			try {
-				await Promise.all(promises);
-			} catch (error) {
-				this.$showError(error, 'Problem loading settings', 'The following error occurred loading the data:');
-			}
-
-			const workflowSettings = JSON.parse(JSON.stringify(this.$store.getters.workflowSettings));
-
-			if (workflowSettings.timezone === undefined) {
-				workflowSettings.timezone = 'DEFAULT';
-			}
-			if (workflowSettings.saveDataErrorExecution === undefined) {
-				workflowSettings.saveDataErrorExecution = 'DEFAULT';
-			}
-			if (workflowSettings.saveDataSuccessExecution === undefined) {
-				workflowSettings.saveDataSuccessExecution = 'DEFAULT';
-			}
-			if (workflowSettings.saveExecutionProgress === undefined) {
-				workflowSettings.saveExecutionProgress = 'DEFAULT';
-			}
-			if (workflowSettings.saveManualExecutions === undefined) {
-				workflowSettings.saveManualExecutions = 'DEFAULT';
-			}
-			if (workflowSettings.executionTimeout === undefined) {
-				workflowSettings.executionTimeout = this.$store.getters.executionTimeout;
-			}
-			if (workflowSettings.maxExecutionTimeout === undefined) {
-				workflowSettings.maxExecutionTimeout = this.$store.getters.maxExecutionTimeout;
-			}
-
-			Vue.set(this, 'workflowSettings', workflowSettings);
-			this.timeoutHMS = this.convertToHMS(workflowSettings.executionTimeout);
-			this.isLoading = false;
 		},
 		async saveSettings () {
 			// Set that the active state should be changed

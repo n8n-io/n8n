@@ -1,3 +1,6 @@
+/* eslint-disable @typescript-eslint/no-unsafe-call */
+/* eslint-disable @typescript-eslint/no-unsafe-return */
+/* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable no-console */
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 /* eslint-disable @typescript-eslint/no-use-before-define */
@@ -23,6 +26,7 @@ import {
 	INodeProperties,
 	INodePropertyCollection,
 	INodeType,
+	INodeVersionedType,
 	IParameterDependencies,
 	IRunExecutionData,
 	IWebhookData,
@@ -41,7 +45,7 @@ import { Workflow } from './Workflow';
  * @param {INodeType} nodeType
  * @returns
  */
-export function getSpecialNodeParameters(nodeType: INodeType) {
+export function getSpecialNodeParameters(nodeType: INodeType): INodeProperties[] {
 	if (nodeType.description.polling === true) {
 		return [
 			{
@@ -296,7 +300,7 @@ export function displayParameter(
 
 			if (
 				values.length === 0 ||
-				!parameter.displayOptions.show[propertyName].some((v) => values.includes(v))
+				!parameter.displayOptions.show[propertyName]!.some((v) => values.includes(v))
 			) {
 				return false;
 			}
@@ -323,7 +327,7 @@ export function displayParameter(
 
 			if (
 				values.length !== 0 &&
-				parameter.displayOptions.hide[propertyName].some((v) => values.includes(v))
+				parameter.displayOptions.hide[propertyName]!.some((v) => values.includes(v))
 			) {
 				return false;
 			}
@@ -844,7 +848,7 @@ export function getNodeWebhooks(
 		return [];
 	}
 
-	const nodeType = workflow.nodeTypes.getByName(node.type) as INodeType;
+	const nodeType = workflow.nodeTypes.getByNameAndVersion(node.type, node.typeVersion) as INodeType;
 
 	if (nodeType.description.webhooks === undefined) {
 		// Node does not have any webhooks so return
@@ -940,7 +944,7 @@ export function getNodeWebhooksBasic(workflow: Workflow, node: INode): IWebhookD
 		return [];
 	}
 
-	const nodeType = workflow.nodeTypes.getByName(node.type) as INodeType;
+	const nodeType = workflow.nodeTypes.getByNameAndVersion(node.type, node.typeVersion) as INodeType;
 
 	if (nodeType.description.webhooks === undefined) {
 		// Node does not have any webhooks so return
@@ -1384,4 +1388,28 @@ export function mergeNodeProperties(
 			mainProperties[existingIndex] = property;
 		}
 	}
+}
+
+export function getVersionedTypeNode(
+	object: INodeVersionedType | INodeType,
+	version?: number,
+): INodeType {
+	if (isNodeTypeVersioned(object)) {
+		return (object as INodeVersionedType).getNodeType(version);
+	}
+	return object as INodeType;
+}
+
+export function getVersionedTypeNodeAll(object: INodeVersionedType | INodeType): INodeType[] {
+	if (isNodeTypeVersioned(object)) {
+		return Object.values((object as INodeVersionedType).nodeVersions).map((element) => {
+			element.description.name = object.description.name;
+			return element;
+		});
+	}
+	return [object as INodeType];
+}
+
+export function isNodeTypeVersioned(object: INodeVersionedType | INodeType): boolean {
+	return !!('getNodeType' in object);
 }
