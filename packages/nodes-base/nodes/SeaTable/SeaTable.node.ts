@@ -301,7 +301,7 @@ export class SeaTable implements INodeType {
 						body.row_id = rowId;
 						responseData = await seaTableApiRequest.call(this, ctx, 'PUT', `/dtable-server/api/v1/dtables/{{dtable_uuid}}/rows/`, body);
 
-						returnData.push(responseData);
+						returnData.push({ _id: rowId, ... responseData });
 					} catch (error) {
 						if (this.continueOnFail()) {
 							returnData.push({ error: error.message });
