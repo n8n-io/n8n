@@ -4,4 +4,5 @@ export interface IUser {
 	lastName?: string;
 	email: string;
 	isOwner: boolean;
+	emailUndeliverable?: boolean;
 }

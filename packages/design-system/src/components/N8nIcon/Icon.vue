@@ -1,7 +1,7 @@
 <template functional>
 	<component
 		:is="$options.components.FontAwesomeIcon"
-		:class="$style[`_${props.size}`]"
+		:class="[$style[`_${props.size}`], data.staticClass, data.class]"
 		:icon="props.icon"
 		:spin="props.spin"
 	/>
