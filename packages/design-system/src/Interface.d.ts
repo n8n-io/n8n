@@ -3,6 +3,9 @@ export interface IUser {
 	firstName?: string;
 	lastName?: string;
 	email: string;
-	isOwner: boolean;
+	globalRole: {
+		name: string;
+		id: string;
+	},
 	emailUndeliverable?: boolean;
 }

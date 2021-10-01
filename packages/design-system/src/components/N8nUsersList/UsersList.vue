@@ -12,10 +12,10 @@
 					<br/>
 					<n8n-link size="small" :bold="true" @click="onUserAction(user, 'reinvite')">Resend invite</n8n-link>
 				</n8n-warning-tooltip>
-				<n8n-badge v-if="user.isOwner">Owner</n8n-badge>
+				<n8n-badge v-if="user.globalRole.name === 'owner'">Owner</n8n-badge>
 				<n8n-badge v-if="!user.firstName">Pending</n8n-badge>
 				<n8n-action-toggle
-					v-if="!user.isOwner"
+					v-if="user.globalRole.name !== 'owner'"
 					:actions="getActions(user)"
 					@action="(action) => onUserAction(user, action)"
 				/>
@@ -55,7 +55,7 @@ export default Vue.extend({
 			},
 		},
 		currentUserId: {
-			type: String || null,
+			type: String,
 		},
 	},
 	computed: {
@@ -74,10 +74,10 @@ export default Vue.extend({
 					return 1;
 				}
 
-				if (a.isOwner) {
+				if (a.globalRole.name === 'owner') {
 					return -1;
 				}
-				if (b.isOwner) {
+				if (b.globalRole.name === 'owner') {
 					return 1;
 				}
 
@@ -106,7 +106,7 @@ export default Vue.extend({
 				value: 'reinvite',
 			};
 
-			if (user.isOwner)	{
+			if (user.globalRole.name === 'owner')	{
 				return [];
 			}
 

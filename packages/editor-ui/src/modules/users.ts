@@ -17,74 +17,102 @@ const module: Module<IUsersState, IRootState> = {
 	state: {
 		// currentUserId: null,
 		// users: {},
-		currentUserId: "10",
+		currentUserId: "1",
 		users: {
 			"1": {
 				id: '1',
 				firstName: 'xi',
 				lastName: 'lll',
 				email: 'test9@gmail.com',
-				isOwner: true,
-				role: 'Owner',
-				// role: 'Member',
+				globalRole: {
+					name: 'owner',
+					id: "1",
+				},
 			},
 			"2": {
 				id: '2',
 				email: 'test2@gmail.com',
-				role: 'Member',
+				globalRole: {
+					name: 'member',
+					id: "1",
+				},
 			},
 			"3": {
 				id: '3',
 				firstName: 'sup',
 				lastName: 'yo',
 				email: 'test3@gmail.com',
-				role: 'Member',
+				globalRole: {
+					name: 'member',
+					id: "1",
+				},
 			},
 			"4": {
 				id: '4',
 				firstName: 'xx',
 				lastName: 'aaaa',
 				email: 'test4@gmail.com',
-				role: 'Member',
+				globalRole: {
+					name: 'member',
+					id: "1",
+				},
 			},
 			"5": {
 				id: '5',
 				firstName: 'gg',
 				lastName: 'kk',
 				email: 'test5@gmail.com',
-				role: 'Member',
+				globalRole: {
+					name: 'member',
+					id: "1",
+				},
 			},
 			"6": {
 				id: '6',
 				email: 'test6@gmail.com',
-				role: 'Member',
+				globalRole: {
+					name: 'member',
+					id: "1",
+				},
 				emailUndeliverable: true,
 			},
 			"7": {
 				id: '7',
 				email: 'test7@gmail.com',
-				role: 'Member',
+				globalRole: {
+					name: 'member',
+					id: "1",
+				},
 			},
 			"8": {
 				id: '8',
 				firstName: 'sup',
 				lastName: 'yo',
 				email: 'test8@gmail.com',
-				role: 'Member',
+				globalRole: {
+					name: 'member',
+					id: "1",
+				},
 			},
 			"9": {
 				id: '9',
 				firstName: 'aaa',
 				lastName: 'yo',
 				email: 'test88@gmail.com',
-				role: 'Member',
+				globalRole: {
+					name: 'member',
+					id: "1",
+				},
 			},
 			"10": {
 				id: "10",
 				firstName: 'verylongfirstnameofmymomandmydad',
 				lastName: 'verylonglastnameofmymomandmydads',
 				email: 'veryyyyyyyyyyyyyyyyylongemailllllllllllllllllllll@gmail.com',
-				role: "Owner",
+				globalRole: {
+					name: "member",
+					id: "1",
+				},
 			},
 		},
 	},
@@ -125,7 +153,7 @@ const module: Module<IUsersState, IRootState> = {
 					if (!user && !authorize.includes(LOGIN_STATUS.LoggedOut)) {
 						return false;
 					}
-					if (user && (!authorize.includes(LOGIN_STATUS.LoggedIn) && !authorize.includes(user.role))) {
+					if (user && (!authorize.includes(LOGIN_STATUS.LoggedIn) && !authorize.includes(user.globalRole.name))) {
 						return false;
 					}
 				}

@@ -34,19 +34,28 @@ UsersList.args = {
 			firstName: 'Sunny',
 			lastName: 'Side',
 			email: "sunny@n8n.io",
-			role: 'owner',
+			globalRole: {
+				name: 'owner',
+				id: 1,
+			},
 		},
 		{
 			id: "2",
 			firstName: 'Kobi',
 			lastName: 'Dog',
 			email: "kobi@n8n.io",
-			role: 'member',
+			globalRole: {
+				name: 'member',
+				id: "2",
+			},
 		},
 		{
 			id: "3",
 			email: "invited@n8n.io",
-			role: 'member',
+			globalRole: {
+				name: 'member',
+				id: "2",
+			},
 		},
 	],
 	currentUserId: "1",

@@ -69,8 +69,8 @@ export const INSTANCE_ID_HEADER = 'n8n-instance-id';
 export const WAIT_TIME_UNLIMITED = '3000-01-01T00:00:00.000Z';
 
 export const ROLE: {Owner: IRole, Member: IRole} = {
-	Owner: 'Owner',
-	Member: 'Member',
+	Owner: 'owner',
+	Member: 'member',
 };
 
 export const LOGIN_STATUS: {LoggedIn: string, LoggedOut: string} = {

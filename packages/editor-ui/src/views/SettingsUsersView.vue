@@ -8,7 +8,7 @@
 					<n8n-button label="Invite new user" icon="plus-square" @click="onInvite" size="large" />
 			</div>
 			<div :class="$style.usersList">
-				<n8n-users-list :users="allUsers" @delete="onDelete" @reinvite="onReinvite" />
+				<n8n-users-list :users="allUsers" :currentUserId="currentUserId" @delete="onDelete" @reinvite="onReinvite" />
 			</div>
 		</div>
 	</SettingsView>
@@ -31,7 +31,7 @@ export default mixins(showMessage).extend({
 		'n8n-users-list': N8nUsersList,
 	},
 	computed: {
-		...mapGetters('users', ['allUsers']),
+		...mapGetters('users', ['allUsers', 'currentUserId']),
 	},
 	methods: {
 		onInvite() {
