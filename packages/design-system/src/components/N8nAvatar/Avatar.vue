@@ -12,6 +12,7 @@
 import Avatar from 'vue2-boring-avatars';
 
 const sizes: {[size: string]: number} = {
+	small: 28,
 	large: 48,
 	medium: 40,
 };
