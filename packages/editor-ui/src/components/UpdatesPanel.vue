@@ -1,10 +1,8 @@
 <template>
-	<Modal
+	<ModalDrawer
 		:name="modalName"
-		:drawer="true"
-		:visible="visible"
-		drawerDirection="ltr"
-		drawerWidth="520px"
+		direction="ltr"
+		width="520px"
 	>
 		<template slot="header">
 			<span :class="$style.title">We’ve been busy ✨</span>
@@ -40,25 +38,25 @@
 				</div>
 			</section>
 		</template>
-	</Modal>
+	</ModalDrawer>
 </template>
 
 <script lang="ts">
 import Vue from 'vue';
 import { mapGetters } from 'vuex';
 
-import Modal from './Modal.vue';
+import ModalDrawer from './ModalDrawer.vue';
 import TimeAgo from './TimeAgo.vue';
 import VersionCard from './VersionCard.vue';
 
 export default Vue.extend({
 	name: 'UpdatesPanel',
 	components: {
-		Modal,
+		ModalDrawer,
 		VersionCard,
 		TimeAgo,
 	},
-	props: ['modalName', 'visible'],
+	props: ['modalName'],
 	computed: {
 		...mapGetters('versions', ['nextVersions', 'currentVersion', 'infoUrl']),
 	},

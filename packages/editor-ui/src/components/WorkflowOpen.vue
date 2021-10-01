@@ -1,7 +1,9 @@
 <template>
 	<Modal
 		:name="modalName"
-		size="xl"
+		width="80%"
+		minWidth="620px"
+		:classic="true"
 	>
 			<template v-slot:header>
 				<div class="workflows-header">
@@ -19,9 +21,9 @@
 						/>
 					</div>
 					<div class="search-filter">
-						<el-input placeholder="Search workflows..." ref="inputFieldFilter" v-model="filterText">
-							<i slot="prefix" class="el-input__icon el-icon-search"></i>
-						</el-input>
+						<n8n-input placeholder="Search workflows..." ref="inputFieldFilter" v-model="filterText">
+							<font-awesome-icon slot="prefix" icon="search"></font-awesome-icon>
+						</n8n-input>
 					</div>
 				</div>
 			</template>
@@ -63,6 +65,7 @@ import Modal from '@/components/Modal.vue';
 import TagsContainer from '@/components/TagsContainer.vue';
 import TagsDropdown from '@/components/TagsDropdown.vue';
 import WorkflowActivator from '@/components/WorkflowActivator.vue';
+import { convertToDisplayDate } from './helpers';
 
 export default mixins(
 	genericHelpers,
@@ -176,8 +179,8 @@ export default mixins(
 						this.workflows = data;
 
 						this.workflows.forEach((workflowData: IWorkflowShortResponse) => {
-							workflowData.createdAt = this.convertToDisplayDate(workflowData.createdAt as number);
-							workflowData.updatedAt = this.convertToDisplayDate(workflowData.updatedAt as number);
+							workflowData.createdAt = convertToDisplayDate(workflowData.createdAt as number);
+							workflowData.updatedAt = convertToDisplayDate(workflowData.updatedAt as number);
 						});
 						this.isDataLoading = false;
 					},
@@ -215,7 +218,6 @@ export default mixins(
 		flex-grow: 1;
 
 		h1 {
-			font-weight: 600;
 			line-height: 24px;
 			font-size: 18px;
 		}

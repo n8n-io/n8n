@@ -1,14 +1,14 @@
 interface IResult {
 	totalWorkflows: number;
 	summary: {
-		failedExecutions: number,
-		successfulExecutions: number,
-		warningExecutions: number,
-		errors: IExecutionError[],
-		warnings: IExecutionError[],
+		failedExecutions: number;
+		successfulExecutions: number;
+		warningExecutions: number;
+		errors: IExecutionError[];
+		warnings: IExecutionError[];
 	};
 	coveredNodes: {
-		[nodeType: string]: number
+		[nodeType: string]: number;
 	};
 	executions: IExecutionResult[];
 }
@@ -21,7 +21,7 @@ interface IExecutionResult {
 	error?: string;
 	changes?: string;
 	coveredNodes: {
-		[nodeType: string]: number
+		[nodeType: string]: number;
 	};
 }
 
