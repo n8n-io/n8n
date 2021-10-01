@@ -118,6 +118,16 @@ const createFormDataObject = (data: object) => {
 	return formData;
 };
 
+function searchForHeader(headers: IDataObject, headerName: string) {
+	if (headers === undefined) {
+		return undefined;
+	}
+
+	const headerNames = Object.keys(headers);
+	headerName = headerName.toLowerCase();
+	return headerNames.find((thisHeader) => thisHeader.toLowerCase() === headerName);
+}
+
 async function parseRequestObject(requestObject: IDataObject) {
 	// This function is a temporary implementation
 	// That translates all http requests done via
@@ -183,13 +193,15 @@ async function parseRequestObject(requestObject: IDataObject) {
 		// When using the `form` property it means the content should be x-www-form-urlencoded.
 		if (requestObject.form !== undefined && requestObject.body === undefined) {
 			// If we have only form
-			axiosConfig.data = new URLSearchParams(requestObject.form as Record<string, string>);
+			axiosConfig.data =
+				typeof requestObject.form === 'string'
+					? stringify(requestObject.form, { format: 'RFC3986' })
+					: stringify(requestObject.form).toString();
 			if (axiosConfig.headers !== undefined) {
-				// remove possibly existing content-type headers
-				const headers = Object.keys(axiosConfig.headers);
-				headers.forEach((header) =>
-					header.toLowerCase() === 'content-type' ? delete axiosConfig.headers[header] : null,
-				);
+				const headerName = searchForHeader(axiosConfig.headers, 'content-type');
+				if (headerName) {
+					delete axiosConfig.headers[headerName];
+				}
 				axiosConfig.headers['Content-Type'] = 'application/x-www-form-urlencoded';
 			} else {
 				axiosConfig.headers = {
@@ -430,16 +442,6 @@ async function proxyRequestToAxios(
 				reject(error);
 			});
 	});
-}
-
-function searchForHeader(headers: IDataObject, headerName: string) {
-	if (headers === undefined) {
-		return undefined;
-	}
-
-	const headerNames = Object.keys(headers);
-	headerName = headerName.toLowerCase();
-	return headerNames.find((thisHeader) => thisHeader.toLowerCase() === headerName);
 }
 
 function convertN8nRequestToAxios(n8nRequest: IHttpRequestOptions): AxiosRequestConfig {
