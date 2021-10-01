@@ -183,6 +183,7 @@ export const scanFields: INodeProperties[] = [
 				name: 'referer',
 				description: 'HTTP referer to set for this scan',
 				type: 'string',
+				placeholder: 'https://n8n.io',
 				default: '',
 			},
 			{
