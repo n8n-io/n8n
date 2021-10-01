@@ -34,6 +34,10 @@ export default Vue.extend({
 			type: String,
 			validator: (value: string): boolean => ['dark', 'base', 'light', 'lighter', 'xlight'].includes(value),
 		},
+		align: {
+			type: String,
+			validator: (value: string): boolean => ['right', 'left', 'center'].includes(value),
+		},
 	},
 	methods: {
 		getClass(props: {size: string, bold: boolean}) {

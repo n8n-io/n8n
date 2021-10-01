@@ -142,7 +142,7 @@
 						<span slot="title" class="item-title-root">
 							{{currentUser.firstName}} {{currentUser.lastName}}
 						</span>
-						<span class="toggle">
+						<div class="toggle">
 							<n8n-action-toggle
 								v-if="!isCollapsed"
 								:actions="[{
@@ -152,7 +152,7 @@
 								placement="bottom-start"
 								@action="onLogout"
 							/>
-						</span>
+						</div>
 					</n8n-menu-item>
 				</div>
 			</n8n-menu>
@@ -731,6 +731,9 @@ export default mixins(
 	.item-title-root {
 		color: var(--color-text-base);
 		font-weight: var(--font-weight-regular);
+		max-width: 100px;
+		overflow: hidden;
+		text-overflow: ellipsis;
 	}
 
 	.toggle {

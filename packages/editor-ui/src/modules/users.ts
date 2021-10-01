@@ -17,7 +17,7 @@ const module: Module<IUsersState, IRootState> = {
 	state: {
 		// currentUserId: null,
 		// users: {},
-		currentUserId: "1",
+		currentUserId: "10",
 		users: {
 			"1": {
 				id: '1',
@@ -78,6 +78,13 @@ const module: Module<IUsersState, IRootState> = {
 				lastName: 'yo',
 				email: 'test88@gmail.com',
 				role: 'Member',
+			},
+			"10": {
+				id: "10",
+				firstName: 'verylongfirstnameofmymomandmydad',
+				lastName: 'verylonglastnameofmymomandmydads',
+				email: 'veryyyyyyyyyyyyyyyyylongemailllllllllllllllllllll@gmail.com',
+				role: "Owner",
 			},
 		},
 	},
