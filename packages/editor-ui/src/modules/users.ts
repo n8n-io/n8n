@@ -22,7 +22,7 @@ const module: Module<IUsersState, IRootState> = {
 			"1": {
 				id: '1',
 				firstName: 'xi',
-				lastName: 'fff',
+				lastName: 'lll',
 				email: 'test9@gmail.com',
 				isOwner: true,
 				role: 'Owner',
