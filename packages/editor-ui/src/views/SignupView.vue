@@ -87,7 +87,7 @@ export default mixins(
 		async onSubmit(values: {[key: string]: string}) {
 			try {
 				this.loading = true;
-				await this.$store.dispatch('users/signup', values);
+				await this.$store.dispatch('users/signup', {...values, token: this.$route.query.token});
 
 				await this.$router.push({ name: 'SigninView' });
 			} catch (error) {

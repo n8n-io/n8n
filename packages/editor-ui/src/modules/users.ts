@@ -98,7 +98,7 @@ const module: Module<IUsersState, IRootState> = {
 		async validateSignupToken(context: ActionContext<IUsersState, IRootState>, params: {token: string}): Promise<{ inviter: { firstName: string, lastName: string } }> {
 			return await validateSignupToken(context.rootGetters.getRestApiContext, params);
 		},
-		async signup(context: ActionContext<IUsersState, IRootState>, params: { firstName: string; lastName: string; password: string;}) {
+		async signup(context: ActionContext<IUsersState, IRootState>, params: { token: string; firstName: string; lastName: string; password: string;}) {
 			const user = await signup(context.rootGetters.getRestApiContext, params);
 			if (user) {
 				context.commit('addUsers', [user]);
