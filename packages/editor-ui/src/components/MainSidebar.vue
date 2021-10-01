@@ -722,6 +722,7 @@ export default mixins(
 
 	.avatar {
 		top: 25%;
+		left: 18px;
 		position: absolute;
 		display: flex;
 		align-items: center;
