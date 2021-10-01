@@ -62,6 +62,7 @@
 		line-height: var.$dialog-font-line-height;
 		font-size: var.$dialog-title-font-size;
 		color: var(--color-text-dark);
+		font-weight: var(--font-weight-regular);
 	}
 
 	@include mixins.e(body) {
