@@ -503,6 +503,10 @@ export interface IN8nUISettings {
 	instanceId: string;
 	personalizationSurvey?: IPersonalizationSurvey;
 	telemetry: ITelemetrySettings;
+	userManagement?: {
+		enabled: boolean;
+		hasOwner: boolean;
+	};
 }
 
 export interface IWorkflowSettings extends IWorkflowSettingsWorkflow {
@@ -723,13 +727,6 @@ export interface IBounds {
 }
 
 export type IRole = 'owner' | 'member';
-
-export interface INewUser {
-	firstName: string;
-	lastName: string;
-	email: string;
-	password: string;
-}
 
 export interface IUser {
 	id: string;

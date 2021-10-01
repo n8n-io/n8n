@@ -1,7 +1,6 @@
-import { IRestApiContext, IUser, INewUser } from '@/Interface';
+import { IRestApiContext, IUser } from '@/Interface';
 import { IDataObject } from 'n8n-workflow';
 import { makeRestApiRequest } from './helpers';
-
 
 export async function getCurrentUser(context: IRestApiContext): Promise<IUser | null> {
 	return await makeRestApiRequest(context, 'GET', '/user');
@@ -15,7 +14,7 @@ export async function logout(context: IRestApiContext): Promise<void> {
 	await makeRestApiRequest(context, 'POST', '/logout');
 }
 
-export async function setupOwner(context: IRestApiContext, params: INewUser): Promise<IUser> {
+export async function setupOwner(context: IRestApiContext, params: { firstName: string; lastName: string; email: string; password: string;}): Promise<IUser> {
 	return await makeRestApiRequest(context, 'POST', '/owner-setup', params as unknown as IDataObject);
 }
 
@@ -23,7 +22,7 @@ export async function validateSignupToken(context: IRestApiContext, params: {tok
 	return await makeRestApiRequest(context, 'GET', '/resolve-signup-token', params);
 }
 
-export async function signup(context: IRestApiContext, params: INewUser): Promise<IUser> {
+export async function signup(context: IRestApiContext, params:  {firstName: string; lastName: string; password: string}): Promise<IUser> {
 	return await makeRestApiRequest(context, 'POST', '/user', params as unknown as IDataObject);
 }
 

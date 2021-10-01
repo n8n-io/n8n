@@ -25,6 +25,7 @@ import Telemetry from './components/Telemetry.vue';
 import mixins from 'vue-typed-mixins';
 import { showMessage } from './components/mixins/showMessage';
 import { IUser } from './Interface';
+import { mapGetters } from 'vuex';
 
 export default mixins(
 	showMessage,
@@ -41,43 +42,72 @@ export default mixins(
 		};
 	},
 	async mounted() {
-		const initialized = await this.init();
-		if (initialized) {
-			this.authenticate();
-		}
+		await this.initialize();
+		this.authenticate();
+	},
+	computed: {
+		...mapGetters('settings', ['isUserManagementEnabled', 'isInstanceSetup']),
+		...mapGetters('users', ['canCurrentUserAccessView', 'currentUser']),
 	},
 	methods: {
-		async init(): Promise<boolean> {
+		async initialize(): Promise<void> {
 			try {
 				await this.$store.dispatch('settings/fetchSettings');
 			} catch (e) {
 				this.$showToast({
 					title: 'Error connecting to n8n',
-					message: 'Could not connect to server. <a onclick="window.location.reload(false);" class="primary-color">Refresh</a> to try again',
+					message: 'Could not connect to server. <a onclick="window.location.reload(false);">Refresh</a> to try again',
 					type: 'error',
 					duration: 0,
 				});
 
-				return false;
+				throw e;
+			}
+
+			if (!this.isUserManagementEnabled) {
+				return;
 			}
 
 			try {
 				await this.$store.dispatch('users/fetchCurrentUser');
 			} catch (e) {
 			}
-
-			return true;
 		},
 		authenticate() {
-			const isAuthorized = this.$store.getters['users/canCurrentUserAccessView'];
+			if (!this.isUserManagementEnabled) {
+				this.loading = false;
 
-			if (isAuthorized(this.$router.currentRoute.name)) {
+				if (this.$route.name && !['ExecutionById', 'NodeViewNew', 'NodeViewExisting', 'WorkflowTemplate'].includes(this.$route.name)) {
+					this.$router.push('/404');
+				}
+
+				return;
+			}
+
+			if (!this.isInstanceSetup) {
+				this.loading = false;
+				if (this.$route.name === 'SetupView') {
+					return;
+				}
+
+				this.$router.push({name: 'SetupView'});
+				return;
+			}
+
+			if (this.$route.name === 'SetupView') {
+				this.$router.push('/');
+
+				this.loading = false;
+				return;
+			}
+
+			if (this.canCurrentUserAccessView(this.$router.currentRoute.name)) {
 				this.loading = false;
 
 				return;
 			}
 
-			const user = this.$store.getters['users/currentUser'] as IUser | null;
+			const user = this.currentUser as IUser | null;
 			if (!user) {
 				const redirect = this.$route.query.redirect || encodeURIComponent(`${window.location.pathname}${window.location.search}`);
 				this.$router.push({name: 'SigninView', query: { redirect }});

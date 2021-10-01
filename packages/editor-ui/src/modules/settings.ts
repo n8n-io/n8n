@@ -27,6 +27,12 @@ const module: Module<ISettingsState, IRootState> = {
 		versionCli(state: ISettingsState) {
 			return state.settings.versionCli;
 		},
+		isUserManagementEnabled(state: ISettingsState): boolean {
+			return !!state.settings.userManagement && state.settings.userManagement.enabled;
+		},
+		isInstanceSetup(state: ISettingsState) {
+			return !!state.settings.userManagement && state.settings.userManagement.hasOwner;
+		},
 	},
 	mutations: {
 		setSettings(state: ISettingsState, settings: IN8nUISettings) {
@@ -37,6 +43,11 @@ const module: Module<ISettingsState, IRootState> = {
 				answers,
 				shouldShow: false,
 			});
+		},
+		completeInstanceSetup(state: ISettingsState) {
+			if (state.settings.userManagement) {
+				state.settings.userManagement.hasOwner = true;
+			}
 		},
 	},
 	actions: {

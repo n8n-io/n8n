@@ -1,10 +1,9 @@
-import { changePassword, deleteUser, getCurrentUser, getUsers, inviteUsers, login, logout, reinvite, sendForgotPasswordEmail, setupOwner, signup, updateUser, updateUserPassword, validatePasswordToken, validateSignupToken } from '@/api/users';
+import { changePassword, deleteUser, getCurrentUser, getUsers, inviteUsers, login, logout, reinvite, sendForgotPasswordEmail, setupOwner, signup, updateUser, updateUserPassword, validatePasswordToken, validateSignupToken } from '@/api/users-mock';
 import { LOGIN_STATUS } from '@/constants';
 import Vue from 'vue';
 import { RouteRecordPublic } from 'vue-router';
 import {  ActionContext, Module } from 'vuex';
 import {
-	INewUser,
 	IRole,
 	IRootState,
 	IUser,
@@ -15,106 +14,8 @@ import router from '../router';
 const module: Module<IUsersState, IRootState> = {
 	namespaced: true,
 	state: {
-		// currentUserId: null,
-		// users: {},
-		currentUserId: "1",
-		users: {
-			"1": {
-				id: '1',
-				firstName: 'xi',
-				lastName: 'lll',
-				email: 'test9@gmail.com',
-				globalRole: {
-					name: 'owner',
-					id: "1",
-				},
-			},
-			"2": {
-				id: '2',
-				email: 'test2@gmail.com',
-				globalRole: {
-					name: 'member',
-					id: "1",
-				},
-			},
-			"3": {
-				id: '3',
-				firstName: 'sup',
-				lastName: 'yo',
-				email: 'test3@gmail.com',
-				globalRole: {
-					name: 'member',
-					id: "1",
-				},
-			},
-			"4": {
-				id: '4',
-				firstName: 'xx',
-				lastName: 'aaaa',
-				email: 'test4@gmail.com',
-				globalRole: {
-					name: 'member',
-					id: "1",
-				},
-			},
-			"5": {
-				id: '5',
-				firstName: 'gg',
-				lastName: 'kk',
-				email: 'test5@gmail.com',
-				globalRole: {
-					name: 'member',
-					id: "1",
-				},
-			},
-			"6": {
-				id: '6',
-				email: 'test6@gmail.com',
-				globalRole: {
-					name: 'member',
-					id: "1",
-				},
-				emailUndeliverable: true,
-			},
-			"7": {
-				id: '7',
-				email: 'test7@gmail.com',
-				globalRole: {
-					name: 'member',
-					id: "1",
-				},
-			},
-			"8": {
-				id: '8',
-				firstName: 'sup',
-				lastName: 'yo',
-				email: 'test8@gmail.com',
-				globalRole: {
-					name: 'member',
-					id: "1",
-				},
-			},
-			"9": {
-				id: '9',
-				firstName: 'aaa',
-				lastName: 'yo',
-				email: 'test88@gmail.com',
-				globalRole: {
-					name: 'member',
-					id: "1",
-				},
-			},
-			"10": {
-				id: "10",
-				firstName: 'verylongfirstnameofmymomandmydad',
-				lastName: 'verylonglastnameofmymomandmydads',
-				email: 'veryyyyyyyyyyyyyyyyylongemailllllllllllllllllllll@gmail.com',
-				globalRole: {
-					name: "member",
-					id: "1",
-				},
-			},
-		},
+		currentUserId: null,
+		users: {},
 	},
 	mutations: {
 		addUsers: (state: IUsersState, users: IUser[]) => {
@@ -170,35 +71,38 @@ const module: Module<IUsersState, IRootState> = {
 			const user = await getCurrentUser(context.rootGetters.getRestApiContext);
 			if (user) {
 				context.commit('addUsers', [user]);
-				context.commit('setCurrntUserId', user.id);
+				context.commit('setCurrentUserId', user.id);
 			}
 		},
 		async login(context: ActionContext<IUsersState, IRootState>, params: {email: string, password: string}) {
 			const user = await login(context.rootGetters.getRestApiContext, params);
 			if (user) {
 				context.commit('addUsers', [user]);
-				context.commit('setCurrntUserId', user.id);
+				context.commit('setCurrentUserId', user.id);
 			}
 		},
 		async logout(context: ActionContext<IUsersState, IRootState>) {
 			await logout(context.rootGetters.getRestApiContext);
 			context.commit('clearCurrentUserId');
 		},
-		async createOwner(context: ActionContext<IUsersState, IRootState>, params: INewUser) {
+		async createOwner(context: ActionContext<IUsersState, IRootState>, params: { firstName: string; lastName: string; email: string; password: string;}) {
 			const user = await setupOwner(context.rootGetters.getRestApiContext, params);
 			if (user) {
 				context.commit('addUsers', [user]);
-				context.commit('setCurrntUserId', user.id);
+				context.commit('setCurrentUserId', user.id);
+				context.commit('settings/completeInstanceSetup', null, {
+					root: true,
+				});
 			}
 		},
 		async validateSignupToken(context: ActionContext<IUsersState, IRootState>, params: {token: string}): Promise<{ inviter: { firstName: string, lastName: string } }> {
 			return await validateSignupToken(context.rootGetters.getRestApiContext, params);
 		},
-		async signup(context: ActionContext<IUsersState, IRootState>, params: INewUser) {
+		async signup(context: ActionContext<IUsersState, IRootState>, params: { firstName: string; lastName: string; password: string;}) {
 			const user = await signup(context.rootGetters.getRestApiContext, params);
 			if (user) {
 				context.commit('addUsers', [user]);
-				context.commit('setCurrntUserId', user.id);
+				context.commit('setCurrentUserId', user.id);
 			}
 		},
 		async sendForgotPasswordEmail(context: ActionContext<IUsersState, IRootState>, params: {email: string}) {

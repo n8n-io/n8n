@@ -1,5 +1,6 @@
 <template>
 	<AuthView
+		v-if="config"
 		:form="config"
 		:formLoading="loading"
 		@submit="onSubmit"
@@ -87,7 +88,7 @@ export default mixins(
 		async onSubmit(values: {[key: string]: string}) {
 			try {
 				this.loading = true;
-				await this.$store.dispatch('users/changePassword', values);
+				await this.$store.dispatch('users/changePassword', {...values, token: this.$route.query.token});
 
 				this.$showMessage({
 					type: 'success',
