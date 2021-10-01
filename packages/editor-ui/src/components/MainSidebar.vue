@@ -72,7 +72,7 @@
 							<span slot="title" class="item-title">Import from File</span>
 						</template>
 					</n8n-menu-item>
-					<n8n-menu-item index="workflow-settings" :disabled="!currentWorkflow">
+					<n8n-menu-item index="workflow-settings" :disabled="!currentWorkflow" v-if="currentUser">
 						<template slot="title">
 							<font-awesome-icon icon="cog"/>
 							<span slot="title" class="item-title">Settings</span>
@@ -134,6 +134,25 @@
 							<GiftNotificationIcon />
 						</div>
 						<span slot="title" class="item-title-root">{{nextVersions.length > 99 ? '99+' : nextVersions.length}} update{{nextVersions.length > 1 ? 's' : ''}} available</span>
+					</n8n-menu-item>
+					<n8n-menu-item index="user" class="user" v-if="currentUser">
+						<div class="avatar">
+							<n8n-avatar :firstName="currentUser.firstName" :lastName="currentUser.lastName" size="small" />
+						</div>
+						<span slot="title" class="item-title-root">
+							{{currentUser.firstName}} {{currentUser.lastName}}
+						</span>
+						<span class="toggle">
+							<n8n-action-toggle
+								v-if="!isCollapsed"
+								:actions="[{
+									label: 'Logout',
+									value: 'logout'
+								}]"
+								placement="bottom-start"
+								@action="onLogout"
+							/>
+						</span>
 					</n8n-menu-item>
 				</div>
 			</n8n-menu>
@@ -237,6 +256,9 @@ export default mixins(
 				'hasVersionUpdates',
 				'nextVersions',
 			]),
+			...mapGetters('users', [
+				'currentUser',
+			]),
 			exeuctionId (): string | undefined {
 				return this.$route.params.id;
 			},
@@ -293,6 +315,13 @@ export default mixins(
 		methods: {
 			trackHelpItemClick (itemType: string) {
 				this.$telemetry.track('User clicked help resource', { type: itemType, workflow_id: this.$store.getters.workflowId });
+			},
+			async onLogout () {
+				try {
+					await this.$store.dispatch('users/logout');
+				} catch (e) {
+					this.$showError(e, 'Could not log out');
+				}
 			},
 			toggleCollapse () {
 				this.$store.commit('ui/toggleSidebarMenuCollapse');
@@ -685,6 +714,28 @@ export default mixins(
 		align-items: center;
 		height: 100%;
 		width: 100%;
+	}
+}
+
+.el-menu-item.user {
+	position: relative;
+
+	.avatar {
+		top: 25%;
+		position: absolute;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+	}
+
+	.item-title-root {
+		color: var(--color-text-base);
+		font-weight: var(--font-weight-regular);
+	}
+
+	.toggle {
+		position: absolute;
+		right: 20px;
 	}
 }
 

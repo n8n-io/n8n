@@ -1,5 +1,5 @@
 <template>
-	<el-dropdown placement="bottom-end" trigger="click" @command="onCommand">
+	<el-dropdown :placement="placement" trigger="click" @command="onCommand">
 		<a :class="$style.button">
 			<component :is="$options.components.N8nIcon"
 				icon="ellipsis-v"
@@ -35,6 +35,10 @@ export default {
 		actions: {
 			type: Array,
 			default: () => [],
+		},
+		placement: {
+			type: String,
+			default: 'bottom-end',
 		},
 	},
 	methods: {
