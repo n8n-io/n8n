@@ -89,13 +89,6 @@ export default Vue.extend({
 					return 1;
 				}
 
-				if (a.isOwner) {
-					return -1;
-				}
-				if (b.isOwner) {
-					return 1;
-				}
-
 				if (a.lastName && b.lastName && a.firstName && b.firstName) {
 					if (a.lastName !== b.lastName) {
 						return a.lastName > b.lastName ? 1 : -1;
