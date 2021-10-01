@@ -22,7 +22,7 @@ export async function validateSignupToken(context: IRestApiContext, params: {tok
 	return await makeRestApiRequest(context, 'GET', '/resolve-signup-token', params);
 }
 
-export async function signup(context: IRestApiContext, params:  {firstName: string; lastName: string; password: string}): Promise<IUser> {
+export async function signup(context: IRestApiContext, params:  {token: string; firstName: string; lastName: string; password: string}): Promise<IUser> {
 	return await makeRestApiRequest(context, 'POST', '/user', params as unknown as IDataObject);
 }
 
@@ -46,8 +46,8 @@ export async function updateUserPassword(context: IRestApiContext, params: {id: 
 	return await makeRestApiRequest(context, 'PATCH', `/user/${params.id}/password`, params);
 }
 
-export async function deleteUser(context: IRestApiContext, {id, transferId}: {id: string, transferId?: string}): Promise<IUser> {
-	return await makeRestApiRequest(context, 'DELETE', `/user/${id}`, transferId ? { transferId } : {});
+export async function deleteUser(context: IRestApiContext, {id, transferId}: {id: string, transferId?: string}): Promise<void> {
+	await makeRestApiRequest(context, 'DELETE', `/user/${id}`, transferId ? { transferId } : {});
 }
 
 export async function getUsers(context: IRestApiContext): Promise<IUser[]> {

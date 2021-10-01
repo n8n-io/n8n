@@ -10,7 +10,7 @@ const users = [
 		email: 'test9@gmail.com',
 		globalRole: {
 			name: 'member',
-			id: "1",
+			id: "2",
 		},
 	},
 	{
@@ -18,7 +18,7 @@ const users = [
 		email: 'test2@gmail.com',
 		globalRole: {
 			name: 'member',
-			id: "1",
+			id: "2",
 		},
 	},
 	{
@@ -28,7 +28,7 @@ const users = [
 		email: 'test3@gmail.com',
 		globalRole: {
 			name: 'member',
-			id: "1",
+			id: "2",
 		},
 	},
 	{
@@ -38,7 +38,7 @@ const users = [
 		email: 'test4@gmail.com',
 		globalRole: {
 			name: 'member',
-			id: "1",
+			id: "2",
 		},
 	},
 	{
@@ -48,7 +48,7 @@ const users = [
 		email: 'test5@gmail.com',
 		globalRole: {
 			name: 'member',
-			id: "1",
+			id: "2",
 		},
 	},
 	{
@@ -56,7 +56,7 @@ const users = [
 		email: 'test6@gmail.com',
 		globalRole: {
 			name: 'member',
-			id: "1",
+			id: "2",
 		},
 		emailUndeliverable: true,
 	},
@@ -65,7 +65,7 @@ const users = [
 		email: 'test7@gmail.com',
 		globalRole: {
 			name: 'member',
-			id: "1",
+			id: "2",
 		},
 	},
 	{
@@ -75,7 +75,7 @@ const users = [
 		email: 'test8@gmail.com',
 		globalRole: {
 			name: 'member',
-			id: "1",
+			id: "2",
 		},
 	},
 	{
@@ -85,7 +85,7 @@ const users = [
 		email: 'test88@gmail.com',
 		globalRole: {
 			name: 'member',
-			id: "1",
+			id: "2",
 		},
 	},
 	{
@@ -95,7 +95,7 @@ const users = [
 		email: 'veryyyyyyyyyyyyyyyyylongemailllllllllllllllllllll@gmail.com',
 		globalRole: {
 			name: "member",
-			id: "1",
+			id: "2",
 		},
 	},
 ];
@@ -133,7 +133,7 @@ function removeUser(userId: string) {
 	window.localStorage.setItem('mock.users.users', JSON.stringify(users));
 }
 
-function log(context: IRestApiContext, method: String, path: string, params?: any): void {
+function log(context: IRestApiContext, method: string, path: string, params?: any): void { // tslint:disable-line:no-any
 	console.log(method, path, params);
 }
 
@@ -163,19 +163,19 @@ export async function logout(context: IRestApiContext): Promise<void> {
 export async function setupOwner(context: IRestApiContext, params: { firstName: string; lastName: string; email: string; password: string;}): Promise<IUser> {
 	log(context, 'POST', '/owner-setup', params as unknown as IDataObject);
 	window.localStorage.setItem('mock.settings.isInstanceSetup', 'true');
-	window.localStorage.setItem('mock.users.currentUserId', '1');
 	const newUser: IUser = {...params, id: getRandomId(), "globalRole": {name: 'owner', id: '1'}};
+	window.localStorage.setItem('mock.users.currentUserId', newUser.id);
 	addUser(newUser);
 
 	return await Promise.resolve(newUser);
 }
 
 export async function validateSignupToken(context: IRestApiContext, params: {token: string}): Promise<{inviter: {firstName: string, lastName: string}}> {
-	log(context, 'GET', '/resolve-signup-token', params);
-
 	if (params.token !== '1234') {
 		throw new Error('invalid token. try query ?token=1234');
 	}
+
+	log(context, 'GET', '/resolve-signup-token', params);
 
 	return await Promise.resolve({
 		inviter: {
@@ -185,12 +185,16 @@ export async function validateSignupToken(context: IRestApiContext, params: {tok
 	});
 }
 
-export async function signup(context: IRestApiContext, params: {firstName: string; lastName: string; password: string}): Promise<IUser> {
+export async function signup(context: IRestApiContext, params: {token: string; firstName: string; lastName: string; password: string}): Promise<IUser> {
+	if (params.token !== '1234') {
+		throw new Error('invalid token. try query ?token=1234');
+	}
+
 	log(context, 'POST', '/user', params as unknown as IDataObject);
 
 	window.localStorage.setItem('mock.settings.isInstanceSetup', 'true');
-	window.localStorage.setItem('mock.users.currentUserId', '1');
-	const newUser: IUser = {...params, email: `${params.firstName}@n8n.io`, id: getRandomId(), "globalRole": {name: 'member', id: '1'}};
+	const newUser: IUser = {...params, email: `${params.firstName}@n8n.io`, id: getRandomId(), "globalRole": {name: 'member', id: '2'}};
+	window.localStorage.setItem('mock.users.currentUserId', newUser.id);
 	addUser(newUser);
 
 	return await Promise.resolve(newUser);
@@ -232,7 +236,7 @@ export async function updateUserPassword(context: IRestApiContext, params: {id: 
 	log(context, 'PATCH', `/user/${params.id}/password`, params);
 }
 
-export async function deleteUser(context: IRestApiContext, {id, transferId}: {id: string, transferId?: string}): Promise<IUser> {
+export async function deleteUser(context: IRestApiContext, {id, transferId}: {id: string, transferId?: string}): Promise<void> {
 	log(context, 'DELETE', `/user/${id}`, transferId ? { transferId } : {});
 	removeUser(id);
 }
