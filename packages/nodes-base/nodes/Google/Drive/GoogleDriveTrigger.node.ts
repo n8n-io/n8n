@@ -174,7 +174,7 @@ export class GoogleDriveTrigger implements INodeType {
 					{
 						name: 'Folder Updated',
 						value: 'folderUpdated',
-						description: 'When a watch folder itself is updated',
+						description: 'When the watch folder itself is updated',
 					},
 				],
 			},
@@ -346,7 +346,7 @@ export class GoogleDriveTrigger implements INodeType {
 			'trashed = false',
 		];
 
-		if (triggerOn === 'specificFolder') {
+		if (triggerOn === 'specificFolder' && event !== 'folderUpdated') {
 			const folderToWatch = this.getNodeParameter('folderToWatch');
 			query.push(`'${folderToWatch}' in parents`);
 		}
@@ -390,6 +390,11 @@ export class GoogleDriveTrigger implements INodeType {
 		if (triggerOn === 'specificFile') {
 			const fileToWatch = this.getNodeParameter('fieldToWatch') as string;
 			files = files.filter((file: { id: string }) => file.id === fileToWatch);
+		}
+
+		if (triggerOn === 'specificFolder' && event === 'folderUpdated') {
+			const folderToWatch = this.getNodeParameter('folderToWatch') as string;
+			files = files.filter((file: { id: string }) => file.id === folderToWatch);
 		}
 
 		webhookData.lastTimeChecked = endDate;
