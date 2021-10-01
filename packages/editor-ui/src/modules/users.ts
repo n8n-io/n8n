@@ -58,6 +58,7 @@ const module: Module<IUsersState, IRootState> = {
 				id: '6',
 				email: 'test6@gmail.com',
 				role: 'Member',
+				emailUndeliverable: true,
 			},
 			"7": {
 				id: '7',

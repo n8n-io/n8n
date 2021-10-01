@@ -7,6 +7,11 @@
 		>
 			<n8n-user-info :user="user" :currentUserId="currentUserId" />
 			<div :class="$style.badgeContainer">
+				<n8n-warning-tooltip v-if="user.emailUndeliverable" placement="left">
+					<n8n-text size="small">Could not deliver invite email.</n8n-text>
+					<br/>
+					<n8n-link size="small" @click="onUserAction(user, 'reinvite')">Resend invite</n8n-link>
+				</n8n-warning-tooltip>
 				<n8n-badge v-if="user.isOwner">Owner</n8n-badge>
 				<n8n-badge v-if="!user.firstName">Pending</n8n-badge>
 				<n8n-action-toggle
@@ -25,7 +30,10 @@ import Vue from 'vue';
 import N8nActionToggle from '../N8nActionToggle';
 import N8nBadge from '../N8nBadge';
 import N8nIcon from '../N8nIcon';
+import N8nLink from '../N8nLink';
+import N8nText from '../N8nText';
 import N8nUserInfo from '../N8nUserInfo';
+import N8nWarningTooltip from '../N8nWarningTooltip';
 
 export default Vue.extend({
 	name: 'n8n-users-list',
@@ -33,7 +41,10 @@ export default Vue.extend({
 		N8nActionToggle,
 		N8nBadge,
 		N8nIcon,
+		N8nText,
+		N8nLink,
 		N8nUserInfo,
+		N8nWarningTooltip,
 	},
 	props: {
 		users: {

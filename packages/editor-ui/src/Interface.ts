@@ -738,6 +738,7 @@ export interface IUser {
 	email: string;
 	role: IRole;
 	isOwner?: boolean;
+	emailUndeliverable?: boolean;
 }
 
 type IValidationRule = {
