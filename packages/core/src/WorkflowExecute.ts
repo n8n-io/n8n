@@ -582,12 +582,14 @@ export class WorkflowExecute {
 
 		const startedAt = new Date();
 
-		const a = this.runExecutionData.executionData!.nodeExecutionStack[0];
-		console.log('a');
-		console.log(a);
-		console.log(a.node.name);
+		const startNode = this.runExecutionData.executionData!.nodeExecutionStack[0].node.name;
 
-		const workflowIssues = workflow.checkReadyForExecution(a.node.name);
+		let destinationNode: string | undefined;
+		if (this.runExecutionData.startData && this.runExecutionData.startData.destinationNode) {
+			destinationNode = this.runExecutionData.startData.destinationNode;
+		}
+
+		const workflowIssues = workflow.checkReadyForExecution({ startNode, destinationNode });
 		if (workflowIssues !== null) {
 			throw new Error(
 				'The workflow has issues and can for that reason not be executed. Please fix them first.',

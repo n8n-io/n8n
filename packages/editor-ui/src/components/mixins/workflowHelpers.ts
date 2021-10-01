@@ -1,6 +1,9 @@
 import {
+	ERROR_TRIGGER_NODE_NAME,
 	PLACEHOLDER_FILLED_AT_EXECUTION_TIME,
 	PLACEHOLDER_EMPTY_WORKFLOW_ID,
+	START_NODE_TYPE,
+	WEBHOOK_NODE_NAME,
 } from '@/constants';
 
 import {
@@ -152,22 +155,31 @@ export const workflowHelpers = mixins(
 
 				let checkNodes = Object.keys(workflow.nodes);
 				if (lastNodeName) {
-					console.log('parent');
 					checkNodes = workflow.getParentNodes(lastNodeName);
+					checkNodes.push(lastNodeName);
 				} else {
-					const startNode = workflow.getStartNode();
-					console.log('startNode', startNode!.name);
-					if (startNode !== undefined) {
-						console.log('child');
-						checkNodes = workflow.getChildNodes(startNode.name);
+					// As webhook nodes always take presidence check first
+					// if there are any
+					let checkWebhook: string[] = [];
+					for (const nodeName of Object.keys(workflow.nodes)) {
+						if (workflow.nodes[nodeName].disabled !== true && workflow.nodes[nodeName].type === WEBHOOK_NODE_NAME) {
+							checkWebhook = [nodeName, ...checkWebhook, ...workflow.getChildNodes(nodeName)];
+						}
+					}
+
+					if (checkWebhook.length) {
+						checkNodes = checkWebhook;
+					} else {
+						// If no webhook nodes got found try to find another trigger node
+						const startNode = workflow.getStartNode();
+						if (startNode !== undefined) {
+							checkNodes = workflow.getChildNodes(startNode.name);
+							checkNodes.push(startNode.name);
+						}
 					}
 				}
-				console.log('checkNodes');
-				console.log(checkNodes);
 
 				for (const nodeName of checkNodes) {
-					console.log('check: ' + nodeName);
-
 					nodeIssues = null;
 					node = workflow.nodes[nodeName];
 
@@ -231,6 +243,10 @@ export const workflowHelpers = mixins(
 
 						return {
 							description: nodeTypeDescription,
+							// As we do not have the trigger/poll functions available in the frontend
+							// we use the information available to figure out what are trigger nodes
+							// @ts-ignore
+							trigger: ![ERROR_TRIGGER_NODE_NAME, START_NODE_TYPE].includes(nodeType) && nodeTypeDescription.inputs.length === 0 && !nodeTypeDescription.webhooks || undefined,
 						};
 					},
 				};
@@ -515,7 +531,7 @@ export const workflowHelpers = mixins(
 						} as IUpdateInformation;
 						this.$store.commit('setNodeValue', changes);
 					});
-					
+
 					const createdTags = (workflowData.tags || []) as ITag[];
 					const tagIds = createdTags.map((tag: ITag): string => tag.id);
 					this.$store.commit('setWorkflowTagIds', tagIds);

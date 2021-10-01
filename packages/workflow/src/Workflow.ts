@@ -231,18 +231,29 @@ export class Workflow {
 	 * @returns {(IWorfklowIssues | null)}
 	 * @memberof Workflow
 	 */
-	checkReadyForExecution(startNodeName: string): IWorfklowIssues | null {
+	checkReadyForExecution(inputData: {
+		startNode?: string;
+		destinationNode?: string;
+	}): IWorfklowIssues | null {
 		let node: INode;
 		let nodeType: INodeType | undefined;
 		let nodeIssues: INodeIssues | null = null;
 		const workflowIssues: IWorfklowIssues = {};
 
-		const childNodes = this.getChildNodes(startNodeName);
-		console.log('childNodes');
-		console.log(childNodes);
+		let checkNodes: string[] = [];
+		if (inputData.destinationNode) {
+			// If a destination node is given we have to check all the nodes
+			// leading up to it
+			checkNodes = this.getParentNodes(inputData.destinationNode);
+			checkNodes.push(inputData.destinationNode);
+		} else if (inputData.startNode) {
+			// If a start node is given we have to check all nodes which
+			// come after it
+			checkNodes = this.getChildNodes(inputData.startNode);
+			checkNodes.push(inputData.startNode);
+		}
 
-		for (const nodeName of childNodes) {
-			console.log('check: ' + nodeName);
+		for (const nodeName of checkNodes) {
 			nodeIssues = null;
 			node = this.nodes[nodeName];
 
