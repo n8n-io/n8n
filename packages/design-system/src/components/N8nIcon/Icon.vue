@@ -1,7 +1,7 @@
 <template functional>
 	<component
 		:is="$options.components.FontAwesomeIcon"
-		:class="[$style[`_${props.size}`], data.staticClass, data.class]"
+		:class="$style[`${props.size}${props.theme ? `-${props.theme}`: ''}`]"
 		:icon="props.icon"
 		:spin="props.spin"
 	/>
@@ -31,26 +31,48 @@ export default {
 			type: Boolean,
 			default: false,
 		},
+		theme: {
+			type: String,
+			default: '',
+			validator: (value: string) => {
+				return ['', 'danger'].includes(value);
+			},
+		},
 	},
 };
 </script>
 
 <style lang="scss" module>
-._small {
+.small {
 	font-size: 0.85em;
 	height: 0.85em;
 	width: 0.85em !important;
 }
 
-._medium {
+.medium {
 	font-size: 0.95em;
 	height: 0.95em;
 	width: 0.95em !important;
 }
 
-._large {
+.large {
 	font-size: 1.22em;
 	height: 1.22em;
 	width: 1.22em !important;
+}
+
+.small-danger {
+	composes: small;
+	color: var(--color-danger);
+}
+
+.medium-danger {
+	composes: medium;
+	color: var(--color-danger);
+}
+
+.large-danger {
+	composes: large;
+	color: var(--color-danger);
 }
 </style>
