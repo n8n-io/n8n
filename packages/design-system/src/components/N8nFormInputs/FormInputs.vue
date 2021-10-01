@@ -105,6 +105,10 @@ export default Vue.extend({
 .container {
 	display: flex;
 	width: 100%;
+
+	@media (max-width: 768px) {
+		flex-direction: column;
+	}
 }
 
 .columnView {
@@ -121,6 +125,11 @@ export default Vue.extend({
 	composes: inputContainer;
 	max-width: 50%;
 	padding-right: var(--spacing-2xs);
+
+	@media (max-width: 768px) {
+		max-width: 100%;
+		padding-right: 0;
+	}
 }
 
 </style>
