@@ -10,7 +10,7 @@
 				<n8n-warning-tooltip v-if="user.emailUndeliverable" placement="left">
 					<n8n-text size="small">Could not deliver invite email.</n8n-text>
 					<br/>
-					<n8n-link size="small" @click="onUserAction(user, 'reinvite')">Resend invite</n8n-link>
+					<n8n-link size="small" :bold="true" @click="onUserAction(user, 'reinvite')">Resend invite</n8n-link>
 				</n8n-warning-tooltip>
 				<n8n-badge v-if="user.isOwner">Owner</n8n-badge>
 				<n8n-badge v-if="!user.firstName">Pending</n8n-badge>

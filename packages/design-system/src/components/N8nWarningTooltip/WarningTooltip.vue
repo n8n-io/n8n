@@ -1,7 +1,7 @@
 <template>
-	<el-tooltip  content=" " :placement="placement" >h
+	<el-tooltip  content=" " :placement="placement" >
 		<div slot="content"><slot /></div>
-		<n8n-icon :class="$style['icon']" icon="exclamation-triangle"></n8n-icon>
+		<n8n-icon icon="exclamation-triangle" theme="danger" />
 	</el-tooltip>
 </template>
 
@@ -9,7 +9,6 @@
 import Vue from 'vue';
 
 import ElTooltip from 'element-ui/lib/tooltip';
-import N8nTooltip from '../N8nTooltip';
 import N8nIcon from '../N8nIcon';
 
 export default Vue.extend({
@@ -27,10 +26,3 @@ export default Vue.extend({
 });
 </script>
 
-<style lang="scss" module>
-	.icon {
-		font-size: 14px;
-		height: 18px;
-		color: $--warning-tooltip-color;
-	}
-</style>

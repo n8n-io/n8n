@@ -36,6 +36,13 @@ export default {
 			type: Boolean,
 			default: false,
 		},
+		theme: {
+			type: String,
+			default: '',
+			validator: (value: string) => {
+				return ['', 'danger'].includes(value);
+			},
+		},
 	},
 };
 </script>
@@ -56,5 +63,20 @@ export default {
 
 .small {
 	width: var(--font-size-2xs) !important;
+}
+
+.small-danger {
+	composes: small;
+	color: var(--color-danger);
+}
+
+.medium-danger {
+	composes: medium;
+	color: var(--color-danger);
+}
+
+.large-danger {
+	composes: large;
+	color: var(--color-danger);
 }
 </style>
