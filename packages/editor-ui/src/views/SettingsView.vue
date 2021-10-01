@@ -41,6 +41,7 @@ export default Vue.extend({
 }
 
 .content {
+	height: 100%;
 	width: 100%;
 	max-width: 800px;
 }
