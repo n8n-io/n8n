@@ -4,7 +4,9 @@
 			<div :class="$style.header">
 				<n8n-heading size="2xlarge">Personal Settings</n8n-heading>
 				<div :class="$style.user">
-					<n8n-text :class="$style.username" color="light">{{currentUser.firstName}} {{currentUser.lastName}}</n8n-text>
+					<span :class="$style.username">
+						<n8n-text  color="light">{{currentUser.firstName}} {{currentUser.lastName}}</n8n-text>
+					</span>
 					<n8n-avatar :firstName="currentUser.firstName" :lastName="currentUser.lastName" size="large" />
 				</div>
 			</div>
@@ -155,8 +157,16 @@ export default mixins(
 .user {
 	display: flex;
 	align-items: center;
-	* {
-		margin-left: var(--spacing-s);
+}
+
+.username {
+	margin-right: var(--spacing-s);
+	text-align: right;
+
+	@media (max-width: $--breakpoint-sm) {
+		max-width: 100px;
+		overflow: hidden;
+		text-overflow: ellipsis;
 	}
 }
 

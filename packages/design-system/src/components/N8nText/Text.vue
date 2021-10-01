@@ -22,18 +22,24 @@ export default Vue.extend({
 			type: String,
 			validator: (value: string): boolean => ['dark', 'base', 'light', 'lighter', 'xlight'].includes(value),
 		},
+		align: {
+			type: String,
+			validator: (value: string): boolean => ['right', 'left', 'center'].includes(value),
+		},
 	},
 	methods: {
 		getClass(props: {size: string, bold: boolean}) {
 			return `body-${props.size}${props.bold ? '-bold' : '-regular'}`;
 		},
-		getStyles(props: {color: string}) {
-			if (!props.color) {
-				return {};
+		getStyles(props: {color: string, align: string}) {
+			const styles = {} as any;
+			if (props.color) {
+				styles.color = `var(--color-text-${props.color})`;
 			}
-			return {
-				'color': `var(--color-text-${props.color})`,
-			};
+			if (props.align) {
+				styles['text-align'] = props.align;
+			}
+			return styles;
 		},
 	},
 });

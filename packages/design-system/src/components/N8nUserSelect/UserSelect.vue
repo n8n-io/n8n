@@ -6,6 +6,7 @@
 		:placeholder="placeholder"
 		:default-first-option="true"
 		:popper-append-to-body="true"
+		:popper-class="$style.limitPopperWidth"
 		noMatchText="No matches found"
 		noDataText="No users"
 		@change="onChange"
@@ -152,5 +153,14 @@ export default Vue.extend({
 .itemContainer {
 	padding: var(--spacing-2xs) var(--spacing-s) var(--spacing-2xs) var(--spacing-s) !important;
 	line-height: 1 !important;
+}
+
+.limitPopperWidth {
+	width: 0;
+
+	li > span {
+		text-overflow: ellipsis;
+		overflow-x: hidden;
+	}
 }
 </style>

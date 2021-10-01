@@ -90,4 +90,5 @@ export default mixins(showMessage).extend({
 	height: 100%;
 	padding-bottom: var(--spacing-5xl);
 }
+
 </style>

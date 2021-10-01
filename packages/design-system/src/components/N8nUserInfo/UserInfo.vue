@@ -49,13 +49,14 @@ export default Vue.extend({
 
 <style lang="scss" module>
 .container {
-	display: flex;
+	display: inline-flex;
+	overflow: hidden;
 }
 
 .avatarContainer {
 	min-height: 40px;
 	min-width: 40px;
-	display: flex;
+	display: inline-flex;
 	align-items: center;
 	justify-content: center;
 	color: var(--color-text-light);
@@ -63,7 +64,7 @@ export default Vue.extend({
 
 .infoContainer {
 	flex-grow: 1;
-	display: flex;
+	display: inline-flex;
 	flex-direction: column;;
 	justify-content: center;
 	margin-left: var(--spacing-xs);
