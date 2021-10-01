@@ -722,7 +722,7 @@ export interface IBounds {
 	maxY: number;
 }
 
-export type IRole = 'Owner' | 'Member';
+export type IRole = 'owner' | 'member';
 
 export interface INewUser {
 	firstName: string;
@@ -736,8 +736,10 @@ export interface IUser {
 	firstName?: string;
 	lastName?: string;
 	email: string;
-	role: IRole;
-	isOwner?: boolean;
+	globalRole: {
+		name: IRole;
+		id: string;
+	};
 	emailUndeliverable?: boolean;
 }
 

@@ -139,8 +139,8 @@ export const OTHER_WORK_AREA_KEY = 'otherWorkArea';
 export const OTHER_COMPANY_INDUSTRY_KEY = 'otherCompanyIndustry';
 
 export const ROLE: {Owner: IRole, Member: IRole} = {
-	Owner: 'Owner',
-	Member: 'Member',
+	Owner: 'owner',
+	Member: 'member',
 };
 
 export const LOGIN_STATUS: {LoggedIn: string, LoggedOut: string} = {
