@@ -4,7 +4,7 @@ import {
 	IRootState,
 	ISettingsState,
 } from '../Interface';
-import { getSettings } from '../api/settings';
+import { getSettings } from '../api/settings-mock';
 
 const module: Module<ISettingsState, IRootState> = {
 	namespaced: true,
@@ -15,10 +15,21 @@ const module: Module<ISettingsState, IRootState> = {
 		versionCli(state: ISettingsState) {
 			return state.settings.versionCli;
 		},
+		isUserManagementEnabled(state: ISettingsState): boolean {
+			return !!state.settings.userManagement && state.settings.userManagement.enabled;
+		},
+		isInstanceSetup(state: ISettingsState) {
+			return !!state.settings.userManagement && state.settings.userManagement.hasOwner;
+		},
 	},
 	mutations: {
 		setSettings(state: ISettingsState, settings: IN8nUISettings) {
 			state.settings = settings;
+		},
+		completeInstanceSetup(state: ISettingsState) {
+			if (state.settings.userManagement) {
+				state.settings.userManagement.hasOwner = true;
+			}
 		},
 	},
 	actions: {

@@ -30,6 +30,9 @@ export default mixins(showMessage).extend({
 		SettingsView,
 		'n8n-users-list': N8nUsersList,
 	},
+	async mounted() {
+		await this.$store.dispatch('users/fetchUsers');
+	},
 	computed: {
 		...mapGetters('users', ['allUsers', 'currentUserId']),
 	},
@@ -46,6 +49,12 @@ export default mixins(showMessage).extend({
 					if (confirm) {
 						try {
 							await this.$store.dispatch('users/deleteUser', {id: user.id});
+
+							this.$showToast({
+								type: 'success',
+								title: 'User deleted successfully',
+								message: `${user.email} was deleted`,
+							});
 						} catch (e) {
 							this.$showError(e, 'Problem deleting user');
 						}
@@ -62,6 +71,12 @@ export default mixins(showMessage).extend({
 			if (user) {
 				try {
 					await this.$store.dispatch('users/reinviteUser', {id: user.id});
+
+					this.$showToast({
+						type: 'success',
+						title: 'User reinvited successfully',
+						message: `${user.email} was invited again`,
+					});
 				} catch (e) {
 					this.$showError(e, 'Problem inviting user');
 				}

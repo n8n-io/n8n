@@ -73,7 +73,7 @@
 							<span slot="title" class="item-title">Import from File</span>
 						</template>
 					</n8n-menu-item>
-					<n8n-menu-item index="workflow-settings" :disabled="!currentWorkflow" v-if="currentUser">
+					<n8n-menu-item index="workflow-settings" :disabled="!currentWorkflow">
 						<template slot="title">
 							<font-awesome-icon icon="cog"/>
 							<span slot="title" class="item-title">Settings</span>
@@ -106,7 +106,7 @@
 					<span slot="title" class="item-title-root">Executions</span>
 				</n8n-menu-item>
 
-				<n8n-menu-item index="settings">
+				<n8n-menu-item index="settings" v-if="currentUser">
 					<font-awesome-icon icon="cog"/>&nbsp;
 					<span slot="title" class="item-title-root">Settings</span>
 				</n8n-menu-item>
@@ -320,6 +320,8 @@ export default mixins(
 			async onLogout () {
 				try {
 					await this.$store.dispatch('users/logout');
+
+					this.$router.push({name: 'SigninView'});
 				} catch (e) {
 					this.$showError(e, 'Could not log out');
 				}

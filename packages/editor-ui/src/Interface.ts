@@ -457,6 +457,10 @@ export interface IN8nUISettings {
 	};
 	versionNotifications: IVersionNotificationSettings;
 	instanceId: string;
+	userManagement?: {
+		enabled: boolean;
+		hasOwner: boolean;
+	};
 }
 
 export interface IWorkflowSettings extends IWorkflowSettingsWorkflow {
@@ -664,13 +668,6 @@ export interface IZoomConfig {
 }
 
 export type IRole = 'owner' | 'member';
-
-export interface INewUser {
-	firstName: string;
-	lastName: string;
-	email: string;
-	password: string;
-}
 
 export interface IUser {
 	id: string;
