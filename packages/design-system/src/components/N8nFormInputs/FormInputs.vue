@@ -8,7 +8,7 @@
 			<div
 				v-for="(input, j) in row"
 				:key="input.name"
-				:class="multiColumn && j < row.length - 1? $style.multiContainer : $style.inputContainer"
+				:class="columns > 1 && !columnView && j < columns - 1? $style.multiContainer : $style.inputContainer"
 			>
 				<n8n-form-input
 					v-bind="input.properties"
@@ -51,7 +51,7 @@ export default Vue.extend({
 			showValidationWarnings: false,
 			values: {} as {[key: string]: string},
 			validity: {} as {[key: string]: boolean},
-			multiColumn: false,
+			columns: 1,
 		};
 	},
 	mounted() {
@@ -61,8 +61,8 @@ export default Vue.extend({
 					Vue.set(this.values, input.name, input.initialValue);
 				}
 
-				if (row.length > 1 && !this.columnView) {
-					this.multiColumn = true;
+				if (row.length > this.columns) {
+					this.columns = row.length;
 				}
 			});
 		});
