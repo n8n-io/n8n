@@ -800,13 +800,14 @@ export function getNodeParameters(
 				}
 			}
 
-			const isEmptyOptional =
-				Object.keys(collectionValues).length === 0 && !nodeProperties.required;
+			const isNested = !nodeProperties.isTopLevel;
+
+			const isEmpty = Object.keys(collectionValues).length === 0;
 
 			const { values } = nodeProperties.options![0] as INodePropertyCollection;
 			const isFlat = values.every((v) => v.type !== 'fixedCollection');
 
-			if (isEmptyOptional && isFlat) {
+			if (isNested && isEmpty && isFlat) {
 				nodeParameters[nodeProperties.name] = createSectionToAdd(nodeProperties);
 				nodeParametersFull[nodeProperties.name] = nodeParameters[nodeProperties.name];
 			}

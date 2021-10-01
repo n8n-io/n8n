@@ -645,6 +645,7 @@ export interface INodeProperties {
 	isNodeSetting?: boolean;
 	noDataExpression?: boolean;
 	required?: boolean;
+	isTopLevel?: boolean;
 }
 export interface INodePropertyOptions {
 	name: string;

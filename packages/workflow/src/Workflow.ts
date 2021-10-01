@@ -100,9 +100,16 @@ export class Workflow {
 				// throw new Error(`The node type "${node.type}" of node "${node.name}" is not known.`);
 			}
 
+			const nodeProperties = nodeType.description.properties.map((property) => {
+				if (property.type === 'fixedCollection') {
+					property.isTopLevel = true;
+				}
+				return property;
+			});
+
 			// Add default values
 			const nodeParameters = NodeHelpers.getNodeParameters(
-				nodeType.description.properties,
+				nodeProperties,
 				node.parameters,
 				true,
 				false,
