@@ -20,13 +20,7 @@ export async function setupOwner(context: IRestApiContext, params: INewUser): Pr
 }
 
 export async function validateSignupToken(context: IRestApiContext, params: {token: string}): Promise<{inviter: {firstName: string, lastName: string}}> {
-	return Promise.resolve({
-		inviter: {
-			firstName: 'Moh',
-			lastName: 'Salah',
-		},
-	});
-	//  return await makeRestApiRequest(context, 'GET', '/resolve-signup-token', params);
+	return await makeRestApiRequest(context, 'GET', '/resolve-signup-token', params);
 }
 
 export async function signup(context: IRestApiContext, params: INewUser): Promise<IUser> {
