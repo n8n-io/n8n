@@ -150,6 +150,7 @@
 									label: 'Logout',
 									value: 'logout'
 								}]"
+								:focusHighlight="false"
 								placement="bottom-start"
 								@action="onLogout"
 							/>
