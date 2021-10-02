@@ -134,7 +134,7 @@ function removeUser(userId: string) {
 }
 
 function log(context: IRestApiContext, method: string, path: string, params?: any): void { // tslint:disable-line:no-any
-	console.log(method, path, params);
+	console.log(method, path, params); // eslint-disable-line no-console
 }
 
 export async function getCurrentUser(context: IRestApiContext): Promise<IUser | null> {
@@ -233,7 +233,7 @@ export async function updateUser(context: IRestApiContext, params: IUser): Promi
 }
 
 export async function updateUserPassword(context: IRestApiContext, params: {id: string, password: string}): Promise<void> {
-	log(context, 'PATCH', `/user/${params.id}/password`, params);
+	log(context, 'PATCH', `/user/${params.id}/password`, {password: params.password});
 }
 
 export async function deleteUser(context: IRestApiContext, {id, transferId}: {id: string, transferId?: string}): Promise<void> {
