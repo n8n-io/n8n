@@ -1,5 +1,4 @@
 import {
-	BINARY_ENCODING,
 	IExecuteFunctions,
 } from 'n8n-core';
 
@@ -345,10 +344,11 @@ export class Raindrop implements INodeType {
 							const binaryPropertyName = updateFields.cover as string;
 
 							const binaryData = items[i].binary![binaryPropertyName] as IBinaryData;
+							const dataBuffer = await this.helpers.getBinaryDataBuffer(i, binaryPropertyName);
 
 							const formData = {
 								cover: {
-									value: Buffer.from(binaryData.data, BINARY_ENCODING),
+									value: dataBuffer,
 									options: {
 										filename: binaryData.fileName,
 										contentType: binaryData.mimeType,

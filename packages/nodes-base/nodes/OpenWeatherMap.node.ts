@@ -208,7 +208,7 @@ export class OpenWeatherMap implements INodeType {
 		const items = this.getInputData();
 		const returnData: IDataObject[] = [];
 
-		const credentials = this.getCredentials('openWeatherMapApi');
+		const credentials = await this.getCredentials('openWeatherMapApi');
 
 		if (credentials === undefined) {
 			throw new NodeOperationError(this.getNode(), 'No credentials got returned!');

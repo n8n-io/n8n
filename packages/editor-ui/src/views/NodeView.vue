@@ -32,7 +32,7 @@
 		</div>
 		<DataDisplay @valueChanged="valueChanged"/>
 		<div v-if="!createNodeActive && !isReadOnly" class="node-creator-button" title="Add Node" @click="openNodeCreator">
-			<el-button icon="el-icon-plus" circle></el-button>
+			<n8n-icon-button size="xlarge" icon="plus" />
 		</div>
 		<node-creator
 			:active="createNodeActive"
@@ -59,52 +59,44 @@
 			</button>
 		</div>
 		<div class="workflow-execute-wrapper" v-if="!isReadOnly">
-			<el-button
-				type="text"
+			<n8n-button
 				@click.stop="runWorkflow()"
-				class="workflow-run-button"
-				:class="{'running': workflowRunning}"
-				:disabled="workflowRunning"
+				:loading="workflowRunning"
+				:label="runButtonText"
+				size="large"
+				icon="play-circle"
 				title="Executes the Workflow from the Start or Webhook Node."
-			>
-				<div class="run-icon">
-					<font-awesome-icon icon="spinner" spin v-if="workflowRunning"/>
-					<font-awesome-icon icon="play-circle" v-else/>
-				</div>
+				:type="workflowRunning ? 'light' : 'primary'"
+			/>
 
-				{{runButtonText}}
-			</el-button>
-
-			<el-button
+			<n8n-icon-button
 				v-if="workflowRunning === true && !executionWaitingForWebhook"
-				circle
-				type="text"
-				@click.stop="stopExecution()"
+				icon="stop"
+				size="large"
 				class="stop-execution"
+				type="light"
 				:title="stopExecutionInProgress ? 'Stopping current execution':'Stop current execution'"
-			>
-				<font-awesome-icon icon="stop" :class="{'fa-spin': stopExecutionInProgress}"/>
-			</el-button>
-			<el-button
+				:loading="stopExecutionInProgress"
+				@click.stop="stopExecution()"
+			/>
+
+			<n8n-icon-button
 				v-if="workflowRunning === true && executionWaitingForWebhook === true"
-				circle
-				type="text"
-				@click.stop="stopWaitingForWebhook()"
 				class="stop-execution"
+				icon="stop"
+				size="large"
 				title="Stop waiting for Webhook call"
-			>
-				<font-awesome-icon icon="stop" :class="{'fa-spin': stopExecutionInProgress}"/>
-			</el-button>
-			<el-button
+				type="light"
+				@click.stop="stopWaitingForWebhook()"
+			/>
+
+			<n8n-icon-button
 				v-if="!isReadOnly && workflowExecution && !workflowRunning"
-				circle
-				type="text"
-				@click.stop="clearExecutionData()"
-				class="clear-execution"
 				title="Deletes the current Execution Data."
-			>
-				<font-awesome-icon icon="trash" class="clear-execution-icon" />
-			</el-button>
+				icon="trash"
+				size="large"
+				@click.stop="clearExecutionData()"
+			/>
 		</div>
 		<Modals />
 	</div>
@@ -150,6 +142,8 @@ import {
 	INodeConnections,
 	INodeIssues,
 	INodeTypeDescription,
+	INodeTypeNameVersion,
+	NodeInputConnections,
 	NodeHelpers,
 	Workflow,
 	IRun,
@@ -167,6 +161,7 @@ import {
 	IPushDataExecutionFinished,
 	ITag,
 	IWorkflowTemplate,
+	IExecutionsSummary,
 } from '../Interface';
 import { mapGetters } from 'vuex';
 
@@ -409,6 +404,15 @@ export default mixins(
 						}
 					}
 				}
+
+				if ((data as IExecutionsSummary).waitTill) {
+					this.$showMessage({
+						title: `This execution hasn't finished yet`,
+						message: `<a onclick="window.location.reload(false);">Refresh</a> to see the latest status.<br/> <a href="https://docs.n8n.io/nodes/n8n-nodes-base.wait/" target="_blank">More info</a>`,
+						type: 'warning',
+						duration: 0,
+					});
+				}
 			},
 			async openWorkflowTemplate (templateId: string) {
 				this.setLoadingText('Loading template');
@@ -632,7 +636,7 @@ export default mixins(
 
 					this.$showMessage({
 						title: 'Workflow created',
-						message: 'A new workflow got created!',
+						message: 'A new workflow was successfully created!',
 						type: 'success',
 					});
 				} else if ((e.key === 's') && (this.isCtrlKeyPressed(e) === true)) {
@@ -912,12 +916,12 @@ export default mixins(
 					await this.restApi().stopCurrentExecution(executionId);
 					this.$showMessage({
 						title: 'Execution stopped',
-						message: `The execution with the id "${executionId}" got stopped!`,
+						message: `The execution with the id "${executionId}" was stopped!`,
 						type: 'success',
 					});
 				} catch (error) {
 					// Execution stop might fail when the execution has already finished. Let's treat this here.
-					const execution = await this.restApi().getExecution(executionId) as IExecutionResponse;
+					const execution = await this.restApi().getExecution(executionId);
 					if (execution.finished) {
 						const executedData = {
 							data: execution.data,
@@ -957,8 +961,8 @@ export default mixins(
 				}
 
 				this.$showMessage({
-					title: 'Webhook got deleted',
-					message: `The webhook got deleted!`,
+					title: 'Webhook deleted',
+					message: `The webhook was deleted successfully`,
 					type: 'success',
 				});
 			},
@@ -1875,13 +1879,13 @@ export default mixins(
 				// Before proceeding we must check if all nodes contain the `properties` attribute.
 				// Nodes are loaded without this information so we must make sure that all nodes
 				// being added have this information.
-				await this.loadNodesProperties(nodes.map(node => node.type));
+				await this.loadNodesProperties(nodes.map(node => ({name: node.type, version: node.typeVersion})));
 
 				// Add the node to the node-list
 				let nodeType: INodeTypeDescription | null;
 				let foundNodeIssues: INodeIssues | null;
 				nodes.forEach((node) => {
-					nodeType = this.$store.getters.nodeType(node.type);
+					nodeType = this.$store.getters.nodeType(node.type, node.typeVersion);
 
 					// Make sure that some properties always exist
 					if (!node.hasOwnProperty('disabled')) {
@@ -1988,7 +1992,7 @@ export default mixins(
 				let newName: string;
 				const createNodes: INode[] = [];
 
-				await this.loadNodesProperties(data.nodes.map(node => node.type));
+				await this.loadNodesProperties(data.nodes.map(node => ({name: node.type, version: node.typeVersion})));
 
 				data.nodes.forEach(node => {
 					if (nodeTypesCount[node.type] !== undefined) {
@@ -2188,13 +2192,11 @@ export default mixins(
 			},
 			async loadSettings (): Promise<void> {
 				const settings = await this.restApi().getSettings() as IN8nUISettings;
-
 				this.$store.commit('setUrlBaseWebhook', settings.urlBaseWebhook);
 				this.$store.commit('setEndpointWebhook', settings.endpointWebhook);
 				this.$store.commit('setEndpointWebhookTest', settings.endpointWebhookTest);
 				this.$store.commit('setSaveDataErrorExecution', settings.saveDataErrorExecution);
 				this.$store.commit('setSaveDataSuccessExecution', settings.saveDataSuccessExecution);
-				this.$store.commit('setSaveManualExecutions', settings.saveManualExecutions);
 				this.$store.commit('setTimezone', settings.timezone);
 				this.$store.commit('setExecutionTimeout', settings.executionTimeout);
 				this.$store.commit('setMaxExecutionTimeout', settings.maxExecutionTimeout);
@@ -2209,16 +2211,24 @@ export default mixins(
 				this.$store.commit('setNodeTypes', nodeTypes);
 			},
 			async loadCredentialTypes (): Promise<void> {
-				const credentialTypes = await this.restApi().getCredentialTypes();
-				this.$store.commit('setCredentialTypes', credentialTypes);
+				await this.$store.dispatch('credentials/fetchCredentialTypes');
 			},
 			async loadCredentials (): Promise<void> {
-				const credentials = await this.restApi().getAllCredentials();
-				this.$store.commit('setCredentials', credentials);
+				await this.$store.dispatch('credentials/fetchAllCredentials');
 			},
-			async loadNodesProperties(nodeNames: string[]): Promise<void> {
-				const allNodes = this.$store.getters.allNodeTypes;
-				const nodesToBeFetched = allNodes.filter((node: INodeTypeDescription) => nodeNames.includes(node.name) && !node.hasOwnProperty('properties')).map((node: INodeTypeDescription) => node.name) as string[];
+			async loadNodesProperties(nodeInfos: INodeTypeNameVersion[]): Promise<void> {
+				const allNodes:INodeTypeDescription[] = this.$store.getters.allNodeTypes;
+
+				const nodesToBeFetched:INodeTypeNameVersion[] = [];
+				allNodes.forEach(node => {
+					if(!!nodeInfos.find(n => n.name === node.name && n.version === node.version) && !node.hasOwnProperty('properties')) {
+						nodesToBeFetched.push({
+							name: node.name,
+							version: node.version,
+						});
+					}
+				});
+
 				if (nodesToBeFetched.length > 0) {
 					// Only call API if node information is actually missing
 					this.startLoading();
@@ -2313,13 +2323,6 @@ export default mixins(
 
 .node-creator-button button {
 	position: relative;
-	background: $--color-primary;
-	font-size: 1.4em;
-	color: #fff;
-}
-
-.node-creator-button:hover button {
-	transform: scale(1.05);
 }
 
 .node-view-root {
@@ -2376,20 +2379,8 @@ export default mixins(
 	width: 300px;
 	text-align: center;
 
-	.run-icon {
-		display: inline-block;
-		transform: scale(1.4);
-		margin-right: 0.5em;
-	}
-
-	.workflow-run-button {
-		padding: 12px;
-	}
-
-	.stop-execution,
-	.workflow-run-button.running {
-		color: $--color-primary;
-		background-color: $--color-primary-light;
+	> * {
+		margin-inline-end: 0.625rem;
 	}
 }
 

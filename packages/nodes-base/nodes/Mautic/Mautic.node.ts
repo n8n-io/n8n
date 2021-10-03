@@ -40,6 +40,11 @@ import {
 } from './ContactSegmentDescription';
 
 import {
+	campaignContactFields,
+	campaignContactOperations,
+} from './CampaignContactDescription';
+
+import {
 	snakeCase,
 } from 'change-case';
 
@@ -105,6 +110,11 @@ export class Mautic implements INodeType {
 				type: 'options',
 				options: [
 					{
+						name: 'Campaign Contact',
+						value: 'campaignContact',
+						description: 'Add/remove contacts to/from a campaign',
+					},
+					{
 						name: 'Company',
 						value: 'company',
 						description: 'Create or modify a company',
@@ -134,6 +144,8 @@ export class Mautic implements INodeType {
 			...contactFields,
 			...contactSegmentOperations,
 			...contactSegmentFields,
+			...campaignContactOperations,
+			...campaignContactFields,
 			...companyContactOperations,
 			...companyContactFields,
 		],
@@ -230,6 +242,19 @@ export class Mautic implements INodeType {
 					returnData.push({
 						name: segment.name,
 						value: segment.id,
+					});
+				}
+				return returnData;
+			},
+			// Get all the available campaings to display them to user so that he can
+			// select them easily
+			async getCampaigns(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const returnData: INodePropertyOptions[] = [];
+				const campaings = await mauticApiRequestAllItems.call(this, 'campaigns', 'GET', '/campaigns');
+				for (const campaign of campaings) {
+					returnData.push({
+						name: campaign.name,
+						value: campaign.id,
 					});
 				}
 				return returnData;
@@ -771,6 +796,21 @@ export class Mautic implements INodeType {
 						const contactId = this.getNodeParameter('contactId', i) as string;
 						const segmentId = this.getNodeParameter('segmentId', i) as string;
 						responseData = await mauticApiRequest.call(this, 'POST', `/segments/${segmentId}/contact/${contactId}/remove`);
+					}
+				}
+
+				if (resource === 'campaignContact') {
+					//https://developer.mautic.org/#add-contact-to-a-campaign
+					if (operation === 'add') {
+						const contactId = this.getNodeParameter('contactId', i) as string;
+						const campaignId = this.getNodeParameter('campaignId', i) as string;
+						responseData = await mauticApiRequest.call(this, 'POST', `/campaigns/${campaignId}/contact/${contactId}/add`);
+					}
+					//https://developer.mautic.org/#remove-contact-from-a-campaign
+					if (operation === 'remove') {
+						const contactId = this.getNodeParameter('contactId', i) as string;
+						const campaignId = this.getNodeParameter('campaignId', i) as string;
+						responseData = await mauticApiRequest.call(this, 'POST', `/campaigns/${campaignId}/contact/${contactId}/remove`);
 					}
 				}
 

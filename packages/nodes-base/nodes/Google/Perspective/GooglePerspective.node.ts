@@ -139,7 +139,7 @@ export class GooglePerspective implements INodeType {
 										value: 'toxicity',
 									},
 								],
-								description: 'Attribute to analyze in the text. Details <a target="_blank" href="https://developers.perspectiveapi.com/s/about-the-api-attributes-and-languages">here</a>',
+								description: 'Attribute to analyze in the text. Details <a href="https://developers.perspectiveapi.com/s/about-the-api-attributes-and-languages">here</a>',
 								default: 'flirtation',
 							},
 							{

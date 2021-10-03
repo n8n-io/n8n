@@ -1,4 +1,5 @@
 import {
+	BINARY_ENCODING,
 	IExecuteFunctions,
 	IHookFunctions,
 	ILoadOptionsFunctions,
@@ -10,7 +11,7 @@ import {
 } from 'request';
 
 import {
-	IDataObject, NodeApiError, NodeOperationError,
+	IBinaryData, IDataObject, NodeApiError, NodeOperationError,
 } from 'n8n-workflow';
 
 // Interface in n8n
@@ -142,8 +143,8 @@ export function addAdditionalFields(this: IExecuteFunctions, body: IDataObject, 
  * @param {object} body
  * @returns {Promise<any>}
  */
-export async function apiRequest(this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions | IWebhookFunctions, method: string, endpoint: string, body: object, query?: IDataObject, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
-	const credentials = this.getCredentials('telegramApi');
+export async function apiRequest(this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions | IWebhookFunctions, method: string, endpoint: string, body: IDataObject, query?: IDataObject, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
+	const credentials = await this.getCredentials('telegramApi');
 
 	if (credentials === undefined) {
 		throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
@@ -152,12 +153,11 @@ export async function apiRequest(this: IHookFunctions | IExecuteFunctions | ILoa
 	query = query || {};
 
 	const options: OptionsWithUri = {
-		headers: {
-		},
+		headers: {},
 		method,
+		uri: `https://api.telegram.org/bot${credentials.accessToken}/${endpoint}`,
 		body,
 		qs: query,
-		uri: `https://api.telegram.org/bot${credentials.accessToken}/${endpoint}`,
 		json: true,
 	};
 
@@ -191,4 +191,8 @@ export function getImageBySize(photos: IDataObject[], size: string): IDataObject
 	const index = sizes[size] as number;
 
 	return photos[index];
+}
+
+export function getPropertyName(operation: string) {
+	return operation.replace('send', '').toLowerCase();
 }

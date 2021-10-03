@@ -1,4 +1,7 @@
-import { PLACEHOLDER_EMPTY_WORKFLOW_ID } from '@/constants';
+import {
+	PLACEHOLDER_FILLED_AT_EXECUTION_TIME,
+	PLACEHOLDER_EMPTY_WORKFLOW_ID,
+} from '@/constants';
 
 import {
 	IConnections,
@@ -8,14 +11,16 @@ import {
 	INodeIssues,
 	INodeParameters,
 	NodeParameterValue,
+	INodeCredentials,
 	INodeType,
 	INodeTypes,
 	INodeTypeData,
 	INodeTypeDescription,
+	INodeVersionedType,
 	IRunData,
 	IRunExecutionData,
 	IWorfklowIssues,
-	INodeCredentials,
+	IWorkflowDataProxyAdditionalKeys,
 	Workflow,
 	NodeHelpers,
 } from 'n8n-workflow';
@@ -29,6 +34,7 @@ import {
 	IWorkflowDataUpdate,
 	XYPositon,
 	ITag,
+	IUpdateInformation,
 } from '../../Interface';
 
 import { externalHooks } from '@/components/mixins/externalHooks';
@@ -39,6 +45,7 @@ import { showMessage } from '@/components/mixins/showMessage';
 import { isEqual } from 'lodash';
 
 import mixins from 'vue-typed-mixins';
+import { v4 as uuidv4} from 'uuid';
 
 export const workflowHelpers = mixins(
 	externalHooks,
@@ -152,7 +159,7 @@ export const workflowHelpers = mixins(
 						continue;
 					}
 
-					nodeType = workflow.nodeTypes.getByName(node.type);
+					nodeType = workflow.nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
 
 					if (nodeType === undefined) {
 						// Node type is not known
@@ -183,12 +190,23 @@ export const workflowHelpers = mixins(
 				const nodeTypes: INodeTypes = {
 					nodeTypes: {},
 					init: async (nodeTypes?: INodeTypeData): Promise<void> => { },
-					getAll: (): INodeType[] => {
+					getAll: (): Array<INodeType | INodeVersionedType> => {
 						// Does not get used in Workflow so no need to return it
 						return [];
 					},
-					getByName: (nodeType: string): INodeType | undefined => {
+					getByName: (nodeType: string): INodeType | INodeVersionedType | undefined => {
 						const nodeTypeDescription = this.$store.getters.nodeType(nodeType);
+
+						if (nodeTypeDescription === null) {
+							return undefined;
+						}
+
+						return {
+							description: nodeTypeDescription,
+						};
+					},
+					getByNameAndVersion: (nodeType: string, version?: number): INodeType | undefined => {
+						const nodeTypeDescription = this.$store.getters.nodeType(nodeType, version);
 
 						if (nodeTypeDescription === null) {
 							return undefined;
@@ -277,7 +295,7 @@ export const workflowHelpers = mixins(
 
 				// Get the data of the node type that we can get the default values
 				// TODO: Later also has to care about the node-type-version as defaults could be different
-				const nodeType = this.$store.getters.nodeType(node.type) as INodeTypeDescription;
+				const nodeType = this.$store.getters.nodeType(node.type, node.typeVersion) as INodeTypeDescription;
 
 				if (nodeType !== null) {
 					// Node-Type is known so we can save the parameters correctly
@@ -367,7 +385,12 @@ export const workflowHelpers = mixins(
 					connectionInputData = [];
 				}
 
-				return workflow.expression.getParameterValue(parameter, runExecutionData, runIndex, itemIndex, activeNode.name, connectionInputData, 'manual', false) as IDataObject;
+				const additionalKeys: IWorkflowDataProxyAdditionalKeys = {
+					$executionId: PLACEHOLDER_FILLED_AT_EXECUTION_TIME,
+					$resumeWebhookUrl: PLACEHOLDER_FILLED_AT_EXECUTION_TIME,
+				};
+
+				return workflow.expression.getParameterValue(parameter, runExecutionData, runIndex, itemIndex, activeNode.name, connectionInputData, 'manual', additionalKeys, false) as IDataObject;
 			},
 
 			resolveExpression(expression: string, siblingParameters: INodeParameters = {}) {
@@ -435,13 +458,23 @@ export const workflowHelpers = mixins(
 				}
 			},
 
-			async saveAsNewWorkflow ({name, tags}: {name?: string, tags?: string[]} = {}): Promise<boolean> {
+			async saveAsNewWorkflow ({name, tags, resetWebhookUrls}: {name?: string, tags?: string[], resetWebhookUrls?: boolean} = {}): Promise<boolean> {
 				try {
 					this.$store.commit('addActiveAction', 'workflowSaving');
 
 					const workflowDataRequest: IWorkflowDataUpdate = await this.getWorkflowDataToSave();
 					// make sure that the new ones are not active
 					workflowDataRequest.active = false;
+					const changedNodes = {} as IDataObject;
+					if (resetWebhookUrls) {
+						workflowDataRequest.nodes = workflowDataRequest.nodes!.map(node => {
+							if (node.webhookId) {
+								node.webhookId = uuidv4();
+								changedNodes[node.name] = node.webhookId;
+							}
+							return node;
+						});
+					}
 
 					if (name) {
 						workflowDataRequest.name = name.trim();
@@ -457,7 +490,15 @@ export const workflowHelpers = mixins(
 					this.$store.commit('setWorkflowName', {newName: workflowData.name, setStateDirty: false});
 					this.$store.commit('setWorkflowSettings', workflowData.settings || {});
 					this.$store.commit('setStateDirty', false);
-
+					Object.keys(changedNodes).forEach((nodeName) => {
+						const changes = {
+							key: 'webhookId',
+							value: changedNodes[nodeName],
+							name: nodeName,
+						} as IUpdateInformation;
+						this.$store.commit('setNodeValue', changes);
+					});
+					
 					const createdTags = (workflowData.tags || []) as ITag[];
 					const tagIds = createdTags.map((tag: ITag): string => tag.id);
 					this.$store.commit('setWorkflowTagIds', tagIds);
@@ -517,8 +558,7 @@ export const workflowHelpers = mixins(
 			async dataHasChanged(id: string) {
 				const currentData = await this.getWorkflowDataToSave();
 
-				let data: IWorkflowDb;
-				data = await this.restApi().getWorkflow(id);
+				const data: IWorkflowDb = await this.restApi().getWorkflow(id);
 
 				if(data !== undefined) {
 					const x = {

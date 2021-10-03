@@ -18,7 +18,7 @@ const BEEMINDER_URI = 'https://www.beeminder.com/api/v1';
 
 export async function beeminderApiRequest(this: IExecuteFunctions | IWebhookFunctions | IHookFunctions | ILoadOptionsFunctions, method: string, endpoint: string, body: any = {}, query: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
 
-	const credentials = this.getCredentials('beeminderApi') as IDataObject;
+	const credentials = await this.getCredentials('beeminderApi') as IDataObject;
 
 	Object.assign(body, { auth_token: credentials.authToken });
 
