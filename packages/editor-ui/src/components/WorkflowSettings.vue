@@ -1,6 +1,6 @@
 <template>
 	<Modal
-		:name="modalName"
+		:name="WORKFLOW_SETTINGS_MODAL_KEY"
 		width="65%"
 		maxHeight="80%"
 		title="Workflow Settings"
@@ -187,6 +187,7 @@ import {
 	IWorkflowShortResponse,
 } from '@/Interface';
 import Modal from './Modal.vue';
+import { WORKFLOW_SETTINGS_MODAL_KEY } from '../constants';
 
 import mixins from 'vue-typed-mixins';
 
@@ -197,11 +198,6 @@ export default mixins(
 	showMessage,
 ).extend({
 	name: 'WorkflowSettings',
-	props: {
-		modalName: {
-			type: String,
-		},
-	},
 	components: {
 		Modal,
 	},
@@ -236,6 +232,7 @@ export default mixins(
 			maxExecutionTimeout: this.$store.getters.maxExecutionTimeout,
 			timeoutHMS: { hours: 0, minutes: 0, seconds: 0 } as ITimeoutHMS,
 			modalBus: new Vue(),
+			WORKFLOW_SETTINGS_MODAL_KEY,
 		};
 	},
 	async mounted () {
@@ -525,6 +522,7 @@ export default mixins(
 
 .setting-name {
 	line-height: 32px;
+	font-weight: var(--font-weight-regular);
 }
 
 .setting-name:hover {

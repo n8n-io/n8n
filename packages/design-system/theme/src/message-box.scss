@@ -48,6 +48,7 @@
 		font-size: var.$messagebox-font-size;
 		line-height: 1;
 		color: var.$messagebox-title-color;
+		font-weight: var(--font-weight-regular);
 	}
 
 	@include mixins.e(headerbtn) {
@@ -129,6 +130,7 @@
 
 	@include mixins.e(message) {
 		margin: 0;
+		font-weight: var(--font-weight-regular);
 
 		& p {
 			margin: 0;

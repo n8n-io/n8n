@@ -1,7 +1,7 @@
 <template>
 	<Modal
 		title="Manage tags"
-		:name="modalName"
+		:name="TAGS_MANAGER_MODAL_KEY"
 		:eventBus="modalBus"
 		@enter="onEnter"
 		minWidth="620px"
@@ -40,13 +40,13 @@ import { showMessage } from "@/components/mixins/showMessage";
 import TagsView from "@/components/TagsManager/TagsView/TagsView.vue";
 import NoTagsView from "@/components/TagsManager/NoTagsView.vue";
 import Modal from "@/components/Modal.vue";
+import { TAGS_MANAGER_MODAL_KEY } from '../../constants';
 
 export default mixins(showMessage).extend({
 	name: "TagsManager",
 	created() {
 		this.$store.dispatch("tags/fetchAll", {force: true, withUsageCount: true});
 	},
-	props: ['modalName'],
 	data() {
 		const tagIds = (this.$store.getters['tags/allTags'] as ITag[])
 			.map((tag) => tag.id);
@@ -55,6 +55,7 @@ export default mixins(showMessage).extend({
 			tagIds,
 			isCreating: false,
 			modalBus: new Vue(),
+			TAGS_MANAGER_MODAL_KEY,
 		};
 	},
 	components: {

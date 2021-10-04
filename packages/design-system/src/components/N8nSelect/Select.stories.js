@@ -1,5 +1,6 @@
 import N8nSelect from './Select.vue';
 import N8nOption from '../N8nOption';
+import N8nIcon from '../N8nIcon';
 import { action } from '@storybook/addon-actions';
 
 export default {
@@ -48,6 +49,7 @@ const Template = (args, { argTypes }) => ({
 	components: {
 		N8nSelect,
 		N8nOption,
+		N8nIcon,
 	},
 	template: '<n8n-select v-bind="$props" v-model="val" @input="onInput" @change="onChange"><n8n-option value="1">op1</n8n-option><n8n-option value="2">op2</n8n-option></n8n-select>',
 	data() {
@@ -73,6 +75,7 @@ const ManyTemplate = (args, { argTypes }) => ({
 	components: {
 		N8nSelect,
 		N8nOption,
+		N8nIcon,
 	},
 	template: `<div class="multi-container">${selects}</div>`,
 	methods,
@@ -97,6 +100,7 @@ const ManyTemplateWithIcon = (args, { argTypes }) => ({
 	components: {
 		N8nSelect,
 		N8nOption,
+		N8nIcon,
 	},
 	template: `<div class="multi-container">${selectsWithIcon}</div>`,
 	methods,
@@ -120,6 +124,7 @@ const LimitedWidthTemplate = (args, { argTypes }) => ({
 	components: {
 		N8nSelect,
 		N8nOption,
+		N8nIcon,
 	},
 	template: '<div style="width:100px;"><n8n-select v-bind="$props" v-model="val" @input="onInput" @change="onChange"><n8n-option value="1" label="opt1 11 1111" /><n8n-option value="2" label="opt2 test very long ipsum"/></n8n-select></div>',
 	data() {

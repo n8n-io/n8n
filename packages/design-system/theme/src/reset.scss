@@ -11,7 +11,7 @@ body {
 	overscroll-behavior-x: none;
 	line-height: 1;
 	font-size: var(--font-size-m);
-	font-weight: 300;
+	font-weight: var(--font-weight-regular);
 	color: var(--color-text-dark);
 	-webkit-font-smoothing: antialiased;
 	-moz-osx-font-smoothing: grayscale;

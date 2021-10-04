@@ -2,7 +2,6 @@
 	<el-dialog
 		:visible="visible"
 		:before-close="closeDialog"
-		:title="title"
 		:class="{'dialog-wrapper': true, 'center': center, 'scrollable': scrollable}"
 		:width="width"
 		:show-close="showClose"
@@ -10,8 +9,18 @@
 		:style="styles"
 		append-to-body
 	>
-		<template v-slot:title>
+		<template v-slot:title v-if="$scopedSlots.header">
 			<slot name="header" v-if="!loading" />
+		</template>
+		<template v-slot:title v-else-if="title">
+			<div>
+				<div>
+					<n8n-heading v-if="title" size="xlarge">{{title}}</n8n-heading>
+				</div>
+				<div>
+					<n8n-heading v-if="subtitle" size="small" color="light">{{subtitle}}</n8n-heading>
+				</div>
+			</div>
 		</template>
 		<div class="modal-content" @keydown.stop @keydown.enter="handleEnter" @keydown.esc="closeDialog">
 			<slot v-if="!loading"  name="content"/>
@@ -19,7 +28,7 @@
 				<n8n-spinner />
 			</div>
 		</div>
-		<el-row  v-if="!loading" class="modal-footer">
+		<el-row  v-if="!loading && $scopedSlots.footer" class="modal-footer">
 			<slot name="footer" :close="closeDialog" />
 		</el-row>
 	</el-dialog>
@@ -35,6 +44,9 @@ export default Vue.extend({
 			type: String,
 		},
 		title: {
+			type: String,
+		},
+		subtitle: {
 			type: String,
 		},
 		eventBus: {
@@ -76,6 +88,10 @@ export default Vue.extend({
 			type: String,
 		},
 		scrollable: {
+			type: Boolean,
+			default: false,
+		},
+		centerTitle: {
 			type: Boolean,
 			default: false,
 		},
