@@ -1,7 +1,7 @@
 <template functional>
 	<div :class="$style.inputLabel">
-		<div :class="$style.label">
-			<component :is="$options.components.N8nText" :bold="true">
+		<div :class="props.label ? $style.label: ''">
+			<component v-if="props.label" :is="$options.components.N8nText" :bold="true">
 				{{ props.label }}
 				<component :is="$options.components.N8nText" color="primary" :bold="true" v-if="props.required">*</component>
 			</component>
@@ -33,7 +33,6 @@ export default {
 	props: {
 		label: {
 			type: String,
-			required: true,
 		},
 		tooltipText: {
 			type: String,

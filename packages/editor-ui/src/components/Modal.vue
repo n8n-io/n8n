@@ -2,7 +2,7 @@
 	<el-dialog
 		:visible="visible"
 		:before-close="closeDialog"
-		:class="{'dialog-wrapper': true, 'center': center, 'scrollable': scrollable}"
+		:class="{'dialog-wrapper': true, [$style.center]: center, scrollable: scrollable}"
 		:width="width"
 		:show-close="showClose"
 		:custom-class="getCustomClass()"
@@ -13,18 +13,18 @@
 			<slot name="header" v-if="!loading" />
 		</template>
 		<template v-slot:title v-else-if="title">
-			<div>
-				<div>
-					<n8n-heading v-if="title" size="xlarge">{{title}}</n8n-heading>
+			<div :class="centerTitle ? $style.centerTitle : ''">
+				<div v-if="title">
+					<n8n-heading size="xlarge">{{title}}</n8n-heading>
 				</div>
-				<div>
-					<n8n-heading v-if="subtitle" size="small" color="text-light">{{subtitle}}</n8n-heading>
+				<div v-if="subtitle" :class="$style.subtitle">
+					<n8n-heading size="small" color="text-light">{{subtitle}}</n8n-heading>
 				</div>
 			</div>
 		</template>
 		<div class="modal-content" @keydown.stop @keydown.enter="handleEnter" @keydown.esc="closeDialog">
 			<slot v-if="!loading"  name="content"/>
-			<div class="loader" v-else>
+			<div :class="$style.loader" v-else>
 				<n8n-spinner />
 			</div>
 		</div>
@@ -204,12 +204,14 @@ export default Vue.extend({
 		overflow: hidden;
 		flex-grow: 1;
 	}
-}
 
-.scrollable .modal-content {
-	overflow-y: auto;
+	&.scrollable .modal-content {
+		overflow-y: auto;
+	}
 }
+</style>
 
+<style lang="scss" module>
 .center {
 		display: flex;
 		align-items: center;
@@ -223,5 +225,13 @@ export default Vue.extend({
 	color: var(--color-primary-tint-1);
 	font-size: 30px;
 	height: 80%;
+}
+
+.centerTitle {
+	text-align: center;
+}
+
+.subtitle {
+	margin-top: var(--spacing-2xs);
 }
 </style>

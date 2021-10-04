@@ -5,7 +5,6 @@
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
 export default {
 	name: 'n8n-heading',
 	props: {
@@ -22,22 +21,15 @@ export default {
 			type: String,
 			validator: (value: string): boolean => ['primary', 'text-dark', 'text-base', 'text-light'].includes(value),
 		},
-		align: {
-			type: String,
-			validator: (value: string): boolean => ['right', 'left', 'center'].includes(value),
-		},
 	},
 	methods: {
 		getClass(props: {size: string, bold: boolean}) {
 			return `heading-${props.size}${props.bold ? '-bold' : '-regular'}`;
 		},
-		getStyles(props: {color: string, align: string}) {
+		getStyles(props: {color: string}) {
 			const styles = {} as any;
 			if (props.color) {
 				styles.color = `var(--color-${props.color})`;
-			}
-			if (props.align) {
-				styles['text-align'] = props.align;
 			}
 			return styles;
 		},

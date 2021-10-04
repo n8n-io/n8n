@@ -653,3 +653,34 @@ export interface IZoomConfig {
 	scale: number;
 	offset: XYPositon;
 }
+
+type IValidationRule = {
+	name: string;
+	config?: any; // tslint:disable-line:no-any
+};
+
+type IFormInputsCol = {
+	name: string;
+	initialValue?: string | number | boolean | null;
+	properties: {
+		label: string;
+		type?: "text" | "email" | "password" | 'select';
+		maxlength?: number;
+		required?: boolean;
+		validators?: {
+			[name: string]: IValidator;
+		};
+		validationRules?: IValidationRule[];
+		infoText?: string;
+		placeholder?: string;
+		options?: Array<{label: string; value: string}>;
+	}
+};
+
+type IFormInputsRow = IFormInputsCol[];
+
+type IValidator = {
+	validate: Function;
+};
+
+export type IFormInputs = IFormInputsRow[];
