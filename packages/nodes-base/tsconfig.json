@@ -25,6 +25,8 @@
 		"src/**/*",
 		"nodes/**/*",
 		"nodes/**/*.json",
+		"zluri-nodes/**/*",
+		"zluri-nodes/**/*.json",
 		"test/**/*"
 	],
 	"exclude": [
