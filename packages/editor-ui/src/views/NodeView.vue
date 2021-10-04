@@ -147,6 +147,7 @@ import {
 	NodeHelpers,
 	Workflow,
 	IRun,
+	INodeCredentialsDetails,
 } from 'n8n-workflow';
 import {
 	IConnectionsUi,
@@ -1879,9 +1880,8 @@ export default mixins(
 				if (!node.credentials) {
 					return;
 				}
-				Object.keys(node.credentials).forEach((nodeCredentialType: string) => {
+				Object.entries(node.credentials).forEach(([nodeCredentialType, nodeCredentials]: [string, INodeCredentialsDetails]) => {
 					const credentialOptions = this.$store.getters['credentials/getCredentialsByType'](nodeCredentialType) as ICredentialsResponse[];
-					let nodeCredentials = node.credentials![nodeCredentialType];
 
 					// Check if workflows applies old credentials style
 					if (typeof nodeCredentials === 'string') {
@@ -1966,6 +1966,7 @@ export default mixins(
 						}
 					}
 
+					// check and match credentials, apply new format if old is used
 					this.matchCredentials(node);
 
 					foundNodeIssues = this.getNodeIssues(nodeType, node);

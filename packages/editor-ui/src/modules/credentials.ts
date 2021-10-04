@@ -97,8 +97,21 @@ const module: Module<ICredentialsState, IRootState> = {
 			};
 		},
 		getCredentialsByType: (state: ICredentialsState, getters: any) => { // tslint:disable-line:no-any
+			let cache: {[type: string]: ICredentialsResponse[]} = {};
+			let timer = false;
 			return (credentialType: string): ICredentialsResponse[] => {
-				return getters.allCredentials.filter((credentialData: ICredentialsResponse) => credentialData.type === credentialType);
+				if (!cache[credentialType]) {
+					cache[credentialType] = Object.values(state.credentials).filter((credentialData: ICredentialsResponse) => credentialData.type === credentialType);
+				}
+				// reset cache after 3 seconds
+				if (!timer) {
+					timer = true;
+					setTimeout(() => {
+						cache = {};
+						timer = false;
+					}, 3000);
+				}
+				return cache[credentialType];
 			};
 		},
 		getNodesWithAccess (state: ICredentialsState, getters: any, rootState: IRootState, rootGetters: any) { // tslint:disable-line:no-any
