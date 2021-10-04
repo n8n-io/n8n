@@ -33,11 +33,8 @@ export default {
 		},
 		getStyles(props: {color: string, align: string}) {
 			const styles = {} as any;
-			if (props.color === 'primary') {
+			if (props.color) {
 				styles.color = `var(--color-${props.color})`;
-			}
-			else if (props.color) {
-				styles.color = `var(--color-text-${props.color})`;
 			}
 			if (props.align) {
 				styles['text-align'] = props.align;

@@ -166,7 +166,7 @@ import { saveAs } from 'file-saver';
 import mixins from 'vue-typed-mixins';
 import { mapGetters } from 'vuex';
 import MenuItemsIterator from './MainSidebarMenuItemsIterator.vue';
-import { CREDENTIAL_LIST_MODAL_KEY, CREDENTIAL_SELECT_MODAL_KEY, DUPLICATE_MODAL_KEY, TAGS_MANAGER_MODAL_KEY, VERSIONS_MODAL_KEY, WORKFLOW_SETTINGS_MODAL_KEY, WORKLOW_OPEN_MODAL_KEY } from '@/constants';
+import { CREDENTIAL_LIST_MODAL_KEY, CREDENTIAL_SELECT_MODAL_KEY, DUPLICATE_MODAL_KEY, TAGS_MANAGER_MODAL_KEY, VERSIONS_MODAL_KEY, WORKFLOW_SETTINGS_MODAL_KEY, WORKFLOW_OPEN_MODAL_KEY } from '@/constants';
 
 const helpMenuItems: IMenuItem[] = [
 	{
@@ -365,7 +365,7 @@ export default mixins(
 			},
 			async handleSelect (key: string, keyPath: string) {
 				if (key === 'workflow-open') {
-					this.$store.dispatch('ui/openModal', WORKLOW_OPEN_MODAL_KEY);
+					this.$store.dispatch('ui/openModal', WORKFLOW_OPEN_MODAL_KEY);
 				} else if (key === 'workflow-import-file') {
 					(this.$refs.importFile as HTMLInputElement).click();
 				} else if (key === 'workflow-import-url') {

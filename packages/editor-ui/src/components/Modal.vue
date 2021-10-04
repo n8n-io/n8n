@@ -18,7 +18,7 @@
 					<n8n-heading v-if="title" size="xlarge">{{title}}</n8n-heading>
 				</div>
 				<div>
-					<n8n-heading v-if="subtitle" size="small" color="light">{{subtitle}}</n8n-heading>
+					<n8n-heading v-if="subtitle" size="small" color="text-light">{{subtitle}}</n8n-heading>
 				</div>
 			</div>
 		</template>

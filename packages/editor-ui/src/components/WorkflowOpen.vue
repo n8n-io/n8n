@@ -1,6 +1,6 @@
 <template>
 	<Modal
-		:name="WORKLOW_OPEN_MODAL_KEY"
+		:name="WORKFLOW_OPEN_MODAL_KEY"
 		width="80%"
 		minWidth="620px"
 		:classic="true"
@@ -66,7 +66,7 @@ import TagsContainer from '@/components/TagsContainer.vue';
 import TagsDropdown from '@/components/TagsDropdown.vue';
 import WorkflowActivator from '@/components/WorkflowActivator.vue';
 import { convertToDisplayDate } from './helpers';
-import { WORKLOW_OPEN_MODAL_KEY } from '../constants';
+import { WORKFLOW_OPEN_MODAL_KEY } from '../constants';
 
 export default mixins(
 	genericHelpers,
@@ -89,7 +89,7 @@ export default mixins(
 			workflows: [] as IWorkflowShortResponse[],
 			filterTagIds: [] as string[],
 			prevFilterTagIds: [] as string[],
-			WORKLOW_OPEN_MODAL_KEY,
+			WORKFLOW_OPEN_MODAL_KEY,
 		};
 	},
 	computed: {
