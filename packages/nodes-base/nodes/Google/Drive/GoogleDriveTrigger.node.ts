@@ -9,6 +9,7 @@ import {
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
+	NodeApiError,
 } from 'n8n-workflow';
 
 import {
@@ -80,8 +81,7 @@ export class GoogleDriveTrigger implements INodeType {
 				name: 'triggerOn',
 				type: 'options',
 				required: true,
-				default: 'fileCreated',
-				description: 'The resource whose events trigger the webhook.',
+				default: '',
 				options: [
 					{
 						name: 'Changes To a Specific File',
@@ -91,11 +91,12 @@ export class GoogleDriveTrigger implements INodeType {
 						name: 'Changes To/In a Specific Folder',
 						value: 'specificFolder',
 					},
-					{
-						name: 'Changes To Any File/Folder',
-						value: 'anyFileFolder',
-					},
+					// {
+					// 	name: 'Changes To Any File/Folder',
+					// 	value: 'anyFileFolder',
+					// },
 				],
+				description: 'The resource whose events trigger the webhook.',
 			},
 			{
 				displayName: 'File To Watch',
@@ -158,7 +159,7 @@ export class GoogleDriveTrigger implements INodeType {
 					},
 				},
 				required: true,
-				default: 'fileCreated',
+				default: '',
 				description: 'The resource whose events trigger the webhook.',
 				options: [
 					{
@@ -172,14 +173,24 @@ export class GoogleDriveTrigger implements INodeType {
 						description: 'When a file is updated in the watched folder',
 					},
 					{
+						name: 'Folder Created',
+						value: 'folderCreated',
+						description: 'When a folder is created in the watched folder',
+					},
+					{
 						name: 'Folder Updated',
 						value: 'folderUpdated',
-						description: 'When the watch folder itself is updated',
+						description: 'When a folder is updated in the watched folder',
+					},
+					{
+						name: 'Watch Folder Updated',
+						value: 'watchFolderUpdated',
+						description: 'When the watched folder itself is modified',
 					},
 				],
 			},
 			{
-				displayName: 'Changes within subfolder won\'t trigger this node',
+				displayName: 'Changes within subfolders won\'t trigger this node',
 				name: 'asas',
 				type: 'notice',
 				displayOptions: {
@@ -190,7 +201,7 @@ export class GoogleDriveTrigger implements INodeType {
 					},
 					hide: {
 						event: [
-							'folderUpdated',
+							'watchFolderUpdated',
 						],
 					},
 				},
@@ -281,20 +292,32 @@ export class GoogleDriveTrigger implements INodeType {
 								value: 'all',
 							},
 							{
+								name: 'Audio',
+								value: 'application/vnd.google-apps.audio',
+							},
+							{
 								name: 'Google Docs',
 								value: 'application/vnd.google-apps.document',
 							},
 							{
-								name: 'Google Spreadsheets',
-								value: 'application/vnd.google-apps.spreadsheet',
+								name: 'Google Drawings',
+								value: 'application/vnd.google-apps.drawing',
 							},
 							{
 								name: 'Google Slides',
 								value: 'application/vnd.google-apps.presentation',
 							},
 							{
-								name: 'Google Drawings',
-								value: 'application/vnd.google-apps.drawing',
+								name: 'Google Spreadsheets',
+								value: 'application/vnd.google-apps.spreadsheet',
+							},
+							{
+								name: 'Photo and Images',
+								value: 'application/vnd.google-apps.photo',
+							},
+							{
+								name: 'Videos',
+								value: 'application/vnd.google-apps.video',
 							},
 						],
 						default: 'all',
@@ -346,15 +369,15 @@ export class GoogleDriveTrigger implements INodeType {
 			'trashed = false',
 		];
 
-		if (triggerOn === 'specificFolder' && event !== 'folderUpdated') {
+		if (triggerOn === 'specificFolder' && event !== 'watchFolderUpdated') {
 			const folderToWatch = this.getNodeParameter('folderToWatch');
 			query.push(`'${folderToWatch}' in parents`);
 		}
 
-		if (triggerOn === 'anyFileFolder') {
-			const driveToWatch = this.getNodeParameter('driveToWatch');
-			query.push(`'${driveToWatch}' in parents`);
-		}
+		// if (triggerOn === 'anyFileFolder') {
+		// 	const driveToWatch = this.getNodeParameter('driveToWatch');
+		// 	query.push(`'${driveToWatch}' in parents`);
+		// }
 
 		if (event.startsWith('file')) {
 			query.push(`mimeType != 'application/vnd.google-apps.folder'`);
@@ -362,14 +385,16 @@ export class GoogleDriveTrigger implements INodeType {
 			query.push(`mimeType = 'application/vnd.google-apps.folder'`);
 		}
 
-		if (event.includes('Created')) {
-			query.push(`createdTime > '${startDate}'`);
-		} else {
-			query.push(`modifiedTime > '${startDate}'`);
-		}
-
 		if (options.fileType && options.fileType !== 'all') {
 			query.push(`mimeType = '${options.fileType}'`);
+		}
+
+		if (this.getMode() !== 'manual') {
+			if (event.includes('Created')) {
+				query.push(`createdTime > '${startDate}'`);
+			} else {
+				query.push(`modifiedTime > '${startDate}'`);
+			}
 		}
 
 		qs.q = query.join(' AND ');
@@ -379,7 +404,6 @@ export class GoogleDriveTrigger implements INodeType {
 		let files;
 
 		if (this.getMode() === 'manual') {
-			qs.q = '';
 			qs.pageSize = 1;
 			files = await googleApiRequest.call(this, 'GET', `/drive/v3/files`, {}, qs);
 			files = files.files;
@@ -387,12 +411,12 @@ export class GoogleDriveTrigger implements INodeType {
 			files = await googleApiRequestAllItems.call(this, 'files', 'GET', `/drive/v3/files`, {}, qs);
 		}
 
-		if (triggerOn === 'specificFile') {
-			const fileToWatch = this.getNodeParameter('fieldToWatch') as string;
+		if (triggerOn === 'specificFile' && this.getMode() !== 'manual') {
+			const fileToWatch = this.getNodeParameter('fileToWatch') as string;
 			files = files.filter((file: { id: string }) => file.id === fileToWatch);
 		}
 
-		if (triggerOn === 'specificFolder' && event === 'folderUpdated') {
+		if (triggerOn === 'specificFolder' && event === 'watchFolderUpdated' && this.getMode() !== 'manual') {
 			const folderToWatch = this.getNodeParameter('folderToWatch') as string;
 			files = files.filter((file: { id: string }) => file.id === folderToWatch);
 		}
@@ -401,6 +425,10 @@ export class GoogleDriveTrigger implements INodeType {
 
 		if (Array.isArray(files) && files.length) {
 			return [this.helpers.returnJsonArray(files)];
+		}
+
+		if (this.getMode() === 'manual') {
+			throw new NodeApiError(this.getNode(), { message: 'No data with the current filter could be found' });
 		}
 
 		return null;
