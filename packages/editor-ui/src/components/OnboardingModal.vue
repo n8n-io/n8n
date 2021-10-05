@@ -5,6 +5,7 @@
 		subtitle="These questions help us tailor n8n to you"
 		:centerTitle="true"
 		:showClose="false"
+		:eventBus="modalBus"
 		width="460px"
 		@enter="save"
 		@input="onInput"

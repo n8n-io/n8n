@@ -25,7 +25,7 @@ const module: Module<IUiState, IRootState> = {
 				open: false,
 			},
 			[ONBOARDING_MODAL_KEY]: {
-				open: true,
+				open: false,
 			},
 			[TAGS_MANAGER_MODAL_KEY]: {
 				open: false,

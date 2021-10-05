@@ -7,6 +7,7 @@ import {
 } from '../Interface';
 import { getSettings, submitSurvey } from '../api/settings';
 import Vue from 'vue';
+import { ONBOARDING_MODAL_KEY } from '@/constants';
 
 const module: Module<ISettingsState, IRootState> = {
 	namespaced: true,
@@ -14,9 +15,6 @@ const module: Module<ISettingsState, IRootState> = {
 		settings: {} as IN8nUISettings,
 	},
 	getters: {
-		shouldShowOnboardingSurvey(state: ISettingsState) {
-			return state.settings.userSurvey && state.settings.userSurvey.shouldShow && !state.settings.userSurvey.answers;
-		},
 	},
 	mutations: {
 		setSettings(state: ISettingsState, settings: IN8nUISettings) {
@@ -32,7 +30,30 @@ const module: Module<ISettingsState, IRootState> = {
 	actions: {
 		async getSettings(context: ActionContext<ISettingsState, IRootState>) {
 			const settings = await getSettings(context.rootGetters.getRestApiContext);
+			settings.userSurvey = {
+				shouldShow: true,
+			};
 			context.commit('setSettings', settings);
+
+			// todo refactor to this store
+			context.commit('setUrlBaseWebhook', settings.urlBaseWebhook, {root: true});
+			context.commit('setEndpointWebhook', settings.endpointWebhook, {root: true});
+			context.commit('setEndpointWebhookTest', settings.endpointWebhookTest, {root: true});
+			context.commit('setSaveDataErrorExecution', settings.saveDataErrorExecution, {root: true});
+			context.commit('setSaveDataSuccessExecution', settings.saveDataSuccessExecution, {root: true});
+			context.commit('setTimezone', settings.timezone, {root: true});
+			context.commit('setExecutionTimeout', settings.executionTimeout, {root: true});
+			context.commit('setMaxExecutionTimeout', settings.maxExecutionTimeout, {root: true});
+			context.commit('setVersionCli', settings.versionCli, {root: true});
+			context.commit('setInstanceId', settings.instanceId, {root: true});
+			context.commit('setOauthCallbackUrls', settings.oauthCallbackUrls, {root: true});
+			context.commit('setN8nMetadata', settings.n8nMetadata || {}, {root: true});
+			context.commit('versions/setVersionNotificationSettings', settings.versionNotifications, {root: true});
+
+			const showOnboardingSurvey = settings.userSurvey && settings.userSurvey.shouldShow && !settings.userSurvey.answers;
+			if (showOnboardingSurvey) {
+				context.commit('ui/openModal', ONBOARDING_MODAL_KEY, {root: true});
+			}
 			return settings;
 		},
 		async submitOnboardingSurvey(context: ActionContext<ISettingsState, IRootState>, results: ISurvey) {
