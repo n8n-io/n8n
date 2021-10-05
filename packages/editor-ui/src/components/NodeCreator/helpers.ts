@@ -2,46 +2,46 @@ import { CORE_NODES_CATEGORY, CUSTOM_NODES_CATEGORY, SUBCATEGORY_DESCRIPTIONS, U
 import { INodeCreateElement, ICategoriesWithNodes, INodeItemProps } from '@/Interface';
 import { INodeTypeDescription } from 'n8n-workflow';
 
+const addNodeToCategory = (accu: ICategoriesWithNodes, nodeType: INodeTypeDescription, category: string, subcategory: string) => {
+	if (!accu[category]) {
+		accu[category] = {};
+	}
+	if (!accu[category][subcategory]) {
+		accu[category][subcategory] = {
+			triggerCount: 0,
+			regularCount: 0,
+			nodes: [],
+		};
+	}
+	const isTrigger = nodeType.group.includes('trigger');
+	if (isTrigger) {
+		accu[category][subcategory].triggerCount++;
+	}
+	if (!isTrigger) {
+		accu[category][subcategory].regularCount++;
+	}
+	accu[category][subcategory].nodes.push({
+		type: 'node',
+		key: `${category}_${nodeType.name}`,
+		category,
+		properties: {
+			nodeType,
+			subcategory,
+		},
+		includedByTrigger: isTrigger,
+		includedByRegular: !isTrigger,
+	});
+};
+
 export const getCategoriesWithNodes = (nodeTypes: INodeTypeDescription[], personalizedNodeTypes: string[]): ICategoriesWithNodes => {
 	return nodeTypes.reduce(
 		(accu: ICategoriesWithNodes, nodeType: INodeTypeDescription) => {
 			if (personalizedNodeTypes.includes(nodeType.name)) {
-				if (!accu[PERSONALIZED_CATEGORY]) {
-					accu[PERSONALIZED_CATEGORY] = {};
-				}
-				if (!accu[PERSONALIZED_CATEGORY][UNCATEGORIZED_SUBCATEGORY]) {
-					accu[PERSONALIZED_CATEGORY][UNCATEGORIZED_SUBCATEGORY] = {
-						triggerCount: 0,
-						regularCount: 0,
-						nodes: [],
-					};
-				}
-
-				accu[PERSONALIZED_CATEGORY][UNCATEGORIZED_SUBCATEGORY].nodes.push({
-					type: 'node',
-					category: PERSONALIZED_CATEGORY,
-					key: `${PERSONALIZED_CATEGORY}_${nodeType.name}`,
-					properties: {
-						subcategory: UNCATEGORIZED_SUBCATEGORY,
-						nodeType,
-					},
-					includedByTrigger: nodeType.group.includes('trigger'),
-					includedByRegular: !nodeType.group.includes('trigger'),
-				});
+				addNodeToCategory(accu, nodeType, PERSONALIZED_CATEGORY, UNCATEGORIZED_SUBCATEGORY);
 			}
 
 			if (!nodeType.codex || !nodeType.codex.categories) {
-				accu[UNCATEGORIZED_CATEGORY][UNCATEGORIZED_SUBCATEGORY].nodes.push({
-					type: 'node',
-					category: UNCATEGORIZED_CATEGORY,
-					key: `${UNCATEGORIZED_CATEGORY}_${nodeType.name}`,
-					properties: {
-						subcategory: UNCATEGORIZED_SUBCATEGORY,
-						nodeType,
-					},
-					includedByTrigger: nodeType.group.includes('trigger'),
-					includedByRegular: !nodeType.group.includes('trigger'),
-				});
+				addNodeToCategory(accu, nodeType, UNCATEGORIZED_CATEGORY, UNCATEGORIZED_SUBCATEGORY);
 				return accu;
 			}
 
@@ -53,46 +53,12 @@ export const getCategoriesWithNodes = (nodeTypes: INodeTypeDescription[], person
 					nodeType.codex.subcategories[category]
 						? nodeType.codex.subcategories[category][0]
 						: UNCATEGORIZED_SUBCATEGORY;
-				if (!accu[category]) {
-					accu[category] = {};
-				}
-				if (!accu[category][subcategory]) {
-					accu[category][subcategory] = {
-						triggerCount: 0,
-						regularCount: 0,
-						nodes: [],
-					};
-				}
-				const isTrigger = nodeType.group.includes('trigger');
-				if (isTrigger) {
-					accu[category][subcategory].triggerCount++;
-				}
-				if (!isTrigger) {
-					accu[category][subcategory].regularCount++;
-				}
-				accu[category][subcategory].nodes.push({
-					type: 'node',
-					key: `${category}_${nodeType.name}`,
-					category,
-					properties: {
-						nodeType,
-						subcategory,
-					},
-					includedByTrigger: isTrigger,
-					includedByRegular: !isTrigger,
-				});
+
+				addNodeToCategory(accu, nodeType, category, subcategory);
 			});
 			return accu;
 		},
-		{
-			[UNCATEGORIZED_CATEGORY]: {
-				[UNCATEGORIZED_SUBCATEGORY]: {
-					triggerCount: 0,
-					regularCount: 0,
-					nodes: [],
-				},
-			},
-		},
+		{},
 	);
 };
 
