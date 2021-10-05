@@ -658,6 +658,15 @@ const config = convict({
 		},
 	},
 
+	userSurvey: {
+		enabled: {
+			doc: 'Whether user survey is enabled.',
+			format: Boolean,
+			default: true,
+			env: 'N8N_USER_SURVEY_ENABLED',
+		},
+	},
+
 	telemetry: {
 		enabled: {
 			doc: 'Whether telemetry is enabled.',

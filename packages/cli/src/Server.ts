@@ -132,6 +132,7 @@ import {
 	ITagWithCountDb,
 	IWorkflowExecutionDataProcess,
 	IWorkflowResponse,
+	IUserSurveyAnswers,
 	LoadNodesAndCredentials,
 	NodeTypes,
 	Push,
@@ -149,6 +150,8 @@ import {
 import * as config from '../config';
 
 import * as TagHelpers from './TagHelpers';
+import * as UserSurvey from './UserSurvey';
+
 import { InternalHooksManager } from './InternalHooksManager';
 import { TagEntity } from './databases/entities/TagEntity';
 import { WorkflowEntity } from './databases/entities/WorkflowEntity';
@@ -278,6 +281,9 @@ class App {
 			},
 			instanceId: '',
 			telemetry: telemetrySettings,
+			userSurvey: {
+				shouldShow: false,
+			},
 		};
 	}
 
@@ -303,6 +309,8 @@ class App {
 		}
 
 		this.frontendSettings.instanceId = await UserSettings.getInstanceId();
+
+		this.frontendSettings.userSurvey = await UserSurvey.prepareUserSurvey();
 
 		InternalHooksManager.init(this.frontendSettings.instanceId);
 
@@ -2634,6 +2642,30 @@ class App {
 					return this.frontendSettings;
 				},
 			),
+		);
+
+		// ----------------------------------------
+		// User Survey
+		// ----------------------------------------
+
+		// Process personalization survey responses
+		this.app.post(
+			`/${this.restEndpoint}/user-survey`,
+			async (req: express.Request, res: express.Response) => {
+				if (!this.frontendSettings.userSurvey.shouldShow) {
+					ResponseHelper.sendErrorResponse(
+						res,
+						new ResponseHelper.ResponseError('User survey already submitted', undefined, 400),
+						false,
+					);
+				}
+
+				const answers = req.body as IUserSurveyAnswers;
+				await UserSurvey.writeUserSurveyToDisk(answers);
+				this.frontendSettings.userSurvey.shouldShow = false;
+				ResponseHelper.sendSuccessResponse(res, undefined, true, 200);
+				void InternalHooksManager.getInstance().onUserSurveySubmitted(answers);
+			},
 		);
 
 		// ----------------------------------------

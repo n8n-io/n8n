@@ -309,6 +309,7 @@ export interface IDiagnosticInfo {
 export interface IInternalHooksClass {
 	onN8nStop(): Promise<void>;
 	onServerStarted(diagnosticInfo: IDiagnosticInfo): Promise<void>;
+	onUserSurveySubmitted(answers: IUserSurveyAnswers): Promise<void>;
 	onWorkflowDeleted(workflowId: string): Promise<void>;
 	onWorkflowSaved(workflow: IWorkflowBase): Promise<void>;
 	onWorkflowPostExecute(workflow: IWorkflowBase, runData?: IRun): Promise<void>;
@@ -391,6 +392,19 @@ export interface IN8nUISettings {
 	versionNotifications: IVersionNotificationSettings;
 	instanceId: string;
 	telemetry: ITelemetrySettings;
+	userSurvey: IUserSurvey;
+}
+
+export interface IUserSurveyAnswers {
+	companySize: string | null;
+	codingSkill: string | null;
+	workArea: string | null;
+	otherWorkArea: string | null;
+}
+
+export interface IUserSurvey {
+	answers?: IUserSurveyAnswers;
+	shouldShow: boolean;
 }
 
 export interface IPackageVersions {

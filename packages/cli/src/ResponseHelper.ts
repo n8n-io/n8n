@@ -90,13 +90,13 @@ export function sendSuccessResponse(
 	}
 }
 
-export function sendErrorResponse(res: Response, error: ResponseError) {
+export function sendErrorResponse(res: Response, error: ResponseError, shouldLog = true) {
 	let httpStatusCode = 500;
 	if (error.httpStatusCode) {
 		httpStatusCode = error.httpStatusCode;
 	}
 
-	if (process.env.NODE_ENV !== 'production') {
+	if (process.env.NODE_ENV !== 'production' && shouldLog) {
 		console.error('ERROR RESPONSE');
 		console.error(error);
 	}
