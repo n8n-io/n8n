@@ -1,6 +1,6 @@
 <template>
 	<Modal
-		:name="ONBOARDING_MODAL_KEY"
+		:name="PERSONALIZATION_MODAL_KEY"
 		:title="!submitted? 'Get started' : 'Thanks!'"
 		:subtitle="!submitted? 'These questions help us tailor n8n to you' : ''"
 		:centerTitle="true"
@@ -111,7 +111,7 @@
 <script lang="ts">
 import mixins from "vue-typed-mixins";
 
-import { ONBOARDING_MODAL_KEY } from "../constants";
+import { PERSONALIZATION_MODAL_KEY } from "../constants";
 import { workflowHelpers } from "@/components/mixins/workflowHelpers";
 import { showMessage } from "@/components/mixins/showMessage";
 import Modal from "./Modal.vue";
@@ -123,12 +123,12 @@ type SurveyKey = "workArea" | "otherWorkArea" | "companySize" | "codingSkill";
 
 export default mixins(showMessage, workflowHelpers).extend({
 	components: { Modal },
-	name: "OnboardingModal",
+	name: "PersonalizationModal",
 	data() {
 		return {
 			submitted: false,
 			isSaving: false,
-			ONBOARDING_MODAL_KEY,
+			PERSONALIZATION_MODAL_KEY,
 			otherWorkAreaFieldVisible: false,
 			modalBus: new Vue(),
 			values: {
@@ -163,7 +163,7 @@ export default mixins(showMessage, workflowHelpers).extend({
 			this.$data.isSaving = true;
 
 			try {
-				await this.$store.dispatch('settings/submitOnboardingSurvey', this.values);
+				await this.$store.dispatch('settings/submitPersonalizationQuestions', this.values);
 
 				if (this.values.workArea === null && this.values.companySize === null && this.values.codingSkill === null) {
 					this.closeDialog();

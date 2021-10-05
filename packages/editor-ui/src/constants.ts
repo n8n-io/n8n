@@ -24,7 +24,7 @@ export const WORKFLOW_SETTINGS_MODAL_KEY = 'settings';
 export const CREDENTIAL_EDIT_MODAL_KEY = 'editCredential';
 export const CREDENTIAL_SELECT_MODAL_KEY = 'selectCredential';
 export const CREDENTIAL_LIST_MODAL_KEY = 'credentialsList';
-export const ONBOARDING_MODAL_KEY = 'onboarding';
+export const PERSONALIZATION_MODAL_KEY = 'personalization';
 
 // breakpoints
 export const BREAKPOINT_SM = 768;

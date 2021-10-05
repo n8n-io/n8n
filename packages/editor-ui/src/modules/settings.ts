@@ -5,9 +5,9 @@ import {
 	ISettingsState,
 	ISurvey,
 } from '../Interface';
-import { getSettings, submitSurvey } from '../api/settings';
+import { getSettings, submitPersonalizationQuestions } from '../api/settings';
 import Vue from 'vue';
-import { AUTOMATION_CONSULTING_WORK_AREA, CALENDLY_TRIGGER_NODE_TYPE, CLEARBIT_NODE_TYPE, COMPANY_SIZE_1000, COMPANY_SIZE_500_999, CRON_NODE_TYPE, ELASTIC_SECURITY_NODE_TYPE, EMAIL_SEND_NODE_TYPE, EXECUTE_COMMAND_NODE_TYPE, FINANCE_PROCUREMENT_HR_WORK_AREA, FUNCTION_NODE_TYPE, GITHUB_TRIGGER_NODE_TYPE, HTTP_REQUEST_NODE_TYPE, IF_NODE_TYPE, ITEM_LISTS_NODE_TYPE, IT_ENGINEERING_WORK_AREA, JIRA_TRIGGER_NODE_TYPE, MICROSOFT_EXCEL_NODE_TYPE, MICROSOFT_TEAMS_NODE_TYPE, ONBOARDING_MODAL_KEY, PAGERDUTY_NODE_TYPE, PRODUCT_WORK_AREA, QUICKBOOKS_NODE_TYPE, SALESFORCE_NODE_TYPE, SALES_BUSINESSDEV_WORK_AREA, SECURITY_WORK_AREA, SEGMENT_NODE_TYPE, SET_NODE_TYPE, SLACK_NODE_TYPE, SPREADSHEET_FILE_NODE_TYPE, SWITCH_NODE_TYPE, WEBHOOK_NODE_TYPE, XERO_NODE_TYPE } from '@/constants';
+import { AUTOMATION_CONSULTING_WORK_AREA, CALENDLY_TRIGGER_NODE_TYPE, CLEARBIT_NODE_TYPE, COMPANY_SIZE_1000, COMPANY_SIZE_500_999, CRON_NODE_TYPE, ELASTIC_SECURITY_NODE_TYPE, EMAIL_SEND_NODE_TYPE, EXECUTE_COMMAND_NODE_TYPE, FINANCE_PROCUREMENT_HR_WORK_AREA, FUNCTION_NODE_TYPE, GITHUB_TRIGGER_NODE_TYPE, HTTP_REQUEST_NODE_TYPE, IF_NODE_TYPE, ITEM_LISTS_NODE_TYPE, IT_ENGINEERING_WORK_AREA, JIRA_TRIGGER_NODE_TYPE, MICROSOFT_EXCEL_NODE_TYPE, MICROSOFT_TEAMS_NODE_TYPE, PERSONALIZATION_MODAL_KEY, PAGERDUTY_NODE_TYPE, PRODUCT_WORK_AREA, QUICKBOOKS_NODE_TYPE, SALESFORCE_NODE_TYPE, SALES_BUSINESSDEV_WORK_AREA, SECURITY_WORK_AREA, SEGMENT_NODE_TYPE, SET_NODE_TYPE, SLACK_NODE_TYPE, SPREADSHEET_FILE_NODE_TYPE, SWITCH_NODE_TYPE, WEBHOOK_NODE_TYPE, XERO_NODE_TYPE } from '@/constants';
 
 const module: Module<ISettingsState, IRootState> = {
 	namespaced: true,
@@ -28,7 +28,7 @@ const module: Module<ISettingsState, IRootState> = {
 		setSettings(state: ISettingsState, settings: IN8nUISettings) {
 			state.settings = settings;
 		},
-		setOnboardingSurvey(state: ISettingsState, answers: ISurvey) {
+		setPersonalizationAnswers(state: ISettingsState, answers: ISurvey) {
 			Vue.set(state.settings, 'userSurvey', {
 				answers,
 				shouldShow: false,
@@ -64,16 +64,16 @@ const module: Module<ISettingsState, IRootState> = {
 			context.commit('setN8nMetadata', settings.n8nMetadata || {}, {root: true});
 			context.commit('versions/setVersionNotificationSettings', settings.versionNotifications, {root: true});
 
-			const showOnboardingSurvey = settings.userSurvey && settings.userSurvey.shouldShow && !settings.userSurvey.answers;
-			if (showOnboardingSurvey) {
-				context.commit('ui/openModal', ONBOARDING_MODAL_KEY, {root: true});
+			const showPersonalizationsModal= settings.userSurvey && settings.userSurvey.shouldShow && !settings.userSurvey.answers;
+			if (showPersonalizationsModal) {
+				context.commit('ui/openModal', PERSONALIZATION_MODAL_KEY, {root: true});
 			}
 			return settings;
 		},
-		async submitOnboardingSurvey(context: ActionContext<ISettingsState, IRootState>, results: ISurvey) {
-			await submitSurvey(context.rootGetters.getRestApiContext, results);
+		async submitPersonalizationQuestions(context: ActionContext<ISettingsState, IRootState>, results: ISurvey) {
+			await submitPersonalizationQuestions(context.rootGetters.getRestApiContext, results);
 
-			context.commit('setOnboardingSurvey', results);
+			context.commit('setPersonalizationAnswers', results);
 		},
 	},
 };

@@ -27,8 +27,8 @@
 			</template>
 		</ModalRoot>
 
-		<ModalRoot :name="ONBOARDING_MODAL_KEY">
-			<OnboardingModal />
+		<ModalRoot :name="PERSONALIZATION_MODAL_KEY">
+			<PersonalizationModal />
 		</ModalRoot>
 
 		<ModalRoot :name="TAGS_MANAGER_MODAL_KEY">
@@ -51,14 +51,14 @@
 
 <script lang="ts">
 import Vue from "vue";
-import { CREDENTIAL_LIST_MODAL_KEY, DUPLICATE_MODAL_KEY, TAGS_MANAGER_MODAL_KEY, ONBOARDING_MODAL_KEY, WORKFLOW_OPEN_MODAL_KEY, VERSIONS_MODAL_KEY, CREDENTIAL_EDIT_MODAL_KEY, CREDENTIAL_SELECT_MODAL_KEY, WORKFLOW_SETTINGS_MODAL_KEY } from '@/constants';
+import { CREDENTIAL_LIST_MODAL_KEY, DUPLICATE_MODAL_KEY, TAGS_MANAGER_MODAL_KEY, PERSONALIZATION_MODAL_KEY, WORKFLOW_OPEN_MODAL_KEY, VERSIONS_MODAL_KEY, CREDENTIAL_EDIT_MODAL_KEY, CREDENTIAL_SELECT_MODAL_KEY, WORKFLOW_SETTINGS_MODAL_KEY } from '@/constants';
 
 import CredentialEdit from "./CredentialEdit/CredentialEdit.vue";
 import CredentialsList from "./CredentialsList.vue";
 import CredentialsSelectModal from "./CredentialsSelectModal.vue";
 import DuplicateWorkflowDialog from "./DuplicateWorkflowDialog.vue";
 import ModalRoot from "./ModalRoot.vue";
-import OnboardingModal from "./OnboardingModal.vue";
+import PersonalizationModal from "./PersonalizationModal.vue";
 import TagsManager from "./TagsManager/TagsManager.vue";
 import UpdatesPanel from "./UpdatesPanel.vue";
 import WorkflowSettings from "./WorkflowSettings.vue";
@@ -72,7 +72,7 @@ export default Vue.extend({
 		CredentialsSelectModal,
 		DuplicateWorkflowDialog,
 		ModalRoot,
-		OnboardingModal,
+		PersonalizationModal,
 		TagsManager,
 		UpdatesPanel,
 		WorkflowSettings,
@@ -83,7 +83,7 @@ export default Vue.extend({
 		CREDENTIAL_LIST_MODAL_KEY,
 		CREDENTIAL_SELECT_MODAL_KEY,
 		DUPLICATE_MODAL_KEY,
-		ONBOARDING_MODAL_KEY,
+		PERSONALIZATION_MODAL_KEY,
 		TAGS_MANAGER_MODAL_KEY,
 		VERSIONS_MODAL_KEY,
 		WORKFLOW_OPEN_MODAL_KEY,
