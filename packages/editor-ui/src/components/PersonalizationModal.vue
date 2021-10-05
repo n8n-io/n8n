@@ -194,6 +194,8 @@ export default mixins(showMessage, workflowHelpers).extend({
 }
 
 .demoImage {
+	border-radius: var(--border-radius-large);
+	border: var(--border-base);
 	width: 100%;
 }
 

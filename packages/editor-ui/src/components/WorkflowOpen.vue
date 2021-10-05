@@ -7,7 +7,7 @@
 	>
 			<template v-slot:header>
 				<div class="workflows-header">
-					<n8n-heading size="xlarge" class="title">
+					<n8n-heading tag="h1" size="xlarge" class="title">
 						Open Workflow
 					</n8n-heading>
 					<div class="tags-filter">

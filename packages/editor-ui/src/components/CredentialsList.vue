@@ -5,7 +5,7 @@
 		title="Credentials"
 	>
 		<template v-slot:content>
-			<n8n-heading size="small" color="text-light">Your saved credentials:</n8n-heading>
+			<n8n-heading tag="h3" size="small" color="text-light">Your saved credentials:</n8n-heading>
 			<div class="new-credentials-button">
 				<n8n-button
 					title="Create New Credentials"

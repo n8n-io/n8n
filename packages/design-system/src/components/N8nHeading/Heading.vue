@@ -1,13 +1,17 @@
 <template functional>
-	<span :class="$style[$options.methods.getClass(props)]" :style="$options.methods.getStyles(props)">
+	<component :is="props.tag" :class="$style[$options.methods.getClass(props)]" :style="$options.methods.getStyles(props)">
 		<slot></slot>
-	</span>
+	</component>
 </template>
 
 <script lang="ts">
 export default {
 	name: 'n8n-heading',
 	props: {
+		tag: {
+			type: String,
+			default: 'span',
+		},
 		bold: {
 			type: Boolean,
 			default: false,

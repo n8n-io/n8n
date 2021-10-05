@@ -17,10 +17,10 @@
 		<template v-slot:title v-else-if="title">
 			<div :class="centerTitle ? $style.centerTitle : ''">
 				<div v-if="title">
-					<n8n-heading size="xlarge">{{title}}</n8n-heading>
+					<n8n-heading tag="h1" size="xlarge">{{title}}</n8n-heading>
 				</div>
 				<div v-if="subtitle" :class="$style.subtitle">
-					<n8n-heading size="small" color="text-light">{{subtitle}}</n8n-heading>
+					<n8n-heading tag="h3" size="small" color="text-light">{{subtitle}}</n8n-heading>
 				</div>
 			</div>
 		</template>

@@ -88,7 +88,7 @@ function getPersonalizedNodeTypes(answers: ISurvey) {
 	let codingSkill = null;
 	if (answers.codingSkill) {
 		codingSkill = parseInt(answers.codingSkill, 10);
-		codingSkill = codingSkill === NaN ? 0 : codingSkill;
+		codingSkill = isNaN(codingSkill)? 0 : codingSkill;
 	}
 
 	let nodeTypes = [] as string[];
