@@ -6,6 +6,8 @@
 		:width="width"
 		:show-close="showClose"
 		:custom-class="getCustomClass()"
+		:close-on-click-modal="closeOnClickModal"
+		:close-on-press-escape="closeOnPressEscape"
 		:style="styles"
 		append-to-body
 	>
@@ -94,6 +96,14 @@ export default Vue.extend({
 		centerTitle: {
 			type: Boolean,
 			default: false,
+		},
+		closeOnClickModal: {
+			type: Boolean,
+			default: true,
+		},
+		closeOnPressEscape: {
+			type: Boolean,
+			default: true,
 		},
 	},
 	mounted() {

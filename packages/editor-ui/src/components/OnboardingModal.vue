@@ -6,6 +6,8 @@
 		:centerTitle="true"
 		:showClose="false"
 		:eventBus="modalBus"
+		:closeOnClickModal="false"
+		:closeOnPressEscape="false"
 		width="460px"
 		@enter="save"
 		@input="onInput"
