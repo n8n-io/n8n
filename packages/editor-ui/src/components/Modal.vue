@@ -30,7 +30,7 @@
 				<n8n-spinner />
 			</div>
 		</div>
-		<el-row  v-if="!loading && $scopedSlots.footer" class="modal-footer">
+		<el-row  v-if="!loading && $scopedSlots.footer" :class="$style.footer">
 			<slot name="footer" :close="closeDialog" />
 		</el-row>
 	</el-dialog>
@@ -243,5 +243,9 @@ export default Vue.extend({
 
 .subtitle {
 	margin-top: var(--spacing-2xs);
+}
+
+.footer {
+	margin-top: var(--spacing-l);
 }
 </style>

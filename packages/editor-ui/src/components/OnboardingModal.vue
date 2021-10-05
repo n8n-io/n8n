@@ -1,8 +1,8 @@
 <template>
 	<Modal
 		:name="ONBOARDING_MODAL_KEY"
-		title="Get started"
-		subtitle="These questions help us tailor n8n to you"
+		:title="!submitted? 'Get started' : 'Thanks!'"
+		:subtitle="!submitted? 'These questions help us tailor n8n to you' : ''"
 		:centerTitle="true"
 		:showClose="false"
 		:eventBus="modalBus"
@@ -13,7 +13,11 @@
 		@input="onInput"
 	>
 		<template v-slot:content>
-			<div :class="$style.container">
+			<div v-if="submitted" :class="$style.submittedContainer">
+				<img :class="$style.demoImage" :src="baseUrl + 'suggestednodes.png'" />
+				<n8n-text>Look out for things marked with a ✨. They are personalized to make n8n more relevant to you.</n8n-text>
+			</div>
+			<div :class="$style.container" v-else>
 				<n8n-input-label label="Which of these areas do you mainly work in?">
 					<n8n-select :value="values.workArea" placeholder="Select..." @change="(value) => onInput('workArea', value)">
 						<n8n-option value="automationConsulting" label="Automation consulting" />
@@ -97,7 +101,8 @@
 		</template>
 		<template v-slot:footer>
 			<div>
-				<n8n-button @click="save" :loading="isSaving" label="Continue" float="right" />
+				<n8n-button v-if="submitted" @click="closeDialog" label="Get started" float="right" />
+				<n8n-button v-else @click="save" :loading="isSaving" label="Continue" float="right" />
 			</div>
 		</template>
 	</Modal>
@@ -112,6 +117,7 @@ import { showMessage } from "@/components/mixins/showMessage";
 import Modal from "./Modal.vue";
 import { ISurvey } from "@/Interface";
 import Vue from "vue";
+import { mapGetters } from "vuex";
 
 type SurveyKey = "workArea" | "otherWorkArea" | "companySize" | "codingSkill";
 
@@ -120,6 +126,7 @@ export default mixins(showMessage, workflowHelpers).extend({
 	name: "OnboardingModal",
 	data() {
 		return {
+			submitted: false,
 			isSaving: false,
 			ONBOARDING_MODAL_KEY,
 			otherWorkAreaFieldVisible: false,
@@ -131,6 +138,11 @@ export default mixins(showMessage, workflowHelpers).extend({
 				codingSkill: null,
 			} as ISurvey,
 		};
+	},
+	computed: {
+		...mapGetters({
+			baseUrl: 'getBaseUrl',
+		}),
 	},
 	methods: {
 		closeDialog() {
@@ -153,7 +165,7 @@ export default mixins(showMessage, workflowHelpers).extend({
 			try {
 				await this.$store.dispatch('settings/submitOnboardingSurvey', this.values);
 
-				this.closeDialog();
+				this.submitted = true;
 			} catch (e) {
 				this.$showError(e, 'Error while submitting results');
 			}
@@ -166,8 +178,19 @@ export default mixins(showMessage, workflowHelpers).extend({
 
 <style lang="scss" module>
 .container {
-	> div {
+	> div:not(:last-child) {
 		margin-bottom: var(--spacing-m);
 	}
 }
+
+.submittedContainer {
+	* {
+		margin-bottom: var(--spacing-2xs);
+	}
+}
+
+.demoImage {
+	width: 100%;
+}
+
 </style>

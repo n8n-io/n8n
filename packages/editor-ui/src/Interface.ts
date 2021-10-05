@@ -697,5 +697,5 @@ export interface ISurvey {
 	companySize: string | null;
 	codingSkill: string | null;
 	workArea: string | null;
-	otherWorkArea: string | null
-};
+	otherWorkArea: string | null;
+}

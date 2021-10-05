@@ -56,6 +56,7 @@ import {
 	N8nMenuItem,
 	N8nSelect,
 	N8nSpinner,
+	N8nText,
 	N8nTooltip,
 	N8nOption,
 } from 'n8n-design-system';
@@ -75,6 +76,7 @@ Vue.use(N8nMenu);
 Vue.use(N8nMenuItem);
 Vue.use(N8nSelect);
 Vue.use(N8nSpinner);
+Vue.component('n8n-text', N8nText);
 Vue.use(N8nTooltip);
 Vue.use(N8nOption);
 

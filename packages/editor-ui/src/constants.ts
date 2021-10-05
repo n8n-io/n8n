@@ -59,7 +59,7 @@ export const QUICKBOOKS_NODE_TYPE = 'n8n-nodes-base.quickbooks';
 export const SPREADSHEET_FILE_NODE_TYPE = 'n8n-nodes-base.spreadsheetFile';
 export const SET_NODE_TYPE = 'n8n-nodes-base.set';
 export const SEGMENT_NODE_TYPE = 'n8n-nodes-base.segment';
-export const EMAIl_SEND_NODE_TYPE = 'n8n-nodes-base.emailSend';
+export const EMAIL_SEND_NODE_TYPE = 'n8n-nodes-base.emailSend';
 export const SLACK_NODE_TYPE = 'n8n-nodes-base.slack';
 
 // Node creator
