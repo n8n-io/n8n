@@ -10,7 +10,7 @@ import {
 
 export class MicrosoftPlanner implements INodeType {
 	description: INodeTypeDescription = {
-		displayName: 'Microsoft Planner',
+		displayName: 'Microsoft Planer',
 		name: 'microsoftPlanner',
 		icon: 'file:planner.svg',
 		group: ['transform'],
@@ -58,7 +58,7 @@ export class MicrosoftPlanner implements INodeType {
 						value: 'serviceAccount',
 					},
 					{
-						name: 'OAuth',
+						name: 'OAuth (suggested)',
 						value: 'oAuth2',
 					},
 				],
@@ -106,7 +106,7 @@ export class MicrosoftPlanner implements INodeType {
 				},
 			},
 			{
-				displayName: 'Card description',
+				displayName: 'Card descripition',
 				name: 'cardDescription',
 				description: 'Anything youd like to mention about the card.',
 				type: 'string',
