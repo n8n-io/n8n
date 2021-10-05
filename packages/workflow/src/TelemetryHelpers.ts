@@ -10,7 +10,7 @@ import {
 } from '.';
 
 export function getNodeTypeForName(workflow: IWorkflowBase, nodeName: string): INode | undefined {
-	return workflow.nodes.find((node: INode) => node.name === nodeName);
+	return workflow.nodes.find((node) => node.name === nodeName);
 }
 
 export function generateNodesGraph(workflow: IWorkflowBase): INodesGraphResult {
