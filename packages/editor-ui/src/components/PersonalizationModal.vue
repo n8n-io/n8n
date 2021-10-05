@@ -197,6 +197,7 @@ export default mixins(showMessage, workflowHelpers).extend({
 	border-radius: var(--border-radius-large);
 	border: var(--border-base);
 	width: 100%;
+	height: 140px;
 }
 
 </style>
