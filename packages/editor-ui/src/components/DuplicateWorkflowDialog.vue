@@ -109,12 +109,18 @@ export default mixins(showMessage, workflowHelpers).extend({
 				return;
 			}
 
+			const currentWorkflowId = this.$store.getters.workflowId;
+
 			this.$data.isSaving = true;
 
 			const saved = await this.saveAsNewWorkflow({name, tags: this.currentTagIds, resetWebhookUrls: true});
 
 			if (saved) {
 				this.closeDialog();
+				this.$telemetry.track('User duplicated workflow', {
+					old_workflow_id: currentWorkflowId,
+					workflow_id: this.$store.getters.workflowId,
+				});
 			}
 
 			this.$data.isSaving = false;

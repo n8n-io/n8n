@@ -9,12 +9,18 @@
 		<div id="content">
 			<router-view />
 		</div>
+		<Telemetry />
 	</div>
 </template>
 
 <script lang="ts">
+import Telemetry from './components/Telemetry.vue';
+
 export default {
 	name: 'App',
+	components: {
+		Telemetry,
+	},
 };
 </script>
 

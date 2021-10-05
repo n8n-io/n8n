@@ -63,6 +63,7 @@ const module: Module<ISettingsState, IRootState> = {
 			context.commit('setOauthCallbackUrls', settings.oauthCallbackUrls, {root: true});
 			context.commit('setN8nMetadata', settings.n8nMetadata || {}, {root: true});
 			context.commit('versions/setVersionNotificationSettings', settings.versionNotifications, {root: true});
+			context.commit('setTelemetry', settings.telemetry, {root: true});
 
 			const showPersonalizationsModal= settings.userSurvey && settings.userSurvey.shouldShow && !settings.userSurvey.answers;
 			if (showPersonalizationsModal) {

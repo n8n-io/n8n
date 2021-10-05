@@ -585,6 +585,21 @@ export default mixins(
 			closeExpressionEditDialog () {
 				this.expressionEditDialogVisible = false;
 			},
+			trackExpressionEditOpen () {
+				if(!this.node) {
+					return;
+				}
+
+				if((this.node.type as string).startsWith('n8n-nodes-base')) {
+					this.$telemetry.track('User opened Expression Editor', {
+						node_type: this.node.type,
+						parameter_name: this.parameter.displayName,
+						parameter_field_type: this.parameter.type,
+						new_expression: !this.isValueExpression,
+						workflow_id: this.$store.getters.workflowId,
+					});	
+				}
+			},
 			closeTextEditDialog () {
 				this.textEditDialogVisible = false;
 			},
@@ -612,6 +627,7 @@ export default mixins(
 			openExpressionEdit() {
 				if (this.isValueExpression) {
 					this.expressionEditDialogVisible = true;
+					this.trackExpressionEditOpen();
 					return;
 				}
 			},
@@ -621,6 +637,7 @@ export default mixins(
 			setFocus () {
 				if (this.isValueExpression) {
 					this.expressionEditDialogVisible = true;
+					this.trackExpressionEditOpen();
 					return;
 				}
 
@@ -700,6 +717,7 @@ export default mixins(
 					}
 
 					this.expressionEditDialogVisible = true;
+					this.trackExpressionEditOpen();
 				} else if (command === 'removeExpression') {
 					this.valueChanged(this.expressionValueComputed !== undefined ? this.expressionValueComputed : null);
 				} else if (command === 'refreshOptions') {

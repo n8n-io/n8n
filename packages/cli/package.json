@@ -83,6 +83,7 @@
   "dependencies": {
     "@oclif/command": "^1.5.18",
     "@oclif/errors": "^1.2.2",
+    "@rudderstack/rudder-sdk-node": "^1.0.2",
     "@types/json-diff": "^0.5.1",
     "@types/jsonwebtoken": "^8.5.2",
     "basic-auth": "^2.0.1",

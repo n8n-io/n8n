@@ -40,7 +40,7 @@
 
 		<n8n-info-tip v-if="documentationUrl && credentialProperties.length">
 			Need help filling out these fields?
-			<a :href="documentationUrl" target="_blank">Open docs</a>
+			<a :href="documentationUrl" target="_blank" @click="onDocumentationUrlClick">Open docs</a>
 		</n8n-info-tip>
 
 		<CopyInput
@@ -165,8 +165,16 @@ export default Vue.extend({
 		},
 	},
 	methods: {
-		onDataChange(event: { name: string; value: string | number | boolean | Date | null }): void {
+		onDataChange (event: { name: string; value: string | number | boolean | Date | null }): void {
 			this.$emit('change', event);
+		},
+		onDocumentationUrlClick (): void {
+			this.$telemetry.track('User clicked credential modal docs link', {
+				docs_link: this.documentationUrl,
+				credential_type: this.credentialTypeName,
+				source: 'modal',
+				workflow_id: this.$store.getters.workflowId,
+			});
 		},
 	},
 	watch: {
