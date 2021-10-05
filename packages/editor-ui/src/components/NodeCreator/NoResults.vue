@@ -35,7 +35,7 @@
 
 
 <script lang="ts">
-import { HTTP_REQUEST_NODE_NAME, REQUEST_NODE_FORM_URL, WEBHOOK_NODE_NAME } from '@/constants';
+import { HTTP_REQUEST_NODE_TYPE, REQUEST_NODE_FORM_URL, WEBHOOK_NODE_TYPE } from '@/constants';
 import Vue from 'vue';
 
 import NoResultsIcon from './NoResultsIcon.vue';
@@ -57,11 +57,11 @@ export default Vue.extend({
 	},
 	methods: {
 		selectWebhook() {
-			this.$emit('nodeTypeSelected', WEBHOOK_NODE_NAME);
+			this.$emit('nodeTypeSelected', WEBHOOK_NODE_TYPE);
 		},
 
 		selectHttpRequest() {
-			this.$emit('nodeTypeSelected', HTTP_REQUEST_NODE_NAME);
+			this.$emit('nodeTypeSelected', HTTP_REQUEST_NODE_TYPE);
 		},
 	},
 });

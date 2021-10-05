@@ -79,7 +79,7 @@
 						/>
 						<n8n-option
 							label="500-999 people"
-							value="500"
+							value="500-999"
 						/>
 						<n8n-option
 							label="1000+ people"

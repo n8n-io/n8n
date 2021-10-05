@@ -1,11 +1,35 @@
-import { CORE_NODES_CATEGORY, CUSTOM_NODES_CATEGORY, SUBCATEGORY_DESCRIPTIONS, UNCATEGORIZED_CATEGORY, UNCATEGORIZED_SUBCATEGORY, REGULAR_NODE_FILTER, TRIGGER_NODE_FILTER, ALL_NODE_FILTER  } from '@/constants';
+import { CORE_NODES_CATEGORY, CUSTOM_NODES_CATEGORY, SUBCATEGORY_DESCRIPTIONS, UNCATEGORIZED_CATEGORY, UNCATEGORIZED_SUBCATEGORY, REGULAR_NODE_FILTER, TRIGGER_NODE_FILTER, ALL_NODE_FILTER, PERSONALIZED_CATEGORY  } from '@/constants';
 import { INodeCreateElement, ICategoriesWithNodes, INodeItemProps } from '@/Interface';
 import { INodeTypeDescription } from 'n8n-workflow';
 
-
-export const getCategoriesWithNodes = (nodeTypes: INodeTypeDescription[]): ICategoriesWithNodes => {
+export const getCategoriesWithNodes = (nodeTypes: INodeTypeDescription[], personalizedNodeTypes: string[]): ICategoriesWithNodes => {
 	return nodeTypes.reduce(
 		(accu: ICategoriesWithNodes, nodeType: INodeTypeDescription) => {
+			if (personalizedNodeTypes.includes(nodeType.name)) {
+				if (!accu[PERSONALIZED_CATEGORY]) {
+					accu[PERSONALIZED_CATEGORY] = {};
+				}
+				if (!accu[PERSONALIZED_CATEGORY][UNCATEGORIZED_SUBCATEGORY]) {
+					accu[PERSONALIZED_CATEGORY][UNCATEGORIZED_SUBCATEGORY] = {
+						triggerCount: 0,
+						regularCount: 0,
+						nodes: [],
+					};
+				}
+
+				accu[PERSONALIZED_CATEGORY][UNCATEGORIZED_SUBCATEGORY].nodes.push({
+					type: 'node',
+					category: PERSONALIZED_CATEGORY,
+					key: `${PERSONALIZED_CATEGORY}_${nodeType.name}`,
+					properties: {
+						subcategory: UNCATEGORIZED_SUBCATEGORY,
+						nodeType,
+					},
+					includedByTrigger: nodeType.group.includes('trigger'),
+					includedByRegular: !nodeType.group.includes('trigger'),
+				});
+			}
+
 			if (!nodeType.codex || !nodeType.codex.categories) {
 				accu[UNCATEGORIZED_CATEGORY][UNCATEGORIZED_SUBCATEGORY].nodes.push({
 					type: 'node',
@@ -20,6 +44,7 @@ export const getCategoriesWithNodes = (nodeTypes: INodeTypeDescription[]): ICate
 				});
 				return accu;
 			}
+
 			nodeType.codex.categories.forEach((_category: string) => {
 				const category = _category.trim();
 				const subcategory =
@@ -72,14 +97,15 @@ export const getCategoriesWithNodes = (nodeTypes: INodeTypeDescription[]): ICate
 };
 
 const getCategories = (categoriesWithNodes: ICategoriesWithNodes): string[] => {
+	const excludeFromSort = [CORE_NODES_CATEGORY, CUSTOM_NODES_CATEGORY, UNCATEGORIZED_CATEGORY, PERSONALIZED_CATEGORY];
 	const categories = Object.keys(categoriesWithNodes);
 	const sorted = categories.filter(
 		(category: string) =>
-			category !== CORE_NODES_CATEGORY && category !== CUSTOM_NODES_CATEGORY && category !== UNCATEGORIZED_CATEGORY,
+			!excludeFromSort.includes(category),
 	);
 	sorted.sort();
 
-	return [CORE_NODES_CATEGORY, CUSTOM_NODES_CATEGORY, ...sorted, UNCATEGORIZED_CATEGORY];
+	return [CORE_NODES_CATEGORY, CUSTOM_NODES_CATEGORY, PERSONALIZED_CATEGORY, ...sorted, UNCATEGORIZED_CATEGORY];
 };
 
 export const getCategorizedList = (categoriesWithNodes: ICategoriesWithNodes): INodeCreateElement[] => {
