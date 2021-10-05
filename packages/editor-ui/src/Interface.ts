@@ -437,6 +437,13 @@ export interface IVersionNotificationSettings {
 	infoUrl: string;
 }
 
+export interface ISurvey {
+	companySize: string | null;
+	codingSkill: string | null;
+	workArea: string | null;
+	otherWorkArea: string | null;
+}
+
 export interface IN8nUISettings {
 	endpointWebhook: string;
 	endpointWebhookTest: string;
@@ -660,42 +667,4 @@ export interface IRestApiContext {
 export interface IZoomConfig {
 	scale: number;
 	offset: XYPositon;
-}
-
-type IValidationRule = {
-	name: string;
-	config?: any; // tslint:disable-line:no-any
-};
-
-type IFormInputsCol = {
-	name: string;
-	initialValue?: string | number | boolean | null;
-	properties: {
-		label: string;
-		type?: "text" | "email" | "password" | 'select';
-		maxlength?: number;
-		required?: boolean;
-		validators?: {
-			[name: string]: IValidator;
-		};
-		validationRules?: IValidationRule[];
-		infoText?: string;
-		placeholder?: string;
-		options?: Array<{label: string; value: string}>;
-	}
-};
-
-type IFormInputsRow = IFormInputsCol[];
-
-type IValidator = {
-	validate: Function;
-};
-
-export type IFormInputs = IFormInputsRow[];
-
-export interface ISurvey {
-	companySize: string | null;
-	codingSkill: string | null;
-	workArea: string | null;
-	otherWorkArea: string | null;
 }
