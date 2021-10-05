@@ -167,7 +167,7 @@
 		</template>
 		<template v-slot:footer>
 			<div class="action-buttons">
-				<n8n-button label="Save" size="large" @click="saveSettings" />
+				<n8n-button label="Save" size="large" float="right" @click="saveSettings" />
 			</div>
 		</template>
 	</Modal>
@@ -509,11 +509,6 @@ export default mixins(
 	.el-row {
 		padding: 0.25em 0;
 	}
-}
-
-.action-buttons {
-	margin-top: 1em;
-	text-align: right;
 }
 
 .setting-info {
