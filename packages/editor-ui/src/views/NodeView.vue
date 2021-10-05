@@ -2308,7 +2308,7 @@ export default mixins(
 	color: #444;
 	padding-right: 5px;
 
-	@media (max-width: $--breakpoint-xs) {
+	@media (max-width: $--breakpoint-2xs) {
 		bottom: 90px;
 	}
 
