@@ -10,6 +10,12 @@ export default {
 				options: ['small', 'medium', 'large'],
 			},
 		},
+		color: {
+			control: {
+				type: 'select',
+				options: ['primary', 'text-dark', 'text-base', 'text-light'],
+			},
+		},
 	},
 };
 
