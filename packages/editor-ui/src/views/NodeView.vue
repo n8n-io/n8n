@@ -99,7 +99,7 @@
 			/>
 		</div>
 		<Modals />
-		<iframe src="/expressions-iframe.html" id="expressions-iframe" style="position: absolute;width:0;height:0;border:0;"></iframe>
+		<iframe src="/expressions.html" id="expressions-iframe" style="position: absolute;width:0;height:0;border:0;"></iframe>
 	</div>
 </template>
 
@@ -2303,7 +2303,7 @@ export default mixins(
 
 		async mounted () {
 			// Add support for custom n8n functionality to standard JavaScript types
-			Expression.extendTypes();
+			// Expression.extendTypes();
 
 			this.$root.$on('importWorkflowData', async (data: IDataObject) => {
 				await this.importWorkflowData(data.data as IWorkflowDataUpdate);

@@ -27,6 +27,7 @@ import {
 	TelemetryHelpers,
 	Workflow,
 	NodeHelpers,
+	Expression,
 } from 'n8n-workflow';
 
 import {
@@ -424,12 +425,18 @@ export const workflowHelpers = mixins(
 					$resumeWebhookUrl: PLACEHOLDER_FILLED_AT_EXECUTION_TIME,
 				};
 
+				// @ts-ignore
+				const expressionsIframe = document.getElementById('expressions-iframe').contentWindow;
+
+				if (expressionsIframe && expressionsIframe.parseExpression) {
+					return expressionsIframe.parseExpression(workflow, parameter, runExecutionData, runIndex, itemIndex, activeNode.name, connectionInputData, 'manual', additionalKeys, false) as IDataObject;
+				}
+
 				return workflow.expression.getParameterValue(parameter, runExecutionData, runIndex, itemIndex, activeNode.name, connectionInputData, 'manual', additionalKeys, false) as IDataObject;
 			},
 
 			resolveExpression(expression: string, siblingParameters: INodeParameters = {}) {
 				// eslint-disable-next-line no-console
-				console.log('expression to resolve: ', expression, siblingParameters);
 				const parameters = {
 					'__xxxxxxx__': expression,
 					...siblingParameters,
