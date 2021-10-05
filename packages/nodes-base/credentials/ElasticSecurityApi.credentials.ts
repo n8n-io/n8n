@@ -3,16 +3,17 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export class ElasticsearchApi implements ICredentialType {
-	name = 'elasticsearchApi';
-	displayName = 'Elasticsearch API';
-	documentationUrl = 'elasticsearch';
+export class ElasticSecurityApi implements ICredentialType {
+	name = 'elasticSecurityApi';
+	displayName = 'Elastic Security API';
+	documentationUrl = 'elasticSecurity';
 	properties: INodeProperties[] = [
 		{
 			displayName: 'Username',
 			name: 'username',
 			type: 'string',
 			default: '',
+			required: true,
 		},
 		{
 			displayName: 'Password',
@@ -22,14 +23,16 @@ export class ElasticsearchApi implements ICredentialType {
 				password: true,
 			},
 			default: '',
+			required: true,
 		},
 		{
 			displayName: 'Base URL',
 			name: 'baseUrl',
 			type: 'string',
 			default: '',
-			placeholder: 'https://mydeployment.es.us-central1.gcp.cloud.es.io:9243',
-			description: 'Referred to as Elasticsearch \'endpoint\' in the Elastic deployment dashboard',
+			placeholder: 'e.g. https://mydeployment.kb.us-central1.gcp.cloud.es.io:9243',
+			description: 'Referred to as Kibana \'endpoint\' in the Elastic deployment dashboard',
+			required: true,
 		},
 	];
 }
