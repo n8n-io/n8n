@@ -30,9 +30,9 @@
 				<n8n-spinner />
 			</div>
 		</div>
-		<el-row  v-if="!loading && $scopedSlots.footer" :class="$style.footer">
+		<div v-if="!loading && $scopedSlots.footer" :class="$style.footer">
 			<slot name="footer" :close="closeDialog" />
-		</el-row>
+		</div>
 	</el-dialog>
 </template>
 
@@ -84,6 +84,9 @@ export default Vue.extend({
 			type: String,
 		},
 		height: {
+			type: String,
+		},
+		minHeight: {
 			type: String,
 		},
 		maxHeight: {
@@ -177,6 +180,9 @@ export default Vue.extend({
 			if (this.height) {
 				styles['--dialog-height'] = this.height;
 			}
+			if (this.minHeight) {
+				styles['--dialog-min-height'] = this.minHeight;
+			}
 			if (this.maxHeight) {
 				styles['--dialog-max-height'] = this.maxHeight;
 			}
@@ -200,6 +206,7 @@ export default Vue.extend({
 		max-width: var(--dialog-max-width, 80%);
 		min-width: var(--dialog-min-width, 420px);
 		height: var(--dialog-height);
+		min-height: var(--dialog-min-height);
 		max-height: var(--dialog-max-height);
 	}
 

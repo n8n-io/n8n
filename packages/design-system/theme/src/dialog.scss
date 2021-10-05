@@ -59,8 +59,8 @@
 	}
 
 	@include mixins.e(title) {
-		line-height: var.$dialog-font-line-height;
-		font-size: var.$dialog-title-font-size;
+		line-height: var(--font-line-height-compact);
+		font-size: var(--font-size-xl);
 		color: var(--color-text-dark);
 		font-weight: var(--font-weight-regular);
 	}

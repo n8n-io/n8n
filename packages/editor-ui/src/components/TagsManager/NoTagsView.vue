@@ -30,7 +30,6 @@ $--footer-spacing: 45px;
 	display: flex;
 	justify-content: center;
 	align-items: center;
-	min-height: $--tags-manager-min-height - $--footer-spacing;
 	margin-top: $--footer-spacing;
 }
 
