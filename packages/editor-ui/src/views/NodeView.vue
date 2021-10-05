@@ -839,7 +839,7 @@ export default mixins(
 					this.copyToClipboard(nodeData);
 					if (data.nodes.length > 0) {
 						this.$telemetry.track('User copied nodes', {
-							node_types: data.nodes.map((node: INode) => node.type),
+							node_types: data.nodes.map((node) => node.type),
 							workflow_id: this.$store.getters.workflowId,
 						});
 					}
