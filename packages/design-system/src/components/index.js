@@ -1,6 +1,4 @@
 import N8nButton from './N8nButton';
-import N8nFormInput from './N8nFormInput';
-import N8nFormInputs from './N8nFormInputs';
 import N8nIcon from './N8nIcon';
 import N8nIconButton from './N8nIconButton';
 import N8nInput from './N8nInput';
@@ -17,7 +15,6 @@ import N8nOption from './N8nOption';
 
 export {
 	N8nButton,
-	N8nFormInputs,
 	N8nIcon,
 	N8nIconButton,
 	N8nInfoTip,

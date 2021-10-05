@@ -457,6 +457,10 @@ export interface IN8nUISettings {
 	};
 	versionNotifications: IVersionNotificationSettings;
 	instanceId: string;
+	userSurvey?: {
+		answers?: ISurvey;
+		shouldShow: boolean;
+	};
 }
 
 export interface IWorkflowSettings extends IWorkflowSettingsWorkflow {
@@ -635,6 +639,10 @@ export interface IUiState {
 	isPageLoading: boolean;
 }
 
+export interface ISettingsState {
+	settings: IN8nUISettings;
+}
+
 export interface IVersionsState {
 	versionNotificationSettings: IVersionNotificationSettings;
 	nextVersions: IVersion[];
@@ -684,3 +692,10 @@ type IValidator = {
 };
 
 export type IFormInputs = IFormInputsRow[];
+
+export interface ISurvey {
+	companySize: string | null;
+	codingSkill: string | null;
+	workArea: string | null;
+	otherWorkArea: string | null
+};
