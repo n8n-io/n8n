@@ -81,12 +81,14 @@ const module: Module<ISettingsState, IRootState> = {
 function getPersonalizedNodeTypes(answers: ISurvey) {
 	const { companySize, workArea } = answers;
 
+	if (companySize === null && workArea === null && answers.codingSkill === null) {
+		return [];
+	}
+
 	let codingSkill = null;
 	if (answers.codingSkill) {
-		try {
-		 codingSkill = parseInt(answers.codingSkill, 10);
-		}
-		catch (e) {}
+		codingSkill = parseInt(answers.codingSkill, 10);
+		codingSkill = codingSkill === NaN ? 0 : codingSkill;
 	}
 
 	let nodeTypes = [] as string[];

@@ -165,6 +165,10 @@ export default mixins(showMessage, workflowHelpers).extend({
 			try {
 				await this.$store.dispatch('settings/submitOnboardingSurvey', this.values);
 
+				if (this.values.workArea === null && this.values.companySize === null && this.values.codingSkill === null) {
+					this.closeDialog();
+				}
+
 				this.submitted = true;
 			} catch (e) {
 				this.$showError(e, 'Error while submitting results');
