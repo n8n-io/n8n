@@ -6,7 +6,7 @@ export async function getSettings(context: IRestApiContext): Promise<IN8nUISetti
 	return await makeRestApiRequest(context, 'GET', '/settings');
 }
 
-export async function submitPersonalizationQuestions(context: IRestApiContext, params: ISurvey): Promise<void> {
+export async function submitPersonalizationSurvey(context: IRestApiContext, params: ISurvey): Promise<void> {
 	await Promise.resolve();
 	// await makeRestApiRequest(context, 'POST', '/user-survey', params as unknown as IDataObject);
 }

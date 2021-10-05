@@ -163,7 +163,7 @@ export default mixins(showMessage, workflowHelpers).extend({
 			this.$data.isSaving = true;
 
 			try {
-				await this.$store.dispatch('settings/submitPersonalizationQuestions', this.values);
+				await this.$store.dispatch('settings/submitPersonalizationSurvey', this.values);
 
 				if (this.values.workArea === null && this.values.companySize === null && this.values.codingSkill === null) {
 					this.closeDialog();
