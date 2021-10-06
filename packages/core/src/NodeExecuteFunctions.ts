@@ -303,7 +303,7 @@ async function parseRequestObject(requestObject: IDataObject) {
 		axiosConfig.maxRedirects = 0;
 	}
 	if (
-		requestObject.followAllRedirect === false &&
+		requestObject.followAllRedirects === false &&
 		((requestObject.method as string | undefined) || 'get').toLowerCase() !== 'get'
 	) {
 		axiosConfig.maxRedirects = 0;
@@ -420,6 +420,16 @@ async function proxyRequestToAxios(
 				}
 			})
 			.catch((error) => {
+				if (configObject.simple === true && error.response) {
+					resolve({
+						body: error.response.data,
+						headers: error.response.headers,
+						statusCode: error.response.status,
+						statusMessage: error.response.statusText,
+					});
+					return;
+				}
+
 				Logger.debug('Request proxied to Axios failed', { error });
 				// Axios hydrates the original error with more data. We extract them.
 				// https://github.com/axios/axios/blob/master/lib/core/enhanceError.js
