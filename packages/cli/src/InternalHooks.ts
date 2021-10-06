@@ -1,6 +1,11 @@
 /* eslint-disable import/no-cycle */
 import { IDataObject, IRun, TelemetryHelpers } from 'n8n-workflow';
-import { IDiagnosticInfo, IInternalHooksClass, IPersonalizationSurveyAnswers, IWorkflowBase } from '.';
+import {
+	IDiagnosticInfo,
+	IInternalHooksClass,
+	IPersonalizationSurveyAnswers,
+	IWorkflowBase,
+} from '.';
 import { Telemetry } from './telemetry';
 
 export class InternalHooksClass implements IInternalHooksClass {

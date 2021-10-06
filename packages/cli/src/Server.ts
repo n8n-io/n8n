@@ -310,7 +310,8 @@ class App {
 
 		this.frontendSettings.instanceId = await UserSettings.getInstanceId();
 
-		this.frontendSettings.personalizationSurvey = await PersonalizationSurvey.preparePersonalizationSurvey();
+		this.frontendSettings.personalizationSurvey =
+			await PersonalizationSurvey.preparePersonalizationSurvey();
 
 		InternalHooksManager.init(this.frontendSettings.instanceId);
 
