@@ -55,7 +55,7 @@ export const workflowRun = mixins(
 
 			return response;
 		},
-		async runWorkflow (nodeName: string, source?: string): Promise<IExecutionPushResponse | undefined> {
+		async runWorkflow (nodeName?: string, source?: string): Promise<IExecutionPushResponse | undefined> {
 			if (this.$store.getters.isActionActive('workflowRunning') === true) {
 				return;
 			}
@@ -70,7 +70,7 @@ export const workflowRun = mixins(
 				const issuesExist = this.$store.getters.nodesIssuesExist;
 				if (issuesExist === true) {
 					// If issues exist get all of the issues of all nodes
-					const workflowIssues = this.checkReadyForExecution(workflow);
+					const workflowIssues = this.checkReadyForExecution(workflow, nodeName);
 					if (workflowIssues !== null) {
 						const errorMessages = [];
 						let nodeIssues: string[];
@@ -94,7 +94,10 @@ export const workflowRun = mixins(
 				}
 
 				// Get the direct parents of the node
-				const directParentNodes = workflow.getParentNodes(nodeName, 'main', 1);
+				let directParentNodes: string[] = [];
+				if (nodeName !== undefined) {
+					directParentNodes = workflow.getParentNodes(nodeName, 'main', 1);
+				}
 
 				const runData = this.$store.getters.getWorkflowRunData;
 
@@ -133,7 +136,7 @@ export const workflowRun = mixins(
 					}
 				}
 
-				if (startNodes.length === 0) {
+				if (startNodes.length === 0 && nodeName !== undefined) {
 					startNodes.push(nodeName);
 				}
 
