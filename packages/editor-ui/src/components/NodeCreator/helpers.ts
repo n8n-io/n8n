@@ -34,7 +34,8 @@ const addNodeToCategory = (accu: ICategoriesWithNodes, nodeType: INodeTypeDescri
 };
 
 export const getCategoriesWithNodes = (nodeTypes: INodeTypeDescription[], personalizedNodeTypes: string[]): ICategoriesWithNodes => {
-	return nodeTypes.reduce(
+	const sorted = [...nodeTypes].sort((a: INodeTypeDescription, b: INodeTypeDescription) => a.displayName > b.displayName? 1 : -1);
+	return sorted.reduce(
 		(accu: ICategoriesWithNodes, nodeType: INodeTypeDescription) => {
 			if (personalizedNodeTypes.includes(nodeType.name)) {
 				addNodeToCategory(accu, nodeType, PERSONALIZED_CATEGORY, UNCATEGORIZED_SUBCATEGORY);
