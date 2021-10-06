@@ -4,7 +4,7 @@ services:
 
   postgres:
     image: postgres:11
-    restart: always
+    restart: unless-stopped
     environment:
       - POSTGRES_USER
       - POSTGRES_PASSWORD
@@ -13,10 +13,11 @@ services:
       - POSTGRES_NON_ROOT_PASSWORD
     volumes:
       - ./init-data.sh:/docker-entrypoint-initdb.d/init-data.sh
+      - ~/.n8n/db:/var/lib/postgresql/data:rw
 
   n8n:
     image: n8nio/n8n
-    restart: always
+    restart: unless-stopped
     environment:
       - DB_TYPE=postgresdb
       - DB_POSTGRESDB_HOST=postgres
@@ -29,10 +30,8 @@ services:
       - N8N_BASIC_AUTH_PASSWORD
     ports:
       - 5678:5678
-    links:
-      - postgres
+    depends_on:
+      postgres:
+        condition: service_healthy
     volumes:
-      - ~/.n8n:/home/node/.n8n
-    # Wait 5 seconds to start n8n to make sure that PostgreSQL is ready
-    # when n8n tries to connect to it
-    command: /bin/sh -c "sleep 5; n8n start"
+      - ~/.n8n/n8n:/home/node/.n8n
