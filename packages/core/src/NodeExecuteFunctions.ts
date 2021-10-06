@@ -251,9 +251,20 @@ async function parseRequestObject(requestObject: IDataObject) {
 		axiosConfig.params = requestObject.qs as IDataObject;
 	}
 
-	if (requestObject.useQuerystring === true) {
+	if (
+		requestObject.useQuerystring === true ||
+		// @ts-ignore
+		requestObject.qsStringifyOptions?.arrayFormat === 'repeat'
+	) {
 		axiosConfig.paramsSerializer = (params) => {
 			return stringify(params, { arrayFormat: 'repeat' });
+		};
+	}
+
+	// @ts-ignore
+	if (requestObject.qsStringifyOptions?.arrayFormat === 'brackets') {
+		axiosConfig.paramsSerializer = (params) => {
+			return stringify(params, { arrayFormat: 'brackets' });
 		};
 	}
 
