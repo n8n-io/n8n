@@ -337,6 +337,7 @@ async function parseRequestObject(requestObject: IDataObject) {
 		axiosConfig.headers = Object.assign(axiosConfig.headers || {}, { accept: '*/*' });
 	}
 	if (
+		requestObject.json !== false &&
 		axiosConfig.data !== undefined &&
 		!(axiosConfig.data instanceof Buffer) &&
 		!allHeaders.some((headerKey) => headerKey.toLowerCase() === 'content-type')
