@@ -132,7 +132,7 @@ import {
 	ITagWithCountDb,
 	IWorkflowExecutionDataProcess,
 	IWorkflowResponse,
-	IUserSurveyAnswers,
+	IPersonalizationSurveyAnswers,
 	LoadNodesAndCredentials,
 	NodeTypes,
 	Push,
@@ -150,7 +150,7 @@ import {
 import * as config from '../config';
 
 import * as TagHelpers from './TagHelpers';
-import * as UserSurvey from './UserSurvey';
+import * as PersonalizationSurvey from './PersonalizationSurvey';
 
 import { InternalHooksManager } from './InternalHooksManager';
 import { TagEntity } from './databases/entities/TagEntity';
@@ -281,7 +281,7 @@ class App {
 			},
 			instanceId: '',
 			telemetry: telemetrySettings,
-			userSurvey: {
+			personalizationSurvey: {
 				shouldShow: false,
 			},
 		};
@@ -310,7 +310,7 @@ class App {
 
 		this.frontendSettings.instanceId = await UserSettings.getInstanceId();
 
-		this.frontendSettings.userSurvey = await UserSurvey.prepareUserSurvey();
+		this.frontendSettings.personalizationSurvey = await PersonalizationSurvey.preparePersonalizationSurvey();
 
 		InternalHooksManager.init(this.frontendSettings.instanceId);
 
@@ -2652,7 +2652,7 @@ class App {
 		this.app.post(
 			`/${this.restEndpoint}/user-survey`,
 			async (req: express.Request, res: express.Response) => {
-				if (!this.frontendSettings.userSurvey.shouldShow) {
+				if (!this.frontendSettings.personalizationSurvey.shouldShow) {
 					ResponseHelper.sendErrorResponse(
 						res,
 						new ResponseHelper.ResponseError('User survey already submitted', undefined, 400),
@@ -2660,12 +2660,12 @@ class App {
 					);
 				}
 
-				const answers = req.body as IUserSurveyAnswers;
-				await UserSurvey.writeUserSurveyToDisk(answers);
-				this.frontendSettings.userSurvey.shouldShow = false;
-				this.frontendSettings.userSurvey.answers = answers;
+				const answers = req.body as IPersonalizationSurveyAnswers;
+				await PersonalizationSurvey.writeSurveyToDisk(answers);
+				this.frontendSettings.personalizationSurvey.shouldShow = false;
+				this.frontendSettings.personalizationSurvey.answers = answers;
 				ResponseHelper.sendSuccessResponse(res, undefined, true, 200);
-				void InternalHooksManager.getInstance().onUserSurveySubmitted(answers);
+				void InternalHooksManager.getInstance().onPersonalizationSurveySubmitted(answers);
 			},
 		);
 

@@ -658,12 +658,12 @@ const config = convict({
 		},
 	},
 
-	userSurvey: {
+	personalizationSurvey: {
 		enabled: {
-			doc: 'Whether user survey is enabled.',
+			doc: 'Whether personalization survey is enabled.',
 			format: Boolean,
 			default: true,
-			env: 'N8N_USER_SURVEY_ENABLED',
+			env: 'N8N_PERSONALIZATION_SURVEY_ENABLED',
 		},
 	},
 
