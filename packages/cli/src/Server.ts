@@ -2663,6 +2663,7 @@ class App {
 				const answers = req.body as IUserSurveyAnswers;
 				await UserSurvey.writeUserSurveyToDisk(answers);
 				this.frontendSettings.userSurvey.shouldShow = false;
+				this.frontendSettings.userSurvey.answers = answers;
 				ResponseHelper.sendSuccessResponse(res, undefined, true, 200);
 				void InternalHooksManager.getInstance().onUserSurveySubmitted(answers);
 			},
