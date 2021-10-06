@@ -40,6 +40,11 @@ import {
 } from './OrganizationDescription';
 
 import {
+	suspendedTicketFields,
+	suspendedTicketOperations
+} from './SuspendedTicketDescription';
+
+import {
 	IComment,
 	ITicket,
  } from './TicketInterface';
@@ -107,9 +112,14 @@ export class Zendesk implements INodeType {
 				type: 'options',
 				options: [
 					{
-						name: 'Ticket',
+						name: 'Ticket (Active)',
 						value: 'ticket',
 						description: 'Tickets are the means through which your end users (customers) communicate with agents in Zendesk Support.',
+					},
+					{
+						name: 'Ticket (Suspended)',
+						value: 'suspended',
+						description: 'Manage suspended tickets.',
 					},
 					{
 						name: 'Ticket Field',
@@ -133,6 +143,9 @@ export class Zendesk implements INodeType {
 			// TICKET
 			...ticketOperations,
 			...ticketFields,
+			// SUSPENDED TICKET
+			...suspendedTicketOperations,
+			...suspendedTicketFields,
 			// TICKET FIELD
 			...ticketFieldOperations,
 			...ticketFieldFields,
@@ -420,6 +433,54 @@ export class Zendesk implements INodeType {
 						const ticketId = this.getNodeParameter('id', i) as string;
 						try {
 							responseData = await zendeskApiRequest.call(this, 'DELETE', `/tickets/${ticketId}`, {});
+						} catch (error) {
+							throw new NodeApiError(this.getNode(), error);
+						}
+					}
+				}
+				//https://developer.zendesk.com/api-reference/ticketing/tickets/suspended_tickets/
+				if (resource === 'suspended') {
+					//https://developer.zendesk.com/api-reference/ticketing/tickets/suspended_tickets/#show-suspended-ticket
+					if (operation === 'get') {
+						const ticketId = this.getNodeParameter('id', i) as string;
+						responseData = await zendeskApiRequest.call(this, 'GET', `/suspended_tickets/${ticketId}`, {});
+						responseData = responseData.suspended_ticket;
+					}
+					//https://developer.zendesk.com/api-reference/ticketing/tickets/suspended_tickets/#list-suspended-tickets
+					if (operation === 'getAll') {
+						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const options = this.getNodeParameter('options', i) as IDataObject;
+
+						if (options.sortBy) {
+							qs.sort_by = options.sortBy;
+						}
+						if (options.sortOrder) {
+							qs.sort_order = options.sortOrder;
+						}
+						if (returnAll) {
+							responseData = await zendeskApiRequestAllItems.call(this, 'suspended_tickets', 'GET', `/suspended_tickets`, {}, qs);
+						} else {
+							const limit = this.getNodeParameter('limit', i) as number;
+							qs.per_page = limit;
+							responseData = await zendeskApiRequest.call(this, 'GET', `/suspended_tickets`, {}, qs);
+							responseData = responseData.suspended_tickets;
+						}
+					}
+					//https://developer.zendesk.com/api-reference/ticketing/tickets/suspended_tickets/#delete-suspended-ticket
+					if (operation === 'delete') {
+						const ticketId = this.getNodeParameter('id', i) as string;
+						try {
+							responseData = await zendeskApiRequest.call(this, 'DELETE', `/suspended_tickets/${ticketId}`, {});
+						} catch (error) {
+							throw new NodeApiError(this.getNode(), error);
+						}
+					}
+					//https://developer.zendesk.com/api-reference/ticketing/tickets/suspended_tickets/#recover-suspended-ticket
+					if (operation === 'recover') {
+						const ticketId = this.getNodeParameter('id', i) as string;
+						try {
+							responseData = await zendeskApiRequest.call(this, 'PUT', `/suspended_tickets/${ticketId}/recover`, {});
+							responseData = responseData.ticket;
 						} catch (error) {
 							throw new NodeApiError(this.getNode(), error);
 						}
