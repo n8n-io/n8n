@@ -13,6 +13,8 @@ services:
       - POSTGRES_NON_ROOT_PASSWORD
     volumes:
       - ./init-data.sh:/docker-entrypoint-initdb.d/init-data.sh
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "postgres"]
 
   n8n:
     image: n8nio/n8n
@@ -33,6 +35,3 @@ services:
       - postgres
     volumes:
       - ~/.n8n:/home/node/.n8n
-    # Wait 5 seconds to start n8n to make sure that PostgreSQL is ready
-    # when n8n tries to connect to it
-    command: /bin/sh -c "sleep 5; n8n start"
