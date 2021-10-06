@@ -100,7 +100,7 @@ function getPersonalizedNodeTypes(answers: ISurvey) {
 		nodeTypes = nodeTypes.concat(CRON_NODE_TYPE);
 	}
 
-	if (codingSkill !== null && codingSkill > 4) {
+	if (codingSkill !== null && codingSkill >= 4) {
 		nodeTypes = nodeTypes.concat(FUNCTION_NODE_TYPE);
 	}
 	else {
