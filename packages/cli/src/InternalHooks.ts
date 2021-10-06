@@ -1,6 +1,11 @@
 /* eslint-disable import/no-cycle */
 import { IDataObject, IRun, TelemetryHelpers } from 'n8n-workflow';
-import { IDiagnosticInfo, IInternalHooksClass, IWorkflowBase } from '.';
+import {
+	IDiagnosticInfo,
+	IInternalHooksClass,
+	IPersonalizationSurveyAnswers,
+	IWorkflowBase,
+} from '.';
 import { Telemetry } from './telemetry';
 
 export class InternalHooksClass implements IInternalHooksClass {
@@ -19,6 +24,15 @@ export class InternalHooksClass implements IInternalHooksClass {
 		};
 		await this.telemetry.identify(info);
 		await this.telemetry.track('Instance started', info);
+	}
+
+	async onPersonalizationSurveySubmitted(answers: IPersonalizationSurveyAnswers): Promise<void> {
+		await this.telemetry.track('User responded to personalization questions', {
+			company_size: answers.companySize,
+			coding_skill: answers.codingSkill,
+			work_area: answers.workArea,
+			other_work_area: answers.otherWorkArea,
+		});
 	}
 
 	async onWorkflowDeleted(workflowId: string): Promise<void> {
