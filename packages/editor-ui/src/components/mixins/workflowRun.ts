@@ -140,6 +140,12 @@ export const workflowRun = mixins(
 					startNodes.push(nodeName);
 				}
 
+				const isNewWorkflow = this.$store.getters.isNewWorkflow;
+				const hasWebhookNode = this.$store.getters.currentWorkflowHasWebhookNode;
+				if (isNewWorkflow && hasWebhookNode) {
+					await this.saveCurrentWorkflow();
+				}
+
 				const workflowData = await this.getWorkflowDataToSave();
 
 				const startRunData: IStartRunData = {
