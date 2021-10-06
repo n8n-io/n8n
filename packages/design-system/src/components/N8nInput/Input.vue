@@ -62,6 +62,9 @@ export default {
 		title: {
 			type: String,
 		},
+		autocomplete: {
+			type: String,
+		},
 	},
 	methods: {
 		getSize(size: string): string | undefined {

@@ -29,6 +29,7 @@
 				:rows="getArgument('rows')"
 				:value="displayValue"
 				:disabled="isReadOnly"
+				:autocomplete="getStringInputType ? 'new-password' : undefined"
 				@input="onTextInputChange"
 				@change="valueChanged"
 				@keydown.stop
