@@ -183,7 +183,7 @@ export class Worker extends Command {
 			{ retryOf: currentExecutionDb.retryOf as string },
 		);
 
-		additionalData.hooks.hookFunctions.sendWebhookResponse = [
+		additionalData.hooks.hookFunctions.sendResponse = [
 			async (response: IN8nHttpFullResponse): Promise<void> => {
 				await job.progress({
 					executionId: job.data.executionId as string,

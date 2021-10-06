@@ -1529,8 +1529,8 @@ export function getExecuteFunctions(
 					Logger.warn(`There was a problem sending messsage to UI: ${error.message}`);
 				}
 			},
-			async sendWebhookResponse(response: IN8nHttpFullResponse): Promise<void> {
-				await additionalData.hooks?.executeHookFunctions('sendWebhookResponse', [response]);
+			async sendResponse(response: IN8nHttpFullResponse): Promise<void> {
+				await additionalData.hooks?.executeHookFunctions('sendResponse', [response]);
 			},
 			helpers: {
 				httpRequest,

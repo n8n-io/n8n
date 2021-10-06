@@ -199,9 +199,9 @@ export class WorkflowRunnerProcess {
 		);
 		additionalData.hooks = this.getProcessForwardHooks();
 
-		additionalData.hooks.hookFunctions.sendWebhookResponse = [
+		additionalData.hooks.hookFunctions.sendResponse = [
 			async (response: IN8nHttpFullResponse): Promise<void> => {
-				await sendToParentProcess('sendWebhookResponse', {
+				await sendToParentProcess('sendResponse', {
 					response: WebhookHelpers.encodeWebhookResponse(response),
 				});
 			},

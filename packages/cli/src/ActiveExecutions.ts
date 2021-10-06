@@ -5,9 +5,7 @@
 /* eslint-disable @typescript-eslint/no-unsafe-call */
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
-import { IN8nHttpFullResponse, IRun } from 'n8n-workflow';
-
-import { createDeferredPromise, IDeferredPromise } from 'n8n-core';
+import { createDeferredPromise, IDeferredPromise, IN8nHttpFullResponse, IRun } from 'n8n-workflow';
 
 import { ChildProcess } from 'child_process';
 // eslint-disable-next-line import/no-extraneous-dependencies
@@ -116,9 +114,9 @@ export class ActiveExecutions {
 		this.activeExecutions[executionId].workflowExecution = workflowExecution;
 	}
 
-	attachWebhookResponsePromise(
+	attachResponsePromise(
 		executionId: string,
-		webhookResponsePromise: IDeferredPromise<IN8nHttpFullResponse>,
+		responsePromise: IDeferredPromise<IN8nHttpFullResponse>,
 	): void {
 		if (this.activeExecutions[executionId] === undefined) {
 			throw new Error(
@@ -126,15 +124,15 @@ export class ActiveExecutions {
 			);
 		}
 
-		this.activeExecutions[executionId].webhookResponsePromise = webhookResponsePromise;
+		this.activeExecutions[executionId].responsePromise = responsePromise;
 	}
 
-	resolveWebhookResponsePromise(executionId: string, response: IN8nHttpFullResponse): void {
+	resolveResponsePromise(executionId: string, response: IN8nHttpFullResponse): void {
 		if (this.activeExecutions[executionId] === undefined) {
 			return;
 		}
 
-		this.activeExecutions[executionId].webhookResponsePromise?.resolve(response);
+		this.activeExecutions[executionId].responsePromise?.resolve(response);
 	}
 
 	/**

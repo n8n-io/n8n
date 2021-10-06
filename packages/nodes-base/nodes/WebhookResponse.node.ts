@@ -166,7 +166,7 @@ export class WebhookResponse implements INodeType {
 			statusMessage: 'blub',
 		};
 
-		this.sendWebhookResponse(response);
+		this.sendResponse(response);
 
 		return this.prepareOutputData(items);
 	}

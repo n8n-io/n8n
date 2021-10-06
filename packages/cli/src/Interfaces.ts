@@ -7,6 +7,7 @@ import {
 	ICredentialsEncrypted,
 	ICredentialType,
 	IDataObject,
+	IDeferredPromise,
 	IN8nHttpFullResponse,
 	IRun,
 	IRunData,
@@ -19,7 +20,7 @@ import {
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
 
-import { IDeferredPromise, WorkflowExecute } from 'n8n-core';
+import { WorkflowExecute } from 'n8n-core';
 
 // eslint-disable-next-line import/no-extraneous-dependencies
 import * as PCancelable from 'p-cancelable';
@@ -242,7 +243,7 @@ export interface IExecutingWorkflowData {
 	process?: ChildProcess;
 	startedAt: Date;
 	postExecutePromises: Array<IDeferredPromise<IRun | undefined>>;
-	webhookResponsePromise?: IDeferredPromise<IN8nHttpFullResponse>;
+	responsePromise?: IDeferredPromise<IN8nHttpFullResponse>;
 	workflowExecution?: PCancelable<IRun>;
 }
 

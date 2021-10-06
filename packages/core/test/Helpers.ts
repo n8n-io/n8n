@@ -4,6 +4,7 @@ import {
 	ICredentialDataDecryptedObject,
 	ICredentialsHelper,
 	IDataObject,
+	IDeferredPromise,
 	IExecuteWorkflowInfo,
 	INodeExecutionData,
 	INodeParameters,
@@ -19,7 +20,7 @@ import {
 	WorkflowHooks,
 } from 'n8n-workflow';
 
-import { Credentials, IDeferredPromise, IExecuteFunctions } from '../src';
+import { Credentials, IExecuteFunctions } from '../src';
 
 export class CredentialsHelper extends ICredentialsHelper {
 	getDecrypted(name: string, type: string): Promise<ICredentialDataDecryptedObject> {

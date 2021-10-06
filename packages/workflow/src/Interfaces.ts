@@ -6,6 +6,7 @@
 import * as express from 'express';
 import * as FormData from 'form-data';
 import { URLSearchParams } from 'url';
+import { IDeferredPromise } from './DeferredPromise';
 import { Workflow } from './Workflow';
 import { WorkflowHooks } from './WorkflowHooks';
 import { WorkflowOperationError } from './WorkflowErrors';
@@ -357,7 +358,8 @@ export interface IExecuteFunctions {
 	): Promise<INodeExecutionData[][]>;
 	putExecutionToWait(waitTill: Date): Promise<void>;
 	sendMessageToUI(message: any): void; // tslint:disable-line:no-any
-	sendWebhookResponse(response: IN8nHttpFullResponse): void; // tslint:disable-line:no-any
+	// TODO: Replace IN8nHttpFullResponse with something more generic
+	sendResponse(response: IN8nHttpFullResponse): void; // tslint:disable-line:no-any
 	helpers: {
 		httpRequest(
 			requestOptions: IHttpRequestOptions,
@@ -478,7 +480,10 @@ export interface IPollFunctions {
 }
 
 export interface ITriggerFunctions {
-	emit(data: INodeExecutionData[][]): void;
+	emit(
+		data: INodeExecutionData[][],
+		responsePromise?: IDeferredPromise<IN8nHttpFullResponse>,
+	): void;
 	getCredentials(type: string): Promise<ICredentialDataDecryptedObject | undefined>;
 	getMode(): WorkflowExecuteMode;
 	getActivationMode(): WorkflowActivateMode;
@@ -958,7 +963,7 @@ export interface IWorkflowExecuteHooks {
 	nodeExecuteBefore?: Array<(nodeName: string) => Promise<void>>;
 	workflowExecuteAfter?: Array<(data: IRun, newStaticData: IDataObject) => Promise<void>>;
 	workflowExecuteBefore?: Array<(workflow: Workflow, data: IRunExecutionData) => Promise<void>>;
-	sendWebhookResponse?: Array<(response: IN8nHttpFullResponse) => Promise<void>>;
+	sendResponse?: Array<(response: IN8nHttpFullResponse) => Promise<void>>;
 }
 
 export interface IWorkflowExecuteAdditionalData {

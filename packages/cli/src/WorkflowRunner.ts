@@ -11,10 +11,11 @@
 /* eslint-disable @typescript-eslint/explicit-module-boundary-types */
 /* eslint-disable import/no-cycle */
 /* eslint-disable @typescript-eslint/no-unused-vars */
-import { IDeferredPromise, IProcessMessage, WorkflowExecute } from 'n8n-core';
+import { IProcessMessage, WorkflowExecute } from 'n8n-core';
 
 import {
 	ExecutionError,
+	IDeferredPromise,
 	IN8nHttpFullResponse,
 	IRun,
 	LoggerProxy as Logger,
@@ -40,7 +41,6 @@ import {
 	ExternalHooks,
 	IBullJobData,
 	IBullJobResponse,
-	IBullWebhookResponse,
 	ICredentialsOverwrite,
 	ICredentialsTypeData,
 	IExecutionFlattedDb,
@@ -75,14 +75,6 @@ export class WorkflowRunner {
 
 		if (executionsMode === 'queue') {
 			this.jobQueue = Queue.getInstance().getBullObjectInstance();
-
-			this.jobQueue.on('global:progress', (jobId, progress: IBullWebhookResponse) => {
-				console.log(`Job ${jobId} did send ${JSON.stringify(progress)}`);
-				this.activeExecutions.resolveWebhookResponsePromise(
-					progress.executionId,
-					WebhookHelpers.decodeWebhookResponse(progress.response),
-				);
-			});
 		}
 	}
 
@@ -154,7 +146,7 @@ export class WorkflowRunner {
 		loadStaticData?: boolean,
 		realtime?: boolean,
 		executionId?: string,
-		webhookResponsePromise?: IDeferredPromise<IN8nHttpFullResponse>,
+		responsePromise?: IDeferredPromise<IN8nHttpFullResponse>,
 	): Promise<string> {
 		const executionsProcess = config.get('executions.process') as string;
 		const executionsMode = config.get('executions.mode') as string;
@@ -167,22 +159,12 @@ export class WorkflowRunner {
 				loadStaticData,
 				realtime,
 				executionId,
-				webhookResponsePromise,
+				responsePromise,
 			);
 		} else if (executionsProcess === 'main') {
-			executionId = await this.runMainProcess(
-				data,
-				loadStaticData,
-				executionId,
-				webhookResponsePromise,
-			);
+			executionId = await this.runMainProcess(data, loadStaticData, executionId, responsePromise);
 		} else {
-			executionId = await this.runSubprocess(
-				data,
-				loadStaticData,
-				executionId,
-				webhookResponsePromise,
-			);
+			executionId = await this.runSubprocess(data, loadStaticData, executionId, responsePromise);
 		}
 
 		const externalHooks = ExternalHooks();
@@ -213,7 +195,7 @@ export class WorkflowRunner {
 		data: IWorkflowExecutionDataProcess,
 		loadStaticData?: boolean,
 		restartExecutionId?: string,
-		webhookResponsePromise?: IDeferredPromise<IN8nHttpFullResponse>,
+		responsePromise?: IDeferredPromise<IN8nHttpFullResponse>,
 	): Promise<string> {
 		if (loadStaticData === true && data.workflowData.id) {
 			data.workflowData.staticData = await WorkflowHelpers.getStaticDataById(
@@ -271,10 +253,10 @@ export class WorkflowRunner {
 				true,
 			);
 
-			additionalData.hooks.hookFunctions.sendWebhookResponse = [
+			additionalData.hooks.hookFunctions.sendResponse = [
 				async (response: IN8nHttpFullResponse): Promise<void> => {
-					if (webhookResponsePromise) {
-						webhookResponsePromise.resolve(response);
+					if (responsePromise) {
+						responsePromise.resolve(response);
 					}
 				},
 			];
@@ -364,14 +346,14 @@ export class WorkflowRunner {
 		loadStaticData?: boolean,
 		realtime?: boolean,
 		restartExecutionId?: string,
-		webhookResponsePromise?: IDeferredPromise<IN8nHttpFullResponse>,
+		responsePromise?: IDeferredPromise<IN8nHttpFullResponse>,
 	): Promise<string> {
 		// TODO: If "loadStaticData" is set to true it has to load data new on worker
 
 		// Register the active execution
 		const executionId = await this.activeExecutions.add(data, undefined, restartExecutionId);
-		if (webhookResponsePromise) {
-			this.activeExecutions.attachWebhookResponsePromise(executionId, webhookResponsePromise);
+		if (responsePromise) {
+			this.activeExecutions.attachResponsePromise(executionId, responsePromise);
 		}
 
 		const jobData: IBullJobData = {
@@ -572,7 +554,7 @@ export class WorkflowRunner {
 		data: IWorkflowExecutionDataProcess,
 		loadStaticData?: boolean,
 		restartExecutionId?: string,
-		webhookResponsePromise?: IDeferredPromise<IN8nHttpFullResponse>,
+		responsePromise?: IDeferredPromise<IN8nHttpFullResponse>,
 	): Promise<string> {
 		let startedAt = new Date();
 		const subprocess = fork(pathJoin(__dirname, 'WorkflowRunnerProcess.js'));
@@ -681,11 +663,9 @@ export class WorkflowRunner {
 			} else if (message.type === 'end') {
 				clearTimeout(executionTimeout);
 				this.activeExecutions.remove(executionId, message.data.runData);
-			} else if (message.type === 'sendWebhookResponse') {
-				if (webhookResponsePromise) {
-					webhookResponsePromise.resolve(
-						WebhookHelpers.decodeWebhookResponse(message.data.response),
-					);
+			} else if (message.type === 'sendResponse') {
+				if (responsePromise) {
+					responsePromise.resolve(WebhookHelpers.decodeWebhookResponse(message.data.response));
 				}
 			} else if (message.type === 'sendMessageToUI') {
 				// eslint-disable-next-line @typescript-eslint/no-unsafe-call

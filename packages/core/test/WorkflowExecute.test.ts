@@ -1,6 +1,14 @@
-import { IConnections, ILogger, INode, IRun, LoggerProxy, Workflow } from 'n8n-workflow';
+import {
+	createDeferredPromise,
+	IConnections,
+	ILogger,
+	INode,
+	IRun,
+	LoggerProxy,
+	Workflow,
+} from 'n8n-workflow';
 
-import { createDeferredPromise, WorkflowExecute } from '../src';
+import { WorkflowExecute } from '../src';
 
 import * as Helpers from './Helpers';
 

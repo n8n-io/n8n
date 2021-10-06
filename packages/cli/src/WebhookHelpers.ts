@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-call */
 /* eslint-disable no-param-reassign */
 /* eslint-disable @typescript-eslint/prefer-optional-chain */
 /* eslint-disable @typescript-eslint/no-shadow */
@@ -15,16 +16,13 @@ import * as express from 'express';
 // eslint-disable-next-line import/no-extraneous-dependencies
 import { get } from 'lodash';
 
-import {
-	createDeferredPromise,
-	BINARY_ENCODING,
-	IDeferredPromise,
-	NodeExecuteFunctions,
-} from 'n8n-core';
+import { BINARY_ENCODING, NodeExecuteFunctions } from 'n8n-core';
 
 import {
+	createDeferredPromise,
 	IBinaryKeyData,
 	IDataObject,
+	IDeferredPromise,
 	IExecuteData,
 	IN8nHttpFullResponse,
 	INode,
@@ -386,10 +384,10 @@ export async function executeWebhook(
 			workflowData,
 		};
 
-		let webhookResponsePromise: IDeferredPromise<IN8nHttpFullResponse> | undefined;
+		let responsePromise: IDeferredPromise<IN8nHttpFullResponse> | undefined;
 		if (responseMode === 'responseNode') {
-			webhookResponsePromise = await createDeferredPromise<IN8nHttpFullResponse>();
-			webhookResponsePromise
+			responsePromise = await createDeferredPromise<IN8nHttpFullResponse>();
+			responsePromise
 				.promise()
 				.then((response: IN8nHttpFullResponse) => {
 					if (didSendResponse) {
@@ -430,7 +428,7 @@ export async function executeWebhook(
 			true,
 			!didSendResponse,
 			executionId,
-			webhookResponsePromise,
+			responsePromise,
 		);
 
 		Logger.verbose(
