@@ -437,12 +437,11 @@ export interface IVersionNotificationSettings {
 	infoUrl: string;
 }
 
-export interface IPersonalizationSurveyAnswers {
-	companySize: string | null;
-	codingSkill: string | null;
-	workArea: string | null;
-	otherWorkArea: string | null;
-}
+export type IPersonalizationSurveyKeys = 'companySize' | 'codingSkill' | 'workArea' | 'otherWorkArea';
+
+export type IPersonalizationSurveyAnswers = {
+	[key in IPersonalizationSurveyKeys]: string | null
+};
 
 export interface IPersonalizationSurvey {
 	answers?: IPersonalizationSurveyAnswers;

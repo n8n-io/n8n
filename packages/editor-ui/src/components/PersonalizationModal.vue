@@ -137,7 +137,7 @@ import {
 import { workflowHelpers } from "@/components/mixins/workflowHelpers";
 import { showMessage } from "@/components/mixins/showMessage";
 import Modal from "./Modal.vue";
-import { IPersonalizationSurveyAnswers } from "@/Interface";
+import { IPersonalizationSurveyAnswers, IPersonalizationSurveyKeys } from "@/Interface";
 import Vue from "vue";
 import { mapGetters } from "vuex";
 
@@ -188,7 +188,7 @@ export default mixins(showMessage, workflowHelpers).extend({
 		closeDialog() {
 			this.modalBus.$emit('close');
 		},
-		onInput(name: "workArea" | "otherWorkArea" | "companySize" | "codingSkill", value: string) {
+		onInput(name: IPersonalizationSurveyKeys, value: string) {
 			if (name === WORK_AREA_KEY && value === OTHER_WORK_AREA_OPTION) {
 				this.otherWorkAreaFieldVisible = true;
 			}
