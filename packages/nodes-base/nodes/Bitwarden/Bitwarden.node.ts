@@ -66,7 +66,7 @@ export class Bitwarden implements INodeType {
 		credentials: [
 			{
 				name: 'bitwardenApi',
-				required: true,
+				required: false,
 			},
 		],
 		properties: [
@@ -94,6 +94,13 @@ export class Bitwarden implements INodeType {
 				],
 				default: 'collection',
 				description: 'Resource to consume',
+			},
+			{
+				displayName: 'Code',
+				name: 'code',
+				type: 'string',
+				default:'',
+				description: '',
 			},
 			...collectionOperations,
 			...collectionFields,
