@@ -92,6 +92,7 @@ export const REQUEST_NODE_FORM_URL = 'https://n8n-community.typeform.com/to/K1fB
 export const INSTANCE_ID_HEADER = 'n8n-instance-id';
 export const WAIT_TIME_UNLIMITED = '3000-01-01T00:00:00.000Z';
 
+export const WORK_AREA_KEY = 'workArea';
 export const AUTOMATION_CONSULTING_WORK_AREA = "automationConsulting";
 export const FINANCE_PROCUREMENT_HR_WORK_AREA = "finance-procurment-HR";
 export const IT_ENGINEERING_WORK_AREA = "IT-Engineering";
@@ -101,11 +102,15 @@ export const PRODUCT_WORK_AREA = "product";
 export const SALES_BUSINESSDEV_WORK_AREA = "sales-businessDevelopment";
 export const SECURITY_WORK_AREA = "security";
 export const SUPPORT_OPS_WORK_AREA = "support-operations";
-export const OTHER_WORK_AREA = "other";
+export const OTHER_WORK_AREA_OPTION = "other";
 
+export const COMPANY_SIZE_KEY = 'companySize';
 export const COMPANY_SIZE_20_OR_LESS = '<20';
 export const COMPANY_SIZE_20_99 = '20-99';
 export const COMPANY_SIZE_100_499 = '100-499';
 export const COMPANY_SIZE_500_999 = '500-999';
 export const COMPANY_SIZE_1000_OR_MORE = '1000+';
 export const COMPANY_SIZE_PERSONAL_USE = 'personalUser';
+
+export const CODING_SKILL_KEY = 'codingSkill';
+export const OTHER_WORK_AREA_KEY = 'otherWorkArea';

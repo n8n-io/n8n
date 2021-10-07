@@ -19,7 +19,7 @@
 			</div>
 			<div :class="$style.container" v-else>
 				<n8n-input-label label="Which of these areas do you mainly work in?">
-					<n8n-select :value="values.workArea" placeholder="Select..." @change="(value) => onInput('workArea', value)">
+					<n8n-select :value="values[WORK_AREA_KEY]" placeholder="Select..." @change="(value) => onInput(WORK_AREA_KEY, value)">
 						<n8n-option :value="AUTOMATION_CONSULTING_WORK_AREA" label="Automation consulting" />
 						<n8n-option :value="FINANCE_PROCUREMENT_HR_WORK_AREA" label="Finance / Procurement / HR" />
 						<n8n-option :value="IT_ENGINEERING_WORK_AREA" label="IT / Engineering" />
@@ -29,19 +29,19 @@
 						<n8n-option :value="SALES_BUSINESSDEV_WORK_AREA" label="Sales / Business Development" />
 						<n8n-option :value="SECURITY_WORK_AREA" label="Security" />
 						<n8n-option :value="SUPPORT_OPS_WORK_AREA" label="Support / Operations" />
-						<n8n-option :value="OTHER_WORK_AREA" label="Other (please specify)" />
+						<n8n-option :value="OTHER_WORK_AREA_OPTION" label="Other (please specify)" />
 					</n8n-select>
 				</n8n-input-label>
 
 				<n8n-input
 					v-if="otherWorkAreaFieldVisible"
-					:value="values.otherWorkArea"
+					:value="values[OTHER_WORK_AREA_KEY]"
 					placeholder="Specify your work area"
-					@input="(value) => onInput('otherWorkArea', value)"
+					@input="(value) => onInput(OTHER_WORK_AREA_KEY, value)"
 				/>
 
 				<n8n-input-label label="How are your coding skills?">
-					<n8n-select :value="values.codingSkill" placeholder="Select..." @change="(value) => onInput('codingSkill', value)">
+					<n8n-select :value="values[CODING_SKILL_KEY]" placeholder="Select..." @change="(value) => onInput(CODING_SKILL_KEY, value)">
 						<n8n-option
 							label="0 (Never coded)"
 							value="0"
@@ -70,7 +70,7 @@
 				</n8n-input-label>
 
 				<n8n-input-label label="How big is your company?">
-					<n8n-select :value="values.companySize" placeholder="Select..." @change="(value) => onInput('companySize', value)">
+					<n8n-select :value="values[COMPANY_SIZE_KEY]" placeholder="Select..." @change="(value) => onInput(COMPANY_SIZE_KEY, value)">
 						<n8n-option
 							label="Less than 20 people"
 							:value="COMPANY_SIZE_20_OR_LESS"
@@ -122,13 +122,17 @@ import {
 	SALES_BUSINESSDEV_WORK_AREA,
 	SECURITY_WORK_AREA,
 	SUPPORT_OPS_WORK_AREA,
-	OTHER_WORK_AREA,
+	OTHER_WORK_AREA_OPTION,
 	COMPANY_SIZE_20_OR_LESS,
 	COMPANY_SIZE_20_99,
 	COMPANY_SIZE_100_499,
 	COMPANY_SIZE_500_999,
 	COMPANY_SIZE_1000_OR_MORE,
 	COMPANY_SIZE_PERSONAL_USE,
+	WORK_AREA_KEY,
+	COMPANY_SIZE_KEY,
+	CODING_SKILL_KEY,
+	OTHER_WORK_AREA_KEY,
 } from "../constants";
 import { workflowHelpers } from "@/components/mixins/workflowHelpers";
 import { showMessage } from "@/components/mixins/showMessage";
@@ -148,10 +152,10 @@ export default mixins(showMessage, workflowHelpers).extend({
 			otherWorkAreaFieldVisible: false,
 			modalBus: new Vue(),
 			values: {
-				workArea: null,
-				otherWorkArea: null,
-				companySize: null,
-				codingSkill: null,
+				[WORK_AREA_KEY]: null,
+				[COMPANY_SIZE_KEY]: null,
+				[CODING_SKILL_KEY]: null,
+				[OTHER_WORK_AREA_KEY]: null,
 			} as IPersonalizationSurveyAnswers,
 			AUTOMATION_CONSULTING_WORK_AREA,
 			FINANCE_PROCUREMENT_HR_WORK_AREA,
@@ -162,13 +166,17 @@ export default mixins(showMessage, workflowHelpers).extend({
 			SALES_BUSINESSDEV_WORK_AREA,
 			SECURITY_WORK_AREA,
 			SUPPORT_OPS_WORK_AREA,
-			OTHER_WORK_AREA,
+			OTHER_WORK_AREA_OPTION,
 			COMPANY_SIZE_20_OR_LESS,
 			COMPANY_SIZE_20_99,
 			COMPANY_SIZE_100_499,
 			COMPANY_SIZE_500_999,
 			COMPANY_SIZE_1000_OR_MORE,
 			COMPANY_SIZE_PERSONAL_USE,
+			WORK_AREA_KEY,
+			COMPANY_SIZE_KEY,
+			CODING_SKILL_KEY,
+			OTHER_WORK_AREA_KEY,
 		};
 	},
 	computed: {
@@ -181,12 +189,12 @@ export default mixins(showMessage, workflowHelpers).extend({
 			this.modalBus.$emit('close');
 		},
 		onInput(name: "workArea" | "otherWorkArea" | "companySize" | "codingSkill", value: string) {
-			if (name === 'workArea' && value === OTHER_WORK_AREA) {
+			if (name === WORK_AREA_KEY && value === OTHER_WORK_AREA_OPTION) {
 				this.otherWorkAreaFieldVisible = true;
 			}
-			else if (name === 'workArea') {
+			else if (name === WORK_AREA_KEY) {
 				this.otherWorkAreaFieldVisible = false;
-				this.values.otherWorkArea = null;
+				this.values[OTHER_WORK_AREA_KEY] = null;
 			}
 
 			this.values[name] = value;
@@ -197,7 +205,7 @@ export default mixins(showMessage, workflowHelpers).extend({
 			try {
 				await this.$store.dispatch('settings/submitPersonalizationSurvey', this.values);
 
-				if (this.values.workArea === null && this.values.companySize === null && this.values.codingSkill === null) {
+				if (this.values[WORK_AREA_KEY] === null && this.values[COMPANY_SIZE_KEY] === null && this.values[CODING_SKILL_KEY] === null) {
 					this.closeDialog();
 				}
 
