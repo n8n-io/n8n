@@ -129,3 +129,17 @@ function getAccessToken(this: IExecuteFunctions | IExecuteSingleFunctions | ILoa
 
 	return this.helpers.request!(options);
 }
+
+export function extractId(url: string): string {
+	if (url.includes('/d/')) {
+		//https://docs.google.com/document/d/1TUJGUf5HUv9e6MJBzcOsPruxXDeGMnGYTBWfkMagcg4/edit
+		const data = url.match(/[-\w]{25,}/);
+		if (Array.isArray(data)) {
+			return data[0];
+		}
+	} else if (url.includes('/folders/')) {
+		//https://drive.google.com/drive/u/0/folders/19MqnruIXju5sAWYD3J71im1d2CBJkZzy
+		return url.split('/folders/')[1];
+	}
+	return url;
+}

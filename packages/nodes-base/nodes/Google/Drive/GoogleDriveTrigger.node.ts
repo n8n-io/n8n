@@ -13,6 +13,7 @@ import {
 } from 'n8n-workflow';
 
 import {
+	extractId,
 	googleApiRequest,
 	googleApiRequestAllItems,
 } from './GenericFunctions';
@@ -61,7 +62,7 @@ export class GoogleDriveTrigger implements INodeType {
 		outputs: ['main'],
 		properties: [
 			{
-				displayName: 'Authentication',
+				displayName: 'Credential Type',
 				name: 'authentication',
 				type: 'options',
 				options: [
@@ -74,7 +75,7 @@ export class GoogleDriveTrigger implements INodeType {
 						value: 'oAuth2',
 					},
 				],
-				default: 'serviceAccount',
+				default: 'oAuth2',
 			},
 			{
 				displayName: 'Trigger On',
@@ -84,11 +85,11 @@ export class GoogleDriveTrigger implements INodeType {
 				default: '',
 				options: [
 					{
-						name: 'Changes To a Specific File',
+						name: 'Changes to a Specific File',
 						value: 'specificFile',
 					},
 					{
-						name: 'Changes To/In a Specific Folder',
+						name: 'Changes Involving a Specific Folder',
 						value: 'specificFolder',
 					},
 					// {
@@ -99,7 +100,7 @@ export class GoogleDriveTrigger implements INodeType {
 				description: 'The resource whose events trigger the webhook.',
 			},
 			{
-				displayName: 'File To Watch',
+				displayName: 'File URL or ID',
 				name: 'fileToWatch',
 				type: 'string',
 				displayOptions: {
@@ -110,10 +111,11 @@ export class GoogleDriveTrigger implements INodeType {
 					},
 				},
 				default: '',
+				description: 'The address of this file when you view it in your browser (or just the ID contained within the URL',
 				required: true,
 			},
 			{
-				displayName: 'Event to Watch',
+				displayName: 'Watch For',
 				name: 'event',
 				type: 'options',
 				displayOptions: {
@@ -124,7 +126,7 @@ export class GoogleDriveTrigger implements INodeType {
 					},
 				},
 				required: true,
-				default: 'fileCreated',
+				default: '',
 				description: 'The resource whose events trigger the webhook.',
 				options: [
 					{
@@ -134,7 +136,7 @@ export class GoogleDriveTrigger implements INodeType {
 				],
 			},
 			{
-				displayName: 'Folder To Watch',
+				displayName: 'Folder URL or ID',
 				name: 'folderToWatch',
 				type: 'string',
 				displayOptions: {
@@ -145,10 +147,11 @@ export class GoogleDriveTrigger implements INodeType {
 					},
 				},
 				default: '',
+				description: 'The address of this folder when you view it in your browser (or just the ID contained within the URL',
 				required: true,
 			},
 			{
-				displayName: 'Event to Watch',
+				displayName: 'Watch For',
 				name: 'event',
 				type: 'options',
 				displayOptions: {
@@ -160,7 +163,6 @@ export class GoogleDriveTrigger implements INodeType {
 				},
 				required: true,
 				default: '',
-				description: 'The resource whose events trigger the webhook.',
 				options: [
 					{
 						name: 'File Created',
@@ -226,7 +228,7 @@ export class GoogleDriveTrigger implements INodeType {
 				description: 'The drive to monitor',
 			},
 			{
-				displayName: 'Event to Watch',
+				displayName: 'Watch For',
 				name: 'event',
 				type: 'options',
 				displayOptions: {
@@ -238,7 +240,6 @@ export class GoogleDriveTrigger implements INodeType {
 				},
 				required: true,
 				default: 'fileCreated',
-				description: 'The resource whose events trigger the webhook.',
 				options: [
 					{
 						name: 'File Created',
@@ -370,7 +371,7 @@ export class GoogleDriveTrigger implements INodeType {
 		];
 
 		if (triggerOn === 'specificFolder' && event !== 'watchFolderUpdated') {
-			const folderToWatch = this.getNodeParameter('folderToWatch');
+			const folderToWatch = extractId(this.getNodeParameter('folderToWatch') as string);
 			query.push(`'${folderToWatch}' in parents`);
 		}
 
@@ -412,12 +413,12 @@ export class GoogleDriveTrigger implements INodeType {
 		}
 
 		if (triggerOn === 'specificFile' && this.getMode() !== 'manual') {
-			const fileToWatch = this.getNodeParameter('fileToWatch') as string;
+			const fileToWatch = extractId(this.getNodeParameter('fileToWatch') as string);
 			files = files.filter((file: { id: string }) => file.id === fileToWatch);
 		}
 
 		if (triggerOn === 'specificFolder' && event === 'watchFolderUpdated' && this.getMode() !== 'manual') {
-			const folderToWatch = this.getNodeParameter('folderToWatch') as string;
+			const folderToWatch = extractId(this.getNodeParameter('folderToWatch') as string);
 			files = files.filter((file: { id: string }) => file.id === folderToWatch);
 		}
 
