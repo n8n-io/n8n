@@ -364,6 +364,27 @@ export const ticketFields = [
 				],
 			},
 			{
+				displayName: 'Assignee Email',
+				name: 'assigneeEmail',
+				type: 'string',
+				default: '',
+				description: 'The e-mail address of the assignee',
+			},
+			{
+				displayName: 'Public Reply',
+				name: 'publicReply',
+				type: 'string',
+				default: '',
+				description: 'Public ticket reply',
+			},
+			{
+				displayName: 'Internal Note',
+				name: 'internalNote',
+				type: 'string',
+				default: '',
+				description: 'Internal Ticket Note (Accepts HTML)',
+			},
+			{
 				displayName: 'External ID',
 				name: 'externalId',
 				type: 'string',

@@ -395,6 +395,25 @@ export class Zendesk implements INodeType {
 							if (updateFields.customFieldsUi) {
 								body.custom_fields = (updateFields.customFieldsUi as IDataObject).customFieldsValues as IDataObject[];
 							}
+							if (updateFields.assigneeEmail) {
+								body.assignee_email = updateFields.assigneeEmail as string;
+							}
+							if (updateFields.internalNote) {
+								const comment: IComment = {
+									html_body: updateFields.internalNote as string,
+									public: false,
+								};
+								body.comment = comment;
+							}
+
+							if (updateFields.publicReply) {
+								const comment: IComment = {
+									body: updateFields.publicReply as string,
+									public: true,
+								};
+								body.comment = comment;
+							}
+
 						}
 						responseData = await zendeskApiRequest.call(this, 'PUT', `/tickets/${ticketId}`, { ticket: body });
 						responseData = responseData.ticket;
