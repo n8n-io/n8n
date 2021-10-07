@@ -132,6 +132,7 @@ import {
 	ITagWithCountDb,
 	IWorkflowExecutionDataProcess,
 	IWorkflowResponse,
+	IPersonalizationSurveyAnswers,
 	LoadNodesAndCredentials,
 	NodeTypes,
 	Push,
@@ -149,6 +150,8 @@ import {
 import * as config from '../config';
 
 import * as TagHelpers from './TagHelpers';
+import * as PersonalizationSurvey from './PersonalizationSurvey';
+
 import { InternalHooksManager } from './InternalHooksManager';
 import { TagEntity } from './databases/entities/TagEntity';
 import { WorkflowEntity } from './databases/entities/WorkflowEntity';
@@ -278,6 +281,9 @@ class App {
 			},
 			instanceId: '',
 			telemetry: telemetrySettings,
+			personalizationSurvey: {
+				shouldShow: false,
+			},
 		};
 	}
 
@@ -303,6 +309,9 @@ class App {
 		}
 
 		this.frontendSettings.instanceId = await UserSettings.getInstanceId();
+
+		this.frontendSettings.personalizationSurvey =
+			await PersonalizationSurvey.preparePersonalizationSurvey();
 
 		InternalHooksManager.init(this.frontendSettings.instanceId);
 
@@ -2634,6 +2643,31 @@ class App {
 					return this.frontendSettings;
 				},
 			),
+		);
+
+		// ----------------------------------------
+		// User Survey
+		// ----------------------------------------
+
+		// Process personalization survey responses
+		this.app.post(
+			`/${this.restEndpoint}/user-survey`,
+			async (req: express.Request, res: express.Response) => {
+				if (!this.frontendSettings.personalizationSurvey.shouldShow) {
+					ResponseHelper.sendErrorResponse(
+						res,
+						new ResponseHelper.ResponseError('User survey already submitted', undefined, 400),
+						false,
+					);
+				}
+
+				const answers = req.body as IPersonalizationSurveyAnswers;
+				await PersonalizationSurvey.writeSurveyToDisk(answers);
+				this.frontendSettings.personalizationSurvey.shouldShow = false;
+				this.frontendSettings.personalizationSurvey.answers = answers;
+				ResponseHelper.sendSuccessResponse(res, undefined, true, 200);
+				void InternalHooksManager.getInstance().onPersonalizationSurveySubmitted(answers);
+			},
 		);
 
 		// ----------------------------------------
