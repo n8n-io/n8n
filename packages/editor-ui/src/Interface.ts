@@ -470,7 +470,7 @@ export interface IN8nUISettings {
 	};
 	versionNotifications: IVersionNotificationSettings;
 	instanceId: string;
-	userSurvey?: IPersonalizationSurvey;
+	personalizationSurvey?: IPersonalizationSurvey;
 	telemetry: ITelemetrySettings;
 }
 

@@ -16,7 +16,7 @@ const module: Module<ISettingsState, IRootState> = {
 	},
 	getters: {
 		personalizedNodeTypes(state: ISettingsState): string[] {
-			const answers = state.settings.userSurvey && state.settings.userSurvey.answers;
+			const answers = state.settings.personalizationSurvey && state.settings.personalizationSurvey.answers;
 			if (!answers) {
 				return [];
 			}
@@ -29,7 +29,7 @@ const module: Module<ISettingsState, IRootState> = {
 			state.settings = settings;
 		},
 		setPersonalizationAnswers(state: ISettingsState, answers: IPersonalizationSurveyAnswers) {
-			Vue.set(state.settings, 'userSurvey', {
+			Vue.set(state.settings, 'personalizationSurvey', {
 				answers,
 				shouldShow: false,
 			});
@@ -57,7 +57,7 @@ const module: Module<ISettingsState, IRootState> = {
 			context.commit('versions/setVersionNotificationSettings', settings.versionNotifications, {root: true});
 			context.commit('setTelemetry', settings.telemetry, {root: true});
 
-			const showPersonalizationsModal= settings.userSurvey && settings.userSurvey.shouldShow && !settings.userSurvey.answers;
+			const showPersonalizationsModal = settings.personalizationSurvey && settings.personalizationSurvey.shouldShow && !settings.personalizationSurvey.answers;
 			if (showPersonalizationsModal) {
 				context.commit('ui/openModal', PERSONALIZATION_MODAL_KEY, {root: true});
 			}
