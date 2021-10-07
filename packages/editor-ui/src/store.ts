@@ -606,6 +606,14 @@ export const store = new Vuex.Store({
 			return state.activeActions.includes(action);
 		},
 
+		isNewWorkflow: (state) => {
+			return state.workflow.id === PLACEHOLDER_EMPTY_WORKFLOW_ID;
+		},
+
+		currentWorkflowHasWebhookNode: (state: IRootState): boolean => {
+			return !!state.workflow.nodes.find((node: INodeUi) => !!node.webhookId);
+		},
+
 		getActiveExecutions: (state): IExecutionsCurrentSummaryExtended[] => {
 			return state.activeExecutions;
 		},
@@ -790,6 +798,7 @@ export const store = new Vuex.Store({
 		workflowId: (state): string => {
 			return state.workflow.id;
 		},
+
 		workflowSettings: (state): IWorkflowSettings => {
 			if (state.workflow.settings === undefined) {
 				return {};

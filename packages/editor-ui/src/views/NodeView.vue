@@ -161,6 +161,7 @@ import {
 	IPushDataExecutionFinished,
 	ITag,
 	IWorkflowTemplate,
+	IExecutionsSummary,
 } from '../Interface';
 import { mapGetters } from 'vuex';
 
@@ -403,6 +404,15 @@ export default mixins(
 						}
 					}
 				}
+
+				if ((data as IExecutionsSummary).waitTill) {
+					this.$showMessage({
+						title: `This execution hasn't finished yet`,
+						message: `<a onclick="window.location.reload(false);">Refresh</a> to see the latest status.<br/> <a href="https://docs.n8n.io/nodes/n8n-nodes-base.wait/" target="_blank">More info</a>`,
+						type: 'warning',
+						duration: 0,
+					});
+				}
 			},
 			async openWorkflowTemplate (templateId: string) {
 				this.setLoadingText('Loading template');
@@ -447,7 +457,7 @@ export default mixins(
 				}
 
 				this.blankRedirect = true;
-				this.$router.push({ name: 'NodeViewNew' });
+				this.$router.push({ name: 'NodeViewNew', query: { templateId } });
 
 				await this.addNodes(data.workflow.nodes, data.workflow.connections);
 				await this.$store.dispatch('workflows/setNewWorkflowName', data.name);
@@ -911,7 +921,7 @@ export default mixins(
 					});
 				} catch (error) {
 					// Execution stop might fail when the execution has already finished. Let's treat this here.
-					const execution = await this.restApi().getExecution(executionId) as IExecutionResponse;
+					const execution = await this.restApi().getExecution(executionId);
 					if (execution.finished) {
 						const executedData = {
 							data: execution.data,
@@ -2182,7 +2192,6 @@ export default mixins(
 			},
 			async loadSettings (): Promise<void> {
 				const settings = await this.restApi().getSettings() as IN8nUISettings;
-
 				this.$store.commit('setUrlBaseWebhook', settings.urlBaseWebhook);
 				this.$store.commit('setEndpointWebhook', settings.endpointWebhook);
 				this.$store.commit('setEndpointWebhookTest', settings.endpointWebhookTest);
@@ -2299,6 +2308,10 @@ export default mixins(
 	z-index: 18;
 	color: #444;
 	padding-right: 5px;
+
+	@media (max-width: $--breakpoint-2xs) {
+		bottom: 90px;
+	}
 
 	&.expanded {
 		left: $--sidebar-expanded-width + $--zoom-menu-margin;

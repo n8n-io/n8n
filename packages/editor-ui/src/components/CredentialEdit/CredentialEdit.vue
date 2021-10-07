@@ -1,11 +1,12 @@
 <template>
 	<Modal
 		:name="modalName"
-		size="lg"
 		:customClass="$style.credentialModal"
 		:eventBus="modalBus"
 		:loading="loading"
 		:beforeClose="beforeClose"
+		width="70%"
+		height="80%"
 	>
 		<template slot="header">
 			<div v-if="credentialType" :class="$style.header">
@@ -200,6 +201,12 @@ export default mixins(showMessage, nodeHelpers).extend({
 				}
 			}
 		}
+
+		this.$externalHooks().run('credentialsEdit.credentialModalOpened', {
+			credentialType: this.credentialTypeName,
+			isEditingCredential: this.mode === 'edit',
+			activeNode: this.$store.getters.activeNode,
+		});
 
 		if (this.credentialId) {
 			if (!this.requiredPropertiesFilled) {
