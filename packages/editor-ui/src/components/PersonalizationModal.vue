@@ -115,7 +115,7 @@ import { PERSONALIZATION_MODAL_KEY } from "../constants";
 import { workflowHelpers } from "@/components/mixins/workflowHelpers";
 import { showMessage } from "@/components/mixins/showMessage";
 import Modal from "./Modal.vue";
-import { ISurvey } from "@/Interface";
+import { IPersonalizationSurveyAnswers } from "@/Interface";
 import Vue from "vue";
 import { mapGetters } from "vuex";
 
@@ -136,7 +136,7 @@ export default mixins(showMessage, workflowHelpers).extend({
 				otherWorkArea: null,
 				companySize: null,
 				codingSkill: null,
-			} as ISurvey,
+			} as IPersonalizationSurveyAnswers,
 		};
 	},
 	computed: {

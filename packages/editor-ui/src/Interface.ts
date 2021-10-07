@@ -438,11 +438,16 @@ export interface IVersionNotificationSettings {
 	infoUrl: string;
 }
 
-export interface ISurvey {
+export interface IPersonalizationSurveyAnswers {
 	companySize: string | null;
 	codingSkill: string | null;
 	workArea: string | null;
 	otherWorkArea: string | null;
+}
+
+export interface IPersonalizationSurvey {
+	answers?: IPersonalizationSurveyAnswers;
+	shouldShow: boolean;
 }
 
 export interface IN8nUISettings {
@@ -465,10 +470,7 @@ export interface IN8nUISettings {
 	};
 	versionNotifications: IVersionNotificationSettings;
 	instanceId: string;
-	userSurvey?: {
-		answers?: ISurvey;
-		shouldShow: boolean;
-	};
+	userSurvey?: IPersonalizationSurvey;
 	telemetry: ITelemetrySettings;
 }
 

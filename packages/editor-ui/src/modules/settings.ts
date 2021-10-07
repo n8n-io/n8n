@@ -1,9 +1,9 @@
 import {  ActionContext, Module } from 'vuex';
 import {
 	IN8nUISettings,
+	IPersonalizationSurveyAnswers,
 	IRootState,
 	ISettingsState,
-	ISurvey,
 } from '../Interface';
 import { getSettings, submitPersonalizationSurvey } from '../api/settings';
 import Vue from 'vue';
@@ -28,7 +28,7 @@ const module: Module<ISettingsState, IRootState> = {
 		setSettings(state: ISettingsState, settings: IN8nUISettings) {
 			state.settings = settings;
 		},
-		setPersonalizationAnswers(state: ISettingsState, answers: ISurvey) {
+		setPersonalizationAnswers(state: ISettingsState, answers: IPersonalizationSurveyAnswers) {
 			Vue.set(state.settings, 'userSurvey', {
 				answers,
 				shouldShow: false,
@@ -72,7 +72,7 @@ const module: Module<ISettingsState, IRootState> = {
 			}
 			return settings;
 		},
-		async submitPersonalizationSurvey(context: ActionContext<ISettingsState, IRootState>, results: ISurvey) {
+		async submitPersonalizationSurvey(context: ActionContext<ISettingsState, IRootState>, results: IPersonalizationSurveyAnswers) {
 			await submitPersonalizationSurvey(context.rootGetters.getRestApiContext, results);
 
 			context.commit('setPersonalizationAnswers', results);
@@ -80,7 +80,7 @@ const module: Module<ISettingsState, IRootState> = {
 	},
 };
 
-function getPersonalizedNodeTypes(answers: ISurvey) {
+function getPersonalizedNodeTypes(answers: IPersonalizationSurveyAnswers) {
 	const { companySize, workArea } = answers;
 
 	if (companySize === null && workArea === null && answers.codingSkill === null) {
