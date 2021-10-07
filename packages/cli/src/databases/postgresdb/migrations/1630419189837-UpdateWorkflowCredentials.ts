@@ -59,15 +59,21 @@ export class UpdateWorkflowCredentials1630419189837 implements MigrationInterfac
 			}
 		});
 
+		const waitingExecutions = await queryRunner.query(`
+			SELECT id, "workflowData"
+			FROM ${tablePrefix}execution_entity
+			WHERE "waitTill" IS NOT NULL AND finished = FALSE
+		`);
+
 		const retryableExecutions = await queryRunner.query(`
 			SELECT id, "workflowData"
 			FROM ${tablePrefix}execution_entity
-			WHERE finished = FALSE AND mode != 'retry'
+			WHERE "waitTill" IS NULL AND finished = FALSE AND mode != 'retry'
 			ORDER BY "startedAt" DESC
 			LIMIT 200
 		`);
-		// @ts-ignore
-		retryableExecutions.forEach(async (execution) => {
+
+		[...waitingExecutions, ...retryableExecutions].forEach(async (execution) => {
 			const data = execution.workflowData;
 			let credentialsUpdated = false;
 			// @ts-ignore
@@ -160,15 +166,21 @@ export class UpdateWorkflowCredentials1630419189837 implements MigrationInterfac
 			}
 		});
 
+		const waitingExecutions = await queryRunner.query(`
+			SELECT id, "workflowData"
+			FROM ${tablePrefix}execution_entity
+			WHERE "waitTill" IS NOT NULL AND finished = FALSE
+		`);
+
 		const retryableExecutions = await queryRunner.query(`
 			SELECT id, "workflowData"
 			FROM ${tablePrefix}execution_entity
-			WHERE finished = FALSE AND mode != 'retry'
+			WHERE "waitTill" IS NULL AND finished = FALSE AND mode != 'retry'
 			ORDER BY "startedAt" DESC
 			LIMIT 200
 		`);
-		// @ts-ignore
-		retryableExecutions.forEach(async (execution) => {
+
+		[...waitingExecutions, ...retryableExecutions].forEach(async (execution) => {
 			const data = execution.workflowData;
 			let credentialsUpdated = false;
 			// @ts-ignore
