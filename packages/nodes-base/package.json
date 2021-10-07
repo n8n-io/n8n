@@ -584,6 +584,7 @@
       "dist/nodes/Salesmate/Salesmate.node.js",
       "dist/nodes/Segment/Segment.node.js",
       "dist/nodes/Sendy/Sendy.node.js",
+      "dist/nodes/StopAndError.node.js",
       "dist/nodes/SurveyMonkey/SurveyMonkeyTrigger.node.js",
       "dist/nodes/Taiga/Taiga.node.js",
       "dist/nodes/Taiga/TaigaTrigger.node.js",
