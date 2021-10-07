@@ -104,7 +104,7 @@ export class Zendesk implements INodeType {
 					},
 				],
 				default: 'apiToken',
-				description: 'The resource to operate on.',
+				description: 'The resource to operate on',
 			},
 			{
 				displayName: 'Resource',
@@ -114,12 +114,12 @@ export class Zendesk implements INodeType {
 					{
 						name: 'Ticket (Active)',
 						value: 'ticket',
-						description: 'Tickets are the means through which your end users (customers) communicate with agents in Zendesk Support.',
+						description: 'Tickets are the means through which your end users (customers) communicate with agents in Zendesk Support',
 					},
 					{
 						name: 'Ticket (Suspended)',
 						value: 'suspended',
-						description: 'Manage suspended tickets.',
+						description: 'Manage suspended tickets',
 					},
 					{
 						name: 'Ticket Field',
@@ -138,7 +138,7 @@ export class Zendesk implements INodeType {
 					},
 				],
 				default: 'ticket',
-				description: 'Resource to consume.',
+				description: 'Resource to consume',
 			},
 			// TICKET
 			...ticketOperations,
@@ -435,6 +435,34 @@ export class Zendesk implements INodeType {
 							responseData = await zendeskApiRequest.call(this, 'DELETE', `/tickets/${ticketId}`, {});
 						} catch (error) {
 							throw new NodeApiError(this.getNode(), error);
+						}
+					}
+					//https://developer.zendesk.com/rest_api/docs/support/search#list-search-results
+					if (operation === 'search') {
+						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const options = this.getNodeParameter('options', i) as IDataObject;
+						const query = this.getNodeParameter('query', i) as string;
+						qs.query = 'type:ticket';
+						qs.query += ` ${query}`;
+						if (options.status) {
+							qs.query += ` status:${options.status}`;
+						}
+						if (options.group) {
+							qs.query += ` group:${options.group}`;
+						}
+						if (options.sortBy) {
+							qs.sort_by = options.sortBy;
+						}
+						if (options.sortOrder) {
+							qs.sort_order = options.sortOrder;
+						}
+						if (returnAll) {
+							responseData = await zendeskApiRequestAllItems.call(this, 'results', 'GET', `/search`, {}, qs);
+						} else {
+							const limit = this.getNodeParameter('limit', i) as number;
+							qs.per_page = limit;
+							responseData = await zendeskApiRequest.call(this, 'GET', `/search`, {}, qs);
+							responseData = responseData.results;
 						}
 					}
 				}
