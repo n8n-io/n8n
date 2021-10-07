@@ -293,11 +293,14 @@ export const split = (subject: string): string[] =>
 		.map(s => s.replace(/\\([\s\S])/gm, ($0, $1) => $1))
 	;
 
-const userBaseUri = (str?: string) => {
-	if (str === undefined) {
-		return str;
+const userBaseUri = (uri?: string) => {
+	if (uri === undefined) {
+		return uri;
 	}
-	let end = str.length;
-	for (; end > 0 && str[end - 1] === '/'; --end) {}
-	return end < str.length ? str.substring(0, end) : str;
+
+	if (uri.endsWith('/')) {
+		return uri.slice(0, -1);
+	}
+
+	return uri;
 };
