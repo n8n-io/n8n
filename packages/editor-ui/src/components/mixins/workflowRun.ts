@@ -55,7 +55,7 @@ export const workflowRun = mixins(
 
 			return response;
 		},
-		async runWorkflow (nodeName: string, source?: string): Promise<IExecutionPushResponse | undefined> {
+		async runWorkflow (nodeName?: string, source?: string): Promise<IExecutionPushResponse | undefined> {
 			const workflow = this.getWorkflow();
 
 			if(nodeName) {
