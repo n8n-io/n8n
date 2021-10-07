@@ -1,35 +1,35 @@
 import {
 	ICredentialType,
-	NodePropertyTypes,
+	INodeProperties,
 } from 'n8n-workflow';
 
 export class HomeAssistantApi implements ICredentialType {
 	name = 'homeAssistantApi';
 	displayName = 'Home Assistant API';
 	documentationUrl = 'homeAssistant';
-	properties = [
+	properties: INodeProperties[] = [
 		{
 			displayName: 'Host',
 			name: 'host',
-			type: 'string' as NodePropertyTypes,
+			type: 'string',
 			default: '',
 		},
 		{
 			displayName: 'Port',
 			name: 'port',
-			type: 'number' as NodePropertyTypes,
+			type: 'number',
 			default: 8123,
 		},
 		{
 			displayName: 'SSL',
 			name: 'ssl',
-			type: 'boolean' as NodePropertyTypes,
+			type: 'boolean',
 			default: false,
 		},
 		{
 			displayName: 'Access Token',
 			name: 'accessToken',
-			type: 'string' as NodePropertyTypes,
+			type: 'string',
 			default: '',
 		},
 	];
