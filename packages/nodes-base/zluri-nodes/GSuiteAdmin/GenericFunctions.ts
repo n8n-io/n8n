@@ -11,6 +11,7 @@ import {
 import {
 	IDataObject,
 	NodeApiError,
+	JsonObject
 } from 'n8n-workflow';
 
 export async function googleApiRequest(this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: string, resource: string, body: any = {}, qs: IDataObject = {}, uri?: string, headers: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
@@ -40,13 +41,13 @@ export async function googleApiRequest(this: IExecuteFunctions | IExecuteSingleF
 		}
 		const credentials = await this.helpers.request!(secretOptions);
 		
+		console.log(options)
 		
-		//@ts-ignore
-		options.headers['Authorization'] ='Bearer '+credentials.accessToken
-		//@ts-ignore
+		options.headers = Object.assign({}, options.headers, {'Authorization':'Bearer '+credentials.accessToken});
+		
 		return await this.helpers.request!(options);
 	} catch (error) {
-		throw new NodeApiError(this.getNode(), error);
+		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }
 

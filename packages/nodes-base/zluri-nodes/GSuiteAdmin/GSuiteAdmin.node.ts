@@ -509,8 +509,8 @@ export class GSuiteAdmin implements INodeType {
 						delete body.emailUi;
 					}
 
-					//@ts-ignore
-					body['customSchemas'] = { testing: { hasdog: true } };
+					
+					// body['customSchemas'] = { testing: { hasdog: true } };
 
 					responseData = await googleApiRequest.call(
 						this,
