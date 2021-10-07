@@ -95,7 +95,7 @@ export interface IRowResponse{
 	metadata: [
 		{
 			key: string,
-			name: string
+			name: string,
 		}
 	];
 	results: IRow[];
