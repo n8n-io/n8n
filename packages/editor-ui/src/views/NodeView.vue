@@ -109,7 +109,7 @@ import {
 } from 'jsplumb';
 import { MessageBoxInputData } from 'element-ui/types/message-box';
 import { jsPlumb, Endpoint, OnConnectionBindInfo } from 'jsplumb';
-import { NODE_NAME_PREFIX, PLACEHOLDER_EMPTY_WORKFLOW_ID, START_NODE_TYPE } from '@/constants';
+import { NODE_NAME_PREFIX, PLACEHOLDER_EMPTY_WORKFLOW_ID, START_NODE_TYPE, WEBHOOK_NODE_TYPE, WORKFLOW_OPEN_MODAL_KEY } from '@/constants';
 import { copyPaste } from '@/components/mixins/copyPaste';
 import { externalHooks } from '@/components/mixins/externalHooks';
 import { genericHelpers } from '@/components/mixins/genericHelpers';
@@ -173,7 +173,7 @@ const SIDEBAR_WIDTH = 65;
 
 const DEFAULT_START_NODE = {
 	name: 'Start',
-	type: 'n8n-nodes-base.start',
+	type: START_NODE_TYPE,
 	typeVersion: 1,
 	position: [
 		DEFAULT_START_POSITION_X,
@@ -626,7 +626,7 @@ export default mixins(
 					e.stopPropagation();
 					e.preventDefault();
 
-					this.$store.dispatch('ui/openWorklfowOpenModal');
+					this.$store.dispatch('ui/openModal', WORKFLOW_OPEN_MODAL_KEY);
 				} else if (e.key === 'n' && this.isCtrlKeyPressed(e) === true && e.altKey === true) {
 					// Create a new workflow
 					e.stopPropagation();
@@ -1776,7 +1776,7 @@ export default mixins(
 				const node = this.$store.getters.nodeByName(nodeName);
 
 				// "requiredNodeTypes" are also defined in cli/commands/run.ts
-				const requiredNodeTypes = [ 'n8n-nodes-base.start' ];
+				const requiredNodeTypes = [ START_NODE_TYPE ];
 
 				if (requiredNodeTypes.includes(node.type)) {
 					// The node is of the required type so check first
@@ -1935,7 +1935,7 @@ export default mixins(
 						node.parameters = nodeParameters !== null ? nodeParameters : {};
 
 						// if it's a webhook and the path is empty set the UUID as the default path
-						if (node.type === 'n8n-nodes-base.webhook' && node.parameters.path === '') {
+						if (node.type === WEBHOOK_NODE_TYPE && node.parameters.path === '') {
 							node.parameters.path = node.webhookId as string;
 						}
 					}
@@ -2211,22 +2211,7 @@ export default mixins(
 				this.$store.commit('setActiveWorkflows', activeWorkflows);
 			},
 			async loadSettings (): Promise<void> {
-				const settings = await this.restApi().getSettings() as IN8nUISettings;
-				this.$store.commit('setUrlBaseWebhook', settings.urlBaseWebhook);
-				this.$store.commit('setEndpointWebhook', settings.endpointWebhook);
-				this.$store.commit('setEndpointWebhookTest', settings.endpointWebhookTest);
-				this.$store.commit('setSaveDataErrorExecution', settings.saveDataErrorExecution);
-				this.$store.commit('setSaveDataSuccessExecution', settings.saveDataSuccessExecution);
-				this.$store.commit('setSaveManualExecutions', settings.saveManualExecutions);
-				this.$store.commit('setTimezone', settings.timezone);
-				this.$store.commit('setExecutionTimeout', settings.executionTimeout);
-				this.$store.commit('setMaxExecutionTimeout', settings.maxExecutionTimeout);
-				this.$store.commit('setVersionCli', settings.versionCli);
-				this.$store.commit('setInstanceId', settings.instanceId);
-				this.$store.commit('setOauthCallbackUrls', settings.oauthCallbackUrls);
-				this.$store.commit('setN8nMetadata', settings.n8nMetadata || {});
-				this.$store.commit('versions/setVersionNotificationSettings', settings.versionNotifications);
-				this.$store.commit('setTelemetry', settings.telemetry);
+				await this.$store.dispatch('settings/getSettings');
 			},
 			async loadNodeTypes (): Promise<void> {
 				const nodeTypes = await this.restApi().getNodeTypes();

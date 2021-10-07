@@ -2,7 +2,6 @@
 	<div id="side-menu">
 		<about :dialogVisible="aboutDialogVisible" @closeDialog="closeAboutDialog"></about>
 		<executions-list :dialogVisible="executionsListDialogVisible" @closeDialog="closeExecutionsListOpenDialog"></executions-list>
-		<credentials-list :dialogVisible="credentialOpenDialogVisible" @closeDialog="closeCredentialOpenDialog"></credentials-list>
 		<input type="file" ref="importFile" style="display: none" v-on:change="handleFileImport()">
 
 		<div class="side-menu-wrapper" :class="{expanded: !isCollapsed}">
@@ -151,7 +150,6 @@ import {
 } from '../Interface';
 
 import About from '@/components/About.vue';
-import CredentialsList from '@/components/CredentialsList.vue';
 import ExecutionsList from '@/components/ExecutionsList.vue';
 import GiftNotificationIcon from './GiftNotificationIcon.vue';
 import WorkflowSettings from '@/components/WorkflowSettings.vue';
@@ -168,6 +166,7 @@ import { saveAs } from 'file-saver';
 import mixins from 'vue-typed-mixins';
 import { mapGetters } from 'vuex';
 import MenuItemsIterator from './MainSidebarMenuItemsIterator.vue';
+import { CREDENTIAL_LIST_MODAL_KEY, CREDENTIAL_SELECT_MODAL_KEY, DUPLICATE_MODAL_KEY, TAGS_MANAGER_MODAL_KEY, VERSIONS_MODAL_KEY, WORKFLOW_SETTINGS_MODAL_KEY, WORKFLOW_OPEN_MODAL_KEY } from '@/constants';
 
 const helpMenuItems: IMenuItem[] = [
 	{
@@ -214,7 +213,6 @@ export default mixins(
 		name: 'MainHeader',
 		components: {
 			About,
-			CredentialsList,
 			ExecutionsList,
 			GiftNotificationIcon,
 			WorkflowSettings,
@@ -225,7 +223,6 @@ export default mixins(
 				aboutDialogVisible: false,
 				// @ts-ignore
 				basePath: this.$store.getters.getBaseUrl,
-				credentialOpenDialogVisible: false,
 				executionsListDialogVisible: false,
 				stopExecutionInProgress: false,
 				helpMenuItems,
@@ -309,14 +306,11 @@ export default mixins(
 			closeExecutionsListOpenDialog () {
 				this.executionsListDialogVisible = false;
 			},
-			closeCredentialOpenDialog () {
-				this.credentialOpenDialogVisible = false;
-			},
 			openTagManager() {
-				this.$store.dispatch('ui/openTagsManagerModal');
+				this.$store.dispatch('ui/openModal', TAGS_MANAGER_MODAL_KEY);
 			},
 			openUpdatesPanel() {
-				this.$store.dispatch('ui/openUpdatesPanel');
+				this.$store.dispatch('ui/openModal', VERSIONS_MODAL_KEY);
 			},
 			async stopExecution () {
 				const executionId = this.$store.getters.activeExecutionId;
@@ -375,7 +369,7 @@ export default mixins(
 			},
 			async handleSelect (key: string, keyPath: string) {
 				if (key === 'workflow-open') {
-					this.$store.dispatch('ui/openWorklfowOpenModal');
+					this.$store.dispatch('ui/openModal', WORKFLOW_OPEN_MODAL_KEY);
 				} else if (key === 'workflow-import-file') {
 					(this.$refs.importFile as HTMLInputElement).click();
 				} else if (key === 'workflow-import-url') {
@@ -433,12 +427,12 @@ export default mixins(
 				} else if (key === 'workflow-save') {
 					this.saveCurrentWorkflow(undefined);
 				} else if (key === 'workflow-duplicate') {
-					this.$store.dispatch('ui/openDuplicateModal');
+					this.$store.dispatch('ui/openModal', DUPLICATE_MODAL_KEY);
 				} else if (key === 'help-about') {
 					this.aboutDialogVisible = true;
 					this.trackHelpItemClick('about');
 				} else if (key === 'workflow-settings') {
-					this.$store.dispatch('ui/openWorkflowSettingsModal');
+					this.$store.dispatch('ui/openModal', WORKFLOW_SETTINGS_MODAL_KEY);
 				} else if (key === 'workflow-new') {
 					const result = this.$store.getters.getStateIsDirty;
 					if(result) {
@@ -470,9 +464,9 @@ export default mixins(
 					}
 					this.$titleReset();
 				} else if (key === 'credentials-open') {
-					this.credentialOpenDialogVisible = true;
+					this.$store.dispatch('ui/openModal', CREDENTIAL_LIST_MODAL_KEY);
 				} else if (key === 'credentials-new') {
-					this.$store.dispatch('ui/openCredentialsSelectModal');
+					this.$store.dispatch('ui/openModal', CREDENTIAL_SELECT_MODAL_KEY);
 				} else if (key === 'execution-open-workflow') {
 					if (this.workflowExecution !== null) {
 						this.openWorkflow(this.workflowExecution.workflowId as string);

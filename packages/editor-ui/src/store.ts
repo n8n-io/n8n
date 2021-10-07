@@ -7,7 +7,6 @@ import { PLACEHOLDER_EMPTY_WORKFLOW_ID, DEFAULT_NODETYPE_VERSION } from '@/const
 import {
 	IConnection,
 	IConnections,
-	ICredentialType,
 	IDataObject,
 	INodeConnections,
 	INodeIssueData,
@@ -19,7 +18,6 @@ import {
 } from 'n8n-workflow';
 
 import {
-	ICredentialsResponse,
 	IExecutionResponse,
 	IExecutionsCurrentSummaryExtended,
 	IRootState,
@@ -36,6 +34,7 @@ import {
 
 import credentials from './modules/credentials';
 import tags from './modules/tags';
+import settings from './modules/settings';
 import ui from './modules/ui';
 import workflows from './modules/workflows';
 import versions from './modules/versions';
@@ -94,6 +93,7 @@ const state: IRootState = {
 const modules = {
 	credentials,
 	tags,
+	settings,
 	workflows,
 	versions,
 	ui,

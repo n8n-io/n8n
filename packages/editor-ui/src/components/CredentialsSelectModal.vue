@@ -1,6 +1,6 @@
 <template>
 	<Modal
-		:name="modalName"
+		:name="CREDENTIAL_SELECT_MODAL_KEY"
 		:eventBus="modalBus"
 		width="50%"
 		:center="true"
@@ -51,6 +51,7 @@ import Vue from 'vue';
 import { mapGetters } from "vuex";
 
 import Modal from './Modal.vue';
+import { CREDENTIAL_SELECT_MODAL_KEY } from '../constants';
 
 export default Vue.extend({
 	name: 'CredentialsSelectModal',
@@ -69,15 +70,11 @@ export default Vue.extend({
 		return {
 			modalBus: new Vue(),
 			selected: '',
+			CREDENTIAL_SELECT_MODAL_KEY,
 		};
 	},
 	computed: {
 		...mapGetters('credentials', ['allCredentialTypes']),
-	},
-	props: {
-		modalName: {
-			type: String,
-		},
 	},
 	methods: {
 		onSelect(type: string) {
