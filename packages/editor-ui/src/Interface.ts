@@ -580,6 +580,7 @@ export interface IRootState {
 	pushConnectionActive: boolean;
 	saveDataErrorExecution: string;
 	saveDataSuccessExecution: string;
+	saveManualExecutions: boolean;
 	timezone: string;
 	stateIsDirty: boolean;
 	executionTimeout: number;
