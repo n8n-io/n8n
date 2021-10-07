@@ -109,11 +109,11 @@ export class MicrosoftDynamicsCrm implements INodeType {
 			},
 			async getAccountFields(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const fields = await getEntityFields.call(this, 'account');
-				return fields.filter(field => field.IsValidForRead).map(field => ({ name: field.LogicalName, value: field.LogicalName }));
+				return fields.filter(field => field.IsValidForRead).filter(field => field.DisplayName.UserLocalizedLabel?.Label).map(field => ({ name: field.DisplayName.UserLocalizedLabel.Label, value: field.LogicalName }));
 			},
 			async getExpandableAccountFields(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const fields = await getEntityFields.call(this, 'account');
-				return fields.filter(field => field.AttributeType === 'Lookup').map(field => ({ name: field.LogicalName, value: field.LogicalName }));
+				return fields.filter(field => field.AttributeType === 'Lookup').map(field => ({ name: field.DisplayName.UserLocalizedLabel.Label, value: field.LogicalName }));
 			},
 		},
 	};
@@ -133,6 +133,7 @@ export class MicrosoftDynamicsCrm implements INodeType {
 					//https://docs.microsoft.com/en-us/powerapps/developer/data-platform/webapi/create-entity-web-api
 					if (operation === 'create') {
 						const name = this.getNodeParameter('name', i) as string;
+						// tslint:disable-next-line: no-any
 						const additionalFields = this.getNodeParameter('additionalFields', i) as { addresses: { address: [{ [key: string]: any }] } };
 						const options = this.getNodeParameter('options', i) as { returnFields: string[] };
 
@@ -202,6 +203,7 @@ export class MicrosoftDynamicsCrm implements INodeType {
 
 					if (operation === 'update') {
 						const accountId = this.getNodeParameter('accountId', i) as string;
+						// tslint:disable-next-line: no-any
 						const updateFields = this.getNodeParameter('updateFields', i) as { addresses: { address: [{ [key: string]: any }] } };
 						const options = this.getNodeParameter('options', i) as { returnFields: string[] };
 

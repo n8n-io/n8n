@@ -203,7 +203,6 @@ export const accountFields = [
 					'account',
 				],
 				operation: [
-					'get',
 					'getAll',
 				],
 			},
