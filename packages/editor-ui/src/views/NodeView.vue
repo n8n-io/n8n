@@ -457,7 +457,7 @@ export default mixins(
 				}
 
 				this.blankRedirect = true;
-				this.$router.push({ name: 'NodeViewNew' });
+				this.$router.push({ name: 'NodeViewNew', query: { templateId } });
 
 				await this.addNodes(data.workflow.nodes, data.workflow.connections);
 				await this.$store.dispatch('workflows/setNewWorkflowName', data.name);
