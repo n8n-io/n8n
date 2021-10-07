@@ -20,16 +20,16 @@
 			<div :class="$style.container" v-else>
 				<n8n-input-label label="Which of these areas do you mainly work in?">
 					<n8n-select :value="values.workArea" placeholder="Select..." @change="(value) => onInput('workArea', value)">
-						<n8n-option value="automationConsulting" label="Automation consulting" />
-						<n8n-option value="finance-procurment-HR" label="Finance / Procurement / HR" />
-						<n8n-option value="IT-Engineering" label="IT / Engineering" />
-						<n8n-option value="legal" label="Legal" />
-						<n8n-option value="marketing-growth" label="Marketing / Growth" />
-						<n8n-option value="product" label="Product" />
-						<n8n-option value="sales-businessDevelopment" label="Sales / Business Development" />
-						<n8n-option value="security" label="Security" />
-						<n8n-option value="support-operations" label="Support / Operations" />
-						<n8n-option value="other" label="Other (please specify)" />
+						<n8n-option :value="AUTOMATION_CONSULTING_WORK_AREA" label="Automation consulting" />
+						<n8n-option :value="FINANCE_PROCUREMENT_HR_WORK_AREA" label="Finance / Procurement / HR" />
+						<n8n-option :value="IT_ENGINEERING_WORK_AREA" label="IT / Engineering" />
+						<n8n-option :value="LEGAL_WORK_AREA" label="Legal" />
+						<n8n-option :value="MARKETING_WORK_AREA" label="Marketing / Growth" />
+						<n8n-option :value="PRODUCT_WORK_AREA" label="Product" />
+						<n8n-option :value="SALES_BUSINESSDEV_WORK_AREA" label="Sales / Business Development" />
+						<n8n-option :value="SECURITY_WORK_AREA" label="Security" />
+						<n8n-option :value="SUPPORT_OPS_WORK_AREA" label="Support / Operations" />
+						<n8n-option :value="OTHER_WORK_AREA" label="Other (please specify)" />
 					</n8n-select>
 				</n8n-input-label>
 
@@ -73,27 +73,27 @@
 					<n8n-select :value="values.companySize" placeholder="Select..." @change="(value) => onInput('companySize', value)">
 						<n8n-option
 							label="Less than 20 people"
-							value="<20"
+							:value="COMPANY_SIZE_20_OR_LESS"
 						/>
 						<n8n-option
 							label="20-99 people"
-							value="20-99"
+							:value="COMPANY_SIZE_20_99"
 						/>
 						<n8n-option
 							label="100-499 people"
-							value="100-499"
+							:value="COMPANY_SIZE_100_499"
 						/>
 						<n8n-option
 							label="500-999 people"
-							value="500-999"
+							:value="COMPANY_SIZE_500_999"
 						/>
 						<n8n-option
 							label="1000+ people"
-							value="1000+"
+							:value="COMPANY_SIZE_1000_OR_MORE"
 						/>
 						<n8n-option
 							label="I'm not using n8n for work"
-							value="personalUse"
+							:value="COMPANY_SIZE_PERSONAL_USE"
 						/>
 					</n8n-select>
 				</n8n-input-label>
@@ -111,15 +111,31 @@
 <script lang="ts">
 import mixins from "vue-typed-mixins";
 
-import { PERSONALIZATION_MODAL_KEY } from "../constants";
+import {
+	PERSONALIZATION_MODAL_KEY,
+	AUTOMATION_CONSULTING_WORK_AREA,
+	FINANCE_PROCUREMENT_HR_WORK_AREA,
+	IT_ENGINEERING_WORK_AREA,
+	LEGAL_WORK_AREA,
+	MARKETING_WORK_AREA,
+	PRODUCT_WORK_AREA,
+	SALES_BUSINESSDEV_WORK_AREA,
+	SECURITY_WORK_AREA,
+	SUPPORT_OPS_WORK_AREA,
+	OTHER_WORK_AREA,
+	COMPANY_SIZE_20_OR_LESS,
+	COMPANY_SIZE_20_99,
+	COMPANY_SIZE_100_499,
+	COMPANY_SIZE_500_999,
+	COMPANY_SIZE_1000_OR_MORE,
+	COMPANY_SIZE_PERSONAL_USE,
+} from "../constants";
 import { workflowHelpers } from "@/components/mixins/workflowHelpers";
 import { showMessage } from "@/components/mixins/showMessage";
 import Modal from "./Modal.vue";
 import { IPersonalizationSurveyAnswers } from "@/Interface";
 import Vue from "vue";
 import { mapGetters } from "vuex";
-
-type SurveyKey = "workArea" | "otherWorkArea" | "companySize" | "codingSkill";
 
 export default mixins(showMessage, workflowHelpers).extend({
 	components: { Modal },
@@ -137,6 +153,22 @@ export default mixins(showMessage, workflowHelpers).extend({
 				companySize: null,
 				codingSkill: null,
 			} as IPersonalizationSurveyAnswers,
+			AUTOMATION_CONSULTING_WORK_AREA,
+			FINANCE_PROCUREMENT_HR_WORK_AREA,
+			IT_ENGINEERING_WORK_AREA,
+			LEGAL_WORK_AREA,
+			MARKETING_WORK_AREA,
+			PRODUCT_WORK_AREA,
+			SALES_BUSINESSDEV_WORK_AREA,
+			SECURITY_WORK_AREA,
+			SUPPORT_OPS_WORK_AREA,
+			OTHER_WORK_AREA,
+			COMPANY_SIZE_20_OR_LESS,
+			COMPANY_SIZE_20_99,
+			COMPANY_SIZE_100_499,
+			COMPANY_SIZE_500_999,
+			COMPANY_SIZE_1000_OR_MORE,
+			COMPANY_SIZE_PERSONAL_USE,
 		};
 	},
 	computed: {
@@ -148,8 +180,8 @@ export default mixins(showMessage, workflowHelpers).extend({
 		closeDialog() {
 			this.modalBus.$emit('close');
 		},
-		onInput(name: SurveyKey, value: string) {
-			if (name === 'workArea' && value === 'other') {
+		onInput(name: "workArea" | "otherWorkArea" | "companySize" | "codingSkill", value: string) {
+			if (name === 'workArea' && value === OTHER_WORK_AREA) {
 				this.otherWorkAreaFieldVisible = true;
 			}
 			else if (name === 'workArea') {
