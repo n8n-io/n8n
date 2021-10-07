@@ -14,16 +14,16 @@ const errorObjectPlaceholder = `{
 	"description": "The resource could not be fetched"
 }`;
 
-export class ThrowError implements INodeType {
+export class StopAndError implements INodeType {
 	description: INodeTypeDescription = {
-		displayName: 'Throw Error',
-		name: 'throwError',
+		displayName: 'Stop and Error',
+		name: 'stopAndError',
 		icon: 'fa:exclamation-triangle',
 		group: ['input'],
 		version: 1,
 		description: 'Throw an error in the workflow',
 		defaults: {
-			name: 'Throw Error',
+			name: 'Stop And Error',
 			color: '#ff0000',
 		},
 		inputs: ['main'],
