@@ -38,15 +38,6 @@ const module: Module<ISettingsState, IRootState> = {
 	actions: {
 		async getSettings(context: ActionContext<ISettingsState, IRootState>) {
 			const settings = await getSettings(context.rootGetters.getRestApiContext);
-			settings.userSurvey = {
-				shouldShow: true,
-				// answers: {
-				// 	workArea: 'other',
-				// 	codingSkill: '3',
-				// 	companySize: '1000+',
-				// 	otherWorkArea: null,
-				// },
-			};
 			context.commit('setSettings', settings);
 
 			// todo refactor to this store
