@@ -582,7 +582,14 @@ export class WorkflowExecute {
 
 		const startedAt = new Date();
 
-		const workflowIssues = workflow.checkReadyForExecution();
+		const startNode = this.runExecutionData.executionData!.nodeExecutionStack[0].node.name;
+
+		let destinationNode: string | undefined;
+		if (this.runExecutionData.startData && this.runExecutionData.startData.destinationNode) {
+			destinationNode = this.runExecutionData.startData.destinationNode;
+		}
+
+		const workflowIssues = workflow.checkReadyForExecution({ startNode, destinationNode });
 		if (workflowIssues !== null) {
 			throw new Error(
 				'The workflow has issues and can for that reason not be executed. Please fix them first.',
@@ -918,6 +925,19 @@ export class WorkflowExecute {
 
 					this.runExecutionData.resultData.runData[executionNode.name].push(taskData);
 
+					if (this.runExecutionData.waitTill!) {
+						await this.executeHook('nodeExecuteAfter', [
+							executionNode.name,
+							taskData,
+							this.runExecutionData,
+						]);
+
+						// Add the node back to the stack that the workflow can start to execute again from that node
+						this.runExecutionData.executionData!.nodeExecutionStack.unshift(executionData);
+
+						break;
+					}
+
 					if (
 						this.runExecutionData.startData &&
 						this.runExecutionData.startData.destinationNode &&
@@ -933,19 +953,6 @@ export class WorkflowExecute {
 
 						// If destination node is defined and got executed stop execution
 						continue;
-					}
-
-					if (this.runExecutionData.waitTill!) {
-						await this.executeHook('nodeExecuteAfter', [
-							executionNode.name,
-							taskData,
-							this.runExecutionData,
-						]);
-
-						// Add the node back to the stack that the workflow can start to execute again from that node
-						this.runExecutionData.executionData!.nodeExecutionStack.unshift(executionData);
-
-						break;
 					}
 
 					// Add the nodes to which the current node has an output connection to that they can

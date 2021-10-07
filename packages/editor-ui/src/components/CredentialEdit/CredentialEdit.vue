@@ -202,6 +202,12 @@ export default mixins(showMessage, nodeHelpers).extend({
 			}
 		}
 
+		this.$externalHooks().run('credentialsEdit.credentialModalOpened', {
+			credentialType: this.credentialTypeName,
+			isEditingCredential: this.mode === 'edit',
+			activeNode: this.$store.getters.activeNode,
+		});
+
 		if (this.credentialId) {
 			if (!this.requiredPropertiesFilled) {
 				this.showValidationWarning = true;

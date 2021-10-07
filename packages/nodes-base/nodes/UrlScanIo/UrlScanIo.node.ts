@@ -36,7 +36,7 @@ export class UrlScanIo implements INodeType {
 		group: ['transform'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
-		description: 'Consume the urlscan.io API',
+		description: 'Provides various utilities for monitoring websites like health checks or screenshots',
 		defaults: {
 			name: 'urlscan.io',
 			color: '#f3d337',
