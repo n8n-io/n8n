@@ -422,7 +422,6 @@
       "dist/nodes/Google/Firebase/CloudFirestore/CloudFirestore.node.js",
       "dist/nodes/Google/Firebase/RealtimeDatabase/RealtimeDatabase.node.js",
       "dist/nodes/Google/Gmail/Gmail.node.js",
-      "dist/nodes/Google/GSuiteAdmin/GSuiteAdmin.node.js",
       "dist/nodes/Google/Perspective/GooglePerspective.node.js",
       "dist/nodes/Google/Sheet/GoogleSheets.node.js",
       "dist/nodes/Google/Slides/GoogleSlides.node.js",
