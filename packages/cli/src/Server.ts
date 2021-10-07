@@ -2784,11 +2784,7 @@ class App {
 		// Read the index file and replace the path placeholder
 		const editorUiPath = require.resolve('n8n-editor-ui');
 		const filePath = pathJoin(pathDirname(editorUiPath), 'dist', 'index.html');
-		const expressionFilePath = pathJoin(
-			pathDirname(editorUiPath),
-			'dist',
-			'expressions-iframe.html',
-		);
+		const expressionFilePath = pathJoin(pathDirname(editorUiPath), 'dist', 'expressions.html');
 		const n8nPath = config.get('path');
 
 		let readIndexFile = readFileSync(filePath, 'utf8');
@@ -2804,12 +2800,9 @@ class App {
 		});
 
 		// Serve the altered index.html file separately
-		this.app.get(
-			`/expressions-iframe.html`,
-			async (req: express.Request, res: express.Response) => {
-				res.send(readExpressionIndexFile);
-			},
-		);
+		this.app.get(`/expressions.html`, async (req: express.Request, res: express.Response) => {
+			res.send(readExpressionIndexFile);
+		});
 
 		// Serve the website
 		const startTime = new Date().toUTCString();
