@@ -55,6 +55,7 @@ const module: Module<ISettingsState, IRootState> = {
 			context.commit('setEndpointWebhookTest', settings.endpointWebhookTest, {root: true});
 			context.commit('setSaveDataErrorExecution', settings.saveDataErrorExecution, {root: true});
 			context.commit('setSaveDataSuccessExecution', settings.saveDataSuccessExecution, {root: true});
+			context.commit('setSaveManualExecutions', settings.saveManualExecutions, {root: true});
 			context.commit('setTimezone', settings.timezone, {root: true});
 			context.commit('setExecutionTimeout', settings.executionTimeout, {root: true});
 			context.commit('setMaxExecutionTimeout', settings.maxExecutionTimeout, {root: true});

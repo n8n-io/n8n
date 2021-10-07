@@ -109,7 +109,7 @@ import {
 } from 'jsplumb';
 import { MessageBoxInputData } from 'element-ui/types/message-box';
 import { jsPlumb, Endpoint, OnConnectionBindInfo } from 'jsplumb';
-import { NODE_NAME_PREFIX, PLACEHOLDER_EMPTY_WORKFLOW_ID, START_NODE_TYPE, WORKFLOW_OPEN_MODAL_KEY } from '@/constants';
+import { NODE_NAME_PREFIX, PLACEHOLDER_EMPTY_WORKFLOW_ID, START_NODE_TYPE, WEBHOOK_NODE_TYPE, WORKFLOW_OPEN_MODAL_KEY } from '@/constants';
 import { copyPaste } from '@/components/mixins/copyPaste';
 import { externalHooks } from '@/components/mixins/externalHooks';
 import { genericHelpers } from '@/components/mixins/genericHelpers';
@@ -173,7 +173,7 @@ const SIDEBAR_WIDTH = 65;
 
 const DEFAULT_START_NODE = {
 	name: 'Start',
-	type: 'n8n-nodes-base.start',
+	type: START_NODE_TYPE,
 	typeVersion: 1,
 	position: [
 		DEFAULT_START_POSITION_X,
@@ -1776,7 +1776,7 @@ export default mixins(
 				const node = this.$store.getters.nodeByName(nodeName);
 
 				// "requiredNodeTypes" are also defined in cli/commands/run.ts
-				const requiredNodeTypes = [ 'n8n-nodes-base.start' ];
+				const requiredNodeTypes = [ START_NODE_TYPE ];
 
 				if (requiredNodeTypes.includes(node.type)) {
 					// The node is of the required type so check first
@@ -1935,7 +1935,7 @@ export default mixins(
 						node.parameters = nodeParameters !== null ? nodeParameters : {};
 
 						// if it's a webhook and the path is empty set the UUID as the default path
-						if (node.type === 'n8n-nodes-base.webhook' && node.parameters.path === '') {
+						if (node.type === WEBHOOK_NODE_TYPE && node.parameters.path === '') {
 							node.parameters.path = node.webhookId as string;
 						}
 					}
@@ -2314,6 +2314,10 @@ export default mixins(
 	z-index: 18;
 	color: #444;
 	padding-right: 5px;
+
+	@media (max-width: $--breakpoint-2xs) {
+		bottom: 90px;
+	}
 
 	&.expanded {
 		left: $--sidebar-expanded-width + $--zoom-menu-margin;

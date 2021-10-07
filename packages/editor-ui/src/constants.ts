@@ -36,31 +36,34 @@ export const BREAKPOINT_XL = 1920;
 // templates
 export const TEMPLATES_BASE_URL = `https://api.n8n.io/`;
 
-export const START_NODE_TYPE = 'n8n-nodes-base.start';
-export const WEBHOOK_NODE_TYPE = 'n8n-nodes-base.webhook';
+// node types
+export const CALENDLY_TRIGGER_NODE_TYPE = 'n8n-nodes-base.calendlyTrigger';
 export const CRON_NODE_TYPE = 'n8n-nodes-base.cron';
-export const HTTP_REQUEST_NODE_TYPE = 'n8n-nodes-base.httpRequest';
+export const CLEARBIT_NODE_TYPE = 'n8n-nodes-base.clearbit';
 export const FUNCTION_NODE_TYPE = 'n8n-nodes-base.function';
-export const ITEM_LISTS_NODE_TYPE = 'n8n-nodes-base.itemLists';
-export const IF_NODE_TYPE = 'n8n-nodes-base.if';
-export const SWITCH_NODE_TYPE = 'n8n-nodes-base.switch';
-export const SALESFORCE_NODE_TYPE = 'n8n-nodes-base.salesforce';
-export const ELASTIC_SECURITY_NODE_TYPE = 'n8n-nodes-base.elasticSecurity';
-export const JIRA_TRIGGER_NODE_TYPE = 'n8n-nodes-base.jiraTrigger';
 export const GITHUB_TRIGGER_NODE_TYPE = 'n8n-nodes-base.githubTrigger';
+export const ERROR_TRIGGER_NODE_TYPE = 'n8n-nodes-base.errorTrigger';
+export const ELASTIC_SECURITY_NODE_TYPE = 'n8n-nodes-base.elasticSecurity';
+export const EMAIL_SEND_NODE_TYPE = 'n8n-nodes-base.emailSend';
+export const EXECUTE_COMMAND_NODE_TYPE = 'n8n-nodes-base.executeCommand';
+export const HTTP_REQUEST_NODE_TYPE = 'n8n-nodes-base.httpRequest';
+export const IF_NODE_TYPE = 'n8n-nodes-base.if';
+export const ITEM_LISTS_NODE_TYPE = 'n8n-nodes-base.itemLists';
+export const JIRA_TRIGGER_NODE_TYPE = 'n8n-nodes-base.jiraTrigger';
 export const MICROSOFT_EXCEL_NODE_TYPE = 'n8n-nodes-base.microsoftExcel';
 export const MICROSOFT_TEAMS_NODE_TYPE = 'n8n-nodes-base.microsoftTeams';
-export const CLEARBIT_NODE_TYPE = 'n8n-nodes-base.clearbit';
+export const NO_OP_NODE_TYPE = 'n8n-nodes-base.noOp';
 export const PAGERDUTY_NODE_TYPE = 'n8n-nodes-base.pagerDuty';
-export const CALENDLY_TRIGGER_NODE_TYPE = 'n8n-nodes-base.calendlyTrigger';
-export const EXECUTE_COMMAND_NODE_TYPE = 'n8n-nodes-base.executeCommand';
-export const XERO_NODE_TYPE = 'n8n-nodes-base.xero';
-export const QUICKBOOKS_NODE_TYPE = 'n8n-nodes-base.quickbooks';
-export const SPREADSHEET_FILE_NODE_TYPE = 'n8n-nodes-base.spreadsheetFile';
-export const SET_NODE_TYPE = 'n8n-nodes-base.set';
+export const SALESFORCE_NODE_TYPE = 'n8n-nodes-base.salesforce';
 export const SEGMENT_NODE_TYPE = 'n8n-nodes-base.segment';
-export const EMAIL_SEND_NODE_TYPE = 'n8n-nodes-base.emailSend';
+export const SET_NODE_TYPE = 'n8n-nodes-base.set';
 export const SLACK_NODE_TYPE = 'n8n-nodes-base.slack';
+export const SPREADSHEET_FILE_NODE_TYPE = 'n8n-nodes-base.spreadsheetFile';
+export const START_NODE_TYPE = 'n8n-nodes-base.start';
+export const SWITCH_NODE_TYPE = 'n8n-nodes-base.switch';
+export const QUICKBOOKS_NODE_TYPE = 'n8n-nodes-base.quickbooks';
+export const WEBHOOK_NODE_TYPE = 'n8n-nodes-base.webhook';
+export const XERO_NODE_TYPE = 'n8n-nodes-base.xero';
 
 // Node creator
 export const CORE_NODES_CATEGORY = 'Core Nodes';

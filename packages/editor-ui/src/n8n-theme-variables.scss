@@ -56,6 +56,7 @@ $--gift-notification-inner-color: $--color-primary;
 $--gift-notification-outer-color: #fff;
 
 // based on element.io breakpoints
+$--breakpoint-2xs: 600px;
 $--breakpoint-xs: 768px;
 $--breakpoint-sm: 992px;
 $--breakpoint-md: 1200px;
@@ -106,4 +107,5 @@ $--version-card-border: 1px #dbdfe7 solid;
 $--version-card-description-text-color: #7d7d87;
 $--version-card-release-date-text-color: #909399;
 $--version-card-box-shadow-color: rgba(109, 48, 40, 0.07);
+
 
