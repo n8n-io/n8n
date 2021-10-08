@@ -1,1 +1,0 @@
-module.exports = {'en':{'payPalTrigger':{'displayName':'PayPal Trigger','description':'Handle PayPal events via webhooks','parameters':{'events':{'name':'events','displayName':'Events','description':'The event to listen to.','options':{}}},'credentials':{'payPalApi':{'clientId':{'displayName':'Client ID'},'secret':{'displayName':'Secret'},'env':{'displayName':'Environment'}}}}}};

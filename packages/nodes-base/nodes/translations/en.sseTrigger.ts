@@ -1,1 +1,0 @@
-module.exports = {'en':{'sseTrigger':{'displayName':'SSE Trigger','description':'Triggers workflow on a new Server-Sent Event','parameters':{'url':{'name':'url','displayName':'URL','description':'The URL to receive the SSE from.','placeholder':'http://example.com','options':{}}},'credentials':{}}}};

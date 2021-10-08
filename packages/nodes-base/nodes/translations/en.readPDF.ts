@@ -1,1 +1,0 @@
-module.exports = {'en':{'readPDF':{'displayName':'Read PDF','description':'Reads a PDF and extracts its content','parameters':{'binaryPropertyName':{'name':'binaryPropertyName','displayName':'Binary Property','description':'Name of the binary property from which to<br />read the PDF file.','options':{}}},'credentials':{}}}};

@@ -1,1 +1,0 @@
-module.exports = {'en':{'cron':{'displayName':'Cron','description':'Triggers the workflow at a specific time','parameters':{'triggerTimes':{'name':'triggerTimes','displayName':'Trigger Times','description':'Triggers for the workflow','placeholder':'Add Cron Time','options':{'item':{'displayName':'Item'}}}},'credentials':{}}}};

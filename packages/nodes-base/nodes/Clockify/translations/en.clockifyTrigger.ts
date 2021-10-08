@@ -1,1 +1,0 @@
-module.exports = {'en':{'clockifyTrigger':{'displayName':'Clockify Trigger','description':'Watches Clockify For Events','parameters':{'workspaceId':{'name':'workspaceId','displayName':'Workspace','options':{}},'watchField':{'name':'watchField','displayName':'Trigger','options':{'New Time Entry':{}}}},'credentials':{'clockifyApi':{'apiKey':{'displayName':'API Key'}}}}}};

@@ -1,1 +1,0 @@
-module.exports = {'en':{'function':{'displayName':'Function','description':'Run custom function code which gets executed once and allows to add, remove, change and replace items.','parameters':{'functionCode':{'name':'functionCode','displayName':'JavaScript Code','description':'The JavaScript code to execute.','options':{}}},'credentials':{}}}};

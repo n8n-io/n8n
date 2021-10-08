@@ -1,1 +1,0 @@
-module.exports = {'en':{'discord':{'displayName':'Discord','description':'Sends data to Discord','parameters':{'webhookUri':{'name':'webhookUri','displayName':'Webhook URL','description':'The webhook url.','options':{}},'text':{'name':'text','displayName':'Text','description':'The text to send.','options':{}}},'credentials':{}}}};
