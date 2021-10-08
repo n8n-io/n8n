@@ -85,13 +85,12 @@ export default mixins(
 			}, []);
 		},
 	},
-	watch: {
-		dialogVisible (newValue) {
-			this.$externalHooks().run('credentialsList.dialogVisibleChanged', { dialogVisible: newValue });
-			if(newValue) {
-				this.$telemetry.track('User opened Credentials panel', { workflow_id: this.$store.getters.workflowId });
-			}
-		},
+	mounted() {
+		this.$externalHooks().run('credentialsList.mounted');
+		this.$telemetry.track('User opened Credentials panel', { workflow_id: this.$store.getters.workflowId });
+	},
+	destroyed() {
+		this.$externalHooks().run('credentialsList.destroyed');
 	},
 	methods: {
 		createCredential () {
