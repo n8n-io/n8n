@@ -79,6 +79,6 @@ export default Vue
 
 <style lang="scss" module>
 .parameterWrapper {
-	margin: 0 var(--spacing-m) 0 var(--spacing-m);
+	margin-left: var(--spacing-s);
 }
 </style>
