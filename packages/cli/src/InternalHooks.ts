@@ -35,6 +35,13 @@ export class InternalHooksClass implements IInternalHooksClass {
 		});
 	}
 
+	async onWorkflowCreated(workflow: IWorkflowBase): Promise<void> {
+		await this.telemetry.track('User created workflow', {
+			workflow_id: workflow.id,
+			node_graph: TelemetryHelpers.generateNodesGraph(workflow).nodeGraph,
+		});
+	}
+
 	async onWorkflowDeleted(workflowId: string): Promise<void> {
 		await this.telemetry.track('User deleted workflow', {
 			workflow_id: workflowId,

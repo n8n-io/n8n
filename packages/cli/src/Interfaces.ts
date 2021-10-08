@@ -310,6 +310,7 @@ export interface IInternalHooksClass {
 	onN8nStop(): Promise<void>;
 	onServerStarted(diagnosticInfo: IDiagnosticInfo): Promise<void>;
 	onPersonalizationSurveySubmitted(answers: IPersonalizationSurveyAnswers): Promise<void>;
+	onWorkflowCreated(workflow: IWorkflowBase): Promise<void>;
 	onWorkflowDeleted(workflowId: string): Promise<void>;
 	onWorkflowSaved(workflow: IWorkflowBase): Promise<void>;
 	onWorkflowPostExecute(workflow: IWorkflowBase, runData?: IRun): Promise<void>;
