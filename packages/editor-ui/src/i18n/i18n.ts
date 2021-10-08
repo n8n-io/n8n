@@ -1,7 +1,6 @@
 import Vue from 'vue';
 import VueI18n from 'vue-i18n';
 import messagesEn from './locales/en';
-import messagesDe from './locales/de'; // TODO: Switch language using env var
 import axios from 'axios';
 
 Vue.use(VueI18n);
@@ -9,7 +8,7 @@ Vue.use(VueI18n);
 export const i18n = new VueI18n({
 	locale: 'en', // set locale
 	fallbackLocale: 'en',
-	messages: { ...messagesEn, ...messagesDe } , // set locale messages
+	messages: { ...messagesEn } , // set locale messages
 	silentTranslationWarn: true,
 });
 
@@ -21,8 +20,10 @@ function setI18nLanguage (lang: string): string {
 	document!.querySelector('html')!.setAttribute('lang', lang);
 	return lang;
 }
-
-setI18nLanguage('de'); // TODO: Switch language using env var
+if(process.env.VUE_APP_N8N_LANGUAGE) {
+	loadLanguageAsync(process.env.VUE_APP_N8N_LANGUAGE)
+		.catch(e => console.error(`Error on setting up ${process.env.VUE_APP_N8N_LANGUAGE} translations`, e));
+}
 
 export function addNodeTranslations(translations: { [key: string]: string | object }) {
 	const lang = Object.keys(translations)[0];
