@@ -679,6 +679,7 @@ class App {
 
 					// @ts-ignore
 					savedWorkflow.id = savedWorkflow.id.toString();
+					void InternalHooksManager.getInstance().onWorkflowCreated(newWorkflow as IWorkflowBase);
 					return savedWorkflow;
 				},
 			),
