@@ -16,14 +16,14 @@ export const suspendedTicketOperations = [
 		},
 		options: [
 			{
-				name: 'Get',
-				value: 'get',
-				description: 'Get a suspended ticket',
-			},
-			{
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete a suspended ticket',
+			},
+			{
+				name: 'Get',
+				value: 'get',
+				description: 'Get a suspended ticket',
 			},
 			{
 				name: 'Get All',

@@ -1,6 +1,6 @@
 import {
 	INodeProperties,
- } from 'n8n-workflow';
+} from 'n8n-workflow';
 
 export const ticketOperations = [
 	{
@@ -36,11 +36,6 @@ export const ticketOperations = [
 				description: 'Get all tickets',
 			},
 			{
-				name: 'Search',
-				value: 'search',
-				description: 'Search tickets',
-			},
-			{
 				name: 'Update',
 				value: 'update',
 				description: 'Update a ticket',
@@ -53,9 +48,9 @@ export const ticketOperations = [
 
 export const ticketFields = [
 
-/* -------------------------------------------------------------------------- */
-/*                                ticket:create                               */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                ticket:create                               */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Description',
 		name: 'description',
@@ -270,9 +265,9 @@ export const ticketFields = [
 		description: `Object of values to set as described <a href="https://developer.zendesk.com/rest_api/docs/support/tickets">here</a>.`,
 	},
 
-/* -------------------------------------------------------------------------- */
-/*                                ticket:update                               */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                ticket:update                               */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Ticket ID',
 		name: 'id',
@@ -329,6 +324,13 @@ export const ticketFields = [
 		},
 		options: [
 			{
+				displayName: 'Assignee Email',
+				name: 'assigneeEmail',
+				type: 'string',
+				default: '',
+				description: 'The e-mail address of the assignee',
+			},
+			{
 				displayName: 'Custom Fields',
 				name: 'customFieldsUi',
 				placeholder: 'Add Custom Field',
@@ -364,27 +366,6 @@ export const ticketFields = [
 				],
 			},
 			{
-				displayName: 'Assignee Email',
-				name: 'assigneeEmail',
-				type: 'string',
-				default: '',
-				description: 'The e-mail address of the assignee',
-			},
-			{
-				displayName: 'Public Reply',
-				name: 'publicReply',
-				type: 'string',
-				default: '',
-				description: 'Public ticket reply',
-			},
-			{
-				displayName: 'Internal Note',
-				name: 'internalNote',
-				type: 'string',
-				default: '',
-				description: 'Internal Ticket Note (Accepts HTML)',
-			},
-			{
 				displayName: 'External ID',
 				name: 'externalId',
 				type: 'string',
@@ -400,6 +381,20 @@ export const ticketFields = [
 				},
 				default: '',
 				description: 'The group this ticket is assigned to',
+			},
+			{
+				displayName: 'Internal Note',
+				name: 'internalNote',
+				type: 'string',
+				default: '',
+				description: 'Internal Ticket Note (Accepts HTML)',
+			},
+			{
+				displayName: 'Public Reply',
+				name: 'publicReply',
+				type: 'string',
+				default: '',
+				description: 'Public ticket reply',
 			},
 			{
 				displayName: 'Recipient',
@@ -505,9 +500,9 @@ export const ticketFields = [
 		description: `Object of values to update as described <a href="https://developer.zendesk.com/rest_api/docs/support/tickets">here</a>.`,
 	},
 
-/* -------------------------------------------------------------------------- */
-/*                                 ticket:get                                 */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                 ticket:get                                 */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Ticket ID',
 		name: 'id',
@@ -526,9 +521,9 @@ export const ticketFields = [
 		},
 		description: 'Ticket ID',
 	},
-/* -------------------------------------------------------------------------- */
-/*                                   ticket:getAll                            */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                   ticket:getAll                            */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Return All',
 		name: 'returnAll',
@@ -588,6 +583,23 @@ export const ticketFields = [
 		},
 		options: [
 			{
+				displayName: 'Group',
+				name: 'group',
+				type: 'options',
+				typeOptions: {
+					loadOptionsMethod: 'getGroups',
+				},
+				default: '',
+				description: 'The group to search',
+			},
+			{
+				displayName: 'Query',
+				name: 'query',
+				type: 'string',
+				default: '',
+				description: '<a href="https://developer.zendesk.com/api-reference/ticketing/ticket-management/search/#syntax-examples">Query syntax</a> to search tickets',
+			},
+			{
 				displayName: 'Sort By',
 				name: 'sortBy',
 				type: 'options',
@@ -622,15 +634,15 @@ export const ticketFields = [
 				type: 'options',
 				options: [
 					{
-						name: 'Asc',
+						name: 'Ascending',
 						value: 'asc',
 					},
 					{
-						name: 'Desc',
+						name: 'Descending',
 						value: 'desc',
 					},
 				],
-				default: 'desc',
+				default: 'asc',
 				description: 'Sort order',
 			},
 			{
@@ -665,9 +677,9 @@ export const ticketFields = [
 		],
 	},
 
-/* -------------------------------------------------------------------------- */
-/*                                ticket:delete                               */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                ticket:delete                               */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Ticket ID',
 		name: 'id',
@@ -686,170 +698,4 @@ export const ticketFields = [
 		},
 		description: 'Ticket ID',
 	},
-/* -------------------------------------------------------------------------- */
-/*                                 ticket:search                              */
-/* -------------------------------------------------------------------------- */
-{
-	displayName: 'Query',
-	name: 'query',
-	type: 'string',
-	default: '',
-	required: false,
-	displayOptions: {
-		show: {
-			resource: [
-				'ticket',
-			],
-			operation: [
-				'search',
-			],
-		},
-	},
-	description: 'Search query to use',
-},
-{
-	displayName: 'Return All',
-	name: 'returnAll',
-	type: 'boolean',
-	displayOptions: {
-		show: {
-			resource: [
-				'ticket',
-			],
-			operation: [
-				'search',
-			],
-		},
-	},
-	default: false,
-	description: 'If all results should be returned or only up to a given limit.',
-},
-{
-	displayName: 'Limit',
-	name: 'limit',
-	type: 'number',
-	displayOptions: {
-		show: {
-			resource: [
-				'ticket',
-			],
-			operation: [
-				'search',
-			],
-			returnAll: [
-				false,
-			],
-		},
-	},
-	typeOptions: {
-		minValue: 1,
-		maxValue: 100,
-	},
-	default: 100,
-	description: 'How many results to return.',
-},
-{
-	displayName: 'Options',
-	name: 'options',
-	type: 'collection',
-	placeholder: 'Add Option',
-	default: {},
-	displayOptions: {
-		show: {
-			resource: [
-				'ticket',
-			],
-			operation: [
-				'search',
-			],
-		},
-	},
-	options: [
-		{
-			displayName: 'Group',
-			name: 'group',
-			type: 'options',
-			typeOptions: {
-				loadOptionsMethod: 'getGroups',
-			},
-			default: '',
-			description: 'The group to search',
-		},
-		{
-			displayName: 'Status',
-			name: 'status',
-			type: 'options',
-			options: [
-				{
-					name: 'Open',
-					value: 'open',
-				},
-				{
-					name: 'New',
-					value: 'new',
-				},
-				{
-					name: 'Pending',
-					value: 'pending',
-				},
-				{
-					name: 'Solved',
-					value: 'solved',
-				},
-				{
-					name: 'Closed',
-					value: 'closed',
-				},
-			],
-			default: '',
-			description: 'The state of the ticket',
-		},
-		{
-			displayName: 'Sort By',
-			name: 'sortBy',
-			type: 'options',
-			options: [
-				{
-					name: 'Updated At',
-					value: 'updated_at',
-				},
-				{
-					name: 'Created At',
-					value: 'created_at',
-				},
-				{
-					name: 'Priority',
-					value: 'priority',
-				},
-				{
-					name: 'Status',
-					value: 'status',
-				},
-				{
-					name: 'Ticket Type',
-					value: 'ticket_type',
-				},
-			],
-			default: 'updated_at',
-			description: 'Defaults to sorting by updated at',
-		},
-		{
-			displayName: 'Sort Order',
-			name: 'sortOrder',
-			type: 'options',
-			options: [
-				{
-					name: 'Asc',
-					value: 'asc',
-				},
-				{
-					name: 'Desc',
-					value: 'desc',
-				},
-			],
-			default: 'desc',
-			description: 'Sort order',
-		},
-	],
-},
 ] as INodeProperties[];

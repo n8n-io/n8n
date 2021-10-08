@@ -47,7 +47,7 @@ import {
 import {
 	IComment,
 	ITicket,
- } from './TicketInterface';
+} from './TicketInterface';
 
 export class Zendesk implements INodeType {
 	description: INodeTypeDescription = {
@@ -299,12 +299,12 @@ export class Zendesk implements INodeType {
 							body: description,
 						};
 						const body: ITicket = {
-								comment,
+							comment,
 						};
 						if (jsonParameters) {
 							const additionalFieldsJson = this.getNodeParameter('additionalFieldsJson', i) as string;
 
-							if (additionalFieldsJson !== '' ) {
+							if (additionalFieldsJson !== '') {
 
 								if (validateJSON(additionalFieldsJson) !== undefined) {
 
@@ -356,7 +356,7 @@ export class Zendesk implements INodeType {
 						if (jsonParameters) {
 							const updateFieldsJson = this.getNodeParameter('updateFieldsJson', i) as string;
 
-							if (updateFieldsJson !== '' ) {
+							if (updateFieldsJson !== '') {
 
 								if (validateJSON(updateFieldsJson) !== undefined) {
 
@@ -429,9 +429,16 @@ export class Zendesk implements INodeType {
 						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
 						const options = this.getNodeParameter('options', i) as IDataObject;
 						qs.query = 'type:ticket';
+						if (options.query) {
+							qs.query += ` ${options.query}`;
+						}
 						if (options.status) {
 							qs.query += ` status:${options.status}`;
 						}
+						if (options.group) {
+							qs.query += ` group:${options.group}`;
+						}
+
 						if (options.sortBy) {
 							qs.sort_by = options.sortBy;
 						}
@@ -454,34 +461,6 @@ export class Zendesk implements INodeType {
 							responseData = await zendeskApiRequest.call(this, 'DELETE', `/tickets/${ticketId}`, {});
 						} catch (error) {
 							throw new NodeApiError(this.getNode(), error);
-						}
-					}
-					//https://developer.zendesk.com/rest_api/docs/support/search#list-search-results
-					if (operation === 'search') {
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
-						const options = this.getNodeParameter('options', i) as IDataObject;
-						const query = this.getNodeParameter('query', i) as string;
-						qs.query = 'type:ticket';
-						qs.query += ` ${query}`;
-						if (options.status) {
-							qs.query += ` status:${options.status}`;
-						}
-						if (options.group) {
-							qs.query += ` group:${options.group}`;
-						}
-						if (options.sortBy) {
-							qs.sort_by = options.sortBy;
-						}
-						if (options.sortOrder) {
-							qs.sort_order = options.sortOrder;
-						}
-						if (returnAll) {
-							responseData = await zendeskApiRequestAllItems.call(this, 'results', 'GET', `/search`, {}, qs);
-						} else {
-							const limit = this.getNodeParameter('limit', i) as number;
-							qs.per_page = limit;
-							responseData = await zendeskApiRequest.call(this, 'GET', `/search`, {}, qs);
-							responseData = responseData.results;
 						}
 					}
 				}
@@ -518,6 +497,7 @@ export class Zendesk implements INodeType {
 						const ticketId = this.getNodeParameter('id', i) as string;
 						try {
 							responseData = await zendeskApiRequest.call(this, 'DELETE', `/suspended_tickets/${ticketId}`, {});
+							responseData = { success: true };
 						} catch (error) {
 							throw new NodeApiError(this.getNode(), error);
 						}
