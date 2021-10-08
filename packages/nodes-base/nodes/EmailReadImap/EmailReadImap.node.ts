@@ -283,7 +283,7 @@ export class EmailReadImap implements INodeType {
 					if (staticData.lastMessageUid !== undefined && message.attributes.uid <= (staticData.lastMessageUid as number)) {
 						continue;
 					}
-					if (staticData.lastMessageUid === undefined || staticData.lastMessageUid as number < message.attributes.uid) {
+					if (staticData.lastMessageUid === undefined || (staticData.lastMessageUid as number) < message.attributes.uid) {
 						staticData.lastMessageUid = message.attributes.uid;
 					}
 					const part = lodash.find(message.parts, { which: '' });
@@ -307,7 +307,7 @@ export class EmailReadImap implements INodeType {
 					if (staticData.lastMessageUid !== undefined && message.attributes.uid <= (staticData.lastMessageUid as number)) {
 						continue;
 					}
-					if (staticData.lastMessageUid === undefined || staticData.lastMessageUid as number < message.attributes.uid) {
+					if (staticData.lastMessageUid === undefined || (staticData.lastMessageUid as number) < message.attributes.uid) {
 						staticData.lastMessageUid = message.attributes.uid;
 					}
 					const parts = getParts(message.attributes.struct!);
@@ -353,7 +353,7 @@ export class EmailReadImap implements INodeType {
 					if (staticData.lastMessageUid !== undefined && message.attributes.uid <= (staticData.lastMessageUid as number)) {
 						continue;
 					}
-					if (staticData.lastMessageUid === undefined || staticData.lastMessageUid as number < message.attributes.uid) {
+					if (staticData.lastMessageUid === undefined || (staticData.lastMessageUid as number) < message.attributes.uid) {
 						staticData.lastMessageUid = message.attributes.uid;
 					}
 					const part = lodash.find(message.parts, { which: 'TEXT' });
@@ -399,7 +399,7 @@ export class EmailReadImap implements INodeType {
 						}
 						if (staticData.lastMessageUid !== undefined) {
 							searchCriteria.push(['UID', `${staticData.lastMessageUid as number}:*`]);
-							/** 
+							/**
 							 * A short explanation about UIDs and how they work
 							 * can be found here: https://dev.to/kehers/imap-new-messages-since-last-check-44gm
 							 * TL;DR:
@@ -413,7 +413,7 @@ export class EmailReadImap implements INodeType {
 							 */
 							Logger.debug('Querying for new messages on node "EmailReadImap"', {searchCriteria});
 						}
-				
+
 						const returnData = await getNewEmails(connection, searchCriteria);
 
 						if (returnData.length) {
