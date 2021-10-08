@@ -334,6 +334,10 @@ export default mixins(showMessage, nodeHelpers).extend({
 				if (property.type === 'string' && !this.credentialData[property.name]) {
 					return false;
 				}
+
+				if (property.type === 'number' && typeof this.credentialData[property.name] !== 'number') {
+					return false;
+				}
 			}
 			return true;
 		},
