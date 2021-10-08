@@ -45,7 +45,7 @@ export async function preparePersonalizationSurvey(): Promise<IPersonalizationSu
 	}
 
 	const enabled =
-		(config.get('personalizationSurvey.enabled') as boolean) &&
+		(config.get('personalization.enabled') as boolean) &&
 		(config.get('diagnostics.enabled') as boolean);
 
 	if (!enabled) {
