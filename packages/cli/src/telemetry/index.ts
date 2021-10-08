@@ -1,8 +1,9 @@
 /* eslint-disable @typescript-eslint/no-unsafe-call */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 import TelemetryClient = require('@rudderstack/rudder-sdk-node');
-import { IDataObject } from 'n8n-workflow';
+import { IDataObject, LoggerProxy } from 'n8n-workflow';
 import config = require('../../config');
+import { getLogger } from '../Logger';
 
 interface IExecutionCountsBufferItem {
 	manual_success_count: number;
@@ -27,13 +28,19 @@ export class Telemetry {
 	constructor(instanceId: string) {
 		this.instanceId = instanceId;
 
-		const enabled = config.get('telemetry.enabled') as boolean;
+		const enabled = config.get('diagnostics.enabled') as boolean;
 		if (enabled) {
-			this.client = new TelemetryClient(
-				config.get('telemetry.config.backend.key') as string,
-				config.get('telemetry.config.backend.url') as string,
-				{ logLevel: 'debug' },
-			);
+			const conf = config.get('diagnostics.config.backend') as string;
+			const [key, url] = conf.split(';');
+
+			if (!key || !url) {
+				const logger = getLogger();
+				LoggerProxy.init(logger);
+				logger.error('Diagnostics config is invalid');
+				return;
+			}
+
+			this.client = new TelemetryClient(key, url, { logLevel: 'debug' });
 
 			this.pulseIntervalReference = setInterval(async () => {
 				void this.pulse();

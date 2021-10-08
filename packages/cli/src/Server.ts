@@ -252,11 +252,19 @@ class App {
 		const urlBaseWebhook = WebhookHelpers.getWebhookBaseUrl();
 
 		const telemetrySettings: ITelemetrySettings = {
-			enabled: config.get('telemetry.enabled') as boolean,
+			enabled: config.get('diagnostics.enabled') as boolean,
 		};
 
 		if (telemetrySettings.enabled) {
-			telemetrySettings.config = config.get('telemetry.config.frontend') as ITelemetryClientConfig;
+			const conf = config.get('diagnostics.config.frontend') as string;
+			const [key, url] = conf.split(';');
+
+			if (!key || !url) {
+				console.log('Diagnostics config is invalid');
+				telemetrySettings.enabled = false;
+			}
+
+			telemetrySettings.config = { key, url };
 		}
 
 		this.frontendSettings = {

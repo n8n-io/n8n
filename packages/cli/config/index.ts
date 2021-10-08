@@ -667,41 +667,25 @@ const config = convict({
 		},
 	},
 
-	telemetry: {
+	diagnostics: {
 		enabled: {
-			doc: 'Whether telemetry is enabled.',
+			doc: 'Whether diagnostic mode is enabled.',
 			format: Boolean,
 			default: true,
-			env: 'N8N_TELEMETRY_ENABLED',
+			env: 'N8N_DIAGNOSTICS_ENABLED',
 		},
 		config: {
 			frontend: {
-				key: {
-					doc: 'Telemetry key for frontend.',
-					format: String,
-					default: '1wfyHJrZGsJmqh86XcncyX2SN3T',
-					env: 'N8N_TELEMETRY_KEY_FRONTEND',
-				},
-				url: {
-					doc: 'Telemetry data plane URL for frontend.',
-					format: String,
-					default: 'https://telemetry-stage.n8n.io',
-					env: 'N8N_TELEMETRY_DATA_PLANE_URL_FRONTEND',
-				},
+				doc: 'Diagnostics config for frontend.',
+				format: String,
+				default: '1wfyHJrZGsJmqh86XcncyX2SN3T;https://telemetry-stage.n8n.io',
+				env: 'N8N_DIAGNOSTICS_CONFIG_FRONTEND',
 			},
 			backend: {
-				key: {
-					doc: 'Telemetry key for backend.',
-					format: String,
-					default: '1wfxw1YdRGrntY8intaq53hui51',
-					env: 'N8N_TELEMETRY_KEY_BACKEND',
-				},
-				url: {
-					doc: 'Telemetry data plane URL for backend.',
-					format: String,
-					default: 'https://telemetry-stage.n8n.io/v1/batch',
-					env: 'N8N_TELEMETRY_DATA_PLANE_URL_BACKEND',
-				},
+				doc: 'Diagnostics config for backend.',
+				format: String,
+				default: '1wfxw1YdRGrntY8intaq53hui51',
+				env: 'N8N_DIAGNOSTICS_CONFIG_BACKEND',
 			},
 		},
 	},
