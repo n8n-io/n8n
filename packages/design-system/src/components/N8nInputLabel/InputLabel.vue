@@ -1,9 +1,9 @@
 <template functional>
 	<div :class="$style.inputLabel">
-		<div :class="props.label ? $style.label: ''">
-			<component v-if="props.label" :is="$options.components.N8nText" :bold="true">
+		<div :class="props.label ? $style[`label-${props.size}`]: ''">
+			<component v-if="props.label" :is="$options.components.N8nText" :bold="props.bold" :size="props.size">
 				{{ props.label }}
-				<component :is="$options.components.N8nText" color="primary" :bold="true" v-if="props.required">*</component>
+				<component :is="$options.components.N8nText" color="primary" :bold="props.bold" :size="props.size" v-if="props.required">*</component>
 			</component>
 			<span :class="$style.infoIcon" v-if="props.tooltipText">
 				<component :is="$options.components.N8nTooltip" placement="top" :popper-class="$style.tooltipPopper">
@@ -40,6 +40,16 @@ export default {
 		required: {
 			type: Boolean,
 		},
+		bold: {
+			type: Boolean,
+			default: true,
+		},
+		size: {
+			type: String,
+			default: 'medium',
+			validator: (value: string): boolean =>
+				['small', 'medium'].indexOf(value) !== -1,
+		},
 	},
 	methods: {
 		addTargetBlank,
@@ -55,11 +65,19 @@ export default {
 }
 
 .label {
-	margin-bottom: var(--spacing-2xs);
-
 	* {
 		margin-right: var(--spacing-4xs);
 	}
+}
+
+.label-small {
+	composes: label;
+	margin-bottom: var(--spacing-4xs);
+}
+
+.label-medium {
+	composes: label;
+	margin-bottom: var(--spacing-2xs);
 }
 
 .infoIcon {
