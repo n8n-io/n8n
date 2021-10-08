@@ -26,7 +26,7 @@
 
 			<div class="add-item-wrapper">
 				<div v-if="values && Object.keys(values).length === 0 || isReadOnly" class="no-items-exist">
-					Currently no items exist
+					<n8n-text size="small">Currently no items exist</n8n-text>
 				</div>
 				<n8n-button v-if="!isReadOnly" fullWidth @click="addItem()" :label="addButtonText" />
 			</div>
@@ -184,7 +184,7 @@ export default mixins(genericHelpers)
 }
 
 .no-items-exist {
-	margin: 0 0 1em 0;
+	margin: var(--spacing-2xs) 0;
 }
 </style>
 

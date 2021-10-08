@@ -7,7 +7,7 @@
 			</component>
 			<span :class="$style.infoIcon" v-if="props.tooltipText">
 				<component :is="$options.components.N8nTooltip" placement="top" :popper-class="$style.tooltipPopper">
-					<component :is="$options.components.N8nIcon" icon="question-circle" />
+					<component :is="$options.components.N8nIcon" icon="question-circle" :size="props.size" />
 					<div slot="content" v-html="$options.methods.addTargetBlank(props.tooltipText)"></div>
 				</component>
 			</span>
@@ -72,10 +72,15 @@ export default {
 </script>
 
 <style lang="scss" module>
-.inputLabel {
-	&:hover {
-		--info-icon-display: inline-block;
+.inputLabel:hover {
+	> div > .infoIcon {
+		display: inline-block;
 	}
+}
+
+.infoIcon {
+	color: var(--color-text-light);
+	display: none;
 }
 
 .label {
@@ -106,11 +111,6 @@ export default {
 .label-medium-underline {
 	composes: label-medium;
 	composes: underline;
-}
-
-.infoIcon {
-	color: var(--color-text-light);
-	display: var(--info-icon-display, none);
 }
 
 .tooltipPopper {

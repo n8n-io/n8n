@@ -597,7 +597,7 @@ export default mixins(
 						parameter_field_type: this.parameter.type,
 						new_expression: !this.isValueExpression,
 						workflow_id: this.$store.getters.workflowId,
-					});	
+					});
 				}
 			},
 			closeTextEditDialog () {
@@ -804,7 +804,7 @@ export default mixins(
 	text-align: right;
 	float: right;
 	color: #ff8080;
-	font-size: 1.2em;
+	font-size: var(--font-size-s);
 }
 
 ::v-deep .color-input {

@@ -20,22 +20,20 @@
 				v-else-if="['collection', 'fixedCollection'].includes(parameter.type)"
 				class="multi-parameter"
 			>
-				<div class="parameter-name" :title="parameter.displayName">
-					<div class="delete-option clickable" title="Delete" v-if="hideDelete !== true && !isReadOnly">
-						<font-awesome-icon
-							icon="trash"
-							class="reset-icon clickable"
-							title="Parameter Options"
-							@click="deleteOption(parameter.name)"
-						/>
-					</div>
-					{{parameter.displayName}}:
-					<n8n-tooltip placement="top" class="parameter-info" v-if="parameter.description" >
-						<div slot="content" v-html="addTargetBlank(parameter.description)"></div>
-						<font-awesome-icon icon="question-circle"/>
-					</n8n-tooltip>
+				<div class="delete-option clickable" title="Delete" v-if="hideDelete !== true && !isReadOnly">
+					<font-awesome-icon
+						icon="trash"
+						class="reset-icon clickable"
+						title="Parameter Options"
+						@click="deleteOption(parameter.name)"
+					/>
 				</div>
-				<div>
+				<n8n-input-label
+					:label="parameter.displayName"
+					:tooltipText="parameter.description"
+					size="small"
+					:underline="true"
+				>
 					<collection-parameter
 						v-if="parameter.type === 'collection'"
 						:parameter="parameter"
@@ -52,7 +50,7 @@
 						:path="getPath(parameter.name)"
 						@valueChanged="valueChanged"
 					/>
-				</div>
+				</n8n-input-label>
 			</div>
 
 			<div v-else-if="displayNodeParameter(parameter)" class="parameter-item">
@@ -260,6 +258,7 @@ export default mixins(
 		position: absolute;
 		z-index: 999;
 		color: #f56c6c;
+		font-size: var(--font-size-2xs);
 
 		&:hover {
 			color: #ff0000;
@@ -268,34 +267,21 @@ export default mixins(
 
 	.multi-parameter {
 		position: relative;
-		margin: 0.5em 0;
-		padding: 0.5em 0;
+		margin: var(--spacing-2xs) 0;
 
-		>.parameter-name {
-			font-weight: 600;
-			border-bottom: 1px solid #999;
+		.delete-option {
+			top: 0;
+			left: -0.9em;
+		}
 
-			&:hover {
-				.parameter-info {
-					display: inline;
-				}
-			}
-
-			.delete-option {
-				top: 0;
-				left: -0.9em;
-			}
-
-			.parameter-info {
-				display: none;
-			}
-
+		.parameter-info {
+			display: none;
 		}
 	}
 
 	.parameter-item {
 		position: relative;
-		margin: 8px 0;
+		margin: var(--spacing-2xs) 0;
 
 		>.delete-option {
 			left: -0.9em;
@@ -303,7 +289,7 @@ export default mixins(
 		}
 	}
 	.parameter-item:hover > .delete-option,
-	.parameter-name:hover > .delete-option {
+	.multi-parameter:hover > .delete-option {
 		display: block;
 	}
 

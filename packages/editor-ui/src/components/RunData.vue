@@ -659,6 +659,7 @@ export default mixins(
 		overflow-y: auto;
 		line-height: 1.5;
 		word-break: normal;
+		font-size: var(--font-size-s);
 
 		.binary-data-row {
 			display: inline-flex;

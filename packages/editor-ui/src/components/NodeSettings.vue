@@ -521,7 +521,6 @@ export default mixins(
 	overflow: hidden;
 	min-width: 350px;
 	max-width: 350px;
-	font-size: var(--font-size-s);
 
 	.header-side-menu {
 		padding: 1em 0 1em 1.8em;
@@ -547,7 +546,6 @@ export default mixins(
 
 	.node-parameters-wrapper {
 		height: 100%;
-		font-size: .9em;
 
 		.el-tabs__header {
 			background-color: #fff5f2;
@@ -561,13 +559,13 @@ export default mixins(
 				padding-bottom: 180px;
 
 				.el-tab-pane {
-					margin: 0 1em;
+					margin: 0 var(--spacing-m);
 				}
 			}
 		}
 
 		.el-tabs__nav {
-			padding-bottom: 1em;
+			padding-bottom: var(--spacing-xs);
 		}
 
 		.add-option {

@@ -1,7 +1,7 @@
 <template>
 	<div @keydown.stop class="fixed-collection-parameter">
 		<div v-if="getProperties.length === 0" class="no-items-exist">
-			Currently no items exist
+			<n8n-text size="small">Currently no items exist</n8n-text>
 		</div>
 
 		<div v-for="property in getProperties" :key="property.name" class="fixed-collection-parameter-property">
@@ -225,8 +225,7 @@ export default mixins(genericHelpers)
 }
 
 .fixed-collection-parameter-property {
-	margin: 0.5em 0;
-	padding: 0.5em 0;
+	margin: var(--spacing-2xs) 0;
 
 	.parameter-name {
 		border-bottom: 1px solid #999;
@@ -255,14 +254,13 @@ export default mixins(genericHelpers)
 
 	+ .parameter-item {
 		.parameter-item-wrapper {
-			padding-top: 0.5em;
 			border-top: 1px dashed #999;
 		}
 	}
 }
 
 .no-items-exist {
-	margin: 0.8em 0;
+	margin: var(--spacing-2xs) 0;
 }
 
 .sort-icon {

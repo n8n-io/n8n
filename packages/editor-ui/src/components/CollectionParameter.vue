@@ -2,7 +2,7 @@
 	<div @keydown.stop class="collection-parameter">
 		<div class="collection-parameter-wrapper">
 			<div v-if="getProperties.length === 0" class="no-items-exist">
-				Currently no properties exist
+				<n8n-text size="small">Currently no properties exist</n8n-text>
 			</div>
 
 			<parameter-input-list :parameters="getProperties" :nodeValues="nodeValues" :path="path" :hideDelete="hideDelete" @valueChanged="valueChanged" />
@@ -187,11 +187,11 @@ export default mixins(
 	padding-left: 2em;
 
 	.param-options {
-		padding-top: 0.5em;
+		margin-top: var(--spacing-2xs);
 	}
 
 	.no-items-exist {
-		margin: 0.8em 0 0.4em 0;
+		margin: var(--spacing-2xs) 0;
 	}
 	.option {
 		position: relative;

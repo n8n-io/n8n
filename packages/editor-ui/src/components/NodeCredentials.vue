@@ -230,7 +230,7 @@ export default mixins(
 	min-width: 20px;
 	margin-left: 5px;
 	color: #ff8080;
-	font-size: 1.2em;
+	font-size: var(--font-size-sm);
 }
 
 .edit {
