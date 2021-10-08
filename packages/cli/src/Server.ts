@@ -316,6 +316,9 @@ class App {
 			promClient.collectDefaultMetrics({ register });
 		}
 
+		this.versions = await GenericHelpers.getVersions();
+		this.frontendSettings.versionCli = this.versions.cli;
+
 		this.frontendSettings.instanceId = await UserSettings.getInstanceId();
 
 		this.frontendSettings.personalizationSurvey =
