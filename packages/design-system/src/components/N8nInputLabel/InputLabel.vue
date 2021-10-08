@@ -1,6 +1,6 @@
 <template functional>
 	<div :class="$style.inputLabel">
-		<div :class="props.label ? $style[`label-${props.size}`]: ''">
+		<div :class="$options.methods.getLabelClass(props, $style)">
 			<component v-if="props.label" :is="$options.components.N8nText" :bold="props.bold" :size="props.size">
 				{{ props.label }}
 				<component :is="$options.components.N8nText" color="primary" :bold="props.bold" :size="props.size" v-if="props.required">*</component>
@@ -50,9 +50,23 @@ export default {
 			validator: (value: string): boolean =>
 				['small', 'medium'].indexOf(value) !== -1,
 		},
+		underline: {
+			type: Boolean,
+		},
 	},
 	methods: {
 		addTargetBlank,
+		getLabelClass(props: {label: string, size: string, underline: boolean}, $style: any) {
+			if (!props.label) {
+				return '';
+			}
+
+			if (props.underline) {
+				return $style[`label-${props.size}-underline`];
+			}
+
+			return $style[`label-${props.size}`];
+		},
 	},
 };
 </script>
@@ -78,6 +92,20 @@ export default {
 .label-medium {
 	composes: label;
 	margin-bottom: var(--spacing-2xs);
+}
+
+.underline {
+	border-bottom: var(--border-base);
+}
+
+.label-small-underline {
+	composes: label-small;
+	composes: underline;
+}
+
+.label-medium-underline {
+	composes: label-medium;
+	composes: underline;
 }
 
 .infoIcon {
