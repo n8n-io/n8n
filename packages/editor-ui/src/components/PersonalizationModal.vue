@@ -21,14 +21,16 @@
 				<n8n-input-label label="Which of these areas do you mainly work in?">
 					<n8n-select :value="values[WORK_AREA_KEY]" placeholder="Select..." @change="(value) => onInput(WORK_AREA_KEY, value)">
 						<n8n-option :value="AUTOMATION_CONSULTING_WORK_AREA" label="Automation consulting" />
-						<n8n-option :value="FINANCE_PROCUREMENT_HR_WORK_AREA" label="Finance / Procurement / HR" />
+						<n8n-option :value="FINANCE_WORK_AREA" label="Finance" />
+						<n8n-option :value="HR_WORK_AREA" label="HR" />
 						<n8n-option :value="IT_ENGINEERING_WORK_AREA" label="IT / Engineering" />
 						<n8n-option :value="LEGAL_WORK_AREA" label="Legal" />
 						<n8n-option :value="MARKETING_WORK_AREA" label="Marketing / Growth" />
+						<n8n-option :value="OPS_WORK_AREA" label="Operations" />
 						<n8n-option :value="PRODUCT_WORK_AREA" label="Product" />
 						<n8n-option :value="SALES_BUSINESSDEV_WORK_AREA" label="Sales / Business Development" />
 						<n8n-option :value="SECURITY_WORK_AREA" label="Security" />
-						<n8n-option :value="SUPPORT_OPS_WORK_AREA" label="Support / Operations" />
+						<n8n-option :value="SUPPORT_WORK_AREA" label="Support" />
 						<n8n-option :value="OTHER_WORK_AREA_OPTION" label="Other (please specify)" />
 					</n8n-select>
 				</n8n-input-label>
@@ -114,14 +116,16 @@ import mixins from "vue-typed-mixins";
 import {
 	PERSONALIZATION_MODAL_KEY,
 	AUTOMATION_CONSULTING_WORK_AREA,
-	FINANCE_PROCUREMENT_HR_WORK_AREA,
+	FINANCE_WORK_AREA,
+	HR_WORK_AREA,
 	IT_ENGINEERING_WORK_AREA,
 	LEGAL_WORK_AREA,
 	MARKETING_WORK_AREA,
 	PRODUCT_WORK_AREA,
 	SALES_BUSINESSDEV_WORK_AREA,
 	SECURITY_WORK_AREA,
-	SUPPORT_OPS_WORK_AREA,
+	SUPPORT_WORK_AREA,
+	OPS_WORK_AREA,
 	OTHER_WORK_AREA_OPTION,
 	COMPANY_SIZE_20_OR_LESS,
 	COMPANY_SIZE_20_99,
@@ -158,14 +162,16 @@ export default mixins(showMessage, workflowHelpers).extend({
 				[OTHER_WORK_AREA_KEY]: null,
 			} as IPersonalizationSurveyAnswers,
 			AUTOMATION_CONSULTING_WORK_AREA,
-			FINANCE_PROCUREMENT_HR_WORK_AREA,
+			FINANCE_WORK_AREA,
+			HR_WORK_AREA,
 			IT_ENGINEERING_WORK_AREA,
 			LEGAL_WORK_AREA,
 			MARKETING_WORK_AREA,
 			PRODUCT_WORK_AREA,
 			SALES_BUSINESSDEV_WORK_AREA,
 			SECURITY_WORK_AREA,
-			SUPPORT_OPS_WORK_AREA,
+			SUPPORT_WORK_AREA,
+			OPS_WORK_AREA,
 			OTHER_WORK_AREA_OPTION,
 			COMPANY_SIZE_20_OR_LESS,
 			COMPANY_SIZE_20_99,
