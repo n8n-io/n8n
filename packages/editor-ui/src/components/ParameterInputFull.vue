@@ -1,21 +1,19 @@
 <template>
-	<div :class="$style.parameterWrapper">
-		<n8n-input-label
-			:label="parameter.displayName"
-			:tooltipText="parameter.description"
-			:bold="false"
-			size="small"
-		>
-			<parameter-input
-				:parameter="parameter"
-				:value="value"
-				:displayOptions="displayOptions"
-				:path="path"
-				:isReadOnly="isReadOnly"
-				@valueChanged="valueChanged"
-				inputSize="small" />
-		</n8n-input-label>
-	</div>
+	<n8n-input-label
+		:label="parameter.displayName"
+		:tooltipText="parameter.description"
+		:bold="false"
+		size="small"
+	>
+		<parameter-input
+			:parameter="parameter"
+			:value="value"
+			:displayOptions="displayOptions"
+			:path="path"
+			:isReadOnly="isReadOnly"
+			@valueChanged="valueChanged"
+			inputSize="small" />
+	</n8n-input-label>
 </template>
 
 <script lang="ts">
@@ -76,9 +74,3 @@ export default Vue
 		},
 	});
 </script>
-
-<style lang="scss" module>
-.parameterWrapper {
-	margin-left: var(--spacing-s);
-}
-</style>

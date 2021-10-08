@@ -1,46 +1,45 @@
 <template>
-	<div v-if="credentialTypesNodeDescriptionDisplayed.length" class="node-credentials">
-		<div class="headline">
-			Credentials
+	<div v-if="credentialTypesNodeDescriptionDisplayed.length" :class="$style.container">
+		<div>
+			<n8n-text size="small" :bold="true">
+				Credentials
+			</n8n-text>
 		</div>
 
-		<div v-for="credentialTypeDescription in credentialTypesNodeDescriptionDisplayed" :key="credentialTypeDescription.name" class="credential-data">
-			<el-row class="credential-parameter-wrapper">
-				<el-col :span="10" class="parameter-name">
-					{{credentialTypeNames[credentialTypeDescription.name]}}:
-				</el-col>
-				<el-col :span="12" class="parameter-value" :class="getIssues(credentialTypeDescription.name).length?'has-issues':''">
+		<div v-for="credentialTypeDescription in credentialTypesNodeDescriptionDisplayed" :key="credentialTypeDescription.name">
+			<n8n-input-label
+				:label="credentialTypeNames[credentialTypeDescription.name]"
+				:bold="false"
+				size="small"
+			>
+				<div :class="$style.input">
+					<n8n-select :value="selected[credentialTypeDescription.name]" :disabled="isReadOnly" @change="(value) => credentialSelected(credentialTypeDescription.name, value)" placeholder="Select Credential" size="small">
+						<n8n-option
+							v-for="(item) in credentialOptions[credentialTypeDescription.name]"
+							:key="item.id"
+							:label="item.name"
+							:value="item.name">
+						</n8n-option>
+						<n8n-option
+							:key="NEW_CREDENTIALS_TEXT"
+							:value="NEW_CREDENTIALS_TEXT"
+							:label="NEW_CREDENTIALS_TEXT"
+						>
+						</n8n-option>
+					</n8n-select>
 
-					<div :style="credentialInputWrapperStyle(credentialTypeDescription.name)">
-						<n8n-select :value="selected[credentialTypeDescription.name]" :disabled="isReadOnly" @change="(value) => credentialSelected(credentialTypeDescription.name, value)" placeholder="Select Credential" size="small">
-							<n8n-option
-								v-for="(item) in credentialOptions[credentialTypeDescription.name]"
-								:key="item.id"
-								:label="item.name"
-								:value="item.name">
-							</n8n-option>
-							<n8n-option
-								:key="NEW_CREDENTIALS_TEXT"
-								:value="NEW_CREDENTIALS_TEXT"
-								:label="NEW_CREDENTIALS_TEXT"
-							>
-							</n8n-option>
-						</n8n-select>
-					</div>
-
-					<div class="credential-issues">
+					<div :class="$style.warning" v-if="getIssues(credentialTypeDescription.name).length">
 						<n8n-tooltip placement="top" >
 							<div slot="content" v-html="'Issues:<br />&nbsp;&nbsp;- ' + getIssues(credentialTypeDescription.name).join('<br />&nbsp;&nbsp;- ')"></div>
 							<font-awesome-icon icon="exclamation-triangle" />
 						</n8n-tooltip>
 					</div>
 
-				</el-col>
-				<el-col :span="2" class="parameter-value credential-action">
-					<font-awesome-icon v-if="selected[credentialTypeDescription.name] && isCredentialValid(credentialTypeDescription.name)" icon="pen" @click="editCredential(credentialTypeDescription.name)" class="update-credentials clickable" title="Update Credentials" />
-				</el-col>
-
-			</el-row>
+					<div :class="$style.edit" v-if="selected[credentialTypeDescription.name] && isCredentialValid(credentialTypeDescription.name)">
+						<font-awesome-icon icon="pen" @click="editCredential(credentialTypeDescription.name)" class="update-credentials clickable" title="Update Credentials" />
+					</div>
+				</div>
+			</n8n-input-label>
 		</div>
 
 	</div>
@@ -124,22 +123,6 @@ export default mixins(
 		},
 	},
 	methods: {
-		credentialInputWrapperStyle (credentialType: string) {
-			let deductWidth = 0;
-			const styles = {
-				width: '100%',
-			};
-			if (this.getIssues(credentialType).length) {
-				deductWidth += 20;
-			}
-
-			if (deductWidth !== 0) {
-				styles.width = `calc(100% - ${deductWidth}px)`;
-			}
-
-			return styles;
-		},
-
 		listenForNewCredentials(credentialType: string) {
 			this.stopListeningForNewCredentials();
 
@@ -234,58 +217,33 @@ export default mixins(
 });
 </script>
 
-<style lang="scss">
+<style lang="scss" module>
+.container {
+	border-bottom: var(--border-base);
 
-.node-credentials {
-	padding-bottom: 1em;
-	margin: 0.5em;
-	border-bottom: 1px solid #ccc;
-
-	.credential-issues {
-		display: none;
-		width: 20px;
-		text-align: right;
-		float: right;
-		color: #ff8080;
-		font-size: 1.2em;
-		margin-top: 3px;
-	}
-
-	.credential-data + .credential-data {
-		margin-top: 1em;
-	}
-
-	.has-issues {
-		.credential-issues {
-			display: inline-block;
-		}
-	}
-
-	.headline {
-		font-weight: bold;
-		margin-bottom: 0.7em;
-	}
-
-	.credential-parameter-wrapper {
-		display: flex;
-		align-items: center;
-	}
-
-	.parameter-name {
-		font-weight: 400;
-	}
-
-	.parameter-value {
-		display: flex;
-		align-items: center;
-	}
-
-	.credential-action {
-		display: flex;
-		justify-content: center;
-		align-items: center;
-		color: var(--color-text-base);
+	> * {
+		margin-bottom: var(--spacing-2xs);
 	}
 }
 
+.warning {
+	min-width: 20px;
+	margin-left: 5px;
+	color: #ff8080;
+	font-size: 1.2em;
+}
+
+.edit {
+	display: flex;
+	justify-content: center;
+	align-items: center;
+	color: var(--color-text-base);
+	min-width: 20px;
+	margin-left: 5px;
+}
+
+.input {
+	display: flex;
+	align-items: center;
+}
 </style>
