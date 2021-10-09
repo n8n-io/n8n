@@ -273,8 +273,6 @@ export class WebhookResponse implements INodeType {
 			body: responseBody,
 			headers,
 			statusCode: responseCode,
-			// TODO: Check why statusMessage is required, does not make sense
-			statusMessage: 'blub',
 		};
 
 		this.sendResponse(response);

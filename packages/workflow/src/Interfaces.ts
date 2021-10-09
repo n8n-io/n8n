@@ -319,7 +319,7 @@ export interface IN8nHttpFullResponse {
 	body: IN8nHttpResponse;
 	headers: IDataObject;
 	statusCode: number;
-	statusMessage: string;
+	statusMessage?: string;
 }
 
 export interface IExecuteFunctions {
