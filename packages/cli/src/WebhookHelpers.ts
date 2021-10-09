@@ -391,7 +391,7 @@ export async function executeWebhook(
 				.promise()
 				.then((response: IN8nHttpFullResponse) => {
 					if (didSendResponse) {
-						throw new Error('Did already send webhook response');
+						return;
 					}
 
 					if (Buffer.isBuffer(response.body)) {
@@ -442,20 +442,6 @@ export async function executeWebhook(
 		>;
 		executePromise
 			.then((data) => {
-				if (responseMode === 'responseNode') {
-					if (!didSendResponse) {
-						// Return an error if no Webhook-Response node did send any data
-						responseCallback(null, {
-							data: {
-								message: 'Workflow did execute sucessfully but no data got returned.',
-							},
-							responseCode,
-						});
-						didSendResponse = true;
-					}
-					return undefined;
-				}
-
 				if (data === undefined) {
 					if (!didSendResponse) {
 						responseCallback(null, {
@@ -481,6 +467,20 @@ export async function executeWebhook(
 					}
 					didSendResponse = true;
 					return data;
+				}
+
+				if (responseMode === 'responseNode') {
+					if (!didSendResponse) {
+						// Return an error if no Webhook-Response node did send any data
+						responseCallback(null, {
+							data: {
+								message: 'Workflow executed sucessfully.',
+							},
+							responseCode,
+						});
+						didSendResponse = true;
+					}
+					return undefined;
 				}
 
 				if (returnData === undefined) {

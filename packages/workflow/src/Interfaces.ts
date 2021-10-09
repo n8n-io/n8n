@@ -310,7 +310,7 @@ export interface IHttpRequestOptions {
 	json?: boolean;
 }
 
-export type IN8nHttpResponse = IDataObject | Buffer | GenericValue | GenericValue[];
+export type IN8nHttpResponse = IDataObject | Buffer | GenericValue | GenericValue[] | null;
 
 export interface IN8nHttpFullResponse {
 	body: IN8nHttpResponse;
