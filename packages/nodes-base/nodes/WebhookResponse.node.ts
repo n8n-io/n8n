@@ -52,9 +52,9 @@ export class WebhookResponse implements INodeType {
 						description: 'Return no data',
 					},
 					{
-						name: 'Binary',
-						value: 'binary',
-						description: 'Return binary data',
+						name: 'Text',
+						value: 'text',
+						description: 'Return a text',
 					},
 					{
 						name: 'First Incoming Item',
@@ -67,9 +67,9 @@ export class WebhookResponse implements INodeType {
 						description: 'Return JSON data',
 					},
 					{
-						name: 'Text',
-						value: 'text',
-						description: 'Return a text',
+						name: 'Binary',
+						value: 'binary',
+						description: 'Return binary data',
 					},
 				],
 				default: 'json',
