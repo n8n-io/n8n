@@ -2,7 +2,7 @@
 import Vue from 'vue';
 import Vuex from 'vuex';
 
-import { PLACEHOLDER_EMPTY_WORKFLOW_ID } from '@/constants';
+import { PLACEHOLDER_EMPTY_WORKFLOW_ID, DEFAULT_NODETYPE_VERSION } from '@/constants';
 
 import {
 	IConnection,
@@ -589,11 +589,10 @@ export const store = new Vuex.Store({
 		},
 
 		updateNodeTypes (state, nodeTypes: INodeTypeDescription[]) {
-			const updatedNodeNames = nodeTypes.map(node => node.name) as string[];
-			const oldNodesNotChanged = state.nodeTypes.filter(node => !updatedNodeNames.includes(node.name));
-			const updatedNodes = [...oldNodesNotChanged, ...nodeTypes];
-			Vue.set(state, 'nodeTypes', updatedNodes);
-			state.nodeTypes = updatedNodes;
+			const oldNodesToKeep = state.nodeTypes.filter(node => !nodeTypes.find(n => n.name === node.name && n.version === node.version));
+			const newNodesState = [...oldNodesToKeep, ...nodeTypes];
+			Vue.set(state, 'nodeTypes', newNodesState);
+			state.nodeTypes = newNodesState;
 		},
 
 		addSidebarMenuItems (state, menuItems: IMenuItem[]) {
@@ -605,6 +604,14 @@ export const store = new Vuex.Store({
 
 		isActionActive: (state) => (action: string): boolean => {
 			return state.activeActions.includes(action);
+		},
+
+		isNewWorkflow: (state) => {
+			return state.workflow.id === PLACEHOLDER_EMPTY_WORKFLOW_ID;
+		},
+
+		currentWorkflowHasWebhookNode: (state: IRootState): boolean => {
+			return !!state.workflow.nodes.find((node: INodeUi) => !!node.webhookId);
 		},
 
 		getActiveExecutions: (state): IExecutionsCurrentSummaryExtended[] => {
@@ -754,9 +761,9 @@ export const store = new Vuex.Store({
 		allNodeTypes: (state): INodeTypeDescription[] => {
 			return state.nodeTypes;
 		},
-		nodeType: (state) => (nodeType: string): INodeTypeDescription | null => {
+		nodeType: (state, getters) => (nodeType: string, typeVersion?: number): INodeTypeDescription | null => {
 			const foundType = state.nodeTypes.find(typeData => {
-				return typeData.name === nodeType;
+				return typeData.name === nodeType && typeData.version === (typeVersion || typeData.defaultVersion || DEFAULT_NODETYPE_VERSION);
 			});
 
 			if (foundType === undefined) {
@@ -791,6 +798,7 @@ export const store = new Vuex.Store({
 		workflowId: (state): string => {
 			return state.workflow.id;
 		},
+
 		workflowSettings: (state): IWorkflowSettings => {
 			if (state.workflow.settings === undefined) {
 				return {};

@@ -269,6 +269,9 @@ export default mixins(
 				MAX_DISPLAY_ITEMS_AUTO_ALL,
 			};
 		},
+		mounted() {
+			this.init();
+		},
 		computed: {
 			hasNodeRun(): boolean {
 				return Boolean(this.node && this.workflowRunData && this.workflowRunData.hasOwnProperty(this.node.name));
@@ -422,6 +425,18 @@ export default mixins(
 			},
 		},
 		methods: {
+			init() {
+				// Reset the selected output index every time another node gets selected
+				this.outputIndex = 0;
+				this.maxDisplayItems = 25;
+				this.refreshDataSize();
+				if (this.displayMode === 'Binary') {
+					this.closeBinaryDataDisplay();
+					if (this.binaryData.length === 0) {
+						this.displayMode = 'Table';
+					}
+				}
+			},
 			closeBinaryDataDisplay () {
 				this.binaryDataDisplayVisible = false;
 				this.binaryDataDisplayData = null;
@@ -606,17 +621,8 @@ export default mixins(
 			},
 		},
 		watch: {
-			node (newNode, oldNode) {
-				// Reset the selected output index every time another node gets selected
-				this.outputIndex = 0;
-				this.maxDisplayItems = 25;
-				this.refreshDataSize();
-				if (this.displayMode === 'Binary') {
-					this.closeBinaryDataDisplay();
-					if (this.binaryData.length === 0) {
-						this.displayMode = 'Table';
-					}
-				}
+			node() {
+				this.init();
 			},
 			jsonData () {
 				this.refreshDataSize();
@@ -628,8 +634,6 @@ export default mixins(
 			maxRunIndex () {
 				this.runIndex = Math.min(this.runIndex, this.maxRunIndex);
 			},
-		},
-		mounted () {
 		},
 	});
 </script>
