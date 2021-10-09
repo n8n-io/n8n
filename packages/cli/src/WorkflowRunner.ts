@@ -16,7 +16,7 @@ import { IProcessMessage, WorkflowExecute } from 'n8n-core';
 import {
 	ExecutionError,
 	IDeferredPromise,
-	IN8nHttpFullResponse,
+	IExecuteResponsePromiseData,
 	IRun,
 	LoggerProxy as Logger,
 	Workflow,
@@ -146,7 +146,7 @@ export class WorkflowRunner {
 		loadStaticData?: boolean,
 		realtime?: boolean,
 		executionId?: string,
-		responsePromise?: IDeferredPromise<IN8nHttpFullResponse>,
+		responsePromise?: IDeferredPromise<IExecuteResponsePromiseData>,
 	): Promise<string> {
 		const executionsProcess = config.get('executions.process') as string;
 		const executionsMode = config.get('executions.mode') as string;
@@ -195,7 +195,7 @@ export class WorkflowRunner {
 		data: IWorkflowExecutionDataProcess,
 		loadStaticData?: boolean,
 		restartExecutionId?: string,
-		responsePromise?: IDeferredPromise<IN8nHttpFullResponse>,
+		responsePromise?: IDeferredPromise<IExecuteResponsePromiseData>,
 	): Promise<string> {
 		if (loadStaticData === true && data.workflowData.id) {
 			data.workflowData.staticData = await WorkflowHelpers.getStaticDataById(
@@ -254,7 +254,7 @@ export class WorkflowRunner {
 			);
 
 			additionalData.hooks.hookFunctions.sendResponse = [
-				async (response: IN8nHttpFullResponse): Promise<void> => {
+				async (response: IExecuteResponsePromiseData): Promise<void> => {
 					if (responsePromise) {
 						responsePromise.resolve(response);
 					}
@@ -346,7 +346,7 @@ export class WorkflowRunner {
 		loadStaticData?: boolean,
 		realtime?: boolean,
 		restartExecutionId?: string,
-		responsePromise?: IDeferredPromise<IN8nHttpFullResponse>,
+		responsePromise?: IDeferredPromise<IExecuteResponsePromiseData>,
 	): Promise<string> {
 		// TODO: If "loadStaticData" is set to true it has to load data new on worker
 
@@ -554,7 +554,7 @@ export class WorkflowRunner {
 		data: IWorkflowExecutionDataProcess,
 		loadStaticData?: boolean,
 		restartExecutionId?: string,
-		responsePromise?: IDeferredPromise<IN8nHttpFullResponse>,
+		responsePromise?: IDeferredPromise<IExecuteResponsePromiseData>,
 	): Promise<string> {
 		let startedAt = new Date();
 		const subprocess = fork(pathJoin(__dirname, 'WorkflowRunnerProcess.js'));

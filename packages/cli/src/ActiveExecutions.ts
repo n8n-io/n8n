@@ -5,7 +5,12 @@
 /* eslint-disable @typescript-eslint/no-unsafe-call */
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
-import { createDeferredPromise, IDeferredPromise, IN8nHttpFullResponse, IRun } from 'n8n-workflow';
+import {
+	createDeferredPromise,
+	IDeferredPromise,
+	IExecuteResponsePromiseData,
+	IRun,
+} from 'n8n-workflow';
 
 import { ChildProcess } from 'child_process';
 // eslint-disable-next-line import/no-extraneous-dependencies
@@ -116,7 +121,7 @@ export class ActiveExecutions {
 
 	attachResponsePromise(
 		executionId: string,
-		responsePromise: IDeferredPromise<IN8nHttpFullResponse>,
+		responsePromise: IDeferredPromise<IExecuteResponsePromiseData>,
 	): void {
 		if (this.activeExecutions[executionId] === undefined) {
 			throw new Error(
@@ -127,7 +132,7 @@ export class ActiveExecutions {
 		this.activeExecutions[executionId].responsePromise = responsePromise;
 	}
 
-	resolveResponsePromise(executionId: string, response: IN8nHttpFullResponse): void {
+	resolveResponsePromise(executionId: string, response: IExecuteResponsePromiseData): void {
 		if (this.activeExecutions[executionId] === undefined) {
 			return;
 		}

@@ -14,9 +14,9 @@ import { ActiveWorkflows, NodeExecuteFunctions } from 'n8n-core';
 import {
 	IDeferredPromise,
 	IExecuteData,
+	IExecuteResponsePromiseData,
 	IGetExecutePollFunctions,
 	IGetExecuteTriggerFunctions,
-	IN8nHttpFullResponse,
 	INode,
 	INodeExecutionData,
 	IRunExecutionData,
@@ -550,7 +550,7 @@ export class ActiveWorkflowRunner {
 		data: INodeExecutionData[][],
 		additionalData: IWorkflowExecuteAdditionalDataWorkflow,
 		mode: WorkflowExecuteMode,
-		responsePromise?: IDeferredPromise<IN8nHttpFullResponse>,
+		responsePromise?: IDeferredPromise<IExecuteResponsePromiseData>,
 	) {
 		const nodeExecutionStack: IExecuteData[] = [
 			{
@@ -644,7 +644,7 @@ export class ActiveWorkflowRunner {
 			);
 			returnFunctions.emit = (
 				data: INodeExecutionData[][],
-				responsePromise?: IDeferredPromise<IN8nHttpFullResponse>,
+				responsePromise?: IDeferredPromise<IExecuteResponsePromiseData>,
 			): void => {
 				// eslint-disable-next-line @typescript-eslint/restrict-template-expressions
 				Logger.debug(`Received trigger for workflow "${workflow.name}"`);

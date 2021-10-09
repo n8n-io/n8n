@@ -8,14 +8,13 @@ import {
 	ICredentialType,
 	IDataObject,
 	IDeferredPromise,
+	IExecuteResponsePromiseData,
 	IN8nHttpFullResponse,
 	IRun,
 	IRunData,
 	IRunExecutionData,
 	ITaskData,
 	IWorkflowBase as IWorkflowBaseWorkflow,
-	// eslint-disable-next-line @typescript-eslint/no-unused-vars
-	IWorkflowCredentials,
 	Workflow,
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
@@ -50,7 +49,7 @@ export interface IBullJobResponse {
 
 export interface IBullWebhookResponse {
 	executionId: string;
-	response: IN8nHttpFullResponse;
+	response: IExecuteResponsePromiseData;
 }
 
 export interface ICustomRequest extends Request {
@@ -243,7 +242,7 @@ export interface IExecutingWorkflowData {
 	process?: ChildProcess;
 	startedAt: Date;
 	postExecutePromises: Array<IDeferredPromise<IRun | undefined>>;
-	responsePromise?: IDeferredPromise<IN8nHttpFullResponse>;
+	responsePromise?: IDeferredPromise<IExecuteResponsePromiseData>;
 	workflowExecution?: PCancelable<IRun>;
 }
 
@@ -453,8 +452,6 @@ export interface IResponseCallbackData {
 	noWebhookResponse?: boolean;
 	responseCode?: number;
 }
-
-export type HttpWebhookCallback = (response: IN8nHttpFullResponse) => void;
 
 export interface ITransferNodeTypes {
 	[key: string]: {

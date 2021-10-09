@@ -194,6 +194,9 @@ export interface IDataObject {
 	[key: string]: GenericValue | IDataObject | GenericValue[] | IDataObject[];
 }
 
+// export type IExecuteResponsePromiseData = IDataObject;
+export type IExecuteResponsePromiseData = IDataObject | IN8nHttpFullResponse;
+
 export interface INodeTypeNameVersion {
 	name: string;
 	version: number;
@@ -358,8 +361,7 @@ export interface IExecuteFunctions {
 	): Promise<INodeExecutionData[][]>;
 	putExecutionToWait(waitTill: Date): Promise<void>;
 	sendMessageToUI(message: any): void; // tslint:disable-line:no-any
-	// TODO: Replace IN8nHttpFullResponse with something more generic
-	sendResponse(response: IN8nHttpFullResponse): void; // tslint:disable-line:no-any
+	sendResponse(response: IExecuteResponsePromiseData): void; // tslint:disable-line:no-any
 	helpers: {
 		httpRequest(
 			requestOptions: IHttpRequestOptions,
@@ -482,7 +484,7 @@ export interface IPollFunctions {
 export interface ITriggerFunctions {
 	emit(
 		data: INodeExecutionData[][],
-		responsePromise?: IDeferredPromise<IN8nHttpFullResponse>,
+		responsePromise?: IDeferredPromise<IExecuteResponsePromiseData>,
 	): void;
 	getCredentials(type: string): Promise<ICredentialDataDecryptedObject | undefined>;
 	getMode(): WorkflowExecuteMode;
@@ -963,7 +965,7 @@ export interface IWorkflowExecuteHooks {
 	nodeExecuteBefore?: Array<(nodeName: string) => Promise<void>>;
 	workflowExecuteAfter?: Array<(data: IRun, newStaticData: IDataObject) => Promise<void>>;
 	workflowExecuteBefore?: Array<(workflow: Workflow, data: IRunExecutionData) => Promise<void>>;
-	sendResponse?: Array<(response: IN8nHttpFullResponse) => Promise<void>>;
+	sendResponse?: Array<(response: IExecuteResponsePromiseData) => Promise<void>>;
 }
 
 export interface IWorkflowExecuteAdditionalData {

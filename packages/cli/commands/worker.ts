@@ -13,11 +13,9 @@ import { Command, flags } from '@oclif/command';
 import { UserSettings, WorkflowExecute } from 'n8n-core';
 
 import {
-	IDataObject,
-	IN8nHttpFullResponse,
+	IExecuteResponsePromiseData,
 	INodeTypes,
 	IRun,
-	IWorkflowExecuteHooks,
 	Workflow,
 	WorkflowHooks,
 	LoggerProxy,
@@ -184,7 +182,7 @@ export class Worker extends Command {
 		);
 
 		additionalData.hooks.hookFunctions.sendResponse = [
-			async (response: IN8nHttpFullResponse): Promise<void> => {
+			async (response: IExecuteResponsePromiseData): Promise<void> => {
 				await job.progress({
 					executionId: job.data.executionId as string,
 					response: WebhookHelpers.encodeWebhookResponse(response),

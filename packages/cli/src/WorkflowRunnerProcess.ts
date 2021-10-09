@@ -10,9 +10,9 @@ import { IProcessMessage, WorkflowExecute } from 'n8n-core';
 import {
 	ExecutionError,
 	IDataObject,
+	IExecuteResponsePromiseData,
 	IExecuteWorkflowInfo,
 	ILogger,
-	IN8nHttpFullResponse,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeData,
@@ -200,7 +200,7 @@ export class WorkflowRunnerProcess {
 		additionalData.hooks = this.getProcessForwardHooks();
 
 		additionalData.hooks.hookFunctions.sendResponse = [
-			async (response: IN8nHttpFullResponse): Promise<void> => {
+			async (response: IExecuteResponsePromiseData): Promise<void> => {
 				await sendToParentProcess('sendResponse', {
 					response: WebhookHelpers.encodeWebhookResponse(response),
 				});

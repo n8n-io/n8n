@@ -24,6 +24,7 @@ import {
 	IDataObject,
 	IDeferredPromise,
 	IExecuteData,
+	IExecuteResponsePromiseData,
 	IN8nHttpFullResponse,
 	INode,
 	IRunExecutionData,
@@ -95,8 +96,11 @@ export function getWorkflowWebhooks(
 	return returnData;
 }
 
-export function decodeWebhookResponse(response: IN8nHttpFullResponse): IN8nHttpFullResponse {
+export function decodeWebhookResponse(
+	response: IExecuteResponsePromiseData,
+): IExecuteResponsePromiseData {
 	if (
+		typeof response === 'object' &&
 		typeof response.body === 'object' &&
 		(response.body as IDataObject)['__@N8nEncodedBuffer@__']
 	) {
@@ -109,8 +113,10 @@ export function decodeWebhookResponse(response: IN8nHttpFullResponse): IN8nHttpF
 	return response;
 }
 
-export function encodeWebhookResponse(response: IN8nHttpFullResponse): IN8nHttpFullResponse {
-	if (Buffer.isBuffer(response.body)) {
+export function encodeWebhookResponse(
+	response: IExecuteResponsePromiseData,
+): IExecuteResponsePromiseData {
+	if (typeof response === 'object' && Buffer.isBuffer(response.body)) {
 		response.body = {
 			'__@N8nEncodedBuffer@__': response.body.toString(BINARY_ENCODING),
 		};

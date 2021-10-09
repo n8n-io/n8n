@@ -17,8 +17,8 @@ import {
 	Expression,
 	IConnections,
 	IDeferredPromise,
+	IExecuteResponsePromiseData,
 	IGetExecuteTriggerFunctions,
-	IN8nHttpFullResponse,
 	INode,
 	INodeExecuteFunctions,
 	INodeExecutionData,
@@ -953,10 +953,10 @@ export class Workflow {
 					(resolveEmit) =>
 					(
 						data: INodeExecutionData[][],
-						responsePromise?: IDeferredPromise<IN8nHttpFullResponse>,
+						responsePromise?: IDeferredPromise<IExecuteResponsePromiseData>,
 					) => {
 						additionalData.hooks!.hookFunctions.sendResponse = [
-							async (response: IN8nHttpFullResponse): Promise<void> => {
+							async (response: IExecuteResponsePromiseData): Promise<void> => {
 								if (responsePromise) {
 									responsePromise.resolve(response);
 								}
