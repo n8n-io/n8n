@@ -147,6 +147,13 @@ export class Webhook implements INodeType {
 				displayName: 'Response Code',
 				name: 'responseCode',
 				type: 'number',
+				displayOptions: {
+					hide: {
+						responseMode: [
+							'responseNode',
+						],
+					},
+				},
 				typeOptions: {
 					minValue: 100,
 					maxValue: 599,
