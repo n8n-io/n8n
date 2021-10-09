@@ -53,7 +53,21 @@ export default Vue.extend({
 	},
 	computed: {
 		showRequiredErrors(): boolean {
-			return this.$props.parameter.type !== 'boolean' && !this.value && this.$props.parameter.required && (this.blurred || this.showValidationWarnings);
+			if (!this.$props.parameter.required) {
+				return false;
+			}
+
+			if (this.blurred || this.showValidationWarnings) {
+				if (this.$props.parameter.type === 'string') {
+					return !this.value;
+				}
+
+				if (this.$props.parameter.type === 'number') {
+					return typeof this.value !== 'number';
+				}
+			}
+
+			return false;
 		},
 	},
 	methods: {
