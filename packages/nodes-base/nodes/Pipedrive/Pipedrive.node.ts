@@ -270,7 +270,7 @@ export class Pipedrive implements INodeType {
 					{
 						name: 'Get All',
 						value: 'getAll',
-						description: 'Get all products in a deal',
+						description: 'Get all activities of a deal',
 					},
 				],
 				default: 'getAll',
@@ -3471,7 +3471,7 @@ export class Pipedrive implements INodeType {
 						],
 					},
 				},
-				description: 'The ID of the deal whose products to retrieve',
+				description: 'The ID of the deal whose activity to retrieve',
 			},
 			{
 				displayName: 'Additional Fields',
@@ -3493,32 +3493,20 @@ export class Pipedrive implements INodeType {
 					{
 						displayName: 'Done',
 						name: 'done',
-						type: 'options',
-						options: [
-							{
-								name: 'Not done',
-								value: '0',
-							},
-							{
-								name: 'Done',
-								value: '1',
-							},
-						],
-						default: '0',
+						type: 'boolean',
+						default: false,
 						description: 'Whether the activity is done or not.',
 					},
 					{
-						displayName: 'Exclude Activity Ids',
+						displayName: 'Exclude Activity IDs',
 						name: 'exclude',
 						type: 'string',
-						typeOptions: {
-							rows: 3,
-						},
 						default: '',
 						description: 'A comma separated Activity Ids, to exclude from result. Ex. 4, 9, 11, ...',
 					},
 				],
 			},
+
 			// ----------------------------------------
 			//               lead: getAll
 			// ----------------------------------------
@@ -4423,8 +4411,8 @@ export class Pipedrive implements INodeType {
 							qs.exclude = (additionalFields.exclude as string);
 						}
 
-						if (additionalFields.done) {
-							qs.done = parseInt(additionalFields.done as string);
+						if (additionalFields && additionalFields.done !== undefined) {
+							qs.done = additionalFields.done === true ? 1 : 0;
 						}
 
 						endpoint = `/deals/${dealId}/activities`;
@@ -5025,7 +5013,7 @@ export class Pipedrive implements INodeType {
 						returnData.push(responseData.data as IDataObject);
 					}
 				}
-			} catch (error: any) {
+			} catch (error) {
 				if (this.continueOnFail()) {
 					if (resource === 'file' && operation === 'download') {
 						items[i].json = { error: error.message };
