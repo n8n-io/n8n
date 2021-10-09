@@ -457,7 +457,7 @@ export default mixins(
 				}
 
 				this.blankRedirect = true;
-				this.$router.push({ name: 'NodeViewNew' });
+				this.$router.push({ name: 'NodeViewNew', query: { templateId } });
 
 				await this.addNodes(data.workflow.nodes, data.workflow.connections);
 				await this.$store.dispatch('workflows/setNewWorkflowName', data.name);
@@ -2197,6 +2197,7 @@ export default mixins(
 				this.$store.commit('setEndpointWebhookTest', settings.endpointWebhookTest);
 				this.$store.commit('setSaveDataErrorExecution', settings.saveDataErrorExecution);
 				this.$store.commit('setSaveDataSuccessExecution', settings.saveDataSuccessExecution);
+				this.$store.commit('setSaveManualExecutions', settings.saveManualExecutions);
 				this.$store.commit('setTimezone', settings.timezone);
 				this.$store.commit('setExecutionTimeout', settings.executionTimeout);
 				this.$store.commit('setMaxExecutionTimeout', settings.maxExecutionTimeout);
