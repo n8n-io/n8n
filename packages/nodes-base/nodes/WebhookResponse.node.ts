@@ -31,17 +31,6 @@ export class WebhookResponse implements INodeType {
 		],
 		properties: [
 			{
-				displayName: 'Response Code',
-				name: 'responseCode',
-				type: 'number',
-				typeOptions: {
-					minValue: 100,
-					maxValue: 599,
-				},
-				default: 200,
-				description: 'The HTTP Response code to return',
-			},
-			{
 				displayName: 'Response Data',
 				name: 'responseData',
 				type: 'options',
@@ -170,6 +159,17 @@ export class WebhookResponse implements INodeType {
 				default: {},
 				options: [
 					{
+						displayName: 'Response Code',
+						name: 'responseCode',
+						type: 'number',
+						typeOptions: {
+							minValue: 100,
+							maxValue: 599,
+						},
+						default: 200,
+						description: 'The HTTP Response code to return',
+					},
+					{
 						displayName: 'Response Headers',
 						name: 'responseHeaders',
 						placeholder: 'Add Response Header',
@@ -210,7 +210,6 @@ export class WebhookResponse implements INodeType {
 	execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
 
-		const responseCode = this.getNodeParameter('responseCode', 0) as number;
 		const responseData = this.getNodeParameter('responseData', 0) as string;
 		const options = this.getNodeParameter('options', 0, {}) as IDataObject;
 
@@ -272,7 +271,7 @@ export class WebhookResponse implements INodeType {
 		const response: IN8nHttpFullResponse = {
 			body: responseBody,
 			headers,
-			statusCode: responseCode,
+			statusCode: options.responseCode as number || 200,
 		};
 
 		this.sendResponse(response);
