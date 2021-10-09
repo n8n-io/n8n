@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-member-access */
 import * as Bull from 'bull';
 import * as config from '../config';
 // eslint-disable-next-line import/no-cycle
@@ -27,6 +28,7 @@ export class Queue {
 
 		this.jobQueue.on('global:progress', (jobId, progress: IBullWebhookResponse) => {
 			this.activeExecutions.resolveResponsePromise(
+				// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
 				progress.executionId,
 				WebhookHelpers.decodeWebhookResponse(progress.response),
 			);

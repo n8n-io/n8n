@@ -38,19 +38,19 @@ import {
 } from 'n8n-workflow';
 // eslint-disable-next-line import/no-cycle
 import {
-	ActiveExecutions,
 	GenericHelpers,
 	IExecutionDb,
 	IResponseCallbackData,
 	IWorkflowDb,
 	IWorkflowExecutionDataProcess,
 	ResponseHelper,
-	// eslint-disable-next-line @typescript-eslint/no-unused-vars
-	WorkflowCredentials,
 	WorkflowExecuteAdditionalData,
 	WorkflowHelpers,
 	WorkflowRunner,
 } from '.';
+
+// eslint-disable-next-line import/no-cycle
+import * as ActiveExecutions from './ActiveExecutions';
 
 const activeExecutions = ActiveExecutions.getInstance();
 

@@ -132,6 +132,7 @@ export class ActiveExecutions {
 			return;
 		}
 
+		// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
 		this.activeExecutions[executionId].responsePromise?.resolve(response);
 	}
 
@@ -212,6 +213,7 @@ export class ActiveExecutions {
 
 		this.activeExecutions[executionId].postExecutePromises.push(waitPromise);
 
+		// eslint-disable-next-line @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-member-access
 		return waitPromise.promise();
 	}
 
