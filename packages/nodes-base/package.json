@@ -457,7 +457,7 @@
       "dist/nodes/MoveBinaryData/MoveBinaryData.node.js",
       "dist/nodes/Msg91/Msg91.node.js",
       "dist/nodes/MySql/MySql.node.js",
-      "dist/nodes/N8nTrigger.node.js",
+      "dist/nodes/N8nTrigger/N8nTrigger.node.js",
       "dist/nodes/Nasa/Nasa.node.js",
       "dist/nodes/NextCloud/NextCloud.node.js",
       "dist/nodes/NoOp/NoOp.node.js",
