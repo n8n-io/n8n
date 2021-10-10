@@ -35,5 +35,11 @@ export class VenafiTppApi implements ICredentialType {
 			},
 			default: '',
 		},
+		{
+			displayName: 'Allow Self-Signed Certificates',
+			name: 'allowUnauthorizedCerts',
+			type: 'boolean' as NodePropertyTypes,
+			default: true,
+		},
 	];
 }

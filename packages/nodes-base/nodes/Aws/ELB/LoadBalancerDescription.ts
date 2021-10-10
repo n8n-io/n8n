@@ -290,7 +290,7 @@ export const loadBalancerFields = [
 					false,
 				],
 			},
-		}
+		},
 	},
 	{
 		displayName: 'Filters',

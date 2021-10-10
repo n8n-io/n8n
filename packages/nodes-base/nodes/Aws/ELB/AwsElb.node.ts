@@ -146,7 +146,7 @@ export class AwsElb implements INodeType {
 
 				const body = [
 					'Version=2016-11-15',
-					'Action=DescribeSecurityGroups'
+					'Action=DescribeSecurityGroups',
 				].join('&');
 
 				const data = await awsApiRequestSOAP.call(this, 'ec2', 'POST', '/', body, {}, { 'Content-Type': 'application/x-www-form-urlencoded', 'charset': 'utf-8', 'User-Agent': 'aws-cli/1.18.124' });
@@ -178,7 +178,7 @@ export class AwsElb implements INodeType {
 
 				const body = [
 					'Version=2016-11-15',
-					'Action=DescribeSubnets'
+					'Action=DescribeSubnets',
 				].join('&');
 
 				const data = await awsApiRequestSOAP.call(this, 'ec2', 'POST', '/', body, {}, { 'Content-Type': 'application/x-www-form-urlencoded', 'charset': 'utf-8', 'User-Agent': 'aws-cli/1.18.124' });

@@ -26,6 +26,11 @@ export const certificateOperations = [
 				description: 'Delete a certificate',
 			},
 			{
+				name: 'Download',
+				value: 'download',
+				description: 'Download a certificate',
+			},
+			{
 				name: 'Get',
 				value: 'get',
 				description: 'Retrieve a certificate',
@@ -536,6 +541,104 @@ export const certificateFields = [
 						],
 					},
 				],
+			},
+		],
+	},
+	/* -------------------------------------------------------------------------- */
+	/*                                 certificate:download                       */
+	/* -------------------------------------------------------------------------- */
+	{
+		displayName: 'Certificate DN',
+		name: 'certificateDn',
+		type: 'string',
+		required: true,
+		displayOptions: {
+			show: {
+				operation: [
+					'download',
+				],
+				resource: [
+					'certificate',
+				],
+			},
+		},
+		default: '',
+	},
+	{
+		displayName: 'Password',
+		name: 'password',
+		type: 'string',
+		required: true,
+		displayOptions: {
+			show: {
+				operation: [
+					'download',
+				],
+				resource: [
+					'certificate',
+				],
+			},
+		},
+		default: '',
+	},
+	{
+		displayName: 'Binary Property',
+		name: 'binaryProperty',
+		type: 'string',
+		required: true,
+		default: 'data',
+		displayOptions: {
+			show: {
+				operation: [
+					'download',
+				],
+				resource: [
+					'certificate',
+				],
+			},
+		},
+		description: 'Name of the binary property to which to write to',
+	},
+	{
+		displayName: 'Additional Fields',
+		name: 'additionalFields',
+		type: 'collection',
+		placeholder: 'Add Field',
+		default: {},
+		displayOptions: {
+			show: {
+				operation: [
+					'download',
+				],
+				resource: [
+					'certificate',
+				],
+			},
+		},
+		options: [
+			{
+				displayName: 'Include Private Key',
+				name: 'IncludePrivateKey',
+				type: 'boolean',
+				default: true,
+			},
+			{
+				displayName: 'Include Chain',
+				name: 'IncludeChain',
+				type: 'boolean',
+				default: true,
+			},
+			{
+				displayName: 'Root First Order',
+				name: 'RootFirstOrder',
+				type: 'string',
+				default: '',
+			},
+			{
+				displayName: 'Keystore Password',
+				name: 'KeystorePassword',
+				type: 'string',
+				default: '',
 			},
 		],
 	},

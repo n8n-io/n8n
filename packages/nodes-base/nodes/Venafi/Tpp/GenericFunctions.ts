@@ -1,6 +1,6 @@
 import {
 	OptionsWithUri,
- } from 'request';
+} from 'request';
 
 import {
 	IExecuteFunctions,
@@ -19,7 +19,7 @@ import {
 
 export async function venafiApiRequest(this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions | IPollFunctions, method: string, resource: string, body: any = {}, qs: IDataObject = {}, uri?: string, headers: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
 
-	const credentials = this.getCredentials('venafiTppApi') as IDataObject;
+	const credentials = await this.getCredentials('venafiTppApi') as IDataObject;
 
 	const data = await getToken.call(this);
 
@@ -31,7 +31,7 @@ export async function venafiApiRequest(this: IExecuteFunctions | IExecuteSingleF
 		method,
 		body,
 		qs,
-		rejectUnauthorized: false,
+		rejectUnauthorized: !credentials.allowUnauthorizedCerts,
 		uri: uri || `${credentials.domain}${resource}`,
 		json: true,
 	};
@@ -60,7 +60,7 @@ export async function venafiApiRequest(this: IExecuteFunctions | IExecuteSingleF
 	}
 }
 
-export async function venafiApiRequestAllItems(this: IExecuteFunctions | ILoadOptionsFunctions, propertyName: string ,method: string, endpoint: string, body: any = {}, query: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
+export async function venafiApiRequestAllItems(this: IExecuteFunctions | ILoadOptionsFunctions, propertyName: string, method: string, endpoint: string, body: any = {}, query: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
 
 	const returnData: IDataObject[] = [];
 
@@ -80,7 +80,7 @@ export async function venafiApiRequestAllItems(this: IExecuteFunctions | ILoadOp
 
 async function getToken(this: ILoadOptionsFunctions | IExecuteFunctions | IExecuteSingleFunctions | IPollFunctions): Promise<any> { // tslint:disable-line:no-any
 
-	const credentials = this.getCredentials('venafiTppApi') as IDataObject;
+	const credentials = await this.getCredentials('venafiTppApi') as IDataObject;
 
 	if (credentials === undefined) {
 		throw new Error('No credentials got returned!');
@@ -95,20 +95,19 @@ async function getToken(this: ILoadOptionsFunctions | IExecuteFunctions | IExecu
 		headers: {},
 		method: 'POST',
 		json: true,
-		rejectUnauthorized: false,
+		rejectUnauthorized: !credentials.allowUnauthorizedCerts,
 		body: {
 			client_id: credentials.clientId,
 			username: credentials.username,
 			password: credentials.password,
 			scope: 'certificate:manage',
-		 },
+		},
 	};
 
 	try {
 		return await this.helpers.request!(requestOptions);
 
 	} catch (error) {
-		console.error(error);
 		throw error;
 	}
 }
