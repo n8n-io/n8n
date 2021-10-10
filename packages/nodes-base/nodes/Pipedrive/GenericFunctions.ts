@@ -6,6 +6,9 @@ import {
 import {
 	IDataObject,
 	ILoadOptionsFunctions,
+	INodePropertyOptions,
+	NodeApiError,
+	NodeOperationError,
 } from 'n8n-workflow';
 
 import {
@@ -69,9 +72,9 @@ export async function pipedriveApiRequest(this: IHookFunctions | IExecuteFunctio
 	try {
 		if (authenticationMethod === 'basicAuth' || authenticationMethod === 'apiToken' || authenticationMethod === 'none') {
 
-			const credentials = this.getCredentials('pipedriveApi');
+			const credentials = await this.getCredentials('pipedriveApi');
 			if (credentials === undefined) {
-				throw new Error('No credentials got returned!');
+				throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
 			}
 
 			query.api_token = credentials.apiToken;
@@ -89,30 +92,15 @@ export async function pipedriveApiRequest(this: IHookFunctions | IExecuteFunctio
 		}
 
 		if (responseData.success === false) {
-			throw new Error(`Pipedrive error response: ${responseData.error} (${responseData.error_info})`);
+			throw new NodeApiError(this.getNode(), responseData);
 		}
 
 		return {
 			additionalData: responseData.additional_data,
-			data: responseData.data,
+			data: (responseData.data === null) ? [] : responseData.data,
 		};
-	} catch(error) {
-		if (error.statusCode === 401) {
-			// Return a clear error
-			throw new Error('The Pipedrive credentials are not valid!');
-		}
-
-		if (error.response && error.response.body && error.response.body.error) {
-			// Try to return the error prettier
-			let errorMessage = `Pipedrive error response [${error.statusCode}]: ${error.response.body.error.message}`;
-			if (error.response.body.error_info) {
-				errorMessage += ` - ${error.response.body.error_info}`;
-			}
-			throw new Error(errorMessage);
-		}
-
-		// If that data does not exist for some reason return the actual error
-		throw error;
+	} catch (error) {
+		throw new NodeApiError(this.getNode(), error);
 	}
 }
 
@@ -182,7 +170,7 @@ export async function pipedriveGetCustomProperties(this: IHookFunctions | IExecu
 	};
 
 	if (endpoints[resource] === undefined) {
-		throw new Error(`The resource "${resource}" is not supported for resolving custom values!`);
+		throw new NodeOperationError(this.getNode(), `The resource "${resource}" is not supported for resolving custom values!`);
 	}
 
 	const requestMethod = 'GET';
@@ -273,4 +261,17 @@ export function pipedriveResolveCustomProperties(customProperties: ICustomProper
 		}
 	}
 
+}
+
+
+export function sortOptionParameters(optionParameters: INodePropertyOptions[]): INodePropertyOptions[] {
+	optionParameters.sort((a, b) => {
+		const aName = a.name.toLowerCase();
+		const bName = b.name.toLowerCase();
+		if (aName < bName) { return -1; }
+		if (aName > bName) { return 1; }
+		return 0;
+	});
+
+	return optionParameters;
 }

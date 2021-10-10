@@ -1,17 +1,17 @@
 import {
 	ICredentialType,
-	NodePropertyTypes,
+	INodeProperties,
 } from 'n8n-workflow';
 
 export class TwakeCloudApi implements ICredentialType {
 	name = 'twakeCloudApi';
-	displayName = 'Twake API';
+	displayName = 'Twake Cloud API';
 	documentationUrl = 'twake';
-	properties = [
+	properties: INodeProperties[] = [
 		{
 			displayName: 'Workspace Key',
 			name: 'workspaceKey',
-			type: 'string' as NodePropertyTypes,
+			type: 'string',
 			default: '',
 		},
 	];

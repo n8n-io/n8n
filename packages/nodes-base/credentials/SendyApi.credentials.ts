@@ -1,24 +1,24 @@
 import {
 	ICredentialType,
-	NodePropertyTypes,
+	INodeProperties,
 } from 'n8n-workflow';
 
 export class SendyApi implements ICredentialType {
 	name = 'sendyApi';
 	displayName = 'Sendy API';
 	documentationUrl = 'sendy';
-	properties = [
+	properties: INodeProperties[] = [
 		{
 			displayName: 'URL',
 			name: 'url',
-			type: 'string' as NodePropertyTypes,
+			type: 'string',
 			default: '',
 			placeholder: 'https://yourdomain.com',
 		},
 		{
 			displayName: 'API Key',
 			name: 'apiKey',
-			type: 'string' as NodePropertyTypes,
+			type: 'string',
 			default: '',
 		},
 	];

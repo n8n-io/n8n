@@ -3,15 +3,21 @@ import {
 } from 'n8n-core';
 
 import {
+	IBinaryData,
+	ICredentialsDecrypted,
+	ICredentialTestFunctions,
 	IDataObject,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
+	NodeCredentialTestResult,
+	NodeOperationError,
 } from 'n8n-workflow';
 
 import {
 	addAdditionalFields,
 	apiRequest,
+	getPropertyName,
 } from './GenericFunctions';
 
 
@@ -23,7 +29,7 @@ export class Telegram implements INodeType {
 		group: ['output'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
-		description: 'Sends data to Telegram.',
+		description: 'Sends data to Telegram',
 		defaults: {
 			name: 'Telegram',
 			color: '#0088cc',
@@ -34,6 +40,7 @@ export class Telegram implements INodeType {
 			{
 				name: 'telegramApi',
 				required: true,
+				testedBy: 'telegramBotTest',
 			},
 		],
 		properties: [
@@ -200,6 +207,11 @@ export class Telegram implements INodeType {
 				},
 				options: [
 					{
+						name: 'Delete Chat Message',
+						value: 'deleteMessage',
+						description: 'Delete a chat message',
+					},
+					{
 						name: 'Edit Message Text',
 						value: 'editMessageText',
 						description: 'Edit a text message',
@@ -208,11 +220,6 @@ export class Telegram implements INodeType {
 						name: 'Pin Chat Message',
 						value: 'pinChatMessage',
 						description: 'Pin a chat message',
-					},
-					{
-						name: 'Unpin Chat Message',
-						value: 'unpinChatMessage',
-						description: 'Unpin a chat message',
 					},
 					{
 						name: 'Send Animation',
@@ -240,14 +247,14 @@ export class Telegram implements INodeType {
 						description: 'Send a location',
 					},
 					{
-						name: 'Send Message',
-						value: 'sendMessage',
-						description: 'Send a text message',
-					},
-					{
 						name: 'Send Media Group',
 						value: 'sendMediaGroup',
 						description: 'Send group of photos or videos to album',
+					},
+					{
+						name: 'Send Message',
+						value: 'sendMessage',
+						description: 'Send a text message',
 					},
 					{
 						name: 'Send Photo',
@@ -263,6 +270,11 @@ export class Telegram implements INodeType {
 						name: 'Send Video',
 						value: 'sendVideo',
 						description: 'Send a video',
+					},
+					{
+						name: 'Unpin Chat Message',
+						value: 'unpinChatMessage',
+						description: 'Unpin a chat message',
 					},
 				],
 				default: 'sendMessage',
@@ -282,11 +294,11 @@ export class Telegram implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
+							'deleteMessage',
 							'get',
 							'leave',
 							'member',
 							'pinChatMessage',
-							'unpinChatMessage',
 							'setDescription',
 							'setTitle',
 							'sendAnimation',
@@ -299,6 +311,7 @@ export class Telegram implements INodeType {
 							'sendPhoto',
 							'sendSticker',
 							'sendVideo',
+							'unpinChatMessage',
 						],
 						resource: [
 							'chat',
@@ -308,6 +321,28 @@ export class Telegram implements INodeType {
 				},
 				required: true,
 				description: 'Unique identifier for the target chat or username of the target<br />channel (in the format @channelusername).',
+			},
+
+			// ----------------------------------
+			//       message:deleteMessage
+			// ----------------------------------
+			{
+				displayName: 'Message ID',
+				name: 'messageId',
+				type: 'string',
+				default: '',
+				displayOptions: {
+					show: {
+						operation: [
+							'deleteMessage',
+						],
+						resource: [
+							'message',
+						],
+					},
+				},
+				required: true,
+				description: 'Unique identifier of the message to delete.',
 			},
 
 			// ----------------------------------
@@ -707,6 +742,61 @@ export class Telegram implements INodeType {
 				required: true,
 				description: 'Unique identifier for the target chat or username of the target<br />channel (in the format @channelusername). To find your chat id ask @get_id_bot.',
 			},
+			// ----------------------------------
+			//         message:sendAnimation/sendAudio/sendDocument/sendPhoto/sendSticker/sendVideo
+			// ----------------------------------
+
+			{
+				displayName: 'Binary Data',
+				name: 'binaryData',
+				type: 'boolean',
+				default: false,
+				required: true,
+				displayOptions: {
+					show: {
+						operation: [
+							'sendAnimation',
+							'sendAudio',
+							'sendDocument',
+							'sendPhoto',
+							'sendVideo',
+							'sendSticker',
+						],
+						resource: [
+							'message',
+						],
+					},
+				},
+				description: 'If the data to upload should be taken from binary field.',
+			},
+			{
+				displayName: 'Binary Property',
+				name: 'binaryPropertyName',
+				type: 'string',
+				default: 'data',
+				required: true,
+				displayOptions: {
+					show: {
+						operation: [
+							'sendAnimation',
+							'sendAudio',
+							'sendDocument',
+							'sendPhoto',
+							'sendVideo',
+							'sendSticker',
+						],
+						resource: [
+							'message',
+						],
+						binaryData: [
+							true,
+						],
+					},
+				},
+				placeholder: '',
+				description: 'Name of the binary property that contains the data to upload',
+			},
+
 			{
 				displayName: 'Message ID',
 				name: 'messageId',
@@ -795,9 +885,12 @@ export class Telegram implements INodeType {
 						resource: [
 							'message',
 						],
+						binaryData: [
+							false,
+						],
 					},
 				},
-				description: 'Animation to send. Pass a file_id to send an animation that exists on the Telegram servers (recommended)<br />or pass an HTTP URL for Telegram to get an animation from the Internet.',
+				description: 'Animation to send. Pass a file_id to send an animation that exists on the Telegram servers (recommended)<br />, an HTTP URL for Telegram to get an animation from the Internet',
 			},
 
 
@@ -818,9 +911,12 @@ export class Telegram implements INodeType {
 						resource: [
 							'message',
 						],
+						binaryData: [
+							false,
+						],
 					},
 				},
-				description: 'Audio file to send. Pass a file_id to send a file that exists on the Telegram servers (recommended)<br />or pass an HTTP URL for Telegram to get a file from the Internet.',
+				description: 'Audio file to send. Pass a file_id to send a file that exists on the Telegram servers (recommended)<br />, an HTTP URL for Telegram to get a file from the Internet',
 			},
 
 
@@ -906,9 +1002,12 @@ export class Telegram implements INodeType {
 						resource: [
 							'message',
 						],
+						binaryData: [
+							false,
+						],
 					},
 				},
-				description: 'Document to send. Pass a file_id to send a file that exists on the Telegram servers (recommended)<br />or pass an HTTP URL for Telegram to get a file from the Internet.',
+				description: 'Document to send. Pass a file_id to send a file that exists on the Telegram servers (recommended)<br />, an HTTP URL for Telegram to get a file from the Internet',
 			},
 
 
@@ -1098,9 +1197,12 @@ export class Telegram implements INodeType {
 						resource: [
 							'message',
 						],
+						binaryData: [
+							false,
+						],
 					},
 				},
-				description: 'Photo to send. Pass a file_id to send a photo that exists on the Telegram servers (recommended)<br />or pass an HTTP URL for Telegram to get a photo from the Internet.',
+				description: 'Photo to send. Pass a file_id to send a photo that exists on the Telegram servers (recommended)<br />, an HTTP URL for Telegram to get a photo from the Internet',
 			},
 
 
@@ -1120,9 +1222,12 @@ export class Telegram implements INodeType {
 						resource: [
 							'message',
 						],
+						binaryData: [
+							false,
+						],
 					},
 				},
-				description: 'Sticker to send. Pass a file_id to send a file that exists on the Telegram servers (recommended)<br />or pass an HTTP URL for Telegram to get a .webp file from the Internet.',
+				description: 'Sticker to send. Pass a file_id to send a file that exists on the Telegram servers (recommended)<br />, an HTTP URL for Telegram to get a .webp file from the Internet',
 			},
 
 
@@ -1142,11 +1247,13 @@ export class Telegram implements INodeType {
 						resource: [
 							'message',
 						],
+						binaryData: [
+							false,
+						],
 					},
 				},
-				description: 'Video file to send. Pass a file_id to send a file that exists on the Telegram servers (recommended)<br />or pass an HTTP URL for Telegram to get a file from the Internet.',
+				description: 'Video file to send. Pass a file_id to send a file that exists on the Telegram servers (recommended)<br />, an HTTP URL for Telegram to get a file from the Internet',
 			},
-
 
 			// ----------------------------------
 			//         message:editMessageText/sendAnimation/sendAudio/sendLocation/sendMessage/sendPhoto/sendSticker/sendVideo
@@ -1707,6 +1814,38 @@ export class Telegram implements INodeType {
 		],
 	};
 
+	methods = {
+		credentialTest: {
+			async telegramBotTest(this: ICredentialTestFunctions, credential: ICredentialsDecrypted): Promise<NodeCredentialTestResult> {
+				const credentials = credential.data;
+				const options = {
+					uri: `https://api.telegram.org/bot${credentials!.accessToken}/getMe`,
+					json: true,
+				};
+				try {
+					const response = await this.helpers.request(options);
+					if (!response.ok) {
+						return {
+							status: 'Error',
+							message: 'Token is not valid.',
+						};
+					}
+				} catch (err) {
+					return {
+						status: 'Error',
+						message: `Token is not valid; ${err.message}`,
+					};
+				}
+
+				return {
+					status: 'OK',
+					message: 'Authentication successful!',
+				};
+
+			},
+		},
+	};
+
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
@@ -1722,334 +1861,372 @@ export class Telegram implements INodeType {
 
 		const operation = this.getNodeParameter('operation', 0) as string;
 		const resource = this.getNodeParameter('resource', 0) as string;
+		const binaryData = this.getNodeParameter('binaryData', 0, false) as boolean;
 
 		for (let i = 0; i < items.length; i++) {
-			// Reset all values
-			requestMethod = 'POST';
-			endpoint = '';
-			body = {};
-			qs = {};
+			try {
+				// Reset all values
+				requestMethod = 'POST';
+				endpoint = '';
+				body = {};
+				qs = {};
 
-			if (resource === 'callback') {
-				if (operation === 'answerQuery') {
-					// ----------------------------------
-					//         callback:answerQuery
-					// ----------------------------------
+				if (resource === 'callback') {
+					if (operation === 'answerQuery') {
+						// ----------------------------------
+						//         callback:answerQuery
+						// ----------------------------------
 
-					endpoint = 'answerCallbackQuery';
+						endpoint = 'answerCallbackQuery';
 
-					body.callback_query_id = this.getNodeParameter('queryId', i) as string;
+						body.callback_query_id = this.getNodeParameter('queryId', i) as string;
 
-					// Add additional fields
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
-					Object.assign(body, additionalFields);
+						// Add additional fields
+						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						Object.assign(body, additionalFields);
 
-				} else if (operation === 'answerInlineQuery') {
-					// -----------------------------------------------
-					//         callback:answerInlineQuery
-					// -----------------------------------------------
+					} else if (operation === 'answerInlineQuery') {
+						// -----------------------------------------------
+						//         callback:answerInlineQuery
+						// -----------------------------------------------
 
-					endpoint = 'answerInlineQuery';
+						endpoint = 'answerInlineQuery';
 
-					body.inline_query_id = this.getNodeParameter('queryId', i) as string;
-					body.results = this.getNodeParameter('results', i) as string;
+						body.inline_query_id = this.getNodeParameter('queryId', i) as string;
+						body.results = this.getNodeParameter('results', i) as string;
 
-					// Add additional fields
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
-					Object.assign(body, additionalFields);
-				}
+						// Add additional fields
+						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						Object.assign(body, additionalFields);
+					}
 
-			} else if (resource === 'chat') {
-				if (operation === 'get') {
-					// ----------------------------------
-					//         chat:get
-					// ----------------------------------
+				} else if (resource === 'chat') {
+					if (operation === 'get') {
+						// ----------------------------------
+						//         chat:get
+						// ----------------------------------
 
-					endpoint = 'getChat';
+						endpoint = 'getChat';
 
-					body.chat_id = this.getNodeParameter('chatId', i) as string;
+						body.chat_id = this.getNodeParameter('chatId', i) as string;
 
-				} else if (operation === 'leave') {
-					// ----------------------------------
-					//         chat:leave
-					// ----------------------------------
+					} else if (operation === 'leave') {
+						// ----------------------------------
+						//         chat:leave
+						// ----------------------------------
 
-					endpoint = 'leaveChat';
+						endpoint = 'leaveChat';
 
-					body.chat_id = this.getNodeParameter('chatId', i) as string;
+						body.chat_id = this.getNodeParameter('chatId', i) as string;
 
-				} else if (operation === 'member') {
-					// ----------------------------------
-					//         chat:member
-					// ----------------------------------
+					} else if (operation === 'member') {
+						// ----------------------------------
+						//         chat:member
+						// ----------------------------------
 
-					endpoint = 'getChatMember';
+						endpoint = 'getChatMember';
 
-					body.chat_id = this.getNodeParameter('chatId', i) as string;
-					body.user_id = this.getNodeParameter('userId', i) as string;
+						body.chat_id = this.getNodeParameter('chatId', i) as string;
+						body.user_id = this.getNodeParameter('userId', i) as string;
 
-				} else if (operation === 'setDescription') {
-					// ----------------------------------
-					//         chat:setDescription
-					// ----------------------------------
+					} else if (operation === 'setDescription') {
+						// ----------------------------------
+						//         chat:setDescription
+						// ----------------------------------
 
-					endpoint = 'setChatDescription';
+						endpoint = 'setChatDescription';
 
-					body.chat_id = this.getNodeParameter('chatId', i) as string;
-					body.description = this.getNodeParameter('description', i) as string;
+						body.chat_id = this.getNodeParameter('chatId', i) as string;
+						body.description = this.getNodeParameter('description', i) as string;
 
-				} else if (operation === 'setTitle') {
-					// ----------------------------------
-					//         chat:setTitle
-					// ----------------------------------
+					} else if (operation === 'setTitle') {
+						// ----------------------------------
+						//         chat:setTitle
+						// ----------------------------------
 
-					endpoint = 'setChatTitle';
+						endpoint = 'setChatTitle';
 
-					body.chat_id = this.getNodeParameter('chatId', i) as string;
-					body.title = this.getNodeParameter('title', i) as string;
+						body.chat_id = this.getNodeParameter('chatId', i) as string;
+						body.title = this.getNodeParameter('title', i) as string;
 
-				}
-				// } else if (resource === 'bot') {
-				// 	if (operation === 'info') {
-				// 		endpoint = 'getUpdates';
-				// 	}
-			} else if (resource === 'file') {
+					}
+					// } else if (resource === 'bot') {
+					// 	if (operation === 'info') {
+					// 		endpoint = 'getUpdates';
+					// 	}
+				} else if (resource === 'file') {
 
-				if (operation === 'get') {
-					// ----------------------------------
-					//         file:get
-					// ----------------------------------
+					if (operation === 'get') {
+						// ----------------------------------
+						//         file:get
+						// ----------------------------------
 
-					endpoint = 'getFile';
+						endpoint = 'getFile';
 
-					body.file_id = this.getNodeParameter('fileId', i) as string;
-				}
+						body.file_id = this.getNodeParameter('fileId', i) as string;
+					}
 
-			} else if (resource === 'message') {
+				} else if (resource === 'message') {
 
-				if (operation === 'editMessageText') {
-					// ----------------------------------
-					//         message:editMessageText
-					// ----------------------------------
+					if (operation === 'editMessageText') {
+						// ----------------------------------
+						//         message:editMessageText
+						// ----------------------------------
 
-					endpoint = 'editMessageText';
+						endpoint = 'editMessageText';
 
-					const messageType = this.getNodeParameter('messageType', i) as string;
+						const messageType = this.getNodeParameter('messageType', i) as string;
 
-					if (messageType === 'inlineMessage') {
-						body.inline_message_id = this.getNodeParameter('inlineMessageId', i) as string;
-					} else {
+						if (messageType === 'inlineMessage') {
+							body.inline_message_id = this.getNodeParameter('inlineMessageId', i) as string;
+						} else {
+							body.chat_id = this.getNodeParameter('chatId', i) as string;
+							body.message_id = this.getNodeParameter('messageId', i) as string;
+						}
+
+						body.text = this.getNodeParameter('text', i) as string;
+
+						// Add additional fields and replyMarkup
+						addAdditionalFields.call(this, body, i);
+
+					} else if (operation === 'deleteMessage') {
+						// ----------------------------------
+						//       message:deleteMessage
+						// ----------------------------------
+
+						endpoint = 'deleteMessage';
+
 						body.chat_id = this.getNodeParameter('chatId', i) as string;
 						body.message_id = this.getNodeParameter('messageId', i) as string;
-					}
 
-					body.text = this.getNodeParameter('text', i) as string;
+					} else if (operation === 'pinChatMessage') {
+						// ----------------------------------
+						//        message:pinChatMessage
+						// ----------------------------------
 
-					// Add additional fields and replyMarkup
-					addAdditionalFields.call(this, body, i);
+						endpoint = 'pinChatMessage';
 
-				} else if (operation === 'pinChatMessage') {
-					// ----------------------------------
-					//        message:pinChatMessage
-					// ----------------------------------
+						body.chat_id = this.getNodeParameter('chatId', i) as string;
+						body.message_id = this.getNodeParameter('messageId', i) as string;
 
-					endpoint = 'pinChatMessage';
-
-					body.chat_id = this.getNodeParameter('chatId', i) as string;
-					body.message_id = this.getNodeParameter('messageId', i) as string;
-
-					const { disable_notification } = this.getNodeParameter('additionalFields', i) as IDataObject;
-					if (disable_notification) {
-						body.disable_notification = true;
-					}
-
-				} else if (operation === 'unpinChatMessage') {
-					// ----------------------------------
-					//        message:unpinChatMessage
-					// ----------------------------------
-
-					endpoint = 'unpinChatMessage';
-
-					body.chat_id = this.getNodeParameter('chatId', i) as string;
-					body.message_id = this.getNodeParameter('messageId', i) as string;
-
-				} else if (operation === 'sendAnimation') {
-					// ----------------------------------
-					//         message:sendAnimation
-					// ----------------------------------
-
-					endpoint = 'sendAnimation';
-
-					body.chat_id = this.getNodeParameter('chatId', i) as string;
-					body.animation = this.getNodeParameter('file', i) as string;
-
-					// Add additional fields and replyMarkup
-					addAdditionalFields.call(this, body, i);
-
-
-				} else if (operation === 'sendAudio') {
-					// ----------------------------------
-					//         message:sendAudio
-					// ----------------------------------
-
-					endpoint = 'sendAudio';
-
-					body.chat_id = this.getNodeParameter('chatId', i) as string;
-					body.audio = this.getNodeParameter('file', i) as string;
-
-					// Add additional fields and replyMarkup
-					addAdditionalFields.call(this, body, i);
-
-				} else if (operation === 'sendChatAction') {
-					// ----------------------------------
-					//         message:sendChatAction
-					// ----------------------------------
-
-					endpoint = 'sendChatAction';
-
-					body.chat_id = this.getNodeParameter('chatId', i) as string;
-					body.action = this.getNodeParameter('action', i) as string;
-
-				} else if (operation === 'sendDocument') {
-					// ----------------------------------
-					//         message:sendDocument
-					// ----------------------------------
-
-					endpoint = 'sendDocument';
-
-					body.chat_id = this.getNodeParameter('chatId', i) as string;
-					body.document = this.getNodeParameter('file', i) as string;
-
-					// Add additional fields and replyMarkup
-					addAdditionalFields.call(this, body, i);
-
-				} else if (operation === 'sendLocation') {
-					// ----------------------------------
-					//         message:sendLocation
-					// ----------------------------------
-
-					endpoint = 'sendLocation';
-
-					body.chat_id = this.getNodeParameter('chatId', i) as string;
-					body.latitude = this.getNodeParameter('latitude', i) as string;
-					body.longitude = this.getNodeParameter('longitude', i) as string;
-
-					// Add additional fields and replyMarkup
-					addAdditionalFields.call(this, body, i);
-
-				} else if (operation === 'sendMessage') {
-					// ----------------------------------
-					//         message:sendMessage
-					// ----------------------------------
-
-					endpoint = 'sendMessage';
-
-					body.chat_id = this.getNodeParameter('chatId', i) as string;
-					body.text = this.getNodeParameter('text', i) as string;
-
-					// Add additional fields and replyMarkup
-					addAdditionalFields.call(this, body, i);
-
-				} else if (operation === 'sendMediaGroup') {
-					// ----------------------------------
-					//         message:sendMediaGroup
-					// ----------------------------------
-
-					endpoint = 'sendMediaGroup';
-
-					body.chat_id = this.getNodeParameter('chatId', i) as string;
-
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
-					Object.assign(body, additionalFields);
-
-					const mediaItems = this.getNodeParameter('media', i) as IDataObject;
-					body.media = [];
-					for (const mediaItem of mediaItems.media as IDataObject[]) {
-						if (mediaItem.additionalFields !== undefined) {
-							Object.assign(mediaItem, mediaItem.additionalFields);
-							delete mediaItem.additionalFields;
+						const { disable_notification } = this.getNodeParameter('additionalFields', i) as IDataObject;
+						if (disable_notification) {
+							body.disable_notification = true;
 						}
-						(body.media as IDataObject[]).push(mediaItem);
+
+					} else if (operation === 'unpinChatMessage') {
+						// ----------------------------------
+						//        message:unpinChatMessage
+						// ----------------------------------
+
+						endpoint = 'unpinChatMessage';
+
+						body.chat_id = this.getNodeParameter('chatId', i) as string;
+						body.message_id = this.getNodeParameter('messageId', i) as string;
+
+					} else if (operation === 'sendAnimation') {
+						// ----------------------------------
+						//         message:sendAnimation
+						// ----------------------------------
+
+						endpoint = 'sendAnimation';
+
+						body.chat_id = this.getNodeParameter('chatId', i) as string;
+						body.animation = this.getNodeParameter('file', i, '') as string;
+
+						// Add additional fields and replyMarkup
+						addAdditionalFields.call(this, body, i);
+
+					} else if (operation === 'sendAudio') {
+						// ----------------------------------
+						//         message:sendAudio
+						// ----------------------------------
+
+						endpoint = 'sendAudio';
+
+						body.chat_id = this.getNodeParameter('chatId', i) as string;
+						body.audio = this.getNodeParameter('file', i, '') as string;
+
+						// Add additional fields and replyMarkup
+						addAdditionalFields.call(this, body, i);
+
+					} else if (operation === 'sendChatAction') {
+						// ----------------------------------
+						//         message:sendChatAction
+						// ----------------------------------
+
+						endpoint = 'sendChatAction';
+
+						body.chat_id = this.getNodeParameter('chatId', i) as string;
+						body.action = this.getNodeParameter('action', i) as string;
+
+					} else if (operation === 'sendDocument') {
+						// ----------------------------------
+						//         message:sendDocument
+						// ----------------------------------
+
+						endpoint = 'sendDocument';
+
+						body.chat_id = this.getNodeParameter('chatId', i) as string;
+						body.document = this.getNodeParameter('file', i, '') as string;
+
+						// Add additional fields and replyMarkup
+						addAdditionalFields.call(this, body, i);
+
+					} else if (operation === 'sendLocation') {
+						// ----------------------------------
+						//         message:sendLocation
+						// ----------------------------------
+
+						endpoint = 'sendLocation';
+
+						body.chat_id = this.getNodeParameter('chatId', i) as string;
+						body.latitude = this.getNodeParameter('latitude', i) as string;
+						body.longitude = this.getNodeParameter('longitude', i) as string;
+
+						// Add additional fields and replyMarkup
+						addAdditionalFields.call(this, body, i);
+
+					} else if (operation === 'sendMessage') {
+						// ----------------------------------
+						//         message:sendMessage
+						// ----------------------------------
+
+						endpoint = 'sendMessage';
+
+						body.chat_id = this.getNodeParameter('chatId', i) as string;
+						body.text = this.getNodeParameter('text', i) as string;
+
+						// Add additional fields and replyMarkup
+						addAdditionalFields.call(this, body, i);
+
+					} else if (operation === 'sendMediaGroup') {
+						// ----------------------------------
+						//         message:sendMediaGroup
+						// ----------------------------------
+
+						endpoint = 'sendMediaGroup';
+
+						body.chat_id = this.getNodeParameter('chatId', i) as string;
+
+						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						Object.assign(body, additionalFields);
+
+						const mediaItems = this.getNodeParameter('media', i) as IDataObject;
+						body.media = [];
+						for (const mediaItem of mediaItems.media as IDataObject[]) {
+							if (mediaItem.additionalFields !== undefined) {
+								Object.assign(mediaItem, mediaItem.additionalFields);
+								delete mediaItem.additionalFields;
+							}
+							(body.media as IDataObject[]).push(mediaItem);
+						}
+
+					} else if (operation === 'sendPhoto') {
+						// ----------------------------------
+						//         message:sendPhoto
+						// ----------------------------------
+
+						endpoint = 'sendPhoto';
+
+						body.chat_id = this.getNodeParameter('chatId', i) as string;
+						body.photo = this.getNodeParameter('file', i, '') as string;
+
+						// Add additional fields and replyMarkup
+						addAdditionalFields.call(this, body, i);
+
+					} else if (operation === 'sendSticker') {
+						// ----------------------------------
+						//         message:sendSticker
+						// ----------------------------------
+
+						endpoint = 'sendSticker';
+
+						body.chat_id = this.getNodeParameter('chatId', i) as string;
+						body.sticker = this.getNodeParameter('file', i, '') as string;
+
+						// Add additional fields and replyMarkup
+						addAdditionalFields.call(this, body, i);
+
+					} else if (operation === 'sendVideo') {
+						// ----------------------------------
+						//         message:sendVideo
+						// ----------------------------------
+
+						endpoint = 'sendVideo';
+
+						body.chat_id = this.getNodeParameter('chatId', i) as string;
+						body.video = this.getNodeParameter('file', i, '') as string;
+
+						// Add additional fields and replyMarkup
+						addAdditionalFields.call(this, body, i);
 					}
-
-				} else if (operation === 'sendPhoto') {
-					// ----------------------------------
-					//         message:sendPhoto
-					// ----------------------------------
-
-					endpoint = 'sendPhoto';
-
-					body.chat_id = this.getNodeParameter('chatId', i) as string;
-					body.photo = this.getNodeParameter('file', i) as string;
-
-					// Add additional fields and replyMarkup
-					addAdditionalFields.call(this, body, i);
-
-				} else if (operation === 'sendSticker') {
-					// ----------------------------------
-					//         message:sendSticker
-					// ----------------------------------
-
-					endpoint = 'sendSticker';
-
-					body.chat_id = this.getNodeParameter('chatId', i) as string;
-					body.sticker = this.getNodeParameter('file', i) as string;
-
-					// Add additional fields and replyMarkup
-					addAdditionalFields.call(this, body, i);
-
-				} else if (operation === 'sendVideo') {
-					// ----------------------------------
-					//         message:sendVideo
-					// ----------------------------------
-
-					endpoint = 'sendVideo';
-
-					body.chat_id = this.getNodeParameter('chatId', i) as string;
-					body.video = this.getNodeParameter('file', i) as string;
-
-					// Add additional fields and replyMarkup
-					addAdditionalFields.call(this, body, i);
-
+				} else {
+					throw new NodeOperationError(this.getNode(), `The resource "${resource}" is not known!`);
 				}
-			} else {
-				throw new Error(`The resource "${resource}" is not known!`);
-			}
 
-			const responseData = await apiRequest.call(this, requestMethod, endpoint, body, qs);
+				let responseData;
 
-			if (resource === 'file' && operation === 'get') {
-				if (this.getNodeParameter('download', i, false) as boolean === true) {
-					const filePath = responseData.result.file_path;
+				if (binaryData === true) {
+					const binaryPropertyName = this.getNodeParameter('binaryPropertyName', 0) as string;
+					const binaryData = items[i].binary![binaryPropertyName] as IBinaryData;
+					const dataBuffer = await this.helpers.getBinaryDataBuffer(i, binaryPropertyName);
+					const propertyName = getPropertyName(operation);
 
-					const credentials = this.getCredentials('telegramApi');
-
-					if (credentials === undefined) {
-						throw new Error('No credentials got returned!');
-					}
-					const file = await apiRequest.call(this, 'GET', '', {}, {}, { json: false, encoding: null, uri: `https://api.telegram.org/file/bot${credentials.accessToken}/${filePath}`, resolveWithFullResponse: true });
-
-					const fileName = filePath.split('/').pop();
-					const binaryData = await this.helpers.prepareBinaryData(Buffer.from(file.body as string), fileName);
-
-					returnData.push({
-						json: responseData,
-						binary: {
-							data: binaryData,
+					const formData = {
+						...body,
+						[propertyName]: {
+							value: dataBuffer,
+							options: {
+								filename: binaryData.fileName,
+								contentType: binaryData.mimeType,
+							},
 						},
-					});
+					};
+					responseData = await apiRequest.call(this, requestMethod, endpoint, {}, qs, { formData });
+				} else {
+					responseData = await apiRequest.call(this, requestMethod, endpoint, body, qs);
+				}
+
+				if (resource === 'file' && operation === 'get') {
+					if (this.getNodeParameter('download', i, false) as boolean === true) {
+						const filePath = responseData.result.file_path;
+
+						const credentials = await this.getCredentials('telegramApi');
+
+						if (credentials === undefined) {
+							throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
+						}
+						const file = await apiRequest.call(this, 'GET', '', {}, {}, { json: false, encoding: null, uri: `https://api.telegram.org/file/bot${credentials.accessToken}/${filePath}`, resolveWithFullResponse: true });
+
+						const fileName = filePath.split('/').pop();
+						const binaryData = await this.helpers.prepareBinaryData(Buffer.from(file.body as string), fileName);
+
+						returnData.push({
+							json: responseData,
+							binary: {
+								data: binaryData,
+							},
+						});
+						continue;
+					}
+				}
+
+				// if (resource === 'bot' && operation === 'info') {
+				// 	responseData = {
+				// 		user: responseData.result[0].message.from,
+				// 		chat: responseData.result[0].message.chat,
+				// 	};
+				// }
+
+				returnData.push({ json: responseData });
+			} catch (error) {
+				if (this.continueOnFail()) {
+					returnData.push({ json: { error: error.message } });
 					continue;
 				}
+				throw error;
 			}
-
-			// if (resource === 'bot' && operation === 'info') {
-			// 	responseData = {
-			// 		user: responseData.result[0].message.from,
-			// 		chat: responseData.result[0].message.chat,
-			// 	};
-			// }
-
-			returnData.push({ json: responseData });
 		}
 
 		return this.prepareOutputData(returnData);

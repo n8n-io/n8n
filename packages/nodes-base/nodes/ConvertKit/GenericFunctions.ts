@@ -10,16 +10,18 @@ import {
 
 import {
 	IDataObject,
-	IHookFunctions
+	IHookFunctions,
+	NodeApiError,
+	NodeOperationError,
 } from 'n8n-workflow';
 
 export async function convertKitApiRequest(this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions | IHookFunctions,
 	method: string, endpoint: string, body: any = {}, qs: IDataObject = {}, uri?: string, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
 
-	const credentials = this.getCredentials('convertKitApi');
+	const credentials = await this.getCredentials('convertKitApi');
 
 	if (credentials === undefined) {
-		throw new Error('No credentials got returned!');
+		throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
 	}
 
 	let options: OptionsWithUri = {
@@ -51,17 +53,8 @@ export async function convertKitApiRequest(this: IExecuteFunctions | IExecuteSin
 	}
 
 	try {
-
 		return await this.helpers.request!(options);
-
 	} catch (error) {
-
-		let errorMessage = error;
-
-		if (error.response && error.response.body && error.response.body.message) {
-			errorMessage = error.response.body.message;
-		}
-
-		throw new Error(`ConvertKit error response: ${errorMessage}`);
+		throw new NodeApiError(this.getNode(), error);
 	}
 }

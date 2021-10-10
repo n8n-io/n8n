@@ -1,37 +1,37 @@
 import {
 	ICredentialType,
-	NodePropertyTypes,
+	INodeProperties,
 } from 'n8n-workflow';
 
 export class SshPassword implements ICredentialType {
 	name = 'sshPassword';
-	displayName = 'SSH';
-	properties = [
+	displayName = 'SSH Password';
+	properties: INodeProperties[] = [
 		{
 			displayName: 'Host',
 			name: 'host',
 			required: true,
-			type: 'string' as NodePropertyTypes,
+			type: 'string',
 			default: '',
-			placeholder: 'localhost'
+			placeholder: 'localhost',
 		},
 		{
 			displayName: 'Port',
 			name: 'port',
 			required: true,
-			type: 'number' as NodePropertyTypes,
+			type: 'number',
 			default: 22,
 		},
 		{
 			displayName: 'Username',
 			name: 'username',
-			type: 'string' as NodePropertyTypes,
+			type: 'string',
 			default: '',
 		},
 		{
 			displayName: 'Password',
 			name: 'password',
-			type: 'string' as NodePropertyTypes,
+			type: 'string',
 			typeOptions: {
 				password: true,
 			},

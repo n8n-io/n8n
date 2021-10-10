@@ -44,7 +44,7 @@ export const draftMessageSharedFields = [
 				type: 'string',
 				default: '',
 				placeholder: 'isRead eq false',
-				description: 'Microsoft Graph API OData $filter query. Information about the syntax can be found <a href="https://docs.microsoft.com/en-us/graph/query-parameters#filter-parameter" target="_blank">here</a>.',
+				description: 'Microsoft Graph API OData $filter query. Information about the syntax can be found <a href="https://docs.microsoft.com/en-us/graph/query-parameters#filter-parameter">here</a>.',
 			},
 		],
 	},
@@ -174,6 +174,13 @@ export const draftMessageSharedFields = [
 					},
 				],
 				default: 'Low',
+			},
+			{
+				displayName: 'Is Read',
+				name: 'isRead',
+				description: 'Indicates whether the message has been read.',
+				type: 'boolean',
+				default: false,
 			},
 			{
 				displayName: 'Read Receipt Requested',

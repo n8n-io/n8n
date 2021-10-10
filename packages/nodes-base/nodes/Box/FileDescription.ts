@@ -41,6 +41,11 @@ export const fileOperations = [
 				description: 'Search files',
 			},
 			{
+				name: 'Share',
+				value: 'share',
+				description: 'Share a file',
+			},
+			{
 				name: 'Upload',
 				value: 'upload',
 				description: 'Upload a file',
@@ -492,6 +497,242 @@ export const fileFields = [
 				default: '',
 				description: `Limits search results to items owned by the given list of owners..</br>
 				Owners are defined as a comma separated list of user IDs.`,
+			},
+		],
+	},
+
+	/* -------------------------------------------------------------------------- */
+	/*                                 file:share                                 */
+	/* -------------------------------------------------------------------------- */
+	{
+		displayName: 'File ID',
+		name: 'fileId',
+		type: 'string',
+		displayOptions: {
+			show: {
+				operation: [
+					'share',
+				],
+				resource: [
+					'file',
+				],
+			},
+		},
+		default: '',
+		description: 'The ID of the file to share.',
+	},
+	{
+		displayName: 'Accessible By',
+		name: 'accessibleBy',
+		type: 'options',
+		options: [
+			{
+				name: 'Group',
+				value: 'group',
+			},
+			{
+				name: 'User',
+				value: 'user',
+			},
+		],
+		displayOptions: {
+			show: {
+				operation: [
+					'share',
+				],
+				resource: [
+					'file',
+				],
+			},
+		},
+		default: '',
+		description: 'The type of object the file will be shared with.',
+	},
+	{
+		displayName: 'Use Email',
+		name: 'useEmail',
+		type: 'boolean',
+		displayOptions: {
+			show: {
+				operation: [
+					'share',
+				],
+				resource: [
+					'file',
+				],
+				accessibleBy: [
+					'user',
+				],
+			},
+		},
+		default: true,
+		description: 'Whether identify the user by email or ID.',
+	},
+	{
+		displayName: 'Email',
+		name: 'email',
+		type: 'string',
+		displayOptions: {
+			show: {
+				operation: [
+					'share',
+				],
+				resource: [
+					'file',
+				],
+				useEmail: [
+					true,
+				],
+				accessibleBy: [
+					'user',
+				],
+			},
+		},
+		default: '',
+		description: `The user's email address to share the file with.`,
+	},
+	{
+		displayName: 'User ID',
+		name: 'userId',
+		type: 'string',
+		displayOptions: {
+			show: {
+				operation: [
+					'share',
+				],
+				resource: [
+					'file',
+				],
+				useEmail: [
+					false,
+				],
+				accessibleBy: [
+					'user',
+				],
+			},
+		},
+		default: '',
+		description: `The user's ID to share the file with.`,
+	},
+	{
+		displayName: 'Group ID',
+		name: 'groupId',
+		type: 'string',
+		displayOptions: {
+			show: {
+				operation: [
+					'share',
+				],
+				resource: [
+					'file',
+				],
+				accessibleBy: [
+					'group',
+				],
+			},
+		},
+		default: '',
+		description: `The group's ID to share the file with.`,
+	},
+	{
+		displayName: 'Role',
+		name: 'role',
+		type: 'options',
+		options: [
+			{
+				name: 'Co-Owner',
+				value: 'coOwner',
+				description: 'A Co-owner has all of functional read/write access that an editor does',
+			},
+			{
+				name: 'Editor',
+				value: 'editor',
+				description: 'An editor has full read/write access to a folder or file',
+			},
+			{
+				name: 'Previewer',
+				value: 'previewer',
+				description: 'A previewer has limited read access',
+			},
+			{
+				name: 'Previewer Uploader',
+				value: 'previewerUploader',
+				description: 'This access level is a combination of Previewer and Uploader',
+			},
+			{
+				name: 'Uploader',
+				value: 'uploader',
+				description: 'An uploader has limited write access',
+			},
+			{
+				name: 'Viewer',
+				value: 'viewer',
+				description: 'A viewer has read access to a folder or file',
+			},
+			{
+				name: 'Viewer Uploader',
+				value: 'viewerUploader',
+				description: 'This access level is a combination of Viewer and Uploader',
+			},
+		],
+		displayOptions: {
+			show: {
+				operation: [
+					'share',
+				],
+				resource: [
+					'file',
+				],
+			},
+		},
+		default: 'editor',
+		description: 'The level of access granted.',
+	},
+	{
+		displayName: 'Options',
+		name: 'options',
+		type: 'collection',
+		placeholder: 'Add Option',
+		displayOptions: {
+			show: {
+				operation: [
+					'share',
+				],
+				resource: [
+					'file',
+				],
+			},
+		},
+		default: {},
+		options: [
+			{
+				displayName: 'Can View Path',
+				name: 'can_view_path',
+				type: 'boolean',
+				default: false,
+				description: `Whether the invited users can see the entire parent path to the associated folder.</br>
+				The user will not gain privileges in any parent folder and therefore cannot see content the user is not collaborated on.`,
+			},
+			{
+				displayName: 'Expires At',
+				name: 'expires_at',
+				type: 'dateTime',
+				default: '',
+				description: 'Set the expiration date for the collaboration. At this date, the collaboration will be automatically removed from the item.',
+			},
+			{
+				displayName: 'Fields',
+				name: 'fields',
+				type: 'string',
+				default: '',
+				description: 'A comma-separated list of attributes to include in the response. This can be used to request fields that are not normally returned in a standard response.',
+			},
+			{
+				displayName: 'Notify',
+				name: 'notify',
+				type: 'boolean',
+				default: false,
+				description: 'Whether if users should receive email notification for the action performed.',
 			},
 		],
 	},

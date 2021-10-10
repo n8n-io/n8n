@@ -10,14 +10,14 @@ import {
 } from 'n8n-core';
 
 import {
-	IDataObject,
+	IDataObject, NodeApiError,
 } from 'n8n-workflow';
 import { IContactUpdate } from './ContactInterface';
 
 
 export async function agileCrmApiRequest(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: string, endpoint: string, body: any = {}, query: IDataObject = {}, uri?: string): Promise<any> { // tslint:disable-line:no-any
 
-	const credentials = this.getCredentials('agileCrmApi');
+	const credentials = await this.getCredentials('agileCrmApi');
 	const options: OptionsWithUri = {
 		method,
 		headers: {
@@ -39,14 +39,14 @@ export async function agileCrmApiRequest(this: IHookFunctions | IExecuteFunction
 	try {
 		return await this.helpers.request!(options);
 	} catch (error) {
-		throw new Error(`AgileCRM error response: ${error.message}`);
+		throw new NodeApiError(this.getNode(), error);
 	}
 
 }
 
 export async function agileCrmApiRequestUpdate(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method = 'PUT', endpoint?: string, body: any = {}, query: IDataObject = {}, uri?: string): Promise<any> { // tslint:disable-line:no-any
 
-	const credentials = this.getCredentials('agileCrmApi');
+	const credentials = await this.getCredentials('agileCrmApi');
 	const baseUri = `https://${credentials!.subdomain}.agilecrm.com/dev/`;
 	const options: OptionsWithUri = {
 		method,
@@ -114,9 +114,9 @@ export async function agileCrmApiRequestUpdate(this: IHookFunctions | IExecuteFu
 
 	} catch (error) {
 		if (successfulUpdates.length === 0) {
-			throw new Error(`AgileCRM error response: ${error.message}`);
+			throw new NodeApiError(this.getNode(), error);
 		} else {
-			throw new Error(`Not all properties updated. Updated properties: ${successfulUpdates.join(', ')} \n \nAgileCRM error response: ${error.message}`);
+			throw new NodeApiError(this.getNode(), error, { message: `Not all properties updated. Updated properties: ${successfulUpdates.join(', ')}`, description: error.message, httpCode: error.statusCode });
 		}
 	}
 

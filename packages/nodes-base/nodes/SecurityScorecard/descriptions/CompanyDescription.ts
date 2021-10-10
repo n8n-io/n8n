@@ -135,7 +135,7 @@ export const companyFields = [
 		description: 'Number of results to return.',
 	},
 	{
-		displayName: 'Simple',
+		displayName: 'Simplify Response',
 		name: 'simple',
 		type: 'boolean',
 		displayOptions: {
@@ -150,7 +150,7 @@ export const companyFields = [
 			},
 		},
 		default: true,
-		description: 'Simplify the response.',
+		description: 'Return a simplified version of the response instead of the raw data.',
 	},
 
 	// company:getFactor
@@ -188,7 +188,7 @@ export const companyFields = [
 			},
 		],
 	},
-	
+
 	// company:getFactorHistorical
 	// company:getHistoricalScore
 	{

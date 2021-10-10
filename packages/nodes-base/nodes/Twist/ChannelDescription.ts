@@ -16,9 +16,19 @@ export const channelOperations = [
 		},
 		options: [
 			{
+				name: 'Archive',
+				value: 'archive',
+				description: 'Archive a channel',
+			},
+			{
 				name: 'Create',
 				value: 'create',
 				description: 'Initiates a public or private channel-based conversation',
+			},
+			{
+				name: 'Delete',
+				value: 'delete',
+				description: 'Delete a channel',
 			},
 			{
 				name: 'Get',
@@ -29,6 +39,11 @@ export const channelOperations = [
 				name: 'Get All',
 				value: 'getAll',
 				description: 'Get all channels',
+			},
+			{
+				name: 'Unarchive',
+				value: 'unarchive',
+				description: 'Unarchive a channel',
 			},
 			{
 				name: 'Update',
@@ -64,7 +79,7 @@ export const channelFields = [
 			},
 		},
 		required: true,
-		description: 'The id of the workspace.',
+		description: 'The ID of the workspace.',
 	},
 	{
 		displayName: 'Name',
@@ -156,28 +171,28 @@ export const channelFields = [
 					},
 				],
 				default: 0,
-				description: 'The color of the channel',
+				description: 'The color of the channel.',
 			},
 			{
 				displayName: 'Description',
 				name: 'description',
 				type: 'string',
 				default: '',
-				description: 'The description of the channel',
+				description: 'The description of the channel.',
 			},
 			{
 				displayName: 'Public',
 				name: 'public',
 				type: 'boolean',
 				default: false,
-				description: 'If enabled, the channel will be marked as public',
+				description: 'If enabled, the channel will be marked as public.',
 			},
 			{
 				displayName: 'Temp ID',
 				name: 'temp_id',
 				type: 'number',
 				default: -1,
-				description: 'The temporary id of the channel. It needs to be a negative number.',
+				description: 'The temporary ID of the channel. It needs to be a negative number.',
 			},
 			{
 				displayName: 'User IDs',
@@ -194,8 +209,9 @@ export const channelFields = [
 			},
 		],
 	},
+
 	/* -------------------------------------------------------------------------- */
-	/*                                  channel:get                               */
+	/*                                  channel:get/archive/unarchive/delete      */
 	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Channel ID',
@@ -205,7 +221,10 @@ export const channelFields = [
 		displayOptions: {
 			show: {
 				operation: [
+					'archive',
+					'delete',
 					'get',
+					'unarchive',
 				],
 				resource: [
 					'channel',
@@ -213,8 +232,9 @@ export const channelFields = [
 			},
 		},
 		required: true,
-		description: 'The ID of the channel',
+		description: 'The ID of the channel.',
 	},
+
 	/* -------------------------------------------------------------------------- */
 	/*                                 channel:getAll                             */
 	/* -------------------------------------------------------------------------- */
@@ -302,7 +322,7 @@ export const channelFields = [
 				name: 'archived',
 				type: 'boolean',
 				default: false,
-				description: 'If enabled, only archived conversations are returned',
+				description: 'If enabled, only archived conversations are returned.',
 			},
 		],
 	},
@@ -400,28 +420,28 @@ export const channelFields = [
 					},
 				],
 				default: 0,
-				description: 'The color of the channel',
+				description: 'The color of the channel.',
 			},
 			{
 				displayName: 'Description',
 				name: 'description',
 				type: 'string',
 				default: '',
-				description: 'The description of the channel',
+				description: 'The description of the channel.',
 			},
 			{
 				displayName: 'Name',
 				name: 'name',
 				type: 'string',
 				default: '',
-				description: 'The name of the channel',
+				description: 'The name of the channel.',
 			},
 			{
 				displayName: 'Public',
 				name: 'public',
 				type: 'boolean',
 				default: false,
-				description: 'If enabled, the channel will be marked as public',
+				description: 'If enabled, the channel will be marked as public.',
 			},
 		],
 	},

@@ -1,23 +1,23 @@
 import {
 	ICredentialType,
-	NodePropertyTypes,
+	INodeProperties,
 } from 'n8n-workflow';
 
 export class YourlsApi implements ICredentialType {
 	name = 'yourlsApi';
 	displayName = 'Yourls API';
 	documentationUrl = 'yourls';
-	properties = [
+	properties: INodeProperties[] = [
 		{
 			displayName: 'Signature',
 			name: 'signature',
-			type: 'string' as NodePropertyTypes,
+			type: 'string',
 			default: '',
 		},
 		{
 			displayName: 'URL',
 			name: 'url',
-			type: 'string' as NodePropertyTypes,
+			type: 'string',
 			default: '',
 			placeholder: 'http://localhost:8080',
 		},

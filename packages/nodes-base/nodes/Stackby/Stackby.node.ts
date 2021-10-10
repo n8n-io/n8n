@@ -7,6 +7,7 @@ import {
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
+	NodeOperationError,
 } from 'n8n-workflow';
 
 import {
@@ -22,7 +23,7 @@ export class Stackby implements INodeType {
 		icon: 'file:stackby.png',
 		group: ['transform'],
 		version: 1,
-		description: 'Read, Write, and Delete Data in Stackby',
+		description: 'Read, write, and delete data in Stackby',
 		defaults: {
 			name: 'Stackby',
 			color: '#772244',
@@ -195,83 +196,115 @@ export class Stackby implements INodeType {
 		const operation = this.getNodeParameter('operation', 0) as string;
 		if (operation === 'read') {
 			for (let i = 0; i < length; i++) {
-				const stackId = this.getNodeParameter('stackId', i) as string;
-				const table = encodeURI(this.getNodeParameter('table', i) as string);
-				const rowIds = this.getNodeParameter('id', i) as string;
-				qs.rowIds = [rowIds];
-				responseData = await apiRequest.call(this, 'GET', `/rowlist/${stackId}/${table}`, {}, qs);
-				// tslint:disable-next-line: no-any
-				returnData.push.apply(returnData, responseData.map((data: any) => data.field));
+				try {
+					const stackId = this.getNodeParameter('stackId', i) as string;
+					const table = encodeURI(this.getNodeParameter('table', i) as string);
+					const rowIds = this.getNodeParameter('id', i) as string;
+					qs.rowIds = [rowIds];
+					responseData = await apiRequest.call(this, 'GET', `/rowlist/${stackId}/${table}`, {}, qs);
+					// tslint:disable-next-line: no-any
+					returnData.push.apply(returnData, responseData.map((data: any) => data.field));
+				} catch (error) {
+					if (this.continueOnFail()) {
+						returnData.push({ error: error.message });
+						continue;
+					}
+					throw error;
+				}
 			}
 		}
 		if (operation === 'delete') {
 			for (let i = 0; i < length; i++) {
-				const stackId = this.getNodeParameter('stackId', i) as string;
-				const table = encodeURI(this.getNodeParameter('table', i) as string);
-				const rowIds = this.getNodeParameter('id', i) as string;
-				qs.rowIds = [rowIds];
+				try {
+					const stackId = this.getNodeParameter('stackId', i) as string;
+					const table = encodeURI(this.getNodeParameter('table', i) as string);
+					const rowIds = this.getNodeParameter('id', i) as string;
+					qs.rowIds = [rowIds];
 
-				responseData = await apiRequest.call(this, 'DELETE', `/rowdelete/${stackId}/${table}`, {}, qs);
-				responseData = responseData.records;
-				returnData.push.apply(returnData, responseData);
+					responseData = await apiRequest.call(this, 'DELETE', `/rowdelete/${stackId}/${table}`, {}, qs);
+					responseData = responseData.records;
+					returnData.push.apply(returnData, responseData);
+				} catch (error) {
+					if (this.continueOnFail()) {
+						returnData.push({ error: error.message });
+						continue;
+					}
+					throw error;
+				}
 			}
 		}
 
 		if (operation === 'append') {
-			const records: { [key: string]: IRecord[] } = {};
-			let key = '';
-			for (let i = 0; i < length; i++) {
-				const stackId = this.getNodeParameter('stackId', i) as string;
-				const table = encodeURI(this.getNodeParameter('table', i) as string);
-				const columns = this.getNodeParameter('columns', i) as string;
-				const columnList = columns.split(',').map(column => column.trim());
+			try {
+				const records: { [key: string]: IRecord[] } = {};
+				let key = '';
+				for (let i = 0; i < length; i++) {
+					const stackId = this.getNodeParameter('stackId', i) as string;
+					const table = encodeURI(this.getNodeParameter('table', i) as string);
+					const columns = this.getNodeParameter('columns', i) as string;
+					const columnList = columns.split(',').map(column => column.trim());
 
-				// tslint:disable-next-line: no-any
-				const record: { [key: string]: any } = {};
-				for (const column of columnList) {
-					if (items[i].json[column] === undefined) {
-						throw new Error(`Column ${column} does not exist on input`);
-					} else {
-						record[column] = items[i].json[column];
+					// tslint:disable-next-line: no-any
+					const record: { [key: string]: any } = {};
+					for (const column of columnList) {
+						if (items[i].json[column] === undefined) {
+							throw new NodeOperationError(this.getNode(), `Column ${column} does not exist on input`);
+						} else {
+							record[column] = items[i].json[column];
+						}
 					}
-				}
-				key = `${stackId}/${table}`;
+					key = `${stackId}/${table}`;
 
-				if (records[key] === undefined) {
-					records[key] = [];
-				}
-				records[key].push({ field: record });
-			}
-
-			for (const key of Object.keys(records)) {
-				responseData = await apiRequest.call(this, 'POST', `/rowcreate/${key}`, { records: records[key] });
-			}
-
-			// tslint:disable-next-line: no-any
-			returnData.push.apply(returnData, responseData.map((data: any) => data.field));
-		}
-
-		if (operation === 'list') {
-			for (let i = 0; i < length; i++) {
-				const stackId = this.getNodeParameter('stackId', i) as string;
-				const table = encodeURI(this.getNodeParameter('table', i) as string);
-				const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
-
-				const additionalFields = this.getNodeParameter('additionalFields', i, {}) as IDataObject;
-
-				if (additionalFields.view) {
-					qs.view = additionalFields.view;
+					if (records[key] === undefined) {
+						records[key] = [];
+					}
+					records[key].push({ field: record });
 				}
 
-				if (returnAll === true) {
-					responseData = await apiRequestAllItems.call(this, 'GET', `/rowlist/${stackId}/${table}`, {}, qs);
-				} else {
-					qs.maxrecord = this.getNodeParameter('limit', 0) as number;
-					responseData = await apiRequest.call(this, 'GET', `/rowlist/${stackId}/${table}`, {}, qs);
+				for (const key of Object.keys(records)) {
+					responseData = await apiRequest.call(this, 'POST', `/rowcreate/${key}`, { records: records[key] });
 				}
 
 				// tslint:disable-next-line: no-any
 				returnData.push.apply(returnData, responseData.map((data: any) => data.field));
+			} catch (error) {
+				if (this.continueOnFail()) {
+					returnData.push({ error: error.message });
+				} else {
+					throw error;
+				}
+			}
+		}
+
+		if (operation === 'list') {
+			for (let i = 0; i < length; i++) {
+				try {
+					const stackId = this.getNodeParameter('stackId', i) as string;
+					const table = encodeURI(this.getNodeParameter('table', i) as string);
+					const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
+
+					const additionalFields = this.getNodeParameter('additionalFields', i, {}) as IDataObject;
+
+					if (additionalFields.view) {
+						qs.view = additionalFields.view;
+					}
+
+					if (returnAll === true) {
+						responseData = await apiRequestAllItems.call(this, 'GET', `/rowlist/${stackId}/${table}`, {}, qs);
+					} else {
+						qs.maxrecord = this.getNodeParameter('limit', 0) as number;
+						responseData = await apiRequest.call(this, 'GET', `/rowlist/${stackId}/${table}`, {}, qs);
+					}
+
+					// tslint:disable-next-line: no-any
+					returnData.push.apply(returnData, responseData.map((data: any) => data.field));
+				} catch (error) {
+					if (this.continueOnFail()) {
+						returnData.push({ error: error.message });
+						continue;
+					}
+					throw error;
+				}
 			}
 		}
 		return [this.helpers.returnJsonArray(returnData)];

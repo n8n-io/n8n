@@ -1,11 +1,11 @@
-import { IExternalHooks } from '@/Interface';
+import { IExternalHooks, IRootState } from '@/Interface';
 import { IDataObject } from 'n8n-workflow';
 import Vue from 'vue';
 import { Store } from 'vuex';
 
 export async function runExternalHook(
 	eventName: string,
-	store: Store<IDataObject>,
+	store: Store<IRootState>,
 	metadata?: IDataObject,
 ) {
 	// @ts-ignore

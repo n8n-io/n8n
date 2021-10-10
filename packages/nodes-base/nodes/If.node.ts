@@ -4,6 +4,7 @@ import {
 	INodeParameters,
 	INodeType,
 	INodeTypeDescription,
+	NodeOperationError,
 	NodeParameterValue,
 } from 'n8n-workflow';
 
@@ -15,7 +16,7 @@ export class If implements INodeType {
 		icon: 'fa:map-signs',
 		group: ['transform'],
 		version: 1,
-		description: 'Splits a stream depending on defined compare operations.',
+		description: 'Splits a stream based on comparisons',
 		defaults: {
 			name: 'IF',
 			color: '#408000',
@@ -326,7 +327,7 @@ export class If implements INodeType {
 		};
 
 		// Converts the input data of a dateTime into a number for easy compare
-		function convertDateTime(value: NodeParameterValue): number {
+		const convertDateTime = (value: NodeParameterValue): number => {
 			let returnValue: number | undefined = undefined;
 			if (typeof value === 'string') {
 				returnValue = new Date(value).getTime();
@@ -337,11 +338,11 @@ export class If implements INodeType {
 			}
 
 			if (returnValue === undefined || isNaN(returnValue)) {
-				throw new Error(`The value "${value}" is not a valid DateTime.`);
+				throw new NodeOperationError(this.getNode(), `The value "${value}" is not a valid DateTime.`);
 			}
 
 			return returnValue;
-		}
+		};
 
 		// The different dataTypes to check the values in
 		const dataTypes = [

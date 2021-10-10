@@ -14,6 +14,7 @@ import {
 	INodeType,
 	INodeTypeDescription,
 	ITriggerResponse,
+	NodeOperationError,
 } from 'n8n-workflow';
 
 export class KafkaTrigger implements INodeType {
@@ -70,6 +71,13 @@ export class KafkaTrigger implements INodeType {
 						description: 'Allow sending message to a previously non exisiting topic .',
 					},
 					{
+						displayName: 'Read messages from beginning',
+						name: 'fromBeginning',
+						type: 'boolean',
+						default: true,
+						description: 'Read message from beginning .',
+					},					
+					{
 						displayName: 'JSON Parse Message',
 						name: 'jsonParseMessage',
 						type: 'boolean',
@@ -108,7 +116,7 @@ export class KafkaTrigger implements INodeType {
 
 		const groupId = this.getNodeParameter('groupId') as string;
 
-		const credentials = this.getCredentials('kafka') as IDataObject;
+		const credentials = await this.getCredentials('kafka') as IDataObject;
 
 		const brokers = (credentials.brokers as string || '').split(',').map(item => item.trim()) as string[];
 
@@ -125,7 +133,7 @@ export class KafkaTrigger implements INodeType {
 
 		if (credentials.authentication === true) {
 			if(!(credentials.username && credentials.password)) {
-				throw new Error('Username and password are required for authentication');
+				throw new NodeOperationError(this.getNode(), 'Username and password are required for authentication');
 			}
 			config.sasl = {
 				username: credentials.username as string,
@@ -139,12 +147,12 @@ export class KafkaTrigger implements INodeType {
 		const consumer = kafka.consumer({ groupId });
 
 		await consumer.connect();
+		
+		const options = this.getNodeParameter('options', {}) as IDataObject;
 
-		await consumer.subscribe({ topic, fromBeginning: true });
+		await consumer.subscribe({ topic, fromBeginning: (options.fromBeginning)? true : false });
 
 		const self = this;
-
-		const options = this.getNodeParameter('options', {}) as IDataObject;
 
 		const startConsumer = async () => {
 			await consumer.run({
@@ -156,7 +164,7 @@ export class KafkaTrigger implements INodeType {
 					if (options.jsonParseMessage) {
 						try {
 							value = JSON.parse(value);
-						} catch (err) { }
+						} catch (error) { }
 					}
 
 					data.message = value;

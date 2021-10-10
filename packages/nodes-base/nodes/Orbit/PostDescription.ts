@@ -114,7 +114,7 @@ export const postFields = [
 		default: {},
 		options: [
 			{
-				displayName: 'Published At',
+				displayName: 'Occurred At',
 				name: 'publishedAt',
 				type: 'dateTime',
 				default: '',

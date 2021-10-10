@@ -1,11 +1,9 @@
+/* eslint-disable @typescript-eslint/no-unsafe-member-access */
+/* eslint-disable no-console */
 import { promises as fs } from 'fs';
 import { Command, flags } from '@oclif/command';
-import {
-	UserSettings,
-} from 'n8n-core';
-import {
-	INode,
-} from 'n8n-workflow';
+import { UserSettings } from 'n8n-core';
+import { INode, LoggerProxy } from 'n8n-workflow';
 
 import {
 	ActiveExecutions,
@@ -13,24 +11,22 @@ import {
 	CredentialTypes,
 	Db,
 	ExternalHooks,
-	GenericHelpers,
 	IWorkflowBase,
 	IWorkflowExecutionDataProcess,
 	LoadNodesAndCredentials,
 	NodeTypes,
+	// eslint-disable-next-line @typescript-eslint/no-unused-vars
 	WorkflowCredentials,
 	WorkflowHelpers,
 	WorkflowRunner,
 } from '../src';
 
+import { getLogger } from '../src/Logger';
 
 export class Execute extends Command {
 	static description = '\nExecutes a given workflow';
 
-	static examples = [
-		`$ n8n execute --id=5`,
-		`$ n8n execute --file=workflow.json`,
-	];
+	static examples = [`$ n8n execute --id=5`, `$ n8n execute --file=workflow.json`];
 
 	static flags = {
 		help: flags.help({ char: 'h' }),
@@ -40,10 +36,17 @@ export class Execute extends Command {
 		id: flags.string({
 			description: 'id of the workflow to execute',
 		}),
+		rawOutput: flags.boolean({
+			description: 'Outputs only JSON data, with no other text',
+		}),
 	};
 
-
+	// eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
 	async run() {
+		const logger = getLogger();
+		LoggerProxy.init(logger);
+
+		// eslint-disable-next-line @typescript-eslint/no-shadow
 		const { flags } = this.parse(Execute);
 
 		// Start directly with the init of the database to improve startup time
@@ -54,24 +57,26 @@ export class Execute extends Command {
 		const loadNodesAndCredentialsPromise = loadNodesAndCredentials.init();
 
 		if (!flags.id && !flags.file) {
-			GenericHelpers.logOutput(`Either option "--id" or "--file" have to be set!`);
+			console.info(`Either option "--id" or "--file" have to be set!`);
 			return;
 		}
 
 		if (flags.id && flags.file) {
-			GenericHelpers.logOutput(`Either "id" or "file" can be set never both!`);
+			console.info(`Either "id" or "file" can be set never both!`);
 			return;
 		}
 
 		let workflowId: string | undefined;
-		let workflowData: IWorkflowBase | undefined = undefined;
+		let workflowData: IWorkflowBase | undefined;
 		if (flags.file) {
 			// Path to workflow is given
 			try {
+				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 				workflowData = JSON.parse(await fs.readFile(flags.file, 'utf8'));
 			} catch (error) {
+				// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
 				if (error.code === 'ENOENT') {
-					GenericHelpers.logOutput(`The file "${flags.file}" could not be found.`);
+					console.info(`The file "${flags.file}" could not be found.`);
 					return;
 				}
 
@@ -80,10 +85,15 @@ export class Execute extends Command {
 
 			// Do a basic check if the data in the file looks right
 			// TODO: Later check with the help of TypeScript data if it is valid or not
-			if (workflowData === undefined || workflowData.nodes === undefined || workflowData.connections === undefined) {
-				GenericHelpers.logOutput(`The file "${flags.file}" does not contain valid workflow data.`);
+			if (
+				workflowData === undefined ||
+				workflowData.nodes === undefined ||
+				workflowData.connections === undefined
+			) {
+				console.info(`The file "${flags.file}" does not contain valid workflow data.`);
 				return;
 			}
+			// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
 			workflowId = workflowData.id!.toString();
 		}
 
@@ -93,10 +103,11 @@ export class Execute extends Command {
 		if (flags.id) {
 			// Id of workflow is given
 			workflowId = flags.id;
-			workflowData = await Db.collections!.Workflow!.findOne(workflowId);
+			// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+			workflowData = await Db.collections.Workflow!.findOne(workflowId);
 			if (workflowData === undefined) {
-				GenericHelpers.logOutput(`The workflow with the id "${workflowId}" does not exist.`);
-				return;
+				console.info(`The workflow with the id "${workflowId}" does not exist.`);
+				process.exit(1);
 			}
 		}
 
@@ -127,7 +138,8 @@ export class Execute extends Command {
 		// Check if the workflow contains the required "Start" node
 		// "requiredNodeTypes" are also defined in editor-ui/views/NodeView.vue
 		const requiredNodeTypes = ['n8n-nodes-base.start'];
-		let startNode: INode | undefined = undefined;
+		let startNode: INode | undefined;
+		// eslint-disable-next-line no-restricted-syntax, @typescript-eslint/no-non-null-assertion
 		for (const node of workflowData!.nodes) {
 			if (requiredNodeTypes.includes(node.type)) {
 				startNode = node;
@@ -138,17 +150,16 @@ export class Execute extends Command {
 		if (startNode === undefined) {
 			// If the workflow does not contain a start-node we can not know what
 			// should be executed and with which data to start.
-			GenericHelpers.logOutput(`The workflow does not contain a "Start" node. So it can not be executed.`);
+			console.info(`The workflow does not contain a "Start" node. So it can not be executed.`);
+			// eslint-disable-next-line consistent-return
 			return Promise.resolve();
 		}
 
 		try {
-			const credentials = await WorkflowCredentials(workflowData!.nodes);
-
 			const runData: IWorkflowExecutionDataProcess = {
-				credentials,
 				executionMode: 'cli',
 				startNodes: [startNode.name],
+				// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
 				workflowData: workflowData!,
 			};
 
@@ -163,26 +174,30 @@ export class Execute extends Command {
 			}
 
 			if (data.data.resultData.error) {
-				this.log('Execution was NOT successfull:');
-				this.log('====================================');
-				this.log(JSON.stringify(data, null, 2));
+				console.info('Execution was NOT successful. See log message for details.');
+				logger.info('Execution error:');
+				logger.info('====================================');
+				logger.info(JSON.stringify(data, null, 2));
 
-				// console.log(data.data.resultData.error);
-				const error = new Error(data.data.resultData.error.message);
-				error.stack = data.data.resultData.error.stack;
-				throw error;
+				const { error } = data.data.resultData;
+				// eslint-disable-next-line @typescript-eslint/no-throw-literal
+				throw {
+					...error,
+					stack: error.stack,
+				};
 			}
-
-			this.log('Execution was successfull:');
-			this.log('====================================');
+			if (flags.rawOutput === undefined) {
+				this.log('Execution was successful:');
+				this.log('====================================');
+			}
 			this.log(JSON.stringify(data, null, 2));
 		} catch (e) {
-			console.error('\nGOT ERROR');
-			console.log('====================================');
-			console.error(e.message);
-			console.error(e.stack);
+			console.error('Error executing workflow. See log messages for details.');
+			logger.error('\nExecution error:');
+			logger.info('====================================');
+			logger.error(e.message);
+			logger.error(e.stack);
 			this.exit(1);
-			return;
 		}
 
 		this.exit();

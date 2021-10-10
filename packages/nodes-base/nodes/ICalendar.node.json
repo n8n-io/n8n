@@ -1,0 +1,21 @@
+{
+	"node": "n8n-nodes-base.iCal",
+	"nodeVersion": "1.0",
+	"codexVersion": "1.0",
+	"categories": [
+		"Core Nodes",
+		"Productivity"
+	],
+	"resources": {
+		"primaryDocumentation": [
+			{
+				"url": "https://docs.n8n.io/nodes/n8n-nodes-base.iCal/"
+			}
+		]
+	},
+	"subcategories": {
+		"Core Nodes": [
+			"Files"
+		]
+	}
+}

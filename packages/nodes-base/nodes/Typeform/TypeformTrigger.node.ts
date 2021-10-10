@@ -4,10 +4,15 @@ import {
 } from 'n8n-core';
 
 import {
+	ICredentialsDecrypted,
+	ICredentialTestFunctions,
 	IDataObject,
 	INodeType,
 	INodeTypeDescription,
 	IWebhookResponseData,
+	JsonObject,
+	NodeApiError,
+	NodeCredentialTestResult,
 } from 'n8n-workflow';
 
 import {
@@ -26,7 +31,7 @@ export class TypeformTrigger implements INodeType {
 		group: ['trigger'],
 		version: 1,
 		subtitle: '=Form ID: {{$parameter["formId"]}}',
-		description: 'Starts the workflow on a Typeform form submission.',
+		description: 'Starts the workflow on a Typeform form submission',
 		defaults: {
 			name: 'Typeform Trigger',
 			color: '#404040',
@@ -44,6 +49,7 @@ export class TypeformTrigger implements INodeType {
 						],
 					},
 				},
+				testedBy: 'testTypeformTokenAuth',
 			},
 			{
 				name: 'typeformOAuth2Api',
@@ -116,6 +122,38 @@ export class TypeformTrigger implements INodeType {
 		loadOptions: {
 			getForms,
 		},
+		credentialTest: {
+			async testTypeformTokenAuth(this: ICredentialTestFunctions, credential: ICredentialsDecrypted): Promise<NodeCredentialTestResult> {
+				const credentials = credential.data;
+
+				const options = {
+					headers: {
+						authorization: `bearer ${credentials!.accessToken}`,
+					},
+					uri: 'https://api.typeform.com/workspaces',
+					json: true,
+				};
+				try {
+					const response = await this.helpers.request(options);
+					if (!response.items) {
+						return {
+							status: 'Error',
+							message: 'Token is not valid.',
+						};
+					}
+				} catch(err) {
+					return {
+						status: 'Error',
+						message: `Token is not valid; ${err.message}`,
+					};
+				}
+
+				return {
+					status: 'OK',
+					message: 'Authentication successful!',
+				};
+			},
+		},
 	};
 
 	// @ts-ignore (because of request)
@@ -174,7 +212,7 @@ export class TypeformTrigger implements INodeType {
 					try {
 						const body = {};
 						await apiRequest.call(this, 'DELETE', endpoint, body);
-					} catch (e) {
+					} catch (error) {
 						return false;
 					}
 					// Remove from the static workflow data so that it is clear
@@ -199,7 +237,7 @@ export class TypeformTrigger implements INodeType {
 			(bodyData.form_response as IDataObject).definition === undefined ||
 			(bodyData.form_response as IDataObject).answers === undefined
 		) {
-			throw new Error('Expected definition/answers data is missing!');
+			throw new NodeApiError(this.getNode(), bodyData as JsonObject, { message: 'Expected definition/answers data is missing!' });
 		}
 
 		const answers = (bodyData.form_response as IDataObject).answers as ITypeformAnswer[];

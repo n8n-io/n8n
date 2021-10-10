@@ -6,12 +6,12 @@ import {
 import {
 	IDataObject,
 	ILoadOptionsFunctions,
+	NodeApiError,
 } from 'n8n-workflow';
 
 import {
 	OptionsWithUri,
 } from 'request';
-
 
 /**
  * Make an API request to HackerNews
@@ -33,13 +33,7 @@ export async function hackerNewsApiRequest(this: IHookFunctions | IExecuteFuncti
 	try {
 		return await this.helpers.request!(options);
 	} catch (error) {
-
-		if (error.response && error.response.body && error.response.body.error) {
-			// Try to return the error prettier
-			throw new Error(`Hacker News error response [${error.statusCode}]: ${error.response.body.error}`);
-		}
-
-		throw error;
+		throw new NodeApiError(this.getNode(), error);
 	}
 }
 

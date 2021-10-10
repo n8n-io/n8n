@@ -7,6 +7,7 @@ import {
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
+	NodeOperationError,
 } from 'n8n-workflow';
 
 import {
@@ -302,80 +303,86 @@ export class HackerNews implements INodeType {
 		let returnAll = false;
 
 		for (let i = 0; i < items.length; i++) {
+			try {
+				let qs: IDataObject = {};
+				let endpoint = '';
+				let includeComments = false;
 
-			let qs: IDataObject = {};
-			let endpoint = '';
-			let includeComments = false;
+				if (resource === 'all') {
+					if (operation === 'getAll') {
 
-			if (resource === 'all') {
-				if (operation === 'getAll') {
+						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const keyword = additionalFields.keyword as string;
+						const tags = additionalFields.tags as string[];
 
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
-					const keyword = additionalFields.keyword as string;
-					const tags = additionalFields.tags as string[];
+						qs = {
+							query: keyword,
+							tags: tags ? tags.join() : '',
+						};
 
-					qs = {
-						query: keyword,
-						tags: tags ? tags.join() : '',
-					};
+						returnAll = this.getNodeParameter('returnAll', i) as boolean;
 
-					returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						if (!returnAll) {
+							qs.hitsPerPage = this.getNodeParameter('limit', i) as number;
+						}
 
-					if (!returnAll) {
-						qs.hitsPerPage = this.getNodeParameter('limit', i) as number;
+						endpoint = 'search?';
+
+					} else {
+						throw new NodeOperationError(this.getNode(), `The operation '${operation}' is unknown!`);
+					}
+				} else if (resource === 'article') {
+
+					if (operation === 'get') {
+
+						endpoint = `items/${this.getNodeParameter('articleId', i)}`;
+						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						includeComments = additionalFields.includeComments as boolean;
+
+					} else {
+						throw new NodeOperationError(this.getNode(), `The operation '${operation}' is unknown!`);
 					}
 
-					endpoint = 'search?';
+				} else if (resource === 'user') {
+
+					if (operation === 'get') {
+						endpoint = `users/${this.getNodeParameter('username', i)}`;
+
+					} else {
+						throw new NodeOperationError(this.getNode(), `The operation '${operation}' is unknown!`);
+					}
 
 				} else {
-					throw new Error(`The operation '${operation}' is unknown!`);
+					throw new NodeOperationError(this.getNode(), `The resource '${resource}' is unknown!`);
 				}
-			} else if (resource === 'article') {
 
-				if (operation === 'get') {
 
-					endpoint = `items/${this.getNodeParameter('articleId', i)}`;
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
-					includeComments = additionalFields.includeComments as boolean;
-
+				let responseData;
+				if (returnAll === true) {
+					responseData = await hackerNewsApiRequestAllItems.call(this, 'GET', endpoint, qs);
 				} else {
-					throw new Error(`The operation '${operation}' is unknown!`);
+					responseData = await hackerNewsApiRequest.call(this, 'GET', endpoint, qs);
+					if (resource === 'all' && operation === 'getAll') {
+						responseData = responseData.hits;
+					}
 				}
 
-			} else if (resource === 'user') {
+				if (resource === 'article' && operation === 'get' && !includeComments) {
+					delete responseData.children;
+				}
 
-				if (operation === 'get') {
-					endpoint = `users/${this.getNodeParameter('username', i)}`;
-
+				if (Array.isArray(responseData)) {
+					returnData.push.apply(returnData, responseData as IDataObject[]);
 				} else {
-					throw new Error(`The operation '${operation}' is unknown!`);
+					returnData.push(responseData as IDataObject);
 				}
-
-			} else {
-				throw new Error(`The resource '${resource}' is unknown!`);
-			}
-
-
-			let responseData;
-			if (returnAll === true) {
-				responseData = await hackerNewsApiRequestAllItems.call(this, 'GET', endpoint, qs);
-			} else {
-				responseData = await hackerNewsApiRequest.call(this, 'GET', endpoint, qs);
-				if (resource === 'all' && operation === 'getAll') {
-					responseData = responseData.hits;
+			} catch (error) {
+				if (this.continueOnFail()) {
+					returnData.push({ error: error.message });
+					continue;
 				}
+				throw error;
 			}
-
-			if (resource === 'article' && operation === 'get' && !includeComments) {
-				delete responseData.children;
-			}
-
-			if (Array.isArray(responseData)) {
-				returnData.push.apply(returnData, responseData as IDataObject[]);
-			} else {
-				returnData.push(responseData as IDataObject);
-			}
-
 		}
 
 		return [this.helpers.returnJsonArray(returnData)];

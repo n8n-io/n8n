@@ -63,9 +63,7 @@ If you have problems or questions go to our forum, we will then try to help you 
 ## Jobs
 
 If you are interested in working for n8n and so shape the future of the project
-check out our job posts:
-
-[https://n8n.join.com](https://n8n.join.com)
+check out our [job posts](https://apply.workable.com/n8n/)
 
 
 

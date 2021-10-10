@@ -9,6 +9,8 @@ import {
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
+	NodeApiError,
+	NodeOperationError,
 } from 'n8n-workflow';
 
 import {
@@ -144,53 +146,60 @@ export class RealtimeDatabase implements INodeType {
 		//https://firebase.google.com/docs/reference/rest/database
 
 		if (['push', 'create', 'update'].includes(operation) && items.length === 1 && Object.keys(items[0].json).length === 0) {
-			throw new Error(`The ${operation} operation needs input data`);
+			throw new NodeOperationError(this.getNode(), `The ${operation} operation needs input data`);
 		}
 
 		for (let i = 0; i < length; i++) {
-			const projectId = this.getNodeParameter('projectId', i) as string;
-			let method = 'GET', attributes = '';
-			const document: IDataObject = {};
-			if (operation === 'create') {
-				method = 'PUT';
-				attributes = this.getNodeParameter('attributes', i) as string;
-			} else if (operation === 'delete') {
-				method = 'DELETE';
-			} else if (operation === 'get') {
-				method = 'GET';
-			} else if (operation === 'push') {
-				method = 'POST';
-				attributes = this.getNodeParameter('attributes', i) as string;
-			} else if (operation === 'update') {
-				method = 'PATCH';
-				attributes = this.getNodeParameter('attributes', i) as string;
-			}
-
-			if (attributes) {
-				const attributeList = attributes.split(',').map(el => el.trim());
-				attributeList.map((attribute: string) => {
-					if (items[i].json.hasOwnProperty(attribute)) {
-						document[attribute] = items[i].json[attribute];
-					}
-				});
-			}
-
-			responseData = await googleApiRequest.call(
-				this,
-				projectId,
-				method,
-				this.getNodeParameter('path', i) as string,
-				document,
-			);
-
-			if (responseData === null) {
-				if (operation === 'get') {
-					throw new Error(`Google Firebase error response: Requested entity was not found.`);
-				} else if (method === 'DELETE') {
-					responseData = { success: true };
+			try {
+				const projectId = this.getNodeParameter('projectId', i) as string;
+				let method = 'GET', attributes = '';
+				const document: IDataObject = {};
+				if (operation === 'create') {
+					method = 'PUT';
+					attributes = this.getNodeParameter('attributes', i) as string;
+				} else if (operation === 'delete') {
+					method = 'DELETE';
+				} else if (operation === 'get') {
+					method = 'GET';
+				} else if (operation === 'push') {
+					method = 'POST';
+					attributes = this.getNodeParameter('attributes', i) as string;
+				} else if (operation === 'update') {
+					method = 'PATCH';
+					attributes = this.getNodeParameter('attributes', i) as string;
 				}
-			}
 
+				if (attributes) {
+					const attributeList = attributes.split(',').map(el => el.trim());
+					attributeList.map((attribute: string) => {
+						if (items[i].json.hasOwnProperty(attribute)) {
+							document[attribute] = items[i].json[attribute];
+						}
+					});
+				}
+
+				responseData = await googleApiRequest.call(
+					this,
+					projectId,
+					method,
+					this.getNodeParameter('path', i) as string,
+					document,
+				);
+
+				if (responseData === null) {
+					if (operation === 'get') {
+						throw new NodeApiError(this.getNode(), responseData, { message: `Requested entity was not found.` });
+					} else if (method === 'DELETE') {
+						responseData = { success: true };
+					}
+				}
+			} catch (error) {
+				if (this.continueOnFail()) {
+					returnData.push({ error: error.message });
+					continue;
+				}
+				throw error;
+			}
 			if (Array.isArray(responseData)) {
 				returnData.push.apply(returnData, responseData as IDataObject[]);
 			} else if (typeof responseData === 'string' || typeof responseData === 'number') {

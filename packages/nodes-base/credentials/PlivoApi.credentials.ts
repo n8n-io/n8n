@@ -1,23 +1,23 @@
 import {
 	ICredentialType,
-	NodePropertyTypes,
+	INodeProperties,
 } from 'n8n-workflow';
 
 export class PlivoApi implements ICredentialType {
 	name = 'plivoApi';
 	displayName = 'Plivo API';
 	documentationUrl = 'plivo';
-	properties = [
+	properties: INodeProperties[] = [
 		{
 			displayName: 'Auth ID',
 			name: 'authId',
-			type: 'string' as NodePropertyTypes,
+			type: 'string',
 			default: '',
 		},
 		{
 			displayName: 'Auth Token',
 			name: 'authToken',
-			type: 'string' as NodePropertyTypes,
+			type: 'string',
 			default: '',
 		},
 	];

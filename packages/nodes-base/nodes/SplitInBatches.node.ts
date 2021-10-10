@@ -14,7 +14,7 @@ export class SplitInBatches implements INodeType {
 		icon: 'fa:th-large',
 		group: ['organization'],
 		version: 1,
-		description: 'Saves the originally incoming data and with each iteration it returns a predefined amount of them.',
+		description: 'Split data into batches and iterate over each batch',
 		defaults: {
 			name: 'SplitInBatches',
 			color: '#007755',
@@ -22,6 +22,12 @@ export class SplitInBatches implements INodeType {
 		inputs: ['main'],
 		outputs: ['main'],
 		properties: [
+			{
+				displayName: 'You may not need this node — n8n nodes automatically run once for each input item. <a href="https://docs.n8n.io/getting-started/key-concepts/looping.html#using-loops-in-n8n" target="_blank">More info</a>',
+				name: 'splitInBatchesNotice',
+				type: 'notice',
+				default: '',
+			},
 			{
 				displayName: 'Batch Size',
 				name: 'batchSize',
@@ -32,7 +38,6 @@ export class SplitInBatches implements INodeType {
 				default: 10,
 				description: 'The number of items to return with each call.',
 			},
-
 			{
 				displayName: 'Options',
 				name: 'options',

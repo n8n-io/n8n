@@ -9,12 +9,12 @@ import {
 } from 'n8n-core';
 
 import {
-	IDataObject,
+	IDataObject, NodeApiError, NodeOperationError,
 } from 'n8n-workflow';
 
 export async function yourlsApiRequest(this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: string, body: any = {}, qs: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
 
-	const credentials = this.getCredentials('yourlsApi') as IDataObject;
+	const credentials = await this.getCredentials('yourlsApi') as IDataObject;
 
 	qs.signature = credentials.signature as string;
 	qs.format = 'json';
@@ -31,22 +31,13 @@ export async function yourlsApiRequest(this: IExecuteFunctions | IExecuteSingleF
 		const response = await this.helpers.request.call(this, options);
 
 		if (response.status === 'fail') {
-			throw new Error(
+			throw new NodeOperationError(this.getNode(),
 				`Yourls error response [400]: ${response.message}`,
 			);
 		}
 
 		return response;
 	} catch (error) {
-		if (error.response && error.response.body && error.response.body.msg) {
-
-			const message = error.response.body.msg;
-
-			// Try to return the error prettier
-			throw new Error(
-				`Yourls error response [${error.statusCode}]: ${message}`,
-			);
-		}
-		throw error;
+		throw new NodeApiError(this.getNode(), error);
 	}
 }

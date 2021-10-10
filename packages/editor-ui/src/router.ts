@@ -1,6 +1,6 @@
 import Vue from 'vue';
 import Router from 'vue-router';
-import MainHeader from '@/components/MainHeader.vue';
+import MainHeader from '@/components/MainHeader/MainHeader.vue';
 import MainSidebar from '@/components/MainSidebar.vue';
 import NodeView from '@/views/NodeView.vue';
 
@@ -18,12 +18,6 @@ export default new Router({
 				default: NodeView,
 				header: MainHeader,
 				sidebar: MainSidebar,
-			},
-		},
-		{
-			path: '/oauth2/callback',
-			name: 'oAuth2Callback',
-			components: {
 			},
 		},
 		{
@@ -47,6 +41,15 @@ export default new Router({
 		{
 			path: '/',
 			redirect: '/workflow',
+		},
+		{
+			path: '/workflows/templates/:id',
+			name: 'WorkflowTemplate',
+			components: {
+				default: NodeView,
+				header: MainHeader,
+				sidebar: MainSidebar,
+			},
 		},
 	],
 });

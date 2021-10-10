@@ -5,19 +5,22 @@ import {
 
 import {
 	IDataObject,
+	ILoadOptionsFunctions,
+	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
 	IWebhookResponseData,
+	NodeApiError,
 } from 'n8n-workflow';
 
-import * as uuid from 'uuid/v4';
+import { v4 as uuid } from 'uuid';
 
 import {
 	snakeCase,
 } from 'change-case';
 
 import {
-	facebookApiRequest,
+	facebookApiRequest, getAllFields, getFields,
 } from './GenericFunctions';
 
 import {
@@ -28,11 +31,11 @@ export class FacebookTrigger implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Facebook Trigger',
 		name: 'facebookTrigger',
-		icon: 'file:facebook.png',
+		icon: 'file:facebook.svg',
 		group: ['trigger'],
 		version: 1,
 		subtitle: '={{$parameter["appId"] +"/"+ $parameter["object"]}}',
-		description: 'Starts the workflow when a Facebook events occurs.',
+		description: 'Starts the workflow when Facebook events occur',
 		defaults: {
 			name: 'Facebook Trigger',
 			color: '#3B5998',
@@ -60,6 +63,14 @@ export class FacebookTrigger implements INodeType {
 			},
 		],
 		properties: [
+			{
+				displayName: 'APP ID',
+				name: 'appId',
+				type: 'string',
+				required: true,
+				default: '',
+				description: 'Facebook APP ID',
+			},
 			{
 				displayName: 'Object',
 				name: 'object',
@@ -125,13 +136,20 @@ export class FacebookTrigger implements INodeType {
 				default: 'user',
 				description: 'The object to subscribe to',
 			},
+			//https://developers.facebook.com/docs/graph-api/webhooks/reference/page
 			{
-				displayName: 'App ID',
-				name: 'appId',
-				type: 'string',
-				required: true,
-				default: '',
-				description: 'Facebook APP ID',
+				displayName: 'Fields',
+				name: 'fields',
+				type: 'multiOptions',
+				typeOptions: {
+					loadOptionsMethod: 'getObjectFields',
+					loadOptionsDependsOn: [
+						'object',
+					],
+				},
+				required: false,
+				default: [],
+				description: 'The set of fields in this object that are subscribed to',
 			},
 			{
 				displayName: 'Options',
@@ -150,6 +168,18 @@ export class FacebookTrigger implements INodeType {
 				],
 			},
 		],
+	};
+
+
+	methods = {
+		loadOptions: {
+			// Get all the available organizations to display them to user so that he can
+			// select them easily
+			async getObjectFields(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const object = this.getCurrentNodeParameter('object') as string;
+				return getFields(object) as INodePropertyOptions[];
+			},
+		},
 	};
 
 	// @ts-ignore (because of request)
@@ -174,12 +204,14 @@ export class FacebookTrigger implements INodeType {
 				const webhookUrl = this.getNodeWebhookUrl('default') as string;
 				const object = this.getNodeParameter('object') as string;
 				const appId = this.getNodeParameter('appId') as string;
+				const fields = this.getNodeParameter('fields') as string[];
 				const options = this.getNodeParameter('options') as IDataObject;
 
 				const body = {
 					object: snakeCase(object),
 					callback_url: webhookUrl,
 					verify_token: uuid(),
+					fields: (fields.includes('*')) ? getAllFields(object) : fields,
 				} as IDataObject;
 
 				if (options.includeValues !== undefined) {
@@ -192,7 +224,7 @@ export class FacebookTrigger implements INodeType {
 
 				if (responseData.success !== true) {
 					// Facebook did not return success, so something went wrong
-					throw new Error('Facebook webhook creation response did not contain the expected data.');
+					throw new NodeApiError(this.getNode(), responseData, { message: 'Facebook webhook creation response did not contain the expected data.' });
 				}
 				return true;
 			},
@@ -202,7 +234,7 @@ export class FacebookTrigger implements INodeType {
 
 				try {
 					await facebookApiRequest.call(this, 'DELETE', `/${appId}/subscriptions`, { object: snakeCase(object) });
-				} catch (e) {
+				} catch (error) {
 					return false;
 				}
 				return true;
@@ -216,7 +248,7 @@ export class FacebookTrigger implements INodeType {
 		const res = this.getResponseObject();
 		const req = this.getRequestObject();
 		const headerData = this.getHeaderData() as IDataObject;
-		const credentials = this.getCredentials('facebookGraphAppApi') as IDataObject;
+		const credentials = await this.getCredentials('facebookGraphAppApi') as IDataObject;
 		// Check if we're getting facebook's challenge request (https://developers.facebook.com/docs/graph-api/webhooks/getting-started)
 		if (this.getWebhookName() === 'setup') {
 			if (query['hub.challenge']) {

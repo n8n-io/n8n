@@ -29,7 +29,7 @@ export class PhilipsHue implements INodeType {
 		group: ['input'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
-		description: 'Consume Philips Hue API.',
+		description: 'Consume Philips Hue API',
 		defaults: {
 			name: 'Philips Hue',
 			color: '#063c9a',

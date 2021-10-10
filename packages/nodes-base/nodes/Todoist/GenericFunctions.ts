@@ -9,7 +9,7 @@ import {
 } from 'n8n-core';
 
 import {
-	IDataObject,
+	IDataObject, NodeApiError,
 } from 'n8n-workflow';
 
 export async function todoistApiRequest(
@@ -40,7 +40,7 @@ export async function todoistApiRequest(
 
 	try {
 		if (authentication === 'apiKey') {
-			const credentials = this.getCredentials('todoistApi') as IDataObject;
+			const credentials = await this.getCredentials('todoistApi') as IDataObject;
 
 			//@ts-ignore
 			options.headers['Authorization'] = `Bearer ${credentials.apiKey}`;
@@ -52,12 +52,6 @@ export async function todoistApiRequest(
 		}
 
 	} catch (error) {
-		const errorMessage = error.response.body;
-
-		if (errorMessage !== undefined) {
-			throw new Error(errorMessage);
-		}
-
-		throw errorMessage;
+		throw new NodeApiError(this.getNode(), error);
 	}
 }

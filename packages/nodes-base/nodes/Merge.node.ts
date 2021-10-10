@@ -17,7 +17,7 @@ export class Merge implements INodeType {
 		group: ['transform'],
 		version: 1,
 		subtitle: '={{$parameter["mode"]}}',
-		description: 'Merges data of multiple streams once data of both is available',
+		description: 'Merges data of multiple streams once data from both is available',
 		defaults: {
 			name: 'Merge',
 			color: '#00bbcc',

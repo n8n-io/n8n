@@ -46,6 +46,7 @@ export interface ICouponLine {
 }
 
 export interface IOrder {
+	[index: string]: any; // tslint:disable-line:no-any
 	billing?: IAddress;
 	coupon_lines?: ICouponLine[];
 	currency?: string;

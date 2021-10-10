@@ -7,6 +7,7 @@ import {
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
+	NodeOperationError,
 } from 'n8n-workflow';
 
 import {
@@ -108,7 +109,7 @@ export class AirtableTrigger implements INodeType {
 						name: 'formula',
 						type: 'string',
 						default: '',
-						description: `Formulas may involve functions, numeric operations, logical operations, and text operations that operate on fields. More info <a href="https://support.airtable.com/hc/en-us/articles/203255215-Formula-Field-Reference" target="_blank">here</a>.`,
+						description: `Formulas may involve functions, numeric operations, logical operations, and text operations that operate on fields. More info <a href="https://support.airtable.com/hc/en-us/articles/203255215-Formula-Field-Reference">here</a>.`,
 					},
 					{
 						displayName: 'View ID',
@@ -170,7 +171,7 @@ export class AirtableTrigger implements INodeType {
 
 		if (Array.isArray(records) && records.length) {
 			if (this.getMode() === 'manual' && records[0].fields[triggerField] === undefined) {
-				throw new Error(`The Field "${triggerField}" does not exist.`);
+				throw new NodeOperationError(this.getNode(), `The Field "${triggerField}" does not exist.`);
 			}
 
 			if (downloadAttachments === true) {

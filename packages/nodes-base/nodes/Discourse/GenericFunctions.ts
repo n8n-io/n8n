@@ -9,12 +9,12 @@ import {
 } from 'n8n-core';
 
 import {
-	IDataObject,
+	IDataObject, NodeApiError,
 } from 'n8n-workflow';
 
 export async function discourseApiRequest(this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: string, path: string, body: any = {}, qs: IDataObject = {}, option = {}): Promise<any> { // tslint:disable-line:no-any
 
-	const credentials = this.getCredentials('discourseApi') as IDataObject;
+	const credentials = await this.getCredentials('discourseApi') as IDataObject;
 
 	const options: OptionsWithUri = {
 		headers: {
@@ -35,15 +35,7 @@ export async function discourseApiRequest(this: IExecuteFunctions | IExecuteSing
 		//@ts-ignore
 		return await this.helpers.request.call(this, options);
 	} catch (error) {
-		if (error.response && error.response.body && error.response.body.errors) {
-
-			const errors = error.response.body.errors;
-			// Try to return the error prettier
-			throw new Error(
-				`Discourse error response [${error.statusCode}]: ${errors.join('|')}`,
-			);
-		}
-		throw error;
+		throw new NodeApiError(this.getNode(), error);
 	}
 }
 

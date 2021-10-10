@@ -1,10 +1,16 @@
+/* eslint-disable no-console */
+/* eslint-disable @typescript-eslint/no-shadow */
+/* eslint-disable @typescript-eslint/explicit-module-boundary-types */
+/* eslint-disable @typescript-eslint/unbound-method */
+/* eslint-disable @typescript-eslint/no-unsafe-member-access */
+/* eslint-disable @typescript-eslint/no-non-null-assertion */
+/* eslint-disable @typescript-eslint/restrict-template-expressions */
+/* eslint-disable @typescript-eslint/no-unused-vars */
+// eslint-disable-next-line import/no-extraneous-dependencies
 import * as PCancelable from 'p-cancelable';
 
 import { Command, flags } from '@oclif/command';
-import {
-	UserSettings,
-	WorkflowExecute,
-} from 'n8n-core';
+import { UserSettings, WorkflowExecute } from 'n8n-core';
 
 import {
 	IDataObject,
@@ -13,12 +19,12 @@ import {
 	IWorkflowExecuteHooks,
 	Workflow,
 	WorkflowHooks,
+	LoggerProxy,
 } from 'n8n-workflow';
 
-import {
-	FindOneOptions,
-} from 'typeorm';
+import { FindOneOptions } from 'typeorm';
 
+import * as Bull from 'bull';
 import {
 	ActiveExecutions,
 	CredentialsOverwrites,
@@ -37,16 +43,15 @@ import {
 	WorkflowExecuteAdditionalData,
 } from '../src';
 
+import { getLogger } from '../src/Logger';
+
 import * as config from '../config';
-import * as Bull from 'bull';
 import * as Queue from '../src/Queue';
 
 export class Worker extends Command {
 	static description = '\nStarts a n8n worker';
 
-	static examples = [
-		`$ n8n worker --concurrency=5`,
-	];
+	static examples = [`$ n8n worker --concurrency=5`];
 
 	static flags = {
 		help: flags.help({ char: 'h' }),
@@ -71,9 +76,10 @@ export class Worker extends Command {
 	 * get removed.
 	 */
 	static async stopProcess() {
-		console.log(`\nStopping n8n...`);
+		LoggerProxy.info(`Stopping n8n...`);
 
 		// Stop accepting new jobs
+		// eslint-disable-next-line @typescript-eslint/no-floating-promises
 		Worker.jobQueue.pause(true);
 
 		try {
@@ -95,15 +101,19 @@ export class Worker extends Command {
 			while (Object.keys(Worker.runningJobs).length !== 0) {
 				if (count++ % 4 === 0) {
 					const waitLeft = Math.ceil((stopTime - new Date().getTime()) / 1000);
-					console.log(`Waiting for ${Object.keys(Worker.runningJobs).length} active executions to finish... (wait ${waitLeft} more seconds)`);
+					LoggerProxy.info(
+						`Waiting for ${
+							Object.keys(Worker.runningJobs).length
+						} active executions to finish... (wait ${waitLeft} more seconds)`,
+					);
 				}
+				// eslint-disable-next-line no-await-in-loop
 				await new Promise((resolve) => {
 					setTimeout(resolve, 500);
 				});
 			}
-
 		} catch (error) {
-			console.error('There was an error shutting down n8n.', error);
+			LoggerProxy.error('There was an error shutting down n8n.', error);
 		}
 
 		process.exit(Worker.processExistCode);
@@ -111,33 +121,77 @@ export class Worker extends Command {
 
 	async runJob(job: Bull.Job, nodeTypes: INodeTypes): Promise<IBullJobResponse> {
 		const jobData = job.data as IBullJobData;
-		const executionDb = await Db.collections.Execution!.findOne(jobData.executionId) as IExecutionFlattedDb;
-		const currentExecutionDb = ResponseHelper.unflattenExecutionData(executionDb) as IExecutionResponse;
-		console.log(`Start job: ${job.id} (Workflow ID: ${currentExecutionDb.workflowData.id} | Execution: ${jobData.executionId})`);
+		const executionDb = (await Db.collections.Execution!.findOne(
+			jobData.executionId,
+		)) as IExecutionFlattedDb;
+		const currentExecutionDb = ResponseHelper.unflattenExecutionData(executionDb);
+		LoggerProxy.info(
+			`Start job: ${job.id} (Workflow ID: ${currentExecutionDb.workflowData.id} | Execution: ${jobData.executionId})`,
+		);
 
-		let staticData = currentExecutionDb.workflowData!.staticData;
-		if (jobData.loadStaticData === true) {
+		let { staticData } = currentExecutionDb.workflowData;
+		if (jobData.loadStaticData) {
 			const findOptions = {
 				select: ['id', 'staticData'],
 			} as FindOneOptions;
-			const workflowData = await Db.collections!.Workflow!.findOne(currentExecutionDb.workflowData.id, findOptions);
+			const workflowData = await Db.collections.Workflow!.findOne(
+				currentExecutionDb.workflowData.id,
+				findOptions,
+			);
 			if (workflowData === undefined) {
-				throw new Error(`The workflow with the ID "${currentExecutionDb.workflowData.id}" could not be found`);
+				throw new Error(
+					`The workflow with the ID "${currentExecutionDb.workflowData.id}" could not be found`,
+				);
 			}
 			staticData = workflowData.staticData;
 		}
 
-		const workflow = new Workflow({ id: currentExecutionDb.workflowData.id as string, name: currentExecutionDb.workflowData.name, nodes: currentExecutionDb.workflowData!.nodes, connections: currentExecutionDb.workflowData!.connections, active: currentExecutionDb.workflowData!.active, nodeTypes, staticData, settings: currentExecutionDb.workflowData!.settings });
+		let workflowTimeout = config.get('executions.timeout') as number; // initialize with default
+		if (
+			// eslint-disable-next-line @typescript-eslint/prefer-optional-chain
+			currentExecutionDb.workflowData.settings &&
+			currentExecutionDb.workflowData.settings.executionTimeout
+		) {
+			workflowTimeout = currentExecutionDb.workflowData.settings.executionTimeout as number; // preference on workflow setting
+		}
 
-		const credentials = await WorkflowCredentials(currentExecutionDb.workflowData.nodes);
+		let executionTimeoutTimestamp: number | undefined;
+		if (workflowTimeout > 0) {
+			workflowTimeout = Math.min(workflowTimeout, config.get('executions.maxTimeout') as number);
+			executionTimeoutTimestamp = Date.now() + workflowTimeout * 1000;
+		}
 
-		const additionalData = await WorkflowExecuteAdditionalData.getBase(credentials);
-		additionalData.hooks = WorkflowExecuteAdditionalData.getWorkflowHooksWorkerExecuter(currentExecutionDb.mode, job.data.executionId, currentExecutionDb.workflowData, { retryOf: currentExecutionDb.retryOf as string });
+		const workflow = new Workflow({
+			id: currentExecutionDb.workflowData.id as string,
+			name: currentExecutionDb.workflowData.name,
+			nodes: currentExecutionDb.workflowData.nodes,
+			connections: currentExecutionDb.workflowData.connections,
+			active: currentExecutionDb.workflowData.active,
+			nodeTypes,
+			staticData,
+			settings: currentExecutionDb.workflowData.settings,
+		});
+
+		const additionalData = await WorkflowExecuteAdditionalData.getBase(
+			undefined,
+			executionTimeoutTimestamp,
+		);
+		additionalData.hooks = WorkflowExecuteAdditionalData.getWorkflowHooksWorkerExecuter(
+			currentExecutionDb.mode,
+			job.data.executionId,
+			currentExecutionDb.workflowData,
+			{ retryOf: currentExecutionDb.retryOf as string },
+		);
+		additionalData.executionId = jobData.executionId;
 
 		let workflowExecute: WorkflowExecute;
 		let workflowRun: PCancelable<IRun>;
 		if (currentExecutionDb.data !== undefined) {
-			workflowExecute = new WorkflowExecute(additionalData, currentExecutionDb.mode, currentExecutionDb.data);
+			workflowExecute = new WorkflowExecute(
+				additionalData,
+				currentExecutionDb.mode,
+				currentExecutionDb.data,
+			);
 			workflowRun = workflowExecute.processRunExecutionData(workflow);
 		} else {
 			// Execute all nodes
@@ -159,7 +213,11 @@ export class Worker extends Command {
 	}
 
 	async run() {
-		console.log('Starting n8n worker...');
+		const logger = getLogger();
+		LoggerProxy.init(logger);
+
+		// eslint-disable-next-line no-console
+		console.info('Starting n8n worker...');
 
 		// Make sure that n8n shuts down gracefully if possible
 		process.on('SIGTERM', Worker.stopProcess);
@@ -171,12 +229,13 @@ export class Worker extends Command {
 				const { flags } = this.parse(Worker);
 
 				// Start directly with the init of the database to improve startup time
-				const startDbInitPromise = Db.init().catch(error => {
-					console.error(`There was an error initializing DB: ${error.message}`);
+				const startDbInitPromise = Db.init().catch((error) => {
+					logger.error(`There was an error initializing DB: "${error.message}"`);
 
 					Worker.processExistCode = 1;
 					// @ts-ignore
 					process.emit('SIGINT');
+					process.exit(1);
 				});
 
 				// Make sure the settings exist
@@ -203,17 +262,19 @@ export class Worker extends Command {
 				// Wait till the database is ready
 				await startDbInitPromise;
 
+				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 				const redisConnectionTimeoutLimit = config.get('queue.bull.redis.timeoutThreshold');
 
 				Worker.jobQueue = Queue.getInstance().getBullObjectInstance();
-				Worker.jobQueue.process(flags.concurrency, (job) => this.runJob(job, nodeTypes));
+				// eslint-disable-next-line @typescript-eslint/no-floating-promises
+				Worker.jobQueue.process(flags.concurrency, async (job) => this.runJob(job, nodeTypes));
 
 				const versions = await GenericHelpers.getVersions();
 
-				console.log('\nn8n worker is now ready');
-				console.log(` * Version: ${versions.cli}`);
-				console.log(` * Concurrency: ${flags.concurrency}`);
-				console.log('');
+				console.info('\nn8n worker is now ready');
+				console.info(` * Version: ${versions.cli}`);
+				console.info(` * Concurrency: ${flags.concurrency}`);
+				console.info('');
 
 				Worker.jobQueue.on('global:progress', (jobId, progress) => {
 					// Progress of a job got updated which does get used
@@ -229,9 +290,10 @@ export class Worker extends Command {
 					}
 				});
 
-				let lastTimer = 0, cumulativeTimeout = 0;
+				let lastTimer = 0;
+				let cumulativeTimeout = 0;
 				Worker.jobQueue.on('error', (error: Error) => {
-					if (error.toString().includes('ECONNREFUSED') === true) {
+					if (error.toString().includes('ECONNREFUSED')) {
 						const now = Date.now();
 						if (now - lastTimer > 30000) {
 							// Means we had no timeout at all or last timeout was temporary and we recovered
@@ -241,29 +303,31 @@ export class Worker extends Command {
 							cumulativeTimeout += now - lastTimer;
 							lastTimer = now;
 							if (cumulativeTimeout > redisConnectionTimeoutLimit) {
-								console.error('Unable to connect to Redis after ' + redisConnectionTimeoutLimit + '. Exiting process.');
+								logger.error(
+									`Unable to connect to Redis after ${redisConnectionTimeoutLimit}. Exiting process.`,
+								);
 								process.exit(1);
 							}
 						}
-						console.warn('Redis unavailable - trying to reconnect...');
-					} else if (error.toString().includes('Error initializing Lua scripts') === true) {
+						logger.warn('Redis unavailable - trying to reconnect...');
+					} else if (error.toString().includes('Error initializing Lua scripts')) {
 						// This is a non-recoverable error
 						// Happens when worker starts and Redis is unavailable
 						// Even if Redis comes back online, worker will be zombie
-						console.error('Error initializing worker.');
+						logger.error('Error initializing worker.');
 						process.exit(2);
 					} else {
-						console.error('Error from queue: ', error);
+						logger.error('Error from queue: ', error);
 					}
 				});
 			} catch (error) {
-				this.error(`There was an error: ${error.message}`);
+				logger.error(`Worker process cannot continue. "${error.message}"`);
 
 				Worker.processExistCode = 1;
 				// @ts-ignore
 				process.emit('SIGINT');
+				process.exit(1);
 			}
 		})();
-
 	}
 }

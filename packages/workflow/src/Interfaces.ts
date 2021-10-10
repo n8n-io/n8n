@@ -1,8 +1,24 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
+/* eslint-disable import/no-extraneous-dependencies */
+/* eslint-disable import/no-cycle */
+// eslint-disable-next-line import/no-extraneous-dependencies
+// eslint-disable-next-line max-classes-per-file
+import * as express from 'express';
+import * as FormData from 'form-data';
+import { URLSearchParams } from 'url';
 import { Workflow } from './Workflow';
 import { WorkflowHooks } from './WorkflowHooks';
-import * as express from 'express';
+import { WorkflowOperationError } from './WorkflowErrors';
+import { NodeApiError, NodeOperationError } from './NodeErrors';
 
-export type IAllExecuteFunctions = IExecuteFunctions | IExecuteSingleFunctions | IHookFunctions | ILoadOptionsFunctions | IPollFunctions | ITriggerFunctions | IWebhookFunctions;
+export type IAllExecuteFunctions =
+	| IExecuteFunctions
+	| IExecuteSingleFunctions
+	| IHookFunctions
+	| ILoadOptionsFunctions
+	| IPollFunctions
+	| ITriggerFunctions
+	| IWebhookFunctions;
 
 export interface IBinaryData {
 	[key: string]: string | undefined;
@@ -32,11 +48,7 @@ export interface IConnection {
 	index: number;
 }
 
-export interface IExecutionError {
-	message: string;
-	node?: string;
-	stack?: string;
-}
+export type ExecutionError = WorkflowOperationError | NodeOperationError | NodeApiError;
 
 // Get used to gives nodes access to credentials
 export interface IGetCredentials {
@@ -45,8 +57,11 @@ export interface IGetCredentials {
 
 export abstract class ICredentials {
 	name: string;
+
 	type: string;
+
 	data: string | undefined;
+
 	nodesAccess: ICredentialNodeAccess[];
 
 	constructor(name: string, type: string, nodesAccess: ICredentialNodeAccess[], data?: string) {
@@ -57,10 +72,15 @@ export abstract class ICredentials {
 	}
 
 	abstract getData(encryptionKey: string, nodeType?: string): ICredentialDataDecryptedObject;
+
 	abstract getDataKey(key: string, encryptionKey: string, nodeType?: string): CredentialInformation;
+
 	abstract getDataToSave(): ICredentialsEncrypted;
+
 	abstract hasNodeAccess(nodeType: string): boolean;
+
 	abstract setData(data: ICredentialDataDecryptedObject, encryptionKey: string): void;
+
 	abstract setDataKey(key: string, data: CredentialInformation, encryptionKey: string): void;
 }
 
@@ -97,21 +117,32 @@ export interface ICredentialsExpressionResolveValues {
 
 export abstract class ICredentialsHelper {
 	encryptionKey: string;
-	workflowCredentials: IWorkflowCredentials;
 
-	constructor(workflowCredentials: IWorkflowCredentials, encryptionKey: string) {
+	constructor(encryptionKey: string) {
 		this.encryptionKey = encryptionKey;
-		this.workflowCredentials = workflowCredentials;
 	}
 
-	abstract getCredentials(name: string, type: string): ICredentials;
-	abstract getDecrypted(name: string, type: string, mode: WorkflowExecuteMode, raw?: boolean, expressionResolveValues?: ICredentialsExpressionResolveValues): ICredentialDataDecryptedObject;
-	abstract updateCredentials(name: string, type: string, data: ICredentialDataDecryptedObject): Promise<void>;
+	abstract getCredentials(name: string, type: string): Promise<ICredentials>;
+
+	abstract getDecrypted(
+		name: string,
+		type: string,
+		mode: WorkflowExecuteMode,
+		raw?: boolean,
+		expressionResolveValues?: ICredentialsExpressionResolveValues,
+	): Promise<ICredentialDataDecryptedObject>;
+
+	abstract updateCredentials(
+		name: string,
+		type: string,
+		data: ICredentialDataDecryptedObject,
+	): Promise<void>;
 }
 
 export interface ICredentialType {
 	name: string;
 	displayName: string;
+	icon?: string;
 	extends?: string[];
 	properties: INodeProperties[];
 	documentationUrl?: string;
@@ -120,7 +151,7 @@ export interface ICredentialType {
 
 export interface ICredentialTypes {
 	credentialTypes?: {
-		[key: string]: ICredentialType
+		[key: string]: ICredentialType;
 	};
 	init(credentialTypes?: { [key: string]: ICredentialType }): Promise<void>;
 	getAll(): ICredentialType[];
@@ -136,7 +167,6 @@ export interface ICredentialData {
 
 // The encrypted credentials which the nodes can access
 export type CredentialInformation = string | number | boolean | IDataObject;
-
 
 // The encrypted credentials which the nodes can access
 export interface ICredentialDataDecryptedObject {
@@ -163,35 +193,79 @@ export interface IDataObject {
 	[key: string]: GenericValue | IDataObject | GenericValue[] | IDataObject[];
 }
 
+export interface INodeTypeNameVersion {
+	name: string;
+	version: number;
+}
 
 export interface IGetExecutePollFunctions {
-	(workflow: Workflow, node: INode, additionalData: IWorkflowExecuteAdditionalData, mode: WorkflowExecuteMode, activation: WorkflowActivateMode): IPollFunctions;
+	(
+		workflow: Workflow,
+		node: INode,
+		additionalData: IWorkflowExecuteAdditionalData,
+		mode: WorkflowExecuteMode,
+		activation: WorkflowActivateMode,
+	): IPollFunctions;
 }
 
 export interface IGetExecuteTriggerFunctions {
-	(workflow: Workflow, node: INode, additionalData: IWorkflowExecuteAdditionalData, mode: WorkflowExecuteMode, activation: WorkflowActivateMode): ITriggerFunctions;
+	(
+		workflow: Workflow,
+		node: INode,
+		additionalData: IWorkflowExecuteAdditionalData,
+		mode: WorkflowExecuteMode,
+		activation: WorkflowActivateMode,
+	): ITriggerFunctions;
 }
-
 
 export interface IGetExecuteFunctions {
-	(workflow: Workflow, runExecutionData: IRunExecutionData, runIndex: number, connectionInputData: INodeExecutionData[], inputData: ITaskDataConnections, node: INode, additionalData: IWorkflowExecuteAdditionalData, mode: WorkflowExecuteMode): IExecuteFunctions;
+	(
+		workflow: Workflow,
+		runExecutionData: IRunExecutionData,
+		runIndex: number,
+		connectionInputData: INodeExecutionData[],
+		inputData: ITaskDataConnections,
+		node: INode,
+		additionalData: IWorkflowExecuteAdditionalData,
+		mode: WorkflowExecuteMode,
+	): IExecuteFunctions;
 }
-
 
 export interface IGetExecuteSingleFunctions {
-	(workflow: Workflow, runExecutionData: IRunExecutionData, runIndex: number, connectionInputData: INodeExecutionData[], inputData: ITaskDataConnections, node: INode, itemIndex: number, additionalData: IWorkflowExecuteAdditionalData, mode: WorkflowExecuteMode): IExecuteSingleFunctions;
+	(
+		workflow: Workflow,
+		runExecutionData: IRunExecutionData,
+		runIndex: number,
+		connectionInputData: INodeExecutionData[],
+		inputData: ITaskDataConnections,
+		node: INode,
+		itemIndex: number,
+		additionalData: IWorkflowExecuteAdditionalData,
+		mode: WorkflowExecuteMode,
+	): IExecuteSingleFunctions;
 }
-
 
 export interface IGetExecuteHookFunctions {
-	(workflow: Workflow, node: INode, additionalData: IWorkflowExecuteAdditionalData, mode: WorkflowExecuteMode, activation: WorkflowActivateMode, isTest?: boolean, webhookData?: IWebhookData): IHookFunctions;
+	(
+		workflow: Workflow,
+		node: INode,
+		additionalData: IWorkflowExecuteAdditionalData,
+		mode: WorkflowExecuteMode,
+		activation: WorkflowActivateMode,
+		isTest?: boolean,
+		webhookData?: IWebhookData,
+	): IHookFunctions;
 }
-
 
 export interface IGetExecuteWebhookFunctions {
-	(workflow: Workflow, node: INode, additionalData: IWorkflowExecuteAdditionalData, mode: WorkflowExecuteMode, webhookData: IWebhookData): IWebhookFunctions;
+	(
+		workflow: Workflow,
+		node: INode,
+		additionalData: IWorkflowExecuteAdditionalData,
+		mode: WorkflowExecuteMode,
+		webhookData: IWebhookData,
+	): IWebhookFunctions;
 }
-
 
 export interface IExecuteData {
 	data: ITaskDataConnections;
@@ -199,54 +273,123 @@ export interface IExecuteData {
 }
 
 export type IContextObject = {
-	[key: string]: any; // tslint:disable-line:no-any
+	[key: string]: any;
 };
-
 
 export interface IExecuteContextData {
 	// Keys are: "flow" | "node:<NODE_NAME>"
 	[key: string]: IContextObject;
 }
 
+export interface IHttpRequestOptions {
+	url: string;
+	headers?: IDataObject;
+	method?: 'DELETE' | 'GET' | 'HEAD' | 'PATCH' | 'POST' | 'PUT';
+	body?: FormData | GenericValue | GenericValue[] | Buffer | URLSearchParams;
+	qs?: IDataObject;
+	arrayFormat?: 'indices' | 'brackets' | 'repeat' | 'comma';
+	auth?: {
+		username: string;
+		password: string;
+	};
+	disableFollowRedirect?: boolean;
+	encoding?: 'arraybuffer' | 'blob' | 'document' | 'json' | 'text' | 'stream';
+	skipSslCertificateValidation?: boolean;
+	returnFullResponse?: boolean;
+	proxy?: {
+		host: string;
+		port: number;
+		auth?: {
+			username: string;
+			password: string;
+		};
+		protocol?: string;
+	};
+	timeout?: number;
+	json?: boolean;
+}
+
+export type IN8nHttpResponse = IDataObject | Buffer | GenericValue | GenericValue[];
+
+export interface IN8nHttpFullResponse {
+	body: IN8nHttpResponse;
+	headers: IDataObject;
+	statusCode: number;
+	statusMessage: string;
+}
 
 export interface IExecuteFunctions {
 	continueOnFail(): boolean;
-	evaluateExpression(expression: string, itemIndex: number): NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[];
-	executeWorkflow(workflowInfo: IExecuteWorkflowInfo, inputData?: INodeExecutionData[]): Promise<any>; // tslint:disable-line:no-any
+	evaluateExpression(
+		expression: string,
+		itemIndex: number,
+	): NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[];
+	executeWorkflow(
+		workflowInfo: IExecuteWorkflowInfo,
+		inputData?: INodeExecutionData[],
+	): Promise<any>;
 	getContext(type: string): IContextObject;
-	getCredentials(type: string, itemIndex?: number): ICredentialDataDecryptedObject | undefined;
+	getCredentials(
+		type: string,
+		itemIndex?: number,
+	): Promise<ICredentialDataDecryptedObject | undefined>;
 	getInputData(inputIndex?: number, inputName?: string): INodeExecutionData[];
 	getMode(): WorkflowExecuteMode;
 	getNode(): INode;
-	getNodeParameter(parameterName: string, itemIndex: number, fallbackValue?: any): NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[] | object; //tslint:disable-line:no-any
+	getNodeParameter<T extends { resource: string }>(
+		parameterName: 'resource',
+		itemIndex?: number,
+	): T['resource'];
+	// getNodeParameter(parameterName: 'operation', itemIndex?: number): string;
+	getNodeParameter(
+		parameterName: string,
+		itemIndex: number,
+		fallbackValue?: any,
+	): NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[] | object;
 	getWorkflowDataProxy(itemIndex: number): IWorkflowDataProxyData;
 	getWorkflowStaticData(type: string): IDataObject;
 	getRestApiUrl(): string;
 	getTimezone(): string;
 	getWorkflow(): IWorkflowMetadata;
-	prepareOutputData(outputData: INodeExecutionData[], outputIndex?: number): Promise<INodeExecutionData[][]>;
+	prepareOutputData(
+		outputData: INodeExecutionData[],
+		outputIndex?: number,
+	): Promise<INodeExecutionData[][]>;
+	putExecutionToWait(waitTill: Date): Promise<void>;
+	sendMessageToUI(message: any): void; // tslint:disable-line:no-any
 	helpers: {
-		[key: string]: (...args: any[]) => any //tslint:disable-line:no-any
+		httpRequest(
+			requestOptions: IHttpRequestOptions,
+		): Promise<IN8nHttpResponse | IN8nHttpFullResponse>;
+		[key: string]: (...args: any[]) => any; // tslint:disable-line:no-any
 	};
 }
 
-
 export interface IExecuteSingleFunctions {
 	continueOnFail(): boolean;
-	evaluateExpression(expression: string, itemIndex: number | undefined): NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[];
+	evaluateExpression(
+		expression: string,
+		itemIndex: number | undefined,
+	): NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[];
 	getContext(type: string): IContextObject;
-	getCredentials(type: string): ICredentialDataDecryptedObject | undefined;
+	getCredentials(type: string): Promise<ICredentialDataDecryptedObject | undefined>;
 	getInputData(inputIndex?: number, inputName?: string): INodeExecutionData;
 	getMode(): WorkflowExecuteMode;
 	getNode(): INode;
-	getNodeParameter(parameterName: string, fallbackValue?: any): NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[] | object; //tslint:disable-line:no-any
+	getNodeParameter(
+		parameterName: string,
+		fallbackValue?: any,
+	): NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[] | object;
 	getRestApiUrl(): string;
 	getTimezone(): string;
 	getWorkflow(): IWorkflowMetadata;
 	getWorkflowDataProxy(): IWorkflowDataProxyData;
 	getWorkflowStaticData(type: string): IDataObject;
 	helpers: {
-		[key: string]: (...args: any[]) => any //tslint:disable-line:no-any
+		httpRequest(
+			requestOptions: IHttpRequestOptions,
+		): Promise<IN8nHttpResponse | IN8nHttpFullResponse>;
+		[key: string]: (...args: any[]) => any; // tslint:disable-line:no-any
 	};
 }
 
@@ -255,75 +398,116 @@ export interface IExecuteWorkflowInfo {
 	id?: string;
 }
 
+export interface ICredentialTestFunctions {
+	helpers: {
+		[key: string]: (...args: any[]) => any;
+	};
+}
+
 export interface ILoadOptionsFunctions {
-	getCredentials(type: string): ICredentialDataDecryptedObject | undefined;
+	getCredentials(type: string): Promise<ICredentialDataDecryptedObject | undefined>;
 	getNode(): INode;
-	getNodeParameter(parameterName: string, fallbackValue?: any): NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[] | object; //tslint:disable-line:no-any
-	getCurrentNodeParameter(parameterName: string): NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[] | object | undefined;
+	getNodeParameter(
+		parameterName: string,
+		fallbackValue?: any,
+	): NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[] | object;
+	getCurrentNodeParameter(
+		parameterName: string,
+	):
+		| NodeParameterValue
+		| INodeParameters
+		| NodeParameterValue[]
+		| INodeParameters[]
+		| object
+		| undefined;
 	getCurrentNodeParameters(): INodeParameters | undefined;
 	getTimezone(): string;
 	getRestApiUrl(): string;
 	helpers: {
-		[key: string]: ((...args: any[]) => any) | undefined; //tslint:disable-line:no-any
+		httpRequest(
+			requestOptions: IHttpRequestOptions,
+		): Promise<IN8nHttpResponse | IN8nHttpFullResponse>;
+		[key: string]: ((...args: any[]) => any) | undefined; // tslint:disable-line:no-any
 	};
 }
 
 export interface IHookFunctions {
-	getCredentials(type: string): ICredentialDataDecryptedObject | undefined;
+	getCredentials(type: string): Promise<ICredentialDataDecryptedObject | undefined>;
 	getMode(): WorkflowExecuteMode;
 	getActivationMode(): WorkflowActivateMode;
 	getNode(): INode;
 	getNodeWebhookUrl: (name: string) => string | undefined;
-	getNodeParameter(parameterName: string, fallbackValue?: any): NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[] | object; //tslint:disable-line:no-any
+	getNodeParameter(
+		parameterName: string,
+		fallbackValue?: any,
+	): NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[] | object;
 	getTimezone(): string;
 	getWebhookDescription(name: string): IWebhookDescription | undefined;
 	getWebhookName(): string;
 	getWorkflow(): IWorkflowMetadata;
 	getWorkflowStaticData(type: string): IDataObject;
 	helpers: {
-		[key: string]: (...args: any[]) => any //tslint:disable-line:no-any
+		httpRequest(
+			requestOptions: IHttpRequestOptions,
+		): Promise<IN8nHttpResponse | IN8nHttpFullResponse>;
+		[key: string]: (...args: any[]) => any; // tslint:disable-line:no-any
 	};
 }
 
 export interface IPollFunctions {
 	__emit(data: INodeExecutionData[][]): void;
-	getCredentials(type: string): ICredentialDataDecryptedObject | undefined;
+	getCredentials(type: string): Promise<ICredentialDataDecryptedObject | undefined>;
 	getMode(): WorkflowExecuteMode;
 	getActivationMode(): WorkflowActivateMode;
 	getNode(): INode;
-	getNodeParameter(parameterName: string, fallbackValue?: any): NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[] | object; //tslint:disable-line:no-any
+	getNodeParameter(
+		parameterName: string,
+		fallbackValue?: any,
+	): NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[] | object;
 	getRestApiUrl(): string;
 	getTimezone(): string;
 	getWorkflow(): IWorkflowMetadata;
 	getWorkflowStaticData(type: string): IDataObject;
 	helpers: {
-		[key: string]: (...args: any[]) => any //tslint:disable-line:no-any
+		httpRequest(
+			requestOptions: IHttpRequestOptions,
+		): Promise<IN8nHttpResponse | IN8nHttpFullResponse>;
+		[key: string]: (...args: any[]) => any; // tslint:disable-line:no-any
 	};
 }
 
 export interface ITriggerFunctions {
 	emit(data: INodeExecutionData[][]): void;
-	getCredentials(type: string): ICredentialDataDecryptedObject | undefined;
+	getCredentials(type: string): Promise<ICredentialDataDecryptedObject | undefined>;
 	getMode(): WorkflowExecuteMode;
 	getActivationMode(): WorkflowActivateMode;
 	getNode(): INode;
-	getNodeParameter(parameterName: string, fallbackValue?: any): NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[] | object; //tslint:disable-line:no-any
+	getNodeParameter(
+		parameterName: string,
+		fallbackValue?: any,
+	): NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[] | object;
 	getRestApiUrl(): string;
 	getTimezone(): string;
 	getWorkflow(): IWorkflowMetadata;
 	getWorkflowStaticData(type: string): IDataObject;
 	helpers: {
-		[key: string]: (...args: any[]) => any //tslint:disable-line:no-any
+		httpRequest(
+			requestOptions: IHttpRequestOptions,
+		): Promise<IN8nHttpResponse | IN8nHttpFullResponse>;
+		[key: string]: (...args: any[]) => any; // tslint:disable-line:no-any
 	};
 }
 
 export interface IWebhookFunctions {
 	getBodyData(): IDataObject;
-	getCredentials(type: string): ICredentialDataDecryptedObject | undefined;
+	getCredentials(type: string): Promise<ICredentialDataDecryptedObject | undefined>;
 	getHeaderData(): object;
 	getMode(): WorkflowExecuteMode;
 	getNode(): INode;
-	getNodeParameter(parameterName: string, fallbackValue?: any): NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[] | object; //tslint:disable-line:no-any
+	getNodeParameter(
+		parameterName: string,
+		fallbackValue?: any,
+	): NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[] | object;
 	getNodeWebhookUrl: (name: string) => string | undefined;
 	getParamsData(): object;
 	getQueryData(): object;
@@ -333,9 +517,15 @@ export interface IWebhookFunctions {
 	getWebhookName(): string;
 	getWorkflowStaticData(type: string): IDataObject;
 	getWorkflow(): IWorkflowMetadata;
-	prepareOutputData(outputData: INodeExecutionData[], outputIndex?: number): Promise<INodeExecutionData[][]>;
+	prepareOutputData(
+		outputData: INodeExecutionData[],
+		outputIndex?: number,
+	): Promise<INodeExecutionData[][]>;
 	helpers: {
-		[key: string]: (...args: any[]) => any //tslint:disable-line:no-any
+		httpRequest(
+			requestOptions: IHttpRequestOptions,
+		): Promise<IN8nHttpResponse | IN8nHttpFullResponse>;
+		[key: string]: (...args: any[]) => any; // tslint:disable-line:no-any
 	};
 }
 
@@ -349,6 +539,7 @@ export interface INode {
 	type: string;
 	position: [number, number];
 	disabled?: boolean;
+	notes?: string;
 	notesInFlow?: boolean;
 	retryOnFail?: boolean;
 	maxTries?: number;
@@ -361,31 +552,25 @@ export interface INode {
 	webhookId?: string;
 }
 
-
 export interface INodes {
 	[key: string]: INode;
 }
 
-
 export interface IObservableObject {
-	[key: string]: any; // tslint:disable-line:no-any
+	[key: string]: any;
 	__dataChanged: boolean;
 }
-
 
 export interface IBinaryKeyData {
 	[key: string]: IBinaryData;
 }
 
 export interface INodeExecutionData {
-	[key: string]: IDataObject | IBinaryKeyData | undefined;
-	// TODO: Rename this one as json does not really fit as it is not json (which is a string) it is actually a JS object
+	[key: string]: IDataObject | IBinaryKeyData | NodeApiError | NodeOperationError | undefined;
 	json: IDataObject;
-	// json: object;
-	// json?: object;
 	binary?: IBinaryKeyData;
+	error?: NodeApiError | NodeOperationError;
 }
-
 
 export interface INodeExecuteFunctions {
 	getExecutePollFunctions: IGetExecutePollFunctions;
@@ -396,7 +581,6 @@ export interface INodeExecuteFunctions {
 	getExecuteWebhookFunctions: IGetExecuteWebhookFunctions;
 }
 
-
 // The values a node property can have
 export type NodeParameterValue = string | number | boolean | undefined | null;
 
@@ -405,38 +589,48 @@ export interface INodeParameters {
 	[key: string]: NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[];
 }
 
-
-export type NodePropertyTypes = 'boolean' | 'collection' | 'color' | 'dateTime' | 'fixedCollection' | 'hidden' | 'json' | 'multiOptions' | 'number' | 'options' | 'string';
+export type NodePropertyTypes =
+	| 'boolean'
+	| 'collection'
+	| 'color'
+	| 'dateTime'
+	| 'fixedCollection'
+	| 'hidden'
+	| 'json'
+	| 'notice'
+	| 'multiOptions'
+	| 'number'
+	| 'options'
+	| 'string';
 
 export type EditorTypes = 'code';
 
 export interface INodePropertyTypeOptions {
 	alwaysOpenEditWindow?: boolean; // Supported by: string
-	editor?: EditorTypes;        // Supported by: string
-	loadOptionsDependsOn?: string[];  // Supported by: options
-	loadOptionsMethod?: string;  // Supported by: options
-	maxValue?: number;           // Supported by: number
-	minValue?: number;           // Supported by: number
-	multipleValues?: boolean;    // Supported by: <All>
-	multipleValueButtonText?: string;    // Supported when "multipleValues" set to true
-	numberPrecision?: number;    // Supported by: number
-	numberStepSize?: number;     // Supported by: number
-	password?: boolean;          // Supported by: string
-	rows?: number;               // Supported by: string
-	showAlpha?: boolean;         // Supported by: color
-	sortable?: boolean;          // Supported when "multipleValues" set to true
+	editor?: EditorTypes; // Supported by: string
+	loadOptionsDependsOn?: string[]; // Supported by: options
+	loadOptionsMethod?: string; // Supported by: options
+	maxValue?: number; // Supported by: number
+	minValue?: number; // Supported by: number
+	multipleValues?: boolean; // Supported by: <All>
+	multipleValueButtonText?: string; // Supported when "multipleValues" set to true
+	numberPrecision?: number; // Supported by: number
+	numberStepSize?: number; // Supported by: number
+	password?: boolean; // Supported by: string
+	rows?: number; // Supported by: string
+	showAlpha?: boolean; // Supported by: color
+	sortable?: boolean; // Supported when "multipleValues" set to true
 	[key: string]: boolean | number | string | EditorTypes | undefined | string[];
 }
 
 export interface IDisplayOptions {
 	hide?: {
-		[key: string]: NodeParameterValue[];
+		[key: string]: NodeParameterValue[] | undefined;
 	};
 	show?: {
-		[key: string]: NodeParameterValue[];
+		[key: string]: NodeParameterValue[] | undefined;
 	};
 }
-
 
 export interface INodeProperties {
 	displayName: string;
@@ -452,8 +646,6 @@ export interface INodeProperties {
 	noDataExpression?: boolean;
 	required?: boolean;
 }
-
-
 export interface INodePropertyOptions {
 	name: string;
 	value: string | number;
@@ -496,15 +688,39 @@ export interface INodeType {
 	methods?: {
 		loadOptions?: {
 			[key: string]: (this: ILoadOptionsFunctions) => Promise<INodePropertyOptions[]>;
-		}
+		};
+		credentialTest?: {
+			// Contains a group of functins that test credentials.
+			[functionName: string]: (
+				this: ICredentialTestFunctions,
+				credential: ICredentialsDecrypted,
+			) => Promise<NodeCredentialTestResult>;
+		};
 	};
 	webhookMethods?: {
 		[key: string]: IWebhookSetupMethods;
 	};
 }
 
-export type WebhookSetupMethodNames = 'checkExists' | 'create' | 'delete';
+export interface INodeVersionedType {
+	nodeVersions: {
+		[key: number]: INodeType;
+	};
+	currentVersion: number;
+	description: INodeTypeBaseDescription;
+	getNodeType: (version?: number) => INodeType;
+}
+export interface NodeCredentialTestResult {
+	status: 'OK' | 'Error';
+	message: string;
+}
 
+export interface NodeCredentialTestRequest {
+	nodeToTestWith?: string; // node name i.e. slack
+	credentials: ICredentialsDecrypted;
+}
+
+export type WebhookSetupMethodNames = 'checkExists' | 'create' | 'delete';
 
 export interface IWebhookSetupMethods {
 	[key: string]: ((this: IHookFunctions) => Promise<boolean>) | undefined;
@@ -513,11 +729,11 @@ export interface IWebhookSetupMethods {
 	delete?: (this: IHookFunctions) => Promise<boolean>;
 }
 
-
 export interface INodeCredentialDescription {
 	name: string;
 	required?: boolean;
 	displayOptions?: IDisplayOptions;
+	testedBy?: string; // Name of a function inside `loadOptions.credentialTest`
 }
 
 export type INodeIssueTypes = 'credentials' | 'execution' | 'parameters' | 'typeUnknown';
@@ -544,15 +760,21 @@ export interface IWorfklowIssues {
 	[key: string]: INodeIssues;
 }
 
-export interface INodeTypeDescription {
+export interface INodeTypeBaseDescription {
 	displayName: string;
 	name: string;
 	icon?: string;
 	group: string[];
-	version: number;
 	description: string;
-	defaults: INodeParameters;
 	documentationUrl?: string;
+	subtitle?: string;
+	defaultVersion?: number;
+	codex?: CodexData;
+}
+
+export interface INodeTypeDescription extends INodeTypeBaseDescription {
+	version: number;
+	defaults: INodeParameters;
 	inputs: string[];
 	inputNames?: string[];
 	outputs: string[];
@@ -561,7 +783,6 @@ export interface INodeTypeDescription {
 	credentials?: INodeCredentialDescription[];
 	maxNodes?: number; // How many nodes of that type can be created in a workflow
 	polling?: boolean;
-	subtitle?: string;
 	hooks?: {
 		[key: string]: INodeHookDescription[] | undefined;
 		activate?: INodeHookDescription[];
@@ -595,19 +816,25 @@ export interface IWebhookDescription {
 	responsePropertyName?: string;
 	responseMode?: WebhookResponseMode | string;
 	responseData?: WebhookResponseData | string;
+	restartWebhook?: boolean;
 }
 
 export interface IWorkflowDataProxyData {
-	$binary: any; // tslint:disable-line:no-any
-	$data: any; // tslint:disable-line:no-any
-	$env: any; // tslint:disable-line:no-any
-	$evaluateExpression: any; // tslint:disable-line:no-any
-	$item: any; // tslint:disable-line:no-any
-	$items: any; // tslint:disable-line:no-any
-	$json: any; // tslint:disable-line:no-any
-	$node: any; // tslint:disable-line:no-any
-	$parameter: any; // tslint:disable-line:no-any
-	$workflow: any; // tslint:disable-line:no-any
+	$binary: any;
+	$data: any;
+	$env: any;
+	$evaluateExpression: any;
+	$item: any;
+	$items: any;
+	$json: any;
+	$node: any;
+	$parameter: any;
+	$position: any;
+	$workflow: any;
+}
+
+export interface IWorkflowDataProxyAdditionalKeys {
+	[key: string]: string | number | undefined;
 }
 
 export interface IWorkflowMetadata {
@@ -620,7 +847,7 @@ export type WebhookHttpMethod = 'GET' | 'POST' | 'HEAD' | 'OPTIONS';
 
 export interface IWebhookResponseData {
 	workflowData?: INodeExecutionData[][];
-	webhookResponse?: any; // tslint:disable-line:no-any
+	webhookResponse?: any;
 	noWebhookResponse?: boolean;
 }
 
@@ -630,14 +857,14 @@ export type WebhookResponseMode = 'onReceived' | 'lastNode';
 export interface INodeTypes {
 	nodeTypes: INodeTypeData;
 	init(nodeTypes?: INodeTypeData): Promise<void>;
-	getAll(): INodeType[];
-	getByName(nodeType: string): INodeType | undefined;
+	getAll(): Array<INodeType | INodeVersionedType>;
+	getByName(nodeType: string): INodeType | INodeVersionedType | undefined;
+	getByNameAndVersion(nodeType: string, version?: number): INodeType | undefined;
 }
-
 
 export interface INodeTypeData {
 	[key: string]: {
-		type: INodeType;
+		type: INodeType | INodeVersionedType;
 		sourcePath: string;
 	};
 }
@@ -646,10 +873,10 @@ export interface IRun {
 	data: IRunExecutionData;
 	finished?: boolean;
 	mode: WorkflowExecuteMode;
+	waitTill?: Date;
 	startedAt: Date;
 	stoppedAt?: Date;
 }
-
 
 // Contains all the data which is needed to execute a workflow and so also to
 // start restart it again after it did fail.
@@ -660,7 +887,7 @@ export interface IRunExecutionData {
 		runNodeFilter?: string[];
 	};
 	resultData: {
-		error?: IExecutionError;
+		error?: ExecutionError;
 		runData: IRunData;
 		lastNodeExecuted?: string;
 	};
@@ -669,23 +896,21 @@ export interface IRunExecutionData {
 		nodeExecutionStack: IExecuteData[];
 		waitingExecution: IWaitingForExecution;
 	};
+	waitTill?: Date;
 }
-
 
 export interface IRunData {
 	// node-name: result-data
 	[key: string]: ITaskData[];
 }
 
-
 // The data that gets returned when a node runs
 export interface ITaskData {
 	startTime: number;
 	executionTime: number;
 	data?: ITaskDataConnections;
-	error?: IExecutionError;
+	error?: ExecutionError;
 }
-
 
 // The data for al the different kind of connectons (like main) and all the indexes
 export interface ITaskDataConnections {
@@ -695,20 +920,17 @@ export interface ITaskDataConnections {
 	[key: string]: Array<INodeExecutionData[] | null>;
 }
 
-
-
 // Keeps data while workflow gets executed and allows when provided to restart execution
 export interface IWaitingForExecution {
 	// Node name
 	[key: string]: {
 		// Run index
-		[key: number]: ITaskDataConnections
+		[key: number]: ITaskDataConnections;
 	};
 }
 
-
 export interface IWorkflowBase {
-	id?: number | string | any; // tslint:disable-line:no-any
+	id?: number | string | any;
 	name: string;
 	active: boolean;
 	createdAt: Date;
@@ -727,32 +949,51 @@ export interface IWorkflowCredentials {
 	};
 }
 
-
 export interface IWorkflowExecuteHooks {
-	[key: string]: Array<((...args: any[]) => Promise<void>)> | undefined; // tslint:disable-line:no-any
-	nodeExecuteAfter?: Array<((nodeName: string, data: ITaskData, executionData: IRunExecutionData) => Promise<void>)>;
-	nodeExecuteBefore?: Array<((nodeName: string) => Promise<void>)>;
-	workflowExecuteAfter?: Array<((data: IRun, newStaticData: IDataObject) => Promise<void>)>;
-	workflowExecuteBefore?: Array<((workflow: Workflow, data: IRunExecutionData) => Promise<void>)>;
+	[key: string]: Array<(...args: any[]) => Promise<void>> | undefined;
+	nodeExecuteAfter?: Array<
+		(nodeName: string, data: ITaskData, executionData: IRunExecutionData) => Promise<void>
+	>;
+	nodeExecuteBefore?: Array<(nodeName: string) => Promise<void>>;
+	workflowExecuteAfter?: Array<(data: IRun, newStaticData: IDataObject) => Promise<void>>;
+	workflowExecuteBefore?: Array<(workflow: Workflow, data: IRunExecutionData) => Promise<void>>;
 }
 
 export interface IWorkflowExecuteAdditionalData {
-	credentials: IWorkflowCredentials;
 	credentialsHelper: ICredentialsHelper;
 	encryptionKey: string;
-	executeWorkflow: (workflowInfo: IExecuteWorkflowInfo, additionalData: IWorkflowExecuteAdditionalData, inputData?: INodeExecutionData[], parentExecutionId?: string, loadedWorkflowData?: IWorkflowBase, loadedRunData?: any) => Promise<any>; // tslint:disable-line:no-any
+	executeWorkflow: (
+		workflowInfo: IExecuteWorkflowInfo,
+		additionalData: IWorkflowExecuteAdditionalData,
+		inputData?: INodeExecutionData[],
+		parentExecutionId?: string,
+		loadedWorkflowData?: IWorkflowBase,
+		loadedRunData?: any,
+	) => Promise<any>;
 	// hooks?: IWorkflowExecuteHooks;
+	executionId?: string;
 	hooks?: WorkflowHooks;
 	httpResponse?: express.Response;
 	httpRequest?: express.Request;
 	restApiUrl: string;
+	sendMessageToUI?: (source: string, message: any) => void;
 	timezone: string;
 	webhookBaseUrl: string;
+	webhookWaitingBaseUrl: string;
 	webhookTestBaseUrl: string;
 	currentNodeParameters?: INodeParameters;
+	executionTimeoutTimestamp?: number;
 }
 
-export type WorkflowExecuteMode = 'cli' | 'error' | 'integrated' | 'internal' | 'manual' | 'retry' | 'trigger' | 'webhook';
+export type WorkflowExecuteMode =
+	| 'cli'
+	| 'error'
+	| 'integrated'
+	| 'internal'
+	| 'manual'
+	| 'retry'
+	| 'trigger'
+	| 'webhook';
 export type WorkflowActivateMode = 'init' | 'create' | 'update' | 'activate' | 'manual';
 
 export interface IWorkflowHooksOptionalParameters {
@@ -761,7 +1002,47 @@ export interface IWorkflowHooksOptionalParameters {
 	sessionId?: string;
 }
 
-
 export interface IWorkflowSettings {
 	[key: string]: IDataObject | string | number | boolean | undefined;
 }
+
+export type LogTypes = 'debug' | 'verbose' | 'info' | 'warn' | 'error';
+
+export interface ILogger {
+	log: (type: LogTypes, message: string, meta?: object) => void;
+	debug: (message: string, meta?: object) => void;
+	verbose: (message: string, meta?: object) => void;
+	info: (message: string, meta?: object) => void;
+	warn: (message: string, meta?: object) => void;
+	error: (message: string, meta?: object) => void;
+}
+
+export interface IStatusCodeMessages {
+	[key: string]: string;
+}
+
+export type CodexData = {
+	categories?: string[];
+	subcategories?: { [category: string]: string[] };
+	alias?: string[];
+};
+
+export type JsonValue = string | number | boolean | null | JsonObject | JsonValue[];
+
+export type JsonObject = { [key: string]: JsonValue };
+
+export type AllEntities<M> = M extends { [key: string]: string } ? Entity<M, keyof M> : never;
+
+export type Entity<M, K> = K extends keyof M ? { resource: K; operation: M[K] } : never;
+
+export type PropertiesOf<M extends { resource: string; operation: string }> = Array<
+	Omit<INodeProperties, 'displayOptions'> & {
+		displayOptions?: {
+			[key in 'show' | 'hide']?: {
+				resource?: Array<M['resource']>;
+				operation?: Array<M['operation']>;
+				[otherKey: string]: NodeParameterValue[] | undefined;
+			};
+		};
+	}
+>;

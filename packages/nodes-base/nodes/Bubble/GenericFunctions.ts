@@ -6,6 +6,7 @@ import {
 import {
 	IDataObject,
 	ILoadOptionsFunctions,
+	NodeApiError,
 } from 'n8n-workflow';
 
 import {
@@ -23,7 +24,7 @@ export async function bubbleApiRequest(
 	qs: IDataObject,
 ) {
 
-	const { apiToken, appName, domain, environment, hosting } = this.getCredentials('bubbleApi') as {
+	const { apiToken, appName, domain, environment, hosting } = await this.getCredentials('bubbleApi') as {
 		apiToken: string,
 		appName: string,
 		domain: string,
@@ -57,11 +58,7 @@ export async function bubbleApiRequest(
 	try {
 		return await this.helpers.request!(options);
 	} catch (error) {
-		if (error?.response?.body?.body?.message) {
-			const errorMessage = error.response.body.body.message;
-			throw new Error(`Bubble.io error response [${error.statusCode}]: ${errorMessage}`);
-		}
-		throw error;
+		throw new NodeApiError(this.getNode(), error);
 	}
 }
 

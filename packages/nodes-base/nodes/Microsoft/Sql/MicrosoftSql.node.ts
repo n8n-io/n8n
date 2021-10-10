@@ -7,6 +7,7 @@ import {
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
+	NodeOperationError,
 } from 'n8n-workflow';
 
 import {
@@ -28,6 +29,7 @@ import {
 	extractUpdateCondition,
 	extractUpdateSet,
 	extractValues,
+	formatColumns,
 } from './GenericFunctions';
 
 export class MicrosoftSql implements INodeType {
@@ -37,7 +39,7 @@ export class MicrosoftSql implements INodeType {
 		icon: 'file:mssql.svg',
 		group: ['input'],
 		version: 1,
-		description: 'Gets, add and update data in Microsoft SQL.',
+		description: 'Get, add and update data in Microsoft SQL',
 		defaults: {
 			name: 'Microsoft SQL',
 			color: '#bcbcbd',
@@ -89,7 +91,7 @@ export class MicrosoftSql implements INodeType {
 				name: 'query',
 				type: 'string',
 				typeOptions: {
-					rows: 5,
+					alwaysOpenEditWindow: true,
 				},
 				displayOptions: {
 					show: {
@@ -212,10 +214,10 @@ export class MicrosoftSql implements INodeType {
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
-		const credentials = this.getCredentials('microsoftSql');
+		const credentials = await this.getCredentials('microsoftSql');
 
 		if (credentials === undefined) {
-			throw new Error('No credentials got returned!');
+			throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
 		}
 
 		const config = {
@@ -225,9 +227,11 @@ export class MicrosoftSql implements INodeType {
 			user: credentials.user as string,
 			password: credentials.password as string,
 			domain: credentials.domain ? (credentials.domain as string) : undefined,
-			connectTimeout: credentials.connectTimeout as number,
+			connectionTimeout: credentials.connectTimeout as number,
+			requestTimeout: credentials.requestTimeout as number,
 			options: {
 				encrypt: credentials.tls as boolean,
+				enableArithAbort: false,
 			},
 		};
 
@@ -276,11 +280,10 @@ export class MicrosoftSql implements INodeType {
 							const values = insertValues
 								.map((item: IDataObject) => extractValues(item))
 								.join(',');
-
 							return pool
 								.request()
 								.query(
-									`INSERT INTO ${table}(${columnString}) VALUES ${values};`,
+									`INSERT INTO ${table}(${formatColumns(columnString)}) VALUES ${values};`,
 								);
 						});
 					},
@@ -363,7 +366,7 @@ export class MicrosoftSql implements INodeType {
 									return pool
 										.request()
 										.query(
-											`DELETE FROM ${table} WHERE ${deleteKey} IN ${extractDeleteValues(
+											`DELETE FROM ${table} WHERE "${deleteKey}" IN ${extractDeleteValues(
 												deleteValues,
 												deleteKey,
 											)};`,
@@ -387,14 +390,14 @@ export class MicrosoftSql implements INodeType {
 				} as IDataObject);
 			} else {
 				await pool.close();
-				throw new Error(`The operation "${operation}" is not supported!`);
+				throw new NodeOperationError(this.getNode(), `The operation "${operation}" is not supported!`);
 			}
-		} catch (err) {
+		} catch (error) {
 			if (this.continueOnFail() === true) {
 				returnItems = items;
 			} else {
 				await pool.close();
-				throw err;
+				throw error;
 			}
 		}
 

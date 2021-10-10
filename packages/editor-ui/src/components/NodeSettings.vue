@@ -4,10 +4,10 @@
 			<span v-if="node">
 				<display-with-change :key-name="'name'" @valueChanged="valueChanged"></display-with-change>
 				<a v-if="nodeType" :href="'http://n8n.io/nodes/' + nodeType.name" target="_blank" class="node-info">
-					<el-tooltip class="clickable" placement="top" effect="light">
+					<n8n-tooltip class="clickable" placement="top" >
 						<div slot="content" v-html="'<strong>Node Description:</strong><br />' + nodeTypeDescription + '<br /><br /><strong>Click the \'?\' icon to open this node on n8n.io </strong>'"></div>
 						<font-awesome-icon icon="question-circle" />
-					</el-tooltip>
+					</n8n-tooltip>
 				</a>
 			</span>
 			<span v-else>No node active</span>
@@ -37,9 +37,6 @@
 <script lang="ts">
 import Vue from 'vue';
 import {
-	INodeIssues,
-	INodeIssueData,
-	INodeIssueObjectProperty,
 	INodeTypeDescription,
 	INodeParameters,
 	INodeProperties,
@@ -59,12 +56,14 @@ import NodeCredentials from '@/components/NodeCredentials.vue';
 import NodeWebhooks from '@/components/NodeWebhooks.vue';
 import { get, set, unset } from 'lodash';
 
+import { externalHooks } from '@/components/mixins/externalHooks';
 import { genericHelpers } from '@/components/mixins/genericHelpers';
 import { nodeHelpers } from '@/components/mixins/nodeHelpers';
 
 import mixins from 'vue-typed-mixins';
 
 export default mixins(
+	externalHooks,
 	genericHelpers,
 	nodeHelpers,
 )
@@ -80,10 +79,8 @@ export default mixins(
 		},
 		computed: {
 			nodeType (): INodeTypeDescription | null {
-				const activeNode = this.node;
-
 				if (this.node) {
-					return this.$store.getters.nodeType(this.node.type);
+					return this.$store.getters.nodeType(this.node.type, this.node.typeVersion);
 				}
 
 				return null;
@@ -323,6 +320,8 @@ export default mixins(
 
 				// Update the issues
 				this.updateNodeCredentialIssues(node);
+
+				this.$externalHooks().run('nodeSettings.credentialSelected', { updateInformation });
 			},
 			valueChanged (parameterData: IUpdateInformation) {
 				let newValue: NodeParameterValue;
@@ -357,6 +356,7 @@ export default mixins(
 
 					// Get only the parameters which are different to the defaults
 					let nodeParameters = NodeHelpers.getNodeParameters(nodeType.properties, node.parameters, false, false);
+					const oldNodeParameters = Object.assign({}, nodeParameters);
 
 					// Copy the data because it is the data of vuex so make sure that
 					// we do not edit it directly
@@ -404,7 +404,10 @@ export default mixins(
 						name: node.name,
 						value: nodeParameters,
 					};
+
 					this.$store.commit('setNodeParameters', updateInformation);
+
+					this.$externalHooks().run('nodeSettings.valueChanged', { parameterPath, newValue, parameters: this.parameters, oldNodeParameters });
 
 					this.updateNodeParameterIssues(node, nodeType);
 					this.updateNodeCredentialIssues(node);
@@ -508,34 +511,17 @@ export default mixins(
 <style lang="scss">
 
 .node-settings {
-	position: absolute;
-	left: 0;
-	width: 350px;
-	height: 100%;
-	border: none;
-	z-index: 200;
-	font-size: 0.8em;
-	color: #555;
-	border-radius: 2px 0 0 2px;
-
-	textarea {
-		font-size: 0.9em;
-		line-height: 1.5em;
-		margin: 0.2em 0;
-
-	}
-	textarea:hover {
-		line-height: 1.5em;
-	}
+	overflow: hidden;
+	min-width: 350px;
+	max-width: 350px;
+	font-size: var(--font-size-s);
 
 	.header-side-menu {
 		padding: 1em 0 1em 1.8em;
-		font-size: 1.35em;
+		font-size: var(--font-size-l);
 		background-color: $--custom-window-sidebar-top;
-		color: #555;
 
 		.node-info {
-			color: #555;
 			display: none;
 			padding-left: 0.5em;
 			font-size: 0.8em;
@@ -553,18 +539,19 @@ export default mixins(
 	}
 
 	.node-parameters-wrapper {
-		height: calc(100% - 110px);
+		height: 100%;
+		font-size: .9em;
 
 		.el-tabs__header {
 			background-color: #fff5f2;
-			line-height: 2em;
 		}
 
 		.el-tabs {
 			height: 100%;
 			.el-tabs__content {
-				height: calc(100% - 17px);
 				overflow-y: auto;
+				height: 100%;
+				padding-bottom: 180px;
 
 				.el-tab-pane {
 					margin: 0 1em;
@@ -576,51 +563,28 @@ export default mixins(
 			padding-bottom: 1em;
 		}
 
-		.add-option > .el-input input::placeholder {
-			color: #fff;
-			font-weight: 600;
+		.add-option {
+			i.el-select__caret {
+				color: var(--color-foreground-xlight);
+			}
+			.el-input .el-input__inner {
+				&,
+				&:hover,
+				&:focus {
+					border-radius: 20px;
+					color: var(--color-foreground-xlight);
+					font-weight: 600;
+					background-color: var(--color-primary);
+					border-color: var(--color-primary);
+					text-align: center;
+				}
+
+				&::placeholder {
+					color: var(--color-foreground-xlight);
+					opacity: 1; /** Firefox */
+				}
+			}
 		}
-
-		.el-button,
-		.add-option > .el-input .el-input__inner,
-		.add-option > .el-input .el-input__inner:hover
-		{
-			background-color: $--color-primary;
-			color: #fff;
-			text-align: center;
-			height: 38px;
-		}
-
-		.el-button,
-		.add-option > .el-input .el-input__inner
-		{
-			border: 1px solid $--color-primary;
-			border-radius: 17px;
-			height: 38px;
-		}
-	}
-
-	.el-input-number,
-	input.el-input__inner {
-		font-size: 0.9em;
-		line-height: 28px;
-		height: 28px;
-	}
-	.el-input-number {
-		padding: 0 10px;
-	}
-
-	.el-input--prefix .el-input__inner {
-		padding: 0 28px;
-	}
-
-	.el-input__prefix {
-		left: 2px;
-		top: 1px;
-	}
-
-	.el-select.add-option .el-input .el-select__caret {
-		color: #fff;
 	}
 }
 
@@ -647,14 +611,15 @@ export default mixins(
 }
 
 .parameter-wrapper {
-	line-height: 2.7em;
 	padding: 0 1em;
 }
+
 .parameter-name {
-	line-height: 2.7em;
+	line-height: 1.5;
 	white-space: nowrap;
 	overflow: hidden;
 	text-overflow: ellipsis;
+	align-self: center;
 }
 
 .color-reset-button-wrapper {

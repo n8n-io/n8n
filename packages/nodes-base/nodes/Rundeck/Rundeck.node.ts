@@ -4,6 +4,7 @@ import {
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
+	NodeOperationError,
 } from 'n8n-workflow';
 import { RundeckApi } from './RundeckApi';
 
@@ -162,9 +163,11 @@ export class Rundeck implements INodeType {
 
 		const operation = this.getNodeParameter('operation', 0) as string;
 		const resource = this.getNodeParameter('resource', 0) as string;
+		const rundeckApi = new RundeckApi(this);
+		await rundeckApi.init();
+
 
 		for (let i = 0; i < length; i++) {
-			const rundeckApi = new RundeckApi(this);
 
 			if (resource === 'job') {
 				if (operation === 'execute') {
@@ -185,10 +188,10 @@ export class Rundeck implements INodeType {
 
 					returnData.push(response);
 				} else {
-					throw new Error(`The operation "${operation}" is not supported!`);
+					throw new NodeOperationError(this.getNode(), `The operation "${operation}" is not supported!`);
 				}
 			} else {
-				throw new Error(`The resource "${resource}" is not supported!`);
+				throw new NodeOperationError(this.getNode(), `The resource "${resource}" is not supported!`);
 			}
 		}
 

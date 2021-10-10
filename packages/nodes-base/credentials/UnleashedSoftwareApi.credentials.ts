@@ -1,23 +1,23 @@
 import {
 	ICredentialType,
-	NodePropertyTypes,
+	INodeProperties,
 } from 'n8n-workflow';
 
 export class UnleashedSoftwareApi implements ICredentialType {
 	name = 'unleashedSoftwareApi';
 	displayName = 'Unleashed API';
 	documentationUrl = 'unleashedSoftware';
-	properties = [
+	properties: INodeProperties[] = [
 		{
 			displayName: 'API ID',
 			name: 'apiId',
-			type: 'string' as NodePropertyTypes,
+			type: 'string',
 			default: '',
 		},
 		{
 			displayName: 'API Key',
 			name: 'apiKey',
-			type: 'string' as NodePropertyTypes,
+			type: 'string',
 			default: '',
 			typeOptions: {
 				password: true,

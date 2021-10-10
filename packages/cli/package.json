@@ -1,6 +1,6 @@
 {
   "name": "n8n",
-  "version": "0.113.0",
+  "version": "0.142.0",
   "description": "n8n Workflow Automation Tool",
   "license": "SEE LICENSE IN LICENSE.md",
   "homepage": "https://n8n.io",
@@ -21,14 +21,15 @@
   "scripts": {
     "build": "tsc",
     "dev": "concurrently -k -n \"TypeScript,Node\" -c \"yellow.bold,cyan.bold\" \"npm run watch\" \"nodemon\"",
+    "format": "cd ../.. && node_modules/prettier/bin-prettier.js packages/cli/**/**.ts --write",
+    "lint": "cd ../.. && node_modules/eslint/bin/eslint.js packages/cli",
+    "lintfix": "cd ../.. && node_modules/eslint/bin/eslint.js packages/cli --fix",
     "postpack": "rm -f oclif.manifest.json",
     "prepack": "echo \"Building project...\" && rm -rf dist && tsc -b && oclif-dev manifest",
     "start": "run-script-os",
     "start:default": "cd bin && ./n8n",
     "start:windows": "cd bin && n8n",
     "test": "jest",
-    "tslint": "tslint -p tsconfig.json -c tslint.json",
-    "tslintfix": "tslint --fix -p tsconfig.json -c tslint.json",
     "watch": "tsc --watch",
     "typeorm": "ts-node ./node_modules/typeorm/cli.js"
   },
@@ -44,7 +45,7 @@
     "workflow"
   ],
   "engines": {
-    "node": ">=12.0.0"
+    "node": ">=14.0.0"
   },
   "files": [
     "bin",
@@ -55,7 +56,7 @@
   "devDependencies": {
     "@oclif/dev-cli": "^1.22.2",
     "@types/basic-auth": "^1.1.2",
-    "@types/bcryptjs": "^2.4.1",
+    "@types/bcryptjs": "^2.4.2",
     "@types/bull": "^3.3.10",
     "@types/compression": "1.0.1",
     "@types/connect-history-api-fallback": "^1.3.1",
@@ -65,7 +66,7 @@
     "@types/jest": "^26.0.13",
     "@types/localtunnel": "^1.9.0",
     "@types/lodash.get": "^4.4.6",
-    "@types/node": "14.0.27",
+    "@types/node": "^14.14.40",
     "@types/open": "^6.1.0",
     "@types/parseurl": "^1.3.1",
     "@types/request-promise-native": "~1.0.15",
@@ -77,17 +78,20 @@
     "ts-jest": "^26.3.0",
     "ts-node": "^8.9.1",
     "tslint": "^6.1.2",
-    "typescript": "~3.9.7"
+    "typescript": "~4.3.5"
   },
   "dependencies": {
     "@oclif/command": "^1.5.18",
     "@oclif/errors": "^1.2.2",
-    "@types/jsonwebtoken": "^8.3.4",
+    "@types/json-diff": "^0.5.1",
+    "@types/jsonwebtoken": "^8.5.2",
     "basic-auth": "^2.0.1",
     "bcryptjs": "^2.4.3",
     "body-parser": "^1.18.3",
-    "body-parser-xml": "^1.1.0",
+    "body-parser-xml": "^2.0.3",
     "bull": "^3.19.0",
+    "callsites": "^3.1.0",
+    "class-validator": "^0.13.1",
     "client-oauth2": "^4.2.5",
     "compression": "^1.7.4",
     "connect-history-api-fallback": "^1.6.0",
@@ -95,19 +99,20 @@
     "csrf": "^3.1.0",
     "dotenv": "^8.0.0",
     "express": "^4.16.4",
+    "fast-glob": "^3.2.5",
     "flatted": "^2.0.0",
-    "glob-promise": "^3.4.0",
     "google-timezones-json": "^1.0.2",
     "inquirer": "^7.0.1",
+    "json-diff": "^0.5.4",
     "jsonwebtoken": "^8.5.1",
     "jwks-rsa": "~1.12.1",
     "localtunnel": "^2.0.0",
     "lodash.get": "^4.4.2",
-    "mysql2": "~2.1.0",
-    "n8n-core": "~0.66.0",
-    "n8n-editor-ui": "~0.83.0",
-    "n8n-nodes-base": "~0.110.0",
-    "n8n-workflow": "~0.55.0",
+    "mysql2": "~2.3.0",
+    "n8n-core": "~0.87.0",
+    "n8n-editor-ui": "~0.110.0",
+    "n8n-nodes-base": "~0.139.0",
+    "n8n-workflow": "~0.71.0",
     "oauth-1.0a": "^2.2.6",
     "open": "^7.0.0",
     "pg": "^8.3.0",
@@ -115,8 +120,9 @@
     "request-promise-native": "^1.0.7",
     "sqlite3": "^5.0.1",
     "sse-channel": "^3.1.1",
-    "tslib": "1.11.2",
-    "typeorm": "^0.2.30"
+    "tslib": "1.14.1",
+    "typeorm": "^0.2.30",
+    "winston": "^3.3.3"
   },
   "jest": {
     "transform": {

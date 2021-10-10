@@ -1,6 +1,10 @@
-import { INodeProperties } from 'n8n-workflow';
+import {
+	INodeProperties,
+} from 'n8n-workflow';
 
-const resource = ['user'];
+const resource = [
+	'user',
+];
 
 export const userOperations = [
 	{
@@ -54,7 +58,7 @@ export const userOperations = [
 export const userFields = [
 
 	/* -------------------------------------------------------------------------- */
-	/*                                user:getAll                            */
+	/*                                user:getAll                                 */
 	/* -------------------------------------------------------------------------- */
 
 	{
@@ -137,7 +141,7 @@ export const userFields = [
 	},
 
 	/* -------------------------------------------------------------------------- */
-	/*                                user:get                            */
+	/*                                user:get                                    */
 	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'User Id',
@@ -157,7 +161,7 @@ export const userFields = [
 	},
 
 	/* -------------------------------------------------------------------------- */
-	/*                                user:delete                            */
+	/*                                user:delete                                 */
 	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'User Id',
@@ -177,7 +181,7 @@ export const userFields = [
 	},
 
 	/* -------------------------------------------------------------------------- */
-	/*                                user:create                           */
+	/*                                user:create                                 */
 	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'First Name',
@@ -243,18 +247,18 @@ export const userFields = [
 		default: {},
 		options: [
 			{
-				displayName: 'Can Create Projects',
-				name: 'can_create_projects',
-				type: 'boolean',
-				default: false,
-				description: 'Whether the user can create projects. Only applicable to Project Managers.',
-			},
-			{
 				displayName: 'Can Create Invoices',
 				name: 'can_create_invoices',
 				type: 'boolean',
 				default: false,
 				description: 'Whether the user can create invoices. Only applicable to Project Managers.',
+			},
+			{
+				displayName: 'Can Create Projects',
+				name: 'can_create_projects',
+				type: 'boolean',
+				default: false,
+				description: 'Whether the user can create projects. Only applicable to Project Managers.',
 			},
 			{
 				displayName: 'Can See Rates',
@@ -342,9 +346,8 @@ export const userFields = [
 		],
 	},
 
-
 	/* -------------------------------------------------------------------------- */
-	/*                                user:update                           */
+	/*                                user:update                                 */
 	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Time Entry Id',
@@ -378,18 +381,18 @@ export const userFields = [
 		default: {},
 		options: [
 			{
-				displayName: 'Can Create Projects',
-				name: 'can_create_projects',
-				type: 'boolean',
-				default: false,
-				description: 'Whether the user can create projects. Only applicable to Project Managers.',
-			},
-			{
 				displayName: 'Can Create Invoices',
 				name: 'can_create_invoices',
 				type: 'boolean',
 				default: false,
 				description: 'Whether the user can create invoices. Only applicable to Project Managers.',
+			},
+			{
+				displayName: 'Can Create Projects',
+				name: 'can_create_projects',
+				type: 'boolean',
+				default: false,
+				description: 'Whether the user can create projects. Only applicable to Project Managers.',
 			},
 			{
 				displayName: 'Can See Rates',

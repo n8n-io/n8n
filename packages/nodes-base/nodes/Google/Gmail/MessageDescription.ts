@@ -227,30 +227,6 @@ export const messageFields = [
 		default: {},
 		options: [
 			{
-				displayName: 'CC Email',
-				name: 'ccList',
-				type: 'string',
-				description: 'The email addresses of the copy recipients.',
-				typeOptions: {
-					multipleValues: true,
-					multipleValueButtonText: 'Add CC Email',
-				},
-				placeholder: 'info@example.com',
-				default: [],
-			},
-			{
-				displayName: 'BCC Email',
-				name: 'bccList',
-				type: 'string',
-				description: 'The email addresses of the blind copy recipients.',
-				typeOptions: {
-					multipleValues: true,
-					multipleValueButtonText: 'Add BCC Email',
-				},
-				placeholder: 'info@example.com',
-				default: [],
-			},
-			{
 				displayName: 'Attachments',
 				name: 'attachmentsUi',
 				placeholder: 'Add Attachments',
@@ -268,13 +244,48 @@ export const messageFields = [
 								name: 'property',
 								type: 'string',
 								default: '',
-								description: 'Name of the binary properties which contain data which should be added to email as attachment',
+								description: `Name of the binary property containing the data to be added to the email as an attachment.</br>
+								Multiples can be set separated by comma.`,
 							},
 						],
 					},
 				],
 				default: '',
 				description: 'Array of supported attachments to add to the message.',
+			},
+			{
+				displayName: 'BCC Email',
+				name: 'bccList',
+				type: 'string',
+				description: 'The email addresses of the blind copy recipients.',
+				typeOptions: {
+					multipleValues: true,
+					multipleValueButtonText: 'Add BCC Email',
+				},
+				placeholder: 'info@example.com',
+				default: [],
+			},
+			{
+				displayName: 'CC Email',
+				name: 'ccList',
+				type: 'string',
+				description: 'The email addresses of the copy recipients.',
+				typeOptions: {
+					multipleValues: true,
+					multipleValueButtonText: 'Add CC Email',
+				},
+				placeholder: 'info@example.com',
+				default: [],
+			},
+			{
+				displayName: 'Sender Name',
+				name: 'senderName',
+				type: 'string',
+				placeholder: 'Name <test@gmail.com>',
+				default: '',
+				description: `The name displayed in your contacts inboxes.</br>
+				It has to be in the format: "Display-Name &#60;name@gmail.com&#62;".</br>
+				The email address has to match the email address of the logged in user for the API`,
 			},
 		],
 	},

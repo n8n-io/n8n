@@ -9,6 +9,7 @@ import {
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
+	NodeOperationError,
 } from 'n8n-workflow';
 
 import {
@@ -157,7 +158,7 @@ export class GoToWebinar implements INodeType {
 		let responseData;
 		const returnData: IDataObject[] = [];
 
-		const { oauthTokenData } = this.getCredentials('goToWebinarOAuth2Api') as {
+		const { oauthTokenData } = await this.getCredentials('goToWebinarOAuth2Api') as {
 			oauthTokenData: { account_key: string, organizer_key: string }
 		};
 
@@ -662,7 +663,7 @@ export class GoToWebinar implements INodeType {
 						Object.assign(body, updateFields);
 
 						if (isEmpty(updateFields)) {
-							throw new Error(`Please enter at least one field to update for the ${resource}.`);
+							throw new NodeOperationError(this.getNode(), `Please enter at least one field to update for the ${resource}.`);
 						}
 
 						const endpoint = `organizers/${organizerKey}/webinars/${webinarKey}`;

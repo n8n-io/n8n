@@ -8,6 +8,8 @@ import {
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
+	NodeApiError,
+	NodeOperationError,
 } from 'n8n-workflow';
 
 import {
@@ -18,7 +20,7 @@ export class FacebookGraphApi implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Facebook Graph API',
 		name: 'facebookGraphApi',
-		icon: 'file:facebook.png',
+		icon: 'file:facebook.svg',
 		group: ['transform'],
 		version: 1,
 		description: 'Interacts with Facebook using the Graph API',
@@ -83,6 +85,14 @@ export class FacebookGraphApi implements INodeType {
 					{
 						name: 'Default',
 						value: '',
+					},
+					{
+						name: 'v12.0',
+						value: 'v12.0',
+					},
+					{
+						name: 'v11.0',
+						value: 'v11.0',
 					},
 					{
 						name: 'v10.0',
@@ -293,7 +303,7 @@ export class FacebookGraphApi implements INodeType {
 		const returnItems: INodeExecutionData[] = [];
 
 		for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
-			const graphApiCredentials = this.getCredentials('facebookGraphApi');
+			const graphApiCredentials = await this.getCredentials('facebookGraphApi');
 
 			const hostUrl = this.getNodeParameter('hostUrl', itemIndex) as string;
 			const httpRequestMethod = this.getNodeParameter('httpRequestMethod', itemIndex) as string;
@@ -365,7 +375,7 @@ export class FacebookGraphApi implements INodeType {
 			if (sendBinaryData) {
 				const item = items[itemIndex];
 				if (item.binary === undefined) {
-					throw new Error('No binary data exists on item!');
+					throw new NodeOperationError(this.getNode(), 'No binary data exists on item!');
 				}
 
 				const binaryPropertyNameFull = this.getNodeParameter('binaryPropertyName', itemIndex) as string;
@@ -379,7 +389,7 @@ export class FacebookGraphApi implements INodeType {
 				}
 
 				if (item.binary[binaryPropertyName] === undefined) {
-					throw new Error(`No binary data property "${binaryPropertyName}" does not exists on item!`);
+					throw new NodeOperationError(this.getNode(), `No binary data property "${binaryPropertyName}" does not exists on item!`);
 				}
 
 				const binaryProperty = item.binary[binaryPropertyName] as IBinaryData;
@@ -400,7 +410,7 @@ export class FacebookGraphApi implements INodeType {
 				response = await this.helpers.request(requestOptions);
 			} catch (error) {
 				if (this.continueOnFail() === false) {
-					throw error;
+					throw new NodeApiError(this.getNode(), error);
 				}
 
 				let errorItem;
@@ -425,7 +435,7 @@ export class FacebookGraphApi implements INodeType {
 
 			if (typeof response === 'string') {
 				if (this.continueOnFail() === false) {
-					throw new Error('Response body is not valid JSON.');
+					throw new NodeOperationError(this.getNode(), 'Response body is not valid JSON.');
 				}
 
 				returnItems.push({ json: { message: response } });

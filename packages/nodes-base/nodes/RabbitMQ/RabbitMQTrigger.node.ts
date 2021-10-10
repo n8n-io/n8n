@@ -107,14 +107,14 @@ export class RabbitMQTrigger implements INodeType {
 
 		const self = this;
 
-		const item: INodeExecutionData = {
-			json: {},
-		};
-
 		const startConsumer = async () => {
 			await channel.consume(queue, async (message: IDataObject) => {
 				if (message !== null) {
 					let content: IDataObject | string = message!.content!.toString();
+
+					const item: INodeExecutionData = {
+						json: {},
+					};
 
 					if (options.contentIsBinary === true) {
 						item.binary = {
@@ -151,6 +151,7 @@ export class RabbitMQTrigger implements INodeType {
 		// the workflow gets deactivated and can so clean up.
 		async function closeFunction() {
 			await channel.close();
+			await channel.connection.close();
 		}
 
 		// The "manualTriggerFunction" function gets called by n8n

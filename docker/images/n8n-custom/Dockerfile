@@ -14,6 +14,7 @@ COPY lerna.json .
 COPY package.json .
 COPY packages/cli/ ./packages/cli/
 COPY packages/core/ ./packages/core/
+COPY packages/design-system/ ./packages/design-system/
 COPY packages/editor-ui/ ./packages/editor-ui/
 COPY packages/nodes-base/ ./packages/nodes-base/
 COPY packages/workflow/ ./packages/workflow/
@@ -29,7 +30,7 @@ FROM node:14.15-alpine
 
 USER root
 
-RUN apk add --update graphicsmagick tzdata tini su-exec
+RUN apk add --update graphicsmagick tzdata tini su-exec git
 
 WORKDIR /data
 

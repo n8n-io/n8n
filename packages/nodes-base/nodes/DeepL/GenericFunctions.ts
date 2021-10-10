@@ -9,7 +9,7 @@ import {
 } from 'n8n-core';
 
 import {
-	IDataObject,
+	IDataObject, NodeApiError, NodeOperationError,
 } from 'n8n-workflow';
 
 export async function deepLApiRequest(
@@ -22,6 +22,15 @@ export async function deepLApiRequest(
 	headers: IDataObject = {},
 ) {
 
+	const proApiEndpoint = 'https://api.deepl.com/v2';
+	const freeApiEndpoint = 'https://api-free.deepl.com/v2';
+
+	const credentials = await this.getCredentials('deepLApi');
+
+	if (credentials === undefined) {
+		throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
+	}
+
 	const options: OptionsWithUri = {
 		headers: {
 			'Content-Type': 'application/json',
@@ -29,7 +38,7 @@ export async function deepLApiRequest(
 		method,
 		body,
 		qs,
-		uri: uri || `https://api.deepl.com/v2${resource}`,
+		uri: uri || `${credentials.apiPlan === 'pro' ? proApiEndpoint : freeApiEndpoint}${resource}`,
 		json: true,
 	};
 
@@ -42,10 +51,10 @@ export async function deepLApiRequest(
 			delete options.body;
 		}
 
-		const credentials = this.getCredentials('deepLApi');
+		const credentials = await this.getCredentials('deepLApi');
 
 		if (credentials === undefined) {
-			throw new Error('No credentials got returned!');
+			throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
 		}
 
 		options.qs.auth_key = credentials.apiKey;
@@ -53,10 +62,6 @@ export async function deepLApiRequest(
 		return await this.helpers.request!(options);
 
 	} catch (error) {
-		if (error?.response?.body?.message) {
-			// Try to return the error prettier
-			throw new Error(`DeepL error response [${error.statusCode}]: ${error.response.body.message}`);
-		}
-		throw error;
+		throw new NodeApiError(this.getNode(), error);
 	}
 }

@@ -8,6 +8,7 @@ import {
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
+	NodeOperationError,
 } from 'n8n-workflow';
 
 import {
@@ -26,10 +27,14 @@ import {
  * @param {IDataObject} data The object to flatten
  * @returns
  */
-function flattenObject (data: IDataObject) {
+function flattenObject(data: IDataObject) {
 	const returnData: IDataObject = {};
 	for (const key1 of Object.keys(data)) {
 		if (data[key1] !== null && (typeof data[key1]) === 'object') {
+			if (data[key1] instanceof Date) {
+				returnData[key1] = data[key1]?.toString();
+				continue;
+			}
 			const flatObject = flattenObject(data[key1] as IDataObject);
 			for (const key2 in flatObject) {
 				if (flatObject[key2] === undefined) {
@@ -52,7 +57,7 @@ export class SpreadsheetFile implements INodeType {
 		icon: 'fa:table',
 		group: ['transform'],
 		version: 1,
-		description: 'Reads and writes data from a spreadsheet file.',
+		description: 'Reads and writes data from a spreadsheet file',
 		defaults: {
 			name: 'Spreadsheet File',
 			color: '#2244FF',
@@ -207,6 +212,20 @@ export class SpreadsheetFile implements INodeType {
 						description: 'File name to set in binary data. By default will "spreadsheet.<fileFormat>" be used.',
 					},
 					{
+						displayName: 'Header Row',
+						name: 'headerRow',
+						type: 'boolean',
+						displayOptions: {
+							show: {
+								'/operation': [
+									'fromFile',
+								],
+							},
+						},
+						default: true,
+						description: 'The first row of the file contains the header names.',
+					},
+					{
 						displayName: 'Include Empty Cells',
 						name: 'includeEmptyCells',
 						type: 'boolean',
@@ -314,135 +333,166 @@ export class SpreadsheetFile implements INodeType {
 
 			let item: INodeExecutionData;
 			for (let i = 0; i < items.length; i++) {
-				item = items[i];
+				try{
 
-				const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i) as string;
-				const options = this.getNodeParameter('options', i, {}) as IDataObject;
+					item = items[i];
 
-				if (item.binary === undefined || item.binary[binaryPropertyName] === undefined) {
-					// Property did not get found on item
-					continue;
-				}
+					const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i) as string;
+					const options = this.getNodeParameter('options', i, {}) as IDataObject;
 
-				// Read the binary spreadsheet data
-				const binaryData = Buffer.from(item.binary[binaryPropertyName].data, BINARY_ENCODING);
-				let workbook;
-				if (options.readAsString === true) {
-					workbook = xlsxRead(binaryData.toString(), { type: 'string', raw: options.rawData as boolean });
-				} else {
-					workbook = xlsxRead(binaryData, { raw: options.rawData as boolean });
-				}
-
-				if (workbook.SheetNames.length === 0) {
-					throw new Error('Spreadsheet does not have any sheets!');
-				}
-
-				let sheetName = workbook.SheetNames[0];
-				if (options.sheetName) {
-					if (!workbook.SheetNames.includes(options.sheetName as string)) {
-						throw new Error(`Spreadsheet does not contain sheet called "${options.sheetName}"!`);
+					if (item.binary === undefined || item.binary[binaryPropertyName] === undefined) {
+						// Property did not get found on item
+						continue;
 					}
-					sheetName = options.sheetName as string;
-				}
 
-				// Convert it to json
-				const sheetToJsonOptions: Sheet2JSONOpts = {};
-				if (options.range) {
-					if (isNaN(options.range as number)) {
-						sheetToJsonOptions.range = options.range;
+					// Read the binary spreadsheet data
+					const binaryData = Buffer.from(item.binary[binaryPropertyName].data, BINARY_ENCODING);
+					let workbook;
+					if (options.readAsString === true) {
+						workbook = xlsxRead(binaryData.toString(), { type: 'string', raw: options.rawData as boolean });
 					} else {
-						sheetToJsonOptions.range = parseInt(options.range as string, 10);
+						workbook = xlsxRead(binaryData, { raw: options.rawData as boolean });
 					}
-				}
 
-				if (options.includeEmptyCells) {
-					sheetToJsonOptions.defval = '';
-				}
+					if (workbook.SheetNames.length === 0) {
+						throw new NodeOperationError(this.getNode(), 'Spreadsheet does not have any sheets!');
+					}
 
-				const sheetJson = xlsxUtils.sheet_to_json(workbook.Sheets[sheetName], sheetToJsonOptions);
+					let sheetName = workbook.SheetNames[0];
+					if (options.sheetName) {
+						if (!workbook.SheetNames.includes(options.sheetName as string)) {
+							throw new NodeOperationError(this.getNode(), `Spreadsheet does not contain sheet called "${options.sheetName}"!`);
+						}
+						sheetName = options.sheetName as string;
+					}
 
-				// Check if data could be found in file
-				if (sheetJson.length === 0) {
-					continue;
-				}
+					// Convert it to json
+					const sheetToJsonOptions: Sheet2JSONOpts = {};
+					if (options.range) {
+						if (isNaN(options.range as number)) {
+							sheetToJsonOptions.range = options.range;
+						} else {
+							sheetToJsonOptions.range = parseInt(options.range as string, 10);
+						}
+					}
 
-				// Add all the found data columns to the workflow data
-				for (const rowData of sheetJson) {
-					newItems.push({ json: rowData } as INodeExecutionData);
+					if (options.includeEmptyCells) {
+						sheetToJsonOptions.defval = '';
+					}
+					if (options.headerRow === false) {
+						sheetToJsonOptions.header = 1; // Consider the first row as a data row
+					}
+
+					const sheetJson = xlsxUtils.sheet_to_json(workbook.Sheets[sheetName], sheetToJsonOptions);
+
+					// Check if data could be found in file
+					if (sheetJson.length === 0) {
+						continue;
+					}
+
+					// Add all the found data columns to the workflow data
+					if (options.headerRow === false) {
+						// Data was returned as an array - https://github.com/SheetJS/sheetjs#json
+						for (const rowData of sheetJson) {
+							newItems.push({ json: { row: rowData } } as INodeExecutionData);
+						}
+					} else {
+						for (const rowData of sheetJson) {
+							newItems.push({ json: rowData } as INodeExecutionData);
+						}
+					}
+
+				} catch (error) {
+					if (this.continueOnFail()) {
+						newItems.push({json:{ error: error.message }});
+						continue;
+					}
+					throw error;
 				}
 			}
 
 			return this.prepareOutputData(newItems);
 		} else if (operation === 'toFile') {
-			// Write the workflow data to spreadsheet file
-			const binaryPropertyName = this.getNodeParameter('binaryPropertyName', 0) as string;
-			const fileFormat = this.getNodeParameter('fileFormat', 0) as string;
-			const options = this.getNodeParameter('options', 0, {}) as IDataObject;
+			try {
 
-			// Get the json data of the items and flatten it
-			let item: INodeExecutionData;
-			const itemData: IDataObject[] = [];
-			for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
-				item = items[itemIndex];
-				itemData.push(flattenObject(item.json));
-			}
+				// Write the workflow data to spreadsheet file
+				const binaryPropertyName = this.getNodeParameter('binaryPropertyName', 0) as string;
+				const fileFormat = this.getNodeParameter('fileFormat', 0) as string;
+				const options = this.getNodeParameter('options', 0, {}) as IDataObject;
 
-			const ws = xlsxUtils.json_to_sheet(itemData);
-
-			const wopts: WritingOptions = {
-				bookSST: false,
-				type: 'buffer',
-			};
-
-			if (fileFormat === 'csv') {
-				wopts.bookType = 'csv';
-			} else if (fileFormat === 'html') {
-				wopts.bookType = 'html';
-			} else if (fileFormat === 'rtf') {
-				wopts.bookType = 'rtf';
-			} else if (fileFormat === 'ods') {
-				wopts.bookType = 'ods';
-				if (options.compression) {
-					wopts.compression = true;
+				// Get the json data of the items and flatten it
+				let item: INodeExecutionData;
+				const itemData: IDataObject[] = [];
+				for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
+					item = items[itemIndex];
+					itemData.push(flattenObject(item.json));
 				}
-			} else if (fileFormat === 'xls') {
-				wopts.bookType = 'xls';
-			} else if (fileFormat === 'xlsx') {
-				wopts.bookType = 'xlsx';
-				if (options.compression) {
-					wopts.compression = true;
+
+				const ws = xlsxUtils.json_to_sheet(itemData);
+
+				const wopts: WritingOptions = {
+					bookSST: false,
+					type: 'buffer',
+				};
+
+				if (fileFormat === 'csv') {
+					wopts.bookType = 'csv';
+				} else if (fileFormat === 'html') {
+					wopts.bookType = 'html';
+				} else if (fileFormat === 'rtf') {
+					wopts.bookType = 'rtf';
+				} else if (fileFormat === 'ods') {
+					wopts.bookType = 'ods';
+					if (options.compression) {
+						wopts.compression = true;
+					}
+				} else if (fileFormat === 'xls') {
+					wopts.bookType = 'xls';
+				} else if (fileFormat === 'xlsx') {
+					wopts.bookType = 'xlsx';
+					if (options.compression) {
+						wopts.compression = true;
+					}
+				}
+
+				// Convert the data in the correct format
+				const sheetName = options.sheetName as string || 'Sheet';
+				const wb: WorkBook = {
+					SheetNames: [sheetName],
+					Sheets: {
+						[sheetName]: ws,
+					},
+				};
+				const wbout = xlsxWrite(wb, wopts);
+
+				// Create a new item with only the binary spreadsheet data
+				const newItem: INodeExecutionData = {
+					json: {},
+					binary: {},
+				};
+
+				let fileName = `spreadsheet.${fileFormat}`;
+				if (options.fileName !== undefined) {
+					fileName = options.fileName as string;
+				}
+
+				newItem.binary![binaryPropertyName] = await this.helpers.prepareBinaryData(wbout, fileName);
+
+				newItems.push(newItem);
+			} catch (error) {
+				if (this.continueOnFail()) {
+					newItems.push({json:{ error: error.message }});
+				} else {
+					throw error;
 				}
 			}
-
-			// Convert the data in the correct format
-			const sheetName = options.sheetName as string || 'Sheet';
-			const wb: WorkBook = {
-				SheetNames: [sheetName],
-				Sheets: {
-					[sheetName]: ws,
-				},
-			};
-			const wbout = xlsxWrite(wb, wopts);
-
-			// Create a new item with only the binary spreadsheet data
-			const newItem: INodeExecutionData = {
-				json: {},
-				binary: {},
-			};
-
-			let fileName = `spreadsheet.${fileFormat}`;
-			if (options.fileName !== undefined) {
-				fileName = options.fileName as string;
-			}
-
-			newItem.binary![binaryPropertyName] = await this.helpers.prepareBinaryData(wbout, fileName);
-
-			const newItems = [];
-			newItems.push(newItem);
-
-			return this.prepareOutputData(newItems);
 		} else {
-			throw new Error(`The operation "${operation}" is not supported!`);
+			if (this.continueOnFail()) {
+				return this.prepareOutputData([{json:{ error: `The operation "${operation}" is not supported!` }}]);
+			}else{
+				throw new NodeOperationError(this.getNode(), `The operation "${operation}" is not supported!`);
+			}
 		}
+		return this.prepareOutputData(newItems);
 	}
 }

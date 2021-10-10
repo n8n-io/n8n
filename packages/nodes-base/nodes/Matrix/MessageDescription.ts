@@ -255,7 +255,7 @@ export const messageFields = [
 				name: 'filter',
 				type: 'string',
 				default: '',
-				description: 'A JSON RoomEventFilter to filter returned events with. More information can be found on this <a href="https://matrix.org/docs/spec/client_server/r0.6.0" target="_blank">page</a>.',
+				description: 'A JSON RoomEventFilter to filter returned events with. More information can be found on this <a href="https://matrix.org/docs/spec/client_server/r0.6.0">page</a>.',
 				placeholder: '{"contains_url":true,"types":["m.room.message", "m.sticker"]}',
 			},
 		],

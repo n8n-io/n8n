@@ -118,7 +118,7 @@ export const industryFields = [
 		description: 'Number of results to return.',
 	},
 	{
-		displayName: 'Simple',
+		displayName: 'Simplify Response',
 		name: 'simple',
 		type: 'boolean',
 		displayOptions: {
@@ -133,7 +133,7 @@ export const industryFields = [
 			},
 		},
 		default: true,
-		description: 'Simplify the response.',
+		description: 'Return a simplified version of the response instead of the raw data.',
 	},
 	{
 		displayName: 'Options',

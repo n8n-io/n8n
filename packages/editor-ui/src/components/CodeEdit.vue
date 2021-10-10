@@ -6,7 +6,7 @@
 					{{parameter.displayName}}:
 				</div>
 				<div class="text-editor" @keydown.stop>
-					<prism-editor :lineNumbers="true" :code="value" @change="valueChanged" language="js"></prism-editor>
+					<prism-editor :lineNumbers="true" :code="value" :readonly="isReadOnly" @change="valueChanged" language="js"></prism-editor>
 				</div>
 			</div>
 		</el-dialog>
@@ -14,42 +14,43 @@
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
-
 // @ts-ignore
 import PrismEditor from 'vue-prism-editor';
 
-import {
-	Workflow,
-} from 'n8n-workflow';
+import { genericHelpers } from '@/components/mixins/genericHelpers';
 
-export default Vue.extend({
-	name: 'CodeEdit',
-	props: [
-		'dialogVisible',
-		'parameter',
-		'value',
-	],
-	components: {
-		PrismEditor,
-	},
-	data () {
-		return {
-		};
-	},
-	methods: {
-		valueChanged (value: string) {
-			this.$emit('valueChanged', value);
-		},
+import mixins from 'vue-typed-mixins';
 
-		closeDialog () {
-			// Handle the close externally as the visible parameter is an external prop
-			// and is so not allowed to be changed here.
-			this.$emit('closeDialog');
-			return false;
+export default mixins(
+	genericHelpers,
+)
+	.extend({
+		name: 'CodeEdit',
+		props: [
+			'dialogVisible',
+			'parameter',
+			'value',
+		],
+		components: {
+			PrismEditor,
 		},
-	},
-});
+		data () {
+			return {
+			};
+		},
+		methods: {
+			valueChanged (value: string) {
+				this.$emit('valueChanged', value);
+			},
+
+			closeDialog () {
+				// Handle the close externally as the visible parameter is an external prop
+				// and is so not allowed to be changed here.
+				this.$emit('closeDialog');
+				return false;
+			},
+		},
+	});
 </script>
 
 <style scoped>

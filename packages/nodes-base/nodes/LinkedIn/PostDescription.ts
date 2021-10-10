@@ -74,7 +74,8 @@ export const postFields = [
 		name: 'organization',
 		type: 'string',
 		default: '',
-		description: 'URN of Organization as which the post should be posted as',
+		placeholder: '1234567',
+		description: 'URN of Organization as which the post should be posted as.',
 		displayOptions: {
 			show: {
 				operation: [
