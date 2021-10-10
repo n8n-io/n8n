@@ -887,13 +887,13 @@ class App {
 			const nodeTypes = NodeTypes();
 
 			const allNodes = nodeTypes.getAll();
-			const language = req.headers['accept-language'] ?? '';
+			const language = process.env.N8N_LANGUAGE || (req.headers['accept-language'] ?? '');
 			const translations = await Promise.all(allNodes.map(async node => {
 				const nodeName = node.description.name.split('.')[1];
 				const {sourcePath} = nodeTypes.getByName(node.description.name, true);
 				const translationPath = path.join(path.dirname(sourcePath), 'translations', `${language}.${nodeName}.header.js`);
 				try {
-					return import(translationPath);
+					return await import(translationPath);
 				} catch (e) {
 					return undefined;
 				}
@@ -920,7 +920,7 @@ class App {
 			const nodeNames = _.get(req, 'body.nodeNames', []) as string[];
 			const nodeTypes = NodeTypes();
 
-			const language = req.headers['accept-language'] ?? '';
+			const language = process.env.N8N_LANGUAGE || (req.headers['accept-language'] ?? '');
 			const requiresTranslation = language.length === 2;
 
 			return nodeNames.map(name => {
