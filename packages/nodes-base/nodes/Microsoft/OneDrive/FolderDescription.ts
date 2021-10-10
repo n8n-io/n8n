@@ -67,7 +67,7 @@ export const folderFields = [
 			},
 		},
 		default: '',
-		description: `Folder's name`,
+		description: `Folder's name, or a folders slash (/) separated hierarchy`,
 	},
 	{
 		displayName: 'Options',
