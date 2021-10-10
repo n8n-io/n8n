@@ -891,7 +891,7 @@ class App {
 			const translations = await Promise.all(allNodes.map(async node => {
 				const nodeName = node.description.name.split('.')[1];
 				const {sourcePath} = nodeTypes.getByName(node.description.name, true);
-				const translationPath = path.join(path.dirname(sourcePath), 'translations', `${language}.header.${nodeName}.js`);
+				const translationPath = path.join(path.dirname(sourcePath), 'translations', `${language}.${nodeName}.header.js`);
 				try {
 					return import(translationPath);
 				} catch (e) {
