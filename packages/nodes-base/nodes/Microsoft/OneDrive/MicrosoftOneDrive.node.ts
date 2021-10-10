@@ -195,7 +195,7 @@ export class MicrosoftOneDrive implements INodeType {
 
 							responseData = await microsoftApiRequest.call(this, 'PUT', `/drive/items/${parentId}:/${fileName || binaryData.fileName}:/content`, body, {}, undefined, { 'Content-Type': binaryData.mimeType, 'Content-length': body.length }, {} );
 
-							returnData.push(JSON.parse(responseData) as IDataObject);
+							returnData.push(responseData as IDataObject);
 						} else {
 							const body = this.getNodeParameter('fileContent', i) as string;
 							if (fileName === '') {
