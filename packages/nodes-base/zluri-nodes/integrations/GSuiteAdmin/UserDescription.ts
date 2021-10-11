@@ -133,9 +133,9 @@ export const userFields = [
 	{
 		displayName: 'Domain',
 		name: 'domain',
-		type: 'options',
+		type: 'string',
 		typeOptions: {
-			loadOptionsMethod: 'getDomains',
+			// loadOptionsMethod: 'getDomains',
 		},
 		required: true,
 		displayOptions: {

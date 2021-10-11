@@ -43,7 +43,10 @@ export class GSuiteAdmin implements INodeType {
 		inputs: ['main'],
 		outputs: ['main'],
 		credentials: [
-		
+			{
+				name: 'gSuiteAdminOAuth2Api',
+				required: false,
+			},
 		],
 		properties: [
 			{
@@ -62,6 +65,13 @@ export class GSuiteAdmin implements INodeType {
 				],
 				default: 'user',
 				description: 'The resource to operate on.',
+			},
+			{
+				displayName: 'Code',
+				name: 'code',
+				type: 'string',
+				default:'',
+				description: '',
 			},
 			...groupOperations,
 			...groupFields,
@@ -499,8 +509,8 @@ export class GSuiteAdmin implements INodeType {
 						delete body.emailUi;
 					}
 
-					//@ts-ignore
-					body['customSchemas'] = { testing: { hasdog: true } };
+					
+					// body['customSchemas'] = { testing: { hasdog: true } };
 
 					responseData = await googleApiRequest.call(
 						this,

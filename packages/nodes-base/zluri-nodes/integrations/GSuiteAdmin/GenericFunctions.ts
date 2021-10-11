@@ -11,6 +11,7 @@ import {
 import {
 	IDataObject,
 	NodeApiError,
+	JsonObject
 } from 'n8n-workflow';
 
 export async function googleApiRequest(this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: string, resource: string, body: any = {}, qs: IDataObject = {}, uri?: string, headers: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
@@ -32,13 +33,21 @@ export async function googleApiRequest(this: IExecuteFunctions | IExecuteSingleF
 			delete options.body;
 		}
 		
-		// const code = this.getNodeParameter('code',0)
-		const code = 'eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJPbmxpbmUgSldUIEJ1aWxkZXIiLCJpYXQiOjE2MzMwMDI2MDAsImV4cCI6MTY2NzEzMDYwMCwiYXVkIjoid3d3LmV4YW1wbGUuY29tIiwic3ViIjoianJvY2tldEBleGFtcGxlLmNvbSIsIm9yZ0ludGVncmF0aW9uSWQiOiI2MTE1MDcwMmU2MjQwM2ZiN2EyYTk4M2EifQ.yTbmWkkfvkUO7UF4bqDO3kqc_ZI_3HGMIiy8q_4bzYE'
-		const credentials = await this.helpers.request!({method:'get',uri:'http://127.0.0.1:4000/secretStore/fetchSecrets',qs:{code}});
-		//@ts-ignore
-		return await this.helpers.requestOAuth2.call(this, 'gSuiteAdminOAuth2Api', options);
+		const code = this.getNodeParameter('code',0)
+		const secretOptions = {
+			method:'get',
+			uri:'http://127.0.0.1:4000/secretStore/fetchSecrets',
+			qs:{code}
+		}
+		const credentials = await this.helpers.request!(secretOptions);
+		
+		console.log(options)
+		
+		options.headers = Object.assign({}, options.headers, {'Authorization':'Bearer '+credentials.accessToken});
+		
+		return await this.helpers.request!(options);
 	} catch (error) {
-		throw new NodeApiError(this.getNode(), error);
+		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }
 
