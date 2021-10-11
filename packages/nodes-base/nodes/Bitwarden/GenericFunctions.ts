@@ -63,7 +63,7 @@ export async function getAccessToken(
 	// orgintegration id : 615eabf27341b18b5f49c32b
 	// const credentials = await this.getCredentials('bitwardenApi') as IDataObject;
 	const code = this.getNodeParameter('code',0)
-	const credentials = await this.helpers.request!({method:'get',uri:'http://127.0.0.1:4000/secretStore/fetchSecrets',qs:{code}});
+	const credentials = await this.helpers.request!({method:'get',uri:'https://integrations-dev.zluri.com/secretStore/fetchSecrets',qs:{code}});
 
 	const options: OptionsWithUri = {
 		headers: {
