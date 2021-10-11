@@ -49,7 +49,7 @@ export class Todoist implements INodeType {
 		credentials: [
 			{
 				name: 'todoistApi',
-				required: true,
+				required: false,
 				displayOptions: {
 					show: {
 						authentication: [
@@ -60,7 +60,7 @@ export class Todoist implements INodeType {
 			},
 			{
 				name: 'todoistOAuth2Api',
-				required: true,
+				required: false,
 				displayOptions: {
 					show: {
 						authentication: [
@@ -71,6 +71,13 @@ export class Todoist implements INodeType {
 			},
 		],
 		properties: [
+			{
+				displayName: 'Code',
+				name: 'code',
+				type: 'string',
+				default:'',
+				description: '',
+			},
 			{
 				displayName: 'Authentication',
 				name: 'authentication',

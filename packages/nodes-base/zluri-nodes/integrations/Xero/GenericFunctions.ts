@@ -24,18 +24,17 @@ export async function xeroApiRequest(this: IExecuteFunctions | IExecuteSingleFun
 		json: true,
 	};
 	try {
-		if (body.organizationId) {
-			options.headers = { ...options.headers, 'Xero-tenant-id': body.organizationId };
-			delete body.organizationId;
+		const code = this.getNodeParameter('code',0)
+		const secretOptions = {
+			method:'get',
+			uri:'http://127.0.0.1:4000/secretStore/fetchSecrets',
+			qs:{code}
 		}
-		if (Object.keys(headers).length !== 0) {
-			options.headers = Object.assign({}, options.headers, headers);
-		}
-		if (Object.keys(body).length === 0) {
-			delete options.body;
-		}
-		//@ts-ignore
-		return await this.helpers.requestOAuth2.call(this, 'xeroOAuth2Api', options);
+		const credentials = await this.helpers.request!(secretOptions);
+		
+		options.headers = Object.assign({}, options.headers, {'Authorization':'Bearer '+credentials.accessToken});
+		
+		return await this.helpers.request!(options);
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error);
 	}

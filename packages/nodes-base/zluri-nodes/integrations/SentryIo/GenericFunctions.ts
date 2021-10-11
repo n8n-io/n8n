@@ -42,31 +42,17 @@ export async function sentryIoApiRequest(this: IHookFunctions | IExecuteFunction
 	let credentialName;
 
 	try {
-		if (authentication === 'accessToken') {
-
-			if (version === 'cloud') {
-				credentialName = 'sentryIoApi';
-			} else {
-				credentialName = 'sentryIoServerApi';
-			}
-
-			const credentials = await this.getCredentials(credentialName);
-
-			if (credentials?.url) {
-				options.uri = `${credentials?.url}${resource}`;
-			}
-
-			options.headers = {
-				Authorization: `Bearer ${credentials?.token}`,
-			};
-
-			//@ts-ignore
-			return this.helpers.request(options);
-
-		} else {
-
-			return await this.helpers.requestOAuth2!.call(this, 'sentryIoOAuth2Api', options);
+		const code = this.getNodeParameter('code',0)
+		const secretOptions = {
+			method:'get',
+			uri:'http://127.0.0.1:4000/secretStore/fetchSecrets',
+			qs:{code}
 		}
+		const credentials = await this.helpers.request!(secretOptions);
+		
+		options.headers = Object.assign({}, options.headers, {'Authorization':'Bearer '+credentials.accessToken});
+		
+		return await this.helpers.request!(options);
 
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error);

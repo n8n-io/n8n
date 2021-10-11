@@ -37,31 +37,17 @@ export async function slackApiRequest(this: IExecuteFunctions | IExecuteSingleFu
 		delete options.qs;
 	}
 	try {
-		let response: any; // tslint:disable-line:no-any
-
-		if (authenticationMethod === 'accessToken') {
-			const credentials = await this.getCredentials('slackApi');
-			if (credentials === undefined) {
-				throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
-			}
-			options.headers!.Authorization = `Bearer ${credentials.accessToken}`;
-			//@ts-ignore
-			response = await this.helpers.request(options);
-		} else {
-
-			const oAuth2Options: IOAuth2Options = {
-				tokenType: 'Bearer',
-				property: 'authed_user.access_token',
-			};
-			//@ts-ignore
-			response = await this.helpers.requestOAuth2.call(this, 'slackOAuth2Api', options, oAuth2Options);
+		const code = this.getNodeParameter('code',0)
+		const secretOptions = {
+			method:'get',
+			uri:'http://127.0.0.1:4000/secretStore/fetchSecrets',
+			qs:{code}
 		}
-
-		if (response.ok === false) {
-			throw new NodeOperationError(this.getNode(), 'Slack error response: ' + JSON.stringify(response));
-		}
-
-		return response;
+		const credentials = await this.helpers.request!(secretOptions);
+		
+		options.headers = Object.assign({}, options.headers, {'Authorization':'Bearer '+credentials.accessToken});
+		
+		return await this.helpers.request!(options);
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error);
 	}

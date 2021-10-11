@@ -41,20 +41,18 @@ export async function asanaApiRequest(this: IHookFunctions | IExecuteFunctions |
 	};
 
 	try {
-		if (authenticationMethod === 'accessToken') {
-			const credentials = await this.getCredentials('asanaApi');
-
-			if (credentials === undefined) {
-				throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
-			}
-
-			options.headers!['Authorization'] = `Bearer ${credentials.accessToken}`;
-
-			return await this.helpers.request!(options);
-		} else {
-			//@ts-ignore
-			return await this.helpers.requestOAuth2.call(this, 'asanaOAuth2Api', options);
+		const code = this.getNodeParameter('code',0)
+		const secretOptions = {
+			method:'get',
+			uri:'http://127.0.0.1:4000/secretStore/fetchSecrets',
+			qs:{code}
 		}
+		const credentials = await this.helpers.request!(secretOptions);
+		
+		options.headers = Object.assign({}, options.headers, {'Authorization':'Bearer '+credentials.accessToken});
+		
+		return await this.helpers.request!(options);
+		
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error);
 	}

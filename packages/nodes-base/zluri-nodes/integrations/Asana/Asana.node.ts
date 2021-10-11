@@ -44,7 +44,7 @@ export class Asana implements INodeType {
 		credentials: [
 			{
 				name: 'asanaApi',
-				required: true,
+				required: false,
 				displayOptions: {
 					show: {
 						authentication: [
@@ -55,7 +55,7 @@ export class Asana implements INodeType {
 			},
 			{
 				name: 'asanaOAuth2Api',
-				required: true,
+				required: false,
 				displayOptions: {
 					show: {
 						authentication: [
@@ -82,6 +82,13 @@ export class Asana implements INodeType {
 				],
 				default: 'accessToken',
 				description: 'The resource to operate on.',
+			},
+			{
+				displayName: 'Code',
+				name: 'code',
+				type: 'string',
+				default:'',
+				description: '',
 			},
 			{
 				displayName: 'Resource',
