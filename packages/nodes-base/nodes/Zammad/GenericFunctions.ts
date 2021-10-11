@@ -62,7 +62,7 @@ export async function zammadApiRequest(
 				throw new NodeApiError(this.getNode(), responseData);
 			}
 			// This is an escape hatch because here the api works differently
-			if(endpoint === '/api/v1/online_notifications/mark_all_as_read')
+			if(endpoint === '/api/v1/online_notifications/mark_all_as_read' || endpoint === '/api/v1/object_manager_attributes_execute_migrations')
 			{
 				return { success: true };
 			}
@@ -106,7 +106,7 @@ export async function zammadApiRequest(
 				throw new NodeApiError(this.getNode(), responseData);
 			}
 			// This is an escape hatch because here the api works differently
-			if(endpoint === '/api/v1/online_notifications/mark_all_as_read')
+			if(endpoint === '/api/v1/online_notifications/mark_all_as_read' || endpoint === '/api/v1/object_manager_attributes_execute_migrations')
 			{
 				return { success: true };
 			}
@@ -152,7 +152,7 @@ export async function zammadApiRequest(
 				throw new NodeApiError(this.getNode(), responseData);
 			}
 			// This is an escape hatch because here the api works differently
-			if(endpoint === '/api/v1/online_notifications/mark_all_as_read')
+			if(endpoint === '/api/v1/online_notifications/mark_all_as_read' || endpoint === '/api/v1/object_manager_attributes_execute_migrations')
 			{
 				return { success: true };
 			}

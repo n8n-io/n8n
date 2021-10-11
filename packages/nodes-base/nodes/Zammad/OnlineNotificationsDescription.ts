@@ -80,6 +80,13 @@ export const OnlineNotificationsDescription = [
 				placeholder: 'Add Field',
 				options: [
 					{
+						displayName: 'Seen?',
+						name: 'seen',
+						type: 'boolean',
+						default: false,
+						description: "Seen status of the online notification."
+					},
+					{
 						displayName: 'Object ID',
 						name: 'o_id',
 						type: 'number',
