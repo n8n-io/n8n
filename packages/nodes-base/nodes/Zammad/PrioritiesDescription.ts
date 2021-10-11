@@ -2,9 +2,9 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const StatesDescription = [
+export const PrioritiesDescription = [
 			// ----------------------------------
-			//         Operation: state
+			//         Operation: priority
 			// ----------------------------------
 			{
 				displayName: 'Operation',
@@ -12,7 +12,7 @@ export const StatesDescription = [
 				type: 'options',
 				displayOptions: {
 					show: {
-						resource: ['state'],
+						resource: ['priority'],
 						api: ['rest']
 					}
 				},
@@ -47,7 +47,7 @@ export const StatesDescription = [
 				description: 'The operation to perform.'
 			},
 			// ----------------------------------
-			//         Fields: state
+			//         Fields: priority
 			// ----------------------------------
 			{
 				displayName: 'Name',
@@ -58,29 +58,14 @@ export const StatesDescription = [
 				displayOptions: {
 					show: {
 						operation: ['create', 'update'],
-						resource: ['state'],
+						resource: ['priority'],
 						api: ['rest'],
 					}
 				},
-				description: 'The name of the state.'
+				description: 'The name of the priority.'
 			},
 			{
-				displayName: 'State Type ID',
-				name: 'state_type_id',
-				type: 'number',
-				default: 0,
-				required: true,
-				displayOptions: {
-					show: {
-						operation: ['create', 'update'],
-						resource: ['state'],
-						api: ['rest'],
-					}
-				},
-				description: 'The state type ID of the state.'
-			},
-			{
-				displayName: 'State ID',
+				displayName: 'Priority ID',
 				name: 'id',
 				type: 'string',
 				default: '',
@@ -88,11 +73,11 @@ export const StatesDescription = [
 				displayOptions: {
 					show: {
 						operation: ['update', 'show', 'delete'],
-						resource: ['state'],
+						resource: ['priority'],
 						api: ['rest'],
 					}
 				},
-				description: 'The ID of the state.'
+				description: 'The ID of the priority.'
 			},
 			{
 				displayName: 'Additional Fields',
@@ -101,26 +86,26 @@ export const StatesDescription = [
 				displayOptions: {
 					show: {
 						operation: ['create', 'update'],
-						resource: ['state'],
+						resource: ['priority'],
 						api: ['rest'],
 					}
 				},
 				default: {},
-				description: 'Additional optional fields of the state.',
+				description: 'Additional optional fields of the priority.',
 				placeholder: 'Add Field',
 				options: [
 					{
-						displayName: 'Next State ID',
-						name: 'next_state_id',
-						type: 'number',
-						default: 0,
-						description: "If ID of the next state."
+						displayName: 'UI Icon',
+						name: 'ui_icon',
+						type: 'string',
+						default: '',
+						description: "If ID of the next priority."
 					},
 					{
-						displayName: 'Ignore Escalation?',
-						name: 'ignore_escalation',
-						type: 'boolean',
-						default: false,
+						displayName: 'UI Color',
+						name: 'ui_color',
+						type: 'string',
+						default: '',
 						description: "If escalation should be ignored."
 					},
 					{
@@ -128,28 +113,21 @@ export const StatesDescription = [
 						name: 'active',
 						type: 'boolean',
 						default: false,
-						description: 'If the state is active.'
+						description: 'If the priority is active.'
 					},
 					{
 						displayName: 'Default create?',
 						name: 'default_create',
 						type: 'boolean',
 						default: false,
-						description: "If state is default for create."
-					},
-					{
-						displayName: 'Default Followup?',
-						name: 'default_follow_up',
-						type: 'boolean',
-						default: false,
-						description: 'If the state is default for follow up.'
+						description: "If priority is default for create."
 					},
 					{
 						displayName: 'Note',
 						name: 'note',
 						type: 'string',
 						default: '',
-						description: "The note of the state."
+						description: "The note of the priority."
 					},
 				]
 			},
@@ -165,7 +143,7 @@ export const StatesDescription = [
 				displayOptions: {
 					show: {
 						operation: ['create', 'update'],
-						resource: ['state'],
+						resource: ['priority'],
 						api: ['rest']
 					}
 				},
@@ -202,11 +180,11 @@ export const StatesDescription = [
 				displayOptions: {
 					show: {
 						operation: ['search'],
-						resource: ['state'],
+						resource: ['priority'],
 						api: ['rest'],
 					}
 				},
-				description: 'The query to search the states.'
+				description: 'The query to search the priorities.'
 			},
 			{
 				displayName: 'Limit',
@@ -216,11 +194,11 @@ export const StatesDescription = [
 				displayOptions: {
 					show: {
 						operation: ['search'],
-						resource: ['state'],
+						resource: ['priority'],
 						api: ['rest'],
 					}
 				},
-				description: 'The limit of how many states to get.'
+				description: 'The limit of how many priorities to get.'
 			},
 			{
 				displayName: 'Sort By',
@@ -230,11 +208,11 @@ export const StatesDescription = [
 				displayOptions: {
 					show: {
 						operation: ['search'],
-						resource: ['state'],
+						resource: ['priority'],
 						api: ['rest'],
 					}
 				},
-				description: 'How to sort the states.'
+				description: 'How to sort the priorities.'
 			},
 			{
 				displayName: 'Order By',
@@ -243,7 +221,7 @@ export const StatesDescription = [
 				displayOptions: {
 					show: {
 						operation: ['search'],
-						resource: ['state'],
+						resource: ['priority'],
 						api: ['rest'],
 					}
 				},
@@ -258,7 +236,7 @@ export const StatesDescription = [
 					},
 				],
 				default: [],
-				description: 'How to order the states.'
+				description: 'How to order the priorities.'
 			},
 
 ] as INodeProperties[];

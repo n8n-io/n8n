@@ -2,9 +2,9 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const StatesDescription = [
+export const OrganizationsDescription = [
 			// ----------------------------------
-			//         Operation: state
+			//         Operation: organization
 			// ----------------------------------
 			{
 				displayName: 'Operation',
@@ -12,7 +12,7 @@ export const StatesDescription = [
 				type: 'options',
 				displayOptions: {
 					show: {
-						resource: ['state'],
+						resource: ['organization'],
 						api: ['rest']
 					}
 				},
@@ -25,6 +25,11 @@ export const StatesDescription = [
 					{
 						name: 'Show',
 						value: 'show',
+						description: 'Get data of an entry.'
+					},
+					{
+						name: 'Search',
+						value: 'search',
 						description: 'Get data of an entry.'
 					},
 					{
@@ -47,7 +52,7 @@ export const StatesDescription = [
 				description: 'The operation to perform.'
 			},
 			// ----------------------------------
-			//         Fields: state
+			//         Fields: organization
 			// ----------------------------------
 			{
 				displayName: 'Name',
@@ -58,29 +63,14 @@ export const StatesDescription = [
 				displayOptions: {
 					show: {
 						operation: ['create', 'update'],
-						resource: ['state'],
+						resource: ['organization'],
 						api: ['rest'],
 					}
 				},
-				description: 'The name of the state.'
+				description: 'The name of the organization.'
 			},
 			{
-				displayName: 'State Type ID',
-				name: 'state_type_id',
-				type: 'number',
-				default: 0,
-				required: true,
-				displayOptions: {
-					show: {
-						operation: ['create', 'update'],
-						resource: ['state'],
-						api: ['rest'],
-					}
-				},
-				description: 'The state type ID of the state.'
-			},
-			{
-				displayName: 'State ID',
+				displayName: 'ID',
 				name: 'id',
 				type: 'string',
 				default: '',
@@ -88,11 +78,11 @@ export const StatesDescription = [
 				displayOptions: {
 					show: {
 						operation: ['update', 'show', 'delete'],
-						resource: ['state'],
+						resource: ['organization'],
 						api: ['rest'],
 					}
 				},
-				description: 'The ID of the state.'
+				description: 'The ID of the organization.'
 			},
 			{
 				displayName: 'Additional Fields',
@@ -101,55 +91,48 @@ export const StatesDescription = [
 				displayOptions: {
 					show: {
 						operation: ['create', 'update'],
-						resource: ['state'],
+						resource: ['organization'],
 						api: ['rest'],
 					}
 				},
 				default: {},
-				description: 'Additional optional fields of the state.',
+				description: 'Additional optional fields of the organization.',
 				placeholder: 'Add Field',
 				options: [
 					{
-						displayName: 'Next State ID',
-						name: 'next_state_id',
-						type: 'number',
-						default: 0,
-						description: "If ID of the next state."
-					},
-					{
-						displayName: 'Ignore Escalation?',
-						name: 'ignore_escalation',
+						displayName: 'Domain Assignment?',
+						name: 'domain_assignment',
 						type: 'boolean',
 						default: false,
-						description: "If escalation should be ignored."
+						description: "If the organizations domain assignment is active."
+					},
+					{
+						displayName: 'Domain',
+						name: 'domain',
+						type: 'string',
+						default: '',
+						description: "The domain of the organization."
+					},
+					{
+						displayName: 'Shared?',
+						name: 'shared',
+						type: 'boolean',
+						default: false,
+						description: "If the organization is shared."
 					},
 					{
 						displayName: 'Active?',
 						name: 'active',
 						type: 'boolean',
 						default: false,
-						description: 'If the state is active.'
-					},
-					{
-						displayName: 'Default create?',
-						name: 'default_create',
-						type: 'boolean',
-						default: false,
-						description: "If state is default for create."
-					},
-					{
-						displayName: 'Default Followup?',
-						name: 'default_follow_up',
-						type: 'boolean',
-						default: false,
-						description: 'If the state is default for follow up.'
+						description: 'If the organization is active.'
 					},
 					{
 						displayName: 'Note',
 						name: 'note',
 						type: 'string',
 						default: '',
-						description: "The note of the state."
+						description: "The note of the organization."
 					},
 				]
 			},
@@ -165,7 +148,7 @@ export const StatesDescription = [
 				displayOptions: {
 					show: {
 						operation: ['create', 'update'],
-						resource: ['state'],
+						resource: ['organization'],
 						api: ['rest']
 					}
 				},
@@ -202,11 +185,11 @@ export const StatesDescription = [
 				displayOptions: {
 					show: {
 						operation: ['search'],
-						resource: ['state'],
+						resource: ['organization'],
 						api: ['rest'],
 					}
 				},
-				description: 'The query to search the states.'
+				description: 'The query to search the organizations.'
 			},
 			{
 				displayName: 'Limit',
@@ -216,11 +199,11 @@ export const StatesDescription = [
 				displayOptions: {
 					show: {
 						operation: ['search'],
-						resource: ['state'],
+						resource: ['organization'],
 						api: ['rest'],
 					}
 				},
-				description: 'The limit of how many states to get.'
+				description: 'The limit of how many organizations to get.'
 			},
 			{
 				displayName: 'Sort By',
@@ -230,11 +213,11 @@ export const StatesDescription = [
 				displayOptions: {
 					show: {
 						operation: ['search'],
-						resource: ['state'],
+						resource: ['organization'],
 						api: ['rest'],
 					}
 				},
-				description: 'How to sort the states.'
+				description: 'How to sort the organizations.'
 			},
 			{
 				displayName: 'Order By',
@@ -243,7 +226,7 @@ export const StatesDescription = [
 				displayOptions: {
 					show: {
 						operation: ['search'],
-						resource: ['state'],
+						resource: ['organization'],
 						api: ['rest'],
 					}
 				},
@@ -258,7 +241,6 @@ export const StatesDescription = [
 					},
 				],
 				default: [],
-				description: 'How to order the states.'
+				description: 'How to order the organizations.'
 			},
-
 ] as INodeProperties[];
