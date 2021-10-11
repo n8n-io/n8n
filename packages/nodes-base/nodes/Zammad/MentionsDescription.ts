@@ -67,7 +67,7 @@ export const MentionsDescription = [
 						api: ['rest'],
 					}
 				},
-				description: 'The id of the mention.'
+				description: 'The id of the mentionable.'
 			},
 			{
 				displayName: 'Mention ID',

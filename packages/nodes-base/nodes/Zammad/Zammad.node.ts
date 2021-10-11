@@ -8,6 +8,7 @@ import {
 } from 'n8n-workflow';
 
 import { MentionsDescription } from './MentionsDescription';
+import { TagsDescription } from './TagsDescription';
 
 import { zammadApiRequest } from './GenericFunctions';
 
@@ -1189,6 +1190,7 @@ export class Zammad implements INodeType {
 				description: 'How to order the tickets.'
 			},
 			...MentionsDescription,
+			...TagsDescription,
 		]
 	};
 
@@ -1814,7 +1816,99 @@ export class Zammad implements INodeType {
 							qs
 						);
 					}
+				} else if (resource === 'tag') {
+				// ----------------------------------
+				//         tag:add
+				// ----------------------------------
+				if (operation === 'add') {
+					requestMethod = 'POST';
+					endpoint = '/api/v1/tags/add';
+					body.item = this.getNodeParameter(
+						'item',
+						i
+					) as string;
+					body.object = this.getNodeParameter(
+						'object',
+						i
+					) as string;
+					body.o_id = this.getNodeParameter(
+						'o_id',
+						i
+					) as string;
+
+					qs = {} as IDataObject;
+
+					responseData = await zammadApiRequest.call(
+						this,
+						requestMethod,
+						endpoint,
+						body,
+						qs
+					);
 				}
+
+				// ----------------------------------
+				//         tag:remove
+				// ----------------------------------
+				else if (operation === 'remove') {
+					requestMethod = 'DELETE';
+					endpoint = '/api/v1/tags/remove';
+					body.item = this.getNodeParameter(
+						'item',
+						i
+					) as string;
+					body.object = this.getNodeParameter(
+						'object',
+						i
+					) as string;
+					body.o_id = this.getNodeParameter(
+						'o_id',
+						i
+					) as string;
+
+					qs = {} as IDataObject;
+
+					responseData = await zammadApiRequest.call(
+						this,
+						requestMethod,
+						endpoint,
+						body,
+						qs
+					);
+				}
+				// ----------------------------------
+				//         tag:list
+				// ----------------------------------
+				else if (operation === 'list') {
+					requestMethod = 'GET';
+					endpoint = '/api/v1/tags';
+					qs = {} as IDataObject;
+					qs.object = this.getNodeParameter('object', i) as string;
+					qs.o_id = this.getNodeParameter('o_id', i) as string;
+
+					responseData = await zammadApiRequest.call(
+						this,
+						requestMethod,
+						endpoint,
+						body,
+						qs
+					);
+				}
+				else if (operation === 'search') {
+					requestMethod = 'GET';
+					endpoint = '/api/v1/tag_search';
+					qs = {} as IDataObject;
+					qs.term = this.getNodeParameter('term', i) as string;
+
+					responseData = await zammadApiRequest.call(
+						this,
+						requestMethod,
+						endpoint,
+						body,
+						qs
+					);
+				}
+			}
 				if (Array.isArray(responseData)) {
 					returnData.push.apply(returnData, responseData as IDataObject[]);
 				} else {
