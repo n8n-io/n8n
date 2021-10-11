@@ -18,6 +18,7 @@ import { PrioritiesDescription } from './PrioritiesDescription';
 import { ArticlesDescription } from './ArticlesDescription';
 import { OnlineNotificationsDescription } from './OnlineNotificationsDescription';
 import { ObjectsDescription } from './ObjectsDescription';
+import { UserAccessTokensDescription } from './UserAccessTokensDescription';
 
 import { zammadApiRequest } from './GenericFunctions';
 
@@ -213,6 +214,7 @@ export class Zammad implements INodeType {
 			...ArticlesDescription,
 			...OnlineNotificationsDescription,
 			...ObjectsDescription,
+			...UserAccessTokensDescription,
 			{
 				displayName: 'Custom Fields',
 				name: 'customFields',
@@ -694,7 +696,6 @@ export class Zammad implements INodeType {
 						body.article = this.getNodeParameter('optionalFieldsArticle', i) as IDataObject;
 						body.article.body = this.getNodeParameter('body', i) as string;
 
-						console.log(JSON.stringify(body));
 						qs = {} as IDataObject;
 
 						responseData = await zammadApiRequest.call(
@@ -1410,6 +1411,68 @@ export class Zammad implements INodeType {
 					else if (operation === 'executeDatabaseMigrations') {
 						requestMethod = 'POST';
 						endpoint = '/api/v1/object_manager_attributes_execute_migrations';
+						qs = {} as IDataObject;
+
+						responseData = await zammadApiRequest.call(
+							this,
+							requestMethod,
+							endpoint,
+							body,
+							qs
+						);
+					}
+				} else if (resource === 'userAccessToken') {
+					// ----------------------------------
+					//         userAccessToken:create
+					// ----------------------------------
+					if (operation === 'create') {
+						requestMethod = 'POST';
+						endpoint = '/api/v1/user_access_token/';
+						body.label = this.getNodeParameter('label', i) as string;
+						body.expires_at = this.getNodeParameter('expires_at', i) as string;
+						body.permission = new Array();
+						const permissions = this.getNodeParameter('permissions', i) as any;
+						for(let i = 0; i < permissions.fields.length; i++) {
+							if(permissions.fields[i].permission ) {
+								body.permission.push(permissions.fields[i].permission);
+							}
+						}
+						console.log(JSON.stringify(body));
+
+
+						qs = {} as IDataObject;
+
+						responseData = await zammadApiRequest.call(
+							this,
+							requestMethod,
+							endpoint,
+							body,
+							qs
+						);
+					}
+					// ----------------------------------
+					//         userAccessToken:list
+					// ----------------------------------
+					else if (operation === 'list') {
+						requestMethod = 'GET';
+						endpoint = '/api/v1/user_access_token/';
+						qs = {} as IDataObject;
+
+						responseData = await zammadApiRequest.call(
+							this,
+							requestMethod,
+							endpoint,
+							body,
+							qs
+						);
+					}
+					// ----------------------------------
+					//         userAccessToken:delete
+					// ----------------------------------
+					else if (operation === 'delete') {
+						requestMethod = 'DELETE';
+						const userAccessTokenId = this.getNodeParameter('id', i) as string;
+						endpoint = '/api/v1/user_access_token/' + userAccessTokenId;
 						qs = {} as IDataObject;
 
 						responseData = await zammadApiRequest.call(
