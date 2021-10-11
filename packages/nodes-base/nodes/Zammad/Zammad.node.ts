@@ -399,21 +399,21 @@ export class Zammad implements INodeType {
 						displayName: 'VIP?',
 						name: 'vip',
 						type: 'boolean',
-						default: '',
+						default: false,
 						description: "Is the user vip?"
 					},
 					{
 						displayName: 'Verified?',
 						name: 'verified',
 						type: 'boolean',
-						default: '',
+						default: false,
 						description: "Is the user verified?"
 					},
 					{
 						displayName: 'Active?',
 						name: 'active',
 						type: 'boolean',
-						default: '',
+						default: false,
 						description: "Is the user active?"
 					},
 				]
@@ -622,17 +622,31 @@ export class Zammad implements INodeType {
 				placeholder: 'Add Field',
 				options: [
 					{
+						displayName: 'Domain Assignment?',
+						name: 'domain_assignment',
+						type: 'boolean',
+						default: false,
+						description: "If the organizations domain assignment is active."
+					},
+					{
+						displayName: 'Domain',
+						name: 'domain',
+						type: 'string',
+						default: '',
+						description: "The domain of the organization."
+					},
+					{
 						displayName: 'Shared?',
 						name: 'shared',
 						type: 'boolean',
-						default: '',
+						default: false,
 						description: "If the organization is shared."
 					},
 					{
 						displayName: 'Active?',
 						name: 'active',
-						type: 'string',
-						default: '',
+						type: 'boolean',
+						default: false,
 						description: 'If the organization is active.'
 					},
 					{
@@ -642,6 +656,46 @@ export class Zammad implements INodeType {
 						default: '',
 						description: "The note of the organization."
 					},
+				]
+			},
+			{
+				displayName: 'Custom User Fields',
+				name: 'customFields',
+				placeholder: 'Add Custom Field',
+				description: 'Adds a custom field to set the value of.',
+				type: 'fixedCollection',
+				typeOptions: {
+					multipleValues: true
+				},
+				displayOptions: {
+					show: {
+						operation: ['create', 'update'],
+						resource: ['organization'],
+						api: ['rest']
+					}
+				},
+				default: {},
+				options: [
+					{
+						name: 'fields',
+						displayName: 'Field',
+						values: [
+							{
+								displayName: 'Field Name',
+								name: 'name',
+								type: 'string',
+								default: '',
+								description: 'Name of the field to set.'
+							},
+							{
+								displayName: 'Field Value',
+								name: 'value',
+								type: 'string',
+								default: '',
+								description: 'Value of the field to set.'
+							}
+						]
+					}
 				]
 			},
 			{
@@ -710,6 +764,188 @@ export class Zammad implements INodeType {
 				],
 				default: [],
 				description: 'How to order the organizations.'
+			},
+			// ----------------------------------
+			//         Operation: group
+			// ----------------------------------
+			{
+				displayName: 'Operation',
+				name: 'operation',
+				type: 'options',
+				displayOptions: {
+					show: {
+						resource: ['group'],
+						api: ['rest']
+					}
+				},
+				options: [
+					{
+						name: 'Create',
+						value: 'create',
+						description: 'Create an entry.'
+					},
+					{
+						name: 'Show',
+						value: 'show',
+						description: 'Get data of an entry.'
+					},
+					{
+						name: 'List',
+						value: 'list',
+						description: 'Get data of all entries.'
+					},
+					{
+						name: 'Update',
+						value: 'update',
+						description: 'Update an entry.'
+					},
+					{
+						name: 'Delete',
+						value: 'delete',
+						description: 'Delete an entry.'
+					},
+				],
+				default: 'create',
+				description: 'The operation to perform.'
+			},
+			// ----------------------------------
+			//         Fields: group
+			// ----------------------------------
+			{
+				displayName: 'Name',
+				name: 'name',
+				type: 'string',
+				default: '',
+				required: true,
+				displayOptions: {
+					show: {
+						operation: ['create', 'update'],
+						resource: ['group'],
+						api: ['rest'],
+					}
+				},
+				description: 'The email address of the group.'
+			},
+			{
+				displayName: 'ID',
+				name: 'id',
+				type: 'string',
+				default: '',
+				required: true,
+				displayOptions: {
+					show: {
+						operation: ['update', 'show', 'delete'],
+						resource: ['group'],
+						api: ['rest'],
+					}
+				},
+				description: 'The ID of the group.'
+			},
+			{
+				displayName: 'Additional Fields',
+				name: 'optionalFields',
+				type: 'collection',
+				displayOptions: {
+					show: {
+						operation: ['create', 'update'],
+						resource: ['group'],
+						api: ['rest'],
+					}
+				},
+				default: {},
+				description: 'Additional optional fields of the group.',
+				placeholder: 'Add Field',
+				options: [
+					{
+						displayName: 'Signature ID',
+						name: 'signature_id',
+						type: 'number',
+						default: 0,
+						description: "The groups gignature ID."
+					},
+					{
+						displayName: 'Email Address ID',
+						name: 'email_address_id',
+						type: 'number',
+						default: 0,
+						description: "The groups email address ID."
+					},
+					{
+						displayName: 'Assignment Timeour',
+						name: 'assignment_timeout',
+						type: 'number',
+						default: 0,
+						description: "The groups Assignment Timeout."
+					},
+					{
+						displayName: 'Followup Possible?',
+						name: 'follow_up_possible',
+						type: 'string',
+						default: 'yes',
+						description: "If follow up is possible with this group. Is string value as required by API."
+					},
+					{
+						displayName: 'Followup Assignment?',
+						name: 'follow_up_assignment',
+						type: 'boolean',
+						default: false,
+						description: "If follow ups should be assigned."
+					},
+					{
+						displayName: 'Active?',
+						name: 'active',
+						type: 'boolean',
+						default: false,
+						description: 'If the group is active.'
+					},
+					{
+						displayName: 'Note',
+						name: 'note',
+						type: 'string',
+						default: '',
+						description: "The note of the group."
+					},
+				]
+			},
+			{
+				displayName: 'Custom User Fields',
+				name: 'customFields',
+				placeholder: 'Add Custom Field',
+				description: 'Adds a custom field to set the value of.',
+				type: 'fixedCollection',
+				typeOptions: {
+					multipleValues: true
+				},
+				displayOptions: {
+					show: {
+						operation: ['create', 'update'],
+						resource: ['group'],
+						api: ['rest']
+					}
+				},
+				default: {},
+				options: [
+					{
+						name: 'fields',
+						displayName: 'Field',
+						values: [
+							{
+								displayName: 'Field Name',
+								name: 'name',
+								type: 'string',
+								default: '',
+								description: 'Name of the field to set.'
+							},
+							{
+								displayName: 'Field Value',
+								name: 'value',
+								type: 'string',
+								default: '',
+								description: 'Value of the field to set.'
+							}
+						]
+					}
+				]
 			},
 		]
 	};
@@ -882,124 +1118,27 @@ export class Zammad implements INodeType {
 							qs
 						);
 					}
-				} else if (resource === 'customObject') {
+				} else if (resource === 'organization') {
 					// ----------------------------------
-					//         customObject:create
-					// ----------------------------------
-					if (operation === 'create') {
-						requestMethod = 'POST';
-						endpoint = '/api/REST/2.0/assets/customObject';
-
-						body = this.getNodeParameter('optionalFields', i) as IDataObject;
-						body.name = this.getNodeParameter('name', i) as string;
-						const { fields } = this.getNodeParameter('customFields', i) as any;
-						body.fields = fields;
-
-						qs = {} as IDataObject;
-
-						responseData = await zammadApiRequest.call(
-							this,
-							requestMethod,
-							endpoint,
-							body,
-
-							qs
-						);
-					}
-					// ----------------------------------
-					//         customObject:update
-					// ----------------------------------
-					else if (operation === 'update') {
-						requestMethod = 'PUT';
-						const objectId = this.getNodeParameter('id', i) as string;
-						endpoint = `/api/REST/2.0/assets/customObject/${objectId}`;
-
-						body = this.getNodeParameter('optionalFields', i) as IDataObject;
-						body.id = objectId;
-						body.name = this.getNodeParameter('name', i) as string;
-						const { fields } = this.getNodeParameter('customFields', i) as any;
-						body.fields = fields;
-
-						qs = {} as IDataObject;
-
-						responseData = await zammadApiRequest.call(
-							this,
-							requestMethod,
-							endpoint,
-							body,
-
-							qs
-						);
-					}
-					// ----------------------------------
-					//         customObject:delete
-					// ----------------------------------
-					else if (operation === 'delete') {
-						requestMethod = 'DELETE';
-						const objectId = this.getNodeParameter('id', i) as string;
-						endpoint = `/api/REST/2.0/assets/customObject/${objectId}`;
-						qs = {} as IDataObject;
-
-						responseData = await zammadApiRequest.call(
-							this,
-							requestMethod,
-							endpoint,
-							body,
-
-							qs
-						);
-					}
-					// ----------------------------------
-					//         customObject:get
-					// ----------------------------------
-					else if (operation === 'get') {
-						requestMethod = 'GET';
-						const objectId = this.getNodeParameter('id', i) as string;
-						endpoint = `/api/REST/2.0/assets/customObject/${objectId}`;
-						qs = {} as IDataObject;
-
-						responseData = await zammadApiRequest.call(
-							this,
-							requestMethod,
-							endpoint,
-							body,
-
-							qs
-						);
-					}
-					// ----------------------------------
-					//         customObject:getALL
-					// ----------------------------------
-					else if (operation === 'getAll') {
-						requestMethod = 'GET';
-						endpoint = '/api/REST/2.0/assets/customObjects';
-						qs = this.getNodeParameter('queryParameters', i) as IDataObject;
-
-						responseData = await zammadApiRequest.call(
-							this,
-							requestMethod,
-							endpoint,
-							body,
-
-							qs
-						);
-					}
-				} else if (resource === 'customObjectData') {
-					// ----------------------------------
-					//         customObjectData:create
+					//         organization:create
 					// ----------------------------------
 					if (operation === 'create') {
 						requestMethod = 'POST';
-						const parentId = this.getNodeParameter('parentId', i) as string;
-						endpoint = `/api/REST/2.0/data/customObject/${parentId}/instance`;
-
+						endpoint = '/api/v1/organizations';
 						body = this.getNodeParameter('optionalFields', i) as IDataObject;
-						// body.accountId = '12345'; TODO: Check if Read Only
-						const { fields } = this.getNodeParameter(
-							'customObjectDataCustomFields',
+						const customFields  = this.getNodeParameter(
+							'customFields',
 							i
-						) as any;
-						body.fieldValues = fields;
+							) as any;
+						if(customFields && customFields.fields && customFields.fields.length !== 0){
+							customFields.fields.forEach!((field: any) => {
+								body[field['name']] = field['value'];
+							});
+						}
+						body.name = this.getNodeParameter(
+							'name',
+							i
+						) as string;
 
 						qs = {} as IDataObject;
 
@@ -1008,23 +1147,30 @@ export class Zammad implements INodeType {
 							requestMethod,
 							endpoint,
 							body,
-
 							qs
 						);
 					}
 					// ----------------------------------
-					//         customObjectData:update
+					//         organization:update
 					// ----------------------------------
 					else if (operation === 'update') {
 						requestMethod = 'PUT';
-						const parentId = this.getNodeParameter('parentId', i) as string;
-						const objectDataId = this.getNodeParameter('id', i) as string;
-						endpoint = `/api/REST/2.0/data/customObject/${parentId}/instance/${objectDataId}`;
-
+						const organizationId = this.getNodeParameter('id', i) as string;
+						endpoint = '/api/v1/organizations/' + organizationId;
 						body = this.getNodeParameter('optionalFields', i) as IDataObject;
-						body.id = objectDataId;
-						const { fields } = this.getNodeParameter('customFields', i) as any;
-						body.fieldValues = fields;
+						const customFields  = this.getNodeParameter(
+							'customFields',
+							i
+							) as any;
+						if(customFields && customFields.fields && customFields.fields.length !== 0){
+							customFields.fields.forEach!((field: any) => {
+								body[field['name']] = field['value'];
+							});
+						}
+						body.name = this.getNodeParameter(
+							'name',
+							i
+						) as string;
 
 						qs = {} as IDataObject;
 
@@ -1033,18 +1179,106 @@ export class Zammad implements INodeType {
 							requestMethod,
 							endpoint,
 							body,
-
 							qs
 						);
 					}
 					// ----------------------------------
-					//         customObject:delete
+					//         organization:delete
 					// ----------------------------------
 					else if (operation === 'delete') {
 						requestMethod = 'DELETE';
-						const parentId = this.getNodeParameter('parentId', i) as string;
-						const objectDataId = this.getNodeParameter('id', i) as string;
-						endpoint = `/api/REST/2.0/data/customObject/${parentId}/instance/${objectDataId}`;
+						const organizationId = this.getNodeParameter('id', i) as string;
+						endpoint = '/api/v1/organizations/' + organizationId;
+						qs = {} as IDataObject;
+
+						responseData = await zammadApiRequest.call(
+							this,
+							requestMethod,
+							endpoint,
+							body,
+							qs
+						);
+					}
+					// ----------------------------------
+					//         organization:show
+					// ----------------------------------
+					else if (operation === 'show') {
+						requestMethod = 'GET';
+						const organizationId = this.getNodeParameter('id', i) as string;
+						endpoint = '/api/v1/organizations/' + organizationId;
+						qs = {} as IDataObject;
+
+						responseData = await zammadApiRequest.call(
+							this,
+							requestMethod,
+							endpoint,
+							body,
+							qs
+						);
+					}
+					// ----------------------------------
+					//         organization:list
+					// ----------------------------------
+					else if (operation === 'list') {
+						requestMethod = 'GET';
+						endpoint = '/api/v1/organizations';
+						qs = {} as IDataObject;
+
+						responseData = await zammadApiRequest.call(
+							this,
+							requestMethod,
+							endpoint,
+							body,
+							qs
+						);
+					}
+					// ----------------------------------
+					//         organization:search
+					// ----------------------------------
+					else if (operation === 'search') {
+						requestMethod = 'GET';
+						endpoint = '/api/v1/organizations/search';
+						qs = {} as IDataObject;
+						qs.query = this.getNodeParameter('query', i) as string;
+						qs.limit = this.getNodeParameter('limit', i)?.toString() as string;
+						let sort_by = this.getNodeParameter('sort_by', i) as string;
+						if(!(sort_by === "")){
+							qs.sort_by = sort_by;
+						}
+						let order_by = this.getNodeParameter('order_by', i) as Array<string>;
+						if(order_by.length !== 0){
+							qs.order_by = order_by;
+						}
+
+						responseData = await zammadApiRequest.call(
+							this,
+							requestMethod,
+							endpoint,
+							body,
+							qs
+						);
+					}
+				} else if (resource === 'group') {
+					// ----------------------------------
+					//         group:create
+					// ----------------------------------
+					if (operation === 'create') {
+						requestMethod = 'POST';
+						endpoint = '/api/v1/groups';
+						body = this.getNodeParameter('optionalFields', i) as IDataObject;
+						const customFields  = this.getNodeParameter(
+							'customFields',
+							i
+							) as any;
+						if(customFields && customFields.fields && customFields.fields.length !== 0){
+							customFields.fields.forEach!((field: any) => {
+								body[field['name']] = field['value'];
+							});
+						}
+						body.name = this.getNodeParameter(
+							'name',
+							i
+						) as string;
 
 						qs = {} as IDataObject;
 
@@ -1053,18 +1287,30 @@ export class Zammad implements INodeType {
 							requestMethod,
 							endpoint,
 							body,
-
 							qs
 						);
 					}
 					// ----------------------------------
-					//         customObjectData:get
+					//         group:update
 					// ----------------------------------
-					else if (operation === 'get') {
-						requestMethod = 'GET';
-						const parentId = this.getNodeParameter('parentId', i) as string;
-						const objectDataId = this.getNodeParameter('id', i) as string;
-						endpoint = `/api/REST/2.0/data/customObject/${parentId}/instance/${objectDataId}`;
+					else if (operation === 'update') {
+						requestMethod = 'PUT';
+						const groupId = this.getNodeParameter('id', i) as string;
+						endpoint = '/api/v1/groups/' + groupId;
+						body = this.getNodeParameter('optionalFields', i) as IDataObject;
+						const customFields  = this.getNodeParameter(
+							'customFields',
+							i
+							) as any;
+						if(customFields && customFields.fields && customFields.fields.length !== 0){
+							customFields.fields.forEach!((field: any) => {
+								body[field['name']] = field['value'];
+							});
+						}
+						body.name = this.getNodeParameter(
+							'name',
+							i
+						) as string;
 
 						qs = {} as IDataObject;
 
@@ -1073,26 +1319,82 @@ export class Zammad implements INodeType {
 							requestMethod,
 							endpoint,
 							body,
-
 							qs
 						);
 					}
 					// ----------------------------------
-					//         customObjectData:getALL
+					//         group:delete
 					// ----------------------------------
-					else if (operation === 'getAll') {
-						requestMethod = 'GET';
-						const parentId = this.getNodeParameter('parentId', i) as string;
-						endpoint = `/api/REST/2.0/data/customObject/${parentId}/instances`;
-
-						qs = this.getNodeParameter('queryParameters', i) as IDataObject;
+					else if (operation === 'delete') {
+						requestMethod = 'DELETE';
+						const groupId = this.getNodeParameter('id', i) as string;
+						endpoint = '/api/v1/groups/' + groupId;
+						qs = {} as IDataObject;
 
 						responseData = await zammadApiRequest.call(
 							this,
 							requestMethod,
 							endpoint,
 							body,
+							qs
+						);
+					}
+					// ----------------------------------
+					//         group:show
+					// ----------------------------------
+					else if (operation === 'show') {
+						requestMethod = 'GET';
+						const groupId = this.getNodeParameter('id', i) as string;
+						endpoint = '/api/v1/groups/' + groupId;
+						qs = {} as IDataObject;
 
+						responseData = await zammadApiRequest.call(
+							this,
+							requestMethod,
+							endpoint,
+							body,
+							qs
+						);
+					}
+					// ----------------------------------
+					//         group:list
+					// ----------------------------------
+					else if (operation === 'list') {
+						requestMethod = 'GET';
+						endpoint = '/api/v1/groups';
+						qs = {} as IDataObject;
+
+						responseData = await zammadApiRequest.call(
+							this,
+							requestMethod,
+							endpoint,
+							body,
+							qs
+						);
+					}
+					// ----------------------------------
+					//         group:search
+					// ----------------------------------
+					else if (operation === 'search') {
+						requestMethod = 'GET';
+						endpoint = '/api/v1/groups/search';
+						qs = {} as IDataObject;
+						qs.query = this.getNodeParameter('query', i) as string;
+						qs.limit = this.getNodeParameter('limit', i)?.toString() as string;
+						let sort_by = this.getNodeParameter('sort_by', i) as string;
+						if(!(sort_by === "")){
+							qs.sort_by = sort_by;
+						}
+						let order_by = this.getNodeParameter('order_by', i) as Array<string>;
+						if(order_by.length !== 0){
+							qs.order_by = order_by;
+						}
+
+						responseData = await zammadApiRequest.call(
+							this,
+							requestMethod,
+							endpoint,
+							body,
 							qs
 						);
 					}

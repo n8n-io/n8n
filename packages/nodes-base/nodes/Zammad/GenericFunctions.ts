@@ -61,7 +61,7 @@ export async function zammadApiRequest(
 			if (responseData && responseData.success === false) {
 				throw new NodeApiError(this.getNode(), responseData);
 			}
-			if(Object.keys(responseData).length === 0){
+			if(method === 'DELETE' && Object.keys(responseData).length === 0){
 				return {success: true};
 			}
 			return responseData;
@@ -96,7 +96,7 @@ export async function zammadApiRequest(
 			if (responseData && responseData.success === false) {
 				throw new NodeApiError(this.getNode(), responseData);
 			}
-			if(Object.keys(responseData).length === 0){
+			if(method === 'DELETE' && Object.keys(responseData).length === 0){
 				return {success: true};
 			}
 			return responseData;
@@ -121,7 +121,7 @@ export async function zammadApiRequest(
 			uri: `${credentials.zammadUrl}${endpoint}`,
 			json: true
 		};
-		if (Object.keys(body).length !== 0) {
+		if (method === 'DELETE' && Object.keys(body).length !== 0) {
 			options.body = body;
 		}
 		try {
