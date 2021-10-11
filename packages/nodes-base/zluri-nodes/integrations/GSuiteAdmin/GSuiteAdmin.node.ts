@@ -520,6 +520,17 @@ export class GSuiteAdmin implements INodeType {
 						qs,
 					);
 				}
+				if (operation === 'makeAdmin') {
+					const userId = this.getNodeParameter('userId', i) as string;
+
+					responseData = await googleApiRequest.call(
+						this,
+						'POST',
+						`/directory/v1/users/${userId}/makeAdmin`,
+						{},
+						qs,
+					);
+				}
 			}
 		}
 
