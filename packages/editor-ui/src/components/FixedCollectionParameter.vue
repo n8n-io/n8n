@@ -5,31 +5,31 @@
 		</div>
 
 		<div v-for="property in getProperties" :key="property.name" class="fixed-collection-parameter-property">
-			<div v-if="property.displayName === '' || parameter.options.length === 1"></div>
-			<div v-else class="parameter-name" :title="property.displayName">{{property.displayName}}:</div>
-
-			<div v-if="multipleValues === true">
-				<div v-for="(value, index) in values[property.name]" :key="property.name + index" class="parameter-item">
+			<n8n-input-label :label="property.displayName === '' || parameter.options.length === 1 ? '' : property.displayName" :underline="true" size="small">
+				<div v-if="multipleValues === true">
+					<div v-for="(value, index) in values[property.name]" :key="property.name + index" class="parameter-item">
+						<div class="parameter-item-wrapper">
+							<div class="delete-option" v-if="!isReadOnly">
+								<font-awesome-icon icon="trash" class="reset-icon clickable" title="Delete Item" @click="deleteOption(property.name, index)" />
+								<div v-if="sortable" class="sort-icon">
+									<font-awesome-icon v-if="index !== 0" icon="angle-up" class="clickable" title="Move up" @click="moveOptionUp(property.name, index)" />
+									<font-awesome-icon v-if="index !== (values[property.name].length -1)" icon="angle-down" class="clickable" title="Move down" @click="moveOptionDown(property.name, index)" />
+								</div>
+							</div>
+							<parameter-input-list :parameters="property.values" :nodeValues="nodeValues" :path="getPropertyPath(property.name, index)" :hideDelete="true" @valueChanged="valueChanged" />
+						</div>
+					</div>
+				</div>
+				<div v-else class="parameter-item">
 					<div class="parameter-item-wrapper">
 						<div class="delete-option" v-if="!isReadOnly">
-							<font-awesome-icon icon="trash" class="reset-icon clickable" title="Delete Item" @click="deleteOption(property.name, index)" />
-							<div v-if="sortable" class="sort-icon">
-								<font-awesome-icon v-if="index !== 0" icon="angle-up" class="clickable" title="Move up" @click="moveOptionUp(property.name, index)" />
-								<font-awesome-icon v-if="index !== (values[property.name].length -1)" icon="angle-down" class="clickable" title="Move down" @click="moveOptionDown(property.name, index)" />
-							</div>
+							<font-awesome-icon icon="trash" class="reset-icon clickable" title="Delete Item" @click="deleteOption(property.name)" />
 						</div>
-						<parameter-input-list :parameters="property.values" :nodeValues="nodeValues" :path="getPropertyPath(property.name, index)" :hideDelete="true" @valueChanged="valueChanged" />
+						<parameter-input-list :parameters="property.values" :nodeValues="nodeValues" :path="getPropertyPath(property.name)" class="parameter-item" @valueChanged="valueChanged" :hideDelete="true" />
 					</div>
 				</div>
-			</div>
-			<div v-else class="parameter-item">
-				<div class="parameter-item-wrapper">
-					<div class="delete-option" v-if="!isReadOnly">
-						<font-awesome-icon icon="trash" class="reset-icon clickable" title="Delete Item" @click="deleteOption(property.name)" />
-					</div>
-					<parameter-input-list :parameters="property.values" :nodeValues="nodeValues" :path="getPropertyPath(property.name)" class="parameter-item" @valueChanged="valueChanged" :hideDelete="true" />
-				</div>
-			</div>
+
+			</n8n-input-label>
 		</div>
 
 		<div v-if="parameterOptions.length > 0 && !isReadOnly">
@@ -226,10 +226,6 @@ export default mixins(genericHelpers)
 
 .fixed-collection-parameter-property {
 	margin: var(--spacing-2xs) 0;
-
-	.parameter-name {
-		border-bottom: 1px solid #999;
-	}
 }
 
 .delete-option {

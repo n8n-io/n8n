@@ -10,10 +10,9 @@
 					</n8n-tooltip>
 				</a>
 			</span>
-			<span v-else>No node active</span>
 		</div>
 		<div class="node-is-not-valid" v-if="node && !nodeValid">
-			The node is not valid as its type "{{node.type}}" is unknown.
+			<n8n-text>The node is not valid as its type "{{node.type}}" is unknown.</n8n-text>
 		</div>
 		<div class="node-parameters-wrapper" v-if="node && nodeValid">
 			<el-tabs stretch @tab-click="handleTabClick">
@@ -22,7 +21,7 @@
 					<node-webhooks :node="node" :nodeType="nodeType" />
 					<parameter-input-list :parameters="parametersNoneSetting" :hideDelete="true" :nodeValues="nodeValues" path="parameters" @valueChanged="valueChanged" />
 					<div v-if="parametersNoneSetting.length === 0">
-						This node does not have any parameters.
+						<n8n-text>This node does not have any parameters.</n8n-text>
 					</div>
 				</el-tab-pane>
 				<el-tab-pane label="Settings">
@@ -559,7 +558,7 @@ export default mixins(
 				padding-bottom: 180px;
 
 				.el-tab-pane {
-					margin: 0 var(--spacing-m);
+					margin: 0 var(--spacing-s);
 				}
 			}
 		}
@@ -617,14 +616,6 @@ export default mixins(
 
 .parameter-wrapper {
 	padding: 0 1em;
-}
-
-.parameter-name {
-	line-height: 1.5;
-	white-space: nowrap;
-	overflow: hidden;
-	text-overflow: ellipsis;
-	align-self: center;
 }
 
 .color-reset-button-wrapper {

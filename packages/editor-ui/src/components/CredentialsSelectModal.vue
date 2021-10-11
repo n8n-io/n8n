@@ -90,10 +90,6 @@ export default Vue.extend({
 </script>
 
 <style module lang="scss">
-.container {
-	margin-bottom: var(--spacing-l);
-}
-
 .title {
 	font-size: var(--font-size-xl);
 	line-height: var(--font-line-height-regular);

@@ -26,15 +26,22 @@ export default Vue.extend({
 			type: String,
 			validator: (value: string): boolean => ['right', 'left', 'center'].includes(value),
 		},
+		compact: {
+			type: Boolean,
+			default: false,
+		},
 	},
 	methods: {
 		getClass(props: {size: string, bold: boolean}) {
 			return `body-${props.size}${props.bold ? '-bold' : '-regular'}`;
 		},
-		getStyles(props: {color: string, align: string}) {
+		getStyles(props: {color: string, align: string, compact: false}) {
 			const styles = {} as any;
 			if (props.color) {
 				styles.color = `var(--color-${props.color})`;
+			}
+			if (props.compact) {
+				styles['line-height'] = 1;
 			}
 			if (props.align) {
 				styles['text-align'] = props.align;

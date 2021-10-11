@@ -14,7 +14,11 @@
 				/>
 			</div>
 
-			<div v-else-if="parameter.type === 'notice'" v-html="parameter.displayName" class="parameter-item parameter-notice"></div>
+			<div v-else-if="parameter.type === 'notice'" class="parameter-item parameter-notice">
+				<n8n-text size="small">
+					<span v-html="parameter.displayName"></span>
+				</n8n-text>
+			</div>
 
 			<div
 				v-else-if="['collection', 'fixedCollection'].includes(parameter.type)"
@@ -297,9 +301,7 @@ export default mixins(
 		background-color: #fff5d3;
 		color: $--custom-font-black;
 		margin: 0.3em 0;
-		padding: 0.8em;
-		line-height: 1.5;
-		word-break: normal;
+		padding: 0.7em;
 
 		a {
 			font-weight: var(--font-weight-bold);

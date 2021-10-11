@@ -149,6 +149,7 @@ export default mixins(genericHelpers)
 	z-index: 999;
 	color: #f56c6c;
 	width: 15px;
+	font-size: var(--font-size-2xs);
 
 	:hover {
 		color: #ff0000;
@@ -157,9 +158,6 @@ export default mixins(genericHelpers)
 
 .duplicate-parameter {
 	margin-top: 0.5em;
-	.parameter-name {
-		border-bottom: 1px solid #999;
-	}
 }
 
 ::v-deep .duplicate-parameter-item {

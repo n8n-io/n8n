@@ -16,7 +16,7 @@
 			<code-edit :dialogVisible="codeEditDialogVisible" :value="value" :parameter="parameter" @closeDialog="closeCodeEditDialog" @valueChanged="expressionUpdated"></code-edit>
 			<text-edit :dialogVisible="textEditDialogVisible" :value="value" :parameter="parameter" @closeDialog="closeTextEditDialog" @valueChanged="expressionUpdated"></text-edit>
 
-			<div v-if="isEditor === true" class="clickable" @click="displayEditDialog()">
+			<div v-if="isEditor === true" class="code-edit clickable" @click="displayEditDialog()">
 				<prism-editor v-if="!codeEditDialogVisible" :lineNumbers="true" :readonly="true" :code="displayValue" language="js"></prism-editor>
 			</div>
 
@@ -515,8 +515,9 @@ export default mixins(
 				const classes = [];
 				const rows = this.getArgument('rows');
 				const isTextarea = this.parameter.type === 'string' && rows !== undefined;
+				const isSwitch = this.parameter.type === 'boolean' && !this.isValueExpression;
 
-				if (!isTextarea) {
+				if (!isTextarea && !isSwitch) {
 					classes.push('parameter-value-container');
 				}
 				if (this.isValueExpression) {
@@ -775,8 +776,12 @@ export default mixins(
 
 <style scoped lang="scss">
 
+.code-edit {
+	font-size: var(--font-size-xs);
+}
+
 .switch-input {
-	margin: 5px 0;
+	margin-bottom: 10px; // match text input height
 }
 
 .parameter-value-container {

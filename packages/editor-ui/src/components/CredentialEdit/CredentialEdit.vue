@@ -24,7 +24,7 @@
 				<div :class="$style.credActions">
 					<n8n-icon-button
 						v-if="currentCredential"
-						size="medium"
+						size="small"
 						title="Delete"
 						icon="trash"
 						type="text"
