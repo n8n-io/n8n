@@ -118,6 +118,16 @@ const createFormDataObject = (data: object) => {
 	return formData;
 };
 
+function searchForHeader(headers: IDataObject, headerName: string) {
+	if (headers === undefined) {
+		return undefined;
+	}
+
+	const headerNames = Object.keys(headers);
+	headerName = headerName.toLowerCase();
+	return headerNames.find((thisHeader) => thisHeader.toLowerCase() === headerName);
+}
+
 async function parseRequestObject(requestObject: IDataObject) {
 	// This function is a temporary implementation
 	// That translates all http requests done via
@@ -183,13 +193,15 @@ async function parseRequestObject(requestObject: IDataObject) {
 		// When using the `form` property it means the content should be x-www-form-urlencoded.
 		if (requestObject.form !== undefined && requestObject.body === undefined) {
 			// If we have only form
-			axiosConfig.data = new URLSearchParams(requestObject.form as Record<string, string>);
+			axiosConfig.data =
+				typeof requestObject.form === 'string'
+					? stringify(requestObject.form, { format: 'RFC3986' })
+					: stringify(requestObject.form).toString();
 			if (axiosConfig.headers !== undefined) {
-				// remove possibly existing content-type headers
-				const headers = Object.keys(axiosConfig.headers);
-				headers.forEach((header) =>
-					header.toLowerCase() === 'content-type' ? delete axiosConfig.headers[header] : null,
-				);
+				const headerName = searchForHeader(axiosConfig.headers, 'content-type');
+				if (headerName) {
+					delete axiosConfig.headers[headerName];
+				}
 				axiosConfig.headers['Content-Type'] = 'application/x-www-form-urlencoded';
 			} else {
 				axiosConfig.headers = {
@@ -239,9 +251,20 @@ async function parseRequestObject(requestObject: IDataObject) {
 		axiosConfig.params = requestObject.qs as IDataObject;
 	}
 
-	if (requestObject.useQuerystring === true) {
+	if (
+		requestObject.useQuerystring === true ||
+		// @ts-ignore
+		requestObject.qsStringifyOptions?.arrayFormat === 'repeat'
+	) {
 		axiosConfig.paramsSerializer = (params) => {
 			return stringify(params, { arrayFormat: 'repeat' });
+		};
+	}
+
+	// @ts-ignore
+	if (requestObject.qsStringifyOptions?.arrayFormat === 'brackets') {
+		axiosConfig.paramsSerializer = (params) => {
+			return stringify(params, { arrayFormat: 'brackets' });
 		};
 	}
 
@@ -291,7 +314,7 @@ async function parseRequestObject(requestObject: IDataObject) {
 		axiosConfig.maxRedirects = 0;
 	}
 	if (
-		requestObject.followAllRedirect === false &&
+		requestObject.followAllRedirects === false &&
 		((requestObject.method as string | undefined) || 'get').toLowerCase() !== 'get'
 	) {
 		axiosConfig.maxRedirects = 0;
@@ -325,6 +348,7 @@ async function parseRequestObject(requestObject: IDataObject) {
 		axiosConfig.headers = Object.assign(axiosConfig.headers || {}, { accept: '*/*' });
 	}
 	if (
+		requestObject.json !== false &&
 		axiosConfig.data !== undefined &&
 		!(axiosConfig.data instanceof Buffer) &&
 		!allHeaders.some((headerKey) => headerKey.toLowerCase() === 'content-type')
@@ -407,6 +431,16 @@ async function proxyRequestToAxios(
 				}
 			})
 			.catch((error) => {
+				if (configObject.simple === true && error.response) {
+					resolve({
+						body: error.response.data,
+						headers: error.response.headers,
+						statusCode: error.response.status,
+						statusMessage: error.response.statusText,
+					});
+					return;
+				}
+
 				Logger.debug('Request proxied to Axios failed', { error });
 				// Axios hydrates the original error with more data. We extract them.
 				// https://github.com/axios/axios/blob/master/lib/core/enhanceError.js
@@ -430,16 +464,6 @@ async function proxyRequestToAxios(
 				reject(error);
 			});
 	});
-}
-
-function searchForHeader(headers: IDataObject, headerName: string) {
-	if (headers === undefined) {
-		return undefined;
-	}
-
-	const headerNames = Object.keys(headers);
-	headerName = headerName.toLowerCase();
-	return headerNames.find((thisHeader) => thisHeader.toLowerCase() === headerName);
 }
 
 function convertN8nRequestToAxios(n8nRequest: IHttpRequestOptions): AxiosRequestConfig {

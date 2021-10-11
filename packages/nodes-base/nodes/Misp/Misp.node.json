@@ -1,19 +1,19 @@
 {
-	"node": "n8n-nodes-base.seaTable",
+	"node": "n8n-nodes-base.misp",
 	"nodeVersion": "1.0",
 	"codexVersion": "1.0",
 	"categories": [
-		"Data & Storage"
+		"Development"
 	],
 	"resources": {
 		"credentialDocumentation": [
 			{
-				"url": "https://docs.n8n.io/credentials/seaTable"
+				"url": "https://docs.n8n.io/credentials/misp"
 			}
 		],
 		"primaryDocumentation": [
 			{
-				"url": "https://docs.n8n.io/nodes/n8n-nodes-base.seaTable/"
+				"url": "https://docs.n8n.io/nodes/n8n-nodes-base.misp/"
 			}
 		]
 	}

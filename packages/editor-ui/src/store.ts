@@ -56,6 +56,7 @@ const state: IRootState = {
 	pushConnectionActive: true,
 	saveDataErrorExecution: 'all',
 	saveDataSuccessExecution: 'all',
+	saveManualExecutions: false,
 	timezone: 'America/New_York',
 	stateIsDirty: false,
 	executionTimeout: -1,
@@ -522,6 +523,9 @@ export const store = new Vuex.Store({
 		setSaveDataSuccessExecution (state, newValue: string) {
 			Vue.set(state, 'saveDataSuccessExecution', newValue);
 		},
+		setSaveManualExecutions (state, saveManualExecutions: boolean) {
+			Vue.set(state, 'saveManualExecutions', saveManualExecutions);
+		},
 		setTimezone (state, timezone: string) {
 			Vue.set(state, 'timezone', timezone);
 		},
@@ -632,6 +636,10 @@ export const store = new Vuex.Store({
 			return state.workflow.id === PLACEHOLDER_EMPTY_WORKFLOW_ID;
 		},
 
+		currentWorkflowHasWebhookNode: (state: IRootState): boolean => {
+			return !!state.workflow.nodes.find((node: INodeUi) => !!node.webhookId);
+		},
+
 		getActiveExecutions: (state): IExecutionsCurrentSummaryExtended[] => {
 			return state.activeExecutions;
 		},
@@ -676,8 +684,8 @@ export const store = new Vuex.Store({
 		saveDataSuccessExecution: (state): string => {
 			return state.saveDataSuccessExecution;
 		},
-		saveManualExecutions: (state, getters): boolean => {
-			return !!getters.workflowSettings.saveManualExecutions;
+		saveManualExecutions: (state): boolean => {
+			return state.saveManualExecutions;
 		},
 		timezone: (state): string => {
 			return state.timezone;
@@ -816,6 +824,7 @@ export const store = new Vuex.Store({
 		workflowId: (state): string => {
 			return state.workflow.id;
 		},
+
 		workflowSettings: (state): IWorkflowSettings => {
 			if (state.workflow.settings === undefined) {
 				return {};

@@ -202,14 +202,22 @@ export default mixins(showMessage, nodeHelpers).extend({
 			}
 		}
 
-		if (this.credentialId) {
-			if (!this.requiredPropertiesFilled) {
-				this.showValidationWarning = true;
+		this.$externalHooks().run('credentialsEdit.credentialModalOpened', {
+			credentialType: this.credentialTypeName,
+			isEditingCredential: this.mode === 'edit',
+			activeNode: this.$store.getters.activeNode,
+		});
+
+		setTimeout(() => {
+			if (this.credentialId) {
+				if (!this.requiredPropertiesFilled) {
+					this.showValidationWarning = true;
+				}
+				else {
+					this.retestCredential();
+				}
 			}
-			else {
-				this.retestCredential();
-			}
-		}
+		}, 0);
 
 		this.loading = false;
 	},
@@ -323,7 +331,11 @@ export default mixins(showMessage, nodeHelpers).extend({
 					continue;
 				}
 
-				if (!this.credentialData[property.name]) {
+				if (property.type === 'string' && !this.credentialData[property.name]) {
+					return false;
+				}
+
+				if (property.type === 'number' && typeof this.credentialData[property.name] !== 'number') {
 					return false;
 				}
 			}
