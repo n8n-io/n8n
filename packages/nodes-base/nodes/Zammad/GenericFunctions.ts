@@ -89,7 +89,7 @@ export async function zammadApiRequest(
 		}
 
 		const options: OptionsWithUri = {
-			headers: { Authorization: `Token token={${credentials.apiKey}}` },
+			headers: { Authorization: `Token token=${credentials.apiKey}` },
 			method,
 			qs,
 			uri: `${credentials.zammadUrl}${endpoint}`,
