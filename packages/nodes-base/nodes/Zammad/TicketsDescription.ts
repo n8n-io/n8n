@@ -137,46 +137,6 @@ export const TicketsDescription = [
 				]
 			},
 			{
-				displayName: 'Custom Fields',
-				name: 'customFields',
-				placeholder: 'Add Custom Field',
-				description: 'Adds a custom field to set the value of.',
-				type: 'fixedCollection',
-				typeOptions: {
-					multipleValues: true
-				},
-				displayOptions: {
-					show: {
-						operation: ['create', 'update'],
-						resource: ['ticket'],
-						api: ['rest']
-					}
-				},
-				default: {},
-				options: [
-					{
-						name: 'fields',
-						displayName: 'Field',
-						values: [
-							{
-								displayName: 'Field Name',
-								name: 'name',
-								type: 'string',
-								default: '',
-								description: 'Name of the field to set.'
-							},
-							{
-								displayName: 'Field Value',
-								name: 'value',
-								type: 'string',
-								default: '',
-								description: 'Value of the field to set.'
-							}
-						]
-					}
-				]
-			},
-			{
 				displayName: 'Query',
 				name: 'query',
 				type: 'string',

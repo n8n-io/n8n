@@ -15,6 +15,7 @@ import { MentionsDescription } from './MentionsDescription';
 import { TagsDescription } from './TagsDescription';
 import { StatesDescription } from './StatesDescription';
 import { PrioritiesDescription } from './PrioritiesDescription';
+import { ArticlesDescription } from './ArticlesDescription';
 
 import { zammadApiRequest } from './GenericFunctions';
 
@@ -198,6 +199,7 @@ export class Zammad implements INodeType {
 				default: 'newCall',
 				description: 'The resource to operate on.'
 			},
+
 			...UsersDescription,
 			...OrganizationsDescription,
 			...GroupsDescription,
@@ -206,6 +208,46 @@ export class Zammad implements INodeType {
 			...TagsDescription,
 			...StatesDescription,
 			...PrioritiesDescription,
+			...ArticlesDescription,
+			{
+				displayName: 'Custom Fields',
+				name: 'customFields',
+				placeholder: 'Add Custom Field',
+				description: 'Adds a custom field to set the value of.',
+				type: 'fixedCollection',
+				typeOptions: {
+					multipleValues: true
+				},
+				displayOptions: {
+					show: {
+						operation: ['create', 'update'],
+						api: ['rest']
+					}
+				},
+				default: {},
+				options: [
+					{
+						name: 'fields',
+						displayName: 'Field',
+						values: [
+							{
+								displayName: 'Field Name',
+								name: 'name',
+								type: 'string',
+								default: '',
+								description: 'Name of the field to set.'
+							},
+							{
+								displayName: 'Field Value',
+								name: 'value',
+								type: 'string',
+								default: '',
+								description: 'Value of the field to set.'
+							}
+						]
+					}
+				]
+			},
 		]
 	};
 
@@ -909,6 +951,9 @@ export class Zammad implements INodeType {
 						qs
 					);
 				}
+				// ----------------------------------
+				//         tag:search
+				// ----------------------------------
 				else if (operation === 'search') {
 					requestMethod = 'GET';
 					endpoint = '/api/v1/tag_search';
@@ -1149,6 +1194,76 @@ export class Zammad implements INodeType {
 					else if (operation === 'list') {
 						requestMethod = 'GET';
 						endpoint = '/api/v1/ticket_priorities';
+						qs = {} as IDataObject;
+
+						responseData = await zammadApiRequest.call(
+							this,
+							requestMethod,
+							endpoint,
+							body,
+							qs
+						);
+					}
+				} else if (resource === 'article') {
+					// ----------------------------------
+					//         article:create
+					// ----------------------------------
+					if (operation === 'create') {
+						requestMethod = 'POST';
+						endpoint = '/api/v1/ticket_articles';
+						body = this.getNodeParameter('optionalFields', i) as IDataObject;
+						const customFields  = this.getNodeParameter(
+							'customFields',
+							i
+							) as any;
+						if(customFields && customFields.fields && customFields.fields.length !== 0){
+							customFields.fields.forEach!((field: any) => {
+								body[field['name']] = field['value'];
+							});
+						}
+						body.ticket_id = this.getNodeParameter(
+							'ticket_id',
+							i
+						) as number;
+						body.body = this.getNodeParameter(
+							'body',
+							i
+						) as string;
+
+						qs = {} as IDataObject;
+
+						responseData = await zammadApiRequest.call(
+							this,
+							requestMethod,
+							endpoint,
+							body,
+							qs
+						);
+					}
+					// ----------------------------------
+					//         article:listByTicketId
+					// ----------------------------------
+					else if (operation === 'listByTicketId') {
+						requestMethod = 'GET';
+						const ticketId = this.getNodeParameter('ticket_id', i) as string;
+						endpoint = '/api/v1/ticket_articles/by_ticket/' + ticketId;
+						qs = {} as IDataObject;
+
+						responseData = await zammadApiRequest.call(
+							this,
+							requestMethod,
+							endpoint,
+							body,
+							qs
+						);
+					}
+					// ----------------------------------
+					//         article:show
+					// ----------------------------------
+					else if (operation === 'show') {
+						requestMethod = 'GET';
+						const id = this.getNodeParameter('id', i) as string;
+						endpoint = '/api/v1/ticket_articles/' + id;
 						qs = {} as IDataObject;
 
 						responseData = await zammadApiRequest.call(
