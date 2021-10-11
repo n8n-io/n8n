@@ -239,7 +239,7 @@ export default mixins(genericHelpers)
 	height: 100%;
 }
 
-.parameter-item-wrapper:hover > .delete-option {
+.parameter-item:hover > .parameter-item-wrapper > .delete-option {
 	display: block;
 }
 

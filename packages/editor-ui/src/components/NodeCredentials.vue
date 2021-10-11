@@ -230,7 +230,7 @@ export default mixins(
 	min-width: 20px;
 	margin-left: 5px;
 	color: #ff8080;
-	font-size: var(--font-size-sm);
+	font-size: var(--font-size-s);
 }
 
 .edit {
@@ -240,6 +240,7 @@ export default mixins(
 	color: var(--color-text-base);
 	min-width: 20px;
 	margin-left: 5px;
+	font-size: var(--font-size-s);
 }
 
 .input {

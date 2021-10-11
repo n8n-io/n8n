@@ -275,7 +275,7 @@ export default mixins(
 
 		.delete-option {
 			top: 0;
-			left: -0.9em;
+			left: -0.5em;
 		}
 
 		.parameter-info {
