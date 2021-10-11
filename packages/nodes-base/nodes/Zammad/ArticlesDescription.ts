@@ -82,7 +82,7 @@ export const ArticlesDescription = [
 						api: ['rest'],
 					}
 				},
-				description: 'The object the article is createed to.'
+				description: 'The body of the article.'
 			},
 			{
 				displayName: 'Additional Fields',

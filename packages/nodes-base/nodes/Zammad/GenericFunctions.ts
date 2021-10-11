@@ -61,8 +61,12 @@ export async function zammadApiRequest(
 			if (responseData && responseData.success === false) {
 				throw new NodeApiError(this.getNode(), responseData);
 			}
+			// This is an escape hatch because here the api works differently
+			if(endpoint.includes('/api/v1/tickets/') && method === 'DELETE' && responseData === undefined){
+				return { success: true };
+			}
 			if(method === 'DELETE' && Object.keys(responseData).length === 0){
-				return {success: true};
+				return { success: true };
 			}
 			return responseData;
 		} catch (error) {
@@ -96,8 +100,12 @@ export async function zammadApiRequest(
 			if (responseData && responseData.success === false) {
 				throw new NodeApiError(this.getNode(), responseData);
 			}
+			// This is an escape hatch because here the api works differently
+			if(endpoint.includes('/api/v1/tickets/') && method === 'DELETE' && responseData === undefined){
+				return { success: true };
+			}
 			if(method === 'DELETE' && Object.keys(responseData).length === 0){
-				return {success: true};
+				return { success: true };
 			}
 			return responseData;
 		} catch (error) {
@@ -133,8 +141,12 @@ export async function zammadApiRequest(
 			if (responseData && responseData.success === false) {
 				throw new NodeApiError(this.getNode(), responseData);
 			}
+			// This is an escape hatch because here the api works differently
+			if(endpoint.includes('/api/v1/tickets/') && method === 'DELETE' && responseData === undefined){
+				return { success: true };
+			}
 			if(Object.keys(responseData).length === 0){
-				return {success: true};
+				return { success: true };
 			}
 			return responseData;
 		} catch (error) {

@@ -694,7 +694,18 @@ export class Zammad implements INodeType {
 							'group',
 							i
 						) as string;
+						body.title = this.getNodeParameter(
+							'title',
+							i
+						) as string;
+						body.customer_id = this.getNodeParameter(
+							'customerId',
+							i
+						) as number;
+						body.article = this.getNodeParameter('optionalFieldsArticle', i) as IDataObject;
+						body.article.body = this.getNodeParameter('body', i) as string;
 
+						console.log(JSON.stringify(body));
 						qs = {} as IDataObject;
 
 						responseData = await zammadApiRequest.call(
@@ -726,7 +737,17 @@ export class Zammad implements INodeType {
 							'group',
 							i
 						) as string;
-
+						body.title = this.getNodeParameter(
+							'title',
+							i
+						) as string;
+						body.customer_id = this.getNodeParameter(
+							'customerId',
+							i
+						) as number;
+						body.article = this.getNodeParameter('optionalFieldsArticle', i) as IDataObject;
+						body.article.body = this.getNodeParameter('body', i) as string;
+						delete body.article;
 						qs = {} as IDataObject;
 
 						responseData = await zammadApiRequest.call(
