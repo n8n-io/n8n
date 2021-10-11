@@ -394,6 +394,7 @@
       "dist/nodes/Facebook/FacebookGraphApi.node.js",
       "dist/nodes/Facebook/FacebookTrigger.node.js",
       "dist/nodes/FileMaker/FileMaker.node.js",
+      "dist/nodes/FilterNew.node.js",
       "dist/nodes/Freshservice/Freshservice.node.js",
       "dist/nodes/Ftp.node.js",
       "dist/nodes/Freshdesk/Freshdesk.node.js",
