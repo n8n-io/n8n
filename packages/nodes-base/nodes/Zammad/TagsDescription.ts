@@ -3,7 +3,7 @@ import {
 } from 'n8n-workflow';
 
 export const TagsDescription = [
-	// ----------------------------------
+			// ----------------------------------
 			//         Operation: tag
 			// ----------------------------------
 			{
@@ -20,7 +20,7 @@ export const TagsDescription = [
 					{
 						name: 'Add',
 						value: 'add',
-						description: 'Add a tag.'
+						description: 'Add a tag to an object.'
 					},
 					{
 						name: 'List',
