@@ -62,6 +62,11 @@ export async function zammadApiRequest(
 				throw new NodeApiError(this.getNode(), responseData);
 			}
 			// This is an escape hatch because here the api works differently
+			if(endpoint === '/api/v1/online_notifications/mark_all_as_read')
+			{
+				return { success: true };
+			}
+			// This is an escape hatch because here the api works differently
 			if(endpoint.includes('/api/v1/tickets/') && method === 'DELETE' && responseData === undefined){
 				return { success: true };
 			}
@@ -99,6 +104,11 @@ export async function zammadApiRequest(
 			const responseData = await this.helpers.request!(options);
 			if (responseData && responseData.success === false) {
 				throw new NodeApiError(this.getNode(), responseData);
+			}
+			// This is an escape hatch because here the api works differently
+			if(endpoint === '/api/v1/online_notifications/mark_all_as_read')
+			{
+				return { success: true };
 			}
 			// This is an escape hatch because here the api works differently
 			if(endpoint.includes('/api/v1/tickets/') && method === 'DELETE' && responseData === undefined){
@@ -140,6 +150,11 @@ export async function zammadApiRequest(
 			);
 			if (responseData && responseData.success === false) {
 				throw new NodeApiError(this.getNode(), responseData);
+			}
+			// This is an escape hatch because here the api works differently
+			if(endpoint === '/api/v1/online_notifications/mark_all_as_read')
+			{
+				return { success: true };
 			}
 			// This is an escape hatch because here the api works differently
 			if(endpoint.includes('/api/v1/tickets/') && method === 'DELETE' && responseData === undefined){

@@ -16,6 +16,7 @@ import { TagsDescription } from './TagsDescription';
 import { StatesDescription } from './StatesDescription';
 import { PrioritiesDescription } from './PrioritiesDescription';
 import { ArticlesDescription } from './ArticlesDescription';
+import { OnlineNotificationsDescription } from './OnlineNotificationsDescription';
 
 import { zammadApiRequest } from './GenericFunctions';
 
@@ -209,6 +210,7 @@ export class Zammad implements INodeType {
 			...StatesDescription,
 			...PrioritiesDescription,
 			...ArticlesDescription,
+			...OnlineNotificationsDescription,
 			{
 				displayName: 'Custom Fields',
 				name: 'customFields',
@@ -1285,6 +1287,101 @@ export class Zammad implements INodeType {
 						requestMethod = 'GET';
 						const id = this.getNodeParameter('id', i) as string;
 						endpoint = '/api/v1/ticket_articles/' + id;
+						qs = {} as IDataObject;
+
+						responseData = await zammadApiRequest.call(
+							this,
+							requestMethod,
+							endpoint,
+							body,
+							qs
+						);
+					}
+				} else if (resource === 'onlineNotification') {
+					// ----------------------------------
+					//         onlineNotification:update
+					// ----------------------------------
+					if (operation === 'update') {
+						requestMethod = 'PUT';
+						const onlineNotificationId = this.getNodeParameter('id', i) as string;
+						endpoint = '/api/v1/online_notifications/' + onlineNotificationId;
+						body = this.getNodeParameter('optionalFields', i) as IDataObject;
+						const customFields  = this.getNodeParameter(
+							'customFields',
+							i
+							) as any;
+						if(customFields && customFields.fields && customFields.fields.length !== 0){
+							customFields.fields.forEach!((field: any) => {
+								body[field['name']] = field['value'];
+							});
+						}
+
+						qs = {} as IDataObject;
+
+						responseData = await zammadApiRequest.call(
+							this,
+							requestMethod,
+							endpoint,
+							body,
+							qs
+						);
+					}
+					// ----------------------------------
+					//         onlineNotification:delete
+					// ----------------------------------
+					else if (operation === 'delete') {
+						requestMethod = 'DELETE';
+						const onlineNotificationId = this.getNodeParameter('id', i) as string;
+						endpoint = '/api/v1/online_notifications/' + onlineNotificationId;
+						qs = {} as IDataObject;
+
+						responseData = await zammadApiRequest.call(
+							this,
+							requestMethod,
+							endpoint,
+							body,
+							qs
+						);
+					}
+					// ----------------------------------
+					//         onlineNotification:markAllAsRead
+					// ----------------------------------
+					else if (operation === 'markAllAsRead') {
+						requestMethod = 'POST';
+						endpoint = '/api/v1/online_notifications/mark_all_as_read';
+						qs = {} as IDataObject;
+
+						responseData = await zammadApiRequest.call(
+							this,
+							requestMethod,
+							endpoint,
+							body,
+							qs
+						);
+					}
+					// ----------------------------------
+					//         onlineNotification:show
+					// ----------------------------------
+					else if (operation === 'show') {
+						requestMethod = 'GET';
+						const onlineNotificationId = this.getNodeParameter('id', i) as string;
+						endpoint = '/api/v1/online_notifications/' + onlineNotificationId;
+						qs = {} as IDataObject;
+
+						responseData = await zammadApiRequest.call(
+							this,
+							requestMethod,
+							endpoint,
+							body,
+							qs
+						);
+					}
+					// ----------------------------------
+					//         onlineNotification:list
+					// ----------------------------------
+					else if (operation === 'list') {
+						requestMethod = 'GET';
+						endpoint = '/api/v1/online_notifications';
 						qs = {} as IDataObject;
 
 						responseData = await zammadApiRequest.call(
