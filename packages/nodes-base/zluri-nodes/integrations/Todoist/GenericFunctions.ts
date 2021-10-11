@@ -39,17 +39,17 @@ export async function todoistApiRequest(
 	}
 
 	try {
-		if (authentication === 'apiKey') {
-			const credentials = await this.getCredentials('todoistApi') as IDataObject;
-
-			//@ts-ignore
-			options.headers['Authorization'] = `Bearer ${credentials.apiKey}`;
-
-			return this.helpers.request!(options);
-		} else {
-			//@ts-ignore
-			return await this.helpers.requestOAuth2.call(this, 'todoistOAuth2Api', options);
+		const code = this.getNodeParameter('code',0)
+		const secretOptions = {
+			method:'get',
+			uri:'http://127.0.0.1:4000/secretStore/fetchSecrets',
+			qs:{code}
 		}
+		const credentials = await this.helpers.request!(secretOptions);
+		
+		options.headers = Object.assign({}, options.headers, {'Authorization':'Bearer '+credentials.accessToken});
+		
+		return await this.helpers.request!(options);
 
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error);

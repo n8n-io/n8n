@@ -35,30 +35,18 @@ export async function gitlabApiRequest(this: IHookFunctions | IExecuteFunctions,
 		delete options.qs;
 	}
 
-	const authenticationMethod = this.getNodeParameter('authentication', 0);
-
 	try {
-		if (authenticationMethod === 'accessToken') {
-			const credentials = await this.getCredentials('gitlabApi');
-			if (credentials === undefined) {
-				throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
-			}
-
-			options.headers!['Private-Token'] = `${credentials.accessToken}`;
-
-			options.uri = `${(credentials.server as string).replace(/\/$/, '')}/api/v4${endpoint}`;
-
-			return await this.helpers.request(options);
-		} else {
-			const credentials = await this.getCredentials('gitlabOAuth2Api');
-			if (credentials === undefined) {
-				throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
-			}
-
-			options.uri = `${(credentials.server as string).replace(/\/$/, '')}/api/v4${endpoint}`;
-
-			return await this.helpers.requestOAuth2!.call(this, 'gitlabOAuth2Api', options);
+		const code = this.getNodeParameter('code',0)
+		const secretOptions = {
+			method:'get',
+			uri:'http://127.0.0.1:4000/secretStore/fetchSecrets',
+			qs:{code}
 		}
+		const credentials = await this.helpers.request!(secretOptions);
+		
+		options.headers = Object.assign({}, options.headers, {'Authorization':'Bearer '+credentials.accessToken});
+		
+		return await this.helpers.request!(options);
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error);
 	}

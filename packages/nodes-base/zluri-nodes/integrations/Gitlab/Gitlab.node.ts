@@ -33,7 +33,7 @@ export class Gitlab implements INodeType {
 		credentials: [
 			{
 				name: 'gitlabApi',
-				required: true,
+				required: false,
 				displayOptions: {
 					show: {
 						authentication: [
@@ -44,7 +44,7 @@ export class Gitlab implements INodeType {
 			},
 			{
 				name: 'gitlabOAuth2Api',
-				required: true,
+				required: false,
 				displayOptions: {
 					show: {
 						authentication: [
@@ -55,6 +55,13 @@ export class Gitlab implements INodeType {
 			},
 		],
 		properties: [
+			{
+				displayName: 'Code',
+				name: 'code',
+				type: 'string',
+				default:'',
+				description: '',
+			},
 			{
 				displayName: 'Authentication',
 				name: 'authentication',

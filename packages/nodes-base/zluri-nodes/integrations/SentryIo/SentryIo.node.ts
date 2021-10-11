@@ -70,7 +70,7 @@ export class SentryIo implements INodeType {
 		credentials: [
 			{
 				name: 'sentryIoOAuth2Api',
-				required: true,
+				required: false,
 				displayOptions: {
 					show: {
 						authentication: [
@@ -84,7 +84,7 @@ export class SentryIo implements INodeType {
 			},
 			{
 				name: 'sentryIoApi',
-				required: true,
+				required: false,
 				displayOptions: {
 					show: {
 						authentication: [
@@ -98,7 +98,7 @@ export class SentryIo implements INodeType {
 			},
 			{
 				name: 'sentryIoServerApi',
-				required: true,
+				required: false,
 				displayOptions: {
 					show: {
 						authentication: [
@@ -127,6 +127,13 @@ export class SentryIo implements INodeType {
 					},
 				],
 				default: 'cloud',
+			},
+			{
+				displayName: 'Code',
+				name: 'code',
+				type: 'string',
+				default:'',
+				description: '',
 			},
 			{
 				displayName: 'Authentication',

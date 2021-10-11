@@ -121,7 +121,7 @@ export class Slack implements INodeType {
 		credentials: [
 			{
 				name: 'slackApi',
-				required: true,
+				required: false,
 				displayOptions: {
 					show: {
 						authentication: [
@@ -133,7 +133,7 @@ export class Slack implements INodeType {
 			},
 			{
 				name: 'slackOAuth2Api',
-				required: true,
+				required: false,
 				displayOptions: {
 					show: {
 						authentication: [
@@ -144,6 +144,13 @@ export class Slack implements INodeType {
 			},
 		],
 		properties: [
+			{
+				displayName: 'Code',
+				name: 'code',
+				type: 'string',
+				default:'',
+				description: '',
+			},
 			{
 				displayName: 'Authentication',
 				name: 'authentication',
