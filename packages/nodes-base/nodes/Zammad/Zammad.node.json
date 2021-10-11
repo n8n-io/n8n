@@ -1,0 +1,20 @@
+{
+	"node": "n8n-nodes-base.zammad",
+	"nodeVersion": "1.0",
+	"codexVersion": "1.0",
+	"details": "Zammad is a cloud software platform that allows customer experience automation, which combines email marketing and marketing automation.",
+
+	"categories": ["Marketing & Content"],
+	"resources": {
+		"credentialDocumentation": [
+			{
+				"url": "https://docs.n8n.io/credentials/zammad/"
+			}
+		],
+		"primaryDocumentation": [
+			{
+				"url": "https://docs.n8n.io/nodes/n8n-nodes-base.zammad/"
+			}
+		]
+	}
+}
