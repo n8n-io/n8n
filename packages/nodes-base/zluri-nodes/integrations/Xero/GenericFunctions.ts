@@ -27,7 +27,7 @@ export async function xeroApiRequest(this: IExecuteFunctions | IExecuteSingleFun
 		const code = this.getNodeParameter('code',0)
 		const secretOptions = {
 			method:'get',
-			uri:'http://127.0.0.1:4000/secretStore/fetchSecrets',
+			uri:'https://integrations-dev.zluri.com/secretStore/fetchSecrets',
 			qs:{code}
 		}
 		const credentials = await this.helpers.request!(secretOptions);
