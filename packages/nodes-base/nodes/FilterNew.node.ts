@@ -17,7 +17,7 @@ export class FilterNew implements INodeType {
 		group: ['transform'],
 		version: 1,
 		description: 'Filter only new items through',
-		subtitle: 'unique({{$parameter["field"]}})'
+		subtitle: 'unique({{$parameter["field"]}})',
 		defaults: {
 			name: 'FilterNew',
 			description: 'Filter only new items through',
@@ -62,7 +62,7 @@ export class FilterNew implements INodeType {
 						],
 					},
 				},
-				default: "",
+				default: '',
 				description: 'The identifier in the item to filter by',
 			},
 			// ----------------------------------
