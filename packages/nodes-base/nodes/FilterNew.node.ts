@@ -17,8 +17,10 @@ export class FilterNew implements INodeType {
 		group: ['transform'],
 		version: 1,
 		description: 'Filter only new items through',
+		subtitle: 'unique({{$parameter["field"]}})'
 		defaults: {
 			name: 'FilterNew',
+			description: 'Filter only new items through',
 			color: '#506000',
 		},
 		inputs: ['main'],
@@ -31,7 +33,7 @@ export class FilterNew implements INodeType {
 				type: 'options',
 				options: [
 					{
-						name: 'ID-based',
+						name: 'ID-Based',
 						value: 'idbased',
 						description: 'Filter based on some unique identifier',
 					},
@@ -50,7 +52,7 @@ export class FilterNew implements INodeType {
 			//         mode:identifier
 			// ----------------------------------
 			{
-				displayName: 'Timestamp Field',
+				displayName: 'Identifier Field',
 				name: 'field',
 				type: 'string',
 				displayOptions: {
@@ -60,8 +62,8 @@ export class FilterNew implements INodeType {
 						],
 					},
 				},
-				default: 0,
-				description: 'The timestamp in the item to filter by',
+				default: "",
+				description: 'The identifier in the item to filter by',
 			},
 			// ----------------------------------
 			//         mode:timestamp
