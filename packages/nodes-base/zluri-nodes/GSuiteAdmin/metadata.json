@@ -243,6 +243,34 @@
       "integrationId": {
         "$oid": "5fc27f4942ca5c5104e1df97"
       }
+    },
+    {
+      "id": "GSUITE.SUPER_ADMIN",
+      "type": "WRITE",
+      "name": "Make a user super admin",
+      "description": "Make a user super admin",
+      "scopes": ["https://www.googleapis.com/auth/admin.directory.user"],
+      "prerequisites": [
+        {
+          "order": 1,
+          "id": "GSUITE.READ_USER",
+          "identifier": "user"
+        }
+      ],
+      "formFields": [
+      ],
+      "n8n": {
+        "nodeName": "G Suite Admin",
+        "type": "n8n-nodes-base.gSuiteAdmin",
+        "parameters": {
+          "userId": "{userId}",
+          "operation": "makeAdmin",
+          "resource": "user"
+        }
+      },
+      "integrationId": {
+        "$oid": "5fc27f4942ca5c5104e1df97"
+      }
     }
   ]
   
