@@ -134,11 +134,11 @@ export default mixins(genericHelpers)
 <style scoped lang="scss">
 
 .duplicate-parameter-item ~.add-item-wrapper {
-	margin: var(--spacing-2xs);
+	margin: var(--spacing-xs);
 }
 
 .add-item-wrapper {
-	margin: 0.5em 0 0em 2em;
+	margin-left: 2em;
 }
 
 .delete-item {
@@ -156,10 +156,6 @@ export default mixins(genericHelpers)
 	}
 }
 
-.duplicate-parameter {
-	margin-top: 0.5em;
-}
-
 ::v-deep .duplicate-parameter-item {
 	position: relative;
 
@@ -175,12 +171,12 @@ export default mixins(genericHelpers)
 ::v-deep .duplicate-parameter-item + .duplicate-parameter-item {
 	.collection-parameter-wrapper {
 		border-top: 1px dashed #999;
-		margin-top: var(--spacing-2xs);
+		margin-top: var(--spacing-xs);
 	}
 }
 
 .no-items-exist {
-	margin: var(--spacing-2xs) 0;
+	margin: var(--spacing-xs) 0;
 }
 </style>
 

@@ -222,7 +222,7 @@ export default mixins(
 	border-bottom: var(--border-base);
 
 	> * {
-		margin-bottom: var(--spacing-2xs);
+		margin-bottom: var(--spacing-xs);
 	}
 }
 

@@ -187,11 +187,11 @@ export default mixins(
 	padding-left: 2em;
 
 	.param-options {
-		margin-top: var(--spacing-2xs);
+		margin-top: var(--spacing-xs);
 	}
 
 	.no-items-exist {
-		margin: var(--spacing-2xs) 0;
+		margin: var(--spacing-xs) 0;
 	}
 	.option {
 		position: relative;

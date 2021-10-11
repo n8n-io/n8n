@@ -246,7 +246,6 @@ export default mixins(genericHelpers)
 .parameter-item {
 	position: relative;
 	padding: 0 0 0 1em;
-	margin: 0.6em 0 0.5em 0.1em;
 
 	+ .parameter-item {
 		.parameter-item-wrapper {
@@ -256,7 +255,7 @@ export default mixins(genericHelpers)
 }
 
 .no-items-exist {
-	margin: var(--spacing-2xs) 0;
+	margin: var(--spacing-xs) 0;
 }
 
 .sort-icon {

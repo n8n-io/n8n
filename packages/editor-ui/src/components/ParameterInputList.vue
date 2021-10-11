@@ -271,11 +271,11 @@ export default mixins(
 
 	.multi-parameter {
 		position: relative;
-		margin: var(--spacing-2xs) 0;
+		margin: var(--spacing-xs) 0;
 
 		.delete-option {
 			top: 0;
-			left: -0.5em;
+			left: -0.9em;
 		}
 
 		.parameter-info {
@@ -285,7 +285,7 @@ export default mixins(
 
 	.parameter-item {
 		position: relative;
-		margin: var(--spacing-2xs) 0;
+		margin: var(--spacing-xs) 0;
 
 		>.delete-option {
 			left: -0.9em;
