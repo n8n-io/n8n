@@ -60,6 +60,11 @@ export const userOperations = [
 				value: 'getTokens',
 				description: 'Get a user tokens',
 			},
+			{
+				name: 'Make admin',
+				value: 'makeAdmin',
+				description: 'Make admin',
+			},
 		],
 		default: 'create',
 		description: 'The operation to perform.',
@@ -439,6 +444,27 @@ export const userFields = [
 		description: ``,
 	},
 
+	/* -------------------------------------------------------------------------- */
+	/*                                 user:Make admin                            */
+	/* -------------------------------------------------------------------------- */
+	{
+		displayName: 'User ID',
+		name: 'userId',
+		type: 'string',
+		required: true,
+		displayOptions: {
+			show: {
+				operation: [
+					'makeAdmin',
+				],
+				resource: [
+					'user',
+				],
+			},
+		},
+		default: '',
+		description: ``,
+	},
 		/* -------------------------------------------------------------------------- */
 	/*                                 user:read                                */
 	/* -------------------------------------------------------------------------- */
