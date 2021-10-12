@@ -220,6 +220,7 @@ export default mixins(
 <style lang="scss" module>
 .container {
 	border-bottom: var(--border-base);
+	margin: var(--spacing-xs) 0;
 
 	> * {
 		margin-bottom: var(--spacing-xs);

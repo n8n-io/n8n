@@ -134,11 +134,7 @@ export default mixins(genericHelpers)
 <style scoped lang="scss">
 
 .duplicate-parameter-item ~.add-item-wrapper {
-	margin: var(--spacing-xs);
-}
-
-.add-item-wrapper {
-	margin-left: 2em;
+	margin-top: var(--spacing-xs);
 }
 
 .delete-item {

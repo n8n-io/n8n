@@ -58,7 +58,7 @@ export default {
 			type: String,
 			default: 'medium',
 			validator: (value: string): boolean =>
-				['small', 'medium', 'large'].indexOf(value) !== -1,
+				['mini', 'small', 'medium', 'large'].indexOf(value) !== -1,
 		},
 		loading: {
 			type: Boolean,

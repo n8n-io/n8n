@@ -225,7 +225,7 @@ export default mixins(genericHelpers)
 }
 
 .fixed-collection-parameter-property {
-	margin: var(--spacing-2xs) 0;
+	margin: var(--spacing-xs) 0;
 }
 
 .delete-option {

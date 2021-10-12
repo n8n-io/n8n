@@ -101,7 +101,7 @@
 									 v-if="scope.row.stoppedAt !== undefined && !scope.row.finished && scope.row.retryOf === undefined && scope.row.retrySuccessId === undefined && !scope.row.waitTill"
 									 type="light"
 									 :theme="scope.row.stoppedAt === null ? 'warning': 'danger'"
-									 size="small"
+									 size="mini"
 									 title="Retry execution"
 									 icon="redo"
 								/>
@@ -711,12 +711,10 @@ export default mixins(
 	position: relative;
 	display: inline-block;
 	padding: 0 10px;
-	height: 22.6px;
 	line-height: 22.6px;
 	border-radius: 15px;
 	text-align: center;
-	font-weight: 400;
-	font-size: 12px;
+	font-size: var(--font-size-s);
 
 	&.error {
 		background-color: var(--color-danger-tint-1);

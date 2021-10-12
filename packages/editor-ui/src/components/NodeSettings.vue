@@ -20,7 +20,7 @@
 					<node-credentials :node="node" @credentialSelected="credentialSelected"></node-credentials>
 					<node-webhooks :node="node" :nodeType="nodeType" />
 					<parameter-input-list :parameters="parametersNoneSetting" :hideDelete="true" :nodeValues="nodeValues" path="parameters" @valueChanged="valueChanged" />
-					<div v-if="parametersNoneSetting.length === 0">
+					<div v-if="parametersNoneSetting.length === 0" class="no-parameters">
 						<n8n-text>This node does not have any parameters.</n8n-text>
 					</div>
 				</el-tab-pane>
@@ -521,6 +521,10 @@ export default mixins(
 	min-width: 350px;
 	max-width: 350px;
 
+	.no-parameters {
+		margin-top: var(--spacing-xs);
+	}
+
 	.header-side-menu {
 		padding: 1em 0 1em 1.8em;
 		font-size: var(--font-size-l);
@@ -548,6 +552,7 @@ export default mixins(
 
 		.el-tabs__header {
 			background-color: #fff5f2;
+			margin-bottom: 0;
 		}
 
 		.el-tabs {
