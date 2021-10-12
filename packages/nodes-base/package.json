@@ -621,6 +621,7 @@
       "dist/nodes/Zendesk/Zendesk.node.js",
       "dist/nodes/Zendesk/ZendeskTrigger.node.js",
       "dist/nodes/ZenHub/ZenHub.node.js",
+      "dist/nodes/ZenHub/ZenHubTrigger.node.js",
       "dist/nodes/Zoho/ZohoCrm.node.js",
       "dist/nodes/Zoom/Zoom.node.js",
       "dist/nodes/Zulip/Zulip.node.js"

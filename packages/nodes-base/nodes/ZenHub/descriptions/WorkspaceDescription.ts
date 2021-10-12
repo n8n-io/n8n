@@ -25,6 +25,11 @@ export const workspaceOperations: INodeProperties[] = [
 				value: 'getBoard',
 				description: 'Get ZenHub Board data for a repository within a Workspace',
 			},
+			{
+				name: 'Get Oldest Board',
+				value: 'getOldest',
+				description: 'Get the oldest ZenHub board for a repository',
+			},
 		],
 		default: 'get',
 		description: 'The operation to perform',
@@ -33,12 +38,6 @@ export const workspaceOperations: INodeProperties[] = [
 ];
 
 export const workspaceFields: INodeProperties[] = [
-
-/* -------------------------------------------------------------------------- */
-/*                                workspace:get                               */
-/* -------------------------------------------------------------------------- */
-
-	// Uses repoID
 
 /* -------------------------------------------------------------------------- */
 /*                                workspace:getBoard                          */

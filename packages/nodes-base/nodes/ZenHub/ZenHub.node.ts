@@ -1,25 +1,27 @@
+import { Moment } from 'moment';
+import moment = require('moment');
 import {
 	IExecuteFunctions,
 } from 'n8n-core';
 
 import {
 	IDataObject,
+	IHttpRequestOptions,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
+	NodeOperationError,
 } from 'n8n-workflow';
 
 import {
-	OptionsWithUri,
-} from 'request';
-
-import {
-	issueOperations,
-	issueFields,
-	epicOperations,
 	epicFields,
-	workspaceOperations,
+	epicOperations,
+	issueFields,
+	issueOperations,
+	milestoneFields,
+	milestoneOperations,
 	workspaceFields,
+	workspaceOperations,
 } from './descriptions'
 
 export class ZenHub implements INodeType {
@@ -29,6 +31,7 @@ export class ZenHub implements INodeType {
 			icon: 'file:zenHub.svg',
 			group: ['transform'],
 			version: 1,
+			subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 			description: 'Consume ZenHub API',
 			defaults: {
 					name: 'ZenHub',
@@ -78,12 +81,15 @@ export class ZenHub implements INodeType {
 					description: 'Resource to consume',
 					noDataExpression: true,
 				},
-				// ISSUE
-				...issueOperations,
-				...issueFields,
 				// EPIC
 				...epicOperations,
 				...epicFields,
+				// ISSUE
+				...issueOperations,
+				...issueFields,
+				// MILESTONE
+				...milestoneOperations,
+				...milestoneFields,
 				// WORKSPACE
 				...workspaceOperations,
 				...workspaceFields,
@@ -94,77 +100,114 @@ export class ZenHub implements INodeType {
 		let responseData;
 		const returnData = [];
 
-		const repoId = this.getNodeParameter('repoId', 0) as string;
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		try {
 
-		const credentials = await this.getCredentials('zenHubApi') as IDataObject;
+			const repoId = this.getNodeParameter('repoId', 0) as string;
+			const resource = this.getNodeParameter('resource', 0) as string;
+			const operation = this.getNodeParameter('operation', 0) as string;
 
-		let uri: string | undefined;
-		let method: string | undefined;
-		let body: string | undefined;
+			const credentials = await this.getCredentials('zenHubApi') as IDataObject;
+			const endpoint = credentials.endpoint as string;
+			console.log(endpoint);
 
-		switch (resource) {
-			// ISSUE
-			case 'issue':
-				const issueNumber = this.getNodeParameter('issueNumber', 0) as string;
+			let path = '';
+			let requestMethod: IHttpRequestOptions["method"] = 'GET';
+			let body: IDataObject = {};
 
-				switch (operation) {
-					case 'get':
-						uri = `https://api.zenhub.com/p1/repositories/${repoId}/issues/${issueNumber}`;
-						method = 'GET';
-						break;
+			switch (resource) {
+				// EPIC
+				case 'epic':
+					switch (operation) {
+						case 'get':
+							path = `/p1/repositories/${repoId}/epics`;
+							requestMethod = 'GET';
+							break;
 
-					case 'getEvents':
-						uri = `https://api.zenhub.com/p1/repositories/${repoId}/issues/${issueNumber}/events`;
-						method = 'GET';
-						break;
-				}
-				break;
+						case 'getEpic':
+							const epicID = this.getNodeParameter('epicId', 0) as string;
+							path = `/p1/repositories/${repoId}/epics/${epicID}`;
+							requestMethod = 'GET';
+							break;
+					}
+					break;
 
-			// EPIC
-			case 'epic':
-				switch (operation) {
-					case 'get':
-						uri = `https://api.zenhub.com/p1/repositories/${repoId}/epics`;
-						method = 'GET';
-						break;
+				// ISSUE
+				case 'issue':
+					const issueNumber = this.getNodeParameter('issueNumber', 0) as string;
 
-					case 'getEpic':
-						const epicID = this.getNodeParameter('epicId', 0) as string;
-						uri = `https://api.zenhub.com/p1/repositories/${repoId}/epics/${epicID}`;
-						method = 'GET';
-						break;
-				}
-				break;
+					switch (operation) {
+						case 'get':
+							path = `/p1/repositories/${repoId}/issues/${issueNumber}`;
+							requestMethod = 'GET';
+							break;
 
-			// WORKSPACE
-			case 'workspace':
-				switch (operation) {
-					case 'get':
-						uri = `https://api.zenhub.com/p2/repositories/${repoId}/workspaces`;
-						method = 'GET';
-						break;
+						case 'getEvents':
+							path = `/p1/repositories/${repoId}/issues/${issueNumber}/events`;
+							requestMethod = 'GET';
+							break;
+					}
+					break;
 
-					case 'getBoard':
-						const workspaceId = this.getNodeParameter('workspaceId', 0) as string;
-						uri = `https://api.zenhub.com/p2/workspaces/${workspaceId}/repositories/${repoId}/board`;
-						method = 'GET';
-						break;
-				}
-				break;
-		}
+				// MILESTONE
+				case 'milestone':
+					const milestoneNumber = this.getNodeParameter('milestoneNumber', 0) as string;
+					switch (operation) {
+						case 'get':
+							path = `/p1/repositories/${repoId}/milestones/${milestoneNumber}/start_date`;
+							requestMethod = 'GET';
+							break;
 
-		if (uri !== undefined && method !== undefined) {
-			const options: OptionsWithUri = {
-				uri: uri,
-				method: method,
-				headers: {
-					'X-Authentication-Token': `${credentials.apiKey}`
-				}
-			};
-			responseData = await this.helpers.request(options);
-			returnData.push(responseData);
+						case 'set':
+							const startDate = this.getNodeParameter('startDate', 0) as Date;
+							path = `/p1/repositories/${repoId}/milestones/${milestoneNumber}/start_date`;
+							requestMethod = 'POST';
+							body.start_date = moment(startDate).toISOString();
+							break;
+					}
+					break;
+
+				// WORKSPACE
+				case 'workspace':
+					switch (operation) {
+						case 'get':
+							path = `/p2/repositories/${repoId}/workspaces`;
+							requestMethod = 'GET';
+							break;
+
+						case 'getBoard':
+							const workspaceId = this.getNodeParameter('workspaceId', 0) as string;
+							path = `/p2/workspaces/${workspaceId}/repositories/${repoId}/board`;
+							requestMethod = 'GET';
+							break;
+
+						case 'getOldest':
+							path = `/p1/repositories/${repoId}/board`;
+							requestMethod = 'GET';
+							break;
+					}
+					break;
+
+				default:
+					throw new NodeOperationError(this.getNode(), `The resource "${resource}" is not known!`);
+			}
+
+			if (path !== undefined) {
+				const options: IHttpRequestOptions = {
+					url: endpoint.replace(/\/$/, '') + path,
+					method: requestMethod,
+					headers: {
+						'User-Agent': 'n8n',
+						'X-Authentication-Token': `${credentials.apiKey}`,
+					},
+					body: body,
+				};
+				responseData = await this.helpers.httpRequest(options);
+				returnData.push(responseData);
+			}
+		} catch (error) {
+			if (!this.continueOnFail()) {
+				throw error;
+			}
 		}
 
 		return [this.helpers.returnJsonArray(returnData)];

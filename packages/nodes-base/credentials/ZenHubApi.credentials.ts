@@ -8,11 +8,17 @@ export class ZenHubApi implements ICredentialType {
 	displayName = 'ZenHub API';
 	documentationUrl = 'zenHub';
 	properties = [
-			{
-					displayName: 'API Key',
-					name: 'apiKey',
-					type: 'string' as NodePropertyTypes,
-					default: '',
-			},
+		{
+			displayName: 'Endpoint',
+			name: 'endpoint',
+			type: 'string' as NodePropertyTypes,
+			default: 'https://api.zenhub.com/',
+		},
+		{
+			displayName: 'API Key',
+			name: 'apiKey',
+			type: 'string' as NodePropertyTypes,
+			default: '',
+		},
 	];
 }
