@@ -292,6 +292,15 @@ export const accountFields = [
 				description: 'Phone number for the account.',
 			},
 			{
+				displayName: 'Record Type ID',
+				name: 'recordTypeId',
+				type: 'options',
+				typeOptions: {
+					loadOptionsMethod: 'getRecordTypes',
+				},
+				default: '',
+			},
+			{
 				displayName: 'SicDesc',
 				name: 'sicDesc',
 				type: 'string',
@@ -538,6 +547,15 @@ export const accountFields = [
 				type: 'string',
 				default: '',
 				description: 'Phone number for the account.',
+			},
+			{
+				displayName: 'Record Type ID',
+				name: 'recordTypeId',
+				type: 'options',
+				typeOptions: {
+					loadOptionsMethod: 'getRecordTypes',
+				},
+				default: '',
 			},
 			{
 				displayName: 'Type',

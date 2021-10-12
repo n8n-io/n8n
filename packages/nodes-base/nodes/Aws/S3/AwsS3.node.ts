@@ -13,7 +13,6 @@ import {
 } from 'xml2js';
 
 import {
-	BINARY_ENCODING,
 	IExecuteFunctions,
 } from 'n8n-core';
 
@@ -115,7 +114,7 @@ export class AwsS3 implements INodeType {
 				if (resource === 'bucket') {
 					//https://docs.aws.amazon.com/AmazonS3/latest/API/API_CreateBucket.html
 					if (operation === 'create') {
-						const credentials = this.getCredentials('aws');
+						const credentials = await this.getCredentials('aws');
 						const name = this.getNodeParameter('name', i) as string;
 						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 						if (additionalFields.acl) {
@@ -607,8 +606,9 @@ export class AwsS3 implements INodeType {
 							}
 
 							const binaryData = (items[i].binary as IBinaryKeyData)[binaryPropertyName];
+							const binaryDataBuffer = await this.helpers.getBinaryDataBuffer(i, binaryPropertyName);
 
-							body = Buffer.from(binaryData.data, BINARY_ENCODING) as Buffer;
+							body = binaryDataBuffer;
 
 							headers['Content-Type'] = binaryData.mimeType;
 

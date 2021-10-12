@@ -181,7 +181,7 @@ export const postFields = [
 		},
 
 		default: '',
-		description: 'Mobiledoc is the raw JSON format that Ghost uses to store post contents. <a href="https://ghost.org/docs/concepts/posts/#document-storage" target="_blank">Info</a>',
+		description: 'Mobiledoc is the raw JSON format that Ghost uses to store post contents. <a href="https://ghost.org/docs/concepts/posts/#document-storage">Info</a>',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -820,7 +820,7 @@ export const postFields = [
 					},
 				},
 				default: '',
-				description: 'Mobiledoc is the raw JSON format that Ghost uses to store post contents. <a href="https://ghost.org/docs/concepts/posts/#document-storage" target="_blank">Info.</a>',
+				description: 'Mobiledoc is the raw JSON format that Ghost uses to store post contents. <a href="https://ghost.org/docs/concepts/posts/#document-storage">Info.</a>',
 			},
 			{
 				displayName: 'Featured',

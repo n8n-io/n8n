@@ -87,10 +87,10 @@ export class HomeAssistant implements INodeType {
 						name: 'Config',
 						value: 'config',
 					},
-					// {
-					// 	name: 'Event',
-					// 	value: 'event',
-					// },
+					{
+						name: 'Event',
+						value: 'event',
+					},
 					// {
 					// 	name: 'History',
 					// 	value: 'history',
@@ -226,7 +226,7 @@ export class HomeAssistant implements INodeType {
 							const limit = this.getNodeParameter('limit', i) as number;
 							responseData = responseData.slice(0, limit);
 						}
-					} else if (operation === 'post') {
+					} else if (operation === 'create') {
 						const eventType = this.getNodeParameter('eventType', i) as string;
 						const eventAttributes = this.getNodeParameter('eventAttributes', i) as {
 							attributes: IDataObject[],

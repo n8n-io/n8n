@@ -12,7 +12,7 @@ import {
 import { IDataObject, NodeApiError, NodeOperationError, } from 'n8n-workflow';
 
 export async function clearbitApiRequest(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: string, api: string, resource: string, body: any = {}, qs: IDataObject = {}, uri?: string, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
-	const credentials = this.getCredentials('clearbitApi');
+	const credentials = await this.getCredentials('clearbitApi');
 	if (credentials === undefined) {
 		throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
 	}

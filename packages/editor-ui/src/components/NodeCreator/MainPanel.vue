@@ -88,7 +88,6 @@ export default mixins(externalHooks).extend({
 		filteredNodeTypes(): INodeCreateElement[] {
 			const nodeTypes: INodeCreateElement[] = this.searchItems;
 			const filter = this.searchFilter;
-
 			const returnData = nodeTypes.filter((el: INodeCreateElement) => {
 				const nodeType = (el.properties as INodeItemProps).nodeType;
 				return filter && matchesSelectType(el, this.selectedType) && matchesNodeType(el, filter);
@@ -215,11 +214,11 @@ export default mixins(externalHooks).extend({
 				this.activeIndex = Math.max(this.activeIndex, 0);
 			} else if (e.key === 'Enter' && activeNodeType) {
 				this.selected(activeNodeType);
-			} else if (e.key === 'ArrowRight' && activeNodeType.type === 'subcategory') {
+			} else if (e.key === 'ArrowRight' && activeNodeType && activeNodeType.type === 'subcategory') {
 				this.selected(activeNodeType);
-			} else if (e.key === 'ArrowRight' && activeNodeType.type === 'category' && !activeNodeType.properties.expanded) {
+			} else if (e.key === 'ArrowRight' && activeNodeType && activeNodeType.type === 'category' && !activeNodeType.properties.expanded) {
 				this.selected(activeNodeType);
-			} else if (e.key === 'ArrowLeft' && activeNodeType.type === 'category' && activeNodeType.properties.expanded) {
+			} else if (e.key === 'ArrowLeft' && activeNodeType && activeNodeType.type === 'category' && activeNodeType.properties.expanded) {
 				this.selected(activeNodeType);
 			}
 		},
@@ -279,15 +278,15 @@ export default mixins(externalHooks).extend({
 </script>
 
 <style lang="scss" scoped>
-/deep/ .el-tabs__item {
+::v-deep .el-tabs__item {
 	padding: 0;
 }
 
-/deep/ .el-tabs__active-bar {
+::v-deep .el-tabs__active-bar {
 	height: 1px;
 }
 
-/deep/ .el-tabs__nav-wrap::after {
+::v-deep .el-tabs__nav-wrap::after {
 	height: 1px;
 }
 
@@ -321,7 +320,7 @@ export default mixins(externalHooks).extend({
 	text-align: center;
 	background-color: $--node-creator-select-background-color;
 
-	/deep/ .el-tabs > div {
+	::v-deep .el-tabs > div {
 		margin-bottom: 0;
 
 		.el-tabs__nav {

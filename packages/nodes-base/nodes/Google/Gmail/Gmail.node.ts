@@ -45,6 +45,7 @@ import {
 } from 'lodash';
 
 export interface IEmail {
+	from?: string;
 	to?: string;
 	cc?: string;
 	bcc?: string;
@@ -355,6 +356,7 @@ export class Gmail implements INodeType {
 						}
 
 						const email: IEmail = {
+							from: additionalFields.senderName as string || '',
 							to: toStr,
 							cc: ccStr,
 							bcc: bccStr,
@@ -455,6 +457,7 @@ export class Gmail implements INodeType {
 						}
 
 						const email: IEmail = {
+							from: additionalFields.senderName as string || '',
 							to: toStr,
 							cc: ccStr,
 							bcc: bccStr,

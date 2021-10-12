@@ -1,5 +1,4 @@
 import {
-	BINARY_ENCODING,
 	IExecuteFunctions,
 } from 'n8n-core';
 
@@ -118,9 +117,10 @@ export class Line implements INodeType {
 								}
 
 								const binaryData = (items[i].binary as IBinaryKeyData)[image.binaryProperty as string];
+								const binaryDataBuffer = await this.helpers.getBinaryDataBuffer(i, image.binaryProperty as string);
 
 								body.imageFile = {
-									value: Buffer.from(binaryData.data, BINARY_ENCODING),
+									value: binaryDataBuffer,
 									options: {
 										filename: binaryData.fileName,
 									},

@@ -1,7 +1,5 @@
 import {
-	BINARY_ENCODING,
 	IExecuteFunctions,
-	IExecuteSingleFunctions
 } from 'n8n-core';
 import {
 	IDataObject,
@@ -76,13 +74,15 @@ export class WriteBinaryFile implements INodeType {
 					throw new NodeOperationError(this.getNode(), `The binary property "${dataPropertyName}" does not exist. So no file can be written!`);
 				}
 
-				// Write the file to disk
-				await fsWriteFile(fileName, Buffer.from(item.binary[dataPropertyName].data, BINARY_ENCODING), 'binary');
-
 				const newItem: INodeExecutionData = {
 					json: {},
 				};
 				Object.assign(newItem.json, item.json);
+
+				const binaryDataBuffer = await this.helpers.getBinaryDataBuffer(itemIndex, dataPropertyName);
+
+				// Write the file to disk
+				await fsWriteFile(fileName, binaryDataBuffer, 'binary');
 
 				if (item.binary !== undefined) {
 					// Create a shallow copy of the binary data so that the old
@@ -100,7 +100,7 @@ export class WriteBinaryFile implements INodeType {
 
 			} catch (error) {
 				if (this.continueOnFail()) {
-					returnData.push({json:{ error: error.message }});
+					returnData.push({ json: { error: error.message } });
 					continue;
 				}
 				throw error;

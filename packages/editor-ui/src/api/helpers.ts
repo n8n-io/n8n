@@ -6,7 +6,6 @@ import {
 	IRestApiContext,
 } from '../Interface';
 
-
 class ResponseError extends Error {
 	// The HTTP status code of response
 	httpStatusCode?: number;
@@ -91,6 +90,6 @@ export async function makeRestApiRequest(context: IRestApiContext, method: Metho
 	return response.data;
 }
 
-export async function get(baseURL: string, endpoint: string, params?: IDataObject) {
-	return await request({method: 'GET', baseURL, endpoint, data: params});
+export async function get(baseURL: string, endpoint: string, params?: IDataObject, headers?: IDataObject) {
+	return await request({method: 'GET', baseURL, endpoint, headers, data: params});
 }

@@ -34,11 +34,11 @@ export async function twakeApiRequest(this: IHookFunctions | IExecuteFunctions |
 
 
 	// if (authenticationMethod === 'cloud') {
-		const credentials = this.getCredentials('twakeCloudApi');
+		const credentials = await this.getCredentials('twakeCloudApi');
 		options.headers!.Authorization = `Bearer ${credentials!.workspaceKey}`;
 
 	// } else {
-	// 	const credentials = this.getCredentials('twakeServerApi');
+	// 	const credentials = await this.getCredentials('twakeServerApi');
 	// 	options.auth = { user: credentials!.publicId as string, pass: credentials!.privateApiKey as string };
 	// 	options.uri = `${credentials!.hostUrl}/api/v1${resource}`;
 	// }

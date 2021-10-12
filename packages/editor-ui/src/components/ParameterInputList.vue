@@ -14,6 +14,8 @@
 				/>
 			</div>
 
+			<div v-else-if="parameter.type === 'notice'" v-html="parameter.displayName" class="parameter-item parameter-notice"></div>
+
 			<div
 				v-else-if="['collection', 'fixedCollection'].includes(parameter.type)"
 				class="multi-parameter"
@@ -28,10 +30,10 @@
 						/>
 					</div>
 					{{parameter.displayName}}:
-					<el-tooltip placement="top" class="parameter-info" v-if="parameter.description" effect="light">
-						<div slot="content" v-html="parameter.description"></div>
+					<n8n-tooltip placement="top" class="parameter-info" v-if="parameter.description" >
+						<div slot="content" v-html="addTargetBlank(parameter.description)"></div>
 						<font-awesome-icon icon="question-circle"/>
-					</el-tooltip>
+					</n8n-tooltip>
 				</div>
 				<div>
 					<collection-parameter
@@ -68,6 +70,7 @@
 					:value="getParameterValue(nodeValues, parameter.name, path)"
 					:displayOptions="true"
 					:path="getPath(parameter.name)"
+					:isReadOnly="isReadOnly"
 					@valueChanged="valueChanged"
 				/>
 			</div>
@@ -89,6 +92,8 @@ import MultipleParameter from '@/components/MultipleParameter.vue';
 import { genericHelpers } from '@/components/mixins/genericHelpers';
 import { workflowHelpers } from '@/components/mixins/workflowHelpers';
 import ParameterInputFull from '@/components/ParameterInputFull.vue';
+
+import { addTargetBlank } from './helpers';
 
 import { get, set } from 'lodash';
 
@@ -119,6 +124,7 @@ export default mixins(
 			},
 		},
 		methods: {
+			addTargetBlank,
 			multipleValues (parameter: INodeProperties): boolean {
 				if (this.getArgument('multipleValues', parameter) === true) {
 					return true;
@@ -289,6 +295,7 @@ export default mixins(
 
 	.parameter-item {
 		position: relative;
+		margin: 8px 0;
 
 		>.delete-option {
 			left: -0.9em;
@@ -298,6 +305,19 @@ export default mixins(
 	.parameter-item:hover > .delete-option,
 	.parameter-name:hover > .delete-option {
 		display: block;
+	}
+
+	.parameter-notice {
+		background-color: #fff5d3;
+		color: $--custom-font-black;
+		margin: 0.3em 0;
+		padding: 0.8em;
+		line-height: 1.5;
+		word-break: normal;
+
+		a {
+			font-weight: var(--font-weight-bold);
+		}
 	}
 }
 

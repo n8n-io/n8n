@@ -209,6 +209,15 @@ export const caseFields = [
 				description: 'The reason why the case was created, such as Instructions not clear, or User didn’t attend training.',
 			},
 			{
+				displayName: 'Record Type ID',
+				name: 'recordTypeId',
+				type: 'options',
+				typeOptions: {
+					loadOptionsMethod: 'getRecordTypes',
+				},
+				default: '',
+			},
+			{
 				displayName: 'Status',
 				name: 'status',
 				type: 'options',
@@ -404,6 +413,15 @@ export const caseFields = [
 				},
 				default: '',
 				description: 'The reason why the case was created, such as Instructions not clear, or User didn’t attend training.',
+			},
+			{
+				displayName: 'Record Type ID',
+				name: 'recordTypeId',
+				type: 'options',
+				typeOptions: {
+					loadOptionsMethod: 'getRecordTypes',
+				},
+				default: '',
 			},
 			{
 				displayName: 'Status',

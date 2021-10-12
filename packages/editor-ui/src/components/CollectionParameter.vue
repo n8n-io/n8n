@@ -7,16 +7,23 @@
 
 			<parameter-input-list :parameters="getProperties" :nodeValues="nodeValues" :path="path" :hideDelete="hideDelete" @valueChanged="valueChanged" />
 
-			<div v-if="parameterOptions.length > 0 && !isReadOnly">
-				<el-button v-if="parameter.options.length === 1" size="small" class="add-option" @click="optionSelected(parameter.options[0].name)">{{ getPlaceholderText }}</el-button>
-				<el-select v-else v-model="selectedOption" :placeholder="getPlaceholderText" size="small" class="add-option" @change="optionSelected" filterable>
-					<el-option
-						v-for="item in parameterOptions"
-						:key="item.name"
-						:label="item.displayName"
-						:value="item.name">
-					</el-option>
-				</el-select>
+			<div v-if="parameterOptions.length > 0 && !isReadOnly" class="param-options">
+				<n8n-button
+					v-if="parameter.options.length === 1"
+					fullWidth
+					@click="optionSelected(parameter.options[0].name)"
+					:label="getPlaceholderText"
+				/>
+				<div v-else class="add-option">
+					<n8n-select v-model="selectedOption" :placeholder="getPlaceholderText" size="small"  @change="optionSelected" filterable>
+						<n8n-option
+							v-for="item in parameterOptions"
+							:key="item.name"
+							:label="item.displayName"
+							:value="item.name">
+						</n8n-option>
+					</n8n-select>
+				</div>
 			</div>
 
 		</div>
@@ -177,11 +184,10 @@ export default mixins(
 <style lang="scss">
 
 .collection-parameter {
-	padding: 0em 0 0em 2em;
+	padding-left: 2em;
 
-	.add-option {
-		margin-top: 0.5em;
-		width: 100%;
+	.param-options {
+		padding-top: 0.5em;
 	}
 
 	.no-items-exist {

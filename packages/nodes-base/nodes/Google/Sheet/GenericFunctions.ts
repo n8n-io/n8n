@@ -9,6 +9,8 @@ import {
 } from 'n8n-core';
 
 import {
+	ICredentialDataDecryptedObject,
+	ICredentialTestFunctions,
 	IDataObject, NodeApiError, NodeOperationError,
 } from 'n8n-workflow';
 
@@ -37,13 +39,13 @@ export async function googleApiRequest(this: IExecuteFunctions | IExecuteSingleF
 		}
 
 		if (authenticationMethod === 'serviceAccount') {
-			const credentials = this.getCredentials('googleApi');
+			const credentials = await this.getCredentials('googleApi');
 
 			if (credentials === undefined) {
 				throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
 			}
 
-			const { access_token } = await getAccessToken.call(this, credentials as IDataObject);
+			const { access_token } = await getAccessToken.call(this, credentials as ICredentialDataDecryptedObject);
 
 			options.headers!.Authorization = `Bearer ${access_token}`;
 			//@ts-ignore
@@ -80,7 +82,7 @@ export async function googleApiRequestAllItems(this: IExecuteFunctions | ILoadOp
 	return returnData;
 }
 
-function getAccessToken(this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, credentials: IDataObject): Promise<IDataObject> {
+export function getAccessToken(this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions | ICredentialTestFunctions, credentials: ICredentialDataDecryptedObject): Promise<IDataObject> {
 	//https://developers.google.com/identity/protocols/oauth2/service-account#httprest
 
 	const scopes = [

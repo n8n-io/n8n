@@ -16,14 +16,14 @@ export const eventOperations = [
 		},
 		options: [
 			{
+				name: 'Create',
+				value: 'create',
+				description: 'Create an event',
+			},
+			{
 				name: 'Get All',
 				value: 'getAll',
 				description: 'Get all events',
-			},
-			{
-				name: 'Post',
-				value: 'post',
-				description: 'Post an event',
 			},
 		],
 		default: 'getAll',
@@ -79,7 +79,7 @@ export const eventFields = [
 	},
 
 	/* -------------------------------------------------------------------------- */
-	/*                                event:post                                  */
+	/*                                event:create                                  */
 	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Event Type',
@@ -88,7 +88,7 @@ export const eventFields = [
 		displayOptions: {
 			show: {
 				operation: [
-					'post',
+					'create',
 				],
 				resource: [
 					'event',
@@ -114,7 +114,7 @@ export const eventFields = [
 					'event',
 				],
 				operation: [
-					'post',
+					'create',
 				],
 			},
 		},

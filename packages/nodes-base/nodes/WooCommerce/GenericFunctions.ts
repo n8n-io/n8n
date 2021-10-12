@@ -32,8 +32,12 @@ import {
 	snakeCase,
 } from 'change-case';
 
+import {
+	omit
+} from 'lodash';
+
 export async function woocommerceApiRequest(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions | IWebhookFunctions, method: string, resource: string, body: any = {}, qs: IDataObject = {}, uri?: string, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
-	const credentials = this.getCredentials('wooCommerceApi');
+	const credentials = await this.getCredentials('wooCommerceApi');
 	if (credentials === undefined) {
 		throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
 	}
@@ -144,3 +148,29 @@ export function toSnakeCase(data:
 		}
 	}
 }
+
+export function setFields(fieldsToSet: IDataObject, body: IDataObject) {
+	for(const fields in fieldsToSet) {
+		if (fields === 'tags') {
+			body['tags'] = (fieldsToSet[fields] as string[]).map(tag => ({id: parseInt(tag, 10)}));
+		} else {
+			body[snakeCase(fields.toString())] = fieldsToSet[fields];
+		}
+		
+	}
+}
+
+export function adjustMetadata(fields: IDataObject & Metadata) {
+	if (!fields.meta_data) return fields;
+
+	return {
+		...omit(fields, ['meta_data']),
+		meta_data: fields.meta_data.meta_data_fields,
+	};
+}
+
+type Metadata = {
+	meta_data?: {
+		meta_data_fields: Array<{ key: string; value: string }>;
+	}
+};

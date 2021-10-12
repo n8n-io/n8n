@@ -31,7 +31,7 @@ export async function s3ApiRequest(this: IHookFunctions | IExecuteFunctions | IL
 
 	let credentials;
 
-	credentials = this.getCredentials('s3');
+	credentials = await this.getCredentials('s3');
 
 	if (credentials === undefined) {
 		throw new NodeOperationError(this.getNode(), 'No credentials got returned!');

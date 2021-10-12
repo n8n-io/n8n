@@ -1,8 +1,8 @@
 <template>
 	<div class="node-icon-wrapper" :style="iconStyleData" :class="{shrink: isSvgIcon && shrink, full: !shrink}">
 		<div v-if="nodeIconData !== null" class="icon">
-			<img :src="nodeIconData.path" style="max-width: 100%; max-height: 100%;" v-if="nodeIconData.type === 'file'"/>
-			<font-awesome-icon :icon="nodeIconData.path" v-else-if="nodeIconData.type === 'fa'" />
+			<img v-if="nodeIconData.type === 'file'" :src="nodeIconData.fileBuffer || nodeIconData.path" style="max-width: 100%; max-height: 100%;" />
+			<font-awesome-icon v-else :icon="nodeIconData.icon || nodeIconData.path" />
 		</div>
 		<div v-else class="node-icon-placeholder">
 			{{nodeType !== null ? nodeType.displayName.charAt(0) : '?' }}
@@ -26,21 +26,25 @@ export default Vue.extend({
 		'nodeType',
 		'size',
 		'shrink',
+		'disabled',
+		'circle',
 	],
 	computed: {
 		iconStyleData (): object {
+			const color = this.disabled ? '#ccc' : this.nodeType.defaults && this.nodeType.defaults.color;
 			if (!this.size) {
-				return {};
+				return {color};
 			}
 
 			const size = parseInt(this.size, 10);
 
 			return {
+				color,
 				width: size + 'px',
 				height: size + 'px',
 				'font-size': Math.floor(parseInt(this.size, 10) * 0.6) + 'px',
 				'line-height': size + 'px',
-				'border-radius': Math.ceil(size / 2) + 'px',
+				'border-radius': this.circle ? '50%': '4px',
 			};
 		},
 		isSvgIcon (): boolean {
@@ -52,6 +56,10 @@ export default Vue.extend({
 		nodeIconData (): null | NodeIconData {
 			if (this.nodeType === null) {
 				return null;
+			}
+
+			if (this.nodeType.iconData) {
+				return this.nodeType.iconData;
 			}
 
 			const restUrl = this.$store.getters.getRestUrl;
@@ -94,6 +102,10 @@ export default Vue.extend({
 	&.full .icon {
 		height: 100%;
 		width: 100%;
+
+		display: flex;
+		justify-content: center;
+		align-items: center;
 	}
 
 	&.shrink .icon {

@@ -480,12 +480,12 @@ export class Redis implements INodeType {
 		};
 
 
-		return new Promise((resolve, reject) => {
+		return new Promise(async (resolve, reject) => {
 			// TODO: For array and object fields it should not have a "value" field it should
 			//       have a parameter field for a path. Because it is not possible to set
 			//       array, object via parameter directly (should maybe be possible?!?!)
 			//       Should maybe have a parameter which is JSON.
-			const credentials = this.getCredentials('redis');
+			const credentials = await this.getCredentials('redis');
 
 			if (credentials === undefined) {
 				throw new NodeOperationError(this.getNode(), 'No credentials got returned!');

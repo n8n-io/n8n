@@ -1,5 +1,4 @@
 import {
-	BINARY_ENCODING,
 	IExecuteFunctions,
 } from 'n8n-core';
 
@@ -91,7 +90,7 @@ export class Pushover implements INodeType {
 				},
 				default: '',
 				description: `The user/group key (not e-mail address) of your user (or you),<br>
-				viewable when logged into our <a href="https://pushover.net/" target="_blank">dashboard</a> (often referred to as USER_KEY in our <a href="https://support.pushover.net/i44-example-code-and-pushover-libraries" target="_blank"></a> and code examples)`,
+				viewable when logged into our <a href="https://pushover.net/">dashboard</a> (often referred to as USER_KEY in our <a href="https://support.pushover.net/i44-example-code-and-pushover-libraries"></a> and code examples)`,
 			},
 			{
 				displayName: 'Message',
@@ -366,8 +365,10 @@ export class Pushover implements INodeType {
 									throw new NodeOperationError(this.getNode(), `No binary data property "${binaryPropertyName}" does not exists on item!`);
 								}
 
+								const dataBuffer = await this.helpers.getBinaryDataBuffer(i, binaryPropertyName);
+
 								body.attachment = {
-									value: Buffer.from(binaryData.data, BINARY_ENCODING),
+									value: dataBuffer,
 									options: {
 										filename: binaryData.fileName,
 									},

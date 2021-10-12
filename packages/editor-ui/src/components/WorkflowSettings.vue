@@ -1,133 +1,139 @@
 <template>
-	<span>
-		<el-dialog class="workflow-settings" :visible="dialogVisible" append-to-body width="65%" title="Workflow Settings" :before-close="closeDialog">
-			<div v-loading="isLoading">
+	<Modal
+		:name="modalName"
+		width="65%"
+		maxHeight="80%"
+		title="Workflow Settings"
+		:eventBus="modalBus"
+		:scrollable="true"
+	>
+		<template v-slot:content>
+			<div v-loading="isLoading" class="workflow-settings">
 				<el-row>
 					<el-col :span="10" class="setting-name">
 						Error Workflow:
-						<el-tooltip class="setting-info" placement="top" effect="light">
+						<n8n-tooltip class="setting-info" placement="top" >
 							<div slot="content" v-html="helpTexts.errorWorkflow"></div>
 							<font-awesome-icon icon="question-circle" />
-						</el-tooltip>
+						</n8n-tooltip>
 					</el-col>
 					<el-col :span="14" class="ignore-key-press">
-						<el-select v-model="workflowSettings.errorWorkflow" placeholder="Select Workflow" size="small" filterable>
-							<el-option
+						<n8n-select v-model="workflowSettings.errorWorkflow" placeholder="Select Workflow" size="medium" filterable :limit-popper-width="true">
+							<n8n-option
 								v-for="item in workflows"
 								:key="item.id"
 								:label="item.name"
 								:value="item.id">
-							</el-option>
-						</el-select>
+							</n8n-option>
+						</n8n-select>
 					</el-col>
 				</el-row>
 				<el-row>
 					<el-col :span="10" class="setting-name">
 						Timezone:
-						<el-tooltip class="setting-info" placement="top" effect="light">
+						<n8n-tooltip class="setting-info" placement="top" >
 							<div slot="content" v-html="helpTexts.timezone"></div>
 							<font-awesome-icon icon="question-circle" />
-						</el-tooltip>
+						</n8n-tooltip>
 					</el-col>
 					<el-col :span="14" class="ignore-key-press">
-						<el-select v-model="workflowSettings.timezone" placeholder="Select Timezone" size="small" filterable>
-							<el-option
+						<n8n-select v-model="workflowSettings.timezone" placeholder="Select Timezone" size="medium" filterable :limit-popper-width="true">
+							<n8n-option
 								v-for="timezone of timezones"
 								:key="timezone.key"
 								:label="timezone.value"
 								:value="timezone.key">
-							</el-option>
-						</el-select>
+							</n8n-option>
+						</n8n-select>
 					</el-col>
 				</el-row>
 				<el-row>
 					<el-col :span="10" class="setting-name">
 						Save Data Error Execution:
-						<el-tooltip class="setting-info" placement="top" effect="light">
+						<n8n-tooltip class="setting-info" placement="top" >
 							<div slot="content" v-html="helpTexts.saveDataErrorExecution"></div>
 							<font-awesome-icon icon="question-circle" />
-						</el-tooltip>
+						</n8n-tooltip>
 					</el-col>
 					<el-col :span="14" class="ignore-key-press">
-						<el-select v-model="workflowSettings.saveDataErrorExecution" placeholder="Select Option" size="small" filterable>
-							<el-option
+						<n8n-select v-model="workflowSettings.saveDataErrorExecution" placeholder="Select Option" size="medium" filterable :limit-popper-width="true">
+							<n8n-option
 								v-for="option of saveDataErrorExecutionOptions"
 								:key="option.key"
 								:label="option.value"
 								:value="option.key">
-							</el-option>
-						</el-select>
+							</n8n-option>
+						</n8n-select>
 					</el-col>
 				</el-row>
 				<el-row>
 					<el-col :span="10" class="setting-name">
 						Save Data Success Execution:
-						<el-tooltip class="setting-info" placement="top" effect="light">
+						<n8n-tooltip class="setting-info" placement="top" >
 							<div slot="content" v-html="helpTexts.saveDataSuccessExecution"></div>
 							<font-awesome-icon icon="question-circle" />
-						</el-tooltip>
+						</n8n-tooltip>
 					</el-col>
 					<el-col :span="14" class="ignore-key-press">
-						<el-select v-model="workflowSettings.saveDataSuccessExecution" placeholder="Select Option" size="small" filterable>
-							<el-option
+						<n8n-select v-model="workflowSettings.saveDataSuccessExecution" placeholder="Select Option" size="medium" filterable :limit-popper-width="true">
+							<n8n-option
 								v-for="option of saveDataSuccessExecutionOptions"
 								:key="option.key"
 								:label="option.value"
 								:value="option.key">
-							</el-option>
-						</el-select>
+							</n8n-option>
+						</n8n-select>
 					</el-col>
 				</el-row>
 				<el-row>
 					<el-col :span="10" class="setting-name">
 						Save Manual Executions:
-						<el-tooltip class="setting-info" placement="top" effect="light">
+						<n8n-tooltip class="setting-info" placement="top" >
 							<div slot="content" v-html="helpTexts.saveManualExecutions"></div>
 							<font-awesome-icon icon="question-circle" />
-						</el-tooltip>
+						</n8n-tooltip>
 					</el-col>
 					<el-col :span="14" class="ignore-key-press">
-						<el-select v-model="workflowSettings.saveManualExecutions" placeholder="Select Option" size="small" filterable>
-							<el-option
+						<n8n-select v-model="workflowSettings.saveManualExecutions" placeholder="Select Option" size="medium" filterable :limit-popper-width="true">
+							<n8n-option
 								v-for="option of saveManualOptions"
 								:key="option.key"
 								:label="option.value"
 								:value="option.key">
-							</el-option>
-						</el-select>
+							</n8n-option>
+						</n8n-select>
 					</el-col>
 				</el-row>
 				<el-row>
 					<el-col :span="10" class="setting-name">
 						Save Execution Progress:
-						<el-tooltip class="setting-info" placement="top" effect="light">
+						<n8n-tooltip class="setting-info" placement="top" >
 							<div slot="content" v-html="helpTexts.saveExecutionProgress"></div>
 							<font-awesome-icon icon="question-circle" />
-						</el-tooltip>
+						</n8n-tooltip>
 					</el-col>
 					<el-col :span="14" class="ignore-key-press">
-						<el-select v-model="workflowSettings.saveExecutionProgress" placeholder="Select Option" size="small" filterable>
-							<el-option
+						<n8n-select v-model="workflowSettings.saveExecutionProgress" placeholder="Select Option" size="medium" filterable :limit-popper-width="true">
+							<n8n-option
 								v-for="option of saveExecutionProgressOptions"
 								:key="option.key"
 								:label="option.value"
 								:value="option.key">
-							</el-option>
-						</el-select>
+							</n8n-option>
+						</n8n-select>
 					</el-col>
 				</el-row>
 				<el-row>
 					<el-col :span="10" class="setting-name">
 						Timeout Workflow:
-						<el-tooltip class="setting-info" placement="top" effect="light">
+						<n8n-tooltip class="setting-info" placement="top" >
 							<div slot="content" v-html="helpTexts.executionTimeoutToggle"></div>
 							<font-awesome-icon icon="question-circle" />
-						</el-tooltip>
+						</n8n-tooltip>
 					</el-col>
 					<el-col :span="14">
 						<div>
 							<el-switch ref="inputField" :value="workflowSettings.executionTimeout > -1" @change="toggleTimeout" active-color="#13ce66"></el-switch>
-							<div class="expression-info clickable" @click="expressionEditDialogVisible = true">Edit Expression</div>
 						</div>
 					</el-col>
 				</el-row>
@@ -135,33 +141,36 @@
 					<el-row>
 						<el-col :span="10" class="setting-name">
 							Timeout After:
-							<el-tooltip class="setting-info" placement="top" effect="light">
+							<n8n-tooltip class="setting-info" placement="top" >
 								<div slot="content" v-html="helpTexts.executionTimeout"></div>
 								<font-awesome-icon icon="question-circle" />
-							</el-tooltip>
+							</n8n-tooltip>
 						</el-col>
 						<el-col :span="4">
-							<el-input-number size="small" v-model="timeoutHMS.hours" :min="0" placeholder="hours" type="number" class="el-input_inner"></el-input-number><br />
-							<div class="timeout-setting-name">hours</div>
+							<n8n-input size="medium" :value="timeoutHMS.hours" @input="(value) => setTimeout('hours', value)" :min="0">
+								<template slot="append">hours</template>
+							</n8n-input>
 						</el-col>
-						<el-col :span="4">
-							<el-input-number size="small" v-model="timeoutHMS.minutes" :min="0" placeholder="minutes" type="number" class="el-input_inner"></el-input-number><br />
-							<div class="timeout-setting-name">minutes</div>
+						<el-col :span="4" class="timeout-input">
+							<n8n-input size="medium" :value="timeoutHMS.minutes" @input="(value) => setTimeout('minutes', value)" :min="0" :max="60">
+								<template slot="append">minutes</template>
+							</n8n-input>
 						</el-col>
-						<el-col :span="4">
-							<el-input-number size="small" v-model="timeoutHMS.seconds" :min="0" placeholder="seconds" type="number" class="el-input_inner"></el-input-number><br />
-							<div class="timeout-setting-name">seconds</div>
+						<el-col :span="4" class="timeout-input">
+							<n8n-input size="medium" :value="timeoutHMS.seconds" @input="(value) => setTimeout('seconds', value)" :min="0" :max="60">
+								<template slot="append">seconds</template>
+							</n8n-input>
 						</el-col>
 					</el-row>
 				</div>
-				<div class="action-buttons">
-					<el-button type="success" @click="saveSettings">
-						Save
-					</el-button>
-				</div>
 			</div>
-		</el-dialog>
-	</span>
+		</template>
+		<template v-slot:footer>
+			<div class="action-buttons">
+				<n8n-button label="Save" size="large" @click="saveSettings" />
+			</div>
+		</template>
+	</Modal>
 </template>
 
 <script lang="ts">
@@ -177,6 +186,7 @@ import {
 	IWorkflowSettings,
 	IWorkflowShortResponse,
 } from '@/Interface';
+import Modal from './Modal.vue';
 
 import mixins from 'vue-typed-mixins';
 
@@ -187,9 +197,14 @@ export default mixins(
 	showMessage,
 ).extend({
 	name: 'WorkflowSettings',
-	props: [
-		'dialogVisible',
-	],
+	props: {
+		modalName: {
+			type: String,
+		},
+	},
+	components: {
+		Modal,
+	},
 	data () {
 		return {
 			isLoading: true,
@@ -220,22 +235,82 @@ export default mixins(
 			executionTimeout: this.$store.getters.executionTimeout,
 			maxExecutionTimeout: this.$store.getters.maxExecutionTimeout,
 			timeoutHMS: { hours: 0, minutes: 0, seconds: 0 } as ITimeoutHMS,
+			modalBus: new Vue(),
 		};
 	},
-	watch: {
-		dialogVisible (newValue, oldValue) {
-			if (newValue) {
-				this.openDialog();
-			}
-			this.$externalHooks().run('workflowSettings.dialogVisibleChanged', { dialogVisible: newValue });
-		},
+	async mounted () {
+		if (this.$route.params.name === undefined) {
+			this.$showMessage({
+				title: 'No workflow active',
+				message: `No workflow active to display settings of.`,
+				type: 'error',
+				duration: 0,
+			});
+			this.closeDialog();
+			return;
+		}
+
+		this.defaultValues.saveDataErrorExecution = this.$store.getters.saveDataErrorExecution;
+		this.defaultValues.saveDataSuccessExecution = this.$store.getters.saveDataSuccessExecution;
+		this.defaultValues.saveManualExecutions = this.$store.getters.saveManualExecutions;
+		this.defaultValues.timezone = this.$store.getters.timezone;
+
+		this.isLoading = true;
+		const promises = [];
+		promises.push(this.loadWorkflows());
+		promises.push(this.loadSaveDataErrorExecutionOptions());
+		promises.push(this.loadSaveDataSuccessExecutionOptions());
+		promises.push(this.loadSaveExecutionProgressOptions());
+		promises.push(this.loadSaveManualOptions());
+		promises.push(this.loadTimezones());
+
+		try {
+			await Promise.all(promises);
+		} catch (error) {
+			this.$showError(error, 'Problem loading settings', 'The following error occurred loading the data:');
+		}
+
+		const workflowSettings = JSON.parse(JSON.stringify(this.$store.getters.workflowSettings));
+
+		if (workflowSettings.timezone === undefined) {
+			workflowSettings.timezone = 'DEFAULT';
+		}
+		if (workflowSettings.saveDataErrorExecution === undefined) {
+			workflowSettings.saveDataErrorExecution = 'DEFAULT';
+		}
+		if (workflowSettings.saveDataSuccessExecution === undefined) {
+			workflowSettings.saveDataSuccessExecution = 'DEFAULT';
+		}
+		if (workflowSettings.saveExecutionProgress === undefined) {
+			workflowSettings.saveExecutionProgress = 'DEFAULT';
+		}
+		if (workflowSettings.saveManualExecutions === undefined) {
+			workflowSettings.saveManualExecutions = 'DEFAULT';
+		}
+		if (workflowSettings.executionTimeout === undefined) {
+			workflowSettings.executionTimeout = this.$store.getters.executionTimeout;
+		}
+		if (workflowSettings.maxExecutionTimeout === undefined) {
+			workflowSettings.maxExecutionTimeout = this.$store.getters.maxExecutionTimeout;
+		}
+
+		Vue.set(this, 'workflowSettings', workflowSettings);
+		this.timeoutHMS = this.convertToHMS(workflowSettings.executionTimeout);
+		this.isLoading = false;
+
+		this.$externalHooks().run('workflowSettings.dialogVisibleChanged', { dialogVisible: true });
 	},
 	methods: {
 		closeDialog () {
-			// Handle the close externally as the visible parameter is an external prop
-			// and is so not allowed to be changed here.
-			this.$emit('closeDialog');
-			return false;
+			this.modalBus.$emit('close');
+		},
+		setTimeout (key: string, value: string) {
+			const time = value ? parseInt(value, 10) : 0;
+
+			this.timeoutHMS = {
+				...this.timeoutHMS,
+				[key]: time,
+			};
 		},
 		async loadSaveDataErrorExecutionOptions () {
 			this.saveDataErrorExecutionOptions.length = 0;
@@ -354,67 +429,6 @@ export default mixins(
 
 			Vue.set(this, 'workflows', workflows);
 		},
-		async openDialog () {
-			const workflowId = this.$route.params.name;
-			if (this.$route.params.name === undefined) {
-				this.$showMessage({
-					title: 'No workflow active',
-					message: `No workflow active to display settings of.`,
-					type: 'error',
-					duration: 0,
-				});
-				this.closeDialog();
-				return;
-			}
-
-			this.defaultValues.saveDataErrorExecution = this.$store.getters.saveDataErrorExecution;
-			this.defaultValues.saveDataSuccessExecution = this.$store.getters.saveDataSuccessExecution;
-			this.defaultValues.saveManualExecutions = this.$store.getters.saveManualExecutions;
-			this.defaultValues.timezone = this.$store.getters.timezone;
-
-			this.isLoading = true;
-			const promises = [];
-			promises.push(this.loadWorkflows());
-			promises.push(this.loadSaveDataErrorExecutionOptions());
-			promises.push(this.loadSaveDataSuccessExecutionOptions());
-			promises.push(this.loadSaveExecutionProgressOptions());
-			promises.push(this.loadSaveManualOptions());
-			promises.push(this.loadTimezones());
-
-			try {
-				await Promise.all(promises);
-			} catch (error) {
-				this.$showError(error, 'Problem loading settings', 'The following error occurred loading the data:');
-			}
-
-			const workflowSettings = JSON.parse(JSON.stringify(this.$store.getters.workflowSettings));
-
-			if (workflowSettings.timezone === undefined) {
-				workflowSettings.timezone = 'DEFAULT';
-			}
-			if (workflowSettings.saveDataErrorExecution === undefined) {
-				workflowSettings.saveDataErrorExecution = 'DEFAULT';
-			}
-			if (workflowSettings.saveDataSuccessExecution === undefined) {
-				workflowSettings.saveDataSuccessExecution = 'DEFAULT';
-			}
-			if (workflowSettings.saveExecutionProgress === undefined) {
-				workflowSettings.saveExecutionProgress = 'DEFAULT';
-			}
-			if (workflowSettings.saveManualExecutions === undefined) {
-				workflowSettings.saveManualExecutions = 'DEFAULT';
-			}
-			if (workflowSettings.executionTimeout === undefined) {
-				workflowSettings.executionTimeout = this.$store.getters.executionTimeout;
-			}
-			if (workflowSettings.maxExecutionTimeout === undefined) {
-				workflowSettings.maxExecutionTimeout = this.$store.getters.maxExecutionTimeout;
-			}
-
-			Vue.set(this, 'workflowSettings', workflowSettings);
-			this.timeoutHMS = this.convertToHMS(workflowSettings.executionTimeout);
-			this.isLoading = false;
-		},
 		async saveSettings () {
 			// Set that the active state should be changed
 			const data: IWorkflowDataUpdate = {
@@ -472,7 +486,7 @@ export default mixins(
 			});
 
 			this.closeDialog();
-			
+
 			this.$externalHooks().run('workflowSettings.saveSettings', { oldSettings });
 		},
 		toggleTimeout() {
@@ -519,9 +533,8 @@ export default mixins(
 	}
 }
 
-.timeout-setting-name {
-	text-align: center;
-	width: calc(100% - 20px);
+.timeout-input {
+	margin-left: 5px;
 }
 
 </style>

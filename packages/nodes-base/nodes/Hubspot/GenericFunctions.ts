@@ -33,13 +33,13 @@ export async function hubspotApiRequest(this: IHookFunctions | IExecuteFunctions
 
 	try {
 		if (authenticationMethod === 'apiKey') {
-			const credentials = this.getCredentials('hubspotApi');
+			const credentials = await this.getCredentials('hubspotApi');
 
 			options.qs.hapikey = credentials!.apiKey as string;
 
 			return await this.helpers.request!(options);
 		} else if (authenticationMethod === 'developerApi') {
-			const credentials = this.getCredentials('hubspotDeveloperApi');
+			const credentials = await this.getCredentials('hubspotDeveloperApi');
 
 			options.qs.hapikey = credentials!.apiKey as string;
 			return await this.helpers.request!(options);
@@ -89,6 +89,17 @@ export function validateJSON(json: string | undefined): any { // tslint:disable-
 		result = '';
 	}
 	return result;
+}
+
+
+// tslint:disable-next-line: no-any
+export function clean(obj: any) {
+	for (const propName in obj) {
+		if (obj[propName] === null || obj[propName] === undefined || obj[propName] === '') {
+			delete obj[propName];
+		}
+	}
+	return obj;
 }
 
 export const propertyEvents = [

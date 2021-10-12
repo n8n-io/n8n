@@ -25,7 +25,7 @@ export async function acuitySchedulingApiRequest(this: IHookFunctions | IExecute
 
 	try {
 		if (authenticationMethod === 'apiKey') {
-			const credentials = this.getCredentials('acuitySchedulingApi');
+			const credentials = await this.getCredentials('acuitySchedulingApi');
 			if (credentials === undefined) {
 				throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
 			}

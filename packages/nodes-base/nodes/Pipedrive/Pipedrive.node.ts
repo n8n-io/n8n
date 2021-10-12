@@ -19,6 +19,7 @@ import {
 	pipedriveEncodeCustomProperties,
 	pipedriveGetCustomProperties,
 	pipedriveResolveCustomProperties,
+	sortOptionParameters,
 } from './GenericFunctions';
 
 import {
@@ -117,6 +118,14 @@ export class Pipedrive implements INodeType {
 					{
 						name: 'Deal',
 						value: 'deal',
+					},
+					{
+						name: 'Deal Activity',
+						value: 'dealActivity',
+					},
+					{
+						name: 'Deal Product',
+						value: 'dealProduct',
 					},
 					{
 						name: 'File',
@@ -244,6 +253,63 @@ export class Pipedrive implements INodeType {
 				],
 				default: 'create',
 				description: 'The operation to perform.',
+			},
+
+			{
+				displayName: 'Operation',
+				name: 'operation',
+				type: 'options',
+				displayOptions: {
+					show: {
+						resource: [
+							'dealActivity',
+						],
+					},
+				},
+				options: [
+					{
+						name: 'Get All',
+						value: 'getAll',
+						description: 'Get all activities of a deal',
+					},
+				],
+				default: 'getAll',
+			},
+
+			{
+				displayName: 'Operation',
+				name: 'operation',
+				type: 'options',
+				displayOptions: {
+					show: {
+						resource: [
+							'dealProduct',
+						],
+					},
+				},
+				options: [
+					{
+						name: 'Add',
+						value: 'add',
+						description: 'Add a product to a deal',
+					},
+					{
+						name: 'Get All',
+						value: 'getAll',
+						description: 'Get all products in a deal',
+					},
+					{
+						name: 'Remove',
+						value: 'remove',
+						description: 'Remove a product from a deal',
+					},
+					{
+						name: 'Update',
+						value: 'update',
+						description: 'Update a product in a deal',
+					},
+				],
+				default: 'add',
 			},
 
 			{
@@ -411,6 +477,11 @@ export class Pipedrive implements INodeType {
 						name: 'Update',
 						value: 'update',
 						description: 'Update an organization',
+					},
+					{
+						name: 'Search',
+						value: 'search',
+						description: 'Search organizations',
 					},
 				],
 				default: 'create',
@@ -1421,6 +1492,330 @@ export class Pipedrive implements INodeType {
 				],
 			},
 			// ----------------------------------
+			//         dealProduct:add
+			// ----------------------------------
+			{
+				displayName: 'Deal ID',
+				name: 'dealId',
+				type: 'options',
+				default: '',
+				typeOptions: {
+					loadOptionsMethod: 'getDeals',
+				},
+				required: true,
+				displayOptions: {
+					show: {
+						operation: [
+							'add',
+						],
+						resource: [
+							'dealProduct',
+						],
+					},
+				},
+				description: 'The ID of the deal to add a product to',
+			},
+			{
+				displayName: 'Product ID',
+				name: 'productId',
+				type: 'options',
+				default: '',
+				typeOptions: {
+					loadOptionsMethod: 'getProducts',
+				},
+				required: true,
+				displayOptions: {
+					show: {
+						operation: [
+							'add',
+						],
+						resource: [
+							'dealProduct',
+						],
+					},
+				},
+				description: 'The ID of the product to add to a deal',
+			},
+			{
+				displayName: 'Item Price',
+				name: 'item_price',
+				type: 'number',
+				typeOptions: {
+					numberPrecision: 2,
+				},
+				default: 0.00,
+				required: true,
+				description: 'Price at which to add or update this product in a deal',
+				displayOptions: {
+					show: {
+						operation: [
+							'add',
+						],
+						resource: [
+							'dealProduct',
+						],
+					},
+				},
+			},
+			{
+				displayName: 'Quantity',
+				name: 'quantity',
+				type: 'number',
+				default: 1,
+				typeOptions: {
+					minValue: 1,
+				},
+				required: true,
+				description: 'How many items of this product to add/update in a deal',
+				displayOptions: {
+					show: {
+						operation: [
+							'add',
+						],
+						resource: [
+							'dealProduct',
+						],
+					},
+				},
+			},
+			{
+				displayName: 'Additional Fields',
+				name: 'additionalFields',
+				type: 'collection',
+				placeholder: 'Add Field',
+				displayOptions: {
+					show: {
+						operation: [
+							'add',
+						],
+						resource: [
+							'dealProduct',
+						],
+					},
+				},
+				default: {},
+				options: [
+					{
+						displayName: 'Comments',
+						name: 'comments',
+						type: 'string',
+						typeOptions: {
+							rows: 4,
+						},
+						default: '',
+						description: 'Text to describe this product-deal attachment',
+					},
+					{
+						displayName: 'Discount Percentage',
+						name: 'discount_percentage',
+						type: 'number',
+						default: 0,
+						typeOptions: {
+							minValue: 0,
+							maxValue: 100,
+						},
+						description: 'Percentage of discount to apply',
+					},
+					{
+						displayName: 'Product Variation ID',
+						name: 'product_variation_id',
+						type: 'string',
+						default: '',
+						description: 'ID of the product variation to use',
+					},
+				],
+			},
+			// ----------------------------------
+			//        dealProduct:update
+			// ----------------------------------
+			{
+				displayName: 'Deal ID',
+				name: 'dealId',
+				type: 'options',
+				default: '',
+				typeOptions: {
+					loadOptionsMethod: 'getDeals',
+				},
+				required: true,
+				displayOptions: {
+					show: {
+						operation: [
+							'update',
+						],
+						resource: [
+							'dealProduct',
+						],
+					},
+				},
+				description: 'The ID of the deal whose product to update',
+			},
+			{
+				displayName: 'Product Attachment ID',
+				name: 'productAttachmentId',
+				type: 'options',
+				default: '',
+				typeOptions: {
+					loadOptionsMethod: 'getProductsDeal',
+					loadOptionsDependsOn: [
+						'dealId',
+					],
+				},
+				required: true,
+				displayOptions: {
+					show: {
+						operation: [
+							'update',
+						],
+						resource: [
+							'dealProduct',
+						],
+					},
+				},
+				description: 'ID of the deal-product (the ID of the product attached to the deal)',
+			},
+			{
+				displayName: 'Update Fields',
+				name: 'updateFields',
+				type: 'collection',
+				placeholder: 'Add Field',
+				displayOptions: {
+					show: {
+						operation: [
+							'update',
+						],
+						resource: [
+							'dealProduct',
+						],
+					},
+				},
+				default: {},
+				options: [
+					{
+						displayName: 'Comments',
+						name: 'comments',
+						type: 'string',
+						typeOptions: {
+							rows: 4,
+						},
+						default: '',
+						description: 'Text to describe this product-deal attachment',
+					},
+					{
+						displayName: 'Discount Percentage',
+						name: 'discount_percentage',
+						type: 'number',
+						default: 0,
+						typeOptions: {
+							minValue: 0,
+							maxValue: 100,
+						},
+						description: 'Percentage of discount to apply',
+					},
+					{
+						displayName: 'Item Price',
+						name: 'item_price',
+						type: 'number',
+						typeOptions: {
+							numberPrecision: 2,
+						},
+						default: 0.00,
+						required: true,
+						description: 'Price at which to add or update this product in a deal',
+					},
+					{
+						displayName: 'Quantity',
+						name: 'quantity',
+						type: 'number',
+						default: 1,
+						typeOptions: {
+							minValue: 1,
+						},
+						required: true,
+						description: 'How many items of this product to add/update in a deal',
+					},
+					{
+						displayName: 'Product Variation ID',
+						name: 'product_variation_id',
+						type: 'string',
+						default: '',
+						description: 'ID of the product variation to use',
+					},
+				],
+			},
+			// ----------------------------------
+			//        dealProduct:remove
+			// ----------------------------------
+			{
+				displayName: 'Deal ID',
+				name: 'dealId',
+				type: 'options',
+				default: '',
+				typeOptions: {
+					loadOptionsMethod: 'getDeals',
+				},
+				required: true,
+				displayOptions: {
+					show: {
+						operation: [
+							'remove',
+						],
+						resource: [
+							'dealProduct',
+						],
+					},
+				},
+				description: 'The ID of the deal whose product to remove',
+			},
+			{
+				displayName: 'Product Attachment ID',
+				name: 'productAttachmentId',
+				type: 'options',
+				default: '',
+				typeOptions: {
+					loadOptionsMethod: 'getProductsDeal',
+					loadOptionsDependsOn: [
+						'dealId',
+					],
+				},
+				required: true,
+				displayOptions: {
+					show: {
+						operation: [
+							'remove',
+						],
+						resource: [
+							'dealProduct',
+						],
+					},
+				},
+				description: 'ID of the deal-product (the ID of the product attached to the deal)',
+			},
+			// ----------------------------------
+			//        dealProduct:getAll
+			// ----------------------------------
+			{
+				displayName: 'Deal ID',
+				name: 'dealId',
+				type: 'options',
+				default: '',
+				typeOptions: {
+					loadOptionsMethod: 'getDeals',
+				},
+				required: true,
+				displayOptions: {
+					show: {
+						operation: [
+							'getAll',
+						],
+						resource: [
+							'dealProduct',
+						],
+					},
+				},
+				description: 'The ID of the deal whose products to retrieve',
+			},
+
+			// ----------------------------------
 			//         deal:search
 			// ----------------------------------
 			{
@@ -1492,7 +1887,8 @@ export class Pipedrive implements INodeType {
 				},
 				default: 100,
 				description: 'How many results to return.',
-			}, {
+			},
+			{
 				displayName: 'Additional Fields',
 				name: 'additionalFields',
 				type: 'collection',
@@ -2275,6 +2671,13 @@ export class Pipedrive implements INodeType {
 						description: 'ID of the deal this note will be associated with',
 					},
 					{
+						displayName: 'Lead ID',
+						name: 'lead_id',
+						type: 'number',
+						default: 0,
+						description: 'ID of the lead this note will be associated with',
+					},
+					{
 						displayName: 'Organization ID',
 						name: 'org_id',
 						type: 'options',
@@ -2444,6 +2847,85 @@ export class Pipedrive implements INodeType {
 				description: 'ID of the organization to get.',
 			},
 
+			// ----------------------------------
+			//         organization:search
+			// ----------------------------------
+			{
+				displayName: 'Term',
+				name: 'term',
+				type: 'string',
+				required: true,
+				displayOptions: {
+					show: {
+						operation: [
+							'search',
+						],
+						resource: [
+							'organization',
+						],
+					},
+				},
+				default: '',
+				description: 'The search term to look for. Minimum 2 characters (or 1 if using exact_match).',
+			},
+			{
+				displayName: 'Additional Fields',
+				name: 'additionalFields',
+				type: 'collection',
+				placeholder: 'Add Field',
+				displayOptions: {
+					show: {
+						operation: [
+							'search',
+						],
+						resource: [
+							'organization',
+						],
+					},
+				},
+				default: {},
+				options: [
+					{
+						displayName: 'Exact Match',
+						name: 'exactMatch',
+						type: 'boolean',
+						default: false,
+						description: 'When enabled, only full exact matches against the given term are returned. It is not case sensitive.',
+					},
+					{
+						displayName: 'Fields',
+						name: 'fields',
+						type: 'multiOptions',
+						default: [],
+						description: 'Fields to the search in. Defaults to all of them.',
+						options: [
+							{
+								name: 'Address',
+								value: 'address',
+							},
+							{
+								name: 'Custom Fields',
+								value: 'custom_fields',
+							},
+							{
+								name: 'Name',
+								value: 'name',
+							},
+							{
+								name: 'Notes',
+								value: 'notes',
+							},
+						],
+					},
+					{
+						displayName: 'RAW Data',
+						name: 'rawData',
+						type: 'boolean',
+						default: false,
+						description: `Returns the data exactly in the way it got received from the API.`,
+					},
+				],
+			},
 			// ----------------------------------
 			//         organization:update
 			// ----------------------------------
@@ -2967,6 +3449,64 @@ export class Pipedrive implements INodeType {
 				description: 'How many results to return.',
 			},
 
+			// ----------------------------------
+			//        dealActivities:getAll
+			// ----------------------------------
+			{
+				displayName: 'Deal ID',
+				name: 'dealId',
+				type: 'options',
+				default: '',
+				typeOptions: {
+					loadOptionsMethod: 'getDeals',
+				},
+				required: true,
+				displayOptions: {
+					show: {
+						operation: [
+							'getAll',
+						],
+						resource: [
+							'dealActivity',
+						],
+					},
+				},
+				description: 'The ID of the deal whose activity to retrieve',
+			},
+			{
+				displayName: 'Additional Fields',
+				name: 'additionalFields',
+				type: 'collection',
+				placeholder: 'Add Field',
+				displayOptions: {
+					show: {
+						operation: [
+							'getAll',
+						],
+						resource: [
+							'dealActivity',
+						],
+					},
+				},
+				default: {},
+				options: [
+					{
+						displayName: 'Done',
+						name: 'done',
+						type: 'boolean',
+						default: false,
+						description: 'Whether the activity is done or not.',
+					},
+					{
+						displayName: 'Exclude Activity IDs',
+						name: 'exclude',
+						type: 'string',
+						default: '',
+						description: 'A comma separated Activity Ids, to exclude from result. Ex. 4, 9, 11, ...',
+					},
+				],
+			},
+
 			// ----------------------------------------
 			//               lead: getAll
 			// ----------------------------------------
@@ -3031,7 +3571,7 @@ export class Pipedrive implements INodeType {
 				default: {},
 				options: [
 					{
-						displayName: 'Filter ID',
+						displayName: 'Predefined Filter',
 						name: 'filterId',
 						type: 'options',
 						typeOptions: {
@@ -3155,6 +3695,13 @@ export class Pipedrive implements INodeType {
 						description: 'ID of the deal this note will be associated with',
 					},
 					{
+						displayName: 'Lead ID',
+						name: 'lead_id',
+						type: 'number',
+						default: 0,
+						description: 'ID of the lead this note will be associated with',
+					},
+					{
 						displayName: 'Organization ID',
 						name: 'org_id',
 						type: 'options',
@@ -3208,9 +3755,12 @@ export class Pipedrive implements INodeType {
 						description: 'Use the Activity due date where you wish to stop fetching Activities from. Insert due date in YYYY-MM-DD format.',
 					},
 					{
-						displayName: 'Filter ID ',
+						displayName: 'Predefined Filter',
 						name: 'filterId',
-						type: 'string',
+						type: 'options',
+						typeOptions: {
+							loadOptionsMethod: 'getFilters',
+						},
 						default: '',
 						description: 'The ID of the Filter to use (will narrow down results if used together with user_id parameter)',
 					},
@@ -3243,6 +3793,87 @@ export class Pipedrive implements INodeType {
 					},
 				],
 			},
+			// ----------------------------------
+			//         deal: getAll
+			// ----------------------------------
+			{
+				displayName: 'Filters',
+				name: 'filters',
+				type: 'collection',
+				placeholder: 'Add Filter',
+				displayOptions: {
+					show: {
+						operation: [
+							'getAll',
+						],
+						resource: [
+							'deal',
+						],
+					},
+				},
+				default: {},
+				options: [
+					{
+						displayName: 'Predefined Filter',
+						name: 'filter_id',
+						type: 'options',
+						typeOptions: {
+							loadOptionsMethod: 'getFilters',
+						},
+						default: '',
+						description: 'Predefined filter to apply to the deals to retrieve',
+					},
+					{
+						displayName: 'Stage ID',
+						name: 'stage_id',
+						type: 'options',
+						typeOptions: {
+							loadOptionsMethod: 'getStageIds',
+						},
+						default: '',
+						description: 'ID of the stage to filter deals by',
+					},
+					{
+						displayName: 'Status',
+						name: 'status',
+						type: 'options',
+						options: [
+							{
+								name: 'All Not Deleted',
+								value: 'all_not_deleted',
+							},
+							{
+								name: 'Deleted',
+								value: 'deleted',
+							},
+							{
+								name: 'Lost',
+								value: 'lost',
+							},
+							{
+								name: 'Open',
+								value: 'open',
+							},
+							{
+								name: 'Won',
+								value: 'won',
+							},
+						],
+						default: 'all_not_deleted',
+						description: 'Status to filter deals by. Defaults to <code>all_not_deleted</code>',
+					},
+					{
+						displayName: 'User ID',
+						name: 'user_id',
+						type: 'options',
+						typeOptions: {
+							loadOptionsMethod: 'getUserIds',
+						},
+						default: '',
+						description: 'ID of the user to filter deals by',
+					},
+				],
+			},
 		],
 	};
 
@@ -3260,15 +3891,28 @@ export class Pipedrive implements INodeType {
 					});
 				}
 
-				returnData.sort((a, b) => {
-					const aName = a.name.toLowerCase();
-					const bName = b.name.toLowerCase();
-					if (aName < bName) { return -1; }
-					if (aName > bName) { return 1; }
-					return 0;
-				});
+				return sortOptionParameters(returnData);
+			},
+			// Get all Filters to display them to user so that he can
+			// select them easily
+			async getFilters(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const returnData: INodePropertyOptions[] = [];
+				const resource = this.getNodeParameter('resource') as string;
+				const type = {
+					'deal': 'deals',
+					'activity': 'activity',
+					'person': 'people',
+				} as { [id: string]: string };
 
-				return returnData;
+				const { data } = await pipedriveApiRequest.call(this, 'GET', '/filters', {}, { type: type[resource] as string });
+				for (const filter of data) {
+					returnData.push({
+						name: filter.name,
+						value: filter.id,
+					});
+				}
+
+				return sortOptionParameters(returnData);
 			},
 			// Get all Organizations to display them to user so that he can
 			// select them easily
@@ -3282,15 +3926,7 @@ export class Pipedrive implements INodeType {
 					});
 				}
 
-				returnData.sort((a, b) => {
-					const aName = a.name.toLowerCase();
-					const bName = b.name.toLowerCase();
-					if (aName < bName) { return -1; }
-					if (aName > bName) { return 1; }
-					return 0;
-				});
-
-				return returnData;
+				return sortOptionParameters(returnData);
 			},
 			// Get all Organizations to display them to user so that he can
 			// select them easily
@@ -3306,15 +3942,33 @@ export class Pipedrive implements INodeType {
 					}
 				}
 
-				returnData.sort((a, b) => {
-					const aName = a.name.toLowerCase();
-					const bName = b.name.toLowerCase();
-					if (aName < bName) { return -1; }
-					if (aName > bName) { return 1; }
-					return 0;
-				});
+				return sortOptionParameters(returnData);
+			},
+			// Get all Deals to display them to user so that he can
+			// select them easily
+			async getDeals(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const { data } = await pipedriveApiRequest.call(this, 'GET', '/deals', {}) as {
+					data: Array<{ id: string; title: string; }>
+				};
+				return sortOptionParameters(data.map(({ id, title }) => ({ value: id, name: title })));
+			},
+			// Get all Products to display them to user so that he can
+			// select them easily
+			async getProducts(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const { data } = await pipedriveApiRequest.call(this, 'GET', '/products', {}) as {
+					data: Array<{ id: string; name: string; }>
+				};
+				return sortOptionParameters(data.map(({ id, name }) => ({ value: id, name })));
+			},
+			// Get all Products related to a deal and display them to user so that he can
+			// select them easily
+			async getProductsDeal(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 
-				return returnData;
+				const dealId = this.getCurrentNodeParameter('dealId');
+				const { data } = await pipedriveApiRequest.call(this, 'GET', `/deals/${dealId}/products`, {}) as {
+					data: Array<{ id: string; name: string; }>
+				};
+				return sortOptionParameters(data.map(({ id, name }) => ({ value: id, name })));
 			},
 			// Get all Stages to display them to user so that he can
 			// select them easily
@@ -3328,15 +3982,7 @@ export class Pipedrive implements INodeType {
 					});
 				}
 
-				returnData.sort((a, b) => {
-					const aName = a.name.toLowerCase();
-					const bName = b.name.toLowerCase();
-					if (aName < bName) { return -1; }
-					if (aName > bName) { return 1; }
-					return 0;
-				});
-
-				return returnData;
+				return sortOptionParameters(returnData);
 			},
 			// Get all the Organization Custom Fields to display them to user so that he can
 			// select them easily
@@ -3352,15 +3998,7 @@ export class Pipedrive implements INodeType {
 					}
 				}
 
-				returnData.sort((a, b) => {
-					const aName = a.name.toLowerCase();
-					const bName = b.name.toLowerCase();
-					if (aName < bName) { return -1; }
-					if (aName > bName) { return 1; }
-					return 0;
-				});
-
-				return returnData;
+				return sortOptionParameters(returnData);
 			},
 			// Get all the Deal Custom Fields to display them to user so that he can
 			// select them easily
@@ -3376,15 +4014,7 @@ export class Pipedrive implements INodeType {
 					}
 				}
 
-				returnData.sort((a, b) => {
-					const aName = a.name.toLowerCase();
-					const bName = b.name.toLowerCase();
-					if (aName < bName) { return -1; }
-					if (aName > bName) { return 1; }
-					return 0;
-				});
-
-				return returnData;
+				return sortOptionParameters(returnData);
 			},
 			// Get all the Person Custom Fields to display them to user so that he can
 			// select them easily
@@ -3400,39 +4030,7 @@ export class Pipedrive implements INodeType {
 					}
 				}
 
-				returnData.sort((a, b) => {
-					const aName = a.name.toLowerCase();
-					const bName = b.name.toLowerCase();
-					if (aName < bName) { return -1; }
-					if (aName > bName) { return 1; }
-					return 0;
-				});
-
-				return returnData;
-			},
-			// Get all the filters to display them to user so that he can
-			// select them easily
-			async getFilters(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-				const returnData: INodePropertyOptions[] = [];
-				const { data } = await pipedriveApiRequest.call(this, 'GET', '/filters', {}, { type: 'people' });
-				for (const filter of data) {
-					const filterName = filter.name;
-					const filterId = filter.id;
-					returnData.push({
-						name: filterName,
-						value: filterId,
-					});
-				}
-
-				returnData.sort((a, b) => {
-					const aName = a.name.toLowerCase();
-					const bName = b.name.toLowerCase();
-					if (aName < bName) { return -1; }
-					if (aName > bName) { return 1; }
-					return 0;
-				});
-
-				return returnData;
+				return sortOptionParameters(returnData);
 			},
 			// Get all the person labels to display them to user so that he can
 			// select them easily
@@ -3453,13 +4051,7 @@ export class Pipedrive implements INodeType {
 					}
 				}
 
-				returnData.sort((a, b) => {
-					const aName = a.name.toLowerCase();
-					const bName = b.name.toLowerCase();
-					if (aName < bName) { return -1; }
-					if (aName > bName) { return 1; }
-					return 0;
-				});
+				sortOptionParameters(returnData);
 
 				if (operation === 'update') {
 					returnData.push({
@@ -3488,13 +4080,7 @@ export class Pipedrive implements INodeType {
 					}
 				}
 
-				returnData.sort((a, b) => {
-					const aName = a.name.toLowerCase();
-					const bName = b.name.toLowerCase();
-					if (aName < bName) { return -1; }
-					if (aName > bName) { return 1; }
-					return 0;
-				});
+				sortOptionParameters(returnData);
 
 				if (operation === 'update') {
 					returnData.push({
@@ -3512,7 +4098,7 @@ export class Pipedrive implements INodeType {
 					data: Array<{ id: string; name: string; }>
 				};
 
-				return data.map(({ id, name }) => ({ value: id, name }));
+				return sortOptionParameters(data.map(({ id, name }) => ({ value: id, name })));
 			},
 
 			// Get all the lead labels to display them to user so that he can
@@ -3522,7 +4108,7 @@ export class Pipedrive implements INodeType {
 					data: Array<{ id: string; name: string; }>
 				};
 
-				return data.map(({ id, name }) => ({ value: id, name }));
+				return sortOptionParameters(data.map(({ id, name }) => ({ value: id, name })));
 			},
 
 			// Get all the labels to display them to user so that he can
@@ -3544,13 +4130,7 @@ export class Pipedrive implements INodeType {
 					}
 				}
 
-				returnData.sort((a, b) => {
-					const aName = a.name.toLowerCase();
-					const bName = b.name.toLowerCase();
-					if (aName < bName) { return -1; }
-					if (aName > bName) { return 1; }
-					return 0;
-				});
+				sortOptionParameters(returnData);
 
 				if (operation === 'update') {
 					returnData.push({
@@ -3661,6 +4241,11 @@ export class Pipedrive implements INodeType {
 						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 						addAdditionalFields(qs, additionalFields);
 
+						if (qs.filterId) {
+							qs.filter_id = qs.filterId;
+							delete qs.filterId;
+						}
+
 						if (qs.type) {
 							qs.type = (qs.type as string[]).join(',');
 						}
@@ -3744,6 +4329,8 @@ export class Pipedrive implements INodeType {
 						if (returnAll === false) {
 							qs.limit = this.getNodeParameter('limit', i) as number;
 						}
+						const filters = this.getNodeParameter('filters', i) as IDataObject;
+						addAdditionalFields(qs, filters);
 
 						endpoint = `/deals`;
 
@@ -3801,12 +4388,96 @@ export class Pipedrive implements INodeType {
 						endpoint = `/deals/search`;
 
 					}
+
+				} else if (resource === 'dealActivity') {
+
+					 if (operation === 'getAll') {
+						// ----------------------------------
+						//        dealActivity: getAll
+						// ----------------------------------
+
+						requestMethod = 'GET';
+						const dealId = this.getNodeParameter('dealId', i) as string;
+
+						returnAll = this.getNodeParameter('returnAll', i) as boolean;
+
+						if (returnAll === false) {
+							qs.limit = this.getNodeParameter('limit', i) as number;
+						}
+
+						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+
+						if (additionalFields.exclude) {
+							qs.exclude = (additionalFields.exclude as string);
+						}
+
+						if (additionalFields && additionalFields.done !== undefined) {
+							qs.done = additionalFields.done === true ? 1 : 0;
+						}
+
+						endpoint = `/deals/${dealId}/activities`;
+
+					}
+				} else if (resource === 'dealProduct') {
+
+					if (operation === 'add') {
+						// ----------------------------------
+						//          dealProduct: add
+						// ----------------------------------
+
+						requestMethod = 'POST';
+						const dealId = this.getNodeParameter('dealId', i) as string;
+
+						endpoint = `/deals/${dealId}/products`;
+
+						body.product_id  = this.getNodeParameter('productId', i) as string;
+						body.item_price = this.getNodeParameter('item_price', i) as string;
+						body.quantity = this.getNodeParameter('quantity', i) as string;
+
+						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						addAdditionalFields(body, additionalFields);
+
+					} else if (operation === 'getAll') {
+						// ----------------------------------
+						//        dealProduct: getAll
+						// ----------------------------------
+
+						requestMethod = 'GET';
+						const dealId = this.getNodeParameter('dealId', i) as string;
+
+						endpoint = `/deals/${dealId}/products`;
+
+					} else if (operation === 'remove') {
+						// ----------------------------------
+						//       dealProduct: remove
+						// ----------------------------------
+
+						requestMethod = 'DELETE';
+						const dealId = this.getNodeParameter('dealId', i) as string;
+						const productAttachmentId = this.getNodeParameter('productAttachmentId', i) as string;
+
+						endpoint = `/deals/${dealId}/products/${productAttachmentId}`;
+
+					} else if (operation === 'update') {
+						// ----------------------------------
+						//         dealProduct: update
+						// ----------------------------------
+
+						requestMethod = 'PUT';
+						const dealId = this.getNodeParameter('dealId', i) as string;
+						const productAttachmentId = this.getNodeParameter('productAttachmentId', i) as string;
+
+						endpoint = `/deals/${dealId}/products/${productAttachmentId}`;
+
+						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+						addAdditionalFields(body, updateFields);
+					}
+
 				} else if (resource === 'file') {
 					if (operation === 'create') {
 						// ----------------------------------
 						//         file:create
 						// ----------------------------------
-
 						requestMethod = 'POST';
 						endpoint = '/files';
 
@@ -4110,8 +4781,7 @@ export class Pipedrive implements INodeType {
 
 						endpoint = `/organizations`;
 
-					}
-					if (operation === 'update') {
+					} else if (operation === 'update') {
 						// ----------------------------------
 						//         organization:update
 						// ----------------------------------
@@ -4128,6 +4798,32 @@ export class Pipedrive implements INodeType {
 							body.label = null;
 						}
 
+					} else if (operation === 'search') {
+						// ----------------------------------
+						//         organization:search
+						// ----------------------------------
+
+						requestMethod = 'GET';
+
+						qs.term = this.getNodeParameter('term', i) as string;
+						returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						if (returnAll === false) {
+							qs.limit = this.getNodeParameter('limit', i) as number;
+						}
+
+						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject & {
+							fields?: string[];
+						};
+
+						if (additionalFields?.fields?.length) {
+							qs.fields = additionalFields.fields.join(',');
+						}
+
+						if (additionalFields.exactMatch) {
+							qs.exact_match = additionalFields.exactMatch as boolean;
+						}
+
+						endpoint = `/organizations/search`;
 					}
 				} else if (resource === 'person') {
 					if (operation === 'create') {
@@ -4164,7 +4860,7 @@ export class Pipedrive implements INodeType {
 
 					} else if (operation === 'getAll') {
 						// ----------------------------------
-						//         persons:getAll
+						//         person:getAll
 						// ----------------------------------
 
 						requestMethod = 'GET';

@@ -35,7 +35,7 @@ export async function emeliaApiRequest(
 	body: object = {},
 	qs: object = {},
 ) {
-	const { apiKey } = this.getCredentials('emeliaApi') as { apiKey: string };
+	const { apiKey } = await this.getCredentials('emeliaApi') as { apiKey: string };
 
 	const options = {
 		headers: {

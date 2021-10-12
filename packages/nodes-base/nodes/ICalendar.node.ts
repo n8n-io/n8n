@@ -160,7 +160,7 @@ export class ICalendar implements INodeType {
 						name: 'calName',
 						type: 'string',
 						default: '',
-						description: 'Specifies the calendar (not event) name. Used by Apple iCal and Microsoft Outlook (<a href="https://docs.microsoft.com/en-us/openspecs/exchange_server_protocols/ms-oxcical/1da58449-b97e-46bd-b018-a1ce576f3e6d" target="_blank">spec</a>).',
+						description: 'Specifies the calendar (not event) name. Used by Apple iCal and Microsoft Outlook (<a href="https://docs.microsoft.com/en-us/openspecs/exchange_server_protocols/ms-oxcical/1da58449-b97e-46bd-b018-a1ce576f3e6d">spec</a>).',
 					},
 					{
 						displayName: 'Description',
@@ -217,7 +217,7 @@ export class ICalendar implements INodeType {
 						name: 'recurrenceRule',
 						type: 'string',
 						default: '',
-						description: `A rule to define the repeat pattern of the event (RRULE). (<a href="https://icalendar.org/rrule-tool.html" target="_blank">Rule generator</a>)`,
+						description: `A rule to define the repeat pattern of the event (RRULE). (<a href="https://icalendar.org/rrule-tool.html">Rule generator</a>)`,
 					},
 					{
 						displayName: 'Organizer',

@@ -308,11 +308,18 @@ export class HttpRequest implements INodeType {
 						description: 'Returns the full reponse data instead of only the body.',
 					},
 					{
-						displayName: 'Follow Redirect',
+						displayName: 'Follow All Redirects',
+						name: 'followAllRedirects',
+						type: 'boolean',
+						default: false,
+						description: 'Follow non-GET HTTP 3xx redirects.',
+					},
+					{
+						displayName: 'Follow GET Redirect',
 						name: 'followRedirect',
 						type: 'boolean',
 						default: true,
-						description: 'Follow HTTP 3xx redirects.',
+						description: 'Follow GET HTTP 3xx redirects.',
 					},
 					{
 						displayName: 'Ignore Response Code',
@@ -633,11 +640,11 @@ export class HttpRequest implements INodeType {
 		const parametersAreJson = this.getNodeParameter('jsonParameters', 0) as boolean;
 		const responseFormat = this.getNodeParameter('responseFormat', 0) as string;
 
-		const httpBasicAuth = this.getCredentials('httpBasicAuth');
-		const httpDigestAuth = this.getCredentials('httpDigestAuth');
-		const httpHeaderAuth = this.getCredentials('httpHeaderAuth');
-		const oAuth1Api = this.getCredentials('oAuth1Api');
-		const oAuth2Api = this.getCredentials('oAuth2Api');
+		const httpBasicAuth = await this.getCredentials('httpBasicAuth');
+		const httpDigestAuth = await this.getCredentials('httpDigestAuth');
+		const httpHeaderAuth = await this.getCredentials('httpHeaderAuth');
+		const oAuth1Api = await this.getCredentials('oAuth1Api');
+		const oAuth2Api = await this.getCredentials('oAuth2Api');
 
 		let requestOptions: OptionsWithUri;
 		let setUiParameter: IDataObject;
@@ -695,6 +702,11 @@ export class HttpRequest implements INodeType {
 			if (options.followRedirect !== undefined) {
 				requestOptions.followRedirect = options.followRedirect as boolean;
 			}
+
+			if (options.followAllRedirects !== undefined) {
+				requestOptions.followAllRedirects = options.followAllRedirects as boolean;
+			}
+
 			if (options.ignoreResponseCode === true) {
 				// @ts-ignore
 				requestOptions.simple = false;

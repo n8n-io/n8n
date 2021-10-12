@@ -12,6 +12,7 @@ import {
 } from 'n8n-workflow';
 
 import {
+	clean,
 	hubspotApiRequest,
 	hubspotApiRequestAllItems,
 } from './GenericFunctions';
@@ -2031,10 +2032,12 @@ export class Hubspot implements INodeType {
 								qs.includeAssociations = filters.includeAssociations as boolean;
 							}
 							if (filters.properties) {
-								qs.properties = (filters.properties as string).split(',');
+								const properties = filters.properties as string | string[];
+								qs.properties = (!Array.isArray(filters.properties)) ? (properties as string).split(',') : properties;
 							}
 							if (filters.propertiesWithHistory) {
-								qs.propertiesWithHistory = (filters.propertiesWithHistory as string).split(',');
+								const propertiesWithHistory = filters.propertiesWithHistory as string | string[];
+								qs.propertiesWithHistory = (!Array.isArray(filters.propertiesWithHistory)) ? (propertiesWithHistory as string).split(',') : propertiesWithHistory;
 							}
 							const endpoint = `/deals/v1/deal/paged`;
 							if (returnAll) {
@@ -2113,7 +2116,7 @@ export class Hubspot implements INodeType {
 							if (returnAll) {
 
 								responseData = await hubspotApiRequestAllItems.call(this, 'results', 'POST', endpoint, body, qs);
-	
+
 							} else {
 								body.limit = this.getNodeParameter('limit', 0) as number;
 								responseData = await hubspotApiRequest.call(this, 'POST', endpoint, body, qs);
@@ -2169,6 +2172,7 @@ export class Hubspot implements INodeType {
 								Object.assign(body, { legalConsentOptions: { legitimateInterest: legitimateInteres } });
 							}
 							if (context) {
+								clean(context);
 								Object.assign(body, { context });
 							}
 							const uri = `https://api.hsforms.com/submissions/v3/integration/submit/${portalId}/${formId}`;

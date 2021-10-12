@@ -114,7 +114,7 @@ export class Baserow implements INodeType {
 	methods = {
 		loadOptions: {
 			async getDatabaseIds(this: ILoadOptionsFunctions) {
-				const credentials = this.getCredentials('baserowApi') as BaserowCredentials;
+				const credentials = await this.getCredentials('baserowApi') as BaserowCredentials;
 				const jwtToken = await getJwtToken.call(this, credentials);
 				const endpoint = '/api/applications/';
 				const databases = await baserowApiRequest.call(this, 'GET', endpoint, {}, {}, jwtToken) as LoadedResource[];
@@ -122,7 +122,7 @@ export class Baserow implements INodeType {
 			},
 
 			async getTableIds(this: ILoadOptionsFunctions) {
-				const credentials = this.getCredentials('baserowApi') as BaserowCredentials;
+				const credentials = await this.getCredentials('baserowApi') as BaserowCredentials;
 				const jwtToken = await getJwtToken.call(this, credentials);
 				const databaseId = this.getNodeParameter('databaseId', 0) as string;
 				const endpoint = `/api/database/tables/database/${databaseId}`;
@@ -131,7 +131,7 @@ export class Baserow implements INodeType {
 			},
 
 			async getTableFields(this: ILoadOptionsFunctions) {
-				const credentials = this.getCredentials('baserowApi') as BaserowCredentials;
+				const credentials = await this.getCredentials('baserowApi') as BaserowCredentials;
 				const jwtToken = await getJwtToken.call(this, credentials);
 				const tableId = this.getNodeParameter('tableId', 0) as string;
 				const endpoint = `/api/database/fields/table/${tableId}/`;
@@ -148,7 +148,7 @@ export class Baserow implements INodeType {
 		const operation = this.getNodeParameter('operation', 0) as Operation;
 
 		const tableId = this.getNodeParameter('tableId', 0) as string;
-		const credentials = this.getCredentials('baserowApi') as BaserowCredentials;
+		const credentials = await this.getCredentials('baserowApi') as BaserowCredentials;
 		const jwtToken = await getJwtToken.call(this, credentials);
 		const fields = await mapper.getTableFields.call(this, tableId, jwtToken);
 		mapper.createMappings(fields);
@@ -222,12 +222,11 @@ export class Baserow implements INodeType {
 
 					const body: IDataObject = {};
 
-					const dataToSend = this.getNodeParameter('dataToSend', 0) as 'defineBelow' | 'autoMapColumns';
+					const dataToSend = this.getNodeParameter('dataToSend', 0) as 'defineBelow' | 'autoMapInputData';
 
-					if (dataToSend === 'autoMapColumns') {
-
+					if (dataToSend === 'autoMapInputData') {
 						const incomingKeys = Object.keys(items[i].json);
-						const rawInputsToIgnore = this.getNodeParameter('inputDataToIgnore', i) as string;
+						const rawInputsToIgnore = this.getNodeParameter('inputsToIgnore', i) as string;
 						const inputDataToIgnore = rawInputsToIgnore.split(',').map(c => c.trim());
 
 						for (const key of incomingKeys) {

@@ -18,9 +18,12 @@
 </template>
 
 <script lang="ts">
-import Vue from "vue";
 
-export default Vue.extend({
+import mixins from 'vue-typed-mixins';
+
+import { externalHooks } from '@/components/mixins/externalHooks';
+
+export default mixins(externalHooks).extend({
 	name: "SearchBar",
 	props: ["value", "eventBus"],
 	mounted() {
@@ -32,6 +35,8 @@ export default Vue.extend({
 		setTimeout(() => {
 			this.focus();
 		}, 0);
+
+		this.$externalHooks().run('nodeCreator_searchBar.mount', { inputRef: this.$refs['input'] });
 	},
 	methods: {
 		focus() {

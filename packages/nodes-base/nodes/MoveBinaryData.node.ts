@@ -299,7 +299,7 @@ export class MoveBinaryData implements INodeType {
 						name: 'keepSource',
 						type: 'boolean',
 						default: false,
-						description: 'If the source key should be kept. By default does it get deleted.',
+						description: 'If the source key should be kept. By default it will be deleted.',
 					},
 					{
 						displayName: 'Keep As Base64',

@@ -512,4 +512,67 @@ export const customObjectFields = [
 			},
 		],
 	},
+	{
+		displayName: 'Additional Fields',
+		name: 'additionalFields',
+		type: 'collection',
+		displayOptions: {
+			show: {
+				operation: [
+					'create',
+					'upsert',
+				],
+				resource: [
+					'customObject',
+				],
+			},
+		},
+		default: {},
+		placeholder: 'Add Field',
+		options: [
+			{
+				displayName: 'Record Type ID',
+				name: 'recordTypeId',
+				type: 'options',
+				typeOptions: {
+					loadOptionsMethod: 'getRecordTypes',
+					loadOptionsDependsOn: [
+						'customObject',
+					],
+				},
+				default: '',
+			},
+		],
+	},
+	{
+		displayName: 'Update Fields',
+		name: 'updateFields',
+		type: 'collection',
+		displayOptions: {
+			show: {
+				operation: [
+					'update',
+				],
+				resource: [
+					'customObject',
+				],
+			},
+		},
+		default: {},
+		placeholder: 'Add Field',
+		options: [
+			{
+				displayName: 'Record Type ID',
+				name: 'recordTypeId',
+				type: 'options',
+				typeOptions: {
+					loadOptionsMethod: 'getRecordTypes',
+					loadOptionsDependsOn: [
+						'customObject',
+					],
+				},
+				default: '',
+			},
+		],
+	},
 ] as INodeProperties[];

@@ -1091,9 +1091,10 @@ export class AwsSes implements INodeType {
 						];
 
 						if (isBodyHtml) {
-							params.push(`Message.Body.Html.Data=${encodeURI(message)}`);
+							params.push(`Message.Body.Html.Data=${encodeURIComponent(message)}`);
+							params.push(`Message.Body.Html.Charset=UTF-8`);
 						} else {
-							params.push(`Message.Body.Text.Data=${encodeURI(message)}`);
+							params.push(`Message.Body.Text.Data=${encodeURIComponent(message)}`);
 						}
 
 						if (toAddresses.length) {

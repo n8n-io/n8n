@@ -1,8 +1,12 @@
-try {
-	require('source-map-support').install();
-} catch (error) {
+/* eslint-disable import/no-cycle */
+import * as NodeExecuteFunctions from './NodeExecuteFunctions';
+import * as UserSettings from './UserSettings';
 
-}
+try {
+	// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call, import/no-extraneous-dependencies, global-require, @typescript-eslint/no-var-requires
+	require('source-map-support').install();
+	// eslint-disable-next-line no-empty
+} catch (error) {}
 
 export * from './ActiveWorkflows';
 export * from './ActiveWebhooks';
@@ -13,10 +17,4 @@ export * from './Interfaces';
 export * from './LoadNodeParameterOptions';
 export * from './NodeExecuteFunctions';
 export * from './WorkflowExecute';
-
-import * as NodeExecuteFunctions from './NodeExecuteFunctions';
-import * as UserSettings from './UserSettings';
-export {
-	NodeExecuteFunctions,
-	UserSettings,
-};
+export { NodeExecuteFunctions, UserSettings };

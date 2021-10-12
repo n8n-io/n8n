@@ -40,7 +40,7 @@ export async function slackApiRequest(this: IExecuteFunctions | IExecuteSingleFu
 		let response: any; // tslint:disable-line:no-any
 
 		if (authenticationMethod === 'accessToken') {
-			const credentials = this.getCredentials('slackApi');
+			const credentials = await this.getCredentials('slackApi');
 			if (credentials === undefined) {
 				throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
 			}
