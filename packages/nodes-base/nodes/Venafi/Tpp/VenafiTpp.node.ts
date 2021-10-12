@@ -129,19 +129,21 @@ export class VenafiTpp implements INodeType {
 
 					if (operation === 'download') {
 						const certificateDn = this.getNodeParameter('certificateDn', i) as string;
-						const password = this.getNodeParameter('password', i) as string;
+						const includePrivateKey = this.getNodeParameter('includePrivateKey', i) as boolean;
 						const binaryProperty = this.getNodeParameter('binaryProperty', i) as string;
 						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 
-						//\\VED\\Policy\\Venafi Operational Certificates\\tpp.venafidemo.com
-
-						const body = {
+						const body: IDataObject = {
 							CertificateDN: certificateDn,
 							Format: 'Base64',
-							Password: password,
-							IncludePrivateKey: true,
 							IncludeChain: true,
 						};
+
+						if (includePrivateKey) {
+							const password = this.getNodeParameter('password', i) as string;
+							body.IncludePrivateKey = true,
+							body.Password = password;
+						}
 
 						Object.assign(body, additionalFields);
 

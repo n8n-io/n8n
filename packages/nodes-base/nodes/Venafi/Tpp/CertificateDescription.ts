@@ -565,17 +565,36 @@ export const certificateFields = [
 		default: '',
 	},
 	{
+		displayName: 'Include Private Key',
+		name: 'includePrivateKey',
+		type: 'boolean',
+		displayOptions: {
+			show: {
+				resource: [
+					'certificate',
+				],
+				operation: [
+					'download',
+				],
+			},
+		},
+		default: false,
+	},
+	{
 		displayName: 'Password',
 		name: 'password',
 		type: 'string',
 		required: true,
 		displayOptions: {
 			show: {
+				resource: [
+					'certificate',
+				],
 				operation: [
 					'download',
 				],
-				resource: [
-					'certificate',
+				includePrivateKey: [
+					true,
 				],
 			},
 		},
@@ -616,12 +635,6 @@ export const certificateFields = [
 			},
 		},
 		options: [
-			{
-				displayName: 'Include Private Key',
-				name: 'IncludePrivateKey',
-				type: 'boolean',
-				default: true,
-			},
 			{
 				displayName: 'Include Chain',
 				name: 'IncludeChain',
