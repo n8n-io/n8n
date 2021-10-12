@@ -100,6 +100,13 @@ export class Telemetry {
 		clearInterval(this.pulseIntervalReference);
 		await this.pulse();
 		await this.track('User instance stopped');
+		return new Promise<void>((resolve) => {
+			if (this.client) {
+				this.client.flush(resolve);
+			} else {
+				resolve();
+			}
+		});
 	}
 
 	async identify(traits?: IDataObject): Promise<void> {
