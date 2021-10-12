@@ -164,6 +164,7 @@ import {
 	IExecutionsSummary,
 } from '../Interface';
 import { mapGetters } from 'vuex';
+import { getStyleTokenValue } from '@/components/helpers';
 
 const NODE_SIZE = 100;
 const DEFAULT_START_POSITION_X = 250;
@@ -1312,34 +1313,32 @@ export default mixins(
 				}
 			},
 			initNodeView () {
-				const connectionOverlays: OverlaySpec[] = [];
-				if (this.isReadOnly === false) {
-					connectionOverlays.push.apply(connectionOverlays, [
-						[
-							'Arrow',
-							{
-								location: 1,
-								foldback: 0.7,
-								width: 12,
-							},
-						],
-						[
-							'Label',
-							{
-								id: 'drop-add-node',
-								label: 'Drop connection<br />to create node',
-								cssClass: 'drop-add-node-label',
-								location: 0.5,
-							},
-						],
-					]);
-				}
+				const connectionOverlays: OverlaySpec[] = [
+					[
+						'Arrow',
+						{
+							location: 1,
+							width: 12,
+							foldback: 1,
+							length: 10,
+						},
+					],
+					[
+						'Label',
+						{
+							id: 'drop-add-node',
+							label: 'Drop connection<br />to create node',
+							cssClass: 'drop-add-node-label',
+							location: 0.5,
+						},
+					],
+				];
 
 				this.instance.importDefaults({
-					Connector: ['Flowchart', { cornerRadius: 8, stub: 50, alwaysRespectStubs: true }],
+					Connector: ['Flowchart', { cornerRadius: 8, stub: 60, gap: 5, alwaysRespectStubs: false}],
 					Endpoint: ['Dot', { radius: 5 }],
 					DragOptions: { cursor: 'pointer', zIndex: 5000 },
-					PaintStyle: { strokeWidth: 2, stroke: '#334455' },
+					PaintStyle: { strokeWidth: 2, stroke: getStyleTokenValue('--color-foreground-dark') },
 					EndpointStyle: { radius: 9, fill: '#acd', stroke: 'red' },
 					HoverPaintStyle: { stroke: '#ff6d5a', lineWidth: 4 },
 					EndpointHoverStyle: { fill: '#ff6d5a', stroke: '#acd' },
@@ -1379,9 +1378,10 @@ export default mixins(
 						info.connection.addOverlay([
 							'Arrow',
 							{
-								location: 0.55,
-								foldback: 0.7,
+								location: 0.5,
 								width: 12,
+								foldback: 1,
+								length: 10,
 							},
 						]);
 					}
@@ -2393,31 +2393,6 @@ export default mixins(
 	line-height: 1.3em;
 	padding: 2px 3px;
 	white-space: nowrap;
-}
-
-.delete-connection {
-	font-weight: 500;
-}
-
-.remove-connection-label {
-	font-size: 12px;
-	color: #fff;
-	line-height: 13px;
-	border-radius: 15px;
-	height: 15px;
-	background-color: #334455;
-	position: relative;
-	height: 15px;
-	width: 15px;
-	text-align: center;
-
-	&:hover {
-		background-color: $--color-primary;
-		font-size: 20px;
-		line-height: 17px;
-		height: 20px;
-		width: 20px;
-	}
 }
 
 .drop-add-node-label {
