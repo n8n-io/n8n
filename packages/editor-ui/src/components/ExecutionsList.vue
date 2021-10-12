@@ -35,7 +35,7 @@
 			<div class="selection-options">
 				<span v-if="checkAll === true || isIndeterminate === true">
 					Selected: {{numSelected}} / <span v-if="finishedExecutionsCountEstimated === true">~</span>{{finishedExecutionsCount}}
-					<n8n-icon-button title="Delete Selected" icon="trash" size="small" @click="handleDeleteSelected" />
+					<n8n-icon-button title="Delete Selected" icon="trash" size="mini" @click="handleDeleteSelected" />
 				</span>
 			</div>
 
