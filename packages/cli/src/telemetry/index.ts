@@ -103,24 +103,38 @@ export class Telemetry {
 	}
 
 	async identify(traits?: IDataObject): Promise<void> {
-		if (this.client) {
-			this.client.identify({
-				userId: this.instanceId,
-				traits: {
-					...traits,
-					instanceId: this.instanceId,
-				},
-			});
-		}
+		return new Promise<void>((resolve) => {
+			if (this.client) {
+				this.client.identify(
+					{
+						userId: this.instanceId,
+						traits: {
+							...traits,
+							instanceId: this.instanceId,
+						},
+					},
+					resolve,
+				);
+			} else {
+				resolve();
+			}
+		});
 	}
 
 	async track(eventName: string, properties?: IDataObject): Promise<void> {
-		if (this.client) {
-			this.client.track({
-				userId: this.instanceId,
-				event: eventName,
-				properties,
-			});
-		}
+		return new Promise<void>((resolve) => {
+			if (this.client) {
+				this.client.track(
+					{
+						userId: this.instanceId,
+						event: eventName,
+						properties,
+					},
+					resolve,
+				);
+			} else {
+				resolve();
+			}
+		});
 	}
 }

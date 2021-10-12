@@ -684,7 +684,7 @@ const config = convict({
 			backend: {
 				doc: 'Diagnostics config for backend.',
 				format: String,
-				default: '1wfxw1YdRGrntY8intaq53hui51',
+				default: '1wfxw1YdRGrntY8intaq53hui51;https://telemetry-stage.n8n.io/v1/batch',
 				env: 'N8N_DIAGNOSTICS_CONFIG_BACKEND',
 			},
 		},
