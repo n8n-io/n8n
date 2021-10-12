@@ -134,10 +134,10 @@
 					<template slot-scope="scope">
 						<div class="actions-container">
 							<span v-if="scope.row.stoppedAt === undefined || scope.row.waitTill">
-								<n8n-icon-button icon="stop" title="Stop Execution" @click.stop="stopExecution(scope.row.id)" :loading="stoppingExecutions.includes(scope.row.id)" />
+								<n8n-icon-button icon="stop" size="small" title="Stop Execution" @click.stop="stopExecution(scope.row.id)" :loading="stoppingExecutions.includes(scope.row.id)" />
 							</span>
 							<span v-if="scope.row.stoppedAt !== undefined && scope.row.id" >
-								<n8n-icon-button icon="folder-open" title="Open Past Execution" @click.stop="displayExecution(scope.row)" />
+								<n8n-icon-button icon="folder-open" size="small" title="Open Past Execution" @click.stop="displayExecution(scope.row)" />
 							</span>
 						</div>
 					</template>
