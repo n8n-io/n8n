@@ -14,6 +14,7 @@ import {
 	ITaskData,
 	IWorkflowBase,
 	IWorkflowExecuteAdditionalData,
+	NodeHelpers,
 	NodeParameterValue,
 	WorkflowHooks,
 } from 'n8n-workflow';
@@ -720,11 +721,15 @@ class NodeTypesClass implements INodeTypes {
 	async init(nodeTypes: INodeTypeData): Promise<void> {}
 
 	getAll(): INodeType[] {
-		return Object.values(this.nodeTypes).map((data) => data.type);
+		return Object.values(this.nodeTypes).map((data) => NodeHelpers.getVersionedTypeNode(data.type));
 	}
 
 	getByName(nodeType: string): INodeType {
-		return this.nodeTypes[nodeType].type;
+		return this.getByNameAndVersion(nodeType);
+	}
+
+	getByNameAndVersion(nodeType: string, version?: number): INodeType {
+		return NodeHelpers.getVersionedTypeNode(this.nodeTypes[nodeType].type, version);
 	}
 }
 

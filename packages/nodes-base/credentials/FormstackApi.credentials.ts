@@ -1,18 +1,18 @@
 import {
 	ICredentialType,
-	NodePropertyTypes,
+	INodeProperties,
 } from 'n8n-workflow';
 
 
 export class FormstackApi implements ICredentialType {
 	name = 'formstackApi';
 	displayName = 'Formstack API';
-	documentationUrl = 'formstack';
-	properties = [
+	documentationUrl = 'formstackTrigger';
+	properties: INodeProperties[] = [
 		{
 			displayName: 'Access Token',
 			name: 'accessToken',
-			type: 'string' as NodePropertyTypes,
+			type: 'string',
 			default: '',
 		},
 	];

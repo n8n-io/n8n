@@ -1,5 +1,5 @@
 <template>
-	<div @keydown.stop :class="$style.container">
+	<div @keydown.stop :class="$style.container" v-if="credentialProperties.length">
 		<div v-for="parameter in credentialProperties" :key="parameter.name">
 			<ParameterInputExpanded
 				:parameter="parameter"

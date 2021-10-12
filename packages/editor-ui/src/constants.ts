@@ -6,6 +6,7 @@ export const PLACEHOLDER_FILLED_AT_EXECUTION_TIME = '[filled at execution time]'
 
 // workflows
 export const PLACEHOLDER_EMPTY_WORKFLOW_ID = '__EMPTY__';
+export const DEFAULT_NODETYPE_VERSION = 1;
 export const DEFAULT_NEW_WORKFLOW_NAME = 'My workflow';
 export const MIN_WORKFLOW_NAME_LENGTH = 1;
 export const MAX_WORKFLOW_NAME_LENGTH = 128;
@@ -19,6 +20,7 @@ export const DUPLICATE_MODAL_KEY = 'duplicate';
 export const TAGS_MANAGER_MODAL_KEY = 'tagsManager';
 export const WORKLOW_OPEN_MODAL_KEY = 'workflowOpen';
 export const VERSIONS_MODAL_KEY = 'versions';
+export const WORKFLOW_SETTINGS_MODAL_KEY = 'settings';
 export const CREDENTIAL_EDIT_MODAL_KEY = 'editCredential';
 export const CREDENTIAL_SELECT_MODAL_KEY = 'selectCredential';
 
@@ -52,6 +54,7 @@ export const ALL_NODE_FILTER = 'All';
 export const UNCATEGORIZED_CATEGORY = 'Miscellaneous';
 export const UNCATEGORIZED_SUBCATEGORY = 'Helpers';
 export const HIDDEN_NODES = ['n8n-nodes-base.start'];
+export const ERROR_TRIGGER_NODE_NAME = 'n8n-nodes-base.errorTrigger';
 export const WEBHOOK_NODE_NAME = 'n8n-nodes-base.webhook';
 export const HTTP_REQUEST_NODE_NAME = 'n8n-nodes-base.httpRequest';
 export const REQUEST_NODE_FORM_URL = 'https://n8n-community.typeform.com/to/K1fBVTZ3';

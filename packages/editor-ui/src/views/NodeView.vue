@@ -142,6 +142,8 @@ import {
 	INodeConnections,
 	INodeIssues,
 	INodeTypeDescription,
+	INodeTypeNameVersion,
+	NodeInputConnections,
 	NodeHelpers,
 	Workflow,
 	IRun,
@@ -159,6 +161,7 @@ import {
 	IPushDataExecutionFinished,
 	ITag,
 	IWorkflowTemplate,
+	IExecutionsSummary,
 } from '../Interface';
 import { mapGetters } from 'vuex';
 
@@ -401,6 +404,15 @@ export default mixins(
 						}
 					}
 				}
+
+				if ((data as IExecutionsSummary).waitTill) {
+					this.$showMessage({
+						title: `This execution hasn't finished yet`,
+						message: `<a onclick="window.location.reload(false);">Refresh</a> to see the latest status.<br/> <a href="https://docs.n8n.io/nodes/n8n-nodes-base.wait/" target="_blank">More info</a>`,
+						type: 'warning',
+						duration: 0,
+					});
+				}
 			},
 			async openWorkflowTemplate (templateId: string) {
 				this.setLoadingText('Loading template');
@@ -445,7 +457,7 @@ export default mixins(
 				}
 
 				this.blankRedirect = true;
-				this.$router.push({ name: 'NodeViewNew' });
+				this.$router.push({ name: 'NodeViewNew', query: { templateId } });
 
 				await this.addNodes(data.workflow.nodes, data.workflow.connections);
 				await this.$store.dispatch('workflows/setNewWorkflowName', data.name);
@@ -909,7 +921,7 @@ export default mixins(
 					});
 				} catch (error) {
 					// Execution stop might fail when the execution has already finished. Let's treat this here.
-					const execution = await this.restApi().getExecution(executionId) as IExecutionResponse;
+					const execution = await this.restApi().getExecution(executionId);
 					if (execution.finished) {
 						const executedData = {
 							data: execution.data,
@@ -1867,13 +1879,13 @@ export default mixins(
 				// Before proceeding we must check if all nodes contain the `properties` attribute.
 				// Nodes are loaded without this information so we must make sure that all nodes
 				// being added have this information.
-				await this.loadNodesProperties(nodes.map(node => node.type));
+				await this.loadNodesProperties(nodes.map(node => ({name: node.type, version: node.typeVersion})));
 
 				// Add the node to the node-list
 				let nodeType: INodeTypeDescription | null;
 				let foundNodeIssues: INodeIssues | null;
 				nodes.forEach((node) => {
-					nodeType = this.$store.getters.nodeType(node.type);
+					nodeType = this.$store.getters.nodeType(node.type, node.typeVersion);
 
 					// Make sure that some properties always exist
 					if (!node.hasOwnProperty('disabled')) {
@@ -1980,7 +1992,7 @@ export default mixins(
 				let newName: string;
 				const createNodes: INode[] = [];
 
-				await this.loadNodesProperties(data.nodes.map(node => node.type));
+				await this.loadNodesProperties(data.nodes.map(node => ({name: node.type, version: node.typeVersion})));
 
 				data.nodes.forEach(node => {
 					if (nodeTypesCount[node.type] !== undefined) {
@@ -2180,7 +2192,6 @@ export default mixins(
 			},
 			async loadSettings (): Promise<void> {
 				const settings = await this.restApi().getSettings() as IN8nUISettings;
-
 				this.$store.commit('setUrlBaseWebhook', settings.urlBaseWebhook);
 				this.$store.commit('setEndpointWebhook', settings.endpointWebhook);
 				this.$store.commit('setEndpointWebhookTest', settings.endpointWebhookTest);
@@ -2206,9 +2217,19 @@ export default mixins(
 			async loadCredentials (): Promise<void> {
 				await this.$store.dispatch('credentials/fetchAllCredentials');
 			},
-			async loadNodesProperties(nodeNames: string[]): Promise<void> {
-				const allNodes = this.$store.getters.allNodeTypes;
-				const nodesToBeFetched = allNodes.filter((node: INodeTypeDescription) => nodeNames.includes(node.name) && !node.hasOwnProperty('properties')).map((node: INodeTypeDescription) => node.name) as string[];
+			async loadNodesProperties(nodeInfos: INodeTypeNameVersion[]): Promise<void> {
+				const allNodes:INodeTypeDescription[] = this.$store.getters.allNodeTypes;
+
+				const nodesToBeFetched:INodeTypeNameVersion[] = [];
+				allNodes.forEach(node => {
+					if(!!nodeInfos.find(n => n.name === node.name && n.version === node.version) && !node.hasOwnProperty('properties')) {
+						nodesToBeFetched.push({
+							name: node.name,
+							version: node.version,
+						});
+					}
+				});
+
 				if (nodesToBeFetched.length > 0) {
 					// Only call API if node information is actually missing
 					this.startLoading();
@@ -2287,6 +2308,10 @@ export default mixins(
 	z-index: 18;
 	color: #444;
 	padding-right: 5px;
+
+	@media (max-width: $--breakpoint-2xs) {
+		bottom: 90px;
+	}
 
 	&.expanded {
 		left: $--sidebar-expanded-width + $--zoom-menu-margin;

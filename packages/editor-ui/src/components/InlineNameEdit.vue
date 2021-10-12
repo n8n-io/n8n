@@ -65,7 +65,11 @@ export default mixins(showMessage).extend({
 			if (!this.name) {
 				this.$emit('input', `Untitled ${this.type}`);
 
-				this.$showWarning('Error', `${this.type} name cannot be empty`);
+				this.$showToast({
+					title: 'Error',
+					message: `${this.type} name cannot be empty`,
+					type: 'warning',
+				});
 			}
 
 			this.isNameEdit = false;

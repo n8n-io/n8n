@@ -13,6 +13,7 @@ import {
 	INodeParameters,
 	INodePropertyOptions,
 	INodeTypeDescription,
+	INodeTypeNameVersion,
 	IRunExecutionData,
 	IRun,
 	IRunData,
@@ -129,9 +130,9 @@ export interface IRestApi {
 	stopCurrentExecution(executionId: string): Promise<IExecutionsStopData>;
 	makeRestApiRequest(method: string, endpoint: string, data?: any): Promise<any>; // tslint:disable-line:no-any
 	getSettings(): Promise<IN8nUISettings>;
-	getNodeTypes(): Promise<INodeTypeDescription[]>;
-	getNodesInformation(nodeList: string[]): Promise<INodeTypeDescription[]>;
-	getNodeParameterOptions(nodeType: string, path: string, methodName: string, currentNodeParameters: INodeParameters, credentials?: INodeCredentials): Promise<INodePropertyOptions[]>;
+	getNodeTypes(onlyLatest?: boolean): Promise<INodeTypeDescription[]>;
+	getNodesInformation(nodeInfos: INodeTypeNameVersion[]): Promise<INodeTypeDescription[]>;
+	getNodeParameterOptions(nodeTypeAndVersion: INodeTypeNameVersion, path: string, methodName: string, currentNodeParameters: INodeParameters, credentials?: INodeCredentials): Promise<INodePropertyOptions[]>;
 	removeTestWebhook(workflowId: string): Promise<boolean>;
 	runWorkflow(runData: IStartRunData): Promise<IExecutionPushResponse>;
 	createNewWorkflow(sendData: IWorkflowDataUpdate): Promise<IWorkflowDb>;
