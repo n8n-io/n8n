@@ -1336,17 +1336,11 @@ export default mixins(
 				}
 
 				this.instance.importDefaults({
-					// notice the 'curviness' argument to this Bezier curve.
-					// the curves on this page are far smoother
-					// than the curves on the first demo, which use the default curviness value.
-					// Connector: ["Bezier", { curviness: 80 }],
-					Connector: ['Bezier', { curviness: 40 }],
-					// @ts-ignore
+					Connector: ['Flowchart', { cornerRadius: 8, stub: 50, alwaysRespectStubs: true }],
 					Endpoint: ['Dot', { radius: 5 }],
 					DragOptions: { cursor: 'pointer', zIndex: 5000 },
 					PaintStyle: { strokeWidth: 2, stroke: '#334455' },
 					EndpointStyle: { radius: 9, fill: '#acd', stroke: 'red' },
-					// EndpointStyle: {},
 					HoverPaintStyle: { stroke: '#ff6d5a', lineWidth: 4 },
 					EndpointHoverStyle: { fill: '#ff6d5a', stroke: '#acd' },
 					ConnectionOverlays: connectionOverlays,
@@ -1382,14 +1376,6 @@ export default mixins(
 
 					// TODO: That should happen after each move (only the setConnector part)
 					if (info.sourceEndpoint.anchor.lastReturnValue[0] >= info.targetEndpoint.anchor.lastReturnValue[0]) {
-						// When the source is before the target it will make sure that
-						// the connection is clearer visible
-
-						// Use the Flowchart connector if the source is underneath the target
-						// so that the connection is properly visible
-						info.connection.setConnector(['Flowchart', { cornerRadius: 15 }]);
-						// TODO: Location should be dependent on distance. The closer together
-						//       the further away from the center
 						info.connection.addOverlay([
 							'Arrow',
 							{
@@ -1398,11 +1384,6 @@ export default mixins(
 								width: 12,
 							},
 						]);
-
-						// Change also the color to give an additional visual hint
-						info.connection.setPaintStyle({ strokeWidth: 2, stroke: '#334455' });
-					} else if (Math.abs(info.sourceEndpoint.anchor.lastReturnValue[1] - info.targetEndpoint.anchor.lastReturnValue[1]) < 30) {
-						info.connection.setConnector(['Straight']);
 					}
 
 					// @ts-ignore
