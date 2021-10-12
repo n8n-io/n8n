@@ -260,7 +260,7 @@ class App {
 			const [key, url] = conf.split(';');
 
 			if (!key || !url) {
-				console.log('Diagnostics config is invalid');
+				LoggerProxy.warn('Diagnostics frontend config is invalid');
 				telemetrySettings.enabled = false;
 			}
 

@@ -36,7 +36,7 @@ export class Telemetry {
 			if (!key || !url) {
 				const logger = getLogger();
 				LoggerProxy.init(logger);
-				logger.error('Diagnostics config is invalid');
+				logger.warn('Diagnostics backend config is invalid');
 				return;
 			}
 
