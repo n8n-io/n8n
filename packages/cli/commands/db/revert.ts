@@ -22,7 +22,7 @@ export class DbRevertMigrationCommand extends Command {
 		const logger = getLogger();
 		LoggerProxy.init(logger);
 
-		// eslint-disable-next-line @typescript-eslint/no-shadow
+		// eslint-disable-next-line @typescript-eslint/no-shadow, @typescript-eslint/no-unused-vars
 		const { flags } = this.parse(DbRevertMigrationCommand);
 
 		let connection: Connection | undefined;
