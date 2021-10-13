@@ -11,6 +11,7 @@ import {
 import {
 	IDataObject, NodeApiError,
 } from 'n8n-workflow';
+import { zluriOAuthApiRequest } from '../util';
 
 export async function todoistApiRequest(
 	this:
@@ -38,17 +39,7 @@ export async function todoistApiRequest(
 	}
 
 	try {
-		const code = this.getNodeParameter('code',0)
-		const secretOptions = {
-			method:'get',
-			uri:'https://integrations-dev.zluri.com/secretStore/fetchSecrets',
-			qs:{code}
-		}
-		const credentials = await this.helpers.request!(secretOptions);
-		
-		options.headers = Object.assign({}, options.headers, {'Authorization':'Bearer '+credentials.accessToken});
-		
-		return await this.helpers.request!(options);
+		return await zluriOAuthApiRequest.call(this as IExecuteFunctions ,options)
 
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error);

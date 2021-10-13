@@ -19,6 +19,7 @@ import {
 	get,
 } from 'lodash';
 
+import  {zluriOAuthApiRequest} from '../util';
 /**
  * Make an API request to Asana
  *
@@ -29,7 +30,7 @@ import {
  * @returns {Promise<any>}
  */
 export async function asanaApiRequest(this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions, method: string, endpoint: string, body: object, query?: object, uri?: string | undefined): Promise<any> { // tslint:disable-line:no-any
-	const authenticationMethod = this.getNodeParameter('authentication', 0);
+	
 
 	const options: OptionsWithUri = {
 		headers: {},
@@ -41,18 +42,9 @@ export async function asanaApiRequest(this: IHookFunctions | IExecuteFunctions |
 	};
 
 	try {
-		const code = this.getNodeParameter('code',0)
-		const secretOptions = {
-			method:'get',
-			uri:'https://integrations-dev.zluri.com/secretStore/fetchSecrets',
-			qs:{code}
-		}
-		const credentials = await this.helpers.request!(secretOptions);
 		
-		options.headers = Object.assign({}, options.headers, {'Authorization':'Bearer '+credentials.accessToken});
-		
-		return await this.helpers.request!(options);
-		
+		return await zluriOAuthApiRequest.call(this as IExecuteFunctions ,options)
+
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error);
 	}
