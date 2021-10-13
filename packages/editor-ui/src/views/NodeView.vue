@@ -1335,7 +1335,7 @@ export default mixins(
 				];
 
 				this.instance.importDefaults({
-					Connector: ['Flowchart', { cornerRadius: 8, stub: 60, gap: 5, alwaysRespectStubs: false}],
+					Connector: ['Bezier', { curviness: 150 }],
 					Endpoint: ['Dot', { radius: 5 }],
 					DragOptions: { cursor: 'pointer', zIndex: 5000 },
 					PaintStyle: { strokeWidth: 2, stroke: getStyleTokenValue('--color-foreground-dark') },
@@ -1362,6 +1362,16 @@ export default mixins(
 				});
 
 				this.instance.bind('connection', (info: OnConnectionBindInfo) => {
+					info.connection.setConnector(['Flowchart', { cornerRadius: 8, stub: 60, gap: 5, alwaysRespectStubs: false}]);
+					info.connection.addOverlay([
+						'Arrow',
+						{
+							location: 1,
+							width: 12,
+							foldback: 1,
+							length: 10,
+						},
+					]);
 					// @ts-ignore
 					const sourceInfo = info.sourceEndpoint.getParameters();
 					// @ts-ignore
