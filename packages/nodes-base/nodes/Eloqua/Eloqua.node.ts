@@ -11,6 +11,22 @@ import {
 
 import { eloquaApiRequest } from './GenericFunctions';
 
+type customFields = {
+	fields: field[];
+};
+
+type Permissions = {
+	fields: permission[];
+};
+
+type field = {
+	[name: string]: string;
+};
+
+type permission = {
+	[permission: string]: string;
+};
+
 export class Eloqua implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Oracle Eloqua',
@@ -955,7 +971,7 @@ export class Eloqua implements INodeType {
 					{},
 				);
 				// @ts-ignore
-				for (const element of response.elements) { 
+				for (const element of response.elements) {
 					const fieldName = element.name;
 					const fieldId = element.id;
 					returnData.push({
@@ -1091,7 +1107,7 @@ export class Eloqua implements INodeType {
 
 						body = this.getNodeParameter('optionalFields', i) as IDataObject;
 						body.name = this.getNodeParameter('name', i) as string;
-						const { fields } = this.getNodeParameter('customFields', i) as any;
+						const { fields } = this.getNodeParameter('customFields', i) as customFields;
 						body.fields = fields;
 
 						qs = {} as IDataObject;
@@ -1116,7 +1132,7 @@ export class Eloqua implements INodeType {
 						body = this.getNodeParameter('optionalFields', i) as IDataObject;
 						body.id = objectId;
 						body.name = this.getNodeParameter('name', i) as string;
-						const { fields } = this.getNodeParameter('customFields', i) as any;
+						const { fields } = this.getNodeParameter('customFields', i) as customFields;
 						body.fields = fields;
 
 						qs = {} as IDataObject;
@@ -1194,7 +1210,7 @@ export class Eloqua implements INodeType {
 
 						body = this.getNodeParameter('optionalFields', i) as IDataObject;
 						// body.accountId = '12345'; TODO: Check if Read Only
-						const { fields } = this.getNodeParameter('customObjectDataCustomFields', i) as any;
+						const { fields } = this.getNodeParameter('customObjectDataCustomFields', i) as customFields;
 						body.fieldValues = fields;
 
 						qs = {} as IDataObject;
@@ -1219,7 +1235,7 @@ export class Eloqua implements INodeType {
 
 						body = this.getNodeParameter('optionalFields', i) as IDataObject;
 						body.id = objectDataId;
-						const { fields } = this.getNodeParameter('customFields', i) as any;
+						const { fields } = this.getNodeParameter('customFields', i) as customFields;
 						body.fieldValues = fields;
 
 						qs = {} as IDataObject;
@@ -1296,10 +1312,11 @@ export class Eloqua implements INodeType {
 				if (Array.isArray(responseData)) {
 					returnData.push.apply(returnData, responseData as IDataObject[]);
 				} else {
-					returnData.push(responseData);
+					returnData.push(responseData as IDataObject);
 				}
-			} catch (error: any) {
+			} catch (error) {
 				if (this.continueOnFail()) {
+					// @ts-ignore
 					returnData.push({ error: error.message });
 					continue;
 				}

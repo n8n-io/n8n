@@ -19,12 +19,11 @@ export async function eventbriteApiRequest(
 		| IWebhookFunctions,
 	method: string,
 	resource: string,
-	body: any = {},
+	body: IDataObject = {},
 	qs: IDataObject = {},
 	uri?: string,
 	option: IDataObject = {},
-): Promise<any> {
-	// tslint:disable-line:no-any
+) {
 	let options: OptionsWithUri = {
 		headers: {},
 		method,
@@ -53,7 +52,8 @@ export async function eventbriteApiRequest(
 		} else {
 			return await this.helpers.requestOAuth2!.call(this, 'eventbriteOAuth2Api', options);
 		}
-	} catch (error: any) {
+	} catch (error) {
+		// @ts-ignore
 		throw new NodeApiError(this.getNode(), error);
 	}
 }
@@ -67,11 +67,9 @@ export async function eventbriteApiRequestAllItems(
 	propertyName: string,
 	method: string,
 	resource: string,
-	body: any = {},
+	body: IDataObject = {},
 	query: IDataObject = {},
-): Promise<any> {
-	// tslint:disable-line:no-any
-
+) {
 	const returnData: IDataObject[] = [];
 
 	let responseData;

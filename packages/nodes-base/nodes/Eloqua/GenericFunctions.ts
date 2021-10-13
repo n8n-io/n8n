@@ -62,7 +62,7 @@ export async function eloquaApiRequest(
 	staticData: IDataObject = {},
 	query: IDataObject = {},
 
-): Promise<object> {
+): Promise<IDataObject> {
 	const authenticationMethod = this.getNodeParameter('authentication', 0) as string;
 
 	if (authenticationMethod === 'httpBasicAuth') {
