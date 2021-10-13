@@ -61,11 +61,11 @@ export async function eloquaApiRequest(
 	body: IDataObject,
 	staticData: IDataObject = {},
 	query: IDataObject = {},
-): Promise<any> {
+
+): Promise<object> {
 	const authenticationMethod = this.getNodeParameter('authentication', 0) as string;
 
 	if (authenticationMethod === 'httpBasicAuth') {
-		//tslint:disable-line:no-any
 		const credentials = await this.getCredentials('eloquaApi');
 
 		if (credentials === undefined) {

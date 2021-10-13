@@ -36,7 +36,7 @@ export async function awsApiRequest(
 	path: string,
 	body?: string,
 	headers?: object,
-): Promise<any> {
+) {
 	// tslint:disable-line:no-any
 	const credentials = await this.getCredentials('aws');
 	if (credentials === undefined) {
@@ -62,7 +62,8 @@ export async function awsApiRequest(
 
 	try {
 		return await this.helpers.request!(options);
-	} catch (error: any) {
+	} catch (error) {
+		// @ts-ignore:next-line
 		throw new NodeApiError(this.getNode(), error, { parseXml: true });
 	}
 }
@@ -74,8 +75,7 @@ export async function awsApiRequestREST(
 	path: string,
 	body?: string,
 	headers?: object,
-): Promise<any> {
-	// tslint:disable-line:no-any
+) {
 	const response = await awsApiRequest.call(this, service, method, path, body, headers);
 	try {
 		return JSON.parse(response);

@@ -143,8 +143,9 @@ export class AwsSecretsManager implements INodeType {
 				} else {
 					returnData.push(responseData);
 				}
-			} catch (error: any) {
+			} catch (error) {
 				if (this.continueOnFail()) {
+					// @ts-ignore:next-line
 					returnData.push({ error: error.message });
 					continue;
 				}

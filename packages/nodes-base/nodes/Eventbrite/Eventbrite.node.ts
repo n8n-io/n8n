@@ -274,7 +274,8 @@ export class Eventbrite implements INodeType {
 		let endpoint = '';
 		let requestMethod = '';
 
-		let body: any = {};
+		// tslint:disable-next-line: prefer-const -> This is disabled because it is not an issue currently with only GET requests, but might be needed as non-constant in future with Create or Update requests.
+		let body: IDataObject = {};
 		let qs: IDataObject = {};
 		let responseData;
 
@@ -362,8 +363,9 @@ export class Eventbrite implements INodeType {
 				} else {
 					returnData.push(responseData);
 				}
-			} catch (error: any) {
+			} catch (error) {
 				if (this.continueOnFail()) {
+					// @ts-ignore:next-line
 					returnData.push({ error: error.message });
 					continue;
 				}

@@ -26,8 +26,8 @@ export async function suiteCrmApiRequest(
 	body: IDataObject,
 	query?: IDataObject,
 	dataKey?: string,
-): Promise<any> {
-	// tslint:disable-line:no-any
+) {
+
 	const credentials = await this.getCredentials('suiteCrmApi');
 	if (credentials === undefined) {
 		throw new Error('Please provide credentials');
@@ -80,13 +80,7 @@ export async function suiteCrmApiRequest(
 		} else {
 			return responseData[dataKey] as IDataObject;
 		}
-	} catch (error: any) {
-		if (error.statusCode === 401) {
-			// Return a clear error
-			throw new Error('The Suite CRM credentials are not valid!');
-		}
-
-		// If that data does not exist for some reason return the actual error
+	} catch (error) {
 		throw error;
 	}
 }

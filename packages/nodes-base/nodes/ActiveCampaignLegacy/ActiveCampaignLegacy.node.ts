@@ -1,6 +1,8 @@
 import { IExecuteFunctions, IHookFunctions } from 'n8n-core';
 import { IDataObject, INodeExecutionData, INodeType, INodeTypeDescription } from 'n8n-workflow';
 
+import { OptionsWithUri } from 'request';
+
 /**
  * Make an API request to ActiveCampaign
  *
@@ -31,7 +33,7 @@ export async function activeCampaignApiRequest(
 	query.api_key = credentials.apiKey;
 	query.api_output = 'json';
 
-	const options: any = {
+	const options: OptionsWithUri = {
 		method,
 		qs: query,
 		uri: `${credentials.apiUrl}${endpoint}`,
@@ -59,7 +61,8 @@ export async function activeCampaignApiRequest(
 		}
 
 		return returnData;
-	} catch (error: any) {
+	} catch (error) {
+		// @ts-ignore:next-line
 		if (error.statusCode === 403) {
 			// Return a clear error
 			throw new Error('The ActiveCampaign credentials are not valid!');

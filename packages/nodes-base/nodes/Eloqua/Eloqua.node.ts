@@ -954,7 +954,8 @@ export class Eloqua implements INodeType {
 					{},
 					{},
 				);
-				for (const element of response.elements) {
+				// @ts-ignore
+				for (const element of response.elements) { 
 					const fieldName = element.name;
 					const fieldId = element.id;
 					returnData.push({
@@ -976,7 +977,7 @@ export class Eloqua implements INodeType {
 		let endpoint = '';
 		let requestMethod = '';
 
-		let body: any = {};
+		let body: IDataObject = {};
 		let qs: IDataObject = {};
 		let responseData;
 
