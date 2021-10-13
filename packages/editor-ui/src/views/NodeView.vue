@@ -111,7 +111,7 @@ import {
 } from 'jsplumb';
 import { MessageBoxInputData } from 'element-ui/types/message-box';
 import { jsPlumb, Endpoint, OnConnectionBindInfo } from 'jsplumb';
-import { NODE_NAME_PREFIX, PLACEHOLDER_EMPTY_WORKFLOW_ID, START_NODE_TYPE } from '@/constants';
+import { JSPLUMB_FLOWCHART_STUB, NODE_NAME_PREFIX, PLACEHOLDER_EMPTY_WORKFLOW_ID, START_NODE_TYPE } from '@/constants';
 import { copyPaste } from '@/components/mixins/copyPaste';
 import { externalHooks } from '@/components/mixins/externalHooks';
 import { genericHelpers } from '@/components/mixins/genericHelpers';
@@ -132,7 +132,7 @@ import NodeCreator from '@/components/NodeCreator/NodeCreator.vue';
 import NodeSettings from '@/components/NodeSettings.vue';
 import RunData from '@/components/RunData.vue';
 
-import { getLeftmostTopNode, getWorkflowCorners, scaleSmaller, scaleBigger, scaleReset, addOrRemoveMidpointArrow } from './helpers';
+import { getLeftmostTopNode, getWorkflowCorners, scaleSmaller, scaleBigger, scaleReset, addOrRemoveMidpointArrow, addEndpointArrow, getDefaultOverlays } from './helpers';
 
 import mixins from 'vue-typed-mixins';
 import { v4 as uuidv4} from 'uuid';
@@ -1312,27 +1312,7 @@ export default mixins(
 				}
 			},
 			initNodeView () {
-				const connectionOverlays: OverlaySpec[] = [
-					[
-						'Arrow',
-						{
-							id: 'endpoint-arrow',
-							location: 1,
-							width: 12,
-							foldback: 1,
-							length: 10,
-						},
-					],
-					[
-						'Label',
-						{
-							id: 'drop-add-node',
-							label: 'Drop connection<br />to create node',
-							cssClass: 'drop-add-node-label',
-							location: 0.5,
-						},
-					],
-				];
+
 
 				this.instance.importDefaults({
 					Connector: ['Bezier', { curviness: 150 }],
@@ -1342,7 +1322,7 @@ export default mixins(
 					EndpointStyle: { radius: 9, fill: '#acd', stroke: 'red' },
 					HoverPaintStyle: { stroke: '#ff6d5a', lineWidth: 4 },
 					EndpointHoverStyle: { fill: '#ff6d5a', stroke: '#acd' },
-					ConnectionOverlays: connectionOverlays,
+					ConnectionOverlays: getDefaultOverlays(),
 					Container: '#node-view',
 				});
 
@@ -1362,17 +1342,9 @@ export default mixins(
 				});
 
 				this.instance.bind('connection', (info: OnConnectionBindInfo) => {
-					info.connection.setConnector(['Flowchart', { cornerRadius: 8, stub: 60, gap: 5, alwaysRespectStubs: false}]);
-					info.connection.addOverlay([
-						'Arrow',
-						{
-							id: 'endpoint-arrow',
-							location: 1,
-							width: 12,
-							foldback: 1,
-							length: 10,
-						},
-					]);
+					info.connection.setConnector(['Flowchart', { cornerRadius: 8, stub: JSPLUMB_FLOWCHART_STUB, gap: 5, alwaysRespectStubs: true}]);
+
+					addEndpointArrow(info.connection);
 					addOrRemoveMidpointArrow(info.connection);
 
 					// @ts-ignore

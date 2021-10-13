@@ -1,5 +1,6 @@
+import { JSPLUMB_FLOWCHART_STUB } from "@/constants";
 import { INodeUi, IZoomConfig } from "@/Interface";
-import { Connection } from "jsplumb";
+import { Connection, OverlaySpec } from "jsplumb";
 
 interface ICorners {
 	minX: number;
@@ -85,10 +86,48 @@ export const scaleReset = (config: IZoomConfig): IZoomConfig => {
 	return config;
 };
 
+export const getDefaultOverlays = (): OverlaySpec[] => ([
+	[
+		'Arrow',
+		{
+			id: 'endpoint-arrow',
+			location: 1,
+			width: 12,
+			foldback: 1,
+			length: 10,
+		},
+	],
+	[
+		'Label',
+		{
+			id: 'drop-add-node',
+			label: 'Drop connection<br />to create node',
+			cssClass: 'drop-add-node-label',
+			location: 0.5,
+		},
+	],
+]);
+
+export const addEndpointArrow = (connection: Connection)  => {
+	const hasArrow = !!connection.getOverlay('midpoint-arrow');
+	if (!hasArrow) {
+		connection.addOverlay([
+			'Arrow',
+			{
+				id: 'endpoint-arrow',
+				location: 1,
+				width: 12,
+				foldback: 1,
+				length: 10,
+			},
+		]);
+	}
+};
+
 export const addOrRemoveMidpointArrow = (connection: Connection) => {
 	const sourceEndpoint = connection.endpoints[0];
 	const targetEndpoint = connection.endpoints[1];
-	const requiresArrow = sourceEndpoint.anchor.lastReturnValue[0] >= targetEndpoint.anchor.lastReturnValue[0];
+	const requiresArrow = sourceEndpoint.anchor.lastReturnValue[0] >= (targetEndpoint.anchor.lastReturnValue[0] - JSPLUMB_FLOWCHART_STUB);
 
 	const hasArrow = !!connection.getOverlay('midpoint-arrow');
 

@@ -62,3 +62,5 @@ export const REQUEST_NODE_FORM_URL = 'https://n8n-community.typeform.com/to/K1fB
 // General
 export const INSTANCE_ID_HEADER = 'n8n-instance-id';
 export const WAIT_TIME_UNLIMITED = '3000-01-01T00:00:00.000Z';
+
+export const JSPLUMB_FLOWCHART_STUB = 60;
