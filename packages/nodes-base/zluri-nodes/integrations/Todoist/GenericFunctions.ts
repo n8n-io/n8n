@@ -22,7 +22,6 @@ export async function todoistApiRequest(
 	body: any = {}, // tslint:disable-line:no-any
 	qs: IDataObject = {},
 ): Promise<any> { // tslint:disable-line:no-any
-	const authentication = this.getNodeParameter('authentication', 0, 'apiKey');
 
 	const endpoint = 'api.todoist.com/rest/v1';
 
