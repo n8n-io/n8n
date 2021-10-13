@@ -107,6 +107,7 @@
 import Vue from 'vue';
 import {
 	Connection,
+	Overlay,
 	OverlaySpec,
 } from 'jsplumb';
 import { MessageBoxInputData } from 'element-ui/types/message-box';
@@ -1394,12 +1395,18 @@ export default mixins(
 							'Label',
 							{
 								id: 'connection-actions',
-								label: `<div>${getIcon('plus')}</div> <div>${getIcon('trash')}</div>`,
+								label: `<div class="add">${getIcon('plus')}</div> <div class="delete">${getIcon('trash')}</div>`,
 								cssClass: 'connection-actions',
 								visible: false,
 								events: {
-									mousedown: (e) => {
-										// this.__removeConnectionByConnectionInfo(info, true);
+									mousedown: (overlay: Overlay, event: MouseEvent) => {
+										const element = event.target as HTMLElement;
+										if (element.classList.contains('delete') || (element.parentElement && element.parentElement.classList.contains('delete'))) {
+											this.__removeConnectionByConnectionInfo(info, true);
+										}
+										if (element.classList.contains('add') || (element.parentElement && element.parentElement.classList.contains('add'))) {
+											console.log('add');
+										}
 									},
 								},
 							},
