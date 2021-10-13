@@ -399,7 +399,7 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 }
 
 .jtk-connector.jtk-hover {
-	z-index: 10;
+	z-index: 5;
 }
 
 .jtk-endpoint {
