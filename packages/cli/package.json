@@ -31,7 +31,7 @@
     "start:windows": "cd bin && n8n",
     "test": "jest",
     "watch": "tsc --watch",
-    "typeorm": "ts-node ./node_modules/typeorm/cli.js"
+    "typeorm": "ts-node ../../node_modules/typeorm/cli.js"
   },
   "bin": {
     "n8n": "./bin/n8n"

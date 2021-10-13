@@ -2,9 +2,25 @@
 import { WorkflowExecuteMode } from 'n8n-workflow';
 
 import { Column, ColumnOptions, Entity, Index, PrimaryGeneratedColumn } from 'typeorm';
-import { IExecutionFlattedDb, IWorkflowDb } from '../..';
+import config = require('../../../config');
+import { DatabaseType, IExecutionFlattedDb, IWorkflowDb } from '../..';
 
-import { resolveDataType } from '../utils';
+function resolveDataType(dataType: string) {
+	const dbType = config.get('database.type') as DatabaseType;
+
+	const typeMap: { [key in DatabaseType]: { [key: string]: string } } = {
+		sqlite: {
+			json: 'simple-json',
+		},
+		postgresdb: {
+			datetime: 'timestamptz',
+		},
+		mysqldb: {},
+		mariadb: {},
+	};
+
+	return typeMap[dbType][dataType] ?? dataType;
+}
 
 @Entity()
 export class ExecutionEntity implements IExecutionFlattedDb {
