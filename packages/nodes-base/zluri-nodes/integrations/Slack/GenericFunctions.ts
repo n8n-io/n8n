@@ -16,6 +16,7 @@ import {
 } from 'n8n-workflow';
 
 import * as _ from 'lodash';
+import { zluriOAuthApiRequest } from '../util';
 
 export async function slackApiRequest(this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: string, resource: string, body: object = {}, query: object = {}, headers: {} | undefined = undefined, option: {} = {}): Promise<any> { // tslint:disable-line:no-any
 	const authenticationMethod = this.getNodeParameter('authentication', 0, 'accessToken') as string;
@@ -37,17 +38,7 @@ export async function slackApiRequest(this: IExecuteFunctions | IExecuteSingleFu
 		delete options.qs;
 	}
 	try {
-		const code = this.getNodeParameter('code',0)
-		const secretOptions = {
-			method:'get',
-			uri:'https://integrations-dev.zluri.com/secretStore/fetchSecrets',
-			qs:{code}
-		}
-		const credentials = await this.helpers.request!(secretOptions);
-		
-		options.headers = Object.assign({}, options.headers, {'Authorization':'Bearer '+credentials.accessToken});
-		
-		return await this.helpers.request!(options);
+		return await zluriOAuthApiRequest.call(this as IExecuteFunctions ,options)
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error);
 	}

@@ -13,6 +13,7 @@ import {
 	NodeApiError,
 	JsonObject
 } from 'n8n-workflow';
+import { zluriOAuthApiRequest } from '../util';
 
 export async function googleApiRequest(this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: string, resource: string, body: any = {}, qs: IDataObject = {}, uri?: string, headers: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
 	const options: OptionsWithUri = {
@@ -33,19 +34,7 @@ export async function googleApiRequest(this: IExecuteFunctions | IExecuteSingleF
 			delete options.body;
 		}
 		
-		const code = this.getNodeParameter('code',0)
-		const secretOptions = {
-			method:'get',
-			uri:'https://integrations-dev.zluri.com/secretStore/fetchSecrets',
-			qs:{code}
-		}
-		const credentials = await this.helpers.request!(secretOptions);
-		
-		console.log(options)
-		
-		options.headers = Object.assign({}, options.headers, {'Authorization':'Bearer '+credentials.accessToken});
-		
-		return await this.helpers.request!(options);
+		return await zluriOAuthApiRequest.call(this as IExecuteFunctions ,options)
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}

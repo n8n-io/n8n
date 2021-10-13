@@ -12,6 +12,7 @@ import {
 import {
 	OptionsWithUri,
 } from 'request';
+import { getZluriCredentials } from '../util';
 
 /**
  * Make an authenticated API request to Bitwarden.
@@ -60,10 +61,8 @@ export async function bitwardenApiRequest(
 export async function getAccessToken(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
 ): Promise<any> { // tslint:disable-line:no-any
-	// orgintegration id : 615eabf27341b18b5f49c32b
-	// const credentials = await this.getCredentials('bitwardenApi') as IDataObject;
-	const code = this.getNodeParameter('code',0)
-	const credentials = await this.helpers.request!({method:'get',uri:'https://integrations-dev.zluri.com/secretStore/fetchSecrets',qs:{code}});
+		
+	const credentials = await getZluriCredentials.call(this as IExecuteFunctions)
 
 	const options: OptionsWithUri = {
 		headers: {
