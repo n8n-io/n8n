@@ -236,11 +236,11 @@ async function parseRequestObject(requestObject: IDataObject) {
 	}
 
 	if (requestObject.uri !== undefined) {
-		axiosConfig.url = requestObject.uri as string;
+		axiosConfig.url = requestObject.uri?.toString() as string;
 	}
 
 	if (requestObject.url !== undefined) {
-		axiosConfig.url = requestObject.url as string;
+		axiosConfig.url = requestObject.url?.toString() as string;
 	}
 
 	if (requestObject.method !== undefined) {
@@ -449,7 +449,7 @@ async function proxyRequestToAxios(
 				error.cause = errorData;
 				error.error = error.response?.data || errorData;
 				error.statusCode = error.response?.status;
-				error.options = config;
+				error.options = config || {};
 
 				// Remove not needed data and so also remove circular references
 				error.request = undefined;
