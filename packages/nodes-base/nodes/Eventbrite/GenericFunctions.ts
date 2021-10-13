@@ -5,7 +5,7 @@ import {
 	IExecuteSingleFunctions,
 	IHookFunctions,
 	ILoadOptionsFunctions,
-	IWebhookFunctions
+	IWebhookFunctions,
 } from 'n8n-core';
 
 import { IDataObject, NodeApiError, NodeOperationError } from 'n8n-workflow';
@@ -22,7 +22,7 @@ export async function eventbriteApiRequest(
 	body: any = {},
 	qs: IDataObject = {},
 	uri?: string,
-	option: IDataObject = {}
+	option: IDataObject = {},
 ): Promise<any> {
 	// tslint:disable-line:no-any
 	let options: OptionsWithUri = {
@@ -31,7 +31,7 @@ export async function eventbriteApiRequest(
 		qs,
 		body,
 		uri: uri || `https://www.eventbriteapi.com/v3${resource}`,
-		json: true
+		json: true,
 	};
 	options = Object.assign({}, options, option);
 	if (Object.keys(options.body).length === 0) {
@@ -44,21 +44,14 @@ export async function eventbriteApiRequest(
 		if (authenticationMethod === 'privateKey') {
 			const credentials = await this.getCredentials('eventbriteApi');
 			if (credentials === undefined) {
-				throw new NodeOperationError(
-					this.getNode(),
-					'No credentials got returned!'
-				);
+				throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
 			}
 
 			options.headers!['Authorization'] = `Bearer ${credentials.apiKey}`;
 
 			return await this.helpers.request!(options);
 		} else {
-			return await this.helpers.requestOAuth2!.call(
-				this,
-				'eventbriteOAuth2Api',
-				options
-			);
+			return await this.helpers.requestOAuth2!.call(this, 'eventbriteOAuth2Api', options);
 		}
 	} catch (error: any) {
 		throw new NodeApiError(this.getNode(), error);
@@ -75,7 +68,7 @@ export async function eventbriteApiRequestAllItems(
 	method: string,
 	resource: string,
 	body: any = {},
-	query: IDataObject = {}
+	query: IDataObject = {},
 ): Promise<any> {
 	// tslint:disable-line:no-any
 
@@ -84,13 +77,7 @@ export async function eventbriteApiRequestAllItems(
 	let responseData;
 
 	do {
-		responseData = await eventbriteApiRequest.call(
-			this,
-			method,
-			resource,
-			body,
-			query
-		);
+		responseData = await eventbriteApiRequest.call(this, method, resource, body, query);
 		query.continuation = responseData.pagination.continuation;
 		returnData.push.apply(returnData, responseData[propertyName]);
 	} while (

@@ -14,13 +14,13 @@ export class EloquaApi implements ICredentialType {
 			type: 'string',
 			default: '',
 		},
-        {
+		{
 			displayName: 'User Name',
 			name: 'userName',
 			type: 'string',
 			default: '',
 		},
-        {
+		{
 			displayName: 'Password',
 			name: 'password',
 			type: 'string',

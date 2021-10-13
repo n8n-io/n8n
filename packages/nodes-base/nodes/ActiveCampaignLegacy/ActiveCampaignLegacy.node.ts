@@ -1,14 +1,5 @@
-import {
-	IExecuteFunctions,
-	IHookFunctions,
-} from 'n8n-core';
-import {
-	IDataObject,
-	INodeTypeDescription,
-	INodeExecutionData,
-	INodeType,
-} from 'n8n-workflow';
-
+import { IExecuteFunctions, IHookFunctions } from 'n8n-core';
+import { IDataObject, INodeExecutionData, INodeType, INodeTypeDescription } from 'n8n-workflow';
 
 /**
  * Make an API request to ActiveCampaign
@@ -19,7 +10,15 @@ import {
  * @param {object} body
  * @returns {Promise<any>}
  */
-export async function activeCampaignApiRequest(this: IHookFunctions | IExecuteFunctions, method: string, endpoint: string, body: IDataObject, query?: IDataObject, dataKeys?: string[]): Promise<any> { // tslint:disable-line:no-any
+export async function activeCampaignApiRequest(
+	this: IHookFunctions | IExecuteFunctions,
+	method: string,
+	endpoint: string,
+	body: IDataObject,
+	query?: IDataObject,
+	dataKeys?: string[],
+) {
+	// tslint:disable-line:no-any
 	const credentials = await this.getCredentials('activeCampaignApi');
 	if (credentials === undefined) {
 		throw new Error('No credentials got returned!');
@@ -32,11 +31,11 @@ export async function activeCampaignApiRequest(this: IHookFunctions | IExecuteFu
 	query.api_key = credentials.apiKey;
 	query.api_output = 'json';
 
-	const options: any = { // tslint:disable-line:no-any
+	const options: any = {
 		method,
 		qs: query,
 		uri: `${credentials.apiUrl}${endpoint}`,
-		json: true
+		json: true,
 	};
 
 	if (Object.keys(body).length !== 0) {
@@ -60,7 +59,6 @@ export async function activeCampaignApiRequest(this: IHookFunctions | IExecuteFu
 		}
 
 		return returnData;
-
 	} catch (error: any) {
 		if (error.statusCode === 403) {
 			// Return a clear error
@@ -72,14 +70,10 @@ export async function activeCampaignApiRequest(this: IHookFunctions | IExecuteFu
 	}
 }
 
-
-
-
 interface CustomProperty {
 	name: string;
 	value: string;
 }
-
 
 /**
  * Add the additional fields to the body
@@ -89,8 +83,12 @@ interface CustomProperty {
  */
 function addAdditionalFields(body: IDataObject, additionalFields: IDataObject) {
 	for (const key of Object.keys(additionalFields)) {
-		if (key === 'customProperties' && (additionalFields.customProperties as IDataObject).property !== undefined) {
-			for (const customProperty of (additionalFields.customProperties as IDataObject)!.property! as CustomProperty[]) {
+		if (
+			key === 'customProperties' &&
+			(additionalFields.customProperties as IDataObject).property !== undefined
+		) {
+			for (const customProperty of (additionalFields.customProperties as IDataObject)!
+				.property! as CustomProperty[]) {
 				body[customProperty.name] = customProperty.value;
 			}
 		} else {
@@ -118,7 +116,7 @@ export class ActiveCampaignLegacy implements INodeType {
 			{
 				name: 'activeCampaignApi',
 				required: true,
-			}
+			},
 		],
 		properties: [
 			{
@@ -135,8 +133,6 @@ export class ActiveCampaignLegacy implements INodeType {
 				description: 'The resource to operate on.',
 			},
 
-
-
 			// ----------------------------------
 			//         operations
 			// ----------------------------------
@@ -146,9 +142,7 @@ export class ActiveCampaignLegacy implements INodeType {
 				type: 'options',
 				displayOptions: {
 					show: {
-						resource: [
-							'contact',
-						],
+						resource: ['contact'],
 					},
 				},
 				options: [
@@ -182,8 +176,6 @@ export class ActiveCampaignLegacy implements INodeType {
 				description: 'The operation to perform.',
 			},
 
-
-
 			// ----------------------------------
 			//         contact
 			// ----------------------------------
@@ -199,12 +191,8 @@ export class ActiveCampaignLegacy implements INodeType {
 				required: true,
 				displayOptions: {
 					show: {
-						operation: [
-							'create',
-						],
-						resource: [
-							'contact',
-						],
+						operation: ['create'],
+						resource: ['contact'],
 					},
 				},
 				description: 'The email of the contact to create',
@@ -215,16 +203,13 @@ export class ActiveCampaignLegacy implements INodeType {
 				type: 'boolean',
 				displayOptions: {
 					show: {
-						operation: [
-							'create',
-						],
-						resource: [
-							'contact',
-						],
+						operation: ['create'],
+						resource: ['contact'],
 					},
 				},
 				default: false,
-				description: 'Update user if it exists already. If not set and user exists it will error instead.',
+				description:
+					'Update user if it exists already. If not set and user exists it will error instead.',
 			},
 			{
 				displayName: 'Additional Fields',
@@ -233,12 +218,8 @@ export class ActiveCampaignLegacy implements INodeType {
 				placeholder: 'Add Field',
 				displayOptions: {
 					show: {
-						operation: [
-							'create',
-						],
-						resource: [
-							'contact',
-						],
+						operation: ['create'],
+						resource: ['contact'],
 					},
 				},
 				default: {},
@@ -268,7 +249,8 @@ export class ActiveCampaignLegacy implements INodeType {
 						displayName: 'Custom Properties',
 						name: 'customProperties',
 						placeholder: 'Add Custom Property',
-						description: 'Adds a custom property to set also values which have not been predefined.',
+						description:
+							'Adds a custom property to set also values which have not been predefined.',
 						type: 'fixedCollection',
 						typeOptions: {
 							multipleValues: true,
@@ -293,7 +275,7 @@ export class ActiveCampaignLegacy implements INodeType {
 										default: '',
 										description: 'Value of the property to set.',
 									},
-								]
+								],
 							},
 						],
 					},
@@ -309,12 +291,8 @@ export class ActiveCampaignLegacy implements INodeType {
 				type: 'number',
 				displayOptions: {
 					show: {
-						operation: [
-							'delete',
-						],
-						resource: [
-							'contact',
-						],
+						operation: ['delete'],
+						resource: ['contact'],
 					},
 				},
 				default: 0,
@@ -331,12 +309,8 @@ export class ActiveCampaignLegacy implements INodeType {
 				type: 'number',
 				displayOptions: {
 					show: {
-						operation: [
-							'get',
-						],
-						resource: [
-							'contact',
-						],
+						operation: ['get'],
+						resource: ['contact'],
 					},
 				},
 				default: 0,
@@ -416,12 +390,8 @@ export class ActiveCampaignLegacy implements INodeType {
 				type: 'number',
 				displayOptions: {
 					show: {
-						operation: [
-							'update',
-						],
-						resource: [
-							'contact',
-						],
+						operation: ['update'],
+						resource: ['contact'],
 					},
 				},
 				default: 0,
@@ -436,12 +406,8 @@ export class ActiveCampaignLegacy implements INodeType {
 				placeholder: 'Add Field',
 				displayOptions: {
 					show: {
-						operation: [
-							'update',
-						],
-						resource: [
-							'contact',
-						],
+						operation: ['update'],
+						resource: ['contact'],
 					},
 				},
 				default: {},
@@ -478,7 +444,8 @@ export class ActiveCampaignLegacy implements INodeType {
 						displayName: 'Custom Properties',
 						name: 'customProperties',
 						placeholder: 'Add Custom Property',
-						description: 'Adds a custom property to set also values which have not been predefined.',
+						description:
+							'Adds a custom property to set also values which have not been predefined.',
 						type: 'fixedCollection',
 						typeOptions: {
 							multipleValues: true,
@@ -503,16 +470,14 @@ export class ActiveCampaignLegacy implements INodeType {
 										default: '',
 										description: 'Value of the property to set.',
 									},
-								]
+								],
 							},
 						],
 					},
 				],
 			},
-
 		],
 	};
-
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
@@ -528,7 +493,6 @@ export class ActiveCampaignLegacy implements INodeType {
 
 		let requestMethod: string;
 		const endpoint = '/admin/api.php';
-		let returnAll = false;
 		let dataKeys: string[] | undefined;
 
 		for (let i = 0; i < items.length; i++) {
@@ -560,7 +524,6 @@ export class ActiveCampaignLegacy implements INodeType {
 					body.email = this.getNodeParameter('email', i) as string;
 					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 					addAdditionalFields(body as IDataObject, additionalFields);
-
 				} else if (operation === 'delete') {
 					// ----------------------------------
 					//         contact:delete
@@ -571,7 +534,6 @@ export class ActiveCampaignLegacy implements INodeType {
 
 					const contactId = this.getNodeParameter('contactId', i) as number;
 					qs.id = contactId;
-
 				} else if (operation === 'get') {
 					// ----------------------------------
 					//         contact:get
@@ -583,24 +545,23 @@ export class ActiveCampaignLegacy implements INodeType {
 					const contactId = this.getNodeParameter('contactId', i) as number;
 					qs.id = contactId;
 
-				// TODO: Does not work as expted so remove for now
-				// } else if (operation === 'getAll') {
-				// 	// ----------------------------------
-				// 	//         contact:getAll
-				// 	// ----------------------------------
+					// TODO: Does not work as expted so remove for now
+					// } else if (operation === 'getAll') {
+					// 	// ----------------------------------
+					// 	//         contact:getAll
+					// 	// ----------------------------------
 
-				// 	requestMethod = 'GET';
-				// 	qs.api_action = 'contact_list';ActiveCampaignLegacy
-				// 	qs.ids = 'ALL';
+					// 	requestMethod = 'GET';
+					// 	qs.api_action = 'contact_list';ActiveCampaignLegacy
+					// 	qs.ids = 'ALL';
 
-				// 	returnAll = this.getNodeParameter('returnAll', i) as boolean;
-				// 	if (returnAll === false) {
-				// 		qs.page = this.getNodeParameter('page', i) as number;
-				// 	}
+					// 	returnAll = this.getNodeParameter('returnAll', i) as boolean;
+					// 	if (returnAll === false) {
+					// 		qs.page = this.getNodeParameter('page', i) as number;
+					// 	}
 
-				// 	const fullUserData = this.getNodeParameter('fullUserData', i) as boolean;
-				// 	qs.full = fullUserData === true ? 1 : 0;
-
+					// 	const fullUserData = this.getNodeParameter('fullUserData', i) as boolean;
+					// 	qs.full = fullUserData === true ? 1 : 0;
 				} else if (operation === 'update') {
 					// ----------------------------------
 					//         contact:update
@@ -617,14 +578,20 @@ export class ActiveCampaignLegacy implements INodeType {
 					body.id = contactId;
 					const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
 					addAdditionalFields(body as IDataObject, updateFields);
-
 				}
 			} else {
 				throw new Error(`The resource "${resource}" is not known!`);
 			}
 
 			let responseData;
-			responseData = await activeCampaignApiRequest.call(this, requestMethod, endpoint, body, qs, dataKeys);
+			responseData = await activeCampaignApiRequest.call(
+				this,
+				requestMethod,
+				endpoint,
+				body,
+				qs,
+				dataKeys,
+			);
 
 			if (Array.isArray(responseData)) {
 				returnData.push.apply(returnData, responseData as IDataObject[]);

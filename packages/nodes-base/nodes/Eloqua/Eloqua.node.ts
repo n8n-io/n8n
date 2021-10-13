@@ -6,7 +6,7 @@ import {
 	INodeExecutionData,
 	INodePropertyOptions,
 	INodeType,
-	INodeTypeDescription
+	INodeTypeDescription,
 } from 'n8n-workflow';
 
 import { eloquaApiRequest } from './GenericFunctions';
@@ -22,7 +22,7 @@ export class Eloqua implements INodeType {
 		description: 'Consume Oracle Eloqua REST API',
 		defaults: {
 			name: 'Oracle Eloqua',
-			color: '#FC636B'
+			color: '#FC636B',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -32,19 +32,19 @@ export class Eloqua implements INodeType {
 				required: true,
 				displayOptions: {
 					show: {
-						authentication: ['httpBasicAuth']
-					}
-				}
+						authentication: ['httpBasicAuth'],
+					},
+				},
 			},
 			{
 				name: 'eloquaOAuth2Api',
 				required: true,
 				displayOptions: {
 					show: {
-						authentication: ['oAuth2']
-					}
-				}
-			}
+						authentication: ['oAuth2'],
+					},
+				},
+			},
 		],
 		properties: [
 			// ----------------------------------
@@ -57,15 +57,15 @@ export class Eloqua implements INodeType {
 				options: [
 					{
 						name: 'Basic Authentication',
-						value: 'httpBasicAuth'
+						value: 'httpBasicAuth',
 					},
 					{
 						name: 'OAuth2',
-						value: 'oAuth2'
-					}
+						value: 'oAuth2',
+					},
 				],
 				default: 'httpBasicAuth',
-				description: 'The authentication method to use.'
+				description: 'The authentication method to use.',
 			},
 			// ----------------------------------
 			//         resources
@@ -77,19 +77,19 @@ export class Eloqua implements INodeType {
 				options: [
 					{
 						name: 'Contact',
-						value: 'contact'
+						value: 'contact',
 					},
 					{
 						name: 'Custom Object',
-						value: 'customObject'
+						value: 'customObject',
 					},
 					{
 						name: 'Custom Object Data',
-						value: 'customObjectData'
-					}
+						value: 'customObjectData',
+					},
 				],
 				default: 'contact',
-				description: 'The resource to operate on.'
+				description: 'The resource to operate on.',
 			},
 			// ----------------------------------
 			//         operations - Contact & Custom Object & Custom Object Data (v2)
@@ -100,38 +100,38 @@ export class Eloqua implements INodeType {
 				type: 'options',
 				displayOptions: {
 					show: {
-						resource: ['contact', 'customObject', 'customObjectData']
-					}
+						resource: ['contact', 'customObject', 'customObjectData'],
+					},
 				},
 				options: [
 					{
 						name: 'Create',
 						value: 'create',
-						description: 'Create an entry'
+						description: 'Create an entry',
 					},
 					{
 						name: 'Delete',
 						value: 'delete',
-						description: 'Delete an entry'
+						description: 'Delete an entry',
 					},
 					{
 						name: 'Get',
 						value: 'get',
-						description: 'Get data of an entry'
+						description: 'Get data of an entry',
 					},
 					{
 						name: 'Get All',
 						value: 'getAll',
-						description: 'Get data of all entries'
+						description: 'Get data of all entries',
 					},
 					{
 						name: 'Update',
 						value: 'update',
-						description: 'Update an entry'
-					}
+						description: 'Update an entry',
+					},
 				],
 				default: 'create',
-				description: 'The operation to perform.'
+				description: 'The operation to perform.',
 			},
 			// ----------------------------------
 			//         fields - Contacts
@@ -145,10 +145,10 @@ export class Eloqua implements INodeType {
 				displayOptions: {
 					show: {
 						operation: ['create', 'update'],
-						resource: ['contact']
-					}
+						resource: ['contact'],
+					},
 				},
-				description: 'The email address of the contact.'
+				description: 'The email address of the contact.',
 			},
 			{
 				displayName: 'ID',
@@ -159,10 +159,10 @@ export class Eloqua implements INodeType {
 				displayOptions: {
 					show: {
 						operation: ['update', 'get', 'delete'],
-						resource: ['contact']
-					}
+						resource: ['contact'],
+					},
 				},
-				description: 'The ID of the contact.'
+				description: 'The ID of the contact.',
 			},
 			{
 				displayName: 'Additional Fields',
@@ -171,8 +171,8 @@ export class Eloqua implements INodeType {
 				displayOptions: {
 					show: {
 						operation: ['create', 'update'],
-						resource: ['contact']
-					}
+						resource: ['contact'],
+					},
 				},
 				default: {},
 				description: 'Additional optional Fields of the contact',
@@ -183,171 +183,171 @@ export class Eloqua implements INodeType {
 						name: 'currentStatus',
 						type: 'string',
 						default: '',
-						description: "The contact's current status."
+						description: 'The contacts current status.',
 					},
 					{
 						displayName: 'Name',
 						name: 'name',
 						type: 'string',
 						default: '',
-						description: 'The name of the contact. Name is ignored by the API and overwritten with the Email Address value.'
+						description:
+							'The name of the contact. Name is ignored by the API and overwritten with the Email Address value.',
 					},
 					{
 						displayName: 'Description',
 						name: 'description',
 						type: 'string',
 						default: '',
-						description: 'The description of the contact.'
+						description: 'The description of the contact.',
 					},
 					{
 						displayName: 'First Name',
 						name: 'firstName',
 						type: 'string',
 						default: '',
-						description: "The contact's first name."
+						description: 'The contacts first name.',
 					},
 					{
 						displayName: 'Last Name',
 						name: 'lastName',
 						type: 'string',
 						default: '',
-						description: "The contact's last name."
+						description: 'The contacts last name.',
 					},
 					{
 						displayName: 'Email Format Preference',
 						name: 'emailFormatPreference',
 						type: 'string',
 						default: '',
-						description: "The contact's email format preference."
+						description: 'The contacts email format preference.',
 					},
 					{
 						displayName: 'Is subscribed?',
 						name: 'isSubscribed',
 						type: 'string',
 						default: '',
-						description: 'Whether or not the contact is subscribed.'
+						description: 'Whether or not the contact is subscribed.',
 					},
 					{
 						displayName: 'Has bouncebacks?',
 						name: 'isBounceback',
 						type: 'string',
 						default: '',
-						description:
-							'Whether or not the contact has any associated bouncebacks.'
+						description: 'Whether or not the contact has any associated bouncebacks.',
 					},
 					{
 						displayName: 'Account Name',
 						name: 'accountName',
 						type: 'string',
 						default: '',
-						description: 'The account name in which the contact belongs.'
+						description: 'The account name in which the contact belongs.',
 					},
 					{
 						displayName: 'Title',
 						name: 'title',
 						type: 'string',
 						default: '',
-						description: "The contact's title."
+						description: 'The contacts title.',
 					},
 					{
 						displayName: 'Subscription Date',
 						name: 'subscriptionDate',
 						type: 'string',
 						default: '',
-						description: "The contact's subscription date."
+						description: 'The contacts subscription date.',
 					},
 					{
 						displayName: 'Unsubscription Date',
 						name: 'unsubscriptionDate',
 						type: 'string',
 						default: '',
-						description: "The contact's unsubscription date."
+						description: 'The contacts unsubscription date.',
 					},
 					{
 						displayName: 'Bounceback Date',
 						name: 'bouncebackDate',
 						type: 'string',
 						default: '',
-						description: "The contact's bounceback date."
+						description: 'The contacts bounceback date.',
 					},
 					{
 						displayName: 'Address 1',
 						name: 'address1',
 						type: 'string',
 						default: '',
-						description: "The contact's first address."
+						description: 'The contacts first address.',
 					},
 					{
 						displayName: 'Address 2',
 						name: 'address2',
 						type: 'string',
 						default: '',
-						description: "The contact's second address."
+						description: 'The contacts second address.',
 					},
 					{
 						displayName: 'Address 3',
 						name: 'address3',
 						type: 'string',
 						default: '',
-						description: "The contact's third address."
+						description: 'The contacts third address.',
 					},
 					{
 						displayName: 'City',
 						name: 'city',
 						type: 'string',
 						default: '',
-						description: "The contact's city."
+						description: 'The contacts city.',
 					},
 					{
 						displayName: 'Province',
 						name: 'province',
 						type: 'string',
 						default: '',
-						description: "The contact's province."
+						description: 'The contacts province.',
 					},
 					{
 						displayName: 'Postal Code',
 						name: 'postalCode',
 						type: 'string',
 						default: '',
-						description: "The contact's postal code."
+						description: 'The contacts postal code.',
 					},
 					{
 						displayName: 'Country',
 						name: 'country',
 						type: 'string',
 						default: '',
-						description: "The contact's country."
+						description: 'The contacts country.',
 					},
 					{
 						displayName: 'Business Phone',
 						name: 'businessPhone',
 						type: 'string',
 						default: '',
-						description: "The contact's business phone number."
+						description: 'The contacts business phone number.',
 					},
 					{
 						displayName: 'Mobile Phone',
 						name: 'mobilePhone',
 						type: 'string',
 						default: '',
-						description: "The contact's mobile phone number."
+						description: 'The contacts mobile phone number.',
 					},
 					{
 						displayName: 'Fax',
 						name: 'fax',
 						type: 'string',
 						default: '',
-						description: "The contact's fax number."
+						description: 'The contacts fax number.',
 					},
 					{
 						displayName: 'Sales Person',
 						name: 'salesPerson',
 						type: 'string',
 						default: '',
-						description: "The contact's account representative."
-					}
-				]
+						description: 'The contacts account representative.',
+					},
+				],
 			},
 			{
 				displayName: 'Custom Contact Fields',
@@ -356,13 +356,13 @@ export class Eloqua implements INodeType {
 				description: 'Adds a custom field to set the value of.',
 				type: 'fixedCollection',
 				typeOptions: {
-					multipleValues: true
+					multipleValues: true,
 				},
 				displayOptions: {
 					show: {
 						operation: ['create', 'update'],
-						resource: ['contact']
-					}
+						resource: ['contact'],
+					},
 				},
 				default: {},
 				options: [
@@ -375,21 +375,21 @@ export class Eloqua implements INodeType {
 								name: 'id',
 								type: 'options',
 								typeOptions: {
-									loadOptionsMethod: 'getContactFields'
+									loadOptionsMethod: 'getContactFields',
 								},
 								default: '',
-								description: 'ID of the field to set.'
+								description: 'ID of the field to set.',
 							},
 							{
 								displayName: 'Field Value',
 								name: 'value',
 								type: 'string',
 								default: '',
-								description: 'Value of the field to set.'
-							}
-						]
-					}
-				]
+								description: 'Value of the field to set.',
+							},
+						],
+					},
+				],
 			},
 			// ----------------------------------
 			//         QueryParameters - contacts - getAll
@@ -401,8 +401,8 @@ export class Eloqua implements INodeType {
 				displayOptions: {
 					show: {
 						operation: ['getAll'],
-						resource: ['contact']
-					}
+						resource: ['contact'],
+					},
 				},
 				default: {},
 				description: 'Query parameters to filter the results by',
@@ -414,7 +414,7 @@ export class Eloqua implements INodeType {
 						type: 'number',
 						default: 100,
 						description:
-							'Maximum number of entities to return. Must be less than or equal to 1000 and greater than or equal to 1.'
+							'Maximum number of entities to return. Must be less than or equal to 1000 and greater than or equal to 1.',
 					},
 					{
 						displayName: 'Depth',
@@ -422,23 +422,21 @@ export class Eloqua implements INodeType {
 						type: 'string',
 						default: '',
 						description:
-							'Level of detail returned by the request. Eloqua APIs can retrieve entities at three different levels of depth: minimal, partial, and complete. Any other values passed are reset to minimal by default.'
+							'Level of detail returned by the request. Eloqua APIs can retrieve entities at three different levels of depth: minimal, partial, and complete. Any other values passed are reset to minimal by default.',
 					},
 					{
 						displayName: 'lastUpdatedAt',
 						name: 'lastUpdatedAt',
 						type: 'number',
 						default: 0,
-						description:
-							'Unix timestamp for the date and time the custom object was last updated.'
+						description: 'Unix timestamp for the date and time the custom object was last updated.',
 					},
 					{
 						displayName: 'Order By',
 						name: 'orderBy',
 						type: 'string',
 						default: '',
-						description:
-							'Specifies the field by which list results are ordered.'
+						description: 'Specifies the field by which list results are ordered.',
 					},
 					{
 						displayName: 'Page',
@@ -446,7 +444,7 @@ export class Eloqua implements INodeType {
 						type: 'number',
 						default: 1,
 						description:
-							'Specifies which page of entities to return (the count parameter defines the number of entities per page). If the page parameter is not supplied, 1 will be used by default.'
+							'Specifies which page of entities to return (the count parameter defines the number of entities per page). If the page parameter is not supplied, 1 will be used by default.',
 					},
 					{
 						displayName: 'Search',
@@ -454,7 +452,7 @@ export class Eloqua implements INodeType {
 						type: 'string',
 						default: '',
 						description:
-							'Specifies the search criteria used to retrieve entities. See the tutorial for information about using this parameter.'
+							'Specifies the search criteria used to retrieve entities. See the tutorial for information about using this parameter.',
 					},
 					{
 						displayName: 'View ID',
@@ -462,9 +460,9 @@ export class Eloqua implements INodeType {
 						type: 'number',
 						default: '',
 						description:
-							'Id of the contact view to filter results. Must be a valid contact view id. Example: ?viewId=100006.'
-					}
-				]
+							'Id of the contact view to filter results. Must be a valid contact view id. Example: ?viewId=100006.',
+					},
+				],
 			},
 			// ----------------------------------
 			//         fields - Custom Object
@@ -478,10 +476,10 @@ export class Eloqua implements INodeType {
 				displayOptions: {
 					show: {
 						operation: ['create', 'update'],
-						resource: ['customObject']
-					}
+						resource: ['customObject'],
+					},
 				},
-				description: 'The name of the custom object.'
+				description: 'The name of the custom object.',
 			},
 			{
 				displayName: 'ID',
@@ -492,10 +490,10 @@ export class Eloqua implements INodeType {
 				displayOptions: {
 					show: {
 						operation: ['update', 'get', 'delete'],
-						resource: ['customObject']
-					}
+						resource: ['customObject'],
+					},
 				},
-				description: 'The ID of the custom object.'
+				description: 'The ID of the custom object.',
 			},
 			{
 				displayName: 'Additional Fields',
@@ -504,8 +502,8 @@ export class Eloqua implements INodeType {
 				displayOptions: {
 					show: {
 						operation: ['create', 'update'],
-						resource: ['customObject']
-					}
+						resource: ['customObject'],
+					},
 				},
 				default: {},
 				description: 'Additional optional Fields of the custom Object',
@@ -516,7 +514,7 @@ export class Eloqua implements INodeType {
 						name: 'description',
 						type: 'string',
 						default: '',
-						description: 'The description of the custom object.'
+						description: 'The description of the custom object.',
 					},
 					{
 						displayName: 'Email Address Field ID',
@@ -524,7 +522,7 @@ export class Eloqua implements INodeType {
 						type: 'string',
 						default: '',
 						description:
-							"For your custom object record to have an email address field, you must create a custom object field which will act as an email address. You can then use the desired custom object field's id as the value for this parameter."
+							'For your custom object record to have an email address field, you must create a custom object field which will act as an email address. You can then use the desired custom object fields id as the value for this parameter.',
 					},
 					{
 						displayName: 'Display Name Field Id',
@@ -532,7 +530,7 @@ export class Eloqua implements INodeType {
 						type: 'string',
 						default: '',
 						description:
-							"For your custom object record to have a meaningful name field, you must create a custom object field which will act as a name. You can then use the desired custom object field's id as the value for this parameter."
+							'For your custom object record to have a meaningful name field, you must create a custom object field which will act as a name. You can then use the desired custom object fields id as the value for this parameter.',
 					},
 					{
 						displayName: 'Unique Code Field ID',
@@ -540,7 +538,7 @@ export class Eloqua implements INodeType {
 						type: 'string',
 						default: '',
 						description:
-							"For your custom object record to have a unique identifier, you must create a <a href='http://docs.oracle.com/cloud/latest/marketingcs_gs/OMCAB/index.html#Developers/RESTAPI/2.0%20Endpoints/Custom%20objects/Custom-object-fields.htm'>custom object field</a> which will act as a GUID. You can then use the desired custom object field's id as the value for this parameter."
+							'For your custom object record to have a unique identifier, you must create a <a href="http://docs.oracle.com/cloud/latest/marketingcs_gs/OMCAB/index.html#Developers/RESTAPI/2.0%20Endpoints/Custom%20objects/Custom-object-fields.htm">custom object field</a> which will act as a GUID. You can then use the desired custom object fields id as the value for this parameter.',
 					},
 					{
 						displayName: 'Delete Linked Custom Object Data',
@@ -548,9 +546,9 @@ export class Eloqua implements INodeType {
 						type: 'string',
 						default: '',
 						description:
-							"Whether or not custom object records are deleted when linked contact records are deleted. Does not apply to records that are unmapped or account deletion. Deleting records is irreversible and data cannot be recovered. The default value is <code>false</code>. This feature is released under our Controlled Availability program. You can request access to this feature by submitting a request to <a href='https://support.oracle.com/epmos/faces/MosIndex.jspx'>My Oracle Support</a>."
-					}
-				]
+							'Whether or not custom object records are deleted when linked contact records are deleted. Does not apply to records that are unmapped or account deletion. Deleting records is irreversible and data cannot be recovered. The default value is <code>false</code>. This feature is released under our Controlled Availability program. You can request access to this feature by submitting a request to <a href="https://support.oracle.com/epmos/faces/MosIndex.jspx">My Oracle Support</a>.',
+					},
+				],
 			},
 			{
 				displayName: 'Custom custom Object Fields',
@@ -559,13 +557,13 @@ export class Eloqua implements INodeType {
 				description: 'Adds a custom field to set the value of.',
 				type: 'fixedCollection',
 				typeOptions: {
-					multipleValues: true
+					multipleValues: true,
 				},
 				displayOptions: {
 					show: {
 						operation: ['create', 'update'],
-						resource: ['customObject']
-					}
+						resource: ['customObject'],
+					},
 				},
 				default: {},
 				options: [
@@ -579,7 +577,7 @@ export class Eloqua implements INodeType {
 								default: '',
 								required: true,
 								type: 'string',
-								description: 'Name of the Custom Object Field'
+								description: 'Name of the Custom Object Field',
 							},
 							{
 								displayName: 'Data Type',
@@ -590,26 +588,26 @@ export class Eloqua implements INodeType {
 								options: [
 									{
 										name: 'Text',
-										value: 'text'
+										value: 'text',
 									},
 									{
 										name: 'Large Text',
-										value: 'largeText'
+										value: 'largeText',
 									},
 									{
 										name: 'Number',
-										value: 'number'
+										value: 'number',
 									},
 									{
 										name: 'numeric',
-										value: 'numeric'
+										value: 'numeric',
 									},
 									{
 										name: 'Date',
-										value: 'date'
-									}
+										value: 'date',
+									},
 								],
-								description: 'Data Type of the Custom Object Field'
+								description: 'Data Type of the Custom Object Field',
 							},
 							{
 								displayName: 'Display Type',
@@ -620,38 +618,38 @@ export class Eloqua implements INodeType {
 								options: [
 									{
 										name: 'Text',
-										value: 'text'
+										value: 'text',
 									},
 									{
 										name: 'Text Area',
-										value: 'textArea'
+										value: 'textArea',
 									},
 									{
 										name: 'Single Select',
-										value: 'singleSelect'
+										value: 'singleSelect',
 									},
 									{
 										name: 'Multi Select',
-										value: 'multiSelect'
+										value: 'multiSelect',
 									},
 									{
 										name: 'Radio Button',
-										value: 'radio'
+										value: 'radio',
 									},
 									{
 										name: 'Checkbox',
-										value: 'checkbox'
+										value: 'checkbox',
 									},
 									{
 										name: 'Hidden',
-										value: 'hidden'
+										value: 'hidden',
 									},
 									{
 										name: 'Submit',
-										value: 'submit'
-									}
+										value: 'submit',
+									},
 								],
-								description: 'Display Type of the Custom Object Field'
+								description: 'Display Type of the Custom Object Field',
 							},
 							{
 								displayName: 'Field Key',
@@ -659,7 +657,7 @@ export class Eloqua implements INodeType {
 								type: 'string',
 								required: true,
 								default: '',
-								description: 'Key of the field to set.'
+								description: 'Key of the field to set.',
 							},
 							{
 								displayName: 'Field Value',
@@ -667,11 +665,11 @@ export class Eloqua implements INodeType {
 								type: 'string',
 								required: true,
 								default: '',
-								description: 'Value of the field to set.'
-							}
-						]
-					}
-				]
+								description: 'Value of the field to set.',
+							},
+						],
+					},
+				],
 			},
 			// ----------------------------------
 			//         QueryParameters - Custom Object - getAll
@@ -683,8 +681,8 @@ export class Eloqua implements INodeType {
 				displayOptions: {
 					show: {
 						operation: ['getAll'],
-						resource: ['customObject']
-					}
+						resource: ['customObject'],
+					},
 				},
 				default: {},
 				description: 'Query parameters to filter the results by',
@@ -696,7 +694,7 @@ export class Eloqua implements INodeType {
 						type: 'number',
 						default: 100,
 						description:
-							'Maximum number of entities to return. Must be less than or equal to 1000 and greater than or equal to 1.'
+							'Maximum number of entities to return. Must be less than or equal to 1000 and greater than or equal to 1.',
 					},
 					{
 						displayName: 'Depth',
@@ -704,23 +702,21 @@ export class Eloqua implements INodeType {
 						type: 'string',
 						default: '',
 						description:
-							'Level of detail returned by the request. Eloqua APIs can retrieve entities at three different levels of depth: minimal, partial, and complete. Any other values passed are reset to minimal by default.'
+							'Level of detail returned by the request. Eloqua APIs can retrieve entities at three different levels of depth: minimal, partial, and complete. Any other values passed are reset to minimal by default.',
 					},
 					{
 						displayName: 'lastUpdatedAt',
 						name: 'lastUpdatedAt',
 						type: 'number',
 						default: 0,
-						description:
-							'Unix timestamp for the date and time the custom object was last updated.'
+						description: 'Unix timestamp for the date and time the custom object was last updated.',
 					},
 					{
 						displayName: 'Order By',
 						name: 'orderBy',
 						type: 'string',
 						default: '',
-						description:
-							'Specifies the field by which list results are ordered.'
+						description: 'Specifies the field by which list results are ordered.',
 					},
 					{
 						displayName: 'Page',
@@ -728,7 +724,7 @@ export class Eloqua implements INodeType {
 						type: 'number',
 						default: 1,
 						description:
-							'Specifies which page of entities to return (the count parameter defines the number of entities per page). If the page parameter is not supplied, 1 will be used by default.'
+							'Specifies which page of entities to return (the count parameter defines the number of entities per page). If the page parameter is not supplied, 1 will be used by default.',
 					},
 					{
 						displayName: 'Search',
@@ -736,9 +732,9 @@ export class Eloqua implements INodeType {
 						type: 'string',
 						default: '',
 						description:
-							'Specifies the search criteria used to retrieve entities. See the tutorial for information about using this parameter.'
-					}
-				]
+							'Specifies the search criteria used to retrieve entities. See the tutorial for information about using this parameter.',
+					},
+				],
 			},
 			// ----------------------------------
 			//         fields - Custom Object Data
@@ -752,10 +748,10 @@ export class Eloqua implements INodeType {
 				displayOptions: {
 					show: {
 						operation: ['create', 'update', 'delete', 'get', 'getAll'],
-						resource: ['customObjectData']
-					}
+						resource: ['customObjectData'],
+					},
 				},
-				description: 'The Id of the custom object data parent.'
+				description: 'The Id of the custom object data parent.',
 			},
 			{
 				displayName: 'ID',
@@ -766,10 +762,10 @@ export class Eloqua implements INodeType {
 				displayOptions: {
 					show: {
 						operation: ['update', 'get', 'delete'],
-						resource: ['customObjectData']
-					}
+						resource: ['customObjectData'],
+					},
 				},
-				description: 'The ID of the custom object data entry.'
+				description: 'The ID of the custom object data entry.',
 			},
 			{
 				displayName: 'Additional Fields',
@@ -778,8 +774,8 @@ export class Eloqua implements INodeType {
 				displayOptions: {
 					show: {
 						operation: ['create', 'update'],
-						resource: ['customObjectData']
-					}
+						resource: ['customObjectData'],
+					},
 				},
 				default: {},
 				description: 'Additional optional Fields of the custom Object',
@@ -790,60 +786,58 @@ export class Eloqua implements INodeType {
 						name: 'currentStatus',
 						type: 'string',
 						default: '',
-						description: 'The description of the custom object.'
+						description: 'The description of the custom object.',
 					},
 					{
 						displayName: 'Name',
 						name: 'name',
 						type: 'string',
 						default: '',
-						description: 'The name of the custom object data.'
+						description: 'The name of the custom object data.',
 					},
 					{
 						displayName: 'Description',
 						name: 'description',
 						type: 'string',
 						default: '',
-						description: 'The description of the custom object.'
+						description: 'The description of the custom object.',
 					},
 					{
 						displayName: 'Source Template ID',
 						name: 'sourceTemplateId',
 						type: 'string',
 						default: '',
-						description: 'Id of the template used to create the asset.'
+						description: 'Id of the template used to create the asset.',
 					},
 					{
 						displayName: 'Contact ID',
 						name: 'contactId',
 						type: 'string',
 						default: '',
-						description:
-							'The contact record Id associated to this custom object data.'
+						description: 'The contact record Id associated to this custom object data.',
 					},
 					{
 						displayName: 'Unique Code',
 						name: 'uniqueCode',
 						type: 'string',
 						default: '',
-						description: 'The unique code associated to the custom object data.'
+						description: 'The unique code associated to the custom object data.',
 					},
 					{
 						displayName: 'Custom Object Record Status',
 						name: 'customObjectRecordStatus',
 						type: 'string',
 						default: '',
-						description: 'The record status of the custom object data.'
+						description: 'The record status of the custom object data.',
 					},
 					{
 						displayName: 'Is Mapped?',
 						name: 'isMapped',
 						type: 'string',
 						default: '',
-						description:
-							'Whether or not the custom object data is mapped to a custom object.'
-					}
-				]
+						description: 'Whether or not the custom object data is mapped to a custom object.',
+					},
+				],
 			},
 			{
 				displayName: 'Custom custom Object Fields',
@@ -852,13 +846,13 @@ export class Eloqua implements INodeType {
 				description: 'Adds a custom field to set the value of.',
 				type: 'fixedCollection',
 				typeOptions: {
-					multipleValues: true
+					multipleValues: true,
 				},
 				displayOptions: {
 					show: {
 						operation: ['create', 'update'],
-						resource: ['customObjectData']
-					}
+						resource: ['customObjectData'],
+					},
 				},
 				default: {},
 				options: [
@@ -872,7 +866,7 @@ export class Eloqua implements INodeType {
 								type: 'string',
 								required: true,
 								default: '',
-								description: 'ID of the field to set.'
+								description: 'ID of the field to set.',
 							},
 							{
 								displayName: 'Field Value',
@@ -880,11 +874,11 @@ export class Eloqua implements INodeType {
 								type: 'string',
 								required: true,
 								default: '',
-								description: 'Value of the field to set.'
-							}
-						]
-					}
-				]
+								description: 'Value of the field to set.',
+							},
+						],
+					},
+				],
 			},
 			// ----------------------------------
 			//         QueryParameters - Custom Object Data - getAll
@@ -896,8 +890,8 @@ export class Eloqua implements INodeType {
 				displayOptions: {
 					show: {
 						operation: ['getAll'],
-						resource: ['customObjectData']
-					}
+						resource: ['customObjectData'],
+					},
 				},
 				default: {},
 				description: 'Query parameters to filter the results by',
@@ -909,7 +903,7 @@ export class Eloqua implements INodeType {
 						type: 'number',
 						default: 100,
 						description:
-							'Maximum number of entities to return. Must be less than or equal to 1000 and greater than or equal to 1.'
+							'Maximum number of entities to return. Must be less than or equal to 1000 and greater than or equal to 1.',
 					},
 					{
 						displayName: 'Depth',
@@ -917,15 +911,14 @@ export class Eloqua implements INodeType {
 						type: 'string',
 						default: '',
 						description:
-							'Level of detail returned by the request. Eloqua APIs can retrieve entities at three different levels of depth: minimal, partial, and complete. Any other values passed are reset to minimal by default.'
+							'Level of detail returned by the request. Eloqua APIs can retrieve entities at three different levels of depth: minimal, partial, and complete. Any other values passed are reset to minimal by default.',
 					},
 					{
 						displayName: 'Order By',
 						name: 'orderBy',
 						type: 'string',
 						default: '',
-						description:
-							'Specifies the field by which list results are ordered.'
+						description: 'Specifies the field by which list results are ordered.',
 					},
 					{
 						displayName: 'Page',
@@ -933,7 +926,7 @@ export class Eloqua implements INodeType {
 						type: 'number',
 						default: 1,
 						description:
-							'Specifies which page of entities to return (the count parameter defines the number of entities per page). If the page parameter is not supplied, 1 will be used by default.'
+							'Specifies which page of entities to return (the count parameter defines the number of entities per page). If the page parameter is not supplied, 1 will be used by default.',
 					},
 					{
 						displayName: 'Search',
@@ -941,39 +934,37 @@ export class Eloqua implements INodeType {
 						type: 'string',
 						default: '',
 						description:
-							'Specifies the search criteria used to retrieve entities. See the tutorial for information about using this parameter.'
-					}
-				]
-			}
-		]
+							'Specifies the search criteria used to retrieve entities. See the tutorial for information about using this parameter.',
+					},
+				],
+			},
+		],
 	};
 
 	methods = {
 		loadOptions: {
 			// Get all the available custom fields to display them to user so that he can
 			// select them easily
-			async getContactFields(
-				this: ILoadOptionsFunctions
-			): Promise<INodePropertyOptions[]> {
+			async getContactFields(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
 				const response = await eloquaApiRequest.call(
 					this,
 					'GET',
 					'/api/REST/1.0/assets/contact/fields',
 					{},
-					{}
+					{},
 				);
 				for (const element of response.elements) {
 					const fieldName = element.name;
 					const fieldId = element.id;
 					returnData.push({
 						name: fieldName,
-						value: fieldId
+						value: fieldId,
 					});
 				}
 				return returnData;
-			}
-		}
+			},
+		},
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
@@ -999,14 +990,8 @@ export class Eloqua implements INodeType {
 						requestMethod = 'POST';
 						endpoint = '/api/REST/1.0/data/contact';
 						body = this.getNodeParameter('optionalFields', i) as IDataObject;
-						body.emailAddress = this.getNodeParameter(
-							'emailAddress',
-							i
-						) as string;
-						const { property } = this.getNodeParameter(
-							'customFields',
-							i
-						) as IDataObject;
+						body.emailAddress = this.getNodeParameter('emailAddress', i) as string;
+						const { property } = this.getNodeParameter('customFields', i) as IDataObject;
 						body.fieldValues = property;
 						qs = {} as IDataObject;
 
@@ -1016,7 +1001,7 @@ export class Eloqua implements INodeType {
 							endpoint,
 							body,
 							staticData,
-							qs
+							qs,
 						);
 					}
 					// ----------------------------------
@@ -1028,14 +1013,8 @@ export class Eloqua implements INodeType {
 						endpoint = `/api/REST/1.0/data/contact/${contactId}`;
 						body = this.getNodeParameter('optionalFields', i) as IDataObject;
 						body.id = contactId;
-						body.emailAddress = this.getNodeParameter(
-							'emailAddress',
-							i
-						) as string;
-						const { property } = this.getNodeParameter(
-							'customFields',
-							i
-						) as IDataObject;
+						body.emailAddress = this.getNodeParameter('emailAddress', i) as string;
+						const { property } = this.getNodeParameter('customFields', i) as IDataObject;
 						body.fieldValues = property;
 						qs = {} as IDataObject;
 
@@ -1045,7 +1024,7 @@ export class Eloqua implements INodeType {
 							endpoint,
 							body,
 							staticData,
-							qs
+							qs,
 						);
 					}
 					// ----------------------------------
@@ -1063,7 +1042,7 @@ export class Eloqua implements INodeType {
 							endpoint,
 							body,
 							staticData,
-							qs
+							qs,
 						);
 					}
 					// ----------------------------------
@@ -1081,7 +1060,7 @@ export class Eloqua implements INodeType {
 							endpoint,
 							body,
 							staticData,
-							qs
+							qs,
 						);
 					}
 					// ----------------------------------
@@ -1098,7 +1077,7 @@ export class Eloqua implements INodeType {
 							endpoint,
 							body,
 							staticData,
-							qs
+							qs,
 						);
 					}
 				} else if (resource === 'customObject') {
@@ -1122,7 +1101,7 @@ export class Eloqua implements INodeType {
 							endpoint,
 							body,
 							staticData,
-							qs
+							qs,
 						);
 					}
 					// ----------------------------------
@@ -1147,7 +1126,7 @@ export class Eloqua implements INodeType {
 							endpoint,
 							body,
 							staticData,
-							qs
+							qs,
 						);
 					}
 					// ----------------------------------
@@ -1165,7 +1144,7 @@ export class Eloqua implements INodeType {
 							endpoint,
 							body,
 							staticData,
-							qs
+							qs,
 						);
 					}
 					// ----------------------------------
@@ -1183,7 +1162,7 @@ export class Eloqua implements INodeType {
 							endpoint,
 							body,
 							staticData,
-							qs
+							qs,
 						);
 					}
 					// ----------------------------------
@@ -1200,7 +1179,7 @@ export class Eloqua implements INodeType {
 							endpoint,
 							body,
 							staticData,
-							qs
+							qs,
 						);
 					}
 				} else if (resource === 'customObjectData') {
@@ -1214,10 +1193,7 @@ export class Eloqua implements INodeType {
 
 						body = this.getNodeParameter('optionalFields', i) as IDataObject;
 						// body.accountId = '12345'; TODO: Check if Read Only
-						const { fields } = this.getNodeParameter(
-							'customObjectDataCustomFields',
-							i
-						) as any;
+						const { fields } = this.getNodeParameter('customObjectDataCustomFields', i) as any;
 						body.fieldValues = fields;
 
 						qs = {} as IDataObject;
@@ -1228,7 +1204,7 @@ export class Eloqua implements INodeType {
 							endpoint,
 							body,
 							staticData,
-							qs
+							qs,
 						);
 					}
 					// ----------------------------------
@@ -1253,7 +1229,7 @@ export class Eloqua implements INodeType {
 							endpoint,
 							body,
 							staticData,
-							qs
+							qs,
 						);
 					}
 					// ----------------------------------
@@ -1273,7 +1249,7 @@ export class Eloqua implements INodeType {
 							endpoint,
 							body,
 							staticData,
-							qs
+							qs,
 						);
 					}
 					// ----------------------------------
@@ -1293,7 +1269,7 @@ export class Eloqua implements INodeType {
 							endpoint,
 							body,
 							staticData,
-							qs
+							qs,
 						);
 					}
 					// ----------------------------------
@@ -1312,7 +1288,7 @@ export class Eloqua implements INodeType {
 							endpoint,
 							body,
 							staticData,
-							qs
+							qs,
 						);
 					}
 				}

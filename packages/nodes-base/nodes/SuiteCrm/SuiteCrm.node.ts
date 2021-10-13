@@ -1,17 +1,8 @@
-import {
-	IExecuteFunctions,
-} from 'n8n-core';
+import { IExecuteFunctions } from 'n8n-core';
 
-import {
-	IDataObject,
-	INodeExecutionData,
-	INodeTypeDescription,
-	INodeType,
-} from 'n8n-workflow';
+import { IDataObject, INodeExecutionData, INodeType, INodeTypeDescription } from 'n8n-workflow';
 
-import {
-	suiteCrmApiRequest
-} from './GenericFunctions';
+import { suiteCrmApiRequest } from './GenericFunctions';
 
 export class SuiteCrm implements INodeType {
 	description: INodeTypeDescription = {
@@ -47,7 +38,7 @@ export class SuiteCrm implements INodeType {
 					{
 						name: 'Custom',
 						value: 'custom',
-					}
+					},
 				],
 				default: 'custom',
 				required: true,
@@ -59,15 +50,13 @@ export class SuiteCrm implements INodeType {
 				type: 'options',
 				displayOptions: {
 					show: {
-						mode: [
-							'custom'
-						],
+						mode: ['custom'],
 					},
 				},
 				options: [
 					{
 						name: 'Module',
-						value: 'module'
+						value: 'module',
 					},
 					{
 						name: 'Relationship',
@@ -75,7 +64,7 @@ export class SuiteCrm implements INodeType {
 					},
 					{
 						name: 'Link',
-						value: 'link'
+						value: 'link',
 					},
 					{
 						name: 'Swagger Documentation',
@@ -83,8 +72,8 @@ export class SuiteCrm implements INodeType {
 					},
 					{
 						name: 'Log out',
-						value: 'logout'
-					}
+						value: 'logout',
+					},
 				],
 				default: 'module',
 				required: true,
@@ -100,12 +89,8 @@ export class SuiteCrm implements INodeType {
 				type: 'options',
 				displayOptions: {
 					show: {
-						mode: [
-							'custom'
-						],
-						resource: [
-							'module'
-						],
+						mode: ['custom'],
+						resource: ['module'],
 					},
 				},
 				options: [
@@ -145,17 +130,14 @@ export class SuiteCrm implements INodeType {
 				type: 'string',
 				displayOptions: {
 					show: {
-						mode: [
-							'custom'
-						],
-						resource: [
-							'module'
-						],
+						mode: ['custom'],
+						resource: ['module'],
 					},
 				},
 				default: '',
 				placeholder: 'Contacts',
-				description: 'The module to operate on. Is optional for operations create and update if set as "Module name" in data field. Will be overwritten by the "Module name" fields value if set.',
+				description:
+					'The module to operate on. Is optional for operations create and update if set as "Module name" in data field. Will be overwritten by the "Module name" fields value if set.',
 			},
 			{
 				displayName: 'Module entry ID',
@@ -163,20 +145,15 @@ export class SuiteCrm implements INodeType {
 				type: 'string',
 				displayOptions: {
 					show: {
-						mode: [
-							'custom'
-						],
-						resource: [
-							'module'
-						],
-						operation: [
-							'delete', 'get', 'update'
-						],
+						mode: ['custom'],
+						resource: ['module'],
+						operation: ['delete', 'get', 'update'],
 					},
 				},
 				default: '',
 				placeholder: 'b13a39f8-1c24-c5d0-ba0d-5ab123d6e899',
-				description: 'The ID of the entry to operate on. Is optional for update operation if set as "Module entry ID" in data field. Will be overwritten by the "Module entry ID" fields value if set.',
+				description:
+					'The ID of the entry to operate on. Is optional for update operation if set as "Module entry ID" in data field. Will be overwritten by the "Module entry ID" fields value if set.',
 			},
 			{
 				displayName: 'Data',
@@ -184,20 +161,15 @@ export class SuiteCrm implements INodeType {
 				type: 'string',
 				displayOptions: {
 					show: {
-						mode: [
-							'custom'
-						],
-						resource: [
-							'module'
-						],
-						operation: [
-							'create', 'update'
-						],
+						mode: ['custom'],
+						resource: ['module'],
+						operation: ['create', 'update'],
 					},
 				},
 				default: '',
 				required: true,
-				description: 'The data to send to Suite CRM. Example: {"type":"Contacts", "id": "12345", "attributes": {"name": "Leonardo da Vinci"}}',
+				description:
+					'The data to send to Suite CRM. Example: {"type":"Contacts", "id": "12345", "attributes": {"name": "Leonardo da Vinci"}}',
 			},
 			{
 				displayName: 'Fields',
@@ -208,15 +180,9 @@ export class SuiteCrm implements INodeType {
 				},
 				displayOptions: {
 					show: {
-						mode: [
-							'custom'
-						],
-						resource: [
-							'module',
-						],
-						operation: [
-							'get', 'getAll'
-						],
+						mode: ['custom'],
+						resource: ['module'],
+						operation: ['get', 'getAll'],
 					},
 				},
 				options: [
@@ -230,8 +196,8 @@ export class SuiteCrm implements INodeType {
 								type: 'string',
 								default: '',
 								description: 'Name of the field.',
-							}
-						]
+							},
+						],
 					},
 				],
 				default: {},
@@ -244,15 +210,9 @@ export class SuiteCrm implements INodeType {
 				type: 'boolean',
 				displayOptions: {
 					show: {
-						mode: [
-							'custom'
-						],
-						resource: [
-							'module'
-						],
-						operation: [
-							'getAll'
-						],
+						mode: ['custom'],
+						resource: ['module'],
+						operation: ['getAll'],
 					},
 				},
 				default: false,
@@ -264,18 +224,10 @@ export class SuiteCrm implements INodeType {
 				type: 'number',
 				displayOptions: {
 					show: {
-						mode: [
-							'custom'
-						],
-						resource: [
-							'module'
-						],
-						operation: [
-							'getAll'
-						],
-						paginate: [
-							true
-						],
+						mode: ['custom'],
+						resource: ['module'],
+						operation: ['getAll'],
+						paginate: [true],
 					},
 				},
 				default: 20,
@@ -287,18 +239,10 @@ export class SuiteCrm implements INodeType {
 				type: 'number',
 				displayOptions: {
 					show: {
-						mode: [
-							'custom'
-						],
-						resource: [
-							'module'
-						],
-						operation: [
-							'getAll'
-						],
-						paginate: [
-							true,
-						]
+						mode: ['custom'],
+						resource: ['module'],
+						operation: ['getAll'],
+						paginate: [true],
 					},
 				},
 				default: 1,
@@ -310,15 +254,9 @@ export class SuiteCrm implements INodeType {
 				type: 'boolean',
 				displayOptions: {
 					show: {
-						mode: [
-							'custom'
-						],
-						resource: [
-							'module'
-						],
-						operation: [
-							'getAll'
-						],
+						mode: ['custom'],
+						resource: ['module'],
+						operation: ['getAll'],
 					},
 				},
 				default: false,
@@ -330,18 +268,10 @@ export class SuiteCrm implements INodeType {
 				type: 'string',
 				displayOptions: {
 					show: {
-						mode: [
-							'custom'
-						],
-						resource: [
-							'module'
-						],
-						operation: [
-							'getAll'
-						],
-						sort: [
-							true
-						],
+						mode: ['custom'],
+						resource: ['module'],
+						operation: ['getAll'],
+						sort: [true],
 					},
 				},
 				default: '',
@@ -354,18 +284,10 @@ export class SuiteCrm implements INodeType {
 				type: 'boolean',
 				displayOptions: {
 					show: {
-						mode: [
-							'custom'
-						],
-						resource: [
-							'module'
-						],
-						operation: [
-							'getAll'
-						],
-						sort: [
-							true,
-						]
+						mode: ['custom'],
+						resource: ['module'],
+						operation: ['getAll'],
+						sort: [true],
 					},
 				},
 				default: false,
@@ -377,15 +299,9 @@ export class SuiteCrm implements INodeType {
 				type: 'boolean',
 				displayOptions: {
 					show: {
-						mode: [
-							'custom'
-						],
-						resource: [
-							'module'
-						],
-						operation: [
-							'getAll'
-						],
+						mode: ['custom'],
+						resource: ['module'],
+						operation: ['getAll'],
 					},
 				},
 				default: false,
@@ -397,18 +313,10 @@ export class SuiteCrm implements INodeType {
 				type: 'string',
 				displayOptions: {
 					show: {
-						mode: [
-							'custom'
-						],
-						resource: [
-							'module'
-						],
-						operation: [
-							'getAll'
-						],
-						filter: [
-							true
-						],
+						mode: ['custom'],
+						resource: ['module'],
+						operation: ['getAll'],
+						filter: [true],
 					},
 				},
 				default: '',
@@ -421,44 +329,36 @@ export class SuiteCrm implements INodeType {
 				type: 'options',
 				displayOptions: {
 					show: {
-						mode: [
-							'custom'
-						],
-						resource: [
-							'module'
-						],
-						operation: [
-							'getAll'
-						],
-						filter: [
-							true,
-						]
+						mode: ['custom'],
+						resource: ['module'],
+						operation: ['getAll'],
+						filter: [true],
 					},
 				},
 				options: [
 					{
 						name: 'Equals',
-						value: 'eq'
+						value: 'eq',
 					},
 					{
 						name: 'Not Equals',
-						value: 'neq'
+						value: 'neq',
 					},
 					{
 						name: 'Greater than',
-						value: 'gt'
+						value: 'gt',
 					},
 					{
 						name: 'Greater or equals than',
-						value: 'gte'
+						value: 'gte',
 					},
 					{
 						name: 'Lower than',
-						value: 'lt'
+						value: 'lt',
 					},
 					{
 						name: 'Lower or equals than',
-						value: 'lte'
+						value: 'lte',
 					},
 				],
 				default: 'eq',
@@ -470,18 +370,10 @@ export class SuiteCrm implements INodeType {
 				type: 'string',
 				displayOptions: {
 					show: {
-						mode: [
-							'custom'
-						],
-						resource: [
-							'module'
-						],
-						operation: [
-							'getAll'
-						],
-						filter: [
-							true
-						],
+						mode: ['custom'],
+						resource: ['module'],
+						operation: ['getAll'],
+						filter: [true],
 					},
 				},
 				default: '',
@@ -498,12 +390,8 @@ export class SuiteCrm implements INodeType {
 				type: 'options',
 				displayOptions: {
 					show: {
-						mode: [
-							'custom'
-						],
-						resource: [
-							'relationship',
-						],
+						mode: ['custom'],
+						resource: ['relationship'],
 					},
 				},
 				options: [
@@ -533,12 +421,8 @@ export class SuiteCrm implements INodeType {
 				type: 'string',
 				displayOptions: {
 					show: {
-						mode: [
-							'custom'
-						],
-						resource: [
-							'relationship',
-						],
+						mode: ['custom'],
+						resource: ['relationship'],
 					},
 				},
 				default: '',
@@ -552,12 +436,8 @@ export class SuiteCrm implements INodeType {
 				type: 'string',
 				displayOptions: {
 					show: {
-						mode: [
-							'custom'
-						],
-						resource: [
-							'relationship',
-						],
+						mode: ['custom'],
+						resource: ['relationship'],
 					},
 				},
 				default: '',
@@ -571,12 +451,8 @@ export class SuiteCrm implements INodeType {
 				type: 'string',
 				displayOptions: {
 					show: {
-						mode: [
-							'custom'
-						],
-						resource: [
-							'relationship',
-						],
+						mode: ['custom'],
+						resource: ['relationship'],
 					},
 				},
 				default: '',
@@ -590,15 +466,9 @@ export class SuiteCrm implements INodeType {
 				type: 'string',
 				displayOptions: {
 					show: {
-						mode: [
-							'custom'
-						],
-						resource: [
-							'relationship',
-						],
-						operation: [
-							'delete', 'create'
-						]
+						mode: ['custom'],
+						resource: ['relationship'],
+						operation: ['delete', 'create'],
 					},
 				},
 				default: '',
@@ -615,19 +485,14 @@ export class SuiteCrm implements INodeType {
 				type: 'string',
 				displayOptions: {
 					show: {
-						mode: [
-							'custom'
-						],
-						resource: [
-							'link',
-						],
+						mode: ['custom'],
+						resource: ['link'],
 					},
 				},
 				default: 'create',
 				required: true,
 				description: 'Input the link you want to GET-Request.',
 			},
-
 		],
 	};
 
@@ -645,81 +510,83 @@ export class SuiteCrm implements INodeType {
 		for (let i = 0; i < length; i++) {
 			const mode = this.getNodeParameter('mode', 0) as string;
 
-
 			if (mode === 'standard') {
-
 				throw new Error('Standard Suite CRM is not yet implemented');
-
 			} else if (mode === 'custom') {
 				const resource = this.getNodeParameter('resource', 0) as string;
 
 				if (resource === 'logout') {
 					responseData = await suiteCrmApiRequest.call(this, 'POST', '/Api/V8/logout', {});
-				}
-				else if (resource === 'swagger') {
-					responseData = await suiteCrmApiRequest.call(this, 'GET', '/Api/V8/meta/swagger.json', {});
-				}
-				else if (resource === 'module') {
+				} else if (resource === 'swagger') {
+					responseData = await suiteCrmApiRequest.call(
+						this,
+						'GET',
+						'/Api/V8/meta/swagger.json',
+						{},
+					);
+				} else if (resource === 'module') {
 					const operation = this.getNodeParameter('operation', 0) as string;
 
 					if (operation === 'create') {
-
 						body = {
-							data: this.getNodeParameter('data', i) as object
+							data: this.getNodeParameter('data', i) as object,
 						} as IDataObject;
 
-						if (!(body!.data!.hasOwnProperty('type'))) {
+						if (!body!.data!.hasOwnProperty('type')) {
 							// tslint:disable-next-line: no-any
 							(body.data as any).type = this.getNodeParameter('moduleName', 0) as string;
 						}
 
 						responseData = await suiteCrmApiRequest.call(this, 'POST', '/Api/V8/module', body);
-
 					} else if (operation === 'update') {
-
 						body = {
-							data: this.getNodeParameter('data', i) as object
+							data: this.getNodeParameter('data', i) as object,
 						} as IDataObject;
 
-						if (!(body!.data!.hasOwnProperty('type'))) {
+						if (!body!.data!.hasOwnProperty('type')) {
 							// tslint:disable-next-line: no-any
 							(body.data as any).type = this.getNodeParameter('moduleName', 0) as string;
 						}
-						if (!(body!.data!.hasOwnProperty('id'))) {
+						if (!body!.data!.hasOwnProperty('id')) {
 							// tslint:disable-next-line: no-any
 							(body.data as any).id = this.getNodeParameter('moduleEntryId', 0) as string;
 						}
 
 						responseData = await suiteCrmApiRequest.call(this, 'PATCH', '/Api/V8/module', body);
-
 					} else if (operation === 'delete') {
-
 						const moduleName = this.getNodeParameter('moduleName', 0) as string;
 						const moduleEntryId = this.getNodeParameter('moduleEntryId', 0) as string;
 
-						responseData = await suiteCrmApiRequest.call(this, 'DELETE', `/Api/V8/module/${moduleName}/${moduleEntryId}`, {});
-
+						responseData = await suiteCrmApiRequest.call(
+							this,
+							'DELETE',
+							`/Api/V8/module/${moduleName}/${moduleEntryId}`,
+							{},
+						);
 					} else if (operation === 'get') {
-
 						const moduleName = this.getNodeParameter('moduleName', 0) as string;
 						const moduleEntryId = this.getNodeParameter('moduleEntryId', 0) as string;
 
 						// tslint:disable-next-line: no-any
 						const fields = this.getNodeParameter('fields', 0) as any;
-						
+
 						if (fields.hasOwnProperty('field') && fields.field.length !== 0) {
 							let fieldsString = '';
-							fields.field.forEach((param: { fieldName: string; }) => {
+							fields.field.forEach((param: { fieldName: string }) => {
 								fieldsString = fieldsString.concat(',').concat(param.fieldName);
 							});
 							fieldsString = fieldsString.slice(1);
 							qs[`fields[${moduleName}]`] = fieldsString;
 						}
 
-						responseData = await suiteCrmApiRequest.call(this, 'GET', `/Api/V8/module/${moduleName}/${moduleEntryId}`, {}, qs);
-
+						responseData = await suiteCrmApiRequest.call(
+							this,
+							'GET',
+							`/Api/V8/module/${moduleName}/${moduleEntryId}`,
+							{},
+							qs,
+						);
 					} else if (operation === 'getAll') {
-
 						const moduleName = this.getNodeParameter('moduleName', 0) as string;
 
 						// tslint:disable-next-line: no-any
@@ -754,15 +621,20 @@ export class SuiteCrm implements INodeType {
 
 						if (fields.hasOwnProperty('field') && fields.field.length !== 0) {
 							let fieldsString = '';
-							fields.field.forEach((param: { fieldName: string; }) => {
+							fields.field.forEach((param: { fieldName: string }) => {
 								fieldsString = fieldsString.concat(',').concat(param.fieldName);
 							});
 							fieldsString = fieldsString.slice(1);
 							qs[`fields[${moduleName}]`] = fieldsString;
 						}
 
-						responseData = await suiteCrmApiRequest.call(this, 'GET', `/Api/V8/module/${moduleName}`, {}, qs);
-
+						responseData = await suiteCrmApiRequest.call(
+							this,
+							'GET',
+							`/Api/V8/module/${moduleName}`,
+							{},
+							qs,
+						);
 					} else {
 						throw new Error(`The operation "${operation}" is not known!`);
 					}
@@ -770,53 +642,62 @@ export class SuiteCrm implements INodeType {
 					const operation = this.getNodeParameter('operation', 0) as string;
 
 					if (operation === 'create') {
-
 						body = {
 							data: {
 								type: this.getNodeParameter('relationshipName', 0) as string,
 								id: this.getNodeParameter('relatedBeanId', 0) as string,
-							}
+							},
 						} as IDataObject;
 
 						const moduleName = this.getNodeParameter('moduleName', 0) as string;
 						const moduleEntryId = this.getNodeParameter('moduleEntryId', 0) as string;
 
-						responseData = await suiteCrmApiRequest.call(this, 'POST', `/Api/V8/module/${moduleName}/${moduleEntryId}/relationships`, body);
-
+						responseData = await suiteCrmApiRequest.call(
+							this,
+							'POST',
+							`/Api/V8/module/${moduleName}/${moduleEntryId}/relationships`,
+							body,
+						);
 					} else if (operation === 'delete') {
-
 						const moduleName = this.getNodeParameter('moduleName', 0) as string;
 						const moduleEntryId = this.getNodeParameter('moduleEntryId', 0) as string;
-						const relationshipName = (this.getNodeParameter('relationshipName', 0) as string).toLowerCase();
+						const relationshipName = (
+							this.getNodeParameter('relationshipName', 0) as string
+						).toLowerCase();
 						const relatedBeanId = this.getNodeParameter('relatedBeanId', 0) as string;
 
-						responseData = await suiteCrmApiRequest.call(this, 'DELETE', `/Api/V8/module/${moduleName}/${moduleEntryId}/relationships/${relationshipName}/${relatedBeanId}`, {});
-
+						responseData = await suiteCrmApiRequest.call(
+							this,
+							'DELETE',
+							`/Api/V8/module/${moduleName}/${moduleEntryId}/relationships/${relationshipName}/${relatedBeanId}`,
+							{},
+						);
 					} else if (operation === 'getAll') {
-
 						const moduleName = this.getNodeParameter('moduleName', 0) as string;
 						const moduleEntryId = this.getNodeParameter('moduleEntryId', 0) as string;
-						const relationshipName = (this.getNodeParameter('relationshipName', 0) as string).toLowerCase();
+						const relationshipName = (
+							this.getNodeParameter('relationshipName', 0) as string
+						).toLowerCase();
 
-						responseData = await suiteCrmApiRequest.call(this, 'GET', `/Api/V8/module/${moduleName}/${moduleEntryId}/relationships/${relationshipName}`, {});
-
+						responseData = await suiteCrmApiRequest.call(
+							this,
+							'GET',
+							`/Api/V8/module/${moduleName}/${moduleEntryId}/relationships/${relationshipName}`,
+							{},
+						);
 					} else {
 						throw new Error(`The operation "${operation}" is not known!`);
 					}
-
 				} else if (resource === 'link') {
-
 					const link = this.getNodeParameter('link', 0) as string;
 
 					responseData = await suiteCrmApiRequest.call(this, 'GET', `/Api/${link}`, {});
-
 				} else {
 					throw new Error(`The resource "${resource}" is not known!`);
 				}
 			} else {
 				throw new Error(`The mode "${mode}" is not known!`);
 			}
-
 
 			if (Array.isArray(responseData)) {
 				returnData.push.apply(returnData, responseData as IDataObject[]);

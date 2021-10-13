@@ -6,13 +6,10 @@ import {
 	INodeExecutionData,
 	INodePropertyOptions,
 	INodeType,
-	INodeTypeDescription
+	INodeTypeDescription,
 } from 'n8n-workflow';
 
-import {
-	eventbriteApiRequest,
-	eventbriteApiRequestAllItems
-} from './GenericFunctions';
+import { eventbriteApiRequest, eventbriteApiRequestAllItems } from './GenericFunctions';
 
 export class Eventbrite implements INodeType {
 	description: INodeTypeDescription = {
@@ -25,7 +22,7 @@ export class Eventbrite implements INodeType {
 		description: 'Consume Eventbrite REST API',
 		defaults: {
 			name: 'Eventbrite',
-			color: '#dc5237'
+			color: '#dc5237',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -35,19 +32,19 @@ export class Eventbrite implements INodeType {
 				required: true,
 				displayOptions: {
 					show: {
-						authentication: ['privateKey']
-					}
-				}
+						authentication: ['privateKey'],
+					},
+				},
 			},
 			{
 				name: 'eventbriteOAuth2Api',
 				required: true,
 				displayOptions: {
 					show: {
-						authentication: ['oAuth2']
-					}
-				}
-			}
+						authentication: ['oAuth2'],
+					},
+				},
+			},
 		],
 		properties: [
 			// ----------------------------------
@@ -60,15 +57,15 @@ export class Eventbrite implements INodeType {
 				options: [
 					{
 						name: 'Private Key',
-						value: 'privateKey'
+						value: 'privateKey',
 					},
 					{
 						name: 'OAuth2',
-						value: 'oAuth2'
-					}
+						value: 'oAuth2',
+					},
 				],
 				default: 'privateKey',
-				description: 'The authentification method to use.'
+				description: 'The authentification method to use.',
 			},
 			// ----------------------------------
 			//         resources
@@ -80,11 +77,11 @@ export class Eventbrite implements INodeType {
 				options: [
 					{
 						name: 'Attendee',
-						value: 'attendee'
-					}
+						value: 'attendee',
+					},
 				],
 				default: 'attendee',
-				description: 'The resource to operate on.'
+				description: 'The resource to operate on.',
 			},
 			// ----------------------------------
 			//         operations
@@ -95,30 +92,29 @@ export class Eventbrite implements INodeType {
 				type: 'options',
 				displayOptions: {
 					show: {
-						resource: ['attendee']
-					}
+						resource: ['attendee'],
+					},
 				},
 				options: [
 					{
 						name: 'Retrieve By Attendee ID',
 						value: 'retrieve',
-						description: 'Retrieve an Attendee by Attendee ID.'
+						description: 'Retrieve an Attendee by Attendee ID.',
 					},
 					{
 						name: 'List By Event ID',
 						value: 'listByEvent',
-						description:
-							'List Attendees by Event ID. Returns a paginated response.'
+						description: 'List Attendees by Event ID. Returns a paginated response.',
 					},
 					{
 						name: 'List by Organization ID',
 						value: 'listByOrganization',
 						description:
-							"List Attendees of an Organization's Events by Organization ID. Returns a paginated response."
-					}
+							'List Attendees of an Organizationss Events by Organization ID. Returns a paginated response.',
+					},
 				],
 				default: 'retrieve',
-				description: 'The operation to perform.'
+				description: 'The operation to perform.',
 			},
 			// ----------------------------------
 			//         fields
@@ -128,17 +124,17 @@ export class Eventbrite implements INodeType {
 				name: 'organizationId',
 				type: 'options',
 				typeOptions: {
-					loadOptionsMethod: 'getOrganizations'
+					loadOptionsMethod: 'getOrganizations',
 				},
 				default: '',
 				required: true,
 				displayOptions: {
 					show: {
 						operation: ['listByOrganization'],
-						resource: ['attendee']
-					}
+						resource: ['attendee'],
+					},
 				},
-				description: 'Organization ID to query for.'
+				description: 'Organization ID to query for.',
 			},
 			// for the load options query
 			{
@@ -146,18 +142,18 @@ export class Eventbrite implements INodeType {
 				name: 'organizationIdForEventsQuery',
 				type: 'options',
 				typeOptions: {
-					loadOptionsMethod: 'getOrganizations'
+					loadOptionsMethod: 'getOrganizations',
 				},
 				default: '',
 				required: false,
 				displayOptions: {
 					show: {
 						operation: ['listByEvent', 'retrieve'],
-						resource: ['attendee']
-					}
+						resource: ['attendee'],
+					},
 				},
 				description:
-					'Organization ID to query for. ID used to query events for selection in the event ID field.'
+					'Organization ID to query for. ID used to query events for selection in the event ID field.',
 			},
 			{
 				displayName: 'Event ID',
@@ -165,17 +161,17 @@ export class Eventbrite implements INodeType {
 				type: 'options',
 				typeOptions: {
 					loadOptionsDependsOn: ['organizationIdForEventsQuery'],
-					loadOptionsMethod: 'getEvents'
+					loadOptionsMethod: 'getEvents',
 				},
 				default: '',
 				required: true,
 				displayOptions: {
 					show: {
 						operation: ['listByEvent', 'retrieve'],
-						resource: ['attendee']
-					}
+						resource: ['attendee'],
+					},
 				},
-				description: 'Event ID to query for.'
+				description: 'Event ID to query for.',
 			},
 			{
 				displayName: 'Attendee ID',
@@ -186,10 +182,10 @@ export class Eventbrite implements INodeType {
 				displayOptions: {
 					show: {
 						operation: ['retrieve'],
-						resource: ['attendee']
-					}
+						resource: ['attendee'],
+					},
 				},
-				description: 'Attendee ID to query for.'
+				description: 'Attendee ID to query for.',
 			},
 			{
 				displayName: 'Get All Entries',
@@ -200,28 +196,26 @@ export class Eventbrite implements INodeType {
 				displayOptions: {
 					show: {
 						operation: ['listByEvent', 'listByOrganization'],
-						resource: ['attendee']
-					}
+						resource: ['attendee'],
+					},
 				},
 				description:
-					'Choose with paginated queries to request all pages. Might take a long time if you request a big data set.'
-			}
-		]
+					'Choose with paginated queries to request all pages. Might take a long time if you request a big data set.',
+			},
+		],
 	};
 
 	methods = {
 		loadOptions: {
 			// Get all the available organizations to display them to user so that he can
 			// select them easily
-			async getOrganizations(
-				this: ILoadOptionsFunctions
-			): Promise<INodePropertyOptions[]> {
+			async getOrganizations(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
 				const organizations = await eventbriteApiRequestAllItems.call(
 					this,
 					'organizations',
 					'GET',
-					'/users/me/organizations'
+					'/users/me/organizations',
 				);
 				for (const organization of organizations) {
 					const organizationName = organization.name;
@@ -229,12 +223,12 @@ export class Eventbrite implements INodeType {
 					if (organizationName !== '') {
 						returnData.push({
 							name: organizationName,
-							value: organizationId
+							value: organizationId,
 						});
 					} else {
 						returnData.push({
 							name: organizationId.toString(),
-							value: organizationId
+							value: organizationId,
 						});
 					}
 				}
@@ -243,18 +237,14 @@ export class Eventbrite implements INodeType {
 			},
 			// Get all the available events to display them to user so that he can
 			// select them easily
-			async getEvents(
-				this: ILoadOptionsFunctions
-			): Promise<INodePropertyOptions[]> {
+			async getEvents(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-				const organization = this.getCurrentNodeParameter(
-					'organizationIdForEventsQuery'
-				);
+				const organization = this.getCurrentNodeParameter('organizationIdForEventsQuery');
 				const events = await eventbriteApiRequestAllItems.call(
 					this,
 					'events',
 					'GET',
-					`/organizations/${organization}/events`
+					`/organizations/${organization}/events`,
 				);
 				for (const event of events) {
 					const eventName = event.name.text;
@@ -262,18 +252,18 @@ export class Eventbrite implements INodeType {
 					if (eventName !== '') {
 						returnData.push({
 							name: eventName,
-							value: eventId
+							value: eventId,
 						});
 					} else {
 						returnData.push({
 							name: eventId.toString(),
-							value: eventId
+							value: eventId,
 						});
 					}
 				}
 				return returnData;
-			}
-		}
+			},
+		},
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
@@ -302,13 +292,7 @@ export class Eventbrite implements INodeType {
 
 						qs = {} as IDataObject;
 
-						responseData = await eventbriteApiRequest.call(
-							this,
-							requestMethod,
-							endpoint,
-							body,
-							qs
-						);
+						responseData = await eventbriteApiRequest.call(this, requestMethod, endpoint, body, qs);
 					}
 					// ----------------------------------
 					//         attendee:listByEvent
@@ -329,7 +313,7 @@ export class Eventbrite implements INodeType {
 								requestMethod,
 								endpoint,
 								body,
-								qs
+								qs,
 							);
 						} else {
 							responseData = await eventbriteApiRequest.call(
@@ -337,7 +321,7 @@ export class Eventbrite implements INodeType {
 								requestMethod,
 								endpoint,
 								body,
-								qs
+								qs,
 							);
 						}
 					}
@@ -346,10 +330,7 @@ export class Eventbrite implements INodeType {
 					// ----------------------------------
 					else if (operation === 'listByOrganization') {
 						requestMethod = 'GET';
-						const organizationId = this.getNodeParameter(
-							'organizationId',
-							i
-						) as string;
+						const organizationId = this.getNodeParameter('organizationId', i) as string;
 						const propertyName = 'attendees';
 						endpoint = `/organizations/${organizationId}/attendees/`;
 
@@ -363,7 +344,7 @@ export class Eventbrite implements INodeType {
 								requestMethod,
 								endpoint,
 								body,
-								qs
+								qs,
 							);
 						} else {
 							responseData = await eventbriteApiRequest.call(
@@ -371,7 +352,7 @@ export class Eventbrite implements INodeType {
 								requestMethod,
 								endpoint,
 								body,
-								qs
+								qs,
 							);
 						}
 					}

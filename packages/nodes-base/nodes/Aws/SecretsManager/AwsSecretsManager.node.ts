@@ -1,11 +1,6 @@
 import { IExecuteFunctions } from 'n8n-core';
 
-import {
-	IDataObject,
-	INodeExecutionData,
-	INodeType,
-	INodeTypeDescription,
-} from 'n8n-workflow';
+import { IDataObject, INodeExecutionData, INodeType, INodeTypeDescription } from 'n8n-workflow';
 
 import { awsApiRequestREST } from './GenericFunctions';
 
@@ -20,15 +15,15 @@ export class AwsSecretsManager implements INodeType {
 		description: 'Consume AWS Secrets Manager API',
 		defaults: {
 			name: 'AWS Secrets Manager',
-			color: '#ea3e40'
+			color: '#ea3e40',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
 		credentials: [
 			{
 				name: 'aws',
-				required: true
-			}
+				required: true,
+			},
 		],
 		properties: [
 			{
@@ -38,11 +33,11 @@ export class AwsSecretsManager implements INodeType {
 				options: [
 					{
 						name: 'Get Secret Value',
-						value: 'getSecretValue'
-					}
+						value: 'getSecretValue',
+					},
 				],
 				default: 'getSecretValue',
-				description: 'The operation to perform.'
+				description: 'The operation to perform.',
 			},
 			{
 				displayName: 'Secret ID',
@@ -52,11 +47,11 @@ export class AwsSecretsManager implements INodeType {
 				required: true,
 				displayOptions: {
 					show: {
-						operation: ['getSecretValue']
-					}
+						operation: ['getSecretValue'],
+					},
 				},
 				description:
-					'Specifies the secret containing the version that you want to retrieve. You can specify either the Amazon Resource Name (ARN) or the friendly name of the secret.'
+					'Specifies the secret containing the version that you want to retrieve. You can specify either the Amazon Resource Name (ARN) or the friendly name of the secret.',
 			},
 			{
 				displayName: 'Version ID',
@@ -65,11 +60,11 @@ export class AwsSecretsManager implements INodeType {
 				default: '',
 				displayOptions: {
 					show: {
-						operation: ['getSecretValue']
-					}
+						operation: ['getSecretValue'],
+					},
 				},
 				description:
-					"Specifies the unique identifier of the version of the secret that you want to retrieve. If you specify both this parameter and VersionStage, the two parameters must refer to the same secret version. If you don't specify either a VersionStage or VersionId then the default is to perform the operation on the version with the VersionStage value of AWSCURRENT."
+					'Specifies the unique identifier of the version of the secret that you want to retrieve. If you specify both this parameter and VersionStage, the two parameters must refer to the same secret version. If you do not specify either a VersionStage or VersionId then the default is to perform the operation on the version with the VersionStage value of AWSCURRENT.',
 			},
 			{
 				displayName: 'Version Stage',
@@ -78,11 +73,11 @@ export class AwsSecretsManager implements INodeType {
 				default: '',
 				displayOptions: {
 					show: {
-						operation: ['getSecretValue']
-					}
+						operation: ['getSecretValue'],
+					},
 				},
 				description:
-					"Specifies the secret version that you want to retrieve by the staging label attached to the version. Staging labels are used to keep track of different versions during the rotation process. If you specify both this parameter and VersionId, the two parameters must refer to the same secret version . If you don't specify either a VersionStage or VersionId, then the default is to perform the operation on the version with the VersionStage value of AWSCURRENT."
+					'Specifies the secret version that you want to retrieve by the staging label attached to the version. Staging labels are used to keep track of different versions during the rotation process. If you specify both this parameter and VersionId, the two parameters must refer to the same secret version. If you do not specify either a VersionStage or VersionId, then the default is to perform the operation on the version with the VersionStage value of AWSCURRENT.',
 			},
 			{
 				displayName: 'Decode JSON String',
@@ -91,13 +86,13 @@ export class AwsSecretsManager implements INodeType {
 				default: true,
 				displayOptions: {
 					show: {
-						operation: ['getSecretValue']
-					}
+						operation: ['getSecretValue'],
+					},
 				},
 				description:
-					"Option to decode the JSON String recieved from the API. Result is added to the Workflow data."
-			}
-		]
+					'Option to decode the JSON String recieved from the API. Result is added to the Workflow data.',
+			},
+		],
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
@@ -109,20 +104,19 @@ export class AwsSecretsManager implements INodeType {
 		for (let i = 0; i < items.length; i++) {
 			try {
 				if (operation === 'getSecretValue') {
-
-					let action = 'secretsmanager.GetSecretValue';
+					const action = 'secretsmanager.GetSecretValue';
 
 					const body: IDataObject = {};
-                    const SecretId = this.getNodeParameter('SecretId', i) as string;
-                    const VersionId = this.getNodeParameter('VersionId', i) as string;
-                    const VersionStage = this.getNodeParameter('VersionStage', i) as string;
-                    body.SecretId = SecretId
-                    if(VersionId){
-                        body.VersionId = VersionId
-                    }
-                    if(VersionStage){
-                        body.VersionStage = VersionStage
-                    }
+					const secretId = this.getNodeParameter('SecretId', i) as string;
+					const versionId = this.getNodeParameter('VersionId', i) as string;
+					const versionStage = this.getNodeParameter('VersionStage', i) as string;
+					body.SecretId = secretId;
+					if (versionId) {
+						body.VersionId = versionId;
+					}
+					if (versionStage) {
+						body.VersionStage = versionStage;
+					}
 
 					responseData = await awsApiRequestREST.call(
 						this,
@@ -132,14 +126,14 @@ export class AwsSecretsManager implements INodeType {
 						JSON.stringify(body),
 						{
 							'X-Amz-Target': action,
-                            'Accept-Encoding': 'identity',
-							'Content-Type': 'application/x-amz-json-1.1'
-						}
+							'Accept-Encoding': 'identity',
+							'Content-Type': 'application/x-amz-json-1.1',
+						},
 					);
 
 					const decode = this.getNodeParameter('decode', i) as boolean;
 
-					if(decode){
+					if (decode) {
 						responseData.SecretString = JSON.parse(responseData.SecretString);
 					}
 				}
