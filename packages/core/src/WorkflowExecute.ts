@@ -74,8 +74,11 @@ export class WorkflowExecute {
 	 * @returns {(Promise<string>)}
 	 * @memberof WorkflowExecute
 	 */
-	// @ts-ignore
-	async run(workflow: Workflow, startNode?: INode, destinationNode?: string): PCancelable<IRun> {
+	// IMPORTANT: Do not add "async" to this function, it will then convert the
+	//            PCancelable to a regular Promise and does so not allow canceling
+	//            active executions anymore
+	// eslint-disable-next-line @typescript-eslint/promise-function-async
+	run(workflow: Workflow, startNode?: INode, destinationNode?: string): PCancelable<IRun> {
 		// Get the nodes to start workflow execution from
 		startNode = startNode || workflow.getStartNode(destinationNode);
 
@@ -134,8 +137,11 @@ export class WorkflowExecute {
 	 * @returns {(Promise<string>)}
 	 * @memberof WorkflowExecute
 	 */
-	// @ts-ignore
-	async runPartialWorkflow(
+	// IMPORTANT: Do not add "async" to this function, it will then convert the
+	//            PCancelable to a regular Promise and does so not allow canceling
+	//            active executions anymore
+	// eslint-disable-next-line @typescript-eslint/promise-function-async
+	runPartialWorkflow(
 		workflow: Workflow,
 		runData: IRunData,
 		startNodes: string[],
@@ -576,8 +582,11 @@ export class WorkflowExecute {
 	 * @returns {Promise<string>}
 	 * @memberof WorkflowExecute
 	 */
-	// @ts-ignore
-	async processRunExecutionData(workflow: Workflow): PCancelable<IRun> {
+	// IMPORTANT: Do not add "async" to this function, it will then convert the
+	//            PCancelable to a regular Promise and does so not allow canceling
+	//            active executions anymore
+	// eslint-disable-next-line @typescript-eslint/promise-function-async
+	processRunExecutionData(workflow: Workflow): PCancelable<IRun> {
 		Logger.verbose('Workflow execution started', { workflowId: workflow.id });
 
 		const startedAt = new Date();
@@ -1063,8 +1072,7 @@ export class WorkflowExecute {
 		startedAt: Date,
 		workflow: Workflow,
 		executionError?: ExecutionError,
-		// @ts-ignore
-	): PCancelable<IRun> {
+	): Promise<IRun> {
 		const fullRunData = this.getFullRunData(startedAt);
 
 		if (executionError !== undefined) {
