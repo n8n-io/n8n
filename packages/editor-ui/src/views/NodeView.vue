@@ -132,7 +132,7 @@ import NodeCreator from '@/components/NodeCreator/NodeCreator.vue';
 import NodeSettings from '@/components/NodeSettings.vue';
 import RunData from '@/components/RunData.vue';
 
-import { getLeftmostTopNode, getWorkflowCorners, scaleSmaller, scaleBigger, scaleReset, addOrRemoveMidpointArrow, addEndpointArrow, getDefaultOverlays } from './helpers';
+import { getLeftmostTopNode, getWorkflowCorners, scaleSmaller, scaleBigger, scaleReset, addOrRemoveMidpointArrow, addEndpointArrow, getDefaultOverlays, getIcon } from './helpers';
 
 import mixins from 'vue-typed-mixins';
 import { v4 as uuidv4} from 'uuid';
@@ -1342,7 +1342,7 @@ export default mixins(
 				});
 
 				this.instance.bind('connection', (info: OnConnectionBindInfo) => {
-					info.connection.setConnector(['Flowchart', { cornerRadius: 8, stub: JSPLUMB_FLOWCHART_STUB, gap: 5, alwaysRespectStubs: true}]);
+					info.connection.setConnector(['Flowchart', { cornerRadius: 8, stub: JSPLUMB_FLOWCHART_STUB, gap: 5, alwaysRespectStubs: false}]);
 
 					addEndpointArrow(info.connection);
 					addOrRemoveMidpointArrow(info.connection);
@@ -1368,14 +1368,24 @@ export default mixins(
 							if (timer !== undefined) {
 								clearTimeout(timer);
 							}
-							const overlay = info.connection.getOverlay('remove-connection');
+							const overlay = info.connection.getOverlay('connection-actions');
 							overlay.setVisible(true);
+
+							const arrow = info.connection.getOverlay('midpoint-arrow');
+							if (arrow) {
+								arrow.setVisible(false);
+							}
 						});
 						info.connection.bind('mouseout', (connection: IConnection) => {
 							timer = setTimeout(() => {
-								const overlay = info.connection.getOverlay('remove-connection');
+								const overlay = info.connection.getOverlay('connection-actions');
 								overlay.setVisible(false);
 								timer = undefined;
+
+								const arrow = info.connection.getOverlay('midpoint-arrow');
+								if (arrow) {
+									arrow.setVisible(true);
+								}
 							}, 500);
 						});
 
@@ -1383,13 +1393,13 @@ export default mixins(
 						info.connection.addOverlay([
 							'Label',
 							{
-								id: 'remove-connection',
-								label: '<span class="delete-connection clickable" title="Delete Connection">x</span>',
-								cssClass: 'remove-connection-label',
-								visible: false,
+								id: 'connection-actions',
+								label: `<div>${getIcon('plus')}</div> <div>${getIcon('trash')}</div>`,
+								cssClass: 'connection-actions',
+								visible: true,
 								events: {
 									mousedown: () => {
-										this.__removeConnectionByConnectionInfo(info, true);
+										// this.__removeConnectionByConnectionInfo(info, true);
 									},
 								},
 							},
@@ -2418,6 +2428,30 @@ export default mixins(
 
 	&:hover {
 		transform: scale(1.1);
+	}
+}
+
+.connection-actions {
+	> div {
+		border: 2px solid var(--color-text-base);
+		background-color: var(--color-background-xlight);
+		font-size: var(--font-size-2xs);
+		border-radius: var(--border-radius-base);
+		height: var(--spacing-l);
+		width: var(--spacing-l);
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		cursor: pointer;
+
+		&:first-child {
+			margin-right: var(--spacing-xs);
+		}
+
+		&:hover {
+			border-color: var(--color-primary);
+			color: var(--color-primary);
+		}
 	}
 }
 
