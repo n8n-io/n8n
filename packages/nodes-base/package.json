@@ -628,7 +628,8 @@
       "dist/zluri-nodes/integrations/SentryIo/SentryIo.node.js",
       "dist/zluri-nodes/integrations/Slack/Slack.node.js",
       "dist/zluri-nodes/integrations/Todoist/Todoist.node.js",
-      "dist/zluri-nodes/integrations/Xero/Xero.node.js"
+      "dist/zluri-nodes/integrations/Xero/Xero.node.js",
+      "dist/zluri-nodes/integrations/Discourse/Discourse.node.js"
     ]
   },
   "devDependencies": {
