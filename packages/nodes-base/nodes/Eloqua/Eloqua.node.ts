@@ -15,16 +15,8 @@ type customFields = {
 	fields: field[];
 };
 
-type Permissions = {
-	fields: permission[];
-};
-
 type field = {
 	[name: string]: string;
-};
-
-type permission = {
-	[permission: string]: string;
 };
 
 export class Eloqua implements INodeType {
