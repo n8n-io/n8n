@@ -1,4 +1,5 @@
 import { INodeUi, IZoomConfig } from "@/Interface";
+import { Connection } from "jsplumb";
 
 interface ICorners {
 	minX: number;
@@ -82,4 +83,35 @@ export const scaleReset = (config: IZoomConfig): IZoomConfig => {
 	config.scale = 1;
 
 	return config;
+};
+
+export const addOrRemoveMidpointArrow = (connection: Connection) => {
+	const sourceEndpoint = connection.endpoints[0];
+	const targetEndpoint = connection.endpoints[1];
+	const requiresArrow = sourceEndpoint.anchor.lastReturnValue[0] >= targetEndpoint.anchor.lastReturnValue[0];
+
+	const hasArrow = !!connection.getOverlay('midpoint-arrow');
+
+	if (!requiresArrow) {
+		if (hasArrow) {
+			connection.removeOverlay('midpoint-arrow');
+		}
+
+		return;
+	}
+
+	if (hasArrow) {
+		return;
+	}
+
+	connection.addOverlay([
+		'Arrow',
+		{
+			id: 'midpoint-arrow',
+			location: 0.5,
+			width: 12,
+			foldback: 1,
+			length: 10,
+		},
+	]);
 };

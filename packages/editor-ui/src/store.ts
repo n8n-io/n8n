@@ -728,9 +728,7 @@ export const store = new Vuex.Store({
 		allConnections: (state): IConnections => {
 			return state.workflow.connections;
 		},
-		// connectionsByNodeName: (state) => (nodeName: string): {[key: string]: Connection[][]} | null => {
-		// connectionsByNodeName: (state) => (nodeName: string): { [key: string]: NodeConnections} | null => {
-		connectionsByNodeName: (state) => (nodeName: string): INodeConnections => {
+		outgoingConnectionsByNodeName: (state) => (nodeName: string): INodeConnections => {
 			if (state.workflow.connections.hasOwnProperty(nodeName)) {
 				return state.workflow.connections[nodeName];
 			}

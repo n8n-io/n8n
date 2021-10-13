@@ -103,11 +103,6 @@ export interface INodeUi extends INode {
 	color?: string;
 	notes?: string;
 	issues?: INodeIssues;
-	_jsPlumb?: {
-		endpoints?: {
-			[key: string]: IEndpointOptions[];
-		};
-	};
 }
 
 export interface INodeTypesMaxCount {

@@ -21,6 +21,7 @@
 				@nodeSelected="nodeSelectedByName"
 				@removeNode="removeNode"
 				@runWorkflow="runWorkflow"
+				@moved="onNodeMoved"
 				:id="'node-' + getNodeIndex(nodeData.name)"
 				:key="getNodeIndex(nodeData.name)"
 				:name="nodeData.name"
@@ -105,6 +106,7 @@
 <script lang="ts">
 import Vue from 'vue';
 import {
+	Connection,
 	OverlaySpec,
 } from 'jsplumb';
 import { MessageBoxInputData } from 'element-ui/types/message-box';
@@ -130,7 +132,7 @@ import NodeCreator from '@/components/NodeCreator/NodeCreator.vue';
 import NodeSettings from '@/components/NodeSettings.vue';
 import RunData from '@/components/RunData.vue';
 
-import { getLeftmostTopNode, getWorkflowCorners, scaleSmaller, scaleBigger, scaleReset } from './helpers';
+import { getLeftmostTopNode, getWorkflowCorners, scaleSmaller, scaleBigger, scaleReset, addOrRemoveMidpointArrow } from './helpers';
 
 import mixins from 'vue-typed-mixins';
 import { v4 as uuidv4} from 'uuid';
@@ -265,9 +267,6 @@ export default mixins(
 			},
 			lastSelectedNode (): INodeUi {
 				return this.$store.getters.lastSelectedNode;
-			},
-			connections (): IConnectionsUi {
-				return this.$store.getters.allConnections;
 			},
 			nodes (): INodeUi[] {
 				return this.$store.getters.allNodes;
@@ -670,7 +669,7 @@ export default mixins(
 						return;
 					}
 
-					const connections = this.$store.getters.connectionsByNodeName(lastSelectedNode.name);
+					const connections = this.$store.getters.outgoingConnectionsByNodeName(lastSelectedNode.name);
 
 					if (connections.main === undefined || connections.main.length === 0) {
 						return;
@@ -725,7 +724,7 @@ export default mixins(
 					}
 
 					const parentNode = connections.main[0][0].node;
-					const connectionsParent = this.$store.getters.connectionsByNodeName(parentNode);
+					const connectionsParent = this.$store.getters.outgoingConnectionsByNodeName(parentNode);
 
 					if (connectionsParent.main === undefined || connectionsParent.main.length === 0) {
 						return;
@@ -1258,7 +1257,7 @@ export default mixins(
 					await Vue.nextTick();
 
 					// Add connections of active node to newly created one
-					let connections = this.$store.getters.connectionsByNodeName(
+					let connections = this.$store.getters.outgoingConnectionsByNodeName(
 						lastSelectedNode.name,
 					);
 					connections = JSON.parse(JSON.stringify(connections));
@@ -1317,6 +1316,7 @@ export default mixins(
 					[
 						'Arrow',
 						{
+							id: 'endpoint-arrow',
 							location: 1,
 							width: 12,
 							foldback: 1,
@@ -1366,12 +1366,15 @@ export default mixins(
 					info.connection.addOverlay([
 						'Arrow',
 						{
+							id: 'endpoint-arrow',
 							location: 1,
 							width: 12,
 							foldback: 1,
 							length: 10,
 						},
 					]);
+					addOrRemoveMidpointArrow(info.connection);
+
 					// @ts-ignore
 					const sourceInfo = info.sourceEndpoint.getParameters();
 					// @ts-ignore
@@ -1382,19 +1385,6 @@ export default mixins(
 
 					const sourceNode = this.$store.getters.nodeByName(sourceNodeName);
 					const targetNode = this.$store.getters.nodeByName(targetNodeName);
-
-					// TODO: That should happen after each move (only the setConnector part)
-					if (info.sourceEndpoint.anchor.lastReturnValue[0] >= info.targetEndpoint.anchor.lastReturnValue[0]) {
-						info.connection.addOverlay([
-							'Arrow',
-							{
-								location: 0.5,
-								width: 12,
-								foldback: 1,
-								length: 10,
-							},
-						]);
-					}
 
 					// @ts-ignore
 					info.connection.removeOverlay('drop-add-node');
@@ -1737,6 +1727,22 @@ export default mixins(
 				this.deselectAllNodes();
 				setTimeout(() => {
 					this.nodeSelectedByName(newNodeData.name, true);
+				});
+			},
+			onNodeMoved (node: INodeUi) {
+				const name = `${NODE_NAME_PREFIX}${this.$store.getters.getNodeIndex(node.name)}`;
+				// @ts-ignore
+				const outgoing = this.instance.getConnections({
+					source: name,
+				}) as Connection[];
+
+				// @ts-ignore
+				const incoming = this.instance.getConnections({
+					target: name,
+				}) as Connection[];
+
+				[...incoming, ...outgoing].forEach((connection: Connection) => {
+					addOrRemoveMidpointArrow(connection);
 				});
 			},
 			removeNode (nodeName: string) {
@@ -2101,7 +2107,7 @@ export default mixins(
 					typeConnections: INodeConnections;
 
 				data.nodes.forEach((node) => {
-					connections = this.$store.getters.connectionsByNodeName(node.name);
+					connections = this.$store.getters.outgoingConnectionsByNodeName(node.name);
 					if (Object.keys(connections).length === 0) {
 						return;
 					}

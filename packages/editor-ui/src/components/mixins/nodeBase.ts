@@ -328,6 +328,8 @@ export const nodeBase = mixins(
 
 							this.$store.commit('updateNodeProperties', updateInformation);
 						});
+
+						this.$emit('moved', node);
 					}
 				},
 				filter: '.node-description, .node-description .node-name, .node-description .node-subtitle',
