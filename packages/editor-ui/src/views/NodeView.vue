@@ -1396,9 +1396,9 @@ export default mixins(
 								id: 'connection-actions',
 								label: `<div>${getIcon('plus')}</div> <div>${getIcon('trash')}</div>`,
 								cssClass: 'connection-actions',
-								visible: true,
+								visible: false,
 								events: {
-									mousedown: () => {
+									mousedown: (e) => {
 										// this.__removeConnectionByConnectionInfo(info, true);
 									},
 								},
