@@ -678,13 +678,13 @@ const config = convict({
 			frontend: {
 				doc: 'Diagnostics config for frontend.',
 				format: String,
-				default: '1wfyHJrZGsJmqh86XcncyX2SN3T;https://telemetry-stage.n8n.io',
+				default: '1zPn9bgWPzlQc0p8Gj1uiK6DOTn;https://telemetry.n8n.io',
 				env: 'N8N_DIAGNOSTICS_CONFIG_FRONTEND',
 			},
 			backend: {
 				doc: 'Diagnostics config for backend.',
 				format: String,
-				default: '1wfxw1YdRGrntY8intaq53hui51;https://telemetry-stage.n8n.io/v1/batch',
+				default: '1zPn7YoGC3ZXE9zLeTKLuQCB4F6;https://telemetry.n8n.io/v1/batch',
 				env: 'N8N_DIAGNOSTICS_CONFIG_BACKEND',
 			},
 		},

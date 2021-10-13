@@ -55,7 +55,7 @@ class Telemetry {
 				return;
 			}
 
-			this.loadTelemetryLibrary(options.config.key, options.config.url, { logLevel: 'DEBUG', integrations: { All: false }, loadIntegration: false });
+			this.loadTelemetryLibrary(options.config.key, options.config.url, { integrations: { All: false }, loadIntegration: false });
 			this.telemetry.identify(instanceId);
 		}
 	}

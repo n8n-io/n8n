@@ -40,7 +40,7 @@ export class Telemetry {
 				return;
 			}
 
-			this.client = new TelemetryClient(key, url, { logLevel: 'debug' });
+			this.client = new TelemetryClient(key, url);
 
 			this.pulseIntervalReference = setInterval(async () => {
 				void this.pulse();
@@ -58,9 +58,11 @@ export class Telemetry {
 				workflow_id: workflowId,
 				...this.executionCountsBuffer[workflowId],
 			});
+			this.executionCountsBuffer[workflowId].manual_error_count = 0;
+			this.executionCountsBuffer[workflowId].manual_success_count = 0;
+			this.executionCountsBuffer[workflowId].prod_error_count = 0;
+			this.executionCountsBuffer[workflowId].prod_success_count = 0;
 		});
-
-		this.executionCountsBuffer = {};
 
 		await this.track('pulse');
 	}
@@ -99,7 +101,7 @@ export class Telemetry {
 	async trackN8nStop(): Promise<void> {
 		clearInterval(this.pulseIntervalReference);
 		await this.pulse();
-		await this.track('User instance stopped');
+		void this.track('User instance stopped');
 		return new Promise<void>((resolve) => {
 			if (this.client) {
 				this.client.flush(resolve);
