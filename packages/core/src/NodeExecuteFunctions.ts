@@ -301,7 +301,7 @@ async function parseRequestObject(requestObject: IDataObject) {
 			});
 		}
 	}
-	if (requestObject.json === false) {
+	if (requestObject.json === false || requestObject.json === undefined) {
 		// Prevent json parsing
 		axiosConfig.transformResponse = (res) => res;
 	}
