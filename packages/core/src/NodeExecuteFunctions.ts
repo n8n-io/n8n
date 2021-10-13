@@ -738,16 +738,20 @@ export async function requestOAuth2(
 
 			credentials.oauthTokenData = newToken.data;
 
-			// Find the name of the credentials
+			// Find the credentials
 			if (!node.credentials || !node.credentials[credentialsType]) {
 				throw new Error(
 					`The node "${node.name}" does not have credentials of type "${credentialsType}"!`,
 				);
 			}
-			const name = node.credentials[credentialsType];
+			const nodeCredentials = node.credentials[credentialsType];
 
 			// Save the refreshed token
-			await additionalData.credentialsHelper.updateCredentials(name, credentialsType, credentials);
+			await additionalData.credentialsHelper.updateCredentials(
+				nodeCredentials,
+				credentialsType,
+				credentials,
+			);
 
 			Logger.debug(
 				`OAuth2 token for "${credentialsType}" used by node "${node.name}" has been saved to database successfully.`,
@@ -955,25 +959,26 @@ export async function getCredentials(
 		} as ICredentialsExpressionResolveValues;
 	}
 
-	let name = node.credentials[type];
+	const nodeCredentials = node.credentials[type];
 
-	if (name.charAt(0) === '=') {
-		// If the credential name is an expression resolve it
-		const additionalKeys = getAdditionalKeys(additionalData);
-		name = workflow.expression.getParameterValue(
-			name,
-			runExecutionData || null,
-			runIndex || 0,
-			itemIndex || 0,
-			node.name,
-			connectionInputData || [],
-			mode,
-			additionalKeys,
-		) as string;
-	}
+	// TODO: solve using credentials via expression
+	// if (name.charAt(0) === '=') {
+	// 	// If the credential name is an expression resolve it
+	// 	const additionalKeys = getAdditionalKeys(additionalData);
+	// 	name = workflow.expression.getParameterValue(
+	// 		name,
+	// 		runExecutionData || null,
+	// 		runIndex || 0,
+	// 		itemIndex || 0,
+	// 		node.name,
+	// 		connectionInputData || [],
+	// 		mode,
+	// 		additionalKeys,
+	// 	) as string;
+	// }
 
 	const decryptedDataObject = await additionalData.credentialsHelper.getDecrypted(
-		name,
+		nodeCredentials,
 		type,
 		mode,
 		false,
