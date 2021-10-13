@@ -32,7 +32,7 @@
 			</div>
 		</div>
 		<DataDisplay @valueChanged="valueChanged"/>
-		<div v-if="!createNodeActive && !isReadOnly" class="node-creator-button" title="Add Node" @click="openNodeCreator">
+		<div v-if="!createNodeActive && !isReadOnly" class="node-creator-button" title="Add Node" @click="() => openNodeCreator('add_node_button')">
 			<n8n-icon-button size="xlarge" icon="plus" />
 		</div>
 		<node-creator
@@ -341,9 +341,9 @@ export default mixins(
 				this.$store.commit('setWorkflowExecutionData', null);
 				this.updateNodesExecutionIssues();
 			},
-			openNodeCreator () {
+			openNodeCreator (source: string) {
 				this.createNodeActive = true;
-				this.$externalHooks().run('nodeView.createNodeActiveChanged', { source: 'add_node_button' });
+				this.$externalHooks().run('nodeView.createNodeActiveChanged', { source });
 			},
 			async openExecution (executionId: string) {
 				this.resetWorkspace();
@@ -1327,20 +1327,24 @@ export default mixins(
 					Container: '#node-view',
 				});
 
-				this.instance.bind('connectionAborted', (info) => {
+				const insertNodeAfterSelected = (info: {sourceId: string, index: number, eventSource: string}) => {
 					// Get the node and set it as active that new nodes
 					// which get created get automatically connected
 					// to it.
 					const sourceNodeName = this.$store.getters.getNodeNameByIndex(info.sourceId.slice(NODE_NAME_PREFIX.length));
 					this.$store.commit('setLastSelectedNode', sourceNodeName);
 
-					const sourceInfo = info.getParameters();
-					this.$store.commit('setLastSelectedNodeOutputIndex', sourceInfo.index);
+					this.$store.commit('setLastSelectedNodeOutputIndex', info.index);
 
-					// Display the node-creator
-					this.createNodeActive = true;
-					this.$externalHooks().run('nodeView.createNodeActiveChanged', { source: 'node_connection_drop' });
-				});
+					this.openNodeCreator(info.eventSource);
+				};
+
+
+				this.instance.bind('connectionAborted', (info) => insertNodeAfterSelected({
+					sourceId: info.sourceId,
+					index: info.getParameters().index,
+					eventSource: 'node_connection_drop',
+				}));
 
 				this.instance.bind('connection', (info: OnConnectionBindInfo) => {
 					info.connection.setConnector(['Flowchart', { cornerRadius: 8, stub: JSPLUMB_FLOWCHART_STUB, gap: 5, alwaysRespectStubs: false}]);
@@ -1390,6 +1394,7 @@ export default mixins(
 							}, 500);
 						});
 
+
 						// @ts-ignore
 						info.connection.addOverlay([
 							'Label',
@@ -1405,7 +1410,13 @@ export default mixins(
 											this.__removeConnectionByConnectionInfo(info, true);
 										}
 										if (element.classList.contains('add') || (element.parentElement && element.parentElement.classList.contains('add'))) {
-											console.log('add');
+											setTimeout(() => {
+												insertNodeAfterSelected({
+													sourceId: info.sourceId,
+													index: sourceInfo.index,
+													eventSource: 'node_connection_action',
+												});
+											}, 150);
 										}
 									},
 								},
@@ -2439,6 +2450,10 @@ export default mixins(
 }
 
 .connection-actions {
+	&:hover {
+		display: block !important;
+	}
+
 	> div {
 		border: 2px solid var(--color-text-base);
 		background-color: var(--color-background-xlight);
