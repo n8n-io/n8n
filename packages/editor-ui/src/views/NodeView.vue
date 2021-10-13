@@ -108,7 +108,6 @@ import Vue from 'vue';
 import {
 	Connection,
 	Overlay,
-	OverlaySpec,
 } from 'jsplumb';
 import { MessageBoxInputData } from 'element-ui/types/message-box';
 import { jsPlumb, Endpoint, OnConnectionBindInfo } from 'jsplumb';
@@ -2457,14 +2456,19 @@ export default mixins(
 	> div {
 		border: 2px solid var(--color-text-base);
 		background-color: var(--color-background-xlight);
-		font-size: var(--font-size-2xs);
 		border-radius: var(--border-radius-base);
 		height: var(--spacing-l);
 		width: var(--spacing-l);
+		cursor: pointer;
+
 		display: inline-flex;
 		align-items: center;
 		justify-content: center;
-		cursor: pointer;
+
+		svg {
+			pointer-events: none;
+			font-size: var(--font-size-2xs);
+		}
 
 		&:first-child {
 			margin-right: var(--spacing-xs);
