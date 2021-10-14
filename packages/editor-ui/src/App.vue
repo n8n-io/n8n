@@ -10,14 +10,22 @@
 			<router-view />
 		</div>
 		<div class="n8n-logo">
+			<img :src="`${basePath}logo-screenshotter.png`"/>
 		</div>
 	</div>
 </template>
 
 <script lang="ts">
-export default {
-	name: 'App',
-};
+import Vue from 'vue';
+
+export default Vue.extend({
+	name: 'Appo',
+	computed: {
+		basePath(): string {
+			return this.$store.getters.getBaseUrl;
+		},
+	},
+});
 </script>
 
 <style lang="scss">
