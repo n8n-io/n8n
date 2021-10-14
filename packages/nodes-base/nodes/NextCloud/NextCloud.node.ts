@@ -11,6 +11,8 @@ import {
 	NodeOperationError,
 } from 'n8n-workflow';
 
+import { URLSearchParams } from 'url';
+
 import {
 	parseString,
 } from 'xml2js';
@@ -134,6 +136,11 @@ export class NextCloud implements INodeType {
 						name: 'Move',
 						value: 'move',
 						description: 'Move a file',
+					},
+					{
+						name: 'Share',
+						value: 'share',
+						description: 'Share a file',
 					},
 					{
 						name: 'Upload',
@@ -472,7 +479,215 @@ export class NextCloud implements INodeType {
 				description: 'Name of the binary property which contains<br />the data for the file to be uploaded.',
 			},
 
-
+			// ----------------------------------
+			//         file:share
+			// ----------------------------------
+			{
+				displayName: 'File Path',
+				name: 'path',
+				type: 'string',
+				default: '',
+				required: true,
+				displayOptions: {
+					show: {
+						operation: [
+							'share',
+						],
+						resource: [
+							'file',
+						],
+					},
+				},
+				placeholder: '/invoices/2019/invoice_1.pdf',
+				description: 'The file path of the file to share. Has to contain the full path. The path should start with "/"',
+			},
+			{
+				displayName: 'Share Type',
+				name: 'shareType',
+				type: 'options',
+				displayOptions: {
+					show: {
+						operation: [
+							'share',
+						],
+						resource: [
+							'file',
+						],
+					},
+				},
+				options: [
+					{
+						name: 'Circle',
+						value: 7,
+					},
+					{
+						name: 'EMail',
+						value: 4,
+					},
+					{
+						name: 'Group',
+						value: 1,
+					},
+					{
+						name: 'Public Link',
+						value: 3,
+					},
+					{
+						name: 'User',
+						value: 0,
+					},
+				],
+				default: 0,
+				description: 'The share permissions to set',
+			},
+			{
+				displayName: 'Circle ID',
+				name: 'circleId',
+				type: 'string',
+				displayOptions: {
+					show: {
+						resource: [
+							'file',
+						],
+						operation: [
+							'share',
+						],
+						shareType: [
+							7,
+						]
+					},
+				},
+				default: '',
+				description: 'The ID of the circle to share with',
+			},
+			{
+				displayName: 'Email',
+				name: 'email',
+				type: 'string',
+				displayOptions: {
+					show: {
+						resource: [
+							'file',
+						],
+						operation: [
+							'share',
+						],
+						shareType: [
+							4,
+						]
+					},
+				},
+				default: '',
+				description: 'The Email address to share with',
+			},
+			{
+				displayName: 'Group ID',
+				name: 'groupId',
+				type: 'string',
+				displayOptions: {
+					show: {
+						resource: [
+							'file',
+						],
+						operation: [
+							'share',
+						],
+						shareType: [
+							1,
+						]
+					},
+				},
+				default: '',
+				description: 'The ID of the group to share with',
+			},
+			{
+				displayName: 'User',
+				name: 'user',
+				type: 'string',
+				displayOptions: {
+					show: {
+						resource: [
+							'file',
+						],
+						operation: [
+							'share',
+						],
+						shareType: [
+							0,
+						]
+					},
+				},
+				default: '',
+				description: 'The user to share with',
+			},
+			{
+				displayName: 'Options',
+				name: 'options',
+				type: 'collection',
+				placeholder: 'Add Option',
+				default: {},
+				displayOptions: {
+					show: {
+						resource: [
+							'file',
+						],
+						operation: [
+							'share',
+						],
+					},
+				},
+				options: [
+					{
+						displayName: 'Password',
+						name: 'password',
+						type: 'string',
+						displayOptions: {
+							show: {
+								'/resource': [
+									'file',
+								],
+								'/operation': [
+									'share',
+								],
+								'/shareType': [
+									3,
+								]
+							},
+						},
+						default: '',
+						description: 'Optional search string.',
+					},
+					{
+						displayName: 'Permissions',
+						name: 'permissions',
+						type: 'options',
+						options: [
+							{
+								name: 'All',
+								value: 31,
+							},
+							{
+								name: 'Create',
+								value: 4,
+							},
+							{
+								name: 'Delete',
+								value: 8,
+							},
+							{
+								name: 'Read',
+								value: 1,
+							},
+							{
+								name: 'Update',
+								value: 2,
+							},
+						],
+						default: 1,
+						description: 'The share permissions to set',
+					},
+				],
+			},
 
 			// ----------------------------------
 			//         folder
@@ -844,6 +1059,36 @@ export class NextCloud implements INodeType {
 							// Is text file
 							body = this.getNodeParameter('fileContent', i) as string;
 						}
+					} else if (operation === 'share') {
+						// ----------------------------------
+						//         share
+						// ----------------------------------
+
+						requestMethod = 'POST';
+
+						endpoint = 'ocs/v2.php/apps/files_sharing/api/v1/shares';
+
+						headers['OCS-APIRequest'] = true;
+						headers['Content-Type'] = 'application/x-www-form-urlencoded';
+
+						const bodyParameters = this.getNodeParameter('options', i) as IDataObject;
+
+						bodyParameters.path = this.getNodeParameter('path', i) as string;
+						bodyParameters.shareType = this.getNodeParameter('shareType', i) as number;
+
+						if (bodyParameters.shareType === 0) {
+							bodyParameters.shareWith = this.getNodeParameter('user', i) as string;
+						} else if (bodyParameters.shareType === 7) {
+							bodyParameters.shareWith = this.getNodeParameter('circleId', i) as number;
+						} else if (bodyParameters.shareType === 4) {
+							bodyParameters.shareWith = this.getNodeParameter('email', i) as string;
+						} else if (bodyParameters.shareType === 1) {
+							bodyParameters.shareWith = this.getNodeParameter('groupId', i) as number;
+						}
+
+						// @ts-ignore
+						body = new URLSearchParams(bodyParameters).toString();
+
 					}
 				} else if (resource === 'folder') {
 					if (operation === 'create') {
@@ -1031,6 +1276,23 @@ export class NextCloud implements INodeType {
 					const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i) as string;
 
 					items[i].binary![binaryPropertyName] = await this.helpers.prepareBinaryData(responseData, endpoint);
+
+				} else if (resource === 'file' && operation === 'share') {
+						const jsonResponseData: IDataObject = await new Promise((resolve, reject) => {
+							parseString(responseData, { explicitArray: false }, (err, data) => {
+								if (err) {
+									return reject(err);
+								}
+
+								if (data.ocs.meta.status !== 'ok') {
+									return reject(new Error(data.ocs.meta.message || data.ocs.meta.status));
+								}
+
+								resolve(data.ocs.data as IDataObject);
+							});
+						});
+
+						returnData.push(jsonResponseData as IDataObject);
 
 				} else if (resource === 'user') {
 
