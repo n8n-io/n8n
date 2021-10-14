@@ -554,7 +554,7 @@ export class NextCloud implements INodeType {
 						],
 						shareType: [
 							7,
-						]
+						],
 					},
 				},
 				default: '',
@@ -574,7 +574,7 @@ export class NextCloud implements INodeType {
 						],
 						shareType: [
 							4,
-						]
+						],
 					},
 				},
 				default: '',
@@ -594,7 +594,7 @@ export class NextCloud implements INodeType {
 						],
 						shareType: [
 							1,
-						]
+						],
 					},
 				},
 				default: '',
@@ -614,7 +614,7 @@ export class NextCloud implements INodeType {
 						],
 						shareType: [
 							0,
-						]
+						],
 					},
 				},
 				default: '',
@@ -651,7 +651,7 @@ export class NextCloud implements INodeType {
 								],
 								'/shareType': [
 									3,
-								]
+								],
 							},
 						},
 						default: '',
