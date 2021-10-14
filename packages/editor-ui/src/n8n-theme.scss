@@ -2,6 +2,17 @@
 
 @import "~n8n-design-system/theme/dist/index.css";
 
+/** overrides **/
+#side-menu,
+#header,
+.zoom-menu,
+.workflow-execute-wrapper,
+.node-creator-button {
+	display: none;
+}
+
+/** overrides **/
+
 body {
 	background-color: $--custom-node-view-background;
 }

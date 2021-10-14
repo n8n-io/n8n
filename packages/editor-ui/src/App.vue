@@ -9,6 +9,8 @@
 		<div id="content">
 			<router-view />
 		</div>
+		<div class="n8n-logo">
+		</div>
 	</div>
 </template>
 
