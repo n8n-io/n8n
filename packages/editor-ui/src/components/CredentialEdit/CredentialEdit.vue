@@ -557,6 +557,7 @@ export default mixins(showMessage, nodeHelpers).extend({
 			);
 
 			const details: ICredentialsDecrypted = {
+				id: this.credentialId,
 				name: this.credentialName,
 				type: this.credentialTypeName!,
 				data: data as unknown as ICredentialDataDecryptedObject,
@@ -605,6 +606,7 @@ export default mixins(showMessage, nodeHelpers).extend({
 			);
 
 			const credentialDetails: ICredentialsDecrypted = {
+				id: this.credentialId,
 				name: this.credentialName,
 				type: this.credentialTypeName!,
 				data: data as unknown as ICredentialDataDecryptedObject,
