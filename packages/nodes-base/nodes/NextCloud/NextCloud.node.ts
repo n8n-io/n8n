@@ -189,6 +189,11 @@ export class NextCloud implements INodeType {
 						value: 'move',
 						description: 'Move a folder',
 					},
+					{
+						name: 'Share',
+						value: 'share',
+						description: 'Share a folder',
+					},
 				],
 				default: 'create',
 				description: 'The operation to perform.',
@@ -495,6 +500,7 @@ export class NextCloud implements INodeType {
 						],
 						resource: [
 							'file',
+							'folder',
 						],
 					},
 				},
@@ -512,6 +518,7 @@ export class NextCloud implements INodeType {
 						],
 						resource: [
 							'file',
+							'folder',
 						],
 					},
 				},
@@ -521,7 +528,7 @@ export class NextCloud implements INodeType {
 						value: 7,
 					},
 					{
-						name: 'EMail',
+						name: 'Email',
 						value: 4,
 					},
 					{
@@ -548,6 +555,7 @@ export class NextCloud implements INodeType {
 					show: {
 						resource: [
 							'file',
+							'folder',
 						],
 						operation: [
 							'share',
@@ -568,6 +576,7 @@ export class NextCloud implements INodeType {
 					show: {
 						resource: [
 							'file',
+							'folder',
 						],
 						operation: [
 							'share',
@@ -588,6 +597,7 @@ export class NextCloud implements INodeType {
 					show: {
 						resource: [
 							'file',
+							'folder',
 						],
 						operation: [
 							'share',
@@ -608,6 +618,7 @@ export class NextCloud implements INodeType {
 					show: {
 						resource: [
 							'file',
+							'folder',
 						],
 						operation: [
 							'share',
@@ -630,6 +641,7 @@ export class NextCloud implements INodeType {
 					show: {
 						resource: [
 							'file',
+							'folder',
 						],
 						operation: [
 							'share',
@@ -645,6 +657,7 @@ export class NextCloud implements INodeType {
 							show: {
 								'/resource': [
 									'file',
+									'folder',
 								],
 								'/operation': [
 									'share',
@@ -1059,36 +1072,6 @@ export class NextCloud implements INodeType {
 							// Is text file
 							body = this.getNodeParameter('fileContent', i) as string;
 						}
-					} else if (operation === 'share') {
-						// ----------------------------------
-						//         share
-						// ----------------------------------
-
-						requestMethod = 'POST';
-
-						endpoint = 'ocs/v2.php/apps/files_sharing/api/v1/shares';
-
-						headers['OCS-APIRequest'] = true;
-						headers['Content-Type'] = 'application/x-www-form-urlencoded';
-
-						const bodyParameters = this.getNodeParameter('options', i) as IDataObject;
-
-						bodyParameters.path = this.getNodeParameter('path', i) as string;
-						bodyParameters.shareType = this.getNodeParameter('shareType', i) as number;
-
-						if (bodyParameters.shareType === 0) {
-							bodyParameters.shareWith = this.getNodeParameter('user', i) as string;
-						} else if (bodyParameters.shareType === 7) {
-							bodyParameters.shareWith = this.getNodeParameter('circleId', i) as number;
-						} else if (bodyParameters.shareType === 4) {
-							bodyParameters.shareWith = this.getNodeParameter('email', i) as string;
-						} else if (bodyParameters.shareType === 1) {
-							bodyParameters.shareWith = this.getNodeParameter('groupId', i) as number;
-						}
-
-						// @ts-ignore
-						body = new URLSearchParams(bodyParameters).toString();
-
 					}
 				} else if (resource === 'folder') {
 					if (operation === 'create') {
@@ -1139,6 +1122,35 @@ export class NextCloud implements INodeType {
 						const toPath = this.getNodeParameter('toPath', i) as string;
 						headers.Destination = `${credentials.webDavUrl}/${encodeURI(toPath)}`;
 
+					} else if (operation === 'share') {
+						// ----------------------------------
+						//         share
+						// ----------------------------------
+
+						requestMethod = 'POST';
+
+						endpoint = 'ocs/v2.php/apps/files_sharing/api/v1/shares';
+
+						headers['OCS-APIRequest'] = true;
+						headers['Content-Type'] = 'application/x-www-form-urlencoded';
+
+						const bodyParameters = this.getNodeParameter('options', i) as IDataObject;
+
+						bodyParameters.path = this.getNodeParameter('path', i) as string;
+						bodyParameters.shareType = this.getNodeParameter('shareType', i) as number;
+
+						if (bodyParameters.shareType === 0) {
+							bodyParameters.shareWith = this.getNodeParameter('user', i) as string;
+						} else if (bodyParameters.shareType === 7) {
+							bodyParameters.shareWith = this.getNodeParameter('circleId', i) as number;
+						} else if (bodyParameters.shareType === 4) {
+							bodyParameters.shareWith = this.getNodeParameter('email', i) as string;
+						} else if (bodyParameters.shareType === 1) {
+							bodyParameters.shareWith = this.getNodeParameter('groupId', i) as number;
+						}
+
+						// @ts-ignore
+						body = new URLSearchParams(bodyParameters).toString();
 					}
 
 				} else if (resource === 'user') {
@@ -1277,7 +1289,7 @@ export class NextCloud implements INodeType {
 
 					items[i].binary![binaryPropertyName] = await this.helpers.prepareBinaryData(responseData, endpoint);
 
-				} else if (resource === 'file' && operation === 'share') {
+				} else if (['file', 'folder'].includes(resource) && operation === 'share') {
 						const jsonResponseData: IDataObject = await new Promise((resolve, reject) => {
 							parseString(responseData, { explicitArray: false }, (err, data) => {
 								if (err) {
