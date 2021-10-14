@@ -207,6 +207,50 @@ export const userFields = [
 			},
 		],
 	},
+	{
+		displayName: 'Custom Fields',
+		name: 'customFields',
+		placeholder: 'Add Custom Field',
+		type: 'fixedCollection',
+		default: '',
+		typeOptions: {
+			multipleValues: true,
+		},
+		description: '',
+		displayOptions: {
+			show: {
+				resource: [
+					'user',
+				],
+				operation: [
+					'create',
+				],
+			},
+		},
+		options: [
+			{
+				name: 'customFieldsValues',
+				displayName: 'Custom Fields',
+				values: [
+					{
+						displayName: 'Name',
+						name: 'name',
+						type: 'string',
+						default: '',
+						description: 'Name of the field key to add.',
+					},
+					{
+						displayName: 'Value',
+						name: 'value',
+						type: 'string',
+						default: '',
+						description: 'Value to set for the field key.',
+					},
+				],
+			},
+		],
+	},
+	
 /* -------------------------------------------------------------------------- */
 /*                                 user:update                                */
 /* -------------------------------------------------------------------------- */
@@ -320,6 +364,50 @@ export const userFields = [
 			},
 		],
 	},
+	{
+		displayName: 'Update Custom Fields',
+		name: 'updateCustomFields',
+		placeholder: 'Update Custom Field',
+		type: 'fixedCollection',
+		default: '',
+		typeOptions: {
+			multipleValues: true,
+		},
+		description: '',
+		displayOptions: {
+			show: {
+				resource: [
+					'post',
+				],
+				operation: [
+					'update',
+				],
+			},
+		},
+		options: [
+			{
+				name: 'customFieldsValues',
+				displayName: 'Custom Fields',
+				values: [
+					{
+						displayName: 'Name',
+						name: 'name',
+						type: 'string',
+						default: '',
+						description: 'Name of the field key to add.',
+					},
+					{
+						displayName: 'Value',
+						name: 'value',
+						type: 'string',
+						default: '',
+						description: 'Value to set for the field key.',
+					},
+				],
+			},
+		],
+	},
+	
 /* -------------------------------------------------------------------------- */
 /*                                 user:get                                   */
 /* -------------------------------------------------------------------------- */

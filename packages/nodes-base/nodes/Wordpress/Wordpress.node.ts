@@ -27,6 +27,7 @@ import {
 import {
 	IUser,
 } from './UserInterface';
+import { validateUpdateFields } from '../Freshservice/GenericFunctions';
 
 export class Wordpress implements INodeType {
 	description: INodeTypeDescription = {
@@ -126,6 +127,20 @@ export class Wordpress implements INodeType {
 				}
 				return returnData;
 			},
+			async getTypes(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const returnData: INodePropertyOptions[] = [];
+				const types = await wordpressApiRequestAllItems.call(this, 'GET', '/types', {});
+				
+				for (const type of types) {
+					const name = type[Object.keys(type)[0]].name;
+					const value = type[Object.keys(type)[0]].rest_base;
+					returnData.push({
+						name: name,
+						value: value,
+					});
+				}
+				return returnData;
+			},
 		},
 	};
 
@@ -144,7 +159,11 @@ export class Wordpress implements INodeType {
 					//https://developer.wordpress.org/rest-api/reference/posts/#create-a-post
 					if (operation === 'create') {
 						const title = this.getNodeParameter('title', i) as string;
+						const postType = this.getNodeParameter('postType', i) as string;
 						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const customFields = this.getNodeParameter('customFields', i) as IDataObject;
+						const meta: {[key: string]: any} = {};
+						
 						const body: IPost = {
 							title,
 						};
@@ -181,12 +200,24 @@ export class Wordpress implements INodeType {
 						if (additionalFields.format) {
 							body.format = additionalFields.format as string;
 						}
-						responseData = await wordpressApiRequest.call(this, 'POST', '/posts', body);
+						if(customFields.customFieldsValues) {
+							const values = customFields.customFieldsValues as IDataObject[];
+							
+							values.forEach(value => {
+								const name = value.name as string;
+								meta[name] = value.value;
+							});
+							body.meta = meta as object;
+						}
+						
+						responseData = await wordpressApiRequest.call(this, 'POST', `/${postType}`, body);
 					}
 					//https://developer.wordpress.org/rest-api/reference/posts/#update-a-post
 					if (operation === 'update') {
 						const postId = this.getNodeParameter('postId', i) as string;
 						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+						const updateCustomFields = this.getNodeParameter('updateCustomFields', i) as IDataObject;
+						const meta: {[key: string]: any} = {};
 						const body: IPost = {
 							id: parseInt(postId, 10),
 						};
@@ -226,6 +257,16 @@ export class Wordpress implements INodeType {
 						if (updateFields.format) {
 							body.format = updateFields.format as string;
 						}
+						if(updateCustomFields.customFieldsValues) {
+							const values = updateCustomFields.customFieldsValues as IDataObject[];
+							
+							values.forEach(value => {
+								const name = value.name as string;
+								meta[name] = value.value;
+							});
+							body.meta = meta as object;
+						}
+						
 						responseData = await wordpressApiRequest.call(this, 'POST', `/posts/${postId}`, body);
 					}
 					//https://developer.wordpress.org/rest-api/reference/posts/#retrieve-a-post
@@ -304,6 +345,8 @@ export class Wordpress implements INodeType {
 						const email = this.getNodeParameter('email', i) as string;
 						const password = this.getNodeParameter('password', i) as string;
 						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const customFields = this.getNodeParameter('customFields', i) as IDataObject;
+						const meta: {[key: string]: any} = {};
 						const body: IUser = {
 							name,
 							username,
@@ -324,12 +367,24 @@ export class Wordpress implements INodeType {
 						if (additionalFields.slug) {
 							body.slug = additionalFields.slug as string;
 						}
+						if(customFields.customFieldsValues) {
+							const values = customFields.customFieldsValues as IDataObject[];
+							
+							values.forEach(value => {
+								const name = value.name as string;
+								meta[name] = value.value;
+							});
+							body.meta = meta as object;
+						}
+						
 						responseData = await wordpressApiRequest.call(this, 'POST', '/users', body);
 					}
 					//https://developer.wordpress.org/rest-api/reference/users/#update-a-user
 					if (operation === 'update') {
 						const userId = this.getNodeParameter('userId', i) as number;
 						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+						const updateCustomFields = this.getNodeParameter('updateCustomFields', i) as IDataObject;
+						const meta: {[key: string]: any} = {};
 						const body: IUser = {
 							id: userId,
 						};
@@ -363,6 +418,16 @@ export class Wordpress implements INodeType {
 						if (updateFields.slug) {
 							body.slug = updateFields.slug as string;
 						}
+						if(updateCustomFields.customFieldsValues) {
+							const values = updateCustomFields.customFieldsValues as IDataObject[];
+							
+							values.forEach(value => {
+								const name = value.name as string;
+								meta[name] = value.value;
+							});
+							body.meta = meta as object;
+						}
+						
 						responseData = await wordpressApiRequest.call(this, 'POST', `/users/${userId}`, body);
 					}
 					//https://developer.wordpress.org/rest-api/reference/users/#retrieve-a-user

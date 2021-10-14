@@ -13,4 +13,5 @@ export interface IPost {
 	sticky?: boolean;
 	categories?: number[];
 	tags?: number[];
+	meta?: object;
 }

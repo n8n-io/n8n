@@ -67,6 +67,27 @@ export const postFields = [
 		},
 		description: 'The title for the post',
 	},
+	{	
+		displayName: 'Post Type',
+		name: 'postType',
+		type: 'options',
+		typeOptions: {
+			loadOptionsMethod: 'getTypes',
+		},
+		default: '',
+		description: 'The type for the post to create.',
+		placeholder: 'Select post type',
+		displayOptions: {
+			show: {
+				resource: [
+					'post',
+				],
+				operation: [
+					'create',
+				],
+			},
+		},	
+	},
 	{
 		displayName: 'Additional Fields',
 		name: 'additionalFields',
@@ -259,6 +280,50 @@ export const postFields = [
 			},
 		],
 	},
+	{
+		displayName: 'Custom Fields',
+		name: 'customFields',
+		placeholder: 'Add Custom Field',
+		type: 'fixedCollection',
+		default: '',
+		typeOptions: {
+			multipleValues: true,
+		},
+		description: '',
+		displayOptions: {
+			show: {
+				resource: [
+					'post',
+				],
+				operation: [
+					'create',
+				],
+			},
+		},
+		options: [
+			{
+				name: 'customFieldsValues',
+				displayName: 'Custom Fields',
+				values: [
+					{
+						displayName: 'Name',
+						name: 'name',
+						type: 'string',
+						default: '',
+						description: 'Name of the field key to add.',
+					},
+					{
+						displayName: 'Value',
+						name: 'value',
+						type: 'string',
+						default: '',
+						description: 'Value to set for the field key.',
+					},
+				],
+			},
+		],
+	},
+	
 /* -------------------------------------------------------------------------- */
 /*                                 post:update                                */
 /* -------------------------------------------------------------------------- */
@@ -479,6 +544,50 @@ export const postFields = [
 			},
 		],
 	},
+	{
+		displayName: 'Update Custom Fields',
+		name: 'updateCustomFields',
+		placeholder: 'Update Custom Field',
+		type: 'fixedCollection',
+		default: '',
+		typeOptions: {
+			multipleValues: true,
+		},
+		description: '',
+		displayOptions: {
+			show: {
+				resource: [
+					'post',
+				],
+				operation: [
+					'update',
+				],
+			},
+		},
+		options: [
+			{
+				name: 'customFieldsValues',
+				displayName: 'Custom Fields',
+				values: [
+					{
+						displayName: 'Name',
+						name: 'name',
+						type: 'string',
+						default: '',
+						description: 'Name of the field key to add.',
+					},
+					{
+						displayName: 'Value',
+						name: 'value',
+						type: 'string',
+						default: '',
+						description: 'Value to set for the field key.',
+					},
+				],
+			},
+		],
+	},
+	
 /* -------------------------------------------------------------------------- */
 /*                                  post:get                                  */
 /* -------------------------------------------------------------------------- */

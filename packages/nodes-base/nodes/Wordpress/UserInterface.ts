@@ -11,4 +11,5 @@ export interface IUser {
 	url?: string;
 	description?: string;
 	password?: string;
+	meta?: object;
 }
