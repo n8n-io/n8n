@@ -267,7 +267,7 @@ export default mixins(
 			executionWaitingForWebhook (): boolean {
 				return this.$store.getters.executionWaitingForWebhook;
 			},
-			lastSelectedNode (): INodeUi {
+			lastSelectedNode (): INodeUi | null {
 				return this.$store.getters.lastSelectedNode;
 			},
 			nodes (): INodeUi[] {
@@ -656,7 +656,7 @@ export default mixins(
 					this.callDebounced('saveCurrentWorkflow', 1000);
 				} else if (e.key === 'Enter') {
 					// Activate the last selected node
-					const lastSelectedNode = this.$store.getters.lastSelectedNode;
+					const lastSelectedNode = this.lastSelectedNode;
 
 					if (lastSelectedNode !== null) {
 						this.$store.commit('setActiveNode', lastSelectedNode.name);
@@ -669,7 +669,7 @@ export default mixins(
 					this.callDebounced('selectDownstreamNodes', 1000);
 				} else if (e.key === 'ArrowRight') {
 					// Set child node active
-					const lastSelectedNode = this.$store.getters.lastSelectedNode;
+					const lastSelectedNode = this.lastSelectedNode;
 					if (lastSelectedNode === null) {
 						return;
 					}
@@ -689,7 +689,7 @@ export default mixins(
 					this.callDebounced('selectUpstreamNodes', 1000);
 				} else if (e.key === 'ArrowLeft') {
 					// Set parent node active
-					const lastSelectedNode = this.$store.getters.lastSelectedNode;
+					const lastSelectedNode = this.lastSelectedNode;
 					if (lastSelectedNode === null) {
 						return;
 					}
@@ -711,7 +711,7 @@ export default mixins(
 					// Set sibling node as active
 
 					// Check first if it has a parent node
-					const lastSelectedNode = this.$store.getters.lastSelectedNode;
+					const lastSelectedNode = this.lastSelectedNode;
 					if (lastSelectedNode === null) {
 						return;
 					}
@@ -795,7 +795,7 @@ export default mixins(
 			},
 
 			selectUpstreamNodes () {
-				const lastSelectedNode = this.$store.getters.lastSelectedNode as INodeUi | null;
+				const lastSelectedNode = this.lastSelectedNode;
 				if (lastSelectedNode === null) {
 					return;
 				}
@@ -812,7 +812,7 @@ export default mixins(
 				this.nodeSelectedByName(lastSelectedNode.name);
 			},
 			selectDownstreamNodes () {
-				const lastSelectedNode = this.$store.getters.lastSelectedNode as INodeUi | null;
+				const lastSelectedNode = this.lastSelectedNode;
 				if (lastSelectedNode === null) {
 					return;
 				}
@@ -1177,7 +1177,7 @@ export default mixins(
 				};
 
 				// Check if there is a last selected node
-				const lastSelectedNode = this.$store.getters.lastSelectedNode;
+				const lastSelectedNode = this.lastSelectedNode;
 				const lastSelectedNodeOutputIndex = this.$store.getters.lastSelectedNodeOutputIndex;
 				if (lastSelectedNode) {
 					// If a node is active then add the new node directly after the current one
