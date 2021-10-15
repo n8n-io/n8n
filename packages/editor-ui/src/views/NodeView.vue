@@ -147,9 +147,11 @@ import {
 	NodeHelpers,
 	Workflow,
 	IRun,
+	INodeCredentialsDetails,
 } from 'n8n-workflow';
 import {
 	IConnectionsUi,
+	ICredentialsResponse,
 	IExecutionResponse,
 	IN8nUISettings,
 	IWorkflowDb,
@@ -327,6 +329,7 @@ export default mixins(
 				ctrlKeyPressed: false,
 				stopExecutionInProgress: false,
 				blankRedirect: false,
+				credentialsUpdated: false,
 			};
 		},
 		beforeDestroy () {
@@ -457,7 +460,7 @@ export default mixins(
 				}
 
 				this.blankRedirect = true;
-				this.$router.push({ name: 'NodeViewNew' });
+				this.$router.push({ name: 'NodeViewNew', query: { templateId } });
 
 				await this.addNodes(data.workflow.nodes, data.workflow.connections);
 				await this.$store.dispatch('workflows/setNewWorkflowName', data.name);
@@ -495,8 +498,10 @@ export default mixins(
 				this.$store.commit('setWorkflowTagIds', tagIds || []);
 
 				await this.addNodes(data.nodes, data.connections);
+				if (!this.credentialsUpdated) {
+					this.$store.commit('setStateDirty', false);
+				}
 
-				this.$store.commit('setStateDirty', false);
 				this.zoomToFit();
 
 				this.$externalHooks().run('workflow.open', { workflowId, workflowName: data.name });
@@ -1871,6 +1876,47 @@ export default mixins(
 				this.deselectAllNodes();
 				this.nodeSelectedByName(newName);
 			},
+			matchCredentials(node: INodeUi) {
+				if (!node.credentials) {
+					return;
+				}
+				Object.entries(node.credentials).forEach(([nodeCredentialType, nodeCredentials]: [string, INodeCredentialsDetails]) => {
+					const credentialOptions = this.$store.getters['credentials/getCredentialsByType'](nodeCredentialType) as ICredentialsResponse[];
+
+					// Check if workflows applies old credentials style
+					if (typeof nodeCredentials === 'string') {
+						nodeCredentials = {
+							id: null,
+							name: nodeCredentials,
+						};
+						this.credentialsUpdated = true;
+					}
+
+					if (nodeCredentials.id) {
+						// Check whether the id is matching with a credential
+						const credentialsForId = credentialOptions.find((optionData: ICredentialsResponse) => optionData.id === nodeCredentials.id);
+						if (credentialsForId) {
+							if (credentialsForId.name !== nodeCredentials.name) {
+								node.credentials![nodeCredentialType].name = credentialsForId.name;
+								this.credentialsUpdated = true;
+							}
+							return;
+						}
+					}
+
+					// No match for id found or old credentials type used
+					node.credentials![nodeCredentialType] = nodeCredentials;
+
+					// check if only one option with the name would exist
+					const credentialsForName = credentialOptions.filter((optionData: ICredentialsResponse) => optionData.name === nodeCredentials.name);
+
+					// only one option exists for the name, take it
+					if (credentialsForName.length === 1) {
+						node.credentials![nodeCredentialType].id = credentialsForName[0].id;
+						this.credentialsUpdated = true;
+					}
+				});
+			},
 			async addNodes (nodes: INodeUi[], connections?: IConnections) {
 				if (!nodes || !nodes.length) {
 					return;
@@ -1919,6 +1965,9 @@ export default mixins(
 							node.parameters.path = node.webhookId as string;
 						}
 					}
+
+					// check and match credentials, apply new format if old is used
+					this.matchCredentials(node);
 
 					foundNodeIssues = this.getNodeIssues(nodeType, node);
 
@@ -2197,6 +2246,7 @@ export default mixins(
 				this.$store.commit('setEndpointWebhookTest', settings.endpointWebhookTest);
 				this.$store.commit('setSaveDataErrorExecution', settings.saveDataErrorExecution);
 				this.$store.commit('setSaveDataSuccessExecution', settings.saveDataSuccessExecution);
+				this.$store.commit('setSaveManualExecutions', settings.saveManualExecutions);
 				this.$store.commit('setTimezone', settings.timezone);
 				this.$store.commit('setExecutionTimeout', settings.executionTimeout);
 				this.$store.commit('setMaxExecutionTimeout', settings.maxExecutionTimeout);
@@ -2307,6 +2357,10 @@ export default mixins(
 	z-index: 18;
 	color: #444;
 	padding-right: 5px;
+
+	@media (max-width: $--breakpoint-2xs) {
+		bottom: 90px;
+	}
 
 	&.expanded {
 		left: $--sidebar-expanded-width + $--zoom-menu-margin;

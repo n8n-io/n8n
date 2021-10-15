@@ -219,13 +219,15 @@ export const pushConnection = mixins(
 					const workflow = this.getWorkflow();
 					if (runDataExecuted.waitTill !== undefined) {
 						const {
-							isNewWorkflow,
 							activeExecutionId,
+							workflowSettings,
 							saveManualExecutions,
 						} = this.$store.getters;
 
+						const isSavingExecutions= workflowSettings.saveManualExecutions === undefined ? saveManualExecutions : workflowSettings.saveManualExecutions;
+
 						let action;
-						if (isNewWorkflow || !saveManualExecutions) {
+						if (!isSavingExecutions) {
 							action = '<a class="open-settings">Turn on saving manual executions</a> and run again to see what happened after this node.';
 						}
 						else {

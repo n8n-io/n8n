@@ -236,11 +236,11 @@ async function parseRequestObject(requestObject: IDataObject) {
 	}
 
 	if (requestObject.uri !== undefined) {
-		axiosConfig.url = requestObject.uri as string;
+		axiosConfig.url = requestObject.uri?.toString() as string;
 	}
 
 	if (requestObject.url !== undefined) {
-		axiosConfig.url = requestObject.url as string;
+		axiosConfig.url = requestObject.url?.toString() as string;
 	}
 
 	if (requestObject.method !== undefined) {
@@ -251,9 +251,24 @@ async function parseRequestObject(requestObject: IDataObject) {
 		axiosConfig.params = requestObject.qs as IDataObject;
 	}
 
-	if (requestObject.useQuerystring === true) {
+	if (
+		requestObject.useQuerystring === true ||
+		// @ts-ignore
+		requestObject.qsStringifyOptions?.arrayFormat === 'repeat'
+	) {
 		axiosConfig.paramsSerializer = (params) => {
 			return stringify(params, { arrayFormat: 'repeat' });
+		};
+	} else if (requestObject.useQuerystring === false) {
+		axiosConfig.paramsSerializer = (params) => {
+			return stringify(params, { arrayFormat: 'indices' });
+		};
+	}
+
+	// @ts-ignore
+	if (requestObject.qsStringifyOptions?.arrayFormat === 'brackets') {
+		axiosConfig.paramsSerializer = (params) => {
+			return stringify(params, { arrayFormat: 'brackets' });
 		};
 	}
 
@@ -290,7 +305,7 @@ async function parseRequestObject(requestObject: IDataObject) {
 			});
 		}
 	}
-	if (requestObject.json === false) {
+	if (requestObject.json === false || requestObject.json === undefined) {
 		// Prevent json parsing
 		axiosConfig.transformResponse = (res) => res;
 	}
@@ -303,7 +318,7 @@ async function parseRequestObject(requestObject: IDataObject) {
 		axiosConfig.maxRedirects = 0;
 	}
 	if (
-		requestObject.followAllRedirect === false &&
+		requestObject.followAllRedirects === false &&
 		((requestObject.method as string | undefined) || 'get').toLowerCase() !== 'get'
 	) {
 		axiosConfig.maxRedirects = 0;
@@ -337,6 +352,7 @@ async function parseRequestObject(requestObject: IDataObject) {
 		axiosConfig.headers = Object.assign(axiosConfig.headers || {}, { accept: '*/*' });
 	}
 	if (
+		requestObject.json !== false &&
 		axiosConfig.data !== undefined &&
 		!(axiosConfig.data instanceof Buffer) &&
 		!allHeaders.some((headerKey) => headerKey.toLowerCase() === 'content-type')
@@ -419,6 +435,16 @@ async function proxyRequestToAxios(
 				}
 			})
 			.catch((error) => {
+				if (configObject.simple === true && error.response) {
+					resolve({
+						body: error.response.data,
+						headers: error.response.headers,
+						statusCode: error.response.status,
+						statusMessage: error.response.statusText,
+					});
+					return;
+				}
+
 				Logger.debug('Request proxied to Axios failed', { error });
 				// Axios hydrates the original error with more data. We extract them.
 				// https://github.com/axios/axios/blob/master/lib/core/enhanceError.js
@@ -427,7 +453,7 @@ async function proxyRequestToAxios(
 				error.cause = errorData;
 				error.error = error.response?.data || errorData;
 				error.statusCode = error.response?.status;
-				error.options = config;
+				error.options = config || {};
 
 				// Remove not needed data and so also remove circular references
 				error.request = undefined;
@@ -716,16 +742,20 @@ export async function requestOAuth2(
 
 			credentials.oauthTokenData = newToken.data;
 
-			// Find the name of the credentials
+			// Find the credentials
 			if (!node.credentials || !node.credentials[credentialsType]) {
 				throw new Error(
 					`The node "${node.name}" does not have credentials of type "${credentialsType}"!`,
 				);
 			}
-			const name = node.credentials[credentialsType];
+			const nodeCredentials = node.credentials[credentialsType];
 
 			// Save the refreshed token
-			await additionalData.credentialsHelper.updateCredentials(name, credentialsType, credentials);
+			await additionalData.credentialsHelper.updateCredentials(
+				nodeCredentials,
+				credentialsType,
+				credentials,
+			);
 
 			Logger.debug(
 				`OAuth2 token for "${credentialsType}" used by node "${node.name}" has been saved to database successfully.`,
@@ -933,25 +963,26 @@ export async function getCredentials(
 		} as ICredentialsExpressionResolveValues;
 	}
 
-	let name = node.credentials[type];
+	const nodeCredentials = node.credentials[type];
 
-	if (name.charAt(0) === '=') {
-		// If the credential name is an expression resolve it
-		const additionalKeys = getAdditionalKeys(additionalData);
-		name = workflow.expression.getParameterValue(
-			name,
-			runExecutionData || null,
-			runIndex || 0,
-			itemIndex || 0,
-			node.name,
-			connectionInputData || [],
-			mode,
-			additionalKeys,
-		) as string;
-	}
+	// TODO: solve using credentials via expression
+	// if (name.charAt(0) === '=') {
+	// 	// If the credential name is an expression resolve it
+	// 	const additionalKeys = getAdditionalKeys(additionalData);
+	// 	name = workflow.expression.getParameterValue(
+	// 		name,
+	// 		runExecutionData || null,
+	// 		runIndex || 0,
+	// 		itemIndex || 0,
+	// 		node.name,
+	// 		connectionInputData || [],
+	// 		mode,
+	// 		additionalKeys,
+	// 	) as string;
+	// }
 
 	const decryptedDataObject = await additionalData.credentialsHelper.getDecrypted(
-		name,
+		nodeCredentials,
 		type,
 		mode,
 		false,

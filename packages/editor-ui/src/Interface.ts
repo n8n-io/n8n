@@ -249,7 +249,7 @@ export interface IActivationError {
 }
 
 export interface ICredentialsResponse extends ICredentialsEncrypted {
-	id?: string;
+	id: string;
 	createdAt: number | string;
 	updatedAt: number | string;
 }
@@ -578,6 +578,7 @@ export interface IRootState {
 	pushConnectionActive: boolean;
 	saveDataErrorExecution: string;
 	saveDataSuccessExecution: string;
+	saveManualExecutions: boolean;
 	timezone: string;
 	stateIsDirty: boolean;
 	executionTimeout: number;
