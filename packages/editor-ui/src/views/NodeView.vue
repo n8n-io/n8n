@@ -1312,8 +1312,6 @@ export default mixins(
 				}
 			},
 			initNodeView () {
-
-
 				this.instance.importDefaults({
 					Connector: ['Bezier', { curviness: 150 }],
 					Endpoint: ['Dot', { radius: 5 }],
@@ -1466,7 +1464,7 @@ export default mixins(
 									id: 'output-name-label',
 									label: outputName,
 									cssClass: 'connection-output-name-label',
-									location: 0.2,
+									location: 30,
 								},
 							]);
 						}
