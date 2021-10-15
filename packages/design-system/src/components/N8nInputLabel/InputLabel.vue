@@ -85,7 +85,7 @@ export default {
 
 .label {
 	* {
-		margin-right: var(--spacing-4xs);
+		margin-right: var(--spacing-5xs);
 	}
 }
 

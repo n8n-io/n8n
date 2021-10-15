@@ -11,12 +11,14 @@
 				:label="credentialTypeNames[credentialTypeDescription.name]"
 				:bold="false"
 				size="small"
+
+				:set="issues = getIssues(credentialTypeDescription.name)"
 			>
 				<div v-if="isReadOnly">
 					<n8n-input disabled :value="selected && selected[credentialTypeDescription.name] && selected[credentialTypeDescription.name].name" size="small" />
 				</div>
 
-				<div :class="$style.input"  v-else >
+				<div :class="issues.length ? $style.hasIssues : $style.input" v-else >
 					<n8n-select :value="getSelectedId(credentialTypeDescription.name)" @change="(value) => onCredentialSelected(credentialTypeDescription.name, value)" placeholder="Select Credential" size="small">
 						<n8n-option
 							v-for="(item) in credentialOptions[credentialTypeDescription.name]"
@@ -32,15 +34,15 @@
 						</n8n-option>
 					</n8n-select>
 
-					<div :class="$style.warning" v-if="getIssues(credentialTypeDescription.name).length">
+					<div :class="$style.warning" v-if="issues.length">
 						<n8n-tooltip placement="top" >
-							<div slot="content" v-html="'Issues:<br />&nbsp;&nbsp;- ' + getIssues(credentialTypeDescription.name).join('<br />&nbsp;&nbsp;- ')"></div>
+							<div slot="content" v-html="'Issues:<br />&nbsp;&nbsp;- ' + issues.join('<br />&nbsp;&nbsp;- ')"></div>
 							<font-awesome-icon icon="exclamation-triangle" />
 						</n8n-tooltip>
 					</div>
 
-					<div :class="$style.edit" v-if="selected[credentialTypeDescription.name] && isCredentialValid(credentialTypeDescription.name)">
-						<font-awesome-icon icon="pen" @click="editCredential(credentialTypeDescription.name)" class="update-credentials clickable" title="Update Credentials" />
+					<div :class="$style.edit" v-if="selected[credentialTypeDescription.name] && isCredentialExisting(credentialTypeDescription.name)">
+						<font-awesome-icon icon="pen" @click="editCredential(credentialTypeDescription.name)" class="clickable" title="Update Credentials" />
 					</div>
 				</div>
 			</n8n-input-label>
@@ -314,5 +316,10 @@ export default mixins(
 .input {
 	display: flex;
 	align-items: center;
+}
+
+.hasIssues {
+	composes: input;
+	--input-border-color: var(--color-danger);
 }
 </style>
