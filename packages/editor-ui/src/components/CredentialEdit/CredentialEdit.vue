@@ -208,14 +208,16 @@ export default mixins(showMessage, nodeHelpers).extend({
 			activeNode: this.$store.getters.activeNode,
 		});
 
-		if (this.credentialId) {
-			if (!this.requiredPropertiesFilled) {
-				this.showValidationWarning = true;
+		setTimeout(() => {
+			if (this.credentialId) {
+				if (!this.requiredPropertiesFilled) {
+					this.showValidationWarning = true;
+				}
+				else {
+					this.retestCredential();
+				}
 			}
-			else {
-				this.retestCredential();
-			}
-		}
+		}, 0);
 
 		this.loading = false;
 	},
@@ -329,7 +331,11 @@ export default mixins(showMessage, nodeHelpers).extend({
 					continue;
 				}
 
-				if (!this.credentialData[property.name]) {
+				if (property.type === 'string' && !this.credentialData[property.name]) {
+					return false;
+				}
+
+				if (property.type === 'number' && typeof this.credentialData[property.name] !== 'number') {
 					return false;
 				}
 			}
@@ -551,6 +557,7 @@ export default mixins(showMessage, nodeHelpers).extend({
 			);
 
 			const details: ICredentialsDecrypted = {
+				id: this.credentialId,
 				name: this.credentialName,
 				type: this.credentialTypeName!,
 				data: data as unknown as ICredentialDataDecryptedObject,
@@ -599,6 +606,7 @@ export default mixins(showMessage, nodeHelpers).extend({
 			);
 
 			const credentialDetails: ICredentialsDecrypted = {
+				id: this.credentialId,
 				name: this.credentialName,
 				type: this.credentialTypeName!,
 				data: data as unknown as ICredentialDataDecryptedObject,
