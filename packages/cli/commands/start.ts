@@ -130,6 +130,8 @@ export class Start extends Command {
 				});
 				executingWorkflows = activeExecutionsInstance.getActiveExecutions();
 			}
+
+			await InternalHooksManager.getInstance().onN8nStop();
 		} catch (error) {
 			console.error('There was an error shutting down n8n.', error);
 		}
