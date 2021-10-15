@@ -18,7 +18,7 @@ export const nodeBase = mixins(
 	},
 	computed: {
 		data (): INodeUi {
-			return this.$store.getters.nodeByName(this.name);
+			return this.$store.getters.getNodeByName(this.name);
 		},
 		hasIssues (): boolean {
 			if (this.data.issues !== undefined && Object.keys(this.data.issues).length) {
@@ -33,11 +33,13 @@ export const nodeBase = mixins(
 			return this.$store.getters.getNodeIndex(this.data.name).toString();
 		},
 		nodePosition (): object {
+			const node = this.$store.getters.nodesByName[this.name];
+			console.log(node);
 			const returnStyles: {
 				[key: string]: string;
 			} = {
-				left: this.data.position[0] + 'px',
-				top: this.data.position[1] + 'px',
+				left: node.position[0] + 'px',
+				top: node.position[1] + 'px',
 			};
 
 			return returnStyles;

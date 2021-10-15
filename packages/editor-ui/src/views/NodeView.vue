@@ -745,7 +745,7 @@ export default mixins(
 								// Ignore current node
 								continue;
 							}
-							siblingNode = this.$store.getters.nodeByName(ouputConnection.node);
+							siblingNode = this.$store.getters.getNodeByName(ouputConnection.node);
 
 							if (e.key === 'ArrowUp') {
 								// Get the next node on the left
@@ -827,6 +827,25 @@ export default mixins(
 
 				// At the end select the previously selected node again
 				this.nodeSelectedByName(lastSelectedNode.name);
+			},
+
+			pushDownstreamNodes (margin: number) {
+				const lastSelectedNode = this.lastSelectedNode;
+				if (lastSelectedNode === null) {
+					return;
+				}
+				const workflow = this.getWorkflow();
+				for (const nodeName of workflow.getChildNodes(lastSelectedNode.name)) {
+					const node = this.$store.getters.nodesByName[nodeName] as INodeUi;
+					const updateInformation = {
+						name: nodeName,
+						properties: {
+							position: [node.position[0] + margin, node.position[1]],
+						},
+					};
+
+					this.$store.commit('updateNodeProperties', updateInformation);
+				}
 			},
 
 			cutSelectedNodes () {
@@ -1074,7 +1093,7 @@ export default mixins(
 			},
 
 			nodeDeselectedByName (nodeName: string) {
-				const node = this.$store.getters.nodeByName(nodeName);
+				const node = this.$store.getters.getNodeByName(nodeName);
 				if (node) {
 					this.nodeDeselected(node);
 				}
@@ -1085,7 +1104,7 @@ export default mixins(
 					this.deselectAllNodes();
 				}
 
-				const node = this.$store.getters.nodeByName(nodeName);
+				const node = this.$store.getters.getNodeByName(nodeName);
 				if (node) {
 					this.nodeSelected(node);
 				}
@@ -1180,6 +1199,7 @@ export default mixins(
 				const lastSelectedNode = this.lastSelectedNode;
 				const lastSelectedNodeOutputIndex = this.$store.getters.lastSelectedNodeOutputIndex;
 				if (lastSelectedNode) {
+					this.pushDownstreamNodes(200);
 					// If a node is active then add the new node directly after the current one
 					// newNodeData.position = [activeNode.position[0], activeNode.position[1] + 60];
 					newNodeData.position = getNewNodePosition(
@@ -1319,8 +1339,8 @@ export default mixins(
 					const sourceNodeName = this.$store.getters.getNodeNameByIndex(sourceInfo.nodeIndex);
 					const targetNodeName = this.$store.getters.getNodeNameByIndex(targetInfo.nodeIndex);
 
-					const sourceNode = this.$store.getters.nodeByName(sourceNodeName);
-					const targetNode = this.$store.getters.nodeByName(targetNodeName);
+					const sourceNode = this.$store.getters.getNodeByName(sourceNodeName);
+					const targetNode = this.$store.getters.getNodeByName(targetNodeName);
 
 					// @ts-ignore
 					info.connection.removeOverlay('drop-add-node');
@@ -1652,7 +1672,7 @@ export default mixins(
 					return;
 				}
 
-				const node = this.$store.getters.nodeByName(nodeName);
+				const node = this.$store.getters.getNodeByName(nodeName);
 
 				const nodeTypeData: INodeTypeDescription = this.$store.getters.nodeType(node.type);
 				if (nodeTypeData.maxNodes !== undefined && this.getNodeTypeCount(node.type) >= nodeTypeData.maxNodes) {
@@ -1710,7 +1730,7 @@ export default mixins(
 					return;
 				}
 
-				const node = this.$store.getters.nodeByName(nodeName);
+				const node = this.$store.getters.getNodeByName(nodeName);
 
 				// "requiredNodeTypes" are also defined in cli/commands/run.ts
 				const requiredNodeTypes = [ 'n8n-nodes-base.start' ];

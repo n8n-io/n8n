@@ -763,7 +763,13 @@ export const store = new Vuex.Store({
 		allNodes: (state): INodeUi[] => {
 			return state.workflow.nodes;
 		},
-		nodeByName: (state) => (nodeName: string): INodeUi | null => {
+		nodesByName: (state: IRootState): {[name: string]: INodeUi} => {
+			return state.workflow.nodes.reduce((accu: {[name: string]: INodeUi}, node) => {
+				accu[node.name] = node;
+				return accu;
+			}, {});
+		},
+		getNodeByName: (state) => (nodeName: string): INodeUi | null => {
 			const foundNode = state.workflow.nodes.find(node => {
 				return node.name === nodeName;
 			});
@@ -796,10 +802,10 @@ export const store = new Vuex.Store({
 			return foundType;
 		},
 		activeNode: (state, getters): INodeUi | null => {
-			return getters.nodeByName(state.activeNode);
+			return getters.getNodeByName(state.activeNode);
 		},
 		lastSelectedNode: (state, getters): INodeUi | null => {
-			return getters.nodeByName(state.lastSelectedNode);
+			return getters.getNodeByName(state.lastSelectedNode);
 		},
 		lastSelectedNodeOutputIndex: (state, getters): number | null => {
 			return state.lastSelectedNodeOutputIndex;

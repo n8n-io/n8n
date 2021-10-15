@@ -316,7 +316,7 @@ export default mixins(
 				// Update the values on the node
 				this.$store.commit('updateNodeProperties', updateInformation);
 
-				const node = this.$store.getters.nodeByName(updateInformation.name);
+				const node = this.$store.getters.getNodeByName(updateInformation.name);
 
 				// Update the issues
 				this.updateNodeCredentialIssues(node);
@@ -336,7 +336,7 @@ export default mixins(
 				// Save the node name before we commit the change because
 				// we need the old name to rename the node properly
 				const nodeNameBefore = parameterData.node || this.node.name;
-				const node = this.$store.getters.nodeByName(nodeNameBefore);
+				const node = this.$store.getters.getNodeByName(nodeNameBefore);
 				if (parameterData.name === 'name') {
 					// Name of node changed so we have to set also the new node name as active
 
