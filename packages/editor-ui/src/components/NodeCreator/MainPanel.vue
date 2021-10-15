@@ -88,7 +88,6 @@ export default mixins(externalHooks).extend({
 		filteredNodeTypes(): INodeCreateElement[] {
 			const nodeTypes: INodeCreateElement[] = this.searchItems;
 			const filter = this.searchFilter;
-
 			const returnData = nodeTypes.filter((el: INodeCreateElement) => {
 				const nodeType = (el.properties as INodeItemProps).nodeType;
 				return filter && matchesSelectType(el, this.selectedType) && matchesNodeType(el, filter);
@@ -215,11 +214,11 @@ export default mixins(externalHooks).extend({
 				this.activeIndex = Math.max(this.activeIndex, 0);
 			} else if (e.key === 'Enter' && activeNodeType) {
 				this.selected(activeNodeType);
-			} else if (e.key === 'ArrowRight' && activeNodeType.type === 'subcategory') {
+			} else if (e.key === 'ArrowRight' && activeNodeType && activeNodeType.type === 'subcategory') {
 				this.selected(activeNodeType);
-			} else if (e.key === 'ArrowRight' && activeNodeType.type === 'category' && !activeNodeType.properties.expanded) {
+			} else if (e.key === 'ArrowRight' && activeNodeType && activeNodeType.type === 'category' && !activeNodeType.properties.expanded) {
 				this.selected(activeNodeType);
-			} else if (e.key === 'ArrowLeft' && activeNodeType.type === 'category' && activeNodeType.properties.expanded) {
+			} else if (e.key === 'ArrowLeft' && activeNodeType && activeNodeType.type === 'category' && activeNodeType.properties.expanded) {
 				this.selected(activeNodeType);
 			}
 		},

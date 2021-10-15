@@ -26,12 +26,15 @@ export const newVersions = mixins(
 				}
 
 				message = `${message} <a class="primary-color">More info</a>`;
-				this.$showWarning('Critical update available', message, {
+				this.$showToast({
+					title: 'Critical update available',
+					message,
 					onClick: () => {
 						this.$store.dispatch('ui/openUpdatesPanel');
 					},
 					closeOnClick: true,
 					customClass: 'clickable',
+					type: 'warning',
 					duration: 0,
 				});
 			}

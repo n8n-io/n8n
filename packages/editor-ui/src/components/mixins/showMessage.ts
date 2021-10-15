@@ -6,6 +6,9 @@ import { externalHooks } from '@/components/mixins/externalHooks';
 import { ExecutionError } from 'n8n-workflow';
 import { ElMessageBoxOptions } from 'element-ui/types/message-box';
 import { MessageType } from 'element-ui/types/message';
+import { isChildOf } from './helpers';
+
+let stickyNotificationQueue: ElNotificationComponent[] = [];
 
 export const showMessage = mixins(externalHooks).extend({
 	methods: {
@@ -15,13 +18,29 @@ export const showMessage = mixins(externalHooks).extend({
 				messageData.position = 'bottom-right';
 			}
 
-			return this.$notify(messageData);
+			const notification = this.$notify(messageData);
+
+			if (messageData.duration === 0) {
+				stickyNotificationQueue.push(notification);
+			}
+
+			return notification;
 		},
 
-		$showWarning(title: string, message: string,  config?: {onClick?: () => void, duration?: number, customClass?: string, closeOnClick?: boolean}) {
+		$showToast(config: {
+				title: string,
+				message: string,
+				onClick?: () => void,
+				onClose?: () => void,
+				duration?: number,
+				customClass?: string,
+				closeOnClick?: boolean,
+				onLinkClick?: (e: HTMLLinkElement) => void,
+				type?: MessageType,
+			}) {
 			// eslint-disable-next-line prefer-const
 			let notification: ElNotificationComponent;
-			if (config && config.closeOnClick) {
+			if (config.closeOnClick) {
 				const cb = config.onClick;
 				config.onClick = () => {
 					if (notification) {
@@ -33,11 +52,34 @@ export const showMessage = mixins(externalHooks).extend({
 				};
 			}
 
+			if (config.onLinkClick) {
+				const onLinkClick = (e: MouseEvent) => {
+					if (e && e.target && config.onLinkClick && isChildOf(notification.$el, e.target as Element)) {
+						const target = e.target as HTMLElement;
+						if (target && target.tagName === 'A') {
+							config.onLinkClick(e.target as HTMLLinkElement);
+						}
+					}
+				};
+				window.addEventListener('click', onLinkClick);
+
+				const cb = config.onClose;
+				config.onClose = () => {
+					window.removeEventListener('click', onLinkClick);
+					if (cb) {
+						cb();
+					}
+				};
+			}
+
 			notification = this.$showMessage({
-				title,
-				message,
-				type: 'warning',
-				...(config || {}),
+				title: config.title,
+				message: config.message,
+				onClick: config.onClick,
+				onClose: config.onClose,
+				duration: config.duration,
+				customClass: config.customClass,
+				type: config.type,
 			});
 
 			return notification;
@@ -97,6 +139,16 @@ export const showMessage = mixins(externalHooks).extend({
 			} catch (e) {
 				return false;
 			}
+		},
+
+		clearAllStickyNotifications() {
+			stickyNotificationQueue.map((notification: ElNotificationComponent) => {
+				if (notification) {
+					notification.close();
+				}
+			});
+
+			stickyNotificationQueue = [];
 		},
 
 		// @ts-ignore

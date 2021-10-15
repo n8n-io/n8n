@@ -66,18 +66,25 @@ import {
 	ICredentialType,
 	IDataObject,
 	INodeCredentials,
+	INodeCredentialsDetails,
 	INodeParameters,
 	INodePropertyOptions,
+	INodeType,
 	INodeTypeDescription,
+	INodeTypeNameVersion,
 	IRunData,
+	INodeVersionedType,
 	IWorkflowBase,
 	IWorkflowCredentials,
 	LoggerProxy,
 	NodeCredentialTestRequest,
 	NodeCredentialTestResult,
+	NodeHelpers,
 	Workflow,
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
+
+import { NodeVersionedType } from 'n8n-nodes-base';
 
 import * as basicAuth from 'basic-auth';
 import * as compression from 'compression';
@@ -636,6 +643,9 @@ class App {
 						});
 					}
 
+					// check credentials for old format
+					await WorkflowHelpers.replaceInvalidCredentials(newWorkflow);
+
 					await this.externalHooks.run('workflow.create', [newWorkflow]);
 
 					await WorkflowHelpers.validateWorkflow(newWorkflow);
@@ -776,6 +786,9 @@ class App {
 					const { id } = req.params;
 					updateData.id = id;
 
+					// check credentials for old format
+					await WorkflowHelpers.replaceInvalidCredentials(updateData as WorkflowEntity);
+
 					await this.externalHooks.run('workflow.update', [updateData]);
 
 					const isActive = await this.activeWorkflowRunner.isActive(id);
@@ -882,7 +895,6 @@ class App {
 				await this.externalHooks.run('workflow.delete', [id]);
 
 				const isActive = await this.activeWorkflowRunner.isActive(id);
-
 				if (isActive) {
 					// Before deleting a workflow deactivate it
 					await this.activeWorkflowRunner.remove(id);
@@ -1060,7 +1072,9 @@ class App {
 			`/${this.restEndpoint}/node-parameter-options`,
 			ResponseHelper.send(
 				async (req: express.Request, res: express.Response): Promise<INodePropertyOptions[]> => {
-					const nodeType = req.query.nodeType as string;
+					const nodeTypeAndVersion = JSON.parse(
+						`${req.query.nodeTypeAndVersion}`,
+					) as INodeTypeNameVersion;
 					const path = req.query.path as string;
 					let credentials: INodeCredentials | undefined;
 					const currentNodeParameters = JSON.parse(
@@ -1075,10 +1089,10 @@ class App {
 
 					// @ts-ignore
 					const loadDataInstance = new LoadNodeParameterOptions(
-						nodeType,
+						nodeTypeAndVersion,
 						nodeTypes,
 						path,
-						JSON.parse(`${req.query.currentNodeParameters}`),
+						currentNodeParameters,
 						credentials,
 					);
 
@@ -1095,46 +1109,58 @@ class App {
 			ResponseHelper.send(
 				async (req: express.Request, res: express.Response): Promise<INodeTypeDescription[]> => {
 					const returnData: INodeTypeDescription[] = [];
+					const onlyLatest = req.query.onlyLatest === 'true';
 
 					const nodeTypes = NodeTypes();
-
 					const allNodes = nodeTypes.getAll();
 
-					allNodes.forEach((nodeData) => {
-						// Make a copy of the object. If we don't do this, then when
-						// The method below is called the properties are removed for good
-						// This happens because nodes are returned as reference.
-						const nodeInfo: INodeTypeDescription = { ...nodeData.description };
+					const getNodeDescription = (nodeType: INodeType): INodeTypeDescription => {
+						const nodeInfo: INodeTypeDescription = { ...nodeType.description };
 						if (req.query.includeProperties !== 'true') {
 							// @ts-ignore
 							delete nodeInfo.properties;
 						}
-						returnData.push(nodeInfo);
-					});
+						return nodeInfo;
+					};
+
+					if (onlyLatest) {
+						allNodes.forEach((nodeData) => {
+							const nodeType = NodeHelpers.getVersionedTypeNode(nodeData);
+							const nodeInfo: INodeTypeDescription = getNodeDescription(nodeType);
+							returnData.push(nodeInfo);
+						});
+					} else {
+						allNodes.forEach((nodeData) => {
+							const allNodeTypes = NodeHelpers.getVersionedTypeNodeAll(nodeData);
+							allNodeTypes.forEach((element) => {
+								const nodeInfo: INodeTypeDescription = getNodeDescription(element);
+								returnData.push(nodeInfo);
+							});
+						});
+					}
 
 					return returnData;
 				},
 			),
 		);
 
-		// Returns node information baesd on namese
+		// Returns node information based on node names and versions
 		this.app.post(
 			`/${this.restEndpoint}/node-types`,
 			ResponseHelper.send(
 				async (req: express.Request, res: express.Response): Promise<INodeTypeDescription[]> => {
-					const nodeNames = _.get(req, 'body.nodeNames', []) as string[];
+					const nodeInfos = _.get(req, 'body.nodeInfos', []) as INodeTypeNameVersion[];
 					const nodeTypes = NodeTypes();
 
-					return nodeNames
-						.map((name) => {
-							try {
-								return nodeTypes.getByName(name);
-							} catch (e) {
-								return undefined;
-							}
-						})
-						.filter((nodeData) => !!nodeData)
-						.map((nodeData) => nodeData!.description);
+					const returnData: INodeTypeDescription[] = [];
+					nodeInfos.forEach((nodeInfo) => {
+						const nodeType = nodeTypes.getByNameAndVersion(nodeInfo.name, nodeInfo.version);
+						if (nodeType?.description) {
+							returnData.push(nodeType.description);
+						}
+					});
+
+					return returnData;
 				},
 			),
 		);
@@ -1156,7 +1182,7 @@ class App {
 					}`;
 
 					const nodeTypes = NodeTypes();
-					const nodeType = nodeTypes.getByName(nodeTypeName);
+					const nodeType = nodeTypes.getByNameAndVersion(nodeTypeName);
 
 					if (nodeType === undefined) {
 						res.status(404).send('The nodeType is not known.');
@@ -1274,26 +1300,9 @@ class App {
 						throw new Error('Credentials have to have a name set!');
 					}
 
-					// Check if credentials with the same name and type exist already
-					const findQuery = {
-						where: {
-							name: incomingData.name,
-							type: incomingData.type,
-						},
-					} as FindOneOptions;
-
-					const checkResult = await Db.collections.Credentials!.findOne(findQuery);
-					if (checkResult !== undefined) {
-						throw new ResponseHelper.ResponseError(
-							`Credentials with the same type and name exist already.`,
-							undefined,
-							400,
-						);
-					}
-
 					// Encrypt the data
 					const credentials = new Credentials(
-						incomingData.name,
+						{ id: null, name: incomingData.name },
 						incomingData.type,
 						incomingData.nodesAccess,
 					);
@@ -1301,10 +1310,6 @@ class App {
 					const newCredentialsData = credentials.getDataToSave() as ICredentialsDb;
 
 					await this.externalHooks.run('credentials.create', [newCredentialsData]);
-
-					// Add special database related data
-
-					// TODO: also add user automatically depending on who is logged in, if anybody is logged in
 
 					// Save the credentials in DB
 					const result = await Db.collections.Credentials!.save(newCredentialsData);
@@ -1342,14 +1347,42 @@ class App {
 						) {
 							return false;
 						}
-						const credentialTestable = node.description.credentials?.find((credential) => {
-							const testFunctionSearch =
-								credential.name === credentialType && !!credential.testedBy;
-							if (testFunctionSearch) {
-								foundTestFunction = node.methods!.credentialTest![credential.testedBy!];
+
+						if (node instanceof NodeVersionedType) {
+							const versionNames = Object.keys((node as INodeVersionedType).nodeVersions);
+							for (const versionName of versionNames) {
+								const nodeType = (node as INodeVersionedType).nodeVersions[
+									versionName as unknown as number
+								];
+								// eslint-disable-next-line @typescript-eslint/no-loop-func
+								const credentialTestable = nodeType.description.credentials?.find((credential) => {
+									const testFunctionSearch =
+										credential.name === credentialType && !!credential.testedBy;
+									if (testFunctionSearch) {
+										foundTestFunction = (node as unknown as INodeType).methods!.credentialTest![
+											credential.testedBy!
+										];
+									}
+									return testFunctionSearch;
+								});
+								if (credentialTestable) {
+									return true;
+								}
 							}
-							return testFunctionSearch;
-						});
+							return false;
+						}
+						const credentialTestable = (node as INodeType).description.credentials?.find(
+							(credential) => {
+								const testFunctionSearch =
+									credential.name === credentialType && !!credential.testedBy;
+								if (testFunctionSearch) {
+									foundTestFunction = (node as INodeType).methods!.credentialTest![
+										credential.testedBy!
+									];
+								}
+								return testFunctionSearch;
+							},
+						);
 						return !!credentialTestable;
 					});
 
@@ -1398,24 +1431,6 @@ class App {
 						}
 					}
 
-					// Check if credentials with the same name and type exist already
-					const findQuery = {
-						where: {
-							id: Not(id),
-							name: incomingData.name,
-							type: incomingData.type,
-						},
-					} as FindOneOptions;
-
-					const checkResult = await Db.collections.Credentials!.findOne(findQuery);
-					if (checkResult !== undefined) {
-						throw new ResponseHelper.ResponseError(
-							`Credentials with the same type and name exist already.`,
-							undefined,
-							400,
-						);
-					}
-
 					const encryptionKey = await UserSettings.getEncryptionKey();
 					if (encryptionKey === undefined) {
 						throw new Error('No encryption key got found to encrypt the credentials!');
@@ -1432,7 +1447,7 @@ class App {
 					}
 
 					const currentlySavedCredentials = new Credentials(
-						result.name,
+						result as INodeCredentialsDetails,
 						result.type,
 						result.nodesAccess,
 						result.data,
@@ -1447,7 +1462,7 @@ class App {
 
 					// Encrypt the data
 					const credentials = new Credentials(
-						incomingData.name,
+						{ id, name: incomingData.name },
 						incomingData.type,
 						incomingData.nodesAccess,
 					);
@@ -1516,7 +1531,7 @@ class App {
 						}
 
 						const credentials = new Credentials(
-							result.name,
+							result as INodeCredentialsDetails,
 							result.type,
 							result.nodesAccess,
 							result.data,
@@ -1660,7 +1675,7 @@ class App {
 				const mode: WorkflowExecuteMode = 'internal';
 				const credentialsHelper = new CredentialsHelper(encryptionKey);
 				const decryptedDataOriginal = await credentialsHelper.getDecrypted(
-					result.name,
+					result as INodeCredentialsDetails,
 					result.type,
 					mode,
 					true,
@@ -1719,7 +1734,11 @@ class App {
 				}`;
 
 				// Encrypt the data
-				const credentials = new Credentials(result.name, result.type, result.nodesAccess);
+				const credentials = new Credentials(
+					result as INodeCredentialsDetails,
+					result.type,
+					result.nodesAccess,
+				);
 
 				credentials.setData(decryptedDataOriginal, encryptionKey);
 				const newCredentialsData = credentials.getDataToSave() as unknown as ICredentialsDb;
@@ -1776,13 +1795,13 @@ class App {
 					// Decrypt the currently saved credentials
 					const workflowCredentials: IWorkflowCredentials = {
 						[result.type]: {
-							[result.name]: result as ICredentialsEncrypted,
+							[result.id.toString()]: result as ICredentialsEncrypted,
 						},
 					};
 					const mode: WorkflowExecuteMode = 'internal';
 					const credentialsHelper = new CredentialsHelper(encryptionKey);
 					const decryptedDataOriginal = await credentialsHelper.getDecrypted(
-						result.name,
+						result as INodeCredentialsDetails,
 						result.type,
 						mode,
 						true,
@@ -1821,7 +1840,11 @@ class App {
 
 					decryptedDataOriginal.oauthTokenData = oauthTokenJson;
 
-					const credentials = new Credentials(result.name, result.type, result.nodesAccess);
+					const credentials = new Credentials(
+						result as INodeCredentialsDetails,
+						result.type,
+						result.nodesAccess,
+					);
 					credentials.setData(decryptedDataOriginal, encryptionKey);
 					const newCredentialsData = credentials.getDataToSave() as unknown as ICredentialsDb;
 					// Add special database related data
@@ -1866,7 +1889,7 @@ class App {
 				const mode: WorkflowExecuteMode = 'internal';
 				const credentialsHelper = new CredentialsHelper(encryptionKey);
 				const decryptedDataOriginal = await credentialsHelper.getDecrypted(
-					result.name,
+					result as INodeCredentialsDetails,
 					result.type,
 					mode,
 					true,
@@ -1903,7 +1926,11 @@ class App {
 				const oAuthObj = new clientOAuth2(oAuthOptions);
 
 				// Encrypt the data
-				const credentials = new Credentials(result.name, result.type, result.nodesAccess);
+				const credentials = new Credentials(
+					result as INodeCredentialsDetails,
+					result.type,
+					result.nodesAccess,
+				);
 				decryptedDataOriginal.csrfSecret = csrfSecret;
 
 				credentials.setData(decryptedDataOriginal, encryptionKey);
@@ -1992,14 +2019,14 @@ class App {
 					// Decrypt the currently saved credentials
 					const workflowCredentials: IWorkflowCredentials = {
 						[result.type]: {
-							[result.name]: result as ICredentialsEncrypted,
+							[result.id.toString()]: result as ICredentialsEncrypted,
 						},
 					};
 
 					const mode: WorkflowExecuteMode = 'internal';
 					const credentialsHelper = new CredentialsHelper(encryptionKey);
 					const decryptedDataOriginal = await credentialsHelper.getDecrypted(
-						result.name,
+						result as INodeCredentialsDetails,
 						result.type,
 						mode,
 						true,
@@ -2081,7 +2108,11 @@ class App {
 
 					_.unset(decryptedDataOriginal, 'csrfSecret');
 
-					const credentials = new Credentials(result.name, result.type, result.nodesAccess);
+					const credentials = new Credentials(
+						result as INodeCredentialsDetails,
+						result.type,
+						result.nodesAccess,
+					);
 					credentials.setData(decryptedDataOriginal, encryptionKey);
 					const newCredentialsData = credentials.getDataToSave() as unknown as ICredentialsDb;
 					// Add special database related data

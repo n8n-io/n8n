@@ -1,6 +1,9 @@
 import {
+	ERROR_TRIGGER_NODE_NAME,
 	PLACEHOLDER_FILLED_AT_EXECUTION_TIME,
 	PLACEHOLDER_EMPTY_WORKFLOW_ID,
+	START_NODE_TYPE,
+	WEBHOOK_NODE_NAME,
 } from '@/constants';
 
 import {
@@ -16,6 +19,7 @@ import {
 	INodeTypes,
 	INodeTypeData,
 	INodeTypeDescription,
+	INodeVersionedType,
 	IRunData,
 	IRunExecutionData,
 	IWorfklowIssues,
@@ -143,13 +147,39 @@ export const workflowHelpers = mixins(
 			},
 
 			// Checks if everything in the workflow is complete and ready to be executed
-			checkReadyForExecution (workflow: Workflow) {
+			checkReadyForExecution (workflow: Workflow, lastNodeName?: string) {
 				let node: INode;
 				let nodeType: INodeType | undefined;
 				let nodeIssues: INodeIssues | null = null;
 				const workflowIssues: IWorfklowIssues = {};
 
-				for (const nodeName of Object.keys(workflow.nodes)) {
+				let checkNodes = Object.keys(workflow.nodes);
+				if (lastNodeName) {
+					checkNodes = workflow.getParentNodes(lastNodeName);
+					checkNodes.push(lastNodeName);
+				} else {
+					// As webhook nodes always take presidence check first
+					// if there are any
+					let checkWebhook: string[] = [];
+					for (const nodeName of Object.keys(workflow.nodes)) {
+						if (workflow.nodes[nodeName].disabled !== true && workflow.nodes[nodeName].type === WEBHOOK_NODE_NAME) {
+							checkWebhook = [nodeName, ...checkWebhook, ...workflow.getChildNodes(nodeName)];
+						}
+					}
+
+					if (checkWebhook.length) {
+						checkNodes = checkWebhook;
+					} else {
+						// If no webhook nodes got found try to find another trigger node
+						const startNode = workflow.getStartNode();
+						if (startNode !== undefined) {
+							checkNodes = workflow.getChildNodes(startNode.name);
+							checkNodes.push(startNode.name);
+						}
+					}
+				}
+
+				for (const nodeName of checkNodes) {
 					nodeIssues = null;
 					node = workflow.nodes[nodeName];
 
@@ -158,7 +188,7 @@ export const workflowHelpers = mixins(
 						continue;
 					}
 
-					nodeType = workflow.nodeTypes.getByName(node.type);
+					nodeType = workflow.nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
 
 					if (nodeType === undefined) {
 						// Node type is not known
@@ -189,11 +219,11 @@ export const workflowHelpers = mixins(
 				const nodeTypes: INodeTypes = {
 					nodeTypes: {},
 					init: async (nodeTypes?: INodeTypeData): Promise<void> => { },
-					getAll: (): INodeType[] => {
+					getAll: (): Array<INodeType | INodeVersionedType> => {
 						// Does not get used in Workflow so no need to return it
 						return [];
 					},
-					getByName: (nodeType: string): INodeType | undefined => {
+					getByName: (nodeType: string): INodeType | INodeVersionedType | undefined => {
 						const nodeTypeDescription = this.$store.getters.nodeType(nodeType);
 
 						if (nodeTypeDescription === null) {
@@ -202,6 +232,21 @@ export const workflowHelpers = mixins(
 
 						return {
 							description: nodeTypeDescription,
+						};
+					},
+					getByNameAndVersion: (nodeType: string, version?: number): INodeType | undefined => {
+						const nodeTypeDescription = this.$store.getters.nodeType(nodeType, version);
+
+						if (nodeTypeDescription === null) {
+							return undefined;
+						}
+
+						return {
+							description: nodeTypeDescription,
+							// As we do not have the trigger/poll functions available in the frontend
+							// we use the information available to figure out what are trigger nodes
+							// @ts-ignore
+							trigger: ![ERROR_TRIGGER_NODE_NAME, START_NODE_TYPE].includes(nodeType) && nodeTypeDescription.inputs.length === 0 && !nodeTypeDescription.webhooks || undefined,
 						};
 					},
 				};
@@ -283,7 +328,7 @@ export const workflowHelpers = mixins(
 
 				// Get the data of the node type that we can get the default values
 				// TODO: Later also has to care about the node-type-version as defaults could be different
-				const nodeType = this.$store.getters.nodeType(node.type) as INodeTypeDescription;
+				const nodeType = this.$store.getters.nodeType(node.type, node.typeVersion) as INodeTypeDescription;
 
 				if (nodeType !== null) {
 					// Node-Type is known so we can save the parameters correctly
@@ -446,7 +491,7 @@ export const workflowHelpers = mixins(
 				}
 			},
 
-			async saveAsNewWorkflow ({name, tags, resetWebhookUrls}: {name?: string, tags?: string[], resetWebhookUrls?: boolean} = {}): Promise<boolean> {
+			async saveAsNewWorkflow ({name, tags, resetWebhookUrls, openInNewWindow}: {name?: string, tags?: string[], resetWebhookUrls?: boolean, openInNewWindow?: boolean} = {}): Promise<boolean> {
 				try {
 					this.$store.commit('addActiveAction', 'workflowSaving');
 
@@ -472,6 +517,12 @@ export const workflowHelpers = mixins(
 						workflowDataRequest.tags = tags;
 					}
 					const workflowData = await this.restApi().createNewWorkflow(workflowDataRequest);
+					if (openInNewWindow) {
+						const routeData = this.$router.resolve({name: 'NodeViewExisting', params: {name: workflowData.id}});
+						window.open(routeData.href, '_blank');
+						this.$store.commit('removeActiveAction', 'workflowSaving');
+						return true;
+					}
 
 					this.$store.commit('setActive', workflowData.active || false);
 					this.$store.commit('setWorkflowId', workflowData.id);
@@ -486,7 +537,7 @@ export const workflowHelpers = mixins(
 						} as IUpdateInformation;
 						this.$store.commit('setNodeValue', changes);
 					});
-					
+
 					const createdTags = (workflowData.tags || []) as ITag[];
 					const tagIds = createdTags.map((tag: ITag): string => tag.id);
 					this.$store.commit('setWorkflowTagIds', tagIds);

@@ -2,7 +2,9 @@
 	<Modal
 		:name="modalName"
 		:eventBus="modalBus"
-		size="sm"
+		width="50%"
+		:center="true"
+		maxWidth="460px"
 	>
 		<template slot="header">
 			<h2 :class="$style.title">Add new credential</h2>
