@@ -1318,7 +1318,7 @@ export default mixins(
 					Connector: ['Bezier', { curviness: 150 }],
 					Endpoint: ['Dot', { radius: 5 }],
 					DragOptions: { cursor: 'pointer', zIndex: 5000 },
-					PaintStyle: { strokeWidth: 2, stroke: getStyleTokenValue('--color-foreground-dark'), outlineStroke: "transparent", outlineWidth: 16},
+					PaintStyle: { strokeWidth: 2, stroke: getStyleTokenValue('--color-foreground-dark'), outlineStroke: "transparent", outlineWidth: 12},
 					EndpointStyle: { radius: 9, fill: '#acd', stroke: 'red' },
 					HoverPaintStyle: { stroke: '#ff6d5a', lineWidth: 4 },
 					EndpointHoverStyle: { fill: '#ff6d5a', stroke: '#acd' },
