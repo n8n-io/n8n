@@ -1,8 +1,9 @@
 /* eslint-disable @typescript-eslint/no-unsafe-call */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 import TelemetryClient = require('@rudderstack/rudder-sdk-node');
-import { IDataObject } from 'n8n-workflow';
+import { IDataObject, LoggerProxy } from 'n8n-workflow';
 import config = require('../../config');
+import { getLogger } from '../Logger';
 
 interface IExecutionCountsBufferItem {
 	manual_success_count: number;
@@ -27,13 +28,19 @@ export class Telemetry {
 	constructor(instanceId: string) {
 		this.instanceId = instanceId;
 
-		const enabled = config.get('telemetry.enabled') as boolean;
+		const enabled = config.get('diagnostics.enabled') as boolean;
 		if (enabled) {
-			this.client = new TelemetryClient(
-				config.get('telemetry.config.backend.key') as string,
-				config.get('telemetry.config.backend.url') as string,
-				{ logLevel: 'debug' },
-			);
+			const conf = config.get('diagnostics.config.backend') as string;
+			const [key, url] = conf.split(';');
+
+			if (!key || !url) {
+				const logger = getLogger();
+				LoggerProxy.init(logger);
+				logger.warn('Diagnostics backend config is invalid');
+				return;
+			}
+
+			this.client = new TelemetryClient(key, url);
 
 			this.pulseIntervalReference = setInterval(async () => {
 				void this.pulse();
@@ -51,9 +58,11 @@ export class Telemetry {
 				workflow_id: workflowId,
 				...this.executionCountsBuffer[workflowId],
 			});
+			this.executionCountsBuffer[workflowId].manual_error_count = 0;
+			this.executionCountsBuffer[workflowId].manual_success_count = 0;
+			this.executionCountsBuffer[workflowId].prod_error_count = 0;
+			this.executionCountsBuffer[workflowId].prod_success_count = 0;
 		});
-
-		this.executionCountsBuffer = {};
 
 		await this.track('pulse');
 	}
@@ -92,28 +101,49 @@ export class Telemetry {
 	async trackN8nStop(): Promise<void> {
 		clearInterval(this.pulseIntervalReference);
 		await this.pulse();
-		await this.track('User instance stopped');
+		void this.track('User instance stopped');
+		return new Promise<void>((resolve) => {
+			if (this.client) {
+				this.client.flush(resolve);
+			} else {
+				resolve();
+			}
+		});
 	}
 
 	async identify(traits?: IDataObject): Promise<void> {
-		if (this.client) {
-			this.client.identify({
-				userId: this.instanceId,
-				traits: {
-					...traits,
-					instanceId: this.instanceId,
-				},
-			});
-		}
+		return new Promise<void>((resolve) => {
+			if (this.client) {
+				this.client.identify(
+					{
+						userId: this.instanceId,
+						traits: {
+							...traits,
+							instanceId: this.instanceId,
+						},
+					},
+					resolve,
+				);
+			} else {
+				resolve();
+			}
+		});
 	}
 
 	async track(eventName: string, properties?: IDataObject): Promise<void> {
-		if (this.client) {
-			this.client.track({
-				userId: this.instanceId,
-				event: eventName,
-				properties,
-			});
-		}
+		return new Promise<void>((resolve) => {
+			if (this.client) {
+				this.client.track(
+					{
+						userId: this.instanceId,
+						event: eventName,
+						properties,
+					},
+					resolve,
+				);
+			} else {
+				resolve();
+			}
+		});
 	}
 }

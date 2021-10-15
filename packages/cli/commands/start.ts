@@ -90,8 +90,6 @@ export class Start extends Command {
 			const externalHooks = ExternalHooks();
 			await externalHooks.run('n8n.stop', []);
 
-			await InternalHooksManager.getInstance().onN8nStop();
-
 			setTimeout(() => {
 				// In case that something goes wrong with shutdown we
 				// kill after max. 30 seconds no matter what
@@ -132,6 +130,8 @@ export class Start extends Command {
 				});
 				executingWorkflows = activeExecutionsInstance.getActiveExecutions();
 			}
+
+			await InternalHooksManager.getInstance().onN8nStop();
 		} catch (error) {
 			console.error('There was an error shutting down n8n.', error);
 		}

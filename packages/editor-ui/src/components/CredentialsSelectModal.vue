@@ -10,7 +10,7 @@
 			<h2 :class="$style.title">Add new credential</h2>
 		</template>
 		<template slot="content">
-			<div :class="$style.container">
+			<div>
 				<div :class="$style.subtitle">Select an app or service to connect to</div>
 				<n8n-select
 					filterable

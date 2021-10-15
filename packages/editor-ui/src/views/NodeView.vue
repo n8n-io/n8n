@@ -345,8 +345,8 @@ export default mixins(
 			},
 			openNodeCreator () {
 				this.createNodeActive = true;
-				this.$externalHooks().run('nodeView.createNodeActiveChanged', { source: 'add_node_button' });
-				this.$telemetry.trackNodesPanel('nodeView.createNodeActiveChanged', { source: 'add_node_button', workflow_id: this.$store.getters.workflowId });
+				this.$externalHooks().run('nodeView.createNodeActiveChanged', { source: 'add_node_button', createNodeActive: this.createNodeActive });
+				this.$telemetry.trackNodesPanel('nodeView.createNodeActiveChanged', { source: 'add_node_button', workflow_id: this.$store.getters.workflowId, createNodeActive: this.createNodeActive });
 			},
 			async openExecution (executionId: string) {
 				this.resetWorkspace();
@@ -597,6 +597,9 @@ export default mixins(
 
 				} else if (e.key === 'Tab') {
 					this.createNodeActive = !this.createNodeActive && !this.isReadOnly;
+					this.$externalHooks().run('nodeView.createNodeActiveChanged', { source: 'tab', createNodeActive: this.createNodeActive });
+					this.$telemetry.trackNodesPanel('nodeView.createNodeActiveChanged', { source: 'tab', workflow_id: this.$store.getters.workflowId, createNodeActive: this.createNodeActive });
+
 				} else if (e.key === this.controlKeyCode) {
 					this.ctrlKeyPressed = true;
 				} else if (e.key === 'F2' && !this.isReadOnly) {
@@ -1387,8 +1390,8 @@ export default mixins(
 
 					// Display the node-creator
 					this.createNodeActive = true;
-					this.$externalHooks().run('nodeView.createNodeActiveChanged', { source: 'node_connection_drop' });
-					this.$telemetry.trackNodesPanel('nodeView.createNodeActiveChanged', { source: 'node_connection_drop', workflow_id: this.$store.getters.workflowId });
+					this.$externalHooks().run('nodeView.createNodeActiveChanged', { source: 'node_connection_drop', createNodeActive: this.createNodeActive });
+					this.$telemetry.trackNodesPanel('nodeView.createNodeActiveChanged', { source: 'node_connection_drop', workflow_id: this.$store.getters.workflowId, createNodeActive: this.createNodeActive });
 				});
 
 				this.instance.bind('connection', (info: OnConnectionBindInfo) => {

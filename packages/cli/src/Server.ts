@@ -253,11 +253,19 @@ class App {
 		const urlBaseWebhook = WebhookHelpers.getWebhookBaseUrl();
 
 		const telemetrySettings: ITelemetrySettings = {
-			enabled: config.get('telemetry.enabled') as boolean,
+			enabled: config.get('diagnostics.enabled') as boolean,
 		};
 
 		if (telemetrySettings.enabled) {
-			telemetrySettings.config = config.get('telemetry.config.frontend') as ITelemetryClientConfig;
+			const conf = config.get('diagnostics.config.frontend') as string;
+			const [key, url] = conf.split(';');
+
+			if (!key || !url) {
+				LoggerProxy.warn('Diagnostics frontend config is invalid');
+				telemetrySettings.enabled = false;
+			}
+
+			telemetrySettings.config = { key, url };
 		}
 
 		this.frontendSettings = {
@@ -308,6 +316,9 @@ class App {
 			register.setDefaultLabels({ prefix });
 			promClient.collectDefaultMetrics({ register });
 		}
+
+		this.versions = await GenericHelpers.getVersions();
+		this.frontendSettings.versionCli = this.versions.cli;
 
 		this.frontendSettings.instanceId = await UserSettings.getInstanceId();
 
@@ -683,6 +694,7 @@ class App {
 
 					// @ts-ignore
 					savedWorkflow.id = savedWorkflow.id.toString();
+					void InternalHooksManager.getInstance().onWorkflowCreated(newWorkflow as IWorkflowBase);
 					return savedWorkflow;
 				},
 			),

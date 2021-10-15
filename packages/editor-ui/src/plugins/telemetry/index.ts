@@ -55,7 +55,7 @@ class Telemetry {
 				return;
 			}
 
-			this.loadTelemetryLibrary(options.config.key, options.config.url, { logLevel: 'DEBUG', integrations: { All: false }, loadIntegration: false });
+			this.loadTelemetryLibrary(options.config.key, options.config.url, { integrations: { All: false }, loadIntegration: false });
 			this.telemetry.identify(instanceId);
 		}
 	}
@@ -71,9 +71,11 @@ class Telemetry {
 			properties.nodes_panel_session_id = this.userNodesPanelSession.sessionId;
 			switch (event) {
 				case 'nodeView.createNodeActiveChanged':
-					this.resetNodesPanelSession();
-					properties.nodes_panel_session_id = this.userNodesPanelSession.sessionId;
-					this.telemetry.track('User opened nodes panel', properties);
+					if (properties.createNodeActive !== false) {
+						this.resetNodesPanelSession();
+						properties.nodes_panel_session_id = this.userNodesPanelSession.sessionId;
+						this.telemetry.track('User opened nodes panel', properties);
+					}
 					break;
 				case 'nodeCreateList.selectedTypeChanged':
 					this.userNodesPanelSession.data.filterMode = properties.new_filter as string;
