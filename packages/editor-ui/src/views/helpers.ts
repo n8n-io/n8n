@@ -1,5 +1,5 @@
 import { JSPLUMB_FLOWCHART_STUB } from "@/constants";
-import { INodeUi, IZoomConfig } from "@/Interface";
+import { INodeUi, IZoomConfig, XYPositon } from "@/Interface";
 import { Connection, OverlaySpec } from "jsplumb";
 
 interface ICorners {
@@ -165,4 +165,43 @@ export const getIcon = (name: string): string => {
 	}
 
 	return '';
+};
+
+const canUsePosition = (position1: XYPositon, position2: XYPositon) => {
+	if (Math.abs(position1[0] - position2[0]) <= 100) {
+		if (Math.abs(position1[1] - position2[1]) <= 50) {
+			return false;
+		}
+	}
+
+	return true;
+};
+
+export const getNewNodePosition = (nodes: INodeUi[], newPosition: XYPositon, movePosition?: XYPositon): XYPositon => {
+	// @ts-ignore
+	newPosition = newPosition.slice();
+
+	if (!movePosition) {
+		movePosition = [50, 50];
+	}
+
+	let conflictFound = false;
+	let i, node;
+	do {
+		conflictFound = false;
+		for (i = 0; i < nodes.length; i++) {
+			node = nodes[i];
+			if (!canUsePosition(node.position, newPosition!)) {
+				conflictFound = true;
+				break;
+			}
+		}
+
+		if (conflictFound === true) {
+			newPosition![0] += movePosition[0];
+			newPosition![1] += movePosition[1];
+		}
+	} while (conflictFound === true);
+
+	return newPosition!;
 };

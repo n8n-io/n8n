@@ -132,7 +132,7 @@ import NodeCreator from '@/components/NodeCreator/NodeCreator.vue';
 import NodeSettings from '@/components/NodeSettings.vue';
 import RunData from '@/components/RunData.vue';
 
-import { getLeftmostTopNode, getWorkflowCorners, scaleSmaller, scaleBigger, scaleReset, addOrRemoveMidpointArrow, addEndpointArrow, getDefaultOverlays, getIcon } from './helpers';
+import { getLeftmostTopNode, getWorkflowCorners, scaleSmaller, scaleBigger, scaleReset, addOrRemoveMidpointArrow, addEndpointArrow, getDefaultOverlays, getIcon, getNewNodePosition } from './helpers';
 
 import mixins from 'vue-typed-mixins';
 import { v4 as uuidv4} from 'uuid';
@@ -1050,7 +1050,7 @@ export default mixins(
 					// Fix the node position as it could be totally offscreen
 					// and the pasted nodes would so not be directly visible to
 					// the user
-					this.updateNodePositions(workflowData, this.getNewNodePosition());
+					this.updateNodePositions(workflowData, getNewNodePosition(this.nodes, this.lastClickPosition));
 
 					const data = await this.addNodesToWorkflow(workflowData);
 
@@ -1096,50 +1096,6 @@ export default mixins(
 				if (setActive === true) {
 					this.$store.commit('setActiveNode', node.name);
 				}
-			},
-
-			canUsePosition (position1: XYPositon, position2: XYPositon) {
-				if (Math.abs(position1[0] - position2[0]) <= 100) {
-					if (Math.abs(position1[1] - position2[1]) <= 50) {
-						return false;
-					}
-				}
-
-				return true;
-			},
-			getNewNodePosition (newPosition?: XYPositon, movePosition?: XYPositon): XYPositon {
-				// TODO: Lates has to consider also the view position (that it creates the node where it is visible)
-				// Use the last click position as position for new node
-				if (newPosition === undefined) {
-					newPosition = this.lastClickPosition;
-				}
-
-				// @ts-ignore
-				newPosition = newPosition.slice();
-
-				if (!movePosition) {
-					movePosition = [50, 50];
-				}
-
-				let conflictFound = false;
-				let i, node;
-				do {
-					conflictFound = false;
-					for (i = 0; i < this.nodes.length; i++) {
-						node = this.nodes[i];
-						if (!this.canUsePosition(node.position, newPosition!)) {
-							conflictFound = true;
-							break;
-						}
-					}
-
-					if (conflictFound === true) {
-						newPosition![0] += movePosition[0];
-						newPosition![1] += movePosition[1];
-					}
-				} while (conflictFound === true);
-
-				return newPosition!;
 			},
 			getUniqueNodeName (originalName: string, additinalUsedNames?: string[]) {
 				// Check if node-name is unique else find one that is
@@ -1226,13 +1182,14 @@ export default mixins(
 				if (lastSelectedNode) {
 					// If a node is active then add the new node directly after the current one
 					// newNodeData.position = [activeNode.position[0], activeNode.position[1] + 60];
-					newNodeData.position = this.getNewNodePosition(
+					newNodeData.position = getNewNodePosition(
+						this.nodes,
 						[lastSelectedNode.position[0] + 200, lastSelectedNode.position[1]],
 						[100, 0],
 					);
 				} else {
 					// If no node is active find a free spot
-					newNodeData.position = this.getNewNodePosition();
+					newNodeData.position = getNewNodePosition(this.nodes, this.lastClickPosition);
 				}
 
 				// Check if node-name is unique else find one that is
@@ -1710,7 +1667,8 @@ export default mixins(
 				// Check if node-name is unique else find one that is
 				newNodeData.name = this.getUniqueNodeName(newNodeData.name);
 
-				newNodeData.position = this.getNewNodePosition(
+				newNodeData.position = getNewNodePosition(
+					this.nodes,
 					[node.position[0], node.position[1] + 150],
 					[0, 150],
 				);
