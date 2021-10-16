@@ -9,15 +9,15 @@
 				<el-col :span="10" class="parameter-name">
 					{{credentialTypeNames[credentialTypeDescription.name]}}:
 				</el-col>
-				<el-col :span="12" class="parameter-value" :class="getIssues(credentialTypeDescription.name).length?'has-issues':''">
 
+				<el-col v-if="!isReadOnly" :span="12" class="parameter-value" :class="getIssues(credentialTypeDescription.name).length?'has-issues':''">
 					<div :style="credentialInputWrapperStyle(credentialTypeDescription.name)">
-						<n8n-select :value="selected[credentialTypeDescription.name]" :disabled="isReadOnly" @change="(value) => credentialSelected(credentialTypeDescription.name, value)" placeholder="Select Credential" size="small">
+						<n8n-select :value="getSelectedId(credentialTypeDescription.name)" @change="(value) => onCredentialSelected(credentialTypeDescription.name, value)" placeholder="Select Credential" size="small">
 							<n8n-option
 								v-for="(item) in credentialOptions[credentialTypeDescription.name]"
 								:key="item.id"
 								:label="item.name"
-								:value="item.name">
+								:value="item.id">
 							</n8n-option>
 							<n8n-option
 								:key="NEW_CREDENTIALS_TEXT"
@@ -34,10 +34,13 @@
 							<font-awesome-icon icon="exclamation-triangle" />
 						</n8n-tooltip>
 					</div>
-
 				</el-col>
-				<el-col :span="2" class="parameter-value credential-action">
-					<font-awesome-icon v-if="selected[credentialTypeDescription.name] && isCredentialValid(credentialTypeDescription.name)" icon="pen" @click="editCredential(credentialTypeDescription.name)" class="update-credentials clickable" title="Update Credentials" />
+				<el-col v-if="!isReadOnly" :span="2" class="parameter-value credential-action">
+					<font-awesome-icon v-if="isCredentialExisting(credentialTypeDescription.name)" icon="pen" @click="editCredential(credentialTypeDescription.name)" class="update-credentials clickable" title="Update Credentials" />
+				</el-col>
+
+				<el-col v-if="isReadOnly" :span="14" class="readonly-container" >
+					<n8n-input disabled :value="selected && selected[credentialTypeDescription.name] && selected[credentialTypeDescription.name].name" size="small" />
 				</el-col>
 
 			</el-row>
@@ -49,12 +52,14 @@
 <script lang="ts">
 import { restApi } from '@/components/mixins/restApi';
 import {
+	ICredentialsResponse,
 	INodeUi,
 	INodeUpdatePropertiesInformation,
 } from '@/Interface';
 import {
 	ICredentialType,
 	INodeCredentialDescription,
+	INodeCredentialsDetails,
 	INodeTypeDescription,
 } from 'n8n-workflow';
 
@@ -119,11 +124,17 @@ export default mixins(
 			}
 			return returnData;
 		},
-		selected(): {[type: string]: string} {
+		selected(): {[type: string]: INodeCredentialsDetails} {
 			return this.node.credentials || {};
 		},
 	},
 	methods: {
+		getSelectedId(type: string) {
+			if (this.isCredentialExisting(type)) {
+				return this.selected[type].id;
+			}
+			return undefined;
+		},
 		credentialInputWrapperStyle (credentialType: string) {
 			let deductWidth = 0;
 			const styles = {
@@ -145,10 +156,10 @@ export default mixins(
 
 			this.newCredentialUnsubscribe = this.$store.subscribe((mutation, state) => {
 				if (mutation.type === 'credentials/upsertCredential' || mutation.type === 'credentials/enableOAuthCredential'){
-					this.credentialSelected(credentialType, mutation.payload.name);
+					this.onCredentialSelected(credentialType, mutation.payload.id);
 				}
 				if (mutation.type === 'credentials/deleteCredential') {
-					this.credentialSelected(credentialType, mutation.payload.name);
+					this.clearSelectedCredential(credentialType);
 					this.stopListeningForNewCredentials();
 				}
 			});
@@ -160,14 +171,52 @@ export default mixins(
 			}
 		},
 
-		credentialSelected (credentialType: string, credentialName: string) {
+		clearSelectedCredential(credentialType: string) {
+			const node: INodeUi = this.node;
+
+			const credentials = {
+				...(node.credentials || {}),
+			};
+
+			delete credentials[credentialType];
+
+			const updateInformation: INodeUpdatePropertiesInformation = {
+				name: this.node.name,
+				properties: {
+					credentials,
+				},
+			};
+
+			this.$emit('credentialSelected', updateInformation);
+		},
+
+		onCredentialSelected (credentialType: string, credentialId: string | null | undefined) {
 			let selected = undefined;
-			if (credentialName === NEW_CREDENTIALS_TEXT) {
+			if (credentialId === NEW_CREDENTIALS_TEXT) {
 				this.listenForNewCredentials(credentialType);
 				this.$store.dispatch('ui/openNewCredential', { type: credentialType });
+				return;
 			}
-			else {
-				selected = credentialName;
+
+			const selectedCredentials = this.$store.getters['credentials/getCredentialById'](credentialId);
+			const oldCredentials = this.node.credentials && this.node.credentials[credentialType] ? this.node.credentials[credentialType] : {};
+
+			selected = { id: selectedCredentials.id, name: selectedCredentials.name };
+
+			// if credentials has been string or neither id matched nor name matched uniquely
+			if (oldCredentials.id === null || (oldCredentials.id && !this.$store.getters['credentials/getCredentialByIdAndType'](oldCredentials.id, credentialType))) {
+				// update all nodes in the workflow with the same old/invalid credentials
+				this.$store.commit('replaceInvalidWorkflowCredentials', {
+					credentials: selected,
+					invalid: oldCredentials,
+					type: credentialType,
+				});
+				this.updateNodesCredentialsIssues();
+				this.$showMessage({
+					title: 'Node credentials updated',
+					message: `Nodes that used credentials "${oldCredentials.name}" have been updated to use "${selected.name}"`,
+					type: 'success',
+				});
 			}
 
 			const node: INodeUi = this.node;
@@ -209,18 +258,19 @@ export default mixins(
 			return node.issues.credentials[credentialTypeName];
 		},
 
-		isCredentialValid(credentialType: string): boolean {
-			const name = this.node.credentials[credentialType];
+		isCredentialExisting(credentialType: string): boolean {
+			if (!this.node.credentials || !this.node.credentials[credentialType] || !this.node.credentials[credentialType].id) {
+				return false;
+			}
+			const { id } = this.node.credentials[credentialType];
 			const options = this.credentialOptions[credentialType];
 
-			return options.find((option: ICredentialType) => option.name === name);
+			return !!options.find((option: ICredentialsResponse) => option.id === id);
 		},
 
 		editCredential(credentialType: string): void {
-			const name = this.node.credentials[credentialType];
-			const options = this.credentialOptions[credentialType];
-			const selected = options.find((option: ICredentialType) => option.name === name);
-			this.$store.dispatch('ui/openExisitngCredential', { id: selected.id });
+			const { id } = this.node.credentials[credentialType];
+			this.$store.dispatch('ui/openExisitngCredential', { id });
 
 			this.listenForNewCredentials(credentialType);
 		},
@@ -282,6 +332,10 @@ export default mixins(
 		justify-content: center;
 		align-items: center;
 		color: var(--color-text-base);
+	}
+
+	.readonly-container {
+		padding-right: 0.5em;
 	}
 }
 
