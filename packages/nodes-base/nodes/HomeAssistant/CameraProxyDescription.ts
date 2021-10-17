@@ -33,7 +33,10 @@ export const cameraProxyFields = [
 	{
 		displayName: 'Camera Entity ID',
 		name: 'cameraEntityId',
-		type: 'string',
+		type: 'options',
+		typeOptions: {
+			loadOptionsMethod: 'getCameraEntities',
+		},
 		default: '',
 		required: true,
 		displayOptions: {

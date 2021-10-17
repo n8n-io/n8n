@@ -4,7 +4,9 @@ import {
 
 import {
 	IDataObject,
+	ILoadOptionsFunctions,
 	INodeExecutionData,
+	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
@@ -49,6 +51,8 @@ import {
 } from './CameraProxyDescription';
 
 import {
+	getHomeAssistantEntities,
+	getHomeAssistantServices,
 	homeAssistantApiRequest,
 } from './GenericFunctions';
 
@@ -131,6 +135,28 @@ export class HomeAssistant implements INodeType {
 			...templateOperations,
 			...templateFields,
 		],
+	};
+
+	methods = {
+		loadOptions: {
+			async getAllEntities(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				return await getHomeAssistantEntities.call(this);
+			},
+			async getCameraEntities(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				return await getHomeAssistantEntities.call(this, 'camera');
+			},
+			async getDomains(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				return await getHomeAssistantServices.call(this);
+			},
+			async getDomainServices(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const currentDomain = this.getCurrentNodeParameter('domain') as string;
+				if (currentDomain) {
+					return await getHomeAssistantServices.call(this, currentDomain);
+				} else {
+					return [];
+				}
+			},
+		},
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
