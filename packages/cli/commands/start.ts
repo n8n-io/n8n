@@ -37,7 +37,7 @@ import { getLogger } from '../src/Logger';
 const open = require('open');
 
 let activeWorkflowRunner: ActiveWorkflowRunner.ActiveWorkflowRunner | undefined;
-let processExistCode = 0;
+let processExitCode = 0;
 
 export class Start extends Command {
 	static description = 'Starts n8n. Makes Web-UI available and starts active workflows';
@@ -92,7 +92,7 @@ export class Start extends Command {
 			setTimeout(() => {
 				// In case that something goes wrong with shutdown we
 				// kill after max. 30 seconds no matter what
-				process.exit(processExistCode);
+				process.exit(processExitCode);
 			}, 30000);
 
 			const skipWebhookDeregistration = config.get(
@@ -133,7 +133,7 @@ export class Start extends Command {
 			console.error('There was an error shutting down n8n.', error);
 		}
 
-		process.exit(processExistCode);
+		process.exit(processExitCode);
 	}
 
 	async run() {
@@ -160,7 +160,7 @@ export class Start extends Command {
 				const startDbInitPromise = Db.init().catch((error: Error) => {
 					logger.error(`There was an error initializing DB: "${error.message}"`);
 
-					processExistCode = 1;
+					processExitCode = 1;
 					// @ts-ignore
 					process.emit('SIGINT');
 					process.exit(1);
@@ -355,7 +355,7 @@ export class Start extends Command {
 				// eslint-disable-next-line @typescript-eslint/restrict-template-expressions
 				this.error(`There was an error: ${error.message}`);
 
-				processExistCode = 1;
+				processExitCode = 1;
 				// @ts-ignore
 				process.emit('SIGINT');
 			}

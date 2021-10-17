@@ -66,6 +66,7 @@ import {
 	ICredentialType,
 	IDataObject,
 	INodeCredentials,
+	INodeCredentialsDetails,
 	INodeParameters,
 	INodePropertyOptions,
 	INodeType,
@@ -642,6 +643,9 @@ class App {
 						});
 					}
 
+					// check credentials for old format
+					await WorkflowHelpers.replaceInvalidCredentials(newWorkflow);
+
 					await this.externalHooks.run('workflow.create', [newWorkflow]);
 
 					await WorkflowHelpers.validateWorkflow(newWorkflow);
@@ -781,6 +785,9 @@ class App {
 
 					const { id } = req.params;
 					updateData.id = id;
+
+					// check credentials for old format
+					await WorkflowHelpers.replaceInvalidCredentials(updateData as WorkflowEntity);
 
 					await this.externalHooks.run('workflow.update', [updateData]);
 
@@ -1293,26 +1300,9 @@ class App {
 						throw new Error('Credentials have to have a name set!');
 					}
 
-					// Check if credentials with the same name and type exist already
-					const findQuery = {
-						where: {
-							name: incomingData.name,
-							type: incomingData.type,
-						},
-					} as FindOneOptions;
-
-					const checkResult = await Db.collections.Credentials!.findOne(findQuery);
-					if (checkResult !== undefined) {
-						throw new ResponseHelper.ResponseError(
-							`Credentials with the same type and name exist already.`,
-							undefined,
-							400,
-						);
-					}
-
 					// Encrypt the data
 					const credentials = new Credentials(
-						incomingData.name,
+						{ id: null, name: incomingData.name },
 						incomingData.type,
 						incomingData.nodesAccess,
 					);
@@ -1320,10 +1310,6 @@ class App {
 					const newCredentialsData = credentials.getDataToSave() as ICredentialsDb;
 
 					await this.externalHooks.run('credentials.create', [newCredentialsData]);
-
-					// Add special database related data
-
-					// TODO: also add user automatically depending on who is logged in, if anybody is logged in
 
 					// Save the credentials in DB
 					const result = await Db.collections.Credentials!.save(newCredentialsData);
@@ -1445,24 +1431,6 @@ class App {
 						}
 					}
 
-					// Check if credentials with the same name and type exist already
-					const findQuery = {
-						where: {
-							id: Not(id),
-							name: incomingData.name,
-							type: incomingData.type,
-						},
-					} as FindOneOptions;
-
-					const checkResult = await Db.collections.Credentials!.findOne(findQuery);
-					if (checkResult !== undefined) {
-						throw new ResponseHelper.ResponseError(
-							`Credentials with the same type and name exist already.`,
-							undefined,
-							400,
-						);
-					}
-
 					const encryptionKey = await UserSettings.getEncryptionKey();
 					if (encryptionKey === undefined) {
 						throw new Error('No encryption key got found to encrypt the credentials!');
@@ -1479,7 +1447,7 @@ class App {
 					}
 
 					const currentlySavedCredentials = new Credentials(
-						result.name,
+						result as INodeCredentialsDetails,
 						result.type,
 						result.nodesAccess,
 						result.data,
@@ -1494,7 +1462,7 @@ class App {
 
 					// Encrypt the data
 					const credentials = new Credentials(
-						incomingData.name,
+						{ id, name: incomingData.name },
 						incomingData.type,
 						incomingData.nodesAccess,
 					);
@@ -1563,7 +1531,7 @@ class App {
 						}
 
 						const credentials = new Credentials(
-							result.name,
+							result as INodeCredentialsDetails,
 							result.type,
 							result.nodesAccess,
 							result.data,
@@ -1707,7 +1675,7 @@ class App {
 				const mode: WorkflowExecuteMode = 'internal';
 				const credentialsHelper = new CredentialsHelper(encryptionKey);
 				const decryptedDataOriginal = await credentialsHelper.getDecrypted(
-					result.name,
+					result as INodeCredentialsDetails,
 					result.type,
 					mode,
 					true,
@@ -1766,7 +1734,11 @@ class App {
 				}`;
 
 				// Encrypt the data
-				const credentials = new Credentials(result.name, result.type, result.nodesAccess);
+				const credentials = new Credentials(
+					result as INodeCredentialsDetails,
+					result.type,
+					result.nodesAccess,
+				);
 
 				credentials.setData(decryptedDataOriginal, encryptionKey);
 				const newCredentialsData = credentials.getDataToSave() as unknown as ICredentialsDb;
@@ -1823,13 +1795,13 @@ class App {
 					// Decrypt the currently saved credentials
 					const workflowCredentials: IWorkflowCredentials = {
 						[result.type]: {
-							[result.name]: result as ICredentialsEncrypted,
+							[result.id.toString()]: result as ICredentialsEncrypted,
 						},
 					};
 					const mode: WorkflowExecuteMode = 'internal';
 					const credentialsHelper = new CredentialsHelper(encryptionKey);
 					const decryptedDataOriginal = await credentialsHelper.getDecrypted(
-						result.name,
+						result as INodeCredentialsDetails,
 						result.type,
 						mode,
 						true,
@@ -1868,7 +1840,11 @@ class App {
 
 					decryptedDataOriginal.oauthTokenData = oauthTokenJson;
 
-					const credentials = new Credentials(result.name, result.type, result.nodesAccess);
+					const credentials = new Credentials(
+						result as INodeCredentialsDetails,
+						result.type,
+						result.nodesAccess,
+					);
 					credentials.setData(decryptedDataOriginal, encryptionKey);
 					const newCredentialsData = credentials.getDataToSave() as unknown as ICredentialsDb;
 					// Add special database related data
@@ -1913,7 +1889,7 @@ class App {
 				const mode: WorkflowExecuteMode = 'internal';
 				const credentialsHelper = new CredentialsHelper(encryptionKey);
 				const decryptedDataOriginal = await credentialsHelper.getDecrypted(
-					result.name,
+					result as INodeCredentialsDetails,
 					result.type,
 					mode,
 					true,
@@ -1950,7 +1926,11 @@ class App {
 				const oAuthObj = new clientOAuth2(oAuthOptions);
 
 				// Encrypt the data
-				const credentials = new Credentials(result.name, result.type, result.nodesAccess);
+				const credentials = new Credentials(
+					result as INodeCredentialsDetails,
+					result.type,
+					result.nodesAccess,
+				);
 				decryptedDataOriginal.csrfSecret = csrfSecret;
 
 				credentials.setData(decryptedDataOriginal, encryptionKey);
@@ -2039,14 +2019,14 @@ class App {
 					// Decrypt the currently saved credentials
 					const workflowCredentials: IWorkflowCredentials = {
 						[result.type]: {
-							[result.name]: result as ICredentialsEncrypted,
+							[result.id.toString()]: result as ICredentialsEncrypted,
 						},
 					};
 
 					const mode: WorkflowExecuteMode = 'internal';
 					const credentialsHelper = new CredentialsHelper(encryptionKey);
 					const decryptedDataOriginal = await credentialsHelper.getDecrypted(
-						result.name,
+						result as INodeCredentialsDetails,
 						result.type,
 						mode,
 						true,
@@ -2128,7 +2108,11 @@ class App {
 
 					_.unset(decryptedDataOriginal, 'csrfSecret');
 
-					const credentials = new Credentials(result.name, result.type, result.nodesAccess);
+					const credentials = new Credentials(
+						result as INodeCredentialsDetails,
+						result.type,
+						result.nodesAccess,
+					);
 					credentials.setData(decryptedDataOriginal, encryptionKey);
 					const newCredentialsData = credentials.getDataToSave() as unknown as ICredentialsDb;
 					// Add special database related data
