@@ -312,7 +312,7 @@ export class AwsDynamoDB implements INodeType {
 						if (scan === true) {
 							body['FilterExpression'] = this.getNodeParameter('filterExpression', i) as string;
 						} else {
-							body['KeyConditionExpression'] = this.getNodeParameter('KeyConditionExpression', i) as string;
+							body['KeyConditionExpression'] = this.getNodeParameter('keyConditionExpression', i) as string;
 						}
 
 						const {
