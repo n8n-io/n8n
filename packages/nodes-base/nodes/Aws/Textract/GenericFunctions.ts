@@ -3,6 +3,7 @@ import {
 } from 'url';
 
 import {
+	Request,
 	sign,
 } from 'aws4';
 
@@ -22,7 +23,9 @@ import {
 } from 'n8n-core';
 
 import {
-	ICredentialDataDecryptedObject, IDataObject, NodeApiError, NodeOperationError,
+	ICredentialDataDecryptedObject,
+	NodeApiError,
+	NodeOperationError,
 } from 'n8n-workflow';
 
 function getEndpointForService(service: string, credentials: ICredentialDataDecryptedObject): string {
@@ -47,7 +50,7 @@ export async function awsApiRequest(this: IHookFunctions | IExecuteFunctions | I
 	const endpoint = new URL(getEndpointForService(service, credentials) + path);
 
 	// Sign AWS API request with the user credentials
-	const signOpts = { headers: headers || {}, host: endpoint.host, method, path, body };
+	const signOpts = { headers: headers || {}, host: endpoint.host, method, path, body } as Request;
 	sign(signOpts, { accessKeyId: `${credentials.accessKeyId}`.trim(), secretAccessKey: `${credentials.secretAccessKey}`.trim() });
 
 
