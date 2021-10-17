@@ -4,6 +4,7 @@ import {
 	ICredentialDataDecryptedObject,
 	ICredentialsExpressionResolveValues,
 	ICredentialsHelper,
+	IHttpRequestOptions,
 	INode,
 	INodeCredentialsDetails,
 	INodeParameters,
@@ -37,6 +38,42 @@ const mockNodeTypes: INodeTypes = {
 };
 
 export class CredentialsHelper extends ICredentialsHelper {
+	private credentialTypes = CredentialTypes();
+
+	/**
+	 * Authenticate
+	 */
+	async authenticate(
+		credentials: ICredentialDataDecryptedObject,
+		typeName: string,
+		requestOptions: IHttpRequestOptions,
+	): Promise<IHttpRequestOptions> {
+		const credentialType = this.credentialTypes.getByName(typeName);
+		if (credentialType.authenticate) {
+			return credentialType.authenticate(credentials, requestOptions);
+		}
+
+		return requestOptions;
+	}
+
+	/**
+	 * Returns all parent types of the given credential type
+	 */
+	getParentTypes(typeName: string): string[] {
+		const credentialType = this.credentialTypes.getByName(typeName);
+
+		if (credentialType === undefined || credentialType.extends === undefined) {
+			return [];
+		}
+
+		let types: string[] = [];
+		credentialType.extends.forEach((type: string) => {
+			types = [...types, typeName, ...this.getParentTypes(type)];
+		});
+
+		return types;
+	}
+
 	/**
 	 * Returns the credentials instance
 	 *
@@ -77,8 +114,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 	 * @memberof CredentialsHelper
 	 */
 	getCredentialsProperties(type: string): INodeProperties[] {
-		const credentialTypes = CredentialTypes();
-		const credentialTypeData = credentialTypes.getByName(type);
+		const credentialTypeData = this.credentialTypes.getByName(type);
 
 		if (credentialTypeData === undefined) {
 			throw new Error(`The credentials of type "${type}" are not known.`);

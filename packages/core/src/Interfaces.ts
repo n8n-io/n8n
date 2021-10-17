@@ -55,6 +55,11 @@ export interface IExecuteFunctions extends IExecuteFunctionsBase {
 			requestOptions: OptionsWithUrl | requestPromise.RequestPromiseOptions,
 		): Promise<any>; // tslint:disable-line:no-any
 		returnJsonArray(jsonData: IDataObject | IDataObject[]): INodeExecutionData[];
+		requestWithAuthentication(
+			this: IAllExecuteFunctions,
+			credentialsType: string,
+			requestOptions: IHttpRequestOptions,
+		): Promise<any>;
 	};
 }
 
@@ -78,6 +83,11 @@ export interface IExecuteSingleFunctions extends IExecuteSingleFunctionsBase {
 			credentialsType: string,
 			requestOptions: OptionsWithUrl | requestPromise.RequestPromiseOptions,
 		): Promise<any>; // tslint:disable-line:no-any
+		requestWithAuthentication(
+			this: IAllExecuteFunctions,
+			credentialsType: string,
+			requestOptions: IHttpRequestOptions,
+		): Promise<any>;
 	};
 }
 
@@ -102,6 +112,11 @@ export interface IPollFunctions extends IPollFunctionsBase {
 			requestOptions: OptionsWithUrl | requestPromise.RequestPromiseOptions,
 		): Promise<any>; // tslint:disable-line:no-any
 		returnJsonArray(jsonData: IDataObject | IDataObject[]): INodeExecutionData[];
+		requestWithAuthentication(
+			this: IAllExecuteFunctions,
+			credentialsType: string,
+			requestOptions: IHttpRequestOptions,
+		): Promise<any>;
 	};
 }
 
@@ -130,6 +145,11 @@ export interface ITriggerFunctions extends ITriggerFunctionsBase {
 			requestOptions: OptionsWithUrl | requestPromise.RequestPromiseOptions,
 		): Promise<any>; // tslint:disable-line:no-any
 		returnJsonArray(jsonData: IDataObject | IDataObject[]): INodeExecutionData[];
+		requestWithAuthentication(
+			this: IAllExecuteFunctions,
+			credentialsType: string,
+			requestOptions: IHttpRequestOptions,
+		): Promise<any>;
 	};
 }
 
@@ -162,6 +182,11 @@ export interface ILoadOptionsFunctions extends ILoadOptionsFunctionsBase {
 			credentialsType: string,
 			requestOptions: OptionsWithUrl | requestPromise.RequestPromiseOptions,
 		): Promise<any>; // tslint:disable-line:no-any
+		requestWithAuthentication(
+			this: IAllExecuteFunctions,
+			credentialsType: string,
+			requestOptions: IHttpRequestOptions,
+		): Promise<any>;
 	};
 }
 
@@ -186,6 +211,11 @@ export interface IHookFunctions extends IHookFunctionsBase {
 			credentialsType: string,
 			requestOptions: OptionsWithUrl | requestPromise.RequestPromiseOptions,
 		): Promise<any>; // tslint:disable-line:no-any
+		requestWithAuthentication(
+			this: IAllExecuteFunctions,
+			credentialsType: string,
+			requestOptions: IHttpRequestOptions,
+		): Promise<any>;
 	};
 }
 
@@ -210,6 +240,11 @@ export interface IWebhookFunctions extends IWebhookFunctionsBase {
 			requestOptions: OptionsWithUrl | requestPromise.RequestPromiseOptions,
 		): Promise<any>; // tslint:disable-line:no-any
 		returnJsonArray(jsonData: IDataObject | IDataObject[]): INodeExecutionData[];
+		requestWithAuthentication(
+			this: IAllExecuteFunctions,
+			credentialsType: string,
+			requestOptions: IHttpRequestOptions,
+		): Promise<any>;
 	};
 }
 

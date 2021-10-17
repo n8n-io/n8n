@@ -15,6 +15,7 @@
 /* eslint-disable no-param-reassign */
 import {
 	GenericValue,
+	IAdditionalCredentialOptions,
 	IAllExecuteFunctions,
 	IBinaryData,
 	IContextObject,
@@ -542,12 +543,11 @@ function convertN8nRequestToAxios(n8nRequest: IHttpRequestOptions): AxiosRequest
 }
 
 async function httpRequest(
-	requestParams: IHttpRequestOptions,
+	requestOptions: IHttpRequestOptions,
 ): Promise<IN8nHttpFullResponse | IN8nHttpResponse> {
-	// tslint:disable-line:no-any
-	const axiosRequest = convertN8nRequestToAxios(requestParams);
+	const axiosRequest = convertN8nRequestToAxios(requestOptions);
 	const result = await axios(axiosRequest);
-	if (requestParams.returnFullResponse) {
+	if (requestOptions.returnFullResponse) {
 		return {
 			body: result.data,
 			headers: result.headers,
@@ -835,6 +835,48 @@ export async function requestOAuth1(
 		// Unknown error so simply throw it
 		throw error;
 	});
+}
+
+export async function requestWithAuthentication(
+	this: IAllExecuteFunctions,
+	credentialsType: string,
+	requestOptions: IHttpRequestOptions,
+	node: INode,
+	additionalData: IWorkflowExecuteAdditionalData,
+	additionalCredentialOptions?: IAdditionalCredentialOptions,
+) {
+	const parentTypes = additionalData.credentialsHelper.getParentTypes(credentialsType);
+
+	if (parentTypes.includes('oAuth1Api')) {
+		return requestOAuth1.call(this, credentialsType, requestOptions);
+	}
+	if (parentTypes.includes('oAuth2Api')) {
+		return requestOAuth2.call(
+			this,
+			credentialsType,
+			requestOptions,
+			node,
+			additionalData,
+			additionalCredentialOptions?.oauth2,
+		);
+	}
+
+	const credentials = await this.getCredentials(credentialsType);
+
+	if (credentials === undefined) {
+		throw new NodeOperationError(
+			node,
+			`Node "${node.name}" does not have any credentials of type "${credentialsType}" set!`,
+		);
+	}
+
+	requestOptions = await additionalData.credentialsHelper.authenticate(
+		credentials,
+		credentialsType,
+		requestOptions,
+	);
+
+	return httpRequest(requestOptions);
 }
 
 /**
@@ -1287,6 +1329,19 @@ export function getExecutePollFunctions(
 				): Promise<any> {
 					return requestOAuth1.call(this, credentialsType, requestOptions);
 				},
+				async requestWithAuthentication(
+					this: IAllExecuteFunctions,
+					credentialsType: string,
+					requestOptions: IHttpRequestOptions,
+				): Promise<any> {
+					return requestWithAuthentication.call(
+						this,
+						credentialsType,
+						requestOptions,
+						node,
+						additionalData,
+					);
+				},
 				returnJsonArray,
 			},
 		};
@@ -1370,7 +1425,6 @@ export function getExecuteTriggerFunctions(
 			helpers: {
 				httpRequest,
 				prepareBinaryData,
-
 				request: proxyRequestToAxios,
 				async requestOAuth2(
 					this: IAllExecuteFunctions,
@@ -1393,6 +1447,19 @@ export function getExecuteTriggerFunctions(
 					requestOptions: OptionsWithUrl | requestPromise.RequestPromiseOptions,
 				): Promise<any> {
 					return requestOAuth1.call(this, credentialsType, requestOptions);
+				},
+				async requestWithAuthentication(
+					this: IAllExecuteFunctions,
+					credentialsType: string,
+					requestOptions: IHttpRequestOptions,
+				): Promise<any> {
+					return requestWithAuthentication.call(
+						this,
+						credentialsType,
+						requestOptions,
+						node,
+						additionalData,
+					);
 				},
 				returnJsonArray,
 			},
@@ -1593,6 +1660,19 @@ export function getExecuteFunctions(
 				): Promise<any> {
 					return requestOAuth1.call(this, credentialsType, requestOptions);
 				},
+				async requestWithAuthentication(
+					this: IAllExecuteFunctions,
+					credentialsType: string,
+					requestOptions: IHttpRequestOptions,
+				): Promise<any> {
+					return requestWithAuthentication.call(
+						this,
+						credentialsType,
+						requestOptions,
+						node,
+						additionalData,
+					);
+				},
 				returnJsonArray,
 			},
 		};
@@ -1767,6 +1847,19 @@ export function getExecuteSingleFunctions(
 				): Promise<any> {
 					return requestOAuth1.call(this, credentialsType, requestOptions);
 				},
+				async requestWithAuthentication(
+					this: IAllExecuteFunctions,
+					credentialsType: string,
+					requestOptions: IHttpRequestOptions,
+				): Promise<any> {
+					return requestWithAuthentication.call(
+						this,
+						credentialsType,
+						requestOptions,
+						node,
+						additionalData,
+					);
+				},
 			},
 		};
 	})(workflow, runExecutionData, connectionInputData, inputData, node, itemIndex);
@@ -1880,6 +1973,19 @@ export function getLoadOptionsFunctions(
 					requestOptions: OptionsWithUrl | requestPromise.RequestPromiseOptions,
 				): Promise<any> {
 					return requestOAuth1.call(this, credentialsType, requestOptions);
+				},
+				async requestWithAuthentication(
+					this: IAllExecuteFunctions,
+					credentialsType: string,
+					requestOptions: IHttpRequestOptions,
+				): Promise<any> {
+					return requestWithAuthentication.call(
+						this,
+						credentialsType,
+						requestOptions,
+						node,
+						additionalData,
+					);
 				},
 			},
 		};
@@ -2000,6 +2106,19 @@ export function getExecuteHookFunctions(
 					requestOptions: OptionsWithUrl | requestPromise.RequestPromiseOptions,
 				): Promise<any> {
 					return requestOAuth1.call(this, credentialsType, requestOptions);
+				},
+				async requestWithAuthentication(
+					this: IAllExecuteFunctions,
+					credentialsType: string,
+					requestOptions: IHttpRequestOptions,
+				): Promise<any> {
+					return requestWithAuthentication.call(
+						this,
+						credentialsType,
+						requestOptions,
+						node,
+						additionalData,
+					);
 				},
 			},
 		};
@@ -2147,6 +2266,19 @@ export function getExecuteWebhookFunctions(
 					requestOptions: OptionsWithUrl | requestPromise.RequestPromiseOptions,
 				): Promise<any> {
 					return requestOAuth1.call(this, credentialsType, requestOptions);
+				},
+				async requestWithAuthentication(
+					this: IAllExecuteFunctions,
+					credentialsType: string,
+					requestOptions: IHttpRequestOptions,
+				): Promise<any> {
+					return requestWithAuthentication.call(
+						this,
+						credentialsType,
+						requestOptions,
+						node,
+						additionalData,
+					);
 				},
 				returnJsonArray,
 			},

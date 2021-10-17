@@ -11,6 +11,10 @@ import { WorkflowHooks } from './WorkflowHooks';
 import { WorkflowOperationError } from './WorkflowErrors';
 import { NodeApiError, NodeOperationError } from './NodeErrors';
 
+export interface IAdditionalCredentialOptions {
+	oauth2: IOAuth2Options;
+}
+
 export type IAllExecuteFunctions =
 	| IExecuteFunctions
 	| IExecuteSingleFunctions
@@ -133,6 +137,14 @@ export abstract class ICredentialsHelper {
 		this.encryptionKey = encryptionKey;
 	}
 
+	abstract getParentTypes(name: string): string[];
+
+	abstract authenticate(
+		credentials: ICredentialDataDecryptedObject,
+		typeName: string,
+		requestOptions: IHttpRequestOptions,
+	): Promise<IHttpRequestOptions>;
+
 	abstract getCredentials(
 		nodeCredentials: INodeCredentialsDetails,
 		type: string,
@@ -161,6 +173,10 @@ export interface ICredentialType {
 	properties: INodeProperties[];
 	documentationUrl?: string;
 	__overwrittenProperties?: string[];
+	authenticate?: (
+		credentials: ICredentialDataDecryptedObject,
+		requestOptions: IHttpRequestOptions,
+	) => Promise<IHttpRequestOptions>;
 }
 
 export interface ICredentialTypes {
@@ -296,10 +312,12 @@ export interface IExecuteContextData {
 	[key: string]: IContextObject;
 }
 
+export type IHttpRequestMethods = 'DELETE' | 'GET' | 'HEAD' | 'PATCH' | 'POST' | 'PUT';
+
 export interface IHttpRequestOptions {
 	url: string;
 	headers?: IDataObject;
-	method?: 'DELETE' | 'GET' | 'HEAD' | 'PATCH' | 'POST' | 'PUT';
+	method?: IHttpRequestMethods;
 	body?: FormData | GenericValue | GenericValue[] | Buffer | URLSearchParams;
 	qs?: IDataObject;
 	arrayFormat?: 'indices' | 'brackets' | 'repeat' | 'comma';
@@ -376,6 +394,12 @@ export interface IExecuteFunctions {
 		httpRequest(
 			requestOptions: IHttpRequestOptions,
 		): Promise<IN8nHttpResponse | IN8nHttpFullResponse>;
+		requestWithAuthentication(
+			this: IAllExecuteFunctions,
+			credentialsType: string,
+			requestOptions: IHttpRequestOptions,
+			additionalCredentialOptions?: IAdditionalCredentialOptions,
+		): Promise<IN8nHttpResponse | IN8nHttpFullResponse>;
 		[key: string]: (...args: any[]) => any; // tslint:disable-line:no-any
 	};
 }
@@ -403,6 +427,12 @@ export interface IExecuteSingleFunctions {
 	helpers: {
 		httpRequest(
 			requestOptions: IHttpRequestOptions,
+		): Promise<IN8nHttpResponse | IN8nHttpFullResponse>;
+		requestWithAuthentication(
+			this: IAllExecuteFunctions,
+			credentialsType: string,
+			requestOptions: IHttpRequestOptions,
+			additionalCredentialOptions?: IAdditionalCredentialOptions,
 		): Promise<IN8nHttpResponse | IN8nHttpFullResponse>;
 		[key: string]: (...args: any[]) => any; // tslint:disable-line:no-any
 	};
@@ -442,6 +472,12 @@ export interface ILoadOptionsFunctions {
 		httpRequest(
 			requestOptions: IHttpRequestOptions,
 		): Promise<IN8nHttpResponse | IN8nHttpFullResponse>;
+		requestWithAuthentication(
+			this: IAllExecuteFunctions,
+			credentialsType: string,
+			requestOptions: IHttpRequestOptions,
+			additionalCredentialOptions?: IAdditionalCredentialOptions,
+		): Promise<IN8nHttpResponse | IN8nHttpFullResponse>;
 		[key: string]: ((...args: any[]) => any) | undefined; // tslint:disable-line:no-any
 	};
 }
@@ -465,6 +501,12 @@ export interface IHookFunctions {
 		httpRequest(
 			requestOptions: IHttpRequestOptions,
 		): Promise<IN8nHttpResponse | IN8nHttpFullResponse>;
+		requestWithAuthentication(
+			this: IAllExecuteFunctions,
+			credentialsType: string,
+			requestOptions: IHttpRequestOptions,
+			additionalCredentialOptions?: IAdditionalCredentialOptions,
+		): Promise<IN8nHttpResponse | IN8nHttpFullResponse>;
 		[key: string]: (...args: any[]) => any; // tslint:disable-line:no-any
 	};
 }
@@ -487,6 +529,12 @@ export interface IPollFunctions {
 		httpRequest(
 			requestOptions: IHttpRequestOptions,
 		): Promise<IN8nHttpResponse | IN8nHttpFullResponse>;
+		requestWithAuthentication(
+			this: IAllExecuteFunctions,
+			credentialsType: string,
+			requestOptions: IHttpRequestOptions,
+			additionalCredentialOptions?: IAdditionalCredentialOptions,
+		): Promise<IN8nHttpResponse | IN8nHttpFullResponse>;
 		[key: string]: (...args: any[]) => any; // tslint:disable-line:no-any
 	};
 }
@@ -508,6 +556,12 @@ export interface ITriggerFunctions {
 	helpers: {
 		httpRequest(
 			requestOptions: IHttpRequestOptions,
+		): Promise<IN8nHttpResponse | IN8nHttpFullResponse>;
+		requestWithAuthentication(
+			this: IAllExecuteFunctions,
+			credentialsType: string,
+			requestOptions: IHttpRequestOptions,
+			additionalCredentialOptions?: IAdditionalCredentialOptions,
 		): Promise<IN8nHttpResponse | IN8nHttpFullResponse>;
 		[key: string]: (...args: any[]) => any; // tslint:disable-line:no-any
 	};
@@ -539,6 +593,12 @@ export interface IWebhookFunctions {
 	helpers: {
 		httpRequest(
 			requestOptions: IHttpRequestOptions,
+		): Promise<IN8nHttpResponse | IN8nHttpFullResponse>;
+		requestWithAuthentication(
+			this: IAllExecuteFunctions,
+			credentialsType: string,
+			requestOptions: IHttpRequestOptions,
+			additionalCredentialOptions?: IAdditionalCredentialOptions,
 		): Promise<IN8nHttpResponse | IN8nHttpFullResponse>;
 		[key: string]: (...args: any[]) => any; // tslint:disable-line:no-any
 	};
