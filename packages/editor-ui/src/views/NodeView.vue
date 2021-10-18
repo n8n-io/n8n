@@ -1741,13 +1741,9 @@ export default mixins(
 					}) as Connection[];
 
 					outgoing.forEach((connection: Connection) => {
-						const arrow = connection.getOverlay('midpoint-arrow');
-						if (arrow) {
-							arrow.setLocation(0.5);
-						}
-
 						connection.removeOverlay('output-items-label');
 						connection.setPaintStyle({stroke: getStyleTokenValue('--color-foreground-dark')});
+						showOrHideMidpointArrow(connection);
 					});
 
 					return;
@@ -1841,10 +1837,7 @@ export default mixins(
 								},
 							]);
 
-							const arrow = connections[0].getOverlay('midpoint-arrow');
-							if (arrow) {
-								arrow.setLocation(0.6);
-							}
+							hideMidpointArrow(conn);
 						});
 					});
 				});
