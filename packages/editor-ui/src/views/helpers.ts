@@ -104,7 +104,6 @@ export const getDefaultOverlays = (): OverlaySpec[] => ([
 			label: 'Drop connection<br />to create node',
 			cssClass: 'drop-add-node-label',
 			location: 0.5,
-			visible: false,
 		},
 	],
 	[
