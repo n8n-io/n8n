@@ -9,7 +9,6 @@ import {
 	IHttpRequestMethods,
 	IHttpRequestOptions,
 	INodePropertyOptions,
-	NodeApiError,
 } from 'n8n-workflow';
 
 import {
@@ -37,12 +36,8 @@ export async function asanaApiRequest(this: IHookFunctions | IExecuteFunctions |
 		json: true,
 	};
 
-	try {
-		const credentialType = authenticationMethod === 'accessToken' ? 'asanaApi' : 'asanaOAuth2Api';
-		return await this.helpers.requestWithAuthentication.call(this, credentialType, options);
-	} catch (error) {
-		throw new NodeApiError(this.getNode(), error);
-	}
+	const credentialType = authenticationMethod === 'accessToken' ? 'asanaApi' : 'asanaOAuth2Api';
+	return this.helpers.requestWithAuthentication.call(this, credentialType, options);
 }
 
 export async function asanaApiRequestAllItems(this: IExecuteFunctions | ILoadOptionsFunctions, method: IHttpRequestMethods, endpoint: string, body: any = {}, query: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any

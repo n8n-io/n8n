@@ -44,6 +44,7 @@ import {
 	IWorkflowDataProxyData,
 	IWorkflowExecuteAdditionalData,
 	IWorkflowMetadata,
+	NodeApiError,
 	NodeHelpers,
 	NodeOperationError,
 	NodeParameterValue,
@@ -845,38 +846,42 @@ export async function requestWithAuthentication(
 	additionalData: IWorkflowExecuteAdditionalData,
 	additionalCredentialOptions?: IAdditionalCredentialOptions,
 ) {
-	const parentTypes = additionalData.credentialsHelper.getParentTypes(credentialsType);
+	try {
+		const parentTypes = additionalData.credentialsHelper.getParentTypes(credentialsType);
 
-	if (parentTypes.includes('oAuth1Api')) {
-		return requestOAuth1.call(this, credentialsType, requestOptions);
-	}
-	if (parentTypes.includes('oAuth2Api')) {
-		return requestOAuth2.call(
-			this,
+		if (parentTypes.includes('oAuth1Api')) {
+			return await requestOAuth1.call(this, credentialsType, requestOptions);
+		}
+		if (parentTypes.includes('oAuth2Api')) {
+			return await requestOAuth2.call(
+				this,
+				credentialsType,
+				requestOptions,
+				node,
+				additionalData,
+				additionalCredentialOptions?.oauth2,
+			);
+		}
+
+		const credentials = await this.getCredentials(credentialsType);
+
+		if (credentials === undefined) {
+			throw new NodeOperationError(
+				node,
+				`Node "${node.name}" does not have any credentials of type "${credentialsType}" set!`,
+			);
+		}
+
+		requestOptions = await additionalData.credentialsHelper.authenticate(
+			credentials,
 			credentialsType,
 			requestOptions,
-			node,
-			additionalData,
-			additionalCredentialOptions?.oauth2,
 		);
+
+		return await httpRequest(requestOptions);
+	} catch (error) {
+		throw new NodeApiError(this.getNode(), error);
 	}
-
-	const credentials = await this.getCredentials(credentialsType);
-
-	if (credentials === undefined) {
-		throw new NodeOperationError(
-			node,
-			`Node "${node.name}" does not have any credentials of type "${credentialsType}" set!`,
-		);
-	}
-
-	requestOptions = await additionalData.credentialsHelper.authenticate(
-		credentials,
-		credentialsType,
-		requestOptions,
-	);
-
-	return httpRequest(requestOptions);
 }
 
 /**
