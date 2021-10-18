@@ -2615,13 +2615,19 @@ export default mixins(
 		align-items: center;
 		justify-content: center;
 
+		position: absolute;
+
+		&.add {
+			right: 4px;
+		}
+
+		&.delete {
+			left: 4px;
+		}
+
 		svg {
 			pointer-events: none;
 			font-size: var(--font-size-2xs);
-		}
-
-		&:first-child {
-			margin-right: var(--spacing-xs);
 		}
 
 		&:hover {
