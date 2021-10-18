@@ -1366,6 +1366,9 @@ export default mixins(
 
 						info.connection.bind('mouseout', (connection: IConnection) => {
 							timer = setTimeout(() => {
+								if (!info.connection) {
+									return;
+								}
 								const overlay = info.connection.getOverlay('connection-actions');
 								overlay.setVisible(false);
 								timer = undefined;
