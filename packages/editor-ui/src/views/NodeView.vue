@@ -1370,11 +1370,12 @@ export default mixins(
 								overlay.setVisible(false);
 								timer = undefined;
 
-								showOrHideMidpointArrow(info.connection);
-
 								const itemsOverlay = info.connection.getOverlay('output-items-label');
 								if (itemsOverlay) {
 									itemsOverlay.setVisible(true);
+								}
+								else {
+									showOrHideMidpointArrow(info.connection);
 								}
 							}, 500);
 						});
