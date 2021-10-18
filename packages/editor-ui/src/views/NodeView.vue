@@ -1363,6 +1363,7 @@ export default mixins(
 								itemsOverlay.setVisible(false);
 							}
 						});
+
 						info.connection.bind('mouseout', (connection: IConnection) => {
 							timer = setTimeout(() => {
 								const overlay = info.connection.getOverlay('connection-actions');
@@ -1377,7 +1378,6 @@ export default mixins(
 								}
 							}, 500);
 						});
-
 
 						// @ts-ignore
 						info.connection.addOverlay([
@@ -2609,6 +2609,7 @@ export default mixins(
 		justify-content: center;
 
 		position: absolute;
+		top: -12px;
 
 		&.add {
 			right: 4px;
