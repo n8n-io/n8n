@@ -162,6 +162,25 @@ export const getIcon = (name: string): string => {
 	return '';
 };
 
+export const showOrHideItemsLabel = (connection: Connection) => {
+	const overlay = connection.getOverlay('output-items-label');
+	if (!overlay) {
+		return;
+	}
+
+	// @ts-ignore
+	const bounds = connection.connector.bounds;
+	const diffX = Math.abs(bounds.maxX - bounds.minX);
+	const diffY = Math.abs(bounds.maxY - bounds.minY);
+
+	if (diffX < 150 && diffY < 100) {
+		overlay.setVisible(false);
+	}
+	else {
+		overlay.setVisible(true);
+	}
+};
+
 const canUsePosition = (position1: XYPositon, position2: XYPositon) => {
 	if (Math.abs(position1[0] - position2[0]) <= 100) {
 		if (Math.abs(position1[1] - position2[1]) <= 50) {

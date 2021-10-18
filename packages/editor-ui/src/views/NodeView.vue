@@ -133,7 +133,7 @@ import NodeCreator from '@/components/NodeCreator/NodeCreator.vue';
 import NodeSettings from '@/components/NodeSettings.vue';
 import RunData from '@/components/RunData.vue';
 
-import { getLeftmostTopNode, getWorkflowCorners, scaleSmaller, scaleBigger, scaleReset, showOrHideMidpointArrow, addEndpointArrow, getDefaultOverlays, getIcon, getNewNodePosition, hideMidpointArrow } from './helpers';
+import { getLeftmostTopNode, getWorkflowCorners, scaleSmaller, scaleBigger, scaleReset, showOrHideMidpointArrow, addEndpointArrow, getDefaultOverlays, getIcon, getNewNodePosition, hideMidpointArrow, showOrHideItemsLabel } from './helpers';
 
 import mixins from 'vue-typed-mixins';
 import { v4 as uuidv4} from 'uuid';
@@ -1732,6 +1732,7 @@ export default mixins(
 
 				[...incoming, ...outgoing].forEach((connection: Connection) => {
 					showOrHideMidpointArrow(connection);
+					showOrHideItemsLabel(connection);
 				});
 			},
 			onNodeRun ({name, data}: {name: string, data: ITaskData[] | null}) {
