@@ -1837,7 +1837,7 @@ export default mixins(
 								{
 									id: 'output-items-label',
 									label,
-									cssClass: 'connection-output-name-label',
+									cssClass: 'connection-output-items-label',
 									location: .5,
 								},
 							]);
@@ -2548,13 +2548,20 @@ export default mixins(
 <style lang="scss">
 
 .connection-input-name-label,
+.connection-output-items-label,
 .connection-output-name-label {
 	border-radius: 7px;
 	background-color: rgba( $--custom-node-view-background, 0.8 );
 	font-size: 0.7em;
+	font-weight: var(--font-weight-regular);
 	line-height: 1.3em;
 	padding: 2px 3px;
 	white-space: nowrap;
+}
+
+.connection-output-items-label {
+	font-size: var(--font-size-s);
+	font-weight: var(--font-weight-regular);
 }
 
 .drop-add-node-label {
