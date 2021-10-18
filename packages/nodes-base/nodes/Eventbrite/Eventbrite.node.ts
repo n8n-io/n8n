@@ -222,13 +222,13 @@ export class Eventbrite implements INodeType {
 					const organizationId = organization.id;
 					if (organizationName !== '') {
 						returnData.push({
-							name: organizationName,
-							value: organizationId,
+							name: organizationName as string,
+							value: organizationId as number,
 						});
 					} else {
 						returnData.push({
-							name: organizationId.toString(),
-							value: organizationId,
+							name: organizationId!.toString() as string,
+							value: organizationId as number,
 						});
 					}
 				}
@@ -247,17 +247,18 @@ export class Eventbrite implements INodeType {
 					`/organizations/${organization}/events`,
 				);
 				for (const event of events) {
-					const eventName = event.name.text;
+					// @ts-ignore
+					const eventName = event!.name!.text;
 					const eventId = event.id;
 					if (eventName !== '') {
 						returnData.push({
-							name: eventName,
-							value: eventId,
+							name: eventName as string,
+							value: eventId as number,
 						});
 					} else {
 						returnData.push({
-							name: eventId.toString(),
-							value: eventId,
+							name: eventId!.toString() as string,
+							value: eventId as number,
 						});
 					}
 				}
