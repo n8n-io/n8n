@@ -93,8 +93,11 @@ export class Start extends Command {
 			setTimeout(() => {
 				// In case that something goes wrong with shutdown we
 				// kill after max. 30 seconds no matter what
+				console.log(`process exited after 30s`);
 				process.exit(processExitCode);
 			}, 30000);
+
+			await InternalHooksManager.getInstance().onN8nStop();
 
 			const skipWebhookDeregistration = config.get(
 				'endpoints.skipWebhoooksDeregistrationOnShutdown',
@@ -130,8 +133,6 @@ export class Start extends Command {
 				});
 				executingWorkflows = activeExecutionsInstance.getActiveExecutions();
 			}
-
-			await InternalHooksManager.getInstance().onN8nStop();
 		} catch (error) {
 			console.error('There was an error shutting down n8n.', error);
 		}

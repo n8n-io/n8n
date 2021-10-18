@@ -86,7 +86,7 @@ export class Telemetry {
 				(properties.error_node_type as string).startsWith('n8n-nodes-base')
 			) {
 				// errored exec
-				await this.track('Workflow execution errored', properties);
+				void this.track('Workflow execution errored', properties);
 
 				if (properties.is_manual) {
 					this.executionCountsBuffer[workflowId].manual_error_count++;
@@ -103,7 +103,6 @@ export class Telemetry {
 
 	async trackN8nStop(): Promise<void> {
 		clearInterval(this.pulseIntervalReference);
-		void this.pulse();
 		void this.track('User instance stopped');
 		return new Promise<void>((resolve) => {
 			if (this.client) {
