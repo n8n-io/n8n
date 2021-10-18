@@ -1743,7 +1743,6 @@ export default mixins(
 					outgoing.forEach((connection: Connection) => {
 						const arrow = connection.getOverlay('midpoint-arrow');
 						if (arrow) {
-							// @ts-ignore
 							arrow.setLocation(0.5);
 						}
 
@@ -1844,7 +1843,6 @@ export default mixins(
 
 							const arrow = connections[0].getOverlay('midpoint-arrow');
 							if (arrow) {
-								// @ts-ignore
 								arrow.setLocation(0.6);
 							}
 						});
