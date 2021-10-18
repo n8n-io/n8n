@@ -187,6 +187,15 @@
 		var(--color-text-xlight-l)
 	);
 
+	--color-foreground-xdark-h: 220;
+	--color-foreground-xdark-s: 7.4%;
+	--color-foreground-xdark-l: 52.5%;
+	--color-foreground-xdark: hsl(
+		var(--color-foreground-xdark-h),
+		var(--color-foreground-xdark-s),
+		var(--color-foreground-xdark-l)
+	);
+
 	--color-foreground-dark-h: 228;
 	--color-foreground-dark-s: 9.6%;
 	--color-foreground-dark-l: 79.6%;

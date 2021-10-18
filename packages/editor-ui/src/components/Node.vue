@@ -80,7 +80,7 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 		nodeRunData(): ITaskData[] {
 			return this.$store.getters.getWorkflowResultDataByNodeName(this.data.name);
 		},
-		workflowDataItems (): Number {
+		workflowDataItems (): number {
 			const workflowResultDataNode = this.nodeRunData;
 			if (workflowResultDataNode === null) {
 				return 0;

@@ -2605,7 +2605,8 @@ export default mixins(
 	}
 
 	> div {
-		border: 2px solid var(--color-text-base);
+		color: var(--color-foreground-xdark);
+		border: 2px solid var(--color-foreground-xdark);
 		background-color: var(--color-background-xlight);
 		border-radius: var(--border-radius-base);
 		height: var(--spacing-l);
