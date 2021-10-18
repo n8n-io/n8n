@@ -464,7 +464,7 @@ export class Redis implements INodeType {
 				const values = value.toString().split(" ");
 				for (let index = 0; index < values.length; index++) {
 					// @ts-ignore
-					await clientHset(keyName, values[index].toString(), values[index].toString());
+					await clientHset(keyName, index, values[index].toString());
 				}
 			} else if (type === 'list') {
 				const clientLset = util.promisify(client.lset).bind(client);
