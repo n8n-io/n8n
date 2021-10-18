@@ -61,6 +61,7 @@ import { workflowHelpers } from '@/components/mixins/workflowHelpers';
 
 import {
 	INodeTypeDescription,
+	ITaskData,
 	NodeHelpers,
 } from 'n8n-workflow';
 
@@ -76,8 +77,11 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 		NodeIcon,
 	},
 	computed: {
-		workflowDataItems () {
-			const workflowResultDataNode = this.$store.getters.getWorkflowResultDataByNodeName(this.data.name);
+		nodeRunData(): ITaskData[] {
+			return this.$store.getters.getWorkflowResultDataByNodeName(this.data.name);
+		},
+		workflowDataItems (): Number {
+			const workflowResultDataNode = this.nodeRunData;
 			if (workflowResultDataNode === null) {
 				return 0;
 			}
@@ -161,9 +165,15 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 				this.setSubtitle();
 			}
 		},
+		nodeRunData(newValue) {
+			this.$emit('run', {name: this.data.name, data: newValue});
+		},
 	},
 	mounted() {
 		this.setSubtitle();
+		setTimeout(() => {
+			this.$emit('run', {name: this.data.name, data: this.nodeRunData});
+		}, 0);
 	},
 	data () {
 		return {
@@ -399,6 +409,10 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 }
 
 .jtk-connector.jtk-hover {
+	z-index: 5;
+}
+
+.jtk-connector.jtk-success {
 	z-index: 5;
 }
 

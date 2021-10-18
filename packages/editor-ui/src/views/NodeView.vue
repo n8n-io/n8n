@@ -22,6 +22,7 @@
 				@removeNode="removeNode"
 				@runWorkflow="runWorkflow"
 				@moved="onNodeMoved"
+				@run="onNodeRun"
 				:id="'node-' + getNodeIndex(nodeData.name)"
 				:key="getNodeIndex(nodeData.name)"
 				:name="nodeData.name"
@@ -132,7 +133,7 @@ import NodeCreator from '@/components/NodeCreator/NodeCreator.vue';
 import NodeSettings from '@/components/NodeSettings.vue';
 import RunData from '@/components/RunData.vue';
 
-import { getLeftmostTopNode, getWorkflowCorners, scaleSmaller, scaleBigger, scaleReset, addOrRemoveMidpointArrow, addEndpointArrow, getDefaultOverlays, getIcon, getNewNodePosition } from './helpers';
+import { getLeftmostTopNode, getWorkflowCorners, scaleSmaller, scaleBigger, scaleReset, showOrHideMidpointArrow, addEndpointArrow, getDefaultOverlays, getIcon, getNewNodePosition, hideMidpointArrow } from './helpers';
 
 import mixins from 'vue-typed-mixins';
 import { v4 as uuidv4} from 'uuid';
@@ -145,14 +146,14 @@ import {
 	INodeIssues,
 	INodeTypeDescription,
 	INodeTypeNameVersion,
-	NodeInputConnections,
 	NodeHelpers,
 	Workflow,
 	IRun,
+	ITaskData,
 	INodeCredentialsDetails,
+	INodeExecutionData,
 } from 'n8n-workflow';
 import {
-	IConnectionsUi,
 	ICredentialsResponse,
 	IExecutionResponse,
 	IN8nUISettings,
@@ -1329,7 +1330,7 @@ export default mixins(
 					info.connection.setConnector(['Flowchart', { cornerRadius: 8, stub: JSPLUMB_FLOWCHART_STUB, gap: 5, alwaysRespectStubs: false}]);
 
 					addEndpointArrow(info.connection);
-					addOrRemoveMidpointArrow(info.connection);
+					showOrHideMidpointArrow(info.connection);
 
 					// @ts-ignore
 					const sourceInfo = info.sourceEndpoint.getParameters();
@@ -1355,9 +1356,11 @@ export default mixins(
 							const overlay = info.connection.getOverlay('connection-actions');
 							overlay.setVisible(true);
 
-							const arrow = info.connection.getOverlay('midpoint-arrow');
-							if (arrow) {
-								arrow.setVisible(false);
+							hideMidpointArrow(info.connection);
+
+							const itemsOverlay = info.connection.getOverlay('output-items-label');
+							if (itemsOverlay) {
+								itemsOverlay.setVisible(false);
 							}
 						});
 						info.connection.bind('mouseout', (connection: IConnection) => {
@@ -1366,9 +1369,11 @@ export default mixins(
 								overlay.setVisible(false);
 								timer = undefined;
 
-								const arrow = info.connection.getOverlay('midpoint-arrow');
-								if (arrow) {
-									arrow.setVisible(true);
+								showOrHideMidpointArrow(info.connection);
+
+								const itemsOverlay = info.connection.getOverlay('output-items-label');
+								if (itemsOverlay) {
+									itemsOverlay.setVisible(true);
 								}
 							}, 500);
 						});
@@ -1722,7 +1727,128 @@ export default mixins(
 				}) as Connection[];
 
 				[...incoming, ...outgoing].forEach((connection: Connection) => {
-					addOrRemoveMidpointArrow(connection);
+					showOrHideMidpointArrow(connection);
+				});
+			},
+			onNodeRun ({name, data}: {name: string, data: ITaskData[] | null}) {
+				const sourceIndex = this.$store.getters.getNodeIndex(name);
+				const sourceId = `${NODE_NAME_PREFIX}${sourceIndex}`;
+
+				if (data === null || data.length === 0) {
+					// @ts-ignore
+					const outgoing = this.instance.getConnections({
+						source: sourceId,
+					}) as Connection[];
+
+					outgoing.forEach((connection: Connection) => {
+						const arrow = connection.getOverlay('midpoint-arrow');
+						if (arrow) {
+							// @ts-ignore
+							arrow.setLocation(0.5);
+						}
+
+						connection.removeOverlay('output-items-label');
+						connection.setPaintStyle({stroke: getStyleTokenValue('--color-foreground-dark')});
+					});
+
+					return;
+				}
+
+				const nodeConnections = (this.$store.getters.outgoingConnectionsByNodeName(name) as INodeConnections).main;
+				if (!nodeConnections) {
+					return;
+				}
+
+				const outputMap: {[sourceEndpoint: string]: {[targetId: string]: {[targetEndpoint: string]: {total: number, iterations: number}}}} = {};
+
+				data.forEach((run: ITaskData) => {
+					if (!run.data) {
+						return;
+					}
+
+					run.data.main.forEach((output: INodeExecutionData[] | null, i: number) => {
+						nodeConnections[i]
+							.map((conn: IConnection) => {
+								const targetIndex = this.getNodeIndex(conn.node);
+								const targetId = `${NODE_NAME_PREFIX}${targetIndex}`;
+
+								const sourceEndpoint = `${sourceIndex}-output${i}`;
+								const targetEndpoint = `${targetIndex}-input${conn.index}`;
+
+								if (!outputMap[sourceEndpoint]) {
+									outputMap[sourceEndpoint] = {};
+								}
+
+								if (!outputMap[sourceEndpoint][targetId]) {
+									outputMap[sourceEndpoint][targetId] = {};
+								}
+
+								if (!outputMap[sourceEndpoint][targetId][targetEndpoint]) {
+									outputMap[sourceEndpoint][targetId][targetEndpoint] = {
+										total: 0,
+										iterations: 0,
+									};
+								}
+
+								outputMap[sourceEndpoint][targetId][targetEndpoint].total += output ? output.length : 0;
+								outputMap[sourceEndpoint][targetId][targetEndpoint].iterations += output ? 1 : 0;
+							});
+					});
+				});
+
+				Object.keys(outputMap).forEach((sourceEndpoint: string) => {
+					Object.keys(outputMap[sourceEndpoint]).forEach((targetId: string) => {
+						Object.keys(outputMap[sourceEndpoint][targetId]).forEach((targetEndpoint: string) => {
+							// @ts-ignore
+							const connections = this.instance.getConnections({
+								source: sourceId,
+								target: targetId,
+							}) as Connection[];
+
+							const conn = connections.find((connection: Connection) => {
+								// @ts-ignore
+								const uuids = connection.getUuids();
+								return uuids[0] === sourceEndpoint && uuids[1] === targetEndpoint;
+							});
+
+							if (!conn) {
+								return;
+							}
+
+							const output = outputMap[sourceEndpoint][targetId][targetEndpoint];
+							if (!output || !output.total) {
+								conn.setPaintStyle({stroke: getStyleTokenValue('--color-foreground-dark')});
+								conn.removeOverlay('output-items-label');
+								return;
+							}
+
+							conn.setPaintStyle({stroke: getStyleTokenValue('--color-success')});
+
+							if (conn.getOverlay('output-items-label')) {
+								conn.removeOverlay('output-items-label');
+							}
+
+							let label = `${output.total}`;
+							label = output.total > 1 ? `${label} items` : `${label} item`;
+							label = output.iterations > 1 ? `${label} total` : label;
+
+							conn.addOverlay([
+								'Label',
+								{
+									id: 'output-items-label',
+									label,
+									cssClass: 'connection-output-name-label',
+									location: .5,
+								},
+							]);
+
+							const arrow = connections[0].getOverlay('midpoint-arrow');
+							if (arrow) {
+								// @ts-ignore
+								arrow.setLocation(0.6);
+							}
+						});
+					});
 				});
 			},
 			removeNode (nodeName: string) {

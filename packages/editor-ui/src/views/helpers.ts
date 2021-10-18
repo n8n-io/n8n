@@ -1,4 +1,3 @@
-import { JSPLUMB_FLOWCHART_STUB } from "@/constants";
 import { INodeUi, IZoomConfig, XYPositon } from "@/Interface";
 import { Connection, OverlaySpec } from "jsplumb";
 
@@ -95,6 +94,7 @@ export const getDefaultOverlays = (): OverlaySpec[] => ([
 			width: 12,
 			foldback: 1,
 			length: 10,
+			visible: true,
 		},
 	],
 	[
@@ -104,46 +104,10 @@ export const getDefaultOverlays = (): OverlaySpec[] => ([
 			label: 'Drop connection<br />to create node',
 			cssClass: 'drop-add-node-label',
 			location: 0.5,
+			visible: false,
 		},
 	],
-]);
-
-export const addEndpointArrow = (connection: Connection)  => {
-	const hasArrow = !!connection.getOverlay('midpoint-arrow');
-	if (!hasArrow) {
-		connection.addOverlay([
-			'Arrow',
-			{
-				id: 'endpoint-arrow',
-				location: 1,
-				width: 12,
-				foldback: 1,
-				length: 10,
-			},
-		]);
-	}
-};
-
-export const addOrRemoveMidpointArrow = (connection: Connection) => {
-	const sourceEndpoint = connection.endpoints[0];
-	const targetEndpoint = connection.endpoints[1];
-	const requiresArrow = sourceEndpoint.anchor.lastReturnValue[0] >= targetEndpoint.anchor.lastReturnValue[0];
-
-	const hasArrow = !!connection.getOverlay('midpoint-arrow');
-
-	if (!requiresArrow) {
-		if (hasArrow) {
-			connection.removeOverlay('midpoint-arrow');
-		}
-
-		return;
-	}
-
-	if (hasArrow) {
-		return;
-	}
-
-	connection.addOverlay([
+	[
 		'Arrow',
 		{
 			id: 'midpoint-arrow',
@@ -151,8 +115,40 @@ export const addOrRemoveMidpointArrow = (connection: Connection) => {
 			width: 12,
 			foldback: 1,
 			length: 10,
+			visible: false,
+		},
+	],
+]);
+
+export const addEndpointArrow = (connection: Connection)  => {
+	connection.addOverlay([
+		'Arrow',
+		{
+			id: 'endpoint-arrow',
+			location: 1,
+			width: 12,
+			foldback: 1,
+			length: 10,
 		},
 	]);
+};
+
+export const hideMidpointArrow = (connection: Connection) => {
+	const arrow = connection.getOverlay('midpoint-arrow');
+	if (arrow) {
+		arrow.setVisible(false);
+	}
+};
+
+export const showOrHideMidpointArrow = (connection: Connection) => {
+	const sourceEndpoint = connection.endpoints[0];
+	const targetEndpoint = connection.endpoints[1];
+	const requiresArrow = sourceEndpoint.anchor.lastReturnValue[0] >= targetEndpoint.anchor.lastReturnValue[0];
+
+	const arrow = connection.getOverlay('midpoint-arrow');
+	if (arrow) {
+		arrow.setVisible(requiresArrow);
+	}
 };
 
 export const getIcon = (name: string): string => {
