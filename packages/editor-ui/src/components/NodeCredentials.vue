@@ -205,7 +205,6 @@ export default mixins(
 			const oldCredentials = this.node.credentials && this.node.credentials[credentialType] ? this.node.credentials[credentialType] : {};
 
 			const selected = { id: selectedCredentials.id, name: selectedCredentials.name };
-			this.$telemetry.track('User selected credential from node modal', { credential_type: credentialType, workflow_id: this.$store.getters.workflowId });
 
 			// if credentials has been string or neither id matched nor name matched uniquely
 			if (oldCredentials.id === null || (oldCredentials.id && !this.$store.getters['credentials/getCredentialByIdAndType'](oldCredentials.id, credentialType))) {
@@ -275,7 +274,6 @@ export default mixins(
 		editCredential(credentialType: string): void {
 			const { id } = this.node.credentials[credentialType];
 			this.$store.dispatch('ui/openExisitngCredential', { id });
-			this.$telemetry.track('User opened Credential modal', { credential_type: credentialType, source: 'node', new_credential: false, workflow_id: this.$store.getters.workflowId });
 
 			this.$telemetry.track('User opened Credential modal', { credential_type: credentialType, source: 'node', new_credential: false, workflow_id: this.$store.getters.workflowId });
 
