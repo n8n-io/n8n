@@ -19,7 +19,7 @@
 			inputSize="large"
 		/>
 		<div class="errors" v-if="showRequiredErrors">
-			This field is required. <a v-if="documentationUrl" :href="documentationUrl" target="_blank">Open docs</a>
+			This field is required. <a v-if="documentationUrl" :href="documentationUrl" target="_blank" @click="onDocumentationUrlClick">Open docs</a>
 		</div>
 	</n8n-input-label>
 </template>
@@ -76,6 +76,13 @@ export default Vue.extend({
 		},
 		valueChanged(parameterData: IUpdateInformation) {
 			this.$emit('change', parameterData);
+		},
+		onDocumentationUrlClick (): void {
+			this.$telemetry.track('User clicked credential modal docs link', {
+				docs_link: this.documentationUrl,
+				source: 'field',
+				workflow_id: this.$store.getters.workflowId,
+			});
 		},
 	},
 });
