@@ -213,10 +213,10 @@ if (!window.localStorage.getItem('ALWAYS_RESPECT_STUB')) {
 const _ALWAYS_RESPECT_STUB = window.localStorage.getItem('ALWAYS_RESPECT_STUB') === 'true';
 
 if (!window.localStorage.getItem('PUSH_NODES_LENGTH')) {
-	window.localStorage.setItem('PUSH_NODES_LENGTH', 'false');
+	window.localStorage.setItem('PUSH_NODES_LENGTH', '200');
 }
 // @ts-ignore
-const _PUSH_NODES_LENGTH = parseInt(window.localStorage.getItem('PUSH_NODES_LENGTH'), 200);
+const _PUSH_NODES_LENGTH = parseInt(window.localStorage.getItem('PUSH_NODES_LENGTH'), 10);
 
 export default mixins(
 	copyPaste,
