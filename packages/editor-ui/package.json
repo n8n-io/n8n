@@ -14,7 +14,7 @@
     "url": "git+https://github.com/n8n-io/n8n.git"
   },
   "scripts": {
-    "build": "cross-env VUE_APP_PUBLIC_PATH=\"/%BASE_PATH%/\" VUE_APP_N8N_LANGUAGE=$N8N_LANGUAGE vue-cli-service build",
+    "build": "cross-env VUE_APP_PUBLIC_PATH=\"/%BASE_PATH%/\" vue-cli-service build",
     "dev": "npm run serve",
     "lint": "vue-cli-service lint",
     "serve": "cross-env VUE_APP_URL_BASE_API=http://localhost:5678/ vue-cli-service serve",

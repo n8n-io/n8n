@@ -166,7 +166,7 @@ import {
 	IPushDataExecutionFinished,
 	ITag,
 } from '../Interface';
-import { addNodeTranslations } from '@/i18n/i18n';
+import {addNodeTranslations, loadLanguage} from '@/i18n/i18n';
 import { mapGetters } from 'vuex';
 
 export default mixins(
@@ -221,6 +221,9 @@ export default mixins(
 					}
 				},
 				deep: true,
+			},
+			'$store.state.defaultLocale' () {
+				loadLanguage(this.$store.state.defaultLocale);
 			},
 		},
 		async beforeRouteLeave(to, from, next) {
@@ -2103,6 +2106,7 @@ export default mixins(
 				this.$store.commit('setVersionCli', settings.versionCli);
 				this.$store.commit('setOauthCallbackUrls', settings.oauthCallbackUrls);
 				this.$store.commit('setN8nMetadata', settings.n8nMetadata || {});
+				this.$store.commit('setDefaultLocale', settings.defaultLocale);
 			},
 			async loadNodeTypes (): Promise<void> {
 				const nodeTypes = await this.restApi().getNodeTypes();

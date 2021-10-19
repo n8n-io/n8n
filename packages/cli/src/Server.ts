@@ -196,6 +196,7 @@ class App {
 				'oauth1': urlBaseWebhook + `${this.restEndpoint}/oauth1-credential/callback`,
 				'oauth2': urlBaseWebhook + `${this.restEndpoint}/oauth2-credential/callback`,
 			},
+			defaultLocale: process.env.N8N_DEFAULT_LOCALE,
 		};
 	}
 
@@ -887,7 +888,7 @@ class App {
 			const nodeTypes = NodeTypes();
 
 			const allNodes = nodeTypes.getAll();
-			const language = process.env.N8N_LANGUAGE || (req.headers['accept-language'] ?? '');
+			const language = process.env.N8N_DEFAULT_LOCALE || (req.headers['accept-language'] ?? '');
 			const translations = await Promise.all(allNodes.map(async node => {
 				const nodeName = node.description.name.split('.')[1];
 				const {sourcePath} = nodeTypes.getByName(node.description.name, true);
@@ -920,7 +921,7 @@ class App {
 			const nodeNames = _.get(req, 'body.nodeNames', []) as string[];
 			const nodeTypes = NodeTypes();
 
-			const language = process.env.N8N_LANGUAGE || (req.headers['accept-language'] ?? '');
+			const language = process.env.N8N_DEFAULT_LOCALE || (req.headers['accept-language'] ?? '');
 			const requiresTranslation = language.length === 2;
 
 			return nodeNames.map(name => {

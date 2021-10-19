@@ -5,16 +5,14 @@ import axios from 'axios';
 
 Vue.use(VueI18n);
 
-const envLang = process.env.VUE_APP_N8N_LANGUAGE;
-const additionalMessages = envLang ? require(`./locales/${envLang}`).default : {};
 export const i18n = new VueI18n({
-	locale: envLang || 'en', // set locale
+	locale: 'en', // set locale
 	fallbackLocale: 'en',
-	messages: { ...messagesEn, ...additionalMessages } , // set locale messages
+	messages: { ...messagesEn } , // set locale messages
 	silentTranslationWarn: true,
 });
 
-const loadedLanguages = ['en', envLang]; // our default language that is preloaded
+const loadedLanguages = ['en']; // our default language that is preloaded
 
 function setI18nLanguage (lang: string): string {
 	i18n.locale = lang;
@@ -35,7 +33,8 @@ export function addNodeTranslations(translations: { [key: string]: string | obje
 	i18n.setLocaleMessage(lang, Object.assign(i18n.messages[lang], newNodesBase));
 }
 
-export function loadLanguageAsync(lang: string) {
+export function loadLanguage(lang?: string) {
+	if(!lang) return Promise.resolve();
 	// If the same language
 	if (i18n.locale === lang) {
 		return Promise.resolve(setI18nLanguage(lang));
@@ -47,12 +46,9 @@ export function loadLanguageAsync(lang: string) {
 	}
 
 	// If the language hasn't been loaded yet
-	return import(/* webpackChunkName: "locale-[request]" */ `./locales/${lang}`).then(
-		messages => {
-			console.log(JSON.stringify(messages.default));
-			i18n.setLocaleMessage(lang, messages.default);
-			loadedLanguages.push(lang);
-			return setI18nLanguage(lang);
-		},
-	);
+	const {default: {[lang]: messages}} = require(`./locales/${lang}`);
+	i18n.setLocaleMessage(lang, messages);
+	loadedLanguages.push(lang);
+
+	return setI18nLanguage(lang);
 }

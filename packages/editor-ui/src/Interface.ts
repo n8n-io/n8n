@@ -452,6 +452,7 @@ export interface IN8nUISettings {
 	};
 	urlBaseWebhook: string;
 	versionCli: string;
+	defaultLocale?: string;
 	n8nMetadata?: {
 		[key: string]: string | number | undefined;
 	};
@@ -563,6 +564,7 @@ export interface IRootState {
 	versionCli: string;
 	oauthCallbackUrls: object;
 	n8nMetadata: object;
+	defaultLocale: string;
 	workflowExecutionData: IExecutionResponse | null;
 	lastSelectedNode: string | null;
 	lastSelectedNodeOutputIndex: number | null;

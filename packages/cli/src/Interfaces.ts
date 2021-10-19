@@ -327,6 +327,7 @@ export interface IN8nUISettings {
 	timezone: string;
 	urlBaseWebhook: string;
 	versionCli: string;
+	defaultLocale?: string;
 	n8nMetadata?: {
 		[key: string]: string | number | undefined;
 	};

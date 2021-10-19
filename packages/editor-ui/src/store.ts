@@ -64,6 +64,7 @@ const state: IRootState = {
 	versionCli: '0.0.0',
 	oauthCallbackUrls: {},
 	n8nMetadata: {},
+	defaultLocale: 'en',
 	workflowExecutionData: null,
 	lastSelectedNode: null,
 	lastSelectedNodeOutputIndex: null,
@@ -552,6 +553,9 @@ export const store = new Vuex.Store({
 		setN8nMetadata(state, metadata: IDataObject) {
 			Vue.set(state, 'n8nMetadata', metadata);
 		},
+		setDefaultLocale(state, locale: string) {
+			Vue.set(state, 'defaultLocale', locale);
+		},
 		setActiveNode (state, nodeName: string) {
 			state.activeNode = nodeName;
 		},
@@ -702,6 +706,9 @@ export const store = new Vuex.Store({
 		},
 		n8nMetadata: (state): object => {
 			return state.n8nMetadata;
+		},
+		defaultLocale: (state): string => {
+			return state.defaultLocale;
 		},
 
 		// Push Connection
