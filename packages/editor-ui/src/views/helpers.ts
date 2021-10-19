@@ -162,6 +162,18 @@ export const getIcon = (name: string): string => {
 	return '';
 };
 
+if (!window.localStorage.getItem('MIN_X_TO_SHOW_OUTPUT_LABEL')) {
+	window.localStorage.setItem('MIN_X_TO_SHOW_OUTPUT_LABEL', '150');
+}
+// @ts-ignore
+const _MIN_X_TO_SHOW_OUTPUT_LABEL = parseInt(window.localStorage.getItem('MIN_X_TO_SHOW_OUTPUT_LABEL'), 10);
+
+if (!window.localStorage.getItem('MIN_Y_TO_SHOW_OUTPUT_LABEL')) {
+	window.localStorage.setItem('MIN_Y_TO_SHOW_OUTPUT_LABEL', '100');
+}
+// @ts-ignore
+const _MIN_Y_TO_SHOW_OUTPUT_LABEL = parseInt(window.localStorage.getItem('MIN_Y_TO_SHOW_OUTPUT_LABEL'), 10);
+
 export const showOrHideItemsLabel = (connection: Connection) => {
 	const overlay = connection.getOverlay('output-items-label');
 	if (!overlay) {
@@ -173,7 +185,7 @@ export const showOrHideItemsLabel = (connection: Connection) => {
 	const diffX = Math.abs(bounds.maxX - bounds.minX);
 	const diffY = Math.abs(bounds.maxY - bounds.minY);
 
-	if (diffX < 150 && diffY < 100) {
+	if (diffX < _MIN_X_TO_SHOW_OUTPUT_LABEL && diffY < _MIN_Y_TO_SHOW_OUTPUT_LABEL) {
 		overlay.setVisible(false);
 	}
 	else {
