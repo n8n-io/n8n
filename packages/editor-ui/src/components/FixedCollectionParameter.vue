@@ -263,6 +263,9 @@ export default mixins(genericHelpers)
 }
 
 .sort-icon {
+	display: flex;
+	flex-direction: column;
+	margin-left: 1px;
 	margin-top: .5em;
 }
 </style>
