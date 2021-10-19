@@ -1,6 +1,6 @@
 <template>
 	<div class="paramter-input-list-wrapper">
-		<div v-for="parameter in filteredParameters" :key="parameter.name">
+		<div v-for="parameter in filteredParameters" :key="parameter.name" :class="{indent}">
 			<div
 				v-if="multipleValues(parameter) === true && parameter.type !== 'fixedCollection'"
 				class="parameter-item"
@@ -116,6 +116,7 @@ export default mixins(
 			'parameters', // INodeProperties
 			'path', // string
 			'hideDelete', // boolean
+			'indent',
 		],
 		computed: {
 			filteredParameters (): INodeProperties[] {
@@ -269,13 +270,17 @@ export default mixins(
 		}
 	}
 
+	.indent > div {
+		padding-left: var(--spacing-xs);
+	}
+
 	.multi-parameter {
 		position: relative;
 		margin: var(--spacing-xs) 0;
 
 		.delete-option {
 			top: 0;
-			left: -0.9em;
+			left: 0;
 		}
 
 		.parameter-info {
@@ -288,8 +293,8 @@ export default mixins(
 		margin: var(--spacing-xs) 0;
 
 		>.delete-option {
-			left: -0.9em;
-			top: 0.6em;
+			top: var(--spacing-5xs);
+			left: 0;
 		}
 	}
 	.parameter-item:hover > .delete-option,

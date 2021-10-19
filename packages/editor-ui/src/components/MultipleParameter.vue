@@ -1,6 +1,5 @@
 <template>
 	<div @keydown.stop class="duplicate-parameter">
-
 		<n8n-input-label
 			:label="parameter.displayName"
 			:tooltipText="parameter.description"

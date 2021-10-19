@@ -221,7 +221,7 @@ export default mixins(genericHelpers)
 <style scoped lang="scss">
 
 .fixed-collection-parameter {
-	padding: 0 0 0 1em;
+	padding-left: var(--spacing-xs);
 }
 
 .fixed-collection-parameter-property {
@@ -250,6 +250,10 @@ export default mixins(genericHelpers)
 	+ .parameter-item {
 		.parameter-item-wrapper {
 			border-top: 1px dashed #999;
+
+			.delete-option {
+				top: 14px;
+			}
 		}
 	}
 }
