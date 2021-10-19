@@ -781,7 +781,7 @@ export default mixins(
 }
 
 .switch-input {
-	margin-bottom: 10px; // match text input height
+	margin: 2px 0;
 }
 
 .parameter-value-container {
