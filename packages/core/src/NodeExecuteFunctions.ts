@@ -444,6 +444,10 @@ async function proxyRequestToAxios(
 					});
 					return;
 				}
+				if (configObject.simple === false && error.response) {
+					resolve(error.response.data);
+					return;
+				}
 
 				Logger.debug('Request proxied to Axios failed', { error });
 				// Axios hydrates the original error with more data. We extract them.
