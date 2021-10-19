@@ -67,5 +67,5 @@ if (!window.localStorage.getItem('JSPLUMB_FLOWCHART_STUB')) {
 	window.localStorage.setItem('JSPLUMB_FLOWCHART_STUB', '50');
 }
 // @ts-ignore
-const _JSPLUMB_FLOWCHART_STUB = parseInt(window.localStorage.getItem('JSPLUMB_FLOWCHART_STUB'));
+const _JSPLUMB_FLOWCHART_STUB = parseInt(window.localStorage.getItem('JSPLUMB_FLOWCHART_STUB'), 10);
 export const JSPLUMB_FLOWCHART_STUB = _JSPLUMB_FLOWCHART_STUB;
