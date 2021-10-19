@@ -132,10 +132,7 @@ export const userFields = [
 	{
 		displayName: 'Account ID',
 		name: 'accountId',
-		type: 'options',
-		typeOptions: {
-			loadOptionsMethod: 'getUsers',
-		},
+		type: 'string',
 		default: '',
 		description: 'Account ID of the user to delete.',
 		displayOptions: {
@@ -155,10 +152,7 @@ export const userFields = [
 	{
 		displayName: 'Account ID',
 		name: 'accountId',
-		type: 'options',
-		typeOptions: {
-			loadOptionsMethod: 'getUsers',
-		},
+		type: 'string',
 		default: '',
 		description: 'Account ID of the user to retrieve.',
 		displayOptions: {
