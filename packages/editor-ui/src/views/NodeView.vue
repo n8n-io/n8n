@@ -1894,6 +1894,7 @@ export default mixins(
 							]);
 
 							hideMidpointArrow(conn);
+							showOrHideItemsLabel(conn);
 						});
 					});
 				});
