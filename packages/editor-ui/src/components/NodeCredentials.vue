@@ -277,6 +277,8 @@ export default mixins(
 			this.$store.dispatch('ui/openExisitngCredential', { id });
 			this.$telemetry.track('User opened Credential modal', { credential_type: credentialType, source: 'node', new_credential: false, workflow_id: this.$store.getters.workflowId });
 
+			this.$telemetry.track('User opened Credential modal', { credential_type: credentialType, source: 'node', new_credential: false, workflow_id: this.$store.getters.workflowId });
+
 			this.listenForNewCredentials(credentialType);
 		},
 	},

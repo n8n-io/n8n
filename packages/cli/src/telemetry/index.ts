@@ -48,13 +48,13 @@ export class Telemetry {
 		}
 	}
 
-	private async pulse(): Promise<void> {
+	private async pulse(): Promise<unknown> {
 		if (!this.client) {
-			return;
+			return Promise.resolve();
 		}
 
-		Object.keys(this.executionCountsBuffer).forEach(async (workflowId) => {
-			await this.track('Workflow execution count', {
+		const allPromises = Object.keys(this.executionCountsBuffer).map(async (workflowId) => {
+			const promise = this.track('Workflow execution count', {
 				workflow_id: workflowId,
 				...this.executionCountsBuffer[workflowId],
 			});
@@ -62,9 +62,12 @@ export class Telemetry {
 			this.executionCountsBuffer[workflowId].manual_success_count = 0;
 			this.executionCountsBuffer[workflowId].prod_error_count = 0;
 			this.executionCountsBuffer[workflowId].prod_success_count = 0;
+
+			return promise;
 		});
 
-		await this.track('pulse');
+		allPromises.push(this.track('pulse'));
+		return Promise.all(allPromises);
 	}
 
 	async trackWorkflowExecution(properties: IDataObject): Promise<void> {
@@ -83,7 +86,7 @@ export class Telemetry {
 				(properties.error_node_type as string).startsWith('n8n-nodes-base')
 			) {
 				// errored exec
-				await this.track('Workflow execution errored', properties);
+				void this.track('Workflow execution errored', properties);
 
 				if (properties.is_manual) {
 					this.executionCountsBuffer[workflowId].manual_error_count++;
@@ -100,7 +103,6 @@ export class Telemetry {
 
 	async trackN8nStop(): Promise<void> {
 		clearInterval(this.pulseIntervalReference);
-		await this.pulse();
 		void this.track('User instance stopped');
 		return new Promise<void>((resolve) => {
 			if (this.client) {
