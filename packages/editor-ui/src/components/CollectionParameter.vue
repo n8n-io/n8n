@@ -184,7 +184,7 @@ export default mixins(
 <style lang="scss">
 
 .collection-parameter {
-	padding-left: var(--spacing-xs);
+	padding-left: var(--spacing-s);
 
 	.param-options {
 		margin-top: var(--spacing-xs);

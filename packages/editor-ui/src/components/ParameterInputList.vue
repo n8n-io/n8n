@@ -271,7 +271,7 @@ export default mixins(
 	}
 
 	.indent > div {
-		padding-left: var(--spacing-xs);
+		padding-left: var(--spacing-s);
 	}
 
 	.multi-parameter {

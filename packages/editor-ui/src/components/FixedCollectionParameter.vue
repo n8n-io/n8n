@@ -221,7 +221,7 @@ export default mixins(genericHelpers)
 <style scoped lang="scss">
 
 .fixed-collection-parameter {
-	padding-left: var(--spacing-xs);
+	padding-left: var(--spacing-s);
 }
 
 .fixed-collection-parameter-property {
