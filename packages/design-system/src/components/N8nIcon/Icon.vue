@@ -8,6 +8,7 @@
 			:is="$options.components.FontAwesomeIcon"
 			:icon="props.icon"
 			:spin="props.spin"
+			:class="$style[props.size]"
 		/>
 	</component>
 </template>
@@ -39,3 +40,21 @@ export default {
 };
 </script>
 
+
+<style lang="scss" module>
+.xlarge {
+	width: var(--font-size-xl) !important;
+}
+
+.large {
+	width: var(--font-size-m) !important;
+}
+
+.medium {
+	width: var(--font-size-s) !important;
+}
+
+.small {
+	width: var(--font-size-2xs) !important;
+}
+</style>
