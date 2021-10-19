@@ -1,13 +1,15 @@
 export interface ISearchConditions {
-	filterType?: string;
-	searchOperation?: string;
+	field?: string;
+	condition_type?: string;
 	value?: string;
+	value2?: string;
 }
 
 export interface IFilterRules {
 	LHS?: string;
 	CONDITION?: string;
 	RHS?: string;
+	RHS_NEW?: string;
 }
 
 export interface IFilter {

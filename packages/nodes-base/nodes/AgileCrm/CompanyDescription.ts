@@ -1,6 +1,7 @@
 import {
 	INodeProperties,
 } from 'n8n-workflow';
+
 export const companyOperations = [
 	{
 		displayName: 'Operation',
@@ -72,10 +73,9 @@ export const companyFields = [
 	/*                                  company:get all                           */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Search Conditions',
-		name: 'searchConditions',
-		placeholder: 'Add Condition',
-		type: 'fixedCollection',
+		displayName: 'Return All',
+		name: 'returnAll',
+		type: 'boolean',
 		displayOptions: {
 			show: {
 				resource: [
@@ -84,142 +84,10 @@ export const companyFields = [
 				operation: [
 					'getAll',
 				],
-				returnAll: [
-					false,
-				],
 			},
 		},
-		typeOptions: {
-			multipleValues: true,
-			sortable: true,
-		},
-		description: 'The conditions to search by.',
-		default: { conditions:[] },
-		options: [
-			{
-				displayName: 'Conditions',
-				name: 'conditions',
-				values: [
-					{
-						displayName: 'Filter Type',
-						name: 'filterType',
-						type: 'options',
-							options: [
-								{
-									name: 'Email',
-									value: 'email',
-								},
-								{
-									name: 'Name',
-									value: 'name',
-								},
-								{
-									name: 'Tags',
-									value: 'tags',
-								},
-							],
-						default: 'email',
-						description: 'The field to search by. You can use the names of system fields like last_name or any other field that is searchable.',
-					},
-					{
-						displayName: 'Search Operation',
-						name: 'searchOperation',
-						type: 'options',
-						options: [
-							{
-								name: 'Equals',
-								value: 'EQUALS',
-								description: 'Equal to the value.',
-							},
-							{
-								name: 'Not equal',
-								value: 'NOTEQUALS',
-								description: 'Not equal to the value.',
-							},
-						],
-						default: 'EQUALS',
-						description: 'Operation to decide how the data should be searched.',
-					},
-					{
-						displayName: 'Value',
-						name: 'value',
-						type: 'string',
-						default: '',
-						description: '',
-					},
-				],
-			},
-		],
-	},
-	{
-		displayName: 'Combine',
-		name: 'combineOperation',
-		type: 'options',
-		displayOptions: {
-			show: {
-				resource: [
-					'company',
-				],
-				operation: [
-					'getAll',
-				],
-				returnAll: [
-					false,
-				],
-			},
-		},
-		options: [
-			{
-				name: 'ALL',
-				description: 'If all conditions are met it goes into "true" branch.',
-				value: 'all',
-			},
-			{
-				name: 'ANY',
-				description: 'If any of the conditions is met it goes into "true" branch.',
-				value: 'any',
-			},
-		],
-		default: 'all',
-		description: 'If multiple rules got set this settings decides if it is true as soon as ANY condition matches or only if ALL get met.',
-	},
-	{
-		displayName: 'Sort Criteria',
-		name: 'sortCriteria',
-		type: 'options',
-		displayOptions: {
-			show: {
-				resource: [
-					'company',
-				],
-				operation: [
-					'getAll',
-				],
-				returnAll: [
-					false,
-				],
-			},
-		},
-		options: [
-			{
-				name: 'Time of edit ascending',
-				value: 'updated_time',
-			},
-			{
-				name: 'Time of edit descending',
-				value: '-updated_time',
-			},
-			{
-				name: 'Time of creation ascending',
-				value: 'created_time',
-			},
-			{
-				name: 'Time of creation descending',
-				value: '-created_time',
-			},
-		],
-		default: '-updated_time',
-		description: 'The criteria to sort by.',
+		default: false,
+		description: 'If all results should be returned or only up to a given limit.',
 	},
 	{
 		displayName: 'Limit',
@@ -241,10 +109,25 @@ export const companyFields = [
 		default: 20,
 		description: 'Number of results to fetch.',
 	},
+
 	{
-		displayName: 'Return All',
-		name: 'returnAll',
-		type: 'boolean',
+		displayName: 'Filter',
+		name: 'filterType',
+		type: 'options',
+		options: [
+			{
+				name: 'None',
+				value: 'none',
+			},
+			{
+				name: 'Build Manually',
+				value: 'manual',
+			},
+			{
+				name: 'JSON',
+				value: 'json',
+			},
+		],
 		displayOptions: {
 			show: {
 				resource: [
@@ -255,8 +138,229 @@ export const companyFields = [
 				],
 			},
 		},
-		default: false,
-		description: 'If all results should be returned or only up to a given limit.',
+		default: 'none',
+	},
+	{
+		displayName: 'Must Match',
+		name: 'matchType',
+		type: 'options',
+		options: [
+			{
+				name: 'Any filter',
+				value: 'anyFilter',
+			},
+			{
+				name: 'All Filters',
+				value: 'allFilters',
+			},
+		],
+		displayOptions: {
+			show: {
+				resource: [
+					'company',
+				],
+				operation: [
+					'getAll',
+				],
+				filterType: [
+					'manual',
+				],
+			},
+		},
+		default: 'anyFilter',
+	},
+	{
+		displayName: 'Filters',
+		name: 'filters',
+		type: 'fixedCollection',
+		typeOptions: {
+			multipleValues: true,
+		},
+		displayOptions: {
+			show: {
+				resource: [
+					'company',
+				],
+				operation: [
+					'getAll',
+				],
+				filterType: [
+					'manual',
+				],
+			},
+		},
+		default: '',
+		placeholder: 'Add Condition',
+		options: [
+			{
+				displayName: 'Conditions',
+				name: 'conditions',
+				values: [
+					{
+						displayName: 'Field',
+						name: 'field',
+						type: 'string',
+						default: '',
+						description: 'Any searchable field.',
+					},
+					{
+						displayName: 'Condition Type',
+						name: 'condition_type',
+						type: 'options',
+						options: [
+							{
+								name: 'Equals',
+								value: 'EQUALS',
+							},
+							{
+								name: 'Not Equal',
+								value: 'NOTEQUALS',
+							},
+							{
+								name: 'Last',
+								value: 'LAST',
+							},
+							{
+								name: 'Between',
+								value: 'BETWEEN',
+							},
+							{
+								name: 'On',
+								value: 'ON',
+							},
+							{
+								name: 'Before',
+								value: 'BEFORE',
+							},
+							{
+								name: 'After',
+								value: 'AFTER',
+							},
+						],
+						default: 'EQUALS',
+					},
+					{
+						displayName: 'Value',
+						name: 'value',
+						type: 'string',
+						default: '',
+					},
+					{
+						displayName: 'Value 2',
+						name: 'value2',
+						type: 'string',
+						displayOptions: {
+							show: {
+								condition_type: [
+									'BETWEEN',
+								],
+							},
+						},
+						default: '',
+					},
+				],
+			},
+		],
+	},
+	{
+		displayName: 'See <a href="https://github.com/agilecrm/rest-api#121-get-contacts-by-dynamic-filter" target="_blank">Agile CRM guide</a> to creating filters',
+		name: 'jsonNotice',
+		type: 'notice',
+		displayOptions: {
+			show: {
+				resource: [
+					'company',
+				],
+				operation: [
+					'getAll',
+				],
+				filterType: [
+					'json',
+				],
+			},
+		},
+		default: '',
+	},
+	{
+		displayName: 'Filters (JSON)',
+		name: 'filterJson',
+		type: 'string',
+		typeOptions: {
+			alwaysOpenEditWindow: true,
+		},
+		displayOptions: {
+			show: {
+				resource: [
+					'company',
+				],
+				operation: [
+					'getAll',
+				],
+				filterType: [
+					'json',
+				],
+			},
+		},
+		default: '',
+		description: '',
+	},
+	{
+		displayName: 'Options',
+		name: 'options',
+		type: 'collection',
+		placeholder: 'Add Option',
+		default: {},
+		displayOptions: {
+			show: {
+				resource: [
+					'company',
+				],
+				operation: [
+					'getAll',
+				],
+			},
+		},
+		options: [
+			{
+				displayName: 'Sort',
+				name: 'sort',
+				type: 'fixedCollection',
+				placeholder: 'Add Sort',
+				default: [],
+				options: [
+					{
+						displayName: 'Sort',
+						name: 'sort',
+						values: [
+							{
+								displayName: 'Direction',
+								name: 'direction',
+								type: 'options',
+								options: [
+									{
+										name: 'Ascending',
+										value: 'ASC',
+									},
+									{
+										name: 'Descending',
+										value: 'DESC',
+									},
+								],
+								default: 'ASC',
+								description: 'The sorting direction',
+							},
+							{
+								displayName: 'Field',
+								name: 'field',
+								type: 'string',
+								default: '',
+								description: `The sorting field`,
+							},
+						],
+					},
+				],
+			},
+		],
 	},
 
 	/* -------------------------------------------------------------------------- */

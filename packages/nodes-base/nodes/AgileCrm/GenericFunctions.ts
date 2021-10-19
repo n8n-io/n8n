@@ -55,6 +55,30 @@ export async function agileCrmApiRequest(this: IHookFunctions | IExecuteFunction
 	}
 }
 
+export async function agileCrmApiRequestAllItems(this: IHookFunctions | ILoadOptionsFunctions | IExecuteFunctions,
+	method: string, resource: string, body: any = {}, query: IDataObject = {}, uri?: string, sendAsForm?: boolean): Promise<any> { // tslint:disable-line:no-any
+	// https://github.com/agilecrm/rest-api#11-listing-contacts-
+
+	const returnData: IDataObject[] = [];
+	let responseData;
+	do {
+		responseData = await agileCrmApiRequest.call(this, method, resource, body, query, uri, sendAsForm);
+		if (responseData.length !== 0) {
+			returnData.push.apply(returnData, responseData);
+			if (sendAsForm) {
+				body.cursor = responseData[responseData.length-1].cursor;
+			} else {
+				query.cursor = responseData[responseData.length-1].cursor;
+			}
+		}
+	} while (
+			responseData.length !== 0 &&
+			responseData[responseData.length-1].hasOwnProperty('cursor')
+		);
+
+	return returnData;
+}
+
 export async function agileCrmApiRequestUpdate(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method = 'PUT', endpoint?: string, body: any = {}, query: IDataObject = {}, uri?: string): Promise<any> { // tslint:disable-line:no-any
 
 	const credentials = await this.getCredentials('agileCrmApi');
@@ -143,20 +167,30 @@ export function validateJSON(json: string | undefined): any { // tslint:disable-
 	return result;
 }
 
-
-export function getRules(conditions: IDataObject): any { // tslint:disable-line:no-any
+export function getFilterRules(conditions: ISearchConditions[], matchType: string): IDataObject { // tslint:disable-line:no-any
 	const rules = [];
 
 	for (const key in conditions) {
 		if (conditions.hasOwnProperty(key)) {
 			const searchConditions: ISearchConditions = conditions[key] as ISearchConditions;
 			const rule: IFilterRules = {
-				LHS: searchConditions.filterType,  // filter type
-				CONDITION: searchConditions.searchOperation, // search operation
-				RHS: searchConditions.value as string, // search value
+				LHS: searchConditions.field,
+				CONDITION: searchConditions.condition_type,
+				RHS: searchConditions.value as string,
+				RHS_NEW: searchConditions.value2 as string,
 			};
 		rules.push(rule);
 		}
 	}
-	return rules;
+
+	if (matchType === 'anyFilter') {
+		return {
+			or_rules: rules,
+		};
+	}
+	else {
+		return {
+			rules,
+		};
+	}
 }
