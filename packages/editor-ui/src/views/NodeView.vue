@@ -109,7 +109,7 @@ import {
 } from 'jsplumb';
 import { MessageBoxInputData } from 'element-ui/types/message-box';
 import { jsPlumb, Endpoint, OnConnectionBindInfo } from 'jsplumb';
-import { NODE_NAME_PREFIX, PLACEHOLDER_EMPTY_WORKFLOW_ID, START_NODE_TYPE } from '@/constants';
+import { NODE_NAME_PREFIX, PLACEHOLDER_EMPTY_WORKFLOW_ID, START_NODE_TYPE, WEBHOOK_NODE_TYPE, WORKFLOW_OPEN_MODAL_KEY } from '@/constants';
 import { copyPaste } from '@/components/mixins/copyPaste';
 import { externalHooks } from '@/components/mixins/externalHooks';
 import { genericHelpers } from '@/components/mixins/genericHelpers';
@@ -175,7 +175,7 @@ const SIDEBAR_WIDTH = 65;
 
 const DEFAULT_START_NODE = {
 	name: 'Start',
-	type: 'n8n-nodes-base.start',
+	type: START_NODE_TYPE,
 	typeVersion: 1,
 	position: [
 		DEFAULT_START_POSITION_X,
@@ -345,7 +345,8 @@ export default mixins(
 			},
 			openNodeCreator () {
 				this.createNodeActive = true;
-				this.$externalHooks().run('nodeView.createNodeActiveChanged', { source: 'add_node_button' });
+				this.$externalHooks().run('nodeView.createNodeActiveChanged', { source: 'add_node_button', createNodeActive: this.createNodeActive });
+				this.$telemetry.trackNodesPanel('nodeView.createNodeActiveChanged', { source: 'add_node_button', workflow_id: this.$store.getters.workflowId, createNodeActive: this.createNodeActive });
 			},
 			async openExecution (executionId: string) {
 				this.resetWorkspace();
@@ -374,6 +375,7 @@ export default mixins(
 				});
 
 				this.$externalHooks().run('execution.open', { workflowId: data.workflowData.id, workflowName: data.workflowData.name, executionId });
+				this.$telemetry.track('User opened read-only execution', { workflow_id: data.workflowData.id, execution_mode: data.mode, execution_finished: data.finished });
 
 				if (data.finished !== true && data.data.resultData.error) {
 					// Check if any node contains an error
@@ -392,12 +394,14 @@ export default mixins(
 					}
 
 					if (nodeErrorFound === false) {
-						const errorMessage = this.$getExecutionError(data.data.resultData.error);
+						const resultError = data.data.resultData.error;
+						const errorMessage = this.$getExecutionError(resultError);
+						const shouldTrack = resultError && resultError.node && resultError.node.type.startsWith('n8n-nodes-base');
 						this.$showMessage({
 							title: 'Failed execution',
 							message: errorMessage,
 							type: 'error',
-						});
+						}, shouldTrack);
 
 						if (data.data.resultData.error.stack) {
 							// Display some more information for now in console to make debugging easier
@@ -593,6 +597,9 @@ export default mixins(
 
 				} else if (e.key === 'Tab') {
 					this.createNodeActive = !this.createNodeActive && !this.isReadOnly;
+					this.$externalHooks().run('nodeView.createNodeActiveChanged', { source: 'tab', createNodeActive: this.createNodeActive });
+					this.$telemetry.trackNodesPanel('nodeView.createNodeActiveChanged', { source: 'tab', workflow_id: this.$store.getters.workflowId, createNodeActive: this.createNodeActive });
+
 				} else if (e.key === this.controlKeyCode) {
 					this.ctrlKeyPressed = true;
 				} else if (e.key === 'F2' && !this.isReadOnly) {
@@ -627,7 +634,7 @@ export default mixins(
 					e.stopPropagation();
 					e.preventDefault();
 
-					this.$store.dispatch('ui/openWorklfowOpenModal');
+					this.$store.dispatch('ui/openModal', WORKFLOW_OPEN_MODAL_KEY);
 				} else if (e.key === 'n' && this.isCtrlKeyPressed(e) === true && e.altKey === true) {
 					// Create a new workflow
 					e.stopPropagation();
@@ -653,7 +660,7 @@ export default mixins(
 						return;
 					}
 
-					this.callDebounced('saveCurrentWorkflow', 1000);
+					this.callDebounced('saveCurrentWorkflow', 1000, undefined, true);
 				} else if (e.key === 'Enter') {
 					// Activate the last selected node
 					const lastSelectedNode = this.$store.getters.lastSelectedNode;
@@ -838,6 +845,12 @@ export default mixins(
 				this.getSelectedNodesToSave().then((data) => {
 					const nodeData = JSON.stringify(data, null, 2);
 					this.copyToClipboard(nodeData);
+					if (data.nodes.length > 0) {
+						this.$telemetry.track('User copied nodes', {
+							node_types: data.nodes.map((node) => node.type),
+							workflow_id: this.$store.getters.workflowId,
+						});
+					}
 				});
 			},
 
@@ -1011,6 +1024,10 @@ export default mixins(
 					}
 				}
 
+				this.$telemetry.track('User pasted nodes', {
+					workflow_id: this.$store.getters.workflowId,
+				});
+
 				return this.importWorkflowData(workflowData!);
 			},
 
@@ -1028,6 +1045,8 @@ export default mixins(
 					return;
 				}
 				this.stopLoading();
+
+				this.$telemetry.track('User imported workflow', { source: 'url', workflow_id: this.$store.getters.workflowId });
 
 				return workflowData;
 			},
@@ -1247,6 +1266,7 @@ export default mixins(
 				this.$store.commit('setStateDirty', true);
 
 				this.$externalHooks().run('nodeView.addNodeButton', { nodeTypeName });
+				this.$telemetry.trackNodesPanel('nodeView.addNodeButton', { node_type: nodeTypeName, workflow_id: this.$store.getters.workflowId });
 
 				// Automatically deselect all nodes and select the current one and also active
 				// current node
@@ -1370,7 +1390,8 @@ export default mixins(
 
 					// Display the node-creator
 					this.createNodeActive = true;
-					this.$externalHooks().run('nodeView.createNodeActiveChanged', { source: 'node_connection_drop' });
+					this.$externalHooks().run('nodeView.createNodeActiveChanged', { source: 'node_connection_drop', createNodeActive: this.createNodeActive });
+					this.$telemetry.trackNodesPanel('nodeView.createNodeActiveChanged', { source: 'node_connection_drop', workflow_id: this.$store.getters.workflowId, createNodeActive: this.createNodeActive });
 				});
 
 				this.instance.bind('connection', (info: OnConnectionBindInfo) => {
@@ -1752,6 +1773,8 @@ export default mixins(
 				setTimeout(() => {
 					this.nodeSelectedByName(newNodeData.name, true);
 				});
+
+				this.$telemetry.track('User duplicated node', { node_type: node.type, workflow_id: this.$store.getters.workflowId });
 			},
 			removeNode (nodeName: string) {
 				if (this.editAllowedCheck() === false) {
@@ -1761,7 +1784,7 @@ export default mixins(
 				const node = this.$store.getters.nodeByName(nodeName);
 
 				// "requiredNodeTypes" are also defined in cli/commands/run.ts
-				const requiredNodeTypes = [ 'n8n-nodes-base.start' ];
+				const requiredNodeTypes = [ START_NODE_TYPE ];
 
 				if (requiredNodeTypes.includes(node.type)) {
 					// The node is of the required type so check first
@@ -1961,7 +1984,7 @@ export default mixins(
 						node.parameters = nodeParameters !== null ? nodeParameters : {};
 
 						// if it's a webhook and the path is empty set the UUID as the default path
-						if (node.type === 'n8n-nodes-base.webhook' && node.parameters.path === '') {
+						if (node.type === WEBHOOK_NODE_TYPE && node.parameters.path === '') {
 							node.parameters.path = node.webhookId as string;
 						}
 					}
@@ -2240,21 +2263,7 @@ export default mixins(
 				this.$store.commit('setActiveWorkflows', activeWorkflows);
 			},
 			async loadSettings (): Promise<void> {
-				const settings = await this.restApi().getSettings() as IN8nUISettings;
-				this.$store.commit('setUrlBaseWebhook', settings.urlBaseWebhook);
-				this.$store.commit('setEndpointWebhook', settings.endpointWebhook);
-				this.$store.commit('setEndpointWebhookTest', settings.endpointWebhookTest);
-				this.$store.commit('setSaveDataErrorExecution', settings.saveDataErrorExecution);
-				this.$store.commit('setSaveDataSuccessExecution', settings.saveDataSuccessExecution);
-				this.$store.commit('setSaveManualExecutions', settings.saveManualExecutions);
-				this.$store.commit('setTimezone', settings.timezone);
-				this.$store.commit('setExecutionTimeout', settings.executionTimeout);
-				this.$store.commit('setMaxExecutionTimeout', settings.maxExecutionTimeout);
-				this.$store.commit('setVersionCli', settings.versionCli);
-				this.$store.commit('setInstanceId', settings.instanceId);
-				this.$store.commit('setOauthCallbackUrls', settings.oauthCallbackUrls);
-				this.$store.commit('setN8nMetadata', settings.n8nMetadata || {});
-				this.$store.commit('versions/setVersionNotificationSettings', settings.versionNotifications);
+				await this.$store.dispatch('settings/getSettings');
 			},
 			async loadNodeTypes (): Promise<void> {
 				const nodeTypes = await this.restApi().getNodeTypes();
