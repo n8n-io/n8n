@@ -1295,11 +1295,35 @@ export default mixins(
 				}
 			},
 			initNodeView () {
+				if (!window.localStorage.getItem('CURVINESS')) {
+					window.localStorage.setItem('CURVINESS', '150');
+				}
+				// @ts-ignore
+				const _CURVINESS = parseInt(window.localStorage.getItem('CURVINESS'));
+
+				if (!window.localStorage.getItem('OUTLINE_STROKE_COLOR')) {
+					window.localStorage.setItem('OUTLINE_STROKE_COLOR', 'transparent');
+				}
+				// @ts-ignore
+				const _OUTLINE_STROKE_COLOR = window.localStorage.getItem('OUTLINE_STROKE_COLOR');
+
+				if (!window.localStorage.getItem('OUTLINE_STROKE_WIDTH')) {
+					window.localStorage.setItem('OUTLINE_STROKE_WIDTH', '12');
+				}
+				// @ts-ignore
+				const _OUTLINE_STROKE_WIDTH = parseInt(window.localStorage.getItem('OUTLINE_STROKE_WIDTH'));
+
+				if (!window.localStorage.getItem('ALWAYS_RESPECT_STUB')) {
+					window.localStorage.setItem('ALWAYS_RESPECT_STUB', 'false');
+				}
+				// @ts-ignore
+				const _ALWAYS_RESPECT_STUB = window.localStorage.getItem('ALWAYS_RESPECT_STUB') === 'true';
+
 				this.instance.importDefaults({
-					Connector: ['Bezier', { curviness: 150 }],
+					Connector: ['Bezier', { curviness: _CURVINESS }],
 					Endpoint: ['Dot', { radius: 5 }],
 					DragOptions: { cursor: 'pointer', zIndex: 5000 },
-					PaintStyle: { strokeWidth: 2, stroke: getStyleTokenValue('--color-foreground-dark'), outlineStroke: "transparent", outlineWidth: 12},
+					PaintStyle: { strokeWidth: 2, stroke: getStyleTokenValue('--color-foreground-dark'), outlineStroke: _OUTLINE_STROKE_COLOR, outlineWidth: _OUTLINE_STROKE_WIDTH},
 					EndpointStyle: { radius: 9, fill: '#acd', stroke: 'red' },
 					HoverPaintStyle: { stroke: '#ff6d5a', lineWidth: 4 },
 					EndpointHoverStyle: { fill: '#ff6d5a', stroke: '#acd' },
@@ -1327,8 +1351,9 @@ export default mixins(
 				}));
 
 				this.instance.bind('connection', (info: OnConnectionBindInfo) => {
-					info.connection.setConnector(['Flowchart', { cornerRadius: 8, stub: JSPLUMB_FLOWCHART_STUB, gap: 5, alwaysRespectStubs: false}]);
-					info.connection.setPaintStyle({stroke: getStyleTokenValue('--color-foreground-dark'), strokeWidth: 2, outlineStroke: "transparent", outlineWidth: 12});
+					info.connection.setConnector(['Flowchart', { cornerRadius: 8, stub: JSPLUMB_FLOWCHART_STUB, gap: 5, alwaysRespectStubs: _ALWAYS_RESPECT_STUB}]);
+					// @ts-ignore
+					info.connection.setPaintStyle({stroke: getStyleTokenValue('--color-foreground-dark'), strokeWidth: 2, outlineStroke: _OUTLINE_STROKE_COLOR, outlineWidth: _OUTLINE_STROKE_WIDTH});
 
 					addEndpointArrow(info.connection);
 					showOrHideMidpointArrow(info.connection);

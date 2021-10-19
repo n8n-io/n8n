@@ -63,4 +63,9 @@ export const REQUEST_NODE_FORM_URL = 'https://n8n-community.typeform.com/to/K1fB
 export const INSTANCE_ID_HEADER = 'n8n-instance-id';
 export const WAIT_TIME_UNLIMITED = '3000-01-01T00:00:00.000Z';
 
-export const JSPLUMB_FLOWCHART_STUB = 50;
+if (!window.localStorage.getItem('JSPLUMB_FLOWCHART_STUB')) {
+	window.localStorage.setItem('JSPLUMB_FLOWCHART_STUB', '50');
+}
+// @ts-ignore
+const _JSPLUMB_FLOWCHART_STUB = parseInt(window.localStorage.getItem('JSPLUMB_FLOWCHART_STUB'));
+export const JSPLUMB_FLOWCHART_STUB = _JSPLUMB_FLOWCHART_STUB;
