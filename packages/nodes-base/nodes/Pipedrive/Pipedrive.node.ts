@@ -3724,20 +3724,6 @@ export class Pipedrive implements INodeType {
 			//         activity:getAll
 			// ----------------------------------
 			{
-				displayName: 'User ID',
-				name: 'user_id',
-				type: 'options',
-				required: true,
-				typeOptions: {
-					loadOptionsMethod: 'getUserIds',
-					loadOptionsDependsOn: [
-						'resource',
-					],
-				},
-				default: 0,
-				description: 'The ID of the User whose Activities will be fetched. If omitted, the User associated with the API token will be used. If 0, Activities for all company Users will be fetched based on the permission sets.',
-			},
-			{
 				displayName: 'Additional Fields',
 				name: 'additionalFields',
 				type: 'collection',
@@ -3794,6 +3780,16 @@ export class Pipedrive implements INodeType {
 						},
 						default: [],
 						description: 'Type of the Activity.',
+					},
+					{
+						displayName: 'User ID',
+						name: 'user_id',
+						type: 'options',
+						typeOptions: {
+							loadOptionsMethod: 'getUserIds',
+						},
+						default: '',
+						description: 'The ID of the User whose Activities will be fetched. If omitted, the User associated with the API token will be used. If 0, Activities for all company Users will be fetched based on the permission sets.',
 					},
 				],
 			},
@@ -3949,8 +3945,8 @@ export class Pipedrive implements INodeType {
 
 				if(resource === 'activity'){
 					returnData.push({
-						name: "All Users",
-						value: 0
+						name: 'All Users',
+						value: 0,
 					});
 				}
 
@@ -4249,7 +4245,6 @@ export class Pipedrive implements INodeType {
 						if (returnAll === false) {
 							qs.limit = this.getNodeParameter('limit', i) as number;
 						}
-						qs.user_id = this.getNodeParameter('user_id', i) as boolean;
 
 						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 						addAdditionalFields(qs, additionalFields);
