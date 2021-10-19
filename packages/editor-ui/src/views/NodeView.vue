@@ -1328,6 +1328,7 @@ export default mixins(
 
 				this.instance.bind('connection', (info: OnConnectionBindInfo) => {
 					info.connection.setConnector(['Flowchart', { cornerRadius: 8, stub: JSPLUMB_FLOWCHART_STUB, gap: 5, alwaysRespectStubs: false}]);
+					info.connection.setPaintStyle({stroke: getStyleTokenValue('--color-foreground-dark'), strokeWidth: 2, outlineStroke: "transparent", outlineWidth: 12});
 
 					addEndpointArrow(info.connection);
 					showOrHideMidpointArrow(info.connection);
@@ -1543,6 +1544,31 @@ export default mixins(
 					updateConnectionDetach(info.sourceEndpoint, info.targetEndpoint, 1);
 					info.connection.removeOverlays();
 					this.__removeConnectionByConnectionInfo(info, false);
+				});
+
+				// @ts-ignore
+				this.instance.bind('connectionDrag', (connection: Connection) => {
+					const onMouseMove = () => {
+						if (!connection) {
+							return;
+						}
+
+						const elements = document.querySelector('div.jtk-endpoint.dropHover');
+						if (elements) {
+							connection.setPaintStyle({stroke: getStyleTokenValue('--color-primary')});
+						}
+						else {
+							connection.setPaintStyle({stroke: getStyleTokenValue('--color-foreground-dark')});
+						}
+					};
+
+					const onMouseUp = () => {
+						window.removeEventListener('mousemove', onMouseMove);
+						window.removeEventListener('mouseup', onMouseUp);
+					};
+
+					window.addEventListener('mousemove', onMouseMove);
+					window.addEventListener('mouseup', onMouseUp);
 				});
 			},
 			async newWorkflow (): Promise<void> {
