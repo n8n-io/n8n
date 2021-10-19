@@ -257,23 +257,6 @@ export const tweetFields = [
 		},
 		options: [
 			{
-				displayName: 'Tweet Mode',
-				name: 'tweetMode',
-				type: 'options',
-				options: [
-					{
-						name: 'Compat',
-						value: 'compat',
-					},
-					{
-						name: 'Extended',
-						value: 'extended',
-					},
-				],
-				default: 'compat',
-				description: 'When extended mode is selected the responsee contains the entire untruncated text of the Tweet',
-			},
-			{
 				displayName: 'Include Entities',
 				name: 'includeEntities',
 				type: 'boolean',
@@ -373,6 +356,23 @@ export const tweetFields = [
 				],
 				default: 'mixed',
 				description: 'Specifies what type of search results you would prefer to receive',
+			},
+			{
+				displayName: 'Tweet Mode',
+				name: 'tweetMode',
+				type: 'options',
+				options: [
+					{
+						name: 'Compatibility',
+						value: 'compat',
+					},
+					{
+						name: 'Extended',
+						value: 'extended',
+					},
+				],
+				default: 'compat',
+				description: 'When the extended mode is selected, the response contains the entire untruncated text of the Tweet',
 			},
 			{
 				displayName: 'Until',
