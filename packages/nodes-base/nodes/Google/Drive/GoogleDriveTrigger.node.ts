@@ -97,7 +97,7 @@ export class GoogleDriveTrigger implements INodeType {
 					// 	value: 'anyFileFolder',
 					// },
 				],
-				description: 'The resource whose events trigger the webhook.',
+				description: '',
 			},
 			{
 				displayName: 'File URL or ID',
@@ -111,7 +111,7 @@ export class GoogleDriveTrigger implements INodeType {
 					},
 				},
 				default: '',
-				description: 'The address of this file when you view it in your browser (or just the ID contained within the URL',
+				description: 'The address of this file when you view it in your browser (or just the ID contained within the URL)',
 				required: true,
 			},
 			{
@@ -126,14 +126,14 @@ export class GoogleDriveTrigger implements INodeType {
 					},
 				},
 				required: true,
-				default: '',
-				description: 'The resource whose events trigger the webhook.',
+				default: 'fileUpdated',
 				options: [
 					{
 						name: 'File Updated',
 						value: 'fileUpdated',
 					},
 				],
+				description: 'When to trigger this node',
 			},
 			{
 				displayName: 'Folder URL or ID',
@@ -147,7 +147,7 @@ export class GoogleDriveTrigger implements INodeType {
 					},
 				},
 				default: '',
-				description: 'The address of this folder when you view it in your browser (or just the ID contained within the URL',
+				description: 'The address of this folder when you view it in your browser (or just the ID contained within the URL)',
 				required: true,
 			},
 			{
@@ -262,6 +262,7 @@ export class GoogleDriveTrigger implements INodeType {
 						description: 'When a folder is updated in the watched drive',
 					},
 				],
+				description: 'When to trigger this node',
 			},
 			{
 				displayName: 'Options',
@@ -313,7 +314,7 @@ export class GoogleDriveTrigger implements INodeType {
 								value: 'application/vnd.google-apps.spreadsheet',
 							},
 							{
-								name: 'Photo and Images',
+								name: 'Photos and Images',
 								value: 'application/vnd.google-apps.photo',
 							},
 							{
