@@ -2,6 +2,7 @@
 	<n8n-input-label
 		:label="parameter.displayName"
 		:tooltipText="parameter.description"
+		:showTooltip="focused"
 		:bold="false"
 		size="small"
 	>
@@ -12,6 +13,8 @@
 			:path="path"
 			:isReadOnly="isReadOnly"
 			@valueChanged="valueChanged"
+			@focus="focused = true"
+			@blur="focused = false"
 			inputSize="small" />
 	</n8n-input-label>
 </template>
@@ -31,6 +34,11 @@ export default Vue
 		name: 'ParameterInputFull',
 		components: {
 			ParameterInput,
+		},
+		data() {
+			return {
+				focused: false,
+			};
 		},
 		computed: {
 			isMultiLineParameter () {

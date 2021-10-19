@@ -5,7 +5,7 @@
 				{{ props.label }}
 				<component :is="$options.components.N8nText" color="primary" :bold="props.bold" :size="props.size" v-if="props.required">*</component>
 			</component>
-			<span :class="$style.infoIcon" v-if="props.tooltipText">
+			<span :class="[$style.infoIcon, props.showTooltip ? $style.showIcon: $style.hiddenIcon]" v-if="props.tooltipText">
 				<component :is="$options.components.N8nTooltip" placement="top" :popper-class="$style.tooltipPopper">
 					<component :is="$options.components.N8nIcon" icon="question-circle" size="small" />
 					<div slot="content" v-html="$options.methods.addTargetBlank(props.tooltipText)"></div>
@@ -53,6 +53,9 @@ export default {
 		underline: {
 			type: Boolean,
 		},
+		showTooltip: {
+			type: Boolean,
+		},
 	},
 	methods: {
 		addTargetBlank,
@@ -80,6 +83,13 @@ export default {
 
 .infoIcon {
 	color: var(--color-text-light);
+}
+
+.showIcon {
+	display: inline-block;
+}
+
+.hiddenIcon {
 	display: none;
 }
 
