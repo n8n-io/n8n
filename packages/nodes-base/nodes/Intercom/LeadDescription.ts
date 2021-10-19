@@ -403,7 +403,7 @@ export const leadFields = [
 				name: 'updateLastRequestAt',
 				type: 'boolean',
 				default: false,
-				description: 'A boolean value, which if true, instructs Intercom to update the<br />users last_request_at value to the current API service time in<br />UTC. default value if not sent is false.',
+				description: 'A boolean value, which if true, instructs Intercom to update the users last_request_at value to the current API service time in UTC. default value if not sent is false.',
 			},
 			{
 				displayName: 'UTM Campaign',

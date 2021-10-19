@@ -481,7 +481,7 @@ export class Github implements INodeType {
 
 				},
 				placeholder: '',
-				description: 'Name of the binary property which contains<br />the data for the file.',
+				description: 'Name of the binary property which contains the data for the file.',
 			},
 			{
 				displayName: 'Commit Message',
@@ -597,7 +597,7 @@ export class Github implements INodeType {
 						],
 					},
 				},
-				description: 'If set it will set the data of the file as binary property<br />instead of returning the raw API response.',
+				description: 'If set it will set the data of the file as binary property instead of returning the raw API response.',
 			},
 			{
 				displayName: 'Binary Property',
@@ -620,7 +620,7 @@ export class Github implements INodeType {
 
 				},
 				placeholder: '',
-				description: 'Name of the binary property in which to save<br />the binary data of the received file.',
+				description: 'Name of the binary property in which to save the binary data of the received file.',
 			},
 
 

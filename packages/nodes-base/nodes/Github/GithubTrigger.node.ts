@@ -314,7 +314,7 @@ export class GithubTrigger implements INodeType {
 					{
 						name: 'team',
 						value: 'team',
-						description: 'Triggered when an organization\'s team is created,<br/>deleted, edited, added_to_repository, or removed_from_repository. Organization hooks only',
+						description: 'Triggered when an organization\'s team is created, deleted, edited, added_to_repository, or removed_from_repository. Organization hooks only',
 					},
 					{
 						name: 'team_add',
