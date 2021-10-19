@@ -37,6 +37,7 @@
 					:tooltipText="parameter.description"
 					size="small"
 					:underline="true"
+					:labelHoverableOnly="true"
 				>
 					<collection-parameter
 						v-if="parameter.type === 'collection'"

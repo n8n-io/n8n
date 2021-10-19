@@ -4,6 +4,7 @@
 			:label="parameter.displayName"
 			:tooltipText="parameter.description"
 			:underline="true"
+			:labelHoverableOnly="true"
 			size="small"
 		>
 
