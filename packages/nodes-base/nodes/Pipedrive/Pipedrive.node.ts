@@ -3928,10 +3928,11 @@ export class Pipedrive implements INodeType {
 
 				return sortOptionParameters(returnData);
 			},
-			// Get all Organizations to display them to user so that he can
+			// Get all Users to display them to user so that he can
 			// select them easily
 			async getUserIds(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
+				const resource = this.getCurrentNodeParameter('resource');
 				const { data } = await pipedriveApiRequest.call(this, 'GET', '/users', {});
 				for (const user of data) {
 					if (user.active_flag === true) {
@@ -3940,6 +3941,13 @@ export class Pipedrive implements INodeType {
 							value: user.id,
 						});
 					}
+				}
+
+				if(resource === 'activity'){
+					returnData.push({
+						name: 'All Users',
+						value: 0,
+					});
 				}
 
 				return sortOptionParameters(returnData);

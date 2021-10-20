@@ -4,7 +4,7 @@ import mixins from 'vue-typed-mixins';
 
 import { deviceSupportHelpers } from '@/components/mixins/deviceSupportHelpers';
 import { nodeIndex } from '@/components/mixins/nodeIndex';
-import { NODE_NAME_PREFIX } from '@/constants';
+import { NODE_NAME_PREFIX, NO_OP_NODE_TYPE } from '@/constants';
 
 export const nodeBase = mixins(
 	deviceSupportHelpers,
@@ -96,7 +96,7 @@ export const nodeBase = mixins(
 
 			if (!nodeTypeData) {
 				// If node type is not know use by default the base.noOp data to display it
-				nodeTypeData = this.$store.getters.nodeType('n8n-nodes-base.noOp');
+				nodeTypeData = this.$store.getters.nodeType(NO_OP_NODE_TYPE);
 			}
 
 			const anchorPositions: {
