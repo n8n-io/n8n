@@ -14,6 +14,7 @@ import {
 	IRunData,
 	IRunExecutionData,
 	ITaskData,
+	ITelemetrySettings,
 	IWorkflowBase as IWorkflowBaseWorkflow,
 	Workflow,
 	WorkflowExecuteMode,
@@ -288,6 +289,40 @@ export interface IExternalHooksClass {
 	run(hookName: string, hookParameters?: any[]): Promise<void>;
 }
 
+export interface IDiagnosticInfo {
+	versionCli: string;
+	databaseType: DatabaseType;
+	notificationsEnabled: boolean;
+	disableProductionWebhooksOnMainProcess: boolean;
+	basicAuthActive: boolean;
+	systemInfo: {
+		os: {
+			type?: string;
+			version?: string;
+		};
+		memory?: number;
+		cpus: {
+			count?: number;
+			model?: string;
+			speed?: number;
+		};
+	};
+	executionVariables: {
+		[key: string]: string | number | undefined;
+	};
+	deploymentType: string;
+}
+
+export interface IInternalHooksClass {
+	onN8nStop(): Promise<void>;
+	onServerStarted(diagnosticInfo: IDiagnosticInfo): Promise<void>;
+	onPersonalizationSurveySubmitted(answers: IPersonalizationSurveyAnswers): Promise<void>;
+	onWorkflowCreated(workflow: IWorkflowBase): Promise<void>;
+	onWorkflowDeleted(workflowId: string): Promise<void>;
+	onWorkflowSaved(workflow: IWorkflowBase): Promise<void>;
+	onWorkflowPostExecute(workflow: IWorkflowBase, runData?: IRun): Promise<void>;
+}
+
 export interface IN8nConfig {
 	database: IN8nConfigDatabase;
 	endpoints: IN8nConfigEndpoints;
@@ -364,6 +399,20 @@ export interface IN8nUISettings {
 	};
 	versionNotifications: IVersionNotificationSettings;
 	instanceId: string;
+	telemetry: ITelemetrySettings;
+	personalizationSurvey: IPersonalizationSurvey;
+}
+
+export interface IPersonalizationSurveyAnswers {
+	companySize: string | null;
+	codingSkill: string | null;
+	workArea: string | null;
+	otherWorkArea: string | null;
+}
+
+export interface IPersonalizationSurvey {
+	answers?: IPersonalizationSurveyAnswers;
+	shouldShow: boolean;
 }
 
 export interface IPackageVersions {

@@ -237,11 +237,11 @@ async function parseRequestObject(requestObject: IDataObject) {
 	}
 
 	if (requestObject.uri !== undefined) {
-		axiosConfig.url = requestObject.uri as string;
+		axiosConfig.url = requestObject.uri?.toString() as string;
 	}
 
 	if (requestObject.url !== undefined) {
-		axiosConfig.url = requestObject.url as string;
+		axiosConfig.url = requestObject.url?.toString() as string;
 	}
 
 	if (requestObject.method !== undefined) {
@@ -259,6 +259,10 @@ async function parseRequestObject(requestObject: IDataObject) {
 	) {
 		axiosConfig.paramsSerializer = (params) => {
 			return stringify(params, { arrayFormat: 'repeat' });
+		};
+	} else if (requestObject.useQuerystring === false) {
+		axiosConfig.paramsSerializer = (params) => {
+			return stringify(params, { arrayFormat: 'indices' });
 		};
 	}
 
@@ -302,7 +306,7 @@ async function parseRequestObject(requestObject: IDataObject) {
 			});
 		}
 	}
-	if (requestObject.json === false) {
+	if (requestObject.json === false || requestObject.json === undefined) {
 		// Prevent json parsing
 		axiosConfig.transformResponse = (res) => res;
 	}
@@ -441,6 +445,10 @@ async function proxyRequestToAxios(
 					});
 					return;
 				}
+				if (configObject.simple === false && error.response) {
+					resolve(error.response.data);
+					return;
+				}
 
 				Logger.debug('Request proxied to Axios failed', { error });
 				// Axios hydrates the original error with more data. We extract them.
@@ -450,7 +458,7 @@ async function proxyRequestToAxios(
 				error.cause = errorData;
 				error.error = error.response?.data || errorData;
 				error.statusCode = error.response?.status;
-				error.options = config;
+				error.options = config || {};
 
 				// Remove not needed data and so also remove circular references
 				error.request = undefined;
@@ -739,16 +747,20 @@ export async function requestOAuth2(
 
 			credentials.oauthTokenData = newToken.data;
 
-			// Find the name of the credentials
+			// Find the credentials
 			if (!node.credentials || !node.credentials[credentialsType]) {
 				throw new Error(
 					`The node "${node.name}" does not have credentials of type "${credentialsType}"!`,
 				);
 			}
-			const name = node.credentials[credentialsType];
+			const nodeCredentials = node.credentials[credentialsType];
 
 			// Save the refreshed token
-			await additionalData.credentialsHelper.updateCredentials(name, credentialsType, credentials);
+			await additionalData.credentialsHelper.updateCredentials(
+				nodeCredentials,
+				credentialsType,
+				credentials,
+			);
 
 			Logger.debug(
 				`OAuth2 token for "${credentialsType}" used by node "${node.name}" has been saved to database successfully.`,
@@ -956,25 +968,26 @@ export async function getCredentials(
 		} as ICredentialsExpressionResolveValues;
 	}
 
-	let name = node.credentials[type];
+	const nodeCredentials = node.credentials[type];
 
-	if (name.charAt(0) === '=') {
-		// If the credential name is an expression resolve it
-		const additionalKeys = getAdditionalKeys(additionalData);
-		name = workflow.expression.getParameterValue(
-			name,
-			runExecutionData || null,
-			runIndex || 0,
-			itemIndex || 0,
-			node.name,
-			connectionInputData || [],
-			mode,
-			additionalKeys,
-		) as string;
-	}
+	// TODO: solve using credentials via expression
+	// if (name.charAt(0) === '=') {
+	// 	// If the credential name is an expression resolve it
+	// 	const additionalKeys = getAdditionalKeys(additionalData);
+	// 	name = workflow.expression.getParameterValue(
+	// 		name,
+	// 		runExecutionData || null,
+	// 		runIndex || 0,
+	// 		itemIndex || 0,
+	// 		node.name,
+	// 		connectionInputData || [],
+	// 		mode,
+	// 		additionalKeys,
+	// 	) as string;
+	// }
 
 	const decryptedDataObject = await additionalData.credentialsHelper.getDecrypted(
-		name,
+		nodeCredentials,
 		type,
 		mode,
 		false,

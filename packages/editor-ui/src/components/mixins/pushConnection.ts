@@ -16,6 +16,7 @@ import { titleChange } from '@/components/mixins/titleChange';
 import { workflowHelpers } from '@/components/mixins/workflowHelpers';
 
 import mixins from 'vue-typed-mixins';
+import { WORKFLOW_SETTINGS_MODAL_KEY } from '@/constants';
 
 export const pushConnection = mixins(
 	externalHooks,
@@ -246,7 +247,7 @@ export const pushConnection = mixins(
 									if (this.$store.getters.isNewWorkflow) {
 										await this.saveAsNewWorkflow();
 									}
-									this.$store.dispatch('ui/openWorkflowSettingsModal');
+									this.$store.dispatch('ui/openModal', WORKFLOW_SETTINGS_MODAL_KEY);
 								}
 							},
 						});
