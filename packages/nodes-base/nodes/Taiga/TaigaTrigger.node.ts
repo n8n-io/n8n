@@ -176,7 +176,7 @@ export class TaigaTrigger implements INodeType {
 				return false;
 			},
 			async create(this: IHookFunctions): Promise<boolean> {
-				const credentials = this.getCredentials('taigaApi') as ICredentialDataDecryptedObject;
+				const credentials = await this.getCredentials('taigaApi') as ICredentialDataDecryptedObject;
 
 				const webhookUrl = this.getNodeWebhookUrl('default') as string;
 

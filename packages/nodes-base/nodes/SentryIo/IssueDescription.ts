@@ -177,7 +177,7 @@ export const issueFields = [
 				name: 'query',
 				type: 'string',
 				default: '',
-				description: 'An optional Sentry structured search query. If not provided an implied "is:unresolved" is assumed. Info <a href="https://docs.sentry.io/product/sentry-basics/search/" target="_blank">here</a>.',
+				description: 'An optional Sentry structured search query. If not provided, an implied "is:unresolved" is assumed. Info <a href="https://docs.sentry.io/product/sentry-basics/search/">here</a>.',
 			},
 			{
 				displayName: 'Stats Period',

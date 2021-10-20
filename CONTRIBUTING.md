@@ -2,7 +2,6 @@
 
 Great that you are here and you want to contribute to n8n
 
-
 ## Contents
 
 - [Code of Conduct](#code-of-conduct)
@@ -15,16 +14,14 @@ Great that you are here and you want to contribute to n8n
 - [Extend Documentation](#extend-documentation)
 - [Contributor License Agreement](#contributor-license-agreement)
 
-
-## Code of Conduct
+## Code of conduct
 
 This project and everyone participating in it are governed by the Code of
 Conduct which can be found in the file [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md).
 By participating, you are expected to uphold this code. Please report
 unacceptable behavior to jan@n8n.io.
 
-
-## Directory Structure
+## Directory structure
 
 n8n is split up in different modules which are all in a single mono repository.
 
@@ -36,24 +33,27 @@ The most important directories:
  - [/packages/cli](/packages/cli) - CLI code to run front- & backend
  - [/packages/core](/packages/core) - Core code which handles workflow
                                       execution, active webhooks and
-                                      workflows
+                                      workflows. **Contact n8n before 
+									  starting on any changes here**
+ - [/packages/design-system](/packages/design-system) - Vue frontend components
  - [/packages/editor-ui](/packages/editor-ui) - Vue frontend workflow editor
  - [/packages/node-dev](/packages/node-dev) - CLI to create new n8n-nodes
  - [/packages/nodes-base](/packages/nodes-base) - Base n8n nodes
  - [/packages/workflow](/packages/workflow) - Workflow code with interfaces which
                                             get used by front- & backend
 
-
-## Development Setup
+## Development setup
 
 If you want to change or extend n8n you have to make sure that all needed
 dependencies are installed and the packages get linked correctly. Here a short guide on how that can be done:
 
-
 ### Requirements
 
+#### Node.js
 
-#### Build Tools
+We suggest using the current [Node.js](https://nodejs.org/en/) LTS version (14.18.0 which includes npm 6.14.15) for development purposes.
+
+#### Build tools
 
 The packages which n8n uses depend on a few build tools:
 
@@ -85,18 +85,23 @@ So for the setup to work correctly lerna has to be installed globally like this:
 npm install -g lerna
 ```
 
-
 ### Actual n8n setup
 
 > **IMPORTANT**: All the steps bellow have to get executed at least once to get the development setup up and running!
 
-
 Now that everything n8n requires to run is installed the actual n8n code can be
 checked out and set up:
 
-1. Clone the repository
+1. [Fork](https://guides.github.com/activities/forking/#fork) the n8n repository
+
+1. Clone your forked repository
 	```
-	git clone https://github.com/n8n-io/n8n.git
+	git clone https://github.com/<your_github_username>/n8n.git
+	```
+
+1. Add the original n8n repository as `upstream` to your forked repository
+    ```
+	git remote add upstream https://github.com/n8n-io/n8n.git
 	```
 
 1. Go into repository folder
@@ -114,8 +119,6 @@ checked out and set up:
 	npm run build
 	```
 
-
-
 ### Start
 
 To start n8n execute:
@@ -129,7 +132,7 @@ To start n8n with tunnel:
 ./packages/cli/bin/n8n start --tunnel
 ```
 
-## Development Cycle
+## Development cycle
 
 While iterating on n8n modules code, you can run `npm run dev`. It will then
 automatically build your code, restart the backend and refresh the frontend
@@ -146,12 +149,11 @@ automatically build your code, restart the backend and refresh the frontend
 	npm run start
 	```
 1. Create tests
-1. Run all tests
+1. Run all [tests](#test-suite)
 	```
 	npm run test
 	```
-1. Commit code and create pull request
-
+1. Commit code and [create a pull request](https://docs.github.com/en/github/collaborating-with-pull-requests/proposing-changes-to-your-work-with-pull-requests/creating-a-pull-request-from-a-fork)
 
 ### Test suite
 
@@ -164,33 +166,25 @@ If that gets executed in one of the package folders it will only run the tests
 of this package. If it gets executed in the n8n-root folder it will run all
 tests of all packages.
 
+## Create custom nodes
 
-
-## Create Custom Nodes
+> **IMPORTANT**: Avoid use of external libraries to ensure your custom nodes can be reviewed and merged quickly.
 
 Learn about [using the node dev CLI](https://docs.n8n.io/nodes/creating-nodes/node-dev-cli.html) to create custom nodes for n8n.
 
-More information can
-be found in the documentation of [n8n-node-dev](https://github.com/n8n-io/n8n/tree/master/packages/node-dev), which is a small CLI which
-helps with n8n-node-development.
-
-
+More information can be found in the documentation of [n8n-node-dev](https://github.com/n8n-io/n8n/tree/master/packages/node-dev), a small CLI which helps with n8n-node-development.
 
 ## Create a new node to contribute to n8n
 
 Follow this tutorial on [creating your first node](https://docs.n8n.io/nodes/creating-nodes/create-node.html) for n8n.
 
-
-
 ## Checklist before submitting a new node
 
 There are several things to keep in mind when creating a node. To help you, we prepared a [checklist](https://docs.n8n.io/nodes/creating-nodes/node-review-checklist.html) that covers the requirements for creating nodes, from preparation to submission. This will help us be quicker to review and merge your PR.
 
-
-## Extend Documentation
+## Extend documentation
 
 The repository for the n8n documentation on [docs.n8n.io](https://docs.n8n.io) can be found [here](https://github.com/n8n-io/n8n-docs).
-
 
 ## Contributor License Agreement
 

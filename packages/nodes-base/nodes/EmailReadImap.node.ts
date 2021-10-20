@@ -177,7 +177,7 @@ export class EmailReadImap implements INodeType {
 
 
 	async trigger(this: ITriggerFunctions): Promise<ITriggerResponse> {
-		const credentials = this.getCredentials('imap');
+		const credentials = await this.getCredentials('imap');
 
 		if (credentials === undefined) {
 			throw new NodeOperationError(this.getNode(), 'No credentials got returned!');

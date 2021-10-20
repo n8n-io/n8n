@@ -2,23 +2,22 @@
 import Vue from 'vue';
 import Vuex from 'vuex';
 
-import { PLACEHOLDER_EMPTY_WORKFLOW_ID } from '@/constants';
+import { PLACEHOLDER_EMPTY_WORKFLOW_ID, DEFAULT_NODETYPE_VERSION } from '@/constants';
 
 import {
 	IConnection,
 	IConnections,
-	ICredentialType,
 	IDataObject,
 	INodeConnections,
 	INodeIssueData,
 	INodeTypeDescription,
 	IRunData,
+	ITelemetrySettings,
 	ITaskData,
 	IWorkflowSettings,
 } from 'n8n-workflow';
 
 import {
-	ICredentialsResponse,
 	IExecutionResponse,
 	IExecutionsCurrentSummaryExtended,
 	IRootState,
@@ -33,7 +32,9 @@ import {
 	IRestApiContext,
 } from './Interface';
 
+import credentials from './modules/credentials';
 import tags from './modules/tags';
+import settings from './modules/settings';
 import ui from './modules/ui';
 import workflows from './modules/workflows';
 import versions from './modules/versions';
@@ -47,8 +48,6 @@ const state: IRootState = {
 	activeNode: null,
 	// @ts-ignore
 	baseUrl: process.env.VUE_APP_URL_BASE_API ? process.env.VUE_APP_URL_BASE_API : (window.BASE_PATH === '/%BASE_PATH%/' ? '/' : window.BASE_PATH),
-	credentials: null,
-	credentialTypes: null,
 	endpointWebhook: 'webhook',
 	endpointWebhookTest: 'webhook-test',
 	executionId: null,
@@ -88,13 +87,16 @@ const state: IRootState = {
 	},
 	sidebarMenuItems: [],
 	instanceId: '',
+	telemetry: null,
 };
 
 const modules = {
+	credentials,
 	tags,
-	ui,
+	settings,
 	workflows,
 	versions,
+	ui,
 };
 
 export const store = new Vuex.Store({
@@ -309,43 +311,6 @@ export const store = new Vuex.Store({
 			}
 		},
 
-		// Credentials
-		addCredentials (state, credentialData: ICredentialsResponse) {
-			if (state.credentials !== null) {
-				state.credentials.push(credentialData);
-			}
-		},
-		removeCredentials (state, credentialData: ICredentialsResponse) {
-			if (state.credentials === null) {
-				return;
-			}
-
-			for (let i = 0; i < state.credentials.length; i++) {
-				if (state.credentials[i].id === credentialData.id) {
-					state.credentials.splice(i, 1);
-					return;
-				}
-			}
-		},
-		updateCredentials (state, credentialData: ICredentialsResponse) {
-			if (state.credentials === null) {
-				return;
-			}
-
-			for (let i = 0; i < state.credentials.length; i++) {
-				if (state.credentials[i].id === credentialData.id) {
-					state.credentials[i] = credentialData;
-					return;
-				}
-			}
-		},
-		setCredentials (state, credentials: ICredentialsResponse[]) {
-			Vue.set(state, 'credentials', credentials);
-		},
-		setCredentialTypes (state, credentialTypes: ICredentialType[]) {
-			Vue.set(state, 'credentialTypes', credentialTypes);
-		},
-
 		renameNodeSelectedAndExecution (state, nameData) {
 			state.stateIsDirty = true;
 			// If node has any WorkflowResultData rename also that one that the data
@@ -410,6 +375,32 @@ export const store = new Vuex.Store({
 				state.stateIsDirty = true;
 			}
 			state.workflow.name = data.newName;
+		},
+
+		// replace invalid credentials in workflow
+		replaceInvalidWorkflowCredentials(state, {credentials, invalid, type }) {
+			state.workflow.nodes.forEach((node) => {
+				if (!node.credentials || !node.credentials[type]) {
+					return;
+				}
+				const nodeCredentials = node.credentials[type];
+
+				if (typeof nodeCredentials === 'string' && nodeCredentials === invalid.name) {
+					node.credentials[type] = credentials;
+					return;
+				}
+
+				if (nodeCredentials.id === null) {
+					if (nodeCredentials.name === invalid.name){
+						node.credentials[type] = credentials;
+					}
+					return;
+				}
+
+				if (nodeCredentials.id === invalid.id) {
+					node.credentials[type] = credentials;
+				}
+			});
 		},
 
 		// Nodes
@@ -552,6 +543,9 @@ export const store = new Vuex.Store({
 		setInstanceId(state, instanceId: string) {
 			Vue.set(state, 'instanceId', instanceId);
 		},
+		setTelemetry(state, telemetry: ITelemetrySettings) {
+			Vue.set(state, 'telemetry', telemetry);
+		},
 		setOauthCallbackUrls(state, urls: IDataObject) {
 			Vue.set(state, 'oauthCallbackUrls', urls);
 		},
@@ -626,11 +620,10 @@ export const store = new Vuex.Store({
 		},
 
 		updateNodeTypes (state, nodeTypes: INodeTypeDescription[]) {
-			const updatedNodeNames = nodeTypes.map(node => node.name) as string[];
-			const oldNodesNotChanged = state.nodeTypes.filter(node => !updatedNodeNames.includes(node.name));
-			const updatedNodes = [...oldNodesNotChanged, ...nodeTypes];
-			Vue.set(state, 'nodeTypes', updatedNodes);
-			state.nodeTypes = updatedNodes;
+			const oldNodesToKeep = state.nodeTypes.filter(node => !nodeTypes.find(n => n.name === node.name && n.version === node.version));
+			const newNodesState = [...oldNodesToKeep, ...nodeTypes];
+			Vue.set(state, 'nodeTypes', newNodesState);
+			state.nodeTypes = newNodesState;
 		},
 
 		addSidebarMenuItems (state, menuItems: IMenuItem[]) {
@@ -642,6 +635,14 @@ export const store = new Vuex.Store({
 
 		isActionActive: (state) => (action: string): boolean => {
 			return state.activeActions.includes(action);
+		},
+
+		isNewWorkflow: (state) => {
+			return state.workflow.id === PLACEHOLDER_EMPTY_WORKFLOW_ID;
+		},
+
+		currentWorkflowHasWebhookNode: (state: IRootState): boolean => {
+			return !!state.workflow.nodes.find((node: INodeUi) => !!node.webhookId);
 		},
 
 		getActiveExecutions: (state): IExecutionsCurrentSummaryExtended[] => {
@@ -682,6 +683,10 @@ export const store = new Vuex.Store({
 			return state.stateIsDirty;
 		},
 
+		instanceId: (state): string => {
+			return state.instanceId;
+		},
+
 		saveDataErrorExecution: (state): string => {
 			return state.saveDataErrorExecution;
 		},
@@ -702,6 +707,9 @@ export const store = new Vuex.Store({
 		},
 		versionCli: (state): string => {
 			return state.versionCli;
+		},
+		telemetry: (state): ITelemetrySettings | null => {
+			return state.telemetry;
 		},
 		oauthCallbackUrls: (state): object => {
 			return state.oauthCallbackUrls;
@@ -788,38 +796,12 @@ export const store = new Vuex.Store({
 			}
 			return false;
 		},
-		allCredentialTypes: (state): ICredentialType[] | null => {
-			return state.credentialTypes;
-		},
-		allCredentials: (state): ICredentialsResponse[] | null => {
-			return state.credentials;
-		},
-		credentialsByType: (state) => (credentialType: string): ICredentialsResponse[] | null => {
-			if (state.credentials === null) {
-				return null;
-			}
-
-			return state.credentials.filter((credentialData) => credentialData.type === credentialType);
-		},
-		credentialType: (state) => (credentialType: string): ICredentialType | null => {
-			if (state.credentialTypes === null) {
-				return null;
-			}
-			const foundType = state.credentialTypes.find(credentialData => {
-				return credentialData.name === credentialType;
-			});
-
-			if (foundType === undefined) {
-				return null;
-			}
-			return foundType;
-		},
 		allNodeTypes: (state): INodeTypeDescription[] => {
 			return state.nodeTypes;
 		},
-		nodeType: (state) => (nodeType: string): INodeTypeDescription | null => {
+		nodeType: (state, getters) => (nodeType: string, typeVersion?: number): INodeTypeDescription | null => {
 			const foundType = state.nodeTypes.find(typeData => {
-				return typeData.name === nodeType;
+				return typeData.name === nodeType && typeData.version === (typeVersion || typeData.defaultVersion || DEFAULT_NODETYPE_VERSION);
 			});
 
 			if (foundType === undefined) {
@@ -854,6 +836,7 @@ export const store = new Vuex.Store({
 		workflowId: (state): string => {
 			return state.workflow.id;
 		},
+
 		workflowSettings: (state): IWorkflowSettings => {
 			if (state.workflow.settings === undefined) {
 				return {};

@@ -230,7 +230,7 @@ export class GraphQL implements INodeType {
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 
 		const items = this.getInputData();
-		const httpHeaderAuth = this.getCredentials('httpHeaderAuth');
+		const httpHeaderAuth = await this.getCredentials('httpHeaderAuth');
 
 		let requestOptions: OptionsWithUri & RequestPromiseOptions;
 

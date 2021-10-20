@@ -1,3 +1,6 @@
+/* eslint-disable no-console */
+/* eslint-disable no-restricted-syntax */
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import * as convict from 'convict';
 import * as dotenv from 'dotenv';
 import * as path from 'path';
@@ -6,7 +9,6 @@ import * as core from 'n8n-core';
 dotenv.config();
 
 const config = convict({
-
 	database: {
 		type: {
 			doc: 'Type of database to use',
@@ -84,7 +86,6 @@ const config = convict({
 					env: 'DB_POSTGRESDB_SSL_REJECT_UNAUTHORIZED',
 				},
 			},
-
 		},
 		mysqldb: {
 			database: {
@@ -147,6 +148,12 @@ const config = convict({
 				env: 'CREDENTIALS_OVERWRITE_ENDPOINT',
 			},
 		},
+		defaultName: {
+			doc: 'Default name for credentials',
+			format: String,
+			default: 'My credentials',
+			env: 'CREDENTIALS_DEFAULT_NAME',
+		},
 	},
 
 	workflows: {
@@ -159,7 +166,6 @@ const config = convict({
 	},
 
 	executions: {
-
 		// By default workflows get always executed in their own process.
 		// If this option gets set to "main" it will run them in the
 		// main-process instead.
@@ -489,6 +495,12 @@ const config = convict({
 			env: 'N8N_ENDPOINT_WEBHOOK',
 			doc: 'Path for webhook endpoint',
 		},
+		webhookWaiting: {
+			format: String,
+			default: 'webhook-waiting',
+			env: 'N8N_ENDPOINT_WEBHOOK_WAIT',
+			doc: 'Path for waiting-webhook endpoint',
+		},
 		webhookTest: {
 			format: String,
 			default: 'webhook-test',
@@ -567,7 +579,6 @@ const config = convict({
 							throw new Error();
 						}
 					}
-
 				} catch (error) {
 					throw new TypeError(`The Nodes to exclude is not a valid Array of strings.`);
 				}
@@ -646,8 +657,47 @@ const config = convict({
 			env: 'N8N_BINARY_DATA_MODE',
 			doc: 'Storage mode for binary data, LOCAL_STORAGE',
 		},
-	}
+	},
 
+	deployment: {
+		type: {
+			format: String,
+			default: 'default',
+			env: 'N8N_DEPLOYMENT_TYPE',
+		},
+	},
+
+	personalization: {
+		enabled: {
+			doc: 'Whether personalization is enabled.',
+			format: Boolean,
+			default: true,
+			env: 'N8N_PERSONALIZATION_ENABLED',
+		},
+	},
+
+	diagnostics: {
+		enabled: {
+			doc: 'Whether diagnostic mode is enabled.',
+			format: Boolean,
+			default: true,
+			env: 'N8N_DIAGNOSTICS_ENABLED',
+		},
+		config: {
+			frontend: {
+				doc: 'Diagnostics config for frontend.',
+				format: String,
+				default: '1zPn9bgWPzlQc0p8Gj1uiK6DOTn;https://telemetry.n8n.io',
+				env: 'N8N_DIAGNOSTICS_CONFIG_FRONTEND',
+			},
+			backend: {
+				doc: 'Diagnostics config for backend.',
+				format: String,
+				default: '1zPn7YoGC3ZXE9zLeTKLuQCB4F6;https://telemetry.n8n.io/v1/batch',
+				env: 'N8N_DIAGNOSTICS_CONFIG_BACKEND',
+			},
+		},
+	},
 });
 
 // Overwrite default configuration with settings which got defined in

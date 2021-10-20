@@ -285,6 +285,16 @@ export const operationFields = [
 										description: 'Field is not equal to value',
 									},
 									{
+										name: 'Contains',
+										value: 'contains',
+										description: 'Field contains value',
+									},
+									{
+										name: 'Contains Not',
+										value: 'contains_not',
+										description: 'Field does not contain value',
+									},
+									{
 										name: 'Date Equal',
 										value: 'date_equal',
 										description: 'Field is date. Format: \'YYYY-MM-DD\'',
@@ -310,19 +320,19 @@ export const operationFields = [
 										description: 'Field in this year. Format: string',
 									},
 									{
-										name: 'Contains',
-										value: 'contains',
-										description: 'Field contains value',
+										name: 'Date Before Date',
+										value: 'date_before',
+										description: 'Field before this date. Format: \'YYYY-MM-DD\'',
 									},
 									{
-										name: 'File Name Contains',
+										name: 'Date After Date',
+										value: 'date_after',
+										description: 'Field after this date. Format: \'YYYY-MM-DD\'',
+									},
+									{
+										name: 'Filename Contains',
 										value: 'filename_contains',
 										description: 'Field filename contains value',
-									},
-									{
-										name: 'Contains Not',
-										value: 'contains_not',
-										description: 'Field does not contain value',
 									},
 									{
 										name: 'Higher Than',
@@ -335,6 +345,31 @@ export const operationFields = [
 										description: 'Field is lower than value',
 									},
 									{
+										name: 'Is Empty',
+										value: 'empty',
+										description: 'Field is empty',
+									},
+									{
+										name: 'Is Not Empty',
+										value: 'not_empty',
+										description: 'Field is not empty',
+									},
+									{
+										name: 'Is True',
+										value: 'boolean',
+										description: 'Boolean field is true',
+									},
+									{
+										name: 'Link Row Has',
+										value: 'link_row_has',
+										description: 'Field has link ID',
+									},
+									{
+										name: 'Link Row Does Not Have',
+										value: 'link_row_has_not',
+										description: 'Field does not have link ID',
+									},
+									{
 										name: 'Single Select Equal',
 										value: 'single_select_equal',
 										description: 'Field selected option is value',
@@ -343,21 +378,6 @@ export const operationFields = [
 										name: 'Single Select Not Equal',
 										value: 'single_select_not_equal',
 										description: 'Field selected option is not value',
-									},
-									{
-										name: 'Is True',
-										value: 'boolean',
-										description: 'Boolean field is true',
-									},
-									{
-										name: 'Is Empty',
-										value: 'empty',
-										description: 'Field is empty',
-									},
-									{
-										name: 'Not Empty',
-										value: 'not_empty',
-										description: 'Field is not empty',
 									},
 								],
 								default: 'equal',

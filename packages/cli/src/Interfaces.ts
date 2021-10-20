@@ -1,3 +1,5 @@
+/* eslint-disable @typescript-eslint/naming-convention */
+/* eslint-disable import/no-cycle */
 import {
 	ExecutionError,
 	ICredentialDataDecryptedObject,
@@ -9,16 +11,17 @@ import {
 	IRunData,
 	IRunExecutionData,
 	ITaskData,
+	ITelemetrySettings,
 	IWorkflowBase as IWorkflowBaseWorkflow,
+	// eslint-disable-next-line @typescript-eslint/no-unused-vars
 	IWorkflowCredentials,
 	Workflow,
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
 
-import {
-	IDeferredPromise, WorkflowExecute,
-} from 'n8n-core';
+import { IDeferredPromise, WorkflowExecute } from 'n8n-core';
 
+// eslint-disable-next-line import/no-extraneous-dependencies
 import * as PCancelable from 'p-cancelable';
 import { Repository } from 'typeorm';
 
@@ -85,7 +88,7 @@ export interface ITagDb {
 }
 
 export type UsageCount = {
-	usageCount: number
+	usageCount: number;
 };
 
 export type ITagWithCountDb = ITagDb & UsageCount;
@@ -119,6 +122,7 @@ export interface ICredentialsBase {
 
 export interface ICredentialsDb extends ICredentialsBase, ICredentialsEncrypted {
 	id: number | string;
+	name: string;
 }
 
 export interface ICredentialsResponse extends ICredentialsDb {
@@ -150,6 +154,7 @@ export interface IExecutionBase {
 // Data in regular format with references
 export interface IExecutionDb extends IExecutionBase {
 	data: IRunExecutionData;
+	waitTill?: Date;
 	workflowData?: IWorkflowBase;
 }
 
@@ -163,6 +168,7 @@ export interface IExecutionResponse extends IExecutionBase {
 	data: IRunExecutionData;
 	retryOf?: string;
 	retrySuccessId?: string;
+	waitTill?: Date;
 	workflowData: IWorkflowBase;
 }
 
@@ -176,6 +182,7 @@ export interface IExecutionFlatted extends IExecutionBase {
 export interface IExecutionFlattedDb extends IExecutionBase {
 	id: number | string;
 	data: string;
+	waitTill?: Date | null;
 	workflowData: IWorkflowBase;
 }
 
@@ -204,12 +211,12 @@ export interface IExecutionsSummary {
 	mode: WorkflowExecuteMode;
 	retryOf?: string;
 	retrySuccessId?: string;
+	waitTill?: Date;
 	startedAt: Date;
 	stoppedAt?: Date;
 	workflowId: string;
 	workflowName?: string;
 }
-
 
 export interface IExecutionsCurrentSummary {
 	id: string;
@@ -218,7 +225,6 @@ export interface IExecutionsCurrentSummary {
 	mode: WorkflowExecuteMode;
 	workflowId: string;
 }
-
 
 export interface IExecutionDeleteFilter {
 	deleteBefore?: Date;
@@ -236,22 +242,33 @@ export interface IExecutingWorkflowData {
 
 export interface IExternalHooks {
 	credentials?: {
-		create?: Array<{ (this: IExternalHooksFunctions, credentialsData: ICredentialsEncrypted): Promise<void>; }>
-		delete?: Array<{ (this: IExternalHooksFunctions, credentialId: string): Promise<void>; }>
-		update?: Array<{ (this: IExternalHooksFunctions, credentialsData: ICredentialsDb): Promise<void>; }>
+		create?: Array<{
+			(this: IExternalHooksFunctions, credentialsData: ICredentialsEncrypted): Promise<void>;
+		}>;
+		delete?: Array<{ (this: IExternalHooksFunctions, credentialId: string): Promise<void> }>;
+		update?: Array<{
+			(this: IExternalHooksFunctions, credentialsData: ICredentialsDb): Promise<void>;
+		}>;
 	};
 	workflow?: {
-		activate?: Array<{ (this: IExternalHooksFunctions, workflowData: IWorkflowDb): Promise<void>; }>
-		create?: Array<{ (this: IExternalHooksFunctions, workflowData: IWorkflowBase): Promise<void>; }>
-		delete?: Array<{ (this: IExternalHooksFunctions, workflowId: string): Promise<void>; }>
-		execute?: Array<{ (this: IExternalHooksFunctions, workflowData: IWorkflowDb, mode: WorkflowExecuteMode): Promise<void>; }>
-		update?: Array<{ (this: IExternalHooksFunctions, workflowData: IWorkflowDb): Promise<void>; }>
+		activate?: Array<{ (this: IExternalHooksFunctions, workflowData: IWorkflowDb): Promise<void> }>;
+		create?: Array<{ (this: IExternalHooksFunctions, workflowData: IWorkflowBase): Promise<void> }>;
+		delete?: Array<{ (this: IExternalHooksFunctions, workflowId: string): Promise<void> }>;
+		execute?: Array<{
+			(
+				this: IExternalHooksFunctions,
+				workflowData: IWorkflowDb,
+				mode: WorkflowExecuteMode,
+			): Promise<void>;
+		}>;
+		update?: Array<{ (this: IExternalHooksFunctions, workflowData: IWorkflowDb): Promise<void> }>;
 	};
 }
 
 export interface IExternalHooksFileData {
 	[key: string]: {
-		[key: string]: Array<(...args: any[]) => Promise<void>>; //tslint:disable-line:no-any
+		// eslint-disable-next-line @typescript-eslint/no-explicit-any
+		[key: string]: Array<(...args: any[]) => Promise<void>>;
 	};
 }
 
@@ -261,7 +278,42 @@ export interface IExternalHooksFunctions {
 
 export interface IExternalHooksClass {
 	init(): Promise<void>;
-	run(hookName: string, hookParameters?: any[]): Promise<void>; // tslint:disable-line:no-any
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any
+	run(hookName: string, hookParameters?: any[]): Promise<void>;
+}
+
+export interface IDiagnosticInfo {
+	versionCli: string;
+	databaseType: DatabaseType;
+	notificationsEnabled: boolean;
+	disableProductionWebhooksOnMainProcess: boolean;
+	basicAuthActive: boolean;
+	systemInfo: {
+		os: {
+			type?: string;
+			version?: string;
+		};
+		memory?: number;
+		cpus: {
+			count?: number;
+			model?: string;
+			speed?: number;
+		};
+	};
+	executionVariables: {
+		[key: string]: string | number | undefined;
+	};
+	deploymentType: string;
+}
+
+export interface IInternalHooksClass {
+	onN8nStop(): Promise<void>;
+	onServerStarted(diagnosticInfo: IDiagnosticInfo): Promise<void>;
+	onPersonalizationSurveySubmitted(answers: IPersonalizationSurveyAnswers): Promise<void>;
+	onWorkflowCreated(workflow: IWorkflowBase): Promise<void>;
+	onWorkflowDeleted(workflowId: string): Promise<void>;
+	onWorkflowSaved(workflow: IWorkflowBase): Promise<void>;
+	onWorkflowPostExecute(workflow: IWorkflowBase, runData?: IRun): Promise<void>;
 }
 
 export interface IN8nConfig {
@@ -291,12 +343,14 @@ export interface IN8nConfigEndpoints {
 	webhookTest: string;
 }
 
+// eslint-disable-next-line import/export
 export interface IN8nConfigExecutions {
 	saveDataOnError: SaveExecutionDataType;
 	saveDataOnSuccess: SaveExecutionDataType;
 	saveDataManualExecutions: boolean;
 }
 
+// eslint-disable-next-line import/export
 export interface IN8nConfigExecutions {
 	saveDataOnError: SaveExecutionDataType;
 	saveDataOnSuccess: SaveExecutionDataType;
@@ -338,6 +392,20 @@ export interface IN8nUISettings {
 	};
 	versionNotifications: IVersionNotificationSettings;
 	instanceId: string;
+	telemetry: ITelemetrySettings;
+	personalizationSurvey: IPersonalizationSurvey;
+}
+
+export interface IPersonalizationSurveyAnswers {
+	companySize: string | null;
+	codingSkill: string | null;
+	workArea: string | null;
+	otherWorkArea: string | null;
+}
+
+export interface IPersonalizationSurvey {
+	answers?: IPersonalizationSurveyAnswers;
+	shouldShow: boolean;
 }
 
 export interface IPackageVersions {
@@ -405,12 +473,10 @@ export interface IPushDataNodeExecuteAfter {
 	nodeName: string;
 }
 
-
 export interface IPushDataNodeExecuteBefore {
 	executionId: string;
 	nodeName: string;
 }
-
 
 export interface IPushDataTestWebhook {
 	executionId: string;
@@ -428,14 +494,12 @@ export interface IResponseCallbackData {
 	responseCode?: number;
 }
 
-
 export interface ITransferNodeTypes {
 	[key: string]: {
 		className: string;
 		sourcePath: string;
 	};
 }
-
 
 export interface IWorkflowErrorData {
 	[key: string]: IDataObject | string | number | ExecutionError;
@@ -453,11 +517,11 @@ export interface IWorkflowErrorData {
 
 export interface IProcessMessageDataHook {
 	hook: string;
-	parameters: any[]; // tslint:disable-line:no-any
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any
+	parameters: any[];
 }
 
 export interface IWorkflowExecutionDataProcess {
-	credentials: IWorkflowCredentials;
 	destinationNode?: string;
 	executionMode: WorkflowExecuteMode;
 	executionData?: IRunExecutionData;
@@ -467,7 +531,6 @@ export interface IWorkflowExecutionDataProcess {
 	startNodes?: string[];
 	workflowData: IWorkflowBase;
 }
-
 
 export interface IWorkflowExecutionDataProcessWithExecution extends IWorkflowExecutionDataProcess {
 	credentialsOverwrite: ICredentialsOverwrite;

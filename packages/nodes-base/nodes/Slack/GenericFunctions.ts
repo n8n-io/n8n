@@ -40,7 +40,7 @@ export async function slackApiRequest(this: IExecuteFunctions | IExecuteSingleFu
 		let response: any; // tslint:disable-line:no-any
 
 		if (authenticationMethod === 'accessToken') {
-			const credentials = this.getCredentials('slackApi');
+			const credentials = await this.getCredentials('slackApi');
 			if (credentials === undefined) {
 				throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
 			}
@@ -71,15 +71,21 @@ export async function slackApiRequestAllItems(this: IExecuteFunctions | ILoadOpt
 	const returnData: IDataObject[] = [];
 	let responseData;
 	query.page = 1;
-	query.count = 100;
+	//if the endpoint uses legacy pagination use count
+	//https://api.slack.com/docs/pagination#classic
+	if (endpoint.includes('files.list')) {
+		query.count = 100;
+	} else {
+		query.limit = 100;
+	}
 	do {
 		responseData = await slackApiRequest.call(this, method, endpoint, body, query);
-		query.cursor = encodeURIComponent(_.get(responseData, 'response_metadata.next_cursor'));
+		query.cursor = _.get(responseData, 'response_metadata.next_cursor');
 		query.page++;
 		returnData.push.apply(returnData, responseData[propertyName]);
 	} while (
 		(responseData.response_metadata !== undefined &&
-			responseData.response_metadata.mext_cursor !== undefined &&
+			responseData.response_metadata.next_cursor !== undefined &&
 			responseData.response_metadata.next_cursor !== '' &&
 			responseData.response_metadata.next_cursor !== null) ||
 		(responseData.paging !== undefined &&

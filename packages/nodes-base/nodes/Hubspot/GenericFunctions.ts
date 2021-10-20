@@ -33,13 +33,13 @@ export async function hubspotApiRequest(this: IHookFunctions | IExecuteFunctions
 
 	try {
 		if (authenticationMethod === 'apiKey') {
-			const credentials = this.getCredentials('hubspotApi');
+			const credentials = await this.getCredentials('hubspotApi');
 
 			options.qs.hapikey = credentials!.apiKey as string;
 
 			return await this.helpers.request!(options);
 		} else if (authenticationMethod === 'developerApi') {
-			const credentials = this.getCredentials('hubspotDeveloperApi');
+			const credentials = await this.getCredentials('hubspotDeveloperApi');
 
 			options.qs.hapikey = credentials!.apiKey as string;
 			return await this.helpers.request!(options);

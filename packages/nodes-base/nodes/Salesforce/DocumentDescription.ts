@@ -86,6 +86,14 @@ export const documentFields = [
 		},
 		options: [
 			{
+				displayName: 'File Extension',
+				name: 'fileExtension',
+				type: 'string',
+				default: '',
+				placeholder: 'pdf',
+				description: 'File extension to use. If none is set, the value from the binary data will be used.',
+			},
+			{
 				displayName: 'Link To Object ID',
 				name: 'linkToObjectId',
 				type: 'string',

@@ -323,7 +323,7 @@ export const recordFields = [
 				name: 'where',
 				type: 'string',
 				default: '',
-				description: 'The filter, using the <a href="https://help.quickbase.com/api-guide/componentsquery.html" target="_blank">Quick Base query language</a>, which determines the records to return.',
+				description: 'The filter, using the <a href="https://help.quickbase.com/api-guide/componentsquery.html">Quick Base query language</a>, which determines the records to return.',
 			},
 		],
 	},

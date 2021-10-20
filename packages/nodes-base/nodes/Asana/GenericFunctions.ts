@@ -42,7 +42,7 @@ export async function asanaApiRequest(this: IHookFunctions | IExecuteFunctions |
 
 	try {
 		if (authenticationMethod === 'accessToken') {
-			const credentials = this.getCredentials('asanaApi');
+			const credentials = await this.getCredentials('asanaApi');
 
 			if (credentials === undefined) {
 				throw new NodeOperationError(this.getNode(), 'No credentials got returned!');

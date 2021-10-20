@@ -2,12 +2,19 @@
 	<div class="node-wrapper" :style="nodePosition">
 		<div class="node-default" :ref="data.name" :style="nodeStyle" :class="nodeClass" @dblclick="setNodeActive" @click.left="mouseLeftClick" v-touch:start="touchStart" v-touch:end="touchEnd">
 			<div v-if="hasIssues" class="node-info-icon node-issues">
-				<el-tooltip placement="top" effect="light">
+				<n8n-tooltip placement="top" >
 					<div slot="content" v-html="nodeIssues"></div>
 					<font-awesome-icon icon="exclamation-triangle" />
-				</el-tooltip>
+				</n8n-tooltip>
 			</div>
 			<el-badge v-else :hidden="workflowDataItems === 0" class="node-info-icon data-count" :value="workflowDataItems"></el-badge>
+
+			<div v-if="waiting" class="node-info-icon waiting">
+				<n8n-tooltip placement="top">
+					<div slot="content" v-html="waiting"></div>
+					<font-awesome-icon icon="clock" />
+				</n8n-tooltip>
+			</div>
 
 			<div class="node-executing-info" title="Node is executing">
 				<font-awesome-icon icon="sync-alt" spin />
@@ -30,7 +37,7 @@
 				</div>
 			</div>
 
-			<NodeIcon class="node-icon" :nodeType="nodeType" size="60" :shrink="true" :disabled="this.data.disabled"/>
+			<NodeIcon class="node-icon" :nodeType="nodeType" size="60" :circle="true" :shrink="true" :disabled="this.data.disabled"/>
 		</div>
 		<div class="node-description">
 			<div class="node-name" :title="data.name">
@@ -46,6 +53,7 @@
 <script lang="ts">
 
 import Vue from 'vue';
+import { WAIT_TIME_UNLIMITED } from '@/constants';
 import { externalHooks } from '@/components/mixins/externalHooks';
 import { nodeBase } from '@/components/mixins/nodeBase';
 import { nodeHelpers } from '@/components/mixins/nodeHelpers';
@@ -59,6 +67,8 @@ import {
 import NodeIcon from '@/components/NodeIcon.vue';
 
 import mixins from 'vue-typed-mixins';
+
+import { get } from 'lodash';
 
 export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).extend({
 	name: 'Node',
@@ -125,6 +135,22 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 				return 'play';
 			}
 		},
+		waiting (): string | undefined {
+			const workflowExecution = this.$store.getters.getWorkflowExecution;
+
+			if (workflowExecution && workflowExecution.waitTill) {
+				const lastNodeExecuted = get(workflowExecution, 'data.resultData.lastNodeExecuted');
+				if (this.name === lastNodeExecuted) {
+					const waitDate = new Date(workflowExecution.waitTill);
+					if (waitDate.toISOString() === WAIT_TIME_UNLIMITED) {
+						return 'The node is waiting indefinitely for an incoming webhook call.';
+					}
+					return `Node is waiting till ${waitDate.toLocaleDateString()} ${waitDate.toLocaleTimeString()}`;
+				}
+			}
+
+			return;
+		},
 		workflowRunning (): boolean {
 			return this.$store.getters.isActionActive('workflowRunning');
 		},
@@ -151,12 +177,15 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 		},
 		disableNode () {
 			this.disableNodes([this.data]);
+			this.$telemetry.track('User set node enabled status', { node_type: this.data.type, is_enabled: !this.data.disabled, workflow_id: this.$store.getters.workflowId });
 		},
 		executeNode () {
 			this.$emit('runWorkflow', this.data.name, 'Node.executeNode');
 		},
 		deleteNode () {
 			this.$externalHooks().run('node.deleteNode', { node: this.data});
+			this.$telemetry.track('User deleted node', { node_type: this.data.type, workflow_id: this.$store.getters.workflowId });
+
 			Vue.nextTick(() => {
 				// Wait a tick else vue causes problems because the data is gone
 				this.$emit('removeNode', this.data.name);
@@ -192,6 +221,7 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 	height: 100px;
 
 	.node-description {
+		line-height: 1.5;
 		position: absolute;
 		bottom: -55px;
 		left: -50px;
@@ -281,12 +311,17 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 
 		.node-info-icon {
 			position: absolute;
-			top: -18px;
+			top: -14px;
 			right: 12px;
-			z-index: 10;
+			z-index: 11;
 
 			&.data-count {
 				font-weight: 600;
+				top: -12px;
+			}
+
+			&.waiting {
+				left: 10px;
 				top: -12px;
 			}
 		}
@@ -296,6 +331,13 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 			height: 25px;
 			font-size: 20px;
 			color: #ff0000;
+		}
+
+		.waiting {
+			width: 25px;
+			height: 25px;
+			font-size: 20px;
+			color: #5e5efa;
 		}
 
 		.node-options {
@@ -312,9 +354,8 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 			text-align: center;
 
 			.option {
-				width: 20px;
+				width: 28px;
 				display: inline-block;
-				padding: 0 0.3em;
 
 				&.touch {
 					display: none;

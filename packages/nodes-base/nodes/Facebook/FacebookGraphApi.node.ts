@@ -87,6 +87,14 @@ export class FacebookGraphApi implements INodeType {
 						value: '',
 					},
 					{
+						name: 'v12.0',
+						value: 'v12.0',
+					},
+					{
+						name: 'v11.0',
+						value: 'v11.0',
+					},
+					{
 						name: 'v10.0',
 						value: 'v10.0',
 					},
@@ -295,7 +303,7 @@ export class FacebookGraphApi implements INodeType {
 		const returnItems: INodeExecutionData[] = [];
 
 		for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
-			const graphApiCredentials = this.getCredentials('facebookGraphApi');
+			const graphApiCredentials = await this.getCredentials('facebookGraphApi');
 
 			const hostUrl = this.getNodeParameter('hostUrl', itemIndex) as string;
 			const httpRequestMethod = this.getNodeParameter('httpRequestMethod', itemIndex) as string;

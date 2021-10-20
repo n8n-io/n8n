@@ -61,7 +61,7 @@ export async function quickBooksApiRequest(
 	const productionUrl = 'https://quickbooks.api.intuit.com';
 	const sandboxUrl = 'https://sandbox-quickbooks.api.intuit.com';
 
-	const credentials = this.getCredentials('quickBooksOAuth2Api') as QuickBooksOAuth2Credentials;
+	const credentials = await this.getCredentials('quickBooksOAuth2Api') as QuickBooksOAuth2Credentials;
 
 	const options: OptionsWithUri = {
 		headers: {
@@ -267,7 +267,7 @@ export async function loadResource(
 		query: `SELECT * FROM ${resource}`,
 	} as IDataObject;
 
-	const { oauthTokenData: { callbackQueryString: { realmId } } } = this.getCredentials('quickBooksOAuth2Api') as { oauthTokenData: { callbackQueryString: { realmId: string } } };
+	const { oauthTokenData: { callbackQueryString: { realmId } } } = await this.getCredentials('quickBooksOAuth2Api') as { oauthTokenData: { callbackQueryString: { realmId: string } } };
 	const endpoint = `/v3/company/${realmId}/query`;
 
 	const resourceItems = await quickBooksApiRequestAllItems.call(this, 'GET', endpoint, qs, {}, resource);

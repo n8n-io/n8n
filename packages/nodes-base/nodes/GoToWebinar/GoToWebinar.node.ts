@@ -158,7 +158,7 @@ export class GoToWebinar implements INodeType {
 		let responseData;
 		const returnData: IDataObject[] = [];
 
-		const { oauthTokenData } = this.getCredentials('goToWebinarOAuth2Api') as {
+		const { oauthTokenData } = await this.getCredentials('goToWebinarOAuth2Api') as {
 			oauthTokenData: { account_key: string, organizer_key: string }
 		};
 

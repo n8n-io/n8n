@@ -3,7 +3,6 @@ import {
 } from 'request';
 
 import {
-	BINARY_ENCODING,
 	IExecuteFunctions,
 	IExecuteSingleFunctions,
 	IHookFunctions,
@@ -168,6 +167,7 @@ export async function uploadAttachments(this: IExecuteFunctions, binaryPropertie
 				const { check_after_secs } = (response.processing_info as IDataObject);
 				await new Promise((resolve, reject) => {
 					setTimeout(() => {
+						// @ts-ignore
 						resolve();
 					}, (check_after_secs as number) * 1000);
 				});

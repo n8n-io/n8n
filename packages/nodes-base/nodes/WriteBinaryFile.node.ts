@@ -1,7 +1,5 @@
 import {
-	BINARY_ENCODING,
 	IExecuteFunctions,
-	IExecuteSingleFunctions
 } from 'n8n-core';
 import {
 	IDataObject,

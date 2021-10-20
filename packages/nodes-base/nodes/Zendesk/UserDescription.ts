@@ -36,6 +36,16 @@ export const userOperations = [
 				description: 'Get all users',
 			},
 			{
+				name: 'Get Organizations',
+				value: 'getOrganizations',
+				description: 'Get a user\'s organizations',
+			},
+			{
+				name: 'Get Related Data',
+				value: 'getRelatedData',
+				description: 'Get data related to the user',
+			},
+			{
 				name: 'Search',
 				value: 'search',
 				description: 'Search users',
@@ -47,7 +57,6 @@ export const userOperations = [
 			},
 		],
 		default: 'create',
-		description: 'The operation to perform.',
 	},
 ] as INodeProperties[];
 
@@ -93,7 +102,7 @@ export const userFields = [
 		options: [
 			{
 				displayName: 'Alias',
-				name: 'alis',
+				name: 'alias',
 				type: 'string',
 				default: '',
 				description: `An alias displayed to end users`,
@@ -159,9 +168,12 @@ export const userFields = [
 			},
 			{
 				displayName: 'Organization ID',
-				name: 'organizationId',
-				type: 'number',
-				default: 0,
+				name: 'organization_id',
+				typeOptions: {
+					loadOptionsMethod: 'getOrganizations',
+				},
+				type: 'options',
+				default: '',
 				description: `The id of the user's organization. If the user has more than one organization memberships, the id of the user's default organization`,
 			},
 			{
@@ -347,7 +359,7 @@ export const userFields = [
 		options: [
 			{
 				displayName: 'Alias',
-				name: 'alis',
+				name: 'alias',
 				type: 'string',
 				default: '',
 				description: `An alias displayed to end users`,
@@ -420,9 +432,12 @@ export const userFields = [
 			},
 			{
 				displayName: 'Organization ID',
-				name: 'organizationId',
-				type: 'number',
-				default: 0,
+				name: 'organization_id',
+				typeOptions: {
+					loadOptionsMethod: 'getOrganizations',
+				},
+				type: 'options',
+				default: '',
 				description: `The id of the user's organization. If the user has more than one organization memberships, the id of the user's default organization`,
 			},
 			{
@@ -767,5 +782,45 @@ export const userFields = [
 			},
 		},
 		description: 'User ID',
+	},
+/* -------------------------------------------------------------------------- */
+/*                             user:getRelatedData                            */
+/* -------------------------------------------------------------------------- */
+	{
+		displayName: 'User ID',
+		name: 'id',
+		type: 'string',
+		default: '',
+		required: true,
+		displayOptions: {
+			show: {
+				resource: [
+					'user',
+				],
+				operation: [
+					'getRelatedData',
+				],
+			},
+		},
+	},
+/* -------------------------------------------------------------------------- */
+/*                              user:getOrganizations                         */
+/* -------------------------------------------------------------------------- */
+	{
+		displayName: 'User ID',
+		name: 'id',
+		type: 'string',
+		default: '',
+		required: true,
+		displayOptions: {
+			show: {
+				resource: [
+					'user',
+				],
+				operation: [
+					'getOrganizations',
+				],
+			},
+		},
 	},
 ] as INodeProperties[];

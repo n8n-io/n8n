@@ -45,7 +45,7 @@ export async function googleApiRequest(
 
 	try {
 		if (authenticationMethod === 'serviceAccount') {
-			const credentials = this.getCredentials('googleApi') as { access_token: string, email: string, privateKey: string };
+			const credentials = await this.getCredentials('googleApi') as { access_token: string, email: string, privateKey: string };
 			const { access_token } = await getAccessToken.call(this, credentials);
 			options.headers.Authorization = `Bearer ${access_token}`;
 			return await this.helpers.request!(options);

@@ -154,7 +154,7 @@ export class WiseTrigger implements INodeType {
 	async webhook(this: IWebhookFunctions): Promise<IWebhookResponseData> {
 		const req = this.getRequestObject();
 		const headers = this.getHeaderData() as IDataObject;
-		const credentials = this.getCredentials('wiseApi') as IDataObject;
+		const credentials = await this.getCredentials('wiseApi') as IDataObject;
 
 		if (headers['x-test-notification'] === 'true') {
 			const res = this.getResponseObject();
