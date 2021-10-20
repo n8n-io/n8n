@@ -185,7 +185,7 @@ export class HtmlExtract implements INodeType {
 								name: 'returnArray',
 								type: 'boolean',
 								default: false,
-								description: 'Returns the values as an array so if multiple ones get found they also get returned separately.If not set all will be returned as a single string.',
+								description: 'Returns the values as an array so if multiple ones get found they also get returned separately. If not set all will be returned as a single string.',
 							},
 						],
 					},
