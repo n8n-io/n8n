@@ -9,7 +9,6 @@ import {
 	INodeType,
 	INodeTypeDescription,
 	IWebhookResponseData,
-	NodeApiError,
 	NodeOperationError,
 } from 'n8n-workflow';
 
@@ -144,6 +143,43 @@ export class Webhook implements INodeType {
 				description: 'The path to listen to.',
 			},
 			{
+				displayName: 'Respond',
+				name: 'responseMode',
+				type: 'options',
+				options: [
+					{
+						name: 'Immediately',
+						value: 'onReceived',
+						description: 'As soon as this node executes',
+					},
+					{
+						name: 'When last node finishes',
+						value: 'lastNode',
+						description: 'Returns data of the last-executed node',
+					},
+					{
+						name: 'Using "Respond to Webhook" node',
+						value: 'responseNode',
+						description: 'Response defined in that node',
+					},
+				],
+				default: 'onReceived',
+				description: 'When and how to respond to the webhook.',
+			},
+			{
+				displayName: 'Insert a "Respond to Webhook" node to control when and how you respond. <a href="https://docs.n8n.io/nodes/n8n-nodes-base.respondToWebhook">More details</a>',
+				name: 'webhookNotice',
+				type: 'notice',
+				displayOptions: {
+					show: {
+						responseMode: [
+							'responseNode',
+						],
+					},
+				},
+				default: '',
+			},
+			{
 				displayName: 'Response Code',
 				name: 'responseCode',
 				type: 'number',
@@ -160,30 +196,6 @@ export class Webhook implements INodeType {
 				},
 				default: 200,
 				description: 'The HTTP Response code to return',
-			},
-			{
-				displayName: 'Respond When',
-				name: 'responseMode',
-				type: 'options',
-				options: [
-					{
-						name: 'Webhook received',
-						value: 'onReceived',
-						description: 'Returns directly with defined Response Code',
-					},
-					{
-						name: 'Last node finishes',
-						value: 'lastNode',
-						description: 'Returns data of the last executed node',
-					},
-					{
-						name: 'Response Node finishes',
-						value: 'responseNode',
-						description: 'Returns data the response node did set',
-					},
-				],
-				default: 'onReceived',
-				description: 'When and how to respond to the webhook.',
 			},
 			{
 				displayName: 'Response Data',
