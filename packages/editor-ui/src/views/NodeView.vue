@@ -135,7 +135,7 @@ import NodeCreator from '@/components/NodeCreator/NodeCreator.vue';
 import NodeSettings from '@/components/NodeSettings.vue';
 import RunData from '@/components/RunData.vue';
 
-import { getLeftmostTopNode, getWorkflowCorners, scaleSmaller, scaleBigger, scaleReset, showOrHideMidpointArrow, getIcon, getNewNodePosition, hideMidpointArrow, showOrHideItemsLabel } from './helpers';
+import { getLeftmostTopNode, getWorkflowCorners, scaleSmaller, scaleBigger, scaleReset, showOrHideMidpointArrow, getIcon, getNewNodePosition, hideOverlay, showOrHideItemsLabel, showOverlay, OVERLAY_ENDPOINT_ARROW_ID, OVERLAY_MIDPOINT_ARROW_ID, OVERLAY_DROP_NODE_ID, OVERLAY_RUN_ITEMS_ID, OVERLAY_CONNECTION_ACTIONS_ID } from './canvasHelpers';
 
 import mixins from 'vue-typed-mixins';
 import { v4 as uuidv4} from 'uuid';
@@ -240,13 +240,11 @@ const CONNECTOR_PAINT_STYLE_SUCCESS = {
 const CONNECTOR_TYPE_BEZIER = ['Bezier', { curviness: _CURVINESS }];
 const CONNECTOR_TYPE_FLOWCHART = ['Flowchart', { cornerRadius: 8, stub: JSPLUMB_FLOWCHART_STUB, gap: 5, alwaysRespectStubs: _ALWAYS_RESPECT_STUB}];
 
-const OVERLAY_DROP_NODE_ID = 'drop-add-node';
-
 const CONNECTOR_ARROW_OVERLAYS: OverlaySpec[] = [
 	[
 		'Arrow',
 		{
-			id: 'endpoint-arrow',
+			id: OVERLAY_ENDPOINT_ARROW_ID,
 			location: 1,
 			width: 12,
 			foldback: 1,
@@ -257,7 +255,7 @@ const CONNECTOR_ARROW_OVERLAYS: OverlaySpec[] = [
 	[
 		'Arrow',
 		{
-			id: 'midpoint-arrow',
+			id: OVERLAY_MIDPOINT_ARROW_ID,
 			location: 0.5,
 			width: 12,
 			foldback: 1,
@@ -1471,15 +1469,10 @@ export default mixins(
 							if (timer !== undefined) {
 								clearTimeout(timer);
 							}
-							const overlay = info.connection.getOverlay('connection-actions');
-							overlay.setVisible(true);
 
-							hideMidpointArrow(info.connection);
-
-							const itemsOverlay = info.connection.getOverlay('output-items-label');
-							if (itemsOverlay) {
-								itemsOverlay.setVisible(false);
-							}
+							showOverlay(info.connection, OVERLAY_CONNECTION_ACTIONS_ID);
+							hideOverlay(info.connection, OVERLAY_MIDPOINT_ARROW_ID);
+							hideOverlay(info.connection, OVERLAY_RUN_ITEMS_ID);
 						});
 
 						info.connection.bind('mouseout', (connection: IConnection) => {
@@ -1487,17 +1480,11 @@ export default mixins(
 								if (!info.connection) {
 									return;
 								}
-								const overlay = info.connection.getOverlay('connection-actions');
-								overlay.setVisible(false);
 								timer = undefined;
 
-								const itemsOverlay = info.connection.getOverlay('output-items-label');
-								if (itemsOverlay) {
-									itemsOverlay.setVisible(true);
-								}
-								else {
-									showOrHideMidpointArrow(info.connection);
-								}
+								hideOverlay(info.connection, OVERLAY_CONNECTION_ACTIONS_ID);
+								showOrHideItemsLabel(info.connection);
+								showOrHideMidpointArrow(info.connection);
 							}, 500);
 						});
 
@@ -1505,9 +1492,9 @@ export default mixins(
 						info.connection.addOverlay([
 							'Label',
 							{
-								id: 'connection-actions',
+								id: OVERLAY_CONNECTION_ACTIONS_ID,
 								label: `<div class="add">${getIcon('plus')}</div> <div class="delete">${getIcon('trash')}</div>`,
-								cssClass: 'connection-actions',
+								cssClass: OVERLAY_CONNECTION_ACTIONS_ID,
 								visible: false,
 								events: {
 									mousedown: (overlay: Overlay, event: MouseEvent) => {
@@ -1849,9 +1836,8 @@ export default mixins(
 					}) as Connection[];
 
 					outgoing.forEach((connection: Connection) => {
-						connection.removeOverlay('output-items-label');
+						connection.removeOverlay(OVERLAY_RUN_ITEMS_ID);
 						connection.setPaintStyle(CONNECTOR_PAINT_STYLE_DEFAULT);
-						showOrHideMidpointArrow(connection);
 					});
 
 					return;
@@ -1865,11 +1851,15 @@ export default mixins(
 				const outputMap: {[sourceEndpoint: string]: {[targetId: string]: {[targetEndpoint: string]: {total: number, iterations: number}}}} = {};
 
 				data.forEach((run: ITaskData) => {
-					if (!run.data) {
+					if (!run.data || !run.data.main) {
 						return;
 					}
 
 					run.data.main.forEach((output: INodeExecutionData[] | null, i: number) => {
+						if (!nodeConnections[i]) {
+							return;
+						}
+
 						nodeConnections[i]
 							.map((conn: IConnection) => {
 								const targetIndex = this.getNodeIndex(conn.node);
@@ -1921,14 +1911,14 @@ export default mixins(
 							const output = outputMap[sourceEndpoint][targetId][targetEndpoint];
 							if (!output || !output.total) {
 								conn.setPaintStyle(CONNECTOR_PAINT_STYLE_DEFAULT);
-								conn.removeOverlay('output-items-label');
+								conn.removeOverlay(OVERLAY_RUN_ITEMS_ID);
 								return;
 							}
 
 							conn.setPaintStyle(CONNECTOR_PAINT_STYLE_SUCCESS);
 
-							if (conn.getOverlay('output-items-label')) {
-								conn.removeOverlay('output-items-label');
+							if (conn.getOverlay(OVERLAY_RUN_ITEMS_ID)) {
+								conn.removeOverlay(OVERLAY_RUN_ITEMS_ID);
 							}
 
 							let label = `${output.total}`;
@@ -1938,14 +1928,13 @@ export default mixins(
 							conn.addOverlay([
 								'Label',
 								{
-									id: 'output-items-label',
+									id: OVERLAY_RUN_ITEMS_ID,
 									label,
 									cssClass: 'connection-output-items-label',
 									location: .5,
 								},
 							]);
 
-							hideMidpointArrow(conn);
 							showOrHideItemsLabel(conn);
 						});
 					});
@@ -2702,6 +2691,7 @@ export default mixins(
 }
 
 .connection-actions {
+	z-index: 9;
 	&:hover {
 		display: block !important;
 	}

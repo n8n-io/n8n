@@ -1,6 +1,25 @@
 import { INodeUi, IZoomConfig, XYPositon } from "@/Interface";
 import { Connection, OverlaySpec } from "jsplumb";
 
+export const OVERLAY_DROP_NODE_ID = 'drop-add-node';
+export const OVERLAY_MIDPOINT_ARROW_ID = 'midpoint-arrow';
+export const OVERLAY_ENDPOINT_ARROW_ID = 'endpoint-arrow';
+export const OVERLAY_RUN_ITEMS_ID = 'output-items-label';
+export const OVERLAY_CONNECTION_ACTIONS_ID = 'connection-actions';
+
+
+if (!window.localStorage.getItem('MIN_X_TO_SHOW_OUTPUT_LABEL')) {
+	window.localStorage.setItem('MIN_X_TO_SHOW_OUTPUT_LABEL', '150');
+}
+// @ts-ignore
+const _MIN_X_TO_SHOW_OUTPUT_LABEL = parseInt(window.localStorage.getItem('MIN_X_TO_SHOW_OUTPUT_LABEL'), 10);
+
+if (!window.localStorage.getItem('MIN_Y_TO_SHOW_OUTPUT_LABEL')) {
+	window.localStorage.setItem('MIN_Y_TO_SHOW_OUTPUT_LABEL', '100');
+}
+// @ts-ignore
+const _MIN_Y_TO_SHOW_OUTPUT_LABEL = parseInt(window.localStorage.getItem('MIN_Y_TO_SHOW_OUTPUT_LABEL'), 10);
+
 interface ICorners {
 	minX: number;
 	minY: number;
@@ -85,8 +104,15 @@ export const scaleReset = (config: IZoomConfig): IZoomConfig => {
 	return config;
 };
 
-export const hideMidpointArrow = (connection: Connection) => {
-	const arrow = connection.getOverlay('midpoint-arrow');
+export const showOverlay = (connection: Connection, overlayId: string) => {
+	const arrow = connection.getOverlay(overlayId);
+	if (arrow) {
+		arrow.setVisible(true);
+	}
+};
+
+export const hideOverlay = (connection: Connection, overlayId: string) => {
+	const arrow = connection.getOverlay(overlayId);
 	if (arrow) {
 		arrow.setVisible(false);
 	}
@@ -97,38 +123,14 @@ export const showOrHideMidpointArrow = (connection: Connection) => {
 	const targetEndpoint = connection.endpoints[1];
 	const requiresArrow = sourceEndpoint.anchor.lastReturnValue[0] >= targetEndpoint.anchor.lastReturnValue[0];
 
-	const arrow = connection.getOverlay('midpoint-arrow');
+	const arrow = connection.getOverlay(OVERLAY_MIDPOINT_ARROW_ID);
 	if (arrow) {
 		arrow.setVisible(requiresArrow);
 	}
 };
 
-export const getIcon = (name: string): string => {
-	if (name === 'trash') {
-		return `<svg data-v-66d5c7e2="" aria-hidden="true" focusable="false" data-prefix="fas" data-icon="trash" role="img" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512" class="svg-inline--fa fa-trash fa-w-14 Icon__medium_ctPPJ"><path data-v-66d5c7e2="" fill="currentColor" d="M432 32H312l-9.4-18.7A24 24 0 0 0 281.1 0H166.8a23.72 23.72 0 0 0-21.4 13.3L136 32H16A16 16 0 0 0 0 48v32a16 16 0 0 0 16 16h416a16 16 0 0 0 16-16V48a16 16 0 0 0-16-16zM53.2 467a48 48 0 0 0 47.9 45h245.8a48 48 0 0 0 47.9-45L416 128H32z" class=""></path></svg>`;
-	}
-
-	if (name === 'plus') {
-		return `<svg data-v-301ed208="" aria-hidden="true" focusable="false" data-prefix="fas" data-icon="plus" role="img" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512" class="svg-inline--fa fa-plus fa-w-14 Icon__medium_ctPPJ"><path data-v-301ed208="" fill="currentColor" d="M416 208H272V64c0-17.67-14.33-32-32-32h-32c-17.67 0-32 14.33-32 32v144H32c-17.67 0-32 14.33-32 32v32c0 17.67 14.33 32 32 32h144v144c0 17.67 14.33 32 32 32h32c17.67 0 32-14.33 32-32V304h144c17.67 0 32-14.33 32-32v-32c0-17.67-14.33-32-32-32z" class=""></path></svg>`;
-	}
-
-	return '';
-};
-
-if (!window.localStorage.getItem('MIN_X_TO_SHOW_OUTPUT_LABEL')) {
-	window.localStorage.setItem('MIN_X_TO_SHOW_OUTPUT_LABEL', '150');
-}
-// @ts-ignore
-const _MIN_X_TO_SHOW_OUTPUT_LABEL = parseInt(window.localStorage.getItem('MIN_X_TO_SHOW_OUTPUT_LABEL'), 10);
-
-if (!window.localStorage.getItem('MIN_Y_TO_SHOW_OUTPUT_LABEL')) {
-	window.localStorage.setItem('MIN_Y_TO_SHOW_OUTPUT_LABEL', '100');
-}
-// @ts-ignore
-const _MIN_Y_TO_SHOW_OUTPUT_LABEL = parseInt(window.localStorage.getItem('MIN_Y_TO_SHOW_OUTPUT_LABEL'), 10);
-
 export const showOrHideItemsLabel = (connection: Connection) => {
-	const overlay = connection.getOverlay('output-items-label');
+	const overlay = connection.getOverlay(OVERLAY_RUN_ITEMS_ID);
 	if (!overlay) {
 		return;
 	}
@@ -145,6 +147,19 @@ export const showOrHideItemsLabel = (connection: Connection) => {
 		overlay.setVisible(true);
 	}
 };
+
+export const getIcon = (name: string): string => {
+	if (name === 'trash') {
+		return `<svg data-v-66d5c7e2="" aria-hidden="true" focusable="false" data-prefix="fas" data-icon="trash" role="img" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512" class="svg-inline--fa fa-trash fa-w-14 Icon__medium_ctPPJ"><path data-v-66d5c7e2="" fill="currentColor" d="M432 32H312l-9.4-18.7A24 24 0 0 0 281.1 0H166.8a23.72 23.72 0 0 0-21.4 13.3L136 32H16A16 16 0 0 0 0 48v32a16 16 0 0 0 16 16h416a16 16 0 0 0 16-16V48a16 16 0 0 0-16-16zM53.2 467a48 48 0 0 0 47.9 45h245.8a48 48 0 0 0 47.9-45L416 128H32z" class=""></path></svg>`;
+	}
+
+	if (name === 'plus') {
+		return `<svg data-v-301ed208="" aria-hidden="true" focusable="false" data-prefix="fas" data-icon="plus" role="img" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512" class="svg-inline--fa fa-plus fa-w-14 Icon__medium_ctPPJ"><path data-v-301ed208="" fill="currentColor" d="M416 208H272V64c0-17.67-14.33-32-32-32h-32c-17.67 0-32 14.33-32 32v144H32c-17.67 0-32 14.33-32 32v32c0 17.67 14.33 32 32 32h144v144c0 17.67 14.33 32 32 32h32c17.67 0 32-14.33 32-32V304h144c17.67 0 32-14.33 32-32v-32c0-17.67-14.33-32-32-32z" class=""></path></svg>`;
+	}
+
+	return '';
+};
+
 
 const canUsePosition = (position1: XYPositon, position2: XYPositon) => {
 	if (Math.abs(position1[0] - position2[0]) <= 100) {

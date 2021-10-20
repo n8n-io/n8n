@@ -123,3 +123,4 @@ if (!window.localStorage.getItem('JSPLUMB_FLOWCHART_STUB')) {
 // @ts-ignore
 const _JSPLUMB_FLOWCHART_STUB = parseInt(window.localStorage.getItem('JSPLUMB_FLOWCHART_STUB'), 10);
 export const JSPLUMB_FLOWCHART_STUB = _JSPLUMB_FLOWCHART_STUB;
+
