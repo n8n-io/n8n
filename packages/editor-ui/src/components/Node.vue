@@ -404,21 +404,29 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 	background-color: #67c23a;
 }
 
+/** connector */
 .jtk-connector {
 	z-index:4;
 }
 
-.jtk-connector.jtk-hover {
+/** node */
+.jtk-endpoint-anchor {
 	z-index: 5;
 }
 
-.jtk-connector.jtk-success {
-	z-index: 5;
-}
-
+/** node endpoints */
 .jtk-endpoint {
 	z-index:5;
 }
+
+.jtk-connector.jtk-dragging {
+	z-index: 6;
+}
+
+.jtk-connector.jtk-hover {
+	z-index: 6;
+}
+
 .jtk-overlay {
 	z-index:6;
 }
