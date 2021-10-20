@@ -200,7 +200,7 @@ if (!window.localStorage.getItem('OUTLINE_STROKE_COLOR')) {
 	window.localStorage.setItem('OUTLINE_STROKE_COLOR', 'transparent');
 }
 // @ts-ignore
-const _OUTLINE_STROKE_COLOR = window.localStorage.getItem('OUTLINE_STROKE_COLOR');
+const _OUTLINE_STROKE_COLOR = window.localStorage.getItem('OUTLINE_STROKE_COLOR') as string;
 
 if (!window.localStorage.getItem('OUTLINE_STROKE_WIDTH')) {
 	window.localStorage.setItem('OUTLINE_STROKE_WIDTH', '12');
@@ -223,8 +223,8 @@ const _PUSH_NODES_LENGTH = parseInt(window.localStorage.getItem('PUSH_NODES_LENG
 const CONNECTOR_PAINT_STYLE_DEFAULT: PaintStyle = {
 	stroke: getStyleTokenValue('--color-foreground-dark'),
 	strokeWidth: 2,
-	outlineWidth: 12,
-	outlineStroke: 'transparent',
+	outlineWidth: _OUTLINE_STROKE_WIDTH,
+	outlineStroke: _OUTLINE_STROKE_COLOR,
 };
 
 const CONNECTOR_PAINT_STYLE_PRIMARY = {
