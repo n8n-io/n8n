@@ -1523,14 +1523,13 @@ export default mixins(
 								info.connection.removeOverlay('input-name-label');
 							}
 
-							// @ts-ignore
 							info.connection.addOverlay([
 								'Label',
 								{
 									id: 'input-name-label',
-									label: inputName,
+									label: `<span>${inputName}</span>`,
 									cssClass: 'connection-input-name-label',
-									location: 0.8,
+									location: 1,
 								},
 							]);
 						}
@@ -1554,7 +1553,7 @@ export default mixins(
 									id: 'output-name-label',
 									label: outputName,
 									cssClass: 'connection-output-name-label',
-									location: 30,
+									location: 13,
 								},
 							]);
 						}
@@ -2681,16 +2680,26 @@ export default mixins(
 
 <style lang="scss">
 
-.connection-input-name-label,
+.connection-input-name-label > span,
 .connection-output-items-label,
 .connection-output-name-label {
 	border-radius: 7px;
-	background-color: rgba( $--custom-node-view-background, 0.8 );
+	background-color: rgba( $--custom-node-view-background, 1 );
 	font-size: 0.7em;
 	font-weight: var(--font-weight-regular);
 	line-height: 1.3em;
 	padding: 2px 3px;
 	white-space: nowrap;
+}
+
+.connection-input-name-label {
+	position: relative;
+
+	span {
+		position: absolute;
+		top: -10px;
+		left: -60px;
+	}
 }
 
 .connection-output-items-label {
