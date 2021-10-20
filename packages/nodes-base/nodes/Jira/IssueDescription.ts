@@ -539,7 +539,7 @@ export const issueFields = [
 				type: 'string',
 				default: '',
 				description: `Use expand to include additional information about the issues in the response.<br/>
-				This parameter accepts a comma-separated list. Expand options include:
+				This parameter accepts a comma-separated list. Expand options include:<br/>
 				renderedFields Returns field values rendered in HTML format.<br/>
 				names Returns the display name of each field.<br/>
 				schema Returns the schema describing a field type.<br/>
