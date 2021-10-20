@@ -297,7 +297,7 @@ export const eventFields = [
 				name: 'ref_url',
 				type: 'string',
 				default: '',
-				description: 'Event Registration page URL. It can be useful when you  do not know Event ID, but have Event link.',
+				description: 'Event Registration page URL. It can be useful when you do not know Event ID, but have Event link.',
 			},
 			{
 				displayName: 'GDPR',
