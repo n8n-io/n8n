@@ -422,16 +422,16 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 	z-index:5;
 }
 
-.jtk-connector.jtk-dragging {
-	z-index: 6;
-}
-
 .jtk-connector.jtk-hover {
 	z-index: 6;
 }
 
 .jtk-overlay {
-	z-index:6;
+	z-index:7;
+}
+
+.jtk-connector.jtk-dragging {
+	z-index: 8;
 }
 
 .jtk-endpoint.dropHover {

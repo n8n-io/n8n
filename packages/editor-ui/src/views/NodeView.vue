@@ -135,7 +135,7 @@ import NodeCreator from '@/components/NodeCreator/NodeCreator.vue';
 import NodeSettings from '@/components/NodeSettings.vue';
 import RunData from '@/components/RunData.vue';
 
-import { getLeftmostTopNode, getWorkflowCorners, scaleSmaller, scaleBigger, scaleReset, showOrHideMidpointArrow, addEndpointArrow, getIcon, getNewNodePosition, hideMidpointArrow, showOrHideItemsLabel } from './helpers';
+import { getLeftmostTopNode, getWorkflowCorners, scaleSmaller, scaleBigger, scaleReset, showOrHideMidpointArrow, getIcon, getNewNodePosition, hideMidpointArrow, showOrHideItemsLabel } from './helpers';
 
 import mixins from 'vue-typed-mixins';
 import { v4 as uuidv4} from 'uuid';
@@ -1449,7 +1449,6 @@ export default mixins(
 					info.connection.setPaintStyle(CONNECTOR_PAINT_STYLE_DEFAULT);
 					addOverlays(info.connection, CONNECTOR_ARROW_OVERLAYS);
 
-					addEndpointArrow(info.connection);
 					showOrHideMidpointArrow(info.connection);
 
 					// @ts-ignore
@@ -1531,66 +1530,11 @@ export default mixins(
 						]);
 					}
 
-					// Display input names if they exist on connection
-					const targetNodeTypeData: INodeTypeDescription = this.$store.getters.nodeType(targetNode.type);
-					if (targetNodeTypeData.inputNames !== undefined) {
-						for (const input of targetNodeTypeData.inputNames) {
-							const inputName = targetNodeTypeData.inputNames[targetInfo.index];
-
-							if (info.connection.getOverlay('input-name-label')) {
-								// Make sure that it does not get added multiple times
-								// continue;
-								info.connection.removeOverlay('input-name-label');
-							}
-
-							info.connection.addOverlay([
-								'Label',
-								{
-									id: 'input-name-label',
-									label: `<span>${inputName}</span>`,
-									cssClass: 'connection-input-name-label',
-									location: 1,
-								},
-							]);
-						}
-					}
-
-					// Display output names if they exist on connection
-					const sourceNodeTypeData: INodeTypeDescription = this.$store.getters.nodeType(sourceNode.type);
-					if (sourceNodeTypeData.outputNames !== undefined) {
-						for (const output of sourceNodeTypeData.outputNames) {
-							const outputName = sourceNodeTypeData.outputNames[sourceInfo.index];
-
-							if (info.connection.getOverlay('output-name-label')) {
-								// Make sure that it does not get added multiple times
-								info.connection.removeOverlay('output-name-label');
-							}
-
-							// @ts-ignore
-							info.connection.addOverlay([
-								'Label',
-								{
-									id: 'output-name-label',
-									label: outputName,
-									cssClass: 'connection-output-name-label',
-									location: 13,
-								},
-							]);
-						}
-					}
-
-					// When connection gets made the output and input name get displayed
-					// as overlay on the connection. So the ones on the endpoint can be hidden.
-					// @ts-ignore
-					const outputNameOverlay = info.connection.endpoints[0].getOverlay('output-name-label');
-					if (![null, undefined].includes(outputNameOverlay)) {
-						outputNameOverlay.setVisible(false);
-					}
-
 					const inputNameOverlay = info.targetEndpoint.getOverlay('input-name-label');
-					if (![null, undefined].includes(inputNameOverlay)) {
-						inputNameOverlay.setVisible(false);
+					if (inputNameOverlay) {
+						inputNameOverlay.setLocation([-4, .5]);
 					}
+
 					this.$store.commit('addConnection', {
 						connection: [
 							{
@@ -1658,6 +1602,11 @@ export default mixins(
 				});
 
 				this.instance.bind('connectionDetached', (info) => {
+					const inputNameOverlay = info.targetEndpoint.getOverlay('input-name-label');
+					if (inputNameOverlay) {
+						inputNameOverlay.setLocation([-2, .5]);
+					}
+
 					updateConnectionDetach(info.sourceEndpoint, info.targetEndpoint, 1);
 					info.connection.removeOverlays();
 					this.__removeConnectionByConnectionInfo(info, false);
@@ -2688,9 +2637,7 @@ export default mixins(
 
 <style lang="scss">
 
-.connection-input-name-label > span,
-.connection-output-items-label,
-.connection-output-name-label {
+.connection-output-items-label {
 	border-radius: 7px;
 	background-color: rgba( $--custom-node-view-background, 1 );
 	font-size: 0.7em;
@@ -2721,6 +2668,7 @@ export default mixins(
 	font-size: 0.8em;
 	text-align: center;
 	background-color: #ffffff55;
+	z-index: 9; /** more than connector in hover state */
 }
 
 .node-input-endpoint-label,

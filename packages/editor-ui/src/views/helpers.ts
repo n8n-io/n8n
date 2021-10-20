@@ -85,19 +85,6 @@ export const scaleReset = (config: IZoomConfig): IZoomConfig => {
 	return config;
 };
 
-export const addEndpointArrow = (connection: Connection)  => {
-	connection.addOverlay([
-		'Arrow',
-		{
-			id: 'endpoint-arrow',
-			location: 1,
-			width: 12,
-			foldback: 1,
-			length: 10,
-		},
-	]);
-};
-
 export const hideMidpointArrow = (connection: Connection) => {
 	const arrow = connection.getOverlay('midpoint-arrow');
 	if (arrow) {
