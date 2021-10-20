@@ -255,16 +255,6 @@ export class Ssh implements INodeType {
 				name: 'options',
 				type: 'collection',
 				placeholder: 'Add Option',
-				displayOptions: {
-					show: {
-						resource: [
-							'file',
-						],
-						operation: [
-							'upload',
-						],
-					},
-				},
 				default: {},
 				options: [
 					{
@@ -273,6 +263,37 @@ export class Ssh implements INodeType {
 						type: 'string',
 						default: '',
 						description: `Overrides the binary data file name.`,
+						displayOptions: {
+							show: {
+								'/resource': [
+									'file',
+								],
+								'/operation': [
+									'upload',
+								],
+							},
+						},
+					},
+					{
+						displayName: 'Override SSH Host',
+						name: 'overrideHost',
+						type: 'string',
+						default: '',
+						description: 'Override the SSH host to connect to.',
+					},
+					{
+						displayName: 'Override SSH Port',
+						name: 'overridePort',
+						type: 'string',
+						default: '',
+						description: 'Override the SSH port to connect to.',
+					},
+					{
+						displayName: 'Override SSH Username',
+						name: 'overrideUsername',
+						type: 'string',
+						default: '',
+						description: 'Override the SSH user to connect as.',
 					},
 				],
 			},
@@ -292,42 +313,44 @@ export class Ssh implements INodeType {
 
 		const ssh = new nodeSSH.NodeSSH();
 
+		let credentials: IDataObject = {};
+		const sshOptions: IDataObject = {};
+
 		try {
 			if (authentication === 'password') {
 
-				const credentials = await this.getCredentials('sshPassword') as IDataObject;
-
-				await ssh.connect({
-					host: credentials.host as string,
-					username: credentials.username as string,
-					port: credentials.port as number,
-					password: credentials.password as string,
-				});
+				credentials = await this.getCredentials('sshPassword') as IDataObject;
+				sshOptions.username = credentials.username as string;
+				sshOptions.password = credentials.password as string;
 
 			} else if (authentication === 'privateKey') {
 
-				const credentials = await this.getCredentials('sshPrivateKey') as IDataObject;
+				credentials = await this.getCredentials('sshPrivateKey') as IDataObject;
 
 				const { path, } = await file({ prefix: 'n8n-ssh-' });
 				temporaryFiles.push(path);
 				await writeFile(path, credentials.privateKey as string);
 
-				const options = {
-					host: credentials.host as string,
-					username: credentials.username as string,
-					port: credentials.port as number,
-					privateKey: path,
-				} as any; // tslint:disable-line: no-any
+				sshOptions.username = credentials.username as string;
+				sshOptions.privateKey = path;
 
 				if (credentials.passphrase) {
-					options.passphrase = credentials.passphrase as string;
+					sshOptions.passphrase = credentials.passphrase as string;
 				}
 
-				await ssh.connect(options);
 			}
 
 			for (let i = 0; i < items.length; i++) {
+				const sshHost = this.getNodeParameter('options.overrideHost', i, '') as string;
+				const sshPort = this.getNodeParameter('options.overridePort', i, '') as number;
+				const sshUsername = this.getNodeParameter('options.overrideUsername', i, '') as string;
+
+				sshOptions.host = sshHost || credentials.host as string;
+				sshOptions.port = sshPort || credentials.port as number;
+				sshOptions.username = sshUsername || credentials.username as string;
+
 				try {
+					await ssh.connect(sshOptions);
 					if (resource === 'command') {
 
 						if (operation === 'execute') {
