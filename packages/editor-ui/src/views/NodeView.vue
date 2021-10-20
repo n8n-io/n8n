@@ -207,7 +207,7 @@ if (!window.localStorage.getItem('OUTLINE_STROKE_WIDTH')) {
 const _OUTLINE_STROKE_WIDTH = parseInt(window.localStorage.getItem('OUTLINE_STROKE_WIDTH'), 10);
 
 if (!window.localStorage.getItem('ALWAYS_RESPECT_STUB')) {
-	window.localStorage.setItem('ALWAYS_RESPECT_STUB', 'false');
+	window.localStorage.setItem('ALWAYS_RESPECT_STUB', 'true');
 }
 // @ts-ignore
 const _ALWAYS_RESPECT_STUB = window.localStorage.getItem('ALWAYS_RESPECT_STUB') === 'true';

@@ -64,7 +64,7 @@ export const INSTANCE_ID_HEADER = 'n8n-instance-id';
 export const WAIT_TIME_UNLIMITED = '3000-01-01T00:00:00.000Z';
 
 if (!window.localStorage.getItem('JSPLUMB_FLOWCHART_STUB')) {
-	window.localStorage.setItem('JSPLUMB_FLOWCHART_STUB', '50');
+	window.localStorage.setItem('JSPLUMB_FLOWCHART_STUB', '20');
 }
 // @ts-ignore
 const _JSPLUMB_FLOWCHART_STUB = parseInt(window.localStorage.getItem('JSPLUMB_FLOWCHART_STUB'), 10);
