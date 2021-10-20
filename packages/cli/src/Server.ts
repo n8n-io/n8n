@@ -889,22 +889,23 @@ class App {
 
 			const allNodes = nodeTypes.getAll();
 			const language = process.env.N8N_DEFAULT_LOCALE || (req.headers['accept-language'] ?? '');
-			const translations = await Promise.all(allNodes.map(async node => {
-				const nodeName = node.description.name.split('.')[1];
-				const {sourcePath} = nodeTypes.getByName(node.description.name, true);
+			const translations = language === 'en' ? {} : await (allNodes.reduce(async (pv, cv) => {
+				const nodeName = cv.description.name.split('.')[1];
+				const {sourcePath} = nodeTypes.getByName(cv.description.name, true);
 				const translationPath = path.join(path.dirname(sourcePath), 'translations', `${language}.${nodeName}.header.js`);
 				try {
-					return await import(translationPath);
+					const translation = await import(translationPath);
+					return {...pv, [cv.description.name]: translation};
 				} catch (e) {
-					return undefined;
+					return pv;
 				}
-			}));
+			}, {})) as {[k: string] : INodeTypeDescription['translation']};
 
-			allNodes.forEach((nodeData, idx) => {
+			allNodes.forEach((nodeData) => {
 				// Make a copy of the object. If we don't do this, then when
 				// The method below is called the properties are removed for good
 				// This happens because nodes are returned as reference.
-				const nodeInfo: INodeTypeDescription = {...nodeData.description, translation: translations[idx]};
+				const nodeInfo: INodeTypeDescription = {...nodeData.description, translation: translations[nodeData.description.name]};
 				if (req.query.includeProperties !== 'true') {
 					// @ts-ignore
 					delete nodeInfo.properties;
@@ -932,7 +933,7 @@ class App {
 
 					const { type, sourcePath } = nodeTypes.getByName(name, true);
 
-					if (sourcePath && name !== 'n8n-nodes-base.start') {
+					if (sourcePath && name !== 'n8n-nodes-base.start' && language !== 'en') {
 						const nodeBaseName = name.split('.')[1];
 						const translation = path.join(path.dirname(sourcePath), 'translations', `${language}.${nodeBaseName}.js`);
 						if (existsSync(translation)) {
