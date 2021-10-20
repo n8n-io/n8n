@@ -1,0 +1,276 @@
+[
+    {
+      "id": "GSUITE.ADD_USER",
+      "type": "WRITE",
+      "name": "Add a new user",
+      "description": "Add a new user in your gsuite account",
+      "scopes": ["https://www.googleapis.com/auth/admin.directory.user"],
+      "formFields": [
+        {
+          "key": "username",
+          "label": "UserName",
+          "type": "text",
+          "isOptional": false,
+          "visible": true
+        },
+        {
+          "key": "password",
+          "label": "Password",
+          "type": "password",
+          "isOptional": false,
+          "visible": true
+        },
+        {
+          "key": "lastName",
+          "label": "Last Name",
+          "type": "text",
+          "isOptional": false,
+          "visible": true
+        },
+        {
+          "key": "firstName",
+          "label": "First Name",
+          "type": "text",
+          "isOptional": false,
+          "visible": true
+        }
+      ],
+      "n8n": {
+        "nodeName": "G Suite Admin",
+        "type": "n8n-nodes-base.gSuiteAdmin",
+        "parameters": {
+          "code": "{code}",
+          "firstName": "{firstName}",
+          "lastName": "{lastName}",
+          "password": "{password}",
+          "username": "{username}",
+          "additionalFields": {},
+          "operation": "create",
+          "resource": "user"
+        }
+      },
+      "integrationId": {
+        "$oid": "5fc27f4942ca5c5104e1df97"
+      }
+    },
+    {
+      "id": "GSUITE.READ_USER",
+      "type": "READ",
+      "name": "Read a user",
+      "description": "Read a user in your gsuite account",
+      "scopes": ["https://www.googleapis.com/auth/admin.directory.user"],
+      "n8n": {
+        "nodeName": "G Suite Admin",
+        "type": "n8n-nodes-base.gSuiteAdmin",
+        "parameters": {
+          "emailId": "{emailId}",
+          "operation": "getByEmail",
+          "resource": "user"
+        }
+      },
+      "integrationId": {
+        "$oid": "5fc27f4942ca5c5104e1df97"
+      }
+    },
+    {
+      "id": "GSUITE.EDIT_USER",
+      "type": "WRITE",
+      "name": "Edit User",
+      "description": "Edit a user given email address",
+      "scopes": ["https://www.googleapis.com/auth/admin.directory.user"],
+      "prerequisites": [
+        {
+          "id": "GSUITE.READ_USER",
+          "identifier": "user"
+        }
+      ],
+      "formFields": [
+        {
+          "key": "userId",
+          "type": "text",
+          "isOptional": false,
+          "visible": false,
+          "value": "{user.id}"
+        },
+        {
+          "key": "primaryEmail",
+          "label": "Email",
+          "type": "email",
+          "isOptional": true,
+          "visible": true,
+          "value": "{user.primaryEmail}"
+        },
+        {
+          "key": "fullName",
+          "label": "Full Name",
+          "type": "text",
+          "isOptional": true,
+          "visible": true,
+          "value": "{user.fullName}"
+        }
+      ],
+      "n8n": {
+        "nodeName": "G Suite Admin",
+        "type": "n8n-nodes-base.gSuiteAdmin",
+        "parameters": {
+          "code": "{code}",
+          "firstName": "{firstName}",
+          "lastName": "{lastName}",
+          "password": "{password}",
+          "username": "{username}",
+          "additionalFields": {},
+          "operation": "update",
+          "resource": "user"
+        }
+      },
+      "integrationId": {
+        "$oid": "5fc27f4942ca5c5104e1df97"
+      }
+    },
+    {
+      "id": "GSUITE.SIGNOUT_USER",
+      "type": "WRITE",
+      "name": "Signout  user",
+      "description": "Signout a user given email id",
+      "scopes": ["https://www.googleapis.com/auth/admin.directory.user.security"],
+      "prerequisites": [
+        {
+          "id": "GSUITE.READ_USER",
+          "identifier": "user"
+        }
+      ],
+      "n8n": {
+        "nodeName": "G Suite Admin",
+        "type": "n8n-nodes-base.gSuiteAdmin",
+        "parameters": {
+          "userId": "{userId}",
+          "operation": "signout",
+          "resource": "user"
+        }
+      },
+      "integrationId": {
+        "$oid": "5fc27f4942ca5c5104e1df97"
+      }
+    },
+    {
+      "id": "GSUITE.DELETE_USER",
+      "type": "WRITE",
+      "name": "Delete a given user",
+      "description": "Delete a user given email id",
+      "scopes": ["https://www.googleapis.com/auth/admin.directory.user"],
+      "prerequisites": [
+        {
+          "id": "GSUITE.READ_USER",
+          "identifier": "user"
+        }
+      ],
+      "n8n": {
+        "nodeName": "G Suite Admin",
+        "type": "n8n-nodes-base.gSuiteAdmin",
+        "parameters": {
+          "userId": "{userId}",
+          "operation": "delete",
+          "resource": "user"
+        }
+      },
+      "integrationId": {
+        "$oid": "5fc27f4942ca5c5104e1df97"
+      }
+    },
+    {
+      "id": "GSUITE.GET_USER_TOKENS",
+      "type": "READ",
+      "name": "Get User Tokens by userId",
+      "description": "Get User Tokens",
+      "scopes": ["https://www.googleapis.com/auth/admin.directory.user.security"],
+      "renderAsList":true,
+      "responseArrayPath": ["items"],
+      "listToRender": [{
+          "name": "Name",
+          "value": "{displayText}",
+          "type": "primary"
+      }],
+      "n8n": {
+        "nodeName": "G Suite Admin",
+        "type": "n8n-nodes-base.gSuiteAdmin",
+        "parameters": {
+          "userId": "{userId}",
+          "operation": "getTokens",
+          "resource": "user"
+        }
+      },
+      "integrationId": {
+        "$oid": "5fc27f4942ca5c5104e1df97"
+      }
+    },
+    {
+      "id": "GSUITE.DELETE_USERTOKEN",
+      "type": "WRITE",
+      "name": "Delets user tokens from an application",
+      "description": "Delets user tokens from an application",
+      "scopes": ["https://www.googleapis.com/auth/admin.directory.user.security"],
+      "prerequisites": [
+        {
+          "order": 1,
+          "id": "GSUITE.READ_USER",
+          "identifier": "user"
+        },
+        {
+          "order": 2,
+          "id": "GSUITE.GET_USER_TOKENS",
+          "identifier": "client"
+        }
+      ],
+      "formFields": [
+        {
+          "key": "clientId",
+          "type": "text",
+          "isOptional": false,
+          "visible": false,
+          "value": "{client.id}"
+        }
+      ],
+      "n8n": {
+        "nodeName": "G Suite Admin",
+        "type": "n8n-nodes-base.gSuiteAdmin",
+        "parameters": {
+          "userId": "{userId}",
+          "clientId": "{clientId}",
+          "operation": "deleteToken",
+          "resource": "user"
+        }
+      },
+      "integrationId": {
+        "$oid": "5fc27f4942ca5c5104e1df97"
+      }
+    },
+    {
+      "id": "GSUITE.SUPER_ADMIN",
+      "type": "WRITE",
+      "name": "Make a user super admin",
+      "description": "Make a user super admin",
+      "scopes": ["https://www.googleapis.com/auth/admin.directory.user"],
+      "prerequisites": [
+        {
+          "order": 1,
+          "id": "GSUITE.READ_USER",
+          "identifier": "user"
+        }
+      ],
+      "formFields": [
+      ],
+      "n8n": {
+        "nodeName": "G Suite Admin",
+        "type": "n8n-nodes-base.gSuiteAdmin",
+        "parameters": {
+          "userId": "{userId}",
+          "operation": "makeAdmin",
+          "resource": "user"
+        }
+      },
+      "integrationId": {
+        "$oid": "5fc27f4942ca5c5104e1df97"
+      }
+    }
+  ]
+  
