@@ -10,8 +10,10 @@ import {
 } from 'n8n-core';
 
 import {
+	IBinaryKeyData,
 	IDataObject,
 	IDisplayOptions,
+	INodeExecutionData,
 	INodeProperties,
 	IPollFunctions,
 	NodeApiError,
@@ -31,7 +33,7 @@ export async function notionApiRequest(this: IHookFunctions | IExecuteFunctions 
 	try {
 		let options: OptionsWithUri = {
 			headers: {
-				'Notion-Version': '2021-05-13',
+				'Notion-Version': '2021-08-16',
 			},
 			method,
 			qs,
@@ -42,7 +44,10 @@ export async function notionApiRequest(this: IHookFunctions | IExecuteFunctions 
 
 		options = Object.assign({}, options, option);
 		const credentials = await this.getCredentials('notionApi') as IDataObject;
-		options!.headers!['Authorization'] = `Bearer ${credentials.apiKey}`;
+		if (!uri) {
+			//do not include the API Key when downloading files, else the request fails
+			options!.headers!['Authorization'] = `Bearer ${credentials.apiKey}`;
+		} 
 		return this.helpers.request!(options);
 
 	} catch (error) {
@@ -303,6 +308,12 @@ function getPropertyKeyValue(value: any, type: string, timezone: string) {
 				};
 			}
 			break;
+		case 'files':
+			result = {
+				type: 'files', files: value.fileUrls.fileUrl
+					.map((file: { name: string, url: string }) => ({ name: file.name, type: 'external', external: { url: file.url } })),
+			};
+			break;
 		default:
 	}
 	return result;
@@ -389,7 +400,7 @@ export function simplifyProperties(properties: any) {
 				results[`${key}`] = '';
 			}
 		} else if (['created_by', 'last_edited_by', 'select'].includes(properties[key].type)) {
-			results[`${key}`] = properties[key][type].name;
+			results[`${key}`] = (properties[key][type]) ? properties[key][type].name : null;
 		} else if (['people'].includes(properties[key].type)) {
 			if (Array.isArray(properties[key][type])) {
 				// tslint:disable-next-line: no-any
@@ -416,17 +427,21 @@ export function simplifyProperties(properties: any) {
 			//TODO figure how to resolve rollup field type
 			// results[`${key}`] = properties[key][type][properties[key][type].type];
 		}
+		else if (['files'].includes(properties[key].type)) {
+			// tslint:disable-next-line: no-any
+			results[`${key}`] = properties[key][type].map((file: { type: string, [key: string]: any }) => (file[file.type].url));
+		}
 	}
 	return results;
 }
 
 // tslint:disable-next-line: no-any
-export function simplifyObjects(objects: any) {
+export function simplifyObjects(objects: any, download = false) {
 	if (!Array.isArray(objects)) {
 		objects = [objects];
 	}
 	const results: IDataObject[] = [];
-	for (const { object, id, properties, parent, title } of objects) {
+	for (const { object, id, properties, parent, title, json, binary } of objects) {
 		if (object === 'page' && (parent.type === 'page_id' || parent.type === 'workspace')) {
 			results.push({
 				id,
@@ -436,6 +451,15 @@ export function simplifyObjects(objects: any) {
 			results.push({
 				id,
 				...simplifyProperties(properties),
+			});
+
+		} else if (download && json.object === 'page' && json.parent.type === 'database_id') {
+			results.push({
+				json: {
+					id,
+					...simplifyProperties(json.properties),
+				},
+				binary,
 			});
 		} else if (object === 'database') {
 			results.push({
@@ -575,6 +599,31 @@ export function getConditions() {
 				description: 'The value of the property to filter by.',
 			} as INodeProperties,
 		);
+	}
+	return elements;
+}
+
+// tslint:disable-next-line: no-any
+export async function downloadFiles(this: IExecuteFunctions | IPollFunctions, records: [{ properties: { [key: string]: any | { id: string, type: string, files: [{ external: { url: string } } | { file: { url: string } }] } } }]): Promise<INodeExecutionData[]> {
+	const elements: INodeExecutionData[] = [];
+	for (const record of records) {
+		const element: INodeExecutionData = { json: {}, binary: {} };
+		element.json = record as unknown as IDataObject;
+		for (const key of Object.keys(record.properties)) {
+			if (record.properties[key].type === 'files') {
+				if (record.properties[key].files.length) {
+					console.log(record.properties[key]);
+					for (const [index, file] of record.properties[key].files.entries()) {
+						const data = await notionApiRequest.call(this, 'GET', '', {}, {}, file?.file?.url || file?.external?.url, { json: false, encoding: null });
+						element.binary![`${key}_${index}`] = await this.helpers.prepareBinaryData(data);
+					}
+				}
+			}
+		}
+		if (Object.keys(element.binary as IBinaryKeyData).length === 0) {
+			delete element.binary;
+		}
+		elements.push(element);
 	}
 	return elements;
 }

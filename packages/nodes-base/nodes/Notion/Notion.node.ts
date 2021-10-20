@@ -12,6 +12,7 @@ import {
 } from 'n8n-workflow';
 
 import {
+	downloadFiles,
 	formatBlocks,
 	formatTitle,
 	getBlockTypes,
@@ -177,7 +178,7 @@ export class Notion implements INodeType {
 				const { properties } = await notionApiRequest.call(this, 'GET', `/databases/${databaseId}`);
 				for (const key of Object.keys(properties)) {
 					//remove parameters that cannot be set from the API.
-					if (!['created_time', 'last_edited_time', 'created_by', 'last_edited_by', 'formula', 'files'].includes(properties[key].type)) {
+					if (!['created_time', 'last_edited_time', 'created_by', 'last_edited_by', 'formula'].includes(properties[key].type)) {
 						returnData.push({
 							name: `${key} - (${properties[key].type})`,
 							value: `${key}|${properties[key].type}`,
@@ -246,7 +247,7 @@ export class Notion implements INodeType {
 				const { properties } = await notionApiRequest.call(this, 'GET', `/databases/${databaseId}`);
 				for (const key of Object.keys(properties)) {
 					//remove parameters that cannot be set from the API.
-					if (!['created_time', 'last_edited_time', 'created_by', 'last_edited_by', 'formula', 'files'].includes(properties[key].type)) {
+					if (!['created_time', 'last_edited_time', 'created_by', 'last_edited_by', 'formula'].includes(properties[key].type)) {
 						returnData.push({
 							name: `${key} - (${properties[key].type})`,
 							value: `${key}|${properties[key].type}`,
@@ -303,6 +304,7 @@ export class Notion implements INodeType {
 
 		const resource = this.getNodeParameter('resource', 0) as string;
 		const operation = this.getNodeParameter('operation', 0) as string;
+		let download = false;
 
 		if (resource === 'block') {
 
@@ -387,6 +389,7 @@ export class Notion implements INodeType {
 
 			if (operation === 'getAll') {
 				for (let i = 0; i < length; i++) {
+					download = this.getNodeParameter('download', 0) as boolean;
 					const simple = this.getNodeParameter('simple', 0) as boolean;
 					const databaseId = this.getNodeParameter('databaseId', i) as string;
 					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
@@ -421,9 +424,15 @@ export class Notion implements INodeType {
 						responseData = await notionApiRequest.call(this, 'POST', `/databases/${databaseId}/query`, body, qs);
 						responseData = responseData.results;
 					}
-					if (simple === true) {
-						responseData = simplifyObjects(responseData);
+
+					if (download === true) {
+						responseData = await downloadFiles.call(this, responseData);
 					}
+
+					if (simple === true) {
+						responseData = simplifyObjects(responseData, download);
+					}
+
 					returnData.push.apply(returnData, responseData);
 				}
 			}
@@ -543,6 +552,11 @@ export class Notion implements INodeType {
 				}
 			}
 		}
+
+		if (download === true) {
+			return this.prepareOutputData(returnData as INodeExecutionData[]);
+		}
+
 		return [this.helpers.returnJsonArray(returnData)];
 	}
 }

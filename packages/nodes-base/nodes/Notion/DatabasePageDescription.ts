@@ -422,6 +422,47 @@ export const databasePageFields = [
 						default: 'default',
 						description: 'Time zone to use. By default n8n timezone is used.',
 					},
+					{
+						displayName: 'File URLs',
+						name: 'fileUrls',
+						placeholder: 'Add File',
+						type: 'fixedCollection',
+						typeOptions: {
+							multipleValues: true,
+							sortable: true,
+						},
+						displayOptions: {
+							show: {
+								type: [
+									'files',
+								],
+							},
+						},
+						description: 'The operations to perform.',
+						default: {},
+						options: [
+							{
+								name: 'fileUrl',
+								displayName: 'File',
+								values: [
+									{
+										displayName: 'Name',
+										name: 'name',
+										type: 'string',
+										default: '',
+										description: 'File Name',
+									},
+									{
+										displayName: 'File URL',
+										name: 'url',
+										type: 'string',
+										default: '',
+										description: 'Link to externally hosted file',
+									},
+								],
+							},
+						],
+					},
 				],
 			},
 		],
@@ -799,6 +840,47 @@ export const databasePageFields = [
 						default: 'default',
 						description: 'Time zone to use. By default n8n timezone is used.',
 					},
+					{
+						displayName: 'File URLs',
+						name: 'fileUrls',
+						placeholder: 'Add File',
+						type: 'fixedCollection',
+						typeOptions: {
+							multipleValues: true,
+							sortable: true,
+						},
+						displayOptions: {
+							show: {
+								type: [
+									'files',
+								],
+							},
+						},
+						description: 'The operations to perform.',
+						default: {},
+						options: [
+							{
+								name: 'fileUrl',
+								displayName: 'File',
+								values: [
+									{
+										displayName: 'Name',
+										name: 'name',
+										type: 'string',
+										default: '',
+										description: 'File Name',
+									},
+									{
+										displayName: 'File URL',
+										name: 'url',
+										type: 'string',
+										default: '',
+										description: 'Link to externally hosted file',
+									},
+								],
+							},
+						],
+					},
 				],
 			},
 		],
@@ -883,6 +965,23 @@ export const databasePageFields = [
 		},
 		default: true,
 		description: 'When set to true a simplify version of the response will be used else the raw data.',
+	},
+	{
+		displayName: 'Download',
+		name: 'download',
+		type: 'boolean',
+		displayOptions: {
+			show: {
+				resource: [
+					'databasePage',
+				],
+				operation: [
+					'getAll',
+				],
+			},
+		},
+		default: true,
+		description: 'Weather to download the files type file',
 	},
 	{
 		displayName: 'Options',
