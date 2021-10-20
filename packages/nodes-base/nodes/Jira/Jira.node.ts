@@ -594,7 +594,11 @@ export class Jira implements INodeType {
 						body.jql = options.jql as string;
 					}
 					if (options.expand) {
-						body.expand = options.expand as string;
+						if (typeof options.expand === 'string') {
+							body.expand = options.expand.split(',');
+						} else {
+							body.expand = options.expand;
+						}
 					}
 					if (returnAll) {
 						responseData = await jiraSoftwareCloudApiRequestAllItems.call(this, 'issues', `/api/2/search`, 'POST', body);

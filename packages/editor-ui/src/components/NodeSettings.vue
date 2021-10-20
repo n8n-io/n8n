@@ -16,7 +16,7 @@
 			The node is not valid as its type "{{node.type}}" is unknown.
 		</div>
 		<div class="node-parameters-wrapper" v-if="node && nodeValid">
-			<el-tabs stretch>
+			<el-tabs stretch @tab-click="handleTabClick">
 				<el-tab-pane label="Parameters">
 					<node-credentials :node="node" @credentialSelected="credentialSelected"></node-credentials>
 					<node-webhooks :node="node" :nodeType="nodeType" />
@@ -48,6 +48,8 @@ import {
 	INodeUpdatePropertiesInformation,
 	IUpdateInformation,
 } from '@/Interface';
+
+import { ElTabPane } from "element-ui/types/tab-pane";
 
 import DisplayWithChange from '@/components/DisplayWithChange.vue';
 import ParameterInputFull from '@/components/ParameterInputFull.vue';
@@ -499,6 +501,11 @@ export default mixins(
 					Vue.set(this.nodeValues, 'parameters', JSON.parse(JSON.stringify(this.node.parameters)));
 				} else {
 					this.nodeValid = false;
+				}
+			},
+			handleTabClick(tab: ElTabPane) {
+				if(tab.label === 'Settings') {
+					this.$telemetry.track('User viewed node settings', { node_type: this.node ? this.node.type : '', workflow_id: this.$store.getters.workflowId });
 				}
 			},
 		},
