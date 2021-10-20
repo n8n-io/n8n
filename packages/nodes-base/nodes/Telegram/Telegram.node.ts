@@ -890,7 +890,7 @@ export class Telegram implements INodeType {
 						],
 					},
 				},
-				description: 'Animation to send. Pass a file_id to send an animation that exists on the Telegram servers (recommended) , an HTTP URL for Telegram to get an animation from the Internet',
+				description: 'Animation to send. Pass a file_id to send an animation that exists on the Telegram servers (recommended), an HTTP URL for Telegram to get an animation from the Internet',
 			},
 
 
@@ -916,7 +916,7 @@ export class Telegram implements INodeType {
 						],
 					},
 				},
-				description: 'Audio file to send. Pass a file_id to send a file that exists on the Telegram servers (recommended) , an HTTP URL for Telegram to get a file from the Internet',
+				description: 'Audio file to send. Pass a file_id to send a file that exists on the Telegram servers (recommended), an HTTP URL for Telegram to get a file from the Internet',
 			},
 
 
@@ -1007,7 +1007,7 @@ export class Telegram implements INodeType {
 						],
 					},
 				},
-				description: 'Document to send. Pass a file_id to send a file that exists on the Telegram servers (recommended) , an HTTP URL for Telegram to get a file from the Internet',
+				description: 'Document to send. Pass a file_id to send a file that exists on the Telegram servers (recommended), an HTTP URL for Telegram to get a file from the Internet',
 			},
 
 
@@ -1202,7 +1202,7 @@ export class Telegram implements INodeType {
 						],
 					},
 				},
-				description: 'Photo to send. Pass a file_id to send a photo that exists on the Telegram servers (recommended) , an HTTP URL for Telegram to get a photo from the Internet',
+				description: 'Photo to send. Pass a file_id to send a photo that exists on the Telegram servers (recommended), an HTTP URL for Telegram to get a photo from the Internet',
 			},
 
 
@@ -1227,7 +1227,7 @@ export class Telegram implements INodeType {
 						],
 					},
 				},
-				description: 'Sticker to send. Pass a file_id to send a file that exists on the Telegram servers (recommended) , an HTTP URL for Telegram to get a .webp file from the Internet',
+				description: 'Sticker to send. Pass a file_id to send a file that exists on the Telegram servers (recommended), an HTTP URL for Telegram to get a .webp file from the Internet',
 			},
 
 
@@ -1252,7 +1252,7 @@ export class Telegram implements INodeType {
 						],
 					},
 				},
-				description: 'Video file to send. Pass a file_id to send a file that exists on the Telegram servers (recommended) , an HTTP URL for Telegram to get a file from the Internet',
+				description: 'Video file to send. Pass a file_id to send a file that exists on the Telegram servers (recommended), an HTTP URL for Telegram to get a file from the Internet',
 			},
 
 			// ----------------------------------
@@ -1421,7 +1421,7 @@ export class Telegram implements INodeType {
 														name: 'switch_inline_query',
 														type: 'string',
 														default: '',
-														description: 'If set, pressing the button will prompt the user to select one of their chats , open that chat and insert the bot‘s username and the specified inline query in the input field. Can be empty, in which case just the bot’s username will be inserted.',
+														description: 'If set, pressing the button will prompt the user to select one of their chats, open that chat and insert the bot‘s username and the specified inline query in the input field. Can be empty, in which case just the bot’s username will be inserted.',
 													},
 													{
 														displayName: 'URL',

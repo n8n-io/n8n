@@ -173,7 +173,7 @@ export class GithubTrigger implements INodeType {
 					{
 						name: 'installation',
 						value: 'installation',
-						description: 'Triggered when someone installs (created) , uninstalls (deleted), or accepts new permissions (new_permissions_accepted) for a GitHub App. When a GitHub App owner requests new permissions, the person who installed the GitHub App must accept the new permissions request.',
+						description: 'Triggered when someone installs (created), uninstalls (deleted), or accepts new permissions (new_permissions_accepted) for a GitHub App. When a GitHub App owner requests new permissions, the person who installed the GitHub App must accept the new permissions request.',
 					},
 					{
 						name: 'installation_repositories',
