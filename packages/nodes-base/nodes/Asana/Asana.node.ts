@@ -599,7 +599,7 @@ export class Asana implements INodeType {
 							loadOptionsMethod: 'getUsers',
 						},
 						default: '',
-						description: 'The assignee to filter tasks on.  Note: If you specify assignee, you must also specify the workspace to filter on.',
+						description: 'The assignee to filter tasks on. Note: If you specify assignee, you must also specify the workspace to filter on.',
 					},
 					{
 						displayName: 'Fields',
@@ -650,7 +650,7 @@ export class Asana implements INodeType {
 							loadOptionsMethod: 'getWorkspaces',
 						},
 						default: '',
-						description: 'The workspace to filter tasks on.  Note: If you specify workspace, you must also specify the assignee to filter on.',
+						description: 'The workspace to filter tasks on. Note: If you specify workspace, you must also specify the assignee to filter on.',
 					},
 					{
 						displayName: 'Completed Since',

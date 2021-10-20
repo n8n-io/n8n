@@ -279,7 +279,7 @@ export const eventFields = [
 								name: 'fieldId',
 								type: 'string',
 								default: '',
-								description: 'Each custom field\'s unique identifier  can be found within the Event\'s Registration block in the Customize tab.',
+								description: 'Each custom field\'s unique identifier can be found within the Event\'s Registration block in the Customize tab.',
 							},
 							{
 								displayName: 'Value',
