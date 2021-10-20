@@ -24,6 +24,7 @@ import {
 
 import {
 	ICredentialDataDecryptedObject,
+	ICredentialTestFunctions,
 	NodeApiError,
 	NodeOperationError,
 } from 'n8n-workflow';
@@ -64,6 +65,14 @@ export async function awsApiRequest(this: IHookFunctions | IExecuteFunctions | I
 	try {
 		return await this.helpers.request!(options);
 	} catch (error) {
+		if (error?.response?.data || error?.response?.body) {
+			let errorMessage = error?.response?.data || error?.response?.body;
+			if (errorMessage.includes('AccessDeniedException')) {
+				errorMessage = JSON.parse(errorMessage).Message;
+				throw new NodeApiError(this.getNode(), error, { message: 'Unauthorized', description: errorMessage });
+			}
+		}
+
 		throw new NodeApiError(this.getNode(), error); // no XML parsing needed
 	}
 }
@@ -113,4 +122,33 @@ export interface IExpenseDocument {
 					Type: { Text: string }
 				}]
 		}];
+}
+
+export async function validateCrendetials(this: ICredentialTestFunctions, decryptedCredentials: ICredentialDataDecryptedObject, service: string): Promise<any> { // tslint:disable-line:no-any
+	const credentials = decryptedCredentials;
+
+	// Concatenate path and instantiate URL object so it parses correctly query strings
+	const endpoint = new URL(getEndpointForService(service, credentials) + `?Action=GetCallerIdentity&Version=2011-06-15`);
+
+	// Sign AWS API request with the user credentials
+	const signOpts = { host: endpoint.host, method: 'POST', path: '?Action=GetCallerIdentity&Version=2011-06-15' } as Request;
+	sign(signOpts, { accessKeyId: `${credentials.accessKeyId}`.trim(), secretAccessKey: `${credentials.secretAccessKey}`.trim() });
+
+	const options: OptionsWithUri = {
+		headers: signOpts.headers,
+		method: 'POST',
+		uri: endpoint.href,
+		body: signOpts.body,
+	};
+
+	const response = await this.helpers.request!(options);
+
+	return await new Promise((resolve, reject) => {
+		parseString(response, { explicitArray: false }, (err, data) => {
+			if (err) {
+				return reject(err);
+			}
+			resolve(data);
+		});
+	});
 }
