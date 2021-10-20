@@ -9,7 +9,7 @@ export const OVERLAY_CONNECTION_ACTIONS_ID = 'connection-actions';
 
 
 if (!window.localStorage.getItem('MIN_X_TO_SHOW_OUTPUT_LABEL')) {
-	window.localStorage.setItem('MIN_X_TO_SHOW_OUTPUT_LABEL', '150');
+	window.localStorage.setItem('MIN_X_TO_SHOW_OUTPUT_LABEL', '90');
 }
 // @ts-ignore
 const _MIN_X_TO_SHOW_OUTPUT_LABEL = parseInt(window.localStorage.getItem('MIN_X_TO_SHOW_OUTPUT_LABEL'), 10);
