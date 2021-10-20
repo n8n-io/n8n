@@ -1,16 +1,23 @@
 import {
+	OptionsWithUri,
+} from 'request';
+
+import {
 	IExecuteFunctions,
 } from 'n8n-core';
 
 import {
 	IBinaryData,
 	IBinaryKeyData,
+	ICredentialsDecrypted,
+	ICredentialTestFunctions,
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
+	NodeCredentialTestResult,
 	NodeOperationError,
 } from 'n8n-workflow';
 
@@ -74,6 +81,7 @@ export class Jira implements INodeType {
 						],
 					},
 				},
+				testedBy: 'jiraSoftwareApiTest',
 			},
 			{
 				name: 'jiraSoftwareServerApi',
@@ -85,6 +93,7 @@ export class Jira implements INodeType {
 						],
 					},
 				},
+				testedBy: 'jiraSoftwareApiTest',
 			},
 		],
 		properties: [
@@ -145,6 +154,44 @@ export class Jira implements INodeType {
 	};
 
 	methods = {
+		credentialTest: {
+			async jiraSoftwareApiTest(this: ICredentialTestFunctions, credential: ICredentialsDecrypted): Promise<NodeCredentialTestResult> {
+				let data; let domain;
+				const credentials = credential.data;
+				domain = credentials!.domain;
+				data = Buffer.from(`${credentials!.email}:${credentials!.password || credentials!.apiToken}`).toString('base64');
+
+				const endpoint = '/api/2/project';
+
+				const options: OptionsWithUri = {
+					headers: {
+						Authorization: `Basic ${data}`,
+						Accept: 'application/json',
+						'Content-Type': 'application/json',
+						'X-Atlassian-Token': 'no-check',
+					},
+					method: 'GET',
+					uri: `${domain}/rest${endpoint}`,
+					qs: {
+						recent: 0,
+					},
+					json: true,
+					timeout: 5000,
+				};
+				try {
+					const response = await this.helpers.request!(options);
+				} catch (err) {
+					return {
+						status: 'Error',
+						message: `Connection details not valid; ${err.message}`,
+					};
+				}
+				return {
+					status: 'OK',
+					message: 'Authentication successful!',
+				};
+			},
+		},
 		loadOptions: {
 			// Get all the projects to display them to user so that he can
 			// select them easily
@@ -370,7 +417,7 @@ export class Jira implements INodeType {
 				}
 
 				const res = await jiraSoftwareCloudApiRequest.call(this, `/api/2/issue/createmeta?projectIds=${projectId}&issueTypeIds=${issueTypeId}&expand=projects.issuetypes.fields`, 'GET');
-				
+
 				// tslint:disable-next-line: no-any
 				const fields = res.projects.find((o: any) => o.id === projectId).issuetypes.find((o: any) => o.id === issueTypeId).fields;
 				for (const key of Object.keys(fields)) {
