@@ -955,7 +955,7 @@ export class GoogleDrive implements INodeType {
 						],
 					},
 				},
-				description: 'By default the response only contain the ID of the file.<br />If this option gets activated it will resolve the data automatically.',
+				description: 'By default the response only contain the ID of the file.<br />If this option gets activated, it will resolve the data automatically.',
 			},
 			{
 				displayName: 'Parents',
