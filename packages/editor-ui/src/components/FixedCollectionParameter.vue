@@ -5,7 +5,12 @@
 		</div>
 
 		<div v-for="property in getProperties" :key="property.name" class="fixed-collection-parameter-property">
-			<n8n-input-label :label="property.displayName === '' || parameter.options.length === 1 ? '' : property.displayName" :underline="true" size="small">
+			<n8n-input-label
+				:label="property.displayName === '' || parameter.options.length === 1 ? '' : property.displayName"
+				:underline="true"
+				:labelHoverableOnly="true"
+				size="small"
+			>
 				<div v-if="multipleValues === true">
 					<div v-for="(value, index) in values[property.name]" :key="property.name + index" class="parameter-item">
 						<div class="parameter-item-wrapper">
@@ -28,7 +33,6 @@
 						<parameter-input-list :parameters="property.values" :nodeValues="nodeValues" :path="getPropertyPath(property.name)" class="parameter-item" @valueChanged="valueChanged" :hideDelete="true" />
 					</div>
 				</div>
-
 			</n8n-input-label>
 		</div>
 

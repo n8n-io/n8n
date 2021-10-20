@@ -4,7 +4,7 @@
 
 			<div class="ignore-key-press">
 				<n8n-input-label :label="parameter.displayName">
-					<div :class="$style.editor" @keydown.stop @keydown.esc="closeDialog()">
+					<div @keydown.stop @keydown.esc="closeDialog()">
 						<n8n-input v-model="tempValue" type="textarea" ref="inputField" :value="value" :placeholder="parameter.placeholder" @change="valueChanged" @keydown.stop="noOp" :rows="15" />
 					</div>
 				</n8n-input-label>
@@ -59,10 +59,3 @@ export default Vue.extend({
 	},
 });
 </script>
-
-<style lang="scss" module>
-.editor {
-	font-size: var(--font-size-s);
-}
-</style>
-

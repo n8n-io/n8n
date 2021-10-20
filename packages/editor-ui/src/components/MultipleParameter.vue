@@ -4,6 +4,7 @@
 			:label="parameter.displayName"
 			:tooltipText="parameter.description"
 			:underline="true"
+			:labelHoverableOnly="true"
 			size="small"
 		>
 
@@ -47,7 +48,6 @@ import { get } from 'lodash';
 import { genericHelpers } from '@/components/mixins/genericHelpers';
 
 import mixins from 'vue-typed-mixins';
-import { addTargetBlank } from './helpers';
 
 export default mixins(genericHelpers)
 	.extend({
@@ -74,7 +74,6 @@ export default mixins(genericHelpers)
 			},
 		},
 		methods: {
-			addTargetBlank,
 			addItem () {
 				const name = this.getPath();
 				let currentValue = get(this.nodeValues, name);

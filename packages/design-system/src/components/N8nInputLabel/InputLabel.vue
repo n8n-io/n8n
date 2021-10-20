@@ -1,6 +1,6 @@
 <template functional>
-	<div :class="$style.inputLabel">
-		<div :class="$options.methods.getLabelClass(props, $style)">
+	<div :class="{[$style.inputLabelContainer]: !props.labelHoverableOnly}">
+		<div :class="{[$style.inputLabel]: props.labelHoverableOnly, [$options.methods.getLabelClass(props, $style)]: true}">
 			<component v-if="props.label" :is="$options.components.N8nText" :bold="props.bold" :size="props.size" :compact="!props.underline">
 				{{ props.label }}
 				<component :is="$options.components.N8nText" color="primary" :bold="props.bold" :size="props.size" v-if="props.required">*</component>
@@ -56,6 +56,10 @@ export default {
 		showTooltip: {
 			type: Boolean,
 		},
+		labelHoverableOnly: {
+			type: Boolean,
+			default: false,
+		},
 	},
 	methods: {
 		addTargetBlank,
@@ -75,8 +79,14 @@ export default {
 </script>
 
 <style lang="scss" module>
-.inputLabel:hover {
+.inputLabelContainer:hover {
 	> div > .infoIcon {
+		display: inline-block;
+	}
+}
+
+.inputLabel:hover {
+	> .infoIcon {
 		display: inline-block;
 	}
 }
