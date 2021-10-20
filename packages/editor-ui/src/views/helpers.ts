@@ -85,40 +85,6 @@ export const scaleReset = (config: IZoomConfig): IZoomConfig => {
 	return config;
 };
 
-export const getDefaultOverlays = (): OverlaySpec[] => ([
-	[
-		'Arrow',
-		{
-			id: 'endpoint-arrow',
-			location: 1,
-			width: 12,
-			foldback: 1,
-			length: 10,
-			visible: true,
-		},
-	],
-	[
-		'Label',
-		{
-			id: 'drop-add-node',
-			label: 'Drop connection<br />to create node',
-			cssClass: 'drop-add-node-label',
-			location: 0.5,
-		},
-	],
-	[
-		'Arrow',
-		{
-			id: 'midpoint-arrow',
-			location: 0.5,
-			width: 12,
-			foldback: 1,
-			length: 10,
-			visible: false,
-		},
-	],
-]);
-
 export const addEndpointArrow = (connection: Connection)  => {
 	connection.addOverlay([
 		'Arrow',

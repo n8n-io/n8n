@@ -21,11 +21,15 @@ import {
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
 
-import {
-	PaintStyle,
-} from 'jsplumb';
-
 declare module 'jsplumb' {
+	interface PaintStyle {
+		stroke?: string;
+		fill?: string;
+		strokeWidth?: number;
+		outlineStroke?: string;
+		outlineWidth?: number;
+	}
+
 	interface Anchor {
 		lastReturnValue: number[];
 	}

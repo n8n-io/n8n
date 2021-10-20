@@ -109,6 +109,8 @@ import Vue from 'vue';
 import {
 	Connection,
 	Overlay,
+	OverlaySpec,
+	PaintStyle,
 } from 'jsplumb';
 import { MessageBoxInputData } from 'element-ui/types/message-box';
 import { jsPlumb, Endpoint, OnConnectionBindInfo } from 'jsplumb';
@@ -133,7 +135,7 @@ import NodeCreator from '@/components/NodeCreator/NodeCreator.vue';
 import NodeSettings from '@/components/NodeSettings.vue';
 import RunData from '@/components/RunData.vue';
 
-import { getLeftmostTopNode, getWorkflowCorners, scaleSmaller, scaleBigger, scaleReset, showOrHideMidpointArrow, addEndpointArrow, getDefaultOverlays, getIcon, getNewNodePosition, hideMidpointArrow, showOrHideItemsLabel } from './helpers';
+import { getLeftmostTopNode, getWorkflowCorners, scaleSmaller, scaleBigger, scaleReset, showOrHideMidpointArrow, addEndpointArrow, getIcon, getNewNodePosition, hideMidpointArrow, showOrHideItemsLabel } from './helpers';
 
 import mixins from 'vue-typed-mixins';
 import { v4 as uuidv4} from 'uuid';
@@ -217,6 +219,72 @@ if (!window.localStorage.getItem('PUSH_NODES_LENGTH')) {
 }
 // @ts-ignore
 const _PUSH_NODES_LENGTH = parseInt(window.localStorage.getItem('PUSH_NODES_LENGTH'), 10);
+
+const CONNECTOR_PAINT_STYLE_DEFAULT: PaintStyle = {
+	stroke: getStyleTokenValue('--color-foreground-dark'),
+	strokeWidth: 2,
+	outlineWidth: 12,
+	outlineStroke: 'transparent',
+};
+
+const CONNECTOR_PAINT_STYLE_PRIMARY = {
+	...CONNECTOR_PAINT_STYLE_DEFAULT,
+	stroke: getStyleTokenValue('--color-primary'),
+};
+
+const CONNECTOR_PAINT_STYLE_SUCCESS = {
+	...CONNECTOR_PAINT_STYLE_DEFAULT,
+	stroke: getStyleTokenValue('--color-success'),
+};
+
+const CONNECTOR_TYPE_BEZIER = ['Bezier', { curviness: _CURVINESS }];
+const CONNECTOR_TYPE_FLOWCHART = ['Flowchart', { cornerRadius: 8, stub: JSPLUMB_FLOWCHART_STUB, gap: 5, alwaysRespectStubs: _ALWAYS_RESPECT_STUB}];
+
+const OVERLAY_DROP_NODE_ID = 'drop-add-node';
+
+const CONNECTOR_ARROW_OVERLAYS: OverlaySpec[] = [
+	[
+		'Arrow',
+		{
+			id: 'endpoint-arrow',
+			location: 1,
+			width: 12,
+			foldback: 1,
+			length: 10,
+			visible: true,
+		},
+	],
+	[
+		'Arrow',
+		{
+			id: 'midpoint-arrow',
+			location: 0.5,
+			width: 12,
+			foldback: 1,
+			length: 10,
+			visible: false,
+		},
+	],
+];
+
+const CONNECTOR_DROP_NODE_OVERLAY: OverlaySpec[] = [
+	[
+		'Label',
+		{
+			id: OVERLAY_DROP_NODE_ID,
+			label: 'Drop connection<br />to create node',
+			cssClass: 'drop-add-node-label',
+			location: 0.5,
+			visible: true,
+		},
+	],
+];
+
+const addOverlays = (connection: Connection, overlays: OverlaySpec[]) => {
+	overlays.forEach((overlay: OverlaySpec) => {
+		connection.addOverlay(overlay);
+	});
+};
 
 export default mixins(
 	copyPaste,
@@ -1326,14 +1394,14 @@ export default mixins(
 			},
 			initNodeView () {
 				this.instance.importDefaults({
-					Connector: ['Bezier', { curviness: _CURVINESS }],
+					Connector: CONNECTOR_TYPE_BEZIER,
 					Endpoint: ['Dot', { radius: 5 }],
 					DragOptions: { cursor: 'pointer', zIndex: 5000 },
-					PaintStyle: { strokeWidth: 2, stroke: getStyleTokenValue('--color-foreground-dark'), outlineStroke: _OUTLINE_STROKE_COLOR, outlineWidth: _OUTLINE_STROKE_WIDTH},
+					PaintStyle: { strokeWidth: 2, stroke: getStyleTokenValue('--color-foreground-dark')},
 					EndpointStyle: { radius: 9, fill: '#acd', stroke: 'red' },
 					HoverPaintStyle: { stroke: '#ff6d5a', lineWidth: 4 },
 					EndpointHoverStyle: { fill: '#ff6d5a', stroke: '#acd' },
-					ConnectionOverlays: getDefaultOverlays(),
+					ConnectionOverlays: CONNECTOR_ARROW_OVERLAYS,
 					Container: '#node-view',
 				});
 
@@ -1357,9 +1425,9 @@ export default mixins(
 				}));
 
 				this.instance.bind('connection', (info: OnConnectionBindInfo) => {
-					info.connection.setConnector(['Flowchart', { cornerRadius: 8, stub: JSPLUMB_FLOWCHART_STUB, gap: 5, alwaysRespectStubs: _ALWAYS_RESPECT_STUB}]);
-					// @ts-ignore
-					info.connection.setPaintStyle({stroke: getStyleTokenValue('--color-foreground-dark'), strokeWidth: 2, outlineStroke: _OUTLINE_STROKE_COLOR, outlineWidth: _OUTLINE_STROKE_WIDTH});
+					info.connection.setConnector(CONNECTOR_TYPE_FLOWCHART);
+					info.connection.setPaintStyle(CONNECTOR_PAINT_STYLE_DEFAULT);
+					addOverlays(info.connection, CONNECTOR_ARROW_OVERLAYS);
 
 					addEndpointArrow(info.connection);
 					showOrHideMidpointArrow(info.connection);
@@ -1375,8 +1443,7 @@ export default mixins(
 					const sourceNode = this.$store.getters.getNodeByName(sourceNodeName);
 					const targetNode = this.$store.getters.getNodeByName(targetNodeName);
 
-					// @ts-ignore
-					info.connection.removeOverlay('drop-add-node');
+					info.connection.removeOverlay(OVERLAY_DROP_NODE_ID);
 
 					if (this.isReadOnly === false) {
 						// Display the connection-delete button only on hover
@@ -1579,17 +1646,26 @@ export default mixins(
 
 				// @ts-ignore
 				this.instance.bind('connectionDrag', (connection: Connection) => {
+					addOverlays(connection, CONNECTOR_DROP_NODE_OVERLAY);
+
+					let droppable = false;
 					const onMouseMove = () => {
 						if (!connection) {
 							return;
 						}
 
 						const elements = document.querySelector('div.jtk-endpoint.dropHover');
-						if (elements) {
-							connection.setPaintStyle({stroke: getStyleTokenValue('--color-primary')});
+						if (elements && !droppable) {
+							droppable = true;
+							connection.setConnector(CONNECTOR_TYPE_FLOWCHART);
+							connection.setPaintStyle(CONNECTOR_PAINT_STYLE_PRIMARY);
+							addOverlays(connection, CONNECTOR_ARROW_OVERLAYS);
 						}
-						else {
-							connection.setPaintStyle({stroke: getStyleTokenValue('--color-foreground-dark')});
+						else if (!elements && droppable) {
+							droppable = false;
+							connection.setConnector(CONNECTOR_TYPE_BEZIER);
+							connection.setPaintStyle(CONNECTOR_PAINT_STYLE_DEFAULT);
+							addOverlays(connection, CONNECTOR_ARROW_OVERLAYS);
 						}
 					};
 
@@ -1804,7 +1880,7 @@ export default mixins(
 
 					outgoing.forEach((connection: Connection) => {
 						connection.removeOverlay('output-items-label');
-						connection.setPaintStyle({stroke: getStyleTokenValue('--color-foreground-dark')});
+						connection.setPaintStyle(CONNECTOR_PAINT_STYLE_DEFAULT);
 						showOrHideMidpointArrow(connection);
 					});
 
@@ -1874,12 +1950,12 @@ export default mixins(
 
 							const output = outputMap[sourceEndpoint][targetId][targetEndpoint];
 							if (!output || !output.total) {
-								conn.setPaintStyle({stroke: getStyleTokenValue('--color-foreground-dark')});
+								conn.setPaintStyle(CONNECTOR_PAINT_STYLE_DEFAULT);
 								conn.removeOverlay('output-items-label');
 								return;
 							}
 
-							conn.setPaintStyle({stroke: getStyleTokenValue('--color-success')});
+							conn.setPaintStyle(CONNECTOR_PAINT_STYLE_SUCCESS);
 
 							if (conn.getOverlay('output-items-label')) {
 								conn.removeOverlay('output-items-label');
