@@ -133,7 +133,7 @@ export const tableFields = [
 				name: 'keyColumns',
 				type: 'string',
 				default: '',
-				description: `Optional column IDs, URLs, or names (fragile and discouraged) ,
+				description: `Optional column IDs, URLs, or names (fragile and discouraged),
 				specifying columns to be used as upsert keys. If more than one separate by ,`,
 			},
 		],
