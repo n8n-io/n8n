@@ -36,6 +36,13 @@ declare module 'jsplumb' {
 	}
 
 	interface Connection {
+		__meta: {
+			sourceNodeName: string,
+			sourceOutputIndex: number,
+			targetNodeName: string,
+			targetOutputIndex: number,
+		};
+
 		// bind(event: string, (connection: Connection): void;): void; // tslint:disable-line:no-any
 		bind(event: string, callback: Function): void; // tslint:disable-line:no-any
 		removeOverlay(name: string): void;

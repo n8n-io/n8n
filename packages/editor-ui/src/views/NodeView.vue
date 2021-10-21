@@ -278,7 +278,12 @@ const CONNECTOR_DROP_NODE_OVERLAY: OverlaySpec[] = [
 	],
 ];
 
-const MAX_X_TO_PUSH_DOWNSTREAM_NODES = 500;
+
+if (!window.localStorage.getItem('MAX_X_TO_PUSH_DOWNSTREAM_NODES')) {
+	window.localStorage.setItem('MAX_X_TO_PUSH_DOWNSTREAM_NODES', '300');
+}
+// @ts-ignore
+const MAX_X_TO_PUSH_DOWNSTREAM_NODES = parseInt(window.localStorage.getItem('MAX_X_TO_PUSH_DOWNSTREAM_NODES'), 10);
 
 const addOverlays = (connection: Connection, overlays: OverlaySpec[]) => {
 	overlays.forEach((overlay: OverlaySpec) => {
@@ -1307,11 +1312,7 @@ export default mixins(
 					duration: 0,
 				});
 			},
-			async addNodeButton (nodeTypeName: string) {
-				if (this.editAllowedCheck() === false) {
-					return;
-				}
-
+			async injectNode (nodeTypeName: string) {
 				const nodeTypeData: INodeTypeDescription | null = this.$store.getters.nodeType(nodeTypeName);
 
 				if (nodeTypeData === null) {
@@ -1338,7 +1339,6 @@ export default mixins(
 
 				// Check if there is a last selected node
 				const lastSelectedNode = this.lastSelectedNode;
-				const lastSelectedNodeOutputIndex = this.$store.getters.lastSelectedNodeOutputIndex;
 				if (lastSelectedNode) {
 					const lastSelectedConnection = this.lastSelectedConnection;
 					if (lastSelectedConnection) {
@@ -1349,7 +1349,6 @@ export default mixins(
 					}
 
 					if (this.newNodeInsertPosition) {
-						console.log('setting', this.newNodeInsertPosition);
 						newNodeData.position = [this.newNodeInsertPosition[0], this.newNodeInsertPosition[1] - NODE_SIZE / 2];
 						this.newNodeInsertPosition = null;
 					}
@@ -1388,65 +1387,54 @@ export default mixins(
 					this.nodeSelectedByName(newNodeData.name, true);
 				});
 
+				return newNodeData;
+			},
+			connectTwoNodes (sourceNodeName: string, sourceNodeOutputIndex: number, targetNodeName: string, targetNodeOuputIndex: number) {
+				const connectionData = [
+					{
+						node: sourceNodeName,
+						type: 'main',
+						index: sourceNodeOutputIndex,
+					},
+					{
+						node: targetNodeName,
+						type: 'main',
+						index: targetNodeOuputIndex,
+					},
+				] as [IConnection, IConnection];
+
+				this.__addConnection(connectionData, true);
+			},
+			async addNodeButton (nodeTypeName: string) {
+				if (this.editAllowedCheck() === false) {
+					return;
+				}
+
+				const lastSelectedConnection = this.lastSelectedConnection;
+				const lastSelectedNode = this.lastSelectedNode;
+				const lastSelectedNodeOutputIndex = this.$store.getters.lastSelectedNodeOutputIndex;
+
+				const newNodeData = await this.injectNode(nodeTypeName);
+				if (!newNodeData) {
+					return;
+				}
+
 				const outputIndex = lastSelectedNodeOutputIndex || 0;
 
+				// If a node is last selected then connect between the active and its child ones
 				if (lastSelectedNode) {
-					// If a node is last selected then connect between the active and its child ones
 					await Vue.nextTick();
 
-					// Add connections of active node to newly created one
-					let connections = this.$store.getters.outgoingConnectionsByNodeName(
-						lastSelectedNode.name,
-					);
-					connections = JSON.parse(JSON.stringify(connections));
+					if (lastSelectedConnection) {
+						this.instance.deleteConnection(lastSelectedConnection); // mutation applied by connectionAborted event
 
-					for (const type of Object.keys(connections)) {
-						if (outputIndex <= connections[type].length) {
-							connections[type][outputIndex].forEach((connectionInfo: IConnection) => {
-								// Remove currenct connection
-
-								const connectionDataDisonnect = [
-									{
-										node: lastSelectedNode.name,
-										type,
-										index: outputIndex,
-									},
-									connectionInfo,
-								] as [IConnection, IConnection];
-
-								this.__removeConnection(connectionDataDisonnect, true);
-
-								const connectionDataConnect = [
-									{
-										node: newNodeData.name,
-										type,
-										index: 0,
-									},
-									connectionInfo,
-								] as [IConnection, IConnection];
-
-								this.__addConnection(connectionDataConnect, true);
-							});
-						}
+						const targetNodeName = lastSelectedConnection.__meta.targetNodeName;
+						const targetOutputIndex = lastSelectedConnection.__meta.targetOutputIndex;
+						this.connectTwoNodes(newNodeData.name, 0, targetNodeName, targetOutputIndex);
 					}
 
-					// TODO: Check if new node has input
-					// TODO: disconnect
 					// Connect active node to the newly created one
-					const connectionData = [
-						{
-							node: lastSelectedNode.name,
-							type: 'main',
-							index: outputIndex,
-						},
-						{
-							node: newNodeData.name,
-							type: 'main',
-							index: 0,
-						},
-					] as [IConnection, IConnection];
-
-					this.__addConnection(connectionData, true);
+					this.connectTwoNodes(lastSelectedNode.name, outputIndex, newNodeData.name, 0);
 				}
 			},
 			initNodeView () {
@@ -1499,6 +1487,13 @@ export default mixins(
 
 					const sourceNodeName = this.$store.getters.getNodeNameByIndex(sourceInfo.nodeIndex);
 					const targetNodeName = this.$store.getters.getNodeNameByIndex(targetInfo.nodeIndex);
+
+					info.connection.__meta = {
+						sourceNodeName,
+						sourceOutputIndex: sourceInfo.index,
+						targetNodeName,
+						targetOutputIndex: targetInfo.index,
+					};
 
 					info.connection.removeOverlay(OVERLAY_DROP_NODE_ID);
 
