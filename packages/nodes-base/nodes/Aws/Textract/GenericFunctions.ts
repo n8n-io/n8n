@@ -66,10 +66,12 @@ export async function awsApiRequest(this: IHookFunctions | IExecuteFunctions | I
 		return await this.helpers.request!(options);
 	} catch (error) {
 		if (error?.response?.data || error?.response?.body) {
-			let errorMessage = error?.response?.data || error?.response?.body;
+			const errorMessage = error?.response?.data || error?.response?.body;
 			if (errorMessage.includes('AccessDeniedException')) {
-				errorMessage = JSON.parse(errorMessage).Message;
-				throw new NodeApiError(this.getNode(), error, { message: 'Unauthorized', description: errorMessage });
+				const user = JSON.parse(errorMessage).Message.split(' ')[1];
+				throw new NodeApiError(this.getNode(), error, { 
+					message: 'Unauthorized — please check your AWS policy configuration',
+					description: `Make sure an identity-based policy allows user ${user} to perform textract:AnalyzeExpense` });
 			}
 		}
 
