@@ -33,7 +33,7 @@ export const nodeBase = mixins(
 			return this.$store.getters.getNodeIndex(this.data.name).toString();
 		},
 		nodePosition (): object {
-			const node = this.$store.getters.nodesByName[this.name];
+			const node = this.$store.getters.nodesByName[this.name]; // position responsive to store changes
 			const returnStyles: {
 				[key: string]: string;
 			} = {

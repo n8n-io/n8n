@@ -129,16 +129,22 @@ export const showOrHideMidpointArrow = (connection: Connection) => {
 	}
 };
 
+export const getConnectorLengths = (connection: Connection): [number, number] => {
+	// @ts-ignore
+	const bounds = connection.connector.bounds;
+	const diffX = Math.abs(bounds.maxX - bounds.minX);
+	const diffY = Math.abs(bounds.maxY - bounds.minY);
+
+	return [diffX, diffY];
+};
+
 export const showOrHideItemsLabel = (connection: Connection) => {
 	const overlay = connection.getOverlay(OVERLAY_RUN_ITEMS_ID);
 	if (!overlay) {
 		return;
 	}
 
-	// @ts-ignore
-	const bounds = connection.connector.bounds;
-	const diffX = Math.abs(bounds.maxX - bounds.minX);
-	const diffY = Math.abs(bounds.maxY - bounds.minY);
+	const [diffX, diffY] = getConnectorLengths(connection);
 
 	if (diffX < _MIN_X_TO_SHOW_OUTPUT_LABEL && diffY < _MIN_Y_TO_SHOW_OUTPUT_LABEL) {
 		overlay.setVisible(false);

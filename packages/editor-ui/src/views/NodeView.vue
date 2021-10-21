@@ -135,7 +135,7 @@ import NodeCreator from '@/components/NodeCreator/NodeCreator.vue';
 import NodeSettings from '@/components/NodeSettings.vue';
 import RunData from '@/components/RunData.vue';
 
-import { getLeftmostTopNode, getWorkflowCorners, scaleSmaller, scaleBigger, scaleReset, showOrHideMidpointArrow, getIcon, getNewNodePosition, hideOverlay, showOrHideItemsLabel, showOverlay, OVERLAY_ENDPOINT_ARROW_ID, OVERLAY_MIDPOINT_ARROW_ID, OVERLAY_DROP_NODE_ID, OVERLAY_RUN_ITEMS_ID, OVERLAY_CONNECTION_ACTIONS_ID } from './canvasHelpers';
+import { getLeftmostTopNode, getWorkflowCorners, scaleSmaller, scaleBigger, scaleReset, showOrHideMidpointArrow, getIcon, getNewNodePosition, hideOverlay, showOrHideItemsLabel, showOverlay, OVERLAY_ENDPOINT_ARROW_ID, OVERLAY_MIDPOINT_ARROW_ID, OVERLAY_DROP_NODE_ID, OVERLAY_RUN_ITEMS_ID, OVERLAY_CONNECTION_ACTIONS_ID, getConnectorLengths } from './canvasHelpers';
 
 import mixins from 'vue-typed-mixins';
 import { v4 as uuidv4} from 'uuid';
@@ -277,6 +277,8 @@ const CONNECTOR_DROP_NODE_OVERLAY: OverlaySpec[] = [
 		},
 	],
 ];
+
+const MINIMUM_X_TO_PUSH_DOWNSTREAM_NODES = 500;
 
 const addOverlays = (connection: Connection, overlays: OverlaySpec[]) => {
 	overlays.forEach((overlay: OverlaySpec) => {
@@ -421,6 +423,7 @@ export default mixins(
 			return {
 				createNodeActive: false,
 				instance: jsPlumb.getInstance(),
+				lastSelectedConnection: null as null | Connection,
 				lastClickPosition: [450, 450] as XYPositon,
 				nodeViewScale: 1,
 				ctrlKeyPressed: false,
@@ -933,13 +936,31 @@ export default mixins(
 				this.nodeSelectedByName(lastSelectedNode.name);
 			},
 
-			pushDownstreamNodes (margin: number) {
-				const lastSelectedNode = this.lastSelectedNode;
-				if (lastSelectedNode === null) {
-					return;
-				}
+			// getJSPlumbConnection (sourceNodeName: string, targetNodeName: string, sourceOutputIndex: number, targetInputIndex: number): Connection | undefined {
+			// 	const sourceIndex = this.getNodeIndex(sourceNodeName);
+			// 	const sourceId = `${NODE_NAME_PREFIX}${sourceIndex}`;
+
+			// 	const targetIndex = this.getNodeIndex(targetNodeName);
+			// 	const targetId = `${NODE_NAME_PREFIX}${targetIndex}`;
+
+			// 	const sourceEndpoint = `${sourceIndex}-output${sourceOutputIndex}`;
+			// 	const targetEndpoint = `${targetIndex}-input${targetInputIndex}`;
+
+			// 	// @ts-ignore
+			// 	const connections = this.instance.getConnections({
+			// 		source: sourceId,
+			// 		target: targetId,
+			// 	}) as Connection[];
+
+			// 	return connections.find((connection: Connection) => {
+			// 		const uuids = connection.getUuids();
+			// 		return uuids[0] === sourceEndpoint && uuids[1] === targetEndpoint;
+			// 	});
+			// },
+
+			pushDownstreamNodes (sourceNodeName: string, margin: number) {
 				const workflow = this.getWorkflow();
-				for (const nodeName of workflow.getChildNodes(lastSelectedNode.name)) {
+				for (const nodeName of workflow.getChildNodes(sourceNodeName)) {
 					const node = this.$store.getters.nodesByName[nodeName] as INodeUi;
 					const updateInformation = {
 						name: nodeName,
@@ -949,6 +970,7 @@ export default mixins(
 					};
 
 					this.$store.commit('updateNodeProperties', updateInformation);
+					this.onNodeMoved(node);
 				}
 			},
 
@@ -1227,6 +1249,7 @@ export default mixins(
 
 				this.$store.commit('setLastSelectedNode', node.name);
 				this.$store.commit('setLastSelectedNodeOutputIndex', null);
+				this.lastSelectedConnection = null;
 
 				if (setActive === true) {
 					this.$store.commit('setActiveNode', node.name);
@@ -1315,7 +1338,14 @@ export default mixins(
 				const lastSelectedNode = this.lastSelectedNode;
 				const lastSelectedNodeOutputIndex = this.$store.getters.lastSelectedNodeOutputIndex;
 				if (lastSelectedNode) {
-					this.pushDownstreamNodes(_PUSH_NODES_LENGTH);
+					const lastSelectedConnection = this.lastSelectedConnection;
+					if (lastSelectedConnection) {
+						const [diffX] = getConnectorLengths(lastSelectedConnection);
+						if (diffX <= MINIMUM_X_TO_PUSH_DOWNSTREAM_NODES) {
+							this.pushDownstreamNodes(lastSelectedNode.name, _PUSH_NODES_LENGTH);
+						}
+					}
+
 					// If a node is active then add the new node directly after the current one
 					// newNodeData.position = [activeNode.position[0], activeNode.position[1] + 60];
 					newNodeData.position = getNewNodePosition(
@@ -1423,14 +1453,17 @@ export default mixins(
 					Container: '#node-view',
 				});
 
-				const insertNodeAfterSelected = (info: {sourceId: string, index: number, eventSource: string}) => {
+				const insertNodeAfterSelected = (info: {sourceId: string, index: number, eventSource: string, connection?: Connection}) => {
 					// Get the node and set it as active that new nodes
 					// which get created get automatically connected
 					// to it.
 					const sourceNodeName = this.$store.getters.getNodeNameByIndex(info.sourceId.slice(NODE_NAME_PREFIX.length));
 					this.$store.commit('setLastSelectedNode', sourceNodeName);
-
 					this.$store.commit('setLastSelectedNodeOutputIndex', info.index);
+
+					if (info.connection) {
+						this.lastSelectedConnection = info.connection;
+					}
 
 					this.openNodeCreator(info.eventSource);
 				};
@@ -1456,9 +1489,6 @@ export default mixins(
 
 					const sourceNodeName = this.$store.getters.getNodeNameByIndex(sourceInfo.nodeIndex);
 					const targetNodeName = this.$store.getters.getNodeNameByIndex(targetInfo.nodeIndex);
-
-					const sourceNode = this.$store.getters.getNodeByName(sourceNodeName);
-					const targetNode = this.$store.getters.getNodeByName(targetNodeName);
 
 					info.connection.removeOverlay(OVERLAY_DROP_NODE_ID);
 
@@ -1500,13 +1530,14 @@ export default mixins(
 									mousedown: (overlay: Overlay, event: MouseEvent) => {
 										const element = event.target as HTMLElement;
 										if (element.classList.contains('delete') || (element.parentElement && element.parentElement.classList.contains('delete'))) {
-											this.__removeConnectionByConnectionInfo(info, true);
+											this.instance.deleteConnection(info.connection); // store mutation applied by connectionDetached event
 										}
-										if (element.classList.contains('add') || (element.parentElement && element.parentElement.classList.contains('add'))) {
+										else if (element.classList.contains('add') || (element.parentElement && element.parentElement.classList.contains('add'))) {
 											setTimeout(() => {
 												insertNodeAfterSelected({
 													sourceId: info.sourceId,
 													index: sourceInfo.index,
+													connection: info.connection,
 													eventSource: 'node_connection_action',
 												});
 											}, 150);
@@ -1764,7 +1795,11 @@ export default mixins(
 					},
 				] as [IConnection, IConnection];
 
-				this.__removeConnection(connectionInfo, removeVisualConnection);
+				if (removeVisualConnection) {
+					this.instance.deleteConnection(info.connection);
+				}
+
+				this.$store.commit('removeConnection', { connection: connectionInfo });
 			},
 			async duplicateNode (nodeName: string) {
 				if (this.editAllowedCheck() === false) {

@@ -44,6 +44,7 @@ declare module 'jsplumb' {
 		setPaintStyle(arg0: PaintStyle): void;
 		addOverlay(arg0: any[]): void; // tslint:disable-line:no-any
 		setConnector(arg0: any[]): void; // tslint:disable-line:no-any
+		getUuids(): [string, string];
 	}
 
 	interface Endpoint {
