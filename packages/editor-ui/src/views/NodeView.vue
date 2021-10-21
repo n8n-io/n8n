@@ -430,6 +430,7 @@ export default mixins(
 				stopExecutionInProgress: false,
 				blankRedirect: false,
 				credentialsUpdated: false,
+				newNodeInsertPosition: null as null | XYPositon,
 			};
 		},
 		beforeDestroy () {
@@ -1250,6 +1251,7 @@ export default mixins(
 				this.$store.commit('setLastSelectedNode', node.name);
 				this.$store.commit('setLastSelectedNodeOutputIndex', null);
 				this.lastSelectedConnection = null;
+				this.newNodeInsertPosition = null;
 
 				if (setActive === true) {
 					this.$store.commit('setActiveNode', node.name);
@@ -1346,13 +1348,20 @@ export default mixins(
 						}
 					}
 
-					// If a node is active then add the new node directly after the current one
-					// newNodeData.position = [activeNode.position[0], activeNode.position[1] + 60];
-					newNodeData.position = getNewNodePosition(
-						this.nodes,
-						[lastSelectedNode.position[0] + 200, lastSelectedNode.position[1]],
-						[100, 0],
-					);
+					if (this.newNodeInsertPosition) {
+						console.log('setting', this.newNodeInsertPosition);
+						newNodeData.position = [this.newNodeInsertPosition[0], this.newNodeInsertPosition[1] - NODE_SIZE / 2];
+						this.newNodeInsertPosition = null;
+					}
+					else {
+						// If a node is active then add the new node directly after the current one
+						// newNodeData.position = [activeNode.position[0], activeNode.position[1] + 60];
+						newNodeData.position = getNewNodePosition(
+							this.nodes,
+							[lastSelectedNode.position[0] + 200, lastSelectedNode.position[1]],
+							[100, 0],
+						);
+					}
 				} else {
 					// If no node is active find a free spot
 					newNodeData.position = getNewNodePosition(this.nodes, this.lastClickPosition);
@@ -1460,6 +1469,7 @@ export default mixins(
 					const sourceNodeName = this.$store.getters.getNodeNameByIndex(info.sourceId.slice(NODE_NAME_PREFIX.length));
 					this.$store.commit('setLastSelectedNode', sourceNodeName);
 					this.$store.commit('setLastSelectedNodeOutputIndex', info.index);
+					this.newNodeInsertPosition = null;
 
 					if (info.connection) {
 						this.lastSelectedConnection = info.connection;
@@ -1632,6 +1642,7 @@ export default mixins(
 
 				// @ts-ignore
 				this.instance.bind('connectionDrag', (connection: Connection) => {
+					this.newNodeInsertPosition = null;
 					addOverlays(connection, CONNECTOR_DROP_NODE_OVERLAY);
 
 					let droppable = false;
@@ -1657,7 +1668,8 @@ export default mixins(
 						}
 					};
 
-					const onMouseUp = () => {
+					const onMouseUp = (e: MouseEvent) => {
+						this.newNodeInsertPosition = [e.pageX, e.pageY];
 						window.removeEventListener('mousemove', onMouseMove);
 						window.removeEventListener('mouseup', onMouseUp);
 					};
