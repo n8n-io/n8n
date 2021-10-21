@@ -156,12 +156,8 @@ export class Jira implements INodeType {
 	methods = {
 		credentialTest: {
 			async jiraSoftwareApiTest(this: ICredentialTestFunctions, credential: ICredentialsDecrypted): Promise<NodeCredentialTestResult> {
-				let data; let domain;
 				const credentials = credential.data;
-				domain = credentials!.domain;
-				data = Buffer.from(`${credentials!.email}:${credentials!.password || credentials!.apiToken}`).toString('base64');
-
-				const endpoint = '/api/2/project';
+				const data = Buffer.from(`${credentials!.email}:${credentials!.password || credentials!.apiToken}`).toString('base64');
 
 				const options: OptionsWithUri = {
 					headers: {
@@ -171,7 +167,7 @@ export class Jira implements INodeType {
 						'X-Atlassian-Token': 'no-check',
 					},
 					method: 'GET',
-					uri: `${domain}/rest${endpoint}`,
+					uri: `${credentials!.domain}/rest/api/2/project`,
 					qs: {
 						recent: 0,
 					},
@@ -179,7 +175,7 @@ export class Jira implements INodeType {
 					timeout: 5000,
 				};
 				try {
-					const response = await this.helpers.request!(options);
+					await this.helpers.request!(options);
 				} catch (err) {
 					return {
 						status: 'Error',
