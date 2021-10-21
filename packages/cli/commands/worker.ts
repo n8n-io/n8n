@@ -26,7 +26,7 @@ import {
 	IBullJobData,
 	IBullJobResponse,
 	IExecutionFlattedDb,
-	IExecutionResponse,
+	InternalHooksManager,
 	LoadNodesAndCredentials,
 	NodeTypes,
 	ResponseHelper,
@@ -258,6 +258,9 @@ export class Worker extends Command {
 				Worker.jobQueue = Queue.getInstance().getBullObjectInstance();
 				// eslint-disable-next-line @typescript-eslint/no-floating-promises
 				Worker.jobQueue.process(flags.concurrency, async (job) => this.runJob(job, nodeTypes));
+
+				const instanceId = await UserSettings.getInstanceId();
+				InternalHooksManager.init(instanceId);
 
 				const versions = await GenericHelpers.getVersions();
 
