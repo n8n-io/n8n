@@ -10,26 +10,22 @@
 	>
 		<template v-slot:content>
 			<div :class="$style.content">
-				<el-row>
-					<n8n-input
-						v-model="name"
-						ref="nameInput"
-						placeholder="Enter workflow name"
-						:maxlength="MAX_WORKFLOW_NAME_LENGTH"
-					/>
-				</el-row>
-				<el-row>
-					<TagsDropdown
-						:createEnabled="true"
-						:currentTagIds="currentTagIds"
-						:eventBus="dropdownBus"
-						@blur="onTagsBlur"
-						@esc="onTagsEsc"
-						@update="onTagsUpdate"
-						placeholder="Choose or create a tag"
-						ref="dropdown"
-					/>
-				</el-row>
+				<n8n-input
+					v-model="name"
+					ref="nameInput"
+					placeholder="Enter workflow name"
+					:maxlength="MAX_WORKFLOW_NAME_LENGTH"
+				/>
+				<TagsDropdown
+					:createEnabled="true"
+					:currentTagIds="currentTagIds"
+					:eventBus="dropdownBus"
+					@blur="onTagsBlur"
+					@esc="onTagsEsc"
+					@update="onTagsUpdate"
+					placeholder="Choose or create a tag"
+					ref="dropdown"
+				/>
 			</div>
 		</template>
 		<template v-slot:footer="{ close }">
@@ -54,7 +50,7 @@ import Modal from "./Modal.vue";
 export default mixins(showMessage, workflowHelpers).extend({
 	components: { TagsDropdown, Modal },
 	name: "DuplicateWorkflow",
-	props: ["dialogVisible", "modalName", "isActive"],
+	props: ["modalName", "isActive"],
 	data() {
 		const currentTagIds = this.$store.getters[
 			"workflowTags"
@@ -113,12 +109,18 @@ export default mixins(showMessage, workflowHelpers).extend({
 				return;
 			}
 
+			const currentWorkflowId = this.$store.getters.workflowId;
+
 			this.$data.isSaving = true;
 
 			const saved = await this.saveAsNewWorkflow({name, tags: this.currentTagIds, resetWebhookUrls: true, openInNewWindow: true});
 
 			if (saved) {
 				this.closeDialog();
+				this.$telemetry.track('User duplicated workflow', {
+					old_workflow_id: currentWorkflowId,
+					workflow_id: this.$store.getters.workflowId,
+				});
 			}
 
 			this.$data.isSaving = false;
@@ -132,8 +134,8 @@ export default mixins(showMessage, workflowHelpers).extend({
 
 <style lang="scss" module>
 .content {
-	> div {
-		margin-bottom: 15px;
+	> *:not(:last-child) {
+		margin-bottom: var(--spacing-m);
 	}
 }
 

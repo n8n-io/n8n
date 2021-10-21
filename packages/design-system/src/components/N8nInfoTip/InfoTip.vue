@@ -1,19 +1,16 @@
 <template functional>
 	<div :class="$style.infotip">
-		<n8n-icon icon="info-circle" /> <span><slot></slot></span>
+		<component :is="$options.components.N8nIcon" icon="info-circle" /> <span><slot></slot></span>
 	</div>
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
-
 import N8nIcon from '../N8nIcon';
-
-Vue.component('N8nIcon', N8nIcon);
 
 export default {
 	name: 'n8n-info-tip',
-	props: {
+	components: {
+		N8nIcon,
 	},
 };
 </script>

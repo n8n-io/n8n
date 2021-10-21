@@ -51,10 +51,13 @@ import {
 	N8nInput,
 	N8nInputLabel,
 	N8nInputNumber,
+	N8nHeading,
 	N8nMenu,
 	N8nMenuItem,
 	N8nSelect,
 	N8nSpinner,
+	N8nText,
+	N8nTooltip,
 	N8nOption,
 } from 'n8n-design-system';
 import { ElMessageBoxOptions } from "element-ui/types/message-box";
@@ -68,10 +71,13 @@ Vue.use(N8nInfoTip);
 Vue.use(N8nInput);
 Vue.use(N8nInputLabel);
 Vue.use(N8nInputNumber);
+Vue.use(N8nHeading);
 Vue.use(N8nMenu);
 Vue.use(N8nMenuItem);
 Vue.use(N8nSelect);
 Vue.use(N8nSpinner);
+Vue.component('n8n-text', N8nText);
+Vue.use(N8nTooltip);
 Vue.use(N8nOption);
 
 // element io

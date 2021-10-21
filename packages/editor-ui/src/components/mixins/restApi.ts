@@ -11,7 +11,6 @@ import {
 	IExecutionFlattedResponse,
 	IExecutionsListResponse,
 	IExecutionsStopData,
-	IN8nUISettings,
 	IStartRunData,
 	IWorkflowDb,
 	IWorkflowShortResponse,
@@ -77,9 +76,6 @@ export const restApi = Vue.extend({
 				},
 				stopCurrentExecution: (executionId: string): Promise<IExecutionsStopData> => {
 					return self.restApi().makeRestApiRequest('POST', `/executions-current/${executionId}/stop`);
-				},
-				getSettings: (): Promise<IN8nUISettings> => {
-					return self.restApi().makeRestApiRequest('GET', `/settings`);
 				},
 
 				// Returns all node-types
