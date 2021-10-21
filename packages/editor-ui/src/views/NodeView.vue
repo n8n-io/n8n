@@ -278,7 +278,7 @@ const CONNECTOR_DROP_NODE_OVERLAY: OverlaySpec[] = [
 	],
 ];
 
-const MINIMUM_X_TO_PUSH_DOWNSTREAM_NODES = 500;
+const MAX_X_TO_PUSH_DOWNSTREAM_NODES = 500;
 
 const addOverlays = (connection: Connection, overlays: OverlaySpec[]) => {
 	overlays.forEach((overlay: OverlaySpec) => {
@@ -1341,7 +1341,7 @@ export default mixins(
 					const lastSelectedConnection = this.lastSelectedConnection;
 					if (lastSelectedConnection) {
 						const [diffX] = getConnectorLengths(lastSelectedConnection);
-						if (diffX <= MINIMUM_X_TO_PUSH_DOWNSTREAM_NODES) {
+						if (diAX MINIMUM_X_TO_PUSH_DOWNSTREAM_NODES) {
 							this.pushDownstreamNodes(lastSelectedNode.name, _PUSH_NODES_LENGTH);
 						}
 					}
