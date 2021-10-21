@@ -308,7 +308,7 @@ export interface IDiagnosticInfo {
 
 export interface IInternalHooksClass {
 	onN8nStop(): Promise<void>;
-	onServerStarted(diagnosticInfo: IDiagnosticInfo): Promise<void>;
+	onServerStarted(diagnosticInfo: IDiagnosticInfo): Promise<unknown[]>;
 	onPersonalizationSurveySubmitted(answers: IPersonalizationSurveyAnswers): Promise<void>;
 	onWorkflowCreated(workflow: IWorkflowBase): Promise<void>;
 	onWorkflowDeleted(workflowId: string): Promise<void>;
