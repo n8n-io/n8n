@@ -1341,7 +1341,7 @@ export default mixins(
 					const lastSelectedConnection = this.lastSelectedConnection;
 					if (lastSelectedConnection) {
 						const [diffX] = getConnectorLengths(lastSelectedConnection);
-						if (diAX MINIMUM_X_TO_PUSH_DOWNSTREAM_NODES) {
+						if (diffX <= MAX_X_TO_PUSH_DOWNSTREAM_NODES) {
 							this.pushDownstreamNodes(lastSelectedNode.name, _PUSH_NODES_LENGTH);
 						}
 					}
