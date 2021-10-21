@@ -9,6 +9,11 @@ import {
 	INodeTypeDescription,
 } from 'n8n-workflow';
 
+import {
+	jenkinsApiRequest,
+} from './GenericFunctions';
+
+
 export class Jenkins implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Jenkins',
@@ -16,6 +21,7 @@ export class Jenkins implements INodeType {
 		icon: 'file:jenkins.svg',
 		group: ['output'],
 		version: 1,
+		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 		description: 'Consume Jenkins API',
 		defaults: {
 			name: 'Jenkins',
@@ -31,6 +37,70 @@ export class Jenkins implements INodeType {
 		],
 		properties: [
 
+			{
+				displayName: 'Resource',
+				name: 'resource',
+				type: 'options',
+				options: [
+					{
+						name: 'Job',
+						value: 'job',
+						description: 'Jenkins job'
+					},
+				],
+				default: 'job',
+				description: 'The resource to operate on',
+				noDataExpression: true,
+			},
+			{
+				displayName: 'Jenkins URL',
+				name: 'url',
+				type: 'string',
+				required: true,
+				default: '',
+				description: 'Location of Jenkins installation',
+				noDataExpression: true,
+			},
+			// --------------------------------------------------------------------------------------------------------
+			//         Trigger a Job
+			// --------------------------------------------------------------------------------------------------------
+			{
+				displayName: 'Operation',
+				name: 'operation',
+				type: 'options',
+				displayOptions: {
+					show: {
+						resource: [
+							'job',
+						],
+					},
+				},
+				options: [
+					{
+						name: 'Trigger a Job',
+						value: 'trigger',
+						description: 'Trigger a specific job',
+					},
+				],
+				default: 'trigger',
+				description: 'The operation to perform',
+				noDataExpression: true,
+			},
+			{
+				displayName: 'Job Name',
+				name: 'job',
+				type: 'string',
+				displayOptions: {
+					show: {
+						resource: [
+							'job',
+						],
+					},
+				},
+				required: true,
+				default: '',
+				description: 'Name of the jenkins job',
+			},
 		],
 	};
 
@@ -45,64 +115,13 @@ export class Jenkins implements INodeType {
 
 		for (let i = 0; i < length; i++) {
 			try {
-				if (resource === 'pipeline') {
-					if (operation === 'get') {
-						const vcs = this.getNodeParameter('vcs', i) as string;
-						let slug = this.getNodeParameter('projectSlug', i) as string;
-						const pipelineNumber = this.getNodeParameter('pipelineNumber', i) as number;
-
-						slug = slug.replace(new RegExp(/\//g), '%2F');
-
-						const endpoint = `/project/${vcs}/${slug}/pipeline/${pipelineNumber}`;
-
-						// responseData = await circleciApiRequest.call(this, 'GET', endpoint, {}, qs);
-					}
-					if (operation === 'getAll') {
-						const vcs = this.getNodeParameter('vcs', i) as string;
-						const filters = this.getNodeParameter('filters', i) as IDataObject;
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
-						let slug = this.getNodeParameter('projectSlug', i) as string;
-
-						slug = slug.replace(new RegExp(/\//g), '%2F');
-
-						if (filters.branch) {
-							qs.branch = filters.branch;
-						}
-
-						const endpoint = `/project/${vcs}/${slug}/pipeline`;
-
-						if (returnAll === true) {
-							// responseData = await circleciApiRequestAllItems.call(this, 'items', 'GET', endpoint, {}, qs);
-
-						} else {
-							qs.limit = this.getNodeParameter('limit', i) as number;
-							// responseData = await circleciApiRequest.call(this, 'GET', endpoint, {}, qs);
-							// responseData = responseData.items;
-							// responseData = responseData.splice(0, qs.limit);
-						}
-					}
-
+				if (resource === 'job') {
 					if (operation === 'trigger') {
-						const vcs = this.getNodeParameter('vcs', i) as string;
-						let slug = this.getNodeParameter('projectSlug', i) as string;
+						const baseUrl = this.getNodeParameter('url', i) as string;
+						const job = this.getNodeParameter('job', i) as string;
 
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
-
-						slug = slug.replace(new RegExp(/\//g), '%2F');
-
-						const endpoint = `/project/${vcs}/${slug}/pipeline`;
-
-						const body: IDataObject = {};
-
-						if (additionalFields.branch) {
-							body.branch = additionalFields.branch as string;
-						}
-
-						if (additionalFields.tag) {
-							body.tag = additionalFields.tag as string;
-						}
-
-						// responseData = await circleciApiRequest.call(this, 'POST', endpoint, body, qs);
+						const endpoint = `${baseUrl}/job/${job}/build`;
+						responseData = await jenkinsApiRequest.call(this, 'get', endpoint, {});
 					}
 				}
 				if (Array.isArray(responseData)) {
