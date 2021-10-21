@@ -27,18 +27,10 @@
 import * as express from 'express';
 import { readFileSync } from 'fs';
 import { dirname as pathDirname, join as pathJoin, resolve as pathResolve } from 'path';
-import {
-	getConnectionManager,
-	In,
-	Like,
-	FindManyOptions,
-	FindOneOptions,
-	IsNull,
-	LessThanOrEqual,
-	Not,
-} from 'typeorm';
+import { FindManyOptions, getConnectionManager, In, IsNull, LessThanOrEqual, Not } from 'typeorm';
 import * as bodyParser from 'body-parser';
 import * as history from 'connect-history-api-fallback';
+import * as os from 'os';
 // eslint-disable-next-line import/no-extraneous-dependencies
 import * as _ from 'lodash';
 import * as clientOAuth2 from 'client-oauth2';
@@ -46,7 +38,7 @@ import * as clientOAuth1 from 'oauth-1.0a';
 import { RequestOptions } from 'oauth-1.0a';
 import * as csrf from 'csrf';
 import * as requestPromise from 'request-promise-native';
-import { createHash, createHmac } from 'crypto';
+import { createHmac } from 'crypto';
 // IMPORTANT! Do not switch to anther bcrypt library unless really necessary and
 // tested with all possible systems like Windows, Alpine on ARM, FreeBSD, ...
 import { compare } from 'bcryptjs';
@@ -72,8 +64,8 @@ import {
 	INodeType,
 	INodeTypeDescription,
 	INodeTypeNameVersion,
-	IRunData,
 	INodeVersionedType,
+	ITelemetrySettings,
 	IWorkflowBase,
 	IWorkflowCredentials,
 	LoggerProxy,
@@ -124,12 +116,13 @@ import {
 	IExecutionsStopData,
 	IExecutionsSummary,
 	IExternalHooksClass,
+	IDiagnosticInfo,
 	IN8nUISettings,
 	IPackageVersions,
 	ITagWithCountDb,
 	IWorkflowExecutionDataProcess,
 	IWorkflowResponse,
-	LoadNodesAndCredentials,
+	IPersonalizationSurveyAnswers,
 	NodeTypes,
 	Push,
 	ResponseHelper,
@@ -142,9 +135,13 @@ import {
 	WorkflowHelpers,
 	WorkflowRunner,
 } from '.';
+
 import * as config from '../config';
 
 import * as TagHelpers from './TagHelpers';
+import * as PersonalizationSurvey from './PersonalizationSurvey';
+
+import { InternalHooksManager } from './InternalHooksManager';
 import { TagEntity } from './databases/entities/TagEntity';
 import { WorkflowEntity } from './databases/entities/WorkflowEntity';
 import { NameRequest } from './WorkflowHelpers';
@@ -243,6 +240,22 @@ class App {
 
 		const urlBaseWebhook = WebhookHelpers.getWebhookBaseUrl();
 
+		const telemetrySettings: ITelemetrySettings = {
+			enabled: config.get('diagnostics.enabled') as boolean,
+		};
+
+		if (telemetrySettings.enabled) {
+			const conf = config.get('diagnostics.config.frontend') as string;
+			const [key, url] = conf.split(';');
+
+			if (!key || !url) {
+				LoggerProxy.warn('Diagnostics frontend config is invalid');
+				telemetrySettings.enabled = false;
+			}
+
+			telemetrySettings.config = { key, url };
+		}
+
 		this.frontendSettings = {
 			endpointWebhook: this.endpointWebhook,
 			endpointWebhookTest: this.endpointWebhookTest,
@@ -264,6 +277,10 @@ class App {
 				infoUrl: config.get('versionNotifications.infoUrl'),
 			},
 			instanceId: '',
+			telemetry: telemetrySettings,
+			personalizationSurvey: {
+				shouldShow: false,
+			},
 		};
 	}
 
@@ -290,7 +307,13 @@ class App {
 
 		this.versions = await GenericHelpers.getVersions();
 		this.frontendSettings.versionCli = this.versions.cli;
-		this.frontendSettings.instanceId = (await generateInstanceId()) as string;
+
+		this.frontendSettings.instanceId = await UserSettings.getInstanceId();
+
+		this.frontendSettings.personalizationSurvey =
+			await PersonalizationSurvey.preparePersonalizationSurvey();
+
+		InternalHooksManager.init(this.frontendSettings.instanceId);
 
 		await this.externalHooks.run('frontend.settings', [this.frontendSettings]);
 
@@ -458,10 +481,13 @@ class App {
 				};
 
 				jwt.verify(token, getKey, jwtVerifyOptions, (err: jwt.VerifyErrors, decoded: object) => {
-					if (err) ResponseHelper.jwtAuthAuthorizationError(res, 'Invalid token');
-					else if (!isTenantAllowed(decoded))
+					if (err) {
+						ResponseHelper.jwtAuthAuthorizationError(res, 'Invalid token');
+					} else if (!isTenantAllowed(decoded)) {
 						ResponseHelper.jwtAuthAuthorizationError(res, 'Tenant not allowed');
-					else next();
+					} else {
+						next();
+					}
 				});
 			});
 		}
@@ -656,6 +682,7 @@ class App {
 
 					// @ts-ignore
 					savedWorkflow.id = savedWorkflow.id.toString();
+					void InternalHooksManager.getInstance().onWorkflowCreated(newWorkflow as IWorkflowBase);
 					return savedWorkflow;
 				},
 			),
@@ -858,12 +885,12 @@ class App {
 					}
 
 					await this.externalHooks.run('workflow.afterUpdate', [workflow]);
+					void InternalHooksManager.getInstance().onWorkflowSaved(workflow as IWorkflowBase);
 
 					if (workflow.active) {
 						// When the workflow is supposed to be active add it again
 						try {
 							await this.externalHooks.run('workflow.activate', [workflow]);
-
 							await this.activeWorkflowRunner.add(id, isActive ? 'update' : 'activate');
 						} catch (error) {
 							// If workflow could not be activated set it again to inactive
@@ -901,6 +928,7 @@ class App {
 				}
 
 				await Db.collections.Workflow!.delete(id);
+				void InternalHooksManager.getInstance().onWorkflowDeleted(id);
 				await this.externalHooks.run('workflow.afterDelete', [id]);
 
 				return true;
@@ -2602,6 +2630,31 @@ class App {
 		);
 
 		// ----------------------------------------
+		// User Survey
+		// ----------------------------------------
+
+		// Process personalization survey responses
+		this.app.post(
+			`/${this.restEndpoint}/user-survey`,
+			async (req: express.Request, res: express.Response) => {
+				if (!this.frontendSettings.personalizationSurvey.shouldShow) {
+					ResponseHelper.sendErrorResponse(
+						res,
+						new ResponseHelper.ResponseError('User survey already submitted', undefined, 400),
+						false,
+					);
+				}
+
+				const answers = req.body as IPersonalizationSurveyAnswers;
+				await PersonalizationSurvey.writeSurveyToDisk(answers);
+				this.frontendSettings.personalizationSurvey.shouldShow = false;
+				this.frontendSettings.personalizationSurvey.answers = answers;
+				ResponseHelper.sendSuccessResponse(res, undefined, true, 200);
+				void InternalHooksManager.getInstance().onPersonalizationSurveySubmitted(answers);
+			},
+		);
+
+		// ----------------------------------------
 		// Webhooks
 		// ----------------------------------------
 
@@ -2730,15 +2783,9 @@ class App {
 							return;
 						}
 
-						const loadNodesAndCredentials = LoadNodesAndCredentials();
-
 						const credentialsOverwrites = CredentialsOverwrites();
 
 						await credentialsOverwrites.init(body);
-
-						const credentialTypes = CredentialTypes();
-
-						await credentialTypes.init(loadNodesAndCredentials.credentialTypes);
 
 						this.presetCredentialsLoaded = true;
 
@@ -2810,6 +2857,43 @@ export async function start(): Promise<void> {
 		console.log(`Version: ${versions.cli}`);
 
 		await app.externalHooks.run('n8n.ready', [app]);
+		const cpus = os.cpus();
+		const diagnosticInfo: IDiagnosticInfo = {
+			basicAuthActive: config.get('security.basicAuth.active') as boolean,
+			databaseType: (await GenericHelpers.getConfigValue('database.type')) as DatabaseType,
+			disableProductionWebhooksOnMainProcess:
+				config.get('endpoints.disableProductionWebhooksOnMainProcess') === true,
+			notificationsEnabled: config.get('versionNotifications.enabled') === true,
+			versionCli: versions.cli,
+			systemInfo: {
+				os: {
+					type: os.type(),
+					version: os.version(),
+				},
+				memory: os.totalmem() / 1024,
+				cpus: {
+					count: cpus.length,
+					model: cpus[0].model,
+					speed: cpus[0].speed,
+				},
+			},
+			executionVariables: {
+				executions_process: config.get('executions.process'),
+				executions_mode: config.get('executions.mode'),
+				executions_timeout: config.get('executions.timeout'),
+				executions_timeout_max: config.get('executions.maxTimeout'),
+				executions_data_save_on_error: config.get('executions.saveDataOnError'),
+				executions_data_save_on_success: config.get('executions.saveDataOnSuccess'),
+				executions_data_save_on_progress: config.get('executions.saveExecutionProgress'),
+				executions_data_save_manual_executions: config.get('executions.saveDataManualExecutions'),
+				executions_data_prune: config.get('executions.pruneData'),
+				executions_data_max_age: config.get('executions.pruneDataMaxAge'),
+				executions_data_prune_timeout: config.get('executions.pruneDataTimeout'),
+			},
+			deploymentType: config.get('deployment.type'),
+		};
+
+		void InternalHooksManager.getInstance().onServerStarted(diagnosticInfo);
 	});
 }
 
@@ -2847,15 +2931,4 @@ async function getExecutionsCount(
 
 	const count = await Db.collections.Execution!.count(countFilter);
 	return { count, estimate: false };
-}
-
-async function generateInstanceId() {
-	const encryptionKey = await UserSettings.getEncryptionKey();
-	const hash = encryptionKey
-		? createHash('sha256')
-				.update(encryptionKey.slice(Math.round(encryptionKey.length / 2)))
-				.digest('hex')
-		: undefined;
-
-	return hash;
 }

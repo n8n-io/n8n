@@ -16,7 +16,6 @@ import { IProcessMessage, WorkflowExecute } from 'n8n-core';
 import {
 	ExecutionError,
 	IRun,
-	IWorkflowBase,
 	LoggerProxy as Logger,
 	Workflow,
 	WorkflowExecuteMode,
@@ -56,6 +55,7 @@ import {
 	WorkflowHelpers,
 } from '.';
 import * as Queue from './Queue';
+import { InternalHooksManager } from './InternalHooksManager';
 
 export class WorkflowRunner {
 	activeExecutions: ActiveExecutions.ActiveExecutions;
@@ -160,10 +160,22 @@ export class WorkflowRunner {
 			executionId = await this.runSubprocess(data, loadStaticData, executionId);
 		}
 
+		const postExecutePromise = this.activeExecutions.getPostExecutePromise(executionId);
+
 		const externalHooks = ExternalHooks();
+		postExecutePromise
+			.then(async (executionData) => {
+				void InternalHooksManager.getInstance().onWorkflowPostExecute(
+					data.workflowData,
+					executionData,
+				);
+			})
+			.catch((error) => {
+				console.error('There was a problem running internal hook "onWorkflowPostExecute"', error);
+			});
+
 		if (externalHooks.exists('workflow.postExecute')) {
-			this.activeExecutions
-				.getPostExecutePromise(executionId)
+			postExecutePromise
 				.then(async (executionData) => {
 					await externalHooks.run('workflow.postExecute', [executionData, data.workflowData]);
 				})

@@ -1,12 +1,17 @@
+import { OptionsWithUri } from 'request';
+
 import {
 	IExecuteFunctions,
 } from 'n8n-core';
 
 import {
+	ICredentialsDecrypted,
+	ICredentialTestFunctions,
 	IDataObject,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
+	NodeCredentialTestResult,
 	NodeOperationError,
 } from 'n8n-workflow';
 
@@ -39,6 +44,7 @@ export class Github implements INodeType {
 			{
 				name: 'githubApi',
 				required: true,
+				testedBy: 'githubApiTest',
 				displayOptions: {
 					show: {
 						authentication: [
@@ -1698,6 +1704,43 @@ export class Github implements INodeType {
 		],
 	};
 
+	methods = {
+		credentialTest: {
+			async githubApiTest(this: ICredentialTestFunctions, credential: ICredentialsDecrypted): Promise<NodeCredentialTestResult> {
+				const credentials = credential.data;
+				const baseUrl = credentials!.server as string || 'https://api.github.com/user';
+
+				const options: OptionsWithUri = {
+					method: 'GET',
+					headers: {
+						'User-Agent': 'n8n',
+						Authorization: `token ${credentials!.accessToken}`,
+					},
+					uri: baseUrl,
+					json: true,
+					timeout: 5000,
+				};
+				try {
+					const response = await this.helpers.request(options);
+					if (!response.id) {
+						return {
+							status: 'Error',
+							message: `Token is not valid: ${response.error}`,
+						};
+					}
+				} catch (error) {
+					return {
+						status: 'Error',
+						message: `Settings are not valid: ${error}`,
+					};
+				}
+				return {
+					status: 'OK',
+					message: 'Authentication successful!',
+				};
+			},
+		},
+	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
