@@ -18,6 +18,7 @@ import {
 	Db,
 	ExternalHooks,
 	GenericHelpers,
+	InternalHooksManager,
 	LoadNodesAndCredentials,
 	NodeTypes,
 	WebhookServer,
@@ -146,6 +147,9 @@ export class Webhook extends Command {
 
 				// Wait till the database is ready
 				await startDbInitPromise;
+
+				const instanceId = await UserSettings.getInstanceId();
+				InternalHooksManager.init(instanceId);
 
 				if (config.get('executions.mode') === 'queue') {
 					const redisHost = config.get('queue.bull.redis.host');

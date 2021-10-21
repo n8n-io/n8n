@@ -312,8 +312,6 @@ class App {
 		this.frontendSettings.personalizationSurvey =
 			await PersonalizationSurvey.preparePersonalizationSurvey();
 
-		InternalHooksManager.init(this.frontendSettings.instanceId);
-
 		await this.externalHooks.run('frontend.settings', [this.frontendSettings]);
 
 		const excludeEndpoints = config.get('security.excludeEndpoints') as string;
