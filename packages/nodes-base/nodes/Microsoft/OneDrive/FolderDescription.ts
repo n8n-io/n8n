@@ -56,6 +56,7 @@ export const folderFields = [
 		name: 'name',
 		required: true,
 		type: 'string',
+		placeholder: '/root/folder',
 		displayOptions: {
 			show: {
 				operation: [
@@ -67,7 +68,7 @@ export const folderFields = [
 			},
 		},
 		default: '',
-		description: `Folder's name, or a folders slash (/) separated hierarchy`,
+		description: 'The name or path of the folder',
 	},
 	{
 		displayName: 'Options',
