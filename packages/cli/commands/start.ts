@@ -22,8 +22,6 @@ import {
 	Db,
 	ExternalHooks,
 	GenericHelpers,
-	// eslint-disable-next-line @typescript-eslint/no-unused-vars
-	IExecutionsCurrentSummary,
 	InternalHooksManager,
 	LoadNodesAndCredentials,
 	NodeTypes,
@@ -320,8 +318,7 @@ export class Start extends Command {
 				activeWorkflowRunner = ActiveWorkflowRunner.getInstance();
 				await activeWorkflowRunner.init();
 
-				// eslint-disable-next-line @typescript-eslint/no-unused-vars
-				const waitTracker = WaitTracker();
+				WaitTracker();
 
 				const editorUrl = GenericHelpers.getBaseUrl();
 				this.log(`\nEditor is now accessible via:\n${editorUrl}`);

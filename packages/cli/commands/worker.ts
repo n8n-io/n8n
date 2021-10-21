@@ -12,21 +12,12 @@ import * as PCancelable from 'p-cancelable';
 import { Command, flags } from '@oclif/command';
 import { UserSettings, WorkflowExecute } from 'n8n-core';
 
-import {
-	IDataObject,
-	INodeTypes,
-	IRun,
-	IWorkflowExecuteHooks,
-	Workflow,
-	WorkflowHooks,
-	LoggerProxy,
-} from 'n8n-workflow';
+import { INodeTypes, IRun, Workflow, LoggerProxy } from 'n8n-workflow';
 
 import { FindOneOptions } from 'typeorm';
 
 import * as Bull from 'bull';
 import {
-	ActiveExecutions,
 	CredentialsOverwrites,
 	CredentialTypes,
 	Db,
@@ -39,7 +30,6 @@ import {
 	LoadNodesAndCredentials,
 	NodeTypes,
 	ResponseHelper,
-	WorkflowCredentials,
 	WorkflowExecuteAdditionalData,
 } from '../src';
 
@@ -203,7 +193,7 @@ export class Worker extends Command {
 		Worker.runningJobs[job.id] = workflowRun;
 
 		// Wait till the execution is finished
-		const runData = await workflowRun;
+		await workflowRun;
 
 		delete Worker.runningJobs[job.id];
 
