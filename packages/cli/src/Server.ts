@@ -27,16 +27,7 @@
 import * as express from 'express';
 import { readFileSync } from 'fs';
 import { dirname as pathDirname, join as pathJoin, resolve as pathResolve } from 'path';
-import {
-	FindManyOptions,
-	FindOneOptions,
-	getConnectionManager,
-	In,
-	IsNull,
-	LessThanOrEqual,
-	Like,
-	Not,
-} from 'typeorm';
+import { FindManyOptions, getConnectionManager, In, IsNull, LessThanOrEqual, Not } from 'typeorm';
 import * as bodyParser from 'body-parser';
 import * as history from 'connect-history-api-fallback';
 import * as os from 'os';
@@ -47,7 +38,7 @@ import * as clientOAuth1 from 'oauth-1.0a';
 import { RequestOptions } from 'oauth-1.0a';
 import * as csrf from 'csrf';
 import * as requestPromise from 'request-promise-native';
-import { createHash, createHmac } from 'crypto';
+import { createHmac } from 'crypto';
 // IMPORTANT! Do not switch to anther bcrypt library unless really necessary and
 // tested with all possible systems like Windows, Alpine on ARM, FreeBSD, ...
 import { compare } from 'bcryptjs';
@@ -73,9 +64,7 @@ import {
 	INodeType,
 	INodeTypeDescription,
 	INodeTypeNameVersion,
-	IRunData,
 	INodeVersionedType,
-	ITelemetryClientConfig,
 	ITelemetrySettings,
 	IWorkflowBase,
 	IWorkflowCredentials,
@@ -134,7 +123,6 @@ import {
 	IWorkflowExecutionDataProcess,
 	IWorkflowResponse,
 	IPersonalizationSurveyAnswers,
-	LoadNodesAndCredentials,
 	NodeTypes,
 	Push,
 	ResponseHelper,
@@ -2795,15 +2783,9 @@ class App {
 							return;
 						}
 
-						const loadNodesAndCredentials = LoadNodesAndCredentials();
-
 						const credentialsOverwrites = CredentialsOverwrites();
 
 						await credentialsOverwrites.init(body);
-
-						const credentialTypes = CredentialTypes();
-
-						await credentialTypes.init(loadNodesAndCredentials.credentialTypes);
 
 						this.presetCredentialsLoaded = true;
 
