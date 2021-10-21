@@ -312,6 +312,9 @@ export class Start extends Command {
 					);
 				}
 
+				const instanceId = await UserSettings.getInstanceId();
+				InternalHooksManager.init(instanceId);
+
 				await Server.start();
 
 				// Start to get active workflows and run their triggers
