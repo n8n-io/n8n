@@ -1,10 +1,11 @@
 <template>
-	<div v-if="dialogVisible">
-		<el-dialog :visible="dialogVisible" append-to-body width="80%" title="Credentials" :before-close="closeDialog">
-			<div class="text-very-light">
-				Your saved credentials:
-			</div>
-
+	<Modal
+		:name="CREDENTIAL_LIST_MODAL_KEY"
+		width="80%"
+		title="Credentials"
+	>
+		<template v-slot:content>
+			<n8n-heading tag="h3" size="small" color="text-light">Your saved credentials:</n8n-heading>
 			<div class="new-credentials-button">
 				<n8n-button
 					title="Create New Credentials"
@@ -31,8 +32,8 @@
 					</template>
 				</el-table-column>
 			</el-table>
-		</el-dialog>
-	</div>
+		</template>
+	</Modal>
 </template>
 
 <script lang="ts">
@@ -46,6 +47,9 @@ import { mapGetters } from "vuex";
 
 import mixins from 'vue-typed-mixins';
 import { convertToDisplayDate } from './helpers';
+import { CREDENTIAL_SELECT_MODAL_KEY, CREDENTIAL_LIST_MODAL_KEY } from '@/constants';
+
+import Modal from './Modal.vue';
 
 export default mixins(
 	externalHooks,
@@ -54,9 +58,14 @@ export default mixins(
 	showMessage,
 ).extend({
 	name: 'CredentialsList',
-	props: [
-		'dialogVisible',
-	],
+	components: {
+		Modal,
+	},
+	data() {
+		return {
+			CREDENTIAL_LIST_MODAL_KEY,
+		};
+	},
 	computed: {
 		...mapGetters('credentials', ['allCredentials']),
 		credentialsToDisplay() {
@@ -76,25 +85,21 @@ export default mixins(
 			}, []);
 		},
 	},
-	watch: {
-		dialogVisible (newValue) {
-			this.$externalHooks().run('credentialsList.dialogVisibleChanged', { dialogVisible: newValue });
-		},
+	mounted() {
+		this.$externalHooks().run('credentialsList.mounted');
+		this.$telemetry.track('User opened Credentials panel', { workflow_id: this.$store.getters.workflowId });
+	},
+	destroyed() {
+		this.$externalHooks().run('credentialsList.destroyed');
 	},
 	methods: {
-		closeDialog () {
-			// Handle the close externally as the visible parameter is an external prop
-			// and is so not allowed to be changed here.
-			this.$emit('closeDialog');
-			return false;
-		},
-
 		createCredential () {
-			this.$store.dispatch('ui/openCredentialsSelectModal');
+			this.$store.dispatch('ui/openModal', CREDENTIAL_SELECT_MODAL_KEY);
 		},
 
 		editCredential (credential: ICredentialsResponse) {
 			this.$store.dispatch('ui/openExisitngCredential', { id: credential.id});
+			this.$telemetry.track('User opened Credential modal', { credential_type: credential.type, source: 'primary_menu', new_credential: false, workflow_id: this.$store.getters.workflowId });
 		},
 
 		async deleteCredential (credential: ICredentialsResponse) {
@@ -130,7 +135,7 @@ export default mixins(
 .new-credentials-button {
 	float: right;
 	position: relative;
-	top: -15px;
+	margin-bottom: var(--spacing-2xs);
 }
 
 .cred-operations {

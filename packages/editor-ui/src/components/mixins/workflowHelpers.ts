@@ -1,9 +1,9 @@
 import {
-	ERROR_TRIGGER_NODE_NAME,
+	ERROR_TRIGGER_NODE_TYPE,
 	PLACEHOLDER_FILLED_AT_EXECUTION_TIME,
 	PLACEHOLDER_EMPTY_WORKFLOW_ID,
 	START_NODE_TYPE,
-	WEBHOOK_NODE_NAME,
+	WEBHOOK_NODE_TYPE,
 } from '@/constants';
 
 import {
@@ -24,6 +24,7 @@ import {
 	IRunExecutionData,
 	IWorfklowIssues,
 	IWorkflowDataProxyAdditionalKeys,
+	TelemetryHelpers,
 	Workflow,
 	NodeHelpers,
 } from 'n8n-workflow';
@@ -162,7 +163,7 @@ export const workflowHelpers = mixins(
 					// if there are any
 					let checkWebhook: string[] = [];
 					for (const nodeName of Object.keys(workflow.nodes)) {
-						if (workflow.nodes[nodeName].disabled !== true && workflow.nodes[nodeName].type === WEBHOOK_NODE_NAME) {
+						if (workflow.nodes[nodeName].disabled !== true && workflow.nodes[nodeName].type === WEBHOOK_NODE_TYPE) {
 							checkWebhook = [nodeName, ...checkWebhook, ...workflow.getChildNodes(nodeName)];
 						}
 					}
@@ -246,7 +247,7 @@ export const workflowHelpers = mixins(
 							// As we do not have the trigger/poll functions available in the frontend
 							// we use the information available to figure out what are trigger nodes
 							// @ts-ignore
-							trigger: ![ERROR_TRIGGER_NODE_NAME, START_NODE_TYPE].includes(nodeType) && nodeTypeDescription.inputs.length === 0 && !nodeTypeDescription.webhooks || undefined,
+							trigger: ![ERROR_TRIGGER_NODE_TYPE, START_NODE_TYPE].includes(nodeType) && nodeTypeDescription.inputs.length === 0 && !nodeTypeDescription.webhooks || undefined,
 						};
 					},
 				};
