@@ -56,7 +56,7 @@ export const folderFields = [
 		name: 'name',
 		required: true,
 		type: 'string',
-		placeholder: '/root/folder',
+		placeholder: '/Pictures/2021',
 		displayOptions: {
 			show: {
 				operation: [
