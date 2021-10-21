@@ -9,7 +9,6 @@ import {
 	IDataObject,
 	IDeferredPromise,
 	IExecuteResponsePromiseData,
-	IN8nHttpFullResponse,
 	IRun,
 	IRunData,
 	IRunExecutionData,
