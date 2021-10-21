@@ -31,17 +31,13 @@ export class RespondToWebhook implements INodeType {
 		],
 		properties: [
 			{
-				displayName: 'Respond with',
+				displayName: 'Respond With',
 				name: 'respondWith',
 				type: 'options',
 				options: [
 					{
-						name: 'No Data',
-						value: 'noData',
-					},
-					{
-						name: 'Text',
-						value: 'text',
+						name: 'Binary',
+						value: 'binary',
 					},
 					{
 						name: 'First Incoming Item',
@@ -52,8 +48,12 @@ export class RespondToWebhook implements INodeType {
 						value: 'json',
 					},
 					{
-						name: 'Binary',
-						value: 'binary',
+						name: 'No Data',
+						value: 'noData',
+					},
+					{
+						name: 'Text',
+						value: 'text',
 					},
 				],
 				default: 'noData',
@@ -128,12 +128,12 @@ export class RespondToWebhook implements INodeType {
 				},
 				options: [
 					{
-						name: 'Choose automatically from input',
+						name: 'Choose Automatically From Input',
 						value: 'automatically',
 						description: 'Use if input data will contain a single piece of binary data',
 					},
 					{
-						name: 'Specify myself',
+						name: 'Specify Myself',
 						value: 'set',
 						description: 'Enter the name of the input field the binary data will be in',
 					},
@@ -141,7 +141,7 @@ export class RespondToWebhook implements INodeType {
 				default: 'automatically',
 			},
 			{
-				displayName: 'Input field name',
+				displayName: 'Input Field Name',
 				name: 'inputFieldName',
 				type: 'string',
 				required: true,
@@ -175,13 +175,13 @@ export class RespondToWebhook implements INodeType {
 							maxValue: 599,
 						},
 						default: 200,
-						description: 'The HTTP Response code to return. Defaults to 200',
+						description: 'The HTTP Response code to return. Defaults to 200.',
 					},
 					{
 						displayName: 'Response Headers',
 						name: 'responseHeaders',
 						placeholder: 'Add Response Header',
-						description: 'Add headers to the webhook response.',
+						description: 'Add headers to the webhook response',
 						type: 'fixedCollection',
 						typeOptions: {
 							multipleValues: true,
@@ -197,14 +197,14 @@ export class RespondToWebhook implements INodeType {
 										name: 'name',
 										type: 'string',
 										default: '',
-										description: 'Name of the header.',
+										description: 'Name of the header',
 									},
 									{
 										displayName: 'Value',
 										name: 'value',
 										type: 'string',
 										default: '',
-										description: 'Value of the header.',
+										description: 'Value of the header',
 									},
 								],
 							},
