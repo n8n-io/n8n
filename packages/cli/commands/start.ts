@@ -24,6 +24,7 @@ import {
 	GenericHelpers,
 	// eslint-disable-next-line @typescript-eslint/no-unused-vars
 	IExecutionsCurrentSummary,
+	InternalHooksManager,
 	LoadNodesAndCredentials,
 	NodeTypes,
 	Server,
@@ -92,8 +93,11 @@ export class Start extends Command {
 			setTimeout(() => {
 				// In case that something goes wrong with shutdown we
 				// kill after max. 30 seconds no matter what
+				console.log(`process exited after 30s`);
 				process.exit(processExitCode);
 			}, 30000);
+
+			await InternalHooksManager.getInstance().onN8nStop();
 
 			const skipWebhookDeregistration = config.get(
 				'endpoints.skipWebhoooksDeregistrationOnShutdown',
@@ -151,9 +155,15 @@ export class Start extends Command {
 				LoggerProxy.init(logger);
 				logger.info('Initializing n8n process');
 
-				// todo remove a few versions after release
 				logger.info(
-					'\nn8n now checks for new versions and security updates. You can turn this off using the environment variable N8N_VERSION_NOTIFICATIONS_ENABLED to "false"\nFor more information, please refer to https://docs.n8n.io/getting-started/installation/advanced/configuration.html\n',
+					'\n' +
+						'****************************************************\n' +
+						'*                                                  *\n' +
+						'*   n8n now sends selected, anonymous telemetry.   *\n' +
+						'*      For more details (and how to opt out):      *\n' +
+						'*   https://docs.n8n.io/reference/telemetry.html   *\n' +
+						'*                                                  *\n' +
+						'****************************************************\n',
 				);
 
 				// Start directly with the init of the database to improve startup time
@@ -173,10 +183,6 @@ export class Start extends Command {
 				const loadNodesAndCredentials = LoadNodesAndCredentials();
 				await loadNodesAndCredentials.init();
 
-				// Load the credentials overwrites if any exist
-				const credentialsOverwrites = CredentialsOverwrites();
-				await credentialsOverwrites.init();
-
 				// Load all external hooks
 				const externalHooks = ExternalHooks();
 				await externalHooks.init();
@@ -186,6 +192,10 @@ export class Start extends Command {
 				await nodeTypes.init(loadNodesAndCredentials.nodeTypes);
 				const credentialTypes = CredentialTypes();
 				await credentialTypes.init(loadNodesAndCredentials.credentialTypes);
+
+				// Load the credentials overwrites if any exist
+				const credentialsOverwrites = CredentialsOverwrites();
+				await credentialsOverwrites.init();
 
 				// Wait till the database is ready
 				await startDbInitPromise;

@@ -1,6 +1,6 @@
 <template>
 	<ModalDrawer
-		:name="modalName"
+		:name="VERSIONS_MODAL_KEY"
 		direction="ltr"
 		width="520px"
 	>
@@ -48,6 +48,7 @@ import { mapGetters } from 'vuex';
 import ModalDrawer from './ModalDrawer.vue';
 import TimeAgo from './TimeAgo.vue';
 import VersionCard from './VersionCard.vue';
+import { VERSIONS_MODAL_KEY } from '../constants';
 
 export default Vue.extend({
 	name: 'UpdatesPanel',
@@ -56,9 +57,13 @@ export default Vue.extend({
 		VersionCard,
 		TimeAgo,
 	},
-	props: ['modalName'],
 	computed: {
 		...mapGetters('versions', ['nextVersions', 'currentVersion', 'infoUrl']),
+	},
+	data() {
+		return {
+			VERSIONS_MODAL_KEY,
+		};
 	},
 });
 </script>
