@@ -59,12 +59,12 @@ export class BitbucketTrigger implements INodeType {
 				required: true,
 				options: [
 					{
-						name: 'Workspace',
-						value: 'workspace',
-					},
-					{
 						name: 'Repository',
 						value: 'repository',
+					},
+					{
+						name: 'Workspace',
+						value: 'workspace',
 					},
 				],
 				default: 'workspace',
