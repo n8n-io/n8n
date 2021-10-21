@@ -20,8 +20,6 @@ import {
 	GenericHelpers,
 	LoadNodesAndCredentials,
 	NodeTypes,
-	// eslint-disable-next-line @typescript-eslint/no-unused-vars
-	TestWebhooks,
 	WebhookServer,
 } from '../src';
 
