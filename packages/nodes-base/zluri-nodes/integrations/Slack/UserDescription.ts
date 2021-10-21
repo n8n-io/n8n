@@ -25,6 +25,16 @@ export const userOperations = [
 				value: 'getPresence',
 				description: `Get online status of a user`,
 			},
+			{
+				name: 'Invite User',
+				value: 'inviteUser',
+				description: `Invite user in slack`,
+			},
+			{
+				name: 'Remove User',
+				value: 'removeUser',
+				description: `Remove User from workspace`,
+			}
 		],
 		default: 'info',
 		description: 'The operation to perform.',
@@ -82,4 +92,104 @@ export const userFields = [
 		required: true,
 		description: 'The ID of the user to get the online status of.',
 	},
+
+		/* -------------------------------------------------------------------------- */
+	/*                                user:inviteUser                            */
+	/* -------------------------------------------------------------------------- */
+	{
+		displayName: 'Channel Ids',
+		name: 'channelIds',
+		type: 'string',
+		default: '',
+		displayOptions: {
+			show: {
+				operation: [
+					'inviteUser',
+				],
+				resource: [
+					'user',
+				],
+			},
+		},
+		required: true,
+		description: 'Provide channel ids like: C1A2B3C4D,C26Z25Y24',
+	},
+	{
+		displayName: 'email',
+		name: 'email',
+		type: 'string',
+		default: '',
+		displayOptions: {
+			show: {
+				operation: [
+					'inviteUser',
+				],
+				resource: [
+					'user',
+				],
+			},
+		},
+		required: true,
+		description: 'Provide email Id',
+	},
+	{
+		displayName: 'Team Id',
+		name: 'teamId',
+		type: 'string',
+		default: '',
+		displayOptions: {
+			show: {
+				operation: [
+					'inviteUser',
+				],
+				resource: [
+					'user',
+				],
+			},
+		},
+		required: true,
+		description: 'Provide Team Id',
+	},
+
+/* -------------------------------------------------------------------------- */
+	/*                                user:removeUser                            */
+	/* -------------------------------------------------------------------------- */
+	{
+		displayName: 'User Id',
+		name: 'userId',
+		type: 'string',
+		default: '',
+		displayOptions: {
+			show: {
+				operation: [
+					'removeUser',
+				],
+				resource: [
+					'user',
+				],
+			},
+		},
+		required: true,
+		description: 'Provide email Id',
+	},
+	{
+		displayName: 'Team Id',
+		name: 'teamId',
+		type: 'string',
+		default: '',
+		displayOptions: {
+			show: {
+				operation: [
+					'removeUser',
+				],
+				resource: [
+					'user',
+				],
+			},
+		},
+		required: true,
+		description: 'Provide Team Id',
+	},
+
+
 ] as INodeProperties[];
