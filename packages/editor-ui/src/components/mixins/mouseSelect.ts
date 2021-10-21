@@ -1,9 +1,10 @@
-import { INodeUi } from '@/Interface';
+import { INodeUi, XYPositon } from '@/Interface';
 
 import mixins from 'vue-typed-mixins';
 
 import { deviceSupportHelpers } from '@/components/mixins/deviceSupportHelpers';
 import { nodeIndex } from '@/components/mixins/nodeIndex';
+import { getMousePosition, getRelativePosition } from '@/views/canvasHelpers';
 
 export const mouseSelect = mixins(
 	deviceSupportHelpers,
@@ -42,23 +43,14 @@ export const mouseSelect = mixins(
 			}
 			return e.ctrlKey;
 		},
-		/**
-		 * Gets mouse position within the node view. Both node view offset and scale (zoom) are considered when
-		 * calculating position.
-		 *
-		 * @param event - mouse event within node view
-		 */
-		getMousePositionWithinNodeView (event: MouseEvent) {
+		getMousePositionWithinNodeView (event: MouseEvent | TouchEvent): XYPositon {
+			const [x, y] = getMousePosition(event);
 			// @ts-ignore
-			const nodeViewScale = this.nodeViewScale;
-			const offsetPosition = this.$store.getters.getNodeViewOffsetPosition;
-			return {
-				x: (event.pageX - offsetPosition[0]) / nodeViewScale,
-				y: (event.pageY - offsetPosition[1]) / nodeViewScale,
-			};
+			return getRelativePosition(x, y, this.nodeViewScale, this.$store.getters.getNodeViewOffsetPosition);
 		},
 		showSelectBox (event: MouseEvent) {
-			this.selectBox = Object.assign(this.selectBox, this.getMousePositionWithinNodeView(event));
+			const [x, y] = this.getMousePositionWithinNodeView(event);
+			this.selectBox = Object.assign(this.selectBox, {x, y});
 
 			// @ts-ignore
 			this.selectBox.style.left = this.selectBox.x + 'px';
@@ -90,7 +82,7 @@ export const mouseSelect = mixins(
 			this.selectActive = false;
 		},
 		getSelectionBox (event: MouseEvent) {
-			const {x, y} = this.getMousePositionWithinNodeView(event);
+			const [x, y] = this.getMousePositionWithinNodeView(event);
 			return {
 				// @ts-ignore
 				x: Math.min(x, this.selectBox.x),

@@ -135,7 +135,7 @@ import NodeCreator from '@/components/NodeCreator/NodeCreator.vue';
 import NodeSettings from '@/components/NodeSettings.vue';
 import RunData from '@/components/RunData.vue';
 
-import { getLeftmostTopNode, getWorkflowCorners, scaleSmaller, scaleBigger, scaleReset, showOrHideMidpointArrow, getIcon, getNewNodePosition, hideOverlay, showOrHideItemsLabel, showOverlay, OVERLAY_ENDPOINT_ARROW_ID, OVERLAY_MIDPOINT_ARROW_ID, OVERLAY_DROP_NODE_ID, OVERLAY_RUN_ITEMS_ID, OVERLAY_CONNECTION_ACTIONS_ID, getConnectorLengths } from './canvasHelpers';
+import { getLeftmostTopNode, getWorkflowCorners, scaleSmaller, scaleBigger, scaleReset, showOrHideMidpointArrow, getIcon, getNewNodePosition, hideOverlay, showOrHideItemsLabel, showOverlay, OVERLAY_ENDPOINT_ARROW_ID, OVERLAY_MIDPOINT_ARROW_ID, OVERLAY_DROP_NODE_ID, OVERLAY_RUN_ITEMS_ID, OVERLAY_CONNECTION_ACTIONS_ID, getConnectorLengths, getRelativePosition, getMousePosition } from './canvasHelpers';
 
 import mixins from 'vue-typed-mixins';
 import { v4 as uuidv4} from 'uuid';
@@ -625,10 +625,7 @@ export default mixins(
 			},
 			mouseDown (e: MouseEvent | TouchEvent) {
 				// Save the location of the mouse click
-				const position = this.getMousePosition(e);
-				const offsetPosition = this.$store.getters.getNodeViewOffsetPosition;
-				this.lastClickPosition[0] = position.x - offsetPosition[0];
-				this.lastClickPosition[1] = position.y - offsetPosition[1];
+				this.lastClickPosition = this.getMousePositionWithinNodeView(e);
 
 				this.mouseDownMouseSelect(e as MouseEvent);
 				this.mouseDownMoveWorkflow(e as MouseEvent);
@@ -1664,7 +1661,7 @@ export default mixins(
 					};
 
 					const onMouseUp = (e: MouseEvent) => {
-						this.newNodeInsertPosition = [e.pageX, e.pageY];
+						this.newNodeInsertPosition = this.getMousePositionWithinNodeView(e);
 						window.removeEventListener('mousemove', onMouseMove);
 						window.removeEventListener('mouseup', onMouseUp);
 					};

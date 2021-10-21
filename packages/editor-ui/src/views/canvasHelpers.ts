@@ -205,3 +205,19 @@ export const getNewNodePosition = (nodes: INodeUi[], newPosition: XYPositon, mov
 
 	return newPosition!;
 };
+
+export const getMousePosition = (e: MouseEvent | TouchEvent): XYPositon => {
+	// @ts-ignore
+	const x = e.pageX !== undefined ? e.pageX : (e.touches && e.touches[0] && e.touches[0].pageX ? e.touches[0].pageX : 0);
+	// @ts-ignore
+	const y = e.pageY !== undefined ? e.pageY : (e.touches && e.touches[0] && e.touches[0].pageY ? e.touches[0].pageY : 0);
+
+	return [x, y];
+};
+
+export const getRelativePosition = (x: number, y: number, scale: number, offset: XYPositon): XYPositon => {
+	return [
+		(x - offset[0]) / scale,
+		(y - offset[1]) / scale,
+	];
+};
