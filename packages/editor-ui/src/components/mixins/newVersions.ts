@@ -3,6 +3,7 @@ import { showMessage } from './showMessage';
 import {
 	IVersion,
 } from '../../Interface';
+import { VERSIONS_MODAL_KEY } from '@/constants';
 
 export const newVersions = mixins(
 	showMessage,
@@ -30,7 +31,7 @@ export const newVersions = mixins(
 					title: 'Critical update available',
 					message,
 					onClick: () => {
-						this.$store.dispatch('ui/openUpdatesPanel');
+						this.$store.dispatch('ui/openModal', VERSIONS_MODAL_KEY);
 					},
 					closeOnClick: true,
 					customClass: 'clickable',

@@ -580,6 +580,7 @@ export default mixins(
 			this.handleAutoRefreshToggle();
 
 			this.$externalHooks().run('executionsList.openDialog');
+			this.$telemetry.track('User opened Executions log', { workflow_id: this.$store.getters.workflowId });
 		},
 		async retryExecution (execution: IExecutionShortResponse, loadWorkflow?: boolean) {
 			this.isDataLoading = true;
