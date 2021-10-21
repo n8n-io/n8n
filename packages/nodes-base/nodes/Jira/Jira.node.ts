@@ -378,7 +378,7 @@ export class Jira implements INodeType {
 					if (field.schema && Object.keys(field.schema).includes('customId')) {
 							returnData.push({
 								name: field.name,
-								value: field.key,
+								value: field.key || field.fieldId,
 							});
 					}
 				}
