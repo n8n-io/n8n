@@ -434,10 +434,6 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 	z-index: 8;
 }
 
-.jtk-endpoint.dropHover {
-	border: 2px solid #ff2244;
-}
-
 .jtk-drag-selected .node-default {
 	/* https://www.cssmatic.com/box-shadow */
 	-webkit-box-shadow: 0px 0px 6px 2px rgba(50, 75, 216, 0.37);

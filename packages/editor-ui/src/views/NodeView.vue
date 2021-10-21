@@ -238,7 +238,7 @@ const CONNECTOR_PAINT_STYLE_SUCCESS = {
 };
 
 const CONNECTOR_TYPE_BEZIER = ['Bezier', { curviness: _CURVINESS }];
-const CONNECTOR_TYPE_FLOWCHART = ['Flowchart', { cornerRadius: 8, stub: JSPLUMB_FLOWCHART_STUB, gap: 5, alwaysRespectStubs: _ALWAYS_RESPECT_STUB}];
+const CONNECTOR_TYPE_FLOWCHART = ['Flowchart', { cornerRadius: 4, stub: JSPLUMB_FLOWCHART_STUB, gap: 5, alwaysRespectStubs: _ALWAYS_RESPECT_STUB}];
 
 const CONNECTOR_ARROW_OVERLAYS: OverlaySpec[] = [
 	[
@@ -1503,8 +1503,10 @@ export default mixins(
 							}
 
 							showOverlay(info.connection, OVERLAY_CONNECTION_ACTIONS_ID);
-							hideOverlay(info.connection, OVERLAY_MIDPOINT_ARROW_ID);
 							hideOverlay(info.connection, OVERLAY_RUN_ITEMS_ID);
+							if (!info.connection.getOverlay(OVERLAY_RUN_ITEMS_ID)) {
+								hideOverlay(info.connection, OVERLAY_MIDPOINT_ARROW_ID);
+							}
 						});
 
 						info.connection.bind('mouseout', (connection: IConnection) => {
@@ -1953,6 +1955,7 @@ export default mixins(
 							if (!output || !output.total) {
 								conn.setPaintStyle(CONNECTOR_PAINT_STYLE_DEFAULT);
 								conn.removeOverlay(OVERLAY_RUN_ITEMS_ID);
+								showOrHideMidpointArrow(conn);
 								return;
 							}
 
@@ -1977,6 +1980,7 @@ export default mixins(
 							]);
 
 							showOrHideItemsLabel(conn);
+							showOrHideMidpointArrow(conn);
 						});
 					});
 				});

@@ -119,13 +119,22 @@ export const hideOverlay = (connection: Connection, overlayId: string) => {
 };
 
 export const showOrHideMidpointArrow = (connection: Connection) => {
+	const hasItemsLabel = !!connection.getOverlay(OVERLAY_RUN_ITEMS_ID);
+
 	const sourceEndpoint = connection.endpoints[0];
 	const targetEndpoint = connection.endpoints[1];
-	const requiresArrow = sourceEndpoint.anchor.lastReturnValue[0] >= targetEndpoint.anchor.lastReturnValue[0];
+
+	const sourcePosition = sourceEndpoint.anchor.lastReturnValue[0];
+	const targetPosition = targetEndpoint.anchor.lastReturnValue[0];
+
+	const minimum = hasItemsLabel ? 150 : 0;
+	const isBackwards = sourcePosition >= targetPosition;
+	const isTooLong = Math.abs(sourcePosition - targetPosition) >= minimum;
 
 	const arrow = connection.getOverlay(OVERLAY_MIDPOINT_ARROW_ID);
 	if (arrow) {
-		arrow.setVisible(requiresArrow);
+		arrow.setVisible(isBackwards && isTooLong);
+		arrow.setLocation(hasItemsLabel ? .6: .5);
 	}
 };
 
