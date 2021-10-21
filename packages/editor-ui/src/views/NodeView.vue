@@ -1615,12 +1615,14 @@ export default mixins(
 							connection.setConnector(CONNECTOR_TYPE_FLOWCHART);
 							connection.setPaintStyle(CONNECTOR_PAINT_STYLE_PRIMARY);
 							addOverlays(connection, CONNECTOR_ARROW_OVERLAYS);
+							hideOverlay(connection, OVERLAY_DROP_NODE_ID);
 						}
 						else if (!elements && droppable) {
 							droppable = false;
 							connection.setConnector(CONNECTOR_TYPE_BEZIER);
 							connection.setPaintStyle(CONNECTOR_PAINT_STYLE_DEFAULT);
 							addOverlays(connection, CONNECTOR_ARROW_OVERLAYS);
+							showOverlay(connection, OVERLAY_DROP_NODE_ID);
 						}
 					};
 
