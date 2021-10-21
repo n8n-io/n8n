@@ -3,12 +3,16 @@ import {
 } from 'n8n-core';
 
 import {
+	ICredentialDataDecryptedObject,
+	ICredentialsDecrypted,
+	ICredentialTestFunctions,
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
+	NodeCredentialTestResult,
 } from 'n8n-workflow';
 
 import {
@@ -22,6 +26,7 @@ import {
 	notionApiRequest,
 	notionApiRequestAllItems,
 	simplifyObjects,
+	validateCrendetials,
 } from './GenericFunctions';
 
 import {
@@ -70,6 +75,7 @@ export class Notion implements INodeType {
 			{
 				name: 'notionApi',
 				required: true,
+				testedBy: 'notionApiCredentialTest',
 				// displayOptions: {
 				// 	show: {
 				// 		authentication: [
@@ -290,6 +296,23 @@ export class Notion implements INodeType {
 					description: 'Timezone set in n8n',
 				});
 				return returnData;
+			},
+		},
+		credentialTest: {
+			async notionApiCredentialTest(this: ICredentialTestFunctions, credential: ICredentialsDecrypted): Promise<NodeCredentialTestResult> {
+				try {
+					await validateCrendetials.call(this, credential.data as ICredentialDataDecryptedObject);
+				} catch (error) {
+					return {
+						status: 'Error',
+						message: 'The security token included in the request is invalid',
+					};
+				}
+
+				return {
+					status: 'OK',
+					message: 'Connection successful!',
+				};
 			},
 		},
 	};

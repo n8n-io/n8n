@@ -11,6 +11,8 @@ import {
 
 import {
 	IBinaryKeyData,
+	ICredentialDataDecryptedObject,
+	ICredentialTestFunctions,
 	IDataObject,
 	IDisplayOptions,
 	INodeExecutionData,
@@ -28,12 +30,14 @@ import * as moment from 'moment-timezone';
 
 import { validate as uuidValidate } from 'uuid';
 
+const version = '2021-08-16';
+
 export async function notionApiRequest(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions | IPollFunctions, method: string, resource: string, body: any = {}, qs: IDataObject = {}, uri?: string, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
 
 	try {
 		let options: OptionsWithUri = {
 			headers: {
-				'Notion-Version': '2021-08-16',
+				'Notion-Version': version,
 			},
 			method,
 			qs,
@@ -626,4 +630,17 @@ export async function downloadFiles(this: IExecuteFunctions | IPollFunctions, re
 		elements.push(element);
 	}
 	return elements;
+}
+
+export function validateCrendetials(this: ICredentialTestFunctions, credentials: ICredentialDataDecryptedObject) {
+	const options: OptionsWithUri = {
+		headers: {
+			'Authorization': `Bearer ${credentials.apiKey}`,
+			'Notion-Version': version,
+		},
+		method: 'GET',
+		uri: `https://api.notion.com/v1/users/me`,
+		json: true,
+	};
+	return this.helpers.request!(options);
 }
