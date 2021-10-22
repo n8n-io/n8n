@@ -1,3 +1,4 @@
+import { request } from 'http';
 import {
 	BINARY_ENCODING,
 	IExecuteFunctions,
@@ -351,8 +352,33 @@ export class HttpRequest implements INodeType {
 						name: 'proxy',
 						type: 'string',
 						default: '',
-						placeholder: 'http://myproxy:3128',
+						placeholder: 'myproxy:3128',
 						description: 'HTTP proxy to use.',
+					},
+					{
+						displayName: 'Proxy Type',
+						name: 'proxyType',
+						type: 'options',
+						options: [
+							{
+								name: 'HTTP',
+								value: 'http',
+							},
+							{
+								name: 'HTTPS',
+								value: 'https',
+							},
+						],
+						default: 'https',
+						description: '',
+					},
+					{
+						displayName: 'Proxy Credentials',
+						name: 'proxyCredentials',
+						type: 'string',
+						default: '',
+						placeholder: 'user:password',
+						description: 'Credentials for the proxy',
 					},
 					{
 						displayName: 'Split Into Items',
@@ -712,7 +738,28 @@ export class HttpRequest implements INodeType {
 				requestOptions.simple = false;
 			}
 			if (options.proxy !== undefined) {
-				requestOptions.proxy = options.proxy as string;
+				const proxyOptions = {};
+				let proxy = (options.proxy as string).split(":");
+				// @ts-ignore
+				proxyOptions.host = proxy[0];
+				// @ts-ignore
+				proxyOptions.port = parseInt(proxy[1]);
+
+				if (options.proxyType !== undefined) {
+					// @ts-ignore
+					proxyOptions.protocol = options.proxyType as string;
+				}
+
+				if (options.proxyCredentials !== undefined) {
+					// @ts-ignore
+					proxyOptions.auth = {};
+					let credentials = (options.proxyCredentials as string).split(":");
+					// @ts-ignore
+					proxyOptions.auth.username = credentials[0];
+					// @ts-ignore
+					proxyOptions.auth.password = credentials[1];
+				}
+				requestOptions.proxy = proxyOptions;
 			}
 			if (options.timeout !== undefined) {
 				requestOptions.timeout = options.timeout as number;
