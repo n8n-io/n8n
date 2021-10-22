@@ -18,15 +18,12 @@ export async function oneSimpleApiRequest(this: IExecuteFunctions, method: strin
 		throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
 	}
 
-	let output = 'json';
-	// Need to pass this in as an option
-	let request = `email=${body.emailAddress}`;
-
+	const outputFormat = 'json';
 	let options: OptionsWithUri = {
 		method,
 		body,
 		qs,
-		uri: uri || `https://onesimpleapi.com/api${resource}?token=${credentials.apiToken}&output=${output}&${request}`,
+		uri: uri || `https://onesimpleapi.com/api${resource}?token=${credentials.apiToken}&output=${outputFormat}`,
 		json: true,
 	};
 	options = Object.assign({}, options, option);
