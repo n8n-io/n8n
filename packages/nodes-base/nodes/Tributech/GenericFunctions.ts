@@ -52,8 +52,8 @@ export async function trustApiRequest(
 	body: IDataObject | IDataObject[] = {},
 	qs: IDataObject = {},
 ) {
-	const credentials = this.getCredentials('tributechOAuth2Api') || {};
-	return executeApiRequest.call(this, method, endpoint, body, qs, credentials.trustApiEndpoint as string);
+	const credentials = await this.getCredentials('tributechOAuth2Api');
+	return executeApiRequest.call(this, method, endpoint, body, qs, credentials?.trustApiEndpoint as string);
 }
 
 export async function dataApiRequest(
@@ -63,8 +63,8 @@ export async function dataApiRequest(
 	body: IDataObject | IDataObject[] = {},
 	qs: IDataObject = {},
 ) {
-	const credentials = this.getCredentials('tributechOAuth2Api') || {};
-	return executeApiRequest.call(this, method, endpoint, body, qs, credentials.dataApiEndpoint as string);
+	const credentials = await this.getCredentials('tributechOAuth2Api');
+	return executeApiRequest.call(this, method, endpoint, body, qs, credentials?.dataApiEndpoint as string);
 }
 
 export async function twinApiRequest(
@@ -74,8 +74,8 @@ export async function twinApiRequest(
 	body: IDataObject | IDataObject[] = {},
 	qs: IDataObject = {},
 ) {
-	const credentials = this.getCredentials('tributechOAuth2Api') || {};
-	return executeApiRequest.call(this, method, endpoint, body, qs, credentials.twinApiEndpoint as string);
+	const credentials = await this.getCredentials('tributechOAuth2Api');
+	return executeApiRequest.call(this, method, endpoint, body, qs, credentials?.twinApiEndpoint as string);
 }
 
 export async function catalogApiRequest(
@@ -85,6 +85,6 @@ export async function catalogApiRequest(
 	body: IDataObject | IDataObject[] = {},
 	qs: IDataObject = {},
 ) {
-	const credentials = this.getCredentials('tributechOAuth2Api') || {};
-	return executeApiRequest.call(this, method, endpoint, body, qs, credentials.catalogApiEndpoint as string);
+	const credentials = await this.getCredentials('tributechOAuth2Api');
+	return executeApiRequest.call(this, method, endpoint, body, qs, credentials?.catalogApiEndpoint as string);
 }
