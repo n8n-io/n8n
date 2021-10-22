@@ -12,7 +12,7 @@ import { Command, flags } from '@oclif/command';
 import { UserSettings } from 'n8n-core';
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
-import { INode, INodeExecutionData, ITaskData, LoggerProxy } from 'n8n-workflow';
+import { INode, ITaskData, LoggerProxy } from 'n8n-workflow';
 
 import { sep } from 'path';
 
@@ -28,14 +28,10 @@ import {
 	CredentialTypes,
 	Db,
 	ExternalHooks,
-	// eslint-disable-next-line @typescript-eslint/no-unused-vars
-	IExecutionsCurrentSummary,
 	IWorkflowDb,
 	IWorkflowExecutionDataProcess,
 	LoadNodesAndCredentials,
 	NodeTypes,
-	// eslint-disable-next-line @typescript-eslint/no-unused-vars
-	WorkflowCredentials,
 	WorkflowRunner,
 } from '../src';
 
