@@ -1334,7 +1334,7 @@ export default mixins(
 					parameters: {},
 				};
 
-				// Check if there is a last selected node
+				// when pulling new connection from node or injecting into a connection
 				const lastSelectedNode = this.lastSelectedNode;
 				if (lastSelectedNode) {
 					const lastSelectedConnection = this.lastSelectedConnection;
@@ -1350,11 +1350,21 @@ export default mixins(
 						this.newNodeInsertPosition = null;
 					}
 					else {
+						let yOffset = 0;
+
+						if (lastSelectedConnection) {
+							const sourceNodeType = this.$store.getters.nodeType(lastSelectedNode.type);
+							if (sourceNodeType && sourceNodeType.outputs.length === 2) {
+								const offsets = [-100, 100];
+								yOffset = offsets[lastSelectedConnection.__meta.sourceOutputIndex];
+							}
+						}
+
 						// If a node is active then add the new node directly after the current one
 						// newNodeData.position = [activeNode.position[0], activeNode.position[1] + 60];
 						newNodeData.position = getNewNodePosition(
 							this.nodes,
-							[lastSelectedNode.position[0] + 200, lastSelectedNode.position[1]],
+							[lastSelectedNode.position[0] + 200, lastSelectedNode.position[1] + yOffset],
 							[100, 0],
 						);
 					}
