@@ -13,23 +13,30 @@ import {
 	IDataObject, NodeApiError, NodeOperationError,
 } from 'n8n-workflow';
 
-export async function jenkinsApiRequest(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: string, uri: string, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
+export async function jenkinsApiRequest(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: string, uri: string, qs: IDataObject = {}, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
 	const credentials = await this.getCredentials('jenkinsApi');
 	if (credentials === undefined) {
 		throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
 	}
+
+	const token = Buffer.from(`${credentials.username}:${credentials.apiKey}`).toString('base64');
+
 	let options: OptionsWithUri = {
 		headers: {
 			'Accept': 'application/json',
+			'Authorization': `Basic ${token}`,
 		},
 		method,
-		uri: `${uri}?token=${credentials.apiKey}`,
+		uri: `${uri}`,
 		json: true,
+		qs
 	};
 	options = Object.assign({}, options, option);
+	console.log(options)
 	try {
 		return await this.helpers.request!(options);
 	} catch (error) {
+		// console.log(error)
 		throw new NodeApiError(this.getNode(), error);
 	}
 }

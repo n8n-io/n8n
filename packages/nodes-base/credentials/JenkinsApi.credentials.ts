@@ -9,6 +9,12 @@ export class JenkinsApi implements ICredentialType {
 	documentationUrl = 'Jenkins';
 	properties: INodeProperties[] = [
 		{
+			displayName: 'Jenking Username',
+			name: 'username',
+			type: 'string',
+			default: '',
+		},
+		{
 			displayName: 'Personal API Token',
 			name: 'apiKey',
 			type: 'string',

@@ -36,7 +36,15 @@ export class Jenkins implements INodeType {
 			},
 		],
 		properties: [
-
+			{
+				displayName: 'Jenkins URL',
+				name: 'url',
+				type: 'string',
+				required: true,
+				default: '',
+				description: 'Location of Jenkins installation',
+				noDataExpression: true,
+			},
 			{
 				displayName: 'Resource',
 				name: 'resource',
@@ -52,17 +60,8 @@ export class Jenkins implements INodeType {
 				description: 'The resource to operate on',
 				noDataExpression: true,
 			},
-			{
-				displayName: 'Jenkins URL',
-				name: 'url',
-				type: 'string',
-				required: true,
-				default: '',
-				description: 'Location of Jenkins installation',
-				noDataExpression: true,
-			},
 			// --------------------------------------------------------------------------------------------------------
-			//         Trigger a Job
+			//         Trigger, copy a Job
 			// --------------------------------------------------------------------------------------------------------
 			{
 				displayName: 'Operation',
@@ -81,10 +80,33 @@ export class Jenkins implements INodeType {
 						value: 'trigger',
 						description: 'Trigger a specific job',
 					},
+					{
+						name: 'Copy a Job',
+						value: 'copy',
+						description: 'Copy a specific job',
+					},
 				],
 				default: 'trigger',
 				description: 'The operation to perform',
 				noDataExpression: true,
+			},
+			{
+				displayName: 'Job Token',
+				name: 'token',
+				type: 'string',
+				displayOptions: {
+					show: {
+						resource: [
+							'job',
+						],
+						operation: [
+							'trigger',
+						],
+					},
+				},
+				required: true,
+				default: '',
+				description: 'Name of the jenkins job',
 			},
 			{
 				displayName: 'Job Name',
@@ -94,12 +116,30 @@ export class Jenkins implements INodeType {
 					show: {
 						resource: [
 							'job',
+						]
+					},
+				},
+				required: true,
+				default: '',
+				description: 'Job token',
+			},
+			{
+				displayName: 'New Job Name',
+				name: 'newJob',
+				type: 'string',
+				displayOptions: {
+					show: {
+						resource: [
+							'job',
+						],
+						operation: [
+							'copy',
 						],
 					},
 				},
 				required: true,
 				default: '',
-				description: 'Name of the jenkins job',
+				description: 'Name of the new jenkins job',
 			},
 		],
 	};
@@ -116,18 +156,31 @@ export class Jenkins implements INodeType {
 		for (let i = 0; i < length; i++) {
 			try {
 				if (resource === 'job') {
-					if (operation === 'trigger') {
-						const baseUrl = this.getNodeParameter('url', i) as string;
-						const job = this.getNodeParameter('job', i) as string;
+					// shared by all operations for "job" resource
+					const baseUrl = this.getNodeParameter('url', i) as string;
+					const job = this.getNodeParameter('job', i) as string;
 
-						const endpoint = `${baseUrl}/job/${job}/build`;
-						responseData = await jenkinsApiRequest.call(this, 'get', endpoint, {});
+					if (operation === 'trigger') {
+						const token = this.getNodeParameter('token', i) as string;
+						const endpoint = `${baseUrl}/job/${job}/build?token=${token}`;
+						responseData = await jenkinsApiRequest.call(this, 'get', endpoint);
+					}
+					if (operation === 'copy') {
+						const name = this.getNodeParameter('newJob', i) as string;
+						const queryParams = {
+							name,
+							mode: 'copy',
+							from: job
+						}
+
+						const endpoint = `${baseUrl}/createItem`;
+						responseData = await jenkinsApiRequest.call(this, 'post', endpoint, queryParams);
 					}
 				}
 				if (Array.isArray(responseData)) {
 					returnData.push.apply(returnData, responseData as IDataObject[]);
 				} else {
-					// returnData.push(responseData as IDataObject);
+					returnData.push(responseData as IDataObject);
 				}
 			} catch (error) {
 				if (this.continueOnFail()) {
