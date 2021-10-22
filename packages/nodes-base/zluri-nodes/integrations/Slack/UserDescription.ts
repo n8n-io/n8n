@@ -34,6 +34,11 @@ export const userOperations = [
 				name: 'Remove User',
 				value: 'removeUser',
 				description: `Remove User from workspace`,
+			},
+			{
+				name: 'Find User By Email',
+				value: 'lookupByEmail',
+				description: `Find User By Email`,
 			}
 		],
 		default: 'info',
@@ -190,6 +195,25 @@ export const userFields = [
 		required: true,
 		description: 'Provide Team Id',
 	},
-
-
+/* -------------------------------------------------------------------------- */
+	/*                                user:lookupByEmail                            */
+	/* -------------------------------------------------------------------------- */
+	{
+		displayName: 'email',
+		name: 'email',
+		type: 'string',
+		default: '',
+		displayOptions: {
+			show: {
+				operation: [
+					'lookupByEmail',
+				],
+				resource: [
+					'user',
+				],
+			},
+		},
+		required: true,
+		description: 'Provide email Id',
+	}
 ] as INodeProperties[];

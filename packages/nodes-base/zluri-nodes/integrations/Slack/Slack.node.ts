@@ -1059,6 +1059,12 @@ export class Slack implements INodeType {
 						const teamId = this.getNodeParameter('teamId', i) as string;
 						responseData = await slackApiRequest.call(this, 'POST', '/admin.users.remove', { user_id, team_id:teamId}, qs);
 					}
+					//lookup By Email
+					// scope: users.read.email
+					if (operation === 'lookupByEmail') {
+						qs.email = this.getNodeParameter('email', i) as string;
+						responseData = await slackApiRequest.call(this, 'GET', '/users.lookupByEmail', {}, qs);
+					}
 				}
 				if (resource === 'userProfile') {
 					//https://api.slack.com/methods/users.profile.set
