@@ -5,6 +5,7 @@ import mixins from 'vue-typed-mixins';
 import { deviceSupportHelpers } from '@/components/mixins/deviceSupportHelpers';
 import { nodeIndex } from '@/components/mixins/nodeIndex';
 import { NODE_NAME_PREFIX, NO_OP_NODE_TYPE } from '@/constants';
+import { getStyleTokenValue } from '../helpers';
 
 export const nodeBase = mixins(
 	deviceSupportHelpers,
@@ -79,6 +80,13 @@ export const nodeBase = mixins(
 							stroke: '#777',
 							lineWidth: 0,
 						},
+						endpointHoverStyle: {
+							width: nodeTypeData && nodeTypeData.outputs.length > 2 ? 9 : 10,
+							height: nodeTypeData && nodeTypeData.outputs.length > 2 ? 18 : 24,
+							fill: getStyleTokenValue('--color-primary'),
+							stroke: getStyleTokenValue('--color-primary'),
+							lineWidth: 0,
+						},
 						dragAllowedWhenFull: true,
 					},
 					output: {
@@ -88,6 +96,11 @@ export const nodeBase = mixins(
 						endpointStyle: {
 							radius: nodeTypeData && nodeTypeData.outputs.length > 2 ? 7 : 11,
 							fill: '#555',
+							outlineStroke: 'none',
+						},
+						endpointHoverStyle: {
+							radius: nodeTypeData && nodeTypeData.outputs.length > 2 ? 7 : 11,
+							fill: getStyleTokenValue('--color-primary'),
 							outlineStroke: 'none',
 						},
 						dragAllowedWhenFull: true,
@@ -175,6 +188,7 @@ export const nodeBase = mixins(
 					maxConnections: inputData.maxConnections,
 					endpoint: inputData.endpoint,
 					endpointStyle: inputData.endpointStyle,
+					endpointHoverStyle: inputData.endpointHoverStyle,
 					isSource: false,
 					isTarget: !this.isReadOnly,
 					parameters: {
@@ -240,6 +254,7 @@ export const nodeBase = mixins(
 					maxConnections: inputData.maxConnections,
 					endpoint: inputData.endpoint,
 					endpointStyle: inputData.endpointStyle,
+					endpointHoverStyle: inputData.endpointHoverStyle,
 					isSource: !this.isReadOnly,
 					isTarget: false,
 					parameters: {

@@ -79,6 +79,7 @@ export interface IEndpointOptions {
 	dragProxy?: any; // tslint:disable-line:no-any
 	endpoint?: string;
 	endpointStyle?: object;
+	endpointHoverStyle?: object;
 	isSource?: boolean;
 	isTarget?: boolean;
 	maxConnections?: number;
