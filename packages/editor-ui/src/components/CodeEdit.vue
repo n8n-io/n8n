@@ -54,6 +54,7 @@ export default mixins(genericHelpers).extend({
 				value: this.value,
 				language: 'javascript',
 				tabSize: 2,
+				readOnly: this.isReadOnly,
 			});
 
 			this.monacoInstance.onDidChangeModelContent((ev) => {
