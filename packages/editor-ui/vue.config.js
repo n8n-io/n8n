@@ -16,7 +16,7 @@ module.exports = {
 			disableHostCheck: true,
 		},
 		plugins: [
-			new MonacoWebpackPlugin(),
+			new MonacoWebpackPlugin({ languages: ['javascript', 'html', 'typescript'] }),
 		],
 	},
 	css: {
@@ -28,5 +28,5 @@ module.exports = {
 			},
 		},
 	},
-	publicPath: process.env.VUE_APP_PUBLIC_PATH ? process.env.VUE_APP_PUBLIC_PATH : '/',
+	publicPath: process.env.VUE_APP_PUBLIC_PATH && process.env.VUE_APP_PUBLIC_PATH !== '/%BASE_PATH%/' ? process.env.VUE_APP_PUBLIC_PATH : '/',
 };
