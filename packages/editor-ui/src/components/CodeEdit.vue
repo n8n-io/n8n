@@ -57,12 +57,11 @@ export default mixins(genericHelpers).extend({
 				readOnly: this.isReadOnly,
 			});
 
-			this.monacoInstance.onDidChangeModelContent((ev) => {
-				if (this.monacoInstance) {
-					const model = this.monacoInstance.getModel();
-					if (model) {
-						this.$emit('valueChanged', model.getValue());
-					}
+			this.monacoInstance.onDidChangeModelContent(() => {
+				const model = this.monacoInstance!.getModel();
+
+				if (model) {
+					this.$emit('valueChanged', model.getValue());
 				}
 			});
 
