@@ -71,7 +71,7 @@ export default mixins(genericHelpers).extend({
 		loadAutocompleteData(): void {
 			const executedWorkflow: IExecutionResponse | null = this.$store.getters.getWorkflowExecution;
 
-			let autocompleteData: INodeExecutionData[] = [{ json: { myNewField: 2 } }];
+			let autocompleteData: INodeExecutionData[] = [];
 
 			if (executedWorkflow) {
 				const lastNodeExecuted = executedWorkflow.data.resultData.lastNodeExecuted;
