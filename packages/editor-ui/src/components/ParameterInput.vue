@@ -13,7 +13,7 @@
 		/>
 
 		<div v-else-if="['json', 'string'].includes(parameter.type) || remoteParameterOptionsLoadingIssues !== null">
-			<code-edit :dialogVisible="codeEditDialogVisible" :value="value" :parameter="parameter" @closeDialog="closeCodeEditDialog" @valueChanged="expressionUpdated"></code-edit>
+			<code-edit v-if="codeEditDialogVisible" :value="value" :parameter="parameter" @closeDialog="closeCodeEditDialog" @valueChanged="expressionUpdated"></code-edit>
 			<text-edit :dialogVisible="textEditDialogVisible" :value="value" :parameter="parameter" @closeDialog="closeTextEditDialog" @valueChanged="expressionUpdated"></text-edit>
 
 			<div v-if="isEditor === true" class="clickable" @click="displayEditDialog()">
@@ -597,7 +597,7 @@ export default mixins(
 						parameter_field_type: this.parameter.type,
 						new_expression: !this.isValueExpression,
 						workflow_id: this.$store.getters.workflowId,
-					});	
+					});
 				}
 			},
 			closeTextEditDialog () {

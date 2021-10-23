@@ -1,3 +1,5 @@
+const MonacoWebpackPlugin = require('monaco-editor-webpack-plugin');
+
 module.exports = {
 	chainWebpack: config => config.resolve.symlinks(false),
 	// transpileDependencies: [
@@ -13,6 +15,9 @@ module.exports = {
 		devServer: {
 			disableHostCheck: true,
 		},
+		plugins: [
+			new MonacoWebpackPlugin(),
+		],
 	},
 	css: {
 		loaderOptions: {
