@@ -167,7 +167,7 @@ export class Webhook implements INodeType {
 				description: 'When and how to respond to the webhook.',
 			},
 			{
-				displayName: 'Insert a "Respond to Webhook" node to control when and how you respond. <a href="https://docs.n8n.io/nodes/n8n-nodes-base.respondToWebhook">More details</a>',
+				displayName: 'Insert a \'Respond to Webhook\' node to control when and how you respond. <a href="https://docs.n8n.io/nodes/n8n-nodes-base.respondToWebhook" target="_blank">More details</a>',
 				name: 'webhookNotice',
 				type: 'notice',
 				displayOptions: {

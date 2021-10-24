@@ -36,41 +36,28 @@ export class RespondToWebhook implements INodeType {
 				type: 'options',
 				options: [
 					{
-						name: 'Binary',
-						value: 'binary',
+						name: 'No Data',
+						value: 'noData',
 					},
 					{
 						name: 'First Incoming Item',
 						value: 'firstIncomingItem',
 					},
 					{
-						name: 'JSON',
-						value: 'json',
-					},
-					{
-						name: 'No Data',
-						value: 'noData',
+						name: 'Binary',
+						value: 'binary',
 					},
 					{
 						name: 'Text',
 						value: 'text',
 					},
+					{
+						name: 'JSON',
+						value: 'json',
+					},
 				],
 				default: 'noData',
 				description: 'The data that should be returned',
-			},
-			{
-				displayName: 'This node will only run for the first item in the input data. When using expressions, note that this node will only run for the first item in the input data.',
-				name: 'webhookNotice',
-				type: 'notice',
-				displayOptions: {
-					show: {
-						respondWith: [
-							'json',
-						],
-					},
-				},
-				default: '',
 			},
 			{
 				displayName: 'When using expressions, note that this node will only run for the first item in the input data.',
@@ -79,6 +66,7 @@ export class RespondToWebhook implements INodeType {
 				displayOptions: {
 					show: {
 						respondWith: [
+							'json',
 							'text',
 						],
 					},
