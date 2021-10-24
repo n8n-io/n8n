@@ -20,6 +20,7 @@ import {
 	ITaskDataConnections,
 	INode,
 	INodePropertyOptions,
+	IConnections,
 } from 'n8n-workflow';
 
 import {
@@ -301,7 +302,13 @@ export const nodeHelpers = mixins(
 
 			// Returns the data of the main input
 			getMainInputData (connectionsData: ITaskDataConnections, outputIndex: number): INodeExecutionData[] {
-				if (!connectionsData || !connectionsData.hasOwnProperty('main') || connectionsData.main === undefined || connectionsData.main.length < outputIndex || connectionsData.main[outputIndex] === null) {
+				if (
+					!connectionsData ||
+					!connectionsData.hasOwnProperty('main') ||
+					connectionsData.main === undefined ||
+					connectionsData.main.length < outputIndex ||
+					connectionsData.main[outputIndex] === null
+				) {
 					return [];
 				}
 				return connectionsData.main[outputIndex] as INodeExecutionData[];
@@ -385,6 +392,23 @@ export const nodeHelpers = mixins(
 					return optionData.name;
 				}
 				return undefined;
+			},
+
+			getInputNodes (node: INode): INodeUi[] | null {
+				const connections: IConnections = this.$store.getters.allConnections;
+
+				const inputNodes = Object.entries(connections).filter(([, connection]) => {
+					if(!connection.main) return false;
+					if(!connection.main[0]) return false;
+					if(!connection.main[0][0]) return false;
+					if(connection.main[0][0].node === node.name) return true;
+					return false;
+				}).map(([name]) => {
+					return (this.$store.getters.allNodes as INodeUi[]).find((n) => n.name === name)!;
+				});
+
+				if(inputNodes && inputNodes.length) return inputNodes;
+				return null;
 			},
 		},
 	});

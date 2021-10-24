@@ -16,28 +16,28 @@
 <script lang="ts">
 // @ts-ignore
 // import PrismEditor from 'vue-prism-editor';
-import * as monaco from 'monaco-editor/esm/vs/editor/editor.api';
+
 
 import { genericHelpers } from '@/components/mixins/genericHelpers';
+import { monacoProvider } from '@/components/mixins/monacoProvider';
+import { nodeHelpers } from './mixins/nodeHelpers';
 
 import mixins from 'vue-typed-mixins';
-import { IExecutionResponse } from '@/Interface';
-import { INodeExecutionData } from 'n8n-workflow';
+import { INodeUi } from '@/Interface';
 
-export default mixins(genericHelpers).extend({
+export default mixins(genericHelpers, monacoProvider, nodeHelpers).extend({
 	name: 'CodeEdit',
 	props: ['dialogVisible', 'parameter', 'value'],
-	data() {
-		return {
-			monacoInstance: null as monaco.editor.IStandaloneCodeEditor | null,
-			monacoLibrary: null as monaco.IDisposable | null,
-		};
-	},
 	mounted() {
-		setTimeout(this.loadEditor);
-	},
-	destroyed() {
-		this.monacoLibrary!.dispose();
+		setTimeout(() => {
+			this.createEditor({
+				root: this.$refs.code as HTMLElement,
+				content: this.value,
+				onUpdate: (value) => this.$emit('valueChanged', value),
+				readOnly: this.isReadOnly,
+			});
+			this.loadAutocompleteData();
+		});
 	},
 	methods: {
 		closeDialog() {
@@ -47,49 +47,32 @@ export default mixins(genericHelpers).extend({
 			return false;
 		},
 
-		loadEditor() {
-			if (!this.$refs.code) return;
-
-			this.monacoInstance = monaco.editor.create(this.$refs.code as HTMLElement, {
-				value: this.value,
-				language: 'javascript',
-				tabSize: 2,
-				readOnly: this.isReadOnly,
-			});
-
-			this.monacoInstance.onDidChangeModelContent(() => {
-				const model = this.monacoInstance!.getModel();
-
-				if (model) {
-					this.$emit('valueChanged', model.getValue());
-				}
-			});
-
-			this.loadAutocompleteData();
-		},
-
 		loadAutocompleteData(): void {
-			const executedWorkflow: IExecutionResponse | null = this.$store.getters.getWorkflowExecution;
+			const currentNode: INodeUi = this.$store.getters.activeNode;
+			const inputNodes: INodeUi[] | null = this.getInputNodes(currentNode);
 
-			let autocompleteData: INodeExecutionData[] = [];
+			const inputData = inputNodes
+				? inputNodes.map((node) => this.getNodeInputData(node))
+				: [];
 
-			if (executedWorkflow) {
-				const lastNodeExecuted = executedWorkflow.data.resultData.lastNodeExecuted;
+			const hasMultipleInputs = inputData.length > 1;
 
-				if (lastNodeExecuted) {
-					const data = executedWorkflow.data.resultData.runData[lastNodeExecuted];
-
-					// @ts-ignore
-					autocompleteData = data[0].data!.main[0];
-				}
-			}
-
-			this.monacoLibrary = monaco.languages.typescript.javascriptDefaults.addExtraLib(
-				[
-					`/**\n\`\`\`\nconst items = ${JSON.stringify(autocompleteData, null, 2)}\n\`\`\`\n*/`,
-					`const items = ${JSON.stringify(autocompleteData)}`,
+			this.loadJsLibrary({
+				name: 'items',
+				content: inputData[0],
+				comment: [
+					hasMultipleInputs ? '**Warning:** This node has inputs from multiple nodes! Multiple runs of this node will be generated for each input.' : '',
+					'\n',
+					'This item is only populated in the `Function` node.',
 				].join('\n'),
-			);
+				showOriginal: inputData[0].length < 25,
+			});
+
+			this.loadJsLibrary({
+				name: 'item',
+				content: inputData[0] ? inputData[0][0]: undefined,
+				comment: 'This item is only populated in the `Function Item` node.',
+			});
 		},
 	},
 });
