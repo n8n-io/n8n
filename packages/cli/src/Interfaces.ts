@@ -52,7 +52,10 @@ export interface ICustomRequest extends Request {
 }
 
 export interface ICredentialsTypeData {
-	[key: string]: ICredentialType;
+	[key: string]: {
+		className: string;
+		sourcePath: string;
+	};
 }
 
 export interface ICredentialsOverwrite {

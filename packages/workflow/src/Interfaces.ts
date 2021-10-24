@@ -180,10 +180,8 @@ export interface ICredentialType {
 }
 
 export interface ICredentialTypes {
-	credentialTypes?: {
-		[key: string]: ICredentialType;
-	};
-	init(credentialTypes?: { [key: string]: ICredentialType }): Promise<void>;
+	credentialTypes?: ICredentialTypeData;
+	init(credentialTypes?: ICredentialTypeData): Promise<void>;
 	getAll(): ICredentialType[];
 	getByName(credentialType: string): ICredentialType;
 }
@@ -940,6 +938,13 @@ export interface INodeTypes {
 	getAll(): Array<INodeType | INodeVersionedType>;
 	getByName(nodeType: string): INodeType | INodeVersionedType | undefined;
 	getByNameAndVersion(nodeType: string, version?: number): INodeType | undefined;
+}
+
+export interface ICredentialTypeData {
+	[key: string]: {
+		type: ICredentialType;
+		sourcePath: string;
+	};
 }
 
 export interface INodeTypeData {
