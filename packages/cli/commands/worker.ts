@@ -12,14 +12,7 @@ import * as PCancelable from 'p-cancelable';
 import { Command, flags } from '@oclif/command';
 import { UserSettings, WorkflowExecute } from 'n8n-core';
 
-import {
-	IExecuteResponsePromiseData,
-	INodeTypes,
-	IRun,
-	Workflow,
-	WorkflowHooks,
-	LoggerProxy,
-} from 'n8n-workflow';
+import { IExecuteResponsePromiseData, INodeTypes, IRun, Workflow, LoggerProxy } from 'n8n-workflow';
 
 import { FindOneOptions } from 'typeorm';
 
@@ -34,6 +27,7 @@ import {
 	IBullJobResponse,
 	IBullWebhookResponse,
 	IExecutionFlattedDb,
+	InternalHooksManager,
 	LoadNodesAndCredentials,
 	NodeTypes,
 	ResponseHelper,
@@ -211,7 +205,7 @@ export class Worker extends Command {
 		Worker.runningJobs[job.id] = workflowRun;
 
 		// Wait till the execution is finished
-		const runData = await workflowRun;
+		await workflowRun;
 
 		delete Worker.runningJobs[job.id];
 
@@ -276,6 +270,9 @@ export class Worker extends Command {
 				Worker.jobQueue = Queue.getInstance().getBullObjectInstance();
 				// eslint-disable-next-line @typescript-eslint/no-floating-promises
 				Worker.jobQueue.process(flags.concurrency, async (job) => this.runJob(job, nodeTypes));
+
+				const instanceId = await UserSettings.getInstanceId();
+				InternalHooksManager.init(instanceId);
 
 				const versions = await GenericHelpers.getVersions();
 
