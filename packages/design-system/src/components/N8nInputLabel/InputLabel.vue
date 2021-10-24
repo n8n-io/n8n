@@ -1,15 +1,15 @@
 <template functional>
 	<div :class="$style.inputLabel">
-		<div :class="$style.label">
-			<span>
-				{{ $options.methods.addTargetBlank(props.label) }}
-				<span v-if="props.required" :class="$style.required">*</span>
-			</span>
+		<div :class="props.label ? $style.label: ''">
+			<component v-if="props.label" :is="$options.components.N8nText" :bold="true">
+				{{ props.label }}
+				<component :is="$options.components.N8nText" color="primary" :bold="true" v-if="props.required">*</component>
+			</component>
 			<span :class="$style.infoIcon" v-if="props.tooltipText">
-				<n8n-tooltip placement="top" :popper-class="$style.tooltipPopper">
-					<n8n-icon icon="question-circle" />
-					<div slot="content" v-html="props.tooltipText"></div>
-				</n8n-tooltip>
+				<component :is="$options.components.N8nTooltip" placement="top" :popper-class="$style.tooltipPopper">
+					<component :is="$options.components.N8nIcon" icon="question-circle" />
+					<div slot="content" v-html="$options.methods.addTargetBlank(props.tooltipText)"></div>
+				</component>
 			</span>
 		</div>
 		<slot></slot>
@@ -17,22 +17,22 @@
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
-
+import N8nText from '../N8nText';
 import N8nTooltip from '../N8nTooltip';
 import N8nIcon from '../N8nIcon';
 
 import { addTargetBlank } from '../utils/helpers';
 
-Vue.component('N8nIcon', N8nIcon);
-Vue.component('N8nTooltip', N8nTooltip);
-
 export default {
 	name: 'n8n-input-label',
+	components: {
+		N8nText,
+		N8nIcon,
+		N8nTooltip,
+	},
 	props: {
 		label: {
 			type: String,
-			required: true,
 		},
 		tooltipText: {
 			type: String,
@@ -55,8 +55,6 @@ export default {
 }
 
 .label {
-	font-weight: var(--font-weight-bold);
-	font-size: var(--font-size-s);
 	margin-bottom: var(--spacing-2xs);
 
 	* {
@@ -67,10 +65,6 @@ export default {
 .infoIcon {
 	color: var(--color-text-light);
 	display: var(--info-icon-display, none);
-}
-
-.required {
-	color: var(--color-primary);
 }
 
 .tooltipPopper {

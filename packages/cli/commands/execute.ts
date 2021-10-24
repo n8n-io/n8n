@@ -15,8 +15,6 @@ import {
 	IWorkflowExecutionDataProcess,
 	LoadNodesAndCredentials,
 	NodeTypes,
-	// eslint-disable-next-line @typescript-eslint/no-unused-vars
-	WorkflowCredentials,
 	WorkflowHelpers,
 	WorkflowRunner,
 } from '../src';

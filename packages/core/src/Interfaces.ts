@@ -165,6 +165,7 @@ export interface ITriggerTime {
 export interface IUserSettings {
 	encryptionKey?: string;
 	tunnelSubdomain?: string;
+	instanceId?: string;
 }
 
 export interface ILoadOptionsFunctions extends ILoadOptionsFunctionsBase {

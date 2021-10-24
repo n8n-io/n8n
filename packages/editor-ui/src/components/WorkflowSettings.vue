@@ -1,6 +1,6 @@
 <template>
 	<Modal
-		:name="modalName"
+		:name="WORKFLOW_SETTINGS_MODAL_KEY"
 		width="65%"
 		maxHeight="80%"
 		title="Workflow Settings"
@@ -167,7 +167,7 @@
 		</template>
 		<template v-slot:footer>
 			<div class="action-buttons">
-				<n8n-button label="Save" size="large" @click="saveSettings" />
+				<n8n-button label="Save" size="large" float="right" @click="saveSettings" />
 			</div>
 		</template>
 	</Modal>
@@ -187,6 +187,7 @@ import {
 	IWorkflowShortResponse,
 } from '@/Interface';
 import Modal from './Modal.vue';
+import { WORKFLOW_SETTINGS_MODAL_KEY } from '../constants';
 
 import mixins from 'vue-typed-mixins';
 
@@ -197,11 +198,6 @@ export default mixins(
 	showMessage,
 ).extend({
 	name: 'WorkflowSettings',
-	props: {
-		modalName: {
-			type: String,
-		},
-	},
 	components: {
 		Modal,
 	},
@@ -236,6 +232,7 @@ export default mixins(
 			maxExecutionTimeout: this.$store.getters.maxExecutionTimeout,
 			timeoutHMS: { hours: 0, minutes: 0, seconds: 0 } as ITimeoutHMS,
 			modalBus: new Vue(),
+			WORKFLOW_SETTINGS_MODAL_KEY,
 		};
 	},
 	async mounted () {
@@ -299,10 +296,12 @@ export default mixins(
 		this.isLoading = false;
 
 		this.$externalHooks().run('workflowSettings.dialogVisibleChanged', { dialogVisible: true });
+		this.$telemetry.track('User opened workflow settings', { workflow_id: this.$store.getters.workflowId });
 	},
 	methods: {
 		closeDialog () {
 			this.modalBus.$emit('close');
+			this.$externalHooks().run('workflowSettings.dialogVisibleChanged', { dialogVisible: false });
 		},
 		setTimeout (key: string, value: string) {
 			const time = value ? parseInt(value, 10) : 0;
@@ -488,6 +487,7 @@ export default mixins(
 			this.closeDialog();
 
 			this.$externalHooks().run('workflowSettings.saveSettings', { oldSettings });
+			this.$telemetry.track('User updated workflow settings', { workflow_id: this.$store.getters.workflowId });
 		},
 		toggleTimeout() {
 			this.workflowSettings.executionTimeout = this.workflowSettings.executionTimeout === -1 ? 0 : -1;
@@ -514,17 +514,13 @@ export default mixins(
 	}
 }
 
-.action-buttons {
-	margin-top: 1em;
-	text-align: right;
-}
-
 .setting-info {
 	display: none;
 }
 
 .setting-name {
 	line-height: 32px;
+	font-weight: var(--font-weight-regular);
 }
 
 .setting-name:hover {

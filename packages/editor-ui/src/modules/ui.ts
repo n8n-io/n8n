@@ -1,4 +1,4 @@
-import { CREDENTIAL_EDIT_MODAL_KEY, DUPLICATE_MODAL_KEY, TAGS_MANAGER_MODAL_KEY, VERSIONS_MODAL_KEY, WORKLOW_OPEN_MODAL_KEY, CREDENTIAL_SELECT_MODAL_KEY, WORKFLOW_SETTINGS_MODAL_KEY } from '@/constants';
+import { CREDENTIAL_EDIT_MODAL_KEY, DUPLICATE_MODAL_KEY, PERSONALIZATION_MODAL_KEY, TAGS_MANAGER_MODAL_KEY, VERSIONS_MODAL_KEY, WORKFLOW_OPEN_MODAL_KEY, CREDENTIAL_SELECT_MODAL_KEY, WORKFLOW_SETTINGS_MODAL_KEY, CREDENTIAL_LIST_MODAL_KEY } from '@/constants';
 import Vue from 'vue';
 import { ActionContext, Module } from 'vuex';
 import {
@@ -15,22 +15,28 @@ const module: Module<IUiState, IRootState> = {
 				mode: '',
 				activeId: null,
 			},
+			[CREDENTIAL_LIST_MODAL_KEY]: {
+				open: false,
+			},
+			[CREDENTIAL_SELECT_MODAL_KEY]: {
+				open: false,
+			},
 			[DUPLICATE_MODAL_KEY]: {
+				open: false,
+			},
+			[PERSONALIZATION_MODAL_KEY]: {
 				open: false,
 			},
 			[TAGS_MANAGER_MODAL_KEY]: {
 				open: false,
 			},
-			[WORKLOW_OPEN_MODAL_KEY]: {
+			[WORKFLOW_OPEN_MODAL_KEY]: {
 				open: false,
 			},
 			[VERSIONS_MODAL_KEY]: {
 				open: false,
 			},
 			[WORKFLOW_SETTINGS_MODAL_KEY]: {
-				open: false,
-			},
-			[CREDENTIAL_SELECT_MODAL_KEY]: {
 				open: false,
 			},
 		},
@@ -86,20 +92,8 @@ const module: Module<IUiState, IRootState> = {
 		},
 	},
 	actions: {
-		openTagsManagerModal: async (context: ActionContext<IUiState, IRootState>) => {
-			context.commit('openModal', TAGS_MANAGER_MODAL_KEY);
-		},
-		openWorklfowOpenModal: async (context: ActionContext<IUiState, IRootState>) => {
-			context.commit('openModal', WORKLOW_OPEN_MODAL_KEY);
-		},
-		openDuplicateModal: async (context: ActionContext<IUiState, IRootState>) => {
-			context.commit('openModal', DUPLICATE_MODAL_KEY);
-		},
-		openUpdatesPanel: async (context: ActionContext<IUiState, IRootState>) => {
-			context.commit('openModal', VERSIONS_MODAL_KEY);
-		},
-		openWorkflowSettingsModal: async (context: ActionContext<IUiState, IRootState>) => {
-			context.commit('openModal', WORKFLOW_SETTINGS_MODAL_KEY);
+		openModal: async (context: ActionContext<IUiState, IRootState>, modalKey: string) => {
+			context.commit('openModal', modalKey);
 		},
 		openExisitngCredential: async (context: ActionContext<IUiState, IRootState>, { id }: {id: string}) => {
 			context.commit('setActiveId', {name: CREDENTIAL_EDIT_MODAL_KEY, id});
@@ -110,9 +104,6 @@ const module: Module<IUiState, IRootState> = {
 			context.commit('setActiveId', {name: CREDENTIAL_EDIT_MODAL_KEY, id: type});
 			context.commit('setMode', {name: CREDENTIAL_EDIT_MODAL_KEY, mode: 'new'});
 			context.commit('openModal', CREDENTIAL_EDIT_MODAL_KEY);
-		},
-		openCredentialsSelectModal: async (context: ActionContext<IUiState, IRootState>) => {
-			context.commit('openModal', CREDENTIAL_SELECT_MODAL_KEY);
 		},
 	},
 };
