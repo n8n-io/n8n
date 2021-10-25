@@ -9,8 +9,8 @@
 /* eslint-disable no-continue */
 /* eslint-disable no-restricted-syntax */
 import * as glob from 'fast-glob';
-import isInstalledGlobally = require('is-installed-globally');
-import globalDirs = require('global-dirs');
+import * as isInstalledGlobally from 'is-installed-globally';
+import * as globalDirs from 'global-dirs';
 import {
 	access as fsAccess,
 	readdir as fsReaddir,
@@ -83,9 +83,7 @@ class LoadNodesAndCredentialsClass {
 		if (isInstalledGlobally) {
 			this.nodeModulesPaths.push(globalDirs.npm.packages);
 			this.logger.info(
-				`n8n is installed globally, add global "node_modules" path: ${
-					globalDirs.npm.packages || ''
-				}`,
+				`n8n is installed globally, add global "node_modules" path: ${globalDirs.npm.packages}`,
 			);
 		}
 

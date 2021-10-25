@@ -102,6 +102,7 @@
     "express": "^4.16.4",
     "fast-glob": "^3.2.5",
     "flatted": "^2.0.0",
+    "global-dirs": "^3.0.0",
     "google-timezones-json": "^1.0.2",
     "inquirer": "^7.0.1",
     "is-installed-globally": "^0.4.0",
