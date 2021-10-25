@@ -1354,9 +1354,10 @@ export default mixins(
 
 						if (lastSelectedConnection) {
 							const sourceNodeType = this.$store.getters.nodeType(lastSelectedNode.type);
-							if (sourceNodeType && sourceNodeType.outputs.length === 2) {
-								const offsets = [-100, 100];
-								yOffset = offsets[lastSelectedConnection.__meta.sourceOutputIndex];
+							const offsets = [[-100, 100], [-150, 0, 150], [-250, -100, 100, 250]];
+							if (sourceNodeType && sourceNodeType.outputs.length > 1) {
+								const offset = offsets[sourceNodeType.outputs.length - 2];
+								yOffset = offset[lastSelectedConnection.__meta.sourceOutputIndex];
 							}
 						}
 
