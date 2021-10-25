@@ -36,7 +36,7 @@ function getEndpointForService(service: string, credentials: ICredentialDataDecr
 	} else if (service === 'sns' && credentials.snsEndpoint) {
 		endpoint = credentials.snsEndpoint;
 	} else {
-		endpoint = `https://${service}.${credentials.region}.amazonaws.com`;
+		endpoint = `https://${service}.${credentials.region || 'us-east-1'}.amazonaws.com`;
 	}
 	return (endpoint as string).replace('{region}', credentials.region as string);
 }
@@ -69,7 +69,7 @@ export async function awsApiRequest(this: IHookFunctions | IExecuteFunctions | I
 			const errorMessage = error?.response?.data || error?.response?.body;
 			if (errorMessage.includes('AccessDeniedException')) {
 				const user = JSON.parse(errorMessage).Message.split(' ')[1];
-				throw new NodeApiError(this.getNode(), error, { 
+				throw new NodeApiError(this.getNode(), error, {
 					message: 'Unauthorized — please check your AWS policy configuration',
 					description: `Make sure an identity-based policy allows user ${user} to perform textract:AnalyzeExpense` });
 			}
