@@ -143,6 +143,8 @@ export abstract class ICredentialsHelper {
 		credentials: ICredentialDataDecryptedObject,
 		typeName: string,
 		requestOptions: IHttpRequestOptions,
+		workflow: Workflow,
+		node: INode,
 	): Promise<IHttpRequestOptions>;
 
 	abstract getCredentials(
@@ -165,6 +167,36 @@ export abstract class ICredentialsHelper {
 	): Promise<void>;
 }
 
+export interface IAuthenticateBase {
+	type: string;
+	properties: {
+		[key: string]: string;
+	};
+}
+
+export interface IAuthenticateBearer extends IAuthenticateBase {
+	type: 'bearer';
+	properties: {
+		tokenPropertyName?: string;
+	};
+}
+
+export interface IAuthenticateHeaderAuth extends IAuthenticateBase {
+	type: 'headerAuth';
+	properties: {
+		key: string;
+		value: string;
+	};
+}
+
+export type IAuthenticate =
+	| ((
+			credentials: ICredentialDataDecryptedObject,
+			requestOptions: IHttpRequestOptions,
+	  ) => Promise<IHttpRequestOptions>)
+	| IAuthenticateBearer
+	| IAuthenticateHeaderAuth;
+
 export interface ICredentialType {
 	name: string;
 	displayName: string;
@@ -173,10 +205,7 @@ export interface ICredentialType {
 	properties: INodeProperties[];
 	documentationUrl?: string;
 	__overwrittenProperties?: string[];
-	authenticate?: (
-		credentials: ICredentialDataDecryptedObject,
-		requestOptions: IHttpRequestOptions,
-	) => Promise<IHttpRequestOptions>;
+	authenticate?: IAuthenticate;
 }
 
 export interface ICredentialTypes {
@@ -911,9 +940,7 @@ export interface IWorkflowDataProxyData {
 	$workflow: any;
 }
 
-export interface IWorkflowDataProxyAdditionalKeys {
-	[key: string]: string | number | undefined;
-}
+export type IWorkflowDataProxyAdditionalKeys = IDataObject;
 
 export interface IWorkflowMetadata {
 	id?: number | string;

@@ -849,6 +849,7 @@ export async function requestWithAuthentication(
 	this: IAllExecuteFunctions,
 	credentialsType: string,
 	requestOptions: IHttpRequestOptions,
+	workflow: Workflow,
 	node: INode,
 	additionalData: IWorkflowExecuteAdditionalData,
 	additionalCredentialOptions?: IAdditionalCredentialOptions,
@@ -883,6 +884,8 @@ export async function requestWithAuthentication(
 			credentials,
 			credentialsType,
 			requestOptions,
+			workflow,
+			node,
 		);
 
 		return await httpRequest(requestOptions);
@@ -1350,6 +1353,7 @@ export function getExecutePollFunctions(
 						this,
 						credentialsType,
 						requestOptions,
+						workflow,
 						node,
 						additionalData,
 					);
@@ -1469,6 +1473,7 @@ export function getExecuteTriggerFunctions(
 						this,
 						credentialsType,
 						requestOptions,
+						workflow,
 						node,
 						additionalData,
 					);
@@ -1681,6 +1686,7 @@ export function getExecuteFunctions(
 						this,
 						credentialsType,
 						requestOptions,
+						workflow,
 						node,
 						additionalData,
 					);
@@ -1868,6 +1874,7 @@ export function getExecuteSingleFunctions(
 						this,
 						credentialsType,
 						requestOptions,
+						workflow,
 						node,
 						additionalData,
 					);
@@ -1995,6 +2002,7 @@ export function getLoadOptionsFunctions(
 						this,
 						credentialsType,
 						requestOptions,
+						workflow,
 						node,
 						additionalData,
 					);
@@ -2128,6 +2136,7 @@ export function getExecuteHookFunctions(
 						this,
 						credentialsType,
 						requestOptions,
+						workflow,
 						node,
 						additionalData,
 					);
@@ -2288,6 +2297,7 @@ export function getExecuteWebhookFunctions(
 						this,
 						credentialsType,
 						requestOptions,
+						workflow,
 						node,
 						additionalData,
 					);

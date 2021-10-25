@@ -12,6 +12,7 @@ import {
 	INodeType,
 	INodeTypeData,
 	INodeTypes,
+	IWorkflowDataProxyAdditionalKeys,
 	NodeHelpers,
 	Workflow,
 	WorkflowExecuteMode,
@@ -41,19 +42,94 @@ export class CredentialsHelper extends ICredentialsHelper {
 	private credentialTypes = CredentialTypes();
 
 	/**
-	 * Authenticate
+	 * Add the required authentication information to the request
 	 */
 	async authenticate(
 		credentials: ICredentialDataDecryptedObject,
 		typeName: string,
-		requestOptions: IHttpRequestOptions,
+		incomingRequestOptions: IHttpRequestOptions,
+		workflow: Workflow,
+		node: INode,
 	): Promise<IHttpRequestOptions> {
+		const requestOptions = incomingRequestOptions;
 		const credentialType = this.credentialTypes.getByName(typeName);
+
 		if (credentialType.authenticate) {
-			return credentialType.authenticate(credentials, requestOptions);
+			if (typeof credentialType.authenticate === 'function') {
+				// Special authentication function is defined
+
+				// eslint-disable-next-line @typescript-eslint/no-unsafe-call
+				return credentialType.authenticate(credentials, requestOptions);
+			}
+
+			if (typeof credentialType.authenticate === 'object') {
+				// Predefined authentication method
+
+				const { authenticate } = credentialType;
+				if (requestOptions.headers === undefined) {
+					requestOptions.headers = {};
+				}
+
+				// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+				if (authenticate.type === 'bearer') {
+					// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+					const tokenPropertyName: string =
+						// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+						authenticate.properties.tokenPropertyName ?? 'accessToken';
+					requestOptions.headers.Authorization = `Bearer ${
+						credentials[tokenPropertyName] as string
+					}`;
+					// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+				} else if (authenticate.type === 'headerAuth') {
+					const key = this.resolveValue(
+						// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+						authenticate.properties.key,
+						{ credentials },
+						workflow,
+						node,
+					);
+
+					const value = this.resolveValue(
+						// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+						authenticate.properties.value,
+						{ credentials },
+						workflow,
+						node,
+					);
+					requestOptions.headers[key] = value;
+				}
+			}
 		}
 
 		return requestOptions;
+	}
+
+	/**
+	 * Resolves the given value in case it is an expression
+	 */
+	resolveValue(
+		parameterValue: string,
+		additionalKeys: IWorkflowDataProxyAdditionalKeys,
+		workflow: Workflow,
+		node: INode,
+	): string {
+		if (parameterValue.charAt(0) !== '=') {
+			return parameterValue;
+		}
+
+		const returnValue = workflow.expression.getSimpleParameterValue(
+			node,
+			parameterValue,
+			'internal',
+			additionalKeys,
+			'',
+		);
+
+		if (!returnValue) {
+			return '';
+		}
+
+		return returnValue.toString();
 	}
 
 	/**
