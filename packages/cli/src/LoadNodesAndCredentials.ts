@@ -9,14 +9,14 @@
 /* eslint-disable no-continue */
 /* eslint-disable no-restricted-syntax */
 import * as glob from 'fast-glob';
-import * as isInstalledGlobally from 'is-installed-globally';
-import * as globalDirs from 'global-dirs';
 import {
 	access as fsAccess,
 	readdir as fsReaddir,
 	readFile as fsReadFile,
 	stat as fsStat,
 } from 'fs/promises';
+import * as isInstalledGlobally from 'is-installed-globally';
+import * as globalDirs from 'global-dirs';
 import { CUSTOM_EXTENSION_ENV, UserSettings } from 'n8n-core';
 import {
 	CodexData,
@@ -81,9 +81,10 @@ class LoadNodesAndCredentialsClass {
 		}
 
 		if (isInstalledGlobally) {
-			this.nodeModulesPaths.push(globalDirs.npm.packages);
+			const globalNodeModules: string = globalDirs.npm.packages;
+			this.nodeModulesPaths.push(globalNodeModules);
 			this.logger.info(
-				`n8n is installed globally, add global "node_modules" path: ${globalDirs.npm.packages}`,
+				`n8n is installed globally, add global "node_modules" path: ${globalNodeModules}`,
 			);
 		}
 
