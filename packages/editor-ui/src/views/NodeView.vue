@@ -1701,6 +1701,9 @@ export default mixins(
 				this.$store.commit('setStateDirty', false);
 
 				await this.addNodes([DEFAULT_START_NODE]);
+
+				this.nodeSelectedByName(DEFAULT_START_NODE.name, false);
+
 				this.$store.commit('setStateDirty', false);
 
 				this.setZoomLevel(1);
