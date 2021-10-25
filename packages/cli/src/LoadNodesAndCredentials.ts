@@ -29,6 +29,8 @@ import * as glob from 'fast-glob';
 import * as path from 'path';
 import { getLogger } from './Logger';
 import * as config from '../config';
+import isInstalledGlobally = require('is-installed-globally');
+import globalDirs = require('global-dirs');
 
 const CUSTOM_NODES_CATEGORY = 'Custom Nodes';
 
@@ -43,7 +45,7 @@ class LoadNodesAndCredentialsClass {
 
 	includeNodes: string[] | undefined = undefined;
 
-	nodeModulesPath = '';
+	nodeModulesPaths: string[] = [];
 
 	logger: ILogger;
 
@@ -60,11 +62,13 @@ class LoadNodesAndCredentialsClass {
 			// in the "node_modules" folder underneath it.
 			path.join(__dirname, '..', '..', 'node_modules', 'n8n-workflow'),
 		];
+
 		for (const checkPath of checkPaths) {
 			try {
 				await fsAccess(checkPath);
 				// Folder exists, so use it.
-				this.nodeModulesPath = path.dirname(checkPath);
+				this.nodeModulesPaths.push(path.dirname(checkPath));
+				this.logger.info(`Main "node_modules" path is: ${path.dirname(checkPath)}`);
 				break;
 			} catch (error) {
 				// Folder does not exist so get next one
@@ -73,8 +77,15 @@ class LoadNodesAndCredentialsClass {
 			}
 		}
 
-		if (this.nodeModulesPath === '') {
+		if (this.nodeModulesPaths.length === 0) {
 			throw new Error('Could not find "node_modules" folder!');
+		}
+
+		if (isInstalledGlobally) {
+			this.nodeModulesPaths.push(globalDirs.npm.packages);
+			this.logger.info(
+				`n8n is installed globally, add global "node_modules" path: ${globalDirs.npm.packages}`,
+			);
 		}
 
 		this.excludeNodes = config.get('nodes.exclude');
@@ -83,8 +94,9 @@ class LoadNodesAndCredentialsClass {
 		// Get all the installed packages which contain n8n nodes
 		const packages = await this.getN8nNodePackages();
 
-		for (const packageName of packages) {
-			await this.loadDataFromPackage(packageName);
+		for (const packageInfo of packages) {
+			this.logger.info(`Load nodes data from: ${packageInfo.path}/${packageInfo.name}`);
+			await this.loadDataFromPackage(packageInfo.path, packageInfo.name);
 		}
 
 		// Read nodes and credentials from custom directories
@@ -113,10 +125,13 @@ class LoadNodesAndCredentialsClass {
 	 * @returns {Promise<string[]>}
 	 * @memberof LoadNodesAndCredentialsClass
 	 */
-	async getN8nNodePackages(): Promise<string[]> {
-		const getN8nNodePackagesRecursive = async (relativePath: string): Promise<string[]> => {
-			const results: string[] = [];
-			const nodeModulesPath = `${this.nodeModulesPath}/${relativePath}`;
+	async getN8nNodePackages(): Promise<{ path: string; name: string }[]> {
+		const getN8nNodePackagesRecursive = async (
+			startPath: string,
+			relativePath: string,
+		): Promise<{ path: string; name: string }[]> => {
+			const results: { path: string; name: string }[] = [];
+			const nodeModulesPath = `${startPath}/${relativePath}`;
 			for (const file of await fsReaddir(nodeModulesPath)) {
 				const isN8nNodesPackage = file.indexOf('n8n-nodes-') === 0;
 				const isNpmScopedPackage = file.indexOf('@') === 0;
@@ -127,15 +142,24 @@ class LoadNodesAndCredentialsClass {
 					continue;
 				}
 				if (isN8nNodesPackage) {
-					results.push(`${relativePath}${file}`);
+					results.push({ path: startPath, name: `${relativePath}${file}` });
 				}
 				if (isNpmScopedPackage) {
-					results.push(...(await getN8nNodePackagesRecursive(`${relativePath}${file}/`)));
+					results.push(
+						...(await getN8nNodePackagesRecursive(startPath, `${relativePath}${file}/`)),
+					);
 				}
 			}
 			return results;
 		};
-		return getN8nNodePackagesRecursive('');
+
+		const packages = await Promise.all(
+			this.nodeModulesPaths.map(async (x) => await getN8nNodePackagesRecursive(x, '')),
+		);
+		return packages.reduce((acc, x) => {
+			acc.push(...x);
+			return acc;
+		}, []);
 	}
 
 	/**
@@ -343,12 +367,13 @@ class LoadNodesAndCredentialsClass {
 	/**
 	 * Loads nodes and credentials from the package with the given name
 	 *
+	 * @param {string} nodeModulesPath The "node_modules" path where package is
 	 * @param {string} packageName The name to read data from
 	 * @returns {Promise<void>}
 	 */
-	async loadDataFromPackage(packageName: string): Promise<void> {
+	async loadDataFromPackage(nodeModulesPath: string, packageName: string): Promise<void> {
 		// Get the absolute path of the package
-		const packagePath = path.join(this.nodeModulesPath, packageName);
+		const packagePath = path.join(nodeModulesPath, packageName);
 
 		// Read the data from the package.json file to see if any n8n data is defiend
 		const packageFileString = await fsReadFile(path.join(packagePath, 'package.json'), 'utf8');
