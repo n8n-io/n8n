@@ -8,24 +8,42 @@ import {
 	NodeParameterValue,
 } from 'n8n-workflow';
 
+// Converts the input data of a dateTime into a number for easy compare
+function convertDateTime(value: NodeParameterValue): number => {
+	let returnValue: number | undefined = undefined;
+	if (typeof value === 'string') {
+		returnValue = new Date(value).getTime();
+	} else if (typeof value === 'number') {
+		returnValue = value;
+	} if ((value as unknown as object) instanceof Date) {
+		returnValue = (value as unknown as Date).getTime();
+	}
 
-export class FilterNew implements INodeType {
+	if (returnValue === undefined || isNaN(returnValue)) {
+		throw new NodeOperationError(this.getNode(), `The value "${value}" is not a valid DateTime.`);
+	}
+
+	return returnValue;
+}
+
+
+export class Deduplicate implements INodeType {
 	description: INodeTypeDescription = {
-		displayName: 'FilterNew',
-		name: 'filter-new',
-		icon: 'fa:map-signs',
+		displayName: 'Deduplicate',
+		name: 'deduplicate',
+		icon: 'fa:clone',
 		group: ['transform'],
 		version: 1,
-		description: 'Filter only new items through',
-		subtitle: 'unique({{$parameter["field"]}})',
+		description: 'Deduplicate items passed through',
+		subtitle: 'unique({{$parameter["mode"]}})',
 		defaults: {
-			name: 'FilterNew',
-			description: 'Filter only new items through',
+			name: 'Deduplicate',
+			description: 'Deduplicates items',
 			color: '#506000',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
-		outputNames: ['filtered'],
+		outputNames: ['deduped'],
 		properties: [
 			{
 				displayName: 'Mode',
@@ -33,43 +51,48 @@ export class FilterNew implements INodeType {
 				type: 'options',
 				options: [
 					{
-						name: 'ID-Based',
-						value: 'idbased',
-						description: 'Filter based on some unique identifier',
+						name: 'Unique expression',
+						value: 'uniqueexpr',
+						description: 'Dedupe based on some unique identifier',
 					},
 					{
-						name: 'Timestamp',
+						name: 'Timestamp sorting',
 						value: 'timestamp',
-						description: 'Filter based on a timestamp field',
+						description: 'Dedupe based on a timestamp field',
+					},
+					{
+						name: 'Hash of JSON',
+						value: 'json',
+						description: 'Simple but potentially expensive hash of whole item',
 					},
 				],
-				default: 'idbased',
-				description: 'How data should be filtered',
+				default: 'uniqueexpr',
+				description: 'How data should be deduplicated',
 			},
 
 
 			// ----------------------------------
-			//         mode:identifier
+			//         mode:uniqueexpr
 			// ----------------------------------
 			{
-				displayName: 'Identifier Field',
+				displayName: 'Unique expression',
 				name: 'field',
 				type: 'string',
 				displayOptions: {
 					show: {
 						mode: [
-							'idbased',
+							'uniqueexpr',
 						],
 					},
 				},
 				default: '',
-				description: 'The identifier in the item to filter by',
+				description: 'The expression to identify items by',
 			},
 			// ----------------------------------
 			//         mode:timestamp
 			// ----------------------------------
 			{
-				displayName: 'Timestamp Field',
+				displayName: 'Timestamp',
 				name: 'field',
 				type: 'dateTime',
 				displayOptions: {
@@ -80,7 +103,7 @@ export class FilterNew implements INodeType {
 					},
 				},
 				default: 0,
-				description: 'The timestamp in the item to filter by',
+				description: 'The timestamp expression in the item to dedupe by',
 			},
 		],
 	};
@@ -96,24 +119,6 @@ export class FilterNew implements INodeType {
 		let item: INodeExecutionData;
 		let tsField: NodeParameterValue;
 
-		// Converts the input data of a dateTime into a number for easy compare
-		const convertDateTime = (value: NodeParameterValue): number => {
-			let returnValue: number | undefined = undefined;
-			if (typeof value === 'string') {
-				returnValue = new Date(value).getTime();
-			} else if (typeof value === 'number') {
-				returnValue = value;
-			} if ((value as unknown as object) instanceof Date) {
-				returnValue = (value as unknown as Date).getTime();
-			}
-
-			if (returnValue === undefined || isNaN(returnValue)) {
-				throw new NodeOperationError(this.getNode(), `The value "${value}" is not a valid DateTime.`);
-			}
-
-			return returnValue;
-		};
-
 		const checkIndexRange = (index: number) => {
 			if (index < 0 || index >= returnData.length) {
 				throw new NodeOperationError(this.getNode(), `The ouput ${index} is not allowed. It has to be between 0 and ${returnData.length - 1}!`);
@@ -122,23 +127,22 @@ export class FilterNew implements INodeType {
 
 		const staticData = this.getWorkflowStaticData('node');
 		const mode = this.getNodeParameter('mode', 0) as string;
-		if (mode === 'idbased') {
-			staticData.seenIds = staticData.seenIds || new Set();
+		if (mode === 'uniqueexpr') {
+			staticData.seenVals = staticData.seenVals || new Set();
 		}
-		const seenIds = staticData.seenIds as Set<string>;
+		const seenVals = staticData.seenVals as Set<string>;
 		// Iterate over all items to check to which output they should be routed to
-		itemLoop:
 		for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
 			try {
 
 				item = items[itemIndex];
 
-				if (mode === 'idbased') {
-					const id = this.getNodeParameter('field', itemIndex) as string;
-					if (seenIds.has(id)) {
+				if (mode === 'uniqueexpr' || mode === 'json') {
+					const val = mode === 'uniqueexpr' ? this.getNodeParameter('field', itemIndex) as string : JSON.stringify(item);
+					if (seenVals.has(val)) {
 						continue;
 					} else {
-						seenIds.add(id);
+						seenVals.add(val);
 						returnData[0].push(item);
 					}
 				} else if (mode === 'timestamp') {
