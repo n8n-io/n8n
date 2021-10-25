@@ -1,5 +1,5 @@
 {
-	"node": "n8n-nodes-base.filter-new",
+	"node": "n8n-nodes-base.deduplicate",
 	"nodeVersion": "1.0",
 	"codexVersion": "1.0",
 	"categories": [
@@ -8,7 +8,7 @@
 	"resources": {
 		"primaryDocumentation": [
 			{
-				"url": "https://docs.n8n.io/nodes/n8n-nodes-base.filter-new/"
+				"url": "https://docs.n8n.io/nodes/n8n-nodes-base.deduplicate/"
 			}
 		],
 		"generic": [

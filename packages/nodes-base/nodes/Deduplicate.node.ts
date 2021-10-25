@@ -8,22 +8,19 @@ import {
 	NodeParameterValue,
 } from 'n8n-workflow';
 
-// Converts the input data of a dateTime into a number for easy compare
-function convertDateTime(value: NodeParameterValue): number => {
-	let returnValue: number | undefined = undefined;
-	if (typeof value === 'string') {
-		returnValue = new Date(value).getTime();
-	} else if (typeof value === 'number') {
-		returnValue = value;
-	} if ((value as unknown as object) instanceof Date) {
-		returnValue = (value as unknown as Date).getTime();
-	}
-
-	if (returnValue === undefined || isNaN(returnValue)) {
-		throw new NodeOperationError(this.getNode(), `The value "${value}" is not a valid DateTime.`);
-	}
-
-	return returnValue;
+function deterministicStringify<T>(value: T): string {
+	const sortObj = <T>(obj: T): T  => (
+		  obj === null || typeof obj !== 'object'
+		  ? obj
+		  : Array.isArray(obj)
+		  ? obj.map(sortObj)
+		  : Object.assign({}, 
+					...Object.entries(obj)
+					  .sort(([keyA], [keyB]) => keyA.localeCompare(keyB))
+					  .map(([k, v]) => ({ [k]: sortObj(v) }),
+					  ))
+	);
+	return JSON.stringify(sortObj(value));
 }
 
 
@@ -114,6 +111,24 @@ export class Deduplicate implements INodeType {
 			[],
 		];
 
+		// Converts the input data of a dateTime into a number for easy compare
+		const convertDateTime = (value: NodeParameterValue): number => {
+			let returnValue: number | undefined = undefined;
+			if (typeof value === 'string') {
+				returnValue = new Date(value).getTime();
+			} else if (typeof value === 'number') {
+				returnValue = value;
+			} if ((value as unknown as object) instanceof Date) {
+				returnValue = (value as unknown as Date).getTime();
+			}
+		
+			if (returnValue === undefined || isNaN(returnValue)) {
+				throw new NodeOperationError(this.getNode(), `The value "${value}" is not a valid DateTime.`);
+			}
+		
+			return returnValue;
+		};
+
 		const items = this.getInputData();
 
 		let item: INodeExecutionData;
@@ -138,7 +153,7 @@ export class Deduplicate implements INodeType {
 				item = items[itemIndex];
 
 				if (mode === 'uniqueexpr' || mode === 'json') {
-					const val = mode === 'uniqueexpr' ? this.getNodeParameter('field', itemIndex) as string : JSON.stringify(item);
+					const val = mode === 'uniqueexpr' ? this.getNodeParameter('field', itemIndex) as string : deterministicStringify(item);
 					if (seenVals.has(val)) {
 						continue;
 					} else {
