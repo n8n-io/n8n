@@ -172,6 +172,7 @@ import {
 } from '../Interface';
 import { mapGetters } from 'vuex';
 import { getStyleTokenValue } from '@/components/helpers';
+import '../plugins/N8nFlowchartType';
 
 const NODE_SIZE = 100;
 const DEFAULT_START_POSITION_X = 250;
@@ -238,7 +239,7 @@ const CONNECTOR_PAINT_STYLE_SUCCESS = {
 };
 
 const CONNECTOR_TYPE_BEZIER = ['Bezier', { curviness: _CURVINESS }];
-const CONNECTOR_TYPE_FLOWCHART = ['Flowchart', { cornerRadius: 4, stub: JSPLUMB_FLOWCHART_STUB, gap: 5, alwaysRespectStubs: _ALWAYS_RESPECT_STUB}];
+const CONNECTOR_TYPE_FLOWCHART = ['N8nFlowchart', { cornerRadius: 4, stub: JSPLUMB_FLOWCHART_STUB, gap: 5, alwaysRespectStubs: _ALWAYS_RESPECT_STUB, yOffset: NODE_SIZE}];
 
 const CONNECTOR_ARROW_OVERLAYS: OverlaySpec[] = [
 	[
