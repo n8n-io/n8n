@@ -8,6 +8,15 @@
 /* eslint-disable no-await-in-loop */
 /* eslint-disable no-continue */
 /* eslint-disable no-restricted-syntax */
+import * as glob from 'fast-glob';
+import isInstalledGlobally = require('is-installed-globally');
+import globalDirs = require('global-dirs');
+import {
+	access as fsAccess,
+	readdir as fsReaddir,
+	readFile as fsReadFile,
+	stat as fsStat,
+} from 'fs/promises';
 import { CUSTOM_EXTENSION_ENV, UserSettings } from 'n8n-core';
 import {
 	CodexData,
@@ -18,19 +27,9 @@ import {
 	INodeVersionedType,
 	LoggerProxy,
 } from 'n8n-workflow';
-
-import {
-	access as fsAccess,
-	readdir as fsReaddir,
-	readFile as fsReadFile,
-	stat as fsStat,
-} from 'fs/promises';
-import * as glob from 'fast-glob';
 import * as path from 'path';
-import { getLogger } from './Logger';
 import * as config from '../config';
-import isInstalledGlobally = require('is-installed-globally');
-import globalDirs = require('global-dirs');
+import { getLogger } from './Logger';
 
 const CUSTOM_NODES_CATEGORY = 'Custom Nodes';
 
@@ -84,7 +83,9 @@ class LoadNodesAndCredentialsClass {
 		if (isInstalledGlobally) {
 			this.nodeModulesPaths.push(globalDirs.npm.packages);
 			this.logger.info(
-				`n8n is installed globally, add global "node_modules" path: ${globalDirs.npm.packages}`,
+				`n8n is installed globally, add global "node_modules" path: ${
+					globalDirs.npm.packages || ''
+				}`,
 			);
 		}
 
@@ -125,12 +126,12 @@ class LoadNodesAndCredentialsClass {
 	 * @returns {Promise<string[]>}
 	 * @memberof LoadNodesAndCredentialsClass
 	 */
-	async getN8nNodePackages(): Promise<{ path: string; name: string }[]> {
+	async getN8nNodePackages(): Promise<Array<{ path: string; name: string }>> {
 		const getN8nNodePackagesRecursive = async (
 			startPath: string,
 			relativePath: string,
-		): Promise<{ path: string; name: string }[]> => {
-			const results: { path: string; name: string }[] = [];
+		): Promise<Array<{ path: string; name: string }>> => {
+			const results: Array<{ path: string; name: string }> = [];
 			const nodeModulesPath = `${startPath}/${relativePath}`;
 			for (const file of await fsReaddir(nodeModulesPath)) {
 				const isN8nNodesPackage = file.indexOf('n8n-nodes-') === 0;
@@ -154,7 +155,7 @@ class LoadNodesAndCredentialsClass {
 		};
 
 		const packages = await Promise.all(
-			this.nodeModulesPaths.map(async (x) => await getN8nNodePackagesRecursive(x, '')),
+			this.nodeModulesPaths.map(async (x) => getN8nNodePackagesRecursive(x, '')),
 		);
 		return packages.reduce((acc, x) => {
 			acc.push(...x);
