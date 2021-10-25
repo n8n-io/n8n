@@ -1479,6 +1479,9 @@ export default mixins(
 					eventSource: 'node_connection_drop',
 				}));
 
+				// only one set of visible actions should be visible at the same time
+				let hideVisibleActions: null | Function = null;
+
 				this.instance.bind('connection', (info: OnConnectionBindInfo) => {
 					info.connection.setConnector(CONNECTOR_TYPE_FLOWCHART);
 					info.connection.setPaintStyle(CONNECTOR_PAINT_STYLE_DEFAULT);
@@ -1504,11 +1507,14 @@ export default mixins(
 					info.connection.removeOverlay(OVERLAY_DROP_NODE_ID);
 
 					if (this.isReadOnly === false) {
-						// Display the connection-delete button only on hover
 						let timer: NodeJS.Timeout | undefined;
 						info.connection.bind('mouseover', (connection: IConnection) => {
 							if (timer !== undefined) {
 								clearTimeout(timer);
+							}
+
+							if (hideVisibleActions) {
+								hideVisibleActions();
 							}
 
 							showOverlay(info.connection, OVERLAY_CONNECTION_ACTIONS_ID);
@@ -1519,15 +1525,22 @@ export default mixins(
 						});
 
 						info.connection.bind('mouseout', (connection: IConnection) => {
+							hideVisibleActions = () => {
+								hideVisibleActions = null;
+								hideOverlay(info.connection, OVERLAY_CONNECTION_ACTIONS_ID);
+								showOrHideItemsLabel(info.connection);
+								showOrHideMidpointArrow(info.connection);
+							};
+
 							timer = setTimeout(() => {
 								if (!info.connection) {
 									return;
 								}
 								timer = undefined;
 
-								hideOverlay(info.connection, OVERLAY_CONNECTION_ACTIONS_ID);
-								showOrHideItemsLabel(info.connection);
-								showOrHideMidpointArrow(info.connection);
+								if (hideVisibleActions) {
+									hideVisibleActions();
+								}
 							}, 500);
 						});
 
