@@ -5,7 +5,6 @@ import {
 	ICredentialDataDecryptedObject,
 	ICredentialsDecrypted,
 	ICredentialsEncrypted,
-	ICredentialType,
 	IDataObject,
 	IRun,
 	IRunData,
@@ -13,8 +12,6 @@ import {
 	ITaskData,
 	ITelemetrySettings,
 	IWorkflowBase as IWorkflowBaseWorkflow,
-	// eslint-disable-next-line @typescript-eslint/no-unused-vars
-	IWorkflowCredentials,
 	Workflow,
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
