@@ -368,4 +368,99 @@ export const filters = [{
 	type: 'dateTime',
 	default: '',
 	description: 'An ISO 8601 format date, with optional time.',
-}];
+},
+//formula types
+{
+	displayName: 'Number',
+	name: 'numberValue',
+	displayOptions: {
+		show: {
+			type: [
+				'formula',
+			],
+			returnType: [
+				'number',
+			],
+		},
+		hide: {
+			condition: [
+				'is_empty',
+				'is_not_empty',
+			],
+		},
+	},
+	type: 'number',
+	default: 0,
+	description: 'Number value.',
+},
+{
+	displayName: 'Text',
+	name: 'textValue',
+	type: 'string',
+	displayOptions: {
+		show: {
+			type: [
+				'formula',
+			],
+			returnType: [
+				'text',
+			],
+		},
+		hide: {
+			condition: [
+				'is_empty',
+				'is_not_empty',
+			],
+		},
+	},
+	default: '',
+},
+{
+	displayName: 'Boolean',
+	name: 'checkboxValue',
+	displayOptions: {
+		show: {
+			type: [
+				'formula',
+			],
+			returnType: [
+				'checkbox',
+			],
+		},
+	},
+	type: 'boolean',
+	default: false,
+	description: `Whether or not the checkbox is checked.</br>
+				true represents checked.</br>
+				false represents unchecked.`,
+},
+	{
+		displayName: 'Date',
+		name: 'dateValue',
+		displayOptions: {
+			show: {
+				type: [
+					'formula',
+				],
+				returnType: [
+					'date',
+				],
+			},
+			hide: {
+				condition: [
+					'is_empty',
+					'is_not_empty',
+					'past_week',
+					'past_month',
+					'past_year',
+					'next_week',
+					'next_month',
+					'next_year',
+				],
+			},
+		},
+		type: 'dateTime',
+		default: '',
+		description: 'An ISO 8601 format date, with optional time.',
+	},
+];
