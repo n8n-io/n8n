@@ -1587,6 +1587,7 @@ export default mixins(
 									mousedown: (overlay: Overlay, event: MouseEvent) => {
 										const element = event.target as HTMLElement;
 										if (element.classList.contains('delete') || (element.parentElement && element.parentElement.classList.contains('delete'))) {
+											activeConnection = null;
 											this.instance.deleteConnection(info.connection); // store mutation applied by connectionDetached event
 										}
 										else if (element.classList.contains('add') || (element.parentElement && element.parentElement.classList.contains('add'))) {
