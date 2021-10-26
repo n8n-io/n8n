@@ -3,7 +3,7 @@
 		:name="WORKFLOW_SETTINGS_MODAL_KEY"
 		width="65%"
 		maxHeight="80%"
-		title="Workflow Settings"
+		:title="`Settings for ${workflowName} (#${workflowId})`"
 		:eventBus="modalBus"
 		:scrollable="true"
 	>
@@ -233,6 +233,8 @@ export default mixins(
 			timeoutHMS: { hours: 0, minutes: 0, seconds: 0 } as ITimeoutHMS,
 			modalBus: new Vue(),
 			WORKFLOW_SETTINGS_MODAL_KEY,
+			workflowId: this.$store.getters.workflowId,
+			workflowName: this.$store.getters.workflowName,
 		};
 	},
 	async mounted () {
