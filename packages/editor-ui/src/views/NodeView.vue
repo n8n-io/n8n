@@ -1481,7 +1481,25 @@ export default mixins(
 				}));
 
 				// only one set of visible actions should be visible at the same time
-				let hideVisibleActions: null | Function = null;
+				let activeConnection: null | Connection = null;
+
+				const hideActions = (connection: Connection | null) => {
+					if (connection) {
+						hideOverlay(connection, OVERLAY_CONNECTION_ACTIONS_ID);
+						showOrHideItemsLabel(connection);
+						showOrHideMidpointArrow(connection);
+					}
+				};
+
+				const showActions = (connection: Connection | null) => {
+					if (connection) {
+						showOverlay(connection, OVERLAY_CONNECTION_ACTIONS_ID);
+						hideOverlay(connection, OVERLAY_RUN_ITEMS_ID);
+						if (!connection.getOverlay(OVERLAY_RUN_ITEMS_ID)) {
+							hideOverlay(connection, OVERLAY_MIDPOINT_ARROW_ID);
+						}
+					}
+				};
 
 				this.instance.bind('connection', (info: OnConnectionBindInfo) => {
 					info.connection.setConnector(CONNECTOR_TYPE_FLOWCHART);
@@ -1508,39 +1526,51 @@ export default mixins(
 					info.connection.removeOverlay(OVERLAY_DROP_NODE_ID);
 
 					if (this.isReadOnly === false) {
-						let timer: NodeJS.Timeout | undefined;
-						info.connection.bind('mouseover', (connection: IConnection) => {
-							if (timer !== undefined) {
-								clearTimeout(timer);
+						let exitTimer: NodeJS.Timeout | undefined;
+						let enterTimer: NodeJS.Timeout | undefined;
+						info.connection.bind('mouseover', (connection: Connection) => {
+							if (exitTimer !== undefined) {
+								clearTimeout(exitTimer);
+								exitTimer = undefined;
 							}
 
-							if (hideVisibleActions) {
-								hideVisibleActions();
+							if (enterTimer) {
+								return;
 							}
 
-							showOverlay(info.connection, OVERLAY_CONNECTION_ACTIONS_ID);
-							hideOverlay(info.connection, OVERLAY_RUN_ITEMS_ID);
-							if (!info.connection.getOverlay(OVERLAY_RUN_ITEMS_ID)) {
-								hideOverlay(info.connection, OVERLAY_MIDPOINT_ARROW_ID);
+							if (info.connection === activeConnection) {
+								return;
 							}
+
+							hideActions(activeConnection);
+
+							enterTimer = setTimeout(() => {
+								enterTimer = undefined;
+								activeConnection = info.connection;
+								showActions(info.connection);
+							}, 150);
 						});
 
-						info.connection.bind('mouseout', (connection: IConnection) => {
-							hideVisibleActions = () => {
-								hideVisibleActions = null;
-								hideOverlay(info.connection, OVERLAY_CONNECTION_ACTIONS_ID);
-								showOrHideItemsLabel(info.connection);
-								showOrHideMidpointArrow(info.connection);
-							};
+						info.connection.bind('mouseout', (connection: Connection) => {
+							if (exitTimer) {
+								return;
+							}
 
-							timer = setTimeout(() => {
-								if (!info.connection) {
-									return;
-								}
-								timer = undefined;
+							if (enterTimer) {
+								clearTimeout(enterTimer);
+								enterTimer = undefined;
+							}
 
-								if (hideVisibleActions) {
-									hideVisibleActions();
+							if (activeConnection !== info.connection) {
+								return;
+							}
+
+							exitTimer = setTimeout(() => {
+								exitTimer = undefined;
+
+								if (activeConnection === info.connection) {
+									hideActions(activeConnection);
+									activeConnection = null;
 								}
 							}, 500);
 						});
