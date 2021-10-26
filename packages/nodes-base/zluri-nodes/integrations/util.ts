@@ -18,8 +18,7 @@ export async function zluriOAuthApiRequest(this:  IExecuteFunctions, options:Opt
     
     const credentials = await getZluriCredentials.call(this)
     const credentialData = JSON.parse(credentials);
-    options.headers = Object.assign({}, options.headers, {'Authorization':'Bearer '+credentialData.accessToken});
-    console.log('options  ', options)
+    options.headers = Object.assign({}, options.headers, {'Authorization':'Bearer '+credentialData.access_token});
     return await this.helpers.request!(options);
 }
 
