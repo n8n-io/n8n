@@ -1,3 +1,4 @@
+import moment = require('moment');
 import { IExecuteFunctions } from 'n8n-core';
 import {
 	INodeExecutionData,
@@ -333,6 +334,8 @@ export class If implements INodeType {
 				returnValue = new Date(value).getTime();
 			} else if (typeof value === 'number') {
 				returnValue = value;
+			} if (moment.isMoment(value)) {
+				returnValue = value.unix();
 			} if ((value as unknown as object) instanceof Date) {
 				returnValue = (value as unknown as Date).getTime();
 			}
