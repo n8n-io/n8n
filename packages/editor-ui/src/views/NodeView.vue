@@ -247,7 +247,7 @@ const getFlowChartType = (connection: Connection) => {
 	return ['N8nFlowchart', {
 		cornerRadius: 4,
 		stub: JSPLUMB_FLOWCHART_STUB + 5 * outputIndex + 5 * inputIndex,
-		gap: outputIndex,
+		gap: 5,
 		alwaysRespectStubs: _ALWAYS_RESPECT_STUB,
 		yOffset: NODE_SIZE + 5,
 	}];
