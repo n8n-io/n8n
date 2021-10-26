@@ -1121,8 +1121,8 @@ export class QuickBooks implements INodeType {
 						const accountName = this.getNodeParameter('accountName', i) as IDataObject;
 
 						const endpoint = `/v3/company/<realmID>/account`;
-						responseData = await quickBooksApiRequest.call(this, 'POST', endpoint, {}, body);
-						responseData = responseData[capitalCase(resource)];
+						// responseData = await quickBooksApiRequest.call(this, 'POST', endpoint, {}, body);
+						// responseData = responseData[capitalCase(resource)];
 
 					}
 				}
