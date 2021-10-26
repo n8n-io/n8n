@@ -239,7 +239,19 @@ const CONNECTOR_PAINT_STYLE_SUCCESS = {
 };
 
 const CONNECTOR_TYPE_STRIGHT = ['Straight'];
-const CONNECTOR_TYPE_FLOWCHART = ['N8nFlowchart', { cornerRadius: 4, stub: JSPLUMB_FLOWCHART_STUB, gap: 5, alwaysRespectStubs: _ALWAYS_RESPECT_STUB, yOffset: NODE_SIZE}];
+
+const getFlowChartType = (connection: Connection) => {
+	const inputIndex = connection.__meta ? connection.__meta.targetOutputIndex : 0;
+	const outputIndex = connection.__meta ? connection.__meta.sourceOutputIndex : 0;
+
+	return ['N8nFlowchart', {
+		cornerRadius: 4,
+		stub: JSPLUMB_FLOWCHART_STUB + 5 * outputIndex + 5 * inputIndex,
+		gap: outputIndex,
+		alwaysRespectStubs: _ALWAYS_RESPECT_STUB,
+		yOffset: NODE_SIZE + 5,
+	}];
+};
 
 const CONNECTOR_ARROW_OVERLAYS: OverlaySpec[] = [
 	[
@@ -1502,12 +1514,6 @@ export default mixins(
 				};
 
 				this.instance.bind('connection', (info: OnConnectionBindInfo) => {
-					info.connection.setConnector(CONNECTOR_TYPE_FLOWCHART);
-					info.connection.setPaintStyle(CONNECTOR_PAINT_STYLE_DEFAULT);
-					addOverlays(info.connection, CONNECTOR_ARROW_OVERLAYS);
-
-					showOrHideMidpointArrow(info.connection);
-
 					// @ts-ignore
 					const sourceInfo = info.sourceEndpoint.getParameters();
 					// @ts-ignore
@@ -1522,6 +1528,14 @@ export default mixins(
 						targetNodeName,
 						targetOutputIndex: targetInfo.index,
 					};
+
+					const connectorType = getFlowChartType(info.connection);
+
+					info.connection.setConnector(connectorType);
+					info.connection.setPaintStyle(CONNECTOR_PAINT_STYLE_DEFAULT);
+					addOverlays(info.connection, CONNECTOR_ARROW_OVERLAYS);
+
+					showOrHideMidpointArrow(info.connection);
 
 					info.connection.removeOverlay(OVERLAY_DROP_NODE_ID);
 
@@ -1702,7 +1716,7 @@ export default mixins(
 						const elements = document.querySelector('div.jtk-endpoint.dropHover');
 						if (elements && !droppable) {
 							droppable = true;
-							connection.setConnector(CONNECTOR_TYPE_FLOWCHART);
+							connection.setConnector(getFlowChartType(connection));
 							connection.setPaintStyle(CONNECTOR_PAINT_STYLE_PRIMARY);
 							addOverlays(connection, CONNECTOR_ARROW_OVERLAYS);
 							hideOverlay(connection, OVERLAY_DROP_NODE_ID);
