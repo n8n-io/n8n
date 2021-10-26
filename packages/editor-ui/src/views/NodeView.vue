@@ -238,7 +238,7 @@ const CONNECTOR_PAINT_STYLE_SUCCESS = {
 	stroke: getStyleTokenValue('--color-success'),
 };
 
-const CONNECTOR_TYPE_BEZIER = ['Bezier', { curviness: _CURVINESS }];
+const CONNECTOR_TYPE_STRIGHT = ['Straight'];
 const CONNECTOR_TYPE_FLOWCHART = ['N8nFlowchart', { cornerRadius: 4, stub: JSPLUMB_FLOWCHART_STUB, gap: 5, alwaysRespectStubs: _ALWAYS_RESPECT_STUB, yOffset: NODE_SIZE}];
 
 const CONNECTOR_ARROW_OVERLAYS: OverlaySpec[] = [
@@ -1448,7 +1448,7 @@ export default mixins(
 			},
 			initNodeView () {
 				this.instance.importDefaults({
-					Connector: CONNECTOR_TYPE_BEZIER,
+					Connector: CONNECTOR_TYPE_STRIGHT ,
 					Endpoint: ['Dot', { radius: 5 }],
 					DragOptions: { cursor: 'pointer', zIndex: 5000 },
 					PaintStyle: { strokeWidth: 2, stroke: getStyleTokenValue('--color-foreground-dark')},
@@ -1709,7 +1709,7 @@ export default mixins(
 						}
 						else if (!elements && droppable) {
 							droppable = false;
-							connection.setConnector(CONNECTOR_TYPE_BEZIER);
+							connection.setConnector(CONNECTOR_TYPE_STRIGHT );
 							connection.setPaintStyle(CONNECTOR_PAINT_STYLE_DEFAULT);
 							addOverlays(connection, CONNECTOR_ARROW_OVERLAYS);
 							showOverlay(connection, OVERLAY_DROP_NODE_ID);
