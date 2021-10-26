@@ -414,10 +414,10 @@ export class Slack implements INodeType {
 							qs.inclusive = filters.inclusive as boolean;
 						}
 						if (filters.latest) {
-							qs.latest = filters.latest as string;
+							qs.latest = new Date(filters.latest as string).getTime()/1000;
 						}
 						if (filters.oldest) {
-							qs.oldest = filters.oldest as string;
+							qs.oldest = new Date(filters.oldest as string).getTime()/1000;
 						}
 						if (returnAll === true) {
 							responseData = await slackApiRequestAllItems.call(this, 'messages', 'GET', '/conversations.history', {}, qs);
@@ -508,10 +508,10 @@ export class Slack implements INodeType {
 							qs.inclusive = filters.inclusive as boolean;
 						}
 						if (filters.latest) {
-							qs.latest = filters.latest as string;
+							qs.latest = new Date(filters.latest as string).getTime()/1000;
 						}
 						if (filters.oldest) {
-							qs.oldest = filters.oldest as string;
+							qs.oldest = new Date(filters.oldest as string).getTime()/1000;
 						}
 						if (returnAll === true) {
 							responseData = await slackApiRequestAllItems.call(this, 'messages', 'GET', '/conversations.replies', {}, qs);

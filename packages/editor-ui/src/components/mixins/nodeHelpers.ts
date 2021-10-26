@@ -7,11 +7,12 @@ import {
 	ICredentialType,
 	INodeCredentialDescription,
 	NodeHelpers,
-	INodeParameters,
+	INodeCredentialsDetails,
 	INodeExecutionData,
 	INodeIssues,
 	INodeIssueData,
 	INodeIssueObjectProperty,
+	INodeParameters,
 	INodeProperties,
 	INodeTypeDescription,
 	IRunData,
@@ -196,7 +197,7 @@ export const nodeHelpers = mixins(
 				let userCredentials: ICredentialsResponse[] | null;
 				let credentialType: ICredentialType | null;
 				let credentialDisplayName: string;
-				let selectedCredentials: string;
+				let selectedCredentials: INodeCredentialsDetails;
 				for (const credentialTypeDescription of nodeType!.credentials!) {
 					// Check if credentials should be displayed else ignore
 					if (this.displayParameter(node.parameters, credentialTypeDescription, '') !== true) {
@@ -218,15 +219,35 @@ export const nodeHelpers = mixins(
 						}
 					} else {
 						// If they are set check if the value is valid
-						selectedCredentials = node.credentials[credentialTypeDescription.name];
+						selectedCredentials = node.credentials[credentialTypeDescription.name] as INodeCredentialsDetails;
+						if (typeof selectedCredentials === 'string') {
+							selectedCredentials = {
+								id: null,
+								name: selectedCredentials,
+							};
+						}
+
 						userCredentials = this.$store.getters['credentials/getCredentialsByType'](credentialTypeDescription.name);
 
 						if (userCredentials === null) {
 							userCredentials = [];
 						}
 
-						if (userCredentials.find((credentialData) => credentialData.name === selectedCredentials) === undefined) {
-							foundIssues[credentialTypeDescription.name] = [`Credentials with name "${selectedCredentials}" do not exist for "${credentialDisplayName}".`];
+						if (selectedCredentials.id) {
+							const idMatch = userCredentials.find((credentialData) => credentialData.id === selectedCredentials.id);
+							if (idMatch) {
+								continue;
+							}
+						}
+
+						const nameMatches = userCredentials.filter((credentialData) => credentialData.name === selectedCredentials.name);
+						if (nameMatches.length > 1) {
+							foundIssues[credentialTypeDescription.name] = [`Credentials with name "${selectedCredentials.name}" exist for "${credentialDisplayName}"`, "Credentials are not clearly identified. Please select the correct credentials."];
+							continue;
+						}
+
+						if (nameMatches.length === 0) {
+							foundIssues[credentialTypeDescription.name] = [`Credentials with name "${selectedCredentials.name}" do not exist for "${credentialDisplayName}".`, "You can create credentials with the exact name and then they get auto-selected on refresh."];
 						}
 					}
 				}

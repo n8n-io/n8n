@@ -7,18 +7,17 @@ import { PLACEHOLDER_EMPTY_WORKFLOW_ID, DEFAULT_NODETYPE_VERSION } from '@/const
 import {
 	IConnection,
 	IConnections,
-	ICredentialType,
 	IDataObject,
 	INodeConnections,
 	INodeIssueData,
 	INodeTypeDescription,
 	IRunData,
+	ITelemetrySettings,
 	ITaskData,
 	IWorkflowSettings,
 } from 'n8n-workflow';
 
 import {
-	ICredentialsResponse,
 	IExecutionResponse,
 	IExecutionsCurrentSummaryExtended,
 	IRootState,
@@ -35,6 +34,7 @@ import {
 
 import credentials from './modules/credentials';
 import tags from './modules/tags';
+import settings from './modules/settings';
 import ui from './modules/ui';
 import workflows from './modules/workflows';
 import versions from './modules/versions';
@@ -56,6 +56,7 @@ const state: IRootState = {
 	pushConnectionActive: true,
 	saveDataErrorExecution: 'all',
 	saveDataSuccessExecution: 'all',
+	saveManualExecutions: false,
 	timezone: 'America/New_York',
 	stateIsDirty: false,
 	executionTimeout: -1,
@@ -86,11 +87,13 @@ const state: IRootState = {
 	},
 	sidebarMenuItems: [],
 	instanceId: '',
+	telemetry: null,
 };
 
 const modules = {
 	credentials,
 	tags,
+	settings,
 	workflows,
 	versions,
 	ui,
@@ -374,6 +377,32 @@ export const store = new Vuex.Store({
 			state.workflow.name = data.newName;
 		},
 
+		// replace invalid credentials in workflow
+		replaceInvalidWorkflowCredentials(state, {credentials, invalid, type }) {
+			state.workflow.nodes.forEach((node) => {
+				if (!node.credentials || !node.credentials[type]) {
+					return;
+				}
+				const nodeCredentials = node.credentials[type];
+
+				if (typeof nodeCredentials === 'string' && nodeCredentials === invalid.name) {
+					node.credentials[type] = credentials;
+					return;
+				}
+
+				if (nodeCredentials.id === null) {
+					if (nodeCredentials.name === invalid.name){
+						node.credentials[type] = credentials;
+					}
+					return;
+				}
+
+				if (nodeCredentials.id === invalid.id) {
+					node.credentials[type] = credentials;
+				}
+			});
+		},
+
 		// Nodes
 		addNode (state, nodeData: INodeUi) {
 			if (!nodeData.hasOwnProperty('name')) {
@@ -496,6 +525,9 @@ export const store = new Vuex.Store({
 		setSaveDataSuccessExecution (state, newValue: string) {
 			Vue.set(state, 'saveDataSuccessExecution', newValue);
 		},
+		setSaveManualExecutions (state, saveManualExecutions: boolean) {
+			Vue.set(state, 'saveManualExecutions', saveManualExecutions);
+		},
 		setTimezone (state, timezone: string) {
 			Vue.set(state, 'timezone', timezone);
 		},
@@ -510,6 +542,9 @@ export const store = new Vuex.Store({
 		},
 		setInstanceId(state, instanceId: string) {
 			Vue.set(state, 'instanceId', instanceId);
+		},
+		setTelemetry(state, telemetry: ITelemetrySettings) {
+			Vue.set(state, 'telemetry', telemetry);
 		},
 		setOauthCallbackUrls(state, urls: IDataObject) {
 			Vue.set(state, 'oauthCallbackUrls', urls);
@@ -606,6 +641,10 @@ export const store = new Vuex.Store({
 			return state.workflow.id === PLACEHOLDER_EMPTY_WORKFLOW_ID;
 		},
 
+		currentWorkflowHasWebhookNode: (state: IRootState): boolean => {
+			return !!state.workflow.nodes.find((node: INodeUi) => !!node.webhookId);
+		},
+
 		getActiveExecutions: (state): IExecutionsCurrentSummaryExtended[] => {
 			return state.activeExecutions;
 		},
@@ -644,14 +683,18 @@ export const store = new Vuex.Store({
 			return state.stateIsDirty;
 		},
 
+		instanceId: (state): string => {
+			return state.instanceId;
+		},
+
 		saveDataErrorExecution: (state): string => {
 			return state.saveDataErrorExecution;
 		},
 		saveDataSuccessExecution: (state): string => {
 			return state.saveDataSuccessExecution;
 		},
-		saveManualExecutions: (state, getters): boolean => {
-			return !!getters.workflowSettings.saveManualExecutions;
+		saveManualExecutions: (state): boolean => {
+			return state.saveManualExecutions;
 		},
 		timezone: (state): string => {
 			return state.timezone;
@@ -664,6 +707,9 @@ export const store = new Vuex.Store({
 		},
 		versionCli: (state): string => {
 			return state.versionCli;
+		},
+		telemetry: (state): ITelemetrySettings | null => {
+			return state.telemetry;
 		},
 		oauthCallbackUrls: (state): object => {
 			return state.oauthCallbackUrls;
@@ -790,6 +836,7 @@ export const store = new Vuex.Store({
 		workflowId: (state): string => {
 			return state.workflow.id;
 		},
+
 		workflowSettings: (state): IWorkflowSettings => {
 			if (state.workflow.settings === undefined) {
 				return {};

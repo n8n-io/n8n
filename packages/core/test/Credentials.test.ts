@@ -3,7 +3,7 @@ import { Credentials } from '../src';
 describe('Credentials', () => {
 	describe('without nodeType set', () => {
 		test('should be able to set and read key data without initial data set', () => {
-			const credentials = new Credentials('testName', 'testType', []);
+			const credentials = new Credentials({ id: null, name: 'testName' }, 'testType', []);
 
 			const key = 'key1';
 			const password = 'password';
@@ -23,7 +23,12 @@ describe('Credentials', () => {
 			const initialData = 4321;
 			const initialDataEncoded = 'U2FsdGVkX1+0baznXt+Ag/ub8A2kHLyoLxn/rR9h4XQ=';
 
-			const credentials = new Credentials('testName', 'testType', [], initialDataEncoded);
+			const credentials = new Credentials(
+				{ id: null, name: 'testName' },
+				'testType',
+				[],
+				initialDataEncoded,
+			);
 
 			const newData = 1234;
 
@@ -46,7 +51,7 @@ describe('Credentials', () => {
 				},
 			];
 
-			const credentials = new Credentials('testName', 'testType', nodeAccess);
+			const credentials = new Credentials({ id: null, name: 'testName' }, 'testType', nodeAccess);
 
 			const key = 'key1';
 			const password = 'password';

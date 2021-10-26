@@ -1,5 +1,5 @@
 <template functional>
-	<n8n-button
+	<component :is="$options.components.N8nButton"
 		:type="props.type"
 		:disabled="props.disabled"
 		:size="props.size === 'xlarge' ? 'large' : props.size"
@@ -14,7 +14,6 @@
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
 import N8nButton from '../N8nButton';
 
 const iconSizeMap = {
@@ -22,10 +21,11 @@ const iconSizeMap = {
 	xlarge: 'large',
 };
 
-Vue.component('N8nButton', N8nButton);
-
 export default {
 	name: 'n8n-icon-button',
+	components: {
+		N8nButton,
+	},
 	props: {
 		type: {
 			type: String,

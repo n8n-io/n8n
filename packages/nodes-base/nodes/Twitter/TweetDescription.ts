@@ -358,6 +358,23 @@ export const tweetFields = [
 				description: 'Specifies what type of search results you would prefer to receive',
 			},
 			{
+				displayName: 'Tweet Mode',
+				name: 'tweetMode',
+				type: 'options',
+				options: [
+					{
+						name: 'Compatibility',
+						value: 'compat',
+					},
+					{
+						name: 'Extended',
+						value: 'extended',
+					},
+				],
+				default: 'compat',
+				description: 'When the extended mode is selected, the response contains the entire untruncated text of the Tweet',
+			},
+			{
 				displayName: 'Until',
 				name: 'until',
 				type: 'dateTime',
