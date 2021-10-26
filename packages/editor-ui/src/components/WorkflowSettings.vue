@@ -191,6 +191,8 @@ import { WORKFLOW_SETTINGS_MODAL_KEY } from '../constants';
 
 import mixins from 'vue-typed-mixins';
 
+import { mapGetters } from "vuex";
+
 export default mixins(
 	externalHooks,
 	genericHelpers,
@@ -233,10 +235,13 @@ export default mixins(
 			timeoutHMS: { hours: 0, minutes: 0, seconds: 0 } as ITimeoutHMS,
 			modalBus: new Vue(),
 			WORKFLOW_SETTINGS_MODAL_KEY,
-			workflowId: this.$store.getters.workflowId,
-			workflowName: this.$store.getters.workflowName,
 		};
 	},
+
+	computed: {
+		...mapGetters(['workflowName', 'workflowId']),
+	},
+
 	async mounted () {
 		if (this.$route.params.name === undefined) {
 			this.$showMessage({
