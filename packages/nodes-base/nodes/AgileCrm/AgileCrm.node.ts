@@ -1,4 +1,7 @@
-import { IExecuteFunctions } from 'n8n-core';
+import {
+	IExecuteFunctions,
+} from 'n8n-core';
+
 import {
 	IDataObject,
 	INodeExecutionData,
@@ -31,17 +34,25 @@ import {
 	agileCrmApiRequest, agileCrmApiRequestAllItems,
 	agileCrmApiRequestUpdate,
 	getFilterRules,
+	simplifyResponse,
 	validateJSON,
 } from './GenericFunctions';
 
-import { IDeal } from './DealInterface';
-import {IFilter, ISearchConditions} from './FilterInterface';
+import {
+	IDeal,
+} from './DealInterface';
+
+import {
+	IFilter,
+	ISearchConditions,
+} from './FilterInterface';
 
 export class AgileCrm implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Agile CRM',
 		name: 'agileCrm',
 		icon: 'file:agilecrm.png',
+		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 		group: ['transform'],
 		version: 1,
 		description: 'Consume Agile CRM API',
@@ -122,7 +133,7 @@ export class AgileCrm implements INodeType {
 					responseData = await agileCrmApiRequest.call(this, 'DELETE', endpoint, {});
 
 				} else if (operation === 'getAll') {
-
+					const simple = this.getNodeParameter('simple', 0) as boolean;
 					const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
 					const filterType = this.getNodeParameter('filterType', i) as string;
 					const sort = this.getNodeParameter('options.sort.sort', i, {}) as { direction: string, field: string };
@@ -138,12 +149,12 @@ export class AgileCrm implements INodeType {
 					filterJson.contact_type = contactType;
 
 					if (filterType === 'manual') {
-						const conditions = this.getNodeParameter('filters.conditions', i) as ISearchConditions[];
+						const conditions = this.getNodeParameter('filters.conditions', i, []) as ISearchConditions[];
 						const matchType = this.getNodeParameter('matchType', i) as string;
 						let rules;
 						if (conditions.length !== 0) {
 							rules = getFilterRules(conditions, matchType);
-							Object.assign(filterJson,rules);
+							Object.assign(filterJson, rules);
 						} else {
 							throw new NodeOperationError(this.getNode(), 'At least one condition must be added.');
 						}
@@ -159,7 +170,7 @@ export class AgileCrm implements INodeType {
 
 					if (sort) {
 						if (sort.direction === 'ASC') {
-						body.global_sort_key = sort.field;
+							body.global_sort_key = sort.field;
 						} else if (sort.direction === 'DESC') {
 							body.global_sort_key = `-${sort.field}`;
 						}
@@ -167,10 +178,14 @@ export class AgileCrm implements INodeType {
 
 					if (returnAll) {
 						body.page_size = 100;
-						responseData = await agileCrmApiRequestAllItems.call(this, 'POST', `api/filters/filter/dynamic-filter`, body, undefined,  undefined, true);
+						responseData = await agileCrmApiRequestAllItems.call(this, 'POST', `api/filters/filter/dynamic-filter`, body, undefined, undefined, true);
 					} else {
 						body.page_size = this.getNodeParameter('limit', 0) as number;
 						responseData = await agileCrmApiRequest.call(this, 'POST', `api/filters/filter/dynamic-filter`, body, undefined, undefined, true);
+					}
+
+					if (simple) {
+						responseData = simplifyResponse(responseData);
 					}
 
 				} else if (operation === 'create') {
@@ -504,10 +519,10 @@ export class AgileCrm implements INodeType {
 
 					if (returnAll) {
 						const limit = 100;
-						responseData = await agileCrmApiRequestAllItems.call(this, 'GET', endpoint, undefined, {page_size: limit});
+						responseData = await agileCrmApiRequestAllItems.call(this, 'GET', endpoint, undefined, { page_size: limit });
 					} else {
 						const limit = this.getNodeParameter('limit', 0) as number;
-						responseData = await agileCrmApiRequest.call(this, 'GET', endpoint, undefined, {page_size: limit});
+						responseData = await agileCrmApiRequest.call(this, 'GET', endpoint, undefined, { page_size: limit });
 					}
 
 				} else if (operation === 'create') {

@@ -12,13 +12,14 @@ import {
 	NodeApiError,
 } from 'n8n-workflow';
 
-import { IContactUpdate } from './ContactInterface';
+import { 
+	IContactUpdate,
+} from './ContactInterface';
 
 import {
 	IFilterRules,
-	ISearchConditions
+	ISearchConditions,
 } from './FilterInterface';
-
 
 export async function agileCrmApiRequest(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
 	method: string, endpoint: string, body: any = {}, query: IDataObject = {}, uri?: string, sendAsForm?: boolean): Promise<any> { // tslint:disable-line:no-any
@@ -193,4 +194,12 @@ export function getFilterRules(conditions: ISearchConditions[], matchType: strin
 			rules,
 		};
 	}
+}
+
+export function simplifyResponse(records: [{ id: string, properties: [{ name: string, value: string }] } ]) {
+	const results = [];
+	for (const record of records) {
+		results.push(record.properties.reduce((obj, value) => Object.assign(obj, { [`${value.name}`]: value.value }), { id: record.id }));
+	}
+	return results;
 }

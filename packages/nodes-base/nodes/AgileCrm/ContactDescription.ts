@@ -170,6 +170,23 @@ export const contactFields = [
 		default: 'anyFilter',
 	},
 	{
+		displayName: 'Simplify Response',
+		name: 'simple',
+		type: 'boolean',
+		displayOptions: {
+			show: {
+				resource: [
+					'contact',
+				],
+				operation: [
+					'getAll',
+				],
+			},
+		},
+		default: false,
+		description: 'Return a simplified version of the response instead of the raw data.',
+	},
+	{
 		displayName: 'Filters',
 		name: 'filters',
 		type: 'fixedCollection',
