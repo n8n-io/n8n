@@ -50,10 +50,10 @@ export class NotionTrigger implements INodeType {
 						name: 'Page Added to Database',
 						value: 'pageAddedToDatabase',
 					},
-					// {
-					// 	name: 'Record Updated',
-					// 	value: 'recordUpdated',
-					// },
+					{
+						name: 'Paged Updated in Database',
+						value: 'pagedUpdatedInDatabase',
+					},
 				],
 				required: true,
 				default: '',
@@ -69,6 +69,7 @@ export class NotionTrigger implements INodeType {
 					show: {
 						event: [
 							'pageAddedToDatabase',
+							'pagedUpdatedInDatabase',
 						],
 					},
 				},
@@ -84,6 +85,7 @@ export class NotionTrigger implements INodeType {
 					show: {
 						event: [
 							'pageAddedToDatabase',
+							'pagedUpdatedInDatabase',
 						],
 					},
 				},
