@@ -292,6 +292,110 @@ export class GoogleDrive implements INodeType {
 				},
 				options: [
 					{
+						displayName: 'Covert Google Docs Files to Format',
+						name: 'docsToFormat',
+						type: 'options',
+						options: [
+							{
+								name: 'MS Word Document',
+								value: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+							},
+							{
+								name: 'PDF',
+								value: 'application/pdf',
+							},
+							{
+								name: 'Open Office Doc',
+								value: 'application/vnd.oasis.opendocument.text',
+							},
+							{
+								name: 'HTML',
+								value: 'text/html',
+							},
+							{
+								name: 'Rich Text',
+								value: 'application/rtf',
+							},
+						],
+						default: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+						description: 'Format used to export when downloading Google Docs files',
+					},
+					{
+						displayName: 'Covert Google Drawings Files to Format',
+						name: 'drawingsToFormat',
+						type: 'options',
+						options: [
+							{
+								name: 'JPEG',
+								value: 'image/jpeg',
+							},
+							{
+								name: 'PNG',
+								value: 'image/png',
+							},
+							{
+								name: 'SVG',
+								value: 'image/svg+xml',
+							},
+							{
+								name: 'PDF',
+								value: 'application/pdf',
+							},
+						],
+						default: 'image/jpeg',
+						description: 'Format used to export when downloading Google Drawings files',
+					},
+					{
+						displayName: 'Covert Google Slides Files to Format',
+						name: 'slidesToFormat',
+						type: 'options',
+						options: [
+							{
+								name: 'MS PowerPoint',
+								value: 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+							},
+							{
+								name: 'PDF',
+								value: 'application/pdf',
+							},
+							{
+								name: 'Open Office presentation',
+								value: 'application/vnd.oasis.opendocument.presentation',
+							},
+							{
+								name: 'Plain Text',
+								value: 'text/plain',
+							},
+						],
+						default: 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+						description: 'Format used to export when downloading Google Slides files',
+					},
+					{
+						displayName: 'Covert Google Spreadsheets Files to Format',
+						name: 'sheetsToFormat',
+						type: 'options',
+						options: [
+							{
+								name: 'MS Excel',
+								value: 'application/x-vnd.oasis.opendocument.spreadsheet',
+							},
+							{
+								name: 'PDF',
+								value: 'application/pdf',
+							},
+							{
+								name: 'CSV',
+								value: 'text/csv',
+							},
+							{
+								name: 'Plain Text',
+								value: 'text/plain',
+							},
+						],
+						default: 'application/x-vnd.oasis.opendocument.spreadsheet',
+						description: 'Format used to export when downloading Google Spreadsheets files',
+					},
+					{
 						displayName: 'File Name',
 						name: 'fileName',
 						type: 'string',
@@ -2140,7 +2244,25 @@ export class GoogleDrive implements INodeType {
 							json: false,
 						};
 
-						const response = await googleApiRequest.call(this, 'GET', `/drive/v3/files/${fileId}`, {}, { alt: 'media' }, undefined, requestOptions);
+						const file = await googleApiRequest.call(this, 'GET', `/drive/v3/files/${fileId}`, {}, { fields: 'mimeType' });
+						let response;
+
+						if (file.mimeType.includes('vnd.google-apps')) {
+							const type = file.mimeType.split('.')[2];
+							let mime;
+							if (type === 'document') {
+								mime = this.getNodeParameter('options.docsToFormat', i, 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') as string;
+							} else if (type === 'presentation') {
+								mime = this.getNodeParameter('options.slidesToFormat', i, 'application/vnd.openxmlformats-officedocument.presentationml.presentation') as string;
+							} else if (type === 'spreadsheet') {
+								mime = this.getNodeParameter('options.sheetsToFormat', i, 'application/x-vnd.oasis.opendocument.spreadsheet') as string;
+							} else {
+								mime = this.getNodeParameter('options.drawingsToFormat', i, 'image/jpeg') as string;
+							}
+							response = await googleApiRequest.call(this, 'GET', `/drive/v3/files/${fileId}/export`, {}, { mimeType: mime }, undefined, requestOptions);
+						} else {
+							response = await googleApiRequest.call(this, 'GET', `/drive/v3/files/${fileId}`, {}, { alt: 'media' }, undefined, requestOptions);
+						}
 
 						let mimeType: string | undefined;
 						let fileName: string | undefined = undefined;
@@ -2325,7 +2447,7 @@ export class GoogleDrive implements INodeType {
 						const properties = this.getNodeParameter('options.propertiesUi.propertyValues', i, []) as IDataObject[];
 
 						if (properties.length) {
-							Object.assign(body, { properties: properties.reduce((obj, value) => Object.assign(obj, { [`${value.key}`]: value.value }), {}) } );
+							Object.assign(body, { properties: properties.reduce((obj, value) => Object.assign(obj, { [`${value.key}`]: value.value }), {}) });
 						}
 
 						const appProperties = this.getNodeParameter('options.appPropertiesUi.appPropertyValues', i, []) as IDataObject[];
