@@ -430,6 +430,10 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 	z-index: 6;
 }
 
+.jtk-endpoint.jtk-hover {
+	z-index: 7;
+}
+
 .jtk-overlay {
 	z-index:7;
 }
