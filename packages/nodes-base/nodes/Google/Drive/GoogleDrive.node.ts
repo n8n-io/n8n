@@ -292,7 +292,7 @@ export class GoogleDrive implements INodeType {
 				},
 				options: [
 					{
-						displayName: 'Covert Google Docs Files to Format',
+						displayName: 'Convert Google Docs Files to Format',
 						name: 'docsToFormat',
 						type: 'options',
 						options: [
@@ -321,7 +321,7 @@ export class GoogleDrive implements INodeType {
 						description: 'Format used to export when downloading Google Docs files',
 					},
 					{
-						displayName: 'Covert Google Drawings Files to Format',
+						displayName: 'Convert Google Drawings Files to Format',
 						name: 'drawingsToFormat',
 						type: 'options',
 						options: [
@@ -346,7 +346,7 @@ export class GoogleDrive implements INodeType {
 						description: 'Format used to export when downloading Google Drawings files',
 					},
 					{
-						displayName: 'Covert Google Slides Files to Format',
+						displayName: 'Convert Google Slides Files to Format',
 						name: 'slidesToFormat',
 						type: 'options',
 						options: [
@@ -371,7 +371,7 @@ export class GoogleDrive implements INodeType {
 						description: 'Format used to export when downloading Google Slides files',
 					},
 					{
-						displayName: 'Covert Google Spreadsheets Files to Format',
+						displayName: 'Convert Google Spreadsheets Files to Format',
 						name: 'sheetsToFormat',
 						type: 'options',
 						options: [
