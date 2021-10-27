@@ -165,8 +165,10 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 		nodeStyle (): object {
 			let borderColor = getStyleTokenValue('--color-foreground-xdark');
 
-			if (this.hasIssues && this.workflowDataItems) {
-				// todo
+			if (this.data.disabled) {
+				borderColor = getStyleTokenValue('--color-foreground-base');
+			}
+			else if (this.hasIssues && this.workflowDataItems) {
 				borderColor = getStyleTokenValue('--color-danger');
 			}
 			else if (this.workflowDataItems && !this.isExecuting) {
@@ -295,16 +297,8 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 			border-style: solid;
 		}
 
-		&.disabled {
-			color: #a0a0a0;
-			text-decoration: line-through;
-			border: 1px solid #eee !important;
-			background-color: #eee;
-		}
-
 		&.executing {
 			background-color: $--color-primary-light !important;
-			border-color: $--color-primary !important;
 
 			.node-executing-info {
 				display: inline-block;
