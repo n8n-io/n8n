@@ -1,5 +1,5 @@
 <template>
-	<div class="node-wrapper" :style="nodePosition">
+	<div :class="{'node-wrapper': true, 'has-subtitles': !!nodeSubtitle}" :style="nodePosition">
 		<div class="node-default" :ref="data.name" :style="nodeStyle" :class="nodeClass" @dblclick="setNodeActive" @click.left="mouseLeftClick" v-touch:start="touchStart" v-touch:end="touchEnd">
 			<div v-if="hasIssues" class="node-info-icon node-issues">
 				<n8n-tooltip placement="top" >
@@ -248,7 +248,7 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 
 </script>
 
-<style lang="scss">
+<style lang="scss" scoped>
 
 .node-wrapper {
 	position: absolute;
@@ -283,12 +283,13 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 	}
 
 	.node-default {
+		position: absolute;
 		width: 100%;
 		height: 100%;
 		background-color: #fff;
 		border-radius: var(--border-radius-large);
 		text-align: center;
-		z-index: 24;
+		z-index: 5;
 		cursor: pointer;
 		color: #444;
 		border: 2px solid var(--color-foreground-xdark);
@@ -412,9 +413,21 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 	}
 }
 
+.selected {
+	position: absolute;
+	top: -8px;
+	left: -8px;
+	background-color: var(--color-foreground-base);
+	height: 116px;
+	width: 116px;
+	border-radius: var(--border-radius-xlarge);
+	opacity: 0.8;
+	z-index: 0;
+}
+
 </style>
 
-<style>
+<style lang="scss">
 .el-badge__content {
 	border-width: 2px;
 	background-color: #67c23a;
@@ -422,7 +435,7 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 
 /** connector */
 .jtk-connector {
-	z-index:4;
+	z-index: 3;
 }
 
 .jtk-connector path {
@@ -459,11 +472,24 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 	z-index: 9;
 }
 
-.jtk-drag-selected .node-default {
-	/* https://www.cssmatic.com/box-shadow */
-	-webkit-box-shadow: 0px 0px 6px 2px rgba(50, 75, 216, 0.37);
-	-moz-box-shadow: 0px 0px 6px 2px rgba(50, 75, 216, 0.37);
-	box-shadow: 0px 0px 6px 2px rgba(50, 75, 216, 0.37);
+.jtk-drag-selected {
+	&.has-subtitles:before {
+		height: 166px;
+	}
+
+	&:before {
+		content: ' ';
+		display: block;
+		position: absolute;
+		top: -8px;
+		left: -8px;
+		background-color: var(--color-foreground-base);
+		height: 140px;
+		width: 116px;
+		border-radius: var(--border-radius-xlarge);
+		opacity: 0.8;
+		z-index: 0;
+	}
 }
 
 .disabled .node-icon img {
