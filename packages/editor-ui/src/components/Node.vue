@@ -414,11 +414,6 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 				display: initial;
 			}
 		}
-
-		&.has-data .node-options,
-		&.has-issues .node-options {
-			top: -35px;
-		}
 	}
 }
 
