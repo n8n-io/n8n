@@ -438,17 +438,17 @@ async function proxyRequestToAxios(
 				}
 			})
 			.catch((error) => {
-				if (configObject.simple === true && error.response) {
-					resolve({
-						body: error.response.data,
-						headers: error.response.headers,
-						statusCode: error.response.status,
-						statusMessage: error.response.statusText,
-					});
-					return;
-				}
 				if (configObject.simple === false && error.response) {
-					resolve(error.response.data);
+					if (configObject.resolveWithFullResponse) {
+						resolve({
+							body: error.response.data,
+							headers: error.response.headers,
+							statusCode: error.response.status,
+							statusMessage: error.response.statusText,
+						});
+					} else {
+						resolve(error.response.data);
+					}
 					return;
 				}
 
