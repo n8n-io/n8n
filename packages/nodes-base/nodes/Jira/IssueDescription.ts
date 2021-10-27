@@ -661,7 +661,7 @@ export const issueFields = [
 			{
 				displayName: 'Expand',
 				name: 'expand',
-				type: 'options',
+				type: 'multiOptions',
 				default: '',
 				options: [
 					{

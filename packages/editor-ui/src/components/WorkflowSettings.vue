@@ -3,7 +3,7 @@
 		:name="WORKFLOW_SETTINGS_MODAL_KEY"
 		width="65%"
 		maxHeight="80%"
-		title="Workflow Settings"
+		:title="`Settings for ${workflowName} (#${workflowId})`"
 		:eventBus="modalBus"
 		:scrollable="true"
 	>
@@ -191,6 +191,8 @@ import { WORKFLOW_SETTINGS_MODAL_KEY } from '../constants';
 
 import mixins from 'vue-typed-mixins';
 
+import { mapGetters } from "vuex";
+
 export default mixins(
 	externalHooks,
 	genericHelpers,
@@ -235,6 +237,11 @@ export default mixins(
 			WORKFLOW_SETTINGS_MODAL_KEY,
 		};
 	},
+
+	computed: {
+		...mapGetters(['workflowName', 'workflowId']),
+	},
+
 	async mounted () {
 		if (this.$route.params.name === undefined) {
 			this.$showMessage({
