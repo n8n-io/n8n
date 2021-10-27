@@ -17,6 +17,7 @@ import {
 
 import {
 	downloadFiles,
+	extractPageId,
 	formatBlocks,
 	formatTitle,
 	getBlockTypes,
@@ -115,6 +116,12 @@ export class Notion implements INodeType {
 			// 	description: 'The resource to operate on.',
 			// },
 			{
+				displayName: 'Make sure you share pages with your Notion integration to see them here',
+				name: 'notionNotice',
+				type: 'notice',
+				default: '',
+			},
+			{
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
@@ -186,7 +193,7 @@ export class Notion implements INodeType {
 					//remove parameters that cannot be set from the API.
 					if (!['created_time', 'last_edited_time', 'created_by', 'last_edited_by', 'formula'].includes(properties[key].type)) {
 						returnData.push({
-							name: `${key} - (${properties[key].type})`,
+							name: `${key}`,
 							value: `${key}|${properties[key].type}`,
 						});
 					}
@@ -204,7 +211,7 @@ export class Notion implements INodeType {
 				const { properties } = await notionApiRequest.call(this, 'GET', `/databases/${databaseId}`);
 				for (const key of Object.keys(properties)) {
 					returnData.push({
-						name: `${key} - (${properties[key].type})`,
+						name: `${key}`,
 						value: `${key}|${properties[key].type}`,
 					});
 				}
@@ -248,14 +255,14 @@ export class Notion implements INodeType {
 			},
 			async getDatabaseIdFromPage(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-				const pageId = this.getCurrentNodeParameter('pageId') as string;
+				const pageId = extractPageId(this.getCurrentNodeParameter('pageId') as string);
 				const { parent: { database_id: databaseId } } = await notionApiRequest.call(this, 'GET', `/pages/${pageId}`);
 				const { properties } = await notionApiRequest.call(this, 'GET', `/databases/${databaseId}`);
 				for (const key of Object.keys(properties)) {
 					//remove parameters that cannot be set from the API.
 					if (!['created_time', 'last_edited_time', 'created_by', 'last_edited_by', 'formula'].includes(properties[key].type)) {
 						returnData.push({
-							name: `${key} - (${properties[key].type})`,
+							name: `${key}`,
 							value: `${key}|${properties[key].type}`,
 						});
 					}
@@ -389,13 +396,37 @@ export class Notion implements INodeType {
 		if (resource === 'databasePage') {
 
 			if (operation === 'create') {
+
+				const databaseId = this.getNodeParameter('databaseId', 0) as string;
+				const { properties } = await notionApiRequest.call(this, 'GET', `/databases/${databaseId}`);
+				let titleKey = '';
+				for (const key of Object.keys(properties)) {
+					if (properties[key].type === 'title') {
+						titleKey = key;
+					}
+				}
+
 				for (let i = 0; i < length; i++) {
+					const title = this.getNodeParameter('title', i) as string;
 					const simple = this.getNodeParameter('simple', i) as boolean;
 					// tslint:disable-next-line: no-any
 					const body: { [key: string]: any } = {
 						parent: {},
 						properties: {},
 					};
+
+					if (title !== '') {
+						body.properties[titleKey] = {
+							title: [
+								{
+									text: {
+										content: title,
+									},
+								},
+							],
+						};
+					}
+
 					body.parent['database_id'] = this.getNodeParameter('databaseId', i) as string;
 					const properties = this.getNodeParameter('propertiesUi.propertyValues', i, []) as IDataObject[];
 					if (properties.length !== 0) {
@@ -462,7 +493,7 @@ export class Notion implements INodeType {
 
 			if (operation === 'update') {
 				for (let i = 0; i < length; i++) {
-					const pageId = this.getNodeParameter('pageId', i) as string;
+					const pageId = extractPageId(this.getNodeParameter('pageId', i) as string);
 					const simple = this.getNodeParameter('simple', i) as boolean;
 					const properties = this.getNodeParameter('propertiesUi.propertyValues', i, []) as IDataObject[];
 					// tslint:disable-next-line: no-any
@@ -528,7 +559,7 @@ export class Notion implements INodeType {
 
 			if (operation === 'get') {
 				for (let i = 0; i < length; i++) {
-					const pageId = this.getNodeParameter('pageId', i) as string;
+					const pageId = extractPageId(this.getNodeParameter('pageId', i) as string);
 					const simple = this.getNodeParameter('simple', i) as boolean;
 					responseData = await notionApiRequest.call(this, 'GET', `/pages/${pageId}`);
 					if (simple === true) {

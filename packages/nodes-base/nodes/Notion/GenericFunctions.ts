@@ -29,6 +29,7 @@ import {
 import * as moment from 'moment-timezone';
 
 import { validate as uuidValidate } from 'uuid';
+import { pageFields } from './PageDescription';
 
 const version = '2021-08-16';
 
@@ -57,10 +58,12 @@ export async function notionApiRequest(this: IHookFunctions | IExecuteFunctions 
 			delete options.body;
 		}
 
+		console.log(JSON.stringify(options, undefined, 2));
+
 		return this.helpers.request!(options);
 
 	} catch (error) {
-		throw new NodeApiError(this.getNode(), error);
+		//throw new NodeApiError(this.getNode(), error);
 	}
 }
 
@@ -359,8 +362,6 @@ export function mapSorting(data: [{ key: string, type: string, direction: string
 }
 
 export function mapFilters(filters: IDataObject[], timezone: string) {
-
-	console.log(filters);
 	// tslint:disable-next-line: no-any
 	return filters.reduce((obj, value: { [key: string]: any }) => {
 		let key = getNameAndType(value.key).type;
@@ -714,4 +715,13 @@ export function validateCrendetials(this: ICredentialTestFunctions, credentials:
 		json: true,
 	};
 	return this.helpers.request!(options);
+}
+
+export function extractPageId(page: string) {
+	if (page.includes('p=')) {
+		return page.split('p=')[1];
+	} else if (page.includes('-')) {
+		return page.split('-')[page.split('-').length - 1];
+	}
+	return page;
 }
