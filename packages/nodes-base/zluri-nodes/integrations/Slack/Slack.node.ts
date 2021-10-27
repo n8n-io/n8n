@@ -1042,6 +1042,29 @@ export class Slack implements INodeType {
 						qs.user = this.getNodeParameter('user', i) as string;
 						responseData = await slackApiRequest.call(this, 'GET', '/users.getPresence', {}, qs);
 					}
+					// invite user 
+					//https://slack.com/api/admin.users.invite
+					//Scope: https://api.slack.com/scopes/admin.users:write 
+					if (operation === 'inviteUser') {
+						const channelIds = this.getNodeParameter('channelIds', i) as string;
+						const email = this.getNodeParameter('email', i) as string;
+						const teamId = this.getNodeParameter('teamId', i) as string;
+						responseData = await slackApiRequest.call(this, 'POST', '/admin.users.invite', { channel_ids:channelIds, email, team_id:teamId}, qs);
+					}
+					// Remove user from workspace 
+					//https://slack.com/api/admin.users.remove
+					//Scope: https://api.slack.com/scopes/admin.users:write 
+					if (operation === 'removeUser') {
+						const user_id = this.getNodeParameter('userId', i) as string;
+						const teamId = this.getNodeParameter('teamId', i) as string;
+						responseData = await slackApiRequest.call(this, 'POST', '/admin.users.remove', { user_id, team_id:teamId}, qs);
+					}
+					//lookup By Email
+					// scope: users.read.email
+					if (operation === 'lookupByEmail') {
+						qs.email = this.getNodeParameter('email', i) as string;
+						responseData = await slackApiRequest.call(this, 'GET', '/users.lookupByEmail', {}, qs);
+					}
 				}
 				if (resource === 'userProfile') {
 					//https://api.slack.com/methods/users.profile.set
