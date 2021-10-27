@@ -516,6 +516,7 @@ export default mixins(
 
 <style scoped lang="scss">
 .workflow-settings {
+	font-size: var(--font-size-s);
 	.el-row {
 		padding: 0.25em 0;
 	}

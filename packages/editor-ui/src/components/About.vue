@@ -67,6 +67,7 @@ export default mixins(
 
 <style scoped lang="scss">
 .n8n-about {
+	font-size: var(--font-size-s);
 	.el-row {
 		padding: 0.25em 0;
 	}
