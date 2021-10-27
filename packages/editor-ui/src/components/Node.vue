@@ -43,7 +43,7 @@
 
 			<NodeIcon class="node-icon" :nodeType="nodeType" :size="40" :shrink="false" :disabled="this.data.disabled"/>
 		</div>
-		<div class="node-description">
+		<div :class="{'node-description': true, 'limited': isSelected}">
 			<div class="node-name" :title="data.name">
 				{{data.name}}
 			</div>
@@ -270,11 +270,15 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 		text-align: center;
 		cursor: default;
 
+		&.limited {
+			padding: 0 50px;
+		}
+
 		.node-name {
 			white-space: nowrap;
 			overflow: hidden;
 			text-overflow: ellipsis;
-			font-weight: 500;
+			font-weight: var(--font-weight-bold);
 		}
 
 		.node-subtitle {
