@@ -378,6 +378,6 @@ export const reportFields = [
 				],
 			},
 		},
-		description: 'Name of the binary property to which to<br />write the data of the read file.',
+		description: 'Name of the binary property to which to write the data of the read file.',
 	},
 ] as INodeProperties[];
