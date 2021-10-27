@@ -454,7 +454,7 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 }
 
 /** node */
-.jtk-endpoint-anchor {
+.jtk-endpoint-anchor .node-default {
 	z-index: 5;
 }
 
