@@ -2,10 +2,10 @@
 	<div @keydown.stop class="collection-parameter">
 		<div class="collection-parameter-wrapper">
 			<div v-if="getProperties.length === 0" class="no-items-exist">
-				Currently no properties exist
+				<n8n-text size="small">Currently no properties exist</n8n-text>
 			</div>
 
-			<parameter-input-list :parameters="getProperties" :nodeValues="nodeValues" :path="path" :hideDelete="hideDelete" @valueChanged="valueChanged" />
+			<parameter-input-list :parameters="getProperties" :nodeValues="nodeValues" :path="path" :hideDelete="hideDelete" :indent="true" @valueChanged="valueChanged" />
 
 			<div v-if="parameterOptions.length > 0 && !isReadOnly" class="param-options">
 				<n8n-button
@@ -184,14 +184,14 @@ export default mixins(
 <style lang="scss">
 
 .collection-parameter {
-	padding-left: 2em;
+	padding-left: var(--spacing-s);
 
 	.param-options {
-		padding-top: 0.5em;
+		margin-top: var(--spacing-xs);
 	}
 
 	.no-items-exist {
-		margin: 0.8em 0 0.4em 0;
+		margin: var(--spacing-xs) 0;
 	}
 	.option {
 		position: relative;

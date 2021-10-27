@@ -10,10 +10,9 @@
 					</n8n-tooltip>
 				</a>
 			</span>
-			<span v-else>No node active</span>
 		</div>
 		<div class="node-is-not-valid" v-if="node && !nodeValid">
-			The node is not valid as its type "{{node.type}}" is unknown.
+			<n8n-text>The node is not valid as its type "{{node.type}}" is unknown.</n8n-text>
 		</div>
 		<div class="node-parameters-wrapper" v-if="node && nodeValid">
 			<el-tabs stretch @tab-click="handleTabClick">
@@ -21,8 +20,8 @@
 					<node-credentials :node="node" @credentialSelected="credentialSelected"></node-credentials>
 					<node-webhooks :node="node" :nodeType="nodeType" />
 					<parameter-input-list :parameters="parametersNoneSetting" :hideDelete="true" :nodeValues="nodeValues" path="parameters" @valueChanged="valueChanged" />
-					<div v-if="parametersNoneSetting.length === 0">
-						This node does not have any parameters.
+					<div v-if="parametersNoneSetting.length === 0" class="no-parameters">
+						<n8n-text>This node does not have any parameters.</n8n-text>
 					</div>
 				</el-tab-pane>
 				<el-tab-pane label="Settings">
@@ -521,7 +520,10 @@ export default mixins(
 	overflow: hidden;
 	min-width: 350px;
 	max-width: 350px;
-	font-size: var(--font-size-s);
+
+	.no-parameters {
+		margin-top: var(--spacing-xs);
+	}
 
 	.header-side-menu {
 		padding: 1em 0 1em 1.8em;
@@ -547,10 +549,10 @@ export default mixins(
 
 	.node-parameters-wrapper {
 		height: 100%;
-		font-size: .9em;
 
 		.el-tabs__header {
 			background-color: #fff5f2;
+			margin-bottom: 0;
 		}
 
 		.el-tabs {
@@ -561,13 +563,13 @@ export default mixins(
 				padding-bottom: 180px;
 
 				.el-tab-pane {
-					margin: 0 1em;
+					margin: 0 var(--spacing-s);
 				}
 			}
 		}
 
 		.el-tabs__nav {
-			padding-bottom: 1em;
+			padding-bottom: var(--spacing-xs);
 		}
 
 		.add-option {
@@ -619,14 +621,6 @@ export default mixins(
 
 .parameter-wrapper {
 	padding: 0 1em;
-}
-
-.parameter-name {
-	line-height: 1.5;
-	white-space: nowrap;
-	overflow: hidden;
-	text-overflow: ellipsis;
-	align-self: center;
 }
 
 .color-reset-button-wrapper {
