@@ -48,7 +48,7 @@ export default {
 			type: String,
 			default: 'medium',
 			validator: (value: string): boolean =>
-				['small', 'medium'].indexOf(value) !== -1,
+				['small', 'medium'].includes(value),
 		},
 		underline: {
 			type: Boolean,

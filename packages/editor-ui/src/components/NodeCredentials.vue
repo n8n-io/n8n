@@ -1,14 +1,8 @@
 <template>
 	<div v-if="credentialTypesNodeDescriptionDisplayed.length" :class="$style.container">
-		<div>
-			<n8n-text size="small" :bold="true">
-				Credentials
-			</n8n-text>
-		</div>
-
 		<div v-for="credentialTypeDescription in credentialTypesNodeDescriptionDisplayed" :key="credentialTypeDescription.name">
 			<n8n-input-label
-				:label="credentialTypeNames[credentialTypeDescription.name]"
+				:label="`Credential for ${credentialTypeNames[credentialTypeDescription.name]}`"
 				:bold="false"
 				size="small"
 
@@ -288,7 +282,6 @@ export default mixins(
 
 <style lang="scss" module>
 .container {
-	border-bottom: var(--border-base);
 	margin: var(--spacing-xs) 0;
 
 	> * {
