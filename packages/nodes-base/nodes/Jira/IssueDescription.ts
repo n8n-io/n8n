@@ -268,7 +268,7 @@ export const issueFields = [
 				name: 'updateHistory',
 				type: 'boolean',
 				default: false,
-				description: `Whether the project in which the issue is created is added to the user's<br/>
+				description: `Whether the project in which the issue is created is added to the user's
 				Recently viewed project list, as shown under Projects in Jira.`,
 			},
 		],
@@ -546,7 +546,7 @@ export const issueFields = [
 				transitions Returns all possible transitions for the issue.<br/>
 				editmeta Returns information about how each field can be edited.<br/>
 				changelog Returns a list of recent updates to an issue, sorted by date, starting from the most recent.<br/>
-				versionedRepresentations Returns a JSON array for each version of a field's value, with the highest number<br/>
+				versionedRepresentations Returns a JSON array for each version of a field's value, with the highest number
 				representing the most recent version. Note: When included in the request, the fields parameter is ignored.`,
 			},
 			{
@@ -567,7 +567,7 @@ export const issueFields = [
 				type: 'boolean',
 				default: false,
 				description: `Indicates whether fields in fields are referenced by keys rather than IDs.<br/>
-				This parameter is useful where fields have been added by a connect app and a field's key<br/>
+				This parameter is useful where fields have been added by a connect app and a field's key
 				may differ from its ID.`,
 			},
 			{
@@ -723,7 +723,7 @@ export const issueFields = [
 				type: 'boolean',
 				default: false,
 				description: `Indicates whether fields in fields are referenced by keys rather than IDs.<br/>
-				This parameter is useful where fields have been added by a connect app and a field's key<br/>
+				This parameter is useful where fields have been added by a connect app and a field's key
 				may differ from its ID.`,
 			},
 			{
@@ -1111,8 +1111,8 @@ export const issueFields = [
 				type: 'string',
 				default: '',
 				description: `Use expand to include additional information about transitions in the response.<br/>
-				 This parameter accepts transitions.fields, which returns information about the fields in the<br/>
-				 transition screen for each transition. Fields hidden from the screen are not returned. Use this<br/>
+				 This parameter accepts transitions.fields, which returns information about the fields in the
+				 transition screen for each transition. Fields hidden from the screen are not returned. Use this
 				 information to populate the fields and update fields in Transition issue.`,
 			},
 			{
@@ -1127,7 +1127,7 @@ export const issueFields = [
 				name: 'skipRemoteOnlyCondition',
 				type: 'boolean',
 				default: false,
-				description: `Indicates whether transitions with the condition Hide<br/>
+				description: `Indicates whether transitions with the condition Hide
 				From User Condition are included in the response.`,
 			},
 		],
