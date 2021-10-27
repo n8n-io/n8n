@@ -2,7 +2,7 @@
 	<div class="node-icon-wrapper" :style="iconStyleData">
 		<div v-if="nodeIconData !== null" class="icon">
 			<img v-if="nodeIconData.type === 'file'" :src="nodeIconData.fileBuffer || nodeIconData.path" style="max-width: 100%; max-height: 100%;" />
-			<font-awesome-icon v-else :icon="nodeIconData.icon || nodeIconData.path" />
+			<font-awesome-icon v-else :icon="nodeIconData.icon || nodeIconData.path" :style="fontStyleData" />
 		</div>
 		<div v-else class="node-icon-placeholder">
 			{{nodeType !== null ? nodeType.displayName.charAt(0) : '?' }}
@@ -42,6 +42,11 @@ export default Vue.extend({
 				'font-size': this.size + 'px',
 				'line-height': this.size + 'px',
 				'border-radius': this.circle ? '50%': '4px',
+			};
+		},
+		fontStyleData (): object {
+			return {
+				'max-width': this.size + 'px',
 			};
 		},
 		isSvgIcon (): boolean {
