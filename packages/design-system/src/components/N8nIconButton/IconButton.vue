@@ -2,11 +2,10 @@
 	<component :is="$options.components.N8nButton"
 		:type="props.type"
 		:disabled="props.disabled"
-		:size="props.size === 'xlarge' ? 'large' : props.size"
+		:size="props.size"
 		:loading="props.loading"
 		:title="props.title"
 		:icon="props.icon"
-		:iconSize="$options.iconSizeMap[props.size] || props.size"
 		:theme="props.theme"
 		@click="(e) => listeners.click && listeners.click(e)"
 		circle
@@ -15,11 +14,6 @@
 
 <script lang="ts">
 import N8nButton from '../N8nButton';
-
-const iconSizeMap = {
-	large: 'medium',
-	xlarge: 'large',
-};
 
 export default {
 	name: 'n8n-icon-button',
@@ -36,8 +30,6 @@ export default {
 		size: {
 			type: String,
 			default: 'medium',
-			validator: (value: string): boolean =>
-				['small', 'medium', 'large', 'xlarge'].indexOf(value) !== -1,
 		},
 		loading: {
 			type: Boolean,
@@ -55,6 +47,5 @@ export default {
 			type: String,
 		},
 	},
-	iconSizeMap,
 };
 </script>
