@@ -29,7 +29,6 @@ import {
 import * as moment from 'moment-timezone';
 
 import { validate as uuidValidate } from 'uuid';
-import { pageFields } from './PageDescription';
 
 const version = '2021-08-16';
 
@@ -58,12 +57,10 @@ export async function notionApiRequest(this: IHookFunctions | IExecuteFunctions 
 			delete options.body;
 		}
 
-		console.log(JSON.stringify(options, undefined, 2));
-
 		return this.helpers.request!(options);
 
 	} catch (error) {
-		//throw new NodeApiError(this.getNode(), error);
+		throw new NodeApiError(this.getNode(), error);
 	}
 }
 

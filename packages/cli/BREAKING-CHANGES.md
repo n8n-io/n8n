@@ -1,6 +1,27 @@
 # n8n Breaking Changes
 
 This list shows all the versions which include breaking changes and how to upgrade.
+## 0.140.0
+
+### What changed?
+
+Previously, empty properties of date, email, number, and rollup types were omitted from the page response. Now, these empty properties are returned with null values.
+
+### When is action necessary?
+
+1 - If you are using the Notion node with any of the operations below and you are working with property types: date, email, number or rollup.
+
+| Resource | Operation |
+|--|--|
+| Database Page | Create |
+| Database Page | Update |
+| Database Page | Get All |
+
+2 - If you are using the Notion Trigger node and you are working with property types: date, email, number or rollup.
+
+### How to upgrade:
+
+Run a test to make sure the new returned values do not break the logic of your workflow.
 
 ## 0.139.0
 
