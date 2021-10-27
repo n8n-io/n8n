@@ -1,5 +1,6 @@
 <template>
-	<div :class="{'node-wrapper': true, 'has-subtitles': !!nodeSubtitle}" :style="nodePosition">
+	<div class="node-wrapper" :style="nodePosition">
+		<div :class="{'selected': true, 'has-subtitles': !!nodeSubtitle}" v-show="isSelected"></div>
 		<div class="node-default" :ref="data.name" :style="nodeStyle" :class="nodeClass" @dblclick="setNodeActive" @click.left="mouseLeftClick" v-touch:start="touchStart" v-touch:end="touchEnd">
 			<div v-if="hasIssues" class="node-info-icon node-issues">
 				<n8n-tooltip placement="top" >
@@ -74,6 +75,7 @@ import mixins from 'vue-typed-mixins';
 
 import { get } from 'lodash';
 import { getStyleTokenValue } from './helpers';
+import { INodeUi } from '@/Interface';
 
 export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).extend({
 	name: 'Node',
@@ -182,6 +184,9 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 			};
 
 			return returnStyles;
+		},
+		isSelected (): boolean {
+			return this.$store.getters.getSelectedNodes.find((node: INodeUi) => node.name === this.data.name);
 		},
 	},
 	watch: {
@@ -414,15 +419,21 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 }
 
 .selected {
+	content: ' ';
+	display: block;
 	position: absolute;
 	top: -8px;
 	left: -8px;
 	background-color: var(--color-foreground-base);
-	height: 116px;
+	height: 140px;
 	width: 116px;
 	border-radius: var(--border-radius-xlarge);
 	opacity: 0.8;
 	z-index: 0;
+
+	&.has-subtitles {
+		height: 166px;
+	}
 }
 
 </style>
@@ -470,26 +481,6 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 
 .jtk-endpoint.jtk-drag-active {
 	z-index: 9;
-}
-
-.jtk-drag-selected {
-	&.has-subtitles:before {
-		height: 166px;
-	}
-
-	&:before {
-		content: ' ';
-		display: block;
-		position: absolute;
-		top: -8px;
-		left: -8px;
-		background-color: var(--color-foreground-base);
-		height: 140px;
-		width: 116px;
-		border-radius: var(--border-radius-xlarge);
-		opacity: 0.8;
-		z-index: 0;
-	}
 }
 
 .disabled .node-icon img {
