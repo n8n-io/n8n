@@ -17,31 +17,31 @@
 
 		<div class="header">
 			<div class="title-text">
-				<strong v-if="dataCount < maxDisplayItems">
+				<n8n-text :bold="true" v-if="dataCount < maxDisplayItems">
 					Items: {{ dataCount }}
-				</strong>
+				</n8n-text>
 				<div v-else class="title-text">
-					<strong>Items:</strong>
+					<n8n-text :bold="true">Items:</n8n-text>
 					<span class="opts">
 						<n8n-select size="mini" v-model="maxDisplayItems" @click.stop>
 							<n8n-option v-for="option in maxDisplayItemsOptions" :label="option" :value="option" :key="option" />
 						</n8n-select>
 					</span>/
-					<strong>{{ dataCount }}</strong>
+					<n8n-text :bold="true">{{ dataCount }}</n8n-text>
 				</div>
 				<n8n-tooltip
 					v-if="runMetadata"
 					placement="right"
 				>
 					<div slot="content">
-						<strong>Start Time:</strong> {{runMetadata.startTime}}<br/>
-						<strong>Execution Time:</strong> {{runMetadata.executionTime}} ms
+						<n8n-text :bold="true" size="small">Start Time:</n8n-text> {{runMetadata.startTime}}<br/>
+						<n8n-text :bold="true" size="small">Execution Time:</n8n-text> {{runMetadata.executionTime}} ms
 					</div>
 					<font-awesome-icon icon="info-circle" class="primary-color" />
 				</n8n-tooltip>
-				<span v-if="maxOutputIndex > 0">
+				<n8n-text :bold="true" v-if="maxOutputIndex > 0">
 					| Output:
-				</span>
+				</n8n-text>
 				<span class="opts" v-if="maxOutputIndex > 0" >
 					<n8n-select size="mini" v-model="outputIndex" @click.stop>
 						<n8n-option v-for="option in (maxOutputIndex + 1)" :label="getOutputName(option-1)" :value="option -1" :key="option">
@@ -49,9 +49,9 @@
 					</n8n-select>
 				</span>
 
-				<span v-if="maxRunIndex > 0">
+				<n8n-text :bold="true" v-if="maxRunIndex > 0">
 					| Data of Execution:
-				</span>
+				</n8n-text>
 				<span class="opts">
 					<n8n-select v-if="maxRunIndex > 0" size="mini" v-model="runIndex" @click.stop>
 						<n8n-option v-for="option in (maxRunIndex + 1)" :label="option + '/' + (maxRunIndex+1)" :value="option-1" :key="option">
@@ -186,7 +186,7 @@
 			</span>
 			<div v-else class="message">
 				<div>
-					<strong>No data</strong><br />
+					<n8n-text :bold="true">No data</n8n-text ><br />
 					<br />
 					Data returned by this node will display here<br />
 				</div>
@@ -659,6 +659,7 @@ export default mixins(
 		overflow-y: auto;
 		line-height: 1.5;
 		word-break: normal;
+		font-size: var(--font-size-s);
 
 		.binary-data-row {
 			display: inline-flex;

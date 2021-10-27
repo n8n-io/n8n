@@ -3,7 +3,7 @@
 		:visible="!!node"
 		:before-close="close"
 		:custom-class="`classic data-display-wrapper`"
-		width="80%"
+		width="85%"
 		append-to-body
 		@opened="showDocumentHelp = true"
 	>
