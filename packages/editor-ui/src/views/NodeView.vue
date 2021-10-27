@@ -250,6 +250,7 @@ const getFlowChartType = (connection: Connection) => {
 		gap: 5,
 		alwaysRespectStubs: _ALWAYS_RESPECT_STUB,
 		yOffset: NODE_SIZE + 5,
+		loopbackMinimum: 150,
 	}];
 };
 

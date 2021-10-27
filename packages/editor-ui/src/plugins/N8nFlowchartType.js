@@ -16,6 +16,7 @@
 			yOffset = params.yOffset || 0,
 			lastx = null, lasty = null, lastOrientation,
 			cornerRadius = params.cornerRadius != null ? params.cornerRadius : 0,
+			loopbackMinimum = params.loopbackMinimum || 100,
 
 			// TODO now common between this and AbstractBezierEditor; refactor into superclass?
 			loopbackRadius = params.loopbackRadius || 25,
@@ -199,8 +200,13 @@
 			const direction = diffY > 0 ? 1 : -1;
 
 			var midx = paintInfo.startStubX + ((paintInfo.endStubX - paintInfo.startStubX) * midpoint),
-				// midy = paintInfo.startStubY + ((paintInfo.endStubY - paintInfo.startStubY) * midpoint),
+				midy;
+
+			if (diffX < (-1 * loopbackMinimum)) {
 				midy = paintInfo.startStubY - (diffX < 0 ? direction * yOffset : 0);
+			} else {
+				midy = paintInfo.startStubY + ((paintInfo.endStubY - paintInfo.startStubY) * midpoint);
+			}
 
 			if (diffX < 0 && diffX > (-1 * yOffset) && Math.abs(diffY) < yOffset) {
 				midy = 0;
