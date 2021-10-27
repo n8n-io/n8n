@@ -450,7 +450,7 @@ export const fileFields = [
 
 		},
 		placeholder: '',
-		description: 'Name of the binary property which contains<br />the data for the file to be uploaded.',
+		description: 'Name of the binary property which contains the data for the file to be uploaded.',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -762,7 +762,7 @@ export const fileFields = [
 				],
 			},
 		},
-		description: 'Name of the binary property to which to<br />write the data of the read file.',
+		description: 'Name of the binary property to which to write the data of the read file.',
 	},
 /* -------------------------------------------------------------------------- */
 /*                                file:delete                                 */

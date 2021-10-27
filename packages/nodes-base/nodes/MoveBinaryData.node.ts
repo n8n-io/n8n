@@ -93,7 +93,7 @@ export class MoveBinaryData implements INodeType {
 					},
 				},
 				default: true,
-				description: 'If all JSON data should be replaced with the data retrieved<br />from binary key. Else the data will be written to a single key.',
+				description: 'If all JSON data should be replaced with the data retrieved from binary key. Else the data will be written to a single key.',
 			},
 			{
 				displayName: 'Source Key',
@@ -128,7 +128,7 @@ export class MoveBinaryData implements INodeType {
 				default: 'data',
 				required: true,
 				placeholder: '',
-				description: 'The name the JSON key to copy data to. It is also possible<br />to define deep keys by using dot-notation like for example:<br />"level1.level2.newKey"',
+				description: 'The name the JSON key to copy data to. It is also possible to define deep keys by using dot-notation like for example:<br />"level1.level2.newKey"',
 			},
 
 			// ----------------------------------
@@ -165,7 +165,7 @@ export class MoveBinaryData implements INodeType {
 				default: 'data',
 				required: true,
 				placeholder: 'data',
-				description: 'The name of the JSON key to get data from. It is also possible<br />to define deep keys by using dot-notation like for example:<br />"level1.level2.currentKey"',
+				description: 'The name of the JSON key to get data from. It is also possible to define deep keys by using dot-notation like for example:<br />"level1.level2.currentKey"',
 			},
 			{
 				displayName: 'Destination Key',
@@ -181,7 +181,7 @@ export class MoveBinaryData implements INodeType {
 				default: 'data',
 				required: true,
 				placeholder: 'data',
-				description: 'The name the binary key to copy data to. It is also possible<br />to define deep keys by using dot-notation like for example:<br />"level1.level2.newKey"',
+				description: 'The name the binary key to copy data to. It is also possible to define deep keys by using dot-notation like for example:<br />"level1.level2.newKey"',
 			},
 
 			{
