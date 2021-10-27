@@ -952,28 +952,6 @@ export default mixins(
 				this.nodeSelectedByName(lastSelectedNode.name);
 			},
 
-			// getJSPlumbConnection (sourceNodeName: string, targetNodeName: string, sourceOutputIndex: number, targetInputIndex: number): Connection | undefined {
-			// 	const sourceIndex = this.getNodeIndex(sourceNodeName);
-			// 	const sourceId = `${NODE_NAME_PREFIX}${sourceIndex}`;
-
-			// 	const targetIndex = this.getNodeIndex(targetNodeName);
-			// 	const targetId = `${NODE_NAME_PREFIX}${targetIndex}`;
-
-			// 	const sourceEndpoint = `${sourceIndex}-output${sourceOutputIndex}`;
-			// 	const targetEndpoint = `${targetIndex}-input${targetInputIndex}`;
-
-			// 	// @ts-ignore
-			// 	const connections = this.instance.getConnections({
-			// 		source: sourceId,
-			// 		target: targetId,
-			// 	}) as Connection[];
-
-			// 	return connections.find((connection: Connection) => {
-			// 		const uuids = connection.getUuids();
-			// 		return uuids[0] === sourceEndpoint && uuids[1] === targetEndpoint;
-			// 	});
-			// },
-
 			pushDownstreamNodes (sourceNodeName: string, margin: number) {
 				const workflow = this.getWorkflow();
 				for (const nodeName of workflow.getChildNodes(sourceNodeName)) {
@@ -1922,6 +1900,27 @@ export default mixins(
 
 				this.$telemetry.track('User duplicated node', { node_type: node.type, workflow_id: this.$store.getters.workflowId });
 			},
+			getJSPlumbConnection (sourceNodeName: string, sourceOutputIndex: number, targetNodeName: string, targetInputIndex: number): Connection | undefined {
+				const sourceIndex = this.getNodeIndex(sourceNodeName);
+				const sourceId = `${NODE_NAME_PREFIX}${sourceIndex}`;
+
+				const targetIndex = this.getNodeIndex(targetNodeName);
+				const targetId = `${NODE_NAME_PREFIX}${targetIndex}`;
+
+				const sourceEndpoint = `${sourceIndex}-output${sourceOutputIndex}`;
+				const targetEndpoint = `${targetIndex}-input${targetInputIndex}`;
+
+				// @ts-ignore
+				const connections = this.instance.getConnections({
+					source: sourceId,
+					target: targetId,
+				}) as Connection[];
+
+				return connections.find((connection: Connection) => {
+					const uuids = connection.getUuids();
+					return uuids[0] === sourceEndpoint && uuids[1] === targetEndpoint;
+				});
+			},
 			onNodeMoved (node: INodeUi) {
 				const name = `${NODE_NAME_PREFIX}${this.$store.getters.getNodeIndex(node.name)}`;
 				// @ts-ignore
@@ -1940,7 +1939,8 @@ export default mixins(
 				});
 			},
 			onNodeRun ({name, data}: {name: string, data: ITaskData[] | null}) {
-				const sourceIndex = this.$store.getters.getNodeIndex(name);
+				const sourceNodeName = name;
+				const sourceIndex = this.$store.getters.getNodeIndex(sourceNodeName);
 				const sourceId = `${NODE_NAME_PREFIX}${sourceIndex}`;
 
 				if (data === null || data.length === 0) {
@@ -1957,12 +1957,12 @@ export default mixins(
 					return;
 				}
 
-				const nodeConnections = (this.$store.getters.outgoingConnectionsByNodeName(name) as INodeConnections).main;
+				const nodeConnections = (this.$store.getters.outgoingConnectionsByNodeName(sourceNodeName) as INodeConnections).main;
 				if (!nodeConnections) {
 					return;
 				}
 
-				const outputMap: {[sourceEndpoint: string]: {[targetId: string]: {[targetEndpoint: string]: {total: number, iterations: number}}}} = {};
+				const outputMap: {[sourceOutputIndex: string]: {[targetNodeName: string]: {[targetInputIndex: string]: {total: number, iterations: number}}}} = {};
 
 				data.forEach((run: ITaskData) => {
 					if (!run.data || !run.data.main) {
@@ -1976,53 +1976,41 @@ export default mixins(
 
 						nodeConnections[i]
 							.map((conn: IConnection) => {
-								const targetIndex = this.getNodeIndex(conn.node);
-								const targetId = `${NODE_NAME_PREFIX}${targetIndex}`;
+								const sourceOutputIndex = i;
+								const targetNodeName = conn.node;
+								const targetInputIndex = conn.index;
 
-								const sourceEndpoint = `${sourceIndex}-output${i}`;
-								const targetEndpoint = `${targetIndex}-input${conn.index}`;
-
-								if (!outputMap[sourceEndpoint]) {
-									outputMap[sourceEndpoint] = {};
+								if (!outputMap[sourceOutputIndex]) {
+									outputMap[sourceOutputIndex] = {};
 								}
 
-								if (!outputMap[sourceEndpoint][targetId]) {
-									outputMap[sourceEndpoint][targetId] = {};
+								if (!outputMap[sourceOutputIndex][targetNodeName]) {
+									outputMap[sourceOutputIndex][targetNodeName] = {};
 								}
 
-								if (!outputMap[sourceEndpoint][targetId][targetEndpoint]) {
-									outputMap[sourceEndpoint][targetId][targetEndpoint] = {
+								if (!outputMap[sourceOutputIndex][targetNodeName][targetInputIndex]) {
+									outputMap[sourceOutputIndex][targetNodeName][targetInputIndex] = {
 										total: 0,
 										iterations: 0,
 									};
 								}
 
-								outputMap[sourceEndpoint][targetId][targetEndpoint].total += output ? output.length : 0;
-								outputMap[sourceEndpoint][targetId][targetEndpoint].iterations += output ? 1 : 0;
+								outputMap[sourceOutputIndex][targetNodeName][targetInputIndex].total += output ? output.length : 0;
+								outputMap[sourceOutputIndex][targetNodeName][targetInputIndex].iterations += output ? 1 : 0;
 							});
 					});
 				});
 
-				Object.keys(outputMap).forEach((sourceEndpoint: string) => {
-					Object.keys(outputMap[sourceEndpoint]).forEach((targetId: string) => {
-						Object.keys(outputMap[sourceEndpoint][targetId]).forEach((targetEndpoint: string) => {
-							// @ts-ignore
-							const connections = this.instance.getConnections({
-								source: sourceId,
-								target: targetId,
-							}) as Connection[];
-
-							const conn = connections.find((connection: Connection) => {
-								// @ts-ignore
-								const uuids = connection.getUuids();
-								return uuids[0] === sourceEndpoint && uuids[1] === targetEndpoint;
-							});
+				Object.keys(outputMap).forEach((sourceOutputIndex: string) => {
+					Object.keys(outputMap[sourceOutputIndex]).forEach((targetNodeName: string) => {
+						Object.keys(outputMap[sourceOutputIndex][targetNodeName]).forEach((targetInputIndex: string) => {
+							const conn = this.getJSPlumbConnection(sourceNodeName, parseInt(sourceOutputIndex, 10), targetNodeName, parseInt(targetInputIndex, 10));
 
 							if (!conn) {
 								return;
 							}
 
-							const output = outputMap[sourceEndpoint][targetId][targetEndpoint];
+							const output = outputMap[sourceOutputIndex][targetNodeName][targetInputIndex];
 							if (!output || !output.total) {
 								conn.setPaintStyle(CONNECTOR_PAINT_STYLE_DEFAULT);
 								conn.removeOverlay(OVERLAY_RUN_ITEMS_ID);
