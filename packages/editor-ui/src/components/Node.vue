@@ -7,9 +7,12 @@
 					<font-awesome-icon icon="exclamation-triangle" />
 				</n8n-tooltip>
 			</div>
-			<el-badge v-else :hidden="workflowDataItems === 0" class="node-info-icon data-count" :value="workflowDataItems"></el-badge>
+			<span v-else-if="workflowDataItems && !data.disabled" class="node-info-icon data-count">
+				<font-awesome-icon icon="check" />
+				<span v-if="workflowDataItems > 1">{{ workflowDataItems }}</span>
+			</span>
 
-			<div v-if="waiting" class="node-info-icon waiting">
+			<div v-if="waiting" class="waiting">
 				<n8n-tooltip placement="top">
 					<div slot="content" v-html="waiting"></div>
 					<font-awesome-icon icon="clock" />
@@ -37,7 +40,7 @@
 				</div>
 			</div>
 
-			<NodeIcon class="node-icon" :nodeType="nodeType" size="60" :circle="true" :shrink="true" :disabled="this.data.disabled"/>
+			<NodeIcon class="node-icon" :nodeType="nodeType" :size="40" :shrink="false" :disabled="this.data.disabled"/>
 		</div>
 		<div class="node-description">
 			<div class="node-name" :title="data.name">
@@ -70,6 +73,7 @@ import NodeIcon from '@/components/NodeIcon.vue';
 import mixins from 'vue-typed-mixins';
 
 import { get } from 'lodash';
+import { getStyleTokenValue } from './helpers';
 
 export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).extend({
 	name: 'Node',
@@ -157,6 +161,25 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 		},
 		workflowRunning (): boolean {
 			return this.$store.getters.isActionActive('workflowRunning');
+		},
+		nodeStyle (): object {
+			let borderColor = getStyleTokenValue('--color-foreground-xdark');
+
+			if (this.hasIssues && this.workflowDataItems) {
+				// todo
+				borderColor = getStyleTokenValue('--color-danger');
+			}
+			else if (this.workflowDataItems && !this.isExecuting) {
+				borderColor = getStyleTokenValue('--color-success');
+			}
+
+			const returnStyles: {
+				[key: string]: string;
+			} = {
+				'border-color': borderColor,
+			};
+
+			return returnStyles;
 		},
 	},
 	watch: {
@@ -261,12 +284,12 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 		width: 100%;
 		height: 100%;
 		background-color: #fff;
-		border-radius: 25px;
+		border-radius: var(--border-radius-large);
 		text-align: center;
 		z-index: 24;
 		cursor: pointer;
 		color: #444;
-		border: 1px dashed grey;
+		border: 2px solid var(--color-foreground-xdark);
 
 		&.has-data {
 			border-style: solid;
@@ -315,39 +338,35 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 
 		.node-icon {
 			position: absolute;
-			top: calc(50% - 30px);
-			left: calc(50% - 30px);
+			top: calc(50% - 20px);
+			left: calc(50% - 20px);
 		}
 
 		.node-info-icon {
 			position: absolute;
-			top: -14px;
-			right: 12px;
-			z-index: 11;
+			bottom: 8px;
+			right: 8px;
 
 			&.data-count {
 				font-weight: 600;
-				top: -12px;
+				color: var(--color-success);
+
+				* {
+					margin-left: 2px;
+				}
 			}
 
-			&.waiting {
-				left: 10px;
-				top: -12px;
+			&.node-issues {
+				color: var(--color-danger);
 			}
-		}
-
-		.node-issues {
-			width: 25px;
-			height: 25px;
-			font-size: 20px;
-			color: #ff0000;
 		}
 
 		.waiting {
-			width: 25px;
-			height: 25px;
-			font-size: 20px;
-			color: #5e5efa;
+			color: var(--color-secondary);
+
+			position: absolute;
+			left: 8px;
+			bottom: 8px;
 		}
 
 		.node-options {

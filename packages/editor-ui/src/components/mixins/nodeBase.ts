@@ -44,15 +44,6 @@ export const nodeBase = mixins(
 
 			return returnStyles;
 		},
-		nodeStyle (): object {
-			const returnStyles: {
-				[key: string]: string;
-			} = {
-				'border-color': this.data.color as string,
-			};
-
-			return returnStyles;
-		},
 	},
 	props: [
 		'name',
