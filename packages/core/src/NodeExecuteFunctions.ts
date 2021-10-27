@@ -86,6 +86,12 @@ import {
 axios.defaults.timeout = 300000;
 // Prevent axios from adding x-form-www-urlencoded headers by default
 axios.defaults.headers.post = {};
+axios.defaults.paramsSerializer = (params) => {
+	if (params instanceof URLSearchParams) {
+		return params.toString();
+	}
+	return stringify(params, { arrayFormat: 'indices' });
+};
 
 const requestPromiseWithDefaults = requestPromise.defaults({
 	timeout: 300000, // 5 minutes
@@ -357,6 +363,7 @@ async function parseRequestObject(requestObject: IDataObject) {
 	if (
 		requestObject.json !== false &&
 		axiosConfig.data !== undefined &&
+		axiosConfig.data !== '' &&
 		!(axiosConfig.data instanceof Buffer) &&
 		!allHeaders.some((headerKey) => headerKey.toLowerCase() === 'content-type')
 	) {
@@ -405,6 +412,11 @@ async function proxyRequestToAxios(
 	}
 
 	axiosConfig = Object.assign(axiosConfig, await parseRequestObject(configObject));
+
+	Logger.debug('Proxying request to axios', {
+		originalConfig: configObject,
+		parsedConfig: axiosConfig,
+	});
 
 	return new Promise((resolve, reject) => {
 		axios(axiosConfig)
