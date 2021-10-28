@@ -200,7 +200,7 @@ export const nodeBase = mixins(
 						['Label',
 							{
 								id: 'input-name-label',
-								location: [-2, 0.5],
+								location: [-3, 0.5],
 								label: nodeTypeData.inputNames[index],
 								cssClass: 'node-input-endpoint-label',
 								visible: true,

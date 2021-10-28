@@ -1601,7 +1601,7 @@ export default mixins(
 
 					const inputNameOverlay = info.targetEndpoint.getOverlay('input-name-label');
 					if (inputNameOverlay) {
-						inputNameOverlay.setLocation([-4, .5]);
+						inputNameOverlay.setLocation([-4.5, .5]);
 					}
 
 					this.$store.commit('addConnection', {
