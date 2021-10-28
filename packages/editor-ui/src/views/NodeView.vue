@@ -1673,7 +1673,8 @@ export default mixins(
 				this.instance.bind('connectionDetached', (info) => {
 					const inputNameOverlay = info.targetEndpoint.getOverlay('input-name-label');
 					if (inputNameOverlay) {
-						inputNameOverlay.setLocation([-2, .5]);
+						// todo
+						inputNameOverlay.setLocation([-3, .5]);
 					}
 
 					updateConnectionDetach(info.sourceEndpoint, info.targetEndpoint, 1);
