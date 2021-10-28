@@ -1,12 +1,12 @@
 import {
-	AllEntities,
-	Entity,
-	PropertiesOf,
+  AllEntities,
+  Entity,
+  PropertiesOf,
 } from 'n8n-workflow';
 
 type BambooHRMap = {
   employees: 'create' | 'get' | 'getDirectory' | 'update';
-  employeeFiles: 'create';
+  employeeFiles: 'create' | 'del' | 'get' | 'getAll' | 'update';
 };
 
 export type BambooHR = AllEntities<BambooHRMap>;
@@ -19,10 +19,10 @@ export type EmployeeFilesProperties = PropertiesOf<BambooHREmployeeFiles>;
 
 
 export interface IAttachment {
-	fields: {
-		item?: object[];
-	};
-	actions: {
-		item?: object[];
-	};
+  fields: {
+    item?: object[];
+  };
+  actions: {
+    item?: object[];
+  };
 }

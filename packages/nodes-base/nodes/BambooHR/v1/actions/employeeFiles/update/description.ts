@@ -1,8 +1,8 @@
 import {
-  EmployeesProperties,
+  EmployeeFilesProperties,
 } from '../../Interfaces';
 
-export const employeesCreateDescription: EmployeesProperties = [
+export const employeeFilesUpdateDescription: EmployeeFilesProperties = [
   {
     displayName: 'Company Name',
     name: 'companyName',
@@ -11,10 +11,10 @@ export const employeesCreateDescription: EmployeesProperties = [
     displayOptions: {
       show: {
         operation: [
-          'create'
+          'update'
         ],
         resource: [
-          'employees',
+          'employeeFiles',
         ],
       },
     },
@@ -22,39 +22,93 @@ export const employeesCreateDescription: EmployeesProperties = [
     description: 'Company name',
   },
   {
-    displayName: 'First Name',
-    name: 'firstName',
+    displayName: 'Id',
+    name: 'id',
     type: 'string',
     required: true,
     displayOptions: {
       show: {
         operation: [
-          'create'
+          'update'
         ],
         resource: [
-          'employees',
+          'employeeFiles',
         ],
       },
     },
     default: '',
-    description: 'First name of the employee',
+    description: 'Id of the employee',
   },
   {
-    displayName: 'Last Name',
-    name: 'lastName',
+    displayName: 'File Id',
+    name: 'fileId',
     type: 'string',
     required: true,
     displayOptions: {
       show: {
         operation: [
-          'create'
+          'update'
         ],
         resource: [
-          'employees',
+          'employeeFiles',
         ],
       },
     },
     default: '',
-    description: 'Last name of the employee',
+    description: 'ID of the employee file',
+  },
+  {
+    displayName: 'Name',
+    name: 'name',
+    type: 'string',
+    required: false,
+    displayOptions: {
+      show: {
+        operation: [
+          'update'
+        ],
+        resource: [
+          'employeeFiles',
+        ],
+      },
+    },
+    default: '',
+    description: 'New name of the category',
+  },
+  {
+    displayName: 'Category ID',
+    name: 'categoryId',
+    type: 'string',
+    required: false,
+    displayOptions: {
+      show: {
+        operation: [
+          'update'
+        ],
+        resource: [
+          'employeeFiles',
+        ],
+      },
+    },
+    default: '',
+    description: 'Move the file to a different category',
+  },
+  {
+    displayName: 'Share with employee',
+    name: 'shareWithEmployee',
+    type: 'string',
+    required: false,
+    displayOptions: {
+      show: {
+        operation: [
+          'update'
+        ],
+        resource: [
+          'employeeFiles',
+        ],
+      },
+    },
+    default: '',
+    description: 'Update whether this file is shared or not',
   },
 ];

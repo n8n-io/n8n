@@ -1,5 +1,5 @@
-import { 
-	INodeTypeDescription,
+import {
+  INodeTypeDescription,
 } from 'n8n-workflow';
 import * as employees from './employees';
 import * as employeeFiles from './employeeFiles';
@@ -24,25 +24,25 @@ export const versionDescription: INodeTypeDescription = {
       required: true,
     },
   ],
-	properties: [
-		{
-			displayName: 'Resource',
-			name: 'resource',
-			type: 'options',
-			options: [
-				{
+  properties: [
+    {
+      displayName: 'Resource',
+      name: 'resource',
+      type: 'options',
+      options: [
+        {
           name: 'Employees',
           value: 'employees',
-				},
+        },
         {
           name: 'Employee Files',
           value: 'employeeFiles',
         },
-			],
-			default: 'employees',
-			description: 'The resource to operate on',
-		},
+      ],
+      default: 'employees',
+      description: 'The resource to operate on',
+    },
     ...employees.descriptions,
     ...employeeFiles.descriptions
-	],
+  ],
 };

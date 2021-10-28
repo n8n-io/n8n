@@ -21,7 +21,6 @@ export const employeeFilesCreateDescription: EmployeeFilesProperties = [
     default: '',
     description: 'Company name',
   },
-  
   {
     displayName: 'Category Name',
     name: 'categoryName',

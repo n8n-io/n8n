@@ -1,7 +1,7 @@
-import { create as execute } from './execute';
-import { employeesCreateDescription as description } from './description';
+import { getAll as execute } from './execute';
+import { employeeFilesGetAllDescription as description } from './description';
 
 export {
-	description,
-	execute,
+  description,
+  execute,
 };

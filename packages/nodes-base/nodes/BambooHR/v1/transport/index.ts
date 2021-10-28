@@ -1,13 +1,13 @@
 import {
-	IExecuteFunctions,
-	IHookFunctions,
-	ILoadOptionsFunctions,
+  IExecuteFunctions,
+  IHookFunctions,
+  ILoadOptionsFunctions,
 } from 'n8n-core';
 
 import {
-	IDataObject,
-	NodeApiError,
-	NodeOperationError,
+  IDataObject,
+  NodeApiError,
+  NodeOperationError,
 } from 'n8n-workflow';
 
 import {
@@ -18,17 +18,17 @@ import {
  * Make an API request to Mattermost
  */
 export async function apiRequest(
-	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
-	method: 'GET' | 'POST' | 'PUT' | 'DELETE' | 'HEAD',
-	uri: string,
+  this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
+  method: 'GET' | 'POST' | 'PUT' | 'DELETE' | 'HEAD',
+  uri: string,
   body: string[] | IDataObject = {},
   option: IDataObject = {}
 ) {
   const credentials = await this.getCredentials('bambooHRApi');
 
-	if (!credentials) {
-		throw new NodeOperationError(this.getNode(), 'No credentials returned!');
-	}
+  if (!credentials) {
+    throw new NodeOperationError(this.getNode(), 'No credentials returned!');
+  }
 
   let options: OptionsWithUri = {
     headers: {

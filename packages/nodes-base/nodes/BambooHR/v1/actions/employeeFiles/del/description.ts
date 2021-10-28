@@ -1,8 +1,8 @@
 import {
-  EmployeesProperties,
+  EmployeeFilesProperties,
 } from '../../Interfaces';
 
-export const employeesCreateDescription: EmployeesProperties = [
+export const employeeFilesDelDescription: EmployeeFilesProperties = [
   {
     displayName: 'Company Name',
     name: 'companyName',
@@ -11,10 +11,10 @@ export const employeesCreateDescription: EmployeesProperties = [
     displayOptions: {
       show: {
         operation: [
-          'create'
+          'del'
         ],
         resource: [
-          'employees',
+          'employeeFiles',
         ],
       },
     },
@@ -22,39 +22,39 @@ export const employeesCreateDescription: EmployeesProperties = [
     description: 'Company name',
   },
   {
-    displayName: 'First Name',
-    name: 'firstName',
+    displayName: 'Id',
+    name: 'id',
     type: 'string',
     required: true,
     displayOptions: {
       show: {
         operation: [
-          'create'
+          'del'
         ],
         resource: [
-          'employees',
+          'employeeFiles',
         ],
       },
     },
     default: '',
-    description: 'First name of the employee',
+    description: 'Id of the employee',
   },
   {
-    displayName: 'Last Name',
-    name: 'lastName',
+    displayName: 'File Id',
+    name: 'fileId',
     type: 'string',
     required: true,
     displayOptions: {
       show: {
         operation: [
-          'create'
+          'del'
         ],
         resource: [
-          'employees',
+          'employeeFiles',
         ],
       },
     },
     default: '',
-    description: 'Last name of the employee',
+    description: 'ID of the employee file',
   },
 ];

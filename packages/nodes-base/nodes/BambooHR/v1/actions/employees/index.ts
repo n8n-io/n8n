@@ -6,7 +6,7 @@ import * as update from "./update";
 import { INodeProperties } from 'n8n-workflow';
 
 export {
-	create,
+  create,
   get,
   getDirectory,
   update
@@ -14,23 +14,23 @@ export {
 
 
 export const descriptions = [
-	{
-		displayName: 'Operation',
-		name: 'operation',
-		type: 'options',
-		displayOptions: {
-			show: {
-				resource: [
-					'employees',
-				],
-			},
-		},
-		options: [
-			{
-				name: 'Create',
-				value: 'create',
+  {
+    displayName: 'Operation',
+    name: 'operation',
+    type: 'options',
+    displayOptions: {
+      show: {
+        resource: [
+          'employees',
+        ],
+      },
+    },
+    options: [
+      {
+        name: 'Create',
+        value: 'create',
         description: 'Create an employee',
-			},
+      },
       {
         name: 'Get',
         value: 'get',
@@ -46,11 +46,11 @@ export const descriptions = [
         value: 'update',
         description: 'Update an employee',
       },
-		],
-		default: 'create',
-		description: 'The operation to perform.',
-	},
-	...create.description,
+    ],
+    default: 'create',
+    description: '',
+  },
+  ...create.description,
   ...get.description,
   ...getDirectory.description,
   ...update.description
