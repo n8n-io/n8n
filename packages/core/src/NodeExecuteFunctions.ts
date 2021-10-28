@@ -71,7 +71,7 @@ import { fromBuffer } from 'file-type';
 import { lookup } from 'mime-types';
 
 import axios, { AxiosProxyConfig, AxiosRequestConfig, Method } from 'axios';
-import { URLSearchParams } from 'url';
+import { URL, URLSearchParams } from 'url';
 // eslint-disable-next-line import/no-cycle
 import {
 	BINARY_ENCODING,
@@ -338,7 +338,63 @@ async function parseRequestObject(requestObject: IDataObject) {
 	}
 
 	if (requestObject.proxy !== undefined) {
-		axiosConfig.proxy = requestObject.proxy as AxiosProxyConfig;
+		// try our best to parse the url provided.
+		if (typeof requestObject.proxy === 'string') {
+			try {
+				const url = new URL(requestObject.proxy);
+				axiosConfig.proxy = {
+					host: url.hostname,
+					port: parseInt(url.port, 10),
+					protocol: url.protocol,
+				};
+				if (!url.port) {
+					// Sets port to a default if not informed
+					if (url.protocol === 'http') {
+						axiosConfig.proxy.port = 80;
+					} else if (url.protocol === 'https') {
+						axiosConfig.proxy.port = 443;
+					}
+				}
+				if (url.username || url.password) {
+					axiosConfig.proxy.auth = {
+						username: url.username,
+						password: url.password,
+					};
+				}
+			} catch (error) {
+				// Not a valid URL. We will try to simply parse stuff
+				// such as user:pass@host:port without protocol (we'll assume http)
+				if (requestObject.proxy.includes('@')) {
+					const [userpass, hostport] = requestObject.proxy.split('@');
+					const [username, password] = userpass.split(':');
+					const [hostname, port] = hostport.split(':');
+					axiosConfig.proxy = {
+						host: hostname,
+						port: parseInt(port, 10),
+						protocol: 'http',
+						auth: {
+							username,
+							password,
+						},
+					};
+				} else if (requestObject.proxy.includes(':')) {
+					const [hostname, port] = requestObject.proxy.split(':');
+					axiosConfig.proxy = {
+						host: hostname,
+						port: parseInt(port, 10),
+						protocol: 'http',
+					};
+				} else {
+					axiosConfig.proxy = {
+						host: requestObject.proxy,
+						port: 80,
+						protocol: 'http',
+					};
+				}
+			}
+		} else {
+			axiosConfig.proxy = requestObject.proxy as AxiosProxyConfig;
+		}
 	}
 
 	if (requestObject.encoding === null) {
