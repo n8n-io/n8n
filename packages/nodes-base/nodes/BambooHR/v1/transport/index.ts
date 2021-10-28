@@ -5,7 +5,6 @@ import {
 } from 'n8n-core';
 
 import {
-	GenericValue,
 	IDataObject,
 	NodeApiError,
 	NodeOperationError,

@@ -7,6 +7,7 @@ import {
 } from 'n8n-workflow';
 
 import * as employees from './employees';
+import * as employeeFiles from './employeeFiles';
 import { BambooHR } from './Interfaces';
 
 export async function router(this: IExecuteFunctions): Promise<INodeExecutionData[]> {
@@ -25,7 +26,9 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 		try {
       if (bamboohr.resource === 'employees') {
         operationResult.push(...await employees[bamboohr.operation].execute.call(this, i));
-			} 
+      } else if (bamboohr.resource === 'employeeFiles') {
+        operationResult.push(...await employeeFiles[bamboohr.operation].execute.call(this, i));
+      }
 		} catch (err) {
 			if (this.continueOnFail()) {
 				operationResult.push({json: this.getInputData(i)[0].json, error: err});

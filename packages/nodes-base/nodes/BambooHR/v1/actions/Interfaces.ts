@@ -5,14 +5,17 @@ import {
 } from 'n8n-workflow';
 
 type BambooHRMap = {
-  employees: 'create';
+  employees: 'create' | 'get' | 'getDirectory' | 'update';
+  employeeFiles: 'create';
 };
 
 export type BambooHR = AllEntities<BambooHRMap>;
 
 export type BambooHREmployees = Entity<BambooHRMap, 'employees'>;
+export type BambooHREmployeeFiles = Entity<BambooHRMap, 'employeeFiles'>;
 
 export type EmployeesProperties = PropertiesOf<BambooHREmployees>;
+export type EmployeeFilesProperties = PropertiesOf<BambooHREmployeeFiles>;
 
 
 export interface IAttachment {

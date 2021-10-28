@@ -2,7 +2,7 @@ import {
   EmployeesProperties,
 } from '../../Interfaces';
 
-export const employeesCreateDescription: EmployeesProperties = [
+export const employeesUpdateDescription: EmployeesProperties = [
   {
     displayName: 'Company Name',
     name: 'companyName',
@@ -11,7 +11,7 @@ export const employeesCreateDescription: EmployeesProperties = [
     displayOptions: {
       show: {
         operation: [
-          'create'
+          'update'
         ],
         resource: [
           'employees',
@@ -22,6 +22,24 @@ export const employeesCreateDescription: EmployeesProperties = [
     description: 'Company name',
   },
   {
+    displayName: 'Id',
+    name: 'id',
+    type: 'string',
+    required: true,
+    displayOptions: {
+      show: {
+        operation: [
+          'update',
+        ],
+        resource: [
+          'employees',
+        ],
+      },
+    },
+    default: '',
+    description: 'Id of the employee',
+  },
+  {
     displayName: 'First Name',
     name: 'firstName',
     type: 'string',
@@ -29,7 +47,7 @@ export const employeesCreateDescription: EmployeesProperties = [
     displayOptions: {
       show: {
         operation: [
-          'create'
+          'update'
         ],
         resource: [
           'employees',
@@ -47,7 +65,7 @@ export const employeesCreateDescription: EmployeesProperties = [
     displayOptions: {
       show: {
         operation: [
-          'create'
+          'update'
         ],
         resource: [
           'employees',

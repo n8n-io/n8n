@@ -2,7 +2,7 @@ import {
   EmployeesProperties,
 } from '../../Interfaces';
 
-export const employeesCreateDescription: EmployeesProperties = [
+export const employeesGetDescription: EmployeesProperties = [
   {
     displayName: 'Company Name',
     name: 'companyName',
@@ -11,7 +11,7 @@ export const employeesCreateDescription: EmployeesProperties = [
     displayOptions: {
       show: {
         operation: [
-          'create'
+          'get'
         ],
         resource: [
           'employees',
@@ -22,14 +22,14 @@ export const employeesCreateDescription: EmployeesProperties = [
     description: 'Company name',
   },
   {
-    displayName: 'First Name',
-    name: 'firstName',
+    displayName: 'Id',
+    name: 'id',
     type: 'string',
     required: true,
     displayOptions: {
       show: {
         operation: [
-          'create'
+          'get',
         ],
         resource: [
           'employees',
@@ -37,24 +37,24 @@ export const employeesCreateDescription: EmployeesProperties = [
       },
     },
     default: '',
-    description: 'First name of the employee',
+    description: 'Id of the employee',
   },
   {
-    displayName: 'Last Name',
-    name: 'lastName',
+    displayName: 'Fields',
+    name: 'fields',
     type: 'string',
-    required: true,
+    required: false,
     displayOptions: {
       show: {
         operation: [
-          'create'
+          'get',
         ],
         resource: [
           'employees',
         ],
       },
     },
-    default: '',
-    description: 'Last name of the employee',
+    default: 'displayName,firstName,lastName,preferredName,jobTitle,workPhone,mobilePhone,workEmail,department,location,division,facebook,linkedIn,twitterFeed,pronouns,workPhoneExtension,supervisor,photoUrl',
+    description: 'Set of fields to get from employee data, separated by coma',
   },
 ];

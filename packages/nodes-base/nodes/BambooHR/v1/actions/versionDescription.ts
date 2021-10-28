@@ -1,30 +1,29 @@
 import { 
-	INodeProperties,
 	INodeTypeDescription,
 } from 'n8n-workflow';
 import * as employees from './employees';
+import * as employeeFiles from './employeeFiles';
 
 
 export const versionDescription: INodeTypeDescription = {
-	displayName: 'Mattermost',
-	name: 'mattermost',
-	icon: 'file:mattermost.svg',
-	group: ['output'],
-	version: 1,
-	subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
-	description: 'Sends data to Mattermost',
-	defaults: {
-		name: 'Mattermost',
-		color: '#000000',
-	},
-	inputs: ['main'],
-	outputs: ['main'],
-	credentials: [
-		{
-			name: 'mattermostApi',
-			required: true,
-		},
-	],
+  displayName: 'BambooHR',
+  name: 'bambooHR',
+  icon: 'file:bambooHR.svg',
+  group: ['transform'],
+  version: 1,
+  description: 'Consume BambooHR API',
+  defaults: {
+    name: 'BambooHR',
+    color: '#73c41d',
+  },
+  inputs: ['main'],
+  outputs: ['main'],
+  credentials: [
+    {
+      name: 'bambooHRApi',
+      required: true,
+    },
+  ],
 	properties: [
 		{
 			displayName: 'Resource',
@@ -34,11 +33,16 @@ export const versionDescription: INodeTypeDescription = {
 				{
           name: 'Employees',
           value: 'employees',
-				}
+				},
+        {
+          name: 'Employee Files',
+          value: 'employeeFiles',
+        },
 			],
-			default: 'message',
+			default: 'employees',
 			description: 'The resource to operate on',
 		},
-    ...employees.descriptions
+    ...employees.descriptions,
+    ...employeeFiles.descriptions
 	],
 };
