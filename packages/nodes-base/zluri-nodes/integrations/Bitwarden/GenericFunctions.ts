@@ -50,7 +50,7 @@ export async function bitwardenApiRequest(
 
 	try {
 		return await this.helpers.request!(options);
-	} catch (error) {
+	} catch (error: any) {
 		throw new NodeApiError(this.getNode(), error);
 	}
 }
@@ -61,7 +61,7 @@ export async function bitwardenApiRequest(
 export async function getAccessToken(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
 ): Promise<any> { // tslint:disable-line:no-any
-		
+
 	const credentials = await getZluriCredentials.call(this as IExecuteFunctions)
 
 	const options: OptionsWithUri = {
@@ -85,7 +85,7 @@ export async function getAccessToken(
 	try {
 		const { access_token } = await this.helpers.request!(options);
 		return access_token;
-	} catch (error) {
+	} catch (error: any) {
 		throw new NodeApiError(this.getNode(), error);
 	}
 }
@@ -117,8 +117,9 @@ export async function handleGetAll(
  * Return the access token URL based on the user's environment.
  */
  async function getTokenUrl(this: IExecuteFunctions | ILoadOptionsFunctions) {
-	const { environment, domain } = await this.getCredentials('bitwardenApi') as IDataObject;
-
+	// const { environment, domain } = await this.getCredentials('bitwardenApi') as IDataObject;
+	const environment = 'cloudHosted';
+	const domain =''
 	return environment === 'cloudHosted'
 		? 'https://identity.bitwarden.com/connect/token'
 		: `${domain}/identity/connect/token`;
@@ -129,8 +130,9 @@ export async function handleGetAll(
  * Return the base API URL based on the user's environment.
  */
 async function getBaseUrl(this: IExecuteFunctions | ILoadOptionsFunctions) {
-	const { environment, domain } = await this.getCredentials('bitwardenApi') as IDataObject;
-
+	// const { environment, domain } = await this.getCredentials('bitwardenApi') as IDataObject;
+	const environment = 'cloudHosted';
+	const domain =''
 	return environment === 'cloudHosted'
 		? 'https://api.bitwarden.com'
 		: `${domain}/api`;

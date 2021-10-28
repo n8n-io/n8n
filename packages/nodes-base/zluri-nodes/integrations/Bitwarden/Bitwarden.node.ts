@@ -407,6 +407,7 @@ export class Bitwarden implements INodeType {
 
 					const endpoint = '/public/members/';
 					responseData = await bitwardenApiRequest.call(this, 'POST', endpoint, {}, body);
+					// console.log(responseData)
 
 				} else if (operation === 'delete') {
 
