@@ -162,16 +162,19 @@ async function parseRequestObject(requestObject: IDataObject) {
 		// and also using formData. Request lib takes precedence for the formData.
 		// We will do the same.
 		// Merge body and form properties.
-		// @ts-ignore
-		axiosConfig.data =
-			typeof requestObject.body === 'string'
-				? requestObject.body
-				: new URLSearchParams(
-						Object.assign(requestObject.body || {}, requestObject.form || {}) as Record<
-							string,
-							string
-						>,
-				  );
+		if (typeof requestObject.body === 'string') {
+			axiosConfig.data = requestObject.body;
+		} else {
+			const allData = Object.assign(requestObject.body || {}, requestObject.form || {}) as Record<
+				string,
+				string
+			>;
+			if (requestObject.useQuerystring === true) {
+				axiosConfig.data = stringify(allData, { arrayFormat: 'repeat' });
+			} else {
+				axiosConfig.data = stringify(allData);
+			}
+		}
 	} else if (contentType && contentType.includes('multipart/form-data') !== false) {
 		if (requestObject.formData !== undefined && requestObject.formData instanceof FormData) {
 			axiosConfig.data = requestObject.formData;
@@ -435,17 +438,17 @@ async function proxyRequestToAxios(
 				}
 			})
 			.catch((error) => {
-				if (configObject.simple === true && error.response) {
-					resolve({
-						body: error.response.data,
-						headers: error.response.headers,
-						statusCode: error.response.status,
-						statusMessage: error.response.statusText,
-					});
-					return;
-				}
 				if (configObject.simple === false && error.response) {
-					resolve(error.response.data);
+					if (configObject.resolveWithFullResponse) {
+						resolve({
+							body: error.response.data,
+							headers: error.response.headers,
+							statusCode: error.response.status,
+							statusMessage: error.response.statusText,
+						});
+					} else {
+						resolve(error.response.data);
+					}
 					return;
 				}
 

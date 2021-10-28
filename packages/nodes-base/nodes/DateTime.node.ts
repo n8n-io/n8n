@@ -496,7 +496,7 @@ export class DateTime implements INodeType {
 						newItem.binary = item.binary;
 					}
 
-					set(newItem, `json.${dataPropertyName}`, newDate);
+					set(newItem, `json.${dataPropertyName}`, newDate.toISOString());
 
 					returnData.push(newItem);
 				}

@@ -415,7 +415,6 @@ export class Workflow {
 					const currentNameEscaped = currentName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
 					parameterValue = parameterValue.replace(
-						// eslint-disable-next-line no-useless-escape
 						new RegExp(`(\\$node(\\.|\\["|\\['))${currentNameEscaped}((\\.|"\\]|'\\]))`, 'g'),
 						`$1${newName}$3`,
 					);

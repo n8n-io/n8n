@@ -133,8 +133,8 @@ export const tableFields = [
 				name: 'keyColumns',
 				type: 'string',
 				default: '',
-				description: `Optional column IDs, URLs, or names (fragile and discouraged)<br />,
-				specifying columns to be used as upsert keys. If more than one separate by ,`,
+				description: `Optional column IDs, URLs, or names (fragile and discouraged),
+				specifying columns to be used as upsert keys. If more than one separate by a comma (,)`,
 			},
 		],
 	},
@@ -202,10 +202,10 @@ export const tableFields = [
 				],
 			},
 		},
-		description: `ID or name of the row. Names are discouraged because<br />
-		they're easily prone to being changed by users. If you're<br />
-		using a name, be sure to URI-encode it. If there are<br />
-		multiple rows with the same value in the identifying column,<br />
+		description: `ID or name of the row. Names are discouraged because
+		they're easily prone to being changed by users. If you're
+		using a name, be sure to URI-encode it. If there are
+		multiple rows with the same value in the identifying column,
 		an arbitrary one will be selected`,
 	},
 	{
@@ -413,7 +413,7 @@ export const tableFields = [
 				type: 'boolean',
 				default: false,
 				description: `Use column names instead of column IDs in the returned output.</br>
-				This is generally discouraged as it is fragile. If columns<br />
+				This is generally discouraged as it is fragile. If columns
 				are renamed, code using original names may throw errors.`,
 			},
 			{
@@ -576,10 +576,10 @@ export const tableFields = [
 				],
 			},
 		},
-		description: `ID or name of the row. Names are discouraged because<br />
-		they're easily prone to being changed by users. If you're<br />
-		using a name, be sure to URI-encode it. If there are multiple<br />
-		rows with the same value in the identifying column, an arbitrary<br />
+		description: `ID or name of the row. Names are discouraged because
+		they're easily prone to being changed by users. If you're
+		using a name, be sure to URI-encode it. If there are multiple
+		rows with the same value in the identifying column, an arbitrary
 		one will be selected`,
 	},
 	{

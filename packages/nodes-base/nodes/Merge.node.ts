@@ -104,7 +104,7 @@ export class Merge implements INodeType {
 					},
 				],
 				default: 'left',
-				description: 'How many items the output will contain<br />if inputs contain different amount of items.',
+				description: 'How many items the output will contain if inputs contain different amount of items.',
 			},
 			{
 				displayName: 'Property Input 1',
