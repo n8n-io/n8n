@@ -13,7 +13,7 @@ import {
   IDataObject, NodeApiError, NodeOperationError,
 } from 'n8n-workflow';
 
-export async function apiRequest(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: string, uri: string, qs: IDataObject = {}, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
+export async function apiRequest(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: string, uri: string, qs: string[] | IDataObject = {}, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
   const credentials = await this.getCredentials('bambooHRApi') as IDataObject;
   if (credentials === undefined) {
     throw new NodeOperationError(this.getNode(), 'No credentials!');
