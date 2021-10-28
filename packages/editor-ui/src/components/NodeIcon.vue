@@ -101,7 +101,7 @@ export default Vue.extend({
 	font-weight: bold;
 	font-size: 20px;
 
-	&.icon {
+	.icon {
 		height: 100%;
 		width: 100%;
 
