@@ -112,6 +112,10 @@ export class Asana implements INodeType {
 						value: 'taskComment',
 					},
 					{
+						name: 'Workspace',
+						value: 'workspace',
+					},
+					{
 						name: 'Task Tag',
 						value: 'taskTag',
 					},
@@ -1272,6 +1276,31 @@ export class Asana implements INodeType {
 				description: 'The project where the task will be removed from',
 			},
 			// ----------------------------------
+			//         workspace
+			// ----------------------------------
+
+			{
+				displayName: 'Operation',
+				name: 'operation',
+				type: 'options',
+				displayOptions: {
+					show: {
+						resource: [
+							'workspace',
+						],
+					},
+				},
+				options: [
+					{
+						name: 'Get',
+						value: 'get',
+						description: 'Fetch all workspaces',
+					},
+				],
+				default: 'get',
+				description: 'Fetch all workspaces',
+			},
+			// ----------------------------------
 			//         taskTag
 			// ----------------------------------
 
@@ -1421,6 +1450,16 @@ export class Asana implements INodeType {
 						value: 'getAll',
 						description: 'Get all users',
 					},
+					{
+						name: 'Add',
+						value: 'add',
+						description: 'Add a user to a workspace',
+					},
+					{
+						name: 'Remove',
+						value: 'remove',
+						description: 'Remove a user from a  workspace',
+					},
 				],
 				default: 'get',
 				description: 'The operation to perform.',
@@ -1472,6 +1511,96 @@ export class Asana implements INodeType {
 					},
 				},
 				description: 'The workspace in which to get users.',
+			},
+
+			// ----------------------------------
+			//         user:add
+			// ----------------------------------
+			{
+				displayName: 'Workspace',
+				name: 'workspace',
+				type: 'options',
+				typeOptions: {
+					loadOptionsMethod: 'getWorkspaces',
+				},
+				options: [],
+				default: '',
+				required: true,
+				displayOptions: {
+					show: {
+						operation: [
+							'add',
+						],
+						resource: [
+							'user',
+						],
+					},
+				},
+				description: 'The workspace in which to create user.',
+			},
+			{
+				displayName: 'UserID',
+				name: 'userID',
+				type: 'string',
+				options: [],
+				default: '',
+				required: true,
+				displayOptions: {
+					show: {
+						operation: [
+							'add',
+						],
+						resource: [
+							'user',
+						],
+					},
+				},
+				description: 'The email ID or Global UserID of the user to be added.',
+			},
+
+			// ----------------------------------
+			//         user:remove
+			// ----------------------------------
+			{
+				displayName: 'Workspace',
+				name: 'workspace',
+				type: 'options',
+				typeOptions: {
+					loadOptionsMethod: 'getWorkspaces',
+				},
+				options: [],
+				default: '',
+				required: true,
+				displayOptions: {
+					show: {
+						operation: [
+							'remove',
+						],
+						resource: [
+							'user',
+						],
+					},
+				},
+				description: 'The workspace in which to remove the user.',
+			},
+			{
+				displayName: 'UserID',
+				name: 'userID',
+				type: 'string',
+				options: [],
+				default: '',
+				required: true,
+				displayOptions: {
+					show: {
+						operation: [
+							'remove',
+						],
+						resource: [
+							'user',
+						],
+					},
+				},
+				description: 'The email ID or Global UserID of the user to be deleted.',
 			},
 
 			// ----------------------------------
@@ -2092,6 +2221,23 @@ export class Asana implements INodeType {
 						responseData = { success: true };
 					}
 				}
+				if (resource === 'workspace') {
+					if (operation === 'get') {
+
+						// ----------------------------------
+						//         workspace::get
+						// ----------------------------------
+
+
+						requestMethod = 'GET';
+
+						endpoint = `/workspaces`;
+
+						responseData = await asanaApiRequest.call(this, requestMethod, endpoint, body, qs);
+
+						responseData = responseData.data;
+					}
+				}
 				if (resource === 'taskTag') {
 					if (operation === 'add') {
 
@@ -2200,6 +2346,41 @@ export class Asana implements INodeType {
 
 						responseData = await asanaApiRequest.call(this, requestMethod, endpoint, body, qs);
 						responseData = responseData.data;
+
+					}
+					if(operation === 'add')
+					{
+						// ----------------------------------
+						//         add
+						// ----------------------------------
+
+						const workspaceId = this.getNodeParameter('workspace', i) as string;
+						body.user = this.getNodeParameter('userID', i) as string;
+
+						requestMethod = 'POST';
+						endpoint = `/workspaces/${workspaceId}/addUser`;
+
+						responseData = await asanaApiRequest.call(this, requestMethod, endpoint, body, qs);
+						responseData = responseData.data;
+
+					}
+					if(operation === 'remove')
+					{
+						{
+						// ----------------------------------
+						//         remove
+						// ----------------------------------
+
+						const workspaceId = this.getNodeParameter('workspace', i) as string;
+						body.user = this.getNodeParameter('userID', i) as string;
+
+						requestMethod = 'POST';
+						endpoint = `/workspaces/${workspaceId}/removeUser`;
+
+						responseData = await asanaApiRequest.call(this, requestMethod, endpoint, body, qs);
+						responseData = responseData.data;
+
+					}
 
 					}
 				}
