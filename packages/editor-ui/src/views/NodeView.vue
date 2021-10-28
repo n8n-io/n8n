@@ -2686,7 +2686,7 @@ export default mixins(
 	top: -5000px;
 	left: -5000px;
 	background-size: 50px 50px;
-	background-image: linear-gradient(to right, #eeeefe 1px, transparent 1px), linear-gradient(to bottom, #eeeefe 1px, transparent 1px);
+	background-image: radial-gradient(circle at 3px 3px, #C5CDD3 3px, transparent 1px);;
 }
 
 .move-active {
