@@ -41,7 +41,7 @@ export default Vue.extend({
 				height: this.size + 'px',
 				'font-size': this.size + 'px',
 				'line-height': this.size + 'px',
-				'border-radius': this.circle ? '50%': '4px',
+				'border-radius': this.circle ? '50%': '2px',
 			};
 		},
 		fontStyleData (): object {
@@ -92,7 +92,7 @@ export default Vue.extend({
 .node-icon-wrapper {
 	width: 26px;
 	height: 26px;
-	border-radius: 4px;
+	border-radius: 2px;
 	color: #444;
 	line-height: 26px;
 	font-size: 1.1em;
