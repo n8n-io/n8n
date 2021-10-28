@@ -17,8 +17,7 @@ import {
 export async function zluriOAuthApiRequest(this:  IExecuteFunctions, options:OptionsWithUri): Promise<any> { 
     
     const credentials = await getZluriCredentials.call(this)
-    const credentialData = JSON.parse(credentials);
-    options.headers = Object.assign({}, options.headers, {'Authorization':'Bearer '+credentialData.access_token});
+    options.headers = Object.assign({}, options.headers, {'Authorization':'Bearer '+credentials.access_token});
     return await this.helpers.request!(options);
 }
 
@@ -35,6 +34,6 @@ export async function zluriOAuthApiRequest(this:  IExecuteFunctions, options:Opt
         uri:'https://integrations-dev.zluri.com/secretStore/fetchSecrets',
         qs:{code}
     }
-    return await this.helpers.request!(secretOptions);
-    
+    const result =  await this.helpers.request!(secretOptions);
+    return JSON.parse(result)
 }
