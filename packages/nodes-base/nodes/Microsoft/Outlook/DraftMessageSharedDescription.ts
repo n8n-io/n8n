@@ -29,7 +29,7 @@ export const draftMessageSharedFields = [
 				name: 'dataPropertyAttachmentsPrefixName',
 				type: 'string',
 				default: 'attachment_',
-				description: 'Prefix for name of the binary property to which to<br />write the attachments. An index starting with 0 will be added.<br />So if name is "attachment_" the first attachment is saved to "attachment_0"',
+				description: 'Prefix for name of the binary property to which to write the attachments. An index starting with 0 will be added.<br />So if name is "attachment_" the first attachment is saved to "attachment_0"',
 			},
 			{
 				displayName: 'Fields',

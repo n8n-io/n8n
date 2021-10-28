@@ -340,7 +340,7 @@ export class Wait implements INodeType {
 					},
 				],
 				default: 'firstEntryJson',
-				description: 'What data should be returned. If it should return<br />all the items as array or only the first item as object',
+				description: 'What data should be returned. If it should return all the items as array or only the first item as object',
 			},
 			{
 				displayName: 'Property Name',
@@ -365,7 +365,7 @@ export class Wait implements INodeType {
 				name: 'limitWaitTime',
 				type: 'boolean',
 				default: false,
-				description: `If no webhook call is received, the workflow will automatically<br />
+				description: `If no webhook call is received, the workflow will automatically
 							 resume execution after the specified limit type`,
 				displayOptions: {
 					show: {
@@ -528,8 +528,8 @@ export class Wait implements INodeType {
 								],
 							},
 						},
-						description: `Name of the binary property to which to write the data of<br />
-									the received file. If the data gets received via "Form-Data Multipart"<br />
+						description: `Name of the binary property to which to write the data of
+									the received file. If the data gets received via "Form-Data Multipart"
 									it will be the prefix and a number starting with 0 will be attached to it.`,
 					},
 					{
