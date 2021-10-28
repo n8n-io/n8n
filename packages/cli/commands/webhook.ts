@@ -18,10 +18,9 @@ import {
 	Db,
 	ExternalHooks,
 	GenericHelpers,
+	InternalHooksManager,
 	LoadNodesAndCredentials,
 	NodeTypes,
-	// eslint-disable-next-line @typescript-eslint/no-unused-vars
-	TestWebhooks,
 	WebhookServer,
 } from '../src';
 
@@ -148,6 +147,9 @@ export class Webhook extends Command {
 
 				// Wait till the database is ready
 				await startDbInitPromise;
+
+				const instanceId = await UserSettings.getInstanceId();
+				InternalHooksManager.init(instanceId);
 
 				if (config.get('executions.mode') === 'queue') {
 					const redisHost = config.get('queue.bull.redis.host');

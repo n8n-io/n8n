@@ -103,7 +103,7 @@ export class StravaTrigger implements INodeType {
 				name: 'resolveData',
 				type: 'boolean',
 				default: true,
-				description: 'By default the webhook-data only contain the Object ID. If this option gets activated it<br />will resolve the data automatically.',
+				description: 'By default the webhook-data only contain the Object ID. If this option gets activated, it will resolve the data automatically.',
 			},
 			{
 				displayName: 'Options',

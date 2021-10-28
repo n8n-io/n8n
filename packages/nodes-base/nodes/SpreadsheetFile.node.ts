@@ -103,7 +103,7 @@ export class SpreadsheetFile implements INodeType {
 
 				},
 				placeholder: '',
-				description: 'Name of the binary property from which to read<br />the binary data of the spreadsheet file.',
+				description: 'Name of the binary property from which to read the binary data of the spreadsheet file.',
 			},
 
 			// ----------------------------------
@@ -169,7 +169,7 @@ export class SpreadsheetFile implements INodeType {
 					},
 				},
 				placeholder: '',
-				description: 'Name of the binary property in which to save<br />the binary data of the spreadsheet file.',
+				description: 'Name of the binary property in which to save the binary data of the spreadsheet file.',
 			},
 
 			{
@@ -265,7 +265,7 @@ export class SpreadsheetFile implements INodeType {
 							},
 						},
 						default: false,
-						description: 'In some cases and file formats, it is necessary to read<br />specifically as string else some special character get interpreted wrong.',
+						description: 'In some cases and file formats, it is necessary to read specifically as string else some special character get interpreted wrong.',
 					},
 					{
 						displayName: 'Range',

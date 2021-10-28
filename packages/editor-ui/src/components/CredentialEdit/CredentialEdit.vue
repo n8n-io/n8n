@@ -24,7 +24,7 @@
 				<div :class="$style.credActions">
 					<n8n-icon-button
 						v-if="currentCredential"
-						size="medium"
+						size="small"
 						title="Delete"
 						icon="trash"
 						type="text"
@@ -667,6 +667,8 @@ export default mixins(showMessage, nodeHelpers).extend({
 			this.$externalHooks().run('credentials.create', {
 				credentialTypeData: this.credentialData,
 			});
+
+			this.$telemetry.track('User created credentials', { credential_type: credentialDetails.type, workflow_id: this.$store.getters.workflowId });
 
 			return credential;
 		},
