@@ -298,7 +298,6 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 		background-color: #fff;
 		border-radius: var(--border-radius-large);
 		text-align: center;
-		z-index: 5;
 		cursor: pointer;
 		color: #444;
 		border: 2px solid var(--color-foreground-xdark);
@@ -443,6 +442,11 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 	background-color: #67c23a;
 }
 
+/** node */
+.jtk-endpoint-anchor .node-default {
+	z-index: 2;
+}
+
 /** connector */
 .jtk-connector {
 	z-index: 3;
@@ -450,11 +454,6 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 
 .jtk-connector path {
 	transition: stroke .1s ease-in-out;
-}
-
-/** node */
-.jtk-endpoint-anchor .node-default {
-	z-index: 5;
 }
 
 /** node endpoints */
