@@ -26,7 +26,7 @@ export async function microsoftApiRequest(this: IExecuteFunctions | IExecuteSing
 		method,
 		body,
 		qs,
-		uri: uri || `${credenitals.domain}/api/data/v9.2${resource}`,
+		uri: uri || `https://${credenitals.subdomain}.crm.dynamics.com/api/data/v9.2${resource}`,
 		json: true,
 	};
 
@@ -494,9 +494,9 @@ export interface IField {
 	IsSortableEnabled: {
 		Value: boolean,
 	};
-	DisplayName: { 
-		UserLocalizedLabel: { 
-			Label: string 
-		} 
+	DisplayName: {
+		UserLocalizedLabel: {
+			Label: string
+		}
 	};
 }

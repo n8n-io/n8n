@@ -2,7 +2,7 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-import { 
+import {
 	getAccountFields,
 } from '../GenericFunctions';
 
@@ -52,7 +52,7 @@ export const accountFields = [
 	{
 		displayName: 'Name',
 		name: 'name',
-		description: 'Company o business name',
+		description: 'Company or business name',
 		type: 'string',
 		required: true,
 		default: '',
