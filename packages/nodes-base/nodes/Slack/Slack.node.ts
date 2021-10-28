@@ -945,7 +945,7 @@ export class Slack implements INodeType {
 						const binaryData = this.getNodeParameter('binaryData', i) as boolean;
 						const body: IDataObject = {};
 						if (options.channelIds) {
-							body.channels = Array.isArray(options.channelIds) ? (options.channelIds as string[]).join(',') : options.channelIds;
+							body.channels = Array.isArray(options.channelIds) ? (options.channelIds as string[]).join(',') : options.channelIds as string;
 						}
 						if (options.fileName) {
 							body.filename = options.fileName as string;
