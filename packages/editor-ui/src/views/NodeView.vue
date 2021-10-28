@@ -244,9 +244,16 @@ const getFlowChartType = (connection: Connection) => {
 	const inputIndex = connection.__meta ? connection.__meta.targetOutputIndex : 0;
 	const outputIndex = connection.__meta ? connection.__meta.sourceOutputIndex : 0;
 
+	const outputEndpoint = connection.endpoints[0];
+	const outputOverlay = outputEndpoint.getOverlay('output-name-label');
+	let labelOffset = 0;
+	if (outputOverlay && outputOverlay.label && outputOverlay.label.length > 1) {
+		labelOffset = 16;
+	}
+
 	return ['N8nFlowchart', {
 		cornerRadius: 4,
-		stub: JSPLUMB_FLOWCHART_STUB + 10 * outputIndex + 10 * inputIndex,
+		stub: JSPLUMB_FLOWCHART_STUB + 10 * outputIndex + 10 * inputIndex + labelOffset,
 		gap: 5,
 		alwaysRespectStubs: _ALWAYS_RESPECT_STUB,
 		yOffset: NODE_SIZE + 5,
