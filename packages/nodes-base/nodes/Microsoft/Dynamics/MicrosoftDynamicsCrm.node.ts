@@ -17,8 +17,10 @@ import {
 	adjustAddresses,
 	getEntityFields,
 	getPicklistOptions,
+	IField,
 	microsoftApiRequest,
 	microsoftApiRequestAllItems,
+	sort,
 } from './GenericFunctions';
 
 import {
@@ -109,11 +111,13 @@ export class MicrosoftDynamicsCrm implements INodeType {
 			},
 			async getAccountFields(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const fields = await getEntityFields.call(this, 'account');
-				return fields.filter(field => field.IsValidForRead).filter(field => field.DisplayName.UserLocalizedLabel?.Label).map(field => ({ name: field.DisplayName.UserLocalizedLabel.Label, value: field.LogicalName }));
+				const isSelectable = (field: IField) => (field.IsValidForRead && field.CanBeSecuredForRead && field.IsValidODataAttribute && field.LogicalName !== 'slaid');
+				return fields.filter(isSelectable).filter(field => field.DisplayName.UserLocalizedLabel?.Label).map(field => ({ name: field.DisplayName.UserLocalizedLabel.Label, value: field.LogicalName })).sort(sort);
 			},
 			async getExpandableAccountFields(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const fields = await getEntityFields.call(this, 'account');
-				return fields.filter(field => field.AttributeType === 'Lookup').map(field => ({ name: field.DisplayName.UserLocalizedLabel.Label, value: field.LogicalName }));
+				const isSelectable = (field: IField) => (field.IsValidForRead && field.CanBeSecuredForRead && field.IsValidODataAttribute && field.AttributeType === 'Lookup' && field.LogicalName !== 'slaid');
+				return fields.filter(isSelectable).map(field => ({ name: field.DisplayName.UserLocalizedLabel.Label, value: field.LogicalName })).sort(sort);
 			},
 		},
 	};

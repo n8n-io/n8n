@@ -73,7 +73,7 @@ export async function getPicklistOptions(this: ILoadOptionsFunctions, entityName
 	return returnData;
 }
 
-export async function getEntityFields(this: ILoadOptionsFunctions, entityName: string): Promise<[{ IsRetrievable: boolean, LogicalName: string, IsValidForRead: string, AttributeType: string, DisplayName: { UserLocalizedLabel: { Label: string } } }]> {
+export async function getEntityFields(this: ILoadOptionsFunctions, entityName: string): Promise<IField[]> {
 	const endpoint = `/EntityDefinitions(LogicalName='${entityName}')/Attributes`;
 	const { value } = await microsoftApiRequest.call(this, 'GET', endpoint);
 	return value;
@@ -273,7 +273,7 @@ export function getAccountFields() {
 			name: 'fax',
 			type: 'string',
 			default: '',
-			description: 'Fax number for the account',
+			description: '',
 		},
 		{
 			displayName: 'FTP site URL',
@@ -295,7 +295,6 @@ export function getAccountFields() {
 		{
 			displayName: 'Name',
 			name: 'name',
-			description: 'Company o business name',
 			type: 'string',
 			default: '',
 			displayOptions: {
@@ -308,6 +307,7 @@ export function getAccountFields() {
 					],
 				},
 			},
+			description: 'Company o business name',
 		},
 		{
 			displayName: 'Credit Limit',
@@ -341,7 +341,7 @@ export function getAccountFields() {
 				loadOptionsMethod: 'getPreferredAppointmentDayCodes',
 			},
 			default: '',
-			description: 'The preferred day of the week for service appointments',
+			description: '',
 		},
 		{
 			displayName: 'Preferred Appointment Time',
@@ -351,7 +351,7 @@ export function getAccountFields() {
 				loadOptionsMethod: 'getPreferredAppointmentTimeCodes',
 			},
 			default: '',
-			description: 'The preferred time of day for service appointments',
+			description: '',
 		},
 		{
 			displayName: 'Preferred Contact Method',
@@ -361,21 +361,21 @@ export function getAccountFields() {
 				loadOptionsMethod: 'getPreferredContactMethodCodes',
 			},
 			default: '',
-			description: 'The preferred method of contact',
+			description: '',
 		},
 		{
 			displayName: 'Primary Satori ID',
 			name: 'primarysatoriid',
 			type: 'string',
 			default: '',
-			description: 'Primary Satori ID for account',
+			description: '',
 		},
 		{
 			displayName: 'Primary Twitter ID',
 			name: 'primarytwitterid',
 			type: 'string',
 			default: '',
-			description: 'Primary Twitter ID for account',
+			description: '',
 		},
 		{
 			displayName: 'Revenue',
@@ -413,7 +413,7 @@ export function getAccountFields() {
 			name: 'stageid',
 			type: 'string',
 			default: '',
-			description: 'ID of the stage',
+			description: '',
 		},
 		{
 			displayName: 'Stock Exchange',
@@ -475,4 +475,28 @@ export function getAccountFields() {
 			description: 'The phonetic spelling of the company name, if specified in Japanese, to make sure the name is pronounced correctly in phone calls and other communications',
 		},
 	];
+}
+
+export const sort = (a: { name: string }, b: { name: string }) => {
+	if (a.name < b.name) { return -1; }
+	if (a.name > b.name) { return 1; }
+	return 0;
+};
+
+export interface IField {
+	IsRetrievable: boolean;
+	LogicalName: string;
+	IsSearchable: string;
+	IsValidODataAttribute: string;
+	IsValidForRead: string;
+	CanBeSecuredForRead: string;
+	AttributeType: string;
+	IsSortableEnabled: {
+		Value: boolean,
+	};
+	DisplayName: { 
+		UserLocalizedLabel: { 
+			Label: string 
+		} 
+	};
 }
