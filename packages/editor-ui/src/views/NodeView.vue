@@ -417,10 +417,12 @@ export default mixins(
 				};
 			},
 			backgroundStyle (): object {
+				const scale = this.nodeViewScale;
 				const offsetPosition = this.$store.getters.getNodeViewOffsetPosition;
 				return {
-					'transform': `scale(${this.nodeViewScale})`,
-					'background-position': `right ${-offsetPosition[0]}px bottom ${-offsetPosition[1]}px`,
+					'background-size': `${50 * scale}px ${50 * scale}px`,
+					'background-position': `left ${offsetPosition[0]}px top ${offsetPosition[1]}px`,
+					'background-image': `radial-gradient(circle at ${3 * scale}px ${3 * scale}px, #C5CDD3 ${3 * scale}px, transparent 1px)`,
 				};
 			},
 			workflowClasses () {
@@ -2691,10 +2693,6 @@ export default mixins(
 	position: absolute;
 	width: 10000px;
 	height: 10000px;
-	top: -5000px;
-	left: -5000px;
-	background-size: 50px 50px;
-	background-image: radial-gradient(circle at 3px 3px, #C5CDD3 3px, transparent 1px);;
 }
 
 .move-active {
