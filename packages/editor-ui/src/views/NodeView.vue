@@ -426,7 +426,7 @@ export default mixins(
 					'background-size': `${squareSize}px ${squareSize}px`,
 					'background-position': `left ${offsetPosition[0]}px top ${offsetPosition[1]}px`,
 				};
-				if (squareSize > 10) {
+				if (squareSize > 10.5) {
 					return {
 						...styles,
 						'background-image': `radial-gradient(circle at ${dotPosition}px ${dotPosition}px, #D4DADE ${dotSize}px, transparent 0)`,
