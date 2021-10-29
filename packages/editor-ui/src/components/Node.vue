@@ -456,6 +456,10 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 	transition: stroke .1s ease-in-out;
 }
 
+.jtk-connector.success {
+	z-index: 4;
+}
+
 /** node endpoints */
 .jtk-endpoint {
 	z-index:5;

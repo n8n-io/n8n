@@ -2034,10 +2034,21 @@ export default mixins(
 								conn.setPaintStyle(CONNECTOR_PAINT_STYLE_DEFAULT);
 								conn.removeOverlay(OVERLAY_RUN_ITEMS_ID);
 								showOrHideMidpointArrow(conn);
+
+								// @ts-ignore
+								if (conn.canvas) {
+									// @ts-ignore
+									(conn.canvas as Element).classList.remove('success');
+								}
 								return;
 							}
 
 							conn.setPaintStyle(CONNECTOR_PAINT_STYLE_SUCCESS);
+							// @ts-ignore
+							if (conn.canvas) {
+								// @ts-ignore
+								(conn.canvas as Element).classList.add('success');
+							}
 
 							if (conn.getOverlay(OVERLAY_RUN_ITEMS_ID)) {
 								conn.removeOverlay(OVERLAY_RUN_ITEMS_ID);
