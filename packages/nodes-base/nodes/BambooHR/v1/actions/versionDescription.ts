@@ -4,7 +4,7 @@ import {
 import * as employees from './employees';
 import * as employeeFiles from './employeeFiles';
 import * as companyFiles from './companyFiles';
-
+import * as reports from './reports';
 
 export const versionDescription: INodeTypeDescription = {
   displayName: 'BambooHR',
@@ -43,12 +43,17 @@ export const versionDescription: INodeTypeDescription = {
           name: 'Company Files',
           value: 'companyFiles',
         },
+        {
+          name: 'Company Reports',
+          value: 'reports',
+        },
       ],
       default: 'employees',
       description: 'The resource to operate on',
     },
     ...employees.descriptions,
     ...employeeFiles.descriptions,
-    ...companyFiles.descriptions
+    ...companyFiles.descriptions,
+    ...reports.descriptions
   ],
 };
