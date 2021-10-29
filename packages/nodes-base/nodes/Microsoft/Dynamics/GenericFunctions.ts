@@ -15,7 +15,7 @@ import {
 } from 'n8n-workflow';
 
 export async function microsoftApiRequest(this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: string, resource: string, body: any = {}, qs: IDataObject = {}, uri?: string, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
-	const credenitals = await this.getCredentials('microsoftDynamicsOAuth2Api') as { domain: string };
+	const credenitals = await this.getCredentials('microsoftDynamicsOAuth2Api') as { subdomain: string };
 
 	let options: OptionsWithUri = {
 		headers: {
