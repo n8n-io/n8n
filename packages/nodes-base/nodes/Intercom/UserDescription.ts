@@ -456,7 +456,7 @@ export const userFields = [
 				type: 'boolean',
 				default: false,
 				options: [],
-				description: 'A boolean value, which if true, instructs Intercom to update the users<br />last_request_at value to the current API service time in UTC.',
+				description: 'A boolean value, which if true, instructs Intercom to update the users last_request_at value to the current API service time in UTC.',
 			},
 			{
 				displayName: 'UTM Campaign',

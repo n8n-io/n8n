@@ -143,6 +143,7 @@ export default mixins(
 
 	.el-dialog__body {
 		padding: 0;
+		font-size: var(--font-size-s);
 	}
 
 	.right-side {

@@ -107,7 +107,7 @@ export class CiscoWebexTrigger implements INodeType {
 					},
 				},
 				default: true,
-				description: 'By default the response only contain a reference to the data the user inputed<br />If this option gets activated it will resolve the data automatically.',
+				description: 'By default the response only contain a reference to the data the user inputed. If this option gets activated, it will resolve the data automatically.',
 			},
 			{
 				displayName: 'Filters',
