@@ -1,4 +1,5 @@
 import {
+	// IAuthenticateBasicAuth,
 	// IAuthenticateBearer,
 	IAuthenticateHeaderAuth,
 	// ICredentialDataDecryptedObject,
@@ -43,4 +44,13 @@ export class AsanaApi implements ICredentialType {
 			value: '=Bearer {{credentials.accessToken}}',
 		},
 	} as IAuthenticateHeaderAuth;
+
+	// authenticate = {
+	// 	type: 'basicAuth',
+	// 	properties: {
+	// 		// userPropertyName: 'user',
+	// 		// passwordPropertyName: 'password',
+	// 	},
+	// } as IAuthenticateBasicAuth;
+
 }

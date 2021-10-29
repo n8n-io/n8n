@@ -80,6 +80,20 @@ export class CredentialsHelper extends ICredentialsHelper {
 						credentials[tokenPropertyName] as string
 					}`;
 					// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+				} else if (authenticate.type === 'basicAuth') {
+					// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+					const userPropertyName: string =
+						// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+						authenticate.properties.userPropertyName ?? 'user';
+					// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+					const passwordPropertyName: string =
+						// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+						authenticate.properties.userPropertyName ?? 'password';
+
+					requestOptions.auth = {
+						username: credentials[userPropertyName] as string,
+						password: credentials[passwordPropertyName] as string,
+					};
 				} else if (authenticate.type === 'headerAuth') {
 					const key = this.resolveValue(
 						// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access

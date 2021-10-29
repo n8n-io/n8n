@@ -174,6 +174,14 @@ export interface IAuthenticateBase {
 	};
 }
 
+export interface IAuthenticateBasicAuth extends IAuthenticateBase {
+	type: 'basicAuth';
+	properties: {
+		userPropertyName?: string;
+		passwordPropertyName?: string;
+	};
+}
+
 export interface IAuthenticateBearer extends IAuthenticateBase {
 	type: 'bearer';
 	properties: {
@@ -194,6 +202,7 @@ export type IAuthenticate =
 			credentials: ICredentialDataDecryptedObject,
 			requestOptions: IHttpRequestOptions,
 	  ) => Promise<IHttpRequestOptions>)
+	| IAuthenticateBasicAuth
 	| IAuthenticateBearer
 	| IAuthenticateHeaderAuth;
 
