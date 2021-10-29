@@ -1962,6 +1962,17 @@ export default mixins(
 				const sourceIndex = this.$store.getters.getNodeIndex(sourceNodeName);
 				const sourceId = `${NODE_NAME_PREFIX}${sourceIndex}`;
 
+				const resetConnection = (connection: Connection) => {
+					connection.removeOverlay(OVERLAY_RUN_ITEMS_ID);
+					connection.setPaintStyle(CONNECTOR_PAINT_STYLE_DEFAULT);
+					showOrHideMidpointArrow(connection);
+					// @ts-ignore
+					if (connection.canvas) {
+						// @ts-ignore
+						(connection.canvas as Element).classList.remove('success');
+					}
+				};
+
 				if (data === null || data.length === 0) {
 					// @ts-ignore
 					const outgoing = this.instance.getConnections({
@@ -1969,8 +1980,7 @@ export default mixins(
 					}) as Connection[];
 
 					outgoing.forEach((connection: Connection) => {
-						connection.removeOverlay(OVERLAY_RUN_ITEMS_ID);
-						connection.setPaintStyle(CONNECTOR_PAINT_STYLE_DEFAULT);
+						resetConnection(connection);
 					});
 
 					return;
@@ -2031,15 +2041,7 @@ export default mixins(
 
 							const output = outputMap[sourceOutputIndex][targetNodeName][targetInputIndex];
 							if (!output || !output.total) {
-								conn.setPaintStyle(CONNECTOR_PAINT_STYLE_DEFAULT);
-								conn.removeOverlay(OVERLAY_RUN_ITEMS_ID);
-								showOrHideMidpointArrow(conn);
-
-								// @ts-ignore
-								if (conn.canvas) {
-									// @ts-ignore
-									(conn.canvas as Element).classList.remove('success');
-								}
+								resetConnection(conn);
 								return;
 							}
 
