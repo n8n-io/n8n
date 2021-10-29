@@ -352,6 +352,8 @@ export type IHttpRequestMethods = 'DELETE' | 'GET' | 'HEAD' | 'PATCH' | 'POST' |
 
 export interface IHttpRequestOptions {
 	url: string;
+	// TODO: Still have to add support in httpRequest function that it gets also used
+	baseURL?: string;
 	headers?: IDataObject;
 	method?: IHttpRequestMethods;
 	body?: FormData | GenericValue | GenericValue[] | Buffer | URLSearchParams;
@@ -760,6 +762,8 @@ export interface INodeProperties {
 	placeholder?: string;
 	isNodeSetting?: boolean;
 	noDataExpression?: boolean;
+	request?: IHttpRequestOptions;
+	requestProperty?: INodeRequestProperty;
 	required?: boolean;
 }
 export interface INodePropertyOptions {
@@ -888,6 +892,11 @@ export interface INodeTypeBaseDescription {
 	codex?: CodexData;
 }
 
+export interface INodeRequestProperty {
+	property?: string;
+	type?: 'body' | 'query';
+}
+
 export interface INodeTypeDescription extends INodeTypeBaseDescription {
 	version: number;
 	defaults: INodeParameters;
@@ -899,6 +908,7 @@ export interface INodeTypeDescription extends INodeTypeBaseDescription {
 	credentials?: INodeCredentialDescription[];
 	maxNodes?: number; // How many nodes of that type can be created in a workflow
 	polling?: boolean;
+	requestDefaults?: IHttpRequestOptions;
 	hooks?: {
 		[key: string]: INodeHookDescription[] | undefined;
 		activate?: INodeHookDescription[];
