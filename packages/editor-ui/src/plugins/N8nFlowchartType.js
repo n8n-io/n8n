@@ -1,3 +1,8 @@
+/**
+ * Custom flowchart type
+ * Based on jsplumb Flowchart type https://github.com/jsplumb/jsplumb/blob/fb5fce52794fa52306825bdaa62bf3855cdfd7e0/src/connectors-flowchart.js
+ */
+
 (function () {
 
 	"use strict";
@@ -17,10 +22,6 @@
 			lastx = null, lasty = null, lastOrientation,
 			cornerRadius = params.cornerRadius != null ? params.cornerRadius : 0,
 			loopbackMinimum = params.loopbackMinimum || 100,
-
-			// TODO now common between this and AbstractBezierEditor; refactor into superclass?
-			loopbackRadius = params.loopbackRadius || 25,
-			isLoopbackCurrently = false,
 
 			sgn = function (n) {
 				return n < 0 ? -1 : n === 0 ? 0 : 1;
@@ -178,22 +179,6 @@
 			// add the start stub segment. use stubs for loopback as it will look better, with the loop spaced
 			// away from the element.
 			addSegment(segments, stubs[0], stubs[1], paintInfo);
-
-			// if its a loopback and we should treat it differently.
-			// if (false && params.sourcePos[0] === params.targetPos[0] && params.sourcePos[1] === params.targetPos[1]) {
-			//
-			//     // we use loopbackRadius here, as statemachine connectors do.
-			//     // so we go radius to the left from stubs[0], then upwards by 2*radius, to the right by 2*radius,
-			//     // down by 2*radius, left by radius.
-			//     addSegment(segments, stubs[0] - loopbackRadius, stubs[1], paintInfo);
-			//     addSegment(segments, stubs[0] - loopbackRadius, stubs[1] - (2 * loopbackRadius), paintInfo);
-			//     addSegment(segments, stubs[0] + loopbackRadius, stubs[1] - (2 * loopbackRadius), paintInfo);
-			//     addSegment(segments, stubs[0] + loopbackRadius, stubs[1], paintInfo);
-			//     addSegment(segments, stubs[0], stubs[1], paintInfo);
-			//
-			// }
-			// else {
-
 
 			const diffX = paintInfo.endStubX - paintInfo.startStubX;
 			const diffY = paintInfo.endStubY - paintInfo.startStubY;
