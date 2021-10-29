@@ -5,6 +5,7 @@ import * as employees from './employees';
 import * as employeeFiles from './employeeFiles';
 import * as companyFiles from './companyFiles';
 import * as reports from './reports';
+import * as accountInformation from './accountInformation';
 
 export const versionDescription: INodeTypeDescription = {
   displayName: 'BambooHR',
@@ -47,6 +48,10 @@ export const versionDescription: INodeTypeDescription = {
           name: 'Company Reports',
           value: 'reports',
         },
+        {
+          name: 'Account Information',
+          value: 'accountInformation',
+        },
       ],
       default: 'employees',
       description: 'The resource to operate on',
@@ -54,6 +59,7 @@ export const versionDescription: INodeTypeDescription = {
     ...employees.descriptions,
     ...employeeFiles.descriptions,
     ...companyFiles.descriptions,
-    ...reports.descriptions
+    ...reports.descriptions,
+    ...accountInformation.descriptions
   ],
 };

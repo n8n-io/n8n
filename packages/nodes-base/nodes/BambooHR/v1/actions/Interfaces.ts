@@ -9,10 +9,12 @@ type BambooHRMap = {
   employeeFiles: 'create' | 'del' | 'get' | 'getAll' | 'update';
   companyFiles: 'create' | 'del' | 'get' | 'getAll' | 'update';
   reports: 'get';
+  accountInformation: 'getDetailsForFields' | 'getFields' | 'getTabularFields' | 'getUsers' | 'updateFields';
 };
 
 export type BambooHR = AllEntities<BambooHRMap>;
 
+export type BambooHRAccountInformation = Entity<BambooHRMap, 'accountInformation'>;
 export type BambooHRCompanyFiles = Entity<BambooHRMap, 'companyFiles'>;
 export type BambooHREmployees = Entity<BambooHRMap, 'employees'>;
 export type BambooHREmployeeFiles = Entity<BambooHRMap, 'employeeFiles'>;
@@ -22,6 +24,7 @@ export type CompanyFilesProperties = PropertiesOf<BambooHRCompanyFiles>;
 export type EmployeesProperties = PropertiesOf<BambooHREmployees>;
 export type EmployeeFilesProperties = PropertiesOf<BambooHREmployeeFiles>;
 export type ReportsProperties = PropertiesOf<BambooHRReports>;
+export type AccountInformationProperties = PropertiesOf<BambooHRAccountInformation>;
 
 export interface IAttachment {
   fields: {
