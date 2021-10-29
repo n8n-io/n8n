@@ -11,16 +11,14 @@ import {
   apiRequest,
 } from '../../../transport';
 
-export async function create(this: IExecuteFunctions, index: number): Promise<INodeExecutionData[]> {
+export async function del(this: IExecuteFunctions, index: number): Promise<INodeExecutionData[]> {
   const body = {} as IDataObject;
-  const requestMethod = 'POST';
-  const endPoint = 'employees';
+  const requestMethod = 'DELETE';
+  const endPoint = 'files';
   const companyName = this.getNodeParameter('companyName', index) as string;
+  const fileId = this.getNodeParameter('fileId', index) as string;
 
-  body.firstName = this.getNodeParameter('firstName', index) as string;
-  body.lastName = this.getNodeParameter('lastName', index) as string;
-
-  const uri = `https://api.bamboohr.com/api/gateway.php/${companyName}/v1/${endPoint}/`;
+  const uri = `https://api.bamboohr.com/api/gateway.php/${companyName}/v1/${endPoint}/${fileId}`;
   const responseData = await apiRequest.call(this, requestMethod, uri, body);
 
   return this.helpers.returnJsonArray(responseData);

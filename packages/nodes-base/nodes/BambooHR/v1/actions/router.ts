@@ -8,6 +8,7 @@ import {
 
 import * as employees from './employees';
 import * as employeeFiles from './employeeFiles';
+import * as companyFiles from './companyFiles';
 import { BambooHR } from './Interfaces';
 
 export async function router(this: IExecuteFunctions): Promise<INodeExecutionData[]> {
@@ -28,6 +29,8 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
         operationResult.push(...await employees[bamboohr.operation].execute.call(this, i));
       } else if (bamboohr.resource === 'employeeFiles') {
         operationResult.push(...await employeeFiles[bamboohr.operation].execute.call(this, i));
+      } else if (bamboohr.resource === 'companyFiles') {
+        operationResult.push(...await companyFiles[bamboohr.operation].execute.call(this, i));
       }
     } catch (err) {
       if (this.continueOnFail()) {

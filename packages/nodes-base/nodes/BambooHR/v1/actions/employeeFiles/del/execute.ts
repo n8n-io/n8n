@@ -17,7 +17,7 @@ export async function del(this: IExecuteFunctions, index: number): Promise<INode
   const endPoint = 'employees';
   const companyName = this.getNodeParameter('companyName', index) as string;
   const id = this.getNodeParameter('id', index) as string;
-  const fileId = this.getNodeParameter('id', index) as string;
+  const fileId = this.getNodeParameter('fileId', index) as string;
 
   const uri = `https://api.bamboohr.com/api/gateway.php/${companyName}/v1/${endPoint}/${id}/files/${fileId}`;
   const responseData = await apiRequest.call(this, requestMethod, uri, body);

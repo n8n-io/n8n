@@ -1,8 +1,8 @@
 import {
-  EmployeeFilesProperties,
+  CompanyFilesProperties,
 } from '../../Interfaces';
 
-export const employeeFilesUpdateDescription: EmployeeFilesProperties = [
+export const companyFilesUpdateDescription: CompanyFilesProperties = [
   {
     displayName: 'Company Name',
     name: 'companyName',
@@ -14,30 +14,12 @@ export const employeeFilesUpdateDescription: EmployeeFilesProperties = [
           'update'
         ],
         resource: [
-          'employeeFiles',
+          'companyFiles',
         ],
       },
     },
     default: '',
     description: 'Company name',
-  },
-  {
-    displayName: 'Id',
-    name: 'id',
-    type: 'string',
-    required: true,
-    displayOptions: {
-      show: {
-        operation: [
-          'update'
-        ],
-        resource: [
-          'employeeFiles',
-        ],
-      },
-    },
-    default: '',
-    description: 'Id of the employee',
   },
   {
     displayName: 'File Id',
@@ -50,12 +32,12 @@ export const employeeFilesUpdateDescription: EmployeeFilesProperties = [
           'update'
         ],
         resource: [
-          'employeeFiles',
+          'companyFiles',
         ],
       },
     },
     default: '',
-    description: 'ID of the employee file',
+    description: 'ID of the company file',
   },
   {
     displayName: 'Additional Fields',
@@ -69,7 +51,7 @@ export const employeeFilesUpdateDescription: EmployeeFilesProperties = [
           'update'
         ],
         resource: [
-          'employeeFiles',
+          'companyFiles',
         ],
       },
     },
@@ -96,5 +78,5 @@ export const employeeFilesUpdateDescription: EmployeeFilesProperties = [
         description: 'Update whether this file is shared or not',
       },
     ],
-  }
+  },
 ];

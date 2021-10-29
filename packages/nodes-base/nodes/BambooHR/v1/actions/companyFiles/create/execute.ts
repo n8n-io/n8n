@@ -3,7 +3,6 @@ import {
 } from 'n8n-core';
 
 import {
-  IDataObject,
   INodeExecutionData,
 } from 'n8n-workflow';
 
@@ -12,13 +11,13 @@ import {
 } from '../../../transport';
 
 export async function create(this: IExecuteFunctions, index: number): Promise<INodeExecutionData[]> {
-  const body = {} as IDataObject;
+  const body: string[] = [];
   const requestMethod = 'POST';
-  const endPoint = 'employees';
+  const endPoint = 'files/categories';
   const companyName = this.getNodeParameter('companyName', index) as string;
+  const categoryName = this.getNodeParameter('categoryName', index) as string;
 
-  body.firstName = this.getNodeParameter('firstName', index) as string;
-  body.lastName = this.getNodeParameter('lastName', index) as string;
+  body.push(categoryName);
 
   const uri = `https://api.bamboohr.com/api/gateway.php/${companyName}/v1/${endPoint}/`;
   const responseData = await apiRequest.call(this, requestMethod, uri, body);
