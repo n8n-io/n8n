@@ -419,16 +419,17 @@ export default mixins(
 			backgroundStyle (): object {
 				const scale = this.nodeViewScale;
 				const offsetPosition = this.$store.getters.getNodeViewOffsetPosition;
-				const squareSize = 50 * scale;
-				const dotSize = 3 * scale;
+				const squareSize = 20 * scale;
+				const dotSize = 1 * scale;
+				const dotPosition = 10 * scale;
 				const styles: object = {
 					'background-size': `${squareSize}px ${squareSize}px`,
 					'background-position': `left ${offsetPosition[0]}px top ${offsetPosition[1]}px`,
 				};
-				if (squareSize > 3) {
+				if (squareSize > 10) {
 					return {
 						...styles,
-						'background-image': `radial-gradient(circle at ${dotSize}px ${dotSize}px, #C5CDD3 ${dotSize}px, transparent 1px)`,
+						'background-image': `radial-gradient(circle at ${dotPosition}px ${dotPosition}px, #D4DADE ${dotSize}px, transparent 0)`,
 					};
 				}
 				return styles;
