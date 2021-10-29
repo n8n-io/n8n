@@ -184,7 +184,7 @@ export interface IAuthenticateBearer extends IAuthenticateBase {
 export interface IAuthenticateHeaderAuth extends IAuthenticateBase {
 	type: 'headerAuth';
 	properties: {
-		key: string;
+		name: string;
 		value: string;
 	};
 }

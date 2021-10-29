@@ -83,7 +83,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 				} else if (authenticate.type === 'headerAuth') {
 					const key = this.resolveValue(
 						// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-						authenticate.properties.key,
+						authenticate.properties.name,
 						{ credentials },
 						workflow,
 						node,

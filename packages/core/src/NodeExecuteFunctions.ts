@@ -29,6 +29,7 @@ import {
 	IN8nHttpFullResponse,
 	IN8nHttpResponse,
 	INode,
+	INodeCredentialDescription,
 	INodeExecutionData,
 	INodeParameters,
 	INodeType,
@@ -1030,39 +1031,46 @@ export async function getCredentials(
 		);
 	}
 
-	if (nodeType.description.credentials === undefined) {
-		throw new NodeOperationError(
-			node,
-			`Node type "${node.type}" does not have any credentials defined!`,
-		);
-	}
+	// Hardcode for now for security reasons that only a single node can access
+	// all credentials
+	const fullAccess = ['n8n-nodes-base.httpRequest'].includes(node.type);
 
-	const nodeCredentialDescription = nodeType.description.credentials.find(
-		(credentialTypeDescription) => credentialTypeDescription.name === type,
-	);
-	if (nodeCredentialDescription === undefined) {
-		throw new NodeOperationError(
-			node,
-			`Node type "${node.type}" does not have any credentials of type "${type}" defined!`,
-		);
-	}
+	let nodeCredentialDescription: INodeCredentialDescription | undefined;
+	if (!fullAccess) {
+		if (nodeType.description.credentials === undefined) {
+			throw new NodeOperationError(
+				node,
+				`Node type "${node.type}" does not have any credentials defined!`,
+			);
+		}
 
-	if (
-		!NodeHelpers.displayParameter(
-			additionalData.currentNodeParameters || node.parameters,
-			nodeCredentialDescription,
-			node.parameters,
-		)
-	) {
-		// Credentials should not be displayed so return undefined even if they would be defined
-		return undefined;
+		nodeCredentialDescription = nodeType.description.credentials.find(
+			(credentialTypeDescription) => credentialTypeDescription.name === type,
+		);
+		if (nodeCredentialDescription === undefined) {
+			throw new NodeOperationError(
+				node,
+				`Node type "${node.type}" does not have any credentials of type "${type}" defined!`,
+			);
+		}
+
+		if (
+			!NodeHelpers.displayParameter(
+				additionalData.currentNodeParameters || node.parameters,
+				nodeCredentialDescription,
+				node.parameters,
+			)
+		) {
+			// Credentials should not be displayed so return undefined even if they would be defined
+			return undefined;
+		}
 	}
 
 	// Check if node has any credentials defined
-	if (!node.credentials || !node.credentials[type]) {
+	if (!fullAccess && (!node.credentials || !node.credentials[type])) {
 		// If none are defined check if the credentials are required or not
 
-		if (nodeCredentialDescription.required === true) {
+		if (nodeCredentialDescription?.required === true) {
 			// Credentials are required so error
 			if (!node.credentials) {
 				throw new NodeOperationError(node, 'Node does not have any credentials set!');
