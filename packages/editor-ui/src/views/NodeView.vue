@@ -419,11 +419,19 @@ export default mixins(
 			backgroundStyle (): object {
 				const scale = this.nodeViewScale;
 				const offsetPosition = this.$store.getters.getNodeViewOffsetPosition;
-				return {
-					'background-size': `${50 * scale}px ${50 * scale}px`,
+				const squareSize = 50 * scale;
+				const dotSize = 3 * scale;
+				const styles: object = {
+					'background-size': `${squareSize}px ${squareSize}px`,
 					'background-position': `left ${offsetPosition[0]}px top ${offsetPosition[1]}px`,
-					'background-image': `radial-gradient(circle at ${3 * scale}px ${3 * scale}px, #C5CDD3 ${3 * scale}px, transparent 1px)`,
 				};
+				if (squareSize > 3) {
+					return {
+						...styles,
+						'background-image': `radial-gradient(circle at ${dotSize}px ${dotSize}px, #C5CDD3 ${dotSize}px, transparent 1px)`,
+					};
+				}
+				return styles;
 			},
 			workflowClasses () {
 				const returnClasses = [];
