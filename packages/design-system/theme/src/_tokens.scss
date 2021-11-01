@@ -277,6 +277,24 @@
 		var(--color-background-xlight-l)
 	);
 
+	--color-canvas-dot-h: 204;
+	--color-canvas-dot-s: 13.2%;
+	--color-canvas-dot-l: 85.1%;
+	--color-canvas-dot: hsl(
+		var(--color-canvas-dot-h),
+		var(--color-canvas-dot-s),
+		var(--color-canvas-dot-l)
+	);
+
+	--color-canvas-background-h: 260;
+	--color-canvas-background-s: 100%;
+	--color-canvas-background-l: 99.4%;
+	--color-canvas-background: hsl(
+		var(--color-canvas-background-h),
+		var(--color-canvas-background-s),
+		var(--color-canvas-background-l)
+	);
+
 	--border-radius-xlarge: 12px;
 	--border-radius-large: 8px;
 	--border-radius-base: 4px;

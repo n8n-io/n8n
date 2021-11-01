@@ -396,9 +396,10 @@ export default mixins(
 					'background-position': `left ${offsetPosition[0]}px top ${offsetPosition[1]}px`,
 				};
 				if (squareSize > 10.5) {
+					const dotColor = getStyleTokenValue('--color-canvas-dot');
 					return {
 						...styles,
-						'background-image': `radial-gradient(circle at ${dotPosition}px ${dotPosition}px, #D4DADE ${dotSize}px, transparent 0)`,
+						'background-image': `radial-gradient(circle at ${dotPosition}px ${dotPosition}px, ${dotColor} ${dotSize}px, transparent 0)`,
 					};
 				}
 				return styles;
@@ -1430,7 +1431,7 @@ export default mixins(
 					Endpoint: ['Dot', { radius: 5 }],
 					DragOptions: { cursor: 'pointer', zIndex: 5000 },
 					PaintStyle: { strokeWidth: 2, stroke: getStyleTokenValue('--color-foreground-dark')},
-					HoverPaintStyle: { stroke: '#ff6d5a', lineWidth: 4 },
+					HoverPaintStyle: { stroke: getStyleTokenValue('--color-primary'), lineWidth: 4 },
 					ConnectionOverlays: CONNECTOR_ARROW_OVERLAYS,
 					Container: '#node-view',
 				});
@@ -2753,7 +2754,7 @@ export default mixins(
 
 .connection-output-items-label {
 	border-radius: 7px;
-	background-color: rgba( $--custom-node-view-background, 1 );
+	background-color: var(--color-canvas-background);
 	font-size: 0.7em;
 	font-weight: var(--font-weight-regular);
 	line-height: 1.3em;
@@ -2787,7 +2788,7 @@ export default mixins(
 
 .node-input-endpoint-label,
 .node-output-endpoint-label {
-	background-color: $--custom-node-view-background;
+	background-color: var(--color-canvas-background);
 	border-radius: 7px;
 	font-size: 0.7em;
 	padding: 2px;
