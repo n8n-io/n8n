@@ -164,7 +164,7 @@ import {
 	INodeUi,
 	IUpdateInformation,
 	IWorkflowDataUpdate,
-	XYPositon,
+	XYPosition,
 	IPushDataExecutionFinished,
 	ITag,
 	IWorkflowTemplate,
@@ -188,7 +188,7 @@ const DEFAULT_START_NODE = {
 	position: [
 		DEFAULT_START_POSITION_X,
 		DEFAULT_START_POSITION_Y,
-	] as XYPositon,
+	] as XYPosition,
 	parameters: {},
 };
 
@@ -430,13 +430,13 @@ export default mixins(
 				createNodeActive: false,
 				instance: jsPlumb.getInstance(),
 				lastSelectedConnection: null as null | Connection,
-				lastClickPosition: [450, 450] as XYPositon,
+				lastClickPosition: [450, 450] as XYPosition,
 				nodeViewScale: 1,
 				ctrlKeyPressed: false,
 				stopExecutionInProgress: false,
 				blankRedirect: false,
 				credentialsUpdated: false,
-				newNodeInsertPosition: null as null | XYPositon,
+				newNodeInsertPosition: null as null | XYPosition,
 			};
 		},
 		beforeDestroy () {
@@ -1325,7 +1325,7 @@ export default mixins(
 					}
 
 					if (this.newNodeInsertPosition) {
-						newNodeData.position = [this.newNodeInsertPosition[0], this.newNodeInsertPosition[1] - NODE_SIZE / 2];
+						newNodeData.position = getNewNodePosition(this.nodes, [this.newNodeInsertPosition[0], this.newNodeInsertPosition[1] - NODE_SIZE / 2]);
 						this.newNodeInsertPosition = null;
 					}
 					else {
@@ -1867,8 +1867,8 @@ export default mixins(
 
 				newNodeData.position = getNewNodePosition(
 					this.nodes,
-					[node.position[0], node.position[1] + 150],
-					[0, 150],
+					[node.position[0], node.position[1] + 140],
+					[0, 140],
 				);
 
 				if (newNodeData.webhookId) {

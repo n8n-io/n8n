@@ -36,7 +36,7 @@ import {
 	IWorkflowData,
 	IWorkflowDb,
 	IWorkflowDataUpdate,
-	XYPositon,
+	XYPosition,
 	ITag,
 	IUpdateInformation,
 } from '../../Interface';
@@ -568,7 +568,7 @@ export const workflowHelpers = mixins(
 
 			// Updates the position of all the nodes that the top-left node
 			// is at the given position
-			updateNodePositions (workflowData: IWorkflowData | IWorkflowDataUpdate, position: XYPositon): void {
+			updateNodePositions (workflowData: IWorkflowData | IWorkflowDataUpdate, position: XYPosition): void {
 				if (workflowData.nodes === undefined) {
 					return;
 				}

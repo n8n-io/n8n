@@ -28,7 +28,7 @@ import {
 	IPushDataNodeExecuteAfter,
 	IUpdateInformation,
 	IWorkflowDb,
-	XYPositon,
+	XYPosition,
 	IRestApiContext,
 } from './Interface';
 
@@ -739,7 +739,7 @@ export const store = new Vuex.Store({
 			return state.nodeIndex[index];
 		},
 
-		getNodeViewOffsetPosition: (state): XYPositon => {
+		getNodeViewOffsetPosition: (state): XYPosition => {
 			return state.nodeViewOffsetPosition;
 		},
 		isNodeViewMoveInProgress: (state): boolean => {

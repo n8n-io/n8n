@@ -1,4 +1,4 @@
-import { INodeUi, XYPositon } from '@/Interface';
+import { INodeUi, XYPosition } from '@/Interface';
 
 import mixins from 'vue-typed-mixins';
 
@@ -43,7 +43,7 @@ export const mouseSelect = mixins(
 			}
 			return e.ctrlKey;
 		},
-		getMousePositionWithinNodeView (event: MouseEvent | TouchEvent): XYPositon {
+		getMousePositionWithinNodeView (event: MouseEvent | TouchEvent): XYPosition {
 			const [x, y] = getMousePosition(event);
 			// @ts-ignore
 			return getRelativePosition(x, y, this.nodeViewScale, this.$store.getters.getNodeViewOffsetPosition);

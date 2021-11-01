@@ -109,12 +109,12 @@ export interface INodeUpdatePropertiesInformation {
 	};
 }
 
-export type XYPositon = [number, number];
+export type XYPosition = [number, number];
 
 export type MessageType = 'success' | 'warning' | 'info' | 'error';
 
 export interface INodeUi extends INode {
-	position: XYPositon;
+	position: XYPosition;
 	color?: string;
 	notes?: string;
 	issues?: INodeIssues;
@@ -613,7 +613,7 @@ export interface IRootState {
 	lastSelectedNodeOutputIndex: number | null;
 	nodeIndex: Array<string | null>;
 	nodeTypes: INodeTypeDescription[];
-	nodeViewOffsetPosition: XYPositon;
+	nodeViewOffsetPosition: XYPosition;
 	nodeViewMoveInProgress: boolean;
 	selectedNodes: INodeUi[];
 	sessionId: string;
@@ -679,5 +679,5 @@ export interface IRestApiContext {
 
 export interface IZoomConfig {
 	scale: number;
-	offset: XYPositon;
+	offset: XYPosition;
 }

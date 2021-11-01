@@ -1,4 +1,4 @@
-import { IConnectionsUi, IEndpointOptions, INodeUi, XYPositon } from '@/Interface';
+import { IConnectionsUi, IEndpointOptions, INodeUi, XYPosition } from '@/Interface';
 
 import mixins from 'vue-typed-mixins';
 
@@ -312,7 +312,7 @@ export const nodeBase = mixins(
 						// even though "start" and "drag" gets called for all. So lets do for now
 						// some dirty DOM query to get the new positions till I have more time to
 						// create a proper solution
-						let newNodePositon: XYPositon;
+						let newNodePositon: XYPosition;
 						moveNodes.forEach((node: INodeUi) => {
 							const nodeElement = `node-${this.getNodeIndex(node.name)}`;
 							const element = document.getElementById(nodeElement);

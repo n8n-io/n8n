@@ -1,4 +1,4 @@
-import { INodeUi, IZoomConfig, XYPositon } from "@/Interface";
+import { INodeUi, IZoomConfig, XYPosition } from "@/Interface";
 import { Connection } from "jsplumb";
 
 export const OVERLAY_DROP_NODE_ID = 'drop-add-node';
@@ -167,7 +167,7 @@ export const getIcon = (name: string): string => {
 };
 
 
-const canUsePosition = (position1: XYPositon, position2: XYPositon) => {
+const canUsePosition = (position1: XYPosition, position2: XYPosition) => {
 	if (Math.abs(position1[0] - position2[0]) <= 100) {
 		if (Math.abs(position1[1] - position2[1]) <= 50) {
 			return false;
@@ -177,12 +177,14 @@ const canUsePosition = (position1: XYPositon, position2: XYPositon) => {
 	return true;
 };
 
-export const getNewNodePosition = (nodes: INodeUi[], newPosition: XYPositon, movePosition?: XYPositon): XYPositon => {
-	// @ts-ignore
-	newPosition = newPosition.slice();
+export const getNewNodePosition = (nodes: INodeUi[], newPosition: XYPosition, movePosition?: XYPosition): XYPosition => {
+	const targetPosition: XYPosition = [...newPosition];
+
+	targetPosition[0] = targetPosition[0] - (targetPosition[0] % 20);
+	targetPosition[1] = targetPosition[1] - (targetPosition[1] % 20);
 
 	if (!movePosition) {
-		movePosition = [20, 20];
+		movePosition = [40, 40];
 	}
 
 	let conflictFound = false;
@@ -191,22 +193,22 @@ export const getNewNodePosition = (nodes: INodeUi[], newPosition: XYPositon, mov
 		conflictFound = false;
 		for (i = 0; i < nodes.length; i++) {
 			node = nodes[i];
-			if (!canUsePosition(node.position, newPosition!)) {
+			if (!canUsePosition(node.position, targetPosition)) {
 				conflictFound = true;
 				break;
 			}
 		}
 
 		if (conflictFound === true) {
-			newPosition![0] += movePosition[0];
-			newPosition![1] += movePosition[1];
+			targetPosition[0] += movePosition[0];
+			targetPosition[1] += movePosition[1];
 		}
 	} while (conflictFound === true);
 
-	return newPosition!;
+	return targetPosition;
 };
 
-export const getMousePosition = (e: MouseEvent | TouchEvent): XYPositon => {
+export const getMousePosition = (e: MouseEvent | TouchEvent): XYPosition => {
 	// @ts-ignore
 	const x = e.pageX !== undefined ? e.pageX : (e.touches && e.touches[0] && e.touches[0].pageX ? e.touches[0].pageX : 0);
 	// @ts-ignore
@@ -215,7 +217,7 @@ export const getMousePosition = (e: MouseEvent | TouchEvent): XYPositon => {
 	return [x, y];
 };
 
-export const getRelativePosition = (x: number, y: number, scale: number, offset: XYPositon): XYPositon => {
+export const getRelativePosition = (x: number, y: number, scale: number, offset: XYPosition): XYPosition => {
 	return [
 		(x - offset[0]) / scale,
 		(y - offset[1]) / scale,
