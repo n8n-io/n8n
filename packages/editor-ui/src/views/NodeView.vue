@@ -1503,17 +1503,11 @@ export default mixins(
 						const elements = document.querySelector('div.jtk-endpoint.dropHover');
 						if (elements && !droppable) {
 							droppable = true;
-							connection.setConnector(CanvasHelpers.getFlowChartType(connection));
-							connection.setPaintStyle(CanvasHelpers.CONNECTOR_PAINT_STYLE_PRIMARY);
-							CanvasHelpers.addOverlays(connection, CanvasHelpers.CONNECTOR_ARROW_OVERLAYS);
-							CanvasHelpers.hideOverlay(connection, CanvasHelpers.OVERLAY_DROP_NODE_ID);
+							CanvasHelpers.showDropConnectionState(connection);
 						}
 						else if (!elements && droppable) {
 							droppable = false;
-							connection.setConnector(CanvasHelpers.CONNECTOR_TYPE_STRIGHT);
-							connection.setPaintStyle(CanvasHelpers.CONNECTOR_PAINT_STYLE_DEFAULT);
-							CanvasHelpers.addOverlays(connection, CanvasHelpers.CONNECTOR_ARROW_OVERLAYS);
-							CanvasHelpers.showOverlay(connection, CanvasHelpers.OVERLAY_DROP_NODE_ID);
+							CanvasHelpers.showPullConnectionState(connection);
 						}
 					};
 

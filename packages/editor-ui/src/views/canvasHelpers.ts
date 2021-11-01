@@ -520,3 +520,17 @@ export const getUniqueNodeName = (nodes: INodeUi[], originalName: string, additi
 
 	return uniqueName;
 };
+
+export const showDropConnectionState = (connection: Connection) => {
+	connection.setConnector(getFlowChartType(connection));
+	connection.setPaintStyle(CONNECTOR_PAINT_STYLE_PRIMARY);
+	addOverlays(connection, CONNECTOR_ARROW_OVERLAYS);
+	hideOverlay(connection, OVERLAY_DROP_NODE_ID);
+};
+
+export const showPullConnectionState = (connection: Connection) => {
+	connection.setConnector(CONNECTOR_TYPE_STRIGHT);
+	connection.setPaintStyle(CONNECTOR_PAINT_STYLE_DEFAULT);
+	addOverlays(connection, CONNECTOR_ARROW_OVERLAYS);
+	showOverlay(connection, OVERLAY_DROP_NODE_ID);
+};
