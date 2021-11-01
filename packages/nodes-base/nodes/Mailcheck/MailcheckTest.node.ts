@@ -101,8 +101,8 @@ export class MailcheckTest implements INodeType {
 					},
 				},
 				requestProperty: {
-					// TODO: If not defined could by default be the name of the property
 					property: 'toEmail', // Simple set
+					value: '={{$value.toUpperCase()}}', // Change value that gets send via an expression
 				},
 				default: '',
 				description: 'Email address to check.',
@@ -187,47 +187,156 @@ export class MailcheckTest implements INodeType {
 								description: 'Due Date to activity be done YYYY-MM-DD',
 							},
 
-							// // Test fixed collection
-							// {
-							// 	displayName: 'Custom Properties',
-							// 	name: 'customProperties',
-							// 	placeholder: 'Add Custom Property',
-							// 	description: 'Adds a custom property to set also values which have not been predefined.',
-							// 	type: 'fixedCollection',
-							// 	typeOptions: {
-							// 		multipleValues: true,
-							// 	},
-							// 	default: {},
-							// 	options: [
-							// 		{
-							// 			name: 'property',
-							// 			displayName: 'Property',
-							// 			values: [
-							// 				{
-							// 					displayName: 'Property Name',
-							// 					name: 'name',
-							// 					type: 'string',
-							// 					default: '',
-							// 					description: 'Name of the property to set.',
-							// 				},
-							// 				{
-							// 					displayName: 'Property Value',
-							// 					name: 'value',
-							// 					type: 'string',
-							// 					default: '',
-							// 					description: 'Value of the property to set.',
-							// 				},
-							// 			],
-							// 		},
-							// 	],
-							// },
-
 						],
 					},
 				],
 			},
 
+			// Test fixed collection0: multipleValues=false
+			{
+				displayName: 'Custom Properties0 (single)',
+				name: 'customPropertiesSingle0',
+				placeholder: 'Add Custom Property',
+				description: 'Adds a custom property to set also values which have not been predefined.',
+				type: 'fixedCollection',
+				default: {},
+				options: [
+					{
+						name: 'property',
+						displayName: 'Property',
+						values: [
 
+							// To set: { single-name: 'value' }
+							{
+								displayName: 'Property Name',
+								name: 'name',
+								type: 'string',
+								default: '',
+								description: 'Name of the property to set.',
+							},
+							{
+								displayName: 'Property Value',
+								name: 'value',
+								type: 'string',
+								default: '',
+								requestProperty: {
+									property: '=single-{{$self.name}}',
+								},
+								description: 'Value of the property to set.',
+							},
+						],
+					},
+				],
+			},
+
+			// Test fixed collection1: multipleValues=false
+			{
+				displayName: 'Custom Properties1 (single)',
+				name: 'customPropertiesSingle1',
+				placeholder: 'Add Custom Property',
+				description: 'Adds a custom property to set also values which have not been predefined.',
+				type: 'fixedCollection',
+				default: {},
+				options: [
+					{
+						name: 'property',
+						displayName: 'Property',
+						values: [
+							// To set: { single-customValues: { name: 'name', value: 'value'} }
+							{
+								displayName: 'Property Name',
+								name: 'name',
+								type: 'string',
+								default: '',
+								requestProperty: {
+									property: '=single-customValues.name',
+								},
+								description: 'Name of the property to set.',
+							},
+							{
+								displayName: 'Property Value',
+								name: 'value',
+								type: 'string',
+								default: '',
+								requestProperty: {
+									property: '=single-customValues.value',
+								},
+								description: 'Value of the property to set.',
+							},
+						],
+					},
+				],
+			},
+
+			// Test fixed collection: multipleValues=true
+			{
+				displayName: 'Custom Properties (multi)',
+				name: 'customPropertiesMulti',
+				placeholder: 'Add Custom Property',
+				description: 'Adds a custom property to set also values which have not been predefined.',
+				type: 'fixedCollection',
+				typeOptions: {
+					multipleValues: true,
+				},
+				default: {},
+				options: [
+					{
+						name: 'property0',
+						displayName: 'Property0',
+						values: [
+
+							// To set: { name0: 'value0', name1: 'value1' }
+							{
+								displayName: 'Property Name',
+								name: 'name',
+								type: 'string',
+								default: '',
+								description: 'Name of the property to set.',
+							},
+							{
+								displayName: 'Property Value',
+								name: 'value',
+								type: 'string',
+								default: '',
+								requestProperty: {
+									property: '={{$self.name}}',
+								},
+								description: 'Value of the property to set.',
+							},
+						],
+					},
+
+
+					{
+						name: 'property1',
+						displayName: 'Property1',
+						values: [
+							// To set: { customValues: [ { name: 'name0', value: 'value0'}, { name: 'name1', value: 'value1'} ]}
+							{
+								displayName: 'Property Name',
+								name: 'name',
+								type: 'string',
+								default: '',
+								requestProperty: {
+									property: '=customValues[{{$index}}].name',
+								},
+								description: 'Name of the property to set.',
+							},
+							{
+								displayName: 'Property Value',
+								name: 'value',
+								type: 'string',
+								default: '',
+								requestProperty: {
+									property: '=customValues[{{$index}}].value',
+								},
+								description: 'Value of the property to set.',
+							},
+						],
+					},
+
+				],
+			},
 
 		],
 	};

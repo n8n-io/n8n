@@ -33,6 +33,7 @@ import {
 	ITriggerResponse,
 	IWebhookData,
 	IWebhookResponseData,
+	IWorkflowDataProxyAdditionalKeys,
 	IWorfklowIssues,
 	IWorkflowExecuteAdditionalData,
 	IWorkflowSettings,
@@ -50,7 +51,7 @@ import {
 	IExecuteFunctions,
 	IHttpRequestOptions,
 	INodeProperties,
-	// INodePropertyCollection,
+	INodePropertyCollection,
 	IObservableObject,
 } from './Interfaces';
 
@@ -1230,7 +1231,16 @@ export class Workflow {
 				mode,
 			);
 
-			return this.runRoutingNode.call(thisArgs, this, node, nodeType);
+			return this.runRoutingNode.call(
+				thisArgs,
+				this,
+				node,
+				runExecutionData,
+				runIndex,
+				connectionInputData,
+				nodeType,
+				mode,
+			);
 		}
 
 		return null;
@@ -1241,7 +1251,11 @@ export class Workflow {
 		this: IExecuteFunctions,
 		workflow: Workflow,
 		node: INode,
+		runExecutionData: IRunExecutionData,
+		runIndex: number,
+		connectionInputData: INodeExecutionData[],
 		nodeType: INodeType,
+		mode: WorkflowExecuteMode,
 	): Promise<INodeExecutionData[][] | null | undefined> {
 		const items = this.getInputData();
 		let returnData: IDataObject[] = [];
@@ -1256,13 +1270,27 @@ export class Workflow {
 		// TODO: Think about how batching could be handled for REST APIs which support it
 		for (let i = 0; i < items.length; i++) {
 			try {
-				const requestOptions = workflow.getRequestOptionsFromNodeType.call(
-					this,
-					workflow,
-					node.parameters,
-					nodeType,
-					i,
-				);
+				const requestOptions: IHttpRequestOptions = nodeType.description.requestDefaults || {
+					url: '',
+				};
+
+				for (const property of nodeType.description.properties) {
+					merge(
+						requestOptions,
+						workflow.getRequestOptionsFromParameters.call(
+							this,
+							workflow,
+							property,
+							node,
+							runExecutionData,
+							runIndex,
+							connectionInputData,
+							i,
+							mode,
+							'',
+						),
+					);
+				}
 
 				// TODO: Change to handle some requests in parallel (should be configurable)
 				if (credentialType) {
@@ -1292,50 +1320,27 @@ export class Workflow {
 		return [this.helpers.returnJsonArray(returnData)];
 	}
 
-	getRequestOptionsFromNodeType(
-		this: IExecuteFunctions,
-		workflow: Workflow,
-		nodeValues: INodeParameters,
-		nodeType: INodeType,
-		itemIndex: number,
-	): IHttpRequestOptions {
-		const returnData: IHttpRequestOptions = nodeType.description.requestDefaults || {
-			url: '',
-		};
-
-		for (const property of nodeType.description.properties) {
-			merge(
-				returnData,
-				workflow.getRequestOptionsFromParameters.call(
-					this,
-					workflow,
-					property,
-					nodeValues,
-					itemIndex,
-					'',
-				),
-			);
-		}
-
-		return returnData;
-	}
-
 	getRequestOptionsFromParameters(
 		this: IExecuteFunctions,
 		workflow: Workflow,
 		nodeProperties: INodeProperties,
-		nodeValues: INodeParameters,
+		node: INode,
+		runExecutionData: IRunExecutionData,
+		runIndex: number,
+		connectionInputData: INodeExecutionData[],
 		itemIndex: number,
+		mode: WorkflowExecuteMode,
 		path: string,
+		additionalKeys?: IWorkflowDataProxyAdditionalKeys,
 	): IHttpRequestOptions | undefined {
 		const returnData: IHttpRequestOptions = {
 			url: '', // TODO: Replace with own type where url is not required
 			qs: {},
 			body: {},
 		};
-		const basePath = path ? `${path}.` : '';
+		let basePath = path ? `${path}.` : '';
 
-		if (!NodeHelpers.displayParameter(nodeValues, nodeProperties, nodeValues)) {
+		if (!NodeHelpers.displayParameter(node.parameters, nodeProperties, node.parameters)) {
 			return undefined;
 		}
 
@@ -1344,11 +1349,48 @@ export class Workflow {
 		}
 
 		if (nodeProperties.requestProperty) {
-			const propertyName = nodeProperties.requestProperty.property || nodeProperties.name;
-			const value = this.getNodeParameter(basePath + nodeProperties.name, itemIndex) as string;
+			let propertyName = nodeProperties.requestProperty.property || nodeProperties.name;
+			if (typeof propertyName === 'string' && propertyName.charAt(0) === '=') {
+				// If the propertyName is an expression resolve it
+				propertyName = workflow.expression.getParameterValue(
+					propertyName,
+					runExecutionData || null,
+					runIndex || 0,
+					itemIndex || 0,
+					node.name,
+					connectionInputData,
+					mode,
+					additionalKeys || {},
+					true,
+				) as string;
+			}
+
+			let value = this.getNodeParameter(basePath + nodeProperties.name, itemIndex) as string;
+
+			if (nodeProperties.requestProperty.value) {
+				const valueString = nodeProperties.requestProperty.value;
+				// Special value got set
+				if (typeof valueString === 'string' && valueString.charAt(0) === '=') {
+					// If the valueString is an expression resolve it
+					value = workflow.expression.getParameterValue(
+						valueString,
+						runExecutionData || null,
+						runIndex || 0,
+						itemIndex || 0,
+						node.name,
+						connectionInputData,
+						mode,
+						{ ...additionalKeys, $value: value },
+						true,
+					) as string;
+				} else {
+					value = valueString;
+				}
+			}
+
 			// TODO: Have to add a way to not use dot-notation as in some cases dots in nams will be required
 			if (nodeProperties.requestProperty.type === 'query') {
-				set(returnData.qs, propertyName, value);
+				set(returnData.qs as object, propertyName, value);
 			} else {
 				// @ts-ignore
 				set(returnData.body, propertyName, value);
@@ -1365,7 +1407,7 @@ export class Workflow {
 		let value;
 		if (nodeProperties.type === 'collection') {
 			value = NodeHelpers.getParameterValueByPath(
-				nodeValues,
+				node.parameters,
 				nodeProperties.name,
 				basePath.slice(0, -1),
 			);
@@ -1382,66 +1424,58 @@ export class Workflow {
 							this,
 							workflow,
 							propertyOption,
-							nodeValues,
+							node,
+							runExecutionData,
+							runIndex,
+							connectionInputData,
 							itemIndex,
+							mode,
 							`${basePath}${nodeProperties.name}`,
 						),
 					);
 				}
 			}
 		} else if (nodeProperties.type === 'fixedCollection') {
-			// TODO: Sill wip
-			// TODO: As above should it only check the properties that got actually set and not all
-			// TODO: Think about how to handle case where array values have to be set like here, so
-			//       that they really end up as array and do not overwrite each other
-			// basePath = basePath ? `${basePath}.` : `${nodeProperties.name}.`;
-			// let propertyOptions: INodePropertyCollection;
-			// for (propertyOptions of nodeProperties.options as INodePropertyCollection[]) {
-			// 	// Check if the option got set and if not skip it
-			// 	value = NodeHelpers.getParameterValueByPath(
-			// 		nodeValues,
-			// 		propertyOptions.name,
-			// 		basePath.slice(0, -1),
-			// 	);
-			// 	if (value === undefined) {
-			// 		continue;
-			// 	}
-			// 	if (nodeProperties.typeOptions?.multipleValues !== undefined) {
-			// 		// Multiple can be set so will be an array of objects
-			// 		if (Array.isArray(value)) {
-			// 			for (let i = 0; i < (value as INodeParameters[]).length; i++) {
-			// 				for (const option of propertyOptions.values) {
-			// 					merge(
-			// 						returnData,
-			// 						workflow.getRequestOptionsFromParameters.call(
-			// 							this,
-			// 							workflow,
-			// 							option,
-			// 							nodeValues,
-			// 							itemIndex,
-			// 							`${basePath}${propertyOptions.name}[${i}]`,
-			// 						),
-			// 					);
-			// 				}
-			// 			}
-			// 		}
-			// 	} else {
-			// 		// Only one can be set so will be an object
-			// 		for (const option of propertyOptions.values) {
-			// 			merge(
-			// 				returnData,
-			// 				workflow.getRequestOptionsFromParameters.call(
-			// 					this,
-			// 					workflow,
-			// 					option,
-			// 					nodeValues,
-			// 					itemIndex,
-			// 					basePath + propertyOptions.name,
-			// 				),
-			// 			);
-			// 		}
-			// 	}
-			// }
+			basePath = `${basePath}${nodeProperties.name}.`;
+			for (const propertyOptions of nodeProperties.options as INodePropertyCollection[]) {
+				// Check if the option got set and if not skip it
+				value = NodeHelpers.getParameterValueByPath(
+					node.parameters,
+					propertyOptions.name,
+					basePath.slice(0, -1),
+				);
+
+				if (value === undefined) {
+					continue;
+				}
+
+				// Make sure that it is always an array to be able to use the same code for multi and single
+				if (!Array.isArray(value)) {
+					value = [value];
+				}
+
+				const loopBasePath = `${basePath}${propertyOptions.name}`;
+				for (let i = 0; i < (value as INodeParameters[]).length; i++) {
+					for (const option of propertyOptions.values) {
+						merge(
+							returnData,
+							workflow.getRequestOptionsFromParameters.call(
+								this,
+								workflow,
+								option,
+								node,
+								runExecutionData,
+								runIndex,
+								connectionInputData,
+								itemIndex,
+								mode,
+								nodeProperties.typeOptions?.multipleValues ? `${loopBasePath}[${i}]` : loopBasePath,
+								{ $index: i, $self: value[i] },
+							),
+						);
+					}
+				}
+			}
 		}
 
 		return returnData;

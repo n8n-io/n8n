@@ -30,6 +30,7 @@ import {
 	IN8nHttpResponse,
 	INode,
 	INodeCredentialDescription,
+	INodeCredentialsDetails,
 	INodeExecutionData,
 	INodeParameters,
 	INodeType,
@@ -1096,7 +1097,9 @@ export async function getCredentials(
 		} as ICredentialsExpressionResolveValues;
 	}
 
-	const nodeCredentials = node.credentials[type];
+	const nodeCredentials = node.credentials
+		? node.credentials[type]
+		: ({} as INodeCredentialsDetails);
 
 	// TODO: solve using credentials via expression
 	// if (name.charAt(0) === '=') {

@@ -894,6 +894,7 @@ export interface INodeTypeBaseDescription {
 
 export interface INodeRequestProperty {
 	property?: string;
+	value?: string;
 	type?: 'body' | 'query';
 }
 
