@@ -129,3 +129,16 @@ import ColorCircles from './ColorCircles.vue';
 		}}
 	</Story>
 </Canvas>
+
+## Canvas
+
+<Canvas>
+	<Story name="background">
+		{{
+			template: `<color-circles :colors="['--color-canvas-background', '--color-canvas-dot']" />`,
+			components: {
+				ColorCircles,
+			},
+		}}
+	</Story>
+</Canvas>
