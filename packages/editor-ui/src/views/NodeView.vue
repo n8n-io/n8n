@@ -1451,12 +1451,37 @@ export default mixins(
 					this.openNodeCreator(info.eventSource);
 				};
 
+				let dropPrevented = false;
 
-				this.instance.bind('connectionAborted', (info) => insertNodeAfterSelected({
-					sourceId: info.sourceId,
-					index: info.getParameters().index,
-					eventSource: 'node_connection_drop',
-				}));
+				this.instance.bind('connectionAborted', (info) => {
+					if (dropPrevented) {
+						dropPrevented = false;
+						return;
+					}
+
+					insertNodeAfterSelected({
+						sourceId: info.sourceId,
+						index: info.getParameters().index,
+						eventSource: 'node_connection_drop',
+					});
+				});
+
+				this.instance.bind('beforeDrop', (info) => {
+					const sourceInfo = info.connection.endpoints[0].getParameters();
+					// @ts-ignore
+					const targetInfo = info.dropEndpoint.getParameters();
+
+					const sourceNodeName = this.$store.getters.getNodeNameByIndex(sourceInfo.nodeIndex);
+					const targetNodeName = this.$store.getters.getNodeNameByIndex(targetInfo.nodeIndex);
+
+					// check for duplicates
+					if (this.getJSPlumbConnection(sourceNodeName, sourceInfo.index, targetNodeName, targetInfo.index)) {
+						dropPrevented = true;
+						return false;
+					}
+
+					return true;
+				});
 
 				// only one set of visible actions should be visible at the same time
 				let activeConnection: null | Connection = null;
@@ -1480,9 +1505,7 @@ export default mixins(
 				};
 
 				this.instance.bind('connection', (info: OnConnectionBindInfo) => {
-					// @ts-ignore
 					const sourceInfo = info.sourceEndpoint.getParameters();
-					// @ts-ignore
 					const targetInfo = info.targetEndpoint.getParameters();
 
 					const sourceNodeName = this.$store.getters.getNodeNameByIndex(sourceInfo.nodeIndex);
