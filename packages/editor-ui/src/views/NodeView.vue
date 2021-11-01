@@ -114,7 +114,7 @@ import {
 } from 'jsplumb';
 import { MessageBoxInputData } from 'element-ui/types/message-box';
 import { jsPlumb, Endpoint, OnConnectionBindInfo } from 'jsplumb';
-import { JSPLUMB_FLOWCHART_STUB, NODE_NAME_PREFIX, PLACEHOLDER_EMPTY_WORKFLOW_ID, START_NODE_TYPE, WEBHOOK_NODE_TYPE, WORKFLOW_OPEN_MODAL_KEY } from '@/constants';
+import { NODE_NAME_PREFIX, PLACEHOLDER_EMPTY_WORKFLOW_ID, START_NODE_TYPE, WEBHOOK_NODE_TYPE, WORKFLOW_OPEN_MODAL_KEY } from '@/constants';
 import { copyPaste } from '@/components/mixins/copyPaste';
 import { externalHooks } from '@/components/mixins/externalHooks';
 import { genericHelpers } from '@/components/mixins/genericHelpers';
@@ -135,7 +135,7 @@ import NodeCreator from '@/components/NodeCreator/NodeCreator.vue';
 import NodeSettings from '@/components/NodeSettings.vue';
 import RunData from '@/components/RunData.vue';
 
-import { getLeftmostTopNode, getWorkflowCorners, scaleSmaller, scaleBigger, scaleReset, showOrHideMidpointArrow, getIcon, getNewNodePosition, hideOverlay, showOrHideItemsLabel, showOverlay, OVERLAY_ENDPOINT_ARROW_ID, OVERLAY_MIDPOINT_ARROW_ID, OVERLAY_DROP_NODE_ID, OVERLAY_RUN_ITEMS_ID, OVERLAY_CONNECTION_ACTIONS_ID, getConnectorLengths, getRelativePosition, getMousePosition } from './canvasHelpers';
+import { JSPLUMB_FLOWCHART_STUB, getLeftmostTopNode, getWorkflowCorners, scaleSmaller, scaleBigger, scaleReset, showOrHideMidpointArrow, getIcon, getNewNodePosition, hideOverlay, showOrHideItemsLabel, showOverlay, OVERLAY_ENDPOINT_ARROW_ID, OVERLAY_MIDPOINT_ARROW_ID, OVERLAY_DROP_NODE_ID, OVERLAY_RUN_ITEMS_ID, OVERLAY_CONNECTION_ACTIONS_ID, getConnectorLengths, getRelativePosition, getMousePosition } from './canvasHelpers';
 
 import mixins from 'vue-typed-mixins';
 import { v4 as uuidv4} from 'uuid';
@@ -175,10 +175,11 @@ import { getStyleTokenValue } from '@/components/helpers';
 import '../plugins/N8nFlowchartType';
 
 const NODE_SIZE = 100;
-const DEFAULT_START_POSITION_X = 250;
+const DEFAULT_START_POSITION_X = 240;
 const DEFAULT_START_POSITION_Y = 300;
 const HEADER_HEIGHT = 65;
 const SIDEBAR_WIDTH = 65;
+const MAX_X_TO_PUSH_DOWNSTREAM_NODES = 300;
 
 const DEFAULT_START_NODE = {
 	name: 'Start',
@@ -191,35 +192,10 @@ const DEFAULT_START_NODE = {
 	parameters: {},
 };
 
-if (!window.localStorage.getItem('CURVINESS')) {
-	window.localStorage.setItem('CURVINESS', '150');
-}
-// @ts-ignore
-const _CURVINESS = parseInt(window.localStorage.getItem('CURVINESS'), 10);
-
-if (!window.localStorage.getItem('OUTLINE_STROKE_COLOR')) {
-	window.localStorage.setItem('OUTLINE_STROKE_COLOR', 'transparent');
-}
-// @ts-ignore
-const _OUTLINE_STROKE_COLOR = window.localStorage.getItem('OUTLINE_STROKE_COLOR') as string;
-
-if (!window.localStorage.getItem('OUTLINE_STROKE_WIDTH')) {
-	window.localStorage.setItem('OUTLINE_STROKE_WIDTH', '12');
-}
-// @ts-ignore
-const _OUTLINE_STROKE_WIDTH = parseInt(window.localStorage.getItem('OUTLINE_STROKE_WIDTH'), 10);
-
-if (!window.localStorage.getItem('ALWAYS_RESPECT_STUB')) {
-	window.localStorage.setItem('ALWAYS_RESPECT_STUB', 'true');
-}
-// @ts-ignore
-const _ALWAYS_RESPECT_STUB = window.localStorage.getItem('ALWAYS_RESPECT_STUB') === 'true';
-
-if (!window.localStorage.getItem('PUSH_NODES_LENGTH')) {
-	window.localStorage.setItem('PUSH_NODES_LENGTH', '200');
-}
-// @ts-ignore
-const _PUSH_NODES_LENGTH = parseInt(window.localStorage.getItem('PUSH_NODES_LENGTH'), 10);
+const _OUTLINE_STROKE_COLOR = 'transparent';
+const _OUTLINE_STROKE_WIDTH = 12;
+const _ALWAYS_RESPECT_STUB = true;
+const _PUSH_NODES_LENGTH = 200;
 
 const CONNECTOR_PAINT_STYLE_DEFAULT: PaintStyle = {
 	stroke: getStyleTokenValue('--color-foreground-dark'),
@@ -256,8 +232,8 @@ const getFlowChartType = (connection: Connection) => {
 		stub: JSPLUMB_FLOWCHART_STUB + 10 * outputIndex + 10 * inputIndex + labelOffset,
 		gap: 5,
 		alwaysRespectStubs: _ALWAYS_RESPECT_STUB,
-		yOffset: NODE_SIZE + 5,
-		loopbackMinimum: 150,
+		yOffset: NODE_SIZE,
+		loopbackMinimum: 140,
 	}];
 };
 
@@ -298,13 +274,6 @@ const CONNECTOR_DROP_NODE_OVERLAY: OverlaySpec[] = [
 		},
 	],
 ];
-
-
-if (!window.localStorage.getItem('MAX_X_TO_PUSH_DOWNSTREAM_NODES')) {
-	window.localStorage.setItem('MAX_X_TO_PUSH_DOWNSTREAM_NODES', '300');
-}
-// @ts-ignore
-const MAX_X_TO_PUSH_DOWNSTREAM_NODES = parseInt(window.localStorage.getItem('MAX_X_TO_PUSH_DOWNSTREAM_NODES'), 10);
 
 const addOverlays = (connection: Connection, overlays: OverlaySpec[]) => {
 	overlays.forEach((overlay: OverlaySpec) => {
@@ -1364,7 +1333,7 @@ export default mixins(
 
 						if (lastSelectedConnection) {
 							const sourceNodeType = this.$store.getters.nodeType(lastSelectedNode.type);
-							const offsets = [[-100, 100], [-150, 0, 150], [-250, -100, 100, 250]];
+							const offsets = [[-100, 100], [-140, 0, 140], [-240, -100, 100, 240]];
 							if (sourceNodeType && sourceNodeType.outputs.length > 1) {
 								const offset = offsets[sourceNodeType.outputs.length - 2];
 								yOffset = offset[lastSelectedConnection.__meta.sourceOutputIndex];

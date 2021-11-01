@@ -117,10 +117,3 @@ export const COMPANY_SIZE_PERSONAL_USE = 'personalUser';
 export const CODING_SKILL_KEY = 'codingSkill';
 export const OTHER_WORK_AREA_KEY = 'otherWorkArea';
 
-if (!window.localStorage.getItem('JSPLUMB_FLOWCHART_STUB')) {
-	window.localStorage.setItem('JSPLUMB_FLOWCHART_STUB', '20');
-}
-// @ts-ignore
-const _JSPLUMB_FLOWCHART_STUB = parseInt(window.localStorage.getItem('JSPLUMB_FLOWCHART_STUB'), 10);
-export const JSPLUMB_FLOWCHART_STUB = _JSPLUMB_FLOWCHART_STUB;
-

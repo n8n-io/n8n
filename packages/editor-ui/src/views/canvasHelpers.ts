@@ -1,24 +1,15 @@
 import { INodeUi, IZoomConfig, XYPositon } from "@/Interface";
-import { Connection, OverlaySpec } from "jsplumb";
+import { Connection } from "jsplumb";
 
 export const OVERLAY_DROP_NODE_ID = 'drop-add-node';
 export const OVERLAY_MIDPOINT_ARROW_ID = 'midpoint-arrow';
 export const OVERLAY_ENDPOINT_ARROW_ID = 'endpoint-arrow';
 export const OVERLAY_RUN_ITEMS_ID = 'output-items-label';
 export const OVERLAY_CONNECTION_ACTIONS_ID = 'connection-actions';
+export const JSPLUMB_FLOWCHART_STUB = 20;
 
-
-if (!window.localStorage.getItem('MIN_X_TO_SHOW_OUTPUT_LABEL')) {
-	window.localStorage.setItem('MIN_X_TO_SHOW_OUTPUT_LABEL', '90');
-}
-// @ts-ignore
-const _MIN_X_TO_SHOW_OUTPUT_LABEL = parseInt(window.localStorage.getItem('MIN_X_TO_SHOW_OUTPUT_LABEL'), 10);
-
-if (!window.localStorage.getItem('MIN_Y_TO_SHOW_OUTPUT_LABEL')) {
-	window.localStorage.setItem('MIN_Y_TO_SHOW_OUTPUT_LABEL', '100');
-}
-// @ts-ignore
-const _MIN_Y_TO_SHOW_OUTPUT_LABEL = parseInt(window.localStorage.getItem('MIN_Y_TO_SHOW_OUTPUT_LABEL'), 10);
+const _MIN_X_TO_SHOW_OUTPUT_LABEL = 90;
+const _MIN_Y_TO_SHOW_OUTPUT_LABEL = 100;
 
 interface ICorners {
 	minX: number;
@@ -191,7 +182,7 @@ export const getNewNodePosition = (nodes: INodeUi[], newPosition: XYPositon, mov
 	newPosition = newPosition.slice();
 
 	if (!movePosition) {
-		movePosition = [50, 50];
+		movePosition = [20, 20];
 	}
 
 	let conflictFound = false;

@@ -280,7 +280,7 @@ export const nodeBase = mixins(
 			//       https://jsplumb.github.io/jsplumb/home.html
 			// Make nodes draggable
 			this.instance.draggable(this.nodeName, {
-				grid: [10, 10],
+				grid: [20, 20],
 				start: (params: { e: MouseEvent }) => {
 					if (this.isReadOnly === true) {
 						// Do not allow to move nodes in readOnly mode
