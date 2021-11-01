@@ -2535,11 +2535,11 @@ export default mixins(
 .connection-output-items-label {
 	border-radius: 7px;
 	background-color: var(--color-canvas-background);
-	font-size: 0.7em;
-	font-weight: var(--font-weight-regular);
 	line-height: 1.3em;
 	padding: 2px 3px;
 	white-space: nowrap;
+	font-size: var(--font-size-s);
+	font-weight: var(--font-weight-regular);
 }
 
 .connection-input-name-label {
@@ -2550,11 +2550,6 @@ export default mixins(
 		top: -10px;
 		left: -60px;
 	}
-}
-
-.connection-output-items-label {
-	font-size: var(--font-size-s);
-	font-weight: var(--font-weight-regular);
 }
 
 .drop-add-node-label {
