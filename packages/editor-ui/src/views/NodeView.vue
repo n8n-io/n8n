@@ -135,7 +135,7 @@ import NodeCreator from '@/components/NodeCreator/NodeCreator.vue';
 import NodeSettings from '@/components/NodeSettings.vue';
 import RunData from '@/components/RunData.vue';
 
-import { JSPLUMB_FLOWCHART_STUB, getLeftmostTopNode, getWorkflowCorners, scaleSmaller, scaleBigger, scaleReset, showOrHideMidpointArrow, getIcon, getNewNodePosition, hideOverlay, showOrHideItemsLabel, showOverlay, OVERLAY_ENDPOINT_ARROW_ID, OVERLAY_MIDPOINT_ARROW_ID, OVERLAY_DROP_NODE_ID, OVERLAY_RUN_ITEMS_ID, OVERLAY_CONNECTION_ACTIONS_ID, getConnectorLengths, getRelativePosition, getMousePosition } from './canvasHelpers';
+import { OVERLAY_INPUT_NAME_LABEL, JSPLUMB_FLOWCHART_STUB, getLeftmostTopNode, getWorkflowCorners, scaleSmaller, scaleBigger, scaleReset, showOrHideMidpointArrow, getIcon, getNewNodePosition, hideOverlay, showOrHideItemsLabel, showOverlay, OVERLAY_ENDPOINT_ARROW_ID, OVERLAY_MIDPOINT_ARROW_ID, OVERLAY_DROP_NODE_ID, OVERLAY_RUN_ITEMS_ID, OVERLAY_CONNECTION_ACTIONS_ID, getConnectorLengths, getRelativePosition, getMousePosition } from './canvasHelpers';
 
 import mixins from 'vue-typed-mixins';
 import { v4 as uuidv4} from 'uuid';
@@ -1610,7 +1610,7 @@ export default mixins(
 						]);
 					}
 
-					const inputNameOverlay = info.targetEndpoint.getOverlay('input-name-label');
+					const inputNameOverlay = info.targetEndpoint.getOverlay(OVERLAY_INPUT_NAME_LABEL);
 					if (inputNameOverlay) {
 						inputNameOverlay.setLocation([-4.5, .5]);
 					}
@@ -1642,7 +1642,7 @@ export default mixins(
 						}
 					}
 					if (targetEndpoint !== undefined && targetEndpoint.connections!.length === maxConnections) {
-						const inputNameOverlay = targetEndpoint.getOverlay('input-name-label');
+						const inputNameOverlay = targetEndpoint.getOverlay(OVERLAY_INPUT_NAME_LABEL);
 						if (![null, undefined].includes(inputNameOverlay)) {
 							inputNameOverlay.setVisible(true);
 						}
@@ -1682,7 +1682,7 @@ export default mixins(
 				});
 
 				this.instance.bind('connectionDetached', (info) => {
-					const inputNameOverlay = info.targetEndpoint.getOverlay('input-name-label');
+					const inputNameOverlay = info.targetEndpoint.getOverlay(OVERLAY_INPUT_NAME_LABEL);
 					if (inputNameOverlay) {
 						// todo
 						inputNameOverlay.setLocation([-3, .5]);

@@ -7,6 +7,7 @@ export const OVERLAY_ENDPOINT_ARROW_ID = 'endpoint-arrow';
 export const OVERLAY_RUN_ITEMS_ID = 'output-items-label';
 export const OVERLAY_CONNECTION_ACTIONS_ID = 'connection-actions';
 export const JSPLUMB_FLOWCHART_STUB = 26;
+export const OVERLAY_INPUT_NAME_LABEL = 'input-name-label';
 
 const _MIN_X_TO_SHOW_OUTPUT_LABEL = 90;
 const _MIN_Y_TO_SHOW_OUTPUT_LABEL = 100;
