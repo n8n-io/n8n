@@ -4,8 +4,8 @@ node_modules
 tmp
 dist
 npm-debug.log*
-package-lock.json
 lerna-debug.log
+package-lock.json
 yarn.lock
 google-generated-credentials.json
 _START_PACKAGE
