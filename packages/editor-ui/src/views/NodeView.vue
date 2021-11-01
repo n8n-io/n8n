@@ -1409,7 +1409,7 @@ export default mixins(
 							enterTimer = setTimeout(() => {
 								enterTimer = undefined;
 								activeConnection = info.connection;
-								CanvasHelpers.showConnectionActions(info.connection);
+								CanvasHelpers.showConectionActions(info.connection);
 							}, 150);
 						});
 
