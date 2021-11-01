@@ -24,5 +24,5 @@ export async function update(this: IExecuteFunctions, index: number): Promise<IN
   const uri = `https://api.bamboohr.com/api/gateway.php/${companyName}/v1/${endPoint}/${id}/files/${fileId}`;
   const responseData = await apiRequest.call(this, requestMethod, uri, body);
 
-  return this.helpers.returnJsonArray(responseData);
+  return this.helpers.returnJsonArray({ statusCode: responseData.statusCode, statusMessage: responseData.statusMessage });
 }

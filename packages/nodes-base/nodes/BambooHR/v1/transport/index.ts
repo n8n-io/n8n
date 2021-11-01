@@ -6,6 +6,7 @@ import {
 
 import {
   IDataObject,
+  IHttpRequestOptions,
   NodeApiError,
   NodeOperationError,
 } from 'n8n-workflow';
@@ -30,24 +31,25 @@ export async function apiRequest(
     throw new NodeOperationError(this.getNode(), 'No credentials returned!');
   }
 
-  let options: OptionsWithUri = {
+  const apiKey = credentials.apiKey;
+
+  let options: IHttpRequestOptions = {
+    method,
+    body: body ? JSON.stringify(body) : null,
+    url: uri,
+    auth: {
+      username: apiKey as string,
+      password: 'x',
+    },
     headers: {
       'Content-Type': 'application/json',
     },
-    method: method,
-    uri: uri,
-    body: body ? JSON.stringify(body) : null,
-    auth: {
-      user: credentials.apiKey as string,
-      pass: 'x',
-    },
+    returnFullResponse: true,
     json: true
   };
-  options = Object.assign({}, options, option);
-
 
   try {
-    return await this.helpers.request!(options);
+    return await this.helpers.httpRequest(options);
   } catch (error) {
     throw new NodeApiError(this.getNode(), error);
   }
