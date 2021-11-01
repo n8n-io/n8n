@@ -77,7 +77,7 @@ export class LingvaNex implements INodeType {
 					loadOptionsMethod: 'getLanguages',
 				},
 				default: '',
-				description: 'The language to use for translation of the input text, set to one of the<br/> language codes listed in <a href="https://cloud.google.com/translate/docs/languages">Language Support</a>',
+				description: 'The language to use for translation of the input text, set to one of the language codes listed in <a href="https://cloud.google.com/translate/docs/languages">Language Support</a>',
 				required: true,
 				displayOptions: {
 					show: {

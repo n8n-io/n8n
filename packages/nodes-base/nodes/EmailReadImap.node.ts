@@ -70,7 +70,7 @@ export class EmailReadImap implements INodeType {
 					},
 				],
 				default: 'read',
-				description: 'What to do after the email has been received. If "nothing" gets<br />selected it will be processed multiple times.',
+				description: 'What to do after the email has been received. If "nothing" gets selected it will be processed multiple times.',
 			},
 			{
 				displayName: 'Download Attachments',
@@ -122,7 +122,7 @@ export class EmailReadImap implements INodeType {
 						],
 					},
 				},
-				description: 'Prefix for name of the binary property to which to<br />write the attachments. An index starting with 0 will be added.<br />So if name is "attachment_" the first attachment is saved to "attachment_0"',
+				description: 'Prefix for name of the binary property to which to write the attachments. An index starting with 0 will be added.<br />So if name is "attachment_" the first attachment is saved to "attachment_0"',
 			},
 			{
 				displayName: 'Property Prefix Name',
@@ -139,7 +139,7 @@ export class EmailReadImap implements INodeType {
 						],
 					},
 				},
-				description: 'Prefix for name of the binary property to which to<br />write the attachments. An index starting with 0 will be added.<br />So if name is "attachment_" the first attachment is saved to "attachment_0"',
+				description: 'Prefix for name of the binary property to which to write the attachments. An index starting with 0 will be added.<br />So if name is "attachment_" the first attachment is saved to "attachment_0"',
 			},
 			{
 				displayName: 'Options',
@@ -399,7 +399,7 @@ export class EmailReadImap implements INodeType {
 						}
 						if (staticData.lastMessageUid !== undefined) {
 							searchCriteria.push(['UID', `${staticData.lastMessageUid as number}:*`]);
-							/** 
+							/**
 							 * A short explanation about UIDs and how they work
 							 * can be found here: https://dev.to/kehers/imap-new-messages-since-last-check-44gm
 							 * TL;DR:
@@ -413,7 +413,7 @@ export class EmailReadImap implements INodeType {
 							 */
 							Logger.debug('Querying for new messages on node "EmailReadImap"', {searchCriteria});
 						}
-				
+
 						const returnData = await getNewEmails(connection, searchCriteria);
 
 						if (returnData.length) {

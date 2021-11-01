@@ -24,7 +24,7 @@
 				<div :class="$style.credActions">
 					<n8n-icon-button
 						v-if="currentCredential"
-						size="medium"
+						size="small"
 						title="Delete"
 						icon="trash"
 						type="text"
@@ -202,14 +202,22 @@ export default mixins(showMessage, nodeHelpers).extend({
 			}
 		}
 
-		if (this.credentialId) {
-			if (!this.requiredPropertiesFilled) {
-				this.showValidationWarning = true;
+		this.$externalHooks().run('credentialsEdit.credentialModalOpened', {
+			credentialType: this.credentialTypeName,
+			isEditingCredential: this.mode === 'edit',
+			activeNode: this.$store.getters.activeNode,
+		});
+
+		setTimeout(() => {
+			if (this.credentialId) {
+				if (!this.requiredPropertiesFilled) {
+					this.showValidationWarning = true;
+				}
+				else {
+					this.retestCredential();
+				}
 			}
-			else {
-				this.retestCredential();
-			}
-		}
+		}, 0);
 
 		this.loading = false;
 	},
@@ -323,7 +331,11 @@ export default mixins(showMessage, nodeHelpers).extend({
 					continue;
 				}
 
-				if (!this.credentialData[property.name]) {
+				if (property.type === 'string' && !this.credentialData[property.name]) {
+					return false;
+				}
+
+				if (property.type === 'number' && typeof this.credentialData[property.name] !== 'number') {
 					return false;
 				}
 			}
@@ -545,6 +557,7 @@ export default mixins(showMessage, nodeHelpers).extend({
 			);
 
 			const details: ICredentialsDecrypted = {
+				id: this.credentialId,
 				name: this.credentialName,
 				type: this.credentialTypeName!,
 				data: data as unknown as ICredentialDataDecryptedObject,
@@ -593,6 +606,7 @@ export default mixins(showMessage, nodeHelpers).extend({
 			);
 
 			const credentialDetails: ICredentialsDecrypted = {
+				id: this.credentialId,
 				name: this.credentialName,
 				type: this.credentialTypeName!,
 				data: data as unknown as ICredentialDataDecryptedObject,
@@ -653,6 +667,8 @@ export default mixins(showMessage, nodeHelpers).extend({
 			this.$externalHooks().run('credentials.create', {
 				credentialTypeData: this.credentialData,
 			});
+
+			this.$telemetry.track('User created credentials', { credential_type: credentialDetails.type, workflow_id: this.$store.getters.workflowId });
 
 			return credential;
 		},

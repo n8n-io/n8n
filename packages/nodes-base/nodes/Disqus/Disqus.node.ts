@@ -624,7 +624,7 @@ export class Disqus implements INodeType {
 						name: 'threadId',
 						type: 'string',
 						default: '',
-						description: 'Looks up a thread by ID. You may pass us the "ident"<br />query type instead of an ID by including "forum". You may<br />pass us the "link" query type to filter by URL. You must pass<br />the "forum" if you do not have the Pro API Access addon.',
+						description: 'Looks up a thread by ID. You may pass us the "ident" query type instead of an ID by including "forum". You may pass us the "link" query type to filter by URL. You must pass the "forum" if you do not have the Pro API Access addon.',
 					},
 				],
 			},

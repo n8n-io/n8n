@@ -53,6 +53,7 @@ export default mixins(copyPaste, showMessage).extend({
 	span {
 		font-family: Monaco, Consolas;
 		line-height: 1.5;
+		font-size: var(--font-size-s);
 	}
 
 	padding: var(--spacing-xs);

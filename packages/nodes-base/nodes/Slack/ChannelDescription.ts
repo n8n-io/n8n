@@ -674,7 +674,7 @@ export const channelFields = [
 				],
 			},
 		},
-		description: 'By default the response only contain the ID to resource. If this<br />option gets activated it will resolve the data automatically.',
+		description: 'By default the response only contain the ID to resource. If this option gets activated, it will resolve the data automatically.',
 	},
 
 	/* -------------------------------------------------------------------------- */
