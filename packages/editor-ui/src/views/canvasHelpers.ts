@@ -325,3 +325,21 @@ export const getRelativePosition = (x: number, y: number, scale: number, offset:
 		(y - offset[1]) / scale,
 	];
 };
+
+export const getBackgroundStyles = (scale: number, offsetPosition: XYPosition) => {
+	const squareSize = 20 * scale;
+	const dotSize = 1 * scale;
+	const dotPosition = 10 * scale;
+	const styles: object = {
+		'background-size': `${squareSize}px ${squareSize}px`,
+		'background-position': `left ${offsetPosition[0]}px top ${offsetPosition[1]}px`,
+	};
+	if (squareSize > 10.5) {
+		const dotColor = getStyleTokenValue('--color-canvas-dot');
+		return {
+			...styles,
+			'background-image': `radial-gradient(circle at ${dotPosition}px ${dotPosition}px, ${dotColor} ${dotSize}px, transparent 0)`,
+		};
+	}
+	return styles;
+};

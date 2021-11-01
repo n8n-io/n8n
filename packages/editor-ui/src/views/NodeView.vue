@@ -278,23 +278,7 @@ export default mixins(
 				};
 			},
 			backgroundStyle (): object {
-				const scale = this.nodeViewScale;
-				const offsetPosition = this.$store.getters.getNodeViewOffsetPosition;
-				const squareSize = 20 * scale;
-				const dotSize = 1 * scale;
-				const dotPosition = 10 * scale;
-				const styles: object = {
-					'background-size': `${squareSize}px ${squareSize}px`,
-					'background-position': `left ${offsetPosition[0]}px top ${offsetPosition[1]}px`,
-				};
-				if (squareSize > 10.5) {
-					const dotColor = getStyleTokenValue('--color-canvas-dot');
-					return {
-						...styles,
-						'background-image': `radial-gradient(circle at ${dotPosition}px ${dotPosition}px, ${dotColor} ${dotSize}px, transparent 0)`,
-					};
-				}
-				return styles;
+				return CanvasHelpers.getBackgroundStyles(this.nodeViewScale, this.$store.getters.getNodeViewOffsetPosition);
 			},
 			workflowClasses () {
 				const returnClasses = [];
