@@ -109,8 +109,6 @@ import Vue from 'vue';
 import {
 	Connection,
 	Overlay,
-	OverlaySpec,
-	PaintStyle,
 } from 'jsplumb';
 import { MessageBoxInputData } from 'element-ui/types/message-box';
 import { jsPlumb, Endpoint, OnConnectionBindInfo } from 'jsplumb';
@@ -153,7 +151,6 @@ import {
 	IRun,
 	ITaskData,
 	INodeCredentialsDetails,
-	INodeExecutionData,
 } from 'n8n-workflow';
 import {
 	ICredentialsResponse,
@@ -1813,17 +1810,6 @@ export default mixins(
 				const sourceIndex = this.$store.getters.getNodeIndex(sourceNodeName);
 				const sourceId = `${NODE_NAME_PREFIX}${sourceIndex}`;
 
-				const resetConnection = (connection: Connection) => {
-					connection.removeOverlay(CanvasHelpers.OVERLAY_RUN_ITEMS_ID);
-					connection.setPaintStyle(CanvasHelpers.CONNECTOR_PAINT_STYLE_DEFAULT);
-					CanvasHelpers.showOrHideMidpointArrow(connection);
-					// @ts-ignore
-					if (connection.canvas) {
-						// @ts-ignore
-						(connection.canvas as Element).classList.remove('success');
-					}
-				};
-
 				if (data === null || data.length === 0) {
 					// @ts-ignore
 					const outgoing = this.instance.getConnections({
@@ -1831,7 +1817,7 @@ export default mixins(
 					}) as Connection[];
 
 					outgoing.forEach((connection: Connection) => {
-						resetConnection(connection);
+						CanvasHelpers.resetConnection(connection);
 					});
 
 					return;
@@ -1842,87 +1828,24 @@ export default mixins(
 					return;
 				}
 
-				const outputMap: {[sourceOutputIndex: string]: {[targetNodeName: string]: {[targetInputIndex: string]: {total: number, iterations: number}}}} = {};
-
-				data.forEach((run: ITaskData) => {
-					if (!run.data || !run.data.main) {
-						return;
-					}
-
-					run.data.main.forEach((output: INodeExecutionData[] | null, i: number) => {
-						if (!nodeConnections[i]) {
-							return;
-						}
-
-						nodeConnections[i]
-							.map((conn: IConnection) => {
-								const sourceOutputIndex = i;
-								const targetNodeName = conn.node;
-								const targetInputIndex = conn.index;
-
-								if (!outputMap[sourceOutputIndex]) {
-									outputMap[sourceOutputIndex] = {};
-								}
-
-								if (!outputMap[sourceOutputIndex][targetNodeName]) {
-									outputMap[sourceOutputIndex][targetNodeName] = {};
-								}
-
-								if (!outputMap[sourceOutputIndex][targetNodeName][targetInputIndex]) {
-									outputMap[sourceOutputIndex][targetNodeName][targetInputIndex] = {
-										total: 0,
-										iterations: 0,
-									};
-								}
-
-								outputMap[sourceOutputIndex][targetNodeName][targetInputIndex].total += output ? output.length : 0;
-								outputMap[sourceOutputIndex][targetNodeName][targetInputIndex].iterations += output ? 1 : 0;
-							});
-					});
-				});
+				const outputMap = CanvasHelpers.getOutputSummary(data, nodeConnections);
 
 				Object.keys(outputMap).forEach((sourceOutputIndex: string) => {
 					Object.keys(outputMap[sourceOutputIndex]).forEach((targetNodeName: string) => {
 						Object.keys(outputMap[sourceOutputIndex][targetNodeName]).forEach((targetInputIndex: string) => {
-							const conn = this.getJSPlumbConnection(sourceNodeName, parseInt(sourceOutputIndex, 10), targetNodeName, parseInt(targetInputIndex, 10));
+							const connection = this.getJSPlumbConnection(sourceNodeName, parseInt(sourceOutputIndex, 10), targetNodeName, parseInt(targetInputIndex, 10));
 
-							if (!conn) {
+							if (!connection) {
 								return;
 							}
 
 							const output = outputMap[sourceOutputIndex][targetNodeName][targetInputIndex];
 							if (!output || !output.total) {
-								resetConnection(conn);
+								CanvasHelpers.resetConnection(connection);
 								return;
 							}
 
-							conn.setPaintStyle(CanvasHelpers.CONNECTOR_PAINT_STYLE_SUCCESS);
-							// @ts-ignore
-							if (conn.canvas) {
-								// @ts-ignore
-								(conn.canvas as Element).classList.add('success');
-							}
-
-							if (conn.getOverlay(CanvasHelpers.OVERLAY_RUN_ITEMS_ID)) {
-								conn.removeOverlay(CanvasHelpers.OVERLAY_RUN_ITEMS_ID);
-							}
-
-							let label = `${output.total}`;
-							label = output.total > 1 ? `${label} items` : `${label} item`;
-							label = output.iterations > 1 ? `${label} total` : label;
-
-							conn.addOverlay([
-								'Label',
-								{
-									id: CanvasHelpers.OVERLAY_RUN_ITEMS_ID,
-									label,
-									cssClass: 'connection-output-items-label',
-									location: .5,
-								},
-							]);
-
-							CanvasHelpers.showOrHideItemsLabel(conn);
-							CanvasHelpers.showOrHideMidpointArrow(conn);
+							CanvasHelpers.addConnectionOutputSuccess(connection, output);
 						});
 					});
 				});

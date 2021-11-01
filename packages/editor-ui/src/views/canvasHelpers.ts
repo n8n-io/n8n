@@ -2,6 +2,12 @@ import { getStyleTokenValue } from "@/components/helpers";
 import { START_NODE_TYPE } from "@/constants";
 import { IBounds, INodeUi, IZoomConfig, XYPosition } from "@/Interface";
 import { Connection, OverlaySpec, PaintStyle } from "jsplumb";
+import {
+	IConnection,
+	ITaskData,
+	INodeExecutionData,
+	NodeInputConnections,
+} from 'n8n-workflow';
 
 export const OVERLAY_DROP_NODE_ID = 'drop-add-node';
 export const OVERLAY_MIDPOINT_ARROW_ID = 'midpoint-arrow';
@@ -360,5 +366,89 @@ export const showConectionActions = (connection: Connection | null) => {
 			hideOverlay(connection, OVERLAY_MIDPOINT_ARROW_ID);
 		}
 	}
+};
+
+export const getOutputSummary = (data: ITaskData[], nodeConnections: NodeInputConnections) => {
+	const outputMap: {[sourceOutputIndex: string]: {[targetNodeName: string]: {[targetInputIndex: string]: {total: number, iterations: number}}}} = {};
+
+	data.forEach((run: ITaskData) => {
+		if (!run.data || !run.data.main) {
+			return;
+		}
+
+		run.data.main.forEach((output: INodeExecutionData[] | null, i: number) => {
+			if (!nodeConnections[i]) {
+				return;
+			}
+
+			nodeConnections[i]
+				.map((connection: IConnection) => {
+					const sourceOutputIndex = i;
+					const targetNodeName = connection.node;
+					const targetInputIndex = connection.index;
+
+					if (!outputMap[sourceOutputIndex]) {
+						outputMap[sourceOutputIndex] = {};
+					}
+
+					if (!outputMap[sourceOutputIndex][targetNodeName]) {
+						outputMap[sourceOutputIndex][targetNodeName] = {};
+					}
+
+					if (!outputMap[sourceOutputIndex][targetNodeName][targetInputIndex]) {
+						outputMap[sourceOutputIndex][targetNodeName][targetInputIndex] = {
+							total: 0,
+							iterations: 0,
+						};
+					}
+
+					outputMap[sourceOutputIndex][targetNodeName][targetInputIndex].total += output ? output.length : 0;
+					outputMap[sourceOutputIndex][targetNodeName][targetInputIndex].iterations += output ? 1 : 0;
+				});
+		});
+	});
+
+	return outputMap;
+};
+
+export const resetConnection = (connection: Connection) => {
+	connection.removeOverlay(OVERLAY_RUN_ITEMS_ID);
+	connection.setPaintStyle(CONNECTOR_PAINT_STYLE_DEFAULT);
+	showOrHideMidpointArrow(connection);
+	// @ts-ignore
+	if (connection.canvas) {
+		// @ts-ignore
+		(connection.canvas as Element).classList.remove('success');
+	}
+};
+
+export const addConnectionOutputSuccess = (connection: Connection, output: {total: number, iterations: number}) => {
+	connection.setPaintStyle(CONNECTOR_PAINT_STYLE_SUCCESS);
+	// @ts-ignore
+	if (connection.canvas) {
+		// @ts-ignore
+		(connection.canvas as Element).classList.add('success');
+	}
+
+	if (connection.getOverlay(OVERLAY_RUN_ITEMS_ID)) {
+		connection.removeOverlay(OVERLAY_RUN_ITEMS_ID);
+	}
+
+	let label = `${output.total}`;
+	label = output.total > 1 ? `${label} items` : `${label} item`;
+	label = output.iterations > 1 ? `${label} total` : label;
+
+	connection.addOverlay([
+		'Label',
+		{
+			id: OVERLAY_RUN_ITEMS_ID,
+			label,
+			cssClass: 'connection-output-items-label',
+			location: .5,
+		},
+	]);
+
+	showOrHideItemsLabel(connection);
+	showOrHideMidpointArrow(connection);
 };
 
