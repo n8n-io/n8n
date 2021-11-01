@@ -15,6 +15,11 @@ export function getAppNameFromCredType(name: string) {
 }
 
 export function getStyleTokenValue(name: string) {
+	if (window.localStorage.getItem(name)) {
+		return window.localStorage.getItem(name);
+	}
 	const style = getComputedStyle(document.body);
-	return style.getPropertyValue(name);
+	const value = style.getPropertyValue(name);
+	window.localStorage.setItem(name, value);
+	return value;
 }
