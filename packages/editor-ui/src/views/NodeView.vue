@@ -108,10 +108,9 @@
 import Vue from 'vue';
 import {
 	Connection,
-	Overlay,
 } from 'jsplumb';
 import { MessageBoxInputData } from 'element-ui/types/message-box';
-import { jsPlumb, Endpoint, OnConnectionBindInfo } from 'jsplumb';
+import { jsPlumb, OnConnectionBindInfo } from 'jsplumb';
 import { NODE_NAME_PREFIX, PLACEHOLDER_EMPTY_WORKFLOW_ID, START_NODE_TYPE, WEBHOOK_NODE_TYPE, WORKFLOW_OPEN_MODAL_KEY } from '@/constants';
 import { copyPaste } from '@/components/mixins/copyPaste';
 import { externalHooks } from '@/components/mixins/externalHooks';
