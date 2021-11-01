@@ -14,9 +14,9 @@ export function getAppNameFromCredType(name: string) {
 	return name.split(' ').filter((word) => !KEYWORDS_TO_FILTER.includes(word)).join(' ');
 }
 
-export function getStyleTokenValue(name: string) {
+export function getStyleTokenValue(name: string): string {
 	if (window.localStorage.getItem(name)) {
-		return window.localStorage.getItem(name);
+		return window.localStorage.getItem(name) as string;
 	}
 	const style = getComputedStyle(document.body);
 	const value = style.getPropertyValue(name);
