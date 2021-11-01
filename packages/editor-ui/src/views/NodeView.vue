@@ -1504,7 +1504,7 @@ export default mixins(
 
 					const inputNameOverlay = info.targetEndpoint.getOverlay(CanvasHelpers.OVERLAY_INPUT_NAME_LABEL);
 					if (inputNameOverlay) {
-						inputNameOverlay.setLocation([-4.5, .5]);
+						inputNameOverlay.setLocation(CanvasHelpers.OVERLAY_INPUT_NAME_LABEL_POSITION_MOVED);
 					}
 
 					this.$store.commit('addConnection', {
@@ -1528,7 +1528,7 @@ export default mixins(
 					// If the source endpoint is not connected to anything else anymore
 					// display the output-name overlays on the endpoint if any exist
 					if (sourceEndpoint !== undefined && sourceEndpoint.connections!.length === maxConnections) {
-						const outputNameOverlay = sourceEndpoint.getOverlay('output-name-label');
+						const outputNameOverlay = sourceEndpoint.getOverlay(CanvasHelpers.OVERLAY_OUTPUT_NAME_LABEL);
 						if (![null, undefined].includes(outputNameOverlay)) {
 							outputNameOverlay.setVisible(true);
 						}
@@ -1576,8 +1576,7 @@ export default mixins(
 				this.instance.bind('connectionDetached', (info) => {
 					const inputNameOverlay = info.targetEndpoint.getOverlay(CanvasHelpers.OVERLAY_INPUT_NAME_LABEL);
 					if (inputNameOverlay) {
-						// todo
-						inputNameOverlay.setLocation([-3, .5]);
+						inputNameOverlay.setLocation(CanvasHelpers.OVERLAY_INPUT_NAME_LABEL_POSITION);
 					}
 
 					updateConnectionDetach(info.sourceEndpoint, info.targetEndpoint, 1);

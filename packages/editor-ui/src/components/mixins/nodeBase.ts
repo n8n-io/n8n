@@ -201,7 +201,7 @@ export const nodeBase = mixins(
 						['Label',
 							{
 								id: CanvasHelpers.OVERLAY_INPUT_NAME_LABEL,
-								location: [-3, 0.5],
+								location: CanvasHelpers.OVERLAY_INPUT_NAME_LABEL_POSITION,
 								label: nodeTypeData.inputNames[index],
 								cssClass: 'node-input-endpoint-label',
 								visible: true,
@@ -263,7 +263,7 @@ export const nodeBase = mixins(
 					newEndpointData.overlays = [
 						['Label',
 							{
-								id: 'output-name-label',
+								id: CanvasHelpers.OVERLAY_OUTPUT_NAME_LABEL,
 								location: [1.9, 0.5],
 								label: nodeTypeData.outputNames[index],
 								cssClass: 'node-output-endpoint-label',

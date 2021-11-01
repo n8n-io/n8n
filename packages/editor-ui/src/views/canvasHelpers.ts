@@ -10,6 +10,9 @@ export const OVERLAY_RUN_ITEMS_ID = 'output-items-label';
 export const OVERLAY_CONNECTION_ACTIONS_ID = 'connection-actions';
 export const JSPLUMB_FLOWCHART_STUB = 26;
 export const OVERLAY_INPUT_NAME_LABEL = 'input-name-label';
+export const OVERLAY_INPUT_NAME_LABEL_POSITION = [-3, .5];
+export const OVERLAY_INPUT_NAME_LABEL_POSITION_MOVED = [-4.5, .5];
+export const OVERLAY_OUTPUT_NAME_LABEL = 'output-name-label';
 
 const MIN_X_TO_SHOW_OUTPUT_LABEL = 90;
 const MIN_Y_TO_SHOW_OUTPUT_LABEL = 100;
@@ -57,7 +60,7 @@ export const getFlowChartType = (connection: Connection) => {
 	const outputIndex = connection.__meta ? connection.__meta.sourceOutputIndex : 0;
 
 	const outputEndpoint = connection.endpoints[0];
-	const outputOverlay = outputEndpoint.getOverlay('output-name-label');
+	const outputOverlay = outputEndpoint.getOverlay(OVERLAY_OUTPUT_NAME_LABEL);
 	let labelOffset = 0;
 	if (outputOverlay && outputOverlay.label && outputOverlay.label.length > 1) {
 		labelOffset = 16;
