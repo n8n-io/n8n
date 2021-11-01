@@ -6,7 +6,7 @@ import { deviceSupportHelpers } from '@/components/mixins/deviceSupportHelpers';
 import { nodeIndex } from '@/components/mixins/nodeIndex';
 import { NODE_NAME_PREFIX, NO_OP_NODE_TYPE } from '@/constants';
 import { getStyleTokenValue } from '../helpers';
-import { OVERLAY_INPUT_NAME_LABEL } from '@/views/canvasHelpers';
+import * as CanvasHelpers from '@/views/canvasHelpers';
 
 export const nodeBase = mixins(
 	deviceSupportHelpers,
@@ -200,7 +200,7 @@ export const nodeBase = mixins(
 					newEndpointData.overlays = [
 						['Label',
 							{
-								id: OVERLAY_INPUT_NAME_LABEL,
+								id: CanvasHelpers.OVERLAY_INPUT_NAME_LABEL,
 								location: [-3, 0.5],
 								label: nodeTypeData.inputNames[index],
 								cssClass: 'node-input-endpoint-label',

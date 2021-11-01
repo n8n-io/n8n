@@ -1,5 +1,7 @@
-import { INodeUi, IZoomConfig, XYPosition } from "@/Interface";
-import { Connection } from "jsplumb";
+import { getStyleTokenValue } from "@/components/helpers";
+import { START_NODE_TYPE } from "@/constants";
+import { IBounds, INodeUi, IZoomConfig, XYPosition } from "@/Interface";
+import { Connection, OverlaySpec, PaintStyle } from "jsplumb";
 
 export const OVERLAY_DROP_NODE_ID = 'drop-add-node';
 export const OVERLAY_MIDPOINT_ARROW_ID = 'midpoint-arrow';
@@ -9,15 +11,111 @@ export const OVERLAY_CONNECTION_ACTIONS_ID = 'connection-actions';
 export const JSPLUMB_FLOWCHART_STUB = 26;
 export const OVERLAY_INPUT_NAME_LABEL = 'input-name-label';
 
-const _MIN_X_TO_SHOW_OUTPUT_LABEL = 90;
-const _MIN_Y_TO_SHOW_OUTPUT_LABEL = 100;
+const MIN_X_TO_SHOW_OUTPUT_LABEL = 90;
+const MIN_Y_TO_SHOW_OUTPUT_LABEL = 100;
 
-interface ICorners {
-	minX: number;
-	minY: number;
-	maxX: number;
-	maxY: number;
-}
+export const NODE_SIZE = 100;
+export const DEFAULT_START_POSITION_X = 240;
+export const DEFAULT_START_POSITION_Y = 300;
+export const HEADER_HEIGHT = 65;
+export const SIDEBAR_WIDTH = 65;
+export const MAX_X_TO_PUSH_DOWNSTREAM_NODES = 300;
+export const PUSH_NODES_OFFSET = 200;
+
+export const DEFAULT_START_NODE = {
+	name: 'Start',
+	type: START_NODE_TYPE,
+	typeVersion: 1,
+	position: [
+		DEFAULT_START_POSITION_X,
+		DEFAULT_START_POSITION_Y,
+	] as XYPosition,
+	parameters: {},
+};
+
+export const CONNECTOR_PAINT_STYLE_DEFAULT: PaintStyle = {
+	stroke: getStyleTokenValue('--color-foreground-dark'),
+	strokeWidth: 2,
+	outlineWidth: 12,
+	outlineStroke: 'transparent',
+};
+
+export const CONNECTOR_PAINT_STYLE_PRIMARY = {
+	...CONNECTOR_PAINT_STYLE_DEFAULT,
+	stroke: getStyleTokenValue('--color-primary'),
+};
+
+export const CONNECTOR_PAINT_STYLE_SUCCESS = {
+	...CONNECTOR_PAINT_STYLE_DEFAULT,
+	stroke: getStyleTokenValue('--color-success'),
+};
+
+export const CONNECTOR_TYPE_STRIGHT = ['Straight'];
+
+export const getFlowChartType = (connection: Connection) => {
+	const inputIndex = connection.__meta ? connection.__meta.targetOutputIndex : 0;
+	const outputIndex = connection.__meta ? connection.__meta.sourceOutputIndex : 0;
+
+	const outputEndpoint = connection.endpoints[0];
+	const outputOverlay = outputEndpoint.getOverlay('output-name-label');
+	let labelOffset = 0;
+	if (outputOverlay && outputOverlay.label && outputOverlay.label.length > 1) {
+		labelOffset = 16;
+	}
+
+	return ['N8nFlowchart', {
+		cornerRadius: 4,
+		stub: JSPLUMB_FLOWCHART_STUB + 10 * outputIndex + 10 * inputIndex + labelOffset,
+		gap: 5,
+		alwaysRespectStubs: true,
+		yOffset: NODE_SIZE,
+		loopbackMinimum: 140,
+	}];
+};
+
+export const CONNECTOR_ARROW_OVERLAYS: OverlaySpec[] = [
+	[
+		'Arrow',
+		{
+			id: OVERLAY_ENDPOINT_ARROW_ID,
+			location: 1,
+			width: 12,
+			foldback: 1,
+			length: 10,
+			visible: true,
+		},
+	],
+	[
+		'Arrow',
+		{
+			id: OVERLAY_MIDPOINT_ARROW_ID,
+			location: 0.5,
+			width: 12,
+			foldback: 1,
+			length: 10,
+			visible: false,
+		},
+	],
+];
+
+export const CONNECTOR_DROP_NODE_OVERLAY: OverlaySpec[] = [
+	[
+		'Label',
+		{
+			id: OVERLAY_DROP_NODE_ID,
+			label: 'Drop connection<br />to create node',
+			cssClass: 'drop-add-node-label',
+			location: 0.5,
+			visible: true,
+		},
+	],
+];
+
+export const addOverlays = (connection: Connection, overlays: OverlaySpec[]) => {
+	overlays.forEach((overlay: OverlaySpec) => {
+		connection.addOverlay(overlay);
+	});
+};
 
 export const getLeftmostTopNode = (nodes: INodeUi[]): INodeUi => {
 	return nodes.reduce((leftmostTop, node) => {
@@ -29,8 +127,8 @@ export const getLeftmostTopNode = (nodes: INodeUi[]): INodeUi => {
 	});
 };
 
-export const getWorkflowCorners = (nodes: INodeUi[]): ICorners => {
-	return nodes.reduce((accu: ICorners, node: INodeUi) => {
+export const getWorkflowCorners = (nodes: INodeUi[]): IBounds => {
+	return nodes.reduce((accu: IBounds, node: INodeUi) => {
 		if (node.position[0] < accu.minX) {
 			accu.minX = node.position[0];
 		}
@@ -147,7 +245,7 @@ export const showOrHideItemsLabel = (connection: Connection) => {
 
 	const [diffX, diffY] = getConnectorLengths(connection);
 
-	if (diffX < _MIN_X_TO_SHOW_OUTPUT_LABEL && diffY < _MIN_Y_TO_SHOW_OUTPUT_LABEL) {
+	if (diffX < MIN_X_TO_SHOW_OUTPUT_LABEL && diffY < MIN_Y_TO_SHOW_OUTPUT_LABEL) {
 		overlay.setVisible(false);
 	}
 	else {

@@ -135,7 +135,7 @@ import NodeCreator from '@/components/NodeCreator/NodeCreator.vue';
 import NodeSettings from '@/components/NodeSettings.vue';
 import RunData from '@/components/RunData.vue';
 
-import { OVERLAY_INPUT_NAME_LABEL, JSPLUMB_FLOWCHART_STUB, getLeftmostTopNode, getWorkflowCorners, scaleSmaller, scaleBigger, scaleReset, showOrHideMidpointArrow, getIcon, getNewNodePosition, hideOverlay, showOrHideItemsLabel, showOverlay, OVERLAY_ENDPOINT_ARROW_ID, OVERLAY_MIDPOINT_ARROW_ID, OVERLAY_DROP_NODE_ID, OVERLAY_RUN_ITEMS_ID, OVERLAY_CONNECTION_ACTIONS_ID, getConnectorLengths, getRelativePosition, getMousePosition } from './canvasHelpers';
+import * as CanvasHelpers from './canvasHelpers';
 
 import mixins from 'vue-typed-mixins';
 import { v4 as uuidv4} from 'uuid';
@@ -158,7 +158,6 @@ import {
 import {
 	ICredentialsResponse,
 	IExecutionResponse,
-	IN8nUISettings,
 	IWorkflowDb,
 	IWorkflowData,
 	INodeUi,
@@ -173,113 +172,6 @@ import {
 import { mapGetters } from 'vuex';
 import { getStyleTokenValue } from '@/components/helpers';
 import '../plugins/N8nFlowchartType';
-
-const NODE_SIZE = 100;
-const DEFAULT_START_POSITION_X = 240;
-const DEFAULT_START_POSITION_Y = 300;
-const HEADER_HEIGHT = 65;
-const SIDEBAR_WIDTH = 65;
-const MAX_X_TO_PUSH_DOWNSTREAM_NODES = 300;
-
-const DEFAULT_START_NODE = {
-	name: 'Start',
-	type: START_NODE_TYPE,
-	typeVersion: 1,
-	position: [
-		DEFAULT_START_POSITION_X,
-		DEFAULT_START_POSITION_Y,
-	] as XYPosition,
-	parameters: {},
-};
-
-const _OUTLINE_STROKE_COLOR = 'transparent';
-const _OUTLINE_STROKE_WIDTH = 12;
-const _ALWAYS_RESPECT_STUB = true;
-const _PUSH_NODES_LENGTH = 200;
-
-const CONNECTOR_PAINT_STYLE_DEFAULT: PaintStyle = {
-	stroke: getStyleTokenValue('--color-foreground-dark'),
-	strokeWidth: 2,
-	outlineWidth: _OUTLINE_STROKE_WIDTH,
-	outlineStroke: _OUTLINE_STROKE_COLOR,
-};
-
-const CONNECTOR_PAINT_STYLE_PRIMARY = {
-	...CONNECTOR_PAINT_STYLE_DEFAULT,
-	stroke: getStyleTokenValue('--color-primary'),
-};
-
-const CONNECTOR_PAINT_STYLE_SUCCESS = {
-	...CONNECTOR_PAINT_STYLE_DEFAULT,
-	stroke: getStyleTokenValue('--color-success'),
-};
-
-const CONNECTOR_TYPE_STRIGHT = ['Straight'];
-
-const getFlowChartType = (connection: Connection) => {
-	const inputIndex = connection.__meta ? connection.__meta.targetOutputIndex : 0;
-	const outputIndex = connection.__meta ? connection.__meta.sourceOutputIndex : 0;
-
-	const outputEndpoint = connection.endpoints[0];
-	const outputOverlay = outputEndpoint.getOverlay('output-name-label');
-	let labelOffset = 0;
-	if (outputOverlay && outputOverlay.label && outputOverlay.label.length > 1) {
-		labelOffset = 16;
-	}
-
-	return ['N8nFlowchart', {
-		cornerRadius: 4,
-		stub: JSPLUMB_FLOWCHART_STUB + 10 * outputIndex + 10 * inputIndex + labelOffset,
-		gap: 5,
-		alwaysRespectStubs: _ALWAYS_RESPECT_STUB,
-		yOffset: NODE_SIZE,
-		loopbackMinimum: 140,
-	}];
-};
-
-const CONNECTOR_ARROW_OVERLAYS: OverlaySpec[] = [
-	[
-		'Arrow',
-		{
-			id: OVERLAY_ENDPOINT_ARROW_ID,
-			location: 1,
-			width: 12,
-			foldback: 1,
-			length: 10,
-			visible: true,
-		},
-	],
-	[
-		'Arrow',
-		{
-			id: OVERLAY_MIDPOINT_ARROW_ID,
-			location: 0.5,
-			width: 12,
-			foldback: 1,
-			length: 10,
-			visible: false,
-		},
-	],
-];
-
-const CONNECTOR_DROP_NODE_OVERLAY: OverlaySpec[] = [
-	[
-		'Label',
-		{
-			id: OVERLAY_DROP_NODE_ID,
-			label: 'Drop connection<br />to create node',
-			cssClass: 'drop-add-node-label',
-			location: 0.5,
-			visible: true,
-		},
-	],
-];
-
-const addOverlays = (connection: Connection, overlays: OverlaySpec[]) => {
-	overlays.forEach((overlay: OverlaySpec) => {
-		connection.addOverlay(overlay);
-	});
-};
 
 export default mixins(
 	copyPaste,
@@ -557,18 +449,18 @@ export default mixins(
 				const nodes = data.workflow.nodes;
 				const hasStartNode = !!nodes.find(node => node.type === START_NODE_TYPE);
 
-				const leftmostTop = getLeftmostTopNode(nodes);
+				const leftmostTop = CanvasHelpers.getLeftmostTopNode(nodes);
 
-				const diffX = DEFAULT_START_POSITION_X - leftmostTop.position[0];
-				const diffY = DEFAULT_START_POSITION_Y - leftmostTop.position[1];
+				const diffX = CanvasHelpers.DEFAULT_START_POSITION_X - leftmostTop.position[0];
+				const diffY = CanvasHelpers.DEFAULT_START_POSITION_Y - leftmostTop.position[1];
 
 				data.workflow.nodes.map((node) => {
-					node.position[0] += diffX + (hasStartNode? 0 : NODE_SIZE * 2);
+					node.position[0] += diffX + (hasStartNode? 0 : CanvasHelpers.NODE_SIZE * 2);
 					node.position[1] += diffY;
 				});
 
 				if (!hasStartNode) {
-					data.workflow.nodes.push(DEFAULT_START_NODE);
+					data.workflow.nodes.push(CanvasHelpers.DEFAULT_START_NODE);
 				}
 
 				this.blankRedirect = true;
@@ -976,21 +868,21 @@ export default mixins(
 			},
 
 			resetZoom () {
-				const { scale, offset } = scaleReset({scale: this.nodeViewScale, offset: this.$store.getters.getNodeViewOffsetPosition});
+				const { scale, offset } = CanvasHelpers.scaleReset({scale: this.nodeViewScale, offset: this.$store.getters.getNodeViewOffsetPosition});
 
 				this.setZoomLevel(scale);
 				this.$store.commit('setNodeViewOffsetPosition', {newOffset: offset});
 			},
 
 			zoomIn() {
-				const { scale, offset: [xOffset, yOffset] } = scaleBigger({scale: this.nodeViewScale, offset: this.$store.getters.getNodeViewOffsetPosition});
+				const { scale, offset: [xOffset, yOffset] } = CanvasHelpers.scaleBigger({scale: this.nodeViewScale, offset: this.$store.getters.getNodeViewOffsetPosition});
 
 				this.setZoomLevel(scale);
 				this.$store.commit('setNodeViewOffsetPosition', {newOffset: [xOffset, yOffset]});
 			},
 
 			zoomOut() {
-				const { scale, offset: [xOffset, yOffset] } = scaleSmaller({scale: this.nodeViewScale, offset: this.$store.getters.getNodeViewOffsetPosition});
+				const { scale, offset: [xOffset, yOffset] } = CanvasHelpers.scaleSmaller({scale: this.nodeViewScale, offset: this.$store.getters.getNodeViewOffsetPosition});
 
 				this.setZoomLevel(scale);
 				this.$store.commit('setNodeViewOffsetPosition', {newOffset: [xOffset, yOffset]});
@@ -1021,24 +913,24 @@ export default mixins(
 					return;
 				}
 
-				const {minX, minY, maxX, maxY} = getWorkflowCorners(nodes);
+				const {minX, minY, maxX, maxY} = CanvasHelpers.getWorkflowCorners(nodes);
 
-				const PADDING = NODE_SIZE * 4;
+				const PADDING = CanvasHelpers.NODE_SIZE * 4;
 
 				const editorWidth = window.innerWidth;
-				const diffX = maxX - minX + SIDEBAR_WIDTH + PADDING;
+				const diffX = maxX - minX + CanvasHelpers.SIDEBAR_WIDTH + PADDING;
 				const scaleX = editorWidth / diffX;
 
 				const editorHeight = window.innerHeight;
-				const diffY = maxY - minY + HEADER_HEIGHT + PADDING;
+				const diffY = maxY - minY + CanvasHelpers.HEADER_HEIGHT + PADDING;
 				const scaleY = editorHeight / diffY;
 
 				const zoomLevel = Math.min(scaleX, scaleY, 1);
-				let xOffset = (minX * -1) * zoomLevel + SIDEBAR_WIDTH; // find top right corner
-				xOffset += (editorWidth - SIDEBAR_WIDTH - (maxX - minX + NODE_SIZE) * zoomLevel) / 2; // add padding to center workflow
+				let xOffset = (minX * -1) * zoomLevel + CanvasHelpers.SIDEBAR_WIDTH; // find top right corner
+				xOffset += (editorWidth - CanvasHelpers.SIDEBAR_WIDTH - (maxX - minX + CanvasHelpers.NODE_SIZE) * zoomLevel) / 2; // add padding to center workflow
 
-				let yOffset = (minY * -1) * zoomLevel + HEADER_HEIGHT; // find top right corner
-				yOffset += (editorHeight - HEADER_HEIGHT - (maxY - minY + NODE_SIZE * 2) * zoomLevel) / 2; // add padding to center workflow
+				let yOffset = (minY * -1) * zoomLevel + CanvasHelpers.HEADER_HEIGHT; // find top right corner
+				yOffset += (editorHeight - CanvasHelpers.HEADER_HEIGHT - (maxY - minY + CanvasHelpers.NODE_SIZE * 2) * zoomLevel) / 2; // add padding to center workflow
 
 				this.setZoomLevel(zoomLevel);
 				this.$store.commit('setNodeViewOffsetPosition', {newOffset: [xOffset, yOffset]});
@@ -1190,7 +1082,7 @@ export default mixins(
 					// Fix the node position as it could be totally offscreen
 					// and the pasted nodes would so not be directly visible to
 					// the user
-					this.updateNodePositions(workflowData, getNewNodePosition(this.nodes, this.lastClickPosition));
+					this.updateNodePositions(workflowData, CanvasHelpers.getNewNodePosition(this.nodes, this.lastClickPosition));
 
 					const data = await this.addNodesToWorkflow(workflowData);
 
@@ -1319,14 +1211,14 @@ export default mixins(
 				if (lastSelectedNode) {
 					const lastSelectedConnection = this.lastSelectedConnection;
 					if (lastSelectedConnection) {
-						const [diffX] = getConnectorLengths(lastSelectedConnection);
-						if (diffX <= MAX_X_TO_PUSH_DOWNSTREAM_NODES) {
-							this.pushDownstreamNodes(lastSelectedNode.name, _PUSH_NODES_LENGTH);
+						const [diffX] = CanvasHelpers.getConnectorLengths(lastSelectedConnection);
+						if (diffX <= CanvasHelpers.MAX_X_TO_PUSH_DOWNSTREAM_NODES) {
+							this.pushDownstreamNodes(lastSelectedNode.name, CanvasHelpers.PUSH_NODES_OFFSET);
 						}
 					}
 
 					if (this.newNodeInsertPosition) {
-						newNodeData.position = getNewNodePosition(this.nodes, [this.newNodeInsertPosition[0], this.newNodeInsertPosition[1] - NODE_SIZE / 2]);
+						newNodeData.position = CanvasHelpers.getNewNodePosition(this.nodes, [this.newNodeInsertPosition[0], this.newNodeInsertPosition[1] - CanvasHelpers.NODE_SIZE / 2]);
 						this.newNodeInsertPosition = null;
 					}
 					else {
@@ -1343,7 +1235,7 @@ export default mixins(
 
 						// If a node is active then add the new node directly after the current one
 						// newNodeData.position = [activeNode.position[0], activeNode.position[1] + 60];
-						newNodeData.position = getNewNodePosition(
+						newNodeData.position = CanvasHelpers.getNewNodePosition(
 							this.nodes,
 							[lastSelectedNode.position[0] + 200, lastSelectedNode.position[1] + yOffset],
 							[100, 0],
@@ -1351,7 +1243,7 @@ export default mixins(
 					}
 				} else {
 					// If no node is active find a free spot
-					newNodeData.position = getNewNodePosition(this.nodes, this.lastClickPosition);
+					newNodeData.position = CanvasHelpers.getNewNodePosition(this.nodes, this.lastClickPosition);
 				}
 
 				// Check if node-name is unique else find one that is
@@ -1427,12 +1319,12 @@ export default mixins(
 			},
 			initNodeView () {
 				this.instance.importDefaults({
-					Connector: CONNECTOR_TYPE_STRIGHT ,
+					Connector: CanvasHelpers.CONNECTOR_TYPE_STRIGHT,
 					Endpoint: ['Dot', { radius: 5 }],
 					DragOptions: { cursor: 'pointer', zIndex: 5000 },
 					PaintStyle: { strokeWidth: 2, stroke: getStyleTokenValue('--color-foreground-dark')},
 					HoverPaintStyle: { stroke: getStyleTokenValue('--color-primary'), lineWidth: 4 },
-					ConnectionOverlays: CONNECTOR_ARROW_OVERLAYS,
+					ConnectionOverlays: CanvasHelpers.CONNECTOR_ARROW_OVERLAYS,
 					Container: '#node-view',
 				});
 
@@ -1489,18 +1381,18 @@ export default mixins(
 
 				const hideActions = (connection: Connection | null) => {
 					if (connection) {
-						hideOverlay(connection, OVERLAY_CONNECTION_ACTIONS_ID);
-						showOrHideItemsLabel(connection);
-						showOrHideMidpointArrow(connection);
+						CanvasHelpers.hideOverlay(connection, CanvasHelpers.OVERLAY_CONNECTION_ACTIONS_ID);
+						CanvasHelpers.showOrHideItemsLabel(connection);
+						CanvasHelpers.showOrHideMidpointArrow(connection);
 					}
 				};
 
 				const showActions = (connection: Connection | null) => {
 					if (connection) {
-						showOverlay(connection, OVERLAY_CONNECTION_ACTIONS_ID);
-						hideOverlay(connection, OVERLAY_RUN_ITEMS_ID);
-						if (!connection.getOverlay(OVERLAY_RUN_ITEMS_ID)) {
-							hideOverlay(connection, OVERLAY_MIDPOINT_ARROW_ID);
+						CanvasHelpers.showOverlay(connection, CanvasHelpers.OVERLAY_CONNECTION_ACTIONS_ID);
+						CanvasHelpers.hideOverlay(connection, CanvasHelpers.OVERLAY_RUN_ITEMS_ID);
+						if (!connection.getOverlay(CanvasHelpers.OVERLAY_RUN_ITEMS_ID)) {
+							CanvasHelpers.hideOverlay(connection, CanvasHelpers.OVERLAY_MIDPOINT_ARROW_ID);
 						}
 					}
 				};
@@ -1519,15 +1411,15 @@ export default mixins(
 						targetOutputIndex: targetInfo.index,
 					};
 
-					const connectorType = getFlowChartType(info.connection);
+					const connectorType = CanvasHelpers.getFlowChartType(info.connection);
 
 					info.connection.setConnector(connectorType);
-					info.connection.setPaintStyle(CONNECTOR_PAINT_STYLE_DEFAULT);
-					addOverlays(info.connection, CONNECTOR_ARROW_OVERLAYS);
+					info.connection.setPaintStyle(CanvasHelpers.CONNECTOR_PAINT_STYLE_DEFAULT);
+					CanvasHelpers.addOverlays(info.connection, CanvasHelpers.CONNECTOR_ARROW_OVERLAYS);
 
-					showOrHideMidpointArrow(info.connection);
+					CanvasHelpers.showOrHideMidpointArrow(info.connection);
 
-					info.connection.removeOverlay(OVERLAY_DROP_NODE_ID);
+					info.connection.removeOverlay(CanvasHelpers.OVERLAY_DROP_NODE_ID);
 
 					if (this.isReadOnly === false) {
 						let exitTimer: NodeJS.Timeout | undefined;
@@ -1583,9 +1475,9 @@ export default mixins(
 						info.connection.addOverlay([
 							'Label',
 							{
-								id: OVERLAY_CONNECTION_ACTIONS_ID,
-								label: `<div class="add">${getIcon('plus')}</div> <div class="delete">${getIcon('trash')}</div>`,
-								cssClass: OVERLAY_CONNECTION_ACTIONS_ID,
+								id: CanvasHelpers.OVERLAY_CONNECTION_ACTIONS_ID,
+								label: `<div class="add">${CanvasHelpers.getIcon('plus')}</div> <div class="delete">${CanvasHelpers.getIcon('trash')}</div>`,
+								cssClass: CanvasHelpers.OVERLAY_CONNECTION_ACTIONS_ID,
 								visible: false,
 								events: {
 									mousedown: (overlay: Overlay, event: MouseEvent) => {
@@ -1610,7 +1502,7 @@ export default mixins(
 						]);
 					}
 
-					const inputNameOverlay = info.targetEndpoint.getOverlay(OVERLAY_INPUT_NAME_LABEL);
+					const inputNameOverlay = info.targetEndpoint.getOverlay(CanvasHelpers.OVERLAY_INPUT_NAME_LABEL);
 					if (inputNameOverlay) {
 						inputNameOverlay.setLocation([-4.5, .5]);
 					}
@@ -1642,7 +1534,7 @@ export default mixins(
 						}
 					}
 					if (targetEndpoint !== undefined && targetEndpoint.connections!.length === maxConnections) {
-						const inputNameOverlay = targetEndpoint.getOverlay(OVERLAY_INPUT_NAME_LABEL);
+						const inputNameOverlay = targetEndpoint.getOverlay(CanvasHelpers.OVERLAY_INPUT_NAME_LABEL);
 						if (![null, undefined].includes(inputNameOverlay)) {
 							inputNameOverlay.setVisible(true);
 						}
@@ -1682,7 +1574,7 @@ export default mixins(
 				});
 
 				this.instance.bind('connectionDetached', (info) => {
-					const inputNameOverlay = info.targetEndpoint.getOverlay(OVERLAY_INPUT_NAME_LABEL);
+					const inputNameOverlay = info.targetEndpoint.getOverlay(CanvasHelpers.OVERLAY_INPUT_NAME_LABEL);
 					if (inputNameOverlay) {
 						// todo
 						inputNameOverlay.setLocation([-3, .5]);
@@ -1696,7 +1588,7 @@ export default mixins(
 				// @ts-ignore
 				this.instance.bind('connectionDrag', (connection: Connection) => {
 					this.newNodeInsertPosition = null;
-					addOverlays(connection, CONNECTOR_DROP_NODE_OVERLAY);
+					CanvasHelpers.addOverlays(connection, CanvasHelpers.CONNECTOR_DROP_NODE_OVERLAY);
 
 					let droppable = false;
 					const onMouseMove = () => {
@@ -1707,17 +1599,17 @@ export default mixins(
 						const elements = document.querySelector('div.jtk-endpoint.dropHover');
 						if (elements && !droppable) {
 							droppable = true;
-							connection.setConnector(getFlowChartType(connection));
-							connection.setPaintStyle(CONNECTOR_PAINT_STYLE_PRIMARY);
-							addOverlays(connection, CONNECTOR_ARROW_OVERLAYS);
-							hideOverlay(connection, OVERLAY_DROP_NODE_ID);
+							connection.setConnector(CanvasHelpers.getFlowChartType(connection));
+							connection.setPaintStyle(CanvasHelpers.CONNECTOR_PAINT_STYLE_PRIMARY);
+							CanvasHelpers.addOverlays(connection, CanvasHelpers.CONNECTOR_ARROW_OVERLAYS);
+							CanvasHelpers.hideOverlay(connection, CanvasHelpers.OVERLAY_DROP_NODE_ID);
 						}
 						else if (!elements && droppable) {
 							droppable = false;
-							connection.setConnector(CONNECTOR_TYPE_STRIGHT );
-							connection.setPaintStyle(CONNECTOR_PAINT_STYLE_DEFAULT);
-							addOverlays(connection, CONNECTOR_ARROW_OVERLAYS);
-							showOverlay(connection, OVERLAY_DROP_NODE_ID);
+							connection.setConnector(CanvasHelpers.CONNECTOR_TYPE_STRIGHT);
+							connection.setPaintStyle(CanvasHelpers.CONNECTOR_PAINT_STYLE_DEFAULT);
+							CanvasHelpers.addOverlays(connection, CanvasHelpers.CONNECTOR_ARROW_OVERLAYS);
+							CanvasHelpers.showOverlay(connection, CanvasHelpers.OVERLAY_DROP_NODE_ID);
 						}
 					};
 
@@ -1736,9 +1628,9 @@ export default mixins(
 				await this.$store.dispatch('workflows/setNewWorkflowName');
 				this.$store.commit('setStateDirty', false);
 
-				await this.addNodes([DEFAULT_START_NODE]);
+				await this.addNodes([CanvasHelpers.DEFAULT_START_NODE]);
 
-				this.nodeSelectedByName(DEFAULT_START_NODE.name, false);
+				this.nodeSelectedByName(CanvasHelpers.DEFAULT_START_NODE.name, false);
 
 				this.$store.commit('setStateDirty', false);
 
@@ -1889,7 +1781,7 @@ export default mixins(
 				// Check if node-name is unique else find one that is
 				newNodeData.name = this.getUniqueNodeName(newNodeData.name);
 
-				newNodeData.position = getNewNodePosition(
+				newNodeData.position = CanvasHelpers.getNewNodePosition(
 					this.nodes,
 					[node.position[0], node.position[1] + 140],
 					[0, 140],
@@ -1947,8 +1839,8 @@ export default mixins(
 				}) as Connection[];
 
 				[...incoming, ...outgoing].forEach((connection: Connection) => {
-					showOrHideMidpointArrow(connection);
-					showOrHideItemsLabel(connection);
+					CanvasHelpers.showOrHideMidpointArrow(connection);
+					CanvasHelpers.showOrHideItemsLabel(connection);
 				});
 			},
 			onNodeRun ({name, data}: {name: string, data: ITaskData[] | null}) {
@@ -1957,9 +1849,9 @@ export default mixins(
 				const sourceId = `${NODE_NAME_PREFIX}${sourceIndex}`;
 
 				const resetConnection = (connection: Connection) => {
-					connection.removeOverlay(OVERLAY_RUN_ITEMS_ID);
-					connection.setPaintStyle(CONNECTOR_PAINT_STYLE_DEFAULT);
-					showOrHideMidpointArrow(connection);
+					connection.removeOverlay(CanvasHelpers.OVERLAY_RUN_ITEMS_ID);
+					connection.setPaintStyle(CanvasHelpers.CONNECTOR_PAINT_STYLE_DEFAULT);
+					CanvasHelpers.showOrHideMidpointArrow(connection);
 					// @ts-ignore
 					if (connection.canvas) {
 						// @ts-ignore
@@ -2039,15 +1931,15 @@ export default mixins(
 								return;
 							}
 
-							conn.setPaintStyle(CONNECTOR_PAINT_STYLE_SUCCESS);
+							conn.setPaintStyle(CanvasHelpers.CONNECTOR_PAINT_STYLE_SUCCESS);
 							// @ts-ignore
 							if (conn.canvas) {
 								// @ts-ignore
 								(conn.canvas as Element).classList.add('success');
 							}
 
-							if (conn.getOverlay(OVERLAY_RUN_ITEMS_ID)) {
-								conn.removeOverlay(OVERLAY_RUN_ITEMS_ID);
+							if (conn.getOverlay(CanvasHelpers.OVERLAY_RUN_ITEMS_ID)) {
+								conn.removeOverlay(CanvasHelpers.OVERLAY_RUN_ITEMS_ID);
 							}
 
 							let label = `${output.total}`;
@@ -2057,15 +1949,15 @@ export default mixins(
 							conn.addOverlay([
 								'Label',
 								{
-									id: OVERLAY_RUN_ITEMS_ID,
+									id: CanvasHelpers.OVERLAY_RUN_ITEMS_ID,
 									label,
 									cssClass: 'connection-output-items-label',
 									location: .5,
 								},
 							]);
 
-							showOrHideItemsLabel(conn);
-							showOrHideMidpointArrow(conn);
+							CanvasHelpers.showOrHideItemsLabel(conn);
+							CanvasHelpers.showOrHideMidpointArrow(conn);
 						});
 					});
 				});

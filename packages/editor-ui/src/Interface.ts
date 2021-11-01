@@ -681,3 +681,11 @@ export interface IZoomConfig {
 	scale: number;
 	offset: XYPosition;
 }
+
+export interface IBounds {
+	minX: number;
+	minY: number;
+	maxX: number;
+	maxY: number;
+}
+
