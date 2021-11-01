@@ -118,6 +118,7 @@ export interface INodeUi extends INode {
 	color?: string;
 	notes?: string;
 	issues?: INodeIssues;
+	name: string;
 }
 
 export interface INodeTypesMaxCount {
