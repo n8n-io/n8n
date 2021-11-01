@@ -343,3 +343,22 @@ export const getBackgroundStyles = (scale: number, offsetPosition: XYPosition) =
 	}
 	return styles;
 };
+
+export const hideConnectionActions = (connection: Connection | null) => {
+	if (connection) {
+		hideOverlay(connection, OVERLAY_CONNECTION_ACTIONS_ID);
+		showOrHideItemsLabel(connection);
+		showOrHideMidpointArrow(connection);
+	}
+};
+
+export const showConectionActions = (connection: Connection | null) => {
+	if (connection) {
+		showOverlay(connection, OVERLAY_CONNECTION_ACTIONS_ID);
+		hideOverlay(connection, OVERLAY_RUN_ITEMS_ID);
+		if (!connection.getOverlay(OVERLAY_RUN_ITEMS_ID)) {
+			hideOverlay(connection, OVERLAY_MIDPOINT_ARROW_ID);
+		}
+	}
+};
+

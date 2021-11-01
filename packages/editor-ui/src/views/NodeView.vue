@@ -1363,24 +1363,6 @@ export default mixins(
 				// only one set of visible actions should be visible at the same time
 				let activeConnection: null | Connection = null;
 
-				const hideActions = (connection: Connection | null) => {
-					if (connection) {
-						CanvasHelpers.hideOverlay(connection, CanvasHelpers.OVERLAY_CONNECTION_ACTIONS_ID);
-						CanvasHelpers.showOrHideItemsLabel(connection);
-						CanvasHelpers.showOrHideMidpointArrow(connection);
-					}
-				};
-
-				const showActions = (connection: Connection | null) => {
-					if (connection) {
-						CanvasHelpers.showOverlay(connection, CanvasHelpers.OVERLAY_CONNECTION_ACTIONS_ID);
-						CanvasHelpers.hideOverlay(connection, CanvasHelpers.OVERLAY_RUN_ITEMS_ID);
-						if (!connection.getOverlay(CanvasHelpers.OVERLAY_RUN_ITEMS_ID)) {
-							CanvasHelpers.hideOverlay(connection, CanvasHelpers.OVERLAY_MIDPOINT_ARROW_ID);
-						}
-					}
-				};
-
 				this.instance.bind('connection', (info: OnConnectionBindInfo) => {
 					const sourceInfo = info.sourceEndpoint.getParameters();
 					const targetInfo = info.targetEndpoint.getParameters();
@@ -1422,12 +1404,12 @@ export default mixins(
 								return;
 							}
 
-							hideActions(activeConnection);
+							CanvasHelpers.hideConnectionActions(activeConnection);
 
 							enterTimer = setTimeout(() => {
 								enterTimer = undefined;
 								activeConnection = info.connection;
-								showActions(info.connection);
+								CanvasHelpers.showConnectionActions(info.connection);
 							}, 150);
 						});
 
@@ -1449,7 +1431,7 @@ export default mixins(
 								exitTimer = undefined;
 
 								if (activeConnection === info.connection) {
-									hideActions(activeConnection);
+									CanvasHelpers.hideConnectionActions(activeConnection);
 									activeConnection = null;
 								}
 							}, 500);
