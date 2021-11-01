@@ -452,3 +452,29 @@ export const addConnectionOutputSuccess = (connection: Connection, output: {tota
 	showOrHideMidpointArrow(connection);
 };
 
+
+export const getZoomToFit = (nodes: INodeUi[]): {offset: XYPosition, zoomLevel: number} => {
+	const {minX, minY, maxX, maxY} = getWorkflowCorners(nodes);
+
+	const PADDING = NODE_SIZE * 4;
+
+	const editorWidth = window.innerWidth;
+	const diffX = maxX - minX + SIDEBAR_WIDTH + PADDING;
+	const scaleX = editorWidth / diffX;
+
+	const editorHeight = window.innerHeight;
+	const diffY = maxY - minY + HEADER_HEIGHT + PADDING;
+	const scaleY = editorHeight / diffY;
+
+	const zoomLevel = Math.min(scaleX, scaleY, 1);
+	let xOffset = (minX * -1) * zoomLevel + SIDEBAR_WIDTH; // find top right corner
+	xOffset += (editorWidth - SIDEBAR_WIDTH - (maxX - minX + NODE_SIZE) * zoomLevel) / 2; // add padding to center workflow
+
+	let yOffset = (minY * -1) * zoomLevel + HEADER_HEIGHT; // find top right corner
+	yOffset += (editorHeight - HEADER_HEIGHT - (maxY - minY + NODE_SIZE * 2) * zoomLevel) / 2; // add padding to center workflow
+
+	return {
+		zoomLevel,
+		offset: [xOffset, yOffset],
+	};
+};

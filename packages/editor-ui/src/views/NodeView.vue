@@ -894,27 +894,10 @@ export default mixins(
 					return;
 				}
 
-				const {minX, minY, maxX, maxY} = CanvasHelpers.getWorkflowCorners(nodes);
-
-				const PADDING = CanvasHelpers.NODE_SIZE * 4;
-
-				const editorWidth = window.innerWidth;
-				const diffX = maxX - minX + CanvasHelpers.SIDEBAR_WIDTH + PADDING;
-				const scaleX = editorWidth / diffX;
-
-				const editorHeight = window.innerHeight;
-				const diffY = maxY - minY + CanvasHelpers.HEADER_HEIGHT + PADDING;
-				const scaleY = editorHeight / diffY;
-
-				const zoomLevel = Math.min(scaleX, scaleY, 1);
-				let xOffset = (minX * -1) * zoomLevel + CanvasHelpers.SIDEBAR_WIDTH; // find top right corner
-				xOffset += (editorWidth - CanvasHelpers.SIDEBAR_WIDTH - (maxX - minX + CanvasHelpers.NODE_SIZE) * zoomLevel) / 2; // add padding to center workflow
-
-				let yOffset = (minY * -1) * zoomLevel + CanvasHelpers.HEADER_HEIGHT; // find top right corner
-				yOffset += (editorHeight - CanvasHelpers.HEADER_HEIGHT - (maxY - minY + CanvasHelpers.NODE_SIZE * 2) * zoomLevel) / 2; // add padding to center workflow
+				const {zoomLevel, offset} = CanvasHelpers.getZoomToFit(nodes);
 
 				this.setZoomLevel(zoomLevel);
-				this.$store.commit('setNodeViewOffsetPosition', {newOffset: [xOffset, yOffset]});
+				this.$store.commit('setNodeViewOffsetPosition', {newOffset: offset});
 			},
 
 			async stopExecution () {
