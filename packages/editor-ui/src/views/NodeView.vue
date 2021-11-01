@@ -1324,8 +1324,6 @@ export default mixins(
 
 					CanvasHelpers.showOrHideMidpointArrow(info.connection);
 
-					info.connection.removeOverlay(CanvasHelpers.OVERLAY_DROP_NODE_ID);
-
 					if (this.isReadOnly === false) {
 						let exitTimer: NodeJS.Timeout | undefined;
 						let enterTimer: NodeJS.Timeout | undefined;
@@ -1376,41 +1374,24 @@ export default mixins(
 							}, 500);
 						});
 
-						// @ts-ignore
-						info.connection.addOverlay([
-							'Label',
-							{
-								id: CanvasHelpers.OVERLAY_CONNECTION_ACTIONS_ID,
-								label: `<div class="add">${CanvasHelpers.getIcon('plus')}</div> <div class="delete">${CanvasHelpers.getIcon('trash')}</div>`,
-								cssClass: CanvasHelpers.OVERLAY_CONNECTION_ACTIONS_ID,
-								visible: false,
-								events: {
-									mousedown: (overlay: Overlay, event: MouseEvent) => {
-										const element = event.target as HTMLElement;
-										if (element.classList.contains('delete') || (element.parentElement && element.parentElement.classList.contains('delete'))) {
-											activeConnection = null;
-											this.instance.deleteConnection(info.connection); // store mutation applied by connectionDetached event
-										}
-										else if (element.classList.contains('add') || (element.parentElement && element.parentElement.classList.contains('add'))) {
-											setTimeout(() => {
-												insertNodeAfterSelected({
-													sourceId: info.sourceId,
-													index: sourceInfo.index,
-													connection: info.connection,
-													eventSource: 'node_connection_action',
-												});
-											}, 150);
-										}
-									},
-								},
+						CanvasHelpers.addConnectionActionsOverlay(info.connection,
+							() => {
+								activeConnection = null;
+								this.instance.deleteConnection(info.connection); // store mutation applied by connectionDetached event
 							},
-						]);
+							() => {
+								setTimeout(() => {
+									insertNodeAfterSelected({
+										sourceId: info.sourceId,
+										index: sourceInfo.index,
+										connection: info.connection,
+										eventSource: 'node_connection_action',
+									});
+								}, 150);
+							});
 					}
 
-					const inputNameOverlay = info.targetEndpoint.getOverlay(CanvasHelpers.OVERLAY_INPUT_NAME_LABEL);
-					if (inputNameOverlay) {
-						inputNameOverlay.setLocation(CanvasHelpers.OVERLAY_INPUT_NAME_LABEL_POSITION_MOVED);
-					}
+					CanvasHelpers.moveBackInputLabelPosition(info.targetEndpoint);
 
 					this.$store.commit('addConnection', {
 						connection: [
@@ -1429,29 +1410,12 @@ export default mixins(
 					});
 				});
 
-				const updateConnectionDetach = (sourceEndpoint: Endpoint, targetEndpoint: Endpoint, maxConnections: number) => {
-					// If the source endpoint is not connected to anything else anymore
-					// display the output-name overlays on the endpoint if any exist
-					if (sourceEndpoint !== undefined && sourceEndpoint.connections!.length === maxConnections) {
-						const outputNameOverlay = sourceEndpoint.getOverlay(CanvasHelpers.OVERLAY_OUTPUT_NAME_LABEL);
-						if (![null, undefined].includes(outputNameOverlay)) {
-							outputNameOverlay.setVisible(true);
-						}
-					}
-					if (targetEndpoint !== undefined && targetEndpoint.connections!.length === maxConnections) {
-						const inputNameOverlay = targetEndpoint.getOverlay(CanvasHelpers.OVERLAY_INPUT_NAME_LABEL);
-						if (![null, undefined].includes(inputNameOverlay)) {
-							inputNameOverlay.setVisible(true);
-						}
-					}
-				};
-
 				this.instance.bind('connectionMoved', (info) => {
 					// When a connection gets moved from one node to another it for some reason
 					// calls the "connection" event but not the "connectionDetached" one. So we listen
 					// additionally to the "connectionMoved" event and then only delete the existing connection.
 
-					updateConnectionDetach(info.originalSourceEndpoint, info.originalTargetEndpoint, 0);
+					CanvasHelpers.resetInputLabelPosition(info.originalTargetEndpoint);
 
 					// @ts-ignore
 					const sourceInfo = info.originalSourceEndpoint.getParameters();
@@ -1479,12 +1443,7 @@ export default mixins(
 				});
 
 				this.instance.bind('connectionDetached', (info) => {
-					const inputNameOverlay = info.targetEndpoint.getOverlay(CanvasHelpers.OVERLAY_INPUT_NAME_LABEL);
-					if (inputNameOverlay) {
-						inputNameOverlay.setLocation(CanvasHelpers.OVERLAY_INPUT_NAME_LABEL_POSITION);
-					}
-
-					updateConnectionDetach(info.sourceEndpoint, info.targetEndpoint, 1);
+					CanvasHelpers.resetInputLabelPosition(info.targetEndpoint);
 					info.connection.removeOverlays();
 					this.__removeConnectionByConnectionInfo(info, false);
 				});

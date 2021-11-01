@@ -1,7 +1,7 @@
 import { getStyleTokenValue } from "@/components/helpers";
 import { START_NODE_TYPE } from "@/constants";
 import { IBounds, INodeUi, IZoomConfig, XYPosition } from "@/Interface";
-import { Connection, OverlaySpec, PaintStyle } from "jsplumb";
+import { Connection, Endpoint, Overlay, OverlaySpec, PaintStyle } from "jsplumb";
 import {
 	IConnection,
 	ITaskData,
@@ -203,17 +203,17 @@ export const scaleReset = (config: IZoomConfig): IZoomConfig => {
 	return config;
 };
 
-export const showOverlay = (connection: Connection, overlayId: string) => {
-	const arrow = connection.getOverlay(overlayId);
-	if (arrow) {
-		arrow.setVisible(true);
+export const showOverlay = (item: Connection | Endpoint, overlayId: string) => {
+	const overlay = item.getOverlay(overlayId);
+	if (overlay) {
+		overlay.setVisible(true);
 	}
 };
 
-export const hideOverlay = (connection: Connection, overlayId: string) => {
-	const arrow = connection.getOverlay(overlayId);
-	if (arrow) {
-		arrow.setVisible(false);
+export const hideOverlay = (item: Connection | Endpoint, overlayId: string) => {
+	const overlay = item.getOverlay(overlayId);
+	if (overlay) {
+		overlay.setVisible(false);
 	}
 };
 
@@ -534,3 +534,41 @@ export const showPullConnectionState = (connection: Connection) => {
 	addOverlays(connection, CONNECTOR_ARROW_OVERLAYS);
 	showOverlay(connection, OVERLAY_DROP_NODE_ID);
 };
+
+export const resetInputLabelPosition = (targetEndpoint: Endpoint) => {
+	const inputNameOverlay = targetEndpoint.getOverlay(OVERLAY_INPUT_NAME_LABEL);
+	if (inputNameOverlay) {
+		inputNameOverlay.setLocation(OVERLAY_INPUT_NAME_LABEL_POSITION);
+	}
+};
+
+export const moveBackInputLabelPosition = (targetEndpoint: Endpoint) => {
+	const inputNameOverlay = targetEndpoint.getOverlay(OVERLAY_INPUT_NAME_LABEL);
+	if (inputNameOverlay) {
+		inputNameOverlay.setLocation(OVERLAY_INPUT_NAME_LABEL_POSITION_MOVED);
+	}
+};
+
+export const addConnectionActionsOverlay = (connection: Connection, onDelete: Function, onAdd: Function) => {
+	connection.addOverlay([
+		'Label',
+		{
+			id: OVERLAY_CONNECTION_ACTIONS_ID,
+			label: `<div class="add">${getIcon('plus')}</div> <div class="delete">${getIcon('trash')}</div>`,
+			cssClass: OVERLAY_CONNECTION_ACTIONS_ID,
+			visible: false,
+			events: {
+				mousedown: (overlay: Overlay, event: MouseEvent) => {
+					const element = event.target as HTMLElement;
+					if (element.classList.contains('delete') || (element.parentElement && element.parentElement.classList.contains('delete'))) {
+						onDelete();
+					}
+					else if (element.classList.contains('add') || (element.parentElement && element.parentElement.classList.contains('add'))) {
+						onAdd();
+					}
+				},
+			},
+		},
+	]);
+};
+
