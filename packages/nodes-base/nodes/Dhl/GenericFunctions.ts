@@ -10,6 +10,8 @@ import {
 } from 'n8n-core';
 
 import {
+	ICredentialDataDecryptedObject,
+	ICredentialTestFunctions,
 	IDataObject,
 	NodeApiError,
 } from 'n8n-workflow';
@@ -38,4 +40,26 @@ export async function dhlApiRequest(this: IHookFunctions | IExecuteFunctions | I
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error);
 	}
+}
+
+export async function validateCrendetials(this: ICredentialTestFunctions, decryptedCredentials: ICredentialDataDecryptedObject): Promise<any> { // tslint:disable-line:no-any
+	const credentials = decryptedCredentials;
+
+	const { apiKey } = credentials as {
+		apiKey: string,
+	};
+
+	const options: OptionsWithUri = {
+		headers: {
+			'DHL-API-Key': apiKey,
+		},
+		qs: {
+			trackingNumber: 123,
+		},
+		method: 'GET',
+		uri: `https://api-eu.dhl.com/track/shipments`,
+		json: true,
+	};
+
+	return this.helpers.request!(options);
 }

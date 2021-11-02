@@ -3,14 +3,19 @@ import {
 } from 'n8n-core';
 
 import {
+	ICredentialDataDecryptedObject,
+	ICredentialsDecrypted,
+	ICredentialTestFunctions,
 	IDataObject,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
+	NodeCredentialTestResult,
 } from 'n8n-workflow';
 
 import {
 	dhlApiRequest,
+	validateCrendetials,
 } from './GenericFunctions';
 
 export class Dhl implements INodeType {
@@ -20,7 +25,7 @@ export class Dhl implements INodeType {
 		icon: 'file:dhl.svg',
 		group: ['input'],
 		version: 1,
-		subtitle: '={{$parameter["operation"]}}',
+		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 		description: 'Consume DHL API',
 		defaults: {
 			name: 'DHL',
@@ -32,20 +37,40 @@ export class Dhl implements INodeType {
 			{
 				name: 'dhlApi',
 				required: true,
+				testedBy: 'dhlApiCredentialTest',
 			},
 		],
 		properties: [
 			{
+				displayName: 'Resource',
+				name: 'resource',
+				type: 'hidden',
+				options: [
+					{
+						name: 'Tracking',
+						value: 'tracking',
+					},
+				],
+				default: 'tracking',
+			},
+			{
 				displayName: 'Operation',
 				name: 'operation',
 				type: 'options',
+				displayOptions: {
+					show: {
+						resource: [
+							'tracking',
+						],
+					},
+				},
 				options: [
 					{
-						name: 'Retrieve Tracking Information',
-						value: 'retrieveTrackingInformation',
+						name: 'Get Tracking Information',
+						value: 'get',
 					},
 				],
-				default: 'retrieveTrackingInformation',
+				default: 'get',
 			},
 			{
 				displayName: 'Tracking Number',
@@ -72,32 +97,56 @@ export class Dhl implements INodeType {
 		],
 	};
 
+	methods = {
+		credentialTest: {
+			async dhlApiCredentialTest(this: ICredentialTestFunctions, credential: ICredentialsDecrypted): Promise<NodeCredentialTestResult> {
+				try {
+					await validateCrendetials.call(this, credential.data as ICredentialDataDecryptedObject);
+				} catch (error) {
+					if (error.statusCode === 401) {
+						return {
+							status: 'Error',
+							message: 'The API Key included in the request is invalid',
+						};
+					}
+				}
+
+				return {
+					status: 'OK',
+					message: 'Connection successful!',
+				};
+			},
+		},
+	};
+
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
 		const returnData: IDataObject[] = [];
 		const length = (items.length as unknown) as number;
 		let qs: IDataObject = {};
 		let responseData;
+		const resource = this.getNodeParameter('resource', 0) as string;
 		const operation = this.getNodeParameter('operation', 0) as string;
 
 		for (let i = 0; i < length; i++) {
 			try {
-				if (operation === 'retrieveTrackingInformation') {
+				if (resource === 'tracking') {
+					if (operation === 'get') {
 
-					const trackingNumber = this.getNodeParameter('trackingNumber', i) as string;
-					const options = this.getNodeParameter('options', i) as IDataObject;
+						const trackingNumber = this.getNodeParameter('trackingNumber', i) as string;
+						const options = this.getNodeParameter('options', i) as IDataObject;
 
-					qs = {
-						trackingNumber,
-					};
+						qs = {
+							trackingNumber,
+						};
 
-					Object.assign(qs, options);
+						Object.assign(qs, options);
 
-					responseData = await dhlApiRequest.call(this, 'GET', `/track/shipments`, {}, qs);
+						responseData = await dhlApiRequest.call(this, 'GET', `/track/shipments`, {}, qs);
 
-					returnData.push(...responseData.shipments);
+						returnData.push(...responseData.shipments);
+					}
 				}
-
 			} catch (error) {
 				if (this.continueOnFail()) {
 					returnData.push({ error: error.description });
