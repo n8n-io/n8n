@@ -10,7 +10,7 @@
 			</div>
 			<span v-else-if="workflowDataItems && !data.disabled" class="node-info-icon data-count">
 				<font-awesome-icon icon="check" />
-				<span v-if="workflowDataItems > 1">{{ workflowDataItems }}</span>
+				<span v-if="workflowDataItems > 1" class="items-count"> {{ workflowDataItems }}</span>
 			</span>
 
 			<div v-if="waiting" class="waiting">
@@ -361,6 +361,10 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 
 			&.node-issues {
 				color: var(--color-danger);
+			}
+
+			.items-count {
+				font-size: var(--font-size-s);
 			}
 		}
 
