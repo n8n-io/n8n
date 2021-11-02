@@ -342,7 +342,7 @@
 			_super = _jp.Connectors.N8nAbstractConnector.apply(this, arguments),
 			midpoint = params.midpoint == null ? 0.5 : params.midpoint,
 			alwaysRespectStubs = params.alwaysRespectStubs === true,
-			yOffset = params.yOffset || 0,
+			loopbackVerticalLength = params.loopbackVerticalLength || 0,
 			lastx = null, lasty = null, lastOrientation,
 			cornerRadius = params.cornerRadius != null ? params.cornerRadius : 0,
 			loopbackMinimum = params.loopbackMinimum || 100,
@@ -512,12 +512,12 @@
 				midy;
 
 			if (diffX < (-1 * loopbackMinimum)) {
-				midy = paintInfo.startStubY - (diffX < 0 ? direction * yOffset : 0);
+				midy = paintInfo.startStubY - (diffX < 0 ? direction * loopbackVerticalLength : 0);
 			} else {
 				midy = paintInfo.startStubY + ((paintInfo.endStubY - paintInfo.startStubY) * midpoint);
 			}
 
-			if (diffX < 0 && diffX > (-1 * yOffset) && Math.abs(diffY) < yOffset) {
+			if (diffX < 0 && diffX > (-1 * loopbackVerticalLength) && Math.abs(diffY) < loopbackVerticalLength) {
 				midy = 0;
 			}
 
