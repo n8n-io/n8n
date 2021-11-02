@@ -53,7 +53,7 @@ export const CONNECTOR_FLOWCHART_TYPE = ['N8nFlowchart', {
 		const indexOffset = 10; // stub offset between different endpoints of same node
 		const index = endpoint && endpoint.__meta ? endpoint.__meta.index : 0;
 
-		const outputOverlay = endpoint.getOverlay(OVERLAY_OUTPUT_NAME_LABEL);
+		const outputOverlay = getOverlay(endpoint, OVERLAY_OUTPUT_NAME_LABEL);
 		const labelOffset = outputOverlay && outputOverlay.label && outputOverlay.label.length > 1 ? 10 : 0;
 
 		return index * indexOffset + labelOffset;
@@ -198,22 +198,30 @@ export const scaleReset = (config: IZoomConfig): IZoomConfig => {
 	return config;
 };
 
+export const getOverlay = (item: Connection | Endpoint, overlayId: string) => {
+	try {
+		return item.getOverlay(overlayId); // handle when _jsPlumb element is deleted
+	} catch (e) {
+		return null;
+	}
+};
+
 export const showOverlay = (item: Connection | Endpoint, overlayId: string) => {
-	const overlay = item.getOverlay(overlayId);
+	const overlay = getOverlay(item, overlayId);
 	if (overlay) {
 		overlay.setVisible(true);
 	}
 };
 
 export const hideOverlay = (item: Connection | Endpoint, overlayId: string) => {
-	const overlay = item.getOverlay(overlayId);
+	const overlay = getOverlay(item, overlayId);
 	if (overlay) {
 		overlay.setVisible(false);
 	}
 };
 
 export const showOrHideMidpointArrow = (connection: Connection) => {
-	const hasItemsLabel = !!connection.getOverlay(OVERLAY_RUN_ITEMS_ID);
+	const hasItemsLabel = !!getOverlay(connection, OVERLAY_RUN_ITEMS_ID);
 
 	const sourceEndpoint = connection.endpoints[0];
 	const targetEndpoint = connection.endpoints[1];
@@ -225,7 +233,7 @@ export const showOrHideMidpointArrow = (connection: Connection) => {
 	const isBackwards = sourcePosition >= targetPosition;
 	const isTooLong = Math.abs(sourcePosition - targetPosition) >= minimum;
 
-	const arrow = connection.getOverlay(OVERLAY_MIDPOINT_ARROW_ID);
+	const arrow = getOverlay(connection, OVERLAY_MIDPOINT_ARROW_ID);
 	if (arrow) {
 		arrow.setVisible(isBackwards && isTooLong);
 		arrow.setLocation(hasItemsLabel ? .6: .5);
@@ -242,7 +250,7 @@ export const getConnectorLengths = (connection: Connection): [number, number] =>
 };
 
 export const showOrHideItemsLabel = (connection: Connection) => {
-	const overlay = connection.getOverlay(OVERLAY_RUN_ITEMS_ID);
+	const overlay = getOverlay(connection, OVERLAY_RUN_ITEMS_ID);
 	if (!overlay) {
 		return;
 	}
@@ -372,7 +380,7 @@ export const showConectionActions = (connection: Connection | null) => {
 	if (connection) {
 		showOverlay(connection, OVERLAY_CONNECTION_ACTIONS_ID);
 		hideOverlay(connection, OVERLAY_RUN_ITEMS_ID);
-		if (!connection.getOverlay(OVERLAY_RUN_ITEMS_ID)) {
+		if (!getOverlay(connection, OVERLAY_RUN_ITEMS_ID)) {
 			hideOverlay(connection, OVERLAY_MIDPOINT_ARROW_ID);
 		}
 	}
@@ -440,7 +448,7 @@ export const addConnectionOutputSuccess = (connection: Connection, output: {tota
 		(connection.canvas as Element).classList.add('success');
 	}
 
-	if (connection.getOverlay(OVERLAY_RUN_ITEMS_ID)) {
+	if (getOverlay(connection, OVERLAY_RUN_ITEMS_ID)) {
 		connection.removeOverlay(OVERLAY_RUN_ITEMS_ID);
 	}
 
@@ -542,14 +550,14 @@ export const showPullConnectionState = (connection: Connection) => {
 };
 
 export const resetInputLabelPosition = (targetEndpoint: Endpoint) => {
-	const inputNameOverlay = targetEndpoint.getOverlay(OVERLAY_INPUT_NAME_LABEL);
+	const inputNameOverlay = getOverlay(targetEndpoint, OVERLAY_INPUT_NAME_LABEL);
 	if (inputNameOverlay) {
 		inputNameOverlay.setLocation(OVERLAY_INPUT_NAME_LABEL_POSITION);
 	}
 };
 
 export const moveBackInputLabelPosition = (targetEndpoint: Endpoint) => {
-	const inputNameOverlay = targetEndpoint.getOverlay(OVERLAY_INPUT_NAME_LABEL);
+	const inputNameOverlay = getOverlay(targetEndpoint, OVERLAY_INPUT_NAME_LABEL);
 	if (inputNameOverlay) {
 		inputNameOverlay.setLocation(OVERLAY_INPUT_NAME_LABEL_POSITION_MOVED);
 	}
