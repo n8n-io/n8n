@@ -1,5 +1,5 @@
 <template>
-	<div class="node-wrapper" :style="nodePosition">
+	<div class="node-wrapper" :style="nodePosition" v-on:mouseenter="onMouseEnter" v-on:mouseleave="onMouseLeave">
 		<div :class="{'selected': true, 'has-subtitles': !!nodeSubtitle}" v-show="isSelected"></div>
 		<div class="node-default" :ref="data.name" :style="nodeStyle" :class="nodeClass" @dblclick="setNodeActive" @click.left="mouseLeftClick" v-touch:start="touchStart" v-touch:end="touchEnd">
 			<div v-if="hasIssues" class="node-info-icon node-issues">
@@ -247,6 +247,12 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 					this.isTouchActive = false;
 				}, 2000);
 			}
+		},
+		onMouseEnter () {
+			this.$emit('mouseenter', this.data.name);
+		},
+		onMouseLeave () {
+			this.$emit('mouseleave', this.data.name);
 		},
 	},
 });
