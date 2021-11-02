@@ -182,7 +182,7 @@
 
 			const diffX = paintInfo.endStubX - paintInfo.startStubX;
 			const diffY = paintInfo.endStubY - paintInfo.startStubY;
-			const direction = diffY > 0 ? 1 : -1;
+			const direction = diffY >= 0 ? 1 : -1;
 
 			var midx = paintInfo.startStubX + ((paintInfo.endStubX - paintInfo.startStubX) * midpoint),
 				midy;
