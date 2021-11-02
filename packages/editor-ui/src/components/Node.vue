@@ -422,15 +422,15 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 	position: absolute;
 	top: -8px;
 	left: -8px;
-	background-color: var(--color-foreground-base);
-	height: 140px;
+	background-color: hsla(var(--color-foreground-base-h), var(--color-foreground-base-s), var(--color-foreground-base-l, 50%));
+	height: 144px;
 	width: 116px;
 	border-radius: var(--border-radius-xlarge);
 	opacity: 0.8;
 	z-index: 0;
 
 	&.has-subtitles {
-		height: 166px;
+		height: 162px;
 	}
 }
 
