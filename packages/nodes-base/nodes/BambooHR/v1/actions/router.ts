@@ -11,6 +11,7 @@ import * as employeeFiles from './employeeFiles';
 import * as companyFiles from './companyFiles';
 import * as reports from './reports';
 import * as accountInformation from './accountInformation';
+import * as tabularData from './tabularData';
 
 import { BambooHR } from './Interfaces';
 
@@ -38,6 +39,8 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
         operationResult.push(...await reports[bamboohr.operation].execute.call(this, i));
       } else if (bamboohr.resource === 'accountInformation') {
         operationResult.push(...await accountInformation[bamboohr.operation].execute.call(this, i));
+      } else if (bamboohr.resource === 'tabularData') {
+        operationResult.push(...await tabularData[bamboohr.operation].execute.call(this, i));
       }
     } catch (err) {
       if (this.continueOnFail()) {

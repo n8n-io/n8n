@@ -23,7 +23,7 @@ export async function apiRequest(
   method: 'GET' | 'POST' | 'PUT' | 'DELETE' | 'HEAD',
   uri: string,
   body: string[] | IDataObject = {},
-  option: IDataObject = {}
+  query: IDataObject = {},
 ) {
   const credentials = await this.getCredentials('bambooHRApi');
 
@@ -36,6 +36,7 @@ export async function apiRequest(
   let options: IHttpRequestOptions = {
     method,
     body: body ? JSON.stringify(body) : null,
+    qs: query,
     url: uri,
     auth: {
       username: apiKey as string,
