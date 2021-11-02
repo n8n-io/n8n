@@ -184,7 +184,7 @@ export class Dropcontact implements INodeType {
 								],
 							},
 						},
-						default: 10,
+						default: 45,
 						description: 'Time (in seconds) the node waits before requesting the contact information using the request_id',
 					},
 				],
@@ -252,7 +252,7 @@ export class Dropcontact implements INodeType {
 			if (resolveData) {
 				const waitTime = this.getNodeParameter('options.waitTime', 0, 0) as number;
 				const delay = (ms: number) => new Promise(res => setTimeout(res, ms));
-				await delay((waitTime || 10) * 1000);
+				await delay((waitTime || 45) * 1000);
 				responseData = await dropcontactApiRequest.call(this, 'GET', `/batch/${responseData.request_id}`, {}, {});
 				if (!responseData.success) {
 					throw new NodeApiError(this.getNode(), {}, {
