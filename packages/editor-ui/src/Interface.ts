@@ -64,7 +64,8 @@ declare module 'jsplumb' {
 
 	interface Overlay {
 		setVisible(visible: boolean): void;
-		setLocation(location: number | [number, number]): void;
+		setLocation(location: number): void;
+		canvas?: HTMLElement;
 	}
 
 	interface OnConnectionBindInfo {

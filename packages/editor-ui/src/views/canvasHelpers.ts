@@ -255,6 +255,21 @@ export const showOrHideItemsLabel = (connection: Connection) => {
 	else {
 		overlay.setVisible(true);
 	}
+
+	if (overlay.canvas) {
+		if (diffY === 0) {
+			const innerElement = overlay.canvas.querySelector('span');
+			if (innerElement) {
+				innerElement.classList.add('floating');
+			}
+		}
+		else {
+			const innerElement = overlay.canvas.querySelector('span');
+			if (innerElement) {
+				innerElement.classList.remove('floating');
+			}
+		}
+	}
 };
 
 export const getIcon = (name: string): string => {
@@ -437,7 +452,7 @@ export const addConnectionOutputSuccess = (connection: Connection, output: {tota
 		'Label',
 		{
 			id: OVERLAY_RUN_ITEMS_ID,
-			label,
+			label: `<span>${label}</span>`,
 			cssClass: 'connection-output-items-label',
 			location: .5,
 		},

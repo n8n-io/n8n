@@ -2455,13 +2455,21 @@ export default mixins(
 <style lang="scss">
 
 .connection-output-items-label {
-	border-radius: 7px;
-	background-color: var(--color-canvas-background);
-	line-height: 1.3em;
-	padding: 2px 3px;
-	white-space: nowrap;
-	font-size: var(--font-size-s);
-	font-weight: var(--font-weight-regular);
+	span {
+		border-radius: 7px;
+		background-color: var(--color-canvas-background);
+		line-height: 1.3em;
+		padding: 0px 3px;
+		white-space: nowrap;
+		font-size: var(--font-size-s);
+		font-weight: var(--font-weight-regular);
+	}
+
+	> span.floating {
+		position: absolute;
+		top: -20px;
+		transform: translateX(-50%)
+	}
 }
 
 .connection-input-name-label {
