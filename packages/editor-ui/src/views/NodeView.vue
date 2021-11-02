@@ -1682,8 +1682,8 @@ export default mixins(
 					return uuids[0] === sourceEndpoint && uuids[1] === targetEndpoint;
 				});
 			},
-			onNodeMoved (node: INodeUi) {
-				const name = `${NODE_NAME_PREFIX}${this.$store.getters.getNodeIndex(node.name)}`;
+			getIncomingOutgoingConnections(nodeName: string): {incoming: Connection[], outgoing: Connection[]} {
+				const name = `${NODE_NAME_PREFIX}${this.$store.getters.getNodeIndex(nodeName)}`;
 				// @ts-ignore
 				const outgoing = this.instance.getConnections({
 					source: name,
@@ -1693,6 +1693,14 @@ export default mixins(
 				const incoming = this.instance.getConnections({
 					target: name,
 				}) as Connection[];
+
+				return {
+					incoming,
+					outgoing,
+				};
+			},
+			onNodeMoved (node: INodeUi) {
+				const {incoming, outgoing} = this.getIncomingOutgoingConnections(node.name);
 
 				[...incoming, ...outgoing].forEach((connection: Connection) => {
 					CanvasHelpers.showOrHideMidpointArrow(connection);
@@ -1749,7 +1757,10 @@ export default mixins(
 					return;
 				}
 
-				const node = this.$store.getters.getNodeByName(nodeName);
+				const node = this.$store.getters.getNodeByName(nodeName) as INodeUi | null;
+				if (!node) {
+					return;
+				}
 
 				// "requiredNodeTypes" are also defined in cli/commands/run.ts
 				const requiredNodeTypes = [ START_NODE_TYPE ];
@@ -1771,6 +1782,27 @@ export default mixins(
 
 					if (deleteAllowed === false) {
 						return;
+					}
+				}
+
+				// connect nodes before/after deleted node
+				const nodeType: INodeTypeDescription = this.$store.getters.nodeType(node.type, node.typeVersion);
+				if (nodeType.outputs.length === 1
+					&& nodeType.inputs.length === 1) {
+					const {incoming, outgoing} = this.getIncomingOutgoingConnections(node.name);
+					if (incoming.length === 1 && outgoing.length === 1) {
+						const conn1 = incoming[0];
+						const conn2 = outgoing[0];
+						if (conn1.__meta && conn2.__meta) {
+							const sourceNodeName = conn1.__meta.sourceNodeName;
+							const sourceNodeOutputIndex = conn1.__meta.sourceOutputIndex;
+							const targetNodeName = conn2.__meta.targetNodeName;
+							const targetNodeOuputIndex = conn2.__meta.targetOutputIndex;
+
+							setTimeout(() => {
+								this.connectTwoNodes(sourceNodeName, sourceNodeOutputIndex, targetNodeName, targetNodeOuputIndex);
+							}, 100);
+						}
 					}
 				}
 
