@@ -1,4 +1,7 @@
 import {
+	IDataObject,
+	IExecuteSingleFunctions,
+	IHttpRequestOptions,
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
@@ -81,7 +84,21 @@ export class MailcheckTest implements INodeType {
 					},
 				},
 				requestProperty: {
-					// If no "property" defined use n8n internal property name
+					// Transform request before it gets send
+					preSend: async function (this: IExecuteSingleFunctions, requestOptions: IHttpRequestOptions): Promise<IHttpRequestOptions>  {
+						requestOptions.qs = (requestOptions.qs || {}) as IDataObject;
+						// if something special is required it is possible to write custom code and get from parameter
+						requestOptions.qs.sender = this.getNodeParameter('sender');
+						return requestOptions;
+					},
+					// Transform the received data
+					postReceive: async function (this: IExecuteSingleFunctions, item: IDataObject | IDataObject[]): Promise<IDataObject | IDataObject[] | null> {
+						if (!Array.isArray(item)) {
+							item.success = true;
+						}
+
+						return item;
+					},
 				},
 				default: '',
 				description: 'Email address to check.',

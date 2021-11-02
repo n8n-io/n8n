@@ -896,6 +896,31 @@ export interface INodeRequestProperty {
 	property?: string;
 	value?: string;
 	type?: 'body' | 'query';
+	preSend?: (
+		this: IExecuteSingleFunctions,
+		requestOptions: IHttpRequestOptions,
+	) => Promise<IHttpRequestOptions>;
+	// TODO: Improve, think how to make it possible to handle binary data
+	postReceive?: (
+		this: IExecuteSingleFunctions,
+		item: IDataObject | IDataObject[],
+	) => Promise<IDataObject | IDataObject[] | null>;
+}
+
+export interface IRequestOptionsFromParameters {
+	options: IHttpRequestOptions;
+	preSend: Array<
+		(
+			this: IExecuteSingleFunctions,
+			requestOptions: IHttpRequestOptions,
+		) => Promise<IHttpRequestOptions>
+	>;
+	postReceive: Array<
+		(
+			this: IExecuteSingleFunctions,
+			item: IDataObject,
+		) => Promise<IDataObject | IDataObject[] | null>
+	>;
 }
 
 export interface INodeTypeDescription extends INodeTypeBaseDescription {

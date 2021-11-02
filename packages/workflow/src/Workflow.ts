@@ -13,7 +13,7 @@
 /* eslint-disable no-restricted-syntax */
 /* eslint-disable import/no-cycle */
 // eslint-disable-next-line import/no-cycle
-import { set, merge } from 'lodash';
+import { get, set, merge } from 'lodash';
 
 import {
 	Expression,
@@ -28,6 +28,7 @@ import {
 	INodeType,
 	INodeTypes,
 	IPollFunctions,
+	IRequestOptionsFromParameters,
 	IRunExecutionData,
 	ITaskDataConnections,
 	ITriggerResponse,
@@ -48,8 +49,7 @@ import {
 import {
 	IConnection,
 	IDataObject,
-	IExecuteFunctions,
-	IHttpRequestOptions,
+	IExecuteSingleFunctions,
 	INodeProperties,
 	INodePropertyCollection,
 	IObservableObject,
@@ -1219,26 +1219,15 @@ export class Workflow {
 			return inputData.main as INodeExecutionData[][];
 		} else {
 			// For nodes which have routing information on properties
-
-			const thisArgs = nodeExecuteFunctions.getExecuteFunctions(
-				this,
-				runExecutionData,
-				runIndex,
-				connectionInputData,
+			return this.runRoutingNode(
+				node,
 				inputData,
-				node,
-				additionalData,
-				mode,
-			);
-
-			return this.runRoutingNode.call(
-				thisArgs,
-				this,
-				node,
 				runExecutionData,
 				runIndex,
 				connectionInputData,
 				nodeType,
+				additionalData,
+				nodeExecuteFunctions,
 				mode,
 			);
 		}
@@ -1248,17 +1237,18 @@ export class Workflow {
 
 	// TODO: Think about proper naming
 	async runRoutingNode(
-		this: IExecuteFunctions,
-		workflow: Workflow,
 		node: INode,
+		inputData: ITaskDataConnections,
 		runExecutionData: IRunExecutionData,
 		runIndex: number,
 		connectionInputData: INodeExecutionData[],
 		nodeType: INodeType,
+		additionalData: IWorkflowExecuteAdditionalData,
+		nodeExecuteFunctions: INodeExecuteFunctions,
 		mode: WorkflowExecuteMode,
 	): Promise<INodeExecutionData[][] | null | undefined> {
-		const items = this.getInputData();
-		let returnData: IDataObject[] = [];
+		const items = inputData.main[0] as INodeExecutionData[];
+		const returnData: INodeExecutionData[] = [];
 		let responseData;
 
 		let credentialType: string | undefined;
@@ -1270,58 +1260,94 @@ export class Workflow {
 		// TODO: Think about how batching could be handled for REST APIs which support it
 		for (let i = 0; i < items.length; i++) {
 			try {
-				const requestOptions: IHttpRequestOptions = nodeType.description.requestDefaults || {
-					url: '',
+				const thisArgs = nodeExecuteFunctions.getExecuteSingleFunctions(
+					this,
+					runExecutionData,
+					runIndex,
+					connectionInputData,
+					inputData,
+					node,
+					i,
+					additionalData,
+					mode,
+				);
+
+				const requestData: IRequestOptionsFromParameters = {
+					options: {
+						url: '', // TODO: Replace with own type where url is not required
+						qs: {},
+						body: {},
+					},
+					preSend: [],
+					postReceive: [],
 				};
 
 				for (const property of nodeType.description.properties) {
-					merge(
-						requestOptions,
-						workflow.getRequestOptionsFromParameters.call(
-							this,
-							workflow,
-							property,
-							node,
-							runExecutionData,
-							runIndex,
-							connectionInputData,
-							i,
-							mode,
-							'',
-						),
+					const tempOptions = this.getRequestOptionsFromParameters.call(
+						thisArgs,
+						this,
+						property,
+						node,
+						runExecutionData,
+						runIndex,
+						connectionInputData,
+						i,
+						mode,
+						'',
 					);
+					if (tempOptions) {
+						merge(requestData.options, tempOptions.options);
+						requestData.preSend.push(...tempOptions.preSend);
+						requestData.postReceive.push(...tempOptions.postReceive);
+					}
+				}
+
+				for (const preSendMethod of requestData.preSend) {
+					// eslint-disable-next-line no-await-in-loop
+					requestData.options = await preSendMethod.call(thisArgs, requestData.options);
 				}
 
 				// TODO: Change to handle some requests in parallel (should be configurable)
 				if (credentialType) {
 					// eslint-disable-next-line no-await-in-loop
-					responseData = await this.helpers.requestWithAuthentication.call(
-						this,
+					responseData = await thisArgs.helpers.requestWithAuthentication.call(
+						thisArgs,
 						credentialType,
-						requestOptions,
+						requestData.options,
 					);
 				} else {
 					// eslint-disable-next-line no-await-in-loop
-					responseData = await this.helpers.httpRequest(requestOptions);
+					responseData = await thisArgs.helpers.httpRequest(requestData.options);
+				}
+
+				for (const postReceiveMethod of requestData.postReceive) {
+					// eslint-disable-next-line no-await-in-loop
+					responseData = await postReceiveMethod.call(thisArgs, responseData as IDataObject);
 				}
 			} catch (error) {
-				if (this.continueOnFail()) {
-					returnData.push({ error: error.message });
+				if (get(node, 'continueOnFail', false)) {
+					returnData.push({ json: {}, error: error.message });
 					continue;
 				}
 				throw error;
 			}
+
 			if (Array.isArray(responseData)) {
-				returnData = [...returnData, ...(responseData as IDataObject[])];
+				returnData.push(
+					...(responseData as IDataObject[]).map((item) => {
+						return { json: item };
+					}),
+				);
 			} else {
-				returnData.push(responseData as IDataObject);
+				returnData.push({ json: responseData as IDataObject });
 			}
 		}
-		return [this.helpers.returnJsonArray(returnData)];
+
+		return [returnData];
 	}
 
 	getRequestOptionsFromParameters(
-		this: IExecuteFunctions,
+		this: IExecuteSingleFunctions,
 		workflow: Workflow,
 		nodeProperties: INodeProperties,
 		node: INode,
@@ -1332,11 +1358,15 @@ export class Workflow {
 		mode: WorkflowExecuteMode,
 		path: string,
 		additionalKeys?: IWorkflowDataProxyAdditionalKeys,
-	): IHttpRequestOptions | undefined {
-		const returnData: IHttpRequestOptions = {
-			url: '', // TODO: Replace with own type where url is not required
-			qs: {},
-			body: {},
+	): IRequestOptionsFromParameters | undefined {
+		const returnData: IRequestOptionsFromParameters = {
+			options: {
+				url: '', // TODO: Replace with own type where url is not required
+				qs: {},
+				body: {},
+			},
+			preSend: [],
+			postReceive: [],
 		};
 		let basePath = path ? `${path}.` : '';
 
@@ -1345,55 +1375,64 @@ export class Workflow {
 		}
 
 		if (nodeProperties.request) {
-			Object.assign(returnData, nodeProperties.request);
+			Object.assign(returnData.options, nodeProperties.request);
 		}
 
 		if (nodeProperties.requestProperty) {
-			let propertyName = nodeProperties.requestProperty.property || nodeProperties.name;
-			if (typeof propertyName === 'string' && propertyName.charAt(0) === '=') {
-				// If the propertyName is an expression resolve it
-				propertyName = workflow.expression.getParameterValue(
-					propertyName,
-					runExecutionData || null,
-					runIndex || 0,
-					itemIndex || 0,
-					node.name,
-					connectionInputData,
-					mode,
-					additionalKeys || {},
-					true,
-				) as string;
-			}
-
-			let value = this.getNodeParameter(basePath + nodeProperties.name, itemIndex) as string;
-
-			if (nodeProperties.requestProperty.value) {
-				const valueString = nodeProperties.requestProperty.value;
-				// Special value got set
-				if (typeof valueString === 'string' && valueString.charAt(0) === '=') {
-					// If the valueString is an expression resolve it
-					value = workflow.expression.getParameterValue(
-						valueString,
+			let propertyName = nodeProperties.requestProperty.property;
+			if (propertyName !== undefined) {
+				if (typeof propertyName === 'string' && propertyName.charAt(0) === '=') {
+					// If the propertyName is an expression resolve it
+					propertyName = workflow.expression.getParameterValue(
+						propertyName,
 						runExecutionData || null,
 						runIndex || 0,
 						itemIndex || 0,
 						node.name,
 						connectionInputData,
 						mode,
-						{ ...additionalKeys, $value: value },
+						additionalKeys || {},
 						true,
 					) as string;
+				}
+
+				let value = this.getNodeParameter(basePath + nodeProperties.name, itemIndex) as string;
+
+				if (nodeProperties.requestProperty.value) {
+					const valueString = nodeProperties.requestProperty.value;
+					// Special value got set
+					if (typeof valueString === 'string' && valueString.charAt(0) === '=') {
+						// If the valueString is an expression resolve it
+						value = workflow.expression.getParameterValue(
+							valueString,
+							runExecutionData || null,
+							runIndex || 0,
+							itemIndex || 0,
+							node.name,
+							connectionInputData,
+							mode,
+							{ ...additionalKeys, $value: value },
+							true,
+						) as string;
+					} else {
+						value = valueString;
+					}
+				}
+
+				// TODO: Have to add a way to not use dot-notation as in some cases dots in nams will be required
+				if (nodeProperties.requestProperty.type === 'query') {
+					set(returnData.options.qs as object, propertyName, value);
 				} else {
-					value = valueString;
+					// @ts-ignore
+					set(returnData.options.body, propertyName, value);
 				}
 			}
 
-			// TODO: Have to add a way to not use dot-notation as in some cases dots in nams will be required
-			if (nodeProperties.requestProperty.type === 'query') {
-				set(returnData.qs as object, propertyName, value);
-			} else {
-				// @ts-ignore
-				set(returnData.body, propertyName, value);
+			if (nodeProperties.requestProperty.preSend) {
+				returnData.preSend.push(nodeProperties.requestProperty.preSend);
+			}
+			if (nodeProperties.requestProperty.postReceive) {
+				returnData.postReceive.push(nodeProperties.requestProperty.postReceive);
 			}
 		}
 
@@ -1418,21 +1457,23 @@ export class Workflow {
 					propertyOption.type !== undefined
 				) {
 					// Check only if option is set and if of type INodeProperties
-					merge(
-						returnData,
-						workflow.getRequestOptionsFromParameters.call(
-							this,
-							workflow,
-							propertyOption,
-							node,
-							runExecutionData,
-							runIndex,
-							connectionInputData,
-							itemIndex,
-							mode,
-							`${basePath}${nodeProperties.name}`,
-						),
+					const tempOptions = workflow.getRequestOptionsFromParameters.call(
+						this,
+						workflow,
+						propertyOption,
+						node,
+						runExecutionData,
+						runIndex,
+						connectionInputData,
+						itemIndex,
+						mode,
+						`${basePath}${nodeProperties.name}`,
 					);
+					if (tempOptions) {
+						merge(returnData.options, tempOptions.options);
+						returnData.preSend.push(...tempOptions.preSend);
+						returnData.postReceive.push(...tempOptions.postReceive);
+					}
 				}
 			}
 		} else if (nodeProperties.type === 'fixedCollection') {
@@ -1457,22 +1498,24 @@ export class Workflow {
 				const loopBasePath = `${basePath}${propertyOptions.name}`;
 				for (let i = 0; i < (value as INodeParameters[]).length; i++) {
 					for (const option of propertyOptions.values) {
-						merge(
-							returnData,
-							workflow.getRequestOptionsFromParameters.call(
-								this,
-								workflow,
-								option,
-								node,
-								runExecutionData,
-								runIndex,
-								connectionInputData,
-								itemIndex,
-								mode,
-								nodeProperties.typeOptions?.multipleValues ? `${loopBasePath}[${i}]` : loopBasePath,
-								{ $index: i, $self: value[i] },
-							),
+						const tempOptions = workflow.getRequestOptionsFromParameters.call(
+							this,
+							workflow,
+							option,
+							node,
+							runExecutionData,
+							runIndex,
+							connectionInputData,
+							itemIndex,
+							mode,
+							nodeProperties.typeOptions?.multipleValues ? `${loopBasePath}[${i}]` : loopBasePath,
+							{ $index: i, $self: value[i] },
 						);
+						if (tempOptions) {
+							merge(returnData.options, tempOptions.options);
+							returnData.preSend.push(...tempOptions.preSend);
+							returnData.postReceive.push(...tempOptions.postReceive);
+						}
 					}
 				}
 			}
