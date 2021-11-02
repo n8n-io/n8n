@@ -36,6 +36,7 @@
 			totalLength = 0,
 			segmentProportions = [],
 			segmentProportionalLengths = [],
+			indexOffset = params.indexOffset,
 			stub = params.stub || 0,
 			sourceStub = _ju.isArray(stub) ? stub[0] : stub,
 			targetStub = _ju.isArray(stub) ? stub[1] : stub,
@@ -230,11 +231,16 @@
 				to[oIndex] = 0;
 			}
 
-			var sx = swapX ? w + (sourceGap * so[0]) : sourceGap * so[0],
+			const sx = swapX ? w + (sourceGap * so[0]) : sourceGap * so[0],
 				sy = swapY ? h + (sourceGap * so[1]) : sourceGap * so[1],
 				tx = swapX ? targetGap * to[0] : w + (targetGap * to[0]),
 				ty = swapY ? targetGap * to[1] : h + (targetGap * to[1]),
-				oProduct = ((so[0] * to[0]) + (so[1] * to[1]));
+				oProduct = ((so[0] * to[0]) + (so[1] * to[1])),
+				sourceIndex = params.sourceEndpoint && params.sourceEndpoint.__meta ? params.sourceEndpoint.__meta.index : 0,
+				targetIndex = params.targetEndpoint && params.targetEndpoint.__meta ? params.targetEndpoint.__meta.index : 0;
+
+			const sourceStubWithOffset = sourceStub + sourceIndex * indexOffset;
+			const targetStubWithOffset = targetStub + targetIndex * indexOffset;
 
 			var result = {
 				sx: sx, sy: sy, tx: tx, ty: ty, lw: lw,
@@ -244,18 +250,18 @@
 				my: (sy + ty) / 2,
 				so: so, to: to, x: x, y: y, w: w, h: h,
 				segment: segment,
-				startStubX: sx + (so[0] * sourceStub),
-				startStubY: sy + (so[1] * sourceStub),
-				endStubX: tx + (to[0] * targetStub),
-				endStubY: ty + (to[1] * targetStub),
-				isXGreaterThanStubTimes2: Math.abs(sx - tx) > (sourceStub + targetStub),
-				isYGreaterThanStubTimes2: Math.abs(sy - ty) > (sourceStub + targetStub),
+				startStubX: sx + (so[0] * sourceStubWithOffset),
+				startStubY: sy + (so[1] * sourceStubWithOffset),
+				endStubX: tx + (to[0] * targetStubWithOffset),
+				endStubY: ty + (to[1] * targetStubWithOffset),
+				isXGreaterThanStubTimes2: Math.abs(sx - tx) > (sourceStubWithOffset + targetStubWithOffset),
+				isYGreaterThanStubTimes2: Math.abs(sy - ty) > (sourceStubWithOffset + targetStubWithOffset),
 				opposite: oProduct === -1,
 				perpendicular: oProduct === 0,
 				orthogonal: oProduct === 1,
 				sourceAxis: so[0] === 0 ? "y" : "x",
 				points: [x, y, w, h, sx, sy, tx, ty ],
-				stubs:[sourceStub, targetStub],
+				stubs:[sourceStubWithOffset, targetStubWithOffset],
 			};
 			result.anchorOrientation = result.opposite ? "opposite" : result.orthogonal ? "orthogonal" : "perpendicular";
 			return result;
@@ -273,12 +279,12 @@
 			this.bounds.maxY = Math.max(this.bounds.maxY, segBounds.maxY);
 		};
 
-		var dumpSegmentsToConsole = function () {
-			console.log("SEGMENTS:");
-			for (var i = 0; i < segments.length; i++) {
-				console.log(segments[i].type, segments[i].getLength(), segmentProportions[i]);
-			}
-		};
+		// var dumpSegmentsToConsole = function () {
+		// 	console.log("SEGMENTS:");
+		// 	for (var i = 0; i < segments.length; i++) {
+		// 		console.log(segments[i].type, segments[i].getLength(), segmentProportions[i]);
+		// 	}
+		// };
 
 		this.pointOnPath = function (location, absolute) {
 			var seg = _findSegmentForLocation(location, absolute);
@@ -331,6 +337,7 @@
 		this.type = "N8nFlowchart";
 		params = params || {};
 		params.stub = params.stub == null ? 30 : params.stub;
+		params.indexOffset = params.indexOffset == null ? 5 : params.indexOffset;
 		var segments,
 			_super = _jp.Connectors.N8nAbstractConnector.apply(this, arguments),
 			midpoint = params.midpoint == null ? 0.5 : params.midpoint,
