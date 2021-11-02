@@ -9,7 +9,6 @@ import { getStyleTokenValue } from '../helpers';
 import * as CanvasHelpers from '@/views/canvasHelpers';
 import { Endpoint } from 'jsplumb';
 
-
 const anchorPositions: {
 	[key: string]: {
 		[key: number]: string[] | number[][];
