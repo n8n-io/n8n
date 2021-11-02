@@ -1,21 +1,338 @@
-/**
- * Custom flowchart type
- * Based on jsplumb Flowchart type https://github.com/jsplumb/jsplumb/blob/fb5fce52794fa52306825bdaa62bf3855cdfd7e0/src/connectors-flowchart.js
- */
+
 
 (function () {
 
 	"use strict";
-	var root = this, _jp = root.jsPlumb, _ju = root.jsPlumbUtil;
+	var root = this, _jp = root.jsPlumb, _ju = root.jsPlumbUtil,  _jg = root.Biltong;
 	var STRAIGHT = "Straight";
 	var ARC = "Arc";
+
+	/*
+		Class: UIComponent
+		Superclass for Connector and AbstractEndpoint.
+	*/
+	var AbstractComponent = function () {
+		this.resetBounds = function () {
+			this.bounds = { minX: Infinity, minY: Infinity, maxX: -Infinity, maxY: -Infinity };
+		};
+		this.resetBounds();
+	};
+
+	/*
+	 * Class: Connector
+	 * Superclass for all Connectors; here is where Segments are managed.  This is exposed on jsPlumb just so it
+	 * can be accessed from other files. You should not try to instantiate one of these directly.
+	 *
+	 * When this class is asked for a pointOnPath, or gradient etc, it must first figure out which segment to dispatch
+	 * that request to. This is done by keeping track of the total connector length as segments are added, and also
+	 * their cumulative ratios to the total length.  Then when the right segment is found it is a simple case of dispatching
+	 * the request to it (and adjusting 'location' so that it is relative to the beginning of that segment.)
+	 */
+	_jp.Connectors.N8nAbstractConnector = function (params) {
+
+		AbstractComponent.apply(this, arguments);
+
+		var segments = [],
+			totalLength = 0,
+			segmentProportions = [],
+			segmentProportionalLengths = [],
+			stub = params.stub || 0,
+			sourceStub = _ju.isArray(stub) ? stub[0] : stub,
+			targetStub = _ju.isArray(stub) ? stub[1] : stub,
+			gap = params.gap || 0,
+			sourceGap = _ju.isArray(gap) ? gap[0] : gap,
+			targetGap = _ju.isArray(gap) ? gap[1] : gap,
+			userProvidedSegments = null,
+			paintInfo = null;
+
+		this.getPathData = function() {
+			var p = "";
+			for (var i = 0; i < segments.length; i++) {
+				p += _jp.SegmentRenderer.getPath(segments[i], i === 0);
+				p += " ";
+			}
+			return p;
+		};
+
+		/**
+			 * Function: findSegmentForPoint
+			 * Returns the segment that is closest to the given [x,y],
+			 * null if nothing found.  This function returns a JS
+			 * object with:
+			 *
+			 *   d   -   distance from segment
+			 *   l   -   proportional location in segment
+			 *   x   -   x point on the segment
+			 *   y   -   y point on the segment
+			 *   s   -   the segment itself.
+			 *   connectorLocation - the location on the connector of the point, expressed as a decimal between 0 and 1 inclusive.
+			 */
+		this.findSegmentForPoint = function (x, y) {
+			var out = { d: Infinity, s: null, x: null, y: null, l: null };
+			for (var i = 0; i < segments.length; i++) {
+				var _s = segments[i].findClosestPointOnPath(x, y);
+				if (_s.d < out.d) {
+					out.d = _s.d;
+					out.l = _s.l;
+					out.x = _s.x;
+					out.y = _s.y;
+					out.s = segments[i];
+					out.x1 = _s.x1;
+					out.x2 = _s.x2;
+					out.y1 = _s.y1;
+					out.y2 = _s.y2;
+					out.index = i;
+					out.connectorLocation = segmentProportions[i][0] + (_s.l * (segmentProportions[i][1] - segmentProportions[i][0]));
+				}
+			}
+
+			return out;
+		};
+
+		this.lineIntersection = function(x1, y1, x2, y2) {
+			var out = [];
+			for (var i = 0; i < segments.length; i++) {
+				out.push.apply(out, segments[i].lineIntersection(x1, y1, x2, y2));
+			}
+			return out;
+		};
+
+		this.boxIntersection = function(x, y, w, h) {
+			var out = [];
+			for (var i = 0; i < segments.length; i++) {
+				out.push.apply(out, segments[i].boxIntersection(x, y, w, h));
+			}
+			return out;
+		};
+
+		this.boundingBoxIntersection = function(box) {
+			var out = [];
+			for (var i = 0; i < segments.length; i++) {
+				out.push.apply(out, segments[i].boundingBoxIntersection(box));
+			}
+			return out;
+		};
+
+		var _updateSegmentProportions = function () {
+				var curLoc = 0;
+				for (var i = 0; i < segments.length; i++) {
+					var sl = segments[i].getLength();
+					segmentProportionalLengths[i] = sl / totalLength;
+					segmentProportions[i] = [curLoc, (curLoc += (sl / totalLength)) ];
+				}
+			},
+
+			/**
+					 * returns [segment, proportion of travel in segment, segment index] for the segment
+					 * that contains the point which is 'location' distance along the entire path, where
+					 * 'location' is a decimal between 0 and 1 inclusive. in this connector type, paths
+					 * are made up of a list of segments, each of which contributes some fraction to
+					 * the total length.
+					 * From 1.3.10 this also supports the 'absolute' property, which lets us specify a location
+					 * as the absolute distance in pixels, rather than a proportion of the total path.
+					 */
+			_findSegmentForLocation = function (location, absolute) {
+
+				var idx, i, inSegmentProportion;
+
+				if (absolute) {
+					location = location > 0 ? location / totalLength : (totalLength + location) / totalLength;
+				}
+
+				// if location 1 we know its the last segment
+				if (location === 1) {
+					idx = segments.length - 1;
+					inSegmentProportion = 1;
+				} else if (location === 0) {
+					// if location 0 we know its the first segment
+					inSegmentProportion = 0;
+					idx = 0;
+				} else {
+
+					// if location >= 0.5, traverse backwards (of course not exact, who knows the segment proportions. but
+					// an educated guess at least)
+					if (location >= 0.5) {
+
+						idx = 0;
+						inSegmentProportion = 0;
+						for (i = segmentProportions.length - 1; i > -1; i--) {
+							if (segmentProportions[i][1] >= location && segmentProportions[i][0] <= location) {
+								idx = i;
+								inSegmentProportion = (location - segmentProportions[i][0]) / segmentProportionalLengths[i];
+								break;
+							}
+						}
+
+					} else {
+						idx = segmentProportions.length - 1;
+						inSegmentProportion = 1;
+						for (i = 0; i < segmentProportions.length; i++) {
+							if (segmentProportions[i][1] >= location) {
+								idx = i;
+								inSegmentProportion = (location - segmentProportions[i][0]) / segmentProportionalLengths[i];
+								break;
+							}
+						}
+					}
+				}
+
+				return { segment: segments[idx], proportion: inSegmentProportion, index: idx };
+			},
+			_addSegment = function (conn, type, params) {
+				if (params.x1 === params.x2 && params.y1 === params.y2) {
+					return;
+				}
+				var s = new _jp.Segments[type](params);
+				segments.push(s);
+				totalLength += s.getLength();
+				conn.updateBounds(s);
+			},
+			_clearSegments = function () {
+				totalLength = segments.length = segmentProportions.length = segmentProportionalLengths.length = 0;
+			};
+
+		this.setSegments = function (_segs) {
+			userProvidedSegments = [];
+			totalLength = 0;
+			for (var i = 0; i < _segs.length; i++) {
+				userProvidedSegments.push(_segs[i]);
+				totalLength += _segs[i].getLength();
+			}
+		};
+
+		this.getLength = function() {
+			return totalLength;
+		};
+
+		var _prepareCompute = function (params) {
+			this.strokeWidth = params.strokeWidth;
+			var segment = _jg.quadrant(params.sourcePos, params.targetPos),
+				swapX = params.targetPos[0] < params.sourcePos[0],
+				swapY = params.targetPos[1] < params.sourcePos[1],
+				lw = params.strokeWidth || 1,
+				so = params.sourceEndpoint.anchor.getOrientation(params.sourceEndpoint),
+				to = params.targetEndpoint.anchor.getOrientation(params.targetEndpoint),
+				x = swapX ? params.targetPos[0] : params.sourcePos[0],
+				y = swapY ? params.targetPos[1] : params.sourcePos[1],
+				w = Math.abs(params.targetPos[0] - params.sourcePos[0]),
+				h = Math.abs(params.targetPos[1] - params.sourcePos[1]);
+
+			// if either anchor does not have an orientation set, we derive one from their relative
+			// positions.  we fix the axis to be the one in which the two elements are further apart, and
+			// point each anchor at the other element.  this is also used when dragging a new connection.
+			if (so[0] === 0 && so[1] === 0 || to[0] === 0 && to[1] === 0) {
+				var index = w > h ? 0 : 1, oIndex = [1, 0][index];
+				so = [];
+				to = [];
+				so[index] = params.sourcePos[index] > params.targetPos[index] ? -1 : 1;
+				to[index] = params.sourcePos[index] > params.targetPos[index] ? 1 : -1;
+				so[oIndex] = 0;
+				to[oIndex] = 0;
+			}
+
+			var sx = swapX ? w + (sourceGap * so[0]) : sourceGap * so[0],
+				sy = swapY ? h + (sourceGap * so[1]) : sourceGap * so[1],
+				tx = swapX ? targetGap * to[0] : w + (targetGap * to[0]),
+				ty = swapY ? targetGap * to[1] : h + (targetGap * to[1]),
+				oProduct = ((so[0] * to[0]) + (so[1] * to[1]));
+
+			var result = {
+				sx: sx, sy: sy, tx: tx, ty: ty, lw: lw,
+				xSpan: Math.abs(tx - sx),
+				ySpan: Math.abs(ty - sy),
+				mx: (sx + tx) / 2,
+				my: (sy + ty) / 2,
+				so: so, to: to, x: x, y: y, w: w, h: h,
+				segment: segment,
+				startStubX: sx + (so[0] * sourceStub),
+				startStubY: sy + (so[1] * sourceStub),
+				endStubX: tx + (to[0] * targetStub),
+				endStubY: ty + (to[1] * targetStub),
+				isXGreaterThanStubTimes2: Math.abs(sx - tx) > (sourceStub + targetStub),
+				isYGreaterThanStubTimes2: Math.abs(sy - ty) > (sourceStub + targetStub),
+				opposite: oProduct === -1,
+				perpendicular: oProduct === 0,
+				orthogonal: oProduct === 1,
+				sourceAxis: so[0] === 0 ? "y" : "x",
+				points: [x, y, w, h, sx, sy, tx, ty ],
+				stubs:[sourceStub, targetStub],
+			};
+			result.anchorOrientation = result.opposite ? "opposite" : result.orthogonal ? "orthogonal" : "perpendicular";
+			return result;
+		};
+
+		this.getSegments = function () {
+			return segments;
+		};
+
+		this.updateBounds = function (segment) {
+			var segBounds = segment.getBounds();
+			this.bounds.minX = Math.min(this.bounds.minX, segBounds.minX);
+			this.bounds.maxX = Math.max(this.bounds.maxX, segBounds.maxX);
+			this.bounds.minY = Math.min(this.bounds.minY, segBounds.minY);
+			this.bounds.maxY = Math.max(this.bounds.maxY, segBounds.maxY);
+		};
+
+		var dumpSegmentsToConsole = function () {
+			console.log("SEGMENTS:");
+			for (var i = 0; i < segments.length; i++) {
+				console.log(segments[i].type, segments[i].getLength(), segmentProportions[i]);
+			}
+		};
+
+		this.pointOnPath = function (location, absolute) {
+			var seg = _findSegmentForLocation(location, absolute);
+			return seg.segment && seg.segment.pointOnPath(seg.proportion, false) || [0, 0];
+		};
+
+		this.gradientAtPoint = function (location, absolute) {
+			var seg = _findSegmentForLocation(location, absolute);
+			return seg.segment && seg.segment.gradientAtPoint(seg.proportion, false) || 0;
+		};
+
+		this.pointAlongPathFrom = function (location, distance, absolute) {
+			var seg = _findSegmentForLocation(location, absolute);
+			// TODO what happens if this crosses to the next segment?
+			return seg.segment && seg.segment.pointAlongPathFrom(seg.proportion, distance, false) || [0, 0];
+		};
+
+		this.compute = function (params) {
+			paintInfo = _prepareCompute.call(this, params);
+
+			_clearSegments();
+			this._compute(paintInfo, params);
+			this.x = paintInfo.points[0];
+			this.y = paintInfo.points[1];
+			this.w = paintInfo.points[2];
+			this.h = paintInfo.points[3];
+			this.segment = paintInfo.segment;
+			_updateSegmentProportions();
+		};
+
+		return {
+			addSegment: _addSegment,
+			prepareCompute: _prepareCompute,
+			sourceStub: sourceStub,
+			targetStub: targetStub,
+			maxStub: Math.max(sourceStub, targetStub),
+			sourceGap: sourceGap,
+			targetGap: targetGap,
+			maxGap: Math.max(sourceGap, targetGap),
+		};
+	};
+	_ju.extend(_jp.Connectors.N8nAbstractConnector, AbstractComponent);
+
+	/**
+	 * Custom flowchart type
+	 * Based on jsplumb Flowchart type https://github.com/jsplumb/jsplumb/blob/fb5fce52794fa52306825bdaa62bf3855cdfd7e0/src/connectors-flowchart.js
+	 */
 
 	var Flowchart = function (params) {
 		this.type = "N8nFlowchart";
 		params = params || {};
 		params.stub = params.stub == null ? 30 : params.stub;
 		var segments,
-			_super = _jp.Connectors.AbstractConnector.apply(this, arguments),
+			_super = _jp.Connectors.N8nAbstractConnector.apply(this, arguments),
 			midpoint = params.midpoint == null ? 0.5 : params.midpoint,
 			alwaysRespectStubs = params.alwaysRespectStubs === true,
 			yOffset = params.yOffset || 0,
@@ -118,7 +435,7 @@
 				}
 			};
 
-		this._compute = function (paintInfo, params) {
+		this._compute = function (paintInfo, connParams) {
 
 			segments = [];
 			lastx = null;
@@ -284,8 +601,8 @@
 							dim = {"x": "height", "y": "width"}[axis],
 							comparator = pi["is" + axis.toUpperCase() + "GreaterThanStubTimes2"];
 
-						if (params.sourceEndpoint.elementId === params.targetEndpoint.elementId) {
-							var _val = oss + ((1 - params.sourceEndpoint.anchor[otherAxis]) * params.sourceInfo[dim]) + _super.maxStub;
+						if (connParams.sourceEndpoint.elementId === connParams.targetEndpoint.elementId) {
+							var _val = oss + ((1 - connParams.sourceEndpoint.anchor[otherAxis]) * connParams.sourceInfo[dim]) + _super.maxStub;
 							return {
 								"x": [
 									[ss, _val],
@@ -350,6 +667,6 @@
 	};
 
 	_jp.Connectors.N8nFlowchart = Flowchart;
-	_ju.extend(_jp.Connectors.Flowchart, _jp.Connectors.AbstractConnector);
+	_ju.extend(_jp.Connectors.N8nFlowchart, _jp.Connectors.N8nAbstractConnector);
 
 }).call(typeof window !== 'undefined' ? window : this);

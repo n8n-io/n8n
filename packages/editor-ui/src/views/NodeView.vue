@@ -1241,7 +1241,7 @@ export default mixins(
 			},
 			initNodeView () {
 				this.instance.importDefaults({
-					Connector: CanvasHelpers.CONNECTOR_TYPE_STRIGHT,
+					Connector: CanvasHelpers.CONNECTOR_FLOWCHART_TYPE,
 					Endpoint: ['Dot', { radius: 5 }],
 					DragOptions: { cursor: 'pointer', zIndex: 5000 },
 					PaintStyle: { strokeWidth: 2, stroke: getStyleTokenValue('--color-foreground-dark')},
@@ -1315,11 +1315,7 @@ export default mixins(
 						targetOutputIndex: targetInfo.index,
 					};
 
-					const connectorType = CanvasHelpers.getFlowChartType(info.connection);
-
-					info.connection.setConnector(connectorType);
 					info.connection.setPaintStyle(CanvasHelpers.CONNECTOR_PAINT_STYLE_DEFAULT);
-					CanvasHelpers.addOverlays(info.connection, CanvasHelpers.CONNECTOR_ARROW_OVERLAYS);
 
 					CanvasHelpers.showOrHideMidpointArrow(info.connection);
 

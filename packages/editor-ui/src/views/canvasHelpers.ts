@@ -42,6 +42,15 @@ export const DEFAULT_START_NODE = {
 	parameters: {},
 };
 
+export const CONNECTOR_FLOWCHART_TYPE = ['N8nFlowchart', {
+	cornerRadius: 4,
+	stub: JSPLUMB_FLOWCHART_STUB + 10,
+	gap: 5,
+	alwaysRespectStubs: true,
+	yOffset: NODE_SIZE,
+	loopbackMinimum: 140,
+}];
+
 export const CONNECTOR_PAINT_STYLE_DEFAULT: PaintStyle = {
 	stroke: getStyleTokenValue('--color-foreground-dark'),
 	strokeWidth: 2,
@@ -57,29 +66,6 @@ export const CONNECTOR_PAINT_STYLE_PRIMARY = {
 export const CONNECTOR_PAINT_STYLE_SUCCESS = {
 	...CONNECTOR_PAINT_STYLE_DEFAULT,
 	stroke: getStyleTokenValue('--color-success'),
-};
-
-export const CONNECTOR_TYPE_STRIGHT = ['Straight'];
-
-export const getFlowChartType = (connection: Connection) => {
-	const inputIndex = connection.__meta ? connection.__meta.targetOutputIndex : 0;
-	const outputIndex = connection.__meta ? connection.__meta.sourceOutputIndex : 0;
-
-	const outputEndpoint = connection.endpoints[0];
-	const outputOverlay = outputEndpoint.getOverlay(OVERLAY_OUTPUT_NAME_LABEL);
-	let labelOffset = 0;
-	if (outputOverlay && outputOverlay.label && outputOverlay.label.length > 1) {
-		labelOffset = 16;
-	}
-
-	return ['N8nFlowchart', {
-		cornerRadius: 4,
-		stub: JSPLUMB_FLOWCHART_STUB + 10 * outputIndex + 10 * inputIndex + labelOffset,
-		gap: 5,
-		alwaysRespectStubs: true,
-		yOffset: NODE_SIZE,
-		loopbackMinimum: 140,
-	}];
 };
 
 export const CONNECTOR_ARROW_OVERLAYS: OverlaySpec[] = [
@@ -522,16 +508,12 @@ export const getUniqueNodeName = (nodes: INodeUi[], originalName: string, additi
 };
 
 export const showDropConnectionState = (connection: Connection) => {
-	connection.setConnector(getFlowChartType(connection));
 	connection.setPaintStyle(CONNECTOR_PAINT_STYLE_PRIMARY);
-	addOverlays(connection, CONNECTOR_ARROW_OVERLAYS);
 	hideOverlay(connection, OVERLAY_DROP_NODE_ID);
 };
 
 export const showPullConnectionState = (connection: Connection) => {
-	connection.setConnector(CONNECTOR_TYPE_STRIGHT);
 	connection.setPaintStyle(CONNECTOR_PAINT_STYLE_DEFAULT);
-	addOverlays(connection, CONNECTOR_ARROW_OVERLAYS);
 	showOverlay(connection, OVERLAY_DROP_NODE_ID);
 };
 

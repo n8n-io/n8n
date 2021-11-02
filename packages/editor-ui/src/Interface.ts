@@ -55,6 +55,10 @@ declare module 'jsplumb' {
 	}
 
 	interface Endpoint {
+		__meta?: {
+			nodeName: string,
+			index: number,
+		};
 		getOverlay(name: string): any; // tslint:disable-line:no-any
 	}
 

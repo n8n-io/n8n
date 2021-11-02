@@ -7,6 +7,7 @@ import { nodeIndex } from '@/components/mixins/nodeIndex';
 import { NODE_NAME_PREFIX, NO_OP_NODE_TYPE } from '@/constants';
 import { getStyleTokenValue } from '../helpers';
 import * as CanvasHelpers from '@/views/canvasHelpers';
+import { Endpoint } from 'jsplumb';
 
 export const nodeBase = mixins(
 	deviceSupportHelpers,
@@ -159,7 +160,7 @@ export const nodeBase = mixins(
 				[key: string]: number;
 			} = {};
 
-			nodeTypeData.inputs.forEach((inputName: string) => {
+			nodeTypeData.inputs.forEach((inputName: string, i: number) => {
 				// @ts-ignore
 				inputData = nodeConnectors[inputName].input;
 
@@ -210,7 +211,11 @@ export const nodeBase = mixins(
 					];
 				}
 
-				this.instance.addEndpoint(this.nodeName, newEndpointData);
+				const endpoint: Endpoint = this.instance.addEndpoint(this.nodeName, newEndpointData);
+				endpoint.__meta = {
+					nodeName: node.name,
+					index: i,
+				};
 
 				// TODO: Activate again if it makes sense. Currently makes problems when removing
 				//       connection on which the input has a name. It does not get hidden because
@@ -226,7 +231,7 @@ export const nodeBase = mixins(
 
 			// Add Outputs
 			indexData = {};
-			nodeTypeData.outputs.forEach((inputName: string) => {
+			nodeTypeData.outputs.forEach((inputName: string, i: number) => {
 				inputData = nodeConnectors[inputName].output;
 
 				// Increment the index for outputs with current name
@@ -273,7 +278,11 @@ export const nodeBase = mixins(
 					];
 				}
 
-				this.instance.addEndpoint(this.nodeName, newEndpointData);
+				const endpoint: Endpoint = this.instance.addEndpoint(this.nodeName, newEndpointData);
+				endpoint.__meta = {
+					nodeName: node.name,
+					index: i,
+				};
 			});
 
 			// TODO: This caused problems with displaying old information
