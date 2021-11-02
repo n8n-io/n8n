@@ -102,10 +102,10 @@ export function adjustMetadata(
 ) {
 	if (!fields.metadata || isEmpty(fields.metadata)) return fields;
 
-	let adjustedMetadata = {};
+	const adjustedMetadata: Record<string, string> = {};
 
 	fields.metadata.metadataProperties.forEach(pair => {
-		adjustedMetadata = { ...adjustedMetadata, ...pair };
+		adjustedMetadata[pair.key] = pair.value;
 	});
 
 	return {
