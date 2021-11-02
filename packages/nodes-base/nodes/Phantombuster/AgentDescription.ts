@@ -176,7 +176,7 @@ export const agentFields = [
 				],
 			},
 		},
-		description: 'By default the outpout is presented as string. If this option gets activated it<br />will resolve the data automatically.',
+		description: 'By default the outpout is presented as string. If this option gets activated, it will resolve the data automatically.',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -283,7 +283,7 @@ export const agentFields = [
 				],
 			},
 		},
-		description: 'By default the launch just include the container ID. If this option gets activated it<br />will resolve the data automatically.',
+		description: 'By default the launch just include the container ID. If this option gets activated, it will resolve the data automatically.',
 	},
 	{
 		displayName: 'JSON Parameters',

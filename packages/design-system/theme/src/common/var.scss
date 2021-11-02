@@ -753,11 +753,7 @@ $switch-button-size: 16px;
 $dialog-background-color: $color-white;
 $dialog-box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
 /// fontSize||Font|1
-$dialog-title-font-size: $font-size-large;
-/// fontSize||Font|1
 $dialog-content-font-size: 14px;
-/// fontLineHeight||LineHeight|2
-$dialog-font-line-height: $font-line-height-primary;
 /// padding||Spacing|3
 $dialog-padding-primary: var(--spacing-l);
 $dialog-close-top: var(--dialog-close-top, var(--spacing-l));

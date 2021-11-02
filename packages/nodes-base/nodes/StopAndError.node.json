@@ -3,7 +3,8 @@
 	"nodeVersion": "1.0",
 	"codexVersion": "1.0",
 	"categories": [
-		"Core Nodes"
+		"Core Nodes",
+		"Utility"
 	],
 	"resources": {
 		"primaryDocumentation": [
@@ -13,13 +14,13 @@
 		]
 	},
 	"alias": [
-		"error",
-		"throw",
-		"exception"
+		"Throw error",
+		"Error",
+		"Exception"
 	],
 	"subcategories": {
-		"Core Nodes": [
-			"Flow"
+		"Core Nodes":[
+			"Helpers"
 		]
 	}
 }

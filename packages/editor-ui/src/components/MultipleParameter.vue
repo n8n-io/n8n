@@ -1,37 +1,37 @@
 <template>
 	<div @keydown.stop class="duplicate-parameter">
+		<n8n-input-label
+			:label="parameter.displayName"
+			:tooltipText="parameter.description"
+			:underline="true"
+			:labelHoverableOnly="true"
+			size="small"
+		>
 
-		<div class="parameter-name">
-			{{parameter.displayName}}:
-			<n8n-tooltip v-if="parameter.description" class="parameter-info" placement="top" >
-				<div slot="content" v-html="addTargetBlank(parameter.description)"></div>
-				<font-awesome-icon icon="question-circle" />
-			</n8n-tooltip>
-		</div>
-
-		<div v-for="(value, index) in values" :key="index" class="duplicate-parameter-item" :class="parameter.type">
-			<div class="delete-item clickable" v-if="!isReadOnly">
-				<font-awesome-icon icon="trash" title="Delete Item" @click="deleteItem(index)" />
-				<div v-if="sortable">
-					<font-awesome-icon v-if="index !== 0" icon="angle-up" class="clickable" title="Move up" @click="moveOptionUp(index)" />
-					<font-awesome-icon v-if="index !== (values.length -1)" icon="angle-down" class="clickable" title="Move down" @click="moveOptionDown(index)" />
+			<div v-for="(value, index) in values" :key="index" class="duplicate-parameter-item" :class="parameter.type">
+				<div class="delete-item clickable" v-if="!isReadOnly">
+					<font-awesome-icon icon="trash" title="Delete Item" @click="deleteItem(index)" />
+					<div v-if="sortable">
+						<font-awesome-icon v-if="index !== 0" icon="angle-up" class="clickable" title="Move up" @click="moveOptionUp(index)" />
+						<font-awesome-icon v-if="index !== (values.length -1)" icon="angle-down" class="clickable" title="Move down" @click="moveOptionDown(index)" />
+					</div>
+				</div>
+				<div v-if="parameter.type === 'collection'">
+					<collection-parameter :parameter="parameter" :values="value" :nodeValues="nodeValues" :path="getPath(index)" :hideDelete="hideDelete" @valueChanged="valueChanged" />
+				</div>
+				<div v-else>
+					<parameter-input class="duplicate-parameter-input-item" :parameter="parameter" :value="value" :displayOptions="true" :path="getPath(index)" @valueChanged="valueChanged" inputSize="small" :isReadOnly="isReadOnly" />
 				</div>
 			</div>
-			<div v-if="parameter.type === 'collection'">
-				<collection-parameter :parameter="parameter" :values="value" :nodeValues="nodeValues" :path="getPath(index)" :hideDelete="hideDelete" @valueChanged="valueChanged" />
-			</div>
-			<div v-else>
-				<parameter-input class="duplicate-parameter-input-item" :parameter="parameter" :value="value" :displayOptions="true" :path="getPath(index)" @valueChanged="valueChanged" inputSize="small" :isReadOnly="isReadOnly" />
-			</div>
-		</div>
 
-		<div class="add-item-wrapper">
-			<div v-if="values && Object.keys(values).length === 0 || isReadOnly" class="no-items-exist">
-				Currently no items exist
+			<div class="add-item-wrapper">
+				<div v-if="values && Object.keys(values).length === 0 || isReadOnly" class="no-items-exist">
+					<n8n-text size="small">Currently no items exist</n8n-text>
+				</div>
+				<n8n-button v-if="!isReadOnly" fullWidth @click="addItem()" :label="addButtonText" />
 			</div>
-			<n8n-button v-if="!isReadOnly" fullWidth @click="addItem()" :label="addButtonText" />
-		</div>
 
+		</n8n-input-label>
 	</div>
 </template>
 
@@ -48,7 +48,6 @@ import { get } from 'lodash';
 import { genericHelpers } from '@/components/mixins/genericHelpers';
 
 import mixins from 'vue-typed-mixins';
-import { addTargetBlank } from './helpers';
 
 export default mixins(genericHelpers)
 	.extend({
@@ -75,7 +74,6 @@ export default mixins(genericHelpers)
 			},
 		},
 		methods: {
-			addTargetBlank,
 			addItem () {
 				const name = this.getPath();
 				let currentValue = get(this.nodeValues, name);
@@ -134,11 +132,7 @@ export default mixins(genericHelpers)
 <style scoped lang="scss">
 
 .duplicate-parameter-item ~.add-item-wrapper {
-	margin: 1.5em 0 0em 0em;
-}
-
-.add-item-wrapper {
-	margin: 0.5em 0 0em 2em;
+	margin-top: var(--spacing-xs);
 }
 
 .delete-item {
@@ -149,23 +143,15 @@ export default mixins(genericHelpers)
 	z-index: 999;
 	color: #f56c6c;
 	width: 15px;
+	font-size: var(--font-size-2xs);
 
 	:hover {
 		color: #ff0000;
 	}
 }
 
-.duplicate-parameter {
-	margin-top: 0.5em;
-	.parameter-name {
-		border-bottom: 1px solid #999;
-	}
-}
-
 ::v-deep .duplicate-parameter-item {
 	position: relative;
-	margin-top: 0.5em;
-	padding-top: 0.5em;
 
 	.multi > .delete-item{
 		top: 0.1em;
@@ -179,12 +165,12 @@ export default mixins(genericHelpers)
 ::v-deep .duplicate-parameter-item + .duplicate-parameter-item {
 	.collection-parameter-wrapper {
 		border-top: 1px dashed #999;
-		padding-top: 0.5em;
+		margin-top: var(--spacing-xs);
 	}
 }
 
 .no-items-exist {
-	margin: 0 0 1em 0;
+	margin: var(--spacing-xs) 0;
 }
 </style>
 

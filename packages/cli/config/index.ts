@@ -649,6 +649,46 @@ const config = convict({
 			env: 'N8N_VERSION_NOTIFICATIONS_INFO_URL',
 		},
 	},
+
+	deployment: {
+		type: {
+			format: String,
+			default: 'default',
+			env: 'N8N_DEPLOYMENT_TYPE',
+		},
+	},
+
+	personalization: {
+		enabled: {
+			doc: 'Whether personalization is enabled.',
+			format: Boolean,
+			default: true,
+			env: 'N8N_PERSONALIZATION_ENABLED',
+		},
+	},
+
+	diagnostics: {
+		enabled: {
+			doc: 'Whether diagnostic mode is enabled.',
+			format: Boolean,
+			default: true,
+			env: 'N8N_DIAGNOSTICS_ENABLED',
+		},
+		config: {
+			frontend: {
+				doc: 'Diagnostics config for frontend.',
+				format: String,
+				default: '1zPn9bgWPzlQc0p8Gj1uiK6DOTn;https://telemetry.n8n.io',
+				env: 'N8N_DIAGNOSTICS_CONFIG_FRONTEND',
+			},
+			backend: {
+				doc: 'Diagnostics config for backend.',
+				format: String,
+				default: '1zPn7YoGC3ZXE9zLeTKLuQCB4F6;https://telemetry.n8n.io/v1/batch',
+				env: 'N8N_DIAGNOSTICS_CONFIG_BACKEND',
+			},
+		},
+	},
 });
 
 // Overwrite default configuration with settings which got defined in

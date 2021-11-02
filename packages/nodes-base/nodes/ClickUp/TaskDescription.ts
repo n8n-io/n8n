@@ -1063,8 +1063,8 @@ export const taskFields = [
 			},
 		},
 		default: false,
-		description: `The value is JSON and will be parsed as such. Is needed<br />
-		if for example needed for labels which expects the value<br />
+		description: `The value is JSON and will be parsed as such. Is needed
+		if for example needed for labels which expects the value
 		to be an array.`,
 	},
 	{

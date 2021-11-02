@@ -208,7 +208,7 @@ export class Pushbullet implements INodeType {
 					},
 				},
 				placeholder: '',
-				description: 'Name of the binary property which contains<br />the data for the file to be created.',
+				description: 'Name of the binary property which contains the data for the file to be created.',
 			},
 			{
 				displayName: 'Target',

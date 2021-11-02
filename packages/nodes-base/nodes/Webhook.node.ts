@@ -202,7 +202,7 @@ export class Webhook implements INodeType {
 					},
 				],
 				default: 'firstEntryJson',
-				description: 'What data should be returned. If it should return<br />all items as an array or only the first item as object.',
+				description: 'What data should be returned. If it should return all items as an array or only the first item as object.',
 			},
 			{
 				displayName: 'Property Name',
@@ -253,8 +253,8 @@ export class Webhook implements INodeType {
 								],
 							},
 						},
-						description: `Name of the binary property to write the data of<br />
-									the received file to. If the data gets received via "Form-Data Multipart"<br />
+						description: `Name of the binary property to write the data of
+									the received file to. If the data gets received via "Form-Data Multipart"
 									it will be the prefix and a number starting with 0 will be attached to it.`,
 					},
 					{
@@ -407,6 +407,7 @@ export class Webhook implements INodeType {
 		// @ts-ignore
 		const mimeType = headers['content-type'] || 'application/json';
 		if (mimeType.includes('multipart/form-data')) {
+			// @ts-ignore
 			const form = new formidable.IncomingForm({ multiples: true });
 
 			return new Promise((resolve, reject) => {
