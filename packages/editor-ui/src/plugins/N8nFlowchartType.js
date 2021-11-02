@@ -36,7 +36,7 @@
 			totalLength = 0,
 			segmentProportions = [],
 			segmentProportionalLengths = [],
-			indexOffset = params.indexOffset,
+			getEndpointOffset = params.getEndpointOffset,
 			stub = params.stub || 0,
 			sourceStub = _ju.isArray(stub) ? stub[0] : stub,
 			targetStub = _ju.isArray(stub) ? stub[1] : stub,
@@ -235,12 +235,10 @@
 				sy = swapY ? h + (sourceGap * so[1]) : sourceGap * so[1],
 				tx = swapX ? targetGap * to[0] : w + (targetGap * to[0]),
 				ty = swapY ? targetGap * to[1] : h + (targetGap * to[1]),
-				oProduct = ((so[0] * to[0]) + (so[1] * to[1])),
-				sourceIndex = params.sourceEndpoint && params.sourceEndpoint.__meta ? params.sourceEndpoint.__meta.index : 0,
-				targetIndex = params.targetEndpoint && params.targetEndpoint.__meta ? params.targetEndpoint.__meta.index : 0;
+				oProduct = ((so[0] * to[0]) + (so[1] * to[1]));
 
-			const sourceStubWithOffset = sourceStub + sourceIndex * indexOffset;
-			const targetStubWithOffset = targetStub + targetIndex * indexOffset;
+			const sourceStubWithOffset = sourceStub + (getEndpointOffset && params.sourceEndpoint ? getEndpointOffset(params.sourceEndpoint) : 0);
+			const targetStubWithOffset = targetStub + (getEndpointOffset && params.targetEndpoint ? getEndpointOffset(params.targetEndpoint) : 0);
 
 			var result = {
 				sx: sx, sy: sy, tx: tx, ty: ty, lw: lw,
@@ -337,7 +335,7 @@
 		this.type = "N8nFlowchart";
 		params = params || {};
 		params.stub = params.stub == null ? 30 : params.stub;
-		params.indexOffset = params.indexOffset == null ? 5 : params.indexOffset;
+		params.getEndpointOffset = params.getEndpointOffset;
 		var segments,
 			_super = _jp.Connectors.N8nAbstractConnector.apply(this, arguments),
 			midpoint = params.midpoint == null ? 0.5 : params.midpoint,

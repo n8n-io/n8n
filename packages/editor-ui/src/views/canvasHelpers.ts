@@ -49,7 +49,15 @@ export const CONNECTOR_FLOWCHART_TYPE = ['N8nFlowchart', {
 	alwaysRespectStubs: true,
 	loopbackVerticalLength: NODE_SIZE, // length of vertical segment when looping
 	loopbackMinimum: 140, // minimum length before flowchart loops around
-	indexOffset: 10, // stub offset between different endpoints of same node
+	getEndpointOffset(endpoint: Endpoint) {
+		const indexOffset = 10; // stub offset between different endpoints of same node
+		const index = endpoint && endpoint.__meta ? endpoint.__meta.index : 0;
+
+		const outputOverlay = endpoint.getOverlay(OVERLAY_OUTPUT_NAME_LABEL);
+		const labelOffset = outputOverlay && outputOverlay.label && outputOverlay.label.length > 1 ? 10 : 0;
+
+		return index * indexOffset + labelOffset;
+	},
 }];
 
 export const CONNECTOR_PAINT_STYLE_DEFAULT: PaintStyle = {
