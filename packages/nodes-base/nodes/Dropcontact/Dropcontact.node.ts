@@ -64,14 +64,6 @@ export class Dropcontact implements INodeType {
 				default: '',
 			},
 			{
-				displayName: 'Siren',
-				name: 'siren',
-				type: 'boolean',
-				required: true,
-				default: false,
-				description: 'Whether you want the SIREN number, NAF code, TVA number, company address and informations about the company leader',
-			},
-			{
 				displayName: 'Resolve Data',
 				name: 'resolveData',
 				type: 'boolean',
@@ -124,23 +116,6 @@ export class Dropcontact implements INodeType {
 						default: '',
 					},
 					{
-						displayName: 'Language',
-						name: 'language',
-						type: 'options',
-						options: [
-							{
-								name: 'English',
-								value: 'en',
-							},
-							{
-								name: 'French',
-								value: 'fr',
-							},
-						],
-						default: 'en',
-						description: 'Whether the response is in English or French',
-					},
-					{
 						displayName: 'Last Name',
 						name: 'last_name',
 						type: 'string',
@@ -173,6 +148,14 @@ export class Dropcontact implements INodeType {
 				placeholder: 'Add Option',
 				default: {},
 				options: [
+					{
+						displayName: 'French Company Enrich',
+						name: 'siren',
+						type: 'boolean',
+						default: false,
+						description: `Whether you want the <a href="https://en.wikipedia.org/wiki/SIREN_code" target="_blank">SIREN number</a>, NAF code, TVA number, company address and informations about the company leader.</br>
+						Only applies to french companies.`,
+					},
 					{
 						displayName: 'Language',
 						name: 'language',
@@ -240,10 +223,9 @@ export class Dropcontact implements INodeType {
 			const data = [];
 			for (let i = 0; i < entryData.length; i++) {
 				const email = this.getNodeParameter('email', i) as string;
-				const siren = this.getNodeParameter('siren', i) as boolean;
 				const additionalFields = this.getNodeParameter('additionalFields', i);
 				const body: IDataObject = {
-					siren,
+					siren: false,
 					laguange: 'en',
 				};
 				if (email !== '') {
@@ -252,6 +234,9 @@ export class Dropcontact implements INodeType {
 				Object.assign(body, additionalFields);
 				if (options.language) {
 					body.language = options.language;
+				}
+				if (options.siren) {
+					body.siren = options.siren;
 				}
 				data.push(body);
 			}
