@@ -1,8 +1,10 @@
 /* eslint-disable func-names */
 /* eslint-disable no-extend-native */
+import { createHash } from 'crypto';
 // @ts-ignore
 import * as tmpl from 'riot-tmpl';
-import { DateTime,/*DateTimeFormatOptions,*/ DurationObjectUnits, /*DurationUnits */} from 'luxon';
+import { DateTime, /*DateTimeFormatOptions,*/ DurationObjectUnits /*DurationUnits */ } from 'luxon';
+import removeMd from 'remove-markdown';
 // eslint-disable-next-line import/no-cycle
 import {
 	INode,
@@ -178,28 +180,98 @@ export class Expression {
 		};
 
 		// @ts-ignore
-		// Object.prototype.isBlank = function () {
-		// 	if (this instanceof String) {
-		// 		return this === '';
-		// 	}
-		// 	if (this instanceof Number) {
-		// 		return this === 0;
-		// 	}
-		// 	if (this instanceof Array) {
-		// 		return this.length === 0;
-		// 	}
-		// 	if (this instanceof Object) {
-		// 		return Object.keys(this).length === 0;
-		// 	}
-		// 	return false;
-		// };
+		String.prototype.stripTags = function () {
+			return this.replace(/<[^>]*>?/gm, '');
+		};
 
-		// // @ts-ignore
-		// Object.prototype.isPresent = function () {
-		// 	// @ts-ignore
-		// 	// eslint-disable-next-line @typescript-eslint/no-unsafe-call
-		// 	return !this.isBlank();
-		// };
+		// @ts-ignore
+		String.prototype.removeMarkdown = function () {
+			// eslint-disable-next-line @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-call
+			return removeMd(this);
+		};
+
+		// @ts-ignore
+		String.prototype.urlEncode = function (entireString: false) {
+			if (entireString) {
+				return encodeURI(this.toString());
+			}
+			return encodeURIComponent(this.toString());
+		};
+
+		// @ts-ignore
+		String.prototype.urlDecode = function (entireString: false) {
+			if (entireString) {
+				return decodeURI(this.toString());
+			}
+			return decodeURIComponent(this.toString());
+		};
+
+		// @ts-ignore
+		String.prototype.encrypt = function (
+			format: 'MD5' | 'SHA1' | 'SHA256' | 'SHA384' | 'SHA512' = 'MD5',
+		) {
+			return createHash(format).update(this.toString()).digest('hex');
+		};
+
+		// @ts-ignore
+		String.prototype.toDate = function () {
+			return new Date(this.toString());
+		};
+
+		// @ts-ignore
+		String.prototype.size = function () {
+			return this.length;
+		};
+
+		// @ts-ignore
+		Number.prototype.random = function (min = 0, max: number | undefined) {
+			if (min < 0) {
+				throw new Error('Invalid minimum number');
+			}
+			return Math.floor(Math.random() * (max ?? Number.MAX_SAFE_INTEGER - min)) + min;
+		};
+
+		// @ts-ignore
+		Array.prototype.first = function () {
+			// eslint-disable-next-line @typescript-eslint/no-unsafe-return
+			return this[0];
+		};
+
+		// @ts-ignore
+		Array.prototype.last = function () {
+			// eslint-disable-next-line @typescript-eslint/no-unsafe-return
+			return this[this.length - 1];
+		};
+
+		// @ts-ignore
+		Array.prototype.unique = function () {
+			// eslint-disable-next-line @typescript-eslint/no-unsafe-return
+			return [...new Set(this)];
+		};
+
+		// @ts-ignore
+		Object.prototype.isBlank = function () {
+			if (this instanceof String) {
+				return this === '';
+			}
+			if (this instanceof Number) {
+				return this === 0;
+			}
+			if (this instanceof Array) {
+				return this.length === 0;
+			}
+			if (this instanceof Object) {
+				return Object.keys(this).length === 0;
+			}
+			return false;
+		};
+
+		// @ts-ignore
+		Object.prototype.isPresent = function () {
+			// @ts-ignore
+			// eslint-disable-next-line @typescript-eslint/no-unsafe-call
+			return !this.isBlank();
+		};
 	}
 
 	/**

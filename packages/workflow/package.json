@@ -50,6 +50,7 @@
     "lodash.get": "^4.4.2",
     "lodash.isequal": "^4.5.0",
     "luxon": "^2.0.2",
+    "remove-markdown": "^0.3.0",
     "riot-tmpl": "^3.0.8",
     "xml2js": "^0.4.23"
   },
