@@ -3,15 +3,20 @@ import {
 } from 'n8n-core';
 
 import {
+	ICredentialDataDecryptedObject,
+	ICredentialsDecrypted,
+	ICredentialTestFunctions,
 	IDataObject,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
 	NodeApiError,
+	NodeCredentialTestResult,
 } from 'n8n-workflow';
 
 import {
 	dropcontactApiRequest,
+	validateCrendetials,
 } from './GenericFunction';
 
 export class Dropcontact implements INodeType {
@@ -33,6 +38,7 @@ export class Dropcontact implements INodeType {
 			{
 				name: 'dropcontactApi',
 				required: true,
+				testedBy: 'dropcontactApiCredentialTest',
 			},
 		],
 		properties: [
@@ -201,6 +207,26 @@ export class Dropcontact implements INodeType {
 				],
 			},
 		],
+	};
+
+	methods = {
+		credentialTest: {
+			async dropcontactApiCredentialTest(this: ICredentialTestFunctions, credential: ICredentialsDecrypted): Promise<NodeCredentialTestResult> {
+				try {
+					await validateCrendetials.call(this, credential.data as ICredentialDataDecryptedObject);
+				} catch (error) {
+					return {
+						status: 'Error',
+						message: 'The API Key included in the request is invalid',
+					};
+				}
+
+				return {
+					status: 'OK',
+					message: 'Connection successful!',
+				};
+			},
+		},
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
