@@ -9,6 +9,54 @@ import { getStyleTokenValue } from '../helpers';
 import * as CanvasHelpers from '@/views/canvasHelpers';
 import { Endpoint } from 'jsplumb';
 
+
+const anchorPositions: {
+	[key: string]: {
+		[key: number]: string[] | number[][];
+	}
+} = {
+	input: {
+		1: [
+			[0.01, 0.5, -1, 0],
+		],
+		2: [
+			[0.01, 0.3, -1, 0],
+			[0.01, 0.7, -1, 0],
+		],
+		3: [
+			[0.01, 0.25, -1, 0],
+			[0.01, 0.5, -1, 0],
+			[0.01, 0.75, -1, 0],
+		],
+		4: [
+			[0.01, 0.2, -1, 0],
+			[0.01, 0.4, -1, 0],
+			[0.01, 0.6, -1, 0],
+			[0.01, 0.8, -1, 0],
+		],
+	},
+	output: {
+		1: [
+			[.99, 0.5, 1, 0],
+		],
+		2: [
+			[.99, 0.3, 1, 0],
+			[.99, 0.7, 1, 0],
+		],
+		3: [
+			[.99, 0.25, 1, 0],
+			[.99, 0.5, 1, 0],
+			[.99, 0.75, 1, 0],
+		],
+		4: [
+			[.99, 0.2, 1, 0],
+			[.99, 0.4, 1, 0],
+			[.99, 0.6, 1, 0],
+			[.99, 0.8, 1, 0],
+		],
+	},
+};
+
 export const nodeBase = mixins(
 	deviceSupportHelpers,
 	nodeIndex,
@@ -105,53 +153,6 @@ export const nodeBase = mixins(
 				// If node type is not know use by default the base.noOp data to display it
 				nodeTypeData = this.$store.getters.nodeType(NO_OP_NODE_TYPE);
 			}
-
-			const anchorPositions: {
-				[key: string]: {
-					[key: number]: string[] | number[][];
-				}
-			} = {
-				input: {
-					1: [
-						[0.01, 0.5, -1, 0],
-					],
-					2: [
-						[0.01, 0.3, -1, 0],
-						[0.01, 0.7, -1, 0],
-					],
-					3: [
-						[0.01, 0.25, -1, 0],
-						[0.01, 0.5, -1, 0],
-						[0.01, 0.75, -1, 0],
-					],
-					4: [
-						[0.01, 0.2, -1, 0],
-						[0.01, 0.4, -1, 0],
-						[0.01, 0.6, -1, 0],
-						[0.01, 0.8, -1, 0],
-					],
-				},
-				output: {
-					1: [
-						[.99, 0.5, 1, 0],
-					],
-					2: [
-						[.99, 0.3, 1, 0],
-						[.99, 0.7, 1, 0],
-					],
-					3: [
-						[.99, 0.25, 1, 0],
-						[.99, 0.5, 1, 0],
-						[.99, 0.75, 1, 0],
-					],
-					4: [
-						[.99, 0.2, 1, 0],
-						[.99, 0.4, 1, 0],
-						[.99, 0.6, 1, 0],
-						[.99, 0.8, 1, 0],
-					],
-				},
-			};
 
 			// Add Inputs
 			let index, inputData, anchorPosition;
