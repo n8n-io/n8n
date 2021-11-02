@@ -517,6 +517,7 @@
       "dist/nodes/Notion/NotionTrigger.node.js",
       "dist/nodes/N8nTrainingCustomerDatastore.node.js",
       "dist/nodes/N8nTrainingCustomerMessenger.node.js",
+      "dist/nodes/OpenCell/OpenCell.node.js",
       "dist/nodes/OpenThesaurus/OpenThesaurus.node.js",
       "dist/nodes/OpenWeatherMap.node.js",
       "dist/nodes/Orbit/Orbit.node.js",
