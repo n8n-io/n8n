@@ -51,6 +51,11 @@ export class Jenkins implements INodeType {
 				type: 'options',
 				options: [
 					{
+						name: 'Jenkins Instance',
+						value: 'jenkins',
+						description: 'Jenkins instance'
+					},
+					{
 						name: 'Job',
 						value: 'job',
 						description: 'Jenkins job'
@@ -61,7 +66,7 @@ export class Jenkins implements INodeType {
 				noDataExpression: true,
 			},
 			// --------------------------------------------------------------------------------------------------------
-			//         Trigger, copy a Job
+			//         Job Operations
 			// --------------------------------------------------------------------------------------------------------
 			{
 				displayName: 'Operation',
@@ -87,9 +92,27 @@ export class Jenkins implements INodeType {
 					},
 				],
 				default: 'trigger',
-				description: 'The operation to perform',
+				description: 'Possible operations',
 				noDataExpression: true,
 			},
+			{
+				displayName: 'Job Name',
+				name: 'job',
+				type: 'string',
+				displayOptions: {
+					show: {
+						resource: [
+							'job',
+						]
+					},
+				},
+				required: true,
+				default: '',
+				description: 'Job token',
+			},
+			// --------------------------------------------------------------------------------------------------------
+			//         Trigger a Job
+			// --------------------------------------------------------------------------------------------------------
 			{
 				displayName: 'Job Token',
 				name: 'token',
@@ -108,21 +131,9 @@ export class Jenkins implements INodeType {
 				default: '',
 				description: 'Name of the jenkins job',
 			},
-			{
-				displayName: 'Job Name',
-				name: 'job',
-				type: 'string',
-				displayOptions: {
-					show: {
-						resource: [
-							'job',
-						]
-					},
-				},
-				required: true,
-				default: '',
-				description: 'Job token',
-			},
+			// --------------------------------------------------------------------------------------------------------
+			//         Copy or Create a Job
+			// --------------------------------------------------------------------------------------------------------
 			{
 				displayName: 'New Job Name',
 				name: 'newJob',
@@ -140,6 +151,75 @@ export class Jenkins implements INodeType {
 				required: true,
 				default: '',
 				description: 'Name of the new jenkins job',
+			},
+
+			// --------------------------------------------------------------------------------------------------------
+			//         Jenkins operations
+			// --------------------------------------------------------------------------------------------------------
+			{
+				displayName: 'Operation',
+				name: 'operation',
+				type: 'options',
+				displayOptions: {
+					show: {
+						resource: [
+							'jenkins',
+						],
+					},
+				},
+				options: [
+					{
+						name: 'Restart Jenkins',
+						value: 'restart',
+						description: 'Restart Jenkins immediately on environments where it is possible',
+					},
+					{
+						name: 'Safely Restart Jenkins',
+						value: 'safeRestart',
+						description: 'Restart Jenkins once no jobs are running on environments where it is possible',
+					},
+					{
+						name: 'Quiet Down Jenkins',
+						value: 'quietDown',
+						description: 'Puts Jenkins in quiet mode, no builds can be started, Jenkins is ready for shutdown',
+					},
+					{
+						name: 'Cancel Quiet Down Jenkins',
+						value: 'cancelQuietDown',
+						description: 'Cancel quiet down state',
+					},
+					{
+						name: 'Shutdown Jenkins',
+						value: 'exit',
+						description: 'Shutdown Jenkins immediately',
+					},
+					{
+						name: 'Safely Shutdown Jenkins',
+						value: 'safeExit',
+						description: 'Shutdown once no jobs are running',
+					},
+				],
+				default: 'safeRestart',
+				description: 'The operation to perform',
+				noDataExpression: true,
+			},
+			{
+				displayName: 'Reason',
+				name: 'reason',
+				type: 'string',
+				displayOptions: {
+					show: {
+						resource: [
+							'jenkins',
+						],
+						operation: [
+							'quietDown',
+						],
+					},
+				},
+				required: false,
+				default: '',
+				description: 'Freeform reason for quiet down mode',
 			},
 		],
 	};
@@ -175,6 +255,38 @@ export class Jenkins implements INodeType {
 
 						const endpoint = `${baseUrl}/createItem`;
 						responseData = await jenkinsApiRequest.call(this, 'post', endpoint, queryParams);
+					}
+					if (operation === 'quietDown') {
+						const reason = this.getNodeParameter('reason', i) as string;
+						let queryParams;
+						if (reason) {
+							queryParams = {
+								reason,
+							}
+						}
+
+						const endpoint = `${baseUrl}/quietDown`;
+						responseData = await jenkinsApiRequest.call(this, 'post', endpoint, queryParams);
+					}
+					if (operation === 'cancelQuietDown') {
+						const endpoint = `${baseUrl}/cancelQuietDown`;
+						responseData = await jenkinsApiRequest.call(this, 'post', endpoint);
+					}
+					if (operation === 'restart') {
+						const endpoint = `${baseUrl}/restart`;
+						responseData = await jenkinsApiRequest.call(this, 'post', endpoint);
+					}
+					if (operation === 'safeRestart') {
+						const endpoint = `${baseUrl}/safeRestart`;
+						responseData = await jenkinsApiRequest.call(this, 'post', endpoint);
+					}
+					if (operation === 'exit') {
+						const endpoint = `${baseUrl}/exit`;
+						responseData = await jenkinsApiRequest.call(this, 'post', endpoint);
+					}
+					if (operation === 'safeExit') {
+						const endpoint = `${baseUrl}/safeExit`;
+						responseData = await jenkinsApiRequest.call(this, 'post', endpoint);
 					}
 				}
 				if (Array.isArray(responseData)) {
