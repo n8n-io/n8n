@@ -90,6 +90,11 @@ export class Jenkins implements INodeType {
 						value: 'copy',
 						description: 'Copy a specific job',
 					},
+					{
+						name: 'Create a Job',
+						value: 'create',
+						description: 'Create a new job',
+					},
 				],
 				default: 'trigger',
 				description: 'Possible operations',
@@ -103,7 +108,11 @@ export class Jenkins implements INodeType {
 					show: {
 						resource: [
 							'job',
-						]
+						],
+						operation: [
+							'trigger',
+							'copy',
+						],
 					},
 				},
 				required: true,
@@ -145,12 +154,31 @@ export class Jenkins implements INodeType {
 						],
 						operation: [
 							'copy',
+							'create',
 						],
 					},
 				},
 				required: true,
 				default: '',
 				description: 'Name of the new jenkins job',
+			},
+			{
+				displayName: 'XML',
+				name: 'xml',
+				type: 'string',
+				displayOptions: {
+					show: {
+						resource: [
+							'job',
+						],
+						operation: [
+							'create',
+						],
+					},
+				},
+				required: true,
+				default: '',
+				description: 'XML of Jenkins config',
 			},
 
 			// --------------------------------------------------------------------------------------------------------
@@ -169,6 +197,16 @@ export class Jenkins implements INodeType {
 				},
 				options: [
 					{
+						name: 'Cancel Quiet Down Jenkins',
+						value: 'cancelQuietDown',
+						description: 'Cancel quiet down state',
+					},
+					{
+						name: 'Quiet Down Jenkins',
+						value: 'quietDown',
+						description: 'Puts Jenkins in quiet mode, no builds can be started, Jenkins is ready for shutdown',
+					},
+					{
 						name: 'Restart Jenkins',
 						value: 'restart',
 						description: 'Restart Jenkins immediately on environments where it is possible',
@@ -179,24 +217,14 @@ export class Jenkins implements INodeType {
 						description: 'Restart Jenkins once no jobs are running on environments where it is possible',
 					},
 					{
-						name: 'Quiet Down Jenkins',
-						value: 'quietDown',
-						description: 'Puts Jenkins in quiet mode, no builds can be started, Jenkins is ready for shutdown',
-					},
-					{
-						name: 'Cancel Quiet Down Jenkins',
-						value: 'cancelQuietDown',
-						description: 'Cancel quiet down state',
+						name: 'Safely Shutdown Jenkins',
+						value: 'safeExit',
+						description: 'Shutdown once no jobs are running',
 					},
 					{
 						name: 'Shutdown Jenkins',
 						value: 'exit',
 						description: 'Shutdown Jenkins immediately',
-					},
-					{
-						name: 'Safely Shutdown Jenkins',
-						value: 'safeExit',
-						description: 'Shutdown once no jobs are running',
 					},
 				],
 				default: 'safeRestart',
@@ -235,17 +263,16 @@ export class Jenkins implements INodeType {
 
 		for (let i = 0; i < length; i++) {
 			try {
+				const baseUrl = this.getNodeParameter('url', i) as string;
 				if (resource === 'job') {
-					// shared by all operations for "job" resource
-					const baseUrl = this.getNodeParameter('url', i) as string;
-					const job = this.getNodeParameter('job', i) as string;
-
 					if (operation === 'trigger') {
 						const token = this.getNodeParameter('token', i) as string;
+						const job = this.getNodeParameter('job', i) as string;
 						const endpoint = `${baseUrl}/job/${job}/build?token=${token}`;
 						responseData = await jenkinsApiRequest.call(this, 'get', endpoint);
 					}
 					if (operation === 'copy') {
+						const job = this.getNodeParameter('job', i) as string;
 						const name = this.getNodeParameter('newJob', i) as string;
 						const queryParams = {
 							name,
@@ -256,6 +283,24 @@ export class Jenkins implements INodeType {
 						const endpoint = `${baseUrl}/createItem`;
 						responseData = await jenkinsApiRequest.call(this, 'post', endpoint, queryParams);
 					}
+					if (operation === 'create') {
+						const name = this.getNodeParameter('newJob', i) as string;
+						const queryParams = {
+							name,
+						}
+						const headers = {
+							'content-type': 'application/xml'
+						}
+
+						const body = this.getNodeParameter('xml', i) as string;
+
+
+						const endpoint = `${baseUrl}/createItem`;
+						responseData = await jenkinsApiRequest.call(this, 'post', endpoint, queryParams, headers, body);
+					}
+				}
+				if (resource === 'jenkins') {
+
 					if (operation === 'quietDown') {
 						const reason = this.getNodeParameter('reason', i) as string;
 						let queryParams;
