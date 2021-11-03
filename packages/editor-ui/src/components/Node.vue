@@ -347,16 +347,12 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 
 		.node-info-icon {
 			position: absolute;
-			bottom: 8px;
-			right: 8px;
+			bottom: 6px;
+			right: 6px;
 
 			&.data-count {
 				font-weight: 600;
 				color: var(--color-success);
-
-				* {
-					margin-left: 2px;
-				}
 			}
 
 			&.node-issues {
