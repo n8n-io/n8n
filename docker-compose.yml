@@ -1,0 +1,27 @@
+version: "3.9"
+
+services:
+  n8n:
+    build: .
+    restart: always
+    ports:
+      - "5678:5678"
+    environment:
+      - N8N_BASIC_AUTH_ACTIVE=true
+      - N8N_BASIC_AUTH_USER
+      - N8N_BASIC_AUTH_PASSWORD
+      - N8N_HOST=${SUBDOMAIN}.${DOMAIN_NAME}
+      - N8N_PORT=5678
+      - N8N_PROTOCOL=https
+      - NODE_ENV=production
+      - EXECUTIONS_PROCESS=main
+      - EXECUTIONS_TIMEOUT=60
+      - EXECUTIONS_TIMEOUT_MAX=120
+      - NODE_TLS_REJECT_UNAUTHORIZED=0
+      - EXECUTIONS_DATA_PRUNE=true
+      - EXECUTIONS_DATA_MAX_AGE=168
+      - WEBHOOK_TUNNEL_URL=https://${SUBDOMAIN}.${DOMAIN_NAME}/
+      - GENERIC_TIMEZONE=${GENERIC_TIMEZONE}
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ${DATA_FOLDER}/.n8n:/home/node/.n8n
