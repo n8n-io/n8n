@@ -23,8 +23,6 @@
 				@runWorkflow="runWorkflow"
 				@moved="onNodeMoved"
 				@run="onNodeRun"
-				@mouseenter="onNodeEnter"
-				@mouseleave="onNodeLeave"
 				:id="'node-' + getNodeIndex(nodeData.name)"
 				:key="getNodeIndex(nodeData.name)"
 				:name="nodeData.name"
@@ -312,7 +310,6 @@ export default mixins(
 				blankRedirect: false,
 				credentialsUpdated: false,
 				newNodeInsertPosition: null as null | XYPosition,
-				hoveringOverNodeName: null as null | string,
 			};
 		},
 		beforeDestroy () {
@@ -1271,23 +1268,15 @@ export default mixins(
 
 				let dropPrevented = false;
 
-				this.instance.bind('connectionAborted', (connection) => {
+				this.instance.bind('connectionAborted', (info) => {
 					if (dropPrevented) {
 						dropPrevented = false;
 						return;
 					}
 
-					if (this.hoveringOverNodeName) {
-						const sourceNodeName = this.$store.getters.getNodeNameByIndex(connection.sourceId.slice(NODE_NAME_PREFIX.length));
-						const outputIndex = connection.getParameters().index;
-
-						this.connectTwoNodes(sourceNodeName, outputIndex, this.hoveringOverNodeName, 0);
-						return;
-					}
-
 					insertNodeAfterSelected({
-						sourceId: connection.sourceId,
-						index: connection.getParameters().index,
+						sourceId: info.sourceId,
+						index: info.getParameters().index,
 						eventSource: 'node_connection_drop',
 					});
 				});
@@ -1466,19 +1455,11 @@ export default mixins(
 						}
 
 						const elements = document.querySelector('div.jtk-endpoint.dropHover');
-						if ((elements || this.hoveringOverNodeName) && !droppable) {
-							if (!elements && this.hoveringOverNodeName) {
-								const node = this.$store.getters.getNodeByName(this.hoveringOverNodeName);
-								const type: INodeTypeDescription = this.$store.getters.nodeType(node.type);
-								if (type.inputs.length !== 1) { // only attach to simple nodes with 1 input
-									return;
-								}
-							}
-
+						if (elements && !droppable) {
 							droppable = true;
 							CanvasHelpers.showDropConnectionState(connection);
 						}
-						else if (!(elements || this.hoveringOverNodeName) && droppable) {
+						else if (!elements && droppable) {
 							droppable = false;
 							CanvasHelpers.showPullConnectionState(connection);
 						}
@@ -1721,12 +1702,6 @@ export default mixins(
 					CanvasHelpers.showOrHideMidpointArrow(connection);
 					CanvasHelpers.showOrHideItemsLabel(connection);
 				});
-			},
-			onNodeEnter (nodeName: string) {
-				this.hoveringOverNodeName = nodeName;
-			},
-			onNodeLeave () {
-				this.hoveringOverNodeName = null;
 			},
 			onNodeRun ({name, data}: {name: string, data: ITaskData[] | null}) {
 				const sourceNodeName = name;
