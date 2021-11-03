@@ -241,7 +241,9 @@ export const showOrHideMidpointArrow = (connection: Connection) => {
 };
 
 export const getConnectorLengths = (connection: Connection): [number, number] => {
-	// @ts-ignore
+	if (!connection.connector) {
+		return [0, 0];
+	}
 	const bounds = connection.connector.bounds;
 	const diffX = Math.abs(bounds.maxX - bounds.minX);
 	const diffY = Math.abs(bounds.maxY - bounds.minY);

@@ -42,7 +42,16 @@ declare module 'jsplumb' {
 			targetNodeName: string,
 			targetOutputIndex: number,
 		};
-		connector?: any;
+		connector?: {
+			setTargetPos: (pos: XYPosition) => void;
+			resetTargetPos: () => void;
+			bounds: {
+				minX: number;
+				maxX: number;
+				minY: number;
+				maxY: number;
+			}
+		};
 
 		// bind(event: string, (connection: Connection): void;): void; // tslint:disable-line:no-any
 		bind(event: string, callback: Function): void;
