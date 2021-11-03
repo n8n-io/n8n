@@ -55,7 +55,8 @@
     "p-cancelable": "^2.0.0",
     "qs": "^6.10.1",
     "request": "^2.88.2",
-    "request-promise-native": "^1.0.7"
+    "request-promise-native": "^1.0.7",
+    "uuid": "^8.3.2"
   },
   "jest": {
     "transform": {

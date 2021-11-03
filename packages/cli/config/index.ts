@@ -172,7 +172,7 @@ const config = convict({
 		process: {
 			doc: 'In what process workflows should be executed',
 			format: ['main', 'own'],
-			default: 'own',
+			default: 'main',
 			env: 'EXECUTIONS_PROCESS',
 		},
 

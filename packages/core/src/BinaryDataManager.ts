@@ -6,6 +6,7 @@ import { BINARY_ENCODING } from './Constants';
 
 export class BinaryDataHelper {
 	private static instance: BinaryDataHelper;
+
 	private storageMode: string;
 
 	constructor(mode: string) {
@@ -16,29 +17,31 @@ export class BinaryDataHelper {
 		}
 	}
 
-	static init(storageMode: string) {
+	static init(storageMode: string): void {
 		if (BinaryDataHelper.instance) {
-			throw 'Binary Data Manager already initialized';
+			throw new Error('Binary Data Manager already initialized');
 		}
 
 		BinaryDataHelper.instance = new BinaryDataHelper(storageMode);
 	}
 
-	static getInstance() {
+	static getInstance(): BinaryDataHelper {
 		if (!BinaryDataHelper.instance) {
-			throw 'Binary Data Manager not initialized';
+			throw new Error('Binary Data Manager not initialized');
 		}
 		return BinaryDataHelper.instance;
 	}
 
-	async storeBinaryData(binaryData: IBinaryData, binaryBuffer: Buffer) {
+	async storeBinaryData(binaryData: IBinaryData, binaryBuffer: Buffer): Promise<IBinaryData> {
+		const retBinaryData = binaryData;
 		if (this.storageMode === 'LOCAL_STORAGE') {
-			binaryData.internalPath = this.generateIdentifier();
-			return this.saveToLocalStorage(binaryBuffer, binaryData.internalPath)
-				.then(() => binaryData);
+			retBinaryData.internalPath = this.generateIdentifier();
+			return this.saveToLocalStorage(binaryBuffer, retBinaryData.internalPath).then(
+				() => retBinaryData,
+			);
 		}
 
-		binaryData.data = binaryBuffer.toString(BINARY_ENCODING);
+		retBinaryData.data = binaryBuffer.toString(BINARY_ENCODING);
 		return binaryData;
 	}
 
@@ -55,10 +58,10 @@ export class BinaryDataHelper {
 			return this.retrieveFromLocalStorage(identifier);
 		}
 
-		throw 'Binary data storage mode is set to default';
+		throw new Error('Binary data storage mode is set to default');
 	}
 
-	public generateIdentifier() {
+	generateIdentifier(): string {
 		return uuid();
 	}
 

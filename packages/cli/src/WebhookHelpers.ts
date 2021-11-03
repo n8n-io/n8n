@@ -15,11 +15,7 @@ import * as express from 'express';
 // eslint-disable-next-line import/no-extraneous-dependencies
 import { get } from 'lodash';
 
-import {
-	BINARY_ENCODING,
-	BinaryDataHelper,
-	NodeExecuteFunctions,
-} from 'n8n-core';
+import { BinaryDataHelper, NodeExecuteFunctions } from 'n8n-core';
 
 import {
 	IBinaryKeyData,
@@ -525,7 +521,9 @@ export async function executeWebhook(
 						if (!didSendResponse) {
 							// Send the webhook response manually
 							res.setHeader('Content-Type', binaryData.mimeType);
-							const binaryDataBuffer = await BinaryDataHelper.getInstance().retrieveBinaryData(binaryData);
+							const binaryDataBuffer = await BinaryDataHelper.getInstance().retrieveBinaryData(
+								binaryData,
+							);
 							res.end(binaryDataBuffer);
 
 							responseCallback(null, {

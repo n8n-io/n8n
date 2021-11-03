@@ -11,7 +11,6 @@ import {
 
 import {
 	writeFile as fsWriteFile,
-	readFile as fsReadFile,
 } from 'fs/promises';
 
 

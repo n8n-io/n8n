@@ -72,6 +72,7 @@ import { lookup } from 'mime-types';
 
 import axios, { AxiosProxyConfig, AxiosRequestConfig, Method } from 'axios';
 import { URLSearchParams } from 'url';
+import { BinaryDataHelper } from './BinaryDataManager';
 // eslint-disable-next-line import/no-cycle
 import {
 	BINARY_ENCODING,
@@ -583,25 +584,6 @@ export async function getBinaryDataBuffer(
 }
 
 /**
- * Returns binary data buffer for given item index and property name.
- *
- * @export
- * @param {ITaskDataConnections} inputData
- * @param {number} itemIndex
- * @param {string} propertyName
- * @returns {Promise<Buffer>}
- */
-export async function getBinaryDataBuffer(inputData: ITaskDataConnections, itemIndex: number, propertyName: string): Promise<Buffer> {
-	try {
-		const binaryData = inputData['main']![0]![itemIndex]!.binary![propertyName]!;
-		return BinaryDataHelper.getInstance().retrieveBinaryData(binaryData);
-	}
-	catch {
-		throw `Binary data with property name ${propertyName} not found in item ${itemIndex}`;
-	}
-}
-
-/**
  * Takes a buffer and converts it into the format n8n uses. It encodes the binary data as
  * base64 and adds metadata.
  *
@@ -643,7 +625,7 @@ export async function prepareBinaryData(
 
 	const returnData: IBinaryData = {
 		mimeType,
-		data: '',//binaryData.toString(BINARY_ENCODING),// BINARY_ENCODING, // todo cleanup
+		data: '', // binaryData.toString(BINARY_ENCODING),// BINARY_ENCODING, // todo cleanup
 	};
 
 	if (filePath) {
@@ -668,7 +650,7 @@ export async function prepareBinaryData(
 
 	// const binaryDataUniqueIdentifier = BinaryDataHelper.getInstance().generateIdentifier();
 	// returnData.internalPath = binaryDataUniqueIdentifier;
-	return await BinaryDataHelper.getInstance().storeBinaryData(returnData, binaryData);
+	return BinaryDataHelper.getInstance().storeBinaryData(returnData, binaryData);
 }
 
 /**
