@@ -13,7 +13,9 @@
 /* eslint-disable no-restricted-syntax */
 /* eslint-disable import/no-cycle */
 // eslint-disable-next-line import/no-cycle
-import { get, set, merge } from 'lodash';
+import get from 'lodash.get';
+import merge from 'lodash.merge';
+import set from 'lodash.set';
 
 import {
 	Expression,

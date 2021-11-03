@@ -85,14 +85,14 @@ export class MailcheckTest implements INodeType {
 				},
 				requestProperty: {
 					// Transform request before it gets send
-					preSend: async function (this: IExecuteSingleFunctions, requestOptions: IHttpRequestOptions): Promise<IHttpRequestOptions>  {
+					async preSend (this: IExecuteSingleFunctions, requestOptions: IHttpRequestOptions): Promise<IHttpRequestOptions>  {
 						requestOptions.qs = (requestOptions.qs || {}) as IDataObject;
 						// if something special is required it is possible to write custom code and get from parameter
 						requestOptions.qs.sender = this.getNodeParameter('sender');
 						return requestOptions;
 					},
 					// Transform the received data
-					postReceive: async function (this: IExecuteSingleFunctions, item: IDataObject | IDataObject[]): Promise<IDataObject | IDataObject[] | null> {
+					async postReceive (this: IExecuteSingleFunctions, item: IDataObject | IDataObject[]): Promise<IDataObject | IDataObject[] | null> {
 						if (!Array.isArray(item)) {
 							item.success = true;
 						}
