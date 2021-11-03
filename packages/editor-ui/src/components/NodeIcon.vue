@@ -1,7 +1,7 @@
 <template>
 	<div class="node-icon-wrapper" :style="iconStyleData">
 		<div v-if="nodeIconData !== null" class="icon">
-			<img v-if="nodeIconData.type === 'file'" :src="nodeIconData.fileBuffer || nodeIconData.path" style="max-width: 100%; max-height: 100%;" />
+			<img v-if="nodeIconData.type === 'file'" :src="nodeIconData.fileBuffer || nodeIconData.path" :style="imageStyleData" />
 			<font-awesome-icon v-else :icon="nodeIconData.icon || nodeIconData.path" :style="fontStyleData" />
 		</div>
 		<div v-else class="node-icon-placeholder">
@@ -12,25 +12,37 @@
 
 <script lang="ts">
 
+import { IVersionNode } from '@/Interface';
+import { INodeTypeDescription } from 'n8n-workflow';
 import Vue from 'vue';
 
 interface NodeIconData {
 	type: string;
-	path: string;
+	path?: string;
 	fileExtension?: string;
+	fileBuffer?: string;
 }
 
 export default Vue.extend({
 	name: 'NodeIcon',
-	props: [
-		'nodeType',
-		'size',
-		'disabled',
-		'circle',
-	],
+	props: {
+		nodeType: {},
+		size: {
+			type: Number,
+		},
+		disabled: {
+			type: Boolean,
+			default: false,
+		},
+		circle: {
+			type: Boolean,
+			default: false,
+		},
+	},
 	computed: {
 		iconStyleData (): object {
-			const color = this.disabled ? '#ccc' : this.nodeType.defaults && this.nodeType.defaults.color;
+			const nodeType = this.nodeType as INodeTypeDescription | IVersionNode | null;
+			const color = this.disabled ? '#ccc' : (nodeType ? nodeType.defaults && nodeType!.defaults.color: '');
 			if (!this.size) {
 				return {color};
 			}
@@ -49,6 +61,12 @@ export default Vue.extend({
 				'max-width': this.size + 'px',
 			};
 		},
+		imageStyleData (): object {
+			return {
+				'max-width': '100%',
+				'max-height': '100%',
+			};
+		},
 		isSvgIcon (): boolean {
 			if (this.nodeIconData && this.nodeIconData.type === 'file' && this.nodeIconData.fileExtension === 'svg') {
 				return true;
@@ -56,26 +74,27 @@ export default Vue.extend({
 			return false;
 		},
 		nodeIconData (): null | NodeIconData {
-			if (this.nodeType === null) {
+			const nodeType = this.nodeType as INodeTypeDescription | IVersionNode | null;
+			if (nodeType === null) {
 				return null;
 			}
 
-			if (this.nodeType.iconData) {
-				return this.nodeType.iconData;
+			if ((nodeType as IVersionNode).iconData) {
+				return (nodeType as IVersionNode).iconData;
 			}
 
 			const restUrl = this.$store.getters.getRestUrl;
 
-			if (this.nodeType.icon) {
+			if (nodeType.icon) {
 				let type, path;
-				[type, path] = this.nodeType.icon.split(':');
+				[type, path] = nodeType.icon.split(':');
 				const returnData: NodeIconData = {
 					type,
 					path,
 				};
 
 				if (type === 'file') {
-					returnData.path = restUrl + '/node-icon/' + this.nodeType.name;
+					returnData.path = restUrl + '/node-icon/' + nodeType.name;
 					returnData.fileExtension = path.split('.').slice(-1).join();
 				}
 

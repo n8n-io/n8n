@@ -82,13 +82,17 @@ export const nodeBase = mixins(
 		nodeIndex (): string {
 			return this.$store.getters.getNodeIndex(this.data.name).toString();
 		},
+		position (): XYPosition {
+			const node = this.$store.getters.nodesByName[this.name] as INodeUi; // position responsive to store changes
+
+			return node.position;
+		},
 		nodePosition (): object {
-			const node = this.$store.getters.nodesByName[this.name]; // position responsive to store changes
 			const returnStyles: {
 				[key: string]: string;
 			} = {
-				left: node.position[0] + 'px',
-				top: node.position[1] + 'px',
+				left: this.position[0] + 'px',
+				top: this.position[1] + 'px',
 			};
 
 			return returnStyles;
@@ -100,6 +104,7 @@ export const nodeBase = mixins(
 		'instance',
 		'isReadOnly',
 		'isActive',
+		'hideActions',
 	],
 	methods: {
 		__addNode (node: INodeUi) {

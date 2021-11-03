@@ -1,7 +1,7 @@
 <template>
 	<div class="node-wrapper" :style="nodePosition">
 		<div :class="{'selected': true, 'has-subtitles': !!nodeSubtitle}" v-show="isSelected"></div>
-		<div class="node-default" :ref="data.name" :style="nodeStyle" :class="nodeClass" @dblclick="setNodeActive" @click.left="mouseLeftClick" v-touch:start="touchStart" v-touch:end="touchEnd">
+		<div class="node-default" :data-name="data.name" :ref="data.name" :style="nodeStyle" :class="nodeClass" @dblclick="setNodeActive" @click.left="mouseLeftClick" v-touch:start="touchStart" v-touch:end="touchEnd">
 			<div v-if="hasIssues" class="node-info-icon node-issues">
 				<n8n-tooltip placement="top" >
 					<div slot="content" v-html="nodeIssues"></div>
@@ -23,7 +23,7 @@
 			<div class="node-executing-info" title="Node is executing">
 				<font-awesome-icon icon="sync-alt" spin />
 			</div>
-			<div class="node-options no-select-on-click" v-if="!isReadOnly">
+			<div class="node-options no-select-on-click" v-if="!isReadOnly" v-show="!hideActions">
 				<div v-touch:tap="deleteNode" class="option" title="Delete Node" >
 					<font-awesome-icon icon="trash" />
 				</div>

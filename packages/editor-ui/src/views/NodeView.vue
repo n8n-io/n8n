@@ -29,6 +29,7 @@
 				:isReadOnly="isReadOnly"
 				:instance="instance"
 				:isActive="!!activeNode && activeNode.name === nodeData.name"
+				:hideActions="pullConnActive"
 				></node>
 			</div>
 		</div>
@@ -309,7 +310,10 @@ export default mixins(
 				stopExecutionInProgress: false,
 				blankRedirect: false,
 				credentialsUpdated: false,
-				newNodeInsertPosition: null as null | XYPosition,
+				newNodeInsertPosition: null as XYPosition | null,
+				pullConnActiveNodeName: null as string | null,
+				pullConnActive: false,
+				dropPrevented: false,
 			};
 		},
 		beforeDestroy () {
@@ -1191,7 +1195,21 @@ export default mixins(
 
 				return newNodeData;
 			},
+			getConnection (sourceNodeName: string, sourceNodeOutputIndex: number, targetNodeName: string, targetNodeOuputIndex: number): IConnection | undefined {
+				const nodeConnections = (this.$store.getters.outgoingConnectionsByNodeName(sourceNodeName) as INodeConnections).main;
+				if (nodeConnections) {
+					const connections: IConnection[] = nodeConnections[sourceNodeOutputIndex];
+
+					return connections.find((connection: IConnection) => connection.node === targetNodeName && connection.index === targetNodeOuputIndex);
+				}
+
+				return undefined;
+			},
 			connectTwoNodes (sourceNodeName: string, sourceNodeOutputIndex: number, targetNodeName: string, targetNodeOuputIndex: number) {
+				if (this.getConnection(sourceNodeName, sourceNodeOutputIndex, targetNodeName, targetNodeOuputIndex)) {
+					return;
+				}
+
 				const connectionData = [
 					{
 						node: sourceNodeName,
@@ -1266,17 +1284,25 @@ export default mixins(
 					this.openNodeCreator(info.eventSource);
 				};
 
-				let dropPrevented = false;
+				this.instance.bind('connectionAborted', (connection) => {
+					this.pullConnActive = false;
 
-				this.instance.bind('connectionAborted', (info) => {
-					if (dropPrevented) {
-						dropPrevented = false;
+					if (this.dropPrevented) {
+						this.dropPrevented = false;
+						return;
+					}
+
+					if (this.pullConnActiveNodeName) {
+						const sourceNodeName = this.$store.getters.getNodeNameByIndex(connection.sourceId.slice(NODE_NAME_PREFIX.length));
+						const outputIndex = connection.getParameters().index;
+
+						this.connectTwoNodes(sourceNodeName, outputIndex, this.pullConnActiveNodeName, 0);
 						return;
 					}
 
 					insertNodeAfterSelected({
-						sourceId: info.sourceId,
-						index: info.getParameters().index,
+						sourceId: connection.sourceId,
+						index: connection.getParameters().index,
 						eventSource: 'node_connection_drop',
 					});
 				});
@@ -1290,8 +1316,8 @@ export default mixins(
 					const targetNodeName = this.$store.getters.getNodeNameByIndex(targetInfo.nodeIndex);
 
 					// check for duplicates
-					if (this.getJSPlumbConnection(sourceNodeName, sourceInfo.index, targetNodeName, targetInfo.index)) {
-						dropPrevented = true;
+					if (this.getConnection(sourceNodeName, sourceInfo.index, targetNodeName, targetInfo.index)) {
+						this.dropPrevented = true;
 						return false;
 					}
 
@@ -1445,23 +1471,43 @@ export default mixins(
 
 				// @ts-ignore
 				this.instance.bind('connectionDrag', (connection: Connection) => {
+					this.pullConnActive = true;
 					this.newNodeInsertPosition = null;
 					CanvasHelpers.addOverlays(connection, CanvasHelpers.CONNECTOR_DROP_NODE_OVERLAY);
+					const nodes = [...document.querySelectorAll('.node-default')];
 
-					let droppable = false;
-					const onMouseMove = () => {
+					const onMouseMove = (e: MouseEvent) => {
 						if (!connection) {
 							return;
 						}
 
-						const elements = document.querySelector('div.jtk-endpoint.dropHover');
-						if (elements && !droppable) {
-							droppable = true;
+						const elements = document.querySelector('.jtk-endpoint.dropHover');
+						if (elements) {
 							CanvasHelpers.showDropConnectionState(connection);
+							return;
 						}
-						else if (!elements && droppable) {
-							droppable = false;
+
+						const intersecting = nodes.find((element: Element) => {
+							const {top, left, right, bottom} = element.getBoundingClientRect();
+							if (top <= e.pageY && bottom >= e.pageY && left <= e.pageX && right >= e.pageX) {
+								const nodeName = (element as HTMLElement).dataset['name'];
+								const node = this.$store.getters.getNodeByName(nodeName) as INodeUi | null;
+								if (node) {
+									const nodeType = this.$store.getters.nodeType(node.type) as INodeTypeDescription;
+									if (nodeType.inputs.length === 1) {
+										this.pullConnActiveNodeName = node.name;
+										CanvasHelpers.showDropConnectionState(connection);
+										return true;
+									}
+								}
+							}
+
+							return false;
+						});
+
+						if (!intersecting) {
 							CanvasHelpers.showPullConnectionState(connection);
+							this.pullConnActiveNodeName = null;
 						}
 					};
 
