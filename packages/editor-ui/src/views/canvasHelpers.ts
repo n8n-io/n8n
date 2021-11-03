@@ -540,15 +540,26 @@ export const getUniqueNodeName = (nodes: INodeUi[], originalName: string, additi
 };
 
 export const showDropConnectionState = (connection: Connection, targetPos: XYPosition) => {
-	connection.connector.setTargetPos(targetPos);
-	connection.setPaintStyle(CONNECTOR_PAINT_STYLE_PRIMARY);
-	hideOverlay(connection, OVERLAY_DROP_NODE_ID);
+	if (connection && connection.connector) {
+		connection.connector.setTargetPos(targetPos);
+		connection.setPaintStyle(CONNECTOR_PAINT_STYLE_PRIMARY);
+		hideOverlay(connection, OVERLAY_DROP_NODE_ID);
+	}
 };
 
 export const showPullConnectionState = (connection: Connection) => {
-	connection.connector.resetTargetPos();
-	connection.setPaintStyle(CONNECTOR_PAINT_STYLE_DEFAULT);
-	showOverlay(connection, OVERLAY_DROP_NODE_ID);
+	if (connection && connection.connector) {
+		connection.connector.resetTargetPos();
+		connection.setPaintStyle(CONNECTOR_PAINT_STYLE_DEFAULT);
+		showOverlay(connection, OVERLAY_DROP_NODE_ID);
+	}
+};
+
+export const resetConnectionAfterPull = (connection: Connection) => {
+	if (connection && connection.connector) {
+		connection.connector.resetTargetPos();
+		connection.setPaintStyle(CONNECTOR_PAINT_STYLE_DEFAULT);
+	}
 };
 
 export const resetInputLabelPosition = (targetEndpoint: Endpoint) => {

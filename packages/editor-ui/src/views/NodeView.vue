@@ -1522,6 +1522,7 @@ export default mixins(
 					const onMouseUp = (e: MouseEvent) => {
 						this.pullConnActive = false;
 						this.newNodeInsertPosition = this.getMousePositionWithinNodeView(e);
+						CanvasHelpers.resetConnectionAfterPull(connection);
 						window.removeEventListener('mousemove', onMouseMove);
 						window.removeEventListener('mouseup', onMouseUp);
 					};

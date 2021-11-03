@@ -42,6 +42,7 @@ declare module 'jsplumb' {
 			targetNodeName: string,
 			targetOutputIndex: number,
 		};
+		connector?: any;
 
 		// bind(event: string, (connection: Connection): void;): void; // tslint:disable-line:no-any
 		bind(event: string, callback: Function): void;
