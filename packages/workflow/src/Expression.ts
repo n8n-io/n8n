@@ -3,7 +3,7 @@
 import { createHash } from 'crypto';
 // @ts-ignore
 import * as tmpl from 'riot-tmpl';
-import { DateTime, /*DateTimeFormatOptions,*/ DurationObjectUnits /*DurationUnits */ } from 'luxon';
+import { DateTime, DurationObjectUnits } from 'luxon';
 import removeMd from 'remove-markdown';
 // eslint-disable-next-line import/no-cycle
 import {
@@ -187,7 +187,7 @@ export class Expression {
 		// @ts-ignore
 		String.prototype.removeMarkdown = function () {
 			// eslint-disable-next-line @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-call
-			return removeMd(this);
+			return removeMd(this.toString());
 		};
 
 		// @ts-ignore
@@ -216,11 +216,6 @@ export class Expression {
 		// @ts-ignore
 		String.prototype.toDate = function () {
 			return new Date(this.toString());
-		};
-
-		// @ts-ignore
-		String.prototype.size = function () {
-			return this.length;
 		};
 
 		// @ts-ignore

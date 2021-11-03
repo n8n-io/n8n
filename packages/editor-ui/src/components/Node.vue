@@ -156,14 +156,14 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 		},
 	},
 	watch: {
-		isActive(newValue, oldValue) {
+		async isActive(newValue, oldValue) {
 			if (!newValue && oldValue) {
-				this.setSubtitle();
+				await this.setSubtitle();
 			}
 		},
 	},
-	mounted() {
-		this.setSubtitle();
+	async mounted() {
+		await this.setSubtitle();
 	},
 	data () {
 		return {
@@ -172,8 +172,8 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 		};
 	},
 	methods: {
-		setSubtitle() {
-			this.nodeSubtitle = this.getNodeSubtitle(this.data, this.nodeType, this.getWorkflow()) || '';
+		async setSubtitle() {
+			this.nodeSubtitle = await this.getNodeSubtitle(this.data, this.nodeType, this.getWorkflow()) || '';
 		},
 		disableNode () {
 			this.disableNodes([this.data]);

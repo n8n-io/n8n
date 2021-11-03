@@ -427,16 +427,10 @@ export const workflowHelpers = mixins(
 
 				// @ts-ignore
 				const expressionsIframe = document.getElementById('expressions-iframe').contentWindow;
-
-				if (expressionsIframe && expressionsIframe.parseExpression) {
-					return expressionsIframe.parseExpression(workflow, parameter, runExecutionData, runIndex, itemIndex, activeNode.name, connectionInputData, 'manual', additionalKeys, false) as IDataObject;
-				}
-
-				return workflow.expression.getParameterValue(parameter, runExecutionData, runIndex, itemIndex, activeNode.name, connectionInputData, 'manual', additionalKeys, false) as IDataObject;
+				return expressionsIframe.getParameterValue(workflow, parameter, runExecutionData, runIndex, itemIndex, activeNode.name, connectionInputData, 'manual', additionalKeys, false) as IDataObject;
 			},
 
 			resolveExpression(expression: string, siblingParameters: INodeParameters = {}) {
-				// eslint-disable-next-line no-console
 				const parameters = {
 					'__xxxxxxx__': expression,
 					...siblingParameters,

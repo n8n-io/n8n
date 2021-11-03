@@ -20,7 +20,8 @@
 		"declaration": true,
 		"outDir": "./dist/",
 		"target": "es2017",
-		"sourceMap": true
+		"sourceMap": true,
+		"esModuleInterop": true
 	},
 	"include": [
 		"**/*.d.ts",

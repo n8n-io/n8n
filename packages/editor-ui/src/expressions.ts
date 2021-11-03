@@ -1,5 +1,6 @@
 import {
 	Expression,
+	INode,
 	INodeExecutionData,
 	INodeParameters,
 	IRunExecutionData,
@@ -14,7 +15,7 @@ import {
 // the native prototype extensions do not polute
 // global namespace on main n8n's editor window.
 // This acts as a proxy
-const parseExpression = (
+const getParameterValue = (
 	workflow: Workflow,
 	parameter: NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[],
 	runExecutionData: IRunExecutionData,
@@ -31,7 +32,7 @@ const parseExpression = (
 	// so we have to always rewrite the expression object.
 	const expression = new Expression(workflow);
 	workflow.expression = expression;
-	
+
 	return workflow.expression.getParameterValue(
 		parameter,
 		runExecutionData,
@@ -46,10 +47,39 @@ const parseExpression = (
 	);
 };
 
+const getSimpleParameterValue = (
+	workflow: Workflow,
+	node: INode,
+	parameterValue: string | boolean | undefined,
+	mode: WorkflowExecuteMode,
+	additionalKeys: IWorkflowDataProxyAdditionalKeys,
+	defaultValue?: boolean | number | string,
+): boolean | number | string | undefined => {
+	// Workflow instance is always recreated
+	// so we have to always rewrite the expression object.
+	const expression = new Expression(workflow);
+	workflow.expression = expression;
+
+	return workflow.expression.getSimpleParameterValue(
+		node,
+		parameterValue,
+		mode,
+		additionalKeys,
+		defaultValue,
+	);
+
+};
+
 const init = () => {
+	// eslint-disable-next-line no-console
+	console.log('Extending expressions inside iframe');
 	Expression.extendTypes();
+	// eslint-disable-next-line no-console
+	console.log('Ending extending expressions inside iframe');
 	// @ts-ignore
-	window.parseExpression = parseExpression;
+	window.getParameterValue = getParameterValue;
+	// @ts-ignore
+	window.getSimpleParameterValue = getSimpleParameterValue;
 };
 
 init();

@@ -349,13 +349,22 @@ export const nodeHelpers = mixins(
 				}
 			},
 			// @ts-ignore
-			getNodeSubtitle (data, nodeType, workflow): string | undefined {
+			async getNodeSubtitle (data, nodeType, workflow): string | undefined {
 				if (data.notesInFlow) {
 					return data.notes;
 				}
 
 				if (nodeType !== null && nodeType.subtitle !== undefined) {
-					return workflow.expression.getSimpleParameterValue(data as INode, nodeType.subtitle, 'internal', PLACEHOLDER_FILLED_AT_EXECUTION_TIME) as string | undefined;
+					// @ts-ignore
+					const expressionsIframe = document.getElementById('expressions-iframe').contentWindow;
+					while (!expressionsIframe.getSimpleParameterValue) {
+						await new Promise((res) => {
+							setTimeout(() => {
+								res(true);
+							}, 100);
+						});
+					}
+					return expressionsIframe.getSimpleParameterValue(data as INode, nodeType.subtitle, 'internal', PLACEHOLDER_FILLED_AT_EXECUTION_TIME) as string | undefined;
 				}
 
 				if (data.parameters.operation !== undefined) {
