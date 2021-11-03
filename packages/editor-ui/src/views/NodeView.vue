@@ -1285,8 +1285,6 @@ export default mixins(
 				};
 
 				this.instance.bind('connectionAborted', (connection) => {
-					this.pullConnActive = false;
-
 					if (this.dropPrevented) {
 						this.dropPrevented = false;
 						return;
@@ -1512,6 +1510,7 @@ export default mixins(
 					};
 
 					const onMouseUp = (e: MouseEvent) => {
+						this.pullConnActive = false;
 						this.newNodeInsertPosition = this.getMousePositionWithinNodeView(e);
 						window.removeEventListener('mousemove', onMouseMove);
 						window.removeEventListener('mouseup', onMouseUp);
