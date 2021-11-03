@@ -75,7 +75,7 @@ import { URL, URLSearchParams } from 'url';
 import { BinaryDataHelper } from './BinaryDataManager';
 // eslint-disable-next-line import/no-cycle
 import {
-	BINARY_ENCODING,
+	// BINARY_ENCODING,
 	ICredentialTestFunctions,
 	IHookFunctions,
 	ILoadOptionsFunctions,
@@ -650,8 +650,10 @@ export async function getBinaryDataBuffer(
 	propertyName: string,
 	inputIndex: number,
 ): Promise<Buffer> {
-	const binaryData = inputData.main![inputIndex]![itemIndex]!.binary![propertyName]!;
-	return Buffer.from(binaryData.data, BINARY_ENCODING);
+	// const binaryData = inputData.main![inputIndex]![itemIndex]!.binary![propertyName]!;
+	const binaryData = inputData.main![0]![itemIndex]!.binary![propertyName]!;
+	return BinaryDataHelper.getInstance().retrieveBinaryData(binaryData);
+	// return Buffer.from(binaryData.data, BINARY_ENCODING);
 }
 
 /**

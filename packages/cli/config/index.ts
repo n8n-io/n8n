@@ -653,7 +653,7 @@ const config = convict({
 	binaryDataManager: {
 		mode: {
 			format: String,
-			default: '',
+			default: 'LOCAL_STORAGE',
 			env: 'N8N_BINARY_DATA_MODE',
 			doc: 'Storage mode for binary data, LOCAL_STORAGE',
 		},
