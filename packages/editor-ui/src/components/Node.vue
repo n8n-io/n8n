@@ -1,6 +1,5 @@
 <template>
 	<div class="node-wrapper" :style="nodePosition">
-		<div :class="{'selected': true, 'has-subtitles': !!nodeSubtitle}" v-show="isSelected"></div>
 		<div class="node-default" :data-name="data.name" :ref="data.name" :style="nodeStyle" :class="nodeClass" @dblclick="setNodeActive" @click.left="mouseLeftClick" v-touch:start="touchStart" v-touch:end="touchEnd">
 			<div v-if="hasIssues" class="node-info-icon node-issues">
 				<n8n-tooltip placement="top" >
@@ -43,12 +42,14 @@
 
 			<NodeIcon class="node-icon" :nodeType="nodeType" :size="40" :shrink="false" :disabled="this.data.disabled"/>
 		</div>
-		<div :class="{'node-description': true, 'limited': isSelected}">
-			<div class="node-name" :title="data.name">
-				<p>{{data.name}}</p>
-			</div>
-			<div v-if="nodeSubtitle !== undefined" class="node-subtitle" :title="nodeSubtitle">
-				{{nodeSubtitle}}
+		<div :class="{'selected': isSelected, 'desc': true}">
+			<div class="node-description">
+				<div class="node-name" :title="data.name">
+					<p>{{data.name}}</p>
+				</div>
+				<div v-if="nodeSubtitle !== undefined" class="node-subtitle" :title="nodeSubtitle">
+					{{nodeSubtitle}}
+				</div>
 			</div>
 		</div>
 	</div>
@@ -262,17 +263,9 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 
 	.node-description {
 		line-height: 1.5;
-		position: absolute;
-		bottom: -55px;
-		left: -50px;
-		width: 200px;
-		height: 50px;
 		text-align: center;
 		cursor: default;
-
-		&.limited {
-			padding: 0 50px;
-		}
+		padding: 8px;
 
 		.node-name {
 			> p { // must be paragraph tag to have two lines in safari
@@ -423,20 +416,28 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 }
 
 .selected {
-	content: ' ';
 	display: block;
+	background-color: rgb(219, 223, 231, .5);
+	// background-color: hsla(var(--color-foreground-base-h), var(--color-foreground-base-s), var(--color-foreground-base-l, 50%));
+	border-radius: var(--border-radius-xlarge);
+	overflow: hidden;
+	left: -8px !important;
+	overflow: hidden;
+	width: 116px !important;
+}
+
+.desc {
+	width: 200px;
 	position: absolute;
 	top: -8px;
-	left: -8px;
-	background-color: hsla(var(--color-foreground-base-h), var(--color-foreground-base-s), var(--color-foreground-base-l, 50%));
-	height: 144px;
-	width: 116px;
-	border-radius: var(--border-radius-xlarge);
-	opacity: 0.8;
-	z-index: 0;
+	left: -50px;
+	overflow: visible;
 
-	&.has-subtitles {
-		height: 162px;
+	&:before {
+		content: ' ';
+		height: 100px;
+		display: block;
+		margin-bottom: 5px;
 	}
 }
 
