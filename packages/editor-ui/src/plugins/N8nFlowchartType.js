@@ -205,18 +205,27 @@
 			return totalLength;
 		};
 
+		this.setTargetPos = function (pos) {
+			this.overrideTargetPos = pos;
+		};
+
+		this.resetTargetPos = function () {
+			this.overrideTargetPos = null;
+		};
+
 		var _prepareCompute = function (params) {
 			this.strokeWidth = params.strokeWidth;
-			var segment = _jg.quadrant(params.sourcePos, params.targetPos),
-				swapX = params.targetPos[0] < params.sourcePos[0],
-				swapY = params.targetPos[1] < params.sourcePos[1],
+			const targetPos = this.overrideTargetPos || params.targetPos;
+			var segment = _jg.quadrant(params.sourcePos, targetPos),
+				swapX = targetPos[0] < params.sourcePos[0],
+				swapY = targetPos[1] < params.sourcePos[1],
 				lw = params.strokeWidth || 1,
 				so = params.sourceEndpoint.anchor.getOrientation(params.sourceEndpoint),
 				to = params.targetEndpoint.anchor.getOrientation(params.targetEndpoint),
-				x = swapX ? params.targetPos[0] : params.sourcePos[0],
-				y = swapY ? params.targetPos[1] : params.sourcePos[1],
-				w = Math.abs(params.targetPos[0] - params.sourcePos[0]),
-				h = Math.abs(params.targetPos[1] - params.sourcePos[1]);
+				x = swapX ? targetPos[0] : params.sourcePos[0],
+				y = swapY ? targetPos[1] : params.sourcePos[1],
+				w = Math.abs(targetPos[0] - params.sourcePos[0]),
+				h = Math.abs(targetPos[1] - params.sourcePos[1]);
 
 			// if either anchor does not have an orientation set, we derive one from their relative
 			// positions.  we fix the axis to be the one in which the two elements are further apart, and
@@ -225,8 +234,8 @@
 				var index = w > h ? 0 : 1, oIndex = [1, 0][index];
 				so = [];
 				to = [];
-				so[index] = params.sourcePos[index] > params.targetPos[index] ? -1 : 1;
-				to[index] = params.sourcePos[index] > params.targetPos[index] ? 1 : -1;
+				so[index] = params.sourcePos[index] > targetPos[index] ? -1 : 1;
+				to[index] = params.sourcePos[index] > targetPos[index] ? 1 : -1;
 				so[oIndex] = 0;
 				to[oIndex] = 0;
 			}

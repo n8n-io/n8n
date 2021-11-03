@@ -539,12 +539,14 @@ export const getUniqueNodeName = (nodes: INodeUi[], originalName: string, additi
 	return uniqueName;
 };
 
-export const showDropConnectionState = (connection: Connection) => {
+export const showDropConnectionState = (connection: Connection, targetPos: XYPosition) => {
+	connection.connector.setTargetPos(targetPos);
 	connection.setPaintStyle(CONNECTOR_PAINT_STYLE_PRIMARY);
 	hideOverlay(connection, OVERLAY_DROP_NODE_ID);
 };
 
 export const showPullConnectionState = (connection: Connection) => {
+	connection.connector.resetTargetPos();
 	connection.setPaintStyle(CONNECTOR_PAINT_STYLE_DEFAULT);
 	showOverlay(connection, OVERLAY_DROP_NODE_ID);
 };

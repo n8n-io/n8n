@@ -1479,9 +1479,13 @@ export default mixins(
 							return;
 						}
 
-						const elements = document.querySelector('.jtk-endpoint.dropHover');
-						if (elements) {
-							CanvasHelpers.showDropConnectionState(connection);
+						const element = document.querySelector('.jtk-endpoint.dropHover');
+						if (element) {
+							const {top, left, right, bottom} = element.getBoundingClientRect();
+							const x = left + (right - left) / 2;
+							const y = top + (bottom - top) / 2;
+							const pos = CanvasHelpers.getRelativePosition(x, y, this.nodeViewScale, this.$store.getters.getNodeViewOffsetPosition);
+							CanvasHelpers.showDropConnectionState(connection, pos);
 							return;
 						}
 
@@ -1495,7 +1499,12 @@ export default mixins(
 									const nodeType = this.$store.getters.nodeType(node.type) as INodeTypeDescription;
 									if (nodeType.inputs.length === 1) {
 										this.pullConnActiveNodeName = node.name;
-										CanvasHelpers.showDropConnectionState(connection);
+
+										const x = left + 1;
+										const y = top + (bottom - top) / 2;
+										const pos = CanvasHelpers.getRelativePosition(x, y, this.nodeViewScale, this.$store.getters.getNodeViewOffsetPosition);
+										CanvasHelpers.showDropConnectionState(connection, pos);
+
 										return true;
 									}
 								}
