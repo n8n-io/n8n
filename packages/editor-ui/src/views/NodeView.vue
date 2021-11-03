@@ -2370,6 +2370,10 @@ export default mixins(
 	&.expanded {
 		left: $--sidebar-expanded-width + $--zoom-menu-margin;
 	}
+
+	button {
+		border: var(--border-base);
+	}
 }
 
 .node-creator-button {
