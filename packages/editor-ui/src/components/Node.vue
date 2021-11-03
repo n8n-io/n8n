@@ -45,7 +45,7 @@
 		</div>
 		<div :class="{'node-description': true, 'limited': isSelected}">
 			<div class="node-name" :title="data.name">
-				{{data.name}}
+				<p>{{data.name}}</p>
 			</div>
 			<div v-if="nodeSubtitle !== undefined" class="node-subtitle" :title="nodeSubtitle">
 				{{nodeSubtitle}}
@@ -275,10 +275,16 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 		}
 
 		.node-name {
-			white-space: nowrap;
-			overflow: hidden;
-			text-overflow: ellipsis;
-			font-weight: var(--font-weight-bold);
+			> p { // must be paragraph tag to have two lines in safari
+				text-overflow: ellipsis;
+				display: -webkit-box;
+				-webkit-box-orient: vertical;
+				-webkit-line-clamp: 2;
+				overflow: hidden;
+				overflow-wrap: anywhere;
+				font-weight: var(--font-weight-bold);
+				line-height: var(--font-line-height-compact);
+			}
 		}
 
 		.node-subtitle {
