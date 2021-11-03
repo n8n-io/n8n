@@ -851,6 +851,9 @@ export interface IWorkflowDataProxyData {
 	$parameter: any;
 	$position: any;
 	$workflow: any;
+	__extendTypes?(): void;
+	now?: Date;
+	today?: Date;
 }
 
 export interface IWorkflowDataProxyAdditionalKeys {

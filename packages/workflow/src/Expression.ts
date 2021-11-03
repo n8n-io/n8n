@@ -341,16 +341,14 @@ export class Expression {
 		try {
 			// eslint-disable-next-line no-param-reassign
 			parameterValue = `{{ __extendTypes() }}${parameterValue}`;
-			// @ts-ignore
+			// eslint-disable-next-line @typescript-eslint/unbound-method, no-underscore-dangle
 			data.__extendTypes = Expression.extendTypes;
-			// @ts-ignore
 			data.now = new Date();
 			// TODO: Investigate why this won't work with Luxon
 			const dateToday = new Date();
 			dateToday.setHours(0);
 			dateToday.setMinutes(0);
 			dateToday.setSeconds(0);
-			// @ts-ignore
 			data.today = dateToday;
 			// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
 			const returnValue = tmpl.tmpl(parameterValue, data);
