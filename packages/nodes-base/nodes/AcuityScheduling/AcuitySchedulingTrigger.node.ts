@@ -117,7 +117,7 @@ export class AcuitySchedulingTrigger implements INodeType {
 				name: 'resolveData',
 				type: 'boolean',
 				default: true,
-				description: 'By default does the webhook-data only contain the ID of the object.<br />If this option gets activated it will resolve the data automatically.',
+				description: 'By default does the webhook-data only contain the ID of the object.<br />If this option gets activated, it will resolve the data automatically.',
 			},
 		],
 	};

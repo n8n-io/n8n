@@ -325,7 +325,7 @@ export class SurveyMonkeyTrigger implements INodeType {
 					},
 				},
 				default: true,
-				description: 'By default the webhook-data only contain the IDs. If this option gets activated it<br />will resolve the data automatically.',
+				description: 'By default the webhook-data only contain the IDs. If this option gets activated, it will resolve the data automatically.',
 			},
 			{
 				displayName: 'Only Answers',

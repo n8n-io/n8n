@@ -98,7 +98,7 @@ export class Compression implements INodeType {
 
 				},
 				placeholder: '',
-				description: 'Name of the binary property which contains<br />the data for the file(s) to be compress/decompress. Multiple can be used separated by ,',
+				description: 'Name of the binary property which contains the data for the file(s) to be compress/decompress. Multiple can be used separated by a comma (,)',
 			},
 			{
 				displayName: 'Output Format',
@@ -161,7 +161,7 @@ export class Compression implements INodeType {
 					},
 				},
 				placeholder: '',
-				description: 'Name of the binary property to which to<br />write the data of the compressed files.',
+				description: 'Name of the binary property to which to write the data of the compressed files.',
 			},
 			{
 				displayName: 'Output Prefix',

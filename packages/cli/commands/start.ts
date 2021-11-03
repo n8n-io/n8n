@@ -22,8 +22,6 @@ import {
 	Db,
 	ExternalHooks,
 	GenericHelpers,
-	// eslint-disable-next-line @typescript-eslint/no-unused-vars
-	IExecutionsCurrentSummary,
 	InternalHooksManager,
 	LoadNodesAndCredentials,
 	NodeTypes,
@@ -183,10 +181,6 @@ export class Start extends Command {
 				const loadNodesAndCredentials = LoadNodesAndCredentials();
 				await loadNodesAndCredentials.init();
 
-				// Load the credentials overwrites if any exist
-				const credentialsOverwrites = CredentialsOverwrites();
-				await credentialsOverwrites.init();
-
 				// Load all external hooks
 				const externalHooks = ExternalHooks();
 				await externalHooks.init();
@@ -196,6 +190,10 @@ export class Start extends Command {
 				await nodeTypes.init(loadNodesAndCredentials.nodeTypes);
 				const credentialTypes = CredentialTypes();
 				await credentialTypes.init(loadNodesAndCredentials.credentialTypes);
+
+				// Load the credentials overwrites if any exist
+				const credentialsOverwrites = CredentialsOverwrites();
+				await credentialsOverwrites.init();
 
 				// Wait till the database is ready
 				await startDbInitPromise;
@@ -314,6 +312,9 @@ export class Start extends Command {
 					);
 				}
 
+				const instanceId = await UserSettings.getInstanceId();
+				InternalHooksManager.init(instanceId);
+
 				await Server.start();
 
 				const binaryDataMode = config.get('binaryDataManager.mode');
@@ -323,8 +324,7 @@ export class Start extends Command {
 				activeWorkflowRunner = ActiveWorkflowRunner.getInstance();
 				await activeWorkflowRunner.init();
 
-				// eslint-disable-next-line @typescript-eslint/no-unused-vars
-				const waitTracker = WaitTracker();
+				WaitTracker();
 
 				const editorUrl = GenericHelpers.getBaseUrl();
 				this.log(`\nEditor is now accessible via:\n${editorUrl}`);
