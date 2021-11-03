@@ -112,7 +112,7 @@
     "mysql2": "~2.3.0",
     "n8n-core": "~0.91.0",
     "n8n-editor-ui": "~0.114.0",
-    "n8n-nodes-base": "~0.143.0",
+    "n8n-nodes-base": "~0.144.0",
     "n8n-workflow": "~0.74.0",
     "oauth-1.0a": "^2.2.6",
     "open": "^7.0.0",
