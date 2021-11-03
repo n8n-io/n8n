@@ -12,6 +12,7 @@ import * as companyFiles from './companyFiles';
 import * as reports from './reports';
 import * as accountInformation from './accountInformation';
 import * as tabularData from './tabularData';
+import * as timeOff from './timeOff';
 
 import { BambooHR } from './Interfaces';
 
@@ -41,6 +42,8 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
         operationResult.push(...await accountInformation[bamboohr.operation].execute.call(this, i));
       } else if (bamboohr.resource === 'tabularData') {
         operationResult.push(...await tabularData[bamboohr.operation].execute.call(this, i));
+      } else if (bamboohr.resource === 'timeOff') {
+        operationResult.push(...await timeOff[bamboohr.operation].execute.call(this, i));
       }
     } catch (err) {
       if (this.continueOnFail()) {

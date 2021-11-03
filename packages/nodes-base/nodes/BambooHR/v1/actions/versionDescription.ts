@@ -7,6 +7,7 @@ import * as companyFiles from './companyFiles';
 import * as reports from './reports';
 import * as accountInformation from './accountInformation';
 import * as tabularData from './tabularData';
+import * as timeOff from './timeOff';
 
 export const versionDescription: INodeTypeDescription = {
   displayName: 'BambooHR',
@@ -57,6 +58,10 @@ export const versionDescription: INodeTypeDescription = {
           name: 'Tabular Data',
           value: 'tabularData',
         },
+        {
+          name: 'Time Off',
+          value: 'timeOff',
+        },
       ],
       default: 'employees',
       description: 'The resource to operate on',
@@ -66,6 +71,7 @@ export const versionDescription: INodeTypeDescription = {
     ...companyFiles.descriptions,
     ...reports.descriptions,
     ...accountInformation.descriptions,
-    ...tabularData.descriptions
+    ...tabularData.descriptions,
+    ...timeOff.descriptions
   ],
 };
