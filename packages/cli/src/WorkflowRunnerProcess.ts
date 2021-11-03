@@ -137,8 +137,11 @@ export class WorkflowRunnerProcess {
 		const instanceId = (await UserSettings.prepareUserSettings()).instanceId ?? '';
 		InternalHooksManager.init(instanceId);
 
-		const binaryDataMode = config.get('binaryDataManager.mode');
-		BinaryDataHelper.init(binaryDataMode);
+		const binaryDataConfig = config.get('binaryDataManager') as IDataObject;
+		await BinaryDataHelper.init(
+			binaryDataConfig.mode as string,
+			binaryDataConfig.localStoragePath as string,
+		);
 
 		// Credentials should now be loaded from database.
 		// We check if any node uses credentials. If it does, then

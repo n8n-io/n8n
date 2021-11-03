@@ -721,8 +721,6 @@ export async function prepareBinaryData(
 		}
 	}
 
-	// const binaryDataUniqueIdentifier = BinaryDataHelper.getInstance().generateIdentifier();
-	// returnData.internalPath = binaryDataUniqueIdentifier;
 	return BinaryDataHelper.getInstance().storeBinaryData(returnData, binaryData);
 }
 

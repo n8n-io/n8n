@@ -9,20 +9,28 @@ export class BinaryDataHelper {
 
 	private storageMode: string;
 
-	constructor(mode: string) {
-		if (mode === '') {
-			this.storageMode = 'IN_MEMORY';
-		} else {
-			this.storageMode = mode;
-		}
+	private storagePath: string;
+
+	constructor(mode: string, storagePath: string) {
+		this.storageMode = mode;
+		this.storagePath = storagePath;
 	}
 
-	static init(storageMode: string): void {
+	static async init(storageMode: string, rootPath: string): Promise<void> {
 		if (BinaryDataHelper.instance) {
 			throw new Error('Binary Data Manager already initialized');
 		}
 
-		BinaryDataHelper.instance = new BinaryDataHelper(storageMode);
+		BinaryDataHelper.instance = new BinaryDataHelper(storageMode, rootPath);
+
+		if (storageMode === 'LOCAL_STORAGE') {
+			return fs
+				.readdir(BinaryDataHelper.instance.storagePath)
+				.catch(async () => fs.mkdir(BinaryDataHelper.instance.storagePath))
+				.then(() => {});
+		}
+
+		return undefined;
 	}
 
 	static getInstance(): BinaryDataHelper {
@@ -35,8 +43,8 @@ export class BinaryDataHelper {
 	async storeBinaryData(binaryData: IBinaryData, binaryBuffer: Buffer): Promise<IBinaryData> {
 		const retBinaryData = binaryData;
 		if (this.storageMode === 'LOCAL_STORAGE') {
-			retBinaryData.internalPath = this.generateIdentifier();
-			return this.saveToLocalStorage(binaryBuffer, retBinaryData.internalPath).then(
+			retBinaryData.internalIdentifier = this.generateIdentifier();
+			return this.saveToLocalStorage(binaryBuffer, retBinaryData.internalIdentifier).then(
 				() => retBinaryData,
 			);
 		}
@@ -47,7 +55,11 @@ export class BinaryDataHelper {
 
 	async retrieveBinaryData(binaryData: IBinaryData): Promise<Buffer> {
 		if (this.storageMode === 'LOCAL_STORAGE') {
-			return this.retrieveBinaryDataByIdentifier(binaryData.internalPath!);
+			if (!binaryData.internalIdentifier) {
+				throw new Error('Binary data is missing identifier');
+			}
+
+			return this.retrieveBinaryDataByIdentifier(binaryData.internalIdentifier);
 		}
 
 		return Buffer.from(binaryData.data, BINARY_ENCODING);
@@ -66,10 +78,10 @@ export class BinaryDataHelper {
 	}
 
 	private async saveToLocalStorage(data: Buffer, identifier: string) {
-		await fs.writeFile(path.join(identifier), data);
+		await fs.writeFile(path.join(this.storagePath, identifier), data);
 	}
 
 	private async retrieveFromLocalStorage(identifier: string) {
-		return fs.readFile(identifier);
+		return fs.readFile(path.join(this.storagePath, identifier));
 	}
 }

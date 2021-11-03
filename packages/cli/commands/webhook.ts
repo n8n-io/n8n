@@ -151,8 +151,11 @@ export class Webhook extends Command {
 				const instanceId = await UserSettings.getInstanceId();
 				InternalHooksManager.init(instanceId);
 
-				const binaryDataMode = config.get('binaryDataManager.mode');
-				BinaryDataHelper.init(binaryDataMode);
+				const binaryDataConfig = config.get('binaryDataManager') as IDataObject;
+				await BinaryDataHelper.init(
+					binaryDataConfig.mode as string,
+					binaryDataConfig.localStoragePath as string,
+				);
 
 				if (config.get('executions.mode') === 'queue') {
 					const redisHost = config.get('queue.bull.redis.host');

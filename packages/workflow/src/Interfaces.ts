@@ -27,7 +27,7 @@ export interface IBinaryData {
 	fileName?: string;
 	directory?: string;
 	fileExtension?: string;
-	internalPath?: string;
+	internalIdentifier?: string;
 }
 
 export interface IOAuth2Options {

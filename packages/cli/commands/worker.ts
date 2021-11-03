@@ -12,7 +12,7 @@ import * as PCancelable from 'p-cancelable';
 import { Command, flags } from '@oclif/command';
 import { BinaryDataHelper, UserSettings, WorkflowExecute } from 'n8n-core';
 
-import { INodeTypes, IRun, Workflow, LoggerProxy } from 'n8n-workflow';
+import { INodeTypes, IRun, Workflow, LoggerProxy, IDataObject } from 'n8n-workflow';
 
 import { FindOneOptions } from 'typeorm';
 
@@ -262,8 +262,11 @@ export class Worker extends Command {
 				const instanceId = await UserSettings.getInstanceId();
 				InternalHooksManager.init(instanceId);
 
-				const binaryDataMode = config.get('binaryDataManager.mode');
-				BinaryDataHelper.init(binaryDataMode);
+				const binaryDataConfig = config.get('binaryDataManager') as IDataObject;
+				await BinaryDataHelper.init(
+					binaryDataConfig.mode as string,
+					binaryDataConfig.localStoragePath as string,
+				);
 
 				const versions = await GenericHelpers.getVersions();
 

@@ -315,8 +315,11 @@ export class Start extends Command {
 				const instanceId = await UserSettings.getInstanceId();
 				InternalHooksManager.init(instanceId);
 
-				const binaryDataMode = config.get('binaryDataManager.mode');
-				BinaryDataHelper.init(binaryDataMode);
+				const binaryDataConfig = config.get('binaryDataManager') as IDataObject;
+				BinaryDataHelper.init(
+					binaryDataConfig.mode as string,
+					binaryDataConfig.localStoragePath as string,
+				);
 
 				await Server.start();
 

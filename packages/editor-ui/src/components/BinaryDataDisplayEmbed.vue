@@ -34,13 +34,13 @@ export default mixins(
 			};
 		},
 		async mounted() {
-			if(!this.binaryData.internalPath) {
+			if(!this.binaryData.internalIdentifier) {
 				this.embedSource = 'data:' + this.binaryData.mimeType + ';base64,' + this.binaryData.data;
 				this.isLoading = false;
 				return;
 			}
 
-			const bufferString = await this.restApi().getBinaryBufferString(this.binaryData!.internalPath!);
+			const bufferString = await this.restApi().getBinaryBufferString(this.binaryData!.internalIdentifier!);
 			this.embedSource = 'data:' + this.binaryData.mimeType + ';base64,' + bufferString;
 			this.isLoading = false;
 		},
