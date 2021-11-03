@@ -46,5 +46,3 @@ COPY docker/images/n8n-custom/docker-entrypoint.sh /docker-entrypoint.sh
 ENTRYPOINT ["tini", "--", "/docker-entrypoint.sh"]
 
 EXPOSE 5678/tcp
-
-CMD ["npm run start"]
