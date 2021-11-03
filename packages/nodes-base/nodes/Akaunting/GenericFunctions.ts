@@ -46,6 +46,7 @@ import {
  			body,
  			qs,
  			uri:url,
+			json: true,
  			headers : {
  				Authorization : `Basic ${basic}`
  			},
