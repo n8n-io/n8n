@@ -231,11 +231,13 @@
 			// positions.  we fix the axis to be the one in which the two elements are further apart, and
 			// point each anchor at the other element.  this is also used when dragging a new connection.
 			if (so[0] === 0 && so[1] === 0 || to[0] === 0 && to[1] === 0) {
-				var index = w > h ? 0 : 1, oIndex = [1, 0][index];
+				// var index = w > h ? 0 : 1, oIndex = [1, 0][index];
+				const index = 0, // always use horizontal axis to determine orientation
+					oIndex = 1;
 				so = [];
 				to = [];
 				so[index] = params.sourcePos[index] > targetPos[index] ? -1 : 1;
-				to[index] = params.sourcePos[index] > targetPos[index] ? 1 : -1;
+				to[index] = -1;//params.sourcePos[index] > targetPos[index] ? 1 : -1; // always default to orienting right
 				so[oIndex] = 0;
 				to[oIndex] = 0;
 			}
