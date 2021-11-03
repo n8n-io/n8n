@@ -170,7 +170,7 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 			if (this.data.disabled) {
 				borderColor = getStyleTokenValue('--color-foreground-base');
 			}
-			else if (this.hasIssues && this.workflowDataItems && !this.isExecuting) {
+			else if (this.hasIssues && !this.isExecuting) {
 				borderColor = getStyleTokenValue('--color-danger');
 			}
 			else if (this.workflowDataItems && !this.isExecuting) {
