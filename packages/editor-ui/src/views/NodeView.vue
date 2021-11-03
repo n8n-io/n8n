@@ -1485,9 +1485,10 @@ export default mixins(
 							return;
 						}
 
+						const inputMargin = 24;
 						const intersecting = nodes.find((element: Element) => {
 							const {top, left, right, bottom} = element.getBoundingClientRect();
-							if (top <= e.pageY && bottom >= e.pageY && left <= e.pageX && right >= e.pageX) {
+							if (top <= e.pageY && bottom >= e.pageY && (left - inputMargin) <= e.pageX && right >= e.pageX) {
 								const nodeName = (element as HTMLElement).dataset['name'];
 								const node = this.$store.getters.getNodeByName(nodeName) as INodeUi | null;
 								if (node) {
