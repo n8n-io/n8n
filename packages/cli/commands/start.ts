@@ -315,10 +315,10 @@ export class Start extends Command {
 				const instanceId = await UserSettings.getInstanceId();
 				InternalHooksManager.init(instanceId);
 
-				await Server.start();
-
 				const binaryDataMode = config.get('binaryDataManager.mode');
 				BinaryDataHelper.init(binaryDataMode);
+
+				await Server.start();
 
 				// Start to get active workflows and run their triggers
 				activeWorkflowRunner = ActiveWorkflowRunner.getInstance();
