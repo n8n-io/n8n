@@ -40,6 +40,38 @@ export const timeOffChangeStatusDescription: TimeOffProperties = [
     description: 'Request ID',
   },
   {
+    displayName: 'Status',
+    name: 'status',
+    type: 'options',
+    required: true,
+    options: [
+      {
+        name: 'Approved',
+        value: 'approved',
+      },
+      {
+        name: 'Denied',
+        value: 'denied',
+      },
+      {
+        name: 'Requested',
+        value: 'requested',
+      },
+    ],
+    displayOptions: {
+      show: {
+        operation: [
+          'changeStatus'
+        ],
+        resource: [
+          'timeOff',
+        ],
+      },
+    },
+    default: 'approved',
+    description: 'Request Status. Choose one of: approved, cancelled, denied',
+  },
+  {
     displayName: 'Additional Fields',
     name: 'additionalFields',
     type: 'collection',
@@ -56,13 +88,6 @@ export const timeOffChangeStatusDescription: TimeOffProperties = [
       },
     },
     options: [
-      {
-        displayName: 'Status',
-        name: 'status',
-        type: 'string',
-        default: 'approved',
-        description: 'Request Status. Choose one of: approved, cancelled, denied',
-      },
       {
         displayName: 'Note',
         name: 'note',

@@ -40,24 +40,6 @@ export const timeOffAdjustTimeDescription: TimeOffProperties = [
     description: 'Employee ID',
   },
   {
-    displayName: 'Date',
-    name: 'date',
-    type: 'string',
-    required: true,
-    displayOptions: {
-      show: {
-        operation: [
-          'adjustTime'
-        ],
-        resource: [
-          'timeOff',
-        ],
-      },
-    },
-    default: '',
-    description: 'The date the adjustment should be added in history. Should be in ISO8601 date format (YYYY-MM-DD)',
-  },
-  {
     displayName: 'Time Off Type ID',
     name: 'timeOffTypeId',
     type: 'string',
@@ -74,6 +56,24 @@ export const timeOffAdjustTimeDescription: TimeOffProperties = [
     },
     default: '',
     description: 'The ID of the time off type to add a balance adjustment for',
+  },
+  {
+    displayName: 'Date',
+    name: 'date',
+    type: 'string',
+    required: true,
+    displayOptions: {
+      show: {
+        operation: [
+          'adjustTime'
+        ],
+        resource: [
+          'timeOff',
+        ],
+      },
+    },
+    default: '',
+    description: 'The date the adjustment should be added in history. Should be in ISO8601 date format (YYYY-MM-DD)',
   },
   {
     displayName: 'Amount',
