@@ -101,6 +101,7 @@ export interface IEndpointOptions {
 	overlays?: any; // tslint:disable-line:no-any
 	parameters?: any; // tslint:disable-line:no-any
 	uuid?: string;
+	enabled?: boolean;
 }
 
 export interface IConnectionsUi {

@@ -257,8 +257,9 @@ export const nodeBase = mixins(
 					endpoint: inputData.endpoint,
 					endpointStyle: inputData.endpointStyle,
 					endpointHoverStyle: inputData.endpointHoverStyle,
-					isSource: !this.isReadOnly,
+					isSource: true,
 					isTarget: false,
+					enabled: !this.isReadOnly,
 					parameters: {
 						nodeIndex: this.nodeIndex,
 						type: inputName,
