@@ -22,7 +22,7 @@ export const tabularDataCreateDescription: TabularDataProperties = [
     description: 'Company name',
   },
   {
-    displayName: 'ID',
+    displayName: 'Employee ID',
     name: 'id',
     type: 'string',
     required: true,
@@ -58,6 +58,24 @@ export const tabularDataCreateDescription: TabularDataProperties = [
     description: 'Name of the table',
   },
   {
+    displayName: 'Location',
+    name: 'location',
+    type: 'string',
+    required: true,
+    displayOptions: {
+      show: {
+        operation: [
+          'create'
+        ],
+        resource: [
+          'tabularData',
+        ],
+      },
+    },
+    default: '',
+    description: 'Location',
+  },
+  {
     displayName: 'Additional Fields',
     name: 'additionalFields',
     type: 'collection',
@@ -75,18 +93,11 @@ export const tabularDataCreateDescription: TabularDataProperties = [
     },
     options: [
       {
-        displayName: 'Data',
+        displayName: 'Date',
         name: 'date',
         type: 'string',
         default: '',
-        description: 'Date',
-      },
-      {
-        displayName: 'Location',
-        name: 'location',
-        type: 'string',
-        default: '',
-        description: 'Location',
+        description: 'Date in format YYYY-MM-DD',
       },
       {
         displayName: 'Division',

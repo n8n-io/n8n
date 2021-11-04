@@ -22,7 +22,7 @@ export const tabularDataGetDescription: TabularDataProperties = [
     description: 'Company name',
   },
   {
-    displayName: 'ID',
+    displayName: 'Employee ID',
     name: 'id',
     type: 'string',
     required: true,

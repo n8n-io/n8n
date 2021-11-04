@@ -22,7 +22,7 @@ export const tabularDataUpdateDescription: TabularDataProperties = [
     description: 'Company name',
   },
   {
-    displayName: 'ID',
+    displayName: 'Employee ID',
     name: 'id',
     type: 'string',
     required: true,
@@ -76,6 +76,24 @@ export const tabularDataUpdateDescription: TabularDataProperties = [
     description: 'Row ID',
   },
   {
+    displayName: 'Location',
+    name: 'location',
+    type: 'string',
+    required: true,
+    displayOptions: {
+      show: {
+        operation: [
+          'update'
+        ],
+        resource: [
+          'tabularData',
+        ],
+      },
+    },
+    default: '',
+    description: 'Location',
+  },
+  {
     displayName: 'Additional Fields',
     name: 'additionalFields',
     type: 'collection',
@@ -98,13 +116,6 @@ export const tabularDataUpdateDescription: TabularDataProperties = [
         type: 'string',
         default: '',
         description: 'Date',
-      },
-      {
-        displayName: 'Location',
-        name: 'location',
-        type: 'string',
-        default: '',
-        description: 'Location',
       },
       {
         displayName: 'Division',
