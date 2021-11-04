@@ -76,7 +76,7 @@ const getInputNameOverlay = (label: string) => ([
 	{
 		id: CanvasHelpers.OVERLAY_INPUT_NAME_LABEL,
 		location: CanvasHelpers.OVERLAY_INPUT_NAME_LABEL_POSITION,
-		label: label,
+		label,
 		cssClass: 'node-input-endpoint-label',
 		visible: true,
 	},
@@ -93,7 +93,7 @@ const getOutputNameOverlay = (label: string) => ([
 	{
 		id: CanvasHelpers.OVERLAY_OUTPUT_NAME_LABEL,
 		location: [1.9, 0.5],
-		label: label,
+		label,
 		cssClass: 'node-output-endpoint-label',
 		visible: true,
 	},
