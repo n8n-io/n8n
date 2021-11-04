@@ -205,23 +205,33 @@
 			return totalLength;
 		};
 
-		this.setTargetPos = function (pos) {
-			this.overrideTargetPos = pos;
+		this.setTargetEndpoint = function (endpoint) {
+			this.overrideTargetEndpoint = endpoint;
 		};
 
-		this.resetTargetPos = function () {
-			this.overrideTargetPos = null;
+		this.resetTargetEndpoint = function () {
+			this.overrideTargetEndpoint = null;
 		};
 
 		var _prepareCompute = function (params) {
+			let { targetPos, targetEndpoint } = params;
+
+			// if has override, use override
+			if (
+				this.overrideTargetEndpoint
+			) {
+				const target = this.overrideTargetEndpoint.anchor.lastReturnValue;
+				targetPos = [target[0], target[1]];
+				targetEndpoint = this.overrideTargetEndpoint;
+			}
+
 			this.strokeWidth = params.strokeWidth;
-			const targetPos = this.overrideTargetPos || params.targetPos;
 			var segment = _jg.quadrant(params.sourcePos, targetPos),
 				swapX = targetPos[0] < params.sourcePos[0],
 				swapY = targetPos[1] < params.sourcePos[1],
 				lw = params.strokeWidth || 1,
 				so = params.sourceEndpoint.anchor.getOrientation(params.sourceEndpoint),
-				to = params.targetEndpoint.anchor.getOrientation(params.targetEndpoint),
+				to = targetEndpoint.anchor.getOrientation(targetEndpoint),
 				x = swapX ? targetPos[0] : params.sourcePos[0],
 				y = swapY ? targetPos[1] : params.sourcePos[1],
 				w = Math.abs(targetPos[0] - params.sourcePos[0]),
@@ -231,13 +241,11 @@
 			// positions.  we fix the axis to be the one in which the two elements are further apart, and
 			// point each anchor at the other element.  this is also used when dragging a new connection.
 			if (so[0] === 0 && so[1] === 0 || to[0] === 0 && to[1] === 0) {
-				// var index = w > h ? 0 : 1, oIndex = [1, 0][index];
-				const index = 0, // always use horizontal axis to determine orientation
-					oIndex = 1;
+				var index = w > h ? 0 : 1, oIndex = [1, 0][index];
 				so = [];
 				to = [];
-				so[index] = 1; //params.sourcePos[index] > targetPos[index] ? -1 : 1; // always default to orienting right
-				to[index] = -1;//params.sourcePos[index] > targetPos[index] ? 1 : -1; // always default to orienting left
+				so[index] = params.sourcePos[index] > targetPos[index] ? -1 : 1;
+				to[index] = params.sourcePos[index] > targetPos[index] ? 1 : -1;
 				so[oIndex] = 0;
 				to[oIndex] = 0;
 			}
@@ -249,7 +257,7 @@
 				oProduct = ((so[0] * to[0]) + (so[1] * to[1]));
 
 			const sourceStubWithOffset = sourceStub + (getEndpointOffset && params.sourceEndpoint ? getEndpointOffset(params.sourceEndpoint) : 0);
-			const targetStubWithOffset = targetStub + (getEndpointOffset && params.targetEndpoint ? getEndpointOffset(params.targetEndpoint) : 0);
+			const targetStubWithOffset = targetStub + (getEndpointOffset && targetEndpoint ? getEndpointOffset(params.targetEndpoint) : 0);
 
 			var result = {
 				sx: sx, sy: sy, tx: tx, ty: ty, lw: lw,

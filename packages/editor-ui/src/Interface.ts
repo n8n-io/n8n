@@ -43,8 +43,8 @@ declare module 'jsplumb' {
 			targetOutputIndex: number,
 		};
 		connector?: {
-			setTargetPos: (pos: XYPosition) => void;
-			resetTargetPos: () => void;
+			setTargetEndpoint: (endpoint: Endpoint) => void;
+			resetTargetEndpoint: () => void;
 			bounds: {
 				minX: number;
 				maxX: number;

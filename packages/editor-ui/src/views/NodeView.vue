@@ -108,7 +108,7 @@
 <script lang="ts">
 import Vue from 'vue';
 import {
-	Connection,
+	Connection, Endpoint,
 } from 'jsplumb';
 import { MessageBoxInputData } from 'element-ui/types/message-box';
 import { jsPlumb, OnConnectionBindInfo } from 'jsplumb';
@@ -1481,11 +1481,8 @@ export default mixins(
 
 						const element = document.querySelector('.jtk-endpoint.dropHover');
 						if (element) {
-							const {top, left, right, bottom} = element.getBoundingClientRect();
-							const x = left + (right - left) / 2;
-							const y = top + (bottom - top) / 2;
-							const pos = CanvasHelpers.getRelativePosition(x, y, this.nodeViewScale, this.$store.getters.getNodeViewOffsetPosition);
-							CanvasHelpers.showDropConnectionState(connection, pos);
+							// @ts-ignore
+							CanvasHelpers.showDropConnectionState(connection, element._jsPlumb);
 							return;
 						}
 
@@ -1493,17 +1490,15 @@ export default mixins(
 						const intersecting = nodes.find((element: Element) => {
 							const {top, left, right, bottom} = element.getBoundingClientRect();
 							if (top <= e.pageY && bottom >= e.pageY && (left - inputMargin) <= e.pageX && right >= e.pageX) {
-								const nodeName = (element as HTMLElement).dataset['name'];
+								const nodeName = (element as HTMLElement).dataset['name'] as string;
 								const node = this.$store.getters.getNodeByName(nodeName) as INodeUi | null;
 								if (node) {
 									const nodeType = this.$store.getters.nodeType(node.type) as INodeTypeDescription;
 									if (nodeType.inputs.length === 1) {
 										this.pullConnActiveNodeName = node.name;
+										const endpoint = this.instance.getEndpoint(this.getInputEndpointUUID(nodeName, 0));
 
-										const x = left + 1;
-										const y = top + (bottom - top) / 2;
-										const pos = CanvasHelpers.getRelativePosition(x, y, this.nodeViewScale, this.$store.getters.getNodeViewOffsetPosition);
-										CanvasHelpers.showDropConnectionState(connection, pos);
+										CanvasHelpers.showDropConnectionState(connection, endpoint);
 
 										return true;
 									}
@@ -1608,11 +1603,17 @@ export default mixins(
 					}
 				});
 			},
+			getOutputEndpointUUID(nodeName: string, index: number) {
+				return `${this.getNodeIndex(nodeName)}-output${index}`;
+			},
+			getInputEndpointUUID(nodeName: string, index: number) {
+				return `${this.getNodeIndex(nodeName)}-input${index}`;
+			},
 			__addConnection (connection: [IConnection, IConnection], addVisualConnection = false) {
 				if (addVisualConnection === true) {
 					const uuid: [string, string] = [
-						`${this.getNodeIndex(connection[0].node)}-output${connection[0].index}`,
-						`${this.getNodeIndex(connection[1].node)}-input${connection[1].index}`,
+						this.getOutputEndpointUUID(connection[0].node, connection[0].index),
+						this.getInputEndpointUUID(connection[1].node, connection[1].index),
 					];
 
 					// Create connections in DOM
