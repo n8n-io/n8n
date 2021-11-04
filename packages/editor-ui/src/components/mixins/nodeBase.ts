@@ -1,4 +1,4 @@
-import { IConnectionsUi, IEndpointOptions, INodeUi, XYPosition } from '@/Interface';
+import { IEndpointOptions, INodeUi, XYPosition } from '@/Interface';
 
 import mixins from 'vue-typed-mixins';
 
@@ -8,6 +8,10 @@ import { NODE_NAME_PREFIX, NO_OP_NODE_TYPE } from '@/constants';
 import { getStyleTokenValue } from '../helpers';
 import * as CanvasHelpers from '@/views/canvasHelpers';
 import { Endpoint } from 'jsplumb';
+
+import {
+	INodeTypeDescription,
+} from 'n8n-workflow';
 
 const anchorPositions: {
 	[key: string]: {
@@ -70,32 +74,11 @@ export const nodeBase = mixins(
 		data (): INodeUi {
 			return this.$store.getters.getNodeByName(this.name);
 		},
-		hasIssues (): boolean {
-			if (this.data.issues !== undefined && Object.keys(this.data.issues).length) {
-				return true;
-			}
-			return false;
-		},
-		nodeName (): string {
+		nodeId (): string {
 			return NODE_NAME_PREFIX + this.nodeIndex;
 		},
 		nodeIndex (): string {
 			return this.$store.getters.getNodeIndex(this.data.name).toString();
-		},
-		position (): XYPosition {
-			const node = this.$store.getters.nodesByName[this.name] as INodeUi; // position responsive to store changes
-
-			return node.position;
-		},
-		nodePosition (): object {
-			const returnStyles: {
-				[key: string]: string;
-			} = {
-				left: this.position[0] + 'px',
-				top: this.position[1] + 'px',
-			};
-
-			return returnStyles;
 		},
 	},
 	props: [
@@ -107,67 +90,35 @@ export const nodeBase = mixins(
 		'hideActions',
 	],
 	methods: {
-		__addNode (node: INodeUi) {
-			// TODO: Later move the node-connection definitions to a special file
-
-			let nodeTypeData = this.$store.getters.nodeType(node.type);
-
-			const nodeConnectors: IConnectionsUi = {
-				main: {
-					input: {
-						uuid: '-input',
-						maxConnections: -1,
-						endpoint: 'Rectangle',
-						endpointStyle: {
-							width: 8,
-							height: nodeTypeData && nodeTypeData.outputs.length > 2 ? 18 : 20,
-							fill: getStyleTokenValue('--color-foreground-xdark'),
-							stroke: getStyleTokenValue('--color-foreground-xdark'),
-							lineWidth: 0,
-						},
-						endpointHoverStyle: {
-							width: 8,
-							height: nodeTypeData && nodeTypeData.outputs.length > 2 ? 18 : 20,
-							fill: getStyleTokenValue('--color-primary'),
-							stroke: getStyleTokenValue('--color-primary'),
-							lineWidth: 0,
-						},
-						dragAllowedWhenFull: true,
-					},
-					output: {
-						uuid: '-output',
-						maxConnections: -1,
-						endpoint: 'Dot',
-						endpointStyle: {
-							radius: nodeTypeData && nodeTypeData.outputs.length > 2 ? 7 : 9,
-							fill: getStyleTokenValue('--color-foreground-xdark'),
-							outlineStroke: 'none',
-						},
-						endpointHoverStyle: {
-							radius: nodeTypeData && nodeTypeData.outputs.length > 2 ? 7 : 9,
-							fill: getStyleTokenValue('--color-primary'),
-							outlineStroke: 'none',
-						},
-						dragAllowedWhenFull: true,
-					},
-				},
-			};
-
-			if (!nodeTypeData) {
-				// If node type is not know use by default the base.noOp data to display it
-				nodeTypeData = this.$store.getters.nodeType(NO_OP_NODE_TYPE);
-			}
-
+		__addInputEndpoints (node: INodeUi, nodeTypeData: INodeTypeDescription) {
 			// Add Inputs
-			let index, inputData, anchorPosition;
+			let index, anchorPosition;
 			let newEndpointData: IEndpointOptions;
-			let indexData: {
+			const indexData: {
 				[key: string]: number;
 			} = {};
 
 			nodeTypeData.inputs.forEach((inputName: string, i: number) => {
-				// @ts-ignore
-				inputData = nodeConnectors[inputName].input;
+				const inputData = {
+					uuid: '-input',
+					maxConnections: -1,
+					endpoint: 'Rectangle',
+					endpointStyle: {
+						width: 8,
+						height: nodeTypeData && nodeTypeData.outputs.length > 2 ? 18 : 20,
+						fill: getStyleTokenValue('--color-foreground-xdark'),
+						stroke: getStyleTokenValue('--color-foreground-xdark'),
+						lineWidth: 0,
+					},
+					endpointHoverStyle: {
+						width: 8,
+						height: nodeTypeData && nodeTypeData.outputs.length > 2 ? 18 : 20,
+						fill: getStyleTokenValue('--color-primary'),
+						stroke: getStyleTokenValue('--color-primary'),
+						lineWidth: 0,
+					},
+					dragAllowedWhenFull: true,
+				};
 
 				// Increment the index for inputs with current name
 				if (indexData.hasOwnProperty(inputName)) {
@@ -216,7 +167,7 @@ export const nodeBase = mixins(
 					];
 				}
 
-				const endpoint: Endpoint = this.instance.addEndpoint(this.nodeName, newEndpointData);
+				const endpoint: Endpoint = this.instance.addEndpoint(this.nodeId, newEndpointData);
 				endpoint.__meta = {
 					nodeName: node.name,
 					index: i,
@@ -230,14 +181,34 @@ export const nodeBase = mixins(
 
 				// if (index === 0 && inputName === 'main') {
 				// 	// Make the first main-input the default one to connect to when connection gets dropped on node
-				// 	this.instance.makeTarget(this.nodeName, newEndpointData);
+				// 	this.instance.makeTarget(this.nodeId, newEndpointData);
 				// }
 			});
+		},
+		__addOutputEndpoints(node: INodeUi, nodeTypeData: INodeTypeDescription) {
+			let index, anchorPosition;
+			let newEndpointData: IEndpointOptions;
+			const indexData: {
+				[key: string]: number;
+			} = {};
 
-			// Add Outputs
-			indexData = {};
 			nodeTypeData.outputs.forEach((inputName: string, i: number) => {
-				inputData = nodeConnectors[inputName].output;
+				const inputData = {
+					uuid: '-output',
+					maxConnections: -1,
+					endpoint: 'Dot',
+					endpointStyle: {
+						radius: nodeTypeData && nodeTypeData.outputs.length > 2 ? 7 : 9,
+						fill: getStyleTokenValue('--color-foreground-xdark'),
+						outlineStroke: 'none',
+					},
+					endpointHoverStyle: {
+						radius: nodeTypeData && nodeTypeData.outputs.length > 2 ? 7 : 9,
+						fill: getStyleTokenValue('--color-primary'),
+						outlineStroke: 'none',
+					},
+					dragAllowedWhenFull: true,
+				};
 
 				// Increment the index for outputs with current name
 				if (indexData.hasOwnProperty(inputName)) {
@@ -284,18 +255,19 @@ export const nodeBase = mixins(
 					];
 				}
 
-				const endpoint: Endpoint = this.instance.addEndpoint(this.nodeName, newEndpointData);
+				const endpoint: Endpoint = this.instance.addEndpoint(this.nodeId, newEndpointData);
 				endpoint.__meta = {
 					nodeName: node.name,
 					index: i,
 				};
 			});
-
+		},
+		__makeInstanceDraggable(node: INodeUi) {
 			// TODO: This caused problems with displaying old information
 			//       https://github.com/jsplumb/katavorio/wiki
 			//       https://jsplumb.github.io/jsplumb/home.html
 			// Make nodes draggable
-			this.instance.draggable(this.nodeName, {
+			this.instance.draggable(this.nodeId, {
 				grid: [20, 20],
 				start: (params: { e: MouseEvent }) => {
 					if (this.isReadOnly === true) {
@@ -357,7 +329,19 @@ export const nodeBase = mixins(
 				},
 				filter: '.node-description, .node-description .node-name, .node-description .node-subtitle',
 			});
+		},
+		__addNode (node: INodeUi) {
+			// TODO: Later move the node-connection definitions to a special file
 
+			let nodeTypeData = this.$store.getters.nodeType(node.type);
+			if (!nodeTypeData) {
+				// If node type is not know use by default the base.noOp data to display it
+				nodeTypeData = this.$store.getters.nodeType(NO_OP_NODE_TYPE);
+			}
+
+			this.__addInputEndpoints(node, nodeTypeData);
+			this.__addOutputEndpoints(node, nodeTypeData);
+			this.__makeInstanceDraggable(node);
 		},
 		touchEnd(e: MouseEvent) {
 			if (this.isTouchDevice) {

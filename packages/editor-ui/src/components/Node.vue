@@ -76,7 +76,7 @@ import mixins from 'vue-typed-mixins';
 
 import { get } from 'lodash';
 import { getStyleTokenValue } from './helpers';
-import { INodeUi } from '@/Interface';
+import { INodeUi, XYPosition } from '@/Interface';
 
 export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).extend({
 	name: 'Node',
@@ -86,6 +86,12 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 	computed: {
 		nodeRunData(): ITaskData[] {
 			return this.$store.getters.getWorkflowResultDataByNodeName(this.data.name);
+		},
+		hasIssues (): boolean {
+			if (this.data.issues !== undefined && Object.keys(this.data.issues).length) {
+				return true;
+			}
+			return false;
 		},
 		workflowDataItems (): number {
 			const workflowResultDataNode = this.nodeRunData;
@@ -145,6 +151,21 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 			} else {
 				return 'play';
 			}
+		},
+		position (): XYPosition {
+			const node = this.$store.getters.nodesByName[this.name] as INodeUi; // position responsive to store changes
+
+			return node.position;
+		},
+		nodePosition (): object {
+			const returnStyles: {
+				[key: string]: string;
+			} = {
+				left: this.position[0] + 'px',
+				top: this.position[1] + 'px',
+			};
+
+			return returnStyles;
 		},
 		waiting (): string | undefined {
 			const workflowExecution = this.$store.getters.getWorkflowExecution;

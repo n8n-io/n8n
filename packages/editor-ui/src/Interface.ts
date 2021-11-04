@@ -104,12 +104,6 @@ export interface IEndpointOptions {
 	enabled?: boolean;
 }
 
-export interface IConnectionsUi {
-	[key: string]: {
-		[key: string]: IEndpointOptions;
-	};
-}
-
 export interface IUpdateInformation {
 	name: string;
 	key: string;
