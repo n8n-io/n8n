@@ -83,7 +83,7 @@ export class ICalendar implements INodeType {
 				type: 'string',
 				default: 'data',
 				required: true,
-				description: 'The field that your iCalendar file will be<br />available under in the output.',
+				description: 'The field that your iCalendar file will be available under in the output.',
 			},
 			{
 				displayName: 'Additional Fields',

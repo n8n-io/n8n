@@ -2001,7 +2001,7 @@ export class Pipedrive implements INodeType {
 
 				},
 				placeholder: '',
-				description: 'Name of the binary property which contains<br />the data for the file to be created.',
+				description: 'Name of the binary property which contains the data for the file to be created.',
 			},
 			{
 				displayName: 'Additional Fields',
@@ -2120,7 +2120,7 @@ export class Pipedrive implements INodeType {
 						],
 					},
 				},
-				description: 'Name of the binary property to which to<br />write the data of the downloaded file.',
+				description: 'Name of the binary property to which to write the data of the downloaded file.',
 			},
 
 			// ----------------------------------
