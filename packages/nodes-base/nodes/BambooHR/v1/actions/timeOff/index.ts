@@ -77,7 +77,7 @@ export const descriptions = [
         description: 'Get a list of employees who will be out, and company holidays, for a period of time',
       },
       {
-        name: 'get Employee Policies',
+        name: 'Get Employee Policies',
         value: 'getEmployeePolicies',
         description: 'List Time Off Policies for Employee',
       },

@@ -55,6 +55,6 @@ export const timeOffEstimateFutureTimeDescription: TimeOffProperties = [
       },
     },
     default: '',
-    description: 'Date-Time',
+    description: 'Date-Time | e.g. 2021-11-04',
   },
 ];
