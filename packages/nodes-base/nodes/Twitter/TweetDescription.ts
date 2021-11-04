@@ -93,7 +93,7 @@ export const tweetFields = [
 				name: 'attachments',
 				type: 'string',
 				default: 'data',
-				description: 'Name of the binary properties which contain<br />data which should be added to tweet as attachment.<br />Multiple ones can be comma separated.',
+				description: 'Name of the binary properties which contain data which should be added to tweet as attachment.<br />Multiple ones can be comma separated.',
 			},
 			{
 				displayName: 'Display Coordinates',
@@ -356,6 +356,23 @@ export const tweetFields = [
 				],
 				default: 'mixed',
 				description: 'Specifies what type of search results you would prefer to receive',
+			},
+			{
+				displayName: 'Tweet Mode',
+				name: 'tweetMode',
+				type: 'options',
+				options: [
+					{
+						name: 'Compatibility',
+						value: 'compat',
+					},
+					{
+						name: 'Extended',
+						value: 'extended',
+					},
+				],
+				default: 'compat',
+				description: 'When the extended mode is selected, the response contains the entire untruncated text of the Tweet',
 			},
 			{
 				displayName: 'Until',

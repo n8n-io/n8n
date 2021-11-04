@@ -13,10 +13,12 @@ import {
 	INodeParameters,
 	INodePropertyOptions,
 	INodeTypeDescription,
+	INodeTypeNameVersion,
 	IRunExecutionData,
 	IRun,
 	IRunData,
 	ITaskData,
+	ITelemetrySettings,
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
 
@@ -128,10 +130,9 @@ export interface IRestApi {
 	getPastExecutions(filter: object, limit: number, lastId?: string | number, firstId?: string | number): Promise<IExecutionsListResponse>;
 	stopCurrentExecution(executionId: string): Promise<IExecutionsStopData>;
 	makeRestApiRequest(method: string, endpoint: string, data?: any): Promise<any>; // tslint:disable-line:no-any
-	getSettings(): Promise<IN8nUISettings>;
-	getNodeTypes(): Promise<INodeTypeDescription[]>;
-	getNodesInformation(nodeList: string[]): Promise<INodeTypeDescription[]>;
-	getNodeParameterOptions(nodeType: string, path: string, methodName: string, currentNodeParameters: INodeParameters, credentials?: INodeCredentials): Promise<INodePropertyOptions[]>;
+	getNodeTypes(onlyLatest?: boolean): Promise<INodeTypeDescription[]>;
+	getNodesInformation(nodeInfos: INodeTypeNameVersion[]): Promise<INodeTypeDescription[]>;
+	getNodeParameterOptions(nodeTypeAndVersion: INodeTypeNameVersion, path: string, methodName: string, currentNodeParameters: INodeParameters, credentials?: INodeCredentials): Promise<INodePropertyOptions[]>;
 	removeTestWebhook(workflowId: string): Promise<boolean>;
 	runWorkflow(runData: IStartRunData): Promise<IExecutionPushResponse>;
 	createNewWorkflow(sendData: IWorkflowDataUpdate): Promise<IWorkflowDb>;
@@ -248,7 +249,7 @@ export interface IActivationError {
 }
 
 export interface ICredentialsResponse extends ICredentialsEncrypted {
-	id?: string;
+	id: string;
 	createdAt: number | string;
 	updatedAt: number | string;
 }
@@ -436,6 +437,17 @@ export interface IVersionNotificationSettings {
 	infoUrl: string;
 }
 
+export type IPersonalizationSurveyKeys = 'companySize' | 'codingSkill' | 'workArea' | 'otherWorkArea';
+
+export type IPersonalizationSurveyAnswers = {
+	[key in IPersonalizationSurveyKeys]: string | null
+};
+
+export interface IPersonalizationSurvey {
+	answers?: IPersonalizationSurveyAnswers;
+	shouldShow: boolean;
+}
+
 export interface IN8nUISettings {
 	endpointWebhook: string;
 	endpointWebhookTest: string;
@@ -456,6 +468,8 @@ export interface IN8nUISettings {
 	};
 	versionNotifications: IVersionNotificationSettings;
 	instanceId: string;
+	personalizationSurvey?: IPersonalizationSurvey;
+	telemetry: ITelemetrySettings;
 }
 
 export interface IWorkflowSettings extends IWorkflowSettingsWorkflow {
@@ -598,6 +612,7 @@ export interface IRootState {
 	workflow: IWorkflowDb;
 	sidebarMenuItems: IMenuItem[];
 	instanceId: string;
+	telemetry: ITelemetrySettings | null;
 }
 
 export interface ICredentialTypeMap {
@@ -633,6 +648,10 @@ export interface IUiState {
 		[key: string]: IModalState;
 	};
 	isPageLoading: boolean;
+}
+
+export interface ISettingsState {
+	settings: IN8nUISettings;
 }
 
 export interface IVersionsState {

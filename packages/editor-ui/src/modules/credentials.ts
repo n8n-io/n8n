@@ -90,9 +90,15 @@ const module: Module<ICredentialsState, IRootState> = {
 		getCredentialById: (state: ICredentialsState) => {
 			return (id: string) => state.credentials[id];
 		},
+		getCredentialByIdAndType: (state: ICredentialsState) => {
+			return (id: string, type: string) => {
+				const credential = state.credentials[id];
+				return !credential || credential.type !== type ? undefined : credential;
+			};
+		},
 		getCredentialsByType: (state: ICredentialsState, getters: any) => { // tslint:disable-line:no-any
 			return (credentialType: string): ICredentialsResponse[] => {
-				return getters.allCredentials.filter((credentialData: ICredentialsResponse) => credentialData.type === credentialType);
+				return getters.allCredentialsByType[credentialType];
 			};
 		},
 		getNodesWithAccess (state: ICredentialsState, getters: any, rootState: IRootState, rootGetters: any) { // tslint:disable-line:no-any

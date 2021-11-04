@@ -61,7 +61,7 @@ export class Xml implements INodeType {
 				},
 				default: 'data',
 				required: true,
-				description: 'Name of the property to which to contains<br />the converted XML data.',
+				description: 'Name of the property to which to contains the converted XML data.',
 			},
 			{
 				displayName: 'Options',
@@ -140,7 +140,7 @@ export class Xml implements INodeType {
 				},
 				default: 'data',
 				required: true,
-				description: 'Name of the property which contains<br />the XML data to convert.',
+				description: 'Name of the property which contains the XML data to convert.',
 			},
 			{
 				displayName: 'Options',

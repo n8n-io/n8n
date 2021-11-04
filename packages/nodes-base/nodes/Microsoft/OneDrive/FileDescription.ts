@@ -236,7 +236,7 @@ export const fileFields = [
 				],
 			},
 		},
-		description: 'Name of the binary property to which to<br />write the data of the read file.',
+		description: 'Name of the binary property to which to write the data of the read file.',
 	},
 /* -------------------------------------------------------------------------- */
 /*                                 file:get                                   */
@@ -457,6 +457,6 @@ export const fileFields = [
 
 		},
 		placeholder: '',
-		description: 'Name of the binary property which contains<br />the data for the file.',
+		description: 'Name of the binary property which contains the data for the file.',
 	},
 ] as INodeProperties[];

@@ -154,7 +154,7 @@ export class Egoi implements INodeType {
 					},
 				},
 				default: true,
-				description: 'By default the response just includes the contact id. If this option gets activated it<br />will resolve the data automatically.',
+				description: 'By default the response just includes the contact id. If this option gets activated, it will resolve the data automatically.',
 			},
 			{
 				displayName: 'Additional Fields',

@@ -11,7 +11,6 @@ import {
 	IExecutionFlattedResponse,
 	IExecutionsListResponse,
 	IExecutionsStopData,
-	IN8nUISettings,
 	IStartRunData,
 	IWorkflowDb,
 	IWorkflowShortResponse,
@@ -24,6 +23,7 @@ import {
 	INodeParameters,
 	INodePropertyOptions,
 	INodeTypeDescription,
+	INodeTypeNameVersion,
 } from 'n8n-workflow';
 import { makeRestApiRequest } from '@/api/helpers';
 
@@ -77,23 +77,20 @@ export const restApi = Vue.extend({
 				stopCurrentExecution: (executionId: string): Promise<IExecutionsStopData> => {
 					return self.restApi().makeRestApiRequest('POST', `/executions-current/${executionId}/stop`);
 				},
-				getSettings: (): Promise<IN8nUISettings> => {
-					return self.restApi().makeRestApiRequest('GET', `/settings`);
-				},
 
 				// Returns all node-types
-				getNodeTypes: (): Promise<INodeTypeDescription[]> => {
-					return self.restApi().makeRestApiRequest('GET', `/node-types`);
+				getNodeTypes: (onlyLatest = false): Promise<INodeTypeDescription[]> => {
+					return self.restApi().makeRestApiRequest('GET', `/node-types`, {onlyLatest});
 				},
 
-				getNodesInformation: (nodeList: string[]): Promise<INodeTypeDescription[]> => {
-					return self.restApi().makeRestApiRequest('POST', `/node-types`, {nodeNames: nodeList});
+				getNodesInformation: (nodeInfos: INodeTypeNameVersion[]): Promise<INodeTypeDescription[]> => {
+					return self.restApi().makeRestApiRequest('POST', `/node-types`, {nodeInfos});
 				},
 
 				// Returns all the parameter options from the server
-				getNodeParameterOptions: (nodeType: string, path: string, methodName: string, currentNodeParameters: INodeParameters, credentials?: INodeCredentials): Promise<INodePropertyOptions[]> => {
+				getNodeParameterOptions: (nodeTypeAndVersion: INodeTypeNameVersion, path: string, methodName: string, currentNodeParameters: INodeParameters, credentials?: INodeCredentials): Promise<INodePropertyOptions[]> => {
 					const sendData = {
-						nodeType,
+						nodeTypeAndVersion,
 						path,
 						methodName,
 						credentials,

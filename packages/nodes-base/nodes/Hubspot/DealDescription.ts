@@ -441,7 +441,7 @@ export const dealFields = [
 				name: 'includeAssociations',
 				type: 'boolean',
 				default: false,
-				description: `Include the IDs of the associated contacts and companies in the results<br/>.
+				description: `Include the IDs of the associated contacts and companies in the results.
 				This will also automatically include the num_associated_contacts property.`,
 			},
 			{
@@ -465,7 +465,7 @@ export const dealFields = [
 					loadOptionsMethod: 'getDealProperties',
 				},
 				default: [],
-				description: `Works similarly to properties=, but this parameter will include the history for the specified property,<br/>
+				description: `Works similarly to properties=, but this parameter will include the history for the specified property,
 				instead of just including the current value. Use this parameter when you need the full history of changes to a property's value.`,
 			},
 
