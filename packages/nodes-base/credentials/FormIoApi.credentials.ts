@@ -1,12 +1,12 @@
 import {
 	ICredentialType,
 	INodeProperties,
-	NodePropertyTypes,
 } from 'n8n-workflow';
 
 export class FormIoApi implements ICredentialType {
 	name = 'formIoApi';
 	displayName = 'Form.io API';
+	documentationUrl = 'formIoTrigger';
 	properties: INodeProperties[] = [
 		{
 			displayName: 'Environment',
@@ -41,13 +41,13 @@ export class FormIoApi implements ICredentialType {
 		{
 			displayName: 'Email',
 			name: 'email',
-			type: 'string' as NodePropertyTypes,
+			type: 'string',
 			default: '',
 		},
 		{
 			displayName: 'Password',
 			name: 'password',
-			type: 'string' as NodePropertyTypes,
+			type: 'string',
 			typeOptions: {
 				password: true,
 			},

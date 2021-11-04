@@ -9,10 +9,15 @@ import 'vue-prism-editor/dist/VuePrismEditor.css';
 import 'vue-json-pretty/lib/styles.css';
 import './n8n-theme.scss';
 
+import "@fontsource/open-sans/latin-400.css";
+import "@fontsource/open-sans/latin-600.css";
+import "@fontsource/open-sans/latin-700.css";
+
 import App from '@/App.vue';
 import router from './router';
 
 import { runExternalHook } from './components/mixins/externalHooks';
+import { TelemetryPlugin } from './plugins/telemetry';
 
 import { store } from './store';
 
@@ -20,6 +25,8 @@ Vue.config.productionTip = false;
 router.afterEach((to, from) => {
 	runExternalHook('main.routeChange', store, { from, to });
 });
+
+Vue.use(TelemetryPlugin);
 
 new Vue({
 	router,

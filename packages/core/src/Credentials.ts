@@ -98,6 +98,7 @@ export class Credentials extends ICredentials {
 		}
 
 		return {
+			id: this.id,
 			name: this.name,
 			type: this.type,
 			data: this.data,

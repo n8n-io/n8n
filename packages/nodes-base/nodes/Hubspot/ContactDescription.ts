@@ -88,7 +88,7 @@ export const contactFields = [
 			},
 		},
 		default: true,
-		description: 'By default the response only includes the ID. If this option gets activated it<br />will resolve the data automatically.',
+		description: 'By default the response only includes the ID. If this option gets activated, it will resolve the data automatically.',
 	},
 	{
 		displayName: 'Additional Fields',
