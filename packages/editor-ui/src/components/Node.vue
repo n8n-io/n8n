@@ -267,17 +267,15 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 		cursor: default;
 		padding: 8px;
 
-		.node-name {
-			> p { // must be paragraph tag to have two lines in safari
-				text-overflow: ellipsis;
-				display: -webkit-box;
-				-webkit-box-orient: vertical;
-				-webkit-line-clamp: 2;
-				overflow: hidden;
-				overflow-wrap: anywhere;
-				font-weight: var(--font-weight-bold);
-				line-height: var(--font-line-height-compact);
-			}
+		.node-name > p { // must be paragraph tag to have two lines in safari
+			text-overflow: ellipsis;
+			display: -webkit-box;
+			-webkit-box-orient: vertical;
+			-webkit-line-clamp: 2;
+			overflow: hidden;
+			overflow-wrap: anywhere;
+			font-weight: var(--font-weight-bold);
+			line-height: var(--font-line-height-compact);
 		}
 
 		.node-subtitle {
@@ -424,6 +422,10 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 	left: -8px !important;
 	overflow: hidden;
 	width: 116px !important;
+
+	.node-name > p {
+		-webkit-line-clamp: 1 !important;
+	}
 }
 
 .desc {
