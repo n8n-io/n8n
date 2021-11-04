@@ -40,6 +40,92 @@ export const timeOffCreateRequestDescription: TimeOffProperties = [
     description: 'Employee ID',
   },
   {
+    displayName: 'Time Off Type ID',
+    name: 'timeOffTypeId',
+    type: 'string',
+    required: true,
+    displayOptions: {
+      show: {
+        operation: [
+          'createRequest'
+        ],
+        resource: [
+          'timeOff',
+        ],
+      },
+    },
+    default: '',
+    description: 'The time off type IDs in a given company can be looked up using the Metadata API',
+  },
+  {
+    displayName: 'Status',
+    name: 'status',
+    type: 'options',
+    required: true,
+    options: [
+      {
+        name: 'Approved',
+        value: 'approved',
+      },
+      {
+        name: 'Denied',
+        value: 'denied',
+      },
+      {
+        name: 'Requested',
+        value: 'requested',
+      },
+    ],
+    displayOptions: {
+      show: {
+        operation: [
+          'createRequest'
+        ],
+        resource: [
+          'timeOff',
+        ],
+      },
+    },
+    default: 'approved',
+    description: 'The possible status values are: "approved", "denied" (or "declined"), "requested"',
+  },
+  {
+    displayName: 'Start Date',
+    name: 'start',
+    type: 'string',
+    required: true,
+    displayOptions: {
+      show: {
+        operation: [
+          'createRequest'
+        ],
+        resource: [
+          'timeOff',
+        ],
+      },
+    },
+    default: '',
+    description: 'The date of the history item should be in the form YYYY-MM-DD',
+  },
+  {
+    displayName: 'End Date',
+    name: 'end',
+    type: 'string',
+    required: true,
+    displayOptions: {
+      show: {
+        operation: [
+          'createRequest'
+        ],
+        resource: [
+          'timeOff',
+        ],
+      },
+    },
+    default: '',
+    description: 'The date of the history item should be in the form YYYY-MM-DD',
+  },
+  {
     displayName: 'Additional Fields',
     name: 'additionalFields',
     type: 'collection',
@@ -56,34 +142,6 @@ export const timeOffCreateRequestDescription: TimeOffProperties = [
       },
     },
     options: [
-      {
-        displayName: 'Status',
-        name: 'status',
-        type: 'string',
-        default: '',
-        description: 'The possible status values are: "approved", "denied" (or "declined"), "requested"',
-      },
-      {
-        displayName: 'Start',
-        name: 'start',
-        type: 'string',
-        default: '',
-        description: 'Start',
-      },
-      {
-        displayName: 'End',
-        name: 'end',
-        type: 'string',
-        default: '',
-        description: 'End',
-      },
-      {
-        displayName: 'Time Off Type ID',
-        name: 'timeOffTypeId',
-        type: 'string',
-        default: '',
-        description: 'Time Off Type ID',
-      },
       {
         displayName: 'Amount',
         name: 'amount',

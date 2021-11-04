@@ -40,24 +40,6 @@ export const timeOffCreateHistoryDescription: TimeOffProperties = [
     description: 'Employee ID',
   },
   {
-    displayName: 'Date',
-    name: 'date',
-    type: 'string',
-    required: true,
-    displayOptions: {
-      show: {
-        operation: [
-          'createHistory'
-        ],
-        resource: [
-          'timeOff',
-        ],
-      },
-    },
-    default: '',
-    description: 'The date the request should be added in history. This will usually be the first date of the request. Should be in ISO8601 date format (YYYY-MM-DD)',
-  },
-  {
     displayName: 'Time Off Request ID',
     name: 'timeOffRequestId',
     type: 'string',
@@ -74,6 +56,24 @@ export const timeOffCreateHistoryDescription: TimeOffProperties = [
     },
     default: '',
     description: 'The ID of the time off request',
+  },
+  {
+    displayName: 'Date',
+    name: 'date',
+    type: 'string',
+    required: true,
+    displayOptions: {
+      show: {
+        operation: [
+          'createHistory'
+        ],
+        resource: [
+          'timeOff',
+        ],
+      },
+    },
+    default: '',
+    description: 'The date the request should be added in history. This will usually be the first date of the request. Should be in ISO8601 date format (YYYY-MM-DD)',
   },
   {
     displayName: 'Note',

@@ -23,9 +23,8 @@ export async function update(this: IExecuteFunctions, index: number): Promise<IN
   const rowId = this.getNodeParameter('rowId', index) as string;
 
   //body parameters
-  const location = this.getNodeParameter('location', index) as string;
   body = this.getNodeParameter('additionalFields', index) as IDataObject;
-  body.location = location;
+  body.location = this.getNodeParameter('location', index) as string;
 
   //API uri
   const uri = `https://api.bamboohr.com/api/gateway.php/${companyName}/v1/${endPoint}/${id}/tables/${tableName}/${rowId}`;
