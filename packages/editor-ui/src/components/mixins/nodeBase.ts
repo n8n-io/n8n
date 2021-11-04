@@ -331,8 +331,6 @@ export const nodeBase = mixins(
 			});
 		},
 		__addNode (node: INodeUi) {
-			// TODO: Later move the node-connection definitions to a special file
-
 			let nodeTypeData = this.$store.getters.nodeType(node.type);
 			if (!nodeTypeData) {
 				// If node type is not know use by default the base.noOp data to display it
