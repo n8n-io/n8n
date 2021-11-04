@@ -42,9 +42,8 @@ ENV NODE_ICU_DATA /usr/local/lib/node_modules/full-icu
 
 COPY --from=builder /data ./
 
-COPY docker/images/n8n-custom/docker-entrypoint.sh /docker-entrypoint.sh
-ENTRYPOINT ["tini", "--", "/docker-entrypoint.sh"]
+COPY docker/images/n8n-custom/docker-entrypoint.sh /data/docker-entrypoint.sh
+
+ENTRYPOINT ["node", "packages/cli/bin/n8n"]
 
 EXPOSE 5678/tcp
-
-CMD ["npm run start"]
