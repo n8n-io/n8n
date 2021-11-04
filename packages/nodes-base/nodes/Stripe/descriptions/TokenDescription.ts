@@ -43,6 +43,16 @@ export const tokenFields = [
 				value: 'cardToken',
 			},
 		],
+		displayOptions: {
+			show: {
+				resource: [
+					'token',
+				],
+				operation: [
+					'create',
+				],
+			},
+		},
 	},
 	{
 		displayName: 'Card Number',
