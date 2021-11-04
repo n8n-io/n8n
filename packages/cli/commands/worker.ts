@@ -10,7 +10,7 @@
 import * as PCancelable from 'p-cancelable';
 
 import { Command, flags } from '@oclif/command';
-import { BinaryDataHelper, UserSettings, WorkflowExecute } from 'n8n-core';
+import { BinaryDataHelper, IBinaryDataConfig, UserSettings, WorkflowExecute } from 'n8n-core';
 
 import { INodeTypes, IRun, Workflow, LoggerProxy, IDataObject } from 'n8n-workflow';
 
@@ -262,11 +262,8 @@ export class Worker extends Command {
 				const instanceId = await UserSettings.getInstanceId();
 				InternalHooksManager.init(instanceId);
 
-				const binaryDataConfig = config.get('binaryDataManager') as IDataObject;
-				await BinaryDataHelper.init(
-					binaryDataConfig.mode as string,
-					binaryDataConfig.localStoragePath as string,
-				);
+				const binaryDataConfig = config.get('binaryDataManager') as IBinaryDataConfig;
+				await BinaryDataHelper.init(binaryDataConfig);
 
 				const versions = await GenericHelpers.getVersions();
 

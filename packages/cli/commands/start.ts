@@ -6,7 +6,7 @@
 /* eslint-disable @typescript-eslint/no-unsafe-call */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 import * as localtunnel from 'localtunnel';
-import { BinaryDataHelper, TUNNEL_SUBDOMAIN_ENV, UserSettings } from 'n8n-core';
+import { BinaryDataHelper, IBinaryDataConfig, TUNNEL_SUBDOMAIN_ENV, UserSettings } from 'n8n-core';
 import { Command, flags } from '@oclif/command';
 // eslint-disable-next-line import/no-extraneous-dependencies
 import * as Redis from 'ioredis';
@@ -315,11 +315,8 @@ export class Start extends Command {
 				const instanceId = await UserSettings.getInstanceId();
 				InternalHooksManager.init(instanceId);
 
-				const binaryDataConfig = config.get('binaryDataManager') as IDataObject;
-				BinaryDataHelper.init(
-					binaryDataConfig.mode as string,
-					binaryDataConfig.localStoragePath as string,
-				);
+				const binaryDataConfig = config.get('binaryDataManager') as IBinaryDataConfig;
+				await BinaryDataHelper.init(binaryDataConfig);
 
 				await Server.start();
 

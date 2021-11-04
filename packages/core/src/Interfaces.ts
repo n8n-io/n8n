@@ -234,3 +234,8 @@ export interface IWorkflowData {
 	pollResponses?: IPollResponse[];
 	triggerResponses?: ITriggerResponse[];
 }
+
+export interface IBinaryDataConfig {
+	mode: 'IN_MEMORY' | 'LOCAL_STORAGE';
+	localStoragePath: string;
+}

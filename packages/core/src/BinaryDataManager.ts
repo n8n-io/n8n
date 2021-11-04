@@ -3,6 +3,7 @@ import * as path from 'path';
 import { v4 as uuid } from 'uuid';
 import { IBinaryData } from 'n8n-workflow';
 import { BINARY_ENCODING } from './Constants';
+import { IBinaryDataConfig } from './Interfaces';
 
 export class BinaryDataHelper {
 	private static instance: BinaryDataHelper;
@@ -16,14 +17,14 @@ export class BinaryDataHelper {
 		this.storagePath = storagePath;
 	}
 
-	static async init(storageMode: string, rootPath: string): Promise<void> {
+	static async init(config: IBinaryDataConfig): Promise<void> {
 		if (BinaryDataHelper.instance) {
 			throw new Error('Binary Data Manager already initialized');
 		}
 
-		BinaryDataHelper.instance = new BinaryDataHelper(storageMode, rootPath);
+		BinaryDataHelper.instance = new BinaryDataHelper(config.mode, config.localStoragePath);
 
-		if (storageMode === 'LOCAL_STORAGE') {
+		if (config.mode === 'LOCAL_STORAGE') {
 			return fs
 				.readdir(BinaryDataHelper.instance.storagePath)
 				.catch(async () => fs.mkdir(BinaryDataHelper.instance.storagePath))
