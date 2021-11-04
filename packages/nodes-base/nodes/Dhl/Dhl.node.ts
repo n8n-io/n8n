@@ -44,6 +44,7 @@ export class Dhl implements INodeType {
 			{
 				displayName: 'Resource',
 				name: 'resource',
+				noDataExpression: true,
 				type: 'hidden',
 				options: [
 					{
@@ -57,6 +58,7 @@ export class Dhl implements INodeType {
 				displayName: 'Operation',
 				name: 'operation',
 				type: 'options',
+				noDataExpression: true,
 				displayOptions: {
 					show: {
 						resource: [
@@ -122,13 +124,12 @@ export class Dhl implements INodeType {
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
 		const returnData: IDataObject[] = [];
-		const length = (items.length as unknown) as number;
 		let qs: IDataObject = {};
 		let responseData;
 		const resource = this.getNodeParameter('resource', 0) as string;
 		const operation = this.getNodeParameter('operation', 0) as string;
 
-		for (let i = 0; i < length; i++) {
+		for (let i = 0; i < items.length; i++) {
 			try {
 				if (resource === 'tracking') {
 					if (operation === 'get') {
