@@ -14,10 +14,16 @@ export async function getTabularFields(this: IExecuteFunctions, index: number): 
   const body: string[] = [];
   const requestMethod = 'GET';
   const endPoint = 'meta/tables';
+
+  //meta data
   const companyName = this.getNodeParameter('companyName', index) as string;
 
+  //API uri
   const uri = `https://api.bamboohr.com/api/gateway.php/${companyName}/v1/${endPoint}`;
+
+  //response
   const responseData = await apiRequest.call(this, requestMethod, uri, body);
 
+  //return
   return this.helpers.returnJsonArray(responseData);
 }

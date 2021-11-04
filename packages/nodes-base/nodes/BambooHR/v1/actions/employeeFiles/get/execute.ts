@@ -16,12 +16,17 @@ export async function get(this: IExecuteFunctions, index: number): Promise<INode
   const requestMethod = 'GET';
   const endPoint = 'employees';
 
+  //meta data
   const companyName = this.getNodeParameter('companyName', index) as string;
   const id = this.getNodeParameter('id', index) as string;
   const fileId = this.getNodeParameter('fileId', index) as string;
 
+  //API uri
   const uri = `https://api.bamboohr.com/api/gateway.php/${companyName}/v1/${endPoint}/${id}/files/${fileId}/`;
+
+  //response
   const responseData = await apiRequest.call(this, requestMethod, uri, body);
 
+  //return
   return this.helpers.returnJsonArray(responseData);
 }

@@ -22,7 +22,7 @@ export const employeeFilesDelDescription: EmployeeFilesProperties = [
     description: 'Company name',
   },
   {
-    displayName: 'Id',
+    displayName: 'Employee ID',
     name: 'id',
     type: 'string',
     required: true,
@@ -37,10 +37,10 @@ export const employeeFilesDelDescription: EmployeeFilesProperties = [
       },
     },
     default: '',
-    description: 'Id of the employee',
+    description: 'ID of the employee',
   },
   {
-    displayName: 'File Id',
+    displayName: 'File ID',
     name: 'fileId',
     type: 'string',
     required: true,

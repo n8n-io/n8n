@@ -22,7 +22,7 @@ export const companyFilesDelDescription: CompanyFilesProperties = [
     description: 'Company name',
   },
   {
-    displayName: 'File Id',
+    displayName: 'File ID',
     name: 'fileId',
     type: 'string',
     required: true,

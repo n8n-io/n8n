@@ -22,7 +22,7 @@ export const employeeFilesGetAllDescription: EmployeeFilesProperties = [
     description: 'Company name',
   },
   {
-    displayName: 'Id',
+    displayName: 'Employee ID',
     name: 'id',
     type: 'string',
     required: true,
@@ -37,6 +37,6 @@ export const employeeFilesGetAllDescription: EmployeeFilesProperties = [
       },
     },
     default: '',
-    description: 'Id of the employee',
+    description: 'ID of the employee',
   },
 ];

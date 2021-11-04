@@ -22,7 +22,7 @@ export const employeeFilesUpdateDescription: EmployeeFilesProperties = [
     description: 'Company name',
   },
   {
-    displayName: 'Id',
+    displayName: 'Employee ID',
     name: 'id',
     type: 'string',
     required: true,
@@ -40,7 +40,7 @@ export const employeeFilesUpdateDescription: EmployeeFilesProperties = [
     description: 'Id of the employee',
   },
   {
-    displayName: 'File Id',
+    displayName: 'File ID',
     name: 'fileId',
     type: 'string',
     required: true,
@@ -75,13 +75,6 @@ export const employeeFilesUpdateDescription: EmployeeFilesProperties = [
     },
     options: [
       {
-        displayName: 'Name',
-        name: 'name',
-        type: 'string',
-        default: '',
-        description: 'New name of the category',
-      },
-      {
         displayName: 'Category ID',
         name: 'categoryId',
         type: 'string',
@@ -89,9 +82,26 @@ export const employeeFilesUpdateDescription: EmployeeFilesProperties = [
         description: 'Move the file to a different category',
       },
       {
+        displayName: 'Name',
+        name: 'name',
+        type: 'string',
+        default: '',
+        description: 'New name of the category',
+      },
+      {
         displayName: 'Share with employee',
         name: 'shareWithEmployee',
-        type: 'string',
+        type: 'options',
+        options: [
+          {
+            name: 'Yes',
+            value: 'yes',
+          },
+          {
+            name: 'No',
+            value: 'no',
+          },
+        ],
         default: '',
         description: 'Update whether this file is shared or not',
       },
