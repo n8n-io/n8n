@@ -71,7 +71,7 @@ import { fromBuffer } from 'file-type';
 import { lookup } from 'mime-types';
 
 import axios, { AxiosProxyConfig, AxiosRequestConfig, Method } from 'axios';
-import { URLSearchParams } from 'url';
+import { URL, URLSearchParams } from 'url';
 // eslint-disable-next-line import/no-cycle
 import {
 	BINARY_ENCODING,
@@ -86,6 +86,12 @@ import {
 axios.defaults.timeout = 300000;
 // Prevent axios from adding x-form-www-urlencoded headers by default
 axios.defaults.headers.post = {};
+axios.defaults.paramsSerializer = (params) => {
+	if (params instanceof URLSearchParams) {
+		return params.toString();
+	}
+	return stringify(params, { arrayFormat: 'indices' });
+};
 
 const requestPromiseWithDefaults = requestPromise.defaults({
 	timeout: 300000, // 5 minutes
@@ -162,16 +168,19 @@ async function parseRequestObject(requestObject: IDataObject) {
 		// and also using formData. Request lib takes precedence for the formData.
 		// We will do the same.
 		// Merge body and form properties.
-		// @ts-ignore
-		axiosConfig.data =
-			typeof requestObject.body === 'string'
-				? requestObject.body
-				: new URLSearchParams(
-						Object.assign(requestObject.body || {}, requestObject.form || {}) as Record<
-							string,
-							string
-						>,
-				  );
+		if (typeof requestObject.body === 'string') {
+			axiosConfig.data = requestObject.body;
+		} else {
+			const allData = Object.assign(requestObject.body || {}, requestObject.form || {}) as Record<
+				string,
+				string
+			>;
+			if (requestObject.useQuerystring === true) {
+				axiosConfig.data = stringify(allData, { arrayFormat: 'repeat' });
+			} else {
+				axiosConfig.data = stringify(allData);
+			}
+		}
 	} else if (contentType && contentType.includes('multipart/form-data') !== false) {
 		if (requestObject.formData !== undefined && requestObject.formData instanceof FormData) {
 			axiosConfig.data = requestObject.formData;
@@ -236,11 +245,11 @@ async function parseRequestObject(requestObject: IDataObject) {
 	}
 
 	if (requestObject.uri !== undefined) {
-		axiosConfig.url = requestObject.uri as string;
+		axiosConfig.url = requestObject.uri?.toString() as string;
 	}
 
 	if (requestObject.url !== undefined) {
-		axiosConfig.url = requestObject.url as string;
+		axiosConfig.url = requestObject.url?.toString() as string;
 	}
 
 	if (requestObject.method !== undefined) {
@@ -258,6 +267,10 @@ async function parseRequestObject(requestObject: IDataObject) {
 	) {
 		axiosConfig.paramsSerializer = (params) => {
 			return stringify(params, { arrayFormat: 'repeat' });
+		};
+	} else if (requestObject.useQuerystring === false) {
+		axiosConfig.paramsSerializer = (params) => {
+			return stringify(params, { arrayFormat: 'indices' });
 		};
 	}
 
@@ -301,7 +314,7 @@ async function parseRequestObject(requestObject: IDataObject) {
 			});
 		}
 	}
-	if (requestObject.json === false) {
+	if (requestObject.json === false || requestObject.json === undefined) {
 		// Prevent json parsing
 		axiosConfig.transformResponse = (res) => res;
 	}
@@ -331,7 +344,63 @@ async function parseRequestObject(requestObject: IDataObject) {
 	}
 
 	if (requestObject.proxy !== undefined) {
-		axiosConfig.proxy = requestObject.proxy as AxiosProxyConfig;
+		// try our best to parse the url provided.
+		if (typeof requestObject.proxy === 'string') {
+			try {
+				const url = new URL(requestObject.proxy);
+				axiosConfig.proxy = {
+					host: url.hostname,
+					port: parseInt(url.port, 10),
+					protocol: url.protocol,
+				};
+				if (!url.port) {
+					// Sets port to a default if not informed
+					if (url.protocol === 'http') {
+						axiosConfig.proxy.port = 80;
+					} else if (url.protocol === 'https') {
+						axiosConfig.proxy.port = 443;
+					}
+				}
+				if (url.username || url.password) {
+					axiosConfig.proxy.auth = {
+						username: url.username,
+						password: url.password,
+					};
+				}
+			} catch (error) {
+				// Not a valid URL. We will try to simply parse stuff
+				// such as user:pass@host:port without protocol (we'll assume http)
+				if (requestObject.proxy.includes('@')) {
+					const [userpass, hostport] = requestObject.proxy.split('@');
+					const [username, password] = userpass.split(':');
+					const [hostname, port] = hostport.split(':');
+					axiosConfig.proxy = {
+						host: hostname,
+						port: parseInt(port, 10),
+						protocol: 'http',
+						auth: {
+							username,
+							password,
+						},
+					};
+				} else if (requestObject.proxy.includes(':')) {
+					const [hostname, port] = requestObject.proxy.split(':');
+					axiosConfig.proxy = {
+						host: hostname,
+						port: parseInt(port, 10),
+						protocol: 'http',
+					};
+				} else {
+					axiosConfig.proxy = {
+						host: requestObject.proxy,
+						port: 80,
+						protocol: 'http',
+					};
+				}
+			}
+		} else {
+			axiosConfig.proxy = requestObject.proxy as AxiosProxyConfig;
+		}
 	}
 
 	if (requestObject.encoding === null) {
@@ -350,6 +419,7 @@ async function parseRequestObject(requestObject: IDataObject) {
 	if (
 		requestObject.json !== false &&
 		axiosConfig.data !== undefined &&
+		axiosConfig.data !== '' &&
 		!(axiosConfig.data instanceof Buffer) &&
 		!allHeaders.some((headerKey) => headerKey.toLowerCase() === 'content-type')
 	) {
@@ -399,6 +469,11 @@ async function proxyRequestToAxios(
 
 	axiosConfig = Object.assign(axiosConfig, await parseRequestObject(configObject));
 
+	Logger.debug('Proxying request to axios', {
+		originalConfig: configObject,
+		parsedConfig: axiosConfig,
+	});
+
 	return new Promise((resolve, reject) => {
 		axios(axiosConfig)
 			.then((response) => {
@@ -431,13 +506,17 @@ async function proxyRequestToAxios(
 				}
 			})
 			.catch((error) => {
-				if (configObject.simple === true && error.response) {
-					resolve({
-						body: error.response.data,
-						headers: error.response.headers,
-						statusCode: error.response.status,
-						statusMessage: error.response.statusText,
-					});
+				if (configObject.simple === false && error.response) {
+					if (configObject.resolveWithFullResponse) {
+						resolve({
+							body: error.response.data,
+							headers: error.response.headers,
+							statusCode: error.response.status,
+							statusMessage: error.response.statusText,
+						});
+					} else {
+						resolve(error.response.data);
+					}
 					return;
 				}
 
@@ -449,7 +528,7 @@ async function proxyRequestToAxios(
 				error.cause = errorData;
 				error.error = error.response?.data || errorData;
 				error.statusCode = error.response?.status;
-				error.options = config;
+				error.options = config || {};
 
 				// Remove not needed data and so also remove circular references
 				error.request = undefined;
@@ -738,16 +817,20 @@ export async function requestOAuth2(
 
 			credentials.oauthTokenData = newToken.data;
 
-			// Find the name of the credentials
+			// Find the credentials
 			if (!node.credentials || !node.credentials[credentialsType]) {
 				throw new Error(
 					`The node "${node.name}" does not have credentials of type "${credentialsType}"!`,
 				);
 			}
-			const name = node.credentials[credentialsType];
+			const nodeCredentials = node.credentials[credentialsType];
 
 			// Save the refreshed token
-			await additionalData.credentialsHelper.updateCredentials(name, credentialsType, credentials);
+			await additionalData.credentialsHelper.updateCredentials(
+				nodeCredentials,
+				credentialsType,
+				credentials,
+			);
 
 			Logger.debug(
 				`OAuth2 token for "${credentialsType}" used by node "${node.name}" has been saved to database successfully.`,
@@ -955,25 +1038,26 @@ export async function getCredentials(
 		} as ICredentialsExpressionResolveValues;
 	}
 
-	let name = node.credentials[type];
+	const nodeCredentials = node.credentials[type];
 
-	if (name.charAt(0) === '=') {
-		// If the credential name is an expression resolve it
-		const additionalKeys = getAdditionalKeys(additionalData);
-		name = workflow.expression.getParameterValue(
-			name,
-			runExecutionData || null,
-			runIndex || 0,
-			itemIndex || 0,
-			node.name,
-			connectionInputData || [],
-			mode,
-			additionalKeys,
-		) as string;
-	}
+	// TODO: solve using credentials via expression
+	// if (name.charAt(0) === '=') {
+	// 	// If the credential name is an expression resolve it
+	// 	const additionalKeys = getAdditionalKeys(additionalData);
+	// 	name = workflow.expression.getParameterValue(
+	// 		name,
+	// 		runExecutionData || null,
+	// 		runIndex || 0,
+	// 		itemIndex || 0,
+	// 		node.name,
+	// 		connectionInputData || [],
+	// 		mode,
+	// 		additionalKeys,
+	// 	) as string;
+	// }
 
 	const decryptedDataObject = await additionalData.credentialsHelper.getDecrypted(
-		name,
+		nodeCredentials,
 		type,
 		mode,
 		false,

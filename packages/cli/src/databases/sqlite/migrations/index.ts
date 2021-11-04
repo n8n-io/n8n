@@ -6,6 +6,7 @@ import { MakeStoppedAtNullable1607431743769 } from './1607431743769-MakeStoppedA
 import { CreateTagEntity1617213344594 } from './1617213344594-CreateTagEntity';
 import { UniqueWorkflowNames1620821879465 } from './1620821879465-UniqueWorkflowNames';
 import { AddWaitColumn1621707690587 } from './1621707690587-AddWaitColumn';
+import { UpdateWorkflowCredentials1630330987096 } from './1630330987096-UpdateWorkflowCredentials';
 
 export const sqliteMigrations = [
 	InitialMigration1588102412422,
@@ -16,4 +17,5 @@ export const sqliteMigrations = [
 	CreateTagEntity1617213344594,
 	UniqueWorkflowNames1620821879465,
 	AddWaitColumn1621707690587,
+	UpdateWorkflowCredentials1630330987096,
 ];

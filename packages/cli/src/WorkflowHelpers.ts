@@ -12,6 +12,7 @@ import {
 	IDataObject,
 	IExecuteData,
 	INode,
+	INodeCredentialsDetails,
 	IRun,
 	IRunExecutionData,
 	ITaskData,
@@ -383,6 +384,113 @@ export async function getStaticDataById(workflowId: string | number) {
 
 	// eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
 	return workflowData.staticData || {};
+}
+
+// Checking if credentials of old format are in use and run a DB check if they might exist uniquely
+export async function replaceInvalidCredentials(workflow: WorkflowEntity): Promise<WorkflowEntity> {
+	const { nodes } = workflow;
+	if (!nodes) return workflow;
+
+	// caching
+	const credentialsByName: Record<string, Record<string, INodeCredentialsDetails>> = {};
+	const credentialsById: Record<string, Record<string, INodeCredentialsDetails>> = {};
+
+	// for loop to run DB fetches sequential and use cache to keep pressure off DB
+	// trade-off: longer response time for less DB queries
+	/* eslint-disable no-await-in-loop */
+	for (const node of nodes) {
+		if (!node.credentials || node.disabled) {
+			continue;
+		}
+		// extract credentials types
+		const allNodeCredentials = Object.entries(node.credentials);
+		for (const [nodeCredentialType, nodeCredentials] of allNodeCredentials) {
+			// Check if Node applies old credentials style
+			if (typeof nodeCredentials === 'string' || nodeCredentials.id === null) {
+				const name = typeof nodeCredentials === 'string' ? nodeCredentials : nodeCredentials.name;
+				// init cache for type
+				if (!credentialsByName[nodeCredentialType]) {
+					credentialsByName[nodeCredentialType] = {};
+				}
+				if (credentialsByName[nodeCredentialType][name] === undefined) {
+					const credentials = await Db.collections.Credentials?.find({
+						name,
+						type: nodeCredentialType,
+					});
+					// if credential name-type combination is unique, use it
+					if (credentials?.length === 1) {
+						credentialsByName[nodeCredentialType][name] = {
+							id: credentials[0].id.toString(),
+							name: credentials[0].name,
+						};
+						node.credentials[nodeCredentialType] = credentialsByName[nodeCredentialType][name];
+						continue;
+					}
+
+					// nothing found - add invalid credentials to cache to prevent further DB checks
+					credentialsByName[nodeCredentialType][name] = {
+						id: null,
+						name,
+					};
+				} else {
+					// get credentials from cache
+					node.credentials[nodeCredentialType] = credentialsByName[nodeCredentialType][name];
+				}
+				continue;
+			}
+
+			// Node has credentials with an ID
+
+			// init cache for type
+			if (!credentialsById[nodeCredentialType]) {
+				credentialsById[nodeCredentialType] = {};
+			}
+
+			// check if credentials for ID-type are not yet cached
+			if (credentialsById[nodeCredentialType][nodeCredentials.id] === undefined) {
+				// check first if ID-type combination exists
+				const credentials = await Db.collections.Credentials?.findOne({
+					id: nodeCredentials.id,
+					type: nodeCredentialType,
+				});
+				if (credentials) {
+					credentialsById[nodeCredentialType][nodeCredentials.id] = {
+						id: credentials.id.toString(),
+						name: credentials.name,
+					};
+					node.credentials[nodeCredentialType] =
+						credentialsById[nodeCredentialType][nodeCredentials.id];
+					continue;
+				}
+				// no credentials found for ID, check if some exist for name
+				const credsByName = await Db.collections.Credentials?.find({
+					name: nodeCredentials.name,
+					type: nodeCredentialType,
+				});
+				// if credential name-type combination is unique, take it
+				if (credsByName?.length === 1) {
+					// add found credential to cache
+					credentialsById[nodeCredentialType][credsByName[0].id] = {
+						id: credsByName[0].id.toString(),
+						name: credsByName[0].name,
+					};
+					node.credentials[nodeCredentialType] =
+						credentialsById[nodeCredentialType][credsByName[0].id];
+					continue;
+				}
+
+				// nothing found - add invalid credentials to cache to prevent further DB checks
+				credentialsById[nodeCredentialType][nodeCredentials.id] = nodeCredentials;
+				continue;
+			}
+
+			// get credentials from cache
+			node.credentials[nodeCredentialType] =
+				credentialsById[nodeCredentialType][nodeCredentials.id];
+		}
+	}
+	/* eslint-enable no-await-in-loop */
+	return workflow;
 }
 
 // TODO: Deduplicate `validateWorkflow` and `throwDuplicateEntryError` with TagHelpers?
