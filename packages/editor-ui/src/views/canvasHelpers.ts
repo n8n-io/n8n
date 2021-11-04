@@ -67,6 +67,11 @@ export const CONNECTOR_PAINT_STYLE_DEFAULT: PaintStyle = {
 	outlineStroke: 'transparent',
 };
 
+export const CONNECTOR_PAINT_STYLE_PULL: PaintStyle = {
+	...CONNECTOR_PAINT_STYLE_DEFAULT,
+	stroke: getStyleTokenValue('--color-foreground-xdark'),
+};
+
 export const CONNECTOR_PAINT_STYLE_PRIMARY = {
 	...CONNECTOR_PAINT_STYLE_DEFAULT,
 	stroke: getStyleTokenValue('--color-primary'),
@@ -555,7 +560,7 @@ export const showDropConnectionState = (connection: Connection, targetEndpoint?:
 export const showPullConnectionState = (connection: Connection) => {
 	if (connection && connection.connector) {
 		connection.connector.resetTargetEndpoint();
-		connection.setPaintStyle(CONNECTOR_PAINT_STYLE_DEFAULT);
+		connection.setPaintStyle(CONNECTOR_PAINT_STYLE_PULL);
 		showOverlay(connection, OVERLAY_DROP_NODE_ID);
 		hideOverlay(connection, OVERLAY_ENDPOINT_ARROW_ID);
 	}
