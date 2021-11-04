@@ -39,6 +39,19 @@ While n8n.cloud and n8n are the same in terms of features, n8n.cloud provides ce
 - Managed OAuth for authentication
 - Easily upgrading to the newest n8n versions
 
+## n8n desktop
+
+The n8n desktop app is the fastest way to try n8n on Windows or Mac computers (support for Linux is coming soon). Download the app from the link below:
+
+[Download for Windows](https://DOWNLOADLINK-WINDOWS)
+[Download for macOS](https://DOWNLOADLINK-MAC)
+
+**Note:** The app is currently in beta and does not support a few nodes. You can read more about it [here](https://GITHUB-README-LINK).
+
+::: tip 💡 Keep in mind
+If you have already installed n8n locally via `npm`, the desktop app will connect to the existing `sqlite` database.
+:::
+
 ## Support
 
 If you have problems or questions, the fastest method is to go to our [forum](https://community.n8n.io).
