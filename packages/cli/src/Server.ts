@@ -679,6 +679,7 @@ class App {
 
 					// @ts-ignore
 					savedWorkflow.id = savedWorkflow.id.toString();
+					await this.externalHooks.run('workflow.afterCreate', [savedWorkflow]);
 					void InternalHooksManager.getInstance().onWorkflowCreated(newWorkflow as IWorkflowBase);
 					return savedWorkflow;
 				},
