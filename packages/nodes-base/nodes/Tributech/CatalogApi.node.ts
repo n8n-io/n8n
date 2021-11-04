@@ -88,7 +88,7 @@ export class CatalogApi implements INodeType {
 					page: this.getNodeParameter('page', i),
 				};
 
-				return catalogApiRequest.call(this, 'GET', '/manage/entities', {}, qs);
+				return catalogApiRequest.call(this, 'GET', '/manage/entities', {}, qs).then(result => result?.data);
 			} else if (operation === 'addNewModels') {
 				const modelArray = (this.getNodeParameter('models', i) as IDataObject)?.model as IDataObject[];
 				const body: IDataObject[] = modelArray.map(model => model.models) as IDataObject[];
@@ -112,7 +112,8 @@ export class CatalogApi implements INodeType {
 				return catalogApiRequest.call(this, 'GET', '/graph/roots');
 			} else if (operation === 'getBases') {
 				const dtmi = this.getNodeParameter('dtmi', i);
-				return catalogApiRequest.call(this, 'GET', `/graph/${dtmi}/bases`);
+				return catalogApiRequest.call(this, 'GET', `/graph/${dtmi}/bases`)
+					.then((res: string[]) => res?.map(model => ({baseDTMI: model})));
 			} else if (operation === 'getExpanded') {
 				const dtmi = this.getNodeParameter('dtmi', i);
 				return catalogApiRequest.call(this, 'GET', `/graph/${dtmi}/expand`);

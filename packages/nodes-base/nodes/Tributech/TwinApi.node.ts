@@ -92,7 +92,7 @@ export class TwinApi implements INodeType {
 				if (Object.keys(filters).length) {
 					Object.assign(qs, filters);
 				}
-				return twinApiRequest.call(this, 'GET', '/twins', {}, qs);
+				return twinApiRequest.call(this, 'GET', '/twins', {}, qs).then(result => result?.content);
 			} else if (operation === 'getTwinsByModelId') {
 				const dtmi = this.getNodeParameter('dtmi', i);
 
@@ -103,7 +103,7 @@ export class TwinApi implements INodeType {
 					Object.assign(qs, filters);
 				}
 
-				return twinApiRequest.call(this, 'GET', `/model/${dtmi}`, {}, qs);
+				return twinApiRequest.call(this, 'GET', `/model/${dtmi}`, {}, qs).then(result => result?.content);
 			} else if (operation === 'getTwinById') {
 				const dtid = this.getNodeParameter('dtid', i);
 				return twinApiRequest.call(this, 'GET', `/twins/${dtid}`, {});
@@ -136,7 +136,7 @@ export class TwinApi implements INodeType {
 					Object.assign(qs, filters);
 				}
 
-				return twinApiRequest.call(this, 'GET', '/relationships', {}, qs);
+				return twinApiRequest.call(this, 'GET', '/relationships', {}, qs).then(result => result?.data);
 			} else if (operation === 'postRelationship') {
 				const body = this.getNodeParameter('relationship', i) as IDataObject;
 				return twinApiRequest.call(this, 'POST', '/relationships', body);

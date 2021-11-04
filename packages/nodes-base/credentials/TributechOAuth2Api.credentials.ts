@@ -42,7 +42,7 @@ export class TributechOAuth2Api implements ICredentialType {
 		{
 			displayName: 'Scope',
 			name: 'scope',
-			type: 'string',
+			type: 'hidden',
 			default: 'openid profile data-api trust-api catalog-api twin-api node-id offline_access',
 		},
 		{
