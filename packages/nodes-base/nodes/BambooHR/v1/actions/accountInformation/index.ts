@@ -47,12 +47,7 @@ export const descriptions = [
         name: 'Get Users',
         value: 'getUsers',
         description: 'Get a List of Users',
-      },
-      {
-        name: 'Add or Update Fields',
-        value: 'updateFields',
-        description: 'Add or Update Values for List Fields',
-      },
+      }
     ],
     default: 'getFields',
     description: '',

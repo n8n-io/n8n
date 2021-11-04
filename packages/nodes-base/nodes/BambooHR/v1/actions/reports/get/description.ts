@@ -37,7 +37,7 @@ export const reportsGetDescription: ReportsProperties = [
       },
     },
     default: '',
-    description: 'Id of the Report',
+    description: 'Id of the Report. You can get the report number by hovering over the report name on the reports page and grabbing the ID.',
   },
   {
     displayName: 'Format',

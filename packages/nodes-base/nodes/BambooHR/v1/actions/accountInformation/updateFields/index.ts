@@ -1,5 +1,5 @@
-import { create as execute } from './execute';
-import { companyFilesCreateDescription as description } from './description';
+import { updateFields as execute } from './execute';
+import { accountInformationUpdateFieldsDescription as description } from './description';
 
 export {
   description,

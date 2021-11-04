@@ -1,7 +1,7 @@
 import {
-  CompanyFilesProperties,
+  AccountInformationProperties,
 } from '../../Interfaces';
 
-export const companyFilesCreateDescription: CompanyFilesProperties = [
+export const accountInformationUpdateFieldsDescription: AccountInformationProperties = [
   
 ];
