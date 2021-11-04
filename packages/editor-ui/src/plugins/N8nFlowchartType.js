@@ -236,8 +236,8 @@
 					oIndex = 1;
 				so = [];
 				to = [];
-				so[index] = params.sourcePos[index] > targetPos[index] ? -1 : 1;
-				to[index] = -1;//params.sourcePos[index] > targetPos[index] ? 1 : -1; // always default to orienting right
+				so[index] = 1; //params.sourcePos[index] > targetPos[index] ? -1 : 1; // always default to orienting right
+				to[index] = -1;//params.sourcePos[index] > targetPos[index] ? 1 : -1; // always default to orienting left
 				so[oIndex] = 0;
 				to[oIndex] = 0;
 			}
@@ -524,10 +524,6 @@
 				midy = paintInfo.startStubY - (diffX < 0 ? direction * loopbackVerticalLength : 0);
 			} else {
 				midy = paintInfo.startStubY + ((paintInfo.endStubY - paintInfo.startStubY) * midpoint);
-			}
-
-			if (diffX < 0 && diffX > (-1 * loopbackVerticalLength) && Math.abs(diffY) < loopbackVerticalLength) {
-				midy = 0;
 			}
 
 			var orientations = {x: [0, 1], y: [1, 0]},
