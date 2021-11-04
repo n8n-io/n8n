@@ -122,7 +122,6 @@ export const nodeBase = mixins(
 	},
 	props: [
 		'name',
-		'nodeId',
 		'instance',
 		'isReadOnly',
 		'isActive',
