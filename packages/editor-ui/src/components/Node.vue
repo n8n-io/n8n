@@ -1,5 +1,6 @@
 <template>
 	<div class="node-wrapper" :style="nodePosition">
+		<div :class="{'selected': true, 'has-subtitles': !!nodeSubtitle}" v-show="isSelected"></div>
 		<div class="node-default" :data-name="data.name" :ref="data.name" :style="nodeStyle" :class="nodeClass" @dblclick="setNodeActive" @click.left="mouseLeftClick" v-touch:start="touchStart" v-touch:end="touchEnd">
 			<div v-if="hasIssues" class="node-info-icon node-issues">
 				<n8n-tooltip placement="top" >
@@ -42,7 +43,7 @@
 
 			<NodeIcon class="node-icon" :nodeType="nodeType" :size="40" :shrink="false" :disabled="this.data.disabled"/>
 		</div>
-		<div :class="{'selected': isSelected, 'desc': true}">
+		<div class="desc">
 			<div class="node-description">
 				<div class="node-name" :title="data.name">
 					<p>{{data.name}}</p>
@@ -436,17 +437,14 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 
 .selected {
 	display: block;
-	background-color: rgb(219, 223, 231, .5);
-	// background-color: hsla(var(--color-foreground-base-h), var(--color-foreground-base-s), var(--color-foreground-base-l, 50%));
+	background-color: hsla(var(--color-foreground-base-h), var(--color-foreground-base-s), var(--color-foreground-base-l), 50%);
 	border-radius: var(--border-radius-xlarge);
 	overflow: hidden;
+	position: absolute;
 	left: -8px !important;
-	overflow: hidden;
+	top: -8px !important;
+	height: 116px;
 	width: 116px !important;
-
-	.node-name > p {
-		-webkit-line-clamp: 1 !important;
-	}
 }
 
 .desc {
