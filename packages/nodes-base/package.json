@@ -552,6 +552,7 @@
       "dist/nodes/Reddit/Reddit.node.js",
       "dist/nodes/Redis/Redis.node.js",
       "dist/nodes/RenameKeys.node.js",
+      "dist/nodes/RespondToWebhook.node.js",
       "dist/nodes/Rocketchat/Rocketchat.node.js",
       "dist/nodes/RssFeedRead.node.js",
       "dist/nodes/Rundeck/Rundeck.node.js",
