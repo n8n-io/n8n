@@ -301,27 +301,22 @@ export class Dropcontact implements INodeType {
 				const options = this.getNodeParameter('options', 0) as IDataObject;
 				const data = [];
 				const simplify = this.getNodeParameter('simplify', 0) as boolean;
+
+				const siren = options.siren === true ? true : false;
+				const language = options.language ? options.language : 'en';
+
 				for (let i = 0; i < entryData.length; i++) {
 					const email = this.getNodeParameter('email', i) as string;
 					const additionalFields = this.getNodeParameter('additionalFields', i);
-					const body: IDataObject = {
-						siren: false,
-						language: 'en',
-					};
+					const body: IDataObject = {};
 					if (email !== '') {
 						body.email = email;
 					}
 					Object.assign(body, additionalFields);
-					if (options.language) {
-						body.language = options.language;
-					}
-					if (options.siren) {
-						body.siren = options.siren;
-					}
 					data.push(body);
 				}
 
-				responseData = await dropcontactApiRequest.call(this, 'POST', '/batch', { data }, {}) as { request_id: string, error: string, success: boolean };
+				responseData = await dropcontactApiRequest.call(this, 'POST', '/batch', { data, siren, language }, {}) as { request_id: string, error: string, success: boolean };
 
 				if (!responseData.success) {
 					if (this.continueOnFail()) {
