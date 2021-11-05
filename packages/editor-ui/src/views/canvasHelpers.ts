@@ -226,6 +226,10 @@ export const hideOverlay = (item: Connection | Endpoint, overlayId: string) => {
 };
 
 export const showOrHideMidpointArrow = (connection: Connection) => {
+	if (!connection || !connection.endpoints || connection.endpoints.length !== 2) {
+		return;
+	}
+
 	const hasItemsLabel = !!getOverlay(connection, OVERLAY_RUN_ITEMS_ID);
 
 	const sourceEndpoint = connection.endpoints[0];
