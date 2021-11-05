@@ -356,7 +356,6 @@ export type IHttpRequestMethods = 'DELETE' | 'GET' | 'HEAD' | 'PATCH' | 'POST' |
 
 export interface IHttpRequestOptions {
 	url: string;
-	// TODO: Still have to add support in httpRequest function that it gets also used
 	baseURL?: string;
 	headers?: IDataObject;
 	method?: IHttpRequestMethods;
