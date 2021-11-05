@@ -1198,9 +1198,11 @@ export default mixins(
 			getConnection (sourceNodeName: string, sourceNodeOutputIndex: number, targetNodeName: string, targetNodeOuputIndex: number): IConnection | undefined {
 				const nodeConnections = (this.$store.getters.outgoingConnectionsByNodeName(sourceNodeName) as INodeConnections).main;
 				if (nodeConnections) {
-					const connections: IConnection[] = nodeConnections[sourceNodeOutputIndex];
+					const connections: IConnection[] | null = nodeConnections[sourceNodeOutputIndex];
 
-					return connections.find((connection: IConnection) => connection.node === targetNodeName && connection.index === targetNodeOuputIndex);
+					if (connections) {
+						return connections.find((connection: IConnection) => connection.node === targetNodeName && connection.index === targetNodeOuputIndex);
+					}
 				}
 
 				return undefined;
