@@ -1299,6 +1299,10 @@ export class Workflow {
 					postReceive: [],
 				};
 
+				if (nodeType.description.requestDefaults) {
+					Object.assign(requestData.options, nodeType.description.requestDefaults);
+				}
+
 				for (const property of nodeType.description.properties) {
 					const tempOptions = this.getRequestOptionsFromParameters.call(
 						thisArgs,
