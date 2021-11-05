@@ -380,7 +380,7 @@ export const getBackgroundStyles = (scale: number, offsetPosition: XYPosition) =
 };
 
 export const hideConnectionActions = (connection: Connection | null) => {
-	if (connection) {
+	if (connection && connection.connector) {
 		hideOverlay(connection, OVERLAY_CONNECTION_ACTIONS_ID);
 		showOrHideItemsLabel(connection);
 		showOrHideMidpointArrow(connection);
@@ -388,7 +388,7 @@ export const hideConnectionActions = (connection: Connection | null) => {
 };
 
 export const showConectionActions = (connection: Connection | null) => {
-	if (connection) {
+	if (connection && connection.connector) {
 		showOverlay(connection, OVERLAY_CONNECTION_ACTIONS_ID);
 		hideOverlay(connection, OVERLAY_RUN_ITEMS_ID);
 		if (!getOverlay(connection, OVERLAY_RUN_ITEMS_ID)) {

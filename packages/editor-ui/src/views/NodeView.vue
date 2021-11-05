@@ -1369,7 +1369,7 @@ export default mixins(
 										return;
 									}
 
-									if (info.connection === activeConnection) {
+									if (!info.connection || info.connection === activeConnection) {
 										return;
 									}
 
@@ -1378,9 +1378,10 @@ export default mixins(
 
 									enterTimer = setTimeout(() => {
 										enterTimer = undefined;
-										activeConnection = info.connection;
-										CanvasHelpers.showConectionActions(info.connection);
-
+										if (info.connection) {
+											activeConnection = info.connection;
+											CanvasHelpers.showConectionActions(info.connection);
+										}
 									}, 150);
 								} catch (e) {
 									console.error(e);
@@ -1398,14 +1399,14 @@ export default mixins(
 										enterTimer = undefined;
 									}
 
-									if (activeConnection !== info.connection) {
+									if (!info.connection || activeConnection !== info.connection) {
 										return;
 									}
 
 									exitTimer = setTimeout(() => {
 										exitTimer = undefined;
 
-										if (activeConnection === info.connection) {
+										if (info.connection && activeConnection === info.connection) {
 											CanvasHelpers.hideConnectionActions(activeConnection);
 											activeConnection = null;
 										}
