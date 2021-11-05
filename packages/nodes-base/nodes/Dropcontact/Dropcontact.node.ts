@@ -109,6 +109,57 @@ export class Dropcontact implements INodeType {
 				default: '',
 			},
 			{
+				displayName: 'Simplify Output (Faster)',
+				name: 'simplify',
+				type: 'boolean',
+				displayOptions: {
+					show: {
+						resource: [
+							'contact',
+						],
+						operation: [
+							'enrich',
+						],
+					},
+				},
+				default: false,
+				description: 'When off, waits for the contact data before completing. Waiting time can be adjusted with Extend Wait Time option. When on, returns a request_id that can be used later in the Fetch Request operation.',
+			},
+			{
+				displayName: 'Extend Wait Time',
+				name: 'extendWaitTime',
+				type: 'boolean',
+				displayOptions: {
+					show: {
+						simplify: [
+							true,
+						],
+					},
+				},
+				default: false,
+				description: 'Whether to wait longer before checking if the contact data is ready. Default wait time is 45 seconds',
+			},
+			{
+				displayName: 'Wait Time (Seconds)',
+				name: 'waitTime',
+				type: 'number',
+				typeOptions: {
+					minValue: 1,
+				},
+				displayOptions: {
+					show: {
+						simplify: [
+							true,
+						],
+						extendWaitTime: [
+							true,
+						],
+					},
+				},
+				default: 45,
+				description: 'How much longer the node should wait to check if contact data is ready',
+			},
+			{
 				displayName: 'Additional Fields',
 				name: 'additionalFields',
 				type: 'collection',
@@ -229,50 +280,6 @@ export class Dropcontact implements INodeType {
 						default: 'en',
 						description: 'Whether the response is in English or French',
 					},
-					{
-						displayName: 'Wait For Enriched Data',
-						name: 'wait',
-						type: 'boolean',
-						default: true,
-						description: `Wait for the contact to be enriched before returning.
-				If after three tries the contact is not ready, an error will be thrown.
-				Number of tries can be increased by setting "Wait Max Tries"`,
-					},
-					{
-						displayName: 'Wait Max Tries',
-						name: 'maxTries',
-						type: 'number',
-						typeOptions: {
-							minValue: 1,
-							maxValue: 10,
-						},
-						displayOptions: {
-							show: {
-								wait: [
-									true,
-								],
-							},
-						},
-						default: 3,
-						description: `How often it should check if the enriched data is available before it fails`,
-					},
-					{
-						displayName: 'Wait Time',
-						name: 'waitTime',
-						type: 'number',
-						typeOptions: {
-							minValue: 1,
-						},
-						displayOptions: {
-							show: {
-								wait: [
-									true,
-								],
-							},
-						},
-						default: 45,
-						description: 'Time (in seconds) the node waits until trying to retrieve the enriched data',
-					},
 				],
 			},
 		],
@@ -310,6 +317,7 @@ export class Dropcontact implements INodeType {
 			if (operation === 'enrich') {
 				const options = this.getNodeParameter('options', 0) as IDataObject;
 				const data = [];
+				const simplify = this.getNodeParameter('simplify', 0) as boolean;
 				for (let i = 0; i < entryData.length; i++) {
 					const email = this.getNodeParameter('email', i) as string;
 					const additionalFields = this.getNodeParameter('additionalFields', i);
@@ -336,40 +344,28 @@ export class Dropcontact implements INodeType {
 					if (this.continueOnFail()) {
 						returnData.push({ error: responseData.reason || 'invalid request' });
 					} else {
-						throw new NodeApiError(this.getNode(), { error: 'invalid request' });
+						throw new NodeApiError(this.getNode(), { error: responseData.reason || 'invalid request' });
 					}
 				}
 
-				let wait = true;
-
-				if (options.hasOwnProperty('wait')) {
-					wait = options.wait as boolean;
-				}
-
-				if (wait) {
-					const waitTime = this.getNodeParameter('options.waitTime', 0, 45) as number;
-					let maxTries = this.getNodeParameter('options.maxTries', 0, 3) as number;
-					const promise = (requestId: string) => {
-						return new Promise((resolve, reject) => {
-							const timeout = setInterval(async () => {
-								responseData = await dropcontactApiRequest.call(this, 'GET', `/batch/${requestId}`, {}, {});
-								if (responseData.hasOwnProperty('data')) {
-									clearInterval(timeout);
-									resolve(responseData);
-								}
-								if (--maxTries === 0) {
-									clearInterval(timeout);
-									reject(new NodeApiError(this.getNode(), {}, {
-										message: responseData.reason,
-										description: 'Hint: Increase the Max Tries or Wait Time to avoid this error',
-									}));
-								}
-							}, waitTime * 1000);
-						});
-					};
-
-					responseData = await promise(responseData.request_id);
-					returnData.push(...responseData.data);
+				if (simplify) {
+					const waitTime = this.getNodeParameter('waitTime', 0, 45) as number;
+					// tslint:disable-next-line: no-any
+					const delay = (ms: any) => new Promise(res => setTimeout(res, ms * 1000));
+					await delay(waitTime);
+					responseData = await dropcontactApiRequest.call(this, 'GET', `/batch/${responseData.request_id}`, {}, {});
+					if (!responseData.success) {
+						if (this.continueOnFail()) {
+							responseData.push({ error: responseData.reason });
+						} else {
+							throw new NodeApiError(this.getNode(), {
+								error: responseData.reason,
+								description: 'Hint: Increase the Wait Time to avoid this error',
+							});
+						}
+					} else {
+						returnData.push(...responseData.data);
+					}
 				} else {
 					returnData.push(responseData);
 				}
@@ -380,7 +376,6 @@ export class Dropcontact implements INodeType {
 					const requestId = this.getNodeParameter('requestId', i) as string;
 					responseData = await dropcontactApiRequest.call(this, 'GET', `/batch/${requestId}`, {}, {}) as { request_id: string, error: string, success: boolean };
 					if (!responseData.success) {
-						console.log(responseData);
 						if (this.continueOnFail()) {
 							responseData.push({ error: responseData.reason || 'invalid request' });
 						} else {
