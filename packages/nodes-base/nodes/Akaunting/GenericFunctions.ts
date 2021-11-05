@@ -11,10 +11,15 @@ import {
 	OptionsWithUri,
 } from 'request';
 
+import FormData = require('form-data');
+
+var request = require('request')
+
 /**
  * Make an API request to Upload Data MonkeyLearn
  *
  * @param {IHookFunctions} this
+ * @param {object} headers
  * @param {string} method
  * @param {string} url_api
  * @param {object} qs
@@ -22,7 +27,7 @@ import {
  * @returns {Promise<any>}
  */
 
- export async function apiCall(this: IHookFunctions | IExecuteFunctions, method : string, url_api:string, qs:IDataObject, body: IDataObject) : Promise<any> {
+ export async function apiCall(this: IHookFunctions | IExecuteFunctions, headers :IDataObject, method : string, url_api:string, qs:IDataObject, body: FormData) : Promise<any> {
  	const credentials = await this.getCredentials('akauntingApi') as {
  		url: string;
  		company_id: string;
@@ -37,19 +42,14 @@ import {
  	try {
  		let url = `${credentials.url}${url_api}`
 		let basic = Buffer.from(`${credentials.username}:${credentials.password}`, 'utf8').toString('base64')
-		console.log(`basic ${basic}`)
-		console.log(`url ${url}`)
-		console.log(`qs ${JSON.stringify(qs)}`)
-		console.log(`body ${JSON.stringify(body)}`)
+		headers.Authorization = `Basic ${basic}`
+
  		const options: OptionsWithUri = {
  			method,
- 			body,
- 			qs,
+ 			formData:body,
  			uri:url,
 			json: true,
- 			headers : {
- 				Authorization : `Basic ${basic}`
- 			},
+ 			headers : headers,
  		};
 
  		return await this.helpers.request(options);
