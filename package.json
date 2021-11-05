@@ -24,5 +24,6 @@
     "rimraf": "^3.0.2",
     "run-script-os": "^1.0.7"
   },
-  "postcss": {}
+  "postcss": {},
+  "dependencies": {}
 }
