@@ -4,6 +4,7 @@ import {
 	ICredentialDataDecryptedObject,
 	ICredentialsHelper,
 	IDataObject,
+	IDeferredPromise,
 	IExecuteWorkflowInfo,
 	IHttpRequestOptions,
 	INodeCredentialsDetails,
@@ -21,7 +22,7 @@ import {
 	WorkflowHooks,
 } from 'n8n-workflow';
 
-import { Credentials, IDeferredPromise, IExecuteFunctions } from '../src';
+import { Credentials, IExecuteFunctions } from '../src';
 
 export class CredentialsHelper extends ICredentialsHelper {
 	async authenticate(

@@ -20,6 +20,8 @@ import set from 'lodash.set';
 import {
 	Expression,
 	IConnections,
+	IDeferredPromise,
+	IExecuteResponsePromiseData,
 	IGetExecuteTriggerFunctions,
 	INode,
 	INodeExecuteFunctions,
@@ -959,10 +961,23 @@ export class Workflow {
 
 			// Add the manual trigger response which resolves when the first time data got emitted
 			triggerResponse!.manualTriggerResponse = new Promise((resolve) => {
-				// eslint-disable-next-line @typescript-eslint/no-shadow
-				triggerFunctions.emit = ((resolve) => (data: INodeExecutionData[][]) => {
-					resolve(data);
-				})(resolve);
+				triggerFunctions.emit = (
+					(resolveEmit) =>
+					(
+						data: INodeExecutionData[][],
+						responsePromise?: IDeferredPromise<IExecuteResponsePromiseData>,
+					) => {
+						additionalData.hooks!.hookFunctions.sendResponse = [
+							async (response: IExecuteResponsePromiseData): Promise<void> => {
+								if (responsePromise) {
+									responsePromise.resolve(response);
+								}
+							},
+						];
+
+						resolveEmit(data);
+					}
+				)(resolve);
 			});
 
 			return triggerResponse;

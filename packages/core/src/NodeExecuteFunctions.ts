@@ -23,6 +23,7 @@ import {
 	ICredentialsExpressionResolveValues,
 	IDataObject,
 	IExecuteFunctions,
+	IExecuteResponsePromiseData,
 	IExecuteSingleFunctions,
 	IExecuteWorkflowInfo,
 	IHttpRequestOptions,
@@ -1722,6 +1723,9 @@ export function getExecuteFunctions(
 					// eslint-disable-next-line @typescript-eslint/restrict-template-expressions
 					Logger.warn(`There was a problem sending messsage to UI: ${error.message}`);
 				}
+			},
+			async sendResponse(response: IExecuteResponsePromiseData): Promise<void> {
+				await additionalData.hooks?.executeHookFunctions('sendResponse', [response]);
 			},
 			helpers: {
 				httpRequest,

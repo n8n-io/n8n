@@ -119,6 +119,22 @@ const customerUpdateOptions = [
 		],
 	},
 	{
+		displayName: 'Password',
+		name: 'password',
+		type: 'string',
+		displayOptions: {
+			show: {
+				'/resource': [
+					'customer',
+				],
+				'/operation': [
+					'create',
+				],
+			},
+		},
+		default: '',
+	},
+	{
 		displayName: 'Shipping Address',
 		name: 'shipping',
 		type: 'collection',
