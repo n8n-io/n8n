@@ -25,7 +25,5 @@
     "run-script-os": "^1.0.7"
   },
   "postcss": {},
-  "dependencies": {
-    "get-image-urls": "^1.0.5"
-  }
+  "dependencies": {}
 }

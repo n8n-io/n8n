@@ -11,6 +11,10 @@ import {
 	OptionsWithUri,
 } from 'request';
 
+import FormData = require('form-data');
+
+var request = require('request')
+
 /**
  * Make an API request to Upload Data MonkeyLearn
  *
@@ -23,7 +27,7 @@ import {
  * @returns {Promise<any>}
  */
 
- export async function apiCall(this: IHookFunctions | IExecuteFunctions, headers :IDataObject, method : string, url_api:string, qs:IDataObject, body: IDataObject) : Promise<any> {
+ export async function apiCall(this: IHookFunctions | IExecuteFunctions, headers :IDataObject, method : string, url_api:string, qs:IDataObject, body: FormData) : Promise<any> {
  	const credentials = await this.getCredentials('akauntingApi') as {
  		url: string;
  		company_id: string;
@@ -39,15 +43,10 @@ import {
  		let url = `${credentials.url}${url_api}`
 		let basic = Buffer.from(`${credentials.username}:${credentials.password}`, 'utf8').toString('base64')
 		headers.Authorization = `Basic ${basic}`
-		console.log(`Headers ${JSON.stringify(headers)}`)
-		console.log(`basic ${basic}`)
-		console.log(`url ${url}`)
-		console.log(`qs ${JSON.stringify(qs)}`)
-		console.log(`body ${JSON.stringify(body)}`)
+
  		const options: OptionsWithUri = {
  			method,
- 			body,
- 			qs,
+ 			formData:body,
  			uri:url,
 			json: true,
  			headers : headers,
@@ -58,26 +57,3 @@ import {
  		throw new NodeApiError(this.getNode(), error);
  	}
  }
-
- /**
- * Make an API request to Upload Data MonkeyLearn
- *
- * @param {IHookFunctions} this
- * @param {string} url
- * @returns {Promise<any>}
- */
-export async function get_image(this: IHookFunctions | IExecuteFunctions, url:string) : Promise<any> {
-	try{
-		const options: OptionsWithUri = {
-			method:"GET",
-			uri:url,
-			encoding: null
-		};
-
-		let resp = await this.helpers.request(options);
-		console.log(resp)
-		return resp
-	}catch(error){
-		throw new NodeApiError(this.getNode(), error);
-	}
-}

@@ -1,10 +1,8 @@
 import {
-	BINARY_ENCODING,
 	IExecuteFunctions,
 } from 'n8n-core';
 
 import {
-	IBinaryData,
 	IDataObject,
 	INodeExecutionData,
 	INodeType,
@@ -14,14 +12,14 @@ import {
 
 import {
 	apiCall,
-	get_image
 } from './GenericFunctions';
 
 import {
 	additionalData
 } from './AdditionalInfo'
 
-var fs = require('fs')
+var request = require("request")
+import FormData = require('form-data');
 
 export class Akaunting implements INodeType {
 	description: INodeTypeDescription = {
@@ -214,57 +212,44 @@ export class Akaunting implements INodeType {
 				let currency_rate = this.getNodeParameter('currency_rate', i) as string
 				const additional = this.getNodeParameter('additional', i) as IDataObject;
 
-				let qs : IDataObject = {
-					company_id : credentials.company_id,
-					account_id,
-					category_id,
-					paid_at,
-					payment_method,
-					amount,
-					currency_code,
-					currency_rate
-				}
+				let body = new FormData()
+				body.append("company_id", credentials.company_id)
+				body.append("account_id", account_id)
+				body.append("category_id", category_id)
+				body.append("paid_at", paid_at)
+				body.append("payment_method", payment_method)
+				body.append("amount", amount)
+				body.append("currency_code", currency_code)
+				body.append("currency_rate", currency_rate)
+
 
 				if (additional.reference) {
-					qs.reference = additional.reference;
+					body.append("reference", additional.reference)
 				}
 
 				if (additional.contact_id) {
-					qs.contact_id = additional.contact_id;
+					body.append("contact_id", additional.contact_id)
 				}
 
 				if (additional.description) {
-					qs.description = additional.description;
+					body.append("description", additional.description)
 				}
 
-				let body : IDataObject = {}
 				if (additional.attachment) {
-					let item = await get_image.call(this, additional.attachment as string)
-
-					const binaryProperty = item as IBinaryData
-					console.log(JSON.stringify(binaryProperty))
-
-					body.attachment = [
-						{
-							value: Buffer.from(binaryProperty.data, BINARY_ENCODING),
-							options: {
-								filename: binaryProperty.fileName,
-								contentType: binaryProperty.mimeType,
-							}
-						}
-					]
+					body.append("attachment[0]", request(additional.attachment as string))
 				}
 
+				const headers : {} = body.getHeaders()
 				if(resource=="create_payment"){
-					qs.search = "type:expense"
-					qs.type = "expense",
+					body.append("search","type:expense")
+					body.append("type","expense")
 
-					responseData = await apiCall.call(this, {}, "POST", "/api/transactions", qs, body)
+					responseData = await apiCall.call(this, headers, "POST", "/api/transactions", {}, body)
 				}else if(resource=="create_revenue"){
-					qs.search = "type:income"
-					qs.type = "income"
+					body.append("search","type:income")
+					body.append("type", "income")
 
-					responseData = await apiCall.call(this, {}, "POST", "/api/transactions", qs, body);
+					responseData = await apiCall.call(this, headers, "POST", "/api/transactions", {}, body);
 				}else{
 					throw new NodeOperationError(this.getNode(), `The resource "${resource}" is not known!`);
 				}
