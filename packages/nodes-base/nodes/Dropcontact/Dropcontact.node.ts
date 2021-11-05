@@ -126,40 +126,6 @@ export class Dropcontact implements INodeType {
 				description: 'When off, waits for the contact data before completing. Waiting time can be adjusted with Extend Wait Time option. When on, returns a request_id that can be used later in the Fetch Request operation.',
 			},
 			{
-				displayName: 'Extend Wait Time',
-				name: 'extendWaitTime',
-				type: 'boolean',
-				displayOptions: {
-					show: {
-						simplify: [
-							true,
-						],
-					},
-				},
-				default: false,
-				description: 'Whether to wait longer before checking if the contact data is ready. Default wait time is 45 seconds',
-			},
-			{
-				displayName: 'Wait Time (Seconds)',
-				name: 'waitTime',
-				type: 'number',
-				typeOptions: {
-					minValue: 1,
-				},
-				displayOptions: {
-					show: {
-						simplify: [
-							true,
-						],
-						extendWaitTime: [
-							true,
-						],
-					},
-				},
-				default: 45,
-				description: 'How much longer the node should wait to check if contact data is ready',
-			},
-			{
 				displayName: 'Additional Fields',
 				name: 'additionalFields',
 				type: 'collection',
@@ -256,6 +222,23 @@ export class Dropcontact implements INodeType {
 				default: {},
 				options: [
 					{
+						displayName: 'Data Fetch Wait Time',
+						name: 'waitTime',
+						type: 'number',
+						typeOptions: {
+							minValue: 1,
+						},
+						displayOptions: {
+							show: {
+								'/simplify': [
+									false,
+								],
+							},
+						},
+						default: 45,
+						description: 'When not simplifying the response, data will be fetched in two steps. This parameter controls how long to wait (in seconds) before trying the second step',
+					},
+					{
 						displayName: 'French Company Enrich',
 						name: 'siren',
 						type: 'boolean',
@@ -348,8 +331,8 @@ export class Dropcontact implements INodeType {
 					}
 				}
 
-				if (simplify) {
-					const waitTime = this.getNodeParameter('waitTime', 0, 45) as number;
+				if (simplify === false) {
+					const waitTime = this.getNodeParameter('options.waitTime', 0, 45) as number;
 					// tslint:disable-next-line: no-any
 					const delay = (ms: any) => new Promise(res => setTimeout(res, ms * 1000));
 					await delay(waitTime);
