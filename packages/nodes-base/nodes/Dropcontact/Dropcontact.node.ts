@@ -300,6 +300,7 @@ export class Dropcontact implements INodeType {
 		const operation = this.getNodeParameter('operation', 0) as string;
 		// tslint:disable-next-line: no-any
 		let responseData: any;
+		const returnData: IDataObject[] = [];
 
 		if (resource === 'contact') {
 			if (operation === 'enrich') {
@@ -310,7 +311,7 @@ export class Dropcontact implements INodeType {
 					const additionalFields = this.getNodeParameter('additionalFields', i);
 					const body: IDataObject = {
 						siren: false,
-						laguange: 'en',
+						language: 'en',
 					};
 					if (email !== '') {
 						body.email = email;
@@ -329,7 +330,7 @@ export class Dropcontact implements INodeType {
 
 				if (!responseData.success) {
 					if (this.continueOnFail()) {
-						responseData.push({ error: responseData.reason || 'invalid request' });
+						returnData.push({ error: responseData.reason || 'invalid request' });
 					} else {
 						throw new NodeApiError(this.getNode(), { error: 'invalid request' });
 					}
@@ -364,12 +365,13 @@ export class Dropcontact implements INodeType {
 					};
 
 					responseData = await promise(responseData.request_id);
-					responseData = responseData.data;
+					returnData.push(...responseData.data);
+				} else {
+					returnData.push(responseData);
 				}
 			}
 
 			if (operation === 'fetchRequest') {
-				responseData = [];
 				for (let i = 0; i < entryData.length; i++) {
 					const requestId = this.getNodeParameter('requestId', i) as string;
 					responseData = await dropcontactApiRequest.call(this, 'GET', `/batch/${requestId}`, {}, {}) as { request_id: string, error: string, success: boolean };
@@ -380,11 +382,11 @@ export class Dropcontact implements INodeType {
 							throw new NodeApiError(this.getNode(), { error: 'invalid request' });
 						}
 					}
-					responseData.push(...responseData.data);
+					returnData.push(...responseData.data);
 				}
 			}
 		}
 
-		return [this.helpers.returnJsonArray(responseData as IDataObject)];
+		return [this.helpers.returnJsonArray(returnData)];
 	}
 }
