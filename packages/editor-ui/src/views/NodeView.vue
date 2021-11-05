@@ -1349,50 +1349,60 @@ export default mixins(
 						let exitTimer: NodeJS.Timeout | undefined;
 						let enterTimer: NodeJS.Timeout | undefined;
 						info.connection.bind('mouseover', (connection: Connection) => {
-							if (exitTimer !== undefined) {
-								clearTimeout(exitTimer);
-								exitTimer = undefined;
+							try {
+								if (exitTimer !== undefined) {
+									clearTimeout(exitTimer);
+									exitTimer = undefined;
+								}
+
+								if (enterTimer) {
+									return;
+								}
+
+								if (info.connection === activeConnection) {
+									return;
+								}
+
+								CanvasHelpers.hideConnectionActions(activeConnection);
+
+
+								enterTimer = setTimeout(() => {
+									enterTimer = undefined;
+									activeConnection = info.connection;
+									CanvasHelpers.showConectionActions(info.connection);
+
+								}, 150);
+							} catch (e) {
+								console.error(e);
 							}
-
-							if (enterTimer) {
-								return;
-							}
-
-							if (info.connection === activeConnection) {
-								return;
-							}
-
-							CanvasHelpers.hideConnectionActions(activeConnection);
-
-							enterTimer = setTimeout(() => {
-								enterTimer = undefined;
-								activeConnection = info.connection;
-								CanvasHelpers.showConectionActions(info.connection);
-							}, 150);
 						});
 
 						info.connection.bind('mouseout', (connection: Connection) => {
-							if (exitTimer) {
-								return;
-							}
-
-							if (enterTimer) {
-								clearTimeout(enterTimer);
-								enterTimer = undefined;
-							}
-
-							if (activeConnection !== info.connection) {
-								return;
-							}
-
-							exitTimer = setTimeout(() => {
-								exitTimer = undefined;
-
-								if (activeConnection === info.connection) {
-									CanvasHelpers.hideConnectionActions(activeConnection);
-									activeConnection = null;
+							try {
+								if (exitTimer) {
+									return;
 								}
-							}, 500);
+
+								if (enterTimer) {
+									clearTimeout(enterTimer);
+									enterTimer = undefined;
+								}
+
+								if (activeConnection !== info.connection) {
+									return;
+								}
+
+								exitTimer = setTimeout(() => {
+									exitTimer = undefined;
+
+									if (activeConnection === info.connection) {
+										CanvasHelpers.hideConnectionActions(activeConnection);
+										activeConnection = null;
+									}
+								}, 500);
+							} catch (e) {
+								console.error(e);
+							}
 						});
 
 						CanvasHelpers.addConnectionActionsOverlay(info.connection,
