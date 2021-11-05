@@ -79,6 +79,7 @@ export class Dropcontact implements INodeType {
 				displayName: 'Request ID',
 				name: 'requestId',
 				type: 'string',
+				required: true,
 				displayOptions: {
 					show: {
 						resource: [
@@ -209,7 +210,7 @@ export class Dropcontact implements INodeType {
 						type: 'boolean',
 						default: false,
 						description: `Whether you want the <a href="https://en.wikipedia.org/wiki/SIREN_code" target="_blank">SIREN number</a>, NAF code, TVA number, company address and informations about the company leader.</br>
-						Only applies to french companies.`,
+						Only applies to french companies`,
 					},
 					{
 						displayName: 'Language',
@@ -233,9 +234,9 @@ export class Dropcontact implements INodeType {
 						name: 'wait',
 						type: 'boolean',
 						default: true,
-						description: `Wait for the contact to be enriched before returning.<br />
-				If after three tries the contact is not ready, an error will be thrown.<br />
-				Number of tries can be increased by setting "Wait Max Tries".`,
+						description: `Wait for the contact to be enriched before returning.
+				If after three tries the contact is not ready, an error will be thrown.
+				Number of tries can be increased by setting "Wait Max Tries"`,
 					},
 					{
 						displayName: 'Wait Max Tries',
@@ -259,6 +260,9 @@ export class Dropcontact implements INodeType {
 						displayName: 'Wait Time',
 						name: 'waitTime',
 						type: 'number',
+						typeOptions: {
+							minValue: 1,
+						},
 						displayOptions: {
 							show: {
 								wait: [
@@ -376,10 +380,11 @@ export class Dropcontact implements INodeType {
 					const requestId = this.getNodeParameter('requestId', i) as string;
 					responseData = await dropcontactApiRequest.call(this, 'GET', `/batch/${requestId}`, {}, {}) as { request_id: string, error: string, success: boolean };
 					if (!responseData.success) {
+						console.log(responseData);
 						if (this.continueOnFail()) {
 							responseData.push({ error: responseData.reason || 'invalid request' });
 						} else {
-							throw new NodeApiError(this.getNode(), { error: 'invalid request' });
+							throw new NodeApiError(this.getNode(), { error: responseData.reason || 'invalid request' });
 						}
 					}
 					returnData.push(...responseData.data);
