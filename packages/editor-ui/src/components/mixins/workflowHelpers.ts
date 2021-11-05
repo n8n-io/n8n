@@ -426,8 +426,15 @@ export const workflowHelpers = mixins(
 				};
 
 				// @ts-ignore
-				const expressionsIframe = document.getElementById('expressions-iframe').contentWindow;
-				return expressionsIframe.getParameterValue(workflow, parameter, runExecutionData, runIndex, itemIndex, activeNode.name, connectionInputData, 'manual', additionalKeys, false) as IDataObject;
+				if (document && document.getElementById('expressions-iframe') && document.getElementById('expressions-iframe').contentWindow) {
+					// iframe should be always loaded and available here
+					// as it has been `await`-ed in `nodeHelpers.ts`.
+					// @ts-ignore
+					const expressionsIframe = document.getElementById('expressions-iframe').contentWindow;
+					return expressionsIframe.getParameterValue(workflow, parameter, runExecutionData, runIndex, itemIndex, activeNode.name, connectionInputData, 'manual', additionalKeys, false) as IDataObject;
+				}
+
+				return workflow.expression.getParameterValue(parameter, runExecutionData, runIndex, itemIndex, activeNode.name, connectionInputData, 'manual', additionalKeys, false) as IDataObject;
 			},
 
 			resolveExpression(expression: string, siblingParameters: INodeParameters = {}) {

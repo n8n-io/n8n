@@ -31,9 +31,8 @@ const getParameterValue = (
 	// Workflow instance is always recreated
 	// so we have to always rewrite the expression object.
 	const expression = new Expression(workflow);
-	workflow.expression = expression;
 
-	return workflow.expression.getParameterValue(
+	return expression.getParameterValue(
 		parameter,
 		runExecutionData,
 		runIndex,
@@ -58,9 +57,8 @@ const getSimpleParameterValue = (
 	// Workflow instance is always recreated
 	// so we have to always rewrite the expression object.
 	const expression = new Expression(workflow);
-	workflow.expression = expression;
 
-	return workflow.expression.getSimpleParameterValue(
+	return expression.getSimpleParameterValue(
 		node,
 		parameterValue,
 		mode,

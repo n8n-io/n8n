@@ -339,12 +339,15 @@ export class Expression {
 
 		// Execute the expression
 		try {
-			// eslint-disable-next-line no-param-reassign
-			parameterValue = `{{ __extendTypes() }}${parameterValue}`;
-			// eslint-disable-next-line @typescript-eslint/unbound-method, no-underscore-dangle
-			data.__extendTypes = Expression.extendTypes;
+			// Extend prototypes first, and then run the actual expression.
+			// This avoids the library concatening the output from both brackets
+			// such as {{ __extendTypes }}{{ 2+3 }} which yields
+			// `undefined` + `5` that is returned as `'5'` instead of `5`
+			// (string 5 instead of number 5). This has even worse impacts
+			// when dealing with arrays.
+			// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call, @typescript-eslint/unbound-method
+			tmpl.tmpl('{{ __extendTypes() }}', { __extendTypes: Expression.extendTypes });
 			data.now = new Date();
-			// TODO: Investigate why this won't work with Luxon
 			const dateToday = new Date();
 			dateToday.setHours(0);
 			dateToday.setMinutes(0);
