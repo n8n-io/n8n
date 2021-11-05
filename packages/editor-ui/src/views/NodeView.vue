@@ -1151,7 +1151,7 @@ export default mixins(
 						let yOffset = 0;
 
 						if (lastSelectedConnection) {
-							const sourceNodeType = this.$store.getters.nodeType(lastSelectedNode.type);
+							const sourceNodeType = this.$store.getters.nodeType(lastSelectedNode.type) as INodeTypeDescription | null;
 							const offsets = [[-100, 100], [-140, 0, 140], [-240, -100, 100, 240]];
 							if (sourceNodeType && sourceNodeType.outputs.length > 1) {
 								const offset = offsets[sourceNodeType.outputs.length - 2];
@@ -1528,8 +1528,8 @@ export default mixins(
 									const nodeName = (element as HTMLElement).dataset['name'] as string;
 									const node = this.$store.getters.getNodeByName(nodeName) as INodeUi | null;
 									if (node) {
-										const nodeType = this.$store.getters.nodeType(node.type) as INodeTypeDescription;
-										if (nodeType.inputs.length === 1) {
+										const nodeType = this.$store.getters.nodeType(node.type) as INodeTypeDescription | null;
+										if (nodeType && nodeType.inputs && nodeType.inputs.length === 1) {
 											this.pullConnActiveNodeName = node.name;
 											const endpoint = this.instance.getEndpoint(this.getInputEndpointUUID(nodeName, 0));
 
@@ -1718,8 +1718,8 @@ export default mixins(
 
 				const node = this.$store.getters.getNodeByName(nodeName);
 
-				const nodeTypeData: INodeTypeDescription = this.$store.getters.nodeType(node.type);
-				if (nodeTypeData.maxNodes !== undefined && this.getNodeTypeCount(node.type) >= nodeTypeData.maxNodes) {
+				const nodeTypeData: INodeTypeDescription | null= this.$store.getters.nodeType(node.type);
+				if (nodeTypeData && nodeTypeData.maxNodes !== undefined && this.getNodeTypeCount(node.type) >= nodeTypeData.maxNodes) {
 					this.showMaxNodeTypeError(nodeTypeData);
 					return;
 				}
@@ -1880,8 +1880,8 @@ export default mixins(
 				}
 
 				// connect nodes before/after deleted node
-				const nodeType: INodeTypeDescription = this.$store.getters.nodeType(node.type, node.typeVersion);
-				if (nodeType.outputs.length === 1
+				const nodeType: INodeTypeDescription | null = this.$store.getters.nodeType(node.type, node.typeVersion);
+				if (nodeType && nodeType.outputs.length === 1
 					&& nodeType.inputs.length === 1) {
 					const {incoming, outgoing} = this.getIncomingOutgoingConnections(node.name);
 					if (incoming.length === 1 && outgoing.length === 1) {
@@ -2051,7 +2051,7 @@ export default mixins(
 				let nodeType: INodeTypeDescription | null;
 				let foundNodeIssues: INodeIssues | null;
 				nodes.forEach((node) => {
-					nodeType = this.$store.getters.nodeType(node.type, node.typeVersion);
+					nodeType = this.$store.getters.nodeType(node.type, node.typeVersion) as INodeTypeDescription | null;
 
 					// Make sure that some properties always exist
 					if (!node.hasOwnProperty('disabled')) {

@@ -353,7 +353,10 @@ export default mixins(
 				} else if (parameterData.name.startsWith('parameters.')) {
 					// A node parameter changed
 
-					const nodeType = this.$store.getters.nodeType(node.type);
+					const nodeType = this.$store.getters.nodeType(node.type) as INodeTypeDescription | null;
+					if (!nodeType) {
+						return;
+					}
 
 					// Get only the parameters which are different to the defaults
 					let nodeParameters = NodeHelpers.getNodeParameters(nodeType.properties, node.parameters, false, false);
