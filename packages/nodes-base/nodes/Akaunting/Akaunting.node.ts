@@ -1,8 +1,10 @@
 import {
+	BINARY_ENCODING,
 	IExecuteFunctions,
 } from 'n8n-core';
 
 import {
+	IBinaryData,
 	IDataObject,
 	INodeExecutionData,
 	INodeType,
@@ -11,8 +13,15 @@ import {
 } from 'n8n-workflow';
 
 import {
-	apiCall
+	apiCall,
+	get_image
 } from './GenericFunctions';
+
+import {
+	additionalData
+} from './AdditionalInfo'
+
+var fs = require('fs')
 
 export class Akaunting implements INodeType {
 	description: INodeTypeDescription = {
@@ -172,40 +181,8 @@ export class Akaunting implements INodeType {
 			},
 			description: 'Reference Payment',
 		},
-		{
-			displayName: 'Contact ID',
-			name: 'contact_id',
-			type: 'string',
-			default: '',
-			placeholder: "1",
-			required: false,
-			displayOptions: {
-				show: {
-					resource: [
-					'create_revenue',
-					'create_payment',
-					],
-				},
-			},
-			description: 'Contact ID',
-		},
-		{
-			displayName: 'Reference',
-			name: 'reference',
-			type: 'string' ,
-			default: '',
-			placeholder: "456tfd4",
-			required: false,
-			displayOptions: {
-				show: {
-					resource: [
-					'create_revenue',
-					'create_payment',
-					],
-				},
-			},
-			description: 'Reference Payment',
-		}],
+		...additionalData
+		],
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
@@ -228,57 +205,66 @@ export class Akaunting implements INodeType {
 				let resource = this.getNodeParameter('resource', i) as string;
 				let responseData : IDataObject
 
-				if(resource=="create_payment"){
-					let account_id = this.getNodeParameter('account_id', i) as number
-					let category_id = this.getNodeParameter('category_id', i) as number
-					let paid_at = this.getNodeParameter('paid_at', i) as string
-					let reference = this.getNodeParameter('reference', i) as string
-					let payment_method = this.getNodeParameter('payment_method', i) as string
-					let amount = this.getNodeParameter('amount', i) as number
-					let currency_code = this.getNodeParameter('currency_code', i) as string
-					let currency_rate = this.getNodeParameter('currency_rate', i) as string
-					let contact_id = this.getNodeParameter('contact_id', i) as number
+				let account_id = this.getNodeParameter('account_id', i) as number
+				let category_id = this.getNodeParameter('category_id', i) as number
+				let paid_at = this.getNodeParameter('paid_at', i) as string
+				let payment_method = this.getNodeParameter('payment_method', i) as string
+				let amount = this.getNodeParameter('amount', i) as number
+				let currency_code = this.getNodeParameter('currency_code', i) as string
+				let currency_rate = this.getNodeParameter('currency_rate', i) as string
+				const additional = this.getNodeParameter('additional', i) as IDataObject;
 
-					let qs : IDataObject = {
-						company_id : credentials.company_id,
-						search : "type:expense",
-						account_id,
-						category_id,
-						paid_at,
-						reference,
-						payment_method,
-						type : "expense",
-						amount,
-						currency_code,
-						contact_id,
-						currency_rate
-					}
-					responseData = await apiCall.call(this, "POST", "/api/transactions", qs, {})
+				let qs : IDataObject = {
+					company_id : credentials.company_id,
+					account_id,
+					category_id,
+					paid_at,
+					payment_method,
+					amount,
+					currency_code,
+					currency_rate
+				}
+
+				if (additional.reference) {
+					qs.reference = additional.reference;
+				}
+
+				if (additional.contact_id) {
+					qs.contact_id = additional.contact_id;
+				}
+
+				if (additional.description) {
+					qs.description = additional.description;
+				}
+
+				let body : IDataObject = {}
+				if (additional.attachment) {
+					let item = await get_image.call(this, additional.attachment as string)
+
+					const binaryProperty = item as IBinaryData
+					console.log(JSON.stringify(binaryProperty))
+
+					body.attachment = [
+						{
+							value: Buffer.from(binaryProperty.data, BINARY_ENCODING),
+							options: {
+								filename: binaryProperty.fileName,
+								contentType: binaryProperty.mimeType,
+							}
+						}
+					]
+				}
+
+				if(resource=="create_payment"){
+					qs.search = "type:expense"
+					qs.type = "expense",
+
+					responseData = await apiCall.call(this, {}, "POST", "/api/transactions", qs, body)
 				}else if(resource=="create_revenue"){
-					let account_id = this.getNodeParameter('account_id', i) as number
-					let category_id = this.getNodeParameter('category_id', i) as number
-					let contact_id = this.getNodeParameter('contact_id', i) as number
-					let paid_at = this.getNodeParameter('paid_at', i) as string
-					let reference = this.getNodeParameter('reference', i) as string
-					let payment_method = this.getNodeParameter('payment_method', i) as string
-					let amount = this.getNodeParameter('amount', i) as number
-					let currency_code = this.getNodeParameter('currency_code', i) as string
-					let currency_rate = this.getNodeParameter('currency_rate', i) as string
-					let qs : IDataObject = {
-						company_id : credentials.company_id,
-						search : "type:income",
-						account_id,
-						category_id,
-						paid_at,
-						reference,
-						payment_method,
-						type : "income",
-						amount,
-						currency_code,
-						contact_id,
-						currency_rate
-					}
-					responseData = await apiCall.call(this, "POST", "/api/transactions", qs, {});
+					qs.search = "type:income"
+					qs.type = "income"
+
+					responseData = await apiCall.call(this, {}, "POST", "/api/transactions", qs, body);
 				}else{
 					throw new NodeOperationError(this.getNode(), `The resource "${resource}" is not known!`);
 				}
