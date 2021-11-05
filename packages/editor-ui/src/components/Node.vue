@@ -1,6 +1,6 @@
 <template>
 	<div class="node-wrapper" :style="nodePosition">
-		<div :class="{'selected': true, 'has-subtitles': !!nodeSubtitle}" v-show="isSelected"></div>
+		<div class="selected" v-show="isSelected"></div>
 		<div class="node-default" :data-name="data.name" :ref="data.name" :style="nodeStyle" :class="nodeClass" @dblclick="setNodeActive" @click.left="mouseLeftClick" v-touch:start="touchStart" v-touch:end="touchEnd">
 			<div v-if="hasIssues" class="node-info-icon node-issues">
 				<n8n-tooltip placement="top" >
@@ -43,14 +43,12 @@
 
 			<NodeIcon class="node-icon" :nodeType="nodeType" :size="40" :shrink="false" :disabled="this.data.disabled"/>
 		</div>
-		<div class="desc">
-			<div class="node-description">
-				<div class="node-name" :title="data.name">
-					<p>{{data.name}}</p>
-				</div>
-				<div v-if="nodeSubtitle !== undefined" class="node-subtitle" :title="nodeSubtitle">
-					{{nodeSubtitle}}
-				</div>
+		<div class="node-description">
+			<div class="node-name" :title="data.name">
+				<p>{{data.name}}</p>
+			</div>
+			<div v-if="nodeSubtitle !== undefined" class="node-subtitle" :title="nodeSubtitle">
+				{{nodeSubtitle}}
 			</div>
 		</div>
 	</div>
@@ -284,10 +282,15 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 	height: 100px;
 
 	.node-description {
+		position: absolute;
+		top: 100px;
+		left: -50px;
 		line-height: 1.5;
 		text-align: center;
 		cursor: default;
 		padding: 8px;
+		width: 200px;
+		pointer-events: none; // prevent container from being draggable
 
 		.node-name > p { // must be paragraph tag to have two lines in safari
 			text-overflow: ellipsis;
@@ -445,21 +448,6 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 	top: -8px !important;
 	height: 116px;
 	width: 116px !important;
-}
-
-.desc {
-	width: 200px;
-	position: absolute;
-	top: -8px;
-	left: -50px;
-	overflow: visible;
-
-	&:before {
-		content: ' ';
-		height: 100px;
-		display: block;
-		margin-bottom: 5px;
-	}
 }
 
 </style>
