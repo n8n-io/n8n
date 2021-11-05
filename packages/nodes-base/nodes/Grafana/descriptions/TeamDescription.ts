@@ -206,7 +206,7 @@ export const teamFields: INodeProperties[] = [
 				name: 'name',
 				type: 'string',
 				default: '',
-				description: 'Name of the team to filter by'
+				description: 'Name of the team to filter by',
 			},
 		],
 	},

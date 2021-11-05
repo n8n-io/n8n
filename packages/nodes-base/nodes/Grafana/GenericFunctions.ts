@@ -27,7 +27,7 @@ export async function grafanaApiRequest(
 	const options: OptionsWithUri = {
 		headers: {
 			Authorization: `Bearer ${apiKey}`,
-			'Content-Type': 'application/json'
+			'Content-Type': 'application/json',
 		},
 		method,
 		body,

@@ -24,9 +24,9 @@ import {
 	dashboardFields,
 	dashboardOperations,
 	teamFields,
-	teamOperations,
 	teamMemberFields,
 	teamMemberOperations,
+	teamOperations,
 	userFields,
 	userOperations,
 } from './descriptions';
@@ -121,7 +121,7 @@ export class Grafana implements INodeType {
 		credentialTest: {
 			async grafanaApiTest(
 				this: ICredentialTestFunctions,
-				credential: ICredentialsDecrypted
+				credential: ICredentialsDecrypted,
 			): Promise<NodeCredentialTestResult> {
 				const { apiKey, baseUrl: rawBaseUrl } = credential.data as GrafanaCredentials;
 				const baseUrl = tolerateTrailingSlash(rawBaseUrl);
@@ -149,7 +149,7 @@ export class Grafana implements INodeType {
 				}
 			},
 		},
-	}
+	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
@@ -295,12 +295,12 @@ export class Grafana implements INodeType {
 
 						const body = {
 							name: this.getNodeParameter('name', i) as string,
-						}
+						};
 
 						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 
 						if (Object.keys(additionalFields).length) {
-							Object.assign(body, additionalFields)
+							Object.assign(body, additionalFields);
 						}
 
 						responseData = await grafanaApiRequest.call(this, 'POST', '/teams', body);
@@ -398,7 +398,7 @@ export class Grafana implements INodeType {
 
 						const body = {
 							userId: parseInt(userId, 10),
-						}
+						};
 
 						const teamId = this.getNodeParameter('teamId', i);
 						const endpoint = `/teams/${teamId}/members`;
