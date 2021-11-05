@@ -1264,8 +1264,8 @@ export default mixins(
 					Connector: CanvasHelpers.CONNECTOR_FLOWCHART_TYPE,
 					Endpoint: ['Dot', { radius: 5 }],
 					DragOptions: { cursor: 'pointer', zIndex: 5000 },
-					PaintStyle: { strokeWidth: 2, stroke: getStyleTokenValue('--color-foreground-dark')},
-					HoverPaintStyle: { stroke: getStyleTokenValue('--color-primary'), lineWidth: 4 },
+					PaintStyle: CanvasHelpers.CONNECTOR_PAINT_STYLE_DEFAULT,
+					HoverPaintStyle: CanvasHelpers.CONNECTOR_PAINT_STYLE_PRIMARY,
 					ConnectionOverlays: CanvasHelpers.CONNECTOR_ARROW_OVERLAYS,
 					Container: '#node-view',
 				});
