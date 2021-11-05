@@ -158,7 +158,7 @@ export class Webhook implements INodeType {
 						description: 'Returns data of the last-executed node',
 					},
 					{
-						name: 'Using "Respond to Webhook" node',
+						name: 'Using \'Respond to Webhook\' node',
 						value: 'responseNode',
 						description: 'Response defined in that node',
 					},

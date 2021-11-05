@@ -36,16 +36,8 @@ export class RespondToWebhook implements INodeType {
 				type: 'options',
 				options: [
 					{
-						name: 'No Data',
-						value: 'noData',
-					},
-					{
 						name: 'First Incoming Item',
 						value: 'firstIncomingItem',
-					},
-					{
-						name: 'Binary',
-						value: 'binary',
 					},
 					{
 						name: 'Text',
@@ -55,8 +47,16 @@ export class RespondToWebhook implements INodeType {
 						name: 'JSON',
 						value: 'json',
 					},
+					{
+						name: 'Binary',
+						value: 'binary',
+					},
+					{
+						name: 'No Data',
+						value: 'noData',
+					},
 				],
-				default: 'noData',
+				default: 'firstIncomingItem',
 				description: 'The data that should be returned',
 			},
 			{
@@ -100,7 +100,7 @@ export class RespondToWebhook implements INodeType {
 					},
 				},
 				default: '',
-				placeholder: 'Workflow started',
+				placeholder: 'e.g. Workflow started',
 				description: 'The HTTP Response text data',
 			},
 			{
