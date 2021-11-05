@@ -1287,255 +1287,280 @@ export default mixins(
 				};
 
 				this.instance.bind('connectionAborted', (connection) => {
-					if (this.dropPrevented) {
-						this.dropPrevented = false;
-						return;
+					try {
+						if (this.dropPrevented) {
+							this.dropPrevented = false;
+							return;
+						}
+
+						if (this.pullConnActiveNodeName) {
+							const sourceNodeName = this.$store.getters.getNodeNameByIndex(connection.sourceId.slice(NODE_NAME_PREFIX.length));
+							const outputIndex = connection.getParameters().index;
+
+							this.connectTwoNodes(sourceNodeName, outputIndex, this.pullConnActiveNodeName, 0);
+							return;
+						}
+
+						insertNodeAfterSelected({
+							sourceId: connection.sourceId,
+							index: connection.getParameters().index,
+							eventSource: 'node_connection_drop',
+						});
+					} catch (e) {
+						console.error(e);
 					}
-
-					if (this.pullConnActiveNodeName) {
-						const sourceNodeName = this.$store.getters.getNodeNameByIndex(connection.sourceId.slice(NODE_NAME_PREFIX.length));
-						const outputIndex = connection.getParameters().index;
-
-						this.connectTwoNodes(sourceNodeName, outputIndex, this.pullConnActiveNodeName, 0);
-						return;
-					}
-
-					insertNodeAfterSelected({
-						sourceId: connection.sourceId,
-						index: connection.getParameters().index,
-						eventSource: 'node_connection_drop',
-					});
 				});
 
 				this.instance.bind('beforeDrop', (info) => {
-					const sourceInfo = info.connection.endpoints[0].getParameters();
-					// @ts-ignore
-					const targetInfo = info.dropEndpoint.getParameters();
+					try {
+						const sourceInfo = info.connection.endpoints[0].getParameters();
+						// @ts-ignore
+						const targetInfo = info.dropEndpoint.getParameters();
 
-					const sourceNodeName = this.$store.getters.getNodeNameByIndex(sourceInfo.nodeIndex);
-					const targetNodeName = this.$store.getters.getNodeNameByIndex(targetInfo.nodeIndex);
+						const sourceNodeName = this.$store.getters.getNodeNameByIndex(sourceInfo.nodeIndex);
+						const targetNodeName = this.$store.getters.getNodeNameByIndex(targetInfo.nodeIndex);
 
-					// check for duplicates
-					if (this.getConnection(sourceNodeName, sourceInfo.index, targetNodeName, targetInfo.index)) {
-						this.dropPrevented = true;
-						return false;
+						// check for duplicates
+						if (this.getConnection(sourceNodeName, sourceInfo.index, targetNodeName, targetInfo.index)) {
+							this.dropPrevented = true;
+							return false;
+						}
+
+						return true;
+					} catch (e) {
+						console.error(e);
+						return true;
 					}
-
-					return true;
 				});
 
 				// only one set of visible actions should be visible at the same time
 				let activeConnection: null | Connection = null;
 
 				this.instance.bind('connection', (info: OnConnectionBindInfo) => {
-					const sourceInfo = info.sourceEndpoint.getParameters();
-					const targetInfo = info.targetEndpoint.getParameters();
+					try {
+						const sourceInfo = info.sourceEndpoint.getParameters();
+						const targetInfo = info.targetEndpoint.getParameters();
 
-					const sourceNodeName = this.$store.getters.getNodeNameByIndex(sourceInfo.nodeIndex);
-					const targetNodeName = this.$store.getters.getNodeNameByIndex(targetInfo.nodeIndex);
+						const sourceNodeName = this.$store.getters.getNodeNameByIndex(sourceInfo.nodeIndex);
+						const targetNodeName = this.$store.getters.getNodeNameByIndex(targetInfo.nodeIndex);
 
-					info.connection.__meta = {
-						sourceNodeName,
-						sourceOutputIndex: sourceInfo.index,
-						targetNodeName,
-						targetOutputIndex: targetInfo.index,
-					};
+						info.connection.__meta = {
+							sourceNodeName,
+							sourceOutputIndex: sourceInfo.index,
+							targetNodeName,
+							targetOutputIndex: targetInfo.index,
+						};
 
-					info.connection.setPaintStyle(CanvasHelpers.CONNECTOR_PAINT_STYLE_DEFAULT);
+						info.connection.setPaintStyle(CanvasHelpers.CONNECTOR_PAINT_STYLE_DEFAULT);
 
-					CanvasHelpers.showOrHideMidpointArrow(info.connection);
+						CanvasHelpers.showOrHideMidpointArrow(info.connection);
 
-					if (this.isReadOnly === false) {
-						let exitTimer: NodeJS.Timeout | undefined;
-						let enterTimer: NodeJS.Timeout | undefined;
-						info.connection.bind('mouseover', (connection: Connection) => {
-							try {
-								if (exitTimer !== undefined) {
-									clearTimeout(exitTimer);
-									exitTimer = undefined;
-								}
-
-								if (enterTimer) {
-									return;
-								}
-
-								if (info.connection === activeConnection) {
-									return;
-								}
-
-								CanvasHelpers.hideConnectionActions(activeConnection);
-
-
-								enterTimer = setTimeout(() => {
-									enterTimer = undefined;
-									activeConnection = info.connection;
-									CanvasHelpers.showConectionActions(info.connection);
-
-								}, 150);
-							} catch (e) {
-								console.error(e);
-							}
-						});
-
-						info.connection.bind('mouseout', (connection: Connection) => {
-							try {
-								if (exitTimer) {
-									return;
-								}
-
-								if (enterTimer) {
-									clearTimeout(enterTimer);
-									enterTimer = undefined;
-								}
-
-								if (activeConnection !== info.connection) {
-									return;
-								}
-
-								exitTimer = setTimeout(() => {
-									exitTimer = undefined;
-
-									if (activeConnection === info.connection) {
-										CanvasHelpers.hideConnectionActions(activeConnection);
-										activeConnection = null;
+						if (this.isReadOnly === false) {
+							let exitTimer: NodeJS.Timeout | undefined;
+							let enterTimer: NodeJS.Timeout | undefined;
+							info.connection.bind('mouseover', (connection: Connection) => {
+								try {
+									if (exitTimer !== undefined) {
+										clearTimeout(exitTimer);
+										exitTimer = undefined;
 									}
-								}, 500);
-							} catch (e) {
-								console.error(e);
-							}
-						});
 
-						CanvasHelpers.addConnectionActionsOverlay(info.connection,
-							() => {
-								activeConnection = null;
-								this.instance.deleteConnection(info.connection); // store mutation applied by connectionDetached event
-							},
-							() => {
-								setTimeout(() => {
-									insertNodeAfterSelected({
-										sourceId: info.sourceId,
-										index: sourceInfo.index,
-										connection: info.connection,
-										eventSource: 'node_connection_action',
-									});
-								}, 150);
+									if (enterTimer) {
+										return;
+									}
+
+									if (info.connection === activeConnection) {
+										return;
+									}
+
+									CanvasHelpers.hideConnectionActions(activeConnection);
+
+
+									enterTimer = setTimeout(() => {
+										enterTimer = undefined;
+										activeConnection = info.connection;
+										CanvasHelpers.showConectionActions(info.connection);
+
+									}, 150);
+								} catch (e) {
+									console.error(e);
+								}
 							});
+
+							info.connection.bind('mouseout', (connection: Connection) => {
+								try {
+									if (exitTimer) {
+										return;
+									}
+
+									if (enterTimer) {
+										clearTimeout(enterTimer);
+										enterTimer = undefined;
+									}
+
+									if (activeConnection !== info.connection) {
+										return;
+									}
+
+									exitTimer = setTimeout(() => {
+										exitTimer = undefined;
+
+										if (activeConnection === info.connection) {
+											CanvasHelpers.hideConnectionActions(activeConnection);
+											activeConnection = null;
+										}
+									}, 500);
+								} catch (e) {
+									console.error(e);
+								}
+							});
+
+							CanvasHelpers.addConnectionActionsOverlay(info.connection,
+								() => {
+									activeConnection = null;
+									this.instance.deleteConnection(info.connection); // store mutation applied by connectionDetached event
+								},
+								() => {
+									setTimeout(() => {
+										insertNodeAfterSelected({
+											sourceId: info.sourceId,
+											index: sourceInfo.index,
+											connection: info.connection,
+											eventSource: 'node_connection_action',
+										});
+									}, 150);
+								});
+						}
+
+						CanvasHelpers.moveBackInputLabelPosition(info.targetEndpoint);
+
+						this.$store.commit('addConnection', {
+							connection: [
+								{
+									node: sourceNodeName,
+									type: sourceInfo.type,
+									index: sourceInfo.index,
+								},
+								{
+									node: targetNodeName,
+									type: targetInfo.type,
+									index: targetInfo.index,
+								},
+							],
+							setStateDirty: true,
+						});
+					} catch (e) {
+						console.error(e);
 					}
+				});
 
-					CanvasHelpers.moveBackInputLabelPosition(info.targetEndpoint);
+				this.instance.bind('connectionMoved', (info) => {
+					try {
+						// When a connection gets moved from one node to another it for some reason
+						// calls the "connection" event but not the "connectionDetached" one. So we listen
+						// additionally to the "connectionMoved" event and then only delete the existing connection.
 
-					this.$store.commit('addConnection', {
-						connection: [
+						CanvasHelpers.resetInputLabelPosition(info.originalTargetEndpoint);
+
+						// @ts-ignore
+						const sourceInfo = info.originalSourceEndpoint.getParameters();
+						// @ts-ignore
+						const targetInfo = info.originalTargetEndpoint.getParameters();
+
+						const connectionInfo = [
 							{
-								node: sourceNodeName,
+								node: this.$store.getters.getNodeNameByIndex(sourceInfo.nodeIndex),
 								type: sourceInfo.type,
 								index: sourceInfo.index,
 							},
 							{
-								node: targetNodeName,
+								node: this.$store.getters.getNodeNameByIndex(targetInfo.nodeIndex),
 								type: targetInfo.type,
 								index: targetInfo.index,
 							},
-						],
-						setStateDirty: true,
-					});
-				});
+						] as [IConnection, IConnection];
 
-				this.instance.bind('connectionMoved', (info) => {
-					// When a connection gets moved from one node to another it for some reason
-					// calls the "connection" event but not the "connectionDetached" one. So we listen
-					// additionally to the "connectionMoved" event and then only delete the existing connection.
+						this.__removeConnection(connectionInfo, false);
 
-					CanvasHelpers.resetInputLabelPosition(info.originalTargetEndpoint);
-
-					// @ts-ignore
-					const sourceInfo = info.originalSourceEndpoint.getParameters();
-					// @ts-ignore
-					const targetInfo = info.originalTargetEndpoint.getParameters();
-
-					const connectionInfo = [
-						{
-							node: this.$store.getters.getNodeNameByIndex(sourceInfo.nodeIndex),
-							type: sourceInfo.type,
-							index: sourceInfo.index,
-						},
-						{
-							node: this.$store.getters.getNodeNameByIndex(targetInfo.nodeIndex),
-							type: targetInfo.type,
-							index: targetInfo.index,
-						},
-					] as [IConnection, IConnection];
-
-					this.__removeConnection(connectionInfo, false);
-
-					// Make sure to remove the overlay else after the second move
-					// it visibly stays behind free floating without a connection.
-					info.connection.removeOverlays();
+						// Make sure to remove the overlay else after the second move
+						// it visibly stays behind free floating without a connection.
+						info.connection.removeOverlays();
+					} catch (e) {
+						console.error(e);
+					}
 				});
 
 				this.instance.bind('connectionDetached', (info) => {
-					CanvasHelpers.resetInputLabelPosition(info.targetEndpoint);
-					info.connection.removeOverlays();
-					this.__removeConnectionByConnectionInfo(info, false);
+					try {
+						CanvasHelpers.resetInputLabelPosition(info.targetEndpoint);
+						info.connection.removeOverlays();
+						this.__removeConnectionByConnectionInfo(info, false);
+					} catch (e) {
+						console.error(e);
+					}
 				});
 
 				// @ts-ignore
 				this.instance.bind('connectionDrag', (connection: Connection) => {
-					this.pullConnActive = true;
-					this.newNodeInsertPosition = null;
-					CanvasHelpers.addOverlays(connection, CanvasHelpers.CONNECTOR_DROP_NODE_OVERLAY);
-					const nodes = [...document.querySelectorAll('.node-default')];
+					try {
+						this.pullConnActive = true;
+						this.newNodeInsertPosition = null;
+						CanvasHelpers.addOverlays(connection, CanvasHelpers.CONNECTOR_DROP_NODE_OVERLAY);
+						const nodes = [...document.querySelectorAll('.node-default')];
 
-					const onMouseMove = (e: MouseEvent) => {
-						if (!connection) {
-							return;
-						}
-
-						const element = document.querySelector('.jtk-endpoint.dropHover');
-						if (element) {
-							// @ts-ignore
-							CanvasHelpers.showDropConnectionState(connection, element._jsPlumb);
-							return;
-						}
-
-						const inputMargin = 24;
-						const intersecting = nodes.find((element: Element) => {
-							const {top, left, right, bottom} = element.getBoundingClientRect();
-							if (top <= e.pageY && bottom >= e.pageY && (left - inputMargin) <= e.pageX && right >= e.pageX) {
-								const nodeName = (element as HTMLElement).dataset['name'] as string;
-								const node = this.$store.getters.getNodeByName(nodeName) as INodeUi | null;
-								if (node) {
-									const nodeType = this.$store.getters.nodeType(node.type) as INodeTypeDescription;
-									if (nodeType.inputs.length === 1) {
-										this.pullConnActiveNodeName = node.name;
-										const endpoint = this.instance.getEndpoint(this.getInputEndpointUUID(nodeName, 0));
-
-										CanvasHelpers.showDropConnectionState(connection, endpoint);
-
-										return true;
-									}
-								}
+						const onMouseMove = (e: MouseEvent) => {
+							if (!connection) {
+								return;
 							}
 
-							return false;
-						});
+							const element = document.querySelector('.jtk-endpoint.dropHover');
+							if (element) {
+								// @ts-ignore
+								CanvasHelpers.showDropConnectionState(connection, element._jsPlumb);
+								return;
+							}
 
-						if (!intersecting) {
-							CanvasHelpers.showPullConnectionState(connection);
-							this.pullConnActiveNodeName = null;
-						}
-					};
+							const inputMargin = 24;
+							const intersecting = nodes.find((element: Element) => {
+								const {top, left, right, bottom} = element.getBoundingClientRect();
+								if (top <= e.pageY && bottom >= e.pageY && (left - inputMargin) <= e.pageX && right >= e.pageX) {
+									const nodeName = (element as HTMLElement).dataset['name'] as string;
+									const node = this.$store.getters.getNodeByName(nodeName) as INodeUi | null;
+									if (node) {
+										const nodeType = this.$store.getters.nodeType(node.type) as INodeTypeDescription;
+										if (nodeType.inputs.length === 1) {
+											this.pullConnActiveNodeName = node.name;
+											const endpoint = this.instance.getEndpoint(this.getInputEndpointUUID(nodeName, 0));
 
-					const onMouseUp = (e: MouseEvent) => {
-						this.pullConnActive = false;
-						this.newNodeInsertPosition = this.getMousePositionWithinNodeView(e);
-						CanvasHelpers.resetConnectionAfterPull(connection);
-						window.removeEventListener('mousemove', onMouseMove);
-						window.removeEventListener('mouseup', onMouseUp);
-					};
+											CanvasHelpers.showDropConnectionState(connection, endpoint);
 
-					window.addEventListener('mousemove', onMouseMove);
-					window.addEventListener('mouseup', onMouseUp);
+											return true;
+										}
+									}
+								}
+
+								return false;
+							});
+
+							if (!intersecting) {
+								CanvasHelpers.showPullConnectionState(connection);
+								this.pullConnActiveNodeName = null;
+							}
+						};
+
+						const onMouseUp = (e: MouseEvent) => {
+							this.pullConnActive = false;
+							this.newNodeInsertPosition = this.getMousePositionWithinNodeView(e);
+							CanvasHelpers.resetConnectionAfterPull(connection);
+							window.removeEventListener('mousemove', onMouseMove);
+							window.removeEventListener('mouseup', onMouseUp);
+						};
+
+						window.addEventListener('mousemove', onMouseMove);
+						window.addEventListener('mouseup', onMouseUp);
+					} catch (e) {
+						console.error(e);
+					}
 				});
 			},
 			async newWorkflow (): Promise<void> {
