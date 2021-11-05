@@ -1575,7 +1575,9 @@ export default mixins(
 				this.$store.commit('setStateDirty', false);
 
 				this.setZoomLevel(1);
-				this.$store.commit('setNodeViewOffsetPosition', {newOffset: [0, 0]});
+				setTimeout(() => {
+					this.$store.commit('setNodeViewOffsetPosition', {newOffset: [0, 0]});
+				}, 0);
 			},
 			async initView (): Promise<void> {
 				if (this.$route.params.action === 'workflowSave') {
