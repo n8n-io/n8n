@@ -10,7 +10,6 @@ import {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { options } from 'rhea';
 
 import {
 	todoistApiRequest,
@@ -562,33 +561,33 @@ export class Todoist implements INodeType {
 						const projectId = this.getNodeParameter('project', i) as number;
 						const labels = this.getNodeParameter('labels', i) as number[];
 						const options = this.getNodeParameter('options', i) as IDataObject;
-	
+
 						const body: IBodyCreateTask = {
 							content,
 							project_id: projectId,
 							priority: (options.priority!) ? parseInt(options.priority as string, 10) : 1,
 						};
-	
+
 						if (options.description) {
 							body.description = options.description as string;
 						}
-	
+
 						if (options.dueDateTime) {
 							body.due_datetime = options.dueDateTime as string;
 						}
-	
+
 						if (options.dueString) {
 							body.due_string = options.dueString as string;
 						}
-	
+
 						if (labels !== undefined && labels.length !== 0) {
 							body.label_ids = labels;
 						}
-	
+
 						if (options.section) {
 							body.section_id = options.section as number;
 						}
-	
+
 						responseData = await todoistApiRequest.call(this, 'POST', '/tasks', body);
 					}
 					if (operation === 'close') {
@@ -684,7 +683,7 @@ export class Todoist implements INodeType {
 							body.label_ids = updateFields.labels as number[];
 						}
 
-						responseData = await todoistApiRequest.call(this, 'POST', `/tasks/${id}`, body);
+						await todoistApiRequest.call(this, 'POST', `/tasks/${id}`, body);
 						responseData = { success: true };
 					}
 				}
