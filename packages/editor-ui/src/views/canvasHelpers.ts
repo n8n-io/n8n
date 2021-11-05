@@ -266,6 +266,12 @@ export const showOrHideItemsLabel = (connection: Connection) => {
 		return;
 	}
 
+	const actionsOverlay = getOverlay(connection, OVERLAY_CONNECTION_ACTIONS_ID);
+	if (actionsOverlay && actionsOverlay.visible) {
+		overlay.setVisible(false);
+		return;
+	}
+
 	const [diffX, diffY] = getConnectorLengths(connection);
 
 	if (diffX < MIN_X_TO_SHOW_OUTPUT_LABEL && diffY < MIN_Y_TO_SHOW_OUTPUT_LABEL) {
