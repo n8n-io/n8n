@@ -161,6 +161,7 @@ export const nodeBase = mixins(
 						type: inputName,
 						index,
 					},
+					enabled: !this.isReadOnly,
 					dragAllowedWhenFull: true,
 					dropOptions: {
 						tolerance: 'touch',
