@@ -56,6 +56,7 @@ import {
 	ICredentialsDecrypted,
 	ICredentialType,
 	IDataObject,
+	IHttpRequestOptions,
 	INodeCredentials,
 	INodeCredentialsDetails,
 	INodeParameters,
@@ -71,7 +72,6 @@ import {
 	NodeCredentialTestResult,
 	NodeHelpers,
 	Workflow,
-	ICredentialsEncrypted,
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
 
@@ -1109,7 +1109,6 @@ class App {
 					if (req.query.credentials !== undefined) {
 						credentials = JSON.parse(req.query.credentials as string);
 					}
-					const methodName = req.query.methodName as string;
 
 					const nodeTypes = NodeTypes();
 
@@ -1124,7 +1123,20 @@ class App {
 
 					const additionalData = await WorkflowExecuteAdditionalData.getBase(currentNodeParameters);
 
-					return loadDataInstance.getOptions(methodName, additionalData);
+					if (req.query.methodName) {
+						return loadDataInstance.getOptionsViaMethodName(
+							req.query.methodName as string,
+							additionalData,
+						);
+					}
+					if (req.query.loadOptions) {
+						return loadDataInstance.getOptionsViaRequestProperty(
+							JSON.parse(req.query.loadOptions as string),
+							additionalData,
+						);
+					}
+
+					return [];
 				},
 			),
 		);

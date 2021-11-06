@@ -730,11 +730,26 @@ export type NodePropertyTypes =
 
 export type EditorTypes = 'code';
 
+export interface ILoadOptions {
+	request: IHttpRequestOptions;
+	rootProperty?: string; // Optional Path to option array
+	name: {
+		property: string;
+		value?: string;
+	};
+	value: {
+		property: string;
+		value?: string;
+	};
+	sort?: boolean; // If the returned options we be sorted alphabetically, true by default
+}
+
 export interface INodePropertyTypeOptions {
 	alwaysOpenEditWindow?: boolean; // Supported by: string
 	editor?: EditorTypes; // Supported by: string
 	loadOptionsDependsOn?: string[]; // Supported by: options
 	loadOptionsMethod?: string; // Supported by: options
+	loadOptions?: ILoadOptions; // Supported by: options
 	maxValue?: number; // Supported by: number
 	minValue?: number; // Supported by: number
 	multipleValues?: boolean; // Supported by: <All>
@@ -745,7 +760,7 @@ export interface INodePropertyTypeOptions {
 	rows?: number; // Supported by: string
 	showAlpha?: boolean; // Supported by: color
 	sortable?: boolean; // Supported when "multipleValues" set to true
-	[key: string]: boolean | number | string | EditorTypes | undefined | string[];
+	[key: string]: any;
 }
 
 export interface IDisplayOptions {

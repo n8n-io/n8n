@@ -27,10 +27,8 @@ export class MailcheckTest implements INodeType {
 				required: true,
 			},
 		],
-		// TODO: Think about some pre-send manipulation (to make it possible to define parameters
-		//       differently in UI than send) and receive-transformation (to simplifiy)
 		requestDefaults: {
-			baseURL: 'http://example.com',
+			baseURL: 'http://localhost:5678',
 			url: '',
 		},
 		properties: [
@@ -175,6 +173,32 @@ export class MailcheckTest implements INodeType {
 						description: 'Due Date to activity be done YYYY-MM-DD',
 					},
 					{
+						displayName: 'Label',
+						name: 'label',
+						type: 'options',
+						typeOptions: {
+							loadOptions: {
+								request: {
+									url: '/webhook/mock-option-parameters',
+									method: 'GET',
+								},
+								rootProperty: 'responseData', // Optional Path to option array
+								name: {
+									property: 'key',
+									// TODO: Is confusing that it is called $value. Should it be $value/$name instead? But
+									//       then would also have to change logic in other locations where also $value gets used.
+									value: '={{$value.toUpperCase()}} ({{$self.value}})',
+								},
+								value: {
+									property: 'value',
+									value: '={{$value}}',
+								},
+								sort: true,
+							},
+						},
+						default: '',
+					},
+					{
 						displayName: 'Lower Level',
 						name: 'lowerLevel',
 						type: 'collection',
@@ -266,7 +290,7 @@ export class MailcheckTest implements INodeType {
 								type: 'string',
 								default: '',
 								requestProperty: {
-									property: '=single-customValues.name',
+									property: 'single-customValues.name',
 								},
 								description: 'Name of the property to set.',
 							},
@@ -276,7 +300,7 @@ export class MailcheckTest implements INodeType {
 								type: 'string',
 								default: '',
 								requestProperty: {
-									property: '=single-customValues.value',
+									property: 'single-customValues.value',
 								},
 								description: 'Value of the property to set.',
 							},

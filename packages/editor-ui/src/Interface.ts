@@ -1,12 +1,12 @@
 
 import {
+	GenericValue,
 	IConnections,
 	ICredentialsDecrypted,
 	ICredentialsEncrypted,
 	ICredentialType,
 	IDataObject,
-	GenericValue,
-	IWorkflowSettings as IWorkflowSettingsWorkflow,
+	ILoadOptions,
 	INode,
 	INodeCredentials,
 	INodeIssues,
@@ -19,6 +19,7 @@ import {
 	IRunData,
 	ITaskData,
 	ITelemetrySettings,
+	IWorkflowSettings as IWorkflowSettingsWorkflow,
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
 
@@ -132,7 +133,7 @@ export interface IRestApi {
 	makeRestApiRequest(method: string, endpoint: string, data?: any): Promise<any>; // tslint:disable-line:no-any
 	getNodeTypes(onlyLatest?: boolean): Promise<INodeTypeDescription[]>;
 	getNodesInformation(nodeInfos: INodeTypeNameVersion[]): Promise<INodeTypeDescription[]>;
-	getNodeParameterOptions(nodeTypeAndVersion: INodeTypeNameVersion, path: string, methodName: string, currentNodeParameters: INodeParameters, credentials?: INodeCredentials): Promise<INodePropertyOptions[]>;
+	getNodeParameterOptions(sendData: { nodeTypeAndVersion: INodeTypeNameVersion, path: string, methodName?: string, loadOptions?: ILoadOptions, currentNodeParameters: INodeParameters, credentials?: INodeCredentials }): Promise<INodePropertyOptions[]> ;
 	removeTestWebhook(workflowId: string): Promise<boolean>;
 	runWorkflow(runData: IStartRunData): Promise<IExecutionPushResponse>;
 	createNewWorkflow(sendData: IWorkflowDataUpdate): Promise<IWorkflowDb>;
