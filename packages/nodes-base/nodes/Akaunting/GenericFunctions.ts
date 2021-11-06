@@ -58,7 +58,8 @@ var request = require('request')
 			...body.getHeaders()
 		}
 		console.log(`Header ${JSON.stringify(headers)}`)
- 		const options: OptionsWithUri = {
+
+    const options: OptionsWithUri = {
  			method,
  			formData:body,
  			uri:url,

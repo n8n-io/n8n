@@ -239,7 +239,7 @@ export class Akaunting implements INodeType {
 					body.append("attachment[0]", request(additional.attachment as string))
 				}
 
-				if(resource=="create_payment"){
+        if(resource=="create_payment"){
 					body.append("search","type:expense")
 					body.append("type","expense")
 
@@ -248,7 +248,7 @@ export class Akaunting implements INodeType {
 					body.append("search","type:income")
 					body.append("type", "income")
 
-					responseData = await apiCall.call(this, {}, "POST", "/api/transactions", {}, body);
+          responseData = await apiCall.call(this, {}, "POST", "/api/transactions", {}, body);
 				}else{
 					throw new NodeOperationError(this.getNode(), `The resource "${resource}" is not known!`);
 				}
