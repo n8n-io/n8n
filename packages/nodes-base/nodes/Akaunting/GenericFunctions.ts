@@ -42,9 +42,24 @@ var request = require('request')
  	try {
  		let url = `${credentials.url}${url_api}`
 		let basic = Buffer.from(`${credentials.username}:${credentials.password}`, 'utf8').toString('base64')
-		headers.Authorization = `Basic ${basic}`
+		let length = await new Promise<number>((resolve, error)=>{
+			body.getLength((err:any, l:number)=>{
+				if(err){
+					error(err)
+				}else{
+					resolve(l)
+				}
+			})
+		})
 
- 		const options: OptionsWithUri = {
+		headers = {
+			'Authorization':`Basic ${basic}`,
+			'Content-Length':length,
+			...body.getHeaders()
+		}
+		console.log(`Header ${JSON.stringify(headers)}`)
+
+    const options: OptionsWithUri = {
  			method,
  			formData:body,
  			uri:url,
