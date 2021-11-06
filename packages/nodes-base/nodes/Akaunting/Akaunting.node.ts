@@ -239,30 +239,16 @@ export class Akaunting implements INodeType {
 					body.append("attachment[0]", request(additional.attachment as string))
 				}
 
-				let length = await new Promise<number>((resolve, error)=>{
-					body.getLength((err:any, l:number)=>{
-						if(err){
-							error(err)
-						}else{
-							resolve(l)
-						}
-					})
-				})
-
-				const headers = {
-					'Content-type':'multipart/form-data',
-					'Content-Length':length
-				}
 				if(resource=="create_payment"){
 					body.append("search","type:expense")
 					body.append("type","expense")
 
-					responseData = await apiCall.call(this, headers, "POST", "/api/transactions", {}, body)
+					responseData = await apiCall.call(this, {}, "POST", "/api/transactions", {}, body)
 				}else if(resource=="create_revenue"){
 					body.append("search","type:income")
 					body.append("type", "income")
 
-					responseData = await apiCall.call(this, headers, "POST", "/api/transactions", {}, body);
+					responseData = await apiCall.call(this, {}, "POST", "/api/transactions", {}, body);
 				}else{
 					throw new NodeOperationError(this.getNode(), `The resource "${resource}" is not known!`);
 				}
