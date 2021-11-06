@@ -257,10 +257,6 @@ async function parseRequestObject(requestObject: IDataObject) {
 		axiosConfig.url = requestObject.url?.toString() as string;
 	}
 
-	if (requestObject.baseURL !== undefined) {
-		axiosConfig.baseURL = requestObject.baseURL?.toString() as string;
-	}
-
 	if (requestObject.method !== undefined) {
 		axiosConfig.method = requestObject.method as Method;
 	}
@@ -568,6 +564,10 @@ function convertN8nRequestToAxios(n8nRequest: IHttpRequestOptions): AxiosRequest
 	} as AxiosRequestConfig;
 
 	axiosRequest.params = n8nRequest.qs;
+
+	if (n8nRequest.baseURL !== undefined) {
+		axiosRequest.baseURL = n8nRequest.baseURL;
+	}
 
 	if (n8nRequest.disableFollowRedirect === true) {
 		axiosRequest.maxRedirects = 0;
