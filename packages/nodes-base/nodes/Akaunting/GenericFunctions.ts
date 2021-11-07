@@ -1,6 +1,7 @@
 import {
 	IExecuteFunctions,
 	IHookFunctions,
+	ILoadOptionsFunctions,
 } from 'n8n-core';
 
 import {
@@ -27,7 +28,7 @@ var request = require('request')
  * @returns {Promise<any>}
  */
 
- export async function apiCall(this: IHookFunctions | IExecuteFunctions, headers :IDataObject, method : string, url_api:string, qs:IDataObject, body: FormData) : Promise<any> {
+ export async function apiCall(this: IHookFunctions | IExecuteFunctions |ILoadOptionsFunctions, headers :IDataObject, method : string, url_api:string, qs:IDataObject, body: FormData) : Promise<any> {
  	const credentials = await this.getCredentials('akauntingApi') as {
  		url: string;
  		company_id: string;
@@ -57,7 +58,6 @@ var request = require('request')
 			'Content-Length':length,
 			...body.getHeaders()
 		}
-		console.log(`Header ${JSON.stringify(headers)}`)
 
     const options: OptionsWithUri = {
  			method,
@@ -66,8 +66,9 @@ var request = require('request')
 			json: true,
  			headers : headers,
  		};
+		// console.log(`Options ${JSON.stringify(options)}`)
 
- 		return await this.helpers.request(options);
+ 		return await this.helpers.request!(options);
  	} catch (error) {
  		throw new NodeApiError(this.getNode(), error);
  	}

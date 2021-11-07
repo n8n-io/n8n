@@ -11,9 +11,12 @@ export const additionalData = [
 	displayOptions: {
 		show: {
 			resource: [
-			'create_revenue',
-			'create_payment',
+			'revenue',
+			'payment',
 			],
+			operation:[
+				'create',
+			]
 		},
 	},
 	options: [
@@ -60,6 +63,17 @@ export const additionalData = [
 				alwaysOpenEditWindow: true,
 			},
 		},
+		{
+			displayName: 'Contact Name',
+			name: 'contact_name',
+			type: 'string' ,
+			default: '',
+			placeholder: "John Doe",
+			description: 'Contact Name',
+			typeOptions: {
+				alwaysOpenEditWindow: true,
+			},
+		}
 	],
 	description: 'Additional Data',
 }

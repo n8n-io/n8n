@@ -5,8 +5,10 @@ import {
 import {
 	IDataObject,
 	INodeExecutionData,
+	ILoadOptionsFunctions,
 	INodeType,
 	INodeTypeDescription,
+	INodePropertyOptions,
 	NodeOperationError,
 } from 'n8n-workflow';
 
@@ -15,20 +17,31 @@ import {
 } from './GenericFunctions';
 
 import {
+	contactFields,
+	contactOperations,
+} from './ContactDescription';
+
+import {
+	transactionFields,
+	transactionOperations,
+} from './TransactionDescription';
+
+import {
 	additionalData
-} from './AdditionalInfo'
+} from './AdditionalInfo';
 
 var request = require("request")
 import FormData = require('form-data');
 
 export class Akaunting implements INodeType {
 	description: INodeTypeDescription = {
-		displayName: 'Akaunting',
+		displayName: 'Akaunting (Beta)',
 		name: 'akaunting',
 		icon: 'file:akaunting.png',
 		group: ['transform'],
 		version: 1,
-		description: 'Custom Nodes Akaunting API',
+		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
+		description: 'Consume Akaunting API',
 		defaults: {
 			name: 'Akaunting',
 			color: '#6DA252',
@@ -36,151 +49,132 @@ export class Akaunting implements INodeType {
 		inputs: ['main'],
 		outputs: ['main'],
 		credentials: [
-		{
-			name: 'akauntingApi',
-			required: true,
-		},
+			{
+				name: 'akauntingApi',
+				required: true,
+			},
 		],
 		properties: [
 		{
 			displayName: 'Resource',
 			name: 'resource',
 			type: 'options',
-			required : true,
 			options: [
-			{
-				name: 'Create Payment',
-				value: 'create_payment',
-			},
-			{
-				name: 'Create Revenue',
-				value: 'create_revenue',
-			},
+				{
+					name: 'Payment',
+					value: 'payment',
+				},
+				{
+					name: 'Revenue',
+					value: 'revenue',
+				},
+				{
+					name: 'Vendor',
+					value: 'vendor',
+				},
+				{
+					name: 'Customer',
+					value: 'customer',
+				},
 			],
-			default: 'create_payment',
+			default: 'payment',
 			description: 'The resource to operate on.',
 		},
-		{
-			displayName: 'Account ID',
-			name: 'account_id',
-			type: 'string' ,
-			default: '',
-			placeholder: '1',
-			required: true,
-			displayOptions: {
-				show: {
-					resource: [
-					'create_payment',
-					'create_revenue',
-					],
-				},
-			},
-			description: 'Account ID',
-		},
-		{
-			displayName: 'Category ID',
-			name: 'category_id',
-			type: 'string',
-			default: '',
-			placeholder : "1",
-			required: true,
-			displayOptions: {
-				show: {
-					resource: [
-					'create_payment',
-					'create_revenue',
-					],
-				},
-			},
-			description: 'Category ID',
-		},
-		{
-			displayName: 'Paid Date',
-			name: 'paid_at',
-			type: 'string' ,
-			default: '',
-			placeholder: "2021-04-15 13:25:53",
-			required: true,
-			displayOptions: {
-				show: {
-					resource: [
-					'create_revenue',
-					'create_payment',
-					],
-				},
-			},
-			description: 'Paid Date',
-		},
-		{
-			displayName: 'Amount',
-			name: 'amount',
-			type: 'string' ,
-			default: '',
-			placeholder: "10",
-			required: true,
-			displayOptions: {
-				show: {
-					resource: [
-					'create_payment',
-					'create_revenue',
-					],
-				},
-			},
-			description: 'Amount',
-		},
-		{
-			displayName: 'Currency Code',
-			name: 'currency_code',
-			type: 'string' ,
-			default: '',
-			placeholder: "USD",
-			required: true,
-			displayOptions: {
-				show: {
-					resource: [
-					'create_payment',
-					'create_revenue',
-					],
-				},
-			},
-			description: 'Currency Code',
-		},
-		{
-			displayName: 'Currency Rate',
-			name: 'currency_rate',
-			type: 'string' ,
-			default: '',
-			placeholder: "1",
-			required: true,
-			displayOptions: {
-				show: {
-					resource: [
-					'create_payment',
-					'create_revenue',
-					],
-				},
-			},
-			description: 'Currency Rate',
-		},
-		{
-			displayName: 'Payment Method',
-			name: 'payment_method',
-			type: 'string' ,
-			default: '',
-			placeholder: "cash",
-			required: true,
-			displayOptions: {
-				show: {
-					resource: [
-					'create_revenue',
-					'create_payment',
-					],
-				},
-			},
-			description: 'Reference Payment',
-		},
-		...additionalData
+		...transactionOperations,
+		...transactionFields,
+		...contactOperations,
+		...contactFields,
+		...additionalData,
 		],
+	};
+
+	methods = {
+		loadOptions: {
+			async getAccounts(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const returnData: INodePropertyOptions[] = [];
+
+				const credentials = await this.getCredentials('akauntingApi') as {
+					url: string;
+					company_id: string;
+					username: string;
+					password: string;
+				};
+
+				if (credentials === undefined) {
+					throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
+				}
+
+				let body = new FormData()
+				body.append("company_id", credentials.company_id)
+				body.append("page", 1)
+				body.append("limit", 100)
+				const headers : {} = body.getHeaders()
+
+				const accounts = await apiCall.call(this, {}, 'GET', "/api/accounts",{}, body);
+
+				for (const account of accounts.data) {
+					returnData.push({
+						name: account.name,
+						value: account.id,
+					});
+				}
+				returnData.sort((a, b) => {
+					if (a.name.toLocaleLowerCase() < b.name.toLocaleLowerCase()) { return -1; }
+					if (a.name.toLocaleLowerCase() > b.name.toLocaleLowerCase()) { return 1; }
+					return 0;
+				});
+				return returnData;
+			},
+
+			async getCategories(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const returnData: INodePropertyOptions[] = [];
+
+				const credentials = await this.getCredentials('akauntingApi') as {
+					url: string;
+					company_id: string;
+					username: string;
+					password: string;
+				};
+
+				if (credentials === undefined) {
+					throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
+				}
+
+				let body = new FormData()
+				body.append("company_id", credentials.company_id)
+				body.append("page", 1)
+				body.append("limit", 100)
+				const headers : {} = body.getHeaders()
+
+				const categories = await apiCall.call(this, {}, 'GET', "/api/categories",{}, body);
+
+				let resource = this.getCurrentNodeParameter('resource') as string;
+				for (const category of categories.data) {
+					if (resource == "payment" && category.type == "expense" )
+					{
+						returnData.push({
+							name: category.name,
+							value: category.id,
+						});
+					}
+					else if (resource == "revenue" && category.type == "income" )
+					{
+						returnData.push({
+							name: category.name,
+							value: category.id,
+						});
+					}
+
+
+				}
+				returnData.sort((a, b) => {
+					if (a.name.toLocaleLowerCase() < b.name.toLocaleLowerCase()) { return -1; }
+					if (a.name.toLocaleLowerCase() > b.name.toLocaleLowerCase()) { return 1; }
+					return 0;
+				});
+				return returnData;
+			},
+		},
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
@@ -195,65 +189,138 @@ export class Akaunting implements INodeType {
 			throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
 		}
 		const items = this.getInputData();
+		const length = items.length as unknown as number;
 		const returnData: IDataObject[] = [];
 
-		for (let i = 0; i < items.length; i++) {
+		for (let i = 0; i < length; i++) {
 			try{
-				// For Post
 				let resource = this.getNodeParameter('resource', i) as string;
+				let operation = this.getNodeParameter('operation', i) as string;
 				let responseData : IDataObject
-
-				let account_id = this.getNodeParameter('account_id', i) as number
-				let category_id = this.getNodeParameter('category_id', i) as number
-				let paid_at = this.getNodeParameter('paid_at', i) as string
-				let payment_method = this.getNodeParameter('payment_method', i) as string
-				let amount = this.getNodeParameter('amount', i) as number
-				let currency_code = this.getNodeParameter('currency_code', i) as string
-				let currency_rate = this.getNodeParameter('currency_rate', i) as string
-				const additional = this.getNodeParameter('additional', i) as IDataObject;
 
 				let body = new FormData()
 				body.append("company_id", credentials.company_id)
-				body.append("account_id", account_id)
-				body.append("category_id", category_id)
-				body.append("paid_at", paid_at)
-				body.append("payment_method", payment_method)
-				body.append("amount", amount)
-				body.append("currency_code", currency_code)
-				body.append("currency_rate", currency_rate)
+				if(resource=="payment" || resource=="revenue"){
+
+					if (operation=="create"){
+						let account_id = this.getNodeParameter('account_id', i) as number
+						let category_id = this.getNodeParameter('category_id', i) as number
+						let paid_at = this.getNodeParameter('paid_at', i) as string
+						let payment_method = this.getNodeParameter('payment_method', i) as string
+						let amount = this.getNodeParameter('amount', i) as number
+						let currency_code = this.getNodeParameter('currency_code', i) as string
+						let currency_rate = this.getNodeParameter('currency_rate', i) as string
+						const additional = this.getNodeParameter('additional', i) as IDataObject;
+
+						body.append("account_id", account_id)
+						body.append("category_id", category_id)
+						body.append("paid_at", paid_at)
+						body.append("payment_method", payment_method)
+						body.append("amount", amount)
+						body.append("currency_code", currency_code)
+						body.append("currency_rate", currency_rate)
 
 
-				if (additional.reference) {
-					body.append("reference", additional.reference)
+						if (additional.reference) {
+							body.append("reference", additional.reference)
+						}
+
+						if (additional.contact_id) {
+							body.append("contact_id", additional.contact_id)
+						}
+
+						if (additional.description) {
+							body.append("description", additional.description)
+						}
+
+						if (additional.attachment) {
+							body.append("attachment[0]", request(additional.attachment as string))
+						}
+
+						if (additional.category_id) {
+							body.append("category_id", additional.category_id)
+						}
+
+						if (additional.contact_name) {
+							body.append("contact_name", additional.contact_name)
+						}
+
+						const headers : {} = body.getHeaders()
+						if(resource=="payment"){
+							body.append("search","type:expense")
+							body.append("type","expense")
+
+							responseData = await apiCall.call(this, {}, "POST", "/api/transactions", {}, body)
+						}
+						else if(resource=="revenue"){
+							body.append("search","type:income")
+							body.append("type", "income")
+
+							responseData = await apiCall.call(this, {}, "POST", "/api/transactions", {}, body);
+						}else{
+							throw new NodeOperationError(this.getNode(), `The resource "${resource}" is not known!`);
+						}
+					}
+					else if (operation=="getAll"){
+
+						const headers : {} = body.getHeaders()
+						if(resource=="payment"){
+							body.append("search","type:expense")
+							body.append("type","expense")
+
+							responseData = await apiCall.call(this, {}, "GET", "/api/transactions", {}, body)
+						}
+						else if(resource=="revenue"){
+							body.append("search","type:income")
+							body.append("type", "income")
+
+							responseData = await apiCall.call(this, {}, "GET", "/api/transactions", {}, body);
+						}else{
+							throw new NodeOperationError(this.getNode(), `The resource "${resource}" is not known!`);
+						}
+					}
+					else{
+						throw new NodeOperationError(this.getNode(), `The resource "${operation}" is not known!`);
+					}
+
+					returnData.push(responseData as IDataObject)
 				}
 
-				if (additional.contact_id) {
-					body.append("contact_id", additional.contact_id)
+				if(resource=="vendor" || resource=="customer"){
+
+					const headers : {} = body.getHeaders()
+					console.log(headers)
+					if(resource=="vendor"){
+						body.append("search","type:vendor")
+					}
+					else if(resource=="customer"){
+						body.append("search","type:customer")
+					}else{
+						throw new NodeOperationError(this.getNode(), `The resource "${resource}" is not known!`);
+					}
+
+					if (operation=="create"){
+						let name = this.getNodeParameter('contact_name', i) as number
+						body.append("name", name)
+						responseData = await apiCall.call(this, {}, "POST", "/api/contacts", {}, body)
+					}
+					else if (operation=="getAll"){
+						body.append("page", 1)
+						body.append("limit", 100)
+						console.log(`Options ${JSON.stringify(body)}`)
+						console.log(body.toString())
+						console.log(body)
+						responseData = await apiCall.call(this, {}, "GET", "/api/contacts", {}, body)
+					}
+					else{
+						throw new NodeOperationError(this.getNode(), `The resource "${operation}" is not known!`);
+					}
+					returnData.push(responseData as IDataObject)
 				}
 
-				if (additional.description) {
-					body.append("description", additional.description)
-				}
-
-				if (additional.attachment) {
-					body.append("attachment[0]", request(additional.attachment as string))
-				}
-
-        if(resource=="create_payment"){
-					body.append("search","type:expense")
-					body.append("type","expense")
-
-					responseData = await apiCall.call(this, {}, "POST", "/api/transactions", {}, body)
-				}else if(resource=="create_revenue"){
-					body.append("search","type:income")
-					body.append("type", "income")
-
-          responseData = await apiCall.call(this, {}, "POST", "/api/transactions", {}, body);
-				}else{
-					throw new NodeOperationError(this.getNode(), `The resource "${resource}" is not known!`);
-				}
-				returnData.push(responseData as IDataObject);
-			} catch (error) {
+			}
+			catch (error)
+			{
 				if (this.continueOnFail()) {
 					returnData.push({ error: error.message });
 					continue;
