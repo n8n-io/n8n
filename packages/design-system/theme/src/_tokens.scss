@@ -75,6 +75,15 @@
 		var(--color-success-tint-2-l)
 	);
 
+	--color-success-light-h: 150;
+	--color-success-light-s: 54%;
+	--color-success-light-l: 70%;
+	--color-success-light: hsl(
+		var(--color-success-light-h),
+		var(--color-success-light-s),
+		var(--color-success-light-l)
+	);
+
 	--color-warning-h: 36;
 	--color-warning-s: 77%;
 	--color-warning-l: 57%;

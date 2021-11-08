@@ -79,7 +79,7 @@ export const CONNECTOR_PAINT_STYLE_PRIMARY = {
 
 export const CONNECTOR_PAINT_STYLE_SUCCESS = {
 	...CONNECTOR_PAINT_STYLE_DEFAULT,
-	stroke: getStyleTokenValue('--color-success'),
+	stroke: getStyleTokenValue('--color-success-light'),
 };
 
 export const CONNECTOR_ARROW_OVERLAYS: OverlaySpec[] = [
