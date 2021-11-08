@@ -7,6 +7,7 @@ import {
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
+	INodeParameters,
 } from 'n8n-workflow';
 
 import {
@@ -86,6 +87,11 @@ export class Jenkins implements INodeType {
 						description: 'Trigger a specific job',
 					},
 					{
+						name: 'Trigger a with Parameters',
+						value: 'triggerParams',
+						description: 'Trigger a specific job',
+					},
+					{
 						name: 'Copy a Job',
 						value: 'copy',
 						description: 'Copy a specific job',
@@ -111,6 +117,7 @@ export class Jenkins implements INodeType {
 						],
 						operation: [
 							'trigger',
+							'triggerParams',
 							'copy',
 						],
 					},
@@ -133,12 +140,55 @@ export class Jenkins implements INodeType {
 						],
 						operation: [
 							'trigger',
+							'triggerParams'
 						],
 					},
 				},
 				required: true,
 				default: '',
 				description: 'Name of the jenkins job',
+			},
+			{
+				displayName: 'Parameters',
+				name: 'param',
+				type: 'fixedCollection',
+				displayOptions: {
+					show: {
+						resource: [
+							'job',
+						],
+						operation: [
+							'triggerParams',
+						],
+					},
+				},
+				required: true,
+				default: '',
+				typeOptions: {
+					multipleValues: true,
+				},
+				options: [
+					{
+						name: 'params',
+						displayName: 'Parameters',
+						values: [
+							{
+								displayName: 'Parameter',
+								name: 'name',
+								type: 'string',
+								default: 'Name of the Parameter  to add.',
+							},
+							{
+								displayName: 'Value',
+								name: 'value',
+								type: 'string',
+								default: '',
+								description: 'Value to set for the parameter.',
+							},
+						],
+					},
+				],
+				description: 'Parameters for Jenkins job',
 			},
 			// --------------------------------------------------------------------------------------------------------
 			//         Copy or Create a Job
@@ -270,6 +320,21 @@ export class Jenkins implements INodeType {
 						const job = this.getNodeParameter('job', i) as string;
 						const endpoint = `${baseUrl}/job/${job}/build?token=${token}`;
 						responseData = await jenkinsApiRequest.call(this, 'get', endpoint);
+					}
+					if (operation === 'triggerParams') {
+						const token = this.getNodeParameter('token', i) as string;
+						const job = this.getNodeParameter('job', i) as string;
+						const params = this.getNodeParameter('param.params', i , [] ) as IDataObject[];
+						let body = {}
+						if (params.length) {
+							body = params.reduce((body, { name, value }) => {
+								body[name] = value
+								return body
+							}, {})
+						}
+						console.log(body)
+						const endpoint = `${baseUrl}/job/${job}/buildWithParameters?token=${token}`;
+						responseData = await jenkinsApiRequest.call(this, 'get', endpoint, {}, {}, { data: body });
 					}
 					if (operation === 'copy') {
 						const job = this.getNodeParameter('job', i) as string;
