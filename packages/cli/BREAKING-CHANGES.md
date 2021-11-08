@@ -1,11 +1,11 @@
 # n8n Breaking Changes
 
 This list shows all the versions which include breaking changes and how to upgrade.
-## 0.140.0
+## 0.149.0
 
 ### What changed?
 
-Previously, empty properties of date, email, number, and rollup types were omitted from the page response. Now, these empty properties are returned with null values.
+Previously, in Notion, empty properties of date, email, number, and rollup types were omitted from the page response. Now, these empty properties are returned with null values.
 
 ### When is action necessary?
 

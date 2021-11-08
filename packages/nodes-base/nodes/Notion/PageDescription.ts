@@ -46,7 +46,7 @@ export const pageFields = [
 	/*                                page:create                                 */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Parent Page ID',
+		displayName: 'Parent Page ID or Link',
 		name: 'pageId',
 		type: 'string',
 		default: '',
@@ -61,7 +61,7 @@ export const pageFields = [
 				],
 			},
 		},
-		description: 'The ID of the parent page that this child page belongs to.',
+		description: `The URL from Notion's 'copy link' functionality (or just the ID contained within the URL)`,
 	},
 	{
 		displayName: 'Title',

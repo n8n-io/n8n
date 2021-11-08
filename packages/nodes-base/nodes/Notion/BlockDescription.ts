@@ -20,12 +20,12 @@ export const blockOperations = [
 		},
 		options: [
 			{
-				name: 'Append',
+				name: 'Append After',
 				value: 'append',
 				description: 'Append a block',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Child Blocks',
 				value: 'getAll',
 				description: 'Get all children blocks',
 			},
@@ -41,7 +41,7 @@ export const blockFields = [
 	/*                                block:append                                 */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Block ID',
+		displayName: 'Block ID or Link',
 		name: 'blockId',
 		type: 'string',
 		default: '',
@@ -56,14 +56,14 @@ export const blockFields = [
 				],
 			},
 		},
-		description: `The ID of block. A page it is also considered a block. Hence, a Page ID can be used as well.`,
+		description: `The ID of block. A page it is also considered a block. Hence, a Page ID can be used as well`,
 	},
 	...blocks('block', 'append'),
 	/* -------------------------------------------------------------------------- */
 	/*                                block:getAll                                */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Block ID',
+		displayName: 'Block ID or Link',
 		name: 'blockId',
 		type: 'string',
 		default: '',
@@ -94,7 +94,7 @@ export const blockFields = [
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'If all results should be returned or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -118,6 +118,6 @@ export const blockFields = [
 			maxValue: 100,
 		},
 		default: 50,
-		description: 'How many results to return.',
+		description: 'How many results to return',
 	},
 ] as INodeProperties[];

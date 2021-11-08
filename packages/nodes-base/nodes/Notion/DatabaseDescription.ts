@@ -37,7 +37,7 @@ export const databaseFields = [
 	/*                                database:get                                */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Database ID',
+		displayName: 'Database Link or ID',
 		name: 'databaseId',
 		type: 'string',
 		default: '',
@@ -52,6 +52,7 @@ export const databaseFields = [
 				],
 			},
 		},
+		description: `The URL from Notion's 'copy link' functionality (or just the ID contained within the URL)`,
 	},
 	/* -------------------------------------------------------------------------- */
 	/*                                database:getAll                             */
@@ -71,7 +72,7 @@ export const databaseFields = [
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'If all results should be returned or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -95,6 +96,24 @@ export const databaseFields = [
 			maxValue: 100,
 		},
 		default: 50,
-		description: 'How many results to return.',
+		description: 'How many results to return',
+	},
+	{
+		displayName: 'Simplify Output',
+		name: 'simple',
+		type: 'boolean',
+		displayOptions: {
+			show: {
+				resource: [
+					'database',
+				],
+				operation: [
+					'getAll',
+					'get',
+				],
+			},
+		},
+		default: false,
+		description: 'Whether to return a simplified version of the response instead of the raw data',
 	},
 ] as INodeProperties[];

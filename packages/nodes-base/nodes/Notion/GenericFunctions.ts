@@ -56,7 +56,6 @@ export async function notionApiRequest(this: IHookFunctions | IExecuteFunctions 
 		if (Object.keys(body).length === 0) {
 			delete options.body;
 		}
-
 		return this.helpers.request!(options);
 
 	} catch (error) {
@@ -223,7 +222,7 @@ export function formatBlocks(blocks: IDataObject[]) {
 			object: 'block',
 			type: block.type,
 			[block.type as string]: {
-				...(block.type === 'to_do') ? { checked: block.checked } : { checked: false },
+				...(block.type === 'to_do') ? { checked: block.checked } : {},
 				//@ts-expect-error
 				// tslint:disable-next-line: no-any
 				text: (block.richText === false) ? formatText(block.textContent).text : getTexts(block.text.text as any || []),
@@ -427,7 +426,7 @@ export function simplifyProperties(properties: any) {
 		} else if (['people'].includes(properties[key].type)) {
 			if (Array.isArray(properties[key][type])) {
 				// tslint:disable-next-line: no-any
-				results[`${key}`] = properties[key][type].map((person: any) => person.person.email || {});
+				results[`${key}`] = properties[key][type].map((person: any) => person.person?.email || {});
 			} else {
 				results[`${key}`] = properties[key][type];
 			}
@@ -464,11 +463,14 @@ export function simplifyObjects(objects: any, download = false) {
 		objects = [objects];
 	}
 	const results: IDataObject[] = [];
-	for (const { object, id, properties, parent, title, json, binary } of objects) {
+	for (const { object, id, properties, parent, title, json, binary, url, created_time, last_edited_time } of objects) {
 		if (object === 'page' && (parent.type === 'page_id' || parent.type === 'workspace')) {
 			results.push({
 				id,
 				title: properties.title.title[0].plain_text,
+				url,
+				created_time,
+				last_edited_time,
 			});
 		} else if (object === 'page' && parent.type === 'database_id') {
 			results.push({
@@ -487,7 +489,8 @@ export function simplifyObjects(objects: any, download = false) {
 		} else if (object === 'database') {
 			results.push({
 				id,
-				title: title[0].plain_text,
+				title: title[0]?.plain_text || '',
+				url,
 			});
 		}
 	}
@@ -717,8 +720,17 @@ export function validateCrendetials(this: ICredentialTestFunctions, credentials:
 export function extractPageId(page: string) {
 	if (page.includes('p=')) {
 		return page.split('p=')[1];
-	} else if (page.includes('-')) {
+	} else if (page.includes('-') && page.includes('https')) {
 		return page.split('-')[page.split('-').length - 1];
 	}
 	return page;
+}
+
+export function extractDatabaseId(database: string) {
+	if (database.includes('?v=')) {
+		const data = database.split('?v=')[0].split('/');
+		const index = data.length - 1;
+		return data[index];
+	}
+	return database;
 }
