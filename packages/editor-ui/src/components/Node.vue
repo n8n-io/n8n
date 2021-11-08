@@ -440,7 +440,7 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 
 .selected {
 	display: block;
-	background-color: hsla(var(--color-foreground-base-h), var(--color-foreground-base-s), var(--color-foreground-base-l), 50%);
+	background-color: hsla(var(--color-foreground-base-h), var(--color-foreground-base-s), var(--color-foreground-base-l), 60%);
 	border-radius: var(--border-radius-xlarge);
 	overflow: hidden;
 	position: absolute;
