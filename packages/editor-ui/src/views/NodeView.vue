@@ -2562,7 +2562,7 @@ export default mixins(
 .connection-run-items-label {
 	span {
 		border-radius: 7px;
-		background-color: var(--color-canvas-background);
+		background-color: hsla(var(--color-canvas-background-h),var( --color-canvas-background-s), var(--color-canvas-background-l), .85);
 		line-height: 1.3em;
 		padding: 0px 3px;
 		white-space: nowrap;
@@ -2599,7 +2599,7 @@ export default mixins(
 
 .node-input-endpoint-label,
 .node-output-endpoint-label {
-	background-color: var(--color-canvas-background);
+	background-color: hsla(var(--color-canvas-background-h),var( --color-canvas-background-s), var(--color-canvas-background-l), .85);
 	border-radius: 7px;
 	font-size: 0.7em;
 	padding: 2px;
