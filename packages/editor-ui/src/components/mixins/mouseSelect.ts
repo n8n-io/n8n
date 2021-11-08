@@ -154,6 +154,10 @@ export const mouseSelect = mixins(
 				this.nodeSelected(node);
 			});
 
+			if (selectedNodes.length === 1) {
+				this.$store.commit('setLastSelectedNode', selectedNodes[0].name);
+			}
+
 			this.hideSelectBox();
 		},
 		mouseMoveSelect (e: MouseEvent) {
