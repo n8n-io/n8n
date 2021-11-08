@@ -91,7 +91,7 @@ export const directMessageFields = [
 				name: 'attachment',
 				type: 'string',
 				default: 'data',
-				description: 'Name of the binary property which contain<br />data that should be added to the direct message as attachment.',
+				description: 'Name of the binary property which contain data that should be added to the direct message as attachment.',
 			},
 		],
 	},

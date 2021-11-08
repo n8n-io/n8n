@@ -363,7 +363,7 @@ const nodeOperationOptions: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'Max amount of characters in a line before a<br />line-break should get added.',
+		description: 'Max amount of characters in a line before a line-break should get added.',
 	},
 
 	// ----------------------------------
@@ -470,7 +470,7 @@ const nodeOperationOptions: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The name of the binary property which contains the data of the image to<br />composite on top of image which is found in Property Name.',
+		description: 'The name of the binary property which contains the data of the image to composite on top of image which is found in Property Name.',
 	},
 	{
 		displayName: 'Position X',
