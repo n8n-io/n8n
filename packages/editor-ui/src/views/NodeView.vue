@@ -1307,7 +1307,7 @@ export default mixins(
 							eventSource: 'node_connection_drop',
 						});
 					} catch (e) {
-						console.error(e);
+						console.error(e);  // eslint-disable-line no-console
 					}
 				});
 
@@ -1328,7 +1328,7 @@ export default mixins(
 
 						return true;
 					} catch (e) {
-						console.error(e);
+						console.error(e);  // eslint-disable-line no-console
 						return true;
 					}
 				});
@@ -1384,7 +1384,7 @@ export default mixins(
 										}
 									}, 150);
 								} catch (e) {
-									console.error(e);
+									console.error(e); // eslint-disable-line no-console
 								}
 							});
 
@@ -1412,7 +1412,7 @@ export default mixins(
 										}
 									}, 500);
 								} catch (e) {
-									console.error(e);
+									console.error(e); // eslint-disable-line no-console
 								}
 							});
 
@@ -1451,7 +1451,7 @@ export default mixins(
 							setStateDirty: true,
 						});
 					} catch (e) {
-						console.error(e);
+						console.error(e); // eslint-disable-line no-console
 					}
 				});
 
@@ -1487,7 +1487,7 @@ export default mixins(
 						// it visibly stays behind free floating without a connection.
 						info.connection.removeOverlays();
 					} catch (e) {
-						console.error(e);
+						console.error(e); // eslint-disable-line no-console
 					}
 				});
 
@@ -1497,7 +1497,7 @@ export default mixins(
 						info.connection.removeOverlays();
 						this.__removeConnectionByConnectionInfo(info, false);
 					} catch (e) {
-						console.error(e);
+						console.error(e); // eslint-disable-line no-console
 					}
 				});
 
@@ -1560,7 +1560,7 @@ export default mixins(
 						window.addEventListener('mousemove', onMouseMove);
 						window.addEventListener('mouseup', onMouseUp);
 					} catch (e) {
-						console.error(e);
+						console.error(e); // eslint-disable-line no-console
 					}
 				});
 			},
