@@ -123,6 +123,13 @@ export class Set implements INodeType {
 						If that is not intended this can be deactivated, it will then set { "a.b": value } instead.
 						`,
 					},
+					{
+						displayName: 'Static Data',
+						name: 'setStaticData',
+						type: 'boolean',
+						default: false,
+						description: `Set this property in the workflow static data`,
+					},
 				],
 			},
 		],
@@ -138,13 +145,16 @@ export class Set implements INodeType {
 		}
 
 		const returnData: INodeExecutionData[] = [];
+		const staticData = this.getWorkflowStaticData('global');
 
 		let item: INodeExecutionData;
 		let keepOnlySet: boolean;
+		let setStaticData: boolean;
 		for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
 			keepOnlySet = this.getNodeParameter('keepOnlySet', itemIndex, false) as boolean;
 			item = items[itemIndex];
 			const options = this.getNodeParameter('options', itemIndex, {}) as IDataObject;
+			setStaticData = options.setStaticData as boolean;
 
 			const newItem: INodeExecutionData = {
 				json: {},
@@ -166,8 +176,14 @@ export class Set implements INodeType {
 			(this.getNodeParameter('values.boolean', itemIndex, []) as INodeParameters[]).forEach((setItem) => {
 				if (options.dotNotation === false) {
 					newItem.json[setItem.name as string] = !!setItem.value;
+					if (setStaticData) {
+						staticData[setItem.name as string] = !!setItem.value;
+					}
 				} else {
 					set(newItem.json, setItem.name as string, !!setItem.value);
+					if (setStaticData) {
+						set(staticData, setItem.name as string, !!setItem.value);
+					}
 				}
 			});
 
@@ -175,8 +191,14 @@ export class Set implements INodeType {
 			(this.getNodeParameter('values.number', itemIndex, []) as INodeParameters[]).forEach((setItem) => {
 				if (options.dotNotation === false) {
 					newItem.json[setItem.name as string] = setItem.value;
+					if (setStaticData) {
+						staticData[setItem.name as string] = setItem.value;
+					}
 				} else {
 					set(newItem.json, setItem.name as string, setItem.value);
+					if (setStaticData) {
+						set(staticData, setItem.name as string, setItem.value);
+					}
 				}
 			});
 
@@ -184,8 +206,14 @@ export class Set implements INodeType {
 			(this.getNodeParameter('values.string', itemIndex, []) as INodeParameters[]).forEach((setItem) => {
 				if (options.dotNotation === false) {
 					newItem.json[setItem.name as string] = setItem.value;
+					if (setStaticData) {
+						staticData[setItem.name as string] = setItem.value;
+					}
 				} else {
 					set(newItem.json, setItem.name as string, setItem.value);
+					if (setStaticData) {
+						set(staticData, setItem.name as string, setItem.value);
+					}
 				}
 			});
 
