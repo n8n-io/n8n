@@ -448,6 +448,7 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 	top: -8px !important;
 	height: 116px;
 	width: 116px !important;
+	z-index: 2;
 }
 
 </style>
