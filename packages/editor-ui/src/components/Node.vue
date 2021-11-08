@@ -8,17 +8,16 @@
 					<font-awesome-icon icon="exclamation-triangle" />
 				</n8n-tooltip>
 			</div>
-			<span v-else-if="workflowDataItems && !data.disabled" class="node-info-icon data-count">
-				<font-awesome-icon icon="check" />
-				<span v-if="workflowDataItems > 1" class="items-count"> {{ workflowDataItems }}</span>
-			</span>
-
-			<div v-if="waiting" class="waiting">
+			<div v-else-if="waiting" class="node-info-icon waiting">
 				<n8n-tooltip placement="top">
 					<div slot="content" v-html="waiting"></div>
 					<font-awesome-icon icon="clock" />
 				</n8n-tooltip>
 			</div>
+			<span v-else-if="workflowDataItems && !data.disabled" class="node-info-icon data-count">
+				<font-awesome-icon icon="check" />
+				<span v-if="workflowDataItems > 1" class="items-count"> {{ workflowDataItems }}</span>
+			</span>
 
 			<div class="node-executing-info" title="Node is executing">
 				<font-awesome-icon icon="sync-alt" spin />
@@ -388,10 +387,6 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 
 		.waiting {
 			color: var(--color-secondary);
-
-			position: absolute;
-			left: 8px;
-			bottom: 8px;
 		}
 
 		.node-options {
