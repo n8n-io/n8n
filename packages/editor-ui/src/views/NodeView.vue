@@ -2572,7 +2572,7 @@ export default mixins(
 
 	> span.floating {
 		position: absolute;
-		top: -20px;
+		top: -22px;
 		transform: translateX(-50%)
 	}
 }
