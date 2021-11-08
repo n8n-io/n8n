@@ -1144,7 +1144,7 @@ export default mixins(
 					}
 
 					if (this.newNodeInsertPosition) {
-						newNodeData.position = CanvasHelpers.getNewNodePosition(this.nodes, [this.newNodeInsertPosition[0], this.newNodeInsertPosition[1] - CanvasHelpers.NODE_SIZE / 2]);
+						newNodeData.position = CanvasHelpers.getNewNodePosition(this.nodes, [this.newNodeInsertPosition[0] + 20, this.newNodeInsertPosition[1] - CanvasHelpers.NODE_SIZE / 2]);
 						this.newNodeInsertPosition = null;
 					}
 					else {
