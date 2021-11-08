@@ -12,7 +12,7 @@ import {
 export const OVERLAY_DROP_NODE_ID = 'drop-add-node';
 export const OVERLAY_MIDPOINT_ARROW_ID = 'midpoint-arrow';
 export const OVERLAY_ENDPOINT_ARROW_ID = 'endpoint-arrow';
-export const OVERLAY_RUN_ITEMS_ID = 'output-items-label';
+export const OVERLAY_RUN_ITEMS_ID = 'run-items-label';
 export const OVERLAY_CONNECTION_ACTIONS_ID = 'connection-actions';
 export const JSPLUMB_FLOWCHART_STUB = 26;
 export const OVERLAY_INPUT_NAME_LABEL = 'input-name-label';
@@ -478,7 +478,7 @@ export const addConnectionOutputSuccess = (connection: Connection, output: {tota
 		{
 			id: OVERLAY_RUN_ITEMS_ID,
 			label: `<span>${label}</span>`,
-			cssClass: 'connection-output-items-label',
+			cssClass: 'connection-run-items-label',
 			location: .5,
 		},
 	]);

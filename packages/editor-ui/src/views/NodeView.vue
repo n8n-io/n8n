@@ -2559,7 +2559,7 @@ export default mixins(
 
 <style lang="scss">
 
-.connection-output-items-label {
+.connection-run-items-label {
 	span {
 		border-radius: 7px;
 		background-color: var(--color-canvas-background);
@@ -2568,12 +2568,13 @@ export default mixins(
 		white-space: nowrap;
 		font-size: var(--font-size-s);
 		font-weight: var(--font-weight-regular);
+		color: var(--color-success);
 	}
 
 	> span.floating {
 		position: absolute;
 		top: -22px;
-		transform: translateX(-50%)
+		transform: translateX(-50%);
 	}
 }
 
