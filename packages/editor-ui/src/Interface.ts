@@ -604,6 +604,9 @@ export interface IRootState {
 	lastSelectedNodeOutputIndex: number | null;
 	nodeIndex: Array<string | null>;
 	nodeTypes: INodeTypeDescription[];
+	nodeTouchedParameters: {
+		[key: string]: INodeTouchedParameters;
+	};
 	nodeViewOffsetPosition: XYPositon;
 	nodeViewMoveInProgress: boolean;
 	selectedNodes: INodeUi[];
@@ -613,6 +616,16 @@ export interface IRootState {
 	sidebarMenuItems: IMenuItem[];
 	instanceId: string;
 	telemetry: ITelemetrySettings | null;
+}
+
+export interface INodeTouchedParameters {
+	nodeName: string;
+	isCredentialFieldTouched: boolean;
+	fieldsParameters: FieldsParametersOption;
+}
+
+export interface FieldsParametersOption {
+	[key: string]: string | number | boolean | object | undefined | null;
 }
 
 export interface ICredentialTypeMap {

@@ -2002,6 +2002,9 @@ export default mixins(
 					}
 
 					this.$store.commit('addNode', node);
+
+					// Add nodeTouchedParameter when user creating a new node
+					this.$store.commit('addNodeTouchedParameters', node);
 				});
 
 				// Wait for the node to be rendered

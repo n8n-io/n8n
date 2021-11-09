@@ -167,7 +167,7 @@
 		/>
 	</div>
 
-	<div class="parameter-issues" v-if="getIssues.length">
+	<div class="parameter-issues" v-if="getIssues.length && getNodeTouchedParameters.fieldsParameters[parameter.name]">
 		<n8n-tooltip placement="top" >
 			<div slot="content" v-html="'Issues:<br />&nbsp;&nbsp;- ' + getIssues.join('<br />&nbsp;&nbsp;- ')"></div>
 			<font-awesome-icon icon="exclamation-triangle" />
@@ -215,6 +215,8 @@ import { showMessage } from '@/components/mixins/showMessage';
 import { workflowHelpers } from '@/components/mixins/workflowHelpers';
 
 import mixins from 'vue-typed-mixins';
+
+import { mapGetters } from "vuex";
 
 export default mixins(
 	externalHooks,
@@ -298,6 +300,9 @@ export default mixins(
 			},
 		},
 		computed: {
+			...mapGetters({
+				getNodeTouchedParameters: 'getNodeTouchedParameters',
+			}),
 			showExpressionAsTextInput(): boolean {
 				const types = ['number', 'boolean', 'dateTime', 'options', 'multiOptions'];
 
@@ -633,9 +638,17 @@ export default mixins(
 				}
 			},
 			onBlur () {
+				// Set if the user interacted with the field on blur
+				const fieldParameter = {touched: true, name: this.parameter.name};
+				this.$store.commit("setNodeTouchedSingleFieldParameter", fieldParameter);
+
 				this.$emit('blur');
 			},
 			setFocus () {
+				// Set if the user interacted with the field on focus
+				const fieldParameter = {touched: true, name: this.parameter.name};
+				this.$store.commit("setNodeTouchedSingleFieldParameter", fieldParameter);
+
 				if (this.isValueExpression) {
 					this.expressionEditDialogVisible = true;
 					this.trackExpressionEditOpen();
@@ -679,6 +692,10 @@ export default mixins(
 				return "#" + ((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1) + ((1 << 8) + Math.floor((1-a)*255)).toString(16).slice(1);
 			},
 			onTextInputChange (value: string) {
+				// Set if the user interacted with the field on input change
+				const fieldParameter = {touched: true, name: this.parameter.name};
+				this.$store.commit("setNodeTouchedSingleFieldParameter", fieldParameter);
+
 				const parameterData = {
 					node: this.node !== null ? this.node.name : this.nodeName,
 					name: this.path,

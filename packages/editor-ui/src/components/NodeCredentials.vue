@@ -13,7 +13,7 @@
 				</div>
 
 				<div :class="issues.length ? $style.hasIssues : $style.input" v-else >
-					<n8n-select :value="getSelectedId(credentialTypeDescription.name)" @change="(value) => onCredentialSelected(credentialTypeDescription.name, value)" placeholder="Select Credential" size="small">
+					<n8n-select :value="getSelectedId(credentialTypeDescription.name)" @change="(value) => onCredentialSelected(credentialTypeDescription.name, value)" @focus="setFocus" placeholder="Select Credential" size="small">
 						<n8n-option
 							v-for="(item) in credentialOptions[credentialTypeDescription.name]"
 							:key="item.id"
@@ -28,7 +28,7 @@
 						</n8n-option>
 					</n8n-select>
 
-					<div :class="$style.warning" v-if="issues.length">
+					<div :class="$style.warning" v-if="issues.length && getNodeTouchedParameters.isCredentialFieldTouched">
 						<n8n-tooltip placement="top" >
 							<div slot="content" v-html="'Issues:<br />&nbsp;&nbsp;- ' + issues.join('<br />&nbsp;&nbsp;- ')"></div>
 							<font-awesome-icon icon="exclamation-triangle" />
@@ -85,8 +85,9 @@ export default mixins(
 		};
 	},
 	computed: {
-		...mapGetters('credentials', {
-			credentialOptions: 'allCredentialsByType',
+		...mapGetters({
+			credentialOptions: 'credentials/allCredentialsByType',
+			getNodeTouchedParameters: 'getNodeTouchedParameters',
 		}),
 		credentialTypesNode (): string[] {
 			return this.credentialTypesNodeDescription
@@ -160,6 +161,11 @@ export default mixins(
 			});
 		},
 
+		setFocus () {
+			// Set if the user interacted with the credential field on focus
+			this.$store.commit("setNodeTouchedCredentialField", true);
+		},
+
 		stopListeningForNewCredentials() {
 			if (this.newCredentialUnsubscribe) {
 				this.newCredentialUnsubscribe();
@@ -186,6 +192,9 @@ export default mixins(
 		},
 
 		onCredentialSelected (credentialType: string, credentialId: string | null | undefined) {
+			// Set if the user interacted with the credential field on select
+			this.$store.commit("setNodeTouchedCredentialField", true);
+
 			if (credentialId === NEW_CREDENTIALS_TEXT) {
 				this.listenForNewCredentials(credentialType);
 				this.$store.dispatch('ui/openNewCredential', { type: credentialType });

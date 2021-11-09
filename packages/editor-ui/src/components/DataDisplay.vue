@@ -106,6 +106,10 @@ export default mixins(externalHooks, nodeHelpers, workflowHelpers).extend({
 			this.$emit('nodeTypeSelected', nodeTypeName);
 		},
 		close () {
+			// Set that user interacted with all node fields on modal closing
+			this.$store.commit("setNodeTouchedCredentialField", true);
+			this.$store.commit("setNodeTouchedParameters");
+
 			this.$externalHooks().run('dataDisplay.nodeEditingFinished');
 			this.showDocumentHelp = false;
 			this.$store.commit('setActiveNode', null);

@@ -20,6 +20,7 @@ import {
 import {
 	IExecutionResponse,
 	IExecutionsCurrentSummaryExtended,
+	INodeTouchedParameters,
 	IRootState,
 	IMenuItem,
 	INodeUi,
@@ -69,6 +70,7 @@ const state: IRootState = {
 	lastSelectedNodeOutputIndex: null,
 	nodeIndex: [],
 	nodeTypes: [],
+	nodeTouchedParameters: {},
 	nodeViewOffsetPosition: [0, 0],
 	nodeViewMoveInProgress: false,
 	selectedNodes: [],
@@ -401,6 +403,117 @@ export const store = new Vuex.Store({
 					node.credentials[type] = credentials;
 				}
 			});
+		},
+
+		// Node-Touched Parameters
+		addNodeTouchedParameters(state, nodeData: INodeUi) {
+			// Make copy of parameters to prevent changing the original object
+			const parameters = JSON.parse(JSON.stringify(nodeData.parameters));
+
+			// Remove unnecessary objects that not need to be tracked if they are touched or not by the user
+			const { authentication, operation, resource, additionalFields, ...fieldsParameters } = parameters;
+
+			// Create new nodeTouchedParameters object
+			const nodeTouchedParameters = {
+				nodeName: nodeData.name,
+				isCredentialFieldTouched: false,
+				fieldsParameters,
+			};
+
+			// Push it to vuex store
+			state.nodeTouchedParameters[nodeData.name] = nodeTouchedParameters;
+		},
+
+		// Set isCredentialFieldTouched if user interacted with the field (focus, defocus, input change)
+		setNodeTouchedCredentialField: (state, bool) => {
+			if (state.activeNode) {
+
+				// Create new single object
+				const singleNodeTouchedParameters = {
+					nodeName: state.activeNode,
+					isCredentialFieldTouched: bool,
+					fieldsParameters: state.nodeTouchedParameters[state.activeNode].fieldsParameters,
+				};
+
+				// Get nodeTouchedParameters object that contains all object
+				const nodeTouchedParameters = state.nodeTouchedParameters;
+
+				// Bind newly created object to the nodeTocuhedParameters object
+				nodeTouchedParameters[state.activeNode] = singleNodeTouchedParameters;
+
+				// Clean-up the nodeTouchedParameters object in vuex in order to update the object immediately
+				state.nodeTouchedParameters = {};
+
+				// Push nodeTouchedParameters to vuex store
+				return state.nodeTouchedParameters = nodeTouchedParameters;
+			} else return null;
+		},
+
+		// Set certatin fieldsParameters object if user interacted with the certain field (focus, defocus, input change)
+		setNodeTouchedSingleFieldParameter: (state, object) => {
+			if(state.activeNode) {
+
+				// Make copy of parameters to prevent changing the original object
+				const fieldsParameters = JSON.parse(JSON.stringify(state.nodeTouchedParameters[state.activeNode].fieldsParameters));
+
+				// Set certain field that is touched by the user
+				fieldsParameters[object.name] = object.touched;
+
+				// Create new single object
+				const singleNodeTouchedParameters = {
+					nodeName: state.activeNode,
+					isCredentialFieldTouched: state.nodeTouchedParameters[state.activeNode].isCredentialFieldTouched,
+					fieldsParameters,
+				};
+
+				// Get nodeTouchedParameters object that contains all object
+				const nodeTouchedParameters = state.nodeTouchedParameters;
+
+				// Bind newly created object to the nodeTocuhedParameters object
+				nodeTouchedParameters[state.activeNode] = singleNodeTouchedParameters;
+
+				// Clean-up the nodeTouchedParameters object in vuex in order to update the object immediately
+				state.nodeTouchedParameters = {};
+
+				// Push nodeTouchedParameters to vuex store
+				return state.nodeTouchedParameters = nodeTouchedParameters;
+			}
+			return true;
+		},
+
+		// Set the main nodeTouchedParameters object when user close the modal, execute the node, or execute the Workflow
+		setNodeTouchedParameters: (state) => {
+			if(state.activeNode) {
+
+				// Get and make copy of fieldsParameters to prevent changing the original object
+				const fieldsParameters = JSON.parse(JSON.stringify(state.nodeTouchedParameters[state.activeNode].fieldsParameters));
+
+				// Set all fieldsParameters objects that interacted with the user
+				for (const key of Object.keys(fieldsParameters)) {
+					fieldsParameters[key] = true;
+				}
+
+				// Create new single object
+				const singleNodeTouchedParameters = {
+					nodeName: state.activeNode,
+					isCredentialFieldTouched: state.nodeTouchedParameters[state.activeNode].isCredentialFieldTouched,
+					fieldsParameters,
+				};
+
+				// Get nodeTouchedParameters object that contains all object
+				const nodeTouchedParameters = state.nodeTouchedParameters;
+
+				// Bind newly created object to the nodeTocuhedParameters object
+				nodeTouchedParameters[state.activeNode] = singleNodeTouchedParameters;
+
+				// Clean-up the nodeTouchedParameters object in vuex in order to update the object immediately
+				state.nodeTouchedParameters = {};
+
+				// Push nodeTouchedParameters to vuex store
+				return state.nodeTouchedParameters = nodeTouchedParameters;
+			}
+
+			return;
 		},
 
 		// Nodes
@@ -873,6 +986,14 @@ export const store = new Vuex.Store({
 
 		sidebarMenuItems: (state): IMenuItem[] => {
 			return state.sidebarMenuItems;
+		},
+
+		getNodeTouchedParameters: (state): INodeTouchedParameters | null | boolean => {
+			if (state.activeNode) {
+				return state.nodeTouchedParameters[state.activeNode];
+			} else {
+				return null;
+			}
 		},
 	},
 });

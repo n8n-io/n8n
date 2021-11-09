@@ -72,6 +72,10 @@ export const workflowRun = mixins(
 
 			this.clearAllStickyNotifications();
 
+			// Set that user interacted with all node fields on modal closing
+			this.$store.commit("setNodeTouchedCredentialField", true);
+			this.$store.commit("setNodeTouchedParameters");
+
 			try {
 				// Check first if the workflow has any issues before execute it
 				const issuesExist = this.$store.getters.nodesIssuesExist;
