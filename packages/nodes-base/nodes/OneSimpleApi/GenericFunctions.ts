@@ -31,6 +31,7 @@ export async function oneSimpleApiRequest(this: IExecuteFunctions, method: strin
 	if (Object.keys(body).length === 0) {
 		delete options.body;
 	}
+
 	try {
 		const responseData = await this.helpers.request(options);
 		return responseData;

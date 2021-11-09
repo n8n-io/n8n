@@ -20,7 +20,7 @@ export class OneSimpleApi implements INodeType {
 		icon: 'file:onesimpleapi.svg',
 		group: ['transform'],
 		version: 1,
-		description: 'Consume One Simple API',
+		description: 'A toolbox of no-code utilities',
 		defaults: {
 			name: 'One Simple API',
 			color: '#1A82e2',
@@ -72,11 +72,6 @@ export class OneSimpleApi implements INodeType {
 						name: 'Generate PDF',
 						value: 'pdf',
 						description: 'Generate a PDF from a webpage',
-					},
-					{
-						name: 'Generate QR Code',
-						value: 'qrCode',
-						description: 'Generate a QR Code',
 					},
 					{
 						name: 'Get SEO Data',
@@ -137,6 +132,11 @@ export class OneSimpleApi implements INodeType {
 						description: 'Expand a shortened url',
 					},
 					{
+						name: 'Generate QR Code',
+						value: 'qrCode',
+						description: 'Generate a QR Code',
+					},
+					{
 						name: 'Validate Email',
 						value: 'validateEmail',
 						description: 'Validate an email address',
@@ -165,7 +165,7 @@ export class OneSimpleApi implements INodeType {
 				description: 'Link to webpage to convert',
 			},
 			{
-				displayName: 'Download',
+				displayName: 'Download PDF?',
 				name: 'download',
 				type: 'boolean',
 				required: true,
@@ -180,6 +180,7 @@ export class OneSimpleApi implements INodeType {
 					},
 				},
 				default: false,
+				description: 'Whether to download the PDF or return a link to it',
 			},
 			{
 				displayName: 'Put Output In Field',
@@ -277,7 +278,8 @@ export class OneSimpleApi implements INodeType {
 						name: 'force',
 						type: 'boolean',
 						default: false,
-						description: '',
+						description: `Normally the API will reuse a previously taken screenshot of the URL to give a faster response.
+						This option allows you to retake the screenshot at that exact time, for those times when it's necessary`,
 					},
 				],
 			},
@@ -293,15 +295,15 @@ export class OneSimpleApi implements INodeType {
 							'qrCode',
 						],
 						resource: [
-							'website',
+							'utility',
 						],
 					},
 				},
 				default: '',
-				description: 'Content of the QR Code',
+				description: 'The text that should be turned into a QR code - like a website URL',
 			},
 			{
-				displayName: 'Download',
+				displayName: 'Download Image?',
 				name: 'download',
 				type: 'boolean',
 				required: true,
@@ -311,11 +313,12 @@ export class OneSimpleApi implements INodeType {
 							'qrCode',
 						],
 						resource: [
-							'website',
+							'utility',
 						],
 					},
 				},
 				default: false,
+				description: 'Whether to download the QR code or return a link to it',
 			},
 			{
 				displayName: 'Put Output In Field',
@@ -328,7 +331,7 @@ export class OneSimpleApi implements INodeType {
 							'qrCode',
 						],
 						resource: [
-							'website',
+							'utility',
 						],
 						download: [
 							true,
@@ -347,7 +350,7 @@ export class OneSimpleApi implements INodeType {
 				displayOptions: {
 					show: {
 						resource: [
-							'website',
+							'utility',
 						],
 						operation: [
 							'qrCode',
@@ -415,7 +418,7 @@ export class OneSimpleApi implements INodeType {
 				description: 'Link to webpage to convert',
 			},
 			{
-				displayName: 'Download',
+				displayName: 'Download Screenshot?',
 				name: 'download',
 				type: 'boolean',
 				required: true,
@@ -430,6 +433,7 @@ export class OneSimpleApi implements INodeType {
 					},
 				},
 				default: false,
+				description: 'Whether to download the screenshot or return a link to it',
 			},
 			{
 				displayName: 'Put Output In Field',
@@ -503,15 +507,15 @@ export class OneSimpleApi implements INodeType {
 						name: 'force',
 						type: 'boolean',
 						default: false,
-						description: `Normally the API will reuse a previously taken screenshot of the URL to give a faster response.</br>
+						description: `Normally the API will reuse a previously taken screenshot of the URL to give a faster response.
 						This option allows you to retake the screenshot at that exact time, for those times when it's necessary`,
 					},
 					{
 						displayName: 'Full Page',
-						name: 'page',
+						name: 'full',
 						type: 'boolean',
 						default: false,
-						description: '',
+						description: 'The API takes a screenshot of the viewable area for the desired screen size. If you need a screenshot of the whole length of the page, use this option',
 					},
 				],
 			},
@@ -628,7 +632,7 @@ export class OneSimpleApi implements INodeType {
 				},
 				options: [
 					{
-						displayName: 'Include Headers',
+						displayName: 'Include Headers?',
 						name: 'headers',
 						type: 'boolean',
 						default: false,
@@ -701,9 +705,9 @@ export class OneSimpleApi implements INodeType {
 						}
 
 						if (options.force) {
-							qs.force = 'Yes';
+							qs.force = 'yes';
 						} else {
-							qs.force = 'No';
+							qs.force = 'no';
 						}
 
 						const response = await oneSimpleApiRequest.call(this, 'GET', '/pdf', {}, qs);
@@ -721,38 +725,7 @@ export class OneSimpleApi implements INodeType {
 							responseData = response;
 						}
 					}
-
-					if (operation === 'qrCode') {
-						const message = this.getNodeParameter('message', i) as string;
-						const options = this.getNodeParameter('options', i) as IDataObject;
-						download = this.getNodeParameter('download', i) as boolean;
-
-						qs.message = message;
-
-						if (options.size) {
-							qs.size = options.size as string;
-						}
-
-						if (options.format) {
-							qs.format = options.format as string;
-						}
-
-						const response = await oneSimpleApiRequest.call(this, 'GET', '/qr_code', {}, qs);
-
-						if (download) {
-							const output = this.getNodeParameter('output', i) as string;
-							const buffer = await oneSimpleApiRequest.call(this, 'GET', '', {}, {}, response.url, { json: false, encoding: null }) as Buffer;
-							responseData = {
-								json: response,
-								binary: {
-									[output]: await this.helpers.prepareBinaryData(buffer),
-								},
-							};
-						} else {
-							responseData = response;
-						}
-					}
-
+					
 					if (operation === 'screenshot') {
 						const link = this.getNodeParameter('link', i) as string;
 						const options = this.getNodeParameter('options', i) as IDataObject;
@@ -765,15 +738,15 @@ export class OneSimpleApi implements INodeType {
 						}
 
 						if (options.full) {
-							qs.full = 'Yes';
+							qs.full = 'yes';
 						} else {
-							qs.full = 'No';
+							qs.full = 'no';
 						}
 
 						if (options.force) {
-							qs.force = 'Yes';
+							qs.force = 'yes';
 						} else {
-							qs.force = 'No';
+							qs.force = 'no';
 						}
 
 						const response = await oneSimpleApiRequest.call(this, 'GET', '/screenshot', {}, qs);
@@ -798,7 +771,7 @@ export class OneSimpleApi implements INodeType {
 						qs.url = link;
 
 						if (options.headers) {
-							qs.headers = 'Yes';
+							qs.headers = 'yes';
 						}
 
 						responseData = await oneSimpleApiRequest.call(this, 'GET', '/page_info', {}, qs);
@@ -836,6 +809,37 @@ export class OneSimpleApi implements INodeType {
 						const url = this.getNodeParameter('link', i) as string;
 						qs.url = url;
 						responseData = await oneSimpleApiRequest.call(this, 'GET', '/unshorten', {}, qs);
+					}
+
+					if (operation === 'qrCode') {
+						const message = this.getNodeParameter('message', i) as string;
+						const options = this.getNodeParameter('options', i) as IDataObject;
+						download = this.getNodeParameter('download', i) as boolean;
+
+						qs.message = message;
+
+						if (options.size) {
+							qs.size = options.size as string;
+						}
+
+						if (options.format) {
+							qs.format = options.format as string;
+						}
+
+						const response = await oneSimpleApiRequest.call(this, 'GET', '/qr_code', {}, qs);
+
+						if (download) {
+							const output = this.getNodeParameter('output', i) as string;
+							const buffer = await oneSimpleApiRequest.call(this, 'GET', '', {}, {}, response.url, { json: false, encoding: null }) as Buffer;
+							responseData = {
+								json: response,
+								binary: {
+									[output]: await this.helpers.prepareBinaryData(buffer),
+								},
+							};
+						} else {
+							responseData = response;
+						}
 					}
 				}
 
