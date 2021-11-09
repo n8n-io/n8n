@@ -280,6 +280,7 @@ class App {
 			personalizationSurvey: {
 				shouldShow: false,
 			},
+			defaultLocale: config.get('defaultLocale'),
 		};
 	}
 

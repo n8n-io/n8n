@@ -55,6 +55,7 @@ const module: Module<ISettingsState, IRootState> = {
 			context.commit('setInstanceId', settings.instanceId, {root: true});
 			context.commit('setOauthCallbackUrls', settings.oauthCallbackUrls, {root: true});
 			context.commit('setN8nMetadata', settings.n8nMetadata || {}, {root: true});
+			context.commit('setDefaultLocale', settings.defaultLocale, {root: true});
 			context.commit('versions/setVersionNotificationSettings', settings.versionNotifications, {root: true});
 			context.commit('setTelemetry', settings.telemetry, {root: true});
 

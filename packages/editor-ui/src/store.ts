@@ -48,6 +48,7 @@ const state: IRootState = {
 	activeNode: null,
 	// @ts-ignore
 	baseUrl: process.env.VUE_APP_URL_BASE_API ? process.env.VUE_APP_URL_BASE_API : (window.BASE_PATH === '/%BASE_PATH%/' ? '/' : window.BASE_PATH),
+	defaultLocale: 'en',
 	endpointWebhook: 'webhook',
 	endpointWebhookTest: 'webhook-test',
 	executionId: null,
@@ -552,6 +553,9 @@ export const store = new Vuex.Store({
 		setN8nMetadata(state, metadata: IDataObject) {
 			Vue.set(state, 'n8nMetadata', metadata);
 		},
+		setDefaultLocale(state, locale: string) {
+			Vue.set(state, 'defaultLocale', locale);
+		},
 		setActiveNode (state, nodeName: string) {
 			state.activeNode = nodeName;
 		},
@@ -716,6 +720,9 @@ export const store = new Vuex.Store({
 		},
 		n8nMetadata: (state): object => {
 			return state.n8nMetadata;
+		},
+		defaultLocale: (state): string => {
+			return state.defaultLocale;
 		},
 
 		// Push Connection
