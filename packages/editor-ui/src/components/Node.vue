@@ -400,7 +400,7 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 			top: -25px;
 			left: -10px;
 			width: 120px;
-			height: 45px;
+			height: 24px;
 			font-size: 0.9em;
 			text-align: left;
 			z-index: 10;
