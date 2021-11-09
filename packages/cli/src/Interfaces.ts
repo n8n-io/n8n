@@ -7,19 +7,19 @@ import {
 	ICredentialsEncrypted,
 	ICredentialType,
 	IDataObject,
+	IDeferredPromise,
+	IExecuteResponsePromiseData,
 	IRun,
 	IRunData,
 	IRunExecutionData,
 	ITaskData,
 	ITelemetrySettings,
 	IWorkflowBase as IWorkflowBaseWorkflow,
-	// eslint-disable-next-line @typescript-eslint/no-unused-vars
-	IWorkflowCredentials,
 	Workflow,
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
 
-import { IDeferredPromise, WorkflowExecute } from 'n8n-core';
+import { WorkflowExecute } from 'n8n-core';
 
 // eslint-disable-next-line import/no-extraneous-dependencies
 import * as PCancelable from 'p-cancelable';
@@ -45,6 +45,11 @@ export interface IBullJobData {
 
 export interface IBullJobResponse {
 	success: boolean;
+}
+
+export interface IBullWebhookResponse {
+	executionId: string;
+	response: IExecuteResponsePromiseData;
 }
 
 export interface ICustomRequest extends Request {
@@ -237,6 +242,7 @@ export interface IExecutingWorkflowData {
 	process?: ChildProcess;
 	startedAt: Date;
 	postExecutePromises: Array<IDeferredPromise<IRun | undefined>>;
+	responsePromise?: IDeferredPromise<IExecuteResponsePromiseData>;
 	workflowExecution?: PCancelable<IRun>;
 }
 
@@ -491,6 +497,7 @@ export interface IPushDataConsoleMessage {
 
 export interface IResponseCallbackData {
 	data?: IDataObject | IDataObject[];
+	headers?: object;
 	noWebhookResponse?: boolean;
 	responseCode?: number;
 }
