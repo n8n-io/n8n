@@ -309,9 +309,10 @@ export class Elasticsearch implements INodeType {
 
 					const indexId = this.getNodeParameter('indexId', i);
 					const documentId = this.getNodeParameter('documentId', i);
+					const qs = this.getNodeParameter('additionalFields', i) as IDataObject;
 
 					const endpoint = `/${indexId}/_update/${documentId}`;
-					responseData = await elasticsearchApiRequest.call(this, 'POST', endpoint, body);
+					responseData = await elasticsearchApiRequest.call(this, 'POST', endpoint, body, qs);
 
 				}
 
