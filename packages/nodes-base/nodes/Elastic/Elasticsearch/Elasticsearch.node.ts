@@ -222,10 +222,10 @@ export class Elasticsearch implements INodeType {
 
 					if (documentId) {
 						const endpoint = `/${indexId}/_doc/${documentId}`;
-						responseData = await elasticsearchApiRequest.call(this, 'PUT', endpoint, body);
+						responseData = await elasticsearchApiRequest.call(this, 'PUT', endpoint, body, qs);
 					} else {
 						const endpoint = `/${indexId}/_doc`;
-						responseData = await elasticsearchApiRequest.call(this, 'POST', endpoint, body);
+						responseData = await elasticsearchApiRequest.call(this, 'POST', endpoint, body, qs);
 					}
 
 				} else if (operation === 'update') {
