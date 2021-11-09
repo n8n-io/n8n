@@ -470,6 +470,7 @@ export interface IN8nUISettings {
 	instanceId: string;
 	personalizationSurvey?: IPersonalizationSurvey;
 	telemetry: ITelemetrySettings;
+	defaultLocale: string;
 }
 
 export interface IWorkflowSettings extends IWorkflowSettingsWorkflow {
@@ -583,6 +584,7 @@ export interface IRootState {
 	activeActions: string[];
 	activeNode: string | null;
 	baseUrl: string;
+	defaultLocale: string;
 	endpointWebhook: string;
 	endpointWebhookTest: string;
 	executionId: string | null;
