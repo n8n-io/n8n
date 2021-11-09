@@ -3,10 +3,13 @@ import {
 } from 'n8n-core';
 
 import {
+	ICredentialsDecrypted,
+	ICredentialTestFunctions,
 	IDataObject,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
+	NodeCredentialTestResult
 } from 'n8n-workflow';
 
 import {
@@ -22,12 +25,17 @@ import {
 
 import {
 	DocumentGetAllOptions,
+	ElasticsearchApiCredentials,
 	FieldsUiValues,
 } from './types';
 
 import {
 	omit,
 } from 'lodash';
+
+import {
+	OptionsWithUri,
+} from 'request';
 
 export class Elasticsearch implements INodeType {
 	description: INodeTypeDescription = {
@@ -48,6 +56,7 @@ export class Elasticsearch implements INodeType {
 			{
 				name: 'elasticsearchApi',
 				required: true,
+				testedBy: 'elasticApiTest',
 			},
 		],
 		properties: [
@@ -73,6 +82,46 @@ export class Elasticsearch implements INodeType {
 			...indexOperations,
 			...indexFields,
 		],
+	};
+
+	methods = {
+		credentialTest: {
+			async elasticApiTest(
+				this: ICredentialTestFunctions,
+				credential: ICredentialsDecrypted,
+			): Promise<NodeCredentialTestResult> {
+				const {
+					username,
+					password,
+					baseUrl: uri,
+				} = credential.data as ElasticsearchApiCredentials;
+
+				const token = Buffer.from(`${username}:${password}`).toString('base64');
+
+				const options: OptionsWithUri = {
+					headers: {
+						Authorization: `Basic ${token}`,
+						'Content-Type': 'application/json',
+					},
+					method: 'GET',
+					uri,
+					json: true,
+				};
+
+				try {
+					await this.helpers.request(options);
+					return {
+						status: 'OK',
+						message: 'Authentication successful',
+					};
+				} catch (error) {
+					return {
+						status: 'Error',
+						message: error.message,
+					};
+				}
+			},
+		},
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
