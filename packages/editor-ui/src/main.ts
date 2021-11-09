@@ -18,6 +18,7 @@ import router from './router';
 
 import { runExternalHook } from './components/mixins/externalHooks';
 import { TelemetryPlugin } from './plugins/telemetry';
+import { i18n } from './i18n';
 
 import { store } from './store';
 
@@ -31,6 +32,7 @@ Vue.use(TelemetryPlugin);
 new Vue({
 	router,
 	store,
+	i18n,
 	render: h => h(App),
 }).$mount('#app');
 

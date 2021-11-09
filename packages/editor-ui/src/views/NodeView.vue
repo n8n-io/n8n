@@ -166,6 +166,7 @@ import {
 	IExecutionsSummary,
 } from '../Interface';
 import { mapGetters } from 'vuex';
+import { loadLanguage } from '@/i18n';
 
 const NODE_SIZE = 100;
 const DEFAULT_START_POSITION_X = 250;
@@ -238,6 +239,11 @@ export default mixins(
 				},
 				deep: true,
 			},
+
+			defaultLocale (newLocale, oldLocale) {
+				console.log(`Switching locale from ${oldLocale} to ${newLocale}`);
+				loadLanguage(newLocale);
+			},
 		},
 		async beforeRouteLeave(to, from, next) {
 			const result = this.$store.getters.getStateIsDirty;
@@ -258,6 +264,9 @@ export default mixins(
 			...mapGetters('ui', [
 				'sidebarMenuCollapsed',
 			]),
+			defaultLocale (): string {
+				return this.$store.getters.defaultLocale;
+			},
 			activeNode (): INodeUi | null {
 				return this.$store.getters.activeNode;
 			},
