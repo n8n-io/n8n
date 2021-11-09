@@ -689,6 +689,13 @@ const config = convict({
 			},
 		},
 	},
+
+	defaultLocale: {
+		doc: 'Default locale for the UI',
+		format: String,
+		default: 'en',
+		env: 'N8N_DEFAULT_LOCALE',
+	},
 });
 
 // Overwrite default configuration with settings which got defined in
