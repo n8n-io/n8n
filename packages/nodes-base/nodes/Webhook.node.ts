@@ -148,11 +148,6 @@ export class Webhook implements INodeType {
 				type: 'options',
 				options: [
 					{
-						name: 'Empty body response',
-						value: 'noBodyResponse',
-						description: 'Responds with empty body',
-					},
-					{
 						name: 'Immediately',
 						value: 'onReceived',
 						description: 'As soon as this node executes',
@@ -383,6 +378,20 @@ export class Webhook implements INodeType {
 						default: false,
 						description: 'Raw body (binary)',
 					},
+					{
+						displayName: 'Send empty response',
+						name: 'sendEmptyResponse',
+						type: 'boolean',
+						displayOptions: {
+							show: {
+								'/responseMode': [
+									'onReceived',
+								],
+							},
+						},
+						default: false,
+						description: 'Sets the response body to be empty',
+					},
 				],
 			},
 		],
@@ -555,6 +564,10 @@ export class Webhook implements INodeType {
 		let webhookResponse: string | undefined;
 		if (options.responseData) {
 			webhookResponse = options.responseData as string;
+		}
+
+		if (options.sendEmptyResponse) {
+			webhookResponse = '';
 		}
 
 		return {
