@@ -680,6 +680,7 @@ class App {
 
 					// @ts-ignore
 					savedWorkflow.id = savedWorkflow.id.toString();
+					await this.externalHooks.run('workflow.afterCreate', [savedWorkflow]);
 					void InternalHooksManager.getInstance().onWorkflowCreated(newWorkflow as IWorkflowBase);
 					return savedWorkflow;
 				},
@@ -2669,7 +2670,13 @@ class App {
 					return;
 				}
 
-				ResponseHelper.sendSuccessResponse(res, response.data, true, response.responseCode);
+				ResponseHelper.sendSuccessResponse(
+					res,
+					response.data,
+					true,
+					response.responseCode,
+					response.headers,
+				);
 			},
 		);
 
@@ -2720,7 +2727,13 @@ class App {
 					return;
 				}
 
-				ResponseHelper.sendSuccessResponse(res, response.data, true, response.responseCode);
+				ResponseHelper.sendSuccessResponse(
+					res,
+					response.data,
+					true,
+					response.responseCode,
+					response.headers,
+				);
 			},
 		);
 
@@ -2746,7 +2759,13 @@ class App {
 					return;
 				}
 
-				ResponseHelper.sendSuccessResponse(res, response.data, true, response.responseCode);
+				ResponseHelper.sendSuccessResponse(
+					res,
+					response.data,
+					true,
+					response.responseCode,
+					response.headers,
+				);
 			},
 		);
 
