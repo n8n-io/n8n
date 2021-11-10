@@ -795,6 +795,18 @@ export default mixins(
 				});
 			},
 
+			setDefaultStartNode(nodes: INodeUi[] = []) {
+				nodes = [DEFAULT_START_NODE];
+
+				nodes.map((node) => {
+					node.disabled = false;
+					node.position[0] = DEFAULT_START_POSITION_X;
+					node.position[1] = DEFAULT_START_POSITION_Y;
+				});
+
+				return nodes;
+			},
+
 			selectAllNodes () {
 				this.nodes.forEach((node) => {
 					this.nodeSelectedByName(node.name);
@@ -1607,7 +1619,10 @@ export default mixins(
 				await this.$store.dispatch('workflows/setNewWorkflowName');
 				this.$store.commit('setStateDirty', false);
 
-				await this.addNodes([DEFAULT_START_NODE]);
+				// Set default values for the new default node
+				const nodes = this.setDefaultStartNode();
+
+				await this.addNodes(nodes);
 				this.$store.commit('setStateDirty', false);
 
 				this.setZoomLevel(1);
@@ -1963,9 +1978,6 @@ export default mixins(
 					if (!node.hasOwnProperty('disabled')) {
 						node.disabled = false;
 					}
-
-					// If the user create new worklow, make sure that the default node's disabled property is reseted
-					node.disabled = false;
 
 					if (!node.hasOwnProperty('color')) {
 						// If no color is defined set the default color of the node type
