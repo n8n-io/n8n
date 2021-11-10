@@ -13,9 +13,10 @@
 <script lang="ts">
 import mixins from 'vue-typed-mixins';
 import { copyPaste } from './mixins/copyPaste';
+import { renderText } from './mixins/renderText';
 import { showMessage } from './mixins/showMessage';
 
-export default mixins(copyPaste, showMessage).extend({
+export default mixins(copyPaste, showMessage, renderText).extend({
 	props: {
 		label: {
 			type: String,
@@ -38,7 +39,7 @@ export default mixins(copyPaste, showMessage).extend({
 			this.copyToClipboard(this.$props.copyContent);
 
 			this.$showMessage({
-				title: 'Copied',
+				title: this.$baseText('credentialsEdit.showMessage.title'),
 				message: this.$props.successMessage,
 				type: 'success',
 			});

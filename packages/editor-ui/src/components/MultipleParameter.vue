@@ -10,10 +10,10 @@
 
 			<div v-for="(value, index) in values" :key="index" class="duplicate-parameter-item" :class="parameter.type">
 				<div class="delete-item clickable" v-if="!isReadOnly">
-					<font-awesome-icon icon="trash" title="Delete Item" @click="deleteItem(index)" />
+					<font-awesome-icon icon="trash" :title="$baseText('multipleParameter.deleteItem')" @click="deleteItem(index)" />
 					<div v-if="sortable">
-						<font-awesome-icon v-if="index !== 0" icon="angle-up" class="clickable" title="Move up" @click="moveOptionUp(index)" />
-						<font-awesome-icon v-if="index !== (values.length -1)" icon="angle-down" class="clickable" title="Move down" @click="moveOptionDown(index)" />
+						<font-awesome-icon v-if="index !== 0" icon="angle-up" class="clickable" :title="$baseText('multipleParameter.moveUp')" @click="moveOptionUp(index)" />
+						<font-awesome-icon v-if="index !== (values.length -1)" icon="angle-down" class="clickable" :title="$baseText('multipleParameter.moveDown')" @click="moveOptionDown(index)" />
 					</div>
 				</div>
 				<div v-if="parameter.type === 'collection'">
@@ -26,7 +26,7 @@
 
 			<div class="add-item-wrapper">
 				<div v-if="values && Object.keys(values).length === 0 || isReadOnly" class="no-items-exist">
-					<n8n-text size="small">Currently no items exist</n8n-text>
+					<n8n-text size="small">{{ $baseText('multipleParameter.currentlyNoItemsExist') }}</n8n-text>
 				</div>
 				<n8n-button v-if="!isReadOnly" fullWidth @click="addItem()" :label="addButtonText" />
 			</div>

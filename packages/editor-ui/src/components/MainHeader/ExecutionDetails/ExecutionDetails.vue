@@ -1,7 +1,7 @@
 <template>
 	<div class="container">
 		<span class="title">
-			Execution Id:
+			{{ $baseText('executionDetails.executionId') + ':' }}
 			<span>
 				<strong>{{ executionId }}</strong
 				>&nbsp;
@@ -9,23 +9,23 @@
 					icon="check"
 					class="execution-icon success"
 					v-if="executionFinished"
-					title="Execution was successful"
+					:title="$baseText('executionDetails.executionWasSuccessful')"
 				/>
 				<font-awesome-icon
 					icon="clock"
 					class="execution-icon warning"
 					v-else-if="executionWaiting"
-					title="Execution waiting"
+					:title="$baseText('executionDetails.executionWaiting')"
 				/>
 				<font-awesome-icon
 					icon="times"
 					class="execution-icon error"
 					v-else
-					title="Execution failed"
+					:title="$baseText('executionDetails.executionFailed')"
 				/>
 			</span>
 			of
-			<span class="primary-color clickable" title="Open Workflow">
+			<span class="primary-color clickable" :title="$baseText('executionDetails.openWorkflow')">
 				<WorkflowNameShort :name="workflowName">
 					<template v-slot="{ shortenedName }">
 						<span @click="openWorkflow(workflowExecution.workflowId)">
