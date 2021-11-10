@@ -40,16 +40,16 @@ export class OneSimpleApi implements INodeType {
 				type: 'options',
 				options: [
 					{
-						name: 'Website',
-						value: 'website',
-					},
-					{
 						name: 'Information',
 						value: 'information',
 					},
 					{
 						name: 'Utility',
 						value: 'utility',
+					},
+					{
+						name: 'Website',
+						value: 'website',
 					},
 				],
 				default: 'website',
@@ -226,22 +226,6 @@ export class OneSimpleApi implements INodeType {
 						type: 'options',
 						options: [
 							{
-								name: 'Letter',
-								value: 'Letter',
-							},
-							{
-								name: 'Legal',
-								value: 'Legal',
-							},
-							{
-								name: 'Tabloid',
-								value: 'Tabloid',
-							},
-							{
-								name: 'Ledger',
-								value: 'Ledger',
-							},
-							{
 								name: 'A0',
 								value: 'A0',
 							},
@@ -268,6 +252,22 @@ export class OneSimpleApi implements INodeType {
 							{
 								name: 'A6',
 								value: 'A6',
+							},
+							{
+								name: 'Legal',
+								value: 'Legal',
+							},
+							{
+								name: 'Ledger',
+								value: 'Ledger',
+							},
+							{
+								name: 'Letter',
+								value: 'Letter',
+							},
+							{
+								name: 'Tabloid',
+								value: 'Tabloid',
 							},
 						],
 						default: '',
@@ -376,7 +376,7 @@ export class OneSimpleApi implements INodeType {
 								value: 'Large',
 							},
 						],
-						default: '',
+						default: 'Small',
 						description: 'The QR Code size',
 					},
 					{
@@ -393,7 +393,7 @@ export class OneSimpleApi implements INodeType {
 								value: 'SVG',
 							},
 						],
-						default: '',
+						default: 'PNG',
 						description: 'The QR Code format',
 					},
 				],
@@ -479,16 +479,16 @@ export class OneSimpleApi implements INodeType {
 						type: 'options',
 						options: [
 							{
-								name: 'Retina',
-								value: 'retina',
-							},
-							{
 								name: 'Phone',
 								value: 'phone',
 							},
 							{
 								name: 'Phone Landscape',
 								value: 'phone-landscape',
+							},
+							{
+								name: 'Retina',
+								value: 'retina',
 							},
 							{
 								name: 'Tablet',
@@ -512,7 +512,7 @@ export class OneSimpleApi implements INodeType {
 					},
 					{
 						displayName: 'Full Page',
-						name: 'full',
+						name: 'fullpage',
 						type: 'boolean',
 						default: false,
 						description: 'The API takes a screenshot of the viewable area for the desired screen size. If you need a screenshot of the whole length of the page, use this option',
@@ -725,7 +725,7 @@ export class OneSimpleApi implements INodeType {
 							responseData = response;
 						}
 					}
-					
+
 					if (operation === 'screenshot') {
 						const link = this.getNodeParameter('link', i) as string;
 						const options = this.getNodeParameter('options', i) as IDataObject;
@@ -737,10 +737,10 @@ export class OneSimpleApi implements INodeType {
 							qs.screen = options.screen as string;
 						}
 
-						if (options.full) {
-							qs.full = 'yes';
+						if (options.fullpage) {
+							qs.fullpage = 'yes';
 						} else {
-							qs.full = 'no';
+							qs.fullpage = 'no';
 						}
 
 						if (options.force) {
