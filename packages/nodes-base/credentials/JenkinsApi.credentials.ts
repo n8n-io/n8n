@@ -20,5 +20,11 @@ export class JenkinsApi implements ICredentialType {
 			type: 'string',
 			default: '',
 		},
+		{
+			displayName: 'Jenkins instance URL',
+			name: 'baseUrl',
+			type: 'string',
+			default: '',
+		},
 	];
 }

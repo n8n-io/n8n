@@ -7,6 +7,9 @@ import {
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
+	ICredentialTestFunctions,
+	ICredentialsDecrypted,
+	NodeCredentialTestResult,
 } from 'n8n-workflow';
 
 import {
@@ -17,6 +20,12 @@ import {
 	parseString,
 } from 'xml2js';
 
+
+export type JenkinsApiCredentials = {
+	username: string;
+	apiKey: string;
+	baseUrl: string;
+};
 
 export class Jenkins implements INodeType {
 	description: INodeTypeDescription = {
@@ -37,6 +46,7 @@ export class Jenkins implements INodeType {
 			{
 				name: 'jenkinsApi',
 				required: true,
+				testedBy: 'buildsGetApiTest',
 			},
 		],
 		properties: [
@@ -324,7 +334,7 @@ export class Jenkins implements INodeType {
 				},
 				options: [
 					{
-						name: 'List builds',
+						name: 'List Builds',
 						value: 'list',
 						description: 'List Builds',
 					},
@@ -408,11 +418,48 @@ export class Jenkins implements INodeType {
 		],
 	};
 
+	methods = {
+		credentialTest: {
+			async buildsGetApiTest(
+				this: ICredentialTestFunctions,
+				credential: ICredentialsDecrypted,
+			): Promise<NodeCredentialTestResult> {
+				const { baseUrl, username, apiKey } = credential.data as JenkinsApiCredentials;
+				const token = Buffer.from(`${username}:${apiKey}`).toString('base64');
+
+				const endpoint = '/api/xml';
+
+				const options = {
+					headers: {
+						Authorization: `Basic ${token}`,
+					},
+					method: 'GET',
+					body: {},
+					qs: {},
+					uri: `${baseUrl}${endpoint}`,
+					json: true,
+				};
+
+				try {
+					await this.helpers.request(options);
+					return {
+						status: 'OK',
+						message: 'Authentication successful',
+					};
+				} catch (error) {
+					return {
+						status: 'Error',
+						message: error.message,
+					};
+				}
+			},
+		},
+	};
+
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
 		const returnData: IDataObject[] = [];
 		const length = items.length as unknown as number;
-		const qs: IDataObject = {};
 		let responseData;
 		const resource = this.getNodeParameter('resource', 0) as string;
 		const operation = this.getNodeParameter('operation', 0) as string;
