@@ -44,12 +44,13 @@
 		</div>
 		<div class="node-description">
 			<div class="node-name" :title="data.name">
-				<p>{{data.name}}</p>
+				<p>{{ nodeTitle }}</p>
 			</div>
 			<div v-if="nodeSubtitle !== undefined" class="node-subtitle" :title="nodeSubtitle">
 				{{nodeSubtitle}}
 			</div>
 		</div>
+		<div class="disabled-linethrough" v-if="showDisabledLinethrough"></div>
 	</div>
 </template>
 
@@ -155,6 +156,9 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 
 			return node.position;
 		},
+		showDisabledLinethrough(): boolean {
+			return !!(this.data.disabled && this.nodeType && this.nodeType.inputs.length === 1 && this.nodeType.outputs.length === 1);
+		},
 		nodePosition (): object {
 			const returnStyles: {
 				[key: string]: string;
@@ -164,6 +168,9 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 			};
 
 			return returnStyles;
+		},
+		nodeTitle (): string {
+			return this.data.disabled ? `${this.data.name} (Disabled)` : this.data.name;
 		},
 		waiting (): string | undefined {
 			const workflowExecution = this.$store.getters.getWorkflowExecution;
@@ -450,14 +457,22 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 	width: 116px !important;
 }
 
+.disabled-linethrough {
+	border: 1px solid var(--color-foreground-dark);
+	position: absolute;
+	top: 49px;
+	left: -3px;
+	width: 111px;
+}
+
 </style>
 
 <style lang="scss">
 /** node */
-.node-wrapper {
+.node-wrapper > * {
 	z-index: 1;
 
-	&.selected {
+	&.selected > * {
 		z-index: 2;
 	}
 }
@@ -481,6 +496,10 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 }
 
 .jtk-connector.jtk-hover {
+	z-index: 6;
+}
+
+.disabled-linethrough {
 	z-index: 6;
 }
 

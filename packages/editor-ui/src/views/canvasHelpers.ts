@@ -45,7 +45,7 @@ export const DEFAULT_START_NODE = {
 export const CONNECTOR_FLOWCHART_TYPE = ['N8nFlowchart', {
 	cornerRadius: 4,
 	stub: JSPLUMB_FLOWCHART_STUB + 10,
-	gap: 5,
+	gap: 4,
 	alwaysRespectStubs: false,
 	loopbackVerticalLength: NODE_SIZE, // length of vertical segment when looping
 	loopbackMinimum: 140, // minimum length before flowchart loops around
