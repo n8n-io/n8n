@@ -2,7 +2,7 @@
 	<el-row class="tags-header">
 		<el-col :span="10">
 			<n8n-input
-				placeholder="Search tags"
+				:placeholder="$baseText('tagsTableHeader.searchTags')"
 				:value="search"
 				@input="onSearchChange"
 				:disabled="disabled"
@@ -13,15 +13,18 @@
 			</n8n-input>
 		</el-col>
 		<el-col :span="14">
-			<n8n-button @click="onAddNew" :disabled="disabled" icon="plus" label="Add new" size="large" float="right" />
+			<n8n-button @click="onAddNew" :disabled="disabled" icon="plus" :label="$baseText('tagsTableHeader.addNew')" size="large" float="right" />
 		</el-col>
 	</el-row>
 </template>
 
 <script lang="ts">
+import { renderText } from "@/components/mixins/renderText";
 import { MAX_TAG_NAME_LENGTH } from "@/constants";
 import Vue from "vue";
-export default Vue.extend({
+import mixins from 'vue-typed-mixins';
+
+export default mixins(renderText).extend({
 	props: {
 		disabled: {
 			default: false,

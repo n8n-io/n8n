@@ -5,26 +5,35 @@
 				<display-with-change :key-name="'name'" @valueChanged="valueChanged"></display-with-change>
 				<a v-if="nodeType" :href="'http://n8n.io/nodes/' + nodeType.name" target="_blank" class="node-info">
 					<n8n-tooltip class="clickable" placement="top" >
-						<div slot="content" v-html="'<strong>Node Description:</strong><br />' + nodeTypeDescription + '<br /><br /><strong>Click the \'?\' icon to open this node on n8n.io </strong>'"></div>
+						<div slot="content" v-html="`<strong>${$baseText('nodeSettings.nodeDescription')}:</strong><br />` + nodeTypeDescription + `<br /><br /><strong>${$baseText('nodeSettings.clickOnTheQuestionMarkIcon')}</strong>`"></div>
 						<font-awesome-icon icon="question-circle" />
 					</n8n-tooltip>
 				</a>
 			</span>
 		</div>
 		<div class="node-is-not-valid" v-if="node && !nodeValid">
-			<n8n-text>The node is not valid as its type "{{node.type}}" is unknown.</n8n-text>
+			<n8n-text>
+				{{
+					$baseText(
+						'nodeSettings.theNodeIsNotValidAsItsTypeIsUnknown',
+						{ interpolate: { nodeType: node.type } },
+					)
+				}}
+			</n8n-text>
 		</div>
 		<div class="node-parameters-wrapper" v-if="node && nodeValid">
 			<el-tabs stretch @tab-click="handleTabClick">
-				<el-tab-pane label="Parameters">
+				<el-tab-pane :label="$baseText('nodeSettings.parameters')">
 					<node-credentials :node="node" @credentialSelected="credentialSelected"></node-credentials>
 					<node-webhooks :node="node" :nodeType="nodeType" />
 					<parameter-input-list :parameters="parametersNoneSetting" :hideDelete="true" :nodeValues="nodeValues" path="parameters" @valueChanged="valueChanged" />
 					<div v-if="parametersNoneSetting.length === 0" class="no-parameters">
-						<n8n-text>This node does not have any parameters.</n8n-text>
+						<n8n-text>
+						{{ $baseText('nodeSettings.thisNodeDoesNotHaveAnyParameters') }}
+						</n8n-text>
 					</div>
 				</el-tab-pane>
-				<el-tab-pane label="Settings">
+				<el-tab-pane :label="$baseText('nodeSettings.settings')">
 					<parameter-input-list :parameters="nodeSettings" :hideDelete="true" :nodeValues="nodeValues" path="" @valueChanged="valueChanged" />
 					<parameter-input-list :parameters="parametersSetting" :nodeValues="nodeValues" path="parameters" @valueChanged="valueChanged" />
 				</el-tab-pane>
@@ -90,7 +99,7 @@ export default mixins(
 				if (this.nodeType && this.nodeType.description) {
 					return this.nodeType.description;
 				} else {
-					return 'No description found';
+					return this.$baseText('nodeSettings.noDescriptionFound');
 				}
 			},
 			headerStyle (): object {
@@ -152,7 +161,7 @@ export default mixins(
 
 				nodeSettings: [
 					{
-						displayName: 'Notes',
+						displayName: this.$baseText('nodeSettings.notes.displayName'),
 						name: 'notes',
 						type: 'string',
 						typeOptions: {
@@ -160,50 +169,50 @@ export default mixins(
 						},
 						default: '',
 						noDataExpression: true,
-						description: 'Optional note to save with the node.',
+						description: this.$baseText('nodeSettings.notes.description'),
 					},
 					{
-						displayName: 'Display note in flow?',
+						displayName: this.$baseText('nodeSettings.notesInFlow.displayName'),
 						name: 'notesInFlow',
 						type: 'boolean',
 						default: false,
 						noDataExpression: true,
-						description: 'If active, the note above will display in the flow as a subtitle.',
+						description: this.$baseText('nodeSettings.notesInFlow.description'),
 					},
 					{
-						displayName: 'Node Color',
+						displayName: this.$baseText('nodeSettings.color.displayName'),
 						name: 'color',
 						type: 'color',
 						default: '#ff0000',
 						noDataExpression: true,
-						description: 'The color of the node in the flow.',
+						description: this.$baseText('nodeSettings.color.description'),
 					},
 					{
-						displayName: 'Always Output Data',
+						displayName: this.$baseText('nodeSettings.alwaysOutputData.displayName'),
 						name: 'alwaysOutputData',
 						type: 'boolean',
 						default: false,
 						noDataExpression: true,
-						description: 'If active, the node will return an empty item even if the <br />node returns no data during an initial execution. Be careful setting <br />this on IF-Nodes as it could cause an infinite loop.',
+						description: this.$baseText('nodeSettings.alwaysOutputData.description'),
 					},
 					{
-						displayName: 'Execute Once',
+						displayName: this.$baseText('nodeSettings.executeOnce.displayName'),
 						name: 'executeOnce',
 						type: 'boolean',
 						default: false,
 						noDataExpression: true,
-						description: 'If active, the node executes only once, with data<br /> from the first item it recieves. ',
+						description: this.$baseText('nodeSettings.executeOnce.description'),
 					},
 					{
-						displayName: 'Retry On Fail',
+						displayName: this.$baseText('nodeSettings.retryOnFail.displayName'),
 						name: 'retryOnFail',
 						type: 'boolean',
 						default: false,
 						noDataExpression: true,
-						description: 'If active, the node tries to execute a failed attempt <br /> multiple times until it succeeds.',
+						description: this.$baseText('nodeSettings.retryOnFail.description'),
 					},
 					{
-						displayName: 'Max. Tries',
+						displayName: this.$baseText('nodeSettings.maxTries.displayName'),
 						name: 'maxTries',
 						type: 'number',
 						typeOptions: {
@@ -219,10 +228,10 @@ export default mixins(
 							},
 						},
 						noDataExpression: true,
-						description: 'Number of times Retry On Fail should attempt to execute the node <br />before stopping and returning the execution as failed.',
+						description: this.$baseText('nodeSettings.maxTries.description'),
 					},
 					{
-						displayName: 'Wait Between Tries',
+						displayName: this.$baseText('nodeSettings.waitBetweenTries.displayName'),
 						name: 'waitBetweenTries',
 						type: 'number',
 						typeOptions: {
@@ -238,15 +247,15 @@ export default mixins(
 							},
 						},
 						noDataExpression: true,
-						description: 'How long to wait between each attempt. Value in ms.',
+						description: this.$baseText('nodeSettings.waitBetweenTries.description'),
 					},
 					{
-						displayName: 'Continue On Fail',
+						displayName: this.$baseText('nodeSettings.continueOnFail.displayName'),
 						name: 'continueOnFail',
 						type: 'boolean',
 						default: false,
 						noDataExpression: true,
-						description: 'If active, the workflow continues even if this node\'s <br />execution fails. When this occurs, the node passes along input data from<br />previous nodes - so your workflow should account for unexpected output data.',
+						description: this.$baseText('nodeSettings.continueOnFail.description'),
 					},
 				] as INodeProperties[],
 

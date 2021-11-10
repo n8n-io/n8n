@@ -1,7 +1,7 @@
 <template>
 	<div @keydown.stop class="fixed-collection-parameter">
 		<div v-if="getProperties.length === 0" class="no-items-exist">
-			<n8n-text size="small">Currently no items exist</n8n-text>
+			<n8n-text size="small">{{ $baseText('fixedCollectionParameter.currentlyNoItemsExist') }}</n8n-text>
 		</div>
 
 		<div v-for="property in getProperties" :key="property.name" class="fixed-collection-parameter-property">
@@ -85,7 +85,7 @@ export default mixins(genericHelpers)
 		},
 		computed: {
 			getPlaceholderText (): string {
-				return this.parameter.placeholder ? this.parameter.placeholder : 'Choose Option To Add';
+				return this.parameter.placeholder ? this.parameter.placeholder : this.$baseText('fixedCollectionParameter.choose');
 			},
 			getProperties (): INodePropertyCollection[] {
 				const returnProperties = [];

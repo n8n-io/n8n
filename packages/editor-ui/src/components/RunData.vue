@@ -7,10 +7,10 @@
 			class="execute-node-button"
 		>
 			<n8n-button
-				:title="`Executes this ${node.name} node after executing any previous nodes that have not yet returned data`"
+				:title="$baseText('runData.executesThisNodeAfterExecuting', { interpolate: { nodeName: node.name } })"
 				:loading="workflowRunning"
 				icon="play-circle"
-				label="Execute Node"
+				:label="$baseText('runData.executeNode')"
 				@click.stop="runWorkflow(node.name, 'RunData.ExecuteNodeButton')"
 			/>
 		</div>
@@ -18,10 +18,10 @@
 		<div class="header">
 			<div class="title-text">
 				<n8n-text :bold="true" v-if="dataCount < maxDisplayItems">
-					Items: {{ dataCount }}
+					{{ $baseText('runData.items') }}: {{ dataCount }}
 				</n8n-text>
 				<div v-else class="title-text">
-					<n8n-text :bold="true">Items:</n8n-text>
+					<n8n-text :bold="true">{{ $baseText('runData.items') }}:</n8n-text>
 					<span class="opts">
 						<n8n-select size="mini" v-model="maxDisplayItems" @click.stop>
 							<n8n-option v-for="option in maxDisplayItemsOptions" :label="option" :value="option" :key="option" />
@@ -34,13 +34,13 @@
 					placement="right"
 				>
 					<div slot="content">
-						<n8n-text :bold="true" size="small">Start Time:</n8n-text> {{runMetadata.startTime}}<br/>
-						<n8n-text :bold="true" size="small">Execution Time:</n8n-text> {{runMetadata.executionTime}} ms
+						<n8n-text :bold="true" size="small">{{ $baseText('runData.startTime') + ':' }}</n8n-text> {{runMetadata.startTime}}<br/>
+						<n8n-text :bold="true" size="small">{{ $baseText('runData.executionTime') + ':' }}</n8n-text> {{runMetadata.executionTime}} {{ $baseText('runData.ms') }}
 					</div>
 					<font-awesome-icon icon="info-circle" class="primary-color" />
 				</n8n-tooltip>
 				<n8n-text :bold="true" v-if="maxOutputIndex > 0">
-					| Output:
+					| {{ $baseText('runData.output') }}:
 				</n8n-text>
 				<span class="opts" v-if="maxOutputIndex > 0" >
 					<n8n-select size="mini" v-model="outputIndex" @click.stop>
@@ -50,7 +50,7 @@
 				</span>
 
 				<n8n-text :bold="true" v-if="maxRunIndex > 0">
-					| Data of Execution:
+					| {{ $baseText('runData.dataOfExecution') }}:
 				</n8n-text>
 				<span class="opts">
 					<n8n-select v-if="maxRunIndex > 0" size="mini" v-model="runIndex" @click.stop>
@@ -62,20 +62,26 @@
 			</div>
 			<div v-if="hasNodeRun && !hasRunError" class="title-data-display-selector" @click.stop>
 				<el-radio-group v-model="displayMode" size="mini">
-					<el-radio-button label="JSON" :disabled="showData === false"></el-radio-button>
-					<el-radio-button label="Table"></el-radio-button>
-					<el-radio-button label="Binary" v-if="binaryData.length !== 0"></el-radio-button>
+					<el-radio-button :label="$baseText('runData.json')" :disabled="showData === false"></el-radio-button>
+					<el-radio-button :label="$baseText('runData.table')"></el-radio-button>
+					<el-radio-button :label="$baseText('runData.binary')" v-if="binaryData.length !== 0"></el-radio-button>
 				</el-radio-group>
 			</div>
 			<div v-if="hasNodeRun && !hasRunError && displayMode === 'JSON' && state.path !== deselectedPlaceholder" class="select-button">
 				<el-dropdown trigger="click" @command="handleCopyClick">
 					<span class="el-dropdown-link">
-						<n8n-icon-button title="Copy to Clipboard" icon="copy" />
+						<n8n-icon-button :title="$baseText('runData.copyToClipboard')" icon="copy" />
 					</span>
 					<el-dropdown-menu slot="dropdown">
-						<el-dropdown-item :command="{command: 'itemPath'}">Copy Item Path</el-dropdown-item>
-						<el-dropdown-item :command="{command: 'parameterPath'}">Copy Parameter Path</el-dropdown-item>
-						<el-dropdown-item :command="{command: 'value'}">Copy Value</el-dropdown-item>
+						<el-dropdown-item :command="{command: 'itemPath'}">
+							{{ $baseText('runData.copyItemPath') }}
+						</el-dropdown-item>
+						<el-dropdown-item :command="{command: 'parameterPath'}">
+							{{ $baseText('runData.copyParameterPath') }}
+						</el-dropdown-item>
+						<el-dropdown-item :command="{command: 'value'}">
+							{{ $baseText('runData.copyValue') }}
+						</el-dropdown-item>
 					</el-dropdown-menu>
 				</el-dropdown>
 			</div>
@@ -88,29 +94,33 @@
 				<span v-else>
 					<div v-if="showData === false" class="too-much-data">
 						<h3>
-							Node returned a large amount of data
+							{{ $baseText('runData.nodeReturnedALargeAmountOfData') }}
 						</h3>
 
 						<div class="text">
-							The node contains {{parseInt(dataSize/1024).toLocaleString()}} KB of data.<br />
-							Displaying it could cause problems!<br />
-							<br />
-							If you do decide to display it, avoid the JSON view!
+							{{ $baseTeext(
+								'runData.theNodeContains',
+								{
+									interpolate: {
+										numberOfKb: parseInt(dataSize/1024).toLocaleString()
+									}
+								}
+							)}}
 						</div>
 
 						<n8n-button
 							icon="eye"
-							label="Display Data Anyway"
+							:label="$baseText('runData.displayDataAnyway')"
 							@click="displayMode = 'Table';showData = true;"
 						/>
 					</div>
 					<div v-else-if="['JSON', 'Table'].includes(displayMode)">
 						<div v-if="jsonData.length === 0" class="no-data">
-							No text data found
+							{{ $baseText('runData.noTextDataFound') }}
 						</div>
 						<div v-else-if="displayMode === 'Table'">
 							<div v-if="tableData !== null && tableData.columns.length === 0" class="no-data">
-								Entries exist but they do not contain any JSON data.
+								{{ $baseText('runData.entriesExistButThey') }}
 							</div>
 							<table v-else-if="tableData !== null">
 								<tr>
@@ -138,7 +148,7 @@
 					</div>
 					<div v-else-if="displayMode === 'Binary'">
 						<div v-if="binaryData.length === 0" class="no-data">
-							No binary data found
+							{{ $baseText('runData.noBinaryDataFound') }}
 						</div>
 
 						<div v-else>
@@ -156,24 +166,24 @@
 												{{key}}
 											</div>
 											<div v-if="binaryData.fileName">
-												<div class="label">File Name: </div>
+												<div class="label">{{ $baseText('runData.fileName') }}: </div>
 												<div class="value">{{binaryData.fileName}}</div>
 											</div>
 											<div v-if="binaryData.directory">
-												<div class="label">Directory: </div>
+												<div class="label">{{ $baseText('runData.directory') }}: </div>
 												<div class="value">{{binaryData.directory}}</div>
 											</div>
 											<div v-if="binaryData.fileExtension">
-												<div class="label">File Extension:</div>
+												<div class="label">{{ $baseText('runData.fileExtension') }}:</div>
 												<div class="value">{{binaryData.fileExtension}}</div>
 											</div>
 											<div v-if="binaryData.mimeType">
-												<div class="label">Mime Type: </div>
+												<div class="label">{{ $baseText('runData.mimeType') }}: </div>
 												<div class="value">{{binaryData.mimeType}}</div>
 											</div>
 
 											<div class="binary-data-show-data-button-wrapper">
-												<n8n-button size="small" label="Show Binary Data" class="binary-data-show-data-button" @click="displayBinaryData(index, key)" />
+												<n8n-button size="small" :label="$baseText('runData.showBinaryData')" class="binary-data-show-data-button" @click="displayBinaryData(index, key)" />
 											</div>
 
 										</div>
@@ -186,9 +196,9 @@
 			</span>
 			<div v-else class="message">
 				<div>
-					<n8n-text :bold="true">No data</n8n-text ><br />
+					<n8n-text :bold="true">{{ $baseText('runData.noData') }}</n8n-text ><br />
 					<br />
-					Data returned by this node will display here<br />
+					{{ $baseText('runData.dataReturnedByThisNodeWillDisplayHere') }}<br />
 				</div>
 			</div>
 		</div>
@@ -221,7 +231,7 @@ import {
 } from '@/constants';
 
 import BinaryDataDisplay from '@/components/BinaryDataDisplay.vue';
-import NodeErrorView from '@/components/Error/NodeViewError.vue';
+import NodeErrorView from '@/components/Error/NodeErrorView.vue';
 
 import { copyPaste } from '@/components/mixins/copyPaste';
 import { externalHooks } from "@/components/mixins/externalHooks";

@@ -2,7 +2,7 @@
 	<div :class="$style.container">
 		<el-row>
 			<el-col :span="8" :class="$style.accessLabel">
-				<n8n-text :compact="true" :bold="true">Allow use by</n8n-text>
+				<n8n-text :compact="true" :bold="true">{{ $baseText('credentialEdit.credentialInfo.allowUseBy') }}</n8n-text>
 			</el-col>
 			<el-col :span="16">
 				<div
@@ -20,7 +20,7 @@
 		</el-row>
 		<el-row v-if="currentCredential">
 			<el-col :span="8" :class="$style.label">
-				<n8n-text :compact="true" :bold="true">Created</n8n-text>
+				<n8n-text :compact="true" :bold="true">{{ $baseText('credentialEdit.credentialInfo.created') }}</n8n-text>
 			</el-col>
 			<el-col :span="16" :class="$style.valueLabel">
 				<n8n-text :compact="true"><TimeAgo :date="currentCredential.createdAt" :capitalize="true" /></n8n-text>
@@ -28,7 +28,7 @@
 		</el-row>
 		<el-row v-if="currentCredential">
 			<el-col :span="8" :class="$style.label">
-				<n8n-text :compact="true" :bold="true">Last modified</n8n-text>
+				<n8n-text :compact="true" :bold="true">{{ $baseText('credentialEdit.credentialInfo.lastModified') }}</n8n-text>
 			</el-col>
 			<el-col :span="16" :class="$style.valueLabel">
 				<n8n-text :compact="true"><TimeAgo :date="currentCredential.updatedAt" :capitalize="true" /></n8n-text>
@@ -36,7 +36,7 @@
 		</el-row>
 		<el-row v-if="currentCredential">
 			<el-col :span="8" :class="$style.label">
-				<n8n-text :compact="true" :bold="true">ID</n8n-text>
+				<n8n-text :compact="true" :bold="true">{{ $baseText('credentialEdit.credentialInfo.id') }}</n8n-text>
 			</el-col>
 			<el-col :span="16" :class="$style.valueLabel">
 				<n8n-text :compact="true">{{currentCredential.id}}</n8n-text>
@@ -47,10 +47,12 @@
 
 <script lang="ts">
 import Vue from 'vue';
+import { renderText } from '../mixins/renderText';
 
 import TimeAgo from '../TimeAgo.vue';
+import mixins from 'vue-typed-mixins';
 
-export default Vue.extend({
+export default mixins(renderText).extend({
 	name: 'CredentialInfo',
 	props: ['nodesWithAccess', 'nodeAccess', 'currentCredential'],
 	components: {

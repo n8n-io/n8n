@@ -3,7 +3,7 @@
 		:name="modalName"
 		:eventBus="modalBus"
 		@enter="save"
-		title="Duplicate Workflow"
+		:title="$baseText('duplicateWorkflowDialog.duplicateWorkflow')"
 		:center="true"
 		minWidth="420px"
 		maxWidth="420px"
@@ -13,7 +13,7 @@
 				<n8n-input
 					v-model="name"
 					ref="nameInput"
-					placeholder="Enter workflow name"
+					:placeholder="$baseText('duplicateWorkflowDialog.enterWorkflowName')"
 					:maxlength="MAX_WORKFLOW_NAME_LENGTH"
 				/>
 				<TagsDropdown
@@ -23,15 +23,15 @@
 					@blur="onTagsBlur"
 					@esc="onTagsEsc"
 					@update="onTagsUpdate"
-					placeholder="Choose or create a tag"
+					:placeholder="$baseText('duplicateWorkflowDialog.chooseOrCreateATag')"
 					ref="dropdown"
 				/>
 			</div>
 		</template>
 		<template v-slot:footer="{ close }">
 			<div :class="$style.footer">
-				<n8n-button @click="save" :loading="isSaving" label="Save" float="right" />
-				<n8n-button type="outline" @click="close" :disabled="isSaving" label="Cancel" float="right" />
+				<n8n-button @click="save" :loading="isSaving" :label="$baseText('duplicateWorkflowDialog.save')" float="right" />
+				<n8n-button type="outline" @click="close" :disabled="isSaving" :label="$baseText('duplicateWorkflowDialog.cancel')" float="right" />
 			</div>
 		</template>
 	</Modal>
@@ -44,10 +44,11 @@ import mixins from "vue-typed-mixins";
 import { MAX_WORKFLOW_NAME_LENGTH } from "@/constants";
 import { workflowHelpers } from "@/components/mixins/workflowHelpers";
 import { showMessage } from "@/components/mixins/showMessage";
+import { renderText } from "@/components/mixins/renderText";
 import TagsDropdown from "@/components/TagsDropdown.vue";
 import Modal from "./Modal.vue";
 
-export default mixins(showMessage, workflowHelpers).extend({
+export default mixins(showMessage, renderText, workflowHelpers).extend({
 	components: { TagsDropdown, Modal },
 	name: "DuplicateWorkflow",
 	props: ["modalName", "isActive"],
@@ -101,8 +102,8 @@ export default mixins(showMessage, workflowHelpers).extend({
 			const name = this.name.trim();
 			if (!name) {
 				this.$showMessage({
-					title: "Name missing",
-					message: `Please enter a name.`,
+					title: this.$baseText('duplicateWorkflowDialog.showMessage.title'),
+					message: this.$baseText('duplicateWorkflowDialog.showMessage.message'),
 					type: "error",
 				});
 

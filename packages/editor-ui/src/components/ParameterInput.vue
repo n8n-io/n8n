@@ -38,7 +38,7 @@
 				:placeholder="isValueExpression?'':parameter.placeholder"
 			>
 				<div slot="suffix" class="expand-input-icon-container">
-					<font-awesome-icon v-if="!isValueExpression && !isReadOnly" icon="external-link-alt" class="edit-window-button clickable" title="Open Edit Window" @click="displayEditDialog()" />
+					<font-awesome-icon v-if="!isValueExpression && !isReadOnly" icon="external-link-alt" class="edit-window-button clickable" :title="$baseText('parameterInput.openEditWindow')" @click="displayEditDialog()" />
 				</div>
 			</n8n-input>
 		</div>
@@ -78,7 +78,7 @@
 			:value="displayValue"
 			:title="displayTitle"
 			:disabled="isReadOnly"
-			:placeholder="parameter.placeholder?parameter.placeholder:'Select date and time'"
+			:placeholder="parameter.placeholder?parameter.placeholder:$baseText('parameterInput.selectDateAndTime')"
 			:picker-options="dateTimePickerOptions"
 			@change="valueChanged"
 			@focus="setFocus"
@@ -169,7 +169,7 @@
 
 	<div class="parameter-issues" v-if="getIssues.length">
 		<n8n-tooltip placement="top" >
-			<div slot="content" v-html="'Issues:<br />&nbsp;&nbsp;- ' + getIssues.join('<br />&nbsp;&nbsp;- ')"></div>
+			<div slot="content" v-html="`${$baseText('parameterInput.issues')}:<br />&nbsp;&nbsp;- ` + getIssues.join('<br />&nbsp;&nbsp;- ')"></div>
 			<font-awesome-icon icon="exclamation-triangle" />
 		</n8n-tooltip>
 	</div>
@@ -177,13 +177,13 @@
 	<div class="parameter-options" v-if="displayOptionsComputed">
 			<el-dropdown trigger="click" @command="optionSelected" size="mini">
 				<span class="el-dropdown-link">
-					<font-awesome-icon icon="cogs" class="reset-icon clickable" title="Parameter Options"/>
+					<font-awesome-icon icon="cogs" class="reset-icon clickable" :title="$baseText('parameterInput.parameterOptions')"/>
 				</span>
 				<el-dropdown-menu slot="dropdown">
-					<el-dropdown-item command="addExpression" v-if="parameter.noDataExpression !== true && !isValueExpression">Add Expression</el-dropdown-item>
-					<el-dropdown-item command="removeExpression" v-if="parameter.noDataExpression !== true && isValueExpression">Remove Expression</el-dropdown-item>
-					<el-dropdown-item command="refreshOptions" v-if="Boolean(remoteMethod)">Refresh List</el-dropdown-item>
-					<el-dropdown-item command="resetValue" :disabled="isDefault" divided>Reset Value</el-dropdown-item>
+					<el-dropdown-item command="addExpression" v-if="parameter.noDataExpression !== true && !isValueExpression">{{ $baseText('parameterInput.addExpression') }}</el-dropdown-item>
+					<el-dropdown-item command="removeExpression" v-if="parameter.noDataExpression !== true && isValueExpression">{{ $baseText('parameterInput.removeExpression') }}</el-dropdown-item>
+					<el-dropdown-item command="refreshOptions" v-if="Boolean(remoteMethod)">{{ $baseText('parameterInput.refreshList') }}</el-dropdown-item>
+					<el-dropdown-item command="resetValue" :disabled="isDefault" divided>{{ $baseText('parameterInput.resetValue') }}</el-dropdown-item>
 				</el-dropdown-menu>
 			</el-dropdown>
 	</div>

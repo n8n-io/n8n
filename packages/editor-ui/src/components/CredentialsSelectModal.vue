@@ -7,15 +7,15 @@
 		maxWidth="460px"
 	>
 		<template slot="header">
-			<h2 :class="$style.title">Add new credential</h2>
+			<h2 :class="$style.title">{{ $baseText('credentialSelectModal.addNewCredential') }}</h2>
 		</template>
 		<template slot="content">
 			<div>
-				<div :class="$style.subtitle">Select an app or service to connect to</div>
+				<div :class="$style.subtitle">{{ $baseText('credentialSelectModal.selectAnAppOrServiceToConnectTo') }}</div>
 				<n8n-select
 					filterable
 					defaultFirstOption
-					placeholder="Search for app..."
+					:placeholder="$baseText('credentialSelectModal.searchForApp')"
 					size="xlarge"
 					ref="select"
 					:value="selected"
@@ -35,7 +35,7 @@
 		<template slot="footer">
 			<div :class="$style.footer">
 				<n8n-button
-					label="Continue"
+					:label="$baseText('credentialSelectModal.continue')"
 					float="right"
 					size="large"
 					:disabled="!selected"
@@ -52,8 +52,10 @@ import { mapGetters } from "vuex";
 
 import Modal from './Modal.vue';
 import { CREDENTIAL_SELECT_MODAL_KEY } from '../constants';
+import mixins from 'vue-typed-mixins';
+import { renderText } from './mixins/renderText';
 
-export default Vue.extend({
+export default mixins(renderText).extend({
 	name: 'CredentialsSelectModal',
 	components: {
 		Modal,

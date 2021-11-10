@@ -3,17 +3,17 @@
 		<banner
 			v-show="showValidationWarning"
 			theme="danger"
-			message="Please check the errors below"
+			:message="$baseText('credentialEdit.credentialConfig.pleaseCheckTheErrorsBelow')"
 		/>
 
 		<banner
 			v-if="authError && !showValidationWarning"
 			theme="danger"
-			message="Couldn’t connect with these settings"
+			:message="$baseText('credentialEdit.credentialConfig.couldntConnectWithTheseSettings')"
 			:details="authError"
-			buttonLabel="Retry"
+			:buttonLabel="$baseText('credentialEdit.credentialConfig.retry')"
 			buttonLoadingLabel="Retrying"
-			buttonTitle="Retry credentials test"
+			:buttonTitle="$baseText('credentialEdit.credentialConfig.retryCredentialTest')"
 			:buttonLoading="isRetesting"
 			@click="$emit('retest')"
 		/>
@@ -21,35 +21,37 @@
 		<banner
 			v-show="showOAuthSuccessBanner && !showValidationWarning"
 			theme="success"
-			message="Account connected"
-			buttonLabel="Reconnect"
-			buttonTitle="Reconnect OAuth Credentials"
+			:message="$baseText('credentialEdit.credentialConfig.accountConnected')"
+			:buttonLabel="$baseText('credentialEdit.credentialConfig.reconnect')"
+			:buttonTitle="$baseText('credentialEdit.credentialConfig.reconnectOAuth2Credential')"
 			@click="$emit('oauth')"
 		/>
 
 		<banner
 			v-show="testedSuccessfully && !showValidationWarning"
 			theme="success"
-			message="Connection tested successfully"
-			buttonLabel="Retry"
-			buttonLoadingLabel="Retrying"
-			buttonTitle="Retry credentials test"
+			:message="$baseText('credentialEdit.credentialConfig.connectionTestedSuccessfully')"
+			:buttonLabel="$baseText('credentialEdit.credentialConfig.retry')"
+			:buttonLoadingLabel="$baseText('credentialEdit.credentialConfig.retrying')"
+			:buttonTitle="$baseText('credentialEdit.credentialConfig.retryCredentialTest')"
 			:buttonLoading="isRetesting"
 			@click="$emit('retest')"
 		/>
 
 		<n8n-info-tip v-if="documentationUrl && credentialProperties.length">
-			Need help filling out these fields?
-			<a :href="documentationUrl" target="_blank" @click="onDocumentationUrlClick">Open docs</a>
+			{{ $baseText('credentialEdit.credentialConfig.needHelpFillingOutTheseFields') }}
+			<a :href="documentationUrl" target="_blank" @click="onDocumentationUrlClick">
+				{{ $baseText('credentialEdit.credentialConfig.openDocs') }}
+			</a>
 		</n8n-info-tip>
 
 		<CopyInput
 			v-if="isOAuthType && credentialProperties.length"
-			label="OAuth Redirect URL"
+			:label="$baseText('credentialEdit.credentialConfig.oAuthRedirectUrl')"
 			:copyContent="oAuthCallbackUrl"
-			copyButtonText="Click to copy"
-			:subtitle="`In ${appName}, use the URL above when prompted to enter an OAuth callback or redirect URL`"
-			successMessage="Redirect URL copied to clipboard"
+			:copyButtonText="$baseText('credentialEdit.credentialConfig.clickToCopy')"
+			:subtitle="$baseText('credentialEdit.credentialConfig.subtitle', { interpolate: { appName } })"
+			:successMessage="$baseText('credentialEdit.credentialConfig.redirectUrlCopiedToClipboard')"
 		/>
 
 		<CredentialInputs
@@ -78,8 +80,11 @@ import Banner from '../Banner.vue';
 import CopyInput from '../CopyInput.vue';
 import CredentialInputs from './CredentialInputs.vue';
 import OauthButton from './OauthButton.vue';
+import { renderText } from '../mixins/renderText';
 
-export default Vue.extend({
+import mixins from 'vue-typed-mixins';
+
+export default mixins(renderText).extend({
 	name: 'CredentialConfig',
 	components: {
 		Banner,

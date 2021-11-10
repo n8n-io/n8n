@@ -1,9 +1,9 @@
 <template>
 	<span :class="$style.container">
-		<span :class="$style.saved" v-if="saved">{{ savedLabel }}</span>
+		<span :class="$style.saved" v-if="saved">{{ $baseText('saveButton.saved') }}</span>
 		<n8n-button
 			v-else
-			:label="isSaving ? savingLabel : saveLabel"
+			:label="saveButtonLabel"
 			:loading="isSaving"
 			:disabled="disabled"
 			@click="$emit('click')"
@@ -13,8 +13,10 @@
 
 <script lang="ts">
 import Vue from 'vue';
+import mixins from 'vue-typed-mixins';
+import { renderText } from './mixins/renderText';
 
-export default Vue.extend({
+export default mixins(renderText).extend({
 	name: "SaveButton",
 	props: {
 		saved: {
@@ -28,15 +30,19 @@ export default Vue.extend({
 		},
 		saveLabel: {
 			type: String,
-			default: 'Save',
 		},
 		savingLabel: {
 			type: String,
-			default: 'Saving',
 		},
 		savedLabel: {
 			type: String,
-			default: 'Saved',
+		},
+	},
+	computed: {
+		saveButtonLabel() {
+			return this.isSaving
+				? this.$baseText('saveButton.saving')
+				: this.$baseText('saveButton.save');
 		},
 	},
 });

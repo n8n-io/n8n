@@ -1,10 +1,10 @@
 import { showMessage } from '@/components/mixins/showMessage';
-import { translate } from '@/components/mixins/translate';
+import { renderText } from '@/components/mixins/renderText';
 import { debounce } from 'lodash';
 
 import mixins from 'vue-typed-mixins';
 
-export const genericHelpers = mixins(showMessage, translate).extend({
+export const genericHelpers = mixins(showMessage, renderText).extend({
 	data () {
 		return {
 			loadingService: null as any | null, // tslint:disable-line:no-any
@@ -23,10 +23,10 @@ export const genericHelpers = mixins(showMessage, translate).extend({
 		displayTimer (msPassed: number, showMs = false): string {
 			if (msPassed < 60000) {
 				if (showMs === false) {
-					return `${Math.floor(msPassed / 1000)} sec.`;
+					return `${Math.floor(msPassed / 1000)} ${this.$baseText('genericHelpers.sec')}`;
 				}
 
-				return `${msPassed / 1000} sec.`;
+				return `${msPassed / 1000} ${this.$baseText('genericHelpers.sec')}`;
 			}
 
 			const secondsPassed = Math.floor(msPassed / 1000);
@@ -38,8 +38,9 @@ export const genericHelpers = mixins(showMessage, translate).extend({
 		editAllowedCheck (): boolean {
 			if (this.isReadOnly) {
 				this.$showMessage({
-					title: 'Workflow can not be changed!',
-					message: `The workflow can not be edited as a past execution gets displayed. To make changed either open the original workflow of which the execution gets displayed or save it under a new name first.`,
+					// title: 'Workflow can not be changed!',
+					title: this.$baseText('genericHelpers.showMessage.title'),
+					message: this.$baseText('genericHelpers.showMessage.message'),
 					type: 'error',
 					duration: 0,
 				});
@@ -58,7 +59,7 @@ export const genericHelpers = mixins(showMessage, translate).extend({
 			this.loadingService = this.$loading(
 				{
 					lock: true,
-					text: text || 'Loading',
+					text: text || this.$baseText('genericHelpers.loading'),
 					spinner: 'el-icon-loading',
 					background: 'rgba(255, 255, 255, 0.8)',
 				},
