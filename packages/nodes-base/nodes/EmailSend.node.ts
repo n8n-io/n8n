@@ -103,7 +103,7 @@ export class EmailSend implements INodeType {
 				name: 'attachments',
 				type: 'string',
 				default: '',
-				description: 'Name of the binary properties which contain<br />data which should be added to email as attachment.<br />Multiple ones can be comma separated.',
+				description: 'Name of the binary properties that contain data to add to email as attachment.<br />Multiple ones can be comma separated.',
 			},
 			{
 				displayName: 'Options',

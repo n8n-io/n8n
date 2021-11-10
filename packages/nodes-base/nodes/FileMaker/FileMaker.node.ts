@@ -202,7 +202,7 @@ export class FileMaker implements INodeType {
 					},
 				},
 				placeholder: 'Portals',
-				description: 'The portal result set to return. Use the portal object name or portal<br />table name. If this parameter is omitted, the API will return all<br />portal objects and records in the layout. For best performance<br />, pass the portal object name or portal table name.',
+				description: 'The portal result set to return. Use the portal object name or portal table name. If this parameter is omitted, the API will return all portal objects and records in the layout. For best performance, pass the portal object name or portal table name.',
 			},
 			// ----------------------------------
 			//         find/records

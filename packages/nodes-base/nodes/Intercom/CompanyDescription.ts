@@ -371,7 +371,7 @@ export const companyFields = [
 				name: 'website',
 				type: 'string',
 				default: '',
-				description: `The URL for this company's website. Please note that the value<br />specified here is not validated. Accepts any string.`,
+				description: `The URL for this company's website. Please note that the value specified here is not validated. Accepts any string.`,
 			},
 		],
 	},
