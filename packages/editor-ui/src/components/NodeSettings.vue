@@ -171,14 +171,6 @@ export default mixins(
 						description: 'If active, the note above will display in the flow as a subtitle.',
 					},
 					{
-						displayName: 'Node Color',
-						name: 'color',
-						type: 'color',
-						default: '#ff0000',
-						noDataExpression: true,
-						description: 'The color of the node in the flow.',
-					},
-					{
 						displayName: 'Always Output Data',
 						name: 'alwaysOutputData',
 						type: 'boolean',
@@ -493,10 +485,6 @@ export default mixins(
 						if (!foundNodeSettings.includes(nodeSetting.name)) {
 							// Set default value
 							Vue.set(this.nodeValues, nodeSetting.name, nodeSetting.default);
-						}
-						if (nodeSetting.name === 'color') {
-							// For color also apply the default node color to the node settings
-							nodeSetting.default = this.nodeType.defaults.color;
 						}
 					}
 
