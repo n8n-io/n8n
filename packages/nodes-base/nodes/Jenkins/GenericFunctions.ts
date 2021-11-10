@@ -41,3 +41,9 @@ export async function jenkinsApiRequest(this: IHookFunctions | IExecuteFunctions
 		throw new NodeApiError(this.getNode(), error);
 	}
 }
+
+export function tolerateTrailingSlash(baseUrl: string) {
+	return baseUrl.endsWith('/')
+		? baseUrl.substr(0, baseUrl.length - 1)
+		: baseUrl;
+}

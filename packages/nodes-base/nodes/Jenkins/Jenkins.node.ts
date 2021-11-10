@@ -14,6 +14,7 @@ import {
 
 import {
 	jenkinsApiRequest,
+	tolerateTrailingSlash
 } from './GenericFunctions';
 
 import {
@@ -50,15 +51,6 @@ export class Jenkins implements INodeType {
 			},
 		],
 		properties: [
-			{
-				displayName: 'Jenkins URL',
-				name: 'url',
-				type: 'string',
-				required: true,
-				default: '',
-				description: 'Location of Jenkins installation',
-				noDataExpression: true,
-			},
 			{
 				displayName: 'Resource',
 				name: 'resource',
@@ -427,6 +419,7 @@ export class Jenkins implements INodeType {
 				const { baseUrl, username, apiKey } = credential.data as JenkinsApiCredentials;
 				const token = Buffer.from(`${username}:${apiKey}`).toString('base64');
 
+				const url = tolerateTrailingSlash(baseUrl);
 				const endpoint = '/api/xml';
 
 				const options = {
@@ -436,7 +429,7 @@ export class Jenkins implements INodeType {
 					method: 'GET',
 					body: {},
 					qs: {},
-					uri: `${baseUrl}${endpoint}`,
+					uri: `${url}${endpoint}`,
 					json: true,
 				};
 
@@ -466,7 +459,7 @@ export class Jenkins implements INodeType {
 
 		for (let i = 0; i < length; i++) {
 			try {
-				const baseUrl = this.getNodeParameter('url', i) as string;
+				const { baseUrl } = await this.getCredentials('jenkinsApi') as JenkinsApiCredentials;
 				if (resource === 'job') {
 					if (operation === 'trigger') {
 						const token = this.getNodeParameter('token', i) as string;
