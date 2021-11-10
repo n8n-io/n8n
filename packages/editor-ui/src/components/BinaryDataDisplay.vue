@@ -4,18 +4,18 @@
 			@click.stop="closeWindow"
 			size="small"
 			class="binary-data-window-back"
-			title="Back to overview page"
+			:title="$baseText('binaryDataDisplay.backToOverviewPage')"
 			icon="arrow-left"
-			label="Back to list"
+			:label="$baseText('binaryDataDisplay.backToList')"
 		/>
 
 		<div class="binary-data-window-wrapper">
 			<div v-if="!binaryData">
-				Data to display did not get found
+				{{ $baseText('binaryDataDisplay.noDataFoundToDisplay') }}
 			</div>
 			<video v-else-if="binaryData.mimeType && binaryData.mimeType.startsWith('video/')" controls autoplay>
 				<source :src="'data:' + binaryData.mimeType + ';base64,' + binaryData.data" :type="binaryData.mimeType">
-				Your browser does not support the video element. Kindly update it to latest version.
+				{{ $baseText('binaryDataDisplay.yourBrowserDoesNotSupport') }}
 			</video>
 			<embed v-else :src="'data:' + binaryData.mimeType + ';base64,' + binaryData.data" class="binary-data" :class="embedClass"/>
 		</div>
@@ -31,11 +31,13 @@ import {
 } from 'n8n-workflow';
 
 import { nodeHelpers } from '@/components/mixins/nodeHelpers';
+import { renderText } from '@/components/mixins/renderText';
 
 import mixins from 'vue-typed-mixins';
 
 export default mixins(
 	nodeHelpers,
+	renderText,
 )
 	.extend({
 		name: 'BinaryDataDisplay',

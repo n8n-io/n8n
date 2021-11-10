@@ -3,12 +3,10 @@
 		<div class="push-connection-lost primary-color" v-if="!pushConnectionActive">
 			<n8n-tooltip placement="bottom-end" >
 				<div slot="content">
-					Cannot connect to server.<br />
-					It is either down or you have a connection issue. <br />
-					It should reconnect automatically once the issue is resolved.
+					{{ $baseText('pushConnectionTracker.cannotConnectToServer') }}
 				</div>
 				<span>
-					<font-awesome-icon icon="exclamation-triangle" />&nbsp; Connection lost
+					<font-awesome-icon icon="exclamation-triangle" />&nbsp; {{ $baseText('pushConnectionTracker.connectionLost') }}
 				</span>
 			</n8n-tooltip>
 		</div>
@@ -20,7 +18,10 @@
 import Vue from "vue";
 import { mapGetters } from "vuex";
 
-export default Vue.extend({
+import mixins from 'vue-typed-mixins';
+import { renderText } from "./mixins/renderText";
+
+export default mixins(renderText).extend({
 	name: "PushConnectionTracker",
 	computed: {
 		...mapGetters(["pushConnectionActive"]),

@@ -8,11 +8,11 @@
 			<template v-slot:header>
 				<div class="workflows-header">
 					<n8n-heading tag="h1" size="xlarge" class="title">
-						Open Workflow
+						{{ $baseText('workflowOpen.openWorkflow') }}
 					</n8n-heading>
 					<div class="tags-filter">
 						<TagsDropdown
-							placeholder="Filter by tags..."
+							:placeholder="$baseText('workflowOpen.openWorkflow')"
 							:currentTagIds="filterTagIds"
 							:createEnabled="false"
 							@update="updateTagsFilter"
@@ -21,7 +21,7 @@
 						/>
 					</div>
 					<div class="search-filter">
-						<n8n-input placeholder="Search workflows..." ref="inputFieldFilter" v-model="filterText">
+						<n8n-input :placeholder="$baseText('workflowOpen.searchWorkflows')" ref="inputFieldFilter" v-model="filterText">
 							<font-awesome-icon slot="prefix" icon="search"></font-awesome-icon>
 						</n8n-input>
 					</div>
@@ -30,7 +30,7 @@
 
 			<template v-slot:content>
 				<el-table class="search-table" :data="filteredWorkflows" stripe @cell-click="openWorkflow" :default-sort = "{prop: 'updatedAt', order: 'descending'}" v-loading="isDataLoading">
-					<el-table-column property="name" label="Name" class-name="clickable" sortable>
+					<el-table-column property="name" :label="$baseText('workflowOpen.name')" class-name="clickable" sortable>
 						<template slot-scope="scope">
 							<div :key="scope.row.id">
 								<span class="name">{{scope.row.name}}</span>
@@ -38,9 +38,9 @@
 							</div>
 						</template>
 					</el-table-column>
-					<el-table-column property="createdAt" label="Created" class-name="clickable" width="155" sortable></el-table-column>
-					<el-table-column property="updatedAt" label="Updated" class-name="clickable" width="155" sortable></el-table-column>
-					<el-table-column label="Active" width="75">
+					<el-table-column property="createdAt" :label="$baseText('workflowOpen.created')" class-name="clickable" width="155" sortable></el-table-column>
+					<el-table-column property="updatedAt" :label="$baseText('workflowOpen.updated')" class-name="clickable" width="155" sortable></el-table-column>
+					<el-table-column :label="$baseText('workflowOpen.active')" width="75">
 						<template slot-scope="scope">
 							<workflow-activator :workflow-active="scope.row.active" :workflow-id="scope.row.id" @workflowActiveChanged="workflowActiveChanged" />
 						</template>
@@ -67,10 +67,12 @@ import TagsDropdown from '@/components/TagsDropdown.vue';
 import WorkflowActivator from '@/components/WorkflowActivator.vue';
 import { convertToDisplayDate } from './helpers';
 import { WORKFLOW_OPEN_MODAL_KEY } from '../constants';
+import { renderText } from '@/components/mixins/renderText';
 
 export default mixins(
 	genericHelpers,
 	restApi,
+	renderText,
 	showMessage,
 	workflowHelpers,
 ).extend({
@@ -141,8 +143,8 @@ export default mixins(
 
 				if (data.id === currentWorkflowId) {
 					this.$showMessage({
-						title: 'Already open',
-						message: 'This is the current workflow',
+						title: this.$baseText('workflowOpen.showMessage.title'),
+						message: this.$baseText('workflowOpen.showMessage.message'),
 						type: 'error',
 						duration: 1500,
 					});
@@ -152,7 +154,13 @@ export default mixins(
 
 				const result = this.$store.getters.getStateIsDirty;
 				if(result) {
-					const importConfirm = await this.confirmMessage(`When you switch workflows your current workflow changes will be lost.`, 'Save your Changes?', 'warning', 'Yes, switch workflows and forget changes');
+					const importConfirm = await this.confirmMessage(
+						this.$baseText('workflowOpen.confirmMessage.message'),
+						this.$baseText('workflowOpen.confirmMessage.headline'),
+						'warning',
+						this.$baseText('workflowOpen.confirmMessage.confirmButtonText'),
+						this.$baseText('workflowOpen.confirmMessage.cancelButtonText'),
+					);
 					if (importConfirm === false) {
 						return;
 					} else {
@@ -189,7 +197,11 @@ export default mixins(
 				)
 				.catch(
 					(error: Error) => {
-						this.$showError(error, 'Problem loading workflows', 'There was a problem loading the workflows:');
+						this.$showError(
+							error,
+							this.$baseText('workflowOpen.showError.title'),
+							this.$baseText('workflowOpen.showError.message') + ':',
+						);
 						this.isDataLoading = false;
 					},
 				);

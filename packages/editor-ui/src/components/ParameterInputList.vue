@@ -24,11 +24,11 @@
 				v-else-if="['collection', 'fixedCollection'].includes(parameter.type)"
 				class="multi-parameter"
 			>
-				<div class="delete-option clickable" title="Delete" v-if="hideDelete !== true && !isReadOnly">
+				<div class="delete-option clickable" :title="$baseText('parameterInputList.delete')" v-if="hideDelete !== true && !isReadOnly">
 					<font-awesome-icon
 						icon="trash"
 						class="reset-icon clickable"
-						title="Parameter Options"
+						:title="$baseText('parameterInputList.parameterOptions')"
 						@click="deleteOption(parameter.name)"
 					/>
 				</div>
@@ -59,11 +59,11 @@
 			</div>
 
 			<div v-else-if="displayNodeParameter(parameter)" class="parameter-item">
-				<div class="delete-option clickable" title="Delete" v-if="hideDelete !== true && !isReadOnly">
+				<div class="delete-option clickable" :title="$baseText('parameterInputList.delete')" v-if="hideDelete !== true && !isReadOnly">
 					<font-awesome-icon
 						icon="trash"
 						class="reset-icon clickable"
-						title="Delete Parameter"
+						:title="$baseText('parameterInputList.deleteParameter')"
 						@click="deleteOption(parameter.name)"
 					/>
 				</div>
