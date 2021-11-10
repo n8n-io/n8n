@@ -42,7 +42,7 @@ export class ReadBinaryFiles implements INodeType {
 				type: 'string',
 				default: 'data',
 				required: true,
-				description: 'Name of the binary property to which to<br />write the data of the read files.',
+				description: 'Name of the binary property to which to write the data of the read files.',
 			},
 		],
 	};

@@ -2,12 +2,6 @@ import dateformat from 'dateformat';
 
 const KEYWORDS_TO_FILTER = ['API', 'OAuth1', 'OAuth2'];
 
-export function addTargetBlank(html: string) {
-	return html.includes('href=')
-		? html.replace(/href=/g, 'target="_blank" href=')
-		: html;
-}
-
 export function convertToDisplayDate (epochTime: number) {
 	return dateformat(epochTime, 'yyyy-mm-dd HH:MM:ss');
 }

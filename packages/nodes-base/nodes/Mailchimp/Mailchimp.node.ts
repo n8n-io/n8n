@@ -1210,7 +1210,7 @@ export class Mailchimp implements INodeType {
 						name: 'skipMergeValidation',
 						type: 'boolean',
 						default: false,
-						description: `If skip_merge_validation is true, member data will be accepted without merge field values,<br/>
+						description: `If skip_merge_validation is true, member data will be accepted without merge field values,
 						even if the merge field is usually required`,
 					},
 					{

@@ -130,7 +130,7 @@ export const userFields = [
 			},
 			{
 				displayName: 'External ID',
-				name: 'externalId',
+				name: 'external_id',
 				type: 'string',
 				default: '',
 				description: 'A unique identifier from another system',
@@ -387,7 +387,7 @@ export const userFields = [
 			},
 			{
 				displayName: 'External ID',
-				name: 'externalId',
+				name: 'external_id',
 				type: 'string',
 				default: '',
 				description: 'A unique identifier from another system',

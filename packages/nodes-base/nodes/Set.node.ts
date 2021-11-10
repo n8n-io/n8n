@@ -29,7 +29,7 @@ export class Set implements INodeType {
 				name: 'keepOnlySet',
 				type: 'boolean',
 				default: false,
-				description: 'If only the values set on this node should be<br />kept and all others removed.',
+				description: 'If only the values set on this node should be kept and all others removed.',
 			},
 			{
 				displayName: 'Values to Set',

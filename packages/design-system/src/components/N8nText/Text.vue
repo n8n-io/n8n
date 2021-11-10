@@ -16,7 +16,7 @@ export default Vue.extend({
 		size: {
 			type: String,
 			default: 'medium',
-			validator: (value: string): boolean => ['large', 'medium', 'small'].includes(value),
+			validator: (value: string): boolean => ['mini', 'small', 'medium', 'large', 'xlarge'].includes(value),
 		},
 		color: {
 			type: String,
@@ -26,15 +26,22 @@ export default Vue.extend({
 			type: String,
 			validator: (value: string): boolean => ['right', 'left', 'center'].includes(value),
 		},
+		compact: {
+			type: Boolean,
+			default: false,
+		},
 	},
 	methods: {
 		getClass(props: {size: string, bold: boolean}) {
 			return `body-${props.size}${props.bold ? '-bold' : '-regular'}`;
 		},
-		getStyles(props: {color: string, align: string}) {
+		getStyles(props: {color: string, align: string, compact: false}) {
 			const styles = {} as any;
 			if (props.color) {
 				styles.color = `var(--color-${props.color})`;
+			}
+			if (props.compact) {
+				styles['line-height'] = 1;
 			}
 			if (props.align) {
 				styles['text-align'] = props.align;
@@ -53,6 +60,22 @@ export default Vue.extend({
 .regular {
 	font-weight: var(--font-weight-regular);
 }
+
+.body-xlarge {
+	font-size: var(--font-size-xl);
+	line-height: var(--font-line-height-xloose);
+}
+
+.body-xlarge-regular {
+	composes: regular;
+	composes: body-xlarge;
+}
+
+.body-xlarge-bold {
+	composes: bold;
+	composes: body-xlarge;
+}
+
 
 .body-large {
 	font-size: var(--font-size-m);

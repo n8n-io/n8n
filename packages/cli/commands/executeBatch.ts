@@ -12,7 +12,7 @@ import { Command, flags } from '@oclif/command';
 import { UserSettings } from 'n8n-core';
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
-import { INode, INodeExecutionData, ITaskData, LoggerProxy } from 'n8n-workflow';
+import { INode, ITaskData, LoggerProxy } from 'n8n-workflow';
 
 import { sep } from 'path';
 
@@ -28,14 +28,11 @@ import {
 	CredentialTypes,
 	Db,
 	ExternalHooks,
-	// eslint-disable-next-line @typescript-eslint/no-unused-vars
-	IExecutionsCurrentSummary,
+	InternalHooksManager,
 	IWorkflowDb,
 	IWorkflowExecutionDataProcess,
 	LoadNodesAndCredentials,
 	NodeTypes,
-	// eslint-disable-next-line @typescript-eslint/no-unused-vars
-	WorkflowCredentials,
 	WorkflowRunner,
 } from '../src';
 
@@ -59,12 +56,12 @@ export class ExecuteBatch extends Command {
 	static executionTimeout = 3 * 60 * 1000;
 
 	static examples = [
-		`$ n8n executeAll`,
-		`$ n8n executeAll --concurrency=10 --skipList=/data/skipList.txt`,
-		`$ n8n executeAll --debug --output=/data/output.json`,
-		`$ n8n executeAll --ids=10,13,15 --shortOutput`,
-		`$ n8n executeAll --snapshot=/data/snapshots --shallow`,
-		`$ n8n executeAll --compare=/data/previousExecutionData --retries=2`,
+		`$ n8n executeBatch`,
+		`$ n8n executeBatch --concurrency=10 --skipList=/data/skipList.txt`,
+		`$ n8n executeBatch --debug --output=/data/output.json`,
+		`$ n8n executeBatch --ids=10,13,15 --shortOutput`,
+		`$ n8n executeBatch --snapshot=/data/snapshots --shallow`,
+		`$ n8n executeBatch --compare=/data/previousExecutionData --retries=2`,
 	];
 
 	static flags = {
@@ -306,6 +303,9 @@ export class ExecuteBatch extends Command {
 		// Load all external hooks
 		const externalHooks = ExternalHooks();
 		await externalHooks.init();
+
+		const instanceId = await UserSettings.getInstanceId();
+		InternalHooksManager.init(instanceId);
 
 		// Add the found types to an instance other parts of the application can use
 		const nodeTypes = NodeTypes();
