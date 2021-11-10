@@ -9,7 +9,7 @@
 						<font-awesome-icon icon="exclamation-triangle" />
 					</n8n-tooltip>
 				</div>
-				<div v-else-if="waiting" class="node-info-icon waiting">
+				<div v-else-if="waiting && !data.disabled" class="node-info-icon waiting">
 					<n8n-tooltip placement="bottom">
 						<div slot="content" v-html="waiting"></div>
 						<font-awesome-icon icon="clock" />
