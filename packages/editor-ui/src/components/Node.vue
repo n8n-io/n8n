@@ -50,7 +50,7 @@
 				{{nodeSubtitle}}
 			</div>
 		</div>
-		<div class="disabled-linethrough" v-if="showDisabledLinethrough"></div>
+		<div :class="{'disabled-linethrough': true, success: workflowDataItems > 0}" v-if="showDisabledLinethrough"></div>
 	</div>
 </template>
 
@@ -115,10 +115,6 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 
 			if (this.isExecuting) {
 				classes.push('executing');
-			}
-
-			if (this.workflowDataItems !== 0) {
-				classes.push('has-data');
 			}
 
 			if (this.hasIssues) {
@@ -335,10 +331,6 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 		color: #444;
 		border: 2px solid var(--color-foreground-xdark);
 
-		&.has-data {
-			border-style: solid;
-		}
-
 		&.executing {
 			background-color: $--color-primary-light !important;
 
@@ -463,6 +455,10 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 	top: 49px;
 	left: -3px;
 	width: 111px;
+
+	&.success {
+		border-color: var(--color-success-light);
+	}
 }
 
 </style>
