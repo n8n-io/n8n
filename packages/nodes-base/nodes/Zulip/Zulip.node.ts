@@ -431,6 +431,9 @@ export class Zulip implements INodeType {
 						if (additionalFields.isGuest) {
 							body.is_guest = additionalFields.isGuest as boolean;
 						}
+						if (additionalFields.role) {
+							body.role = additionalFields.role as number;
+						}
 						if (additionalFields.profileData) {
 							//@ts-ignore
 							body.profile_data = additionalFields.profileData.properties as [{}];
