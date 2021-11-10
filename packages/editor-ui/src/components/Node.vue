@@ -1,6 +1,6 @@
 <template>
-	<div class="node-wrapper" :style="nodePosition">
-		<div class="selected" v-show="isSelected"></div>
+	<div :class="{'node-wrapper': true, selected: isSelected}" :style="nodePosition">
+		<div class="select-background" v-show="isSelected"></div>
 		<div class="node-default" :data-name="data.name" :ref="data.name" :style="nodeStyle" :class="nodeClass" @dblclick="setNodeActive" @click.left="mouseLeftClick" v-touch:start="touchStart" v-touch:end="touchEnd">
 			<div v-if="hasIssues" class="node-info-icon node-issues">
 				<n8n-tooltip placement="bottom" >
@@ -438,7 +438,7 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 	}
 }
 
-.selected {
+.select-background {
 	display: block;
 	background-color: hsla(var(--color-foreground-base-h), var(--color-foreground-base-s), var(--color-foreground-base-l), 60%);
 	border-radius: var(--border-radius-xlarge);
@@ -448,20 +448,18 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 	top: -8px !important;
 	height: 116px;
 	width: 116px !important;
-	z-index: 2;
 }
 
 </style>
 
 <style lang="scss">
-.el-badge__content {
-	border-width: 2px;
-	background-color: #67c23a;
-}
-
 /** node */
-.jtk-endpoint-anchor .node-default {
-	z-index: 2;
+.node-wrapper {
+	z-index: 1;
+
+	&.selected {
+		z-index: 2;
+	}
 }
 
 /** connector */
@@ -506,4 +504,5 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 	-webkit-filter: contrast(40%) brightness(1.5) grayscale(100%);
 	filter: contrast(40%) brightness(1.5) grayscale(100%);
 }
+
 </style>
