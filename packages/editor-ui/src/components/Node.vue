@@ -1,27 +1,32 @@
 <template>
-	<div :class="{'node-wrapper': true, selected: isSelected}" :style="nodePosition">
+	<div class="node-wrapper" :style="nodePosition">
 		<div class="select-background" v-show="isSelected"></div>
-		<div class="node-default" :data-name="data.name" :ref="data.name" :style="nodeStyle" :class="nodeClass" @dblclick="setNodeActive" @click.left="mouseLeftClick" v-touch:start="touchStart" v-touch:end="touchEnd">
-			<div v-if="hasIssues" class="node-info-icon node-issues">
-				<n8n-tooltip placement="bottom" >
-					<div slot="content" v-html="nodeIssues"></div>
-					<font-awesome-icon icon="exclamation-triangle" />
-				</n8n-tooltip>
-			</div>
-			<div v-else-if="waiting" class="node-info-icon waiting">
-				<n8n-tooltip placement="bottom">
-					<div slot="content" v-html="waiting"></div>
-					<font-awesome-icon icon="clock" />
-				</n8n-tooltip>
-			</div>
-			<span v-else-if="workflowDataItems && !data.disabled" class="node-info-icon data-count">
-				<font-awesome-icon icon="check" />
-				<span v-if="workflowDataItems > 1" class="items-count"> {{ workflowDataItems }}</span>
-			</span>
+		<div class="node-default" :data-name="data.name" :ref="data.name">
+			<div :class="nodeClass" :style="nodeStyle"  @dblclick="setNodeActive" @click.left="mouseLeftClick" v-touch:start="touchStart" v-touch:end="touchEnd">
+				<div v-if="hasIssues" class="node-info-icon node-issues">
+					<n8n-tooltip placement="bottom" >
+						<div slot="content" v-html="nodeIssues"></div>
+						<font-awesome-icon icon="exclamation-triangle" />
+					</n8n-tooltip>
+				</div>
+				<div v-else-if="waiting" class="node-info-icon waiting">
+					<n8n-tooltip placement="bottom">
+						<div slot="content" v-html="waiting"></div>
+						<font-awesome-icon icon="clock" />
+					</n8n-tooltip>
+				</div>
+				<span v-else-if="workflowDataItems && !data.disabled" class="node-info-icon data-count">
+					<font-awesome-icon icon="check" />
+					<span v-if="workflowDataItems > 1" class="items-count"> {{ workflowDataItems }}</span>
+				</span>
 
-			<div class="node-executing-info" title="Node is executing">
-				<font-awesome-icon icon="sync-alt" spin />
+				<div class="node-executing-info" title="Node is executing">
+					<font-awesome-icon icon="sync-alt" spin />
+				</div>
+
+				<NodeIcon class="node-icon" :nodeType="nodeType" :size="40" :shrink="false" :disabled="this.data.disabled"/>
 			</div>
+
 			<div class="node-options no-select-on-click" v-if="!isReadOnly" v-show="!hideActions">
 				<div v-touch:tap="deleteNode" class="option" title="Delete Node" >
 					<font-awesome-icon icon="trash" />
@@ -39,8 +44,7 @@
 					<font-awesome-icon class="execute-icon" icon="play-circle" />
 				</div>
 			</div>
-
-			<NodeIcon class="node-icon" :nodeType="nodeType" :size="40" :shrink="false" :disabled="this.data.disabled"/>
+			<div :class="{'disabled-linethrough': true, success: workflowDataItems > 0}" v-if="showDisabledLinethrough"></div>
 		</div>
 		<div class="node-description">
 			<div class="node-name" :title="data.name">
@@ -50,7 +54,6 @@
 				{{nodeSubtitle}}
 			</div>
 		</div>
-		<div :class="{'disabled-linethrough': true, success: workflowDataItems > 0}" v-if="showDisabledLinethrough"></div>
 	</div>
 </template>
 
@@ -107,7 +110,11 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 			return this.$store.getters.nodeType(this.data.type);
 		},
 		nodeClass () {
-			const classes = [];
+			const classes = ['node-box'];
+
+			if (this.isSelected) {
+				classes.push('selected');
+			}
 
 			if (this.data.disabled) {
 				classes.push('disabled');
@@ -324,12 +331,15 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 		position: absolute;
 		width: 100%;
 		height: 100%;
-		background-color: #fff;
-		border-radius: var(--border-radius-large);
-		text-align: center;
 		cursor: pointer;
-		color: #444;
-		border: 2px solid var(--color-foreground-xdark);
+
+		.node-box {
+			width: 100%;
+			height: 100%;
+			border: 2px solid var(--color-foreground-xdark);
+			border-radius: var(--border-radius-large);
+			background-color: #fff;
+		}
 
 		&.executing {
 			background-color: $--color-primary-light !important;
@@ -455,6 +465,7 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 	top: 49px;
 	left: -3px;
 	width: 111px;
+	pointer-events: none;
 
 	&.success {
 		border-color: var(--color-success-light);
@@ -465,10 +476,10 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 
 <style lang="scss">
 /** node */
-.node-wrapper > * {
+.node-box {
 	z-index: 1;
 
-	&.selected > * {
+	&.selected {
 		z-index: 2;
 	}
 }
@@ -513,6 +524,10 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 
 .jtk-endpoint.jtk-drag-active {
 	z-index: 9;
+}
+
+.node-options {
+	z-index: 10;
 }
 
 .disabled .node-icon img {
