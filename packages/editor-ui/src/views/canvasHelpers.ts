@@ -30,6 +30,7 @@ export const HEADER_HEIGHT = 65;
 export const SIDEBAR_WIDTH = 65;
 export const MAX_X_TO_PUSH_DOWNSTREAM_NODES = 300;
 export const PUSH_NODES_OFFSET = 200;
+const LOOPBACK_MINIMUM = 140;
 
 export const DEFAULT_START_NODE = {
 	name: 'Start',
@@ -48,7 +49,7 @@ export const CONNECTOR_FLOWCHART_TYPE = ['N8nFlowchart', {
 	gap: 4,
 	alwaysRespectStubs: false,
 	loopbackVerticalLength: NODE_SIZE, // length of vertical segment when looping
-	loopbackMinimum: 140, // minimum length before flowchart loops around
+	loopbackMinimum: LOOPBACK_MINIMUM, // minimum length before flowchart loops around
 	getEndpointOffset(endpoint: Endpoint) {
 		const indexOffset = 10; // stub offset between different endpoints of same node
 		const index = endpoint && endpoint.__meta ? endpoint.__meta.index : 0;
@@ -260,7 +261,21 @@ export const getConnectorLengths = (connection: Connection): [number, number] =>
 	return [diffX, diffY];
 };
 
+const isLoopingBackwards = (connection: Connection) => {
+	const sourceEndpoint = connection.endpoints[0];
+	const targetEndpoint = connection.endpoints[1];
+
+	const sourcePosition = sourceEndpoint.anchor.lastReturnValue[0];
+	const targetPosition = targetEndpoint.anchor.lastReturnValue[0];
+
+	return targetPosition - sourcePosition < (-1 * LOOPBACK_MINIMUM);
+};
+
 export const showOrHideItemsLabel = (connection: Connection) => {
+	if (!connection || !connection.connector) {
+		return;
+	}
+
 	const overlay = getOverlay(connection, OVERLAY_RUN_ITEMS_ID);
 	if (!overlay) {
 		return;
@@ -282,7 +297,7 @@ export const showOrHideItemsLabel = (connection: Connection) => {
 	}
 
 	if (overlay.canvas) {
-		if (diffY === 0) {
+		if (diffY === 0 || isLoopingBackwards(connection)) {
 			const innerElement = overlay.canvas.querySelector('span');
 			if (innerElement) {
 				innerElement.classList.add('floating');
