@@ -7,12 +7,15 @@ import {
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
-	INodeParameters,
 } from 'n8n-workflow';
 
 import {
 	jenkinsApiRequest,
 } from './GenericFunctions';
+
+import {
+	parseString,
+} from 'xml2js';
 
 
 export class Jenkins implements INodeType {
@@ -60,6 +63,11 @@ export class Jenkins implements INodeType {
 						name: 'Job',
 						value: 'job',
 						description: 'Jenkins job'
+					},
+					{
+						name: 'Builds',
+						value: 'builds',
+						description: 'List of builds job'
 					},
 				],
 				default: 'job',
@@ -299,6 +307,32 @@ export class Jenkins implements INodeType {
 				default: '',
 				description: 'Freeform reason for quiet down mode',
 			},
+
+			// --------------------------------------------------------------------------------------------------------
+			//         Builds operations
+			// --------------------------------------------------------------------------------------------------------
+			{
+				displayName: 'Operation',
+				name: 'operation',
+				type: 'options',
+				displayOptions: {
+					show: {
+						resource: [
+							'builds',
+						],
+					},
+				},
+				options: [
+					{
+						name: 'List builds',
+						value: 'list',
+						description: 'List Builds',
+					},
+				],
+				default: 'list',
+				description: 'The operation to perform',
+				noDataExpression: true,
+			}
 		],
 	};
 
@@ -397,6 +431,21 @@ export class Jenkins implements INodeType {
 					if (operation === 'safeExit') {
 						const endpoint = `${baseUrl}/safeExit`;
 						responseData = await jenkinsApiRequest.call(this, 'post', endpoint);
+					}
+				}
+				if (resource === 'builds') {
+					if (operation === 'list') {
+						const endpoint = `${baseUrl}/api/xml`;
+						const response = await jenkinsApiRequest.call(this, 'get', endpoint);
+						responseData = await new Promise((resolve, reject) => {
+							parseString(response, { explicitArray: false }, (err, data) => {
+								if (err) {
+									return reject(err);
+								}
+								resolve(data);
+							});
+						});
+						console.log(responseData)
 					}
 				}
 				if (Array.isArray(responseData)) {
