@@ -1964,6 +1964,9 @@ export default mixins(
 						node.disabled = false;
 					}
 
+					// If the user create new worklow, make sure that the default node's disabled property is reseted
+					node.disabled = false;
+
 					if (!node.hasOwnProperty('color')) {
 						// If no color is defined set the default color of the node type
 						if (nodeType && nodeType.defaults.color) {
