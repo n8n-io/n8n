@@ -1,12 +1,12 @@
 <template >
 	<span class="static-text-wrapper">
-		<span v-show="!editActive" title="Click to change">
+		<span v-show="!editActive" :title="$baseText('displayWithChange.clickToChange')">
 			<span class="static-text" @mousedown="startEdit">{{currentValue}}</span>
 		</span>
 		<span v-show="editActive">
 			<input class="edit-field" ref="inputField" type="text" v-model="newValue" @keydown.enter.stop.prevent="setValue" @keydown.escape.stop.prevent="cancelEdit" @keydown.stop="noOp" @blur="cancelEdit" />
-			<font-awesome-icon icon="times" @mousedown="cancelEdit" class="icons clickable" title="Cancel Edit" />
-			<font-awesome-icon icon="check" @mousedown="setValue" class="icons clickable" title="Set Value" />
+			<font-awesome-icon icon="times" @mousedown="cancelEdit" class="icons clickable" :title="$baseText('displayWithChange.cancelEdit')" />
+			<font-awesome-icon icon="check" @mousedown="setValue" class="icons clickable" :title="$baseText('displayWithChange.setValue')" />
 		</span>
 	</span>
 </template>

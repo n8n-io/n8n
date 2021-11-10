@@ -53,10 +53,10 @@
 						:light="true"
 					>
 						<n8n-menu-item index="connection" :class="$style.credTab"
-							><span slot="title">Connection</span></n8n-menu-item
+							><span slot="title">{{ $baseText('credentialEdit.credentialEdit.connection') }}</span></n8n-menu-item
 						>
 						<n8n-menu-item index="details" :class="$style.credTab"
-							><span slot="title">Details</span></n8n-menu-item
+							><span slot="title">{{ $baseText('credentialEdit.credentialEdit.details') }}</span></n8n-menu-item
 						>
 					</n8n-menu>
 				</div>
@@ -116,6 +116,7 @@ import CredentialIcon from '../CredentialIcon.vue';
 
 import mixins from 'vue-typed-mixins';
 import { nodeHelpers } from '../mixins/nodeHelpers';
+import { renderText } from '../mixins/renderText';
 import { showMessage } from '../mixins/showMessage';
 
 import CredentialConfig from './CredentialConfig.vue';
@@ -128,7 +129,7 @@ interface NodeAccessMap {
 	[nodeType: string]: ICredentialNodeAccess | null;
 }
 
-export default mixins(showMessage, nodeHelpers).extend({
+export default mixins(renderText, showMessage, nodeHelpers).extend({
 	name: 'CredentialsDetail',
 	components: {
 		CredentialConfig,
@@ -349,20 +350,20 @@ export default mixins(showMessage, nodeHelpers).extend({
 			if (this.hasUnsavedChanges) {
 				const displayName = this.credentialType ? this.credentialType.displayName : '';
 				keepEditing = await this.confirmMessage(
-					`Are you sure you want to throw away the changes you made to the ${displayName} credential?`,
-					'Close without saving?',
+					this.$baseText('credentialEdit.credentialEdit.confirmMessage.beforeClose1.message', { interpolate: { credentialDisplayName: displayName } }),
+					this.$baseText('credentialEdit.credentialEdit.confirmMessage.beforeClose1.headline'),
 					null,
-					'Keep editing',
-					'Close',
+					this.$baseText('credentialEdit.credentialEdit.confirmMessage.beforeClose1.cancelButtonText'),
+					this.$baseText('credentialEdit.credentialEdit.confirmMessage.beforeClose1.confirmButtonText'),
 				);
 			}
 			else if (this.isOAuthType && !this.isOAuthConnected) {
 				keepEditing = await this.confirmMessage(
-					`You need to connect your credential for it to work`,
-					'Close without connecting?',
+					this.$baseText('credentialEdit.credentialEdit.confirmMessage.beforeClose2.message'),
+					this.$baseText('credentialEdit.credentialEdit.confirmMessage.beforeClose2.headline'),
 					null,
-					'Keep editing',
-					'Close',
+					this.$baseText('credentialEdit.credentialEdit.confirmMessage.beforeClose2.cancelButtonText'),
+					this.$baseText('credentialEdit.credentialEdit.confirmMessage.beforeClose2.confirmButtonText'),
 				);
 			}
 
@@ -400,7 +401,9 @@ export default mixins(showMessage, nodeHelpers).extend({
 				this.$store.getters['credentials/getCredentialTypeByName'](name);
 
 			if (!credentialsData) {
-				throw new Error(`Could not find credentials of type: ${name}`);
+				throw new Error(
+					this.$baseText('credentialEdit.credentialEdit.couldNotFindCredentialOfType') + ':' + name,
+				);
 			}
 
 			if (credentialsData.extends === undefined) {
@@ -436,7 +439,7 @@ export default mixins(showMessage, nodeHelpers).extend({
 					});
 				if (!currentCredentials) {
 					throw new Error(
-						`Could not find the credentials with the id: ${this.credentialId}`,
+						this.$baseText('credentialEdit.credentialEdit.couldNotFindCredentialWithId') + ':' + this.credentialId,
 					);
 				}
 
@@ -448,11 +451,11 @@ export default mixins(showMessage, nodeHelpers).extend({
 						this.nodeAccess[access.nodeType] = access;
 					},
 				);
-			} catch (e) {
+			} catch (error) {
 				this.$showError(
-					e,
-					'Problem loading credentials',
-					'There was a problem loading the credentials:',
+					error,
+					this.$baseText('credentialEdit.credentialEdit.showError.loadCredential.title'),
+					this.$baseText('credentialEdit.credentialEdit.showError.loadCredential.message'),
 				);
 				this.closeDialog();
 
@@ -657,8 +660,8 @@ export default mixins(showMessage, nodeHelpers).extend({
 			} catch (error) {
 				this.$showError(
 					error,
-					'Problem creating credentials',
-					'There was a problem creating the credentials:',
+					this.$baseText('credentialEdit.credentialEdit.showError.createCredential.title'),
+					this.$baseText('credentialEdit.credentialEdit.showError.createCredential.message'),
 				);
 
 				return null;
@@ -686,8 +689,8 @@ export default mixins(showMessage, nodeHelpers).extend({
 			} catch (error) {
 				this.$showError(
 					error,
-					'Problem updating credentials',
-					'There was a problem updating the credentials:',
+					this.$baseText('credentialEdit.credentialEdit.showError.updateCredential.title'),
+					this.$baseText('credentialEdit.credentialEdit.showError.updateCredential.message'),
 				);
 
 				return null;
@@ -708,10 +711,10 @@ export default mixins(showMessage, nodeHelpers).extend({
 			const savedCredentialName = this.currentCredential.name;
 
 			const deleteConfirmed = await this.confirmMessage(
-				`Are you sure you want to delete "${savedCredentialName}" credentials?`,
-				'Delete Credentials?',
+				this.$baseText('credentialEdit.credentialEdit.confirmMessage.deleteCredential.message', { interpolate: { savedCredentialName } }),
+				this.$baseText('credentialEdit.credentialEdit.confirmMessage.deleteCredential.headline'),
 				null,
-				'Yes, delete!',
+				this.$baseText('credentialEdit.credentialEdit.confirmMessage.deleteCredential.confirmButtonText'),
 			);
 
 			if (deleteConfirmed === false) {
@@ -727,8 +730,8 @@ export default mixins(showMessage, nodeHelpers).extend({
 			} catch (error) {
 				this.$showError(
 					error,
-					'Problem deleting credentials',
-					'There was a problem deleting the credentials:',
+					this.$baseText('credentialEdit.credentialEdit.showError.deleteCredential.title'),
+					this.$baseText('credentialEdit.credentialEdit.showError.deleteCredential.message'),
 				);
 				this.isDeleting = false;
 
@@ -740,8 +743,11 @@ export default mixins(showMessage, nodeHelpers).extend({
 			this.updateNodesCredentialsIssues();
 
 			this.$showMessage({
-				title: 'Credentials deleted',
-				message: `The credential "${savedCredentialName}" was deleted!`,
+				title: this.$baseText('credentialEdit.credentialEdit.showMessage.title'),
+				message: this.$baseText(
+					'credentialEdit.credentialEdit.showMessage.message',
+					{ interpolate: { savedCredentialName } },
+				),
 				type: 'success',
 			});
 			this.closeDialog();
@@ -778,8 +784,8 @@ export default mixins(showMessage, nodeHelpers).extend({
 			} catch (error) {
 				this.$showError(
 					error,
-					'OAuth Authorization Error',
-					'Error generating authorization URL:',
+					this.$baseText('credentialEdit.credentialEdit.showError.generateAuthorizationUrl.title'),
+					this.$baseText('credentialEdit.credentialEdit.showError.generateAuthorizationUrl.message'),
 				);
 
 				return;

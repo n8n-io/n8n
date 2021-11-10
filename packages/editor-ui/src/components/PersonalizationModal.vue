@@ -1,8 +1,8 @@
 <template>
 	<Modal
 		:name="PERSONALIZATION_MODAL_KEY"
-		:title="!submitted? 'Get started' : 'Thanks!'"
-		:subtitle="!submitted? 'These questions help us tailor n8n to you' : ''"
+		:title="!submitted? $baseText('personalizationModal.getStarted') : $baseText('personalizationModal.thanks')"
+		:subtitle="!submitted? $baseText('personalizationModal.theseQuestionsHelpUs') : ''"
 		:centerTitle="true"
 		:showClose="false"
 		:eventBus="modalBus"
@@ -15,37 +15,37 @@
 		<template v-slot:content>
 			<div v-if="submitted" :class="$style.submittedContainer">
 				<img :class="$style.demoImage" :src="baseUrl + 'suggestednodes.png'" />
-				<n8n-text>Look out for things marked with a ✨. They are personalized to make n8n more relevant to you.</n8n-text>
+				<n8n-text>{{ $baseText('personalizationModal.lookOutForThingsMarked') }}</n8n-text>
 			</div>
 			<div :class="$style.container" v-else>
-				<n8n-input-label label="Which of these areas do you mainly work in?">
-					<n8n-select :value="values[WORK_AREA_KEY]" placeholder="Select..." @change="(value) => onInput(WORK_AREA_KEY, value)">
-						<n8n-option :value="AUTOMATION_CONSULTING_WORK_AREA" label="Automation consulting" />
-						<n8n-option :value="FINANCE_WORK_AREA" label="Finance" />
-						<n8n-option :value="HR_WORK_AREA" label="HR" />
-						<n8n-option :value="IT_ENGINEERING_WORK_AREA" label="IT / Engineering" />
-						<n8n-option :value="LEGAL_WORK_AREA" label="Legal" />
-						<n8n-option :value="MARKETING_WORK_AREA" label="Marketing / Growth" />
-						<n8n-option :value="OPS_WORK_AREA" label="Operations" />
-						<n8n-option :value="PRODUCT_WORK_AREA" label="Product" />
-						<n8n-option :value="SALES_BUSINESSDEV_WORK_AREA" label="Sales / Business Development" />
-						<n8n-option :value="SECURITY_WORK_AREA" label="Security" />
-						<n8n-option :value="SUPPORT_WORK_AREA" label="Support" />
-						<n8n-option :value="OTHER_WORK_AREA_OPTION" label="Other (please specify)" />
+				<n8n-input-label :label="$baseText('personalizationModal.whichOfTheseAreasDoYouMainlyWorkIn')">
+					<n8n-select :value="values[WORK_AREA_KEY]" :placeholder="$baseText('personalizationModal.select')" @change="(value) => onInput(WORK_AREA_KEY, value)">
+						<n8n-option :value="AUTOMATION_CONSULTING_WORK_AREA" :label="$baseText('personalizationModal.automationConsulting')" />
+						<n8n-option :value="FINANCE_WORK_AREA" :label="$baseText('personalizationModal.finance')" />
+						<n8n-option :value="HR_WORK_AREA" :label="$baseText('personalizationModal.hr')" />
+						<n8n-option :value="IT_ENGINEERING_WORK_AREA" :label="$baseText('personalizationModal.itEngineering')" />
+						<n8n-option :value="LEGAL_WORK_AREA" :label="$baseText('personalizationModal.legal')" />
+						<n8n-option :value="MARKETING_WORK_AREA" :label="$baseText('personalizationModal.marketingGrowth')" />
+						<n8n-option :value="OPS_WORK_AREA" :label="$baseText('personalizationModal.operations')" />
+						<n8n-option :value="PRODUCT_WORK_AREA" :label="$baseText('personalizationModal.product')" />
+						<n8n-option :value="SALES_BUSINESSDEV_WORK_AREA" :label="$baseText('personalizationModal.salesBusinessDevelopment')" />
+						<n8n-option :value="SECURITY_WORK_AREA" :label="$baseText('personalizationModal.security')" />
+						<n8n-option :value="SUPPORT_WORK_AREA" :label="$baseText('personalizationModal.support')" />
+						<n8n-option :value="OTHER_WORK_AREA_OPTION" :label="$baseText('personalizationModal.otherPleaseSpecify')" />
 					</n8n-select>
 				</n8n-input-label>
 
 				<n8n-input
 					v-if="otherWorkAreaFieldVisible"
 					:value="values[OTHER_WORK_AREA_KEY]"
-					placeholder="Specify your work area"
+					:placeholder="$baseText('personalizationModal.specifyYourWorkArea')"
 					@input="(value) => onInput(OTHER_WORK_AREA_KEY, value)"
 				/>
 
-				<n8n-input-label label="How are your coding skills?">
-					<n8n-select :value="values[CODING_SKILL_KEY]" placeholder="Select..." @change="(value) => onInput(CODING_SKILL_KEY, value)">
+				<n8n-input-label :label="$baseText('personalizationModal.howAreYourCodingSkills')">
+					<n8n-select :value="values[CODING_SKILL_KEY]" :placeholder="$baseText('personalizationModal.select')" @change="(value) => onInput(CODING_SKILL_KEY, value)">
 						<n8n-option
-							label="0 (Never coded)"
+							:label="`0 (${baseText('personalizationModal.neverCoded')})`"
 							value="0"
 						/>
 						<n8n-option
@@ -65,36 +65,36 @@
 							value="4"
 						/>
 						<n8n-option
-							label="5 (Pro coder)"
+							:label="`5 (${$baseText('personalizationModal.proCoder')})`"
 							value="5"
 						/>
 					</n8n-select>
 				</n8n-input-label>
 
-				<n8n-input-label label="How big is your company?">
-					<n8n-select :value="values[COMPANY_SIZE_KEY]" placeholder="Select..." @change="(value) => onInput(COMPANY_SIZE_KEY, value)">
+				<n8n-input-label :label="$baseText('personalizationModal.howBigIsYourCompany')">
+					<n8n-select :value="values[COMPANY_SIZE_KEY]" :placeholder="$baseText('personalizationModal.select')" @change="(value) => onInput(COMPANY_SIZE_KEY, value)">
 						<n8n-option
-							label="Less than 20 people"
+							:label="$baseText('personalizationModal.lessThan20People')"
 							:value="COMPANY_SIZE_20_OR_LESS"
 						/>
 						<n8n-option
-							label="20-99 people"
+							:label="`20-99 ${$baseText('personalizationModal.people')}`"
 							:value="COMPANY_SIZE_20_99"
 						/>
 						<n8n-option
-							label="100-499 people"
+							:label="`100-499 ${$baseText('personalizationModal.people')}`"
 							:value="COMPANY_SIZE_100_499"
 						/>
 						<n8n-option
-							label="500-999 people"
+							:label="`500-999 ${$baseText('personalizationModal.people')}`"
 							:value="COMPANY_SIZE_500_999"
 						/>
 						<n8n-option
-							label="1000+ people"
+							:label="`1000+ ${$baseText('personalizationModal.people')}`"
 							:value="COMPANY_SIZE_1000_OR_MORE"
 						/>
 						<n8n-option
-							label="I'm not using n8n for work"
+							:label="$baseText('personalizationModal.imNotUsingN8nForWork')"
 							:value="COMPANY_SIZE_PERSONAL_USE"
 						/>
 					</n8n-select>
@@ -103,8 +103,8 @@
 		</template>
 		<template v-slot:footer>
 			<div>
-				<n8n-button v-if="submitted" @click="closeDialog" label="Get started" float="right" />
-				<n8n-button v-else @click="save" :loading="isSaving" label="Continue" float="right" />
+				<n8n-button v-if="submitted" @click="closeDialog" :label="$baseText('personalizationModal.getStarted')" float="right" />
+				<n8n-button v-else @click="save" :loading="isSaving" :label="$baseText('personalizationModal.continue')" float="right" />
 			</div>
 		</template>
 	</Modal>
@@ -140,12 +140,13 @@ import {
 } from "../constants";
 import { workflowHelpers } from "@/components/mixins/workflowHelpers";
 import { showMessage } from "@/components/mixins/showMessage";
+import { renderText } from "@/components/mixins/renderText";
 import Modal from "./Modal.vue";
 import { IPersonalizationSurveyAnswers, IPersonalizationSurveyKeys } from "@/Interface";
 import Vue from "vue";
 import { mapGetters } from "vuex";
 
-export default mixins(showMessage, workflowHelpers).extend({
+export default mixins(showMessage, renderText, workflowHelpers).extend({
 	components: { Modal },
 	name: "PersonalizationModal",
 	data() {
@@ -217,7 +218,7 @@ export default mixins(showMessage, workflowHelpers).extend({
 
 				this.submitted = true;
 			} catch (e) {
-				this.$showError(e, 'Error while submitting results');
+				this.$showError(e, this.$baseText('personalizationModal.errorWhileSubmittingResults'));
 			}
 
 			this.$data.isSaving = false;

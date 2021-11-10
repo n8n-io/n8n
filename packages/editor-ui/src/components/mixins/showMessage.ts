@@ -7,10 +7,11 @@ import { ExecutionError } from 'n8n-workflow';
 import { ElMessageBoxOptions } from 'element-ui/types/message-box';
 import { MessageType } from 'element-ui/types/message';
 import { isChildOf } from './helpers';
+import { renderText } from '@/components/mixins/renderText';
 
 let stickyNotificationQueue: ElNotificationComponent[] = [];
 
-export const showMessage = mixins(externalHooks).extend({
+export const showMessage = mixins(externalHooks, renderText).extend({
 	methods: {
 		$showMessage(messageData: ElNotificationOptions, track = true) {
 			messageData.dangerouslyUseHTMLString = true;
@@ -130,11 +131,11 @@ export const showMessage = mixins(externalHooks).extend({
 			this.$telemetry.track('Instance FE emitted error', { error_title: title, error_description: message, error_message: error.message, workflow_id: this.$store.getters.workflowId });
 		},
 
-		async confirmMessage (message: string, headline: string, type: MessageType | null = 'warning', confirmButtonText = 'OK', cancelButtonText = 'Cancel'): Promise<boolean> {
+		async confirmMessage (message: string, headline: string, type: MessageType | null = 'warning', confirmButtonText?: string, cancelButtonText?: string): Promise<boolean> {
 			try {
 				const options: ElMessageBoxOptions  = {
-					confirmButtonText,
-					cancelButtonText,
+					confirmButtonText: confirmButtonText || this.$baseText('showMessage.ok'),
+					cancelButtonText: cancelButtonText || this.$baseText('showMessage.cancel'),
 					dangerouslyUseHTMLString: true,
 					...(type && { type }),
 				};
@@ -172,7 +173,7 @@ export const showMessage = mixins(externalHooks).extend({
 					<summary
 						style="color: #ff6d5a; font-weight: bold; cursor: pointer;"
 					>
-						Show Details
+						${this.$baseText('showMessage.showDetails')}
 					</summary>
 					<p>${node.name}: ${errorDescription}</p>
 				</details>

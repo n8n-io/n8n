@@ -2,7 +2,14 @@
 	<div v-if="credentialTypesNodeDescriptionDisplayed.length" :class="$style.container">
 		<div v-for="credentialTypeDescription in credentialTypesNodeDescriptionDisplayed" :key="credentialTypeDescription.name">
 			<n8n-input-label
-				:label="`Credential for ${credentialTypeNames[credentialTypeDescription.name]}`"
+				:label="$baseText(
+					'nodeCredentials.credentialFor',
+					{
+						interpolate: {
+							credentialType: credentialTypeNames[credentialTypeDescription.name]
+						}
+					}
+				)"
 				:bold="false"
 				size="small"
 
@@ -13,7 +20,7 @@
 				</div>
 
 				<div :class="issues.length ? $style.hasIssues : $style.input" v-else >
-					<n8n-select :value="getSelectedId(credentialTypeDescription.name)" @change="(value) => onCredentialSelected(credentialTypeDescription.name, value)" placeholder="Select Credential" size="small">
+					<n8n-select :value="getSelectedId(credentialTypeDescription.name)" @change="(value) => onCredentialSelected(credentialTypeDescription.name, value)" :placeholder="$baseText('nodeCredentials.selectCredential')" size="small">
 						<n8n-option
 							v-for="(item) in credentialOptions[credentialTypeDescription.name]"
 							:key="item.id"
@@ -30,13 +37,13 @@
 
 					<div :class="$style.warning" v-if="issues.length">
 						<n8n-tooltip placement="top" >
-							<div slot="content" v-html="'Issues:<br />&nbsp;&nbsp;- ' + issues.join('<br />&nbsp;&nbsp;- ')"></div>
+							<div slot="content" v-html="`${$baseText('nodeCredentials.issues')}:<br />&nbsp;&nbsp;- ` + issues.join('<br />&nbsp;&nbsp;- ')"></div>
 							<font-awesome-icon icon="exclamation-triangle" />
 						</n8n-tooltip>
 					</div>
 
 					<div :class="$style.edit" v-if="selected[credentialTypeDescription.name] && isCredentialExisting(credentialTypeDescription.name)">
-						<font-awesome-icon icon="pen" @click="editCredential(credentialTypeDescription.name)" class="clickable" title="Update Credentials" />
+						<font-awesome-icon icon="pen" @click="editCredential(credentialTypeDescription.name)" class="clickable" :title="$baseText('nodeCredentials.updateCredential')" />
 					</div>
 				</div>
 			</n8n-input-label>
@@ -210,8 +217,16 @@ export default mixins(
 				});
 				this.updateNodesCredentialsIssues();
 				this.$showMessage({
-					title: 'Node credentials updated',
-					message: `Nodes that used credentials "${oldCredentials.name}" have been updated to use "${selected.name}"`,
+					title: this.$baseText('nodeCredentials.showMessage.title'),
+					message: this.$baseText(
+						'nodeCredentials.showMessage.message',
+						{
+							interpolate: {
+								oldCredentialName: oldCredentials.name,
+								newCredentialName: selected.name,
+							},
+						},
+					),
 					type: 'success',
 				});
 			}

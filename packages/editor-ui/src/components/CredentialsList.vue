@@ -2,32 +2,32 @@
 	<Modal
 		:name="CREDENTIAL_LIST_MODAL_KEY"
 		width="80%"
-		title="Credentials"
+		:title="$baseText('credentialsList.credentials')"
 	>
 		<template v-slot:content>
-			<n8n-heading tag="h3" size="small" color="text-light">Your saved credentials:</n8n-heading>
+			<n8n-heading tag="h3" size="small" color="text-light">{{ $baseText('credentialsList.yourSavedCredentials') + ':' }}</n8n-heading>
 			<div class="new-credentials-button">
 				<n8n-button
-					title="Create New Credentials"
+					:title="$baseText('credentialsList.createNewCredential')"
 					icon="plus"
-					label="Add New"
+					:label="$baseText('credentialsList.addNew')"
 					size="large"
 					@click="createCredential()"
 				/>
 			</div>
 
 			<el-table :data="credentialsToDisplay" :default-sort = "{prop: 'name', order: 'ascending'}" stripe max-height="450" @row-click="editCredential">
-				<el-table-column property="name" label="Name" class-name="clickable" sortable></el-table-column>
-				<el-table-column property="type" label="Type" class-name="clickable" sortable></el-table-column>
-				<el-table-column property="createdAt" label="Created" class-name="clickable" sortable></el-table-column>
-				<el-table-column property="updatedAt" label="Updated" class-name="clickable" sortable></el-table-column>
+				<el-table-column property="name" :label="$baseText('credentialsList.name')" class-name="clickable" sortable></el-table-column>
+				<el-table-column property="type" :label="$baseText('credentialsList.type')" class-name="clickable" sortable></el-table-column>
+				<el-table-column property="createdAt" :label="$baseText('credentialsList.created')" class-name="clickable" sortable></el-table-column>
+				<el-table-column property="updatedAt" :label="$baseText('credentialsList.updated')" class-name="clickable" sortable></el-table-column>
 				<el-table-column
-					label="Operations"
+					:label="$baseText('credentialsList.operations')"
 					width="120">
 					<template slot-scope="scope">
 						<div class="cred-operations">
-							<n8n-icon-button title="Edit Credentials" @click.stop="editCredential(scope.row)" size="small" icon="pen" />
-							<n8n-icon-button title="Delete Credentials" @click.stop="deleteCredential(scope.row)" size="small" icon="trash" />
+							<n8n-icon-button :title="$baseText('credentialsList.editCredential')" @click.stop="editCredential(scope.row)" size="small" icon="pen" />
+							<n8n-icon-button :title="$baseText('credentialsList.deleteCredential')" @click.stop="deleteCredential(scope.row)" size="small" icon="trash" />
 						</div>
 					</template>
 				</el-table-column>
@@ -103,7 +103,16 @@ export default mixins(
 		},
 
 		async deleteCredential (credential: ICredentialsResponse) {
-			const deleteConfirmed = await this.confirmMessage(`Are you sure you want to delete "${credential.name}" credentials?`, 'Delete Credentials?', null, 'Yes, delete!');
+			const deleteConfirmed = await this.confirmMessage(
+				this.$baseText(
+					'credentialsList.confirmMessage.message',
+					{ interpolate: { credentialName: credential.name }},
+				),
+				this.$baseText('credentialsList.confirmMessage.headline'),
+				null,
+				this.$baseText('credentialsList.confirmMessage.confirmButtonText'),
+				this.$baseText('credentialsList.confirmMessage.cancelButtonText'),
+			);
 
 			if (deleteConfirmed === false) {
 				return;
@@ -112,7 +121,11 @@ export default mixins(
 			try {
 				await this.$store.dispatch('credentials/deleteCredential', {id: credential.id});
 			} catch (error) {
-				this.$showError(error, 'Problem deleting credentials', 'There was a problem deleting the credentials:');
+				this.$showError(
+					error,
+					this.$baseText('credentialsList.showError.deleteCredential.title'),
+					this.$baseText('credentialsList.showError.deleteCredential.message'),
+				);
 
 				return;
 			}
@@ -121,8 +134,11 @@ export default mixins(
 			this.updateNodesCredentialsIssues();
 
 			this.$showMessage({
-				title: 'Credentials deleted',
-				message: `The credential "${credential.name}" was deleted!`,
+				title: this.$baseText('credentialsList.showMessage.title'),
+				message: this.$baseText(
+					'credentialsList.showMessage.message',
+					{ interpolate: { credentialName: credential.name }},
+				),
 				type: 'success',
 			});
 		},

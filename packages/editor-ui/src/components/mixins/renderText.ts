@@ -1,14 +1,7 @@
 // import { TranslationPath } from '@/Interface';
 import Vue from 'vue';
 
-/**
- * Mixin to translate:
- * - base strings, i.e. any string that is not node- or credentials-specific,
- * - specific strings,
- * 	- node-specific strings, i.e. those in `NodeView.vue`,
- * 	- credentials-specific strings, i.e. those in `EditCredentials.vue`.
- */
-export const translate = Vue.extend({
+export const renderText = Vue.extend({
 	computed: {
 		/**
 		 * Node type for the active node in `NodeView.vue`.
@@ -19,23 +12,18 @@ export const translate = Vue.extend({
 	},
 
 	methods: {
-		// -----------------------------------------
-		//               main methods
-		// -----------------------------------------
-
 		/**
-		 * Translate a base string. Called directly in Vue templates.
-		 * Optionally, [interpolate a variable](https://kazupon.github.io/vue-i18n/guide/formatting.html#named-formatting).
+		 * Render a string of base text, i.e. a string with a **fixed path** to the value in the locale object. Allows for [interpolation](https://kazupon.github.io/vue-i18n/guide/formatting.html#named-formatting) when the localized value contains a string between curly braces.
+		 * ```js
+		 * $baseText('fixed.path.to.localized.value');
+		 * $baseText('fixed.path.to.localized.value', { interpolate: { var: arg } });
+		 * ```
 		 */
 		$baseText(
 			key: string,
-			options?: { interpolate?: { [key: string]: string } },
+			options?: { interpolate: { [key: string]: string } },
 		): string {
-			const translatedBaseString = options && options.interpolate
-				? this.$t(key, options.interpolate)
-				: this.$t(key);
-
-			return translatedBaseString.toString();
+			return this.$t(key, options && options.interpolate).toString();
 		},
 
 		/**

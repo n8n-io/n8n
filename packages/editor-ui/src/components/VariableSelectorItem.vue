@@ -11,7 +11,7 @@
 
 					<el-dropdown trigger="click" @click.stop @command="optionSelected($event, item)" v-if="allowParentSelect === true">
 						<span class="el-dropdown-link clickable" @click.stop>
-							<font-awesome-icon icon="dot-circle" title="Select Item" />
+							<font-awesome-icon icon="dot-circle" :title="$baseText('variableSelectorItem.selectItem')" />
 						</span>
 						<el-dropdown-menu slot="dropdown">
 							<el-dropdown-item :command="operation.command" v-for="operation in itemAddOperations" :key="operation.command">{{operation.displayName}}</el-dropdown-item>
@@ -29,7 +29,7 @@
 				{{item.name}}:
 				<font-awesome-icon icon="dot-circle" title="Select Item" />
 			</div>
-			<div class="item-value">{{ item.value !== undefined?item.value:'--- EMPTY ---' }}</div>
+			<div class="item-value">{{ item.value !== undefined?item.value: $baseText('variableSelectorItem.empty') }}</div>
 		</div>
 	</div>
 </template>
@@ -41,8 +41,10 @@ import {
 	IVariableSelectorOption,
 	IVariableItemSelected,
 } from '@/Interface';
+import { renderText } from './mixins/renderText';
+import mixins from 'vue-typed-mixins';
 
-export default Vue.extend({
+export default mixins(renderText).extend({
 	name: 'VariableSelectorItem',
 	props: [
 		'allowParentSelect',

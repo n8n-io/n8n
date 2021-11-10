@@ -2,7 +2,7 @@
 	<div @keydown.stop class="collection-parameter">
 		<div class="collection-parameter-wrapper">
 			<div v-if="getProperties.length === 0" class="no-items-exist">
-				<n8n-text size="small">Currently no properties exist</n8n-text>
+				<n8n-text size="small">{{ $baseText('collectionParameter.noProperties') }}</n8n-text>
 			</div>
 
 			<parameter-input-list :parameters="getProperties" :nodeValues="nodeValues" :path="path" :hideDelete="hideDelete" :indent="true" @valueChanged="valueChanged" />
@@ -67,7 +67,7 @@ export default mixins(
 		},
 		computed: {
 			getPlaceholderText (): string {
-				return this.parameter.placeholder ? this.parameter.placeholder : 'Choose Option To Add';
+				return this.parameter.placeholder ? this.parameter.placeholder : this.$baseText('collectionParameter.choose');
 			},
 			getProperties (): INodeProperties[] {
 				const returnProperties = [];

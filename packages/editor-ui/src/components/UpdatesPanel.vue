@@ -5,16 +5,26 @@
 		width="520px"
 	>
 		<template slot="header">
-			<span :class="$style.title">We’ve been busy ✨</span>
+			<span :class="$style.title">
+				{{ $baseText('updatesPanel.weVeBeenBusy') }}
+			</span>
 		</template>
 		<template slot="content">
 			<section :class="$style['description']">
-
 				<p v-if="currentVersion">
-					You’re on {{ currentVersion.name }}, which was released
-					<strong><TimeAgo :date="currentVersion.createdAt" /></strong> and is
-					<strong>{{ nextVersions.length }} version{{nextVersions.length > 1 ? "s" : ""}}</strong>
-					behind the latest and greatest n8n
+					{{ $baseText(
+						'updatesPanel.youReOnVersion',
+						{ interpolate: { currentVersionName: currentVersion.name } }
+					) }}
+					<strong><TimeAgo :date="currentVersion.createdAt" /></strong>{{ $baseText('updatesPanel.andIs') }} <strong>{{ $baseText(
+							'updatesPanel.version',
+							{
+								interpolate: {
+									numberOfVersions: nextVersions.length,
+									howManySuffix: nextVersions.length > 1 ? "s" : "",
+								}
+							}
+					)}}</strong> {{ $baseText('updatesPanel.behindTheLatest') }}
 				</p>
 
 				<a
@@ -24,7 +34,9 @@
 					target="_blank"
 				>
 					<font-awesome-icon icon="info-circle"></font-awesome-icon>
-					<span>How to update your n8n version</span>
+					<span>
+						{{ $baseText('updatesPanel.howToUpdateYourN8nVersion') }}
+					</span>
 				</a>
 
 			</section>
@@ -49,8 +61,10 @@ import ModalDrawer from './ModalDrawer.vue';
 import TimeAgo from './TimeAgo.vue';
 import VersionCard from './VersionCard.vue';
 import { VERSIONS_MODAL_KEY } from '../constants';
+import { renderText } from './mixins/renderText';
+import mixins from 'vue-typed-mixins';
 
-export default Vue.extend({
+export default mixins(renderText).extend({
 	name: 'UpdatesPanel',
 	components: {
 		ModalDrawer,

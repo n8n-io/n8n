@@ -5,7 +5,7 @@ import axios from 'axios';
 
 Vue.use(VueI18n);
 
-console.log('About to initialize i18n');
+console.log('About to initialize i18n'); // eslint-disable-line no-console
 
 export const i18n = new VueI18n({
 	locale: 'en',
@@ -24,7 +24,7 @@ function setLanguage(language: string): string {
 }
 
 export async function loadLanguage(language?: string) {
-	console.log(`loadLanguage called with ${language}`);
+	console.log(`loadLanguage called with ${language}`); // eslint-disable-line no-console
 
 	if (!language) return Promise.resolve();
 

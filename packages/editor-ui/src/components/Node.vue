@@ -16,23 +16,23 @@
 				</n8n-tooltip>
 			</div>
 
-			<div class="node-executing-info" title="Node is executing">
+			<div class="node-executing-info" :title="$baseText('node.nodeIsExecuting')">
 				<font-awesome-icon icon="sync-alt" spin />
 			</div>
 			<div class="node-options no-select-on-click" v-if="!isReadOnly">
-				<div v-touch:tap="deleteNode" class="option" title="Delete Node" >
+				<div v-touch:tap="deleteNode" class="option" :title="$baseText('node.deleteNode')">
 					<font-awesome-icon icon="trash" />
 				</div>
-				<div v-touch:tap="disableNode" class="option" title="Activate/Deactivate Node" >
+				<div v-touch:tap="disableNode" class="option" :title="$baseText('node.activateDeactivateNode')">
 					<font-awesome-icon :icon="nodeDisabledIcon" />
 				</div>
-				<div v-touch:tap="duplicateNode" class="option" title="Duplicate Node" >
+				<div v-touch:tap="duplicateNode" class="option" :title="$baseText('node.duplicateNode')">
 					<font-awesome-icon icon="clone" />
 				</div>
-				<div v-touch:tap="setNodeActive" class="option touch" title="Edit Node" v-if="!isReadOnly">
+				<div v-touch:tap="setNodeActive" class="option touch" :title="$baseText('node.editNode')" v-if="!isReadOnly">
 					<font-awesome-icon class="execute-icon" icon="cog" />
 				</div>
-				<div v-touch:tap="executeNode" class="option" title="Execute Node" v-if="!isReadOnly && !workflowRunning">
+				<div v-touch:tap="executeNode" class="option" :title="$baseText('node.executeNode')" v-if="!isReadOnly && !workflowRunning">
 					<font-awesome-icon class="execute-icon" icon="play-circle" />
 				</div>
 			</div>
@@ -57,6 +57,7 @@ import { WAIT_TIME_UNLIMITED } from '@/constants';
 import { externalHooks } from '@/components/mixins/externalHooks';
 import { nodeBase } from '@/components/mixins/nodeBase';
 import { nodeHelpers } from '@/components/mixins/nodeHelpers';
+import { renderText } from '@/components/mixins/renderText';
 import { workflowHelpers } from '@/components/mixins/workflowHelpers';
 
 import {
@@ -70,7 +71,7 @@ import mixins from 'vue-typed-mixins';
 
 import { get } from 'lodash';
 
-export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).extend({
+export default mixins(externalHooks, nodeBase, nodeHelpers, renderText, workflowHelpers).extend({
 	name: 'Node',
 	components: {
 		NodeIcon,
