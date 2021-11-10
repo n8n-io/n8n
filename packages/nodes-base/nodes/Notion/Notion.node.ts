@@ -149,7 +149,6 @@ export class Notion implements INodeType {
 					},
 				],
 				default: 'page',
-				description: 'Resource to consume.',
 			},
 			...blockOperations,
 			...blockFields,
@@ -346,10 +345,12 @@ export class Notion implements INodeType {
 						children: formatBlocks(this.getNodeParameter('blockUi.blockValues', i, []) as IDataObject[]),
 					};
 					const block = await notionApiRequest.call(this, 'PATCH', `/blocks/${blockId}/children`, body);
+					//console.log(await notionApiRequest.call(this, 'GET', `/blocks/3faf44f3a2284526b1dfe0b6edc1e76e`));
 					returnData.push(block);
 				}
 			}
 
+			
 			if (operation === 'getAll') {
 				for (let i = 0; i < length; i++) {
 					const blockId = extractPageId(this.getNodeParameter('blockId', i) as string);
@@ -453,7 +454,7 @@ export class Notion implements INodeType {
 
 			if (operation === 'getAll') {
 				for (let i = 0; i < length; i++) {
-					download = this.getNodeParameter('download', 0) as boolean;
+					download = this.getNodeParameter('options.download', 0, false) as boolean;
 					const simple = this.getNodeParameter('simple', 0) as boolean;
 					const databaseId = this.getNodeParameter('databaseId', i) as string;
 					const returnAll = this.getNodeParameter('returnAll', i) as boolean;

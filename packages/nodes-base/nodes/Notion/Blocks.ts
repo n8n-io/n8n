@@ -551,7 +551,6 @@ export const blocks = (resource: string, operation: string) => [{
 					typeOptions: {
 						loadOptionsMethod: 'getBlockTypes',
 					},
-					description: 'Type of block',
 					default: 'paragraph',
 				},
 				...block('paragraph'),

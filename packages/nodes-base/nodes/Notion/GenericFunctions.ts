@@ -467,6 +467,7 @@ export function simplifyObjects(objects: any, download = false) {
 		if (object === 'page' && (parent.type === 'page_id' || parent.type === 'workspace')) {
 			results.push({
 				id,
+				//if change title for name then it's going to be a breaking change.
 				title: properties.title.title[0].plain_text,
 				url,
 				created_time,

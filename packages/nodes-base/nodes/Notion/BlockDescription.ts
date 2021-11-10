@@ -56,7 +56,7 @@ export const blockFields = [
 				],
 			},
 		},
-		description: `The ID of block. A page it is also considered a block. Hence, a Page ID can be used as well`,
+		description: `The Block URL from Notion's 'copy link' functionality (or just the ID contained within the URL). Pages are also blocks, so you can use a page URL/ID here too`,
 	},
 	...blocks('block', 'append'),
 	/* -------------------------------------------------------------------------- */
@@ -78,6 +78,7 @@ export const blockFields = [
 				],
 			},
 		},
+		description: `The Block URL from Notion's 'copy link' functionality (or just the ID contained within the URL). Pages are also blocks, so you can use a page URL/ID here too`,
 	},
 	{
 		displayName: 'Return All',

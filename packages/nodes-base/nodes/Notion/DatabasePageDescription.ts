@@ -51,7 +51,7 @@ export const databasePageFields = [
 	/*                                databasePage:create                         */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Database ID',
+		displayName: 'Database Name or ID',
 		name: 'databaseId',
 		type: 'options',
 		default: '',
@@ -982,23 +982,6 @@ export const databasePageFields = [
 		description: 'Whether to return a simplified version of the response instead of the raw data',
 	},
 	{
-		displayName: 'Download',
-		name: 'download',
-		type: 'boolean',
-		displayOptions: {
-			show: {
-				resource: [
-					'databasePage',
-				],
-				operation: [
-					'getAll',
-				],
-			},
-		},
-		default: true,
-		description: 'Whether to download the fields type file',
-	},
-	{
 		displayName: 'Options',
 		name: 'options',
 		type: 'collection',
@@ -1015,6 +998,13 @@ export const databasePageFields = [
 		default: {},
 		placeholder: 'Add Field',
 		options: [
+			{
+				displayName: 'Download',
+				name: 'download',
+				type: 'boolean',
+				default: false,
+				description: 'If a database field contains a file, whether to download it',
+			},
 			{
 				displayName: 'Filters',
 				name: 'filter',
