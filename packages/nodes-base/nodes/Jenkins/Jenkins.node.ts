@@ -332,7 +332,79 @@ export class Jenkins implements INodeType {
 				default: 'list',
 				description: 'The operation to perform',
 				noDataExpression: true,
-			}
+			},
+			{
+				displayName: 'Depth',
+				name: 'depth',
+				type: 'number',
+				displayOptions: {
+					show: {
+						resource: [
+							'builds',
+						],
+						operation: [
+							'list',
+						],
+					},
+				},
+				required: true,
+				default: 1,
+				description: 'String depth parameter',
+			},
+			{
+				displayName: 'Tree',
+				name: 'tree',
+				type: 'string',
+				displayOptions: {
+					show: {
+						resource: [
+							'builds',
+						],
+						operation: [
+							'list',
+						],
+					},
+				},
+				required: false,
+				default: '',
+				description: 'String tree parameter',
+			},
+			{
+				displayName: 'Xpath',
+				name: 'xpath',
+				type: 'string',
+				displayOptions: {
+					show: {
+						resource: [
+							'builds',
+						],
+						operation: [
+							'list',
+						],
+					},
+				},
+				required: false,
+				default: '',
+				description: 'String xpath parameter',
+			},
+			{
+				displayName: 'Exclude',
+				name: 'exclude',
+				type: 'string',
+				displayOptions: {
+					show: {
+						resource: [
+							'builds',
+						],
+						operation: [
+							'list',
+						],
+					},
+				},
+				required: false,
+				default: '',
+				description: 'String exclude parameter',
+			},
 		],
 	};
 
@@ -436,7 +508,19 @@ export class Jenkins implements INodeType {
 				if (resource === 'builds') {
 					if (operation === 'list') {
 						const endpoint = `${baseUrl}/api/xml`;
-						const response = await jenkinsApiRequest.call(this, 'get', endpoint);
+						const depth = this.getNodeParameter('depth', i) as number;
+						const tree = this.getNodeParameter('tree', i) as string ;
+						const xpath = this.getNodeParameter('xpath', i) as string;
+						const exclude = this.getNodeParameter('exclude', i) as string;
+
+						const queryParams = {
+							depth,
+							tree: tree.length? tree : undefined,
+							xpath: xpath.length? xpath : undefined,
+							exclude: exclude.length? exclude : undefined,
+						}
+
+						const response = await jenkinsApiRequest.call(this, 'get', endpoint, queryParams);
 						responseData = await new Promise((resolve, reject) => {
 							parseString(response, { explicitArray: false }, (err, data) => {
 								if (err) {
@@ -445,7 +529,6 @@ export class Jenkins implements INodeType {
 								resolve(data);
 							});
 						});
-						console.log(responseData)
 					}
 				}
 				if (Array.isArray(responseData)) {
