@@ -3,12 +3,12 @@ import {
 } from 'n8n-core';
 
 import {
+	ICredentialsDecrypted,
+	ICredentialTestFunctions,
 	IDataObject,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
-	ICredentialTestFunctions,
-	ICredentialsDecrypted,
 	NodeCredentialTestResult,
 } from 'n8n-workflow';
 
@@ -67,17 +67,17 @@ export class Jenkins implements INodeType {
 					{
 						name: 'Jenkins Instance',
 						value: 'jenkins',
-						description: 'Jenkins instance'
+						description: 'Jenkins instance',
 					},
 					{
 						name: 'Job',
 						value: 'job',
-						description: 'Jenkins job'
+						description: 'Jenkins job',
 					},
 					{
 						name: 'Builds',
 						value: 'builds',
-						description: 'List of builds job'
+						description: 'List of builds job',
 					},
 				],
 				default: 'job',
@@ -158,7 +158,7 @@ export class Jenkins implements INodeType {
 						],
 						operation: [
 							'trigger',
-							'triggerParams'
+							'triggerParams',
 						],
 					},
 				},
@@ -201,7 +201,7 @@ export class Jenkins implements INodeType {
 								name: 'value',
 								type: 'string',
 								default: '',
-								description: 'Value to set for the parameter.',
+								description: 'Value to set for the parameter',
 							},
 						],
 					},
@@ -296,7 +296,7 @@ export class Jenkins implements INodeType {
 					},
 				],
 				default: 'safeRestart',
-				description: 'The operation to perform',
+				description: 'Jenkins operation',
 				noDataExpression: true,
 			},
 			{
@@ -340,7 +340,7 @@ export class Jenkins implements INodeType {
 					},
 				],
 				default: 'list',
-				description: 'The operation to perform',
+				description: 'Build operation',
 				noDataExpression: true,
 			},
 			{
@@ -477,15 +477,15 @@ export class Jenkins implements INodeType {
 					if (operation === 'triggerParams') {
 						const token = this.getNodeParameter('token', i) as string;
 						const job = this.getNodeParameter('job', i) as string;
-						const params = this.getNodeParameter('param.params', i , [] ) as IDataObject[];
-						let body = {}
+						const params = this.getNodeParameter('param.params', i , [] ) as [];
+						let body = {};
 						if (params.length) {
-							body = params.reduce((body, { name, value }) => {
-								body[name] = value
-								return body
-							}, {})
+							body = params.reduce((body:IDataObject , param: {name: string; value: string}) => {
+								body[param.name] = param.value;
+								return body;
+							}, {});
 						}
-						console.log(body)
+						console.log(body);
 						const endpoint = `${baseUrl}/job/${job}/buildWithParameters?token=${token}`;
 						responseData = await jenkinsApiRequest.call(this, 'get', endpoint, {}, {}, { data: body });
 					}
@@ -495,8 +495,8 @@ export class Jenkins implements INodeType {
 						const queryParams = {
 							name,
 							mode: 'copy',
-							from: job
-						}
+							from: job,
+						};
 
 						const endpoint = `${baseUrl}/createItem`;
 						responseData = await jenkinsApiRequest.call(this, 'post', endpoint, queryParams);
@@ -505,10 +505,10 @@ export class Jenkins implements INodeType {
 						const name = this.getNodeParameter('newJob', i) as string;
 						const queryParams = {
 							name,
-						}
+						};
 						const headers = {
-							'content-type': 'application/xml'
-						}
+							'content-type': 'application/xml',
+						};
 
 						const body = this.getNodeParameter('xml', i) as string;
 
@@ -525,7 +525,7 @@ export class Jenkins implements INodeType {
 						if (reason) {
 							queryParams = {
 								reason,
-							}
+							};
 						}
 
 						const endpoint = `${baseUrl}/quietDown`;
@@ -565,7 +565,7 @@ export class Jenkins implements INodeType {
 							tree: tree.length? tree : undefined,
 							xpath: xpath.length? xpath : undefined,
 							exclude: exclude.length? exclude : undefined,
-						}
+						};
 
 						const response = await jenkinsApiRequest.call(this, 'get', endpoint, queryParams);
 						responseData = await new Promise((resolve, reject) => {

@@ -26,13 +26,13 @@ export async function jenkinsApiRequest(this: IHookFunctions | IExecuteFunctions
 		headers: {
 			'Accept': 'application/json',
 			'Authorization': `Basic ${token}`,
-			...headers
+			...headers,
 		},
 		method,
-		uri: `${uri}`
+		uri: `${uri}`,
 		json: true,
 		qs,
-		body
+		body,
 	};
 	options = Object.assign({}, options, option);
 	try {
