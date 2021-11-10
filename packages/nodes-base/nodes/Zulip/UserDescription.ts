@@ -290,7 +290,7 @@ export const userFields = [
 						value: 400,
 					},
 					{
-						name: 'Guess',
+						name: 'Guest',
 						value: 600,
 					},
 				],
