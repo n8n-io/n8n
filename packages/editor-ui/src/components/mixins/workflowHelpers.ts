@@ -362,11 +362,6 @@ export const workflowHelpers = mixins(
 							nodeData.credentials = saveCredenetials;
 						}
 					}
-
-					// Save the node color only if it is different to the default color
-					if (node.color && node.color !== nodeType.defaults.color) {
-						nodeData.color = node.color;
-					}
 				} else {
 					// Node-Type is not known so save the data as it is
 					nodeData.credentials = node.credentials;

@@ -2059,12 +2059,6 @@ export default mixins(
 						node.disabled = false;
 					}
 
-					if (!node.hasOwnProperty('color')) {
-						// If no color is defined set the default color of the node type
-						if (nodeType && nodeType.defaults.color) {
-							node.color = nodeType.defaults.color as string;
-						}
-					}
 					if (!node.hasOwnProperty('parameters')) {
 						node.parameters = {};
 					}
