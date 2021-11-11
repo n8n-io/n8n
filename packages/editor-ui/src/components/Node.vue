@@ -214,7 +214,7 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 			}
 		},
 		nodeRunData(newValue) {
-			this.$emit('run', {name: this.data.name, data: newValue});
+			this.$emit('run', {name: this.data.name, data: newValue, waiting: !!this.waiting});
 		},
 	},
 	mounted() {

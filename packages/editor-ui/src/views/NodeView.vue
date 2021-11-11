@@ -1808,12 +1808,12 @@ export default mixins(
 					CanvasHelpers.showOrHideItemsLabel(connection);
 				});
 			},
-			onNodeRun ({name, data}: {name: string, data: ITaskData[] | null}) {
+			onNodeRun ({name, data, waiting}: {name: string, data: ITaskData[] | null, waiting: boolean}) {
 				const sourceNodeName = name;
 				const sourceIndex = this.$store.getters.getNodeIndex(sourceNodeName);
 				const sourceId = `${NODE_NAME_PREFIX}${sourceIndex}`;
 
-				if (data === null || data.length === 0) {
+				if (data === null || data.length === 0 || waiting) {
 					// @ts-ignore
 					const outgoing = this.instance.getConnections({
 						source: sourceId,
