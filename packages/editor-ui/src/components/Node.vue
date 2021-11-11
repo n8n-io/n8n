@@ -3,22 +3,24 @@
 		<div class="select-background" v-show="isSelected"></div>
 		<div class="node-default" :data-name="data.name" :ref="data.name">
 			<div :class="nodeClass" :style="nodeStyle"  @dblclick="setNodeActive" @click.left="mouseLeftClick" v-touch:start="touchStart" v-touch:end="touchEnd">
-				<div v-if="hasIssues" class="node-info-icon node-issues">
-					<n8n-tooltip placement="bottom" >
-						<div slot="content" v-html="nodeIssues"></div>
-						<font-awesome-icon icon="exclamation-triangle" />
-					</n8n-tooltip>
+				<div v-if="!data.disabled" class="node-info-icon">
+					<div v-if="hasIssues" class="node-issues">
+						<n8n-tooltip placement="bottom" >
+							<div slot="content" v-html="nodeIssues"></div>
+							<font-awesome-icon icon="exclamation-triangle" />
+						</n8n-tooltip>
+					</div>
+					<div v-else-if="waiting" class="waiting">
+						<n8n-tooltip placement="bottom">
+							<div slot="content" v-html="waiting"></div>
+							<font-awesome-icon icon="clock" />
+						</n8n-tooltip>
+					</div>
+					<span v-else-if="workflowDataItems" class="data-count">
+						<font-awesome-icon icon="check" />
+						<span v-if="workflowDataItems > 1" class="items-count"> {{ workflowDataItems }}</span>
+					</span>
 				</div>
-				<div v-else-if="waiting && !data.disabled" class="node-info-icon waiting">
-					<n8n-tooltip placement="bottom">
-						<div slot="content" v-html="waiting"></div>
-						<font-awesome-icon icon="clock" />
-					</n8n-tooltip>
-				</div>
-				<span v-else-if="workflowDataItems && !data.disabled" class="node-info-icon data-count">
-					<font-awesome-icon icon="check" />
-					<span v-if="workflowDataItems > 1" class="items-count"> {{ workflowDataItems }}</span>
-				</span>
 
 				<div class="node-executing-info" title="Node is executing">
 					<font-awesome-icon icon="sync-alt" spin />
@@ -385,12 +387,12 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 			bottom: 6px;
 			right: 6px;
 
-			&.data-count {
+			.data-count {
 				font-weight: 600;
 				color: var(--color-success);
 			}
 
-			&.node-issues {
+			.node-issues {
 				color: var(--color-danger);
 			}
 
