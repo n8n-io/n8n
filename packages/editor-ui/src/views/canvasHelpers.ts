@@ -49,7 +49,7 @@ export const CONNECTOR_FLOWCHART_TYPE = ['N8nFlowchart', {
 	stub: JSPLUMB_FLOWCHART_STUB + 10,
 	gap: 4,
 	alwaysRespectStubs: false,
-	loopbackVerticalLength: NODE_SIZE, // length of vertical segment when looping
+	loopbackVerticalLength: NODE_SIZE, // height of vertical segment when looping
 	loopbackMinimum: LOOPBACK_MINIMUM, // minimum length before flowchart loops around
 	getEndpointOffset(endpoint: Endpoint) {
 		const indexOffset = 10; // stub offset between different endpoints of same node
