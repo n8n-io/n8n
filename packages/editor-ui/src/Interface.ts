@@ -36,7 +36,7 @@ declare module 'jsplumb' {
 	}
 
 	interface Connection {
-		__meta: {
+		__meta?: {
 			sourceNodeName: string,
 			sourceOutputIndex: number,
 			targetNodeName: string,
