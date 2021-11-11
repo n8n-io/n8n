@@ -34,7 +34,7 @@ import {
 import {
 	OptionsWithUri,
 } from 'request';
-import { DashboardUpdatePayload, GrafanaCredentials } from './types';
+import { DashboardUpdateFields, DashboardUpdatePayload, GrafanaCredentials } from './types';
 
 export class Grafana implements INodeType {
 	description: INodeTypeDescription = {
@@ -261,15 +261,18 @@ export class Grafana implements INodeType {
 							},
 						};
 
-						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+						const updateFields = this.getNodeParameter('updateFields', i) as DashboardUpdateFields;
 
 						throwOnEmptyUpdate.call(this, resource, updateFields);
 
 						const { title, ...rest } = updateFields;
 
-						body.dashboard.title = title !== undefined
-							? title
-							: await grafanaApiRequest.call(this, 'GET', `/dashboards/uid/${dashboardUid}`);
+						if (!title) {
+							const { dashboard } = await grafanaApiRequest.call(this, 'GET', `/dashboards/uid/${dashboardUid}`);
+							body.dashboard.title = dashboard.title;
+						} else {
+							body.dashboard.title = title;
+						}
 
 						if (Object.keys(rest).length) {
 							Object.assign(body, rest);
@@ -361,22 +364,25 @@ export class Grafana implements INodeType {
 
 						// https://grafana.com/docs/grafana/latest/http_api/team/#update-team
 
-						const body = {
-							overwrite: true,
-						};
-
 						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
 
 						throwOnEmptyUpdate.call(this, resource, updateFields);
+
+						const body: IDataObject = {};
+
+						const teamId = this.getNodeParameter('teamId', i);
+
+						// prevent email from being overridden to empty
+						if (!updateFields.email) {
+							const { email } = await grafanaApiRequest.call(this, 'GET', `/teams/${teamId}`);
+							body.email = email;
+						}
 
 						if (Object.keys(updateFields).length) {
 							Object.assign(body, updateFields);
 						}
 
-						const teamId = this.getNodeParameter('teamId', i);
-
-						await grafanaApiRequest.call(this, 'PUT', `/teams/${teamId}`, body);
-						responseData = await grafanaApiRequest.call(this, 'GET', `/teams/${teamId}`);
+						responseData = await grafanaApiRequest.call(this, 'PUT', `/teams/${teamId}`, body);
 
 					}
 

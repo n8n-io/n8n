@@ -10,3 +10,8 @@ export type DashboardUpdatePayload = {
     title?: string
   }
 };
+
+export type DashboardUpdateFields = {
+  title?: string;
+  folderId?: string;
+};
