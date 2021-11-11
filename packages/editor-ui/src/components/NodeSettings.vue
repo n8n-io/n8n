@@ -122,13 +122,6 @@ export default mixins(
 
 				return this.nodeType.properties;
 			},
-			isColorDefaultValue (): boolean {
-				if (this.nodeType === null) {
-					return false;
-				}
-
-				return this.node.color === this.nodeType.defaults.color;
-			},
 			workflowRunning (): boolean {
 				return this.$store.getters.isActionActive('workflowRunning');
 			},
