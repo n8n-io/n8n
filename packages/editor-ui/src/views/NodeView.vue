@@ -1646,10 +1646,10 @@ export default mixins(
 				});
 			},
 			getOutputEndpointUUID(nodeName: string, index: number) {
-				return `${this.getNodeIndex(nodeName)}-output${index}`;
+				return CanvasHelpers.getOutputEndpointUUID(this.getNodeIndex(nodeName), index);
 			},
 			getInputEndpointUUID(nodeName: string, index: number) {
-				return `${this.getNodeIndex(nodeName)}-input${index}`;
+				return CanvasHelpers.getInputEndpointUUID(this.getNodeIndex(nodeName), index);
 			},
 			__addConnection (connection: [IConnection, IConnection], addVisualConnection = false) {
 				if (addVisualConnection === true) {
@@ -1763,8 +1763,8 @@ export default mixins(
 				const targetIndex = this.getNodeIndex(targetNodeName);
 				const targetId = `${NODE_NAME_PREFIX}${targetIndex}`;
 
-				const sourceEndpoint = `${sourceIndex}-output${sourceOutputIndex}`;
-				const targetEndpoint = `${targetIndex}-input${targetInputIndex}`;
+				const sourceEndpoint = CanvasHelpers.getOutputEndpointUUID(sourceIndex, sourceOutputIndex);
+				const targetEndpoint = CanvasHelpers.getInputEndpointUUID(targetIndex, targetInputIndex);
 
 				// @ts-ignore
 				const connections = this.instance.getConnections({

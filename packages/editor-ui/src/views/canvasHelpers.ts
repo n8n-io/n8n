@@ -725,3 +725,10 @@ export const addConnectionActionsOverlay = (connection: Connection, onDelete: Fu
 	]);
 };
 
+export const getOutputEndpointUUID = (nodeIndex: string, outputIndex: number) => {
+	return `${nodeIndex}${OUTPUT_UUID_KEY}${outputIndex}`;
+};
+
+export const getInputEndpointUUID = (nodeIndex: string, inputIndex: number) => {
+	return `${nodeIndex}${INPUT_UUID_KEY}${inputIndex}`;
+};

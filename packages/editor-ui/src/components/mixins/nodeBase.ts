@@ -61,7 +61,7 @@ export const nodeBase = mixins(
 				const anchorPosition = CanvasHelpers.ANCHOR_POSITIONS.input[nodeTypeData.inputs.length][index];
 
 				const newEndpointData: IEndpointOptions = {
-					uuid: `${this.nodeIndex}` + CanvasHelpers.INPUT_UUID_KEY + index,
+					uuid: CanvasHelpers.getInputEndpointUUID(this.nodeIndex, index),
 					anchor: anchorPosition,
 					maxConnections: -1,
 					endpoint: 'Rectangle',
@@ -126,7 +126,7 @@ export const nodeBase = mixins(
 				const anchorPosition = CanvasHelpers.ANCHOR_POSITIONS.output[nodeTypeData.outputs.length][index];
 
 				const newEndpointData: IEndpointOptions = {
-					uuid: `${this.nodeIndex}` + CanvasHelpers.OUTPUT_UUID_KEY + index,
+					uuid: CanvasHelpers.getOutputEndpointUUID(this.nodeIndex, index),
 					anchor: anchorPosition,
 					maxConnections: -1,
 					endpoint: 'Dot',
