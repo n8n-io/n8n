@@ -317,6 +317,7 @@ const config = convict({
 			},
 		},
 	},
+
 	generic: {
 		// The timezone to use. Is important for nodes like "Cron" which start the
 		// workflow automatically at a specified time. This setting can also be
@@ -530,6 +531,15 @@ const config = convict({
 			format: Boolean,
 			default: false,
 			env: 'N8N_SKIP_WEBHOOK_DEREGISTRATION_SHUTDOWN',
+		},
+	},
+
+	userManagement: {
+		enabled: {
+			doc: 'Whether user management is enabled.',
+			format: Boolean,
+			default: false,
+			env: 'N8N_USER_MANAGEMENT_ENABLED',
 		},
 	},
 

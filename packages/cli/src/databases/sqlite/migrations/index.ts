@@ -1,3 +1,5 @@
+import config = require('../../../../config');
+
 import { InitialMigration1588102412422 } from './1588102412422-InitialMigration';
 import { WebhookModel1592445003908 } from './1592445003908-WebhookModel';
 import { CreateIndexStoppedAt1594825041918 } from './1594825041918-CreateIndexStoppedAt';
@@ -7,8 +9,9 @@ import { CreateTagEntity1617213344594 } from './1617213344594-CreateTagEntity';
 import { UniqueWorkflowNames1620821879465 } from './1620821879465-UniqueWorkflowNames';
 import { AddWaitColumn1621707690587 } from './1621707690587-AddWaitColumn';
 import { UpdateWorkflowCredentials1630330987096 } from './1630330987096-UpdateWorkflowCredentials';
+import { CreateUserManagement1636626154932 } from './1636626154932-CreateUserManagement';
 
-export const sqliteMigrations = [
+const sqliteMigrations = [
 	InitialMigration1588102412422,
 	WebhookModel1592445003908,
 	CreateIndexStoppedAt1594825041918,
@@ -19,3 +22,10 @@ export const sqliteMigrations = [
 	AddWaitColumn1621707690587,
 	UpdateWorkflowCredentials1630330987096,
 ];
+
+if (config.get('userManagement.enabled')) {
+	const userMgmtMigrations = [CreateUserManagement1636626154932];
+	sqliteMigrations.push(...userMgmtMigrations);
+}
+
+export { sqliteMigrations };

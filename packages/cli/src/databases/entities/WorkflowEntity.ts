@@ -13,6 +13,7 @@ import {
 	Index,
 	JoinTable,
 	ManyToMany,
+	OneToMany,
 	PrimaryGeneratedColumn,
 	UpdateDateColumn,
 } from 'typeorm';
@@ -20,6 +21,7 @@ import {
 import config = require('../../../config');
 import { DatabaseType, IWorkflowDb } from '../..';
 import { TagEntity } from './TagEntity';
+import { SharedWorkflow } from './SharedWorkflow';
 
 function resolveDataType(dataType: string) {
 	const dbType = config.get('database.type') as DatabaseType;
@@ -106,6 +108,9 @@ export class WorkflowEntity implements IWorkflowDb {
 		},
 	})
 	tags: TagEntity[];
+
+	@OneToMany(() => SharedWorkflow, (sharedWorkflow) => sharedWorkflow.workflow)
+	shared: SharedWorkflow[];
 
 	@BeforeUpdate()
 	setUpdateDate() {
