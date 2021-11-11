@@ -177,11 +177,11 @@ export class Zendesk implements INodeType {
 				};
 
 				try {
-					const response = await this.helpers.request!(options);
+					await this.helpers.request!(options);
 				} catch (error) {
 					return {
 						status: 'Error',
-						message: `Connection details not valid; ${error.message}`,
+						message: `Connection details not valid: ${error.message}`,
 					};
 				}
 				return {
