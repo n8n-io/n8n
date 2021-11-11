@@ -637,11 +637,3 @@ export const addConnectionActionsOverlay = (connection: Connection, onDelete: Fu
 	]);
 };
 
-export const getOutputEndpointUUID = (nodeIndex: string, outputIndex: number): string => {
-	return `${nodeIndex}-output${outputIndex}`;
-};
-
-export const getInputEndpointUUID = (nodeIndex: string, inputIndex: number): string => {
-	return `${nodeIndex}-input${inputIndex}`;
-};
-

@@ -1644,14 +1644,17 @@ export default mixins(
 					}
 				});
 			},
+			getOutputEndpointUUID(nodeName: string, index: number) {
+				return `${this.getNodeIndex(nodeName)}-output${index}`;
+			},
+			getInputEndpointUUID(nodeName: string, index: number) {
+				return `${this.getNodeIndex(nodeName)}-input${index}`;
+			},
 			__addConnection (connection: [IConnection, IConnection], addVisualConnection = false) {
 				if (addVisualConnection === true) {
-					const sourceIndex = this.getNodeIndex(connection[0].node);
-					const targetIndex = this.getNodeIndex(connection[1].node);
-
 					const uuid: [string, string] = [
-						CanvasHelpers.getOutputEndpointUUID(sourceIndex, connection[0].index),
-						CanvasHelpers.getInputEndpointUUID(targetIndex, connection[1].index),
+						this.getOutputEndpointUUID(connection[0].node, connection[0].index),
+						this.getInputEndpointUUID(connection[1].node, connection[1].index),
 					];
 
 					// Create connections in DOM
@@ -1759,8 +1762,8 @@ export default mixins(
 				const targetIndex = this.getNodeIndex(targetNodeName);
 				const targetId = `${NODE_NAME_PREFIX}${targetIndex}`;
 
-				const sourceEndpoint = CanvasHelpers.getOutputEndpointUUID(sourceIndex, sourceOutputIndex);
-				const targetEndpoint = CanvasHelpers.getInputEndpointUUID(targetIndex, targetInputIndex);
+				const sourceEndpoint = `${sourceIndex}-output${sourceOutputIndex}`;
+				const targetEndpoint = `${targetIndex}-input${targetInputIndex}`;
 
 				// @ts-ignore
 				const connections = this.instance.getConnections({

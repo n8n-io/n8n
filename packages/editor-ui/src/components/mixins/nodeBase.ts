@@ -60,6 +60,9 @@ const anchorPositions: {
 	},
 };
 
+const INPUT_UUID_KEY = '-input';
+const OUTPUT_UUID_KEY = '-output';
+
 const getInputEndpointStyle = (nodeTypeData: INodeTypeDescription, color: string) => ({
 	width: 8,
 	height: nodeTypeData && nodeTypeData.outputs.length > 2 ? 18 : 20,
@@ -145,7 +148,7 @@ export const nodeBase = mixins(
 				const anchorPosition = anchorPositions.input[nodeTypeData.inputs.length][index];
 
 				const newEndpointData: IEndpointOptions = {
-					uuid: CanvasHelpers.getInputEndpointUUID(this.nodeIndex, index),
+					uuid: `${this.nodeIndex}` + INPUT_UUID_KEY + index,
 					anchor: anchorPosition,
 					maxConnections: -1,
 					endpoint: 'Rectangle',
@@ -210,7 +213,7 @@ export const nodeBase = mixins(
 				const anchorPosition = anchorPositions.output[nodeTypeData.outputs.length][index];
 
 				const newEndpointData: IEndpointOptions = {
-					uuid: CanvasHelpers.getInputEndpointUUID(this.nodeIndex, index),
+					uuid: `${this.nodeIndex}` + OUTPUT_UUID_KEY + index,
 					anchor: anchorPosition,
 					maxConnections: -1,
 					endpoint: 'Dot',
