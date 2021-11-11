@@ -19,6 +19,7 @@ export const OVERLAY_INPUT_NAME_LABEL = 'input-name-label';
 export const OVERLAY_INPUT_NAME_LABEL_POSITION = [-3, .5];
 export const OVERLAY_INPUT_NAME_LABEL_POSITION_MOVED = [-4.5, .5];
 export const OVERLAY_OUTPUT_NAME_LABEL = 'output-name-label';
+export const GRID_SIZE = 20;
 
 const MIN_X_TO_SHOW_OUTPUT_LABEL = 90;
 const MIN_Y_TO_SHOW_OUTPUT_LABEL = 100;
@@ -29,7 +30,7 @@ export const DEFAULT_START_POSITION_Y = 300;
 export const HEADER_HEIGHT = 65;
 export const SIDEBAR_WIDTH = 65;
 export const MAX_X_TO_PUSH_DOWNSTREAM_NODES = 300;
-export const PUSH_NODES_OFFSET = 200;
+export const PUSH_NODES_OFFSET = GRID_SIZE * 10;
 const LOOPBACK_MINIMUM = 140;
 
 export const DEFAULT_START_NODE = {
@@ -338,8 +339,8 @@ const canUsePosition = (position1: XYPosition, position2: XYPosition) => {
 export const getNewNodePosition = (nodes: INodeUi[], newPosition: XYPosition, movePosition?: XYPosition): XYPosition => {
 	const targetPosition: XYPosition = [...newPosition];
 
-	targetPosition[0] = targetPosition[0] - (targetPosition[0] % 20);
-	targetPosition[1] = targetPosition[1] - (targetPosition[1] % 20);
+	targetPosition[0] = targetPosition[0] - (targetPosition[0] % GRID_SIZE);
+	targetPosition[1] = targetPosition[1] - (targetPosition[1] % GRID_SIZE);
 
 	if (!movePosition) {
 		movePosition = [40, 40];
@@ -383,9 +384,9 @@ export const getRelativePosition = (x: number, y: number, scale: number, offset:
 };
 
 export const getBackgroundStyles = (scale: number, offsetPosition: XYPosition) => {
-	const squareSize = 20 * scale;
+	const squareSize = GRID_SIZE * scale;
 	const dotSize = 1 * scale;
-	const dotPosition = 10 * scale;
+	const dotPosition = (GRID_SIZE / 2) * scale;
 	const styles: object = {
 		'background-size': `${squareSize}px ${squareSize}px`,
 		'background-position': `left ${offsetPosition[0]}px top ${offsetPosition[1]}px`,
