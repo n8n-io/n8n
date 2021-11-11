@@ -1,5 +1,5 @@
 <template>
-	<div class="node-wrapper" :style="nodePosition">
+	<div :class="{'node-wrapper': true, selected: isSelected}" :style="nodePosition">
 		<div class="select-background" v-show="isSelected"></div>
 		<div class="node-default" :data-name="data.name" :ref="data.name">
 			<div :class="nodeClass" :style="nodeStyle"  @dblclick="setNodeActive" @click.left="mouseLeftClick" v-touch:start="touchStart" v-touch:end="touchEnd">
@@ -113,10 +113,6 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 		},
 		nodeClass () {
 			const classes = ['node-box'];
-
-			if (this.isSelected) {
-				classes.push('selected');
-			}
 
 			if (this.data.disabled) {
 				classes.push('disabled');
@@ -478,12 +474,8 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 
 <style lang="scss">
 /** node */
-.node-box {
-	z-index: 1;
-
-	&.selected {
-		z-index: 2;
-	}
+.node-wrapper.selected {
+	z-index: 2;
 }
 
 /** connector */
