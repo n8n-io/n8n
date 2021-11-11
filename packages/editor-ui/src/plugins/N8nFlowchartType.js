@@ -363,6 +363,7 @@
 	 * @param loopbackVerticalLength {number} height of vertical segment when looping
 	 * @param cornerRadius {number} radius of flowchart connectors
 	 * @param loopbackMinimum {number} minimum threshold before looping behavior takes effect
+	 * @param gap {number | [number, number]} gap between connector and source/target endpoints
 	 */
 
 	var Flowchart = function (params) {
