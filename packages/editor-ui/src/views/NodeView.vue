@@ -819,7 +819,8 @@ export default mixins(
 
 			pushDownstreamNodes (sourceNodeName: string, margin: number) {
 				const workflow = this.getWorkflow();
-				for (const nodeName of workflow.getChildNodes(sourceNodeName)) {
+				const childNodes = workflow.getChildNodes(sourceNodeName);
+				for (const nodeName of childNodes) {
 					const node = this.$store.getters.nodesByName[nodeName] as INodeUi;
 					const updateInformation = {
 						name: nodeName,
