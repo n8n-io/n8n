@@ -576,6 +576,13 @@ export const store = new Vuex.Store({
 			}
 			state.workflowExecutionData.data.resultData.runData[pushData.nodeName].push(pushData.data);
 		},
+		clearNodeExecutionData (state, nodeName: string): void {
+			if (state.workflowExecutionData === null) {
+				return;
+			}
+
+			Vue.delete(state.workflowExecutionData.data.resultData.runData, nodeName);
+		},
 
 		setWorkflowSettings (state, workflowSettings: IWorkflowSettings) {
 			Vue.set(state.workflow, 'settings', workflowSettings);

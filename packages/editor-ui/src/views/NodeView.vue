@@ -1917,6 +1917,7 @@ export default mixins(
 				this.$store.commit('removeAllNodeConnection', node);
 
 				this.$store.commit('removeNode', node);
+				this.$store.commit('clearNodeExecutionData', node.name);
 
 				// Now it can draw again
 				this.instance.setSuspendDrawing(false, true);
