@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-call */
 /* eslint-disable no-param-reassign */
 /* eslint-disable @typescript-eslint/prefer-optional-chain */
 /* eslint-disable @typescript-eslint/no-shadow */
@@ -18,9 +19,13 @@ import { get } from 'lodash';
 import { BINARY_ENCODING, NodeExecuteFunctions } from 'n8n-core';
 
 import {
+	createDeferredPromise,
 	IBinaryKeyData,
 	IDataObject,
+	IDeferredPromise,
 	IExecuteData,
+	IExecuteResponsePromiseData,
+	IN8nHttpFullResponse,
 	INode,
 	IRunExecutionData,
 	IWebhookData,
@@ -34,19 +39,19 @@ import {
 } from 'n8n-workflow';
 // eslint-disable-next-line import/no-cycle
 import {
-	ActiveExecutions,
 	GenericHelpers,
 	IExecutionDb,
 	IResponseCallbackData,
 	IWorkflowDb,
 	IWorkflowExecutionDataProcess,
 	ResponseHelper,
-	// eslint-disable-next-line @typescript-eslint/no-unused-vars
-	WorkflowCredentials,
 	WorkflowExecuteAdditionalData,
 	WorkflowHelpers,
 	WorkflowRunner,
 } from '.';
+
+// eslint-disable-next-line import/no-cycle
+import * as ActiveExecutions from './ActiveExecutions';
 
 const activeExecutions = ActiveExecutions.getInstance();
 
@@ -89,6 +94,35 @@ export function getWorkflowWebhooks(
 	}
 
 	return returnData;
+}
+
+export function decodeWebhookResponse(
+	response: IExecuteResponsePromiseData,
+): IExecuteResponsePromiseData {
+	if (
+		typeof response === 'object' &&
+		typeof response.body === 'object' &&
+		(response.body as IDataObject)['__@N8nEncodedBuffer@__']
+	) {
+		response.body = Buffer.from(
+			(response.body as IDataObject)['__@N8nEncodedBuffer@__'] as string,
+			BINARY_ENCODING,
+		);
+	}
+
+	return response;
+}
+
+export function encodeWebhookResponse(
+	response: IExecuteResponsePromiseData,
+): IExecuteResponsePromiseData {
+	if (typeof response === 'object' && Buffer.isBuffer(response.body)) {
+		response.body = {
+			'__@N8nEncodedBuffer@__': response.body.toString(BINARY_ENCODING),
+		};
+	}
+
+	return response;
 }
 
 /**
@@ -169,7 +203,7 @@ export async function executeWebhook(
 		200,
 	) as number;
 
-	if (!['onReceived', 'lastNode'].includes(responseMode as string)) {
+	if (!['onReceived', 'lastNode', 'responseNode'].includes(responseMode as string)) {
 		// If the mode is not known we error. Is probably best like that instead of using
 		// the default that people know as early as possible (probably already testing phase)
 		// that something does not resolve properly.
@@ -356,9 +390,52 @@ export async function executeWebhook(
 			workflowData,
 		};
 
+		let responsePromise: IDeferredPromise<IN8nHttpFullResponse> | undefined;
+		if (responseMode === 'responseNode') {
+			responsePromise = await createDeferredPromise<IN8nHttpFullResponse>();
+			responsePromise
+				.promise()
+				.then((response: IN8nHttpFullResponse) => {
+					if (didSendResponse) {
+						return;
+					}
+
+					if (Buffer.isBuffer(response.body)) {
+						res.header(response.headers);
+						res.end(response.body);
+
+						responseCallback(null, {
+							noWebhookResponse: true,
+						});
+					} else {
+						// TODO: This probably needs some more changes depending on the options on the
+						//       Webhook Response node
+						responseCallback(null, {
+							data: response.body as IDataObject,
+							headers: response.headers,
+							responseCode: response.statusCode,
+						});
+					}
+
+					didSendResponse = true;
+				})
+				.catch(async (error) => {
+					Logger.error(
+						`Error with Webhook-Response for execution "${executionId}": "${error.message}"`,
+						{ executionId, workflowId: workflow.id },
+					);
+				});
+		}
+
 		// Start now to run the workflow
 		const workflowRunner = new WorkflowRunner();
-		executionId = await workflowRunner.run(runData, true, !didSendResponse, executionId);
+		executionId = await workflowRunner.run(
+			runData,
+			true,
+			!didSendResponse,
+			executionId,
+			responsePromise,
+		);
 
 		Logger.verbose(
 			`Started execution of workflow "${workflow.name}" from webhook with execution ID ${executionId}`,
@@ -396,6 +473,20 @@ export async function executeWebhook(
 					}
 					didSendResponse = true;
 					return data;
+				}
+
+				if (responseMode === 'responseNode') {
+					if (!didSendResponse) {
+						// Return an error if no Webhook-Response node did send any data
+						responseCallback(null, {
+							data: {
+								message: 'Workflow executed sucessfully.',
+							},
+							responseCode,
+						});
+						didSendResponse = true;
+					}
+					return undefined;
 				}
 
 				if (returnData === undefined) {
