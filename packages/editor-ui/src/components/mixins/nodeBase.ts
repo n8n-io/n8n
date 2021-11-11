@@ -5,99 +5,12 @@ import mixins from 'vue-typed-mixins';
 import { deviceSupportHelpers } from '@/components/mixins/deviceSupportHelpers';
 import { nodeIndex } from '@/components/mixins/nodeIndex';
 import { NODE_NAME_PREFIX, NO_OP_NODE_TYPE } from '@/constants';
-import { getStyleTokenValue } from '../helpers';
 import * as CanvasHelpers from '@/views/canvasHelpers';
 import { Endpoint } from 'jsplumb';
 
 import {
 	INodeTypeDescription,
 } from 'n8n-workflow';
-
-const anchorPositions: {
-	[key: string]: {
-		[key: number]: string[] | number[][];
-	}
-} = {
-	input: {
-		1: [
-			[0.01, 0.5, -1, 0],
-		],
-		2: [
-			[0.01, 0.3, -1, 0],
-			[0.01, 0.7, -1, 0],
-		],
-		3: [
-			[0.01, 0.25, -1, 0],
-			[0.01, 0.5, -1, 0],
-			[0.01, 0.75, -1, 0],
-		],
-		4: [
-			[0.01, 0.2, -1, 0],
-			[0.01, 0.4, -1, 0],
-			[0.01, 0.6, -1, 0],
-			[0.01, 0.8, -1, 0],
-		],
-	},
-	output: {
-		1: [
-			[.99, 0.5, 1, 0],
-		],
-		2: [
-			[.99, 0.3, 1, 0],
-			[.99, 0.7, 1, 0],
-		],
-		3: [
-			[.99, 0.25, 1, 0],
-			[.99, 0.5, 1, 0],
-			[.99, 0.75, 1, 0],
-		],
-		4: [
-			[.99, 0.2, 1, 0],
-			[.99, 0.4, 1, 0],
-			[.99, 0.6, 1, 0],
-			[.99, 0.8, 1, 0],
-		],
-	},
-};
-
-const INPUT_UUID_KEY = '-input';
-const OUTPUT_UUID_KEY = '-output';
-
-const getInputEndpointStyle = (nodeTypeData: INodeTypeDescription, color: string) => ({
-	width: 8,
-	height: nodeTypeData && nodeTypeData.outputs.length > 2 ? 18 : 20,
-	fill: getStyleTokenValue(color),
-	stroke: getStyleTokenValue(color),
-	lineWidth: 0,
-});
-
-const getInputNameOverlay = (label: string) => ([
-	'Label',
-	{
-		id: CanvasHelpers.OVERLAY_INPUT_NAME_LABEL,
-		location: CanvasHelpers.OVERLAY_INPUT_NAME_LABEL_POSITION,
-		label,
-		cssClass: 'node-input-endpoint-label',
-		visible: true,
-	},
-]);
-
-const getOutputEndpointStyle = (nodeTypeData: INodeTypeDescription, color: string) => ({
-	radius: nodeTypeData && nodeTypeData.outputs.length > 2 ? 7 : 9,
-	fill: getStyleTokenValue(color),
-	outlineStroke: 'none',
-});
-
-const getOutputNameOverlay = (label: string) => ([
-	'Label',
-	{
-		id: CanvasHelpers.OVERLAY_OUTPUT_NAME_LABEL,
-		location: [1.9, 0.5],
-		label,
-		cssClass: 'node-output-endpoint-label',
-		visible: true,
-	},
-]);
 
 export const nodeBase = mixins(
 	deviceSupportHelpers,
@@ -145,15 +58,15 @@ export const nodeBase = mixins(
 				index = indexData[inputName];
 
 				// Get the position of the anchor depending on how many it has
-				const anchorPosition = anchorPositions.input[nodeTypeData.inputs.length][index];
+				const anchorPosition = CanvasHelpers.ANCHOR_POSITIONS.input[nodeTypeData.inputs.length][index];
 
 				const newEndpointData: IEndpointOptions = {
-					uuid: `${this.nodeIndex}` + INPUT_UUID_KEY + index,
+					uuid: `${this.nodeIndex}` + CanvasHelpers.INPUT_UUID_KEY + index,
 					anchor: anchorPosition,
 					maxConnections: -1,
 					endpoint: 'Rectangle',
-					endpointStyle: getInputEndpointStyle(nodeTypeData, '--color-foreground-xdark'),
-					endpointHoverStyle: getInputEndpointStyle(nodeTypeData, '--color-primary'),
+					endpointStyle: CanvasHelpers.getInputEndpointStyle(nodeTypeData, '--color-foreground-xdark'),
+					endpointHoverStyle: CanvasHelpers.getInputEndpointStyle(nodeTypeData, '--color-primary'),
 					isSource: false,
 					isTarget: !this.isReadOnly,
 					parameters: {
@@ -172,7 +85,7 @@ export const nodeBase = mixins(
 				if (nodeTypeData.inputNames) {
 					// Apply input names if they got set
 					newEndpointData.overlays = [
-						getInputNameOverlay(nodeTypeData.inputNames[index]),
+						CanvasHelpers.getInputNameOverlay(nodeTypeData.inputNames[index]),
 					];
 				}
 
@@ -210,15 +123,15 @@ export const nodeBase = mixins(
 				index = indexData[inputName];
 
 				// Get the position of the anchor depending on how many it has
-				const anchorPosition = anchorPositions.output[nodeTypeData.outputs.length][index];
+				const anchorPosition = CanvasHelpers.ANCHOR_POSITIONS.output[nodeTypeData.outputs.length][index];
 
 				const newEndpointData: IEndpointOptions = {
-					uuid: `${this.nodeIndex}` + OUTPUT_UUID_KEY + index,
+					uuid: `${this.nodeIndex}` + CanvasHelpers.OUTPUT_UUID_KEY + index,
 					anchor: anchorPosition,
 					maxConnections: -1,
 					endpoint: 'Dot',
-					endpointStyle: getOutputEndpointStyle(nodeTypeData, '--color-foreground-xdark'),
-					endpointHoverStyle: getOutputEndpointStyle(nodeTypeData, '--color-primary'),
+					endpointStyle: CanvasHelpers.getOutputEndpointStyle(nodeTypeData, '--color-foreground-xdark'),
+					endpointHoverStyle: CanvasHelpers.getOutputEndpointStyle(nodeTypeData, '--color-primary'),
 					isSource: true,
 					isTarget: false,
 					enabled: !this.isReadOnly,
@@ -234,7 +147,7 @@ export const nodeBase = mixins(
 				if (nodeTypeData.outputNames) {
 					// Apply output names if they got set
 					newEndpointData.overlays = [
-						getOutputNameOverlay(nodeTypeData.outputNames[index]),
+						CanvasHelpers.getOutputNameOverlay(nodeTypeData.outputNames[index]),
 					];
 				}
 

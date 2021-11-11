@@ -7,6 +7,7 @@ import {
 	ITaskData,
 	INodeExecutionData,
 	NodeInputConnections,
+	INodeTypeDescription,
 } from 'n8n-workflow';
 
 export const OVERLAY_DROP_NODE_ID = 'drop-add-node';
@@ -32,6 +33,8 @@ export const SIDEBAR_WIDTH = 65;
 export const MAX_X_TO_PUSH_DOWNSTREAM_NODES = 300;
 export const PUSH_NODES_OFFSET = GRID_SIZE * 10;
 const LOOPBACK_MINIMUM = 140;
+export const INPUT_UUID_KEY = '-input';
+export const OUTPUT_UUID_KEY = '-output';
 
 export const DEFAULT_START_NODE = {
 	name: 'Start',
@@ -121,6 +124,91 @@ export const CONNECTOR_DROP_NODE_OVERLAY: OverlaySpec[] = [
 		},
 	],
 ];
+
+
+export const ANCHOR_POSITIONS: {
+	[key: string]: {
+		[key: number]: string[] | number[][];
+	}
+} = {
+	input: {
+		1: [
+			[0.01, 0.5, -1, 0],
+		],
+		2: [
+			[0.01, 0.3, -1, 0],
+			[0.01, 0.7, -1, 0],
+		],
+		3: [
+			[0.01, 0.25, -1, 0],
+			[0.01, 0.5, -1, 0],
+			[0.01, 0.75, -1, 0],
+		],
+		4: [
+			[0.01, 0.2, -1, 0],
+			[0.01, 0.4, -1, 0],
+			[0.01, 0.6, -1, 0],
+			[0.01, 0.8, -1, 0],
+		],
+	},
+	output: {
+		1: [
+			[.99, 0.5, 1, 0],
+		],
+		2: [
+			[.99, 0.3, 1, 0],
+			[.99, 0.7, 1, 0],
+		],
+		3: [
+			[.99, 0.25, 1, 0],
+			[.99, 0.5, 1, 0],
+			[.99, 0.75, 1, 0],
+		],
+		4: [
+			[.99, 0.2, 1, 0],
+			[.99, 0.4, 1, 0],
+			[.99, 0.6, 1, 0],
+			[.99, 0.8, 1, 0],
+		],
+	},
+};
+
+
+export const getInputEndpointStyle = (nodeTypeData: INodeTypeDescription, color: string) => ({
+	width: 8,
+	height: nodeTypeData && nodeTypeData.outputs.length > 2 ? 18 : 20,
+	fill: getStyleTokenValue(color),
+	stroke: getStyleTokenValue(color),
+	lineWidth: 0,
+});
+
+export const getInputNameOverlay = (label: string) => ([
+	'Label',
+	{
+		id: OVERLAY_INPUT_NAME_LABEL,
+		location: OVERLAY_INPUT_NAME_LABEL_POSITION,
+		label,
+		cssClass: 'node-input-endpoint-label',
+		visible: true,
+	},
+]);
+
+export const getOutputEndpointStyle = (nodeTypeData: INodeTypeDescription, color: string) => ({
+	radius: nodeTypeData && nodeTypeData.outputs.length > 2 ? 7 : 9,
+	fill: getStyleTokenValue(color),
+	outlineStroke: 'none',
+});
+
+export const getOutputNameOverlay = (label: string) => ([
+	'Label',
+	{
+		id: OVERLAY_OUTPUT_NAME_LABEL,
+		location: [1.9, 0.5],
+		label,
+		cssClass: 'node-output-endpoint-label',
+		visible: true,
+	},
+]);
 
 export const addOverlays = (connection: Connection, overlays: OverlaySpec[]) => {
 	overlays.forEach((overlay: OverlaySpec) => {
