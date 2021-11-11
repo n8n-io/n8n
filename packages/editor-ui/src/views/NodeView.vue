@@ -1155,7 +1155,8 @@ export default mixins(
 							const offsets = [[-100, 100], [-140, 0, 140], [-240, -100, 100, 240]];
 							if (sourceNodeType && sourceNodeType.outputs.length > 1) {
 								const offset = offsets[sourceNodeType.outputs.length - 2];
-								yOffset = offset[lastSelectedConnection.__meta.sourceOutputIndex];
+								const sourceOutputIndex = lastSelectedConnection.__meta ? lastSelectedConnection.__meta.sourceOutputIndex : 0;
+								yOffset = offset[sourceOutputIndex];
 							}
 						}
 
@@ -1247,7 +1248,7 @@ export default mixins(
 				if (lastSelectedNode) {
 					await Vue.nextTick();
 
-					if (lastSelectedConnection) {
+					if (lastSelectedConnection && lastSelectedConnection.__meta) {
 						this.instance.deleteConnection(lastSelectedConnection); // mutation applied by connectionAborted event
 
 						const targetNodeName = lastSelectedConnection.__meta.targetNodeName;
@@ -1531,7 +1532,8 @@ export default mixins(
 										const nodeType = this.$store.getters.nodeType(node.type) as INodeTypeDescription | null;
 										if (nodeType && nodeType.inputs && nodeType.inputs.length === 1) {
 											this.pullConnActiveNodeName = node.name;
-											const endpoint = this.instance.getEndpoint(this.getInputEndpointUUID(nodeName, 0));
+											const index = this.getNodeIndex(nodeName);
+											const endpoint = this.instance.getEndpoint(CanvasHelpers.getInputEndpointUUID(index, 0));
 
 											CanvasHelpers.showDropConnectionState(connection, endpoint);
 
