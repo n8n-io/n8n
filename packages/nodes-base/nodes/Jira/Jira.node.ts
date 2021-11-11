@@ -179,7 +179,7 @@ export class Jira implements INodeType {
 				} catch (err) {
 					return {
 						status: 'Error',
-						message: `Connection details not valid; ${err.message}`,
+						message: `Connection details not valid: ${err.message}`,
 					};
 				}
 				return {
