@@ -1,7 +1,7 @@
 <template>
 	<div :class="{'node-wrapper': true, selected: isSelected}" :style="nodePosition">
 		<div class="select-background" v-show="isSelected"></div>
-		<div class="node-default" :data-name="data.name" :ref="data.name">
+		<div :class="{'node-default': true, 'touch-active': isTouchActive, 'is-touch-device': isTouchDevice}" :data-name="data.name" :ref="data.name">
 			<div :class="nodeClass" :style="nodeStyle"  @dblclick="setNodeActive" @click.left="mouseLeftClick" v-touch:start="touchStart" v-touch:end="touchEnd">
 				<div v-if="!data.disabled" class="node-info-icon">
 					<div v-if="hasIssues" class="node-issues">
@@ -111,30 +111,12 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 		nodeType (): INodeTypeDescription | null {
 			return this.$store.getters.nodeType(this.data.type);
 		},
-		nodeClass () {
-			const classes = ['node-box'];
-
-			if (this.data.disabled) {
-				classes.push('disabled');
-			}
-
-			if (this.isExecuting) {
-				classes.push('executing');
-			}
-
-			if (this.hasIssues) {
-				classes.push('has-issues');
-			}
-
-			if (this.isTouchDevice) {
-				classes.push('is-touch-device');
-			}
-
-			if (this.isTouchActive) {
-				classes.push('touch-active');
-			}
-
-			return classes;
+		nodeClass (): object {
+			return {
+				'node-box': true,
+				disabled: this.data.disabled,
+				executing: this.isExecuting,
+			};
 		},
 		nodeIssues (): string {
 			if (this.data.issues === undefined) {
@@ -337,13 +319,13 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 			border: 2px solid var(--color-foreground-xdark);
 			border-radius: var(--border-radius-large);
 			background-color: #fff;
-		}
 
-		&.executing {
-			background-color: $--color-primary-light !important;
+			&.executing {
+				background-color: $--color-primary-light !important;
 
-			.node-executing-info {
-				display: inline-block;
+				.node-executing-info {
+					display: inline-block;
+				}
 			}
 		}
 
