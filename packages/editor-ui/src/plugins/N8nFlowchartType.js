@@ -205,10 +205,18 @@
 			return totalLength;
 		};
 
+		/**
+		 * Set target endpoint
+		 * (to override default behavior tracking mouse when dragging mouse)
+		 * @param {Endpoint} endpoint
+		 */
 		this.setTargetEndpoint = function (endpoint) {
 			this.overrideTargetEndpoint = endpoint;
 		};
 
+		/**
+		 * reset target endpoint overriding default behavior
+		 */
 		this.resetTargetEndpoint = function () {
 			this.overrideTargetEndpoint = null;
 		};
@@ -230,8 +238,8 @@
 				swapX = targetPos[0] < params.sourcePos[0],
 				swapY = targetPos[1] < params.sourcePos[1],
 				lw = params.strokeWidth || 1,
-				so = params.sourceEndpoint.anchor.getOrientation(params.sourceEndpoint),
-				to = targetEndpoint.anchor.getOrientation(targetEndpoint),
+				so = params.sourceEndpoint.anchor.getOrientation(params.sourceEndpoint), // source orientation
+				to = targetEndpoint.anchor.getOrientation(targetEndpoint), // target orientation
 				x = swapX ? targetPos[0] : params.sourcePos[0],
 				y = swapY ? targetPos[1] : params.sourcePos[1],
 				w = Math.abs(targetPos[0] - params.sourcePos[0]),
@@ -348,6 +356,13 @@
 	/**
 	 * Custom flowchart type
 	 * Based on jsplumb Flowchart type https://github.com/jsplumb/jsplumb/blob/fb5fce52794fa52306825bdaa62bf3855cdfd7e0/src/connectors-flowchart.js
+	 *
+	 * @param stub {number} length of stub segments
+	 * @param getEndpointOffset {Function} callback to offset stub length based on endpoint
+	 * @param midpoint {number} float percent of halfway point of segments
+	 * @param loopbackVerticalLength {number} height of vertical segment when looping
+	 * @param cornerRadius {number} radius of flowchart connectors
+	 * @param loopbackMinimum {number} minimum threshold before looping behavior takes effect
 	 */
 
 	var Flowchart = function (params) {
