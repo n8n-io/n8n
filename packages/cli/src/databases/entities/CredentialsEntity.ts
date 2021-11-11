@@ -8,12 +8,14 @@ import {
 	CreateDateColumn,
 	Entity,
 	Index,
+	OneToMany,
 	PrimaryGeneratedColumn,
 	UpdateDateColumn,
 } from 'typeorm';
 
 import config = require('../../../config');
 import { DatabaseType, ICredentialsDb } from '../..';
+import { SharedCredentials } from './SharedCredentials';
 
 function resolveDataType(dataType: string) {
 	const dbType = config.get('database.type') as DatabaseType;
@@ -64,6 +66,9 @@ export class CredentialsEntity implements ICredentialsDb {
 		length: 32,
 	})
 	type: string;
+
+	@OneToMany(() => SharedCredentials, (sharedCredentials) => sharedCredentials.credentials)
+	shared: SharedCredentials[];
 
 	@Column(resolveDataType('json'))
 	nodesAccess: ICredentialNodeAccess[];

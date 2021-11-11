@@ -1,3 +1,4 @@
+/* eslint-disable import/no-cycle */
 import {
 	BeforeUpdate,
 	Column,
@@ -5,6 +6,8 @@ import {
 	CreateDateColumn,
 	Entity,
 	Index,
+	OneToMany,
+	ManyToOne,
 	PrimaryGeneratedColumn,
 	UpdateDateColumn,
 } from 'typeorm';
@@ -12,6 +15,9 @@ import { IsEmail, Length } from 'class-validator';
 import { IDataObject } from 'n8n-workflow';
 import config = require('../../../config');
 import { DatabaseType } from '../..';
+import { Role } from './Role';
+import { SharedWorkflow } from './SharedWorkflow';
+import { SharedCredentials } from './SharedCredentials';
 
 function resolveDataType(dataType: string) {
 	const dbType = config.get('database.type') as DatabaseType;
@@ -49,7 +55,8 @@ export class User {
 	@PrimaryGeneratedColumn('uuid')
 	id: string;
 
-	@Column({ unique: true, length: 254 })
+	@Column({ length: 254 })
+	@Index({ unique: true })
 	@IsEmail()
 	email: string;
 
@@ -64,7 +71,7 @@ export class User {
 	@Column()
 	password: string;
 
-	@Column()
+	@Column({ nullable: true })
 	resetPasswordToken: string;
 
 	@Column({
@@ -72,6 +79,17 @@ export class User {
 		nullable: true,
 	})
 	personalizationAnswers: IDataObject;
+
+	@ManyToOne(() => Role, (role) => role.globalForUsers, {
+		cascade: true,
+	})
+	globalRole: Role;
+
+	@OneToMany(() => SharedWorkflow, (sharedWorkflow) => sharedWorkflow.user)
+	sharedWorkflows: SharedWorkflow[];
+
+	@OneToMany(() => SharedCredentials, (sharedCredentials) => sharedCredentials.user)
+	sharedCredentials: SharedCredentials[];
 
 	@CreateDateColumn({ precision: 3, default: () => getTimestampSyntax() })
 	createdAt: Date;

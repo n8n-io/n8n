@@ -1,18 +1,23 @@
+/* eslint-disable import/no-cycle */
 import {
 	BeforeUpdate,
 	Column,
 	CreateDateColumn,
 	Entity,
-	Index,
-	ManyToMany,
+	OneToMany,
 	PrimaryGeneratedColumn,
+	Unique,
 	UpdateDateColumn,
 } from 'typeorm';
 import { IsDate, IsOptional, IsString, Length } from 'class-validator';
 
 import config = require('../../../config');
 import { DatabaseType } from '../../index';
-import { WorkflowEntity } from './WorkflowEntity';
+import { User } from './User';
+import { SharedWorkflow } from './SharedWorkflow';
+import { SharedCredentials } from './SharedCredentials';
+
+type RoleScopes = 'global';
 
 // eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
 function getTimestampSyntax() {
@@ -29,18 +34,21 @@ function getTimestampSyntax() {
 }
 
 @Entity()
+@Unique(['scope', 'name'])
 export class Role {
 	@PrimaryGeneratedColumn()
 	id: number;
 
 	@Column({ length: 32 })
-	@Index({ unique: true })
 	@IsString({ message: 'Role name must be of type string.' })
 	@Length(1, 32, { message: 'Role name must be 1 to 32 characters long.' })
 	name: string;
 
 	@Column()
-	scope: string;
+	scope: RoleScopes;
+
+	@OneToMany(() => User, (user) => user.globalRole)
+	globalForUsers: User[];
 
 	@CreateDateColumn({ precision: 3, default: () => getTimestampSyntax() })
 	@IsOptional() // ignored by validation because set at DB level
@@ -56,11 +64,14 @@ export class Role {
 	@IsDate()
 	updatedAt: Date;
 
-	@ManyToMany(() => WorkflowEntity, (workflow) => workflow.tags)
-	workflows: WorkflowEntity[];
+	@OneToMany(() => SharedWorkflow, (sharedWorkflow) => sharedWorkflow.role)
+	sharedWorkflows: SharedWorkflow[];
+
+	@OneToMany(() => SharedCredentials, (sharedCredentials) => sharedCredentials.role)
+	sharedCredentials: SharedCredentials[];
 
 	@BeforeUpdate()
-	setUpdateDate() {
+	setUpdateDate(): void {
 		this.updatedAt = new Date();
 	}
 }
