@@ -3,7 +3,7 @@
 		<div class="select-background" v-show="isSelected"></div>
 		<div :class="{'node-default': true, 'touch-active': isTouchActive, 'is-touch-device': isTouchDevice}" :data-name="data.name" :ref="data.name">
 			<div :class="nodeClass" :style="nodeStyle"  @dblclick="setNodeActive" @click.left="mouseLeftClick" v-touch:start="touchStart" v-touch:end="touchEnd">
-				<div v-if="!data.disabled" class="node-info-icon">
+				<div v-if="!data.disabled" :class="{'node-info-icon': true, 'shift-icon': shiftOutputCount}">
 					<div v-if="hasIssues" class="node-issues">
 						<n8n-tooltip placement="bottom" >
 							<div slot="content" v-html="nodeIssues"></div>
@@ -203,6 +203,9 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 		isSelected (): boolean {
 			return this.$store.getters.getSelectedNodes.find((node: INodeUi) => node.name === this.data.name);
 		},
+		shiftOutputCount (): boolean {
+			return !!(this.nodeType && this.nodeType.outputs.length > 2);
+		},
 	},
 	watch: {
 		isActive(newValue, oldValue) {
@@ -364,6 +367,10 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 			position: absolute;
 			bottom: 6px;
 			right: 6px;
+
+			&.shift-icon {
+				right: 12px;
+			}
 
 			.data-count {
 				font-weight: 600;
