@@ -24,6 +24,10 @@ export const collections: IDatabaseCollections = {
 	Workflow: null,
 	Webhook: null,
 	Tag: null,
+	Role: null,
+	User: null,
+	SharedCredentials: null,
+	SharedWorkflow: null,
 };
 
 export async function init(): Promise<IDatabaseCollections> {
@@ -143,6 +147,13 @@ export async function init(): Promise<IDatabaseCollections> {
 	collections.Workflow = getRepository(entities.WorkflowEntity);
 	collections.Webhook = getRepository(entities.WebhookEntity);
 	collections.Tag = getRepository(entities.TagEntity);
+
+	if (config.get('userManagement.enabled')) {
+		collections.Role = getRepository(entities.Role);
+		collections.User = getRepository(entities.User);
+		collections.SharedCredentials = getRepository(entities.SharedCredentials);
+		collections.SharedWorkflow = getRepository(entities.SharedWorkflow);
+	}
 
 	return collections;
 }

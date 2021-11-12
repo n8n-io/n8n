@@ -145,6 +145,8 @@ import { TagEntity } from './databases/entities/TagEntity';
 import { WorkflowEntity } from './databases/entities/WorkflowEntity';
 import { NameRequest } from './WorkflowHelpers';
 
+import { UMRouter } from './UserManagement';
+
 require('body-parser-xml')(bodyParser);
 
 class App {
@@ -600,6 +602,14 @@ class App {
 
 			next();
 		});
+
+		// ----------------------------------------
+		// User Management
+		// ----------------------------------------
+
+		if (config.get('userManagement.enabled')) {
+			UMRouter.addRoutes.apply(this);
+		}
 
 		// ----------------------------------------
 		// Healthcheck

@@ -11,7 +11,7 @@ export class CreateUserManagement1636626154932 implements MigrationInterface {
 		);
 
 		await queryRunner.query(
-			`CREATE TABLE "user" ("id" varchar PRIMARY KEY NOT NULL, "email" varchar(254) NOT NULL, "firstName" varchar(32) NOT NULL, "lastName" varchar(32) NOT NULL, "password" varchar NOT NULL, "resetPasswordToken" varchar, "personalizationAnswers" text, "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "globalRoleId" integer, CONSTRAINT "FK_f0609be844f9200ff4365b1bb3d" FOREIGN KEY ("globalRoleId") REFERENCES "role" ("id") ON DELETE NO ACTION ON UPDATE NO ACTION)`,
+			`CREATE TABLE "user" ("id" varchar PRIMARY KEY NOT NULL, "email" varchar(254) NOT NULL, "firstName" varchar(32) NOT NULL, "lastName" varchar(32) NOT NULL, "password" varchar NOT NULL, "resetPasswordToken" varchar, "personalizationAnswers" text, "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "globalRoleId" integer NOT NULL, CONSTRAINT "FK_f0609be844f9200ff4365b1bb3d" FOREIGN KEY ("globalRoleId") REFERENCES "role" ("id") ON DELETE NO ACTION ON UPDATE NO ACTION)`,
 		);
 		await queryRunner.query(
 			`CREATE UNIQUE INDEX "IDX_e12875dfb3b1d92d7d7c5377e2" ON "user" ("email") `,
