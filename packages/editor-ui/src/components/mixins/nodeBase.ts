@@ -151,8 +151,32 @@ export const nodeBase = mixins(
 					];
 				}
 
-				const endpoint: Endpoint = this.instance.addEndpoint(this.nodeId, newEndpointData);
+				const endpoint: Endpoint = this.instance.addEndpoint(this.nodeId, {...newEndpointData});
 				endpoint.__meta = {
+					nodeName: node.name,
+					index: i,
+				};
+
+				const plusEndpointData: IEndpointOptions = {
+					uuid: CanvasHelpers.getOutputEndpointUUID(this.nodeIndex, index),
+					anchor: anchorPosition,
+					maxConnections: -1,
+					endpoint: 'N8nPlus',
+					isSource: true,
+					isTarget: false,
+					enabled: !this.isReadOnly,
+					parameters: {
+						nodeIndex: this.nodeIndex,
+						type: inputName,
+						index,
+					},
+					cssClass: 'plus-draggable-endpoint',
+					dragAllowedWhenFull: false,
+					dragProxy: ['Rectangle', { width: 1, height: 1, strokeWidth: 0 }],
+				};
+
+				const plusEndpoint: Endpoint = this.instance.addEndpoint(this.nodeId, plusEndpointData);
+				plusEndpoint.__meta = {
 					nodeName: node.name,
 					index: i,
 				};

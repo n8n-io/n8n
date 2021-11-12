@@ -128,7 +128,7 @@ export const CONNECTOR_DROP_NODE_OVERLAY: OverlaySpec[] = [
 
 export const ANCHOR_POSITIONS: {
 	[key: string]: {
-		[key: number]: string[] | number[][];
+		[key: number]: number[][];
 	}
 } = {
 	input: {

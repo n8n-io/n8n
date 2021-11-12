@@ -1,6 +1,6 @@
 (function () {
-
 	"use strict";
+
 	var root = this, _jp = root.jsPlumb, _ju = root.jsPlumbUtil,  _jg = root.Biltong;
 	var STRAIGHT = "Straight";
 	var ARC = "Arc";

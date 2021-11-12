@@ -169,6 +169,7 @@ import {
 import { mapGetters } from 'vuex';
 import { getStyleTokenValue } from '@/components/helpers';
 import '../plugins/N8nFlowchartType';
+import '../plugins/PlusEndpointType';
 
 export default mixins(
 	copyPaste,

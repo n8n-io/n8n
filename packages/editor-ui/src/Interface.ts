@@ -102,6 +102,7 @@ export interface IEndpointOptions {
 	parameters?: any; // tslint:disable-line:no-any
 	uuid?: string;
 	enabled?: boolean;
+	cssClass?: string;
 }
 
 export interface IUpdateInformation {
