@@ -1,6 +1,5 @@
 /* eslint-disable @typescript-eslint/naming-convention */
 /* eslint-disable import/no-cycle */
-import config = require('../../../config');
 import { CredentialsEntity } from './CredentialsEntity';
 import { ExecutionEntity } from './ExecutionEntity';
 import { WorkflowEntity } from './WorkflowEntity';
@@ -11,21 +10,14 @@ import { Role } from './Role';
 import { SharedWorkflow } from './SharedWorkflow';
 import { SharedCredentials } from './SharedCredentials';
 
-const entities = {
+export const entities = {
 	CredentialsEntity,
 	ExecutionEntity,
 	WorkflowEntity,
 	WebhookEntity,
 	TagEntity,
+	User,
+	Role,
+	SharedWorkflow,
+	SharedCredentials,
 };
-
-if (config.get('userManagement.enabled')) {
-	Object.assign(entities, {
-		User,
-		Role,
-		SharedWorkflow,
-		SharedCredentials,
-	});
-}
-
-export { entities };

@@ -82,6 +82,7 @@ export class User {
 
 	@ManyToOne(() => Role, (role) => role.globalForUsers, {
 		cascade: true,
+		nullable: false,
 	})
 	globalRole: Role;
 

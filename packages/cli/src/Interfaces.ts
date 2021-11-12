@@ -30,6 +30,10 @@ import { Url } from 'url';
 import { Request } from 'express';
 import { WorkflowEntity } from './databases/entities/WorkflowEntity';
 import { TagEntity } from './databases/entities/TagEntity';
+import { Role } from './databases/entities/Role';
+import { User } from './databases/entities/User';
+import { SharedCredentials } from './databases/entities/SharedCredentials';
+import { SharedWorkflow } from './databases/entities/SharedWorkflow';
 
 export interface IActivationError {
 	time: number;
@@ -70,6 +74,10 @@ export interface IDatabaseCollections {
 	Workflow: Repository<WorkflowEntity> | null;
 	Webhook: Repository<IWebhookDb> | null;
 	Tag: Repository<TagEntity> | null;
+	Role: Repository<Role> | null;
+	User: Repository<User> | null;
+	SharedCredentials: Repository<SharedCredentials> | null;
+	SharedWorkflow: Repository<SharedWorkflow> | null;
 }
 
 export interface IWebhookDb {
