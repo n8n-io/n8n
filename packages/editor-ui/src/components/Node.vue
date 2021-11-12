@@ -140,9 +140,6 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 				return 'play';
 			}
 		},
-		showWebhookNodeTooltip (): boolean  {
-			return this.workflowRunning && this.nodeType!.webhooks ? true : false;
-		},
 		waiting (): string | undefined {
 			const workflowExecution = this.$store.getters.getWorkflowExecution;
 
@@ -169,6 +166,18 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 				this.setSubtitle();
 			}
 		},
+		workflowRunning: {
+			handler(bool) {
+				if (bool && this.nodeType!.webhooks) {
+					setTimeout(() => {
+						this.showWebhookNodeTooltip = bool;
+					}, 2500);
+				} else {
+					this.showWebhookNodeTooltip = false;
+				}
+			},
+			immediate: false,
+		},
 	},
 	mounted() {
 		this.setSubtitle();
@@ -177,6 +186,7 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 		return {
 			isTouchActive: false,
 			nodeSubtitle: '',
+			showWebhookNodeTooltip: false,
 		};
 	},
 	methods: {
