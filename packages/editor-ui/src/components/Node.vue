@@ -16,6 +16,11 @@
 				</n8n-tooltip>
 			</div>
 
+			<n8n-tooltip :placement="'top'" :manual="true" :open-delay="2500" :value="showWebhookNodeTooltip">
+				<div slot="content" v-html="`Waiting for you to create an event in ${getTrimmedWebhookNodeName()}`"></div>
+				<span />
+			</n8n-tooltip>
+
 			<div class="node-executing-info" title="Node is executing">
 				<font-awesome-icon icon="sync-alt" spin />
 			</div>
@@ -135,6 +140,9 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 				return 'play';
 			}
 		},
+		showWebhookNodeTooltip (): boolean  {
+			return this.workflowRunning && this.nodeType!.webhooks ? true : false;
+		},
 		waiting (): string | undefined {
 			const workflowExecution = this.$store.getters.getWorkflowExecution;
 
@@ -196,6 +204,9 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 				// Wait a tick else vue causes problems because the data is gone
 				this.$emit('duplicateNode', this.data.name);
 			});
+		},
+		getTrimmedWebhookNodeName() {
+			return this.name.replace(/Trigger/g, "");
 		},
 		setNodeActive () {
 			this.$store.commit('setActiveNode', this.data.name);
