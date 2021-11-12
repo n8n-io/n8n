@@ -795,18 +795,6 @@ export default mixins(
 				});
 			},
 
-			setDefaultStartNode(nodes: INodeUi[] = []) {
-				nodes = [DEFAULT_START_NODE];
-
-				nodes.map((node) => {
-					node.disabled = false;
-					node.position[0] = DEFAULT_START_POSITION_X;
-					node.position[1] = DEFAULT_START_POSITION_Y;
-				});
-
-				return nodes;
-			},
-
 			selectAllNodes () {
 				this.nodes.forEach((node) => {
 					this.nodeSelectedByName(node.name);
@@ -1620,7 +1608,7 @@ export default mixins(
 				this.$store.commit('setStateDirty', false);
 
 				// Set default values for the new default node
-				const nodes = this.setDefaultStartNode();
+				const nodes = [{...DEFAULT_START_NODE}];
 
 				await this.addNodes(nodes);
 				this.$store.commit('setStateDirty', false);
