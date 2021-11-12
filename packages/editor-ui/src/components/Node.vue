@@ -16,7 +16,7 @@
 				</n8n-tooltip>
 			</div>
 
-			<n8n-tooltip :placement="'top'" :manual="true" :open-delay="2500" :value="showWebhookNodeTooltip">
+			<n8n-tooltip placement="top" :manual="true" :value="showWebhookNodeTooltip">
 				<div slot="content" v-html="`Waiting for you to create an event in ${getTrimmedWebhookNodeName()}`"></div>
 				<span />
 			</n8n-tooltip>
@@ -69,6 +69,8 @@ import {
 	NodeHelpers,
 } from 'n8n-workflow';
 
+import { INodeUi } from '../Interface';
+
 import NodeIcon from '@/components/NodeIcon.vue';
 
 import mixins from 'vue-typed-mixins';
@@ -88,6 +90,9 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 			}
 
 			return workflowResultDataNode.length;
+		},
+		nodeOffsetPosition() {
+			return this.$store.getters.getNodeViewOffsetPosition;
 		},
 		isExecuting (): boolean {
 			return this.$store.getters.executingNode === this.data.name;
@@ -166,9 +171,40 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 				this.setSubtitle();
 			}
 		},
+		nodePosition: {
+			handler() {
+				// Re-render the helping tooltip for trigger node if its position is changed
+				if (this.showWebhookNodeTooltip) {
+					this.showWebhookNodeTooltip = false;
+					setTimeout(() => {
+						this.showWebhookNodeTooltip = true;
+					}, 100);
+				}
+			},
+			immediate: true,
+			deep: true,
+		},
+		nodeOffsetPosition: {
+			handler() {
+				// Re-render the helping tooltip for trigger node if the workflow is zoomed-out/in
+				if (this.showWebhookNodeTooltip) {
+					this.showWebhookNodeTooltip = false;
+					setTimeout(() => {
+						this.showWebhookNodeTooltip = true;
+					}, 100);
+				}
+			},
+			immediate: false,
+			deep: true,
+		},
 		workflowRunning: {
 			handler(bool) {
-				if (bool && this.nodeType!.webhooks) {
+				// Show helping tooltip for trigger node if:
+				// #workflow is runnung (bool)
+				// #if it is a trigger node (this.isWebhookNode)
+				// #if it is only one trigger node in the WF (this.isSingleWebhookNode)
+				// #if the node is not disabled (!this.data.disabled)
+				if (bool && this.isWebhookNode() && this.isSingleWebhookNode() && !this.data.disabled) {
 					setTimeout(() => {
 						this.showWebhookNodeTooltip = bool;
 					}, 2500);
@@ -190,6 +226,34 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 		};
 	},
 	methods: {
+		isWebhookNode (): INodeTypeDescription | boolean {
+			const node = this.$store.getters.allNodeTypes.filter((elem: INodeTypeDescription) => {
+				if (elem.displayName === this.data.name) {
+					return elem.group.includes('trigger');
+				} else {
+					return;
+				}
+			});
+
+			return node.length > 0 ? true : false;
+		},
+		isSingleWebhookNode (): INodeUi[] | INodeTypeDescription | boolean {
+			const nodeTypes = this.$store.getters.allNodeTypes;
+			const nodes = this.$store.getters.allNodes;
+			const webhookNodes = [];
+
+			nodeTypes.forEach((types : INodeTypeDescription) => {
+				nodes.forEach((node: INodeUi) => {
+					if (types.name === node.type) {
+						if (types.group.includes('trigger')) {
+							webhookNodes.push(node);
+						}
+					}
+				});
+			});
+
+			return webhookNodes.length === 1;
+		},
 		setSubtitle() {
 			this.nodeSubtitle = this.getNodeSubtitle(this.data, this.nodeType, this.getWorkflow()) || '';
 		},
