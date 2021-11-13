@@ -124,7 +124,7 @@ export class GoogleTasks implements INodeType {
 							body.notes = additionalFields.notes as string;
 						}
 						if (additionalFields.dueDate) {
-							body.dueDate = additionalFields.dueDate as string;
+							body.due = additionalFields.dueDate as string;
 						}
 
 						if (additionalFields.completed) {
@@ -249,7 +249,7 @@ export class GoogleTasks implements INodeType {
 						}
 
 						if (updateFields.dueDate) {
-							body.dueDate = updateFields.dueDate as string;
+							body.due = updateFields.dueDate as string;
 						}
 
 						if (updateFields.completed) {
