@@ -509,35 +509,35 @@ const nodeOperationOptions: INodeProperties[] = [
 				value: 'Copy',
 			},
 			{
-				name: 'CopyBlack',
+				name: 'Copy Black',
 				value: 'CopyBlack',
 			},
 			{
-				name: 'CopyBlue',
+				name: 'Copy Blue',
 				value: 'CopyBlue',
 			},
 			{
-				name: 'CopyCyan',
+				name: 'Copy Cyan',
 				value: 'CopyCyan',
 			},
 			{
-				name: 'CopyGreen',
+				name: 'Copy Green',
 				value: 'CopyGreen',
 			},
 			{
-				name: 'CopyMagenta',
+				name: 'Copy Magenta',
 				value: 'CopyMagenta',
 			},
 			{
-				name: 'CopyOpacity',
+				name: 'Copy Opacity',
 				value: 'CopyOpacity',
 			},
 			{
-				name: 'CopyRed',
+				name: 'Copy Red',
 				value: 'CopyRed',
 			},
 			{
-				name: 'CopyYellow',
+				name: 'Copy Yellow',
 				value: 'CopyYellow',
 			},
 			{
