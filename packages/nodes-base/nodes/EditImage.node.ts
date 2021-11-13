@@ -153,6 +153,10 @@ const nodeOperationOptions: INodeProperties[] = [
 		},
 		options: [
 			{
+				name: 'Circle',
+				value: 'circle',
+			},
+			{
 				name: 'Line',
 				value: 'line',
 			},
@@ -192,6 +196,7 @@ const nodeOperationOptions: INodeProperties[] = [
 					'draw',
 				],
 				primitive: [
+					'circle',
 					'line',
 					'rectangle',
 				],
@@ -210,6 +215,7 @@ const nodeOperationOptions: INodeProperties[] = [
 					'draw',
 				],
 				primitive: [
+					'circle',
 					'line',
 					'rectangle',
 				],
@@ -228,6 +234,7 @@ const nodeOperationOptions: INodeProperties[] = [
 					'draw',
 				],
 				primitive: [
+					'circle',
 					'line',
 					'rectangle',
 				],
@@ -246,6 +253,7 @@ const nodeOperationOptions: INodeProperties[] = [
 					'draw',
 				],
 				primitive: [
+					'circle',
 					'line',
 					'rectangle',
 				],
@@ -471,6 +479,110 @@ const nodeOperationOptions: INodeProperties[] = [
 			},
 		},
 		description: 'The name of the binary property which contains the data of the image to composite on top of image which is found in Property Name.',
+	},
+	{
+		displayName: 'Operator',
+		name: 'operator',
+		type: 'options',
+		displayOptions: {
+			show: {
+				operation: [
+					'composite',
+				],
+			},
+		},
+		options: [
+			{
+				name: 'Add',
+				value: 'Add',
+			},
+			{
+				name: 'Atop',
+				value: 'Atop',
+			},
+			{
+				name: 'Bumpmap',
+				value: 'Bumpmap',
+			},
+			{
+				name: 'Copy',
+				value: 'Copy',
+			},
+			{
+				name: 'Copy Black',
+				value: 'CopyBlack',
+			},
+			{
+				name: 'Copy Blue',
+				value: 'CopyBlue',
+			},
+			{
+				name: 'Copy Cyan',
+				value: 'CopyCyan',
+			},
+			{
+				name: 'Copy Green',
+				value: 'CopyGreen',
+			},
+			{
+				name: 'Copy Magenta',
+				value: 'CopyMagenta',
+			},
+			{
+				name: 'Copy Opacity',
+				value: 'CopyOpacity',
+			},
+			{
+				name: 'Copy Red',
+				value: 'CopyRed',
+			},
+			{
+				name: 'Copy Yellow',
+				value: 'CopyYellow',
+			},
+			{
+				name: 'Difference',
+				value: 'Difference',
+			},
+			{
+				name: 'Divide',
+				value: 'Divide',
+			},
+			{
+				name: 'In',
+				value: 'In',
+			},
+			{
+				name: 'Minus',
+				value: 'Minus',
+			},
+			{
+				name: 'Multiply',
+				value: 'Multiply',
+			},
+			{
+				name: 'Out',
+				value: 'Out',
+			},
+			{
+				name: 'Over',
+				value: 'Over',
+			},
+			{
+				name: 'Plus',
+				value: 'Plus',
+			},
+			{
+				name: 'Subtract',
+				value: 'Subtract',
+			},
+			{
+				name: 'Xor',
+				value: 'Xor',
+			},
+		],
+		default: 'Over',
+		description: 'The operator to use to combine the images.',
 	},
 	{
 		displayName: 'Position X',
@@ -1095,6 +1207,7 @@ export class EditImage implements INodeType {
 					} else if (operationData.operation === 'composite') {
 						const positionX = operationData.positionX as number;
 						const positionY = operationData.positionY as number;
+						const operator = operationData.operator as string;
 
 						const geometryString = (positionX >= 0 ? '+' : '') + positionX + (positionY >= 0 ? '+' : '') + positionY;
 
@@ -1109,9 +1222,9 @@ export class EditImage implements INodeType {
 						if (operations[0].operation === 'create') {
 							// It seems like if the image gets created newly we have to create a new gm instance
 							// else it fails for some reason
-							gmInstance = gm(gmInstance!.stream('png')).geometry(geometryString).composite(path);
+							gmInstance = gm(gmInstance!.stream('png')).compose(operator).geometry(geometryString).composite(path);
 						} else {
-							gmInstance = gmInstance!.geometry(geometryString).composite(path);
+							gmInstance = gmInstance!.compose(operator).geometry(geometryString).composite(path);
 						}
 
 						if (operations.length !== i + 1) {
@@ -1131,6 +1244,8 @@ export class EditImage implements INodeType {
 
 						if (operationData.primitive === 'line') {
 							gmInstance = gmInstance.drawLine(operationData.startPositionX as number, operationData.startPositionY as number, operationData.endPositionX as number, operationData.endPositionY as number);
+						} else if (operationData.primitive === 'circle') {
+							gmInstance = gmInstance.drawCircle(operationData.startPositionX as number, operationData.startPositionY as number, operationData.endPositionX as number, operationData.endPositionY as number);
 						} else if (operationData.primitive === 'rectangle') {
 							gmInstance = gmInstance.drawRectangle(operationData.startPositionX as number, operationData.startPositionY as number, operationData.endPositionX as number, operationData.endPositionY as number, operationData.cornerRadius as number || undefined);
 						}
