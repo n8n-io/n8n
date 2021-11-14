@@ -1,19 +1,27 @@
 <template functional>
 	<component
-		:is="$options.components.FontAwesomeIcon"
-		:class="$style[`_${props.size}`]"
-		:icon="props.icon"
-		:spin="props.spin"
-	/>
+		:is="$options.components.N8nText"
+		:size="props.size"
+		:compact="true"
+	>
+		<component
+			:is="$options.components.FontAwesomeIcon"
+			:icon="props.icon"
+			:spin="props.spin"
+			:class="$style[props.size]"
+		/>
+	</component>
 </template>
 
 <script lang="ts">
 import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
+import N8nText from '../N8nText';
 
 export default {
 	name: 'n8n-icon',
 	components: {
 		FontAwesomeIcon,
+		N8nText,
 	},
 	props: {
 		icon: {
@@ -23,9 +31,6 @@ export default {
 		size: {
 			type: String,
 			default: 'medium',
-			validator: function (value: string): boolean {
-				return ['small', 'medium', 'large'].indexOf(value) !== -1;
-			},
 		},
 		spin: {
 			type: Boolean,
@@ -35,22 +40,21 @@ export default {
 };
 </script>
 
+
 <style lang="scss" module>
-._small {
-	font-size: 0.85em;
-	height: 0.85em;
-	width: 0.85em !important;
+.xlarge {
+	width: var(--font-size-xl) !important;
 }
 
-._medium {
-	font-size: 0.95em;
-	height: 0.95em;
-	width: 0.95em !important;
+.large {
+	width: var(--font-size-m) !important;
 }
 
-._large {
-	font-size: 1.22em;
-	height: 1.22em;
-	width: 1.22em !important;
+.medium {
+	width: var(--font-size-s) !important;
+}
+
+.small {
+	width: var(--font-size-2xs) !important;
 }
 </style>

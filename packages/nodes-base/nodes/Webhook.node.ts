@@ -9,7 +9,6 @@ import {
 	INodeType,
 	INodeTypeDescription,
 	IWebhookResponseData,
-	NodeApiError,
 	NodeOperationError,
 } from 'n8n-workflow';
 
@@ -132,7 +131,7 @@ export class Webhook implements INodeType {
 					},
 				],
 				default: 'GET',
-				description: 'The HTTP method to liste to.',
+				description: 'The HTTP method to listen to.',
 			},
 			{
 				displayName: 'Path',
@@ -144,34 +143,59 @@ export class Webhook implements INodeType {
 				description: 'The path to listen to.',
 			},
 			{
+				displayName: 'Respond',
+				name: 'responseMode',
+				type: 'options',
+				options: [
+					{
+						name: 'Immediately',
+						value: 'onReceived',
+						description: 'As soon as this node executes',
+					},
+					{
+						name: 'When last node finishes',
+						value: 'lastNode',
+						description: 'Returns data of the last-executed node',
+					},
+					{
+						name: 'Using \'Respond to Webhook\' node',
+						value: 'responseNode',
+						description: 'Response defined in that node',
+					},
+				],
+				default: 'onReceived',
+				description: 'When and how to respond to the webhook.',
+			},
+			{
+				displayName: 'Insert a \'Respond to Webhook\' node to control when and how you respond. <a href="https://docs.n8n.io/nodes/n8n-nodes-base.respondToWebhook" target="_blank">More details</a>',
+				name: 'webhookNotice',
+				type: 'notice',
+				displayOptions: {
+					show: {
+						responseMode: [
+							'responseNode',
+						],
+					},
+				},
+				default: '',
+			},
+			{
 				displayName: 'Response Code',
 				name: 'responseCode',
 				type: 'number',
+				displayOptions: {
+					hide: {
+						responseMode: [
+							'responseNode',
+						],
+					},
+				},
 				typeOptions: {
 					minValue: 100,
 					maxValue: 599,
 				},
 				default: 200,
 				description: 'The HTTP Response code to return',
-			},
-			{
-				displayName: 'Respond when',
-				name: 'responseMode',
-				type: 'options',
-				options: [
-					{
-						name: 'Webhook received',
-						value: 'onReceived',
-						description: 'Returns directly with defined Response Code',
-					},
-					{
-						name: 'Last node finishes',
-						value: 'lastNode',
-						description: 'Returns data of the last executed node',
-					},
-				],
-				default: 'onReceived',
-				description: 'When and how to respond to the webhook.',
 			},
 			{
 				displayName: 'Response Data',
@@ -202,7 +226,7 @@ export class Webhook implements INodeType {
 					},
 				],
 				default: 'firstEntryJson',
-				description: 'What data should be returned. If it should return<br />all the itemsas array or only the first item as object.',
+				description: 'What data should be returned. If it should return all items as an array or only the first item as object.',
 			},
 			{
 				displayName: 'Property Name',
@@ -253,8 +277,8 @@ export class Webhook implements INodeType {
 								],
 							},
 						},
-						description: `Name of the binary property to which to write the data of<br />
-									the received file. If the data gets received via "Form-Data Multipart"<br />
+						description: `Name of the binary property to write the data of
+									the received file to. If the data gets received via "Form-Data Multipart"
 									it will be the prefix and a number starting with 0 will be attached to it.`,
 					},
 					{
@@ -407,6 +431,7 @@ export class Webhook implements INodeType {
 		// @ts-ignore
 		const mimeType = headers['content-type'] || 'application/json';
 		if (mimeType.includes('multipart/form-data')) {
+			// @ts-ignore
 			const form = new formidable.IncomingForm({ multiples: true });
 
 			return new Promise((resolve, reject) => {
