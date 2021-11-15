@@ -419,8 +419,8 @@
 				_ty = sp[1] < tp[1] ? 0 : _h;
 
 			if (paintInfo.ySpan <= STRAIGHT_LINE_MINIMUM) {
-				minorAnchor = 0;
-				majorAnchor = 0;
+				minorAnchor = 0.1;
+				majorAnchor = 0.1;
 			}
 			else {
 				majorAnchor = paintInfo.xSpan * curvinessCoeffient + zBezierOffset;
