@@ -5,46 +5,6 @@
 	var STRAIGHT = "Straight";
 	var ARC = "Arc";
 
-	const _findControlPoint = function (point, sourceAnchorPosition, targetAnchorPosition, sourceEndpoint, targetEndpoint, soo, too, majorAnchor, minorAnchor) {
-		// determine if the two anchors are perpendicular to each other in their orientation.  we swap the control
-		// points around if so (code could be tightened up)
-		var perpendicular = soo[0] !== too[0] || soo[1] === too[1],
-			p = [];
-
-		if (!perpendicular) {
-			if (soo[0] === 0) {
-				p.push(sourceAnchorPosition[0] < targetAnchorPosition[0] ? point[0] + minorAnchor : point[0] - minorAnchor);
-			}
-			else {
-				p.push(point[0] - (majorAnchor * soo[0]));
-			}
-
-			if (soo[1] === 0) {
-				p.push(sourceAnchorPosition[1] < targetAnchorPosition[1] ? point[1] + minorAnchor : point[1] - minorAnchor);
-			}
-			else {
-				p.push(point[1] + (majorAnchor * too[1]));
-			}
-		}
-		else {
-			if (too[0] === 0) {
-				p.push(targetAnchorPosition[0] < sourceAnchorPosition[0] ? point[0] + minorAnchor : point[0] - minorAnchor);
-			}
-			else {
-				p.push(point[0] + (majorAnchor * too[0]));
-			}
-
-			if (too[1] === 0) {
-				p.push(targetAnchorPosition[1] < sourceAnchorPosition[1] ? point[1] + minorAnchor : point[1] - minorAnchor);
-			}
-			else {
-				p.push(point[1] + (majorAnchor * soo[1]));
-			}
-		}
-
-		return p;
-	};
-
 	/*
 		Class: UIComponent
 		Superclass for Connector and AbstractEndpoint.
@@ -450,22 +410,13 @@
 			midpoint = params.midpoint == null ? 0.5 : params.midpoint,
 			alwaysRespectStubs = params.alwaysRespectStubs === true,
 			loopbackVerticalLength = params.loopbackVerticalLength || 0,
-			lastx = null, lasty = null, lastOrientation,
+			lastx = null, lasty = null,
 			cornerRadius = params.cornerRadius != null ? params.cornerRadius : 0,
 			loopbackMinimum = params.loopbackMinimum || 100,
 
-			sgn = function (n) {
-				return n < 0 ? -1 : n === 0 ? 0 : 1;
-			},
-			segmentDirections = function(segment) {
-				return [
-					sgn( segment[2] - segment[0] ),
-					sgn( segment[3] - segment[1] ),
-				];
-			},
 			/**
-					 * helper method to add a segment.
-					 */
+			 * helper method to add a segment.
+			 */
 			addSegment = function (segments, x, y, paintInfo) {
 				if (lastx === x && lasty === y) {
 					return;
@@ -477,84 +428,13 @@
 				lastx = x;
 				lasty = y;
 				segments.push([ lx, ly, x, y, o ]);
-			},
-			segLength = function (s) {
-				return Math.sqrt(Math.pow(s[0] - s[2], 2) + Math.pow(s[1] - s[3], 2));
-			},
-			_cloneArray = function (a) {
-				var _a = [];
-				_a.push.apply(_a, a);
-				return _a;
-			},
-			writeSegments = function (conn, segments, paintInfo) {
-				var current = null, next, currentDirection, nextDirection;
-				for (var i = 0; i < segments.length - 1; i++) {
-
-					current = current || _cloneArray(segments[i]);
-					next = _cloneArray(segments[i + 1]);
-
-					currentDirection = segmentDirections(current);
-					nextDirection = segmentDirections(next);
-
-					if (cornerRadius > 0 && current[4] !== next[4]) {
-
-						var minSegLength = Math.min(segLength(current), segLength(next));
-						var radiusToUse = Math.min(cornerRadius, minSegLength / 2);
-
-						current[2] -= currentDirection[0] * radiusToUse;
-						current[3] -= currentDirection[1] * radiusToUse;
-						next[0] += nextDirection[0] * radiusToUse;
-						next[1] += nextDirection[1] * radiusToUse;
-
-						var ac = (currentDirection[1] === nextDirection[0] && nextDirection[0] === 1) ||
-															((currentDirection[1] === nextDirection[0] && nextDirection[0] === 0) && currentDirection[0] !== nextDirection[1]) ||
-															(currentDirection[1] === nextDirection[0] && nextDirection[0] === -1),
-							sgny = next[1] > current[3] ? 1 : -1,
-							sgnx = next[0] > current[2] ? 1 : -1,
-							sgnEqual = sgny === sgnx,
-							cx = (sgnEqual && ac || (!sgnEqual && !ac)) ? next[0] : current[2],
-							cy = (sgnEqual && ac || (!sgnEqual && !ac)) ? current[3] : next[1];
-
-						_super.addSegment(conn, STRAIGHT, {
-							x1: current[0], y1: current[1], x2: current[2], y2: current[3],
-						});
-
-						_super.addSegment(conn, ARC, {
-							r: radiusToUse,
-							x1: current[2],
-							y1: current[3],
-							x2: next[0],
-							y2: next[1],
-							cx: cx,
-							cy: cy,
-							ac: ac,
-						});
-					}
-					else {
-						// dx + dy are used to adjust for line width.
-						var dx = (current[2] === current[0]) ? 0 : (current[2] > current[0]) ? (paintInfo.lw / 2) : -(paintInfo.lw / 2),
-							dy = (current[3] === current[1]) ? 0 : (current[3] > current[1]) ? (paintInfo.lw / 2) : -(paintInfo.lw / 2);
-
-						_super.addSegment(conn, STRAIGHT, {
-							x1: current[0] - dx, y1: current[1] - dy, x2: current[2] + dx, y2: current[3] + dy,
-						});
-					}
-					current = next;
-				}
-				if (next != null) {
-					// last segment
-					_super.addSegment(conn, STRAIGHT, {
-						x1: next[0], y1: next[1], x2: next[2], y2: next[3],
-					});
-				}
 			};
 
-		this._compute = function (paintInfo, connParams) {
+		this._compute = function (paintInfo) {
 
 			segments = [];
 			lastx = null;
 			lasty = null;
-			lastOrientation = null;
 
 			var commonStubCalculator = function () {
 					return [paintInfo.startStubX, paintInfo.startStubY, paintInfo.endStubX, paintInfo.endStubY];
@@ -709,25 +589,9 @@
 					},
 					opposite: function (axis, ss, oss, es) {
 						var pi = paintInfo,
-							otherAxis = {"x": "y", "y": "x"}[axis],
-							dim = {"x": "height", "y": "width"}[axis],
 							comparator = pi["is" + axis.toUpperCase() + "GreaterThanStubTimes2"];
 
-						if (pi.sourceEndpoint.elementId === pi.targetEndpoint.elementId) {
-							var _val = oss + ((1 - pi.sourceEndpoint.anchor[otherAxis]) * pi.sourceInfo[dim]) + _super.maxStub;
-							return {
-								"x": [
-									[ss, _val],
-									[es, _val],
-								],
-								"y": [
-									[_val, ss],
-									[_val, es],
-								],
-							}[axis];
-
-						}
-						else if (!comparator || (pi.so[idx] === 1 && ss > es) || (pi.so[idx] === -1 && ss < es)) {
+						if (!comparator || (pi.so[idx] === 1 && ss > es) || (pi.so[idx] === -1 && ss < es)) {
 							return {
 								"x": [
 									[ss, midy],
@@ -765,20 +629,141 @@
 			// line to end stub
 			addSegment(segments, stubs[2], stubs[3], paintInfo);
 
-			//}
-
 			// end stub to end (common)
 			addSegment(segments, paintInfo.tx, paintInfo.ty, paintInfo);
 
-
-
 			// write out the segments.
-			writeSegments(this, segments, paintInfo);
-
+			writeFlowchartSegments(_super, this, segments, paintInfo, cornerRadius);
 		};
 	};
 
-	_jp.Connectors.N8nCustom = Flowchart;
+	_jp.Connectors.N8nCustom = N8nCustom;
 	_ju.extend(_jp.Connectors.N8nCustom, _jp.Connectors.N8nAbstractConnector);
+
+
+	function _findControlPoint(point, sourceAnchorPosition, targetAnchorPosition, sourceEndpoint, targetEndpoint, soo, too, majorAnchor, minorAnchor) {
+		// determine if the two anchors are perpendicular to each other in their orientation.  we swap the control
+		// points around if so (code could be tightened up)
+		var perpendicular = soo[0] !== too[0] || soo[1] === too[1],
+			p = [];
+
+		if (!perpendicular) {
+			if (soo[0] === 0) {
+				p.push(sourceAnchorPosition[0] < targetAnchorPosition[0] ? point[0] + minorAnchor : point[0] - minorAnchor);
+			}
+			else {
+				p.push(point[0] - (majorAnchor * soo[0]));
+			}
+
+			if (soo[1] === 0) {
+				p.push(sourceAnchorPosition[1] < targetAnchorPosition[1] ? point[1] + minorAnchor : point[1] - minorAnchor);
+			}
+			else {
+				p.push(point[1] + (majorAnchor * too[1]));
+			}
+		}
+		else {
+			if (too[0] === 0) {
+				p.push(targetAnchorPosition[0] < sourceAnchorPosition[0] ? point[0] + minorAnchor : point[0] - minorAnchor);
+			}
+			else {
+				p.push(point[0] + (majorAnchor * too[0]));
+			}
+
+			if (too[1] === 0) {
+				p.push(targetAnchorPosition[1] < sourceAnchorPosition[1] ? point[1] + minorAnchor : point[1] - minorAnchor);
+			}
+			else {
+				p.push(point[1] + (majorAnchor * soo[1]));
+			}
+		}
+
+		return p;
+	};
+
+
+	function sgn(n) {
+		return n < 0 ? -1 : n === 0 ? 0 : 1;
+	};
+
+	function getFlowchartSegmentDirections(segment) {
+		return [
+			sgn( segment[2] - segment[0] ),
+			sgn( segment[3] - segment[1] ),
+		];
+	};
+
+	function getSegmentLength(s) {
+		return Math.sqrt(Math.pow(s[0] - s[2], 2) + Math.pow(s[1] - s[3], 2));
+	};
+
+	function _cloneArray(a) {
+		var _a = [];
+		_a.push.apply(_a, a);
+		return _a;
+	};
+
+	function writeFlowchartSegments(_super, conn, segments, paintInfo, cornerRadius) {
+		var current = null, next, currentDirection, nextDirection;
+		for (var i = 0; i < segments.length - 1; i++) {
+
+			current = current || _cloneArray(segments[i]);
+			next = _cloneArray(segments[i + 1]);
+
+			currentDirection = getFlowchartSegmentDirections(current);
+			nextDirection = getFlowchartSegmentDirections(next);
+
+			if (cornerRadius > 0 && current[4] !== next[4]) {
+
+				var minSegLength = Math.min(getSegmentLength(current), getSegmentLength(next));
+				var radiusToUse = Math.min(cornerRadius, minSegLength / 2);
+
+				current[2] -= currentDirection[0] * radiusToUse;
+				current[3] -= currentDirection[1] * radiusToUse;
+				next[0] += nextDirection[0] * radiusToUse;
+				next[1] += nextDirection[1] * radiusToUse;
+
+				var ac = (currentDirection[1] === nextDirection[0] && nextDirection[0] === 1) ||
+													((currentDirection[1] === nextDirection[0] && nextDirection[0] === 0) && currentDirection[0] !== nextDirection[1]) ||
+													(currentDirection[1] === nextDirection[0] && nextDirection[0] === -1),
+					sgny = next[1] > current[3] ? 1 : -1,
+					sgnx = next[0] > current[2] ? 1 : -1,
+					sgnEqual = sgny === sgnx,
+					cx = (sgnEqual && ac || (!sgnEqual && !ac)) ? next[0] : current[2],
+					cy = (sgnEqual && ac || (!sgnEqual && !ac)) ? current[3] : next[1];
+
+				_super.addSegment(conn, STRAIGHT, {
+					x1: current[0], y1: current[1], x2: current[2], y2: current[3],
+				});
+
+				_super.addSegment(conn, ARC, {
+					r: radiusToUse,
+					x1: current[2],
+					y1: current[3],
+					x2: next[0],
+					y2: next[1],
+					cx: cx,
+					cy: cy,
+					ac: ac,
+				});
+			}
+			else {
+				// dx + dy are used to adjust for line width.
+				var dx = (current[2] === current[0]) ? 0 : (current[2] > current[0]) ? (paintInfo.lw / 2) : -(paintInfo.lw / 2),
+					dy = (current[3] === current[1]) ? 0 : (current[3] > current[1]) ? (paintInfo.lw / 2) : -(paintInfo.lw / 2);
+
+				_super.addSegment(conn, STRAIGHT, {
+					x1: current[0] - dx, y1: current[1] - dy, x2: current[2] + dx, y2: current[3] + dy,
+				});
+			}
+			current = next;
+		}
+		if (next != null) {
+			// last segment
+			_super.addSegment(conn, STRAIGHT, {
+				x1: next[0], y1: next[1], x2: next[2], y2: next[3],
+			});
+		}
+	};
 
 }).call(typeof window !== 'undefined' ? window : this);
