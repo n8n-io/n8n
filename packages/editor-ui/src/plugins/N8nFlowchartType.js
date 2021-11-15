@@ -5,6 +5,46 @@
 	var STRAIGHT = "Straight";
 	var ARC = "Arc";
 
+	const _findControlPoint = function (point, sourceAnchorPosition, targetAnchorPosition, sourceEndpoint, targetEndpoint, soo, too, majorAnchor, minorAnchor) {
+		// determine if the two anchors are perpendicular to each other in their orientation.  we swap the control
+		// points around if so (code could be tightened up)
+		var perpendicular = soo[0] !== too[0] || soo[1] === too[1],
+			p = [];
+
+		if (!perpendicular) {
+			if (soo[0] === 0) {
+				p.push(sourceAnchorPosition[0] < targetAnchorPosition[0] ? point[0] + minorAnchor : point[0] - minorAnchor);
+			}
+			else {
+				p.push(point[0] - (majorAnchor * soo[0]));
+			}
+
+			if (soo[1] === 0) {
+				p.push(sourceAnchorPosition[1] < targetAnchorPosition[1] ? point[1] + minorAnchor : point[1] - minorAnchor);
+			}
+			else {
+				p.push(point[1] + (majorAnchor * too[1]));
+			}
+		}
+		else {
+			if (too[0] === 0) {
+				p.push(targetAnchorPosition[0] < sourceAnchorPosition[0] ? point[0] + minorAnchor : point[0] - minorAnchor);
+			}
+			else {
+				p.push(point[0] + (majorAnchor * too[0]));
+			}
+
+			if (too[1] === 0) {
+				p.push(targetAnchorPosition[1] < sourceAnchorPosition[1] ? point[1] + minorAnchor : point[1] - minorAnchor);
+			}
+			else {
+				p.push(point[1] + (majorAnchor * soo[1]));
+			}
+		}
+
+		return p;
+	};
+
 	/*
 		Class: UIComponent
 		Superclass for Connector and AbstractEndpoint.
@@ -363,50 +403,6 @@
 			majorAnchor = params.curviness || 150,
 			minorAnchor = 10;
 
-		this.getCurviness = function () {
-			return majorAnchor;
-		};
-
-		this._findControlPoint = function (point, sourceAnchorPosition, targetAnchorPosition, sourceEndpoint, targetEndpoint, soo, too) {
-			// determine if the two anchors are perpendicular to each other in their orientation.  we swap the control
-			// points around if so (code could be tightened up)
-			var perpendicular = soo[0] !== too[0] || soo[1] === too[1],
-				p = [];
-
-			if (!perpendicular) {
-				if (soo[0] === 0) {
-					p.push(sourceAnchorPosition[0] < targetAnchorPosition[0] ? point[0] + minorAnchor : point[0] - minorAnchor);
-				}
-				else {
-					p.push(point[0] - (majorAnchor * soo[0]));
-				}
-
-				if (soo[1] === 0) {
-					p.push(sourceAnchorPosition[1] < targetAnchorPosition[1] ? point[1] + minorAnchor : point[1] - minorAnchor);
-				}
-				else {
-					p.push(point[1] + (majorAnchor * too[1]));
-				}
-			}
-			else {
-				if (too[0] === 0) {
-					p.push(targetAnchorPosition[0] < sourceAnchorPosition[0] ? point[0] + minorAnchor : point[0] - minorAnchor);
-				}
-				else {
-					p.push(point[0] + (majorAnchor * too[0]));
-				}
-
-				if (too[1] === 0) {
-					p.push(targetAnchorPosition[1] < sourceAnchorPosition[1] ? point[1] + minorAnchor : point[1] - minorAnchor);
-				}
-				else {
-					p.push(point[1] + (majorAnchor * soo[1]));
-				}
-			}
-
-			return p;
-		};
-
 		this._compute = function (paintInfo) {
 			var sp = paintInfo.sourcePos,
 				tp = paintInfo.targetPos,
@@ -423,17 +419,14 @@
 				_tx = sp[0] < tp[0] ? 0 : _w,
 				_ty = sp[1] < tp[1] ? 0 : _h;
 
-			_CP = this._findControlPoint([_sx, _sy], sp, tp, paintInfo.sourceEndpoint, paintInfo.targetEndpoint, paintInfo.so, paintInfo.to);
-			_CP2 = this._findControlPoint([_tx, _ty], tp, sp, paintInfo.targetEndpoint, paintInfo.sourceEndpoint, paintInfo.to, paintInfo.so);
-
+			_CP = _findControlPoint([_sx, _sy], sp, tp, paintInfo.sourceEndpoint, paintInfo.targetEndpoint, paintInfo.so, paintInfo.to, majorAnchor, minorAnchor);
+			_CP2 = _findControlPoint([_tx, _ty], tp, sp, paintInfo.targetEndpoint, paintInfo.sourceEndpoint, paintInfo.to, paintInfo.so, majorAnchor, minorAnchor);
 
 			_super.addSegment(this, "Bezier", {
 				x1: _sx, y1: _sy, x2: _tx, y2: _ty,
 				cp1x: _CP[0], cp1y: _CP[1], cp2x: _CP2[0], cp2y: _CP2[1],
 			});
 		};
-
-
 	};
 
 	_jp.Connectors.N8nBezier = Bezier;
