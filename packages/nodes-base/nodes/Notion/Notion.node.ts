@@ -3,9 +3,13 @@ import {
 	INodeVersionedType,
 } from 'n8n-workflow';
 
-import { 
+import {
 	NotionV1,
 } from './v1/NotionV1.node';
+
+import {
+	NotionV2,
+} from './v2/NotionV2.node';
 
 import {
 	NodeVersionedType,
@@ -20,11 +24,12 @@ export class Notion extends NodeVersionedType {
 			group: ['output'],
 			subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 			description: 'Consume Notion API (Beta)',
-			defaultVersion: 1,
+			defaultVersion: 2,
 		};
 
 		const nodeVersions: INodeVersionedType['nodeVersions'] = {
 			1: new NotionV1(baseDescription),
+			2: new NotionV2(baseDescription),
 		};
 
 		super(nodeVersions, baseDescription);

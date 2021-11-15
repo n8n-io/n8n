@@ -10,6 +10,8 @@ import {
 } from 'n8n-core';
 
 import {
+	ICredentialDataDecryptedObject,
+	ICredentialTestFunctions,
 	IDataObject,
 	IDisplayOptions,
 	INodeProperties,
@@ -26,12 +28,17 @@ import * as moment from 'moment-timezone';
 
 import { validate as uuidValidate } from 'uuid';
 
+const apiVersion: { [key: number]: string } = {
+	1: '2021-05-13',
+	2: '2021-08-16',
+};
+
 export async function notionApiRequest(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions | IPollFunctions, method: string, resource: string, body: any = {}, qs: IDataObject = {}, uri?: string, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
 
 	try {
 		let options: OptionsWithUri = {
 			headers: {
-				'Notion-Version': '2021-05-13',
+				'Notion-Version': apiVersion[this.getNode().typeVersion],
 			},
 			method,
 			qs,
@@ -577,4 +584,17 @@ export function getConditions() {
 		);
 	}
 	return elements;
+}
+
+export function validateCrendetials(this: ICredentialTestFunctions, credentials: ICredentialDataDecryptedObject) {
+	const options: OptionsWithUri = {
+		headers: {
+			'Authorization': `Bearer ${credentials.apiKey}`,
+			'Notion-Version': apiVersion[2],
+		},
+		method: 'GET',
+		uri: `https://api.notion.com/v1/users/me`,
+		json: true,
+	};
+	return this.helpers.request!(options);
 }
