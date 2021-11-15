@@ -49,7 +49,7 @@
 		Class: UIComponent
 		Superclass for Connector and AbstractEndpoint.
 	*/
-	var AbstractComponent = function () {
+	const AbstractComponent = function () {
 		this.resetBounds = function () {
 			this.bounds = { minX: Infinity, minY: Infinity, maxX: -Infinity, maxY: -Infinity };
 		};
