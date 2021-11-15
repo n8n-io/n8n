@@ -417,7 +417,7 @@
 			/**
 			 * helper method to add a segment.
 			 */
-			addSegment = function (segments, x, y, paintInfo) {
+			addFlowchartSegment = function (segments, x, y, paintInfo) {
 				if (lastx === x && lasty === y) {
 					return;
 				}
@@ -436,208 +436,33 @@
 			lastx = null;
 			lasty = null;
 
-			var commonStubCalculator = function () {
-					return [paintInfo.startStubX, paintInfo.startStubY, paintInfo.endStubX, paintInfo.endStubY];
-				},
-				stubCalculators = {
-					perpendicular: commonStubCalculator,
-					orthogonal: commonStubCalculator,
-					opposite: function (axis) {
-						var pi = paintInfo,
-							idx = axis === "x" ? 0 : 1,
-							areInProximity = {
-								"x": function () {
-									return ( (pi.so[idx] === 1 && (
-										( (pi.startStubX > pi.endStubX) && (pi.tx > pi.startStubX) ) ||
-																			( (pi.sx > pi.endStubX) && (pi.tx > pi.sx))))) ||
-
-																			( (pi.so[idx] === -1 && (
-																				( (pi.startStubX < pi.endStubX) && (pi.tx < pi.startStubX) ) ||
-																			( (pi.sx < pi.endStubX) && (pi.tx < pi.sx)))));
-								},
-								"y": function () {
-									return ( (pi.so[idx] === 1 && (
-										( (pi.startStubY > pi.endStubY) && (pi.ty > pi.startStubY) ) ||
-																			( (pi.sy > pi.endStubY) && (pi.ty > pi.sy))))) ||
-
-																			( (pi.so[idx] === -1 && (
-																				( (pi.startStubY < pi.endStubY) && (pi.ty < pi.startStubY) ) ||
-																			( (pi.sy < pi.endStubY) && (pi.ty < pi.sy)))));
-								},
-							};
-
-						if (!alwaysRespectStubs && areInProximity[axis]()) {
-							return {
-								"x": [(paintInfo.sx + paintInfo.tx) / 2, paintInfo.startStubY, (paintInfo.sx + paintInfo.tx) / 2, paintInfo.endStubY],
-								"y": [paintInfo.startStubX, (paintInfo.sy + paintInfo.ty) / 2, paintInfo.endStubX, (paintInfo.sy + paintInfo.ty) / 2],
-							}[axis];
-						}
-						else {
-							return [paintInfo.startStubX, paintInfo.startStubY, paintInfo.endStubX, paintInfo.endStubY];
-						}
-					},
-				};
-
 			// calculate Stubs.
-			var stubs = stubCalculators[paintInfo.anchorOrientation](paintInfo.sourceAxis),
-				idx = paintInfo.sourceAxis === "x" ? 0 : 1,
-				oidx = paintInfo.sourceAxis === "x" ? 1 : 0,
-				ss = stubs[idx],
-				oss = stubs[oidx],
-				es = stubs[idx + 2],
-				oes = stubs[oidx + 2];
+			var stubs = calcualteStubSegment(paintInfo, {alwaysRespectStubs});
 
 			// add the start stub segment. use stubs for loopback as it will look better, with the loop spaced
 			// away from the element.
-			addSegment(segments, stubs[0], stubs[1], paintInfo);
-
-			const diffX = paintInfo.endStubX - paintInfo.startStubX;
-			const diffY = paintInfo.endStubY - paintInfo.startStubY;
-			const direction = diffY >= 0 ? 1 : -1; // vertical direction of loop, above or below source
-
-			var midx = paintInfo.startStubX + ((paintInfo.endStubX - paintInfo.startStubX) * midpoint),
-				midy;
-
-			if (diffX < (-1 * loopbackMinimum)) {
-				// loop backward behavior
-				midy = paintInfo.startStubY - (diffX < 0 ? direction * loopbackVerticalLength : 0);
-			} else {
-				// original flowchart behavior
-				midy = paintInfo.startStubY + ((paintInfo.endStubY - paintInfo.startStubY) * midpoint);
-			}
-
-			var orientations = {x: [0, 1], y: [1, 0]},
-				lineCalculators = {
-					perpendicular: function (axis) {
-						var pi = paintInfo,
-							sis = {
-								x: [
-									[[1, 2, 3, 4], null, [2, 1, 4, 3]],
-									null,
-									[[4, 3, 2, 1], null, [3, 4, 1, 2]],
-								],
-								y: [
-									[[3, 2, 1, 4], null, [2, 3, 4, 1]],
-									null,
-									[[4, 1, 2, 3], null, [1, 4, 3, 2]],
-								],
-							},
-							stubs = {
-								x: [[pi.startStubX, pi.endStubX], null, [pi.endStubX, pi.startStubX]],
-								y: [[pi.startStubY, pi.endStubY], null, [pi.endStubY, pi.startStubY]],
-							},
-							midLines = {
-								x: [[midx, pi.startStubY], [midx, pi.endStubY]],
-								y: [[pi.startStubX, midy], [pi.endStubX, midy]],
-							},
-							linesToEnd = {
-								x: [[pi.endStubX, pi.startStubY]],
-								y: [[pi.startStubX, pi.endStubY]],
-							},
-							startToEnd = {
-								x: [[pi.startStubX, pi.endStubY], [pi.endStubX, pi.endStubY]],
-								y: [[pi.endStubX, pi.startStubY], [pi.endStubX, pi.endStubY]],
-							},
-							startToMidToEnd = {
-								x: [[pi.startStubX, midy], [pi.endStubX, midy], [pi.endStubX, pi.endStubY]],
-								y: [[midx, pi.startStubY], [midx, pi.endStubY], [pi.endStubX, pi.endStubY]],
-							},
-							otherStubs = {
-								x: [pi.startStubY, pi.endStubY],
-								y: [pi.startStubX, pi.endStubX],
-							},
-							soIdx = orientations[axis][0], toIdx = orientations[axis][1],
-							_so = pi.so[soIdx] + 1,
-							_to = pi.to[toIdx] + 1,
-							otherFlipped = (pi.to[toIdx] === -1 && (otherStubs[axis][1] < otherStubs[axis][0])) || (pi.to[toIdx] === 1 && (otherStubs[axis][1] > otherStubs[axis][0])),
-							stub1 = stubs[axis][_so][0],
-							stub2 = stubs[axis][_so][1],
-							segmentIndexes = sis[axis][_so][_to];
-
-						if (pi.segment === segmentIndexes[3] || (pi.segment === segmentIndexes[2] && otherFlipped)) {
-							return midLines[axis];
-						}
-						else if (pi.segment === segmentIndexes[2] && stub2 < stub1) {
-							return linesToEnd[axis];
-						}
-						else if ((pi.segment === segmentIndexes[2] && stub2 >= stub1) || (pi.segment === segmentIndexes[1] && !otherFlipped)) {
-							return startToMidToEnd[axis];
-						}
-						else if (pi.segment === segmentIndexes[0] || (pi.segment === segmentIndexes[1] && otherFlipped)) {
-							return startToEnd[axis];
-						}
-					},
-					orthogonal: function (axis, startStub, otherStartStub, endStub, otherEndStub) {
-						var pi = paintInfo,
-							extent = {
-								"x": pi.so[0] === -1 ? Math.min(startStub, endStub) : Math.max(startStub, endStub),
-								"y": pi.so[1] === -1 ? Math.min(startStub, endStub) : Math.max(startStub, endStub),
-							}[axis];
-
-						return {
-							"x": [
-								[extent, otherStartStub],
-								[extent, otherEndStub],
-								[endStub, otherEndStub],
-							],
-							"y": [
-								[otherStartStub, extent],
-								[otherEndStub, extent],
-								[otherEndStub, endStub],
-							],
-						}[axis];
-					},
-					opposite: function (axis, ss, oss, es) {
-						var pi = paintInfo,
-							comparator = pi["is" + axis.toUpperCase() + "GreaterThanStubTimes2"];
-
-						if (!comparator || (pi.so[idx] === 1 && ss > es) || (pi.so[idx] === -1 && ss < es)) {
-							return {
-								"x": [
-									[ss, midy],
-									[es, midy],
-								],
-								"y": [
-									[midx, ss],
-									[midx, es],
-								],
-							}[axis];
-						}
-						else if ((pi.so[idx] === 1 && ss < es) || (pi.so[idx] === -1 && ss > es)) {
-							return {
-								"x": [
-									[midx, pi.sy],
-									[midx, pi.ty],
-								],
-								"y": [
-									[pi.sx, midy],
-									[pi.tx, midy],
-								],
-							}[axis];
-						}
-					},
-				};
+			addFlowchartSegment(segments, stubs[0], stubs[1], paintInfo);
 
 			// compute the rest of the line
-			var p = lineCalculators[paintInfo.anchorOrientation](paintInfo.sourceAxis, ss, oss, es, oes);
+			var p = calculateLineSegment(paintInfo, stubs, {midpoint, loopbackMinimum, loopbackVerticalLength});
 			if (p) {
 				for (var i = 0; i < p.length; i++) {
-					addSegment(segments, p[i][0], p[i][1], paintInfo);
+					addFlowchartSegment(segments, p[i][0], p[i][1], paintInfo);
 				}
 			}
 
 			// line to end stub
-			addSegment(segments, stubs[2], stubs[3], paintInfo);
+			addFlowchartSegment(segments, stubs[2], stubs[3], paintInfo);
 
 			// end stub to end (common)
-			addSegment(segments, paintInfo.tx, paintInfo.ty, paintInfo);
+			addFlowchartSegment(segments, paintInfo.tx, paintInfo.ty, paintInfo);
 
 			// write out the segments.
 			writeFlowchartSegments(_super, this, segments, paintInfo, cornerRadius);
 		};
 	};
 
-	_jp.Connectors.N8nCustom = N8nCustom;
+	_jp.Connectors.N8nCustom = Flowchart;
 	_ju.extend(_jp.Connectors.N8nCustom, _jp.Connectors.N8nAbstractConnector);
 
 
@@ -765,5 +590,105 @@
 			});
 		}
 	};
+
+	const lineCalculators = {
+		opposite: function (paintInfo, {axis, startStub, endStub, idx, midx, midy}) {
+			var pi = paintInfo,
+				comparator = pi["is" + axis.toUpperCase() + "GreaterThanStubTimes2"];
+
+			if (!comparator || (pi.so[idx] === 1 && startStub > endStub) || (pi.so[idx] === -1 && startStub < endStub)) {
+				return {
+					"x": [
+						[startStub, midy],
+						[endStub, midy],
+					],
+					"y": [
+						[midx, startStub],
+						[midx, endStub],
+					],
+				}[axis];
+			}
+			else if ((pi.so[idx] === 1 && startStub < endStub) || (pi.so[idx] === -1 && startStub > endStub)) {
+				return {
+					"x": [
+						[midx, pi.sy],
+						[midx, pi.ty],
+					],
+					"y": [
+						[pi.sx, midy],
+						[pi.tx, midy],
+					],
+				}[axis];
+			}
+		},
+	};
+
+	const stubCalculators = {
+		opposite: function (paintInfo, {axis, alwaysRespectStubs}) {
+			var pi = paintInfo,
+				idx = axis === "x" ? 0 : 1,
+				areInProximity = {
+					"x": function () {
+						return ( (pi.so[idx] === 1 && (
+							( (pi.startStubX > pi.endStubX) && (pi.tx > pi.startStubX) ) ||
+																( (pi.sx > pi.endStubX) && (pi.tx > pi.sx))))) ||
+
+																( (pi.so[idx] === -1 && (
+																	( (pi.startStubX < pi.endStubX) && (pi.tx < pi.startStubX) ) ||
+																( (pi.sx < pi.endStubX) && (pi.tx < pi.sx)))));
+					},
+					"y": function () {
+						return ( (pi.so[idx] === 1 && (
+							( (pi.startStubY > pi.endStubY) && (pi.ty > pi.startStubY) ) ||
+																( (pi.sy > pi.endStubY) && (pi.ty > pi.sy))))) ||
+
+																( (pi.so[idx] === -1 && (
+																	( (pi.startStubY < pi.endStubY) && (pi.ty < pi.startStubY) ) ||
+																( (pi.sy < pi.endStubY) && (pi.ty < pi.sy)))));
+					},
+				};
+
+			if (!alwaysRespectStubs && areInProximity[axis]()) {
+				return {
+					"x": [(paintInfo.sx + paintInfo.tx) / 2, paintInfo.startStubY, (paintInfo.sx + paintInfo.tx) / 2, paintInfo.endStubY],
+					"y": [paintInfo.startStubX, (paintInfo.sy + paintInfo.ty) / 2, paintInfo.endStubX, (paintInfo.sy + paintInfo.ty) / 2],
+				}[axis];
+			}
+			else {
+				return [paintInfo.startStubX, paintInfo.startStubY, paintInfo.endStubX, paintInfo.endStubY];
+			}
+		},
+	};
+
+	function calcualteStubSegment(paintInfo, {alwaysRespectStubs}) {
+		return stubCalculators['opposite'](paintInfo, {axis: paintInfo.sourceAxis, alwaysRespectStubs});
+	}
+
+	function calculateLineSegment(paintInfo, stubs, { midpoint, loopbackVerticalLength, loopbackMinimum }) {
+		const axis = paintInfo.sourceAxis,
+			idx = paintInfo.sourceAxis === "x" ? 0 : 1,
+			oidx = paintInfo.sourceAxis === "x" ? 1 : 0,
+			startStub = stubs[idx],
+			otherStartStub = stubs[oidx],
+			endStub = stubs[idx + 2],
+			otherEndStub = stubs[oidx + 2];
+
+		const diffX = paintInfo.endStubX - paintInfo.startStubX;
+		const diffY = paintInfo.endStubY - paintInfo.startStubY;
+		const direction = diffY >= 0 ? 1 : -1; // vertical direction of loop, above or below source
+
+		var midx = paintInfo.startStubX + ((paintInfo.endStubX - paintInfo.startStubX) * midpoint),
+			midy;
+
+		if (diffX < (-1 * loopbackMinimum)) {
+			// loop backward behavior
+			midy = paintInfo.startStubY - (diffX < 0 ? direction * loopbackVerticalLength : 0);
+		} else {
+			// original flowchart behavior
+			midy = paintInfo.startStubY + ((paintInfo.endStubY - paintInfo.startStubY) * midpoint);
+		}
+
+		return lineCalculators['opposite'](paintInfo, {axis, startStub, otherStartStub, endStub, otherEndStub, idx, oidx, midx, midy});
+	}
 
 }).call(typeof window !== 'undefined' ? window : this);
