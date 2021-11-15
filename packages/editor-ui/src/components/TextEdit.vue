@@ -1,11 +1,11 @@
 <template>
 	<div v-if="dialogVisible">
-		<el-dialog :visible="dialogVisible" append-to-body width="80%" :title="`Edit ${parameter.displayName}`" :before-close="closeDialog">
+		<el-dialog :visible="dialogVisible" append-to-body width="80%" :title="`${$baseText('textEdit.edit')} ${$nodeText.topParameterDisplayName(parameter)}`" :before-close="closeDialog">
 
 			<div class="ignore-key-press">
-				<n8n-input-label :label="parameter.displayName">
+				<n8n-input-label :label="$nodeText.topParameterDisplayName(parameter)">
 					<div @keydown.stop @keydown.esc="closeDialog()">
-						<n8n-input v-model="tempValue" type="textarea" ref="inputField" :value="value" :placeholder="parameter.placeholder" @change="valueChanged" @keydown.stop="noOp" :rows="15" />
+						<n8n-input v-model="tempValue" type="textarea" ref="inputField" :value="value" :placeholder="$nodeText.placeholder(parameter)" @change="valueChanged" @keydown.stop="noOp" :rows="15" />
 					</div>
 				</n8n-input-label>
 			</div>
@@ -16,9 +16,10 @@
 
 <script lang="ts">
 import Vue from 'vue';
+import { renderText } from '@/components/mixins/renderText';
+import mixins from 'vue-typed-mixins';
 
-export default Vue.extend({
-
+export default mixins(renderText).extend({
 	name: 'TextEdit',
 	props: [
 		'dialogVisible',

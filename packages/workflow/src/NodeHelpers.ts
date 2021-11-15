@@ -1390,7 +1390,7 @@ export function mergeNodeProperties(
 	}
 }
 
-export function getVersionedTypeNode(
+export function getVersionedNodeType(
 	object: INodeVersionedType | INodeType,
 	version?: number,
 ): INodeType {
@@ -1400,7 +1400,7 @@ export function getVersionedTypeNode(
 	return object as INodeType;
 }
 
-export function getVersionedTypeNodeAll(object: INodeVersionedType | INodeType): INodeType[] {
+export function getVersionedNodeTypeAll(object: INodeVersionedType | INodeType): INodeType[] {
 	if (isNodeTypeVersioned(object)) {
 		return Object.values((object as INodeVersionedType).nodeVersions).map((element) => {
 			element.description.name = object.description.name;

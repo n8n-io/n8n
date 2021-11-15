@@ -1,8 +1,8 @@
 <template>
 	<div @keydown.stop class="duplicate-parameter">
 		<n8n-input-label
-			:label="parameter.displayName"
-			:tooltipText="parameter.description"
+			:label="$nodeText.topParameterDisplayName(parameter)"
+			:tooltipText="$nodeText.topParameterDescription(parameter)"
 			:underline="true"
 			:labelHoverableOnly="true"
 			size="small"
@@ -64,7 +64,14 @@ export default mixins(genericHelpers)
 		],
 		computed: {
 			addButtonText (): string {
-				return (this.parameter.typeOptions && this.parameter.typeOptions.multipleValueButtonText) ? this.parameter.typeOptions.multipleValueButtonText : 'Add item';
+				if (
+					!this.parameter.typeOptions &&
+					!this.parameter.typeOptions.multipleValueButtonText
+				) {
+					return this.$baseText('multipleParameter.addItem');
+				}
+
+				return this.$nodeText.multipleValueButtonText(this.parameter);
 			},
 			hideDelete (): boolean {
 				return this.parameter.options.length === 1;
