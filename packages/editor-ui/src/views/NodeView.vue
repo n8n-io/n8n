@@ -1607,7 +1607,6 @@ export default mixins(
 				await this.$store.dispatch('workflows/setNewWorkflowName');
 				this.$store.commit('setStateDirty', false);
 
-				// Set default values for the new default node
 				const nodes = [{...DEFAULT_START_NODE}];
 
 				await this.addNodes(nodes);
