@@ -663,7 +663,7 @@ export const getUniqueNodeName = (nodes: INodeUi[], originalName: string, additi
 export const showDropConnectionState = (connection: Connection, targetEndpoint?: Endpoint) => {
 	if (connection && connection.connector) {
 		if (targetEndpoint) {
-			// connection.connector.setTargetEndpoint(targetEndpoint);
+			connection.connector.setTargetEndpoint(targetEndpoint);
 		}
 		connection.setPaintStyle(CONNECTOR_PAINT_STYLE_PRIMARY);
 		hideOverlay(connection, OVERLAY_DROP_NODE_ID);
@@ -673,7 +673,7 @@ export const showDropConnectionState = (connection: Connection, targetEndpoint?:
 
 export const showPullConnectionState = (connection: Connection) => {
 	if (connection && connection.connector) {
-		// connection.connector.resetTargetEndpoint();
+		connection.connector.resetTargetEndpoint();
 		connection.setPaintStyle(CONNECTOR_PAINT_STYLE_PULL);
 		showOverlay(connection, OVERLAY_DROP_NODE_ID);
 		hideOverlay(connection, OVERLAY_ENDPOINT_ARROW_ID);
@@ -682,7 +682,7 @@ export const showPullConnectionState = (connection: Connection) => {
 
 export const resetConnectionAfterPull = (connection: Connection) => {
 	if (connection && connection.connector) {
-		// connection.connector.resetTargetEndpoint();
+		connection.connector.resetTargetEndpoint();
 		connection.setPaintStyle(CONNECTOR_PAINT_STYLE_DEFAULT);
 		showOverlay(connection, OVERLAY_ENDPOINT_ARROW_ID);
 	}
