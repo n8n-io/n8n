@@ -33,6 +33,7 @@ import {
 
 import mixins from 'vue-typed-mixins';
 import { mapGetters } from "vuex";
+} from 'n8n-workflow';
 
 export default mixins(
 	externalHooks,
@@ -45,7 +46,6 @@ export default mixins(
 		{
 			name: 'WorkflowActivator',
 			props: [
-				'disabled',
 				'workflowActive',
 				'workflowId',
 			],
@@ -73,6 +73,13 @@ export default mixins(
 						return '#ff4949';
 					}
 					return '#13ce66';
+				},
+				disabled(): boolean {
+					return !this.containsTrigger;
+				},
+				containsTrigger(): boolean {
+					const foundNodes = this.$store.getters.allNodes.map(({type}) => this.$store.getters.nodeType(type));
+					return foundNodes.filter(((type: INodeTypeDescription) => type.group.includes('trigger'))).length > 0;
 				},
 			},
 			methods: {
