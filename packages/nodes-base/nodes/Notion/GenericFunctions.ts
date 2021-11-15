@@ -50,6 +50,10 @@ export async function notionApiRequest(this: IHookFunctions | IExecuteFunctions 
 		options = Object.assign({}, options, option);
 		const credentials = await this.getCredentials('notionApi') as IDataObject;
 		options!.headers!['Authorization'] = `Bearer ${credentials.apiKey}`;
+
+		if (Object.keys(body).length === 0) {
+			delete options.body;
+		}
 		return this.helpers.request!(options);
 
 	} catch (error) {
@@ -346,6 +350,8 @@ export function mapSorting(data: [{ key: string, type: string, direction: string
 }
 
 export function mapFilters(filters: IDataObject[], timezone: string) {
+
+	console.log(filters);
 	// tslint:disable-next-line: no-any
 	return filters.reduce((obj, value: { [key: string]: any }) => {
 		let key = getNameAndType(value.key).type;
@@ -359,12 +365,25 @@ export function mapFilters(filters: IDataObject[], timezone: string) {
 		} else if (['past_week', 'past_month', 'past_year', 'next_week', 'next_month', 'next_year'].includes(value.condition as string)) {
 			valuePropertyName = {};
 		}
-		if (key === 'rich_text') {
+		if (key === 'rich_text' || key === 'text') {
 			key = 'text';
 		} else if (key === 'phone_number') {
 			key = 'phone';
 		} else if (key === 'date' && !['is_empty', 'is_not_empty'].includes(value.condition as string)) {
 			valuePropertyName = (valuePropertyName !== undefined && !Object.keys(valuePropertyName).length) ? {} : moment.tz(value.date, timezone).utc().format();
+		} else if (key === 'number') {
+			key = 'text';
+		} else if (key === 'boolean') {
+			key = 'checkbox';
+		}
+
+		if (value.type === 'formula') {
+			const valuePropertyName = value[`${camelCase(value.returnType)}Value`];
+
+			return Object.assign(obj, {
+				['property']: getNameAndType(value.key).name,
+				[key]: { [value.returnType]: { [`${value.condition}`]: valuePropertyName } },
+			});
 		}
 
 		return Object.assign(obj, {
@@ -396,7 +415,7 @@ export function simplifyProperties(properties: any) {
 				results[`${key}`] = '';
 			}
 		} else if (['created_by', 'last_edited_by', 'select'].includes(properties[key].type)) {
-			results[`${key}`] = properties[key][type].name;
+			results[`${key}`] = (properties[key][type]) ? properties[key][type].name : null;
 		} else if (['people'].includes(properties[key].type)) {
 			if (Array.isArray(properties[key][type])) {
 				// tslint:disable-next-line: no-any
@@ -556,11 +575,20 @@ export function getConditions() {
 			'is_empty',
 			'is_not_empty',
 		],
-		formula: [
-			'contains',
-			'does_not_contain',
-			'is_empty',
-			'is_not_empty',
+	};
+
+	const formula: { [key: string]: string[] } = {
+		text: [
+			...typeConditions.rich_text,
+		],
+		checkbox: [
+			...typeConditions.checkbox,
+		],
+		number: [
+			...typeConditions.number,
+		],
+		date: [
+			...typeConditions.date,
 		],
 	};
 
@@ -583,6 +611,48 @@ export function getConditions() {
 			} as INodeProperties,
 		);
 	}
+
+	elements.push(
+		{
+			displayName: 'Return Type',
+			name: 'returnType',
+			type: 'options',
+			displayOptions: {
+				show: {
+					type: [
+						'formula',
+					],
+				},
+			} as IDisplayOptions,
+			options: Object.keys(formula).map((key: string) => ({ name: capitalCase(key), value: key })),
+			default: '',
+			description: 'The formula return type',
+		} as INodeProperties,
+	);
+
+	for (const key of Object.keys(formula)) {
+		elements.push(
+			{
+				displayName: 'Condition',
+				name: 'condition',
+				type: 'options',
+				displayOptions: {
+					show: {
+						type: [
+							'formula',
+						],
+						returnType: [
+							key,
+						],
+					},
+				} as IDisplayOptions,
+				options: formula[key].map((key: string) => ({ name: capitalCase(key), value: key })),
+				default: '',
+				description: 'The value of the property to filter by.',
+			} as INodeProperties,
+		);
+	}
+
 	return elements;
 }
 
