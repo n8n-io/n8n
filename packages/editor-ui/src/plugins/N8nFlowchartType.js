@@ -374,6 +374,14 @@
 
 		params.stub = params.stub == null ? 30 : params.stub;
 
+		if (!window.localStorage.getItem('BEZIER_CURVINESS_COEFFICIENT')) {
+			window.localStorage.setItem('BEZIER_CURVINESS_COEFFICIENT', '0.25');
+		}
+
+		if (!window.localStorage.getItem('BEZIER_Z_OFFSET')) {
+			window.localStorage.setItem('BEZIER_Z_OFFSET', '75');
+		}
+
 		var _super = _jp.Connectors.N8nAbstractConnector.apply(this, arguments),
 			minorAnchor = 10,
 			majorAnchor = 0,
@@ -384,8 +392,8 @@
 			lastx = null, lasty = null,
 			cornerRadius = params.cornerRadius != null ? params.cornerRadius : 0,
 			loopbackMinimum = params.loopbackMinimum || 100,
-			curvinessCoeffient = 0.25,
-			zBezierOffset = 75;
+			curvinessCoeffient = parseFloat(window.localStorage.getItem('BEZIER_CURVINESS_COEFFICIENT')),
+			zBezierOffset = parseFloat(window.localStorage.getItem('BEZIER_Z_OFFSET'));
 
 		const STRAIGHT_LINE_MINIMUM = 20;
 
