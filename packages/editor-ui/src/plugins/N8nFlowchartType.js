@@ -355,29 +355,11 @@
 	};
 	_ju.extend(_jp.Connectors.N8nAbstractConnector, AbstractComponent);
 
-	_jp.Connectors.N8nAbstractBezierConnector = function(params) {
-		params = params || {};
-		var _super;
-
-		this._compute = function (paintInfo) {
-			var sp = paintInfo.sourcePos,
-				tp = paintInfo.targetPos,
-				_w = Math.abs(sp[0] - tp[0]),
-				_h = Math.abs(sp[1] - tp[1]);
-
-			this._computeBezier(paintInfo, sp, tp, _w, _h);
-		};
-
-		_super = _jp.Connectors.N8nAbstractConnector.apply(this, arguments);
-		return _super;
-	};
-	_ju.extend(_jp.Connectors.N8nAbstractBezierConnector, _jp.Connectors.N8nAbstractConnector);
-
 	var Bezier = function (params) {
 		params = params || {};
 		this.type = "N8nBezier";
 
-		var _super = _jp.Connectors.N8nAbstractBezierConnector.apply(this, arguments),
+		var _super = _jp.Connectors.N8nAbstractConnector.apply(this, arguments),
 			majorAnchor = params.curviness || 150,
 			minorAnchor = 10;
 
@@ -425,6 +407,15 @@
 			return p;
 		};
 
+		this._compute = function (paintInfo) {
+			var sp = paintInfo.sourcePos,
+				tp = paintInfo.targetPos,
+				_w = Math.abs(sp[0] - tp[0]),
+				_h = Math.abs(sp[1] - tp[1]);
+
+			this._computeBezier(paintInfo, sp, tp, _w, _h);
+		};
+
 		this._computeBezier = function (paintInfo, sp, tp, _w, _h) {
 			var _CP, _CP2,
 				_sx = sp[0] < tp[0] ? _w : 0,
@@ -446,7 +437,7 @@
 	};
 
 	_jp.Connectors.N8nBezier = Bezier;
-	_ju.extend(_jp.Connectors.N8nBezier, _jp.Connectors.N8nAbstractBezierConnector);
+	_ju.extend(_jp.Connectors.N8nBezier, _jp.Connectors.N8nAbstractConnector);
 
 }).call(typeof window !== 'undefined' ? window : this);
 
