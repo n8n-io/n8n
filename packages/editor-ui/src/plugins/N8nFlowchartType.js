@@ -375,15 +375,19 @@
 		params.stub = params.stub == null ? 30 : params.stub;
 
 		var _super = _jp.Connectors.N8nAbstractConnector.apply(this, arguments),
-			majorAnchor = params.curviness || 150,
 			minorAnchor = 10,
+			majorAnchor = 0,
 			segments,
 			midpoint = params.midpoint == null ? 0.5 : params.midpoint,
 			alwaysRespectStubs = params.alwaysRespectStubs === true,
 			loopbackVerticalLength = params.loopbackVerticalLength || 0,
 			lastx = null, lasty = null,
 			cornerRadius = params.cornerRadius != null ? params.cornerRadius : 0,
-			loopbackMinimum = params.loopbackMinimum || 100;
+			loopbackMinimum = params.loopbackMinimum || 100,
+			curvinessCoeffient = 0.25,
+			zBezierOffset = 75;
+
+		const STRAIGHT_LINE_MINIMUM = 20;
 
 		this._compute = function (paintInfo) {
 			if (paintInfo.tx < 0) {
@@ -405,6 +409,14 @@
 				_sy = sp[1] < tp[1] ? _h : 0,
 				_tx = sp[0] < tp[0] ? 0 : _w,
 				_ty = sp[1] < tp[1] ? 0 : _h;
+
+			if (paintInfo.ySpan <= STRAIGHT_LINE_MINIMUM) {
+				minorAnchor = 0;
+				majorAnchor = 0;
+			}
+			else {
+				majorAnchor = paintInfo.xSpan * curvinessCoeffient + zBezierOffset;
+			}
 
 			_CP = _findControlPoint([_sx, _sy], sp, tp, paintInfo.sourceEndpoint, paintInfo.targetEndpoint, paintInfo.so, paintInfo.to, majorAnchor, minorAnchor);
 			_CP2 = _findControlPoint([_tx, _ty], tp, sp, paintInfo.targetEndpoint, paintInfo.sourceEndpoint, paintInfo.to, paintInfo.so, majorAnchor, minorAnchor);
