@@ -395,9 +395,9 @@
 	};
 	_ju.extend(_jp.Connectors.N8nAbstractConnector, AbstractComponent);
 
-	var Bezier = function (params) {
+	var N8nCustom = function (params) {
 		params = params || {};
-		this.type = "N8nBezier";
+		this.type = "N8nCustom";
 
 		var _super = _jp.Connectors.N8nAbstractConnector.apply(this, arguments),
 			majorAnchor = params.curviness || 150,
@@ -429,8 +429,8 @@
 		};
 	};
 
-	_jp.Connectors.N8nBezier = Bezier;
-	_ju.extend(_jp.Connectors.N8nBezier, _jp.Connectors.N8nAbstractConnector);
+	_jp.Connectors.N8nCustom= N8nCustom;
+	_ju.extend(_jp.Connectors.N8nCustom, _jp.Connectors.N8nAbstractConnector);
 
 }).call(typeof window !== 'undefined' ? window : this);
 

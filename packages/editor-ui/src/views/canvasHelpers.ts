@@ -47,7 +47,7 @@ export const DEFAULT_START_NODE = {
 	parameters: {},
 };
 
-export const CONNECTOR_FLOWCHART_TYPE = ['N8nBezier', {
+export const CONNECTOR_FLOWCHART_TYPE = ['N8nCustom', {
 	cornerRadius: 4,
 	stub: JSPLUMB_FLOWCHART_STUB + 10,
 	gap: 4,
