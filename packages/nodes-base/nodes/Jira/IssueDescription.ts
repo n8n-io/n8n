@@ -254,6 +254,13 @@ export const issueFields = [
 				description: 'Priority',
 			},
 			{
+				displayName: 'Raw JSON',
+				name: 'rawJson',
+				type: 'string',
+				default: '',
+				description: 'A JSON object to be merged with the existing request object',
+			},
+			{
 				displayName: 'Reporter',
 				name: 'reporter',
 				type: 'options',
@@ -424,6 +431,13 @@ export const issueFields = [
 				},
 				default: '',
 				description: 'Priority',
+			},
+			{
+				displayName: 'Raw JSON',
+				name: 'rawJson',
+				type: 'string',
+				default: '',
+				description: 'A JSON object to be merged with the existing request object',
 			},
 			{
 				displayName: 'Reporter',

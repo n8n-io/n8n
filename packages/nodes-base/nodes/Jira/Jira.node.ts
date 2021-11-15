@@ -55,6 +55,10 @@ import {
 	userOperations,
 } from './UserDescription';
 
+import {
+	merge,
+} from 'lodash';
+
 export class Jira implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Jira Software',
@@ -517,6 +521,9 @@ export class Jira implements INodeType {
 						};
 					}
 					body.fields = fields;
+					if (additionalFields.rawJson) {
+						merge(body, JSON.parse(additionalFields.rawJson as string));
+					}
 					responseData = await jiraSoftwareCloudApiRequest.call(this, '/api/2/issue', 'POST', body);
 					returnData.push(responseData);
 				}
@@ -591,7 +598,9 @@ export class Jira implements INodeType {
 						};
 					}
 					body.fields = fields;
-
+					if (updateFields.rawJson) {
+						merge(body, JSON.parse(updateFields.rawJson as string));
+					}
 					if (updateFields.statusId) {
 						responseData = await jiraSoftwareCloudApiRequest.call(this, `/api/2/issue/${issueKey}/transitions`, 'POST', { transition: { id: updateFields.statusId } });
 					}
