@@ -72,7 +72,7 @@
 </template>
 
 <script lang="ts">
-import { ICredentialType } from 'n8n-workflow';
+import { ICredentialType, INodeTypeDescription } from 'n8n-workflow';
 import { getAppNameFromCredType } from '../helpers';
 
 import Vue from 'vue';
@@ -81,10 +81,11 @@ import CopyInput from '../CopyInput.vue';
 import CredentialInputs from './CredentialInputs.vue';
 import OauthButton from './OauthButton.vue';
 import { renderText } from '../mixins/renderText';
-
+import { restApi } from '@/components/mixins/restApi';
+import { addNodeTranslation } from '@/i18n';
 import mixins from 'vue-typed-mixins';
 
-export default mixins(renderText).extend({
+export default mixins(renderText, restApi).extend({
 	name: 'CredentialConfig',
 	components: {
 		Banner,
@@ -94,6 +95,7 @@ export default mixins(renderText).extend({
 	},
 	props: {
 		credentialType: {
+			type: Object,
 		},
 		credentialProperties: {
 			type: Array,
@@ -126,6 +128,10 @@ export default mixins(renderText).extend({
 			type: Boolean,
 		},
 	},
+	async beforeMount() {
+		await this.findCredentialTextRenderKeys();
+		await this.addNodeTranslationForCredential();
+	},
 	computed: {
 		appName(): string {
 			if (!this.credentialType) {
@@ -136,7 +142,7 @@ export default mixins(renderText).extend({
 				(this.credentialType as ICredentialType).displayName,
 			);
 
-			return appName || "the service you're connecting to";
+			return appName || this.$baseText('credentialEdit.credentialConfig.theServiceYouReConnectingTo');
 		},
 		credentialTypeName(): string {
 			return (this.credentialType as ICredentialType).name;
@@ -170,6 +176,62 @@ export default mixins(renderText).extend({
 		},
 	},
 	methods: {
+		/**
+		 * Find the keys needed by the mixin to render credential text, and place them in the Vuex store.
+		 */
+		async findCredentialTextRenderKeys() {
+			const nodeTypes = await this.restApi().getNodeTypes();
+
+			// credential type name → node type name
+			const map = nodeTypes.reduce<Record<string, string>>((acc, cur) => {
+				if (!cur.credentials) return acc;
+
+				cur.credentials.forEach(cred => {
+					if (acc[cred.name]) return;
+					acc[cred.name] = cur.name;
+				});
+
+				return acc;
+			}, {});
+
+			const renderKeys = {
+				nodeType: map[this.credentialType.name],
+				credentialType: this.credentialType.name,
+			};
+
+			this.$store.commit('setCredentialTextRenderKeys', renderKeys);
+		},
+
+		/**
+		 * Add to the translation object the node translation
+		 * for the credential being viewed.
+		 */
+		async addNodeTranslationForCredential() {
+			// TODO i18n: Check if node translation has already been added (via NodeView)
+
+			const { nodeType }: { nodeType: string } = this.$store.getters.credentialTextRenderKeys;
+			const version = await this.getCurrentNodeVersion(nodeType);
+
+			const nodeToBeFetched = [{ name: nodeType, version }];
+
+			const nodesInfo = await this.restApi().getNodesInformation(nodeToBeFetched);
+			const nodeInfo = nodesInfo.pop();
+
+			if (nodeInfo && nodeInfo.translation) {
+				addNodeTranslation(nodeInfo.translation, this.$store.getters.defaultLocale);
+			}
+		},
+
+		/**
+		 * Get the current version for a node type.
+		 */
+		async getCurrentNodeVersion(targetNodeType: string) {
+			const { allNodeTypes }: { allNodeTypes: INodeTypeDescription[] } = this.$store.getters;
+			const found = allNodeTypes.find(nodeType => nodeType.name === targetNodeType);
+
+			return found ? found.version : 1;
+		},
+
 		onDataChange (event: { name: string; value: string | number | boolean | Date | null }): void {
 			this.$emit('change', event);
 		},

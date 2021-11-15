@@ -584,6 +584,7 @@ export interface IRootState {
 	activeActions: string[];
 	activeNode: string | null;
 	baseUrl: string;
+	credentialTextRenderKeys: { nodeType: string; credentialType: string; } | null;
 	defaultLocale: string;
 	endpointWebhook: string;
 	endpointWebhookTest: string;

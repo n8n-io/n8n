@@ -16,7 +16,7 @@
 
 			<div v-else-if="parameter.type === 'notice'" class="parameter-item parameter-notice">
 				<n8n-text size="small">
-					<span v-html="parameter.displayName"></span>
+					<span v-html="$nodeText.topParameterDisplayName(parameter)"></span>
 				</n8n-text>
 			</div>
 
@@ -33,8 +33,8 @@
 					/>
 				</div>
 				<n8n-input-label
-					:label="parameter.displayName"
-					:tooltipText="parameter.description"
+					:label="$nodeText.topParameterDisplayName(parameter)"
+					:tooltipText="$nodeText.topParameterDescription(parameter)"
 					size="small"
 					:underline="true"
 					:labelHoverableOnly="true"

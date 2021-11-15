@@ -43,7 +43,7 @@
 					<n8n-option
 						v-for="item in parameterOptions"
 						:key="item.name"
-						:label="item.displayName"
+						:label="$nodeText.collectionOptionDisplayName(parameter, item)"
 						:value="item.name">
 					</n8n-option>
 				</n8n-select>
@@ -85,7 +85,8 @@ export default mixins(genericHelpers)
 		},
 		computed: {
 			getPlaceholderText (): string {
-				return this.parameter.placeholder ? this.parameter.placeholder : this.$baseText('fixedCollectionParameter.choose');
+				const placeholder = this.$nodeText.placeholder(this.parameter);
+				return placeholder ? placeholder : this.$baseText('fixedCollectionParameter.choose');
 			},
 			getProperties (): INodePropertyCollection[] {
 				const returnProperties = [];

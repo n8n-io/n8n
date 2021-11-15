@@ -1,7 +1,7 @@
 <template>
 	<n8n-input-label
-		:label="parameter.displayName"
-		:tooltipText="parameter.description"
+		:label="$credText.topParameterDisplayName(parameter)"
+		:tooltipText="$credText.topParameterDescription(parameter)"
 		:required="parameter.required"
 		:showTooltip="focused"
 	>
@@ -13,6 +13,7 @@
 			:displayOptions="true"
 			:documentationUrl="documentationUrl"
 			:errorHighlight="showRequiredErrors"
+			:isForCredential="true"
 			@focus="onFocus"
 			@blur="onBlur"
 			@textInput="valueChanged"
@@ -20,7 +21,7 @@
 			inputSize="large"
 		/>
 		<div class="errors" v-if="showRequiredErrors">
-			{{ $baseText('parameterInputExpanded.thisFieldIsRequired') }} <a v-if="documentationUrl" :href="documentationUrl" target="_blank" @click="onDocumentationUrlClick">Open docs</a>
+			{{ $baseText('parameterInputExpanded.thisFieldIsRequired') }} <a v-if="documentationUrl" :href="documentationUrl" target="_blank" @click="onDocumentationUrlClick">{{ $baseText('parameterInputExpanded.openDocs') }}</a>
 		</div>
 	</n8n-input-label>
 </template>
@@ -29,8 +30,10 @@
 import { IUpdateInformation } from '@/Interface';
 import ParameterInput from './ParameterInput.vue';
 import Vue from 'vue';
+import mixins from 'vue-typed-mixins';
+import { renderText } from './mixins/renderText';
 
-export default Vue.extend({
+export default mixins(renderText).extend({
 	name: 'ParameterInputExpanded',
 	components: {
 		ParameterInput,

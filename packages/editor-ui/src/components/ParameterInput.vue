@@ -35,7 +35,7 @@
 				@focus="setFocus"
 				@blur="onBlur"
 				:title="displayTitle"
-				:placeholder="isValueExpression?'':parameter.placeholder"
+				:placeholder="isValueExpression ? '' : getPlaceholder()"
 			>
 				<div slot="suffix" class="expand-input-icon-container">
 					<font-awesome-icon v-if="!isValueExpression && !isReadOnly" icon="external-link-alt" class="edit-window-button clickable" :title="$baseText('parameterInput.openEditWindow')" @click="displayEditDialog()" />
@@ -78,7 +78,7 @@
 			:value="displayValue"
 			:title="displayTitle"
 			:disabled="isReadOnly"
-			:placeholder="parameter.placeholder?parameter.placeholder:$baseText('parameterInput.selectDateAndTime')"
+			:placeholder="parameter.placeholder ? getPlaceholder() : $baseText('parameterInput.selectDateAndTime')"
 			:picker-options="dateTimePickerOptions"
 			@change="valueChanged"
 			@focus="setFocus"
@@ -124,11 +124,13 @@
 				v-for="option in parameterOptions"
 				:value="option.value"
 				:key="option.value"
-				:label="option.name"
+				:label="getOptionsOptionDisplayName(option)"
 			>
 				<div class="list-option">
-					<div class="option-headline">{{ option.name }}</div>
-					<div v-if="option.description" class="option-description" v-html="option.description"></div>
+					<div class="option-headline">
+						{{ getOptionsOptionDisplayName(option) }}
+					</div>
+					<div v-if="option.description" class="option-description" v-html="getOptionsOptionDescription(option)"></div>
 				</div>
 			</n8n-option>
 		</n8n-select>
@@ -148,10 +150,10 @@
 			@blur="onBlur"
 			:title="displayTitle"
 		>
-			<n8n-option v-for="option in parameterOptions" :value="option.value" :key="option.value" :label="option.name" >
+			<n8n-option v-for="option in parameterOptions" :value="option.value" :key="option.value" :label="getOptionsOptionDisplayName(option)">
 				<div class="list-option">
-					<div class="option-headline">{{ option.name }}</div>
-					<div v-if="option.description" class="option-description" v-html="option.description"></div>
+					<div class="option-headline">{{ getOptionsOptionDisplayName(option) }}</div>
+					<div v-if="option.description" class="option-description" v-html="getOptionsOptionDescription(option)"></div>
 				</div>
 			</n8n-option>
 		</n8n-select>
@@ -240,6 +242,7 @@ export default mixins(
 			'value',
 			'hideIssues', // boolean
 			'errorHighlight',
+			'isForCredential', // boolean
 		],
 		data () {
 			return {
@@ -255,14 +258,14 @@ export default mixins(
 				dateTimePickerOptions: {
 					shortcuts: [
 						{
-							text: 'Today',
+							text: 'Today', // TODO
 							// tslint:disable-next-line:no-any
 							onClick (picker: any) {
 								picker.$emit('pick', new Date());
 							},
 						},
 						{
-							text: 'Yesterday',
+							text: 'Yesterday', // TODO
 							// tslint:disable-next-line:no-any
 							onClick (picker: any) {
 								const date = new Date();
@@ -271,7 +274,7 @@ export default mixins(
 							},
 						},
 						{
-							text: 'A week ago',
+							text: 'A week ago', // TODO
 							// tslint:disable-next-line:no-any
 							onClick (picker: any) {
 								const date = new Date();
@@ -325,20 +328,26 @@ export default mixins(
 				return this.$store.getters.activeNode;
 			},
 			displayTitle (): string {
-				let title = `Parameter: "${this.shortPath}"`;
-				if (this.getIssues.length) {
-					title += ` has issues`;
-					if (this.isValueExpression === true) {
-						title += ` and expression`;
-					}
-					title += `!`;
-				} else {
-					if (this.isValueExpression === true) {
-						title += ` has expression`;
-					}
+				const interpolation = { interpolate: { shortPath: this.shortPath } };
+
+				if (this.getIssues.length && this.isValueExpression) {
+					return this.$baseText(
+						'parameterInput.parameterHasIssuesAndExpression',
+						interpolation,
+					);
+				} else if (this.getIssues.length && !this.isValueExpression) {
+					return this.$baseText(
+						'parameterInput.parameterHasIssues',
+						interpolation,
+					);
+				} else if (!this.getIssues.length && this.isValueExpression) {
+					return this.$baseText(
+						'parameterInput.parameterHasExpression',
+						interpolation,
+					);
 				}
 
-				return title;
+				return this.$baseText('parameterInput.parameter', interpolation);
 			},
 			displayValue (): string | number | boolean | null {
 				if (this.remoteParameterOptionsLoading === true) {
@@ -346,7 +355,7 @@ export default mixins(
 					// to user that the data is loading. If not it would
 					// display the user the key instead of the value it
 					// represents
-					return 'Loading options...';
+					return this.$baseText('parameterInput.loadingOptions');
 				}
 
 				let returnValue;
@@ -415,7 +424,7 @@ export default mixins(
 				try {
 					computedValue = this.resolveExpression(this.value) as NodeParameterValue;
 				} catch (error) {
-					computedValue = `[ERROR: ${error.message}]`;
+					computedValue = `[${this.$baseText('parameterInput.error')}}: ${error.message}]`;
 				}
 
 				// Try to convert it into the corret type
@@ -559,6 +568,22 @@ export default mixins(
 			},
 		},
 		methods: {
+			getPlaceholder(): string {
+				return this.isForCredential
+					? this.$credText.placeholder(this.parameter)
+					: this.$nodeText.placeholder(this.parameter);
+			},
+			getOptionsOptionDisplayName(option: { value: string; name: string }): string {
+				return this.isForCredential
+					? this.$credText.optionsOptionDisplayName(this.parameter, option)
+					: this.$nodeText.optionsOptionDisplayName(this.parameter, option);
+			},
+			getOptionsOptionDescription(option: { value: string; description: string }): string {
+				return this.isForCredential
+					? this.$credText.optionsOptionDescription(this.parameter, option)
+					: this.$nodeText.optionsOptionDescription(this.parameter, option);
+			},
+
 			async loadRemoteParameterOptions () {
 				if (this.node === null || this.remoteMethod === undefined || this.remoteParameterOptionsLoading) {
 					return;

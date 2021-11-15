@@ -1,7 +1,7 @@
 <template>
 	<n8n-input-label
-		:label="parameter.displayName"
-		:tooltipText="parameter.description"
+		:label="$nodeText.topParameterDisplayName(parameter)"
+		:tooltipText="$nodeText.topParameterDescription(parameter)"
 		:showTooltip="focused"
 		:bold="false"
 		size="small"
@@ -27,8 +27,10 @@ import {
 } from '@/Interface';
 
 import ParameterInput from '@/components/ParameterInput.vue';
+import { renderText } from '@/components/mixins/renderText';
+import mixins from 'vue-typed-mixins';
 
-export default Vue
+export default mixins(renderText)
 	.extend({
 		name: 'ParameterInputFull',
 		components: {
