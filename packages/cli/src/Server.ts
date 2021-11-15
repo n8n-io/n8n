@@ -24,8 +24,9 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 /* eslint-disable no-restricted-syntax */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
+/* eslint-disable import/no-dynamic-require */
 import * as express from 'express';
-import { readFileSync } from 'fs';
+import { readFileSync, existsSync } from 'fs';
 import { dirname as pathDirname, join as pathJoin, resolve as pathResolve } from 'path';
 import { FindManyOptions, getConnectionManager, In, IsNull, LessThanOrEqual, Not } from 'typeorm';
 import * as bodyParser from 'body-parser';
@@ -144,6 +145,7 @@ import { InternalHooksManager } from './InternalHooksManager';
 import { TagEntity } from './databases/entities/TagEntity';
 import { WorkflowEntity } from './databases/entities/WorkflowEntity';
 import { NameRequest } from './WorkflowHelpers';
+import { getTranslationPath } from './TranslationHelpers';
 
 require('body-parser-xml')(bodyParser);
 
@@ -1152,13 +1154,13 @@ class App {
 
 					if (onlyLatest) {
 						allNodes.forEach((nodeData) => {
-							const nodeType = NodeHelpers.getVersionedTypeNode(nodeData);
+							const nodeType = NodeHelpers.getVersionedNodeType(nodeData);
 							const nodeInfo: INodeTypeDescription = getNodeDescription(nodeType);
 							returnData.push(nodeInfo);
 						});
 					} else {
 						allNodes.forEach((nodeData) => {
-							const allNodeTypes = NodeHelpers.getVersionedTypeNodeAll(nodeData);
+							const allNodeTypes = NodeHelpers.getVersionedNodeTypeAll(nodeData);
 							allNodeTypes.forEach((element) => {
 								const nodeInfo: INodeTypeDescription = getNodeDescription(element);
 								returnData.push(nodeInfo);
@@ -1179,15 +1181,28 @@ class App {
 					const nodeInfos = _.get(req, 'body.nodeInfos', []) as INodeTypeNameVersion[];
 					const nodeTypes = NodeTypes();
 
-					const returnData: INodeTypeDescription[] = [];
-					nodeInfos.forEach((nodeInfo) => {
-						const nodeType = nodeTypes.getByNameAndVersion(nodeInfo.name, nodeInfo.version);
-						if (nodeType?.description) {
-							returnData.push(nodeType.description);
-						}
-					});
+					const language = config.get('defaultLocale') ?? req.headers['accept-language'] ?? 'en';
 
-					return returnData;
+					if (language === 'en') {
+						return nodeInfos.reduce<INodeTypeDescription[]>((acc, { name, version }) => {
+							const { description } = nodeTypes.getByNameAndVersion(name, version);
+							if (description) acc.push(description);
+							return acc;
+						}, []);
+					}
+
+					// add node translations where available
+					return nodeInfos.reduce<INodeTypeDescription[]>((acc, { name, version }) => {
+						const { description, sourcePath } = nodeTypes.getWithPath(name, version);
+						const mainTranslationPath = getTranslationPath(sourcePath, language);
+
+						if (description && existsSync(mainTranslationPath)) {
+							description.translation = require(mainTranslationPath);
+						}
+
+						if (description) acc.push(description);
+						return acc;
+					}, []);
 				},
 			),
 		);

@@ -170,7 +170,7 @@ import {
 	IExecutionsSummary,
 } from '../Interface';
 import { mapGetters } from 'vuex';
-import { loadLanguage } from '@/i18n';
+import { loadLanguage, addNodeTranslation } from '@/i18n';
 
 const NODE_SIZE = 100;
 const DEFAULT_START_POSITION_X = 250;
@@ -2384,8 +2384,16 @@ export default mixins(
 				if (nodesToBeFetched.length > 0) {
 					// Only call API if node information is actually missing
 					this.startLoading();
-					const nodeInfo = await this.restApi().getNodesInformation(nodesToBeFetched);
-					this.$store.commit('updateNodeTypes', nodeInfo);
+
+					const nodesInfo = await this.restApi().getNodesInformation(nodesToBeFetched);
+
+					nodesInfo.forEach(nodeInfo => {
+						if (nodeInfo.translation) {
+							addNodeTranslation(nodeInfo.translation, this.$store.getters.defaultLocale);
+						}
+					});
+
+					this.$store.commit('updateNodeTypes', nodesInfo);
 					this.stopLoading();
 				}
 			},

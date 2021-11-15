@@ -1,191 +1,211 @@
+/* tslint:disable: variable-name */
+
 // import { TranslationPath } from '@/Interface';
 import Vue from 'vue';
 
-export const renderText = Vue.extend({
-	computed: {
-		/**
-		 * Node type for the active node in `NodeView.vue`.
-		 */
-		activeNodeType (): string {
-			return this.$store.getters.activeNode.type;
-		},
-	},
+const REUSABLE_TEXT_KEY = 'reusableText';
+const CREDENTIALS_MODAL_KEY = 'credentialsModal';
+const NODE_VIEW_KEY = 'nodeView';
 
+export const renderText = Vue.extend({
 	methods: {
 		/**
-		 * Render a string of base text, i.e. a string with a **fixed path** to the value in the locale object. Allows for [interpolation](https://kazupon.github.io/vue-i18n/guide/formatting.html#named-formatting) when the localized value contains a string between curly braces.
-		 * ```js
-		 * $baseText('fixed.path.to.localized.value');
-		 * $baseText('fixed.path.to.localized.value', { interpolate: { var: arg } });
-		 * ```
+		 * Render a string of base text, i.e. a string with a fixed path to the localized value in the base text object. Optionally allows for [interpolation](https://kazupon.github.io/vue-i18n/guide/formatting.html#named-formatting) when the localized value contains a string between curly braces.
 		 */
 		$baseText(
-			key: string,
-			options?: { interpolate: { [key: string]: string } },
+			key: string, options?: { interpolate: { [key: string]: string } },
 		): string {
 			return this.$t(key, options && options.interpolate).toString();
 		},
 
 		/**
-		 * Translate a node- or credentials-specific string.
-		 * Called in-mixin by node- or credentials-specific methods,
-		 * which are called directly in Vue templates.
+		 * Render a string of dynamic text, i.e. a string with a constructed path to the localized value in the node text object, either in the credentials modal (`$credText`) or in the node view (`$nodeView`). **Private method**, to be called only from the two namespaces within this mixin.
 		 */
-		translateSpecific(
+		__render(
 			{ key, fallback }: { key: string, fallback: string },
-		): string {
+		) {
 			return this.$te(key) ? this.$t(key).toString() : fallback;
 		},
+	},
 
-		// -----------------------------------------
-		//           node-specific methods
-		// -----------------------------------------
+	computed: {
+		$credText () {
+			const { credentialTextRenderKeys: keys } = this.$store.getters;
+			const nodeType = keys ? keys.nodeType : '';
+			const credentialType = keys ? keys.credentialType : '';
+			const credentialPrefix = `${nodeType}.${CREDENTIALS_MODAL_KEY}.${credentialType}`;
+			const context = this;
 
-		/**
-		 * Translate a top-level node parameter name, i.e. leftmost parameter in `NodeView.vue`.
-		 */
-		$translateNodeParameterName(
-			{ name: parameterName, displayName }: { name: string; displayName: string; },
-		) {
-			return this.translateSpecific({
-				key: `${this.activeNodeType}.parameters.${parameterName}.displayName`,
-				fallback: displayName,
-			});
+			return {
+
+				/**
+				 * Display name for a top-level parameter in the credentials modal.
+				 */
+				topParameterDisplayName(
+					{ name: parameterName, displayName }: { name: string; displayName: string; },
+				) {
+					if (['clientId', 'clientSecret'].includes(parameterName)) {
+						return context.__render({
+							key: `${REUSABLE_TEXT_KEY}.oauth2.${parameterName}`,
+							fallback: displayName,
+						});
+					}
+
+					return context.__render({
+						key: `${credentialPrefix}.${parameterName}.displayName`,
+						fallback: displayName,
+					});
+				},
+
+				/**
+				 * Description for a top-level parameter in the credentials modal.
+				 */
+				topParameterDescription(
+					{ name: parameterName, description }: { name: string; description: string; },
+				) {
+					return context.__render({
+						key: `${credentialPrefix}.${parameterName}.description`,
+						fallback: description,
+					});
+				},
+
+				/**
+				 * Display name for an option inside an `options` or `multiOptions` parameter in the credentials modal.
+				 */
+				optionsOptionDisplayName(
+					{ name: parameterName }: { name: string; },
+					{ value: optionName, name: displayName }: { value: string; name: string; },
+				) {
+					return context.__render({
+						key: `${credentialPrefix}.${parameterName}.options.${optionName}.displayName`,
+						fallback: displayName,
+					});
+				},
+
+				/**
+				 * Description for an option inside an `options` or `multiOptions` parameter in the credentials modal.
+				 */
+				optionsOptionDescription(
+					{ name: parameterName }: { name: string; },
+					{ value: optionName, description }: { value: string; description: string; },
+				) {
+					return context.__render({
+						key: `${credentialPrefix}.${parameterName}.options.${optionName}.description`,
+						fallback: description,
+					});
+				},
+
+				/**
+				 * Placeholder for a `string` or `collection` or `fixedCollection` parameter in the credentials modal.
+				 * - For a `string` parameter, the placeholder is unselectable greyed-out sample text.
+				 * - For a `collection` or `fixedCollection` parameter, the placeholder is the button text.
+				 */
+				placeholder(
+					{ name: parameterName, displayName }: { name: string; displayName: string; },
+				) {
+					return context.__render({
+						key: `${credentialPrefix}.${parameterName}.placeholder`,
+						fallback: displayName,
+					});
+				},
+			};
 		},
 
-		/**
-		 * Translate a top-level parameter description for a node or for credentials.
-		 */
-		 $translateDescription(
-			{ name: parameterName, description }: { name: string; description: string; },
-		) {
-			return this.translateSpecific({
-				key: `${this.activeNodeType}.parameters.${parameterName}.description`,
-				fallback: description,
-			});
-		},
+		$nodeText () {
+			const nodePrefix = `${this.$store.getters.activeNode.type}.${NODE_VIEW_KEY}`;
+			const context = this;
 
-		/**
-		 * Translate the name for an option in a `collection` or `fixed collection` parameter,
-		 * e.g. an option name in an "Additional Options" fixed collection.
-		 */
-		$translateCollectionOptionName(
-			{ name: parameterName }: { name: string; },
-			{ name: optionName, displayName }: { name: string; displayName: string; },
-		) {
-			return this.translateSpecific({
-				key: `${this.activeNodeType}.parameters.${parameterName}.options.${optionName}.displayName`,
-				fallback: displayName,
-			});
-		},
+			return {
+				/**
+				 * Display name for a top-level parameter in the node view.
+				 */
+				topParameterDisplayName(
+					{ name: parameterName, displayName }: { name: string; displayName: string; },
+				) {
+					return context.__render({
+						key: `${nodePrefix}.${parameterName}.displayName`,
+						fallback: displayName,
+					});
+				},
 
-		/**
-		 * Translate the label for a button that adds another field-input pair to a collection.
-		 */
-		$translateMultipleValueButtonText(
-			{ name: parameterName, typeOptions: { multipleValueButtonText } }:
-			{ name: string, typeOptions: { multipleValueButtonText: string } },
-		) {
-			return this.translateSpecific({
-				key: `${this.activeNodeType}.parameters.${parameterName}.multipleValueButtonText`,
-				fallback: multipleValueButtonText,
-			});
-		},
+				/**
+				 * Description for a top-level parameter in the node view in the node view.
+				 */
+				topParameterDescription(
+					{ name: parameterName, description }: { name: string; description: string; },
+				) {
+					return context.__render({
+						key: `${nodePrefix}.${parameterName}.description`,
+						fallback: description,
+					});
+				},
 
-		// -----------------------------------------
-		//          creds-specific methods
-		// -----------------------------------------
+				/**
+				 * Display name for an option inside a `collection` or `fixedCollection` parameter in the node view.
+				 */
+				collectionOptionDisplayName(
+					{ name: parameterName }: { name: string; },
+					{ name: optionName, displayName }: { name: string; displayName: string; },
+				) {
+					return context.__render({
+						key: `${nodePrefix}.${parameterName}.options.${optionName}.displayName`,
+						fallback: displayName,
+					});
+				},
 
-		/**
-		 * Translate a credentials property name, i.e. leftmost parameter in `CredentialsEdit.vue`.
-		 */
-		 $translateCredentialsPropertyName(
-			{ name: parameterName, displayName }: { name: string; displayName: string; },
-			{ nodeType, credentialsName }: { nodeType: string, credentialsName: string; },
-		) {
-			if (['clientId', 'clientSecret'].includes(parameterName)) {
-				return this.$t(`oauth2.${parameterName}`);
-			}
+				/**
+				 * Display name for an option inside an `options` or `multiOptions` parameter in the node view.
+				 */
+				optionsOptionDisplayName(
+					{ name: parameterName }: { name: string; },
+					{ value: optionName, name: displayName }: { value: string; name: string; },
+				) {
+					return context.__render({
+						key: `${nodePrefix}.${parameterName}.options.${optionName}.displayName`,
+						fallback: displayName,
+					});
+				},
 
-			return this.translateSpecific({
-				key: `${nodeType}.credentials.${credentialsName}.${parameterName}.displayName`,
-				fallback: displayName,
-			});
-		},
+				/**
+				 * Description for an option inside an `options` or `multiOptions` parameter in the node view.
+				 */
+				optionsOptionDescription(
+					{ name: parameterName }: { name: string; },
+					{ value: optionName, description }: { value: string; description: string; },
+				) {
+					return context.__render({
+						key: `${nodePrefix}.${parameterName}.options.${optionName}.description`,
+						fallback: description,
+					});
+				},
 
-		/**
-		 * Translate a credentials property description, i.e. label tooltip in `CredentialsEdit.vue`.
-		 */
-		$translateCredentialsPropertyDescription(
-			{ name: parameterName, description }: { name: string; description: string; },
-			{ nodeType, credentialsName }: { nodeType: string, credentialsName: string; },
-		) {
-			return this.translateSpecific({
-				key: `${nodeType}.credentials.${credentialsName}.${parameterName}.description`,
-				fallback: description,
-			});
-		},
+				/**
+				 * Text for a button to add another option inside a `collection` or `fixedCollection` parameter having`multipleValues: true` in the node view.
+				 */
+				multipleValueButtonText(
+					{ name: parameterName, typeOptions: { multipleValueButtonText } }:
+					{ name: string; typeOptions: { multipleValueButtonText: string; } },
+				) {
+					return context.__render({
+						key: `${nodePrefix}.${parameterName}.multipleValueButtonText`,
+						fallback: multipleValueButtonText,
+					});
+				},
 
-		// -----------------------------------------
-		//     node- and creds-specific methods
-		// -----------------------------------------
-
-		/**
-		 * Translate the placeholder inside the input field for a string-type parameter.
-		 */
-		$translatePlaceholder(
-			{ name: parameterName, placeholder }: { name: string; placeholder: string; },
-			isCredential = false,
-			{ nodeType, credentialsName } = { nodeType: '', credentialsName: '' },
-		) {
-			const key = isCredential
-				? `${nodeType}.credentials.${credentialsName}.placeholder`
-				: `${this.activeNodeType}.parameters.${parameterName}.placeholder`;
-
-			return this.translateSpecific({
-				key,
-				fallback: placeholder,
-			});
-		},
-
-		/**
-		 * Translate the name for an option in an `options` parameter,
-		 * e.g. an option name in a "Resource" or "Operation" dropdown menu.
-		 */
-		$translateOptionsOptionName(
-			{ name: parameterName }: { name: string },
-			{ value: optionName, name: displayName }: { value: string; name: string; },
-			isCredential = false,
-			{ nodeType, credentialsName } = { nodeType: '', credentialsName: '' },
-		) {
-			const key = isCredential
-				? `${nodeType}.credentials.${credentialsName}.options.${optionName}.displayName`
-				: `${this.activeNodeType}.parameters.${parameterName}.options.${optionName}.displayName`;
-
-			return this.translateSpecific({
-				key,
-				fallback: displayName,
-			});
-		},
-
-		/**
-		 * Translate the description for an option in an `options` parameter,
-		 * e.g. an option name in a "Resource" or "Operation" dropdown menu.
-		 */
-		$translateOptionsOptionDescription(
-			{ name: parameterName }: { name: string },
-			{ value: optionName, description }: { value: string; description: string; },
-			isCredential = false,
-			{ nodeType, credentialsName } = { nodeType: '', credentialsName: '' },
-		) {
-			const key = isCredential
-				? `${nodeType}.credentials.${credentialsName}.options.${optionName}.description`
-				: `${this.activeNodeType}.parameters.${parameterName}.options.${optionName}.description`;
-
-			return this.translateSpecific({
-				key,
-				fallback: description,
-			});
+				/**
+				 * Placeholder for a `string` or `collection` or `fixedCollection` parameter in the node view.
+				 * - For a `string` parameter, the placeholder is unselectable greyed-out sample text.
+				 * - For a `collection` or `fixedCollection` parameter, the placeholder is the button text.
+				 */
+				placeholder(
+					{ name: parameterName, placeholder }: { name: string; placeholder: string; },
+				) {
+					return context.__render({
+						key: `${nodePrefix}.${parameterName}.placeholder`,
+						fallback: placeholder,
+					});
+				},
+			};
 		},
 	},
 });

@@ -2,24 +2,27 @@ import Vue from 'vue';
 import VueI18n from 'vue-i18n';
 import englishBaseText from './locales/en';
 import axios from 'axios';
+import path from 'path';
 
 Vue.use(VueI18n);
 
+// TODO i18n: Remove next line
 console.log('About to initialize i18n'); // eslint-disable-line no-console
 
 export const i18n = new VueI18n({
 	locale: 'en',
 	fallbackLocale: 'en',
-	messages: englishBaseText,
+	messages: { en: englishBaseText },
 	silentTranslationWarn: true,
 });
 
 const loadedLanguages = ['en'];
 
-function setLanguage(language: string): string {
+function setLanguage(language: string) {
 	i18n.locale = language;
 	axios.defaults.headers.common['Accept-Language'] = language;
 	document!.querySelector('html')!.setAttribute('lang', language);
+
 	return language;
 }
 
@@ -36,21 +39,30 @@ export async function loadLanguage(language?: string) {
 		return Promise.resolve(setLanguage(language));
 	}
 
-	const { default: { [language]: messages }} = require(`./locales/${language}`);
-	i18n.setLocaleMessage(language, messages);
+	const baseText = require(`./locales/${language}`).default; // TODO i18n: `path.join()`
+	console.log(baseText);
+	i18n.setLocaleMessage(language, baseText);
 	loadedLanguages.push(language);
 
 	return setLanguage(language);
 }
 
-export function addNodeTranslations(translations: { [key: string]: string | object }) {
-	const lang = Object.keys(translations)[0];
-	const messages = translations[lang];
+export function addNodeTranslation(
+	nodeTranslation: { [key: string]: object },
+	language: string,
+) {
 	const newNodesBase = {
 		'n8n-nodes-base': Object.assign(
-			i18n.messages[lang]['n8n-nodes-base'],
-			messages,
+			i18n.messages[language]['n8n-nodes-base'] || {},
+			nodeTranslation,
 		),
 	};
-	i18n.setLocaleMessage(lang, Object.assign(i18n.messages[lang], newNodesBase));
+
+	// TODO i18n: Remove next line
+	console.log('newNodesBase', newNodesBase); // eslint-disable-line no-console
+
+	i18n.setLocaleMessage(
+		language,
+		Object.assign(i18n.messages[language], newNodesBase),
+	);
 }
