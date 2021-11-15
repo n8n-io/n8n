@@ -372,20 +372,34 @@
 		params = params || {};
 		this.type = "N8nCustom";
 
+		params.stub = params.stub == null ? 30 : params.stub;
+
 		var _super = _jp.Connectors.N8nAbstractConnector.apply(this, arguments),
 			majorAnchor = params.curviness || 150,
-			minorAnchor = 10;
+			minorAnchor = 10,
+			segments,
+			midpoint = params.midpoint == null ? 0.5 : params.midpoint,
+			alwaysRespectStubs = params.alwaysRespectStubs === true,
+			loopbackVerticalLength = params.loopbackVerticalLength || 0,
+			lastx = null, lasty = null,
+			cornerRadius = params.cornerRadius != null ? params.cornerRadius : 0,
+			loopbackMinimum = params.loopbackMinimum || 100;
 
 		this._compute = function (paintInfo) {
+			if (paintInfo.tx < 0) {
+				this._computeFlowchart(paintInfo);
+			}
+			else {
+				this._computeBezier(paintInfo);
+			}
+		};
+
+		this._computeBezier = function (paintInfo) {
 			var sp = paintInfo.sourcePos,
 				tp = paintInfo.targetPos,
 				_w = Math.abs(sp[0] - tp[0]),
 				_h = Math.abs(sp[1] - tp[1]);
 
-			this._computeBezier(paintInfo, sp, tp, _w, _h);
-		};
-
-		this._computeBezier = function (paintInfo, sp, tp, _w, _h) {
 			var _CP, _CP2,
 				_sx = sp[0] < tp[0] ? _w : 0,
 				_sy = sp[1] < tp[1] ? _h : 0,
@@ -400,37 +414,24 @@
 				cp1x: _CP[0], cp1y: _CP[1], cp2x: _CP2[0], cp2y: _CP2[1],
 			});
 		};
-	};
 
-	var Flowchart = function (params) {
-		params.stub = params.stub == null ? 30 : params.stub;
-		params.getEndpointOffset = params.getEndpointOffset;
-		var segments,
-			_super = _jp.Connectors.N8nAbstractConnector.apply(this, arguments),
-			midpoint = params.midpoint == null ? 0.5 : params.midpoint,
-			alwaysRespectStubs = params.alwaysRespectStubs === true,
-			loopbackVerticalLength = params.loopbackVerticalLength || 0,
-			lastx = null, lasty = null,
-			cornerRadius = params.cornerRadius != null ? params.cornerRadius : 0,
-			loopbackMinimum = params.loopbackMinimum || 100,
+		/**
+		 * helper method to add a segment.
+		 */
+		const addFlowchartSegment = function (segments, x, y, paintInfo) {
+			if (lastx === x && lasty === y) {
+				return;
+			}
+			var lx = lastx == null ? paintInfo.sx : lastx,
+				ly = lasty == null ? paintInfo.sy : lasty,
+				o = lx === x ? "v" : "h";
 
-			/**
-			 * helper method to add a segment.
-			 */
-			addFlowchartSegment = function (segments, x, y, paintInfo) {
-				if (lastx === x && lasty === y) {
-					return;
-				}
-				var lx = lastx == null ? paintInfo.sx : lastx,
-					ly = lasty == null ? paintInfo.sy : lasty,
-					o = lx === x ? "v" : "h";
+			lastx = x;
+			lasty = y;
+			segments.push([ lx, ly, x, y, o ]);
+		};
 
-				lastx = x;
-				lasty = y;
-				segments.push([ lx, ly, x, y, o ]);
-			};
-
-		this._compute = function (paintInfo) {
+		this._computeFlowchart = function (paintInfo) {
 
 			segments = [];
 			lastx = null;
@@ -462,7 +463,7 @@
 		};
 	};
 
-	_jp.Connectors.N8nCustom = Flowchart;
+	_jp.Connectors.N8nCustom = N8nCustom;
 	_ju.extend(_jp.Connectors.N8nCustom, _jp.Connectors.N8nAbstractConnector);
 
 
