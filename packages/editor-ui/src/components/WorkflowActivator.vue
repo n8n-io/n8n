@@ -1,6 +1,7 @@
 <template>
 	<div class="workflow-activator">
 		<el-switch
+			v-if="!disabled"
 			v-loading="loading"
 			element-loading-spinner="el-icon-loading"
 			:value="workflowActive"
@@ -10,6 +11,19 @@
 			:active-color="getActiveColor"
 			inactive-color="#8899AA">
 		</el-switch>
+		<n8n-tooltip v-else placement="bottom">
+			<div slot="content">This workflow has no trigger nodes that require activation</div>
+			<el-switch
+			v-loading="loading"
+			element-loading-spinner="el-icon-loading"
+			:value="workflowActive"
+			@change="activeChanged"
+			:title="workflowActive?'Deactivate Workflow':'Activate Workflow'"
+				:disabled="true"
+			:active-color="getActiveColor"
+			inactive-color="#8899AA">
+		</el-switch>
+		</n8n-tooltip>
 
 		<div class="could-not-be-started" v-if="couldNotBeStarted">
 			<n8n-tooltip placement="top">
