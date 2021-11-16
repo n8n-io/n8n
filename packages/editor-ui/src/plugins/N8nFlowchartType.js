@@ -1,3 +1,13 @@
+/**
+ * Custom connector type
+ * Based on jsplumb Flowchart and Bezier types
+ *
+ * https://github.com/jsplumb/jsplumb
+ * https://github.com/jsplumb/jsplumb/blob/fb5fce52794fa52306825bdaa62bf3855cdfd7e0/src/connectors-flowchart.js
+ * https://github.com/jsplumb/jsplumb/blob/fb5fce52794fa52306825bdaa62bf3855cdfd7e0/src/connectors-bezier.js
+ *
+ * Dual licensed under the MIT and GPL2 licenses.
+ */
 (function () {
 
 	"use strict";
@@ -7,15 +17,14 @@
 
 	/**
 	 * Custom connector type
-	 * Based on jsplumb Flowchart and Bezier types
 	 *
-	 * @param stub {number} length of stub segments
-	 * @param getEndpointOffset {Function} callback to offset stub length based on endpoint
-	 * @param midpoint {number} float percent of halfway point of segments
-	 * @param loopbackVerticalLength {number} height of vertical segment when looping
+	 * @param stub {number} length of stub segments in flowchart
+	 * @param getEndpointOffset {Function} callback to offset stub length based on endpoint in flowchart
+	 * @param midpoint {number} float percent of halfway point of segments in flowchart
+	 * @param loopbackVerticalLength {number} height of vertical segment when looping in flowchart
 	 * @param cornerRadius {number} radius of flowchart connectors
-	 * @param loopbackMinimum {number} minimum threshold before looping behavior takes effect
-	 * @param gap {number | [number, number]} gap between connector and source/target endpoints
+	 * @param loopbackMinimum {number} minimum threshold before looping behavior takes effect in flowchart
+	 * @param targetGap {number} gap between connector and target endpoint in both flowchart and bezier
 	 */
 	const N8nCustom = function (params) {
 		params = params || {};
@@ -23,6 +32,7 @@
 
 		params.stub = params.stub == null ? 30 : params.stub;
 
+		// temp
 		if (!window.localStorage.getItem('BEZIER_CURVINESS_COEFFICIENT')) {
 			window.localStorage.setItem('BEZIER_CURVINESS_COEFFICIENT', '0.25');
 		}
@@ -43,7 +53,7 @@
 			loopbackMinimum = params.loopbackMinimum || 100,
 			curvinessCoeffient = parseFloat(window.localStorage.getItem('BEZIER_CURVINESS_COEFFICIENT')),
 			zBezierOffset = parseFloat(window.localStorage.getItem('BEZIER_Z_OFFSET')),
-			gap = params.gap || 0,
+			targetGap = params.targetGap || 0,
 			stub = params.stub || 0;
 
 		const STRAIGHT_LINE_MINIMUM = 20;
@@ -65,7 +75,7 @@
 		};
 
 		this._compute = function (originalPaintInfo, params) {
-			const paintInfo = _getPaintInfo(params, { gap, stub, overrideTargetEndpoint: this.overrideTargetEndpoint });
+			const paintInfo = _getPaintInfo(params, { targetGap, stub, overrideTargetEndpoint: this.overrideTargetEndpoint });
 			Object.keys(paintInfo).forEach((key) => {
 				// override so that bounding box is calculated correctly wheen target override is set
 				originalPaintInfo[key] = paintInfo[key];
@@ -385,7 +395,7 @@
 		return lineCalculators['opposite'](paintInfo, {axis, startStub, otherStartStub, endStub, otherEndStub, idx, oidx, midx, midy});
 	}
 
-	function _getPaintInfo(params, { gap, stub, overrideTargetEndpoint }) {
+	function _getPaintInfo(params, { targetGap, stub, overrideTargetEndpoint }) {
 		let { targetPos, targetEndpoint } = params;
 
 		if (
@@ -395,9 +405,7 @@
 			targetEndpoint = overrideTargetEndpoint;
 		}
 
-		gap = gap || 0;
-		const sourceGap = _ju.isArray(gap) ? gap[0] : gap;
-		const targetGap = _ju.isArray(gap) ? gap[1] : gap;
+		const sourceGap = 0;
 
 		stub = stub || 0;
 		const sourceStub = _ju.isArray(stub) ? stub[0] : stub;
@@ -457,6 +465,7 @@
 			sourceAxis: so[0] === 0 ? "y" : "x",
 			points: [x, y, w, h, sx, sy, tx, ty ],
 			stubs:[sourceStubWithOffset, targetStubWithOffset],
+			anchorOrientation: "opposite", // always opposite since our endpoints are always opposite (source orientation is left (1) and target orientaiton is right (-1))
 
 			/** custom keys added */
 			sourceEndpoint: params.sourceEndpoint,
@@ -465,7 +474,7 @@
 			targetPos: targetEndpoint.anchor.getCurrentLocation(),
 			targetGap,
 		};
-		result.anchorOrientation = result.opposite ? "opposite" : result.orthogonal ? "orthogonal" : "perpendicular";
+
 		return result;
 	};
 
