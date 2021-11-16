@@ -47,8 +47,6 @@
 			targetGap = params.targetGap || 0,
 			stub = params.stub || 0;
 
-		const STRAIGHT_LINE_MINIMUM = 20;
-
 		/**
 		 * Set target endpoint
 		 * (to override default behavior tracking mouse when dragging mouse)
@@ -92,10 +90,7 @@
 				_tx = sp[0] < tp[0] ? 0 : _w,
 				_ty = sp[1] < tp[1] ? 0 : _h;
 
-			if (paintInfo.ySpan <= STRAIGHT_LINE_MINIMUM) {
-				majorAnchor = 0.1;
-			}
-			else if (paintInfo.ySpan <= 100 && paintInfo.xSpan <= 100) {
+			if (paintInfo.ySpan <= 100 || (paintInfo.ySpan <= 100 && paintInfo.xSpan <= 100)) {
 				majorAnchor = 0.1;
 			}
 			else {
