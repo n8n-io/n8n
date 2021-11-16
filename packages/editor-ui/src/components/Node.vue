@@ -521,9 +521,4 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 	z-index: 10;
 }
 
-.disabled .node-icon img {
-	-webkit-filter: contrast(40%) brightness(1.5) grayscale(100%);
-	filter: contrast(40%) brightness(1.5) grayscale(100%);
-}
-
 </style>
