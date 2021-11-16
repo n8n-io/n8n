@@ -1217,6 +1217,9 @@ export default mixins(
 				if (this.getConnection(sourceNodeName, sourceNodeOutputIndex, targetNodeName, targetNodeOuputIndex)) {
 					return;
 				}
+				if (sourceNodeName === 'Start' && targetNodeName === 'Set') {
+					console.log('connecting two nodes', sourceNodeName, sourceNodeOutputIndex, targetNodeName, targetNodeOuputIndex);
+				}
 
 				const connectionData = [
 					{
@@ -1254,7 +1257,7 @@ export default mixins(
 					await Vue.nextTick();
 
 					if (lastSelectedConnection && lastSelectedConnection.__meta) {
-						this.instance.deleteConnection(lastSelectedConnection); // mutation applied by connectionAborted event
+						this.__deleteJSPlumbConnection(lastSelectedConnection);
 
 						const targetNodeName = lastSelectedConnection.__meta.targetNodeName;
 						const targetOutputIndex = lastSelectedConnection.__meta.targetOutputIndex;
@@ -1425,8 +1428,7 @@ export default mixins(
 							CanvasHelpers.addConnectionActionsOverlay(info.connection,
 								() => {
 									activeConnection = null;
-									this.pullConnActiveNodeName = null;
-									this.instance.deleteConnection(info.connection); // store mutation applied by connectionDetached event
+									this.__deleteJSPlumbConnection(info.connection);
 								},
 								() => {
 									setTimeout(() => {
@@ -1693,14 +1695,19 @@ export default mixins(
 
 					// @ts-ignore
 					connections.forEach((connectionInstance) => {
-						// Make sure to remove the overlay else after the second move
-						// it visibly stays behind free floating without a connection.
-						connectionInstance.removeOverlays();
-						this.instance.deleteConnection(connectionInstance);
+						this.__deleteJSPlumbConnection(connectionInstance);
 					});
 				}
 
 				this.$store.commit('removeConnection', { connection });
+			},
+			__deleteJSPlumbConnection(connection: Connection) {
+				// Make sure to remove the overlay else after the second move
+				// it visibly stays behind free floating without a connection.
+				connection.removeOverlays();
+
+				this.pullConnActiveNodeName = null; // prevent new connections when connectionDetached is triggered
+				this.instance.deleteConnection(connection); // on delete, triggers connectionDetached event which applies mutation to store
 			},
 			__removeConnectionByConnectionInfo (info: OnConnectionBindInfo, removeVisualConnection = false) {
 				// @ts-ignore
@@ -1722,7 +1729,7 @@ export default mixins(
 				] as [IConnection, IConnection];
 
 				if (removeVisualConnection) {
-					this.instance.deleteConnection(info.connection);
+					this.__deleteJSPlumbConnection(info.connection);
 				}
 
 				this.$store.commit('removeConnection', { connection: connectionInfo });
