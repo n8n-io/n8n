@@ -11,7 +11,7 @@ import {
 	PrimaryGeneratedColumn,
 	UpdateDateColumn,
 } from 'typeorm';
-import { IsEmail, Length } from 'class-validator';
+import { IsEmail } from 'class-validator';
 import { IDataObject } from 'n8n-workflow';
 import config = require('../../../config');
 import { DatabaseType } from '../..';
@@ -60,15 +60,13 @@ export class User {
 	@IsEmail()
 	email: string;
 
-	@Column({ length: 32 })
-	@Length(1, 32, { message: 'First name must be 1 to 32 characters long.' })
+	@Column({ length: 32, nullable: true })
 	firstName: string;
 
-	@Column({ length: 32 })
-	@Length(1, 32, { message: 'Last name must be 1 to 32 characters long.' })
+	@Column({ length: 32, nullable: true })
 	lastName: string;
 
-	@Column()
+	@Column({ nullable: true })
 	password: string;
 
 	@Column({ nullable: true })
