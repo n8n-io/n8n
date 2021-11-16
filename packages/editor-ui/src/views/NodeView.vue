@@ -1305,6 +1305,7 @@ export default mixins(
 							const outputIndex = connection.getParameters().index;
 
 							this.connectTwoNodes(sourceNodeName, outputIndex, this.pullConnActiveNodeName, 0);
+							this.pullConnActiveNodeName = null;
 							return;
 						}
 
@@ -1503,6 +1504,14 @@ export default mixins(
 						CanvasHelpers.resetInputLabelPosition(info.targetEndpoint);
 						info.connection.removeOverlays();
 						this.__removeConnectionByConnectionInfo(info, false);
+
+						if (this.pullConnActiveNodeName) { // establish new connection when dragging connection from one node to another
+							const sourceNodeName = this.$store.getters.getNodeNameByIndex(info.connection.sourceId.slice(NODE_NAME_PREFIX.length));
+							const outputIndex = info.connection.getParameters().index;
+
+							this.connectTwoNodes(sourceNodeName, outputIndex, this.pullConnActiveNodeName, 0);
+							this.pullConnActiveNodeName = null;
+						}
 					} catch (e) {
 						console.error(e); // eslint-disable-line no-console
 					}
