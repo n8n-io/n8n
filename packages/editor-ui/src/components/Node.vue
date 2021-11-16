@@ -17,7 +17,7 @@
 			</div>
 
 			<n8n-tooltip placement="top" :manual="true" :value="showWebhookNodeTooltip" popper-class="node-tooltip">
-				<div slot="content" v-html="`Waiting for you to create an event in ${getTrimmedWebhookNodeName()}`"></div>
+				<div slot="content" v-text="getTriggerNodeTooltip()"></div>
 				<span />
 			</n8n-tooltip>
 
@@ -102,6 +102,9 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 		},
 		isTriggerNode (): boolean {
 			return this.nodeType !== null ? this.nodeType.group.includes('trigger') : false;
+		},
+		isTriggerNodeTooltipEmpty () : boolean {
+			return this.nodeType !== null ? this.nodeType.eventTriggerDescription === '' : false;
 		},
 		nodeType (): INodeTypeDescription | null {
 			return this.$store.getters.nodeType(this.data.type);
@@ -203,7 +206,7 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 		},
 		workflowRunning: {
 			handler(isWorkflowRunning) {
-				if (isWorkflowRunning && this.isTriggerNode && this.isSingleActiveTriggerNode) {
+				if (isWorkflowRunning && this.isTriggerNode && this.isSingleActiveTriggerNode && !this.isTriggerNodeTooltipEmpty) {
 					setTimeout(() => {
 						this.showWebhookNodeTooltip = isWorkflowRunning;
 					}, 2500);
@@ -249,6 +252,13 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 				// Wait a tick else vue causes problems because the data is gone
 				this.$emit('duplicateNode', this.data.name);
 			});
+		},
+		getTriggerNodeTooltip (): string | undefined {
+			if (this.nodeType !== null && this.nodeType.hasOwnProperty('eventTriggerDescription')) {
+				return this.nodeType.eventTriggerDescription;
+			} else {
+				return `Waiting for you to create an event in ${this.getTrimmedWebhookNodeName()}`;
+			}
 		},
 		getTrimmedWebhookNodeName() {
 			return this.name.replace(/Trigger/g, "");
