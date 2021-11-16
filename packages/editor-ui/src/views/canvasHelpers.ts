@@ -700,6 +700,9 @@ export const moveBackInputLabelPosition = (targetEndpoint: Endpoint) => {
 };
 
 export const addConnectionActionsOverlay = (connection: Connection, onDelete: Function, onAdd: Function) => {
+	if (getOverlay(connection, OVERLAY_CONNECTION_ACTIONS_ID)) {
+		return; // avoid free floating actions when dragging connection from one node to another
+	}
 	connection.addOverlay([
 		'Label',
 		{

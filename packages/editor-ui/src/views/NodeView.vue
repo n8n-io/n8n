@@ -1490,10 +1490,6 @@ export default mixins(
 						] as [IConnection, IConnection];
 
 						this.__removeConnection(connectionInfo, false);
-
-						// Make sure to remove the overlay else after the second move
-						// it visibly stays behind free floating without a connection.
-						info.connection.removeOverlays();
 					} catch (e) {
 						console.error(e); // eslint-disable-line no-console
 					}
@@ -1696,6 +1692,9 @@ export default mixins(
 
 					// @ts-ignore
 					connections.forEach((connectionInstance) => {
+						// Make sure to remove the overlay else after the second move
+						// it visibly stays behind free floating without a connection.
+						connectionInstance.removeOverlays();
 						this.instance.deleteConnection(connectionInstance);
 					});
 				}
