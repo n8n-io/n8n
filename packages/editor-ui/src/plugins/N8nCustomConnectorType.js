@@ -33,7 +33,7 @@
 		params.stub = params.stub == null ? 30 : params.stub;
 
 		var _super = _jp.Connectors.AbstractConnector.apply(this, arguments),
-			minorAnchor = 10, // seems to be angle at which connector leaves endpoint
+			minorAnchor = 0, // seems to be angle at which connector leaves endpoint
 			majorAnchor = 0, // translates to curviness of bezier curve
 			segments,
 			midpoint = params.midpoint == null ? 0.5 : params.midpoint,
@@ -93,7 +93,9 @@
 				_ty = sp[1] < tp[1] ? 0 : _h;
 
 			if (paintInfo.ySpan <= STRAIGHT_LINE_MINIMUM) {
-				minorAnchor = 0.1;
+				majorAnchor = 0.1;
+			}
+			else if (paintInfo.ySpan <= 100 && paintInfo.xSpan <= 100) {
 				majorAnchor = 0.1;
 			}
 			else {
