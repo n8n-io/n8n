@@ -1358,9 +1358,7 @@ export default mixins(
 							targetOutputIndex: targetInfo.index,
 						};
 
-						info.connection.setPaintStyle(CanvasHelpers.CONNECTOR_PAINT_STYLE_DEFAULT);
-
-						CanvasHelpers.showOrHideMidpointArrow(info.connection);
+						CanvasHelpers.resetConnection(info.connection);
 
 						if (this.isReadOnly === false) {
 							let exitTimer: NodeJS.Timeout | undefined;
@@ -1517,6 +1515,7 @@ export default mixins(
 					try {
 						this.pullConnActive = true;
 						this.newNodeInsertPosition = null;
+						CanvasHelpers.resetConnection(connection);
 						CanvasHelpers.addOverlays(connection, CanvasHelpers.CONNECTOR_DROP_NODE_OVERLAY);
 						const nodes = [...document.querySelectorAll('.node-default')];
 
