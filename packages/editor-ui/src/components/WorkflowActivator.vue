@@ -14,15 +14,15 @@
 		<n8n-tooltip v-else placement="bottom">
 			<div slot="content">This workflow has no trigger nodes that require activation</div>
 			<el-switch
-			v-loading="loading"
-			element-loading-spinner="el-icon-loading"
-			:value="workflowActive"
-			@change="activeChanged"
-			:title="workflowActive?'Deactivate Workflow':'Activate Workflow'"
+				v-loading="loading"
+				element-loading-spinner="el-icon-loading"
+				:value="workflowActive"
+				@change="activeChanged"
+				:title="workflowActive?'Deactivate Workflow':'Activate Workflow'"
 				:disabled="true"
-			:active-color="getActiveColor"
-			inactive-color="#8899AA">
-		</el-switch>
+				:active-color="getActiveColor"
+				inactive-color="#8899AA">
+			</el-switch>
 		</n8n-tooltip>
 
 		<div class="could-not-be-started" v-if="couldNotBeStarted">
@@ -43,11 +43,15 @@ import { showMessage } from '@/components/mixins/showMessage';
 import { workflowHelpers } from '@/components/mixins/workflowHelpers';
 import {
 	IWorkflowDataUpdate,
+	INodeUi,
 } from '../Interface';
 
 import mixins from 'vue-typed-mixins';
 import { mapGetters } from "vuex";
+import {
+	INodeTypeDescription,
 } from 'n8n-workflow';
+import { ElMessageBoxOptions } from 'element-ui/types/message-box';
 
 export default mixins(
 	externalHooks,
@@ -66,6 +70,7 @@ export default mixins(
 			data () {
 				return {
 					loading: false,
+					showSuccessDialog: false,
 				};
 			},
 			computed: {
@@ -92,7 +97,7 @@ export default mixins(
 					return !this.containsTrigger;
 				},
 				containsTrigger(): boolean {
-					const foundNodes = this.$store.getters.allNodes.map(({type}) => this.$store.getters.nodeType(type));
+					const foundNodes = this.$store.getters.allNodes.map(({ type }: INodeUi) => this.$store.getters.nodeType(type));
 					return foundNodes.filter(((type: INodeTypeDescription) => type.group.includes('trigger'))).length > 0;
 				},
 			},
@@ -173,6 +178,44 @@ export default mixins(
 
 					if (newActiveState === true) {
 						this.$store.commit('setWorkflowActive', this.workflowId);
+
+						// Show activation dialog
+						const foundTriggers = this.$store.getters.allNodes
+							.map(({ type }: INodeUi) => this.$store.getters.nodeType(type))
+							.filter(((type: INodeTypeDescription) => type.group.includes('trigger')));
+						let alertTriggerContent = 'Your trigger will now fire production executions automatically.';
+						// if multiple triggers
+						if (foundTriggers.length > 1) {
+							alertTriggerContent = 'Your triggers will now fire production executions automatically.';
+						} else {
+							const trigger = foundTriggers[0];
+							//check if webhook
+							if (this.$store.getters.currentWorkflowHasWebhookNode) {
+								if (trigger.name === 'Webhook') {
+									// check if a standard Webhook trigger
+									alertTriggerContent = 'You can now make calls to your production webhook URL.';
+								} else {
+									alertTriggerContent = `Your workflow will now listen for events from ${trigger.displayName}.`;
+								}
+							} else if (trigger.polling) {
+								//check if a polling trigger
+								alertTriggerContent = `Your workflow will now check ${trigger.displayName} for events on a regular basis.`;
+							} else if (trigger.displayName === 'Cron') {
+								// check if a standard Cron trigger
+								alertTriggerContent = 'Your cron trigger will now run on the schedule you have defined.';
+							} else if (trigger.displayName === 'Interval') {
+								// check if a standard Interval trigger
+								alertTriggerContent = 'Your interval trigger will now run on the schedule you have defined.';
+							}
+						}
+						const options: ElMessageBoxOptions  = {
+							confirmButtonText: 'Got it',
+							dangerouslyUseHTMLString: true,
+						};
+						const alertMessage = '<p><b>These executions will not show up immediately in the editor</b>, but you can see them in the <a>execution list</a>.</p>';
+
+						this.$alert(`${alertTriggerContent} ${alertMessage}`, 'Workflow activated', options);
+						this.showSuccessDialog = true;
 					} else {
 						this.$store.commit('setWorkflowInactive', this.workflowId);
 					}
