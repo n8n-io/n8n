@@ -60,12 +60,16 @@
 		<ModalRoot :name="WORKFLOW_SETTINGS_MODAL_KEY">
 			<WorkflowSettings />
 		</ModalRoot>
+
+		<ModalRoot :name="EXECUTIONS_MODAL_KEY">
+			<ExecutionsList />
+		</ModalRoot>
 	</div>
 </template>
 
 <script lang="ts">
 import Vue from "vue";
-import { CONTACT_PROMPT_MODAL_KEY, CREDENTIAL_LIST_MODAL_KEY, DUPLICATE_MODAL_KEY, TAGS_MANAGER_MODAL_KEY, PERSONALIZATION_MODAL_KEY, WORKFLOW_OPEN_MODAL_KEY, VERSIONS_MODAL_KEY, CREDENTIAL_EDIT_MODAL_KEY, CREDENTIAL_SELECT_MODAL_KEY, WORKFLOW_SETTINGS_MODAL_KEY, VALUE_SURVEY_MODAL_KEY } from '@/constants';
+import { CONTACT_PROMPT_MODAL_KEY, CREDENTIAL_LIST_MODAL_KEY, DUPLICATE_MODAL_KEY, EXECUTIONS_MODAL_KEY, PERSONALIZATION_MODAL_KEY, TAGS_MANAGER_MODAL_KEY, WORKFLOW_OPEN_MODAL_KEY, VERSIONS_MODAL_KEY, CREDENTIAL_EDIT_MODAL_KEY, CREDENTIAL_SELECT_MODAL_KEY, WORKFLOW_SETTINGS_MODAL_KEY, VALUE_SURVEY_MODAL_KEY } from '@/constants';
 
 import ContactPromptModal from './ContactPromptModal.vue';
 import CredentialEdit from "./CredentialEdit/CredentialEdit.vue";
@@ -79,6 +83,7 @@ import UpdatesPanel from "./UpdatesPanel.vue";
 import ValueSurvey from "./ValueSurvey.vue";
 import WorkflowSettings from "./WorkflowSettings.vue";
 import WorkflowOpen from "./WorkflowOpen.vue";
+import ExecutionsList from "./ExecutionsList.vue";
 
 export default Vue.extend({
 	name: "Modals",
@@ -95,6 +100,7 @@ export default Vue.extend({
 		ValueSurvey,
 		WorkflowSettings,
 		WorkflowOpen,
+		ExecutionsList,
 	},
 	data: () => ({
 		CONTACT_PROMPT_MODAL_KEY,
@@ -108,6 +114,7 @@ export default Vue.extend({
 		WORKFLOW_OPEN_MODAL_KEY,
 		WORKFLOW_SETTINGS_MODAL_KEY,
 		VALUE_SURVEY_MODAL_KEY,
+		EXECUTIONS_MODAL_KEY,
 	}),
 });
 </script>

@@ -1,6 +1,12 @@
 <template>
-	<span>
-		<el-dialog :visible="dialogVisible" append-to-body width="80%" :title="`${$locale.baseText('executionsList.workflowExecutions')} ${combinedExecutions.length}/${finishedExecutionsCountEstimated === true ? '~' : ''}${combinedExecutionsCount}`" :before-close="closeDialog">
+	<Modal
+		:name="EXECUTIONS_MODAL_KEY"
+		width="80%"
+		:title="`${$locale.baseText('executionsList.workflowExecutions')} ${combinedExecutions.length}/${finishedExecutionsCountEstimated === true ? '~' : ''}${combinedExecutionsCount}`"
+		:closeDialog="closeDialog"
+	>
+		<template v-slot:content>
+
 			<div class="filters">
 				<el-row>
 					<el-col :span="2" class="filter-headline">
@@ -153,9 +159,8 @@
 			<div class="load-more" v-if="finishedExecutionsCount > finishedExecutions.length || finishedExecutionsCountEstimated === true">
 				<n8n-button icon="sync" :title="$locale.baseText('executionsList.loadMore')" :label="$locale.baseText('executionsList.loadMore')" @click="loadMore()" :loading="isDataLoading" />
 			</div>
-
-		</el-dialog>
-	</span>
+		</template>
+	</Modal>
 </template>
 
 <script lang="ts">
@@ -163,6 +168,7 @@ import Vue from 'vue';
 
 import ExecutionTime from '@/components/ExecutionTime.vue';
 import WorkflowActivator from '@/components/WorkflowActivator.vue';
+import Modal from '@/components/Modal.vue';
 
 import { externalHooks } from '@/components/mixins/externalHooks';
 import { WAIT_TIME_UNLIMITED } from '@/constants';
@@ -193,6 +199,9 @@ import {
 
 import mixins from 'vue-typed-mixins';
 
+import { EXECUTIONS_MODAL_KEY } from '@/constants';
+
+
 export default mixins(
 	externalHooks,
 	genericHelpers,
@@ -206,6 +215,7 @@ export default mixins(
 	components: {
 		ExecutionTime,
 		WorkflowActivator,
+		Modal,
 	},
 	data () {
 		return {
@@ -230,6 +240,7 @@ export default mixins(
 
 			stoppingExecutions: [] as string[],
 			workflows: [] as IWorkflowShortResponse[],
+			EXECUTIONS_MODAL_KEY,
 		};
 	},
 	computed: {

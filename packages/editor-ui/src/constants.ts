@@ -28,6 +28,7 @@ export const CREDENTIAL_LIST_MODAL_KEY = 'credentialsList';
 export const PERSONALIZATION_MODAL_KEY = 'personalization';
 export const CONTACT_PROMPT_MODAL_KEY = 'contactPrompt';
 export const VALUE_SURVEY_MODAL_KEY = 'valueSurvey';
+export const EXECUTIONS_MODAL_KEY = 'executions';
 
 // breakpoints
 export const BREAKPOINT_SM = 768;

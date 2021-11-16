@@ -166,7 +166,7 @@ import { saveAs } from 'file-saver';
 import mixins from 'vue-typed-mixins';
 import { mapGetters } from 'vuex';
 import MenuItemsIterator from './MainSidebarMenuItemsIterator.vue';
-import { CREDENTIAL_LIST_MODAL_KEY, CREDENTIAL_SELECT_MODAL_KEY, DUPLICATE_MODAL_KEY, TAGS_MANAGER_MODAL_KEY, VERSIONS_MODAL_KEY, WORKFLOW_SETTINGS_MODAL_KEY, WORKFLOW_OPEN_MODAL_KEY } from '@/constants';
+import { CREDENTIAL_LIST_MODAL_KEY, CREDENTIAL_SELECT_MODAL_KEY, DUPLICATE_MODAL_KEY, TAGS_MANAGER_MODAL_KEY, VERSIONS_MODAL_KEY, WORKFLOW_SETTINGS_MODAL_KEY, WORKFLOW_OPEN_MODAL_KEY, EXECUTIONS_MODAL_KEY } from '@/constants';
 
 export default mixins(
 	genericHelpers,
@@ -506,7 +506,7 @@ export default mixins(
 						this.openWorkflow(this.workflowExecution.workflowId as string);
 					}
 				} else if (key === 'executions') {
-					this.executionsListDialogVisible = true;
+					this.$store.dispatch('ui/openModal', EXECUTIONS_MODAL_KEY);
 				}
 			},
 		},
