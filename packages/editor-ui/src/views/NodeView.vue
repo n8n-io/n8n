@@ -1330,6 +1330,7 @@ export default mixins(
 						// check for duplicates
 						if (this.getConnection(sourceNodeName, sourceInfo.index, targetNodeName, targetInfo.index)) {
 							this.dropPrevented = true;
+							this.pullConnActiveNodeName = null;
 							return false;
 						}
 
@@ -1424,6 +1425,7 @@ export default mixins(
 							CanvasHelpers.addConnectionActionsOverlay(info.connection,
 								() => {
 									activeConnection = null;
+									this.pullConnActiveNodeName = null;
 									this.instance.deleteConnection(info.connection); // store mutation applied by connectionDetached event
 								},
 								() => {
@@ -1513,6 +1515,7 @@ export default mixins(
 				// @ts-ignore
 				this.instance.bind('connectionDrag', (connection: Connection) => {
 					try {
+						this.pullConnActiveNodeName = null;
 						this.pullConnActive = true;
 						this.newNodeInsertPosition = null;
 						CanvasHelpers.resetConnection(connection);
