@@ -444,7 +444,7 @@ export default mixins(
 				});
 
 				if (!hasStartNode) {
-					data.workflow.nodes.push(CanvasHelpers.DEFAULT_START_NODE);
+					data.workflow.nodes.push({...CanvasHelpers.DEFAULT_START_NODE});
 				}
 
 				this.blankRedirect = true;
@@ -1576,7 +1576,7 @@ export default mixins(
 				await this.$store.dispatch('workflows/setNewWorkflowName');
 				this.$store.commit('setStateDirty', false);
 
-				await this.addNodes([CanvasHelpers.DEFAULT_START_NODE]);
+				await this.addNodes([{...CanvasHelpers.DEFAULT_START_NODE}]);
 
 				this.nodeSelectedByName(CanvasHelpers.DEFAULT_START_NODE.name, false);
 
