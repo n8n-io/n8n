@@ -70,7 +70,6 @@ export default mixins(
 			data () {
 				return {
 					loading: false,
-					showSuccessDialog: false,
 				};
 			},
 			computed: {
@@ -213,9 +212,7 @@ export default mixins(
 							dangerouslyUseHTMLString: true,
 						};
 						const alertMessage = '<p><b>These executions will not show up immediately in the editor</b>, but you can see them in the <a>execution list</a>.</p>';
-
 						this.$alert(`${alertTriggerContent} ${alertMessage}`, 'Workflow activated', options);
-						this.showSuccessDialog = true;
 					} else {
 						this.$store.commit('setWorkflowInactive', this.workflowId);
 					}
