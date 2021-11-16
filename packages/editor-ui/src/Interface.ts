@@ -42,6 +42,7 @@ declare module 'jsplumb' {
 			targetNodeName: string,
 			targetOutputIndex: number,
 		};
+		canvas?: HTMLElement;
 		connector?: {
 			setTargetEndpoint: (endpoint: Endpoint) => void;
 			resetTargetEndpoint: () => void;

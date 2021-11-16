@@ -554,19 +554,15 @@ export const resetConnection = (connection: Connection) => {
 	connection.removeOverlay(OVERLAY_RUN_ITEMS_ID);
 	connection.setPaintStyle(CONNECTOR_PAINT_STYLE_DEFAULT);
 	showOrHideMidpointArrow(connection);
-	// @ts-ignore
 	if (connection.canvas) {
-		// @ts-ignore
-		(connection.canvas as Element).classList.remove('success');
+		connection.canvas.classList.remove('success');
 	}
 };
 
 export const addConnectionOutputSuccess = (connection: Connection, output: {total: number, iterations: number}) => {
 	connection.setPaintStyle(CONNECTOR_PAINT_STYLE_SUCCESS);
-	// @ts-ignore
 	if (connection.canvas) {
-		// @ts-ignore
-		(connection.canvas as Element).classList.add('success');
+		connection.canvas.classList.add('success');
 	}
 
 	if (getOverlay(connection, OVERLAY_RUN_ITEMS_ID)) {
