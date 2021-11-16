@@ -167,8 +167,7 @@ import {
 	IExecutionsSummary,
 } from '../Interface';
 import { mapGetters } from 'vuex';
-import { getStyleTokenValue } from '@/components/helpers';
-import '../plugins/N8nFlowchartType';
+import '../plugins/N8nCustomConnectorType';
 
 export default mixins(
 	copyPaste,
