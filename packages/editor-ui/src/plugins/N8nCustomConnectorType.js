@@ -32,15 +32,6 @@
 
 		params.stub = params.stub == null ? 30 : params.stub;
 
-		// temp
-		if (!window.localStorage.getItem('BEZIER_CURVINESS_COEFFICIENT')) {
-			window.localStorage.setItem('BEZIER_CURVINESS_COEFFICIENT', '0.25');
-		}
-
-		if (!window.localStorage.getItem('BEZIER_Z_OFFSET')) {
-			window.localStorage.setItem('BEZIER_Z_OFFSET', '75');
-		}
-
 		var _super = _jp.Connectors.AbstractConnector.apply(this, arguments),
 			minorAnchor = 10, // seems to be angle at which connector leaves endpoint
 			majorAnchor = 0, // translates to curviness of bezier curve
@@ -51,8 +42,8 @@
 			lastx = null, lasty = null,
 			cornerRadius = params.cornerRadius != null ? params.cornerRadius : 0,
 			loopbackMinimum = params.loopbackMinimum || 100,
-			curvinessCoeffient = parseFloat(window.localStorage.getItem('BEZIER_CURVINESS_COEFFICIENT')),
-			zBezierOffset = parseFloat(window.localStorage.getItem('BEZIER_Z_OFFSET')),
+			curvinessCoeffient = 0.4,
+			zBezierOffset = 40,
 			targetGap = params.targetGap || 0,
 			stub = params.stub || 0;
 
