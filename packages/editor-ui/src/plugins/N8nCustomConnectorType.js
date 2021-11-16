@@ -90,7 +90,7 @@
 				_tx = sp[0] < tp[0] ? 0 : _w,
 				_ty = sp[1] < tp[1] ? 0 : _h;
 
-			if (paintInfo.ySpan <= 100 || (paintInfo.ySpan <= 100 && paintInfo.xSpan <= 100)) {
+			if (paintInfo.ySpan <= 20 || (paintInfo.ySpan <= 100 && paintInfo.xSpan <= 100)) {
 				majorAnchor = 0.1;
 			}
 			else {
