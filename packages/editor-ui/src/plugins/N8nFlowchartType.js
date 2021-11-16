@@ -42,8 +42,8 @@
 		}
 
 		var _super = _jp.Connectors.AbstractConnector.apply(this, arguments),
-			minorAnchor = 10,
-			majorAnchor = 0,
+			minorAnchor = 10, // seems to be angle at which connector leaves endpoint
+			majorAnchor = 0, // translates to curviness of bezier curve
 			segments,
 			midpoint = params.midpoint == null ? 0.5 : params.midpoint,
 			alwaysRespectStubs = params.alwaysRespectStubs === true,
