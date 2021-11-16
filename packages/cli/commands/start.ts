@@ -303,7 +303,49 @@ export class Start extends Command {
 					const port = config.get('port');
 
 					// @ts-ignore
-					const webhookTunnel = await localtunnel(port, tunnelSettings);
+					let webhookTunnel = await localtunnel(port, tunnelSettings);
+
+					// TODO: THIS IS JUST A POC!
+					const tunnelErrorFunction = async (error) => {
+						console.error('There was a problem with tunnel', error);
+						let reconnected = false as boolean;
+						for (let i = 0; i < 10; i++) {
+							console.error('Try to reconnect...');
+							// eslint-disable-next-line no-await-in-loop, @typescript-eslint/no-loop-func
+							await new Promise<void>((resolve) =>
+								setTimeout(async () => {
+									reconnected = true;
+									try {
+										console.log(`Try to reconnect... (${i + 1}/10)`);
+										// @ts-ignore
+										webhookTunnel = await localtunnel(port, tunnelSettings);
+
+										// @ts-ignore
+										// eslint-disable-next-line id-denylist
+										webhookTunnel.on('error', tunnelErrorFunction);
+
+										// eslint-disable-next-line id-denylist
+									} catch (err) {
+										console.log('Reconnect failed', error);
+									}
+									resolve();
+								}, 3000),
+							);
+
+							if (reconnected) {
+								break;
+							}
+						}
+
+						if (!reconnected) {
+							console.error('Could not reconnect to tunnel');
+							process.exit(processExitCode);
+						}
+					};
+
+					// @ts-ignore
+					// eslint-disable-next-line id-denylist
+					webhookTunnel.on('error', tunnelErrorFunction);
 
 					process.env.WEBHOOK_URL = `${webhookTunnel.url}/`;
 					this.log(`Tunnel URL: ${process.env.WEBHOOK_URL}\n`);
