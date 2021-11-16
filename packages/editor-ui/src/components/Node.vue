@@ -321,7 +321,7 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 			height: 100%;
 			border: 2px solid var(--color-foreground-xdark);
 			border-radius: var(--border-radius-large);
-			background-color: #fff;
+			background-color: var(--color-background-xlight);
 
 			&.executing {
 				background-color: $--color-primary-light !important;
