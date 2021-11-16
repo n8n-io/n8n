@@ -30,6 +30,7 @@ import {
 	additionalData
 } from './AdditionalInfo';
 
+var querystring = require('querystring');
 var request = require("request")
 import FormData = require('form-data');
 
@@ -55,36 +56,36 @@ export class Akaunting implements INodeType {
 			},
 		],
 		properties: [
-		{
-			displayName: 'Resource',
-			name: 'resource',
-			type: 'options',
-			options: [
-				{
-					name: 'Payment',
-					value: 'payment',
-				},
-				{
-					name: 'Revenue',
-					value: 'revenue',
-				},
-				{
-					name: 'Vendor',
-					value: 'vendor',
-				},
-				{
-					name: 'Customer',
-					value: 'customer',
-				},
-			],
-			default: 'payment',
-			description: 'The resource to operate on.',
-		},
-		...transactionOperations,
-		...transactionFields,
-		...contactOperations,
-		...contactFields,
-		...additionalData,
+			{
+				displayName: 'Resource',
+				name: 'resource',
+				type: 'options',
+				options: [
+					{
+						name: 'Payment',
+						value: 'payment',
+					},
+					{
+						name: 'Revenue',
+						value: 'revenue',
+					},
+					{
+						name: 'Vendor',
+						value: 'vendor',
+					},
+					{
+						name: 'Customer',
+						value: 'customer',
+					},
+				],
+				default: 'payment',
+				description: 'The resource to operate on.',
+			},
+			...transactionOperations,
+			...transactionFields,
+			...contactOperations,
+			...contactFields,
+			...additionalData,
 		],
 	};
 
@@ -108,9 +109,9 @@ export class Akaunting implements INodeType {
 				body.append("company_id", credentials.company_id)
 				body.append("page", 1)
 				body.append("limit", 100)
-				const headers : {} = body.getHeaders()
+				const headers: {} = body.getHeaders()
 
-				const accounts = await apiCall.call(this, {}, 'GET', "/api/accounts",{}, body);
+				const accounts = await apiCall.call(this, {}, 'GET', "/api/accounts", {}, body);
 
 				for (const account of accounts.data) {
 					returnData.push({
@@ -144,21 +145,19 @@ export class Akaunting implements INodeType {
 				body.append("company_id", credentials.company_id)
 				body.append("page", 1)
 				body.append("limit", 100)
-				const headers : {} = body.getHeaders()
+				const headers: {} = body.getHeaders()
 
-				const categories = await apiCall.call(this, {}, 'GET', "/api/categories",{}, body);
+				const categories = await apiCall.call(this, {}, 'GET', "/api/categories", {}, body);
 
 				let resource = this.getCurrentNodeParameter('resource') as string;
 				for (const category of categories.data) {
-					if (resource == "payment" && category.type == "expense" )
-					{
+					if (resource == "payment" && category.type == "expense") {
 						returnData.push({
 							name: category.name,
 							value: category.id,
 						});
 					}
-					else if (resource == "revenue" && category.type == "income" )
-					{
+					else if (resource == "revenue" && category.type == "income") {
 						returnData.push({
 							name: category.name,
 							value: category.id,
@@ -193,16 +192,15 @@ export class Akaunting implements INodeType {
 		const returnData: IDataObject[] = [];
 
 		for (let i = 0; i < length; i++) {
-			try{
+			try {
 				let resource = this.getNodeParameter('resource', i) as string;
 				let operation = this.getNodeParameter('operation', i) as string;
-				let responseData : IDataObject
+				let responseData: IDataObject
 
 				let body = new FormData()
-				body.append("company_id", credentials.company_id)
-				if(resource=="payment" || resource=="revenue"){
+				if (resource == "payment" || resource == "revenue") {
+					if (operation == "create") {
 
-					if (operation=="create"){
 						let account_id = this.getNodeParameter('account_id', i) as number
 						let category_id = this.getNodeParameter('category_id', i) as number
 						let paid_at = this.getNodeParameter('paid_at', i) as string
@@ -212,6 +210,7 @@ export class Akaunting implements INodeType {
 						let currency_rate = this.getNodeParameter('currency_rate', i) as string
 						const additional = this.getNodeParameter('additional', i) as IDataObject;
 
+						body.append("company_id", credentials.company_id)
 						body.append("account_id", account_id)
 						body.append("category_id", category_id)
 						body.append("paid_at", paid_at)
@@ -245,82 +244,102 @@ export class Akaunting implements INodeType {
 							body.append("contact_name", additional.contact_name)
 						}
 
-						const headers : {} = body.getHeaders()
-						if(resource=="payment"){
-							body.append("search","type:expense")
-							body.append("type","expense")
+						const headers: {} = body.getHeaders()
+						if (resource == "payment") {
+							body.append("search", "type:expense")
+							body.append("type", "expense")
 
 							responseData = await apiCall.call(this, {}, "POST", "/api/transactions", {}, body)
 						}
-						else if(resource=="revenue"){
-							body.append("search","type:income")
+						else if (resource == "revenue") {
+							body.append("search", "type:income")
 							body.append("type", "income")
 
 							responseData = await apiCall.call(this, {}, "POST", "/api/transactions", {}, body);
-						}else{
+						} else {
 							throw new NodeOperationError(this.getNode(), `The resource "${resource}" is not known!`);
 						}
 					}
-					else if (operation=="getAll"){
+					else if (operation == "getAll") {
 
-						const headers : {} = body.getHeaders()
-						if(resource=="payment"){
-							body.append("search","type:expense")
-							body.append("type","expense")
-
-							responseData = await apiCall.call(this, {}, "GET", "/api/transactions", {}, body)
+						if (resource == "payment") {
+							const params = {
+								company_id: credentials.company_id,
+								search: "type:expense",
+								page: 1,
+								limit: 100
+							}
+							const qs = querystring.stringify(params)
+							responseData = await apiCall.call(this, {}, "GET", "/api/transactions", qs, body)
 						}
-						else if(resource=="revenue"){
-							body.append("search","type:income")
-							body.append("type", "income")
-
-							responseData = await apiCall.call(this, {}, "GET", "/api/transactions", {}, body);
-						}else{
+						else if (resource == "revenue") {
+							const params = {
+								company_id: credentials.company_id,
+								search: "type:income",
+								page: 1,
+								limit: 100
+							}
+							const qs = querystring.stringify(params)
+							responseData = await apiCall.call(this, {}, "GET", "/api/transactions", qs, body);
+						} else {
 							throw new NodeOperationError(this.getNode(), `The resource "${resource}" is not known!`);
 						}
 					}
-					else{
+					else {
 						throw new NodeOperationError(this.getNode(), `The resource "${operation}" is not known!`);
 					}
 
 					returnData.push(responseData as IDataObject)
 				}
 
-				if(resource=="vendor" || resource=="customer"){
+				if (resource == "vendor" || resource == "customer") {
 
-					const headers : {} = body.getHeaders()
-					console.log(headers)
-					if(resource=="vendor"){
-						body.append("search","type:vendor")
-					}
-					else if(resource=="customer"){
-						body.append("search","type:customer")
-					}else{
-						throw new NodeOperationError(this.getNode(), `The resource "${resource}" is not known!`);
-					}
-
-					if (operation=="create"){
+					if (operation == "create") {
+						if (resource == "vendor") {
+							body.append("search", "type:vendor")
+						}
+						else if (resource == "customer") {
+							body.append("search", "type:customer")
+						} else {
+							throw new NodeOperationError(this.getNode(), `The resource "${resource}" is not known!`);
+						}
+						body.append("company_id", credentials.company_id)
 						let name = this.getNodeParameter('contact_name', i) as number
 						body.append("name", name)
 						responseData = await apiCall.call(this, {}, "POST", "/api/contacts", {}, body)
+						returnData.push(responseData as IDataObject)
 					}
-					else if (operation=="getAll"){
-						body.append("page", 1)
-						body.append("limit", 100)
-						console.log(`Options ${JSON.stringify(body)}`)
-						console.log(body.toString())
-						console.log(body)
-						responseData = await apiCall.call(this, {}, "GET", "/api/contacts", {}, body)
-					}
-					else{
-						throw new NodeOperationError(this.getNode(), `The resource "${operation}" is not known!`);
-					}
-					returnData.push(responseData as IDataObject)
-				}
+					else if (operation == "getAll") {
+						let params = {}
+						if (resource == "vendor") {
+							params = {
+								company_id: credentials.company_id,
+								search: "type:vendor",
+								page: 1,
+								limit: 100
+							}
+						}
+						else if (resource == "customer")
+						{
+							params = {
+								company_id: credentials.company_id,
+								search: "type:customer",
+								page: 1,
+								limit: 100
+							}
+						}
+						else {
+							throw new NodeOperationError(this.getNode(), `The resource "${operation}" is not known!`);
+						}
+						const qs = querystring.stringify(params)
+						console.log(qs)
+						responseData = await apiCall.call(this, {}, "GET", "/api/contacts", qs, body)
+						returnData.push(responseData as IDataObject)
 
+					}
+				}
 			}
-			catch (error)
-			{
+			catch (error) {
 				if (this.continueOnFail()) {
 					returnData.push({ error: error.message });
 					continue;

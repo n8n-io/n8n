@@ -41,7 +41,7 @@ var request = require('request')
  	}
 
  	try {
- 		let url = `${credentials.url}${url_api}`
+ 		let url = `${credentials.url}${url_api}?${qs}`
 		let basic = Buffer.from(`${credentials.username}:${credentials.password}`, 'utf8').toString('base64')
 		let length = await new Promise<number>((resolve, error)=>{
 			body.getLength((err:any, l:number)=>{
@@ -53,22 +53,41 @@ var request = require('request')
 			})
 		})
 
-		headers = {
-			'Authorization':`Basic ${basic}`,
-			'Content-Length':length,
-			...body.getHeaders()
+		if(method == 'POST')
+		{
+			headers = {
+				'Authorization':`Basic ${basic}`,
+				'Content-Length':length,
+
+				...body.getHeaders()
+			}
+			const options: OptionsWithUri = {
+				method,
+				formData:body,
+				uri:url,
+			 json: true,
+				headers : headers,
+			};
+			console.log(`Options ${JSON.stringify(options)}`)
+ 			return await this.helpers.request!(options);
+		}
+		else if (method == 'GET')
+		{
+			headers = {
+				'Authorization':`Basic ${basic}`
+			}
+
+			const options = {
+				uri:url,
+				headers : headers,
+			};
+			console.log(`Options ${JSON.stringify(options)}`)
+			return await this.helpers.request!(options);
 		}
 
-    const options: OptionsWithUri = {
- 			method,
- 			formData:body,
- 			uri:url,
-			json: true,
- 			headers : headers,
- 		};
-		// console.log(`Options ${JSON.stringify(options)}`)
 
- 		return await this.helpers.request!(options);
+
+
  	} catch (error) {
  		throw new NodeApiError(this.getNode(), error);
  	}
