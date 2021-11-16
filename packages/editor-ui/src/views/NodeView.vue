@@ -1217,9 +1217,6 @@ export default mixins(
 				if (this.getConnection(sourceNodeName, sourceNodeOutputIndex, targetNodeName, targetNodeOuputIndex)) {
 					return;
 				}
-				if (sourceNodeName === 'Start' && targetNodeName === 'Set') {
-					console.log('connecting two nodes', sourceNodeName, sourceNodeOutputIndex, targetNodeName, targetNodeOuputIndex);
-				}
 
 				const connectionData = [
 					{
