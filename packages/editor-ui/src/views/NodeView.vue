@@ -2469,7 +2469,6 @@ export default mixins(
 	width: 200px;
 	bottom: 45px;
 	line-height: 25px;
-	z-index: 18;
 	color: #444;
 	padding-right: 5px;
 
@@ -2491,7 +2490,6 @@ export default mixins(
 	text-align: center;
 	top: 80px;
 	right: 20px;
-	z-index: 10;
 }
 
 .node-creator-button button {
@@ -2603,7 +2601,6 @@ export default mixins(
 	font-size: 0.8em;
 	text-align: center;
 	background-color: #ffffff55;
-	z-index: 9; /** more than connector in hover state */
 }
 
 .node-input-endpoint-label,
@@ -2637,7 +2634,6 @@ export default mixins(
 }
 
 .connection-actions {
-	z-index: 9;
 	&:hover {
 		display: block !important;
 	}

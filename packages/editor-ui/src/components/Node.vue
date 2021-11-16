@@ -509,7 +509,15 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 	z-index: 9;
 }
 
+.connection-actions {
+	z-index: 10;
+}
+
 .node-options {
+	z-index: 10;
+}
+
+.drop-add-node-label {
 	z-index: 10;
 }
 
