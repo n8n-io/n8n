@@ -326,7 +326,7 @@ export const showOrHideMidpointArrow = (connection: Connection) => {
 	const targetEndpoint = connection.endpoints[1];
 
 	const sourcePosition = sourceEndpoint.anchor.lastReturnValue[0];
-	const targetPosition = targetEndpoint.anchor.lastReturnValue[0];
+	const targetPosition = targetEndpoint.anchor.lastReturnValue ? targetEndpoint.anchor.lastReturnValue[0] : 0; // lastReturnValue is null when moving connections from node to another
 
 	const minimum = hasItemsLabel ? 150 : 0;
 	const isBackwards = sourcePosition >= targetPosition;
