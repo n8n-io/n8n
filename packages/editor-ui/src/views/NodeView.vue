@@ -1686,7 +1686,9 @@ export default mixins(
 				await this.$store.dispatch('workflows/setNewWorkflowName');
 				this.$store.commit('setStateDirty', false);
 
-				await this.addNodes([DEFAULT_START_NODE]);
+				const nodes = [{...DEFAULT_START_NODE}];
+
+				await this.addNodes(nodes);
 				this.$store.commit('setStateDirty', false);
 
 				this.setZoomLevel(1);
