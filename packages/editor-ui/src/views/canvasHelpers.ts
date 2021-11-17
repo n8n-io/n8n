@@ -48,7 +48,7 @@ export const DEFAULT_START_NODE = {
 };
 
 export const CONNECTOR_FLOWCHART_TYPE = ['N8nCustom', {
-	cornerRadius: 4,
+	cornerRadius: 12,
 	stub: JSPLUMB_FLOWCHART_STUB + 10,
 	targetGap: 4,
 	alwaysRespectStubs: false,
