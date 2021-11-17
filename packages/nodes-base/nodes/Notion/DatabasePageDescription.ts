@@ -48,7 +48,7 @@ export const databasePageOperations = [
 export const databasePageFields = [
 
 	/* -------------------------------------------------------------------------- */
-	/*                                databasePage:create                       */
+	/*                                databasePage:create                         */
 	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Database ID',
@@ -422,13 +422,57 @@ export const databasePageFields = [
 						default: 'default',
 						description: 'Time zone to use. By default n8n timezone is used.',
 					},
+					{
+						displayName: 'File URLs',
+						name: 'fileUrls',
+						placeholder: 'Add File',
+						type: 'fixedCollection',
+						typeOptions: {
+							multipleValues: true,
+							sortable: true,
+						},
+						displayOptions: {
+							show: {
+								'/version': [
+									2,
+								],
+								type: [
+									'files',
+								],
+							},
+						},
+						description: 'The operations to perform.',
+						default: {},
+						options: [
+							{
+								name: 'fileUrl',
+								displayName: 'File',
+								values: [
+									{
+										displayName: 'Name',
+										name: 'name',
+										type: 'string',
+										default: '',
+										description: 'File Name',
+									},
+									{
+										displayName: 'File URL',
+										name: 'url',
+										type: 'string',
+										default: '',
+										description: 'Link to externally hosted file',
+									},
+								],
+							},
+						],
+					},
 				],
 			},
 		],
 	},
 	...blocks('databasePage', 'create'),
 	/* -------------------------------------------------------------------------- */
-	/*                      databasePage:update                                 */
+	/*                      databasePage:update                                   */
 	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Page ID',
@@ -799,6 +843,50 @@ export const databasePageFields = [
 						default: 'default',
 						description: 'Time zone to use. By default n8n timezone is used.',
 					},
+					{
+						displayName: 'File URLs',
+						name: 'fileUrls',
+						placeholder: 'Add File',
+						type: 'fixedCollection',
+						typeOptions: {
+							multipleValues: true,
+							sortable: true,
+						},
+						displayOptions: {
+							show: {
+								'/version': [
+									2,
+								],
+								type: [
+									'files',
+								],
+							},
+						},
+						description: 'The operations to perform.',
+						default: {},
+						options: [
+							{
+								name: 'fileUrl',
+								displayName: 'File',
+								values: [
+									{
+										displayName: 'Name',
+										name: 'name',
+										type: 'string',
+										default: '',
+										description: 'File Name',
+									},
+									{
+										displayName: 'File URL',
+										name: 'url',
+										type: 'string',
+										default: '',
+										description: 'Link to externally hosted file',
+									},
+								],
+							},
+						],
+					},
 				],
 			},
 		],
@@ -901,6 +989,26 @@ export const databasePageFields = [
 		default: {},
 		placeholder: 'Add Field',
 		options: [
+			{
+				displayName: 'Download Files',
+				name: 'downloadFiles',
+				type: 'boolean',
+				displayOptions: {
+					show: {
+						'/version': [
+							2,
+						],
+						'/resource': [
+							'databasePage',
+						],
+						'/operation': [
+							'getAll',
+						],
+					},
+				},
+				default: false,
+				description: 'If a database field contains a file, whether to download it',
+			},
 			{
 				displayName: 'Filters',
 				name: 'filter',

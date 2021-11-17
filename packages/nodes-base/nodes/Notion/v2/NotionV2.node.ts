@@ -17,6 +17,7 @@ import {
 } from 'n8n-workflow';
 
 import {
+	downloadFiles,
 	formatBlocks,
 	formatTitle,
 	getBlockTypes,
@@ -217,6 +218,7 @@ export class NotionV2 implements INodeType {
 
 		const resource = this.getNodeParameter('resource', 0) as string;
 		const operation = this.getNodeParameter('operation', 0) as string;
+		let download = false;
 
 		if (resource === 'block') {
 
@@ -301,6 +303,7 @@ export class NotionV2 implements INodeType {
 
 			if (operation === 'getAll') {
 				for (let i = 0; i < length; i++) {
+					download = this.getNodeParameter('options.downloadFiles', 0) as boolean;
 					const simple = this.getNodeParameter('simple', 0) as boolean;
 					const databaseId = this.getNodeParameter('databaseId', i) as string;
 					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
@@ -335,8 +338,11 @@ export class NotionV2 implements INodeType {
 						responseData = await notionApiRequest.call(this, 'POST', `/databases/${databaseId}/query`, body, qs);
 						responseData = responseData.results;
 					}
+					if (download === true) {
+						responseData = await downloadFiles.call(this, responseData);
+					}
 					if (simple === true) {
-						responseData = simplifyObjects(responseData);
+						responseData = simplifyObjects(responseData, download);
 					}
 					returnData.push.apply(returnData, responseData);
 				}
@@ -456,6 +462,9 @@ export class NotionV2 implements INodeType {
 					returnData.push.apply(returnData, responseData);
 				}
 			}
+		}
+		if (download === true) {
+			return this.prepareOutputData(returnData as INodeExecutionData[]);
 		}
 		return [this.helpers.returnJsonArray(returnData)];
 	}

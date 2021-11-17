@@ -10,10 +10,12 @@ import {
 } from 'n8n-core';
 
 import {
+	IBinaryKeyData,
 	ICredentialDataDecryptedObject,
 	ICredentialTestFunctions,
 	IDataObject,
 	IDisplayOptions,
+	INodeExecutionData,
 	INodeProperties,
 	IPollFunctions,
 	NodeApiError,
@@ -49,8 +51,10 @@ export async function notionApiRequest(this: IHookFunctions | IExecuteFunctions 
 
 		options = Object.assign({}, options, option);
 		const credentials = await this.getCredentials('notionApi') as IDataObject;
-		options!.headers!['Authorization'] = `Bearer ${credentials.apiKey}`;
-
+		if (!uri) {
+			//do not include the API Key when downloading files, else the request fails
+			options!.headers!['Authorization'] = `Bearer ${credentials.apiKey}`;
+		} 
 		if (Object.keys(body).length === 0) {
 			delete options.body;
 		}
@@ -314,6 +318,12 @@ function getPropertyKeyValue(value: any, type: string, timezone: string) {
 				};
 			}
 			break;
+		case 'files':
+			result = {
+				type: 'files', files: value.fileUrls.fileUrl
+					.map((file: { name: string, url: string }) => ({ name: file.name, type: 'external', external: { url: file.url } })),
+			};
+			break;
 		default:
 	}
 	return result;
@@ -441,18 +451,21 @@ export function simplifyProperties(properties: any) {
 		} else if (['rollup'].includes(properties[key].type)) {
 			//TODO figure how to resolve rollup field type
 			// results[`${key}`] = properties[key][type][properties[key][type].type];
+		} else if (['files'].includes(properties[key].type)) {
+			// tslint:disable-next-line: no-any
+			results[`${key}`] = properties[key][type].map((file: { type: string, [key: string]: any }) => (file[file.type].url));
 		}
 	}
 	return results;
 }
 
 // tslint:disable-next-line: no-any
-export function simplifyObjects(objects: any) {
+export function simplifyObjects(objects: any, download = false) {
 	if (!Array.isArray(objects)) {
 		objects = [objects];
 	}
 	const results: IDataObject[] = [];
-	for (const { object, id, properties, parent, title } of objects) {
+	for (const { object, id, properties, parent, title, json, binary, url, created_time, last_edited_time } of objects) {
 		if (object === 'page' && (parent.type === 'page_id' || parent.type === 'workspace')) {
 			results.push({
 				id,
@@ -463,10 +476,18 @@ export function simplifyObjects(objects: any) {
 				id,
 				...simplifyProperties(properties),
 			});
+		} else if (download && json.object === 'page' && json.parent.type === 'database_id') {
+			results.push({
+				json: {
+					id,
+					...simplifyProperties(json.properties),
+				},
+				binary,
+			});
 		} else if (object === 'database') {
 			results.push({
 				id,
-				title: title[0].plain_text,
+				title: title[0].plain_text || '',
 			});
 		}
 	}
@@ -667,4 +688,28 @@ export function validateCrendetials(this: ICredentialTestFunctions, credentials:
 		json: true,
 	};
 	return this.helpers.request!(options);
+}
+
+// tslint:disable-next-line: no-any
+export async function downloadFiles(this: IExecuteFunctions | IPollFunctions, records: [{ properties: { [key: string]: any | { id: string, type: string, files: [{ external: { url: string } } | { file: { url: string } }] } } }]): Promise<INodeExecutionData[]> {
+	const elements: INodeExecutionData[] = [];
+	for (const record of records) {
+		const element: INodeExecutionData = { json: {}, binary: {} };
+		element.json = record as unknown as IDataObject;
+		for (const key of Object.keys(record.properties)) {
+			if (record.properties[key].type === 'files') {
+				if (record.properties[key].files.length) {
+					for (const [index, file] of record.properties[key].files.entries()) {
+						const data = await notionApiRequest.call(this, 'GET', '', {}, {}, file?.file?.url || file?.external?.url, { json: false, encoding: null });
+						element.binary![`${key}_${index}`] = await this.helpers.prepareBinaryData(data);
+					}
+				}
+			}
+		}
+		if (Object.keys(element.binary as IBinaryKeyData).length === 0) {
+			delete element.binary;
+		}
+		elements.push(element);
+	}
+	return elements;
 }

@@ -90,6 +90,12 @@ export const versionDescription: INodeTypeDescription = {
 				default: '',
 			},
 			{
+				displayName: 'Version',
+				name: 'version',
+				type: 'hidden',
+				default: 1,
+			},
+			{
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
