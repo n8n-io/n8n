@@ -1141,13 +1141,14 @@ export default mixins(
 				const lastSelectedNode = this.lastSelectedNode;
 				if (lastSelectedNode) {
 					const lastSelectedConnection = this.lastSelectedConnection;
-					if (lastSelectedConnection) {
+					if (lastSelectedConnection) { // set when injecting into a connection
 						const [diffX] = CanvasHelpers.getConnectorLengths(lastSelectedConnection);
 						if (diffX <= CanvasHelpers.MAX_X_TO_PUSH_DOWNSTREAM_NODES) {
 							this.pushDownstreamNodes(lastSelectedNode.name, CanvasHelpers.PUSH_NODES_OFFSET);
 						}
 					}
 
+					// set when pulling connections
 					if (this.newNodeInsertPosition) {
 						newNodeData.position = CanvasHelpers.getNewNodePosition(this.nodes, [this.newNodeInsertPosition[0] + CanvasHelpers.GRID_SIZE, this.newNodeInsertPosition[1] - CanvasHelpers.NODE_SIZE / 2]);
 						this.newNodeInsertPosition = null;
@@ -1169,7 +1170,7 @@ export default mixins(
 						// newNodeData.position = [activeNode.position[0], activeNode.position[1] + 60];
 						newNodeData.position = CanvasHelpers.getNewNodePosition(
 							this.nodes,
-							[lastSelectedNode.position[0] + 200, lastSelectedNode.position[1] + yOffset],
+							[lastSelectedNode.position[0] + CanvasHelpers.PUSH_NODES_OFFSET, lastSelectedNode.position[1] + yOffset],
 							[100, 0],
 						);
 					}
