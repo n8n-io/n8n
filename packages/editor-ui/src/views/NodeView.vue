@@ -167,8 +167,7 @@ import {
 	IExecutionsSummary,
 } from '../Interface';
 import { mapGetters } from 'vuex';
-import { getStyleTokenValue } from '@/components/helpers';
-import '../plugins/N8nFlowchartType';
+import '../plugins/N8nCustomConnectorType';
 import '../plugins/PlusEndpointType';
 
 export default mixins(
@@ -445,7 +444,7 @@ export default mixins(
 				});
 
 				if (!hasStartNode) {
-					data.workflow.nodes.push(CanvasHelpers.DEFAULT_START_NODE);
+					data.workflow.nodes.push({...CanvasHelpers.DEFAULT_START_NODE});
 				}
 
 				this.blankRedirect = true;
@@ -1143,15 +1142,16 @@ export default mixins(
 				const lastSelectedNode = this.lastSelectedNode;
 				if (lastSelectedNode) {
 					const lastSelectedConnection = this.lastSelectedConnection;
-					if (lastSelectedConnection) {
+					if (lastSelectedConnection) { // set when injecting into a connection
 						const [diffX] = CanvasHelpers.getConnectorLengths(lastSelectedConnection);
 						if (diffX <= CanvasHelpers.MAX_X_TO_PUSH_DOWNSTREAM_NODES) {
 							this.pushDownstreamNodes(lastSelectedNode.name, CanvasHelpers.PUSH_NODES_OFFSET);
 						}
 					}
 
+					// set when pulling connections
 					if (this.newNodeInsertPosition) {
-						newNodeData.position = CanvasHelpers.getNewNodePosition(this.nodes, [this.newNodeInsertPosition[0] + 20, this.newNodeInsertPosition[1] - CanvasHelpers.NODE_SIZE / 2]);
+						newNodeData.position = CanvasHelpers.getNewNodePosition(this.nodes, [this.newNodeInsertPosition[0] + CanvasHelpers.GRID_SIZE, this.newNodeInsertPosition[1] - CanvasHelpers.NODE_SIZE / 2]);
 						this.newNodeInsertPosition = null;
 					}
 					else {
@@ -1171,7 +1171,7 @@ export default mixins(
 						// newNodeData.position = [activeNode.position[0], activeNode.position[1] + 60];
 						newNodeData.position = CanvasHelpers.getNewNodePosition(
 							this.nodes,
-							[lastSelectedNode.position[0] + 200, lastSelectedNode.position[1] + yOffset],
+							[lastSelectedNode.position[0] + CanvasHelpers.PUSH_NODES_OFFSET, lastSelectedNode.position[1] + yOffset],
 							[100, 0],
 						);
 					}
@@ -1256,7 +1256,7 @@ export default mixins(
 					await Vue.nextTick();
 
 					if (lastSelectedConnection && lastSelectedConnection.__meta) {
-						this.instance.deleteConnection(lastSelectedConnection); // mutation applied by connectionAborted event
+						this.__deleteJSPlumbConnection(lastSelectedConnection);
 
 						const targetNodeName = lastSelectedConnection.__meta.targetNodeName;
 						const targetOutputIndex = lastSelectedConnection.__meta.targetOutputIndex;
@@ -1306,6 +1306,7 @@ export default mixins(
 							const outputIndex = connection.getParameters().index;
 
 							this.connectTwoNodes(sourceNodeName, outputIndex, this.pullConnActiveNodeName, 0);
+							this.pullConnActiveNodeName = null;
 							return;
 						}
 
@@ -1331,6 +1332,7 @@ export default mixins(
 						// check for duplicates
 						if (this.getConnection(sourceNodeName, sourceInfo.index, targetNodeName, targetInfo.index)) {
 							this.dropPrevented = true;
+							this.pullConnActiveNodeName = null;
 							return false;
 						}
 
@@ -1359,9 +1361,7 @@ export default mixins(
 							targetOutputIndex: targetInfo.index,
 						};
 
-						info.connection.setPaintStyle(CanvasHelpers.CONNECTOR_PAINT_STYLE_DEFAULT);
-
-						CanvasHelpers.showOrHideMidpointArrow(info.connection);
+						CanvasHelpers.resetConnection(info.connection);
 
 						if (this.isReadOnly === false) {
 							let exitTimer: NodeJS.Timeout | undefined;
@@ -1427,7 +1427,7 @@ export default mixins(
 							CanvasHelpers.addConnectionActionsOverlay(info.connection,
 								() => {
 									activeConnection = null;
-									this.instance.deleteConnection(info.connection); // store mutation applied by connectionDetached event
+									this.__deleteJSPlumbConnection(info.connection);
 								},
 								() => {
 									setTimeout(() => {
@@ -1490,10 +1490,6 @@ export default mixins(
 						] as [IConnection, IConnection];
 
 						this.__removeConnection(connectionInfo, false);
-
-						// Make sure to remove the overlay else after the second move
-						// it visibly stays behind free floating without a connection.
-						info.connection.removeOverlays();
 					} catch (e) {
 						console.error(e); // eslint-disable-line no-console
 					}
@@ -1504,6 +1500,14 @@ export default mixins(
 						CanvasHelpers.resetInputLabelPosition(info.targetEndpoint);
 						info.connection.removeOverlays();
 						this.__removeConnectionByConnectionInfo(info, false);
+
+						if (this.pullConnActiveNodeName) { // establish new connection when dragging connection from one node to another
+							const sourceNodeName = this.$store.getters.getNodeNameByIndex(info.connection.sourceId.slice(NODE_NAME_PREFIX.length));
+							const outputIndex = info.connection.getParameters().index;
+
+							this.connectTwoNodes(sourceNodeName, outputIndex, this.pullConnActiveNodeName, 0);
+							this.pullConnActiveNodeName = null;
+						}
 					} catch (e) {
 						console.error(e); // eslint-disable-line no-console
 					}
@@ -1512,8 +1516,10 @@ export default mixins(
 				// @ts-ignore
 				this.instance.bind('connectionDrag', (connection: Connection) => {
 					try {
+						this.pullConnActiveNodeName = null;
 						this.pullConnActive = true;
 						this.newNodeInsertPosition = null;
+						CanvasHelpers.resetConnection(connection);
 						CanvasHelpers.addOverlays(connection, CanvasHelpers.CONNECTOR_DROP_NODE_OVERLAY);
 						const nodes = [...document.querySelectorAll('.node-default')];
 
@@ -1577,7 +1583,7 @@ export default mixins(
 				await this.$store.dispatch('workflows/setNewWorkflowName');
 				this.$store.commit('setStateDirty', false);
 
-				await this.addNodes([CanvasHelpers.DEFAULT_START_NODE]);
+				await this.addNodes([{...CanvasHelpers.DEFAULT_START_NODE}]);
 
 				this.nodeSelectedByName(CanvasHelpers.DEFAULT_START_NODE.name, false);
 
@@ -1688,11 +1694,19 @@ export default mixins(
 
 					// @ts-ignore
 					connections.forEach((connectionInstance) => {
-						this.instance.deleteConnection(connectionInstance);
+						this.__deleteJSPlumbConnection(connectionInstance);
 					});
 				}
 
 				this.$store.commit('removeConnection', { connection });
+			},
+			__deleteJSPlumbConnection(connection: Connection) {
+				// Make sure to remove the overlay else after the second move
+				// it visibly stays behind free floating without a connection.
+				connection.removeOverlays();
+
+				this.pullConnActiveNodeName = null; // prevent new connections when connectionDetached is triggered
+				this.instance.deleteConnection(connection); // on delete, triggers connectionDetached event which applies mutation to store
 			},
 			__removeConnectionByConnectionInfo (info: OnConnectionBindInfo, removeVisualConnection = false) {
 				// @ts-ignore
@@ -1714,7 +1728,7 @@ export default mixins(
 				] as [IConnection, IConnection];
 
 				if (removeVisualConnection) {
-					this.instance.deleteConnection(info.connection);
+					this.__deleteJSPlumbConnection(info.connection);
 				}
 
 				this.$store.commit('removeConnection', { connection: connectionInfo });
@@ -1908,35 +1922,37 @@ export default mixins(
 					}
 				}
 
-				const nodeIndex = this.$store.getters.getNodeIndex(nodeName);
-				const nodeIdName = `node-${nodeIndex}`;
+				setTimeout(() => {
+					const nodeIndex = this.$store.getters.getNodeIndex(nodeName);
+					const nodeIdName = `node-${nodeIndex}`;
 
-				// Suspend drawing
-				this.instance.setSuspendDrawing(true);
+					// Suspend drawing
+					this.instance.setSuspendDrawing(true);
 
-				// Remove all endpoints and the connections in jsplumb
-				this.instance.removeAllEndpoints(nodeIdName);
+					// Remove all endpoints and the connections in jsplumb
+					this.instance.removeAllEndpoints(nodeIdName);
 
-				// Remove the draggable
-				// @ts-ignore
-				this.instance.destroyDraggable(nodeIdName);
+					// Remove the draggable
+					// @ts-ignore
+					this.instance.destroyDraggable(nodeIdName);
 
-				// Remove the connections in data
-				this.$store.commit('removeAllNodeConnection', node);
+					// Remove the connections in data
+					this.$store.commit('removeAllNodeConnection', node);
 
-				this.$store.commit('removeNode', node);
-				this.$store.commit('clearNodeExecutionData', node.name);
+					this.$store.commit('removeNode', node);
+					this.$store.commit('clearNodeExecutionData', node.name);
 
-				// Now it can draw again
-				this.instance.setSuspendDrawing(false, true);
+					// Now it can draw again
+					this.instance.setSuspendDrawing(false, true);
 
-				// Remove node from selected index if found in it
-				this.$store.commit('removeNodeFromSelection', node);
+					// Remove node from selected index if found in it
+					this.$store.commit('removeNodeFromSelection', node);
 
-				// Remove from node index
-				if (nodeIndex !== -1) {
-					this.$store.commit('setNodeIndex', { index: nodeIndex, name: null });
-				}
+					// Remove from node index
+					if (nodeIndex !== -1) {
+						this.$store.commit('setNodeIndex', { index: nodeIndex, name: null });
+					}
+				}, 0); // allow other events to finish like drag stop
 			},
 			valueChanged (parameterData: IUpdateInformation) {
 				if (parameterData.name === 'name' && parameterData.oldValue) {
@@ -2463,7 +2479,6 @@ export default mixins(
 	width: 200px;
 	bottom: 45px;
 	line-height: 25px;
-	z-index: 18;
 	color: #444;
 	padding-right: 5px;
 
@@ -2485,7 +2500,6 @@ export default mixins(
 	text-align: center;
 	top: 80px;
 	right: 20px;
-	z-index: 10;
 }
 
 .node-creator-button button {
@@ -2597,7 +2611,6 @@ export default mixins(
 	font-size: 0.8em;
 	text-align: center;
 	background-color: #ffffff55;
-	z-index: 9; /** more than connector in hover state */
 }
 
 .node-input-endpoint-label,
@@ -2631,7 +2644,6 @@ export default mixins(
 }
 
 .connection-actions {
-	z-index: 9;
 	&:hover {
 		display: block !important;
 	}

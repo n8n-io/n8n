@@ -31,7 +31,7 @@ export const DEFAULT_START_POSITION_Y = 300;
 export const HEADER_HEIGHT = 65;
 export const SIDEBAR_WIDTH = 65;
 export const MAX_X_TO_PUSH_DOWNSTREAM_NODES = 300;
-export const PUSH_NODES_OFFSET = GRID_SIZE * 10;
+export const PUSH_NODES_OFFSET = NODE_SIZE * 2 + GRID_SIZE;
 const LOOPBACK_MINIMUM = 140;
 export const INPUT_UUID_KEY = '-input';
 export const OUTPUT_UUID_KEY = '-output';
@@ -47,10 +47,10 @@ export const DEFAULT_START_NODE = {
 	parameters: {},
 };
 
-export const CONNECTOR_FLOWCHART_TYPE = ['N8nFlowchart', {
-	cornerRadius: 4,
+export const CONNECTOR_FLOWCHART_TYPE = ['N8nCustom', {
+	cornerRadius: 12,
 	stub: JSPLUMB_FLOWCHART_STUB + 10,
-	gap: 4,
+	targetGap: 4,
 	alwaysRespectStubs: false,
 	loopbackVerticalLength: NODE_SIZE, // height of vertical segment when looping
 	loopbackMinimum: LOOPBACK_MINIMUM, // minimum length before flowchart loops around
@@ -326,7 +326,7 @@ export const showOrHideMidpointArrow = (connection: Connection) => {
 	const targetEndpoint = connection.endpoints[1];
 
 	const sourcePosition = sourceEndpoint.anchor.lastReturnValue[0];
-	const targetPosition = targetEndpoint.anchor.lastReturnValue[0];
+	const targetPosition = targetEndpoint.anchor.lastReturnValue ? targetEndpoint.anchor.lastReturnValue[0] : sourcePosition + 1; // lastReturnValue is null when moving connections from node to another
 
 	const minimum = hasItemsLabel ? 150 : 0;
 	const isBackwards = sourcePosition >= targetPosition;
@@ -554,19 +554,15 @@ export const resetConnection = (connection: Connection) => {
 	connection.removeOverlay(OVERLAY_RUN_ITEMS_ID);
 	connection.setPaintStyle(CONNECTOR_PAINT_STYLE_DEFAULT);
 	showOrHideMidpointArrow(connection);
-	// @ts-ignore
 	if (connection.canvas) {
-		// @ts-ignore
-		(connection.canvas as Element).classList.remove('success');
+		connection.canvas.classList.remove('success');
 	}
 };
 
 export const addConnectionOutputSuccess = (connection: Connection, output: {total: number, iterations: number}) => {
 	connection.setPaintStyle(CONNECTOR_PAINT_STYLE_SUCCESS);
-	// @ts-ignore
 	if (connection.canvas) {
-		// @ts-ignore
-		(connection.canvas as Element).classList.add('success');
+		connection.canvas.classList.add('success');
 	}
 
 	if (getOverlay(connection, OVERLAY_RUN_ITEMS_ID)) {
@@ -667,7 +663,6 @@ export const showDropConnectionState = (connection: Connection, targetEndpoint?:
 		}
 		connection.setPaintStyle(CONNECTOR_PAINT_STYLE_PRIMARY);
 		hideOverlay(connection, OVERLAY_DROP_NODE_ID);
-		showOverlay(connection, OVERLAY_ENDPOINT_ARROW_ID);
 	}
 };
 
@@ -676,7 +671,6 @@ export const showPullConnectionState = (connection: Connection) => {
 		connection.connector.resetTargetEndpoint();
 		connection.setPaintStyle(CONNECTOR_PAINT_STYLE_PULL);
 		showOverlay(connection, OVERLAY_DROP_NODE_ID);
-		hideOverlay(connection, OVERLAY_ENDPOINT_ARROW_ID);
 	}
 };
 
@@ -684,7 +678,6 @@ export const resetConnectionAfterPull = (connection: Connection) => {
 	if (connection && connection.connector) {
 		connection.connector.resetTargetEndpoint();
 		connection.setPaintStyle(CONNECTOR_PAINT_STYLE_DEFAULT);
-		showOverlay(connection, OVERLAY_ENDPOINT_ARROW_ID);
 	}
 };
 
@@ -703,6 +696,9 @@ export const moveBackInputLabelPosition = (targetEndpoint: Endpoint) => {
 };
 
 export const addConnectionActionsOverlay = (connection: Connection, onDelete: Function, onAdd: Function) => {
+	if (getOverlay(connection, OVERLAY_CONNECTION_ACTIONS_ID)) {
+		return; // avoid free floating actions when moving connection from one node to another
+	}
 	connection.addOverlay([
 		'Label',
 		{

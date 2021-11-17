@@ -321,7 +321,7 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 			height: 100%;
 			border: 2px solid var(--color-foreground-xdark);
 			border-radius: var(--border-radius-large);
-			background-color: #fff;
+			background-color: var(--color-background-xlight);
 
 			&.executing {
 				background-color: $--color-primary-light !important;
@@ -509,13 +509,16 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 	z-index: 9;
 }
 
+.connection-actions {
+	z-index: 10;
+}
+
 .node-options {
 	z-index: 10;
 }
 
-.disabled .node-icon img {
-	-webkit-filter: contrast(40%) brightness(1.5) grayscale(100%);
-	filter: contrast(40%) brightness(1.5) grayscale(100%);
+.drop-add-node-label {
+	z-index: 10;
 }
 
 </style>
