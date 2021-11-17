@@ -97,9 +97,7 @@ export default mixins(
 		},
 
 		itemSelected (eventData: IVariableItemSelected) {
-			// User inserted item from Expression Editor variable selector
 			(this.$refs.inputFieldExpression as any).itemSelected(eventData); // tslint:disable-line:no-any
-
 			this.$externalHooks().run('expressionEdit.itemSelected', { parameter: this.parameter, value: this.value, selectedItem: eventData });
 		},
 	},
@@ -110,6 +108,10 @@ export default mixins(
 
 			const resolvedExpressionValue = this.$refs.expressionResult && (this.$refs.expressionResult as any).getValue() || undefined;  // tslint:disable-line:no-any
 			this.$externalHooks().run('expressionEdit.dialogVisibleChanged', { dialogVisible: newValue, parameter: this.parameter, value: this.value, resolvedExpressionValue });
+
+			if (!newValue) {
+				this.$telemetry.track('User closed Expression Editor', { empty_expression: (this.value === '=') || (this.value === '={{}}') || !this.value, workflow_id: this.$store.getters.workflowId });
+			}
 		},
 	},
 });
@@ -141,6 +143,7 @@ export default mixins(
 
 	.el-dialog__body {
 		padding: 0;
+		font-size: var(--font-size-s);
 	}
 
 	.right-side {

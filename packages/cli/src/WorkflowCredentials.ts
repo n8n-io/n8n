@@ -10,7 +10,7 @@ export async function WorkflowCredentials(nodes: INode[]): Promise<IWorkflowCred
 
 	let node;
 	let type;
-	let name;
+	let nodeCredentials;
 	let foundCredentials;
 	// eslint-disable-next-line no-restricted-syntax
 	for (node of nodes) {
@@ -21,19 +21,30 @@ export async function WorkflowCredentials(nodes: INode[]): Promise<IWorkflowCred
 
 		// eslint-disable-next-line no-restricted-syntax
 		for (type of Object.keys(node.credentials)) {
-			if (!returnCredentials.hasOwnProperty(type)) {
+			if (!returnCredentials[type]) {
 				returnCredentials[type] = {};
 			}
-			name = node.credentials[type];
+			nodeCredentials = node.credentials[type];
 
-			if (!returnCredentials[type].hasOwnProperty(name)) {
+			if (!nodeCredentials.id) {
+				throw new Error(
+					`Credentials with name "${nodeCredentials.name}" for type "${type}" miss an ID.`,
+				);
+			}
+
+			if (!returnCredentials[type][nodeCredentials.id]) {
 				// eslint-disable-next-line no-await-in-loop, @typescript-eslint/no-non-null-assertion
-				foundCredentials = await Db.collections.Credentials!.find({ name, type });
-				if (!foundCredentials.length) {
-					throw new Error(`Could not find credentials for type "${type}" with name "${name}".`);
+				foundCredentials = await Db.collections.Credentials!.findOne({
+					id: nodeCredentials.id,
+					type,
+				});
+				if (!foundCredentials) {
+					throw new Error(
+						`Could not find credentials for type "${type}" with ID "${nodeCredentials.id}".`,
+					);
 				}
 				// eslint-disable-next-line prefer-destructuring
-				returnCredentials[type][name] = foundCredentials[0];
+				returnCredentials[type][nodeCredentials.id] = foundCredentials;
 			}
 		}
 	}

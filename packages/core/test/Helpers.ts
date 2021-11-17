@@ -4,7 +4,9 @@ import {
 	ICredentialDataDecryptedObject,
 	ICredentialsHelper,
 	IDataObject,
+	IDeferredPromise,
 	IExecuteWorkflowInfo,
+	INodeCredentialsDetails,
 	INodeExecutionData,
 	INodeParameters,
 	INodeType,
@@ -19,21 +21,24 @@ import {
 	WorkflowHooks,
 } from 'n8n-workflow';
 
-import { Credentials, IDeferredPromise, IExecuteFunctions } from '../src';
+import { Credentials, IExecuteFunctions } from '../src';
 
 export class CredentialsHelper extends ICredentialsHelper {
-	getDecrypted(name: string, type: string): Promise<ICredentialDataDecryptedObject> {
+	getDecrypted(
+		nodeCredentials: INodeCredentialsDetails,
+		type: string,
+	): Promise<ICredentialDataDecryptedObject> {
 		return new Promise((res) => res({}));
 	}
 
-	getCredentials(name: string, type: string): Promise<Credentials> {
+	getCredentials(nodeCredentials: INodeCredentialsDetails, type: string): Promise<Credentials> {
 		return new Promise((res) => {
-			res(new Credentials('', '', [], ''));
+			res(new Credentials({ id: null, name: '' }, '', [], ''));
 		});
 	}
 
 	async updateCredentials(
-		name: string,
+		nodeCredentials: INodeCredentialsDetails,
 		type: string,
 		data: ICredentialDataDecryptedObject,
 	): Promise<void> {}

@@ -244,7 +244,7 @@ export const worksheetFields = [
 				],
 			},
 		},
-		description: 'Index of the first row which contains<br />the actual data and not the keys. Starts with 0.',
+		description: 'Index of the first row which contains the actual data and not the keys. Starts with 0.',
 	},
 	{
 		displayName: 'Key Row',

@@ -3,7 +3,7 @@
 		:visible="!!node"
 		:before-close="close"
 		:custom-class="`classic data-display-wrapper`"
-		width="80%"
+		width="85%"
 		append-to-body
 		@opened="showDocumentHelp = true"
 	>
@@ -94,6 +94,7 @@ export default mixins(externalHooks, nodeHelpers, workflowHelpers).extend({
 		node (node, oldNode) {
 			if(node && !oldNode) {
 				this.$externalHooks().run('dataDisplay.nodeTypeChanged', { nodeSubtitle: this.getNodeSubtitle(node, this.nodeType, this.getWorkflow()) });
+				this.$telemetry.track('User opened node modal', { node_type: this.nodeType ? this.nodeType.name : '', workflow_id: this.$store.getters.workflowId });
 			}
 		},
 	},
