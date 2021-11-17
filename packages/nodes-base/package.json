@@ -575,6 +575,7 @@
       "dist/nodes/Slack/Slack.node.js",
       "dist/nodes/Sms77/Sms77.node.js",
       "dist/nodes/Snowflake/Snowflake.node.js",
+      "dist/nodes/SplitBinaries/SplitBinaries.node.js",
       "dist/nodes/SplitInBatches/SplitInBatches.node.js",
       "dist/nodes/Splunk/Splunk.node.js",
       "dist/nodes/Spontit/Spontit.node.js",
