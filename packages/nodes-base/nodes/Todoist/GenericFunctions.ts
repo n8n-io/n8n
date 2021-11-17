@@ -44,7 +44,6 @@ export async function todoistApiRequest(
 
 			//@ts-ignore
 			options.headers['Authorization'] = `Bearer ${credentials.apiKey}`;
-
 			return this.helpers.request!(options);
 		} else {
 			//@ts-ignore
