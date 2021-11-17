@@ -16,7 +16,7 @@
 				</n8n-tooltip>
 			</div>
 
-			<n8n-tooltip placement="top" :manual="true" :value="showWebhookNodeTooltip" popper-class="node-tooltip">
+			<n8n-tooltip placement="top" :manual="true" :value="showWebhookNodeTooltip" popper-class="node-trigger-tooltip">
 				<div slot="content" v-text="getTriggerNodeTooltip()"></div>
 				<span />
 			</n8n-tooltip>
@@ -98,13 +98,16 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 			return this.$store.getters.executingNode === this.data.name;
 		},
 		isSingleActiveTriggerNode (): boolean {
-			return this.$store.getters.getActiveWorkflowTriggerNodes.length === 1 && !this.data.disabled;
+			return this.$store.getters.activeWorkflowTriggerNodes.length === 1 && !this.data.disabled;
 		},
 		isTriggerNode (): boolean {
-			return this.nodeType !== null ? this.nodeType.group.includes('trigger') : false;
+			return !!(this.nodeType && this.nodeType.group.includes('trigger'));
 		},
 		isTriggerNodeTooltipEmpty () : boolean {
 			return this.nodeType !== null ? this.nodeType.eventTriggerDescription === '' : false;
+		},
+		isNodeDisabled (): boolean | undefined {
+			return this.data.disabled;
 		},
 		nodeType (): INodeTypeDescription | null {
 			return this.$store.getters.nodeType(this.data.type);
@@ -185,7 +188,9 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 				if (this.showWebhookNodeTooltip) {
 					this.showWebhookNodeTooltip = false;
 					setTimeout(() => {
-						this.showWebhookNodeTooltip = true;
+						if (this.workflowRunning) {
+							this.showWebhookNodeTooltip = true;
+						}
 					}, 200);
 				}
 			},
@@ -197,7 +202,9 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 				if (this.showWebhookNodeTooltip) {
 					this.showWebhookNodeTooltip = false;
 					setTimeout(() => {
-						this.showWebhookNodeTooltip = true;
+						if (this.workflowRunning) {
+							this.showWebhookNodeTooltip = true;
+						}
 					}, 200);
 				}
 			},
@@ -206,15 +213,33 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 		},
 		workflowRunning: {
 			handler(isWorkflowRunning) {
-				if (isWorkflowRunning && this.isTriggerNode && this.isSingleActiveTriggerNode && !this.isTriggerNodeTooltipEmpty) {
+				if (isWorkflowRunning && this.isTriggerNode && this.isSingleActiveTriggerNode && !this.isTriggerNodeTooltipEmpty && !this.isNodeDisabled) {
 					setTimeout(() => {
-						this.showWebhookNodeTooltip = isWorkflowRunning;
+						if (!this.isNodeDisabled && !this.hasIssues) {
+							this.showWebhookNodeTooltip = this.workflowRunning;
+						}
 					}, 2500);
 				} else {
 					this.showWebhookNodeTooltip = false;
 				}
 			},
-			immediate: false,
+			immediate: true,
+		},
+		isNodeDisabled: {
+			handler(isNodeDisabled) {
+				if (this.workflowRunning && this.isTriggerNode && this.isSingleActiveTriggerNode && !this.isTriggerNodeTooltipEmpty && !this.isNodeDisabled && !this.hasIssues) {
+					this.showWebhookNodeTooltip = isNodeDisabled;
+				}
+			},
+			immediate: true,
+		},
+		isSingleActiveTriggerNode: {
+			handler(isSingleActiveTriggerNode) {
+				if (this.workflowRunning && this.isTriggerNode && !this.hasIssues) {
+					this.showWebhookNodeTooltip = isSingleActiveTriggerNode;
+				}
+			},
+			immediate: true,
 		},
 	},
 	mounted() {
@@ -455,7 +480,7 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 	}
 }
 
-.node-tooltip {
+.node-trigger-tooltip {
 	max-width: 160px;
 }
 </style>
