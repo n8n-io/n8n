@@ -1920,35 +1920,37 @@ export default mixins(
 					}
 				}
 
-				const nodeIndex = this.$store.getters.getNodeIndex(nodeName);
-				const nodeIdName = `node-${nodeIndex}`;
+				setTimeout(() => {
+					const nodeIndex = this.$store.getters.getNodeIndex(nodeName);
+					const nodeIdName = `node-${nodeIndex}`;
 
-				// Suspend drawing
-				this.instance.setSuspendDrawing(true);
+					// Suspend drawing
+					this.instance.setSuspendDrawing(true);
 
-				// Remove all endpoints and the connections in jsplumb
-				this.instance.removeAllEndpoints(nodeIdName);
+					// Remove all endpoints and the connections in jsplumb
+					this.instance.removeAllEndpoints(nodeIdName);
 
-				// Remove the draggable
-				// @ts-ignore
-				this.instance.destroyDraggable(nodeIdName);
+					// Remove the draggable
+					// @ts-ignore
+					this.instance.destroyDraggable(nodeIdName);
 
-				// Remove the connections in data
-				this.$store.commit('removeAllNodeConnection', node);
+					// Remove the connections in data
+					this.$store.commit('removeAllNodeConnection', node);
 
-				this.$store.commit('removeNode', node);
-				this.$store.commit('clearNodeExecutionData', node.name);
+					this.$store.commit('removeNode', node);
+					this.$store.commit('clearNodeExecutionData', node.name);
 
-				// Now it can draw again
-				this.instance.setSuspendDrawing(false, true);
+					// Now it can draw again
+					this.instance.setSuspendDrawing(false, true);
 
-				// Remove node from selected index if found in it
-				this.$store.commit('removeNodeFromSelection', node);
+					// Remove node from selected index if found in it
+					this.$store.commit('removeNodeFromSelection', node);
 
-				// Remove from node index
-				if (nodeIndex !== -1) {
-					this.$store.commit('setNodeIndex', { index: nodeIndex, name: null });
-				}
+					// Remove from node index
+					if (nodeIndex !== -1) {
+						this.$store.commit('setNodeIndex', { index: nodeIndex, name: null });
+					}
+				}, 0); // allow other events to finish like drag stop
 			},
 			valueChanged (parameterData: IUpdateInformation) {
 				if (parameterData.name === 'name' && parameterData.oldValue) {
