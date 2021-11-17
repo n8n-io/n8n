@@ -40,7 +40,6 @@ export async function loadLanguage(language?: string) {
 	}
 
 	const baseText = require(`./locales/${language}`).default; // TODO i18n: `path.join()`
-	console.log(baseText);
 	i18n.setLocaleMessage(language, baseText);
 	loadedLanguages.push(language);
 
