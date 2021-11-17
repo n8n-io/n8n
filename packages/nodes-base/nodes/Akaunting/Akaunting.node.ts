@@ -109,7 +109,6 @@ export class Akaunting implements INodeType {
 				body.append("company_id", credentials.company_id)
 				body.append("page", 1)
 				body.append("limit", 100)
-				const headers: {} = body.getHeaders()
 
 				const accounts = await apiCall.call(this, {}, 'GET', "/api/accounts", {}, body);
 
@@ -145,7 +144,6 @@ export class Akaunting implements INodeType {
 				body.append("company_id", credentials.company_id)
 				body.append("page", 1)
 				body.append("limit", 100)
-				const headers: {} = body.getHeaders()
 
 				const categories = await apiCall.call(this, {}, 'GET', "/api/categories", {}, body);
 
@@ -259,9 +257,7 @@ export class Akaunting implements INodeType {
 						} else {
 							throw new NodeOperationError(this.getNode(), `The resource "${resource}" is not known!`);
 						}
-					}
-					else if (operation == "getAll") {
-
+					} else if (operation == "getAll") {
 						if (resource == "payment") {
 							const params = {
 								company_id: credentials.company_id,
@@ -319,8 +315,7 @@ export class Akaunting implements INodeType {
 								limit: 100
 							}
 						}
-						else if (resource == "customer")
-						{
+						else if (resource == "customer") {
 							params = {
 								company_id: credentials.company_id,
 								search: "type:customer",
