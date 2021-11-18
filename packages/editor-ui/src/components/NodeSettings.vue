@@ -95,9 +95,26 @@ export default mixins(
 
 				return null;
 			},
+			nodeTypeName(): string {
+				if (this.nodeType) {
+					const shortNodeType = this.nodeType.name.replace('n8n-nodes-base.', '');
+
+					return this.$headerText({
+						key: `headers.${shortNodeType}.displayName`,
+						fallback: this.nodeType.name,
+					});
+				}
+
+				return '';
+			},
 			nodeTypeDescription (): string {
 				if (this.nodeType && this.nodeType.description) {
-					return this.nodeType.description;
+					const shortNodeType = this.nodeType.name.replace('n8n-nodes-base.', '');
+
+					return this.$headerText({
+						key: `headers.${shortNodeType}.description`,
+						fallback: this.nodeType.description,
+					});
 				} else {
 					return this.$baseText('nodeSettings.noDescriptionFound');
 				}

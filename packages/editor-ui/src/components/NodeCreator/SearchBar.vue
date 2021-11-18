@@ -5,7 +5,7 @@
 		</div>
 		<div class="text">
 			<input
-				placeholder="Search nodes..."
+				:placeholder="$baseText('nodeCreator.searchBar.searchNodes')"
 				ref="input"
 				:value="value"
 				@input="onInput"
@@ -22,8 +22,9 @@
 import mixins from 'vue-typed-mixins';
 
 import { externalHooks } from '@/components/mixins/externalHooks';
+import { renderText } from '../mixins/renderText';
 
-export default mixins(externalHooks).extend({
+export default mixins(externalHooks, renderText).extend({
 	name: "SearchBar",
 	props: ["value", "eventBus"],
 	mounted() {

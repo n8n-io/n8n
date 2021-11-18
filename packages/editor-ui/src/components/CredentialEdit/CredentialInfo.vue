@@ -2,7 +2,9 @@
 	<div :class="$style.container">
 		<el-row>
 			<el-col :span="8" :class="$style.accessLabel">
-				<n8n-text :compact="true" :bold="true">{{ $baseText('credentialEdit.credentialInfo.allowUseBy') }}</n8n-text>
+				<n8n-text :compact="true" :bold="true">
+					{{ $baseText('credentialEdit.credentialInfo.allowUseBy') }}
+				</n8n-text>
 			</el-col>
 			<el-col :span="16">
 				<div
@@ -11,7 +13,10 @@
 					:class="$style.valueLabel"
 				>
 					<el-checkbox
-						:label="node.displayName"
+						:label="$headerText({
+							key: `headers.${shortNodeType(node)}.displayName`,
+							fallback: node.displayName,
+						})"
 						:value="!!nodeAccess[node.name]"
 						@change="(val) => onNodeAccessChange(node.name, val)"
 					/>
@@ -20,7 +25,9 @@
 		</el-row>
 		<el-row v-if="currentCredential">
 			<el-col :span="8" :class="$style.label">
-				<n8n-text :compact="true" :bold="true">{{ $baseText('credentialEdit.credentialInfo.created') }}</n8n-text>
+				<n8n-text :compact="true" :bold="true">
+					{{ $baseText('credentialEdit.credentialInfo.created') }}
+				</n8n-text>
 			</el-col>
 			<el-col :span="16" :class="$style.valueLabel">
 				<n8n-text :compact="true"><TimeAgo :date="currentCredential.createdAt" :capitalize="true" /></n8n-text>
@@ -28,7 +35,9 @@
 		</el-row>
 		<el-row v-if="currentCredential">
 			<el-col :span="8" :class="$style.label">
-				<n8n-text :compact="true" :bold="true">{{ $baseText('credentialEdit.credentialInfo.lastModified') }}</n8n-text>
+				<n8n-text :compact="true" :bold="true">
+					{{ $baseText('credentialEdit.credentialInfo.lastModified') }}
+				</n8n-text>
 			</el-col>
 			<el-col :span="16" :class="$style.valueLabel">
 				<n8n-text :compact="true"><TimeAgo :date="currentCredential.updatedAt" :capitalize="true" /></n8n-text>
@@ -36,10 +45,12 @@
 		</el-row>
 		<el-row v-if="currentCredential">
 			<el-col :span="8" :class="$style.label">
-				<n8n-text :compact="true" :bold="true">{{ $baseText('credentialEdit.credentialInfo.id') }}</n8n-text>
+				<n8n-text :compact="true" :bold="true">
+					{{ $baseText('credentialEdit.credentialInfo.id') }}
+				</n8n-text>
 			</el-col>
 			<el-col :span="16" :class="$style.valueLabel">
-				<n8n-text :compact="true">{{currentCredential.id}}</n8n-text>
+				<n8n-text :compact="true">{{ currentCredential.id }}</n8n-text>
 			</el-col>
 		</el-row>
 	</div>
@@ -51,6 +62,7 @@ import { renderText } from '../mixins/renderText';
 
 import TimeAgo from '../TimeAgo.vue';
 import mixins from 'vue-typed-mixins';
+import { INodeTypeDescription } from 'n8n-workflow';
 
 export default mixins(renderText).extend({
 	name: 'CredentialInfo',
@@ -64,6 +76,9 @@ export default mixins(renderText).extend({
 				name,
 				value,
 			});
+		},
+		shortNodeType(nodeType: INodeTypeDescription) {
+			return nodeType.name.replace('n8n-nodes-base.', '');
 		},
 	},
 });

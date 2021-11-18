@@ -1,5 +1,9 @@
 module.exports = {
 	bitwarden: {
+		header: {
+			displayName: '🇩🇪 Bitwarden',
+			description: '🇩🇪 Consume Bitwarden API',
+		},
 		credentialsModal: {
 			bitwardenApi: {
 				environment: {

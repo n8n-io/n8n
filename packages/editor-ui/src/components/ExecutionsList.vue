@@ -114,7 +114,12 @@
 
 					</template>
 				</el-table-column>
-				<el-table-column property="mode" :label="$baseText('executionsList.mode')" width="100" align="center"></el-table-column>
+				<el-table-column property="mode" :label="$baseText('executionsList.mode')" width="100" align="center">
+					<!-- TODO i18n <template slot-scope="scope">
+						{{convertToDisplayDate(scope.row.startedAt)}}<br />
+						<small v-if="scope.row.id">ID: {{scope.row.id}}</small>
+					</template> -->
+				</el-table-column>
 				<el-table-column :label="$baseText('executionsList.runningTime')" width="150" align="center">
 					<template slot-scope="scope">
 						<span v-if="scope.row.stoppedAt === undefined">
