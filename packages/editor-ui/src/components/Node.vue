@@ -51,6 +51,7 @@
 		<div class="node-description">
 			<div class="node-name" :title="data.name">
 				<p>{{ nodeTitle }}</p>
+				<p v-if="data.disabled">(Disabled)</p>
 			</div>
 			<div v-if="nodeSubtitle !== undefined" class="node-subtitle" :title="nodeSubtitle">
 				{{nodeSubtitle}}
@@ -153,7 +154,7 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 			return returnStyles;
 		},
 		nodeTitle (): string {
-			return this.data.disabled ? `${this.data.name} (Disabled)` : this.data.name;
+			return this.data.name;
 		},
 		waiting (): string | undefined {
 			const workflowExecution = this.$store.getters.getWorkflowExecution;
