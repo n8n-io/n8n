@@ -31,6 +31,11 @@ export const nodeDescription: INodeTypeDescription = {
 			type: 'options',
 			options: [
 				{
+					name: 'Aggregate',
+					value: 'aggregate',
+					description: 'Aggregate documents.',
+				},
+				{
 					name: 'Delete',
 					value: 'delete',
 					description: 'Delete documents.',
@@ -62,6 +67,29 @@ export const nodeDescription: INodeTypeDescription = {
 			required: true,
 			default: '',
 			description: 'MongoDB Collection',
+		},
+
+		// ----------------------------------
+		//         aggregate
+		// ----------------------------------
+		{
+			displayName: 'Aggregate Query (JSON format)',
+			name: 'query',
+			type: 'json',
+			typeOptions: {
+				rows: 5,
+			},
+			displayOptions: {
+				show: {
+					operation: [
+						'aggregate',
+					],
+				},
+			},
+			default: '{}',
+			placeholder: `[{ "$match": { "$gt": "1950-01-01" }, ... }]`,
+			required: true,
+			description: 'MongoDB Aggregate query.',
 		},
 
 		// ----------------------------------
@@ -150,6 +178,7 @@ export const nodeDescription: INodeTypeDescription = {
 			required: true,
 			description: 'MongoDB Find query.',
 		},
+
 		// ----------------------------------
 		//         insert
 		// ----------------------------------

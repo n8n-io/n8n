@@ -46,7 +46,33 @@ export class MongoDb implements INodeType {
 		const items = this.getInputData();
 		const operation = this.getNodeParameter('operation', 0) as string;
 
-		if (operation === 'delete') {
+		if (operation === 'aggregate') {
+			// ----------------------------------
+			//         aggregate
+			// ----------------------------------
+
+			try {
+				const queryParameter = JSON.parse(this.getNodeParameter('query', 0) as string);
+
+				if (queryParameter._id && typeof queryParameter._id === 'string') {
+					queryParameter._id = new ObjectID(queryParameter._id);
+				}
+
+				let query = mdb
+					.collection(this.getNodeParameter('collection', 0) as string)
+					.aggregate(queryParameter);
+
+				const queryResult = await query.toArray();
+
+				returnItems = this.helpers.returnJsonArray(queryResult as IDataObject[]);
+			} catch (error) {
+				if (this.continueOnFail()) {
+					returnItems = this.helpers.returnJsonArray({ error: error.message } );
+				} else {
+					throw error;
+				}
+			}
+		} else if (operation === 'delete') {
 			// ----------------------------------
 			//         delete
 			// ----------------------------------
