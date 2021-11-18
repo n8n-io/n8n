@@ -18,6 +18,9 @@ export const databasePageOperations = [
 		type: 'options',
 		displayOptions: {
 			show: {
+				version: [
+					1,
+				],
 				resource: [
 					'databasePage',
 				],
@@ -43,6 +46,50 @@ export const databasePageOperations = [
 		default: 'create',
 		description: 'The operation to perform.',
 	},
+	{
+		displayName: 'Operation',
+		name: 'operation',
+		type: 'options',
+		displayOptions: {
+			show: {
+				version: [
+					2,
+				],
+				resource: [
+					'databasePage',
+				],
+			},
+		},
+		options: [
+			{
+				name: 'Create',
+				value: 'create',
+				description: 'Create a pages in a database',
+			},
+			{
+				name: 'Get',
+				value: 'get',
+				description: 'Get a page in a database',
+			},
+			{
+				name: 'Get All',
+				value: 'getAll',
+				description: 'Get all pages in a database',
+			},
+			{
+				name: 'Search',
+				value: 'search',
+				description: 'Search pages in a database',
+			},
+			{
+				name: 'Update',
+				value: 'update',
+				description: 'Update pages in a database',
+			},
+		],
+		default: 'create',
+		description: 'The operation to perform.',
+	},
 ] as INodeProperties[];
 
 export const databasePageFields = [
@@ -51,7 +98,7 @@ export const databasePageFields = [
 	/*                                databasePage:create                         */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Database ID',
+		displayName: 'Database Name or ID',
 		name: 'databaseId',
 		type: 'options',
 		default: '',
@@ -69,10 +116,30 @@ export const databasePageFields = [
 				],
 			},
 		},
-		description: 'The ID of the database that this databasePage belongs to.',
+		description: 'The ID of the database that this databasePage belongs to',
 	},
 	{
-		displayName: 'Simple',
+		displayName: 'Title',
+		name: 'title',
+		type: 'string',
+		default: '',
+		displayOptions: {
+			show: {
+				version: [
+					2,
+				],
+				resource: [
+					'databasePage',
+				],
+				operation: [
+					'create',
+				],
+			},
+		},
+		description: 'Page title. Appears at the top of the page and can be found via Quick Find',
+	},
+	{
+		displayName: 'Simplify Output',
 		name: 'simple',
 		type: 'boolean',
 		displayOptions: {
@@ -86,7 +153,7 @@ export const databasePageFields = [
 			},
 		},
 		default: true,
-		description: 'When set to true a simplify version of the response will be used else the raw data.',
+		description: 'Whether to return a simplified version of the response instead of the raw data',
 	},
 	{
 		displayName: 'Properties',
@@ -194,7 +261,7 @@ export const databasePageFields = [
 							},
 						},
 						default: '',
-						description: `Phone number. No structure is enforced.`,
+						description: `Phone number. No structure is enforced`,
 					},
 					{
 						displayName: 'Options',
@@ -212,7 +279,7 @@ export const databasePageFields = [
 						},
 						default: [],
 						description: `Name of the options you want to set.
-						Multiples can be defined separated by comma.`,
+						Multiples can be defined separated by comma`,
 					},
 					{
 						displayName: 'Option',
@@ -229,7 +296,7 @@ export const databasePageFields = [
 							},
 						},
 						default: '',
-						description: `Name of the option you want to set.`,
+						description: `Name of the option you want to set`,
 					},
 					{
 						displayName: 'Email',
@@ -243,7 +310,7 @@ export const databasePageFields = [
 							},
 						},
 						default: '',
-						description: 'Email address.',
+						description: 'Email address',
 					},
 					{
 						displayName: 'URL',
@@ -257,7 +324,7 @@ export const databasePageFields = [
 							},
 						},
 						default: '',
-						description: 'Web address.',
+						description: 'Web address',
 					},
 					{
 						displayName: 'User IDs',
@@ -274,7 +341,7 @@ export const databasePageFields = [
 							},
 						},
 						default: [],
-						description: 'List of users. Multiples can be defined separated by comma.',
+						description: 'List of users. Multiples can be defined separated by comma',
 					},
 					{
 						displayName: 'Relation IDs',
@@ -291,7 +358,7 @@ export const databasePageFields = [
 							},
 						},
 						default: [],
-						description: 'List of databases that belong to another database. Multiples can be defined separated by comma.',
+						description: 'List of databases that belong to another database. Multiples can be defined separated by comma',
 					},
 					{
 						displayName: 'Checked',
@@ -308,7 +375,7 @@ export const databasePageFields = [
 						description: `
 						Whether or not the checkbox is checked.</br>
 						true represents checked.</br>
-						false represents unchecked.
+						false represents unchecked
 						`,
 					},
 					{
@@ -323,7 +390,7 @@ export const databasePageFields = [
 						},
 						type: 'number',
 						default: 0,
-						description: 'Number value.',
+						description: 'Number value',
 					},
 					{
 						displayName: 'Range',
@@ -337,7 +404,7 @@ export const databasePageFields = [
 						},
 						type: 'boolean',
 						default: false,
-						description: 'Weather or not you want to define a date range.',
+						description: 'Weather or not you want to define a date range',
 					},
 					{
 						displayName: 'Include Time',
@@ -351,7 +418,7 @@ export const databasePageFields = [
 						},
 						type: 'boolean',
 						default: true,
-						description: 'Weather or not to include the time in the date.',
+						description: 'Weather or not to include the time in the date',
 					},
 					{
 						displayName: 'Date',
@@ -368,7 +435,7 @@ export const databasePageFields = [
 						},
 						type: 'dateTime',
 						default: '',
-						description: 'An ISO 8601 format date, with optional time.',
+						description: 'An ISO 8601 format date, with optional time',
 					},
 					{
 						displayName: 'Date Start',
@@ -385,7 +452,7 @@ export const databasePageFields = [
 						},
 						type: 'dateTime',
 						default: '',
-						description: 'An ISO 8601 format date, with optional time.',
+						description: 'An ISO 8601 format date, with optional time',
 					},
 					{
 						displayName: 'Date End',
@@ -403,7 +470,7 @@ export const databasePageFields = [
 						type: 'dateTime',
 						default: '',
 						description: `
-						An ISO 8601 formatted date, with optional time. Represents the end of a date range.`,
+						An ISO 8601 formatted date, with optional time. Represents the end of a date range`,
 					},
 					{
 						displayName: 'Timezone',
@@ -420,7 +487,7 @@ export const databasePageFields = [
 							loadOptionsMethod: 'getTimezones',
 						},
 						default: 'default',
-						description: 'Time zone to use. By default n8n timezone is used.',
+						description: 'Time zone to use. By default n8n timezone is used',
 					},
 					{
 						displayName: 'File URLs',
@@ -441,7 +508,7 @@ export const databasePageFields = [
 								],
 							},
 						},
-						description: 'The operations to perform.',
+						description: 'The operations to perform',
 						default: {},
 						options: [
 							{
@@ -475,7 +542,7 @@ export const databasePageFields = [
 	/*                      databasePage:update                                   */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Page ID',
+		displayName: 'Database Page Link or ID',
 		name: 'pageId',
 		type: 'string',
 		default: '',
@@ -490,10 +557,10 @@ export const databasePageFields = [
 				],
 			},
 		},
-		description: 'The ID of the databasePage to update.',
+		description: `The URL from Notion's 'copy link' functionality (or just the ID contained within the URL)`,
 	},
 	{
-		displayName: 'Simplify Response',
+		displayName: 'Simplify Output',
 		name: 'simple',
 		type: 'boolean',
 		displayOptions: {
@@ -507,7 +574,7 @@ export const databasePageFields = [
 			},
 		},
 		default: true,
-		description: 'Return a simplified version of the response instead of the raw data.',
+		description: 'Whether to return a simplified version of the response instead of the raw data',
 	},
 	{
 		displayName: 'Properties',
@@ -891,6 +958,49 @@ export const databasePageFields = [
 			},
 		],
 	},
+/* -------------------------------------------------------------------------- */
+/*                                databasePage:get                            */
+/* -------------------------------------------------------------------------- */
+	{
+		displayName: 'Database Page Link or ID',
+		name: 'pageId',
+		type: 'string',
+		default: '',
+		required: true,
+		displayOptions: {
+			show: {
+				version: [
+					2,
+				],
+				resource: [
+					'databasePage',
+				],
+				operation: [
+					'get',
+				],
+			},
+		},
+	},
+	{
+		displayName: 'Simplify Output',
+		name: 'simple',
+		type: 'boolean',
+		displayOptions: {
+			show: {
+				version: [
+					2,
+				],
+				resource: [
+					'databasePage',
+				],
+				operation: [
+					'get',
+				],
+			},
+		},
+		default: true,
+		description: 'Whether to return a simplified version of the response instead of the raw data',
+	},
 	/* -------------------------------------------------------------------------- */
 	/*                                databasePage:getAll                         */
 	/* -------------------------------------------------------------------------- */
@@ -956,7 +1066,7 @@ export const databasePageFields = [
 		description: 'How many results to return.',
 	},
 	{
-		displayName: 'Simple',
+		displayName: 'Simplify Output',
 		name: 'simple',
 		type: 'boolean',
 		displayOptions: {
@@ -970,7 +1080,7 @@ export const databasePageFields = [
 			},
 		},
 		default: true,
-		description: 'When set to true a simplify version of the response will be used else the raw data.',
+		description: 'Whether to return a simplified version of the response instead of the raw data',
 	},
 	{
 		displayName: 'Options',
@@ -1154,6 +1264,152 @@ export const databasePageFields = [
 								],
 								default: '',
 								description: 'The direction to sort.',
+							},
+						],
+					},
+				],
+			},
+		],
+	},
+	/* -------------------------------------------------------------------------- */
+	/*                                databasePage:search                         */
+	/* -------------------------------------------------------------------------- */
+	{
+		displayName: 'Search Text',
+		name: 'text',
+		type: 'string',
+		default: '',
+		required: true,
+		displayOptions: {
+			show: {
+				resource: [
+					'databasePage',
+				],
+				operation: [
+					'search',
+				],
+			},
+		},
+		description: 'When supplied, limits which pages are returned by comparing the query to the page title',
+	},
+	{
+		displayName: 'Return All',
+		name: 'returnAll',
+		type: 'boolean',
+		displayOptions: {
+			show: {
+				resource: [
+					'databasePage',
+				],
+				operation: [
+					'search',
+				],
+			},
+		},
+		default: false,
+		description: 'If all results should be returned or only up to a given limit.',
+	},
+	{
+		displayName: 'Limit',
+		name: 'limit',
+		type: 'number',
+		displayOptions: {
+			show: {
+				resource: [
+					'databasePage',
+				],
+				operation: [
+					'search',
+				],
+				returnAll: [
+					false,
+				],
+			},
+		},
+		typeOptions: {
+			minValue: 1,
+			maxValue: 100,
+		},
+		default: 50,
+		description: 'How many results to return.',
+	},
+	{
+		displayName: 'Simplify Output',
+		name: 'simple',
+		type: 'boolean',
+		displayOptions: {
+			show: {
+				resource: [
+					'databasePage',
+				],
+				operation: [
+					'search',
+				],
+			},
+		},
+		default: true,
+		description: 'Whether to return a simplified version of the response instead of the raw data',
+	},
+	{
+		displayName: 'Options',
+		name: 'options',
+		type: 'collection',
+		displayOptions: {
+			show: {
+				resource: [
+					'databasePage',
+				],
+				operation: [
+					'search',
+				],
+			},
+		},
+		default: {},
+		placeholder: 'Add Field',
+		options: [
+			{
+				displayName: 'Sort',
+				name: 'sort',
+				placeholder: 'Add Sort',
+				type: 'fixedCollection',
+				typeOptions: {
+					multipleValues: false,
+				},
+				default: {},
+				options: [
+					{
+						displayName: 'Sort',
+						name: 'sortValue',
+						values: [
+							{
+								displayName: 'Direction',
+								name: 'direction',
+								type: 'options',
+								options: [
+									{
+										name: 'Ascending',
+										value: 'ascending',
+									},
+									{
+										name: 'Descending',
+										value: 'descending',
+									},
+								],
+								default: 'descending',
+								description: 'The direction to sort',
+							},
+							{
+								displayName: 'Timestamp',
+								name: 'timestamp',
+								type: 'options',
+								options: [
+									{
+										name: 'Last Edited Time',
+										value: 'last_edited_time',
+									},
+								],
+								default: 'last_edited_time',
+								description: `The name of the timestamp to sort against`,
 							},
 						],
 					},

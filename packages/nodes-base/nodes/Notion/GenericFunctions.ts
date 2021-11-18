@@ -58,6 +58,7 @@ export async function notionApiRequest(this: IHookFunctions | IExecuteFunctions 
 		if (Object.keys(body).length === 0) {
 			delete options.body;
 		}
+
 		return this.helpers.request!(options);
 
 	} catch (error) {
@@ -224,7 +225,7 @@ export function formatBlocks(blocks: IDataObject[]) {
 			object: 'block',
 			type: block.type,
 			[block.type as string]: {
-				...(block.type === 'to_do') ? { checked: block.checked } : { checked: false },
+				...(block.type === 'to_do') ? { checked: block.checked } : {},
 				//@ts-expect-error
 				// tslint:disable-next-line: no-any
 				text: (block.richText === false) ? formatText(block.textContent).text : getTexts(block.text.text as any || []),
@@ -361,7 +362,6 @@ export function mapSorting(data: [{ key: string, type: string, direction: string
 
 export function mapFilters(filters: IDataObject[], timezone: string) {
 
-	console.log(filters);
 	// tslint:disable-next-line: no-any
 	return filters.reduce((obj, value: { [key: string]: any }) => {
 		let key = getNameAndType(value.key).type;
@@ -429,7 +429,7 @@ export function simplifyProperties(properties: any) {
 		} else if (['people'].includes(properties[key].type)) {
 			if (Array.isArray(properties[key][type])) {
 				// tslint:disable-next-line: no-any
-				results[`${key}`] = properties[key][type].map((person: any) => person.person.email || {});
+				results[`${key}`] = properties[key][type].map((person: any) => person.person?.email || {});
 			} else {
 				results[`${key}`] = properties[key][type];
 			}
@@ -460,7 +460,7 @@ export function simplifyProperties(properties: any) {
 }
 
 // tslint:disable-next-line: no-any
-export function simplifyObjects(objects: any, download = false) {
+export function simplifyObjects(objects: any, download = false, version = 1) {
 	if (!Array.isArray(objects)) {
 		objects = [objects];
 	}
@@ -469,26 +469,56 @@ export function simplifyObjects(objects: any, download = false) {
 		if (object === 'page' && (parent.type === 'page_id' || parent.type === 'workspace')) {
 			results.push({
 				id,
-				title: properties.title.title[0].plain_text,
+				name: properties.title.title[0].plain_text,
 			});
 		} else if (object === 'page' && parent.type === 'database_id') {
-			results.push({
-				id,
-				...simplifyProperties(properties),
-			});
-		} else if (download && json.object === 'page' && json.parent.type === 'database_id') {
-			results.push({
-				json: {
+			if (version === 1) {
+				results.push({
 					id,
-					...simplifyProperties(json.properties),
-				},
-				binary,
-			});
+					...simplifyProperties(properties),
+				});
+			} else {
+				results.push({
+					id,
+					name: getPropertyTitle(properties),
+					url,
+					...prepend('property', simplifyProperties(properties)),
+				});
+			}
+		} else if (download && json.object === 'page' && json.parent.type === 'database_id') {
+			if (version === 1) {
+				results.push({
+					json: {
+						id,
+						...simplifyProperties(json.properties),
+					},
+					binary,
+				});
+			} else {
+				results.push({
+					json: {
+						id,
+						name: getPropertyTitle(properties),
+						url,
+						...prepend('property', simplifyProperties(json.properties)),
+					},
+					binary,
+				});
+			}
+
 		} else if (object === 'database') {
-			results.push({
-				id,
-				title: title[0].plain_text || '',
-			});
+			if (version === 1) {
+				results.push({
+					id,
+					title: title[0].plain_text || '',
+				});
+			} else {
+				results.push({
+					id,
+					name: title[0]?.plain_text || '',
+					url,
+				});
+			}
 		}
 	}
 	return results;
@@ -712,4 +742,37 @@ export async function downloadFiles(this: IExecuteFunctions | IPollFunctions, re
 		elements.push(element);
 	}
 	return elements;
+}
+
+export function extractPageId(page: string) {
+	if (page.includes('p=')) {
+		return page.split('p=')[1];
+	} else if (page.includes('-')) {
+	} else if (page.includes('-') && page.includes('https')) {
+		return page.split('-')[page.split('-').length - 1];
+	}
+	return page;
+}
+
+export function extractDatabaseId(database: string) {
+	if (database.includes('?v=')) {
+		const data = database.split('?v=')[0].split('/');
+		const index = data.length - 1;
+		return data[index];
+	}
+	return database;
+}
+
+// tslint:disable-next-line: no-any
+function prepend(stringKey: string, properties: { [key: string]: any }) {
+	for (const key of Object.keys(properties)) {
+		properties[`${stringKey}_${key}`] = properties[key];
+		delete properties[key];
+	}
+	return properties;
+}
+
+// tslint:disable-next-line: no-any
+export function getPropertyTitle(properties: { [key: string]: any }) {
+	return Object.values(properties).filter(property => property.type === 'title')[0].title[0].plain_text;
 }

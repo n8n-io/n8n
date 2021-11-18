@@ -95,35 +95,35 @@ const annotation = [
 				name: 'bold',
 				type: 'boolean',
 				default: false,
-				description: 'Whether the text is bolded.',
+				description: 'Whether the text is bolded',
 			},
 			{
 				displayName: 'Italic',
 				name: 'italic',
 				type: 'boolean',
 				default: false,
-				description: 'Whether the text is italicized.',
+				description: 'Whether the text is italicized',
 			},
 			{
 				displayName: 'Strikethrough',
 				name: 'strikethrough',
 				type: 'boolean',
 				default: false,
-				description: 'Whether the text is struck through.',
+				description: 'Whether the text is struck through',
 			},
 			{
 				displayName: 'Underline',
 				name: 'underline',
 				type: 'boolean',
 				default: false,
-				description: 'Whether the text is underlined.',
+				description: 'Whether the text is underlined',
 			},
 			{
 				displayName: 'Code',
 				name: 'code',
 				type: 'boolean',
 				default: false,
-				description: 'Whether the text is code style.',
+				description: 'Whether the text is code style',
 			},
 			{
 				displayName: 'Color',
@@ -131,10 +131,10 @@ const annotation = [
 				type: 'options',
 				options: colors,
 				default: '',
-				description: 'Color of the text.',
+				description: 'Color of the text',
 			},
 		],
-		description: 'All annotations that apply to this rich text.',
+		description: 'All annotations that apply to this rich text',
 	},
 ] as INodeProperties[];
 
@@ -170,7 +170,7 @@ const typeMention = [
 		],
 		default: '',
 		description: `An inline mention of a user, page, database, or date. In the app these are</br>
-		created by typing @ followed by the name of a user, page, database, or a date.`,
+		created by typing @ followed by the name of a user, page, database, or a date`,
 	},
 	{
 		displayName: 'User ID',
@@ -187,7 +187,7 @@ const typeMention = [
 			},
 		},
 		default: '',
-		description: 'The id of the user being mentioned.',
+		description: 'The id of the user being mentioned',
 	},
 	{
 		displayName: 'Page ID',
@@ -201,7 +201,7 @@ const typeMention = [
 			},
 		},
 		default: '',
-		description: 'The id of the page being mentioned.',
+		description: 'The id of the page being mentioned',
 	},
 	{
 		displayName: 'Database ID',
@@ -218,7 +218,7 @@ const typeMention = [
 			},
 		},
 		default: '',
-		description: 'The id of the database being mentioned.',
+		description: 'The id of the database being mentioned',
 	},
 	{
 		displayName: 'Range',
@@ -232,7 +232,7 @@ const typeMention = [
 		},
 		type: 'boolean',
 		default: false,
-		description: 'Weather or not you want to define a date range.',
+		description: 'Weather or not you want to define a date range',
 	},
 	{
 		displayName: 'Date',
@@ -249,7 +249,7 @@ const typeMention = [
 		},
 		type: 'dateTime',
 		default: '',
-		description: 'An ISO 8601 format date, with optional time.',
+		description: 'An ISO 8601 format date, with optional time',
 	},
 	{
 		displayName: 'Date Start',
@@ -266,7 +266,7 @@ const typeMention = [
 		},
 		type: 'dateTime',
 		default: '',
-		description: 'An ISO 8601 format date, with optional time.',
+		description: 'An ISO 8601 format date, with optional time',
 	},
 	{
 		displayName: 'Date End',
@@ -283,7 +283,7 @@ const typeMention = [
 		},
 		type: 'dateTime',
 		default: '',
-		description: `An ISO 8601 formatted date, with optional time. Represents the end of a date range.`,
+		description: `An ISO 8601 formatted date, with optional time. Represents the end of a date range`,
 	},
 ] as INodeProperties[];
 
@@ -318,7 +318,7 @@ const typeText = [
 		type: 'string',
 		default: '',
 		description: `Text content. This field contains the actual content</br>
-		of your text and is probably the field you'll use most often.`,
+		of your text and is probably the field you'll use most often`,
 	},
 	{
 		displayName: 'Is Link',
@@ -348,7 +348,7 @@ const typeText = [
 		},
 		type: 'string',
 		default: '',
-		description: 'The URL that this link points to.',
+		description: 'The URL that this link points to',
 	},
 ] as INodeProperties[];
 
@@ -397,7 +397,7 @@ export const text = (displayOptions: IDisplayOptions) => [
 				],
 			},
 		],
-		description: 'Rich text in the block.',
+		description: 'Rich text in the block',
 	}] as INodeProperties[];
 
 
@@ -413,7 +413,7 @@ const todo = (type: string) => [{
 			],
 		},
 	},
-	description: 'Whether the to_do is checked or not.',
+	description: 'Whether the to_do is checked or not',
 }] as INodeProperties[];
 
 const title = (type: string) => [{
@@ -428,7 +428,7 @@ const title = (type: string) => [{
 			],
 		},
 	},
-	description: 'Plain text of page title.',
+	description: 'Plain text of page title',
 }] as INodeProperties[];
 
 const richText = (displayOptions: IDisplayOptions) => [
@@ -551,7 +551,6 @@ export const blocks = (resource: string, operation: string) => [{
 					typeOptions: {
 						loadOptionsMethod: 'getBlockTypes',
 					},
-					description: 'Type of block',
 					default: 'paragraph',
 				},
 				...block('paragraph'),
