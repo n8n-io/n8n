@@ -1,5 +1,9 @@
 module.exports = {
 	github: {
+		header: {
+			displayName: '🇩🇪 GitHub',
+			description: '🇩🇪 Consume GitHub API',
+		},
 		credentialsModal: {
 			githubOAuth2Api: {
 				server: {

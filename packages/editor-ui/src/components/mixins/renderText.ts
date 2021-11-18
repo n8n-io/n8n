@@ -19,10 +19,19 @@ export const renderText = Vue.extend({
 		},
 
 		/**
-		 * Render a string of dynamic text, i.e. a string with a constructed path to the localized value in the node text object, either in the credentials modal (`$credText`) or in the node view (`$nodeView`). **Private method**, to be called only from the two namespaces within this mixin.
+		 * Render a string of dynamic header text, used in the nodes panel and in the node view.
+		 */
+		$headerText(arg: { key: string; fallback: string; }) {
+			return this.__render(arg);
+		},
+
+		/**
+		 * Render a string of dynamic text, i.e. a string with a constructed path to the localized value in the node text object - in the credentials modal (`$credText`), in the node view (`$nodeText`), or in the headers (`$headerText`) in the nodes panel and node view. _Private method_, to be called only from within this mixin.
+		 *
+		 * Unlike in `$baseText`, the fallback has to be set manually for dynamic text.
 		 */
 		__render(
-			{ key, fallback }: { key: string, fallback: string },
+			{ key, fallback }: { key: string; fallback: string; },
 		) {
 			return this.$te(key) ? this.$t(key).toString() : fallback;
 		},

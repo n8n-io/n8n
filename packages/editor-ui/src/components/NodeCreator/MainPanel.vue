@@ -11,9 +11,9 @@
 			/>
 			<div class="type-selector">
 				<el-tabs v-model="selectedType" stretch>
-					<el-tab-pane label="All" :name="ALL_NODE_FILTER"></el-tab-pane>
-					<el-tab-pane label="Regular" :name="REGULAR_NODE_FILTER"></el-tab-pane>
-					<el-tab-pane label="Trigger" :name="TRIGGER_NODE_FILTER"></el-tab-pane>
+					<el-tab-pane :label="$baseText('nodeCreator.mainPanel.all')" :name="ALL_NODE_FILTER"></el-tab-pane>
+					<el-tab-pane :label="$baseText('nodeCreator.mainPanel.regular')" :name="REGULAR_NODE_FILTER"></el-tab-pane>
+					<el-tab-pane :label="$baseText('nodeCreator.mainPanel.trigger')" :name="TRIGGER_NODE_FILTER"></el-tab-pane>
 				</el-tabs>
 			</div>
 			<div v-if="searchFilter.length === 0" class="scrollable">
@@ -55,9 +55,10 @@ import { INodeCreateElement, INodeItemProps, ISubcategoryItemProps } from '@/Int
 import { ALL_NODE_FILTER, CORE_NODES_CATEGORY, REGULAR_NODE_FILTER, TRIGGER_NODE_FILTER } from '@/constants';
 import SlideTransition from '../transitions/SlideTransition.vue';
 import { matchesNodeType, matchesSelectType } from './helpers';
+import { renderText } from '../mixins/renderText';
 
 
-export default mixins(externalHooks).extend({
+export default mixins(externalHooks, renderText).extend({
 	name: 'NodeCreateList',
 	components: {
 		ItemIterator,

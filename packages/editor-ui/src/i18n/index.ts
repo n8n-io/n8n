@@ -2,7 +2,7 @@ import Vue from 'vue';
 import VueI18n from 'vue-i18n';
 import englishBaseText from './locales/en';
 import axios from 'axios';
-import path from 'path';
+import { INodeTranslationHeaders } from '@/Interface';
 
 Vue.use(VueI18n);
 
@@ -27,6 +27,7 @@ function setLanguage(language: string) {
 }
 
 export async function loadLanguage(language?: string) {
+	// TODO i18n: Remove next line
 	console.log(`loadLanguage called with ${language}`); // eslint-disable-line no-console
 
 	if (!language) return Promise.resolve();
@@ -39,11 +40,11 @@ export async function loadLanguage(language?: string) {
 		return Promise.resolve(setLanguage(language));
 	}
 
-	const baseText = require(`./locales/${language}`).default; // TODO i18n: `path.join()`
+	const baseText = require(`./locales/${language}`).default;
 	i18n.setLocaleMessage(language, baseText);
 	loadedLanguages.push(language);
 
-	return setLanguage(language);
+	setLanguage(language);
 }
 
 export function addNodeTranslation(
@@ -64,4 +65,17 @@ export function addNodeTranslation(
 		language,
 		Object.assign(i18n.messages[language], newNodesBase),
 	);
+}
+
+export function addHeaders(
+	headers: INodeTranslationHeaders,
+	language: string,
+) {
+	i18n.setLocaleMessage(
+		language,
+		Object.assign(i18n.messages[language], { headers }),
+	);
+
+	// TODO i18n: Remove next line
+	console.log(i18n.messages.de.headers); // eslint-disable-line no-console
 }

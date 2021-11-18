@@ -170,7 +170,11 @@ import {
 	IExecutionsSummary,
 } from '../Interface';
 import { mapGetters } from 'vuex';
-import { loadLanguage, addNodeTranslation } from '@/i18n';
+import {
+	loadLanguage,
+	addNodeTranslation,
+	addHeaders,
+} from '@/i18n';
 
 const NODE_SIZE = 100;
 const DEFAULT_START_POSITION_X = 250;
@@ -245,9 +249,13 @@ export default mixins(
 				deep: true,
 			},
 
-			defaultLocale (newLocale, oldLocale) {
+			async defaultLocale (newLocale, oldLocale) {
+				// TODO i18n: Remove next line
 				console.log(`Switching locale from ${oldLocale} to ${newLocale}`); // eslint-disable-line no-console
 				loadLanguage(newLocale);
+
+				const headers = await this.restApi().getNodeTranslationHeaders();
+				addHeaders(headers, this.$store.getters.defaultLocale);
 			},
 		},
 		async beforeRouteLeave(to, from, next) {
