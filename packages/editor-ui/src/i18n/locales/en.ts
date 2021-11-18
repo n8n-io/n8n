@@ -1,4 +1,50 @@
 export default {
+	nodeCreator: {
+		categoryNames: {
+			coreNodes: 'Core Nodes',
+			customNodes: 'Custom Nodes',
+			suggestedNodes: 'Suggested Nodes ✨',
+			analytics: 'Analytics',
+			communication: 'Communication',
+			dataStorage: 'Data & Storage',
+			development: 'Development',
+			financeAccounting: 'Finance & Accounting',
+			marketingContent: 'Marketing & Content',
+			productivity: 'Productivity',
+			sales: 'Sales',
+			utility: 'Utility',
+			miscellaneous: 'Miscellaneous',
+		},
+		subcategoryNames: {
+			dataTransformation: 'Data Transformation',
+			flow: 'Flow',
+			files: 'Files',
+			helpers: 'Helpers',
+		},
+		subcategoryDescriptions: {
+			manipulate: 'Manipulate data fields, run code',
+			branches: 'Branches, core triggers, merge data',
+			work: 'Work with CSV, XML, text, images etc.',
+			http: 'HTTP Requests (API calls), date and time, scrape HTML',
+		},
+		mainPanel: {
+			all: 'All',
+			regular: 'Regular',
+			trigger: 'Trigger',
+		},
+		searchBar: {
+			searchNodes: 'Search nodes...',
+		},
+		noResults: {
+			weDidntMakeThatYet: "We didn't make that... yet",
+			dontWorryYouCanProbablyDoItWithThe: 'Don’t worry, you can probably do it with the {httpRequest} or {webhook} node',
+			httpRequest: 'HTTP Request',
+			webhook: 'Webhook',
+			node: 'node',
+			wantUsToMakeItFaster: 'Want us to make it faster?',
+			requestTheNode: 'Request the node',
+		},
+	},
 	textEdit: {
 		edit: 'Edit',
 	},
