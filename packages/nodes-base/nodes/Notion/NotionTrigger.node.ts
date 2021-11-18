@@ -50,10 +50,10 @@ export class NotionTrigger implements INodeType {
 						name: 'Page Added to Database',
 						value: 'pageAddedToDatabase',
 					},
-					// {
-					// 	name: 'Record Updated',
-					// 	value: 'recordUpdated',
-					// },
+					{
+						name: 'Paged Updated in Database',
+						value: 'pagedUpdatedInDatabase',
+					},
 				],
 				required: true,
 				default: '',
@@ -69,6 +69,7 @@ export class NotionTrigger implements INodeType {
 					show: {
 						event: [
 							'pageAddedToDatabase',
+							'pagedUpdatedInDatabase',
 						],
 					},
 				},
@@ -77,18 +78,19 @@ export class NotionTrigger implements INodeType {
 				description: 'The ID of this database.',
 			},
 			{
-				displayName: 'Simple',
+				displayName: 'Simplify Output',
 				name: 'simple',
 				type: 'boolean',
 				displayOptions: {
 					show: {
 						event: [
 							'pageAddedToDatabase',
+							'pagedUpdatedInDatabase',
 						],
 					},
 				},
 				default: true,
-				description: 'When set to true a simplify version of the response will be used else the raw data.',
+				description: 'Whether to return a simplified version of the response instead of the raw data',
 			},
 		],
 	};
@@ -173,7 +175,7 @@ export class NotionTrigger implements INodeType {
 			}
 
 			if (simple === true) {
-				records = simplifyObjects(records);
+				records = simplifyObjects(records, false);
 			}
 
 			webhookData.lastRecordProccesed = data[0].id;
