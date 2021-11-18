@@ -1,4 +1,4 @@
-<template >
+<template>
 	<span class="static-text-wrapper">
 		<span v-show="!editActive" :title="$baseText('displayWithChange.clickToChange')">
 			<span class="static-text" @mousedown="startEdit">{{currentValue}}</span>
@@ -32,6 +32,15 @@ export default mixins(genericHelpers).extend({
 				// @ts-ignore
 				return path.split('.').reduce((acc, part) => acc && acc[part], obj);
 			};
+
+			if (this.keyName === 'name' && this.node.type.startsWith('n8n-nodes-base.')) {
+				const shortNodeType = this.node.type.replace('n8n-nodes-base.', '');
+
+				return this.$headerText({
+					key: `headers.${shortNodeType}.displayName`,
+					fallback: getDescendantProp(this.node, this.keyName),
+				});
+			}
 
 			return getDescendantProp(this.node, this.keyName);
 		},

@@ -1207,6 +1207,22 @@ class App {
 			),
 		);
 
+		// Returns node information based on node names and versions
+		this.app.get(
+			`/${this.restEndpoint}/node-translation-headers`,
+			ResponseHelper.send(
+				async (req: express.Request, res: express.Response): Promise<object | void> => {
+					const packagesPath = pathJoin(__dirname, '..', '..', '..');
+					const headersPath = pathJoin(packagesPath, 'nodes-base', 'dist', 'nodes', 'headers');
+					try {
+						return require(headersPath);
+					} catch (error) {
+						res.status(500).send('Failed to find headers file');
+					}
+				},
+			),
+		);
+
 		// ----------------------------------------
 		// Node-Types
 		// ----------------------------------------

@@ -4,27 +4,31 @@
 			<NoResultsIcon />
 		</div>
 		<div class="title">
-			<div>We didn't make that... yet</div>
+			<div>
+				{{ $baseText('nodeCreator.noResults.weDidntMakeThatYet') }}
+			</div>
 			<div class="action">
-				Don’t worry, you can probably do it with the
-				<a @click="selectHttpRequest">HTTP Request</a> or
-				<a @click="selectWebhook">Webhook</a> node
+				{{ $baseText('nodeCreator.noResults.dontWorryYouCanProbablyDoItWithThe') }}
+				<a @click="selectHttpRequest">{{ $baseText('nodeCreator.noResults.httpRequest') }}</a> or
+				<a @click="selectWebhook">{{ $baseText('nodeCreator.noResults.webhook') }}</a> {{ $baseText('nodeCreator.noResults.node') }}
 			</div>
 		</div>
 
 		<div class="request">
-			<div>Want us to make it faster?</div>
+			<div>
+				{{ $baseText('nodeCreator.noResults.wantUsToMakeItFaster') }}
+			</div>
 			<div>
 				<a
 					:href="REQUEST_NODE_FORM_URL"
 					target="_blank"
 				>
-					<span>Request the node</span>&nbsp;
+					<span>{{ $baseText('nodeCreator.noResults.requestTheNode') }}</span>&nbsp;
 					<span>
 						<font-awesome-icon
 							class="external"
 							icon="external-link-alt"
-							title="Request the node"
+							:title="$baseText('nodeCreator.noResults.requestTheNode')"
 						/>
 					</span>
 				</a>
@@ -37,10 +41,11 @@
 <script lang="ts">
 import { HTTP_REQUEST_NODE_TYPE, REQUEST_NODE_FORM_URL, WEBHOOK_NODE_TYPE } from '@/constants';
 import Vue from 'vue';
-
+import { renderText } from '../mixins/renderText';
+import mixins from 'vue-typed-mixins';
 import NoResultsIcon from './NoResultsIcon.vue';
 
-export default Vue.extend({
+export default mixins(renderText).extend({
 	name: 'NoResults',
 	components: {
 		NoResultsIcon,

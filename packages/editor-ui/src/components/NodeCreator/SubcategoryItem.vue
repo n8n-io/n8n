@@ -1,9 +1,11 @@
-<template functional>
+<template>
 	<div :class="$style.subcategory">
 		<div :class="$style.details">
-			<div :class="$style.title">{{ props.item.properties.subcategory }}</div>
-			<div v-if="props.item.properties.description" :class="$style.description">
-				{{ props.item.properties.description }}
+			<div :class="$style.title">
+				{{ $baseText(`nodeCreator.subcategoryNames.${subcategoryName}`) }}
+			</div>
+			<div v-if="item.properties.description" :class="$style.description">
+				{{ $baseText(`nodeCreator.subcategoryDescriptions.${subcategoryDescription}`) }}
 			</div>
 		</div>
 		<div :class="$style.action">
@@ -13,9 +15,22 @@
 </template>
 
 <script lang="ts">
-export default {
+import camelcase from 'lodash.camelcase';
+import { renderText } from '@/components/mixins/renderText';
+import mixins from 'vue-typed-mixins';
+
+export default mixins(renderText).extend({
 	props: ['item'],
-};
+	computed: {
+		subcategoryName() {
+			return camelcase(this.item.properties.subcategory);
+		},
+		subcategoryDescription() {
+			const firstWord = this.item.properties.description.split(' ').shift() || '';
+			return firstWord.toLowerCase().replace(/,/g, '');
+		},
+	},
+});
 </script>
 
 
