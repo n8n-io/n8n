@@ -92,6 +92,7 @@ export const nodeBase = mixins(
 				const endpoint: Endpoint = this.instance.addEndpoint(this.nodeId, newEndpointData);
 				endpoint.__meta = {
 					nodeName: node.name,
+					nodeId: this.nodeId,
 					index: i,
 				};
 
@@ -154,6 +155,7 @@ export const nodeBase = mixins(
 				const endpoint: Endpoint = this.instance.addEndpoint(this.nodeId, {...newEndpointData});
 				endpoint.__meta = {
 					nodeName: node.name,
+					nodeId: this.nodeId,
 					index: i,
 				};
 
@@ -178,6 +180,7 @@ export const nodeBase = mixins(
 				const plusEndpoint: Endpoint = this.instance.addEndpoint(this.nodeId, plusEndpointData);
 				plusEndpoint.__meta = {
 					nodeName: node.name,
+					nodeId: this.nodeId,
 					index: i,
 				};
 			});

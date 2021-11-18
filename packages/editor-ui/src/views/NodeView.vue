@@ -1577,6 +1577,17 @@ export default mixins(
 						console.error(e); // eslint-disable-line no-console
 					}
 				});
+
+				// @ts-ignore
+				this.instance.bind(('plusEndpointClick'), (endpoint: Endpoint) => {
+					if (endpoint && endpoint.__meta) {
+						insertNodeAfterSelected({
+							sourceId: endpoint.__meta.nodeId,
+							index: endpoint.__meta.index,
+							eventSource: 'plus-connector',
+						});
+					}
+				});
 			},
 			async newWorkflow (): Promise<void> {
 				await this.resetWorkspace();

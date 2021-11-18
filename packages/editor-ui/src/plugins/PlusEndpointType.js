@@ -77,6 +77,10 @@
 			</svg>
 		`;
 
+		this.canvas.addEventListener('click', (e) => {
+			this._jsPlumb.instance.fire('plusEndpointClick', params.endpoint, e);
+		});
+
 		this._jsPlumb.instance.appendElement(this.canvas);
 
 		this.paint = function (style, anchor) {
