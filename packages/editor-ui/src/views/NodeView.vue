@@ -1716,7 +1716,7 @@ export default mixins(
 				// it visibly stays behind free floating without a connection.
 				connection.removeOverlays();
 
-				const sourceEndpoint = connection.endpoints[0];
+				const sourceEndpoint = connection.endpoints && connection.endpoints.length && connection.endpoints[0];
 				this.pullConnActiveNodeName = null; // prevent new connections when connectionDetached is triggered
 				this.instance.deleteConnection(connection); // on delete, triggers connectionDetached event which applies mutation to store
 				if (sourceEndpoint) {

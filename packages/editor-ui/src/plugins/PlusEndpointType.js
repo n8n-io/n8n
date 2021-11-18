@@ -22,10 +22,8 @@
 		this.type = "N8nPlus";
 		DOMElementEndpoint.apply(this, arguments);
 		this._compute = (anchorPoint, orientation, endpointStyle, connectorPaintStyle) => {
-			const instance = this._jsPlumb.instance;
-			const connections = instance.getConnections({
-				source: params.endpoint.elementId,
-			});
+			const endpoint = params.endpoint;
+			const connections = endpoint.connections;
 			if (connections.length >= 1) {
 				return [anchorPoint[0], anchorPoint[1], 0, 0];
 			}
