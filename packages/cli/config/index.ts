@@ -589,12 +589,6 @@ const config = convict({
 				},
 			},
 			templates: {
-				instanceSetup: {
-					doc: 'HTML template for when the instance has been set up (use full path)',
-					format: String,
-					default: '',
-					env: 'N8N_UM_EMAIL_TEMPLATES_SETUP',
-				},
 				invite: {
 					doc: 'HTML template for inviting new people (use full path)',
 					format: String,

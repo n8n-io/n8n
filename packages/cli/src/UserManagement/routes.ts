@@ -1,6 +1,5 @@
 /* eslint-disable import/no-cycle */
 import * as express from 'express';
-import { IDataObject } from 'n8n-workflow';
 import { Db, GenericHelpers, ResponseHelper } from '..';
 import { User } from '../databases/entities/User';
 import { getInstance } from './email';
