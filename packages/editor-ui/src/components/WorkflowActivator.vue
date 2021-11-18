@@ -188,17 +188,18 @@ export default mixins(
 							alertTriggerContent = 'Your triggers will now fire production executions automatically.';
 						} else {
 							const trigger = foundTriggers[0];
+							const serviceName = trigger.displayName.replace(/ trigger/i, '');
 							//check if webhook
 							if (this.$store.getters.currentWorkflowHasWebhookNode) {
 								if (trigger.name === 'Webhook') {
 									// check if a standard Webhook trigger
 									alertTriggerContent = 'You can now make calls to your production webhook URL.';
 								} else {
-									alertTriggerContent = `Your workflow will now listen for events from ${trigger.displayName}.`;
+									alertTriggerContent = `Your workflow will now listen for events from ${serviceName}.`;
 								}
 							} else if (trigger.polling) {
 								//check if a polling trigger
-								alertTriggerContent = `Your workflow will now check ${trigger.displayName} for events on a regular basis.`;
+								alertTriggerContent = `Your workflow will now check ${serviceName} for events on a regular basis.`;
 							} else if (trigger.displayName === 'Cron') {
 								// check if a standard Cron trigger
 								alertTriggerContent = 'Your cron trigger will now run on the schedule you have defined.';
