@@ -481,11 +481,6 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 	z-index: 4;
 }
 
-/** node endpoints */
-.jtk-endpoint {
-	z-index:5;
-}
-
 .jtk-connector.jtk-hover {
 	z-index: 6;
 }
@@ -494,8 +489,12 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 	z-index: 6;
 }
 
-.jtk-endpoint.jtk-hover {
-	z-index: 7;
+.jtk-endpoint.plus-container {
+	z-index: 6;
+}
+
+.jtk-endpoint.dot-output-endpoint {
+	z-index:7;
 }
 
 .jtk-overlay {

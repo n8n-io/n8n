@@ -75,6 +75,7 @@ export const nodeBase = mixins(
 						index,
 					},
 					enabled: !this.isReadOnly,
+					cssClass: 'rect-input-endpoint',
 					dragAllowedWhenFull: true,
 					dropOptions: {
 						tolerance: 'touch',
@@ -141,6 +142,7 @@ export const nodeBase = mixins(
 						type: inputName,
 						index,
 					},
+					cssClass: 'dot-output-endpoint',
 					dragAllowedWhenFull: false,
 					dragProxy: ['Rectangle', { width: 1, height: 1, strokeWidth: 0 }],
 				};

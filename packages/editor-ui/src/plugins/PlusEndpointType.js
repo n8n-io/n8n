@@ -37,8 +37,7 @@
 			display: "block",
 			background: "transparent",
 			position: "absolute",
-		}, this._jsPlumb.instance.endpointClass + clazz);
-		this.canvas.classList.add('plus-container');
+		}, this._jsPlumb.instance.endpointClass + clazz + ' plus-container');
 
 		this.canvas.innerHTML = `
 			<style type="text/css">
