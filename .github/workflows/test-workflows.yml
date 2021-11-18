@@ -4,6 +4,7 @@ on:
   schedule:
     - cron: "0 2 * * *"
   workflow_dispatch:
+  push:
 
 
 jobs:
@@ -34,10 +35,10 @@ jobs:
       -
         name: Install dependencies
         run: |
-          apt update -y
+          sudo apt update -y
           echo 'tzdata tzdata/Areas select Europe' | debconf-set-selections
           echo 'tzdata tzdata/Zones/Europe select Paris' | debconf-set-selections
-          DEBIAN_FRONTEND="noninteractive" apt-get install -y graphicsmagick
+          DEBIAN_FRONTEND="noninteractive" sudo apt-get install -y graphicsmagick
         shell: bash
       -
         name: npm install and build
