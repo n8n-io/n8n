@@ -71,6 +71,7 @@ declare module 'jsplumb' {
 			index: number,
 		};
 		getOverlay(name: string): any; // tslint:disable-line:no-any
+		repaint(params?: object): void;
 	}
 
 	interface Overlay {

@@ -18,10 +18,18 @@
 		* Class: Endpoints.N8nPlus
 		*/
 	_jp.Endpoints.N8nPlus = function (params) {
-		var _super = _jp.Endpoints.AbstractEndpoint.apply(this, arguments);
+		const _super = _jp.Endpoints.AbstractEndpoint.apply(this, arguments);
 		this.type = "N8nPlus";
 		DOMElementEndpoint.apply(this, arguments);
-		this._compute = function (anchorPoint, orientation, endpointStyle, connectorPaintStyle) {
+		this._compute = (anchorPoint, orientation, endpointStyle, connectorPaintStyle) => {
+			const instance = this._jsPlumb.instance;
+			const connections = instance.getConnections({
+				source: params.endpoint.elementId,
+			});
+			if (connections.length >= 1) {
+				return [anchorPoint[0], anchorPoint[1], 0, 0];
+			}
+
 			return [anchorPoint[0], anchorPoint[1] - 12, 64, 24];
 		};
 
@@ -68,29 +76,6 @@
 				<path d="M56.125 10.8438H53.0312V7.75C53.0312 7.38477 52.709 7.0625 52.3438 7.0625H51.6562C51.2695 7.0625 50.9688 7.38477 50.9688 7.75V10.8438H47.875C47.4883 10.8438 47.1875 11.166 47.1875 11.5312V12.2188C47.1875 12.6055 47.4883 12.9062 47.875 12.9062H50.9688V16C50.9688 16.3867 51.2695 16.6875 51.6562 16.6875H52.3438C52.709 16.6875 53.0312 16.3867 53.0312 16V12.9062H56.125C56.4902 12.9062 56.8125 12.6055 56.8125 12.2188V11.5312C56.8125 11.166 56.4902 10.8438 56.125 10.8438Z" />
 			</svg>
 		`;
-
-
-
-		// 			<svg viewBox="0 0 64 24">
-		// 			<path d="M0 12L40 12" stroke="#7D838F" stroke-width="2"></path>
-		// 			<rect x="41" y="1" width="22" height="22" rx="3" fill="white" stroke="#7D838F" stroke-width="2"></rect>
-		// 		<g><path d="M56.125 10.8438H53.0312V7.75C53.0312 7.38477 52.709 7.0625 52.3438 7.0625H51.6562C51.2695 7.0625 50.9688 7.38477 50.9688 7.75V10.8438H47.875C47.4883 10.8438 47.1875 11.166 47.1875 11.5312V12.2188C47.1875 12.6055 47.4883 12.9062 47.875 12.9062H50.9688V16C50.9688 16.3867 51.2695 16.6875 51.6562 16.6875H52.3438C52.709 16.6875 53.0312 16.3867 53.0312 16V12.9062H56.125C56.4902 12.9062 56.8125 12.6055 56.8125 12.2188V11.5312C56.8125 11.166 56.4902 10.8438 56.125 10.8438Z" fill="#7D838F"></path></g></svg>
-		// `;
-		// 	<svg width="64" height="24" viewBox="0 0 64 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-		// 		<path d="M0 12L40 12" stroke="#7D838F" stroke-width="2"/>
-		// 		<rect x="41" y="1" width="22" height="22" rx="3" fill="white" stroke="#7D838F" stroke-width="2"/>
-		// 		<path d="M56.125 10.8438H53.0312V7.75C53.0312 7.38477 52.709 7.0625 52.3438 7.0625H51.6562C51.2695 7.0625 50.9688 7.38477 50.9688 7.75V10.8438H47.875C47.4883 10.8438 47.1875 11.166 47.1875 11.5312V12.2188C47.1875 12.6055 47.4883 12.9062 47.875 12.9062H50.9688V16C50.9688 16.3867 51.2695 16.6875 51.6562 16.6875H52.3438C52.709 16.6875 53.0312 16.3867 53.0312 16V12.9062H56.125C56.4902 12.9062 56.8125 12.6055 56.8125 12.2188V11.5312C56.8125 11.166 56.4902 10.8438 56.125 10.8438Z" fill="#7D838F"/>
-		// 	</svg>
-		// 	<svg aria-hidden="true" focusable="false" data-prefix="fas" data-icon="plus" role="img" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512" class="svg-inline--fa fa-plus fa-w-14 Icon__medium_ctPPJ"><path data-v-301ed208="" fill="currentColor" d="M416 208H272V64c0-17.67-14.33-32-32-32h-32c-17.67 0-32 14.33-32 32v144H32c-17.67 0-32 14.33-32 32v32c0 17.67 14.33 32 32 32h144v144c0 17.67 14.33 32 32 32h32c17.67 0 32-14.33 32-32V304h144c17.67 0 32-14.33 32-32v-32c0-17.67-14.33-32-32-32z" class=""></path></svg>
-		// `;
-
-		// const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
-		// svg.innerHTML = `
-		// 	<path d="M0 12L40 12" stroke="#7D838F" stroke-width="2"/>
-		// 	<rect x="41" y="1" width="22" height="22" rx="3" fill="white" stroke="#7D838F" stroke-width="2"/>
-		// 	<path data-v-301ed208="" fill="currentColor" d="M416 208H272V64c0-17.67-14.33-32-32-32h-32c-17.67 0-32 14.33-32 32v144H32c-17.67 0-32 14.33-32 32v32c0 17.67 14.33 32 32 32h144v144c0 17.67 14.33 32 32 32h32c17.67 0 32-14.33 32-32V304h144c17.67 0 32-14.33 32-32v-32c0-17.67-14.33-32-32-32z" class=""></path>
-		// `;
-		// this.canvas.appendChild(svg);
 
 		this._jsPlumb.instance.appendElement(this.canvas);
 
