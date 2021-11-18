@@ -19,7 +19,7 @@
     "bin": "n8n"
   },
   "scripts": {
-    "build": "tsc",
+    "build": "tsc && cp -r ./src/UserManagement/email/templates ./dist/src/UserManagement/email ",
     "dev": "concurrently -k -n \"TypeScript,Node\" -c \"yellow.bold,cyan.bold\" \"npm run watch\" \"nodemon\"",
     "format": "cd ../.. && node_modules/prettier/bin-prettier.js packages/cli/**/**.ts --write",
     "lint": "cd ../.. && node_modules/eslint/bin/eslint.js packages/cli",
@@ -115,6 +115,7 @@
     "n8n-editor-ui": "~0.123.0",
     "n8n-nodes-base": "~0.154.0",
     "n8n-workflow": "~0.81.0",
+    "nodemailer": "^6.7.1",
     "oauth-1.0a": "^2.2.6",
     "open": "^7.0.0",
     "pg": "^8.3.0",
