@@ -482,6 +482,8 @@ function hookFunctionsSave(parentProcessMode?: string): IWorkflowExecuteHooks {
 					if (isManualMode && !saveManualExecutions && !fullRunData.waitTill) {
 						// Data is always saved, so we remove from database
 						// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+						console.log('JSON.stringify(fullRunData)');
+						// console.log(JSON.stringify(fullRunData));
 						await Db.collections.Execution!.delete(this.executionId);
 						return;
 					}
@@ -514,6 +516,8 @@ function hookFunctionsSave(parentProcessMode?: string): IWorkflowExecuteHooks {
 								);
 							}
 							// Data is always saved, so we remove from database
+							console.log('JSON.stringify(fullRunData2)');
+							// console.log(JSON.stringify(fullRunData));
 							await Db.collections.Execution!.delete(this.executionId);
 							return;
 						}

@@ -1,9 +1,10 @@
+import { parse } from 'flatted';
 import { promises as fs } from 'fs';
 import * as path from 'path';
 import { v4 as uuid } from 'uuid';
-import { IBinaryData } from 'n8n-workflow';
+import { IBinaryData, IRunExecutionData, ITaskData } from 'n8n-workflow';
 import { BINARY_ENCODING } from './Constants';
-import { IBinaryDataConfig } from './Interfaces';
+import { IBinaryDataConfig, IExecutionFlattedDb } from './Interfaces';
 
 export class BinaryDataHelper {
 	private static instance: BinaryDataHelper;
@@ -76,6 +77,57 @@ export class BinaryDataHelper {
 
 	generateIdentifier(): string {
 		return uuid();
+	}
+
+	async findAndDeleteBinaryData(fullExecutionDataList: IExecutionFlattedDb[]): Promise<unknown> {
+		if (this.storageMode === 'LOCAL_STORAGE') {
+			const allIdentifiers: string[] = [];
+
+			fullExecutionDataList.forEach((fullExecutionData) => {
+				const { runData } = (parse(fullExecutionData.data) as IRunExecutionData).resultData;
+
+				Object.values(runData).forEach((item: ITaskData[]) => {
+					item.forEach((taskData) => {
+						if (taskData?.data) {
+							Object.values(taskData.data).forEach((connectionData) => {
+								connectionData.forEach((executionData) => {
+									if (executionData) {
+										executionData.forEach((element) => {
+											if (element?.binary) {
+												Object.values(element?.binary).forEach((binaryItem) => {
+													if (binaryItem.internalIdentifier) {
+														allIdentifiers.push(binaryItem.internalIdentifier);
+													}
+												});
+											}
+										});
+									}
+								});
+							});
+						}
+					});
+				});
+			});
+
+			return Promise.all(
+				allIdentifiers.map(async (identifier) => this.deleteBinaryDataByIdentifier(identifier)),
+			);
+		}
+
+		return Promise.resolve();
+	}
+
+	async deleteBinaryDataByIdentifier(identifier: string): Promise<void> {
+		if (this.storageMode === 'LOCAL_STORAGE') {
+			console.log('deleting: ', identifier);
+			return this.deleteFromLocalStorage(identifier);
+		}
+
+		return undefined;
+	}
+
+	private async deleteFromLocalStorage(identifier: string) {
+		return fs.rm(path.join(this.storagePath, identifier));
 	}
 
 	private async saveToLocalStorage(data: Buffer, identifier: string) {

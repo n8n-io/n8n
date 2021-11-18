@@ -2399,14 +2399,25 @@ class App {
 					const filters = {
 						startedAt: LessThanOrEqual(deleteData.deleteBefore),
 					};
+
 					if (deleteData.filters !== undefined) {
 						Object.assign(filters, deleteData.filters);
 					}
 
+					const execs = await Db.collections.Execution!.find(filters);
+
 					await Db.collections.Execution!.delete(filters);
+					await BinaryDataHelper.getInstance().findAndDeleteBinaryData(execs);
 				} else if (deleteData.ids !== undefined) {
+					const execs = await Db.collections
+						.Execution!.createQueryBuilder('execution')
+						.select(['execution.id', 'execution.data'])
+						.where('execution.id IN (:...ids)', { ids: deleteData.ids })
+						.getMany();
+
 					// Deletes all executions with the given ids
 					await Db.collections.Execution!.delete(deleteData.ids);
+					await BinaryDataHelper.getInstance().findAndDeleteBinaryData(execs);
 				} else {
 					throw new Error('Required body-data "ids" or "deleteBefore" is missing!');
 				}
