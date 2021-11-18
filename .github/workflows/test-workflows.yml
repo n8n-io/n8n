@@ -35,8 +35,9 @@ jobs:
       -
         name: Install dependencies
         run: |
-          echo 'tzdata tzdata/Areas select Europe' | debconf-set-selections
-          echo 'tzdata tzdata/Zones/Europe select Paris' | debconf-set-selections
+          sudo apt update -y
+          echo 'tzdata tzdata/Areas select Europe' | sudo debconf-set-selections
+          echo 'tzdata tzdata/Zones/Europe select Paris' | sudo debconf-set-selections
           DEBIAN_FRONTEND="noninteractive" sudo apt-get install -y graphicsmagick
         shell: bash
       -
