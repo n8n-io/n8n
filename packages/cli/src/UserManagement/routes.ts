@@ -1,6 +1,7 @@
 import * as express from 'express';
 import { Db, ResponseHelper } from '..';
 import { User } from '../databases/entities/User';
+import { getInstance } from './email';
 
 export function addRoutes(): void {
 	// ----------------------------------------
@@ -31,6 +32,24 @@ export function addRoutes(): void {
 			}
 			// adjust helper that you can pass statuscode, in this case 404!
 			ResponseHelper.sendErrorResponse(res, new Error('User not found!'));
+		},
+	);
+
+	this.app.get(
+		`/${this.restEndpoint}/test-email`,
+		async (req: express.Request, res: express.Response) => {
+			const mailer = getInstance();
+			const result = await mailer.sendInstanceSetupEmail({
+				email: 'omar@n8n.io',
+				firstName: 'Omar',
+				lastName: 'Ajoue',
+			});
+			if (result.success) {
+				ResponseHelper.sendSuccessResponse(res, 'All good!');
+			} else {
+				// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+				ResponseHelper.sendErrorResponse(res, result.error!);
+			}
 		},
 	);
 }

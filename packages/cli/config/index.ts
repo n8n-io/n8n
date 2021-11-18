@@ -541,6 +541,48 @@ const config = convict({
 			default: false,
 			env: 'N8N_USER_MANAGEMENT_ENABLED',
 		},
+		emails: {
+			mode: {
+				doc: 'How to send emails',
+				format: String,
+				default: '', // possible values: 'smtp' | ''
+				env: 'N8N_UM_EMAIL_MODE',
+			},
+			smtp: {
+				host: {
+					doc: 'SMTP server host',
+					format: String,
+					default: 'smtp.gmail.com',
+					env: 'N8N_UM_EMAIL_SMTP_HOST',
+				},
+				port: {
+					doc: 'SMTP Server port',
+					format: Number,
+					default: 465,
+					env: 'N8N_UM_EMAIL_SMTP_PORT',
+				},
+				secure: {
+					doc: 'Whether or not to use SSL',
+					format: Boolean,
+					default: true,
+					env: 'N8N_UM_EMAIL_SMTP_SSL',
+				},
+				auth: {
+					user: {
+						doc: 'SMTP Login username',
+						format: String,
+						default: 'youremail@gmail.com',
+						env: 'N8N_UM_EMAIL_SMTP_USER',
+					},
+					pass: {
+						doc: 'SMTP Login password',
+						format: String,
+						default: 'my-super-password',
+						env: 'N8N_UM_EMAIL_SMTP_PASS',
+					},
+				},
+			},
+		},
 	},
 
 	externalHookFiles: {
