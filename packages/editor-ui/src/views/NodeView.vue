@@ -1607,7 +1607,9 @@ export default mixins(
 				await this.$store.dispatch('workflows/setNewWorkflowName');
 				this.$store.commit('setStateDirty', false);
 
-				await this.addNodes([DEFAULT_START_NODE]);
+				const nodes = [{...DEFAULT_START_NODE}];
+
+				await this.addNodes(nodes);
 				this.$store.commit('setStateDirty', false);
 
 				this.setZoomLevel(1);
@@ -1917,10 +1919,13 @@ export default mixins(
 
 					if (nodeCredentials.id) {
 						// Check whether the id is matching with a credential
-						const credentialsForId = credentialOptions.find((optionData: ICredentialsResponse) => optionData.id === nodeCredentials.id);
+						const credentialsId = nodeCredentials.id.toString(); // due to a fixed bug in the migration UpdateWorkflowCredentials (just sqlite) we have to cast to string and check later if it has been a number
+						const credentialsForId = credentialOptions.find((optionData: ICredentialsResponse) =>
+							optionData.id === credentialsId,
+						);
 						if (credentialsForId) {
-							if (credentialsForId.name !== nodeCredentials.name) {
-								node.credentials![nodeCredentialType].name = credentialsForId.name;
+							if (credentialsForId.name !== nodeCredentials.name || typeof nodeCredentials.id === 'number') {
+								node.credentials![nodeCredentialType] = { id: credentialsForId.id, name: credentialsForId.name };
 								this.credentialsUpdated = true;
 							}
 							return;

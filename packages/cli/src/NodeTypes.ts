@@ -40,6 +40,9 @@ class NodeTypesClass implements INodeTypes {
 	}
 
 	getByNameAndVersion(nodeType: string, version?: number): INodeType {
+		if (this.nodeTypes[nodeType] === undefined) {
+			throw new Error(`The node-type "${nodeType}" is not known!`);
+		}
 		return NodeHelpers.getVersionedTypeNode(this.nodeTypes[nodeType].type, version);
 	}
 }
