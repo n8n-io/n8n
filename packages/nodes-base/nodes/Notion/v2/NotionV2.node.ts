@@ -121,7 +121,7 @@ export class NotionV2 implements INodeType {
 					if (['multi_select', 'select'].includes(type) && operation === 'getAll') {
 						return (properties[name][type].options)
 							.map((option: IDataObject) => ({ name: option.name, value: option.name }));
-					} else if (['multi_select'].includes(type) && ['create', 'update'].includes(operation)) {
+					} else if (['multi_select', 'select'].includes(type) && ['create', 'update'].includes(operation)) {
 						return (properties[name][type].options)
 							.map((option: IDataObject) => ({ name: option.name, value: option.name }));
 					}

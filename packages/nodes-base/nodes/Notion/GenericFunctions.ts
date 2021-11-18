@@ -295,7 +295,7 @@ function getPropertyKeyValue(value: any, type: string, timezone: string) {
 			break;
 		case 'select':
 			result = {
-				type: 'select', select: { id: value.selectValue },
+				type: 'select', select: { name: value.selectValue },
 			};
 			break;
 		case 'date':
