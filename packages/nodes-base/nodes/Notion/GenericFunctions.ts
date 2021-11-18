@@ -470,55 +470,31 @@ export function simplifyObjects(objects: any, download = false, version = 1) {
 			results.push({
 				id,
 				name: properties.title.title[0].plain_text,
+				...version === 2 ? { url } : {},
 			});
 		} else if (object === 'page' && parent.type === 'database_id') {
-			if (version === 1) {
-				results.push({
-					id,
-					...simplifyProperties(properties),
-				});
-			} else {
-				results.push({
-					id,
-					name: getPropertyTitle(properties),
-					url,
-					...prepend('property', simplifyProperties(properties)),
-				});
-			}
+			results.push({
+				id,
+				...(version === 2) ? { name: getPropertyTitle(properties) } : {},
+				...(version === 2) ? { url } : {},
+				...(version === 2) ? { ...prepend('property', simplifyProperties(properties)) }  : { ...simplifyProperties(properties) },
+			});
 		} else if (download && json.object === 'page' && json.parent.type === 'database_id') {
-			if (version === 1) {
-				results.push({
-					json: {
-						id,
-						...simplifyProperties(json.properties),
-					},
-					binary,
-				});
-			} else {
-				results.push({
-					json: {
-						id,
-						name: getPropertyTitle(properties),
-						url,
-						...prepend('property', simplifyProperties(json.properties)),
-					},
-					binary,
-				});
-			}
-
+			results.push({
+				json: {
+					id,
+					...(version === 2) ? { name: getPropertyTitle(json.properties) } : {},
+					...(version === 2) ? { url } : {},
+					...(version === 2) ? { ...prepend('property', simplifyProperties(json.properties)) } : { ...simplifyProperties(json.properties) },
+				},
+				binary,
+			});
 		} else if (object === 'database') {
-			if (version === 1) {
-				results.push({
-					id,
-					title: title[0].plain_text || '',
-				});
-			} else {
-				results.push({
-					id,
-					name: title[0]?.plain_text || '',
-					url,
-				});
-			}
+			results.push({
+				id,
+				title: title[0].plain_text || '',
+				...version === 2 ? { url } : {},
+			});
 		}
 	}
 	return results;
@@ -774,5 +750,5 @@ function prepend(stringKey: string, properties: { [key: string]: any }) {
 
 // tslint:disable-next-line: no-any
 export function getPropertyTitle(properties: { [key: string]: any }) {
-	return Object.values(properties).filter(property => property.type === 'title')[0].title[0].plain_text;
+	return Object.values(properties).filter(property => property.type === 'title')[0].title[0]?.plain_text || '';
 }

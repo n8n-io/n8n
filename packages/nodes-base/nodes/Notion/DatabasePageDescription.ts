@@ -18,9 +18,6 @@ export const databasePageOperations = [
 		type: 'options',
 		displayOptions: {
 			show: {
-				version: [
-					1,
-				],
 				resource: [
 					'databasePage',
 				],
@@ -36,50 +33,6 @@ export const databasePageOperations = [
 				name: 'Get All',
 				value: 'getAll',
 				description: 'Get all pages in a database',
-			},
-			{
-				name: 'Update',
-				value: 'update',
-				description: 'Update pages in a database',
-			},
-		],
-		default: 'create',
-		description: 'The operation to perform.',
-	},
-	{
-		displayName: 'Operation',
-		name: 'operation',
-		type: 'options',
-		displayOptions: {
-			show: {
-				version: [
-					2,
-				],
-				resource: [
-					'databasePage',
-				],
-			},
-		},
-		options: [
-			{
-				name: 'Create',
-				value: 'create',
-				description: 'Create a pages in a database',
-			},
-			{
-				name: 'Get',
-				value: 'get',
-				description: 'Get a page in a database',
-			},
-			{
-				name: 'Get All',
-				value: 'getAll',
-				description: 'Get all pages in a database',
-			},
-			{
-				name: 'Search',
-				value: 'search',
-				description: 'Search pages in a database',
 			},
 			{
 				name: 'Update',
@@ -958,9 +911,9 @@ export const databasePageFields = [
 			},
 		],
 	},
-/* -------------------------------------------------------------------------- */
-/*                                databasePage:get                            */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                databasePage:get                            */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Database Page Link or ID',
 		name: 'pageId',
@@ -1005,7 +958,7 @@ export const databasePageFields = [
 	/*                                databasePage:getAll                         */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Database ID',
+		displayName: 'Database Name or ID',
 		name: 'databaseId',
 		type: 'options',
 		typeOptions: {
@@ -1264,152 +1217,6 @@ export const databasePageFields = [
 								],
 								default: '',
 								description: 'The direction to sort.',
-							},
-						],
-					},
-				],
-			},
-		],
-	},
-	/* -------------------------------------------------------------------------- */
-	/*                                databasePage:search                         */
-	/* -------------------------------------------------------------------------- */
-	{
-		displayName: 'Search Text',
-		name: 'text',
-		type: 'string',
-		default: '',
-		required: true,
-		displayOptions: {
-			show: {
-				resource: [
-					'databasePage',
-				],
-				operation: [
-					'search',
-				],
-			},
-		},
-		description: 'When supplied, limits which pages are returned by comparing the query to the page title',
-	},
-	{
-		displayName: 'Return All',
-		name: 'returnAll',
-		type: 'boolean',
-		displayOptions: {
-			show: {
-				resource: [
-					'databasePage',
-				],
-				operation: [
-					'search',
-				],
-			},
-		},
-		default: false,
-		description: 'If all results should be returned or only up to a given limit.',
-	},
-	{
-		displayName: 'Limit',
-		name: 'limit',
-		type: 'number',
-		displayOptions: {
-			show: {
-				resource: [
-					'databasePage',
-				],
-				operation: [
-					'search',
-				],
-				returnAll: [
-					false,
-				],
-			},
-		},
-		typeOptions: {
-			minValue: 1,
-			maxValue: 100,
-		},
-		default: 50,
-		description: 'How many results to return.',
-	},
-	{
-		displayName: 'Simplify Output',
-		name: 'simple',
-		type: 'boolean',
-		displayOptions: {
-			show: {
-				resource: [
-					'databasePage',
-				],
-				operation: [
-					'search',
-				],
-			},
-		},
-		default: true,
-		description: 'Whether to return a simplified version of the response instead of the raw data',
-	},
-	{
-		displayName: 'Options',
-		name: 'options',
-		type: 'collection',
-		displayOptions: {
-			show: {
-				resource: [
-					'databasePage',
-				],
-				operation: [
-					'search',
-				],
-			},
-		},
-		default: {},
-		placeholder: 'Add Field',
-		options: [
-			{
-				displayName: 'Sort',
-				name: 'sort',
-				placeholder: 'Add Sort',
-				type: 'fixedCollection',
-				typeOptions: {
-					multipleValues: false,
-				},
-				default: {},
-				options: [
-					{
-						displayName: 'Sort',
-						name: 'sortValue',
-						values: [
-							{
-								displayName: 'Direction',
-								name: 'direction',
-								type: 'options',
-								options: [
-									{
-										name: 'Ascending',
-										value: 'ascending',
-									},
-									{
-										name: 'Descending',
-										value: 'descending',
-									},
-								],
-								default: 'descending',
-								description: 'The direction to sort',
-							},
-							{
-								displayName: 'Timestamp',
-								name: 'timestamp',
-								type: 'options',
-								options: [
-									{
-										name: 'Last Edited Time',
-										value: 'last_edited_time',
-									},
-								],
-								default: 'last_edited_time',
-								description: `The name of the timestamp to sort against`,
 							},
 						],
 					},

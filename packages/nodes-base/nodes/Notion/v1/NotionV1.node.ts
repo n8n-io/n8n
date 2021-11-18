@@ -13,6 +13,8 @@ import {
 } from 'n8n-workflow';
 
 import {
+	extractDatabaseId,
+	extractPageId,
 	formatBlocks,
 	formatTitle,
 	getBlockTypes,
@@ -200,7 +202,7 @@ export class NotionV1 implements INodeType {
 
 			if (operation === 'append') {
 				for (let i = 0; i < length; i++) {
-					const blockId = this.getNodeParameter('blockId', i) as string;
+					const blockId = extractPageId(this.getNodeParameter('blockId', i) as string);
 					const body: IDataObject = {
 						children: formatBlocks(this.getNodeParameter('blockUi.blockValues', i, []) as IDataObject[]),
 					};
@@ -211,7 +213,7 @@ export class NotionV1 implements INodeType {
 
 			if (operation === 'getAll') {
 				for (let i = 0; i < length; i++) {
-					const blockId = this.getNodeParameter('blockId', i) as string;
+					const blockId = extractPageId(this.getNodeParameter('blockId', i) as string);
 					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
 					if (returnAll) {
 						responseData = await notionApiRequestAllItems.call(this, 'results', 'GET', `/blocks/${blockId}/children`, {});
@@ -229,7 +231,7 @@ export class NotionV1 implements INodeType {
 
 			if (operation === 'get') {
 				for (let i = 0; i < length; i++) {
-					const databaseId = this.getNodeParameter('databaseId', i) as string;
+					const databaseId = extractDatabaseId(this.getNodeParameter('databaseId', i) as string);
 					responseData = await notionApiRequest.call(this, 'GET', `/databases/${databaseId}`);
 					returnData.push(responseData);
 				}
@@ -322,7 +324,7 @@ export class NotionV1 implements INodeType {
 
 			if (operation === 'update') {
 				for (let i = 0; i < length; i++) {
-					const pageId = this.getNodeParameter('pageId', i) as string;
+					const pageId = extractPageId(this.getNodeParameter('pageId', i) as string);
 					const simple = this.getNodeParameter('simple', i) as boolean;
 					const properties = this.getNodeParameter('propertiesUi.propertyValues', i, []) as IDataObject[];
 					// tslint:disable-next-line: no-any
@@ -375,7 +377,7 @@ export class NotionV1 implements INodeType {
 						parent: {},
 						properties: {},
 					};
-					body.parent['page_id'] = this.getNodeParameter('pageId', i) as string;
+					body.parent['page_id'] = extractPageId(this.getNodeParameter('pageId', i) as string);
 					body.properties = formatTitle(this.getNodeParameter('title', i) as string);
 					body.children = formatBlocks(this.getNodeParameter('blockUi.blockValues', i, []) as IDataObject[]);
 					responseData = await notionApiRequest.call(this, 'POST', '/pages', body);
@@ -388,7 +390,7 @@ export class NotionV1 implements INodeType {
 
 			if (operation === 'get') {
 				for (let i = 0; i < length; i++) {
-					const pageId = this.getNodeParameter('pageId', i) as string;
+					const pageId = extractPageId(this.getNodeParameter('pageId', i) as string);
 					const simple = this.getNodeParameter('simple', i) as boolean;
 					responseData = await notionApiRequest.call(this, 'GET', `/pages/${pageId}`);
 					if (simple === true) {
