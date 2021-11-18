@@ -31,6 +31,22 @@
 				<font-awesome-icon @click="displayActivationError" icon="exclamation-triangle" />
 			</n8n-tooltip>
 		</div>
+
+		<div v-if="showActivationAlert">
+
+			<el-dialog
+				title="Workflow activated"
+				append-to-body
+				:custom-class="classic"
+				:visible="showActivationAlert"
+				width="30%">
+				<p>{{alertTriggerContent}}</p>
+				<p><b>These executions will not show up immediately in the editor</b>, but you can see them in the <a @click="showExecutionsList">execution list</a>.</p>
+				<span slot="footer" class="dialog-footer">
+					<n8n-button @click="showActivationAlert = false" label="Got it"/>
+				</span>
+			</el-dialog>
+		</div>
 	</div>
 </template>
 
@@ -52,6 +68,8 @@ import {
 	INodeTypeDescription,
 } from 'n8n-workflow';
 import { ElMessageBoxOptions } from 'element-ui/types/message-box';
+import { EXECUTIONS_MODAL_KEY } from '@/constants';
+
 
 export default mixins(
 	externalHooks,
@@ -70,6 +88,8 @@ export default mixins(
 			data () {
 				return {
 					loading: false,
+					alertTriggerContent: '',
+					showActivationAlert: false
 				};
 			},
 			computed: {
@@ -182,10 +202,9 @@ export default mixins(
 						const foundTriggers = this.$store.getters.allNodes
 							.map(({ type }: INodeUi) => this.$store.getters.nodeType(type))
 							.filter(((type: INodeTypeDescription) => type.group.includes('trigger')));
-						let alertTriggerContent = 'Your trigger will now fire production executions automatically.';
 						// if multiple triggers
 						if (foundTriggers.length > 1) {
-							alertTriggerContent = 'Your triggers will now fire production executions automatically.';
+							this.alertTriggerContent = 'Your triggers will now fire production executions automatically.';
 						} else {
 							const trigger = foundTriggers[0];
 							const serviceName = trigger.displayName.replace(/ trigger/i, '');
@@ -193,27 +212,22 @@ export default mixins(
 							if (this.$store.getters.currentWorkflowHasWebhookNode) {
 								if (trigger.name === 'Webhook') {
 									// check if a standard Webhook trigger
-									alertTriggerContent = 'You can now make calls to your production webhook URL.';
+									this.alertTriggerContent = 'You can now make calls to your production webhook URL.';
 								} else {
-									alertTriggerContent = `Your workflow will now listen for events from ${serviceName}.`;
+									this.alertTriggerContent = `Your workflow will now listen for events from ${serviceName}.`;
 								}
 							} else if (trigger.polling) {
 								//check if a polling trigger
-								alertTriggerContent = `Your workflow will now check ${serviceName} for events on a regular basis.`;
+								this.alertTriggerContent = `Your workflow will now check ${serviceName} for events on a regular basis.`;
 							} else if (trigger.displayName === 'Cron') {
 								// check if a standard Cron trigger
-								alertTriggerContent = 'Your cron trigger will now run on the schedule you have defined.';
+								this.alertTriggerContent = 'Your cron trigger will now run on the schedule you have defined.';
 							} else if (trigger.displayName === 'Interval') {
 								// check if a standard Interval trigger
-								alertTriggerContent = 'Your interval trigger will now run on the schedule you have defined.';
+								this.alertTriggerContent = 'Your interval trigger will now run on the schedule you have defined.';
 							}
 						}
-						const options: ElMessageBoxOptions  = {
-							confirmButtonText: 'Got it',
-							dangerouslyUseHTMLString: true,
-						};
-						const alertMessage = '<p><b>These executions will not show up immediately in the editor</b>, but you can see them in the <a>execution list</a>.</p>';
-						this.$alert(`${alertTriggerContent} ${alertMessage}`, 'Workflow activated', options);
+						this.showActivationAlert = true
 					} else {
 						this.$store.commit('setWorkflowInactive', this.workflowId);
 					}
@@ -249,6 +263,10 @@ export default mixins(
 						duration: 0,
 					});
 				},
+				async showExecutionsList () {
+					this.$store.dispatch('ui/openModal', EXECUTIONS_MODAL_KEY);
+
+				}
 			},
 		},
 	);
@@ -268,4 +286,5 @@ export default mixins(
 ::v-deep .el-loading-spinner {
 	margin-top: -10px;
 }
+
 </style>
