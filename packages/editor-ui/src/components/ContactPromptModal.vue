@@ -51,7 +51,7 @@ export default mixins(workflowHelpers).extend({
 	methods: {
 		closeDialog(): void {
 			if (!this.isEmailValid) {
-				this.$telemetry.track('Some msg', { instance_id: this.$store.getters.instanceId, email: null });
+				this.$telemetry.track('User closed email modal', { instance_id: this.$store.getters.instanceId, email: null });
 			}
 			this.modalBus.$emit("close");
 		},
@@ -60,7 +60,7 @@ export default mixins(workflowHelpers).extend({
 		},
 		send(): void {
 			if (this.isEmailValid) {
-				this.$telemetry.track('Some msg', { instance_id: this.$store.getters.instanceId, email: this.email });
+				this.$telemetry.track('User closed email modal', { instance_id: this.$store.getters.instanceId, email: this.email });
 			}
 			this.closeDialog();
 		},

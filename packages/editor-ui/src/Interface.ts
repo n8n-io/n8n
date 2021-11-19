@@ -472,7 +472,7 @@ export interface IN8nUISettings {
 	telemetry: ITelemetrySettings;
 }
 
-export interface IN8nContactPromt {
+export interface IN8nContactPrompt {
 	show: boolean;
 }
 
