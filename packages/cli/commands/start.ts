@@ -316,7 +316,7 @@ export class Start extends Command {
 				InternalHooksManager.init(instanceId);
 
 				const binaryDataConfig = config.get('binaryDataManager') as IBinaryDataConfig;
-				await BinaryDataHelper.init(binaryDataConfig);
+				await BinaryDataHelper.init(binaryDataConfig, true);
 
 				await Server.start();
 
