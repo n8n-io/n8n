@@ -86,9 +86,12 @@ export class ImportWorkflowsCommand extends Command {
 			const credentialsEntities = (await Db.collections.Credentials?.find()) ?? [];
 			let i;
 			if (flags.separate) {
-				const files = await glob(
-					`${flags.input.endsWith(path.sep) ? flags.input : flags.input + path.sep}*.json`,
-				);
+				let inputPath = flags.input;
+				if (process.platform === 'win32') {
+					inputPath = inputPath.replace(/\\/g, '/');
+				}
+				inputPath = inputPath.replace(/\/$/g, '');
+				const files = await glob(`${inputPath}/*.json`);
 				for (i = 0; i < files.length; i++) {
 					const workflow = JSON.parse(fs.readFileSync(files[i], { encoding: 'utf8' }));
 					if (credentialsEntities.length > 0) {
