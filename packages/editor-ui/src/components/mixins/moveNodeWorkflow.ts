@@ -3,6 +3,7 @@ import mixins from 'vue-typed-mixins';
 import normalizeWheel from 'normalize-wheel';
 import { deviceSupportHelpers } from '@/components/mixins/deviceSupportHelpers';
 import { nodeIndex } from '@/components/mixins/nodeIndex';
+import { getMousePosition } from '@/views/canvasHelpers';
 
 export const moveNodeWorkflow = mixins(
 	deviceSupportHelpers,
@@ -15,29 +16,18 @@ export const moveNodeWorkflow = mixins(
 	},
 
 	methods: {
-		getMousePosition(e: MouseEvent | TouchEvent) {
-			// @ts-ignore
-			const x = e.pageX !== undefined ? e.pageX : (e.touches && e.touches[0] && e.touches[0].pageX ? e.touches[0].pageX : 0);
-			// @ts-ignore
-			const y = e.pageY !== undefined ? e.pageY : (e.touches && e.touches[0] && e.touches[0].pageY ? e.touches[0].pageY : 0);
-
-			return {
-				x,
-				y,
-			};
-		},
 		moveWorkflow (e: MouseEvent) {
 			const offsetPosition = this.$store.getters.getNodeViewOffsetPosition;
 
-			const position = this.getMousePosition(e);
+			const [x, y] = getMousePosition(e);
 
-			const nodeViewOffsetPositionX = offsetPosition[0] + (position.x - this.moveLastPosition[0]);
-			const nodeViewOffsetPositionY = offsetPosition[1] + (position.y - this.moveLastPosition[1]);
+			const nodeViewOffsetPositionX = offsetPosition[0] + (x - this.moveLastPosition[0]);
+			const nodeViewOffsetPositionY = offsetPosition[1] + (y - this.moveLastPosition[1]);
 			this.$store.commit('setNodeViewOffsetPosition', {newOffset: [nodeViewOffsetPositionX, nodeViewOffsetPositionY]});
 
 			// Update the last position
-			this.moveLastPosition[0] = position.x;
-			this.moveLastPosition[1] = position.y;
+			this.moveLastPosition[0] = x;
+			this.moveLastPosition[1] = y;
 		},
 		mouseDownMoveWorkflow (e: MouseEvent) {
 			if (this.isCtrlKeyPressed(e) === false) {
@@ -53,10 +43,10 @@ export const moveNodeWorkflow = mixins(
 
 			this.$store.commit('setNodeViewMoveInProgress', true);
 
-			const position = this.getMousePosition(e);
+			const [x, y] = getMousePosition(e);
 
-			this.moveLastPosition[0] = position.x;
-			this.moveLastPosition[1] = position.y;
+			this.moveLastPosition[0] = x;
+			this.moveLastPosition[1] = y;
 
 			// @ts-ignore
 			this.$el.addEventListener('mousemove', this.mouseMoveNodeWorkflow);
