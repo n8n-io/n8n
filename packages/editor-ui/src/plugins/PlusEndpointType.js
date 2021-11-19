@@ -47,7 +47,11 @@
 					cursor: pointer;
 				}
 
-				.plus-container svg path:first-of-type,rect:first-of-type {
+				.plus-container svg path:first-of-type {
+					stroke: hsl( 228, 9.6%, 79.6% );
+				}
+
+				.plus-container svg rect:first-of-type {
 					stroke: #7D838F;
 				}
 
@@ -55,9 +59,9 @@
 					fill: #7D838F;
 				}
 
-				.plus-container:hover svg path:first-of-type {
-					stroke: #ff6d5a;
-				}
+				// .plus-container:hover svg path:first-of-type {
+				// 	stroke: #ff6d5a;
+				// }
 
 				.plus-container:hover svg rect:first-of-type {
 					stroke: #ff6d5a;
@@ -102,6 +106,7 @@
 		this._jsPlumb.instance.appendElement(this.canvas);
 
 		this.paint = function (style, anchor) {
+			console.log(style, anchor);
 			_ju.sizeElement(this.canvas, this.x, this.y, this.w, this.h);
 		};
 	};
