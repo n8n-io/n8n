@@ -26,13 +26,15 @@
 					<font-awesome-icon icon="sync-alt" spin />
 				</div>
 
+				<div class="node-trigger-tooltip__wrapper">
+					<n8n-tooltip placement="top" :manual="true" :value="showWebhookNodeTooltip" popper-class="node-trigger-tooltip__wrapper--item">
+						<div slot="content" v-text="getTriggerNodeTooltip()"></div>
+						<span />
+					</n8n-tooltip>
+				</div>
+
 				<NodeIcon class="node-icon" :nodeType="nodeType" :size="40" :shrink="false" :disabled="this.data.disabled"/>
 			</div>
-
-			<n8n-tooltip placement="top" :manual="true" :value="showWebhookNodeTooltip" popper-class="node-trigger-tooltip">
-				<div slot="content" v-text="getTriggerNodeTooltip()"></div>
-				<span />
-			</n8n-tooltip>
 
 			<div class="node-options no-select-on-click" v-if="!isReadOnly" v-show="!hideActions">
 				<div v-touch:tap="deleteNode" class="option" title="Delete Node" >
@@ -558,17 +560,26 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 		border-color: var(--color-success-light);
 	}
 }
-
-.node-trigger-tooltip {
-	max-width: 160px;
-	z-index: 0;
-}
 </style>
 
 <style lang="scss">
 /** node */
 .node-wrapper.selected {
 	z-index: 2;
+}
+
+.node-trigger-tooltip {
+	&__wrapper {
+		top: -22px;
+		left: 50px;
+		position: relative;
+
+		&--item {
+			max-width: 160px;
+			position: fixed;
+			z-index: 0!important;
+		}
+	}
 }
 
 /** connector */
