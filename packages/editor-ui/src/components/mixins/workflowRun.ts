@@ -191,6 +191,7 @@ export const workflowRun = mixins(
 					},
 				};
 				this.$store.commit('setWorkflowExecutionData', executionData);
+				this.updateNodesExecutionIssues();
 
 				 const runWorkflowApiResponse = await this.runWorkflowApi(startRunData);
 

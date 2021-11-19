@@ -5,9 +5,12 @@
 /* eslint-disable @typescript-eslint/no-unsafe-call */
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
-import { IRun } from 'n8n-workflow';
-
-import { createDeferredPromise } from 'n8n-core';
+import {
+	createDeferredPromise,
+	IDeferredPromise,
+	IExecuteResponsePromiseData,
+	IRun,
+} from 'n8n-workflow';
 
 import { ChildProcess } from 'child_process';
 // eslint-disable-next-line import/no-extraneous-dependencies
@@ -116,6 +119,28 @@ export class ActiveExecutions {
 		this.activeExecutions[executionId].workflowExecution = workflowExecution;
 	}
 
+	attachResponsePromise(
+		executionId: string,
+		responsePromise: IDeferredPromise<IExecuteResponsePromiseData>,
+	): void {
+		if (this.activeExecutions[executionId] === undefined) {
+			throw new Error(
+				`No active execution with id "${executionId}" got found to attach to workflowExecution to!`,
+			);
+		}
+
+		this.activeExecutions[executionId].responsePromise = responsePromise;
+	}
+
+	resolveResponsePromise(executionId: string, response: IExecuteResponsePromiseData): void {
+		if (this.activeExecutions[executionId] === undefined) {
+			return;
+		}
+
+		// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+		this.activeExecutions[executionId].responsePromise?.resolve(response);
+	}
+
 	/**
 	 * Remove an active execution
 	 *
@@ -193,6 +218,7 @@ export class ActiveExecutions {
 
 		this.activeExecutions[executionId].postExecutePromises.push(waitPromise);
 
+		// eslint-disable-next-line @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-member-access
 		return waitPromise.promise();
 	}
 

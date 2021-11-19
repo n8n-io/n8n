@@ -6,6 +6,8 @@ if [ -d /root/.n8n ] ; then
   ln -s /root/.n8n /home/node/
 fi
 
+chown -R node /home/node
+
 if [ "$#" -gt 0 ]; then
   # Got started with arguments
   COMMAND=$1;

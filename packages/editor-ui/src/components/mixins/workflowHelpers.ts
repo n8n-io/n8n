@@ -36,7 +36,7 @@ import {
 	IWorkflowData,
 	IWorkflowDb,
 	IWorkflowDataUpdate,
-	XYPositon,
+	XYPosition,
 	ITag,
 	IUpdateInformation,
 } from '../../Interface';
@@ -225,7 +225,7 @@ export const workflowHelpers = mixins(
 						return [];
 					},
 					getByName: (nodeType: string): INodeType | INodeVersionedType | undefined => {
-						const nodeTypeDescription = this.$store.getters.nodeType(nodeType);
+						const nodeTypeDescription = this.$store.getters.nodeType(nodeType) as INodeTypeDescription | null;
 
 						if (nodeTypeDescription === null) {
 							return undefined;
@@ -236,7 +236,7 @@ export const workflowHelpers = mixins(
 						};
 					},
 					getByNameAndVersion: (nodeType: string, version?: number): INodeType | undefined => {
-						const nodeTypeDescription = this.$store.getters.nodeType(nodeType, version);
+						const nodeTypeDescription = this.$store.getters.nodeType(nodeType, version) as INodeTypeDescription | null;
 
 						if (nodeTypeDescription === null) {
 							return undefined;
@@ -329,7 +329,7 @@ export const workflowHelpers = mixins(
 
 				// Get the data of the node type that we can get the default values
 				// TODO: Later also has to care about the node-type-version as defaults could be different
-				const nodeType = this.$store.getters.nodeType(node.type, node.typeVersion) as INodeTypeDescription;
+				const nodeType = this.$store.getters.nodeType(node.type, node.typeVersion) as INodeTypeDescription | null;
 
 				if (nodeType !== null) {
 					// Node-Type is known so we can save the parameters correctly
@@ -361,11 +361,6 @@ export const workflowHelpers = mixins(
 						if (Object.keys(saveCredenetials).length !== 0) {
 							nodeData.credentials = saveCredenetials;
 						}
-					}
-
-					// Save the node color only if it is different to the default color
-					if (node.color && node.color !== nodeType.defaults.color) {
-						nodeData.color = node.color;
 					}
 				} else {
 					// Node-Type is not known so save the data as it is
@@ -568,7 +563,7 @@ export const workflowHelpers = mixins(
 
 			// Updates the position of all the nodes that the top-left node
 			// is at the given position
-			updateNodePositions (workflowData: IWorkflowData | IWorkflowDataUpdate, position: XYPositon): void {
+			updateNodePositions (workflowData: IWorkflowData | IWorkflowDataUpdate, position: XYPosition): void {
 				if (workflowData.nodes === undefined) {
 					return;
 				}

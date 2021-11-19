@@ -13,3 +13,8 @@ export function convertToHumanReadableDate (epochTime: number) {
 export function getAppNameFromCredType(name: string) {
 	return name.split(' ').filter((word) => !KEYWORDS_TO_FILTER.includes(word)).join(' ');
 }
+
+export function getStyleTokenValue(name: string): string {
+	const style = getComputedStyle(document.body);
+	return style.getPropertyValue(name);
+}
