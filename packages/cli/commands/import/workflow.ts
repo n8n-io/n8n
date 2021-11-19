@@ -6,7 +6,6 @@ import { INode, INodeCredentialsDetails, LoggerProxy } from 'n8n-workflow';
 
 import * as fs from 'fs';
 import * as glob from 'fast-glob';
-import * as path from 'path';
 import { UserSettings } from 'n8n-core';
 import { getLogger } from '../../src/Logger';
 import { Db, ICredentialsDb } from '../../src';
