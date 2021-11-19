@@ -489,10 +489,6 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 	z-index: 6;
 }
 
-.disabled-linethrough {
-	z-index: 6;
-}
-
 .jtk-endpoint.plus-endpoint {
 	z-index: 6;
 }
@@ -503,6 +499,10 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 
 .jtk-overlay {
 	z-index:7;
+}
+
+.disabled-linethrough {
+	z-index: 8;
 }
 
 .jtk-connector.jtk-dragging {
