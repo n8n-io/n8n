@@ -472,6 +472,10 @@ export interface IN8nUISettings {
 	telemetry: ITelemetrySettings;
 }
 
+export interface IN8nContactPromt {
+	show: boolean;
+}
+
 export interface IWorkflowSettings extends IWorkflowSettingsWorkflow {
 	errorWorkflow?: string;
 	saveDataErrorExecution?: string;

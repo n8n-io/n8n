@@ -191,6 +191,7 @@ export const workflowRun = mixins(
 					},
 				};
 				this.$store.commit('setWorkflowExecutionData', executionData);
+				this.$store.dispatch('settings/getContactPromptData');
 
 				 const runWorkflowApiResponse = await this.runWorkflowApi(startRunData);
 

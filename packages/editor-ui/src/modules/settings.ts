@@ -5,10 +5,10 @@ import {
 	IRootState,
 	ISettingsState,
 } from '../Interface';
-import { getSettings, submitPersonalizationSurvey } from '../api/settings';
+import { getSettings, getContactPromptData, submitPersonalizationSurvey } from '../api/settings';
 import Vue from 'vue';
 import { getPersonalizedNodeTypes } from './helper';
-import { PERSONALIZATION_MODAL_KEY } from '@/constants';
+import { CONTACT_PROMPT_MODAL_KEY, PERSONALIZATION_MODAL_KEY } from '@/constants';
 
 const module: Module<ISettingsState, IRootState> = {
 	namespaced: true,
@@ -68,6 +68,13 @@ const module: Module<ISettingsState, IRootState> = {
 			await submitPersonalizationSurvey(context.rootGetters.getRestApiContext, results);
 
 			context.commit('setPersonalizationAnswers', results);
+		},
+		async getContactPromptData(context: ActionContext<ISettingsState, IRootState>) {
+			const contactPromptData = await getContactPromptData(context.state.settings.instanceId);
+
+			if (contactPromptData.show) {
+				context.commit('ui/openModal', CONTACT_PROMPT_MODAL_KEY, {root: true});
+			}
 		},
 	},
 };
