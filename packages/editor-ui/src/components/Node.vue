@@ -97,6 +97,9 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 		isExecuting (): boolean {
 			return this.$store.getters.executingNode === this.data.name;
 		},
+		isDragTriggerNodeActive (): boolean {
+			return this.$store.getters.isActionActive('dragActive');
+		},
 		isSingleActiveTriggerNode (): boolean {
 			return this.$store.getters.activeWorkflowTriggerNodes.length === 1 && !this.data.disabled;
 		},
@@ -182,6 +185,13 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 			if (!newValue && oldValue) {
 				this.setSubtitle();
 			}
+		},
+		isDragTriggerNodeActive: {
+			handler(isDragTriggerNodeActive) {
+				if (this.workflowRunning && this.isTriggerNode && this.isSingleActiveTriggerNode && !this.isTriggerNodeTooltipEmpty && !this.isNodeDisabled && !this.hasIssues) {
+					this.showWebhookNodeTooltip = !isDragTriggerNodeActive;
+				}
+			},
 		},
 		nodePosition: {
 			handler() {
@@ -482,6 +492,7 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 
 .node-trigger-tooltip {
 	max-width: 160px;
+	z-index: 0;
 }
 </style>
 
