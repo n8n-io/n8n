@@ -110,7 +110,8 @@ export const showMessage = mixins(externalHooks).extend({
 			return errorMessage;
 		},
 
-		$showError(error: Error, title: string, message?: string) {
+		$showError(e: Error | unknown, title: string, message?: string) {
+			const error = e as Error;
 			const messageLine = message ? `${message}<br/>` : '';
 			this.$showMessage({
 				title,
