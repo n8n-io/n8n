@@ -38,10 +38,10 @@
 				title="Workflow activated"
 				append-to-body
 				center
-				:visible="showActivationAlert"
-				width="30%">
+				:visible.sync="showActivationAlert"
+				width="40%">
 				<p>{{alertTriggerContent}}</p>
-				<p><b>These executions will not show up immediately in the editor</b>, but you can see them in the <a @click="showExecutionsList">execution list</a>.</p>
+				<p><span class="emphasised">These executions will not show up immediately in the editor</span>, but you can see them in the <a @click="showExecutionsList">execution list</a>.</p>
 				<span slot="footer" class="dialog-footer">
 					<n8n-button @click="showActivationAlert = false" label="Got it"/>
 				</span>
@@ -116,6 +116,7 @@ export default mixins(
 				},
 				containsTrigger(): boolean {
 					const foundNodes = this.$store.getters.allNodes.map(({ type }: INodeUi) => this.$store.getters.nodeType(type));
+					console.log(foundNodes);
 					return foundNodes.filter(((type: INodeTypeDescription) => type.group.includes('trigger'))).length > 0;
 				},
 			},
@@ -284,6 +285,10 @@ export default mixins(
 
 ::v-deep .el-loading-spinner {
 	margin-top: -10px;
+}
+
+.emphasised {
+	font-weight: 600;
 }
 
 </style>
