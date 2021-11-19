@@ -541,6 +541,7 @@ export default {
 		thisNodeDoesNotHaveAnyParameters: '🇩🇪 This node does not have any parameters.',
 	},
 	nodeView: {
+		dropConnectionToAddNode: '🇩🇪 Drop connection<br />to add node',
 		addNode: '🇩🇪 Add node',
 		stopWaitingForWebhookCall: '🇩🇪 Stop waiting for Webhook call',
 		deletesTheCurrentExecutionData: '🇩🇪 Deletes the current Execution Data.',
@@ -589,8 +590,6 @@ export default {
 			executingWorkflow: '🇩🇪 Executing Workflow',
 			waitingForWebhookCall: '🇩🇪 Waiting for Webhook-Call',
 		},
-		dropConnectionToCreateNode: '🇩🇪 Drop connection<br />to create node',
-		deleteConnection: '🇩🇪 Delete Connection',
 		itLooksLikeYouHaveBeenEditingSomething: '🇩🇪 It looks like you have been editing something. If you leave before saving, your changes will be lost.',
 		thereWasAProblemLoadingTheNodeParametersOfNode: '🇩🇪 There was a problem loading the node-parameters of node',
 		noNodesGivenToAdd: '🇩🇪 No nodes given to add!',
