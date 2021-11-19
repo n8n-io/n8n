@@ -34,10 +34,6 @@
 				<span />
 			</n8n-tooltip>
 
-			<div class="node-executing-info" title="Node is executing">
-				<font-awesome-icon icon="sync-alt" spin />
-			</div>
-			<div class="node-options no-select-on-click" v-if="!isReadOnly">
 			<div class="node-options no-select-on-click" v-if="!isReadOnly" v-show="!hideActions">
 				<div v-touch:tap="deleteNode" class="option" title="Delete Node" >
 					<font-awesome-icon icon="trash" />
