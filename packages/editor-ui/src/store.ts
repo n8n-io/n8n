@@ -788,15 +788,8 @@ export const store = new Vuex.Store({
 				return accu;
 			}, {});
 		},
-		getNodeByName: (state) => (nodeName: string): INodeUi | null => {
-			const foundNode = state.workflow.nodes.find(node => {
-				return node.name === nodeName;
-			});
-
-			if (foundNode === undefined) {
-				return null;
-			}
-			return foundNode;
+		getNodeByName: (state, getters) => (nodeName: string): INodeUi | null => {
+			return getters.nodesByName[nodeName] || null;
 		},
 		nodesIssuesExist: (state): boolean => {
 			for (const node of state.workflow.nodes) {

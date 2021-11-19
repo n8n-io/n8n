@@ -42,7 +42,7 @@ export default Vue.extend({
 	computed: {
 		iconStyleData (): object {
 			const nodeType = this.nodeType as INodeTypeDescription | IVersionNode | null;
-			const color = nodeType ? nodeType.defaults && nodeType!.defaults.color: '';
+			const color = nodeType ? nodeType.defaults && nodeType!.defaults.color : '';
 			if (!this.size) {
 				return {color};
 			}
@@ -54,11 +54,11 @@ export default Vue.extend({
 				'font-size': this.size + 'px',
 				'line-height': this.size + 'px',
 				'border-radius': this.circle ? '50%': '2px',
-				...(this.disabled ? {
+				...(this.disabled && {
 					color: '#ccc',
 					'-webkit-filter': 'contrast(40%) brightness(1.5) grayscale(100%)',
 					'filter': 'contrast(40%) brightness(1.5) grayscale(100%)',
-				}: {}),
+				}),
 			};
 		},
 		fontStyleData (): object {

@@ -385,18 +385,13 @@ export const showOrHideItemsLabel = (connection: Connection) => {
 		overlay.setVisible(true);
 	}
 
-	if (overlay.canvas) {
+	const innerElement = overlay.canvas && overlay.canvas.querySelector('span');
+	if (innerElement) {
 		if (diffY === 0 || isLoopingBackwards(connection)) {
-			const innerElement = overlay.canvas.querySelector('span');
-			if (innerElement) {
-				innerElement.classList.add('floating');
-			}
+			innerElement.classList.add('floating');
 		}
 		else {
-			const innerElement = overlay.canvas.querySelector('span');
-			if (innerElement) {
-				innerElement.classList.remove('floating');
-			}
+			innerElement.classList.remove('floating');
 		}
 	}
 };
