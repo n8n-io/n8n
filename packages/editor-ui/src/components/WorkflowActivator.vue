@@ -37,7 +37,7 @@
 			<el-dialog
 				title="Workflow activated"
 				append-to-body
-				:custom-class="classic"
+				center
 				:visible="showActivationAlert"
 				width="30%">
 				<p>{{alertTriggerContent}}</p>
@@ -67,7 +67,6 @@ import { mapGetters } from "vuex";
 import {
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { ElMessageBoxOptions } from 'element-ui/types/message-box';
 import { EXECUTIONS_MODAL_KEY } from '@/constants';
 
 
@@ -113,7 +112,7 @@ export default mixins(
 					return '#13ce66';
 				},
 				disabled(): boolean {
-					return !this.containsTrigger;
+					return this.workflowActive ? false : !this.containsTrigger;
 				},
 				containsTrigger(): boolean {
 					const foundNodes = this.$store.getters.allNodes.map(({ type }: INodeUi) => this.$store.getters.nodeType(type));
