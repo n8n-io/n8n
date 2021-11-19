@@ -213,6 +213,7 @@ import {
 	IBinaryKeyData,
 	IDataObject,
 	INodeExecutionData,
+	INodeTypeDescription,
 	IRunData,
 	IRunExecutionData,
 	ITaskData,
@@ -539,8 +540,8 @@ export default mixins(
 					return outputIndex + 1;
 				}
 
-				const nodeType = this.$store.getters.nodeType(this.node.type);
-				if (!nodeType.hasOwnProperty('outputNames') || nodeType.outputNames.length <= outputIndex) {
+				const nodeType = this.$store.getters.nodeType(this.node.type) as INodeTypeDescription | null;
+				if (!nodeType || !nodeType.outputNames || nodeType.outputNames.length <= outputIndex) {
 					return outputIndex + 1;
 				}
 

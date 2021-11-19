@@ -28,7 +28,7 @@ import {
 	IPushDataNodeExecuteAfter,
 	IUpdateInformation,
 	IWorkflowDb,
-	XYPositon,
+	XYPosition,
 	IRestApiContext,
 } from './Interface';
 
@@ -584,6 +584,13 @@ export const store = new Vuex.Store({
 			}
 			state.workflowExecutionData.data.resultData.runData[pushData.nodeName].push(pushData.data);
 		},
+		clearNodeExecutionData (state, nodeName: string): void {
+			if (state.workflowExecutionData === null) {
+				return;
+			}
+
+			Vue.delete(state.workflowExecutionData.data.resultData.runData, nodeName);
+		},
 
 		setWorkflowSettings (state, workflowSettings: IWorkflowSettings) {
 			Vue.set(state.workflow, 'settings', workflowSettings);
@@ -754,7 +761,7 @@ export const store = new Vuex.Store({
 			return state.nodeIndex[index];
 		},
 
-		getNodeViewOffsetPosition: (state): XYPositon => {
+		getNodeViewOffsetPosition: (state): XYPosition => {
 			return state.nodeViewOffsetPosition;
 		},
 		isNodeViewMoveInProgress: (state): boolean => {
@@ -781,9 +788,7 @@ export const store = new Vuex.Store({
 		allConnections: (state): IConnections => {
 			return state.workflow.connections;
 		},
-		// connectionsByNodeName: (state) => (nodeName: string): {[key: string]: Connection[][]} | null => {
-		// connectionsByNodeName: (state) => (nodeName: string): { [key: string]: NodeConnections} | null => {
-		connectionsByNodeName: (state) => (nodeName: string): INodeConnections => {
+		outgoingConnectionsByNodeName: (state) => (nodeName: string): INodeConnections => {
 			if (state.workflow.connections.hasOwnProperty(nodeName)) {
 				return state.workflow.connections[nodeName];
 			}
@@ -792,15 +797,14 @@ export const store = new Vuex.Store({
 		allNodes: (state): INodeUi[] => {
 			return state.workflow.nodes;
 		},
-		nodeByName: (state) => (nodeName: string): INodeUi | null => {
-			const foundNode = state.workflow.nodes.find(node => {
-				return node.name === nodeName;
-			});
-
-			if (foundNode === undefined) {
-				return null;
-			}
-			return foundNode;
+		nodesByName: (state: IRootState): {[name: string]: INodeUi} => {
+			return state.workflow.nodes.reduce((accu: {[name: string]: INodeUi}, node) => {
+				accu[node.name] = node;
+				return accu;
+			}, {});
+		},
+		getNodeByName: (state, getters) => (nodeName: string): INodeUi | null => {
+			return getters.nodesByName[nodeName] || null;
 		},
 		nodesIssuesExist: (state): boolean => {
 			for (const node of state.workflow.nodes) {
@@ -825,10 +829,10 @@ export const store = new Vuex.Store({
 			return foundType;
 		},
 		activeNode: (state, getters): INodeUi | null => {
-			return getters.nodeByName(state.activeNode);
+			return getters.getNodeByName(state.activeNode);
 		},
 		lastSelectedNode: (state, getters): INodeUi | null => {
-			return getters.nodeByName(state.lastSelectedNode);
+			return getters.getNodeByName(state.lastSelectedNode);
 		},
 		lastSelectedNodeOutputIndex: (state, getters): number | null => {
 			return state.lastSelectedNodeOutputIndex;
