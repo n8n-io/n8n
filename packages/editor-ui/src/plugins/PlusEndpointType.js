@@ -106,7 +106,7 @@
 		this._jsPlumb.instance.appendElement(this.canvas);
 
 		this.paint = function (style, anchor) {
-			console.log(style, anchor);
+			// console.log(style, anchor);
 			_ju.sizeElement(this.canvas, this.x, this.y, this.w, this.h);
 		};
 	};
