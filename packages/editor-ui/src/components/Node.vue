@@ -468,6 +468,10 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 	z-index: 2;
 }
 
+.jtk-endpoint {
+	z-index: 2;
+}
+
 /** connector */
 .jtk-connector {
 	z-index: 3;
@@ -489,7 +493,7 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 	z-index: 6;
 }
 
-.jtk-endpoint.plus-container {
+.jtk-endpoint.plus-endpoint {
 	z-index: 6;
 }
 

@@ -11,6 +11,7 @@ import { Endpoint } from 'jsplumb';
 import {
 	INodeTypeDescription,
 } from 'n8n-workflow';
+import { getStyleTokenValue } from '../helpers';
 
 export const nodeBase = mixins(
 	deviceSupportHelpers,
@@ -169,6 +170,14 @@ export const nodeBase = mixins(
 					isSource: true,
 					isTarget: false,
 					enabled: !this.isReadOnly,
+					endpointStyle: {
+						fill: getStyleTokenValue('--color-xdark'),
+						outlineStroke: 'none',
+					},
+					endpointHoverStyle: {
+						fill: getStyleTokenValue('--color-primary'),
+						outlineStroke: 'hover', // hack to distinguish hover state
+					},
 					parameters: {
 						nodeIndex: this.nodeIndex,
 						type: inputName,
