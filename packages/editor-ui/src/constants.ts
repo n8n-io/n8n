@@ -117,3 +117,4 @@ export const COMPANY_SIZE_PERSONAL_USE = 'personalUser';
 
 export const CODING_SKILL_KEY = 'codingSkill';
 export const OTHER_WORK_AREA_KEY = 'otherWorkArea';
+

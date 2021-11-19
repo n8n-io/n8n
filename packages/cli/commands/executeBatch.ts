@@ -817,10 +817,22 @@ export class ExecuteBatch extends Command {
 								const changes = diff(JSON.parse(contents), data, { keysOnly: true });
 
 								if (changes !== undefined) {
-									// we have structural changes. Report them.
-									executionResult.error = `Workflow may contain breaking changes`;
-									executionResult.changes = changes;
-									executionResult.executionStatus = 'error';
+									// If we had only additions with no removals
+									// Then we treat as a warning and not an error.
+									// To find this, we convert the object to JSON
+									// and search for the `__deleted` string
+									const changesJson = JSON.stringify(changes);
+									if (changesJson.includes('__deleted')) {
+										// we have structural changes. Report them.
+										executionResult.error = 'Workflow may contain breaking changes';
+										executionResult.changes = changes;
+										executionResult.executionStatus = 'error';
+									} else {
+										executionResult.error =
+											'Workflow contains new data that previously did not exist.';
+										executionResult.changes = changes;
+										executionResult.executionStatus = 'warning';
+									}
 								} else {
 									executionResult.executionStatus = 'success';
 								}
