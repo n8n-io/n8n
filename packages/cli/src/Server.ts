@@ -145,7 +145,7 @@ import { InternalHooksManager } from './InternalHooksManager';
 import { TagEntity } from './databases/entities/TagEntity';
 import { WorkflowEntity } from './databases/entities/WorkflowEntity';
 import { NameRequest } from './WorkflowHelpers';
-import { getTranslationPath } from './TranslationHelpers';
+import { getExpectedNodeTranslationPath } from './TranslationHelpers';
 
 require('body-parser-xml')(bodyParser);
 
@@ -1186,23 +1186,26 @@ class App {
 					if (language === 'en') {
 						return nodeInfos.reduce<INodeTypeDescription[]>((acc, { name, version }) => {
 							const { description } = nodeTypes.getByNameAndVersion(name, version);
-							if (description) acc.push(description);
+							acc.push(description);
 							return acc;
 						}, []);
 					}
 
-					// add node translations where available
-					return nodeInfos.reduce<INodeTypeDescription[]>((acc, { name, version }) => {
-						const { description, sourcePath } = nodeTypes.getWithPath(name, version);
-						const mainTranslationPath = getTranslationPath(sourcePath, language);
+					const nodeTypesWithTranslations: INodeTypeDescription[] = [];
 
-						if (description && existsSync(mainTranslationPath)) {
-							description.translation = require(mainTranslationPath);
+					for (const { name, version } of nodeInfos) {
+						const { description, sourcePath } = nodeTypes.getWithPath(name, version);
+						// eslint-disable-next-line no-await-in-loop
+						const nodeTranslationPath = await getExpectedNodeTranslationPath(sourcePath, language);
+
+						if (existsSync(nodeTranslationPath)) {
+							description.translation = require(nodeTranslationPath);
 						}
 
-						if (description) acc.push(description);
-						return acc;
-					}, []);
+						nodeTypesWithTranslations.push(description);
+					}
+
+					return nodeTypesWithTranslations;
 				},
 			),
 		);
