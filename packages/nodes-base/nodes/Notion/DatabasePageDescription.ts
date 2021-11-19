@@ -18,6 +18,9 @@ export const databasePageOperations = [
 		type: 'options',
 		displayOptions: {
 			show: {
+				version: [
+					1,
+				],
 				resource: [
 					'databasePage',
 				],
@@ -41,7 +44,44 @@ export const databasePageOperations = [
 			},
 		],
 		default: 'create',
-		description: 'The operation to perform.',
+	},
+	{
+		displayName: 'Operation',
+		name: 'operation',
+		type: 'options',
+		displayOptions: {
+			show: {
+				version: [
+					2,
+				],
+				resource: [
+					'databasePage',
+				],
+			},
+		},
+		options: [
+			{
+				name: 'Create',
+				value: 'create',
+				description: 'Create a pages in a database',
+			},
+			{
+				name: 'Get',
+				value: 'get',
+				description: 'Get a page in a database',
+			},
+			{
+				name: 'Get All',
+				value: 'getAll',
+				description: 'Get all pages in a database',
+			},
+			{
+				name: 'Update',
+				value: 'update',
+				description: 'Update pages in a database',
+			},
+		],
+		default: 'create',
 	},
 ] as INodeProperties[];
 

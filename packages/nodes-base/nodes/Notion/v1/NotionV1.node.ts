@@ -270,6 +270,7 @@ export class NotionV1 implements INodeType {
 					if (properties.length !== 0) {
 						body.properties = mapProperties(properties, timezone) as IDataObject;
 					}
+					console.log(JSON.stringify(body.properties, undefined, 2));
 					body.children = formatBlocks(this.getNodeParameter('blockUi.blockValues', i, []) as IDataObject[]);
 					responseData = await notionApiRequest.call(this, 'POST', '/pages', body);
 					if (simple === true) {

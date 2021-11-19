@@ -77,7 +77,7 @@ export class NotionV2 implements INodeType {
 				const { properties } = await notionApiRequest.call(this, 'GET', `/databases/${databaseId}`);
 				for (const key of Object.keys(properties)) {
 					//remove parameters that cannot be set from the API.
-					if (!['created_time', 'last_edited_time', 'created_by', 'last_edited_by', 'formula', 'files'].includes(properties[key].type)) {
+					if (!['created_time', 'last_edited_time', 'created_by', 'last_edited_by', 'formula', 'files', 'rollup'].includes(properties[key].type)) {
 						returnData.push({
 							name: `${key}`,
 							value: `${key}|${properties[key].type}`,
@@ -146,9 +146,9 @@ export class NotionV2 implements INodeType {
 				const { properties } = await notionApiRequest.call(this, 'GET', `/databases/${databaseId}`);
 				for (const key of Object.keys(properties)) {
 					//remove parameters that cannot be set from the API.
-					if (!['created_time', 'last_edited_time', 'created_by', 'last_edited_by', 'formula', 'files'].includes(properties[key].type)) {
+					if (!['created_time', 'last_edited_time', 'created_by', 'last_edited_by', 'formula', 'files', 'rollup'].includes(properties[key].type)) {
 						returnData.push({
-							name: `${key} - (${properties[key].type})`,
+							name: `${key}`,
 							value: `${key}|${properties[key].type}`,
 						});
 					}
@@ -162,11 +162,11 @@ export class NotionV2 implements INodeType {
 			},
 
 			async getDatabaseOptionsFromPage(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-				const pageId = this.getCurrentNodeParameter('pageId') as string;
+				const pageId = extractPageId(this.getCurrentNodeParameter('pageId') as string);
 				const [name, type] = (this.getCurrentNodeParameter('&key') as string).split('|');
 				const { parent: { database_id: databaseId } } = await notionApiRequest.call(this, 'GET', `/pages/${pageId}`);
 				const { properties } = await notionApiRequest.call(this, 'GET', `/databases/${databaseId}`);
-				return (properties[name][type].options).map((option: IDataObject) => ({ name: option.name, value: option.id }));
+				return (properties[name][type].options).map((option: IDataObject) => ({ name: option.name, value: option.name }));
 			},
 
 			// Get all the timezones to display them to user so that he can
@@ -321,7 +321,7 @@ export class NotionV2 implements INodeType {
 					body.parent['database_id'] = this.getNodeParameter('databaseId', i) as string;
 					const properties = this.getNodeParameter('propertiesUi.propertyValues', i, []) as IDataObject[];
 					if (properties.length !== 0) {
-						body.properties = mapProperties(properties, timezone) as IDataObject;
+						body.properties = Object.assign(body.properties, mapProperties(properties, timezone, 2) as IDataObject);
 					}
 					body.children = formatBlocks(this.getNodeParameter('blockUi.blockValues', i, []) as IDataObject[]);
 					responseData = await notionApiRequest.call(this, 'POST', '/pages', body);
@@ -401,11 +401,11 @@ export class NotionV2 implements INodeType {
 						properties: {},
 					};
 					if (properties.length !== 0) {
-						body.properties = mapProperties(properties, timezone) as IDataObject;
+						body.properties = mapProperties(properties, timezone, 2) as IDataObject;
 					}
 					responseData = await notionApiRequest.call(this, 'PATCH', `/pages/${pageId}`, body);
 					if (simple === true) {
-						responseData = simplifyObjects(responseData);
+						responseData = simplifyObjects(responseData, false, 2);
 					}
 					returnData.push.apply(returnData, Array.isArray(responseData) ? responseData : [responseData]);
 				}

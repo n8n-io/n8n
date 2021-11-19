@@ -235,7 +235,7 @@ export function formatBlocks(blocks: IDataObject[]) {
 }
 
 // tslint:disable-next-line: no-any
-function getPropertyKeyValue(value: any, type: string, timezone: string) {
+function getPropertyKeyValue(value: any, type: string, timezone: string, version = 1) {
 	let result = {};
 	switch (type) {
 		case 'rich_text':
@@ -294,7 +294,7 @@ function getPropertyKeyValue(value: any, type: string, timezone: string) {
 			break;
 		case 'select':
 			result = {
-				type: 'select', select: { name: value.selectValue },
+				type: 'select', select: (version === 1) ? { id: value.selectValue } : { name: value.selectValue },
 			};
 			break;
 		case 'date':
@@ -344,9 +344,9 @@ function getNameAndType(key: string) {
 	};
 }
 
-export function mapProperties(properties: IDataObject[], timezone: string) {
+export function mapProperties(properties: IDataObject[], timezone: string, version = 1) {
 	return properties.reduce((obj, value) => Object.assign(obj, {
-		[`${(value.key as string).split('|')[0]}`]: getPropertyKeyValue(value, (value.key as string).split('|')[1], timezone),
+		[`${(value.key as string).split('|')[0]}`]: getPropertyKeyValue(value, (value.key as string).split('|')[1], timezone, version),
 	}), {});
 }
 
@@ -491,7 +491,7 @@ export function simplifyObjects(objects: any, download = false, version = 1) {
 		} else if (object === 'database') {
 			results.push({
 				id,
-				title: title[0].plain_text || '',
+				...version === 2 ? { name: title[0]?.plain_text || '' } : { title: title[0]?.plain_text || '' },
 				...version === 2 ? { url } : {},
 			});
 		}
