@@ -87,7 +87,7 @@ export default mixins(
 			data () {
 				return {
 					loading: false,
-					alertTriggerContent: '',
+					alertTriggerContent: 'Your trigger will now fire production executions automatically.',
 					showActivationAlert: false,
 				};
 			},
@@ -115,9 +115,10 @@ export default mixins(
 					return this.workflowActive ? false : !this.containsTrigger;
 				},
 				containsTrigger(): boolean {
-					const foundNodes = this.$store.getters.allNodes.map(({ type }: INodeUi) => this.$store.getters.nodeType(type));
-					console.log(foundNodes);
-					return foundNodes.filter(((type: INodeTypeDescription) => type.group.includes('trigger'))).length > 0;
+					const foundNodes = this.$store.getters.allNodes
+						.filter(({ disabled }: INodeUi) => !disabled)
+						.map(({ type }: INodeUi) => this.$store.getters.nodeType(type));
+					return foundNodes.filter(((node: INodeTypeDescription) => node.group.includes('trigger'))).length > 0;
 				},
 			},
 			methods: {
@@ -200,8 +201,9 @@ export default mixins(
 
 						// Show activation dialog
 						const foundTriggers = this.$store.getters.allNodes
+							.filter(({ disabled }: INodeUi) => !disabled)
 							.map(({ type }: INodeUi) => this.$store.getters.nodeType(type))
-							.filter(((type: INodeTypeDescription) => type.group.includes('trigger')));
+							.filter(((node: INodeTypeDescription) => node.group.includes('trigger')));
 						// if multiple triggers
 						if (foundTriggers.length > 1) {
 							this.alertTriggerContent = 'Your triggers will now fire production executions automatically.';
@@ -265,7 +267,7 @@ export default mixins(
 				},
 				async showExecutionsList () {
 					this.$store.dispatch('ui/openModal', EXECUTIONS_MODAL_KEY);
-
+					this.showActivationAlert = false;
 				},
 			},
 		},
