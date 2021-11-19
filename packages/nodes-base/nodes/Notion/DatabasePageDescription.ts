@@ -2,6 +2,11 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
+import { 
+	getConditions,
+	getSearchFilters,
+} from './GenericFunctions';
+
 import {
 	blocks,
 	text,
@@ -1068,6 +1073,7 @@ export const databasePageFields = [
 		default: true,
 		description: 'Whether to return a simplified version of the response instead of the raw data',
 	},
+	...getSearchFilters('databasePage'),
 	{
 		displayName: 'Options',
 		name: 'options',
@@ -1113,13 +1119,20 @@ export const databasePageFields = [
 				typeOptions: {
 					multipleValues: false,
 				},
+				displayOptions: {
+					show: {
+						'/version': [
+							1,
+						],
+					},
+				},
 				default: {},
 				options: [
 					{
 						displayName: 'Single Condition',
 						name: 'singleCondition',
 						values: [
-							...filters,
+							...filters(getConditions()),
 						],
 					},
 					{
@@ -1140,14 +1153,14 @@ export const databasePageFields = [
 										displayName: 'OR',
 										name: 'or',
 										values: [
-											...filters,
+											...filters(getConditions()),
 										],
 									},
 									{
 										displayName: 'AND',
 										name: 'and',
 										values: [
-											...filters,
+											...filters(getConditions()),
 										],
 									},
 								],

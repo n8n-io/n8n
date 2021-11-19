@@ -26,6 +26,10 @@ import {
 	capitalCase,
 } from 'change-case';
 
+import {
+	filters,
+} from './Filters';
+
 import * as moment from 'moment-timezone';
 
 import { validate as uuidValidate } from 'uuid';
@@ -753,4 +757,241 @@ function prepend(stringKey: string, properties: { [key: string]: any }) {
 // tslint:disable-next-line: no-any
 export function getPropertyTitle(properties: { [key: string]: any }) {
 	return Object.values(properties).filter(property => property.type === 'title')[0].title[0]?.plain_text || '';
+}
+
+export function getSearchFilters(resource: string) {
+	return [
+		{
+			displayName: 'Filter',
+			name: 'filterType',
+			type: 'options',
+			options: [
+				{
+					name: 'None',
+					value: 'none',
+				},
+				{
+					name: 'Build Manually',
+					value: 'manual',
+				},
+				{
+					name: 'JSON',
+					value: 'json',
+				},
+			],
+			displayOptions: {
+				show: {
+					version: [
+						2,
+					],
+					resource: [
+						resource,
+					],
+					operation: [
+						'getAll',
+					],
+				},
+			},
+			default: 'none',
+		},
+		{
+			displayName: 'Must Match',
+			name: 'matchType',
+			type: 'options',
+			options: [
+				{
+					name: 'Any filter',
+					value: 'anyFilter',
+				},
+				{
+					name: 'All Filters',
+					value: 'allFilters',
+				},
+			],
+			displayOptions: {
+				show: {
+					version: [
+						2,
+					],
+					resource: [
+						resource,
+					],
+					operation: [
+						'getAll',
+					],
+					filterType: [
+						'manual',
+					],
+				},
+			},
+			default: 'anyFilter',
+		},
+		{
+			displayName: 'Filters',
+			name: 'filters',
+			type: 'fixedCollection',
+			typeOptions: {
+				multipleValues: true,
+			},
+			displayOptions: {
+				show: {
+					version: [
+						2,
+					],
+					resource: [
+						resource,
+					],
+					operation: [
+						'getAll',
+					],
+					filterType: [
+						'manual',
+					],
+				},
+			},
+			default: '',
+			placeholder: 'Add Condition',
+			options: [
+				{
+					displayName: 'Conditions',
+					name: 'conditions',
+					values: [
+						...filters(getConditions()),
+					],
+				},
+			],
+		},
+		{
+			displayName: 'See <a href="https://developers.notion.com/reference/post-database-query#post-database-query-filter" target="_blank">Notion guide</a> to creating filters',
+			name: 'jsonNotice',
+			type: 'notice',
+			displayOptions: {
+				show: {
+					version: [
+						2,
+					],
+					resource: [
+						resource,
+					],
+					operation: [
+						'getAll',
+					],
+					filterType: [
+						'json',
+					],
+				},
+			},
+			default: '',
+		},
+		{
+			displayName: 'Filters (JSON)',
+			name: 'filterJson',
+			type: 'string',
+			typeOptions: {
+				alwaysOpenEditWindow: true,
+			},
+			displayOptions: {
+				show: {
+					version: [
+						2,
+					],
+					resource: [
+						resource,
+					],
+					operation: [
+						'getAll',
+					],
+					filterType: [
+						'json',
+					],
+				},
+			},
+			default: '',
+			description: '',
+		},
+		// {
+		// 	displayName: 'Options',
+		// 	name: 'options',
+		// 	type: 'collection',
+		// 	placeholder: 'Add Option',
+		// 	default: {},
+		// 	displayOptions: {
+		// 		show: {
+		// 			resource: [
+		// 				resource,
+		// 			],
+		// 			operation: [
+		// 				'getAll',
+		// 			],
+		// 		},
+		// 	},
+		// 	options: [
+		// 		// {
+		// 		// 	displayName: 'Properties',
+		// 		// 	name: 'properties',
+		// 		// 	type: 'multiOptions',
+		// 		// 	typeOptions: {
+		// 		// 		loadOptionsMethod: attributeFunction,
+		// 		// 	},
+		// 		// 	default: ['*'],
+		// 		// 	description: 'Properties the response will return. By default all properties are returned',
+		// 		// },
+		// 		{
+		// 			displayName: 'Sort',
+		// 			name: 'sort',
+		// 			type: 'fixedCollection',
+		// 			placeholder: 'Add Sort',
+		// 			typeOptions: {
+		// 				multipleValues: true,
+		// 			},
+		// 			default: [],
+		// 			options: [
+		// 				{
+		// 					displayName: 'Sort',
+		// 					name: 'sort',
+		// 					values: [
+		// 						{
+		// 							displayName: 'Direction',
+		// 							name: 'direction',
+		// 							type: 'options',
+		// 							options: [
+		// 								{
+		// 									name: 'Ascending',
+		// 									value: 'ASC',
+		// 								},
+		// 								{
+		// 									name: 'Descending',
+		// 									value: 'DESC',
+		// 								},
+		// 							],
+		// 							default: 'ASC',
+		// 							description: 'The sorting direction',
+		// 						},
+		// 						// {
+		// 						// 	displayName: 'Field',
+		// 						// 	name: 'field',
+		// 						// 	type: 'options',
+		// 						// 	typeOptions: {
+		// 						// 		loadOptionsMethod: sortableAttributeFunction,
+		// 						// 	},
+		// 						// 	default: '',
+		// 						// 	description: `The sorting field`,
+		// 						// },
+		// 					],
+		// 				},
+		// 			],
+		// 		},
+		// 	],
+		// },
+	];
+}
+
+export function validateJSON(json: string | undefined): any { // tslint:disable-line:no-any
+	let result;
+	try {
+		result = JSON.parse(json!);
+	} catch (exception) {
+		result = undefined;
+	}
+	return result;
 }

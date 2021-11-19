@@ -13,6 +13,7 @@ import {
 	INodeType,
 	INodeTypeBaseDescription,
 	INodeTypeDescription,
+	NodeApiError,
 	NodeCredentialTestResult,
 } from 'n8n-workflow';
 
@@ -30,6 +31,7 @@ import {
 	notionApiRequestAllItems,
 	simplifyObjects,
 	validateCrendetials,
+	validateJSON,
 } from '../GenericFunctions';
 
 import * as moment from 'moment-timezone';
@@ -336,7 +338,6 @@ export class NotionV2 implements INodeType {
 			if (operation === 'get') {
 				for (let i = 0; i < length; i++) {
 					const pageId = extractPageId(this.getNodeParameter('pageId', i) as string);
-					console.log(pageId);
 					const simple = this.getNodeParameter('simple', i) as boolean;
 					responseData = await notionApiRequest.call(this, 'GET', `/pages/${pageId}`);
 					if (simple === true) {
@@ -352,23 +353,29 @@ export class NotionV2 implements INodeType {
 					const simple = this.getNodeParameter('simple', 0) as boolean;
 					const databaseId = this.getNodeParameter('databaseId', i) as string;
 					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
-					const filters = this.getNodeParameter('options.filter', i, {}) as IDataObject;
+					const filterType = this.getNodeParameter('filterType', 0) as string;
+					const conditions = this.getNodeParameter('filters.conditions', i, []) as IDataObject[];
 					const sort = this.getNodeParameter('options.sort.sortValue', i, []) as IDataObject[];
 					const body: IDataObject = {
 						filter: {},
 					};
-					if (filters.singleCondition) {
-						body['filter'] = mapFilters([filters.singleCondition] as IDataObject[], timezone);
-					}
-					if (filters.multipleCondition) {
-						const { or, and } = (filters.multipleCondition as IDataObject).condition as IDataObject;
-						if (Array.isArray(or) && or.length !== 0) {
-							Object.assign(body.filter, { or: (or as IDataObject[]).map((data) => mapFilters([data], timezone)) });
+
+					if (filterType === 'manual') {
+						const matchType = this.getNodeParameter('matchType', 0) as string;
+						if (matchType === 'anyFilter') {
+							Object.assign(body.filter, { or: conditions.map((data) => mapFilters([data], timezone)) });
+						} else if (matchType === 'allFilters') {
+							Object.assign(body.filter, { and: conditions.map((data) => mapFilters([data], timezone)) });
 						}
-						if (Array.isArray(and) && and.length !== 0) {
-							Object.assign(body.filter, { and: (and as IDataObject[]).map((data) => mapFilters([data], timezone)) });
+					} else if (filterType === 'json') {
+						const filterJson = this.getNodeParameter('filterJson', i) as string;
+						if (validateJSON(filterJson) !== undefined) {
+							body.filter = JSON.parse(filterJson);
+						} else {
+							throw new NodeApiError(this.getNode(), { message: 'Filters (JSON) must be a valid json' });
 						}
 					}
+
 					if (!Object.keys(body.filter as IDataObject).length) {
 						delete body.filter;
 					}

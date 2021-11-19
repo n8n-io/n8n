@@ -1,8 +1,7 @@
-import {
-	getConditions
-} from './GenericFunctions';
 
-export const filters = [{
+
+// tslint:disable-next-line: no-any
+export const filters = (conditions: any) => [{
 	displayName: 'Property Name',
 	name: 'key',
 	type: 'options',
@@ -21,7 +20,7 @@ export const filters = [{
 	type: 'hidden',
 	default: '={{$parameter["&key"].split("|")[1]}}',
 },
-...getConditions(),
+...conditions,
 {
 	displayName: 'Title',
 	name: 'titleValue',
