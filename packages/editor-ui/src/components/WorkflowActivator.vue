@@ -124,12 +124,7 @@ export default mixins(
 			methods: {
 				async activeChanged (newActiveState: boolean) {
 					if (this.workflowId === undefined) {
-						this.$showMessage({
-							title: this.$locale.baseText('workflowActivator.showMessage.activeChangedWorkflowIdUndefined.title'),
-							message: this.$locale.baseText('workflowActivator.showMessage.activeChangedWorkflowIdUndefined.message'),
-							type: 'error',
-						});
-						return;
+						await this.saveCurrentWorkflow();
 					}
 
 					if (this.nodesIssuesExist === true) {
