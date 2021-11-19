@@ -10,6 +10,7 @@ import { BinaryDataHelper, IBinaryDataConfig, IProcessMessage, UserSettings, Wor
 import {
 	ExecutionError,
 	IDataObject,
+	IExecuteResponsePromiseData,
 	IExecuteWorkflowInfo,
 	ILogger,
 	INodeExecutionData,
@@ -33,6 +34,7 @@ import {
 	IWorkflowExecuteProcess,
 	IWorkflowExecutionDataProcessWithExecution,
 	NodeTypes,
+	WebhookHelpers,
 	WorkflowExecuteAdditionalData,
 	WorkflowHelpers,
 } from '.';
@@ -203,6 +205,15 @@ export class WorkflowRunnerProcess {
 			workflowTimeout <= 0 ? undefined : Date.now() + workflowTimeout * 1000,
 		);
 		additionalData.hooks = this.getProcessForwardHooks();
+
+		additionalData.hooks.hookFunctions.sendResponse = [
+			async (response: IExecuteResponsePromiseData): Promise<void> => {
+				await sendToParentProcess('sendResponse', {
+					response: WebhookHelpers.encodeWebhookResponse(response),
+				});
+			},
+		];
+
 		additionalData.executionId = inputData.executionId;
 
 		// eslint-disable-next-line @typescript-eslint/no-explicit-any

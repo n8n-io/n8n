@@ -12,7 +12,9 @@
 import { ActiveWorkflows, NodeExecuteFunctions } from 'n8n-core';
 
 import {
+	IDeferredPromise,
 	IExecuteData,
+	IExecuteResponsePromiseData,
 	IGetExecutePollFunctions,
 	IGetExecuteTriggerFunctions,
 	INode,
@@ -40,8 +42,6 @@ import {
 	NodeTypes,
 	ResponseHelper,
 	WebhookHelpers,
-	// eslint-disable-next-line @typescript-eslint/no-unused-vars
-	WorkflowCredentials,
 	WorkflowExecuteAdditionalData,
 	WorkflowHelpers,
 	WorkflowRunner,
@@ -550,6 +550,7 @@ export class ActiveWorkflowRunner {
 		data: INodeExecutionData[][],
 		additionalData: IWorkflowExecuteAdditionalDataWorkflow,
 		mode: WorkflowExecuteMode,
+		responsePromise?: IDeferredPromise<IExecuteResponsePromiseData>,
 	) {
 		const nodeExecutionStack: IExecuteData[] = [
 			{
@@ -580,7 +581,7 @@ export class ActiveWorkflowRunner {
 		};
 
 		const workflowRunner = new WorkflowRunner();
-		return workflowRunner.run(runData, true);
+		return workflowRunner.run(runData, true, undefined, undefined, responsePromise);
 	}
 
 	/**
@@ -641,13 +642,16 @@ export class ActiveWorkflowRunner {
 				mode,
 				activation,
 			);
-			returnFunctions.emit = (data: INodeExecutionData[][]): void => {
+			returnFunctions.emit = (
+				data: INodeExecutionData[][],
+				responsePromise?: IDeferredPromise<IExecuteResponsePromiseData>,
+			): void => {
 				// eslint-disable-next-line @typescript-eslint/restrict-template-expressions
 				Logger.debug(`Received trigger for workflow "${workflow.name}"`);
 				WorkflowHelpers.saveStaticData(workflow);
 				// eslint-disable-next-line id-denylist
-				this.runWorkflow(workflowData, node, data, additionalData, mode).catch((err) =>
-					console.error(err),
+				this.runWorkflow(workflowData, node, data, additionalData, mode, responsePromise).catch(
+					(error) => console.error(error),
 				);
 			};
 			return returnFunctions;
