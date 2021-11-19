@@ -78,7 +78,7 @@ export const filters = [{
 		},
 	},
 	default: '',
-	description: `Phone number. No structure is enforced.`,
+	description: `Phone number. No structure is enforced`,
 },
 {
 	displayName: 'Option',
@@ -101,8 +101,6 @@ export const filters = [{
 		},
 	},
 	default: [],
-	description: `Name of the options you want to set.
-	Multiples can be defined separated by comma.`,
 },
 {
 	displayName: 'Option',
@@ -125,7 +123,6 @@ export const filters = [{
 		},
 	},
 	default: '',
-	description: `Name of the option you want to set.`,
 },
 {
 	displayName: 'Email',
@@ -145,7 +142,6 @@ export const filters = [{
 		},
 	},
 	default: '',
-	description: 'Email address.',
 },
 {
 	displayName: 'URL',
@@ -165,7 +161,6 @@ export const filters = [{
 		},
 	},
 	default: '',
-	description: 'Web address.',
 },
 {
 	displayName: 'User ID',
@@ -188,7 +183,7 @@ export const filters = [{
 		},
 	},
 	default: '',
-	description: 'List of users. Multiples can be defined separated by comma.',
+	description: 'List of users. Multiples can be defined separated by comma',
 },
 {
 	displayName: 'User ID',
@@ -211,7 +206,7 @@ export const filters = [{
 		},
 	},
 	default: '',
-	description: 'List of users. Multiples can be defined separated by comma.',
+	description: 'List of users. Multiples can be defined separated by comma',
 },
 {
 	displayName: 'User ID',
@@ -234,7 +229,7 @@ export const filters = [{
 		},
 	},
 	default: '',
-	description: 'List of users. Multiples can be defined separated by comma.',
+	description: 'List of users. Multiples can be defined separated by comma',
 },
 {
 	displayName: 'Relation ID',
@@ -267,9 +262,9 @@ export const filters = [{
 	},
 	type: 'boolean',
 	default: false,
-	description: `Whether or not the checkbox is checked.</br>
-				true represents checked.</br>
-				false represents unchecked.`,
+	description: `Whether or not the checkbox is checked.
+				true represents checked.
+				false represents unchecked`,
 },
 {
 	displayName: 'Number',
@@ -289,7 +284,7 @@ export const filters = [{
 	},
 	type: 'number',
 	default: 0,
-	description: 'Number value.',
+	description: 'Number value',
 },
 {
 	displayName: 'Date',
@@ -315,7 +310,7 @@ export const filters = [{
 	},
 	type: 'dateTime',
 	default: '',
-	description: 'An ISO 8601 format date, with optional time.',
+	description: 'An ISO 8601 format date, with optional time',
 },
 {
 	displayName: 'Created Time',
@@ -341,7 +336,7 @@ export const filters = [{
 	},
 	type: 'dateTime',
 	default: '',
-	description: 'An ISO 8601 format date, with optional time.',
+	description: 'An ISO 8601 format date, with optional time',
 },
 {
 	displayName: 'Last Edited Time',
@@ -367,7 +362,7 @@ export const filters = [{
 	},
 	type: 'dateTime',
 	default: '',
-	description: 'An ISO 8601 format date, with optional time.',
+	description: 'An ISO 8601 format date, with optional time',
 },
 //formula types
 {
@@ -391,7 +386,7 @@ export const filters = [{
 	},
 	type: 'number',
 	default: 0,
-	description: 'Number value.',
+	description: 'Number value',
 },
 {
 	displayName: 'Text',
@@ -430,9 +425,9 @@ export const filters = [{
 	},
 	type: 'boolean',
 	default: false,
-	description: `Whether or not the checkbox is checked.</br>
-				true represents checked.</br>
-				false represents unchecked.`,
+	description: `Whether or not the checkbox is checked.
+				true represents checked.
+				false represents unchecked`,
 },
 {
 	displayName: 'Date',
@@ -461,6 +456,6 @@ export const filters = [{
 	},
 	type: 'dateTime',
 	default: '',
-	description: 'An ISO 8601 format date, with optional time.',
+	description: 'An ISO 8601 format date, with optional time',
 },
 ];

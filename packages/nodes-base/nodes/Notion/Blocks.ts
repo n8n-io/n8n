@@ -317,7 +317,7 @@ const typeText = [
 		},
 		type: 'string',
 		default: '',
-		description: `Text content. This field contains the actual content</br>
+		description: `Text content. This field contains the actual content
 		of your text and is probably the field you'll use most often`,
 	},
 	{

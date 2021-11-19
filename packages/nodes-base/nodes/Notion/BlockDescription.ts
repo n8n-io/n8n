@@ -31,7 +31,6 @@ export const blockOperations = [
 			},
 		],
 		default: 'append',
-		description: 'The operation to perform.',
 	},
 ] as INodeProperties[];
 

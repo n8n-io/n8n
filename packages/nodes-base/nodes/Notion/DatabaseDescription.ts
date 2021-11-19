@@ -52,7 +52,7 @@ export const databaseFields = [
 				],
 			},
 		},
-		description: `The URL from Notion's 'copy link' functionality (or just the ID contained within the URL)`,
+		description: `The Database URL from Notion's 'copy link' functionality (or just the ID contained within the URL)`,
 	},
 	/* -------------------------------------------------------------------------- */
 	/*                                database:getAll                             */

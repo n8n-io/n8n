@@ -153,6 +153,7 @@ export const pageFields = [
 				],
 			},
 		},
+		description: `The Page URL from Notion's 'copy link' functionality (or just the ID contained within the URL)`,
 	},
 	{
 		displayName: 'Simplify Output',
@@ -209,7 +210,7 @@ export const pageFields = [
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -233,7 +234,7 @@ export const pageFields = [
 			maxValue: 100,
 		},
 		default: 50,
-		description: 'How many results to return.',
+		description: 'How many results to return',
 	},
 	{
 		displayName: 'Simplify Output',
@@ -294,7 +295,7 @@ export const pageFields = [
 									},
 								],
 								default: 'object',
-								description: 'The name of the property to filter by.',
+								description: 'The name of the property to filter by',
 							},
 							{
 								displayName: 'Value',
@@ -311,7 +312,7 @@ export const pageFields = [
 									},
 								],
 								default: '',
-								description: 'The value of the property to filter by.',
+								description: 'The value of the property to filter by',
 							},
 						],
 					},
@@ -346,7 +347,7 @@ export const pageFields = [
 									},
 								],
 								default: '',
-								description: 'The direction to sort.',
+								description: 'The direction to sort',
 							},
 							{
 								displayName: 'Timestamp',
@@ -359,7 +360,7 @@ export const pageFields = [
 									},
 								],
 								default: 'last_edited_time',
-								description: `The name of the timestamp to sort against.`,
+								description: `The name of the timestamp to sort against`,
 							},
 						],
 					},

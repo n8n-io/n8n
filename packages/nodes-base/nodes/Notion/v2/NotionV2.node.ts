@@ -37,6 +37,7 @@ import * as moment from 'moment-timezone';
 import {
 	versionDescription
 } from './versionDescription';
+import { extractId } from '../../ActionNetwork/GenericFunctions';
 
 export class NotionV2 implements INodeType {
 
@@ -335,6 +336,7 @@ export class NotionV2 implements INodeType {
 			if (operation === 'get') {
 				for (let i = 0; i < length; i++) {
 					const pageId = extractPageId(this.getNodeParameter('pageId', i) as string);
+					console.log(pageId);
 					const simple = this.getNodeParameter('simple', i) as boolean;
 					responseData = await notionApiRequest.call(this, 'GET', `/pages/${pageId}`);
 					if (simple === true) {

@@ -366,8 +366,8 @@ export const databasePageFields = [
 						type: 'boolean',
 						default: false,
 						description: `
-						Whether or not the checkbox is checked.</br>
-						true represents checked.</br>
+						Whether or not the checkbox is checked.
+						true represents checked.
 						false represents unchecked
 						`,
 					},
@@ -501,7 +501,6 @@ export const databasePageFields = [
 								],
 							},
 						},
-						description: 'The operations to perform',
 						default: {},
 						options: [
 							{
@@ -513,7 +512,6 @@ export const databasePageFields = [
 										name: 'name',
 										type: 'string',
 										default: '',
-										description: 'File Name',
 									},
 									{
 										displayName: 'File URL',
@@ -550,7 +548,7 @@ export const databasePageFields = [
 				],
 			},
 		},
-		description: `The URL from Notion's 'copy link' functionality (or just the ID contained within the URL)`,
+		description: `The Database Page URL from Notion's 'copy link' functionality (or just the ID contained within the URL)`,
 	},
 	{
 		displayName: 'Simplify Output',
@@ -675,7 +673,7 @@ export const databasePageFields = [
 							},
 						},
 						default: '',
-						description: `Phone number. No structure is enforced.`,
+						description: `Phone number. No structure is enforced`,
 					},
 					{
 						displayName: 'Options',
@@ -692,8 +690,6 @@ export const databasePageFields = [
 							},
 						},
 						default: [],
-						description: `Name of the options you want to set.
-						Multiples can be defined separated by comma.`,
 					},
 					{
 						displayName: 'Option',
@@ -710,7 +706,6 @@ export const databasePageFields = [
 							},
 						},
 						default: '',
-						description: `Name of the option you want to set.`,
 					},
 					{
 						displayName: 'Email',
@@ -724,7 +719,6 @@ export const databasePageFields = [
 							},
 						},
 						default: '',
-						description: 'Email address.',
 					},
 					{
 						displayName: 'URL',
@@ -738,7 +732,7 @@ export const databasePageFields = [
 							},
 						},
 						default: '',
-						description: 'Web address.',
+						description: 'Web address',
 					},
 					{
 						displayName: 'User IDs',
@@ -755,7 +749,7 @@ export const databasePageFields = [
 							},
 						},
 						default: [],
-						description: 'List of users. Multiples can be defined separated by comma.',
+						description: 'List of users. Multiples can be defined separated by comma',
 					},
 					{
 						displayName: 'Relation IDs',
@@ -772,7 +766,7 @@ export const databasePageFields = [
 							},
 						},
 						default: [],
-						description: 'List of databases that belong to another database. Multiples can be defined separated by comma.',
+						description: 'List of databases that belong to another database. Multiples can be defined separated by comma',
 					},
 					{
 						displayName: 'Checked',
@@ -787,9 +781,9 @@ export const databasePageFields = [
 						type: 'boolean',
 						default: false,
 						description: `
-						Whether or not the checkbox is checked.</br>
-						true represents checked.</br>
-						false represents unchecked.
+						Whether or not the checkbox is checked.
+						true represents checked.
+						false represents unchecked
 						`,
 					},
 					{
@@ -804,7 +798,7 @@ export const databasePageFields = [
 						},
 						type: 'number',
 						default: 0,
-						description: 'Number value.',
+						description: 'Number value',
 					},
 					{
 						displayName: 'Range',
@@ -818,7 +812,7 @@ export const databasePageFields = [
 						},
 						type: 'boolean',
 						default: false,
-						description: 'Weather or not you want to define a date range.',
+						description: 'Weather or not you want to define a date range',
 					},
 					{
 						displayName: 'Include Time',
@@ -832,7 +826,7 @@ export const databasePageFields = [
 						},
 						type: 'boolean',
 						default: true,
-						description: 'Weather or not to include the time in the date.',
+						description: 'Weather or not to include the time in the date',
 					},
 					{
 						displayName: 'Date',
@@ -849,7 +843,7 @@ export const databasePageFields = [
 						},
 						type: 'dateTime',
 						default: '',
-						description: 'An ISO 8601 format date, with optional time.',
+						description: 'An ISO 8601 format date, with optional time',
 					},
 					{
 						displayName: 'Date Start',
@@ -866,7 +860,7 @@ export const databasePageFields = [
 						},
 						type: 'dateTime',
 						default: '',
-						description: 'An ISO 8601 format date, with optional time.',
+						description: 'An ISO 8601 format date, with optional time',
 					},
 					{
 						displayName: 'Date End',
@@ -884,7 +878,7 @@ export const databasePageFields = [
 						type: 'dateTime',
 						default: '',
 						description: `
-						An ISO 8601 formatted date, with optional time. Represents the end of a date range.`,
+						An ISO 8601 formatted date, with optional time. Represents the end of a date range`,
 					},
 					{
 						displayName: 'Timezone',
@@ -901,7 +895,7 @@ export const databasePageFields = [
 							loadOptionsMethod: 'getTimezones',
 						},
 						default: 'default',
-						description: 'Time zone to use. By default n8n timezone is used.',
+						description: 'Time zone to use. By default n8n timezone is used',
 					},
 					{
 						displayName: 'File URLs',
@@ -922,7 +916,6 @@ export const databasePageFields = [
 								],
 							},
 						},
-						description: 'The operations to perform.',
 						default: {},
 						options: [
 							{
@@ -934,7 +927,6 @@ export const databasePageFields = [
 										name: 'name',
 										type: 'string',
 										default: '',
-										description: 'File Name',
 									},
 									{
 										displayName: 'File URL',
@@ -973,6 +965,7 @@ export const databasePageFields = [
 				],
 			},
 		},
+		description: `The Database Page URL from Notion's 'copy link' functionality (or just the ID contained within the URL)`,
 	},
 	{
 		displayName: 'Simplify Output',
@@ -1032,7 +1025,7 @@ export const databasePageFields = [
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -1056,7 +1049,7 @@ export const databasePageFields = [
 			maxValue: 100,
 		},
 		default: 50,
-		description: 'How many results to return.',
+		description: 'How many results to return',
 	},
 	{
 		displayName: 'Simplify Output',
@@ -1182,7 +1175,7 @@ export const databasePageFields = [
 								name: 'timestamp',
 								type: 'boolean',
 								default: false,
-								description: `Whether or not to use the record's timestamp to sort the response.`,
+								description: `Whether or not to use the record's timestamp to sort the response`,
 							},
 							{
 								displayName: 'Property Name',
@@ -1202,7 +1195,7 @@ export const databasePageFields = [
 									],
 								},
 								default: '',
-								description: 'The name of the property to filter by.',
+								description: 'The name of the property to filter by',
 							},
 							{
 								displayName: 'Property Name',
@@ -1226,7 +1219,7 @@ export const databasePageFields = [
 									},
 								},
 								default: '',
-								description: 'The name of the property to filter by.',
+								description: 'The name of the property to filter by',
 							},
 							{
 								displayName: 'Type',
@@ -1256,7 +1249,7 @@ export const databasePageFields = [
 									},
 								],
 								default: '',
-								description: 'The direction to sort.',
+								description: 'The direction to sort',
 							},
 						],
 					},
