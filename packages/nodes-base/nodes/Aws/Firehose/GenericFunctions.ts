@@ -75,6 +75,7 @@ export async function awsApiRequestREST(
 	body?: string,
 	headers?: object,
 ) {
+	console.log(service, method, path, body, headers);
 	const response = await awsApiRequest.call(this, service, method, path, body, headers);
 	try {
 		return JSON.parse(response);
