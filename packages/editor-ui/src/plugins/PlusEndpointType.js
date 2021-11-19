@@ -45,6 +45,16 @@
 					cursor: pointer;
 				}
 
+				.plus-stalk {
+					border-top: 2px solid var(--color-foreground-dark);
+					position: absolute;
+					width: 40px;
+					height: 0;
+					right: 100%;
+					top: calc(50% - 1px);
+					pointer-events: none;
+				}
+
 				.plus-container {
 					color: var(--color-foreground-xdark);
 					border: 2px solid var(--color-foreground-xdark);
@@ -84,7 +94,15 @@
 				.hidden .plus-container {
 					display: none;
 				}
+
+				.hidden .plus-stalk {
+					display: none;
+				}
+
 			</style>
+
+			<div class="plus-stalk">
+			</div>
 
 			<div class="plus-container">
 				<svg aria-hidden="true" focusable="false" data-prefix="fas" data-icon="plus" role="img" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512" class="svg-inline--fa fa-plus fa-w-14 Icon__medium_ctPPJ">
