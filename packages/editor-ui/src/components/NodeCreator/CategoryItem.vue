@@ -1,7 +1,7 @@
 <template>
 	<div :class="$style.category">
 		<span :class="$style.name">
-			{{ $baseText(`nodeCreator.categoryNames.${categoryName}`) }}
+			{{ renderCategoryName(categoryName) }}
 		</span>
 		<font-awesome-icon
 			:class="$style.arrow"
@@ -23,6 +23,13 @@ export default mixins(renderText).extend({
 	computed: {
 		categoryName() {
 			return camelcase(this.item.category);
+		},
+	},
+	methods: {
+		renderCategoryName(categoryName: string) {
+			const key = `nodeCreator.categoryNames.${categoryName}`;
+
+			return this.$te(key) ? this.$baseText(key) : categoryName;
 		},
 	},
 });
