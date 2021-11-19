@@ -1520,7 +1520,6 @@ export default mixins(
 						this.pullConnActive = true;
 						this.newNodeInsertPosition = null;
 						CanvasHelpers.resetConnection(connection);
-						CanvasHelpers.addOverlays(connection, CanvasHelpers.CONNECTOR_DROP_NODE_OVERLAY);
 						const nodes = [...document.querySelectorAll('.node-default')];
 
 						const onMouseMove = (e: MouseEvent) => {
