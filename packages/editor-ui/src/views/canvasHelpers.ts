@@ -112,18 +112,6 @@ export const CONNECTOR_ARROW_OVERLAYS: OverlaySpec[] = [
 	],
 ];
 
-export const CONNECTOR_DROP_NODE_OVERLAY: OverlaySpec[] = [
-	[
-		'Label',
-		{
-			id: OVERLAY_DROP_NODE_ID,
-			label: 'Drop connection<br />to add node',
-			cssClass: 'drop-add-node-label',
-			location: 0.5,
-			visible: true,
-		},
-	],
-];
 
 
 export const ANCHOR_POSITIONS: {
