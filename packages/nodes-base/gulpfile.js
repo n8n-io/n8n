@@ -20,7 +20,14 @@ task('build:translations', writeHeadersAndTranslations);
  * each node translation at `/dist/nodes/<node>/translations/<language>.js`
  */
 function writeHeadersAndTranslations(done) {
-	checkLocale();
+	const { N8N_DEFAULT_LOCALE: locale } = process.env;
+
+	log(`Default locale set to: ${colorize(PURPLE_ANSI_COLOR_CODE, locale || 'en')}`);
+
+	if (!locale || locale === 'en') {
+		log('No translation required - Skipping translations build...');
+		return done();
+	};
 
 	const paths = getTranslationPaths();
 	const { headers, translations } = getHeadersAndTranslations(paths);
@@ -108,17 +115,6 @@ function isValidHeader(header, allowedHeaderKeys) {
 		headerKeys.every(key => allowedHeaderKeys.includes(key));
 }
 
-function checkLocale() {
-	const { N8N_DEFAULT_LOCALE: locale } = process.env;
-
-	log(`Default locale set to: ${colorize(PURPLE_ANSI_COLOR_CODE, locale || 'en')}`);
-
-	if (!locale || locale === 'en') {
-		log('No translation required - Skipping translations build...');
-		return;
-	};
-}
-
 function writeDestinationFile(destinationPath, data) {
 	writeFile(
 		destinationPath,
@@ -138,4 +134,4 @@ const log = (string, { bulletpoint } = { bulletpoint: false }) => {
 };
 
 const colorize = (ansiColorCode, string) =>
-	['\033[', ansiColorCode, 'm', string, '\033[0m'].join('')
+	['\033[', ansiColorCode, 'm', string, '\033[0m'].join('');
