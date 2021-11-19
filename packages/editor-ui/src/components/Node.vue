@@ -1,5 +1,5 @@
 <template>
-	<div :class="{'node-wrapper': true, selected: isSelected}" :style="nodePosition">
+	<div class="node-wrapper" :style="nodePosition">
 		<div class="select-background" v-show="isSelected"></div>
 		<div :class="{'node-default': true, 'touch-active': isTouchActive, 'is-touch-device': isTouchDevice}" :data-name="data.name" :ref="data.name">
 			<div :class="nodeClass" :style="nodeStyle"  @dblclick="setNodeActive" @click.left="mouseLeftClick" v-touch:start="touchStart" v-touch:end="touchEnd">
@@ -463,11 +463,6 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 </style>
 
 <style lang="scss">
-/** node */
-.node-wrapper.selected {
-	z-index: 2;
-}
-
 .jtk-endpoint {
 	z-index: 2;
 }
