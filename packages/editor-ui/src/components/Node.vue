@@ -97,7 +97,7 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 		isExecuting (): boolean {
 			return this.$store.getters.executingNode === this.data.name;
 		},
-		isDragTriggerNodeActive (): boolean {
+		isDragActiveTriggerNode (): boolean {
 			return this.$store.getters.isActionActive('dragActive');
 		},
 		isSingleActiveTriggerNode (): boolean {
@@ -186,10 +186,10 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 				this.setSubtitle();
 			}
 		},
-		isDragTriggerNodeActive: {
-			handler(isDragTriggerNodeActive) {
+		isDragActiveTriggerNode: {
+			handler(isDragActiveTriggerNode) {
 				if (this.workflowRunning && this.isTriggerNode && this.isSingleActiveTriggerNode && !this.isTriggerNodeTooltipEmpty && !this.isNodeDisabled && !this.hasIssues) {
-					this.showWebhookNodeTooltip = !isDragTriggerNodeActive;
+					this.showWebhookNodeTooltip = !isDragActiveTriggerNode;
 				}
 			},
 		},
