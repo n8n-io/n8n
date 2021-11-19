@@ -91,7 +91,7 @@
 			</svg>
 			<div class="drop-hover-message">
 				Click to add node</br>
-				or drag to connection
+				or drag to connect
 			</div>
 		`;
 
