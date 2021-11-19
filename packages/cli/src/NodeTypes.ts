@@ -40,6 +40,10 @@ class NodeTypesClass implements INodeTypes {
 		return this.nodeTypes[nodeType].type;
 	}
 
+	/**
+	 * Variant of `getByNameAndVersion` that includes the node's source path,
+	 * to be used for locating the node's `/translations` dir.
+	 */
 	getWithPath(
 		nodeTypeName: string,
 		version: number,
