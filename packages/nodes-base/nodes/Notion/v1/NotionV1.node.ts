@@ -71,7 +71,7 @@ export class NotionV1 implements INodeType {
 				const { properties } = await notionApiRequest.call(this, 'GET', `/databases/${databaseId}`);
 				for (const key of Object.keys(properties)) {
 					//remove parameters that cannot be set from the API.
-					if (!['created_time', 'last_edited_time', 'created_by', 'last_edited_by', 'formula', 'files'].includes(properties[key].type)) {
+					if (!['created_time', 'last_edited_time', 'created_by', 'last_edited_by', 'formula', 'files', 'rollup'].includes(properties[key].type)) {
 						returnData.push({
 							name: `${key} - (${properties[key].type})`,
 							value: `${key}|${properties[key].type}`,
@@ -219,7 +219,7 @@ export class NotionV1 implements INodeType {
 						responseData = await notionApiRequestAllItems.call(this, 'results', 'GET', `/blocks/${blockId}/children`, {});
 					} else {
 						qs.page_size = this.getNodeParameter('limit', i) as number;
-						responseData = await notionApiRequest.call(this, 'GET', `/blocks/${blockId}/children`, {});
+						responseData = await notionApiRequest.call(this, 'GET', `/blocks/${blockId}/children`, {}, qs);
 						responseData = responseData.results;
 					}
 					returnData.push.apply(returnData, responseData);

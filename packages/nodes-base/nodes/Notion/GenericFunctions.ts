@@ -48,7 +48,6 @@ export async function notionApiRequest(this: IHookFunctions | IExecuteFunctions 
 			uri: uri || `https://api.notion.com/v1${resource}`,
 			json: true,
 		};
-
 		options = Object.assign({}, options, option);
 		const credentials = await this.getCredentials('notionApi') as IDataObject;
 		if (!uri) {
@@ -723,7 +722,6 @@ export async function downloadFiles(this: IExecuteFunctions | IPollFunctions, re
 export function extractPageId(page: string) {
 	if (page.includes('p=')) {
 		return page.split('p=')[1];
-	} else if (page.includes('-')) {
 	} else if (page.includes('-') && page.includes('https')) {
 		return page.split('-')[page.split('-').length - 1];
 	}
@@ -735,8 +733,12 @@ export function extractDatabaseId(database: string) {
 		const data = database.split('?v=')[0].split('/');
 		const index = data.length - 1;
 		return data[index];
+	} else if (database.includes('/')) {
+		const index = database.split('/').length - 1;
+		return database.split('/')[index];
+	} else {
+		return database;
 	}
-	return database;
 }
 
 // tslint:disable-next-line: no-any

@@ -243,7 +243,7 @@ export class NotionV2 implements INodeType {
 						responseData = await notionApiRequestAllItems.call(this, 'results', 'GET', `/blocks/${blockId}/children`, {});
 					} else {
 						qs.page_size = this.getNodeParameter('limit', i) as number;
-						responseData = await notionApiRequest.call(this, 'GET', `/blocks/${blockId}/children`, {});
+						responseData = await notionApiRequest.call(this, 'GET', `/blocks/${blockId}/children`, {}, qs);
 						responseData = responseData.results;
 					}
 					returnData.push.apply(returnData, responseData);
