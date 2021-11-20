@@ -34,7 +34,7 @@ export default mixins(genericHelpers).extend({
 			};
 
 			if (this.keyName === 'name' && this.node.type.startsWith('n8n-nodes-base.')) {
-				const shortNodeType = this.node.type.replace('n8n-nodes-base.', '');
+				const shortNodeType = this.$shortNodeType(this.node.type);
 
 				return this.$headerText({
 					key: `headers.${shortNodeType}.displayName`,

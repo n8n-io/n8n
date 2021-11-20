@@ -26,7 +26,7 @@ async function getMaxVersion(from: string) {
 	return Math.max(...dirnames.map((d) => parseInt(d.charAt(1), 10)));
 }
 
-export async function getExpectedNodeTranslationPath(
+export async function getNodeTranslationPath(
 	nodeSourcePath: string,
 	language: string,
 ): Promise<string> {

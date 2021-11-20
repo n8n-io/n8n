@@ -49,7 +49,7 @@ export default mixins(renderText).extend({
 	],
 	computed: {
 		shortNodeType() {
-			return this.nodeType.name.replace('n8n-nodes-base.', '');
+			return this.$shortNodeType(this.nodeType.name);
 		},
 	},
 	// @ts-ignore

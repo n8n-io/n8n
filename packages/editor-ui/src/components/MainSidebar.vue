@@ -469,8 +469,8 @@ export default mixins(
 							this.$baseText('mainSidebar.confirmMessage.workflowNew.message'),
 							this.$baseText('mainSidebar.confirmMessage.workflowNew.headline'),
 							'warning',
-							this.$baseText('mainSidebar.confirmMessage.workflowNew.confirmButton'),
-							this.$baseText('mainSidebar.confirmMessage.workflowNew.cancelButton'),
+							this.$baseText('mainSidebar.confirmMessage.workflowNew.confirmButtonText'),
+							this.$baseText('mainSidebar.confirmMessage.workflowNew.cancelButtonText'),
 						);
 						if (importConfirm === true) {
 							this.$store.commit('setStateDirty', false);
