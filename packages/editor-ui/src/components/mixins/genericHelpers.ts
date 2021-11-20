@@ -23,17 +23,16 @@ export const genericHelpers = mixins(showMessage, renderText).extend({
 		displayTimer (msPassed: number, showMs = false): string {
 			if (msPassed < 60000) {
 				if (showMs === false) {
-					return `${Math.floor(msPassed / 1000)} ${this.$baseText('genericHelpers.sec')}`;
+					return `${this.$n(Math.floor(msPassed / 1000), 'decimal')} ${this.$baseText('genericHelpers.sec')}`;
 				}
 
-				return `${msPassed / 1000} ${this.$baseText('genericHelpers.sec')}`;
+				return `${this.$n(msPassed / 1000, 'decimal')} ${this.$baseText('genericHelpers.sec')}`;
 			}
 
 			const secondsPassed = Math.floor(msPassed / 1000);
 			const minutesPassed = Math.floor(secondsPassed / 60);
-			const secondsLeft = (secondsPassed - (minutesPassed * 60)).toString().padStart(2, '0');
 
-			return `${minutesPassed}:${secondsLeft} min.`;
+			return `${this.$n(minutesPassed, 'decimal')}:${this.$n(secondsPassed, 'decimal')} ${this.$baseText('genericHelpers.min')}`;
 		},
 		editAllowedCheck (): boolean {
 			if (this.isReadOnly) {

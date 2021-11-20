@@ -1,14 +1,16 @@
-/* tslint:disable: variable-name */
 
-// import { TranslationPath } from '@/Interface';
 import Vue from 'vue';
 
-const REUSABLE_TEXT_KEY = 'reusableText';
+const REUSABLE_DYNAMIC_TEXT_KEY = 'reusableDynamicText';
 const CREDENTIALS_MODAL_KEY = 'credentialsModal';
 const NODE_VIEW_KEY = 'nodeView';
 
 export const renderText = Vue.extend({
 	methods: {
+		$shortNodeType(longNodeType: string) {
+			return longNodeType.replace('n8n-nodes-base.', '');
+		},
+
 		/**
 		 * Render a string of base text, i.e. a string with a fixed path to the localized value in the base text object. Optionally allows for [interpolation](https://kazupon.github.io/vue-i18n/guide/formatting.html#named-formatting) when the localized value contains a string between curly braces.
 		 */
@@ -55,7 +57,7 @@ export const renderText = Vue.extend({
 				) {
 					if (['clientId', 'clientSecret'].includes(parameterName)) {
 						return context.__render({
-							key: `${REUSABLE_TEXT_KEY}.oauth2.${parameterName}`,
+							key: `${REUSABLE_DYNAMIC_TEXT_KEY}.oauth2.${parameterName}`,
 							fallback: displayName,
 						});
 					}

@@ -458,8 +458,7 @@ export default mixins(
 
 					data.workflow.nodes.forEach((node) => {
 						if (!this.$store.getters.nodeType(node.type)) {
-							const name = node.type.replace('n8n-nodes-base.', '');
-							throw new Error(`The ${name} node is not supported`);
+							throw new Error(`The ${this.$shortNodeType(node.type)} node is not supported`);
 						}
 					});
 				} catch (error) {

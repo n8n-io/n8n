@@ -115,10 +115,9 @@
 					</template>
 				</el-table-column>
 				<el-table-column property="mode" :label="$baseText('executionsList.mode')" width="100" align="center">
-					<!-- TODO i18n <template slot-scope="scope">
-						{{convertToDisplayDate(scope.row.startedAt)}}<br />
-						<small v-if="scope.row.id">ID: {{scope.row.id}}</small>
-					</template> -->
+					<template slot-scope="scope">
+						{{ $baseText(`executionsList.modes.${scope.row.mode}`) }}
+					</template>
 				</el-table-column>
 				<el-table-column :label="$baseText('executionsList.runningTime')" width="150" align="center">
 					<template slot-scope="scope">
@@ -255,14 +254,6 @@ export default mixins(
 					name: this.$baseText('executionsList.waiting'),
 				},
 			];
-		},
-		modes () {
-			return {
-				error: this.$baseText('executionsList.modes.error'),
-				retry: this.$baseText('executionsList.modes.retry'),
-				manual: this.$baseText('executionsList.modes.manual'),
-				trigger: this.$baseText('executionsList.modes.trigger'),
-			};
 		},
 		activeExecutions (): IExecutionsCurrentSummaryExtended[] {
 			return this.$store.getters.getActiveExecutions;
@@ -542,7 +533,7 @@ export default mixins(
 
 			this.finishedExecutions = data.results.map((execution) => {
 				// @ts-ignore
-				return { ...execution, mode: this.modes[execution.mode] };
+				return { ...execution, mode: execution.mode };
 			});
 			this.finishedExecutionsCount = data.count;
 			this.finishedExecutionsCountEstimated = data.estimated;
@@ -577,7 +568,7 @@ export default mixins(
 
 			data.results = data.results.map((execution) => {
 				// @ts-ignore
-				return { ...execution, mode: this.modes[execution.mode] };
+				return { ...execution, mode: execution.mode };
 			});
 
 			this.finishedExecutions.push.apply(this.finishedExecutions, data.results);
