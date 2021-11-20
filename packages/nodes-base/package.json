@@ -490,6 +490,7 @@
       "dist/nodes/Merge/Merge.node.js",
       "dist/nodes/MessageBird/MessageBird.node.js",
       "dist/nodes/Microsoft/Dynamics/MicrosoftDynamicsCrm.node.js",
+      "dist/nodes/Microsoft/Dynamics/MicrosoftDynamicsCrmTrigger.node.js",
       "dist/nodes/Microsoft/Excel/MicrosoftExcel.node.js",
       "dist/nodes/Microsoft/OneDrive/MicrosoftOneDrive.node.js",
       "dist/nodes/Microsoft/Outlook/MicrosoftOutlook.node.js",

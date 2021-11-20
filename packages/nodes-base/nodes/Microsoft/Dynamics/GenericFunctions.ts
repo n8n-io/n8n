@@ -10,11 +10,12 @@ import {
 
 import {
 	IDataObject,
+	IHookFunctions,
 	INodePropertyOptions,
 	NodeApiError,
 } from 'n8n-workflow';
 
-export async function microsoftApiRequest(this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: string, resource: string, body: any = {}, qs: IDataObject = {}, uri?: string, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
+export async function microsoftApiRequest(this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions | IHookFunctions, method: string, resource: string, body: any = {}, qs: IDataObject = {}, uri?: string, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
 	const credenitals = await this.getCredentials('microsoftDynamicsOAuth2Api') as { subdomain: string };
 
 	let options: OptionsWithUri = {
@@ -58,6 +59,27 @@ export async function microsoftApiRequestAllItems(this: IExecuteFunctions | ILoa
 	);
 
 	return returnData;
+}
+
+export async function getSdkMessagesHelper(this: ILoadOptionsFunctions, entityName: string): Promise<INodePropertyOptions[]> {
+	const returnData: INodePropertyOptions[] = [{name: 'default', value: 'default'}];
+	const sdkMessagesEndpoint = `/sdkmessagefilters?$filter=primaryobjecttypecode eq '${entityName}'&$expand=sdkmessageid`;
+	const { value } = await microsoftApiRequest.call(this, 'GET', sdkMessagesEndpoint);
+	for (const val of value)
+	{
+		returnData.push({
+			name: val.sdkmessageid.name,
+			value: `${val.sdkmessagefilterid}:${val.sdkmessageid.sdkmessageid}:${val.sdkmessageid.name}`
+		});
+	}
+	
+	return returnData;
+}
+
+export async function getEntitiesHelper(this: ILoadOptionsFunctions) : Promise<IEntity[]> {
+	const endpoint = `/EntityDefinitions?$filter=IsValidForAdvancedFind eq true&$select=LogicalName,DisplayName,LogicalCollectionName`;
+	const { value } = await microsoftApiRequest.call(this, 'GET', endpoint);
+	return value;
 }
 
 export async function getPicklistOptions(this: ILoadOptionsFunctions, entityName: string, attributeName: string): Promise<INodePropertyOptions[]> {
@@ -488,12 +510,29 @@ export interface IField {
 	LogicalName: string;
 	IsSearchable: string;
 	IsValidODataAttribute: string;
-	IsValidForRead: string;
-	CanBeSecuredForRead: string;
+	IsValidForRead: boolean;
+	IsValidForCreate: boolean;
+	IsValidForUpdate: boolean;
+	CanBeSecuredForRead: boolean;
 	AttributeType: string;
 	IsSortableEnabled: {
 		Value: boolean,
 	};
+	DisplayName: {
+		UserLocalizedLabel: {
+			Label: string
+		}
+	},
+	AttributeTypeName: {
+		Value: string
+	};
+}
+
+export interface IEntity {
+	LogicalName: string;
+	LogicalCollectionName: string;
+	PrimaryIdAttribute: string;
+	PrimaryNameAttribute: string;
 	DisplayName: {
 		UserLocalizedLabel: {
 			Label: string
