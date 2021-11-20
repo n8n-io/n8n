@@ -97,7 +97,7 @@ export default mixins(
 			},
 			nodeTypeName(): string {
 				if (this.nodeType) {
-					const shortNodeType = this.nodeType.name.replace('n8n-nodes-base.', '');
+					const shortNodeType = this.$shortNodeType(this.nodeType.name);
 
 					return this.$headerText({
 						key: `headers.${shortNodeType}.displayName`,
@@ -109,7 +109,7 @@ export default mixins(
 			},
 			nodeTypeDescription (): string {
 				if (this.nodeType && this.nodeType.description) {
-					const shortNodeType = this.nodeType.name.replace('n8n-nodes-base.', '');
+					const shortNodeType = this.$shortNodeType(this.nodeType.name);
 
 					return this.$headerText({
 						key: `headers.${shortNodeType}.description`,

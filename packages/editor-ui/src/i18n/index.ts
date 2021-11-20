@@ -40,8 +40,14 @@ export async function loadLanguage(language?: string) {
 		return Promise.resolve(setLanguage(language));
 	}
 
-	const baseText = require(`./locales/${language}`).default;
-	i18n.setLocaleMessage(language, baseText);
+	const { numberFormats, ...rest } = require(`./locales/${language}`).default;
+
+	i18n.setLocaleMessage(language, rest);
+
+	if (numberFormats) {
+		i18n.setNumberFormat(language, numberFormats);
+	}
+
 	loadedLanguages.push(language);
 
 	setLanguage(language);

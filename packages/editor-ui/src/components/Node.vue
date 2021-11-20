@@ -162,7 +162,7 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, renderText, workflow
 			return returnStyles;
 		},
 		shortNodeType (): string {
-			return this.data.type.replace('n8n-nodes-base.', '');
+			return this.$shortNodeType(this.data.type);
 		},
 		waiting (): string | undefined {
 			const workflowExecution = this.$store.getters.getWorkflowExecution;

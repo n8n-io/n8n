@@ -1,5 +1,15 @@
 export default {
-	reusableText: {
+	numberFormats: {
+		decimal: {
+			style: 'decimal',
+		},
+	},
+	reusableBaseText: {
+		cancel: '🇩🇪 Cancel',
+		save: '🇩🇪 Save',
+		name: '🇩🇪 Name',
+	},
+	reusableDynamicText: {
 		oauth2: {
 			clientId: '🇩🇪 Client ID',
 			clientSecret: '🇩🇪 Client Secret',
@@ -120,7 +130,7 @@ export default {
 		noProperties: '🇩🇪 No properties',
 	},
 	credentialsList: {
-		name: '🇩🇪 Name',
+		name: '@:reusableBaseText.name',
 		type: '🇩🇪 Type',
 		credentials: '🇩🇪 Credentials',
 		addNew: '🇩🇪 Add New',
@@ -165,11 +175,11 @@ export default {
 		setValue: '🇩🇪 Set Value',
 	},
 	duplicateWorkflowDialog: {
-		cancel: '🇩🇪 Cancel',
+		cancel: '@:reusableBaseText.cancel',
 		chooseOrCreateATag: '🇩🇪 Choose or create a tag',
 		duplicateWorkflow: '🇩🇪 Duplicate Workflow',
 		enterWorkflowName: '🇩🇪 Enter workflow name',
-		save: '🇩🇪 Save',
+		save: '@:reusableBaseText.save',
 		showMessage: {
 			message: '🇩🇪 Please enter a name.',
 			title: '🇩🇪 Name missing',
@@ -292,7 +302,7 @@ export default {
 		filters: '🇩🇪 Filters',
 		loadMore: '🇩🇪 Load More',
 		mode: '🇩🇪 Mode',
-		name: '🇩🇪 Name',
+		name: '@:reusableBaseText.name',
 		openPastExecution: '🇩🇪 Open Past Execution',
 		retryExecution: '🇩🇪 Retry execution',
 		retryOf: '🇩🇪 Retry of',
@@ -373,6 +383,14 @@ export default {
 		result: '🇩🇪 Result',
 		variableSelector: '🇩🇪 Variable Selector',
 	},
+	variableSelector: {
+		variableFilter: '🇩🇪 Variable filter...',
+		currentNode: '🇩🇪 Current Node',
+		parameters: '🇩🇪 Parameters',
+		nodes: '🇩🇪 Nodes',
+		outputData: '🇩🇪 Output Data',
+		context: '🇩🇪 Context',
+	},
 	fixedCollectionParameter: {
 		choose: '🇩🇪 Choose...',
 		currentlyNoItemsExist: '🇩🇪 Currently no items exist',
@@ -384,6 +402,7 @@ export default {
 		},
 		loading: '🇩🇪 Loading',
 		sec: '🇩🇪 sec.',
+		min: '🇩🇪 min.',
 	},
 	mainSidebar: {
 		aboutN8n: '🇩🇪 About n8n',
@@ -409,7 +428,7 @@ export default {
 		help: '🇩🇪 Help',
 		helpMenuItems: {
 			documentation: '🇩🇪 Documentation',
-			forum: '🇩🇪 Forum',
+			forum: '🇩🇪 Forum @:mainSidebar.helpMenuItems.documentation',
 			workflows: '🇩🇪 Workflows',
 		},
 		importFromFile: '🇩🇪 Import from File',
@@ -417,13 +436,13 @@ export default {
 		new: '🇩🇪 New',
 		open: '🇩🇪 Open',
 		prompt: {
-			cancel: '🇩🇪 Cancel',
+			cancel: '@:reusableBaseText.cancel',
 			import: '🇩🇪 Import',
 			importWorkflowFromUrl: '🇩🇪 Import Workflow from URL',
 			invalidUrl: '🇩🇪 Invalid URL',
 			workflowUrl: '🇩🇪 Workflow URL',
 		},
-		save: '🇩🇪 Save',
+		save: '@:reusableBaseText.save',
 		settings: '🇩🇪 Settings',
 		showError: {
 			stopExecution: {
@@ -584,7 +603,7 @@ export default {
 		workflowWithIdCouldNotBeFound: '🇩🇪 Workflow with id "{workflowId}" could not be found!',
 		executesTheWorkflowFromTheStartOrWebhookNode: '🇩🇪 Executes the Workflow from the Start or Webhook Node.',
 		prompt: {
-			cancel: '🇩🇪 Cancel',
+			cancel: '@:reusableBaseText.cancel',
 			invalidName: '🇩🇪 Invalid Name',
 			newName: '🇩🇪 New Name',
 			rename: '🇩🇪 Rename',
@@ -739,7 +758,7 @@ export default {
 	showMessage: {
 		showDetails: '🇩🇪 Show Details',
 		ok: '🇩🇪 OK',
-		cancel: '🇩🇪 Cancel',
+		cancel: '@:reusableBaseText.cancel',
 	},
 	pushConnection: {
 		showMessage: {
@@ -781,7 +800,7 @@ export default {
 		theNodeContains: '🇩🇪 The node contains {numberOfKb} KB of data.<br />Displaying it could cause problems!<br /><br />If you do decide to display it, avoid the JSON view!',
 	},
 	saveButton: {
-		save: '🇩🇪 Save',
+		save: '@:reusableBaseText.save',
 		saving: '🇩🇪 Saving',
 		saved: '🇩🇪 Saved',
 	},
@@ -830,11 +849,11 @@ export default {
 		noMatchingTagsExist: '🇩🇪 No matching tags exist',
 		saveChanges: '🇩🇪 Save changes?',
 		areYouSureYouWantToDeleteThisTag: '🇩🇪 Are you sure you want to delete this tag?',
-		cancel: '🇩🇪 Cancel',
+		cancel: '@:reusableBaseText.cancel',
 		createTag: '🇩🇪 Create tag',
 		deleteTag: '🇩🇪 Delete tag',
 		editTag: '🇩🇪 Edit Tag',
-		name: '🇩🇪 Name',
+		name: '@:reusableBaseText.name',
 		usage: '🇩🇪 Usage',
 	},
 	tagsTableHeader: {
@@ -908,7 +927,7 @@ export default {
 			message: '🇩🇪 When you switch workflows your current workflow changes will be lost.',
 		},
 		created: '🇩🇪 Created',
-		name: '🇩🇪 Name',
+		name: '@:reusableBaseText.name',
 		openWorkflow: '🇩🇪 Open Workflow',
 		searchWorkflows: '🇩🇪 Search workflows...',
 		showError: {
@@ -950,18 +969,18 @@ export default {
 		hours: '🇩🇪 hours',
 		minutes: '🇩🇪 minutes',
 		noWorkflow: '🇩🇪 - No Workflow -',
-		save: '🇩🇪 Save',
+		save: '@:reusableBaseText.save',
 		saveDataErrorExecution: '🇩🇪 Save Data Error Execution',
 		saveDataErrorExecutionOptions: {
 			defaultSave: '🇩🇪 Default - ({defaultValue})',
 			doNotSave: '🇩🇪 Do not save',
-			save: '🇩🇪 Save',
+			save: '@:reusableBaseText.save',
 		},
 		saveDataSuccessExecution: '🇩🇪 Save Data Success Execution',
 		saveDataSuccessExecutionOptions: {
 			defaultSave: '🇩🇪 Default - ({defaultValue})',
 			doNotSave: '🇩🇪 Do not save',
-			save: '🇩🇪 Save',
+			save: '@:reusableBaseText.save',
 		},
 		saveExecutionProgress: '🇩🇪 Save Execution Progress',
 		saveExecutionProgressOptions: {

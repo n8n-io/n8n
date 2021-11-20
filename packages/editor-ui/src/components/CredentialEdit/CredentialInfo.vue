@@ -78,7 +78,7 @@ export default mixins(renderText).extend({
 			});
 		},
 		shortNodeType(nodeType: INodeTypeDescription) {
-			return nodeType.name.replace('n8n-nodes-base.', '');
+			return this.$shortNodeType(nodeType.name);
 		},
 	},
 });

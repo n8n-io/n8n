@@ -25,6 +25,8 @@
 /* eslint-disable no-restricted-syntax */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 /* eslint-disable import/no-dynamic-require */
+/* eslint-disable no-await-in-loop */
+
 import * as express from 'express';
 import { readFileSync, existsSync } from 'fs';
 import { dirname as pathDirname, join as pathJoin, resolve as pathResolve } from 'path';
@@ -145,7 +147,7 @@ import { InternalHooksManager } from './InternalHooksManager';
 import { TagEntity } from './databases/entities/TagEntity';
 import { WorkflowEntity } from './databases/entities/WorkflowEntity';
 import { NameRequest } from './WorkflowHelpers';
-import { getExpectedNodeTranslationPath } from './TranslationHelpers';
+import { getNodeTranslationPath } from './TranslationHelpers';
 
 require('body-parser-xml')(bodyParser);
 
@@ -1179,33 +1181,28 @@ class App {
 			ResponseHelper.send(
 				async (req: express.Request, res: express.Response): Promise<INodeTypeDescription[]> => {
 					const nodeInfos = _.get(req, 'body.nodeInfos', []) as INodeTypeNameVersion[];
-					const nodeTypes = NodeTypes();
-
 					const language = config.get('defaultLocale') ?? req.headers['accept-language'] ?? 'en';
 
 					if (language === 'en') {
 						return nodeInfos.reduce<INodeTypeDescription[]>((acc, { name, version }) => {
-							const { description } = nodeTypes.getByNameAndVersion(name, version);
+							const { description } = NodeTypes().getByNameAndVersion(name, version);
 							acc.push(description);
 							return acc;
 						}, []);
 					}
 
-					const nodeTypesWithTranslations: INodeTypeDescription[] = [];
+					const nodeTypes: INodeTypeDescription[] = [];
 
 					for (const { name, version } of nodeInfos) {
-						const { description, sourcePath } = nodeTypes.getWithPath(name, version);
-						// eslint-disable-next-line no-await-in-loop
-						const nodeTranslationPath = await getExpectedNodeTranslationPath(sourcePath, language);
-
-						if (existsSync(nodeTranslationPath)) {
-							description.translation = require(nodeTranslationPath);
+						const { description, sourcePath } = NodeTypes().getWithSourcePath(name, version);
+						const translationPath = await getNodeTranslationPath(sourcePath, language);
+						if (existsSync(translationPath)) {
+							description.translation = require(translationPath);
 						}
-
-						nodeTypesWithTranslations.push(description);
+						nodeTypes.push(description);
 					}
 
-					return nodeTypesWithTranslations;
+					return nodeTypes;
 				},
 			),
 		);
@@ -2895,6 +2892,12 @@ export async function start(): Promise<void> {
 		const versions = await GenericHelpers.getVersions();
 		console.log(`n8n ready on ${ADDRESS}, port ${PORT}`);
 		console.log(`Version: ${versions.cli}`);
+
+		const defaultLocale = config.get('defaultLocale');
+
+		if (!defaultLocale || defaultLocale !== 'en') {
+			console.log(`Locale: ${config.get('defaultLocale')}`);
+		}
 
 		await app.externalHooks.run('n8n.ready', [app]);
 		const cpus = os.cpus();

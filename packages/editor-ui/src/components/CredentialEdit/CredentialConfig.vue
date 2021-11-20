@@ -203,17 +203,12 @@ export default mixins(renderText, restApi).extend({
 		},
 
 		/**
-		 * Add to the translation object the node translation
-		 * for the credential being viewed.
+		 * Add to the translation object the node translation for the credential in the modal.
 		 */
 		async addNodeTranslationForCredential() {
-			// TODO i18n: Check if node translation has already been added (via NodeView)
-
 			const { nodeType }: { nodeType: string } = this.$store.getters.credentialTextRenderKeys;
 			const version = await this.getCurrentNodeVersion(nodeType);
-
 			const nodeToBeFetched = [{ name: nodeType, version }];
-
 			const nodesInfo = await this.restApi().getNodesInformation(nodeToBeFetched);
 			const nodeInfo = nodesInfo.pop();
 

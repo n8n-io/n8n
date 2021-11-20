@@ -41,10 +41,9 @@ class NodeTypesClass implements INodeTypes {
 	}
 
 	/**
-	 * Variant of `getByNameAndVersion` that includes the node's source path,
-	 * to be used for locating the node's `/translations` dir.
+	 * Variant of `getByNameAndVersion` that includes the node's source path, used to locate a node's translations.
 	 */
-	getWithPath(
+	getWithSourcePath(
 		nodeTypeName: string,
 		version: number,
 	): { description: INodeTypeDescription } & { sourcePath: string } {
