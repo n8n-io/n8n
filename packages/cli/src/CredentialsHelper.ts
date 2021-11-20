@@ -1,17 +1,36 @@
-import { Credentials } from 'n8n-core';
+/* eslint-disable no-restricted-syntax */
+/* eslint-disable @typescript-eslint/no-unsafe-member-access */
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
+/* eslint-disable @typescript-eslint/no-unsafe-return */
+/* eslint-disable @typescript-eslint/no-unsafe-call */
+
+// eslint-disable-next-line import/no-extraneous-dependencies
+import { AxiosError } from 'axios';
+
+import { Credentials, NodeExecuteFunctions } from 'n8n-core';
+
+import { NodeVersionedType } from 'n8n-nodes-base';
 
 import {
 	ICredentialDataDecryptedObject,
+	ICredentialsDecrypted,
 	ICredentialsExpressionResolveValues,
 	ICredentialsHelper,
+	ICredentialTestFunction,
+	ICredentialNodeTestRequest,
 	IHttpRequestOptions,
 	INode,
 	INodeCredentialsDetails,
+	INodeCredentialTestResult,
+	INodeExecutionData,
 	INodeParameters,
 	INodeProperties,
 	INodeType,
 	INodeTypeData,
 	INodeTypes,
+	INodeVersionedType,
+	IRequestOptionsFromParameters,
+	IRunExecutionData,
 	IWorkflowDataProxyAdditionalKeys,
 	NodeHelpers,
 	Workflow,
@@ -19,22 +38,38 @@ import {
 } from 'n8n-workflow';
 
 // eslint-disable-next-line import/no-cycle
-import { CredentialsOverwrites, CredentialTypes, Db, ICredentialsDb } from '.';
+import {
+	CredentialsOverwrites,
+	CredentialTypes,
+	Db,
+	ICredentialsDb,
+	NodeTypes,
+	WorkflowExecuteAdditionalData,
+} from '.';
+
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const merge = require('lodash.merge');
 
 const mockNodeTypes: INodeTypes = {
-	nodeTypes: {},
+	nodeTypes: {} as INodeTypeData,
 	// eslint-disable-next-line @typescript-eslint/no-unused-vars
 	init: async (nodeTypes?: INodeTypeData): Promise<void> => {},
-	getAll: (): INodeType[] => {
-		// Does not get used in Workflow so no need to return it
-		return [];
+	getAll(): Array<INodeType | INodeVersionedType> {
+		// @ts-ignore
+		return Object.values(this.nodeTypes).map((data) => data.type);
 	},
 	// eslint-disable-next-line @typescript-eslint/no-unused-vars
-	getByName: (nodeType: string): INodeType | undefined => {
-		return undefined;
+	getByName(nodeType: string): INodeType | INodeVersionedType | undefined {
+		if (this.nodeTypes[nodeType] === undefined) {
+			throw new Error(`The node-type "${nodeType}" is not known!`);
+		}
+		return this.nodeTypes[nodeType].type;
 	},
-	getByNameAndVersion: (): INodeType | undefined => {
-		return undefined;
+	getByNameAndVersion(nodeType: string, version?: number): INodeType {
+		if (this.nodeTypes[nodeType] === undefined) {
+			throw new Error(`The node-type "${nodeType}" is not known!`);
+		}
+		return NodeHelpers.getVersionedTypeNode(this.nodeTypes[nodeType].type, version);
 	},
 };
 
@@ -72,7 +107,6 @@ export class CredentialsHelper extends ICredentialsHelper {
 
 				// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
 				if (authenticate.type === 'bearer') {
-					// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 					const tokenPropertyName: string =
 						// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
 						authenticate.properties.tokenPropertyName ?? 'accessToken';
@@ -81,11 +115,9 @@ export class CredentialsHelper extends ICredentialsHelper {
 					}`;
 					// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
 				} else if (authenticate.type === 'basicAuth') {
-					// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 					const userPropertyName: string =
 						// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
 						authenticate.properties.userPropertyName ?? 'user';
-					// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 					const passwordPropertyName: string =
 						// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
 						authenticate.properties.userPropertyName ?? 'password';
@@ -215,7 +247,6 @@ export class CredentialsHelper extends ICredentialsHelper {
 		}
 
 		const combineProperties = [] as INodeProperties[];
-		// eslint-disable-next-line no-restricted-syntax
 		for (const credentialsTypeName of credentialTypeData.extends) {
 			const mergeCredentialProperties = this.getCredentialsProperties(credentialsTypeName);
 			NodeHelpers.mergeNodeProperties(combineProperties, mergeCredentialProperties);
@@ -385,5 +416,243 @@ export class CredentialsHelper extends ICredentialsHelper {
 
 		// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
 		await Db.collections.Credentials!.update(findQuery, newCredentialsData);
+	}
+
+	getCredentialTestFunction(
+		credentialType: string,
+		nodeToTestWith?: string,
+	): ICredentialTestFunction | ICredentialNodeTestRequest | undefined {
+		const nodeTypes = NodeTypes();
+		const allNodes = nodeTypes.getAll();
+
+		// Check all the nodes one by one if they have a test function defined
+		for (let i = 0; i < allNodes.length; i++) {
+			const node = allNodes[i];
+
+			if (nodeToTestWith && node.description.name !== nodeToTestWith) {
+				// eslint-disable-next-line no-continue
+				continue;
+			}
+
+			// Always set to an array even if node is not versioned to not having
+			// to duplicate the logic
+			const allNodeTypes: INodeType[] = [];
+			if (node instanceof NodeVersionedType) {
+				// Node is versioned
+				allNodeTypes.push(...Object.values((node as INodeVersionedType).nodeVersions));
+			} else {
+				// Node is not versioned
+				allNodeTypes.push(node as INodeType);
+			}
+
+			// Check each of the node versions for credential tests
+			for (const nodeType of allNodeTypes) {
+				// Check each of teh credentials
+				for (const credential of nodeType.description.credentials ?? []) {
+					if (credential.name === credentialType && !!credential.testedBy) {
+						if (typeof credential.testedBy === 'string') {
+							// Test is defined as string which links to a functoin
+							// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+							return (node as unknown as INodeType).methods?.credentialTest![credential.testedBy];
+						}
+
+						// Test is defined as JSON with a defintion for the request to make
+						return {
+							nodeType,
+							testRequest: credential.testedBy,
+						};
+					}
+				}
+			}
+		}
+		return undefined;
+	}
+
+	async testCredentials(
+		credentialType: string,
+		credentialsDecrypted: ICredentialsDecrypted,
+		nodeToTestWith?: string,
+	): Promise<INodeCredentialTestResult> {
+		const credentialTestFunction = this.getCredentialTestFunction(credentialType, nodeToTestWith);
+
+		if (credentialTestFunction === undefined) {
+			return Promise.resolve({
+				status: 'Error',
+				message: 'No testing function found for this credential.',
+			});
+		}
+
+		if (typeof credentialTestFunction === 'function') {
+			// The credentials get tested via a function that is defined on the node
+			const credentialTestFunctions = NodeExecuteFunctions.getCredentialTestFunctions();
+			// eslint-disable-next-line @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
+			return credentialTestFunction.call(credentialTestFunctions, credentialsDecrypted);
+		}
+
+		// Credentials get tested via request instructions
+
+		// TODO: Temp worfklows get created at multiple locations (for example also LoadNodeParameterOptions),
+		//       check if some of them are identical enough that it can be combined
+
+		const node: INode = {
+			parameters: {},
+			name: 'Temp-Node',
+			type: credentialTestFunction.nodeType.description.name,
+			typeVersion: credentialTestFunction.nodeType.description.version,
+			position: [0, 0],
+		};
+
+		const workflowData = {
+			nodes: [node],
+			connections: {},
+		};
+
+		const nodeType: INodeType = {
+			description: {
+				...credentialTestFunction.nodeType.description,
+				properties: [
+					{
+						displayName: 'Temp',
+						name: 'temp',
+						type: 'string',
+						request: credentialTestFunction.testRequest.request,
+						default: '',
+					},
+				],
+			},
+		};
+
+		const nodeTypes: INodeTypes = {
+			...mockNodeTypes,
+			nodeTypes: {
+				[credentialTestFunction.nodeType.description.name]: {
+					sourcePath: '',
+					type: nodeType,
+				},
+			},
+		};
+
+		const workflow = new Workflow({
+			nodes: workflowData.nodes,
+			connections: workflowData.connections,
+			active: false,
+			nodeTypes,
+		});
+
+		const mode = 'internal';
+		const runIndex = 0;
+		const itemIndex = 0;
+		const inputData = {};
+		const connectionInputData: INodeExecutionData[] = [];
+		const runExecutionData: IRunExecutionData = {
+			resultData: {
+				runData: {},
+			},
+		};
+
+		const additionalData = await WorkflowExecuteAdditionalData.getBase(node.parameters);
+
+		const thisArgs = NodeExecuteFunctions.getExecuteSingleFunctions(
+			workflow,
+			runExecutionData,
+			runIndex,
+			connectionInputData,
+			inputData,
+			node,
+			itemIndex,
+			additionalData,
+			mode,
+		);
+
+		const requestData: IRequestOptionsFromParameters = {
+			options: {
+				url: '', // TODO: Replace with own type where url is not required
+				qs: {},
+				body: {},
+			},
+			preSend: [],
+			postReceive: [],
+		};
+
+		if (nodeType.description.requestDefaults) {
+			Object.assign(requestData.options, nodeType.description.requestDefaults);
+		}
+
+		const tempOptions = workflow.getRequestOptionsFromParameters.call(
+			thisArgs,
+			workflow,
+			{
+				displayName: 'Temp',
+				name: 'temp',
+				type: 'string',
+				request: credentialTestFunction.testRequest.request,
+				default: '',
+			},
+			credentialTestFunction.nodeType,
+			runExecutionData,
+			runIndex,
+			connectionInputData,
+			itemIndex,
+			mode,
+		);
+
+		if (tempOptions) {
+			merge(requestData.options, tempOptions.options);
+			requestData.preSend.push(...tempOptions.preSend);
+			requestData.postReceive.push(...tempOptions.postReceive);
+		}
+
+		try {
+			const responseData = await workflow.makeRoutingRequest
+				.call(thisArgs, requestData, credentialType, credentialsDecrypted)
+				.catch((error: AxiosError) => {
+					// Do not fail any requests to allow custom error messages and
+					// make logic easier
+					if (!error.response) {
+						throw error;
+					}
+
+					return {
+						body: error.response.data,
+						headers: error.response.headers,
+						statusCode: error.response.status,
+						statusMessage: error.response.statusText,
+					};
+				});
+
+			if (credentialTestFunction.testRequest.rules) {
+				// Special testing rules are defined so check all in order
+				for (const rule of credentialTestFunction.testRequest.rules) {
+					if (rule.type === 'responseCode') {
+						if (responseData.statusCode === rule.properties.value) {
+							return {
+								status: 'Error',
+								message: rule.properties.message,
+							};
+						}
+					}
+				}
+			}
+
+			if (responseData.statusCode < 199 || responseData.statusCode > 299) {
+				// All requests with response codes that are not 2xx are treated by default as failed
+				return {
+					status: 'Error',
+					message:
+						// eslint-disable-next-line @typescript-eslint/restrict-template-expressions
+						responseData.statusMessage || `Received HTTP status code: ${responseData.statusCode}`,
+				};
+			}
+
+			return {
+				status: 'OK',
+				message: 'Connection successful!',
+			};
+		} catch (error) {
+			return {
+				status: 'Error',
+				message: error.message.toString(),
+			};
+		}
 	}
 }

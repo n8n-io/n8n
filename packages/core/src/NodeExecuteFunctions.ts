@@ -972,9 +972,14 @@ export async function requestWithAuthentication(
 			);
 		}
 
-		const credentials = await this.getCredentials(credentialsType);
+		let credentialsDecrypted: ICredentialDataDecryptedObject | undefined;
+		if (additionalCredentialOptions?.credentialsDecrypted) {
+			credentialsDecrypted = additionalCredentialOptions.credentialsDecrypted.data;
+		} else {
+			credentialsDecrypted = await this.getCredentials(credentialsType);
+		}
 
-		if (credentials === undefined) {
+		if (credentialsDecrypted === undefined) {
 			throw new NodeOperationError(
 				node,
 				`Node "${node.name}" does not have any credentials of type "${credentialsType}" set!`,
@@ -982,7 +987,7 @@ export async function requestWithAuthentication(
 		}
 
 		requestOptions = await additionalData.credentialsHelper.authenticate(
-			credentials,
+			credentialsDecrypted,
 			credentialsType,
 			requestOptions,
 			workflow,
@@ -1464,6 +1469,7 @@ export function getExecutePollFunctions(
 					this: IAllExecuteFunctions,
 					credentialsType: string,
 					requestOptions: IHttpRequestOptions,
+					additionalCredentialOptions?: IAdditionalCredentialOptions,
 				): Promise<any> {
 					return requestWithAuthentication.call(
 						this,
@@ -1472,6 +1478,7 @@ export function getExecutePollFunctions(
 						workflow,
 						node,
 						additionalData,
+						additionalCredentialOptions,
 					);
 				},
 				returnJsonArray,
@@ -1584,6 +1591,7 @@ export function getExecuteTriggerFunctions(
 					this: IAllExecuteFunctions,
 					credentialsType: string,
 					requestOptions: IHttpRequestOptions,
+					additionalCredentialOptions?: IAdditionalCredentialOptions,
 				): Promise<any> {
 					return requestWithAuthentication.call(
 						this,
@@ -1592,6 +1600,7 @@ export function getExecuteTriggerFunctions(
 						workflow,
 						node,
 						additionalData,
+						additionalCredentialOptions,
 					);
 				},
 				returnJsonArray,
@@ -1800,6 +1809,7 @@ export function getExecuteFunctions(
 					this: IAllExecuteFunctions,
 					credentialsType: string,
 					requestOptions: IHttpRequestOptions,
+					additionalCredentialOptions?: IAdditionalCredentialOptions,
 				): Promise<any> {
 					return requestWithAuthentication.call(
 						this,
@@ -1808,6 +1818,7 @@ export function getExecuteFunctions(
 						workflow,
 						node,
 						additionalData,
+						additionalCredentialOptions,
 					);
 				},
 				returnJsonArray,
@@ -1988,6 +1999,7 @@ export function getExecuteSingleFunctions(
 					this: IAllExecuteFunctions,
 					credentialsType: string,
 					requestOptions: IHttpRequestOptions,
+					additionalCredentialOptions?: IAdditionalCredentialOptions,
 				): Promise<any> {
 					return requestWithAuthentication.call(
 						this,
@@ -1996,6 +2008,7 @@ export function getExecuteSingleFunctions(
 						workflow,
 						node,
 						additionalData,
+						additionalCredentialOptions,
 					);
 				},
 			},
@@ -2116,6 +2129,7 @@ export function getLoadOptionsFunctions(
 					this: IAllExecuteFunctions,
 					credentialsType: string,
 					requestOptions: IHttpRequestOptions,
+					additionalCredentialOptions?: IAdditionalCredentialOptions,
 				): Promise<any> {
 					return requestWithAuthentication.call(
 						this,
@@ -2124,6 +2138,7 @@ export function getLoadOptionsFunctions(
 						workflow,
 						node,
 						additionalData,
+						additionalCredentialOptions,
 					);
 				},
 			},
@@ -2250,6 +2265,7 @@ export function getExecuteHookFunctions(
 					this: IAllExecuteFunctions,
 					credentialsType: string,
 					requestOptions: IHttpRequestOptions,
+					additionalCredentialOptions?: IAdditionalCredentialOptions,
 				): Promise<any> {
 					return requestWithAuthentication.call(
 						this,
@@ -2258,6 +2274,7 @@ export function getExecuteHookFunctions(
 						workflow,
 						node,
 						additionalData,
+						additionalCredentialOptions,
 					);
 				},
 			},
@@ -2411,6 +2428,7 @@ export function getExecuteWebhookFunctions(
 					this: IAllExecuteFunctions,
 					credentialsType: string,
 					requestOptions: IHttpRequestOptions,
+					additionalCredentialOptions?: IAdditionalCredentialOptions,
 				): Promise<any> {
 					return requestWithAuthentication.call(
 						this,
@@ -2419,6 +2437,7 @@ export function getExecuteWebhookFunctions(
 						workflow,
 						node,
 						additionalData,
+						additionalCredentialOptions,
 					);
 				},
 				returnJsonArray,

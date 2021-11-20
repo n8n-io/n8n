@@ -13,7 +13,8 @@ import { WorkflowOperationError } from './WorkflowErrors';
 import { NodeApiError, NodeOperationError } from './NodeErrors';
 
 export interface IAdditionalCredentialOptions {
-	oauth2: IOAuth2Options;
+	oauth2?: IOAuth2Options;
+	credentialsDecrypted?: ICredentialsDecrypted;
 }
 
 export type IAllExecuteFunctions =
@@ -206,6 +207,32 @@ export type IAuthenticate =
 	| IAuthenticateBasicAuth
 	| IAuthenticateBearer
 	| IAuthenticateHeaderAuth;
+
+export interface IAuthenticateRuleBase {
+	type: string;
+	properties: {
+		[key: string]: string | number;
+	};
+	errorMessage?: string;
+}
+
+export interface IAuthenticateRuleResponseCode extends IAuthenticateRuleBase {
+	type: 'responseCode';
+	properties: {
+		value: number;
+		message: string;
+	};
+}
+
+export interface ICredentialTestRequest {
+	request: IHttpRequestOptions;
+	rules?: IAuthenticateRuleResponseCode[];
+}
+
+export interface ICredentialNodeTestRequest {
+	nodeType: INodeType;
+	testRequest: ICredentialTestRequest;
+}
 
 export interface ICredentialType {
 	name: string;
@@ -484,6 +511,11 @@ export interface IExecuteWorkflowInfo {
 	code?: IWorkflowBase;
 	id?: string;
 }
+
+export type ICredentialTestFunction = (
+	this: ICredentialTestFunctions,
+	credential: ICredentialsDecrypted,
+) => Promise<INodeCredentialTestResult>;
 
 export interface ICredentialTestFunctions {
 	helpers: {
@@ -833,10 +865,7 @@ export interface INodeType {
 		};
 		credentialTest?: {
 			// Contains a group of functins that test credentials.
-			[functionName: string]: (
-				this: ICredentialTestFunctions,
-				credential: ICredentialsDecrypted,
-			) => Promise<NodeCredentialTestResult>;
+			[functionName: string]: ICredentialTestFunction;
 		};
 	};
 	webhookMethods?: {
@@ -852,12 +881,12 @@ export interface INodeVersionedType {
 	description: INodeTypeBaseDescription;
 	getNodeType: (version?: number) => INodeType;
 }
-export interface NodeCredentialTestResult {
+export interface INodeCredentialTestResult {
 	status: 'OK' | 'Error';
 	message: string;
 }
 
-export interface NodeCredentialTestRequest {
+export interface INodeCredentialTestRequest {
 	nodeToTestWith?: string; // node name i.e. slack
 	credentials: ICredentialsDecrypted;
 }
@@ -875,7 +904,7 @@ export interface INodeCredentialDescription {
 	name: string;
 	required?: boolean;
 	displayOptions?: IDisplayOptions;
-	testedBy?: string; // Name of a function inside `loadOptions.credentialTest`
+	testedBy?: ICredentialTestRequest | string; // Name of a function inside `loadOptions.credentialTest`
 }
 
 export type INodeIssueTypes = 'credentials' | 'execution' | 'parameters' | 'typeUnknown';

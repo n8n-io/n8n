@@ -25,6 +25,21 @@ export class MailcheckTest implements INodeType {
 			{
 				name: 'mailcheckApi',
 				required: true,
+				testedBy: {
+					request: {
+						method: 'GET',
+						url: '/webhook/maicheck-auth-test',
+					},
+					rules: [
+						{
+							type: 'responseCode',
+							properties: {
+								value: 403,
+								message: 'Does not exist.',
+							},
+						},
+					]
+				},
 			},
 		],
 		requestDefaults: {

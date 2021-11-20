@@ -1,3 +1,4 @@
+/* eslint-disable no-await-in-loop */
 /* eslint-disable @typescript-eslint/no-unsafe-call */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
@@ -20,6 +21,7 @@ import set from 'lodash.set';
 import {
 	Expression,
 	IConnections,
+	ICredentialsDecrypted,
 	IDeferredPromise,
 	IExecuteResponsePromiseData,
 	IGetExecuteTriggerFunctions,
@@ -1323,28 +1325,8 @@ export class Workflow {
 					}
 				}
 
-				for (const preSendMethod of requestData.preSend) {
-					// eslint-disable-next-line no-await-in-loop
-					requestData.options = await preSendMethod.call(thisArgs, requestData.options);
-				}
-
 				// TODO: Change to handle some requests in parallel (should be configurable)
-				if (credentialType) {
-					// eslint-disable-next-line no-await-in-loop
-					responseData = await thisArgs.helpers.requestWithAuthentication.call(
-						thisArgs,
-						credentialType,
-						requestData.options,
-					);
-				} else {
-					// eslint-disable-next-line no-await-in-loop
-					responseData = await thisArgs.helpers.httpRequest(requestData.options);
-				}
-
-				for (const postReceiveMethod of requestData.postReceive) {
-					// eslint-disable-next-line no-await-in-loop
-					responseData = await postReceiveMethod.call(thisArgs, responseData as IDataObject);
-				}
+				responseData = await this.makeRoutingRequest.call(thisArgs, requestData, credentialType);
 			} catch (error) {
 				if (get(node, 'continueOnFail', false)) {
 					returnData.push({ json: {}, error: error.message });
@@ -1365,6 +1347,35 @@ export class Workflow {
 		}
 
 		return [returnData];
+	}
+
+	async makeRoutingRequest(
+		this: IExecuteSingleFunctions,
+		requestData: IRequestOptionsFromParameters,
+		credentialType?: string,
+		credentialsDecrypted?: ICredentialsDecrypted,
+	) {
+		let responseData;
+		for (const preSendMethod of requestData.preSend) {
+			requestData.options = await preSendMethod.call(this, requestData.options);
+		}
+
+		if (credentialType) {
+			responseData = await this.helpers.requestWithAuthentication.call(
+				this,
+				credentialType,
+				requestData.options,
+				{ credentialsDecrypted },
+			);
+		} else {
+			responseData = await this.helpers.httpRequest(requestData.options);
+		}
+
+		for (const postReceiveMethod of requestData.postReceive) {
+			responseData = await postReceiveMethod.call(this, responseData as IDataObject);
+		}
+
+		return responseData;
 	}
 
 	getRequestOptionsFromParameters(
