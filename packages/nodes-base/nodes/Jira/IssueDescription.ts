@@ -165,6 +165,18 @@ export const issueFields = [
 				description: 'Description',
 			},
 			{
+				displayName: 'Components',
+				name: 'componentIds',
+				type: 'multiOptions',
+				typeOptions: {
+					loadOptionsMethod: 'getProjectComponents',
+					loadOptionsDependsOn: [
+						'project',
+					],
+				},
+				default: [],
+			},
+			{
 				displayName: 'Custom Fields',
 				name: 'customFieldsUi',
 				type: 'fixedCollection',
