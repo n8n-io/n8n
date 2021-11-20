@@ -61,13 +61,13 @@ const mockNodeTypes: INodeTypes = {
 	// eslint-disable-next-line @typescript-eslint/no-unused-vars
 	getByName(nodeType: string): INodeType | INodeVersionedType | undefined {
 		if (this.nodeTypes[nodeType] === undefined) {
-			throw new Error(`The node-type "${nodeType}" is not known!`);
+			return undefined;
 		}
 		return this.nodeTypes[nodeType].type;
 	},
-	getByNameAndVersion(nodeType: string, version?: number): INodeType {
+	getByNameAndVersion(nodeType: string, version?: number): INodeType | undefined {
 		if (this.nodeTypes[nodeType] === undefined) {
-			throw new Error(`The node-type "${nodeType}" is not known!`);
+			return undefined;
 		}
 		return NodeHelpers.getVersionedTypeNode(this.nodeTypes[nodeType].type, version);
 	},

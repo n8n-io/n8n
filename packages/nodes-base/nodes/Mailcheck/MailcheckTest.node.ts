@@ -38,7 +38,7 @@ export class MailcheckTest implements INodeType {
 								message: 'Does not exist.',
 							},
 						},
-					]
+					],
 				},
 			},
 		],
