@@ -73,8 +73,6 @@ import { mapGetters } from "vuex";
 
 import mixins from 'vue-typed-mixins';
 
-const NEW_CREDENTIALS_TEXT = '- Create New -';
-
 export default mixins(
 	genericHelpers,
 	nodeHelpers,
@@ -87,7 +85,7 @@ export default mixins(
 	],
 	data () {
 		return {
-			NEW_CREDENTIALS_TEXT,
+			NEW_CREDENTIALS_TEXT: `- ${this.$baseText('nodeCredentials.createNew')} -`,
 			newCredentialUnsubscribe: null as null | (() => void),
 		};
 	},
@@ -193,7 +191,7 @@ export default mixins(
 		},
 
 		onCredentialSelected (credentialType: string, credentialId: string | null | undefined) {
-			if (credentialId === NEW_CREDENTIALS_TEXT) {
+			if (credentialId === this.NEW_CREDENTIALS_TEXT) {
 				this.listenForNewCredentials(credentialType);
 				this.$store.dispatch('ui/openNewCredential', { type: credentialType });
 				this.$telemetry.track('User opened Credential modal', { credential_type: credentialType, source: 'node', new_credential: true, workflow_id: this.$store.getters.workflowId });

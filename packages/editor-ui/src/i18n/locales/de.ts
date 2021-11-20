@@ -265,7 +265,7 @@ export default {
 		},
 	},
 	readOnly: {
-		youreViewingTheLogOf: `You're viewing the log of a previous execution. You cannot<br />
+		youreViewingTheLogOf: `🇩🇪 You're viewing the log of a previous execution. You cannot<br />
 		make changes since this execution already occured. Make changes<br />
 		to this workflow by clicking on its name on the left.`,
 		readOnly: '🇩🇪 Read only',
@@ -463,14 +463,19 @@ export default {
 		deleteItem: '🇩🇪 Delete item',
 	},
 	node: {
+		theNodeIsWaitingIndefinitelyForAnIncomingWebhookCall: '🇩🇪 The node is waiting indefinitely for an incoming webhook call.',
+		nodeIsWaitingTill: '🇩🇪 Node is waiting till {date} {time}',
+		disabled: '🇩🇪 Disabled',
 		nodeIsExecuting: '🇩🇪 Node is executing',
 		deleteNode: '🇩🇪 Delete Node',
 		activateDeactivateNode: '🇩🇪 Activate/Deactivate Node',
 		duplicateNode: '🇩🇪 Duplicate Node',
 		editNode: '🇩🇪 Edit Node',
 		executeNode: '🇩🇪 Execute Node',
+		issues: '🇩🇪 Issues',
 	},
 	nodeCredentials: {
+		createNew: '🇩🇪 Create New',
 		credentialFor: '🇩🇪 Credential for {credentialType}',
 		selectCredential: '🇩🇪 Select Credential',
 		issues: '🇩🇪 Issues',
