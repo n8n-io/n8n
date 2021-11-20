@@ -55,6 +55,7 @@
   ],
   "devDependencies": {
     "@oclif/dev-cli": "^1.22.2",
+    "@types/validator": "^13.7.0",
     "@types/basic-auth": "^1.1.2",
     "@types/bcryptjs": "^2.4.2",
     "@types/bull": "^3.3.10",
