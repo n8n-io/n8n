@@ -22,7 +22,7 @@
 					</span>
 				</div>
 
-				<div class="node-executing-info" title="Node is executing">
+				<div class="node-executing-info" :title="$baseText('node.nodeIsExecuting')">
 					<font-awesome-icon icon="sync-alt" spin />
 				</div>
 
@@ -51,11 +51,17 @@
 		</div>
 		<div class="node-description">
 			<div class="node-name" :title="data.name">
-				<p>{{ nodeTitle }}</p>
-				<p v-if="data.disabled">(Disabled)</p>
+				<p>
+					{{ this.$headerText({
+							key: `headers.${shortNodeType}.displayName`,
+							fallback: data.name,
+						})
+					}}
+				</p>
+				<p v-if="data.disabled">({{ $baseText('node.disabled') }}}</p>
 			</div>
 			<div v-if="nodeSubtitle !== undefined" class="node-subtitle" :title="nodeSubtitle">
-				{{nodeSubtitle}}
+				{{ nodeSubtitle }}
 			</div>
 		</div>
 	</div>
@@ -128,7 +134,7 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, renderText, workflow
 
 			const nodeIssues = NodeHelpers.nodeIssuesToString(this.data.issues, this.data);
 
-			return 'Issues:<br />&nbsp;&nbsp;- ' + nodeIssues.join('<br />&nbsp;&nbsp;- ');
+			return `${this.$baseText('node.issues')}:<br />&nbsp;&nbsp;- ` + nodeIssues.join('<br />&nbsp;&nbsp;- ');
 		},
 		nodeDisabledIcon (): string {
 			if (this.data.disabled === false) {
@@ -155,8 +161,8 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, renderText, workflow
 
 			return returnStyles;
 		},
-		nodeTitle (): string {
-			return this.data.name;
+		shortNodeType (): string {
+			return this.data.type.replace('n8n-nodes-base.', '');
 		},
 		waiting (): string | undefined {
 			const workflowExecution = this.$store.getters.getWorkflowExecution;
@@ -166,9 +172,17 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, renderText, workflow
 				if (this.name === lastNodeExecuted) {
 					const waitDate = new Date(workflowExecution.waitTill);
 					if (waitDate.toISOString() === WAIT_TIME_UNLIMITED) {
-						return 'The node is waiting indefinitely for an incoming webhook call.';
+						return this.$baseText('node.theNodeIsWaitingIndefinitelyForAnIncomingWebhookCall');
 					}
-					return `Node is waiting till ${waitDate.toLocaleDateString()} ${waitDate.toLocaleTimeString()}`;
+					return this.$baseText(
+						'node.nodeIsWaitingTill',
+						{
+							interpolate: {
+								date: waitDate.toLocaleDateString(),
+								time: waitDate.toLocaleTimeString(),
+						 	},
+						},
+					);
 				}
 			}
 
