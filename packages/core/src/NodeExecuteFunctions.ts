@@ -1116,6 +1116,12 @@ export async function getCredentials(
 		}
 	}
 
+	if (fullAccess && (!node.credentials || !node.credentials[type])) {
+		// Make sure that fullAccess nodes still behave like before that if they
+		// request access to credentials that are currently not set it returns undefined
+		return undefined;
+	}
+
 	let expressionResolveValues: ICredentialsExpressionResolveValues | undefined;
 	if (connectionInputData && runExecutionData && runIndex !== undefined) {
 		expressionResolveValues = {
