@@ -13,18 +13,18 @@ export class MicrosoftDynamicsOAuth2Api implements ICredentialType {
 	properties: INodeProperties[] = [
 		//https://docs.microsoft.com/en-us/azure/active-directory/develop/v2-permissions-and-consent
 		{
-			displayName: 'Subdomain',
-			name: 'subdomain',
+			displayName: 'Url',
+			name: 'url',
 			type: 'string',
 			required: true,
-			placeholder: 'organization',
+			placeholder: 'Url to Microsoft Dynamics',
 			default: '',
 		},
 		{
 			displayName: 'Scope',
 			name: 'scope',
 			type: 'hidden',
-			default: '=openid offline_access https://{{$self.subdomain}}.crm.dynamics.com/.default',
+			default: '=openid offline_access https://{{$self.url}}/.default',
 		},
 	];
 }

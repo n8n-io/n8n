@@ -15,7 +15,7 @@ import {
 } from 'n8n-workflow';
 
 export async function microsoftApiRequest(this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: string, resource: string, body: any = {}, qs: IDataObject = {}, uri?: string, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
-	const credenitals = await this.getCredentials('microsoftDynamicsOAuth2Api') as { subdomain: string };
+	const credentials = await this.getCredentials('microsoftDynamicsOAuth2Api') as { url: string };
 
 	let options: OptionsWithUri = {
 		headers: {
@@ -26,7 +26,7 @@ export async function microsoftApiRequest(this: IExecuteFunctions | IExecuteSing
 		method,
 		body,
 		qs,
-		uri: uri || `https://${credenitals.subdomain}.crm.dynamics.com/api/data/v9.2${resource}`,
+		uri: uri || `https://${credentials.url}/api/data/v9.2${resource}`,
 		json: true,
 	};
 
