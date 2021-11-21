@@ -864,7 +864,9 @@ export class HttpRequest implements INodeType {
 					if (requestOptions.headers === undefined) {
 						requestOptions.headers = {};
 					}
-					requestOptions.headers['Content-Type'] = 'application/json';
+					if (['POST', 'PUT', 'PATCH'].includes(requestMethod)) {
+						requestOptions.headers['Content-Type'] = 'application/json';
+					}
 				}
 			} else if (options.bodyContentType === 'raw') {
 				requestOptions.json = false;
@@ -918,7 +920,7 @@ export class HttpRequest implements INodeType {
 					};
 				}
 				this.sendMessageToUI(sendRequest);
-			} catch (e) {}
+			} catch (e) { }
 
 			// Now that the options are all set make the actual http request
 			if (oAuth1Api !== undefined) {
