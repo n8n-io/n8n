@@ -2830,6 +2830,8 @@ class App {
 				},
 			}),
 		);
+
+		this.externalHooks.run('n8n.customRoutes', [this.app, ResponseHelper]);
 	}
 }
 
