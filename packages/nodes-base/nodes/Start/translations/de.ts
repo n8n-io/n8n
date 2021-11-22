@@ -1,5 +1,5 @@
 module.exports = {
-	github: {
+	start: {
 		header: {
 			displayName: '🇩🇪 Start',
 		},
