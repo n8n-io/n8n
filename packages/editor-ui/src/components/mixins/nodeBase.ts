@@ -162,38 +162,40 @@ export const nodeBase = mixins(
 					index: i,
 				};
 
-				const plusEndpointData: IEndpointOptions = {
-					uuid: CanvasHelpers.getOutputEndpointUUID(this.nodeIndex, index),
-					anchor: anchorPosition,
-					maxConnections: -1,
-					endpoint: 'N8nPlus',
-					isSource: true,
-					isTarget: false,
-					enabled: !this.isReadOnly,
-					endpointStyle: {
-						fill: getStyleTokenValue('--color-xdark'),
-						outlineStroke: 'none',
-					},
-					endpointHoverStyle: {
-						fill: getStyleTokenValue('--color-primary'),
-						outlineStroke: 'hover', // hack to distinguish hover state
-					},
-					parameters: {
-						nodeIndex: this.nodeIndex,
-						type: inputName,
-						index,
-					},
-					cssClass: 'plus-draggable-endpoint',
-					dragAllowedWhenFull: false,
-					dragProxy: ['Rectangle', { width: 1, height: 1, strokeWidth: 0 }],
-				};
+				if (!this.isReadOnly) {
+					const plusEndpointData: IEndpointOptions = {
+						uuid: CanvasHelpers.getOutputEndpointUUID(this.nodeIndex, index),
+						anchor: anchorPosition,
+						maxConnections: -1,
+						endpoint: 'N8nPlus',
+						isSource: true,
+						isTarget: false,
+						enabled: !this.isReadOnly,
+						endpointStyle: {
+							fill: getStyleTokenValue('--color-xdark'),
+							outlineStroke: 'none',
+						},
+						endpointHoverStyle: {
+							fill: getStyleTokenValue('--color-primary'),
+							outlineStroke: 'hover', // hack to distinguish hover state
+						},
+						parameters: {
+							nodeIndex: this.nodeIndex,
+							type: inputName,
+							index,
+						},
+						cssClass: 'plus-draggable-endpoint',
+						dragAllowedWhenFull: false,
+						dragProxy: ['Rectangle', { width: 1, height: 1, strokeWidth: 0 }],
+					};
 
-				const plusEndpoint: Endpoint = this.instance.addEndpoint(this.nodeId, plusEndpointData);
-				plusEndpoint.__meta = {
-					nodeName: node.name,
-					nodeId: this.nodeId,
-					index: i,
-				};
+					const plusEndpoint: Endpoint = this.instance.addEndpoint(this.nodeId, plusEndpointData);
+					plusEndpoint.__meta = {
+						nodeName: node.name,
+						nodeId: this.nodeId,
+						index: i,
+					};
+				}
 			});
 		},
 		__makeInstanceDraggable(node: INodeUi) {
