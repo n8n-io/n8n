@@ -76,13 +76,13 @@ jobs:
         shell: bash
         env:
           N8N_ENCRYPTION_KEY: ${{secrets.ENCRYPTION_KEY}}
-      -
-        name: Export credentials
-        if: always()
-        run: n8n/packages/cli/bin/n8n export:credentials --output=test-workflows/credentials.json --all --pretty
-        shell: bash
-        env:
-          N8N_ENCRYPTION_KEY: ${{secrets.ENCRYPTION_KEY}}
+      # -
+      #   name: Export credentials
+      #   if: always()
+      #   run: n8n/packages/cli/bin/n8n export:credentials --output=test-workflows/credentials.json --all --pretty
+      #   shell: bash
+      #   env:
+      #     N8N_ENCRYPTION_KEY: ${{secrets.ENCRYPTION_KEY}}
       # -
       #   name: Commit and push credential changes
       #   if: always()
