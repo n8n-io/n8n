@@ -26,6 +26,12 @@
 		this._compute = (anchorPoint, orientation, endpointStyle, connectorPaintStyle) => {
 			const endpoint = params.endpoint;
 			const connections = endpoint.connections;
+			setTimeout(() => {
+				if (this.label && !this.labelOffset) { // if label is hidden, offset is 0 so recalculate
+					this.setSuccessOutput(this.label, true);
+				}
+			}, 0);
+
 			if (connections.length >= 1) {
 				return [anchorPoint[0], anchorPoint[1], 0, 0];
 			}
@@ -141,17 +147,21 @@
 		const plusStalk = this.canvas.querySelector('.plus-stalk');
 		const successOutput = this.canvas.querySelector('.plus-stalk span');
 
-		this.setSuccessOutput = (output) => {
+		this.setSuccessOutput = (output, repaint = true) => {
 			this.canvas.classList.add('success');
 			successOutput.textContent = output;
+			this.label = output;
 			this.labelOffset = successOutput.offsetWidth;
 			plusStalk.style.width = `${40 + this.labelOffset}px`;
-			params.endpoint.repaint();
+			if (repaint) {
+				params.endpoint.repaint();
+			}
 		};
 
 		this.clearSuccessOutput = () => {
 			this.canvas.classList.remove('success');
 			successOutput.textContent = '';
+			this.label = '';
 			this.labelOffset = 0;
 			plusStalk.style.width = '40px';
 			params.endpoint.repaint();

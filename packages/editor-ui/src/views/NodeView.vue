@@ -1896,7 +1896,7 @@ export default mixins(
 							const endpoint = this.getPlusEndpoint(sourceNodeName, parseInt(sourceOutputIndex, 10));
 							if (endpoint) {
 								const output = outputMap[sourceOutputIndex][''][0];
-								if (output) {
+								if (output && output.total > 0) {
 									// @ts-ignore
 									endpoint.endpoint.setSuccessOutput(CanvasHelpers.getRunItemsLabel(output));
 								}
