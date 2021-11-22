@@ -83,12 +83,12 @@ jobs:
         shell: bash
         env:
           N8N_ENCRYPTION_KEY: ${{secrets.ENCRYPTION_KEY}}
-      -
-        name: Commit and push credential changes
-        if: always()
-        run: |
-          cd test-workflows
-          git config --global user.name 'n8n test bot'
-          git config --global user.email 'n8n-test-bot@users.noreply.github.com'
-          git commit -am "Automated credential update"
-          git push --force --quiet "https://janober:${{ secrets.TOKEN }}@github.com/n8n-io/test-workflows.git" main:main
+      # -
+      #   name: Commit and push credential changes
+      #   if: always()
+      #   run: |
+      #     cd test-workflows
+      #     git config --global user.name 'n8n test bot'
+      #     git config --global user.email 'n8n-test-bot@users.noreply.github.com'
+      #     git commit -am "Automated credential update"
+      #     git push --force --quiet "https://janober:${{ secrets.TOKEN }}@github.com/n8n-io/test-workflows.git" main:main
