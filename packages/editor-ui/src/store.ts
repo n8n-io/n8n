@@ -740,7 +740,7 @@ export const store = new Vuex.Store({
 
 		activeWorkflowTriggerNodes: (state, getters) => {
 			return state.workflow.nodes.filter(node => {
-				return getters.nodeType(node.type).group.includes('trigger') && !node.disabled;
+				return getters.nodeType(node.type).group.includes('trigger');
 			});
 		},
 		// Node-Index

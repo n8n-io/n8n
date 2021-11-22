@@ -123,7 +123,11 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 			return this.$store.getters.isActionActive('dragActive');
 		},
 		isSingleActiveTriggerNode (): boolean {
-			return this.$store.getters.activeWorkflowTriggerNodes.length === 1 && !this.data.disabled;
+			const nodes = this.$store.getters.activeWorkflowTriggerNodes.filter((node: INodeUi) => {
+				return this.$store.getters.nodeType(node.type).eventTriggerDescription && this.$store.getters.nodeType(node.type).eventTriggerDescription !== '' && !node.disabled;
+			});
+
+			return nodes.length === 1;
 		},
 		isTriggerNode (): boolean {
 			return !!(this.nodeType && this.nodeType.group.includes('trigger'));
@@ -290,15 +294,19 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 		},
 		isNodeDisabled: {
 			handler(isNodeDisabled) {
-				if (this.workflowRunning && this.isTriggerNode && this.isSingleActiveTriggerNode && !this.isTriggerNodeTooltipEmpty && !this.isNodeDisabled && !this.hasIssues) {
-					this.showWebhookNodeTooltip = isNodeDisabled;
+				if (this.isTriggerNodeTooltipEmpty) {
+					this.showWebhookNodeTooltip = false;
+				} else if (this.workflowRunning && this.isTriggerNode && !isNodeDisabled && !this.hasIssues) {
+					this.showWebhookNodeTooltip = true;
+				} else {
+					this.showWebhookNodeTooltip = false;
 				}
 			},
 			immediate: true,
 		},
 		isSingleActiveTriggerNode: {
 			handler(isSingleActiveTriggerNode) {
-				if (this.workflowRunning && this.isTriggerNode && !this.hasIssues) {
+				if (this.workflowRunning && this.isTriggerNode && !this.hasIssues && !this.isNodeDisabled && !this.isTriggerNodeTooltipEmpty) {
 					this.showWebhookNodeTooltip = isSingleActiveTriggerNode;
 				}
 			},
