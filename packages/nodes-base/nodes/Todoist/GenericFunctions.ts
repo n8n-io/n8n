@@ -12,11 +12,10 @@ import {
 	IDataObject, NodeApiError,
 } from 'n8n-workflow';
 
+export type Context = IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions;
+
 export async function todoistApiRequest(
-	this:
-		| IHookFunctions
-		| IExecuteFunctions
-		| ILoadOptionsFunctions,
+	this: Context,
 	method: string,
 	resource: string,
 	body: any = {}, // tslint:disable-line:no-any
