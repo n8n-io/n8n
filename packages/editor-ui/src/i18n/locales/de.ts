@@ -428,7 +428,7 @@ export default {
 		help: '🇩🇪 Help',
 		helpMenuItems: {
 			documentation: '🇩🇪 Documentation',
-			forum: '🇩🇪 Forum @:mainSidebar.helpMenuItems.documentation',
+			forum: '🇩🇪 Forum',
 			workflows: '🇩🇪 Workflows',
 		},
 		importFromFile: '🇩🇪 Import from File',
