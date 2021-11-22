@@ -87,7 +87,7 @@ export default mixins(
 			data () {
 				return {
 					loading: false,
-					alertTriggerContent: 'Your trigger will now fire production executions automatically.',
+					alertTriggerContent: '',
 					showActivationAlert: false,
 				};
 			},
@@ -112,7 +112,7 @@ export default mixins(
 					return '#13ce66';
 				},
 				disabled(): boolean {
-					return this.workflowActive ? false : !this.containsTrigger;
+					return this.workflowActive && this.isWorkflowActive ? false : !this.containsTrigger;
 				},
 				containsTrigger(): boolean {
 					const foundNodes = this.$store.getters.allNodes
@@ -203,25 +203,32 @@ export default mixins(
 						if (foundTriggers.length > 1) {
 							this.alertTriggerContent = 'Your triggers will now fire production executions automatically.';
 						} else {
+							// Set default to in case it needs overwriting
+							this.alertTriggerContent = 'Your trigger will now fire production executions automatically.';
 							const trigger = foundTriggers[0];
+							console.log(trigger.type, trigger.name);
 							const serviceName = trigger.displayName.replace(/ trigger/i, '');
 							//check if webhook
 							if (this.$store.getters.currentWorkflowHasWebhookNode) {
-								if (trigger.name === 'Webhook') {
+								if (trigger.name === 'n8n-nodes-base.webhook') {
 									// check if a standard Webhook trigger
 									this.alertTriggerContent = 'You can now make calls to your production webhook URL.';
 								} else {
-									this.alertTriggerContent = `Your workflow will now listen for events from ${serviceName}.`;
+									this.alertTriggerContent = `Your workflow will now listen for events from ${serviceName} and trigger executions.`;
 								}
 							} else if (trigger.polling) {
 								//check if a polling trigger
-								this.alertTriggerContent = `Your workflow will now check ${serviceName} for events on a regular basis.`;
-							} else if (trigger.displayName === 'Cron') {
+								this.alertTriggerContent = `Your workflow will now regularly check  ${serviceName}for events and trigger executions for them.`;
+							} else if (trigger.name === 'n8n-nodes-base.cron') {
 								// check if a standard Cron trigger
-								this.alertTriggerContent = 'Your cron trigger will now run on the schedule you have defined.';
-							} else if (trigger.displayName === 'Interval') {
+								this.alertTriggerContent = 'Your cron trigger will now trigger executions on the schedule you have defined.';
+							} else if (trigger.name === 'n8n-nodes-base.interval') {
 								// check if a standard Interval trigger
-								this.alertTriggerContent = 'Your interval trigger will now run on the schedule you have defined.';
+								this.alertTriggerContent = 'Your interval trigger will now trigger executions on the schedule you have defined.';
+							} else if (trigger.name === 'n8n-nodes-base.workflowTrigger') {
+								this.alertTriggerContent = 'Your workflow will now trigger executions on the event you have defined.';
+							} else if (trigger.name === 'n8n-nodes-base.sseTrigger') {
+								this.alertTriggerContent = 'You can now make calls to your SSE URL to trigger executions. ';
 							}
 						}
 						this.showActivationAlert = true;
@@ -262,7 +269,6 @@ export default mixins(
 				},
 				async showExecutionsList () {
 					this.$store.dispatch('ui/openModal', EXECUTIONS_MODAL_KEY);
-					this.showActivationAlert = false;
 				},
 			},
 		},
