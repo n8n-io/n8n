@@ -427,6 +427,30 @@ export class Jira implements INodeType {
 				}
 				return returnData;
 			},
+
+			// Get all the components to display them to user so that he can
+			// select them easily
+			async getProjectComponents(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const returnData: INodePropertyOptions[] = [];
+
+				const project = this.getCurrentNodeParameter('project');
+				const { values: components } = await jiraSoftwareCloudApiRequest.call(this, `/api/2/project/${project}/component`, 'GET');
+
+				for (const component of components) {
+					returnData.push({
+						name: component.name,
+						value: component.id,
+					});
+				}
+
+				returnData.sort((a, b) => {
+					if (a.name < b.name) { return -1; }
+					if (a.name > b.name) { return 1; }
+					return 0;
+				});
+
+				return returnData;
+			},
 		},
 	};
 
@@ -491,6 +515,9 @@ export class Jira implements INodeType {
 					}
 					if (additionalFields.updateHistory) {
 						qs.updateHistory = additionalFields.updateHistory as boolean;
+					}
+					if (additionalFields.componentIds) {
+						fields.components = (additionalFields.componentIds as string[]).map(id => ({ id }));
 					}
 					if (additionalFields.customFieldsUi) {
 						const customFields = (additionalFields.customFieldsUi as IDataObject).customFieldsValues as IDataObject[];
