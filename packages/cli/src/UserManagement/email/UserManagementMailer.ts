@@ -1,12 +1,40 @@
-import { readFileSync } from 'fs';
+import { existsSync, readFileSync } from 'fs';
+import { IDataObject } from 'n8n-workflow';
 import { join as pathJoin } from 'path';
 import config = require('../../../config');
 import {
 	InstanceSetupData,
+	InviteEmailData,
+	PasswordResetData,
 	SendEmailResult,
 	UserManagementMailerImplementation,
 } from './Interfaces';
 import { NodeMailer } from './NodeMailer';
+
+function getTemplate(configKeyName: string, defaultFilename: string) {
+	const templateOverride = config.get(`userManagement.emails.templates.${configKeyName}`) as string;
+	let template;
+	if (templateOverride && existsSync(templateOverride)) {
+		template = readFileSync(templateOverride, {
+			encoding: 'utf-8',
+		});
+	} else {
+		template = readFileSync(pathJoin(__dirname, `templates/${defaultFilename}`), {
+			encoding: 'utf-8',
+		});
+	}
+	return template;
+}
+
+function replaceStrings(template: string, data: IDataObject) {
+	let output = template;
+	const keys = Object.keys(data);
+	keys.forEach((key) => {
+		const regex = new RegExp(`\\{\\{\\s*${key}\\s*\\}\\}`, 'g');
+		output = output.replace(regex, data[key] as string);
+	});
+	return output;
+}
 
 export class UserManagementMailer {
 	private mailer: UserManagementMailerImplementation | undefined;
@@ -18,18 +46,44 @@ export class UserManagementMailer {
 		}
 	}
 
-	async sendInstanceSetupEmail(instanceSetupData: InstanceSetupData): Promise<SendEmailResult> {
-		let template = readFileSync(pathJoin(__dirname, 'templates/instanceSetup.html'), {
-			encoding: 'utf-8',
-		});
-		template = template.replace(/\{\{\s*firstName\s*\}\}/, instanceSetupData.firstName ?? '');
-		template = template.replace(/\{\{\s*lastName\s*\}\}/, instanceSetupData.lastName ?? '');
-		template = template.replace(/\{\{\s*email\s*\}\}/, instanceSetupData.email);
+	async instanceSetup(instanceSetupData: InstanceSetupData): Promise<SendEmailResult> {
+		let template = getTemplate('instanceSetup', 'instanceSetup.html');
+		template = replaceStrings(template, instanceSetupData);
 
 		// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
 		const result = await this.mailer?.sendMail({
 			emailRecipients: instanceSetupData.email,
 			subject: 'Your n8n instance is up and running!',
+			body: template,
+		});
+
+		// If mailer does not exist it means mail has been disabled.
+		return result ?? { success: true };
+	}
+
+	async invite(inviteEmailData: InviteEmailData): Promise<SendEmailResult> {
+		let template = getTemplate('invite', 'invite.html');
+		template = replaceStrings(template, inviteEmailData);
+
+		// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+		const result = await this.mailer?.sendMail({
+			emailRecipients: inviteEmailData.email,
+			subject: 'You have been invited to n8n',
+			body: template,
+		});
+
+		// If mailer does not exist it means mail has been disabled.
+		return result ?? { success: true };
+	}
+
+	async passwordReset(passwordResetData: PasswordResetData): Promise<SendEmailResult> {
+		let template = getTemplate('passwordReset', 'passwordReset.html');
+		template = replaceStrings(template, passwordResetData);
+
+		// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+		const result = await this.mailer?.sendMail({
+			emailRecipients: passwordResetData.email,
+			subject: 'n8n password reset',
 			body: template,
 		});
 

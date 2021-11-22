@@ -581,6 +581,32 @@ const config = convict({
 						env: 'N8N_UM_EMAIL_SMTP_PASS',
 					},
 				},
+				sender: {
+					doc: 'How to display sender name',
+					format: String,
+					default: '"n8n rocks" <n8n@n8n.io>',
+					env: 'N8N_UM_EMAIL_SMTP_SENDER',
+				},
+			},
+			templates: {
+				instanceSetup: {
+					doc: 'HTML template for when the instance has been set up (use full path)',
+					format: String,
+					default: '',
+					env: 'N8N_UM_EMAIL_TEMPLATES_SETUP',
+				},
+				invite: {
+					doc: 'HTML template for inviting new people (use full path)',
+					format: String,
+					default: '',
+					env: 'N8N_UM_EMAIL_TEMPLATES_INVITE',
+				},
+				passwordReset: {
+					doc: 'HTML template for resetting password (use full path)',
+					format: String,
+					default: '',
+					env: 'N8N_UM_EMAIL_TEMPLATES_PWRESET',
+				},
 			},
 		},
 	},

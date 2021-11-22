@@ -39,7 +39,7 @@ export function addRoutes(): void {
 		`/${this.restEndpoint}/test-email`,
 		async (req: express.Request, res: express.Response) => {
 			const mailer = getInstance();
-			const result = await mailer.sendInstanceSetupEmail({
+			const result = await mailer.instanceSetup({
 				email: 'omar@n8n.io',
 				firstName: 'Omar',
 				lastName: 'Ajoue',

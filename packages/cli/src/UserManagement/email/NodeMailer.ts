@@ -19,18 +19,14 @@ export class NodeMailer implements UserManagementMailerImplementation {
 	}
 
 	async sendMail(mailData: MailData): Promise<SendEmailResult> {
-		// eslint-disable-next-line no-console
-		console.log('about to call sendmail');
 		try {
-			const result = await this.transport.sendMail({
-				from: '"Omar Ajoue" <krynble@gmail.com>',
+			await this.transport.sendMail({
+				from: config.get('userManagement.emails.smtp.sender'),
 				to: mailData.emailRecipients,
 				subject: mailData.subject,
-				// text: "Hello world?", // plain text body
+				text: mailData.textOnly,
 				html: mailData.body,
 			});
-			// eslint-disable-next-line no-console
-			console.log(result);
 		} catch (error) {
 			return {
 				success: false,
