@@ -552,6 +552,13 @@ export const resetConnection = (connection: Connection) => {
 	}
 };
 
+export const getRunItemsLabel = (output: {total: number, iterations: number}): string => {
+	let label = `${output.total}`;
+	label = output.total > 1 ? `${label} items` : `${label} item`;
+	label = output.iterations > 1 ? `${label} total` : label;
+	return label;
+};
+
 export const addConnectionOutputSuccess = (connection: Connection, output: {total: number, iterations: number}) => {
 	connection.setPaintStyle(CONNECTOR_PAINT_STYLE_SUCCESS);
 	if (connection.canvas) {
@@ -562,15 +569,11 @@ export const addConnectionOutputSuccess = (connection: Connection, output: {tota
 		connection.removeOverlay(OVERLAY_RUN_ITEMS_ID);
 	}
 
-	let label = `${output.total}`;
-	label = output.total > 1 ? `${label} items` : `${label} item`;
-	label = output.iterations > 1 ? `${label} total` : label;
-
 	connection.addOverlay([
 		'Label',
 		{
 			id: OVERLAY_RUN_ITEMS_ID,
-			label: `<span>${label}</span>`,
+			label: `<span class="center">${getRunItemsLabel(output)}</span>`,
 			cssClass: 'connection-run-items-label',
 			location: .5,
 		},

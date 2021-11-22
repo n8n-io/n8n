@@ -1898,7 +1898,7 @@ export default mixins(
 								const output = outputMap[sourceOutputIndex][''][0];
 								if (output) {
 									// @ts-ignore
-									endpoint.endpoint.setSuccessOutput(output);
+									endpoint.endpoint.setSuccessOutput(CanvasHelpers.getRunItemsLabel(output));
 								}
 								else {
 									// @ts-ignore
@@ -2638,9 +2638,12 @@ export default mixins(
 		color: var(--color-success);
 	}
 
-	> span.floating {
+	.floating {
 		position: absolute;
 		top: -22px;
+	}
+
+	.floating.center {
 		transform: translateX(-50%);
 	}
 }

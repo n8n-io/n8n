@@ -103,9 +103,17 @@
 					border-color: var(--color-success-light);
 				}
 
+				.plus-stalk span {
+					display: none;
+				}
+
+				.success .plus-stalk span {
+					display: inline;
+				}
 			</style>
 
-			<div class="plus-stalk">
+			<div class="plus-stalk connection-run-items-label">
+				<span class="floating"></span>
 			</div>
 
 			<div class="plus-container">
@@ -127,13 +135,16 @@
 
 		const container = this.canvas.querySelector('.plus-container');
 		const message = container.querySelector('.drop-hover-message');
+		const successOutput = this.canvas.querySelector('.plus-stalk span');
 
-		this.setSuccessOutput = () => {
+		this.setSuccessOutput = (output) => {
 			this.canvas.classList.add('success');
+			successOutput.textContent = output;
 		};
 
 		this.clearSuccessOutput = () => {
 			this.canvas.classList.remove('success');
+			successOutput.textContent = '';
 		};
 
 		this.paint = function (style, anchor) {
