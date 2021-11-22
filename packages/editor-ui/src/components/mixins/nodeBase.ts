@@ -175,7 +175,7 @@ export const nodeBase = mixins(
 							fill: getStyleTokenValue('--color-xdark'),
 							outlineStroke: 'none',
 							hover: false,
-							size: nodeTypeData.outputs.length > 3 ? 'small' : 'medium',
+							size: nodeTypeData.outputs.length >= 3 ? 'small' : 'medium',
 						},
 						endpointHoverStyle: {
 							fill: getStyleTokenValue('--color-primary'),
