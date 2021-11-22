@@ -20,6 +20,8 @@
 	_jp.Endpoints.N8nPlus = function (params) {
 		const _super = _jp.Endpoints.AbstractEndpoint.apply(this, arguments);
 		this.type = "N8nPlus";
+		this.labelOffset = 0;
+
 		DOMElementEndpoint.apply(this, arguments);
 		this._compute = (anchorPoint, orientation, endpointStyle, connectorPaintStyle) => {
 			const endpoint = params.endpoint;
@@ -28,7 +30,7 @@
 				return [anchorPoint[0], anchorPoint[1], 0, 0];
 			}
 
-			return [anchorPoint[0] + 40, anchorPoint[1] - 12, 24, 24];
+			return [anchorPoint[0] + 40 + this.labelOffset, anchorPoint[1] - 12, 24, 24];
 		};
 
 		var clazz = params.cssClass ? " " + params.cssClass : "";
@@ -105,6 +107,7 @@
 
 				.plus-stalk span {
 					display: none;
+					transform: translateX(50%);
 				}
 
 				.success .plus-stalk span {
@@ -135,16 +138,23 @@
 
 		const container = this.canvas.querySelector('.plus-container');
 		const message = container.querySelector('.drop-hover-message');
+		const plusStalk = this.canvas.querySelector('.plus-stalk');
 		const successOutput = this.canvas.querySelector('.plus-stalk span');
 
 		this.setSuccessOutput = (output) => {
 			this.canvas.classList.add('success');
 			successOutput.textContent = output;
+			this.labelOffset = successOutput.offsetWidth;
+			plusStalk.style.width = `${40 + this.labelOffset}px`;
+			params.endpoint.repaint();
 		};
 
 		this.clearSuccessOutput = () => {
 			this.canvas.classList.remove('success');
 			successOutput.textContent = '';
+			this.labelOffset = 0;
+			plusStalk.style.width = '40px';
+			params.endpoint.repaint();
 		};
 
 		this.paint = function (style, anchor) {
