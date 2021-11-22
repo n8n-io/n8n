@@ -174,10 +174,13 @@ export const nodeBase = mixins(
 						endpointStyle: {
 							fill: getStyleTokenValue('--color-xdark'),
 							outlineStroke: 'none',
+							hover: false,
+							size: nodeTypeData.outputs.length > 3 ? 'small' : 'medium',
 						},
 						endpointHoverStyle: {
 							fill: getStyleTokenValue('--color-primary'),
-							outlineStroke: 'hover', // hack to distinguish hover state
+							outlineStroke: 'none',
+							hover: true, // hack to distinguish hover state
 						},
 						parameters: {
 							nodeIndex: this.nodeIndex,

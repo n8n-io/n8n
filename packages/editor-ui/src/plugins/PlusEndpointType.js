@@ -20,24 +20,21 @@
 	_jp.Endpoints.N8nPlus = function (params) {
 		const _super = _jp.Endpoints.AbstractEndpoint.apply(this, arguments);
 		this.type = "N8nPlus";
+		this.label = '';
 		this.labelOffset = 0;
+		this.size = 'medium';
+
+		const boxSize = {
+			medium: 24,
+			small: 18,
+		};
+		const stalkLength = 40;
+		const verticalOffset = {
+			medium: 12,
+			small: 9,
+		};
 
 		DOMElementEndpoint.apply(this, arguments);
-		this._compute = (anchorPoint, orientation, endpointStyle, connectorPaintStyle) => {
-			const endpoint = params.endpoint;
-			const connections = endpoint.connections;
-			setTimeout(() => {
-				if (this.label && !this.labelOffset) { // if label is hidden, offset is 0 so recalculate
-					this.setSuccessOutput(this.label, true);
-				}
-			}, 0);
-
-			if (connections.length >= 1) {
-				return [anchorPoint[0], anchorPoint[1], 0, 0];
-			}
-
-			return [anchorPoint[0] + 40 + this.labelOffset, anchorPoint[1] - 12, 24, 24];
-		};
 
 		var clazz = params.cssClass ? " " + params.cssClass : "";
 
@@ -56,7 +53,7 @@
 				.plus-stalk {
 					border-top: 2px solid var(--color-foreground-dark);
 					position: absolute;
-					width: 40px;
+					width: ${stalkLength}px;
 					height: 0;
 					right: 100%;
 					top: calc(50% - 1px);
@@ -68,8 +65,8 @@
 					border: 2px solid var(--color-foreground-xdark);
 					background-color: var(--color-background-xlight);
 					border-radius: var(--border-radius-base);
-					height: var(--spacing-l);
-					width: var(--spacing-l);
+					height: ${boxSize.medium}px;
+					width: ${boxSize.medium}px;
 
 					display: inline-flex;
 					align-items: center;
@@ -80,6 +77,12 @@
 					top: 0;
 					right: 0;
 					pointer-events: none;
+				}
+
+				.plus-container.small {
+					height: ${boxSize.small}px;
+					width: ${boxSize.small}px;
+					font-size: 8px;
 				}
 
 				.plus-container svg path:nth-of-type(2) {
@@ -152,7 +155,7 @@
 			successOutput.textContent = output;
 			this.label = output;
 			this.labelOffset = successOutput.offsetWidth;
-			plusStalk.style.width = `${40 + this.labelOffset}px`;
+			plusStalk.style.width = `${stalkLength + this.labelOffset}px`;
 			if (repaint) {
 				params.endpoint.repaint();
 			}
@@ -163,7 +166,7 @@
 			successOutput.textContent = '';
 			this.label = '';
 			this.labelOffset = 0;
-			plusStalk.style.width = '40px';
+			plusStalk.style.width = `${stalkLength}px`;
 			params.endpoint.repaint();
 		};
 
@@ -178,7 +181,7 @@
 				this.canvas.classList.remove('hidden');
 				container.style.color = style.fill;
 				container.style['border-color'] = style.fill;
-				if (style.outlineStroke === 'hover') {
+				if (style.hover) {
 					message.style.display = 'inline';
 				}
 				else {
@@ -186,6 +189,27 @@
 				}
 			}
 			_ju.sizeElement(this.canvas, this.x, this.y, this.w, this.h);
+		};
+
+		this._compute = (anchorPoint, orientation, endpointStyle, connectorPaintStyle) => {
+			this.size = endpointStyle.size || this.size;
+			if (this.size !== 'medium') {
+				container.classList.add(this.size);
+			}
+
+			const endpoint = params.endpoint;
+			const connections = endpoint.connections;
+			setTimeout(() => {
+				if (this.label && !this.labelOffset) { // if label is hidden, offset is 0 so recalculate
+					this.setSuccessOutput(this.label, true);
+				}
+			}, 0);
+
+			if (connections.length >= 1) {
+				return [anchorPoint[0], anchorPoint[1], 0, 0];
+			}
+
+			return [anchorPoint[0] + stalkLength + this.labelOffset, anchorPoint[1] - verticalOffset[this.size], boxSize[this.size], boxSize[this.size]];
 		};
 	};
 	_ju.extend(_jp.Endpoints.N8nPlus, [_jp.Endpoints.AbstractEndpoint, DOMElementEndpoint], {
