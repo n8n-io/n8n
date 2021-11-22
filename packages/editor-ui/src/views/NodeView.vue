@@ -1812,6 +1812,16 @@ export default mixins(
 					return uuids[0] === sourceEndpoint && uuids[1] === targetEndpoint;
 				});
 			},
+			getJSPlumbEndpoints (nodeName: string): Endpoint[] {
+				const nodeIndex = this.getNodeIndex(nodeName);
+				const nodeId = `${NODE_NAME_PREFIX}${nodeIndex}`;
+				return this.instance.getEndpoints(nodeId);
+			},
+			getPlusEndpoint (nodeName: string, outputIndex: number): Endpoint | undefined {
+				const endpoints = this.getJSPlumbEndpoints(nodeName);
+				// @ts-ignore
+				return endpoints.find((endpoint: Endpoint) => endpoint.type === 'N8nPlus' && endpoint.__meta && endpoint.__meta.index === outputIndex);
+			},
 			getIncomingOutgoingConnections(nodeName: string): {incoming: Connection[], outgoing: Connection[]} {
 				const name = `${NODE_NAME_PREFIX}${this.$store.getters.getNodeIndex(nodeName)}`;
 				// @ts-ignore
@@ -1851,33 +1861,50 @@ export default mixins(
 					outgoing.forEach((connection: Connection) => {
 						CanvasHelpers.resetConnection(connection);
 					});
+					const endpoints = this.getJSPlumbEndpoints(sourceNodeName);
+					endpoints.forEach((endpoint: Endpoint) => {
+						// @ts-ignore
+						if (endpoint.type === 'N8nPlus') {
+							// @ts-ignore
+							endpoint.endpoint.clearSuccessOutput();
+						}
+					});
 
 					return;
 				}
 
 				const nodeConnections = (this.$store.getters.outgoingConnectionsByNodeName(sourceNodeName) as INodeConnections).main;
-				if (!nodeConnections) {
-					return;
-				}
-
-				const outputMap = CanvasHelpers.getOutputSummary(data, nodeConnections);
+				const outputMap = CanvasHelpers.getOutputSummary(data, nodeConnections || []);
 
 				Object.keys(outputMap).forEach((sourceOutputIndex: string) => {
 					Object.keys(outputMap[sourceOutputIndex]).forEach((targetNodeName: string) => {
 						Object.keys(outputMap[sourceOutputIndex][targetNodeName]).forEach((targetInputIndex: string) => {
-							const connection = this.getJSPlumbConnection(sourceNodeName, parseInt(sourceOutputIndex, 10), targetNodeName, parseInt(targetInputIndex, 10));
+							if (targetNodeName) {
+								const connection = this.getJSPlumbConnection(sourceNodeName, parseInt(sourceOutputIndex, 10), targetNodeName, parseInt(targetInputIndex, 10));
 
-							if (!connection) {
-								return;
+								if (connection) {
+									const output = outputMap[sourceOutputIndex][targetNodeName][targetInputIndex];
+									if (!output || !output.total) {
+										CanvasHelpers.resetConnection(connection);
+										return;
+									}
+
+									CanvasHelpers.addConnectionOutputSuccess(connection, output);
+								}
 							}
 
-							const output = outputMap[sourceOutputIndex][targetNodeName][targetInputIndex];
-							if (!output || !output.total) {
-								CanvasHelpers.resetConnection(connection);
-								return;
+							const endpoint = this.getPlusEndpoint(sourceNodeName, parseInt(sourceOutputIndex, 10));
+							if (endpoint) {
+								const output = outputMap[sourceOutputIndex][''][0];
+								if (output) {
+									// @ts-ignore
+									endpoint.endpoint.setSuccessOutput(output);
+								}
+								else {
+									// @ts-ignore
+									endpoint.endpoint.clearSuccessOutput();
+								}
 							}
-
-							CanvasHelpers.addConnectionOutputSuccess(connection, output);
 						});
 					});
 				});

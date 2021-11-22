@@ -497,19 +497,31 @@ export const getOutputSummary = (data: ITaskData[], nodeConnections: NodeInputCo
 		}
 
 		run.data.main.forEach((output: INodeExecutionData[] | null, i: number) => {
-			if (!nodeConnections[i]) {
+			const sourceOutputIndex = i;
+
+			if (!outputMap[sourceOutputIndex]) {
+				outputMap[sourceOutputIndex] = {};
+			}
+
+			if (!outputMap[sourceOutputIndex]['']) {
+				outputMap[sourceOutputIndex][''] = {};
+				outputMap[sourceOutputIndex][''][0] = {
+					total: 0,
+					iterations: 0,
+				};
+			}
+
+			outputMap[sourceOutputIndex][''][0].total += output ? output.length : 0;
+			outputMap[sourceOutputIndex][''][0].iterations += output ? 1 : 0;
+
+			if (!nodeConnections[sourceOutputIndex]) {
 				return;
 			}
 
-			nodeConnections[i]
+			nodeConnections[sourceOutputIndex]
 				.map((connection: IConnection) => {
-					const sourceOutputIndex = i;
 					const targetNodeName = connection.node;
 					const targetInputIndex = connection.index;
-
-					if (!outputMap[sourceOutputIndex]) {
-						outputMap[sourceOutputIndex] = {};
-					}
 
 					if (!outputMap[sourceOutputIndex][targetNodeName]) {
 						outputMap[sourceOutputIndex][targetNodeName] = {};

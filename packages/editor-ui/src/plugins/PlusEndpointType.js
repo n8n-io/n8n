@@ -99,6 +99,10 @@
 					display: none;
 				}
 
+				.success .plus-stalk {
+					border-color: var(--color-success-light);
+				}
+
 			</style>
 
 			<div class="plus-stalk">
@@ -123,6 +127,14 @@
 
 		const container = this.canvas.querySelector('.plus-container');
 		const message = container.querySelector('.drop-hover-message');
+
+		this.setSuccessOutput = () => {
+			this.canvas.classList.add('success');
+		};
+
+		this.clearSuccessOutput = () => {
+			this.canvas.classList.remove('success');
+		};
 
 		this.paint = function (style, anchor) {
 			const endpoint = params.endpoint;
