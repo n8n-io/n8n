@@ -118,6 +118,8 @@ export class Expression {
 		// Execute the expression
 		try {
 			// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
+			tmpl.tmpl('{{global=this;}}', data);
+			// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
 			const returnValue = tmpl.tmpl(parameterValue, data);
 			if (typeof returnValue === 'function') {
 				throw new Error('Expression resolved to a function. Please add "()"');
