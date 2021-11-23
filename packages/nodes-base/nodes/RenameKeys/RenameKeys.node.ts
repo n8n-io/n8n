@@ -1,6 +1,7 @@
 import { IExecuteFunctions } from 'n8n-core';
 import {
 	INodeExecutionData,
+	INodeParameters,
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
@@ -31,6 +32,13 @@ export class RenameKeys implements INodeType {
 		inputs: ['main'],
 		outputs: ['main'],
 		properties: [
+			{
+				displayName: 'Keep Only Renamed',
+				name: 'keepOnlyRenamed',
+				type: 'boolean',
+				default: false,
+				description: 'If only the values renamed on this node should be kept and all others removed.',
+			},
 			{
 				displayName: 'Keys',
 				name: 'keys',
@@ -78,16 +86,24 @@ export class RenameKeys implements INodeType {
 		const returnData: INodeExecutionData[] = [];
 
 		let item: INodeExecutionData;
-		let newItem: INodeExecutionData;
+		//let newItem: INodeExecutionData;
+		let keepOnlyRenamed: boolean;
 		let renameKeys: IRenameKey[];
 		let value: any; // tslint:disable-line:no-any
 		for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
+			keepOnlyRenamed = this.getNodeParameter('keepOnlyRenamed', itemIndex, false) as boolean;
 			renameKeys = this.getNodeParameter('keys.key', itemIndex, []) as IRenameKey[];
 			item = items[itemIndex];
-
-			// Copy the whole JSON data as data on any level can be renamed
-			newItem = {
-				json: JSON.parse(JSON.stringify(item.json)),
+			
+			const newItem: INodeExecutionData = {
+				json: {},
+			};
+			
+			if (keepOnlyRenamed !== true) {
+				// Copy the whole JSON data as data on any level can be renamed
+				newItem = {
+					json: JSON.parse(JSON.stringify(item.json)),
+				};
 			};
 
 			if (item.binary !== undefined) {
@@ -106,8 +122,10 @@ export class RenameKeys implements INodeType {
 					return;
 				}
 				set(newItem.json, renameKey.newKey, value);
-
-				unset(newItem.json, renameKey.currentKey as string);
+				
+				if (keepOnlyRenamed !== true) {
+					unset(newItem.json, renameKey.currentKey as string);
+				};
 			});
 
 			returnData.push(newItem);
