@@ -28,15 +28,14 @@ export async function apiRequest(
 		throw new NodeOperationError(this.getNode(), 'No credentials returned!');
 	}
 
+	query['api_key']=credentials.apiKey
+
 	const options: IHttpRequestOptions = {
 		method,
 		body,
 		qs: query,
-		url: `${credentials.baseUrl}/api/v1/${endpoint}`,
-		headers: {
-			authorization: `Bearer ${credentials.accessToken}`,
-			'content-type': 'application/json; charset=utf-8',
-		},
+		url: `https://${credentials.subDomain}.syncromsp.com/api/v1/${endpoint}`,
+		headers: {},
 	};
 
 	try {
@@ -44,29 +43,4 @@ export async function apiRequest(
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error);
 	}
-}
-
-export async function apiRequestAllItems(
-	this: IExecuteFunctions | ILoadOptionsFunctions,
-	method: 'GET' | 'POST' | 'PUT' | 'DELETE' | 'HEAD',
-	endpoint: string,
-	body: IDataObject = {},
-	query: IDataObject = {},
-) {
-
-	const returnData: IDataObject[] = [];
-
-	let responseData;
-	query.page = 0;
-	query.per_page = 100;
-
-	do {
-		responseData = await apiRequest.call(this, method, endpoint, body, query);
-		query.page++;
-		returnData.push.apply(returnData, responseData);
-	} while (
-		responseData.length !== 0
-	);
-
-	return returnData;
 }

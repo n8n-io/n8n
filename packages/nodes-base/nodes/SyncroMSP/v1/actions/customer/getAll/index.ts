@@ -1,5 +1,5 @@
 import { getAll as execute } from './execute';
-import { userGetAllDescription as description } from './description';
+import { customerGetAllDescription as description } from './description';
 
 export {
 	description,
