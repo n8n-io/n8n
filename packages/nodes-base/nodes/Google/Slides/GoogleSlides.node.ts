@@ -171,7 +171,7 @@ export class GoogleSlides implements INodeType {
 			{
 				displayName: 'Presentation ID',
 				name: 'presentationId',
-				description: 'ID of the presentation to retrieve. Found in the presentation URL:<br><code>https://docs.google.com/presentation/d/PRESENTATION_ID/edit</code>',
+				description: 'ID of the presentation to retrieve. Found in the presentation URL: <code>https://docs.google.com/presentation/d/PRESENTATION_ID/edit</code>',
 				placeholder: '1wZtNFZ8MO-WKrxhYrOLMvyiqSgFwdSz5vn8_l_7eNqw',
 				type: 'string',
 				default: '',

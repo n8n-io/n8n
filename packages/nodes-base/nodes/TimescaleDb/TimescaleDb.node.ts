@@ -247,11 +247,7 @@ export class TimescaleDb implements INodeType {
 							},
 						],
 						default: 'multiple',
-						description: [
-							'The way queries should be sent to database.',
-							'Can be used in conjunction with <b>Continue on Fail</b>.',
-							'See the docs for more examples',
-						].join('<br>'),
+						description: 'The way queries should be sent to database. Can be used in conjunction with <b>Continue on Fail</b>. See the docs for more examples',
 					},
 					{
 						displayName: 'Query Parameters',

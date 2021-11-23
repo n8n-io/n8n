@@ -315,8 +315,7 @@ export const recordFields = [
 						],
 					},
 				],
-				description: `By default, queries will be sorted by the given sort fields or the default sort if the query does not provide any.<br>
-				Set to false to avoid sorting when the order of the data returned is not important. Returning data without sorting can improve performance.`,
+				description: `By default, queries will be sorted by the given sort fields or the default sort if the query does not provide any. Set to false to avoid sorting when the order of the data returned is not important. Returning data without sorting can improve performance.`,
 			},
 			{
 				displayName: 'Where',
@@ -446,8 +445,8 @@ export const recordFields = [
 			// 		loadOptionsMethod: 'getUniqueTableFields',
 			// 	},
 			// 	default: '',
-			// 	description: `You're updating records in a Quick Base table with data from an external file. In order for a merge like this to work,<br>
-			// 	Quick Base needs a way to match records in the source data with corresponding records in the destination table. You make this possible by<br>
+			// 	description: `You're updating records in a Quick Base table with data from an external file. In order for a merge like this to work,
+			// 	Quick Base needs a way to match records in the source data with corresponding records in the destination table. You make this possible by
 			// 	choosing the field in the app table that holds unique matching values. This is called a merge field.`,
 			// },
 		],
@@ -527,9 +526,7 @@ export const recordFields = [
 			},
 		},
 		default: '',
-		description: `You're updating records in a Quick Base table with data from an external file. In order for a merge like this to work,<br>
-		Quick Base needs a way to match records in the source data with corresponding records in the destination table. You make this possible by<br>
-		choosing the field in the app table that holds unique matching values. This is called a merge field.`,
+		description: `You're updating records in a Quick Base table with data from an external file. In order for a merge like this to work, Quick Base needs a way to match records in the source data with corresponding records in the destination table. You make this possible by choosing the field in the app table that holds unique matching values. This is called a merge field.`,
 	},
 	{
 		displayName: 'Simplify Response',

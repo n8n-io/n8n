@@ -288,7 +288,7 @@ export class AwsTranscribe implements INodeType {
 						],
 					},
 				},
-				description: 'By default, the response only contains metadata about the transcript.<br>Enable this option to retrieve the transcript instead.',
+				description: 'By default, the response only contains metadata about the transcript. Enable this option to retrieve the transcript instead.',
 			},
 			{
 				displayName: 'Simple',
@@ -444,7 +444,7 @@ export class AwsTranscribe implements INodeType {
 								ShowAlternatives: true,
 								MaxAlternatives: options.maxAlternatives,
 							});
-						} 
+						}
 
 						if (options.maxSpeakerLabels) {
 							Object.assign(body.Settings, {

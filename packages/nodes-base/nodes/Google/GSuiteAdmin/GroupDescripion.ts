@@ -90,9 +90,7 @@ export const groupFields = [
 				name: 'description',
 				type: 'string',
 				default: '',
-				description: `An extended description to help users determine the purpose of a group.<br>
-				For example, you can include information about who should join the group,<br>
-				the types of messages to send to the group, links to FAQs about the group, or related groups`,
+				description: `An extended description to help users determine the purpose of a group. For example, you can include information about who should join the group, the types of messages to send to the group, links to FAQs about the group, or related groups`,
 			},
 			{
 				displayName: 'Name',
@@ -309,9 +307,7 @@ export const groupFields = [
 				name: 'description',
 				type: 'string',
 				default: '',
-				description: `An extended description to help users determine the purpose of a group.<br>
-				For example, you can include information about who should join the group,<br>
-				the types of messages to send to the group, links to FAQs about the group, or related groups`,
+				description: `An extended description to help users determine the purpose of a group. For example, you can include information about who should join the group, the types of messages to send to the group, links to FAQs about the group, or related groups`,
 			},
 			{
 				displayName: 'Email',

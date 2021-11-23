@@ -107,8 +107,7 @@ export const listEntryFields = [
 				name: 'creator_id',
 				type: 'string',
 				default: '',
-				description: `The id of a Person resource who should be recorded as adding the entry to the list. <br/>
-				Must be a person who can access Affinity. If not provided the creator defaults to the owner of the API key.`,
+				description: `The id of a Person resource who should be recorded as adding the entry to the list. Must be a person who can access Affinity. If not provided the creator defaults to the owner of the API key.`,
 			},
 		],
 	},

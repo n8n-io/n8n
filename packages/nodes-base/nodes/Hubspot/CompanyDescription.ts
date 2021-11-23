@@ -896,10 +896,7 @@ export const companyFields = [
 					loadOptionsMethod: 'getCompanyProperties',
 				},
 				default: '',
-				description: `Used to include specific company properties in the results.<br/>
-				By default, the results will only include company ID and will not include the values for any properties for your companys.<br/>
-				Including this parameter will include the data for the specified property in the results.<br/>
-				You can include this parameter multiple times to request multiple properties separed by ,.`,
+				description: `Used to include specific company properties in the results. By default, the results will only include company ID and will not include the values for any properties for your companys. Including this parameter will include the data for the specified property in the results. You can include this parameter multiple times to request multiple properties separed by ,.`,
 			},
 			{
 				displayName: 'Properties With History',
@@ -1009,8 +1006,7 @@ export const companyFields = [
 				name: 'includePropertyVersions',
 				type: 'boolean',
 				default: false,
-				description: `By default, you will only get data for the most recent version of a property in the "versions" data.<br/>
-				If you include this parameter, you will get data for all previous versions.`,
+				description: `By default, you will only get data for the most recent version of a property in the "versions" data. If you include this parameter, you will get data for all previous versions.`,
 			},
 		],
 	},
@@ -1101,10 +1097,7 @@ export const companyFields = [
 					loadOptionsMethod: 'getCompanyProperties',
 				},
 				default: '',
-				description: `Used to include specific company properties in the results.<br/>
-				By default, the results will only include company ID and will not include the values for any properties for your companys.<br/>
-				Including this parameter will include the data for the specified property in the results.<br/>
-				You can include this parameter multiple times to request multiple properties separed by ,.`,
+				description: `Used to include specific company properties in the results. By default, the results will only include company ID and will not include the values for any properties for your companys. Including this parameter will include the data for the specified property in the results. You can include this parameter multiple times to request multiple properties separed by ,.`,
 			},
 		],
 	},

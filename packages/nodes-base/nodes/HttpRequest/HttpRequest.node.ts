@@ -436,9 +436,7 @@ export class HttpRequest implements INodeType {
 						],
 					},
 				},
-				description: `Name of the binary property which contains the data for the file to be uploaded.<br />
-							For Form-Data Multipart, multiple can be provided in the format:<br />
-							"sendKey1:binaryProperty1,sendKey2:binaryProperty2`,
+				description: `Name of the binary property which contains the data for the file to be uploaded. For Form-Data Multipart, multiple can be provided in the format: "sendKey1:binaryProperty1,sendKey2:binaryProperty2`,
 			},
 			{
 				displayName: 'Body Parameters',

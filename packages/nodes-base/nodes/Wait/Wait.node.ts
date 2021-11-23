@@ -385,8 +385,7 @@ export class Wait implements INodeType {
 				name: 'limitType',
 				type: 'options',
 				default: 'afterTimeInterval',
-				description: `Sets the condition for the execution to resume.<br />
-							 Can be a specified date or after some time.`,
+				description: `Sets the condition for the execution to resume. Can be a specified date or after some time.`,
 				displayOptions: {
 					show: {
 						limitWaitTime: [

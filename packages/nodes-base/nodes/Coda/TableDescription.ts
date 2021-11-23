@@ -378,9 +378,7 @@ export const tableFields = [
 					alwaysOpenEditWindow: true,
 				},
 				default: '',
-				description: `Query used to filter returned rows, specified as <column_id_or_name>:<value>. <br/>
-				If you'd like to use a column name instead of an ID, you must quote it (e.g., "My Column":123).<br/>
-				Also note that value is a JSON value; if you'd like to use a string, you must surround it in quotes (e.g., "groceries").`,
+				description: `Query used to filter returned rows, specified as <column_id_or_name>:<value>. If you'd like to use a column name instead of an ID, you must quote it (e.g., "My Column":123). Also note that value is a JSON value; if you'd like to use a string, you must surround it in quotes (e.g., "groceries").`,
 			},
 			{
 				displayName: 'RAW Data',
@@ -404,8 +402,7 @@ export const tableFields = [
 						value: 'natural',
 					},
 				],
-				description: `Specifies the sort order of the rows returned.<br />
-				If left unspecified, rows are returned by creation time ascending.`,
+				description: `Specifies the sort order of the rows returned. If left unspecified, rows are returned by creation time ascending.`,
 			},
 			{
 				displayName: 'Use Column Names',
