@@ -41,7 +41,6 @@ export default {
 			analytics: '🇩🇪 Analytics',
 			communication: '🇩🇪 Communication',
 		},
-    // ...
 ```
 
 ### Translating base text
@@ -78,7 +77,6 @@ export default {
 		saving: '🇩🇪 Saving',
 		saved: '🇩🇪 Saved',
 	},
-	// ...
 ```
 
 To [localize decimal values](https://vue-i18n.intlify.dev/guide/essentials/number.html#basic-usage), add this key to the base text:
@@ -90,7 +88,6 @@ export default {
 			style: 'decimal',
 		},
 	},
-	// ...
 }
 ```
 
@@ -142,10 +139,10 @@ Mattermost
       └── v1
           ├── Mattermost.node.ts
           ├── actions
-		  ├── methods
-		  ├── transport
+          ├── methods
+          ├── transport
           └── translations
-		       ├── de.js
+               ├── de.js
                ├── es.ts
                └── ja.ts
 ```
@@ -159,17 +156,16 @@ export class Github implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'GitHub',
 		description: 'Consume GitHub API',
-		name: 'github', // ← key to use in translation
+		name: 'github', // key to use in translation
 		icon: 'file:github.svg',
 		group: ['input'],
 		version: 1,
-		// ...
 ```
 
 ```js
 module.exports = {
-	github: {}, // ↑ key from node's description.name
-	githubTrigger: {}, // ↑ key from node's description.name
+	github: {}, // key from node's description.name
+	githubTrigger: {}, // key from node's description.name
 };
 ```
 
@@ -205,7 +201,6 @@ export class Github implements INodeType {
 		icon: 'file:github.svg',
 		group: ['input'],
 		version: 1,
-		// ...
 ```
 
 ```js
@@ -238,11 +233,10 @@ In the examples below, the node credential source is located at `/packages/nodes
 
 ```js
 export class GithubApi implements ICredentialType {
-	name = 'githubApi'; // ← key to use in translation
+	name = 'githubApi'; // key to use in translation
 	displayName = 'Github API';
 	documentationUrl = 'github';
 	properties: INodeProperties[] = [
-	// ...
 ```
 
 ```js
@@ -250,7 +244,7 @@ module.exports = {
 	github: {
 		header: {},
 		credentialsModal: {
-			githubApi: {} // ↑ key from node credential name
+			githubApi: {} // key from node credential name
 		},
 		nodeView: {},
 	},
@@ -280,7 +274,7 @@ export class GithubApi implements ICredentialType {
 		},
 		{
 			displayName: 'Access Token',
-			name: 'accessToken', // ← key to use in translation
+			name: 'accessToken', // key to use in translation
 			type: 'string',
 			default: '',
 		},
@@ -291,19 +285,15 @@ export class GithubApi implements ICredentialType {
 ```js
 module.exports = {
 	github: {
-		header: {
-			// ...
-		},
+		header: {},
 		credentialsModal: {
 			githubApi: {
-				server: {} // ↑ key from node credential parameter name
-				user: {} // ↑ key from node credential parameter name
-				accessToken: {} // ↑ key from node credential parameter name
+				server: {} // key from node credential parameter name
+				user: {} // key from node credential parameter name
+				accessToken: {} // key from node credential parameter name
 			},
 		},
-		nodeView: {
-			// ...
-		},
+		nodeView: {},
 	},
 };
 ```
@@ -346,17 +336,15 @@ export class Github implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'GitHub',
 		name: 'github',
-		// ...
 		properties: [
 			{
 				displayName: 'Resource',
-				name: 'resource', // ← key to use in translation
+				name: 'resource', // key to use in translation
 				type: 'options',
 				options: [],
 				default: 'issue',
 				description: 'The resource to operate on.',
 			},
-		// ...
 ```
 
 ```js
@@ -365,7 +353,7 @@ module.exports = {
 		header: {},
 		credentialsModal: {},
 		nodeView: {
-			resource: {}, // ↑ key from node parameter name
+			resource: {}, // key from node parameter name
 		},
 	},
 };
@@ -381,13 +369,12 @@ Allowed keys: `displayName`, `description`, and `placeholder`.
 
 ```js
 {
-	displayName: 'Repository Owner', // translatable
-	name: 'owner',
+	displayName: 'Repository Owner',
+	name: 'owner', // key to use in translation
 	type: 'string',
 	required: true,
-	// ...
-	placeholder: 'n8n-io', // translatable
-	description: 'Owner of the repository.', // translatable
+	placeholder: 'n8n-io',
+	description: 'Owner of the repository.',
 },
 ```
 
@@ -397,7 +384,7 @@ module.exports = {
 		header: {},
 		credentialsModal: {},
 		nodeView: {
-			owner: {
+			owner: { // key from node parameter name
 				displayName: '🇩🇪 Repository Owner',
 				placeholder: '🇩🇪 n8n-io',
 				description: '🇩🇪 Owner of the repository.',
@@ -419,21 +406,21 @@ Allows subkeys: `options.{optionName}.displayName` and `options.{optionName}.des
 
 ```js
 {
-	displayName: 'Resource', // translatable
+	displayName: 'Resource',
 	name: 'resource',
 	type: 'options',
 	options: [
 		{
-			name: 'File', // translatable
-			value: 'file',
+			name: 'File',
+			value: 'file', // key to use in translation
 		},
 		{
-			name: 'Issue', // translatable
-			value: 'issue',
+			name: 'Issue',
+			value: 'issue', // key to use in translation
 		},
 	],
 	default: 'issue',
-	description: 'The resource to operate on.', // translatable
+	description: 'The resource to operate on.',
 },
 ```
 
@@ -470,12 +457,12 @@ Allowed keys: `displayName`, `description`, `placeholder`, and `multipleValueBut
 
 ```js
 {
-	displayName: 'Labels', // translatable
-	name: 'labels',
+	displayName: 'Labels',
+	name: 'labels', // key to use in translation
 	type: 'collection',
 	typeOptions: {
 		multipleValues: true,
-		multipleValueButtonText: 'Add Label', // translatable
+		multipleValueButtonText: 'Add Label',
 	},
 	displayOptions: {
 		show: {
@@ -490,11 +477,11 @@ Allowed keys: `displayName`, `description`, `placeholder`, and `multipleValueBut
 	default: { 'label': '' },
 	options: [
 		{
-			displayName: 'Label', // translatable
-			name: 'label',
+			displayName: 'Label',
+			name: 'label', // key to use in translation
 			type: 'string',
 			default: '',
-			description: 'Label to add to issue.', // translatable
+			description: 'Label to add to issue.',
 		},
 	],
 },
