@@ -6,7 +6,7 @@
 
 		<div v-for="property in getProperties" :key="property.name" class="fixed-collection-parameter-property">
 			<n8n-input-label
-				:label="property.displayName === '' || parameter.options.length === 1 ? '' : property.displayName"
+				:label="property.displayName === '' || parameter.options.length === 1 ? '' : $nodeText.topParameterDisplayName(property)"
 				:underline="true"
 				:labelHoverableOnly="true"
 				size="small"
@@ -15,10 +15,10 @@
 					<div v-for="(value, index) in values[property.name]" :key="property.name + index" class="parameter-item">
 						<div class="parameter-item-wrapper">
 							<div class="delete-option" v-if="!isReadOnly">
-								<font-awesome-icon icon="trash" class="reset-icon clickable" title="Delete Item" @click="deleteOption(property.name, index)" />
+								<font-awesome-icon icon="trash" class="reset-icon clickable" :title="$baseText('fixedCollectionParameter.deleteItem')" @click="deleteOption(property.name, index)" />
 								<div v-if="sortable" class="sort-icon">
-									<font-awesome-icon v-if="index !== 0" icon="angle-up" class="clickable" title="Move up" @click="moveOptionUp(property.name, index)" />
-									<font-awesome-icon v-if="index !== (values[property.name].length -1)" icon="angle-down" class="clickable" title="Move down" @click="moveOptionDown(property.name, index)" />
+									<font-awesome-icon v-if="index !== 0" icon="angle-up" class="clickable" :title="$baseText('fixedCollectionParameter.moveUp')" @click="moveOptionUp(property.name, index)" />
+									<font-awesome-icon v-if="index !== (values[property.name].length -1)" icon="angle-down" class="clickable" :title="$baseText('fixedCollectionParameter.moveDown')" @click="moveOptionDown(property.name, index)" />
 								</div>
 							</div>
 							<parameter-input-list :parameters="property.values" :nodeValues="nodeValues" :path="getPropertyPath(property.name, index)" :hideDelete="true" @valueChanged="valueChanged" />
@@ -28,7 +28,7 @@
 				<div v-else class="parameter-item">
 					<div class="parameter-item-wrapper">
 						<div class="delete-option" v-if="!isReadOnly">
-							<font-awesome-icon icon="trash" class="reset-icon clickable" title="Delete Item" @click="deleteOption(property.name)" />
+							<font-awesome-icon icon="trash" class="reset-icon clickable" :title="$baseText('fixedCollectionParameter.deleteItem')" @click="deleteOption(property.name)" />
 						</div>
 						<parameter-input-list :parameters="property.values" :nodeValues="nodeValues" :path="getPropertyPath(property.name)" class="parameter-item" @valueChanged="valueChanged" :hideDelete="true" />
 					</div>
