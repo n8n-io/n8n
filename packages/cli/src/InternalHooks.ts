@@ -11,7 +11,7 @@ import { Telemetry } from './telemetry';
 export class InternalHooksClass implements IInternalHooksClass {
 	constructor(private telemetry: Telemetry) {}
 
-	async onServerStarted(diagnosticInfo: IDiagnosticInfo): Promise<void> {
+	async onServerStarted(diagnosticInfo: IDiagnosticInfo): Promise<unknown[]> {
 		const info = {
 			version_cli: diagnosticInfo.versionCli,
 			db_type: diagnosticInfo.databaseType,
@@ -22,12 +22,15 @@ export class InternalHooksClass implements IInternalHooksClass {
 			execution_variables: diagnosticInfo.executionVariables,
 			n8n_deployment_type: diagnosticInfo.deploymentType,
 		};
-		await this.telemetry.identify(info);
-		await this.telemetry.track('Instance started', info);
+
+		return Promise.all([
+			this.telemetry.identify(info),
+			this.telemetry.track('Instance started', info),
+		]);
 	}
 
 	async onPersonalizationSurveySubmitted(answers: IPersonalizationSurveyAnswers): Promise<void> {
-		await this.telemetry.track('User responded to personalization questions', {
+		return this.telemetry.track('User responded to personalization questions', {
 			company_size: answers.companySize,
 			coding_skill: answers.codingSkill,
 			work_area: answers.workArea,
@@ -36,20 +39,20 @@ export class InternalHooksClass implements IInternalHooksClass {
 	}
 
 	async onWorkflowCreated(workflow: IWorkflowBase): Promise<void> {
-		await this.telemetry.track('User created workflow', {
+		return this.telemetry.track('User created workflow', {
 			workflow_id: workflow.id,
 			node_graph: TelemetryHelpers.generateNodesGraph(workflow).nodeGraph,
 		});
 	}
 
 	async onWorkflowDeleted(workflowId: string): Promise<void> {
-		await this.telemetry.track('User deleted workflow', {
+		return this.telemetry.track('User deleted workflow', {
 			workflow_id: workflowId,
 		});
 	}
 
 	async onWorkflowSaved(workflow: IWorkflowBase): Promise<void> {
-		await this.telemetry.track('User saved workflow', {
+		return this.telemetry.track('User saved workflow', {
 			workflow_id: workflow.id,
 			node_graph: TelemetryHelpers.generateNodesGraph(workflow).nodeGraph,
 		});
@@ -96,10 +99,16 @@ export class InternalHooksClass implements IInternalHooksClass {
 			}
 		}
 
-		void this.telemetry.trackWorkflowExecution(properties);
+		return this.telemetry.trackWorkflowExecution(properties);
 	}
 
 	async onN8nStop(): Promise<void> {
-		await this.telemetry.trackN8nStop();
+		const timeoutPromise = new Promise<void>((resolve) => {
+			setTimeout(() => {
+				resolve();
+			}, 3000);
+		});
+
+		return Promise.race([timeoutPromise, this.telemetry.trackN8nStop()]);
 	}
 }
