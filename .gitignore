@@ -10,5 +10,7 @@ yarn.lock
 google-generated-credentials.json
 _START_PACKAGE
 .env
+.vscode/*
+!.vscode/extensions.json
 .idea
 nodelinter.config.json
