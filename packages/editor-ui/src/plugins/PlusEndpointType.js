@@ -165,11 +165,15 @@
 				successOutput.textContent = output;
 				this.label = output;
 				this.labelOffset = successOutput.offsetWidth;
-				plusStalk.style.width = `${stalkLength + this.labelOffset}px`;
+			}
+			else {
+				this.label = '';
+				this.labelOffset = 24;
+			}
 
-				if (repaint && !this._jsPlumb.instance.isSuspendDrawing()) {
-					params.endpoint.repaint(); // force rerender to move plus hoverable/draggable space
-				}
+			plusStalk.style.width = `${stalkLength + this.labelOffset}px`;
+			if (repaint && !this._jsPlumb.instance.isSuspendDrawing()) {
+				params.endpoint.repaint(); // force rerender to move plus hoverable/draggable space
 			}
 		};
 
