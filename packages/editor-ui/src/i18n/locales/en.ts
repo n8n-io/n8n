@@ -389,6 +389,9 @@ export default {
 	fixedCollectionParameter: {
 		choose: 'Choose...',
 		currentlyNoItemsExist: 'Currently no items exist',
+		deleteItem: 'Delete item',
+		moveUp: 'Move up',
+		moveDown: 'Move down',
 	},
 	genericHelpers: {
 		showMessage: {
