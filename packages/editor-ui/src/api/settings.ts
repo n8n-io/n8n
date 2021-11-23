@@ -1,6 +1,6 @@
 import { IDataObject } from 'n8n-workflow';
 import { IRestApiContext, IN8nContactPrompt, IN8nUISettings, IPersonalizationSurveyAnswers } from '../Interface';
-import { makeRestApiRequest, get } from './helpers';
+import { makeRestApiRequest, get, post } from './helpers';
 import { TEMPLATES_BASE_URL } from '@/constants';
 
 export async function getSettings(context: IRestApiContext): Promise<IN8nUISettings> {
@@ -14,7 +14,11 @@ export async function submitPersonalizationSurvey(context: IRestApiContext, para
 export async function getContactPromptData(instanceId: string): Promise<IN8nContactPrompt> {
 	//static response for staging enviroment
 	return { show: true };
-	//production envrionemnt
+	//production envrionment
 	return await get(TEMPLATES_BASE_URL, '/prompt', {}, {'n8n-instance-id': instanceId});
+}
+
+export async function updateContactPromptData(instanceId: string, email: string): Promise<void> {
+	return await post(TEMPLATES_BASE_URL, '/prompt', { email }, {'n8n-instance-id': instanceId});
 }
 

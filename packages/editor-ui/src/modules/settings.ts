@@ -6,7 +6,7 @@ import {
 	IRootState,
 	ISettingsState,
 } from '../Interface';
-import { getSettings, getContactPromptData, submitPersonalizationSurvey } from '../api/settings';
+import { getSettings, getContactPromptData, submitPersonalizationSurvey, updateContactPromptData } from '../api/settings';
 import Vue from 'vue';
 import { getPersonalizedNodeTypes } from './helper';
 import { CONTACT_PROMPT_MODAL_KEY, PERSONALIZATION_MODAL_KEY } from '@/constants';
@@ -87,6 +87,9 @@ const module: Module<ISettingsState, IRootState> = {
 				context.commit('ui/openModal', CONTACT_PROMPT_MODAL_KEY, {root: true});
 				context.commit('setContactPromptModal', { isAlreadyShowed: contactPromptData.show });
 			}
+		},
+		async updateContactPromptData(context: ActionContext<ISettingsState, IRootState>, email: string) {
+			await updateContactPromptData(context.state.settings.instanceId, email);
 		},
 	},
 };

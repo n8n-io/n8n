@@ -2,8 +2,10 @@
 	<Modal
 		:name="modalName"
 		:eventBus="modalBus"
-		title="You're a power user"
 		:center="true"
+		:closeOnPressEscape="false"
+		:beforeClose="closeDialog"
+		title="You're a power user"
 		minWidth="460px"
 		maxWidth="460px"
 	>
@@ -53,13 +55,14 @@ export default mixins(workflowHelpers).extend({
 			if (!this.isEmailValid) {
 				this.$telemetry.track('User closed email modal', { instance_id: this.$store.getters.instanceId, email: null });
 			}
-			this.modalBus.$emit("close");
+			this.$store.commit('ui/closeTopModal');
 		},
 		onInputChange(value: string): void {
 			this.isEmailValid = this.validateEmail(value);
 		},
 		send(): void {
 			if (this.isEmailValid) {
+				this.$store.dispatch('settings/updateContactPromptData', this.email);
 				this.$telemetry.track('User closed email modal', { instance_id: this.$store.getters.instanceId, email: this.email });
 			}
 			this.closeDialog();
