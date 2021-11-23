@@ -6,7 +6,7 @@ import {
 export class OneSaasApi implements ICredentialType {
 	name = 'oneSaasApi';
 	displayName = '1SaaS';
-	documentationUrl = 'actionNetwork';
+	documentationUrl = '1Saas';
 	properties: INodeProperties[] = [
 		{
 			displayName: 'API Key',

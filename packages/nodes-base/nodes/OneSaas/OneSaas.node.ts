@@ -10,6 +10,31 @@ import {
 } from 'n8n-workflow';
 
 import {
+	aiFields,
+	aiOperations
+} from './AIDescription';
+
+import {
+	codeFields,
+	codeOperations
+} from './CodeDescription';
+
+import {
+	filesFields,
+	filesOperations
+} from './FilesDescription';
+
+import {
+	noCodeHelperFields,
+	noCodeHelperOperations
+} from './NoCodeHelperDescription';
+
+import {
+	randomFields,
+	randomOperations
+} from './RandomDescription';
+
+import {
 	oneSaasRequest,
 } from './GenericFunctions';
 
@@ -17,7 +42,7 @@ export class OneSaas implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: '1 SaaS',
 		name: 'oneSaas',
-		icon: 'file:oneSaas.svg',
+		icon: 'file:oneSaas.png',
 		group: ['transform'],
 		version: 1,
 		description: 'A toolbox of no-code utilities',
@@ -29,7 +54,7 @@ export class OneSaas implements INodeType {
 		outputs: ['main'],
 		credentials: [
 			{
-				name: 'oneSaas',
+				name: 'oneSaasApi',
 				required: true,
 			},
 		],
@@ -48,8 +73,8 @@ export class OneSaas implements INodeType {
 						value: 'code',
 					},
 					{
-						name: 'File',
-						value: 'file',
+						name: 'Files',
+						value: 'files',
 					},
 					{
 						name: 'NoCode Helper',
@@ -64,65 +89,106 @@ export class OneSaas implements INodeType {
 				required: true,
 			},
 			// AI
-			{
-				displayName: 'Operation',
-				name: 'operation',
-				type: 'options',
-				displayOptions: {
-					show: {
-						resource: [
-							'ai',
-						],
-					},
-				},
-				options: [
-					{
-						name: 'OCR',
-						value: 'ocr',
-						description: 'Generate a PDF from a webpage',
-					},
-					{
-						name: 'Picture Recognition',
-						value: 'pictureRecognition',
-						description: 'Get SEO information from website',
-					},
-					{
-						name: 'Entity Detection',
-						value: 'entityDetection',
-						description: 'Create a screenshot from a webpage',
-					},
-					{
-						name: 'Mood Detection',
-						value: 'moodDetection',
-						description: 'Create a screenshot from a webpage',
-					},
-					{
-						name: 'Email Validation',
-						value: 'emailValidation',
-						description: 'Create a screenshot from a webpage',
-					},
-					{
-						name: 'Translation',
-						value: 'translation',
-						description: 'Create a screenshot from a webpage',
-					},
-					{
-						name: 'Language Validation',
-						value: 'languageValidation',
-						description: 'Create a screenshot from a webpage',
-					},
-				],
-				default: 'ocr',
-			},
+			...aiOperations,
+			...aiFields,
 			// Code
-			// File
+			//...codeOperations,
+			//...codeFields,
+			// Files
+			//...filesOperations,
+			//...filesFields,
 			// NoCode Helper
+			//...noCodeHelperOperations,
+			//...noCodeHelperFields,
 			// Random
+			//...randomOperations,
+			//...randomFields,
 		],
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
-		// Not Yet Implemented
+		const items = this.getInputData();
+		const returnData: IDataObject[] = [];
+		const length = items.length as unknown as number;
+		const qs: IDataObject = {};
+		let responseData;
+		let download;
+		for (let i = 0; i < length; i++) {
+			try {
+				const resource = this.getNodeParameter('resource', 0) as string;
+				const operation = this.getNodeParameter('operation', 0) as string;
+				if (resource === 'ai') {
+					if (operation === 'emailValidation') {
+						const email = this.getNodeParameter('email', i) as string;
+						const body: IDataObject = {
+							email,
+						};
+						responseData = await oneSaasRequest.call(this, 'POST', '/email', {email: email });
+					}
+					if (operation === 'entityDetection') {
+						const text = this.getNodeParameter('text', i) as string;
+						const body: IDataObject = {
+							text,
+						};
+						responseData = await oneSaasRequest.call(this, 'POST', '/entity', {text: text });
+					}
+					if (operation === 'languageValidation') {
+						const text = this.getNodeParameter('text', i) as string;
+						const body: IDataObject = {
+							text,
+						};
+						responseData = await oneSaasRequest.call(this, 'POST', '/lang', {text: text });
+						responseData = responseData.languageResult;
+					}
+					if (operation === 'moodDetection') {
+						const text = this.getNodeParameter('text', i) as string;
+						const body: IDataObject = {
+							text,
+						};
+						responseData = await oneSaasRequest.call(this, 'POST', '/mood', {text: text });
+						responseData = responseData.sentimentResult;
+					}
+					if (operation === 'ocr') {
+						const imageUrl = this.getNodeParameter('imageUrl', i) as string;
+						const body: IDataObject = {
+							imageUrl,
+						};
+						responseData = await oneSaasRequest.call(this, 'POST', '/ocr', {imageUrl: imageUrl });
+					}
+					if (operation === 'pictureRecognition') {
+						const imageUrl = this.getNodeParameter('imageUrl', i) as string;
+						const body: IDataObject = {
+							imageUrl,
+						};
+						responseData = await oneSaasRequest.call(this, 'POST', '/pic', {imageUrl: imageUrl });
+						responseData = responseData.concepts;
+					}
+					if (operation === 'translation') {
+						const text = this.getNodeParameter('text', i) as string;
+						const resultLang = this.getNodeParameter('resultLang', i) as string;
+						const body: IDataObject = {
+							text,
+							resultLang,
+						};
+						responseData = await oneSaasRequest.call(this, 'POST', '/translate', {text: text, resultLang: resultLang });
+					}
+				}
+
+				if (Array.isArray(responseData)) {
+					returnData.push.apply(returnData, responseData as IDataObject[]);
+				} else {
+					returnData.push(responseData as IDataObject);
+				}
+
+			} catch (error) {
+				if (this.continueOnFail()) {
+					returnData.push({ error: error.message });
+					continue;
+				}
+				throw error;
+			}
+		}
+		return [this.helpers.returnJsonArray(returnData)];
 	}
 
 }
