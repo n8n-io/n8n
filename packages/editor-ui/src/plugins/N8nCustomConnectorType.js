@@ -676,7 +676,7 @@
 
 		const diffX = paintInfo.endStubX - paintInfo.startStubX;
 		const diffY = paintInfo.endStubY - paintInfo.startStubY;
-		const direction = -1; // vertical direction of loop, above or below source
+		const direction = -1; // vertical direction of loop, always below source
 
 		var midx = paintInfo.startStubX + ((paintInfo.endStubX - paintInfo.startStubX) * midpoint),
 			midy;
