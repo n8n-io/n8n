@@ -78,6 +78,7 @@ export default {
 		saving: '🇩🇪 Saving',
 		saved: '🇩🇪 Saved',
 	},
+	// ...
 ```
 
 To [localize decimal values](https://vue-i18n.intlify.dev/guide/essentials/number.html#basic-usage), add this key to the base text:
@@ -219,17 +220,11 @@ module.exports = {
 ```
 
 <p align="center">
-    <img src="img/header1.png">
-    &nbsp;&nbsp;&nbsp;&nbsp;
+    <img src="img/header1.png" width="200">
     <img src="img/header2.png">
-    &nbsp;&nbsp;&nbsp;&nbsp;
-    <img src="img/header3.png">
-</p>
-
-<p align="center">
-    <img src="img/header4.png">
-    &nbsp;&nbsp;&nbsp;&nbsp;
-    <img src="img/header5.png">
+    <img src="img/header3.png" width="200">
+    <img src="img/header4.png" width="200">
+    <img src="img/header5.png" width="200">
 </p>
 
 #### `credentialsModal` section
@@ -410,11 +405,8 @@ module.exports = {
 ```
 
 <p align="center">
-    <img src="img/node1.png">
+    <img src="img/node1.png" width="200">
 </p>
-
-TODO i18n
-[IMAGE OF NODE VIEW MODAL WHERE `string` parameter IS USED]
 
 #### `options` parameter
 
@@ -466,7 +458,7 @@ module.exports = {
 ```
 
 <p align="center">
-    <img src="img/node2.png">
+    <img src="img/node2.png" width="200">
 </p>
 
 #### `collection` and `fixedCollection` parameters
@@ -543,7 +535,7 @@ module.exports = {
 To reduce nesting and to share translations, a parameter inside a collection's or fixed collection's `options` parameter sits at the same level of nesting as the containing collection in the `nodeView` section.
 
 <p align="center">
-    <img src="img/node3.png">
+    <img src="img/node4.png" width="200">
 </p>
 
 > **Note**: In case of deep nesting, i.e. a child of a child of a `collection` and `fixedCollection` parameter, the deeply nested child in principle should be translatable at the same level of nesting as the `collection` and `fixedCollection` parameter, but this has not been fully tested for this first release.
