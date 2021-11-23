@@ -1583,7 +1583,7 @@ export default mixins(
 						insertNodeAfterSelected({
 							sourceId: endpoint.__meta.nodeId,
 							index: endpoint.__meta.index,
-							eventSource: 'plus-connector',
+							eventSource: 'plus-endpoint',
 						});
 					}
 				});
