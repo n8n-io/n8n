@@ -220,7 +220,7 @@
 			}, 0);
 
 			if (connections.length >= 1) {
-				return [anchorPoint[0], anchorPoint[1], 0, 0];
+				return [anchorPoint[0] + stalkLength + this.labelOffset, anchorPoint[1] - verticalOffset[this.size], 0, 0];
 			}
 
 			return [anchorPoint[0] + stalkLength + this.labelOffset, anchorPoint[1] - verticalOffset[this.size], boxSize[this.size], boxSize[this.size]];
