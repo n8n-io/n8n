@@ -5,7 +5,7 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 /* eslint-disable @typescript-eslint/no-use-before-define */
 /* eslint-disable @typescript-eslint/unbound-method */
-import { BinaryDataHelper, IBinaryDataConfig, IProcessMessage, UserSettings, WorkflowExecute } from 'n8n-core';
+import { BinaryDataManager, IBinaryDataConfig, IProcessMessage, UserSettings, WorkflowExecute } from 'n8n-core';
 
 import {
 	ExecutionError,
@@ -140,7 +140,7 @@ export class WorkflowRunnerProcess {
 		InternalHooksManager.init(instanceId);
 
 		const binaryDataConfig = config.get('binaryDataManager') as IBinaryDataConfig;
-		await BinaryDataHelper.init(binaryDataConfig);
+		await BinaryDataManager.init(binaryDataConfig);
 
 		// Credentials should now be loaded from database.
 		// We check if any node uses credentials. If it does, then

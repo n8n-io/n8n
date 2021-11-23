@@ -73,7 +73,7 @@ import { lookup } from 'mime-types';
 
 import axios, { AxiosProxyConfig, AxiosRequestConfig, Method } from 'axios';
 import { URL, URLSearchParams } from 'url';
-import { BinaryDataHelper } from './BinaryDataManager';
+import { BinaryDataManager } from './BinaryDataManager';
 // eslint-disable-next-line import/no-cycle
 import {
 	// BINARY_ENCODING,
@@ -679,7 +679,7 @@ export async function getBinaryDataBuffer(
 ): Promise<Buffer> {
 	// const binaryData = inputData.main![inputIndex]![itemIndex]!.binary![propertyName]!;
 	const binaryData = inputData.main![0]![itemIndex]!.binary![propertyName]!;
-	return BinaryDataHelper.getInstance().retrieveBinaryData(binaryData);
+	return BinaryDataManager.getInstance().retrieveBinaryData(binaryData);
 	// return Buffer.from(binaryData.data, BINARY_ENCODING);
 }
 
@@ -748,7 +748,7 @@ export async function prepareBinaryData(
 		}
 	}
 
-	return BinaryDataHelper.getInstance().storeBinaryData(returnData, binaryData);
+	return BinaryDataManager.getInstance().storeBinaryData(returnData, binaryData);
 }
 
 /**

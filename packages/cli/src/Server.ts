@@ -45,7 +45,7 @@ import { compare } from 'bcryptjs';
 import * as promClient from 'prom-client';
 
 import {
-	BinaryDataHelper,
+	BinaryDataManager,
 	Credentials,
 	ICredentialTestFunctions,
 	LoadNodeParameterOptions,
@@ -2408,7 +2408,7 @@ class App {
 					const execs = await Db.collections.Execution!.find(filters);
 
 					await Db.collections.Execution!.delete(filters);
-					await BinaryDataHelper.getInstance().findAndDeleteBinaryData(execs);
+					await BinaryDataManager.getInstance().findAndDeleteBinaryData(execs);
 				} else if (deleteData.ids !== undefined) {
 					const execs = await Db.collections
 						.Execution!.createQueryBuilder('execution')
@@ -2418,7 +2418,7 @@ class App {
 
 					// Deletes all executions with the given ids
 					await Db.collections.Execution!.delete(deleteData.ids);
-					await BinaryDataHelper.getInstance().findAndDeleteBinaryData(execs);
+					await BinaryDataManager.getInstance().findAndDeleteBinaryData(execs);
 				} else {
 					throw new Error('Required body-data "ids" or "deleteBefore" is missing!');
 				}
@@ -2621,7 +2621,7 @@ class App {
 			`/${this.restEndpoint}/data/:path`,
 			ResponseHelper.send(async (req: express.Request, res: express.Response): Promise<string> => {
 				const dataPath = req.params.path;
-				return BinaryDataHelper.getInstance()
+				return BinaryDataManager.getInstance()
 					.retrieveBinaryDataByIdentifier(dataPath)
 					.then((buffer: Buffer) => {
 						return buffer.toString('base64');

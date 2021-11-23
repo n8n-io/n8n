@@ -14,7 +14,7 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable func-names */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
-import { BinaryDataHelper, UserSettings, WorkflowExecute } from 'n8n-core';
+import { BinaryDataManager, UserSettings, WorkflowExecute } from 'n8n-core';
 
 import {
 	IDataObject,
@@ -482,7 +482,7 @@ function hookFunctionsSave(parentProcessMode?: string): IWorkflowExecuteHooks {
 					if (isManualMode && !saveManualExecutions && !fullRunData.waitTill) {
 						// Data is always saved, so we remove from database
 						await Db.collections.Execution!.delete(this.executionId);
-						BinaryDataHelper.getInstance().findAndMarkDataForDeletionFromFullRunData(fullRunData);
+						BinaryDataManager.getInstance().findAndMarkDataForDeletionFromFullRunData(fullRunData);
 
 						return;
 					}
@@ -516,7 +516,7 @@ function hookFunctionsSave(parentProcessMode?: string): IWorkflowExecuteHooks {
 							}
 							// Data is always saved, so we remove from database
 							await Db.collections.Execution!.delete(this.executionId);
-							BinaryDataHelper.getInstance().findAndMarkDataForDeletionFromFullRunData(fullRunData);
+							BinaryDataManager.getInstance().findAndMarkDataForDeletionFromFullRunData(fullRunData);
 
 							return;
 						}

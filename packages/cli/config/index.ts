@@ -663,6 +663,12 @@ const config = convict({
 			env: 'N8N_BINARY_DATA_STORAGE_PATH',
 			doc: 'Storage mode for binary data, LOCAL_STORAGE',
 		},
+		binaryDataTTL: {
+			format: Number,
+			default: 60,
+			env: 'N8N_BINARY_DATA_TTL',
+			doc: 'TTL for binary data of unsaved executions in minutes',
+		},
 	},
 
 	deployment: {

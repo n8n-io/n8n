@@ -241,6 +241,7 @@ export interface IWorkflowData {
 export interface IBinaryDataConfig {
 	mode: 'IN_MEMORY' | 'LOCAL_STORAGE';
 	localStoragePath: string;
+	binaryDataTTL: number;
 }
 
 export interface IExecutionBase {
@@ -272,4 +273,17 @@ export interface IExecutionResponse extends IExecutionBase {
 	retrySuccessId?: string;
 	waitTill?: Date;
 	workflowData: IWorkflowBase;
+}
+
+export interface IBinaryDataManagerOptions {
+	clearOldData: boolean;
+}
+
+export interface IBinaryDataManager {
+	init(config: IBinaryDataConfig): Promise<void>;
+	storeBinaryData(binaryData: IBinaryData, binaryBuffer: Buffer): Promise<IBinaryData>;
+	retrieveBinaryDataByIdentifier(identifier: string): Promise<Buffer>;
+	markDataForDeletion(identifiers: string[]): Promise<void>;
+	deleteMarkedFiles(): Promise<unknown>;
+	deleteBinaryDataByIdentifier(identifier: string): Promise<void>;
 }
