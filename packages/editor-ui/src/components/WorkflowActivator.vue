@@ -31,22 +31,6 @@
 				<font-awesome-icon @click="displayActivationError" icon="exclamation-triangle" />
 			</n8n-tooltip>
 		</div>
-
-		<div v-if="showActivationAlert">
-
-			<el-dialog
-				title="Workflow activated"
-				append-to-body
-				center
-				:visible.sync="showActivationAlert"
-				width="40%">
-				<p>{{alertTriggerContent}}</p>
-				<p><span class="emphasised">These executions will not show up immediately in the editor</span>, but you can see them in the <a @click="showExecutionsList">execution list</a>.</p>
-				<span slot="footer" class="dialog-footer">
-					<n8n-button @click="showActivationAlert = false" label="Got it"/>
-				</span>
-			</el-dialog>
-		</div>
 	</div>
 </template>
 
@@ -68,7 +52,10 @@ import { mapGetters } from "vuex";
 import {
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { EXECUTIONS_MODAL_KEY } from '@/constants';
+import {
+	EXECUTIONS_MODAL_KEY,
+	WORKFLOW_ACTIVE_MODAL_KEY,
+} from '@/constants';
 
 
 export default mixins(
@@ -89,7 +76,6 @@ export default mixins(
 				return {
 					loading: false,
 					alertTriggerContent: '',
-					showActivationAlert: false,
 					nodes: [] as INodeUi[],
 				};
 			},
@@ -252,7 +238,7 @@ export default mixins(
 								this.alertTriggerContent = 'You can now make calls to your SSE URL to trigger executions.';
 							}
 						}
-						this.showActivationAlert = true;
+						this.$store.dispatch('ui/openModal', WORKFLOW_ACTIVE_MODAL_KEY);
 					} else {
 						this.$store.commit('setWorkflowInactive', this.workflowId);
 					}
