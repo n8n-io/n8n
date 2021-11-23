@@ -18,7 +18,7 @@ Currently, n8n does _not_ allow for internalization of:
 
 A locale identifier is a language code compatible with the [`Accept-Language` header](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Accept-Language), e.g. `de` (German), `es` (Spanish), `ja` (Japanese). Regional variants of locale identifiers are not supported, i.e. use `de`, not `de-AT`. For a list of all locale identifiers, refer to the [639-1 column in the ISO 639-1 codes article](https://en.wikipedia.org/wiki/List_of_ISO_639-1_codes).
 
-By default, n8n runs in the `en` (English) locale. To have it to run in a different locale, set the `N8N_DEFAULT_LOCALE` environment variable. If it has been set and is not `en`, n8n will use the UI strings for that locale - for any untranslated UI strings, n8n fall back to `en`.
+By default, n8n runs in the `en` (English) locale. To have it run in a different locale, set the `N8N_DEFAULT_LOCALE` environment variable. If it has been set and is not `en`, n8n will use the UI strings for that locale - for any untranslated UI strings, n8n fall back to `en`.
 
 ```sh
 export N8N_DEFAULT_LOCALE=de
@@ -79,7 +79,7 @@ export default {
 	},
 ```
 
-To [localize decimal values](https://vue-i18n.intlify.dev/guide/essentials/number.html#basic-usage), add this key to the base text:
+To [localize decimal values](https://vue-i18n.intlify.dev/guide/essentials/number.html#basic-usage), add this to the base text:
 
 ```js
 export default {
@@ -93,7 +93,7 @@ export default {
 
 #### Interpolation
 
-Some base text strings feature [interpolation](https://kazupon.github.io/vue-i18n/guide/formatting.html#named-formatting) with a variable in curly braces, e.g. `Execution ID {activeExecutionId} was stopped`. In case of interpolation, the translated string must not modify the variable: `Die Ausführung mit der ID {activeExecutionId} wurde gestoppt`.
+Some base text strings use [interpolation](https://kazupon.github.io/vue-i18n/guide/formatting.html#named-formatting) with a variable in curly braces, e.g. `Execution ID {activeExecutionId} was stopped`. In case of interpolation, the translated string must not modify the variable: `Die Ausführung mit der ID {activeExecutionId} wurde gestoppt`.
 
 ## Dynamic text
 
@@ -113,13 +113,11 @@ GitHub
       └── ja.ts
 ```
 
-Each translation file may contain the translations for one or both (regular and trigger) nodes.
+Each node translation file may contain the translations for one or both (regular and trigger) nodes.
 
 In the examples below, the node source is located at `/packages/nodes-base/nodes/Github/GitHub.node.ts` and the node translation is located at `/packages/nodes-base/nodes/Github/translations/de.ts`.
 
-***
-
-In case of grouping dirs, e.g. `Google`, `Aws`, and `Microsoft`, the `/translations` dir must also be located alongside the `*.node.ts` file:
+For nodes in grouping dirs, e.g. `Google`, `Aws`, and `Microsoft`, locate the `/translations` dir alongside the `*.node.ts` file:
 
 ```
 Google
@@ -131,13 +129,13 @@ Google
           └── ja.ts
 ```
 
-And same for nodes in versioned dirs:
+For nodes in versioned dirs, locate the `/translations` dir alongside the versioned `*.node.ts` file:
 
 ```
 Mattermost
   └── Mattermost.node.ts
       └── v1
-          ├── Mattermost.node.ts
+          ├── MattermostV1.node.ts
           ├── actions
           ├── methods
           ├── transport
@@ -186,7 +184,7 @@ module.exports = {
 };
 ```
 
-> Note: These three keys as well as all keys described below are optional. Remember that, in case of missing sections or keys pointing to missing translations, n8n will fall back to the `en` locale.
+> Note: These three keys as well as all keys described below are optional. Remember that, in case of missing sections or missing translations, n8n will fall back to the `en` locale.
 
 #### `header` section
 
@@ -195,8 +193,8 @@ The `header` section points to an object that may contain only two keys, `displa
 ```js
 export class Github implements INodeType {
 	description: INodeTypeDescription = {
-		displayName: 'GitHub',
-		description: 'Consume GitHub API',
+		displayName: 'GitHub', // key to use in translation
+		description: 'Consume GitHub API', // key to use in translation
 		name: 'github',
 		icon: 'file:github.svg',
 		group: ['input'],
@@ -214,6 +212,8 @@ module.exports = {
 };
 ```
 
+Header text is used wherever the node's display name and description are needed:
+
 <p align="center">
     <img src="img/header1.png" width="400">
     <img src="img/header2.png" width="200">
@@ -227,7 +227,7 @@ module.exports = {
 
 #### `credentialsModal` section
 
-The `credentialsModal` section points to an object having a key that matches the node credential `name`:
+The `credentialsModal` section points to an object containing a key that matches the node credential `name`:
 
 In the examples below, the node credential source is located at `/packages/nodes-base/credentials/GithubApi.credentials.ts`.
 
@@ -261,14 +261,14 @@ export class GithubApi implements ICredentialType {
 	properties: INodeProperties[] = [
 		{
 			displayName: 'Github Server',
-			name: 'server', // ← key to use in translation
+			name: 'server', // key to use in translation
 			type: 'string',
 			default: 'https://api.github.com',
 			description: 'The server to connect to. Only has to be set if Github Enterprise is used.',
 		},
 		{
 			displayName: 'User',
-			name: 'user', // ← key to use in translation
+			name: 'user', // key to use in translation
 			type: 'string',
 			default: '',
 		},
@@ -298,7 +298,7 @@ module.exports = {
 };
 ```
 
-The object for each node credential parameter allows for the keys `displayName`, `description`, and `placeholder`. Their values will be rendered instead of the English text.
+The object for each node credential parameter allows for the keys `displayName`, `description`, and `placeholder`.
 
 ```js
 module.exports = {
@@ -434,10 +434,10 @@ module.exports = {
 				displayName: '🇩🇪 Resource',
 				description: '🇩🇪 The resource to operate on.',
 				options: {
-					file: {
+					file: { // key from node parameter options name
 						displayName: '🇩🇪 File',
 					},
-					issue: {
+					issue: { // key from node parameter options name
 						displayName: '🇩🇪 Issue',
 					},
 				},
@@ -487,6 +487,8 @@ Allowed keys: `displayName`, `description`, `placeholder`, and `multipleValueBut
 },
 ```
 
+To reduce nesting and to share translations, a parameter inside a collection's or fixed collection's `options` parameter sits at the same level of nesting as the containing collection in the `nodeView` section:
+
 ```js
 module.exports = {
 	github: {
@@ -522,8 +524,6 @@ module.exports = {
 };
 ```
 
-To reduce nesting and to share translations, a parameter inside a collection's or fixed collection's `options` parameter sits at the same level of nesting as the containing collection in the `nodeView` section.
-
 <p align="center">
     <img src="img/node4.png" width="400">
 </p>
@@ -532,9 +532,9 @@ To reduce nesting and to share translations, a parameter inside a collection's o
 
 #### Reusable dynamic text
 
-Also, the base text file may contain the special key `reusableDynamicText`, allowing for a node parameter to be translated once and reused elsewhere in other node parameter translations.
+The base text file may contain the special key `reusableDynamicText`, allowing for a node parameter to be translated once and reused in all other node parameter translations.
 
-Currently only the keys `oauth.clientId` and `oauth.clientSecret` are supported - these two translations to be reused in all node credential parameters.
+Currently only the keys `oauth.clientId` and `oauth.clientSecret` are supported as a PoC - these two translations will be reused in all node credential parameters.
 
 ```js
 export default {
@@ -594,6 +594,6 @@ After changing the dynamic text file:
 1. Stop and restart the first terminal.
 2. Refresh the browser at `http://localhost:5678`
 
-If a `headerText` section was changed, run `npm run build:translations` again.
+If a `headerText` section was changed, re-run `npm run build:translations` in `/nodes-base`.
 
-> **Note**: To translate base and dynamic text simultaneously, open three terminals following the steps in both sections (opening the first terminal only once) and browse at `http://localhost:8080`.
+> **Note**: To translate base and dynamic text simultaneously, run three terminals following the steps from both sections (first terminal running only once) and browse `http://localhost:8080`.
