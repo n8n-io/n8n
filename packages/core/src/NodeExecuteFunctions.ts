@@ -677,10 +677,8 @@ export async function getBinaryDataBuffer(
 	propertyName: string,
 	inputIndex: number,
 ): Promise<Buffer> {
-	// const binaryData = inputData.main![inputIndex]![itemIndex]!.binary![propertyName]!;
-	const binaryData = inputData.main![0]![itemIndex]!.binary![propertyName]!;
+	const binaryData = inputData.main![inputIndex]![itemIndex]!.binary![propertyName]!;
 	return BinaryDataManager.getInstance().retrieveBinaryData(binaryData);
-	// return Buffer.from(binaryData.data, BINARY_ENCODING);
 }
 
 /**
@@ -725,7 +723,7 @@ export async function prepareBinaryData(
 
 	const returnData: IBinaryData = {
 		mimeType,
-		data: '', // binaryData.toString(BINARY_ENCODING),// BINARY_ENCODING, // todo cleanup
+		data: '',
 	};
 
 	if (filePath) {

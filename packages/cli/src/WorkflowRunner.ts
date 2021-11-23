@@ -538,8 +538,6 @@ export class WorkflowRunner {
 						(workflowDidSucceed && saveDataSuccessExecution === 'none') ||
 						(!workflowDidSucceed && saveDataErrorExecution === 'none')
 					) {
-						// console.log('JSON.stringify(runData)');
-						// console.log(JSON.stringify(runData));
 						await Db.collections.Execution!.delete(executionId);
 					}
 					// eslint-disable-next-line id-denylist
