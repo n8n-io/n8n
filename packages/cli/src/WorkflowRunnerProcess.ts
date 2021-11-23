@@ -5,7 +5,13 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 /* eslint-disable @typescript-eslint/no-use-before-define */
 /* eslint-disable @typescript-eslint/unbound-method */
-import { BinaryDataManager, IBinaryDataConfig, IProcessMessage, UserSettings, WorkflowExecute } from 'n8n-core';
+import {
+	BinaryDataManager,
+	IBinaryDataConfig,
+	IProcessMessage,
+	UserSettings,
+	WorkflowExecute,
+} from 'n8n-core';
 
 import {
 	ExecutionError,

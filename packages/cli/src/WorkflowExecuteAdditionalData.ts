@@ -516,7 +516,9 @@ function hookFunctionsSave(parentProcessMode?: string): IWorkflowExecuteHooks {
 							}
 							// Data is always saved, so we remove from database
 							await Db.collections.Execution!.delete(this.executionId);
-							BinaryDataManager.getInstance().findAndMarkDataForDeletionFromFullRunData(fullRunData);
+							BinaryDataManager.getInstance().findAndMarkDataForDeletionFromFullRunData(
+								fullRunData,
+							);
 
 							return;
 						}
