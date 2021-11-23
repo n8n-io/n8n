@@ -11,7 +11,7 @@ import {
   apiRequest,
 } from '../../../transport';
 
-export async function getDirectory(this: IExecuteFunctions, index: number): Promise<INodeExecutionData[]> {
+export async function getAll(this: IExecuteFunctions, index: number): Promise<INodeExecutionData[]> {
   const body = {} as IDataObject;
   const requestMethod = 'GET';
   const endPoint = 'employees/directory';
@@ -20,5 +20,5 @@ export async function getDirectory(this: IExecuteFunctions, index: number): Prom
   const responseData = await apiRequest.call(this, requestMethod, endPoint, body);
 
   //return
-  return this.helpers.returnJsonArray(responseData);
+  return this.helpers.returnJsonArray(responseData.body.employees);
 }

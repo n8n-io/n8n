@@ -5,7 +5,7 @@ import {
 } from 'n8n-workflow';
 
 type BambooHRMap = {
-  employees: 'create' | 'get' | 'getDirectory' | 'update';
+  employees: 'create' | 'get' | 'getAll' | 'update';
   employeeFiles: 'create' | 'del' | 'get' | 'getAll' | 'update';
   companyFiles: 'create' | 'del' | 'get' | 'getAll' | 'update';
   reports: 'get';

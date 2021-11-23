@@ -1,6 +1,6 @@
 import * as create from './create';
 import * as get from './get';
-import * as getDirectory from './getDirectory';
+import * as getAll from './getAll';
 import * as update from "./update";
 
 import { INodeProperties } from 'n8n-workflow';
@@ -8,7 +8,7 @@ import { INodeProperties } from 'n8n-workflow';
 export {
   create,
   get,
-  getDirectory,
+  getAll,
   update
 };
 
@@ -37,9 +37,9 @@ export const descriptions = [
         description: 'Get basic employee information',
       },
       {
-        name: 'Get Directory',
-        value: 'getDirectory',
-        description: 'Gets employee directory.',
+        name: 'Get All',
+        value: 'getAll',
+        description: 'Gets all employee directory.',
       },
       {
         name: 'Update',
@@ -52,6 +52,6 @@ export const descriptions = [
   },
   ...create.description,
   ...get.description,
-  ...getDirectory.description,
+  ...getAll.description,
   ...update.description
 ] as INodeProperties[];

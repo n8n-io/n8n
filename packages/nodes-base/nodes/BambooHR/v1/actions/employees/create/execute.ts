@@ -24,6 +24,10 @@ export async function create(this: IExecuteFunctions, index: number): Promise<IN
   //response
   const responseData = await apiRequest.call(this, requestMethod, endPoint, body);
 
+	//obtain employeeID
+	const rawEmployeeId = responseData.headers.location.lastIndexOf('/');
+	const employeeId = responseData.headers.location.substring(rawEmployeeId + 1);
+
   //return
-  return this.helpers.returnJsonArray({ statusCode: responseData.statusCode, statusMessage: responseData.statusMessage });
+  return this.helpers.returnJsonArray({ id: employeeId, statusCode: responseData.statusCode, statusMessage: responseData.statusMessage });
 }
