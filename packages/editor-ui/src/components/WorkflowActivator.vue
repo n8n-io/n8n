@@ -60,6 +60,7 @@ import { workflowHelpers } from '@/components/mixins/workflowHelpers';
 import {
 	IWorkflowDataUpdate,
 	INodeUi,
+	IWorkflowDb,
 } from '../Interface';
 
 import mixins from 'vue-typed-mixins';
@@ -89,7 +90,16 @@ export default mixins(
 					loading: false,
 					alertTriggerContent: '',
 					showActivationAlert: false,
+					nodes: [] as INodeUi[],
 				};
+			},
+			mounted() {
+				if (this.workflowId && this.$store.state.workflow.id !== this.workflowId) {
+					this.restApi().getWorkflow(this.workflowId)
+						.then((data: IWorkflowDb) => {
+							this.nodes = data.nodes;
+						});
+				}
 			},
 			computed: {
 				...mapGetters({
@@ -115,7 +125,13 @@ export default mixins(
 					return this.workflowActive && this.isWorkflowActive ? false : !this.containsTrigger;
 				},
 				containsTrigger(): boolean {
-					const foundNodes = this.$store.getters.allNodes
+					let nodes: INodeUi[];
+					if (this.nodes.length > 0) {
+						nodes = this.nodes;
+					} else {
+						nodes = this.$store.getters.allNodes;
+					}
+					const foundNodes = nodes
 						.filter(({ disabled }: INodeUi) => !disabled)
 						.map(({ type }: INodeUi) => this.$store.getters.nodeType(type));
 					return foundNodes.filter(((node: INodeTypeDescription) => node.group.includes('trigger'))).length > 0;
@@ -195,7 +211,13 @@ export default mixins(
 						this.$store.commit('setWorkflowActive', this.workflowId);
 
 						// Show activation dialog
-						const foundTriggers = this.$store.getters.allNodes
+						let nodes: INodeUi[];
+						if (this.nodes.length > 0) {
+							nodes = this.nodes;
+						} else {
+							nodes = this.$store.getters.allNodes;
+						}
+						const foundTriggers = nodes
 							.filter(({ disabled }: INodeUi) => !disabled)
 							.map(({ type }: INodeUi) => this.$store.getters.nodeType(type))
 							.filter(((node: INodeTypeDescription) => node.group.includes('trigger')));
@@ -206,7 +228,6 @@ export default mixins(
 							// Set default to in case it needs overwriting
 							this.alertTriggerContent = 'Your trigger will now fire production executions automatically.';
 							const trigger = foundTriggers[0];
-							console.log(trigger.type, trigger.name);
 							const serviceName = trigger.displayName.replace(/ trigger/i, '');
 							//check if webhook
 							if (this.$store.getters.currentWorkflowHasWebhookNode) {
@@ -228,7 +249,7 @@ export default mixins(
 							} else if (trigger.name === 'n8n-nodes-base.workflowTrigger') {
 								this.alertTriggerContent = 'Your workflow will now trigger executions on the event you have defined.';
 							} else if (trigger.name === 'n8n-nodes-base.sseTrigger') {
-								this.alertTriggerContent = 'You can now make calls to your SSE URL to trigger executions. ';
+								this.alertTriggerContent = 'You can now make calls to your SSE URL to trigger executions.';
 							}
 						}
 						this.showActivationAlert = true;
