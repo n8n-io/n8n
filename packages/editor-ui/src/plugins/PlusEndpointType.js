@@ -61,6 +61,17 @@
 					pointer-events: none;
 				}
 
+				.plus-stalk .connection-run-items-label {
+					position: relative;
+					width: 100%;
+				}
+
+				.plus-stalk .connection-run-items-label span {
+					display: none;
+					left: 50%;
+					transform: translateX(-50%);
+				}
+
 				.plus-container {
 					color: var(--color-foreground-xdark);
 					border: 2px solid var(--color-foreground-xdark);
@@ -115,18 +126,15 @@
 					border-color: var(--color-success-light);
 				}
 
-				.plus-stalk span {
-					display: none;
-					transform: translateX(50%);
-				}
-
 				.success .plus-stalk span {
 					display: inline;
 				}
 			</style>
 
-			<div class="plus-stalk connection-run-items-label">
-				<span class="floating"></span>
+			<div class="plus-stalk">
+				<div class="connection-run-items-label">
+					<span class="floating"></span>
+				</div>
 			</div>
 
 			<div class="plus-container">
