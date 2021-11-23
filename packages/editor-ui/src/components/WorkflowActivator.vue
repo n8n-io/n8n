@@ -196,49 +196,10 @@ export default mixins(
 					if (newActiveState === true) {
 						this.$store.commit('setWorkflowActive', this.workflowId);
 
-						// Show activation dialog
-						let nodes: INodeUi[];
-						if (this.nodes.length > 0) {
-							nodes = this.nodes;
-						} else {
-							nodes = this.$store.getters.allNodes;
+						// Show activation dialog only for current workflow and if user hasn't deactivated it
+						if (this.nodes.length === 0 && !window.localStorage.getItem('hideActivationAlert')) {
+							this.$store.dispatch('ui/openModal', WORKFLOW_ACTIVE_MODAL_KEY);
 						}
-						const foundTriggers = nodes
-							.filter(({ disabled }: INodeUi) => !disabled)
-							.map(({ type }: INodeUi) => this.$store.getters.nodeType(type))
-							.filter(((node: INodeTypeDescription) => node.group.includes('trigger')));
-						// if multiple triggers
-						if (foundTriggers.length > 1) {
-							this.alertTriggerContent = 'Your triggers will now fire production executions automatically.';
-						} else {
-							// Set default to in case it needs overwriting
-							this.alertTriggerContent = 'Your trigger will now fire production executions automatically.';
-							const trigger = foundTriggers[0];
-							const serviceName = trigger.displayName.replace(/ trigger/i, '');
-							//check if webhook
-							if (this.$store.getters.currentWorkflowHasWebhookNode) {
-								if (trigger.name === 'n8n-nodes-base.webhook') {
-									// check if a standard Webhook trigger
-									this.alertTriggerContent = 'You can now make calls to your production webhook URL.';
-								} else {
-									this.alertTriggerContent = `Your workflow will now listen for events from ${serviceName} and trigger executions.`;
-								}
-							} else if (trigger.polling) {
-								//check if a polling trigger
-								this.alertTriggerContent = `Your workflow will now regularly check  ${serviceName}for events and trigger executions for them.`;
-							} else if (trigger.name === 'n8n-nodes-base.cron') {
-								// check if a standard Cron trigger
-								this.alertTriggerContent = 'Your cron trigger will now trigger executions on the schedule you have defined.';
-							} else if (trigger.name === 'n8n-nodes-base.interval') {
-								// check if a standard Interval trigger
-								this.alertTriggerContent = 'Your interval trigger will now trigger executions on the schedule you have defined.';
-							} else if (trigger.name === 'n8n-nodes-base.workflowTrigger') {
-								this.alertTriggerContent = 'Your workflow will now trigger executions on the event you have defined.';
-							} else if (trigger.name === 'n8n-nodes-base.sseTrigger') {
-								this.alertTriggerContent = 'You can now make calls to your SSE URL to trigger executions.';
-							}
-						}
-						this.$store.dispatch('ui/openModal', WORKFLOW_ACTIVE_MODAL_KEY);
 					} else {
 						this.$store.commit('setWorkflowInactive', this.workflowId);
 					}
@@ -295,10 +256,6 @@ export default mixins(
 
 ::v-deep .el-loading-spinner {
 	margin-top: -10px;
-}
-
-.emphasised {
-	font-weight: 600;
 }
 
 </style>
