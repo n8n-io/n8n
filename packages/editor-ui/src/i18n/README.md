@@ -12,8 +12,7 @@ Currently, n8n does _not_ allow for internalization of:
 
 - messages from outside the `editor-ui` package, e.g. `No active database connection`,
 - node subtitles, e.g. `create: user` or `getAll: post` below the node name on the canvas,
-- new version notification contents in the updates panel, e.g. `Includes node enhancements`,
-- deeply nested parameters inside `collection` and `fixedCollection` (untested feature).
+- new version notification contents in the updates panel, e.g. `Includes node enhancements`.
 
 ## Locale identifiers
 
@@ -507,7 +506,6 @@ Allowed keys: `displayName`, `description`, `placeholder`, and `multipleValueBut
 ```
 
 ```js
-// node translation: /packages/nodes-base/nodes/Github/translations/de.ts
 module.exports = {
 	github: {
 		header: {},
@@ -523,16 +521,32 @@ module.exports = {
 				displayName: '🇩🇪 Label',
 				description: '🇩🇪 Label to add to issue.',
 			},
+
+			// fixed collection
+			additionalParameters: {
+				displayName: '🇩🇪 Additional Fields',
+				options: {
+					author: {
+						displayName: '🇩🇪 Author',
+					},
+				},
+			},
+			// fixed collection item - same level of nesting
+			author: {
+				displayName: '🇩🇪 Author',
+			},
 		},
 	},
 };
 ```
 
-To reduce excessive nesting, a parameter inside a collection's `options` parameter sits at the same level of nesting as the containing collection in the `nodeView` section.
+To reduce nesting and to share translations, a parameter inside a collection's or fixed collection's `options` parameter sits at the same level of nesting as the containing collection in the `nodeView` section.
 
 <p align="center">
     <img src="img/node3.png">
 </p>
+
+> **Note**: In case of deep nesting, i.e. a child of a child of a `collection` and `fixedCollection` parameter, the deeply nested child in principle should be translatable at the same level of nesting as the `collection` and `fixedCollection` parameter, but this has not been fully tested for this first release.
 
 #### Reusable dynamic text
 
