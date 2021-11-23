@@ -148,7 +148,7 @@ module.exports = {
 			},
 			email: {
 				displayName: '🇩🇪 Email',
-				description: '🇩🇪 The email of the author of the commit.'
+				description: '🇩🇪 The email of the author of the commit.',
 			},
 
 		},
