@@ -27,16 +27,7 @@
 import * as express from 'express';
 import { readFileSync } from 'fs';
 import { dirname as pathDirname, join as pathJoin, resolve as pathResolve } from 'path';
-import {
-	FindManyOptions,
-	FindOneOptions,
-	getConnectionManager,
-	In,
-	IsNull,
-	LessThanOrEqual,
-	Like,
-	Not,
-} from 'typeorm';
+import { FindManyOptions, getConnectionManager, In, IsNull, LessThanOrEqual, Not } from 'typeorm';
 import * as bodyParser from 'body-parser';
 import * as history from 'connect-history-api-fallback';
 import * as os from 'os';
@@ -47,7 +38,7 @@ import * as clientOAuth1 from 'oauth-1.0a';
 import { RequestOptions } from 'oauth-1.0a';
 import * as csrf from 'csrf';
 import * as requestPromise from 'request-promise-native';
-import { createHash, createHmac } from 'crypto';
+import { createHmac } from 'crypto';
 // IMPORTANT! Do not switch to anther bcrypt library unless really necessary and
 // tested with all possible systems like Windows, Alpine on ARM, FreeBSD, ...
 import { compare } from 'bcryptjs';
@@ -63,7 +54,6 @@ import {
 
 import {
 	ICredentialsDecrypted,
-	ICredentialsEncrypted,
 	ICredentialType,
 	IDataObject,
 	INodeCredentials,
@@ -73,17 +63,15 @@ import {
 	INodeType,
 	INodeTypeDescription,
 	INodeTypeNameVersion,
-	IRunData,
 	INodeVersionedType,
-	ITelemetryClientConfig,
 	ITelemetrySettings,
 	IWorkflowBase,
-	IWorkflowCredentials,
 	LoggerProxy,
 	NodeCredentialTestRequest,
 	NodeCredentialTestResult,
 	NodeHelpers,
 	Workflow,
+	ICredentialsEncrypted,
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
 
@@ -134,7 +122,6 @@ import {
 	IWorkflowExecutionDataProcess,
 	IWorkflowResponse,
 	IPersonalizationSurveyAnswers,
-	LoadNodesAndCredentials,
 	NodeTypes,
 	Push,
 	ResponseHelper,
@@ -324,8 +311,6 @@ class App {
 
 		this.frontendSettings.personalizationSurvey =
 			await PersonalizationSurvey.preparePersonalizationSurvey();
-
-		InternalHooksManager.init(this.frontendSettings.instanceId);
 
 		await this.externalHooks.run('frontend.settings', [this.frontendSettings]);
 
@@ -694,6 +679,7 @@ class App {
 
 					// @ts-ignore
 					savedWorkflow.id = savedWorkflow.id.toString();
+					await this.externalHooks.run('workflow.afterCreate', [savedWorkflow]);
 					void InternalHooksManager.getInstance().onWorkflowCreated(newWorkflow as IWorkflowBase);
 					return savedWorkflow;
 				},
@@ -1594,11 +1580,11 @@ class App {
 					const findQuery = {} as FindManyOptions;
 					if (req.query.filter) {
 						findQuery.where = JSON.parse(req.query.filter as string);
-						if ((findQuery.where! as IDataObject).id !== undefined) {
+						if (findQuery.where.id !== undefined) {
 							// No idea if multiple where parameters make db search
 							// slower but to be sure that that is not the case we
 							// remove all unnecessary fields in case the id is defined.
-							findQuery.where = { id: (findQuery.where! as IDataObject).id };
+							findQuery.where = { id: findQuery.where.id };
 						}
 					}
 
@@ -1832,12 +1818,6 @@ class App {
 						return ResponseHelper.sendErrorResponse(res, errorResponse);
 					}
 
-					// Decrypt the currently saved credentials
-					const workflowCredentials: IWorkflowCredentials = {
-						[result.type]: {
-							[result.id.toString()]: result as ICredentialsEncrypted,
-						},
-					};
 					const mode: WorkflowExecuteMode = 'internal';
 					const credentialsHelper = new CredentialsHelper(encryptionKey);
 					const decryptedDataOriginal = await credentialsHelper.getDecrypted(
@@ -2055,13 +2035,6 @@ class App {
 						);
 						return ResponseHelper.sendErrorResponse(res, errorResponse);
 					}
-
-					// Decrypt the currently saved credentials
-					const workflowCredentials: IWorkflowCredentials = {
-						[result.type]: {
-							[result.id.toString()]: result as ICredentialsEncrypted,
-						},
-					};
 
 					const mode: WorkflowExecuteMode = 'internal';
 					const credentialsHelper = new CredentialsHelper(encryptionKey);
@@ -2696,7 +2669,13 @@ class App {
 					return;
 				}
 
-				ResponseHelper.sendSuccessResponse(res, response.data, true, response.responseCode);
+				ResponseHelper.sendSuccessResponse(
+					res,
+					response.data,
+					true,
+					response.responseCode,
+					response.headers,
+				);
 			},
 		);
 
@@ -2747,7 +2726,13 @@ class App {
 					return;
 				}
 
-				ResponseHelper.sendSuccessResponse(res, response.data, true, response.responseCode);
+				ResponseHelper.sendSuccessResponse(
+					res,
+					response.data,
+					true,
+					response.responseCode,
+					response.headers,
+				);
 			},
 		);
 
@@ -2773,7 +2758,13 @@ class App {
 					return;
 				}
 
-				ResponseHelper.sendSuccessResponse(res, response.data, true, response.responseCode);
+				ResponseHelper.sendSuccessResponse(
+					res,
+					response.data,
+					true,
+					response.responseCode,
+					response.headers,
+				);
 			},
 		);
 
@@ -2795,15 +2786,9 @@ class App {
 							return;
 						}
 
-						const loadNodesAndCredentials = LoadNodesAndCredentials();
-
 						const credentialsOverwrites = CredentialsOverwrites();
 
 						await credentialsOverwrites.init(body);
-
-						const credentialTypes = CredentialTypes();
-
-						await credentialTypes.init(loadNodesAndCredentials.credentialTypes);
 
 						this.presetCredentialsLoaded = true;
 
