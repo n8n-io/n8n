@@ -31,9 +31,6 @@ module.exports = {
 			},
 		},
 		nodeView: {
-			/**
-			 * Examples of `options` parameters.
-			 */
 			authentication: {
 				displayName: '🇩🇪 Authentication',
 				options: {
@@ -83,9 +80,6 @@ module.exports = {
 				},
 			},
 
-			/**
-			 * Examples of `string` parameters.
-			 */
 			owner: {
 				displayName: '🇩🇪 Repository Owner',
 				placeholder: '🇩🇪 n8n-io',
@@ -102,10 +96,6 @@ module.exports = {
 				displayName: '🇩🇪 Body',
 			},
 
-			/**
-			 * Examples of `collection` parameters.
-			 * `multipleValueButtonText` is the button label.
-			 */
 			labels: {
 				displayName: '🇩🇪 Labels',
 				multipleValueButtonText: '🇩🇪 Add Label',
@@ -115,10 +105,6 @@ module.exports = {
 				multipleValueButtonText: '🇩🇪 Add Assignee',
 			},
 
-			/**
-			 * Examples of fields in `collection` parameters.
-			 * Note: Same level of nesting as `collection`.
-			 */
 			label: {
 				displayName: '🇩🇪 Label',
 				description: '🇩🇪 Label to add to issue.',
@@ -128,10 +114,6 @@ module.exports = {
 				description: '🇩🇪 User to assign issue to.',
 			},
 
-			/**
-			 * Example of a `fixedCollection` parameter.
-			 * `placeholder` is the button label.
-			 */
 			additionalParameters: {
 				displayName: '🇩🇪 Additional Fields',
 				placeholder: '🇩🇪 Add Field',
@@ -148,19 +130,18 @@ module.exports = {
 				},
 			},
 
-			/**
-			 * Example of a field in a `fixedCollection` parameter.
-			 * Note: Same level of nesting as `fixedCollection`.
-			 */
-			committer: {
-				displayName: '🇩🇪 Commit-Macher',
-				description: '🇩🇪 Beschreibung',
+			author: {
+				displayName: '🇩🇪 Author',
 			},
 
-			/**
-			 * Examples of options in a field in a `fixedCollection` parameter.
-			 * Note: Same level of nesting as `fixedCollection`.
-			 */
+			branch: {
+				displayName: '🇩🇪 Branch',
+			},
+
+			committer: {
+				displayName: '🇩🇪 Committer',
+			},
+
 			name: {
 				displayName: '🇩🇪 Name',
 				description: '🇩🇪 The name of the author of the commit.',
