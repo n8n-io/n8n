@@ -47,21 +47,13 @@ export const DEFAULT_START_NODE = {
 	parameters: {},
 };
 
-if (!window.localStorage.getItem('LOOPBACK_MINIMUM')) {
-	window.localStorage.setItem('LOOPBACK_MINIMUM', `${LOOPBACK_MINIMUM}`);
-}
-
-if (!window.localStorage.getItem('LOOPBACK_VERTICAL_LENGTH')) {
-	window.localStorage.setItem('LOOPBACK_VERTICAL_LENGTH', `${NODE_SIZE}`);
-}
-
 export const CONNECTOR_FLOWCHART_TYPE = ['N8nCustom', {
 	cornerRadius: 12,
 	stub: JSPLUMB_FLOWCHART_STUB + 10,
 	targetGap: 4,
 	alwaysRespectStubs: false,
-	loopbackVerticalLength: parseInt(window.localStorage.getItem('LOOPBACK_VERTICAL_LENGTH') || '0', 10), // height of vertical segment when looping
-	loopbackMinimum: parseInt(window.localStorage.getItem('LOOPBACK_MINIMUM') || '0', 10), // minimum length before flowchart loops around
+	loopbackVerticalLength: NODE_SIZE + GRID_SIZE, // height of vertical segment when looping
+	loopbackMinimum: LOOPBACK_MINIMUM, // minimum length before flowchart loops around
 	getEndpointOffset(endpoint: Endpoint) {
 		const indexOffset = 10; // stub offset between different endpoints of same node
 		const index = endpoint && endpoint.__meta ? endpoint.__meta.index : 0;
