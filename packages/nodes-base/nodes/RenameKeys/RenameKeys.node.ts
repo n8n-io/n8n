@@ -86,7 +86,6 @@ export class RenameKeys implements INodeType {
 		const returnData: INodeExecutionData[] = [];
 
 		let item: INodeExecutionData;
-		//let newItem: INodeExecutionData;
 		let keepOnlyRenamed: boolean;
 		let renameKeys: IRenameKey[];
 		let value: any; // tslint:disable-line:no-any
@@ -100,17 +99,17 @@ export class RenameKeys implements INodeType {
 			};
 			
 			if (keepOnlyRenamed !== true) {
+				if (item.binary !== undefined) {
+					// Reference binary data if any exists. We can reference it
+					// as this nodes does not change it
+					newItem.binary = item.binary;
+				}
+				
 				// Copy the whole JSON data as data on any level can be renamed
 				newItem = {
 					json: JSON.parse(JSON.stringify(item.json)),
 				};
 			};
-
-			if (item.binary !== undefined) {
-				// Reference binary data if any exists. We can reference it
-				// as this nodes does not change it
-				newItem.binary = item.binary;
-			}
 
 			renameKeys.forEach((renameKey) => {
 				if (renameKey.currentKey === '' || renameKey.newKey === '' || renameKey.currentKey === renameKey.newKey) {
