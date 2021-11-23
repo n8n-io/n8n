@@ -23,6 +23,7 @@
 		this.label = '';
 		this.labelOffset = 0;
 		this.size = 'medium';
+		this.showOutputLabel = true;
 
 		const boxSize = {
 			medium: 24,
@@ -152,12 +153,15 @@
 
 		this.setSuccessOutput = (output, repaint = true) => {
 			this.canvas.classList.add('success');
-			successOutput.textContent = output;
-			this.label = output;
-			this.labelOffset = successOutput.offsetWidth;
-			plusStalk.style.width = `${stalkLength + this.labelOffset}px`;
-			if (repaint) {
-				params.endpoint.repaint();
+			if (this.showOutputLabel) {
+				successOutput.textContent = output;
+				this.label = output;
+				this.labelOffset = successOutput.offsetWidth;
+				plusStalk.style.width = `${stalkLength + this.labelOffset}px`;
+
+				if (repaint) {
+					params.endpoint.repaint(); // force rerender to move plus hoverable/draggable space
+				}
 			}
 		};
 
@@ -193,6 +197,8 @@
 
 		this._compute = (anchorPoint, orientation, endpointStyle, connectorPaintStyle) => {
 			this.size = endpointStyle.size || this.size;
+			this.showOutputLabel = !!endpointStyle.showOutputLabel;
+
 			if (this.size !== 'medium') {
 				container.classList.add(this.size);
 			}
