@@ -167,7 +167,7 @@
 				this.labelOffset = successOutput.offsetWidth;
 				plusStalk.style.width = `${stalkLength + this.labelOffset}px`;
 
-				if (repaint) {
+				if (repaint && !this._jsPlumb.instance.isSuspendDrawing()) {
 					params.endpoint.repaint(); // force rerender to move plus hoverable/draggable space
 				}
 			}
