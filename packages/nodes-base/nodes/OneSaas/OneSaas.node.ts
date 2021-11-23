@@ -92,8 +92,8 @@ export class OneSaas implements INodeType {
 			...aiOperations,
 			...aiFields,
 			// Code
-			//...codeOperations,
-			//...codeFields,
+			...codeOperations,
+			...codeFields,
 			// Files
 			//...filesOperations,
 			//...filesFields,
@@ -117,27 +117,28 @@ export class OneSaas implements INodeType {
 			try {
 				const resource = this.getNodeParameter('resource', 0) as string;
 				const operation = this.getNodeParameter('operation', 0) as string;
+				// AI: https://docs.1saas.co/api-documentation/ai
 				if (resource === 'ai') {
 					if (operation === 'emailValidation') {
 						const email = this.getNodeParameter('email', i) as string;
 						const body: IDataObject = {
 							email,
 						};
-						responseData = await oneSaasRequest.call(this, 'POST', '/email', {email: email });
+						responseData = await oneSaasRequest.call(this, 'POST', '/email', body);
 					}
 					if (operation === 'entityDetection') {
 						const text = this.getNodeParameter('text', i) as string;
 						const body: IDataObject = {
 							text,
 						};
-						responseData = await oneSaasRequest.call(this, 'POST', '/entity', {text: text });
+						responseData = await oneSaasRequest.call(this, 'POST', '/entity', body);
 					}
 					if (operation === 'languageValidation') {
 						const text = this.getNodeParameter('text', i) as string;
 						const body: IDataObject = {
 							text,
 						};
-						responseData = await oneSaasRequest.call(this, 'POST', '/lang', {text: text });
+						responseData = await oneSaasRequest.call(this, 'POST', '/lang', body);
 						responseData = responseData.languageResult;
 					}
 					if (operation === 'moodDetection') {
@@ -145,7 +146,7 @@ export class OneSaas implements INodeType {
 						const body: IDataObject = {
 							text,
 						};
-						responseData = await oneSaasRequest.call(this, 'POST', '/mood', {text: text });
+						responseData = await oneSaasRequest.call(this, 'POST', '/mood', body);
 						responseData = responseData.sentimentResult;
 					}
 					if (operation === 'ocr') {
@@ -153,14 +154,14 @@ export class OneSaas implements INodeType {
 						const body: IDataObject = {
 							imageUrl,
 						};
-						responseData = await oneSaasRequest.call(this, 'POST', '/ocr', {imageUrl: imageUrl });
+						responseData = await oneSaasRequest.call(this, 'POST', '/ocr', body);
 					}
 					if (operation === 'pictureRecognition') {
 						const imageUrl = this.getNodeParameter('imageUrl', i) as string;
 						const body: IDataObject = {
 							imageUrl,
 						};
-						responseData = await oneSaasRequest.call(this, 'POST', '/pic', {imageUrl: imageUrl });
+						responseData = await oneSaasRequest.call(this, 'POST', '/pic', body);
 						responseData = responseData.concepts;
 					}
 					if (operation === 'translation') {
@@ -170,7 +171,24 @@ export class OneSaas implements INodeType {
 							text,
 							resultLang,
 						};
-						responseData = await oneSaasRequest.call(this, 'POST', '/translate', {text: text, resultLang: resultLang });
+						responseData = await oneSaasRequest.call(this, 'POST', '/translate', body);
+					}
+				}
+				// Code : https://docs.1saas.co/api-documentation/code
+				if (resource === 'code') {
+					if (operation === 'javascript') {
+						const code = this.getNodeParameter('code', i) as string;
+						const body: IDataObject = {
+							code,
+						};
+						responseData = await oneSaasRequest.call(this, 'POST', '/js', body);
+					}
+					if (operation === 'python') {
+						const code = this.getNodeParameter('code', i) as string;
+						const body: IDataObject = {
+							code,
+						};
+						responseData = await oneSaasRequest.call(this, 'POST', '/py', body);
 					}
 				}
 

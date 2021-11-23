@@ -17,7 +17,7 @@ export const codeOperations = [
 		options: [
 			{
 				name: 'Javascript',
-				value: 'javaScript',
+				value: 'javascript',
 				description: 'Run Javascript via API',
 			},
 			{
@@ -26,8 +26,47 @@ export const codeOperations = [
 				description: 'Run Python via API',
 			},
 		],
-		default: 'javaScript',
+		default: 'javascript',
 	},
 ] as INodeProperties[];
 
-export const codeFields = [] as INodeProperties[];
+export const codeFields = [
+	// code: javascript
+	{
+		displayName: 'Code',
+		name: 'code',
+		type: 'string',
+		required: true,
+		displayOptions: {
+			show: {
+				operation: [
+					'javascript',
+				],
+				resource: [
+					'code',
+				],
+			},
+		},
+		default: '',
+		description: 'Your javascript code',
+	},
+	// code: javascript
+	{
+		displayName: 'Code',
+		name: 'code',
+		type: 'string',
+		required: true,
+		displayOptions: {
+			show: {
+				operation: [
+					'python',
+				],
+				resource: [
+					'code',
+				],
+			},
+		},
+		default: '',
+		description: 'Your python code',
+	},
+] as INodeProperties[];
