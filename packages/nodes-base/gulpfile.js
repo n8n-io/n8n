@@ -13,13 +13,12 @@ function copyIcons() {
 	return src('credentials/**/*.{png,svg}').pipe(dest('dist/credentials'));
 }
 
-task('build:translations', writeHeadersAndTranslations);
+task('build:translations', writeHeaders);
 
 /**
- * Write all node translation headers at `/dist/nodes/headers.js` and write
- * each node translation at `/dist/nodes/<node>/translations/<language>.js`
+ * Write all node translation headers at `/dist/nodes/headers.js`.
  */
-function writeHeadersAndTranslations(done) {
+function writeHeaders(done) {
 	const { N8N_DEFAULT_LOCALE: locale } = process.env;
 
 	log(`Default locale set to: ${colorize(PURPLE_ANSI_COLOR_CODE, locale || 'en')}`);
@@ -30,7 +29,7 @@ function writeHeadersAndTranslations(done) {
 	};
 
 	const paths = getTranslationPaths();
-	const { headers, translations } = getHeadersAndTranslations(paths);
+	const headers = getHeaders(paths);
 
 	const headersDestinationPath = path.join(__dirname, 'dist', 'nodes', 'headers.js');
 
@@ -38,13 +37,6 @@ function writeHeadersAndTranslations(done) {
 
 	log('Headers translation file written to:');
 	log(headersDestinationPath, { bulletpoint: true });
-
-	translations.forEach(t => {
-		writeDestinationFile(t.destinationPath, t.content);
-	});
-
-	log('Main translation files written to:');
-	translations.forEach(t => log(t.destinationPath, { bulletpoint: true }))
 
 	done();
 }
@@ -82,7 +74,7 @@ function getTranslationPaths() {
 	}, []);
 }
 
-function getHeadersAndTranslations(paths) {
+function getHeaders(paths) {
 	return paths.reduce((acc, cur) => {
 		const translation = require(cur.source);
 		const nodeTypes = Object.keys(translation);
@@ -91,17 +83,12 @@ function getHeadersAndTranslations(paths) {
 			const { header } = translation[nodeType];
 
 			if (isValidHeader(header, ALLOWED_HEADER_KEYS)) {
-				acc.headers[nodeType] = header;
+				acc[nodeType] = header;
 			}
-
-			acc.translations.push({
-				destinationPath: cur.destination,
-				content: translation,
-			});
 		}
 
 		return acc;
-	}, { headers: {}, translations: [] });
+	}, {});
 }
 
 
