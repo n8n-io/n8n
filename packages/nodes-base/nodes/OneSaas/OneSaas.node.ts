@@ -72,10 +72,10 @@ export class OneSaas implements INodeType {
 						name: 'Code',
 						value: 'code',
 					},
-					{
+					/*{
 						name: 'Files',
 						value: 'files',
-					},
+					},*/
 					{
 						name: 'NoCode Helper',
 						value: 'noCodeHelper',
@@ -101,8 +101,8 @@ export class OneSaas implements INodeType {
 			//...noCodeHelperOperations,
 			//...noCodeHelperFields,
 			// Random
-			//...randomOperations,
-			//...randomFields,
+			...randomOperations,
+			...randomFields,
 		],
 	};
 
@@ -117,7 +117,7 @@ export class OneSaas implements INodeType {
 			try {
 				const resource = this.getNodeParameter('resource', 0) as string;
 				const operation = this.getNodeParameter('operation', 0) as string;
-				// AI: https://docs.1saas.co/api-documentation/ai
+				// AI : https://docs.1saas.co/api-documentation/ai
 				if (resource === 'ai') {
 					if (operation === 'emailValidation') {
 						const email = this.getNodeParameter('email', i) as string;
@@ -132,6 +132,7 @@ export class OneSaas implements INodeType {
 							text,
 						};
 						responseData = await oneSaasRequest.call(this, 'POST', '/entity', body);
+						responseData = responseData.result;
 					}
 					if (operation === 'languageValidation') {
 						const text = this.getNodeParameter('text', i) as string;
@@ -189,6 +190,34 @@ export class OneSaas implements INodeType {
 							code,
 						};
 						responseData = await oneSaasRequest.call(this, 'POST', '/py', body);
+					}
+				}
+				// Random : https://docs.1saas.co/api-documentation/random
+				if (resource === 'random') {
+					if (operation === 'city') {
+						responseData = await oneSaasRequest.call(this, 'POST', '/city');
+					}
+					if (operation === 'name') {
+						responseData = await oneSaasRequest.call(this, 'POST', '/name');
+					}
+					if (operation === 'number') {
+						const range = this.getNodeParameter('range', i) as string;
+						const type = this.getNodeParameter('type', i) as string;
+						const body: IDataObject = {
+							range,
+							type,
+						};
+						responseData = await oneSaasRequest.call(this, 'POST', '/nr', body);
+					}
+					if (operation === 'string') {
+						const type = this.getNodeParameter('type', i) as string;
+						const leng = this.getNodeParameter('leng', i) as string;
+						const body: IDataObject = {
+							type,
+							leng,
+						};
+						responseData = await oneSaasRequest.call(this, 'POST', '/string', body);
+
 					}
 				}
 
