@@ -74,7 +74,7 @@ export const nodeBase = mixins(
 						type: inputName,
 						index,
 					},
-					enabled: !this.isReadOnly,
+					enabled: !this.isReadOnly && nodeTypeData.inputs.length > 1, // disable for nodes with multiple inputs.. otherwise attachment handled by connectionDrag event in NodeView
 					dragAllowedWhenFull: true,
 					dropOptions: {
 						tolerance: 'touch',
