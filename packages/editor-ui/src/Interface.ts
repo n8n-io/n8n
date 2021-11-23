@@ -469,6 +469,10 @@ export interface IPersonalizationSurvey {
 	shouldShow: boolean;
 }
 
+export interface IContactPromptModal {
+	isAlreadyShowed: boolean;
+}
+
 export interface IN8nUISettings {
 	endpointWebhook: string;
 	endpointWebhookTest: string;
@@ -491,6 +495,7 @@ export interface IN8nUISettings {
 	instanceId: string;
 	personalizationSurvey?: IPersonalizationSurvey;
 	telemetry: ITelemetrySettings;
+	contactPromptModal?: IContactPromptModal; //temporary
 }
 
 export interface IN8nContactPrompt {

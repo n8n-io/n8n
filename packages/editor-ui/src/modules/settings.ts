@@ -2,6 +2,7 @@ import {  ActionContext, Module } from 'vuex';
 import {
 	IN8nUISettings,
 	IPersonalizationSurveyAnswers,
+	IContactPromptModal,
 	IRootState,
 	ISettingsState,
 } from '../Interface';
@@ -33,6 +34,11 @@ const module: Module<ISettingsState, IRootState> = {
 			Vue.set(state.settings, 'personalizationSurvey', {
 				answers,
 				shouldShow: false,
+			});
+		},
+		setContactPromptModal(state: ISettingsState, data: IContactPromptModal) {
+			Vue.set(state.settings, 'contactPromptModal', {
+				isAlreadyShowed: data.isAlreadyShowed,
 			});
 		},
 	},
@@ -71,9 +77,15 @@ const module: Module<ISettingsState, IRootState> = {
 		},
 		async getContactPromptData(context: ActionContext<ISettingsState, IRootState>) {
 			const contactPromptData = await getContactPromptData(context.state.settings.instanceId);
+			let showContactPromptData = true;
 
-			if (contactPromptData.show) {
+			if (context.state.settings.contactPromptModal) {
+				showContactPromptData = !context.state.settings.contactPromptModal!.isAlreadyShowed;
+			}
+
+			if (contactPromptData.show && showContactPromptData) {
 				context.commit('ui/openModal', CONTACT_PROMPT_MODAL_KEY, {root: true});
+				context.commit('setContactPromptModal', { isAlreadyShowed: contactPromptData.show });
 			}
 		},
 	},
