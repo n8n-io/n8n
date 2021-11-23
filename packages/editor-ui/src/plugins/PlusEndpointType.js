@@ -172,7 +172,7 @@
 			}
 
 			plusStalk.style.width = `${stalkLength + this.labelOffset}px`;
-			if (repaint && !this._jsPlumb.instance.isSuspendDrawing()) {
+			if (repaint && !this._jsPlumb && this._jsPlumb.instance && this._jsPlumb.instance.isSuspendDrawing()) {
 				params.endpoint.repaint(); // force rerender to move plus hoverable/draggable space
 			}
 		};
