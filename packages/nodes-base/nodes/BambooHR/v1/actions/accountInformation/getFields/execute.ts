@@ -15,14 +15,8 @@ export async function getFields(this: IExecuteFunctions, index: number): Promise
   const requestMethod = 'GET';
   const endPoint = 'meta/fields';
 
-  //meta data
-  const companyName = this.getNodeParameter('companyName', index) as string;
-
-  //API uri
-  const uri = `https://api.bamboohr.com/api/gateway.php/${companyName}/v1/${endPoint}`;
-
   //response
-  const responseData = await apiRequest.call(this, requestMethod, uri, body);
+  const responseData = await apiRequest.call(this, requestMethod, endPoint, body);
 
   //return
   return this.helpers.returnJsonArray(responseData);

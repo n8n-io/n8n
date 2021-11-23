@@ -4,24 +4,6 @@ import {
 
 export const timeOffGetEmployeeOutDescription: TimeOffProperties = [
   {
-    displayName: 'Company Name',
-    name: 'companyName',
-    type: 'string',
-    required: true,
-    displayOptions: {
-      show: {
-        operation: [
-          'getEmployeeOut'
-        ],
-        resource: [
-          'timeOff',
-        ],
-      },
-    },
-    default: '',
-    description: 'Company name',
-  },
-  {
     displayName: 'Additional Fields',
     name: 'additionalFields',
     type: 'collection',

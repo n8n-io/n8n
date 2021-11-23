@@ -21,7 +21,7 @@ import {
 export async function apiRequest(
   this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
   method: 'GET' | 'POST' | 'PUT' | 'DELETE' | 'HEAD',
-  uri: string,
+  endPoint: string,
   body: string[] | IDataObject = {},
   query: IDataObject = {},
 ) {
@@ -31,7 +31,12 @@ export async function apiRequest(
     throw new NodeOperationError(this.getNode(), 'No credentials returned!');
   }
 
+	//set-up credentials
   const apiKey = credentials.apiKey;
+	const companyName = credentials.companyName;
+
+	//set-up uri
+	const uri = `https://api.bamboohr.com/api/gateway.php/${companyName}/v1/${endPoint}`;
 
   let options: IHttpRequestOptions = {
     method,

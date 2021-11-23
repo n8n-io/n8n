@@ -16,14 +16,8 @@ export async function getDirectory(this: IExecuteFunctions, index: number): Prom
   const requestMethod = 'GET';
   const endPoint = 'employees/directory';
 
-  //meta data
-  const companyName = this.getNodeParameter('companyName', index) as string;
-
-  //API uri
-  const uri = `https://api.bamboohr.com/api/gateway.php/${companyName}/v1/${endPoint}/`;
-
   //response
-  const responseData = await apiRequest.call(this, requestMethod, uri, body);
+  const responseData = await apiRequest.call(this, requestMethod, endPoint, body);
 
   //return
   return this.helpers.returnJsonArray(responseData);

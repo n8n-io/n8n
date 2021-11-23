@@ -14,17 +14,15 @@ import {
 export async function getAll(this: IExecuteFunctions, index: number): Promise<INodeExecutionData[]> {
   const body = {} as IDataObject;
   const requestMethod = 'GET';
-  const endPoint = 'employees';
 
   //meta data
-  const companyName = this.getNodeParameter('companyName', index) as string;
   const id = this.getNodeParameter('id', index) as string;
 
-  //API uri
-  const uri = `https://api.bamboohr.com/api/gateway.php/${companyName}/v1/${endPoint}/${id}/files/view/`;
+	//endpoint
+	const endPoint = `employees/${id}/files/view/`;
 
   //response
-  const responseData = await apiRequest.call(this, requestMethod, uri, body);
+  const responseData = await apiRequest.call(this, requestMethod, endPoint, body);
 
   //return
   return this.helpers.returnJsonArray(responseData);

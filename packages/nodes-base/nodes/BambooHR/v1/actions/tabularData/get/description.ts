@@ -4,24 +4,6 @@ import {
 
 export const tabularDataGetDescription: TabularDataProperties = [
   {
-    displayName: 'Company Name',
-    name: 'companyName',
-    type: 'string',
-    required: true,
-    displayOptions: {
-      show: {
-        operation: [
-          'get'
-        ],
-        resource: [
-          'tabularData',
-        ],
-      },
-    },
-    default: '',
-    description: 'Company name',
-  },
-  {
     displayName: 'Employee ID',
     name: 'id',
     type: 'string',

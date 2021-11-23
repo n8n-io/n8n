@@ -4,24 +4,6 @@ import {
 
 export const reportsGetDescription: ReportsProperties = [
   {
-    displayName: 'Company Name',
-    name: 'companyName',
-    type: 'string',
-    required: true,
-    displayOptions: {
-      show: {
-        operation: [
-          'get'
-        ],
-        resource: [
-          'reports',
-        ],
-      },
-    },
-    default: '',
-    description: 'Company name',
-  },
-  {
     displayName: 'Report ID',
     name: 'id',
     type: 'string',

@@ -4,24 +4,6 @@ import {
 
 export const timeOffChangeStatusDescription: TimeOffProperties = [
   {
-    displayName: 'Company Name',
-    name: 'companyName',
-    type: 'string',
-    required: true,
-    displayOptions: {
-      show: {
-        operation: [
-          'changeStatus'
-        ],
-        resource: [
-          'timeOff',
-        ],
-      },
-    },
-    default: '',
-    description: 'Company name',
-  },
-  {
     displayName: 'Request ID',
     name: 'requestId',
     type: 'string',
@@ -92,7 +74,7 @@ export const timeOffChangeStatusDescription: TimeOffProperties = [
         displayName: 'Note',
         name: 'note',
         type: 'string',
-        default: 'Note!',
+        default: '',
         description: 'A note to attach to the change in status',
       },
     ],

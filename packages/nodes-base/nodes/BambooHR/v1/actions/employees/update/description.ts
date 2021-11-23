@@ -4,25 +4,7 @@ import {
 
 export const employeesUpdateDescription: EmployeesProperties = [
   {
-    displayName: 'Company Name',
-    name: 'companyName',
-    type: 'string',
-    required: true,
-    displayOptions: {
-      show: {
-        operation: [
-          'update'
-        ],
-        resource: [
-          'employees',
-        ],
-      },
-    },
-    default: '',
-    description: 'Company name',
-  },
-  {
-    displayName: 'Employee Id',
+    displayName: 'Employee ID',
     name: 'id',
     type: 'string',
     required: true,

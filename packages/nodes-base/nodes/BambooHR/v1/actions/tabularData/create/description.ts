@@ -4,24 +4,6 @@ import {
 
 export const tabularDataCreateDescription: TabularDataProperties = [
   {
-    displayName: 'Company Name',
-    name: 'companyName',
-    type: 'string',
-    required: true,
-    displayOptions: {
-      show: {
-        operation: [
-          'create'
-        ],
-        resource: [
-          'tabularData',
-        ],
-      },
-    },
-    default: '',
-    description: 'Company name',
-  },
-  {
     displayName: 'Employee ID',
     name: 'id',
     type: 'string',

@@ -4,24 +4,6 @@ import {
 
 export const timeOffCreateRequestDescription: TimeOffProperties = [
   {
-    displayName: 'Company Name',
-    name: 'companyName',
-    type: 'string',
-    required: true,
-    displayOptions: {
-      show: {
-        operation: [
-          'createRequest'
-        ],
-        resource: [
-          'timeOff',
-        ],
-      },
-    },
-    default: '',
-    description: 'Company name',
-  },
-  {
     displayName: 'Employee ID',
     name: 'employeeId',
     type: 'string',

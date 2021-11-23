@@ -4,24 +4,6 @@ import {
 
 export const timeOffAdjustTimeDescription: TimeOffProperties = [
   {
-    displayName: 'Company Name',
-    name: 'companyName',
-    type: 'string',
-    required: true,
-    displayOptions: {
-      show: {
-        operation: [
-          'adjustTime'
-        ],
-        resource: [
-          'timeOff',
-        ],
-      },
-    },
-    default: '',
-    description: 'Company name',
-  },
-  {
     displayName: 'Employee ID',
     name: 'employeeId',
     type: 'string',

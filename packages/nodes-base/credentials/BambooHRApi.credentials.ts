@@ -14,5 +14,11 @@ export class BambooHRApi implements ICredentialType {
       type: 'string' as NodePropertyTypes,
       default: '',
     },
+		{
+      displayName: 'Company name',
+      name: 'companyName',
+      type: 'string' as NodePropertyTypes,
+      default: '',
+    },
   ];
 }

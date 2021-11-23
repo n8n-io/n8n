@@ -15,13 +15,11 @@ export async function create(this: IExecuteFunctions, index: number): Promise<IN
   const body = {} as IDataObject;
   const requestMethod = 'POST';
   const endPoint = 'employees';
-  const companyName = this.getNodeParameter('companyName', index) as string;
 
   body.firstName = this.getNodeParameter('firstName', index) as string;
   body.lastName = this.getNodeParameter('lastName', index) as string;
 
-  const uri = `https://api.bamboohr.com/api/gateway.php/${companyName}/v1/${endPoint}/`;
-  const responseData = await apiRequest.call(this, requestMethod, uri, body);
+  const responseData = await apiRequest.call(this, requestMethod, endPoint, body);
 
   return this.helpers.returnJsonArray(responseData);
 }

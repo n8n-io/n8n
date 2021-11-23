@@ -14,20 +14,18 @@ import {
 export async function get(this: IExecuteFunctions, index: number): Promise<INodeExecutionData[]> {
   const body = {} as IDataObject;
   const requestMethod = 'GET';
-  const endPoint = 'employees';
 
-  //meta data
-  const companyName = this.getNodeParameter('companyName', index) as string;
-  const id = this.getNodeParameter('id', index) as string;
+	//meta data
+	const id = this.getNodeParameter('id', index) as string;
 
-  //query parameters
+	//query parameters
   const fields = this.getNodeParameter('fields', index);
 
-  //API uri
-  const uri = `https://api.bamboohr.com/api/gateway.php/${companyName}/v1/${endPoint}/${id}/?fields=${fields}`;
+	//endpoint
+  const endPoint = `employees/${id}/?fields=${fields}`;
 
-  //response
-  const responseData = await apiRequest.call(this, requestMethod, uri, body);
+	//response
+	const responseData = await apiRequest.call(this, requestMethod, endPoint, body);
 
   //return
   return this.helpers.returnJsonArray(responseData);

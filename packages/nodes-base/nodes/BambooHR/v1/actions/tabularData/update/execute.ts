@@ -14,23 +14,21 @@ import {
 export async function update(this: IExecuteFunctions, index: number): Promise<INodeExecutionData[]> {
   var body = {} as IDataObject;
   const requestMethod = 'POST';
-  const endPoint = 'employees';
 
   //meta data
-  const companyName = this.getNodeParameter('companyName', index) as string;
   const id = this.getNodeParameter('id', index) as string;
   const tableName = this.getNodeParameter('table', index) as string;
   const rowId = this.getNodeParameter('rowId', index) as string;
+
+	//endpoint
+	const endPoint = `employees/${id}/tables/${tableName}/${rowId}`;
 
   //body parameters
   body = this.getNodeParameter('additionalFields', index) as IDataObject;
   body.location = this.getNodeParameter('location', index) as string;
 
-  //API uri
-  const uri = `https://api.bamboohr.com/api/gateway.php/${companyName}/v1/${endPoint}/${id}/tables/${tableName}/${rowId}`;
-
   //response
-  const responseData = await apiRequest.call(this, requestMethod, uri, body);
+  const responseData = await apiRequest.call(this, requestMethod, endPoint, body);
 
   //return
   return this.helpers.returnJsonArray({ statusCode: responseData.statusCode, statusMessage: responseData.statusMessage });
