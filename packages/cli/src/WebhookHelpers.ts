@@ -16,7 +16,7 @@ import * as express from 'express';
 // eslint-disable-next-line import/no-extraneous-dependencies
 import { get } from 'lodash';
 
-import { BinaryDataHelper, NodeExecuteFunctions } from 'n8n-core';
+import { BINARY_ENCODING, BinaryDataHelper, NodeExecuteFunctions } from 'n8n-core';
 
 import {
 	createDeferredPromise,

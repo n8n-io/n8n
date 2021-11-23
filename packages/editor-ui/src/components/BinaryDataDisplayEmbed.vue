@@ -3,6 +3,9 @@
 		<div v-if="isLoading">
 			Loading binary data...
 		</div>
+		<div v-else-if="error">
+			Error loading binary data
+		</div>
 		<div v-else>
 			<video v-if="binaryData.mimeType && binaryData.mimeType.startsWith('video/')" controls autoplay>
 				<source :src="embedSource" :type="binaryData.mimeType">
@@ -31,6 +34,7 @@ export default mixins(
 			return {
 				isLoading: true,
 				embedSource: '',
+				error: false,
 			};
 		},
 		async mounted() {
@@ -40,9 +44,14 @@ export default mixins(
 				return;
 			}
 
-			const bufferString = await this.restApi().getBinaryBufferString(this.binaryData!.internalIdentifier!);
-			this.embedSource = 'data:' + this.binaryData.mimeType + ';base64,' + bufferString;
-			this.isLoading = false;
+			try {
+				const bufferString = await this.restApi().getBinaryBufferString(this.binaryData!.internalIdentifier!);
+				this.embedSource = 'data:' + this.binaryData.mimeType + ';base64,' + bufferString;
+				this.isLoading = false;
+			} catch (e) {
+				this.isLoading = false;
+				this.error = true;
+			}
 		},
 		methods: {
 			embedClass (): string[] {

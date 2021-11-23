@@ -187,7 +187,7 @@ export class BinaryDataHelper {
 		return this.getFilesToDelete(metaFilename).then(async (filesToDelete) => {
 			return Promise.all(
 				Object.keys(filesToDelete).map(async (identifier) =>
-					this.deleteBinaryDataByIdentifier(identifier),
+					this.deleteBinaryDataByIdentifier(identifier).catch(() => {}),
 				),
 			).then(() => {});
 		});
@@ -252,6 +252,11 @@ export class BinaryDataHelper {
 	}
 
 	private async retrieveFromLocalStorage(identifier: string) {
-		return fs.readFile(path.join(this.storagePath, identifier));
+		const filePath = path.join(this.storagePath, identifier);
+		try {
+			return await fs.readFile(filePath);
+		} catch (e) {
+			throw new Error(`Error finding file: ${filePath}`);
+		}
 	}
 }
