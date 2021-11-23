@@ -221,10 +221,10 @@ module.exports = {
 
 <p align="center">
     <img src="img/header1.png" width="400">
-    <img src="img/header2.png">
+    <img src="img/header2.png" width="200">
     <img src="img/header3.png" width="400">
     <img src="img/header4.png" width="400">
-    <img src="img/header5.png" width="400">
+    <img src="img/header5.png">
 </p>
 
 #### `credentialsModal` section
