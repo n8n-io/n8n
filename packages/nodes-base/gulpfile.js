@@ -85,17 +85,20 @@ function getTranslationPaths() {
 function getHeadersAndTranslations(paths) {
 	return paths.reduce((acc, cur) => {
 		const translation = require(cur.source);
-		const nodeType = Object.keys(translation).pop();
-		const { header } = translation[nodeType];
+		const nodeTypes = Object.keys(translation);
 
-		if (isValidHeader(header, ALLOWED_HEADER_KEYS)) {
-			acc.headers[nodeType] = header;
+		for (const nodeType of nodeTypes) {
+			const { header } = translation[nodeType];
+
+			if (isValidHeader(header, ALLOWED_HEADER_KEYS)) {
+				acc.headers[nodeType] = header;
+			}
+
+			acc.translations.push({
+				destinationPath: cur.destination,
+				content: translation,
+			});
 		}
-
-		acc.translations.push({
-			destinationPath: cur.destination,
-			content: translation,
-		});
 
 		return acc;
 	}, { headers: {}, translations: [] });
