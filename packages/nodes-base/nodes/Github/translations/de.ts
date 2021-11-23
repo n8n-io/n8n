@@ -1,4 +1,10 @@
 module.exports = {
+	githubTrigger: {
+		header: {
+			displayName: '🇩🇪 GitHub Trigger',
+			description: '🇩🇪 Listen to GitHub events',
+		},
+	},
 	github: {
 		header: {
 			displayName: '🇩🇪 GitHub',
