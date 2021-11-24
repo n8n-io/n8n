@@ -4,6 +4,7 @@
 		:eventBus="modalBus"
 		:center="true"
 		:closeOnPressEscape="false"
+		:customClass="'contact-prompt-modal'"
 		:beforeClose="closeDialog"
 		title="You're a power user"
 		minWidth="460px"
@@ -14,15 +15,12 @@
 		</template>
 		<template v-slot:content>
 			<div :class="$style.description">Your experience with n8n can help us improve - for you and our entire community.</div>
-			<div :class="$style.subtitle">Can our Product team reach out?</div>
-			<div :class="$style.content">
-				<n8n-input
-					v-model="email"
-					@input="onInputChange"
-					placeholder="Your emaill address"
-				/>
-			</div>
-			<div :class="$style.disclaimer">Our contact team will contact you personally. No spam, promise!</div>
+			<n8n-input
+				v-model="email"
+				@input="onInputChange"
+				placeholder="Your emaill address"
+			/>
+			<div :class="$style.disclaimer">David from our product team will reach out personally.</div>
 		</template>
 		<template v-slot:footer>
 			<div :class="$style.footer">
@@ -64,6 +62,11 @@ export default mixins(workflowHelpers).extend({
 			if (this.isEmailValid) {
 				this.$store.dispatch('settings/updateContactPromptData', this.email);
 				this.$telemetry.track('User closed email modal', { instance_id: this.$store.getters.instanceId, email: this.email });
+				this.$showMessage({
+					title: 'Thanks!',
+					message: "It's people like you that help make n8n better",
+					type: 'success',
+				});
 			}
 			this.closeDialog();
 		},
@@ -82,21 +85,24 @@ export default mixins(workflowHelpers).extend({
 }
 
 .description {
-	margin-bottom: var(--spacing-xs);
+	margin-bottom: var(--spacing-s);
 	font-size: var(--font-size-s);
-	line-height: var(--font-line-height-xloose);
-}
-
-.subtitle {
-	margin-bottom: var(--spacing-2xs);
-	font-size: var(--font-size-s);
-	font-weight: var(--font-weight-bold);
 	line-height: var(--font-line-height-xloose);
 }
 
 .disclaimer {
-	margin-top: var(--spacing-3xs);
+	margin-top: var(--spacing-4xs);
 	font-size: var(--font-size-2xs);
 	line-height: var(--font-line-height-xloose);
+}
+</style>
+
+<style lang="scss">
+.dialog-wrapper {
+	.contact-prompt-modal {
+		.el-dialog__body {
+			padding: 16px 24px 24px;
+		}
+	}
 }
 </style>

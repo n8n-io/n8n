@@ -12,9 +12,6 @@ export async function submitPersonalizationSurvey(context: IRestApiContext, para
 }
 
 export async function getContactPromptData(instanceId: string): Promise<IN8nContactPrompt> {
-	//static response for staging enviroment
-	return { show: true };
-	//production envrionment
 	return await get(TEMPLATES_BASE_URL, '/prompt', {}, {'n8n-instance-id': instanceId});
 }
 
