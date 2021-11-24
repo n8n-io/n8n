@@ -550,8 +550,16 @@ export const issueFields = [
 				name: 'expand',
 				type: 'string',
 				default: '',
-				description: `Use expand to include additional information about the issues in the response. This parameter accepts a comma-separated list. Expand options include: <code>renderedFields</code> Returns field values rendered in HTML format. <code>names</code> Returns the display name of each field. <code>schema</code> Returns the schema describing a field type. <code>transitions</code> Returns all possible transitions for the issue. <code>editmeta</code> Returns information about how each field can be edited. <code>changelog</code> Returns a list of recent updates to an issue, sorted by date, starting from the most recent. <code>versionedRepresentations</code> Returns a JSON array for each version of a field's value, with the highest number
-				representing the most recent version. Note: When included in the request, the fields parameter is ignored.`,
+				description: `<p>Use expand to include additional information about the issues in the response. This parameter accepts a comma-separated list. Expand options include:
+				<ul>
+					<li><code>renderedFields</code> Returns field values rendered in HTML format.</li>
+					<li><code>names</code> Returns the display name of each field.</li>
+					<li><code>schema</code> Returns the schema describing a field type.</li>
+					<li><code>transitions</code> Returns all possible transitions for the issue.</li>
+					<li><code>editmeta</code> Returns information about how each field can be edited.</li>
+					<li><code>changelog</code> Returns a list of recent updates to an issue, sorted by date, starting from the most recent.</li>
+					<li><code>versionedRepresentations</code> Returns a JSON array for each version of a field's value, with the highest number representing the most recent version. Note: When included in the request, the fields parameter is ignored.</li>
+				</ul>`,
 			},
 			{
 				displayName: 'Fields',

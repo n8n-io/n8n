@@ -431,7 +431,7 @@ export const ticketFields = [
 					loadOptionsMethod: 'getTicketProperties',
 				},
 				default: [],
-				description: `Used to include specific ticket properties in the results. By default, the results will only include ticket ID and will not include the values for any properties for your tickets. Including this parameter will include the data for the specified property in the results. You can include this parameter multiple times to request multiple properties separated by ,.`,
+				description: `<p>Used to include specific ticket properties in the results. By default, the results will only include ticket ID and will not include the values for any properties for your tickets.</p><p>Including this parameter will include the data for the specified property in the results. You can include this parameter multiple times to request multiple properties separated by a comma: <code>,</code>.</p>`,
 			},
 			{
 				displayName: 'Properties With History',
@@ -512,7 +512,7 @@ export const ticketFields = [
 					loadOptionsMethod: 'getTicketProperties',
 				},
 				default: [],
-				description: `Used to include specific ticket properties in the results. By default, the results will only include ticket ID and will not include the values for any properties for your tickets. Including this parameter will include the data for the specified property in the results. You can include this parameter multiple times to request multiple properties separated by ,.`,
+				description: `<p>Used to include specific ticket properties in the results. By default, the results will only include company ID and will not include the values for any properties for your company.</p><p>Including this parameter will include the data for the specified property in the results. You can include this parameter multiple times to request multiple properties separated by a comma: <code>,</code>.</p>`,
 			},
 			{
 				displayName: 'Properties With History',

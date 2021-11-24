@@ -525,7 +525,7 @@ export const recordFields = [
 			},
 		},
 		default: '',
-		description: `You're updating records in a Quick Base table with data from an external file. In order for a merge like this to work, Quick Base needs a way to match records in the source data with corresponding records in the destination table. You make this possible by choosing the field in the app table that holds unique matching values. This is called a merge field.`,
+		description: `<p>You're updating records in a Quick Base table with data from an external file. In order for a merge like this to work, Quick Base needs a way to match records in the source data with corresponding records in the destination table.</p><p>You make this possible by choosing the field in the app table that holds unique matching values. This is called a merge field.</p>`,
 	},
 	{
 		displayName: 'Simplify Response',

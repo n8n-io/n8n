@@ -136,7 +136,7 @@ export const notificationFields = [
 				name: 'notificationDisabled',
 				type: 'boolean',
 				default: false,
-				description: `true: The user doesn't receive a push notification when the message is sent. false: The user receives a push notification when the message is sent`,
+				description: `<p>true: The user doesn't receive a push notification when the message is sent.</p><p>false: The user receives a push notification when the message is sent</p>`,
 			},
 			{
 				displayName: 'Sticker',

@@ -291,7 +291,7 @@ export const documentFields = [
 			{
 				displayName: 'Allow Partial Search Results',
 				name: 'allow_partial_search_results',
-				description: 'If true, return partial results if there are shard request timeouts or shard failures. If false, returns an error with no partial results. Defaults to true',
+				description: '<p>If true, return partial results if there are shard request timeouts or shard failures.</p><p>If false, returns an error with no partial results. Defaults to true.</p>',
 				type: 'boolean',
 				default: true,
 			},
