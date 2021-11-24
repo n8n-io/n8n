@@ -162,7 +162,7 @@ export class Github implements INodeType {
 {
 	"github": {}, // key from node's description.name
 	"githubTrigger": {}, // key from node's description.name
-};
+}
 ```
 
 The object inside allows for three keys: `header`, `credentialsModal` and `nodeView`. These are the _sections_ of each node translation:
@@ -179,7 +179,7 @@ The object inside allows for three keys: `header`, `credentialsModal` and `nodeV
 		"credentialsModal": {},
 		"nodeView": {},
 	},
-};
+}
 ```
 
 > **Note**: These three keys as well as all keys described below are optional. Remember that, in case of missing sections or missing translations, n8n will fall back to the `en` locale.
@@ -207,7 +207,7 @@ export class Github implements INodeType {
 			"description": "🇩🇪 Consume GitHub API",
 		},
 	},
-};
+}
 ```
 
 Header text is used wherever the node's display name and description are needed:
@@ -246,7 +246,7 @@ export class GithubApi implements ICredentialType {
 		},
 		"nodeView": {},
 	},
-};
+}
 ```
 
 The node credential `name` key points to an object containing translation keys that match the node's credential parameter names:
@@ -293,7 +293,7 @@ export class GithubApi implements ICredentialType {
 		},
 		"nodeView": {},
 	},
-};
+}
 ```
 
 The object for each node credential parameter allows for the keys `displayName`, `description`, and `placeholder`.
@@ -318,7 +318,7 @@ The object for each node credential parameter allows for the keys `displayName`,
 		},
 		"nodeView": {},
 	},
-};
+}
 ```
 
 <p align="center">
@@ -354,7 +354,7 @@ export class Github implements INodeType {
 			"resource": {}, // key from node parameter name
 		},
 	},
-};
+}
 ```
 
 > **Note**: Other than in the `*.node.ts` file, operational parameters may also be found in `*Description.ts` files in the same dir, e.g. `UserDescription.ts`.
@@ -389,7 +389,7 @@ Allowed keys: `displayName`, `description`, and `placeholder`.
 			},
 		},
 	},
-};
+}
 ```
 
 <p align="center">
@@ -442,7 +442,7 @@ Allowed subkeys: `options.{optionName}.displayName` and `options.{optionName}.de
 			},
 		},
 	},
-};
+}
 ```
 
 <p align="center">
@@ -519,7 +519,7 @@ To reduce nesting and to share translations, a parameter inside a collection's o
 			},
 		},
 	},
-};
+}
 ```
 
 <p align="center">
