@@ -89,7 +89,7 @@ export class Pushover implements INodeType {
 					},
 				},
 				default: '',
-				description: `The user/group key (not e-mail address) of your user (or you), viewable when logged into our <a href="https://pushover.net/">dashboard</a> (often referred to as USER_KEY in our <a href="https://support.pushover.net/i44-example-code-and-pushover-libraries"></a> and code examples)`,
+				description: `The user/group key (not e-mail address) of your user (or you), viewable when logged into the <a href="https://pushover.net/">dashboard</a> (often referred to as <code>USER_KEY</code> in the <a href="https://support.pushover.net/i44-example-code-and-pushover-libraries">libraries</a> and code examples)`,
 			},
 			{
 				displayName: 'Message',
