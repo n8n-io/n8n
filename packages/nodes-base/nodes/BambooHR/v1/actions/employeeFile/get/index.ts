@@ -1,5 +1,5 @@
 import { get as execute } from './execute';
-import { employeeFilesGetDescription as description } from './description';
+import { employeeFileGetDescription as description } from './description';
 
 export {
   description,

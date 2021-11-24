@@ -2,7 +2,7 @@ import {
   INodeTypeDescription,
 } from 'n8n-workflow';
 import * as employees from './employees';
-import * as employeeFiles from './employeeFiles';
+import * as employeeFile from './employeeFile';
 import * as companyFiles from './companyFiles';
 import * as reports from './reports';
 import * as accountInformation from './accountInformation';
@@ -40,8 +40,8 @@ export const versionDescription: INodeTypeDescription = {
           value: 'employees',
         },
         {
-          name: 'Employee Files',
-          value: 'employeeFiles',
+          name: 'Employee File',
+          value: 'employeeFile',
         },
         {
           name: 'Company Files',
@@ -68,7 +68,7 @@ export const versionDescription: INodeTypeDescription = {
       description: 'The resource to operate on',
     },
     ...employees.descriptions,
-    ...employeeFiles.descriptions,
+    ...employeeFile.descriptions,
     ...companyFiles.descriptions,
     ...reports.descriptions,
     ...accountInformation.descriptions,

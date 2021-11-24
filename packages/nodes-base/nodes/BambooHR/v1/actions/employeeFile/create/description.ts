@@ -1,8 +1,8 @@
 import {
-  EmployeeFilesProperties,
+  EmployeeFileProperties,
 } from '../../Interfaces';
 
-export const employeeFilesCreateDescription: EmployeeFilesProperties = [
+export const employeeFileCreateDescription: EmployeeFileProperties = [
   {
     displayName: 'Category Name',
     name: 'categoryName',
@@ -14,7 +14,7 @@ export const employeeFilesCreateDescription: EmployeeFilesProperties = [
           'create'
         ],
         resource: [
-          'employeeFiles',
+          'employeeFile',
         ],
       },
     },

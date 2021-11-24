@@ -23,7 +23,7 @@ export const descriptions = [
     displayOptions: {
       show: {
         resource: [
-          'employeeFiles',
+          'employeeFile',
         ],
       },
     },
