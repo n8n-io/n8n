@@ -6,6 +6,7 @@ import {
 import * as customer from './customer';
 import * as ticket from './ticket';
 import * as contact from './contact';
+import * as rmm from './rmm';
 
 export const versionDescription: INodeTypeDescription = {
 	displayName: 'SyncroMSP',
@@ -45,6 +46,10 @@ export const versionDescription: INodeTypeDescription = {
 					name: 'Contact',
 					value: 'contact',
 				},
+				{
+					name: 'RMM',
+					value: 'rmm',
+				},
 			],
 			default: 'customer',
 			description: 'The resource to operate on',
@@ -52,5 +57,6 @@ export const versionDescription: INodeTypeDescription = {
 		...customer.descriptions,
 		...ticket.descriptions,
 		...contact.descriptions,
+		...rmm.descriptions,
 	],
 };
