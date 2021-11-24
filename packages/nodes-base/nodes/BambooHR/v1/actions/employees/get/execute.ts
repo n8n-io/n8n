@@ -28,5 +28,5 @@ export async function get(this: IExecuteFunctions, index: number): Promise<INode
 	const responseData = await apiRequest.call(this, requestMethod, endPoint, body);
 
   //return
-  return this.helpers.returnJsonArray(responseData);
+  return this.helpers.returnJsonArray(responseData.body);
 }

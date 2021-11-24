@@ -22,7 +22,7 @@ export async function update(this: IExecuteFunctions, index: number): Promise<IN
 	const endPoint = `employees/${id}`;
 
   //body parameters
-  body = this.getNodeParameter('additionalFields', index) as IDataObject;
+  body = this.getNodeParameter('updateFields', index) as IDataObject;
   body.firstName = this.getNodeParameter('firstName', index) as string;
   body.lastName = this.getNodeParameter('lastName', index) as string;
 

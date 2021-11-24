@@ -40,8 +40,8 @@ export const employeeFilesUpdateDescription: EmployeeFilesProperties = [
     description: 'ID of the employee file',
   },
   {
-    displayName: 'Additional Fields',
-    name: 'additionalFields',
+    displayName: 'Update Fields',
+    name: 'updateFields',
     type: 'collection',
     placeholder: 'Add Field',
     default: {},

@@ -22,7 +22,7 @@ export async function update(this: IExecuteFunctions, index: number): Promise<IN
 	const endPoint = `files/${fileId}`;
 
   //body parameters
-  body = this.getNodeParameter('additionalFields', index) as IDataObject;
+  body = this.getNodeParameter('updateFields', index) as IDataObject;
 
   //response
   const responseData = await apiRequest.call(this, requestMethod, endPoint, body);

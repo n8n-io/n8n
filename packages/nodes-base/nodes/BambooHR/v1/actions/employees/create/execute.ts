@@ -29,5 +29,5 @@ export async function create(this: IExecuteFunctions, index: number): Promise<IN
 	const employeeId = responseData.headers.location.substring(rawEmployeeId + 1);
 
   //return
-  return this.helpers.returnJsonArray({ id: employeeId, statusCode: responseData.statusCode, statusMessage: responseData.statusMessage });
+  return this.helpers.returnJsonArray({ id: employeeId });
 }

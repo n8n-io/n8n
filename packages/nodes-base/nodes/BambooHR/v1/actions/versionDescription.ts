@@ -15,6 +15,7 @@ export const versionDescription: INodeTypeDescription = {
   icon: 'file:bambooHR.svg',
   group: ['transform'],
   version: 1,
+	subtitle: '={{$parameter["resource"] + ": " + $parameter["operation"]}}',
   description: 'Consume BambooHR API',
   defaults: {
     name: 'BambooHR',

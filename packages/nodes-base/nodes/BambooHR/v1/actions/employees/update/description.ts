@@ -58,8 +58,8 @@ export const employeesUpdateDescription: EmployeesProperties = [
     description: 'Last name of the employee',
   },
   {
-    displayName: 'Additional Fields',
-    name: 'additionalFields',
+    displayName: 'Update Fields',
+    name: 'updateFields',
     type: 'collection',
     placeholder: 'Add Field',
     default: {},

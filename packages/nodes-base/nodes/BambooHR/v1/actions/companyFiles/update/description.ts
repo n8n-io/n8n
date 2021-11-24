@@ -22,8 +22,8 @@ export const companyFilesUpdateDescription: CompanyFilesProperties = [
     description: 'ID of the company file',
   },
   {
-    displayName: 'Additional Fields',
-    name: 'additionalFields',
+    displayName: 'Update Fields',
+    name: 'updateFields',
     type: 'collection',
     placeholder: 'Add Field',
     default: {},
