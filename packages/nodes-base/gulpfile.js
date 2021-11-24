@@ -51,7 +51,7 @@ function getTranslationPaths() {
 			__dirname,
 			cur.split('/').slice(1, -1).join('/'),
 			'translations',
-			`${locale}.ts`,
+			`${locale}.json`,
 		);
 
 		if (existsSync(sourcePath) && !seen[sourcePath]) {
@@ -61,7 +61,7 @@ function getTranslationPaths() {
 				__dirname,
 				cur.split('/').slice(0, -1).join('/'),
 				'translations',
-				`${locale}.js`,
+				`${locale}.json`,
 			);
 
 			acc.push({
