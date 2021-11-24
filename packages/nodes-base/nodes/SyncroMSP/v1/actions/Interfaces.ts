@@ -5,7 +5,7 @@ import {
 } from 'n8n-workflow';
 
 type SyncroMspMap = {
-	customer: 'getAll';
+	customer: 'getAll'|'addCustomer';
 	ticket: 'getAll';
 	contact: 'getAll';
 	rmm: 'getAlerts';
