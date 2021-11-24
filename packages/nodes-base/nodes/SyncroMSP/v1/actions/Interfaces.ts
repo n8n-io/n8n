@@ -7,15 +7,18 @@ import {
 type SyncroMspMap = {
 	customer: 'getAll';
 	ticket: 'getAll';
+	contact: 'getAll';
 };
 
 export type SyncroMsp = AllEntities<SyncroMspMap>;
 
 export type SyncroMspMapCustomer = Entity<SyncroMspMap, 'customer'>;
 export type SyncroMspMapTicket = Entity<SyncroMspMap, 'ticket'>;
+export type SyncroMspMapContact = Entity<SyncroMspMap, 'contact'>;
 
 export type CustomerProperties = PropertiesOf<SyncroMspMapCustomer>;
 export type TicketProperties = PropertiesOf<SyncroMspMapTicket>;
+export type ContactProperties = PropertiesOf<SyncroMspMapContact>;
 
 export interface IAttachment {
 	fields: {

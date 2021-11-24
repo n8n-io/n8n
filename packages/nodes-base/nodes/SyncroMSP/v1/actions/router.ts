@@ -8,6 +8,7 @@ import {
 
 import * as customer from './customer';
 import * as ticket from './ticket';
+import * as contact from './contact';
 import { SyncroMsp } from './Interfaces';
 
 export async function router(this: IExecuteFunctions): Promise<INodeExecutionData[]> {
@@ -31,6 +32,8 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 				operationResult.push(...await customer[syncroMsp.operation].execute.call(this, i));
 			} else if (syncroMsp.resource === 'ticket') {
 				operationResult.push(...await ticket[syncroMsp.operation].execute.call(this, i));
+			} else if (syncroMsp.resource === 'contact') {
+				operationResult.push(...await contact[syncroMsp.operation].execute.call(this, i));
 			}
 		} catch (err) {
 			if (this.continueOnFail()) {

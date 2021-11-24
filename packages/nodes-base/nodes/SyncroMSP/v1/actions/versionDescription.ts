@@ -5,6 +5,7 @@ import {
 
 import * as customer from './customer';
 import * as ticket from './ticket';
+import * as contact from './contact';
 
 export const versionDescription: INodeTypeDescription = {
 	displayName: 'SyncroMSP',
@@ -40,11 +41,16 @@ export const versionDescription: INodeTypeDescription = {
 					name: 'Ticket',
 					value: 'ticket',
 				},
+				{
+					name: 'Contact',
+					value: 'contact',
+				},
 			],
 			default: 'customer',
 			description: 'The resource to operate on',
 		},
 		...customer.descriptions,
 		...ticket.descriptions,
+		...contact.descriptions,
 	],
 };
