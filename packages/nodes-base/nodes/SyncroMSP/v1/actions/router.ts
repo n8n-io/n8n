@@ -18,8 +18,6 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 		let operation = this.getNodeParameter('operation', i);
 		if (operation === 'del') {
 			operation = 'delete';
-		} else if (operation === 'desactive') {
-			operation = 'deactive';
 		}
 
 		const syncroMsp = {
