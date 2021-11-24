@@ -655,13 +655,13 @@ const config = convict({
 			format: String,
 			default: 'IN_MEMORY',
 			env: 'N8N_BINARY_DATA_MODE',
-			doc: 'Storage mode for binary data, LOCAL_STORAGE',
+			doc: 'Storage mode for binary data, IN_MEMORY, LOCAL_STORAGE',
 		},
 		localStoragePath: {
 			format: String,
 			default: path.join(core.UserSettings.getUserN8nFolderPath(), 'binaryData'),
 			env: 'N8N_BINARY_DATA_STORAGE_PATH',
-			doc: 'Storage mode for binary data, LOCAL_STORAGE',
+			doc: 'Path for binary data storage in LOCAL_STORAGE mode',
 		},
 		binaryDataTTL: {
 			format: Number,
