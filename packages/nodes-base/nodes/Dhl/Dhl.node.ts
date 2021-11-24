@@ -48,11 +48,11 @@ export class Dhl implements INodeType {
 				type: 'hidden',
 				options: [
 					{
-						name: 'Tracking',
-						value: 'tracking',
+						name: 'Shipment',
+						value: 'shipment',
 					},
 				],
-				default: 'tracking',
+				default: 'shipment',
 			},
 			{
 				displayName: 'Operation',
@@ -62,13 +62,13 @@ export class Dhl implements INodeType {
 				displayOptions: {
 					show: {
 						resource: [
-							'tracking',
+							'shipment',
 						],
 					},
 				},
 				options: [
 					{
-						name: 'Get Tracking Information',
+						name: 'Get Tracking Details',
 						value: 'get',
 					},
 				],
@@ -89,10 +89,11 @@ export class Dhl implements INodeType {
 				default: {},
 				options: [
 					{
-						displayName: 'Recipient Postal Code',
+						displayName: `Recipient's Postal Code`,
 						name: 'recipientPostalCode',
 						type: 'string',
 						default: '',
+						description: `DHL will return more detailed information on the shipment when you provide the Recipient's Postal Code - it acts as a verification step`,
 					},
 				],
 			},
@@ -131,7 +132,7 @@ export class Dhl implements INodeType {
 
 		for (let i = 0; i < items.length; i++) {
 			try {
-				if (resource === 'tracking') {
+				if (resource === 'shipment') {
 					if (operation === 'get') {
 
 						const trackingNumber = this.getNodeParameter('trackingNumber', i) as string;
