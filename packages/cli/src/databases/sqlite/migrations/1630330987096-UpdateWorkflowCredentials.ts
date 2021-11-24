@@ -39,7 +39,7 @@ export class UpdateWorkflowCredentials1630330987096 implements MigrationInterfac
 									// @ts-ignore
 									(credentials) => credentials.name === name && credentials.type === type,
 								);
-								node.credentials[type] = { id: matchingCredentials?.id || null, name };
+								node.credentials[type] = { id: matchingCredentials?.id.toString() || null, name };
 								credentialsUpdated = true;
 							}
 						}
@@ -82,7 +82,7 @@ export class UpdateWorkflowCredentials1630330987096 implements MigrationInterfac
 									// @ts-ignore
 									(credentials) => credentials.name === name && credentials.type === type,
 								);
-								node.credentials[type] = { id: matchingCredentials?.id || null, name };
+								node.credentials[type] = { id: matchingCredentials?.id.toString() || null, name };
 								credentialsUpdated = true;
 							}
 						}
@@ -126,7 +126,7 @@ export class UpdateWorkflowCredentials1630330987096 implements MigrationInterfac
 								// @ts-ignore
 								(credentials) => credentials.name === name && credentials.type === type,
 							);
-							node.credentials[type] = { id: matchingCredentials?.id || null, name };
+							node.credentials[type] = { id: matchingCredentials?.id.toString() || null, name };
 							credentialsUpdated = true;
 						}
 					}
@@ -176,8 +176,8 @@ export class UpdateWorkflowCredentials1630330987096 implements MigrationInterfac
 						for (const [type, creds] of allNodeCredentials) {
 							if (typeof creds === 'object') {
 								const matchingCredentials = credentialsEntities.find(
-									// @ts-ignore
-									(credentials) => credentials.id === creds.id && credentials.type === type,
+									// @ts-ignore double-equals because creds.id can be string or number
+									(credentials) => credentials.id == creds.id && credentials.type === type,
 								);
 								if (matchingCredentials) {
 									node.credentials[type] = matchingCredentials.name;
@@ -226,8 +226,8 @@ export class UpdateWorkflowCredentials1630330987096 implements MigrationInterfac
 						for (const [type, creds] of allNodeCredentials) {
 							if (typeof creds === 'object') {
 								const matchingCredentials = credentialsEntities.find(
-									// @ts-ignore
-									(credentials) => credentials.id === creds.id && credentials.type === type,
+									// @ts-ignore double-equals because creds.id can be string or number
+									(credentials) => credentials.id == creds.id && credentials.type === type,
 								);
 								if (matchingCredentials) {
 									node.credentials[type] = matchingCredentials.name;
@@ -276,8 +276,8 @@ export class UpdateWorkflowCredentials1630330987096 implements MigrationInterfac
 					for (const [type, creds] of allNodeCredentials) {
 						if (typeof creds === 'object') {
 							const matchingCredentials = credentialsEntities.find(
-								// @ts-ignore
-								(credentials) => credentials.id === creds.id && credentials.type === type,
+								// @ts-ignore double-equals because creds.id can be string or number
+								(credentials) => credentials.id == creds.id && credentials.type === type,
 							);
 							if (matchingCredentials) {
 								node.credentials[type] = matchingCredentials.name;

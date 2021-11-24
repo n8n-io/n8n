@@ -12,7 +12,7 @@ import * as PCancelable from 'p-cancelable';
 import { Command, flags } from '@oclif/command';
 import { UserSettings, WorkflowExecute } from 'n8n-core';
 
-import { INodeTypes, IRun, Workflow, LoggerProxy } from 'n8n-workflow';
+import { IExecuteResponsePromiseData, INodeTypes, IRun, Workflow, LoggerProxy } from 'n8n-workflow';
 
 import { FindOneOptions } from 'typeorm';
 
@@ -25,11 +25,13 @@ import {
 	GenericHelpers,
 	IBullJobData,
 	IBullJobResponse,
+	IBullWebhookResponse,
 	IExecutionFlattedDb,
 	InternalHooksManager,
 	LoadNodesAndCredentials,
 	NodeTypes,
 	ResponseHelper,
+	WebhookHelpers,
 	WorkflowExecuteAdditionalData,
 } from '../src';
 
@@ -172,6 +174,16 @@ export class Worker extends Command {
 			currentExecutionDb.workflowData,
 			{ retryOf: currentExecutionDb.retryOf as string },
 		);
+
+		additionalData.hooks.hookFunctions.sendResponse = [
+			async (response: IExecuteResponsePromiseData): Promise<void> => {
+				await job.progress({
+					executionId: job.data.executionId as string,
+					response: WebhookHelpers.encodeWebhookResponse(response),
+				} as IBullWebhookResponse);
+			},
+		];
+
 		additionalData.executionId = jobData.executionId;
 
 		let workflowExecute: WorkflowExecute;

@@ -64,7 +64,7 @@ export default mixins(
 		],
 		data () {
 			return {
-				isMinimized: this.nodeType.name !== WEBHOOK_NODE_TYPE,
+				isMinimized: this.nodeType && this.nodeType.name !== WEBHOOK_NODE_TYPE,
 				showUrlFor: 'test',
 			};
 		},
