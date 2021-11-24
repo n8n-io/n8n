@@ -18,7 +18,7 @@ Currently, n8n does _not_ allow for internalization of:
 
 A locale identifier is a language code compatible with the [`Accept-Language` header](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Accept-Language), e.g. `de` (German), `es` (Spanish), `ja` (Japanese). Regional variants of locale identifiers are not supported, i.e. use `de`, not `de-AT`. For a list of all locale identifiers, refer to the [639-1 column in the ISO 639-1 codes article](https://en.wikipedia.org/wiki/List_of_ISO_639-1_codes).
 
-By default, n8n runs in the `en` (English) locale. To have it run in a different locale, set the `N8N_DEFAULT_LOCALE` environment variable. If it has been set and is not `en`, n8n will use the UI strings for that locale - for any untranslated UI strings, n8n fall back to `en`.
+By default, n8n runs in the `en` (English) locale. To have it run in a different locale, set the `N8N_DEFAULT_LOCALE` environment variable. If it has been set and is not `en`, n8n will use the UI strings for that locale - for any untranslated UI strings, n8n will automatically fall back to `en`.
 
 ```sh
 export N8N_DEFAULT_LOCALE=de
@@ -61,7 +61,7 @@ Optionally, remove any untranslated strings from the new base text file. Untrans
 
 #### Reusable base text
 
-As a convenience, the base text file may contain the special key `reusableBaseText`, allowing for a string to be translated once and reused elsewhere in the base text file:
+As a convenience, the base text file may contain the special key `reusableBaseText` to share strings between translations. For more information, refer to Vue i18n's [linked locale messages](https://kazupon.github.io/vue-i18n/guide/messages.html#linked-locale-messages).
 
 ```js
 export default {
@@ -79,7 +79,7 @@ export default {
 	},
 ```
 
-To [localize decimal values](https://vue-i18n.intlify.dev/guide/essentials/number.html#basic-usage), add this to the base text:
+As a convenience, the base text file may also contain the special key `numberFormats` to localize numbers. For more information, refer to Vue i18n's [number localization](https://kazupon.github.io/vue-i18n/guide/number.html#number-localization).
 
 ```js
 export default {
@@ -115,8 +115,6 @@ GitHub
 
 Each node translation file may contain the translations for one or both (regular and trigger) nodes.
 
-In the examples below, the node source is located at `/packages/nodes-base/nodes/Github/GitHub.node.ts` and the node translation is located at `/packages/nodes-base/nodes/Github/translations/de.ts`.
-
 For nodes in grouping dirs, e.g. `Google`, `Aws`, and `Microsoft`, locate the `/translations` dir alongside the `*.node.ts` file:
 
 ```
@@ -147,6 +145,8 @@ Mattermost
 
 ### Translating dynamic text
 
+> **Note**: In the examples below, the node source is located at `/packages/nodes-base/nodes/Github/GitHub.node.ts` and the node translation is located at `/packages/nodes-base/nodes/Github/translations/de.ts`.
+
 Each node translation is an object with a key that matches the node's `description.name`:
 
 ```js
@@ -175,16 +175,16 @@ module.exports = {
 		header: {},
 		credentialsModal: {},
 		nodeView: {},
-    },
+	},
 	githubTrigger: {
 		header: {},
 		credentialsModal: {},
 		nodeView: {},
-    },
+	},
 };
 ```
 
-> Note: These three keys as well as all keys described below are optional. Remember that, in case of missing sections or missing translations, n8n will fall back to the `en` locale.
+> **Note**: These three keys as well as all keys described below are optional. Remember that, in case of missing sections or missing translations, n8n will fall back to the `en` locale.
 
 #### `header` section
 
@@ -227,9 +227,9 @@ Header text is used wherever the node's display name and description are needed:
 
 #### `credentialsModal` section
 
-The `credentialsModal` section points to an object containing a key that matches the node credential `name`:
+> **Note**: In the examples below, the node credential source is located at `/packages/nodes-base/credentials/GithubApi.credentials.ts`.
 
-In the examples below, the node credential source is located at `/packages/nodes-base/credentials/GithubApi.credentials.ts`.
+The `credentialsModal` section points to an object containing a key that matches the node credential `name`.
 
 ```js
 export class GithubApi implements ICredentialType {
@@ -359,7 +359,7 @@ module.exports = {
 };
 ```
 
-> Note: Other than in the `*.node.ts` file, operational parameters may also be found in `*Description.ts` files in the same dir, e.g. `UserDescription.ts`.
+> **Note**: Other than in the `*.node.ts` file, operational parameters may also be found in `*Description.ts` files in the same dir, e.g. `UserDescription.ts`.
 
 A node parameter allows for different translation keys depending on parameter type.
 
@@ -402,7 +402,7 @@ module.exports = {
 
 Allowed keys: `displayName`, `description`, and `placeholder`.
 
-Allows subkeys: `options.{optionName}.displayName` and `options.{optionName}.description`.
+Allowed subkeys: `options.{optionName}.displayName` and `options.{optionName}.description`.
 
 ```js
 {
