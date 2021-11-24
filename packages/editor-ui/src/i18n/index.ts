@@ -1,6 +1,6 @@
 import Vue from 'vue';
 import VueI18n from 'vue-i18n';
-import englishBaseText from './locales/en';
+const englishBaseText = require('./locales/en');
 import axios from 'axios';
 import { INodeTranslationHeaders } from '@/Interface';
 
@@ -40,7 +40,7 @@ export async function loadLanguage(language?: string) {
 		return Promise.resolve(setLanguage(language));
 	}
 
-	const { numberFormats, ...rest } = require(`./locales/${language}`).default;
+	const { numberFormats, ...rest } = require(`./locales/${language}.json`);
 
 	i18n.setLocaleMessage(language, rest);
 
