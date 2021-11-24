@@ -289,6 +289,7 @@
       "dist/credentials/UrlScanIoApi.credentials.js",
       "dist/credentials/VeroApi.credentials.js",
       "dist/credentials/VideoAskOAuth2Api.credentials.js",
+      "dist/credentials/VideoAskApi.credentials.js",
       "dist/credentials/VonageApi.credentials.js",
       "dist/credentials/WebflowApi.credentials.js",
       "dist/credentials/WebflowOAuth2Api.credentials.js",

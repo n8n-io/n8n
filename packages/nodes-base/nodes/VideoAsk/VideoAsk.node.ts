@@ -31,9 +31,44 @@ export class VideoAsk implements INodeType {
 				{
 					name: 'videoAskOAuth2Api',
 					required: true,
+					displayOptions: {
+						show: {
+							authentication: [
+								'oAuth2',
+							],
+						},
+					},
+				},
+				{
+					name: 'videoAskApi',
+					required: true,
+					displayOptions: {
+						show: {
+							authentication: [
+								'accessToken',
+							],
+						},
+					},
 				},
 			],
 			properties: [
+				{
+					displayName: 'Authentication',
+					name: 'authentication',
+					type: 'options',
+					options: [
+						{
+							name: 'Access Token',
+							value: 'accessToken',
+						},
+						{
+							name: 'OAuth2',
+							value: 'oAuth2',
+						},
+					],
+					default: 'accessToken',
+					description: 'The resource to operate on.',
+				},
 				{
 					displayName: 'Resource',
 					name: 'resource',
