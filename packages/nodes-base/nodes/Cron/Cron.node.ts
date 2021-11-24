@@ -250,6 +250,7 @@ export class Cron implements INodeType {
 				],
 			},
 		],
+		activationMessage: 'Your cron trigger will now trigger executions on the schedule you have defined.',
 	};
 
 

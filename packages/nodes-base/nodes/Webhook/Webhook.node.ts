@@ -382,6 +382,7 @@ export class Webhook implements INodeType {
 				],
 			},
 		],
+		activationMessage: 'You can now make calls to your production webhook URL.',
 	};
 
 	async webhook(this: IWebhookFunctions): Promise<IWebhookResponseData> {

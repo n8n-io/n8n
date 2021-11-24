@@ -62,30 +62,16 @@ export default Vue.extend({
 				return 'Your triggers will now fire production executions automatically.';
 			}
 			const trigger = foundTriggers[0];
+			if (trigger.activationMessage) {
+				return trigger.activationMessage;
+			}
 			const serviceName = trigger.displayName.replace(/ trigger/i, '');
 			//check if webhook
 			if (this.$store.getters.currentWorkflowHasWebhookNode) {
-				if (trigger.name === 'n8n-nodes-base.webhook') {
-					// check if a standard Webhook trigger
-					return 'You can now make calls to your production webhook URL.';
-				} else {
-					return `Your workflow will now listen for events from ${serviceName} and trigger executions.`;
-				}
+				return `Your workflow will now listen for events from ${serviceName} and trigger executions.`;
 			} else if (trigger.polling) {
 				//check if a polling trigger
 				return `Your workflow will now regularly check  ${serviceName}for events and trigger executions for them.`;
-			} else if (trigger.name === 'n8n-nodes-base.cron') {
-				// check if a standard Cron trigger
-				return 'Your cron trigger will now trigger executions on the schedule you have defined.';
-			} else if (trigger.name === 'n8n-nodes-base.interval') {
-				// check if a standard Interval trigger
-				return 'Your interval trigger will now trigger executions on the schedule you have defined.';
-			} else if (trigger.name === 'n8n-nodes-base.workflowTrigger') {
-				// check if a standard Workflow trigger
-				return 'Your workflow will now trigger executions on the event you have defined.';
-			} else if (trigger.name === 'n8n-nodes-base.sseTrigger') {
-				// check if a standard SSE trigger
-				return 'You can now make calls to your SSE URL to trigger executions.';
 			} else {
 				// default message
 				return 'Your trigger will now fire production executions automatically.';

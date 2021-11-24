@@ -55,6 +55,7 @@ export class Interval implements INodeType {
 				description: 'Unit of the interval value.',
 			},
 		],
+		activationMessage: 'Your interval trigger will now trigger executions on the schedule you have defined.',
 	};
 
 
