@@ -461,8 +461,7 @@ export const dealFields = [
 					loadOptionsMethod: 'getDealProperties',
 				},
 				default: [],
-				description: `Works similarly to properties=, but this parameter will include the history for the specified property,
-				instead of just including the current value. Use this parameter when you need the full history of changes to a property's value.`,
+				description: `Works similarly to properties=, but this parameter will include the history for the specified property, instead of just including the current value. Use this parameter when you need the full history of changes to a property's value.`,
 			},
 
 		],
@@ -778,7 +777,7 @@ export const dealFields = [
 					loadOptionsMethod: 'getDealProperties',
 				},
 				default: [],
-				description: `<p>Used to include specific deal properties in the results. By default, the results will only include company ID and will not include the values for any properties for your company.</p><p>Including this parameter will include the data for the specified property in the results. You can include this parameter multiple times to request multiple properties separated by a comma: <code>,</code>.</p>`,
+				description: `<p>Used to include specific deal properties in the results. By default, the results will only include Deal ID and will not include the values for any properties for your company.</p><p>Including this parameter will include the data for the specified property in the results. You can include this parameter multiple times to request multiple properties separated by a comma: <code>,</code>.</p>`,
 			},
 			{
 				displayName: 'Query',
