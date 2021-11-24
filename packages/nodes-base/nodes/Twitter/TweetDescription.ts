@@ -195,9 +195,7 @@ export const tweetFields = [
 				],
 			},
 		},
-		description: `A UTF-8, URL-encoded search query of 500 characters maximum,</br>
-		including operators. Queries may additionally be limited by complexity.</br>
-		Check the searching examples <a href="https://developer.twitter.com/en/docs/tweets/search/guides/standard-operators">here</a>.`,
+		description: `A UTF-8, URL-encoded search query of 500 characters maximum, including operators. Queries may additionally be limited by complexity. Check the searching examples <a href="https://developer.twitter.com/en/docs/tweets/search/guides/standard-operators">here</a>.`,
 	},
 	{
 		displayName: 'Return All',

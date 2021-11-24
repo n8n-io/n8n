@@ -397,7 +397,7 @@ export const contactFields = [
 					},
 				},
 				default: '',
-				description: `Used to include specific company properties in the results. By default, the results will only include company ID and will not include the values for any properties for your companys. Including this parameter will include the data for the specified property in the results. You can include this parameter multiple times to request multiple properties separed by ,.`,
+				description: `Used to include specific company properties in the results. By default, the results will only include company ID and will not include the values for any properties for your companys. Including this parameter will include the data for the specified property in the results. You can include this parameter multiple times to request multiple properties separated by ,.`,
 			},
 			{
 				displayName: 'Postal Code',
@@ -577,7 +577,7 @@ export const contactFields = [
 					loadOptionsMethod: 'getContactProperties',
 				},
 				default: '',
-				description: `Used to include specific company properties in the results. By default, the results will only include company ID and will not include the values for any properties for your companys. Including this parameter will include the data for the specified property in the results. You can include this parameter multiple times to request multiple properties separed by ,.`,
+				description: `Used to include specific company properties in the results. By default, the results will only include company ID and will not include the values for any properties for your companys. Including this parameter will include the data for the specified property in the results. You can include this parameter multiple times to request multiple properties separated by ,.`,
 			},
 			{
 				displayName: 'Property Mode',
@@ -700,7 +700,7 @@ export const contactFields = [
 					loadOptionsMethod: 'getContactProperties',
 				},
 				default: '',
-				description: `Used to include specific company properties in the results. By default, the results will only include company ID and will not include the values for any properties for your companys. Including this parameter will include the data for the specified property in the results. You can include this parameter multiple times to request multiple properties separed by ,.`,
+				description: `Used to include specific company properties in the results. By default, the results will only include company ID and will not include the values for any properties for your companys. Including this parameter will include the data for the specified property in the results. You can include this parameter multiple times to request multiple properties separated by ,.`,
 			},
 			{
 				displayName: 'Property Mode',
@@ -845,7 +845,7 @@ export const contactFields = [
 					loadOptionsMethod: 'getContactProperties',
 				},
 				default: '',
-				description: `Used to include specific company properties in the results. By default, the results will only include company ID and will not include the values for any properties for your companys. Including this parameter will include the data for the specified property in the results. You can include this parameter multiple times to request multiple properties separed by ,.`,
+				description: `Used to include specific company properties in the results. By default, the results will only include company ID and will not include the values for any properties for your companys. Including this parameter will include the data for the specified property in the results. You can include this parameter multiple times to request multiple properties separated by ,.`,
 			},
 			{
 				displayName: 'Property Mode',

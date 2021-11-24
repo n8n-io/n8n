@@ -244,8 +244,7 @@ export const messageFields = [
 								name: 'property',
 								type: 'string',
 								default: '',
-								description: `Name of the binary property containing the data to be added to the email as an attachment.</br>
-								Multiples can be set separated by comma.`,
+								description: `Name of the binary property containing the data to be added to the email as an attachment. Multiples can be set separated by comma.`,
 							},
 						],
 					},
@@ -283,9 +282,7 @@ export const messageFields = [
 				type: 'string',
 				placeholder: 'Name <test@gmail.com>',
 				default: '',
-				description: `The name displayed in your contacts inboxes.</br>
-				It has to be in the format: "Display-Name &#60;name@gmail.com&#62;".</br>
-				The email address has to match the email address of the logged in user for the API`,
+				description: `The name displayed in your contacts inboxes. It has to be in the format: "Display-Name &#60;name@gmail.com&#62;". The email address has to match the email address of the logged in user for the API`,
 			},
 		],
 	},
@@ -503,10 +500,7 @@ export const messageFields = [
 					alwaysOpenEditWindow: true,
 				},
 				default: '',
-				description: `Only return messages matching the specified query.</br>
-				Supports the same query format as the Gmail search box.</br>
-				For example, "from:someuser@example.com rfc822msgid:<somemsgid@example.com> is:unread".</br>
-				Parameter cannot be used when accessing the api using the gmail.metadata scope.`,
+				description: `Only return messages matching the specified query. Supports the same query format as the Gmail search box. For example, "from:someuser@example.com rfc822msgid:<somemsgid@example.com> is:unread". Parameter cannot be used when accessing the api using the gmail.metadata scope.`,
 			},
 		],
 	},

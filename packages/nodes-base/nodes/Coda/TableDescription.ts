@@ -237,9 +237,7 @@ export const tableFields = [
 				name: 'useColumnNames',
 				type: 'boolean',
 				default: false,
-				description: `Use column names instead of column IDs in the returned output.</br>
-				This is generally discouraged as it is fragile. If columns are renamed,</br>
-				code using original names may throw errors.`,
+				description: `Use column names instead of column IDs in the returned output. This is generally discouraged as it is fragile. If columns are renamed, code using original names may throw errors.`,
 			},
 			{
 				displayName: 'ValueFormat',
@@ -409,9 +407,7 @@ export const tableFields = [
 				name: 'useColumnNames',
 				type: 'boolean',
 				default: false,
-				description: `Use column names instead of column IDs in the returned output.</br>
-				This is generally discouraged as it is fragile. If columns
-				are renamed, code using original names may throw errors.`,
+				description: `Use column names instead of column IDs in the returned output. This is generally discouraged as it is fragile. If columns are renamed, code using original names may throw errors.`,
 			},
 			{
 				displayName: 'ValueFormat',

@@ -558,8 +558,7 @@ export const issueFields = [
 				name: 'fields',
 				type: 'string',
 				default: '',
-				description: `A list of fields to return for the issue. This parameter accepts a comma-separated list. Use it to retrieve a subset of fields. Allowed values: <code>*all</code> Returns all fields.
-				<code>*navigable</code> Returns navigable fields. Any issue field, prefixed with a minus to exclude.`,
+				description: `A list of fields to return for the issue. This parameter accepts a comma-separated list. Use it to retrieve a subset of fields. Allowed values: <code>*all</code> Returns all fields. <code>*navigable</code> Returns navigable fields. Any issue field, prefixed with a minus to exclude.`,
 			},
 			{
 				displayName: 'Fields By Key',

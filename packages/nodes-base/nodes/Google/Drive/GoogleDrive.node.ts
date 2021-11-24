@@ -792,9 +792,7 @@ export class GoogleDrive implements INodeType {
 						name: 'keepRevisionForever',
 						type: 'boolean',
 						default: false,
-						description: `Whether to set the 'keepForever' field in the new head revision.</br>
-						his is only applicable to files with binary content in Google Drive.</br>
-						Only 200 revisions for the file can be kept forever. If the limit is reached, try deleting pinned revisions.`,
+						description: `Whether to set the 'keepForever' field in the new head revision. This is only applicable to files with binary content in Google Drive. Only 200 revisions for the file can be kept forever. If the limit is reached, try deleting pinned revisions.`,
 					},
 					{
 						displayName: 'OCR Language',

@@ -206,8 +206,7 @@ export const productFields = [
 					multipleValues: true,
 				},
 				default: {},
-				description: `The custom product property names like Size, Color, and Material.</br>
-				You can add up to 3 options of up to 255 characters each.`,
+				description: `The custom product property names like Size, Color, and Material. You can add up to 3 options of up to 255 characters each.`,
 				options: [
 					{
 						displayName: 'Option',
@@ -425,8 +424,7 @@ export const productFields = [
 					multipleValues: true,
 				},
 				default: {},
-				description: `The custom product property names like Size, Color, and Material.</br>
-				You can add up to 3 options of up to 255 characters each.`,
+				description: `The custom product property names like Size, Color, and Material. You can add up to 3 options of up to 255 characters each.`,
 				options: [
 					{
 						displayName: 'Option',
