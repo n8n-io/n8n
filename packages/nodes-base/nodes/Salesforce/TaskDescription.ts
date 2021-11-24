@@ -339,7 +339,7 @@ export const taskFields = [
 						value: 'RecurrenceRegenerated',
 					},
 				],
-				description: `Represents what triggers a repeating task to repeat. Add this field to a page layout together with the RecurrenceInterval field, which determines the number of days between the triggering date (due date or close date) and the due date of the next repeating task in the series.Label is Repeat This Task.`,
+				description: `Represents what triggers a repeating task to repeat. Add this field to a page layout together with the RecurrenceInterval field, which determines the number of days between the triggering date (due date or close date) and the due date of the next repeating task in the series. Label is Repeat This Task.`,
 			},
 			{
 				displayName: 'Recurrence Start Date Only',
@@ -704,7 +704,7 @@ export const taskFields = [
 						value: 'RecurrenceRegenerated',
 					},
 				],
-				description: `Represents what triggers a repeating task to repeat. Add this field to a page layout together with the RecurrenceInterval field, which determines the number of days between the triggering date (due date or close date) and the due date of the next repeating task in the series.Label is Repeat This Task.`,
+				description: `Represents what triggers a repeating task to repeat. Add this field to a page layout together with the RecurrenceInterval field, which determines the number of days between the triggering date (due date or close date) and the due date of the next repeating task in the series. Label is Repeat This Task.`,
 			},
 			{
 				displayName: 'Recurrence Type',

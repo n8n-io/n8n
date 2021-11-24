@@ -1057,7 +1057,7 @@ export class GoogleDrive implements INodeType {
 							},
 						},
 						default: false,
-						description: `Set to true to opt in to API behavior that aims for all items to have exactly one parent. This parameter only takes effect if the item is not in a shared drive`,
+						description: `Set to true to opt in to API behavior that aims for all items to have exactly one parent. This parameter only takes effect if the item is not in a shared drive.`,
 					},
 					{
 						displayName: 'Fields',

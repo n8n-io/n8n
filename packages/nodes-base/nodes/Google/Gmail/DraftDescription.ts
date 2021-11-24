@@ -209,7 +209,7 @@ export const draftFields = [
 								name: 'property',
 								type: 'string',
 								default: '',
-								description: `Name of the binary property containing the data to be added to the email as an attachment. Multiples can be set separated by comma.`,
+								description: `Name of the binary property containing the data to be added to the email as an attachment. Multiple can be set separated by comma.`,
 							},
 						],
 					},

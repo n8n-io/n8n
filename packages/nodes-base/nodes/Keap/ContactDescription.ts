@@ -72,7 +72,7 @@ export const contactFields = [
 			},
 		},
 		default: 'email',
-		description: `Performs duplicate checking by one of the following options: Email, EmailAndName, if a match is found using the option provided, the existing contact will be updated`,
+		description: `Performs duplicate checking by one of the following options: Email, EmailAndName. If a match is found using the option provided, the existing contact will be updated`,
 	},
 	{
 		displayName: 'Additional Fields',
