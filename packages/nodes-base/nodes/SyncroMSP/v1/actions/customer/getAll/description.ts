@@ -31,7 +31,7 @@ export const customerGetAllDescription: CustomerProperties = [
 				displayName: 'Page',
 				name: 'page',
 				type: 'number',
-				default: 25,
+				default: 1,
 				description: 'Returns provided page of results, each page contains 25 results',
 			},
 		],
