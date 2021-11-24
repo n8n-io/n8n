@@ -116,7 +116,7 @@ export const productFields = [
 				name: 'handle',
 				type: 'string',
 				default: '',
-				description: `A unique human-friendly string for the product. Automatically generated from the product\'s title. Used by the Liquid templating language to refer to objects.`,
+				description: `A unique human-friendly string for the product. Automatically generated from the product's title. Used by the Liquid templating language to refer to objects.`,
 			},
 			{
 				displayName: 'Images',
@@ -334,7 +334,7 @@ export const productFields = [
 				name: 'handle',
 				type: 'string',
 				default: '',
-				description: `A unique human-friendly string for the product. Automatically generated from the product\'s title. Used by the Liquid templating language to refer to objects.`,
+				description: `A unique human-friendly string for the product. Automatically generated from the product's title. Used by the Liquid templating language to refer to objects.`,
 			},
 			{
 				displayName: 'Images',
