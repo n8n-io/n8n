@@ -1,22 +1,21 @@
 <template>
 	<Modal
 		:name="WORKFLOW_ACTIVE_MODAL_KEY"
-		width="40%"
-		minWidth="400px"
+		width="460px"
+		minWidth="350px"
 		title="Workflow activated"
-		:classic="true"
 	>
 		<template v-slot:content>
 			<p>{{triggerContent}}</p>
-			<p><span class="emphasised">These executions will not show up immediately in the editor</span>, but you can see them in the <a @click="showExecutionsList">execution list</a>.</p>
-			<p>
-				<el-checkbox v-model="checked" @change="handleCheckboxChange">Don't show again</el-checkbox>
-			</p>
+			<p class="spaced-p"><span class="emphasised">These executions will not show up immediately in the editor</span>, but you can see them in the <a @click="showExecutionsList">execution list</a>.</p>
 		</template>
 
 
 		<template v-slot:footer="{ close }">
-			<n8n-button @click="close" label="Got it"/>
+			<div class="right-aligned-footer">
+				<el-checkbox v-model="checked" @change="handleCheckboxChange">Don't show again</el-checkbox>
+				<n8n-button @click="close" label="Got it"/>
+			</div>
 		</template>
 	</Modal>
 </template>
@@ -88,8 +87,21 @@ export default Vue.extend({
 }
 
 p {
-	margin-top: 10px;
 	font-size: 14px;
+	line-height: 19px;
+}
+
+.spaced-p {
+	margin-top: 10px;
+}
+
+.right-aligned-footer {
+	text-align: right;
+}
+
+button {
+	margin-left: 10px;
+	line-height: 14px;
 }
 
 </style>
