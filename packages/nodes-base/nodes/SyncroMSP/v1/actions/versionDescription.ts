@@ -4,6 +4,7 @@ import {
 } from 'n8n-workflow';
 
 import * as customer from './customer';
+import * as ticket from './ticket';
 
 export const versionDescription: INodeTypeDescription = {
 	displayName: 'SyncroMSP',
@@ -35,10 +36,15 @@ export const versionDescription: INodeTypeDescription = {
 					name: 'Customer',
 					value: 'customer',
 				},
+				{
+					name: 'Ticket',
+					value: 'ticket',
+				},
 			],
 			default: 'customer',
 			description: 'The resource to operate on',
 		},
 		...customer.descriptions,
+		...ticket.descriptions,
 	],
 };
