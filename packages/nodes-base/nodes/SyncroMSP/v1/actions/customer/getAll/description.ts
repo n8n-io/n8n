@@ -25,7 +25,7 @@ export const customerGetAllDescription: CustomerProperties = [
 				name: 'query',
 				type: 'string',
 				default: '',
-				description: 'Search query',
+				description: 'Search query, it can be anything related to customer data like name etc.',
 			},
 			{
 				displayName: 'Page',
