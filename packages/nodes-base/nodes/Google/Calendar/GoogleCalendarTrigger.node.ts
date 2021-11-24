@@ -150,8 +150,8 @@ export class GoogleCalendarTrigger implements INodeType {
 		} else if (triggerOn === 'eventStarted' || triggerOn === 'eventEnded') {
 			Object.assign(qs, {
 				singleEvents: true,
-				timeMin: startDate,
-				timeMax: endDate,
+				timeMin: moment(startDate).startOf('second').utc().format(),
+				timeMax: moment(endDate).endOf('second').utc().format(),
 				orderBy: 'startTime',
 			});
 		}
@@ -169,11 +169,11 @@ export class GoogleCalendarTrigger implements INodeType {
 			if (triggerOn === 'eventCreated') {
 				events = events.filter((event: { created: string }) => moment(event.created).isBetween(startDate, endDate));
 			} else if (triggerOn === 'eventUpdated') {
-				events = events.filter((event: { created: string, updated: string }) => !moment(event.created).isSame(event.updated));
+				events = events.filter((event: { created: string, updated: string }) => !moment(moment(event.created).format('YYYY-MM-DDTHH:mm:ss')).isSame(moment(event.updated).format('YYYY-MM-DDTHH:mm:ss')));
 			} else if (triggerOn === 'eventStarted') {
-				events = events.filter((event: { start: { dateTime: string } }) => moment(event.start.dateTime).isBetween(startDate, endDate));
+				events = events.filter((event: { start: { dateTime: string } }) => moment(event.start.dateTime).isBetween(startDate, endDate, null, '[]'));
 			} else if (triggerOn === 'eventEnded') {
-				events = events.filter((event: { end: { dateTime: string } }) => moment(event.end.dateTime).isBetween(startDate, endDate));
+				events = events.filter((event: { end: { dateTime: string } }) => moment(event.end.dateTime).isBetween(startDate, endDate, null, '[]'));
 			}
 		}
 
@@ -189,5 +189,4 @@ export class GoogleCalendarTrigger implements INodeType {
 
 		return null;
 	}
-
 }

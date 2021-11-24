@@ -704,14 +704,14 @@ export const eventFields = [
 				events and instances of recurring events, but not the underlying recurring events themselves.`,
 			},
 			{
-				displayName: 'End Time',
+				displayName: 'Start Time',
 				name: 'timeMax',
 				type: 'dateTime',
 				default: '',
 				description: `Upper bound (exclusive) for an event's start time to filter by`,
 			},
 			{
-				displayName: 'Start Time',
+				displayName: 'End Time',
 				name: 'timeMin',
 				type: 'dateTime',
 				default: '',
