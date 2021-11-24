@@ -34,6 +34,6 @@ export async function getNodeTranslationPath(
 	const maxVersion = await getMaxVersion(nodeDir);
 
 	return maxVersion
-		? join(nodeDir, `v${maxVersion}`, 'translations', `${language}.js`)
-		: join(nodeDir, 'translations', `${language}.js`);
+		? join(nodeDir, `v${maxVersion}`, 'translations', `${language}.json`)
+		: join(nodeDir, 'translations', `${language}.json`);
 }
