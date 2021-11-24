@@ -277,7 +277,7 @@ export const viewFields = [
 					alwaysOpenEditWindow: true,
 				},
 				default: '',
-				description: `Query used to filter returned rows, specified as <column_id_or_name>:<value>. If you'd like to use a column name instead of an ID, you must quote it (e.g., "My Column":123). Also note that value is a JSON value; if you'd like to use a string, you must surround it in quotes (e.g., "groceries").`,
+				description: `Query used to filter returned rows, specified as &lt;column_id_or_name&gt;:&lt;value&gt;. If you'd like to use a column name instead of an ID, you must quote it (e.g., "My Column":123). Also note that value is a JSON value; if you'd like to use a string, you must surround it in quotes (e.g., "groceries").`,
 			},
 			{
 				displayName: 'Use Column Names',
