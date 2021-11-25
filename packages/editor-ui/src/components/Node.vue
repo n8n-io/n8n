@@ -146,7 +146,7 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 		nodeType (): INodeTypeDescription | null {
 			return this.data && this.$store.getters.nodeType(this.data.type);
 		},
-		node (): INodeUi | undefined {
+		node (): INodeUi | undefined { // same as this.data but reactive..
 			return this.$store.getters.nodesByName[this.name] as INodeUi | undefined;
 		},
 		nodeClass (): object {
@@ -173,9 +173,7 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 			}
 		},
 		position (): XYPosition {
-			const node = this.$store.getters.nodesByName[this.name] as INodeUi; // position responsive to store changes
-
-			return node.position;
+			return this.node ? this.node.position : [0, 0];
 		},
 		showDisabledLinethrough(): boolean {
 			return !!(this.data.disabled && this.nodeType && this.nodeType.inputs.length === 1 && this.nodeType.outputs.length === 1);
