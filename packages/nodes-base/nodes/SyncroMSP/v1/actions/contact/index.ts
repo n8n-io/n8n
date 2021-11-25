@@ -22,7 +22,7 @@ export const descriptions = [
 		},
 		options: [
 			{
-				name: 'Get All Contacts',
+				name: 'Get All',
 				value: 'getAll',
 				description: 'Retrieve all contacts',
 			},

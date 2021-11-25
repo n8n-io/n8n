@@ -22,7 +22,7 @@ export const descriptions = [
 		},
 		options: [
 			{
-				name: 'Get All Customers',
+				name: 'Get All',
 				value: 'getAll',
 				description: 'Retrieve all customers',
 			},

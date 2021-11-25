@@ -4,6 +4,23 @@ import {
 
 export const customerGetAllDescription: CustomerProperties = [
 	{
+		displayName: 'Return All',
+		name: 'returnAll',
+		type: 'boolean',
+		displayOptions: {
+			show: {
+				resource: [
+					'customer',
+				],
+				operation: [
+					'getAll',
+				],
+			},
+		},
+		default: false,
+		description: 'If all results should be returned or only up to a given limit.',
+	},
+	{
 		displayName: 'Additional Fields',
 		name: 'additionalFields',
 		type: 'collection',
@@ -21,11 +38,19 @@ export const customerGetAllDescription: CustomerProperties = [
 		default: {},
 		options: [
 			{
-				displayName: 'Query',
+				displayName: 'Search Query',
 				name: 'query',
 				type: 'string',
 				default: '',
+				placeholder: 'John Doe',
 				description: 'Search query, it can be anything related to customer data like name etc.',
+			},
+			{
+				displayName: 'Limit',
+				name: 'per_page',
+				type: 'number',
+				default: 25,
+				description: 'limit the number of rows returned',
 			},
 			{
 				displayName: 'Page',

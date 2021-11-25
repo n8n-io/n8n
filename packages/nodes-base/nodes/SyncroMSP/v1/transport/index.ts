@@ -44,3 +44,26 @@ export async function apiRequest(
 		throw new NodeApiError(this.getNode(), error);
 	}
 }
+
+export async function apiRequestAllItems(
+	this: IExecuteFunctions | ILoadOptionsFunctions,
+	method: 'GET' | 'POST' | 'PUT' | 'DELETE' | 'HEAD',
+	endpoint: string,
+	body: IDataObject = {},
+	query: IDataObject = {},
+) {
+
+	let returnData: IDataObject[] = [];
+
+	let responseData;
+	query.page = 1;
+
+	do {
+		responseData = await apiRequest.call(this, method, endpoint, body, query);
+		query.page++;
+		returnData = returnData.concat(responseData[endpoint]);
+	} while (
+		responseData[endpoint].length !== 0
+	);
+	return returnData;
+}
