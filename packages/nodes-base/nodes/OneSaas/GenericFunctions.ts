@@ -23,7 +23,7 @@ export async function oneSaasRequest(this: IExecuteFunctions, method: string, re
 		method,
 		body,
 		qs,
-		uri: uri || `https://api.1saas.co/v1/${resource}`,
+		uri: uri || `https://api.1saas.co/v1${resource}`,
 		json: true,
 	};
 	options = Object.assign({}, options, option);
