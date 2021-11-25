@@ -1580,11 +1580,11 @@ class App {
 					const findQuery = {} as FindManyOptions;
 					if (req.query.filter) {
 						findQuery.where = JSON.parse(req.query.filter as string);
-						if ((findQuery.where! as IDataObject).id !== undefined) {
+						if (findQuery.where.id !== undefined) {
 							// No idea if multiple where parameters make db search
 							// slower but to be sure that that is not the case we
 							// remove all unnecessary fields in case the id is defined.
-							findQuery.where = { id: (findQuery.where! as IDataObject).id };
+							findQuery.where = { id: findQuery.where.id };
 						}
 					}
 
