@@ -163,21 +163,17 @@
 		const plusStalk = this.canvas.querySelector('.plus-stalk');
 		const successOutput = this.canvas.querySelector('.plus-stalk span');
 
-		this.setSuccessOutput = (output, repaint = true) => {
+		this.setSuccessOutput = (output) => {
 			this.canvas.classList.add('success');
 			if (this.showOutputLabel) {
 				successOutput.textContent = output;
 				this.label = output;
 				this.labelOffset = successOutput.offsetWidth;
-			}
-			else {
-				this.label = '';
-				this.labelOffset = 24;
-			}
 
-			plusStalk.style.width = `${stalkLength + this.labelOffset}px`;
-			if (repaint && this._jsPlumb && this._jsPlumb.instance && !this._jsPlumb.instance.isSuspendDrawing()) {
-				params.endpoint.repaint(); // force rerender to move plus hoverable/draggable space
+				plusStalk.style.width = `${stalkLength + this.labelOffset}px`;
+				if (this._jsPlumb && this._jsPlumb.instance && !this._jsPlumb.instance.isSuspendDrawing()) {
+					params.endpoint.repaint(); // force rerender to move plus hoverable/draggable space
+				}
 			}
 		};
 
