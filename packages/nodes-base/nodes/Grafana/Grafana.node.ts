@@ -291,13 +291,13 @@ export class Grafana implements INodeType {
 							body.dashboard.title = dashboard.title;
 						} else {
 							const dashboards = await grafanaApiRequest.call(this, 'GET', '/search') as Array<{ title: string }>;
-							const titles = dashboards.map(({ title }) => title)
+							const titles = dashboards.map(({ title }) => title);
 
 							if (titles.includes(title)) {
 								throw new NodeApiError(
 									this.getNode(),
 									{ message: 'A dashboard with the same name already exists in the selected folder' },
-								)
+								);
 							}
 
 							body.dashboard.title = title;
