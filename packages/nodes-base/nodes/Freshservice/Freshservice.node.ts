@@ -573,7 +573,6 @@ export class Freshservice implements INodeType {
 						const assetFields = this.getNodeParameter('assetFieldsUi.assetFieldValue', i, []) as IDataObject[];
 
 						Object.assign(body, { type_fields: assetFields.reduce((obj, value) => Object.assign(obj, { [`${value.name}`]: value.value }), {}) });
-						console.log(body);
 						responseData = await freshserviceApiRequest.call(this, 'POST', '/assets', body);
 
 					} else if (operation === 'delete') {

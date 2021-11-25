@@ -169,8 +169,7 @@ const typeMention = [
 			},
 		],
 		default: '',
-		description: `An inline mention of a user, page, database, or date. In the app these are</br>
-		created by typing @ followed by the name of a user, page, database, or a date`,
+		description: `An inline mention of a user, page, database, or date. In the app these are created by typing @ followed by the name of a user, page, database, or a date`,
 	},
 	{
 		displayName: 'User ID',
