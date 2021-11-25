@@ -27,15 +27,10 @@ export async function oneSaasRequest(this: IExecuteFunctions, method: string, re
 		json: true,
 	};
 	options = Object.assign({}, options, option);
-
-	if (Object.keys(body).length === 0) {
-		delete options.body;
-	}
 	options.headers!['auth'] = `${credentials.apiKey}`;
 
 	try {
 		const responseData = await this.helpers.request(options);
-		console.log(responseData);
 		return responseData;
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error);

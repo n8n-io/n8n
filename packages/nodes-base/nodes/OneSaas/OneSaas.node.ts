@@ -195,10 +195,10 @@ export class OneSaas implements INodeType {
 				// Random : https://docs.1saas.co/api-documentation/random
 				if (resource === 'random') {
 					if (operation === 'city') {
-						responseData = await oneSaasRequest.call(this, 'POST', '/city');
+						responseData = await oneSaasRequest.call(this, 'POST', '/city', {});
 					}
 					if (operation === 'name') {
-						responseData = await oneSaasRequest.call(this, 'POST', '/name');
+						responseData = await oneSaasRequest.call(this, 'POST', '/name', {});
 					}
 					if (operation === 'number') {
 						const range = this.getNodeParameter('range', i) as string;
