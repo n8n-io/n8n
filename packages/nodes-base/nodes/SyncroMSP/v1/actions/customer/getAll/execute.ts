@@ -23,7 +23,7 @@ export async function getAll(this: IExecuteFunctions, index: number): Promise<IN
 	const body = {} as IDataObject;
 
 	if (id) {
-		qs.id=id
+		qs.id=id;
 	} else if (additionalFields) {
 		qs = additionalFields;
 	}
