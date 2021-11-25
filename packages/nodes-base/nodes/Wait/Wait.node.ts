@@ -887,7 +887,6 @@ export class Wait implements INodeType {
 		} else {
 			// resume: dateTime
 			const dateTime = this.getNodeParameter('dateTime', 0) as string;
-			console.log('dateTime', dateTime);
 
 			waitTill = new Date(dateTime);
 		}
