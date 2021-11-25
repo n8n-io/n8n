@@ -12,7 +12,10 @@ import {
 import {
 	OptionsWithUri,
 } from 'request';
-import { GrafanaCredentials } from './types';
+
+import {
+	GrafanaCredentials,
+} from './types';
 
 export async function grafanaApiRequest(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
@@ -21,7 +24,11 @@ export async function grafanaApiRequest(
 	body: IDataObject = {},
 	qs: IDataObject = {},
 ) {
-	const { apiKey, baseUrl: rawBaseUrl } = await this.getCredentials('grafanaApi') as GrafanaCredentials;
+	const {
+		apiKey,
+		baseUrl: rawBaseUrl,
+	} = await this.getCredentials('grafanaApi') as GrafanaCredentials;
+
 	const baseUrl = tolerateTrailingSlash(rawBaseUrl);
 
 	const options: OptionsWithUri = {
@@ -51,6 +58,22 @@ export async function grafanaApiRequest(
 			error.response.data.message += '. Are you sure the user is a member of this team?';
 		}
 
+		if (error?.response?.data?.message === 'Team not found') {
+			error.response.data.message += ' with the provided ID';
+		}
+
+		if (error?.response?.data?.message === 'A dashboard with the same name in the folder already exists') {
+			error.response.data.message = 'A dashboard with the same name already exists in the selected folder';
+		}
+
+		if (error?.response?.data?.message === 'Team name taken') {
+			error.response.data.message = 'This team name is already taken. Please choose a new one.';
+		}
+
+		if (error?.code === 'ECONNREFUSED') {
+			error.message = 'Invalid credentials or error in establishing connection with given credentials';
+		}
+
 		throw new NodeApiError(this.getNode(), error);
 	}
 }
@@ -72,4 +95,17 @@ export function tolerateTrailingSlash(baseUrl: string) {
 	return baseUrl.endsWith('/')
 		? baseUrl.substr(0, baseUrl.length - 1)
 		: baseUrl;
+}
+
+export function deriveUid(this: IExecuteFunctions, uidOrUrl: string) {
+	if (!uidOrUrl.startsWith('http')) return uidOrUrl;
+
+	const urlSegments = uidOrUrl.split('/');
+	const uid = urlSegments[urlSegments.indexOf('d') + 1];
+
+	if (!uid) {
+		throw new NodeOperationError(this.getNode(), 'Failed to derive UID from URL');
+	}
+
+	return uid;
 }

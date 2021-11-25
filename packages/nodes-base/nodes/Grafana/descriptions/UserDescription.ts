@@ -24,7 +24,7 @@ export const userOperations: INodeProperties[] = [
 			{
 				name: 'Get All',
 				value: 'getAll',
-				description: 'Retrieve all users in the current organizations',
+				description: 'Retrieve all users in the current organization',
 			},
 			{
 				name: 'Update',
@@ -80,7 +80,7 @@ export const userFields: INodeProperties[] = [
 				name: 'role',
 				type: 'options',
 				default: 'Admin',
-				description: 'Role to assign to the user to update',
+				description: 'New role for the user',
 				options: [
 					{
 						name: 'Admin',

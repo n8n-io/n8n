@@ -83,7 +83,7 @@ export const dashboardFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Folder Name/ID',
+				displayName: 'Folder Name or ID',
 				name: 'folderId',
 				type: 'options',
 				default: '',
@@ -98,9 +98,9 @@ export const dashboardFields: INodeProperties[] = [
 	//            dashboard: delete
 	// ----------------------------------------
 	{
-		displayName: 'Dashboard UID',
-		name: 'dashboardUid',
-		description: 'Aalphabetic identifier of the dashboard to delete',
+		displayName: 'Dashboard UID or URL',
+		name: 'dashboardUidOrUrl',
+		description: 'Unique alphabetic identifier or URL of the dashboard to delete',
 		placeholder: 'cIBgcSjkk',
 		type: 'string',
 		required: true,
@@ -121,9 +121,9 @@ export const dashboardFields: INodeProperties[] = [
 	//              dashboard: get
 	// ----------------------------------------
 	{
-		displayName: 'Dashboard UID',
-		name: 'dashboardUid',
-		description: 'Alphabetic identifier of the dashboard to retrieve',
+		displayName: 'Dashboard UID or URL',
+		name: 'dashboardUidOrUrl',
+		description: 'Unique alphabetic identifier or URL of the dashboard to retrieve',
 		placeholder: 'cIBgcSjkk',
 		type: 'string',
 		required: true,
@@ -207,24 +207,16 @@ export const dashboardFields: INodeProperties[] = [
 				type: 'string',
 				default: '',
 			},
-			{
-				displayName: 'Starred',
-				name: 'starred',
-				type: 'boolean',
-				default: false,
-				description: 'Whether to return only starred dashboards',
-			},
 		],
 	},
-
 
 	// ----------------------------------------
 	//            dashboard: update
 	// ----------------------------------------
 	{
-		displayName: 'Dashboard UID',
-		name: 'dashboardUid',
-		description: 'Unique (alphabetic) identifier of the dashboard to update',
+		displayName: 'Dashboard UID or URL',
+		name: 'dashboardUidOrUrl',
+		description: 'Unique alphabetic identifier or URL of the dashboard to update',
 		placeholder: 'cIBgcSjkk',
 		type: 'string',
 		required: true,
@@ -258,11 +250,11 @@ export const dashboardFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Folder Name/ID',
+				displayName: 'Folder Name or ID',
 				name: 'folderId',
 				type: 'options',
 				default: '',
-				description: 'Folder to create the dashboard in - if the folder is unspecified, the dashboard will be saved to the <code>General</code> folder. Choose from the list or specify an ID. You can also specify the ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description: 'Folder to move the dashboard into - if the folder is unspecified, the dashboard will be saved to the General folder. Choose from the list or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 				typeOptions: {
 					loadOptionsMethod: 'getFolders',
 				},
@@ -272,7 +264,7 @@ export const dashboardFields: INodeProperties[] = [
 				name: 'title',
 				type: 'string',
 				default: '',
-				description: 'Title of the dashboard to create',
+				description: 'New title of the dashboard',
 			},
 		],
 	},
