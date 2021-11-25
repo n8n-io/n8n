@@ -27,7 +27,7 @@
 				</div>
 
 				<div class="node-trigger-tooltip__wrapper">
-					<n8n-tooltip placement="top" :manual="true" :value="showWebhookNodeTooltip" popper-class="node-trigger-tooltip__wrapper--item">
+					<n8n-tooltip placement="top" :manual="true" :value="showTriggerNodeTooltip" popper-class="node-trigger-tooltip__wrapper--item">
 						<div slot="content" v-text="getTriggerNodeTooltip()"></div>
 						<span />
 					</n8n-tooltip>
@@ -113,13 +113,13 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 
 			return workflowResultDataNode.length;
 		},
-		nodeOffsetPosition() {
+		canvasOffsetPosition() {
 			return this.$store.getters.getNodeViewOffsetPosition;
 		},
 		isExecuting (): boolean {
 			return this.$store.getters.executingNode === this.data.name;
 		},
-		isDragActiveTriggerNode (): boolean {
+		isDragActive (): boolean {
 			return this.$store.getters.isActionActive('dragActive');
 		},
 		isSingleActiveTriggerNode (): boolean {
@@ -136,10 +136,13 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 			return this.nodeType !== null ? this.nodeType.eventTriggerDescription === '' : false;
 		},
 		isNodeDisabled (): boolean | undefined {
-			return this.data.disabled;
+			return this.node && this.node.disabled;
 		},
 		nodeType (): INodeTypeDescription | null {
 			return this.$store.getters.nodeType(this.data.type);
+		},
+		node (): INodeUi | undefined {
+			return this.$store.getters.nodesByName[this.name] as INodeUi;
 		},
 		nodeClass (): object {
 			return {
@@ -236,81 +239,34 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 		shiftOutputCount (): boolean {
 			return !!(this.nodeType && this.nodeType.outputs.length > 2);
 		},
-	},
+		shouldShowTooltip () : boolean {
+			return this.workflowRunning && this.isTriggerNode && this.isSingleActiveTriggerNode && !this.isTriggerNodeTooltipEmpty && !this.isNodeDisabled && !this.hasIssues && !this.isDragActive;
+		},
+ 	},
 	watch: {
 		isActive(newValue, oldValue) {
 			if (!newValue && oldValue) {
 				this.setSubtitle();
 			}
 		},
-		isDragActiveTriggerNode: {
-			handler(isDragActiveTriggerNode) {
-				if (this.workflowRunning && this.isTriggerNode && this.isSingleActiveTriggerNode && !this.isTriggerNodeTooltipEmpty && !this.isNodeDisabled && !this.hasIssues) {
-					this.showWebhookNodeTooltip = !isDragActiveTriggerNode;
-				}
-			},
+		canvasOffsetPosition() {
+			if (this.showTriggerNodeTooltip) {
+				this.showTriggerNodeTooltip = false;
+				setTimeout(() => {
+					if (this.workflowRunning) {
+						this.showTriggerNodeTooltip = true;
+					}
+				}, 200);
+			}
 		},
-		nodePosition: {
-			handler() {
-				if (this.showWebhookNodeTooltip) {
-					this.showWebhookNodeTooltip = false;
-					setTimeout(() => {
-						if (this.workflowRunning && this.isSingleActiveTriggerNode) {
-							this.showWebhookNodeTooltip = true;
-						}
-					}, 200);
-				}
-			},
-			immediate: true,
-			deep: true,
-		},
-		nodeOffsetPosition: {
-			handler() {
-				if (this.showWebhookNodeTooltip) {
-					this.showWebhookNodeTooltip = false;
-					setTimeout(() => {
-						if (this.workflowRunning) {
-							this.showWebhookNodeTooltip = true;
-						}
-					}, 200);
-				}
-			},
-			immediate: false,
-			deep: true,
-		},
-		workflowRunning: {
-			handler(isWorkflowRunning) {
-				if (isWorkflowRunning && this.isTriggerNode && this.isSingleActiveTriggerNode && !this.isTriggerNodeTooltipEmpty && !this.isNodeDisabled) {
-					setTimeout(() => {
-						if (!this.isNodeDisabled && !this.hasIssues && this.isSingleActiveTriggerNode) {
-							this.showWebhookNodeTooltip = this.workflowRunning;
-						}
-					}, 2500);
-				} else {
-					this.showWebhookNodeTooltip = false;
-				}
-			},
-			immediate: true,
-		},
-		isNodeDisabled: {
-			handler(isNodeDisabled) {
-				if (this.isTriggerNodeTooltipEmpty) {
-					this.showWebhookNodeTooltip = false;
-				} else if (this.workflowRunning && this.isTriggerNode && !isNodeDisabled && !this.hasIssues && this.isSingleActiveTriggerNode) {
-					this.showWebhookNodeTooltip = true;
-				} else {
-					this.showWebhookNodeTooltip = false;
-				}
-			},
-			immediate: true,
-		},
-		isSingleActiveTriggerNode: {
-			handler(isSingleActiveTriggerNode) {
-				if (this.workflowRunning && this.isTriggerNode && !this.hasIssues && !this.isNodeDisabled && !this.isTriggerNodeTooltipEmpty) {
-					this.showWebhookNodeTooltip = isSingleActiveTriggerNode;
-				}
-			},
-			immediate: true,
+		shouldShowTooltip(shouldShowTooltip) {
+			if (shouldShowTooltip) {
+				setTimeout(() => {
+					this.showTriggerNodeTooltip = this.shouldShowTooltip;
+				}, 2500);
+			} else {
+				this.showTriggerNodeTooltip = false;
+			}
 		},
 		nodeRunData(newValue) {
 			this.$emit('run', {name: this.data.name, data: newValue, waiting: !!this.waiting});
@@ -326,7 +282,7 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 		return {
 			isTouchActive: false,
 			nodeSubtitle: '',
-			showWebhookNodeTooltip: false,
+			showTriggerNodeTooltip: false,
 		};
 	},
 	methods: {
@@ -359,11 +315,11 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 			if (this.nodeType !== null && this.nodeType.hasOwnProperty('eventTriggerDescription')) {
 				return this.nodeType.eventTriggerDescription;
 			} else {
-				return `Waiting for you to create an event in ${this.getTrimmedWebhookNodeName()}`;
+				return `Waiting for you to create an event in ${this.getTrimmedTriggerNodeTypeName()}`;
 			}
 		},
-		getTrimmedWebhookNodeName() {
-			return this.name.replace(/Trigger/g, "");
+		getTrimmedTriggerNodeTypeName() {
+			return this.nodeType && this.nodeType.displayName.replace(/Trigger/, "");
 		},
 		setNodeActive () {
 			this.$store.commit('setActiveNode', this.data.name);
