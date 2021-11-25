@@ -13,7 +13,6 @@ import {
 
 
 export async function getAll(this: IExecuteFunctions, index: number): Promise<INodeExecutionData[]> {
-	const id = this.getNodeParameter('id', index) as string;
 	const returnAll = this.getNodeParameter('returnAll', index) as boolean;
 	const additionalFields = this.getNodeParameter('additionalFields', index) as IDataObject;
 
@@ -22,9 +21,7 @@ export async function getAll(this: IExecuteFunctions, index: number): Promise<IN
 	const endpoint = 'customers';
 	const body = {} as IDataObject;
 
-	if (id) {
-		qs.id=id;
-	} else if (additionalFields) {
+	if (additionalFields) {
 		qs = additionalFields;
 	}
 

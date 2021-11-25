@@ -2,43 +2,23 @@ import {
 	CustomerProperties,
 } from '../../Interfaces';
 
-export const customerGetAllDescription: CustomerProperties = [
+export const customerGetCustomerDescription: CustomerProperties = [
 	{
-		displayName: 'Return All',
-		name: 'returnAll',
-		type: 'boolean',
+		displayName: 'Cutomer Id',
+		name: 'id',
+		type: 'string',
 		displayOptions: {
 			show: {
 				resource: [
 					'customer',
 				],
 				operation: [
-					'getAll',
+					'getCustomer',
 				],
 			},
 		},
-		default: false,
-		description: 'If all results should be returned or only up to a given limit.',
-	},
-	{
-		displayName: 'Limit',
-		name: 'per_page',
-		type: 'number',
-		displayOptions: {
-			show: {
-				resource: [
-					'customer',
-				],
-				operation: [
-					'getAll',
-				],
-				returnAll: [
-					false,
-				],
-			},
-		},
-		default: 25,
-		description: 'limit the number of rows returned',
+		default: '',
+		description: 'get specific customer by id',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -51,7 +31,7 @@ export const customerGetAllDescription: CustomerProperties = [
 					'customer',
 				],
 				operation: [
-					'getAll',
+					'getCustomer',
 				],
 			},
 		},
