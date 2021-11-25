@@ -3,6 +3,7 @@ import * as getAll from './getAll';
 import * as addCustomer from './addCustomer';
 import * as deleteCustomer from './deleteCustomer';
 import * as updateCustomer from './updateCustomer';
+import * as getCustomer from './getCustomer';
 
 import { INodeProperties } from 'n8n-workflow';
 
@@ -11,6 +12,7 @@ export {
 	addCustomer,
 	deleteCustomer,
 	updateCustomer,
+	getCustomer,
 };
 
 
@@ -33,6 +35,11 @@ export const descriptions = [
 				description: 'Retrieve all customers',
 			},
 			{
+				name: 'Get',
+				value: 'getCustomer',
+				description: 'Retrieve customer',
+			},
+			{
 				name: 'Create',
 				value: 'addCustomer',
 				description: 'add new customers',
@@ -52,6 +59,7 @@ export const descriptions = [
 		description: 'The operation to perform.',
 	},
 	...getAll.description,
+	...getCustomer.description,
 	...addCustomer.description,
 	...deleteCustomer.description,
 	...updateCustomer.description,
