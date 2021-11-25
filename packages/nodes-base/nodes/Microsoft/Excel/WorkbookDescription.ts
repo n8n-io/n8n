@@ -76,8 +76,7 @@ export const workbookFields = [
 				name: 'name',
 				type: 'string',
 				default: '',
-				description: `The name of the worksheet to be added. If specified, name should be unqiue. </BR>
-				If not specified, Excel determines the name of the new worksheet.`,
+				description: `The name of the worksheet to be added. If specified, name should be unqiue. If not specified, Excel determines the name of the new worksheet.`,
 			},
 		],
 	},

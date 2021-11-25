@@ -61,9 +61,7 @@ export class AirtableTrigger implements INodeType {
 				name: 'triggerField',
 				type: 'string',
 				default: '',
-				description: `A Created Time or Last Modified Time field that will be used to sort records. <br>
-				If you do not have a Created Time or Last Modified Time field in your schema, please create one,<br>
-				because without this field trigger will not work correctly.`,
+				description: `A Created Time or Last Modified Time field that will be used to sort records. If you do not have a Created Time or Last Modified Time field in your schema, please create one, because without this field trigger will not work correctly.`,
 				required: true,
 			},
 			{
@@ -100,9 +98,7 @@ export class AirtableTrigger implements INodeType {
 						name: 'fields',
 						type: 'string',
 						default: '',
-						description: `Fields to be included in the response.<br>
-						Multiple ones can be set separated by comma. Example: name,id.<br>
-						By default just the trigger field will be included.`,
+						description: `Fields to be included in the response. Multiple ones can be set separated by comma. Example: <code>name, id</code>. By default just the trigger field will be included.`,
 					},
 					{
 						displayName: 'Formula',

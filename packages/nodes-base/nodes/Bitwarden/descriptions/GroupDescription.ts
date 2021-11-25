@@ -144,7 +144,7 @@ export const groupFields = [
 		name: 'accessAll',
 		type: 'boolean',
 		default: false,
-		description: 'Allow this group to access all collections within the organization, instead of only its associated collections.<br>If set to true, this option overrides any collection assignments.',
+		description: 'Allow this group to access all collections within the organization, instead of only its associated collections. If set to true, this option overrides any collection assignments.',
 		displayOptions: {
 			show: {
 				resource: [
@@ -208,7 +208,7 @@ export const groupFields = [
 				name: 'accessAll',
 				type: 'boolean',
 				default: false,
-				description: 'Allow this group to access all collections within the organization, instead of only its associated collections.<br>If set to true, this option overrides any collection assignments.',
+				description: 'Allow this group to access all collections within the organization, instead of only its associated collections. If set to true, this option overrides any collection assignments.',
 			},
 			{
 				displayName: 'Collections',
