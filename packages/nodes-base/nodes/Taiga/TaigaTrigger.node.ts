@@ -235,7 +235,6 @@ export class TaigaTrigger implements INodeType {
 
 		// // @ts-ignore
 		// const requestSignature = headerData['x-taiga-webhook-signature'];
-		// console.log(requestSignature);
 
 		// if (requestSignature === undefined) {
 		// 	return {};
