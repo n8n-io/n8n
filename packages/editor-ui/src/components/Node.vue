@@ -28,7 +28,7 @@
 
 				<div class="node-trigger-tooltip__wrapper">
 					<n8n-tooltip placement="top" :manual="true" :value="showTriggerNodeTooltip" popper-class="node-trigger-tooltip__wrapper--item">
-						<div slot="content" v-text="getTriggerNodeTooltip()"></div>
+						<div slot="content" v-text="getTriggerNodeTooltip"></div>
 						<span />
 					</n8n-tooltip>
 				</div>
@@ -116,6 +116,13 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 		canvasOffsetPosition() {
 			return this.$store.getters.getNodeViewOffsetPosition;
 		},
+		getTriggerNodeTooltip (): string | undefined {
+			if (this.nodeType !== null && this.nodeType.hasOwnProperty('eventTriggerDescription')) {
+				return this.nodeType.eventTriggerDescription;
+			} else {
+				return `Waiting for you to create an event in ${this.nodeType && this.nodeType.displayName.replace(/Trigger/, "")}`;
+			}
+		},
 		isExecuting (): boolean {
 			return this.$store.getters.executingNode === this.data.name;
 		},
@@ -123,8 +130,9 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 			return this.$store.getters.isActionActive('dragActive');
 		},
 		isSingleActiveTriggerNode (): boolean {
-			const nodes = this.$store.getters.activeWorkflowTriggerNodes.filter((node: INodeUi) => {
-				return this.$store.getters.nodeType(node.type).eventTriggerDescription !== '' && !node.disabled;
+			const nodes = this.$store.getters.workflowTriggerNodes.filter((node: INodeUi) => {
+				const nodeType =  this.$store.getters.nodeType(node.type);
+				return nodeType && nodeType.eventTriggerDescription !== '' && !node.disabled;
 			});
 
 			return nodes.length === 1;
@@ -142,7 +150,7 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 			return this.$store.getters.nodeType(this.data.type);
 		},
 		node (): INodeUi | undefined {
-			return this.$store.getters.nodesByName[this.name] as INodeUi;
+			return this.$store.getters.nodesByName[this.name] as INodeUi | undefined;
 		},
 		nodeClass (): object {
 			return {
@@ -239,7 +247,7 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 		shiftOutputCount (): boolean {
 			return !!(this.nodeType && this.nodeType.outputs.length > 2);
 		},
-		shouldShowTooltip () : boolean {
+		shouldShowTriggerTooltip () : boolean {
 			return this.workflowRunning && this.isTriggerNode && this.isSingleActiveTriggerNode && !this.isTriggerNodeTooltipEmpty && !this.isNodeDisabled && !this.hasIssues && !this.isDragActive;
 		},
  	},
@@ -253,16 +261,14 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 			if (this.showTriggerNodeTooltip) {
 				this.showTriggerNodeTooltip = false;
 				setTimeout(() => {
-					if (this.workflowRunning) {
-						this.showTriggerNodeTooltip = true;
-					}
+					this.showTriggerNodeTooltip = true;
 				}, 200);
 			}
 		},
-		shouldShowTooltip(shouldShowTooltip) {
-			if (shouldShowTooltip) {
+		shouldShowTriggerTooltip(shouldShowTriggerTooltip) {
+			if (shouldShowTriggerTooltip) {
 				setTimeout(() => {
-					this.showTriggerNodeTooltip = this.shouldShowTooltip;
+					this.showTriggerNodeTooltip = this.shouldShowTriggerTooltip;
 				}, 2500);
 			} else {
 				this.showTriggerNodeTooltip = false;
@@ -310,16 +316,6 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 				// Wait a tick else vue causes problems because the data is gone
 				this.$emit('duplicateNode', this.data.name);
 			});
-		},
-		getTriggerNodeTooltip (): string | undefined {
-			if (this.nodeType !== null && this.nodeType.hasOwnProperty('eventTriggerDescription')) {
-				return this.nodeType.eventTriggerDescription;
-			} else {
-				return `Waiting for you to create an event in ${this.getTrimmedTriggerNodeTypeName()}`;
-			}
-		},
-		getTrimmedTriggerNodeTypeName() {
-			return this.nodeType && this.nodeType.displayName.replace(/Trigger/, "");
 		},
 		setNodeActive () {
 			this.$store.commit('setActiveNode', this.data.name);
