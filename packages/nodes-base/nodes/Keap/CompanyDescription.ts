@@ -366,8 +366,7 @@ export const companyFields = [
 				name: 'fields',
 				type: 'string',
 				default: '',
-				description: `Comma-delimited list of Company properties to include in the response.</br>
-				(Fields such as notes, fax_number and custom_fields aren't included, by default.)`,
+				description: `Comma-delimited list of Company properties to include in the response. (Fields such as notes, fax_number and custom_fields aren't included, by default.)`,
 			},
 		],
 	},

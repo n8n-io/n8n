@@ -84,7 +84,7 @@ export class EmailReadImap implements INodeType {
 						],
 					},
 				},
-				description: 'If attachments of emails should be downloaded.<br />Only set if needed as it increases processing.',
+				description: 'If attachments of emails should be downloaded. Only set if needed as it increases processing.',
 			},
 			{
 				displayName: 'Format',
@@ -122,7 +122,7 @@ export class EmailReadImap implements INodeType {
 						],
 					},
 				},
-				description: 'Prefix for name of the binary property to which to write the attachments. An index starting with 0 will be added.<br />So if name is "attachment_" the first attachment is saved to "attachment_0"',
+				description: 'Prefix for name of the binary property to which to write the attachments. An index starting with 0 will be added. So if name is "attachment_" the first attachment is saved to "attachment_0"',
 			},
 			{
 				displayName: 'Property Prefix Name',
@@ -139,7 +139,7 @@ export class EmailReadImap implements INodeType {
 						],
 					},
 				},
-				description: 'Prefix for name of the binary property to which to write the attachments. An index starting with 0 will be added.<br />So if name is "attachment_" the first attachment is saved to "attachment_0"',
+				description: 'Prefix for name of the binary property to which to write the attachments. An index starting with 0 will be added. So if name is "attachment_" the first attachment is saved to "attachment_0"',
 			},
 			{
 				displayName: 'Options',
