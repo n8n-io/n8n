@@ -57,11 +57,13 @@ export const CONNECTOR_FLOWCHART_TYPE = ['N8nCustom', {
 	getEndpointOffset(endpoint: Endpoint) {
 		const indexOffset = 10; // stub offset between different endpoints of same node
 		const index = endpoint && endpoint.__meta ? endpoint.__meta.index : 0;
+		const outputsCount = endpoint && endpoint.__meta ? endpoint.__meta.outputsCount : 0;
 
 		const outputOverlay = getOverlay(endpoint, OVERLAY_OUTPUT_NAME_LABEL);
 		const labelOffset = outputOverlay && outputOverlay.label && outputOverlay.label.length > 1 ? 10 : 0;
+		const outputsOffset = outputsCount > 3 ? 24 : 0; // avoid intersecting plus
 
-		return index * indexOffset + labelOffset;
+		return index * indexOffset + labelOffset + outputsOffset;
 	},
 }];
 

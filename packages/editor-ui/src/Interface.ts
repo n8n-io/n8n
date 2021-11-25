@@ -70,6 +70,7 @@ declare module 'jsplumb' {
 			nodeName: string,
 			nodeId: string,
 			index: number,
+			outputsCount: number,
 		};
 		getOverlay(name: string): any; // tslint:disable-line:no-any
 		repaint(params?: object): void;

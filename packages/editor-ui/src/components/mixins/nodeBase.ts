@@ -160,6 +160,7 @@ export const nodeBase = mixins(
 					nodeName: node.name,
 					nodeId: this.nodeId,
 					index: i,
+					outputsCount: nodeTypeData.outputs.length,
 				};
 
 				if (!this.isReadOnly) {
@@ -198,6 +199,7 @@ export const nodeBase = mixins(
 						nodeName: node.name,
 						nodeId: this.nodeId,
 						index: i,
+						outputsCount: nodeTypeData.outputs.length,
 					};
 				}
 			});
