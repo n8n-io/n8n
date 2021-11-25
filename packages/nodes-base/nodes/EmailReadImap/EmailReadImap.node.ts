@@ -36,6 +36,7 @@ export class EmailReadImap implements INodeType {
 		group: ['trigger'],
 		version: 1,
 		description: 'Triggers the workflow when a new email is received',
+		eventTriggerDescription: 'Waiting for you to receive an email',
 		defaults: {
 			name: 'IMAP Email',
 			color: '#44AA22',

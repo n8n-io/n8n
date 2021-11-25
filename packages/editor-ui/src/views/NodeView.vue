@@ -261,7 +261,7 @@ export default mixins(
 				}
 
 				if (this.executionWaitingForWebhook === true) {
-					return 'Waiting for Webhook-Call';
+					return 'Waiting for Trigger Event';
 				}
 
 				return 'Executing Workflow';
