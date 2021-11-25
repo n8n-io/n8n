@@ -344,7 +344,7 @@ export const pageFields = [
 										value: 'descending',
 									},
 								],
-								default: '',
+								default: 'descending',
 								description: 'The direction to sort',
 							},
 							{

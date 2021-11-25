@@ -289,6 +289,42 @@ export class NotionV2 implements INodeType {
 					returnData.push.apply(returnData, responseData);
 				}
 			}
+
+			if (operation === 'search') {
+				for (let i = 0; i < length; i++) {
+					const text = this.getNodeParameter('text', i) as string;
+					const options = this.getNodeParameter('options', i) as IDataObject;
+					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+					const simple = this.getNodeParameter('simple', i) as boolean;
+					const body: IDataObject = {
+						filter: {
+							property: 'object',
+							value: 'database',
+						},
+					};
+
+					if (text) {
+						body['query'] = text;
+					}
+					if (options.sort) {
+						const sort = (options.sort as IDataObject || {}).sortValue as IDataObject || {};
+						body['sort'] = sort;
+					}
+					if (returnAll) {
+						responseData = await notionApiRequestAllItems.call(this, 'results', 'POST', '/search', body);
+					} else {
+						qs.limit = this.getNodeParameter('limit', i) as number;
+						responseData = await notionApiRequestAllItems.call(this, 'results', 'POST', '/search', body);
+						responseData = responseData.splice(0, qs.limit);
+					}
+
+					if (simple === true) {
+						responseData = simplifyObjects(responseData, download, 2);
+					}
+
+					returnData.push.apply(returnData, responseData);
+				}
+			}
 		}
 
 		if (resource === 'databasePage') {
