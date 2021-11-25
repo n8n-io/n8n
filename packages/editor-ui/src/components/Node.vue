@@ -131,7 +131,7 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 		},
 		isSingleActiveTriggerNode (): boolean {
 			const nodes = this.$store.getters.workflowTriggerNodes.filter((node: INodeUi) => {
-				const nodeType =  this.$store.getters.nodeType(node.type);
+				const nodeType =  this.$store.getters.nodeType(node.type) as INodeTypeDescription | null;
 				return nodeType && nodeType.eventTriggerDescription !== '' && !node.disabled;
 			});
 
