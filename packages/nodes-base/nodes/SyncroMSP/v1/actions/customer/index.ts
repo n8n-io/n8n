@@ -26,6 +26,11 @@ export const descriptions = [
 				value: 'getAll',
 				description: 'Retrieve all customers',
 			},
+			{
+				name: 'Add Customer',
+				value: 'addCustomer',
+				description: 'add new customers',
+			},
 		],
 		default: '',
 		description: 'The operation to perform.',
