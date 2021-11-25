@@ -68,7 +68,7 @@
 
 				.plus-stalk .connection-run-items-label span {
 					display: none;
-					left: 50%;
+					left: calc(50% + 4px);
 					transform: translateX(-50%);
 				}
 
