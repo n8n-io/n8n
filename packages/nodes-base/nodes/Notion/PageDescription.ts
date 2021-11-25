@@ -39,7 +39,6 @@ export const pageOperations = [
 			},
 		],
 		default: 'create',
-		description: 'The operation to perform.',
 	},
 	{
 		displayName: 'Operation',
@@ -68,7 +67,6 @@ export const pageOperations = [
 			},
 		],
 		default: 'create',
-		description: 'The operation to perform.',
 	},
 ] as INodeProperties[];
 
@@ -111,7 +109,7 @@ export const pageFields = [
 				],
 			},
 		},
-		description: 'Page title. Appears at the top of the page and can be found via Quick Find.',
+		description: 'Page title. Appears at the top of the page and can be found via Quick Find',
 	},
 	{
 		displayName: 'Simplify Output',
@@ -193,7 +191,7 @@ export const pageFields = [
 				],
 			},
 		},
-		description: 'The text to search for.',
+		description: 'The text to search for',
 	},
 	{
 		displayName: 'Return All',

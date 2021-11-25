@@ -27,7 +27,6 @@ export const databaseOperations = [
 			},
 		],
 		default: 'get',
-		description: 'The operation to perform.',
 	},
 ] as INodeProperties[];
 

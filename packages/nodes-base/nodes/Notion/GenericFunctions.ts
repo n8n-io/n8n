@@ -34,6 +34,8 @@ import * as moment from 'moment-timezone';
 
 import { validate as uuidValidate } from 'uuid';
 
+import { snakeCase } from 'change-case';
+
 const apiVersion: { [key: number]: string } = {
 	1: '2021-05-13',
 	2: '2021-08-16',
@@ -748,7 +750,7 @@ export function extractDatabaseId(database: string) {
 // tslint:disable-next-line: no-any
 function prepend(stringKey: string, properties: { [key: string]: any }) {
 	for (const key of Object.keys(properties)) {
-		properties[`${stringKey}_${key}`] = properties[key];
+		properties[`${stringKey}_${snakeCase(key)}`] = properties[key];
 		delete properties[key];
 	}
 	return properties;

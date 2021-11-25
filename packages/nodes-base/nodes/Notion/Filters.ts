@@ -12,7 +12,7 @@ export const filters = (conditions: any) => [{
 		],
 	},
 	default: '',
-	description: 'The name of the property to filter by.',
+	description: 'The name of the property to filter by',
 },
 {
 	displayName: 'Type',
