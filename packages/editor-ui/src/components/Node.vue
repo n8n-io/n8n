@@ -126,9 +126,6 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 		isExecuting (): boolean {
 			return this.$store.getters.executingNode === this.data.name;
 		},
-		isDragActive (): boolean {
-			return this.$store.getters.isActionActive('dragActive');
-		},
 		isSingleActiveTriggerNode (): boolean {
 			const nodes = this.$store.getters.workflowTriggerNodes.filter((node: INodeUi) => {
 				const nodeType =  this.$store.getters.nodeType(node.type) as INodeTypeDescription | null;
@@ -147,7 +144,7 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 			return this.node && this.node.disabled;
 		},
 		nodeType (): INodeTypeDescription | null {
-			return this.$store.getters.nodeType(this.data.type);
+			return this.data && this.$store.getters.nodeType(this.data.type);
 		},
 		node (): INodeUi | undefined {
 			return this.$store.getters.nodesByName[this.name] as INodeUi | undefined;
@@ -248,7 +245,7 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 			return !!(this.nodeType && this.nodeType.outputs.length > 2);
 		},
 		shouldShowTriggerTooltip () : boolean {
-			return this.workflowRunning && this.isTriggerNode && this.isSingleActiveTriggerNode && !this.isTriggerNodeTooltipEmpty && !this.isNodeDisabled && !this.hasIssues && !this.isDragActive;
+			return this.workflowRunning && this.isTriggerNode && this.isSingleActiveTriggerNode && !this.isTriggerNodeTooltipEmpty && !this.isNodeDisabled && !this.hasIssues && !this.dragging;
 		},
  	},
 	watch: {
@@ -289,6 +286,7 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 			isTouchActive: false,
 			nodeSubtitle: '',
 			showTriggerNodeTooltip: false,
+			dragging: false,
 		};
 	},
 	methods: {
