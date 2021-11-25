@@ -13,6 +13,10 @@ import {
 
 
 export async function getAll(this: IExecuteFunctions, index: number): Promise<INodeExecutionData[]> {
+	const firstname = this.getNodeParameter('firstname', index) as IDataObject;
+	const lastname = this.getNodeParameter('lastname', index) as IDataObject;
+	const email = this.getNodeParameter('email', index) as IDataObject;
+	const business_name = this.getNodeParameter('business_name', index) as IDataObject;
 	const additionalFields = this.getNodeParameter('additionalFields', index) as IDataObject;
 
 	let qs = {} as IDataObject;
@@ -24,8 +28,13 @@ export async function getAll(this: IExecuteFunctions, index: number): Promise<IN
 		body = additionalFields;
 	}
 
+	body.firstname=firstname;
+	body.lastname=lastname;
+	body.email=email;
+	body.business_name=business_name;
+
 	let responseData;
 	responseData = await apiRequest.call(this, requestMethod, endpoint, body, qs);
 
-	return this.helpers.returnJsonArray(responseData.customers);
+	return this.helpers.returnJsonArray(responseData.customer);
 }

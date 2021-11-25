@@ -21,6 +21,23 @@ export const customerGetAllDescription: CustomerProperties = [
 		description: 'If all results should be returned or only up to a given limit.',
 	},
 	{
+		displayName: 'Get by Id',
+		name: 'id',
+		type: 'string',
+		displayOptions: {
+			show: {
+				resource: [
+					'customer',
+				],
+				operation: [
+					'getAll',
+				],
+			},
+		},
+		default: '',
+		description: 'get specific customer by id',
+	},
+	{
 		displayName: 'Additional Fields',
 		name: 'additionalFields',
 		type: 'collection',
