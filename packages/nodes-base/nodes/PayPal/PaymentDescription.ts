@@ -270,7 +270,7 @@ export const payoutFields = [
 				name: 'note',
 				type: 'string',
 				default: '',
-				description: 'The payouts and item-level notes are concatenated in the email.<br />Max length: 1000 characters.',
+				description: 'The payouts and item-level notes are concatenated in the email. Max length: 1000 characters.',
 			},
 		],
 	},

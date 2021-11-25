@@ -135,5 +135,9 @@ export default {
 
 .tooltipPopper {
 	max-width: 400px;
+
+	li {
+		margin-left: var(--spacing-s);
+	}
 }
 </style>
