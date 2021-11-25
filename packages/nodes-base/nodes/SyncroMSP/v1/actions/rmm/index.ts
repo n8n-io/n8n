@@ -22,7 +22,7 @@ export const descriptions = [
 		},
 		options: [
 			{
-				name: 'Get RMM Alerts',
+				name: 'Get Alerts',
 				value: 'getAlerts',
 				description: 'Retrieve RMM Alerts',
 			},

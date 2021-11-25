@@ -8,11 +8,12 @@ import {
 } from 'n8n-workflow';
 
 import {
-	apiRequest,
+	apiRequest, apiRequestAllItems
 } from '../../../transport';
 
 
 export async function getAll(this: IExecuteFunctions, index: number): Promise<INodeExecutionData[]> {
+	const returnAll = this.getNodeParameter('returnAll', index) as boolean;
 	const additionalFields = this.getNodeParameter('additionalFields', index) as IDataObject;
 
 	let qs = {} as IDataObject;
@@ -25,7 +26,11 @@ export async function getAll(this: IExecuteFunctions, index: number): Promise<IN
 	}
 
 	let responseData;
-	responseData = await apiRequest.call(this, requestMethod, endpoint, body, qs);
-
-	return this.helpers.returnJsonArray(responseData.rmm_alerts);
+	if (returnAll) {
+		responseData = await apiRequestAllItems.call(this, requestMethod, endpoint, body, qs);
+		return this.helpers.returnJsonArray(responseData);
+	} else {
+		responseData = await apiRequest.call(this, requestMethod, endpoint, body, qs);
+		return this.helpers.returnJsonArray(responseData.rmm_alerts);
+	}
 }
