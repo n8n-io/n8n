@@ -2,10 +2,10 @@ import {
 	CustomerProperties,
 } from '../../Interfaces';
 
-export const customerAddCustomerDescription: CustomerProperties = [
+export const customerUpdateCustomerDescription: CustomerProperties = [
 	{
-		displayName: 'First Name',
-		name: 'firstname',
+		displayName: 'Customer Id',
+		name: 'id',
 		type: 'string',
 		displayOptions: {
 			show: {
@@ -13,55 +13,7 @@ export const customerAddCustomerDescription: CustomerProperties = [
 					'customer',
 				],
 				operation: [
-					'addCustomer',
-				],
-			},
-		},
-		default: '',
-	},
-	{
-		displayName: 'Last Name',
-		name: 'lastname',
-		type: 'string',
-		displayOptions: {
-			show: {
-				resource: [
-					'customer',
-				],
-				operation: [
-					'addCustomer',
-				],
-			},
-		},
-		default: '',
-	},
-	{
-		displayName: 'Business Name',
-		name: 'business_name',
-		type: 'string',
-		displayOptions: {
-			show: {
-				resource: [
-					'customer',
-				],
-				operation: [
-					'addCustomer',
-				],
-			},
-		},
-		default: '',
-	},
-	{
-		displayName: 'Email',
-		name: 'email',
-		type: 'string',
-		displayOptions: {
-			show: {
-				resource: [
-					'customer',
-				],
-				operation: [
-					'addCustomer',
+					'updateCustomer',
 				],
 			},
 		},
@@ -78,12 +30,36 @@ export const customerAddCustomerDescription: CustomerProperties = [
 					'customer',
 				],
 				operation: [
-					'addCustomer',
+					'updateCustomer',
 				],
 			},
 		},
 		default: {},
 		options: [
+			{
+				displayName: 'First Name',
+				name: 'firstname',
+				type: 'string',
+				default: '',
+			},
+			{
+				displayName: 'Last Name',
+				name: 'lastname',
+				type: 'string',
+				default: '',
+			},
+			{
+				displayName: 'Business Name',
+				name: 'business_name',
+				type: 'string',
+				default: '',
+			},
+			{
+				displayName: 'Email',
+				name: 'email',
+				type: 'string',
+				default: '',
+			},
 			{
 				displayName: 'Phone',
 				name: 'phone',

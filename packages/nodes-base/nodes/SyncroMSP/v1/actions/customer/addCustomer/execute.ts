@@ -12,7 +12,7 @@ import {
 } from '../../../transport';
 
 
-export async function getAll(this: IExecuteFunctions, index: number): Promise<INodeExecutionData[]> {
+export async function addCustomer(this: IExecuteFunctions, index: number): Promise<INodeExecutionData[]> {
 	const firstname = this.getNodeParameter('firstname', index) as IDataObject;
 	const lastname = this.getNodeParameter('lastname', index) as IDataObject;
 	const email = this.getNodeParameter('email', index) as IDataObject;
