@@ -243,7 +243,7 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 			return !!(this.nodeType && this.nodeType.outputs.length > 2);
 		},
 		shouldShowTriggerTooltip () : boolean {
-			return this.workflowRunning && this.isTriggerNode && this.isSingleActiveTriggerNode && !this.isTriggerNodeTooltipEmpty && !this.isNodeDisabled && !this.hasIssues && !this.dragging;
+			return !!this.node && this.workflowRunning && this.isTriggerNode && this.isSingleActiveTriggerNode && !this.isTriggerNodeTooltipEmpty && !this.isNodeDisabled && !this.hasIssues && !this.dragging;
 		},
  	},
 	watch: {
@@ -256,7 +256,7 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 			if (this.showTriggerNodeTooltip) {
 				this.showTriggerNodeTooltip = false;
 				setTimeout(() => {
-					this.showTriggerNodeTooltip = true;
+					this.showTriggerNodeTooltip = this.shouldShowTriggerTooltip;
 				}, 200);
 			}
 		},
