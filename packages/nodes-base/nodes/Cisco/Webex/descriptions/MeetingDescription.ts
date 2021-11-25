@@ -848,8 +848,7 @@ export const meetingFields = [
 				name: 'password',
 				type: 'string',
 				default: '',
-				description: `Meeting password. Must conform to the site's password complexity settings.</br>
-				If not specified, a random password conforming to the site's password rules will be generated automatically`,
+				description: `Meeting password. Must conform to the site's password complexity settings. If not specified, a random password conforming to the site's password rules will be generated automatically`,
 			},
 			{
 				displayName: 'Public Meeting',
