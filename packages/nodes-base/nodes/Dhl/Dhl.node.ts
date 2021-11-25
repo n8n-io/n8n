@@ -21,7 +21,7 @@ import {
 export class Dhl implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'DHL',
-		name: 'Dhl',
+		name: 'dhl',
 		icon: 'file:dhl.svg',
 		group: ['input'],
 		version: 1,
