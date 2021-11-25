@@ -29,9 +29,12 @@ export class WorkflowTrigger implements INodeType {
 				type: 'multiOptions',
 				required: true,
 				default: [],
-				description: 'Specifies under which conditions an execution should happen:<br />' +
-					'- <b>Active Workflow Updated</b>: Triggers when this workflow is updated<br />' +
-					'- <b>Workflow Activated</b>: Triggers when this workflow is activated',
+				description: `Specifies under which conditions an execution should happen:
+					<ul>
+						<li><b>Active Workflow Updated</b>: Triggers when this workflow is updated</li>
+						<li><b>Workflow Activated</b>: Triggers when this workflow is activated</li>
+					</ul>
+				`,
 				options: [
 					{
 						name: 'Active Workflow Updated',

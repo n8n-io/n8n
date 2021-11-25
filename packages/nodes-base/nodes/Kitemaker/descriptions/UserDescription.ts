@@ -13,7 +13,7 @@ export const userOperations = [
 			{
 				name: 'Get All',
 				value: 'getAll',
-				description: 'Retrieve data on all the users in the<br>logged-in user\'s organization.',
+				description: `Retrieve data on all the users in the logged-in user's organization.`,
 			},
 		],
 		displayOptions: {
