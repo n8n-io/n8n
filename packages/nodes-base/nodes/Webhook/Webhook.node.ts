@@ -45,6 +45,7 @@ export class Webhook implements INodeType {
 		group: ['trigger'],
 		version: 1,
 		description: 'Starts the workflow when a webhook is called',
+		eventTriggerDescription: 'Waiting for you to ping the Test URL',
 		defaults: {
 			name: 'Webhook',
 			color: '#885577',
