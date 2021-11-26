@@ -1392,8 +1392,10 @@ export class Workflow {
 		additionalKeys?: IWorkflowDataProxyAdditionalKeys,
 	): IRequestOptionsFromParameters | undefined {
 		const returnData: IRequestOptionsFromParameters = {
+			// @ts-ignore
 			options: {
-				url: '', // TODO: Replace with own type where url is not required
+				// Do not uncomment, else it will overwrite url always to empty!
+				// url: '', // TODO: Replace with own type where url is not required
 				qs: {},
 				body: {},
 			},
