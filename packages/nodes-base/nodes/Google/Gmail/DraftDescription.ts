@@ -209,8 +209,7 @@ export const draftFields = [
 								name: 'property',
 								type: 'string',
 								default: '',
-								description: `Name of the binary property containing the data to be added to the email as an attachment.</br>
-								Multiples can be set separated by comma.`,
+								description: `Name of the binary property containing the data to be added to the email as an attachment. Multiple properties can be set separated by comma.`,
 							},
 						],
 					},
@@ -252,7 +251,7 @@ export const draftFields = [
 						],
 					},
 				},
-				description: 'Prefix for name of the binary property to which to<br />write the attachments. An index starting with 0 will be added.<br />So if name is "attachment_" the first attachment is saved to "attachment_0"',
+				description: 'Prefix for name of the binary property to which to write the attachments. An index starting with 0 will be added. So if name is "attachment_" the first attachment is saved to "attachment_0"',
 			},
 			{
 				displayName: 'Format',
@@ -368,7 +367,7 @@ export const draftFields = [
 						],
 					},
 				},
-				description: 'Prefix for name of the binary property to which to<br />write the attachments. An index starting with 0 will be added.<br />So if name is "attachment_" the first attachment is saved to "attachment_0"',
+				description: 'Prefix for name of the binary property to which to write the attachments. An index starting with 0 will be added. So if name is "attachment_" the first attachment is saved to "attachment_0"',
 			},
 			{
 				displayName: 'Format',

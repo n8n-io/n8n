@@ -2,7 +2,7 @@
 	<div :class="$style.container">
 		<el-row>
 			<el-col :span="8" :class="$style.accessLabel">
-				<span>Allow use by</span>
+				<n8n-text :compact="true" :bold="true">Allow use by</n8n-text>
 			</el-col>
 			<el-col :span="16">
 				<div
@@ -20,26 +20,26 @@
 		</el-row>
 		<el-row v-if="currentCredential">
 			<el-col :span="8" :class="$style.label">
-				<span>Created</span>
+				<n8n-text :compact="true" :bold="true">Created</n8n-text>
 			</el-col>
 			<el-col :span="16" :class="$style.valueLabel">
-				<TimeAgo :date="currentCredential.createdAt" :capitalize="true" />
+				<n8n-text :compact="true"><TimeAgo :date="currentCredential.createdAt" :capitalize="true" /></n8n-text>
 			</el-col>
 		</el-row>
 		<el-row v-if="currentCredential">
 			<el-col :span="8" :class="$style.label">
-				<span>Last modified</span>
+				<n8n-text :compact="true" :bold="true">Last modified</n8n-text>
 			</el-col>
 			<el-col :span="16" :class="$style.valueLabel">
-				<TimeAgo :date="currentCredential.updatedAt" :capitalize="true" />
+				<n8n-text :compact="true"><TimeAgo :date="currentCredential.updatedAt" :capitalize="true" /></n8n-text>
 			</el-col>
 		</el-row>
 		<el-row v-if="currentCredential">
 			<el-col :span="8" :class="$style.label">
-				<span>ID</span>
+				<n8n-text :compact="true" :bold="true">ID</n8n-text>
 			</el-col>
 			<el-col :span="16" :class="$style.valueLabel">
-				<span>{{currentCredential.id}}</span>
+				<n8n-text :compact="true">{{currentCredential.id}}</n8n-text>
 			</el-col>
 		</el-row>
 	</div>

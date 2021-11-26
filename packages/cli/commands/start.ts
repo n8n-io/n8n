@@ -22,8 +22,7 @@ import {
 	Db,
 	ExternalHooks,
 	GenericHelpers,
-	// eslint-disable-next-line @typescript-eslint/no-unused-vars
-	IExecutionsCurrentSummary,
+	InternalHooksManager,
 	LoadNodesAndCredentials,
 	NodeTypes,
 	Server,
@@ -37,7 +36,7 @@ import { getLogger } from '../src/Logger';
 const open = require('open');
 
 let activeWorkflowRunner: ActiveWorkflowRunner.ActiveWorkflowRunner | undefined;
-let processExistCode = 0;
+let processExitCode = 0;
 
 export class Start extends Command {
 	static description = 'Starts n8n. Makes Web-UI available and starts active workflows';
@@ -92,8 +91,11 @@ export class Start extends Command {
 			setTimeout(() => {
 				// In case that something goes wrong with shutdown we
 				// kill after max. 30 seconds no matter what
-				process.exit(processExistCode);
+				console.log(`process exited after 30s`);
+				process.exit(processExitCode);
 			}, 30000);
+
+			await InternalHooksManager.getInstance().onN8nStop();
 
 			const skipWebhookDeregistration = config.get(
 				'endpoints.skipWebhoooksDeregistrationOnShutdown',
@@ -133,7 +135,7 @@ export class Start extends Command {
 			console.error('There was an error shutting down n8n.', error);
 		}
 
-		process.exit(processExistCode);
+		process.exit(processExitCode);
 	}
 
 	async run() {
@@ -151,16 +153,22 @@ export class Start extends Command {
 				LoggerProxy.init(logger);
 				logger.info('Initializing n8n process');
 
-				// todo remove a few versions after release
 				logger.info(
-					'\nn8n now checks for new versions and security updates. You can turn this off using the environment variable N8N_VERSION_NOTIFICATIONS_ENABLED to "false"\nFor more information, please refer to https://docs.n8n.io/getting-started/installation/advanced/configuration.html\n',
+					'\n' +
+						'****************************************************\n' +
+						'*                                                  *\n' +
+						'*   n8n now sends selected, anonymous telemetry.   *\n' +
+						'*      For more details (and how to opt out):      *\n' +
+						'*   https://docs.n8n.io/reference/telemetry.html   *\n' +
+						'*                                                  *\n' +
+						'****************************************************\n',
 				);
 
 				// Start directly with the init of the database to improve startup time
 				const startDbInitPromise = Db.init().catch((error: Error) => {
 					logger.error(`There was an error initializing DB: "${error.message}"`);
 
-					processExistCode = 1;
+					processExitCode = 1;
 					// @ts-ignore
 					process.emit('SIGINT');
 					process.exit(1);
@@ -173,10 +181,6 @@ export class Start extends Command {
 				const loadNodesAndCredentials = LoadNodesAndCredentials();
 				await loadNodesAndCredentials.init();
 
-				// Load the credentials overwrites if any exist
-				const credentialsOverwrites = CredentialsOverwrites();
-				await credentialsOverwrites.init();
-
 				// Load all external hooks
 				const externalHooks = ExternalHooks();
 				await externalHooks.init();
@@ -186,6 +190,10 @@ export class Start extends Command {
 				await nodeTypes.init(loadNodesAndCredentials.nodeTypes);
 				const credentialTypes = CredentialTypes();
 				await credentialTypes.init(loadNodesAndCredentials.credentialTypes);
+
+				// Load the credentials overwrites if any exist
+				const credentialsOverwrites = CredentialsOverwrites();
+				await credentialsOverwrites.init();
 
 				// Wait till the database is ready
 				await startDbInitPromise;
@@ -304,14 +312,16 @@ export class Start extends Command {
 					);
 				}
 
+				const instanceId = await UserSettings.getInstanceId();
+				InternalHooksManager.init(instanceId);
+
 				await Server.start();
 
 				// Start to get active workflows and run their triggers
 				activeWorkflowRunner = ActiveWorkflowRunner.getInstance();
 				await activeWorkflowRunner.init();
 
-				// eslint-disable-next-line @typescript-eslint/no-unused-vars
-				const waitTracker = WaitTracker();
+				WaitTracker();
 
 				const editorUrl = GenericHelpers.getBaseUrl();
 				this.log(`\nEditor is now accessible via:\n${editorUrl}`);
@@ -355,7 +365,7 @@ export class Start extends Command {
 				// eslint-disable-next-line @typescript-eslint/restrict-template-expressions
 				this.error(`There was an error: ${error.message}`);
 
-				processExistCode = 1;
+				processExitCode = 1;
 				// @ts-ignore
 				process.emit('SIGINT');
 			}

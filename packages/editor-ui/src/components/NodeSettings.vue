@@ -10,19 +10,18 @@
 					</n8n-tooltip>
 				</a>
 			</span>
-			<span v-else>No node active</span>
 		</div>
 		<div class="node-is-not-valid" v-if="node && !nodeValid">
-			The node is not valid as its type "{{node.type}}" is unknown.
+			<n8n-text>The node is not valid as its type "{{node.type}}" is unknown.</n8n-text>
 		</div>
 		<div class="node-parameters-wrapper" v-if="node && nodeValid">
-			<el-tabs stretch>
+			<el-tabs stretch @tab-click="handleTabClick">
 				<el-tab-pane label="Parameters">
 					<node-credentials :node="node" @credentialSelected="credentialSelected"></node-credentials>
 					<node-webhooks :node="node" :nodeType="nodeType" />
 					<parameter-input-list :parameters="parametersNoneSetting" :hideDelete="true" :nodeValues="nodeValues" path="parameters" @valueChanged="valueChanged" />
-					<div v-if="parametersNoneSetting.length === 0">
-						This node does not have any parameters.
+					<div v-if="parametersNoneSetting.length === 0" class="no-parameters">
+						<n8n-text>This node does not have any parameters.</n8n-text>
 					</div>
 				</el-tab-pane>
 				<el-tab-pane label="Settings">
@@ -48,6 +47,8 @@ import {
 	INodeUpdatePropertiesInformation,
 	IUpdateInformation,
 } from '@/Interface';
+
+import { ElTabPane } from "element-ui/types/tab-pane";
 
 import DisplayWithChange from '@/components/DisplayWithChange.vue';
 import ParameterInputFull from '@/components/ParameterInputFull.vue';
@@ -121,13 +122,6 @@ export default mixins(
 
 				return this.nodeType.properties;
 			},
-			isColorDefaultValue (): boolean {
-				if (this.nodeType === null) {
-					return false;
-				}
-
-				return this.node.color === this.nodeType.defaults.color;
-			},
 			workflowRunning (): boolean {
 				return this.$store.getters.isActionActive('workflowRunning');
 			},
@@ -168,14 +162,6 @@ export default mixins(
 						default: false,
 						noDataExpression: true,
 						description: 'If active, the note above will display in the flow as a subtitle.',
-					},
-					{
-						displayName: 'Node Color',
-						name: 'color',
-						type: 'color',
-						default: '#ff0000',
-						noDataExpression: true,
-						description: 'The color of the node in the flow.',
 					},
 					{
 						displayName: 'Always Output Data',
@@ -316,7 +302,7 @@ export default mixins(
 				// Update the values on the node
 				this.$store.commit('updateNodeProperties', updateInformation);
 
-				const node = this.$store.getters.nodeByName(updateInformation.name);
+				const node = this.$store.getters.getNodeByName(updateInformation.name);
 
 				// Update the issues
 				this.updateNodeCredentialIssues(node);
@@ -336,7 +322,7 @@ export default mixins(
 				// Save the node name before we commit the change because
 				// we need the old name to rename the node properly
 				const nodeNameBefore = parameterData.node || this.node.name;
-				const node = this.$store.getters.nodeByName(nodeNameBefore);
+				const node = this.$store.getters.getNodeByName(nodeNameBefore);
 				if (parameterData.name === 'name') {
 					// Name of node changed so we have to set also the new node name as active
 
@@ -352,7 +338,10 @@ export default mixins(
 				} else if (parameterData.name.startsWith('parameters.')) {
 					// A node parameter changed
 
-					const nodeType = this.$store.getters.nodeType(node.type);
+					const nodeType = this.$store.getters.nodeType(node.type) as INodeTypeDescription | null;
+					if (!nodeType) {
+						return;
+					}
 
 					// Get only the parameters which are different to the defaults
 					let nodeParameters = NodeHelpers.getNodeParameters(nodeType.properties, node.parameters, false, false);
@@ -490,15 +479,16 @@ export default mixins(
 							// Set default value
 							Vue.set(this.nodeValues, nodeSetting.name, nodeSetting.default);
 						}
-						if (nodeSetting.name === 'color') {
-							// For color also apply the default node color to the node settings
-							nodeSetting.default = this.nodeType.defaults.color;
-						}
 					}
 
 					Vue.set(this.nodeValues, 'parameters', JSON.parse(JSON.stringify(this.node.parameters)));
 				} else {
 					this.nodeValid = false;
+				}
+			},
+			handleTabClick(tab: ElTabPane) {
+				if(tab.label === 'Settings') {
+					this.$telemetry.track('User viewed node settings', { node_type: this.node ? this.node.type : '', workflow_id: this.$store.getters.workflowId });
 				}
 			},
 		},
@@ -514,7 +504,10 @@ export default mixins(
 	overflow: hidden;
 	min-width: 350px;
 	max-width: 350px;
-	font-size: var(--font-size-s);
+
+	.no-parameters {
+		margin-top: var(--spacing-xs);
+	}
 
 	.header-side-menu {
 		padding: 1em 0 1em 1.8em;
@@ -540,10 +533,10 @@ export default mixins(
 
 	.node-parameters-wrapper {
 		height: 100%;
-		font-size: .9em;
 
 		.el-tabs__header {
 			background-color: #fff5f2;
+			margin-bottom: 0;
 		}
 
 		.el-tabs {
@@ -554,13 +547,13 @@ export default mixins(
 				padding-bottom: 180px;
 
 				.el-tab-pane {
-					margin: 0 1em;
+					margin: 0 var(--spacing-s);
 				}
 			}
 		}
 
 		.el-tabs__nav {
-			padding-bottom: 1em;
+			padding-bottom: var(--spacing-xs);
 		}
 
 		.add-option {
@@ -612,14 +605,6 @@ export default mixins(
 
 .parameter-wrapper {
 	padding: 0 1em;
-}
-
-.parameter-name {
-	line-height: 1.5;
-	white-space: nowrap;
-	overflow: hidden;
-	text-overflow: ellipsis;
-	align-self: center;
 }
 
 .color-reset-button-wrapper {

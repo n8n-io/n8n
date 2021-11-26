@@ -19,6 +19,7 @@ import {
 	pipedriveEncodeCustomProperties,
 	pipedriveGetCustomProperties,
 	pipedriveResolveCustomProperties,
+	sortOptionParameters,
 } from './GenericFunctions';
 
 import {
@@ -117,6 +118,10 @@ export class Pipedrive implements INodeType {
 					{
 						name: 'Deal',
 						value: 'deal',
+					},
+					{
+						name: 'Deal Activity',
+						value: 'dealActivity',
 					},
 					{
 						name: 'Deal Product',
@@ -248,6 +253,27 @@ export class Pipedrive implements INodeType {
 				],
 				default: 'create',
 				description: 'The operation to perform.',
+			},
+
+			{
+				displayName: 'Operation',
+				name: 'operation',
+				type: 'options',
+				displayOptions: {
+					show: {
+						resource: [
+							'dealActivity',
+						],
+					},
+				},
+				options: [
+					{
+						name: 'Get All',
+						value: 'getAll',
+						description: 'Get all activities of a deal',
+					},
+				],
+				default: 'getAll',
 			},
 
 			{
@@ -1975,7 +2001,7 @@ export class Pipedrive implements INodeType {
 
 				},
 				placeholder: '',
-				description: 'Name of the binary property which contains<br />the data for the file to be created.',
+				description: 'Name of the binary property which contains the data for the file to be created.',
 			},
 			{
 				displayName: 'Additional Fields',
@@ -2094,7 +2120,7 @@ export class Pipedrive implements INodeType {
 						],
 					},
 				},
-				description: 'Name of the binary property to which to<br />write the data of the downloaded file.',
+				description: 'Name of the binary property to which to write the data of the downloaded file.',
 			},
 
 			// ----------------------------------
@@ -3423,6 +3449,64 @@ export class Pipedrive implements INodeType {
 				description: 'How many results to return.',
 			},
 
+			// ----------------------------------
+			//        dealActivities:getAll
+			// ----------------------------------
+			{
+				displayName: 'Deal ID',
+				name: 'dealId',
+				type: 'options',
+				default: '',
+				typeOptions: {
+					loadOptionsMethod: 'getDeals',
+				},
+				required: true,
+				displayOptions: {
+					show: {
+						operation: [
+							'getAll',
+						],
+						resource: [
+							'dealActivity',
+						],
+					},
+				},
+				description: 'The ID of the deal whose activity to retrieve',
+			},
+			{
+				displayName: 'Additional Fields',
+				name: 'additionalFields',
+				type: 'collection',
+				placeholder: 'Add Field',
+				displayOptions: {
+					show: {
+						operation: [
+							'getAll',
+						],
+						resource: [
+							'dealActivity',
+						],
+					},
+				},
+				default: {},
+				options: [
+					{
+						displayName: 'Done',
+						name: 'done',
+						type: 'boolean',
+						default: false,
+						description: 'Whether the activity is done or not.',
+					},
+					{
+						displayName: 'Exclude Activity IDs',
+						name: 'exclude',
+						type: 'string',
+						default: '',
+						description: 'A comma separated Activity Ids, to exclude from result. Ex. 4, 9, 11, ...',
+					},
+				],
+			},
+
 			// ----------------------------------------
 			//               lead: getAll
 			// ----------------------------------------
@@ -3807,15 +3891,7 @@ export class Pipedrive implements INodeType {
 					});
 				}
 
-				returnData.sort((a, b) => {
-					const aName = a.name.toLowerCase();
-					const bName = b.name.toLowerCase();
-					if (aName < bName) { return -1; }
-					if (aName > bName) { return 1; }
-					return 0;
-				});
-
-				return returnData;
+				return sortOptionParameters(returnData);
 			},
 			// Get all Filters to display them to user so that he can
 			// select them easily
@@ -3836,15 +3912,7 @@ export class Pipedrive implements INodeType {
 					});
 				}
 
-				returnData.sort((a, b) => {
-					const aName = a.name.toLowerCase();
-					const bName = b.name.toLowerCase();
-					if (aName < bName) { return -1; }
-					if (aName > bName) { return 1; }
-					return 0;
-				});
-
-				return returnData;
+				return sortOptionParameters(returnData);
 			},
 			// Get all Organizations to display them to user so that he can
 			// select them easily
@@ -3858,20 +3926,13 @@ export class Pipedrive implements INodeType {
 					});
 				}
 
-				returnData.sort((a, b) => {
-					const aName = a.name.toLowerCase();
-					const bName = b.name.toLowerCase();
-					if (aName < bName) { return -1; }
-					if (aName > bName) { return 1; }
-					return 0;
-				});
-
-				return returnData;
+				return sortOptionParameters(returnData);
 			},
-			// Get all Organizations to display them to user so that he can
+			// Get all Users to display them to user so that he can
 			// select them easily
 			async getUserIds(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
+				const resource = this.getCurrentNodeParameter('resource');
 				const { data } = await pipedriveApiRequest.call(this, 'GET', '/users', {});
 				for (const user of data) {
 					if (user.active_flag === true) {
@@ -3882,15 +3943,14 @@ export class Pipedrive implements INodeType {
 					}
 				}
 
-				returnData.sort((a, b) => {
-					const aName = a.name.toLowerCase();
-					const bName = b.name.toLowerCase();
-					if (aName < bName) { return -1; }
-					if (aName > bName) { return 1; }
-					return 0;
-				});
+				if(resource === 'activity'){
+					returnData.push({
+						name: 'All Users',
+						value: 0,
+					});
+				}
 
-				return returnData;
+				return sortOptionParameters(returnData);
 			},
 			// Get all Deals to display them to user so that he can
 			// select them easily
@@ -3898,7 +3958,7 @@ export class Pipedrive implements INodeType {
 				const { data } = await pipedriveApiRequest.call(this, 'GET', '/deals', {}) as {
 					data: Array<{ id: string; title: string; }>
 				};
-				return data.map(({ id, title }) => ({ value: id, name: title }));
+				return sortOptionParameters(data.map(({ id, title }) => ({ value: id, name: title })));
 			},
 			// Get all Products to display them to user so that he can
 			// select them easily
@@ -3906,7 +3966,7 @@ export class Pipedrive implements INodeType {
 				const { data } = await pipedriveApiRequest.call(this, 'GET', '/products', {}) as {
 					data: Array<{ id: string; name: string; }>
 				};
-				return data.map(({ id, name }) => ({ value: id, name }));
+				return sortOptionParameters(data.map(({ id, name }) => ({ value: id, name })));
 			},
 			// Get all Products related to a deal and display them to user so that he can
 			// select them easily
@@ -3916,7 +3976,7 @@ export class Pipedrive implements INodeType {
 				const { data } = await pipedriveApiRequest.call(this, 'GET', `/deals/${dealId}/products`, {}) as {
 					data: Array<{ id: string; name: string; }>
 				};
-				return data.map(({ id, name }) => ({ value: id, name }));
+				return sortOptionParameters(data.map(({ id, name }) => ({ value: id, name })));
 			},
 			// Get all Stages to display them to user so that he can
 			// select them easily
@@ -3930,15 +3990,7 @@ export class Pipedrive implements INodeType {
 					});
 				}
 
-				returnData.sort((a, b) => {
-					const aName = a.name.toLowerCase();
-					const bName = b.name.toLowerCase();
-					if (aName < bName) { return -1; }
-					if (aName > bName) { return 1; }
-					return 0;
-				});
-
-				return returnData;
+				return sortOptionParameters(returnData);
 			},
 			// Get all the Organization Custom Fields to display them to user so that he can
 			// select them easily
@@ -3954,15 +4006,7 @@ export class Pipedrive implements INodeType {
 					}
 				}
 
-				returnData.sort((a, b) => {
-					const aName = a.name.toLowerCase();
-					const bName = b.name.toLowerCase();
-					if (aName < bName) { return -1; }
-					if (aName > bName) { return 1; }
-					return 0;
-				});
-
-				return returnData;
+				return sortOptionParameters(returnData);
 			},
 			// Get all the Deal Custom Fields to display them to user so that he can
 			// select them easily
@@ -3978,15 +4022,7 @@ export class Pipedrive implements INodeType {
 					}
 				}
 
-				returnData.sort((a, b) => {
-					const aName = a.name.toLowerCase();
-					const bName = b.name.toLowerCase();
-					if (aName < bName) { return -1; }
-					if (aName > bName) { return 1; }
-					return 0;
-				});
-
-				return returnData;
+				return sortOptionParameters(returnData);
 			},
 			// Get all the Person Custom Fields to display them to user so that he can
 			// select them easily
@@ -4002,15 +4038,7 @@ export class Pipedrive implements INodeType {
 					}
 				}
 
-				returnData.sort((a, b) => {
-					const aName = a.name.toLowerCase();
-					const bName = b.name.toLowerCase();
-					if (aName < bName) { return -1; }
-					if (aName > bName) { return 1; }
-					return 0;
-				});
-
-				return returnData;
+				return sortOptionParameters(returnData);
 			},
 			// Get all the person labels to display them to user so that he can
 			// select them easily
@@ -4031,13 +4059,7 @@ export class Pipedrive implements INodeType {
 					}
 				}
 
-				returnData.sort((a, b) => {
-					const aName = a.name.toLowerCase();
-					const bName = b.name.toLowerCase();
-					if (aName < bName) { return -1; }
-					if (aName > bName) { return 1; }
-					return 0;
-				});
+				sortOptionParameters(returnData);
 
 				if (operation === 'update') {
 					returnData.push({
@@ -4066,13 +4088,7 @@ export class Pipedrive implements INodeType {
 					}
 				}
 
-				returnData.sort((a, b) => {
-					const aName = a.name.toLowerCase();
-					const bName = b.name.toLowerCase();
-					if (aName < bName) { return -1; }
-					if (aName > bName) { return 1; }
-					return 0;
-				});
+				sortOptionParameters(returnData);
 
 				if (operation === 'update') {
 					returnData.push({
@@ -4090,7 +4106,7 @@ export class Pipedrive implements INodeType {
 					data: Array<{ id: string; name: string; }>
 				};
 
-				return data.map(({ id, name }) => ({ value: id, name }));
+				return sortOptionParameters(data.map(({ id, name }) => ({ value: id, name })));
 			},
 
 			// Get all the lead labels to display them to user so that he can
@@ -4100,7 +4116,7 @@ export class Pipedrive implements INodeType {
 					data: Array<{ id: string; name: string; }>
 				};
 
-				return data.map(({ id, name }) => ({ value: id, name }));
+				return sortOptionParameters(data.map(({ id, name }) => ({ value: id, name })));
 			},
 
 			// Get all the labels to display them to user so that he can
@@ -4122,13 +4138,7 @@ export class Pipedrive implements INodeType {
 					}
 				}
 
-				returnData.sort((a, b) => {
-					const aName = a.name.toLowerCase();
-					const bName = b.name.toLowerCase();
-					if (aName < bName) { return -1; }
-					if (aName > bName) { return 1; }
-					return 0;
-				});
+				sortOptionParameters(returnData);
 
 				if (operation === 'update') {
 					returnData.push({
@@ -4387,6 +4397,35 @@ export class Pipedrive implements INodeType {
 
 					}
 
+				} else if (resource === 'dealActivity') {
+
+					 if (operation === 'getAll') {
+						// ----------------------------------
+						//        dealActivity: getAll
+						// ----------------------------------
+
+						requestMethod = 'GET';
+						const dealId = this.getNodeParameter('dealId', i) as string;
+
+						returnAll = this.getNodeParameter('returnAll', i) as boolean;
+
+						if (returnAll === false) {
+							qs.limit = this.getNodeParameter('limit', i) as number;
+						}
+
+						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+
+						if (additionalFields.exclude) {
+							qs.exclude = (additionalFields.exclude as string);
+						}
+
+						if (additionalFields && additionalFields.done !== undefined) {
+							qs.done = additionalFields.done === true ? 1 : 0;
+						}
+
+						endpoint = `/deals/${dealId}/activities`;
+
+					}
 				} else if (resource === 'dealProduct') {
 
 					if (operation === 'add') {

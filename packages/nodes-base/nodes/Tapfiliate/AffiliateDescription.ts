@@ -176,7 +176,7 @@ export const affiliateFields = [
 				name: 'companyName',
 				type: 'string',
 				default: '',
-				description: `The affiliate’s company data,`,
+				description: `The affiliate’s company data.`,
 			},
 		],
 	},
