@@ -18,11 +18,13 @@ export const MAX_TAG_NAME_LENGTH = 24;
 // modals
 export const DUPLICATE_MODAL_KEY = 'duplicate';
 export const TAGS_MANAGER_MODAL_KEY = 'tagsManager';
-export const WORKLOW_OPEN_MODAL_KEY = 'workflowOpen';
+export const WORKFLOW_OPEN_MODAL_KEY = 'workflowOpen';
 export const VERSIONS_MODAL_KEY = 'versions';
 export const WORKFLOW_SETTINGS_MODAL_KEY = 'settings';
 export const CREDENTIAL_EDIT_MODAL_KEY = 'editCredential';
 export const CREDENTIAL_SELECT_MODAL_KEY = 'selectCredential';
+export const CREDENTIAL_LIST_MODAL_KEY = 'credentialsList';
+export const PERSONALIZATION_MODAL_KEY = 'personalization';
 
 // breakpoints
 export const BREAKPOINT_SM = 768;
@@ -33,7 +35,35 @@ export const BREAKPOINT_XL = 1920;
 
 // templates
 export const TEMPLATES_BASE_URL = `https://api.n8n.io/`;
+
+// node types
+export const CALENDLY_TRIGGER_NODE_TYPE = 'n8n-nodes-base.calendlyTrigger';
+export const CRON_NODE_TYPE = 'n8n-nodes-base.cron';
+export const CLEARBIT_NODE_TYPE = 'n8n-nodes-base.clearbit';
+export const FUNCTION_NODE_TYPE = 'n8n-nodes-base.function';
+export const GITHUB_TRIGGER_NODE_TYPE = 'n8n-nodes-base.githubTrigger';
+export const ERROR_TRIGGER_NODE_TYPE = 'n8n-nodes-base.errorTrigger';
+export const ELASTIC_SECURITY_NODE_TYPE = 'n8n-nodes-base.elasticSecurity';
+export const EMAIL_SEND_NODE_TYPE = 'n8n-nodes-base.emailSend';
+export const EXECUTE_COMMAND_NODE_TYPE = 'n8n-nodes-base.executeCommand';
+export const HTTP_REQUEST_NODE_TYPE = 'n8n-nodes-base.httpRequest';
+export const IF_NODE_TYPE = 'n8n-nodes-base.if';
+export const ITEM_LISTS_NODE_TYPE = 'n8n-nodes-base.itemLists';
+export const JIRA_TRIGGER_NODE_TYPE = 'n8n-nodes-base.jiraTrigger';
+export const MICROSOFT_EXCEL_NODE_TYPE = 'n8n-nodes-base.microsoftExcel';
+export const MICROSOFT_TEAMS_NODE_TYPE = 'n8n-nodes-base.microsoftTeams';
+export const NO_OP_NODE_TYPE = 'n8n-nodes-base.noOp';
+export const PAGERDUTY_NODE_TYPE = 'n8n-nodes-base.pagerDuty';
+export const SALESFORCE_NODE_TYPE = 'n8n-nodes-base.salesforce';
+export const SEGMENT_NODE_TYPE = 'n8n-nodes-base.segment';
+export const SET_NODE_TYPE = 'n8n-nodes-base.set';
+export const SLACK_NODE_TYPE = 'n8n-nodes-base.slack';
+export const SPREADSHEET_FILE_NODE_TYPE = 'n8n-nodes-base.spreadsheetFile';
 export const START_NODE_TYPE = 'n8n-nodes-base.start';
+export const SWITCH_NODE_TYPE = 'n8n-nodes-base.switch';
+export const QUICKBOOKS_NODE_TYPE = 'n8n-nodes-base.quickbooks';
+export const WEBHOOK_NODE_TYPE = 'n8n-nodes-base.webhook';
+export const XERO_NODE_TYPE = 'n8n-nodes-base.xero';
 
 // Node creator
 export const CORE_NODES_CATEGORY = 'Core Nodes';
@@ -53,11 +83,37 @@ export const TRIGGER_NODE_FILTER = 'Trigger';
 export const ALL_NODE_FILTER = 'All';
 export const UNCATEGORIZED_CATEGORY = 'Miscellaneous';
 export const UNCATEGORIZED_SUBCATEGORY = 'Helpers';
-export const HIDDEN_NODES = ['n8n-nodes-base.start'];
-export const WEBHOOK_NODE_NAME = 'n8n-nodes-base.webhook';
-export const HTTP_REQUEST_NODE_NAME = 'n8n-nodes-base.httpRequest';
+export const PERSONALIZED_CATEGORY = 'Suggested Nodes ✨';
+export const HIDDEN_NODES = [START_NODE_TYPE];
+
 export const REQUEST_NODE_FORM_URL = 'https://n8n-community.typeform.com/to/K1fBVTZ3';
 
 // General
 export const INSTANCE_ID_HEADER = 'n8n-instance-id';
 export const WAIT_TIME_UNLIMITED = '3000-01-01T00:00:00.000Z';
+
+export const WORK_AREA_KEY = 'workArea';
+export const AUTOMATION_CONSULTING_WORK_AREA = 'automationConsulting';
+export const FINANCE_WORK_AREA = 'finance';
+export const HR_WORK_AREA = 'HR';
+export const IT_ENGINEERING_WORK_AREA = 'IT-Engineering';
+export const LEGAL_WORK_AREA = 'legal';
+export const MARKETING_WORK_AREA = 'marketing-growth';
+export const PRODUCT_WORK_AREA = 'product';
+export const SALES_BUSINESSDEV_WORK_AREA = 'sales-businessDevelopment';
+export const SECURITY_WORK_AREA = 'security';
+export const SUPPORT_WORK_AREA = 'support';
+export const OPS_WORK_AREA = 'ops';
+export const OTHER_WORK_AREA_OPTION = 'other';
+
+export const COMPANY_SIZE_KEY = 'companySize';
+export const COMPANY_SIZE_20_OR_LESS = '<20';
+export const COMPANY_SIZE_20_99 = '20-99';
+export const COMPANY_SIZE_100_499 = '100-499';
+export const COMPANY_SIZE_500_999 = '500-999';
+export const COMPANY_SIZE_1000_OR_MORE = '1000+';
+export const COMPANY_SIZE_PERSONAL_USE = 'personalUser';
+
+export const CODING_SKILL_KEY = 'codingSkill';
+export const OTHER_WORK_AREA_KEY = 'otherWorkArea';
+

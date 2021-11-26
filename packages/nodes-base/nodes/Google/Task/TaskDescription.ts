@@ -448,6 +448,13 @@ export const taskFields = [
 				description: 'Flag indicating whether the task has been deleted.',
 			},
 			{
+				displayName: 'Due Date',
+				name: 'dueDate',
+				type: 'dateTime',
+				default: '',
+				description: 'Due date of the task.',
+			},
+			{
 				displayName: 'Notes',
 				name: 'notes',
 				type: 'string',

@@ -398,7 +398,7 @@ export class Freshdesk implements INodeType {
 						name: 'ccEmails',
 						type: 'string',
 						default: '',
-						description: `Separated by , email addresses added in the 'cc' field of the incoming ticket email`,
+						description: `Separated by a comma (,) email addresses added in the 'cc' field of the incoming ticket email`,
 					},
 					{
 						displayName: 'Company',
@@ -485,7 +485,7 @@ export class Freshdesk implements INodeType {
 						name: 'tags',
 						type: 'string',
 						default: '',
-						description: `separated by , tags that have been associated with the ticket`,
+						description: `separated by a comma (,) tags that have been associated with the ticket`,
 					},
 					{
 						displayName: 'Type',
@@ -642,7 +642,7 @@ export class Freshdesk implements INodeType {
 						name: 'ccEmails',
 						type: 'string',
 						default: '',
-						description: `Separated by , email addresses added in the 'cc' field of the incoming ticket email`,
+						description: `Separated by a comma (,) email addresses added in the 'cc' field of the incoming ticket email`,
 					},
 					{
 						displayName: 'Company',
@@ -847,7 +847,7 @@ export class Freshdesk implements INodeType {
 						name: 'tags',
 						type: 'string',
 						default: '',
-						description: `separated by , tags that have been associated with the ticket`,
+						description: `separated by a comma (,) tags that have been associated with the ticket`,
 					},
 					{
 						displayName: 'Type',

@@ -16,6 +16,8 @@
 import {
 	Expression,
 	IConnections,
+	IDeferredPromise,
+	IExecuteResponsePromiseData,
 	IGetExecuteTriggerFunctions,
 	INode,
 	INodeExecuteFunctions,
@@ -231,13 +233,29 @@ export class Workflow {
 	 * @returns {(IWorfklowIssues | null)}
 	 * @memberof Workflow
 	 */
-	checkReadyForExecution(): IWorfklowIssues | null {
+	checkReadyForExecution(inputData: {
+		startNode?: string;
+		destinationNode?: string;
+	}): IWorfklowIssues | null {
 		let node: INode;
 		let nodeType: INodeType | undefined;
 		let nodeIssues: INodeIssues | null = null;
 		const workflowIssues: IWorfklowIssues = {};
 
-		for (const nodeName of Object.keys(this.nodes)) {
+		let checkNodes: string[] = [];
+		if (inputData.destinationNode) {
+			// If a destination node is given we have to check all the nodes
+			// leading up to it
+			checkNodes = this.getParentNodes(inputData.destinationNode);
+			checkNodes.push(inputData.destinationNode);
+		} else if (inputData.startNode) {
+			// If a start node is given we have to check all nodes which
+			// come after it
+			checkNodes = this.getChildNodes(inputData.startNode);
+			checkNodes.push(inputData.startNode);
+		}
+
+		for (const nodeName of checkNodes) {
 			nodeIssues = null;
 			node = this.nodes[nodeName];
 
@@ -399,8 +417,7 @@ export class Workflow {
 					const currentNameEscaped = currentName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
 					parameterValue = parameterValue.replace(
-						// eslint-disable-next-line no-useless-escape
-						new RegExp(`(\\$node(\.|\\["|\\[\'))${currentNameEscaped}((\.|"\\]|\'\\]))`, 'g'),
+						new RegExp(`(\\$node(\\.|\\["|\\['))${currentNameEscaped}((\\.|"\\]|'\\]))`, 'g'),
 						`$1${newName}$3`,
 					);
 				}
@@ -931,10 +948,23 @@ export class Workflow {
 
 			// Add the manual trigger response which resolves when the first time data got emitted
 			triggerResponse!.manualTriggerResponse = new Promise((resolve) => {
-				// eslint-disable-next-line @typescript-eslint/no-shadow
-				triggerFunctions.emit = ((resolve) => (data: INodeExecutionData[][]) => {
-					resolve(data);
-				})(resolve);
+				triggerFunctions.emit = (
+					(resolveEmit) =>
+					(
+						data: INodeExecutionData[][],
+						responsePromise?: IDeferredPromise<IExecuteResponsePromiseData>,
+					) => {
+						additionalData.hooks!.hookFunctions.sendResponse = [
+							async (response: IExecuteResponsePromiseData): Promise<void> => {
+								if (responsePromise) {
+									responsePromise.resolve(response);
+								}
+							},
+						];
+
+						resolveEmit(data);
+					}
+				)(resolve);
 			});
 
 			return triggerResponse;

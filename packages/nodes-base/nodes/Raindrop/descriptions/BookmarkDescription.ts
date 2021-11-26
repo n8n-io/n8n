@@ -118,7 +118,7 @@ export const bookmarkFields = [
 				name: 'tags',
 				type: 'string',
 				default: '',
-				description: 'Bookmark tags. Multiple can be set separated by comma.',
+				description: 'Bookmark tags. Multiple tags can be set separated by comma.',
 			},
 			{
 				displayName: 'Title',
@@ -306,7 +306,7 @@ export const bookmarkFields = [
 				name: 'tags',
 				type: 'string',
 				default: '',
-				description: 'Bookmark tags. Multiple can be set separated by comma.',
+				description: 'Bookmark tags. Multiple tags can be set separated by comma.',
 			},
 			{
 				displayName: 'Title',

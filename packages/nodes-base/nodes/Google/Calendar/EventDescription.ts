@@ -258,8 +258,7 @@ export const eventFields = [
 				name: 'maxAttendees',
 				type: 'number',
 				default: 0,
-				description: `The maximum number of attendees to include in the response.</br>
-				If there are more than the specified number of attendees, only the participant is returned`,
+				description: `The maximum number of attendees to include in the response. If there are more than the specified number of attendees, only the participant is returned`,
 			},
 			{
 				displayName: 'Repeat Frecuency',
@@ -563,8 +562,7 @@ export const eventFields = [
 				name: 'maxAttendees',
 				type: 'number',
 				default: 0,
-				description: `The maximum number of attendees to include in the response.</br>
-				If there are more than the specified number of attendees, only the participant is returned`,
+				description: `The maximum number of attendees to include in the response. If there are more than the specified number of attendees, only the participant is returned`,
 			},
 			{
 				displayName: 'Timezone',
@@ -652,8 +650,7 @@ export const eventFields = [
 				name: 'maxAttendees',
 				type: 'number',
 				default: 0,
-				description: `The maximum number of attendees to include in the response.</br>
-				If there are more than the specified number of attendees, only the participant is returned`,
+				description: `The maximum number of attendees to include in the response. If there are more than the specified number of attendees, only the participant is returned`,
 			},
 			{
 				displayName: 'Order By',
@@ -700,8 +697,7 @@ export const eventFields = [
 				name: 'singleEvents',
 				type: 'boolean',
 				default: false,
-				description: `Whether to expand recurring events into instances and only return single one-off</br>
-				events and instances of recurring events, but not the underlying recurring events themselves.`,
+				description: `Whether to expand recurring events into instances and only return single one-off events and instances of recurring events, but not the underlying recurring events themselves.`,
 			},
 			{
 				displayName: 'End Time',
@@ -885,8 +881,7 @@ export const eventFields = [
 				name: 'maxAttendees',
 				type: 'number',
 				default: 0,
-				description: `The maximum number of attendees to include in the response.</br>
-				If there are more than the specified number of attendees, only the participant is returned`,
+				description: `The maximum number of attendees to include in the response. If there are more than the specified number of attendees, only the participant is returned`,
 			},
 			{
 				displayName: 'Repeat Frecuency',

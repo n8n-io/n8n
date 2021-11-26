@@ -1,16 +1,23 @@
 import {
+	OptionsWithUri,
+} from 'request';
+
+import {
 	IExecuteFunctions,
 } from 'n8n-core';
 
 import {
 	IBinaryData,
 	IBinaryKeyData,
+	ICredentialsDecrypted,
+	ICredentialTestFunctions,
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
+	NodeCredentialTestResult,
 	NodeOperationError,
 } from 'n8n-workflow';
 
@@ -74,6 +81,7 @@ export class Jira implements INodeType {
 						],
 					},
 				},
+				testedBy: 'jiraSoftwareApiTest',
 			},
 			{
 				name: 'jiraSoftwareServerApi',
@@ -85,6 +93,7 @@ export class Jira implements INodeType {
 						],
 					},
 				},
+				testedBy: 'jiraSoftwareApiTest',
 			},
 		],
 		properties: [
@@ -145,6 +154,40 @@ export class Jira implements INodeType {
 	};
 
 	methods = {
+		credentialTest: {
+			async jiraSoftwareApiTest(this: ICredentialTestFunctions, credential: ICredentialsDecrypted): Promise<NodeCredentialTestResult> {
+				const credentials = credential.data;
+				const data = Buffer.from(`${credentials!.email}:${credentials!.password || credentials!.apiToken}`).toString('base64');
+
+				const options: OptionsWithUri = {
+					headers: {
+						Authorization: `Basic ${data}`,
+						Accept: 'application/json',
+						'Content-Type': 'application/json',
+						'X-Atlassian-Token': 'no-check',
+					},
+					method: 'GET',
+					uri: `${credentials!.domain}/rest/api/2/project`,
+					qs: {
+						recent: 0,
+					},
+					json: true,
+					timeout: 5000,
+				};
+				try {
+					await this.helpers.request!(options);
+				} catch (err) {
+					return {
+						status: 'Error',
+						message: `Connection details not valid: ${err.message}`,
+					};
+				}
+				return {
+					status: 'OK',
+					message: 'Authentication successful!',
+				};
+			},
+		},
 		loadOptions: {
 			// Get all the projects to display them to user so that he can
 			// select them easily
@@ -370,7 +413,7 @@ export class Jira implements INodeType {
 				}
 
 				const res = await jiraSoftwareCloudApiRequest.call(this, `/api/2/issue/createmeta?projectIds=${projectId}&issueTypeIds=${issueTypeId}&expand=projects.issuetypes.fields`, 'GET');
-				
+
 				// tslint:disable-next-line: no-any
 				const fields = res.projects.find((o: any) => o.id === projectId).issuetypes.find((o: any) => o.id === issueTypeId).fields;
 				for (const key of Object.keys(fields)) {
@@ -378,10 +421,34 @@ export class Jira implements INodeType {
 					if (field.schema && Object.keys(field.schema).includes('customId')) {
 							returnData.push({
 								name: field.name,
-								value: field.key,
+								value: field.key || field.fieldId,
 							});
 					}
 				}
+				return returnData;
+			},
+
+			// Get all the components to display them to user so that he can
+			// select them easily
+			async getProjectComponents(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const returnData: INodePropertyOptions[] = [];
+
+				const project = this.getCurrentNodeParameter('project');
+				const { values: components } = await jiraSoftwareCloudApiRequest.call(this, `/api/2/project/${project}/component`, 'GET');
+
+				for (const component of components) {
+					returnData.push({
+						name: component.name,
+						value: component.id,
+					});
+				}
+
+				returnData.sort((a, b) => {
+					if (a.name < b.name) { return -1; }
+					if (a.name > b.name) { return 1; }
+					return 0;
+				});
+
 				return returnData;
 			},
 		},
@@ -448,6 +515,9 @@ export class Jira implements INodeType {
 					}
 					if (additionalFields.updateHistory) {
 						qs.updateHistory = additionalFields.updateHistory as boolean;
+					}
+					if (additionalFields.componentIds) {
+						fields.components = (additionalFields.componentIds as string[]).map(id => ({ id }));
 					}
 					if (additionalFields.customFieldsUi) {
 						const customFields = (additionalFields.customFieldsUi as IDataObject).customFieldsValues as IDataObject[];
@@ -594,7 +664,11 @@ export class Jira implements INodeType {
 						body.jql = options.jql as string;
 					}
 					if (options.expand) {
-						body.expand = options.expand as string;
+						if (typeof options.expand === 'string') {
+							body.expand = options.expand.split(',');
+						} else {
+							body.expand = options.expand;
+						}
 					}
 					if (returnAll) {
 						responseData = await jiraSoftwareCloudApiRequestAllItems.call(this, 'issues', `/api/2/search`, 'POST', body);

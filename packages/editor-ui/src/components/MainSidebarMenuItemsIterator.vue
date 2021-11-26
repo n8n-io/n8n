@@ -22,6 +22,7 @@ export default Vue.extend({
 	props: [
 		'items',
 		'root',
+		'afterItemClick',
 	],
 	methods: {
 		onClick(item: IMenuItem) {
@@ -36,6 +37,10 @@ export default Vue.extend({
 				}
 				else {
 					window.location.assign(item.properties.href);
+				}
+
+				if(this.afterItemClick) {
+					this.afterItemClick(item.id);
 				}
 			}
 		},

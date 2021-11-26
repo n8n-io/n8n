@@ -16,6 +16,7 @@ import { titleChange } from '@/components/mixins/titleChange';
 import { workflowHelpers } from '@/components/mixins/workflowHelpers';
 
 import mixins from 'vue-typed-mixins';
+import { WORKFLOW_SETTINGS_MODAL_KEY } from '@/constants';
 
 export const pushConnection = mixins(
 	externalHooks,
@@ -219,13 +220,15 @@ export const pushConnection = mixins(
 					const workflow = this.getWorkflow();
 					if (runDataExecuted.waitTill !== undefined) {
 						const {
-							isNewWorkflow,
 							activeExecutionId,
+							workflowSettings,
 							saveManualExecutions,
 						} = this.$store.getters;
 
+						const isSavingExecutions= workflowSettings.saveManualExecutions === undefined ? saveManualExecutions : workflowSettings.saveManualExecutions;
+
 						let action;
-						if (isNewWorkflow || !saveManualExecutions) {
+						if (!isSavingExecutions) {
 							action = '<a class="open-settings">Turn on saving manual executions</a> and run again to see what happened after this node.';
 						}
 						else {
@@ -244,7 +247,7 @@ export const pushConnection = mixins(
 									if (this.$store.getters.isNewWorkflow) {
 										await this.saveAsNewWorkflow();
 									}
-									this.$store.dispatch('ui/openWorkflowSettingsModal');
+									this.$store.dispatch('ui/openModal', WORKFLOW_SETTINGS_MODAL_KEY);
 								}
 							},
 						});
