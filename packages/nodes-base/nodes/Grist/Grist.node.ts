@@ -7,10 +7,10 @@ import {
 	ICredentialTestFunctions,
 	IDataObject,
 	ILoadOptionsFunctions,
+	INodeCredentialTestResult,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
-	NodeCredentialTestResult,
 } from 'n8n-workflow';
 
 import {
@@ -81,7 +81,7 @@ export class Grist implements INodeType {
 			async gristApiTest(
 				this: ICredentialTestFunctions,
 				credential: ICredentialsDecrypted,
-			): Promise<NodeCredentialTestResult> {
+			): Promise<INodeCredentialTestResult> {
 				const {
 					apiKey,
 					planType,

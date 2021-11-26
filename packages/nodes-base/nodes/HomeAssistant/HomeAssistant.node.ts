@@ -6,10 +6,10 @@ import {
 	ICredentialsDecrypted,
 	ICredentialTestFunctions,
 	IDataObject,
+	INodeCredentialTestResult,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
-	NodeCredentialTestResult,
 } from 'n8n-workflow';
 
 import {
@@ -139,7 +139,7 @@ export class HomeAssistant implements INodeType {
 
 	methods = {
 		credentialTest: {
-			async homeAssistantApiTest(this: ICredentialTestFunctions, credential: ICredentialsDecrypted): Promise<NodeCredentialTestResult> {
+			async homeAssistantApiTest(this: ICredentialTestFunctions, credential: ICredentialsDecrypted): Promise<INodeCredentialTestResult> {
 				const credentials = credential.data;
 				const options = {
 					method: 'GET',
