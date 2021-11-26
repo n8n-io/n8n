@@ -458,7 +458,7 @@ export interface IVersionNotificationSettings {
 	infoUrl: string;
 }
 
-export type IPersonalizationSurveyKeys = 'companySize' | 'codingSkill' | 'workArea' | 'otherWorkArea';
+export type IPersonalizationSurveyKeys = 'companySize' | 'codingSkill' | 'workArea' | 'otherWorkArea' | 'companyIndustry' | 'otherCompanyIndustry';
 
 export type IPersonalizationSurveyAnswers = {
 	[key in IPersonalizationSurveyKeys]: string | null

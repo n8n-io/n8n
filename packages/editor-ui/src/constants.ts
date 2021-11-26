@@ -105,6 +105,20 @@ export const SECURITY_WORK_AREA = 'security';
 export const SUPPORT_WORK_AREA = 'support';
 export const OPS_WORK_AREA = 'ops';
 export const OTHER_WORK_AREA_OPTION = 'other';
+export const NOT_APPLICABLE_WORK_AREA = 'n/a';
+export const EXECUTIVE_WORK_AREA = 'executive';
+
+export const COMPANY_INDUSTRY_KEY = 'companyIndustry';
+export const E_COMMERCE_INDUSTRY = 'eCommerce';
+export const AUTOMATION_CONSULTING_INDUSTRY = 'automation-consulting';
+export const SYSTEM_INTEGRATION_INDUSTRY = 'systems-integration';
+export const GOVERNMENT_INDUSTRY = 'government';
+export const LEGAL_INDUSTRY = 'legal-industry';
+export const HEALTHCARE_INDUSTRY= 'healthcare';
+export const FINANCE_INDUSTRY = 'finance-industry';
+export const SECURITY_INDUSTRY = 'security-industry';
+export const SAAS_INDUSTRY = 'saas';
+export const OTHER_INDUSTRY_OPTION= 'other';
 
 export const COMPANY_SIZE_KEY = 'companySize';
 export const COMPANY_SIZE_20_OR_LESS = '<20';
@@ -116,4 +130,5 @@ export const COMPANY_SIZE_PERSONAL_USE = 'personalUser';
 
 export const CODING_SKILL_KEY = 'codingSkill';
 export const OTHER_WORK_AREA_KEY = 'otherWorkArea';
+export const OTHER_COMPANY_INDUSTRY_KEY = 'otherCompanyIndustry';
 
