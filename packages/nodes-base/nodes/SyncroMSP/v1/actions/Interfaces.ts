@@ -7,7 +7,7 @@ import {
 type SyncroMspMap = {
 	customer: 'getAll' | 'addCustomer' | 'deleteCustomer' | 'updateCustomer' | 'getCustomer';
 	ticket: 'getAll';
-	contact: 'getAll';
+	contact: 'getAll' | 'addContact' | 'deleteContact' | 'updateContact' | 'getContact';
 	rmm: 'getAlerts';
 };
 
