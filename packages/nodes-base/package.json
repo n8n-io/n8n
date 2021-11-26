@@ -299,7 +299,6 @@
       "dist/credentials/WordpressApi.credentials.js",
       "dist/credentials/WufooApi.credentials.js",
       "dist/credentials/XeroOAuth2Api.credentials.js",
-      "dist/credentials/YouTubeOAuth2Api.credentials.js",
       "dist/credentials/YourlsApi.credentials.js",
       "dist/credentials/YouTubeOAuth2Api.credentials.js",
       "dist/credentials/ZendeskApi.credentials.js",
