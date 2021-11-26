@@ -134,8 +134,7 @@ export const tableFields = [
 				typeOptions: {
 					minValue: 0,
 				},
-				description: `Specifies the relative position of the new row. If not defined,</br>
-				 the addition happens at the end. Any rows below the inserted row are shifted downwards. Zero-indexed`,
+				description: `Specifies the relative position of the new row. If not defined, the addition happens at the end. Any rows below the inserted row are shifted downwards. Zero-indexed`,
 			},
 		],
 	},
