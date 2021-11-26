@@ -19,7 +19,7 @@ export async function muteAlert(this: IExecuteFunctions, index: number): Promise
 	const qs = {} as IDataObject;
 	const requestMethod = 'POST';
 	const endpoint = `rmm_alerts/${id}/mute`;
-	let body = {} as IDataObject;
+	const body = {} as IDataObject;
 
 	body.id =id;
 	body.mute_for = mute;

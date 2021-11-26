@@ -22,7 +22,7 @@ export async function addAlert(this: IExecuteFunctions, index: number): Promise<
 	const qs = {} as IDataObject;
 	const requestMethod = 'POST';
 	const endpoint = 'rmm_alerts';
-	let body = {} as IDataObject;
+	const body = {} as IDataObject;
 
 	body.customer_id = customerId;
 	body.asset_id = assetId;
