@@ -51,7 +51,7 @@ export const postCommentFields = [
 		type: 'string',
 		required: true,
 		default: '',
-		description: 'ID of the post to write the comment to. Found in the post URL:<br><code>/r/[subreddit_name]/comments/[post_id]/[post_title]</code>',
+		description: 'ID of the post to write the comment to. Found in the post URL: <code>/r/[subreddit_name]/comments/[post_id]/[post_title]</code>',
 		placeholder: 'l0me7x',
 		displayOptions: {
 			show: {
@@ -110,7 +110,7 @@ export const postCommentFields = [
 		type: 'string',
 		required: true,
 		default: '',
-		description: 'ID of the post to get all comments from. Found in the post URL:<br><code>/r/[subreddit_name]/comments/[post_id]/[post_title]</code>',
+		description: 'ID of the post to get all comments from. Found in the post URL: <code>/r/[subreddit_name]/comments/[post_id]/[post_title]</code>',
 		placeholder: 'l0me7x',
 		displayOptions: {
 			show: {
@@ -174,7 +174,7 @@ export const postCommentFields = [
 		type: 'string',
 		required: true,
 		default: '',
-		description: 'ID of the comment to remove. Found in the comment URL:<br><code>/r/[subreddit_name]/comments/[post_id]/[post_title]/[comment_id]</code>',
+		description: 'ID of the comment to remove. Found in the comment URL:<code>/r/[subreddit_name]/comments/[post_id]/[post_title]/[comment_id]</code>',
 		placeholder: 'gla7fmt',
 		displayOptions: {
 			show: {
@@ -197,7 +197,7 @@ export const postCommentFields = [
 		type: 'string',
 		required: true,
 		default: '',
-		description: 'ID of the comment to reply to. To be found in the comment URL:<br><code>www.reddit.com/r/[subreddit_name]/comments/[post_id]/[post_title]/[comment_id]</code>',
+		description: 'ID of the comment to reply to. To be found in the comment URL: <code>www.reddit.com/r/[subreddit_name]/comments/[post_id]/[post_title]/[comment_id]</code>',
 		placeholder: 'gl9iroa',
 		displayOptions: {
 			show: {
