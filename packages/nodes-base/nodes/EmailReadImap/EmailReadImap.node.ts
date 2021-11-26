@@ -377,6 +377,18 @@ export class EmailReadImap implements INodeType {
 		};
 
 		const establishConnection = (): Promise<ImapSimple> => {
+
+			let searchCriteria = [
+				'UNSEEN',
+			] as Array<string | string[]>;
+			if (options.customEmailConfig !== undefined) {
+				try {
+					searchCriteria = JSON.parse(options.customEmailConfig as string);
+				} catch (error) {
+					throw new NodeOperationError(this.getNode(), `Custom email config is not valid JSON.`);
+				}
+			}
+
 			const config: ImapSimpleOptions = {
 				imap: {
 					user: credentials.user as string,
@@ -388,16 +400,6 @@ export class EmailReadImap implements INodeType {
 				},
 				onmail: async () => {
 					if (connection) {
-						let searchCriteria = [
-							'UNSEEN',
-						] as Array<string | string[]>;
-						if (options.customEmailConfig !== undefined) {
-							try {
-								searchCriteria = JSON.parse(options.customEmailConfig as string);
-							} catch (error) {
-								throw new NodeOperationError(this.getNode(), `Custom email config is not valid JSON.`);
-							}
-						}
 						if (staticData.lastMessageUid !== undefined) {
 							searchCriteria.push(['UID', `${staticData.lastMessageUid as number}:*`]);
 							/**
@@ -415,10 +417,16 @@ export class EmailReadImap implements INodeType {
 							Logger.debug('Querying for new messages on node "EmailReadImap"', {searchCriteria});
 						}
 
-						const returnData = await getNewEmails(connection, searchCriteria);
-
-						if (returnData.length) {
-							this.emit([returnData]);
+						try {
+							const returnData = await getNewEmails(connection, searchCriteria);
+							if (returnData.length) {
+								this.emit([returnData]);
+							}
+						} catch (error) {
+							this.emit([[{
+								json:{}, // seems like I have to pass it
+								error: new NodeOperationError(this.getNode(), `IMAP query failed: ${error instanceof Error ? error.message : error}`)
+							}]]);
 						}
 					}
 				},
