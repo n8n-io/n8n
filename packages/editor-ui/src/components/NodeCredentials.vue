@@ -1,60 +1,60 @@
 <template>
-	<div v-if="credentialTypesNodeDescriptionDisplayed.length" class="node-credentials">
-		<div class="headline">
-			Credentials
-		</div>
+	<div v-if="credentialTypesNodeDescriptionDisplayed.length" :class="$style.container">
+		<div v-for="credentialTypeDescription in credentialTypesNodeDescriptionDisplayed" :key="credentialTypeDescription.name">
+			<n8n-input-label
+				:label="`Credential for ${credentialTypeNames[credentialTypeDescription.name]}`"
+				:bold="false"
+				size="small"
 
-		<div v-for="credentialTypeDescription in credentialTypesNodeDescriptionDisplayed" :key="credentialTypeDescription.name" class="credential-data">
-			<el-row class="credential-parameter-wrapper">
-				<el-col :span="10" class="parameter-name">
-					{{credentialTypeNames[credentialTypeDescription.name]}}:
-				</el-col>
-				<el-col :span="12" class="parameter-value" :class="getIssues(credentialTypeDescription.name).length?'has-issues':''">
+				:set="issues = getIssues(credentialTypeDescription.name)"
+			>
+				<div v-if="isReadOnly">
+					<n8n-input disabled :value="selected && selected[credentialTypeDescription.name] && selected[credentialTypeDescription.name].name" size="small" />
+				</div>
 
-					<div :style="credentialInputWrapperStyle(credentialTypeDescription.name)">
-						<n8n-select :value="selected[credentialTypeDescription.name]" :disabled="isReadOnly" @change="(value) => credentialSelected(credentialTypeDescription.name, value)" placeholder="Select Credential" size="small">
-							<n8n-option
-								v-for="(item) in credentialOptions[credentialTypeDescription.name]"
-								:key="item.id"
-								:label="item.name"
-								:value="item.name">
-							</n8n-option>
-							<n8n-option
-								:key="NEW_CREDENTIALS_TEXT"
-								:value="NEW_CREDENTIALS_TEXT"
-								:label="NEW_CREDENTIALS_TEXT"
-							>
-							</n8n-option>
-						</n8n-select>
-					</div>
+				<div :class="issues.length ? $style.hasIssues : $style.input" v-else >
+					<n8n-select :value="getSelectedId(credentialTypeDescription.name)" @change="(value) => onCredentialSelected(credentialTypeDescription.name, value)" placeholder="Select Credential" size="small">
+						<n8n-option
+							v-for="(item) in credentialOptions[credentialTypeDescription.name]"
+							:key="item.id"
+							:label="item.name"
+							:value="item.id">
+						</n8n-option>
+						<n8n-option
+							:key="NEW_CREDENTIALS_TEXT"
+							:value="NEW_CREDENTIALS_TEXT"
+							:label="NEW_CREDENTIALS_TEXT"
+						>
+						</n8n-option>
+					</n8n-select>
 
-					<div class="credential-issues">
+					<div :class="$style.warning" v-if="issues.length">
 						<n8n-tooltip placement="top" >
-							<div slot="content" v-html="'Issues:<br />&nbsp;&nbsp;- ' + getIssues(credentialTypeDescription.name).join('<br />&nbsp;&nbsp;- ')"></div>
+							<div slot="content" v-html="'Issues:<br />&nbsp;&nbsp;- ' + issues.join('<br />&nbsp;&nbsp;- ')"></div>
 							<font-awesome-icon icon="exclamation-triangle" />
 						</n8n-tooltip>
 					</div>
 
-				</el-col>
-				<el-col :span="2" class="parameter-value credential-action">
-					<font-awesome-icon v-if="selected[credentialTypeDescription.name] && isCredentialValid(credentialTypeDescription.name)" icon="pen" @click="editCredential(credentialTypeDescription.name)" class="update-credentials clickable" title="Update Credentials" />
-				</el-col>
-
-			</el-row>
+					<div :class="$style.edit" v-if="selected[credentialTypeDescription.name] && isCredentialExisting(credentialTypeDescription.name)">
+						<font-awesome-icon icon="pen" @click="editCredential(credentialTypeDescription.name)" class="clickable" title="Update Credentials" />
+					</div>
+				</div>
+			</n8n-input-label>
 		</div>
-
 	</div>
 </template>
 
 <script lang="ts">
 import { restApi } from '@/components/mixins/restApi';
 import {
+	ICredentialsResponse,
 	INodeUi,
 	INodeUpdatePropertiesInformation,
 } from '@/Interface';
 import {
 	ICredentialType,
 	INodeCredentialDescription,
+	INodeCredentialsDetails,
 	INodeTypeDescription,
 } from 'n8n-workflow';
 
@@ -101,7 +101,7 @@ export default mixins(
 		credentialTypesNodeDescription (): INodeCredentialDescription[] {
 			const node = this.node as INodeUi;
 
-			const activeNodeType = this.$store.getters.nodeType(node.type) as INodeTypeDescription;
+			const activeNodeType = this.$store.getters.nodeType(node.type) as INodeTypeDescription | null;
 			if (activeNodeType && activeNodeType.credentials) {
 				return activeNodeType.credentials;
 			}
@@ -119,11 +119,17 @@ export default mixins(
 			}
 			return returnData;
 		},
-		selected(): {[type: string]: string} {
+		selected(): {[type: string]: INodeCredentialsDetails} {
 			return this.node.credentials || {};
 		},
 	},
 	methods: {
+		getSelectedId(type: string) {
+			if (this.isCredentialExisting(type)) {
+				return this.selected[type].id;
+			}
+			return undefined;
+		},
 		credentialInputWrapperStyle (credentialType: string) {
 			let deductWidth = 0;
 			const styles = {
@@ -145,10 +151,10 @@ export default mixins(
 
 			this.newCredentialUnsubscribe = this.$store.subscribe((mutation, state) => {
 				if (mutation.type === 'credentials/upsertCredential' || mutation.type === 'credentials/enableOAuthCredential'){
-					this.credentialSelected(credentialType, mutation.payload.name);
+					this.onCredentialSelected(credentialType, mutation.payload.id);
 				}
 				if (mutation.type === 'credentials/deleteCredential') {
-					this.credentialSelected(credentialType, mutation.payload.name);
+					this.clearSelectedCredential(credentialType);
 					this.stopListeningForNewCredentials();
 				}
 			});
@@ -160,14 +166,54 @@ export default mixins(
 			}
 		},
 
-		credentialSelected (credentialType: string, credentialName: string) {
-			let selected = undefined;
-			if (credentialName === NEW_CREDENTIALS_TEXT) {
+		clearSelectedCredential(credentialType: string) {
+			const node: INodeUi = this.node;
+
+			const credentials = {
+				...(node.credentials || {}),
+			};
+
+			delete credentials[credentialType];
+
+			const updateInformation: INodeUpdatePropertiesInformation = {
+				name: this.node.name,
+				properties: {
+					credentials,
+				},
+			};
+
+			this.$emit('credentialSelected', updateInformation);
+		},
+
+		onCredentialSelected (credentialType: string, credentialId: string | null | undefined) {
+			if (credentialId === NEW_CREDENTIALS_TEXT) {
 				this.listenForNewCredentials(credentialType);
 				this.$store.dispatch('ui/openNewCredential', { type: credentialType });
+				this.$telemetry.track('User opened Credential modal', { credential_type: credentialType, source: 'node', new_credential: true, workflow_id: this.$store.getters.workflowId });
+				return;
 			}
-			else {
-				selected = credentialName;
+
+			this.$telemetry.track('User selected credential from node modal', { credential_type: credentialType, workflow_id: this.$store.getters.workflowId });
+
+			const selectedCredentials = this.$store.getters['credentials/getCredentialById'](credentialId);
+			const oldCredentials = this.node.credentials && this.node.credentials[credentialType] ? this.node.credentials[credentialType] : {};
+
+			const selected = { id: selectedCredentials.id, name: selectedCredentials.name };
+
+			// if credentials has been string or neither id matched nor name matched uniquely
+			if (oldCredentials.id === null || (oldCredentials.id && !this.$store.getters['credentials/getCredentialByIdAndType'](oldCredentials.id, credentialType))) {
+				// update all nodes in the workflow with the same old/invalid credentials
+				this.$store.commit('replaceInvalidWorkflowCredentials', {
+					credentials: selected,
+					invalid: oldCredentials,
+					type: credentialType,
+				});
+				this.updateNodesCredentialsIssues();
+				this.$showMessage({
+					title: 'Node credentials updated',
+					message: `Nodes that used credentials "${oldCredentials.name}" have been updated to use "${selected.name}"`,
+					type: 'success',
+				});
 			}
 
 			const node: INodeUi = this.node;
@@ -209,18 +255,21 @@ export default mixins(
 			return node.issues.credentials[credentialTypeName];
 		},
 
-		isCredentialValid(credentialType: string): boolean {
-			const name = this.node.credentials[credentialType];
+		isCredentialExisting(credentialType: string): boolean {
+			if (!this.node.credentials || !this.node.credentials[credentialType] || !this.node.credentials[credentialType].id) {
+				return false;
+			}
+			const { id } = this.node.credentials[credentialType];
 			const options = this.credentialOptions[credentialType];
 
-			return options.find((option: ICredentialType) => option.name === name);
+			return !!options.find((option: ICredentialsResponse) => option.id === id);
 		},
 
 		editCredential(credentialType: string): void {
-			const name = this.node.credentials[credentialType];
-			const options = this.credentialOptions[credentialType];
-			const selected = options.find((option: ICredentialType) => option.name === name);
-			this.$store.dispatch('ui/openExisitngCredential', { id: selected.id });
+			const { id } = this.node.credentials[credentialType];
+			this.$store.dispatch('ui/openExisitngCredential', { id });
+
+			this.$telemetry.track('User opened Credential modal', { credential_type: credentialType, source: 'node', new_credential: false, workflow_id: this.$store.getters.workflowId });
 
 			this.listenForNewCredentials(credentialType);
 		},
@@ -231,58 +280,39 @@ export default mixins(
 });
 </script>
 
-<style lang="scss">
+<style lang="scss" module>
+.container {
+	margin: var(--spacing-xs) 0;
 
-.node-credentials {
-	padding-bottom: 1em;
-	margin: 0.5em;
-	border-bottom: 1px solid #ccc;
-
-	.credential-issues {
-		display: none;
-		width: 20px;
-		text-align: right;
-		float: right;
-		color: #ff8080;
-		font-size: 1.2em;
-		margin-top: 3px;
-	}
-
-	.credential-data + .credential-data {
-		margin-top: 1em;
-	}
-
-	.has-issues {
-		.credential-issues {
-			display: inline-block;
-		}
-	}
-
-	.headline {
-		font-weight: bold;
-		margin-bottom: 0.7em;
-	}
-
-	.credential-parameter-wrapper {
-		display: flex;
-		align-items: center;
-	}
-
-	.parameter-name {
-		font-weight: 400;
-	}
-
-	.parameter-value {
-		display: flex;
-		align-items: center;
-	}
-
-	.credential-action {
-		display: flex;
-		justify-content: center;
-		align-items: center;
-		color: var(--color-text-base);
+	> * {
+		margin-bottom: var(--spacing-xs);
 	}
 }
 
+.warning {
+	min-width: 20px;
+	margin-left: 5px;
+	color: #ff8080;
+	font-size: var(--font-size-s);
+}
+
+.edit {
+	display: flex;
+	justify-content: center;
+	align-items: center;
+	color: var(--color-text-base);
+	min-width: 20px;
+	margin-left: 5px;
+	font-size: var(--font-size-s);
+}
+
+.input {
+	display: flex;
+	align-items: center;
+}
+
+.hasIssues {
+	composes: input;
+	--input-border-color: var(--color-danger);
+}
 </style>

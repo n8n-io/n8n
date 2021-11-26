@@ -6,6 +6,7 @@ import {
 import {
 	IDataObject,
 	ILoadOptionsFunctions,
+	INodePropertyOptions,
 	NodeApiError,
 	NodeOperationError,
 } from 'n8n-workflow';
@@ -260,4 +261,17 @@ export function pipedriveResolveCustomProperties(customProperties: ICustomProper
 		}
 	}
 
+}
+
+
+export function sortOptionParameters(optionParameters: INodePropertyOptions[]): INodePropertyOptions[] {
+	optionParameters.sort((a, b) => {
+		const aName = a.name.toLowerCase();
+		const bName = b.name.toLowerCase();
+		if (aName < bName) { return -1; }
+		if (aName > bName) { return 1; }
+		return 0;
+	});
+
+	return optionParameters;
 }

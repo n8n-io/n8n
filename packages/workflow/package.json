@@ -1,6 +1,6 @@
 {
   "name": "n8n-workflow",
-  "version": "0.70.0",
+  "version": "0.78.0",
   "description": "Workflow base code of n8n",
   "license": "SEE LICENSE IN LICENSE.md",
   "homepage": "https://n8n.io",
@@ -30,7 +30,7 @@
     "@types/express": "^4.17.6",
     "@types/jest": "^26.0.13",
     "@types/lodash.get": "^4.4.6",
-    "@types/node": "^14.14.40",
+    "@types/node": "14.17.27",
     "@types/xml2js": "^0.4.3",
     "@typescript-eslint/eslint-plugin": "^4.29.0",
     "@typescript-eslint/parser": "^4.29.0",

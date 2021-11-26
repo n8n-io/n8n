@@ -1,6 +1,6 @@
 import {
 	INodeProperties,
- } from 'n8n-workflow';
+} from 'n8n-workflow';
 
 export const ticketOperations = [
 	{
@@ -36,6 +36,11 @@ export const ticketOperations = [
 				description: 'Get all tickets',
 			},
 			{
+				name: 'Recover',
+				value: 'recover',
+				description: 'Recover a suspended ticket',
+			},
+			{
 				name: 'Update',
 				value: 'update',
 				description: 'Update a ticket',
@@ -48,9 +53,9 @@ export const ticketOperations = [
 
 export const ticketFields = [
 
-/* -------------------------------------------------------------------------- */
-/*                                ticket:create                               */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                ticket:create                               */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Description',
 		name: 'description',
@@ -265,9 +270,9 @@ export const ticketFields = [
 		description: `Object of values to set as described <a href="https://developer.zendesk.com/rest_api/docs/support/tickets">here</a>.`,
 	},
 
-/* -------------------------------------------------------------------------- */
-/*                                ticket:update                               */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                ticket:update                               */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Ticket ID',
 		name: 'id',
@@ -324,6 +329,13 @@ export const ticketFields = [
 		},
 		options: [
 			{
+				displayName: 'Assignee Email',
+				name: 'assigneeEmail',
+				type: 'string',
+				default: '',
+				description: 'The e-mail address of the assignee',
+			},
+			{
 				displayName: 'Custom Fields',
 				name: 'customFieldsUi',
 				placeholder: 'Add Custom Field',
@@ -374,6 +386,20 @@ export const ticketFields = [
 				},
 				default: '',
 				description: 'The group this ticket is assigned to',
+			},
+			{
+				displayName: 'Internal Note',
+				name: 'internalNote',
+				type: 'string',
+				default: '',
+				description: 'Internal Ticket Note (Accepts HTML)',
+			},
+			{
+				displayName: 'Public Reply',
+				name: 'publicReply',
+				type: 'string',
+				default: '',
+				description: 'Public ticket reply',
 			},
 			{
 				displayName: 'Recipient',
@@ -478,10 +504,38 @@ export const ticketFields = [
 		},
 		description: `Object of values to update as described <a href="https://developer.zendesk.com/rest_api/docs/support/tickets">here</a>.`,
 	},
-
-/* -------------------------------------------------------------------------- */
-/*                                 ticket:get                                 */
-/* -------------------------------------------------------------------------- */
+	{
+		displayName: 'Ticket Type',
+		name: 'ticketType',
+		type: 'options',
+		options: [
+			{
+				name: 'Regular',
+				value: 'regular',
+			},
+			{
+				name: 'Suspended',
+				value: 'suspended',
+			},
+		],
+		default: 'regular',
+		required: true,
+		displayOptions: {
+			show: {
+				resource: [
+					'ticket',
+				],
+				operation: [
+					'get',
+					'delete',
+					'getAll',
+				],
+			},
+		},
+	},
+	/* -------------------------------------------------------------------------- */
+	/*                                 ticket:get                                 */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Ticket ID',
 		name: 'id',
@@ -496,13 +550,37 @@ export const ticketFields = [
 				operation: [
 					'get',
 				],
+				ticketType: [
+					'regular',
+				],
 			},
 		},
 		description: 'Ticket ID',
 	},
-/* -------------------------------------------------------------------------- */
-/*                                   ticket:getAll                            */
-/* -------------------------------------------------------------------------- */
+	{
+		displayName: 'Suspended Ticket ID',
+		name: 'id',
+		type: 'string',
+		default: '',
+		required: true,
+		displayOptions: {
+			show: {
+				resource: [
+					'ticket',
+				],
+				operation: [
+					'get',
+				],
+				ticketType: [
+					'suspended',
+				],
+			},
+		},
+		description: 'Ticket ID',
+	},
+	/* -------------------------------------------------------------------------- */
+	/*                                   ticket:getAll                            */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Return All',
 		name: 'returnAll',
@@ -562,6 +640,37 @@ export const ticketFields = [
 		},
 		options: [
 			{
+				displayName: 'Group',
+				name: 'group',
+				type: 'options',
+				typeOptions: {
+					loadOptionsMethod: 'getGroups',
+				},
+				displayOptions: {
+					show: {
+						'/ticketType': [
+							'regular',
+						],
+					},
+				},
+				default: '',
+				description: 'The group to search',
+			},
+			{
+				displayName: 'Query',
+				name: 'query',
+				type: 'string',
+				displayOptions: {
+					show: {
+						'/ticketType': [
+							'regular',
+						],
+					},
+				},
+				default: '',
+				description: '<a href="https://developer.zendesk.com/api-reference/ticketing/ticket-management/search/#syntax-examples">Query syntax</a> to search tickets',
+			},
+			{
 				displayName: 'Sort By',
 				name: 'sortBy',
 				type: 'options',
@@ -596,21 +705,28 @@ export const ticketFields = [
 				type: 'options',
 				options: [
 					{
-						name: 'Asc',
+						name: 'Ascending',
 						value: 'asc',
 					},
 					{
-						name: 'Desc',
+						name: 'Descending',
 						value: 'desc',
 					},
 				],
-				default: 'desc',
+				default: 'asc',
 				description: 'Sort order',
 			},
 			{
 				displayName: 'Status',
 				name: 'status',
 				type: 'options',
+				displayOptions: {
+					show: {
+						'/ticketType': [
+							'regular',
+						],
+					},
+				},
 				options: [
 					{
 						name: 'Open',
@@ -639,9 +755,9 @@ export const ticketFields = [
 		],
 	},
 
-/* -------------------------------------------------------------------------- */
-/*                                ticket:delete                               */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                ticket:delete                               */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Ticket ID',
 		name: 'id',
@@ -656,8 +772,52 @@ export const ticketFields = [
 				operation: [
 					'delete',
 				],
+				ticketType: [
+					'regular',
+				],
 			},
 		},
 		description: 'Ticket ID',
+	},
+	{
+		displayName: 'Suspended Ticket ID',
+		name: 'id',
+		type: 'string',
+		default: '',
+		required: true,
+		displayOptions: {
+			show: {
+				resource: [
+					'ticket',
+				],
+				operation: [
+					'delete',
+				],
+				ticketType: [
+					'suspended',
+				],
+			},
+		},
+		description: 'Ticket ID',
+	},
+	/* -------------------------------------------------------------------------- */
+	/*                                ticket:recover                              */
+	/* -------------------------------------------------------------------------- */
+	{
+		displayName: 'Suspended Ticket ID',
+		name: 'id',
+		type: 'string',
+		default: '',
+		required: true,
+		displayOptions: {
+			show: {
+				resource: [
+					'ticket',
+				],
+				operation: [
+					'recover',
+				],
+			},
+		},
 	},
 ] as INodeProperties[];

@@ -13,7 +13,7 @@ export const spaceOperations = [
 			{
 				name: 'Get All',
 				value: 'getAll',
-				description: 'Retrieve data on all the spaces in the<br>logged-in user\'s organization.',
+				description: `Retrieve data on all the spaces in the logged-in user's organization.`,
 			},
 		],
 		displayOptions: {
