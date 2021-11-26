@@ -70,7 +70,7 @@ export const rmmAddAlertDescription: RmmProperties = [
 	{
 		displayName: 'Status',
 		name: 'status',
-		type: 'string',
+		type: 'options',
 		displayOptions: {
 			show: {
 				resource: [

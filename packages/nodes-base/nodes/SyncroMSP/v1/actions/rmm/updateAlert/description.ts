@@ -63,7 +63,7 @@ export const rmmUpdateAlertDescription: RmmProperties = [
 			{
 				displayName: 'Status',
 				name: 'status',
-				type: 'string',
+				type: 'options',
 				options : [
 					{
 						name: 'Active',
