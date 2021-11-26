@@ -96,6 +96,7 @@ export const nodeBase = mixins(
 					nodeName: node.name,
 					nodeId: this.nodeId,
 					index: i,
+					totalEndpoints: nodeTypeData.inputs.length,
 				};
 
 				// TODO: Activate again if it makes sense. Currently makes problems when removing
@@ -160,7 +161,7 @@ export const nodeBase = mixins(
 					nodeName: node.name,
 					nodeId: this.nodeId,
 					index: i,
-					outputsCount: nodeTypeData.outputs.length,
+					totalEndpoints: nodeTypeData.outputs.length,
 				};
 
 				if (!this.isReadOnly) {
@@ -199,7 +200,7 @@ export const nodeBase = mixins(
 						nodeName: node.name,
 						nodeId: this.nodeId,
 						index: i,
-						outputsCount: nodeTypeData.outputs.length,
+						totalEndpoints: nodeTypeData.outputs.length,
 					};
 				}
 			});
