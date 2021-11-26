@@ -6,6 +6,7 @@
 import * as express from 'express';
 import * as FormData from 'form-data';
 import { URLSearchParams } from 'url';
+import { IDeferredPromise } from './DeferredPromise';
 import { Workflow } from './Workflow';
 import { WorkflowHooks } from './WorkflowHooks';
 import { WorkflowOperationError } from './WorkflowErrors';
@@ -52,10 +53,12 @@ export type ExecutionError = WorkflowOperationError | NodeOperationError | NodeA
 
 // Get used to gives nodes access to credentials
 export interface IGetCredentials {
-	get(type: string, name: string): Promise<ICredentialsEncrypted>;
+	get(type: string, id: string | null): Promise<ICredentialsEncrypted>;
 }
 
 export abstract class ICredentials {
+	id?: string;
+
 	name: string;
 
 	type: string;
@@ -64,8 +67,15 @@ export abstract class ICredentials {
 
 	nodesAccess: ICredentialNodeAccess[];
 
-	constructor(name: string, type: string, nodesAccess: ICredentialNodeAccess[], data?: string) {
-		this.name = name;
+	constructor(
+		nodeCredentials: INodeCredentialsDetails,
+		type: string,
+		nodesAccess: ICredentialNodeAccess[],
+		data?: string,
+	) {
+		// eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
+		this.id = nodeCredentials.id || undefined;
+		this.name = nodeCredentials.name;
 		this.type = type;
 		this.nodesAccess = nodesAccess;
 		this.data = data;
@@ -93,6 +103,7 @@ export interface ICredentialNodeAccess {
 }
 
 export interface ICredentialsDecrypted {
+	id: string | number;
 	name: string;
 	type: string;
 	nodesAccess: ICredentialNodeAccess[];
@@ -100,6 +111,7 @@ export interface ICredentialsDecrypted {
 }
 
 export interface ICredentialsEncrypted {
+	id?: string | number;
 	name: string;
 	type: string;
 	nodesAccess: ICredentialNodeAccess[];
@@ -122,10 +134,13 @@ export abstract class ICredentialsHelper {
 		this.encryptionKey = encryptionKey;
 	}
 
-	abstract getCredentials(name: string, type: string): Promise<ICredentials>;
+	abstract getCredentials(
+		nodeCredentials: INodeCredentialsDetails,
+		type: string,
+	): Promise<ICredentials>;
 
 	abstract getDecrypted(
-		name: string,
+		nodeCredentials: INodeCredentialsDetails,
 		type: string,
 		mode: WorkflowExecuteMode,
 		raw?: boolean,
@@ -133,7 +148,7 @@ export abstract class ICredentialsHelper {
 	): Promise<ICredentialDataDecryptedObject>;
 
 	abstract updateCredentials(
-		name: string,
+		nodeCredentials: INodeCredentialsDetails,
 		type: string,
 		data: ICredentialDataDecryptedObject,
 	): Promise<void>;
@@ -160,6 +175,7 @@ export interface ICredentialTypes {
 
 // The way the credentials get saved in the database (data encrypted)
 export interface ICredentialData {
+	id?: string;
 	name: string;
 	data: string; // Contains the access data as encrypted JSON string
 	nodesAccess: ICredentialNodeAccess[];
@@ -192,6 +208,9 @@ export type GenericValue = string | object | number | boolean | undefined | null
 export interface IDataObject {
 	[key: string]: GenericValue | IDataObject | GenericValue[] | IDataObject[];
 }
+
+// export type IExecuteResponsePromiseData = IDataObject;
+export type IExecuteResponsePromiseData = IDataObject | IN8nHttpFullResponse;
 
 export interface INodeTypeNameVersion {
 	name: string;
@@ -309,13 +328,13 @@ export interface IHttpRequestOptions {
 	json?: boolean;
 }
 
-export type IN8nHttpResponse = IDataObject | Buffer | GenericValue | GenericValue[];
+export type IN8nHttpResponse = IDataObject | Buffer | GenericValue | GenericValue[] | null;
 
 export interface IN8nHttpFullResponse {
 	body: IN8nHttpResponse;
 	headers: IDataObject;
 	statusCode: number;
-	statusMessage: string;
+	statusMessage?: string;
 }
 
 export interface IExecuteFunctions {
@@ -357,6 +376,7 @@ export interface IExecuteFunctions {
 	): Promise<INodeExecutionData[][]>;
 	putExecutionToWait(waitTill: Date): Promise<void>;
 	sendMessageToUI(message: any): void; // tslint:disable-line:no-any
+	sendResponse(response: IExecuteResponsePromiseData): void; // tslint:disable-line:no-any
 	helpers: {
 		httpRequest(
 			requestOptions: IHttpRequestOptions,
@@ -477,7 +497,10 @@ export interface IPollFunctions {
 }
 
 export interface ITriggerFunctions {
-	emit(data: INodeExecutionData[][]): void;
+	emit(
+		data: INodeExecutionData[][],
+		responsePromise?: IDeferredPromise<IExecuteResponsePromiseData>,
+	): void;
 	getCredentials(type: string): Promise<ICredentialDataDecryptedObject | undefined>;
 	getMode(): WorkflowExecuteMode;
 	getActivationMode(): WorkflowActivateMode;
@@ -529,8 +552,13 @@ export interface IWebhookFunctions {
 	};
 }
 
+export interface INodeCredentialsDetails {
+	id: string | null;
+	name: string;
+}
+
 export interface INodeCredentials {
-	[key: string]: string;
+	[key: string]: INodeCredentialsDetails;
 }
 
 export interface INode {
@@ -775,6 +803,7 @@ export interface INodeTypeBaseDescription {
 export interface INodeTypeDescription extends INodeTypeBaseDescription {
 	version: number;
 	defaults: INodeParameters;
+	eventTriggerDescription?: string;
 	inputs: string[];
 	inputNames?: string[];
 	outputs: string[];
@@ -942,10 +971,8 @@ export interface IWorkflowBase {
 }
 
 export interface IWorkflowCredentials {
-	// Credential type
-	[key: string]: {
-		// Name
-		[key: string]: ICredentialsEncrypted;
+	[credentialType: string]: {
+		[id: string]: ICredentialsEncrypted;
 	};
 }
 
@@ -957,6 +984,7 @@ export interface IWorkflowExecuteHooks {
 	nodeExecuteBefore?: Array<(nodeName: string) => Promise<void>>;
 	workflowExecuteAfter?: Array<(data: IRun, newStaticData: IDataObject) => Promise<void>>;
 	workflowExecuteBefore?: Array<(workflow: Workflow, data: IRunExecutionData) => Promise<void>>;
+	sendResponse?: Array<(response: IExecuteResponsePromiseData) => Promise<void>>;
 }
 
 export interface IWorkflowExecuteAdditionalData {
@@ -1046,3 +1074,41 @@ export type PropertiesOf<M extends { resource: string; operation: string }> = Ar
 		};
 	}
 >;
+
+// Telemetry
+
+export interface INodesGraph {
+	node_types: string[];
+	node_connections: IDataObject[];
+	nodes: INodesGraphNode;
+}
+
+export interface INodesGraphNode {
+	[key: string]: INodeGraphItem;
+}
+
+export interface INodeGraphItem {
+	type: string;
+	resource?: string;
+	operation?: string;
+	domain?: string;
+}
+
+export interface INodeNameIndex {
+	[name: string]: string;
+}
+
+export interface INodesGraphResult {
+	nodeGraph: INodesGraph;
+	nameIndices: INodeNameIndex;
+}
+
+export interface ITelemetryClientConfig {
+	url: string;
+	key: string;
+}
+
+export interface ITelemetrySettings {
+	enabled: boolean;
+	config?: ITelemetryClientConfig;
+}

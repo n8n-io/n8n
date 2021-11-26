@@ -1,13 +1,12 @@
 <template>
 	<div v-if="dialogVisible">
 		<el-dialog :visible="dialogVisible" append-to-body :close-on-click-modal="false" width="80%" :title="`Edit ${parameter.displayName}`" :before-close="closeDialog">
-			<div class="text-editor-wrapper ignore-key-press">
-				<div class="editor-description">
-					{{parameter.displayName}}:
-				</div>
-				<div class="text-editor" @keydown.stop>
-					<prism-editor :lineNumbers="true" :code="value" :readonly="isReadOnly" @change="valueChanged" language="js"></prism-editor>
-				</div>
+			<div class="ignore-key-press">
+				<n8n-input-label :label="parameter.displayName">
+					<div :class="$style.editor" @keydown.stop>
+						<prism-editor :lineNumbers="true" :code="value" :readonly="isReadOnly" @change="valueChanged" language="js"></prism-editor>
+					</div>
+				</n8n-input-label>
 			</div>
 		</el-dialog>
 	</div>
@@ -53,9 +52,8 @@ export default mixins(
 	});
 </script>
 
-<style scoped>
-.editor-description {
-	font-weight: bold;
-	padding: 0 0 0.5em 0.2em;;
+<style lang="scss" module>
+.editor {
+	font-size: var(--font-size-s);
 }
 </style>

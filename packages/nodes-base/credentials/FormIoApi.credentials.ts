@@ -1,7 +1,6 @@
 import {
 	ICredentialType,
 	INodeProperties,
-	NodePropertyTypes,
 } from 'n8n-workflow';
 
 export class FormIoApi implements ICredentialType {
@@ -42,13 +41,13 @@ export class FormIoApi implements ICredentialType {
 		{
 			displayName: 'Email',
 			name: 'email',
-			type: 'string' as NodePropertyTypes,
+			type: 'string',
 			default: '',
 		},
 		{
 			displayName: 'Password',
 			name: 'password',
-			type: 'string' as NodePropertyTypes,
+			type: 'string',
 			typeOptions: {
 				password: true,
 			},

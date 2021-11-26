@@ -84,7 +84,7 @@ export class OpenThesaurus implements INodeType {
 						name: 'similar',
 						type: 'boolean',
 						default: false,
-						description: 'This also returns up to five similarly written words for each answer.</br> This is useful to be able to make a suggestion to the user in the event of a possible typing error.',
+						description: 'This also returns up to five similarly written words for each answer. This is useful to be able to make a suggestion to the user in the event of a possible typing error.',
 					},
 					{
 						displayName: 'Starts With',
@@ -105,7 +105,7 @@ export class OpenThesaurus implements INodeType {
 						name: 'substringFromResults',
 						type: 'number',
 						default: 0,
-						description: 'Specifies from which entry the partial word hits are to be returned.</br> Only works together with substring = true.',
+						description: 'Specifies from which entry the partial word hits are to be returned. Only works together with substring = true.',
 					},
 					{
 						displayName: 'Substring Max Results',
@@ -115,7 +115,7 @@ export class OpenThesaurus implements INodeType {
 							maxValue: 250,
 						},
 						default: 10,
-						description: 'Specifies how many partial word hits should be returned in total.</br> Only works together with substring = true.',
+						description: 'Specifies how many partial word hits should be returned in total. Only works together with substring = true.',
 					},
 					{
 						displayName: 'Subsynsets',

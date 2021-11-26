@@ -15,8 +15,9 @@ import { IProcessMessage, WorkflowExecute } from 'n8n-core';
 
 import {
 	ExecutionError,
+	IDeferredPromise,
+	IExecuteResponsePromiseData,
 	IRun,
-	IWorkflowBase,
 	LoggerProxy as Logger,
 	Workflow,
 	WorkflowExecuteMode,
@@ -42,9 +43,7 @@ import {
 	IBullJobResponse,
 	ICredentialsOverwrite,
 	ICredentialsTypeData,
-	IExecutionDb,
 	IExecutionFlattedDb,
-	IExecutionResponse,
 	IProcessMessageDataHook,
 	ITransferNodeTypes,
 	IWorkflowExecutionDataProcess,
@@ -52,10 +51,12 @@ import {
 	NodeTypes,
 	Push,
 	ResponseHelper,
+	WebhookHelpers,
 	WorkflowExecuteAdditionalData,
 	WorkflowHelpers,
 } from '.';
 import * as Queue from './Queue';
+import { InternalHooksManager } from './InternalHooksManager';
 
 export class WorkflowRunner {
 	activeExecutions: ActiveExecutions.ActiveExecutions;
@@ -146,6 +147,7 @@ export class WorkflowRunner {
 		loadStaticData?: boolean,
 		realtime?: boolean,
 		executionId?: string,
+		responsePromise?: IDeferredPromise<IExecuteResponsePromiseData>,
 	): Promise<string> {
 		const executionsProcess = config.get('executions.process') as string;
 		const executionsMode = config.get('executions.mode') as string;
@@ -153,17 +155,35 @@ export class WorkflowRunner {
 		if (executionsMode === 'queue' && data.executionMode !== 'manual') {
 			// Do not run "manual" executions in bull because sending events to the
 			// frontend would not be possible
-			executionId = await this.runBull(data, loadStaticData, realtime, executionId);
+			executionId = await this.runBull(
+				data,
+				loadStaticData,
+				realtime,
+				executionId,
+				responsePromise,
+			);
 		} else if (executionsProcess === 'main') {
-			executionId = await this.runMainProcess(data, loadStaticData, executionId);
+			executionId = await this.runMainProcess(data, loadStaticData, executionId, responsePromise);
 		} else {
-			executionId = await this.runSubprocess(data, loadStaticData, executionId);
+			executionId = await this.runSubprocess(data, loadStaticData, executionId, responsePromise);
 		}
 
+		const postExecutePromise = this.activeExecutions.getPostExecutePromise(executionId);
+
 		const externalHooks = ExternalHooks();
+		postExecutePromise
+			.then(async (executionData) => {
+				void InternalHooksManager.getInstance().onWorkflowPostExecute(
+					data.workflowData,
+					executionData,
+				);
+			})
+			.catch((error) => {
+				console.error('There was a problem running internal hook "onWorkflowPostExecute"', error);
+			});
+
 		if (externalHooks.exists('workflow.postExecute')) {
-			this.activeExecutions
-				.getPostExecutePromise(executionId)
+			postExecutePromise
 				.then(async (executionData) => {
 					await externalHooks.run('workflow.postExecute', [executionData, data.workflowData]);
 				})
@@ -188,6 +208,7 @@ export class WorkflowRunner {
 		data: IWorkflowExecutionDataProcess,
 		loadStaticData?: boolean,
 		restartExecutionId?: string,
+		responsePromise?: IDeferredPromise<IExecuteResponsePromiseData>,
 	): Promise<string> {
 		if (loadStaticData === true && data.workflowData.id) {
 			data.workflowData.staticData = await WorkflowHelpers.getStaticDataById(
@@ -244,6 +265,15 @@ export class WorkflowRunner {
 				executionId,
 				true,
 			);
+
+			additionalData.hooks.hookFunctions.sendResponse = [
+				async (response: IExecuteResponsePromiseData): Promise<void> => {
+					if (responsePromise) {
+						responsePromise.resolve(response);
+					}
+				},
+			];
+
 			additionalData.sendMessageToUI = WorkflowExecuteAdditionalData.sendMessageToUI.bind({
 				sessionId: data.sessionId,
 			});
@@ -329,11 +359,15 @@ export class WorkflowRunner {
 		loadStaticData?: boolean,
 		realtime?: boolean,
 		restartExecutionId?: string,
+		responsePromise?: IDeferredPromise<IExecuteResponsePromiseData>,
 	): Promise<string> {
 		// TODO: If "loadStaticData" is set to true it has to load data new on worker
 
 		// Register the active execution
 		const executionId = await this.activeExecutions.add(data, undefined, restartExecutionId);
+		if (responsePromise) {
+			this.activeExecutions.attachResponsePromise(executionId, responsePromise);
+		}
 
 		const jobData: IBullJobData = {
 			executionId,
@@ -533,6 +567,7 @@ export class WorkflowRunner {
 		data: IWorkflowExecutionDataProcess,
 		loadStaticData?: boolean,
 		restartExecutionId?: string,
+		responsePromise?: IDeferredPromise<IExecuteResponsePromiseData>,
 	): Promise<string> {
 		let startedAt = new Date();
 		const subprocess = fork(pathJoin(__dirname, 'WorkflowRunnerProcess.js'));
@@ -641,6 +676,10 @@ export class WorkflowRunner {
 			} else if (message.type === 'end') {
 				clearTimeout(executionTimeout);
 				this.activeExecutions.remove(executionId, message.data.runData);
+			} else if (message.type === 'sendResponse') {
+				if (responsePromise) {
+					responsePromise.resolve(WebhookHelpers.decodeWebhookResponse(message.data.response));
+				}
 			} else if (message.type === 'sendMessageToUI') {
 				// eslint-disable-next-line @typescript-eslint/no-unsafe-call
 				WorkflowExecuteAdditionalData.sendMessageToUI.bind({ sessionId: data.sessionId })(
