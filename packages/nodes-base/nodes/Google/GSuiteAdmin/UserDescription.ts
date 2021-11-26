@@ -640,8 +640,7 @@ export const userFields = [
 				name: 'query',
 				type: 'string',
 				default: '',
-				description: `Free text search terms to find users that match these terms in any field, except for extended properties.</br>
-				For more information on constructing user queries, see <a href="https://developers.google.com/admin-sdk/directory/v1/guides/search-users">Search for Users</a>`,
+				description: `Free text search terms to find users that match these terms in any field, except for extended properties. For more information on constructing user queries, see <a href="https://developers.google.com/admin-sdk/directory/v1/guides/search-users">Search for Users</a>`,
 			},
 			{
 				displayName: 'Show Deleted',

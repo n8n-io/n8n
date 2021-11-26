@@ -149,8 +149,7 @@ export const profileFields = [
 					},
 				],
 				default: [],
-				description: `Fetch the Humantic profile of the user for a particular persona type.<br>
-				Multiple persona values can be supported using comma as a delimiter.`,
+				description: `Fetch the Humantic profile of the user for a particular persona type. Multiple persona values can be supported using comma as a delimiter.`,
 			},
 		],
 	},

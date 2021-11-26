@@ -197,8 +197,7 @@ export const coorganizerFields = [
 				],
 			},
 		},
-		description: `By default only internal co-organizers (with a GoToWebinar account) can be deleted.</br>
-		If you want to use this call for external co-organizers you have to set this parameter to 'true'.`,
+		description: `By default only internal co-organizers (with a GoToWebinar account) can be deleted. If you want to use this call for external co-organizers you have to set this parameter to 'true'.`,
 	},
 
 	// ----------------------------------
@@ -276,8 +275,7 @@ export const coorganizerFields = [
 		type: 'string',
 		required: true,
 		default: '',
-		description: `By default only internal co-organizers (with a GoToWebinar account) can be deleted.</br>
-		If you want to use this call for external co-organizers you have to set this parameter to 'true'.`,
+		description: `By default only internal co-organizers (with a GoToWebinar account) can be deleted. If you want to use this call for external co-organizers you have to set this parameter to 'true'.`,
 		displayOptions: {
 			show: {
 				resource: [
