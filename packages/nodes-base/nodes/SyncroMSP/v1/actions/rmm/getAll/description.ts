@@ -13,12 +13,32 @@ export const rmmGetAllDescription: RmmProperties = [
 					'rmm',
 				],
 				operation: [
-					'getAlerts',
+					'getAll',
 				],
 			},
 		},
 		default: false,
 		description: 'If all results should be returned or only up to a given limit.',
+	},
+	{
+		displayName: 'Limit',
+		name: 'per_page',
+		type: 'number',
+		displayOptions: {
+			show: {
+				resource: [
+					'rmm',
+				],
+				operation: [
+					'getAll',
+				],
+				returnAll: [
+					false,
+				],
+			},
+		},
+		default: 25,
+		description: 'limit the number of rows returned',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -31,7 +51,7 @@ export const rmmGetAllDescription: RmmProperties = [
 					'rmm',
 				],
 				operation: [
-					'getAlerts',
+					'getAll',
 				],
 			},
 		},
@@ -44,13 +64,6 @@ export const rmmGetAllDescription: RmmProperties = [
 				default: '',
 				placeholder: 'all',
 				description: 'Possible values resolved, all, active.',
-			},
-			{
-				displayName: 'Limit',
-				name: 'per_page',
-				type: 'number',
-				default: 25,
-				description: 'limit the number of rows returned',
 			},
 			{
 				displayName: 'Page',

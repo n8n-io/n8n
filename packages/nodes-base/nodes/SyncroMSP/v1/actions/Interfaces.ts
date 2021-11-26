@@ -8,7 +8,7 @@ type SyncroMspMap = {
 	customer: 'getAll' | 'addCustomer' | 'deleteCustomer' | 'updateCustomer' | 'getCustomer';
 	ticket: 'getAll';
 	contact: 'getAll' | 'addContact' | 'deleteContact' | 'updateContact' | 'getContact';
-	rmm: 'getAlerts';
+	rmm: 'getAll' | 'getAlert' | 'addAlert' | 'deleteAlert' | 'updateAlert' | 'muteAlert' ;
 };
 
 export type SyncroMsp = AllEntities<SyncroMspMap>;
