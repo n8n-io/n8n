@@ -22,5 +22,5 @@ export async function getCustomer(this: IExecuteFunctions, index: number): Promi
 
 	let responseData;
 	responseData = await apiRequest.call(this, requestMethod, endpoint, body, qs);
-	return this.helpers.returnJsonArray(responseData.customers);
+	return this.helpers.returnJsonArray(responseData.customer);
 }
