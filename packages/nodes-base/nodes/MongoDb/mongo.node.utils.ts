@@ -108,12 +108,45 @@ export function getItemCopy(
 	});
 }
 
+/**
+ * Assign a Date Object to an Field
+ * @param {Object} insertItem the item object
+ * @param {string} str the path to set value
+ * @param {Date} val the date value
+ * @returns
+ */
+function setDateField(insertItem: Object, str: string, val: Date) {
+	const path = str.split(".") || [];
+	while (path.length > 1){
+		const item = path.shift();
+		if (undefined != item) {
+			insertItem = insertItem[item];
+		}
+	}
+	return insertItem[path.shift()] = val;
+}
+
+/**
+ *
+ * @param {Object} insertItem the item object
+ * @param {string} str the path to get value
+ * @returns
+ */
+function getDateField(insertItem: Object, str: string) {
+	const path = str.split(".") || [];
+	for (var i = 0; i < path.length; i++){
+		insertItem = insertItem[path[i]];
+	}
+	return insertItem;
+}
+
 export function handleDateFields(insertItems: IDataObject[], fields: string) {
 	const dateFields = (fields as string).split(',');
 	for (let i = 0; i < insertItems.length; i++) {
-		for (const key of Object.keys(insertItems[i])) {
-			if (dateFields.includes(key)) {
-				insertItems[i][key] = new Date(insertItems[i][key] as string);
+		for(const dateField of dateFields){
+			let dateValue = getDateField(insertItems[i], dateField);
+			if (undefined != dateValue){
+				setDateField(insertItems[i], dateField, new Date(dateValue as string));
 			}
 		}
 	}
