@@ -13,6 +13,7 @@ import {
 
 import {
 	todoistApiRequest,
+	FormatDueDatetime,
 } from './GenericFunctions';
 
 interface IBodyCreateTask {
@@ -573,7 +574,7 @@ export class Todoist implements INodeType {
 						}
 
 						if (options.dueDateTime) {
-							body.due_datetime = options.dueDateTime as string;
+							body.due_datetime = FormatDueDatetime(options.dueDateTime as string);
 						}
 
 						if (options.dueString) {
@@ -670,7 +671,7 @@ export class Todoist implements INodeType {
 						}
 
 						if (updateFields.dueDateTime) {
-							body.due_datetime = updateFields.dueDateTime as string;
+							body.due_datetime = FormatDueDatetime(updateFields.dueDateTime as string);
 						}
 
 						if (updateFields.dueString) {
