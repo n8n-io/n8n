@@ -26,7 +26,7 @@ export async function getAll(this: IExecuteFunctions, index: number): Promise<IN
 		qs = additionalFields;
 	}
 
-	qs.per_page = perPage
+	qs.per_page = perPage;
 
 	let responseData;
 	if (returnAll) {
