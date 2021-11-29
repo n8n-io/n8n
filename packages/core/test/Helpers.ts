@@ -616,10 +616,7 @@ class NodeTypesClass implements INodeTypes {
 									name: 'dotNotation',
 									type: 'boolean',
 									default: true,
-									description: `By default does dot-notation get used in property names..<br />
-						This means that "a.b" will set the property "b" underneath "a" so { "a": { "b": value} }.<br />
-						If that is not intended this can be deactivated, it will then set { "a.b": value } instead.
-						`,
+									description: `<p>By default, dot-notation is used in property names. This means that "a.b" will set the property "b" underneath "a" so { "a": { "b": value} }.</p><p>If that is not intended this can be deactivated, it will then set { "a.b": value } instead.</p>`,
 								},
 							],
 						},

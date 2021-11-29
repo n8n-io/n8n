@@ -1611,8 +1611,7 @@ class App {
 				async (req: express.Request, res: express.Response): Promise<ICredentialsResponse[]> => {
 					const findQuery = {} as FindManyOptions;
 					if (req.query.filter) {
-						findQuery.where = JSON.parse(req.query.filter as string);
-						// @ts-ignore
+						findQuery.where = JSON.parse(req.query.filter as string) as IDataObject;
 						if (findQuery.where.id !== undefined) {
 							// No idea if multiple where parameters make db search
 							// slower but to be sure that that is not the case we

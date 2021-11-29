@@ -279,7 +279,7 @@ export class SpreadsheetFile implements INodeType {
 							},
 						},
 						default: '',
-						description: 'The range to read from the table.<br />If set to a number it will be the starting row.<br />If set to string it will be used as A1-style bounded range.',
+						description: 'The range to read from the table. If set to a number it will be the starting row. If set to string it will be used as A1-style bounded range.',
 					},
 					{
 						displayName: 'Sheet Name',

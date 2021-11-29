@@ -272,9 +272,7 @@ export class Pushbullet implements INodeType {
 					},
 				},
 				default: '',
-				description: `The value to be set depending on the target selected.<br>
-				For example, if the target selected is email then this field would take the email address<br>
-				of the person you are trying to send the push to.`,
+				description: `The value to be set depending on the target selected. For example, if the target selected is email then this field would take the email address of the person you are trying to send the push to.`,
 			},
 			{
 				displayName: 'Value',
