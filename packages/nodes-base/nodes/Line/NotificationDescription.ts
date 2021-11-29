@@ -125,7 +125,7 @@ export const notificationFields = [
 									},
 								},
 								default: 'data',
-								description: `Name of the property that holds the binary data.<br>`,
+								description: `Name of the property that holds the binary data.`,
 							},
 						],
 					},
@@ -136,8 +136,7 @@ export const notificationFields = [
 				name: 'notificationDisabled',
 				type: 'boolean',
 				default: false,
-				description: `true: The user doesn't receive a push notification when the message is sent.<br>
-				false: The user receives a push notification when the message is sent`,
+				description: `<p>true: The user doesn't receive a push notification when the message is sent.</p><p>false: The user receives a push notification when the message is sent</p>`,
 			},
 			{
 				displayName: 'Sticker',

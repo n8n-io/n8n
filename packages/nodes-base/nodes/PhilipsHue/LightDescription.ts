@@ -258,8 +258,7 @@ export const lightFields = [
 				type: 'string',
 				default: '',
 				placeholder: '0.64394,0.33069',
-				description: `The x and y coordinates of a color in CIE color space.</br>
-				The first entry is the x coordinate and the second entry is the y coordinate. Both x and y are between 0 and 1`,
+				description: `The x and y coordinates of a color in CIE color space. The first entry is the x coordinate and the second entry is the y coordinate. Both x and y are between 0 and 1`,
 			},
 			{
 				displayName: 'Coordinates Increments',

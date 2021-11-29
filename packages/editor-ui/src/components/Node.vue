@@ -26,6 +26,13 @@
 					<font-awesome-icon icon="sync-alt" spin />
 				</div>
 
+				<div class="node-trigger-tooltip__wrapper">
+					<n8n-tooltip placement="top" :manual="true" :value="showTriggerNodeTooltip" popper-class="node-trigger-tooltip__wrapper--item">
+						<div slot="content" v-text="getTriggerNodeTooltip"></div>
+						<span />
+					</n8n-tooltip>
+				</div>
+
 				<NodeIcon class="node-icon" :nodeType="nodeType" :size="40" :shrink="false" :disabled="this.data.disabled"/>
 			</div>
 
@@ -110,11 +117,41 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, renderText, workflow
 
 			return workflowResultDataNode.length;
 		},
+		canvasOffsetPosition() {
+			return this.$store.getters.getNodeViewOffsetPosition;
+		},
+		getTriggerNodeTooltip (): string | undefined {
+			if (this.nodeType !== null && this.nodeType.hasOwnProperty('eventTriggerDescription')) {
+				return this.nodeType.eventTriggerDescription;
+			} else {
+				return `Waiting for you to create an event in ${this.nodeType && this.nodeType.displayName.replace(/Trigger/, "")}`;
+			}
+		},
 		isExecuting (): boolean {
 			return this.$store.getters.executingNode === this.data.name;
 		},
+		isSingleActiveTriggerNode (): boolean {
+			const nodes = this.$store.getters.workflowTriggerNodes.filter((node: INodeUi) => {
+				const nodeType =  this.$store.getters.nodeType(node.type) as INodeTypeDescription | null;
+				return nodeType && nodeType.eventTriggerDescription !== '' && !node.disabled;
+			});
+
+			return nodes.length === 1;
+		},
+		isTriggerNode (): boolean {
+			return !!(this.nodeType && this.nodeType.group.includes('trigger'));
+		},
+		isTriggerNodeTooltipEmpty () : boolean {
+			return this.nodeType !== null ? this.nodeType.eventTriggerDescription === '' : false;
+		},
+		isNodeDisabled (): boolean | undefined {
+			return this.node && this.node.disabled;
+		},
 		nodeType (): INodeTypeDescription | null {
-			return this.$store.getters.nodeType(this.data.type);
+			return this.data && this.$store.getters.nodeType(this.data.type);
+		},
+		node (): INodeUi | undefined { // same as this.data but reactive..
+			return this.$store.getters.nodesByName[this.name] as INodeUi | undefined;
 		},
 		nodeClass (): object {
 			return {
@@ -140,9 +177,7 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, renderText, workflow
 			}
 		},
 		position (): XYPosition {
-			const node = this.$store.getters.nodesByName[this.name] as INodeUi; // position responsive to store changes
-
-			return node.position;
+			return this.node ? this.node.position : [0, 0];
 		},
 		showDisabledLinethrough(): boolean {
 			return !!(this.data.disabled && this.nodeType && this.nodeType.inputs.length === 1 && this.nodeType.outputs.length === 1);
@@ -236,11 +271,31 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, renderText, workflow
 		shiftOutputCount (): boolean {
 			return !!(this.nodeType && this.nodeType.outputs.length > 2);
 		},
-	},
+		shouldShowTriggerTooltip () : boolean {
+			return !!this.node && this.workflowRunning && this.workflowDataItems === 0 && this.isTriggerNode && this.isSingleActiveTriggerNode && !this.isTriggerNodeTooltipEmpty && !this.isNodeDisabled && !this.hasIssues && !this.dragging;
+		},
+ 	},
 	watch: {
 		isActive(newValue, oldValue) {
 			if (!newValue && oldValue) {
 				this.setSubtitle();
+			}
+		},
+		canvasOffsetPosition() {
+			if (this.showTriggerNodeTooltip) {
+				this.showTriggerNodeTooltip = false;
+				setTimeout(() => {
+					this.showTriggerNodeTooltip = this.shouldShowTriggerTooltip;
+				}, 200);
+			}
+		},
+		shouldShowTriggerTooltip(shouldShowTriggerTooltip) {
+			if (shouldShowTriggerTooltip) {
+				setTimeout(() => {
+					this.showTriggerNodeTooltip = this.shouldShowTriggerTooltip;
+				}, 2500);
+			} else {
+				this.showTriggerNodeTooltip = false;
 			}
 		},
 		nodeRunData(newValue) {
@@ -257,6 +312,8 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, renderText, workflow
 		return {
 			isTouchActive: false,
 			nodeSubtitle: '',
+			showTriggerNodeTooltip: false,
+			dragging: false,
 		};
 	},
 	methods: {
@@ -517,13 +574,26 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, renderText, workflow
 		border-color: var(--color-success-light);
 	}
 }
-
 </style>
 
 <style lang="scss">
 /** node */
 .node-wrapper.selected {
 	z-index: 2;
+}
+
+.node-trigger-tooltip {
+	&__wrapper {
+		top: -22px;
+		left: 50px;
+		position: relative;
+
+		&--item {
+			max-width: 160px;
+			position: fixed;
+			z-index: 0!important;
+		}
+	}
 }
 
 /** connector */
