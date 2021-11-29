@@ -559,11 +559,11 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 }
 
 .jtk-endpoint.dot-output-endpoint {
-	z-index:7;
+	z-index: 7;
 }
 
 .jtk-overlay {
-	z-index:7;
+	z-index: 7;
 }
 
 .disabled-linethrough {
