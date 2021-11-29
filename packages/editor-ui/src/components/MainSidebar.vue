@@ -125,7 +125,12 @@
 				<MenuItemsIterator :items="sidebarMenuBottomItems" :root="true"/>
 
 				<div class="footer-menu-items">
-					<n8n-menu-item index="updates" class="updates" v-if="hasVersionUpdates" @click="openUpdatesPanel">
+					<n8n-menu-item
+						index="updates"
+						class="updates"
+						v-if="!isDesktop && hasVersionUpdates"
+						@click="openUpdatesPanel"
+					>
 						<div class="gift-container">
 							<GiftNotificationIcon />
 						</div>
@@ -260,6 +265,10 @@ export default mixins(
 			},
 			executionWaitingForWebhook (): boolean {
 				return this.$store.getters.executionWaitingForWebhook;
+			},
+			isDesktop() {
+				return process.env.VUE_APP_N8N_DEPLOYMENT_TYPE &&
+					process.env.VUE_APP_N8N_DEPLOYMENT_TYPE.startsWith('desktop');
 			},
 			isExecutionPage (): boolean {
 				if (['ExecutionById'].includes(this.$route.name as string)) {
