@@ -1109,6 +1109,7 @@ export class EditImage implements INodeType {
 					],
 					composite: [
 						'dataPropertyNameComposite',
+						'operator',
 						'positionX',
 						'positionY',
 					],
