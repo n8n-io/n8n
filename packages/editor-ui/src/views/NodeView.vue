@@ -2644,9 +2644,6 @@ export default mixins(
 	.floating {
 		position: absolute;
 		top: -22px;
-	}
-
-	.floating.center {
 		transform: translateX(-50%);
 	}
 }

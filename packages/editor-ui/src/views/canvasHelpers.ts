@@ -575,7 +575,7 @@ export const addConnectionOutputSuccess = (connection: Connection, output: {tota
 		'Label',
 		{
 			id: OVERLAY_RUN_ITEMS_ID,
-			label: `<span class="center">${getRunItemsLabel(output)}</span>`,
+			label: `<span>${getRunItemsLabel(output)}</span>`,
 			cssClass: 'connection-run-items-label',
 			location: .5,
 		},

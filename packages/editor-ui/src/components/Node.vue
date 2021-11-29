@@ -621,7 +621,6 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 	.plus-stalk .connection-run-items-label span {
 		display: none;
 		left: calc(50% + 4px);
-		transform: translateX(-50%);
 	}
 
 	.plus-container {
