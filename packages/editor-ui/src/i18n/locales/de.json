@@ -552,7 +552,7 @@
 		"runButtonText": {
 			"executeWorkflow": "🇩🇪 Execute Workflow",
 			"executingWorkflow": "🇩🇪 Executing Workflow",
-			"waitingForWebhookCall": "🇩🇪 Waiting for Webhook-Call"
+			"waitingForTriggerEvent": "🇩🇪 Waiting for Trigger Event"
 		},
 		"showError": {
 			"getWorkflowDataFromUrl": {

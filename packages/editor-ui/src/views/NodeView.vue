@@ -291,7 +291,7 @@ export default mixins(
 				}
 
 				if (this.executionWaitingForWebhook === true) {
-					return this.$baseText('nodeView.runButtonText.waitingForWebhookCall');
+					return this.$baseText('nodeView.runButtonText.waitingForTriggerEvent');
 				}
 
 				return this.$baseText('nodeView.runButtonText.executingWorkflow');
