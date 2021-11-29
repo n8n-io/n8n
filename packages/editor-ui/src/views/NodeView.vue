@@ -108,7 +108,7 @@
 <script lang="ts">
 import Vue from 'vue';
 import {
-	Connection, Endpoint,
+	Connection, Endpoint, N8nPlusEndpoint,
 } from 'jsplumb';
 import { MessageBoxInputData } from 'element-ui/types/message-box';
 import { jsPlumb, OnConnectionBindInfo } from 'jsplumb';
@@ -1897,15 +1897,13 @@ export default mixins(
 							}
 
 							const endpoint = this.getPlusEndpoint(sourceNodeName, parseInt(sourceOutputIndex, 10));
-							if (endpoint) {
+							if (endpoint && endpoint.endpoint) {
 								const output = outputMap[sourceOutputIndex][NODE_OUTPUT_DEFAULT_KEY][0];
 								if (output && output.total > 0) {
-									// @ts-ignore
-									endpoint.endpoint.setSuccessOutput(CanvasHelpers.getRunItemsLabel(output));
+									(endpoint.endpoint as N8nPlusEndpoint).setSuccessOutput(CanvasHelpers.getRunItemsLabel(output));
 								}
 								else {
-									// @ts-ignore
-									endpoint.endpoint.clearSuccessOutput();
+									(endpoint.endpoint as N8nPlusEndpoint).clearSuccessOutput();
 								}
 							}
 						});
