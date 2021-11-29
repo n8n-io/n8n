@@ -139,6 +139,7 @@ import * as config from '../config';
 
 import * as TagHelpers from './TagHelpers';
 import * as PersonalizationSurvey from './PersonalizationSurvey';
+import * as UserManagementHelpers from './UserManagement/UserManagementHelper';
 
 import { InternalHooksManager } from './InternalHooksManager';
 import { TagEntity } from './databases/entities/TagEntity';
@@ -686,6 +687,12 @@ class App {
 						.Workflow!.save(newWorkflow)
 						.catch(WorkflowHelpers.throwDuplicateEntryError)) as WorkflowEntity;
 					savedWorkflow.tags = TagHelpers.sortByRequestOrder(savedWorkflow.tags, incomingTagOrder);
+					try {
+						await UserManagementHelpers.saveWorkflowOwnership(savedWorkflow, incomingData);
+					} catch (error) {
+						// TODO: decide how to better handle this.
+						LoggerProxy.debug('Error saving workflow ownership', { error });
+					}
 
 					// @ts-ignore
 					savedWorkflow.id = savedWorkflow.id.toString();
