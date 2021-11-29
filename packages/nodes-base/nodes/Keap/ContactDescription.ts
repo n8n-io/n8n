@@ -72,8 +72,7 @@ export const contactFields = [
 			},
 		},
 		default: 'email',
-		description: `Performs duplicate checking by one of the following options: Email, EmailAndName,</br>
-		if a match is found using the option provided, the existing contact will be updated`,
+		description: `Performs duplicate checking by one of the following options: Email, EmailAndName. If a match is found using the option provided, the existing contact will be updated`,
 	},
 	{
 		displayName: 'Additional Fields',
@@ -616,8 +615,7 @@ export const contactFields = [
 				name: 'fields',
 				type: 'string',
 				default: '',
-				description: `Comma-delimited list of Contact properties to include in the response.</br>
-				(Some fields such as lead_source_id, custom_fields, and job_title aren't included, by default.)`,
+				description: `Comma-delimited list of Contact properties to include in the response. (Some fields such as lead_source_id, custom_fields, and job_title aren't included, by default.)`,
 			},
 		],
 	},

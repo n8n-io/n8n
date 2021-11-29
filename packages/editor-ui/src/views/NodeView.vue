@@ -1624,7 +1624,7 @@ export default mixins(
 						);
 						const nodes = [...document.querySelectorAll('.node-default')];
 
-						const onMouseMove = (e: MouseEvent) => {
+						const onMouseMove = (e: MouseEvent | TouchEvent) => {
 							if (!connection) {
 								return;
 							}
@@ -1639,7 +1639,8 @@ export default mixins(
 							const inputMargin = 24;
 							const intersecting = nodes.find((element: Element) => {
 								const {top, left, right, bottom} = element.getBoundingClientRect();
-								if (top <= e.pageY && bottom >= e.pageY && (left - inputMargin) <= e.pageX && right >= e.pageX) {
+								const [x, y] = CanvasHelpers.getMousePosition(e);
+								if (top <= y && bottom >= y && (left - inputMargin) <= x && right >= x) {
 									const nodeName = (element as HTMLElement).dataset['name'] as string;
 									const node = this.$store.getters.getNodeByName(nodeName) as INodeUi | null;
 									if (node) {
@@ -1664,7 +1665,7 @@ export default mixins(
 							}
 						};
 
-						const onMouseUp = (e: MouseEvent) => {
+						const onMouseUp = (e: MouseEvent | TouchEvent) => {
 							this.pullConnActive = false;
 							this.newNodeInsertPosition = this.getMousePositionWithinNodeView(e);
 							CanvasHelpers.resetConnectionAfterPull(connection);
@@ -1673,7 +1674,9 @@ export default mixins(
 						};
 
 						window.addEventListener('mousemove', onMouseMove);
+						window.addEventListener('touchmove', onMouseMove);
 						window.addEventListener('mouseup', onMouseUp);
+						window.addEventListener('touchend', onMouseMove);
 					} catch (e) {
 						console.error(e); // eslint-disable-line no-console
 					}

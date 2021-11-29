@@ -227,7 +227,7 @@ export const transferFields = [
 		type: 'boolean',
 		required: true,
 		default: false,
-		description: 'Download the transfer receipt as a PDF file.<br>Only for executed transfers, having status \'Outgoing Payment Sent\'.',
+		description: `Download the transfer receipt as a PDF file. Only for executed transfers, having status 'Outgoing Payment Sent'.`,
 		displayOptions: {
 			show: {
 				resource: [
