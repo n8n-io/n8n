@@ -243,7 +243,7 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 			return !!(this.nodeType && this.nodeType.outputs.length > 2);
 		},
 		shouldShowTriggerTooltip () : boolean {
-			return !!this.node && this.workflowRunning && this.isTriggerNode && this.isSingleActiveTriggerNode && !this.isTriggerNodeTooltipEmpty && !this.isNodeDisabled && !this.hasIssues && !this.dragging;
+			return !!this.node && this.workflowRunning && this.workflowDataItems === 0 && this.isTriggerNode && this.isSingleActiveTriggerNode && !this.isTriggerNodeTooltipEmpty && !this.isNodeDisabled && !this.hasIssues && !this.dragging;
 		},
  	},
 	watch: {
