@@ -591,3 +591,98 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 }
 
 </style>
+
+<style lang="scss">
+	/** Plus Endpoint **/
+
+	$--stalklength: 40px;
+	$--box-size-medium: 24px;
+	$--box-size-small: 18px;
+
+	.plus-endpoint {
+		cursor: pointer;
+	}
+
+	.plus-stalk {
+		border-top: 2px solid var(--color-foreground-dark);
+		position: absolute;
+		width: $--stalklength;
+		height: 0;
+		right: 100%;
+		top: calc(50% - 1px);
+		pointer-events: none;
+	}
+
+	.plus-stalk .connection-run-items-label {
+		position: relative;
+		width: 100%;
+	}
+
+	.plus-stalk .connection-run-items-label span {
+		display: none;
+		left: calc(50% + 4px);
+		transform: translateX(-50%);
+	}
+
+	.plus-container {
+		color: var(--color-foreground-xdark);
+		border: 2px solid var(--color-foreground-xdark);
+		background-color: var(--color-background-xlight);
+		border-radius: var(--border-radius-base);
+		height: $--box-size-medium;
+		width: $--box-size-medium;
+
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		font-size: var(--font-size-2xs);
+		position: absolute;
+
+		top: 0;
+		right: 0;
+		pointer-events: none;
+	}
+
+	.plus-container.small {
+		height: $--box-size-small;
+		width: $--box-size-small;
+		font-size: 8px;
+	}
+
+	.plus-container svg {
+		width: 1em;
+	}
+
+	.plus-container svg path:nth-of-type(2) {
+		fill: #7D838F;
+	}
+
+	.drop-hover-message {
+		font-weight: 600;
+		font-size: 12px;
+		line-height: 16px;
+		color: #909399;
+
+		position: absolute;
+		top: -6px;
+		left: calc(100% + 8px);
+		width: 200px;
+		display: none;
+	}
+
+	.hidden .plus-container {
+		display: none;
+	}
+
+	.hidden .plus-stalk {
+		display: none;
+	}
+
+	.success .plus-stalk {
+		border-color: var(--color-success-light);
+	}
+
+	.success .plus-stalk span {
+		display: inline;
+	}
+</style>

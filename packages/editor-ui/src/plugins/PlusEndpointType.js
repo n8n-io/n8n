@@ -46,95 +46,6 @@
 		}, this._jsPlumb.instance.endpointClass + clazz + ' plus-endpoint');
 
 		this.canvas.innerHTML = `
-			<style type="text/css">
-				.plus-endpoint {
-					cursor: pointer;
-				}
-
-				.plus-stalk {
-					border-top: 2px solid var(--color-foreground-dark);
-					position: absolute;
-					width: ${stalkLength}px;
-					height: 0;
-					right: 100%;
-					top: calc(50% - 1px);
-					pointer-events: none;
-				}
-
-				.plus-stalk .connection-run-items-label {
-					position: relative;
-					width: 100%;
-				}
-
-				.plus-stalk .connection-run-items-label span {
-					display: none;
-					left: calc(50% + 4px);
-					transform: translateX(-50%);
-				}
-
-				.plus-container {
-					color: var(--color-foreground-xdark);
-					border: 2px solid var(--color-foreground-xdark);
-					background-color: var(--color-background-xlight);
-					border-radius: var(--border-radius-base);
-					height: ${boxSize.medium}px;
-					width: ${boxSize.medium}px;
-
-					display: inline-flex;
-					align-items: center;
-					justify-content: center;
-					font-size: var(--font-size-2xs);
-					position: absolute;
-
-					top: 0;
-					right: 0;
-					pointer-events: none;
-				}
-
-				.plus-container.small {
-					height: ${boxSize.small}px;
-					width: ${boxSize.small}px;
-					font-size: 8px;
-				}
-
-				.plus-container svg {
-					width: 1em;
-				}
-
-				.plus-container svg path:nth-of-type(2) {
-					fill: #7D838F;
-				}
-
-				.drop-hover-message {
-					font-weight: 600;
-					font-size: 12px;
-					line-height: 16px;
-					color: #909399;
-
-					position: absolute;
-					top: -6px;
-					left: calc(100% + 8px);
-					width: 200px;
-					display: none;
-				}
-
-				.hidden .plus-container {
-					display: none;
-				}
-
-				.hidden .plus-stalk {
-					display: none;
-				}
-
-				.success .plus-stalk {
-					border-color: var(--color-success-light);
-				}
-
-				.success .plus-stalk span {
-					display: inline;
-				}
-			</style>
-
 			<div class="plus-stalk">
 				<div class="connection-run-items-label">
 					<span class="floating"></span>
@@ -186,11 +97,25 @@
 			params.endpoint.repaint();
 		};
 
-		this.paint = function (style, anchor) {
+		const hasEndpointConnections = () => {
 			const endpoint = params.endpoint;
-			const connections = endpoint.connections;
+			const plusConnections= endpoint.connections;
 
-			if (connections.length >= 1) {
+			if (plusConnections.length >= 1) {
+				return true;
+			}
+
+			const allConnections = this._jsPlumb.instance.getConnections({
+				source: endpoint.elementId,
+			}); // includes connections from other output endpoints like dot
+
+			return !!allConnections.find((connection) => {
+				return connection.endpoints.length && connection.endpoints[0] === endpoint;
+			});
+		};
+
+		this.paint = function (style, anchor) {
+			if (hasEndpointConnections()) {
 				this.canvas.classList.add('hidden');
 			}
 			else {
@@ -215,8 +140,6 @@
 				container.classList.add(this.size);
 			}
 
-			const endpoint = params.endpoint;
-			const connections = endpoint.connections;
 			setTimeout(() => {
 				if (this.label && !this.labelOffset) { // if label is hidden, offset is 0 so recalculate
 					this.setSuccessOutput(this.label, true);
