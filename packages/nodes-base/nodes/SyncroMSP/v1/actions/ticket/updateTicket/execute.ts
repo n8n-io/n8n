@@ -28,5 +28,5 @@ export async function updateTicket(this: IExecuteFunctions, index: number): Prom
 	let responseData;
 	responseData = await apiRequest.call(this, requestMethod, endpoint, body, qs);
 
-	return this.helpers.returnJsonArray(responseData);
+	return this.helpers.returnJsonArray(responseData.ticket);
 }
