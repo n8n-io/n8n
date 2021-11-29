@@ -30,16 +30,6 @@ export const descriptions = [
 		},
 		options: [
 			{
-				name: 'Get All',
-				value: 'getAll',
-				description: 'Retrieve all tickets',
-			},
-			{
-				name: 'Get',
-				value: 'getTicket',
-				description: 'Retrieve ticket ',
-			},
-			{
 				name: 'Create',
 				value: 'addTicket',
 				description: 'add new ticket',
@@ -48,6 +38,16 @@ export const descriptions = [
 				name: 'Delete',
 				value: 'deleteTicket',
 				description: 'delete ticket',
+			},
+			{
+				name: 'Get',
+				value: 'getTicket',
+				description: 'Retrieve ticket ',
+			},
+			{
+				name: 'Get All',
+				value: 'getAll',
+				description: 'Retrieve all tickets',
 			},
 			{
 				name: 'Update',

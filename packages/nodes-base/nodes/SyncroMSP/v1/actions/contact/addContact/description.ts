@@ -20,8 +20,8 @@ export const contactAddContactDescription: ContactProperties = [
 		default: '',
 	},
 	{
-		displayName: 'Name',
-		name: 'name',
+		displayName: 'Email',
+		name: 'email',
 		type: 'string',
 		displayOptions: {
 			show: {
@@ -36,8 +36,8 @@ export const contactAddContactDescription: ContactProperties = [
 		default: '',
 	},
 	{
-		displayName: 'Email',
-		name: 'email',
+		displayName: 'Name',
+		name: 'name',
 		type: 'string',
 		displayOptions: {
 			show: {
@@ -69,12 +69,6 @@ export const contactAddContactDescription: ContactProperties = [
 		default: {},
 		options: [
 			{
-				displayName: 'Phone',
-				name: 'phone',
-				type: 'string',
-				default: '',
-			},
-			{
 				displayName: 'Address',
 				name: 'address1',
 				type: 'string',
@@ -87,6 +81,18 @@ export const contactAddContactDescription: ContactProperties = [
 				default: '',
 			},
 			{
+				displayName: 'Notes',
+				name: 'notes',
+				type: 'string',
+				default: '',
+			},
+			{
+				displayName: 'Phone',
+				name: 'phone',
+				type: 'string',
+				default: '',
+			},
+			{
 				displayName: 'State',
 				name: 'state',
 				type: 'string',
@@ -95,12 +101,6 @@ export const contactAddContactDescription: ContactProperties = [
 			{
 				displayName: 'ZIP',
 				name: 'zip',
-				type: 'string',
-				default: '',
-			},
-			{
-				displayName: 'Notes',
-				name: 'notes',
 				type: 'string',
 				default: '',
 			},

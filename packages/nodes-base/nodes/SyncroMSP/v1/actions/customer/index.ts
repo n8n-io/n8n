@@ -30,16 +30,6 @@ export const descriptions = [
 		},
 		options: [
 			{
-				name: 'Get All',
-				value: 'getAll',
-				description: 'Retrieve all customers',
-			},
-			{
-				name: 'Get',
-				value: 'getCustomer',
-				description: 'Retrieve customer',
-			},
-			{
 				name: 'Create',
 				value: 'addCustomer',
 				description: 'add new customers',
@@ -48,6 +38,16 @@ export const descriptions = [
 				name: 'Delete',
 				value: 'deleteCustomer',
 				description: 'delete customers',
+			},
+			{
+				name: 'Get',
+				value: 'getCustomer',
+				description: 'Retrieve customer',
+			},
+			{
+				name: 'Get All',
+				value: 'getAll',
+				description: 'Retrieve all customers',
 			},
 			{
 				name: 'Update',

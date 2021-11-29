@@ -30,16 +30,6 @@ export const descriptions = [
 		},
 		options: [
 			{
-				name: 'Get All',
-				value: 'getAll',
-				description: 'Retrieve all contacts',
-			},
-			{
-				name: 'Get',
-				value: 'getContact',
-				description: 'Retrieve contact',
-			},
-			{
 				name: 'Create',
 				value: 'addContact',
 				description: 'add new contact',
@@ -48,6 +38,16 @@ export const descriptions = [
 				name: 'Delete',
 				value: 'deleteContact',
 				description: 'delete contact',
+			},
+			{
+				name: 'Get',
+				value: 'getContact',
+				description: 'Retrieve contact',
+			},
+			{
+				name: 'Get All',
+				value: 'getAll',
+				description: 'Retrieve all contacts',
 			},
 			{
 				name: 'Update',

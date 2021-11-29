@@ -5,10 +5,10 @@ import {
 } from 'n8n-workflow';
 
 type SyncroMspMap = {
-	customer: 'getAll' | 'addCustomer' | 'deleteCustomer' | 'updateCustomer' | 'getCustomer';
-	ticket: 'getAll' | 'addTicket' | 'deleteTicket' | 'updateTicket' | 'getTicket';
 	contact: 'getAll' | 'addContact' | 'deleteContact' | 'updateContact' | 'getContact';
+	customer: 'getAll' | 'addCustomer' | 'deleteCustomer' | 'updateCustomer' | 'getCustomer';
 	rmm: 'getAll' | 'getAlert' | 'addAlert' | 'deleteAlert' | 'muteAlert' ;
+	ticket: 'getAll' | 'addTicket' | 'deleteTicket' | 'updateTicket' | 'getTicket';
 };
 
 export type SyncroMsp = AllEntities<SyncroMspMap>;

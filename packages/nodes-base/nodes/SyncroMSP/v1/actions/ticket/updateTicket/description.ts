@@ -37,14 +37,14 @@ export const ticketUpdateTicketDescription: TicketProperties = [
 		default: {},
 		options: [
 			{
-				displayName: 'Customer Id',
-				name: 'customer_id',
+				displayName: 'Asset Id',
+				name: 'asset_id',
 				type: 'string',
 				default: '',
 			},
 			{
-				displayName: 'Subject',
-				name: 'subject',
+				displayName: 'Customer Id',
+				name: 'customer_id',
 				type: 'string',
 				default: '',
 			},
@@ -67,14 +67,14 @@ export const ticketUpdateTicketDescription: TicketProperties = [
 				default: '',
 			},
 			{
-				displayName: 'Ticket Type',
-				name: 'ticket_type',
+				displayName: 'Subject',
+				name: 'subject',
 				type: 'string',
 				default: '',
 			},
 			{
-				displayName: 'Asset Id',
-				name: 'asset_id',
+				displayName: 'Ticket Type',
+				name: 'ticket_type',
 				type: 'string',
 				default: '',
 			},

@@ -37,24 +37,6 @@ export const contactUpdateContactDescription: ContactProperties = [
 		default: {},
 		options: [
 			{
-				displayName: 'Name',
-				name: 'name',
-				type: 'string',
-				default: '',
-			},
-			{
-				displayName: 'Email',
-				name: 'email',
-				type: 'string',
-				default: '',
-			},
-			{
-				displayName: 'Phone',
-				name: 'phone',
-				type: 'string',
-				default: '',
-			},
-			{
 				displayName: 'Address',
 				name: 'address1',
 				type: 'string',
@@ -67,6 +49,30 @@ export const contactUpdateContactDescription: ContactProperties = [
 				default: '',
 			},
 			{
+				displayName: 'Email',
+				name: 'email',
+				type: 'string',
+				default: '',
+			},
+			{
+				displayName: 'Name',
+				name: 'name',
+				type: 'string',
+				default: '',
+			},
+			{
+				displayName: 'Notes',
+				name: 'notes',
+				type: 'string',
+				default: '',
+			},
+			{
+				displayName: 'Phone',
+				name: 'phone',
+				type: 'string',
+				default: '',
+			},
+			{
 				displayName: 'State',
 				name: 'state',
 				type: 'string',
@@ -75,12 +81,6 @@ export const contactUpdateContactDescription: ContactProperties = [
 			{
 				displayName: 'ZIP',
 				name: 'zip',
-				type: 'string',
-				default: '',
-			},
-			{
-				displayName: 'Notes',
-				name: 'notes',
 				type: 'string',
 				default: '',
 			},

@@ -4,8 +4,8 @@ import {
 
 export const rmmAddAlertDescription: RmmProperties = [
 	{
-		displayName: 'Customer Id',
-		name: 'customerId',
+		displayName: 'Asset Id',
+		name: 'assetId',
 		type: 'string',
 		displayOptions: {
 			show: {
@@ -20,8 +20,8 @@ export const rmmAddAlertDescription: RmmProperties = [
 		default: '',
 	},
 	{
-		displayName: 'Asset Id',
-		name: 'assetId',
+		displayName: 'Customer Id',
+		name: 'customerId',
 		type: 'string',
 		displayOptions: {
 			show: {
@@ -87,12 +87,12 @@ export const rmmAddAlertDescription: RmmProperties = [
 				value: 'active',
 			},
 			{
-				name: 'Resolved',
-				value: 'resolved',
-			},
-			{
 				name: 'All',
 				value: 'all',
+			},
+			{
+				name: 'Resolved',
+				value: 'resolved',
 			},
 		],
 		default: '',

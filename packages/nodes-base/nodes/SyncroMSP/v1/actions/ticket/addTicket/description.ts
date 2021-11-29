@@ -53,6 +53,12 @@ export const ticketAddTicketDescription: TicketProperties = [
 		default: {},
 		options: [
 			{
+				displayName: 'Asset Id',
+				name: 'asset_id',
+				type: 'string',
+				default: '',
+			},
+			{
 				displayName: 'Due Date',
 				name: 'due_date',
 				type: 'dateTime',
@@ -73,12 +79,6 @@ export const ticketAddTicketDescription: TicketProperties = [
 			{
 				displayName: 'Ticket Type',
 				name: 'ticket_type',
-				type: 'string',
-				default: '',
-			},
-			{
-				displayName: 'Asset Id',
-				name: 'asset_id',
 				type: 'string',
 				default: '',
 			},

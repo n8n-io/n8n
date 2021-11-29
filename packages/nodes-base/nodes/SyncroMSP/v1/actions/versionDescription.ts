@@ -35,23 +35,23 @@ export const versionDescription: INodeTypeDescription = {
 			type: 'options',
 			options: [
 				{
-					name: 'Customer',
-					value: 'customer',
-				},
-				{
-					name: 'Ticket',
-					value: 'ticket',
-				},
-				{
 					name: 'Contact',
 					value: 'contact',
+				},
+				{
+					name: 'Customer',
+					value: 'customer',
 				},
 				{
 					name: 'RMM',
 					value: 'rmm',
 				},
+				{
+					name: 'Ticket',
+					value: 'ticket',
+				},
 			],
-			default: 'customer',
+			default: 'contact',
 			description: 'The resource to operate on',
 		},
 		...customer.descriptions,

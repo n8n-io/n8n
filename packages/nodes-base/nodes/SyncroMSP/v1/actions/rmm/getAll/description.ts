@@ -58,19 +58,19 @@ export const rmmGetAllDescription: RmmProperties = [
 		default: {},
 		options: [
 			{
+				displayName: 'Page',
+				name: 'page',
+				type: 'number',
+				default: 1,
+				description: 'Returns provided page of results, each page contains 25 results',
+			},
+			{
 				displayName: 'Status',
 				name: 'status',
 				type: 'string',
 				default: '',
 				placeholder: 'all',
 				description: 'Possible values resolved, all, active.',
-			},
-			{
-				displayName: 'Page',
-				name: 'page',
-				type: 'number',
-				default: 1,
-				description: 'Returns provided page of results, each page contains 25 results',
 			},
 		],
 	},

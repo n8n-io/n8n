@@ -30,16 +30,6 @@ export const descriptions = [
 		},
 		options: [
 			{
-				name: 'Get All',
-				value: 'getAll',
-				description: 'Retrieve all  RMM Alerts',
-			},
-			{
-				name: 'Get',
-				value: 'getAlert',
-				description: 'Retrieve RMM Alert ',
-			},
-			{
 				name: 'Create',
 				value: 'addAlert',
 				description: 'add new RMM Alert',
@@ -48,6 +38,16 @@ export const descriptions = [
 				name: 'Delete',
 				value: 'deleteAlert',
 				description: 'delete RMM Alert',
+			},
+			{
+				name: 'Get',
+				value: 'getAlert',
+				description: 'Retrieve RMM Alert ',
+			},
+			{
+				name: 'Get All',
+				value: 'getAll',
+				description: 'Retrieve all  RMM Alerts',
 			},
 			{
 				name: 'Mute',
