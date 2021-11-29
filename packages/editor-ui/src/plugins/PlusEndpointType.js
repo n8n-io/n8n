@@ -30,10 +30,6 @@
 			small: 18,
 		};
 		const stalkLength = 40;
-		const verticalOffset = {
-			medium: 12,
-			small: 9,
-		};
 
 		DOMElementEndpoint.apply(this, arguments);
 
@@ -146,7 +142,7 @@
 				}
 			}, 0);
 
-			return [anchorPoint[0] + stalkLength + this.labelOffset, anchorPoint[1] - verticalOffset[this.size], boxSize[this.size], boxSize[this.size]];
+			return [anchorPoint[0] + stalkLength + this.labelOffset, anchorPoint[1] - boxSize[this.size] / 2, boxSize[this.size], boxSize[this.size]];
 		};
 	};
 	_ju.extend(_jp.Endpoints.N8nPlus, [_jp.Endpoints.AbstractEndpoint, DOMElementEndpoint], {
