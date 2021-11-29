@@ -1945,7 +1945,7 @@ export default mixins(
 					}
 				}
 
-				let suspendDrawingImmediately = true;
+				let waitForNewConnection = false;
 				// connect nodes before/after deleted node
 				const nodeType: INodeTypeDescription | null = this.$store.getters.nodeType(node.type, node.typeVersion);
 				if (nodeType && nodeType.outputs.length === 1
@@ -1955,7 +1955,7 @@ export default mixins(
 						const conn1 = incoming[0];
 						const conn2 = outgoing[0];
 						if (conn1.__meta && conn2.__meta) {
-							suspendDrawingImmediately = false;
+							waitForNewConnection = true;
 							const sourceNodeName = conn1.__meta.sourceNodeName;
 							const sourceNodeOutputIndex = conn1.__meta.sourceOutputIndex;
 							const targetNodeName = conn2.__meta.targetNodeName;
@@ -1964,9 +1964,9 @@ export default mixins(
 							setTimeout(() => {
 								this.connectTwoNodes(sourceNodeName, sourceNodeOutputIndex, targetNodeName, targetNodeOuputIndex);
 
-								if (!suspendDrawingImmediately) {
+								if (waitForNewConnection) {
 									this.instance.setSuspendDrawing(false, true);
-									suspendDrawingImmediately = false;
+									waitForNewConnection = false;
 								}
 							}, 100); // just to make it clear to users that this is a new connection
 						}
@@ -1993,7 +1993,7 @@ export default mixins(
 					this.$store.commit('removeNode', node);
 					this.$store.commit('clearNodeExecutionData', node.name);
 
-					if (suspendDrawingImmediately) {
+					if (!waitForNewConnection) {
 						// Now it can draw again
 						this.instance.setSuspendDrawing(false, true);
 					}
