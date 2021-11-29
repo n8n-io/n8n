@@ -256,8 +256,6 @@ export default mixins(showMessage, workflowHelpers).extend({
 			this.modalBus.$emit('close');
 		},
 		onInput(name: IPersonalizationSurveyKeys, value: string) {
-			console.log(name, value);
-
 			if (name === WORK_AREA_KEY && value.includes(OTHER_WORK_AREA_OPTION)) {
 				this.otherWorkAreaFieldVisible = true;
 			}
@@ -303,7 +301,7 @@ export default mixins(showMessage, workflowHelpers).extend({
 
 <style lang="scss" module>
 .container {
-	> div:not(:last-child) {
+	> div, section > div:not(:last-child) {
 		margin-bottom: var(--spacing-m);
 	}
 }
@@ -320,5 +318,6 @@ export default mixins(showMessage, workflowHelpers).extend({
 	width: 100%;
 	height: 140px;
 }
+
 
 </style>
