@@ -808,6 +808,21 @@ export const store = new Vuex.Store({
 		allNodeTypes: (state): INodeTypeDescription[] => {
 			return state.nodeTypes;
 		},
+
+		/**
+		 * Getter for node default names ending with a number: `'S3'`, `'Magento 2'`, etc.
+		 */
+		nativelyNumberSuffixedDefaults: (_, getters): string[] => {
+			const { allNodeTypes } = getters as {
+				allNodeTypes: Array<INodeTypeDescription & { defaults: { name: string } }>;
+			};
+
+			return allNodeTypes.reduce<string[]>((acc, cur) => {
+				if (/\d$/.test(cur.defaults.name)) acc.push(cur.defaults.name);
+				return acc;
+			}, []);
+		},
+
 		nodeType: (state, getters) => (nodeType: string, typeVersion?: number): INodeTypeDescription | null => {
 			const foundType = state.nodeTypes.find(typeData => {
 				return typeData.name === nodeType && typeData.version === (typeVersion || typeData.defaultVersion || DEFAULT_NODETYPE_VERSION);
