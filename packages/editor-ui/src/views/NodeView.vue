@@ -1868,8 +1868,7 @@ export default mixins(
 					endpoints.forEach((endpoint: Endpoint) => {
 						// @ts-ignore
 						if (endpoint.type === 'N8nPlus') {
-							// @ts-ignore
-							endpoint.endpoint.clearSuccessOutput();
+							(endpoint.endpoint as N8nPlusEndpoint).clearSuccessOutput();
 						}
 					});
 
