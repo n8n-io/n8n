@@ -818,6 +818,19 @@ export const store = new Vuex.Store({
 		allNodeTypes: (state): INodeTypeDescription[] => {
 			return state.nodeTypes;
 		},
+
+		/**
+		 * Getter for node display names ending with a number: `'S3'`, `'MSG91'`, etc.
+		 */
+		nativelyNumberSuffixedNodeNames: (_, getters): string[] => {
+			const allNodeTypes: INodeTypeDescription[] = getters.allNodeTypes;
+
+			return allNodeTypes.reduce<string[]>((acc, cur) => {
+				if (/\d$/.test(cur.displayName)) acc.push(cur.displayName);
+				return acc;
+			}, []);
+		},
+
 		nodeType: (state, getters) => (nodeType: string, typeVersion?: number): INodeTypeDescription | null => {
 			const foundType = state.nodeTypes.find(typeData => {
 				return typeData.name === nodeType && typeData.version === (typeVersion || typeData.defaultVersion || DEFAULT_NODETYPE_VERSION);
