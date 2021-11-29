@@ -1,5 +1,5 @@
 import { getStyleTokenValue } from "@/components/helpers";
-import { START_NODE_TYPE } from "@/constants";
+import { NODE_OUTPUT_DEFAULT_KEY, START_NODE_TYPE } from "@/constants";
 import { IBounds, INodeUi, IZoomConfig, XYPosition } from "@/Interface";
 import { Connection, Endpoint, Overlay, OverlaySpec, PaintStyle } from "jsplumb";
 import {
@@ -505,16 +505,16 @@ export const getOutputSummary = (data: ITaskData[], nodeConnections: NodeInputCo
 				outputMap[sourceOutputIndex] = {};
 			}
 
-			if (!outputMap[sourceOutputIndex]['']) {
-				outputMap[sourceOutputIndex][''] = {};
-				outputMap[sourceOutputIndex][''][0] = {
+			if (!outputMap[sourceOutputIndex][NODE_OUTPUT_DEFAULT_KEY]) {
+				outputMap[sourceOutputIndex][NODE_OUTPUT_DEFAULT_KEY] = {};
+				outputMap[sourceOutputIndex][NODE_OUTPUT_DEFAULT_KEY][0] = {
 					total: 0,
 					iterations: 0,
 				};
 			}
 
-			outputMap[sourceOutputIndex][''][0].total += output ? output.length : 0;
-			outputMap[sourceOutputIndex][''][0].iterations += output ? 1 : 0;
+			outputMap[sourceOutputIndex][NODE_OUTPUT_DEFAULT_KEY][0].total += output ? output.length : 0;
+			outputMap[sourceOutputIndex][NODE_OUTPUT_DEFAULT_KEY][0].iterations += output ? 1 : 0;
 
 			if (!nodeConnections[sourceOutputIndex]) {
 				return;
