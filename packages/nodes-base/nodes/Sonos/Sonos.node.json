@@ -3,17 +3,17 @@
 	"nodeVersion": "1.0",
 	"codexVersion": "1.0",
 	"categories": [
-		"Communication"
+		"Miscellaneous"
 	],
 	"resources": {
 		"credentialDocumentation": [
 			{
-				"url": "https://docs.n8n.io/credentials/spontit"
+				"url": "https://docs.n8n.io/credentials/sonos"
 			}
 		],
 		"primaryDocumentation": [
 			{
-				"url": "https://docs.n8n.io/nodes/n8n-nodes-base.spontit/"
+				"url": "https://docs.n8n.io/nodes/n8n-nodes-base.sonos/"
 			}
 		]
 	}

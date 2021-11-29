@@ -1,4 +1,3 @@
-import { IHookFunctions } from 'n8n-core';
 import {
     IExecuteFunctions,
 } from 'n8n-core';
@@ -8,23 +7,18 @@ import {
     INodeExecutionData,
     INodeType,
     INodeTypeDescription,
-    ILoadOptionsFunctions,
-    INodePropertyOptions,
     NodePropertyTypes
 } from 'n8n-workflow';
-
-import {
-    OptionsWithUri,
-} from 'request';
+import { executeGroupAction, groupAll, groupVolume, playAudioClip, playFavorite, loadPlayers, loadHouseholds, loadFavorites } from './GenericFunctions';
 
 export class Sonos implements INodeType {
     description: INodeTypeDescription = {
         displayName: 'Sonos',
         name: 'sonos',
         icon: 'file:Sonos.svg',
-        group: ['transform'],
+        group: ['output'],
         version: 1,
-        description: 'Play alarms on your Sonos system.',
+        description: 'Control your Sonos system.',
         defaults: {
             name: 'Sonos',
             color: '#1A82e2',
@@ -43,25 +37,113 @@ export class Sonos implements INodeType {
                 name: 'household',
                 type: 'options' as NodePropertyTypes,
                 options: [],
-                default: [],
+                default: "",
                 required: true,
                 typeOptions: {
                     loadOptionsMethod: 'loadHouseholds'
                 }
             },
             {
+                displayName: 'Action',
+                name: 'action',
+                type: 'options' as NodePropertyTypes,
+                options: [
+                    {name: "Play Audio Clip", value: "playAudioClip", description: "Plays an audio file from a URL on one of your players."},
+                    {name: "Play", value: "play", description: "Starts the music on the first group found in your Sonos system."},
+                    {name: "Play Favorite", value: "playFavorite", description: "Loads a Sonos favorite and plays it on the first group found in your Sonos system."},
+                    {name: "Pause", value: "pause", description: "Stops the music on the first group found in your Sonos system."},
+                    {name: "Toggle Play/Pause", value: "togglePlayPause", description: "Toggles the music on the first group found in your Sonos system."},
+                    {name: "Skip Song", value: "skipToNextTrack", description: "Skips the song on the first group found in your Sonos system."},
+                    {name: "Previous Song", value: "skipToPreviousTrack", description: "Jumps to previous song on the first group found in your Sonos system."},
+                    {name: "Group All Players", value: "groupAll", description: "Groups all players in your system."},
+                    {name: "Set Group Volume", value: "groupVolume", description: "Sets the volume of the first group in your system."},
+                ],
+                default: "",
+                required: true,
+            },
+            {
                 displayName: 'Player',
                 name: 'player',
                 type: 'options' as NodePropertyTypes,
                 options: [],
-                default: [],
+                default: "",
                 required: true,
+                displayOptions: {
+                    show: {
+                        action: [
+                            'playAudioClip',
+                        ],
+                    },
+                },
                 typeOptions: {
                     loadOptionsMethod: 'loadPlayers',
                     loadOptionsDependsOn: [
                         'household',
                     ],
                 }
+            },
+            {
+                displayName: 'Favorite',
+                name: 'favorite',
+                type: 'options' as NodePropertyTypes,
+                options: [],
+                default: "",
+                required: true,
+                displayOptions: {
+                    show: {
+                        action: [
+                            'playFavorite',
+                        ],
+                    },
+                },
+                typeOptions: {
+                    loadOptionsMethod: 'loadFavorites',
+                    loadOptionsDependsOn: [
+                        'household',
+                    ],
+                }
+            },
+            {
+                displayName: 'Shuffe',
+                name: 'shuffle',
+                type: 'boolean' as NodePropertyTypes,
+                default: true,
+                required: true,
+                displayOptions: {
+                    show: {
+                        action: [
+                            'playFavorite',
+                        ],
+                    },
+                },
+            },
+            {
+                displayName: 'Repeat',
+                name: 'repeat',
+                type: 'boolean' as NodePropertyTypes,
+                default: true,
+                required: true,
+                displayOptions: {
+                    show: {
+                        action: [
+                            'playFavorite',
+                        ],
+                    },
+                },
+            },
+            {
+                displayName: 'Crossfade',
+                name: 'crossfade',
+                type: 'boolean' as NodePropertyTypes,
+                default: true,
+                required: true,
+                displayOptions: {
+                    show: {
+                        action: [
+                            'playFavorite',
+                        ],
+                    },
+                },
             },
             {
                 displayName: 'Volume',
@@ -73,7 +155,15 @@ export class Sonos implements INodeType {
                     maxValue: 100,
                     minValue: 1,
                     numberStepSize: 1
-                }
+                },
+                displayOptions: {
+                    show: {
+                        action: [
+                            'playAudioClip',
+                            'groupVolume',
+                        ],
+                    },
+                },
             },
             {
                 displayName: 'Soundfile',
@@ -81,55 +171,22 @@ export class Sonos implements INodeType {
                 type: 'string' as NodePropertyTypes,
                 default: 'http://www.moviesoundclips.net/effects/animals/wolf-howls.mp3',
                 required: true,
+                displayOptions: {
+                    show: {
+                        action: [
+                            'playAudioClip',
+                        ],
+                    },
+                },
             }
         ],
     };
 
     methods = {
 		loadOptions: {
-			async loadHouseholds(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-				const returnData: INodePropertyOptions[] = [];
-
-				let data;
-				try {
-					data = await callSonosApi.call(this, 'GET', '/households');
-				} catch (err: any) {
-                    if (err.message = "No credentials got returned!") {
-                        return returnData;
-                    }
-					throw new Error(`SONOS Error: ${err}`);
-				}
-
-				for (const household of data.households!) {
-					returnData.push({
-						name: household.id as string,
-						value: household.id as string,
-					});
-				}
-				return returnData;
-			},
-            async loadPlayers(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-				const returnData: INodePropertyOptions[] = [];
-
-				let data;
-				try {
-		            const household = this.getNodeParameter('household', 0);
-					data = await callSonosApi.call(this, 'GET', `/households//${household}/groups`);
-				} catch (err: any) {
-                    if (err.message = "No credentials got returned!") {
-                        return returnData;
-                    }
-					throw new Error(`SONOS Error: ${err}`);
-				}
-
-				for (const player of data.players!) {
-					returnData.push({
-						name: player.name as string,
-						value: player.id as string,
-					});
-				}
-				return returnData;
-			}
+			loadHouseholds,
+            loadFavorites,
+            loadPlayers,
 		},
 	};
 
@@ -140,22 +197,30 @@ export class Sonos implements INodeType {
             if (credentials === undefined) {
                 throw new Error('No credentials got returned!');
             }
-            const player = this.getNodeParameter('player', 0);
-            const options: OptionsWithUri = {
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                method: 'POST',
-                body: JSON.stringify({
-                    name: "n8n",
-                    appId: "com.n8n.sonos",
-                    streamUrl: this.getNodeParameter('url', 0),
-                    clipType: "CUSTOM",
-                    volume: this.getNodeParameter('volume', 0),
-                }),
-                uri: 'https://api.ws.sonos.com/control/api/v1/players/' + player + '/audioClip',
-            };
-            await this.helpers.requestOAuth2.call(this, 'sonosApi', options);
+            const action = this.getNodeParameter('action', 0);
+            switch (action) {
+                case "playAudioClip":
+                    await playAudioClip.call(this);
+                    break;
+                case "groupAll":
+                    await groupAll.call(this);
+                    break;
+                case "play":
+                case "pause":
+                case "togglePlayPause":
+                case "skipToNextTrack":
+                case "skipToPreviousTrack":
+                    await executeGroupAction.call(this, action);
+                    break;
+                case "playFavorite":
+                    await playFavorite.call(this);
+                    break;
+                case "groupVolume":
+                    await groupVolume.call(this);
+                    break;
+                default:
+                    throw new Error("Unknown method or not implemented");
+            }
             returnData.push({message: 'ok'});
         } catch (error: any) {
             if (this.continueOnFail()) {
@@ -166,22 +231,4 @@ export class Sonos implements INodeType {
         }
         return [this.helpers.returnJsonArray(returnData)];
     }
-}
-
-async function callSonosApi(this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions, method: string, path: string): Promise<any> {
-    const credentials = this.getCredentials('sonosApi');
-	if (credentials === undefined) {
-		throw new Error('No credentials got returned!');
-	}
-
-    const options: OptionsWithUri = {
-		headers: {
-			'Content-Type': 'application/json',
-		},
-		method,
-		uri: 'https://api.ws.sonos.com/control/api/v1/' + path,
-	};
-
-    //@ts-ignore
-    return JSON.parse(await this.helpers.requestOAuth2.call(this, 'sonosApi', options));
 }
