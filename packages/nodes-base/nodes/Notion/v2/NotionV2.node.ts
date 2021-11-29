@@ -39,7 +39,6 @@ import * as moment from 'moment-timezone';
 import {
 	versionDescription
 } from './versionDescription';
-import { extractId } from '../../ActionNetwork/GenericFunctions';
 
 export class NotionV2 implements INodeType {
 
@@ -482,6 +481,18 @@ export class NotionV2 implements INodeType {
 		}
 
 		if (resource === 'page') {
+
+			if (operation === 'archive') {
+				for (let i = 0; i < length; i++) {
+					const pageId = extractPageId(this.getNodeParameter('pageId', i) as string);
+					const simple = this.getNodeParameter('simple', i) as boolean;
+					responseData = await notionApiRequest.call(this, 'PATCH', `/pages/${pageId}`, { archived: true });
+					if (simple === true) {
+						responseData = simplifyObjects(responseData, download, 2);
+					}
+					returnData.push.apply(returnData, Array.isArray(responseData) ? responseData : [responseData]);
+				}
+			}
 
 			if (operation === 'create') {
 				for (let i = 0; i < length; i++) {

@@ -56,6 +56,11 @@ export const pageOperations = [
 		},
 		options: [
 			{
+				name: 'Archive',
+				value: 'archive',
+				description: 'Archive a page',
+			},
+			{
 				name: 'Create',
 				value: 'create',
 				description: 'Create a page',
@@ -71,7 +76,50 @@ export const pageOperations = [
 ] as INodeProperties[];
 
 export const pageFields = [
-
+	/* -------------------------------------------------------------------------- */
+	/*                                page:archive                                */
+	/* -------------------------------------------------------------------------- */
+	{
+		displayName: 'Page Link or ID',
+		name: 'pageId',
+		type: 'string',
+		default: '',
+		required: true,
+		displayOptions: {
+			show: {
+				version: [
+					2,
+				],
+				resource: [
+					'page',
+				],
+				operation: [
+					'archive',
+				],
+			},
+		},
+		description: `The Page URL from Notion's 'copy link' functionality (or just the ID contained within the URL)`,
+	},
+	{
+		displayName: 'Simplify Output',
+		name: 'simple',
+		type: 'boolean',
+		displayOptions: {
+			show: {
+				version: [
+					2,
+				],
+				resource: [
+					'page',
+				],
+				operation: [
+					'archive',
+				],
+			},
+		},
+		default: true,
+		description: 'Whether to return a simplified version of the response instead of the raw data',
+	},
 	/* -------------------------------------------------------------------------- */
 	/*                                page:create                                 */
 	/* -------------------------------------------------------------------------- */

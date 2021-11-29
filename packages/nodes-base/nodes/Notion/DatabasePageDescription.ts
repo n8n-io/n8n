@@ -114,7 +114,7 @@ export const databasePageFields = [
 				],
 			},
 		},
-		description: 'The ID of the database that this databasePage belongs to',
+		description: `The Database Page URL from Notion's 'copy link' functionality (or just the ID contained within the URL)`,
 	},
 	{
 		displayName: 'Title',
