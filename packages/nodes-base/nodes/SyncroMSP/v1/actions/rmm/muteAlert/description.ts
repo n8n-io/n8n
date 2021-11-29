@@ -13,7 +13,7 @@ export const rmmMuteAlertDescription: RmmProperties = [
 					'rmm',
 				],
 				operation: [
-					'deleteAlert',
+					'muteAlert',
 				],
 			},
 		},
@@ -23,14 +23,14 @@ export const rmmMuteAlertDescription: RmmProperties = [
 	{
 		displayName: 'Mute Period',
 		name: 'muteFor',
-		type: 'string',
+		type: 'options',
 		displayOptions: {
 			show: {
 				resource: [
 					'rmm',
 				],
 				operation: [
-					'deleteAlert',
+					'muteAlert',
 				],
 			},
 		},

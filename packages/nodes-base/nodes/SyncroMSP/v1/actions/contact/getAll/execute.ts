@@ -25,6 +25,7 @@ export async function getAll(this: IExecuteFunctions, index: number): Promise<IN
 		qs = additionalFields;
 	}
 
+
 	let responseData;
 	if (returnAll) {
 		responseData = await apiRequestAllItems.call(this, requestMethod, endpoint, body, qs);

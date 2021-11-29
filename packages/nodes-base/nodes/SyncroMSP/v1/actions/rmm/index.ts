@@ -2,7 +2,6 @@
 import * as getAlert from './getAlert';
 import * as getAll from './getAll';
 import * as addAlert from './addAlert';
-import * as updateAlert from './updateAlert';
 import * as deleteAlert from './deleteAlert';
 import * as muteAlert from './muteAlert';
 
@@ -14,7 +13,6 @@ export {
 	muteAlert,
 	deleteAlert,
 	addAlert,
-	updateAlert,
 };
 
 
@@ -52,11 +50,6 @@ export const descriptions = [
 				description: 'delete RMM Alert',
 			},
 			{
-				name: 'Update',
-				value: 'updateAlert',
-				description: 'update RMM Alert',
-			},
-			{
 				name: 'Mute',
 				value: 'muteAlert',
 				description: 'mute RMM Alert',
@@ -68,7 +61,6 @@ export const descriptions = [
 	...getAll.description,
 	...getAlert.description,
 	...addAlert.description,
-	...updateAlert.description,
 	...deleteAlert.description,
 	...muteAlert.description,
 ] as INodeProperties[];

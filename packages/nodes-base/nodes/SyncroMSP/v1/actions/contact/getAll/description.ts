@@ -21,26 +21,6 @@ export const contactGetAllDescription: ContactProperties = [
 		description: 'If all results should be returned or only up to a given limit.',
 	},
 	{
-		displayName: 'Limit',
-		name: 'per_page',
-		type: 'number',
-		displayOptions: {
-			show: {
-				resource: [
-					'contact',
-				],
-				operation: [
-					'getAll',
-				],
-				returnAll: [
-					false,
-				],
-			},
-		},
-		default: 25,
-		description: 'limit the number of rows returned',
-	},
-	{
 		displayName: 'Additional Fields',
 		name: 'additionalFields',
 		type: 'collection',

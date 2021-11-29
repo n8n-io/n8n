@@ -14,16 +14,11 @@ import {
 
 export async function getContact(this: IExecuteFunctions, index: number): Promise<INodeExecutionData[]> {
 	const id = this.getNodeParameter('id', index) as string;
-	const additionalFields = this.getNodeParameter('additionalFields', index) as IDataObject;
 
-	let qs = {} as IDataObject;
+	const qs = {} as IDataObject;
 	const requestMethod = 'GET';
 	const endpoint = `contacts/${id}`;
 	const body = {} as IDataObject;
-
-	if (additionalFields) {
-		qs = additionalFields;
-	}
 
 	let responseData;
 	responseData = await apiRequest.call(this, requestMethod, endpoint, body, qs);
