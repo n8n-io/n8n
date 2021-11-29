@@ -13,13 +13,15 @@ export class SurveyMonkeyApi implements ICredentialType {
 			name: 'accessToken',
 			type: 'string',
 			default: '',
-			description: `The access token must have the following scopes:</br />
-			- Create/modify webhooks</br />
-			- View webhooks</br />
-			- View surveys</br />
-			- View collectors</br />
-			- View responses<br />
-			- View response details`,
+			description: `The access token must have the following scopes:
+			<ul>
+				<li>Create/modify webhooks</li>
+				<li>View webhooks</li>
+				<li>View surveys</li>
+				<li>View collectors</li>
+				<li>View responses</li>
+				<li>View response details</li>
+			</ul>`,
 		},
 		{
 			displayName: 'Client ID',

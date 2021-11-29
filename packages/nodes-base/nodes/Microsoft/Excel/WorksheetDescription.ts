@@ -269,7 +269,7 @@ export const worksheetFields = [
 			},
 		},
 		default: 0,
-		description: 'Index of the row which contains the keys. Starts at 0.<br />The incoming node data is matched to the keys for assignment. The matching is case sensitve.',
+		description: 'Index of the row which contains the keys. Starts at 0. The incoming node data is matched to the keys for assignment. The matching is case sensitve.',
 	},
 	{
 		displayName: 'Filters',

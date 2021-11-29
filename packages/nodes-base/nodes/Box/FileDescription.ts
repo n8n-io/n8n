@@ -327,8 +327,7 @@ export const fileFields = [
 				name: 'contet_types',
 				type: 'string',
 				default: '',
-				description: `Limits search results to items with the given content types.</br>
-				Content types are defined as a comma separated lists of Box recognized content types.`,
+				description: `Limits search results to items with the given content types. Content types are defined as a comma separated lists of Box recognized content types.`,
 			},
 			{
 				displayName: 'Created At Range',
@@ -397,8 +396,7 @@ export const fileFields = [
 				name: 'ancestor_folder_ids',
 				type: 'string',
 				default: '',
-				description: `Limits search results to items within the given list of folders.</br>
-				Folders are defined as a comma separated lists of folder IDs.`,
+				description: `Limits search results to items within the given list of folders. Folders are defined as a comma separated lists of folder IDs.`,
 			},
 			{
 				displayName: 'Scope',
@@ -423,8 +421,7 @@ export const fileFields = [
 				type: 'string',
 				default: '',
 				placeholder: '1000000,5000000',
-				description: `Limits search results to items within a given file size range.</br>
-				File size ranges are defined as comma separated byte sizes.`,
+				description: `Limits search results to items within a given file size range. File size ranges are defined as comma separated byte sizes.`,
 			},
 			{
 				displayName: 'Sort',
@@ -495,8 +492,7 @@ export const fileFields = [
 				name: 'owner_user_ids',
 				type: 'string',
 				default: '',
-				description: `Limits search results to items owned by the given list of owners..</br>
-				Owners are defined as a comma separated list of user IDs.`,
+				description: `Limits search results to items owned by the given list of owners. Owners are defined as a comma separated list of user IDs.`,
 			},
 		],
 	},
@@ -710,8 +706,7 @@ export const fileFields = [
 				name: 'can_view_path',
 				type: 'boolean',
 				default: false,
-				description: `Whether the invited users can see the entire parent path to the associated folder.</br>
-				The user will not gain privileges in any parent folder and therefore cannot see content the user is not collaborated on.`,
+				description: `Whether the invited users can see the entire parent path to the associated folder. The user will not gain privileges in any parent folder and therefore cannot see content the user is not collaborated on.`,
 			},
 			{
 				displayName: 'Expires At',

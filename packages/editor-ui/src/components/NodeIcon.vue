@@ -1,8 +1,8 @@
 <template>
-	<div class="node-icon-wrapper" :style="iconStyleData" :class="{shrink: isSvgIcon && shrink, full: !shrink}">
+	<div class="node-icon-wrapper" :style="iconStyleData">
 		<div v-if="nodeIconData !== null" class="icon">
-			<img v-if="nodeIconData.type === 'file'" :src="nodeIconData.fileBuffer || nodeIconData.path" style="max-width: 100%; max-height: 100%;" />
-			<font-awesome-icon v-else :icon="nodeIconData.icon || nodeIconData.path" />
+			<img v-if="nodeIconData.type === 'file'" :src="nodeIconData.fileBuffer || nodeIconData.path" :style="imageStyleData" />
+			<font-awesome-icon v-else :icon="nodeIconData.icon || nodeIconData.path" :style="fontStyleData" />
 		</div>
 		<div v-else class="node-icon-placeholder">
 			{{nodeType !== null ? nodeType.displayName.charAt(0) : '?' }}
@@ -12,39 +12,65 @@
 
 <script lang="ts">
 
+import { IVersionNode } from '@/Interface';
+import { INodeTypeDescription } from 'n8n-workflow';
 import Vue from 'vue';
 
 interface NodeIconData {
 	type: string;
-	path: string;
+	path?: string;
 	fileExtension?: string;
+	fileBuffer?: string;
 }
 
 export default Vue.extend({
 	name: 'NodeIcon',
-	props: [
-		'nodeType',
-		'size',
-		'shrink',
-		'disabled',
-		'circle',
-	],
+	props: {
+		nodeType: {},
+		size: {
+			type: Number,
+		},
+		disabled: {
+			type: Boolean,
+			default: false,
+		},
+		circle: {
+			type: Boolean,
+			default: false,
+		},
+	},
 	computed: {
 		iconStyleData (): object {
-			const color = this.disabled ? '#ccc' : this.nodeType.defaults && this.nodeType.defaults.color;
+			const nodeType = this.nodeType as INodeTypeDescription | IVersionNode | null;
+			const color = nodeType ? nodeType.defaults && nodeType!.defaults.color : '';
 			if (!this.size) {
 				return {color};
 			}
 
-			const size = parseInt(this.size, 10);
-
 			return {
 				color,
-				width: size + 'px',
-				height: size + 'px',
-				'font-size': Math.floor(parseInt(this.size, 10) * 0.6) + 'px',
-				'line-height': size + 'px',
-				'border-radius': this.circle ? '50%': '4px',
+				width: this.size + 'px',
+				height: this.size + 'px',
+				'font-size': this.size + 'px',
+				'line-height': this.size + 'px',
+				'border-radius': this.circle ? '50%': '2px',
+				...(this.disabled && {
+					color: '#ccc',
+					'-webkit-filter': 'contrast(40%) brightness(1.5) grayscale(100%)',
+					'filter': 'contrast(40%) brightness(1.5) grayscale(100%)',
+				}),
+			};
+		},
+		fontStyleData (): object {
+			return {
+				'max-width': this.size + 'px',
+			};
+		},
+		imageStyleData (): object {
+			return {
+				width: '100%',
+				'max-width': '100%',
+				'max-height': '100%',
 			};
 		},
 		isSvgIcon (): boolean {
@@ -54,26 +80,27 @@ export default Vue.extend({
 			return false;
 		},
 		nodeIconData (): null | NodeIconData {
-			if (this.nodeType === null) {
+			const nodeType = this.nodeType as INodeTypeDescription | IVersionNode | null;
+			if (nodeType === null) {
 				return null;
 			}
 
-			if (this.nodeType.iconData) {
-				return this.nodeType.iconData;
+			if ((nodeType as IVersionNode).iconData) {
+				return (nodeType as IVersionNode).iconData;
 			}
 
 			const restUrl = this.$store.getters.getRestUrl;
 
-			if (this.nodeType.icon) {
+			if (nodeType.icon) {
 				let type, path;
-				[type, path] = this.nodeType.icon.split(':');
+				[type, path] = nodeType.icon.split(':');
 				const returnData: NodeIconData = {
 					type,
 					path,
 				};
 
 				if (type === 'file') {
-					returnData.path = restUrl + '/node-icon/' + this.nodeType.name;
+					returnData.path = restUrl + '/node-icon/' + nodeType.name;
 					returnData.fileExtension = path.split('.').slice(-1).join();
 				}
 
@@ -90,7 +117,7 @@ export default Vue.extend({
 .node-icon-wrapper {
 	width: 26px;
 	height: 26px;
-	border-radius: 4px;
+	border-radius: 2px;
 	color: #444;
 	line-height: 26px;
 	font-size: 1.1em;
@@ -99,17 +126,13 @@ export default Vue.extend({
 	font-weight: bold;
 	font-size: 20px;
 
-	&.full .icon {
+	.icon {
 		height: 100%;
 		width: 100%;
 
 		display: flex;
 		justify-content: center;
 		align-items: center;
-	}
-
-	&.shrink .icon {
-		margin: 0.24em;
 	}
 
 	.node-icon-placeholder {
