@@ -15,8 +15,8 @@
 	});
 
 	/*
-		* Class: Endpoints.N8nPlus
-		*/
+	* Class: Endpoints.N8nPlus
+	*/
 	_jp.Endpoints.N8nPlus = function (params) {
 		const _super = _jp.Endpoints.AbstractEndpoint.apply(this, arguments);
 		this.type = "N8nPlus";
