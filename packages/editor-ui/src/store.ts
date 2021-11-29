@@ -862,7 +862,7 @@ export const store = new Vuex.Store({
 			return state.workflowExecutionData;
 		},
 		getWorkflowRunData: (state): IRunData | null => {
-			if (state.workflowExecutionData === null) {
+			if (!state.workflowExecutionData || !state.workflowExecutionData.data || !state.workflowExecutionData.data.resultData) {
 				return null;
 			}
 
