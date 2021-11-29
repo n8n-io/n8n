@@ -15,6 +15,7 @@ export class N8nTrigger implements INodeType {
 		group: ['trigger'],
 		version: 1,
 		description: 'Handle events from your n8n instance',
+		eventTriggerDescription: '',
 		defaults: {
 			name: 'n8n Trigger',
 			color: '#ff6d5a',
@@ -28,8 +29,7 @@ export class N8nTrigger implements INodeType {
 				type: 'multiOptions',
 				required: true,
 				default: [],
-				description: 'Specifies under which conditions an execution should happen:<br />' +
-					'- <b>Instance started</b>: Triggers when this n8n instance is started or re-started',
+				description: 'Specifies under which conditions an execution should happen: <b>Instance started</b>: Triggers when this n8n instance is started or re-started',
 				options: [
 					{
 						name: 'Instance started',

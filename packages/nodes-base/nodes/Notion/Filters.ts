@@ -267,9 +267,7 @@ export const filters = [{
 	},
 	type: 'boolean',
 	default: false,
-	description: `Whether or not the checkbox is checked.</br>
-				true represents checked.</br>
-				false represents unchecked.`,
+	description: 'Whether or not the checkbox is checked. <code>true</code> represents checked. <code>false</code> represents unchecked.',
 },
 {
 	displayName: 'Number',

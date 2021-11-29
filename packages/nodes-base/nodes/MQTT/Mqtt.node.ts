@@ -99,9 +99,7 @@ export class Mqtt implements INodeType {
 						name: 'retain',
 						type: 'boolean',
 						default: false,
-						description: `Normally if a publisher publishes a message to a topic, and no one is subscribed to<br>
-						that topic the message is simply discarded by the broker. However the publisher can tell the broker<br>
-						to keep the last message on that topic by setting the retain flag to true.`,
+						description: `Normally if a publisher publishes a message to a topic, and no one is subscribed to that topic the message is simply discarded by the broker. However the publisher can tell the broker to keep the last message on that topic by setting the retain flag to true.`,
 					},
 				],
 			},
@@ -149,7 +147,7 @@ export class Mqtt implements INodeType {
 				ca,
 				cert,
 				key,
-				rejectUnauthorized,	
+				rejectUnauthorized,
 			};
 			if (credentials.username && credentials.password) {
 				clientOptions.username = credentials.username as string;
@@ -158,7 +156,7 @@ export class Mqtt implements INodeType {
 
 			 client = mqtt.connect(brokerUrl, clientOptions);
 		}
-		
+
 		const sendInputData = this.getNodeParameter('sendInputData', 0) as boolean;
 
 		// tslint:disable-next-line: no-any

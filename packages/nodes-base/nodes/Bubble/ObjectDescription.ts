@@ -492,8 +492,7 @@ export const objectFields = [
 								name: 'sort_field',
 								type: 'string',
 								default: '',
-								description: `Specify the field to use for sorting. Either use a fielddefined for</br>
-								the current typeor use _random_sorting to get the entries in a random order`,
+								description: `Specify the field to use for sorting. Either use a fielddefined for the current typeor use <code>_random_sorting</code> to get the entries in a random order`,
 							},
 							{
 								displayName: 'Descending',
