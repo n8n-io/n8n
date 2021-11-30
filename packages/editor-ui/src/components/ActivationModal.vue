@@ -54,8 +54,10 @@ export default mixins(workflowHelpers).extend({
 	},
 	computed: {
 		triggerContent (): string {
-			const foundTriggers = this.$store.getters.worklfowEnabledTriggerNodes
-				.map(({ type }: INodeUi) => this.$store.getters.nodeType(type));
+			const foundTriggers = this.$store.getters.workflowTriggerNodes
+				.filter((node: INodeUi) => {
+					return !node.disabled;
+				}).map(({ type }: INodeUi) => this.$store.getters.nodeType(type));
 			// if multiple triggers
 			if (foundTriggers.length > 1) {
 				return 'Your triggers will now fire production executions automatically.';
