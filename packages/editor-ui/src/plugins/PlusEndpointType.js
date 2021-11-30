@@ -451,7 +451,7 @@
 
 			setTimeout(() => {
 				if (this.label && !this.labelOffset) { // if label is hidden, offset is 0 so recalculate
-					this.setSuccessOutput(this.label, true);
+					this.setSuccessOutput(this.label);
 				}
 			}, 0);
 
