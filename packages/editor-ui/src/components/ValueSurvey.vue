@@ -102,7 +102,7 @@ export default mixins(workflowHelpers).extend({
 				this.$telemetry.track('User responded value survey email', { instance_id: this.$store.getters.instanceId, email: this.form.email });
 				this.$showMessage({
 					title: 'Thanks for your feedback',
-					message: "If you’d like to help even more, answer this quick survey.",
+					message: "If you’d like to help even more, answer this <a href='https://n8n-community.typeform.com/quicksurvey#how_disappointed=xxxxx&instance_id=xxxxx'>quick survey.</a>",
 					type: 'success',
 				});
 			}
