@@ -6,14 +6,14 @@
 		title="Workflow activated"
 	>
 		<template v-slot:content>
-			<p>{{triggerContent}}</p>
-			<p class="spaced-p"><span class="emphasised">These executions will not show up immediately in the editor</span>, but you can see them in the <a @click="showExecutionsList">execution list</a>.</p>
+			<p :class="$style.p">{{triggerContent}}</p>
+			<p :class="[$style.p, $style.spaced]"><span :class="$style.emphasised">These executions will not show up immediately in the editor</span>, but you can see them in the <a @click="showExecutionsList">execution list</a>.</p>
 		</template>
 
 
 		<template v-slot:footer="{ close }">
-			<div class="right-aligned-footer">
-				<el-checkbox v-model="checked" @change="handleCheckboxChange">Don't show again</el-checkbox>
+			<div :class="$style.footer">
+				<el-checkbox :value="checked" @change="handleCheckboxChange">Don't show again</el-checkbox>
 				<n8n-button @click="close" label="Got it"/>
 			</div>
 		</template>
@@ -24,7 +24,7 @@
 import Vue from 'vue';
 
 import Modal from '@/components/Modal.vue';
-import { WORKFLOW_ACTIVE_MODAL_KEY, EXECUTIONS_MODAL_KEY } from '../constants';
+import { WORKFLOW_ACTIVE_MODAL_KEY, EXECUTIONS_MODAL_KEY, LOCAL_STORAGE_ACTIVATION_FLAG } from '../constants';
 import { INodeUi } from '../Interface';
 import { INodeTypeDescription } from 'n8n-workflow';
 
@@ -47,7 +47,8 @@ export default Vue.extend({
 			this.$store.dispatch('ui/openModal', EXECUTIONS_MODAL_KEY);
 		},
 		handleCheckboxChange (checkboxValue: boolean) {
-			window.localStorage.setItem('hideActivationAlert', checkboxValue.toString());
+			this.checked = checkboxValue;
+			window.localStorage.setItem(LOCAL_STORAGE_ACTIVATION_FLAG, checkboxValue.toString());
 		},
 	},
 	computed: {
@@ -80,28 +81,29 @@ export default Vue.extend({
 });
 </script>
 
-<style scoped lang="scss">
+
+<style lang="scss" module>
 
 .emphasised {
-	font-weight: 600;
+	font-weight: var(--font-weight-bold);
 }
 
-p {
-	font-size: 14px;
+.p {
+	font-size: var(--font-size-s);
 	line-height: 19px;
 }
 
-.spaced-p {
-	margin-top: 10px;
+.spaced {
+	margin-top: var(--spacing-2xs);
 }
 
-.right-aligned-footer {
+.footer {
 	text-align: right;
-}
 
-button {
-	margin-left: 10px;
-	line-height: 14px;
+	button {
+		margin-left: var(--spacing-s);
+		line-height: 14px;
+	}
 }
 
 </style>

@@ -1,25 +1,14 @@
 <template>
 	<div class="workflow-activator">
-		<el-switch
-			v-if="!disabled"
-			v-loading="loading"
-			element-loading-spinner="el-icon-loading"
-			:value="workflowActive"
-			@change="activeChanged"
-			:title="workflowActive ? $locale.baseText('workflowActivator.deactivateWorkflow') : $locale.baseText('workflowActivator.activateWorkflow')"
-			:disabled="disabled || loading"
-			:active-color="getActiveColor"
-			inactive-color="#8899AA">
-		</el-switch>
-		<n8n-tooltip v-else placement="bottom">
+		<n8n-tooltip :disabled="!disabled" placement="bottom">
 			<div slot="content">This workflow has no trigger nodes that require activation</div>
 			<el-switch
 				v-loading="loading"
 				element-loading-spinner="el-icon-loading"
 				:value="workflowActive"
 				@change="activeChanged"
-				:title="workflowActive?'Deactivate Workflow':'Activate Workflow'"
-				:disabled="true"
+			  :title="workflowActive ? $locale.baseText('workflowActivator.deactivateWorkflow') : $locale.baseText('workflowActivator.activateWorkflow')"
+				:disabled="disabled"
 				:active-color="getActiveColor"
 				inactive-color="#8899AA">
 			</el-switch>
@@ -55,6 +44,7 @@ import {
 import {
 	EXECUTIONS_MODAL_KEY,
 	WORKFLOW_ACTIVE_MODAL_KEY,
+	LOCAL_STORAGE_ACTIVATION_FLAG,
 } from '@/constants';
 
 
@@ -75,7 +65,6 @@ export default mixins(
 			data () {
 				return {
 					loading: false,
-					alertTriggerContent: '',
 					nodes: [] as INodeUi[],
 				};
 			},
@@ -108,7 +97,7 @@ export default mixins(
 					return '#13ce66';
 				},
 				disabled(): boolean {
-					return this.workflowActive && this.isWorkflowActive ? false : !this.containsTrigger;
+					return this.workflowActive ? !this.containsTrigger : false;
 				},
 				containsTrigger(): boolean {
 					let nodes: INodeUi[];
@@ -197,7 +186,7 @@ export default mixins(
 						this.$store.commit('setWorkflowActive', this.workflowId);
 
 						// Show activation dialog only for current workflow and if user hasn't deactivated it
-						if (this.nodes.length === 0 && !window.localStorage.getItem('hideActivationAlert')) {
+						if (this.nodes.length === 0 && !window.localStorage.getItem(LOCAL_STORAGE_ACTIVATION_FLAG)) {
 							this.$store.dispatch('ui/openModal', WORKFLOW_ACTIVE_MODAL_KEY);
 						}
 					} else {
@@ -235,15 +224,13 @@ export default mixins(
 						duration: 0,
 					});
 				},
-				async showExecutionsList () {
-					this.$store.dispatch('ui/openModal', EXECUTIONS_MODAL_KEY);
-				},
 			},
 		},
 	);
 </script>
 
-<style scoped>
+<style lang="scss" scoped>
+
 .workflow-activator {
 	display: inline-block;
 }
