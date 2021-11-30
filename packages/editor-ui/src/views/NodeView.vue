@@ -2019,12 +2019,12 @@ export default mixins(
 				this.nodeSelectedByName(newName);
 			},
 			deleteEveryEndpoint () {
+				// Check as it does not exist on first load
 				if (this.instance) {
 					const nodes = this.$store.getters.allNodes as INodeUi[];
 					// @ts-ignore
 					nodes.forEach((node: INodeUi) => this.instance.destroyDraggable(`${NODE_NAME_PREFIX}${this.$store.getters.getNodeIndex(node.name)}`));
 
-					// On first load it does not exist
 					this.instance.deleteEveryEndpoint();
 				}
 			},
