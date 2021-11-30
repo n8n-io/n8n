@@ -2021,8 +2021,14 @@ export default mixins(
 			deleteEveryEndpoint () {
 				if (this.instance) {
 					const nodes = this.$store.getters.allNodes as INodeUi[];
-					// @ts-ignore
-					nodes.forEach((node: INodeUi) => this.instance.destroyDraggable(`${NODE_NAME_PREFIX}${this.$store.getters.getNodeIndex(node.name)}`));
+					nodes.forEach((node: INodeUi) => {
+						try {
+							// @ts-ignore
+							this.instance.destroyDraggable(`${NODE_NAME_PREFIX}${this.$store.getters.getNodeIndex(node.name)}`); // eslint-disable-line no-console
+						} catch (e) {
+							console.error(e);
+						}
+					});
 
 					// On first load it does not exist
 					this.instance.deleteEveryEndpoint();
