@@ -93,7 +93,6 @@ export const INSTANCE_ID_HEADER = 'n8n-instance-id';
 export const WAIT_TIME_UNLIMITED = '3000-01-01T00:00:00.000Z';
 
 export const WORK_AREA_KEY = 'workArea';
-export const AUTOMATION_CONSULTING_WORK_AREA = 'automationConsulting';
 export const FINANCE_WORK_AREA = 'finance';
 export const HR_WORK_AREA = 'HR';
 export const IT_ENGINEERING_WORK_AREA = 'IT-Engineering';
@@ -104,12 +103,12 @@ export const SALES_BUSINESSDEV_WORK_AREA = 'sales-businessDevelopment';
 export const SECURITY_WORK_AREA = 'security';
 export const SUPPORT_WORK_AREA = 'support';
 export const OPS_WORK_AREA = 'ops';
+export const EXECUTIVE_WORK_AREA = 'executive';
 export const OTHER_WORK_AREA_OPTION = 'other';
 export const NOT_APPLICABLE_WORK_AREA = 'n/a';
-export const EXECUTIVE_WORK_AREA = 'executive';
 
 export const COMPANY_INDUSTRY_KEY = 'companyIndustry';
-export const E_COMMERCE_INDUSTRY = 'eCommerce';
+export const E_COMMERCE_INDUSTRY = 'e-commerce';
 export const AUTOMATION_CONSULTING_INDUSTRY = 'automation-consulting';
 export const SYSTEM_INTEGRATION_INDUSTRY = 'systems-integration';
 export const GOVERNMENT_INDUSTRY = 'government';

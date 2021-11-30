@@ -58,8 +58,8 @@ const module: Module<ISettingsState, IRootState> = {
 			context.commit('versions/setVersionNotificationSettings', settings.versionNotifications, {root: true});
 			context.commit('setTelemetry', settings.telemetry, {root: true});
 
-			const showPersonalizationsModal = settings.personalizationSurvey && settings.personalizationSurvey.shouldShow && !settings.personalizationSurvey.answers;
-			// const showPersonalizationsModal = true;
+			// const showPersonalizationsModal = settings.personalizationSurvey && settings.personalizationSurvey.shouldShow && !settings.personalizationSurvey.answers;
+			const showPersonalizationsModal = true;
 			if (showPersonalizationsModal) {
 				context.commit('ui/openModal', PERSONALIZATION_MODAL_KEY, {root: true});
 			}

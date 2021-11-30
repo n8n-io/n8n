@@ -21,27 +21,27 @@
 				<n8n-input-label label="How are your coding skills?">
 					<n8n-select :value="values[CODING_SKILL_KEY]" placeholder="Select..." @change="(value) => onInput(CODING_SKILL_KEY, value)">
 						<n8n-option
-							label="0 Never coded"
+							label="0. Never coded"
 							value="0"
 						/>
 						<n8n-option
-							label="1 I get stuck too quickly to achieve much"
+							label="1. I get stuck too quickly to achieve much"
 							value="1"
 						/>
 						<n8n-option
-							label="2 I can code some useful things, but I spend a lot of time stuck"
+							label="2. I can code some useful things, but I spend a lot of time stuck"
 							value="2"
 						/>
 						<n8n-option
-							label="3 I know enough to be dangerous, but I'm no expert"
+							label="3. I know enough to be dangerous, but I'm no expert"
 							value="3"
 						/>
 						<n8n-option
-							label="4 I can figure most things out"
+							label="4. I can figure most things out"
 							value="4"
 						/>
 						<n8n-option
-							label="5 I can do almost anything I want, easily (pro coder)"
+							label="5. I can do almost anything I want, easily (pro coder)"
 							value="5"
 						/>
 					</n8n-select>
@@ -49,15 +49,14 @@
 
 				<n8n-input-label label="Which of these areas do you mainly work in?">
 					<n8n-select :value="values[WORK_AREA_KEY]" multiple placeholder="Select..." @change="(value) => onInput(WORK_AREA_KEY, value)">
-						<n8n-option :value="AUTOMATION_CONSULTING_WORK_AREA" label="Automation consulting" />
 						<n8n-option :value="FINANCE_WORK_AREA" label="Finance" />
 						<n8n-option :value="HR_WORK_AREA" label="HR" />
 						<n8n-option :value="IT_ENGINEERING_WORK_AREA" label="IT / Engineering" />
 						<n8n-option :value="LEGAL_WORK_AREA" label="Legal" />
-						<n8n-option :value="MARKETING_WORK_AREA" label="Marketing / Growth" />
+						<n8n-option :value="MARKETING_WORK_AREA" label="Marketing" />
 						<n8n-option :value="OPS_WORK_AREA" label="Operations" />
 						<n8n-option :value="PRODUCT_WORK_AREA" label="Product" />
-						<n8n-option :value="SALES_BUSINESSDEV_WORK_AREA" label="Sales / Business Development" />
+						<n8n-option :value="SALES_BUSINESSDEV_WORK_AREA" label="Sales / Bizdev" />
 						<n8n-option :value="SECURITY_WORK_AREA" label="Security" />
 						<n8n-option :value="SUPPORT_WORK_AREA" label="Support" />
 						<n8n-option :value="EXECUTIVE_WORK_AREA" label="Executive team" />
@@ -73,7 +72,7 @@
 				/>
 
 				<section v-if="showOtherQuestion">
-					<n8n-input-label label="Which industry is your company in?">
+					<n8n-input-label label="Which industries is your company in?">
 					<n8n-select :value="values[COMPANY_INDUSTRY_KEY]" multiple placeholder="Select..." @change="(value) => onInput(COMPANY_INDUSTRY_KEY, value)">
 						<n8n-option :value="E_COMMERCE_INDUSTRY" label="eCommerce" />
 						<n8n-option :value="AUTOMATION_CONSULTING_INDUSTRY" label="Automation consulting" />
@@ -82,10 +81,7 @@
 						<n8n-option :value="LEGAL_INDUSTRY" label="Legal" />
 						<n8n-option :value="HEALTHCARE_INDUSTRY" label="Healthcare" />
 						<n8n-option :value="FINANCE_INDUSTRY" label="Finance" />
-						<n8n-option :value="SECURITY_INDUSTRY" label="Product" />
-						<n8n-option :value="SALES_BUSINESSDEV_WORK_AREA" label="Sales / Business Development" />
-						<n8n-option :value="SECURITY_WORK_AREA" label="Security" />
-						<n8n-option :value="SUPPORT_WORK_AREA" label="Security" />
+						<n8n-option :value="SECURITY_INDUSTRY" label="Security" />
 						<n8n-option :value="SAAS_INDUSTRY" label="SaaS" />
 						<n8n-option :value="OTHER_INDUSTRY_OPTION" label="Other (please specify)" />
 					</n8n-select>
@@ -144,7 +140,6 @@ import mixins from "vue-typed-mixins";
 
 import {
 	PERSONALIZATION_MODAL_KEY,
-	AUTOMATION_CONSULTING_WORK_AREA,
 	FINANCE_WORK_AREA,
 	HR_WORK_AREA,
 	IT_ENGINEERING_WORK_AREA,
@@ -208,7 +203,6 @@ export default mixins(showMessage, workflowHelpers).extend({
 				[COMPANY_INDUSTRY_KEY]: null,
 				[OTHER_COMPANY_INDUSTRY_KEY]: null,
 			} as IPersonalizationSurveyAnswers,
-			AUTOMATION_CONSULTING_WORK_AREA,
 			FINANCE_WORK_AREA,
 			HR_WORK_AREA,
 			IT_ENGINEERING_WORK_AREA,
