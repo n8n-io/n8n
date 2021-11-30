@@ -93,7 +93,7 @@ return items;`,
 		const vm = new NodeVM(options);
 
 		if (mode === 'manual') {
-			vm.on('console.log', this.sendMessageToUI);
+			vm.on('console.log', (...args: any[]) => this.sendMessageToUI(args));
 		}
 
 		// Get the code to execute
