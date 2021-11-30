@@ -643,6 +643,10 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 				width: $--box-size-small;
 				font-size: 8px;
 			}
+
+			.fa-plus {
+				width: 1em;
+			}
 		}
 
 		.drop-hover-message {
