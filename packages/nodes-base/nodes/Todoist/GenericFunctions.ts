@@ -53,3 +53,39 @@ export async function todoistApiRequest(
 		throw new NodeApiError(this.getNode(), error);
 	}
 }
+
+export async function todoistSyncRequest(
+	this: Context,
+	body: any = {}, // tslint:disable-line:no-any
+	qs: IDataObject = {},
+): Promise<any> { // tslint:disable-line:no-any
+	const authentication = this.getNodeParameter('authentication', 0, 'apiKey');
+
+	const options: OptionsWithUri = {
+		headers: {},
+		method: 'POST',
+		qs,
+		uri: `https://api.todoist.com/sync/v8/sync`,
+		json: true,
+	};
+
+	if (Object.keys(body).length !== 0) {
+		options.body = body;
+	}
+
+	try {
+		if (authentication === 'apiKey') {
+			const credentials = await this.getCredentials('todoistApi') as IDataObject;
+
+			//@ts-ignore
+			options.headers['Authorization'] = `Bearer ${credentials.apiKey}`;
+			return this.helpers.request!(options);
+		} else {
+			//@ts-ignore
+			return await this.helpers.requestOAuth2.call(this, 'todoistOAuth2Api', options);
+		}
+
+	} catch (error) {
+		throw new NodeApiError(this.getNode(), error);
+	}
+}

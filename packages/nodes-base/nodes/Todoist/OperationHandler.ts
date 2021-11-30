@@ -1,6 +1,7 @@
 import {IDataObject} from 'n8n-workflow';
-import {Context, todoistApiRequest} from './GenericFunctions';
-import {TodoistResponse} from './Service';
+import {Context, todoistApiRequest, todoistSyncRequest} from './GenericFunctions';
+import {Section, TodoistResponse} from './Service';
+import { v4 as uuid } from 'uuid';
 
 export interface OperationHandler {
 	handleOperation(ctx: Context, itemIndex: number): Promise<TodoistResponse>;
@@ -41,7 +42,7 @@ export class CreateHandler implements OperationHandler {
 			body.section_id = options.section as number;
 		}
 
-		const data =  await todoistApiRequest.call(ctx, 'POST', '/tasks', body);
+		const data = await todoistApiRequest.call(ctx, 'POST', '/tasks', body);
 
 		return {
 			success: true,
@@ -114,6 +115,10 @@ export class GetAllHandler implements OperationHandler {
 		}
 
 		let responseData = await todoistApiRequest.call(ctx, 'GET', '/tasks', {}, qs);
+		const sections = await this.getSections(ctx, filters.projectId as string);
+		for (const task of responseData) {
+			task.section = sections.get(task.section_id as string);
+		}
 
 		if (!returnAll) {
 			const limit = ctx.getNodeParameter('limit', itemIndex) as number;
@@ -124,6 +129,11 @@ export class GetAllHandler implements OperationHandler {
 			success: true,
 			data: responseData,
 		};
+	}
+
+	private async getSections(ctx: Context, projectId: string): Promise<Map<string, string>> {
+		const sections: Section[] = await todoistApiRequest.call(ctx, 'GET', '/sections', {}, {project_id: projectId});
+		return new Map(sections.map(s => [s.id, s.name]));
 	}
 }
 
@@ -180,6 +190,31 @@ export class UpdateHandler implements OperationHandler {
 	}
 }
 
+export class MoveHandler implements OperationHandler {
+	async handleOperation(ctx: Context, itemIndex: number): Promise<TodoistResponse> {
+		//https://api.todoist.com/sync/v8/sync
+		const taskId = ctx.getNodeParameter('taskId', itemIndex) as string;
+		const section = ctx.getNodeParameter('section', itemIndex) as string;
+
+		const body: SyncRequest = {
+			commands: [
+				{
+					type: CommandType.ITEM_MOVE,
+					uuid: uuid(),
+					args: {
+						id: taskId,
+						section_id: section,
+					},
+				},
+			],
+		};
+
+		await todoistSyncRequest.call(ctx, body);
+
+		return {success: true, data: null};
+	}
+}
+
 export interface CreateTaskRequest {
 	content?: string;
 	description?: string;
@@ -193,4 +228,18 @@ export interface CreateTaskRequest {
 	due_datetime?: string;
 	due_date?: string;
 	due_lang?: string;
+}
+
+export interface SyncRequest {
+	commands: Command[];
+}
+
+export interface Command {
+	type: CommandType;
+	uuid: string;
+	args: {};
+}
+
+export enum CommandType {
+	ITEM_MOVE = 'item_move',
 }

@@ -4,6 +4,7 @@ import {
 	DeleteHandler,
 	GetAllHandler,
 	GetHandler,
+	MoveHandler,
 	ReopenHandler,
 	UpdateHandler
 } from './OperationHandler';
@@ -23,6 +24,7 @@ export class TodoistService implements Service {
 		'getAll': new GetAllHandler(),
 		'reopen': new ReopenHandler(),
 		'update': new UpdateHandler(),
+		'move': new MoveHandler(),
 	};
 
 }
@@ -35,6 +37,12 @@ export enum OperationType {
 	getAll = 'getAll',
 	reopen = 'reopen',
 	update = 'update',
+	move = 'move',
+}
+
+export interface Section {
+	name: string;
+	id: string;
 }
 
 export interface Service {

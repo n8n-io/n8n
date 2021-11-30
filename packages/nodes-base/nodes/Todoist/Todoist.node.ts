@@ -134,6 +134,11 @@ export class Todoist implements INodeType {
 						value: 'update',
 						description: 'Update a task',
 					},
+					{
+						name: 'Move',
+						value: 'move',
+						description: 'Move a task',
+					},
 				],
 				default: 'create',
 				description: 'The operation to perform.',
@@ -152,11 +157,32 @@ export class Todoist implements INodeType {
 						],
 						operation: [
 							'create',
+							'move',
 						],
 					},
 				},
 				default: '',
 				description: 'The project you want to operate on.',
+			},
+			{
+				displayName: 'Section',
+				name: 'section',
+				type: 'options',
+				typeOptions: {
+					loadOptionsMethod: 'getSections',
+				},
+				displayOptions: {
+					show: {
+						resource: [
+							'task',
+						],
+						operation: [
+							'move',
+						],
+					},
+				},
+				default: '',
+				description: 'Section to which you want move the task',
 			},
 			{
 				displayName: 'Labels',
@@ -217,6 +243,7 @@ export class Todoist implements INodeType {
 							'get',
 							'reopen',
 							'update',
+							'move',
 						],
 					},
 				},
