@@ -254,7 +254,7 @@ export const taskFields = [
 					alwaysOpenEditWindow: true,
 				},
 				default: '',
-				description: 'Custom fields to set as JSON in the format:<br />[{"id": "", "value": ""}]',
+				description: 'Custom fields to set as JSON in the format: <code>[ {"id": "", "value": ""} ]</code>',
 			},
 			{
 				displayName: 'Content',

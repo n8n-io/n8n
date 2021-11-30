@@ -169,8 +169,7 @@ const typeMention = [
 			},
 		],
 		default: '',
-		description: `An inline mention of a user, page, database, or date. In the app these are</br>
-		created by typing @ followed by the name of a user, page, database, or a date.`,
+		description: `An inline mention of a user, page, database, or date. In the app these are created by typing @ followed by the name of a user, page, database, or a date.`,
 	},
 	{
 		displayName: 'User ID',
@@ -317,8 +316,7 @@ const typeText = [
 		},
 		type: 'string',
 		default: '',
-		description: `Text content. This field contains the actual content</br>
-		of your text and is probably the field you'll use most often.`,
+		description: `Text content. This field contains the actual content of your text and is probably the field you'll use most often.`,
 	},
 	{
 		displayName: 'Is Link',
