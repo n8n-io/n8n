@@ -574,7 +574,7 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 	z-index: 8;
 }
 
-.jtk-endpoint.jtk-drag-active:not(.plus-endpoint) {
+.jtk-drag-active.dot-output-endpoint, .jtk-drag-active.rect-input-endpoint {
 	z-index: 9;
 }
 
