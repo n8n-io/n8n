@@ -4,7 +4,7 @@
   "homepage": "https://n8n.io",
   "scripts": {
     "bootstrap": "lerna bootstrap --hoist --no-ci",
-    "build": "npm install typescript && npm install gulp && npm install gulp-dart-sass && lerna exec npm run build",
+    "build": "npm install typescript && npm install gulp && npm install gulp-dart-sass && npm install gulp-autoprefixer && lerna exec npm run build",
     "dev": "lerna exec npm run dev --parallel",
     "clean:dist": "lerna exec -- rimraf ./dist",
     "format": "lerna exec npm run format",
