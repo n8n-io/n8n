@@ -104,6 +104,7 @@ return item;`,
 				const vm = new NodeVM(options);
 
 				if (mode === 'manual') {
+					// tslint:disable-next-line:no-any
 					vm.on('console.log', (...args: any[]) => this.sendMessageToUI(args));
 				}
 
