@@ -410,6 +410,18 @@
 			params.endpoint.repaint();
 		};
 
+		const isDragging = () => {
+			const endpoint = params.endpoint;
+			const plusConnections = endpoint.connections;
+
+			if (plusConnections.length) {
+				return !!plusConnections.find((conn) => conn && conn.targetId && conn.targetId.startsWith('jsPlumb'));
+			}
+
+
+			return false;
+		};
+
 		const hasEndpointConnections = () => {
 			const endpoint = params.endpoint;
 			const plusConnections = endpoint.connections;
@@ -459,7 +471,17 @@
 				}
 			}, 0);
 
-			return [anchorPoint[0] + stalkLength + this.labelOffset, anchorPoint[1] - boxSize[this.size] / 2, boxSize[this.size], boxSize[this.size]];
+			const defaultPosition = [anchorPoint[0] + stalkLength + this.labelOffset, anchorPoint[1] - boxSize[this.size] / 2, boxSize[this.size], boxSize[this.size]];
+
+			if (isDragging()) {
+				return defaultPosition;
+			}
+
+			if (hasEndpointConnections()) {
+				return [0, 0, 0, 0]; // remove hoverable box from view
+			}
+
+			return defaultPosition;
 		};
 	};
 	_ju.extend(_jp.Endpoints.N8nPlus, [_jp.Endpoints.AbstractEndpoint, DOMElementEndpoint], {
