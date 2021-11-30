@@ -32,27 +32,27 @@ export const descriptions = [
 			{
 				name: 'Create',
 				value: 'addAlert',
-				description: 'add new RMM Alert',
+				description: 'Add new RMM Alert',
 			},
 			{
 				name: 'Delete',
 				value: 'deleteAlert',
-				description: 'delete RMM Alert',
+				description: 'Delete RMM Alert',
 			},
 			{
 				name: 'Get',
 				value: 'getAlert',
-				description: 'Retrieve RMM Alert ',
+				description: 'Retrieve RMM Alert',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
-				description: 'Retrieve all  RMM Alerts',
+				description: 'Retrieve all RMM Alerts',
 			},
 			{
 				name: 'Mute',
 				value: 'muteAlert',
-				description: 'mute RMM Alert',
+				description: 'Mute RMM Alert',
 			},
 		],
 		default: '',
@@ -64,4 +64,3 @@ export const descriptions = [
 	...deleteAlert.description,
 	...muteAlert.description,
 ] as INodeProperties[];
-

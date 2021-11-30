@@ -32,17 +32,17 @@ export const descriptions = [
 			{
 				name: 'Create',
 				value: 'addTicket',
-				description: 'add new ticket',
+				description: 'Add new ticket',
 			},
 			{
 				name: 'Delete',
 				value: 'deleteTicket',
-				description: 'delete ticket',
+				description: 'Delete ticket',
 			},
 			{
 				name: 'Get',
 				value: 'getTicket',
-				description: 'Retrieve ticket ',
+				description: 'Retrieve ticket',
 			},
 			{
 				name: 'Get All',
@@ -52,7 +52,7 @@ export const descriptions = [
 			{
 				name: 'Update',
 				value: 'updateTicket',
-				description: 'update ticket',
+				description: 'Update ticket',
 			},
 		],
 		default: '',
@@ -64,4 +64,3 @@ export const descriptions = [
 	...deleteTicket.description,
 	...updateTicket.description,
 ] as INodeProperties[];
-

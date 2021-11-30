@@ -32,12 +32,12 @@ export const descriptions = [
 			{
 				name: 'Create',
 				value: 'addContact',
-				description: 'add new contact',
+				description: 'Add new contact',
 			},
 			{
 				name: 'Delete',
 				value: 'deleteContact',
-				description: 'delete contact',
+				description: 'Delete contact',
 			},
 			{
 				name: 'Get',
@@ -52,7 +52,7 @@ export const descriptions = [
 			{
 				name: 'Update',
 				value: 'updateContact',
-				description: 'update contact',
+				description: 'Update contact',
 			},
 		],
 		default: '',
@@ -64,4 +64,3 @@ export const descriptions = [
 	...updateContact.description,
 	...deleteContact.description,
 ] as INodeProperties[];
-
