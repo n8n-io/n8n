@@ -648,7 +648,7 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 		.drop-hover-message {
 			font-weight: var(--font-weight-bold);
 			font-size: var(--font-size-2xs);
-			line-height: 16px;
+			line-height: var(--font-line-height-regular);
 			color: var(--color-text-light);
 
 			position: absolute;
