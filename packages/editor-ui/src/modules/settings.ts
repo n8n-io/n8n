@@ -5,10 +5,10 @@ import {
 	IRootState,
 	ISettingsState,
 } from '../Interface';
-import { getPromptsData, getSettings, submitValueSurvey, submitPersonalizationSurvey } from '../api/settings';
+import { getPromptsData, getSettings, submitValueSurvey, submitPersonalizationSurvey, updateContactPrompt } from '../api/settings';
 import Vue from 'vue';
 import { getPersonalizedNodeTypes } from './helper';
-import { PERSONALIZATION_MODAL_KEY, VALUE_SURVEY_MODAL_KEY } from '@/constants';
+import { CONTACT_PROMPT_MODAL_KEY, PERSONALIZATION_MODAL_KEY, VALUE_SURVEY_MODAL_KEY } from '@/constants';
 import { IDataObject } from 'n8n-workflow';
 
 const module: Module<ISettingsState, IRootState> = {
@@ -73,13 +73,19 @@ const module: Module<ISettingsState, IRootState> = {
 		async getPromptsData(context: ActionContext<ISettingsState, IRootState>) {
 			const promptData = await getPromptsData(context.state.settings.instanceId);
 
+			if (promptData.showPrompt) {
+				context.commit('ui/openModal', CONTACT_PROMPT_MODAL_KEY, {root: true});
+			}
+
 			if (promptData.showValueSurvey && !promptData.showPrompt) {
 				context.commit('ui/openModal', VALUE_SURVEY_MODAL_KEY, {root: true});
 			}
-
 		},
 		async submitValueSurvey(context: ActionContext<ISettingsState, IRootState>, params: IDataObject) {
 			await submitValueSurvey(context.state.settings.instanceId, params);
+		},
+		async updateContactPrompt(context: ActionContext<ISettingsState, IRootState>, email: string) {
+			await updateContactPrompt(context.state.settings.instanceId, email);
 		},
 	},
 };

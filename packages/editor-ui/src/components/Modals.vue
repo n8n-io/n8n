@@ -1,5 +1,13 @@
 <template>
 	<div>
+		<ModalRoot :name="CONTACT_PROMPT_MODAL_KEY">
+			<template v-slot:default="{ modalName }">
+				<ContactPromptModal
+					:modalName="modalName"
+				/>
+			</template>
+		</ModalRoot>
+
 		<ModalRoot :name="CREDENTIAL_EDIT_MODAL_KEY">
 			<template v-slot="{ modalName, activeId, mode }">
 				<CredentialEdit
@@ -55,8 +63,9 @@
 
 <script lang="ts">
 import Vue from "vue";
-import { CREDENTIAL_LIST_MODAL_KEY, DUPLICATE_MODAL_KEY, TAGS_MANAGER_MODAL_KEY, PERSONALIZATION_MODAL_KEY, WORKFLOW_OPEN_MODAL_KEY, VERSIONS_MODAL_KEY, CREDENTIAL_EDIT_MODAL_KEY, CREDENTIAL_SELECT_MODAL_KEY, WORKFLOW_SETTINGS_MODAL_KEY, VALUE_SURVEY_MODAL_KEY } from '@/constants';
+import { CONTACT_PROMPT_MODAL_KEY, CREDENTIAL_LIST_MODAL_KEY, DUPLICATE_MODAL_KEY, TAGS_MANAGER_MODAL_KEY, PERSONALIZATION_MODAL_KEY, WORKFLOW_OPEN_MODAL_KEY, VERSIONS_MODAL_KEY, CREDENTIAL_EDIT_MODAL_KEY, CREDENTIAL_SELECT_MODAL_KEY, WORKFLOW_SETTINGS_MODAL_KEY, VALUE_SURVEY_MODAL_KEY } from '@/constants';
 
+import ContactPromptModal from './ContactPromptModal.vue';
 import CredentialEdit from "./CredentialEdit/CredentialEdit.vue";
 import CredentialsList from "./CredentialsList.vue";
 import CredentialsSelectModal from "./CredentialsSelectModal.vue";
@@ -72,6 +81,7 @@ import WorkflowOpen from "./WorkflowOpen.vue";
 export default Vue.extend({
 	name: "Modals",
 	components: {
+		ContactPromptModal,
 		CredentialEdit,
 		CredentialsList,
 		CredentialsSelectModal,
@@ -85,6 +95,7 @@ export default Vue.extend({
 		WorkflowOpen,
 	},
 	data: () => ({
+		CONTACT_PROMPT_MODAL_KEY,
 		CREDENTIAL_EDIT_MODAL_KEY,
 		CREDENTIAL_LIST_MODAL_KEY,
 		CREDENTIAL_SELECT_MODAL_KEY,
