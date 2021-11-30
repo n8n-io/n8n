@@ -2,7 +2,7 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const messageOperations = [
+export const messageOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -44,9 +44,9 @@ export const messageOperations = [
 		default: 'post',
 		description: 'The operation to perform.',
 	},
-] as INodeProperties[];
+];
 
-export const messageFields = [
+export const messageFields: INodeProperties[] = [
 
 	/* ----------------------------------------------------------------------- */
 	/*                                 message:getPermalink
@@ -1711,4 +1711,4 @@ export const messageFields = [
 		},
 		description: `Timestamp of the message to be deleted.`,
 	},
-] as INodeProperties[];
+];

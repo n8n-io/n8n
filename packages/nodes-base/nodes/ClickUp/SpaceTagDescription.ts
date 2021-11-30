@@ -2,7 +2,7 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const spaceTagOperations = [
+export const spaceTagOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -39,9 +39,9 @@ export const spaceTagOperations = [
 		default: 'create',
 		description: 'The operation to perform.',
 	},
-] as INodeProperties[];
+];
 
-export const spaceTagFields = [
+export const spaceTagFields: INodeProperties[] = [
 	/* -------------------------------------------------------------------------- */
 	/*                                spaceTag:create                             */
 	/* -------------------------------------------------------------------------- */
@@ -201,4 +201,4 @@ export const spaceTagFields = [
 		default: 50,
 		description: 'How many results to return.',
 	},
-] as INodeProperties[];
+];

@@ -1,6 +1,6 @@
 import { INodeProperties } from 'n8n-workflow';
 
-export const paymentOperations = [
+export const paymentOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -37,9 +37,9 @@ export const paymentOperations = [
 		default: 'create',
 		description: 'The operation to perform.',
 	},
-] as INodeProperties[];
+];
 
-export const paymentFields = [
+export const paymentFields: INodeProperties[] = [
 /* -------------------------------------------------------------------------- */
 /*                                 payment:create                             */
 /* -------------------------------------------------------------------------- */
@@ -267,6 +267,7 @@ export const paymentFields = [
 		displayName: 'Payment ID',
 		name: 'paymentId',
 		type: 'string',
+		default: '',
 		required: true,
 		displayOptions: {
 			show: {
@@ -286,6 +287,7 @@ export const paymentFields = [
 		displayName: 'Payment ID',
 		name: 'paymentId',
 		type: 'string',
+		default: '',
 		required: true,
 		displayOptions: {
 			show: {
@@ -405,4 +407,4 @@ export const paymentFields = [
 		],
 	},
 
-] as INodeProperties[];
+];
