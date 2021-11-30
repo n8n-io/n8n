@@ -387,11 +387,11 @@
 		const plusStalk = this.canvas.querySelector('.plus-stalk');
 		const successOutput = this.canvas.querySelector('.plus-stalk span');
 
-		this.setSuccessOutput = (output) => {
+		this.setSuccessOutput = (label) => {
 			this.canvas.classList.add('success');
 			if (this.showOutputLabel) {
-				successOutput.textContent = output;
-				this.label = output;
+				successOutput.textContent = label;
+				this.label = label;
 				this.labelOffset = successOutput.offsetWidth;
 
 				plusStalk.style.width = `${stalkLength + this.labelOffset}px`;
@@ -412,7 +412,7 @@
 
 		const hasEndpointConnections = () => {
 			const endpoint = params.endpoint;
-			const plusConnections= endpoint.connections;
+			const plusConnections = endpoint.connections;
 
 			if (plusConnections.length >= 1) {
 				return true;
@@ -435,12 +435,8 @@
 				this.canvas.classList.remove('hidden');
 				container.style.color = style.fill;
 				container.style['border-color'] = style.fill;
-				if (style.hover) {
-					message.style.display = 'inline';
-				}
-				else {
-					message.style.display = 'none';
-				}
+				message.style.display = style.hover ? 'inline' : 'none';
+				message.style.display = 'none';
 			}
 			_ju.sizeElement(this.canvas, this.x, this.y, this.w, this.h);
 		};
