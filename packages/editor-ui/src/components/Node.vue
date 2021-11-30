@@ -643,21 +643,13 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 				width: $--box-size-small;
 				font-size: 8px;
 			}
-
-			svg {
-				width: 1em;
-
-				path:nth-of-type(2) {
-					fill: #7D838F;
-				}
-			}
 		}
 
 		.drop-hover-message {
-			font-weight: 600;
-			font-size: 12px;
+			font-weight: var(--font-weight-bold);
+			font-size: var(--font-size-2xs);
 			line-height: 16px;
-			color: #909399;
+			color: var(--color-text-light);
 
 			position: absolute;
 			top: -6px;
