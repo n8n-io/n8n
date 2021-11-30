@@ -423,7 +423,12 @@
 			}); // includes connections from other output endpoints like dot
 
 			return !!allConnections.find((connection) => {
-				return connection.endpoints.length && connection.endpoints[0] === endpoint;
+				if (!connection || !connection.endpoints || !connection.endpoints.length || !connection.endpoints[0]) {
+					return false;
+				}
+
+				const sourceEndpoint = connection.endpoints[0];
+				return sourceEndpoint === endpoint || sourceEndpoint.getUuid() === endpoint.getUuid();
 			});
 		};
 

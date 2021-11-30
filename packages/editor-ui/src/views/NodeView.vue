@@ -1722,7 +1722,8 @@ export default mixins(
 				this.pullConnActiveNodeName = null; // prevent new connections when connectionDetached is triggered
 				this.instance.deleteConnection(connection); // on delete, triggers connectionDetached event which applies mutation to store
 				if (sourceEndpoint) {
-					sourceEndpoint.repaint();
+					const endpoints = this.instance.getEndpoints(sourceEndpoint.elementId);
+					endpoints.forEach((endpoint: Endpoint) => endpoint.repaint()); // repaint both circle and plus endpoint
 				}
 			},
 			__removeConnectionByConnectionInfo (info: OnConnectionBindInfo, removeVisualConnection = false) {
