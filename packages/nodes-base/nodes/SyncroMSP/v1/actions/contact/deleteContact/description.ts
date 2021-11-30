@@ -4,7 +4,7 @@ import {
 
 export const contactDeleteDescription: ContactProperties = [
 	{
-		displayName: 'Contact Id',
+		displayName: 'Contact ID',
 		name: 'id',
 		type: 'string',
 		displayOptions: {
@@ -18,6 +18,6 @@ export const contactDeleteDescription: ContactProperties = [
 			},
 		},
 		default: '',
-		description: 'Delete a specific contact by id',
+		description: 'Delete a specific contact by ID',
 	},
 ];

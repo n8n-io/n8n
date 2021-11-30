@@ -4,7 +4,7 @@ import {
 
 export const rmmDeleteAlertDescription: RmmProperties = [
 	{
-		displayName: 'RMM Alert Id',
+		displayName: 'RMM Alert ID',
 		name: 'id',
 		type: 'string',
 		displayOptions: {
@@ -18,6 +18,6 @@ export const rmmDeleteAlertDescription: RmmProperties = [
 			},
 		},
 		default: '',
-		description: 'Delete alert by id',
+		description: 'Delete alert by ID',
 	},
 ];

@@ -4,7 +4,7 @@ import {
 
 export const rmmGetAlertsDescription: RmmProperties = [
 	{
-		displayName: 'RMM Alert Id',
+		displayName: 'RMM Alert ID',
 		name: 'id',
 		type: 'string',
 		displayOptions: {
@@ -18,6 +18,6 @@ export const rmmGetAlertsDescription: RmmProperties = [
 			},
 		},
 		default: '',
-		description: 'get specific rmm alert by id',
+		description: 'Get specific rmm alert by ID',
 	},
 ];

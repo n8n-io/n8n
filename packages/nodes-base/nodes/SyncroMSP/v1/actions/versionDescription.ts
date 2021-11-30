@@ -10,7 +10,7 @@ import * as rmm from './rmm';
 
 export const versionDescription: INodeTypeDescription = {
 	displayName: 'SyncroMSP',
-	name: 'syncromsp',
+	name: 'syncroMsp',
 	icon: 'file:syncromsp.png',
 	group: ['output'],
 	version: 1,

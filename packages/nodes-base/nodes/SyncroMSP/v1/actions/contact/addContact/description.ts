@@ -4,7 +4,7 @@ import {
 
 export const contactAddContactDescription: ContactProperties = [
 	{
-		displayName: 'Customer Id',
+		displayName: 'Customer ID',
 		name: 'customerId',
 		type: 'string',
 		displayOptions: {

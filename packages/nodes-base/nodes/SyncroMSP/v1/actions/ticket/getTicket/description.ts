@@ -4,7 +4,7 @@ import {
 
 export const ticketGetTicketDescription: TicketProperties = [
 	{
-		displayName: 'Ticket Id',
+		displayName: 'Ticket ID',
 		name: 'id',
 		type: 'string',
 		displayOptions: {
@@ -18,6 +18,6 @@ export const ticketGetTicketDescription: TicketProperties = [
 			},
 		},
 		default: '',
-		description: 'get specific customer by id',
+		description: 'Get specific customer by ID',
 	},
 ];

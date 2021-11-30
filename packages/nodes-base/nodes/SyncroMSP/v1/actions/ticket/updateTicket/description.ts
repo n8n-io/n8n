@@ -4,7 +4,7 @@ import {
 
 export const ticketUpdateTicketDescription: TicketProperties = [
 	{
-		displayName: 'Ticket Id',
+		displayName: 'Ticket ID',
 		name: 'id',
 		type: 'string',
 		displayOptions: {
@@ -37,13 +37,13 @@ export const ticketUpdateTicketDescription: TicketProperties = [
 		default: {},
 		options: [
 			{
-				displayName: 'Asset Id',
+				displayName: 'Asset ID',
 				name: 'asset_id',
 				type: 'string',
 				default: '',
 			},
 			{
-				displayName: 'Customer Id',
+				displayName: 'Customer ID',
 				name: 'customer_id',
 				type: 'string',
 				default: '',

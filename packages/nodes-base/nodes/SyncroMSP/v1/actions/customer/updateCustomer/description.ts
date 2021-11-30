@@ -4,7 +4,7 @@ import {
 
 export const customerUpdateCustomerDescription: CustomerProperties = [
 	{
-		displayName: 'Customer Id',
+		displayName: 'Customer ID',
 		name: 'id',
 		type: 'string',
 		displayOptions: {

@@ -4,7 +4,7 @@ import {
 
 export const contactGetContactDescription: ContactProperties = [
 	{
-		displayName: 'Contact Id',
+		displayName: 'Contact ID',
 		name: 'id',
 		type: 'string',
 		displayOptions: {
@@ -18,6 +18,6 @@ export const contactGetContactDescription: ContactProperties = [
 			},
 		},
 		default: '',
-		description: 'get specific contact by id',
+		description: 'Get specific contact by ID',
 	},
 ];

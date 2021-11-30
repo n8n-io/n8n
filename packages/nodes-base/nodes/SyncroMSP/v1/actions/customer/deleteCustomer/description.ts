@@ -4,7 +4,7 @@ import {
 
 export const customerDeleteDescription: CustomerProperties = [
 	{
-		displayName: 'Customer Id',
+		displayName: 'Customer ID',
 		name: 'id',
 		type: 'string',
 		displayOptions: {
@@ -18,6 +18,6 @@ export const customerDeleteDescription: CustomerProperties = [
 			},
 		},
 		default: '',
-		description: 'Delete a specific customer by id',
+		description: 'Delete a specific customer by ID',
 	},
 ];

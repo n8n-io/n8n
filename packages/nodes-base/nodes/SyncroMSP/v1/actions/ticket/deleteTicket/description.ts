@@ -4,7 +4,7 @@ import {
 
 export const ticketDeleteDescription: TicketProperties = [
 	{
-		displayName: 'Ticket Id',
+		displayName: 'Ticket ID',
 		name: 'id',
 		type: 'string',
 		displayOptions: {
@@ -18,6 +18,6 @@ export const ticketDeleteDescription: TicketProperties = [
 			},
 		},
 		default: '',
-		description: 'Delete a specific customer by id',
+		description: 'Delete a specific customer by ID',
 	},
 ];

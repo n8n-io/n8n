@@ -4,7 +4,7 @@ import {
 
 export const rmmAddAlertDescription: RmmProperties = [
 	{
-		displayName: 'Asset Id',
+		displayName: 'Asset ID',
 		name: 'assetId',
 		type: 'string',
 		displayOptions: {
@@ -20,7 +20,7 @@ export const rmmAddAlertDescription: RmmProperties = [
 		default: '',
 	},
 	{
-		displayName: 'Customer Id',
+		displayName: 'Customer ID',
 		name: 'customerId',
 		type: 'string',
 		displayOptions: {

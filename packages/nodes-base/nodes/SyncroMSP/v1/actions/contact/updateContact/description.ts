@@ -4,7 +4,7 @@ import {
 
 export const contactUpdateContactDescription: ContactProperties = [
 	{
-		displayName: 'Contact Id',
+		displayName: 'Contact ID',
 		name: 'id',
 		type: 'string',
 		displayOptions: {

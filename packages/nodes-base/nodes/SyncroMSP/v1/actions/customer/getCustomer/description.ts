@@ -4,7 +4,7 @@ import {
 
 export const customerGetCustomerDescription: CustomerProperties = [
 	{
-		displayName: 'Cutomer Id',
+		displayName: 'Cutomer ID',
 		name: 'id',
 		type: 'string',
 		displayOptions: {
@@ -18,6 +18,6 @@ export const customerGetCustomerDescription: CustomerProperties = [
 			},
 		},
 		default: '',
-		description: 'get specific customer by id',
+		description: 'Get specific customer by ID',
 	},
 ];

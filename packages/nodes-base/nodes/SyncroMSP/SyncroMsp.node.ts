@@ -11,7 +11,7 @@ export class SyncroMsp extends NodeVersionedType {
 	constructor() {
 		const baseDescription: INodeTypeBaseDescription = {
 			displayName: 'SyncroMSP',
-			name: 'syncromsp',
+			name: 'syncroMsp',
 			icon: 'file:syncromsp.png',
 			group: ['output'],
 			subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',

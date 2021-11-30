@@ -18,11 +18,11 @@ export const rmmGetAllDescription: RmmProperties = [
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'If all results should be returned or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
-		name: 'per_page',
+		name: 'perPage',
 		type: 'number',
 		displayOptions: {
 			show: {
@@ -38,7 +38,7 @@ export const rmmGetAllDescription: RmmProperties = [
 			},
 		},
 		default: 25,
-		description: 'limit the number of rows returned',
+		description: 'Limit the number of rows returned',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -70,7 +70,7 @@ export const rmmGetAllDescription: RmmProperties = [
 				type: 'string',
 				default: '',
 				placeholder: 'all',
-				description: 'Possible values resolved, all, active.',
+				description: 'Possible values resolved, all, active',
 			},
 		],
 	},

@@ -5,7 +5,7 @@ import {
 export const customerAddCustomerDescription: CustomerProperties = [
 	{
 		displayName: 'Business Name',
-		name: 'business_name',
+		name: 'businessName',
 		type: 'string',
 		displayOptions: {
 			show: {
