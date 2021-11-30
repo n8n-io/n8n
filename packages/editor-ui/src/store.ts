@@ -762,6 +762,13 @@ export const store = new Vuex.Store({
 				return getters.nodeType(node.type).group.includes('trigger');
 			});
 		},
+
+		worklfowEnabledTriggerNodes: (state, getters) => {
+			return getters.workflowTriggerNodes.filter(node => {
+				return !node.disabled;
+			});
+		},
+
 		// Node-Index
 		getNodeIndex: (state) => (nodeName: string): number => {
 			return state.nodeIndex.indexOf(nodeName);

@@ -68,14 +68,6 @@ export default mixins(
 					nodes: [] as INodeUi[],
 				};
 			},
-			mounted() {
-				if (this.workflowId && this.$store.state.workflow.id !== this.workflowId) {
-					this.restApi().getWorkflow(this.workflowId)
-						.then((data: IWorkflowDb) => {
-							this.nodes = data.nodes;
-						});
-				}
-			},
 			computed: {
 				...mapGetters({
 					dirtyState: "getStateIsDirty",
@@ -97,19 +89,18 @@ export default mixins(
 					return '#13ce66';
 				},
 				disabled(): boolean {
-					return this.workflowActive ? !this.containsTrigger : false;
+					if (this.isCurrentWorkflow) {
+						// Switch should be enabled if workflow is currently active
+						return !this.workflowActive && !this.containsTrigger;
+					}
+					return false;
+				},
+				isCurrentWorkflow() {
+					return this.workflowId && this.$store.state.workflow.id == this.workflowId;
 				},
 				containsTrigger(): boolean {
-					let nodes: INodeUi[];
-					if (this.nodes.length > 0) {
-						nodes = this.nodes;
-					} else {
-						nodes = this.$store.getters.allNodes;
-					}
-					const foundNodes = nodes
-						.filter(({ disabled }: INodeUi) => !disabled)
-						.map(({ type }: INodeUi) => this.$store.getters.nodeType(type));
-					return foundNodes.filter(((node: INodeTypeDescription) => node.group.includes('trigger'))).length > 0;
+					const foundTriggers = this.$store.getters.worklfowEnabledTriggerNodes;
+					return foundTriggers.length > 0;
 				},
 			},
 			methods: {
@@ -186,7 +177,7 @@ export default mixins(
 						this.$store.commit('setWorkflowActive', this.workflowId);
 
 						// Show activation dialog only for current workflow and if user hasn't deactivated it
-						if (this.nodes.length === 0 && !window.localStorage.getItem(LOCAL_STORAGE_ACTIVATION_FLAG)) {
+						if (this.isCurrentWorkflow && !window.localStorage.getItem(LOCAL_STORAGE_ACTIVATION_FLAG)) {
 							this.$store.dispatch('ui/openModal', WORKFLOW_ACTIVE_MODAL_KEY);
 						}
 					} else {

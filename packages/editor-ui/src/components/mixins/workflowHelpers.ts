@@ -460,9 +460,7 @@ export const workflowHelpers = mixins(
 					// Check if trigger was removed from active workflow
 					let triggerIsRemoved = false;
 					if (this.$store.getters.isActive) {
-						const triggers = this.$store.getters.allNodes
-							.map(({ type }: INodeUi) => this.$store.getters.nodeType(type))
-							.filter(((type: INodeTypeDescription) => type.group.includes('trigger')));
+						const triggers = this.$store.getters.worklfowEnabledTriggerNodes;
 						triggerIsRemoved = triggers.length === 0;
 
 						if (triggerIsRemoved) {
