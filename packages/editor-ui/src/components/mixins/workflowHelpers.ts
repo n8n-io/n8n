@@ -632,5 +632,8 @@ export const workflowHelpers = mixins(
 
 				return true;
 			},
+			getNodeName(nodeName: string) {
+				return nodeName.replace(/ trigger/i, '');
+			},
 		},
 	});

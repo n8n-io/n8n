@@ -125,7 +125,7 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 			if (this.nodeType !== null && this.nodeType.hasOwnProperty('eventTriggerDescription')) {
 				return this.nodeType.eventTriggerDescription;
 			} else {
-				return `Waiting for you to create an event in ${this.nodeType && this.nodeType.displayName.replace(/Trigger/, "")}`;
+				return `Waiting for you to create an event in ${this.nodeType && this.getNodeName(this.nodeType.displayName)}`;
 			}
 		},
 		isPollingTypeNode (): boolean {

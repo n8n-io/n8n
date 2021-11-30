@@ -21,14 +21,15 @@
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
 
 import Modal from '@/components/Modal.vue';
 import { WORKFLOW_ACTIVE_MODAL_KEY, EXECUTIONS_MODAL_KEY, LOCAL_STORAGE_ACTIVATION_FLAG } from '../constants';
 import { INodeUi } from '../Interface';
-import { INodeTypeDescription } from 'n8n-workflow';
+import mixins from 'vue-typed-mixins';
+import { workflowHelpers } from '@/components/mixins/workflowHelpers';
 
-export default Vue.extend({
+
+export default mixins(workflowHelpers).extend({
 	name: 'ActivationModal',
 	components: {
 		Modal,
@@ -53,10 +54,8 @@ export default Vue.extend({
 	},
 	computed: {
 		triggerContent (): string {
-			const foundTriggers = this.$store.getters.allNodes
-				.filter(({ disabled }: INodeUi) => !disabled)
-				.map(({ type }: INodeUi) => this.$store.getters.nodeType(type))
-				.filter(((node: INodeTypeDescription) => node.group.includes('trigger')));
+			const foundTriggers = this.$store.getters.worklfowEnabledTriggerNodes
+				.map(({ type }: INodeUi) => this.$store.getters.nodeType(type));
 			// if multiple triggers
 			if (foundTriggers.length > 1) {
 				return 'Your triggers will now fire production executions automatically.';
@@ -65,13 +64,13 @@ export default Vue.extend({
 			if (trigger.activationMessage) {
 				return trigger.activationMessage;
 			}
-			const serviceName = trigger.displayName.replace(/ trigger/i, '');
+			const serviceName = this.getNodeName(trigger.displayName);
 			//check if webhook
-			if (this.$store.getters.currentWorkflowHasWebhookNode) {
+			if (trigger.webhookId) {
 				return `Your workflow will now listen for events from ${serviceName} and trigger executions.`;
 			} else if (trigger.polling) {
 				//check if a polling trigger
-				return `Your workflow will now regularly check  ${serviceName}for events and trigger executions for them.`;
+				return `Your workflow will now regularly check ${serviceName} for events and trigger executions for them.`;
 			} else {
 				// default message
 				return 'Your trigger will now fire production executions automatically.';
