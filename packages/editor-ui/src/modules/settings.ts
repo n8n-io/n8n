@@ -5,10 +5,11 @@ import {
 	IRootState,
 	ISettingsState,
 } from '../Interface';
-import { getSettings, submitPersonalizationSurvey } from '../api/settings';
+import { getPromptsData, getSettings, submitValueSurvey, submitPersonalizationSurvey } from '../api/settings';
 import Vue from 'vue';
 import { getPersonalizedNodeTypes } from './helper';
-import { PERSONALIZATION_MODAL_KEY } from '@/constants';
+import { PERSONALIZATION_MODAL_KEY, VALUE_SURVEY_MODAL_KEY } from '@/constants';
+import { IDataObject } from 'n8n-workflow';
 
 const module: Module<ISettingsState, IRootState> = {
 	namespaced: true,
@@ -68,6 +69,17 @@ const module: Module<ISettingsState, IRootState> = {
 			await submitPersonalizationSurvey(context.rootGetters.getRestApiContext, results);
 
 			context.commit('setPersonalizationAnswers', results);
+		},
+		async getPromptsData(context: ActionContext<ISettingsState, IRootState>) {
+			const promptData = await getPromptsData(context.state.settings.instanceId);
+
+			if (promptData.showValueSurvey && !promptData.showPrompt) {
+				context.commit('ui/openModal', VALUE_SURVEY_MODAL_KEY, {root: true});
+			}
+
+		},
+		async submitValueSurvey(context: ActionContext<ISettingsState, IRootState>, params: IDataObject) {
+			await submitValueSurvey(context.state.settings.instanceId, params);
 		},
 	},
 };

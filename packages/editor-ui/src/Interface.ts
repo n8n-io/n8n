@@ -469,6 +469,11 @@ export interface IPersonalizationSurvey {
 	shouldShow: boolean;
 }
 
+export interface IN8nPrompt {
+	showPrompt: boolean;
+	showValueSurvey: boolean;
+}
+
 export interface IN8nUISettings {
 	endpointWebhook: string;
 	endpointWebhookTest: string;

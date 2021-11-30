@@ -25,6 +25,7 @@ export const CREDENTIAL_EDIT_MODAL_KEY = 'editCredential';
 export const CREDENTIAL_SELECT_MODAL_KEY = 'selectCredential';
 export const CREDENTIAL_LIST_MODAL_KEY = 'credentialsList';
 export const PERSONALIZATION_MODAL_KEY = 'personalization';
+export const VALUE_SURVEY_MODAL_KEY = 'valueSurvey';
 
 // breakpoints
 export const BREAKPOINT_SM = 768;
@@ -34,7 +35,7 @@ export const BREAKPOINT_XL = 1920;
 
 
 // templates
-export const TEMPLATES_BASE_URL = `https://api.n8n.io/`;
+export const TEMPLATES_BASE_URL = `https://api-staging.n8n.io/`;
 
 // node types
 export const CALENDLY_TRIGGER_NODE_TYPE = 'n8n-nodes-base.calendlyTrigger';

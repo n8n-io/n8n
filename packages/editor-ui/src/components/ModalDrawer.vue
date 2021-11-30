@@ -23,6 +23,9 @@ export default Vue.extend({
 		name: {
 			type: String,
 		},
+		beforeClose: {
+			type: Function,
+		},
 		eventBus: {
 			type: Vue,
 		},
@@ -65,8 +68,22 @@ export default Vue.extend({
 				this.$emit('enter');
 			}
 		},
-		close() {
+		close(callback?: () => void) {
+			if (this.beforeClose) {
+				this.beforeClose(() => {
+					this.$store.commit('ui/closeTopModal');
+					if (typeof callback === 'function') {
+						callback();
+					}
+				});
+
+				return;
+			}
+
 			this.$store.commit('ui/closeTopModal');
+			if (typeof callback === 'function') {
+				callback();
+			}
 		},
 	},
 	computed: {
