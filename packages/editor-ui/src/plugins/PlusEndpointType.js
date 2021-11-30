@@ -436,7 +436,6 @@
 				container.style.color = style.fill;
 				container.style['border-color'] = style.fill;
 				message.style.display = style.hover ? 'inline' : 'none';
-				message.style.display = 'none';
 			}
 			_ju.sizeElement(this.canvas, this.x, this.y, this.w, this.h);
 		};
