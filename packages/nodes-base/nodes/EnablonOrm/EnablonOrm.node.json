@@ -1,0 +1,20 @@
+{
+	"node": "n8n-nodes-base.enablonOrm",
+	"nodeVersion": "1.0",
+	"codexVersion": "1.0",
+	"categories": [
+		"Operational Risk "
+	],
+	"resources": {
+		"credentialDocumentation": [
+			{
+				"url": "https://docs.n8n.io/credentials/enablon"
+			}
+		],
+		"primaryDocumentation": [
+			{
+				"url": "https://docs.n8n.io/nodes/n8n-nodes-base.enablonOrm/"
+			}
+		]
+	}
+}
