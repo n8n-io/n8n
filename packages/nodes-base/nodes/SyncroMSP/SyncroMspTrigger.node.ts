@@ -13,11 +13,11 @@ import {
 export class SyncroMspTrigger implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'SyncroMSP Trigger',
-		name: 'syncromspTrigger',
+		name: 'syncroMspTrigger',
 		icon: 'file:syncromsp.png',
 		group: ['trigger'],
 		version: 1,
-		subtitle: '={{$parameter["events"]}}',
+		subtitle: '=Events: {{$parameter["events"].includes("*") ? "All" :  $parameter["events"].join(", ")}}',
 		description: 'Starts the workflow when events occur on SyncroMSP',
 		defaults: {
 			name: 'SyncroMSP Trigger',
