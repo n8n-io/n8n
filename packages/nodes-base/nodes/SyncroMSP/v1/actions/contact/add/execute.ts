@@ -27,6 +27,11 @@ export async function addContact(this: IExecuteFunctions, index: number): Promis
 		body = additionalFields;
 	}
 
+	if(body.address){
+		body.address1=body.address;
+		delete body.address;
+	}
+
 	body.name=name;
 	body.email=email;
 	body.customer_id=id;

@@ -38,25 +38,29 @@ export const ticketUpdateDescription: TicketProperties = [
 		options: [
 			{
 				displayName: 'Asset ID',
-				name: 'asset_id',
+				name: 'assetId',
 				type: 'string',
 				default: '',
 			},
 			{
 				displayName: 'Customer ID',
-				name: 'customer_id',
-				type: 'string',
+				name: 'customerId',
+				type: 'options',
+				typeOptions: {
+					loadOptionsMethod: 'getCustomers',
+				},
+				options: [],
 				default: '',
 			},
 			{
 				displayName: 'Due Date',
-				name: 'due_date',
+				name: 'dueDate',
 				type: 'dateTime',
 				default: '',
 			},
 			{
 				displayName: 'Problem Type',
-				name: 'problem_type',
+				name: 'problemType',
 				type: 'string',
 				default: '',
 			},
@@ -74,7 +78,7 @@ export const ticketUpdateDescription: TicketProperties = [
 			},
 			{
 				displayName: 'Ticket Type',
-				name: 'ticket_type',
+				name: 'ticketType',
 				type: 'string',
 				default: '',
 			},

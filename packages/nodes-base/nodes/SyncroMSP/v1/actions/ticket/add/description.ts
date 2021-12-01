@@ -6,7 +6,11 @@ export const ticketAddDescription: TicketProperties = [
 	{
 		displayName: 'Customer ID',
 		name: 'customerId',
-		type: 'string',
+		type: 'options',
+		typeOptions: {
+			loadOptionsMethod: 'getCustomers',
+		},
+		options: [],
 		displayOptions: {
 			show: {
 				resource: [
@@ -54,19 +58,19 @@ export const ticketAddDescription: TicketProperties = [
 		options: [
 			{
 				displayName: 'Asset ID',
-				name: 'asset_id',
+				name: 'assetId',
 				type: 'string',
 				default: '',
 			},
 			{
 				displayName: 'Due Date',
-				name: 'due_date',
+				name: 'dueDate',
 				type: 'dateTime',
 				default: '',
 			},
 			{
 				displayName: 'Problem Type',
-				name: 'problem_type',
+				name: 'problemType',
 				type: 'string',
 				default: '',
 			},
@@ -78,7 +82,7 @@ export const ticketAddDescription: TicketProperties = [
 			},
 			{
 				displayName: 'Ticket Type',
-				name: 'ticket_type',
+				name: 'ticketType',
 				type: 'string',
 				default: '',
 			},

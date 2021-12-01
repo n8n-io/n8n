@@ -15,7 +15,7 @@ export class SyncroMsp extends NodeVersionedType {
 			icon: 'file:syncromsp.png',
 			group: ['output'],
 			subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
-			description: 'Gets data from SyncroMSP',
+			description: 'Manage contacts, tickets and more from Syncro MSP',
 			defaultVersion: 1,
 		};
 

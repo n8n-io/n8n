@@ -38,7 +38,7 @@ export const contactUpdateDescription: ContactProperties = [
 		options: [
 			{
 				displayName: 'Address',
-				name: 'address1',
+				name: 'address',
 				type: 'string',
 				default: '',
 			},

@@ -5,7 +5,7 @@ import {
 export const rmmGetAllDescription: RmmProperties = [
 	{
 		displayName: 'Limit',
-		name: 'perPage',
+		name: 'limit',
 		type: 'number',
 		displayOptions: {
 			show: {
@@ -91,6 +91,13 @@ export const rmmGetAllDescription: RmmProperties = [
 				displayName: 'Page',
 				name: 'page',
 				type: 'number',
+				displayOptions: {
+					show: {
+						'/returnAll': [
+							false,
+						],
+					},
+				},
 				default: 1,
 				description: 'Returns provided page of results, each page contains 25 results',
 			},

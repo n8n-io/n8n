@@ -98,19 +98,19 @@ export const customerAddDescription: CustomerProperties = [
 			},
 			{
 				displayName: 'Get SMS',
-				name: 'get_sms',
+				name: 'getSms',
 				type: 'boolean',
 				default: true,
 			},
 			{
 				displayName: 'Invoice Email',
-				name: 'invoice_cc_email',
+				name: 'invoiceCcEmail',
 				type: 'string',
 				default: '',
 			},
 			{
 				displayName: 'No Email',
-				name: 'no_email',
+				name: 'noEmail',
 				type: 'boolean',
 				default: false,
 			},
@@ -122,7 +122,7 @@ export const customerAddDescription: CustomerProperties = [
 			},
 			{
 				displayName: 'Notification Email',
-				name: 'notification_email',
+				name: 'notificationEmail',
 				type: 'string',
 				default: '',
 			},
@@ -134,7 +134,7 @@ export const customerAddDescription: CustomerProperties = [
 			},
 			{
 				displayName: 'Referred By',
-				name: 'referred_by',
+				name: 'referredBy',
 				type: 'string',
 				default: '',
 			},

@@ -55,7 +55,7 @@ export const descriptions = [
 				description: 'Mute RMM Alert',
 			},
 		],
-		default: '',
+		default: 'getAll',
 		description: 'The operation to perform.',
 	},
 	...getAll.description,

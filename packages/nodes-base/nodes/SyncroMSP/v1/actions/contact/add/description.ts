@@ -6,7 +6,11 @@ export const contactAddDescription: ContactProperties = [
 	{
 		displayName: 'Customer ID',
 		name: 'customerId',
-		type: 'string',
+		type: 'options',
+		typeOptions: {
+			loadOptionsMethod: 'getCustomers',
+		},
+		options: [],
 		displayOptions: {
 			show: {
 				resource: [
@@ -70,7 +74,7 @@ export const contactAddDescription: ContactProperties = [
 		options: [
 			{
 				displayName: 'Address',
-				name: 'address1',
+				name: 'address',
 				type: 'string',
 				default: '',
 			},

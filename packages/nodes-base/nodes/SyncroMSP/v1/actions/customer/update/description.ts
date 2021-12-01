@@ -44,7 +44,7 @@ export const customerUpdateDescription: CustomerProperties = [
 			},
 			{
 				displayName: 'Business Name',
-				name: 'business_name',
+				name: 'businessName',
 				type: 'string',
 				default: '',
 			},
@@ -62,31 +62,31 @@ export const customerUpdateDescription: CustomerProperties = [
 			},
 			{
 				displayName: 'First Name',
-				name: 'firstname',
+				name: 'firstName',
 				type: 'string',
 				default: '',
 			},
 			{
 				displayName: 'Get SMS',
-				name: 'get_sms',
+				name: 'getSms',
 				type: 'boolean',
 				default: true,
 			},
 			{
 				displayName: 'Invoice Email',
-				name: 'invoice_cc_email',
+				name: 'invoiceCcEmail',
 				type: 'string',
 				default: '',
 			},
 			{
 				displayName: 'Last Name',
-				name: 'lastname',
+				name: 'lastName',
 				type: 'string',
 				default: '',
 			},
 			{
 				displayName: 'No Email',
-				name: 'no_email',
+				name: 'noEmail',
 				type: 'boolean',
 				default: false,
 			},
@@ -98,7 +98,7 @@ export const customerUpdateDescription: CustomerProperties = [
 			},
 			{
 				displayName: 'Notification Email',
-				name: 'notification_email',
+				name: 'notificationEmail',
 				type: 'string',
 				default: '',
 			},
@@ -110,7 +110,7 @@ export const customerUpdateDescription: CustomerProperties = [
 			},
 			{
 				displayName: 'Referred By',
-				name: 'referred_by',
+				name: 'referredBy',
 				type: 'string',
 				default: '',
 			},

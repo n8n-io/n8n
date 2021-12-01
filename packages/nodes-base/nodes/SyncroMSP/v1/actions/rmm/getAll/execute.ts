@@ -27,7 +27,7 @@ export async function getAll(this: IExecuteFunctions, index: number): Promise<IN
 	}
 
 	if (returnAll === false) {
-		qs.per_page = this.getNodeParameter('perPage', index) as number;
+		qs.per_page = this.getNodeParameter('limit', index) as number;
 	}
 	qs.status = status;
 

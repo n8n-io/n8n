@@ -17,16 +17,27 @@ export async function addCustomer(this: IExecuteFunctions, index: number): Promi
 	const lastname = this.getNodeParameter('lastname', index) as IDataObject;
 	const email = this.getNodeParameter('email', index) as IDataObject;
 	const businessName = this.getNodeParameter('businessName', index) as IDataObject;
-	const additionalFields = this.getNodeParameter('additionalFields', index) as IDataObject;
+	const { address, city, getSms, invoiceCcEmail, noEmail, notes, notificationEmail, phone, referredBy, state, zip} = this.getNodeParameter('additionalFields', index) as IDataObject;
 
 	const qs = {} as IDataObject;
 	const requestMethod = 'POST';
 	const endpoint = 'customers';
 	let body = {} as IDataObject;
 
-	if (additionalFields) {
-		body = additionalFields;
-	}
+	body={
+		address,
+		city,
+		get_sms : getSms,
+		invoice_cc_email : invoiceCcEmail,
+		no_email : noEmail,
+		notes,
+		notification_email : notificationEmail,
+		phone,
+		referred_by : referredBy,
+		state,
+		zip,
+	};
+
 
 	body.firstname=firstname;
 	body.lastname=lastname;

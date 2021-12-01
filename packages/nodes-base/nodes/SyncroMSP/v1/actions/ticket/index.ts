@@ -55,7 +55,7 @@ export const descriptions = [
 				description: 'Update ticket',
 			},
 		],
-		default: '',
+		default: 'getAll',
 		description: 'The operation to perform.',
 	},
 	...getAll.description,

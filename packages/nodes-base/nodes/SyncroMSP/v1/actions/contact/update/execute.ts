@@ -25,6 +25,11 @@ export async function updateContact(this: IExecuteFunctions, index: number): Pro
 		body = additionalFields;
 	}
 
+	if(body.address){
+		body.address1=body.address;
+		delete body.address;
+	}
+
 	let responseData;
 	responseData = await apiRequest.call(this, requestMethod, endpoint, body, qs);
 

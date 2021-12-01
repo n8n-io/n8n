@@ -22,7 +22,11 @@ export const rmmAddDescription: RmmProperties = [
 	{
 		displayName: 'Customer ID',
 		name: 'customerId',
-		type: 'string',
+		type: 'options',
+		typeOptions: {
+			loadOptionsMethod: 'getCustomers',
+		},
+		options: [],
 		displayOptions: {
 			show: {
 				resource: [
