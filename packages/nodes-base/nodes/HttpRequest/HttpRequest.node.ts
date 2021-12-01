@@ -436,9 +436,7 @@ export class HttpRequest implements INodeType {
 						],
 					},
 				},
-				description: `Name of the binary property which contains the data for the file to be uploaded.<br />
-							For Form-Data Multipart, multiple can be provided in the format:<br />
-							"sendKey1:binaryProperty1,sendKey2:binaryProperty2`,
+				description: `Name of the binary property which contains the data for the file to be uploaded. For Form-Data Multipart, they can be provided in the format: <code>"sendKey1:binaryProperty1,sendKey2:binaryProperty2</code>`,
 			},
 			{
 				displayName: 'Body Parameters',
@@ -772,7 +770,7 @@ export class HttpRequest implements INodeType {
 										propertyName = propertyDataParts[0];
 										binaryPropertyName = propertyDataParts[1];
 									} else if (binaryPropertyNames.length > 1) {
-										throw new NodeOperationError(this.getNode(), 'If more than one property should be send it is needed to define the in the format: "sendKey1:binaryProperty1,sendKey2:binaryProperty2"');
+										throw new NodeOperationError(this.getNode(), 'If more than one property should be send it is needed to define the in the format:<code>"sendKey1:binaryProperty1,sendKey2:binaryProperty2"</code>');
 									}
 
 									if (item.binary[binaryPropertyName] === undefined) {
@@ -864,7 +862,9 @@ export class HttpRequest implements INodeType {
 					if (requestOptions.headers === undefined) {
 						requestOptions.headers = {};
 					}
-					requestOptions.headers['Content-Type'] = 'application/json';
+					if (['POST', 'PUT', 'PATCH'].includes(requestMethod)) {
+						requestOptions.headers['Content-Type'] = 'application/json';
+					}
 				}
 			} else if (options.bodyContentType === 'raw') {
 				requestOptions.json = false;
@@ -918,7 +918,7 @@ export class HttpRequest implements INodeType {
 					};
 				}
 				this.sendMessageToUI(sendRequest);
-			} catch (e) {}
+			} catch (e) { }
 
 			// Now that the options are all set make the actual http request
 			if (oAuth1Api !== undefined) {
