@@ -177,6 +177,12 @@ export default mixins(workflowHelpers).extend({
 			margin: 0;
 			padding: 18px 0 16px;
 
+			.el-drawer__close-btn {
+				top: 12px;
+				right: 16px;
+				position: absolute;
+			}
+
 			.el-dialog__close {
 				font-weight: var(--font-weight-bold);
 				color: var(--color-text-xlight);
