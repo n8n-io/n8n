@@ -817,9 +817,17 @@ class App {
 					req: express.Request,
 					res: express.Response,
 				): Promise<WorkflowEntity | undefined> => {
-					const workflow = await Db.collections.Workflow!.findOne(req.params.id, {
-						relations: ['tags'],
-					});
+					const qb = Db.collections.Workflow!.createQueryBuilder('w');
+					qb.leftJoinAndSelect('w.tags', 't');
+					qb.where('w.id = :workflowId', { workflowId: req.params.id });
+
+					if (this.isUserManagementEnabled) {
+						qb.innerJoin('w.shared', 'shared');
+						// TODO: test this
+						qb.where('shared.user', req.body.user);
+					}
+
+					const workflow = await qb.getOne();
 
 					if (workflow === undefined) {
 						return undefined;
@@ -844,12 +852,32 @@ class App {
 					const { id } = req.params;
 					updateData.id = id;
 
+					let isActive = false;
+					if (this.isUserManagementEnabled) {
+						const qb = Db.collections.Workflow!.createQueryBuilder('w');
+						qb.leftJoinAndSelect('w.tags', 't');
+						qb.where('w.id = :workflowId', { workflowId: req.params.id });
+						qb.innerJoin('w.shared', 'shared');
+						// TODO: test this
+						qb.where('shared.user', req.body.user);
+						const workflow = await qb.getOne();
+						if (workflow) {
+							isActive = workflow.active;
+						} else {
+							throw new ResponseHelper.ResponseError(
+								`Workflow with id "${id}" could not be found to be updated.`,
+								undefined,
+								400,
+							);
+						}
+					} else {
+						isActive = await this.activeWorkflowRunner.isActive(id);
+					}
+
 					// check credentials for old format
 					await WorkflowHelpers.replaceInvalidCredentials(updateData as WorkflowEntity);
 
 					await this.externalHooks.run('workflow.update', [updateData]);
-
-					const isActive = await this.activeWorkflowRunner.isActive(id);
 
 					if (isActive) {
 						// When workflow gets saved always remove it as the triggers could have been
@@ -952,7 +980,28 @@ class App {
 
 				await this.externalHooks.run('workflow.delete', [id]);
 
-				const isActive = await this.activeWorkflowRunner.isActive(id);
+				let isActive = false;
+				if (this.isUserManagementEnabled) {
+					const qb = Db.collections.Workflow!.createQueryBuilder('w');
+					qb.leftJoinAndSelect('w.tags', 't');
+					qb.where('w.id = :workflowId', { workflowId: req.params.id });
+					qb.innerJoin('w.shared', 'shared');
+					// TODO: test this
+					qb.where('shared.user', req.body.user);
+					const workflow = await qb.getOne();
+					if (workflow) {
+						isActive = workflow.active;
+					} else {
+						throw new ResponseHelper.ResponseError(
+							`Workflow with id "${id}" could not be found to be updated.`,
+							undefined,
+							400,
+						);
+					}
+				} else {
+					isActive = await this.activeWorkflowRunner.isActive(id);
+				}
+
 				if (isActive) {
 					// Before deleting a workflow deactivate it
 					await this.activeWorkflowRunner.remove(id);
@@ -987,6 +1036,10 @@ class App {
 						destinationNode === undefined
 					) {
 						const additionalData = await WorkflowExecuteAdditionalData.getBase();
+						if (this.isUserManagementEnabled) {
+							// TODO: test this.
+							additionalData.userId = req.body.userId;
+						}
 						const nodeTypes = NodeTypes();
 						const workflowInstance = new Workflow({
 							id: workflowData.id,
@@ -1026,6 +1079,10 @@ class App {
 						startNodes,
 						workflowData,
 					};
+					if (this.isUserManagementEnabled) {
+						// TODO: test this.
+						data.userId = req.body.userId;
+					}
 					const workflowRunner = new WorkflowRunner();
 					const executionId = await workflowRunner.run(data);
 

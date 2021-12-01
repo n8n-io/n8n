@@ -201,6 +201,9 @@ export class WorkflowRunnerProcess {
 			undefined,
 			workflowTimeout <= 0 ? undefined : Date.now() + workflowTimeout * 1000,
 		);
+		if (this.data.userId) {
+			additionalData.userId = this.data.userId;
+		}
 		additionalData.hooks = this.getProcessForwardHooks();
 
 		additionalData.hooks.hookFunctions.sendResponse = [

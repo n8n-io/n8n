@@ -1089,6 +1089,7 @@ export async function getCredentials(
 		mode,
 		false,
 		expressionResolveValues,
+		additionalData.userId,
 	);
 
 	return decryptedDataObject;

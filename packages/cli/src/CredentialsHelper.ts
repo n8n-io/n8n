@@ -48,12 +48,20 @@ export class CredentialsHelper extends ICredentialsHelper {
 	async getCredentials(
 		nodeCredentials: INodeCredentialsDetails,
 		type: string,
+		userId?: string,
 	): Promise<Credentials> {
 		if (!nodeCredentials.id) {
 			throw new Error(`Credentials "${nodeCredentials.name}" for type "${type}" don't have an ID.`);
 		}
 
-		const credentials = await Db.collections.Credentials?.findOne({ id: nodeCredentials.id, type });
+		// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+		const qb = Db.collections.Credentials!.createQueryBuilder('c');
+		qb.where('c.id = :id and c.type = :type', { id: nodeCredentials.id, type });
+		if (userId) {
+			// TODO: implement this.
+			// qb.
+		}
+		const credentials = await qb.getOne();
 
 		if (!credentials) {
 			throw new Error(
@@ -116,8 +124,9 @@ export class CredentialsHelper extends ICredentialsHelper {
 		mode: WorkflowExecuteMode,
 		raw?: boolean,
 		expressionResolveValues?: ICredentialsExpressionResolveValues,
+		userId?: string,
 	): Promise<ICredentialDataDecryptedObject> {
-		const credentials = await this.getCredentials(nodeCredentials, type);
+		const credentials = await this.getCredentials(nodeCredentials, type, userId);
 		const decryptedDataOriginal = credentials.getData(this.encryptionKey);
 
 		if (raw === true) {

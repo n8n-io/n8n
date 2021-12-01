@@ -145,6 +145,7 @@ export abstract class ICredentialsHelper {
 		mode: WorkflowExecuteMode,
 		raw?: boolean,
 		expressionResolveValues?: ICredentialsExpressionResolveValues,
+		userId?: string,
 	): Promise<ICredentialDataDecryptedObject>;
 
 	abstract updateCredentials(
@@ -1011,6 +1012,7 @@ export interface IWorkflowExecuteAdditionalData {
 	webhookTestBaseUrl: string;
 	currentNodeParameters?: INodeParameters;
 	executionTimeoutTimestamp?: number;
+	userId?: string; // this is a UUID - used to firewall actions in user management
 }
 
 export type WorkflowExecuteMode =
