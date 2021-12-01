@@ -1889,10 +1889,10 @@ export default mixins(
 									const output = outputMap[sourceOutputIndex][targetNodeName][targetInputIndex];
 									if (!output || !output.total) {
 										CanvasHelpers.resetConnection(connection);
-										return;
 									}
-
-									CanvasHelpers.addConnectionOutputSuccess(connection, output);
+									else {
+										CanvasHelpers.addConnectionOutputSuccess(connection, output);
+									}
 								}
 							}
 
