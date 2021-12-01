@@ -44,6 +44,10 @@ export class KoboToolbox implements INodeType {
             name: 'Submission',
             value: 'submission',
           },
+          {
+            name: 'Hook',
+            value: 'hook',
+          },
         ],
         default: 'submission',
         required: true,
@@ -99,6 +103,47 @@ export class KoboToolbox implements INodeType {
           },
         ],
         default: 'query',
+        description: 'The operation to perform.',
+      },
+      {
+        displayName: 'Operation',
+        name: 'operation',
+        type: 'options',
+        displayOptions: {
+          show: {
+            resource: [
+              'hook',
+            ],
+          },
+        },
+        options: [
+          {
+            name: 'List',
+            value: 'list',
+            description: 'List all hooks on a form',
+          },
+          {
+            name: 'Get',
+            value: 'get',
+            description: 'Get a single hook definition',
+          },
+          {
+            name: 'Retry All',
+            value: 'retry_all',
+            description: 'Retry all failed attempts for a given hook',
+          },
+          {
+            name: 'Retry One',
+            value: 'retry_one',
+            description: 'Retry a specific hook',
+          },
+          {
+            name: 'Logs',
+            value: 'logs',
+            description: 'Get hook logs',
+          },
+        ],
+        default: 'list',
         description: 'The operation to perform.',
       },
       {
@@ -160,6 +205,45 @@ export class KoboToolbox implements INodeType {
             operation: [
               'get',
               'delete',
+            ],
+          },
+        },
+        default: '',
+        description:'Submission id',
+      },
+      {
+        displayName: 'Hook id',
+        name: 'id',
+        type: 'string',
+        required: true,
+        displayOptions: {
+          show: {
+            resource: [
+              'hook',
+            ],
+            operation: [
+              'get',
+              'logs',
+              'retry_one',
+              'retry_all',
+            ],
+          },
+        },
+        default: '',
+        description:'Submission id',
+      },
+      {
+        displayName: 'Hook log id',
+        name: 'log_id',
+        type: 'string',
+        required: true,
+        displayOptions: {
+          show: {
+            resource: [
+              'hook',
+            ],
+            operation: [
+              'retry_one',
             ],
           },
         },
@@ -262,7 +346,7 @@ export class KoboToolbox implements INodeType {
           
           const options: IHttpRequestOptions = {
             url: `/api/v2/assets/${asset_uid}/data`,
-            params: {
+            qs: {
               start,
               limit,
               ...(query  && {query}),
@@ -272,24 +356,22 @@ export class KoboToolbox implements INodeType {
             ...baseOptions,
           };
           
-          // This is a paginated response, return the list
-          const response = await this.helpers.httpRequest(options);
-          responseData = response.results ? response.results : null;
+          responseData = await this.helpers.httpRequest(options);
         }
         
         if (operation === 'get') {
-          const id = this.getNodeParameter('id', 0) as string;
+          const id = this.getNodeParameter('id', i) as string;
           
           const options: IHttpRequestOptions = {
             url: `/api/v2/assets/${asset_uid}/data/${id}`,
             ...baseOptions,
           };
           
-          responseData = [await this.helpers.httpRequest(options)];
+          responseData = await this.helpers.httpRequest(options);
         }
         
         if (operation === 'delete') {
-          const id = this.getNodeParameter('id', 0) as string;
+          const id = this.getNodeParameter('id', i) as string;
           
           const options: IHttpRequestOptions = {
             method: 'DELETE',
@@ -297,7 +379,7 @@ export class KoboToolbox implements INodeType {
             ...baseOptions,
           };
           
-          responseData = [await this.helpers.httpRequest(options)];
+          responseData = await this.helpers.httpRequest(options);
         }
       }
       
@@ -308,12 +390,73 @@ export class KoboToolbox implements INodeType {
             ...baseOptions,
           };
           
-          responseData = [await this.helpers.httpRequest(options)];
+          responseData = await this.helpers.httpRequest(options);
         }
       }
-      
+
+      if (resource === 'hook') {
+        if (operation === 'list') {
+          const options: IHttpRequestOptions = {
+            url: `/api/v2/assets/${asset_uid}/hooks`,
+            ...baseOptions,
+          };
+          
+          responseData = await this.helpers.httpRequest(options);
+        }
+
+        if (operation === 'get') {
+          const id = this.getNodeParameter('id', i) as string;
+          const options: IHttpRequestOptions = {
+            url: `/api/v2/assets/${asset_uid}/hooks/${id}`,
+            ...baseOptions,
+          };
+          
+          responseData = await this.helpers.httpRequest(options);
+        }
+
+        if (operation === 'retry_all') {
+          const id = this.getNodeParameter('id', i) as string;
+          const options: IHttpRequestOptions = {
+            method: 'PATCH',
+            url: `/api/v2/assets/${asset_uid}/hooks/${id}/retry`,
+            ...baseOptions,
+          };
+          
+          responseData = await this.helpers.httpRequest(options);
+        }
+
+        if (operation === 'logs') {
+          const id = this.getNodeParameter('id', i) as string;
+          const options: IHttpRequestOptions = {
+            url: `/api/v2/assets/${asset_uid}/hooks/${id}/logs`,
+            ...baseOptions,
+          };
+          
+          responseData = await this.helpers.httpRequest(options);
+        }
+
+        if (operation === 'retry_one') {
+          const id = this.getNodeParameter('id', i) as string;
+          const log_id = this.getNodeParameter('log_id', i) as string;
+          const options: IHttpRequestOptions = {
+            url: `/api/v2/assets/${asset_uid}/hooks/${id}/logs/${log_id}/retry`,
+            ...baseOptions,
+          };
+          
+          responseData = await this.helpers.httpRequest(options);
+        }
+      }
+
       if (responseData) {
-        returnData = returnData.concat(responseData);
+        if(responseData.hasOwnProperty('count') && responseData.hasOwnProperty('results') && responseData.hasOwnProperty('next') && responseData.hasOwnProperty('previous')) {
+          // It's a paginated list, append all results
+          // TODO: return a pagination indicator??
+          returnData = returnData.concat(responseData.results);
+        }
+        else {
+          // It's a single response, return it
+          returnData = returnData.concat([responseData]);
+        }
       }
     }
     // Map data to n8n data
