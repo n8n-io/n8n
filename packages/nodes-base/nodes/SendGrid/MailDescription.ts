@@ -272,7 +272,7 @@ export const mailFields = [
 				name: 'bccEmail',
 				type: 'string',
 				default: '',
-				description: 'Comma-separated list of emails of the recipients<br>of a blind carbon copy of the email.',
+				description: 'Comma-separated list of emails of the recipients of a blind carbon copy of the email.',
 			},
 			{
 				displayName: 'Categories',
@@ -286,7 +286,7 @@ export const mailFields = [
 				name: 'ccEmail',
 				type: 'string',
 				default: '',
-				description: 'Comma-separated list of emails of the recipients<br>of a carbon copy of the email.',
+				description: 'Comma-separated list of emails of the recipients of a carbon copy of the email.',
 			},
 			{
 				displayName: 'Enable Sandbox',

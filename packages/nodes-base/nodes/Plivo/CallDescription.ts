@@ -101,7 +101,7 @@ export const callFields = [
 		name: 'answer_url',
 		type: 'string',
 		default: '',
-		description: 'URL to be invoked by Plivo once the call is answered.<br>It should return the XML to handle the call once answered.',
+		description: 'URL to be invoked by Plivo once the call is answered. It should return the XML to handle the call once answered.',
 		required: true,
 		displayOptions: {
 			show: {

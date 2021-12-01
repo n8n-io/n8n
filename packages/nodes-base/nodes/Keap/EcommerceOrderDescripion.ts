@@ -155,8 +155,7 @@ export const ecommerceOrderFields = [
 				name: 'promoCodes',
 				type: 'string',
 				default: '',
-				description: `Uses multiple strings separated by comma as promo codes.</br>
-				The corresponding discount will be applied to the order.`,
+				description: `Uses multiple strings separated by comma as promo codes. The corresponding discount will be applied to the order.`,
 			},
 			{
 				displayName: 'Sales Affiliate ID',
@@ -310,8 +309,7 @@ export const ecommerceOrderFields = [
 							minValue: 0,
 						},
 						default: 0,
-						description: `Overridable price of the product, if not specified,</br>
-						the default will be used.`,
+						description: `Overridable price of the product, if not specified, the default will be used.`,
 					},
 					{
 						displayName: 'Product ID',

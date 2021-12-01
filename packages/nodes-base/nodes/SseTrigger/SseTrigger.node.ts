@@ -15,6 +15,7 @@ export class SseTrigger implements INodeType {
 		group: ['trigger'],
 		version: 1,
 		description: 'Triggers the workflow when Server-Sent Events occur',
+		eventTriggerDescription: '',
 		defaults: {
 			name: 'SSE Trigger',
 			color: '#225577',
