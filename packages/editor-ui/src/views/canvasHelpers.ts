@@ -640,7 +640,9 @@ export const getUniqueNodeName = ({
 
 	if (found) {
 		nameIndex = originalName.split(found).pop();
-		if (nameIndex) index = parseInt(nameIndex, 10);
+		if (nameIndex) {
+			index = parseInt(nameIndex, 10);
+		}
 		baseName = uniqueName = found;
 	} else {
 		const nameMatch = originalName.match(/(.*\D+)(\d*)/);
