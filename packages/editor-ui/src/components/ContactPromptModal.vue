@@ -18,7 +18,7 @@
 			<n8n-input
 				v-model="email"
 				@input="onInputChange"
-				placeholder="Your emaill address"
+				placeholder="Your email address"
 			/>
 			<div :class="$style.disclaimer">David from our product team will reach out personally.</div>
 		</template>
