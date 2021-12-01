@@ -205,6 +205,8 @@ class App {
 
 	presetCredentialsLoaded: boolean;
 
+	isUserManagementEnabled: boolean;
+
 	constructor() {
 		this.app = express();
 
@@ -239,6 +241,8 @@ class App {
 
 		this.presetCredentialsLoaded = false;
 		this.endpointPresetCredentials = config.get('credentials.overwrite.endpoint') as string;
+
+		this.isUserManagementEnabled = config.get('userManagement.enabled');
 
 		const urlBaseWebhook = WebhookHelpers.getWebhookBaseUrl();
 
@@ -608,7 +612,7 @@ class App {
 		// User Management
 		// ----------------------------------------
 
-		if (config.get('userManagement.enabled')) {
+		if (this.isUserManagementEnabled) {
 			UMRouter.addRoutes.apply(this);
 		}
 
@@ -687,11 +691,14 @@ class App {
 						.Workflow!.save(newWorkflow)
 						.catch(WorkflowHelpers.throwDuplicateEntryError)) as WorkflowEntity;
 					savedWorkflow.tags = TagHelpers.sortByRequestOrder(savedWorkflow.tags, incomingTagOrder);
-					try {
-						await UserManagementHelpers.saveWorkflowOwnership(savedWorkflow, incomingData);
-					} catch (error) {
-						// TODO: decide how to better handle this.
-						LoggerProxy.debug('Error saving workflow ownership', { error });
+					if (this.isUserManagementEnabled) {
+						try {
+							await UserManagementHelpers.saveWorkflowOwnership(savedWorkflow, incomingData);
+						} catch (error) {
+							// TODO: decide if this is fatal and we must rollback or
+							// log and treat it elsewhere.
+							LoggerProxy.debug('Error saving workflow ownership', { error });
+						}
 					}
 
 					// @ts-ignore
@@ -760,16 +767,25 @@ class App {
 		this.app.get(
 			`/${this.restEndpoint}/workflows`,
 			ResponseHelper.send(async (req: express.Request, res: express.Response) => {
-				const findQuery: FindManyOptions<WorkflowEntity> = {
-					select: ['id', 'name', 'active', 'createdAt', 'updatedAt'],
-					relations: ['tags'],
-				};
+				const queryBuilder = Db.collections.Workflow!.createQueryBuilder('w');
+				queryBuilder.select(['w.id', 'w.name', 'w.active', 'w.createdAt', 'w.updatedAt']);
+				queryBuilder.leftJoinAndSelect('w.tags', 't');
 
 				if (req.query.filter) {
-					findQuery.where = JSON.parse(req.query.filter as string);
+					const jsonFilters = JSON.parse(req.query.filter as string);
+					const keys = Object.keys(jsonFilters);
+					keys.forEach((key) => {
+						queryBuilder.where(`w.${key} = :${key}`, { [key]: jsonFilters[key] });
+					});
 				}
 
-				const workflows = await Db.collections.Workflow!.find(findQuery);
+				if (this.isUserManagementEnabled) {
+					queryBuilder.innerJoin('w.shared', 'shared');
+					// TODO: test this
+					queryBuilder.where('shared.user', req.body.user);
+				}
+
+				const workflows = await queryBuilder.getMany();
 
 				workflows.forEach((workflow) => {
 					// @ts-ignore
