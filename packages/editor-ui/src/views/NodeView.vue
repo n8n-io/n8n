@@ -2114,10 +2114,8 @@ export default mixins(
 				this.$store.commit('renameNodeSelectedAndExecution', { old: currentName, new: newName });
 
 				// Reset all nodes and connections to load the new ones
-				if (this.instance) {
-					// On first load it does not exist
-					this.instance.deleteEveryEndpoint();
-				}
+				this.deleteEveryEndpoint();
+
 				this.$store.commit('removeAllConnections');
 				this.$store.commit('removeAllNodes', {setStateDirty: true});
 
@@ -2130,6 +2128,16 @@ export default mixins(
 				// Make sure that the node is selected again
 				this.deselectAllNodes();
 				this.nodeSelectedByName(newName);
+			},
+			deleteEveryEndpoint () {
+				// Check as it does not exist on first load
+				if (this.instance) {
+					const nodes = this.$store.getters.allNodes as INodeUi[];
+					// @ts-ignore
+					nodes.forEach((node: INodeUi) => this.instance.destroyDraggable(`${NODE_NAME_PREFIX}${this.$store.getters.getNodeIndex(node.name)}`));
+
+					this.instance.deleteEveryEndpoint();
+				}
 			},
 			matchCredentials(node: INodeUi) {
 				if (!node.credentials) {
@@ -2449,10 +2457,7 @@ export default mixins(
 			},
 			resetWorkspace () {
 				// Reset nodes
-				if (this.instance) {
-					// On first load it does not exist
-					this.instance.deleteEveryEndpoint();
-				}
+				this.deleteEveryEndpoint();
 
 				if (this.executionWaitingForWebhook === true) {
 					// Make sure that if there is a waiting test-webhook that
