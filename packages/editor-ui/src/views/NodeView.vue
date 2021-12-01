@@ -243,6 +243,7 @@ export default mixins(
 			...mapGetters('ui', [
 				'sidebarMenuCollapsed',
 			]),
+			...mapGetters(['nativelyNumberSuffixedDefaults']),
 			activeNode (): INodeUi | null {
 				return this.$store.getters.activeNode;
 			},
@@ -1183,7 +1184,7 @@ export default mixins(
 				newNodeData.name = CanvasHelpers.getUniqueNodeName({
 					nodes: this.$store.getters.allNodes,
 					originalName: newNodeData.name,
-					nativelyNumberSuffixed: this.$store.getters.nativelyNumberSuffixedDefaults,
+					nativelyNumberSuffixed: this.nativelyNumberSuffixedDefaults,
 				});
 
 				if (nodeTypeData.webhooks && nodeTypeData.webhooks.length) {
@@ -1760,7 +1761,7 @@ export default mixins(
 				newNodeData.name = CanvasHelpers.getUniqueNodeName({
 					nodes: this.$store.getters.allNodes,
 					originalName: newNodeData.name,
-					nativelyNumberSuffixed: this.$store.getters.nativelyNumberSuffixedDefaults,
+					nativelyNumberSuffixed: this.nativelyNumberSuffixedDefaults,
 				});
 
 				newNodeData.position = CanvasHelpers.getNewNodePosition(
@@ -2004,7 +2005,7 @@ export default mixins(
 				newName = CanvasHelpers.getUniqueNodeName({
 					nodes: this.$store.getters.allNodes,
 					originalName: newName,
-					nativelyNumberSuffixed: this.$store.getters.nativelyNumberSuffixedDefaults,
+					nativelyNumberSuffixed: this.nativelyNumberSuffixedDefaults,
 				});
 
 				// Rename the node and update the connections
@@ -2218,7 +2219,7 @@ export default mixins(
 						nodes: this.$store.getters.allNodes,
 						originalName: node.name,
 						additionalUsedNames: newNodeNames,
-						nativelyNumberSuffixed: this.$store.getters.nativelyNumberSuffixedDefaults,
+						nativelyNumberSuffixed: this.nativelyNumberSuffixedDefaults,
 					});
 
 					newNodeNames.push(newName);
