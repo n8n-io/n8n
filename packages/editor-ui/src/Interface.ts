@@ -470,11 +470,14 @@ export interface IPersonalizationSurvey {
 }
 
 export interface IN8nPrompt {
+	message: string;
+	title: string;
 	showPrompt: boolean;
 	showValueSurvey: boolean;
 }
 
 export interface IN8nUISettings {
+	contactPrompt: IN8nPrompt;
 	endpointWebhook: string;
 	endpointWebhookTest: string;
 	saveDataErrorExecution: string;

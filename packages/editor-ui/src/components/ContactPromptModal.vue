@@ -11,10 +11,10 @@
 		maxWidth="460px"
 	>
 		<template slot="header">
-			<h2 :class="$style.title">You’re a power user 💪</h2>
+			<h2 :class="$style.title" v-text="title" />
 		</template>
 		<template v-slot:content>
-			<div :class="$style.description">Your experience with n8n can help us improve - for you and our entire community.</div>
+			<div :class="$style.description" v-text="description" />
 			<n8n-input
 				v-model="email"
 				@input="onInputChange"
@@ -33,8 +33,11 @@
 <script lang="ts">
 import Vue from "vue";
 import mixins from "vue-typed-mixins";
+import { mapGetters } from 'vuex';
+
 import { workflowHelpers } from "@/components/mixins/workflowHelpers";
 import Modal from "./Modal.vue";
+
 export default mixins(workflowHelpers).extend({
 	components: { Modal },
 	name: "ContactPromptModal",
@@ -45,6 +48,25 @@ export default mixins(workflowHelpers).extend({
 			isEmailValid: false,
 			modalBus: new Vue(),
 		};
+	},
+	computed: {
+		...mapGetters({
+			promptData: 'settings/getPromptsData',
+		}),
+		title() : string {
+			if (this.promptData.title) {
+				return this.promptData.title;
+			} else {
+				return 'You’re a power user 💪';
+			}
+		},
+		description() : string {
+			if (this.promptData.message) {
+				return this.promptData.message;
+			} else {
+				return 'Your experience with n8n can help us improve - for you and our entire community.';
+			}
+		},
 	},
 	methods: {
 		closeDialog(): void {

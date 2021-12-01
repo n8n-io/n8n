@@ -1,5 +1,6 @@
 import {  ActionContext, Module } from 'vuex';
 import {
+	IN8nPrompt,
 	IN8nUISettings,
 	IPersonalizationSurveyAnswers,
 	IRootState,
@@ -25,6 +26,9 @@ const module: Module<ISettingsState, IRootState> = {
 
 			return getPersonalizedNodeTypes(answers);
 		},
+		getPromptsData(state: ISettingsState) {
+			return state.settings.contactPrompt;
+		},
 	},
 	mutations: {
 		setSettings(state: ISettingsState, settings: IN8nUISettings) {
@@ -35,6 +39,9 @@ const module: Module<ISettingsState, IRootState> = {
 				answers,
 				shouldShow: false,
 			});
+		},
+		setPromptData(state: ISettingsState, data: IN8nPrompt) {
+			Vue.set(state.settings, 'contactPrompt', data);
 		},
 	},
 	actions: {
@@ -74,6 +81,7 @@ const module: Module<ISettingsState, IRootState> = {
 			const promptData = await getPromptsData(context.state.settings.instanceId);
 
 			if (promptData.showPrompt) {
+				context.commit('setPromptData', promptData);
 				context.commit('ui/openModal', CONTACT_PROMPT_MODAL_KEY, {root: true});
 			}
 
