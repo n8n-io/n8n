@@ -141,7 +141,6 @@ export default mixins(
 
 				if (e.metaKey || e.ctrlKey) {
 					const route = this.$router.resolve({name: 'NodeViewExisting', params: {name: data.id}});
-					console.log(route.href);
 					window.open(route.href, '_blank');
 
 					return;
