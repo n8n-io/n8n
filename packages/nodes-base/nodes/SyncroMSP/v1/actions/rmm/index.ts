@@ -1,18 +1,18 @@
 
-import * as getAlert from './getAlert';
+import * as get from './get';
 import * as getAll from './getAll';
-import * as addAlert from './addAlert';
-import * as deleteAlert from './deleteAlert';
-import * as muteAlert from './muteAlert';
+import * as add from './add';
+import * as del from './del';
+import * as mute from './mute';
 
 import { INodeProperties } from 'n8n-workflow';
 
 export {
 	getAll,
-	getAlert,
-	muteAlert,
-	deleteAlert,
-	addAlert,
+	get,
+	mute,
+	del as delete,
+	add,
 };
 
 
@@ -31,17 +31,17 @@ export const descriptions = [
 		options: [
 			{
 				name: 'Create',
-				value: 'addAlert',
+				value: 'add',
 				description: 'Add new RMM Alert',
 			},
 			{
 				name: 'Delete',
-				value: 'deleteAlert',
+				value: 'delete',
 				description: 'Delete RMM Alert',
 			},
 			{
 				name: 'Get',
-				value: 'getAlert',
+				value: 'get',
 				description: 'Retrieve RMM Alert',
 			},
 			{
@@ -51,7 +51,7 @@ export const descriptions = [
 			},
 			{
 				name: 'Mute',
-				value: 'muteAlert',
+				value: 'mute',
 				description: 'Mute RMM Alert',
 			},
 		],
@@ -59,8 +59,8 @@ export const descriptions = [
 		description: 'The operation to perform.',
 	},
 	...getAll.description,
-	...getAlert.description,
-	...addAlert.description,
-	...deleteAlert.description,
-	...muteAlert.description,
+	...get.description,
+	...add.description,
+	...del.description,
+	...mute.description,
 ] as INodeProperties[];

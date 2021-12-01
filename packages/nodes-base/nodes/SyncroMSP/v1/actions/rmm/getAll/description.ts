@@ -4,23 +4,6 @@ import {
 
 export const rmmGetAllDescription: RmmProperties = [
 	{
-		displayName: 'Return All',
-		name: 'returnAll',
-		type: 'boolean',
-		displayOptions: {
-			show: {
-				resource: [
-					'rmm',
-				],
-				operation: [
-					'getAll',
-				],
-			},
-		},
-		default: false,
-		description: 'If all results should be returned or only up to a given limit',
-	},
-	{
 		displayName: 'Limit',
 		name: 'perPage',
 		type: 'number',
@@ -39,6 +22,53 @@ export const rmmGetAllDescription: RmmProperties = [
 		},
 		default: 25,
 		description: 'Limit the number of rows returned',
+	},
+	{
+		displayName: 'Return All',
+		name: 'returnAll',
+		type: 'boolean',
+		displayOptions: {
+			show: {
+				resource: [
+					'rmm',
+				],
+				operation: [
+					'getAll',
+				],
+			},
+		},
+		default: false,
+		description: 'If all results should be returned or only up to a given limit',
+	},
+	{
+		displayName: 'Status',
+		name: 'status',
+		type: 'options',
+		displayOptions: {
+			show: {
+				resource: [
+					'rmm',
+				],
+				operation: [
+					'getAll',
+				],
+			},
+		},
+		options : [
+			{
+				name: 'Active',
+				value: 'active',
+			},
+			{
+				name: 'All',
+				value: 'all',
+			},
+			{
+				name: 'Resolved',
+				value: 'resolved',
+			},
+		],
+		default: 'active',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -64,14 +94,7 @@ export const rmmGetAllDescription: RmmProperties = [
 				default: 1,
 				description: 'Returns provided page of results, each page contains 25 results',
 			},
-			{
-				displayName: 'Status',
-				name: 'status',
-				type: 'string',
-				default: '',
-				placeholder: 'all',
-				description: 'Possible values resolved, all, active',
-			},
+
 		],
 	},
 ];

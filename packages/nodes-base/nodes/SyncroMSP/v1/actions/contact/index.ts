@@ -1,18 +1,18 @@
 
 import * as getAll from './getAll';
-import * as addContact from './addContact';
-import * as getContact from './getContact';
-import * as updateContact from './updateContact';
-import * as deleteContact from './deleteContact';
+import * as add from './add';
+import * as get from './get';
+import * as update from './update';
+import * as del from './del';
 
 import { INodeProperties } from 'n8n-workflow';
 
 export {
 	getAll,
-	addContact,
-	deleteContact,
-	updateContact,
-	getContact,
+	add,
+	del as delete,
+	update,
+	get,
 };
 
 
@@ -31,17 +31,17 @@ export const descriptions = [
 		options: [
 			{
 				name: 'Create',
-				value: 'addContact',
+				value: 'add',
 				description: 'Add new contact',
 			},
 			{
 				name: 'Delete',
-				value: 'deleteContact',
+				value: 'delete',
 				description: 'Delete contact',
 			},
 			{
 				name: 'Get',
-				value: 'getContact',
+				value: 'get',
 				description: 'Retrieve contact',
 			},
 			{
@@ -51,7 +51,7 @@ export const descriptions = [
 			},
 			{
 				name: 'Update',
-				value: 'updateContact',
+				value: 'update',
 				description: 'Update contact',
 			},
 		],
@@ -59,8 +59,8 @@ export const descriptions = [
 		description: 'The operation to perform.',
 	},
 	...getAll.description,
-	...addContact.description,
-	...getContact.description,
-	...updateContact.description,
-	...deleteContact.description,
+	...add.description,
+	...get.description,
+	...update.description,
+	...del.description,
 ] as INodeProperties[];

@@ -18,7 +18,7 @@ export const contactGetAllDescription: ContactProperties = [
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'If all results should be returned or only up to a given limit',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -43,14 +43,6 @@ export const contactGetAllDescription: ContactProperties = [
 				type: 'number',
 				default: 1,
 				description: 'Returns provided page of results, each page contains 25 results',
-			},
-			{
-				displayName: 'Search Query',
-				name: 'query',
-				type: 'string',
-				default: '',
-				placeholder: 'John Doe',
-				description: 'Search query, it can be anything related to contact data like name etc.',
 			},
 		],
 	},

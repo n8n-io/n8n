@@ -58,13 +58,6 @@ export const ticketGetAllDescription: TicketProperties = [
 		default: {},
 		options: [
 			{
-				displayName: 'Limit',
-				name: 'per_page',
-				type: 'number',
-				default: 25,
-				description: 'limit the number of rows returned',
-			},
-			{
 				displayName: 'Page',
 				name: 'page',
 				type: 'number',

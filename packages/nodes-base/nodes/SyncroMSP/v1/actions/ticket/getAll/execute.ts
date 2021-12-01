@@ -15,7 +15,6 @@ import {
 export async function getAll(this: IExecuteFunctions, index: number): Promise<INodeExecutionData[]> {
 	const returnAll = this.getNodeParameter('returnAll', index) as boolean;
 	const additionalFields = this.getNodeParameter('additionalFields', index) as IDataObject;
-	const perPage = this.getNodeParameter('perPage',index) as string;
 
 	let qs = {} as IDataObject;
 	const requestMethod = 'GET';
@@ -26,7 +25,9 @@ export async function getAll(this: IExecuteFunctions, index: number): Promise<IN
 		qs = additionalFields;
 	}
 
-	qs.per_page = perPage;
+	if (returnAll === false) {
+		qs.per_page = this.getNodeParameter('perPage', index) as number;
+	}
 
 	let responseData;
 	if (returnAll) {

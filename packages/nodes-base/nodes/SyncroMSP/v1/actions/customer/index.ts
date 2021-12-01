@@ -1,18 +1,18 @@
 
 import * as getAll from './getAll';
-import * as addCustomer from './addCustomer';
-import * as deleteCustomer from './deleteCustomer';
-import * as updateCustomer from './updateCustomer';
-import * as getCustomer from './getCustomer';
+import * as add from './add';
+import * as del from './del';
+import * as update from './update';
+import * as get from './get';
 
 import { INodeProperties } from 'n8n-workflow';
 
 export {
 	getAll,
-	addCustomer,
-	deleteCustomer,
-	updateCustomer,
-	getCustomer,
+	add,
+	del as delete,
+	update,
+	get,
 };
 
 
@@ -31,17 +31,17 @@ export const descriptions = [
 		options: [
 			{
 				name: 'Create',
-				value: 'addCustomer',
-				description: 'add new customers',
+				value: 'add',
+				description: 'Add new customer',
 			},
 			{
 				name: 'Delete',
-				value: 'deleteCustomer',
-				description: 'delete customers',
+				value: 'delete',
+				description: 'Delete customer',
 			},
 			{
 				name: 'Get',
-				value: 'getCustomer',
+				value: 'get',
 				description: 'Retrieve customer',
 			},
 			{
@@ -51,17 +51,17 @@ export const descriptions = [
 			},
 			{
 				name: 'Update',
-				value: 'updateCustomer',
-				description: 'update customers',
+				value: 'update',
+				description: 'Update customer',
 			},
 		],
 		default: '',
 		description: 'The operation to perform.',
 	},
 	...getAll.description,
-	...getCustomer.description,
-	...addCustomer.description,
-	...deleteCustomer.description,
-	...updateCustomer.description,
+	...get.description,
+	...add.description,
+	...del.description,
+	...update.description,
 ] as INodeProperties[];
 

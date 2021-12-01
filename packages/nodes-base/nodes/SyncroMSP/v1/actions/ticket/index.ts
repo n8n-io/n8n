@@ -1,18 +1,18 @@
 
 import * as getAll from './getAll';
-import * as addTicket from './addTicket';
-import * as getTicket from './getTicket';
-import * as deleteTicket from './deleteTicket';
-import * as updateTicket from './updateTicket';
+import * as add from './add';
+import * as get from './get';
+import * as del from './del';
+import * as update from './update';
 
 import { INodeProperties } from 'n8n-workflow';
 
 export {
 	getAll,
-	addTicket,
-	getTicket,
-	deleteTicket,
-	updateTicket,
+	add,
+	get,
+	del as delete,
+	update,
 };
 
 
@@ -31,17 +31,17 @@ export const descriptions = [
 		options: [
 			{
 				name: 'Create',
-				value: 'addTicket',
+				value: 'add',
 				description: 'Add new ticket',
 			},
 			{
 				name: 'Delete',
-				value: 'deleteTicket',
+				value: 'delete',
 				description: 'Delete ticket',
 			},
 			{
 				name: 'Get',
-				value: 'getTicket',
+				value: 'get',
 				description: 'Retrieve ticket',
 			},
 			{
@@ -51,7 +51,7 @@ export const descriptions = [
 			},
 			{
 				name: 'Update',
-				value: 'updateTicket',
+				value: 'update',
 				description: 'Update ticket',
 			},
 		],
@@ -59,8 +59,8 @@ export const descriptions = [
 		description: 'The operation to perform.',
 	},
 	...getAll.description,
-	...addTicket.description,
-	...getTicket.description,
-	...deleteTicket.description,
-	...updateTicket.description,
+	...add.description,
+	...get.description,
+	...del.description,
+	...update.description,
 ] as INodeProperties[];
