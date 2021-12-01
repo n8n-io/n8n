@@ -79,7 +79,7 @@ export default mixins(workflowHelpers).extend({
 	},
 	methods: {
 		closeDialog(): void {
-			if (!this.isEmailValid) {
+			if (!this.isEmailValid && this.form.value === '') {
 				this.$telemetry.track('User responded value survey score', { instance_id: this.$store.getters.instanceId, how_disappointed: '' });
 			}
 			this.resetForm();
