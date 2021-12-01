@@ -2,12 +2,14 @@
 	<ModalDrawer
 		:name="VALUE_SURVEY_MODAL_KEY"
 		:beforeClose="closeDialog"
+		:modal="false"
+		:wrapperClosable="false"
 		direction="btt"
 		width="120px"
 		class="value-survey"
 	>
 		<template slot="header">
-			<span :class="$style.title" v-text="getTitle" />
+			<span :class="$style.title" v-html="getTitle" />
 		</template>
 		<template slot="content">
 			<section :class="$style.content">
@@ -25,7 +27,7 @@
 						/>
 						<n8n-button label="Send" float="right" @click="send" :disabled="!isEmailValid" />
 					</div>
-					<div :class="$style.disclaimer">Our team would contact you personally. No spam, promise!</div>
+					<div :class="$style.disclaimer">David from our product team will reach out personally.</div>
 				</div>
 			</section>
 		</template>
@@ -67,7 +69,7 @@ export default mixins(workflowHelpers).extend({
 			isEmailValid: false,
 			showButtons: true,
 			title: {
-				default: "How would you feel if you could no longer use n8n?",
+				default: "How would you feel if you could <strong>no longer use n8n</strong>?",
 				very: "Sorry to hear that. We'd love to learn how to improve. Can we reach out?",
 				somewhat: "Thanks for your feedback! We'd love to understand how we can improve. Can we reach out?",
 				not: "Great to hear! Can we reach out to see how we can make n8n even better for you?",
@@ -102,8 +104,9 @@ export default mixins(workflowHelpers).extend({
 				this.$telemetry.track('User responded value survey email', { instance_id: this.$store.getters.instanceId, email: this.form.email });
 				this.$showMessage({
 					title: 'Thanks for your feedback',
-					message: `If you’d like to help even more, answer this <a href="https://n8n-community.typeform.com/quicksurvey#how_disappointed=${this.form.value}&instance_id=${this.$store.getters.instanceId}">quick survey.</a>`,
+					message: `If you’d like to help even more, answer this <a target="_blank" href="https://n8n-community.typeform.com/quicksurvey#how_disappointed=${this.form.value}&instance_id=${this.$store.getters.instanceId}">quick survey.</a>`,
 					type: 'success',
+					duration: -1,
 				});
 			}
 			this.closeDialog();
@@ -119,7 +122,7 @@ export default mixins(workflowHelpers).extend({
 <style module lang="scss">
 .title {
 	height: 16px;
-	font-size: var(--font-size-s);
+	font-size: var(--font-size-m);
 	line-height: 18px;
 	text-align: center;
 	color: var(--color-text-xlight);
@@ -136,6 +139,7 @@ export default mixins(workflowHelpers).extend({
 			border: var(--color-background-xlight);
 			border-radius: 4px;
 			color: var(--color-background-dark);
+			font-size: var(--font-size-s);
 		}
 	}
 
@@ -150,12 +154,13 @@ export default mixins(workflowHelpers).extend({
 
 			button {
 				margin-left: 10px;
+				font-size: var(--font-size-s);
 			}
 		}
 
 		.disclaimer {
-			margin-top: var(--spacing-4xs);
-			font-size: 10px;
+			margin-top: var(--spacing-3xs);
+			font-size: var(--font-size-2xs);
 			color: var(--color-text-xlight);
 		}
 	}
