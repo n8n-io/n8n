@@ -325,11 +325,11 @@ export const opportunityFields = [
 				options: [
 					{
 						name: 'Business',
-						valie: 'Business',
+						value: 'Business',
 					},
 					{
 						name: 'New Business',
-						valie: 'New Business',
+						value: 'New Business',
 					},
 				],
 				description: 'Type of opportunity. For example, Existing Business or New Business. Label is Opportunity Type.',
@@ -538,11 +538,11 @@ export const opportunityFields = [
 				options: [
 					{
 						name: 'Business',
-						valie: 'Business',
+						value: 'Business',
 					},
 					{
 						name: 'New Business',
-						valie: 'New Business',
+						value: 'New Business',
 					},
 				],
 				description: 'Type of opportunity. For example, Existing Business or New Business. Label is Opportunity Type.',
