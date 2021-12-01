@@ -2,9 +2,8 @@ import { readFileSync, writeFile } from 'fs';
 import { promisify } from 'util';
 import { UserSettings } from 'n8n-core';
 
-import * as config from '../config';
 // eslint-disable-next-line import/no-cycle
-import { Db, IPersonalizationSurvey, IPersonalizationSurveyAnswers } from '.';
+import { IPersonalizationSurvey, IPersonalizationSurveyAnswers } from '.';
 
 const fsWriteFile = promisify(writeFile);
 
@@ -40,21 +39,8 @@ export async function preparePersonalizationSurvey(): Promise<IPersonalizationSu
 
 	survey.answers = loadSurveyFromDisk();
 
+	// Only show survey if it hasn't been previously answered
 	if (survey.answers) {
-		return survey;
-	}
-
-	const enabled =
-		(config.get('personalization.enabled') as boolean) &&
-		(config.get('diagnostics.enabled') as boolean);
-
-	if (!enabled) {
-		return survey;
-	}
-
-	const workflowsExist = !!(await Db.collections.Workflow?.findOne());
-
-	if (workflowsExist) {
 		return survey;
 	}
 
