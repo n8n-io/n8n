@@ -51,7 +51,7 @@ export async function scrapingBeeApiRequest(
 			return {};
 		}
 
-		throw new NodeApiError(this.getNode(), error as JsonObject);
+		throw new NodeApiError(this.getNode(), error);
 	}
 }
 
