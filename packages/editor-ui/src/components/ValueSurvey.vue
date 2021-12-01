@@ -169,6 +169,9 @@ export default mixins(workflowHelpers).extend({
 
 <style lang="scss">
 .value-survey {
+	height: 120px;
+  top: auto;
+
 	.el-drawer {
 		background: var(--color-background-dark);
 
