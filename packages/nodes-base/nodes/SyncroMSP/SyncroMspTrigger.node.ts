@@ -60,9 +60,9 @@ export class SyncroMspTrigger implements INodeType {
 						description: 'Triggers on creation of a new ticket.',
 					},
 					{
-						name: 'Ticket Resolved',
+						name: 'Ticket Customer Reply',
 						value: 'resolveTicket',
-						description: 'Triggers when ticket status is marked as resolved.',
+						description: 'Triggers when ticket status is marked as customer-reply.',
 					},
 					{
 						name: 'Ticket In-Progress',
@@ -70,9 +70,14 @@ export class SyncroMspTrigger implements INodeType {
 						description: 'Triggers when ticket status is marked as in-progress.',
 					},
 					{
-						name: 'Ticket Customer Reply',
+						name: 'Ticket Resolved',
 						value: 'resolveTicket',
-						description: 'Triggers when ticket status is marked as customer-reply.',
+						description: 'Triggers when ticket status is marked as resolved.',
+					},
+					{
+						name: 'Ticket Scheduled',
+						value: 'scheduledTicket',
+						description: 'Triggers when ticket status is marked as scheduled.',
 					},
 					{
 						name: 'Ticket Waiting for Parts',
@@ -83,11 +88,6 @@ export class SyncroMspTrigger implements INodeType {
 						name: 'Ticket Waiting for Customer',
 						value: 'waitingForCustomerTicket',
 						description: 'Triggers when ticket status is marked as waiting-for-customer.',
-					},
-					{
-						name: 'Ticket Scheduled',
-						value: 'scheduledTicket',
-						description: 'Triggers when ticket status is marked as scheduled.',
 					},
 				],
 				required: true,
