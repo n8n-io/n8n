@@ -152,7 +152,7 @@
       "dist/credentials/Kafka.credentials.js",
       "dist/credentials/KeapOAuth2Api.credentials.js",
       "dist/credentials/KitemakerApi.credentials.js",
-      "dist/credentials/KoboToolbox/KoboToolboxApi.credentials.js",
+      "dist/credentials/KoboToolboxApi.credentials.js",
       "dist/credentials/LemlistApi.credentials.js",
       "dist/credentials/LineNotifyOAuth2Api.credentials.js",
       "dist/credentials/LingvaNexApi.credentials.js",
