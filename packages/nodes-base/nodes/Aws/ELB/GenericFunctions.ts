@@ -1,4 +1,5 @@
 import {
+	Request,
 	sign,
 } from 'aws4';
 
@@ -36,7 +37,7 @@ export async function awsApiRequest(this: IHookFunctions | IExecuteFunctions | I
 	const endpoint = `${service}.${credentials.region}.amazonaws.com`;
 
 	// Sign AWS API request with the user credentials
-	const signOpts = { headers: headers || {}, host: endpoint, method, path, body };
+	const signOpts = { headers: headers || {}, host: endpoint, method, path, body } as Request;
 
 	if (Object.keys(query).length > 0) {
 		signOpts.path = `${signOpts.path}&${queryToString(query)}`;
