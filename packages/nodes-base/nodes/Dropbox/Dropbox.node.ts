@@ -361,7 +361,7 @@ export class Dropbox implements INodeType {
 						],
 					},
 				},
-				description: 'Name of the binary property to which to<br />write the data of the read file.',
+				description: 'Name of the binary property to which to write the data of the read file.',
 			},
 
 			// ----------------------------------
@@ -446,7 +446,7 @@ export class Dropbox implements INodeType {
 
 				},
 				placeholder: '',
-				description: 'Name of the binary property which contains<br />the data for the file to be uploaded.',
+				description: 'Name of the binary property which contains the data for the file to be uploaded.',
 			},
 
 			// ----------------------------------
@@ -621,7 +621,7 @@ export class Dropbox implements INodeType {
 						name: 'file_extensions',
 						type: 'string',
 						default: '',
-						description: 'Multiple can be set separated by comma. Example: jpg,pdf',
+						description: 'Multiple file extensions can be set separated by comma. Example: jpg,pdf',
 					},
 					{
 						displayName: 'Folder',

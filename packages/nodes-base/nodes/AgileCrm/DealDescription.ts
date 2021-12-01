@@ -110,8 +110,6 @@ export const dealFields = [
 		default: false,
 		description: 'If all results should be returned or only up to a given limit.',
 	},
-
-
 	/* -------------------------------------------------------------------------- */
 	/*                                deal:create                                 */
 	/* -------------------------------------------------------------------------- */

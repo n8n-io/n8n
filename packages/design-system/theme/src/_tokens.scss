@@ -75,6 +75,15 @@
 		var(--color-success-tint-2-l)
 	);
 
+	--color-success-light-h: 150;
+	--color-success-light-s: 54%;
+	--color-success-light-l: 70%;
+	--color-success-light: hsl(
+		var(--color-success-light-h),
+		var(--color-success-light-s),
+		var(--color-success-light-l)
+	);
+
 	--color-warning-h: 36;
 	--color-warning-s: 77%;
 	--color-warning-l: 57%;
@@ -187,6 +196,24 @@
 		var(--color-text-xlight-l)
 	);
 
+	--color-foreground-xdark-h: 220;
+	--color-foreground-xdark-s: 7.4%;
+	--color-foreground-xdark-l: 52.5%;
+	--color-foreground-xdark: hsl(
+		var(--color-foreground-xdark-h),
+		var(--color-foreground-xdark-s),
+		var(--color-foreground-xdark-l)
+	);
+
+	--color-foreground-dark-h: 228;
+	--color-foreground-dark-s: 9.6%;
+	--color-foreground-dark-l: 79.6%;
+	--color-foreground-dark: hsl(
+		var(--color-foreground-dark-h),
+		var(--color-foreground-dark-s),
+		var(--color-foreground-dark-l)
+	);
+
 	--color-foreground-base-h: 220;
 	--color-foreground-base-s: 20%;
 	--color-foreground-base-l: 88.2%;
@@ -259,6 +286,26 @@
 		var(--color-background-xlight-l)
 	);
 
+	--color-canvas-dot-h: 204;
+	--color-canvas-dot-s: 15.6%;
+	--color-canvas-dot-l: 87.5%;
+	--color-canvas-dot: hsl(
+		var(--color-canvas-dot-h),
+		var(--color-canvas-dot-s),
+		var(--color-canvas-dot-l)
+	);
+
+	--color-canvas-background-h: 260;
+	--color-canvas-background-s: 100%;
+	--color-canvas-background-l: 99.4%;
+	--color-canvas-background: hsl(
+		var(--color-canvas-background-h),
+		var(--color-canvas-background-s),
+		var(--color-canvas-background-l)
+	);
+
+	--border-radius-xlarge: 12px;
+	--border-radius-large: 8px;
 	--border-radius-base: 4px;
 	--border-radius-small: 2px;
 	--border-color-base: var(--color-foreground-base);

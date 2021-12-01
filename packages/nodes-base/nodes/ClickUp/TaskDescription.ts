@@ -254,7 +254,7 @@ export const taskFields = [
 					alwaysOpenEditWindow: true,
 				},
 				default: '',
-				description: 'Custom fields to set as JSON in the format:<br />[{"id": "", "value": ""}]',
+				description: 'Custom fields to set as JSON in the format: <code>[ {"id": "", "value": ""} ]</code>',
 			},
 			{
 				displayName: 'Content',
@@ -1063,8 +1063,8 @@ export const taskFields = [
 			},
 		},
 		default: false,
-		description: `The value is JSON and will be parsed as such. Is needed<br />
-		if for example needed for labels which expects the value<br />
+		description: `The value is JSON and will be parsed as such. Is needed
+		if for example needed for labels which expects the value
 		to be an array.`,
 	},
 	{
