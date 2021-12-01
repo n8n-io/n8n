@@ -2,6 +2,7 @@ import { readFileSync, writeFile } from 'fs';
 import { promisify } from 'util';
 import { UserSettings } from 'n8n-core';
 
+import * as config from '../config';
 // eslint-disable-next-line import/no-cycle
 import { IPersonalizationSurvey, IPersonalizationSurveyAnswers } from '.';
 
@@ -39,8 +40,15 @@ export async function preparePersonalizationSurvey(): Promise<IPersonalizationSu
 
 	survey.answers = loadSurveyFromDisk();
 
-	// Only show survey if it hasn't been previously answered
+	// Do not show survey if it has been previously answered
 	if (survey.answers) {
+		return survey;
+	}
+
+	// or if user opted out of personalization
+	const enabled = config.get('personalization.enabled') as boolean;
+
+	if (!enabled) {
 		return survey;
 	}
 
