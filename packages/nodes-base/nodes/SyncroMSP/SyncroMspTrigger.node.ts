@@ -80,14 +80,14 @@ export class SyncroMspTrigger implements INodeType {
 						description: 'Triggers when ticket status is marked as scheduled.',
 					},
 					{
-						name: 'Ticket Waiting for Parts',
-						value: 'waitingForPartsTicket',
-						description: 'Triggers when ticket status is marked as waiting-for-parts.',
-					},
-					{
 						name: 'Ticket Waiting for Customer',
 						value: 'waitingForCustomerTicket',
 						description: 'Triggers when ticket status is marked as waiting-for-customer.',
+					},
+					{
+						name: 'Ticket Waiting for Parts',
+						value: 'waitingForPartsTicket',
+						description: 'Triggers when ticket status is marked as waiting-for-parts.',
 					},
 				],
 				required: true,
@@ -109,11 +109,11 @@ export class SyncroMspTrigger implements INodeType {
 			'A Ticket status was changed to New' : 'createTicket',
 			'A Ticket status was changed to Resolved' : 'resolveTicket',
 			'A Ticket was resolved' : 'resolveTicket',
-			'A Ticket status was changed to In Progress' : 'inProgressTicket',
 			'A Ticket status was changed to Customer Reply' : 'customerReplyTicket',
-			'A Ticket status was changed to Waiting for Parts' : 'waitingForPartsTicket',
-			'A Ticket status was changed to Waiting on Customer': 'waitingForCustomerTicket',
+			'A Ticket status was changed to In Progress' : 'inProgressTicket',
 			'A Ticket status was changed to Scheduled' : 'scheduledTicket',
+			'A Ticket status was changed to Waiting on Customer': 'waitingForCustomerTicket',
+			'A Ticket status was changed to Waiting for Parts' : 'waitingForPartsTicket',
 		};
 		const event = (bodyData.text as string).split('\n')[0];
 		const attribute = bodyData['attributes'] as IDataObject;
