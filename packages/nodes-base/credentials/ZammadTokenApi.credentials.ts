@@ -24,5 +24,11 @@ export class ZammadTokenApi implements ICredentialType {
 			},
 			default: '',
 		},
+		{
+			displayName: 'Ignore SSL Issues',
+			name: 'allowUnauthorizedCerts',
+			type: 'boolean',
+			default: false,
+		},
 	];
 }

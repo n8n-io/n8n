@@ -26,6 +26,12 @@ export class ZammadOAuth2Api implements ICredentialType {
 			required: true,
 		},
 		{
+			displayName: 'Ignore SSL Issues',
+			name: 'allowUnauthorizedCerts',
+			type: 'boolean',
+			default: false,
+		},
+		{
 			displayName: 'Scope',
 			name: 'scope',
 			type: 'hidden',
