@@ -21,7 +21,7 @@ export class SyncroMspTrigger implements INodeType {
 		description: 'Starts the workflow when events occur on SyncroMSP',
 		defaults: {
 			name: 'SyncroMSP Trigger',
-			color: '#000000',
+			color: '#08a4ab',
 		},
 		inputs: [],
 		outputs: ['main'],
