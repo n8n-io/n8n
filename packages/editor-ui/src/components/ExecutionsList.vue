@@ -35,7 +35,7 @@
 			<div class="selection-options">
 				<span v-if="checkAll === true || isIndeterminate === true">
 					Selected: {{numSelected}} / <span v-if="finishedExecutionsCountEstimated === true">~</span>{{finishedExecutionsCount}}
-					<n8n-icon-button title="Delete Selected" icon="trash" size="small" @click="handleDeleteSelected" />
+					<n8n-icon-button title="Delete Selected" icon="trash" size="mini" @click="handleDeleteSelected" />
 				</span>
 			</div>
 
@@ -43,10 +43,10 @@
 				<el-table-column label="" width="30">
 					<!-- eslint-disable-next-line vue/no-unused-vars -->
 					<template slot="header" slot-scope="scope">
-						<el-checkbox :indeterminate="isIndeterminate" v-model="checkAll" @change="handleCheckAllChange">Check all</el-checkbox>
+						<el-checkbox :indeterminate="isIndeterminate" v-model="checkAll" @change="handleCheckAllChange" label=" "></el-checkbox>
 					</template>
 					<template slot-scope="scope">
-						<el-checkbox v-if="scope.row.stoppedAt !== undefined && scope.row.id" :value="selectedItems[scope.row.id.toString()] || checkAll" @change="handleCheckboxChanged(scope.row.id)" >Check all</el-checkbox>
+						<el-checkbox v-if="scope.row.stoppedAt !== undefined && scope.row.id" :value="selectedItems[scope.row.id.toString()] || checkAll" @change="handleCheckboxChanged(scope.row.id)" label=" "></el-checkbox>
 					</template>
 				</el-table-column>
 				<el-table-column property="startedAt" label="Started At / ID" width="205">
@@ -101,7 +101,7 @@
 									 v-if="scope.row.stoppedAt !== undefined && !scope.row.finished && scope.row.retryOf === undefined && scope.row.retrySuccessId === undefined && !scope.row.waitTill"
 									 type="light"
 									 :theme="scope.row.stoppedAt === null ? 'warning': 'danger'"
-									 size="small"
+									 size="mini"
 									 title="Retry execution"
 									 icon="redo"
 								/>
@@ -134,10 +134,10 @@
 					<template slot-scope="scope">
 						<div class="actions-container">
 							<span v-if="scope.row.stoppedAt === undefined || scope.row.waitTill">
-								<n8n-icon-button icon="stop" title="Stop Execution" @click.stop="stopExecution(scope.row.id)" :loading="stoppingExecutions.includes(scope.row.id)" />
+								<n8n-icon-button icon="stop" size="small" title="Stop Execution" @click.stop="stopExecution(scope.row.id)" :loading="stoppingExecutions.includes(scope.row.id)" />
 							</span>
 							<span v-if="scope.row.stoppedAt !== undefined && scope.row.id" >
-								<n8n-icon-button icon="folder-open" title="Open Past Execution" @click.stop="displayExecution(scope.row)" />
+								<n8n-icon-button icon="folder-open" size="small" title="Open Past Execution" @click.stop="displayExecution(scope.row)" />
 							</span>
 						</div>
 					</template>
@@ -172,6 +172,10 @@ import {
 	IExecutionsSummary,
 	IWorkflowShortResponse,
 } from '@/Interface';
+
+import {
+	convertToDisplayDate,
+} from './helpers';
 
 import {
 	IDataObject,
@@ -319,6 +323,7 @@ export default mixins(
 			}
 			return false;
 		},
+		convertToDisplayDate,
 		displayExecution (execution: IExecutionShortResponse) {
 			this.$router.push({
 				name: 'ExecutionById',
@@ -380,7 +385,7 @@ export default mixins(
 
 			this.$showMessage({
 				title: 'Execution deleted',
-				message: 'The executions got deleted!',
+				message: 'The executions were deleted!',
 				type: 'success',
 			});
 
@@ -575,6 +580,7 @@ export default mixins(
 			this.handleAutoRefreshToggle();
 
 			this.$externalHooks().run('executionsList.openDialog');
+			this.$telemetry.track('User opened Executions log', { workflow_id: this.$store.getters.workflowId });
 		},
 		async retryExecution (execution: IExecutionShortResponse, loadWorkflow?: boolean) {
 			this.isDataLoading = true;
@@ -705,12 +711,10 @@ export default mixins(
 	position: relative;
 	display: inline-block;
 	padding: 0 10px;
-	height: 22.6px;
 	line-height: 22.6px;
 	border-radius: 15px;
 	text-align: center;
-	font-weight: 400;
-	font-size: 12px;
+	font-size: var(--font-size-s);
 
 	&.error {
 		background-color: var(--color-danger-tint-1);

@@ -15,6 +15,10 @@
 
 	.el-select__tags {
 		overflow-x: scroll;
+
+		&::-webkit-scrollbar {
+			display: none;
+		}
 	}
 
 	.el-select__tags > span {

@@ -87,6 +87,14 @@ export class FacebookGraphApi implements INodeType {
 						value: '',
 					},
 					{
+						name: 'v12.0',
+						value: 'v12.0',
+					},
+					{
+						name: 'v11.0',
+						value: 'v11.0',
+					},
+					{
 						name: 'v10.0',
 						value: 'v10.0',
 					},
@@ -196,9 +204,7 @@ export class FacebookGraphApi implements INodeType {
 						],
 					},
 				},
-				description: `Name of the binary property which contains the data for the file to be uploaded.<br />
-							For Form-Data Multipart, multiple can be provided in the format:<br />
-							"sendKey1:binaryProperty1,sendKey2:binaryProperty2`,
+				description: `Name of the binary property which contains the data for the file to be uploaded. For Form-Data Multipart, they can be provided in the format: <code>"sendKey1:binaryProperty1,sendKey2:binaryProperty2</code>`,
 			},
 			{
 				displayName: 'Options',

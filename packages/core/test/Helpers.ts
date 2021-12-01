@@ -4,7 +4,9 @@ import {
 	ICredentialDataDecryptedObject,
 	ICredentialsHelper,
 	IDataObject,
+	IDeferredPromise,
 	IExecuteWorkflowInfo,
+	INodeCredentialsDetails,
 	INodeExecutionData,
 	INodeParameters,
 	INodeType,
@@ -14,25 +16,29 @@ import {
 	ITaskData,
 	IWorkflowBase,
 	IWorkflowExecuteAdditionalData,
+	NodeHelpers,
 	NodeParameterValue,
 	WorkflowHooks,
 } from 'n8n-workflow';
 
-import { Credentials, IDeferredPromise, IExecuteFunctions } from '../src';
+import { Credentials, IExecuteFunctions } from '../src';
 
 export class CredentialsHelper extends ICredentialsHelper {
-	getDecrypted(name: string, type: string): Promise<ICredentialDataDecryptedObject> {
+	getDecrypted(
+		nodeCredentials: INodeCredentialsDetails,
+		type: string,
+	): Promise<ICredentialDataDecryptedObject> {
 		return new Promise((res) => res({}));
 	}
 
-	getCredentials(name: string, type: string): Promise<Credentials> {
+	getCredentials(nodeCredentials: INodeCredentialsDetails, type: string): Promise<Credentials> {
 		return new Promise((res) => {
-			res(new Credentials('', '', [], ''));
+			res(new Credentials({ id: null, name: '' }, '', [], ''));
 		});
 	}
 
 	async updateCredentials(
-		name: string,
+		nodeCredentials: INodeCredentialsDetails,
 		type: string,
 		data: ICredentialDataDecryptedObject,
 	): Promise<void> {}
@@ -610,10 +616,7 @@ class NodeTypesClass implements INodeTypes {
 									name: 'dotNotation',
 									type: 'boolean',
 									default: true,
-									description: `By default does dot-notation get used in property names..<br />
-						This means that "a.b" will set the property "b" underneath "a" so { "a": { "b": value} }.<br />
-						If that is not intended this can be deactivated, it will then set { "a.b": value } instead.
-						`,
+									description: `<p>By default, dot-notation is used in property names. This means that "a.b" will set the property "b" underneath "a" so { "a": { "b": value} }.</p><p>If that is not intended this can be deactivated, it will then set { "a.b": value } instead.</p>`,
 								},
 							],
 						},
@@ -720,11 +723,15 @@ class NodeTypesClass implements INodeTypes {
 	async init(nodeTypes: INodeTypeData): Promise<void> {}
 
 	getAll(): INodeType[] {
-		return Object.values(this.nodeTypes).map((data) => data.type);
+		return Object.values(this.nodeTypes).map((data) => NodeHelpers.getVersionedTypeNode(data.type));
 	}
 
 	getByName(nodeType: string): INodeType {
-		return this.nodeTypes[nodeType].type;
+		return this.getByNameAndVersion(nodeType);
+	}
+
+	getByNameAndVersion(nodeType: string, version?: number): INodeType {
+		return NodeHelpers.getVersionedTypeNode(this.nodeTypes[nodeType].type, version);
 	}
 }
 

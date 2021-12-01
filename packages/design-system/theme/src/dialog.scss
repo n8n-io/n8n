@@ -32,12 +32,12 @@
 
 	@include mixins.e(header) {
 		padding: var.$dialog-padding-primary;
-		padding-bottom: 10px;
+		padding-bottom: 0px;
 	}
 
 	@include mixins.e(headerbtn) {
 		position: absolute;
-		top: var.$dialog-padding-primary;
+		top: var.$dialog-close-top;
 		right: var.$dialog-padding-primary;
 		padding: 0;
 		background: transparent;
@@ -59,16 +59,15 @@
 	}
 
 	@include mixins.e(title) {
-		line-height: var.$dialog-font-line-height;
-		font-size: var.$dialog-title-font-size;
+		line-height: var(--font-line-height-compact);
+		font-size: var(--font-size-xl);
 		color: var(--color-text-dark);
+		font-weight: var(--font-weight-regular);
 	}
 
 	@include mixins.e(body) {
-		padding: (var.$dialog-padding-primary + 10px) var.$dialog-padding-primary;
-		color: var(--color-text-dark);
-		font-size: var.$dialog-content-font-size;
-		word-break: break-all;
+		padding: var.$dialog-padding-primary;
+		color: var(--color-text-base);
 	}
 
 	@include mixins.e(footer) {

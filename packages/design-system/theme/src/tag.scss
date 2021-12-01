@@ -5,6 +5,7 @@
 	background-color: var.$color-primary-lighter;
 	border-color: var.$color-primary-light-5;
 	color: var.$color-primary-light-1;
+	font-weight: var(--font-weight-regular);
 
 	@include mixins.when(hit) {
 		border-color: var.$tag-primary-color;
@@ -37,9 +38,9 @@
 	}
 
 	&.el-tag--success {
-		background-color: var.$color-success-lighter;
-		border-color: var.$color-success-light-5;
-		color: var.$color-success-light-3;
+		background-color: var(--color-success-tint-2);
+		border-color: var(--color-success-tint-1);
+		color: var(--color-success);
 
 		@include mixins.when(hit) {
 			border-color: var.$tag-success-color;
@@ -94,9 +95,7 @@
 @include mixins.b(tag) {
 	@include genTheme();
 	display: inline-block;
-	height: 32px;
 	padding: var.$tag-padding;
-	line-height: 30px;
 	font-size: var.$tag-font-size;
 	color: var.$tag-primary-color;
 	border-width: 1px;
@@ -132,8 +131,7 @@
 	}
 
 	@include mixins.m(medium) {
-		height: 28px;
-		line-height: 26px;
+		padding: 12px;
 
 		.el-icon-close {
 			transform: scale(0.8);

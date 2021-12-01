@@ -66,7 +66,7 @@ export const documentFields = [
 			},
 		},
 		placeholder: '',
-		description: 'Name of the binary property which contains<br />the data for the file to be uploaded.',
+		description: 'Name of the binary property which contains the data for the file to be uploaded.',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -85,6 +85,14 @@ export const documentFields = [
 			},
 		},
 		options: [
+			{
+				displayName: 'File Extension',
+				name: 'fileExtension',
+				type: 'string',
+				default: '',
+				placeholder: 'pdf',
+				description: 'File extension to use. If none is set, the value from the binary data will be used.',
+			},
 			{
 				displayName: 'Link To Object ID',
 				name: 'linkToObjectId',

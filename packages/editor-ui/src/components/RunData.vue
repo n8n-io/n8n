@@ -17,32 +17,31 @@
 
 		<div class="header">
 			<div class="title-text">
-				<strong v-if="dataCount < maxDisplayItems">
+				<n8n-text :bold="true" v-if="dataCount < maxDisplayItems">
 					Items: {{ dataCount }}
-				</strong>
+				</n8n-text>
 				<div v-else class="title-text">
-					<strong>Items:</strong>
+					<n8n-text :bold="true">Items:</n8n-text>
 					<span class="opts">
 						<n8n-select size="mini" v-model="maxDisplayItems" @click.stop>
 							<n8n-option v-for="option in maxDisplayItemsOptions" :label="option" :value="option" :key="option" />
 						</n8n-select>
-					</span>&nbsp;/
-					<strong>{{ dataCount }}</strong>
+					</span>/
+					<n8n-text :bold="true">{{ dataCount }}</n8n-text>
 				</div>
-				&nbsp;
 				<n8n-tooltip
 					v-if="runMetadata"
 					placement="right"
 				>
 					<div slot="content">
-						<strong>Start Time:</strong> {{runMetadata.startTime}}<br/>
-						<strong>Execution Time:</strong> {{runMetadata.executionTime}} ms
+						<n8n-text :bold="true" size="small">Start Time:</n8n-text> {{runMetadata.startTime}}<br/>
+						<n8n-text :bold="true" size="small">Execution Time:</n8n-text> {{runMetadata.executionTime}} ms
 					</div>
 					<font-awesome-icon icon="info-circle" class="primary-color" />
 				</n8n-tooltip>
-				<span v-if="maxOutputIndex > 0">
-					| Output:&nbsp;
-				</span>
+				<n8n-text :bold="true" v-if="maxOutputIndex > 0">
+					| Output:
+				</n8n-text>
 				<span class="opts" v-if="maxOutputIndex > 0" >
 					<n8n-select size="mini" v-model="outputIndex" @click.stop>
 						<n8n-option v-for="option in (maxOutputIndex + 1)" :label="getOutputName(option-1)" :value="option -1" :key="option">
@@ -50,9 +49,9 @@
 					</n8n-select>
 				</span>
 
-				<span v-if="maxRunIndex > 0">
-					| Data of Execution:&nbsp;
-				</span>
+				<n8n-text :bold="true" v-if="maxRunIndex > 0">
+					| Data of Execution:
+				</n8n-text>
 				<span class="opts">
 					<n8n-select v-if="maxRunIndex > 0" size="mini" v-model="runIndex" @click.stop>
 						<n8n-option v-for="option in (maxRunIndex + 1)" :label="option + '/' + (maxRunIndex+1)" :value="option-1" :key="option">
@@ -187,7 +186,7 @@
 			</span>
 			<div v-else class="message">
 				<div>
-					<strong>No data</strong><br />
+					<n8n-text :bold="true">No data</n8n-text ><br />
 					<br />
 					Data returned by this node will display here<br />
 				</div>
@@ -204,6 +203,7 @@ import {
 	IBinaryKeyData,
 	IDataObject,
 	INodeExecutionData,
+	INodeTypeDescription,
 	IRunData,
 	IRunExecutionData,
 	ITaskData,
@@ -269,6 +269,9 @@ export default mixins(
 				MAX_DISPLAY_DATA_SIZE,
 				MAX_DISPLAY_ITEMS_AUTO_ALL,
 			};
+		},
+		mounted() {
+			this.init();
 		},
 		computed: {
 			hasNodeRun(): boolean {
@@ -423,6 +426,18 @@ export default mixins(
 			},
 		},
 		methods: {
+			init() {
+				// Reset the selected output index every time another node gets selected
+				this.outputIndex = 0;
+				this.maxDisplayItems = 25;
+				this.refreshDataSize();
+				if (this.displayMode === 'Binary') {
+					this.closeBinaryDataDisplay();
+					if (this.binaryData.length === 0) {
+						this.displayMode = 'Table';
+					}
+				}
+			},
 			closeBinaryDataDisplay () {
 				this.binaryDataDisplayVisible = false;
 				this.binaryDataDisplayData = null;
@@ -515,8 +530,8 @@ export default mixins(
 					return outputIndex + 1;
 				}
 
-				const nodeType = this.$store.getters.nodeType(this.node.type);
-				if (!nodeType.hasOwnProperty('outputNames') || nodeType.outputNames.length <= outputIndex) {
+				const nodeType = this.$store.getters.nodeType(this.node.type) as INodeTypeDescription | null;
+				if (!nodeType || !nodeType.outputNames || nodeType.outputNames.length <= outputIndex) {
 					return outputIndex + 1;
 				}
 
@@ -607,17 +622,8 @@ export default mixins(
 			},
 		},
 		watch: {
-			node (newNode, oldNode) {
-				// Reset the selected output index every time another node gets selected
-				this.outputIndex = 0;
-				this.maxDisplayItems = 25;
-				this.refreshDataSize();
-				if (this.displayMode === 'Binary') {
-					this.closeBinaryDataDisplay();
-					if (this.binaryData.length === 0) {
-						this.displayMode = 'Table';
-					}
-				}
+			node() {
+				this.init();
 			},
 			jsonData () {
 				this.refreshDataSize();
@@ -625,12 +631,14 @@ export default mixins(
 			displayMode (newValue, oldValue) {
 				this.closeBinaryDataDisplay();
 				this.$externalHooks().run('runData.displayModeChanged', { newValue, oldValue });
+				if(this.node) {
+					const nodeType = this.node ? this.node.type : '';
+					this.$telemetry.track('User changed node output view mode', { old_mode: oldValue, new_mode: newValue, node_type: nodeType, workflow_id: this.$store.getters.workflowId });
+				}
 			},
 			maxRunIndex () {
 				this.runIndex = Math.min(this.runIndex, this.maxRunIndex);
 			},
-		},
-		mounted () {
 		},
 	});
 </script>
@@ -639,14 +647,8 @@ export default mixins(
 
 .run-data-view {
 	position: relative;
-	bottom: 0;
-	left: 0;
-	margin-left: 350px;
-	width: calc(100% - 350px);
+	width: 100%;
 	height: 100%;
-	z-index: 100;
-	color: #555;
-	font-size: 14px;
 	background-color: #f9f9f9;
 
 	.data-display-content {
@@ -657,6 +659,8 @@ export default mixins(
 		right: 0;
 		overflow-y: auto;
 		line-height: 1.5;
+		word-break: normal;
+		font-size: var(--font-size-s);
 
 		.binary-data-row {
 			display: inline-flex;
@@ -795,6 +799,10 @@ export default mixins(
 		.title-text {
 			display: inline-flex;
 			align-items: center;
+
+			> * {
+				margin-right: 2px;
+			}
 		}
 
 		.title-data-display-selector {

@@ -1,13 +1,15 @@
 <template>
 	<Modal
-		:name="modalName"
-		size="xl"
+		:name="WORKFLOW_OPEN_MODAL_KEY"
+		width="80%"
+		minWidth="620px"
+		:classic="true"
 	>
 			<template v-slot:header>
 				<div class="workflows-header">
-					<div class="title">
-						<h1>Open Workflow</h1>
-					</div>
+					<n8n-heading tag="h1" size="xlarge" class="title">
+						Open Workflow
+					</n8n-heading>
 					<div class="tags-filter">
 						<TagsDropdown
 							placeholder="Filter by tags..."
@@ -63,6 +65,8 @@ import Modal from '@/components/Modal.vue';
 import TagsContainer from '@/components/TagsContainer.vue';
 import TagsDropdown from '@/components/TagsDropdown.vue';
 import WorkflowActivator from '@/components/WorkflowActivator.vue';
+import { convertToDisplayDate } from './helpers';
+import { WORKFLOW_OPEN_MODAL_KEY } from '../constants';
 
 export default mixins(
 	genericHelpers,
@@ -85,6 +89,7 @@ export default mixins(
 			workflows: [] as IWorkflowShortResponse[],
 			filterTagIds: [] as string[],
 			prevFilterTagIds: [] as string[],
+			WORKFLOW_OPEN_MODAL_KEY,
 		};
 	},
 	computed: {
@@ -176,8 +181,8 @@ export default mixins(
 						this.workflows = data;
 
 						this.workflows.forEach((workflowData: IWorkflowShortResponse) => {
-							workflowData.createdAt = this.convertToDisplayDate(workflowData.createdAt as number);
-							workflowData.updatedAt = this.convertToDisplayDate(workflowData.updatedAt as number);
+							workflowData.createdAt = convertToDisplayDate(workflowData.createdAt as number);
+							workflowData.updatedAt = convertToDisplayDate(workflowData.updatedAt as number);
 						});
 						this.isDataLoading = false;
 					},
@@ -211,14 +216,8 @@ export default mixins(
 .workflows-header {
 	display: flex;
 
-	.title {
+	> *:first-child {
 		flex-grow: 1;
-
-		h1 {
-			font-weight: 600;
-			line-height: 24px;
-			font-size: 18px;
-		}
 	}
 
 	.search-filter {

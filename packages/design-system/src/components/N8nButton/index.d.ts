@@ -35,9 +35,6 @@ export declare class N8nButton extends N8nComponent {
 	/** Button icon, accepts an icon name of font awesome icon component */
 	icon: string;
 
-	/** Size of icon */
-	iconSize: N8nComponentSize;
-
 	/** Full width */
 	fullWidth: boolean;
 

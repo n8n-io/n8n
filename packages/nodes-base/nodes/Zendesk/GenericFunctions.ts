@@ -33,7 +33,6 @@ export async function zendeskApiRequest(this: IHookFunctions | IExecuteFunctions
 	if (Object.keys(options.body).length === 0) {
 		delete options.body;
 	}
-
 	try {
 		if (authenticationMethod === 'apiToken') {
 			const credentials = await this.getCredentials('zendeskApi');
@@ -43,9 +42,8 @@ export async function zendeskApiRequest(this: IHookFunctions | IExecuteFunctions
 			}
 
 			const base64Key =  Buffer.from(`${credentials.email}/token:${credentials.apiToken}`).toString('base64');
-			options.uri = `https://${credentials.subdomain}.zendesk.com/api/v2${resource}.json`;
+			options.uri = uri || `https://${credentials.subdomain}.zendesk.com/api/v2${resource}.json`;
 			options.headers!['Authorization'] = `Basic ${base64Key}`;
-
 			return await this.helpers.request!(options);
 		} else {
 			const credentials = await this.getCredentials('zendeskOAuth2Api');
@@ -54,7 +52,7 @@ export async function zendeskApiRequest(this: IHookFunctions | IExecuteFunctions
 				throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
 			}
 
-			options.uri = `https://${credentials.subdomain}.zendesk.com/api/v2${resource}.json`;
+			options.uri = uri || `https://${credentials.subdomain}.zendesk.com/api/v2${resource}.json`;
 
 			return await this.helpers.requestOAuth2!.call(this, 'zendeskOAuth2Api', options);
 		}

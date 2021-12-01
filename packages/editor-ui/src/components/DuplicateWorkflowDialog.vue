@@ -3,19 +3,19 @@
 		:name="modalName"
 		:eventBus="modalBus"
 		@enter="save"
-		size="sm"
 		title="Duplicate Workflow"
+		:center="true"
+		minWidth="420px"
+		maxWidth="420px"
 	>
 		<template v-slot:content>
-			<el-row>
+			<div :class="$style.content">
 				<n8n-input
 					v-model="name"
 					ref="nameInput"
 					placeholder="Enter workflow name"
 					:maxlength="MAX_WORKFLOW_NAME_LENGTH"
 				/>
-			</el-row>
-			<el-row>
 				<TagsDropdown
 					:createEnabled="true"
 					:currentTagIds="currentTagIds"
@@ -26,7 +26,7 @@
 					placeholder="Choose or create a tag"
 					ref="dropdown"
 				/>
-			</el-row>
+			</div>
 		</template>
 		<template v-slot:footer="{ close }">
 			<div :class="$style.footer">
@@ -50,7 +50,7 @@ import Modal from "./Modal.vue";
 export default mixins(showMessage, workflowHelpers).extend({
 	components: { TagsDropdown, Modal },
 	name: "DuplicateWorkflow",
-	props: ["dialogVisible", "modalName", "isActive"],
+	props: ["modalName", "isActive"],
 	data() {
 		const currentTagIds = this.$store.getters[
 			"workflowTags"
@@ -109,12 +109,18 @@ export default mixins(showMessage, workflowHelpers).extend({
 				return;
 			}
 
+			const currentWorkflowId = this.$store.getters.workflowId;
+
 			this.$data.isSaving = true;
 
-			const saved = await this.saveAsNewWorkflow({name, tags: this.currentTagIds, resetWebhookUrls: true});
+			const saved = await this.saveAsNewWorkflow({name, tags: this.currentTagIds, resetWebhookUrls: true, openInNewWindow: true});
 
 			if (saved) {
 				this.closeDialog();
+				this.$telemetry.track('User duplicated workflow', {
+					old_workflow_id: currentWorkflowId,
+					workflow_id: this.$store.getters.workflowId,
+				});
 			}
 
 			this.$data.isSaving = false;
@@ -127,6 +133,12 @@ export default mixins(showMessage, workflowHelpers).extend({
 </script>
 
 <style lang="scss" module>
+.content {
+	> *:not(:last-child) {
+		margin-bottom: var(--spacing-m);
+	}
+}
+
 .footer {
 	> * {
 		margin-left: var(--spacing-3xs);

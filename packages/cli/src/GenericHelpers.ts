@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-non-null-assertion */
 /* eslint-disable @typescript-eslint/restrict-template-expressions */
 /* eslint-disable @typescript-eslint/no-unsafe-return */
 /* eslint-disable no-param-reassign */
@@ -6,12 +7,15 @@
 import * as express from 'express';
 import { join as pathJoin } from 'path';
 import { readFile as fsReadFile } from 'fs/promises';
-import { readFileSync as fsReadFileSync } from 'fs';
 import { IDataObject } from 'n8n-workflow';
 import * as config from '../config';
 
 // eslint-disable-next-line import/no-cycle
-import { IPackageVersions } from '.';
+import { Db, ICredentialsDb, IPackageVersions } from '.';
+// eslint-disable-next-line import/order
+import { Like } from 'typeorm';
+// eslint-disable-next-line import/no-cycle
+import { WorkflowEntity } from './databases/entities/WorkflowEntity';
 
 let versionCache: IPackageVersions | undefined;
 
@@ -133,40 +137,54 @@ export async function getConfigValue(
 }
 
 /**
- * Gets value from config with support for "_FILE" environment variables synchronously
+ * Generate a unique name for a workflow or credentials entity.
  *
- * @export
- * @param {string} configKey The key of the config data to get
- * @returns {(string | boolean | number | undefined)}
+ * - If the name does not yet exist, it returns the requested name.
+ * - If the name already exists once, it returns the requested name suffixed with 2.
+ * - If the name already exists more than once with suffixes, it looks for the max suffix
+ * and returns the requested name with max suffix + 1.
  */
-export function getConfigValueSync(configKey: string): string | boolean | number | undefined {
-	// Get the environment variable
-	const configSchema = config.getSchema();
-	// @ts-ignore
-	const currentSchema = extractSchemaForKey(configKey, configSchema._cvtProperties as IDataObject);
-	// Check if environment variable is defined for config key
-	if (currentSchema.env === undefined) {
-		// No environment variable defined, so return value from config
-		return config.get(configKey);
+// eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
+export async function generateUniqueName(
+	requestedName: string,
+	entityType: 'workflow' | 'credentials',
+) {
+	const findConditions = {
+		select: ['name' as const],
+		where: {
+			name: Like(`${requestedName}%`),
+		},
+	};
+
+	const found: Array<WorkflowEntity | ICredentialsDb> =
+		entityType === 'workflow'
+			? await Db.collections.Workflow!.find(findConditions)
+			: await Db.collections.Credentials!.find(findConditions);
+
+	// name is unique
+	if (found.length === 0) {
+		return { name: requestedName };
 	}
 
-	// Check if special file enviroment variable exists
-	const fileEnvironmentVariable = process.env[`${currentSchema.env}_FILE`];
-	if (fileEnvironmentVariable === undefined) {
-		// Does not exist, so return value from config
-		return config.get(configKey);
-	}
+	const maxSuffix = found.reduce((acc, { name }) => {
+		const parts = name.split(`${requestedName} `);
 
-	let data;
-	try {
-		data = fsReadFileSync(fileEnvironmentVariable, 'utf8');
-	} catch (error) {
-		if (error.code === 'ENOENT') {
-			throw new Error(`The file "${fileEnvironmentVariable}" could not be found.`);
+		if (parts.length > 2) return acc;
+
+		const suffix = Number(parts[1]);
+
+		// eslint-disable-next-line no-restricted-globals
+		if (!isNaN(suffix) && Math.ceil(suffix) > acc) {
+			acc = Math.ceil(suffix);
 		}
 
-		throw error;
+		return acc;
+	}, 0);
+
+	// name is duplicate but no numeric suffixes exist yet
+	if (maxSuffix === 0) {
+		return { name: `${requestedName} 2` };
 	}
 
-	return data;
+	return { name: `${requestedName} ${maxSuffix + 1}` };
 }

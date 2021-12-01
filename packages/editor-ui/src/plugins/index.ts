@@ -1,3 +1,3 @@
 import './icons';
 import './directives';
-import './compontents';
+import './components';

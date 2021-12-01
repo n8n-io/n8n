@@ -118,8 +118,7 @@ export const playlistItemFields = [
 				name: 'onBehalfOfContentOwner',
 				type: 'string',
 				default: '',
-				description: `The onBehalfOfContentOwner parameter indicates that the request's authorization credentials identify<br>
-				a YouTube CMS user who is acting on behalf of the content owner specified in the parameter value`,
+				description: `The onBehalfOfContentOwner parameter indicates that the request's authorization credentials identify a YouTube CMS user who is acting on behalf of the content owner specified in the parameter value`,
 			},
 			{
 				displayName: 'Position',
@@ -222,8 +221,7 @@ export const playlistItemFields = [
 				name: 'onBehalfOfContentOwner',
 				type: 'string',
 				default: '',
-				description: `The onBehalfOfContentOwner parameter indicates that the request's authorization credentials identify<br>
-				a YouTube CMS user who is acting on behalf of the content owner specified in the parameter value`,
+				description: `The onBehalfOfContentOwner parameter indicates that the request's authorization credentials identify a YouTube CMS user who is acting on behalf of the content owner specified in the parameter value`,
 			},
 		],
 	},
@@ -269,8 +267,7 @@ export const playlistItemFields = [
 				name: 'onBehalfOfContentOwner',
 				type: 'string',
 				default: '',
-				description: `The onBehalfOfContentOwner parameter indicates that the request's authorization credentials identify<br>
-				a YouTube CMS user who is acting on behalf of the content owner specified in the parameter value`,
+				description: `The onBehalfOfContentOwner parameter indicates that the request's authorization credentials identify a YouTube CMS user who is acting on behalf of the content owner specified in the parameter value`,
 			},
 		],
 	},
@@ -400,8 +397,7 @@ export const playlistItemFields = [
 				name: 'onBehalfOfContentOwner',
 				type: 'string',
 				default: '',
-				description: `The onBehalfOfContentOwner parameter indicates that the request's authorization credentials identify<br>
-				a YouTube CMS user who is acting on behalf of the content owner specified in the parameter value`,
+				description: `The onBehalfOfContentOwner parameter indicates that the request's authorization credentials identify a YouTube CMS user who is acting on behalf of the content owner specified in the parameter value`,
 			},
 		],
 	},

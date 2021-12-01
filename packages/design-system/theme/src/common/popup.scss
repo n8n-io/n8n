@@ -31,8 +31,7 @@
 	top: 0;
 	width: 100%;
 	height: 100%;
-	opacity: var.$popup-modal-opacity;
-	background: var.$popup-modal-background-color;
+	background-color: var.$popup-modal-background-color;
 }
 
 @include mixins.b(popup-parent) {

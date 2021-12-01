@@ -46,24 +46,6 @@ export default mixins(
 </script>
 
 <style lang="scss">
-.el-menu--horizontal>.el-menu-item,
-.el-menu--horizontal>.el-submenu .el-submenu__title,
-.el-menu-item {
-	height: 65px;
-	line-height: 65px;
-}
-
-.el-submenu .el-submenu__title,
-.el-menu--horizontal>.el-menu-item,
-.el-menu.el-menu--horizontal {
-	border: none !important;
-}
-.el-menu--popup-bottom-start {
-	margin-top: 0px;
-	border-top: 1px solid #464646;
-	border-radius: 0 0 2px 2px;
-}
-
 .main-header {
 	position: fixed;
 	top: 0;

@@ -1,7 +1,14 @@
 <template>
-	<span>
-		<el-dialog class="workflow-settings" custom-class="classic" :visible="dialogVisible" append-to-body width="65%" title="Workflow Settings" :before-close="closeDialog">
-			<div v-loading="isLoading">
+	<Modal
+		:name="WORKFLOW_SETTINGS_MODAL_KEY"
+		width="65%"
+		maxHeight="80%"
+		:title="`Settings for ${workflowName} (#${workflowId})`"
+		:eventBus="modalBus"
+		:scrollable="true"
+	>
+		<template v-slot:content>
+			<div v-loading="isLoading" class="workflow-settings">
 				<el-row>
 					<el-col :span="10" class="setting-name">
 						Error Workflow:
@@ -156,12 +163,14 @@
 						</el-col>
 					</el-row>
 				</div>
-				<div class="action-buttons">
-					<n8n-button label="Save" size="large" @click="saveSettings" />
-				</div>
 			</div>
-		</el-dialog>
-	</span>
+		</template>
+		<template v-slot:footer>
+			<div class="action-buttons">
+				<n8n-button label="Save" size="large" float="right" @click="saveSettings" />
+			</div>
+		</template>
+	</Modal>
 </template>
 
 <script lang="ts">
@@ -177,8 +186,12 @@ import {
 	IWorkflowSettings,
 	IWorkflowShortResponse,
 } from '@/Interface';
+import Modal from './Modal.vue';
+import { WORKFLOW_SETTINGS_MODAL_KEY } from '../constants';
 
 import mixins from 'vue-typed-mixins';
+
+import { mapGetters } from "vuex";
 
 export default mixins(
 	externalHooks,
@@ -187,9 +200,9 @@ export default mixins(
 	showMessage,
 ).extend({
 	name: 'WorkflowSettings',
-	props: [
-		'dialogVisible',
-	],
+	components: {
+		Modal,
+	},
 	data () {
 		return {
 			isLoading: true,
@@ -220,22 +233,82 @@ export default mixins(
 			executionTimeout: this.$store.getters.executionTimeout,
 			maxExecutionTimeout: this.$store.getters.maxExecutionTimeout,
 			timeoutHMS: { hours: 0, minutes: 0, seconds: 0 } as ITimeoutHMS,
+			modalBus: new Vue(),
+			WORKFLOW_SETTINGS_MODAL_KEY,
 		};
 	},
-	watch: {
-		dialogVisible (newValue, oldValue) {
-			if (newValue) {
-				this.openDialog();
-			}
-			this.$externalHooks().run('workflowSettings.dialogVisibleChanged', { dialogVisible: newValue });
-		},
+
+	computed: {
+		...mapGetters(['workflowName', 'workflowId']),
+	},
+
+	async mounted () {
+		if (this.$route.params.name === undefined) {
+			this.$showMessage({
+				title: 'No workflow active',
+				message: `No workflow active to display settings of.`,
+				type: 'error',
+				duration: 0,
+			});
+			this.closeDialog();
+			return;
+		}
+
+		this.defaultValues.saveDataErrorExecution = this.$store.getters.saveDataErrorExecution;
+		this.defaultValues.saveDataSuccessExecution = this.$store.getters.saveDataSuccessExecution;
+		this.defaultValues.saveManualExecutions = this.$store.getters.saveManualExecutions;
+		this.defaultValues.timezone = this.$store.getters.timezone;
+
+		this.isLoading = true;
+		const promises = [];
+		promises.push(this.loadWorkflows());
+		promises.push(this.loadSaveDataErrorExecutionOptions());
+		promises.push(this.loadSaveDataSuccessExecutionOptions());
+		promises.push(this.loadSaveExecutionProgressOptions());
+		promises.push(this.loadSaveManualOptions());
+		promises.push(this.loadTimezones());
+
+		try {
+			await Promise.all(promises);
+		} catch (error) {
+			this.$showError(error, 'Problem loading settings', 'The following error occurred loading the data:');
+		}
+
+		const workflowSettings = JSON.parse(JSON.stringify(this.$store.getters.workflowSettings));
+
+		if (workflowSettings.timezone === undefined) {
+			workflowSettings.timezone = 'DEFAULT';
+		}
+		if (workflowSettings.saveDataErrorExecution === undefined) {
+			workflowSettings.saveDataErrorExecution = 'DEFAULT';
+		}
+		if (workflowSettings.saveDataSuccessExecution === undefined) {
+			workflowSettings.saveDataSuccessExecution = 'DEFAULT';
+		}
+		if (workflowSettings.saveExecutionProgress === undefined) {
+			workflowSettings.saveExecutionProgress = 'DEFAULT';
+		}
+		if (workflowSettings.saveManualExecutions === undefined) {
+			workflowSettings.saveManualExecutions = 'DEFAULT';
+		}
+		if (workflowSettings.executionTimeout === undefined) {
+			workflowSettings.executionTimeout = this.$store.getters.executionTimeout;
+		}
+		if (workflowSettings.maxExecutionTimeout === undefined) {
+			workflowSettings.maxExecutionTimeout = this.$store.getters.maxExecutionTimeout;
+		}
+
+		Vue.set(this, 'workflowSettings', workflowSettings);
+		this.timeoutHMS = this.convertToHMS(workflowSettings.executionTimeout);
+		this.isLoading = false;
+
+		this.$externalHooks().run('workflowSettings.dialogVisibleChanged', { dialogVisible: true });
+		this.$telemetry.track('User opened workflow settings', { workflow_id: this.$store.getters.workflowId });
 	},
 	methods: {
 		closeDialog () {
-			// Handle the close externally as the visible parameter is an external prop
-			// and is so not allowed to be changed here.
-			this.$emit('closeDialog');
-			return false;
+			this.modalBus.$emit('close');
+			this.$externalHooks().run('workflowSettings.dialogVisibleChanged', { dialogVisible: false });
 		},
 		setTimeout (key: string, value: string) {
 			const time = value ? parseInt(value, 10) : 0;
@@ -362,66 +435,6 @@ export default mixins(
 
 			Vue.set(this, 'workflows', workflows);
 		},
-		async openDialog () {
-			if (this.$route.params.name === undefined) {
-				this.$showMessage({
-					title: 'No workflow active',
-					message: `No workflow active to display settings of.`,
-					type: 'error',
-					duration: 0,
-				});
-				this.closeDialog();
-				return;
-			}
-
-			this.defaultValues.saveDataErrorExecution = this.$store.getters.saveDataErrorExecution;
-			this.defaultValues.saveDataSuccessExecution = this.$store.getters.saveDataSuccessExecution;
-			this.defaultValues.saveManualExecutions = this.$store.getters.saveManualExecutions;
-			this.defaultValues.timezone = this.$store.getters.timezone;
-
-			this.isLoading = true;
-			const promises = [];
-			promises.push(this.loadWorkflows());
-			promises.push(this.loadSaveDataErrorExecutionOptions());
-			promises.push(this.loadSaveDataSuccessExecutionOptions());
-			promises.push(this.loadSaveExecutionProgressOptions());
-			promises.push(this.loadSaveManualOptions());
-			promises.push(this.loadTimezones());
-
-			try {
-				await Promise.all(promises);
-			} catch (error) {
-				this.$showError(error, 'Problem loading settings', 'The following error occurred loading the data:');
-			}
-
-			const workflowSettings = JSON.parse(JSON.stringify(this.$store.getters.workflowSettings));
-
-			if (workflowSettings.timezone === undefined) {
-				workflowSettings.timezone = 'DEFAULT';
-			}
-			if (workflowSettings.saveDataErrorExecution === undefined) {
-				workflowSettings.saveDataErrorExecution = 'DEFAULT';
-			}
-			if (workflowSettings.saveDataSuccessExecution === undefined) {
-				workflowSettings.saveDataSuccessExecution = 'DEFAULT';
-			}
-			if (workflowSettings.saveExecutionProgress === undefined) {
-				workflowSettings.saveExecutionProgress = 'DEFAULT';
-			}
-			if (workflowSettings.saveManualExecutions === undefined) {
-				workflowSettings.saveManualExecutions = 'DEFAULT';
-			}
-			if (workflowSettings.executionTimeout === undefined) {
-				workflowSettings.executionTimeout = this.$store.getters.executionTimeout;
-			}
-			if (workflowSettings.maxExecutionTimeout === undefined) {
-				workflowSettings.maxExecutionTimeout = this.$store.getters.maxExecutionTimeout;
-			}
-
-			Vue.set(this, 'workflowSettings', workflowSettings);
-			this.timeoutHMS = this.convertToHMS(workflowSettings.executionTimeout);
-			this.isLoading = false;
-		},
 		async saveSettings () {
 			// Set that the active state should be changed
 			const data: IWorkflowDataUpdate = {
@@ -481,6 +494,7 @@ export default mixins(
 			this.closeDialog();
 
 			this.$externalHooks().run('workflowSettings.saveSettings', { oldSettings });
+			this.$telemetry.track('User updated workflow settings', { workflow_id: this.$store.getters.workflowId });
 		},
 		toggleTimeout() {
 			this.workflowSettings.executionTimeout = this.workflowSettings.executionTimeout === -1 ? 0 : -1;
@@ -502,14 +516,10 @@ export default mixins(
 
 <style scoped lang="scss">
 .workflow-settings {
+	font-size: var(--font-size-s);
 	.el-row {
 		padding: 0.25em 0;
 	}
-}
-
-.action-buttons {
-	margin-top: 1em;
-	text-align: right;
 }
 
 .setting-info {
@@ -518,6 +528,7 @@ export default mixins(
 
 .setting-name {
 	line-height: 32px;
+	font-weight: var(--font-weight-regular);
 }
 
 .setting-name:hover {

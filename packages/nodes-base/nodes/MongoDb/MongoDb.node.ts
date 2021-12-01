@@ -71,9 +71,15 @@ export class MongoDb implements INodeType {
 			// ----------------------------------
 
 			try {
+				const queryParameter = JSON.parse(this.getNodeParameter('query', 0) as string);
+
+				if (queryParameter._id && typeof queryParameter._id === 'string') {
+					queryParameter._id = new ObjectID(queryParameter._id);
+				}
+
 				let query = mdb
 					.collection(this.getNodeParameter('collection', 0) as string)
-					.find(JSON.parse(this.getNodeParameter('query', 0) as string));
+					.find(queryParameter);
 
 				const options = this.getNodeParameter('options', 0) as IDataObject;
 				const limit = options.limit as number;
