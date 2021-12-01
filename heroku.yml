@@ -1,0 +1,18 @@
+setup:
+    addons:
+      - plan: heroku-postgresql
+        as: DATABASE
+
+    config:
+        N8N_BASIC_AUTH_ACTIVE: true
+        N8N_BASIC_AUTH_USER: user
+        N8N_BASIC_AUTH_PASSWORD: pass
+				WEBHOOK_URL: https://smartcloud1.herokuapp.com
+				NODE_TLS_REJECT_UNAUTHORIZED: 0
+				PGSSLMODE: require
+				N8N_ENCRYPTION_KEY: MdRRn2jiZuVeh5tI77A6
+				GENERIC_TIMEZONE: Europe/Amsterdam
+
+build:
+    docker:
+        web: Dockerfile
