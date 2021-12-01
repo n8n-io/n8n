@@ -92,7 +92,7 @@ import NodeIcon from '@/components/NodeIcon.vue';
 import mixins from 'vue-typed-mixins';
 
 import { get } from 'lodash';
-import { getStyleTokenValue } from './helpers';
+import { getStyleTokenValue, getTriggerNodeServiceName } from './helpers';
 import { INodeUi, XYPosition } from '@/Interface';
 
 export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).extend({
@@ -125,7 +125,7 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 			if (this.nodeType !== null && this.nodeType.hasOwnProperty('eventTriggerDescription')) {
 				return this.nodeType.eventTriggerDescription;
 			} else {
-				return `Waiting for you to create an event in ${this.nodeType && this.getNodeName(this.nodeType.displayName)}`;
+				return `Waiting for you to create an event in ${this.nodeType && getTriggerNodeServiceName(this.nodeType.displayName)}`;
 			}
 		},
 		isPollingTypeNode (): boolean {

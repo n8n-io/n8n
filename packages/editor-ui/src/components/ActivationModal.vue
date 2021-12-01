@@ -6,8 +6,12 @@
 		title="Workflow activated"
 	>
 		<template v-slot:content>
-			<p :class="$style.p">{{triggerContent}}</p>
-			<p :class="[$style.p, $style.spaced]"><span :class="$style.emphasised">These executions will not show up immediately in the editor</span>, but you can see them in the <a @click="showExecutionsList">execution list</a>.</p>
+			<div>
+				<n8n-text>{{triggerContent}}</n8n-text>
+			</div>
+			<div :class="$style.spaced">
+				<n8n-text><span :class="$style.emphasised">These executions will not show up immediately in the editor</span>, but you can see them in the <a @click="showExecutionsList">execution list</a>.</n8n-text>
+			</div>
 		</template>
 
 
@@ -22,14 +26,14 @@
 
 <script lang="ts">
 
+import Vue from 'vue';
+
 import Modal from '@/components/Modal.vue';
 import { WORKFLOW_ACTIVE_MODAL_KEY, EXECUTIONS_MODAL_KEY, LOCAL_STORAGE_ACTIVATION_FLAG } from '../constants';
 import { INodeUi } from '../Interface';
-import mixins from 'vue-typed-mixins';
-import { workflowHelpers } from '@/components/mixins/workflowHelpers';
+import { getTriggerNodeServiceName } from './helpers';
 
-
-export default mixins(workflowHelpers).extend({
+export default Vue.extend({
 	name: 'ActivationModal',
 	components: {
 		Modal,
@@ -66,7 +70,7 @@ export default mixins(workflowHelpers).extend({
 			if (trigger.activationMessage) {
 				return trigger.activationMessage;
 			}
-			const serviceName = this.getNodeName(trigger.displayName);
+			const serviceName = getTriggerNodeServiceName(trigger.displayName);
 			//check if webhook
 			if (trigger.webhookId) {
 				return `Your workflow will now listen for events from ${serviceName} and trigger executions.`;
@@ -89,11 +93,6 @@ export default mixins(workflowHelpers).extend({
 	font-weight: var(--font-weight-bold);
 }
 
-.p {
-	font-size: var(--font-size-s);
-	line-height: 19px;
-}
-
 .spaced {
 	margin-top: var(--spacing-2xs);
 }
@@ -101,9 +100,8 @@ export default mixins(workflowHelpers).extend({
 .footer {
 	text-align: right;
 
-	button {
+	> * {
 		margin-left: var(--spacing-s);
-		line-height: 14px;
 	}
 }
 

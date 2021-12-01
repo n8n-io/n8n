@@ -18,3 +18,7 @@ export function getStyleTokenValue(name: string): string {
 	const style = getComputedStyle(document.body);
 	return style.getPropertyValue(name);
 }
+
+export function getTriggerNodeServiceName(nodeName: string) {
+	return nodeName.replace(/ trigger/i, '');
+}

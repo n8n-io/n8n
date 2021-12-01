@@ -8,7 +8,7 @@
 				:value="workflowActive"
 				@change="activeChanged"
 			  :title="workflowActive ? $locale.baseText('workflowActivator.deactivateWorkflow') : $locale.baseText('workflowActivator.activateWorkflow')"
-				:disabled="disabled"
+				:disabled="disabled || loading"
 				:active-color="getActiveColor"
 				inactive-color="#8899AA">
 			</el-switch>
@@ -81,11 +81,8 @@ export default mixins(
 					return '#13ce66';
 				},
 				disabled(): boolean {
-					if (this.isCurrentWorkflow) {
-						// Switch should be enabled if workflow is currently active
-						return !this.workflowActive && !this.containsTrigger;
-					}
-					return false;
+					// Switch should be enabled if workflow is currently active and should always be enabled for workflows not currently in editor
+					return this.isCurrentWorkflow && !this.workflowActive && !this.containsTrigger;
 				},
 				isCurrentWorkflow(): boolean {
 					return this.workflowId && this.$store.state.workflow.id === this.workflowId;
