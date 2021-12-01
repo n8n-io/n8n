@@ -13,12 +13,14 @@ export class ZammadBasicApi implements ICredentialType {
 			name: 'zammadUrl',
 			type: 'string',
 			default: 'https://your_url.zammad.com',
+			required: true,
 		},
 		{
 			displayName: 'User Name / E-Mail',
 			name: 'userName',
 			type: 'string',
 			default: '',
+			required: true,
 		},
 		{
 			displayName: 'Password',
@@ -28,6 +30,7 @@ export class ZammadBasicApi implements ICredentialType {
 				password: true,
 			},
 			default: '',
+			required: true,
 		},
 		{
 			displayName: 'Ignore SSL Issues',

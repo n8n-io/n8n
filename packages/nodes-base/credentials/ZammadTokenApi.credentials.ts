@@ -10,7 +10,7 @@ export class ZammadTokenApi implements ICredentialType {
 	properties: INodeProperties[] = [
 		{
 			displayName: 'Zammad URL',
-			name: 'authUrl',
+			name: 'zammadUrl',
 			type: 'string',
 			default: 'https://your_url.zammad.com',
 			required: true,
@@ -23,6 +23,7 @@ export class ZammadTokenApi implements ICredentialType {
 				password: true,
 			},
 			default: '',
+			required: true,
 		},
 		{
 			displayName: 'Ignore SSL Issues',
