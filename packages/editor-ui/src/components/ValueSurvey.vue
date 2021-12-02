@@ -70,9 +70,9 @@ export default mixins(workflowHelpers).extend({
 			showButtons: true,
 			title: {
 				default: "How would you feel if you could <strong>no longer use n8n</strong>?",
-				very: "Sorry to hear that. We'd love to learn how to improve. Can we reach out?",
+				very: "Great to hear! Can we reach out to see how we can make n8n even better for you?",
 				somewhat: "Thanks for your feedback! We'd love to understand how we can improve. Can we reach out?",
-				not: "Great to hear! Can we reach out to see how we can make n8n even better for you?",
+				not: "Sorry to hear that. We'd love to learn how to improve. Can we reach out?",
 			},
 			VALUE_SURVEY_MODAL_KEY,
 		};
