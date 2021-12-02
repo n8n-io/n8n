@@ -29,6 +29,7 @@
 
 import * as express from 'express';
 import { readFileSync, existsSync } from 'fs';
+import { readFile } from 'fs/promises';
 import { dirname as pathDirname, join as pathJoin, resolve as pathResolve } from 'path';
 import { FindManyOptions, getConnectionManager, In, IsNull, LessThanOrEqual, Not } from 'typeorm';
 import * as bodyParser from 'body-parser';
@@ -1197,8 +1198,13 @@ class App {
 					for (const { name, version } of nodeInfos) {
 						const { description, sourcePath } = NodeTypes().getWithSourcePath(name, version);
 						const translationPath = await getNodeTranslationPath(sourcePath, defaultLocale);
-						if (existsSync(translationPath)) {
-							description.translation = require(translationPath);
+
+						try {
+							const translation = await readFile(translationPath, 'utf8');
+							description.translation = JSON.parse(translation);
+							// eslint-disable-next-line no-empty
+						} catch (error) {
+							// file not accessible
 						}
 						nodeTypes.push(description);
 					}
