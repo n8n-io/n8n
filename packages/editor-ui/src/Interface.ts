@@ -477,7 +477,7 @@ export interface IN8nPrompt {
 }
 
 export interface IN8nUISettings {
-	contactPrompt: IN8nPrompt;
+	promptData: IN8nPrompt;
 	endpointWebhook: string;
 	endpointWebhookTest: string;
 	saveDataErrorExecution: string;

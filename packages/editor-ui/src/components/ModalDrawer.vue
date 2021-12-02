@@ -3,7 +3,7 @@
 		:direction="direction"
 		:visible="visible"
 		:size="width"
-		:before-close="close"
+		:before-close="beforeClose"
 		:modal="modal"
 		:wrapperClosable="wrapperClosable"
 		>
@@ -78,22 +78,8 @@ export default Vue.extend({
 				this.$emit('enter');
 			}
 		},
-		close(callback?: () => void) {
-			if (this.beforeClose) {
-				this.beforeClose(() => {
-					this.$store.commit('ui/closeTopModal');
-					if (typeof callback === 'function') {
-						callback();
-					}
-				});
-
-				return;
-			}
-
+		close() {
 			this.$store.commit('ui/closeTopModal');
-			if (typeof callback === 'function') {
-				callback();
-			}
 		},
 	},
 	computed: {

@@ -148,7 +148,7 @@ export default mixins(
 
 					this.$emit('workflowActiveChanged', { id: this.workflowId, active: newActiveState });
 					this.loading = false;
-					this.$store.dispatch('settings/getPromptsData');
+					this.$store.dispatch('ui/openUserPromptsIfPossible');
 				},
 				async displayActivationError () {
 					let errorMessage: string;

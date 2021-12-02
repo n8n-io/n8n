@@ -2460,6 +2460,7 @@ export default mixins(
 				setTimeout(() => {
 					this.checkForNewVersions();
 				}, 0);
+				this.$store.dispatch('settings/fetchPromptsData');
 			});
 
 			this.$externalHooks().run('nodeView.mount');

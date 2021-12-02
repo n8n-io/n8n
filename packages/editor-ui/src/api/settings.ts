@@ -15,7 +15,7 @@ export async function getPromptsData(instanceId: string): Promise<IN8nPrompt> {
 	return await get(TEMPLATES_BASE_URL, '/prompts', {}, {'n8n-instance-id': instanceId});
 }
 
-export async function updateContactPrompt(instanceId: string, email: string): Promise<void> {
+export async function submitContactInfo(instanceId: string, email: string): Promise<void> {
 	return await post(TEMPLATES_BASE_URL, '/prompt', { email }, {'n8n-instance-id': instanceId});
 }
 

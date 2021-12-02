@@ -4,11 +4,9 @@
 		:eventBus="modalBus"
 		:center="true"
 		:closeOnPressEscape="false"
-		:customClass="'contact-prompt-modal'"
 		:beforeClose="closeDialog"
-		title="You're a power user"
-		minWidth="460px"
-		maxWidth="460px"
+		customClass="contact-prompt-modal"
+		width="460px"
 	>
 		<template slot="header">
 			<h2 :class="$style.title" v-text="title" />
@@ -17,7 +15,6 @@
 			<div :class="$style.description" v-text="description" />
 			<n8n-input
 				v-model="email"
-				@input="onInputChange"
 				placeholder="Your email address"
 			/>
 			<div :class="$style.disclaimer">David from our product team will reach out personally.</div>
@@ -35,6 +32,7 @@ import Vue from "vue";
 import mixins from "vue-typed-mixins";
 import { mapGetters } from 'vuex';
 
+import { VALID_EMAIL_REGEX } from '@/constants';
 import { workflowHelpers } from "@/components/mixins/workflowHelpers";
 import Modal from "./Modal.vue";
 
@@ -45,7 +43,6 @@ export default mixins(workflowHelpers).extend({
 	data() {
 		return {
 			email: '',
-			isEmailValid: false,
 			modalBus: new Vue(),
 		};
 	},
@@ -54,18 +51,21 @@ export default mixins(workflowHelpers).extend({
 			promptData: 'settings/getPromptsData',
 		}),
 		title() : string {
-			if (this.promptData.title) {
+			if (this.promptData && this.promptData.title) {
 				return this.promptData.title;
 			} else {
 				return 'You’re a power user 💪';
 			}
 		},
 		description() : string {
-			if (this.promptData.message) {
+			if (this.promptData && this.promptData.message) {
 				return this.promptData.message;
 			} else {
 				return 'Your experience with n8n can help us improve - for you and our entire community.';
 			}
+		},
+		isEmailValid(): boolean {
+			return VALID_EMAIL_REGEX.test(String(this.email).toLowerCase());
 		},
 	},
 	methods: {
@@ -75,12 +75,9 @@ export default mixins(workflowHelpers).extend({
 			}
 			this.$store.commit('ui/closeTopModal');
 		},
-		onInputChange(value: string): void {
-			this.isEmailValid = this.validateEmail(value);
-		},
 		send(): void {
 			if (this.isEmailValid) {
-				this.$store.dispatch('settings/updateContactPrompt', this.email);
+				this.$store.dispatch('settings/submitContactInfo', this.email);
 				this.$telemetry.track('User closed email modal', { instance_id: this.$store.getters.instanceId, email: this.email });
 				this.$showMessage({
 					title: 'Thanks!',
@@ -89,10 +86,6 @@ export default mixins(workflowHelpers).extend({
 				});
 			}
 			this.closeDialog();
-		},
-		validateEmail(email: string) {
-			const re = /^(([^<>()[\]\\.,;:\s@"]+(\.[^<>()[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/;
-			return re.test(String(email).toLowerCase());
 		},
 	},
 });

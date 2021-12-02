@@ -6,10 +6,10 @@ import {
 	IRootState,
 	ISettingsState,
 } from '../Interface';
-import { getPromptsData, getSettings, submitValueSurvey, submitPersonalizationSurvey, updateContactPrompt } from '../api/settings';
+import { getPromptsData, getSettings, submitValueSurvey, submitPersonalizationSurvey, submitContactInfo } from '../api/settings';
 import Vue from 'vue';
 import { getPersonalizedNodeTypes } from './helper';
-import { CONTACT_PROMPT_MODAL_KEY, PERSONALIZATION_MODAL_KEY, VALUE_SURVEY_MODAL_KEY } from '@/constants';
+import { PERSONALIZATION_MODAL_KEY } from '@/constants';
 import { IDataObject } from 'n8n-workflow';
 
 const module: Module<ISettingsState, IRootState> = {
@@ -27,7 +27,7 @@ const module: Module<ISettingsState, IRootState> = {
 			return getPersonalizedNodeTypes(answers);
 		},
 		getPromptsData(state: ISettingsState) {
-			return state.settings.contactPrompt;
+			return state.settings.promptData;
 		},
 	},
 	mutations: {
@@ -40,8 +40,8 @@ const module: Module<ISettingsState, IRootState> = {
 				shouldShow: false,
 			});
 		},
-		setPromptData(state: ISettingsState, data: IN8nPrompt) {
-			Vue.set(state.settings, 'contactPrompt', data);
+		setPromptData(state: ISettingsState, promptData: IN8nPrompt) {
+			Vue.set(state.settings, 'promptData', promptData);
 		},
 	},
 	actions: {
@@ -77,23 +77,27 @@ const module: Module<ISettingsState, IRootState> = {
 
 			context.commit('setPersonalizationAnswers', results);
 		},
-		async getPromptsData(context: ActionContext<ISettingsState, IRootState>) {
-			const promptData = await getPromptsData(context.state.settings.instanceId);
-
-			if (promptData.showPrompt) {
+		async fetchPromptsData(context: ActionContext<ISettingsState, IRootState>) {
+			try {
+				const promptData = await getPromptsData(context.state.settings.instanceId);
 				context.commit('setPromptData', promptData);
-				context.commit('ui/openModal', CONTACT_PROMPT_MODAL_KEY, {root: true});
+			} catch (e) {
+				return;
 			}
-
-			if (promptData.showValueSurvey && !promptData.showPrompt) {
-				context.commit('ui/openModal', VALUE_SURVEY_MODAL_KEY, {root: true});
+		},
+		async submitContactInfo(context: ActionContext<ISettingsState, IRootState>, email: string) {
+			try {
+				await submitContactInfo(context.state.settings.instanceId, email);
+			} catch (e) {
+				return;
 			}
 		},
 		async submitValueSurvey(context: ActionContext<ISettingsState, IRootState>, params: IDataObject) {
-			await submitValueSurvey(context.state.settings.instanceId, params);
-		},
-		async updateContactPrompt(context: ActionContext<ISettingsState, IRootState>, email: string) {
-			await updateContactPrompt(context.state.settings.instanceId, email);
+			try {
+				await submitValueSurvey(context.state.settings.instanceId, params);
+			} catch (e) {
+				return;
+			}
 		},
 	},
 };

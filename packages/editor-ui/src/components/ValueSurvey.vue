@@ -22,7 +22,6 @@
 					<div :class="$style.input">
 						<n8n-input
 							v-model="form.email"
-							@input="onInputChange"
 							placeholder="Your email address"
 						/>
 						<n8n-button label="Send" float="right" @click="send" :disabled="!isEmailValid" />
@@ -36,11 +35,15 @@
 
 <script lang="ts">
 import mixins from "vue-typed-mixins";
+
+import { VALID_EMAIL_REGEX, VALUE_SURVEY_MODAL_KEY } from '@/constants';
 import { workflowHelpers } from "@/components/mixins/workflowHelpers";
-
 import ModalDrawer from './ModalDrawer.vue';
-import { VALUE_SURVEY_MODAL_KEY } from '../constants';
 
+const DEFAULT_TITLE = `How would you feel if you could <strong>no longer use n8n</strong>?`;
+const VERY_TITLE = `Great to hear! Can we reach out to see how we can make n8n even better for you?`;
+const SOMEWHAT_TITLE = `Thanks for your feedback! We'd love to understand how we can improve. Can we reach out?`;
+const NOT_TITLE = `Sorry to hear that. We'd love to learn how to improve. Can we reach out?`;
 
 export default mixins(workflowHelpers).extend({
 	name: 'ValueSurvey',
@@ -50,14 +53,17 @@ export default mixins(workflowHelpers).extend({
 	computed: {
 		getTitle (): string {
 			if (this.form.value === 'very') {
-				return this.title.very;
+				return VERY_TITLE;
 			} else if (this.form.value === 'somewhat') {
-				return this.title.somewhat;
+				return SOMEWHAT_TITLE;
 			} else if (this.form.value === 'not') {
-				return this.title.not;
+				return NOT_TITLE;
 			} else {
-				return this.title.default;
+				return DEFAULT_TITLE;
 			}
+		},
+		isEmailValid(): boolean {
+			return VALID_EMAIL_REGEX.test(String(this.form.email).toLowerCase());
 		},
 	},
 	data() {
@@ -66,36 +72,19 @@ export default mixins(workflowHelpers).extend({
 				email: '',
 				value: '',
 			},
-			isEmailValid: false,
 			showButtons: true,
-			title: {
-				default: "How would you feel if you could <strong>no longer use n8n</strong>?",
-				very: "Great to hear! Can we reach out to see how we can make n8n even better for you?",
-				somewhat: "Thanks for your feedback! We'd love to understand how we can improve. Can we reach out?",
-				not: "Sorry to hear that. We'd love to learn how to improve. Can we reach out?",
-			},
 			VALUE_SURVEY_MODAL_KEY,
 		};
 	},
 	methods: {
 		closeDialog(): void {
-			if (!this.isEmailValid && this.form.value === '') {
+			if (this.form.value === '') {
 				this.$telemetry.track('User responded value survey score', { instance_id: this.$store.getters.instanceId, how_disappointed: '' });
+			} else if (this.form.value !== '') {
+				this.$telemetry.track('User responded value survey email', { instance_id: this.$store.getters.instanceId, email: '' });
 			}
 
-			if (!this.isEmailValid && this.form.value !== '') {
-				this.$telemetry.track('User responded value survey email', { instance_id: this.$store.getters.instanceId, email: null });
-			}
-
-			this.resetForm();
 			this.$store.commit('ui/closeTopModal');
-		},
-		onInputChange(value: string): void {
-			this.isEmailValid = this.validateEmail(value);
-		},
-		resetForm() {
-			this.form.email = '';
-			this.form.value = '';
 		},
 		selectSurveyValue(value: string) {
 			this.form.value = value;
@@ -113,12 +102,8 @@ export default mixins(workflowHelpers).extend({
 					type: 'success',
 					duration: -1,
 				});
+				this.$store.commit('ui/closeTopModal');
 			}
-			this.closeDialog();
-		},
-		validateEmail(email: string) {
-			const re = /^(([^<>()[\]\\.,;:\s@"]+(\.[^<>()[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/;
-			return re.test(String(email).toLowerCase());
 		},
 	},
 });
