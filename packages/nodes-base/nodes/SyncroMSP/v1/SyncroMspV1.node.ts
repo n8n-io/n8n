@@ -26,9 +26,6 @@ export class SyncroMspV1 implements INodeType {
 	methods = { loadOptions };
 
 	async execute(this: IExecuteFunctions) {
-		// Router returns INodeExecutionData[]
-		// We need to output INodeExecutionData[][]
-		// So we wrap in []
 		return await router.call(this);
 	}
 }
