@@ -240,9 +240,6 @@ export default mixins(
 				// TODO i18n: Remove next line
 				console.log(`Switching locale from ${oldLocale} to ${newLocale}`); // eslint-disable-line no-console
 				loadLanguage(newLocale);
-
-				const headers = await this.restApi().getNodeTranslationHeaders();
-				addHeaders(headers, this.$store.getters.defaultLocale);
 			},
 		},
 		async beforeRouteLeave(to, from, next) {
@@ -2569,6 +2566,11 @@ export default mixins(
 
 			try {
 				await Promise.all(loadPromises);
+
+				if (this.defaultLocale !== 'en') {
+					const headers = await this.restApi().getNodeTranslationHeaders();
+					addHeaders(headers, this.defaultLocale);
+				}
 			} catch (error) {
 				this.$showError(
 					error,
