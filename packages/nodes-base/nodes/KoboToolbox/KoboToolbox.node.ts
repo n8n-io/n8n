@@ -1,4 +1,7 @@
-import { table } from 'console';
+// TODO:
+// - Support light submission data reformatting (e.g. parsing GeoJSON)
+// - Support a trigger for new submission webhooks
+
 import {
 	IExecuteFunctions,
 } from 'n8n-core';
@@ -12,7 +15,6 @@ import {
 	INodeType,
 	INodeTypeDescription,
 	NodeCredentialTestResult,
-	// NodeOperationError,
 } from 'n8n-workflow';
 
 export class KoboToolbox implements INodeType {
@@ -592,36 +594,30 @@ export class KoboToolbox implements INodeType {
 						...baseOptions,
 					};
 					const source = await this.helpers.httpRequest(options);
+					console.dir(source);
+
+					// Initialize return object with the original submission JSON content
+					const newItem: INodeExecutionData = {
+						json: {
+							...source,
+						},
+						binary: {},
+					};
 
 					// Look for attachment links - there can be more than one
 					if(source['_attachments'] && source['_attachments'].length) {
-						// Do a shallow copy of the source object to use as JSON reference
-						const jsonData = { ...source };
-						delete jsonData._attachments;
 
 						for (const attachment of source['_attachments']) {
 							// look for the question name linked to this attachment
 							const filename = attachment.filename;
 							let relatedQuestion = '';
-							// console.log(`Found attachment ${filename}`);
+							console.log(`Found attachment ${filename}`);
 							Object.keys(source).forEach(question => {
 								if(filename.endsWith('/' + source[question])) {
 									relatedQuestion = question;
-									// console.log(`Found attachment for form question: ${relatedQuestion}`);
+									console.log(`Found attachment for form question: ${relatedQuestion}`);
 								}
 							});
-
-							// Initialize return object with the original submission JSON content
-							const newItem: INodeExecutionData = {
-								json: {
-									...jsonData,
-									_attachment: {
-										...attachment,
-										relatedQuestion,
-									},
-								},
-								binary: {},
-							};
 
 							// Download attachment
 							const binaryData = await this.helpers.httpRequest({
@@ -629,11 +625,14 @@ export class KoboToolbox implements INodeType {
 								encoding: 'arraybuffer',
 								...baseOptions,
 							});
+							console.log(`Downloaded attachment ${filename}`);
 							const binaryName = additionalFields.filename === 'filename' ? filename : relatedQuestion;
 							newItem.binary![binaryName] = await this.helpers.prepareBinaryData(Buffer.from(binaryData));
-							binaryItems.push(newItem);
 						}
 					}
+
+					// Add item to final output - even if there's no attachment retrieved
+					binaryItems.push(newItem);
 				}
 			}
 
