@@ -29,7 +29,6 @@ export async function addContact(this: IExecuteFunctions, index: number): Promis
 
 	if(body.address){
 		body.address1=body.address;
-		delete body.address;
 	}
 
 	body.name=name;
