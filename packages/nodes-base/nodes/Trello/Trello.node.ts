@@ -4,7 +4,9 @@ import {
 
 import {
 	IDataObject,
+	ILoadOptionsFunctions,
 	INodeExecutionData,
+	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
 	NodeOperationError,
@@ -49,6 +51,8 @@ import {
 	listFields,
 	listOperations,
 } from './ListDescription';
+
+interface TrelloBoard { id: string; name: string; }
 
 export class Trello implements INodeType {
 	description: INodeTypeDescription = {
@@ -134,30 +138,26 @@ export class Trello implements INodeType {
 
 		],
 	};
-	
+
 	methods = {
 		loadOptions:{
 			async getAllBoards(
-				this: ILoadOptionsForFunctions,
+				this: ILoadOptionsFunctions,
 			): Promise<INodePropertyOptions[]> {
  					const returnData: INodePropertyOptions[] = [];
-// 					const boards = await googleApiRequestAllItems.call( //LMAO obvs change the request signature TODO
-// 					this,
-// 					'items',
-// 					'GET',
-// 					'/calendar/v3/users/me/calendarList',
-// 				);
 					var requestMethod = 'GET';
-				var endpoint = '/members/me/boards'; //Not sure if this needs the preceding /1/ (as in: /1/members/me/boards)
-						const boards = await apiRequestAllItems.call(this, requestMethod, endpoint, {}, {});
-						for(const board in boards){
-							const boardName = board.name;
-							const boardId = board.id;
-							returnData.push({
-								name: boardName,
-								value: boardId,
-							});
-						}
+					var endpoint = 'members/me/boards'; //Not sure if this needs the preceding /1/ (as in: /1/members/me/boards)
+					const responseData: Array<TrelloBoard> = await apiRequest.call(this, requestMethod, endpoint, {}, {});
+
+					for(var index = 0 ; index < responseData.length ; index++){
+						let board: TrelloBoard = responseData[index];
+						const boardName = board['name'];
+						const boardId = board.id;
+						returnData.push({
+							name: boardName,
+							value: boardId,
+						});
+					}
 					return returnData;
 				}
 		}

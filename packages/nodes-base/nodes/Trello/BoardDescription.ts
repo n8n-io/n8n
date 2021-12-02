@@ -33,11 +33,11 @@ export const boardOperations = [
 				value: 'get',
 				description: 'Get the data of a board',
 			},
-			{
-				name: 'Get All Boards',
-				value: 'get',
-				description: 'Get all of a user\'s boards'
-			},
+			// {
+			// 	name: 'Get All Boards',
+			// 	value: 'get',
+			// 	description: 'Get all of a user\'s boards'
+			// },
 			{
 				name: 'Update',
 				value: 'update',
@@ -329,7 +329,7 @@ export const boardFields = [
 		},
 		description: 'The ID of the board to delete.',
 	},
-	
+
 	// ----------------------------------
 	//         board:get
 	// ----------------------------------
@@ -387,55 +387,7 @@ export const boardFields = [
 			},
 		],
 	},
-	
-// 	// ----------------------------------
-// 	//         board:get all boards
-// 	// ----------------------------------
-// 	{
-// 		displayName: 'Board ID',
-// 		name: 'id',
-// 		type: 'string',
-// 		default: '',
-// 		required: true,
-// 		displayOptions: {
-// 			show: {
-// 				operation: [
-// 					'get',
-// 				],
-// 				resource: [
-// 					'board',
-// 				],
-// 			},
-// 		},
-// 		description: 'The ID of the board to get.',
-// 	},
-// 	{
-// 		displayName: 'Additional Fields',
-// 		name: 'additionalFields',
-// 		type: 'collection',
-// 		placeholder: 'Add Field',
-// 		displayOptions: {
-// 			show: {
-// 				operation: [
-// 					'get',
-// 				],
-// 				resource: [
-// 					'board',
-// 				],
-// 			},
-// 		},
-// 		default: {},
-// 		options: [
-// 			{
-// 				displayName: 'Fields',
-// 				name: 'fields',
-// 				type: 'string',
-// 				default: 'all',
-// 				description: 'TODO - fix for get all Fields to return. Either "all" or a comma-separated list: closed, dateLastActivity, dateLastView, desc, descData, idOrganization, invitations, invited, labelNames, memberships, name, pinned, powerUps, prefs, shortLink, shortUrl, starred, subscribed, url',
-// 			},
-// 		],
-// 	},
-	
+
 	// ----------------------------------
 	//         board:update
 	// ----------------------------------
