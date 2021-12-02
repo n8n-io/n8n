@@ -179,7 +179,9 @@
 		"executionId": "🇩🇪 Execution ID",
 		"executionWaiting": "🇩🇪 Execution waiting",
 		"executionWasSuccessful": "🇩🇪 Execution was successful",
-		"openWorkflow": "🇩🇪 Open Workflow"
+		"openWorkflow": "🇩🇪 Open Workflow",
+		"of": "🇩🇪 of",
+		"workflow": "🇩🇪 workflow"
 	},
 	"executionsList": {
 		"allWorkflows": "🇩🇪 All Workflows",
