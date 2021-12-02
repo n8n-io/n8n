@@ -1193,21 +1193,31 @@ class App {
 						}, []);
 					}
 
-					const nodeTypes: INodeTypeDescription[] = [];
-
-					for (const { name, version } of nodeInfos) {
+					async function populateTranslation(
+						name: string,
+						version: number,
+						nodeTypes: INodeTypeDescription[],
+					) {
 						const { description, sourcePath } = NodeTypes().getWithSourcePath(name, version);
 						const translationPath = await getNodeTranslationPath(sourcePath, defaultLocale);
 
 						try {
 							const translation = await readFile(translationPath, 'utf8');
 							description.translation = JSON.parse(translation);
-							// eslint-disable-next-line no-empty
 						} catch (error) {
-							// file not accessible
+							// ignore - no translation at expected translation path
 						}
+
 						nodeTypes.push(description);
 					}
+
+					const nodeTypes: INodeTypeDescription[] = [];
+
+					const promises = nodeInfos.map(async ({ name, version }) =>
+						populateTranslation(name, version, nodeTypes),
+					);
+
+					await Promise.all(promises);
 
 					return nodeTypes;
 				},
