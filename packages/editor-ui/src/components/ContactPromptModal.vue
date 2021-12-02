@@ -17,7 +17,7 @@
 				v-model="email"
 				placeholder="Your email address"
 			/>
-			<div :class="$style.disclaimer">David from our product team will reach out personally.</div>
+			<div :class="$style.disclaimer">David from our product team will get in touch personally.</div>
 		</template>
 		<template v-slot:footer>
 			<div :class="$style.footer">

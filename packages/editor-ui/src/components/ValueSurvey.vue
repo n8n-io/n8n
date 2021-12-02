@@ -26,7 +26,7 @@
 						/>
 						<n8n-button label="Send" float="right" @click="send" :disabled="!isEmailValid" />
 					</div>
-					<div :class="$style.disclaimer">David from our product team will reach out personally.</div>
+					<div :class="$style.disclaimer">David from our product team will get in touch personally.</div>
 				</div>
 			</section>
 		</template>
@@ -100,11 +100,14 @@ export default mixins(workflowHelpers).extend({
 					title: 'Thanks for your feedback',
 					message: `If you’d like to help even more, answer this <a target="_blank" href="https://n8n-community.typeform.com/quicksurvey#how_disappointed=${this.form.value}&instance_id=${this.$store.getters.instanceId}">quick survey.</a>`,
 					type: 'success',
-					duration: -1,
+					duration: 15000,
 				});
 				this.$store.commit('ui/closeTopModal');
 			}
 		},
+	},
+	mounted() {
+		this.$telemetry.track('User shown value survey', { instance_id: this.$store.getters.instanceId});
 	},
 });
 </script>
