@@ -129,8 +129,10 @@ export default mixins(renderText, restApi).extend({
 		},
 	},
 	async beforeMount() {
-		await this.findCredentialTextRenderKeys();
-		await this.addNodeTranslationForCredential();
+		if (this.$store.getters.defaultLocale !== 'en') {
+			await this.findCredentialTextRenderKeys();
+			await this.addNodeTranslationForCredential();
+		}
 	},
 	computed: {
 		appName(): string {
