@@ -143,7 +143,7 @@ export class AwsFirehose implements INodeType {
 					const body: IDataObject = {};
 					body.DeliveryStreamName = this.getNodeParameter('deliveryStreamName', i) as string;
 
-					let records = [] as IDataObject[];
+					const records = [] as IDataObject[];
 
 					item = items[i];
 

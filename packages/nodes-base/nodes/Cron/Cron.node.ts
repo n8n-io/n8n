@@ -25,6 +25,7 @@ export class Cron implements INodeType {
 		group: ['trigger'],
 		version: 1,
 		description: 'Triggers the workflow at a specific time',
+		eventTriggerDescription: '',
 		defaults: {
 			name: 'Cron',
 			color: '#00FF00',

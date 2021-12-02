@@ -792,9 +792,7 @@ export class GoogleDrive implements INodeType {
 						name: 'keepRevisionForever',
 						type: 'boolean',
 						default: false,
-						description: `Whether to set the 'keepForever' field in the new head revision.</br>
-						his is only applicable to files with binary content in Google Drive.</br>
-						Only 200 revisions for the file can be kept forever. If the limit is reached, try deleting pinned revisions.`,
+						description: `Whether to set the 'keepForever' field in the new head revision. This is only applicable to files with binary content in Google Drive. Only 200 revisions for the file can be kept forever. If the limit is reached, try deleting pinned revisions.`,
 					},
 					{
 						displayName: 'OCR Language',
@@ -955,7 +953,7 @@ export class GoogleDrive implements INodeType {
 						],
 					},
 				},
-				description: 'By default the response only contain the ID of the file.<br />If this option gets activated, it will resolve the data automatically.',
+				description: 'By default the response only contain the ID of the file. If this option gets activated, it will resolve the data automatically.',
 			},
 			{
 				displayName: 'Parents',
@@ -1059,8 +1057,7 @@ export class GoogleDrive implements INodeType {
 							},
 						},
 						default: false,
-						description: `Set to true to opt in to API behavior that aims for all items to have exactly one parent.<br>
-						This parameter only takes effect if the item is not in a shared drive`,
+						description: `Set to true to opt in to API behavior that aims for all items to have exactly one parent. This parameter only takes effect if the item is not in a shared drive.`,
 					},
 					{
 						displayName: 'Fields',
@@ -1165,8 +1162,7 @@ export class GoogleDrive implements INodeType {
 							},
 						},
 						default: '',
-						description: `This parameter only takes effect if the item is not in a shared drive and the request is attempting to transfer the ownership of the item.<br>
-						When set to true, the item is moved to the new owner's My Drive root folder and all prior parents removed`,
+						description: `<p>This parameter only takes effect if the item is not in a shared drive and the request is attempting to transfer the ownership of the item.</p><p>When set to true, the item is moved to the new owner's My Drive root folder and all prior parents removed.</p>`,
 					},
 					{
 						displayName: 'Send Notification Email',

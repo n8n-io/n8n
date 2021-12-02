@@ -74,7 +74,7 @@ export const nodeBase = mixins(
 						type: inputName,
 						index,
 					},
-					enabled: !this.isReadOnly,
+					enabled: !this.isReadOnly && nodeTypeData.inputs.length > 1, // only enabled for nodes with multiple inputs.. otherwise attachment handled by connectionDrag event in NodeView
 					dragAllowedWhenFull: true,
 					dropOptions: {
 						tolerance: 'touch',
@@ -170,6 +170,8 @@ export const nodeBase = mixins(
 						// Do not allow to move nodes in readOnly mode
 						return false;
 					}
+					// @ts-ignore
+					this.dragging = true;
 
 					if (params.e && !this.$store.getters.isNodeSelected(this.data.name)) {
 						// Only the node which gets dragged directly gets an event, for all others it is
@@ -183,6 +185,8 @@ export const nodeBase = mixins(
 					return true;
 				},
 				stop: (params: { e: MouseEvent }) => {
+					// @ts-ignore
+					this.dragging = false;
 					if (this.$store.getters.isActionActive('dragActive')) {
 						const moveNodes = this.$store.getters.getSelectedNodes.slice();
 						const selectedNodeNames = moveNodes.map((node: INodeUi) => node.name);

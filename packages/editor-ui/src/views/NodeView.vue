@@ -261,7 +261,7 @@ export default mixins(
 				}
 
 				if (this.executionWaitingForWebhook === true) {
-					return 'Waiting for Webhook-Call';
+					return 'Waiting for Trigger Event';
 				}
 
 				return 'Executing Workflow';
@@ -1522,7 +1522,7 @@ export default mixins(
 						CanvasHelpers.addOverlays(connection, CanvasHelpers.CONNECTOR_DROP_NODE_OVERLAY);
 						const nodes = [...document.querySelectorAll('.node-default')];
 
-						const onMouseMove = (e: MouseEvent) => {
+						const onMouseMove = (e: MouseEvent | TouchEvent) => {
 							if (!connection) {
 								return;
 							}
@@ -1537,7 +1537,8 @@ export default mixins(
 							const inputMargin = 24;
 							const intersecting = nodes.find((element: Element) => {
 								const {top, left, right, bottom} = element.getBoundingClientRect();
-								if (top <= e.pageY && bottom >= e.pageY && (left - inputMargin) <= e.pageX && right >= e.pageX) {
+								const [x, y] = CanvasHelpers.getMousePosition(e);
+								if (top <= y && bottom >= y && (left - inputMargin) <= x && right >= x) {
 									const nodeName = (element as HTMLElement).dataset['name'] as string;
 									const node = this.$store.getters.getNodeByName(nodeName) as INodeUi | null;
 									if (node) {
@@ -1562,7 +1563,7 @@ export default mixins(
 							}
 						};
 
-						const onMouseUp = (e: MouseEvent) => {
+						const onMouseUp = (e: MouseEvent | TouchEvent) => {
 							this.pullConnActive = false;
 							this.newNodeInsertPosition = this.getMousePositionWithinNodeView(e);
 							CanvasHelpers.resetConnectionAfterPull(connection);
@@ -1571,7 +1572,9 @@ export default mixins(
 						};
 
 						window.addEventListener('mousemove', onMouseMove);
+						window.addEventListener('touchmove', onMouseMove);
 						window.addEventListener('mouseup', onMouseUp);
+						window.addEventListener('touchend', onMouseMove);
 					} catch (e) {
 						console.error(e); // eslint-disable-line no-console
 					}
@@ -2000,10 +2003,8 @@ export default mixins(
 				this.$store.commit('renameNodeSelectedAndExecution', { old: currentName, new: newName });
 
 				// Reset all nodes and connections to load the new ones
-				if (this.instance) {
-					// On first load it does not exist
-					this.instance.deleteEveryEndpoint();
-				}
+				this.deleteEveryEndpoint();
+
 				this.$store.commit('removeAllConnections');
 				this.$store.commit('removeAllNodes', {setStateDirty: true});
 
@@ -2016,6 +2017,16 @@ export default mixins(
 				// Make sure that the node is selected again
 				this.deselectAllNodes();
 				this.nodeSelectedByName(newName);
+			},
+			deleteEveryEndpoint () {
+				// Check as it does not exist on first load
+				if (this.instance) {
+					const nodes = this.$store.getters.allNodes as INodeUi[];
+					// @ts-ignore
+					nodes.forEach((node: INodeUi) => this.instance.destroyDraggable(`${NODE_NAME_PREFIX}${this.$store.getters.getNodeIndex(node.name)}`));
+
+					this.instance.deleteEveryEndpoint();
+				}
 			},
 			matchCredentials(node: INodeUi) {
 				if (!node.credentials) {
@@ -2333,10 +2344,7 @@ export default mixins(
 			},
 			resetWorkspace () {
 				// Reset nodes
-				if (this.instance) {
-					// On first load it does not exist
-					this.instance.deleteEveryEndpoint();
-				}
+				this.deleteEveryEndpoint();
 
 				if (this.executionWaitingForWebhook === true) {
 					// Make sure that if there is a waiting test-webhook that

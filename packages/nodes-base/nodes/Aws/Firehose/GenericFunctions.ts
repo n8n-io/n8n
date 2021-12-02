@@ -1,5 +1,5 @@
 import { URL } from 'url';
-import { sign, Request } from 'aws4';
+import { Request, sign } from 'aws4';
 import { OptionsWithUri } from 'request';
 
 import {
