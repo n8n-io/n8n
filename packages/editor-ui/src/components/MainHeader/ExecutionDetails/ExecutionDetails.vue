@@ -36,7 +36,15 @@
 			</span>
 			workflow
 		</span>
-		<ReadOnly class="read-only" />
+		<n8n-tooltip class="read-only primary-color" placement="bottom-end" >
+			<div slot="content">
+				{{ $baseText('readOnly.youreViewingTheLogOf') }}
+			</div>
+			<span>
+				<font-awesome-icon icon="exclamation-triangle" />
+				{{ $baseText('readOnly.readOnly') }}
+			</span>
+		</n8n-tooltip>
 	</div>
 </template>
 
@@ -48,13 +56,12 @@ import { IExecutionResponse } from "../../../Interface";
 import { titleChange } from "@/components/mixins/titleChange";
 
 import WorkflowNameShort from "@/components/WorkflowNameShort.vue";
-import ReadOnly from "@/components/MainHeader/ExecutionDetails/ReadOnly.vue";
+import { renderText } from "@/components/mixins/renderText";
 
-export default mixins(titleChange).extend({
+export default mixins(titleChange, renderText).extend({
 	name: "ExecutionDetails",
 	components: {
 		WorkflowNameShort,
-		ReadOnly,
 	},
 	computed: {
 		executionId(): string | undefined {
