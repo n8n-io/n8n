@@ -116,9 +116,7 @@ const module: Module<IUiState, IRootState> = {
 
 			if (promptData.showPrompt) {
 				context.commit('ui/openModal', CONTACT_PROMPT_MODAL_KEY, {root: true});
-			}
-
-			if (promptData.showValueSurvey && !promptData.showPrompt) {
+			} else if (promptData.showValueSurvey) {
 				context.commit('ui/openModal', VALUE_SURVEY_MODAL_KEY, {root: true});
 			}
 		},
