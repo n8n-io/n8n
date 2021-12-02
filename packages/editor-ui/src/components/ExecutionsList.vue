@@ -530,11 +530,7 @@ export default mixins(
 				return;
 			}
 			const data = await this.restApi().getPastExecutions(this.workflowFilterPast, this.requestItemsPerRequest);
-
-			this.finishedExecutions = data.results.map((execution) => {
-				// @ts-ignore
-				return { ...execution, mode: execution.mode };
-			});
+			this.finishedExecutions = data.results;
 			this.finishedExecutionsCount = data.count;
 			this.finishedExecutionsCountEstimated = data.estimated;
 		},
