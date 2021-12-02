@@ -507,7 +507,7 @@ class App {
 		// Get push connections
 		this.app.use((req: express.Request, res: express.Response, next: express.NextFunction) => {
 			if (req.url.indexOf(`/${this.restEndpoint}/push`) === 0) {
-				// TODO: Later also has to add some kind of authentication token
+				// TODO UM: Later also has to add some kind of authentication token
 				if (req.query.sessionId === undefined) {
 					next(new Error('The query parameter "sessionId" is missing!'));
 					return;
@@ -703,7 +703,7 @@ class App {
 						try {
 							await UserManagementHelpers.saveWorkflowOwnership(savedWorkflow, incomingData);
 						} catch (error) {
-							// TODO: decide if this is fatal and we must rollback or
+							// TODO UM: decide if this is fatal and we must rollback or
 							// log and treat it elsewhere.
 							LoggerProxy.debug('Error saving workflow ownership', { error });
 						}
@@ -789,7 +789,7 @@ class App {
 
 				if (this.isUserManagementEnabled) {
 					queryBuilder.innerJoin('w.shared', 'shared');
-					// TODO: test this
+					// TODO UM: test this
 					queryBuilder.where('shared.user', req.body.user);
 				}
 
@@ -831,7 +831,7 @@ class App {
 
 					if (this.isUserManagementEnabled) {
 						qb.innerJoin('w.shared', 'shared');
-						// TODO: test this
+						// TODO UM: test this
 						qb.where('shared.user', req.body.user);
 					}
 
@@ -866,7 +866,7 @@ class App {
 						qb.leftJoinAndSelect('w.tags', 't');
 						qb.where('w.id = :workflowId', { workflowId: req.params.id });
 						qb.innerJoin('w.shared', 'shared');
-						// TODO: test this
+						// TODO UM: test this
 						qb.where('shared.user', req.body.user);
 						const workflow = await qb.getOne();
 						if (workflow) {
@@ -994,7 +994,7 @@ class App {
 					qb.leftJoinAndSelect('w.tags', 't');
 					qb.where('w.id = :workflowId', { workflowId: req.params.id });
 					qb.innerJoin('w.shared', 'shared');
-					// TODO: test this
+					// TODO UM: test this
 					qb.where('shared.user', req.body.user);
 					const workflow = await qb.getOne();
 					if (workflow) {
@@ -1045,7 +1045,7 @@ class App {
 					) {
 						const additionalData = await WorkflowExecuteAdditionalData.getBase();
 						if (this.isUserManagementEnabled) {
-							// TODO: test this.
+							// TODO UM: test this.
 							additionalData.userId = req.body.userId;
 						}
 						const nodeTypes = NodeTypes();
@@ -1088,7 +1088,7 @@ class App {
 						workflowData,
 					};
 					if (this.isUserManagementEnabled) {
-						// TODO: test this.
+						// TODO UM: test this.
 						data.userId = req.body.userId;
 					}
 					const workflowRunner = new WorkflowRunner();
@@ -1221,6 +1221,10 @@ class App {
 					);
 
 					const additionalData = await WorkflowExecuteAdditionalData.getBase(currentNodeParameters);
+					if (this.isUserManagementEnabled) {
+						// TODO UM: restrict user access to credentials he cannot use.
+						additionalData.userId = req.body.userId;
+					}
 
 					return loadDataInstance.getOptions(methodName, additionalData);
 				},
@@ -1388,7 +1392,9 @@ class App {
 			`/${this.restEndpoint}/active`,
 			ResponseHelper.send(
 				async (req: express.Request, res: express.Response): Promise<string[]> => {
-					const activeWorkflows = await this.activeWorkflowRunner.getActiveWorkflows();
+					const activeWorkflows = await this.activeWorkflowRunner.getActiveWorkflows(
+						this.isUserManagementEnabled ? req.body.userId : undefined,
+					);
 					return activeWorkflows.map((workflow) => workflow.id.toString());
 				},
 			),
@@ -1403,6 +1409,9 @@ class App {
 					res: express.Response,
 				): Promise<IActivationError | undefined> => {
 					const { id } = req.params;
+					if (this.isUserManagementEnabled) {
+						// TODO UM: Check if current user has access to this workflow.
+					}
 					return this.activeWorkflowRunner.getActivationError(id);
 				},
 			),
