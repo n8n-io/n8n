@@ -237,8 +237,6 @@ export default mixins(
 			},
 
 			async defaultLocale (newLocale, oldLocale) {
-				// TODO i18n: Remove next line
-				console.log(`Switching locale from ${oldLocale} to ${newLocale}`); // eslint-disable-line no-console
 				loadLanguage(newLocale);
 			},
 		},
