@@ -24,7 +24,7 @@
 					:title="$baseText('executionDetails.executionFailed')"
 				/>
 			</span>
-			of
+			{{ $baseText('executionDetails.of') }}
 			<span class="primary-color clickable" :title="$baseText('executionDetails.openWorkflow')">
 				<WorkflowNameShort :name="workflowName">
 					<template v-slot="{ shortenedName }">
@@ -34,7 +34,7 @@
 					</template>
 				</WorkflowNameShort>
 			</span>
-			workflow
+			{{ $baseText('executionDetails.workflow') }}
 		</span>
 		<n8n-tooltip class="read-only primary-color" placement="bottom-end" >
 			<div slot="content">
