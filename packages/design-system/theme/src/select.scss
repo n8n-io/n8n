@@ -14,7 +14,7 @@
 	width: 100%;
 
 	.el-select__tags {
-
+		overflow-x: scroll;
 
 		&::-webkit-scrollbar {
 			display: none;

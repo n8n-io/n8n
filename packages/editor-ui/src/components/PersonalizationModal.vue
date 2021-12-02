@@ -47,7 +47,7 @@
 					</n8n-select>
 				</n8n-input-label>
 
-				<n8n-input-label label="Which of these areas do you mainly work in?">
+				<n8n-input-label label="Which areas do you mainly work in?">
 					<n8n-select :value="values[WORK_AREA_KEY]" multiple placeholder="Select..." @change="(value) => onInput(WORK_AREA_KEY, value)">
 						<n8n-option :value="FINANCE_WORK_AREA" label="Finance" />
 						<n8n-option :value="HR_WORK_AREA" label="HR" />
