@@ -4,7 +4,7 @@ import { UserSettings } from 'n8n-core';
 
 import * as config from '../config';
 // eslint-disable-next-line import/no-cycle
-import { IPersonalizationSurvey, IPersonalizationSurveyAnswers } from '.';
+import { Db, IPersonalizationSurvey, IPersonalizationSurveyAnswers } from '.';
 
 const fsWriteFile = promisify(writeFile);
 
@@ -40,15 +40,21 @@ export async function preparePersonalizationSurvey(): Promise<IPersonalizationSu
 
 	survey.answers = loadSurveyFromDisk();
 
-	// Do not show survey if it has been previously answered
 	if (survey.answers) {
 		return survey;
 	}
 
-	// or if user opted out of personalization
-	const enabled = config.get('personalization.enabled') as boolean;
+	const enabled =
+		(config.get('personalization.enabled') as boolean) &&
+		(config.get('diagnostics.enabled') as boolean);
 
 	if (!enabled) {
+		return survey;
+	}
+
+	const workflowsExist = !!(await Db.collections.Workflow?.findOne());
+
+	if (workflowsExist) {
 		return survey;
 	}
 
