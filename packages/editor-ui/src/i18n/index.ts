@@ -6,9 +6,6 @@ import { INodeTranslationHeaders } from '@/Interface';
 
 Vue.use(VueI18n);
 
-// TODO i18n: Remove next line
-console.log('About to initialize i18n'); // eslint-disable-line no-console
-
 export const i18n = new VueI18n({
 	locale: 'en',
 	fallbackLocale: 'en',
@@ -27,9 +24,6 @@ function setLanguage(language: string) {
 }
 
 export async function loadLanguage(language?: string) {
-	// TODO i18n: Remove next line
-	console.log(`loadLanguage called with ${language}`); // eslint-disable-line no-console
-
 	if (!language) return Promise.resolve();
 
 	if (i18n.locale === language) {
@@ -64,9 +58,6 @@ export function addNodeTranslation(
 		),
 	};
 
-	// TODO i18n: Remove next line
-	console.log('newNodesBase', newNodesBase); // eslint-disable-line no-console
-
 	i18n.setLocaleMessage(
 		language,
 		Object.assign(i18n.messages[language], newNodesBase),
@@ -81,7 +72,4 @@ export function addHeaders(
 		language,
 		Object.assign(i18n.messages[language], { headers }),
 	);
-
-	// TODO i18n: Remove next line
-	console.log(i18n.messages[language].headers); // eslint-disable-line no-console
 }
