@@ -1181,9 +1181,10 @@ class App {
 			ResponseHelper.send(
 				async (req: express.Request, res: express.Response): Promise<INodeTypeDescription[]> => {
 					const nodeInfos = _.get(req, 'body.nodeInfos', []) as INodeTypeNameVersion[];
-					const language = config.get('defaultLocale') ?? req.headers['accept-language'] ?? 'en';
 
-					if (language === 'en') {
+					const { defaultLocale } = this.frontendSettings;
+
+					if (defaultLocale === 'en') {
 						return nodeInfos.reduce<INodeTypeDescription[]>((acc, { name, version }) => {
 							const { description } = NodeTypes().getByNameAndVersion(name, version);
 							acc.push(description);
@@ -1195,7 +1196,7 @@ class App {
 
 					for (const { name, version } of nodeInfos) {
 						const { description, sourcePath } = NodeTypes().getWithSourcePath(name, version);
-						const translationPath = await getNodeTranslationPath(sourcePath, language);
+						const translationPath = await getNodeTranslationPath(sourcePath, defaultLocale);
 						if (existsSync(translationPath)) {
 							description.translation = require(translationPath);
 						}
@@ -2894,8 +2895,8 @@ export async function start(): Promise<void> {
 
 		const defaultLocale = config.get('defaultLocale');
 
-		if (!defaultLocale || defaultLocale !== 'en') {
-			console.log(`Locale: ${config.get('defaultLocale')}`);
+		if (defaultLocale !== 'en') {
+			console.log(`Locale: ${defaultLocale}`);
 		}
 
 		await app.externalHooks.run('n8n.ready', [app]);
