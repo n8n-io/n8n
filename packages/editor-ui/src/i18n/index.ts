@@ -83,5 +83,5 @@ export function addHeaders(
 	);
 
 	// TODO i18n: Remove next line
-	console.log(i18n.messages.de.headers); // eslint-disable-line no-console
+	console.log(i18n.messages[language].headers); // eslint-disable-line no-console
 }
