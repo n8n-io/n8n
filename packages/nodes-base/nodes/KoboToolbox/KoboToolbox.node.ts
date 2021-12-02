@@ -1,3 +1,4 @@
+import { table } from 'console';
 import {
 	IExecuteFunctions,
 } from 'n8n-core';
@@ -48,6 +49,10 @@ export class KoboToolbox implements INodeType {
 					{
 						name: 'Submission',
 						value: 'submission',
+					},
+					{
+						name: 'Attachment',
+						value: 'attachment',
 					},
 					{
 						name: 'Hook',
@@ -108,6 +113,27 @@ export class KoboToolbox implements INodeType {
 					},
 				],
 				default: 'query',
+				description: 'The operation to perform.',
+			},
+			{
+				displayName: 'Operation',
+				name: 'operation',
+				type: 'options',
+				displayOptions: {
+					show: {
+						resource: [
+							'attachment',
+						],
+					},
+				},
+				options: [
+					{
+						name: 'Download',
+						value: 'download',
+						description: 'Download all attachments of a given submission',
+					},
+				],
+				default: 'download',
 				description: 'The operation to perform.',
 			},
 			{
@@ -203,10 +229,12 @@ export class KoboToolbox implements INodeType {
 					show: {
 						resource: [
 							'submission',
+							'attachment',
 						],
 						operation: [
 							'get',
 							'delete',
+							'download',
 						],
 					},
 				},
@@ -291,6 +319,45 @@ export class KoboToolbox implements INodeType {
 					},
 				],
 			},
+			{
+				displayName: 'Additional Options',
+				name: 'additionalFields',
+				type: 'collection',
+				displayOptions: {
+					show: {
+						resource: [
+							'attachment',
+						],
+					},
+				},
+				default: {},
+				options: [
+					{
+						displayName: 'File Size',
+						name: 'version',
+						type: 'options',
+						default:'Original',
+						description:'Attachment size to retrieve, if multiple versions are available',
+						options: [
+							{name: 'Original', value: 'download_url'},
+							{name: 'Small',    value: 'download_small_url'},
+							{name: 'Medium',   value: 'download_medium_url'},
+							{name: 'Large',    value: 'download_large_url'},
+						],
+					},
+					{
+						displayName: 'Name downloaded files from',
+						name: 'filename',
+						type: 'options',
+						default:'downloRelated Form Questionad_url',
+						description:'The strategy to name the downloaded files',
+						options: [
+							{name: 'Related Form Question',        value: 'related_question'},
+							{name: 'Original Server File Name',    value: 'filename'},
+						],
+					},
+				],
+			},
 		],
 	};
 
@@ -337,6 +404,7 @@ export class KoboToolbox implements INodeType {
 		let responseData: any;
 		// tslint:disable-next-line:no-any
 		let returnData: any[] = [];
+		const binaryItems: INodeExecutionData[] = [];
 		const items = this.getInputData();
 		const resource  = this.getNodeParameter('resource', 0) as string;
 		const operation = this.getNodeParameter('operation', 0) as string;
@@ -506,6 +574,69 @@ export class KoboToolbox implements INodeType {
 				}
 			}
 
+			if (resource === 'attachment') {
+				// *********************************************************************
+				//                             Attachment
+				// *********************************************************************
+
+				if (operation === 'download') {
+					// ----------------------------------
+					//          Attachment: download
+					// ----------------------------------
+
+					// Download submission details
+					const id = this.getNodeParameter('id', i) as string;
+					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					const options: IHttpRequestOptions = {
+						url: `${credentials.URL}/api/v2/assets/${asset_uid}/data/${id}`,
+						...baseOptions,
+					};
+					const source = await this.helpers.httpRequest(options);
+
+					// Look for attachment links - there can be more than one
+					if(source['_attachments'] && source['_attachments'].length) {
+						// Do a shallow copy of the source object to use as JSON reference
+						const jsonData = { ...source };
+						delete jsonData._attachments;
+
+						for (const attachment of source['_attachments']) {
+							// look for the question name linked to this attachment
+							const filename = attachment.filename;
+							let relatedQuestion = '';
+							// console.log(`Found attachment ${filename}`);
+							Object.keys(source).forEach(question => {
+								if(filename.endsWith('/' + source[question])) {
+									relatedQuestion = question;
+									// console.log(`Found attachment for form question: ${relatedQuestion}`);
+								}
+							});
+
+							// Initialize return object with the original submission JSON content
+							const newItem: INodeExecutionData = {
+								json: {
+									...jsonData,
+									_attachment: {
+										...attachment,
+										relatedQuestion,
+									},
+								},
+								binary: {},
+							};
+
+							// Download attachment
+							const binaryData = await this.helpers.httpRequest({
+								url: attachment[additionalFields.version as string] || attachment.download_url,
+								encoding: 'arraybuffer',
+								...baseOptions,
+							});
+							const binaryName = additionalFields.filename === 'filename' ? filename : relatedQuestion;
+							newItem.binary![binaryName] = await this.helpers.prepareBinaryData(Buffer.from(binaryData));
+							binaryItems.push(newItem);
+						}
+					}
+				}
+			}
+
 			if (responseData) {
 				if(responseData.hasOwnProperty('count') && responseData.hasOwnProperty('results') && responseData.hasOwnProperty('next') && responseData.hasOwnProperty('previous')) {
 					// It's a paginated list, append all results
@@ -518,7 +649,10 @@ export class KoboToolbox implements INodeType {
 				}
 			}
 		}
+
 		// Map data to n8n data
-		return [this.helpers.returnJsonArray(returnData)];
+		return binaryItems.length
+			? [binaryItems]
+			: [this.helpers.returnJsonArray(returnData)];
 	}
 }
