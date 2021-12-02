@@ -82,6 +82,11 @@ export default mixins(workflowHelpers).extend({
 			if (!this.isEmailValid && this.form.value === '') {
 				this.$telemetry.track('User responded value survey score', { instance_id: this.$store.getters.instanceId, how_disappointed: '' });
 			}
+
+			if (!this.isEmailValid && this.form.value !== '') {
+				this.$telemetry.track('User responded value survey email', { instance_id: this.$store.getters.instanceId, email: null });
+			}
+
 			this.resetForm();
 			this.$store.commit('ui/closeTopModal');
 		},
