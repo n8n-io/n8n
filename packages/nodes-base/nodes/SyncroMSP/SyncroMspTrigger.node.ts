@@ -35,6 +35,12 @@ export class SyncroMspTrigger implements INodeType {
 		],
 		properties: [
 			{
+				displayName: 'To use this node, add the webhook URLs above in Synchro. <a href="https://help.syncromsp.com/hc/en-us/articles/115002529773-Notification-Center-Overview" target="_blank">More details</a>',
+				name: 'webhookNotice',
+				type: 'notice',
+				default: '',
+			},
+			{
 				displayName: 'Events',
 				name: 'events',
 				type: 'multiOptions',
