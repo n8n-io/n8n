@@ -597,9 +597,19 @@ export const getZoomToFit = (nodes: INodeUi[]): {offset: XYPosition, zoomLevel: 
 	};
 };
 
-export const getUniqueNodeName = (nodes: INodeUi[], originalName: string, additinalUsedNames?: string[]) => {
+export const getUniqueNodeName = ({
+	nodes,
+	originalName,
+	additionalUsedNames,
+	nativelyNumberSuffixed,
+} : {
+	nodes: INodeUi[],
+	originalName: string,
+	additionalUsedNames?: string[],
+	nativelyNumberSuffixed: string[],
+}) => {
 	// Check if node-name is unique else find one that is
-	additinalUsedNames = additinalUsedNames || [];
+	additionalUsedNames = additionalUsedNames || [];
 
 	// Get all the names of the current nodes
 	const nodeNames = nodes.map((node: INodeUi) => {
@@ -607,31 +617,42 @@ export const getUniqueNodeName = (nodes: INodeUi[], originalName: string, additi
 	});
 
 	// Check first if the current name is already unique
-	if (!nodeNames.includes(originalName) && !additinalUsedNames.includes(originalName)) {
+	if (!nodeNames.includes(originalName) && !additionalUsedNames.includes(originalName)) {
 		return originalName;
 	}
 
-	const nameMatch = originalName.match(/(.*\D+)(\d*)/);
+	const found = nativelyNumberSuffixed.find((n) => originalName.startsWith(n));
+
 	let ignore, baseName, nameIndex, uniqueName;
 	let index = 1;
 
-	if (nameMatch === null) {
-		// Name is only a number
-		index = parseInt(originalName, 10);
-		baseName = '';
-		uniqueName = baseName + index;
-	} else {
-		// Name is string or string/number combination
-		[ignore, baseName, nameIndex] = nameMatch;
-		if (nameIndex !== '') {
+	if (found) {
+		nameIndex = originalName.split(found).pop();
+		if (nameIndex) {
 			index = parseInt(nameIndex, 10);
 		}
-		uniqueName = baseName;
+		baseName = uniqueName = found;
+	} else {
+		const nameMatch = originalName.match(/(.*\D+)(\d*)/);
+
+		if (nameMatch === null) {
+			// Name is only a number
+			index = parseInt(originalName, 10);
+			baseName = '';
+			uniqueName = baseName + index;
+		} else {
+			// Name is string or string/number combination
+			[ignore, baseName, nameIndex] = nameMatch;
+			if (nameIndex !== '') {
+				index = parseInt(nameIndex, 10);
+			}
+			uniqueName = baseName;
+		}
 	}
 
 	while (
 		nodeNames.includes(uniqueName) ||
-		additinalUsedNames.includes(uniqueName)
+		additionalUsedNames.includes(uniqueName)
 	) {
 		uniqueName = baseName + (index++);
 	}

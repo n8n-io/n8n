@@ -270,6 +270,7 @@ export default mixins(
 			defaultLocale (): string {
 				return this.$store.getters.defaultLocale;
 			},
+			...mapGetters(['nativelyNumberSuffixedDefaults']),
 			activeNode (): INodeUi | null {
 				return this.$store.getters.activeNode;
 			},
@@ -1265,7 +1266,11 @@ export default mixins(
 				}
 
 				// Check if node-name is unique else find one that is
-				newNodeData.name = CanvasHelpers.getUniqueNodeName(this.$store.getters.allNodes, newNodeData.name);
+				newNodeData.name = CanvasHelpers.getUniqueNodeName({
+					nodes: this.$store.getters.allNodes,
+					originalName: newNodeData.name,
+					nativelyNumberSuffixed: this.nativelyNumberSuffixedDefaults,
+				});
 
 				if (nodeTypeData.webhooks && nodeTypeData.webhooks.length) {
 					newNodeData.webhookId = uuidv4();
@@ -1857,7 +1862,11 @@ export default mixins(
 				const newNodeData = JSON.parse(JSON.stringify(this.getNodeDataToSave(node)));
 
 				// Check if node-name is unique else find one that is
-				newNodeData.name = CanvasHelpers.getUniqueNodeName(this.$store.getters.allNodes, newNodeData.name);
+				newNodeData.name = CanvasHelpers.getUniqueNodeName({
+					nodes: this.$store.getters.allNodes,
+					originalName: newNodeData.name,
+					nativelyNumberSuffixed: this.nativelyNumberSuffixedDefaults,
+				});
 
 				newNodeData.position = CanvasHelpers.getNewNodePosition(
 					this.nodes,
@@ -2101,7 +2110,11 @@ export default mixins(
 					return;
 				}
 				// Check if node-name is unique else find one that is
-				newName = CanvasHelpers.getUniqueNodeName(this.$store.getters.allNodes, newName);
+				newName = CanvasHelpers.getUniqueNodeName({
+					nodes: this.$store.getters.allNodes,
+					originalName: newName,
+					nativelyNumberSuffixed: this.nativelyNumberSuffixedDefaults,
+				});
 
 				// Rename the node and update the connections
 				const workflow = this.getWorkflow(undefined, undefined, true);
@@ -2320,7 +2333,12 @@ export default mixins(
 					}
 
 					oldName = node.name;
-					newName = CanvasHelpers.getUniqueNodeName(this.$store.getters.allNodes, node.name, newNodeNames);
+					newName = CanvasHelpers.getUniqueNodeName({
+						nodes: this.$store.getters.allNodes,
+						originalName: node.name,
+						additionalUsedNames: newNodeNames,
+						nativelyNumberSuffixed: this.nativelyNumberSuffixedDefaults,
+					});
 
 					newNodeNames.push(newName);
 					nodeNameTable[oldName] = newName;
