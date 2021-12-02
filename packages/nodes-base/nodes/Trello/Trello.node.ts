@@ -134,6 +134,34 @@ export class Trello implements INodeType {
 
 		],
 	};
+	
+	methods = {
+		loadOptions:{
+			async getAllBoards(
+				this: ILoadOptionsForFunctions,
+			): Promise<INodePropertyOptions[]> {
+ 					const returnData: INodePropertyOptions[] = [];
+// 					const boards = await googleApiRequestAllItems.call( //LMAO obvs change the request signature TODO
+// 					this,
+// 					'items',
+// 					'GET',
+// 					'/calendar/v3/users/me/calendarList',
+// 				);
+					var requestMethod = 'GET';
+				var endpoint = '/members/me/boards'; //Not sure if this needs the preceding /1/ (as in: /1/members/me/boards)
+						const boards = await apiRequestAllItems.call(this, requestMethod, endpoint, {}, {});
+						for(const board in boards){
+							const boardName = board.name;
+							const boardId = board.id;
+							returnData.push({
+								name: boardName,
+								value: boardId,
+							});
+						}
+					return returnData;
+				}
+		}
+	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
