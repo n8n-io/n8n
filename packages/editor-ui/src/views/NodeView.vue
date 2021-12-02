@@ -270,6 +270,9 @@ export default mixins(
 			defaultLocale (): string {
 				return this.$store.getters.defaultLocale;
 			},
+			englishLocale(): boolean {
+				return this.defaultLocale === 'en';
+			},
 			...mapGetters(['nativelyNumberSuffixedDefaults']),
 			activeNode (): INodeUi | null {
 				return this.$store.getters.activeNode;
@@ -353,6 +356,76 @@ export default mixins(
 			clearExecutionData () {
 				this.$store.commit('setWorkflowExecutionData', null);
 				this.updateNodesExecutionIssues();
+			},
+			translateName(type: string, originalName: string) {
+				return this.$headerText({
+					key: `headers.${this.$shortNodeType(type)}.displayName`,
+					fallback: originalName,
+				});
+			},
+			getUniqueNodeName({
+				originalName,
+				additionalUsedNames = [],
+				type = '',
+			} : {
+				originalName: string,
+				additionalUsedNames?: string[],
+				type?: string,
+			}) {
+				const allNodeNamesOnCanvas = this.$store.getters.allNodes.map((n: INodeUi) => n.name);
+				originalName = this.englishLocale ? originalName : this.translateName(type, originalName);
+
+				if (
+					!allNodeNamesOnCanvas.includes(originalName) &&
+					!additionalUsedNames.includes(originalName)
+				) {
+					return originalName; // already unique
+				}
+
+				let natives: string[] = this.nativelyNumberSuffixedDefaults;
+				natives = this.englishLocale ? natives : natives.map(name => {
+					const type = name.toLowerCase().replace('_', '');
+					return this.translateName(type, name);
+				});
+
+				const found = natives.find((n) => originalName.startsWith(n));
+
+				let ignore, baseName, nameIndex, uniqueName;
+				let index = 1;
+
+				if (found) {
+					// name natively ends with number
+					nameIndex = originalName.split(found).pop();
+					if (nameIndex) {
+						index = parseInt(nameIndex, 10);
+					}
+					baseName = uniqueName = originalName;
+				} else {
+					const nameMatch = originalName.match(/(.*\D+)(\d*)/);
+
+					if (nameMatch === null) {
+						// name is only a number
+						index = parseInt(originalName, 10);
+						baseName = '';
+						uniqueName = baseName + index;
+					} else {
+						// name is string or string/number combination
+						[ignore, baseName, nameIndex] = nameMatch;
+						if (nameIndex !== '') {
+							index = parseInt(nameIndex, 10);
+						}
+						uniqueName = baseName = originalName;
+					}
+				}
+
+				while (
+					allNodeNamesOnCanvas.includes(uniqueName) ||
+					additionalUsedNames.includes(uniqueName)
+				) {
+					uniqueName = baseName + (index++);
+				}
+
+				return uniqueName;
 			},
 			openNodeCreator (source: string) {
 				this.createNodeActive = true;
@@ -1265,11 +1338,11 @@ export default mixins(
 					newNodeData.position = CanvasHelpers.getNewNodePosition(this.nodes, this.lastClickPosition);
 				}
 
+
 				// Check if node-name is unique else find one that is
-				newNodeData.name = CanvasHelpers.getUniqueNodeName({
-					nodes: this.$store.getters.allNodes,
+				newNodeData.name = this.getUniqueNodeName({
 					originalName: newNodeData.name,
-					nativelyNumberSuffixed: this.nativelyNumberSuffixedDefaults,
+					type: newNodeData.type,
 				});
 
 				if (nodeTypeData.webhooks && nodeTypeData.webhooks.length) {
@@ -1862,10 +1935,9 @@ export default mixins(
 				const newNodeData = JSON.parse(JSON.stringify(this.getNodeDataToSave(node)));
 
 				// Check if node-name is unique else find one that is
-				newNodeData.name = CanvasHelpers.getUniqueNodeName({
-					nodes: this.$store.getters.allNodes,
+				newNodeData.name = this.getUniqueNodeName({
 					originalName: newNodeData.name,
-					nativelyNumberSuffixed: this.nativelyNumberSuffixedDefaults,
+					type: newNodeData.type,
 				});
 
 				newNodeData.position = CanvasHelpers.getNewNodePosition(
@@ -2110,10 +2182,8 @@ export default mixins(
 					return;
 				}
 				// Check if node-name is unique else find one that is
-				newName = CanvasHelpers.getUniqueNodeName({
-					nodes: this.$store.getters.allNodes,
+				newName = this.getUniqueNodeName({
 					originalName: newName,
-					nativelyNumberSuffixed: this.nativelyNumberSuffixedDefaults,
 				});
 
 				// Rename the node and update the connections
@@ -2333,11 +2403,10 @@ export default mixins(
 					}
 
 					oldName = node.name;
-					newName = CanvasHelpers.getUniqueNodeName({
-						nodes: this.$store.getters.allNodes,
+					newName = this.getUniqueNodeName({
 						originalName: node.name,
 						additionalUsedNames: newNodeNames,
-						nativelyNumberSuffixed: this.nativelyNumberSuffixedDefaults,
+						type: node.type,
 					});
 
 					newNodeNames.push(newName);

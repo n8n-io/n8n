@@ -196,21 +196,14 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, renderText, workflow
 			return this.$shortNodeType(this.data.type);
 		},
 		nodeTitle (): string {
-			const node = this.data;
+			if (this.data.name === 'Start') {
+				return this.$headerText({
+					key: `headers.start.displayName`,
+					fallback: 'Start',
+				});
+			}
 
-			const nodeName = this.$headerText({
-				key: `headers.${this.$shortNodeType(node.type)}.displayName`,
-				fallback: node.name,
-			});
-
-			if (!/\d$/.test(node.name)) return nodeName;
-
-			const nativeDuplicateSuffix = this.getDuplicateSuffix(node, { fromNative: true });
-
-			if (nativeDuplicateSuffix) return nodeName + nativeDuplicateSuffix;
-
-			return nodeName + this.getDuplicateSuffix(node, { fromStandard: true });
-
+			return this.data.name;
 		},
 		waiting (): string | undefined {
 			const workflowExecution = this.$store.getters.getWorkflowExecution;
@@ -341,34 +334,6 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, renderText, workflow
 				// Wait a tick else vue causes problems because the data is gone
 				this.$emit('duplicateNode', this.data.name);
 			});
-		},
-
-		/**
-		 * Extract the duplicate number suffix from a node name:
-		 * - from a node name natively ending in a number, e.g. `'S31'` → `'1'`
-		 * - from a standard node name, e.g. `'GitHub1'` → `'1'`
-		 */
-		getDuplicateSuffix(
-			node: INodeUi,
-			{ fromNative, fromStandard }: { fromNative?: true; fromStandard?: true; },
-		) {
-			if (fromNative) {
-				const { nativelyNumberSuffixedNodeNames: natives } = this.$store.getters;
-				const found = natives.find((native: string) => node.name.includes(native));
-
-				if (!found) return null;
-
-				return node.name.split(found).pop()!;
-			}
-
-			if (fromStandard) {
-				const match = node.name.match(/(.*)(?<duplicateSuffix>\d)$/);
-				if (!match || !match.groups || !match.groups.duplicateSuffix) return null;
-
-				return match.groups.duplicateSuffix;
-			}
-
-			throw new Error('Either "fromNative" or "fromStandard" must be specified');
 		},
 
 		setNodeActive () {
