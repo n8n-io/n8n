@@ -245,6 +245,7 @@ export class WorkflowRunner {
 			workflowTimeout <= 0 ? undefined : Date.now() + workflowTimeout * 1000,
 		);
 		if (data.userId) {
+			// @ts-ignore
 			additionalData.userId = data.userId;
 		}
 
