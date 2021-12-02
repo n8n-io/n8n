@@ -333,11 +333,17 @@ export class ActiveWorkflowRunner {
 	 * @returns {string[]}
 	 * @memberof ActiveWorkflowRunner
 	 */
-	async getActiveWorkflows(): Promise<IWorkflowDb[]> {
-		const activeWorkflows = (await Db.collections.Workflow?.find({
-			where: { active: true },
-			select: ['id'],
-		})) as IWorkflowDb[];
+	async getActiveWorkflows(userId?: string): Promise<IWorkflowDb[]> {
+		const qb = Db.collections.Workflow!.createQueryBuilder('w');
+		qb.where('active = :active', { active: true });
+		qb.select('w.id');
+
+		if (userId) {
+			// TODO UM: implement this.
+			// qb.innerJoin
+		}
+
+		const activeWorkflows = (await qb.getMany()) as IWorkflowDb[];
 		return activeWorkflows.filter(
 			(workflow) => this.activationErrors[workflow.id.toString()] === undefined,
 		);
