@@ -2076,6 +2076,10 @@ class App {
 						scopes: _.split(_.get(oauthCredentials, 'scope', 'openid,') as string, ','),
 					};
 
+					let oauthToken: clientOAuth2.Token | null = null;
+
+					const oAuthObj = new clientOAuth2(oAuth2Parameters);
+
 					if ((_.get(oauthCredentials, 'authentication', 'header') as string) === 'body') {
 						options = {
 							body: {
@@ -2083,19 +2087,22 @@ class App {
 								client_secret: _.get(oauthCredentials, 'clientSecret', '') as string,
 							},
 						};
-						delete oAuth2Parameters.clientSecret;
 					}
 
+					if ((_.get(oauthCredentials, 'permissionType', 'delegated') as string) === 'application') {
+						oauthToken = await oAuthObj.credentials.getToken(options);
+					} else {
+						const queryParameters = req.originalUrl.split('?').splice(1, 1).join('');
+
+						oauthToken = await oAuthObj.code.getToken(
+							`${oAuth2Parameters.redirectUri}?${queryParameters}`,
+							options,
+						);
+					}
+
+					delete oAuth2Parameters.clientSecret;
+
 					await this.externalHooks.run('oauth2.callback', [oAuth2Parameters]);
-
-					const oAuthObj = new clientOAuth2(oAuth2Parameters);
-
-					const queryParameters = req.originalUrl.split('?').splice(1, 1).join('');
-
-					const oauthToken = await oAuthObj.code.getToken(
-						`${oAuth2Parameters.redirectUri}?${queryParameters}`,
-						options,
-					);
 
 					if (Object.keys(req.query).length > 2) {
 						_.set(oauthToken.data, 'callbackQueryString', _.omit(req.query, 'state', 'code'));
