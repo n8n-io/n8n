@@ -458,7 +458,7 @@ export interface IVersionNotificationSettings {
 	infoUrl: string;
 }
 
-export type IPersonalizationSurveyKeys = 'companySize' | 'codingSkill' | 'workArea' | 'otherWorkArea';
+export type IPersonalizationSurveyKeys = 'codingSkill' | 'companyIndustry' | 'companySize' | 'otherCompanyIndustry' | 'otherWorkArea' | 'workArea';
 
 export type IPersonalizationSurveyAnswers = {
 	[key in IPersonalizationSurveyKeys]: string | null
@@ -700,4 +700,3 @@ export interface IBounds {
 	maxX: number;
 	maxY: number;
 }
-
