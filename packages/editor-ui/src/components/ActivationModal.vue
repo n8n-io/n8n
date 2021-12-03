@@ -10,7 +10,7 @@
 				<n8n-text>{{triggerContent}}</n8n-text>
 			</div>
 			<div :class="$style.spaced">
-				<n8n-text><span :class="$style.emphasised">These executions will not show up immediately in the editor</span>, but you can see them in the <a @click="showExecutionsList">execution list</a>.</n8n-text>
+				<n8n-text><n8n-text :bold="true">These executions will not show up immediately in the editor</n8n-text>, but you can see them in the <a @click="showExecutionsList">execution list</a>.</n8n-text>
 			</div>
 		</template>
 
