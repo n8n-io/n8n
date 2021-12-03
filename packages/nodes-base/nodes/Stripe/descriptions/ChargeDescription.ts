@@ -2,7 +2,7 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const chargeOperations = [
+export const chargeOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -39,9 +39,9 @@ export const chargeOperations = [
 			},
 		},
 	},
-] as INodeProperties[];
+];
 
-export const chargeFields = [
+export const chargeFields: INodeProperties[] = [
 	// ----------------------------------
 	//       charge: create
 	// ----------------------------------
@@ -388,6 +388,7 @@ export const chargeFields = [
 				displayName: 'Metadata',
 				name: 'metadata',
 				type: 'fixedCollection',
+				default: {},
 				placeholder: 'Add Metadata Item',
 				description: 'Set of key-value pairs to attach to the charge to update',
 				typeOptions: {
@@ -425,6 +426,7 @@ export const chargeFields = [
 				displayName: 'Shipping',
 				name: 'shipping',
 				type: 'fixedCollection',
+				default: {},
 				description: 'Shipping information for the charge',
 				placeholder: 'Add Field',
 				typeOptions: {
@@ -506,4 +508,4 @@ export const chargeFields = [
 		],
 	},
 
-] as INodeProperties[];
+];
