@@ -1633,11 +1633,9 @@ export default mixins(
 					if (workflowId !== null) {
 						const workflow = await this.restApi().getWorkflow(workflowId);
 						if (!workflow) {
-							// redirect to a new Workflow
 							this.$router.push({
 								name: "NodeViewNew",
 							});
-							// send error pop-up
 							this.$showMessage({
 								title: 'Error',
 								message: 'Could not find workflow',
