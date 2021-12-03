@@ -5,7 +5,7 @@
   "scripts": {
     "bootstrap": "lerna bootstrap --hoist --no-ci",
     "build": "lerna exec npm run build",
-    "heroku-postbuild": "npm run bootstrap && npm run build",
+    "heroku-postbuild": "apt-get install -y build-essential python && npm install -g lerna && npm run bootstrap && npm run build",
     "dev": "lerna exec npm run dev --parallel",
     "clean:dist": "lerna exec -- rimraf ./dist",
     "format": "lerna exec npm run format",
