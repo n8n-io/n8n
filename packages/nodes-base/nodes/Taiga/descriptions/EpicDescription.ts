@@ -2,7 +2,7 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const epicOperations = [
+export const epicOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -44,9 +44,9 @@ export const epicOperations = [
 		default: 'create',
 		description: 'Operation to perform',
 	},
-] as INodeProperties[];
+];
 
-export const epicFields = [
+export const epicFields: INodeProperties[] = [
 	// ----------------------------------------
 	//               epic: create
 	// ----------------------------------------
@@ -426,4 +426,4 @@ export const epicFields = [
 			},
 		],
 	},
-] as INodeProperties[];
+];

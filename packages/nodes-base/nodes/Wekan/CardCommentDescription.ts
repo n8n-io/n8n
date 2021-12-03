@@ -2,7 +2,7 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const cardCommentOperations = [
+export const cardCommentOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -39,9 +39,9 @@ export const cardCommentOperations = [
 		default: 'create',
 		description: 'The operation to perform.',
 	},
-] as INodeProperties[];
+];
 
-export const cardCommentFields = [
+export const cardCommentFields: INodeProperties[] = [
 	// ----------------------------------
 	//         cardComment:create
 	// ----------------------------------
@@ -457,4 +457,4 @@ export const cardCommentFields = [
 		default: 100,
 		description: 'How many results to return.',
 	},
-] as INodeProperties[];
+];
