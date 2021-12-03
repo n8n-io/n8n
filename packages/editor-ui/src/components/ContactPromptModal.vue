@@ -57,16 +57,16 @@ export default mixins(workflowHelpers).extend({
 		title() : string {
 			if (this.promptData && this.promptData.title) {
 				return this.promptData.title;
-			} else {
-				return 'You’re a power user 💪';
 			}
+
+			return 'You’re a power user 💪';
 		},
 		description() : string {
 			if (this.promptData && this.promptData.message) {
 				return this.promptData.message;
-			} else {
-				return 'Your experience with n8n can help us improve - for you and our entire community.';
 			}
+
+			return 'Your experience with n8n can help us improve - for you and our entire community.';
 		},
 		isEmailValid(): boolean {
 			return VALID_EMAIL_REGEX.test(String(this.email).toLowerCase());

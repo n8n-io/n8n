@@ -10,7 +10,7 @@
 	>
 		<template slot="header">
 			<div :class="$style.title">
-				<n8n-heading tag="h2" size="small" color="text-xlight">{{ getTitle }}</n8n-heading>
+				<n8n-heading tag="h2" size="medium" color="text-xlight">{{ getTitle }}</n8n-heading>
 			</div>
 		</template>
 		<template slot="content">
@@ -30,7 +30,9 @@
 						/>
 						<n8n-button label="Send" float="right" @click="send" :disabled="!isEmailValid" />
 					</div>
-					<div :class="$style.disclaimer">David from our product team will get in touch personally.</div>
+					<div :class="$style.disclaimer">
+						<n8n-text size="small" color="text-xlight">David from our product team will get in touch personally.</n8n-text>
+					</div>
 				</div>
 			</section>
 		</template>
@@ -38,11 +40,12 @@
 </template>
 
 <script lang="ts">
-import mixins from "vue-typed-mixins";
-
 import { VALID_EMAIL_REGEX, VALUE_SURVEY_MODAL_KEY } from '@/constants';
-import { workflowHelpers } from "@/components/mixins/workflowHelpers";
+
 import ModalDrawer from './ModalDrawer.vue';
+
+import mixins from "vue-typed-mixins";
+import { workflowHelpers } from "@/components/mixins/workflowHelpers";
 
 const DEFAULT_TITLE = `How likely are you to recommend n8n to a friend or colleague?`;
 const SECOND_QUESTION_TITLE = `Thanks for your feedback! We'd love to understand how we can improve. Can we reach out?`;
@@ -77,8 +80,8 @@ export default mixins(workflowHelpers).extend({
 	methods: {
 		closeDialog(): void {
 			if (this.form.value === '') {
-				this.$telemetry.track('User responded value survey score', { instance_id: this.$store.getters.instanceId, how_disappointed: '' });
-			} else if (this.form.value !== '') {
+				this.$telemetry.track('User responded value survey score', { instance_id: this.$store.getters.instanceId, nps: '' });
+			} else {
 				this.$telemetry.track('User responded value survey email', { instance_id: this.$store.getters.instanceId, email: '' });
 			}
 
@@ -88,20 +91,18 @@ export default mixins(workflowHelpers).extend({
 			this.form.value = value;
 			this.showButtons = false;
 			this.$store.dispatch('settings/submitValueSurvey', {value: this.form.value});
-			this.$telemetry.track('User responded value survey score', { instance_id: this.$store.getters.instanceId, how_disappointed: this.form.value });
+			this.$telemetry.track('User responded value survey score', { instance_id: this.$store.getters.instanceId, nps: this.form.value });
 		},
 		send(): void {
-			if (this.isEmailValid) {
-				this.$store.dispatch('settings/submitValueSurvey', {email: this.form.email, value: this.form.value});
-				this.$telemetry.track('User responded value survey email', { instance_id: this.$store.getters.instanceId, email: this.form.email });
-				this.$showMessage({
-					title: 'Thanks for your feedback',
-					message: `If you’d like to help even more, answer this <a target="_blank" href="https://n8n-community.typeform.com/quicksurvey#how_disappointed=${this.form.value}&instance_id=${this.$store.getters.instanceId}">quick survey.</a>`,
-					type: 'success',
-					duration: 15000,
-				});
-				this.$store.commit('ui/closeTopModal');
-			}
+			this.$store.dispatch('settings/submitValueSurvey', {email: this.form.email, value: this.form.value});
+			this.$telemetry.track('User responded value survey email', { instance_id: this.$store.getters.instanceId, email: this.form.email });
+			this.$showMessage({
+				title: 'Thanks for your feedback',
+				message: `If you’d like to help even more, answer this <a target="_blank" href="https://n8n-community.typeform.com/quicksurvey#nps=${this.form.value}&instance_id=${this.$store.getters.instanceId}">quick survey.</a>`,
+				type: 'success',
+				duration: 15000,
+			});
+			this.$store.commit('ui/closeTopModal');
 		},
 	},
 	mounted() {
@@ -163,9 +164,7 @@ export default mixins(workflowHelpers).extend({
 		}
 
 		.disclaimer {
-			margin-top: var(--spacing-3xs);
-			font-size: var(--font-size-2xs);
-			color: var(--color-text-xlight);
+			margin-top: var(--spacing-4xs);
 		}
 	}
 }
