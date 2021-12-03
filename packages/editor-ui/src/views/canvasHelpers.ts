@@ -1,5 +1,5 @@
 import { getStyleTokenValue } from "@/components/helpers";
-import { START_NODE_TYPE } from "@/constants";
+import { NODE_OUTPUT_DEFAULT_KEY, START_NODE_TYPE } from "@/constants";
 import { IBounds, INodeUi, IZoomConfig, XYPosition } from "@/Interface";
 import { Connection, Endpoint, Overlay, OverlaySpec, PaintStyle } from "jsplumb";
 import {
@@ -57,11 +57,13 @@ export const CONNECTOR_FLOWCHART_TYPE = ['N8nCustom', {
 	getEndpointOffset(endpoint: Endpoint) {
 		const indexOffset = 10; // stub offset between different endpoints of same node
 		const index = endpoint && endpoint.__meta ? endpoint.__meta.index : 0;
+		const totalEndpoints = endpoint && endpoint.__meta ? endpoint.__meta.totalEndpoints : 0;
 
 		const outputOverlay = getOverlay(endpoint, OVERLAY_OUTPUT_NAME_LABEL);
 		const labelOffset = outputOverlay && outputOverlay.label && outputOverlay.label.length > 1 ? 10 : 0;
+		const outputsOffset = totalEndpoints > 3 ? 24 : 0; // avoid intersecting plus
 
-		return index * indexOffset + labelOffset;
+		return index * indexOffset + labelOffset + outputsOffset;
 	},
 }];
 
@@ -112,23 +114,9 @@ export const CONNECTOR_ARROW_OVERLAYS: OverlaySpec[] = [
 	],
 ];
 
-export const CONNECTOR_DROP_NODE_OVERLAY: OverlaySpec[] = [
-	[
-		'Label',
-		{
-			id: OVERLAY_DROP_NODE_ID,
-			label: 'Drop connection<br />to add node',
-			cssClass: 'drop-add-node-label',
-			location: 0.5,
-			visible: true,
-		},
-	],
-];
-
-
 export const ANCHOR_POSITIONS: {
 	[key: string]: {
-		[key: number]: string[] | number[][];
+		[key: number]: number[][];
 	}
 } = {
 	input: {
@@ -511,19 +499,32 @@ export const getOutputSummary = (data: ITaskData[], nodeConnections: NodeInputCo
 		}
 
 		run.data.main.forEach((output: INodeExecutionData[] | null, i: number) => {
-			if (!nodeConnections[i]) {
+			const sourceOutputIndex = i;
+
+			if (!outputMap[sourceOutputIndex]) {
+				outputMap[sourceOutputIndex] = {};
+			}
+
+			if (!outputMap[sourceOutputIndex][NODE_OUTPUT_DEFAULT_KEY]) {
+				outputMap[sourceOutputIndex][NODE_OUTPUT_DEFAULT_KEY] = {};
+				outputMap[sourceOutputIndex][NODE_OUTPUT_DEFAULT_KEY][0] = {
+					total: 0,
+					iterations: 0,
+				};
+			}
+
+			const defaultOutput = outputMap[sourceOutputIndex][NODE_OUTPUT_DEFAULT_KEY][0];
+			defaultOutput.total += output ? output.length : 0;
+			defaultOutput.iterations += output ? 1 : 0;
+
+			if (!nodeConnections[sourceOutputIndex]) {
 				return;
 			}
 
-			nodeConnections[i]
+			nodeConnections[sourceOutputIndex]
 				.map((connection: IConnection) => {
-					const sourceOutputIndex = i;
 					const targetNodeName = connection.node;
 					const targetInputIndex = connection.index;
-
-					if (!outputMap[sourceOutputIndex]) {
-						outputMap[sourceOutputIndex] = {};
-					}
 
 					if (!outputMap[sourceOutputIndex][targetNodeName]) {
 						outputMap[sourceOutputIndex][targetNodeName] = {};
@@ -554,6 +555,13 @@ export const resetConnection = (connection: Connection) => {
 	}
 };
 
+export const getRunItemsLabel = (output: {total: number, iterations: number}): string => {
+	let label = `${output.total}`;
+	label = output.total > 1 ? `${label} items` : `${label} item`;
+	label = output.iterations > 1 ? `${label} total` : label;
+	return label;
+};
+
 export const addConnectionOutputSuccess = (connection: Connection, output: {total: number, iterations: number}) => {
 	connection.setPaintStyle(CONNECTOR_PAINT_STYLE_SUCCESS);
 	if (connection.canvas) {
@@ -564,15 +572,11 @@ export const addConnectionOutputSuccess = (connection: Connection, output: {tota
 		connection.removeOverlay(OVERLAY_RUN_ITEMS_ID);
 	}
 
-	let label = `${output.total}`;
-	label = output.total > 1 ? `${label} items` : `${label} item`;
-	label = output.iterations > 1 ? `${label} total` : label;
-
 	connection.addOverlay([
 		'Label',
 		{
 			id: OVERLAY_RUN_ITEMS_ID,
-			label: `<span>${label}</span>`,
+			label: `<span>${getRunItemsLabel(output)}</span>`,
 			cssClass: 'connection-run-items-label',
 			location: .5,
 		},
