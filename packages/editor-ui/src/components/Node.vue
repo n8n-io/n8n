@@ -61,7 +61,9 @@
 				<p>
 					{{ nodeTitle }}
 				</p>
-				<p v-if="data.disabled">({{ $baseText('node.disabled') }}}</p>
+				<p v-if="data.disabled">
+					({{ $baseText('node.disabled') }})
+				</p>
 			</div>
 			<div v-if="nodeSubtitle !== undefined" class="node-subtitle" :title="nodeSubtitle">
 				{{ nodeSubtitle }}
