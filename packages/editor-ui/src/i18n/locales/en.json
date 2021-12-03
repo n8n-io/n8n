@@ -166,8 +166,10 @@
 		"openWorkflow": "Open Workflow",
 		"of": "of",
 		"workflow": "workflow",
-		"readOnly": "Read only",
-		"youreViewingTheLogOf": "You're viewing the log of a previous execution. You cannot<br />\n\t\tmake changes since this execution already occurred. Make changes<br />\n\t\tto this workflow by clicking on its name on the left."
+		"readOnly": {
+			"readOnly": "Read only",
+			"youreViewingTheLogOf": "You're viewing the log of a previous execution. You cannot<br />\n\t\tmake changes since this execution already occurred. Make changes<br />\n\t\tto this workflow by clicking on its name on the left."
+		}
 	},
 	"executionsList": {
 		"allWorkflows": "All Workflows",
