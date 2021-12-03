@@ -71,14 +71,15 @@ const formatValue = (value: any, format: string): any => { //tslint:disable-line
 
 		// Check if it's a closed polygon geo-shape: -1.954117 30.085159 0 0;-1.955005 30.084622 0 0;-1.956057 30.08506 0 0;-1.956393 30.086229 0 0;-1.955853 30.087143 0 0;-1.954609 30.08725 0 0;-1.953966 30.086735 0 0;-1.953805 30.085897 0 0;-1.954117 30.085159 0 0
 		const points = value.split(';');
-		if (points.length >= 2 && _.every(points, point => /^-?\d+(?:\.\d+)?$/.test(_.toString(point))) && _.first(points) === _.last(points)) {
-			// Convert to GeoJSON
+		if (points.length >= 2 && _.first(points) === _.last(points) && /^[-\d\.\s;]+$/.test(value)) {
 			// Using the GeoJSON format as per https://www.elastic.co/guide/en/elasticsearch/reference/7.5/geo-shape.html#geo-polygon
-			const parsedPoints = points.map(parseGeoPoint);
-			return {
-				type: 'polygon',
-				coordinates: [parsedPoints],
-			};
+			const coordinates = _.compact(points.map(parseGeoPoint));
+			if(coordinates.length === points.length) {
+				return {
+					type: 'polygon',
+					coordinates,
+				};
+			}
 		}
 
 		// Parse numbers
@@ -124,8 +125,8 @@ export function formatSubmission(submission: IDataObject, selectMasks: string[] 
 	// Reformat _geolocation
 	if(_.isArray(response.geolocation) && response.geolocation.length === 2 && response.geolocation[0] && response.geolocation[1]) {
 		response.geolocation = {
-			lat: response.geolocation[1],
-			lon: response.geolocation[0],
+			lat: response.geolocation[0],
+			lon: response.geolocation[1],
 		};
 	}
 
