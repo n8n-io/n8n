@@ -482,7 +482,9 @@ function hookFunctionsSave(parentProcessMode?: string): IWorkflowExecuteHooks {
 					if (isManualMode && !saveManualExecutions && !fullRunData.waitTill) {
 						// Data is always saved, so we remove from database
 						await Db.collections.Execution!.delete(this.executionId);
-						BinaryDataManager.getInstance().findAndMarkDataForDeletionFromFullRunData(fullRunData);
+						await BinaryDataManager.getInstance().findAndMarkDataForDeletionFromFullRunData(
+							fullRunData,
+						);
 
 						return;
 					}
@@ -516,7 +518,7 @@ function hookFunctionsSave(parentProcessMode?: string): IWorkflowExecuteHooks {
 							}
 							// Data is always saved, so we remove from database
 							await Db.collections.Execution!.delete(this.executionId);
-							BinaryDataManager.getInstance().findAndMarkDataForDeletionFromFullRunData(
+							await BinaryDataManager.getInstance().findAndMarkDataForDeletionFromFullRunData(
 								fullRunData,
 							);
 

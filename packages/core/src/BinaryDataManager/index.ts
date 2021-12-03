@@ -9,7 +9,7 @@ export class BinaryDataManager {
 
 	private manager?: IBinaryDataManager;
 
-	static async init(config: IBinaryDataConfig, clearOldData = false): Promise<void> {
+	static async init(config: IBinaryDataConfig, mainManager = false): Promise<void> {
 		if (BinaryDataManager.instance) {
 			throw new Error('Binary Data Manager already initialized');
 		}
@@ -18,11 +18,7 @@ export class BinaryDataManager {
 
 		if (config.mode === 'LOCAL_STORAGE') {
 			BinaryDataManager.instance.manager = new BinaryDataLocalStorage();
-			await BinaryDataManager.instance.manager.init(config);
-		}
-
-		if (clearOldData) {
-			await BinaryDataManager.instance.deleteMarkedFiles();
+			await BinaryDataManager.instance.manager.init(config, mainManager);
 		}
 
 		return undefined;
@@ -66,9 +62,9 @@ export class BinaryDataManager {
 		throw new Error('Binary data storage mode is set to default');
 	}
 
-	findAndMarkDataForDeletionFromFullRunData(fullRunData: IRun): void {
+	async findAndMarkDataForDeletionFromFullRunData(fullRunData: IRun): Promise<void> {
 		const identifiers = this.findBinaryDataFromRunData(fullRunData.data.resultData.runData);
-		void this.markDataForDeletion(identifiers);
+		return this.markDataForDeletion(identifiers);
 	}
 
 	findAndMarkDataForDeletion(fullExecutionDataList: IExecutionFlattedDb[]): void {
@@ -99,14 +95,6 @@ export class BinaryDataManager {
 	private async markDataForDeletion(identifiers: string[]): Promise<void> {
 		if (this.manager) {
 			return this.manager.markDataForDeletion(identifiers);
-		}
-
-		return Promise.resolve();
-	}
-
-	private async deleteMarkedFiles(): Promise<unknown> {
-		if (this.manager) {
-			return this.manager.deleteMarkedFiles();
 		}
 
 		return Promise.resolve();

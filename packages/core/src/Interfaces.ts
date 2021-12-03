@@ -280,7 +280,7 @@ export interface IBinaryDataManagerOptions {
 }
 
 export interface IBinaryDataManager {
-	init(config: IBinaryDataConfig): Promise<void>;
+	init(config: IBinaryDataConfig, startPurger: boolean): Promise<void>;
 	storeBinaryData(binaryData: IBinaryData, binaryBuffer: Buffer): Promise<IBinaryData>;
 	retrieveBinaryDataByIdentifier(identifier: string): Promise<Buffer>;
 	markDataForDeletion(identifiers: string[]): Promise<void>;

@@ -1,6 +1,6 @@
 import { promises as fs } from 'fs';
 import * as path from 'path';
-import { IBinaryData, IDataObject } from 'n8n-workflow';
+import { IBinaryData } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 
 import { IBinaryDataConfig, IBinaryDataManager } from '../Interfaces';
@@ -8,14 +8,17 @@ import { IBinaryDataConfig, IBinaryDataManager } from '../Interfaces';
 export class BinaryDataLocalStorage implements IBinaryDataManager {
 	private storagePath = '';
 
-	private managerId = '';
-
 	private binaryDataTTL = 60;
 
-	async init(config: IBinaryDataConfig): Promise<void> {
+	async init(config: IBinaryDataConfig, startPurger = false): Promise<void> {
 		this.storagePath = config.localStoragePath;
-		this.managerId = `manager-${uuid()}`;
 		this.binaryDataTTL = config.binaryDataTTL;
+		if (startPurger) {
+			setInterval(async () => {
+				// get all files and delete data
+				await this.deleteMarkedFiles();
+			}, this.binaryDataTTL * 30000);
+		}
 
 		return fs
 			.readdir(this.storagePath)
@@ -25,7 +28,8 @@ export class BinaryDataLocalStorage implements IBinaryDataManager {
 
 	async storeBinaryData(binaryData: IBinaryData, binaryBuffer: Buffer): Promise<IBinaryData> {
 		const retBinaryData = binaryData;
-		retBinaryData.internalIdentifier = this.generateIdentifier();
+		retBinaryData.internalIdentifier = uuid();
+
 		return this.saveToLocalStorage(binaryBuffer, retBinaryData.internalIdentifier).then(
 			() => retBinaryData,
 		);
@@ -36,75 +40,49 @@ export class BinaryDataLocalStorage implements IBinaryDataManager {
 	}
 
 	async markDataForDeletion(identifiers: string[]): Promise<void> {
-		const currentFiles = await this.getFilesToDelete(`meta-${this.managerId}.json`);
-		const filesToDelete = identifiers.reduce((acc: IDataObject, cur: string) => {
-			acc[cur] = 1;
-			return acc;
-		}, currentFiles);
-
-		setTimeout(async () => {
-			const currentFilesToDelete = await this.getFilesToDelete(`meta-${this.managerId}.json`);
-			identifiers.forEach(async (identifier) => {
-				void this.deleteBinaryDataByIdentifier(identifier);
-				delete currentFilesToDelete[identifier];
-			});
-
-			void this.writeDeletionIdsToFile(currentFilesToDelete);
-		}, 60000 * this.binaryDataTTL);
-
-		return this.writeDeletionIdsToFile(filesToDelete);
+		const tt = new Date(new Date().getTime() + this.binaryDataTTL * 60000);
+		return fs.writeFile(
+			path.join(this.getBinaryDataMetaPath(), `binarymeta-${tt.valueOf().toString()}`),
+			JSON.stringify(identifiers, null, '\t'),
+		);
 	}
 
 	async deleteMarkedFiles(): Promise<unknown> {
-		const metaFileNames = (await fs.readdir(this.getBinaryDataMetaPath())).filter((filename) =>
-			filename.startsWith('meta-manager'),
-		);
+		const currentTimeValue = new Date().valueOf();
+		const metaFileNames = await fs.readdir(this.getBinaryDataMetaPath());
 
-		const deletePromises = metaFileNames.map(async (metaFile) =>
-			this.deleteMarkedFilesByMetaFile(metaFile).then(async () =>
-				this.deleteMetaFileByName(metaFile),
-			),
-		);
+		const filteredFilenames = metaFileNames.filter((filename) => {
+			try {
+				return (
+					filename.startsWith('binarymeta-') && parseInt(filename.substr(11), 10) < currentTimeValue
+				);
+			} catch (e) {
+				return false;
+			}
+		});
 
-		return Promise.all(deletePromises).finally(async () => this.writeDeletionIdsToFile({}));
-	}
+		const proms = filteredFilenames.map(async (filename) => {
+			return this.deleteMarkedFilesByMetaFile(filename).then(async () =>
+				this.deleteMetaFileByName(filename),
+			);
+		});
 
-	generateIdentifier(): string {
-		return uuid();
+		return Promise.all(proms);
 	}
 
 	private getBinaryDataMetaPath() {
 		return path.join(this.storagePath, 'meta');
 	}
 
-	private async writeDeletionIdsToFile(filesToDelete: IDataObject): Promise<void> {
-		return fs.writeFile(
-			path.join(this.getBinaryDataMetaPath(), `meta-${this.managerId}.json`),
-			JSON.stringify(filesToDelete, null, '\t'),
-		);
-	}
-
-	private async getFilesToDelete(metaFilename: string): Promise<IDataObject> {
-		let filesToDelete = {};
-		try {
-			const file = await fs.readFile(path.join(this.getBinaryDataMetaPath(), metaFilename), 'utf8');
-
-			filesToDelete = JSON.parse(file) as IDataObject;
-		} catch {
-			return {};
-		}
-
-		return filesToDelete;
-	}
-
-	private async deleteMarkedFilesByMetaFile(metaFilename: string): Promise<void> {
-		return this.getFilesToDelete(metaFilename).then(async (filesToDelete) => {
-			return Promise.all(
-				Object.keys(filesToDelete).map(async (identifier) =>
-					this.deleteBinaryDataByIdentifier(identifier).catch(() => {}),
-				),
-			).then(() => {});
-		});
+	private async deleteMarkedFilesByMetaFile(metaFilename: string): Promise<unknown> {
+		return fs
+			.readFile(path.join(this.getBinaryDataMetaPath(), metaFilename), 'utf8')
+			.then(async (file) => {
+				const identifiers = JSON.parse(file) as string[];
+				return Promise.all(
+					identifiers.map(async (identifier) => this.deleteBinaryDataByIdentifier(identifier)),
+				);
+			});
 	}
 
 	private async deleteMetaFileByName(filename: string): Promise<void> {
