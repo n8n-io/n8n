@@ -1,5 +1,5 @@
 import { IDataObject } from 'n8n-workflow';
-import { IRestApiContext, IN8nPrompt, IN8nUISettings, IPersonalizationSurveyAnswers } from '../Interface';
+import { IRestApiContext, IN8nPrompt, IN8nValueSurveyData, IN8nUISettings, IPersonalizationSurveyAnswers } from '../Interface';
 import { makeRestApiRequest, get, post } from './helpers';
 import { TEMPLATES_BASE_URL } from '@/constants';
 
@@ -19,7 +19,7 @@ export async function submitContactInfo(instanceId: string, email: string): Prom
 	return await post(TEMPLATES_BASE_URL, '/prompt', { email }, {'n8n-instance-id': instanceId});
 }
 
-export async function submitValueSurvey(instanceId: string, params: IDataObject): Promise<IN8nPrompt> {
+export async function submitValueSurvey(instanceId: string, params: IN8nValueSurveyData): Promise<IN8nPrompt> {
 	return await post(TEMPLATES_BASE_URL, '/value-survey', params, {'n8n-instance-id': instanceId});
 }
 

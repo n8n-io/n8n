@@ -476,6 +476,10 @@ export interface IN8nPrompt {
 	showValueSurvey: boolean;
 }
 
+export interface IN8nValueSurveyData {
+	[key: string]: string;
+}
+
 export interface IN8nUISettings {
 	endpointWebhook: string;
 	endpointWebhookTest: string;

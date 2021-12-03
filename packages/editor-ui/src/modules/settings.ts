@@ -2,6 +2,7 @@ import {  ActionContext, Module } from 'vuex';
 import {
 	IN8nPrompt,
 	IN8nUISettings,
+	IN8nValueSurveyData,
 	IPersonalizationSurveyAnswers,
 	IRootState,
 	ISettingsState,
@@ -100,7 +101,7 @@ const module: Module<ISettingsState, IRootState> = {
 				return;
 			}
 		},
-		async submitValueSurvey(context: ActionContext<ISettingsState, IRootState>, params: IDataObject) {
+		async submitValueSurvey(context: ActionContext<ISettingsState, IRootState>, params: IN8nValueSurveyData) {
 			try {
 				await submitValueSurvey(context.state.settings.instanceId, params);
 			} catch (e) {
