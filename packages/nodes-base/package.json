@@ -471,6 +471,7 @@
       "dist/nodes/Keap/KeapTrigger.node.js",
       "dist/nodes/Kitemaker/Kitemaker.node.js",
       "dist/nodes/KoboToolbox/KoboToolbox.node.js",
+      "dist/nodes/KoboToolbox/KoboToolboxTrigger.node.js",
       "dist/nodes/Lemlist/Lemlist.node.js",
       "dist/nodes/Lemlist/LemlistTrigger.node.js",
       "dist/nodes/Line/Line.node.js",
