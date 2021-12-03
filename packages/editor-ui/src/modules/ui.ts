@@ -111,15 +111,6 @@ const module: Module<IUiState, IRootState> = {
 			context.commit('setMode', {name: CREDENTIAL_EDIT_MODAL_KEY, mode: 'new'});
 			context.commit('openModal', CREDENTIAL_EDIT_MODAL_KEY);
 		},
-		openUserPromptsIfPossible(context: ActionContext<IUiState, IRootState>) {
-			const promptData = context.rootGetters['settings/getPromptsData'];
-
-			if (promptData.showPrompt) {
-				context.commit('ui/openModal', CONTACT_PROMPT_MODAL_KEY, {root: true});
-			} else if (promptData.showValueSurvey) {
-				context.commit('ui/openModal', VALUE_SURVEY_MODAL_KEY, {root: true});
-			}
-		},
 	},
 };
 

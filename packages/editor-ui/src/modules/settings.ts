@@ -9,7 +9,7 @@ import {
 import { getPromptsData, getSettings, submitValueSurvey, submitPersonalizationSurvey, submitContactInfo } from '../api/settings';
 import Vue from 'vue';
 import { getPersonalizedNodeTypes } from './helper';
-import { PERSONALIZATION_MODAL_KEY } from '@/constants';
+import { CONTACT_PROMPT_MODAL_KEY, PERSONALIZATION_MODAL_KEY, VALUE_SURVEY_MODAL_KEY } from '@/constants';
 import { IDataObject } from 'n8n-workflow';
 
 const module: Module<ISettingsState, IRootState> = {
@@ -80,6 +80,13 @@ const module: Module<ISettingsState, IRootState> = {
 		async fetchPromptsData(context: ActionContext<ISettingsState, IRootState>) {
 			try {
 				const promptData = await getPromptsData(context.state.settings.instanceId);
+
+				if (promptData.showPrompt) {
+					context.commit('ui/openModal', CONTACT_PROMPT_MODAL_KEY, {root: true});
+				} else if (promptData.showValueSurvey) {
+					context.commit('ui/openModal', VALUE_SURVEY_MODAL_KEY, {root: true});
+				}
+
 				context.commit('setPromptData', promptData);
 			} catch (e) {
 				return;

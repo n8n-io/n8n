@@ -9,14 +9,18 @@
 		class="value-survey"
 	>
 		<template slot="header">
-			<span :class="$style.title" v-html="getTitle" />
+			<div :class="$style.title">
+				<n8n-heading tag="h2" size="small" color="text-xlight">{{ getTitle }}</n8n-heading>
+			</div>
 		</template>
 		<template slot="content">
 			<section :class="$style.content">
 				<div v-if="showButtons" :class="$style.buttons">
-					<n8n-button @click="selectSurveyValue('very')" label="Very disappointed" />
-					<n8n-button @click="selectSurveyValue('somewhat')" label="Somewhat disappointed" />
-					<n8n-button @click="selectSurveyValue('not')" label="Not disappointed (it isn’t really that useful)" />
+					<n8n-button v-for="value in 11" :key="value - 1" @click="selectSurveyValue((value - 1).toString())" :label="(value - 1).toString()" />
+					<div :class="$style.text">
+						<n8n-text size="small" color="text-xlight">Not likely</n8n-text>
+						<n8n-text size="small" color="text-xlight">Very likely</n8n-text>
+					</div>
 				</div>
 				<div v-else :class="$style.email">
 					<div :class="$style.input">
@@ -40,10 +44,8 @@ import { VALID_EMAIL_REGEX, VALUE_SURVEY_MODAL_KEY } from '@/constants';
 import { workflowHelpers } from "@/components/mixins/workflowHelpers";
 import ModalDrawer from './ModalDrawer.vue';
 
-const DEFAULT_TITLE = `How would you feel if you could <strong>no longer use n8n</strong>?`;
-const VERY_TITLE = `Great to hear! Can we reach out to see how we can make n8n even better for you?`;
-const SOMEWHAT_TITLE = `Thanks for your feedback! We'd love to understand how we can improve. Can we reach out?`;
-const NOT_TITLE = `Sorry to hear that. We'd love to learn how to improve. Can we reach out?`;
+const DEFAULT_TITLE = `How likely are you to recommend n8n to a friend or colleague?`;
+const SECOND_QUESTION_TITLE = `Thanks for your feedback! We'd love to understand how we can improve. Can we reach out?`;
 
 export default mixins(workflowHelpers).extend({
 	name: 'ValueSurvey',
@@ -52,12 +54,8 @@ export default mixins(workflowHelpers).extend({
 	},
 	computed: {
 		getTitle (): string {
-			if (this.form.value === 'very') {
-				return VERY_TITLE;
-			} else if (this.form.value === 'somewhat') {
-				return SOMEWHAT_TITLE;
-			} else if (this.form.value === 'not') {
-				return NOT_TITLE;
+			if (this.form.value !== '') {
+				return SECOND_QUESTION_TITLE;
 			} else {
 				return DEFAULT_TITLE;
 			}
@@ -115,10 +113,7 @@ export default mixins(workflowHelpers).extend({
 <style module lang="scss">
 .title {
 	height: 16px;
-	font-size: var(--font-size-m);
-	line-height: 18px;
 	text-align: center;
-	color: var(--color-text-xlight);
 }
 
 .content {
@@ -127,12 +122,28 @@ export default mixins(workflowHelpers).extend({
 
 	.buttons {
 		button {
+			width: 28px;
 			margin: 0 8px;
 			background-color: var(--color-background-xlight);
 			border: var(--color-background-xlight);
 			border-radius: 4px;
 			color: var(--color-background-dark);
 			font-size: var(--font-size-s);
+			font-weight: var(--font-weight-bold);
+
+			&:first-child {
+				margin-left: 0;
+			}
+
+			&:last-child {
+				margin-right: 0;
+			}
+		}
+
+		.text {
+			margin-top: 8px;
+			display: flex;
+			justify-content: space-between;
 		}
 	}
 
