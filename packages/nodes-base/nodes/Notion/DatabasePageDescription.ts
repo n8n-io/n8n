@@ -11,7 +11,7 @@ import {
 	filters,
 } from './Filters';
 
-export const databasePageOperations = [
+export const databasePageOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -43,9 +43,9 @@ export const databasePageOperations = [
 		default: 'create',
 		description: 'The operation to perform.',
 	},
-] as INodeProperties[];
+];
 
-export const databasePageFields = [
+export const databasePageFields: INodeProperties[] = [
 
 	/* -------------------------------------------------------------------------- */
 	/*                                databasePage:create                       */
@@ -1045,4 +1045,4 @@ export const databasePageFields = [
 			},
 		],
 	},
-] as INodeProperties[];
+];
