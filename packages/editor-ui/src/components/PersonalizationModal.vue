@@ -71,7 +71,7 @@
 					@input="(value) => onInput(OTHER_WORK_AREA_KEY, value)"
 				/>
 
-				<section v-if="showOtherQuestion">
+				<section v-if="showAllIndustryQuestions">
 					<n8n-input-label label="Which industries is your company in?">
 					<n8n-select :value="values[COMPANY_INDUSTRY_KEY]" multiple placeholder="Select..." @change="(value) => onInput(COMPANY_INDUSTRY_KEY, value)">
 						<n8n-option :value="E_COMMERCE_INDUSTRY" label="eCommerce" />
@@ -193,7 +193,7 @@ export default mixins(showMessage, workflowHelpers).extend({
 			PERSONALIZATION_MODAL_KEY,
 			otherWorkAreaFieldVisible: false,
 			otherCompanyIndustryFieldVisible: false,
-			showOtherQuestion: true,
+			showAllIndustryQuestions: true,
 			modalBus: new Vue(),
 			values: {
 				[WORK_AREA_KEY]: null,
@@ -254,11 +254,11 @@ export default mixins(showMessage, workflowHelpers).extend({
 				this.otherWorkAreaFieldVisible = true;
 			}
 			else if (name === WORK_AREA_KEY && value.includes(NOT_APPLICABLE_WORK_AREA)) {
-				this.showOtherQuestion = false;
+				this.showAllIndustryQuestions = false;
 			}
 			else if (name === WORK_AREA_KEY) {
 				this.otherWorkAreaFieldVisible = false;
-				this.showOtherQuestion = true;
+				this.showAllIndustryQuestions = true;
 				this.values[OTHER_WORK_AREA_KEY] = null;
 			}
 
