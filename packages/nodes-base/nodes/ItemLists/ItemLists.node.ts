@@ -696,64 +696,63 @@ return 0;`,
 					}
 
 					if (!Array.isArray(arrayToSplit)) {
-						throw new NodeOperationError(this.getNode(), `The provided field '${fieldToSplitOut}' is not an array`);
-					} else {
+						arrayToSplit = [arrayToSplit];
+					}
 
-						for (const element of arrayToSplit) {
-							let newItem = {};
+					for (const element of arrayToSplit) {
+						let newItem = {};
 
-							if (include === 'selectedOtherFields') {
+						if (include === 'selectedOtherFields') {
 
-								const fieldsToInclude = (this.getNodeParameter('fieldsToInclude.fields', i, []) as [{ fieldName: string }]).map(field => field.fieldName);
+							const fieldsToInclude = (this.getNodeParameter('fieldsToInclude.fields', i, []) as [{ fieldName: string }]).map(field => field.fieldName);
 
-								if (!fieldsToInclude.length) {
-									throw new NodeOperationError(this.getNode(), 'No fields specified', { description: 'Please add a field to include' });
-								}
-
-								newItem = {
-									...fieldsToInclude.reduce((prev, field) => {
-										if (field === fieldToSplitOut) {
-											return prev;
-										}
-										let value;
-										if (disableDotNotation === false) {
-											value = get(items[i].json, field);
-										} else {
-											value = items[i].json[field as string];
-										}
-										prev = { ...prev, [field as string]: value, };
-										return prev;
-									}, {}),
-								};
-
-							} else if (include === 'allOtherFields') {
-
-								const keys = Object.keys(items[i].json);
-
-								newItem = {
-									...keys.reduce((prev, field) => {
-										let value;
-										if (disableDotNotation === false) {
-											value = get(items[i].json, field);
-										} else {
-											value = items[i].json[field as string];
-										}
-										prev = { ...prev, [field as string]: value, };
-										return prev;
-									}, {}),
-								};
-
-								unset(newItem, fieldToSplitOut);
+							if (!fieldsToInclude.length) {
+								throw new NodeOperationError(this.getNode(), 'No fields specified', { description: 'Please add a field to include' });
 							}
 
-							if (typeof element === 'object' && include === 'noOtherFields' && destinationFieldName === '') {
-								newItem = { ...newItem, ...element };
-							} else {
-								newItem = { ...newItem, [destinationFieldName as string || fieldToSplitOut as string]: element };
-							}
+							newItem = {
+								...fieldsToInclude.reduce((prev, field) => {
+									if (field === fieldToSplitOut) {
+										return prev;
+									}
+									let value;
+									if (disableDotNotation === false) {
+										value = get(items[i].json, field);
+									} else {
+										value = items[i].json[field as string];
+									}
+									prev = { ...prev, [field as string]: value, };
+									return prev;
+								}, {}),
+							};
 
-							returnData.push({ json: newItem });
+						} else if (include === 'allOtherFields') {
+
+							const keys = Object.keys(items[i].json);
+
+							newItem = {
+								...keys.reduce((prev, field) => {
+									let value;
+									if (disableDotNotation === false) {
+										value = get(items[i].json, field);
+									} else {
+										value = items[i].json[field as string];
+									}
+									prev = { ...prev, [field as string]: value, };
+									return prev;
+								}, {}),
+							};
+
+							unset(newItem, fieldToSplitOut);
 						}
+
+						if (typeof element === 'object' && include === 'noOtherFields' && destinationFieldName === '') {
+							newItem = { ...newItem, ...element };
+						} else {
+							newItem = { ...newItem, [destinationFieldName as string || fieldToSplitOut as string]: element };
+						}
+
+						returnData.push({ json: newItem });
 					}
 				}
 
@@ -986,7 +985,7 @@ return 0;`,
 						fieldName: string;
 						order: 'ascending' | 'descending'
 					}>;
-				
+
 
 					if (!sortFields || !sortFields.length) {
 						throw new NodeOperationError(this.getNode(), 'No sorting specified. Please add a field to sort by');
