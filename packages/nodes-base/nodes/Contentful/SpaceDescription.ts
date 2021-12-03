@@ -7,7 +7,7 @@ export const resource = {
 	value: 'space',
 };
 
-export const operations = [
+export const operations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -28,6 +28,6 @@ export const operations = [
 		default: 'get',
 		description: 'The operation to perform.',
 	},
-] as INodeProperties[];
+];
 
-export const fields = [] as INodeProperties[];
+export const fields: INodeProperties[] = [];

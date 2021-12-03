@@ -2,7 +2,7 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const recordOperations = [
+export const recordOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -44,9 +44,9 @@ export const recordOperations = [
 		default: 'create',
 		description: 'The operation to perform.',
 	},
-] as INodeProperties[];
+];
 
-export const recordFields = [
+export const recordFields: INodeProperties[] = [
 	/* -------------------------------------------------------------------------- */
 	/*                                record:create                               */
 	/* -------------------------------------------------------------------------- */
@@ -180,8 +180,7 @@ export const recordFields = [
 				],
 			},
 		},
-		description: `The filter to delete records. To delete all records specify a filter that will include all records,</br>
-		for example {3.GT.0} where 3 is the ID of the Record ID field.`,
+		description: `The filter to delete records. To delete all records specify a filter that will include all records, for example {3.GT.0} where 3 is the ID of the Record ID field.`,
 	},
 	/* -------------------------------------------------------------------------- */
 	/*                                record:getAll                               */
@@ -315,8 +314,7 @@ export const recordFields = [
 						],
 					},
 				],
-				description: `By default, queries will be sorted by the given sort fields or the default sort if the query does not provide any.<br>
-				Set to false to avoid sorting when the order of the data returned is not important. Returning data without sorting can improve performance.`,
+				description: `By default, queries will be sorted by the given sort fields or the default sort if the query does not provide any. Set to false to avoid sorting when the order of the data returned is not important. Returning data without sorting can improve performance.`,
 			},
 			{
 				displayName: 'Where',
@@ -446,8 +444,8 @@ export const recordFields = [
 			// 		loadOptionsMethod: 'getUniqueTableFields',
 			// 	},
 			// 	default: '',
-			// 	description: `You're updating records in a Quick Base table with data from an external file. In order for a merge like this to work,<br>
-			// 	Quick Base needs a way to match records in the source data with corresponding records in the destination table. You make this possible by<br>
+			// 	description: `You're updating records in a Quick Base table with data from an external file. In order for a merge like this to work,
+			// 	Quick Base needs a way to match records in the source data with corresponding records in the destination table. You make this possible by
 			// 	choosing the field in the app table that holds unique matching values. This is called a merge field.`,
 			// },
 		],
@@ -527,9 +525,7 @@ export const recordFields = [
 			},
 		},
 		default: '',
-		description: `You're updating records in a Quick Base table with data from an external file. In order for a merge like this to work,<br>
-		Quick Base needs a way to match records in the source data with corresponding records in the destination table. You make this possible by<br>
-		choosing the field in the app table that holds unique matching values. This is called a merge field.`,
+		description: `<p>You're updating records in a Quick Base table with data from an external file. In order for a merge like this to work, Quick Base needs a way to match records in the source data with corresponding records in the destination table.</p><p>You make this possible by choosing the field in the app table that holds unique matching values. This is called a merge field.</p>`,
 	},
 	{
 		displayName: 'Simplify Response',
@@ -587,4 +583,4 @@ export const recordFields = [
 			},
 		],
 	},
-] as INodeProperties[];
+];

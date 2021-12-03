@@ -6,7 +6,7 @@ import {
 	TLP,
 } from '../interfaces/AlertInterface';
 
-export const observableOperations = [
+export const observableOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -27,9 +27,9 @@ export const observableOperations = [
 			loadOptionsMethod: 'loadObservableOptions',
 		},
 	},
-] as INodeProperties[];
+];
 
-export const observableFields = [
+export const observableFields: INodeProperties[] = [
 	{
 		displayName: 'Case ID',
 		name: 'caseId',
@@ -674,4 +674,4 @@ export const observableFields = [
 			},
 		],
 	},
-] as INodeProperties[];
+];
