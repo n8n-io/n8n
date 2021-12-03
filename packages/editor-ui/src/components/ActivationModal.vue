@@ -61,20 +61,22 @@ export default Vue.extend({
 			const foundTriggers = this.$store.getters.workflowTriggerNodes
 				.filter((node: INodeUi) => {
 					return !node.disabled;
-				}).map(({ type }: INodeUi) => this.$store.getters.nodeType(type));
+				});
 			// if multiple triggers
 			if (foundTriggers.length > 1) {
 				return 'Your triggers will now fire production executions automatically.';
 			}
 			const trigger = foundTriggers[0];
-			if (trigger.activationMessage) {
-				return trigger.activationMessage;
+			const originalTrigger = this.$store.getters.nodeType(trigger.type);
+
+			if (originalTrigger.activationMessage) {
+				return originalTrigger.activationMessage;
 			}
-			const serviceName = getTriggerNodeServiceName(trigger.displayName);
+			const serviceName = getTriggerNodeServiceName(originalTrigger.displayName);
 			//check if webhook
 			if (trigger.webhookId) {
 				return `Your workflow will now listen for events from ${serviceName} and trigger executions.`;
-			} else if (trigger.polling) {
+			} else if (originalTrigger.polling) {
 				//check if a polling trigger
 				return `Your workflow will now regularly check ${serviceName} for events and trigger executions for them.`;
 			} else {
