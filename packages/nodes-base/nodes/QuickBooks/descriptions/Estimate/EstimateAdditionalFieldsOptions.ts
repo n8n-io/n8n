@@ -1,4 +1,8 @@
-export const estimateAdditionalFieldsOptions = [
+import {
+	INodeProperties,
+} from 'n8n-workflow';
+
+export const estimateAdditionalFieldsOptions: INodeProperties[] = [
 	{
 		displayName: 'Apply Tax After Discount',
 		name: 'ApplyTaxAfterDiscount',

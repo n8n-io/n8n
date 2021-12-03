@@ -2,7 +2,7 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const contactOperations = [
+export const contactOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -44,9 +44,9 @@ export const contactOperations = [
 		default: 'get',
 		description: 'The operation to perform.',
 	},
-] as INodeProperties[];
+];
 
-export const contactFields = [
+export const contactFields: INodeProperties[] = [
 	/* -------------------------------------------------------------------------- */
 	/*                                  contact:get                               */
 	/* -------------------------------------------------------------------------- */
@@ -450,6 +450,7 @@ export const contactFields = [
 				displayName: 'Address',
 				name: 'addressOptions',
 				type: 'fixedCollection',
+				default: {},
 				description: 'Contacts address.',
 				typeOptions: {
 					multipleValues: true,
@@ -504,6 +505,7 @@ export const contactFields = [
 				displayName: 'Email',
 				name: 'emailOptions',
 				type: 'fixedCollection',
+				default: {},
 				description: 'Contact email.',
 				typeOptions: {
 					multipleValues: true,
@@ -604,6 +606,7 @@ export const contactFields = [
 				displayName: 'Phone',
 				name: 'phoneOptions',
 				type: 'fixedCollection',
+				default: {},
 				description: 'Contacts phone.',
 				typeOptions: {
 					multipleValues: true,
@@ -685,6 +688,7 @@ export const contactFields = [
 				displayName: 'Website',
 				name: 'websiteOptions',
 				type: 'fixedCollection',
+				default: {},
 				description: 'Contacts websites.',
 				typeOptions: {
 					multipleValues: true,
@@ -764,6 +768,7 @@ export const contactFields = [
 				displayName: 'Custom Properties',
 				name: 'customProperties',
 				type: 'fixedCollection',
+				default: {},
 				description: 'Custom Properties',
 				typeOptions: {
 					multipleValues: true,
@@ -909,6 +914,7 @@ export const contactFields = [
 				displayName: 'Address',
 				name: 'addressOptions',
 				type: 'fixedCollection',
+				default: {},
 				description: 'Contacts address.',
 				typeOptions: {
 					multipleValues: true,
@@ -963,6 +969,7 @@ export const contactFields = [
 				displayName: 'Email',
 				name: 'emailOptions',
 				type: 'fixedCollection',
+				default: {},
 				description: 'Contact email.',
 				typeOptions: {
 					multipleValues: true,
@@ -1063,6 +1070,7 @@ export const contactFields = [
 				displayName: 'Phone',
 				name: 'phoneOptions',
 				type: 'fixedCollection',
+				default: {},
 				description: 'Contacts phone.',
 				typeOptions: {
 					multipleValues: true,
@@ -1144,6 +1152,7 @@ export const contactFields = [
 				displayName: 'Website',
 				name: 'websiteOptions',
 				type: 'fixedCollection',
+				default: {},
 				description: 'Contacts websites.',
 				typeOptions: {
 					multipleValues: true,
@@ -1223,6 +1232,7 @@ export const contactFields = [
 				displayName: 'Custom Properties',
 				name: 'customProperties',
 				type: 'fixedCollection',
+				default: {},
 				description: 'Custom Properties',
 				typeOptions: {
 					multipleValues: true,
@@ -1261,4 +1271,4 @@ export const contactFields = [
 		],
 	},
 
-] as INodeProperties[];
+];
