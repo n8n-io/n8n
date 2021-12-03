@@ -2,7 +2,7 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const contactFieldOperations = [
+export const contactFieldOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -43,9 +43,9 @@ export const contactFieldOperations = [
 		],
 		default: 'create',
 	},
-] as INodeProperties[];
+];
 
-export const contactFieldFields = [
+export const contactFieldFields: INodeProperties[] = [
 	// ----------------------------------------
 	//           contactField: create
 	// ----------------------------------------
@@ -289,4 +289,4 @@ export const contactFieldFields = [
 			},
 		},
 	},
-] as INodeProperties[];
+];
