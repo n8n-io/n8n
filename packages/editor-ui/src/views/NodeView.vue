@@ -1633,11 +1633,21 @@ export default mixins(
 					if (workflowId !== null) {
 						const workflow = await this.restApi().getWorkflow(workflowId);
 						if (!workflow) {
-							throw new Error('Could not find workflow');
+							// redirect to a new Workflow
+							this.$router.push({
+								name: "NodeViewNew",
+							});
+							// send error pop-up
+							this.$showMessage({
+								title: 'Error',
+								message: 'Could not find workflow',
+								type: 'error',
+							});
+						} else {
+							this.$titleSet(workflow.name, 'IDLE');
+							// Open existing workflow
+							await this.openWorkflow(workflowId);
 						}
-						this.$titleSet(workflow.name, 'IDLE');
-						// Open existing workflow
-						await this.openWorkflow(workflowId);
 					} else {
 						// Create new workflow
 						await this.newWorkflow();
