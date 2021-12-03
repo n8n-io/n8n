@@ -2,7 +2,7 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const notificationOperations = [
+export const notificationOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -24,9 +24,9 @@ export const notificationOperations = [
 		default: 'send',
 		description: 'The operation to perform.',
 	},
-] as INodeProperties[];
+];
 
-export const notificationFields = [
+export const notificationFields: INodeProperties[] = [
 
 	/* -------------------------------------------------------------------------- */
 	/*                                 notification:send                          */
@@ -172,4 +172,4 @@ export const notificationFields = [
 			},
 		],
 	},
-] as INodeProperties[];
+];

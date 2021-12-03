@@ -2,7 +2,7 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const affiliateMetadataOperations = [
+export const affiliateMetadataOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -34,9 +34,9 @@ export const affiliateMetadataOperations = [
 		default: 'add',
 		description: 'The operation to perform.',
 	},
-] as INodeProperties[];
+];
 
-export const affiliateMetadataFields = [
+export const affiliateMetadataFields: INodeProperties[] = [
 	/* -------------------------------------------------------------------------- */
 	/*                         affiliateMetadata:add                              */
 	/* -------------------------------------------------------------------------- */
@@ -45,6 +45,7 @@ export const affiliateMetadataFields = [
 		name: 'affiliateId',
 		type: 'string',
 		required: true,
+		default: '',
 		displayOptions: {
 			show: {
 				resource: [
@@ -109,6 +110,7 @@ export const affiliateMetadataFields = [
 		name: 'affiliateId',
 		type: 'string',
 		required: true,
+		default: '',
 		displayOptions: {
 			show: {
 				resource: [
@@ -147,6 +149,7 @@ export const affiliateMetadataFields = [
 		name: 'affiliateId',
 		type: 'string',
 		required: true,
+		default: '',
 		displayOptions: {
 			show: {
 				resource: [
@@ -193,4 +196,4 @@ export const affiliateMetadataFields = [
 		default: '',
 		description: 'Value to set for the metadata key.',
 	},
-] as INodeProperties[];
+];
