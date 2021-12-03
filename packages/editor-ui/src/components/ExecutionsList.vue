@@ -137,7 +137,7 @@
 								<n8n-icon-button icon="stop" size="small" title="Stop Execution" @click.stop="stopExecution(scope.row.id)" :loading="stoppingExecutions.includes(scope.row.id)" />
 							</span>
 							<span v-if="scope.row.stoppedAt !== undefined && scope.row.id" >
-								<n8n-icon-button icon="folder-open" size="small" title="Open Past Execution" @click.stop="displayExecution(scope.row)" />
+								<n8n-icon-button icon="folder-open" size="small" title="Open Past Execution" @click.stop="(e) => displayExecution(scope.row, e)" />
 							</span>
 						</div>
 					</template>
@@ -324,7 +324,14 @@ export default mixins(
 			return false;
 		},
 		convertToDisplayDate,
-		displayExecution (execution: IExecutionShortResponse) {
+		displayExecution (execution: IExecutionShortResponse, e: PointerEvent) {
+			if (e.metaKey || e.ctrlKey) {
+				const route = this.$router.resolve({name: 'ExecutionById', params: {id: execution.id}});
+				window.open(route.href, '_blank');
+
+				return;
+			}
+
 			this.$router.push({
 				name: 'ExecutionById',
 				params: { id: execution.id },

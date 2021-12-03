@@ -1,6 +1,6 @@
 import { INodeProperties } from 'n8n-workflow';
 
-export const collectionOperations = [
+export const collectionOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -32,9 +32,9 @@ export const collectionOperations = [
 		default: 'getAll',
 		description: 'The operation to perform.',
 	},
-] as INodeProperties[];
+];
 
-export const collectionFields = [
+export const collectionFields: INodeProperties[] = [
 	{
 		displayName: 'Collection',
 		name: 'collection',
@@ -285,4 +285,4 @@ export const collectionFields = [
 		],
 		description: 'Entry data to send.',
 	},
-] as INodeProperties[];
+];

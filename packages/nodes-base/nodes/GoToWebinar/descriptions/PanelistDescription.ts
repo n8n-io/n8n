@@ -2,7 +2,7 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const panelistOperations = [
+export const panelistOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -35,9 +35,9 @@ export const panelistOperations = [
 			},
 		},
 	},
-] as INodeProperties[];
+];
 
-export const panelistFields = [
+export const panelistFields: INodeProperties[] = [
 	// ----------------------------------
 	//        panelist: create
 	// ----------------------------------
@@ -250,4 +250,4 @@ export const panelistFields = [
 			},
 		},
 	},
-] as INodeProperties[];
+];

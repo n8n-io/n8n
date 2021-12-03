@@ -6,7 +6,7 @@ const resource = [
 	'company',
 ];
 
-export const companyOperations = [
+export const companyOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -27,4 +27,4 @@ export const companyOperations = [
 		description: 'The operation to perform.',
 	},
 
-] as INodeProperties[];
+];
