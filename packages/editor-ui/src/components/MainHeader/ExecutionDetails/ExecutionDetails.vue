@@ -38,11 +38,11 @@
 		</span>
 		<n8n-tooltip class="read-only primary-color" placement="bottom-end" >
 			<div slot="content">
-				{{ $baseText('readOnly.youreViewingTheLogOf') }}
+				{{ $baseText('executionDetails.youreViewingTheLogOf') }}
 			</div>
 			<span>
 				<font-awesome-icon icon="exclamation-triangle" />
-				{{ $baseText('readOnly.readOnly') }}
+				{{ $baseText('executionDetails.readOnly') }}
 			</span>
 		</n8n-tooltip>
 	</div>
