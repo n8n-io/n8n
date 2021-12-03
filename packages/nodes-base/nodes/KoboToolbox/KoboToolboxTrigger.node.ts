@@ -145,7 +145,7 @@ export class KoboToolboxTrigger implements INodeType {
 		// console.dir(req.body);
 
 		const response = formatOptions.reformat
-			? formatSubmission(req.body, parseStringList(formatOptions.select_mask), parseStringList(formatOptions.number_mask))
+			? formatSubmission(req.body, parseStringList(formatOptions.select_mask as string), parseStringList(formatOptions.number_mask as string))
 			: req.body;
 
 		return {

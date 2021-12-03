@@ -180,13 +180,13 @@ export class KoboToolbox implements INodeType {
 							limit,
 							...(queryOptions.query   && {query:  queryOptions.query}),
 							...(queryOptions.sort    && {sort:   queryOptions.sort}),
-							...(queryOptions.fields  && {fields: JSON.stringify(queryOptions.fields.toString().split(',').map(s => s.trim()))}),
+							...(queryOptions.fields  && {fields: JSON.stringify(parseStringList(queryOptions.fields as string))}),
 						},
 					}));
 
 					if(formatOptions.reformat) {
 						responseData = responseData.map((submission : IDataObject) => {
-							return formatSubmission(submission, parseStringList(formatOptions.select_mask), parseStringList(formatOptions.number_mask));
+							return formatSubmission(submission, parseStringList(formatOptions.select_mask as string), parseStringList(formatOptions.number_mask as string));
 						});
 					}
 				}
@@ -204,7 +204,7 @@ export class KoboToolbox implements INodeType {
 
 					if(formatOptions.reformat) {
 						responseData = responseData.map((submission : IDataObject) => {
-							return formatSubmission(submission, parseStringList(formatOptions.select_mask), parseStringList(formatOptions.number_mask));
+							return formatSubmission(submission, parseStringList(formatOptions.select_mask as string), parseStringList(formatOptions.number_mask as string));
 						});
 					}
 				}
@@ -314,7 +314,7 @@ export class KoboToolbox implements INodeType {
 						url: `/api/v2/assets/${asset_uid}/data/${id}`,
 					});
 					if(formatOptions.reformat) {
-						submission = formatSubmission(submission, parseStringList(formatOptions.select_mask), parseStringList(formatOptions.number_mask));
+						submission = formatSubmission(submission, parseStringList(formatOptions.select_mask as string), parseStringList(formatOptions.number_mask as string));
 					}
 					// console.dir(submission);
 
