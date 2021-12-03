@@ -52,18 +52,18 @@ export default mixins(workflowHelpers).extend({
 	},
 	computed: {
 		...mapGetters({
-			promptData: 'settings/getPromptsData',
+			promptsData: 'settings/getPromptsData',
 		}),
 		title() : string {
-			if (this.promptData && this.promptData.title) {
-				return this.promptData.title;
+			if (this.promptsData && this.promptsData.title) {
+				return this.promptsData.title;
 			}
 
 			return 'You’re a power user 💪';
 		},
 		description() : string {
-			if (this.promptData && this.promptData.message) {
-				return this.promptData.message;
+			if (this.promptsData && this.promptsData.message) {
+				return this.promptsData.message;
 			}
 
 			return 'Your experience with n8n can help us improve - for you and our entire community.';

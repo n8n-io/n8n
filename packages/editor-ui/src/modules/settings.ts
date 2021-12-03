@@ -16,6 +16,7 @@ const module: Module<ISettingsState, IRootState> = {
 	namespaced: true,
 	state: {
 		settings: {} as IN8nUISettings,
+		promptsData: {} as IN8nPrompt,
 	},
 	getters: {
 		personalizedNodeTypes(state: ISettingsState): string[] {
@@ -27,7 +28,7 @@ const module: Module<ISettingsState, IRootState> = {
 			return getPersonalizedNodeTypes(answers);
 		},
 		getPromptsData(state: ISettingsState) {
-			return state.settings.promptData;
+			return state.promptsData;
 		},
 	},
 	mutations: {
@@ -40,8 +41,8 @@ const module: Module<ISettingsState, IRootState> = {
 				shouldShow: false,
 			});
 		},
-		setPromptData(state: ISettingsState, promptData: IN8nPrompt) {
-			Vue.set(state.settings, 'promptData', promptData);
+		setPromptsData(state: ISettingsState, promptsData: IN8nPrompt) {
+			Vue.set(state, 'promptsData', promptsData);
 		},
 	},
 	actions: {
@@ -79,15 +80,15 @@ const module: Module<ISettingsState, IRootState> = {
 		},
 		async fetchPromptsData(context: ActionContext<ISettingsState, IRootState>) {
 			try {
-				const promptData = await getPromptsData(context.state.settings.instanceId);
+				const promptsData = await getPromptsData(context.state.settings.instanceId);
 
-				if (promptData.showPrompt) {
+				if (promptsData.showPrompt) {
 					context.commit('ui/openModal', CONTACT_PROMPT_MODAL_KEY, {root: true});
-				} else if (promptData.showValueSurvey) {
+				} else if (promptsData.showValueSurvey) {
 					context.commit('ui/openModal', VALUE_SURVEY_MODAL_KEY, {root: true});
 				}
 
-				context.commit('setPromptData', promptData);
+				context.commit('setPromptsData', promptsData);
 			} catch (e) {
 				return;
 			}

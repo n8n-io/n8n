@@ -477,7 +477,6 @@ export interface IN8nPrompt {
 }
 
 export interface IN8nUISettings {
-	promptData: IN8nPrompt;
 	endpointWebhook: string;
 	endpointWebhookTest: string;
 	saveDataErrorExecution: string;
@@ -681,6 +680,7 @@ export interface IUiState {
 
 export interface ISettingsState {
 	settings: IN8nUISettings;
+	promptsData: IN8nPrompt;
 }
 
 export interface IVersionsState {
