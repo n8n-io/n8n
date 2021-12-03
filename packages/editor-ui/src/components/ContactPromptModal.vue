@@ -9,15 +9,19 @@
 		width="460px"
 	>
 		<template slot="header">
-			<h2 :class="$style.title" v-text="title" />
+			<n8n-heading tag="h2" size="xlarge" color="text-dark">{{ title }}</n8n-heading>
 		</template>
 		<template v-slot:content>
-			<div :class="$style.description" v-text="description" />
+			<div :class="$style.description">
+				<n8n-text size="medium" color="text-base">{{ description }}</n8n-text>
+			</div>
 			<n8n-input
 				v-model="email"
 				placeholder="Your email address"
 			/>
-			<div :class="$style.disclaimer">David from our product team will get in touch personally.</div>
+			<div :class="$style.disclaimer">
+				<n8n-text size="small" color="text-base">David from our product team will get in touch personally.</n8n-text>
+			</div>
 		</template>
 		<template v-slot:footer>
 			<div :class="$style.footer">
@@ -92,19 +96,12 @@ export default mixins(workflowHelpers).extend({
 </script>
 
 <style lang="scss" module>
-.title {
-	font-size: var(--font-size-xl);
-	line-height: var(--font-line-height-regular);
-}
 .description {
 	margin-bottom: var(--spacing-s);
-	font-size: var(--font-size-s);
-	line-height: var(--font-line-height-xloose);
 }
+
 .disclaimer {
 	margin-top: var(--spacing-4xs);
-	font-size: var(--font-size-2xs);
-	line-height: var(--font-line-height-xloose);
 }
 </style>
 
