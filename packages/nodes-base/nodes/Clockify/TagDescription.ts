@@ -2,7 +2,7 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const tagOperations = [
+export const tagOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -39,9 +39,9 @@ export const tagOperations = [
 		default: 'create',
 		description: 'The operation to perform.',
 	},
-] as INodeProperties[];
+];
 
-export const tagFields = [
+export const tagFields: INodeProperties[] = [
 
 	/* -------------------------------------------------------------------------- */
 	/*                                 tag:create                                 */
@@ -239,4 +239,4 @@ export const tagFields = [
 			},
 		],
 	},
-] as INodeProperties[];
+];

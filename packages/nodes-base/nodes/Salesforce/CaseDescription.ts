@@ -1,6 +1,6 @@
 import { INodeProperties } from 'n8n-workflow';
 
-export const caseOperations = [
+export const caseOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -52,9 +52,9 @@ export const caseOperations = [
 		default: 'create',
 		description: 'The operation to perform.',
 	},
-] as INodeProperties[];
+];
 
-export const caseFields = [
+export const caseFields: INodeProperties[] = [
 
 	/* -------------------------------------------------------------------------- */
 	/*                                case:create                                 */
@@ -716,4 +716,4 @@ export const caseFields = [
 			},
 		],
 	},
-] as INodeProperties[];
+];
