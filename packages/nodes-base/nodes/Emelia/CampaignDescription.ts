@@ -2,7 +2,7 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const campaignOperations = [
+export const campaignOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -43,9 +43,9 @@ export const campaignOperations = [
 			},
 		},
 	},
-] as INodeProperties[];
+];
 
-export const campaignFields = [
+export const campaignFields: INodeProperties[] = [
 	// ----------------------------------
 	//       campaign: addContact
 	// ----------------------------------
@@ -323,4 +323,4 @@ export const campaignFields = [
 		},
 	},
 
-] as INodeProperties[];
+];
