@@ -513,8 +513,9 @@ export const getOutputSummary = (data: ITaskData[], nodeConnections: NodeInputCo
 				};
 			}
 
-			outputMap[sourceOutputIndex][NODE_OUTPUT_DEFAULT_KEY][0].total += output ? output.length : 0;
-			outputMap[sourceOutputIndex][NODE_OUTPUT_DEFAULT_KEY][0].iterations += output ? 1 : 0;
+			const defaultOutput = outputMap[sourceOutputIndex][NODE_OUTPUT_DEFAULT_KEY][0];
+			defaultOutput.total += output ? output.length : 0;
+			defaultOutput.iterations += output ? 1 : 0;
 
 			if (!nodeConnections[sourceOutputIndex]) {
 				return;
