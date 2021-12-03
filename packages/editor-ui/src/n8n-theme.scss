@@ -117,28 +117,6 @@ body {
 	}
 }
 
-// Transfer list (nodes)
-.el-transfer {
-	.el-transfer-panel {
-		background-color: $--custom-input-background;
-		// border: 1px solid #404040;
-		border: none;
-		border-radius: 10px;
-		padding: 1em;
-
-		.el-transfer-panel__header {
-			background: none;
-		}
-	}
-	.el-transfer__buttons button {
-		border: 2px solid $--color-primary;
-	}
-	.el-transfer__buttons button.is-disabled {
-		border: 2px solid #aaa;
-		background-color: #fff;
-	}
-}
-
 // Tabs
 .type-selector:focus,
 .el-tabs__header:focus,
@@ -212,4 +190,3 @@ body {
 		}
 	}
 }
-
