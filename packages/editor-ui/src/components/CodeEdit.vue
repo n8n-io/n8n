@@ -86,5 +86,6 @@ export default mixins(genericHelpers, monacoProvider, nodeHelpers).extend({
 
 .text-editor {
 	min-height: 30rem;
+  font-size: var(--font-size-s);
 }
 </style>

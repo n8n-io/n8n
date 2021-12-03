@@ -3,6 +3,7 @@
 		:label="parameter.displayName"
 		:tooltipText="parameter.description"
 		:required="parameter.required"
+		:showTooltip="focused"
 	>
 		<parameter-input
 			:parameter="parameter"
@@ -12,7 +13,7 @@
 			:displayOptions="true"
 			:documentationUrl="documentationUrl"
 			:errorHighlight="showRequiredErrors"
-
+			@focus="onFocus"
 			@blur="onBlur"
 			@textInput="valueChanged"
 			@valueChanged="valueChanged"
@@ -48,7 +49,8 @@ export default Vue.extend({
 	},
 	data() {
 		return {
-			blurred: false,
+			focused: false,
+			blurredEver: false,
 		};
 	},
 	computed: {
@@ -57,7 +59,7 @@ export default Vue.extend({
 				return false;
 			}
 
-			if (this.blurred || this.showValidationWarnings) {
+			if (this.blurredEver || this.showValidationWarnings) {
 				if (this.$props.parameter.type === 'string') {
 					return !this.value;
 				}
@@ -71,8 +73,12 @@ export default Vue.extend({
 		},
 	},
 	methods: {
+		onFocus() {
+			this.focused = true;
+		},
 		onBlur() {
-			this.blurred = true;
+			this.blurredEver = true;
+			this.focused = false;
 		},
 		valueChanged(parameterData: IUpdateInformation) {
 			this.$emit('change', parameterData);

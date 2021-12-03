@@ -1,6 +1,6 @@
 import { INodeProperties } from 'n8n-workflow';
 
-export const clientOperations = [
+export const clientOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -37,9 +37,9 @@ export const clientOperations = [
 		default: 'create',
 		description: 'The operation to perform.',
 	},
-] as INodeProperties[];
+];
 
-export const clientFields = [
+export const clientFields: INodeProperties[] = [
 /* -------------------------------------------------------------------------- */
 /*                                 client:create                              */
 /* -------------------------------------------------------------------------- */
@@ -294,6 +294,7 @@ export const clientFields = [
 		displayName: 'Client ID',
 		name: 'clientId',
 		type: 'string',
+		default: '',
 		required: true,
 		displayOptions: {
 			show: {
@@ -313,6 +314,7 @@ export const clientFields = [
 		displayName: 'Client ID',
 		name: 'clientId',
 		type: 'string',
+		default: '',
 		required: true,
 		displayOptions: {
 			show: {
@@ -431,4 +433,4 @@ export const clientFields = [
 			},
 		],
 	},
-] as INodeProperties[];
+];

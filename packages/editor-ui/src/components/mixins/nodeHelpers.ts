@@ -351,6 +351,7 @@ export const nodeHelpers = mixins(
 					};
 
 					this.$store.commit('updateNodeProperties', updateInformation);
+					this.$store.commit('clearNodeExecutionData', node.name);
 					this.updateNodeParameterIssues(node);
 					this.updateNodeCredentialIssues(node);
 				}

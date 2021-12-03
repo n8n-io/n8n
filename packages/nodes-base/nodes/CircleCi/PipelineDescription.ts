@@ -2,7 +2,7 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const pipelineOperations = [
+export const pipelineOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -34,9 +34,9 @@ export const pipelineOperations = [
 		default: 'get',
 		description: 'The operation to perform.',
 	},
-] as INodeProperties[];
+];
 
-export const pipelineFields = [
+export const pipelineFields: INodeProperties[] = [
 
 /* -------------------------------------------------------------------------- */
 /*                               pipeline:shared                              */
@@ -211,19 +211,15 @@ export const pipelineFields = [
 				name: 'branch',
 				type: 'string',
 				default: '',
-				description: `The branch where the pipeline ran.<br/>
-				The HEAD commit on this branch was used for the pipeline.<br/>
-				Note that branch and tag are mutually exclusive.`,
+				description: `The branch where the pipeline ran. The HEAD commit on this branch was used for the pipeline. Note that branch and tag are mutually exclusive.`,
 			},
 			{
 				displayName: 'Tag',
 				name: 'tag',
 				type: 'string',
 				default: '',
-				description: `The tag used by the pipeline.<br/>
-				The commit that this tag points to was used for the pipeline.<br/>
-				Note that branch and tag are mutually exclusive`,
+				description: `The tag used by the pipeline. The commit that this tag points to was used for the pipeline. Note that branch and tag are mutually exclusive`,
 			},
 		],
 	},
-] as INodeProperties[];
+];
