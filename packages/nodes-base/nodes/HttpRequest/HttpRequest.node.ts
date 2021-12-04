@@ -917,7 +917,7 @@ export class HttpRequest implements INodeType {
 						body: `Binary data got replaced with this text. Original was a Buffer with a size of ${requestOptions.body.length} byte.`,
 					};
 				}
-				this.sendMessageToUI([sendRequest]);
+				this.sendMessageToUI(sendRequest);
 			} catch (e) { }
 
 			// Now that the options are all set make the actual http request

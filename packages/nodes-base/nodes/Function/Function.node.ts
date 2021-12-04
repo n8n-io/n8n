@@ -93,8 +93,7 @@ return items;`,
 		const vm = new NodeVM(options);
 
 		if (mode === 'manual') {
-			// tslint:disable-next-line:no-any
-			vm.on('console.log', (...args: any[]) => this.sendMessageToUI(args));
+			vm.on('console.log', this.sendMessageToUI);
 		}
 
 		// Get the code to execute

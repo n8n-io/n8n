@@ -924,7 +924,7 @@ export async function executeWorkflow(
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-export function sendMessageToUI(source: string, message: any) {
+export function sendMessageToUI(source: string, messages: any[]) {
 	if (this.sessionId === undefined) {
 		return;
 	}
@@ -932,17 +932,14 @@ export function sendMessageToUI(source: string, message: any) {
 	// Push data to session which started workflow
 	try {
 		const pushInstance = Push.getInstance();
-		// eslint-disable-next-line @typescript-eslint/no-explicit-any
-		message.forEach((arg: any) => {
-			pushInstance.send(
-				'sendConsoleMessage',
-				{
-					source: `Node: "${source}"`,
-					message: arg,
-				},
-				this.sessionId,
-			);
-		});
+		pushInstance.send(
+			'sendConsoleMessage',
+			{
+				source: `Node: "${source}"`,
+				messages,
+			},
+			this.sessionId,
+		);
 	} catch (error) {
 		Logger.warn(`There was a problem sending messsage to UI: ${error.message}`);
 	}
