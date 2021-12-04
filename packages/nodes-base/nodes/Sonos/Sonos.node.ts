@@ -9,7 +9,7 @@ import {
     INodeTypeDescription,
     NodePropertyTypes
 } from 'n8n-workflow';
-import { executeGroupAction, groupAll, groupVolume, playAudioClip, playFavorite, loadPlayers, loadHouseholds, loadFavorites } from './GenericFunctions';
+import { executeGroupAction, groupAll, setGroupVolume, playAudioClip, playFavorite, loadPlayers, loadHouseholds, loadFavorites } from './GenericFunctions';
 
 export class Sonos implements INodeType {
     description: INodeTypeDescription = {
@@ -216,7 +216,7 @@ export class Sonos implements INodeType {
                     await playFavorite.call(this);
                     break;
                 case "groupVolume":
-                    await groupVolume.call(this);
+                    await setGroupVolume.call(this);
                     break;
                 default:
                     throw new Error("Unknown method or not implemented");

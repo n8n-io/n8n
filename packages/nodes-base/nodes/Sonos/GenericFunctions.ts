@@ -72,7 +72,7 @@ export async function playFavorite(this: IExecuteFunctions): Promise<void> {
     await this.helpers.requestOAuth2.call(this, 'sonosApi', options);
 }
 
-export async function groupVolume(this: IExecuteFunctions): Promise<void> {
+export async function setGroupVolume(this: IExecuteFunctions): Promise<void> {
     const firstGroupId = await getFirstGroup.call(this);
     const options: OptionsWithUri = {
         headers: {
@@ -111,7 +111,7 @@ export async function loadPlayers(this: ILoadOptionsFunctions | IExecuteFunction
     let data;
     try {
         const household = this.getNodeParameter('household', 0);
-        data = await callSonosApi.call(this, 'GET', `/households//${household}/groups`);
+        data = await callSonosApi.call(this, 'GET', `/households/${household}/groups`);
     } catch (err: any) {
         if (err.message === "No credentials got returned!") {
             return returnData;

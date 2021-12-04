@@ -1,0 +1,8 @@
+{
+    "id": "fakeId",
+    "name": "ACME",
+    "appId": "com.acme.app",
+    "priority": "LOW",
+    "clipType": "CUSTOM",
+    "status": "INACTIVE"
+}

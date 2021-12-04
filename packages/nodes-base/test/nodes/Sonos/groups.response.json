@@ -1,0 +1,51 @@
+{
+    "groups": [
+        {
+            "id": "RINCON_1234567:1234",
+            "name": "Sonos Roam + 1",
+            "coordinatorId": "RINCON_1234567",
+            "playbackState": "PLAYBACK_STATE_IDLE",
+            "playerIds": [
+                "RINCON_123456_1",
+                "RINCON_123456_2",
+                "RINCON_1234567_1"
+            ]
+        }
+    ],
+    "players": [
+        {
+            "id": "RINCON_123456",
+            "name": "Sonos Roam",
+            "minApiVersion": "1.1.0",
+            "isUnregistered": false,
+            "capabilities": [
+                "PLAYBACK",
+                "CLOUD",
+                "AIRPLAY",
+                "VOICE",
+                "AUDIO_CLIP"
+            ],
+            "deviceIds": [
+                "RINCON_123456_1",
+                "RINCON_123456_2"
+            ]
+        },
+        {
+            "id": "RINCON_1234567",
+            "name": "Sonos Move",
+            "minApiVersion": "1.1.0",
+            "isUnregistered": false,
+            "capabilities": [
+                "PLAYBACK",
+                "CLOUD",
+                "AIRPLAY",
+                "VOICE",
+                "AUDIO_CLIP"
+            ],
+            "deviceIds": [
+                "RINCON_1234567_1"
+            ]
+        }
+    ],
+    "partial": false
+}
