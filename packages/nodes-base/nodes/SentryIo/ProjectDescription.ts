@@ -2,7 +2,7 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const projectOperations = [
+export const projectOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -44,9 +44,9 @@ export const projectOperations = [
 		default: 'get',
 		description: 'The operation to perform',
 	},
-] as INodeProperties[];
+];
 
-export const projectFields = [
+export const projectFields: INodeProperties[] = [
 	/* -------------------------------------------------------------------------- */
 	/*                                project:create/get                          */
 	/* -------------------------------------------------------------------------- */
@@ -375,4 +375,4 @@ export const projectFields = [
 		required: true,
 		description: 'The slug of the project to delete.',
 	},
-] as INodeProperties[];
+];

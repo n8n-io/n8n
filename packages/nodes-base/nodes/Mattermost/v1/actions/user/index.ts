@@ -17,7 +17,7 @@ export {
 };
 
 
-export const descriptions = [
+export const descriptions: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -70,5 +70,5 @@ export const descriptions = [
 	...getByEmail.description,
 	...getById.description,
 	...invite.description,
-] as INodeProperties[];
+];
 

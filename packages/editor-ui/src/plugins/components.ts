@@ -31,7 +31,6 @@ import Col from 'element-ui/lib/col';
 import Badge from 'element-ui/lib/badge';
 import Card from 'element-ui/lib/card';
 import ColorPicker from 'element-ui/lib/color-picker';
-import Transfer from 'element-ui/lib/transfer';
 import Container from 'element-ui/lib/container';
 import Loading from 'element-ui/lib/loading';
 import MessageBox from 'element-ui/lib/message-box';
@@ -109,7 +108,6 @@ Vue.use(Col);
 Vue.use(Badge);
 Vue.use(Card);
 Vue.use(ColorPicker);
-Vue.use(Transfer);
 Vue.use(Container);
 
 Vue.component(CollapseTransition.name, CollapseTransition);

@@ -1,8 +1,12 @@
 import {
+	INodeProperties
+} from 'n8n-workflow';
+
+import {
 	getConditions
 } from './GenericFunctions';
 
-export const filters = [{
+export const filters: INodeProperties[] = [{
 	displayName: 'Property Name',
 	name: 'key',
 	type: 'options',

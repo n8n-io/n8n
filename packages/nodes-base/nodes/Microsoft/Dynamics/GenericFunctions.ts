@@ -10,6 +10,7 @@ import {
 
 import {
 	IDataObject,
+	INodeProperties,
 	INodePropertyOptions,
 	NodeApiError,
 } from 'n8n-workflow';
@@ -92,7 +93,7 @@ export function adjustAddresses(addresses: [{ [key: string]: string }]) {
 	return results;
 }
 
-export function getAccountFields() {
+export function getAccountFields(): INodeProperties[] {
 	return [
 		{
 			displayName: 'Account Category',
