@@ -8,6 +8,7 @@ import {
 	INodeTypeDescription,
 	IPollFunctions,
 	NodeApiError,
+	NodeOperationError,
 } from 'n8n-workflow';
 
 import {
@@ -25,7 +26,7 @@ export class GoogleCalendarTrigger implements INodeType {
 		group: ['trigger'],
 		version: 1,
 		subtitle: '={{$parameter["triggerOn"]}}',
-		description: '',
+		description: 'Starts the workflow when Google Calendar events occur',
 		defaults: {
 			name: 'Google Calendar Trigger',
 			color: '#3E87E4',
@@ -121,10 +122,32 @@ export class GoogleCalendarTrigger implements INodeType {
 	};
 
 	async poll(this: IPollFunctions): Promise<INodeExecutionData[][] | null> {
-		const triggerOn = this.getNodeParameter('triggerOn') as string;
+		const poolTimes = this.getNodeParameter('pollTimes.item', []) as IDataObject[];
+		const triggerOn = this.getNodeParameter('triggerOn', '') as string;
 		const calendarId = this.getNodeParameter('calendarId') as string;
 		const webhookData = this.getWorkflowStaticData('node');
 		const matchTerm = this.getNodeParameter('options.matchTerm', '') as string;
+
+		if (poolTimes.length === 0) {
+			throw new NodeOperationError(
+				this.getNode(),
+				'Please set a poll time',
+			);
+		}
+
+		if (triggerOn === '') {
+			throw new NodeOperationError(
+				this.getNode(),
+				'Please select an event',
+			);
+		}
+
+		if (calendarId === '') {
+			throw new NodeOperationError(
+				this.getNode(),
+				'Please select a calendar',
+			);
+		}
 
 		const now = moment().utc().format();
 
