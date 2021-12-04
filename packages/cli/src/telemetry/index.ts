@@ -135,10 +135,12 @@ export class Telemetry {
 	async track(eventName: string, properties?: IDataObject): Promise<void> {
 		return new Promise<void>((resolve) => {
 			if (this.client) {
+				// @ts-ignore
 				this.client.track(
 					{
 						userId: this.instanceId,
 						event: eventName,
+						// @ts-ignore
 						properties,
 					},
 					resolve,
