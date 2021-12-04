@@ -1,4 +1,3 @@
-
 import {
 	IExecuteFunctions,
 } from 'n8n-core';
@@ -158,11 +157,68 @@ export class GoogleSheets implements INodeType {
 						value: 'update',
 						description: 'Update rows in a sheet',
 					},
+					{
+						name: 'Update By Column Or Row',
+						value: 'updateByColumnOrRow',
+						description: 'Update by column or row',
+					},
 				],
 				default: 'read',
 				description: 'The operation to perform.',
 			},
-
+			{
+				displayName: 'Property binding',
+				name: 'propertyBinding',
+				type: 'string',
+				displayOptions: {
+					show: {
+						resource: [
+							'sheet',
+						],
+					},
+					hide: {
+						operation: [
+							'create',
+							'delete',
+							'remove',
+							'update',
+						],
+					},
+				},
+				default: 'A1:Property1,B1:Property2',
+				required: true,
+				description: 'If the Major Dimension is Columns, then the value list of Property1 will be vertically downward from cell A1. If the Major Dimension is ROWS, then the value list of Property1 will be horizontally rowed from cell A1 to the right.',
+			},
+			{
+				displayName: 'Major Dimension',
+				name: 'majorDimension',
+				type: 'options',
+				options: [
+					{
+						name: 'Columns',
+						value: 'COLUMNS',
+						description: 'By Column',
+					},
+					{
+						name: 'Rows',
+						value: 'ROWS',
+						description: 'By Row',
+					},
+				],
+				displayOptions: {
+					show: {
+						resource: [
+							'sheet',
+						],
+						operation: [
+							'updateByColumnOrRow',
+						]
+					}
+				},
+				default: 'COLUMNS',
+				required: true,
+				description: 'COLUMNS will be arranged vertically downward at the beginning of the specified range, and ROWS will be arranged horizontally to the right at the beginning of the specified range',
+			},
 			// ----------------------------------
 			//         All
 			// ----------------------------------
@@ -196,6 +252,7 @@ export class GoogleSheets implements INodeType {
 							'create',
 							'delete',
 							'remove',
+							'updateByColumnOrRow',
 						],
 					},
 				},
@@ -414,6 +471,7 @@ export class GoogleSheets implements INodeType {
 							'clear',
 							'delete',
 							'remove',
+							'updateByColumnOrRow',
 						],
 						rawData: [
 							true,
@@ -445,6 +503,7 @@ export class GoogleSheets implements INodeType {
 							'create',
 							'delete',
 							'remove',
+							'updateByColumnOrRow',
 						],
 						rawData: [
 							true,
@@ -1055,7 +1114,7 @@ export class GoogleSheets implements INodeType {
 			const sheet = new GoogleSheet(spreadsheetId, this);
 
 			let range = '';
-			if (!['create', 'delete', 'remove'].includes(operation)) {
+			if (!['create', 'delete', 'remove','updateByColumnOrRow'].includes(operation)) {
 				range = this.getNodeParameter('range', 0) as string;
 			}
 
@@ -1334,6 +1393,29 @@ export class GoogleSheets implements INodeType {
 				} catch (error) {
 					if (this.continueOnFail()) {
 						return this.prepareOutputData([{json:{ error: error.message }}]);
+					}
+					throw error;
+				}
+			} else if (operation === 'updateByColumnOrRow') {
+				const propertyBinding = this.getNodeParameter('propertyBinding', 0) as string;
+				const majorDimension = this.getNodeParameter('majorDimension', 0, {}) as string;
+				try {
+					const items = this.getInputData();
+					const updateData: ISheetUpdateData[] = [];
+					propertyBinding.split(',').forEach(binding => {
+						const kv = binding.split(':');
+						const range = kv[0], prop = kv[1];
+						updateData.push({
+							range,
+							values: [[prop, ...items.map(item => item.json[prop] as string)]],
+							majorDimension,
+						});
+					});
+					const data = await sheet.batchUpdate(updateData, valueInputMode);
+					return this.prepareOutputData(items);
+				} catch (error) {
+					if (this.continueOnFail()) {
+						return this.prepareOutputData([{json: {error: error.message}}]);
 					}
 					throw error;
 				}

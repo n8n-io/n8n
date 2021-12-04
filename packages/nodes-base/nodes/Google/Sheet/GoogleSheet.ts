@@ -27,6 +27,7 @@ export interface IGoogleAuthCredentials {
 export interface ISheetUpdateData {
 	range: string;
 	values: string[][];
+	majorDimension?: string;
 }
 
 export interface ILookupValues {
