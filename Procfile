@@ -1,1 +1,1 @@
-web: npm run start --tunnel
+web: npm run start

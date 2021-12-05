@@ -7,6 +7,7 @@
     "build": "lerna exec npm run build",
     "heroku-postbuild": "npm install -g lerna && npm install -g run-script-os && npm install -g @oclif/command && npm i && npm run bootstrap && npm run build",
     "connect:heroku": "heroku ps:exec -a smartcloud1",
+    "docker:n8n-custom": "docker build -t n8n-custom -f docker/images/n8n-custom/Dockerfile .",
     "dev": "lerna exec npm run dev --parallel",
     "clean:dist": "lerna exec -- rimraf ./dist",
     "format": "lerna exec npm run format",
