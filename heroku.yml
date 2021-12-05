@@ -1,0 +1,13 @@
+setup:
+  addons:
+    - plan: heroku-postgresql
+      as: DATABASE
+  config:
+    N8N_BASIC_AUTH_ACTIVE: true
+    N8N_BASIC_AUTH_USER: user
+    N8N_BASIC_AUTH_PASSWORD: pass
+build:
+  docker:
+    web: docker/images/n8n-custom/Dockerfile
+run:
+  web: npm start
