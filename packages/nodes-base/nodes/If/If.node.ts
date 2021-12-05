@@ -156,6 +156,10 @@ export class If implements INodeType {
 										name: 'Is Empty',
 										value: 'isEmpty',
 									},
+									{
+										name: 'Is Not Empty',
+										value: 'isNotEmpty',
+									},
 								],
 								default: 'smaller',
 								description: 'Operation to decide where the the data should be mapped to.',
@@ -168,6 +172,7 @@ export class If implements INodeType {
 									hide: {
 										operation: [
 											'isEmpty',
+											'isNotEmpty',
 										],
 									},
 								},
@@ -224,6 +229,10 @@ export class If implements INodeType {
 										name: 'Is Empty',
 										value: 'isEmpty',
 									},
+									{
+										name: 'Is Not Empty',
+										value: 'isNotEmpty',
+									},
 								],
 								default: 'equal',
 								description: 'Operation to decide where the the data should be mapped to.',
@@ -236,6 +245,7 @@ export class If implements INodeType {
 									hide: {
 										operation: [
 											'isEmpty',
+											'isNotEmpty',
 											'regex',
 										],
 									},
@@ -310,7 +320,8 @@ export class If implements INodeType {
 			smaller: (value1: NodeParameterValue, value2: NodeParameterValue) => (value1 || 0) < (value2 || 0),
 			smallerEqual: (value1: NodeParameterValue, value2: NodeParameterValue) => (value1 || 0) <= (value2 || 0),
 			startsWith: (value1: NodeParameterValue, value2: NodeParameterValue) => (value1 as string).startsWith(value2 as string),
-			isEmpty: (value1: NodeParameterValue) => [undefined, null, ''].includes(value1 as string),
+			isEmpty: (value1: NodeParameterValue) => (([undefined, null, ''].includes(value1 as string)) || ((typeof value1 === 'object' && value1 !== null) ? (Object.entries(value1 as string).length === 0) : false)),
+			isNotEmpty: (value1: NodeParameterValue) => !(([undefined, null, ''].includes(value1 as string)) || ((typeof value1 === 'object' && value1 !== null) ? (Object.entries(value1 as string).length === 0) : false)),
 			regex: (value1: NodeParameterValue, value2: NodeParameterValue) => {
 				const regexMatch = (value2 || '').toString().match(new RegExp('^/(.*?)/([gimusy]*)$'));
 
