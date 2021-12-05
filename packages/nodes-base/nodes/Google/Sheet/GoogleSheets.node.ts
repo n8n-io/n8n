@@ -167,21 +167,28 @@ export class GoogleSheets implements INodeType {
 				description: 'The operation to perform.',
 			},
 			{
+				displayName: 'Sheet title field',
+				name: 'sheetTitleField',
+				type: 'string',
+				displayOptions: {
+					show: {
+						operation: [
+							'updateByColumnOrRow',
+						],
+					},
+				},
+				default: '',
+				required: false,
+				description: 'This field will be parsed into a sheet title, if it does not exist in the sheet, it will be created, otherwise it will be updated',
+			},
+			{
 				displayName: 'Property binding',
 				name: 'propertyBinding',
 				type: 'string',
 				displayOptions: {
 					show: {
-						resource: [
-							'sheet',
-						],
-					},
-					hide: {
 						operation: [
-							'create',
-							'delete',
-							'remove',
-							'update',
+							'updateByColumnOrRow',
 						],
 					},
 				},
@@ -207,13 +214,10 @@ export class GoogleSheets implements INodeType {
 				],
 				displayOptions: {
 					show: {
-						resource: [
-							'sheet',
-						],
 						operation: [
 							'updateByColumnOrRow',
-						]
-					}
+						],
+					},
 				},
 				default: 'COLUMNS',
 				required: true,
@@ -1114,7 +1118,7 @@ export class GoogleSheets implements INodeType {
 			const sheet = new GoogleSheet(spreadsheetId, this);
 
 			let range = '';
-			if (!['create', 'delete', 'remove','updateByColumnOrRow'].includes(operation)) {
+			if (!['create', 'delete', 'remove', 'updateByColumnOrRow', 'multiSheetUpdate'].includes(operation)) {
 				range = this.getNodeParameter('range', 0) as string;
 			}
 
@@ -1122,6 +1126,54 @@ export class GoogleSheets implements INodeType {
 
 			const valueInputMode = (options.valueInputMode || 'RAW') as ValueInputOption;
 			const valueRenderMode = (options.valueRenderMode || 'UNFORMATTED_VALUE') as ValueRenderOption;
+
+			const updateByColumnOrRow = async (sheetTitleField?: string): Promise<INodeExecutionData[][]> => {
+				const propertyBinding = this.getNodeParameter('propertyBinding', 0) as string;
+				const majorDimension = this.getNodeParameter('majorDimension', 0, {}) as string;
+				try {
+					const items = this.getInputData();
+
+					const updateData: ISheetUpdateData[] = [];
+
+					let groups: any = {};
+					if (sheetTitleField && sheetTitleField.length) {
+						const groupBy = (xs: any[], key: string): any => {
+							return xs.reduce((rv: any[], x: any) => {
+								(rv[x[key]] = rv[x[key]] || []).push(x);
+								return rv;
+							}, {});
+						};
+						groups = groupBy(items.map(item => item.json), sheetTitleField);
+					}
+					propertyBinding.split(',').forEach(binding => {
+						const kv = binding.split(':');
+						const range = kv[0], prop = kv[1];
+						if (sheetTitleField && sheetTitleField.length) {
+							Object.keys(groups).forEach(key => {
+								const items = groups[key];
+								updateData.push({
+									range: key + '!' + range,
+									values: [[prop, ...items.map(item => item[prop] as string)]],
+									majorDimension,
+								});
+							});
+						} else {
+							updateData.push({
+								range,
+								values: [[prop, ...items.map(item => item.json[prop] as string)]],
+								majorDimension,
+							});
+						}
+					});
+					const data = await sheet.batchUpdate(updateData, valueInputMode);
+					return this.prepareOutputData(items);
+				} catch (error) {
+					if (this.continueOnFail()) {
+						return this.prepareOutputData([{json: {error: error.message}}]);
+					}
+					throw error;
+				}
+			};
 
 			if (operation === 'append') {
 				// ----------------------------------
@@ -1397,30 +1449,52 @@ export class GoogleSheets implements INodeType {
 					throw error;
 				}
 			} else if (operation === 'updateByColumnOrRow') {
-				const propertyBinding = this.getNodeParameter('propertyBinding', 0) as string;
-				const majorDimension = this.getNodeParameter('majorDimension', 0, {}) as string;
-				try {
-					const items = this.getInputData();
-					const updateData: ISheetUpdateData[] = [];
-					propertyBinding.split(',').forEach(binding => {
-						const kv = binding.split(':');
-						const range = kv[0], prop = kv[1];
-						updateData.push({
-							range,
-							values: [[prop, ...items.map(item => item.json[prop] as string)]],
-							majorDimension,
-						});
-					});
-					const data = await sheet.batchUpdate(updateData, valueInputMode);
-					return this.prepareOutputData(items);
-				} catch (error) {
-					if (this.continueOnFail()) {
-						return this.prepareOutputData([{json: {error: error.message}}]);
-					}
-					throw error;
-				}
-			}
+				const sheetTitleField = this.getNodeParameter('sheetTitleField', 0) as string;
+				if (sheetTitleField && sheetTitleField.length) {
+					const responseData = await sheet.spreadsheetGetSheets();
 
+					if (responseData === undefined) {
+						throw new NodeOperationError(this.getNode(), 'No data got returned');
+					}
+
+					const returnData: INodePropertyOptions[] = [];
+					for (const sheet of responseData.sheets!) {
+						if (sheet.properties!.sheetType !== 'GRID') {
+							continue;
+						}
+
+						returnData.push({
+							name: (sheet.properties!.title as string).trim(),
+							value: sheet.properties!.sheetId as unknown as string,
+						});
+					}
+					const items = this.getInputData();
+					const allSheetTitles = Array.from(new Set(items.map(item => (item.json[sheetTitleField] as string).trim())));
+					const existedSheetTitles = returnData.map(item => item.name);
+					const requests = allSheetTitles.filter(title => !existedSheetTitles.includes(title)).map(title => {
+						return {
+							'addSheet': {
+								'properties': {
+									'sheetType': 'GRID',
+									'index': 0,
+									'title': title,
+								},
+							},
+						};
+					});
+					if (requests && requests.length) {
+						const sheetResp = await googleApiRequest.call(this, 'POST', `/v4/spreadsheets/${spreadsheetId}:batchUpdate`, {requests});
+
+						(sheetResp.replies as any[]).forEach(reply => {
+							returnData.push({
+								value: reply.addSheet.properties.sheetId,
+								name: reply.addSheet.properties.title,
+							});
+						});
+					}
+				}
+				return updateByColumnOrRow(sheetTitleField);
+			}
 		}
 
 		if (resource === 'spreadsheet') {
