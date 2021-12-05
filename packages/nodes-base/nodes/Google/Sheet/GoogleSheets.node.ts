@@ -1147,7 +1147,7 @@ export class GoogleSheets implements INodeType {
 					}
 					propertyBinding.split(',').forEach(binding => {
 						const kv = binding.split(':');
-						const range = kv[0], prop = kv[1];
+						const range = kv[0].trim(), prop = kv[1].trim();
 						if (sheetTitleField && sheetTitleField.length) {
 							Object.keys(groups).forEach(key => {
 								const items = groups[key];
@@ -1449,7 +1449,7 @@ export class GoogleSheets implements INodeType {
 					throw error;
 				}
 			} else if (operation === 'updateByColumnOrRow') {
-				const sheetTitleField = this.getNodeParameter('sheetTitleField', 0) as string;
+				const sheetTitleField = (this.getNodeParameter('sheetTitleField', 0) as string).trim();
 				if (sheetTitleField && sheetTitleField.length) {
 					const responseData = await sheet.spreadsheetGetSheets();
 
