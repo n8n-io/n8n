@@ -7,6 +7,7 @@
     "build": "lerna exec npm run build",
     "heroku-postbuild": "npm install -g lerna && npm install -g run-script-os && npm install -g @oclif/command && npm i && npm run bootstrap && npm run build",
     "connect:heroku": "heroku ps:exec -a smartcloud1",
+    "heroku:n8n-custom:build-local-push-and-release": "npm run docker:n8n-custom && npm run heroku:push-n8n-custom && heroku:release-n8n-custom",
     "heroku:container-login": "heroku container:login",
     "heroku:push-n8n-custom": "docker tag n8n-custom registry.heroku.com/smartcloud1/web && docker push registry.heroku.com/smartcloud1/web",
     "heroku:release-n8n-custom": "heroku container:release web -a smartcloud1",
