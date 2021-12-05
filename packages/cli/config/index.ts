@@ -349,7 +349,7 @@ const config = convict({
 		format: Number,
 		default: 5678,
 		arg: 'port',
-		env: 'N8N_PORT',
+		env: 'PORT',
 		doc: 'HTTP port n8n can be reached',
 	},
 	listen_address: {
