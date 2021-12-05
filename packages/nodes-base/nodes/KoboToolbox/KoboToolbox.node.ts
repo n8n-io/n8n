@@ -226,7 +226,6 @@ export class KoboToolbox implements INodeType {
 					responseData = [await koboToolboxApiRequest.call(this, {
 						url: `/api/v2/assets/${asset_uid}/data/${id}/validation_status/`,
 					})];
-					console.dir(responseData);
 				}
 
 				if (operation === 'set_validation') {
