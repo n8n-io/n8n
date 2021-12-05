@@ -29,6 +29,6 @@ if (parseInt(nodeVersion[0], 10) < 14) {
 	process.exit(0);
 }
 
-require('../../../node_modules/@oclif/command').run()
-.then(require('../../../node_modules/@oclif/command/flush'))
-.catch(require('../../../node_modules/@oclif/errors/handle'));
+require('@oclif/command').run()
+.then(require('@oclif/command/flush'))
+.catch(require('@oclif/errors/handle'));
