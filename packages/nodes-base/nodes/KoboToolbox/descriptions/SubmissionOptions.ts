@@ -4,7 +4,7 @@ import {
 
 export const submissionOptions = [
 	{
-		displayName: 'Submission id',
+		displayName: 'Submission ID',
 		name: 'id',
 		type: 'string',
 		required: true,
@@ -18,10 +18,44 @@ export const submissionOptions = [
 					'get',
 					'delete',
 					'download',
+					'get_validation',
+					'set_validation',
 				],
 			},
 		},
 		default: '',
-		description:'Submission id (number, e.g. 245128)',
+		description:'Submission ID (number, e.g. 245128)',
+	},
+	{
+		displayName: 'Validation Status',
+		name: 'validationStatus',
+		type: 'options',
+		required: true,
+		displayOptions: {
+			show: {
+				resource: [
+					'submission',
+				],
+				operation: [
+					'set_validation',
+				],
+			},
+		},
+		default: '',
+		options: [
+			{
+				name: 'Approved',
+				value: 'validation_status_approved',
+			},
+			{
+				name: 'Not Approved',
+				value: 'validation_status_not_approved',
+			},
+			{
+				name: 'On Hold',
+				value: 'validation_status_on_hold',
+			},
+		],
+		description:'Desired Validation Status',
 	},
 ] as INodeProperties[];

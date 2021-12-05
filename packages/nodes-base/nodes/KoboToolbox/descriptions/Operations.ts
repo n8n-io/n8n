@@ -51,6 +51,16 @@ export const operations = [
 						value: 'delete',
 						description: 'Delete a single submission',
 					},
+					{
+						name: 'Get Validation Status',
+						value: 'get_validation',
+						description: 'Get the validation status for the submission',
+					},
+					{
+						name: 'Update Validation Status',
+						value: 'set_validation',
+						description: 'Set the validation status of the submission',
+					},
 				],
 				default: 'query',
 				description: 'The operation to perform.',

@@ -216,6 +216,34 @@ export class KoboToolbox implements INodeType {
 						url: `/api/v2/assets/${asset_uid}/data/${id}`,
 					})];
 				}
+
+				if (operation === 'get_validation') {
+					// ----------------------------------
+					//          Submissions: get_validation
+					// ----------------------------------
+					const id = this.getNodeParameter('id', i) as string;
+
+					responseData = [await koboToolboxApiRequest.call(this, {
+						url: `/api/v2/assets/${asset_uid}/data/${id}/validation_status/`,
+					})];
+					console.dir(responseData);
+				}
+
+				if (operation === 'set_validation') {
+					// ----------------------------------
+					//          Submissions: set_validation
+					// ----------------------------------
+					const id = this.getNodeParameter('id', i) as string;
+					const status = this.getNodeParameter('validationStatus', i) as string;
+
+					responseData = [await koboToolboxApiRequest.call(this, {
+						method: 'PATCH',
+						url: `/api/v2/assets/${asset_uid}/data/${id}/validation_status/`,
+						body: {
+							"validation_status.uid": status,
+						},
+					})];
+				}
 			}
 
 			if (resource === 'form') {
