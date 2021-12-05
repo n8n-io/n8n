@@ -1,5 +1,4 @@
 #!/bin/sh
-
 if [ -d /root/.n8n ] ; then
   chmod o+rx /root
   chown -R node /root/.n8n
@@ -14,12 +13,15 @@ if [ "$#" -gt 0 ]; then
 
   if [[ "$COMMAND" == "n8n" ]]; then
     shift
-    exec su-exec node ./packages/cli/bin/n8n "$@"
+    # exec su-exec node ./packages/cli/bin/n8n "$@"
+		exec node ./packages/cli/bin/n8n "$@"
   else
-    exec su-exec node "$@"
+    #exec su-exec node "$@"
+		exec node "$@"
   fi
 
 else
 # Got started without arguments
-exec su-exec node ./packages/cli/bin/n8n
+#exec su-exec node ./packages/cli/bin/n8n
+exec node ./packages/cli/bin/n8n
 fi
