@@ -1,7 +1,3 @@
-// TODO:
-// - Support light submission data reformatting (e.g. parsing GeoJSON)
-// - Support a trigger for new submission webhooks
-
 import {
 	IExecuteFunctions,
 } from 'n8n-core';
