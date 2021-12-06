@@ -59,7 +59,7 @@ export class FigmaTrigger implements INodeType {
 				type: 'string',
 				required: true,
 				default: '',
-				description: 'Team id to receive updates about',
+				description: 'Trigger will monitor this Figma Team for changes. Team ID can be found in the URL of a Figma Team page when viewed in a web browser: figma.com/files/team/{TEAM-ID}/',
 			},
 			{
 				displayName: 'Trigger On',
@@ -74,22 +74,22 @@ export class FigmaTrigger implements INodeType {
 					{
 						name: 'File Deleted',
 						value: 'fileDelete',
-						description: 'Triggers whenever a file has been deleted. If you subscribe to FILE_UPDATE, you automatically get these notifications. Note that this does not trigger on all files within a folder, if the folder is deleted',
-					},
-					{
-						name: 'Library Publish',
-						value: 'libraryPublish',
-						description: 'Triggers whenever a library file is published',
+						description: 'Triggers whenever a file has been deleted. Does not trigger on all files within a folder, if the folder is deleted',
 					},
 					{
 						name: 'File Updated',
 						value: 'fileUpdate',
-						description: 'Triggers whenever a file saves. This occurs whenever a file is closed or within 30 seconds after changes have been made',
+						description: 'Triggers whenever a file saves or is deleted. This occurs whenever a file is closed or within 30 seconds after changes have been made',
 					},
 					{
 						name: 'File Version Updated',
 						value: 'fileVersionUpdate',
 						description: 'Triggers whenever a named version is created in the version history of a file',
+					},
+					{
+						name: 'Library Publish',
+						value: 'libraryPublish',
+						description: 'Triggers whenever a library file is published',
 					},
 				],
 				default: '',
@@ -136,7 +136,7 @@ export class FigmaTrigger implements INodeType {
 				};
 
 				const responseData = await figmaApiRequest.call(this, 'POST', endpoint, body);
-				//console.log(responseData);
+
 				if (responseData.id === undefined) {
 					// Required data is missing so was not successful
 					return false;
@@ -166,8 +166,6 @@ export class FigmaTrigger implements INodeType {
 
 	async webhook(this: IWebhookFunctions): Promise<IWebhookResponseData> {
 		const bodyData = this.getBodyData();
-
-		console.log(bodyData);
 
 		if (bodyData.event_type === 'PING') {
 			const res = this.getResponseObject();
