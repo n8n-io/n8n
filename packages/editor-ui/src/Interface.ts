@@ -461,7 +461,7 @@ export interface IPushDataTestWebhook {
 
 export interface IPushDataConsoleMessage {
 	source: string;
-	message: string;
+	messages: string[];
 }
 
 export interface IVersionNotificationSettings {
