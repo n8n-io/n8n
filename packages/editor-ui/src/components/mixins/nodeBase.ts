@@ -12,10 +12,12 @@ import {
 	INodeTypeDescription,
 } from 'n8n-workflow';
 import { getStyleTokenValue } from '../helpers';
+import { renderText } from './renderText';
 
 export const nodeBase = mixins(
 	deviceSupportHelpers,
 	nodeIndex,
+	renderText,
 ).extend({
 	mounted () {
 		// Initialize the node
@@ -202,6 +204,14 @@ export const nodeBase = mixins(
 						index: i,
 						totalEndpoints: nodeTypeData.outputs.length,
 					};
+
+					const _plusEndpoint = this.instance.getEndpoint(
+						CanvasHelpers.getOutputEndpointUUID(this.nodeIndex, index),
+					);
+
+					const dropHoverMessageDiv = _plusEndpoint.canvas.children[1].children[1];
+
+					dropHoverMessageDiv.innerHTML = this.$baseText('nodesBase.clickToAddNodeOrDragToConnect');
 				}
 			});
 		},
