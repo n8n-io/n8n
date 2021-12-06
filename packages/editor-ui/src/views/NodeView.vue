@@ -604,6 +604,11 @@ export default mixins(
 					this.callDebounced('selectAllNodes', 1000);
 				} else if ((e.key === 'c') && (this.isCtrlKeyPressed(e) === true)) {
 					this.callDebounced('copySelectedNodes', 1000);
+					this.$showMessage({
+						title: 'Copied!',
+						message: '',
+						type: 'success',
+					});
 				} else if ((e.key === 'x') && (this.isCtrlKeyPressed(e) === true)) {
 					// Cut nodes
 					e.stopPropagation();
@@ -963,12 +968,6 @@ export default mixins(
 					this.$showError(error, 'Problem deleting the test-webhook', 'There was a problem deleting webhook:');
 					return;
 				}
-
-				this.$showMessage({
-					title: 'Webhook deleted',
-					message: `The webhook was deleted successfully`,
-					type: 'success',
-				});
 			},
 
 			/**
