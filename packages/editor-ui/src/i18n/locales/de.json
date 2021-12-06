@@ -471,6 +471,9 @@
 		"theErrorCauseIsTooLargeToBeDisplayed": "🇩🇪 The error cause is too large to be displayed.",
 		"time": "🇩🇪 Time"
 	},
+	"nodesBase": {
+		"clickToAddNodeOrDragToConnect": "🇩🇪 Click to add node<br>or drag to connect"
+	},
 	"nodeSettings": {
 		"alwaysOutputData": {
 			"description": "🇩🇪 If active, the node will return an empty item even if the <br />node returns no data during an initial execution. Be careful setting <br />this on IF-Nodes as it could cause an infinite loop.",
