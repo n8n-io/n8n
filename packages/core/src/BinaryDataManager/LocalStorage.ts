@@ -70,6 +70,13 @@ export class BinaryDataLocalStorage implements IBinaryDataManager {
 		return Promise.all(proms);
 	}
 
+	async duplicateBinaryDataByIdentifier(identifier: string): Promise<string> {
+		const newIdentifier = uuid();
+		return fs
+			.copyFile(path.join(this.storagePath, identifier), path.join(this.storagePath, newIdentifier))
+			.then(async () => Promise.resolve(newIdentifier));
+	}
+
 	private getBinaryDataMetaPath() {
 		return path.join(this.storagePath, 'meta');
 	}

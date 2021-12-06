@@ -286,4 +286,5 @@ export interface IBinaryDataManager {
 	markDataForDeletion(identifiers: string[]): Promise<void>;
 	deleteMarkedFiles(): Promise<unknown>;
 	deleteBinaryDataByIdentifier(identifier: string): Promise<void>;
+	duplicateBinaryDataByIdentifier(identifier: string): Promise<string>;
 }

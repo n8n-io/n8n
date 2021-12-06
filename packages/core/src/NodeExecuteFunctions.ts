@@ -1470,7 +1470,6 @@ export function getExecuteTriggerFunctions(
 			helpers: {
 				httpRequest,
 				prepareBinaryData,
-
 				request: proxyRequestToAxios,
 				async requestOAuth2(
 					this: IAllExecuteFunctions,
@@ -1546,7 +1545,9 @@ export function getExecuteFunctions(
 				workflowInfo: IExecuteWorkflowInfo,
 				inputData?: INodeExecutionData[],
 			): Promise<any> {
-				return additionalData.executeWorkflow(workflowInfo, additionalData, inputData);
+				return additionalData
+					.executeWorkflow(workflowInfo, additionalData, inputData)
+					.then(async (result) => BinaryDataManager.getInstance().duplicateBinaryData(result));
 			},
 			getContext(type: string): IContextObject {
 				return NodeHelpers.getContext(runExecutionData, type, node);

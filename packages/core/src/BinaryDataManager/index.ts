@@ -1,5 +1,12 @@
 import { parse } from 'flatted';
-import { IBinaryData, IRun, IRunData, IRunExecutionData, ITaskData } from 'n8n-workflow';
+import {
+	IBinaryData,
+	INodeExecutionData,
+	IRun,
+	IRunData,
+	IRunExecutionData,
+	ITaskData,
+} from 'n8n-workflow';
 import { BINARY_ENCODING } from '../Constants';
 import { IBinaryDataConfig, IBinaryDataManager, IExecutionFlattedDb } from '../Interfaces';
 import { BinaryDataLocalStorage } from './LocalStorage';
@@ -90,6 +97,69 @@ export class BinaryDataManager {
 		}
 
 		return Promise.resolve();
+	}
+
+	private async duplicateBinaryDataInExecData(
+		executionData: INodeExecutionData,
+	): Promise<INodeExecutionData> {
+		if (this.manager && executionData.binary) {
+			const binaryDataKeys = Object.keys(executionData.binary);
+			const bdPromises = binaryDataKeys.map(async (key: string) => {
+				if (!executionData.binary) {
+					return { key, newIdentifier: undefined };
+				}
+
+				const identifier = executionData.binary[key].internalIdentifier;
+				if (!identifier) {
+					return { key, newIdentifier: undefined };
+				}
+
+				return this.manager?.duplicateBinaryDataByIdentifier(identifier).then((newIdentifier) => ({
+					newIdentifier,
+					key,
+				}));
+			});
+
+			return Promise.all(bdPromises).then((b) => {
+				return b.reduce((acc, curr) => {
+					if (acc.binary && curr) {
+						acc.binary[curr.key].internalIdentifier = curr.newIdentifier;
+					}
+
+					return acc;
+				}, executionData);
+			});
+		}
+
+		return executionData;
+	}
+
+	async duplicateBinaryData(
+		inputData: Array<INodeExecutionData[] | null> | unknown,
+	): Promise<INodeExecutionData[][]> {
+		if (inputData && this.manager) {
+			const returnInputData = (inputData as INodeExecutionData[][]).map(
+				async (executionDataArray) => {
+					if (executionDataArray) {
+						return Promise.all(
+							executionDataArray.map((executionData) => {
+								if (executionData.binary) {
+									return this.duplicateBinaryDataInExecData(executionData);
+								}
+
+								return executionData;
+							}),
+						);
+					}
+
+					return executionDataArray;
+				},
+			);
+
+			return Promise.all(returnInputData);
+		}
+
+		return Promise.resolve(inputData as INodeExecutionData[][]);
 	}
 
 	private async markDataForDeletion(identifiers: string[]): Promise<void> {
