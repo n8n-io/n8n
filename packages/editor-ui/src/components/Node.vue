@@ -1,5 +1,5 @@
 <template>
-	<div :class="{'node-wrapper': true, selected: isSelected}" :style="nodePosition">
+	<div class="node-wrapper" :style="nodePosition">
 		<div class="select-background" v-show="isSelected"></div>
 		<div :class="{'node-default': true, 'touch-active': isTouchActive, 'is-touch-device': isTouchDevice}" :data-name="data.name" :ref="data.name">
 			<div :class="nodeClass" :style="nodeStyle"  @dblclick="setNodeActive" @click.left="mouseLeftClick" v-touch:start="touchStart" v-touch:end="touchEnd">
@@ -544,8 +544,7 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, renderText, workflow
 </style>
 
 <style lang="scss">
-/** node */
-.node-wrapper.selected {
+.jtk-endpoint {
 	z-index: 2;
 }
 
@@ -576,32 +575,31 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, renderText, workflow
 	z-index: 4;
 }
 
-/** node endpoints */
-.jtk-endpoint {
-	z-index:5;
-}
-
 .jtk-connector.jtk-hover {
 	z-index: 6;
 }
 
-.disabled-linethrough {
+.jtk-endpoint.plus-endpoint {
 	z-index: 6;
 }
 
-.jtk-endpoint.jtk-hover {
+.jtk-endpoint.dot-output-endpoint {
 	z-index: 7;
 }
 
 .jtk-overlay {
-	z-index:7;
+	z-index: 7;
+}
+
+.disabled-linethrough {
+	z-index: 8;
 }
 
 .jtk-connector.jtk-dragging {
 	z-index: 8;
 }
 
-.jtk-endpoint.jtk-drag-active {
+.jtk-drag-active.dot-output-endpoint, .jtk-drag-active.rect-input-endpoint {
 	z-index: 9;
 }
 
@@ -617,4 +615,88 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, renderText, workflow
 	z-index: 10;
 }
 
+</style>
+
+<style lang="scss">
+	$--stalklength: 40px;
+	$--box-size-medium: 24px;
+	$--box-size-small: 18px;
+
+	.plus-endpoint {
+		cursor: pointer;
+
+		.plus-stalk {
+			border-top: 2px solid var(--color-foreground-dark);
+			position: absolute;
+			width: $--stalklength;
+			height: 0;
+			right: 100%;
+			top: calc(50% - 1px);
+			pointer-events: none;
+
+		  .connection-run-items-label {
+				position: relative;
+				width: 100%;
+
+				span {
+					display: none;
+					left: calc(50% + 4px);
+				}
+			}
+		}
+
+		.plus-container {
+			color: var(--color-foreground-xdark);
+			border: 2px solid var(--color-foreground-xdark);
+			background-color: var(--color-background-xlight);
+			border-radius: var(--border-radius-base);
+			height: $--box-size-medium;
+			width: $--box-size-medium;
+
+			display: inline-flex;
+			align-items: center;
+			justify-content: center;
+			font-size: var(--font-size-2xs);
+			position: absolute;
+
+			top: 0;
+			right: 0;
+			pointer-events: none;
+
+			&.small {
+				height: $--box-size-small;
+				width: $--box-size-small;
+				font-size: 8px;
+			}
+
+			.fa-plus {
+				width: 1em;
+			}
+		}
+
+		.drop-hover-message {
+			font-weight: var(--font-weight-bold);
+			font-size: var(--font-size-2xs);
+			line-height: var(--font-line-height-regular);
+			color: var(--color-text-light);
+
+			position: absolute;
+			top: -6px;
+			left: calc(100% + 8px);
+			width: 200px;
+			display: none;
+		}
+
+		&.hidden > * {
+			display: none;
+		}
+
+		&.success .plus-stalk {
+			border-color: var(--color-success-light);
+
+			span {
+				display: inline;
+			}
+		}
+	}
 </style>

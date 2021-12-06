@@ -114,11 +114,11 @@ export class Expression {
 
 		// @ts-ignore
 		data.document = {};
+		// @ts-ignore
+		data.constructor = {};
 
 		// Execute the expression
 		try {
-			// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
-			// tmpl.tmpl('{{this.Promise=global.Promise;global=this;}}', data);
 			// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
 			const returnValue = tmpl.tmpl(parameterValue, data);
 			if (typeof returnValue === 'function') {
