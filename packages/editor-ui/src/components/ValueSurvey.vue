@@ -21,6 +21,7 @@
 							<n8n-button
 								@click="selectSurveyValue((value - 1).toString())"
 								:label="(value - 1).toString()"
+								:loading="loading"
 								type="outline"
 							/>
 						</div>
