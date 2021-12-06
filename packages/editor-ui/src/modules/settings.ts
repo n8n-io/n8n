@@ -5,7 +5,8 @@ import {
 	IRootState,
 	ISettingsState,
 } from '../Interface';
-import { getSettings, submitPersonalizationSurvey } from '../api/settings';
+import { getSettings } from '../api/settings-mock';
+import { submitPersonalizationSurvey } from '../api/settings';
 import Vue from 'vue';
 import { getPersonalizedNodeTypes } from './helper';
 import { PERSONALIZATION_MODAL_KEY } from '@/constants';
