@@ -11,7 +11,6 @@ import { getPromptsData, getSettings, submitValueSurvey, submitPersonalizationSu
 import Vue from 'vue';
 import { getPersonalizedNodeTypes } from './helper';
 import { CONTACT_PROMPT_MODAL_KEY, PERSONALIZATION_MODAL_KEY, VALUE_SURVEY_MODAL_KEY } from '@/constants';
-import { IDataObject } from 'n8n-workflow';
 
 const module: Module<ISettingsState, IRootState> = {
 	namespaced: true,

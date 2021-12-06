@@ -27,6 +27,7 @@
 						<n8n-input
 							v-model="form.email"
 							placeholder="Your email address"
+							@input="onInputChange"
 						/>
 						<n8n-button label="Send" float="right" @click="send" :disabled="!isEmailValid" />
 					</div>
@@ -86,6 +87,9 @@ export default mixins(workflowHelpers).extend({
 			}
 
 			this.$store.commit('ui/closeTopModal');
+		},
+		onInputChange(value: string) {
+			this.form.email = value;
 		},
 		selectSurveyValue(value: string) {
 			this.form.value = value;

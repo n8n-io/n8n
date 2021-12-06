@@ -641,6 +641,7 @@ export default mixins(
 					}
 
 					this.callDebounced('saveCurrentWorkflow', 1000, undefined, true);
+					this.$store.dispatch('settings/fetchPromptsData');
 				} else if (e.key === 'Enter') {
 					// Activate the last selected node
 					const lastSelectedNode = this.lastSelectedNode;

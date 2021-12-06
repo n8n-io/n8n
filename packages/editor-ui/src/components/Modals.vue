@@ -47,7 +47,7 @@
 			<UpdatesPanel />
 		</ModalRoot>
 
-		<ModalRoot :name="VALUE_SURVEY_MODAL_KEY">
+		<ModalRoot :name="VALUE_SURVEY_MODAL_KEY" :keepAlive="true">
 			<ValueSurvey />
 		</ModalRoot>
 
