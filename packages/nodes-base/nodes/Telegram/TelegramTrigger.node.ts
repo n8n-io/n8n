@@ -218,7 +218,13 @@ export class TelegramTrigger implements INodeType {
 
 			let imageSize = 'large';
 
-			if ((bodyData.message && bodyData.message.photo && Array.isArray(bodyData.message.photo) || bodyData.message?.document)) {
+			let key: 'message' | 'channel_post' = 'message';
+
+			if (bodyData.channel_post) {
+				key = 'channel_post';
+			}
+
+			if ((bodyData[key] && bodyData[key]?.photo && Array.isArray(bodyData[key]?.photo) || bodyData[key]?.document)) {
 
 				if (additionalFields.imageSize) {
 
@@ -227,22 +233,22 @@ export class TelegramTrigger implements INodeType {
 
 				let fileId;
 
-				if (bodyData.message.photo) {
+				if (bodyData[key]?.photo) {
 
-					let image = getImageBySize(bodyData.message.photo as IDataObject[], imageSize) as IDataObject;
+					let image = getImageBySize(bodyData[key]?.photo as IDataObject[], imageSize) as IDataObject;
 
 					// When the image is sent from the desktop app telegram does not resize the image
 					// So return the only image avaiable
 					// Basically the Image Size parameter would work just when the images comes from the mobile app
 					if (image === undefined) {
-						image = bodyData.message.photo[0];
+						image = bodyData[key]!.photo![0];
 					}
 
 					fileId = image.file_id;
 
 				} else {
 
-					fileId = bodyData.message?.document?.file_id;
+					fileId = bodyData[key]?.document?.file_id;
 				}
 
 				const { result: { file_path } } = await apiRequest.call(this, 'GET', `getFile?file_id=${fileId}`, {});

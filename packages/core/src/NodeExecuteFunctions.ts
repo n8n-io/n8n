@@ -1649,13 +1649,13 @@ export function getExecuteFunctions(
 			async putExecutionToWait(waitTill: Date): Promise<void> {
 				runExecutionData.waitTill = waitTill;
 			},
-			sendMessageToUI(message: any): void {
+			sendMessageToUI(...args: any[]): void {
 				if (mode !== 'manual') {
 					return;
 				}
 				try {
 					if (additionalData.sendMessageToUI) {
-						additionalData.sendMessageToUI(node.name, message);
+						additionalData.sendMessageToUI(node.name, args);
 					}
 				} catch (error) {
 					// eslint-disable-next-line @typescript-eslint/restrict-template-expressions
