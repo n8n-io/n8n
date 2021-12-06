@@ -54,7 +54,6 @@ import {
 	N8nInput,
 	N8nInputLabel,
 	N8nInputNumber,
-	N8nHeading,
 	N8nLink,
 	N8nMenu,
 	N8nMenuItem,
@@ -75,7 +74,6 @@ Vue.use(Fragment.Plugin);
 Vue.use(N8nActionToggle);
 Vue.use(N8nAvatar);
 Vue.use(N8nButton);
-Vue.component('n8n-heading', N8nHeading);
 Vue.component('n8n-form-box', N8nFormBox);
 Vue.component('n8n-form-inputs', N8nFormInputs);
 Vue.use('n8n-icon', N8nIcon);
