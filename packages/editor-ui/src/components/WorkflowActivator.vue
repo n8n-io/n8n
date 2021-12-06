@@ -85,7 +85,7 @@ export default mixins(
 					return this.isCurrentWorkflow && !this.workflowActive && !this.containsTrigger;
 				},
 				isCurrentWorkflow(): boolean {
-					return this.workflowId && this.$store.state.workflow.id === this.workflowId;
+					return this.workflowId ? this.$store.state.workflow.id === this.workflowId : true;
 				},
 				containsTrigger(): boolean {
 					const foundTriggers = this.$store.getters.workflowTriggerNodes
