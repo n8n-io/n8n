@@ -54,6 +54,7 @@
 
 <script lang="ts">
 import { VALID_EMAIL_REGEX, VALUE_SURVEY_MODAL_KEY } from '@/constants';
+import { IN8nPromptResponse } from '@/Interface';
 
 import ModalDrawer from './ModalDrawer.vue';
 
@@ -86,6 +87,7 @@ export default mixins(workflowHelpers).extend({
 				email: '',
 				value: '',
 			},
+			loading: false,
 			showButtons: true,
 			VALUE_SURVEY_MODAL_KEY,
 		};
@@ -112,28 +114,38 @@ export default mixins(workflowHelpers).extend({
 		selectSurveyValue(value: string) {
 			this.form.value = value;
 			this.showButtons = false;
-			this.$store.dispatch('settings/submitValueSurvey', { value: this.form.value });
-			this.$telemetry.track('User responded value survey score', {
-				instance_id: this.$store.getters.instanceId,
-				nps: this.form.value,
+			this.loading = true;
+			this.$store.dispatch('settings/submitValueSurvey', { value: this.form.value }).then((response: IN8nPromptResponse) => {
+				if (response.updated) {
+					this.$telemetry.track('User responded value survey score', {
+						instance_id: this.$store.getters.instanceId,
+						nps: this.form.value,
+					});
+				}
+				this.loading = false;
 			});
+
 		},
 		send(): void {
 			this.$store.dispatch('settings/submitValueSurvey', {
 				email: this.form.email,
 				value: this.form.value,
+			}).then((response: IN8nPromptResponse) => {
+				if (response.updated) {
+					this.$telemetry.track('User responded value survey email', {
+						instance_id: this.$store.getters.instanceId,
+						email: this.form.email,
+					});
+					this.$showMessage({
+						title: 'Thanks for your feedback',
+						message: `If you’d like to help even more, answer this <a target="_blank" href="https://n8n-community.typeform.com/quicksurvey#nps=${this.form.value}&instance_id=${this.$store.getters.instanceId}">quick survey.</a>`,
+						type: 'success',
+						duration: 15000,
+					});
+					this.$store.commit('ui/closeTopModal');
+				}
 			});
-			this.$telemetry.track('User responded value survey email', {
-				instance_id: this.$store.getters.instanceId,
-				email: this.form.email,
-			});
-			this.$showMessage({
-				title: 'Thanks for your feedback',
-				message: `If you’d like to help even more, answer this <a target="_blank" href="https://n8n-community.typeform.com/quicksurvey#nps=${this.form.value}&instance_id=${this.$store.getters.instanceId}">quick survey.</a>`,
-				type: 'success',
-				duration: 15000,
-			});
-			this.$store.commit('ui/closeTopModal');
+
 		},
 	},
 	mounted() {

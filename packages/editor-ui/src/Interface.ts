@@ -469,7 +469,7 @@ export interface IPersonalizationSurvey {
 	shouldShow: boolean;
 }
 
-export interface IN8nPrompt {
+export interface IN8nPrompts {
 	message: string;
 	title: string;
 	showPrompt: boolean;
@@ -478,6 +478,10 @@ export interface IN8nPrompt {
 
 export interface IN8nValueSurveyData {
 	[key: string]: string;
+}
+
+export interface IN8nPromptResponse {
+	updated: boolean;
 }
 
 export interface IN8nUISettings {
@@ -684,7 +688,7 @@ export interface IUiState {
 
 export interface ISettingsState {
 	settings: IN8nUISettings;
-	promptsData: IN8nPrompt;
+	promptsData: IN8nPrompts;
 }
 
 export interface IVersionsState {
