@@ -119,18 +119,6 @@ export default mixins(
 						// workflow. If that would not happen then it could be quite confusing
 						// for people because it would activate a different version of the workflow
 						// than the one they can currently see.
-						if (this.dirtyState) {
-							const importConfirm = await this.confirmMessage(
-								this.$locale.baseText('workflowActivator.confirmMessage.message'),
-								this.$locale.baseText('workflowActivator.confirmMessage.headline'),
-								'warning',
-								this.$locale.baseText('workflowActivator.confirmMessage.confirmButtonText'),
-								this.$locale.baseText('workflowActivator.confirmMessage.cancelButtonText'),
-							);
-							if (importConfirm === false) {
-								return;
-							}
-						}
 
 						// Get the current workflow data that it gets saved together with the activation
 						data = await this.getWorkflowDataToSave();

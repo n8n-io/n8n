@@ -67,16 +67,16 @@ export default Vue.extend({
 				return 'Your triggers will now fire production executions automatically.';
 			}
 			const trigger = foundTriggers[0];
-			const originalTrigger = this.$store.getters.nodeType(trigger.type);
+			const triggerNodeType = this.$store.getters.nodeType(trigger.type);
 
-			if (originalTrigger.activationMessage) {
-				return originalTrigger.activationMessage;
+			if (triggerNodeType.activationMessage) {
+				return triggerNodeType.activationMessage;
 			}
-			const serviceName = getTriggerNodeServiceName(originalTrigger.displayName);
+			const serviceName = getTriggerNodeServiceName(triggerNodeType.displayName);
 			//check if webhook
 			if (trigger.webhookId) {
 				return `Your workflow will now listen for events from ${serviceName} and trigger executions.`;
-			} else if (originalTrigger.polling) {
+			} else if (triggerNodeType.polling) {
 				//check if a polling trigger
 				return `Your workflow will now regularly check ${serviceName} for events and trigger executions for them.`;
 			} else {
@@ -90,10 +90,6 @@ export default Vue.extend({
 
 
 <style lang="scss" module>
-
-.emphasised {
-	font-weight: var(--font-weight-bold);
-}
 
 .spaced {
 	margin-top: var(--spacing-2xs);
