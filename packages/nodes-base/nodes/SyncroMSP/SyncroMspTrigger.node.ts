@@ -126,15 +126,14 @@ export class SyncroMspTrigger implements INodeType {
 		attribute.event=mapToEvents[event];
 
 		const returnData: IDataObject[] = [];
-
 		if(events && (events.includes(mapToEvents[event] as string) || events.includes('*'))){
 			returnData.push(attribute);
+			return {
+				workflowData: [
+					this.helpers.returnJsonArray(returnData),
+				],
+			};
 		}
-
-		return {
-			workflowData: [
-				this.helpers.returnJsonArray(returnData),
-			],
-		};
+		return {};
 	}
 }
