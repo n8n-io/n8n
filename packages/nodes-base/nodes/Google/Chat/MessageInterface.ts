@@ -37,9 +37,9 @@ enum Type {
 	'BOT',
 }
 
-// // todo: define other interfaces
+// // TODO: define other interfaces
 //
-// export interface IMessage {
+// export interface IMessage {s
 // 	name?: string;
 // 	sender?: IUser;
 // 	createTime?: string;
@@ -64,8 +64,15 @@ enum Type {
 // }
 //
 // export interface ICardHeader {
-// 	// actionLabel?: string,
-// 	// onClick?: IOnClick,
+// 	title: string;
+// 	subtitle: string;
+// 	imageStyle: ImageStyleType;
+// 	imageUrl: string;
+// }
+// enum ImageStyleType {
+// 	'IMAGE_STYLE_UNSPECIFIED',
+// 	'IMAGE',
+// 	'AVATAR',
 // }
 //
 // export interface ISection {
@@ -97,5 +104,5 @@ enum Type {
 // }
 //
 // export interface IAttachment {
-//
+// // attachments are not available for bots
 // }

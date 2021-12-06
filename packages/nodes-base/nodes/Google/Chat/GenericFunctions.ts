@@ -140,3 +140,45 @@ export function validateJSON(json: string | undefined): any { // tslint:disable-
 	}
 	return result;
 }
+
+export function getPagingParameters(resource: string, operation = 'getAll') {
+	return [
+		{
+			displayName: 'Return All',
+			name: 'returnAll',
+			type: 'boolean',
+			displayOptions: {
+				show: {
+					resource: [
+						resource,
+					],
+					operation: [
+						operation,
+					],
+				},
+			},
+			default: false,
+			description: 'If all results should be returned or only up to a given limit.',
+		},
+		{
+			displayName: 'Limit',
+			name: 'limit',
+			type: 'number',
+			displayOptions: {
+				show: {
+					resource: [
+						resource,
+					],
+					operation: [
+						operation,
+					],
+					returnAll: [
+						false,
+					],
+				},
+			},
+			default: 100,
+			description: 'The limit of records to return. The value is capped at 1000. Server may return fewer results than requested. If unspecified, server will default to 100.',
+		},
+	];
+}

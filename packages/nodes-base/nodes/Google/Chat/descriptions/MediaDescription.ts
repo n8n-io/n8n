@@ -18,7 +18,7 @@ export const mediaOperations = [
 			{
 				name: 'Download',
 				value: 'download',
-				description: 'Downloads media.',
+				description: 'Download media.',
 			},
 		],
 		default: 'download',
@@ -28,7 +28,7 @@ export const mediaOperations = [
 
 export const  mediaFields = [
 	/* -------------------------------------------------------------------------- */
-	/*                                 media:download                              */
+	/*                                 media:download                             */
 	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Resource Name',

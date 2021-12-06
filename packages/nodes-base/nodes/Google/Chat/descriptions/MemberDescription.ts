@@ -2,6 +2,10 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
+import {
+	getPagingParameters
+} from '../GenericFunctions';
+
 export const memberOperations = [
 	{
 		displayName: 'Operation',
@@ -52,15 +56,15 @@ export const memberFields = [
 			},
 		},
 		default: '',
-		description: 'Resource name of the membership to be retrieved, in the form "spaces/*/members/*".',
+		description: 'Member to be retrieved in the form "spaces/*/members/*".',
 	},
 
 	/* -------------------------------------------------------------------------- */
-	/*                                 members:getAll                              */
+	/*                                 member:getAll                              */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Parent Name',
-		name: 'parentName',
+		displayName: 'Space Name',
+		name: 'spaceName',
 		type: 'string',
 		required: true,
 		displayOptions: {
@@ -74,64 +78,10 @@ export const memberFields = [
 			},
 		},
 		default: '',
-		description: 'The resource name of the space for which membership list is to be fetched, in the form "spaces/*".',
+		description: 'The name of the space for which to retrieve members, in the form "spaces/*".',
 	},
-	{
-		displayName: 'Return All',
-		name: 'returnAll',
-		type: 'boolean',
-		displayOptions: {
-			show: {
-				resource: [
-					'member',
-				],
-				operation: [
-					'getAll',
-				],
-			},
-		},
-		default: false,
-		description: 'If all results should be returned or only up to a given limit.',
-	},
-	{
-		displayName: 'Additional Fields',
-		name: 'additionalFields',
-		type: 'collection',
-		placeholder: 'Add Field',
-		default: {},
-		displayOptions: {
-			show: {
-				resource: [
-					'member',
-				],
-				operation: [
-					'getAll',
-				],
-				returnAll: [
-					false,
-				],
-			},
-		},
-		options: [
-			{
-				displayName: 'Page Size',
-				name: 'pageSize',
-				type: 'number',
-				typeOptions: {
-					minValue: 1,
-					numberStepSize: 1,
-				},
-				default: '',
-				description: 'Requested page size. The value is capped at 1000. Server may return fewer results than requested. If unspecified, server will default to 100.',
-			},
-			{
-				displayName: 'Page Token',
-				name: 'pageToken',
-				type: 'string',
-				default: '',
-				description: 'A token identifying a page of results the server should return.',
-			},
-		],
-	},
+
+	...getPagingParameters('member'),
+
 ] as INodeProperties[];
 

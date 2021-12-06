@@ -2,6 +2,10 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
+import {
+	getPagingParameters
+} from '../GenericFunctions';
+
 export const spaceOperations = [
 	{
 		displayName: 'Operation',
@@ -55,64 +59,9 @@ export const  spaceFields = [
 	},
 
 	/* -------------------------------------------------------------------------- */
-	/*                                 space:getAll                              */
+	/*                                 space:getAll                               */
 	/* -------------------------------------------------------------------------- */
-	{
-		displayName: 'Return All',
-		name: 'returnAll',
-		type: 'boolean',
-		displayOptions: {
-			show: {
-				resource: [
-					'space',
-				],
-				operation: [
-					'getAll',
-				],
-			},
-		},
-		default: false,
-		description: 'If all results should be returned or only up to a given limit.',
-	},
-	{
-		displayName: 'Additional Fields',
-		name: 'additionalFields',
-		type: 'collection',
-		placeholder: 'Add Field',
-		default: {},
-		displayOptions: {
-			show: {
-				resource: [
-					'space',
-				],
-				operation: [
-					'getAll',
-				],
-				returnAll: [
-					false,
-				],
-			},
-		},
-		options: [
-			{
-				displayName: 'Page Size',
-				name: 'pageSize',
-				type: 'number',
-				typeOptions: {
-					minValue: 1,
-					numberStepSize: 1,
-				},
-				default: '',
-				description: 'Requested page size. The value is capped at 1000. Server may return fewer results than requested. If unspecified, server will default to 100.',
-			},
-			{
-				displayName: 'Page Token',
-				name: 'pageToken',
-				type: 'string',
-				default: '',
-				description: 'A token identifying a page of results the server should return.',
-			},
-		],
-	},
+
+	...getPagingParameters('space'),
 
 ] as INodeProperties[];
