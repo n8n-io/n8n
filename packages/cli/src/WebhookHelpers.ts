@@ -628,6 +628,13 @@ export async function executeWebhook(
 							data.push(entry.json);
 						}
 					}
+
+					if (!didSendResponse) {
+						responseCallback(null, {
+							data,
+							responseCode,
+						});
+					}
 				}
 				didSendResponse = true;
 

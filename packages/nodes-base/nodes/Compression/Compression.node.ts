@@ -2,8 +2,6 @@ import {
 	IExecuteFunctions,
 } from 'n8n-core';
 
-import { promises as fs } from 'fs';
-
 import {
 	IBinaryKeyData,
 	INodeExecutionData,
