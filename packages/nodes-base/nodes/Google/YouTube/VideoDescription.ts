@@ -2,7 +2,7 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const videoOperations = [
+export const videoOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -49,9 +49,9 @@ export const videoOperations = [
 		default: 'getAll',
 		description: 'The operation to perform.',
 	},
-] as INodeProperties[];
+];
 
-export const videoFields = [
+export const videoFields: INodeProperties[] = [
 	/* -------------------------------------------------------------------------- */
 	/*                                 video:upload                               */
 	/* -------------------------------------------------------------------------- */
@@ -296,8 +296,7 @@ export const videoFields = [
 				name: 'onBehalfOfContentOwner',
 				type: 'string',
 				default: '',
-				description: `The onBehalfOfContentOwner parameter indicates that the request's authorization credentials identify<br>
-				a YouTube CMS user who is acting on behalf of the content owner specified in the parameter value`,
+				description: `The onBehalfOfContentOwner parameter indicates that the request's authorization credentials identify a YouTube CMS user who is acting on behalf of the content owner specified in the parameter value`,
 			},
 		],
 	},
@@ -407,8 +406,7 @@ export const videoFields = [
 				name: 'onBehalfOfContentOwner',
 				type: 'string',
 				default: '',
-				description: `The onBehalfOfContentOwner parameter indicates that the request's authorization credentials identify<br>
-				a YouTube CMS user who is acting on behalf of the content owner specified in the parameter value`,
+				description: `The onBehalfOfContentOwner parameter indicates that the request's authorization credentials identify a YouTube CMS user who is acting on behalf of the content owner specified in the parameter value`,
 			},
 		],
 	},
@@ -874,4 +872,4 @@ export const videoFields = [
 			},
 		],
 	},
-] as INodeProperties[];
+];

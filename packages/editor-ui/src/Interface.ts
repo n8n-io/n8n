@@ -18,35 +18,76 @@ import {
 	IRun,
 	IRunData,
 	ITaskData,
+	ITelemetrySettings,
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
 
-import {
-	PaintStyle,
-} from 'jsplumb';
-
 declare module 'jsplumb' {
+	interface PaintStyle {
+		stroke?: string;
+		fill?: string;
+		strokeWidth?: number;
+		outlineStroke?: string;
+		outlineWidth?: number;
+	}
+
 	interface Anchor {
 		lastReturnValue: number[];
 	}
 
 	interface Connection {
+		__meta?: {
+			sourceNodeName: string,
+			sourceOutputIndex: number,
+			targetNodeName: string,
+			targetOutputIndex: number,
+		};
+		canvas?: HTMLElement;
+		connector?: {
+			setTargetEndpoint: (endpoint: Endpoint) => void;
+			resetTargetEndpoint: () => void;
+			bounds: {
+				minX: number;
+				maxX: number;
+				minY: number;
+				maxY: number;
+			}
+		};
+
 		// bind(event: string, (connection: Connection): void;): void; // tslint:disable-line:no-any
-		bind(event: string, callback: Function): void; // tslint:disable-line:no-any
+		bind(event: string, callback: Function): void;
 		removeOverlay(name: string): void;
 		removeOverlays(): void;
 		setParameter(name: string, value: any): void; // tslint:disable-line:no-any
 		setPaintStyle(arg0: PaintStyle): void;
 		addOverlay(arg0: any[]): void; // tslint:disable-line:no-any
 		setConnector(arg0: any[]): void; // tslint:disable-line:no-any
+		getUuids(): [string, string];
 	}
 
 	interface Endpoint {
+		endpoint: any; // tslint:disable-line:no-any
+		elementId: string;
+		__meta?: {
+			nodeName: string,
+			nodeId: string,
+			index: number,
+			totalEndpoints: number;
+		};
+		getUuid(): string;
 		getOverlay(name: string): any; // tslint:disable-line:no-any
+		repaint(params?: object): void;
+	}
+
+	interface N8nPlusEndpoint extends Endpoint {
+		setSuccessOutput(message: string): void;
+		clearSuccessOutput(): void;
 	}
 
 	interface Overlay {
 		setVisible(visible: boolean): void;
+		setLocation(location: number): void;
+		canvas?: HTMLElement;
 	}
 
 	interface OnConnectionBindInfo {
@@ -65,18 +106,15 @@ export interface IEndpointOptions {
 	dragProxy?: any; // tslint:disable-line:no-any
 	endpoint?: string;
 	endpointStyle?: object;
+	endpointHoverStyle?: object;
 	isSource?: boolean;
 	isTarget?: boolean;
 	maxConnections?: number;
 	overlays?: any; // tslint:disable-line:no-any
 	parameters?: any; // tslint:disable-line:no-any
 	uuid?: string;
-}
-
-export interface IConnectionsUi {
-	[key: string]: {
-		[key: string]: IEndpointOptions;
-	};
+	enabled?: boolean;
+	cssClass?: string;
 }
 
 export interface IUpdateInformation {
@@ -94,20 +132,16 @@ export interface INodeUpdatePropertiesInformation {
 	};
 }
 
-export type XYPositon = [number, number];
+export type XYPosition = [number, number];
 
 export type MessageType = 'success' | 'warning' | 'info' | 'error';
 
 export interface INodeUi extends INode {
-	position: XYPositon;
+	position: XYPosition;
 	color?: string;
 	notes?: string;
 	issues?: INodeIssues;
-	_jsPlumb?: {
-		endpoints?: {
-			[key: string]: IEndpointOptions[];
-		};
-	};
+	name: string;
 }
 
 export interface INodeTypesMaxCount {
@@ -129,7 +163,6 @@ export interface IRestApi {
 	getPastExecutions(filter: object, limit: number, lastId?: string | number, firstId?: string | number): Promise<IExecutionsListResponse>;
 	stopCurrentExecution(executionId: string): Promise<IExecutionsStopData>;
 	makeRestApiRequest(method: string, endpoint: string, data?: any): Promise<any>; // tslint:disable-line:no-any
-	getSettings(): Promise<IN8nUISettings>;
 	getNodeTypes(onlyLatest?: boolean): Promise<INodeTypeDescription[]>;
 	getNodesInformation(nodeInfos: INodeTypeNameVersion[]): Promise<INodeTypeDescription[]>;
 	getNodeParameterOptions(nodeTypeAndVersion: INodeTypeNameVersion, path: string, methodName: string, currentNodeParameters: INodeParameters, credentials?: INodeCredentials): Promise<INodePropertyOptions[]>;
@@ -249,7 +282,7 @@ export interface IActivationError {
 }
 
 export interface ICredentialsResponse extends ICredentialsEncrypted {
-	id?: string;
+	id: string;
 	createdAt: number | string;
 	updatedAt: number | string;
 }
@@ -428,13 +461,24 @@ export interface IPushDataTestWebhook {
 
 export interface IPushDataConsoleMessage {
 	source: string;
-	message: string;
+	messages: string[];
 }
 
 export interface IVersionNotificationSettings {
 	enabled: boolean;
 	endpoint: string;
 	infoUrl: string;
+}
+
+export type IPersonalizationSurveyKeys = 'codingSkill' | 'companyIndustry' | 'companySize' | 'otherCompanyIndustry' | 'otherWorkArea' | 'workArea';
+
+export type IPersonalizationSurveyAnswers = {
+	[key in IPersonalizationSurveyKeys]: string | null
+};
+
+export interface IPersonalizationSurvey {
+	answers?: IPersonalizationSurveyAnswers;
+	shouldShow: boolean;
 }
 
 export interface IN8nUISettings {
@@ -457,6 +501,8 @@ export interface IN8nUISettings {
 	};
 	versionNotifications: IVersionNotificationSettings;
 	instanceId: string;
+	personalizationSurvey?: IPersonalizationSurvey;
+	telemetry: ITelemetrySettings;
 }
 
 export interface IWorkflowSettings extends IWorkflowSettingsWorkflow {
@@ -591,7 +637,7 @@ export interface IRootState {
 	lastSelectedNodeOutputIndex: number | null;
 	nodeIndex: Array<string | null>;
 	nodeTypes: INodeTypeDescription[];
-	nodeViewOffsetPosition: XYPositon;
+	nodeViewOffsetPosition: XYPosition;
 	nodeViewMoveInProgress: boolean;
 	selectedNodes: INodeUi[];
 	sessionId: string;
@@ -599,6 +645,7 @@ export interface IRootState {
 	workflow: IWorkflowDb;
 	sidebarMenuItems: IMenuItem[];
 	instanceId: string;
+	telemetry: ITelemetrySettings | null;
 }
 
 export interface ICredentialTypeMap {
@@ -636,6 +683,10 @@ export interface IUiState {
 	isPageLoading: boolean;
 }
 
+export interface ISettingsState {
+	settings: IN8nUISettings;
+}
+
 export interface IVersionsState {
 	versionNotificationSettings: IVersionNotificationSettings;
 	nextVersions: IVersion[];
@@ -652,5 +703,12 @@ export interface IRestApiContext {
 
 export interface IZoomConfig {
 	scale: number;
-	offset: XYPositon;
+	offset: XYPosition;
+}
+
+export interface IBounds {
+	minX: number;
+	minY: number;
+	maxX: number;
+	maxY: number;
 }
