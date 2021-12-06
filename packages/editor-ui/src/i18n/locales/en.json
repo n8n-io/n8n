@@ -455,7 +455,7 @@
 		"theErrorCauseIsTooLargeToBeDisplayed": "The error cause is too large to be displayed.",
 		"time": "Time"
 	},
-	"nodesBase": {
+	"nodeBase": {
 		"clickToAddNodeOrDragToConnect": "Click to add node<br>or drag to connect"
 	},
 	"nodeSettings": {
