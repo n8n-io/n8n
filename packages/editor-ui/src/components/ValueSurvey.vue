@@ -15,8 +15,16 @@
 		</template>
 		<template slot="content">
 			<section :class="$style.content">
-				<div v-if="showButtons" :class="$style.buttons">
-					<n8n-button v-for="value in 11" :key="value - 1" @click="selectSurveyValue((value - 1).toString())" :label="(value - 1).toString()" />
+				<div v-if="showButtons" :class="$style.wrapper">
+					<div :class="$style.buttons">
+						<div :class="$style.button" v-for="value in 11" :key="value - 1" >
+							<n8n-button
+								@click="selectSurveyValue((value - 1).toString())"
+								:label="(value - 1).toString()"
+								type="outline"
+							/>
+						</div>
+					</div>
 					<div :class="$style.text">
 						<n8n-text size="small" color="text-xlight">Not likely</n8n-text>
 						<n8n-text size="small" color="text-xlight">Very likely</n8n-text>
@@ -29,10 +37,14 @@
 							placeholder="Your email address"
 							@input="onInputChange"
 						/>
-						<n8n-button label="Send" float="right" @click="send" :disabled="!isEmailValid" />
+						<div :class="$style.button">
+							<n8n-button label="Send" float="right" @click="send" :disabled="!isEmailValid" />
+						</div>
 					</div>
 					<div :class="$style.disclaimer">
-						<n8n-text size="small" color="text-xlight">David from our product team will get in touch personally.</n8n-text>
+						<n8n-text size="small" color="text-xlight">
+							David from our product team will get in touch personally.
+						</n8n-text>
 					</div>
 				</div>
 			</section>
@@ -45,8 +57,8 @@ import { VALID_EMAIL_REGEX, VALUE_SURVEY_MODAL_KEY } from '@/constants';
 
 import ModalDrawer from './ModalDrawer.vue';
 
-import mixins from "vue-typed-mixins";
-import { workflowHelpers } from "@/components/mixins/workflowHelpers";
+import mixins from 'vue-typed-mixins';
+import { workflowHelpers } from '@/components/mixins/workflowHelpers';
 
 const DEFAULT_TITLE = `How likely are you to recommend n8n to a friend or colleague?`;
 const SECOND_QUESTION_TITLE = `Thanks for your feedback! We'd love to understand how we can improve. Can we reach out?`;
@@ -57,7 +69,7 @@ export default mixins(workflowHelpers).extend({
 		ModalDrawer,
 	},
 	computed: {
-		getTitle (): string {
+		getTitle(): string {
 			if (this.form.value !== '') {
 				return SECOND_QUESTION_TITLE;
 			} else {
@@ -81,9 +93,15 @@ export default mixins(workflowHelpers).extend({
 	methods: {
 		closeDialog(): void {
 			if (this.form.value === '') {
-				this.$telemetry.track('User responded value survey score', { instance_id: this.$store.getters.instanceId, nps: '' });
+				this.$telemetry.track('User responded value survey score', {
+					instance_id: this.$store.getters.instanceId,
+					nps: '',
+				});
 			} else {
-				this.$telemetry.track('User responded value survey email', { instance_id: this.$store.getters.instanceId, email: '' });
+				this.$telemetry.track('User responded value survey email', {
+					instance_id: this.$store.getters.instanceId,
+					email: '',
+				});
 			}
 
 			this.$store.commit('ui/closeTopModal');
@@ -94,12 +112,21 @@ export default mixins(workflowHelpers).extend({
 		selectSurveyValue(value: string) {
 			this.form.value = value;
 			this.showButtons = false;
-			this.$store.dispatch('settings/submitValueSurvey', {value: this.form.value});
-			this.$telemetry.track('User responded value survey score', { instance_id: this.$store.getters.instanceId, nps: this.form.value });
+			this.$store.dispatch('settings/submitValueSurvey', { value: this.form.value });
+			this.$telemetry.track('User responded value survey score', {
+				instance_id: this.$store.getters.instanceId,
+				nps: this.form.value,
+			});
 		},
 		send(): void {
-			this.$store.dispatch('settings/submitValueSurvey', {email: this.form.email, value: this.form.value});
-			this.$telemetry.track('User responded value survey email', { instance_id: this.$store.getters.instanceId, email: this.form.email });
+			this.$store.dispatch('settings/submitValueSurvey', {
+				email: this.form.email,
+				value: this.form.value,
+			});
+			this.$telemetry.track('User responded value survey email', {
+				instance_id: this.$store.getters.instanceId,
+				email: this.form.email,
+			});
 			this.$showMessage({
 				title: 'Thanks for your feedback',
 				message: `If you’d like to help even more, answer this <a target="_blank" href="https://n8n-community.typeform.com/quicksurvey#nps=${this.form.value}&instance_id=${this.$store.getters.instanceId}">quick survey.</a>`,
@@ -110,7 +137,9 @@ export default mixins(workflowHelpers).extend({
 		},
 	},
 	mounted() {
-		this.$telemetry.track('User shown value survey', { instance_id: this.$store.getters.instanceId});
+		this.$telemetry.track('User shown value survey', {
+			instance_id: this.$store.getters.instanceId,
+		});
 	},
 });
 </script>
@@ -125,23 +154,32 @@ export default mixins(workflowHelpers).extend({
 	display: flex;
 	justify-content: center;
 
-	.buttons {
-		button {
-			width: 28px;
-			margin: 0 8px;
-			background-color: var(--color-background-xlight);
-			border: var(--color-background-xlight);
-			border-radius: 4px;
-			color: var(--color-background-dark);
-			font-size: var(--font-size-s);
-			font-weight: var(--font-weight-bold);
+	.wrapper {
+		display: flex;
+		flex-direction: column;
 
-			&:first-child {
-				margin-left: 0;
-			}
+		.buttons {
+			display: flex;
 
-			&:last-child {
-				margin-right: 0;
+			.button {
+				margin: 0 8px;
+
+				button {
+					width: 28px;
+					border: var(--color-background-xlight);
+					border-radius: 4px;
+					color: var(--color-background-dark);
+					font-size: var(--font-size-s);
+					font-weight: var(--font-weight-bold);
+				}
+
+				&:first-child {
+					margin-left: 0;
+				}
+
+				&:last-child {
+					margin-right: 0;
+				}
 			}
 		}
 
@@ -161,9 +199,12 @@ export default mixins(workflowHelpers).extend({
 				height: 36px;
 			}
 
-			button {
+			.button {
 				margin-left: 10px;
-				font-size: var(--font-size-s);
+
+				button {
+					font-size: var(--font-size-s);
+				}
 			}
 		}
 
