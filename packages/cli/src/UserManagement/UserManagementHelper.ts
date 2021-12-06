@@ -1,6 +1,7 @@
 /* eslint-disable import/no-cycle */
 import { IDataObject } from 'n8n-workflow';
 import { Db } from '..';
+import config = require('../../config');
 import { Role } from '../databases/entities/Role';
 import { SharedWorkflow } from '../databases/entities/SharedWorkflow';
 import { User } from '../databases/entities/User';
@@ -18,4 +19,9 @@ export async function saveWorkflowOwnership(
 		user: incomingData.user as User,
 		workflow: savedWorkflow,
 	});
+}
+
+export function isEmailSetup(): boolean {
+	const emailMode = config.get('userManagement.emails.mode');
+	return !!emailMode;
 }

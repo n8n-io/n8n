@@ -1,7 +1,10 @@
+/* eslint-disable import/no-cycle */
 import * as express from 'express';
-import { Db, ResponseHelper } from '..';
+import { IDataObject } from 'n8n-workflow';
+import { Db, GenericHelpers, ResponseHelper } from '..';
 import { User } from '../databases/entities/User';
 import { getInstance } from './email';
+import { isEmailSetup } from './UserManagementHelper';
 
 export function addRoutes(): void {
 	// ----------------------------------------
@@ -35,17 +38,64 @@ export function addRoutes(): void {
 		},
 	);
 
-	this.app.get(
-		`/${this.restEndpoint}/test-email`,
+	this.app.post(
+		`/${this.restEndpoint}/invite`,
 		async (req: express.Request, res: express.Response) => {
+			// TODO UM: validate if current user can invite people.
+
+			if (!isEmailSetup()) {
+				throw new Error('Email sending must be set up in order to invite other users.');
+			}
+
+			// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-non-null-assertion
+			const role = await Db.collections.Role!.findOne(req.body.roleId);
+
+			if (!role) {
+				throw new Error('Selected role was not found');
+			}
+
+			const { email, firstName, lastName } = req.body as IDataObject;
+
+			if (!email.includes('@') || !email.includes('.')) {
+				throw new Error('You must provide a valid email address');
+			}
+
+			// TODO UM: when using workspaces this needs to be very differernt.
+			const emailExists = await Db.collections.User!.findOne({ email: email as string });
+
+			if (emailExists) {
+				ResponseHelper.sendErrorResponse(res, new Error('Email already exists'));
+				return;
+			}
+
+			const userInfo = {
+				email,
+				firstName,
+				lastName,
+				globalRole: role,
+			} as User;
+
+			const newUser = await Db.collections.User!.save(userInfo);
+
+			let inviteAcceptUrl = GenericHelpers.getBaseUrl();
+			if (!inviteAcceptUrl.endsWith('/')) {
+				inviteAcceptUrl += '/';
+			}
+			// TODO UM: decide if this URL will be final.
+			// TODO UM: user id below needs to be changed
+			// eslint-disable-next-line @typescript-eslint/restrict-template-expressions, @typescript-eslint/no-unsafe-member-access
+			inviteAcceptUrl += `accept-invite/${req.body.userId}/${newUser.id}`;
+
 			const mailer = getInstance();
-			const result = await mailer.instanceSetup({
-				email: 'omar@n8n.io',
-				firstName: 'Omar',
-				lastName: 'Ajoue',
+			const result = await mailer.invite({
+				email: email as string,
+				firstName: firstName as string | undefined,
+				lastName: lastName as string | undefined,
+				inviteAcceptUrl,
 			});
+
 			if (result.success) {
-				ResponseHelper.sendSuccessResponse(res, 'All good!');
+				ResponseHelper.sendSuccessResponse(res, { success: true });
 			} else {
 				// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
 				ResponseHelper.sendErrorResponse(res, result.error!);
