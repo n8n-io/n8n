@@ -78,7 +78,6 @@ const module: Module<ISettingsState, IRootState> = {
 			if (showPersonalizationsModal) {
 				context.commit('ui/openModal', PERSONALIZATION_MODAL_KEY, {root: true});
 			}
-			return settings;
 		},
 		async submitPersonalizationSurvey(context: ActionContext<ISettingsState, IRootState>, results: IPersonalizationSurveyAnswers) {
 			await submitPersonalizationSurvey(context.rootGetters.getRestApiContext, results);
