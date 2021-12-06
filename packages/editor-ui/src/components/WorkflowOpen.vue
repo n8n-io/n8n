@@ -136,10 +136,17 @@ export default mixins(
 				this.filterTagIds.push(tagId);
 			}
 		},
-		async openWorkflow (data: IWorkflowShortResponse, column: any) { // tslint:disable-line:no-any
+		async openWorkflow (data: IWorkflowShortResponse, column: any, cell: any, e: PointerEvent) { // tslint:disable-line:no-any
 			if (column.label !== 'Active') {
 
 				const currentWorkflowId = this.$store.getters.workflowId;
+
+				if (e.metaKey || e.ctrlKey) {
+					const route = this.$router.resolve({name: 'NodeViewExisting', params: {name: data.id}});
+					window.open(route.href, '_blank');
+
+					return;
+				}
 
 				if (data.id === currentWorkflowId) {
 					this.$showMessage({
