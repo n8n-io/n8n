@@ -60,6 +60,7 @@ const module: Module<ISettingsState, IRootState> = {
 			context.commit('setTelemetry', settings.telemetry, {root: true});
 
 			const showPersonalizationsModal = settings.personalizationSurvey && settings.personalizationSurvey.shouldShow && !settings.personalizationSurvey.answers;
+
 			if (showPersonalizationsModal) {
 				context.commit('ui/openModal', PERSONALIZATION_MODAL_KEY, {root: true});
 			}
