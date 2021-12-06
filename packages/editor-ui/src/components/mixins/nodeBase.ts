@@ -181,6 +181,7 @@ export const nodeBase = mixins(
 							hover: false,
 							showOutputLabel: nodeTypeData.outputs.length === 1,
 							size: nodeTypeData.outputs.length >= 3 ? 'small' : 'medium',
+							hoverMessage: this.$baseText('nodesBase.clickToAddNodeOrDragToConnect'),
 						},
 						endpointHoverStyle: {
 							fill: getStyleTokenValue('--color-primary'),
@@ -204,14 +205,6 @@ export const nodeBase = mixins(
 						index: i,
 						totalEndpoints: nodeTypeData.outputs.length,
 					};
-
-					const _plusEndpoint = this.instance.getEndpoint(
-						CanvasHelpers.getOutputEndpointUUID(this.nodeIndex, index),
-					);
-
-					const dropHoverMessageDiv = _plusEndpoint.canvas.children[1].children[1];
-
-					dropHoverMessageDiv.innerHTML = this.$baseText('nodesBase.clickToAddNodeOrDragToConnect');
 				}
 			});
 		},
