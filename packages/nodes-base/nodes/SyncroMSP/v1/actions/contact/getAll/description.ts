@@ -33,6 +33,9 @@ export const contactGetAllDescription: ContactProperties = [
 				operation: [
 					'getAll',
 				],
+				returnAll: [
+					false,
+				],
 			},
 		},
 		default: {},
