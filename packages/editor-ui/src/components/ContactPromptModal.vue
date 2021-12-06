@@ -15,12 +15,11 @@
 			<div :class="$style.description">
 				<n8n-text size="medium" color="text-base">{{ description }}</n8n-text>
 			</div>
-			<n8n-input
-				v-model="email"
-				placeholder="Your email address"
-			/>
+			<n8n-input v-model="email" placeholder="Your email address" />
 			<div :class="$style.disclaimer">
-				<n8n-text size="small" color="text-base">David from our product team will get in touch personally.</n8n-text>
+				<n8n-text size="small" color="text-base"
+					>David from our product team will get in touch personally.</n8n-text
+				>
 			</div>
 		</template>
 		<template v-slot:footer>
@@ -32,18 +31,19 @@
 </template>
 
 <script lang="ts">
-import Vue from "vue";
-import mixins from "vue-typed-mixins";
+import Vue from 'vue';
+import mixins from 'vue-typed-mixins';
 import { mapGetters } from 'vuex';
 
+import { IN8nPromptResponse } from '@/Interface';
 import { VALID_EMAIL_REGEX } from '@/constants';
-import { workflowHelpers } from "@/components/mixins/workflowHelpers";
-import Modal from "./Modal.vue";
+import { workflowHelpers } from '@/components/mixins/workflowHelpers';
+import Modal from './Modal.vue';
 
 export default mixins(workflowHelpers).extend({
 	components: { Modal },
-	name: "ContactPromptModal",
-	props: ["modalName"],
+	name: 'ContactPromptModal',
+	props: ['modalName'],
 	data() {
 		return {
 			email: '',
@@ -54,14 +54,14 @@ export default mixins(workflowHelpers).extend({
 		...mapGetters({
 			promptsData: 'settings/getPromptsData',
 		}),
-		title() : string {
+		title(): string {
 			if (this.promptsData && this.promptsData.title) {
 				return this.promptsData.title;
 			}
 
 			return 'You’re a power user 💪';
 		},
-		description() : string {
+		description(): string {
 			if (this.promptsData && this.promptsData.message) {
 				return this.promptsData.message;
 			}
@@ -75,19 +75,30 @@ export default mixins(workflowHelpers).extend({
 	methods: {
 		closeDialog(): void {
 			if (!this.isEmailValid) {
-				this.$telemetry.track('User closed email modal', { instance_id: this.$store.getters.instanceId, email: null });
+				this.$telemetry.track('User closed email modal', {
+					instance_id: this.$store.getters.instanceId,
+					email: null,
+				});
 			}
 			this.$store.commit('ui/closeTopModal');
 		},
 		send(): void {
 			if (this.isEmailValid) {
-				this.$store.dispatch('settings/submitContactInfo', this.email);
-				this.$telemetry.track('User closed email modal', { instance_id: this.$store.getters.instanceId, email: this.email });
-				this.$showMessage({
-					title: 'Thanks!',
-					message: "It's people like you that help make n8n better",
-					type: 'success',
-				});
+				this.$store
+					.dispatch('settings/submitContactInfo', this.email)
+					.then((response: IN8nPromptResponse) => {
+						if (response.updated) {
+							this.$telemetry.track('User closed email modal', {
+								instance_id: this.$store.getters.instanceId,
+								email: this.email,
+							});
+							this.$showMessage({
+								title: 'Thanks!',
+								message: "It's people like you that help make n8n better",
+								type: 'success',
+							});
+						}
+					});
 			}
 			this.closeDialog();
 		},
