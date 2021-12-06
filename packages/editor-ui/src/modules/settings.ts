@@ -52,7 +52,7 @@ const module: Module<ISettingsState, IRootState> = {
 		},
 	},
 	actions: {
-		async getSettings(context: ActionContext<ISettingsState, IRootState>) {
+		async fetchSettings(context: ActionContext<ISettingsState, IRootState>) {
 			const settings = await getSettings(context.rootGetters.getRestApiContext);
 			context.commit('setSettings', settings);
 
