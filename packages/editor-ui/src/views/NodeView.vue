@@ -844,7 +844,7 @@ export default mixins(
 				this.deleteSelectedNodes();
 			},
 
-			copySelectedNodes (isCut: boolean,) {
+			copySelectedNodes (isCut: boolean) {
 				this.getSelectedNodesToSave().then((data) => {
 					const nodeData = JSON.stringify(data, null, 2);
 					this.copyToClipboard(nodeData);
