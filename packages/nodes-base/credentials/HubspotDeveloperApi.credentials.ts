@@ -9,7 +9,7 @@ const scopes = [
 	'crm.objects.companies.read',
 	'crm.schemas.companies.read',
 	'crm.objects.deals.read',
-	'crm.schemas.deals.read'
+	'crm.schemas.deals.read',
 ];
 
 export class HubspotDeveloperApi implements ICredentialType {
