@@ -70,9 +70,7 @@ export default Vue.extend({
 </script>
 
 <style module lang="scss">
-.container {
-	> * {
-		margin-bottom: var(--spacing-s);
-	}
+.container > * {
+	margin-bottom: var(--spacing-s);
 }
 </style>
