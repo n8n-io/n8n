@@ -53,22 +53,12 @@ export const companyFileUpdateDescription: CompanyFileProperties = [
         description: 'New name of the category',
       },
       {
-        displayName: 'Share with employee',
-        name: 'shareWithEmployee',
-        type: 'options',
-        options: [
-          {
-            name: 'Yes',
-            value: 'yes',
-          },
-          {
-            name: 'No',
-            value: 'no',
-          },
-        ],
-        default: '',
-        description: 'Update whether this file is shared or not',
-      },
+				displayName: 'Share with employee',
+				name: 'shareWithEmployee',
+				type: 'boolean',
+				default: true,
+				description: 'Update whether this file is shared or not',
+			},
     ],
   },
 ];
