@@ -39,7 +39,7 @@ export default mixins(copyPaste, showMessage, renderText).extend({
 			this.copyToClipboard(this.$props.copyContent);
 
 			this.$showMessage({
-				title: this.$baseText('credentialsEdit.showMessage.title'),
+				title: this.$i18n2.baseText('credentialsEdit.showMessage.title'),
 				message: this.$props.successMessage,
 				type: 'success',
 			});

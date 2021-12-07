@@ -3,17 +3,17 @@
 		<banner
 			v-show="showValidationWarning"
 			theme="danger"
-			:message="$baseText('credentialEdit.credentialConfig.pleaseCheckTheErrorsBelow')"
+			:message="$i18n2.baseText('credentialEdit.credentialConfig.pleaseCheckTheErrorsBelow')"
 		/>
 
 		<banner
 			v-if="authError && !showValidationWarning"
 			theme="danger"
-			:message="$baseText('credentialEdit.credentialConfig.couldntConnectWithTheseSettings')"
+			:message="$i18n2.baseText('credentialEdit.credentialConfig.couldntConnectWithTheseSettings')"
 			:details="authError"
-			:buttonLabel="$baseText('credentialEdit.credentialConfig.retry')"
+			:buttonLabel="$i18n2.baseText('credentialEdit.credentialConfig.retry')"
 			buttonLoadingLabel="Retrying"
-			:buttonTitle="$baseText('credentialEdit.credentialConfig.retryCredentialTest')"
+			:buttonTitle="$i18n2.baseText('credentialEdit.credentialConfig.retryCredentialTest')"
 			:buttonLoading="isRetesting"
 			@click="$emit('retest')"
 		/>
@@ -21,37 +21,37 @@
 		<banner
 			v-show="showOAuthSuccessBanner && !showValidationWarning"
 			theme="success"
-			:message="$baseText('credentialEdit.credentialConfig.accountConnected')"
-			:buttonLabel="$baseText('credentialEdit.credentialConfig.reconnect')"
-			:buttonTitle="$baseText('credentialEdit.credentialConfig.reconnectOAuth2Credential')"
+			:message="$i18n2.baseText('credentialEdit.credentialConfig.accountConnected')"
+			:buttonLabel="$i18n2.baseText('credentialEdit.credentialConfig.reconnect')"
+			:buttonTitle="$i18n2.baseText('credentialEdit.credentialConfig.reconnectOAuth2Credential')"
 			@click="$emit('oauth')"
 		/>
 
 		<banner
 			v-show="testedSuccessfully && !showValidationWarning"
 			theme="success"
-			:message="$baseText('credentialEdit.credentialConfig.connectionTestedSuccessfully')"
-			:buttonLabel="$baseText('credentialEdit.credentialConfig.retry')"
-			:buttonLoadingLabel="$baseText('credentialEdit.credentialConfig.retrying')"
-			:buttonTitle="$baseText('credentialEdit.credentialConfig.retryCredentialTest')"
+			:message="$i18n2.baseText('credentialEdit.credentialConfig.connectionTestedSuccessfully')"
+			:buttonLabel="$i18n2.baseText('credentialEdit.credentialConfig.retry')"
+			:buttonLoadingLabel="$i18n2.baseText('credentialEdit.credentialConfig.retrying')"
+			:buttonTitle="$i18n2.baseText('credentialEdit.credentialConfig.retryCredentialTest')"
 			:buttonLoading="isRetesting"
 			@click="$emit('retest')"
 		/>
 
 		<n8n-info-tip v-if="documentationUrl && credentialProperties.length">
-			{{ $baseText('credentialEdit.credentialConfig.needHelpFillingOutTheseFields') }}
+			{{ $i18n2.baseText('credentialEdit.credentialConfig.needHelpFillingOutTheseFields') }}
 			<a :href="documentationUrl" target="_blank" @click="onDocumentationUrlClick">
-				{{ $baseText('credentialEdit.credentialConfig.openDocs') }}
+				{{ $i18n2.baseText('credentialEdit.credentialConfig.openDocs') }}
 			</a>
 		</n8n-info-tip>
 
 		<CopyInput
 			v-if="isOAuthType && credentialProperties.length"
-			:label="$baseText('credentialEdit.credentialConfig.oAuthRedirectUrl')"
+			:label="$i18n2.baseText('credentialEdit.credentialConfig.oAuthRedirectUrl')"
 			:copyContent="oAuthCallbackUrl"
-			:copyButtonText="$baseText('credentialEdit.credentialConfig.clickToCopy')"
-			:subtitle="$baseText('credentialEdit.credentialConfig.subtitle', { interpolate: { appName } })"
-			:successMessage="$baseText('credentialEdit.credentialConfig.redirectUrlCopiedToClipboard')"
+			:copyButtonText="$i18n2.baseText('credentialEdit.credentialConfig.clickToCopy')"
+			:subtitle="$i18n2.baseText('credentialEdit.credentialConfig.subtitle', { interpolate: { appName } })"
+			:successMessage="$i18n2.baseText('credentialEdit.credentialConfig.redirectUrlCopiedToClipboard')"
 		/>
 
 		<CredentialInputs
@@ -144,7 +144,7 @@ export default mixins(renderText, restApi).extend({
 				(this.credentialType as ICredentialType).displayName,
 			);
 
-			return appName || this.$baseText('credentialEdit.credentialConfig.theServiceYouReConnectingTo');
+			return appName || this.$i18n2.baseText('credentialEdit.credentialConfig.theServiceYouReConnectingTo');
 		},
 		credentialTypeName(): string {
 			return (this.credentialType as ICredentialType).name;

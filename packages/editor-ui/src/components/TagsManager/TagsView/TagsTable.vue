@@ -3,13 +3,13 @@
 		stripe
 		max-height="450"
 		ref="table"
-		:empty-text="$baseText('tagsTable.noMatchingTagsExist')"
+		:empty-text="$i18n2.baseText('tagsTable.noMatchingTagsExist')"
 		:data="rows"
 		:span-method="getSpan"
 		:row-class-name="getRowClasses"
 		v-loading="isLoading"
 	>
-		<el-table-column :label="$baseText('tagsTable.name')">
+		<el-table-column :label="$i18n2.baseText('tagsTable.name')">
 			<template slot-scope="scope">
 				<div class="name" :key="scope.row.id" @keydown.stop>
 					<transition name="fade" mode="out-in">
@@ -21,7 +21,7 @@
 							ref="nameInput"
 						></n8n-input>
 						<span v-else-if="scope.row.delete">
-							<span>{{ $baseText('tagsTable.areYouSureYouWantToDeleteThisTag') }}</span>
+							<span>{{ $i18n2.baseText('tagsTable.areYouSureYouWantToDeleteThisTag') }}</span>
 							<input ref="deleteHiddenInput" class="hidden" />
 						</span>
 						<span v-else :class="{ disabled: scope.row.disable }">
@@ -31,7 +31,7 @@
 				</div>
 			</template>
 		</el-table-column>
-		<el-table-column :label="$baseText('tagsTable.usage')" width="150">
+		<el-table-column :label="$i18n2.baseText('tagsTable.usage')" width="150">
 			<template slot-scope="scope">
 				<transition name="fade" mode="out-in">
 						<div v-if="!scope.row.create && !scope.row.delete" :class="{ disabled: scope.row.disable }">
@@ -44,20 +44,20 @@
 			<template slot-scope="scope">
 				<transition name="fade" mode="out-in">
 					<div class="ops" v-if="scope.row.create">
-						<n8n-button :label="$baseText('tagsTable.cancel')" @click.stop="cancel" type="outline" :disabled="isSaving" />
-						<n8n-button :label="$baseText('tagsTable.createTag')" @click.stop="apply" :loading="isSaving" />
+						<n8n-button :label="$i18n2.baseText('tagsTable.cancel')" @click.stop="cancel" type="outline" :disabled="isSaving" />
+						<n8n-button :label="$i18n2.baseText('tagsTable.createTag')" @click.stop="apply" :loading="isSaving" />
 					</div>
 					<div class="ops" v-else-if="scope.row.update">
-						<n8n-button :label="$baseText('tagsTable.cancel')" @click.stop="cancel" type="outline" :disabled="isSaving" />
-						<n8n-button :label="$baseText('tagsTable.saveChanges')" @click.stop="apply" :loading="isSaving" />
+						<n8n-button :label="$i18n2.baseText('tagsTable.cancel')" @click.stop="cancel" type="outline" :disabled="isSaving" />
+						<n8n-button :label="$i18n2.baseText('tagsTable.saveChanges')" @click.stop="apply" :loading="isSaving" />
 					</div>
 					<div class="ops" v-else-if="scope.row.delete">
-						<n8n-button :label="$baseText('tagsTable.cancel')" @click.stop="cancel" type="outline" :disabled="isSaving" />
-						<n8n-button :label="$baseText('tagsTable.deleteTag')" @click.stop="apply" :loading="isSaving" />
+						<n8n-button :label="$i18n2.baseText('tagsTable.cancel')" @click.stop="cancel" type="outline" :disabled="isSaving" />
+						<n8n-button :label="$i18n2.baseText('tagsTable.deleteTag')" @click.stop="apply" :loading="isSaving" />
 					</div>
 					<div class="ops main" v-else-if="!scope.row.disable">
-						<n8n-icon-button :title="$baseText('tagsTable.editTag')" @click.stop="enableUpdate(scope.row)" icon="pen" />
-						<n8n-icon-button :title="$baseText('tagsTable.deleteTag')" @click.stop="enableDelete(scope.row)" icon="trash" />
+						<n8n-icon-button :title="$i18n2.baseText('tagsTable.editTag')" @click.stop="enableUpdate(scope.row)" icon="pen" />
+						<n8n-icon-button :title="$i18n2.baseText('tagsTable.deleteTag')" @click.stop="enableDelete(scope.row)" icon="trash" />
 					</div>
 				</transition>
 			</template>

@@ -263,8 +263,8 @@ export const pushConnection = mixins(
 						// Workflow did execute without a problem
 						this.$titleSet(workflow.name as string, 'IDLE');
 						this.$showMessage({
-							title: this.$baseText('pushConnection.showMessage.title'),
-							message: this.$baseText('pushConnection.showMessage.message'),
+							title: this.$i18n2.baseText('pushConnection.showMessage.title'),
+							message: this.$i18n2.baseText('pushConnection.showMessage.message'),
 							type: 'success',
 						});
 					}

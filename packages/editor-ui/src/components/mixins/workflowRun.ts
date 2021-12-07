@@ -34,7 +34,7 @@ export const workflowRun = mixins(
 				// Do not start if the connection to server is not active
 				// because then it can not receive the data as it executes.
 				throw new Error(
-					this.$baseText('workflowRun.noActiveConnectionToTheServer'),
+					this.$i18n2.baseText('workflowRun.noActiveConnectionToTheServer'),
 				);
 			}
 
@@ -93,8 +93,8 @@ export const workflowRun = mixins(
 						}
 
 						this.$showMessage({
-							title: this.$baseText('workflowRun.showMessage.title'),
-							message: this.$baseText('workflowRun.showMessage.message') + ':<br />&nbsp;&nbsp;- ' + errorMessages.join('<br />&nbsp;&nbsp;- '),
+							title: this.$i18n2.baseText('workflowRun.showMessage.title'),
+							message: this.$i18n2.baseText('workflowRun.showMessage.message') + ':<br />&nbsp;&nbsp;- ' + errorMessages.join('<br />&nbsp;&nbsp;- '),
 							type: 'error',
 							duration: 0,
 						});
@@ -206,8 +206,8 @@ export const workflowRun = mixins(
 				this.$titleSet(workflow.name as string, 'ERROR');
 				this.$showError(
 					error,
-					this.$baseText('workflowRun.showError.title'),
-					this.$baseText('workflowRun.showError.message') + ':',
+					this.$i18n2.baseText('workflowRun.showError.title'),
+					this.$i18n2.baseText('workflowRun.showError.message') + ':',
 				);
 				return undefined;
 			}

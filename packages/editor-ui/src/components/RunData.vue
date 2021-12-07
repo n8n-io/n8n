@@ -7,10 +7,10 @@
 			class="execute-node-button"
 		>
 			<n8n-button
-				:title="$baseText('runData.executesThisNodeAfterExecuting', { interpolate: { nodeName: node.name } })"
+				:title="$i18n2.baseText('runData.executesThisNodeAfterExecuting', { interpolate: { nodeName: node.name } })"
 				:loading="workflowRunning"
 				icon="play-circle"
-				:label="$baseText('runData.executeNode')"
+				:label="$i18n2.baseText('runData.executeNode')"
 				@click.stop="runWorkflow(node.name, 'RunData.ExecuteNodeButton')"
 			/>
 		</div>
@@ -18,10 +18,10 @@
 		<div class="header">
 			<div class="title-text">
 				<n8n-text :bold="true" v-if="dataCount < maxDisplayItems">
-					{{ $baseText('runData.items') }}: {{ dataCount }}
+					{{ $i18n2.baseText('runData.items') }}: {{ dataCount }}
 				</n8n-text>
 				<div v-else class="title-text">
-					<n8n-text :bold="true">{{ $baseText('runData.items') }}:</n8n-text>
+					<n8n-text :bold="true">{{ $i18n2.baseText('runData.items') }}:</n8n-text>
 					<span class="opts">
 						<n8n-select size="mini" v-model="maxDisplayItems" @click.stop>
 							<n8n-option v-for="option in maxDisplayItemsOptions" :label="option" :value="option" :key="option" />
@@ -34,13 +34,13 @@
 					placement="right"
 				>
 					<div slot="content">
-						<n8n-text :bold="true" size="small">{{ $baseText('runData.startTime') + ':' }}</n8n-text> {{runMetadata.startTime}}<br/>
-						<n8n-text :bold="true" size="small">{{ $baseText('runData.executionTime') + ':' }}</n8n-text> {{runMetadata.executionTime}} {{ $baseText('runData.ms') }}
+						<n8n-text :bold="true" size="small">{{ $i18n2.baseText('runData.startTime') + ':' }}</n8n-text> {{runMetadata.startTime}}<br/>
+						<n8n-text :bold="true" size="small">{{ $i18n2.baseText('runData.executionTime') + ':' }}</n8n-text> {{runMetadata.executionTime}} {{ $i18n2.baseText('runData.ms') }}
 					</div>
 					<font-awesome-icon icon="info-circle" class="primary-color" />
 				</n8n-tooltip>
 				<n8n-text :bold="true" v-if="maxOutputIndex > 0">
-					| {{ $baseText('runData.output') }}:
+					| {{ $i18n2.baseText('runData.output') }}:
 				</n8n-text>
 				<span class="opts" v-if="maxOutputIndex > 0" >
 					<n8n-select size="mini" v-model="outputIndex" @click.stop>
@@ -50,7 +50,7 @@
 				</span>
 
 				<n8n-text :bold="true" v-if="maxRunIndex > 0">
-					| {{ $baseText('runData.dataOfExecution') }}:
+					| {{ $i18n2.baseText('runData.dataOfExecution') }}:
 				</n8n-text>
 				<span class="opts">
 					<n8n-select v-if="maxRunIndex > 0" size="mini" v-model="runIndex" @click.stop>
@@ -62,25 +62,25 @@
 			</div>
 			<div v-if="hasNodeRun && !hasRunError" class="title-data-display-selector" @click.stop>
 				<el-radio-group v-model="displayMode" size="mini">
-					<el-radio-button :label="$baseText('runData.json')" :disabled="showData === false"></el-radio-button>
-					<el-radio-button :label="$baseText('runData.table')"></el-radio-button>
-					<el-radio-button :label="$baseText('runData.binary')" v-if="binaryData.length !== 0"></el-radio-button>
+					<el-radio-button :label="$i18n2.baseText('runData.json')" :disabled="showData === false"></el-radio-button>
+					<el-radio-button :label="$i18n2.baseText('runData.table')"></el-radio-button>
+					<el-radio-button :label="$i18n2.baseText('runData.binary')" v-if="binaryData.length !== 0"></el-radio-button>
 				</el-radio-group>
 			</div>
 			<div v-if="hasNodeRun && !hasRunError && displayMode === 'JSON' && state.path !== deselectedPlaceholder" class="select-button">
 				<el-dropdown trigger="click" @command="handleCopyClick">
 					<span class="el-dropdown-link">
-						<n8n-icon-button :title="$baseText('runData.copyToClipboard')" icon="copy" />
+						<n8n-icon-button :title="$i18n2.baseText('runData.copyToClipboard')" icon="copy" />
 					</span>
 					<el-dropdown-menu slot="dropdown">
 						<el-dropdown-item :command="{command: 'itemPath'}">
-							{{ $baseText('runData.copyItemPath') }}
+							{{ $i18n2.baseText('runData.copyItemPath') }}
 						</el-dropdown-item>
 						<el-dropdown-item :command="{command: 'parameterPath'}">
-							{{ $baseText('runData.copyParameterPath') }}
+							{{ $i18n2.baseText('runData.copyParameterPath') }}
 						</el-dropdown-item>
 						<el-dropdown-item :command="{command: 'value'}">
-							{{ $baseText('runData.copyValue') }}
+							{{ $i18n2.baseText('runData.copyValue') }}
 						</el-dropdown-item>
 					</el-dropdown-menu>
 				</el-dropdown>
@@ -94,7 +94,7 @@
 				<span v-else>
 					<div v-if="showData === false" class="too-much-data">
 						<h3>
-							{{ $baseText('runData.nodeReturnedALargeAmountOfData') }}
+							{{ $i18n2.baseText('runData.nodeReturnedALargeAmountOfData') }}
 						</h3>
 
 						<div class="text">
@@ -110,17 +110,17 @@
 
 						<n8n-button
 							icon="eye"
-							:label="$baseText('runData.displayDataAnyway')"
+							:label="$i18n2.baseText('runData.displayDataAnyway')"
 							@click="displayMode = 'Table';showData = true;"
 						/>
 					</div>
 					<div v-else-if="['JSON', 'Table'].includes(displayMode)">
 						<div v-if="jsonData.length === 0" class="no-data">
-							{{ $baseText('runData.noTextDataFound') }}
+							{{ $i18n2.baseText('runData.noTextDataFound') }}
 						</div>
 						<div v-else-if="displayMode === 'Table'">
 							<div v-if="tableData !== null && tableData.columns.length === 0" class="no-data">
-								{{ $baseText('runData.entriesExistButThey') }}
+								{{ $i18n2.baseText('runData.entriesExistButThey') }}
 							</div>
 							<table v-else-if="tableData !== null">
 								<tr>
@@ -148,7 +148,7 @@
 					</div>
 					<div v-else-if="displayMode === 'Binary'">
 						<div v-if="binaryData.length === 0" class="no-data">
-							{{ $baseText('runData.noBinaryDataFound') }}
+							{{ $i18n2.baseText('runData.noBinaryDataFound') }}
 						</div>
 
 						<div v-else>
@@ -166,24 +166,24 @@
 												{{key}}
 											</div>
 											<div v-if="binaryData.fileName">
-												<div class="label">{{ $baseText('runData.fileName') }}: </div>
+												<div class="label">{{ $i18n2.baseText('runData.fileName') }}: </div>
 												<div class="value">{{binaryData.fileName}}</div>
 											</div>
 											<div v-if="binaryData.directory">
-												<div class="label">{{ $baseText('runData.directory') }}: </div>
+												<div class="label">{{ $i18n2.baseText('runData.directory') }}: </div>
 												<div class="value">{{binaryData.directory}}</div>
 											</div>
 											<div v-if="binaryData.fileExtension">
-												<div class="label">{{ $baseText('runData.fileExtension') }}:</div>
+												<div class="label">{{ $i18n2.baseText('runData.fileExtension') }}:</div>
 												<div class="value">{{binaryData.fileExtension}}</div>
 											</div>
 											<div v-if="binaryData.mimeType">
-												<div class="label">{{ $baseText('runData.mimeType') }}: </div>
+												<div class="label">{{ $i18n2.baseText('runData.mimeType') }}: </div>
 												<div class="value">{{binaryData.mimeType}}</div>
 											</div>
 
 											<div class="binary-data-show-data-button-wrapper">
-												<n8n-button size="small" :label="$baseText('runData.showBinaryData')" class="binary-data-show-data-button" @click="displayBinaryData(index, key)" />
+												<n8n-button size="small" :label="$i18n2.baseText('runData.showBinaryData')" class="binary-data-show-data-button" @click="displayBinaryData(index, key)" />
 											</div>
 
 										</div>
@@ -196,9 +196,9 @@
 			</span>
 			<div v-else class="message">
 				<div>
-					<n8n-text :bold="true">{{ $baseText('runData.noData') }}</n8n-text ><br />
+					<n8n-text :bold="true">{{ $i18n2.baseText('runData.noData') }}</n8n-text ><br />
 					<br />
-					{{ $baseText('runData.dataReturnedByThisNodeWillDisplayHere') }}<br />
+					{{ $i18n2.baseText('runData.dataReturnedByThisNodeWillDisplayHere') }}<br />
 				</div>
 			</div>
 		</div>

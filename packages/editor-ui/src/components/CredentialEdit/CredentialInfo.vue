@@ -3,7 +3,7 @@
 		<el-row>
 			<el-col :span="8" :class="$style.accessLabel">
 				<n8n-text :compact="true" :bold="true">
-					{{ $baseText('credentialEdit.credentialInfo.allowUseBy') }}
+					{{ $i18n2.baseText('credentialEdit.credentialInfo.allowUseBy') }}
 				</n8n-text>
 			</el-col>
 			<el-col :span="16">
@@ -13,7 +13,7 @@
 					:class="$style.valueLabel"
 				>
 					<el-checkbox
-						:label="$headerText({
+						:label="$i18n2.headerText({
 							key: `headers.${shortNodeType(node)}.displayName`,
 							fallback: node.displayName,
 						})"
@@ -26,7 +26,7 @@
 		<el-row v-if="currentCredential">
 			<el-col :span="8" :class="$style.label">
 				<n8n-text :compact="true" :bold="true">
-					{{ $baseText('credentialEdit.credentialInfo.created') }}
+					{{ $i18n2.baseText('credentialEdit.credentialInfo.created') }}
 				</n8n-text>
 			</el-col>
 			<el-col :span="16" :class="$style.valueLabel">
@@ -36,7 +36,7 @@
 		<el-row v-if="currentCredential">
 			<el-col :span="8" :class="$style.label">
 				<n8n-text :compact="true" :bold="true">
-					{{ $baseText('credentialEdit.credentialInfo.lastModified') }}
+					{{ $i18n2.baseText('credentialEdit.credentialInfo.lastModified') }}
 				</n8n-text>
 			</el-col>
 			<el-col :span="16" :class="$style.valueLabel">
@@ -46,7 +46,7 @@
 		<el-row v-if="currentCredential">
 			<el-col :span="8" :class="$style.label">
 				<n8n-text :compact="true" :bold="true">
-					{{ $baseText('credentialEdit.credentialInfo.id') }}
+					{{ $i18n2.baseText('credentialEdit.credentialInfo.id') }}
 				</n8n-text>
 			</el-col>
 			<el-col :span="16" :class="$style.valueLabel">
@@ -78,7 +78,7 @@ export default mixins(renderText).extend({
 			});
 		},
 		shortNodeType(nodeType: INodeTypeDescription) {
-			return this.$shortNodeType(nodeType.name);
+			return this.$i18n2.shortNodeType(nodeType.name);
 		},
 	},
 });

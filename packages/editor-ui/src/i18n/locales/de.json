@@ -80,6 +80,8 @@
 			"couldNotFindCredentialOfType": "🇩🇪 Could not find credential of type",
 			"couldNotFindCredentialWithId": "🇩🇪 Could not find credential with ID",
 			"details": "🇩🇪 Details",
+			"delete": "🇩🇪 Delete",
+			"saving": "🇩🇪 Saving",
 			"showError": {
 				"createCredential": {
 					"message": "",
@@ -105,7 +107,8 @@
 			"showMessage": {
 				"message": "🇩🇪 The credential {savedCredentialName} was deleted!",
 				"title": "🇩🇪 Credential deleted"
-			}
+			},
+			"testing": "🇩🇪 Testing"
 		},
 		"credentialInfo": {
 			"allowUseBy": "🇩🇪 Allow use by",
@@ -555,6 +558,7 @@
 			"rename": "🇩🇪 Rename",
 			"renameNode": "🇩🇪 Rename Node"
 		},
+		"redirecting": "🇩🇪 Redirecting",
 		"refresh": "🇩🇪 Refresh",
 		"resetZoom": "🇩🇪 Reset Zoom",
 		"runButtonText": {

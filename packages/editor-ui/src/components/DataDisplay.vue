@@ -15,7 +15,7 @@
 		<transition name="fade">
 			<div v-if="nodeType && showDocumentHelp" class="doc-help-wrapper">
 						<svg id="help-logo" :href="documentationUrl" target="_blank" width="18px" height="18px" viewBox="0 0 18 18" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
-							<title>{{ $baseText('dataDisplay.nodeDocumentation') }}</title>
+							<title>{{ $i18n2.baseText('dataDisplay.nodeDocumentation') }}</title>
 							<g stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
 								<g transform="translate(-1127.000000, -836.000000)" fill-rule="nonzero">
 									<g transform="translate(1117.000000, 825.000000)">
@@ -31,7 +31,7 @@
 						</svg>
 
 					<div class="text">
-						{{ $baseText('dataDisplay.needHelp') }} <a id="doc-hyperlink" :href="documentationUrl" target="_blank" @click="onDocumentationUrlClick">{{ $baseText('dataDisplay.openDocumentationFor', { interpolate: { nodeTypeDisplayName: nodeType.displayName } }) }}</a>
+						{{ $i18n2.baseText('dataDisplay.needHelp') }} <a id="doc-hyperlink" :href="documentationUrl" target="_blank" @click="onDocumentationUrlClick">{{ $i18n2.baseText('dataDisplay.openDocumentationFor', { interpolate: { nodeTypeDisplayName: nodeType.displayName } }) }}</a>
 					</div>
 			</div>
 		</transition>

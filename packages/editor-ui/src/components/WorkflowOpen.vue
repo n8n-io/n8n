@@ -8,11 +8,11 @@
 			<template v-slot:header>
 				<div class="workflows-header">
 					<n8n-heading tag="h1" size="xlarge" class="title">
-						{{ $baseText('workflowOpen.openWorkflow') }}
+						{{ $i18n2.baseText('workflowOpen.openWorkflow') }}
 					</n8n-heading>
 					<div class="tags-filter">
 						<TagsDropdown
-							:placeholder="$baseText('workflowOpen.openWorkflow')"
+							:placeholder="$i18n2.baseText('workflowOpen.openWorkflow')"
 							:currentTagIds="filterTagIds"
 							:createEnabled="false"
 							@update="updateTagsFilter"
@@ -21,7 +21,7 @@
 						/>
 					</div>
 					<div class="search-filter">
-						<n8n-input :placeholder="$baseText('workflowOpen.searchWorkflows')" ref="inputFieldFilter" v-model="filterText">
+						<n8n-input :placeholder="$i18n2.baseText('workflowOpen.searchWorkflows')" ref="inputFieldFilter" v-model="filterText">
 							<font-awesome-icon slot="prefix" icon="search"></font-awesome-icon>
 						</n8n-input>
 					</div>
@@ -30,7 +30,7 @@
 
 			<template v-slot:content>
 				<el-table class="search-table" :data="filteredWorkflows" stripe @cell-click="openWorkflow" :default-sort = "{prop: 'updatedAt', order: 'descending'}" v-loading="isDataLoading">
-					<el-table-column property="name" :label="$baseText('workflowOpen.name')" class-name="clickable" sortable>
+					<el-table-column property="name" :label="$i18n2.baseText('workflowOpen.name')" class-name="clickable" sortable>
 						<template slot-scope="scope">
 							<div :key="scope.row.id">
 								<span class="name">{{scope.row.name}}</span>
@@ -38,9 +38,9 @@
 							</div>
 						</template>
 					</el-table-column>
-					<el-table-column property="createdAt" :label="$baseText('workflowOpen.created')" class-name="clickable" width="155" sortable></el-table-column>
-					<el-table-column property="updatedAt" :label="$baseText('workflowOpen.updated')" class-name="clickable" width="155" sortable></el-table-column>
-					<el-table-column :label="$baseText('workflowOpen.active')" width="75">
+					<el-table-column property="createdAt" :label="$i18n2.baseText('workflowOpen.created')" class-name="clickable" width="155" sortable></el-table-column>
+					<el-table-column property="updatedAt" :label="$i18n2.baseText('workflowOpen.updated')" class-name="clickable" width="155" sortable></el-table-column>
+					<el-table-column :label="$i18n2.baseText('workflowOpen.active')" width="75">
 						<template slot-scope="scope">
 							<workflow-activator :workflow-active="scope.row.active" :workflow-id="scope.row.id" @workflowActiveChanged="workflowActiveChanged" />
 						</template>
@@ -150,8 +150,8 @@ export default mixins(
 
 				if (data.id === currentWorkflowId) {
 					this.$showMessage({
-						title: this.$baseText('workflowOpen.showMessage.title'),
-						message: this.$baseText('workflowOpen.showMessage.message'),
+						title: this.$i18n2.baseText('workflowOpen.showMessage.title'),
+						message: this.$i18n2.baseText('workflowOpen.showMessage.message'),
 						type: 'error',
 						duration: 1500,
 					});
@@ -162,11 +162,11 @@ export default mixins(
 				const result = this.$store.getters.getStateIsDirty;
 				if(result) {
 					const importConfirm = await this.confirmMessage(
-						this.$baseText('workflowOpen.confirmMessage.message'),
-						this.$baseText('workflowOpen.confirmMessage.headline'),
+						this.$i18n2.baseText('workflowOpen.confirmMessage.message'),
+						this.$i18n2.baseText('workflowOpen.confirmMessage.headline'),
 						'warning',
-						this.$baseText('workflowOpen.confirmMessage.confirmButtonText'),
-						this.$baseText('workflowOpen.confirmMessage.cancelButtonText'),
+						this.$i18n2.baseText('workflowOpen.confirmMessage.confirmButtonText'),
+						this.$i18n2.baseText('workflowOpen.confirmMessage.cancelButtonText'),
 					);
 					if (importConfirm === false) {
 						return;
@@ -206,8 +206,8 @@ export default mixins(
 					(error: Error) => {
 						this.$showError(
 							error,
-							this.$baseText('workflowOpen.showError.title'),
-							this.$baseText('workflowOpen.showError.message') + ':',
+							this.$i18n2.baseText('workflowOpen.showError.title'),
+							this.$i18n2.baseText('workflowOpen.showError.message') + ':',
 						);
 						this.isDataLoading = false;
 					},
