@@ -1,8 +1,12 @@
 import _Vue from "vue";
-import { IRootState } from '@/Interface';
+import axios from 'axios';
 import VueI18n from 'vue-i18n';
-import { i18n as i18nLib } from '../../i18n';
 import { Store } from "vuex";
+import Vue from 'vue';
+import { INodeTranslationHeaders, IRootState } from '@/Interface';
+const englishBaseText = require('./locales/en');
+
+Vue.use(VueI18n);
 
 const REUSABLE_DYNAMIC_TEXT_KEY = 'reusableDynamicText';
 const CREDENTIALS_MODAL_KEY = 'credentialsModal';
@@ -28,20 +32,11 @@ export class I18nClass {
 	}
 
 	private get i18n(): VueI18n {
-		return i18nLib;
-	}
-
-	/**
-	 * Render a string of dynamic text, i.e. a string with a constructed path to the localized value in the node text object, in the credentials modal, in the node view, or in the headers. Unlike in `baseText`, the fallback has to be set manually for dynamic text.
-	 */
-	private dynamicRender(
-		{ key, fallback }: { key: string; fallback: string; },
-	) {
-		return this.i18n.te(key) ? this.i18n.t(key).toString() : fallback;
+		return i18nInstance;
 	}
 
 	// ----------------------------------
-	//        template helpers
+	//         helper methods
 	// ----------------------------------
 
 	exists(key: string) {
@@ -56,6 +51,10 @@ export class I18nClass {
 		return longNodeType.replace('n8n-nodes-base.', '');
 	}
 
+	// ----------------------------------
+	//        render methods
+	// ----------------------------------
+
 	/**
 	 * Render a string of base text, i.e. a string with a fixed path to the localized value in the base text object. Optionally allows for [interpolation](https://kazupon.github.io/vue-i18n/guide/formatting.html#named-formatting) when the localized value contains a string between curly braces.
 	 */
@@ -63,6 +62,15 @@ export class I18nClass {
 		key: string, options?: { interpolate: { [key: string]: string } },
 	): string {
 		return this.i18n.t(key, options && options.interpolate).toString();
+	}
+
+	/**
+	 * Render a string of dynamic text, i.e. a string with a constructed path to the localized value in the node text object, in the credentials modal, in the node view, or in the headers. Unlike in `baseText`, the fallback has to be set manually for dynamic text.
+	 */
+	private dynamicRender(
+		{ key, fallback }: { key: string; fallback: string; },
+	) {
+		return this.i18n.te(key) ? this.i18n.t(key).toString() : fallback;
 	}
 
 	/**
@@ -251,4 +259,72 @@ export class I18nClass {
 			},
 		};
 	}
+}
+
+const i18nInstance = new VueI18n({
+	locale: 'en',
+	fallbackLocale: 'en',
+	messages: { en: englishBaseText },
+	silentTranslationWarn: true,
+});
+
+const loadedLanguages = ['en'];
+
+function setLanguage(language: string) {
+	i18nInstance.locale = language;
+	axios.defaults.headers.common['Accept-Language'] = language;
+	document!.querySelector('html')!.setAttribute('lang', language);
+
+	return language;
+}
+
+export async function loadLanguage(language?: string) {
+	if (!language) return Promise.resolve();
+
+	if (i18nInstance.locale === language) {
+		return Promise.resolve(setLanguage(language));
+	}
+
+	if (loadedLanguages.includes(language)) {
+		return Promise.resolve(setLanguage(language));
+	}
+
+	const { numberFormats, ...rest } = require(`./locales/${language}.json`);
+
+	i18nInstance.setLocaleMessage(language, rest);
+
+	if (numberFormats) {
+		i18nInstance.setNumberFormat(language, numberFormats);
+	}
+
+	loadedLanguages.push(language);
+
+	setLanguage(language);
+}
+
+export function addNodeTranslation(
+	nodeTranslation: { [key: string]: object },
+	language: string,
+) {
+	const newNodesBase = {
+		'n8n-nodes-base': Object.assign(
+			i18nInstance.messages[language]['n8n-nodes-base'] || {},
+			nodeTranslation,
+		),
+	};
+
+	i18nInstance.setLocaleMessage(
+		language,
+		Object.assign(i18nInstance.messages[language], newNodesBase),
+	);
+}
+
+export function addHeaders(
+	headers: INodeTranslationHeaders,
+	language: string,
+) {
+	i18nInstance.setLocaleMessage(
+		language,
+		Object.assign(i18nInstance.messages[language], { headers }),
+	);
 }
