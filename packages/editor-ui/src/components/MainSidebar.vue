@@ -22,94 +22,94 @@
 				<el-submenu index="workflow" title="Workflow" popperClass="sidebar-popper">
 					<template slot="title">
 						<font-awesome-icon icon="network-wired"/>&nbsp;
-						<span slot="title" class="item-title-root">{{ $i18n2.baseText('mainSidebar.workflows') }}</span>
+						<span slot="title" class="item-title-root">{{ $i.baseText('mainSidebar.workflows') }}</span>
 					</template>
 
 					<n8n-menu-item index="workflow-new">
 						<template slot="title">
 							<font-awesome-icon icon="file"/>&nbsp;
-							<span slot="title" class="item-title">{{ $i18n2.baseText('mainSidebar.new') }}</span>
+							<span slot="title" class="item-title">{{ $i.baseText('mainSidebar.new') }}</span>
 						</template>
 					</n8n-menu-item>
 					<n8n-menu-item index="workflow-open">
 						<template slot="title">
 							<font-awesome-icon icon="folder-open"/>&nbsp;
-							<span slot="title" class="item-title">{{ $i18n2.baseText('mainSidebar.open') }}</span>
+							<span slot="title" class="item-title">{{ $i.baseText('mainSidebar.open') }}</span>
 						</template>
 					</n8n-menu-item>
 					<n8n-menu-item index="workflow-save">
 						<template slot="title">
 							<font-awesome-icon icon="save"/>
-							<span slot="title" class="item-title">{{ $i18n2.baseText('mainSidebar.save') }}</span>
+							<span slot="title" class="item-title">{{ $i.baseText('mainSidebar.save') }}</span>
 						</template>
 					</n8n-menu-item>
 					<n8n-menu-item index="workflow-duplicate" :disabled="!currentWorkflow">
 						<template slot="title">
 							<font-awesome-icon icon="copy"/>
-							<span slot="title" class="item-title">{{ $i18n2.baseText('mainSidebar.duplicate') }}</span>
+							<span slot="title" class="item-title">{{ $i.baseText('mainSidebar.duplicate') }}</span>
 						</template>
 					</n8n-menu-item>
 					<n8n-menu-item index="workflow-delete" :disabled="!currentWorkflow">
 						<template slot="title">
 							<font-awesome-icon icon="trash"/>
-							<span slot="title" class="item-title">{{ $i18n2.baseText('mainSidebar.delete') }}</span>
+							<span slot="title" class="item-title">{{ $i.baseText('mainSidebar.delete') }}</span>
 						</template>
 					</n8n-menu-item>
 					<n8n-menu-item index="workflow-download">
 						<template slot="title">
 							<font-awesome-icon icon="file-download"/>
-							<span slot="title" class="item-title">{{ $i18n2.baseText('mainSidebar.download') }}</span>
+							<span slot="title" class="item-title">{{ $i.baseText('mainSidebar.download') }}</span>
 						</template>
 					</n8n-menu-item>
 					<n8n-menu-item index="workflow-import-url">
 						<template slot="title">
 							<font-awesome-icon icon="cloud"/>
-							<span slot="title" class="item-title">{{ $i18n2.baseText('mainSidebar.importFromUrl') }}</span>
+							<span slot="title" class="item-title">{{ $i.baseText('mainSidebar.importFromUrl') }}</span>
 						</template>
 					</n8n-menu-item>
 					<n8n-menu-item index="workflow-import-file">
 						<template slot="title">
 							<font-awesome-icon icon="hdd"/>
-							<span slot="title" class="item-title">{{ $i18n2.baseText('mainSidebar.importFromFile') }}</span>
+							<span slot="title" class="item-title">{{ $i.baseText('mainSidebar.importFromFile') }}</span>
 						</template>
 					</n8n-menu-item>
 					<n8n-menu-item index="workflow-settings" :disabled="!currentWorkflow">
 						<template slot="title">
 							<font-awesome-icon icon="cog"/>
-							<span slot="title" class="item-title">{{ $i18n2.baseText('mainSidebar.settings') }}</span>
+							<span slot="title" class="item-title">{{ $i.baseText('mainSidebar.settings') }}</span>
 						</template>
 					</n8n-menu-item>
 				</el-submenu>
 
-				<el-submenu index="credentials" :title="$i18n2.baseText('mainSidebar.credentials')" popperClass="sidebar-popper">
+				<el-submenu index="credentials" :title="$i.baseText('mainSidebar.credentials')" popperClass="sidebar-popper">
 					<template slot="title">
 						<font-awesome-icon icon="key"/>&nbsp;
-						<span slot="title" class="item-title-root">{{ $i18n2.baseText('mainSidebar.credentials') }}</span>
+						<span slot="title" class="item-title-root">{{ $i.baseText('mainSidebar.credentials') }}</span>
 					</template>
 
 					<n8n-menu-item index="credentials-new">
 						<template slot="title">
 							<font-awesome-icon icon="file"/>
-							<span slot="title" class="item-title">{{ $i18n2.baseText('mainSidebar.new') }}</span>
+							<span slot="title" class="item-title">{{ $i.baseText('mainSidebar.new') }}</span>
 						</template>
 					</n8n-menu-item>
 					<n8n-menu-item index="credentials-open">
 						<template slot="title">
 							<font-awesome-icon icon="folder-open"/>
-							<span slot="title" class="item-title">{{ $i18n2.baseText('mainSidebar.open') }}</span>
+							<span slot="title" class="item-title">{{ $i.baseText('mainSidebar.open') }}</span>
 						</template>
 					</n8n-menu-item>
 				</el-submenu>
 
 				<n8n-menu-item index="executions">
 					<font-awesome-icon icon="tasks"/>&nbsp;
-					<span slot="title" class="item-title-root">{{ $i18n2.baseText('mainSidebar.executions') }}</span>
+					<span slot="title" class="item-title-root">{{ $i.baseText('mainSidebar.executions') }}</span>
 				</n8n-menu-item>
 
 				<el-submenu index="help" class="help-menu" title="Help" popperClass="sidebar-popper">
 					<template slot="title">
 						<font-awesome-icon icon="question"/>&nbsp;
-						<span slot="title" class="item-title-root">{{ $i18n2.baseText('mainSidebar.help') }}</span>
+						<span slot="title" class="item-title-root">{{ $i.baseText('mainSidebar.help') }}</span>
 					</template>
 
 					<MenuItemsIterator :items="helpMenuItems" :afterItemClick="trackHelpItemClick" />
@@ -117,7 +117,7 @@
 					<n8n-menu-item index="help-about">
 						<template slot="title">
 							<font-awesome-icon class="about-icon" icon="info"/>
-							<span slot="title" class="item-title">{{ $i18n2.baseText('mainSidebar.aboutN8n') }}</span>
+							<span slot="title" class="item-title">{{ $i.baseText('mainSidebar.aboutN8n') }}</span>
 						</template>
 					</n8n-menu-item>
 				</el-submenu>
@@ -209,7 +209,7 @@ export default mixins(
 						type: 'link',
 						properties: {
 							href: 'https://docs.n8n.io',
-							title: this.$i18n2.baseText('mainSidebar.helpMenuItems.documentation'),
+							title: this.$i.baseText('mainSidebar.helpMenuItems.documentation'),
 							icon: 'book',
 							newWindow: true,
 						},
@@ -219,7 +219,7 @@ export default mixins(
 						type: 'link',
 						properties: {
 							href: 'https://community.n8n.io',
-							title: this.$i18n2.baseText('mainSidebar.helpMenuItems.forum'),
+							title: this.$i.baseText('mainSidebar.helpMenuItems.forum'),
 							icon: 'users',
 							newWindow: true,
 						},
@@ -229,7 +229,7 @@ export default mixins(
 						type: 'link',
 						properties: {
 							href: 'https://n8n.io/workflows',
-							title: this.$i18n2.baseText('mainSidebar.helpMenuItems.workflows'),
+							title: this.$i.baseText('mainSidebar.helpMenuItems.workflows'),
 							icon: 'network-wired',
 							newWindow: true,
 						},
@@ -322,8 +322,8 @@ export default mixins(
 					this.stopExecutionInProgress = true;
 					await this.restApi().stopCurrentExecution(executionId);
 					this.$showMessage({
-						title: this.$i18n2.baseText('mainSidebar.showMessage.stopExecution.title'),
-						message: this.$i18n2.baseText(
+						title: this.$i.baseText('mainSidebar.showMessage.stopExecution.title'),
+						message: this.$i.baseText(
 							'mainSidebar.showMessage.stopExecution.message',
 							{ interpolate: { executionId }},
 						),
@@ -332,8 +332,8 @@ export default mixins(
 				} catch (error) {
 					this.$showError(
 						error,
-						this.$i18n2.baseText('mainSidebar.showError.stopExecution.title'),
-						this.$i18n2.baseText('mainSidebar.showError.stopExecution.message') + ':',
+						this.$i.baseText('mainSidebar.showError.stopExecution.title'),
+						this.$i.baseText('mainSidebar.showError.stopExecution.message') + ':',
 					);
 				}
 				this.stopExecutionInProgress = false;
@@ -358,8 +358,8 @@ export default mixins(
 						worflowData = JSON.parse(data as string);
 					} catch (error) {
 						this.$showMessage({
-							title: this.$i18n2.baseText('mainSidebar.showMessage.handleFileImport.title'),
-							message: this.$i18n2.baseText('mainSidebar.showMessage.handleFileImport.message'),
+							title: this.$i.baseText('mainSidebar.showMessage.handleFileImport.title'),
+							message: this.$i.baseText('mainSidebar.showMessage.handleFileImport.message'),
 							type: 'error',
 						});
 						return;
@@ -382,12 +382,12 @@ export default mixins(
 				} else if (key === 'workflow-import-url') {
 					try {
 						const promptResponse = await this.$prompt(
-							this.$i18n2.baseText('mainSidebar.prompt.workflowUrl') + ':',
-							this.$i18n2.baseText('mainSidebar.prompt.importWorkflowFromUrl') + ':',
+							this.$i.baseText('mainSidebar.prompt.workflowUrl') + ':',
+							this.$i.baseText('mainSidebar.prompt.importWorkflowFromUrl') + ':',
 							{
-								confirmButtonText: this.$i18n2.baseText('mainSidebar.prompt.import'),
-								cancelButtonText: this.$i18n2.baseText('mainSidebar.prompt.cancel'),
-								inputErrorMessage: this.$i18n2.baseText('mainSidebar.prompt.invalidUrl'),
+								confirmButtonText: this.$i.baseText('mainSidebar.prompt.import'),
+								cancelButtonText: this.$i.baseText('mainSidebar.prompt.cancel'),
+								inputErrorMessage: this.$i.baseText('mainSidebar.prompt.invalidUrl'),
 								inputPattern: /^http[s]?:\/\/.*\.json$/i,
 							},
 						) as MessageBoxInputData;
@@ -396,14 +396,14 @@ export default mixins(
 					} catch (e) {}
 				} else if (key === 'workflow-delete') {
 					const deleteConfirmed = await this.confirmMessage(
-						this.$i18n2.baseText(
+						this.$i.baseText(
 							'mainSidebar.confirmMessage.workflowDelete.message',
 							{ interpolate: { workflowName: this.workflowName } },
 						),
-						this.$i18n2.baseText('mainSidebar.confirmMessage.workflowDelete.headline'),
+						this.$i.baseText('mainSidebar.confirmMessage.workflowDelete.headline'),
 						'warning',
-						this.$i18n2.baseText('mainSidebar.confirmMessage.workflowDelete.confirmButtonText'),
-						this.$i18n2.baseText('mainSidebar.confirmMessage.workflowDelete.cancelButtonText'),
+						this.$i.baseText('mainSidebar.confirmMessage.workflowDelete.confirmButtonText'),
+						this.$i.baseText('mainSidebar.confirmMessage.workflowDelete.cancelButtonText'),
 					);
 
 					if (deleteConfirmed === false) {
@@ -415,8 +415,8 @@ export default mixins(
 					} catch (error) {
 						this.$showError(
 							error,
-							this.$i18n2.baseText('mainSidebar.showError.stopExecution.title'),
-							this.$i18n2.baseText('mainSidebar.showError.stopExecution.message') + ':',
+							this.$i.baseText('mainSidebar.showError.stopExecution.title'),
+							this.$i.baseText('mainSidebar.showError.stopExecution.message') + ':',
 						);
 						return;
 					}
@@ -424,8 +424,8 @@ export default mixins(
 					// Reset tab title since workflow is deleted.
 					this.$titleReset();
 					this.$showMessage({
-						title: this.$i18n2.baseText('mainSidebar.showMessage.handleSelect1.title'),
-						message: this.$i18n2.baseText(
+						title: this.$i.baseText('mainSidebar.showMessage.handleSelect1.title'),
+						message: this.$i.baseText(
 							'mainSidebar.showMessage.handleSelect1.message',
 							{ interpolate: { workflowName: this.workflowName }},
 						),
@@ -464,11 +464,11 @@ export default mixins(
 					const result = this.$store.getters.getStateIsDirty;
 					if(result) {
 						const importConfirm = await this.confirmMessage(
-							this.$i18n2.baseText('mainSidebar.confirmMessage.workflowNew.message'),
-							this.$i18n2.baseText('mainSidebar.confirmMessage.workflowNew.headline'),
+							this.$i.baseText('mainSidebar.confirmMessage.workflowNew.message'),
+							this.$i.baseText('mainSidebar.confirmMessage.workflowNew.headline'),
 							'warning',
-							this.$i18n2.baseText('mainSidebar.confirmMessage.workflowNew.confirmButtonText'),
-							this.$i18n2.baseText('mainSidebar.confirmMessage.workflowNew.cancelButtonText'),
+							this.$i.baseText('mainSidebar.confirmMessage.workflowNew.confirmButtonText'),
+							this.$i.baseText('mainSidebar.confirmMessage.workflowNew.cancelButtonText'),
 						);
 						if (importConfirm === true) {
 							this.$store.commit('setStateDirty', false);
@@ -479,8 +479,8 @@ export default mixins(
 							}
 
 							this.$showMessage({
-								title: this.$i18n2.baseText('mainSidebar.showMessage.handleSelect2.title'),
-								message: this.$i18n2.baseText('mainSidebar.showMessage.handleSelect2.message'),
+								title: this.$i.baseText('mainSidebar.showMessage.handleSelect2.title'),
+								message: this.$i.baseText('mainSidebar.showMessage.handleSelect2.message'),
 								type: 'success',
 							});
 						}
@@ -490,8 +490,8 @@ export default mixins(
 						}
 
 						this.$showMessage({
-							title: this.$i18n2.baseText('mainSidebar.showMessage.handleSelect3.title'),
-							message: this.$i18n2.baseText('mainSidebar.showMessage.handleSelect3.message'),
+							title: this.$i.baseText('mainSidebar.showMessage.handleSelect3.title'),
+							message: this.$i.baseText('mainSidebar.showMessage.handleSelect3.message'),
 							type: 'success',
 						});
 					}

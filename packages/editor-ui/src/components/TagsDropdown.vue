@@ -25,13 +25,13 @@
 			>
 				<font-awesome-icon icon="plus-circle" />
 				<span>
-					{{ $i18n2.baseText('tagsDropdown.createTag', { interpolate: { filter } }) }}
+					{{ $i.baseText('tagsDropdown.createTag', { interpolate: { filter } }) }}
 				</span>
 			</n8n-option>
 			<n8n-option v-else-if="options.length === 0" value="message" disabled>
-				<span v-if="createEnabled">{{ $i18n2.baseText('tagsDropdown.typeToCreateATag') }}</span>
-				<span v-else-if="allTags.length > 0">{{ $i18n2.baseText('tagsDropdown.noMatchingTagsExist') }}</span>
-				<span v-else>{{ $i18n2.baseText('tagsDropdown.noTagsExist') }}</span>
+				<span v-if="createEnabled">{{ $i.baseText('tagsDropdown.typeToCreateATag') }}</span>
+				<span v-else-if="allTags.length > 0">{{ $i.baseText('tagsDropdown.noMatchingTagsExist') }}</span>
+				<span v-else>{{ $i.baseText('tagsDropdown.noTagsExist') }}</span>
 			</n8n-option>
 
 			<!-- key is id+index for keyboard navigation to work well with filter -->
@@ -46,7 +46,7 @@
 
 			<n8n-option :key="MANAGE_KEY" :value="MANAGE_KEY" class="ops manage-tags">
 				<font-awesome-icon icon="cog" />
-				<span>{{ $i18n2.baseText('tagsDropdown.manageTags') }}</span>
+				<span>{{ $i.baseText('tagsDropdown.manageTags') }}</span>
 			</n8n-option>
 		</n8n-select>
 	</div>
@@ -141,8 +141,8 @@ export default mixins(showMessage).extend({
 			} catch (error) {
 				this.$showError(
 					error,
-					this.$i18n2.baseText('tagsDropdown.showError.title'),
-					this.$i18n2.baseText(
+					this.$i.baseText('tagsDropdown.showError.title'),
+					this.$i.baseText(
 						'tagsDropdown.showError.message',
 						{ interpolate: { name } },
 					),

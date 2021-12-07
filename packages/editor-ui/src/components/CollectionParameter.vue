@@ -2,7 +2,7 @@
 	<div @keydown.stop class="collection-parameter">
 		<div class="collection-parameter-wrapper">
 			<div v-if="getProperties.length === 0" class="no-items-exist">
-				<n8n-text size="small">{{ $i18n2.baseText('collectionParameter.noProperties') }}</n8n-text>
+				<n8n-text size="small">{{ $i.baseText('collectionParameter.noProperties') }}</n8n-text>
 			</div>
 
 			<parameter-input-list :parameters="getProperties" :nodeValues="nodeValues" :path="path" :hideDelete="hideDelete" :indent="true" @valueChanged="valueChanged" />
@@ -19,7 +19,7 @@
 						<n8n-option
 							v-for="item in parameterOptions"
 							:key="item.name"
-							:label="$i18n2.nodeText().collectionOptionDisplayName(parameter, item)"
+							:label="$i.nodeText().collectionOptionDisplayName(parameter, item)"
 							:value="item.name">
 						</n8n-option>
 					</n8n-select>
@@ -67,8 +67,8 @@ export default mixins(
 		},
 		computed: {
 			getPlaceholderText (): string {
-				const placeholder = this.$i18n2.nodeText().placeholder(this.parameter);
-				return placeholder ? placeholder : this.$i18n2.baseText('collectionParameter.choose');
+				const placeholder = this.$i.nodeText().placeholder(this.parameter);
+				return placeholder ? placeholder : this.$i.baseText('collectionParameter.choose');
 			},
 			getProperties (): INodeProperties[] {
 				const returnProperties = [];

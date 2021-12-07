@@ -5,7 +5,7 @@
 			element-loading-spinner="el-icon-loading"
 			:value="workflowActive"
 			@change="activeChanged"
-			:title="workflowActive ? $i18n2.baseText('workflowActivator.deactivateWorkflow') : $i18n2.baseText('workflowActivator.activateWorkflow')"
+			:title="workflowActive ? $i.baseText('workflowActivator.deactivateWorkflow') : $i.baseText('workflowActivator.activateWorkflow')"
 			:disabled="disabled || loading"
 			:active-color="getActiveColor"
 			inactive-color="#8899AA">
@@ -13,7 +13,7 @@
 
 		<div class="could-not-be-started" v-if="couldNotBeStarted">
 			<n8n-tooltip placement="top">
-				<div @click="displayActivationError" slot="content">{{ $i18n2.baseText('workflowActivator.theWorkflowIsSetToBeActiveBut') }}</div>
+				<div @click="displayActivationError" slot="content">{{ $i.baseText('workflowActivator.theWorkflowIsSetToBeActiveBut') }}</div>
 				<font-awesome-icon @click="displayActivationError" icon="exclamation-triangle" />
 			</n8n-tooltip>
 		</div>
@@ -79,8 +79,8 @@ export default mixins(
 				async activeChanged (newActiveState: boolean) {
 					if (this.workflowId === undefined) {
 						this.$showMessage({
-							title: this.$i18n2.baseText('workflowActivator.showMessage.activeChangedWorkflowIdUndefined.title'),
-							message: this.$i18n2.baseText('workflowActivator.showMessage.activeChangedWorkflowIdUndefined.message'),
+							title: this.$i.baseText('workflowActivator.showMessage.activeChangedWorkflowIdUndefined.title'),
+							message: this.$i.baseText('workflowActivator.showMessage.activeChangedWorkflowIdUndefined.message'),
 							type: 'error',
 						});
 						return;
@@ -88,8 +88,8 @@ export default mixins(
 
 					if (this.nodesIssuesExist === true) {
 						this.$showMessage({
-							title: this.$i18n2.baseText('workflowActivator.showMessage.activeChangedNodesIssuesExistTrue.title'),
-							message: this.$i18n2.baseText('workflowActivator.showMessage.activeChangedNodesIssuesExistTrue.message'),
+							title: this.$i.baseText('workflowActivator.showMessage.activeChangedNodesIssuesExistTrue.title'),
+							message: this.$i.baseText('workflowActivator.showMessage.activeChangedNodesIssuesExistTrue.message'),
 							type: 'error',
 						});
 						return;
@@ -106,11 +106,11 @@ export default mixins(
 						// than the one they can currently see.
 						if (this.dirtyState) {
 							const importConfirm = await this.confirmMessage(
-								this.$i18n2.baseText('workflowActivator.confirmMessage.message'),
-								this.$i18n2.baseText('workflowActivator.confirmMessage.headline'),
+								this.$i.baseText('workflowActivator.confirmMessage.message'),
+								this.$i.baseText('workflowActivator.confirmMessage.headline'),
 								'warning',
-								this.$i18n2.baseText('workflowActivator.confirmMessage.confirmButtonText'),
-								this.$i18n2.baseText('workflowActivator.confirmMessage.cancelButtonText'),
+								this.$i.baseText('workflowActivator.confirmMessage.confirmButtonText'),
+								this.$i.baseText('workflowActivator.confirmMessage.cancelButtonText'),
 							);
 							if (importConfirm === false) {
 								return;
@@ -131,8 +131,8 @@ export default mixins(
 						const newStateName = newActiveState === true ? 'activated' : 'deactivated';
 						this.$showError(
 							error,
-							this.$i18n2.baseText('workflowActivator.showError.title'),
-							this.$i18n2.baseText(
+							this.$i.baseText('workflowActivator.showError.title'),
+							this.$i.baseText(
 								'workflowActivator.showError.message',
 								{ interpolate: { newStateName } },
 							) + ':',
@@ -168,19 +168,19 @@ export default mixins(
 						const errorData = await this.restApi().getActivationError(this.workflowId);
 
 						if (errorData === undefined) {
-							errorMessage = this.$i18n2.baseText('workflowActivator.showMessage.displayActivationError.message.errorDataUndefined');
+							errorMessage = this.$i.baseText('workflowActivator.showMessage.displayActivationError.message.errorDataUndefined');
 						} else {
-							errorMessage = this.$i18n2.baseText(
+							errorMessage = this.$i.baseText(
 								'workflowActivator.showMessage.displayActivationError.message.errorDataNotUndefined',
 								{ interpolate: { message: errorData.error.message } },
 							);
 						}
 					} catch (error) {
-						errorMessage = this.$i18n2.baseText('workflowActivator.showMessage.displayActivationError.message.catchBlock');
+						errorMessage = this.$i.baseText('workflowActivator.showMessage.displayActivationError.message.catchBlock');
 					}
 
 					this.$showMessage({
-						title: this.$i18n2.baseText('workflowActivator.showMessage.displayActivationError.title'),
+						title: this.$i.baseText('workflowActivator.showMessage.displayActivationError.title'),
 						message: errorMessage,
 						type: 'warning',
 						duration: 0,

@@ -11,15 +11,13 @@ const NODE_VIEW_KEY = 'nodeView';
 export function I18nPlugin(vue: typeof _Vue, store: Store<IRootState>): void {
 	const i18n = new I18nClass(store);
 
-	if (!vue.prototype.hasOwnProperty('$i18n2')) {
-		Object.defineProperty(vue, '$i18n2', {
-			get() { return i18n; },
-		});
+	Object.defineProperty(vue, '$i', {
+		get() { return i18n; },
+	});
 
-		Object.defineProperty(vue.prototype, '$i18n2', {
-			get() { return i18n; },
-		});
-	}
+	Object.defineProperty(vue.prototype, '$i', {
+		get() { return i18n; },
+	});
 }
 
 export class I18nClass {
