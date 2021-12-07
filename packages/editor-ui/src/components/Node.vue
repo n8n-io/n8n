@@ -22,7 +22,7 @@
 					</span>
 				</div>
 
-				<div class="node-executing-info" :title="$i18n2.baseText('node.nodeIsExecuting')">
+				<div class="node-executing-info" :title="$i.baseText('node.nodeIsExecuting')">
 					<font-awesome-icon icon="sync-alt" spin />
 				</div>
 
@@ -37,20 +37,20 @@
 			</div>
 
 			<div class="node-options no-select-on-click" v-if="!isReadOnly" v-show="!hideActions">
-				<div v-touch:tap="deleteNode" class="option" :title="$i18n2.baseText('node.deleteNode')" >
+				<div v-touch:tap="deleteNode" class="option" :title="$i.baseText('node.deleteNode')" >
 
 					<font-awesome-icon icon="trash" />
 				</div>
-				<div v-touch:tap="disableNode" class="option" :title="$i18n2.baseText('node.activateDeactivateNode')">
+				<div v-touch:tap="disableNode" class="option" :title="$i.baseText('node.activateDeactivateNode')">
 					<font-awesome-icon :icon="nodeDisabledIcon" />
 				</div>
-				<div v-touch:tap="duplicateNode" class="option" :title="$i18n2.baseText('node.duplicateNode')">
+				<div v-touch:tap="duplicateNode" class="option" :title="$i.baseText('node.duplicateNode')">
 					<font-awesome-icon icon="clone" />
 				</div>
-				<div v-touch:tap="setNodeActive" class="option touch" :title="$i18n2.baseText('node.editNode')" v-if="!isReadOnly">
+				<div v-touch:tap="setNodeActive" class="option touch" :title="$i.baseText('node.editNode')" v-if="!isReadOnly">
 					<font-awesome-icon class="execute-icon" icon="cog" />
 				</div>
-				<div v-touch:tap="executeNode" class="option" :title="$i18n2.baseText('node.executeNode')" v-if="!isReadOnly && !workflowRunning">
+				<div v-touch:tap="executeNode" class="option" :title="$i.baseText('node.executeNode')" v-if="!isReadOnly && !workflowRunning">
 					<font-awesome-icon class="execute-icon" icon="play-circle" />
 				</div>
 			</div>
@@ -62,7 +62,7 @@
 					{{ nodeTitle }}
 				</p>
 				<p v-if="data.disabled">
-					({{ $i18n2.baseText('node.disabled') }})
+					({{ $i.baseText('node.disabled') }})
 				</p>
 			</div>
 			<div v-if="nodeSubtitle !== undefined" class="node-subtitle" :title="nodeSubtitle">
@@ -168,7 +168,7 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 
 			const nodeIssues = NodeHelpers.nodeIssuesToString(this.data.issues, this.data);
 
-			return `${this.$i18n2.baseText('node.issues')}:<br />&nbsp;&nbsp;- ` + nodeIssues.join('<br />&nbsp;&nbsp;- ');
+			return `${this.$i.baseText('node.issues')}:<br />&nbsp;&nbsp;- ` + nodeIssues.join('<br />&nbsp;&nbsp;- ');
 		},
 		nodeDisabledIcon (): string {
 			if (this.data.disabled === false) {
@@ -194,11 +194,11 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 			return returnStyles;
 		},
 		shortNodeType (): string {
-			return this.$i18n2.shortNodeType(this.data.type);
+			return this.$i.shortNodeType(this.data.type);
 		},
 		nodeTitle (): string {
 			if (this.data.name === 'Start') {
-				return this.$i18n2.headerText({
+				return this.$i.headerText({
 					key: `headers.start.displayName`,
 					fallback: 'Start',
 				});
@@ -214,9 +214,9 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 				if (this.name === lastNodeExecuted) {
 					const waitDate = new Date(workflowExecution.waitTill);
 					if (waitDate.toISOString() === WAIT_TIME_UNLIMITED) {
-						return this.$i18n2.baseText('node.theNodeIsWaitingIndefinitelyForAnIncomingWebhookCall');
+						return this.$i.baseText('node.theNodeIsWaitingIndefinitelyForAnIncomingWebhookCall');
 					}
-					return this.$i18n2.baseText(
+					return this.$i.baseText(
 						'node.nodeIsWaitingTill',
 						{
 							interpolate: {

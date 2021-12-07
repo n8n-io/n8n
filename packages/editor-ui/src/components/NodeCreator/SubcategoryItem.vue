@@ -2,10 +2,10 @@
 	<div :class="$style.subcategory">
 		<div :class="$style.details">
 			<div :class="$style.title">
-				{{ $i18n2.baseText(`nodeCreator.subcategoryNames.${subcategoryName}`) }}
+				{{ $i.baseText(`nodeCreator.subcategoryNames.${subcategoryName}`) }}
 			</div>
 			<div v-if="item.properties.description" :class="$style.description">
-				{{ $i18n2.baseText(`nodeCreator.subcategoryDescriptions.${subcategoryDescription}`) }}
+				{{ $i.baseText(`nodeCreator.subcategoryDescriptions.${subcategoryDescription}`) }}
 			</div>
 		</div>
 		<div :class="$style.action">

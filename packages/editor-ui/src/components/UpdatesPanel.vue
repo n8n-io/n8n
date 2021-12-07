@@ -6,17 +6,17 @@
 	>
 		<template slot="header">
 			<span :class="$style.title">
-				{{ $i18n2.baseText('updatesPanel.weVeBeenBusy') }}
+				{{ $i.baseText('updatesPanel.weVeBeenBusy') }}
 			</span>
 		</template>
 		<template slot="content">
 			<section :class="$style['description']">
 				<p v-if="currentVersion">
-					{{ $i18n2.baseText(
+					{{ $i.baseText(
 						'updatesPanel.youReOnVersion',
 						{ interpolate: { currentVersionName: currentVersion.name } }
 					) }}
-					<strong><TimeAgo :date="currentVersion.createdAt" /></strong>{{ $i18n2.baseText('updatesPanel.andIs') }} <strong>{{ $i18n2.baseText(
+					<strong><TimeAgo :date="currentVersion.createdAt" /></strong>{{ $i.baseText('updatesPanel.andIs') }} <strong>{{ $i.baseText(
 							'updatesPanel.version',
 							{
 								interpolate: {
@@ -24,7 +24,7 @@
 									howManySuffix: nextVersions.length > 1 ? "s" : "",
 								}
 							}
-					)}}</strong> {{ $i18n2.baseText('updatesPanel.behindTheLatest') }}
+					)}}</strong> {{ $i.baseText('updatesPanel.behindTheLatest') }}
 				</p>
 
 				<a
@@ -35,7 +35,7 @@
 				>
 					<font-awesome-icon icon="info-circle"></font-awesome-icon>
 					<span>
-						{{ $i18n2.baseText('updatesPanel.howToUpdateYourN8nVersion') }}
+						{{ $i.baseText('updatesPanel.howToUpdateYourN8nVersion') }}
 					</span>
 				</a>
 

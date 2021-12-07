@@ -1,12 +1,12 @@
 <template>
 	<div @keydown.stop class="fixed-collection-parameter">
 		<div v-if="getProperties.length === 0" class="no-items-exist">
-			<n8n-text size="small">{{ $i18n2.baseText('fixedCollectionParameter.currentlyNoItemsExist') }}</n8n-text>
+			<n8n-text size="small">{{ $i.baseText('fixedCollectionParameter.currentlyNoItemsExist') }}</n8n-text>
 		</div>
 
 		<div v-for="property in getProperties" :key="property.name" class="fixed-collection-parameter-property">
 			<n8n-input-label
-				:label="property.displayName === '' || parameter.options.length === 1 ? '' : $i18n2.nodeText().topParameterDisplayName(property)"
+				:label="property.displayName === '' || parameter.options.length === 1 ? '' : $i.nodeText().topParameterDisplayName(property)"
 				:underline="true"
 				:labelHoverableOnly="true"
 				size="small"
@@ -15,10 +15,10 @@
 					<div v-for="(value, index) in values[property.name]" :key="property.name + index" class="parameter-item">
 						<div class="parameter-item-wrapper">
 							<div class="delete-option" v-if="!isReadOnly">
-								<font-awesome-icon icon="trash" class="reset-icon clickable" :title="$i18n2.baseText('fixedCollectionParameter.deleteItem')" @click="deleteOption(property.name, index)" />
+								<font-awesome-icon icon="trash" class="reset-icon clickable" :title="$i.baseText('fixedCollectionParameter.deleteItem')" @click="deleteOption(property.name, index)" />
 								<div v-if="sortable" class="sort-icon">
-									<font-awesome-icon v-if="index !== 0" icon="angle-up" class="clickable" :title="$i18n2.baseText('fixedCollectionParameter.moveUp')" @click="moveOptionUp(property.name, index)" />
-									<font-awesome-icon v-if="index !== (values[property.name].length -1)" icon="angle-down" class="clickable" :title="$i18n2.baseText('fixedCollectionParameter.moveDown')" @click="moveOptionDown(property.name, index)" />
+									<font-awesome-icon v-if="index !== 0" icon="angle-up" class="clickable" :title="$i.baseText('fixedCollectionParameter.moveUp')" @click="moveOptionUp(property.name, index)" />
+									<font-awesome-icon v-if="index !== (values[property.name].length -1)" icon="angle-down" class="clickable" :title="$i.baseText('fixedCollectionParameter.moveDown')" @click="moveOptionDown(property.name, index)" />
 								</div>
 							</div>
 							<parameter-input-list :parameters="property.values" :nodeValues="nodeValues" :path="getPropertyPath(property.name, index)" :hideDelete="true" @valueChanged="valueChanged" />
@@ -28,7 +28,7 @@
 				<div v-else class="parameter-item">
 					<div class="parameter-item-wrapper">
 						<div class="delete-option" v-if="!isReadOnly">
-							<font-awesome-icon icon="trash" class="reset-icon clickable" :title="$i18n2.baseText('fixedCollectionParameter.deleteItem')" @click="deleteOption(property.name)" />
+							<font-awesome-icon icon="trash" class="reset-icon clickable" :title="$i.baseText('fixedCollectionParameter.deleteItem')" @click="deleteOption(property.name)" />
 						</div>
 						<parameter-input-list :parameters="property.values" :nodeValues="nodeValues" :path="getPropertyPath(property.name)" class="parameter-item" @valueChanged="valueChanged" :hideDelete="true" />
 					</div>
@@ -43,7 +43,7 @@
 					<n8n-option
 						v-for="item in parameterOptions"
 						:key="item.name"
-						:label="$i18n2.nodeText().collectionOptionDisplayName(parameter, item)"
+						:label="$i.nodeText().collectionOptionDisplayName(parameter, item)"
 						:value="item.name">
 					</n8n-option>
 				</n8n-select>
@@ -85,8 +85,8 @@ export default mixins(genericHelpers)
 		},
 		computed: {
 			getPlaceholderText (): string {
-				const placeholder = this.$i18n2.nodeText().placeholder(this.parameter);
-				return placeholder ? placeholder : this.$i18n2.baseText('fixedCollectionParameter.choose');
+				const placeholder = this.$i.nodeText().placeholder(this.parameter);
+				return placeholder ? placeholder : this.$i.baseText('fixedCollectionParameter.choose');
 			},
 			getProperties (): INodePropertyCollection[] {
 				const returnProperties = [];

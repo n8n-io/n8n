@@ -27,7 +27,7 @@ export default Vue.extend({
 		renderCategoryName(categoryName: string) {
 			const key = `nodeCreator.categoryNames.${categoryName}`;
 
-			return this.$i18n2.exists(key) ? this.$i18n2.baseText(key) : categoryName;
+			return this.$i.exists(key) ? this.$i.baseText(key) : categoryName;
 		},
 	},
 });
