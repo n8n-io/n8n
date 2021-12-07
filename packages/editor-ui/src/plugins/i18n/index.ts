@@ -2,34 +2,30 @@ import _Vue from "vue";
 import { IRootState } from '@/Interface';
 import VueI18n from 'vue-i18n';
 import { i18n as i18nLib } from '../../i18n';
+import { Store } from "vuex";
 
 const REUSABLE_DYNAMIC_TEXT_KEY = 'reusableDynamicText';
 const CREDENTIALS_MODAL_KEY = 'credentialsModal';
 const NODE_VIEW_KEY = 'nodeView';
 
-// this.$i18n.baseText('key1.key1', { interpolate: { keyName: '...' } });
-// this.$i18n.nodeText.placeholder('...');
-// this.$i18n.credText.placeholder('...');
-// this.$i18n.headerText.placeholder({ key: '...', fallback: '...' });
-
-export function I18nPlugin(vue: typeof _Vue, store: IRootState): void {
+export function I18nPlugin(vue: typeof _Vue, store: Store<IRootState>): void {
 	const i18n = new I18nClass(store);
 
-	if (!vue.prototype.hasOwnProperty('$i18n2')) { // TODO: Rename to `$i18n` after removing legacy i18n property
-		Object.defineProperty(vue, '$i18n2', { // TODO: Rename to `$i18n` after removing legacy i18n property
+	if (!vue.prototype.hasOwnProperty('$i18n2')) {
+		Object.defineProperty(vue, '$i18n2', {
 			get() { return i18n; },
 		});
 
-		Object.defineProperty(vue.prototype, '$i18n2', { // TODO: Rename to `$i18n` after removing legacy i18n property
+		Object.defineProperty(vue.prototype, '$i18n2', {
 			get() { return i18n; },
 		});
 	}
 }
 
 export class I18nClass {
-	$store: IRootState;
+	$store: Store<IRootState>;
 
-	constructor(store: IRootState) {
+	constructor(store: Store<IRootState>) {
 		this.$store = store;
 	}
 
@@ -38,17 +34,27 @@ export class I18nClass {
 	}
 
 	/**
-	 * Render a string of dynamic text, i.e. a string with a constructed path to the localized value in the node text object - in the credentials modal (`$credText`), in the node view (`$nodeText`), or in the headers (`$headerText`) in the nodes panel and node view. _Private method_, to be called only from within this mixin.
-	 *
-	 * Unlike in `$baseText`, the fallback has to be set manually for dynamic text.
+	 * Render a string of dynamic text, i.e. a string with a constructed path to the localized value in the node text object, in the credentials modal, in the node view, or in the headers. Unlike in `baseText`, the fallback has to be set manually for dynamic text.
 	 */
-	private __render(
+	private dynamicRender(
 		{ key, fallback }: { key: string; fallback: string; },
 	) {
 		return this.i18n.te(key) ? this.i18n.t(key).toString() : fallback;
 	}
 
-	$shortNodeType(longNodeType: string) {
+	// ----------------------------------
+	//        template helpers
+	// ----------------------------------
+
+	exists(key: string) {
+		return this.i18n.te(key);
+	}
+
+	number(value: number, options: VueI18n.FormattedNumberPartType) {
+		return this.i18n.n(value, options);
+	}
+
+	shortNodeType(longNodeType: string) {
 		return longNodeType.replace('n8n-nodes-base.', '');
 	}
 
@@ -65,11 +71,11 @@ export class I18nClass {
 	 * Render a string of dynamic header text, used in the nodes panel and in the node view.
 	 */
 	headerText(arg: { key: string; fallback: string; }) {
-		return this.__render(arg);
+		return this.dynamicRender(arg);
 	}
 
 	credText () {
-		const keys = this.$store.credentialTextRenderKeys;
+		const { credentialTextRenderKeys: keys } = this.$store.getters;
 		const nodeType = keys ? keys.nodeType : '';
 		const credentialType = keys ? keys.credentialType : '';
 		const credentialPrefix = `${nodeType}.${CREDENTIALS_MODAL_KEY}.${credentialType}`;
@@ -84,13 +90,13 @@ export class I18nClass {
 				{ name: parameterName, displayName }: { name: string; displayName: string; },
 			) {
 				if (['clientId', 'clientSecret'].includes(parameterName)) {
-					return context.__render({
+					return context.dynamicRender({
 						key: `${REUSABLE_DYNAMIC_TEXT_KEY}.oauth2.${parameterName}`,
 						fallback: displayName,
 					});
 				}
 
-				return context.__render({
+				return context.dynamicRender({
 					key: `${credentialPrefix}.${parameterName}.displayName`,
 					fallback: displayName,
 				});
@@ -102,7 +108,7 @@ export class I18nClass {
 			topParameterDescription(
 				{ name: parameterName, description }: { name: string; description: string; },
 			) {
-				return context.__render({
+				return context.dynamicRender({
 					key: `${credentialPrefix}.${parameterName}.description`,
 					fallback: description,
 				});
@@ -115,7 +121,7 @@ export class I18nClass {
 				{ name: parameterName }: { name: string; },
 				{ value: optionName, name: displayName }: { value: string; name: string; },
 			) {
-				return context.__render({
+				return context.dynamicRender({
 					key: `${credentialPrefix}.${parameterName}.options.${optionName}.displayName`,
 					fallback: displayName,
 				});
@@ -128,7 +134,7 @@ export class I18nClass {
 				{ name: parameterName }: { name: string; },
 				{ value: optionName, description }: { value: string; description: string; },
 			) {
-				return context.__render({
+				return context.dynamicRender({
 					key: `${credentialPrefix}.${parameterName}.options.${optionName}.description`,
 					fallback: description,
 				});
@@ -142,7 +148,7 @@ export class I18nClass {
 			placeholder(
 				{ name: parameterName, displayName }: { name: string; displayName: string; },
 			) {
-				return context.__render({
+				return context.dynamicRender({
 					key: `${credentialPrefix}.${parameterName}.placeholder`,
 					fallback: displayName,
 				});
@@ -151,8 +157,7 @@ export class I18nClass {
 	}
 
 	nodeText () {
-		// @ts-ignore TODO
-		const type = this.$store.activeNode.type;
+		const type = this.$store.getters.activeNode.type;
 		const nodePrefix = `${type}.${NODE_VIEW_KEY}`;
 		const context = this;
 
@@ -163,7 +168,7 @@ export class I18nClass {
 			topParameterDisplayName(
 				{ name: parameterName, displayName }: { name: string; displayName: string; },
 			) {
-				return context.__render({
+				return context.dynamicRender({
 					key: `${nodePrefix}.${parameterName}.displayName`,
 					fallback: displayName,
 				});
@@ -175,7 +180,7 @@ export class I18nClass {
 			topParameterDescription(
 				{ name: parameterName, description }: { name: string; description: string; },
 			) {
-				return context.__render({
+				return context.dynamicRender({
 					key: `${nodePrefix}.${parameterName}.description`,
 					fallback: description,
 				});
@@ -188,7 +193,7 @@ export class I18nClass {
 				{ name: parameterName }: { name: string; },
 				{ name: optionName, displayName }: { name: string; displayName: string; },
 			) {
-				return context.__render({
+				return context.dynamicRender({
 					key: `${nodePrefix}.${parameterName}.options.${optionName}.displayName`,
 					fallback: displayName,
 				});
@@ -201,7 +206,7 @@ export class I18nClass {
 				{ name: parameterName }: { name: string; },
 				{ value: optionName, name: displayName }: { value: string; name: string; },
 			) {
-				return context.__render({
+				return context.dynamicRender({
 					key: `${nodePrefix}.${parameterName}.options.${optionName}.displayName`,
 					fallback: displayName,
 				});
@@ -214,7 +219,7 @@ export class I18nClass {
 				{ name: parameterName }: { name: string; },
 				{ value: optionName, description }: { value: string; description: string; },
 			) {
-				return context.__render({
+				return context.dynamicRender({
 					key: `${nodePrefix}.${parameterName}.options.${optionName}.description`,
 					fallback: description,
 				});
@@ -227,7 +232,7 @@ export class I18nClass {
 				{ name: parameterName, typeOptions: { multipleValueButtonText } }:
 				{ name: string; typeOptions: { multipleValueButtonText: string; } },
 			) {
-				return context.__render({
+				return context.dynamicRender({
 					key: `${nodePrefix}.${parameterName}.multipleValueButtonText`,
 					fallback: multipleValueButtonText,
 				});
@@ -241,12 +246,11 @@ export class I18nClass {
 			placeholder(
 				{ name: parameterName, placeholder }: { name: string; placeholder: string; },
 			) {
-				return context.__render({
+				return context.dynamicRender({
 					key: `${nodePrefix}.${parameterName}.placeholder`,
 					fallback: placeholder,
 				});
 			},
 		};
 	}
-
 }

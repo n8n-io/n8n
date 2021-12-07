@@ -29,7 +29,7 @@ export default mixins(renderText).extend({
 		renderCategoryName(categoryName: string) {
 			const key = `nodeCreator.categoryNames.${categoryName}`;
 
-			return this.$te(key) ? this.$baseText(key) : categoryName;
+			return this.$i18n2.exists(key) ? this.$i18n2.baseText(key) : categoryName;
 		},
 	},
 });

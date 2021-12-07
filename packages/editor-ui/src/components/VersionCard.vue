@@ -4,26 +4,26 @@
 		<div :class="$style.header">
 			<div>
 				<div :class="$style.name">
-					{{ `${$baseText('versionCard.version')} ${version.name}` }}
+					{{ `${$i18n2.baseText('versionCard.version')} ${version.name}` }}
 				</div>
 				<WarningTooltip v-if="version.hasSecurityIssue">
 					<template>
-						{{ $baseText('versionCard.thisVersionHasASecurityIssue') }}
+						{{ $i18n2.baseText('versionCard.thisVersionHasASecurityIssue') }}
 					</template>
 				</WarningTooltip>
 				<Badge
 					v-if="version.hasSecurityFix"
-					:text="$baseText('versionCard.securityUpdate')"
+					:text="$i18n2.baseText('versionCard.securityUpdate')"
 					type="danger"
 				/>
 				<Badge
 					v-if="version.hasBreakingChange"
-					:text="$baseText('versionCard.breakingChanges')"
+					:text="$i18n2.baseText('versionCard.breakingChanges')"
 					type="warning"
 				/>
 			</div>
 			<div :class="$style['release-date']">
-				{{ $baseText('versionCard.released') }}&nbsp;<TimeAgo :date="version.createdAt" />
+				{{ $i18n2.baseText('versionCard.released') }}&nbsp;<TimeAgo :date="version.createdAt" />
 			</div>
 		</div>
 		<div :class="$style.divider" v-if="version.description || (version.nodes && version.nodes.length)"></div>
@@ -62,7 +62,7 @@ export default mixins(renderText).extend({
 	props: ['version'],
 	// @ts-ignore
 	nodeName (node: IVersionNode): string {
-		return node !== null ? node.displayName : this.$baseText('versionCard.unknown');
+		return node !== null ? node.displayName : this.$i18n2.baseText('versionCard.unknown');
 	},
 });
 </script>

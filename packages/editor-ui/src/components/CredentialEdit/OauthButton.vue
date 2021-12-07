@@ -4,12 +4,12 @@
 			v-if="isGoogleOAuthType"
 			:src="basePath + 'google-signin-light.png'"
 			:class="$style.googleIcon"
-			:alt="$baseText('credentialEdit.oAuthButton.signInWithGoogle')"
+			:alt="$i18n2.baseText('credentialEdit.oAuthButton.signInWithGoogle')"
 			@click.stop="$emit('click')"
 		/>
 		<n8n-button
 			v-else
-			:label="$baseText('credentialEdit.oAuthButton.connectMyAccount')"
+			:label="$i18n2.baseText('credentialEdit.oAuthButton.connectMyAccount')"
 			size="large"
 			@click.stop="$emit('click')"
 		/>

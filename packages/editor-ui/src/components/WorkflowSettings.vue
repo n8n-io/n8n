@@ -3,7 +3,7 @@
 		:name="WORKFLOW_SETTINGS_MODAL_KEY"
 		width="65%"
 		maxHeight="80%"
-		:title="$baseText('workflowSettings.settingsFor', { interpolate: { workflowName, workflowId } })"
+		:title="$i18n2.baseText('workflowSettings.settingsFor', { interpolate: { workflowName, workflowId } })"
 		:eventBus="modalBus"
 		:scrollable="true"
 	>
@@ -11,7 +11,7 @@
 			<div v-loading="isLoading" class="workflow-settings">
 				<el-row>
 					<el-col :span="10" class="setting-name">
-						{{ $baseText('workflowSettings.errorWorkflow') + ":" }}
+						{{ $i18n2.baseText('workflowSettings.errorWorkflow') + ":" }}
 						<n8n-tooltip class="setting-info" placement="top" >
 							<div slot="content" v-html="helpTexts.errorWorkflow"></div>
 							<font-awesome-icon icon="question-circle" />
@@ -30,7 +30,7 @@
 				</el-row>
 				<el-row>
 					<el-col :span="10" class="setting-name">
-						{{ $baseText('workflowSettings.timezone') + ":" }}
+						{{ $i18n2.baseText('workflowSettings.timezone') + ":" }}
 						<n8n-tooltip class="setting-info" placement="top" >
 							<div slot="content" v-html="helpTexts.timezone"></div>
 							<font-awesome-icon icon="question-circle" />
@@ -49,14 +49,14 @@
 				</el-row>
 				<el-row>
 					<el-col :span="10" class="setting-name">
-						{{ $baseText('workflowSettings.saveDataErrorExecution') + ":" }}
+						{{ $i18n2.baseText('workflowSettings.saveDataErrorExecution') + ":" }}
 						<n8n-tooltip class="setting-info" placement="top" >
 							<div slot="content" v-html="helpTexts.saveDataErrorExecution"></div>
 							<font-awesome-icon icon="question-circle" />
 						</n8n-tooltip>
 					</el-col>
 					<el-col :span="14" class="ignore-key-press">
-						<n8n-select v-model="workflowSettings.saveDataErrorExecution" :placeholder="$baseText('workflowSettings.selectOption')" size="medium" filterable :limit-popper-width="true">
+						<n8n-select v-model="workflowSettings.saveDataErrorExecution" :placeholder="$i18n2.baseText('workflowSettings.selectOption')" size="medium" filterable :limit-popper-width="true">
 							<n8n-option
 								v-for="option of saveDataErrorExecutionOptions"
 								:key="option.key"
@@ -68,14 +68,14 @@
 				</el-row>
 				<el-row>
 					<el-col :span="10" class="setting-name">
-						{{ $baseText('workflowSettings.saveDataSuccessExecution') + ":" }}
+						{{ $i18n2.baseText('workflowSettings.saveDataSuccessExecution') + ":" }}
 						<n8n-tooltip class="setting-info" placement="top" >
 							<div slot="content" v-html="helpTexts.saveDataSuccessExecution"></div>
 							<font-awesome-icon icon="question-circle" />
 						</n8n-tooltip>
 					</el-col>
 					<el-col :span="14" class="ignore-key-press">
-						<n8n-select v-model="workflowSettings.saveDataSuccessExecution" :placeholder="$baseText('workflowSettings.selectOption')" size="medium" filterable :limit-popper-width="true">
+						<n8n-select v-model="workflowSettings.saveDataSuccessExecution" :placeholder="$i18n2.baseText('workflowSettings.selectOption')" size="medium" filterable :limit-popper-width="true">
 							<n8n-option
 								v-for="option of saveDataSuccessExecutionOptions"
 								:key="option.key"
@@ -87,14 +87,14 @@
 				</el-row>
 				<el-row>
 					<el-col :span="10" class="setting-name">
-						{{ $baseText('workflowSettings.saveManualExecutions') + ":" }}
+						{{ $i18n2.baseText('workflowSettings.saveManualExecutions') + ":" }}
 						<n8n-tooltip class="setting-info" placement="top" >
 							<div slot="content" v-html="helpTexts.saveManualExecutions"></div>
 							<font-awesome-icon icon="question-circle" />
 						</n8n-tooltip>
 					</el-col>
 					<el-col :span="14" class="ignore-key-press">
-						<n8n-select v-model="workflowSettings.saveManualExecutions" :placeholder="$baseText('workflowSettings.selectOption')" size="medium" filterable :limit-popper-width="true">
+						<n8n-select v-model="workflowSettings.saveManualExecutions" :placeholder="$i18n2.baseText('workflowSettings.selectOption')" size="medium" filterable :limit-popper-width="true">
 							<n8n-option
 								v-for="option of saveManualOptions"
 								:key="option.key"
@@ -106,14 +106,14 @@
 				</el-row>
 				<el-row>
 					<el-col :span="10" class="setting-name">
-						{{ $baseText('workflowSettings.saveExecutionProgress') + ":" }}
+						{{ $i18n2.baseText('workflowSettings.saveExecutionProgress') + ":" }}
 						<n8n-tooltip class="setting-info" placement="top" >
 							<div slot="content" v-html="helpTexts.saveExecutionProgress"></div>
 							<font-awesome-icon icon="question-circle" />
 						</n8n-tooltip>
 					</el-col>
 					<el-col :span="14" class="ignore-key-press">
-						<n8n-select v-model="workflowSettings.saveExecutionProgress" :placeholder="$baseText('workflowSettings.selectOption')" size="medium" filterable :limit-popper-width="true">
+						<n8n-select v-model="workflowSettings.saveExecutionProgress" :placeholder="$i18n2.baseText('workflowSettings.selectOption')" size="medium" filterable :limit-popper-width="true">
 							<n8n-option
 								v-for="option of saveExecutionProgressOptions"
 								:key="option.key"
@@ -125,7 +125,7 @@
 				</el-row>
 				<el-row>
 					<el-col :span="10" class="setting-name">
-						{{ $baseText('workflowSettings.timeoutWorkflow') + ":" }}
+						{{ $i18n2.baseText('workflowSettings.timeoutWorkflow') + ":" }}
 						<n8n-tooltip class="setting-info" placement="top" >
 							<div slot="content" v-html="helpTexts.executionTimeoutToggle"></div>
 							<font-awesome-icon icon="question-circle" />
@@ -140,7 +140,7 @@
 				<div v-if="workflowSettings.executionTimeout > -1">
 					<el-row>
 						<el-col :span="10" class="setting-name">
-							{{ $baseText('workflowSettings.timeoutAfter') + ":" }}
+							{{ $i18n2.baseText('workflowSettings.timeoutAfter') + ":" }}
 							<n8n-tooltip class="setting-info" placement="top" >
 								<div slot="content" v-html="helpTexts.executionTimeout"></div>
 								<font-awesome-icon icon="question-circle" />
@@ -148,17 +148,17 @@
 						</el-col>
 						<el-col :span="4">
 							<n8n-input size="medium" :value="timeoutHMS.hours" @input="(value) => setTimeout('hours', value)" :min="0">
-								<template slot="append">{{ $baseText('workflowSettings.hours') }}</template>
+								<template slot="append">{{ $i18n2.baseText('workflowSettings.hours') }}</template>
 							</n8n-input>
 						</el-col>
 						<el-col :span="4" class="timeout-input">
 							<n8n-input size="medium" :value="timeoutHMS.minutes" @input="(value) => setTimeout('minutes', value)" :min="0" :max="60">
-								<template slot="append">{{ $baseText('workflowSettings.minutes') }}</template>
+								<template slot="append">{{ $i18n2.baseText('workflowSettings.minutes') }}</template>
 							</n8n-input>
 						</el-col>
 						<el-col :span="4" class="timeout-input">
 							<n8n-input size="medium" :value="timeoutHMS.seconds" @input="(value) => setTimeout('seconds', value)" :min="0" :max="60">
-								<template slot="append">{{ $baseText('workflowSettings.seconds') }}</template>
+								<template slot="append">{{ $i18n2.baseText('workflowSettings.seconds') }}</template>
 							</n8n-input>
 						</el-col>
 					</el-row>
@@ -207,14 +207,14 @@ export default mixins(
 		return {
 			isLoading: true,
 			helpTexts: {
-				errorWorkflow: this.$baseText('workflowSettings.helpTexts.errorWorkflow'),
-				timezone: this.$baseText('workflowSettings.helpTexts.timezone'),
-				saveDataErrorExecution: this.$baseText('workflowSettings.helpTexts.saveDataErrorExecution'),
-				saveDataSuccessExecution: this.$baseText('workflowSettings.helpTexts.saveDataSuccessExecution'),
-				saveExecutionProgress: this.$baseText('workflowSettings.helpTexts.saveExecutionProgress'),
-				saveManualExecutions: this.$baseText('workflowSettings.helpTexts.saveManualExecutions'),
-				executionTimeoutToggle: this.$baseText('workflowSettings.helpTexts.executionTimeoutToggle'),
-				executionTimeout: this.$baseText('workflowSettings.helpTexts.executionTimeout'),
+				errorWorkflow: this.$i18n2.baseText('workflowSettings.helpTexts.errorWorkflow'),
+				timezone: this.$i18n2.baseText('workflowSettings.helpTexts.timezone'),
+				saveDataErrorExecution: this.$i18n2.baseText('workflowSettings.helpTexts.saveDataErrorExecution'),
+				saveDataSuccessExecution: this.$i18n2.baseText('workflowSettings.helpTexts.saveDataSuccessExecution'),
+				saveExecutionProgress: this.$i18n2.baseText('workflowSettings.helpTexts.saveExecutionProgress'),
+				saveManualExecutions: this.$i18n2.baseText('workflowSettings.helpTexts.saveManualExecutions'),
+				executionTimeoutToggle: this.$i18n2.baseText('workflowSettings.helpTexts.executionTimeoutToggle'),
+				executionTimeout: this.$i18n2.baseText('workflowSettings.helpTexts.executionTimeout'),
 			},
 			defaultValues: {
 				timezone: 'America/New_York',
@@ -324,24 +324,24 @@ export default mixins(
 				this.saveDataErrorExecutionOptions, [
 					{
 						key: 'DEFAULT',
-						value: this.$baseText(
+						value: this.$i18n2.baseText(
 							'workflowSettings.saveDataErrorExecutionOptions.defaultSave',
 							{
 								interpolate: {
 									defaultValue: this.defaultValues.saveDataErrorExecution === 'all'
-										? this.$baseText('workflowSettings.saveDataErrorExecutionOptions.save')
-										: this.$baseText('workflowSettings.saveDataErrorExecutionOptions.doNotsave'),
+										? this.$i18n2.baseText('workflowSettings.saveDataErrorExecutionOptions.save')
+										: this.$i18n2.baseText('workflowSettings.saveDataErrorExecutionOptions.doNotsave'),
 								},
 							},
 						),
 					},
 					{
 						key: 'all',
-						value: this.$baseText('workflowSettings.saveDataErrorExecutionOptions.save'),
+						value: this.$i18n2.baseText('workflowSettings.saveDataErrorExecutionOptions.save'),
 					},
 					{
 						key: 'none',
-						value: this.$baseText('workflowSettings.saveDataErrorExecutionOptions.doNotSave'),
+						value: this.$i18n2.baseText('workflowSettings.saveDataErrorExecutionOptions.doNotSave'),
 					},
 				],
 			);
@@ -352,24 +352,24 @@ export default mixins(
 				this.saveDataSuccessExecutionOptions, [
 					{
 						key: 'DEFAULT',
-						value: this.$baseText(
+						value: this.$i18n2.baseText(
 							'workflowSettings.saveDataSuccessExecutionOptions.defaultSave',
 							{
 								interpolate: {
 									defaultValue: this.defaultValues.saveDataSuccessExecution === 'all'
-										? this.$baseText('workflowSettings.saveDataSuccessExecutionOptions.save')
-										: this.$baseText('workflowSettings.saveDataSuccessExecutionOptions.doNotSave'),
+										? this.$i18n2.baseText('workflowSettings.saveDataSuccessExecutionOptions.save')
+										: this.$i18n2.baseText('workflowSettings.saveDataSuccessExecutionOptions.doNotSave'),
 								},
 							},
 						),
 					},
 					{
 						key: 'all',
-						value: this.$baseText('workflowSettings.saveDataSuccessExecutionOptions.save'),
+						value: this.$i18n2.baseText('workflowSettings.saveDataSuccessExecutionOptions.save'),
 					},
 					{
 						key: 'none',
-						value: this.$baseText('workflowSettings.saveDataSuccessExecutionOptions.doNotSave'),
+						value: this.$i18n2.baseText('workflowSettings.saveDataSuccessExecutionOptions.doNotSave'),
 					},
 				],
 			);
@@ -380,22 +380,22 @@ export default mixins(
 				this.saveExecutionProgressOptions, [
 					{
 						key: 'DEFAULT',
-						value: this.$baseText(
+						value: this.$i18n2.baseText(
 							'workflowSettings.saveExecutionProgressOptions.defaultSave',
 							{
 								interpolate: {
-									defaultValue: this.defaultValues.saveExecutionProgress ? this.$baseText('workflowSettings.saveExecutionProgressOptions.yes') : this.$baseText('workflowSettings.saveExecutionProgressOptions.no'),
+									defaultValue: this.defaultValues.saveExecutionProgress ? this.$i18n2.baseText('workflowSettings.saveExecutionProgressOptions.yes') : this.$i18n2.baseText('workflowSettings.saveExecutionProgressOptions.no'),
 								},
 							},
 						),
 					},
 					{
 						key: true,
-						value: this.$baseText('workflowSettings.saveExecutionProgressOptions.yes'),
+						value: this.$i18n2.baseText('workflowSettings.saveExecutionProgressOptions.yes'),
 					},
 					{
 						key: false,
-						value: this.$baseText('workflowSettings.saveExecutionProgressOptions.no'),
+						value: this.$i18n2.baseText('workflowSettings.saveExecutionProgressOptions.no'),
 					},
 				],
 			);
@@ -404,22 +404,22 @@ export default mixins(
 			this.saveManualOptions.length = 0;
 			this.saveManualOptions.push({
 				key: 'DEFAULT',
-				value: this.$baseText(
+				value: this.$i18n2.baseText(
 					'workflowSettings.saveManualOptions.defaultSave',
 					{
 						interpolate: {
-							defaultValue: this.defaultValues.saveManualExecutions ? this.$baseText('workflowSettings.saveManualOptions.yes') : this.$baseText('workflowSettings.saveManualOptions.no'),
+							defaultValue: this.defaultValues.saveManualExecutions ? this.$i18n2.baseText('workflowSettings.saveManualOptions.yes') : this.$i18n2.baseText('workflowSettings.saveManualOptions.no'),
 						},
 					},
 				),
 			});
 			this.saveManualOptions.push({
 				key: true,
-				value: this.$baseText('workflowSettings.saveManualOptions.yes'),
+				value: this.$i18n2.baseText('workflowSettings.saveManualOptions.yes'),
 			});
 			this.saveManualOptions.push({
 				key: false,
-				value: this.$baseText('workflowSettings.saveManualOptions.no'),
+				value: this.$i18n2.baseText('workflowSettings.saveManualOptions.no'),
 			});
 		},
 
@@ -433,12 +433,12 @@ export default mixins(
 
 			let defaultTimezoneValue = timezones[this.defaultValues.timezone] as string | undefined;
 			if (defaultTimezoneValue === undefined) {
-				defaultTimezoneValue = this.$baseText('workflowSettings.defaultTimezoneNotValid');
+				defaultTimezoneValue = this.$i18n2.baseText('workflowSettings.defaultTimezoneNotValid');
 			}
 
 			this.timezones.push({
 				key: 'DEFAULT',
-				value: this.$baseText(
+				value: this.$i18n2.baseText(
 					'workflowSettings.defaultTimezone',
 					{ interpolate: { defaultTimezoneValue } },
 				),
@@ -465,7 +465,7 @@ export default mixins(
 			// @ts-ignore
 			workflows.unshift({
 				id: undefined as unknown as string,
-				name: this.$baseText('workflowSettings.noWorkflow'),
+				name: this.$i18n2.baseText('workflowSettings.noWorkflow'),
 			});
 
 			Vue.set(this, 'workflows', workflows);
@@ -485,9 +485,9 @@ export default mixins(
 
 			if (data.settings!.executionTimeout === 0) {
 				this.$showError(
-					new Error(this.$baseText('workflowSettings.showError.saveSettings1.errorMessage')),
-					this.$baseText('workflowSettings.showError.saveSettings1.title'),
-					this.$baseText('workflowSettings.showError.saveSettings1.message') + ':',
+					new Error(this.$i18n2.baseText('workflowSettings.showError.saveSettings1.errorMessage')),
+					this.$i18n2.baseText('workflowSettings.showError.saveSettings1.title'),
+					this.$i18n2.baseText('workflowSettings.showError.saveSettings1.message') + ':',
 				);
 				return;
 			}
@@ -497,7 +497,7 @@ export default mixins(
 				const { hours, minutes, seconds } = this.convertToHMS(this.workflowSettings.maxExecutionTimeout as number);
 				this.$showError(
 					new Error(
-						this.$baseText(
+						this.$i18n2.baseText(
 							'workflowSettings.showError.saveSettings2.errorMessage',
 							{
 								interpolate: {
@@ -508,8 +508,8 @@ export default mixins(
 							},
 						),
 					),
-					this.$baseText('workflowSettings.showError.saveSettings2.title'),
-					this.$baseText('workflowSettings.showError.saveSettings2.message') + ':',
+					this.$i18n2.baseText('workflowSettings.showError.saveSettings2.title'),
+					this.$i18n2.baseText('workflowSettings.showError.saveSettings2.message') + ':',
 				);
 				return;
 			}
@@ -522,8 +522,8 @@ export default mixins(
 			} catch (error) {
 				this.$showError(
 					error,
-					this.$baseText('workflowSettings.showError.saveSettings3.title'),
-					this.$baseText('workflowSettings.showError.saveSettings3.message') + ':',
+					this.$i18n2.baseText('workflowSettings.showError.saveSettings3.title'),
+					this.$i18n2.baseText('workflowSettings.showError.saveSettings3.message') + ':',
 				);
 				this.isLoading = false;
 				return;
@@ -544,8 +544,8 @@ export default mixins(
 			this.isLoading = false;
 
 			this.$showMessage({
-				title: this.$baseText('workflowSettings.showMessage.saveSettings.title'),
-				message: this.$baseText('workflowSettings.showMessage.saveSettings.message'),
+				title: this.$i18n2.baseText('workflowSettings.showMessage.saveSettings.title'),
+				message: this.$i18n2.baseText('workflowSettings.showMessage.saveSettings.message'),
 				type: 'success',
 			});
 

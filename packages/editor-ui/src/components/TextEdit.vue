@@ -1,11 +1,11 @@
 <template>
 	<div v-if="dialogVisible">
-		<el-dialog :visible="dialogVisible" append-to-body width="80%" :title="`${$baseText('textEdit.edit')} ${$nodeText.topParameterDisplayName(parameter)}`" :before-close="closeDialog">
+		<el-dialog :visible="dialogVisible" append-to-body width="80%" :title="`${$i18n2.baseText('textEdit.edit')} ${$i18n2.nodeText().topParameterDisplayName(parameter)}`" :before-close="closeDialog">
 
 			<div class="ignore-key-press">
-				<n8n-input-label :label="$nodeText.topParameterDisplayName(parameter)">
+				<n8n-input-label :label="$i18n2.nodeText().topParameterDisplayName(parameter)">
 					<div @keydown.stop @keydown.esc="closeDialog()">
-						<n8n-input v-model="tempValue" type="textarea" ref="inputField" :value="value" :placeholder="$nodeText.placeholder(parameter)" @change="valueChanged" @keydown.stop="noOp" :rows="15" />
+						<n8n-input v-model="tempValue" type="textarea" ref="inputField" :value="value" :placeholder="$i18n2.nodeText().placeholder(parameter)" @change="valueChanged" @keydown.stop="noOp" :rows="15" />
 					</div>
 				</n8n-input-label>
 			</div>
