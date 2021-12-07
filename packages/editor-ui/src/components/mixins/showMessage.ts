@@ -134,8 +134,8 @@ export const showMessage = mixins(externalHooks).extend({
 		async confirmMessage (message: string, headline: string, type: MessageType | null = 'warning', confirmButtonText?: string, cancelButtonText?: string): Promise<boolean> {
 			try {
 				const options: ElMessageBoxOptions  = {
-					confirmButtonText: confirmButtonText || this.$i18n2.baseText('showMessage.ok'),
-					cancelButtonText: cancelButtonText || this.$i18n2.baseText('showMessage.cancel'),
+					confirmButtonText: confirmButtonText || this.$i.baseText('showMessage.ok'),
+					cancelButtonText: cancelButtonText || this.$i.baseText('showMessage.cancel'),
 					dangerouslyUseHTMLString: true,
 					...(type && { type }),
 				};
@@ -173,7 +173,7 @@ export const showMessage = mixins(externalHooks).extend({
 					<summary
 						style="color: #ff6d5a; font-weight: bold; cursor: pointer;"
 					>
-						${this.$i18n2.baseText('showMessage.showDetails')}
+						${this.$i.baseText('showMessage.showDetails')}
 					</summary>
 					<p>${node.name}: ${errorDescription}</p>
 				</details>

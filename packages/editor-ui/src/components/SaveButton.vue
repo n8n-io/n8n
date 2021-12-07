@@ -1,6 +1,6 @@
 <template>
 	<span :class="$style.container">
-		<span :class="$style.saved" v-if="saved">{{ $i18n2.baseText('saveButton.saved') }}</span>
+		<span :class="$style.saved" v-if="saved">{{ $i.baseText('saveButton.saved') }}</span>
 		<n8n-button
 			v-else
 			:label="saveButtonLabel"
@@ -39,8 +39,8 @@ export default Vue.extend({
 	computed: {
 		saveButtonLabel() {
 			return this.isSaving
-				? this.$i18n2.baseText('saveButton.saving')
-				: this.$i18n2.baseText('saveButton.save');
+				? this.$i.baseText('saveButton.saving')
+				: this.$i.baseText('saveButton.save');
 		},
 	},
 });
