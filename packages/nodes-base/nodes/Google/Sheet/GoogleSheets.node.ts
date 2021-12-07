@@ -30,6 +30,11 @@ import {
 	hexToRgb,
 } from './GenericFunctions';
 
+interface GroupResult{
+	dimension:IDataObject;
+	items:IDataObject[];
+}
+
 export class GoogleSheets implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Google Sheets ',
@@ -179,7 +184,7 @@ export class GoogleSheets implements INodeType {
 				},
 				default: '',
 				required: false,
-				description: 'This field will be parsed into a sheet title, if it does not exist in the sheet, it will be created, otherwise it will be updated',
+				description: 'Separate multiple column names with commas(eg:age,gender). When there are multiple columns, the Cartesian product will be calculated,This field will be parsed into a sheet title, if it does not exist in the sheet, it will be created, otherwise it will be updated',
 			},
 			{
 				displayName: 'Property binding',
@@ -1105,7 +1110,6 @@ export class GoogleSheets implements INodeType {
 		},
 	};
 
-
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 
 		const operation = this.getNodeParameter('operation', 0) as string;
@@ -1127,7 +1131,46 @@ export class GoogleSheets implements INodeType {
 			const valueInputMode = (options.valueInputMode || 'RAW') as ValueInputOption;
 			const valueRenderMode = (options.valueRenderMode || 'UNFORMATTED_VALUE') as ValueRenderOption;
 
-			const updateByColumnOrRow = async (sheetTitleField?: string): Promise<INodeExecutionData[][]> => {
+			const isObjectValueEqual= (a:IDataObject, b:IDataObject):boolean=>  {
+				const aProps = Object.getOwnPropertyNames(a);
+				const bProps = Object.getOwnPropertyNames(b);
+
+				if (aProps.length !== bProps.length) {
+					return false;
+				}
+
+				for (let i = 0; i < aProps.length; i++) {
+					const propName = aProps[i];
+					if (a[propName] !== b[propName]) {
+						return false;
+					}
+				}
+				return true;
+			};
+
+			const groupBy = (xs: IDataObject[], keys: string[]): GroupResult[] => {
+				const result: GroupResult[] = [];
+				xs.forEach(x => {
+					const group: IDataObject = {};
+					keys.forEach(key => {
+						group[key] = x[key];
+					});
+					const targetGroup = result.filter(r => isObjectValueEqual(r.dimension, group));
+					if (targetGroup && targetGroup.length) {
+						(targetGroup[0].items = targetGroup[0].items || []).push(x);
+					} else {
+						result.push({
+							dimension: group,
+							items: [x],
+						});
+					}
+				});
+				return result;
+			};
+			const getGroupName = (dimension: IDataObject): string => {
+				return Object.keys(dimension).map(key => `${key}=${dimension[key]}`).join(',');
+			};
+			const updateByColumnOrRow = async (dimensions?: string[]): Promise<INodeExecutionData[][]> => {
 				const propertyBinding = this.getNodeParameter('propertyBinding', 0) as string;
 				const majorDimension = this.getNodeParameter('majorDimension', 0, {}) as string;
 				try {
@@ -1135,25 +1178,19 @@ export class GoogleSheets implements INodeType {
 
 					const updateData: ISheetUpdateData[] = [];
 
-					let groups: any = {};
-					if (sheetTitleField && sheetTitleField.length) {
-						const groupBy = (xs: any[], key: string): any => {
-							return xs.reduce((rv: any[], x: any) => {
-								(rv[x[key]] = rv[x[key]] || []).push(x);
-								return rv;
-							}, {});
-						};
-						groups = groupBy(items.map(item => item.json), sheetTitleField);
+					let groups: any = null;
+					if (dimensions && dimensions.length) {
+						groups = groupBy(items.map(item => item.json), dimensions);
 					}
 					propertyBinding.split(',').forEach(binding => {
 						const kv = binding.split(':');
 						const range = kv[0].trim(), prop = kv[1].trim();
-						if (sheetTitleField && sheetTitleField.length) {
-							Object.keys(groups).forEach(key => {
-								const items = groups[key];
+						if (groups) {
+							groups.forEach(group => {
+								const groupName = getGroupName(group.dimension);
 								updateData.push({
-									range: key + '!' + range,
-									values: [[prop, ...items.map(item => item[prop] as string)]],
+									range: `'${groupName}'!${range}`,
+									values: [[prop, ...group.items.map(item => item[prop] as string)]],
 									majorDimension,
 								});
 							});
@@ -1450,7 +1487,11 @@ export class GoogleSheets implements INodeType {
 				}
 			} else if (operation === 'updateByColumnOrRow') {
 				const sheetTitleField = (this.getNodeParameter('sheetTitleField', 0) as string).trim();
+				let dimensions = null;
 				if (sheetTitleField && sheetTitleField.length) {
+					dimensions = sheetTitleField.split(',');
+				}
+				if (dimensions && dimensions.length) {
 					const responseData = await sheet.spreadsheetGetSheets();
 
 					if (responseData === undefined) {
@@ -1469,7 +1510,28 @@ export class GoogleSheets implements INodeType {
 						});
 					}
 					const items = this.getInputData();
-					const allSheetTitles = Array.from(new Set(items.map(item => (item.json[sheetTitleField] as string).trim())));
+
+					const cartesian =
+						(...a) => a.reduce((a, b) => a.flatMap(d => b.map(e => [d, e].flat())));
+					let b: string[][] = [];
+					items.forEach(item => {
+						dimensions.forEach((dim, i) => {
+							(b[i] = b[i] || []).push((item.json[dim] as string).trim());
+						});
+					});
+					b = b.map(arr => Array.from(new Set(arr)));
+					const groups = b.length === 1 ? b[0].map(x=>[x]) : cartesian(b);
+
+					console.assert(groups[0].length === dimensions.length);
+
+					const allSheetTitles = groups.map((groupValueArr: string[]) => {
+						let group: IDataObject = {};
+						groupValueArr.forEach((val, j) => {
+							group[dimensions[j]] = val;
+						});
+						return getGroupName(group);
+					});
+
 					const existedSheetTitles = returnData.map(item => item.name);
 					const requests = allSheetTitles.filter(title => !existedSheetTitles.includes(title)).map(title => {
 						return {
@@ -1493,7 +1555,7 @@ export class GoogleSheets implements INodeType {
 						});
 					}
 				}
-				return updateByColumnOrRow(sheetTitleField);
+				return updateByColumnOrRow(dimensions);
 			}
 		}
 
