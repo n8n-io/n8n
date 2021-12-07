@@ -472,7 +472,7 @@ export interface IPersonalizationSurvey {
 export interface IN8nPrompts {
 	message: string;
 	title: string;
-	showPrompt: boolean;
+	showContactPrompt: boolean;
 	showValueSurvey: boolean;
 }
 

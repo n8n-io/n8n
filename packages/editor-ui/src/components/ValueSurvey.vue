@@ -17,13 +17,13 @@
 			<section :class="$style.content">
 				<div v-if="showButtons" :class="$style.wrapper">
 					<div :class="$style.buttons">
-						<div :class="$style.button" v-for="value in 11" :key="value - 1" >
-							<n8n-button
+						<div v-for="value in 11" :key="value - 1" :class="$style.wrapper">
+							<button
+								:class="$style.button"
 								@click="selectSurveyValue((value - 1).toString())"
-								:label="(value - 1).toString()"
-								:loading="loading"
-								type="outline"
-							/>
+							>
+							  <span :class="$style.text" v-text="(value - 1).toString()" />
+							</button>
 						</div>
 					</div>
 					<div :class="$style.text">
@@ -32,7 +32,10 @@
 					</div>
 				</div>
 				<div v-else :class="$style.email">
-					<div :class="$style.input">
+					<div
+						:class="$style.input"
+						@keyup.enter="send"
+					>
 						<n8n-input
 							v-model="form.email"
 							placeholder="Your email address"
@@ -88,7 +91,6 @@ export default mixins(workflowHelpers).extend({
 				email: '',
 				value: '',
 			},
-			loading: false,
 			showButtons: true,
 			VALUE_SURVEY_MODAL_KEY,
 		};
@@ -115,7 +117,6 @@ export default mixins(workflowHelpers).extend({
 		selectSurveyValue(value: string) {
 			this.form.value = value;
 			this.showButtons = false;
-			this.loading = true;
 			this.$store.dispatch('settings/submitValueSurvey', { value: this.form.value }).then((response: IN8nPromptResponse) => {
 				if (response.updated) {
 					this.$telemetry.track('User responded value survey score', {
@@ -123,30 +124,30 @@ export default mixins(workflowHelpers).extend({
 						nps: this.form.value,
 					});
 				}
-				this.loading = false;
 			});
 
 		},
 		send(): void {
-			this.$store.dispatch('settings/submitValueSurvey', {
-				email: this.form.email,
-				value: this.form.value,
-			}).then((response: IN8nPromptResponse) => {
-				if (response.updated) {
-					this.$telemetry.track('User responded value survey email', {
-						instance_id: this.$store.getters.instanceId,
-						email: this.form.email,
-					});
-					this.$showMessage({
-						title: 'Thanks for your feedback',
-						message: `If you’d like to help even more, answer this <a target="_blank" href="https://n8n-community.typeform.com/quicksurvey#nps=${this.form.value}&instance_id=${this.$store.getters.instanceId}">quick survey.</a>`,
-						type: 'success',
-						duration: 15000,
-					});
+			if (this.isEmailValid) {
+				this.$store.dispatch('settings/submitValueSurvey', {
+					email: this.form.email,
+					value: this.form.value,
+				}).then((response: IN8nPromptResponse) => {
+					if (response.updated) {
+						this.$telemetry.track('User responded value survey email', {
+							instance_id: this.$store.getters.instanceId,
+							email: this.form.email,
+						});
+						this.$showMessage({
+							title: 'Thanks for your feedback',
+							message: `If you’d like to help even more, answer this <a target="_blank" href="https://n8n-community.typeform.com/quicksurvey#nps=${this.form.value}&instance_id=${this.$store.getters.instanceId}">quick survey.</a>`,
+							type: 'success',
+							duration: 15000,
+						});
+					}
 					this.$store.commit('ui/closeTopModal');
-				}
-			});
-
+				});
+			}
 		},
 	},
 	mounted() {
@@ -174,16 +175,31 @@ export default mixins(workflowHelpers).extend({
 		.buttons {
 			display: flex;
 
-			.button {
+			.wrapper {
 				margin: 0 8px;
 
-				button {
+				.button {
 					width: 28px;
+					height: 29px;
 					border: var(--color-background-xlight);
 					border-radius: 4px;
-					color: var(--color-background-dark);
-					font-size: var(--font-size-s);
-					font-weight: var(--font-weight-bold);
+					cursor: pointer;
+					display: flex;
+					align-items: center;
+					justify-content: center;
+
+					.text {
+						margin: 0;
+						color: var(--color-background-dark);
+						font-size: var(--font-size-s);
+						font-weight: var(--font-weight-bold);
+					}
+
+					&:hover {
+						.text {
+							color: var(--color-primary);
+						}
+					}
 				}
 
 				&:first-child {
@@ -214,10 +230,6 @@ export default mixins(workflowHelpers).extend({
 
 			.button {
 				margin-left: 10px;
-
-				button {
-					font-size: var(--font-size-s);
-				}
 			}
 		}
 

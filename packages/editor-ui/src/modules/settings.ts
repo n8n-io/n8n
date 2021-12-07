@@ -82,7 +82,7 @@ const module: Module<ISettingsState, IRootState> = {
 			try {
 				const promptsData: IN8nPrompts = await getPromptsData(context.state.settings.instanceId);
 
-				if (promptsData && promptsData.showPrompt) {
+				if (promptsData && promptsData.showContactPrompt) {
 					context.commit('ui/openModal', CONTACT_PROMPT_MODAL_KEY, {root: true});
 				} else if (promptsData && promptsData.showValueSurvey) {
 					context.commit('ui/openModal', VALUE_SURVEY_MODAL_KEY, {root: true});
@@ -90,21 +90,21 @@ const module: Module<ISettingsState, IRootState> = {
 
 				context.commit('setPromptsData', promptsData);
 			} catch (e) {
-				return;
+				return e;
 			}
 		},
 		async submitContactInfo(context: ActionContext<ISettingsState, IRootState>, email: string) {
 			try {
 				return await submitContactInfo(context.state.settings.instanceId, email);
 			} catch (e) {
-				return;
+				return e;
 			}
 		},
 		async submitValueSurvey(context: ActionContext<ISettingsState, IRootState>, params: IN8nValueSurveyData) {
 			try {
 				return await submitValueSurvey(context.state.settings.instanceId, params);
 			} catch (e) {
-				return;
+				return e;
 			}
 		},
 	},

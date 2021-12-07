@@ -326,6 +326,9 @@ export default mixins(
 				this.$store.commit('setWorkflowExecutionData', null);
 				this.updateNodesExecutionIssues();
 			},
+			fetchPromptsData () {
+				this.$store.dispatch('settings/fetchPromptsData');
+			},
 			openNodeCreator (source: string) {
 				this.createNodeActive = true;
 				this.$externalHooks().run('nodeView.createNodeActiveChanged', { source, createNodeActive: this.createNodeActive });
@@ -641,7 +644,7 @@ export default mixins(
 					}
 
 					this.callDebounced('saveCurrentWorkflow', 1000, undefined, true);
-					this.$store.dispatch('settings/fetchPromptsData');
+					this.callDebounced('fetchPromptsData', 1000);
 				} else if (e.key === 'Enter') {
 					// Activate the last selected node
 					const lastSelectedNode = this.lastSelectedNode;

@@ -15,7 +15,9 @@
 			<div :class="$style.description">
 				<n8n-text size="medium" color="text-base">{{ description }}</n8n-text>
 			</div>
-			<n8n-input v-model="email" placeholder="Your email address" />
+			<div @keyup.enter="send">
+				<n8n-input v-model="email" placeholder="Your email address" />
+			</div>
 			<div :class="$style.disclaimer">
 				<n8n-text size="small" color="text-base"
 					>David from our product team will get in touch personally.</n8n-text
@@ -74,12 +76,10 @@ export default mixins(workflowHelpers).extend({
 	},
 	methods: {
 		closeDialog(): void {
-			if (!this.isEmailValid) {
-				this.$telemetry.track('User closed email modal', {
-					instance_id: this.$store.getters.instanceId,
-					email: null,
-				});
-			}
+			this.$telemetry.track('User closed email modal', {
+				instance_id: this.$store.getters.instanceId,
+				email: null,
+			});
 			this.$store.commit('ui/closeTopModal');
 		},
 		send(): void {
@@ -99,8 +99,8 @@ export default mixins(workflowHelpers).extend({
 							});
 						}
 					});
+				this.closeDialog();
 			}
-			this.closeDialog();
 		},
 	},
 });
