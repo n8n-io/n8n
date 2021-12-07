@@ -351,12 +351,14 @@ export class Jenkins implements INodeType {
 				},
 				required: true,
 				default: 1,
-				description: 'String depth parameter',
+				description: '',
 			},
 			{
-				displayName: 'Tree',
-				name: 'tree',
-				type: 'string',
+				displayName: 'Filters',
+				name: 'filters',
+				type: 'collection',
+				placeholder: 'Add Field',
+				default: {},
 				displayOptions: {
 					show: {
 						resource: [
@@ -367,45 +369,29 @@ export class Jenkins implements INodeType {
 						],
 					},
 				},
-				required: false,
-				default: '',
-				description: 'String tree parameter',
-			},
-			{
-				displayName: 'Xpath',
-				name: 'xpath',
-				type: 'string',
-				displayOptions: {
-					show: {
-						resource: [
-							'build',
-						],
-						operation: [
-							'build:getAll',
-						],
+				options: [
+					{
+						displayName: 'Tree',
+						name: 'tree',
+						type: 'string',
+						default: '',
+						description: 'String tree parameter',
 					},
-				},
-				required: false,
-				default: '',
-				description: 'String xpath parameter',
-			},
-			{
-				displayName: 'Exclude',
-				name: 'exclude',
-				type: 'string',
-				displayOptions: {
-					show: {
-						resource: [
-							'build',
-						],
-						operation: [
-							'build:getAll',
-						],
+					{
+						displayName: 'Xpath',
+						name: 'xpath',
+						type: 'string',
+						default: '',
+						description: 'String xpath parameter',
 					},
-				},
-				required: false,
-				default: '',
-				description: 'String exclude parameter',
+					{
+						displayName: 'Exclude',
+						name: 'exclude',
+						type: 'string',
+						default: '',
+						description: 'String exclude parameter',
+					},
+				],
 			},
 		],
 	};
@@ -478,7 +464,6 @@ export class Jenkins implements INodeType {
 								return body;
 							}, {});
 						}
-						console.log(body);
 						const endpoint = `${baseUrl}/job/${job}/buildWithParameters?token=${token}`;
 						responseData = await jenkinsApiRequest.call(this, 'get', endpoint, {}, {}, { data: body });
 					}
@@ -504,7 +489,6 @@ export class Jenkins implements INodeType {
 						};
 
 						const body = this.getNodeParameter('xml', i) as string;
-
 
 						const endpoint = `${baseUrl}/createItem`;
 						responseData = await jenkinsApiRequest.call(this, 'post', endpoint, queryParams, headers, body);
@@ -549,15 +533,18 @@ export class Jenkins implements INodeType {
 					if (operation === 'build:getAll') {
 						const endpoint = `${baseUrl}/api/xml`;
 						const depth = this.getNodeParameter('depth', i) as number;
-						const tree = this.getNodeParameter('tree', i) as string ;
-						const xpath = this.getNodeParameter('xpath', i) as string;
-						const exclude = this.getNodeParameter('exclude', i) as string;
+
+						const filters = this.getNodeParameter('filters', i) as IDataObject;
+
+						const tree = filters.tree as string ;
+						const xpath = filters.xpath as string;
+						const exclude = filters.exclude as string;
 
 						const queryParams = {
 							depth,
-							tree: tree.length? tree : undefined,
-							xpath: xpath.length? xpath : undefined,
-							exclude: exclude.length? exclude : undefined,
+							tree,
+							xpath,
+							exclude,
 						};
 
 						const response = await jenkinsApiRequest.call(this, 'get', endpoint, queryParams);
