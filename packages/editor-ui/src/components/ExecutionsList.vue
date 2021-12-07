@@ -1,13 +1,13 @@
 <template>
 	<span>
-		<el-dialog :visible="dialogVisible" append-to-body width="80%" :title="`${$i18n2.baseText('executionsList.workflowExecutions')} ${combinedExecutions.length}/${finishedExecutionsCountEstimated === true ? '~' : ''}${combinedExecutionsCount}`" :before-close="closeDialog">
+		<el-dialog :visible="dialogVisible" append-to-body width="80%" :title="`${$i.baseText('executionsList.workflowExecutions')} ${combinedExecutions.length}/${finishedExecutionsCountEstimated === true ? '~' : ''}${combinedExecutionsCount}`" :before-close="closeDialog">
 			<div class="filters">
 				<el-row>
 					<el-col :span="2" class="filter-headline">
-						{{ $i18n2.baseText('executionsList.filters') }}:
+						{{ $i.baseText('executionsList.filters') }}:
 					</el-col>
 					<el-col :span="7">
-						<n8n-select v-model="filter.workflowId" :placeholder="$i18n2.baseText('executionsList.selectWorkflow')" size="medium" filterable @change="handleFilterChanged">
+						<n8n-select v-model="filter.workflowId" :placeholder="$i.baseText('executionsList.selectWorkflow')" size="medium" filterable @change="handleFilterChanged">
 							<n8n-option
 								v-for="item in workflows"
 								:key="item.id"
@@ -17,7 +17,7 @@
 						</n8n-select>
 					</el-col>
 					<el-col :span="5" :offset="1">
-						<n8n-select v-model="filter.status" :placeholder="$i18n2.baseText('executionsList.selectStatus')" size="medium" filterable @change="handleFilterChanged">
+						<n8n-select v-model="filter.status" :placeholder="$i.baseText('executionsList.selectStatus')" size="medium" filterable @change="handleFilterChanged">
 							<n8n-option
 								v-for="item in statuses"
 								:key="item.id"
@@ -27,15 +27,15 @@
 						</n8n-select>
 					</el-col>
 					<el-col :span="4" :offset="5" class="autorefresh">
-						<el-checkbox v-model="autoRefresh" @change="handleAutoRefreshToggle">{{ $i18n2.baseText('executionsList.autoRefresh') }}</el-checkbox>
+						<el-checkbox v-model="autoRefresh" @change="handleAutoRefreshToggle">{{ $i.baseText('executionsList.autoRefresh') }}</el-checkbox>
 					</el-col>
 				</el-row>
 			</div>
 
 			<div class="selection-options">
 				<span v-if="checkAll === true || isIndeterminate === true">
-					{{ $i18n2.baseText('executionsList.selected') }}: {{numSelected}} / <span v-if="finishedExecutionsCountEstimated === true">~</span>{{finishedExecutionsCount}}
-					<n8n-icon-button :title="$i18n2.baseText('executionsList.deleteSelected')" icon="trash" size="mini" @click="handleDeleteSelected" />
+					{{ $i.baseText('executionsList.selected') }}: {{numSelected}} / <span v-if="finishedExecutionsCountEstimated === true">~</span>{{finishedExecutionsCount}}
+					<n8n-icon-button :title="$i.baseText('executionsList.deleteSelected')" icon="trash" size="mini" @click="handleDeleteSelected" />
 				</span>
 			</div>
 
@@ -49,45 +49,45 @@
 						<el-checkbox v-if="scope.row.stoppedAt !== undefined && scope.row.id" :value="selectedItems[scope.row.id.toString()] || checkAll" @change="handleCheckboxChanged(scope.row.id)" label=" "></el-checkbox>
 					</template>
 				</el-table-column>
-				<el-table-column property="startedAt" :label="$i18n2.baseText('executionsList.startedAtId')" width="205">
+				<el-table-column property="startedAt" :label="$i.baseText('executionsList.startedAtId')" width="205">
 					<template slot-scope="scope">
 						{{convertToDisplayDate(scope.row.startedAt)}}<br />
 						<small v-if="scope.row.id">ID: {{scope.row.id}}</small>
 					</template>
 				</el-table-column>
-				<el-table-column property="workflowName" :label="$i18n2.baseText('executionsList.name')">
+				<el-table-column property="workflowName" :label="$i.baseText('executionsList.name')">
 					<template slot-scope="scope">
 						<span class="workflow-name">
-							{{ scope.row.workflowName || $i18n2.baseText('executionsList.unsavedWorkflow') }}
+							{{ scope.row.workflowName || $i.baseText('executionsList.unsavedWorkflow') }}
 						</span>
 
 						<span v-if="scope.row.stoppedAt === undefined">
-							({{ $i18n2.baseText('executionsList.running') }})
+							({{ $i.baseText('executionsList.running') }})
 						</span>
 						<span v-if="scope.row.retryOf !== undefined">
-							<br /><small>{{ $i18n2.baseText('executionsList.retryOf') }} "{{scope.row.retryOf}}"</small>
+							<br /><small>{{ $i.baseText('executionsList.retryOf') }} "{{scope.row.retryOf}}"</small>
 						</span>
 						<span v-else-if="scope.row.retrySuccessId !== undefined">
-							<br /><small>{{ $i18n2.baseText('executionsList.successRetry') }} "{{scope.row.retrySuccessId}}"</small>
+							<br /><small>{{ $i.baseText('executionsList.successRetry') }} "{{scope.row.retrySuccessId}}"</small>
 						</span>
 					</template>
 				</el-table-column>
-				<el-table-column :label="$i18n2.baseText('executionsList.status')" width="122" align="center">
+				<el-table-column :label="$i.baseText('executionsList.status')" width="122" align="center">
 					<template slot-scope="scope" align="center">
 
 						<n8n-tooltip placement="top" >
 							<div slot="content" v-html="statusTooltipText(scope.row)"></div>
 							<span class="status-badge running" v-if="scope.row.stoppedAt === undefined">
-								{{ $i18n2.baseText('executionsList.running') }}
+								{{ $i.baseText('executionsList.running') }}
 							</span>
 							<span class="status-badge success" v-else-if="scope.row.finished">
-								{{ $i18n2.baseText('executionsList.success') }}
+								{{ $i.baseText('executionsList.success') }}
 							</span>
 							<span class="status-badge error" v-else-if="scope.row.stoppedAt !== null">
-								{{ $i18n2.baseText('executionsList.error') }}
+								{{ $i.baseText('executionsList.error') }}
 							</span>
 							<span class="status-badge warning" v-else>
-								{{ $i18n2.baseText('executionsList.unknown') }}
+								{{ $i.baseText('executionsList.unknown') }}
 							</span>
 						</n8n-tooltip>
 
@@ -98,28 +98,28 @@
 									 type="light"
 									 :theme="scope.row.stoppedAt === null ? 'warning': 'danger'"
 									 size="mini"
-									 :title="$i18n2.baseText('executionsList.retryExecution')"
+									 :title="$i.baseText('executionsList.retryExecution')"
 									 icon="redo"
 								/>
 							</span>
 							<el-dropdown-menu slot="dropdown">
 								<el-dropdown-item :command="{command: 'currentlySaved', row: scope.row}">
-									{{ $i18n2.baseText('executionsList.retryWithCurrentlySavedWorkflow') }}
+									{{ $i.baseText('executionsList.retryWithCurrentlySavedWorkflow') }}
 								</el-dropdown-item>
 								<el-dropdown-item :command="{command: 'original', row: scope.row}">
-									{{ $i18n2.baseText('executionsList.retryWithOriginalworkflow') }}
+									{{ $i.baseText('executionsList.retryWithOriginalworkflow') }}
 								</el-dropdown-item>
 							</el-dropdown-menu>
 						</el-dropdown>
 
 					</template>
 				</el-table-column>
-				<el-table-column property="mode" :label="$i18n2.baseText('executionsList.mode')" width="100" align="center">
+				<el-table-column property="mode" :label="$i.baseText('executionsList.mode')" width="100" align="center">
 					<template slot-scope="scope">
-						{{ $i18n2.baseText(`executionsList.modes.${scope.row.mode}`) }}
+						{{ $i.baseText(`executionsList.modes.${scope.row.mode}`) }}
 					</template>
 				</el-table-column>
-				<el-table-column :label="$i18n2.baseText('executionsList.runningTime')" width="150" align="center">
+				<el-table-column :label="$i.baseText('executionsList.runningTime')" width="150" align="center">
 					<template slot-scope="scope">
 						<span v-if="scope.row.stoppedAt === undefined">
 							<font-awesome-icon icon="spinner" spin />
@@ -138,10 +138,10 @@
 					<template slot-scope="scope">
 						<div class="actions-container">
 							<span v-if="scope.row.stoppedAt === undefined || scope.row.waitTill">
-								<n8n-icon-button icon="stop" size="small" :title="$i18n2.baseText('executionsList.stopExecution')" @click.stop="stopExecution(scope.row.id)" :loading="stoppingExecutions.includes(scope.row.id)" />
+								<n8n-icon-button icon="stop" size="small" :title="$i.baseText('executionsList.stopExecution')" @click.stop="stopExecution(scope.row.id)" :loading="stoppingExecutions.includes(scope.row.id)" />
 							</span>
 							<span v-if="scope.row.stoppedAt !== undefined && scope.row.id" >
-								<n8n-icon-button icon="folder-open" size="small" :title="$i18n2.baseText('executionsList.openPastExecution')" @click.stop="(e) => displayExecution(scope.row, e)" />
+								<n8n-icon-button icon="folder-open" size="small" :title="$i.baseText('executionsList.openPastExecution')" @click.stop="(e) => displayExecution(scope.row, e)" />
 							</span>
 						</div>
 					</template>
@@ -149,7 +149,7 @@
 			</el-table>
 
 			<div class="load-more" v-if="finishedExecutionsCount > finishedExecutions.length || finishedExecutionsCountEstimated === true">
-				<n8n-button icon="sync" :title="$i18n2.baseText('executionsList.loadMore')" :label="$i18n2.baseText('executionsList.loadMore')" @click="loadMore()" :loading="isDataLoading" />
+				<n8n-button icon="sync" :title="$i.baseText('executionsList.loadMore')" :label="$i.baseText('executionsList.loadMore')" @click="loadMore()" :loading="isDataLoading" />
 			</div>
 
 		</el-dialog>
@@ -235,23 +235,23 @@ export default mixins(
 			return [
 				{
 					id: 'ALL',
-					name: this.$i18n2.baseText('executionsList.anyStatus'),
+					name: this.$i.baseText('executionsList.anyStatus'),
 				},
 				{
 					id: 'error',
-					name: this.$i18n2.baseText('executionsList.error'),
+					name: this.$i.baseText('executionsList.error'),
 				},
 				{
 					id: 'running',
-					name: this.$i18n2.baseText('executionsList.running'),
+					name: this.$i.baseText('executionsList.running'),
 				},
 				{
 					id: 'success',
-					name: this.$i18n2.baseText('executionsList.success'),
+					name: this.$i.baseText('executionsList.success'),
 				},
 				{
 					id: 'waiting',
-					name: this.$i18n2.baseText('executionsList.waiting'),
+					name: this.$i.baseText('executionsList.waiting'),
 				},
 			];
 		},
@@ -369,14 +369,14 @@ export default mixins(
 		},
 		async handleDeleteSelected () {
 			const deleteExecutions = await this.confirmMessage(
-				this.$i18n2.baseText(
+				this.$i.baseText(
 					'executionsList.confirmMessage.message',
 					{ interpolate: { numSelected: this.numSelected.toString() }},
 				),
-				this.$i18n2.baseText('executionsList.confirmMessage.headline'),
+				this.$i.baseText('executionsList.confirmMessage.headline'),
 				'warning',
-				this.$i18n2.baseText('executionsList.confirmMessage.confirmButtonText'),
-				this.$i18n2.baseText('executionsList.confirmMessage.cancelButtonText'),
+				this.$i.baseText('executionsList.confirmMessage.confirmButtonText'),
+				this.$i.baseText('executionsList.confirmMessage.cancelButtonText'),
 			);
 
 			if (deleteExecutions === false) {
@@ -400,8 +400,8 @@ export default mixins(
 				this.isDataLoading = false;
 				this.$showError(
 					error,
-					this.$i18n2.baseText('executionsList.showError.handleDeleteSelected.title'),
-					this.$i18n2.baseText('executionsList.showError.handleDeleteSelected.message'),
+					this.$i.baseText('executionsList.showError.handleDeleteSelected.title'),
+					this.$i.baseText('executionsList.showError.handleDeleteSelected.message'),
 				);
 
 				return;
@@ -409,8 +409,8 @@ export default mixins(
 			this.isDataLoading = false;
 
 			this.$showMessage({
-				title: this.$i18n2.baseText('executionsList.showMessage.handleDeleteSelected.title'),
-				message: this.$i18n2.baseText('executionsList.showMessage.handleDeleteSelected.message'),
+				title: this.$i.baseText('executionsList.showMessage.handleDeleteSelected.title'),
+				message: this.$i.baseText('executionsList.showMessage.handleDeleteSelected.message'),
 				type: 'success',
 			});
 
@@ -563,8 +563,8 @@ export default mixins(
 				this.isDataLoading = false;
 				this.$showError(
 					error,
-					this.$i18n2.baseText('executionsList.showError.loadMore.title'),
-					this.$i18n2.baseText('executionsList.showError.loadMore.message') + ':',
+					this.$i.baseText('executionsList.showError.loadMore.title'),
+					this.$i.baseText('executionsList.showError.loadMore.message') + ':',
 				);
 				return;
 			}
@@ -596,15 +596,15 @@ export default mixins(
 				// @ts-ignore
 				workflows.unshift({
 					id: 'ALL',
-					name: this.$i18n2.baseText('executionsList.allWorkflows'),
+					name: this.$i.baseText('executionsList.allWorkflows'),
 				});
 
 				Vue.set(this, 'workflows', workflows);
 			} catch (error) {
 				this.$showError(
 					error,
-					this.$i18n2.baseText('executionsList.showError.loadWorkflows.title'),
-					this.$i18n2.baseText('executionsList.showError.loadWorkflows.message') + ':',
+					this.$i.baseText('executionsList.showError.loadWorkflows.title'),
+					this.$i.baseText('executionsList.showError.loadWorkflows.message') + ':',
 				);
 			}
 		},
@@ -628,14 +628,14 @@ export default mixins(
 
 				if (retrySuccessful === true) {
 					this.$showMessage({
-						title: this.$i18n2.baseText('executionsList.showMessage.retrySuccessfulTrue.title'),
-						message: this.$i18n2.baseText('executionsList.showMessage.retrySuccessfulTrue.message'),
+						title: this.$i.baseText('executionsList.showMessage.retrySuccessfulTrue.title'),
+						message: this.$i.baseText('executionsList.showMessage.retrySuccessfulTrue.message'),
 						type: 'success',
 					});
 				} else {
 					this.$showMessage({
-						title: this.$i18n2.baseText('executionsList.showMessage.retrySuccessfulFalse.title'),
-						message: this.$i18n2.baseText('executionsList.showMessage.retrySuccessfulFalse.message'),
+						title: this.$i.baseText('executionsList.showMessage.retrySuccessfulFalse.title'),
+						message: this.$i.baseText('executionsList.showMessage.retrySuccessfulFalse.message'),
 						type: 'error',
 					});
 				}
@@ -644,8 +644,8 @@ export default mixins(
 			} catch (error) {
 				this.$showError(
 					error,
-					this.$i18n2.baseText('executionsList.showError.retryExecution.title'),
-					this.$i18n2.baseText('executionsList.showError.retryExecution.message') + ':',
+					this.$i.baseText('executionsList.showError.retryExecution.title'),
+					this.$i.baseText('executionsList.showError.retryExecution.message') + ':',
 				);
 
 				this.isDataLoading = false;
@@ -661,8 +661,8 @@ export default mixins(
 			} catch (error) {
 				this.$showError(
 					error,
-					this.$i18n2.baseText('executionsList.showError.refreshData.title'),
-					this.$i18n2.baseText('executionsList.showError.refreshData.message') + ':',
+					this.$i.baseText('executionsList.showError.refreshData.title'),
+					this.$i.baseText('executionsList.showError.refreshData.message') + ':',
 				);
 			}
 
@@ -672,10 +672,10 @@ export default mixins(
 			if (entry.waitTill) {
 				const waitDate = new Date(entry.waitTill);
 				if (waitDate.toISOString() === WAIT_TIME_UNLIMITED) {
-					return this.$i18n2.baseText('executionsList.statusTooltipText.theWorkflowIsWaitingIndefinitely');
+					return this.$i.baseText('executionsList.statusTooltipText.theWorkflowIsWaitingIndefinitely');
 				}
 
-				return this.$i18n2.baseText(
+				return this.$i.baseText(
 					'executionsList.statusTooltipText.theWorkflowIsWaitingTill',
 					{
 						interpolate: {
@@ -685,28 +685,28 @@ export default mixins(
 					},
 				);
 			} else if (entry.stoppedAt === undefined) {
-				return this.$i18n2.baseText('executionsList.statusTooltipText.theWorkflowIsCurrentlyExecuting');
+				return this.$i.baseText('executionsList.statusTooltipText.theWorkflowIsCurrentlyExecuting');
 			} else if (entry.finished === true && entry.retryOf !== undefined) {
-				return this.$i18n2.baseText(
+				return this.$i.baseText(
 					'executionsList.statusTooltipText.theWorkflowExecutionWasARetryOfAndItWasSuccessful',
 					{ interpolate: { entryRetryOf: entry.retryOf }},
 				);
 			} else if (entry.finished === true) {
-				return this.$i18n2.baseText('executionsList.statusTooltipText.theWorkflowExecutionWasSuccessful');
+				return this.$i.baseText('executionsList.statusTooltipText.theWorkflowExecutionWasSuccessful');
 			} else if (entry.retryOf !== undefined) {
-				return this.$i18n2.baseText(
+				return this.$i.baseText(
 					'executionsList.statusTooltipText.theWorkflowExecutionWasARetryOfAndFailed',
 					{ interpolate: { entryRetryOf: entry.retryOf }},
 				);
 			} else if (entry.retrySuccessId !== undefined) {
-				return this.$i18n2.baseText(
+				return this.$i.baseText(
 					'executionsList.statusTooltipText.theWorkflowExecutionFailedButTheRetryWasSuccessful',
 					{ interpolate: { entryRetrySuccessId: entry.retrySuccessId }},
 				);
 			} else if (entry.stoppedAt === null) {
-				return this.$i18n2.baseText('executionsList.statusTooltipText.theWorkflowExecutionIsProbablyStillRunning');
+				return this.$i.baseText('executionsList.statusTooltipText.theWorkflowExecutionIsProbablyStillRunning');
 			} else {
-				return this.$i18n2.baseText('executionsList.statusTooltipText.theWorkflowExecutionFailed');
+				return this.$i.baseText('executionsList.statusTooltipText.theWorkflowExecutionFailed');
 			}
 		},
 		async stopExecution (activeExecutionId: string) {
@@ -722,8 +722,8 @@ export default mixins(
 				this.stoppingExecutions.splice(index, 1);
 
 				this.$showMessage({
-					title: this.$i18n2.baseText('executionsList.showMessage.stopExecution.title'),
-					message: this.$i18n2.baseText(
+					title: this.$i.baseText('executionsList.showMessage.stopExecution.title'),
+					message: this.$i.baseText(
 						'executionsList.showMessage.stopExecution.message',
 						{ interpolate: { activeExecutionId } },
 					),
@@ -734,8 +734,8 @@ export default mixins(
 			} catch (error) {
 				this.$showError(
 					error,
-					this.$i18n2.baseText('executionsList.showError.stopExecution.title'),
-					this.$i18n2.baseText('executionsList.showError.stopExecution.message'),
+					this.$i.baseText('executionsList.showError.stopExecution.title'),
+					this.$i.baseText('executionsList.showError.stopExecution.message'),
 				);
 			}
 		},

@@ -5,7 +5,7 @@
 		</div>
 		<div class="text">
 			<input
-				:placeholder="$i18n2.baseText('nodeCreator.searchBar.searchNodes')"
+				:placeholder="$i.baseText('nodeCreator.searchBar.searchNodes')"
 				ref="input"
 				:value="value"
 				@input="onInput"

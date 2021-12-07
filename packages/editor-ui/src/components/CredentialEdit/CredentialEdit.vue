@@ -25,7 +25,7 @@
 					<n8n-icon-button
 						v-if="currentCredential"
 						size="small"
-						:title="$i18n2.baseText('credentialEdit.credentialEdit.delete')"
+						:title="$i.baseText('credentialEdit.credentialEdit.delete')"
 						icon="trash"
 						type="text"
 						:disabled="isSaving"
@@ -37,8 +37,8 @@
 						:saved="!hasUnsavedChanges && !isTesting"
 						:isSaving="isSaving || isTesting"
 						:savingLabel="isTesting
-							? $i18n2.baseText('credentialEdit.credentialEdit.testing')
-							: $i18n2.baseText('credentialEdit.credentialEdit.saving')"
+							? $i.baseText('credentialEdit.credentialEdit.testing')
+							: $i.baseText('credentialEdit.credentialEdit.saving')"
 						@click="saveCredential"
 					/>
 				</div>
@@ -55,10 +55,10 @@
 						:light="true"
 					>
 						<n8n-menu-item index="connection" :class="$style.credTab"
-							><span slot="title">{{ $i18n2.baseText('credentialEdit.credentialEdit.connection') }}</span></n8n-menu-item
+							><span slot="title">{{ $i.baseText('credentialEdit.credentialEdit.connection') }}</span></n8n-menu-item
 						>
 						<n8n-menu-item index="details" :class="$style.credTab"
-							><span slot="title">{{ $i18n2.baseText('credentialEdit.credentialEdit.details') }}</span></n8n-menu-item
+							><span slot="title">{{ $i.baseText('credentialEdit.credentialEdit.details') }}</span></n8n-menu-item
 						>
 					</n8n-menu>
 				</div>
@@ -351,20 +351,20 @@ export default mixins(showMessage, nodeHelpers).extend({
 			if (this.hasUnsavedChanges) {
 				const displayName = this.credentialType ? this.credentialType.displayName : '';
 				keepEditing = await this.confirmMessage(
-					this.$i18n2.baseText('credentialEdit.credentialEdit.confirmMessage.beforeClose1.message', { interpolate: { credentialDisplayName: displayName } }),
-					this.$i18n2.baseText('credentialEdit.credentialEdit.confirmMessage.beforeClose1.headline'),
+					this.$i.baseText('credentialEdit.credentialEdit.confirmMessage.beforeClose1.message', { interpolate: { credentialDisplayName: displayName } }),
+					this.$i.baseText('credentialEdit.credentialEdit.confirmMessage.beforeClose1.headline'),
 					null,
-					this.$i18n2.baseText('credentialEdit.credentialEdit.confirmMessage.beforeClose1.cancelButtonText'),
-					this.$i18n2.baseText('credentialEdit.credentialEdit.confirmMessage.beforeClose1.confirmButtonText'),
+					this.$i.baseText('credentialEdit.credentialEdit.confirmMessage.beforeClose1.cancelButtonText'),
+					this.$i.baseText('credentialEdit.credentialEdit.confirmMessage.beforeClose1.confirmButtonText'),
 				);
 			}
 			else if (this.isOAuthType && !this.isOAuthConnected) {
 				keepEditing = await this.confirmMessage(
-					this.$i18n2.baseText('credentialEdit.credentialEdit.confirmMessage.beforeClose2.message'),
-					this.$i18n2.baseText('credentialEdit.credentialEdit.confirmMessage.beforeClose2.headline'),
+					this.$i.baseText('credentialEdit.credentialEdit.confirmMessage.beforeClose2.message'),
+					this.$i.baseText('credentialEdit.credentialEdit.confirmMessage.beforeClose2.headline'),
 					null,
-					this.$i18n2.baseText('credentialEdit.credentialEdit.confirmMessage.beforeClose2.cancelButtonText'),
-					this.$i18n2.baseText('credentialEdit.credentialEdit.confirmMessage.beforeClose2.confirmButtonText'),
+					this.$i.baseText('credentialEdit.credentialEdit.confirmMessage.beforeClose2.cancelButtonText'),
+					this.$i.baseText('credentialEdit.credentialEdit.confirmMessage.beforeClose2.confirmButtonText'),
 				);
 			}
 
@@ -403,7 +403,7 @@ export default mixins(showMessage, nodeHelpers).extend({
 
 			if (!credentialsData) {
 				throw new Error(
-					this.$i18n2.baseText('credentialEdit.credentialEdit.couldNotFindCredentialOfType') + ':' + name,
+					this.$i.baseText('credentialEdit.credentialEdit.couldNotFindCredentialOfType') + ':' + name,
 				);
 			}
 
@@ -440,7 +440,7 @@ export default mixins(showMessage, nodeHelpers).extend({
 					});
 				if (!currentCredentials) {
 					throw new Error(
-						this.$i18n2.baseText('credentialEdit.credentialEdit.couldNotFindCredentialWithId') + ':' + this.credentialId,
+						this.$i.baseText('credentialEdit.credentialEdit.couldNotFindCredentialWithId') + ':' + this.credentialId,
 					);
 				}
 
@@ -455,8 +455,8 @@ export default mixins(showMessage, nodeHelpers).extend({
 			} catch (error) {
 				this.$showError(
 					error,
-					this.$i18n2.baseText('credentialEdit.credentialEdit.showError.loadCredential.title'),
-					this.$i18n2.baseText('credentialEdit.credentialEdit.showError.loadCredential.message'),
+					this.$i.baseText('credentialEdit.credentialEdit.showError.loadCredential.title'),
+					this.$i.baseText('credentialEdit.credentialEdit.showError.loadCredential.message'),
 				);
 				this.closeDialog();
 
@@ -661,8 +661,8 @@ export default mixins(showMessage, nodeHelpers).extend({
 			} catch (error) {
 				this.$showError(
 					error,
-					this.$i18n2.baseText('credentialEdit.credentialEdit.showError.createCredential.title'),
-					this.$i18n2.baseText('credentialEdit.credentialEdit.showError.createCredential.message'),
+					this.$i.baseText('credentialEdit.credentialEdit.showError.createCredential.title'),
+					this.$i.baseText('credentialEdit.credentialEdit.showError.createCredential.message'),
 				);
 
 				return null;
@@ -690,8 +690,8 @@ export default mixins(showMessage, nodeHelpers).extend({
 			} catch (error) {
 				this.$showError(
 					error,
-					this.$i18n2.baseText('credentialEdit.credentialEdit.showError.updateCredential.title'),
-					this.$i18n2.baseText('credentialEdit.credentialEdit.showError.updateCredential.message'),
+					this.$i.baseText('credentialEdit.credentialEdit.showError.updateCredential.title'),
+					this.$i.baseText('credentialEdit.credentialEdit.showError.updateCredential.message'),
 				);
 
 				return null;
@@ -712,10 +712,10 @@ export default mixins(showMessage, nodeHelpers).extend({
 			const savedCredentialName = this.currentCredential.name;
 
 			const deleteConfirmed = await this.confirmMessage(
-				this.$i18n2.baseText('credentialEdit.credentialEdit.confirmMessage.deleteCredential.message', { interpolate: { savedCredentialName } }),
-				this.$i18n2.baseText('credentialEdit.credentialEdit.confirmMessage.deleteCredential.headline'),
+				this.$i.baseText('credentialEdit.credentialEdit.confirmMessage.deleteCredential.message', { interpolate: { savedCredentialName } }),
+				this.$i.baseText('credentialEdit.credentialEdit.confirmMessage.deleteCredential.headline'),
 				null,
-				this.$i18n2.baseText('credentialEdit.credentialEdit.confirmMessage.deleteCredential.confirmButtonText'),
+				this.$i.baseText('credentialEdit.credentialEdit.confirmMessage.deleteCredential.confirmButtonText'),
 			);
 
 			if (deleteConfirmed === false) {
@@ -731,8 +731,8 @@ export default mixins(showMessage, nodeHelpers).extend({
 			} catch (error) {
 				this.$showError(
 					error,
-					this.$i18n2.baseText('credentialEdit.credentialEdit.showError.deleteCredential.title'),
-					this.$i18n2.baseText('credentialEdit.credentialEdit.showError.deleteCredential.message'),
+					this.$i.baseText('credentialEdit.credentialEdit.showError.deleteCredential.title'),
+					this.$i.baseText('credentialEdit.credentialEdit.showError.deleteCredential.message'),
 				);
 				this.isDeleting = false;
 
@@ -744,8 +744,8 @@ export default mixins(showMessage, nodeHelpers).extend({
 			this.updateNodesCredentialsIssues();
 
 			this.$showMessage({
-				title: this.$i18n2.baseText('credentialEdit.credentialEdit.showMessage.title'),
-				message: this.$i18n2.baseText(
+				title: this.$i.baseText('credentialEdit.credentialEdit.showMessage.title'),
+				message: this.$i.baseText(
 					'credentialEdit.credentialEdit.showMessage.message',
 					{ interpolate: { savedCredentialName } },
 				),
@@ -785,8 +785,8 @@ export default mixins(showMessage, nodeHelpers).extend({
 			} catch (error) {
 				this.$showError(
 					error,
-					this.$i18n2.baseText('credentialEdit.credentialEdit.showError.generateAuthorizationUrl.title'),
-					this.$i18n2.baseText('credentialEdit.credentialEdit.showError.generateAuthorizationUrl.message'),
+					this.$i.baseText('credentialEdit.credentialEdit.showError.generateAuthorizationUrl.title'),
+					this.$i.baseText('credentialEdit.credentialEdit.showError.generateAuthorizationUrl.message'),
 				);
 
 				return;

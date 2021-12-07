@@ -22,23 +22,23 @@ export const genericHelpers = mixins(showMessage).extend({
 		displayTimer (msPassed: number, showMs = false): string {
 			if (msPassed < 60000) {
 				if (showMs === false) {
-					return `${this.$n(Math.floor(msPassed / 1000), 'decimal')} ${this.$i18n2.baseText('genericHelpers.sec')}`;
+					return `${this.$n(Math.floor(msPassed / 1000), 'decimal')} ${this.$i.baseText('genericHelpers.sec')}`;
 				}
 
-				return `${this.$i18n2.number(msPassed / 1000, 'decimal')} ${this.$i18n2.baseText('genericHelpers.sec')}`;
+				return `${this.$i.number(msPassed / 1000, 'decimal')} ${this.$i.baseText('genericHelpers.sec')}`;
 			}
 
 			const secondsPassed = Math.floor(msPassed / 1000);
 			const minutesPassed = Math.floor(secondsPassed / 60);
 
-			return `${this.$i18n2.number(minutesPassed, 'decimal')}:${this.$i18n2.number(secondsPassed, 'decimal')} ${this.$i18n2.baseText('genericHelpers.min')}`;
+			return `${this.$i.number(minutesPassed, 'decimal')}:${this.$i.number(secondsPassed, 'decimal')} ${this.$i.baseText('genericHelpers.min')}`;
 		},
 		editAllowedCheck (): boolean {
 			if (this.isReadOnly) {
 				this.$showMessage({
 					// title: 'Workflow can not be changed!',
-					title: this.$i18n2.baseText('genericHelpers.showMessage.title'),
-					message: this.$i18n2.baseText('genericHelpers.showMessage.message'),
+					title: this.$i.baseText('genericHelpers.showMessage.title'),
+					message: this.$i.baseText('genericHelpers.showMessage.message'),
 					type: 'error',
 					duration: 0,
 				});
@@ -57,7 +57,7 @@ export const genericHelpers = mixins(showMessage).extend({
 			this.loadingService = this.$loading(
 				{
 					lock: true,
-					text: text || this.$i18n2.baseText('genericHelpers.loading'),
+					text: text || this.$i.baseText('genericHelpers.loading'),
 					spinner: 'el-icon-loading',
 					background: 'rgba(255, 255, 255, 0.8)',
 				},

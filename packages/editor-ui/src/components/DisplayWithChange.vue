@@ -1,12 +1,12 @@
 <template>
 	<span class="static-text-wrapper">
-		<span v-show="!editActive" :title="$i18n2.baseText('displayWithChange.clickToChange')">
+		<span v-show="!editActive" :title="$i.baseText('displayWithChange.clickToChange')">
 			<span class="static-text" @mousedown="startEdit">{{currentValue}}</span>
 		</span>
 		<span v-show="editActive">
 			<input class="edit-field" ref="inputField" type="text" v-model="newValue" @keydown.enter.stop.prevent="setValue" @keydown.escape.stop.prevent="cancelEdit" @keydown.stop="noOp" @blur="cancelEdit" />
-			<font-awesome-icon icon="times" @mousedown="cancelEdit" class="icons clickable" :title="$i18n2.baseText('displayWithChange.cancelEdit')" />
-			<font-awesome-icon icon="check" @mousedown="setValue" class="icons clickable" :title="$i18n2.baseText('displayWithChange.setValue')" />
+			<font-awesome-icon icon="times" @mousedown="cancelEdit" class="icons clickable" :title="$i.baseText('displayWithChange.cancelEdit')" />
+			<font-awesome-icon icon="check" @mousedown="setValue" class="icons clickable" :title="$i.baseText('displayWithChange.setValue')" />
 		</span>
 	</span>
 </template>
@@ -34,9 +34,9 @@ export default mixins(genericHelpers).extend({
 			};
 
 			if (this.keyName === 'name' && this.node.type.startsWith('n8n-nodes-base.')) {
-				const shortNodeType = this.$i18n2.shortNodeType(this.node.type);
+				const shortNodeType = this.$i.shortNodeType(this.node.type);
 
-				return this.$i18n2.headerText({
+				return this.$i.headerText({
 					key: `headers.${shortNodeType}.displayName`,
 					fallback: getDescendantProp(this.node, this.keyName),
 				});
