@@ -1,5 +1,4 @@
 import { IRestApiContext, IUser } from '@/Interface';
-import { faUsersSlash } from '@fortawesome/free-solid-svg-icons';
 import { IDataObject } from 'n8n-workflow';
 
 const users = [
@@ -95,6 +94,10 @@ const getRandomId = () =>  `${Math.floor(Math.random() * 10000000000 + 100)}`;
 
 if (!window.localStorage.getItem('mock.users.users')) {
 	window.localStorage.setItem('mock.users.users', JSON.stringify(users));
+}
+
+if (!window.localStorage.getItem('mock.users.currentUserId')) {
+	window.localStorage.setItem('mock.users.currentUserId', 'null');
 }
 
 function getAllUsers() {
