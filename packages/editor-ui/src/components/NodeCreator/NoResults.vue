@@ -41,11 +41,9 @@
 <script lang="ts">
 import { HTTP_REQUEST_NODE_TYPE, REQUEST_NODE_FORM_URL, WEBHOOK_NODE_TYPE } from '@/constants';
 import Vue from 'vue';
-import { renderText } from '../mixins/renderText';
-import mixins from 'vue-typed-mixins';
 import NoResultsIcon from './NoResultsIcon.vue';
 
-export default mixins(renderText).extend({
+export default Vue.extend({
 	name: 'NoResults',
 	components: {
 		NoResultsIcon,

@@ -14,7 +14,6 @@ import { externalHooks } from '@/components/mixins/externalHooks';
 import { restApi } from '@/components/mixins/restApi';
 import { workflowHelpers } from '@/components/mixins/workflowHelpers';
 import { showMessage } from '@/components/mixins/showMessage';
-import { renderText } from '@/components/mixins/renderText';
 
 import mixins from 'vue-typed-mixins';
 import { titleChange } from './titleChange';
@@ -22,7 +21,6 @@ import { titleChange } from './titleChange';
 export const workflowRun = mixins(
 	externalHooks,
 	restApi,
-	renderText,
 	workflowHelpers,
 	showMessage,
 	titleChange,

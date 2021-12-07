@@ -48,15 +48,13 @@ import TimeAgo from './TimeAgo.vue';
 import Badge from './Badge.vue';
 import WarningTooltip from './WarningTooltip.vue';
 import { IVersionNode } from '@/Interface';
-import { renderText } from './mixins/renderText';
-import mixins from 'vue-typed-mixins';
 
 Vue.component('NodeIcon', NodeIcon);
 Vue.component('TimeAgo', TimeAgo);
 Vue.component('Badge', Badge);
 Vue.component('WarningTooltip', WarningTooltip);
 
-export default mixins(renderText).extend({
+export default Vue.extend({
 	components: { NodeIcon, TimeAgo, Badge, WarningTooltip },
 	name: 'VersionCard',
 	props: ['version'],

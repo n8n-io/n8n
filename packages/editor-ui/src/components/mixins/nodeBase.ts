@@ -12,12 +12,10 @@ import {
 	INodeTypeDescription,
 } from 'n8n-workflow';
 import { getStyleTokenValue } from '../helpers';
-import { renderText } from './renderText';
 
 export const nodeBase = mixins(
 	deviceSupportHelpers,
 	nodeIndex,
-	renderText,
 ).extend({
 	mounted () {
 		// Initialize the node

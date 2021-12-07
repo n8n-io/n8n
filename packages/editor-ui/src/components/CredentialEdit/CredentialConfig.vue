@@ -80,12 +80,11 @@ import Banner from '../Banner.vue';
 import CopyInput from '../CopyInput.vue';
 import CredentialInputs from './CredentialInputs.vue';
 import OauthButton from './OauthButton.vue';
-import { renderText } from '../mixins/renderText';
 import { restApi } from '@/components/mixins/restApi';
 import { addNodeTranslation } from '@/i18n';
 import mixins from 'vue-typed-mixins';
 
-export default mixins(renderText, restApi).extend({
+export default mixins(restApi).extend({
 	name: 'CredentialConfig',
 	components: {
 		Banner,

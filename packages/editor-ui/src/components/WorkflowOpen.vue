@@ -67,12 +67,10 @@ import TagsDropdown from '@/components/TagsDropdown.vue';
 import WorkflowActivator from '@/components/WorkflowActivator.vue';
 import { convertToDisplayDate } from './helpers';
 import { WORKFLOW_OPEN_MODAL_KEY } from '../constants';
-import { renderText } from '@/components/mixins/renderText';
 
 export default mixins(
 	genericHelpers,
 	restApi,
-	renderText,
 	showMessage,
 	workflowHelpers,
 ).extend({

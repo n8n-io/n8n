@@ -58,13 +58,11 @@
 
 <script lang="ts">
 import Vue from 'vue';
-import { renderText } from '../mixins/renderText';
 
 import TimeAgo from '../TimeAgo.vue';
-import mixins from 'vue-typed-mixins';
 import { INodeTypeDescription } from 'n8n-workflow';
 
-export default mixins(renderText).extend({
+export default Vue.extend({
 	name: 'CredentialInfo',
 	props: ['nodesWithAccess', 'nodeAccess', 'currentCredential'],
 	components: {

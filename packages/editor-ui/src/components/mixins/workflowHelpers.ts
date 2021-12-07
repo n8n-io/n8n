@@ -45,17 +45,15 @@ import { externalHooks } from '@/components/mixins/externalHooks';
 import { restApi } from '@/components/mixins/restApi';
 import { nodeHelpers } from '@/components/mixins/nodeHelpers';
 import { showMessage } from '@/components/mixins/showMessage';
-import { renderText } from '@/components/mixins/renderText';
 
 import { isEqual } from 'lodash';
 
 import mixins from 'vue-typed-mixins';
-import { v4 as uuidv4} from 'uuid';
+import { v4 as uuidv4 } from 'uuid';
 
 export const workflowHelpers = mixins(
 	externalHooks,
 	nodeHelpers,
-	renderText,
 	restApi,
 	showMessage,
 )
