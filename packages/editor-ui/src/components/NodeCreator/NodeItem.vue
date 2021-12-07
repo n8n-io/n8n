@@ -4,7 +4,7 @@
 		<div>
 			<div :class="$style.details">
 				<span :class="$style.name">
-					{{ $headerText({
+					{{ $i18n2.headerText({
 							key: `headers.${shortNodeType}.displayName`,
 							fallback: nodeType.displayName,
 						})
@@ -15,7 +15,7 @@
 				</span>
 			</div>
 			<div :class="$style.description">
-				{{ $headerText({
+				{{ $i18n2.headerText({
 						key: `headers.${shortNodeType}.description`,
 						fallback: nodeType.description,
 					})
@@ -49,7 +49,7 @@ export default mixins(renderText).extend({
 	],
 	computed: {
 		shortNodeType() {
-			return this.$shortNodeType(this.nodeType.name);
+			return this.$i18n2.shortNodeType(this.nodeType.name);
 		},
 	},
 	// @ts-ignore

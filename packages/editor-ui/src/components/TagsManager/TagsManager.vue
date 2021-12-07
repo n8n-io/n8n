@@ -1,6 +1,6 @@
 <template>
 	<Modal
-		:title="$baseText('tagsManager.manageTags')"
+		:title="$i18n2.baseText('tagsManager.manageTags')"
 		:name="TAGS_MANAGER_MODAL_KEY"
 		:eventBus="modalBus"
 		@enter="onEnter"
@@ -25,7 +25,7 @@
 			</el-row>
 		</template>
 		<template v-slot:footer="{ close }">
-			<n8n-button :label="$baseText('tagsManager.done')" @click="close" float="right" />
+			<n8n-button :label="$i18n2.baseText('tagsManager.done')" @click="close" float="right" />
 		</template>
 	</Modal>
 </template>
@@ -88,7 +88,7 @@ export default mixins(renderText, showMessage).extend({
 			try {
 				if (!name) {
 					throw new Error(
-						this.$baseText('tagsManager.tagNameCannotBeEmpty'),
+						this.$i18n2.baseText('tagsManager.tagNameCannotBeEmpty'),
 					);
 				}
 
@@ -99,8 +99,8 @@ export default mixins(renderText, showMessage).extend({
 				const escapedName = escape(name);
 				this.$showError(
 					error,
-					this.$baseText('tagsManager.showError.onCreate.title'),
-					this.$baseText(
+					this.$i18n2.baseText('tagsManager.showError.onCreate.title'),
+					this.$i18n2.baseText(
 						'tagsManager.showError.onCreate.message',
 						{ interpolate: { escapedName } },
 					) + ':',
@@ -116,7 +116,7 @@ export default mixins(renderText, showMessage).extend({
 			try {
 				if (!name) {
 					throw new Error(
-						this.$baseText('tagsManager.tagNameCannotBeEmpty'),
+						this.$i18n2.baseText('tagsManager.tagNameCannotBeEmpty'),
 					);
 				}
 
@@ -132,8 +132,8 @@ export default mixins(renderText, showMessage).extend({
 				const escapedOldName = escape(oldName);
 
 				this.$showMessage({
-					title: this.$baseText('tagsManager.showMessage.onUpdate.title'),
-					message: this.$baseText(
+					title: this.$i18n2.baseText('tagsManager.showMessage.onUpdate.title'),
+					message: this.$i18n2.baseText(
 						'tagsManager.showMessage.onUpdate.message',
 						{ interpolate: { escapedName, escapedOldName } },
 					),
@@ -143,8 +143,8 @@ export default mixins(renderText, showMessage).extend({
 				const escapedName = escape(oldName);
 				this.$showError(
 					error,
-					this.$baseText('tagsManager.showError.onUpdate.title'),
-					this.$baseText(
+					this.$i18n2.baseText('tagsManager.showError.onUpdate.title'),
+					this.$i18n2.baseText(
 						'tagsManager.showError.onUpdate.message',
 						{ interpolate: { escapedName } },
 					) + ':',
@@ -161,7 +161,7 @@ export default mixins(renderText, showMessage).extend({
 				const deleted = await this.$store.dispatch("tags/delete", id);
 				if (!deleted) {
 					throw new Error(
-						this.$baseText('tagsManager.couldNotDeleteTag'),
+						this.$i18n2.baseText('tagsManager.couldNotDeleteTag'),
 					);
 				}
 
@@ -171,8 +171,8 @@ export default mixins(renderText, showMessage).extend({
 
 				const escapedName = escape(name);
 				this.$showMessage({
-					title: this.$baseText('tagsManager.showMessage.onDelete.title'),
-					message: this.$baseText(
+					title: this.$i18n2.baseText('tagsManager.showMessage.onDelete.title'),
+					message: this.$i18n2.baseText(
 						'tagsManager.showMessage.onDelete.message',
 						{ interpolate: { escapedName } },
 					),
@@ -182,8 +182,8 @@ export default mixins(renderText, showMessage).extend({
 				const escapedName = escape(name);
 				this.$showError(
 					error,
-					this.$baseText('tagsManager.showError.onDelete.title'),
-					this.$baseText(
+					this.$i18n2.baseText('tagsManager.showError.onDelete.title'),
+					this.$i18n2.baseText(
 						'tagsManager.showError.onDelete.message',
 						{ interpolate: { escapedName } },
 					) + ':',

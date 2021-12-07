@@ -1,6 +1,6 @@
 <template>
 	<span>
-		<el-dialog class="n8n-about" :visible="dialogVisible" append-to-body width="50%" :title="$baseText('about.aboutN8n')" :before-close="closeDialog">
+		<el-dialog class="n8n-about" :visible="dialogVisible" append-to-body width="50%" :title="$i18n2.baseText('about.aboutN8n')" :before-close="closeDialog">
 			<div>
 				<el-row>
 					<el-col :span="8" class="info-name">
@@ -30,7 +30,7 @@
 				</el-row>
 
 				<div class="action-buttons">
-					<n8n-button @click="closeDialog" :label="$baseText('about.close')" />
+					<n8n-button @click="closeDialog" :label="$i18n2.baseText('about.close')" />
 				</div>
 			</div>
 		</el-dialog>

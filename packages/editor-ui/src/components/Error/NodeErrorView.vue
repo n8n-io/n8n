@@ -1,18 +1,18 @@
 <template>
 	<div>
 		<div class="error-header">
-			<div class="error-message">{{ $baseText('nodeErrorView.error') + ':' + error.message }}</div>
+			<div class="error-message">{{ $i18n2.baseText('nodeErrorView.error') + ':' + error.message }}</div>
 			<div class="error-description" v-if="error.description">{{error.description}}</div>
 		</div>
 		<details>
 			<summary class="error-details__summary">
-				<font-awesome-icon class="error-details__icon" icon="angle-right" /> {{ $baseText('nodeErrorView.details') }}
+				<font-awesome-icon class="error-details__icon" icon="angle-right" /> {{ $i18n2.baseText('nodeErrorView.details') }}
 			</summary>
 			<div class="error-details__content">
 				<div v-if="error.timestamp">
 					<el-card class="box-card" shadow="never">
 						<div slot="header" class="clearfix box-card__title">
-							<span>{{ $baseText('nodeErrorView.time') }}</span>
+							<span>{{ $i18n2.baseText('nodeErrorView.time') }}</span>
 						</div>
 						<div>
 							{{new Date(error.timestamp).toLocaleString()}}
@@ -22,7 +22,7 @@
 				<div v-if="error.httpCode">
 					<el-card class="box-card" shadow="never">
 						<div slot="header" class="clearfix box-card__title">
-							<span>{{ $baseText('nodeErrorView.httpCode') }}</span>
+							<span>{{ $i18n2.baseText('nodeErrorView.httpCode') }}</span>
 						</div>
 						<div>
 							{{error.httpCode}}
@@ -32,13 +32,13 @@
 				<div v-if="error.cause">
 					<el-card class="box-card" shadow="never">
 						<div slot="header" class="clearfix box-card__title">
-							<span>{{ $baseText('nodeErrorView.cause') }}</span>
+							<span>{{ $i18n2.baseText('nodeErrorView.cause') }}</span>
 							<br>
-							<span class="box-card__subtitle">{{ $baseText('nodeErrorView.dataBelowMayContain') }}</span>
+							<span class="box-card__subtitle">{{ $i18n2.baseText('nodeErrorView.dataBelowMayContain') }}</span>
 						</div>
 						<div>
 							<div class="copy-button" v-if="displayCause">
-								<n8n-icon-button @click="copyCause" :title="$baseText('nodeErrorView.copyToClipboard')" icon="copy" />
+								<n8n-icon-button @click="copyCause" :title="$i18n2.baseText('nodeErrorView.copyToClipboard')" icon="copy" />
 							</div>
 							<vue-json-pretty
 								v-if="displayCause"
@@ -50,7 +50,7 @@
 								class="json-data"
 							/>
 							<span v-else>
-								<font-awesome-icon icon="info-circle" />{{ $baseText('nodeErrorView.theErrorCauseIsTooLargeToBeDisplayed') }}
+								<font-awesome-icon icon="info-circle" />{{ $i18n2.baseText('nodeErrorView.theErrorCauseIsTooLargeToBeDisplayed') }}
 							</span>
 						</div>
 					</el-card>
@@ -58,7 +58,7 @@
 				<div v-if="error.stack">
 					<el-card class="box-card" shadow="never">
 						<div slot="header" class="clearfix box-card__title">
-							<span>{{ $baseText('nodeErrorView.stack') }}</span>
+							<span>{{ $i18n2.baseText('nodeErrorView.stack') }}</span>
 						</div>
 						<div>
 							<pre><code>{{error.stack}}</code></pre>
@@ -105,8 +105,8 @@ export default mixins(
 		},
 		copySuccess() {
 			this.$showMessage({
-				title: this.$baseText('nodeErrorView.showMessage.title'),
-				message: this.$baseText('nodeErrorView.showMessage.message'),
+				title: this.$i18n2.baseText('nodeErrorView.showMessage.title'),
+				message: this.$i18n2.baseText('nodeErrorView.showMessage.message'),
 				type: 'info',
 			});
 		},

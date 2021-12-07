@@ -1,8 +1,8 @@
 <template>
 	<div @keydown.stop class="duplicate-parameter">
 		<n8n-input-label
-			:label="$nodeText.topParameterDisplayName(parameter)"
-			:tooltipText="$nodeText.topParameterDescription(parameter)"
+			:label="$i18n2.nodeText().topParameterDisplayName(parameter)"
+			:tooltipText="$i18n2.nodeText().topParameterDescription(parameter)"
 			:underline="true"
 			:labelHoverableOnly="true"
 			size="small"
@@ -10,10 +10,10 @@
 
 			<div v-for="(value, index) in values" :key="index" class="duplicate-parameter-item" :class="parameter.type">
 				<div class="delete-item clickable" v-if="!isReadOnly">
-					<font-awesome-icon icon="trash" :title="$baseText('multipleParameter.deleteItem')" @click="deleteItem(index)" />
+					<font-awesome-icon icon="trash" :title="$i18n2.baseText('multipleParameter.deleteItem')" @click="deleteItem(index)" />
 					<div v-if="sortable">
-						<font-awesome-icon v-if="index !== 0" icon="angle-up" class="clickable" :title="$baseText('multipleParameter.moveUp')" @click="moveOptionUp(index)" />
-						<font-awesome-icon v-if="index !== (values.length -1)" icon="angle-down" class="clickable" :title="$baseText('multipleParameter.moveDown')" @click="moveOptionDown(index)" />
+						<font-awesome-icon v-if="index !== 0" icon="angle-up" class="clickable" :title="$i18n2.baseText('multipleParameter.moveUp')" @click="moveOptionUp(index)" />
+						<font-awesome-icon v-if="index !== (values.length -1)" icon="angle-down" class="clickable" :title="$i18n2.baseText('multipleParameter.moveDown')" @click="moveOptionDown(index)" />
 					</div>
 				</div>
 				<div v-if="parameter.type === 'collection'">
@@ -26,7 +26,7 @@
 
 			<div class="add-item-wrapper">
 				<div v-if="values && Object.keys(values).length === 0 || isReadOnly" class="no-items-exist">
-					<n8n-text size="small">{{ $baseText('multipleParameter.currentlyNoItemsExist') }}</n8n-text>
+					<n8n-text size="small">{{ $i18n2.baseText('multipleParameter.currentlyNoItemsExist') }}</n8n-text>
 				</div>
 				<n8n-button v-if="!isReadOnly" fullWidth @click="addItem()" :label="addButtonText" />
 			</div>
@@ -68,10 +68,10 @@ export default mixins(genericHelpers)
 					!this.parameter.typeOptions &&
 					!this.parameter.typeOptions.multipleValueButtonText
 				) {
-					return this.$baseText('multipleParameter.addItem');
+					return this.$i18n2.baseText('multipleParameter.addItem');
 				}
 
-				return this.$nodeText.multipleValueButtonText(this.parameter);
+				return this.$i18n2.nodeText().multipleValueButtonText(this.parameter);
 			},
 			hideDelete (): boolean {
 				return this.parameter.options.length === 1;

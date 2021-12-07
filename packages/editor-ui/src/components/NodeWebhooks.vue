@@ -1,8 +1,8 @@
 <template>
 	<div v-if="webhooksNode.length" class="webhoooks">
-		<div class="clickable headline" :class="{expanded: !isMinimized}" @click="isMinimized=!isMinimized" :title="isMinimized ? $baseText('nodeWebhooks.clickToDisplayWebhookUrls') : $baseText('nodeWebhooks.clickToHideWebhookUrls')">
+		<div class="clickable headline" :class="{expanded: !isMinimized}" @click="isMinimized=!isMinimized" :title="isMinimized ? $i18n2.baseText('nodeWebhooks.clickToDisplayWebhookUrls') : $i18n2.baseText('nodeWebhooks.clickToHideWebhookUrls')">
 			<font-awesome-icon icon="angle-down" class="minimize-button minimize-icon" />
-			{{ $baseText('nodeWebhooks.webhookUrls') }}
+			{{ $i18n2.baseText('nodeWebhooks.webhookUrls') }}
 		</div>
 		<el-collapse-transition>
 			<div class="node-webhooks" v-if="!isMinimized">
@@ -10,14 +10,14 @@
 					<el-row>
 						<el-col :span="24">
 							<el-radio-group v-model="showUrlFor" size="mini">
-								<el-radio-button label="test">{{ $baseText('nodeWebhooks.testUrl') }}</el-radio-button>
-								<el-radio-button label="production">{{ $baseText('nodeWebhooks.productionUrl') }}</el-radio-button>
+								<el-radio-button label="test">{{ $i18n2.baseText('nodeWebhooks.testUrl') }}</el-radio-button>
+								<el-radio-button label="production">{{ $i18n2.baseText('nodeWebhooks.productionUrl') }}</el-radio-button>
 							</el-radio-group>
 						</el-col>
 					</el-row>
 				</div>
 
-				<n8n-tooltip v-for="(webhook, index) in webhooksNode" :key="index" class="item"  :content="$baseText('nodeWebhooks.clickToCopyWebhookUrls')" placement="left">
+				<n8n-tooltip v-for="(webhook, index) in webhooksNode" :key="index" class="item"  :content="$i18n2.baseText('nodeWebhooks.clickToCopyWebhookUrls')" placement="left">
 					<div class="webhook-wrapper">
 							<div class="http-field">
 								<div class="http-method">
@@ -85,8 +85,8 @@ export default mixins(
 				this.copyToClipboard(webhookUrl);
 
 				this.$showMessage({
-					title: this.$baseText('nodeWebhooks.showMessage.title'),
-					message: this.$baseText('nodeWebhooks.showMessage.message'),
+					title: this.$i18n2.baseText('nodeWebhooks.showMessage.title'),
+					message: this.$i18n2.baseText('nodeWebhooks.showMessage.message'),
 					type: 'success',
 				});
 			},
@@ -97,7 +97,7 @@ export default mixins(
 				try {
 					return this.resolveExpression(webhookData[key] as string) as string;
 				} catch (e) {
-					return this.$baseText('nodeWebhooks.invalidExpression');
+					return this.$i18n2.baseText('nodeWebhooks.invalidExpression');
 				}
 			},
 			getWebhookUrl (webhookData: IWebhookDescription): string {

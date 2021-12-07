@@ -38,7 +38,7 @@
 				:placeholder="isValueExpression ? '' : getPlaceholder()"
 			>
 				<div slot="suffix" class="expand-input-icon-container">
-					<font-awesome-icon v-if="!isValueExpression && !isReadOnly" icon="external-link-alt" class="edit-window-button clickable" :title="$baseText('parameterInput.openEditWindow')" @click="displayEditDialog()" />
+					<font-awesome-icon v-if="!isValueExpression && !isReadOnly" icon="external-link-alt" class="edit-window-button clickable" :title="$i18n2.baseText('parameterInput.openEditWindow')" @click="displayEditDialog()" />
 				</div>
 			</n8n-input>
 		</div>
@@ -78,7 +78,7 @@
 			:value="displayValue"
 			:title="displayTitle"
 			:disabled="isReadOnly"
-			:placeholder="parameter.placeholder ? getPlaceholder() : $baseText('parameterInput.selectDateAndTime')"
+			:placeholder="parameter.placeholder ? getPlaceholder() : $i18n2.baseText('parameterInput.selectDateAndTime')"
 			:picker-options="dateTimePickerOptions"
 			@change="valueChanged"
 			@focus="setFocus"
@@ -171,7 +171,7 @@
 
 	<div class="parameter-issues" v-if="getIssues.length">
 		<n8n-tooltip placement="top" >
-			<div slot="content" v-html="`${$baseText('parameterInput.issues')}:<br />&nbsp;&nbsp;- ` + getIssues.join('<br />&nbsp;&nbsp;- ')"></div>
+			<div slot="content" v-html="`${$i18n2.baseText('parameterInput.issues')}:<br />&nbsp;&nbsp;- ` + getIssues.join('<br />&nbsp;&nbsp;- ')"></div>
 			<font-awesome-icon icon="exclamation-triangle" />
 		</n8n-tooltip>
 	</div>
@@ -179,13 +179,13 @@
 	<div class="parameter-options" v-if="displayOptionsComputed">
 			<el-dropdown trigger="click" @command="optionSelected" size="mini">
 				<span class="el-dropdown-link">
-					<font-awesome-icon icon="cogs" class="reset-icon clickable" :title="$baseText('parameterInput.parameterOptions')"/>
+					<font-awesome-icon icon="cogs" class="reset-icon clickable" :title="$i18n2.baseText('parameterInput.parameterOptions')"/>
 				</span>
 				<el-dropdown-menu slot="dropdown">
-					<el-dropdown-item command="addExpression" v-if="parameter.noDataExpression !== true && !isValueExpression">{{ $baseText('parameterInput.addExpression') }}</el-dropdown-item>
-					<el-dropdown-item command="removeExpression" v-if="parameter.noDataExpression !== true && isValueExpression">{{ $baseText('parameterInput.removeExpression') }}</el-dropdown-item>
-					<el-dropdown-item command="refreshOptions" v-if="Boolean(remoteMethod)">{{ $baseText('parameterInput.refreshList') }}</el-dropdown-item>
-					<el-dropdown-item command="resetValue" :disabled="isDefault" divided>{{ $baseText('parameterInput.resetValue') }}</el-dropdown-item>
+					<el-dropdown-item command="addExpression" v-if="parameter.noDataExpression !== true && !isValueExpression">{{ $i18n2.baseText('parameterInput.addExpression') }}</el-dropdown-item>
+					<el-dropdown-item command="removeExpression" v-if="parameter.noDataExpression !== true && isValueExpression">{{ $i18n2.baseText('parameterInput.removeExpression') }}</el-dropdown-item>
+					<el-dropdown-item command="refreshOptions" v-if="Boolean(remoteMethod)">{{ $i18n2.baseText('parameterInput.refreshList') }}</el-dropdown-item>
+					<el-dropdown-item command="resetValue" :disabled="isDefault" divided>{{ $i18n2.baseText('parameterInput.resetValue') }}</el-dropdown-item>
 				</el-dropdown-menu>
 			</el-dropdown>
 	</div>
@@ -331,23 +331,23 @@ export default mixins(
 				const interpolation = { interpolate: { shortPath: this.shortPath } };
 
 				if (this.getIssues.length && this.isValueExpression) {
-					return this.$baseText(
+					return this.$i18n2.baseText(
 						'parameterInput.parameterHasIssuesAndExpression',
 						interpolation,
 					);
 				} else if (this.getIssues.length && !this.isValueExpression) {
-					return this.$baseText(
+					return this.$i18n2.baseText(
 						'parameterInput.parameterHasIssues',
 						interpolation,
 					);
 				} else if (!this.getIssues.length && this.isValueExpression) {
-					return this.$baseText(
+					return this.$i18n2.baseText(
 						'parameterInput.parameterHasExpression',
 						interpolation,
 					);
 				}
 
-				return this.$baseText('parameterInput.parameter', interpolation);
+				return this.$i18n2.baseText('parameterInput.parameter', interpolation);
 			},
 			displayValue (): string | number | boolean | null {
 				if (this.remoteParameterOptionsLoading === true) {
@@ -355,7 +355,7 @@ export default mixins(
 					// to user that the data is loading. If not it would
 					// display the user the key instead of the value it
 					// represents
-					return this.$baseText('parameterInput.loadingOptions');
+					return this.$i18n2.baseText('parameterInput.loadingOptions');
 				}
 
 				let returnValue;
@@ -424,7 +424,7 @@ export default mixins(
 				try {
 					computedValue = this.resolveExpression(this.value) as NodeParameterValue;
 				} catch (error) {
-					computedValue = `[${this.$baseText('parameterInput.error')}}: ${error.message}]`;
+					computedValue = `[${this.$i18n2.baseText('parameterInput.error')}}: ${error.message}]`;
 				}
 
 				// Try to convert it into the corret type
@@ -570,18 +570,18 @@ export default mixins(
 		methods: {
 			getPlaceholder(): string {
 				return this.isForCredential
-					? this.$credText.placeholder(this.parameter)
-					: this.$nodeText.placeholder(this.parameter);
+					? this.$i18n2.credText().placeholder(this.parameter)
+					: this.$i18n2.nodeText().placeholder(this.parameter);
 			},
 			getOptionsOptionDisplayName(option: { value: string; name: string }): string {
 				return this.isForCredential
-					? this.$credText.optionsOptionDisplayName(this.parameter, option)
-					: this.$nodeText.optionsOptionDisplayName(this.parameter, option);
+					? this.$i18n2.credText().optionsOptionDisplayName(this.parameter, option)
+					: this.$i18n2.nodeText().optionsOptionDisplayName(this.parameter, option);
 			},
 			getOptionsOptionDescription(option: { value: string; description: string }): string {
 				return this.isForCredential
-					? this.$credText.optionsOptionDescription(this.parameter, option)
-					: this.$nodeText.optionsOptionDescription(this.parameter, option);
+					? this.$i18n2.credText().optionsOptionDescription(this.parameter, option)
+					: this.$i18n2.nodeText().optionsOptionDescription(this.parameter, option);
 			},
 
 			async loadRemoteParameterOptions () {
