@@ -18,6 +18,7 @@ import router from './router';
 
 import { runExternalHook } from './components/mixins/externalHooks';
 import { TelemetryPlugin } from './plugins/telemetry';
+import { I18nPlugin } from './plugins/i18n';
 import { i18n } from './i18n';
 
 import { store } from './store';
@@ -28,11 +29,12 @@ router.afterEach((to, from) => {
 });
 
 Vue.use(TelemetryPlugin);
+Vue.use(I18nPlugin);
 
 new Vue({
 	router,
 	store,
-	i18n,
+	i18n, // legacy i18n
 	render: h => h(App),
 }).$mount('#app');
 
