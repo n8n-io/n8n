@@ -92,7 +92,7 @@ export class WorkableTrigger implements INodeType {
 							loadOptionsMethod: 'getStages',
 						},
 						default: '',
-						description: `Get notifications only for one job`,
+						description: `Get notifications for specific stages. e.g. 'hired'`,
 					},
 				],
 			},
@@ -103,10 +103,10 @@ export class WorkableTrigger implements INodeType {
 		loadOptions: {
 			async getJobs(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-				const jobs = await workableApiRequest.call(this, 'GET', '/jobs');
+				const { jobs } = await workableApiRequest.call(this, 'GET', '/jobs');
 				for (const job of jobs) {
 					returnData.push({
-						name: job.shortcode,
+						name: job.full_title,
 						value: job.shortcode,
 					});
 				}
@@ -114,7 +114,7 @@ export class WorkableTrigger implements INodeType {
 			},
 			async getStages(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-				const stages = await workableApiRequest.call(this, 'GET', '/stages');
+				const { stages } = await workableApiRequest.call(this, 'GET', '/stages');
 				for (const stage of stages) {
 					returnData.push({
 						name: stage.name,
@@ -148,21 +148,21 @@ export class WorkableTrigger implements INodeType {
 				const webhookData = this.getWorkflowStaticData('node');
 				const webhookUrl = this.getNodeWebhookUrl('default');
 				const triggerOn = this.getNodeParameter('triggerOn') as string;
-				const { stage_slug, job_shortcode } = this.getNodeParameter('filters') as IDataObject;
+				const { stage, job } = this.getNodeParameter('filters') as IDataObject;
 				const endpoint = '/subscriptions';
 
 				const body: IDataObject = {
 					event: snakeCase(triggerOn).toLowerCase(),
 					args: {
 						account_id: credentials.subdomain,
-						job_shortcode,
-						stage_slug,
+						job_shortcode: job,
+						stage_slug: stage,
 					},
 					target: webhookUrl,
 				};
 
 				const responseData = await workableApiRequest.call(this, 'POST', endpoint, body);
-				//console.log(responseData);
+
 				if (responseData.id === undefined) {
 					// Required data is missing so was not successful
 					return false;
