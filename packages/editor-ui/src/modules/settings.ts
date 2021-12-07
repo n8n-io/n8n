@@ -79,18 +79,20 @@ const module: Module<ISettingsState, IRootState> = {
 			context.commit('setPersonalizationAnswers', results);
 		},
 		async fetchPromptsData(context: ActionContext<ISettingsState, IRootState>) {
-			try {
-				const promptsData: IN8nPrompts = await getPromptsData(context.state.settings.instanceId);
+			if (context.rootGetters.isTelemetryEnabled) {
+				try {
+					const promptsData: IN8nPrompts = await getPromptsData(context.state.settings.instanceId);
 
-				if (promptsData && promptsData.showContactPrompt) {
-					context.commit('ui/openModal', CONTACT_PROMPT_MODAL_KEY, {root: true});
-				} else if (promptsData && promptsData.showValueSurvey) {
-					context.commit('ui/openModal', VALUE_SURVEY_MODAL_KEY, {root: true});
+					if (promptsData && promptsData.showContactPrompt) {
+						context.commit('ui/openModal', CONTACT_PROMPT_MODAL_KEY, {root: true});
+					} else if (promptsData && promptsData.showValueSurvey) {
+						context.commit('ui/openModal', VALUE_SURVEY_MODAL_KEY, {root: true});
+					}
+
+					context.commit('setPromptsData', promptsData);
+				} catch (e) {
+					return e;
 				}
-
-				context.commit('setPromptsData', promptsData);
-			} catch (e) {
-				return e;
 			}
 		},
 		async submitContactInfo(context: ActionContext<ISettingsState, IRootState>, email: string) {
