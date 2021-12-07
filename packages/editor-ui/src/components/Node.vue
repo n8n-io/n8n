@@ -79,7 +79,6 @@ import { WAIT_TIME_UNLIMITED } from '@/constants';
 import { externalHooks } from '@/components/mixins/externalHooks';
 import { nodeBase } from '@/components/mixins/nodeBase';
 import { nodeHelpers } from '@/components/mixins/nodeHelpers';
-import { renderText } from '@/components/mixins/renderText';
 import { workflowHelpers } from '@/components/mixins/workflowHelpers';
 
 import {
@@ -96,7 +95,7 @@ import { get } from 'lodash';
 import { getStyleTokenValue } from './helpers';
 import { INodeUi, XYPosition } from '@/Interface';
 
-export default mixins(externalHooks, nodeBase, nodeHelpers, renderText, workflowHelpers).extend({
+export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).extend({
 	name: 'Node',
 	components: {
 		NodeIcon,

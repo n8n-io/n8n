@@ -49,7 +49,6 @@ import {
 
 import { externalHooks } from '@/components/mixins/externalHooks';
 import { nodeHelpers } from '@/components/mixins/nodeHelpers';
-import { renderText } from '@/components/mixins/renderText';
 import { workflowHelpers } from '@/components/mixins/workflowHelpers';
 
 import NodeSettings from '@/components/NodeSettings.vue';
@@ -57,7 +56,7 @@ import RunData from '@/components/RunData.vue';
 
 import mixins from 'vue-typed-mixins';
 
-export default mixins(externalHooks, nodeHelpers, renderText, workflowHelpers).extend({
+export default mixins(externalHooks, nodeHelpers, workflowHelpers).extend({
 	name: 'DataDisplay',
 	components: {
 		NodeSettings,

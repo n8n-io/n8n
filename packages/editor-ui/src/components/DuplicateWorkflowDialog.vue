@@ -44,11 +44,10 @@ import mixins from "vue-typed-mixins";
 import { MAX_WORKFLOW_NAME_LENGTH } from "@/constants";
 import { workflowHelpers } from "@/components/mixins/workflowHelpers";
 import { showMessage } from "@/components/mixins/showMessage";
-import { renderText } from "@/components/mixins/renderText";
 import TagsDropdown from "@/components/TagsDropdown.vue";
 import Modal from "./Modal.vue";
 
-export default mixins(showMessage, renderText, workflowHelpers).extend({
+export default mixins(showMessage, workflowHelpers).extend({
 	components: { TagsDropdown, Modal },
 	name: "DuplicateWorkflow",
 	props: ["modalName", "isActive"],

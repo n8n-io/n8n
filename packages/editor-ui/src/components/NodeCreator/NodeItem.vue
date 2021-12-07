@@ -33,13 +33,10 @@ import { INodeTypeDescription } from 'n8n-workflow';
 import NodeIcon from '../NodeIcon.vue';
 import TriggerIcon from '../TriggerIcon.vue';
 
-import mixins from 'vue-typed-mixins';
-import { renderText } from '@/components/mixins/renderText';
-
 Vue.component('NodeIcon', NodeIcon);
 Vue.component('TriggerIcon', TriggerIcon);
 
-export default mixins(renderText).extend({
+export default Vue.extend({
 	name: 'NodeItem',
 	props: [
 		'active',

@@ -7,11 +7,10 @@ import { ExecutionError } from 'n8n-workflow';
 import { ElMessageBoxOptions } from 'element-ui/types/message-box';
 import { MessageType } from 'element-ui/types/message';
 import { isChildOf } from './helpers';
-import { renderText } from '@/components/mixins/renderText';
 
 let stickyNotificationQueue: ElNotificationComponent[] = [];
 
-export const showMessage = mixins(externalHooks, renderText).extend({
+export const showMessage = mixins(externalHooks).extend({
 	methods: {
 		$showMessage(messageData: ElNotificationOptions, track = true) {
 			messageData.dangerouslyUseHTMLString = true;

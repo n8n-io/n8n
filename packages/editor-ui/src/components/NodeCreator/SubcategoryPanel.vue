@@ -26,10 +26,7 @@ import Vue from 'vue';
 
 import ItemIterator from './ItemIterator.vue';
 
-import { renderText } from '@/components/mixins/renderText';
-import mixins from 'vue-typed-mixins';
-
-export default mixins(renderText).extend({
+export default Vue.extend({
 	name: 'SubcategoryPanel',
 	components: {
 		ItemIterator,

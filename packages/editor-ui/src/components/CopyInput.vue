@@ -13,10 +13,9 @@
 <script lang="ts">
 import mixins from 'vue-typed-mixins';
 import { copyPaste } from './mixins/copyPaste';
-import { renderText } from './mixins/renderText';
 import { showMessage } from './mixins/showMessage';
 
-export default mixins(copyPaste, showMessage, renderText).extend({
+export default mixins(copyPaste, showMessage).extend({
 	props: {
 		label: {
 			type: String,

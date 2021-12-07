@@ -41,10 +41,8 @@ import {
 	IVariableSelectorOption,
 	IVariableItemSelected,
 } from '@/Interface';
-import { renderText } from './mixins/renderText';
-import mixins from 'vue-typed-mixins';
 
-export default mixins(renderText).extend({
+export default Vue.extend({
 	name: 'VariableSelectorItem',
 	props: [
 		'allowParentSelect',

@@ -18,10 +18,9 @@
 
 <script lang="ts">
 import Vue from 'vue';
-import { renderText } from '../mixins/renderText';
 import mixins from 'vue-typed-mixins';
 
-export default mixins(renderText).extend({
+export default Vue.extend({
 	props: {
 		isGoogleOAuthType: {
 			type: Boolean,

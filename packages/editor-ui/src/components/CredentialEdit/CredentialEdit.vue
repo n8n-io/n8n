@@ -118,7 +118,6 @@ import CredentialIcon from '../CredentialIcon.vue';
 
 import mixins from 'vue-typed-mixins';
 import { nodeHelpers } from '../mixins/nodeHelpers';
-import { renderText } from '../mixins/renderText';
 import { showMessage } from '../mixins/showMessage';
 
 import CredentialConfig from './CredentialConfig.vue';
@@ -131,7 +130,7 @@ interface NodeAccessMap {
 	[nodeType: string]: ICredentialNodeAccess | null;
 }
 
-export default mixins(renderText, showMessage, nodeHelpers).extend({
+export default mixins(showMessage, nodeHelpers).extend({
 	name: 'CredentialsDetail',
 	components: {
 		CredentialConfig,
