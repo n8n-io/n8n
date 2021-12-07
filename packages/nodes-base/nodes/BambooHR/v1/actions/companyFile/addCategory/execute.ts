@@ -10,7 +10,7 @@ import {
   apiRequest,
 } from '../../../transport';
 
-export async function create(this: IExecuteFunctions, index: number): Promise<INodeExecutionData[]> {
+export async function addCategory(this: IExecuteFunctions, index: number): Promise<INodeExecutionData[]> {
   const body: string[] = [];
   const requestMethod = 'POST';
   const endPoint = 'files/categories';

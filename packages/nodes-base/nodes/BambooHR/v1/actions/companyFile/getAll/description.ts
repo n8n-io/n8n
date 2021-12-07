@@ -1,8 +1,8 @@
 import {
-  CompanyFilesProperties,
+  CompanyFileProperties,
 } from '../../Interfaces';
 
-export const companyFilesGetAllDescription: CompanyFilesProperties = [
+export const companyFileGetAllDescription: CompanyFileProperties = [
 	{
 		displayName: 'Only Files',
 		name: 'onlyFiles',
@@ -15,7 +15,7 @@ export const companyFilesGetAllDescription: CompanyFilesProperties = [
 					'getAll',
 				],
 				resource: [
-					'companyFiles',
+					'companyFile',
 				],
 			},
 		},
@@ -32,7 +32,7 @@ export const companyFilesGetAllDescription: CompanyFilesProperties = [
 					'getAll',
 				],
 				resource: [
-					'companyFiles',
+					'companyFile',
 				],
 			},
 		},
@@ -53,7 +53,7 @@ export const companyFilesGetAllDescription: CompanyFilesProperties = [
 					'getAll',
 				],
 				resource: [
-					'companyFiles',
+					'companyFile',
 				],
 				returnAll: [
 					false,

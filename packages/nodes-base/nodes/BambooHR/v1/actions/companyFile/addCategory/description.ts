@@ -1,8 +1,8 @@
 import {
-  CompanyFilesProperties,
+  CompanyFileProperties,
 } from '../../Interfaces';
 
-export const companyFilesCreateDescription: CompanyFilesProperties = [
+export const companyFileAddCategoryDescription: CompanyFileProperties = [
   {
     displayName: 'Category Name',
     name: 'categoryName',
@@ -11,10 +11,10 @@ export const companyFilesCreateDescription: CompanyFilesProperties = [
     displayOptions: {
       show: {
         operation: [
-          'create'
+          'addCategory'
         ],
         resource: [
-          'companyFiles',
+          'companyFile',
         ],
       },
     },

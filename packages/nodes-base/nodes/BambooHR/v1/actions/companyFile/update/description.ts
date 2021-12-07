@@ -1,8 +1,8 @@
 import {
-  CompanyFilesProperties,
+  CompanyFileProperties,
 } from '../../Interfaces';
 
-export const companyFilesUpdateDescription: CompanyFilesProperties = [
+export const companyFileUpdateDescription: CompanyFileProperties = [
   {
     displayName: 'File ID',
     name: 'fileId',
@@ -14,7 +14,7 @@ export const companyFilesUpdateDescription: CompanyFilesProperties = [
           'update'
         ],
         resource: [
-          'companyFiles',
+          'companyFile',
         ],
       },
     },
@@ -33,7 +33,7 @@ export const companyFilesUpdateDescription: CompanyFilesProperties = [
           'update'
         ],
         resource: [
-          'companyFiles',
+          'companyFile',
         ],
       },
     },

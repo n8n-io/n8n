@@ -8,7 +8,7 @@ import {
 
 import * as employees from './employees';
 import * as employeeFile from './employeeFile';
-import * as companyFiles from './companyFiles';
+import * as companyFile from './companyFile';
 import * as reports from './reports';
 import * as accountInformation from './accountInformation';
 import * as tabularData from './tabularData';
@@ -34,8 +34,8 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
         operationResult.push(...await employees[bamboohr.operation].execute.call(this, i));
       } else if (bamboohr.resource === 'employeeFile') {
         operationResult.push(...await employeeFile[bamboohr.operation].execute.call(this, i));
-      } else if (bamboohr.resource === 'companyFiles') {
-        operationResult.push(...await companyFiles[bamboohr.operation].execute.call(this, i));
+      } else if (bamboohr.resource === 'companyFile') {
+        operationResult.push(...await companyFile[bamboohr.operation].execute.call(this, i));
       } else if (bamboohr.resource === 'reports') {
         operationResult.push(...await reports[bamboohr.operation].execute.call(this, i));
       } else if (bamboohr.resource === 'accountInformation') {

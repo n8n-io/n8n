@@ -3,7 +3,7 @@ import {
 } from 'n8n-workflow';
 import * as employees from './employees';
 import * as employeeFile from './employeeFile';
-import * as companyFiles from './companyFiles';
+import * as companyFile from './companyFile';
 import * as reports from './reports';
 import * as accountInformation from './accountInformation';
 import * as tabularData from './tabularData';
@@ -44,8 +44,8 @@ export const versionDescription: INodeTypeDescription = {
           value: 'employeeFile',
         },
         {
-          name: 'Company Files',
-          value: 'companyFiles',
+          name: 'Company File',
+          value: 'companyFile',
         },
         {
           name: 'Company Reports',
@@ -69,7 +69,7 @@ export const versionDescription: INodeTypeDescription = {
     },
     ...employees.descriptions,
     ...employeeFile.descriptions,
-    ...companyFiles.descriptions,
+    ...companyFile.descriptions,
     ...reports.descriptions,
     ...accountInformation.descriptions,
     ...tabularData.descriptions,

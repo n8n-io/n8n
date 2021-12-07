@@ -1,8 +1,8 @@
 import {
-  CompanyFilesProperties,
+  CompanyFileProperties,
 } from '../../Interfaces';
 
-export const companyFilesDelDescription: CompanyFilesProperties = [
+export const companyFileGetDescription: CompanyFileProperties = [
   {
     displayName: 'File ID',
     name: 'fileId',
@@ -11,10 +11,10 @@ export const companyFilesDelDescription: CompanyFilesProperties = [
     displayOptions: {
       show: {
         operation: [
-          'del'
+          'get'
         ],
         resource: [
-          'companyFiles',
+          'companyFile',
         ],
       },
     },

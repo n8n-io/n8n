@@ -7,7 +7,7 @@ import {
 type BambooHRMap = {
   employees: 'create' | 'get' | 'getAll' | 'update';
   employeeFile: 'create' | 'del' | 'get' | 'getAll' | 'update';
-  companyFiles: 'create' | 'del' | 'get' | 'getAll' | 'update';
+  companyFile: 'addCategory' | 'del' | 'get' | 'getAll' | 'update';
   reports: 'get';
   accountInformation: 'getDetailsForFields' | 'getFields' | 'getTabularFields' | 'getUsers' | 'updateFields';
   tabularData: 'create' | 'get' | 'getAll' | 'update';
@@ -17,14 +17,14 @@ type BambooHRMap = {
 export type BambooHR = AllEntities<BambooHRMap>;
 
 export type BambooHRAccountInformation = Entity<BambooHRMap, 'accountInformation'>;
-export type BambooHRCompanyFiles = Entity<BambooHRMap, 'companyFiles'>;
+export type BambooHRCompanyFile = Entity<BambooHRMap, 'companyFile'>;
 export type BambooHREmployees = Entity<BambooHRMap, 'employees'>;
 export type BambooHREmployeeFile = Entity<BambooHRMap, 'employeeFile'>;
 export type BambooHRReports = Entity<BambooHRMap, 'reports'>;
 export type BambooHRTabularData = Entity<BambooHRMap, 'tabularData'>;
 export type BambooHRTimeOff = Entity<BambooHRMap, 'timeOff'>;
 
-export type CompanyFilesProperties = PropertiesOf<BambooHRCompanyFiles>;
+export type CompanyFileProperties = PropertiesOf<BambooHRCompanyFile>;
 export type EmployeesProperties = PropertiesOf<BambooHREmployees>;
 export type EmployeeFileProperties = PropertiesOf<BambooHREmployeeFile>;
 export type ReportsProperties = PropertiesOf<BambooHRReports>;
