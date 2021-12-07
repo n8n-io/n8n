@@ -604,11 +604,6 @@ export default mixins(
 					this.callDebounced('selectAllNodes', 1000);
 				} else if ((e.key === 'c') && (this.isCtrlKeyPressed(e) === true)) {
 					this.callDebounced('copySelectedNodes', 1000);
-					this.$showMessage({
-						title: 'Copied!',
-						message: '',
-						type: 'success',
-					});
 				} else if ((e.key === 'x') && (this.isCtrlKeyPressed(e) === true)) {
 					// Cut nodes
 					e.stopPropagation();
@@ -845,15 +840,22 @@ export default mixins(
 			},
 
 			cutSelectedNodes () {
-				this.copySelectedNodes();
+				this.copySelectedNodes(true);
 				this.deleteSelectedNodes();
 			},
 
-			copySelectedNodes () {
+			copySelectedNodes (isCut: boolean,) {
 				this.getSelectedNodesToSave().then((data) => {
 					const nodeData = JSON.stringify(data, null, 2);
 					this.copyToClipboard(nodeData);
 					if (data.nodes.length > 0) {
+						if(!isCut){
+							this.$showMessage({
+								title: 'Copied!',
+								message: '',
+								type: 'success',
+							});
+						}
 						this.$telemetry.track('User copied nodes', {
 							node_types: data.nodes.map((node) => node.type),
 							workflow_id: this.$store.getters.workflowId,
