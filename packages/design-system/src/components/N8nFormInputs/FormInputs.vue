@@ -1,5 +1,5 @@
 <template>
-	<fragment>
+	<div>
 		<div
 			:class="columnView ? $style.columnView : $style.container"
 			v-for="(row, i) in inputs"
@@ -20,7 +20,7 @@
 				/>
 			</div>
 		</div>
-	</fragment>
+	</div>
 </template>
 
 <script lang="ts">
