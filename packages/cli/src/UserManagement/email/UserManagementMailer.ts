@@ -3,7 +3,6 @@ import { IDataObject } from 'n8n-workflow';
 import { join as pathJoin } from 'path';
 import config = require('../../../config');
 import {
-	InstanceSetupData,
 	InviteEmailData,
 	PasswordResetData,
 	SendEmailResult,
@@ -44,21 +43,6 @@ export class UserManagementMailer {
 		if (config.get('userManagement.emails.mode') === 'smtp') {
 			this.mailer = new NodeMailer();
 		}
-	}
-
-	async instanceSetup(instanceSetupData: InstanceSetupData): Promise<SendEmailResult> {
-		let template = getTemplate('instanceSetup', 'instanceSetup.html');
-		template = replaceStrings(template, instanceSetupData);
-
-		// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-		const result = await this.mailer?.sendMail({
-			emailRecipients: instanceSetupData.email,
-			subject: 'Your n8n instance is up and running!',
-			body: template,
-		});
-
-		// If mailer does not exist it means mail has been disabled.
-		return result ?? { success: true };
 	}
 
 	async invite(inviteEmailData: InviteEmailData): Promise<SendEmailResult> {
