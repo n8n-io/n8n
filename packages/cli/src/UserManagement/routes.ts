@@ -54,14 +54,18 @@ export function addRoutes(): void {
 				throw new Error('Selected role was not found');
 			}
 
-			const { email, firstName, lastName } = req.body as IDataObject;
+			const { email, firstName, lastName } = req.body as {
+				email: string;
+				firstName?: string;
+				lastName?: string;
+			};
 
 			if (!email.includes('@') || !email.includes('.')) {
 				throw new Error('You must provide a valid email address');
 			}
 
 			// TODO UM: when using workspaces this needs to be very differernt.
-			const emailExists = await Db.collections.User!.findOne({ email: email as string });
+			const emailExists = await Db.collections.User!.findOne({ email });
 
 			if (emailExists) {
 				ResponseHelper.sendErrorResponse(res, new Error('Email already exists'));
@@ -78,6 +82,7 @@ export function addRoutes(): void {
 			const newUser = await Db.collections.User!.save(userInfo);
 
 			let inviteAcceptUrl = GenericHelpers.getBaseUrl();
+			const domain = inviteAcceptUrl;
 			if (!inviteAcceptUrl.endsWith('/')) {
 				inviteAcceptUrl += '/';
 			}
@@ -88,10 +93,11 @@ export function addRoutes(): void {
 
 			const mailer = getInstance();
 			const result = await mailer.invite({
-				email: email as string,
-				firstName: firstName as string | undefined,
-				lastName: lastName as string | undefined,
+				email,
+				firstName,
+				lastName,
 				inviteAcceptUrl,
+				domain,
 			});
 
 			if (result.success) {
