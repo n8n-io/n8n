@@ -17,7 +17,7 @@ export class SyncroMspTrigger implements INodeType {
 		icon: 'file:syncromsp.png',
 		group: ['trigger'],
 		version: 1,
-		subtitle: '=Events: {{$parameter["events"].includes("*") ? "All" :  $parameter["events"].join(", ")}}',
+		subtitle: '=Events: {{$parameter["events"].includes("All") ? "All" :  $parameter["events"].join(", ")}}',
 		description: 'Starts the workflow when events occur on SyncroMSP',
 		defaults: {
 			name: 'SyncroMSP Trigger',
@@ -46,8 +46,8 @@ export class SyncroMspTrigger implements INodeType {
 				type: 'multiOptions',
 				options: [
 					{
-						name: '*',
-						value: '*',
+						name: 'All',
+						value: 'All',
 						description: 'Any time any event is triggered (Wildcard Event).',
 					},
 					{
@@ -126,7 +126,7 @@ export class SyncroMspTrigger implements INodeType {
 		attribute.event=mapToEvents[event];
 
 		const returnData: IDataObject[] = [];
-		if(events && (events.includes(mapToEvents[event] as string) || events.includes('*'))){
+		if(events && (events.includes(mapToEvents[event] as string) || events.includes('All'))){
 			returnData.push(attribute);
 			return {
 				workflowData: [
