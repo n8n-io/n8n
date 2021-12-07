@@ -81,7 +81,7 @@ import CopyInput from '../CopyInput.vue';
 import CredentialInputs from './CredentialInputs.vue';
 import OauthButton from './OauthButton.vue';
 import { restApi } from '@/components/mixins/restApi';
-import { addNodeTranslation } from '@/i18n';
+import { addNodeTranslation } from '@/plugins/i18n';
 import mixins from 'vue-typed-mixins';
 
 export default mixins(restApi).extend({
