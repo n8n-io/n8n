@@ -2,7 +2,7 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const releaseOperations = [
+export const releaseOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -43,9 +43,9 @@ export const releaseOperations = [
 		],
 		default: 'create',
 	},
-] as INodeProperties[];
+];
 
-export const releaseFields = [
+export const releaseFields: INodeProperties[] = [
 	// ----------------------------------------
 	//             release: create
 	// ----------------------------------------
@@ -230,9 +230,7 @@ export const releaseFields = [
 				default: '',
 				description: 'ID of the department initiating the release. Choose from the list or specify an ID. You can also specify the ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 				typeOptions: {
-					loadOptionsMethod: [
-						'getDepartments',
-					],
+					loadOptionsMethod: 'getDepartments',
 				},
 			},
 			{
@@ -249,9 +247,7 @@ export const releaseFields = [
 				default: '',
 				description: 'ID of the agent group to which the release is assigned. Choose from the list or specify an ID. You can also specify the ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 				typeOptions: {
-					loadOptionsMethod: [
-						'getAgentGroups',
-					],
+					loadOptionsMethod: 'getAgentGroups',
 				},
 			},
 		],
@@ -390,9 +386,7 @@ export const releaseFields = [
 				default: '',
 				description: 'ID of the department initiating the release. Choose from the list or specify an ID. You can also specify the ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 				typeOptions: {
-					loadOptionsMethod: [
-						'getDepartments',
-					],
+					loadOptionsMethod: 'getDepartments',
 				},
 			},
 			{
@@ -409,9 +403,7 @@ export const releaseFields = [
 				default: '',
 				description: 'ID of the agent group to which the release is assigned. Choose from the list or specify an ID. You can also specify the ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 				typeOptions: {
-					loadOptionsMethod: [
-						'getAgentGroups',
-					],
+					loadOptionsMethod: 'getAgentGroups',
 				},
 			},
 			{
@@ -498,4 +490,4 @@ export const releaseFields = [
 			},
 		],
 	},
-] as INodeProperties[];
+];

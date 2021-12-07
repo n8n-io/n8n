@@ -2,7 +2,7 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const reminderOperations = [
+export const reminderOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -43,9 +43,9 @@ export const reminderOperations = [
 		],
 		default: 'create',
 	},
-] as INodeProperties[];
+];
 
-export const reminderFields = [
+export const reminderFields: INodeProperties[] = [
 	// ----------------------------------------
 	//             reminder: create
 	// ----------------------------------------
@@ -391,4 +391,4 @@ export const reminderFields = [
 			},
 		],
 	},
-] as INodeProperties[];
+];

@@ -2,7 +2,7 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const formOperations = [
+export const formOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -29,9 +29,9 @@ export const formOperations = [
 		default: 'getFields',
 		description: 'The operation to perform.',
 	},
-] as INodeProperties[];
+];
 
-export const formFields = [
+export const formFields: INodeProperties[] = [
 
 	/* -------------------------------------------------------------------------- */
 	/*                                form:submit                                 */
@@ -154,16 +154,14 @@ export const formFields = [
 						name: 'sfdcCampaignId',
 						type: 'string',
 						default: '',
-						description: `If the form is for an account using the HubSpot Salesforce Integration,</br>
-						you can include the ID of a Salesforce campaign to add the contact to the specified campaign.`,
+						description: `If the form is for an account using the HubSpot Salesforce Integration, you can include the ID of a Salesforce campaign to add the contact to the specified campaign.`,
 					},
 					{
 						displayName: 'Go to Webinar Webinar ID',
 						name: 'goToWebinarWebinarKey',
 						type: 'string',
 						default: '',
-						description: `If the form is for an account using the HubSpot GoToWebinar Integration,</br>
-						you can include the ID of a webinar to enroll the contact in that webinar when they submit the form.`,
+						description: `If the form is for an account using the HubSpot GoToWebinar Integration, you can include the ID of a webinar to enroll the contact in that webinar when they submit the form.`,
 					},
 				],
 			},
@@ -270,8 +268,7 @@ export const formFields = [
 						name: 'value',
 						type: 'boolean',
 						default: false,
-						description: `This must be true when using the 'legitimateInterest' option, as it reflects</br>
-						the consent indicated by the visitor when submitting the form`,
+						description: `This must be true when using the 'legitimateInterest' option, as it reflects the consent indicated by the visitor when submitting the form`,
 					},
 					{
 						displayName: 'Legal Basis',
@@ -326,4 +323,4 @@ export const formFields = [
 		default: '',
 		description: 'The ID of the form',
 	},
-] as INodeProperties[];
+];

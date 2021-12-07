@@ -247,7 +247,7 @@ export class Mandrill implements INodeType {
 						name: 'async',
 						type: 'boolean',
 						default: false,
-						description: `Enable a background sending mode that is optimized for bulk sending.<br />In async mode, messages/send will immediately return a status of "queued" for every recipient. To handle rejections when sending in async mode, set up a webhook for the 'reject' event. Defaults to false for messages with no more than 10 recipients; messages with more than 10 recipients are always sent asynchronously, regardless of the value of async.`,
+						description: `Enable a background sending mode that is optimized for bulk sending. In async mode, messages/send will immediately return a status of "queued" for every recipient. To handle rejections when sending in async mode, set up a webhook for the 'reject' event. Defaults to false for messages with no more than 10 recipients; messages with more than 10 recipients are always sent asynchronously, regardless of the value of async.`,
 					},
 					{
 						displayName: 'Auto Text',

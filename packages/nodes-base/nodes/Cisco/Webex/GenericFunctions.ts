@@ -149,7 +149,7 @@ export function getAttachemnts(attachements: IDataObject[]) {
 	return _attachments;
 }
 
-export function getActionInheritedProperties() {
+export function getActionInheritedProperties(): INodeProperties[] {
 	return [
 		{
 			displayName: 'Title',
@@ -190,7 +190,7 @@ export function getActionInheritedProperties() {
 	];
 }
 
-export function getTextBlockProperties() {
+export function getTextBlockProperties(): INodeProperties[] {
 	return [
 		{
 			displayName: 'Text',
@@ -522,7 +522,7 @@ export function getTextBlockProperties() {
 	];
 }
 
-export function getInputTextProperties() {
+export function getInputTextProperties(): INodeProperties[] {
 	return [
 		{
 			displayName: 'ID',

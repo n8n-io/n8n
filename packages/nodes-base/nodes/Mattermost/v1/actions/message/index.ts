@@ -10,7 +10,7 @@ export {
 	postEphemeral,
 };
 
-export const descriptions = [
+export const descriptions: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -45,4 +45,4 @@ export const descriptions = [
 	...del.description,
 	...post.description,
 	...postEphemeral.description,
-] as INodeProperties[];
+];
