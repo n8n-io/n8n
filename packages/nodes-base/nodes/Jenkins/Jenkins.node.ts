@@ -45,7 +45,7 @@ export class Jenkins implements INodeType {
 		outputs: ['main'],
 		credentials: [
 			{
-				name: 'jenkinsApi',
+				name: 'JenkinsApi',
 				required: true,
 				testedBy: 'buildsGetApiTest',
 			},
@@ -57,8 +57,8 @@ export class Jenkins implements INodeType {
 				type: 'options',
 				options: [
 					{
-						name: 'Jenkins Instance',
-						value: 'jenkins',
+						name: 'Instance',
+						value: 'instance',
 						description: 'Jenkins instance',
 					},
 					{
@@ -67,8 +67,8 @@ export class Jenkins implements INodeType {
 						description: 'Jenkins job',
 					},
 					{
-						name: 'Builds',
-						value: 'builds',
+						name: 'Build',
+						value: 'build',
 						description: 'List of builds job',
 					},
 				],
@@ -97,7 +97,7 @@ export class Jenkins implements INodeType {
 						description: 'Trigger a specific job',
 					},
 					{
-						name: 'Trigger a with Parameters',
+						name: 'Trigger a Job with Parameters',
 						value: 'triggerParams',
 						description: 'Trigger a specific job',
 					},
@@ -107,7 +107,7 @@ export class Jenkins implements INodeType {
 						description: 'Copy a specific job',
 					},
 					{
-						name: 'Create a Job',
+						name: 'Create',
 						value: 'create',
 						description: 'Create a new job',
 					},
@@ -134,7 +134,7 @@ export class Jenkins implements INodeType {
 				},
 				required: true,
 				default: '',
-				description: 'Job token',
+				description: 'Name of the jenkins job',
 			},
 			// --------------------------------------------------------------------------------------------------------
 			//         Trigger a Job
@@ -156,12 +156,13 @@ export class Jenkins implements INodeType {
 				},
 				required: true,
 				default: '',
-				description: 'Name of the jenkins job',
+				description: 'Job token',
 			},
 			{
 				displayName: 'Parameters',
 				name: 'param',
 				type: 'fixedCollection',
+				placeholder: 'Add Parameter',
 				displayOptions: {
 					show: {
 						resource: [
@@ -183,17 +184,16 @@ export class Jenkins implements INodeType {
 						displayName: 'Parameters',
 						values: [
 							{
-								displayName: 'Parameter',
+								displayName: 'Name',
 								name: 'name',
 								type: 'string',
-								default: 'Name of the Parameter  to add.',
+								default: '',
 							},
 							{
 								displayName: 'Value',
 								name: 'value',
 								type: 'string',
 								default: '',
-								description: 'Value to set for the parameter',
 							},
 						],
 					},
@@ -251,7 +251,7 @@ export class Jenkins implements INodeType {
 				displayOptions: {
 					show: {
 						resource: [
-							'jenkins',
+							'instance',
 						],
 					},
 				},
@@ -298,7 +298,7 @@ export class Jenkins implements INodeType {
 				displayOptions: {
 					show: {
 						resource: [
-							'jenkins',
+							'instance',
 						],
 						operation: [
 							'quietDown',
@@ -320,18 +320,18 @@ export class Jenkins implements INodeType {
 				displayOptions: {
 					show: {
 						resource: [
-							'builds',
+							'build',
 						],
 					},
 				},
 				options: [
 					{
-						name: 'List Builds',
-						value: 'list',
+						name: 'Get All Builds',
+						value: 'build:getAll',
 						description: 'List Builds',
 					},
 				],
-				default: 'list',
+				default: 'build:getAll',
 				description: 'Build operation',
 				noDataExpression: true,
 			},
@@ -342,10 +342,10 @@ export class Jenkins implements INodeType {
 				displayOptions: {
 					show: {
 						resource: [
-							'builds',
+							'build',
 						],
 						operation: [
-							'list',
+							'build:getAll',
 						],
 					},
 				},
@@ -360,10 +360,10 @@ export class Jenkins implements INodeType {
 				displayOptions: {
 					show: {
 						resource: [
-							'builds',
+							'build',
 						],
 						operation: [
-							'list',
+							'build:getAll',
 						],
 					},
 				},
@@ -378,10 +378,10 @@ export class Jenkins implements INodeType {
 				displayOptions: {
 					show: {
 						resource: [
-							'builds',
+							'build',
 						],
 						operation: [
-							'list',
+							'build:getAll',
 						],
 					},
 				},
@@ -396,10 +396,10 @@ export class Jenkins implements INodeType {
 				displayOptions: {
 					show: {
 						resource: [
-							'builds',
+							'build',
 						],
 						operation: [
-							'list',
+							'build:getAll',
 						],
 					},
 				},
@@ -459,7 +459,7 @@ export class Jenkins implements INodeType {
 
 		for (let i = 0; i < length; i++) {
 			try {
-				const { baseUrl } = await this.getCredentials('jenkinsApi') as JenkinsApiCredentials;
+				const { baseUrl } = await this.getCredentials('JenkinsApi') as JenkinsApiCredentials;
 				if (resource === 'job') {
 					if (operation === 'trigger') {
 						const token = this.getNodeParameter('token', i) as string;
@@ -510,7 +510,7 @@ export class Jenkins implements INodeType {
 						responseData = await jenkinsApiRequest.call(this, 'post', endpoint, queryParams, headers, body);
 					}
 				}
-				if (resource === 'jenkins') {
+				if (resource === 'instance') {
 
 					if (operation === 'quietDown') {
 						const reason = this.getNodeParameter('reason', i) as string;
@@ -545,8 +545,8 @@ export class Jenkins implements INodeType {
 						responseData = await jenkinsApiRequest.call(this, 'post', endpoint);
 					}
 				}
-				if (resource === 'builds') {
-					if (operation === 'list') {
+				if (resource === 'build') {
+					if (operation === 'build:getAll') {
 						const endpoint = `${baseUrl}/api/xml`;
 						const depth = this.getNodeParameter('depth', i) as number;
 						const tree = this.getNodeParameter('tree', i) as string ;
