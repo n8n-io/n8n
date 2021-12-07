@@ -22,9 +22,8 @@
 import mixins from 'vue-typed-mixins';
 
 import { externalHooks } from '@/components/mixins/externalHooks';
-import { renderText } from '../mixins/renderText';
 
-export default mixins(externalHooks, renderText).extend({
+export default mixins(externalHooks).extend({
 	name: "SearchBar",
 	props: ["value", "eventBus"],
 	mounted() {

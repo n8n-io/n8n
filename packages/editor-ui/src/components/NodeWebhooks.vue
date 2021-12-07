@@ -50,11 +50,9 @@ import { showMessage } from '@/components/mixins/showMessage';
 import { workflowHelpers } from '@/components/mixins/workflowHelpers';
 
 import mixins from 'vue-typed-mixins';
-import { renderText } from './mixins/renderText';
 
 export default mixins(
 	copyPaste,
-	renderText,
 	showMessage,
 	workflowHelpers,
 )

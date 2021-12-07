@@ -55,10 +55,9 @@ import { INodeCreateElement, INodeItemProps, ISubcategoryItemProps } from '@/Int
 import { ALL_NODE_FILTER, CORE_NODES_CATEGORY, REGULAR_NODE_FILTER, TRIGGER_NODE_FILTER } from '@/constants';
 import SlideTransition from '../transitions/SlideTransition.vue';
 import { matchesNodeType, matchesSelectType } from './helpers';
-import { renderText } from '../mixins/renderText';
 
 
-export default mixins(externalHooks, renderText).extend({
+export default mixins(externalHooks).extend({
 	name: 'NodeCreateList',
 	components: {
 		ItemIterator,

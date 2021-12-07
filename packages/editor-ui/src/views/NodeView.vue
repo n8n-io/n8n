@@ -128,7 +128,6 @@ import { newVersions } from '@/components/mixins/newVersions';
 
 import { workflowHelpers } from '@/components/mixins/workflowHelpers';
 import { workflowRun } from '@/components/mixins/workflowRun';
-import { renderText } from '@/components/mixins/renderText';
 
 import DataDisplay from '@/components/DataDisplay.vue';
 import Modals from '@/components/Modals.vue';
@@ -188,7 +187,6 @@ export default mixins(
 	mouseSelect,
 	moveNodeWorkflow,
 	restApi,
-	renderText,
 	showMessage,
 	titleChange,
 	workflowHelpers,

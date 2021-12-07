@@ -60,12 +60,11 @@ import { ITag } from "@/Interface";
 import { MAX_TAG_NAME_LENGTH, TAGS_MANAGER_MODAL_KEY } from "@/constants";
 
 import { showMessage } from "@/components/mixins/showMessage";
-import { renderText } from "@/components/mixins/renderText";
 
 const MANAGE_KEY = "__manage";
 const CREATE_KEY = "__create";
 
-export default mixins(showMessage, renderText).extend({
+export default mixins(showMessage).extend({
 	name: "TagsDropdown",
 	props: ["placeholder", "currentTagIds", "createEnabled", "eventBus"],
 	data() {

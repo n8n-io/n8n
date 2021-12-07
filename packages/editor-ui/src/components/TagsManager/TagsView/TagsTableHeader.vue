@@ -19,12 +19,10 @@
 </template>
 
 <script lang="ts">
-import { renderText } from "@/components/mixins/renderText";
 import { MAX_TAG_NAME_LENGTH } from "@/constants";
 import Vue from "vue";
-import mixins from 'vue-typed-mixins';
 
-export default mixins(renderText).extend({
+export default Vue.extend({
 	props: {
 		disabled: {
 			default: false,

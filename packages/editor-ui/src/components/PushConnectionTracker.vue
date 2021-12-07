@@ -18,10 +18,7 @@
 import Vue from "vue";
 import { mapGetters } from "vuex";
 
-import mixins from 'vue-typed-mixins';
-import { renderText } from "./mixins/renderText";
-
-export default mixins(renderText).extend({
+export default Vue.extend({
 	name: "PushConnectionTracker",
 	computed: {
 		...mapGetters(["pushConnectionActive"]),

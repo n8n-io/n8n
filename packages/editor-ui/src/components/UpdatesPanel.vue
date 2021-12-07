@@ -61,10 +61,8 @@ import ModalDrawer from './ModalDrawer.vue';
 import TimeAgo from './TimeAgo.vue';
 import VersionCard from './VersionCard.vue';
 import { VERSIONS_MODAL_KEY } from '../constants';
-import { renderText } from './mixins/renderText';
-import mixins from 'vue-typed-mixins';
 
-export default mixins(renderText).extend({
+export default Vue.extend({
 	name: 'UpdatesPanel',
 	components: {
 		ModalDrawer,

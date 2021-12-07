@@ -1,10 +1,9 @@
 import { showMessage } from '@/components/mixins/showMessage';
-import { renderText } from '@/components/mixins/renderText';
 import { debounce } from 'lodash';
 
 import mixins from 'vue-typed-mixins';
 
-export const genericHelpers = mixins(showMessage, renderText).extend({
+export const genericHelpers = mixins(showMessage).extend({
 	data () {
 		return {
 			loadingService: null as any | null, // tslint:disable-line:no-any
