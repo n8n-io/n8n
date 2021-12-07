@@ -10,7 +10,6 @@ import * as employees from './employees';
 import * as employeeFile from './employeeFile';
 import * as companyFile from './companyFile';
 import * as reports from './reports';
-import * as accountInformation from './accountInformation';
 import * as tabularData from './tabularData';
 import * as timeOff from './timeOff';
 
@@ -38,8 +37,6 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
         operationResult.push(...await companyFile[bamboohr.operation].execute.call(this, i));
       } else if (bamboohr.resource === 'reports') {
         operationResult.push(...await reports[bamboohr.operation].execute.call(this, i));
-      } else if (bamboohr.resource === 'accountInformation') {
-        operationResult.push(...await accountInformation[bamboohr.operation].execute.call(this, i));
       } else if (bamboohr.resource === 'tabularData') {
         operationResult.push(...await tabularData[bamboohr.operation].execute.call(this, i));
       } else if (bamboohr.resource === 'timeOff') {

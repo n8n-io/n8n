@@ -2,7 +2,7 @@ import {
   EmployeeFileProperties,
 } from '../../Interfaces';
 
-export const employeeFileCreateDescription: EmployeeFileProperties = [
+export const employeeFileAddCategoryDescription: EmployeeFileProperties = [
   {
     displayName: 'Category Name',
     name: 'categoryName',
@@ -11,7 +11,7 @@ export const employeeFileCreateDescription: EmployeeFileProperties = [
     displayOptions: {
       show: {
         operation: [
-          'create'
+          'addCategory'
         ],
         resource: [
           'employeeFile',

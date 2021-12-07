@@ -5,7 +5,6 @@ import * as employees from './employees';
 import * as employeeFile from './employeeFile';
 import * as companyFile from './companyFile';
 import * as reports from './reports';
-import * as accountInformation from './accountInformation';
 import * as tabularData from './tabularData';
 import * as timeOff from './timeOff';
 
@@ -48,12 +47,8 @@ export const versionDescription: INodeTypeDescription = {
           value: 'companyFile',
         },
         {
-          name: 'Company Reports',
+          name: 'Company Report',
           value: 'reports',
-        },
-        {
-          name: 'Account Information',
-          value: 'accountInformation',
         },
         {
           name: 'Tabular Data',
@@ -71,7 +66,6 @@ export const versionDescription: INodeTypeDescription = {
     ...employeeFile.descriptions,
     ...companyFile.descriptions,
     ...reports.descriptions,
-    ...accountInformation.descriptions,
     ...tabularData.descriptions,
     ...timeOff.descriptions
   ],

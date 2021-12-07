@@ -1,4 +1,4 @@
-import * as create from './create';
+import * as addCategory from './addCategory';
 import * as del from './del';
 import * as get from './get';
 import * as getAll from './getAll';
@@ -7,7 +7,7 @@ import * as update from "./update";
 import { INodeProperties } from 'n8n-workflow';
 
 export {
-  create,
+  addCategory,
   del,
   get,
   getAll,
@@ -29,8 +29,8 @@ export const descriptions = [
     },
     options: [
       {
-        name: 'Create',
-        value: 'create',
+        name: 'Add Category',
+        value: 'addCategory',
         description: 'Add an employee file category',
       },
       {
@@ -54,10 +54,10 @@ export const descriptions = [
         description: 'Update an employee file',
       }
     ],
-    default: 'create',
+    default: 'addCategory',
     description: '',
   },
-  ...create.description,
+  ...addCategory.description,
   ...del.description,
   ...get.description,
   ...getAll.description,
