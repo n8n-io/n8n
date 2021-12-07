@@ -24,6 +24,7 @@ export async function update(this: IExecuteFunctions, index: number): Promise<IN
 
   //body parameters
   body = this.getNodeParameter('updateFields', index) as IDataObject;
+	body.shareWithEmployee ? body.shareWithEmployee = 'yes' : body.shareWithEmployee = 'no';
 
   //response
   const responseData = await apiRequest.call(this, requestMethod, endPoint, body);
