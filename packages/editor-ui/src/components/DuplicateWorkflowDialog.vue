@@ -3,7 +3,7 @@
 		:name="modalName"
 		:eventBus="modalBus"
 		@enter="save"
-		:title="$baseText('duplicateWorkflowDialog.duplicateWorkflow')"
+		:title="$i18n2.baseText('duplicateWorkflowDialog.duplicateWorkflow')"
 		:center="true"
 		minWidth="420px"
 		maxWidth="420px"
@@ -13,7 +13,7 @@
 				<n8n-input
 					v-model="name"
 					ref="nameInput"
-					:placeholder="$baseText('duplicateWorkflowDialog.enterWorkflowName')"
+					:placeholder="$i18n2.baseText('duplicateWorkflowDialog.enterWorkflowName')"
 					:maxlength="MAX_WORKFLOW_NAME_LENGTH"
 				/>
 				<TagsDropdown
@@ -23,15 +23,15 @@
 					@blur="onTagsBlur"
 					@esc="onTagsEsc"
 					@update="onTagsUpdate"
-					:placeholder="$baseText('duplicateWorkflowDialog.chooseOrCreateATag')"
+					:placeholder="$i18n2.baseText('duplicateWorkflowDialog.chooseOrCreateATag')"
 					ref="dropdown"
 				/>
 			</div>
 		</template>
 		<template v-slot:footer="{ close }">
 			<div :class="$style.footer">
-				<n8n-button @click="save" :loading="isSaving" :label="$baseText('duplicateWorkflowDialog.save')" float="right" />
-				<n8n-button type="outline" @click="close" :disabled="isSaving" :label="$baseText('duplicateWorkflowDialog.cancel')" float="right" />
+				<n8n-button @click="save" :loading="isSaving" :label="$i18n2.baseText('duplicateWorkflowDialog.save')" float="right" />
+				<n8n-button type="outline" @click="close" :disabled="isSaving" :label="$i18n2.baseText('duplicateWorkflowDialog.cancel')" float="right" />
 			</div>
 		</template>
 	</Modal>
@@ -102,8 +102,8 @@ export default mixins(showMessage, renderText, workflowHelpers).extend({
 			const name = this.name.trim();
 			if (!name) {
 				this.$showMessage({
-					title: this.$baseText('duplicateWorkflowDialog.showMessage.title'),
-					message: this.$baseText('duplicateWorkflowDialog.showMessage.message'),
+					title: this.$i18n2.baseText('duplicateWorkflowDialog.showMessage.title'),
+					message: this.$i18n2.baseText('duplicateWorkflowDialog.showMessage.message'),
 					type: "error",
 				});
 

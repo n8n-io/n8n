@@ -57,7 +57,7 @@ export default mixins(renderText).extend({
 		},
 		rows(): ITagRow[] {
 			const getUsage = (count: number | undefined) => count && count > 0
-				? this.$baseText(
+				? this.$i18n2.baseText(
 					count > 1 ?
 						'tagsView.inUse.plural' : 'tagsView.inUse.singular',
 					{
@@ -66,7 +66,7 @@ export default mixins(renderText).extend({
 						},
 					},
 				)
-				: this.$baseText('tagsView.notBeingUsed');
+				: this.$i18n2.baseText('tagsView.notBeingUsed');
 
 			const disabled = this.isCreateEnabled || this.$data.updateId || this.$data.deleteId;
 			const tagRows = (this.$props.tags || [])

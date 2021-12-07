@@ -5,7 +5,7 @@
 				<font-awesome-icon class="back-arrow" icon="arrow-left" />
 			</div>
 			<span>
-				{{ $baseText(`nodeCreator.subcategoryNames.${subcategoryName}`) }}
+				{{ $i18n2.baseText(`nodeCreator.subcategoryNames.${subcategoryName}`) }}
 			</span>
 		</div>
 

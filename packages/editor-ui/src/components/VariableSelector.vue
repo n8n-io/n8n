@@ -1,7 +1,7 @@
 <template>
 	<div @keydown.stop class="variable-selector-wrapper">
 		<div class="input-wrapper">
-			<n8n-input :placeholder="$baseText('variableSelector.variableFilter')" v-model="variableFilter" ref="inputField" size="small" type="text"></n8n-input>
+			<n8n-input :placeholder="$i18n2.baseText('variableSelector.variableFilter')" v-model="variableFilter" ref="inputField" size="small" type="text"></n8n-input>
 		</div>
 
 		<div class="result-wrapper">
@@ -525,14 +525,14 @@ export default mixins(
 
 				currentNodeData.push(
 					{
-						name: this.$baseText('variableSelector.parameters'),
+						name: this.$i18n2.baseText('variableSelector.parameters'),
 						options: this.sortOptions(this.getNodeParameters(activeNode.name, initialPath, skipParameter, filterText) as IVariableSelectorOption[]),
 					},
 				);
 
 				returnData.push(
 					{
-						name: this.$baseText('variableSelector.currentNode'),
+						name: this.$i18n2.baseText('variableSelector.currentNode'),
 						options: this.sortOptions(currentNodeData),
 					},
 				);
@@ -557,7 +557,7 @@ export default mixins(
 
 					nodeOptions = [
 						{
-							name: this.$baseText('variableSelector.parameters'),
+							name: this.$i18n2.baseText('variableSelector.parameters'),
 							options: this.sortOptions(this.getNodeParameters(nodeName, `$node["${nodeName}"].parameter`, undefined, filterText)),
 						} as IVariableSelectorOption,
 					];
@@ -570,7 +570,7 @@ export default mixins(
 						if (tempOptions.length) {
 							nodeOptions = [
 								{
-									name: this.$baseText('variableSelector.context'),
+									name: this.$i18n2.baseText('variableSelector.context'),
 									options: this.sortOptions(tempOptions),
 								} as IVariableSelectorOption,
 							];
@@ -583,18 +583,18 @@ export default mixins(
 						if (tempOutputData) {
 							nodeOptions.push(
 								{
-									name: this.$baseText('variableSelector.outputData'),
+									name: this.$i18n2.baseText('variableSelector.outputData'),
 									options: this.sortOptions(tempOutputData),
 								} as IVariableSelectorOption,
 							);
 						}
 					}
 
-					const shortNodeType = this.$shortNodeType(node.type);
+					const shortNodeType = this.$i18n2.shortNodeType(node.type);
 
 					allNodesData.push(
 						{
-							name: this.$headerText({
+							name: this.$i18n2.headerText({
 								key: `headers.${shortNodeType}.displayName`,
 								fallback: nodeName,
 							}),
@@ -605,7 +605,7 @@ export default mixins(
 
 				returnData.push(
 					{
-						name: this.$baseText('variableSelector.nodes'),
+						name: this.$i18n2.baseText('variableSelector.nodes'),
 						options: this.sortOptions(allNodesData),
 					},
 				);

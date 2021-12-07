@@ -2,7 +2,7 @@
 	<el-row class="tags-header">
 		<el-col :span="10">
 			<n8n-input
-				:placeholder="$baseText('tagsTableHeader.searchTags')"
+				:placeholder="$i18n2.baseText('tagsTableHeader.searchTags')"
 				:value="search"
 				@input="onSearchChange"
 				:disabled="disabled"
@@ -13,7 +13,7 @@
 			</n8n-input>
 		</el-col>
 		<el-col :span="14">
-			<n8n-button @click="onAddNew" :disabled="disabled" icon="plus" :label="$baseText('tagsTableHeader.addNew')" size="large" float="right" />
+			<n8n-button @click="onAddNew" :disabled="disabled" icon="plus" :label="$i18n2.baseText('tagsTableHeader.addNew')" size="large" float="right" />
 		</el-col>
 	</el-row>
 </template>

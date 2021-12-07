@@ -2,7 +2,7 @@
 	<div v-if="credentialTypesNodeDescriptionDisplayed.length" :class="$style.container">
 		<div v-for="credentialTypeDescription in credentialTypesNodeDescriptionDisplayed" :key="credentialTypeDescription.name">
 			<n8n-input-label
-				:label="$baseText(
+				:label="$i18n2.baseText(
 					'nodeCredentials.credentialFor',
 					{
 						interpolate: {
@@ -20,7 +20,7 @@
 				</div>
 
 				<div :class="issues.length ? $style.hasIssues : $style.input" v-else >
-					<n8n-select :value="getSelectedId(credentialTypeDescription.name)" @change="(value) => onCredentialSelected(credentialTypeDescription.name, value)" :placeholder="$baseText('nodeCredentials.selectCredential')" size="small">
+					<n8n-select :value="getSelectedId(credentialTypeDescription.name)" @change="(value) => onCredentialSelected(credentialTypeDescription.name, value)" :placeholder="$i18n2.baseText('nodeCredentials.selectCredential')" size="small">
 						<n8n-option
 							v-for="(item) in credentialOptions[credentialTypeDescription.name]"
 							:key="item.id"
@@ -37,13 +37,13 @@
 
 					<div :class="$style.warning" v-if="issues.length">
 						<n8n-tooltip placement="top" >
-							<div slot="content" v-html="`${$baseText('nodeCredentials.issues')}:<br />&nbsp;&nbsp;- ` + issues.join('<br />&nbsp;&nbsp;- ')"></div>
+							<div slot="content" v-html="`${$i18n2.baseText('nodeCredentials.issues')}:<br />&nbsp;&nbsp;- ` + issues.join('<br />&nbsp;&nbsp;- ')"></div>
 							<font-awesome-icon icon="exclamation-triangle" />
 						</n8n-tooltip>
 					</div>
 
 					<div :class="$style.edit" v-if="selected[credentialTypeDescription.name] && isCredentialExisting(credentialTypeDescription.name)">
-						<font-awesome-icon icon="pen" @click="editCredential(credentialTypeDescription.name)" class="clickable" :title="$baseText('nodeCredentials.updateCredential')" />
+						<font-awesome-icon icon="pen" @click="editCredential(credentialTypeDescription.name)" class="clickable" :title="$i18n2.baseText('nodeCredentials.updateCredential')" />
 					</div>
 				</div>
 			</n8n-input-label>
@@ -85,7 +85,7 @@ export default mixins(
 	],
 	data () {
 		return {
-			NEW_CREDENTIALS_TEXT: `- ${this.$baseText('nodeCredentials.createNew')} -`,
+			NEW_CREDENTIALS_TEXT: `- ${this.$i18n2.baseText('nodeCredentials.createNew')} -`,
 			newCredentialUnsubscribe: null as null | (() => void),
 		};
 	},
@@ -215,8 +215,8 @@ export default mixins(
 				});
 				this.updateNodesCredentialsIssues();
 				this.$showMessage({
-					title: this.$baseText('nodeCredentials.showMessage.title'),
-					message: this.$baseText(
+					title: this.$i18n2.baseText('nodeCredentials.showMessage.title'),
+					message: this.$i18n2.baseText(
 						'nodeCredentials.showMessage.message',
 						{
 							interpolate: {
