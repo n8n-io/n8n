@@ -36,10 +36,13 @@ import {
 	omit
 } from 'lodash';
 
-export async function woocommerceApiRequest(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions | IWebhookFunctions, method: string, resource: string, body: any = {}, qs: IDataObject = {}, uri?: string, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
+export async function woocommerceApiRequest(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions | IWebhookFunctions, method: string, resource: string, body: any = {}, qs: IDataObject = {}, uri?: string, option: IDataObject = {}, path?: string): Promise<any> { // tslint:disable-line:no-any
 	const credentials = await this.getCredentials('wooCommerceApi');
 	if (credentials === undefined) {
 		throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
+	}
+	if(path) {
+		path = `${credentials.url}${path}`;
 	}
 
 	let options: OptionsWithUri = {
@@ -50,7 +53,7 @@ export async function woocommerceApiRequest(this: IHookFunctions | IExecuteFunct
 		method,
 		qs,
 		body,
-		uri: uri || `${credentials.url}/wp-json/wc/v3${resource}`,
+		uri: uri || path || `${credentials.url}/wp-json/wc/v3${resource}`,
 		json: true,
 	};
 
@@ -62,6 +65,7 @@ export async function woocommerceApiRequest(this: IHookFunctions | IExecuteFunct
 	if (!Object.keys(body).length) {
 		delete options.form;
 	}
+
 	options = Object.assign({}, options, option);
 	try {
 		return await this.helpers.request!(options);
@@ -103,7 +107,6 @@ export function getAutomaticSecret(credentials: ICredentialDataDecryptedObject) 
 
 export function setMetadata(data:
 	IShoppingLine[] |
-	IShoppingLine[] |
 	IFeeLine[] |
 	ILineItem[] |
 	ICouponLine[]) {
@@ -122,7 +125,6 @@ export function setMetadata(data:
 }
 
 export function toSnakeCase(data:
-	IShoppingLine[] |
 	IShoppingLine[] |
 	IFeeLine[] |
 	ILineItem[] |
@@ -156,7 +158,7 @@ export function setFields(fieldsToSet: IDataObject, body: IDataObject) {
 		} else {
 			body[snakeCase(fields.toString())] = fieldsToSet[fields];
 		}
-		
+
 	}
 }
 
@@ -174,3 +176,32 @@ type Metadata = {
 		meta_data_fields: Array<{ key: string; value: string }>;
 	}
 };
+
+export function validateJSON(json: string | undefined): any { // tslint:disable-line:no-any
+	let result;
+	try {
+		result = JSON.parse(json!);
+	} catch (exception) {
+		result = undefined;
+	}
+	return result;
+}
+
+/**
+ * Creates an object from an array of names values
+ *
+ * @export
+ * @param Array<{key:string,value:string}> data
+ * @returns IDataObject
+ */
+export function parseArrayToObject(data: Array<{name:string,value:string}>): IDataObject {
+	const jsonData: IDataObject = {};
+	if(data) {
+		for (let i = 0; i < data.length; i++) {
+			if (data[i].name && data[i].value) {
+				jsonData[data[i].name] = data[i].value;
+			}
+		}
+	}
+	return jsonData;
+}

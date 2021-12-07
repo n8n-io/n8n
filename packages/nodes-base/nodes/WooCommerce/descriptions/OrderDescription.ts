@@ -275,6 +275,9 @@ export const orderFields: INodeProperties[] = [
 				operation: [
 					'create',
 				],
+				jsonParameterCouponLines: [
+					false,
+				],
 			},
 		},
 		description: 'Coupons line data',
@@ -328,6 +331,44 @@ export const orderFields: INodeProperties[] = [
 		],
 	},
 	{
+		displayName: 'Coupon Lines',
+		name: 'couponLinesJson',
+		type: 'json',
+		displayOptions: {
+			show: {
+				resource: [
+					'order',
+				],
+				operation: [
+					'create',
+				],
+				jsonParameterCouponLines: [
+					true,
+				],
+			},
+		},
+		default: '',
+		description: 'Line Items as JSON (flat object).',
+	},
+	{
+		displayName: 'JSON Parameter Coupon Lines',
+		name: 'jsonParameterCouponLines',
+		type: 'boolean',
+		displayOptions: {
+			show: {
+				resource: [
+					'order',
+				],
+				operation: [
+					'create',
+				],
+			},
+		},
+		default: false,
+		description: 'If the Coupon Lines parameter should be set via the value-key pair UI or JSON.',
+	},
+
+	{
 		displayName: 'Fee Lines',
 		name: 'feeLinesUi',
 		placeholder: 'Add Fee Line',
@@ -343,6 +384,9 @@ export const orderFields: INodeProperties[] = [
 				],
 				operation: [
 					'create',
+				],
+				jsonParameterFeeLines: [
+					false,
 				],
 			},
 		},
@@ -428,6 +472,44 @@ export const orderFields: INodeProperties[] = [
 		],
 	},
 	{
+		displayName: 'Fee Lines',
+		name: 'feeLinesJson',
+		type: 'json',
+		displayOptions: {
+			show: {
+				resource: [
+					'order',
+				],
+				operation: [
+					'create',
+				],
+				jsonParameterFeeLines: [
+					true,
+				],
+			},
+		},
+		default: '',
+		description: 'Fee Lines as JSON (flat object).',
+	},
+	{
+		displayName: 'JSON Parameter Fee Lines',
+		name: 'jsonParameterFeeLines',
+		type: 'boolean',
+		displayOptions: {
+			show: {
+				resource: [
+					'order',
+				],
+				operation: [
+					'create',
+				],
+			},
+		},
+		default: false,
+		description: 'If the Fee Lines parameter should be set via the value-key pair UI or JSON.',
+	},
+
+	{
 		displayName: 'Line Items',
 		name: 'lineItemsUi',
 		placeholder: 'Add Line Item',
@@ -443,6 +525,9 @@ export const orderFields: INodeProperties[] = [
 				],
 				operation: [
 					'create',
+				],
+				jsonParameterLineItems: [
+					false,
 				],
 			},
 		},
@@ -539,6 +624,44 @@ export const orderFields: INodeProperties[] = [
 		],
 	},
 	{
+		displayName: 'Line Items',
+		name: 'lineItemsJson',
+		type: 'json',
+		displayOptions: {
+			show: {
+				resource: [
+					'order',
+				],
+				operation: [
+					'create',
+				],
+				jsonParameterLineItems: [
+					true,
+				],
+			},
+		},
+		default: '',
+		description: 'Line Items as JSON (flat object).',
+	},
+	{
+		displayName: 'JSON Parameter Line Items',
+		name: 'jsonParameterLineItems',
+		type: 'boolean',
+		displayOptions: {
+			show: {
+				resource: [
+					'order',
+				],
+				operation: [
+					'create',
+				],
+			},
+		},
+		default: false,
+		description: 'If the Line Items parameter should be set via the value-key pair UI or JSON.',
+	},
+
+	{
 		displayName: 'Metadata',
 		name: 'metadataUi',
 		placeholder: 'Add Metadata',
@@ -554,6 +677,9 @@ export const orderFields: INodeProperties[] = [
 				],
 				operation: [
 					'create',
+				],
+				jsonParameterMetadata: [
+					false,
 				],
 			},
 		},
@@ -581,6 +707,44 @@ export const orderFields: INodeProperties[] = [
 			},
 		],
 	},
+	{
+		displayName: 'Metadata',
+		name: 'metadataJson',
+		type: 'json',
+		displayOptions: {
+			show: {
+				resource: [
+					'order',
+				],
+				operation: [
+					'create',
+				],
+				jsonParameterMetadata: [
+					true,
+				],
+			},
+		},
+		default: '',
+		description: 'Metadata as JSON (flat object).',
+	},
+	{
+		displayName: 'JSON Parameter Metadata',
+		name: 'jsonParameterMetadata',
+		type: 'boolean',
+		displayOptions: {
+			show: {
+				resource: [
+					'order',
+				],
+				operation: [
+					'create',
+				],
+			},
+		},
+		default: false,
+		description: 'If Metadata parameter should be set via the value-key pair UI or JSON.',
+	},
+
 	{
 		displayName: 'Shipping',
 		name: 'shippingUi',
@@ -676,6 +840,9 @@ export const orderFields: INodeProperties[] = [
 				operation: [
 					'create',
 				],
+				jsonParameterShippingLines: [
+					false,
+				],
 			},
 		},
 		description: 'Shipping line data',
@@ -741,6 +908,43 @@ export const orderFields: INodeProperties[] = [
 				],
 			},
 		],
+	},
+	{
+		displayName: 'Shipping Lines',
+		name: 'shippingLinesJson',
+		type: 'json',
+		displayOptions: {
+			show: {
+				resource: [
+					'order',
+				],
+				operation: [
+					'create',
+				],
+				jsonParameterShippingLines: [
+					true,
+				],
+			},
+		},
+		default: '',
+		description: 'Shipping Lines as JSON (flat object).',
+	},
+	{
+		displayName: 'JSON Parameter Shipping Lines',
+		name: 'jsonParameterShippingLines',
+		type: 'boolean',
+		displayOptions: {
+			show: {
+				resource: [
+					'order',
+				],
+				operation: [
+					'create',
+				],
+			},
+		},
+		default: false,
+		description: 'If Shipping Lines parameter should be set via the value-key pair UI or JSON.',
 	},
 /* -------------------------------------------------------------------------- */
 /*                                 order:update                             */
@@ -981,6 +1185,9 @@ export const orderFields: INodeProperties[] = [
 				operation: [
 					'update',
 				],
+				jsonParameterCouponLines: [
+					false,
+				],
 			},
 		},
 		description: 'Coupons line data',
@@ -1034,6 +1241,44 @@ export const orderFields: INodeProperties[] = [
 		],
 	},
 	{
+		displayName: 'Coupon Lines',
+		name: 'couponLinesJson',
+		type: 'json',
+		displayOptions: {
+			show: {
+				resource: [
+					'order',
+				],
+				operation: [
+					'update',
+				],
+				jsonParameterCouponLines: [
+					true,
+				],
+			},
+		},
+		default: '',
+		description: 'Line Items as JSON (flat object).',
+	},
+	{
+		displayName: 'JSON Parameter Coupon Lines',
+		name: 'jsonParameterCouponLines',
+		type: 'boolean',
+		displayOptions: {
+			show: {
+				resource: [
+					'order',
+				],
+				operation: [
+					'update',
+				],
+			},
+		},
+		default: false,
+		description: 'If the Coupon Lines parameter should be set via the value-key pair UI or JSON.',
+	},
+
+	{
 		displayName: 'Fee Lines',
 		name: 'feeLinesUi',
 		placeholder: 'Add Fee Line',
@@ -1049,6 +1294,9 @@ export const orderFields: INodeProperties[] = [
 				],
 				operation: [
 					'update',
+				],
+				jsonParameterFeeLines: [
+					false,
 				],
 			},
 		},
@@ -1134,6 +1382,44 @@ export const orderFields: INodeProperties[] = [
 		],
 	},
 	{
+		displayName: 'Fee Lines',
+		name: 'feeLinesJson',
+		type: 'json',
+		displayOptions: {
+			show: {
+				resource: [
+					'order',
+				],
+				operation: [
+					'update',
+				],
+				jsonParameterFeeLines: [
+					true,
+				],
+			},
+		},
+		default: '',
+		description: 'Fee Lines as JSON (flat object).',
+	},
+	{
+		displayName: 'JSON Parameter Fee Lines',
+		name: 'jsonParameterFeeLines',
+		type: 'boolean',
+		displayOptions: {
+			show: {
+				resource: [
+					'order',
+				],
+				operation: [
+					'update',
+				],
+			},
+		},
+		default: false,
+		description: 'If the Fee Lines parameter should be set via the value-key pair UI or JSON.',
+	},
+
+	{
 		displayName: 'Line Items',
 		name: 'lineItemsUi',
 		placeholder: 'Add Line Item',
@@ -1149,6 +1435,9 @@ export const orderFields: INodeProperties[] = [
 				],
 				operation: [
 					'update',
+				],
+				jsonParameterLineItems: [
+					false,
 				],
 			},
 		},
@@ -1245,6 +1534,44 @@ export const orderFields: INodeProperties[] = [
 		],
 	},
 	{
+		displayName: 'Line Items',
+		name: 'lineItemsJson',
+		type: 'json',
+		displayOptions: {
+			show: {
+				resource: [
+					'order',
+				],
+				operation: [
+					'update',
+				],
+				jsonParameterLineItems: [
+					true,
+				],
+			},
+		},
+		default: '',
+		description: 'Line Items as JSON (flat object).',
+	},
+	{
+		displayName: 'JSON Parameter Line Items',
+		name: 'jsonParameterLineItems',
+		type: 'boolean',
+		displayOptions: {
+			show: {
+				resource: [
+					'order',
+				],
+				operation: [
+					'update',
+				],
+			},
+		},
+		default: false,
+		description: 'If the Line Items parameter should be set via the value-key pair UI or JSON.',
+	},
+
+	{
 		displayName: 'Metadata',
 		name: 'metadataUi',
 		placeholder: 'Add Metadata',
@@ -1260,6 +1587,9 @@ export const orderFields: INodeProperties[] = [
 				],
 				operation: [
 					'update',
+				],
+				jsonParameterMetadata: [
+					false,
 				],
 			},
 		},
@@ -1287,6 +1617,44 @@ export const orderFields: INodeProperties[] = [
 			},
 		],
 	},
+	{
+		displayName: 'Metadata',
+		name: 'metadataJson',
+		type: 'json',
+		displayOptions: {
+			show: {
+				resource: [
+					'order',
+				],
+				operation: [
+					'update',
+				],
+				jsonParameterMetadata: [
+					true,
+				],
+			},
+		},
+		default: '',
+		description: 'Metadata as JSON (flat object).',
+	},
+	{
+		displayName: 'JSON Parameter Metadata',
+		name: 'jsonParameterMetadata',
+		type: 'boolean',
+		displayOptions: {
+			show: {
+				resource: [
+					'order',
+				],
+				operation: [
+					'update',
+				],
+			},
+		},
+		default: false,
+		description: 'If Metadata parameter should be set via the value-key pair UI or JSON.',
+	},
+
 	{
 		displayName: 'Shipping',
 		name: 'shippingUi',
@@ -1382,6 +1750,9 @@ export const orderFields: INodeProperties[] = [
 				operation: [
 					'update',
 				],
+				jsonParameterShippingLines: [
+					false,
+				],
 			},
 		},
 		description: 'Shipping line data',
@@ -1447,6 +1818,43 @@ export const orderFields: INodeProperties[] = [
 				],
 			},
 		],
+	},
+	{
+		displayName: 'Shipping Lines',
+		name: 'shippingLinesJson',
+		type: 'json',
+		displayOptions: {
+			show: {
+				resource: [
+					'order',
+				],
+				operation: [
+					'update',
+				],
+				jsonParameterShippingLines: [
+					true,
+				],
+			},
+		},
+		default: '',
+		description: 'Shipping Lines as JSON (flat object).',
+	},
+	{
+		displayName: 'JSON Parameter Shipping Lines',
+		name: 'jsonParameterShippingLines',
+		type: 'boolean',
+		displayOptions: {
+			show: {
+				resource: [
+					'order',
+				],
+				operation: [
+					'update',
+				],
+			},
+		},
+		default: false,
+		description: 'If Shipping Lines parameter should be set via the value-key pair UI or JSON.',
 	},
 /* -------------------------------------------------------------------------- */
 /*                                   order:get                              */
