@@ -737,7 +737,6 @@ export interface IUser {
 		name: IRole;
 		id: string;
 	};
-	emailUndeliverable?: boolean;
 }
 
 type IValidationRule = {

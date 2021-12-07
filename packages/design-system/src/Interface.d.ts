@@ -6,6 +6,5 @@ export interface IUser {
 	globalRole: {
 		name: string;
 		id: string;
-	},
-	emailUndeliverable?: boolean;
+	};
 }

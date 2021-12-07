@@ -52,15 +52,6 @@ const users = [
 		},
 	},
 	{
-		id: '6',
-		email: 'test6@gmail.com',
-		globalRole: {
-			name: 'member',
-			id: "2",
-		},
-		emailUndeliverable: true,
-	},
-	{
 		id: '7',
 		email: 'test7@gmail.com',
 		globalRole: {
