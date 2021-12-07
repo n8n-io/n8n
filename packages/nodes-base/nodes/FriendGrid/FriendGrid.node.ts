@@ -123,47 +123,56 @@ export class FriendGrid implements INodeType {
         ],
     };
 
-async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
-	let responseData;
-	const resource = this.getNodeParameter('resource', 0) as string;
-	const operation = this.getNodeParameter('operation', 0) as string;
-	//Get credentials the user provided for this node
-	const credentials = await this.getCredentials('friendGridApi') as IDataObject;
+    async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
+        const items = this.getInputData();
+        let responseData;
+        const returnData = [];
+        const resource = this.getNodeParameter('resource', 0) as string;
+        const operation = this.getNodeParameter('operation', 0) as string;
+        //Get credentials the user provided for this node
+        const credentials = await this.getCredentials('friendGridApi') as IDataObject;
 
-	if (resource === 'contact') {
-		if (operation === 'create') {
-			// get email input
-			const email = this.getNodeParameter('email', 0) as string;
-			// get additional fields input
-			const additionalFields = this.getNodeParameter('additionalFields', 0) as IDataObject;
-			const data: IDataObject = {
-				email,
-			};
+        for (let i = 0; i < items.length; i++) {
+            if (resource === 'contact') {
+                if (operation === 'create') {
+                    // get email input
+                    const email = this.getNodeParameter('email', i) as string;
 
-			Object.assign(data, additionalFields);
+                    // i = 1 returns ricardo@n8n.io
+                    // i = 2 returns hello@n8n.io
 
-			//Make http request according to <https://sendgrid.com/docs/api-reference/>
-			const options: OptionsWithUri = {
-				headers: {
-					'Accept': 'application/json',
-					'Authorization': `Bearer ${credentials.apiKey}`,
-				},
-				method: 'PUT',
-				body: {
-					contacts: [
-						data,
-					],
-				},
-				uri: `https://api.sendgrid.com/v3/marketing/contacts`,
-				json: true,
-			};
+                    // get additional fields input
+                    const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+                    const data: IDataObject = {
+                        email,
+                    };
 
-			responseData = await this.helpers.request(options);
-		}
-	}
+                    Object.assign(data, additionalFields);
 
-	// Map data to n8n data
-	return [this.helpers.returnJsonArray(responseData)];
-}
+                    //Make http request according to <https://sendgrid.com/docs/api-reference/>
+                    const options: OptionsWithUri = {
+                        headers: {
+                            'Accept': 'application/json',
+                            'Authorization': `Bearer ${credentials.apiKey}`,
+                        },
+                        method: 'PUT',
+                        body: {
+                            contacts: [
+                                data,
+                            ],
+                        },
+                        uri: `https://api.sendgrid.com/v3/marketing/contacts`,
+                        json: true,
+                    };
+
+                    responseData = await this.helpers.request(options);
+                    returnData.push(responseData);
+                }
+            }
+        }
+        // Map data to n8n data structure
+        return [this.helpers.returnJsonArray(returnData)];
+    }
+
 
 }
