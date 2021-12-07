@@ -28,7 +28,6 @@ import N8nIcon from '../N8nIcon';
 import N8nLink from '../N8nLink';
 import N8nText from '../N8nText';
 import N8nUserInfo from '../N8nUserInfo';
-import N8nWarningTooltip from '../N8nWarningTooltip';
 
 export default Vue.extend({
 	name: 'n8n-users-list',
@@ -39,7 +38,6 @@ export default Vue.extend({
 		N8nText,
 		N8nLink,
 		N8nUserInfo,
-		N8nWarningTooltip,
 	},
 	props: {
 		users: {
