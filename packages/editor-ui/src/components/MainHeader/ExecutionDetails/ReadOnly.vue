@@ -11,10 +11,9 @@
 </template>
 
 <script lang="ts">
-import { renderText } from "@/components/mixins/renderText";
-import mixins from "vue-typed-mixins";
+import Vue from 'vue';
 
-export default mixins(renderText).extend({
+export default Vue.extend({
 	name: "ReadOnly",
 });
 </script>

@@ -31,13 +31,11 @@ import {
 } from 'n8n-workflow';
 
 import { nodeHelpers } from '@/components/mixins/nodeHelpers';
-import { renderText } from '@/components/mixins/renderText';
 
 import mixins from 'vue-typed-mixins';
 
 export default mixins(
 	nodeHelpers,
-	renderText,
 )
 	.extend({
 		name: 'BinaryDataDisplay',

@@ -30,10 +30,8 @@
 import { IUpdateInformation } from '@/Interface';
 import ParameterInput from './ParameterInput.vue';
 import Vue from 'vue';
-import mixins from 'vue-typed-mixins';
-import { renderText } from './mixins/renderText';
 
-export default mixins(renderText).extend({
+export default Vue.extend({
 	name: 'ParameterInputExpanded',
 	components: {
 		ParameterInput,

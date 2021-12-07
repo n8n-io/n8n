@@ -32,11 +32,10 @@ import { ITag, ITagRow } from "@/Interface";
 import TagsTableHeader from "@/components/TagsManager/TagsView/TagsTableHeader.vue";
 import TagsTable from "@/components/TagsManager/TagsView/TagsTable.vue";
 import mixins from "vue-typed-mixins";
-import { renderText } from "@/components/mixins/renderText";
 
 const matches = (name: string, filter: string) => name.toLowerCase().trim().includes(filter.toLowerCase().trim());
 
-export default mixins(renderText).extend({
+export default Vue.extend({
 	components: { TagsTableHeader, TagsTable },
 	name: "TagsView",
 	props: ["tags", "isLoading"],

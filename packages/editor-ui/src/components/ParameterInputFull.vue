@@ -27,10 +27,8 @@ import {
 } from '@/Interface';
 
 import ParameterInput from '@/components/ParameterInput.vue';
-import { renderText } from '@/components/mixins/renderText';
-import mixins from 'vue-typed-mixins';
 
-export default mixins(renderText)
+export default Vue
 	.extend({
 		name: 'ParameterInputFull',
 		components: {

@@ -247,13 +247,12 @@ import {
 } from "../constants";
 import { workflowHelpers } from "@/components/mixins/workflowHelpers";
 import { showMessage } from "@/components/mixins/showMessage";
-import { renderText } from "@/components/mixins/renderText";
 import Modal from "./Modal.vue";
 import { IPersonalizationSurveyAnswers, IPersonalizationSurveyKeys } from "@/Interface";
 import Vue from "vue";
 import { mapGetters } from "vuex";
 
-export default mixins(showMessage, renderText, workflowHelpers).extend({
+export default mixins(showMessage, workflowHelpers).extend({
 	components: { Modal },
 	name: "PersonalizationModal",
 	data() {

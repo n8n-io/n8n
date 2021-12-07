@@ -155,7 +155,6 @@ import GiftNotificationIcon from './GiftNotificationIcon.vue';
 import WorkflowSettings from '@/components/WorkflowSettings.vue';
 
 import { genericHelpers } from '@/components/mixins/genericHelpers';
-import { renderText } from '@/components/mixins/renderText';
 import { restApi } from '@/components/mixins/restApi';
 import { showMessage } from '@/components/mixins/showMessage';
 import { titleChange } from '@/components/mixins/titleChange';
@@ -172,7 +171,6 @@ import { CREDENTIAL_LIST_MODAL_KEY, CREDENTIAL_SELECT_MODAL_KEY, DUPLICATE_MODAL
 export default mixins(
 	genericHelpers,
 	restApi,
-	renderText,
 	showMessage,
 	titleChange,
 	workflowHelpers,

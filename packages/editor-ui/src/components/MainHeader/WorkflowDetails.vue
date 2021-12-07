@@ -90,7 +90,6 @@ import SaveButton from "@/components/SaveButton.vue";
 import TagsDropdown from "@/components/TagsDropdown.vue";
 import InlineTextEdit from "@/components/InlineTextEdit.vue";
 import BreakpointsObserver from "@/components/BreakpointsObserver.vue";
-import { renderText } from "@/components/mixins/renderText";
 
 const hasChanged = (prev: string[], curr: string[]) => {
 	if (prev.length !== curr.length) {
@@ -101,7 +100,7 @@ const hasChanged = (prev: string[], curr: string[]) => {
 	return curr.reduce((accu, val) => accu || !set.has(val), false);
 };
 
-export default mixins(renderText, workflowHelpers).extend({
+export default mixins(workflowHelpers).extend({
 	name: "WorkflowDetails",
 	components: {
 		TagsContainer,

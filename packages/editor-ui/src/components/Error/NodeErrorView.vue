@@ -79,12 +79,10 @@ import mixins from 'vue-typed-mixins';
 import {
 	MAX_DISPLAY_DATA_SIZE,
 } from '@/constants';
-import { renderText } from '../mixins/renderText';
 
 export default mixins(
 	copyPaste,
 	showMessage,
-	renderText,
 ).extend({
 	name: 'NodeErrorView',
 	props: [

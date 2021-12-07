@@ -15,11 +15,10 @@
 </template>
 
 <script lang="ts">
+import Vue from 'vue';
 import camelcase from 'lodash.camelcase';
-import { renderText } from '@/components/mixins/renderText';
-import mixins from 'vue-typed-mixins';
 
-export default mixins(renderText).extend({
+export default Vue.extend({
 	props: ['item'],
 	computed: {
 		subcategoryName() {
