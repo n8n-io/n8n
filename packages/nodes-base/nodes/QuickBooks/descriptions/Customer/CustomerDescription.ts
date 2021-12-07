@@ -6,7 +6,7 @@ import {
 	customerAdditionalFieldsOptions,
 } from './CustomerAdditionalFieldsOptions';
 
-export const customerOperations = [
+export const customerOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -39,9 +39,9 @@ export const customerOperations = [
 			},
 		},
 	},
-] as INodeProperties[];
+];
 
-export const customerFields = [
+export const customerFields: INodeProperties[] = [
 	// ----------------------------------
 	//         customer: create
 	// ----------------------------------
@@ -219,4 +219,4 @@ export const customerFields = [
 		},
 		options: customerAdditionalFieldsOptions,
 	},
-] as INodeProperties[];
+];

@@ -2,7 +2,7 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const paymentOperations = [
+export const paymentOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -29,9 +29,9 @@ export const paymentOperations = [
 		default: 'getAll',
 		description: 'The operation to perform.',
 	},
-] as INodeProperties[];
+];
 
-export const paymentFields = [
+export const paymentFields: INodeProperties[] = [
 	/* -------------------------------------------------------------------------- */
 	/*                                 payment:getAll                             */
 	/* -------------------------------------------------------------------------- */
@@ -245,4 +245,4 @@ export const paymentFields = [
 		},
 		description: 'Date you want to move the payment to.',
 	},
-] as INodeProperties[];
+];

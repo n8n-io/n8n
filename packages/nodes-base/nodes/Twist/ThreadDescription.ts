@@ -2,7 +2,7 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const threadOperations = [
+export const threadOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -44,9 +44,9 @@ export const threadOperations = [
 		default: 'create',
 		description: 'The operation to perform.',
 	},
-] as INodeProperties[];
+];
 
-export const threadFields = [
+export const threadFields: INodeProperties[] = [
 	/*-------------------------------------------------------------------------- */
 	/*                                thread:create                              */
 	/* ------------------------------------------------------------------------- */
@@ -125,6 +125,7 @@ export const threadFields = [
 				displayName: 'Actions',
 				name: 'actionsUi',
 				type: 'fixedCollection',
+				default: {},
 				placeholder: 'Add Action',
 				typeOptions: {
 					multipleValues: true,
@@ -445,6 +446,7 @@ export const threadFields = [
 				displayName: 'Actions',
 				name: 'actionsUi',
 				type: 'fixedCollection',
+				default: {},
 				placeholder: 'Add Action',
 				typeOptions: {
 					multipleValues: true,
@@ -564,4 +566,4 @@ export const threadFields = [
 			},
 		],
 	},
-] as INodeProperties[];
+];

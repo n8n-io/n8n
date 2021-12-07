@@ -2898,6 +2898,15 @@ export async function start(): Promise<void> {
 
 		void InternalHooksManager.getInstance().onServerStarted(diagnosticInfo);
 	});
+
+	server.on('error', (error: Error & { code: string }) => {
+		if (error.code === 'EADDRINUSE') {
+			console.log(
+				`n8n's port ${PORT} is already in use. Do you have another instance of n8n running already?`,
+			);
+			process.exit(1);
+		}
+	});
 }
 
 async function getExecutionsCount(
