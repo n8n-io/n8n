@@ -777,4 +777,5 @@ export type IFormBoxConfig = {
 	inputs: IFormInputs;
 	redirectLink?: string;
 	redirectText?: string;
+	validateOnBlur?: boolean;
 };

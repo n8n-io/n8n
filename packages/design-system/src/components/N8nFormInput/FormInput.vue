@@ -243,6 +243,10 @@ export default Vue.extend({
 		showValidationWarnings: {
 			type: Boolean,
 		},
+		validateOnBlur: {
+			type: Boolean,
+			default: true,
+		},
 		documentationUrl: {
 			type: String,
 		},
@@ -276,7 +280,7 @@ export default Vue.extend({
 		showErrors(): boolean {
 			return (
 				!!this.validationError &&
-				((this.hasBlurred && !this.isTyping) || this.showValidationWarnings)
+				((this.validateOnBlur && this.hasBlurred && !this.isTyping) || this.showValidationWarnings)
 			);
 		},
 	},

@@ -27,6 +27,7 @@ const FORM_CONFIG: IFormBoxConfig = {
 				required: true,
 				validationRules: [{name: 'VALID_EMAIL'}],
 				showRequiredAsterisk: false,
+				validateOnBlur: false,
 			},
 		},
 		{
@@ -37,6 +38,7 @@ const FORM_CONFIG: IFormBoxConfig = {
 				required: true,
 				validationRules: [{name: 'MIN_LENGTH', config: {minimum: 8}}],
 				showRequiredAsterisk: false,
+				validateOnBlur: false,
 			},
 		},
 	]],
