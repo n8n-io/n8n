@@ -52,7 +52,6 @@ $color-warning-shade: lightness(
 	border-radius: var(--border-radius-base);
 	border: var(--border-base);
 	white-space: nowrap;
-	font-weight: var(--font-weight-bold);
 }
 
 .danger {

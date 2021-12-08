@@ -7,8 +7,8 @@
 		>
 			<n8n-user-info :user="user" :currentUserId="currentUserId" />
 			<div :class="$style.badgeContainer">
-				<n8n-badge v-if="user.globalRole.name === 'owner'">Owner</n8n-badge>
-				<n8n-badge v-if="!user.firstName">Pending</n8n-badge>
+				<n8n-badge v-if="user.globalRole.name === 'owner'" :bold="true">Owner</n8n-badge>
+				<n8n-badge v-if="!user.firstName" :bold="true">Pending</n8n-badge>
 				<n8n-action-toggle
 					v-if="user.globalRole.name !== 'owner'"
 					:actions="getActions(user)"
