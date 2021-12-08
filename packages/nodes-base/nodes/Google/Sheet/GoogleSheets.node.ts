@@ -1520,7 +1520,7 @@ export class GoogleSheets implements INodeType {
 						});
 					});
 					b = b.map(arr => Array.from(new Set(arr)));
-					const groups = b.length === 1 ? b[0].map(x=>[x]) : cartesian(b);
+					const groups = b.length === 1 ? b[0].map(x=>[x]) : cartesian(...b);
 
 					console.assert(groups[0].length === dimensions.length);
 
