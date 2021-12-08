@@ -24,7 +24,10 @@ export const timeOffCreateRequestDescription: TimeOffProperties = [
   {
     displayName: 'Time Off Type ID',
     name: 'timeOffTypeId',
-    type: 'string',
+    type: 'options',
+		typeOptions: {
+			loadOptionsMethod: 'getTimeOffTypeID',
+		},
     required: true,
     displayOptions: {
       show: {
@@ -127,9 +130,9 @@ export const timeOffCreateRequestDescription: TimeOffProperties = [
       {
         displayName: 'Amount',
         name: 'amount',
-        type: 'string',
+        type: 'number',
         default: '',
-        description: 'Amount',
+        description: 'Number of days/hours',
       }
     ],
   }

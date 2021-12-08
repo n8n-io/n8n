@@ -76,7 +76,7 @@ export const tabularDataUpdateDescription: TabularDataProperties = [
     description: 'Location',
   },
   {
-    displayName: 'Additional Fields',
+    displayName: 'Update Fields',
     name: 'additionalFields',
     type: 'collection',
     placeholder: 'Add Field',
@@ -93,7 +93,7 @@ export const tabularDataUpdateDescription: TabularDataProperties = [
     },
     options: [
       {
-        displayName: 'Data',
+        displayName: 'Date',
         name: 'date',
         type: 'string',
         default: '',
