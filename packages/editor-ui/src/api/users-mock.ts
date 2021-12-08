@@ -218,7 +218,6 @@ export async function updateUser(context: IRestApiContext, params: IUser): Promi
 	log(context, 'PATCH', `/user/${params.id}`, params as unknown as IDataObject);
 	const user = getCurrUser();
 	removeUser(params.id);
-	console.log(user, params);
 	const newUser = {
 		...user,
 		...params,
