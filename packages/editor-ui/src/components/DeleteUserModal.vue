@@ -55,7 +55,7 @@ export default mixins(showMessage).extend({
 		Modal,
 		N8nUserSelect,
 	},
-	name: "DuplicateWorkflow",
+	name: "DeleteUserModal",
 	props: {
 		modalName: {
 			type: String,

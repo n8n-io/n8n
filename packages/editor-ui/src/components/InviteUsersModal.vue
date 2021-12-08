@@ -34,7 +34,7 @@ import { IFormInputs } from "@/Interface";
 
 export default mixins(showMessage).extend({
 	components: { Modal },
-	name: "DuplicateWorkflow",
+	name: "InviteUsersModal",
 	props: {
 		modalName: {
 			type: String,
