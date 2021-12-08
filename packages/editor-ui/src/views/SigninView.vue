@@ -26,6 +26,7 @@ const FORM_CONFIG: IFormBoxConfig = {
 				type: 'email',
 				required: true,
 				validationRules: [{name: 'VALID_EMAIL'}],
+				showRequiredAsterisk: false,
 			},
 		},
 		{
@@ -35,6 +36,7 @@ const FORM_CONFIG: IFormBoxConfig = {
 				type: 'password',
 				required: true,
 				validationRules: [{name: 'MIN_LENGTH', config: {minimum: 8}}],
+				showRequiredAsterisk: false,
 			},
 		},
 	]],

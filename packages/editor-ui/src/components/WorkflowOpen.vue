@@ -225,7 +225,6 @@ export default mixins(
 
 	> *:first-child {
 		flex-grow: 1;
-		font-weight: var(--font-weight-regular);
 
 		h1 {
 			line-height: 24px;

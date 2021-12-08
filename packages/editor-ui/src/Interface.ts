@@ -752,6 +752,7 @@ type IFormInputsCol = {
 		type?: "text" | "email" | "password" | 'select';
 		maxlength?: number;
 		required?: boolean;
+		showRequiredAsterisk?: boolean;
 		validators?: {
 			[name: string]: IValidator;
 		};
