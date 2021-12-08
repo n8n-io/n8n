@@ -95,7 +95,7 @@ export default Vue.extend({
 			};
 
 			const REINVITE = {
-				label: 'Reinvite user',
+				label: 'Resend invite',
 				value: 'reinvite',
 			};
 

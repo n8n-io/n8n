@@ -72,7 +72,7 @@ export default mixins(showMessage).extend({
 
 					this.$showToast({
 						type: 'success',
-						title: 'User reinvited successfully',
+						title: 'Invite was sent successfully',
 						message: `${user.email} was invited again`,
 					});
 				} catch (e) {
