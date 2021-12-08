@@ -204,7 +204,7 @@ export class MicrosoftGraphSecurity implements INodeType {
 						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
 
 						if (!Object.keys(updateFields).length) {
-							throwOnEmptyUpdate.call(this)
+							throwOnEmptyUpdate.call(this);
 						}
 
 						if (Object.keys(updateFields).length) {

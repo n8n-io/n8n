@@ -72,7 +72,7 @@ export async function msGraphSecurityApiRequest(
 		}
 
 		if (['Invalid filter clause', 'Invalid ODATA query filter'].includes(nestedMessage)) {
-			error.error.error.message += ' - Please check that your query parameter syntax is correct: https://docs.microsoft.com/en-us/graph/query-parameters#filter-parameter'
+			error.error.error.message += ' - Please check that your query parameter syntax is correct: https://docs.microsoft.com/en-us/graph/query-parameters#filter-parameter';
 		}
 
 		throw new NodeApiError(this.getNode(), error);
