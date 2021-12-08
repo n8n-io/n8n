@@ -218,12 +218,14 @@ export async function updateUser(context: IRestApiContext, params: IUser): Promi
 	log(context, 'PATCH', `/user/${params.id}`, params as unknown as IDataObject);
 	const user = getCurrUser();
 	removeUser(params.id);
-	addUser({
+	console.log(user, params);
+	const newUser = {
 		...user,
 		...params,
-	});
+	};
+	addUser(newUser);
 
-	return await Promise.resolve(params);
+	return await Promise.resolve(newUser);
 }
 
 export async function updateUserPassword(context: IRestApiContext, params: {id: string, password: string}): Promise<void> {
