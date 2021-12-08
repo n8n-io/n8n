@@ -10,7 +10,7 @@
 				<n8n-text>{{triggerContent}}</n8n-text>
 			</div>
 			<div :class="$style.spaced">
-				<n8n-text><n8n-text :bold="true">These executions will not show up immediately in the editor</n8n-text>, but you can see them in the <a @click="showExecutionsList">execution list</a>.</n8n-text>
+				<n8n-text><n8n-text :bold="true">These executions will not show up immediately in the editor</n8n-text>, but you can see them in the <a @click="showExecutionsList">execution list</a> if you choose to <a @click="showSettings">save executions</a>.</n8n-text>
 			</div>
 		</template>
 
@@ -29,7 +29,7 @@
 import Vue from 'vue';
 
 import Modal from '@/components/Modal.vue';
-import { WORKFLOW_ACTIVE_MODAL_KEY, EXECUTIONS_MODAL_KEY, LOCAL_STORAGE_ACTIVATION_FLAG } from '../constants';
+import { WORKFLOW_ACTIVE_MODAL_KEY, EXECUTIONS_MODAL_KEY, WORKFLOW_SETTINGS_MODAL_KEY, LOCAL_STORAGE_ACTIVATION_FLAG } from '../constants';
 import { INodeUi } from '../Interface';
 import { getTriggerNodeServiceName } from './helpers';
 
@@ -50,6 +50,9 @@ export default Vue.extend({
 	methods: {
 		async showExecutionsList () {
 			this.$store.dispatch('ui/openModal', EXECUTIONS_MODAL_KEY);
+		},
+		async showSettings() {
+			this.$store.dispatch('ui/openModal', WORKFLOW_SETTINGS_MODAL_KEY);
 		},
 		handleCheckboxChange (checkboxValue: boolean) {
 			this.checked = checkboxValue;
