@@ -2,7 +2,7 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const contactOperations = [
+export const contactOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -44,9 +44,9 @@ export const contactOperations = [
 		default: 'get',
 		description: 'The operation to perform.',
 	},
-] as INodeProperties[];
+];
 
-export const contactFields = [
+export const contactFields: INodeProperties[] = [
 	/* -------------------------------------------------------------------------- */
 	/*                                contact:create                               */
 	/* -------------------------------------------------------------------------- */
@@ -386,9 +386,7 @@ export const contactFields = [
 				name: 'exactMatch',
 				type: 'boolean',
 				default: false,
-				description: `When set to true it will search for contacts with the exact value<br>
-				of the email and name provided in the query string. Without this flag, matching is done via a standard 'like' comparison,<br>
-				which may sometimes be slow.`,
+				description: `When set to true it will search for contacts with the exact value of the email and name provided in the query string. Without this flag, matching is done via a standard 'like' comparison, which may sometimes be slow.`,
 			},
 			{
 				displayName: 'Fields',
@@ -644,4 +642,4 @@ export const contactFields = [
 		],
 	},
 
-] as INodeProperties[];
+];

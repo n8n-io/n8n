@@ -6,7 +6,7 @@ import {
 	TLP,
 } from '../interfaces/AlertInterface';
 
-export const alertOperations = [
+export const alertOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -24,9 +24,9 @@ export const alertOperations = [
 		},
 		default: 'create',
 	},
-] as INodeProperties[];
+];
 
-export const alertFields = [
+export const alertFields: INodeProperties[] = [
 	{
 		displayName: 'Return All',
 		name: 'returnAll',
@@ -1002,4 +1002,4 @@ export const alertFields = [
 			},
 		],
 	},
-] as INodeProperties[];
+];
