@@ -35,7 +35,7 @@ export const versionDescription: INodeTypeDescription = {
       type: 'options',
       options: [
         {
-          name: 'Employees',
+          name: 'Employee',
           value: 'employees',
         },
         {
