@@ -2,7 +2,7 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const playlistOperations = [
+export const playlistOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -44,9 +44,9 @@ export const playlistOperations = [
 		default: 'getAll',
 		description: 'The operation to perform.',
 	},
-] as INodeProperties[];
+];
 
-export const playlistFields = [
+export const playlistFields: INodeProperties[] = [
 	/* -------------------------------------------------------------------------- */
 	/*                                 playlist:create                            */
 	/* -------------------------------------------------------------------------- */
@@ -561,4 +561,4 @@ export const playlistFields = [
 			},
 		],
 	},
-] as INodeProperties[];
+];
