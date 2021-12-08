@@ -21,6 +21,7 @@ export class InternalHooksClass implements IInternalHooksClass {
 			system_info: diagnosticInfo.systemInfo,
 			execution_variables: diagnosticInfo.executionVariables,
 			n8n_deployment_type: diagnosticInfo.deploymentType,
+			n8n_binary_data_mode: diagnosticInfo.binaryDataMode,
 		};
 
 		return Promise.all([

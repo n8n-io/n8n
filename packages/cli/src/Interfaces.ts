@@ -310,6 +310,7 @@ export interface IDiagnosticInfo {
 		[key: string]: string | number | undefined;
 	};
 	deploymentType: string;
+	binaryDataMode: string;
 }
 
 export interface IInternalHooksClass {

@@ -25,6 +25,7 @@ export class BinaryDataLocalStorage implements IBinaryDataManager {
 			.catch(async () => fs.mkdir(this.storagePath, { recursive: true }))
 			.then(async () => fs.readdir(this.getBinaryDataMetaPath()))
 			.catch(async () => fs.mkdir(this.getBinaryDataMetaPath(), { recursive: true }))
+			.then(async () => this.deleteMarkedFiles())
 			.then(() => {});
 	}
 

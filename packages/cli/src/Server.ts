@@ -47,6 +47,7 @@ import * as promClient from 'prom-client';
 import {
 	BinaryDataManager,
 	Credentials,
+	IBinaryDataConfig,
 	ICredentialTestFunctions,
 	LoadNodeParameterOptions,
 	NodeExecuteFunctions,
@@ -2890,6 +2891,7 @@ export async function start(): Promise<void> {
 
 		await app.externalHooks.run('n8n.ready', [app]);
 		const cpus = os.cpus();
+		const binarDataConfig = config.get('binaryDataManager') as IBinaryDataConfig;
 		const diagnosticInfo: IDiagnosticInfo = {
 			basicAuthActive: config.get('security.basicAuth.active') as boolean,
 			databaseType: (await GenericHelpers.getConfigValue('database.type')) as DatabaseType,
@@ -2923,6 +2925,7 @@ export async function start(): Promise<void> {
 				executions_data_prune_timeout: config.get('executions.pruneDataTimeout'),
 			},
 			deploymentType: config.get('deployment.type'),
+			binaryDataMode: binarDataConfig.mode,
 		};
 
 		void InternalHooksManager.getInstance().onServerStarted(diagnosticInfo);

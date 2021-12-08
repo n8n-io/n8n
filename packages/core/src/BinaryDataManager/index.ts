@@ -23,7 +23,7 @@ export class BinaryDataManager {
 
 		BinaryDataManager.instance = new BinaryDataManager();
 
-		if (config.mode === 'LOCAL_STORAGE') {
+		if (config.mode === 'FILESYSTEM') {
 			BinaryDataManager.instance.manager = new BinaryDataLocalStorage();
 			await BinaryDataManager.instance.manager.init(config, mainManager);
 		}
