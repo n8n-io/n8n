@@ -6,13 +6,11 @@ import {
 	IExecuteFunctions,
 	IHookFunctions,
 	ILoadOptionsFunctions,
-	returnJsonArray,
 } from 'n8n-core';
 
 import {
 	IDataObject, NodeApiError,
 } from 'n8n-workflow';
-import { Console } from 'console';
 
 export function FormatDueDatetime(ISOString: string): string {
 	// Assuming that the problem with incorrect date format was caused by milliseconds
