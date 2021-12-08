@@ -11,7 +11,7 @@ import * as timeOff from './timeOff';
 export const versionDescription: INodeTypeDescription = {
   displayName: 'BambooHR',
   name: 'bambooHR',
-  icon: 'file:bambooHR.svg',
+  icon: 'file:bambooHR.png',
   group: ['transform'],
   version: 1,
 	subtitle: '={{$parameter["resource"] + ": " + $parameter["operation"]}}',
