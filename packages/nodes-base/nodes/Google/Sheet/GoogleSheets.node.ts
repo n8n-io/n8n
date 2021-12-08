@@ -1170,7 +1170,32 @@ export class GoogleSheets implements INodeType {
 			const getGroupName = (dimension: IDataObject): string => {
 				return Object.keys(dimension).map(key => `${key}=${dimension[key]}`).join(',');
 			};
-			const updateByColumnOrRow = async (dimensions?: string[]): Promise<INodeExecutionData[][]> => {
+			const createSheet = async (titleArr: string[]): Promise<INodePropertyOptions[]> => {
+				const returnData: INodePropertyOptions[] = [];
+				const requests = titleArr.map(title => {
+					return {
+						'addSheet': {
+							'properties': {
+								'sheetType': 'GRID',
+								'index': 0,
+								'title': title,
+							},
+						},
+					};
+				});
+				if (requests && requests.length) {
+					const sheetResp = await googleApiRequest.call(this, 'POST', `/v4/spreadsheets/${spreadsheetId}:batchUpdate`, {requests});
+
+					(sheetResp.replies as any[]).forEach(reply => {
+						returnData.push({
+							value: reply.addSheet.properties.sheetId,
+							name: reply.addSheet.properties.title,
+						});
+					});
+				}
+				return returnData;
+			};
+			const updateByColumnOrRow = async (dimensions?: string[], existedSheetTitles?: string[]): Promise<INodeExecutionData[][]> => {
 				const propertyBinding = this.getNodeParameter('propertyBinding', 0) as string;
 				const majorDimension = this.getNodeParameter('majorDimension', 0, {}) as string;
 				try {
@@ -1182,12 +1207,14 @@ export class GoogleSheets implements INodeType {
 					if (dimensions && dimensions.length) {
 						groups = groupBy(items.map(item => item.json), dimensions);
 					}
+					const sheetTitleArr: string[] = [];
 					propertyBinding.split(',').forEach(binding => {
 						const kv = binding.split(':');
 						const range = kv[0].trim(), prop = kv[1].trim();
 						if (groups) {
 							groups.forEach(group => {
 								const groupName = getGroupName(group.dimension);
+								sheetTitleArr.push(groupName);
 								updateData.push({
 									range: `'${groupName}'!${range}`,
 									values: [[prop, ...group.items.map(item => item[prop] as string)]],
@@ -1202,6 +1229,10 @@ export class GoogleSheets implements INodeType {
 							});
 						}
 					});
+					if (sheetTitleArr && sheetTitleArr.length) {
+						const titleArr = Array.from(new Set(sheetTitleArr)).filter(title => !existedSheetTitles!.includes(title));
+						const sheets = await createSheet(titleArr);
+					}
 					const data = await sheet.batchUpdate(updateData, valueInputMode);
 					return this.prepareOutputData(items);
 				} catch (error) {
@@ -1235,7 +1266,7 @@ export class GoogleSheets implements INodeType {
 					return this.prepareOutputData(items);
 				} catch (error) {
 					if (this.continueOnFail()) {
-						return this.prepareOutputData([{json:{ error: error.message }}]);
+						return this.prepareOutputData([{json: {error: error.message}}]);
 					}
 					throw error;
 				}
@@ -1250,7 +1281,7 @@ export class GoogleSheets implements INodeType {
 					return this.prepareOutputData(items);
 				} catch (error) {
 					if (this.continueOnFail()) {
-						return this.prepareOutputData([{json:{ error: error.message }}]);
+						return this.prepareOutputData([{json: {error: error.message}}]);
 					}
 					throw error;
 				}
@@ -1264,11 +1295,11 @@ export class GoogleSheets implements INodeType {
 						const spreadsheetId = this.getNodeParameter('sheetId', i) as string;
 						const options = this.getNodeParameter('options', i, {}) as IDataObject;
 						const simple = this.getNodeParameter('simple', 0) as boolean;
-						const properties = { ...options };
+						const properties = {...options};
 
 						if (options.tabColor) {
-							const { red, green, blue } = hexToRgb(options.tabColor as string)!;
-							properties.tabColor = { red: red / 255, green: green / 255, blue: blue / 255 };
+							const {red, green, blue} = hexToRgb(options.tabColor as string)!;
+							properties.tabColor = {red: red / 255, green: green / 255, blue: blue / 255};
 						}
 
 						const requests = [{
@@ -1277,7 +1308,7 @@ export class GoogleSheets implements INodeType {
 							},
 						}];
 
-						responseData = await googleApiRequest.call(this, 'POST', `/v4/spreadsheets/${spreadsheetId}:batchUpdate`, { requests });
+						responseData = await googleApiRequest.call(this, 'POST', `/v4/spreadsheets/${spreadsheetId}:batchUpdate`, {requests});
 
 						if (simple === true) {
 							Object.assign(responseData, responseData.replies[0].addSheet.properties);
@@ -1286,7 +1317,7 @@ export class GoogleSheets implements INodeType {
 						returnData.push(responseData);
 					} catch (error) {
 						if (this.continueOnFail()) {
-							returnData.push({ error: error.message });
+							returnData.push({error: error.message});
 							continue;
 						}
 						throw error;
@@ -1332,7 +1363,7 @@ export class GoogleSheets implements INodeType {
 					return this.prepareOutputData(items);
 				} catch (error) {
 					if (this.continueOnFail()) {
-						return this.prepareOutputData([{json:{ error: error.message }}]);
+						return this.prepareOutputData([{json: {error: error.message}}]);
 					}
 					throw error;
 				}
@@ -1371,7 +1402,7 @@ export class GoogleSheets implements INodeType {
 					return [this.helpers.returnJsonArray(returnData)];
 				} catch (error) {
 					if (this.continueOnFail()) {
-						return [this.helpers.returnJsonArray({ error: error.message })];
+						return [this.helpers.returnJsonArray({error: error.message})];
 					}
 					throw error;
 				}
@@ -1408,7 +1439,7 @@ export class GoogleSheets implements INodeType {
 					return [this.helpers.returnJsonArray(returnData)];
 				} catch (error) {
 					if (this.continueOnFail()) {
-						return [this.helpers.returnJsonArray({ error: error.message })];
+						return [this.helpers.returnJsonArray({error: error.message})];
 					}
 					throw error;
 				}
@@ -1428,12 +1459,12 @@ export class GoogleSheets implements INodeType {
 							},
 						}];
 
-						responseData = await googleApiRequest.call(this, 'POST', `/v4/spreadsheets/${spreadsheetId}:batchUpdate`, { requests });
+						responseData = await googleApiRequest.call(this, 'POST', `/v4/spreadsheets/${spreadsheetId}:batchUpdate`, {requests});
 						delete responseData.replies;
 						returnData.push(responseData);
 					} catch (error) {
 						if (this.continueOnFail()) {
-							returnData.push({ error: error.message });
+							returnData.push({error: error.message});
 							continue;
 						}
 						throw error;
@@ -1481,13 +1512,13 @@ export class GoogleSheets implements INodeType {
 					return this.prepareOutputData(items);
 				} catch (error) {
 					if (this.continueOnFail()) {
-						return this.prepareOutputData([{json:{ error: error.message }}]);
+						return this.prepareOutputData([{json: {error: error.message}}]);
 					}
 					throw error;
 				}
 			} else if (operation === 'updateByColumnOrRow') {
 				const sheetTitleField = (this.getNodeParameter('sheetTitleField', 0) as string).trim();
-				let dimensions = null;
+				let dimensions = null, existedSheetTitles: string[] = [];
 				if (sheetTitleField && sheetTitleField.length) {
 					dimensions = sheetTitleField.split(',');
 				}
@@ -1509,53 +1540,34 @@ export class GoogleSheets implements INodeType {
 							value: sheet.properties!.sheetId as unknown as string,
 						});
 					}
-					const items = this.getInputData();
+					existedSheetTitles = returnData.map(item => item.name);
 
-					const cartesian =
-						(...a) => a.reduce((a, b) => a.flatMap(d => b.map(e => [d, e].flat())));
-					let b: string[][] = [];
-					items.forEach(item => {
-						dimensions.forEach((dim, i) => {
-							(b[i] = b[i] || []).push((item.json[dim] as string).trim());
-						});
-					});
-					b = b.map(arr => Array.from(new Set(arr)));
-					const groups = b.length === 1 ? b[0].map(x=>[x]) : cartesian(...b);
-
-					console.assert(groups[0].length === dimensions.length);
-
-					const allSheetTitles = groups.map((groupValueArr: string[]) => {
-						let group: IDataObject = {};
-						groupValueArr.forEach((val, j) => {
-							group[dimensions[j]] = val;
-						});
-						return getGroupName(group);
-					});
-
-					const existedSheetTitles = returnData.map(item => item.name);
-					const requests = allSheetTitles.filter(title => !existedSheetTitles.includes(title)).map(title => {
-						return {
-							'addSheet': {
-								'properties': {
-									'sheetType': 'GRID',
-									'index': 0,
-									'title': title,
-								},
-							},
-						};
-					});
-					if (requests && requests.length) {
-						const sheetResp = await googleApiRequest.call(this, 'POST', `/v4/spreadsheets/${spreadsheetId}:batchUpdate`, {requests});
-
-						(sheetResp.replies as any[]).forEach(reply => {
-							returnData.push({
-								value: reply.addSheet.properties.sheetId,
-								name: reply.addSheet.properties.title,
-							});
-						});
-					}
+					// create sheets
+					// const items = this.getInputData();
+					// const cartesian =
+					// 	(...a) => a.reduce((a, b) => a.flatMap(d => b.map(e => [d, e].flat())));
+					// let b: string[][] = [];
+					// items.forEach(item => {
+					// 	dimensions.forEach((dim, i) => {
+					// 		(b[i] = b[i] || []).push((item.json[dim] as string).trim());
+					// 	});
+					// });
+					// b = b.map(arr => Array.from(new Set(arr)));
+					// const groups = b.length === 1 ? b[0].map(x=>[x]) : cartesian(...b);
+					//
+					// console.assert(groups[0].length === dimensions.length);
+					//
+					// const allSheetTitles = groups.map((groupValueArr: string[]) => {
+					// 	let group: IDataObject = {};
+					// 	groupValueArr.forEach((val, j) => {
+					// 		group[dimensions[j]] = val;
+					// 	});
+					// 	return getGroupName(group);
+					// });
+					//
+					// const shouldCreateTitleArr = allSheetTitles.filter(title => !existedSheetTitles.includes(title));
 				}
-				return updateByColumnOrRow(dimensions);
+				return updateByColumnOrRow(dimensions, existedSheetTitles);
 			}
 		}
 
