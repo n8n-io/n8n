@@ -7,9 +7,7 @@
 			<div :class="$style.buttonContainer">
 					<n8n-button label="Invite new user" icon="plus-square" @click="onInvite" size="large" />
 			</div>
-			<div :class="$style.usersList">
-				<n8n-users-list :users="allUsers" :currentUserId="currentUserId" @delete="onDelete" @reinvite="onReinvite" />
-			</div>
+			<n8n-users-list :users="allUsers" :currentUserId="currentUserId" @delete="onDelete" @reinvite="onReinvite" />
 		</div>
 	</SettingsView>
 </template>
@@ -89,7 +87,7 @@ export default mixins(showMessage).extend({
 <style lang="scss" module>
 .container {
 	height: 100%;
-	overflow: hidden;
+	overflow: auto;
 	> * {
 		margin-bottom: var(--spacing-2xl);
 	}
@@ -98,12 +96,6 @@ export default mixins(showMessage).extend({
 .buttonContainer {
 	display: flex;
 	justify-content: right;
-}
-
-.usersList {
-	overflow: auto;
-	height: 100%;
-	padding-bottom: var(--spacing-5xl);
 }
 
 </style>
