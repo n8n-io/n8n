@@ -19,6 +19,7 @@
 					:inputs="formInputs"
 					:eventBus="formBus"
 					@input="onInput"
+					@ready="onReadyToSubmit"
 					@submit="onSubmit"
 				/>
 			</div>
@@ -33,7 +34,7 @@
 				</div>
 			</div>
 			<div>
-				<n8n-button float="right" label="Save" size="large" :disabled="!hasAnyChanges" @click="onSaveClick" />
+				<n8n-button float="right" label="Save" size="large" :disabled="!hasAnyChanges || !readyToSubmit" @click="onSaveClick" />
 			</div>
 		</div>
 	</SettingsView>
@@ -62,6 +63,7 @@ export default mixins(
 			hasAnyChanges: false,
 			formInputs: null as null | IFormInputs,
 			formBus: new Vue(),
+			readyToSubmit: false,
 		};
 	},
 	mounted() {
@@ -108,6 +110,9 @@ export default mixins(
 	methods: {
 		onInput() {
 			this.hasAnyChanges = true;
+		},
+		onReadyToSubmit(ready: boolean) {
+			this.readyToSubmit = ready;
 		},
 		async onSubmit(form: {firstName: string, lastName: string, email: string}) {
 			try {

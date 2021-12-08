@@ -74,14 +74,7 @@ export default Vue.extend({
 			this.eventBus.$on('submit', this.onSubmit);
 		}
 	},
-	methods: {
-		onInput(name: string, value: string) {
-			this.values = {
-				...this.values,
-				[name]: value,
-			};
-			this.$emit('input', {name, value});
-		},
+	computed: {
 		isReadyToSubmit(): boolean {
 			for (let key in this.validity) {
 				if (!this.validity[key]) {
@@ -91,14 +84,28 @@ export default Vue.extend({
 
 			return true;
 		},
+	},
+	methods: {
+		onInput(name: string, value: string) {
+			this.values = {
+				...this.values,
+				[name]: value,
+			};
+			this.$emit('input', {name, value});
+		},
 		onValidate(name: string, valid: boolean) {
-			this.validity[name] = valid;
+			Vue.set(this.validity, name, valid);
 		},
 		onSubmit() {
 			this.showValidationWarnings = true;
-			if (this.isReadyToSubmit()) {
+			if (this.isReadyToSubmit) {
 				this.$emit('submit', this.values);
 			}
+		},
+	},
+	watch: {
+		isReadyToSubmit(ready: boolean) {
+			this.$emit('ready', ready);
 		},
 	},
 });
