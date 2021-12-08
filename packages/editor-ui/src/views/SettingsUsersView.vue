@@ -43,7 +43,7 @@ export default mixins(showMessage).extend({
 			const user = getUserById(userId) as IUser | null;
 			if (user) {
 				if (!user.firstName) {
-					const confirm = await this.confirmMessage('Are you sure you want to delete this invited user?', 'Delete invited user');
+					const confirm = await this.confirmMessage('Are you sure you want to delete this invited user?', `Delete ${user.email}`);
 					if (confirm) {
 						try {
 							await this.$store.dispatch('users/deleteUser', {id: user.id});
@@ -88,6 +88,8 @@ export default mixins(showMessage).extend({
 .container {
 	height: 100%;
 	overflow: auto;
+	padding-right: var(--spacing-2xs);
+
 	> * {
 		margin-bottom: var(--spacing-2xl);
 	}
