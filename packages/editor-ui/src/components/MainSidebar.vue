@@ -128,7 +128,7 @@
 
 				<MenuItemsIterator :items="sidebarMenuBottomItems" :root="true"/>
 
-				<div class="footer-menu-items">
+				<div :class="`footer-menu-items ${currentUser ? 'logged-in': ''}`">
 					<n8n-menu-item index="updates" class="updates" v-if="hasVersionUpdates" @click="openUpdatesPanel">
 						<div class="gift-container">
 							<GiftNotificationIcon />
@@ -693,6 +693,10 @@ export default mixins(
 	flex-direction: column;
 	justify-content: flex-end;
 	padding-bottom: 32px;
+
+	&.logged-in {
+		padding-bottom: 8px;
+	}
 }
 
 .el-menu-item.updates {
@@ -729,7 +733,8 @@ export default mixins(
 
 	.item-title-root {
 		color: var(--color-text-base);
-		font-weight: var(--font-weight-regular);
+		font-weight: var(--font-weight-bold);
+		font-size: var(--font-size-s);
 		max-width: 100px;
 		overflow: hidden;
 		text-overflow: ellipsis;
