@@ -2,7 +2,7 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const messageOperations = [
+export const messageOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -44,9 +44,9 @@ export const messageOperations = [
 		default: 'post',
 		description: 'The operation to perform.',
 	},
-] as INodeProperties[];
+];
 
-export const messageFields = [
+export const messageFields: INodeProperties[] = [
 
 	/* ----------------------------------------------------------------------- */
 	/*                                 message:getPermalink
@@ -623,10 +623,7 @@ export const messageFields = [
 							},
 						},
 						default: '',
-						description: `A string acting as a unique identifier for a block.</br>
-								You can use this block_id when you receive an interaction payload to</br>
-								identify the source of the action. If not specified, a block_id will be generated.</br>
-								Maximum length for this field is 255 characters.`,
+						description: `A string acting as a unique identifier for a block. You can use this block_id when you receive an interaction payload to identify the source of the action. If not specified, a block_id will be generated. Maximum length for this field is 255 characters.`,
 					},
 					{
 						displayName: 'Elements',
@@ -702,9 +699,7 @@ export const messageFields = [
 											},
 										},
 										default: '',
-										description: `An identifier for this action. You can use this when you receive an interaction</br>
-												payload to identify the source of the action. Should be unique among all other action_ids used</br>
-												elsewhere by your app. `,
+										description: `An identifier for this action. You can use this when you receive an interaction payload to identify the source of the action. Should be unique among all other action_ids used elsewhere by your app.`,
 									},
 									{
 										displayName: 'URL',
@@ -718,9 +713,7 @@ export const messageFields = [
 											},
 										},
 										default: '',
-										description: `A URL to load in the user's browser when the button is clicked.</br>
-												Maximum length for this field is 3000 characters. If you're using url, you'll still</br>
-												receive an interaction payload and will need to send an acknowledgement response.`,
+										description: `A URL to load in the user's browser when the button is clicked. Maximum length for this field is 3000 characters. If you're using url, you'll still receive an interaction payload and will need to send an acknowledgement response.`,
 									},
 									{
 										displayName: 'Value',
@@ -952,10 +945,7 @@ export const messageFields = [
 							},
 						},
 						default: '',
-						description: `A string acting as a unique identifier for a block.</br>
-								You can use this block_id when you receive an interaction payload to</br>
-								identify the source of the action. If not specified, a block_id will be generated.</br>
-								Maximum length for this field is 255 characters.`,
+						description: `A string acting as a unique identifier for a block. You can use this block_id when you receive an interaction payload to identify the source of the action. If not specified, a block_id will be generated. Maximum length for this field is 255 characters.`,
 					},
 					{
 						displayName: 'Text',
@@ -1111,9 +1101,7 @@ export const messageFields = [
 								],
 							},
 						],
-						description: `An array of text objects. Any text objects included with</br>
-								fields will be rendered in a compact format that allows for 2 columns of</br>
-								side-by-side text. Maximum number of items is 10.`,
+						description: `An array of text objects. Any text objects included with fields will be rendered in a compact format that allows for 2 columns of side-by-side text. Maximum number of items is 10.`,
 					},
 					{
 						displayName: 'Accessory',
@@ -1189,9 +1177,7 @@ export const messageFields = [
 										},
 										type: 'string',
 										default: '',
-										description: `An identifier for this action. You can use this when you receive an interaction</br>
-												payload to identify the source of the action. Should be unique among all other action_ids used</br>
-												elsewhere by your app. `,
+										description: `An identifier for this action. You can use this when you receive an interaction payload to identify the source of the action. Should be unique among all other action_ids used elsewhere by your app.`,
 									},
 									{
 										displayName: 'URL',
@@ -1205,9 +1191,7 @@ export const messageFields = [
 										},
 										type: 'string',
 										default: '',
-										description: `A URL to load in the user's browser when the button is clicked.</br>
-												Maximum length for this field is 3000 characters. If you're using url, you'll still</br>
-												receive an interaction payload and will need to send an acknowledgement response.`,
+										description: `A URL to load in the user's browser when the button is clicked. Maximum length for this field is 3000 characters. If you're using url, you'll still receive an interaction payload and will need to send an acknowledgement response.`,
 									},
 									{
 										displayName: 'Value',
@@ -1727,4 +1711,4 @@ export const messageFields = [
 		},
 		description: `Timestamp of the message to be deleted.`,
 	},
-] as INodeProperties[];
+];

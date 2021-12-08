@@ -2,7 +2,7 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const addConfigFields = [
+export const addConfigFields: INodeProperties[] = [
 	{
 		displayName: 'Key',
 		name: 'key',
@@ -68,4 +68,4 @@ export const addConfigFields = [
 			},
 		],
 	},
-] as INodeProperties[];
+];

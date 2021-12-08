@@ -6,7 +6,7 @@ import {
 	activeCampaignDefaultGetAllProperties,
 } from './GenericFunctions';
 
-export const tagOperations = [
+export const tagOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -48,9 +48,9 @@ export const tagOperations = [
 		default: 'create',
 		description: 'The operation to perform.',
 	},
-] as INodeProperties[];
+];
 
-export const tagFields = [
+export const tagFields: INodeProperties[] = [
 	// ----------------------------------
 	//         contact:create
 	// ----------------------------------
@@ -229,4 +229,4 @@ export const tagFields = [
 	//         tag:getAll
 	// ----------------------------------
 	...activeCampaignDefaultGetAllProperties('tag', 'getAll'),
-] as INodeProperties[];
+];

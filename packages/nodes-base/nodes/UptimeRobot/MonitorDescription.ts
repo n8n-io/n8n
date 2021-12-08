@@ -2,7 +2,7 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const monitorOperations = [
+export const monitorOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -49,9 +49,9 @@ export const monitorOperations = [
 		default: 'getAll',
 		description: 'The operation to perform.',
 	},
-] as INodeProperties[];
+];
 
-export const monitorFields = [
+export const monitorFields: INodeProperties[] = [
 	/* -------------------------------------------------------------------------- */
 	/*                                monitor:create                              */
 	/* -------------------------------------------------------------------------- */
@@ -509,4 +509,4 @@ export const monitorFields = [
 			},
 		],
 	},
-] as INodeProperties[];
+];
