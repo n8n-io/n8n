@@ -18,12 +18,7 @@
 				<div v-if="showButtons" :class="$style.wrapper">
 					<div :class="$style.buttons">
 						<div v-for="value in 11" :key="value - 1" :class="$style.wrapper">
-							<button
-								:class="$style.button"
-								@click="selectSurveyValue((value - 1).toString())"
-							>
-							  <span :class="$style.text" v-text="(value - 1).toString()" />
-							</button>
+							<n8n-square-button :label="(value - 1).toString()" :bold="true" @click="selectSurveyValue((value - 1).toString())" />
 						</div>
 					</div>
 					<div :class="$style.text">
@@ -177,30 +172,6 @@ export default mixins(workflowHelpers).extend({
 
 			.wrapper {
 				margin: 0 8px;
-
-				.button {
-					width: 28px;
-					height: 29px;
-					border: var(--color-background-xlight);
-					border-radius: 4px;
-					cursor: pointer;
-					display: flex;
-					align-items: center;
-					justify-content: center;
-
-					.text {
-						margin: 0;
-						color: var(--color-background-dark);
-						font-size: var(--font-size-s);
-						font-weight: var(--font-weight-bold);
-					}
-
-					&:hover {
-						.text {
-							color: var(--color-primary);
-						}
-					}
-				}
 
 				&:first-child {
 					margin-left: 0;
