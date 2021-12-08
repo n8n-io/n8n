@@ -117,11 +117,12 @@ export const secureScoreControlProfileFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Filter Expression',
-				name: '$filter',
-				description: '<a href="https://docs.microsoft.com/en-us/graph/query-parameters#filter-parameter">Expression</a> to filter results by, e.g. <code>startswith(id,\'AATP\')</code>',
+				displayName: 'Filter Query Parameter',
+				name: 'filter',
+				description: '<a href="https://docs.microsoft.com/en-us/graph/query-parameters#filter-parameter">Query parameter</a> to filter results by',
 				type: 'string',
 				default: '',
+				placeholder: 'startsWith(id, \'AATP\')',
 			},
 		],
 	},
@@ -151,8 +152,9 @@ export const secureScoreControlProfileFields: INodeProperties[] = [
 		displayName: 'Provider',
 		name: 'provider',
 		type: 'string',
-		description: 'Name of the security product/service vendor',
+		description: 'Name of the provider of the security product or service',
 		default: '',
+		placeholder: 'SecureScore',
 		required: true,
 		displayOptions: {
 			show: {
@@ -169,8 +171,9 @@ export const secureScoreControlProfileFields: INodeProperties[] = [
 		displayName: 'Vendor',
 		name: 'vendor',
 		type: 'string',
-		description: 'Name of the security product/service provider',
+		description: 'Name of the vendor of the security product or service',
 		default: '',
+		placeholder: 'Microsoft',
 		required: true,
 		displayOptions: {
 			show: {
@@ -201,30 +204,6 @@ export const secureScoreControlProfileFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Assigned To',
-				name: 'assignedTo',
-				type: 'string', // TODO loadOptions
-				default: '',
-				description: 'Name of the analyst who the alert is assigned to for triage, investigation, or remediation',
-			},
-			{
-				displayName: 'Comments',
-				name: 'comments',
-				type: 'multiOptions',
-				default: [],
-				description: 'Analyst comments on how the alert was closed, for customer alert management',
-				options: [
-					{
-						name: 'Closed in Identity Protection (IPC)',
-						value: 'Closed in IPC',
-					},
-					{
-						name: 'Closed in Cloud App Security (MCAS)',
-						value: 'Closed in MCAS',
-					},
-				],
-			},
-			{
 				displayName: 'State',
 				name: 'state',
 				type: 'options',
@@ -240,12 +219,12 @@ export const secureScoreControlProfileFields: INodeProperties[] = [
 						value: 'Ignored',
 					},
 					{
-						name: 'Third Party',
-						value: 'ThirdParty',
-					},
-					{
 						name: 'Reviewed',
 						value: 'Reviewed',
+					},
+					{
+						name: 'Third Party',
+						value: 'ThirdParty',
 					},
 				],
 			},

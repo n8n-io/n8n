@@ -10,19 +10,17 @@ import {
 } from 'n8n-workflow';
 
 import {
-	microsoftGraphSecurityApiRequest,
+	msGraphSecurityApiRequest,
+	throwOnEmptyUpdate,
+	tolerateDoubleQuotes,
 } from './GenericFunctions';
 
 import {
-	alertFields,
-	alertOperations,
 	secureScoreControlProfileFields,
 	secureScoreControlProfileOperations,
 	secureScoreFields,
 	secureScoreOperations,
 } from './descriptions';
-
-import * as moment from 'moment-timezone';
 
 export class MicrosoftGraphSecurity implements INodeType {
 	description: INodeTypeDescription = {
@@ -34,7 +32,7 @@ export class MicrosoftGraphSecurity implements INodeType {
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 		description: 'Consume the Microsoft Graph Security API',
 		defaults: {
-			name: 'MicrosoftGraphSecurity',
+			name: 'Microsoft Graph Security',
 			color: '#0078d4',
 		},
 		inputs: ['main'],
@@ -53,10 +51,6 @@ export class MicrosoftGraphSecurity implements INodeType {
 				noDataExpression: true,
 				options: [
 					{
-						name: 'Alert',
-						value: 'alert',
-					},
-					{
 						name: 'Secure Score',
 						value: 'secureScore',
 					},
@@ -65,10 +59,8 @@ export class MicrosoftGraphSecurity implements INodeType {
 						value: 'secureScoreControlProfile',
 					},
 				],
-				default: 'alert',
+				default: 'secureScore',
 			},
-			...alertOperations,
-			...alertFields,
 			...secureScoreOperations,
 			...secureScoreFields,
 			...secureScoreControlProfileOperations,
@@ -80,10 +72,8 @@ export class MicrosoftGraphSecurity implements INodeType {
 		const items = this.getInputData();
 		const returnData: IDataObject[] = [];
 
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
-
-		const timezone = this.getTimezone();
+		const resource = this.getNodeParameter('resource', 0) as 'secureScore'| 'secureScoreControlProfile';
+		const operation = this.getNodeParameter('operation', 0) as 'get' | 'getAll' | 'update';
 
 		let responseData;
 
@@ -91,67 +81,7 @@ export class MicrosoftGraphSecurity implements INodeType {
 
 			try {
 
-				if (resource === 'alert') {
-
-					// **********************************************************************
-					//                                 alert
-					// **********************************************************************
-
-					if (operation === 'get') {
-
-						// ----------------------------------------
-						//                alert: get
-						// ----------------------------------------
-
-						// https://docs.microsoft.com/en-us/graph/api/alert-get
-
-						const alertId = this.getNodeParameter('alertId', i);
-
-						responseData = await microsoftGraphSecurityApiRequest.call(this, 'GET', `/alerts/${alertId}`);
-
-					} else if (operation === 'getAll') {
-
-						// ----------------------------------------
-						//              alert: getAll
-						// ----------------------------------------
-
-						// https://docs.microsoft.com/en-us/graph/api/alert-list
-
-						const qs = {} as IDataObject;
-						const filters = this.getNodeParameter('filters', i) as IDataObject;
-
-						if (Object.keys(filters).length) {
-							Object.assign(qs, filters);
-						}
-
-						responseData = await microsoftGraphSecurityApiRequest.call(this, 'GET', '/alerts', {}, qs);
-
-					} else if (operation === 'update') {
-
-						// ----------------------------------------
-						//              alert: update
-						// ----------------------------------------
-
-						// https://docs.microsoft.com/en-us/graph/api/alert-update
-
-						const body = {
-							provider: this.getNodeParameter('provider', i),
-							vendor: this.getNodeParameter('vendor', i),
-						} as IDataObject;
-
-						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
-
-						if (Object.keys(updateFields).length) {
-							Object.assign(body, updateFields);
-						}
-
-						const alertId = this.getNodeParameter('alertId', i);
-
-						responseData = await microsoftGraphSecurityApiRequest.call(this, 'PATCH', `/alerts/${alertId}`, body);
-
-					}
-
-				} else if (resource === 'secureScore') {
+				if (resource === 'secureScore') {
 
 					// **********************************************************************
 					//                              secureScore
@@ -167,8 +97,8 @@ export class MicrosoftGraphSecurity implements INodeType {
 
 						const secureScoreId = this.getNodeParameter('secureScoreId', i);
 
-						const endpoint = `/secureScore/${secureScoreId}`;
-						responseData = await microsoftGraphSecurityApiRequest.call(this, 'GET', endpoint);
+						responseData = await msGraphSecurityApiRequest.call(this, 'GET', `/secureScores/${secureScoreId}`);
+						delete responseData['@odata.context'];
 
 					} else if (operation === 'getAll') {
 
@@ -178,15 +108,34 @@ export class MicrosoftGraphSecurity implements INodeType {
 
 						// https://docs.microsoft.com/en-us/graph/api/security-list-securescores
 
-						const qs = {} as IDataObject;
-						const filters = this.getNodeParameter('filters', i) as IDataObject;
+						const qs: IDataObject = {};
 
-						if (Object.keys(filters).length) {
-							Object.assign(qs, filters);
+						const {
+							filter,
+							includeControlScores,
+						} = this.getNodeParameter('filters', i) as {
+							filter?: string;
+							includeControlScores?: boolean;
+						};
+
+						if (filter) {
+							qs.$filter = tolerateDoubleQuotes(filter);
 						}
 
-						responseData = await microsoftGraphSecurityApiRequest.call(this, 'GET', '/secureScores', {}, qs);
-						responseData = responseData.value;
+						const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
+
+						if (!returnAll) {
+							qs.$count = true;
+							qs.$top = this.getNodeParameter('limit', 0);
+						}
+
+						responseData = await msGraphSecurityApiRequest
+							.call(this, 'GET', '/secureScores', {}, qs)
+							.then(response => response.value) as Array<{ controlScores: object[] }>;
+
+						if (!includeControlScores) {
+							responseData = responseData.map(({ controlScores, ...rest }) => rest);
+						}
 
 					}
 
@@ -206,7 +155,9 @@ export class MicrosoftGraphSecurity implements INodeType {
 
 						const secureScoreControlProfileId = this.getNodeParameter('secureScoreControlProfileId', i);
 						const endpoint = `/secureScoreControlProfiles/${secureScoreControlProfileId}`;
-						responseData = await microsoftGraphSecurityApiRequest.call(this, 'GET', endpoint);
+
+						responseData = await msGraphSecurityApiRequest.call(this, 'GET', endpoint);
+						delete responseData['@odata.context'];
 
 					} else if (operation === 'getAll') {
 
@@ -216,22 +167,24 @@ export class MicrosoftGraphSecurity implements INodeType {
 
 						// https://docs.microsoft.com/en-us/graph/api/security-list-securescorecontrolprofiles
 
-						const qs = {} as IDataObject;
-						const filters = this.getNodeParameter('filters', i) as IDataObject;
+						const qs: IDataObject = {};
 
-						if (Object.keys(filters).length) {
-							Object.assign(qs, filters);
+						const { filter } = this.getNodeParameter('filters', i) as { filter?: string };
+
+						if (filter) {
+							qs.$filter = tolerateDoubleQuotes(filter);
 						}
 
 						const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
 
 						if (!returnAll) {
+							qs.$count = true;
 							qs.$top = this.getNodeParameter('limit', 0);
 						}
 
-						const endpoint = '/secureScoreControlProfiles';
-						responseData = await microsoftGraphSecurityApiRequest.call(this, 'GET', endpoint, {}, qs);
-						responseData = responseData.value;
+						responseData = await msGraphSecurityApiRequest
+							.call(this, 'GET', '/secureScoreControlProfiles', {}, qs)
+							.then(response => response.value);
 
 					} else if (operation === 'update') {
 
@@ -241,28 +194,29 @@ export class MicrosoftGraphSecurity implements INodeType {
 
 						// https://docs.microsoft.com/en-us/graph/api/securescorecontrolprofile-update
 
-						const body = {
+						const body: IDataObject = {
 							vendorInformation: {
 								provider: this.getNodeParameter('provider', i),
 								vendor: this.getNodeParameter('vendor', i),
 							},
-						} as IDataObject;
+						};
 
-						const { closedDateTime, ...rest } = this.getNodeParameter('updateFields', i) as IDataObject;
+						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
 
-						if (Object.keys(rest).length) {
-							Object.assign(body, rest);
+						if (!Object.keys(updateFields).length) {
+							throwOnEmptyUpdate.call(this)
 						}
 
-						if (closedDateTime) {
-							body.closedDateTime = moment.tz(closedDateTime, timezone).format();
+						if (Object.keys(updateFields).length) {
+							Object.assign(body, updateFields);
 						}
 
-						const secureScoreControlProfileId = this.getNodeParameter('secureScoreControlProfileId', i);
-						const endpoint = `/secureScoreControlProfiles/${secureScoreControlProfileId}`;
+						const id = this.getNodeParameter('secureScoreControlProfileId', i);
+						const endpoint = `/secureScoreControlProfiles/${id}`;
 						const headers = { Prefer: 'return=representation' };
 
-						responseData = await microsoftGraphSecurityApiRequest.call(this, 'PATCH', endpoint, body, headers);
+						responseData = await msGraphSecurityApiRequest.call(this, 'PATCH', endpoint, body, {}, headers);
+						delete responseData['@odata.context'];
 
 					}
 
@@ -275,8 +229,6 @@ export class MicrosoftGraphSecurity implements INodeType {
 				}
 				throw error;
 			}
-
-
 
 			Array.isArray(responseData)
 				? returnData.push(...responseData)

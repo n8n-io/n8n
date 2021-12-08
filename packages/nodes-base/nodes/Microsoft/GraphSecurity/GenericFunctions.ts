@@ -5,13 +5,14 @@ import {
 import {
 	IDataObject,
 	NodeApiError,
+	NodeOperationError,
 } from 'n8n-workflow';
 
 import {
 	OptionsWithUri,
 } from 'request';
 
-export async function microsoftGraphSecurityApiRequest(
+export async function msGraphSecurityApiRequest(
 	this: IExecuteFunctions,
 	method: string,
 	endpoint: string,
@@ -48,14 +49,40 @@ export async function microsoftGraphSecurityApiRequest(
 		delete options.qs;
 	}
 
-	if (headers) {
+	if (Object.keys(headers).length) {
 		options.headers = { ...options.headers, ...headers };
 	}
 
 	try {
-		console.log(options);
 		return await this.helpers.request(options);
 	} catch (error) {
+		const nestedMessage = error?.error?.error?.message;
+
+		if (nestedMessage.startsWith('{"')) {
+			error = JSON.parse(nestedMessage);
+		}
+
+		if (nestedMessage.startsWith('Http request failed with statusCode=BadRequest')) {
+			error.error.error.message = 'Request failed with bad request';
+		} else if (nestedMessage.startsWith('Http request failed with')) {
+			const stringified = nestedMessage.split(': ').pop();
+			if (stringified) {
+				error = JSON.parse(stringified);
+			}
+		}
+
+		if (['Invalid filter clause', 'Invalid ODATA query filter'].includes(nestedMessage)) {
+			error.error.error.message += ' - Please check that your query parameter syntax is correct: https://docs.microsoft.com/en-us/graph/query-parameters#filter-parameter'
+		}
+
 		throw new NodeApiError(this.getNode(), error);
 	}
+}
+
+export function tolerateDoubleQuotes(filterQueryParameter: string) {
+	return filterQueryParameter.replace(/"/g, `'`);
+}
+
+export function throwOnEmptyUpdate(this: IExecuteFunctions) {
+	throw new NodeOperationError(this.getNode(), 'Please enter at least one field to update');
 }

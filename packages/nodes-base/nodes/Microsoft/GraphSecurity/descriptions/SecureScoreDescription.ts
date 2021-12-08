@@ -113,11 +113,18 @@ export const secureScoreFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Filter Expression',
-				name: '$filter',
-				description: '<a href="https://docs.microsoft.com/en-us/graph/query-parameters#filter-parameter">Expression</a> to filter results by, e.g. <code>startswith(id,\'AATP\')</code>',
+				displayName: 'Filter Query Parameter',
+				name: 'filter',
+				description: '<a href="https://docs.microsoft.com/en-us/graph/query-parameters#filter-parameter">Query parameter</a> to filter results by',
 				type: 'string',
 				default: '',
+				placeholder: 'currentScore eq 13',
+			},
+			{
+				displayName: 'Include Control Scores',
+				name: 'includeControlScores',
+				type: 'boolean',
+				default: false,
 			},
 		],
 	},
