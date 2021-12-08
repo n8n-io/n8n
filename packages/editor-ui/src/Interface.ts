@@ -757,6 +757,7 @@ type IFormInputsCol = {
 			[name: string]: IValidator;
 		};
 		validationRules?: IValidationRule[];
+		validateOnBlur?: boolean;
 		infoText?: string;
 		placeholder?: string;
 		options?: Array<{label: string; value: string}>;
@@ -777,5 +778,4 @@ export type IFormBoxConfig = {
 	inputs: IFormInputs;
 	redirectLink?: string;
 	redirectText?: string;
-	validateOnBlur?: boolean;
 };

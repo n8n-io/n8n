@@ -11,7 +11,7 @@
 				<n8n-text :bold="true">{{user.firstName}} {{user.lastName}} {{currentUserId === user.id ? '(you)' : ''}}</n8n-text>
 			</div>
 			<div>
-				<n8n-text color="light">{{user.email}}</n8n-text>
+				<n8n-text size="small" color="light">{{user.email}}</n8n-text>
 			</div>
 		</div>
 		<div v-else :class="$style.infoContainer">
