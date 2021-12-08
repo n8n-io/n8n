@@ -27,6 +27,10 @@
 		outline: none;
 		background-color: var.$menu-item-hover-fill;
 		color: var.$menu-item-hover-font-color;
+
+		i {
+			color: var.$menu-item-hover-font-color;
+		}
 	}
 
 	@include mixins.when(disabled) {
