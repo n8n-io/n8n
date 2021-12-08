@@ -15,7 +15,7 @@
 			</n8n-menu-item>
 			<n8n-menu-item index="/settings/users" v-if="canAccessUsersView">
 				<i :class="$style.icon">
-					<font-awesome-icon icon="users" />
+					<font-awesome-icon icon="user-friends" />
 				</i>
 				<span slot="title">Users</span>
 			</n8n-menu-item>
