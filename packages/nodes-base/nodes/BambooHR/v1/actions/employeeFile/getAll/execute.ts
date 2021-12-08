@@ -1,22 +1,22 @@
 import {
-  IExecuteFunctions,
+	IExecuteFunctions,
 } from 'n8n-core';
 
 import {
-  IDataObject,
-  INodeExecutionData,
+	IDataObject,
+	INodeExecutionData,
 } from 'n8n-workflow';
 
 import {
-  apiRequest,
+	apiRequest,
 } from '../../../transport';
 
 export async function getAll(this: IExecuteFunctions, index: number): Promise<INodeExecutionData[]> {
-  const body = {} as IDataObject;
-  const requestMethod = 'GET';
+	const body = {} as IDataObject;
+	const requestMethod = 'GET';
 
-  //meta data
-  const id = this.getNodeParameter('id', index) as string;
+	//meta data
+	const id = this.getNodeParameter('id', index) as string;
 
 	//limit parameters
 	const onlyFiles =  this.getNodeParameter('onlyFiles', index) as boolean;
@@ -26,10 +26,10 @@ export async function getAll(this: IExecuteFunctions, index: number): Promise<IN
 	//endpoint
 	const endPoint = `employees/${id}/files/view/`;
 
-  //response
-  const responseData = await apiRequest.call(this, requestMethod, endPoint, body);
+	//response
+	const responseData = await apiRequest.call(this, requestMethod, endPoint, body);
 
-	let onlyFilesArray = [];
+	const onlyFilesArray = [];
 
 	//return only files without categories
 	if (onlyFiles) {
@@ -53,6 +53,6 @@ export async function getAll(this: IExecuteFunctions, index: number): Promise<IN
 		return this.helpers.returnJsonArray(responseData.body.categories.slice(0, limit));
 	}
 
-  //return
-  return this.helpers.returnJsonArray(responseData.body.categories);
+	//return
+	return this.helpers.returnJsonArray(responseData.body.categories);
 }

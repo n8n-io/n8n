@@ -1,16 +1,16 @@
 import {
-  AllEntities,
-  Entity,
-  PropertiesOf,
+	AllEntities,
+	Entity,
+	PropertiesOf,
 } from 'n8n-workflow';
 
 type BambooHRMap = {
-  employees: 'create' | 'get' | 'getAll' | 'update';
-  employeeFile: 'addCategory' | 'del' | 'get' | 'getAll' | 'update';
-  companyFile: 'addCategory' | 'del' | 'get' | 'getAll' | 'update';
-  reports: 'get';
-  tabularData: 'create' | 'get' | 'getAll' | 'update';
-  timeOff: 'adjustTime' | 'assign' | 'changeStatus' | 'createHistory' | 'createRequest' | 'estimateFutureTime' | 'getEmployeeOut' | 'getEmployeePolicies' | 'getAllPolicies' | 'getRequests' | 'getTypes';
+	employees: 'create' | 'get' | 'getAll' | 'update';
+	employeeFile: 'addCategory' | 'del' | 'get' | 'getAll' | 'update';
+	companyFile: 'addCategory' | 'del' | 'get' | 'getAll' | 'update';
+	reports: 'get';
+	tabularData: 'create' | 'get' | 'getAll' | 'update';
+	timeOff: 'adjustTime' | 'assign' | 'changeStatus' | 'createHistory' | 'createRequest' | 'estimateFutureTime' | 'getEmployeeOut' | 'getEmployeePolicies' | 'getAllPolicies' | 'getRequests' | 'getTypes';
 };
 
 export type BambooHR = AllEntities<BambooHRMap>;
@@ -30,10 +30,10 @@ export type TabularDataProperties = PropertiesOf<BambooHRTabularData>;
 export type TimeOffProperties = PropertiesOf<BambooHRTimeOff>;
 
 export interface IAttachment {
-  fields: {
-    item?: object[];
-  };
-  actions: {
-    item?: object[];
-  };
+	fields: {
+		item?: object[];
+	};
+	actions: {
+		item?: object[];
+	};
 }

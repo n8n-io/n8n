@@ -1,26 +1,26 @@
 import {
-  EmployeeFileProperties,
+	EmployeeFileProperties,
 } from '../../Interfaces';
 
 export const employeeFileGetAllDescription: EmployeeFileProperties = [
-  {
-    displayName: 'Employee ID',
-    name: 'id',
-    type: 'string',
-    required: true,
-    displayOptions: {
-      show: {
-        operation: [
-          'getAll',
-        ],
-        resource: [
-          'employeeFile',
-        ],
-      },
-    },
-    default: '',
-    description: 'ID of the employee. When set to 0, the fields of the user who created the API are retrieved.',
-  },
+	{
+		displayName: 'Employee ID',
+		name: 'id',
+		type: 'string',
+		required: true,
+		displayOptions: {
+			show: {
+				operation: [
+					'getAll',
+				],
+				resource: [
+					'employeeFile',
+				],
+			},
+		},
+		default: '',
+		description: 'ID of the employee. When set to 0, the fields of the user who created the API are retrieved.',
+	},
 	{
 		displayName: 'Only Files',
 		name: 'onlyFiles',

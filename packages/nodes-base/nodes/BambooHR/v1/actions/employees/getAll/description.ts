@@ -1,5 +1,5 @@
 import {
-  EmployeesProperties,
+	EmployeesProperties,
 } from '../../Interfaces';
 
 export const employeesGetAllDescription: EmployeesProperties = [

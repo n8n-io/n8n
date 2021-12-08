@@ -1,38 +1,38 @@
 import {
-  IExecuteFunctions,
+	IExecuteFunctions,
 } from 'n8n-core';
 
 import {
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodePropertyOptions,
-  INodeType,
-  INodeTypeBaseDescription,
-  INodeTypeDescription,
+	INodeType,
+	INodeTypeBaseDescription,
+	INodeTypeDescription,
 } from 'n8n-workflow';
 
 import { router } from './v1/actions/router';
 import { versionDescription } from './v1/actions/versionDescription';
 
 import {
-  apiRequest,
+	apiRequest,
 } from './v1/transport';
 
 export class BambooHR implements INodeType {
-  description: INodeTypeDescription;
+	description: INodeTypeDescription;
 
-  constructor(baseDescription: INodeTypeBaseDescription) {
-    this.description = {
-      ...baseDescription,
-      ...versionDescription,
-    };
-  }
+	constructor(baseDescription: INodeTypeBaseDescription) {
+		this.description = {
+			...baseDescription,
+			...versionDescription,
+		};
+	}
 
 	methods = {
 		loadOptions: {
 			async getTimeOffTypeID(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-				var body = {} as IDataObject;
+				const body = {} as IDataObject;
 				const requestMethod = 'GET';
 				const endPoint = 'meta/time_off/types';
 
@@ -47,13 +47,13 @@ export class BambooHR implements INodeType {
 				}
 				return returnData;
 			},
-		}
-	}
+		},
+	};
 
-  async execute(this: IExecuteFunctions) {
-    // Router returns INodeExecutionData[]
-    // We need to output INodeExecutionData[][]
-    // So we wrap in []
-    return [await router.call(this)];
-  }
+	async execute(this: IExecuteFunctions) {
+		// Router returns INodeExecutionData[]
+		// We need to output INodeExecutionData[][]
+		// So we wrap in []
+		return [await router.call(this)];
+	}
 }

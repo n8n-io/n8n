@@ -1,24 +1,24 @@
 import {
-  ICredentialType,
-  NodePropertyTypes,
+	ICredentialType,
+	NodePropertyTypes,
 } from 'n8n-workflow';
 
 export class BambooHRApi implements ICredentialType {
-  name = 'bambooHRApi';
-  displayName = 'BambooHR API';
-  documentationUrl = 'bambooHR';
-  properties = [
-    {
-      displayName: 'API Key',
-      name: 'apiKey',
-      type: 'string' as NodePropertyTypes,
-      default: '',
-    },
+	name = 'bambooHRApi';
+	displayName = 'BambooHR API';
+	documentationUrl = 'bambooHR';
+	properties = [
 		{
-      displayName: 'Company name',
-      name: 'companyName',
-      type: 'string' as NodePropertyTypes,
-      default: '',
-    },
-  ];
+			displayName: 'API Key',
+			name: 'apiKey',
+			type: 'string' as NodePropertyTypes,
+			default: '',
+		},
+		{
+			displayName: 'Company name',
+			name: 'companyName',
+			type: 'string' as NodePropertyTypes,
+			default: '',
+		},
+	];
 }

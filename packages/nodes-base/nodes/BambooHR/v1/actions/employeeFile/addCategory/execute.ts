@@ -1,27 +1,27 @@
 import {
-  IExecuteFunctions,
+	IExecuteFunctions,
 } from 'n8n-core';
 
 import {
-  INodeExecutionData,
+	INodeExecutionData,
 } from 'n8n-workflow';
 
 import {
-  apiRequest,
+	apiRequest,
 } from '../../../transport';
 
 export async function addCategory(this: IExecuteFunctions, index: number): Promise<INodeExecutionData[]> {
-  const body: string[] = [];
-  const requestMethod = 'POST';
-  const endPoint = 'employees/files/categories';
+	const body: string[] = [];
+	const requestMethod = 'POST';
+	const endPoint = 'employees/files/categories';
 
-  //body parameters
-  const categoryName = this.getNodeParameter('categoryName', index) as string;
-  body.push(categoryName);
+	//body parameters
+	const categoryName = this.getNodeParameter('categoryName', index) as string;
+	body.push(categoryName);
 
-  //response
-  const responseData = await apiRequest.call(this, requestMethod, endPoint, body);
+	//response
+	const responseData = await apiRequest.call(this, requestMethod, endPoint, body);
 
-  //return
-  return this.helpers.returnJsonArray({ statusCode: responseData.statusCode, statusMessage: responseData.statusMessage });
+	//return
+	return this.helpers.returnJsonArray({ statusCode: responseData.statusCode, statusMessage: responseData.statusMessage });
 }

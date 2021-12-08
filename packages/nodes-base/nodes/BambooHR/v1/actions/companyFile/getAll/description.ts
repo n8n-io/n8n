@@ -1,5 +1,5 @@
 import {
-  CompanyFileProperties,
+	CompanyFileProperties,
 } from '../../Interfaces';
 
 export const companyFileGetAllDescription: CompanyFileProperties = [

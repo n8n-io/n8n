@@ -1,5 +1,5 @@
 import {
-  TimeOffProperties,
+	TimeOffProperties,
 } from '../../Interfaces';
 
 export const timeOffGetAllPoliciesDescription: TimeOffProperties = [
