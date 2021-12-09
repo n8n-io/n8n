@@ -5,7 +5,7 @@
 		:size="$options.methods.getSize(props.size)"
 		:class="$style[$options.methods.getClass(props)]"
 		:ref="data.ref"
-		:autocomplete="props.autocomplete"
+		:autoComplete="props.autocomplete"
 		v-on="listeners"
 	>
 		<template v-slot:prepend>

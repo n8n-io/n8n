@@ -31,6 +31,7 @@ import { showMessage } from "@/components/mixins/showMessage";
 import Modal from "./Modal.vue";
 import Vue from "vue";
 import { IFormInputs } from "@/Interface";
+import { ROLE } from "@/constants";
 
 export default mixins(showMessage).extend({
 	components: { Modal },
@@ -69,7 +70,7 @@ export default mixins(showMessage).extend({
 					type: 'select',
 					options: [
 						{
-							value: 'member',
+							value: ROLE.Member,
 							label: 'Member',
 						},
 					],
@@ -98,11 +99,11 @@ export default mixins(showMessage).extend({
 				this.emails = e.value;
 			}
 		},
-		async onSubmit(values: {[key: string]: string}) {
+		async onSubmit() {
 			try {
 				this.loading = true;
 
-				const emails = values.emails.split(',')
+				const emails = this.emails.split(',')
 					.map((email) => email.trim())
 					.filter((email) => !!email);
 
@@ -110,7 +111,7 @@ export default mixins(showMessage).extend({
 					throw new Error('No users to invite');
 				}
 
-				await this.$store.dispatch('users/inviteUsers', {emails, role: values.role});
+				await this.$store.dispatch('users/inviteUsers', {emails, role: ROLE.Member});
 
 				this.$showMessage({
 					type: 'success',

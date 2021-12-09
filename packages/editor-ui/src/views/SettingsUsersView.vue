@@ -43,7 +43,7 @@ export default mixins(showMessage).extend({
 			const user = getUserById(userId) as IUser | null;
 			if (user) {
 				if (!user.firstName) {
-					const confirm = await this.confirmMessage('Are you sure you want to delete this invited user?', `Delete ${user.email}`);
+					const confirm = await this.confirmMessage('Are you sure you want to delete this invited user?', `Delete ${user.email}`, null);
 					if (confirm) {
 						try {
 							await this.$store.dispatch('users/deleteUser', {id: user.id});
