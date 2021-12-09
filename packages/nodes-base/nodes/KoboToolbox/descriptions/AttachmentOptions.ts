@@ -20,7 +20,7 @@ export const attachmentOptions = [
 				displayName: 'File Size',
 				name: 'version',
 				type: 'options',
-				default:'Original',
+				default:'download_url',
 				description:'Attachment size to retrieve, if multiple versions are available',
 				options: [
 					{name: 'Original', value: 'download_url'},
@@ -33,7 +33,7 @@ export const attachmentOptions = [
 				displayName: 'Name downloaded files from',
 				name: 'filename',
 				type: 'options',
-				default:'downloRelated Form Questionad_url',
+				default:'related_question',
 				description:'The strategy to name the downloaded files',
 				options: [
 					{name: 'Related Form Question',        value: 'related_question'},
