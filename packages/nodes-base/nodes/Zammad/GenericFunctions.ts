@@ -43,7 +43,7 @@ export async function zammadApiRequest(
 			method,
 			qs,
 			uri: `${credentials.zammadUrl}${endpoint}`,
-			rejectUnauthorized: credentials.allowUnauthorizedCerts as boolean,
+			rejectUnauthorized: !credentials.allowUnauthorizedCerts as boolean,
 			json: true,
 		};
 
@@ -90,7 +90,7 @@ export async function zammadApiRequest(
 			method,
 			qs,
 			uri: `${credentials.zammadUrl}${endpoint}`,
-			rejectUnauthorized: credentials.allowUnauthorizedCerts as boolean,
+			rejectUnauthorized: !credentials.allowUnauthorizedCerts as boolean,
 			json: true,
 		};
 
@@ -137,7 +137,7 @@ export async function zammadApiRequest(
 			method,
 			qs,
 			uri: `${credentials.zammadUrl}${endpoint}`,
-			rejectUnauthorized: credentials.allowUnauthorizedCerts as boolean,
+			rejectUnauthorized: !credentials.allowUnauthorizedCerts as boolean,
 			json: true,
 		};
 		if (method === 'DELETE' && Object.keys(body).length !== 0) {

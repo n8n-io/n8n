@@ -30,7 +30,7 @@ export async function theHiveApiRequest(this: IHookFunctions | IExecuteFunctions
 		qs: query,
 		uri: uri || `${credentials.url}/api${resource}`,
 		body,
-		rejectUnauthorized: credentials.allowUnauthorizedCerts as boolean,
+		rejectUnauthorized: !credentials.allowUnauthorizedCerts as boolean,
 		json: true,
 	};
 
