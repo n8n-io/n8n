@@ -129,6 +129,7 @@ export class AwsFirehose implements INodeType {
 		const items = this.getInputData();
 
 		const returnData: IDataObject[] = [];
+		const body: IDataObject = {};
 		const qs: IDataObject = {};
 
 		let responseData;
@@ -140,7 +141,6 @@ export class AwsFirehose implements INodeType {
 				if (operation === 'putRecordBatch') {
 					const action = 'Firehose_20150804.PutRecordBatch';
 
-					const body: IDataObject = {};
 					body.DeliveryStreamName = this.getNodeParameter('deliveryStreamName', i) as string;
 
 					const records = [] as IDataObject[];
