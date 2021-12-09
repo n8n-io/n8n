@@ -702,6 +702,7 @@
     "iconv-lite": "^0.6.2",
     "ics": "^2.27.0",
     "imap-simple": "^4.3.0",
+    "isbot": "^3.3.4",  
     "iso-639-1": "^2.1.3",
     "jsonwebtoken": "^8.5.1",
     "kafkajs": "^1.14.0",
