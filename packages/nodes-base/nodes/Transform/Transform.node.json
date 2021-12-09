@@ -1,0 +1,34 @@
+{
+	"node": "n8n-nodes-base.transform",
+	"nodeVersion": "1.0",
+	"codexVersion": "1.0",
+	"details": "The Transform node allows you to manipulate strings, objects and arrays within an item.",
+	"categories": [
+		"Utility"
+	],
+	"resources": {
+		"primaryDocumentation": [
+			{
+				"url": "https://docs.n8n.io/nodes/n8n-nodes-base.transform/"
+			}
+		]
+	},
+	"alias": [
+		"base64",
+		"capitalize",
+		"decode",
+		"encode",
+		"html",
+		"lowercase",
+		"map",
+		"replace",
+		"reverse",
+		"search",
+		"strip",
+		"split",
+		"trim",
+		"uppercase",
+		"titlecase",
+		"url"
+	]
+}

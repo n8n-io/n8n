@@ -16,24 +16,24 @@ import {
 	faCheckCircle,
 	faChevronDown,
 	faChevronUp,
-	faCode,
-	faCodeBranch,
-	faCog,
-	faCogs,
 	faClock,
 	faClone,
 	faCloud,
 	faCloudDownloadAlt,
+	faCode,
+	faCodeBranch,
+	faCog,
+	faCogs,
 	faCopy,
 	faCut,
 	faDotCircle,
 	faEdit,
 	faEnvelope,
-	faEye,
+	faExchangeAlt,
 	faExclamationTriangle,
 	faExpand,
 	faExternalLinkAlt,
-	faExchangeAlt,
+	faEye,
 	faFile,
 	faFileArchive,
 	faFileCode,
@@ -62,6 +62,7 @@ import {
 	faPlusCircle,
 	faQuestion,
 	faQuestionCircle,
+	faRandom,
 	faRedo,
 	faRss,
 	faSave,
@@ -101,24 +102,24 @@ library.add(faCheck);
 library.add(faCheckCircle);
 library.add(faChevronDown);
 library.add(faChevronUp);
-library.add(faCode);
-library.add(faCodeBranch);
-library.add(faCog);
-library.add(faCogs);
 library.add(faClock);
 library.add(faClone);
 library.add(faCloud);
 library.add(faCloudDownloadAlt);
+library.add(faCode);
+library.add(faCodeBranch);
+library.add(faCog);
+library.add(faCogs);
 library.add(faCopy);
 library.add(faCut);
 library.add(faDotCircle);
 library.add(faEdit);
 library.add(faEnvelope);
-library.add(faEye);
+library.add(faExchangeAlt);
 library.add(faExclamationTriangle);
 library.add(faExpand);
 library.add(faExternalLinkAlt);
-library.add(faExchangeAlt);
+library.add(faEye);
 library.add(faFile);
 library.add(faFileArchive);
 library.add(faFileCode);
@@ -147,6 +148,7 @@ library.add(faPlus);
 library.add(faPlusCircle);
 library.add(faQuestion);
 library.add(faQuestionCircle);
+library.add(faRandom);
 library.add(faRedo);
 library.add(faRss);
 library.add(faSave);
