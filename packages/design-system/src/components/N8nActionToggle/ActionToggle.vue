@@ -1,20 +1,22 @@
 <template>
-	<el-dropdown :placement="placement" trigger="click" @command="onCommand">
-		<span :class="focusHighlight ? $style.focusButton : $style.button">
-			<component :is="$options.components.N8nIcon"
-				icon="ellipsis-v"
-			/>
-		</span>
-		<el-dropdown-menu slot="dropdown">
-			<el-dropdown-item
-				v-for="action in actions"
-				:key="action.value"
-				:command="action.value"
-			>
-				{{action.label}}
-			</el-dropdown-item>
-		</el-dropdown-menu>
-	</el-dropdown>
+	<span :class="$style.container">
+		<el-dropdown :placement="placement" trigger="click" @command="onCommand">
+			<span :class="focusHighlight ? $style.focusButton : $style.button">
+				<component :is="$options.components.N8nIcon"
+					icon="ellipsis-v"
+				/>
+			</span>
+			<el-dropdown-menu slot="dropdown">
+				<el-dropdown-item
+					v-for="action in actions"
+					:key="action.value"
+					:command="action.value"
+				>
+					{{action.label}}
+				</el-dropdown-item>
+			</el-dropdown-menu>
+		</el-dropdown>
+	</span>
 </template>
 
 <script lang="ts">
@@ -54,6 +56,10 @@ export default {
 </script>
 
 <style lang="scss" module>
+.container > * {
+	line-height: 1;
+}
+
 .button {
 	padding: var(--spacing-4xs);
 	border-radius: var(--border-radius-base);
