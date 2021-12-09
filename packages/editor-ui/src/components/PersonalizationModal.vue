@@ -196,11 +196,11 @@ export default mixins(showMessage, workflowHelpers).extend({
 			showAllIndustryQuestions: true,
 			modalBus: new Vue(),
 			values: {
-				[WORK_AREA_KEY]: null,
+				[WORK_AREA_KEY]: [],
 				[COMPANY_SIZE_KEY]: null,
 				[CODING_SKILL_KEY]: null,
 				[OTHER_WORK_AREA_KEY]: null,
-				[COMPANY_INDUSTRY_KEY]: null,
+				[COMPANY_INDUSTRY_KEY]: [],
 				[OTHER_COMPANY_INDUSTRY_KEY]: null,
 			} as IPersonalizationSurveyAnswers,
 			FINANCE_WORK_AREA,
@@ -249,7 +249,7 @@ export default mixins(showMessage, workflowHelpers).extend({
 		closeDialog() {
 			this.modalBus.$emit('close');
 		},
-		onInput(name: IPersonalizationSurveyKeys, value: string) {
+		onInput(name: IPersonalizationSurveyKeys, value: string & string[]) {
 			if (name === WORK_AREA_KEY && value.includes(OTHER_WORK_AREA_OPTION)) {
 				this.otherWorkAreaFieldVisible = true;
 			}
