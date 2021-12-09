@@ -1,6 +1,6 @@
 import * as addCategory from './addCategory';
 import * as del from './del';
-import * as get from './get';
+import * as download from './download';
 import * as getAll from './getAll';
 import * as update from './update';
 
@@ -9,7 +9,7 @@ import { INodeProperties } from 'n8n-workflow';
 export {
 	addCategory,
 	del,
-	get,
+	download,
 	getAll,
 	update
 };
@@ -39,9 +39,9 @@ export const descriptions = [
 				description: 'Delete a company file',
 			},
 			{
-				name: 'Get',
-				value: 'get',
-				description: 'Gets an company file',
+				name: 'Download',
+				value: 'download',
+				description: 'Download an company file',
 			},
 			{
 				name: 'Get All',
@@ -59,7 +59,7 @@ export const descriptions = [
 	},
 	...addCategory.description,
 	...del.description,
-	...get.description,
+	...download.description,
 	...getAll.description,
 	...update.description,
 ] as INodeProperties[];

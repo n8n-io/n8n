@@ -6,8 +6,8 @@ import {
 
 type BambooHRMap = {
 	employees: 'create' | 'get' | 'getAll' | 'update';
-	employeeFile: 'addCategory' | 'del' | 'get' | 'getAll' | 'update';
-	companyFile: 'addCategory' | 'del' | 'get' | 'getAll' | 'update';
+	employeeFile: 'addCategory' | 'del' | 'download' | 'getAll' | 'update';
+	companyFile: 'addCategory' | 'del' | 'download' | 'getAll' | 'update';
 	reports: 'get';
 	tabularData: 'create' | 'get' | 'getAll' | 'update';
 	timeOff: 'adjustTime' | 'assign' | 'changeStatus' | 'createHistory' | 'createRequest' | 'estimateFutureTime' | 'getEmployeeOut' | 'getEmployeePolicies' | 'getAllPolicies' | 'getRequests' | 'getTypes';

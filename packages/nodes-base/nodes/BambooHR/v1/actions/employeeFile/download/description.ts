@@ -2,7 +2,7 @@ import {
 	EmployeeFileProperties,
 } from '../../Interfaces';
 
-export const employeeFileGetDescription: EmployeeFileProperties = [
+export const employeeFileDownloadDescription: EmployeeFileProperties = [
 	{
 		displayName: 'Employee ID',
 		name: 'id',
@@ -11,7 +11,7 @@ export const employeeFileGetDescription: EmployeeFileProperties = [
 		displayOptions: {
 			show: {
 				operation: [
-					'get',
+					'download',
 				],
 				resource: [
 					'employeeFile',
@@ -29,7 +29,7 @@ export const employeeFileGetDescription: EmployeeFileProperties = [
 		displayOptions: {
 			show: {
 				operation: [
-					'get',
+					'download',
 				],
 				resource: [
 					'employeeFile',

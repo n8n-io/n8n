@@ -11,16 +11,15 @@ import {
 	apiRequest,
 } from '../../../transport';
 
-export async function get(this: IExecuteFunctions, index: number): Promise<INodeExecutionData[]> {
+export async function download(this: IExecuteFunctions, index: number): Promise<INodeExecutionData[]> {
 	const body = {} as IDataObject;
 	const requestMethod = 'GET';
 
 	//meta data
-	const id = this.getNodeParameter('id', index) as string;
 	const fileId = this.getNodeParameter('fileId', index) as string;
 
 	//endpoint
-	const endPoint = `employees/${id}/files/${fileId}/`;
+	const endPoint = `files/${fileId}`;
 
 	//response
 	const responseData = await apiRequest.call(this, requestMethod, endPoint, body);

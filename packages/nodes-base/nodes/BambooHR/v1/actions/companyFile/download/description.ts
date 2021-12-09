@@ -2,7 +2,7 @@ import {
 	CompanyFileProperties,
 } from '../../Interfaces';
 
-export const companyFileGetDescription: CompanyFileProperties = [
+export const companyFileDownloadDescription: CompanyFileProperties = [
 	{
 		displayName: 'File ID',
 		name: 'fileId',
@@ -11,7 +11,7 @@ export const companyFileGetDescription: CompanyFileProperties = [
 		displayOptions: {
 			show: {
 				operation: [
-					'get',
+					'download',
 				],
 				resource: [
 					'companyFile',

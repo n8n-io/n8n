@@ -11,10 +11,6 @@ import {
 	NodeOperationError,
 } from 'n8n-workflow';
 
-import {
-	OptionsWithUri,
-} from 'request';
-
 /**
  * Make an API request to Mattermost
  */
