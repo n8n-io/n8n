@@ -213,6 +213,7 @@ export class WorkflowRunnerProcess {
 			workflowTimeout <= 0 ? undefined : Date.now() + workflowTimeout * 1000,
 		);
 		if (this.data.userId) {
+			// @ts-ignore
 			additionalData.userId = this.data.userId;
 		}
 		additionalData.hooks = this.getProcessForwardHooks();
