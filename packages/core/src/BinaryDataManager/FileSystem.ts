@@ -8,7 +8,7 @@ import { IBinaryDataConfig, IBinaryDataManager } from '../Interfaces';
 const PREFIX_METAFILE = 'binarymeta-';
 const PREFIX_FILE_ID = 'filesystem-';
 
-export class BinaryDataLocalStorage implements IBinaryDataManager {
+export class BinaryDataFileSystem implements IBinaryDataManager {
 	private storagePath = '';
 
 	private binaryDataTTL = 60;

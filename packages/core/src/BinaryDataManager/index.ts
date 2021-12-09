@@ -9,7 +9,7 @@ import {
 } from 'n8n-workflow';
 import { BINARY_ENCODING } from '../Constants';
 import { IBinaryDataConfig, IBinaryDataManager, IExecutionFlattedDb } from '../Interfaces';
-import { BinaryDataLocalStorage } from './LocalStorage';
+import { BinaryDataFileSystem } from './FileSystem';
 
 export class BinaryDataManager {
 	private static instance: BinaryDataManager;
@@ -24,7 +24,7 @@ export class BinaryDataManager {
 		BinaryDataManager.instance = new BinaryDataManager();
 
 		if (config.mode === 'filesystem') {
-			BinaryDataManager.instance.manager = new BinaryDataLocalStorage();
+			BinaryDataManager.instance.manager = new BinaryDataFileSystem();
 			await BinaryDataManager.instance.manager.init(config, mainManager);
 		}
 
