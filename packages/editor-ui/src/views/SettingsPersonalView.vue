@@ -76,6 +76,7 @@ export default mixins(
 						label: 'First name',
 						maxlength: 32,
 						required: true,
+						autocomplete: 'given-name',
 					},
 				},
 				{
@@ -85,6 +86,7 @@ export default mixins(
 						label: 'Last name',
 						maxlength: 32,
 						required: true,
+						autocomplete: 'family-name',
 					},
 				},
 			],
@@ -97,6 +99,7 @@ export default mixins(
 						type: 'email',
 						required: true,
 						validationRules: [{name: 'VALID_EMAIL'}],
+						autocomplete: 'email',
 					},
 				},
 			],

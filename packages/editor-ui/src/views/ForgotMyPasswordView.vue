@@ -26,6 +26,7 @@ const FORM_CONFIG: IFormBoxConfig = {
 				type: 'email',
 				required: true,
 				validationRules: [{name: 'VALID_EMAIL'}],
+				autocomplete: 'email',
 			},
 		},
 	]],

@@ -62,7 +62,7 @@ const module: Module<IUsersState, IRootState> = {
 				return true;
 			};
 		},
-		canUserDeleteTags(state: IUsersState, getters: any) {
+		canUserDeleteTags(state: IUsersState, getters: any) { // tslint:disable-line:no-any
 			const user = getters.currentUser as IUser | null;
 
 			return user && user.globalRole.name === ROLE.Owner;

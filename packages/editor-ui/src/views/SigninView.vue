@@ -28,6 +28,7 @@ const FORM_CONFIG: IFormBoxConfig = {
 				validationRules: [{name: 'VALID_EMAIL'}],
 				showRequiredAsterisk: false,
 				validateOnBlur: false,
+				autocomplete: 'email',
 			},
 		},
 		{
@@ -39,6 +40,7 @@ const FORM_CONFIG: IFormBoxConfig = {
 				validationRules: [{name: 'MIN_LENGTH', config: {minimum: 8}}],
 				showRequiredAsterisk: false,
 				validateOnBlur: false,
+				autocomplete: 'current-password',
 			},
 		},
 	]],

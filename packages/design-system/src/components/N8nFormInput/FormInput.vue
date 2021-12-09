@@ -22,6 +22,7 @@
 				:placeholder="placeholder"
 				:value="value"
 				:maxlength="maxlength"
+				:autocomplete="autocomplete"
 				@input="onInput"
 				@blur="onBlur"
 				@focus="onFocus"
@@ -265,6 +266,9 @@ export default Vue.extend({
 		},
 		options: {
 			type: Array,
+		},
+		autocomplete: {
+			type: String,
 		},
 	},
 	mounted() {

@@ -24,6 +24,7 @@ const FORM_CONFIG: IFormBoxConfig = {
 				label: 'First name',
 				maxlength: 32,
 				required: true,
+				autocomplete: 'given-name',
 			},
 		},
 		{
@@ -32,6 +33,7 @@ const FORM_CONFIG: IFormBoxConfig = {
 				label: 'Last name',
 				maxlength: 32,
 				required: true,
+				autocomplete: 'family-name',
 			},
 		},
 		{
@@ -42,6 +44,7 @@ const FORM_CONFIG: IFormBoxConfig = {
 				validationRules: [{name: 'DEFAULT_PASSWORD_RULES'}],
 				required: true,
 				infoText: 'At least 8 characters with 1 number and 1 uppercase',
+				autocomplete: 'new-password',
 			},
 		},
 	]],

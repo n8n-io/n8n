@@ -59,6 +59,7 @@ export default mixins(showMessage).extend({
 					required: true,
 					validationRules: [{name: 'DEFAULT_PASSWORD_RULES'}],
 					infoText: 'At least 8 characters with 1 number and 1 uppercase',
+					autocomplete: 'new-password',
 				},
 			},
 			{
@@ -73,6 +74,7 @@ export default mixins(showMessage).extend({
 						},
 					},
 					validationRules: [{name: 'TWO_PASSWORDS_MATCH'}],
+					autocomplete: 'new-password',
 				},
 			},
 		]];

@@ -5,6 +5,7 @@
 		:size="$options.methods.getSize(props.size)"
 		:class="$style[$options.methods.getClass(props)]"
 		:ref="data.ref"
+		:autocomplete="props.autocomplete"
 		v-on="listeners"
 	>
 		<template v-slot:prepend>
@@ -61,6 +62,10 @@ export default {
 		},
 		title: {
 			type: String,
+		},
+		autocomplete: {
+			type: String,
+			default: 'off',
 		},
 	},
 	methods: {

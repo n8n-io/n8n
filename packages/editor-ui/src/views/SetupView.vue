@@ -24,6 +24,7 @@ const FORM_CONFIG: IFormBoxConfig = {
 				type: 'email',
 				required: true,
 				validationRules: [{name: 'VALID_EMAIL'}],
+				autocomplete: 'email',
 			},
 		},
 		{
@@ -32,6 +33,7 @@ const FORM_CONFIG: IFormBoxConfig = {
 				label: 'First name',
 				maxlength: 32,
 				required: true,
+				autocomplete: 'given-name',
 			},
 		},
 		{
@@ -40,6 +42,7 @@ const FORM_CONFIG: IFormBoxConfig = {
 				label: 'Last name',
 				maxlength: 32,
 				required: true,
+				autocomplete: 'family-name',
 			},
 		},
 		{
@@ -50,6 +53,7 @@ const FORM_CONFIG: IFormBoxConfig = {
 				required: true,
 				validationRules: [{name: 'DEFAULT_PASSWORD_RULES'}],
 				infoText: 'At least 8 characters with 1 number and 1 uppercase',
+				autocomplete: 'new-password',
 			},
 		},
 	]],
