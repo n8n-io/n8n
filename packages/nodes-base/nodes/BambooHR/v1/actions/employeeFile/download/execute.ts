@@ -11,7 +11,7 @@ import {
 	apiRequest,
 } from '../../../transport';
 
-export async function download(this: IExecuteFunctions, index: number): Promise<any> {
+export async function download(this: IExecuteFunctions, index: number) {
 	const body = {} as IDataObject;
 	const requestMethod = 'GET';
 
