@@ -743,6 +743,10 @@ export default mixins(
 	.toggle {
 		position: absolute;
 		right: 20px;
+
+		* {
+			line-height: 1;
+		}
 	}
 }
 
