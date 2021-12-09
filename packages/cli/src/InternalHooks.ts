@@ -9,9 +9,16 @@ import {
 import { Telemetry } from './telemetry';
 
 export class InternalHooksClass implements IInternalHooksClass {
-	constructor(private telemetry: Telemetry) {}
+	private versionCli: string;
 
-	async onServerStarted(diagnosticInfo: IDiagnosticInfo): Promise<unknown[]> {
+	constructor(private telemetry: Telemetry, versionCli: string) {
+		this.versionCli = versionCli;
+	}
+
+	async onServerStarted(
+		diagnosticInfo: IDiagnosticInfo,
+		earliestWorkflowCreatedAt?: Date,
+	): Promise<unknown[]> {
 		const info = {
 			version_cli: diagnosticInfo.versionCli,
 			db_type: diagnosticInfo.databaseType,
@@ -25,7 +32,10 @@ export class InternalHooksClass implements IInternalHooksClass {
 
 		return Promise.all([
 			this.telemetry.identify(info),
-			this.telemetry.track('Instance started', info),
+			this.telemetry.track('Instance started', {
+				...info,
+				earliest_workflow_created: earliestWorkflowCreatedAt,
+			}),
 		]);
 	}
 
@@ -52,9 +62,13 @@ export class InternalHooksClass implements IInternalHooksClass {
 	}
 
 	async onWorkflowSaved(workflow: IWorkflowBase): Promise<void> {
+		const nodesGraph = TelemetryHelpers.generateNodesGraph(workflow).nodeGraph;
+
 		return this.telemetry.track('User saved workflow', {
 			workflow_id: workflow.id,
-			node_graph: TelemetryHelpers.generateNodesGraph(workflow).nodeGraph,
+			node_graph: nodesGraph,
+			node_graph_string: JSON.stringify(nodesGraph),
+			vesrion_cli: this.versionCli,
 		});
 	}
 
@@ -62,6 +76,7 @@ export class InternalHooksClass implements IInternalHooksClass {
 		const properties: IDataObject = {
 			workflow_id: workflow.id,
 			is_manual: false,
+			vesrion_cli: this.versionCli,
 		};
 
 		if (runData !== undefined) {
@@ -92,6 +107,8 @@ export class InternalHooksClass implements IInternalHooksClass {
 				if (properties.is_manual) {
 					const nodeGraphResult = TelemetryHelpers.generateNodesGraph(workflow);
 					properties.node_graph = nodeGraphResult.nodeGraph;
+					properties.node_graph_string = JSON.stringify(nodeGraphResult.nodeGraph);
+
 					if (errorNodeName) {
 						properties.error_node_id = nodeGraphResult.nameIndices[errorNodeName];
 					}
