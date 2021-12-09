@@ -31,10 +31,10 @@ export async function download(this: IExecuteFunctions, index: number): Promise<
 	//buffer
 	const buffer = Buffer.from(response.body);
 
-	let responseData = {
+	const responseData = {
 		json: {file: fileName},
 		binary: {
-			[output]: await this.helpers.prepareBinaryData(buffer as unknown as Buffer, fileName, mimeType)
+			[output]: await this.helpers.prepareBinaryData(buffer as unknown as Buffer, fileName, mimeType),
 		},
 	};
 
