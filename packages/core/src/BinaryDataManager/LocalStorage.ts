@@ -5,6 +5,9 @@ import { v4 as uuid } from 'uuid';
 
 import { IBinaryDataConfig, IBinaryDataManager } from '../Interfaces';
 
+const PREFIX_METAFILE = 'binarymeta-';
+const PREFIX_FILE_ID = 'filesystem-';
+
 export class BinaryDataLocalStorage implements IBinaryDataManager {
 	private storagePath = '';
 
@@ -31,11 +34,9 @@ export class BinaryDataLocalStorage implements IBinaryDataManager {
 
 	async storeBinaryData(binaryData: IBinaryData, binaryBuffer: Buffer): Promise<IBinaryData> {
 		const retBinaryData = binaryData;
-		retBinaryData.internalIdentifier = uuid();
+		retBinaryData.id = this.generateFileName();
 
-		return this.saveToLocalStorage(binaryBuffer, retBinaryData.internalIdentifier).then(
-			() => retBinaryData,
-		);
+		return this.saveToLocalStorage(binaryBuffer, retBinaryData.id).then(() => retBinaryData);
 	}
 
 	async retrieveBinaryDataByIdentifier(identifier: string): Promise<Buffer> {
@@ -45,7 +46,7 @@ export class BinaryDataLocalStorage implements IBinaryDataManager {
 	async markDataForDeletion(identifiers: string[]): Promise<void> {
 		const tt = new Date(new Date().getTime() + this.binaryDataTTL * 60000);
 		return fs.writeFile(
-			path.join(this.getBinaryDataMetaPath(), `binarymeta-${tt.valueOf().toString()}`),
+			path.join(this.getBinaryDataMetaPath(), PREFIX_METAFILE + tt.valueOf().toString()),
 			JSON.stringify(identifiers, null, '\t'),
 		);
 	}
@@ -57,7 +58,8 @@ export class BinaryDataLocalStorage implements IBinaryDataManager {
 		const filteredFilenames = metaFileNames.filter((filename) => {
 			try {
 				return (
-					filename.startsWith('binarymeta-') && parseInt(filename.substr(11), 10) < currentTimeValue
+					filename.startsWith(PREFIX_METAFILE) &&
+					parseInt(filename.substr(11), 10) < currentTimeValue
 				);
 			} catch (e) {
 				return false;
@@ -74,7 +76,7 @@ export class BinaryDataLocalStorage implements IBinaryDataManager {
 	}
 
 	async duplicateBinaryDataByIdentifier(identifier: string): Promise<string> {
-		const newIdentifier = uuid();
+		const newIdentifier = this.generateFileName();
 		return fs
 			.copyFile(path.join(this.storagePath, identifier), path.join(this.storagePath, newIdentifier))
 			.then(async () => Promise.resolve(newIdentifier));
@@ -82,6 +84,10 @@ export class BinaryDataLocalStorage implements IBinaryDataManager {
 
 	private getBinaryDataMetaPath() {
 		return path.join(this.storagePath, 'meta');
+	}
+
+	private generateFileName(): string {
+		return PREFIX_FILE_ID + uuid();
 	}
 
 	private async deleteMarkedFilesByMetaFile(metaFilename: string): Promise<unknown> {

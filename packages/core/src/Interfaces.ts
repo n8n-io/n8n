@@ -239,7 +239,7 @@ export interface IWorkflowData {
 }
 
 export interface IBinaryDataConfig {
-	mode: 'IN_MEMORY' | 'FILESYSTEM';
+	mode: 'default' | 'filesystem';
 	localStoragePath: string;
 	binaryDataTTL: number;
 }

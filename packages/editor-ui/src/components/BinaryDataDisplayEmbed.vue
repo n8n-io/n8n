@@ -38,14 +38,14 @@ export default mixins(
 			};
 		},
 		async mounted() {
-			if(!this.binaryData.internalIdentifier) {
+			if(!this.binaryData.id) {
 				this.embedSource = 'data:' + this.binaryData.mimeType + ';base64,' + this.binaryData.data;
 				this.isLoading = false;
 				return;
 			}
 
 			try {
-				const bufferString = await this.restApi().getBinaryBufferString(this.binaryData!.internalIdentifier!);
+				const bufferString = await this.restApi().getBinaryBufferString(this.binaryData!.id!);
 				this.embedSource = 'data:' + this.binaryData.mimeType + ';base64,' + bufferString;
 				this.isLoading = false;
 			} catch (e) {

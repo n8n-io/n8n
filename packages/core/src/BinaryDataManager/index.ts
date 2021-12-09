@@ -23,7 +23,7 @@ export class BinaryDataManager {
 
 		BinaryDataManager.instance = new BinaryDataManager();
 
-		if (config.mode === 'FILESYSTEM') {
+		if (config.mode === 'filesystem') {
 			BinaryDataManager.instance.manager = new BinaryDataLocalStorage();
 			await BinaryDataManager.instance.manager.init(config, mainManager);
 		}
@@ -51,11 +51,11 @@ export class BinaryDataManager {
 
 	async retrieveBinaryData(binaryData: IBinaryData): Promise<Buffer> {
 		if (this.manager) {
-			if (!binaryData.internalIdentifier) {
+			if (!binaryData.id) {
 				throw new Error('Binary data is missing identifier');
 			}
 
-			return this.retrieveBinaryDataByIdentifier(binaryData.internalIdentifier);
+			return this.retrieveBinaryDataByIdentifier(binaryData.id);
 		}
 
 		return Buffer.from(binaryData.data, BINARY_ENCODING);
@@ -106,16 +106,16 @@ export class BinaryDataManager {
 			const binaryDataKeys = Object.keys(executionData.binary);
 			const bdPromises = binaryDataKeys.map(async (key: string) => {
 				if (!executionData.binary) {
-					return { key, newIdentifier: undefined };
+					return { key, newId: undefined };
 				}
 
-				const identifier = executionData.binary[key].internalIdentifier;
+				const identifier = executionData.binary[key].id;
 				if (!identifier) {
-					return { key, newIdentifier: undefined };
+					return { key, newId: undefined };
 				}
 
-				return this.manager?.duplicateBinaryDataByIdentifier(identifier).then((newIdentifier) => ({
-					newIdentifier,
+				return this.manager?.duplicateBinaryDataByIdentifier(identifier).then((newId) => ({
+					newId,
 					key,
 				}));
 			});
@@ -123,7 +123,7 @@ export class BinaryDataManager {
 			return Promise.all(bdPromises).then((b) => {
 				return b.reduce((acc, curr) => {
 					if (acc.binary && curr) {
-						acc.binary[curr.key].internalIdentifier = curr.newIdentifier;
+						acc.binary[curr.key].id = curr.newId;
 					}
 
 					return acc;
@@ -192,8 +192,8 @@ export class BinaryDataManager {
 								executionData.forEach((element) => {
 									if (element?.binary) {
 										Object.values(element?.binary).forEach((binaryItem) => {
-											if (binaryItem.internalIdentifier) {
-												allIdentifiers.push(binaryItem.internalIdentifier);
+											if (binaryItem.id) {
+												allIdentifiers.push(binaryItem.id);
 											}
 										});
 									}
