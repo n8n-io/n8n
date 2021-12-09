@@ -219,7 +219,7 @@ export class AwsFirehose implements INodeType {
 					if(recordsAsJson){
 						let recordsJson = this.getNodeParameter('recordsJson', i) as Records;
 						if(typeof recordsJson === 'string'){
-							recordsJson = JSON.parse(recordsJson)
+							recordsJson = JSON.parse(recordsJson);
 						}
 						if(!Array.isArray(recordsJson)){
 							throw new NodeOperationError(this.getNode(), 'You must provide an array or a JSON representation of an array. Entries of this array are flexible but need to be base64 encodable. They are encoded and sent to Firehose.');
@@ -243,7 +243,7 @@ export class AwsFirehose implements INodeType {
 					if(filesAsJson){
 						let filesJson = this.getNodeParameter('filesJson', i) as Files;
 						if(typeof filesJson === 'string'){
-							filesJson = JSON.parse(filesJson)
+							filesJson = JSON.parse(filesJson);
 						}
 						if(!Array.isArray(filesJson)){
 							throw new NodeOperationError(this.getNode(), 'You must provide an array or a JSON representation of an array. Entries of this array need to be property names of files stored in n8n. Every file will be base4 encoded and sent to Firehose.');
