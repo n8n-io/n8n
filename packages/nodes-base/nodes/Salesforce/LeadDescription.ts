@@ -2,7 +2,7 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const leadOperations = [
+export const leadOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -64,9 +64,9 @@ export const leadOperations = [
 		default: 'create',
 		description: 'The operation to perform.',
 	},
-] as INodeProperties[];
+];
 
-export const leadFields = [
+export const leadFields: INodeProperties[] = [
 
 	/* -------------------------------------------------------------------------- */
 	/*                                lead:create                                 */
@@ -257,7 +257,7 @@ export const leadFields = [
 			{
 				displayName: 'Is Unread By Owner',
 				name: 'IsUnreadByOwner',
-				type: 'Boolean',
+				type: 'boolean',
 				default: false,
 				description: 'If true, lead has been assigned, but not yet viewed. See Unread Leads for more information. Label is Unread By Owner.',
 			},
@@ -517,7 +517,7 @@ export const leadFields = [
 			{
 				displayName: 'Is Unread By Owner',
 				name: 'IsUnreadByOwner',
-				type: 'Boolean',
+				type: 'boolean',
 				default: false,
 				description: 'If true, lead has been assigned, but not yet viewed. See Unread Leads for more information. Label is Unread By Owner.',
 			},
@@ -983,4 +983,4 @@ export const leadFields = [
 			},
 		],
 	},
-] as INodeProperties[];
+];

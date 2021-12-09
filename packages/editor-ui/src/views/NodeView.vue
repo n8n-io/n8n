@@ -108,11 +108,11 @@
 <script lang="ts">
 import Vue from 'vue';
 import {
-	Connection, Endpoint,
+	Connection, Endpoint, N8nPlusEndpoint,
 } from 'jsplumb';
 import { MessageBoxInputData } from 'element-ui/types/message-box';
 import { jsPlumb, OnConnectionBindInfo } from 'jsplumb';
-import { NODE_NAME_PREFIX, PLACEHOLDER_EMPTY_WORKFLOW_ID, START_NODE_TYPE, WEBHOOK_NODE_TYPE, WORKFLOW_OPEN_MODAL_KEY } from '@/constants';
+import { NODE_NAME_PREFIX, NODE_OUTPUT_DEFAULT_KEY, PLACEHOLDER_EMPTY_WORKFLOW_ID, START_NODE_TYPE, WEBHOOK_NODE_TYPE, WORKFLOW_OPEN_MODAL_KEY } from '@/constants';
 import { copyPaste } from '@/components/mixins/copyPaste';
 import { externalHooks } from '@/components/mixins/externalHooks';
 import { genericHelpers } from '@/components/mixins/genericHelpers';
@@ -168,6 +168,7 @@ import {
 } from '../Interface';
 import { mapGetters } from 'vuex';
 import '../plugins/N8nCustomConnectorType';
+import '../plugins/PlusEndpointType';
 
 export default mixins(
 	copyPaste,
@@ -360,7 +361,7 @@ export default mixins(
 				this.$externalHooks().run('execution.open', { workflowId: data.workflowData.id, workflowName: data.workflowData.name, executionId });
 				this.$telemetry.track('User opened read-only execution', { workflow_id: data.workflowData.id, execution_mode: data.mode, execution_finished: data.finished });
 
-				if (data.finished !== true && data.data.resultData.error) {
+				if (data.finished !== true && data && data.data && data.data.resultData && data.data.resultData.error) {
 					// Check if any node contains an error
 					let nodeErrorFound = false;
 					if (data.data.resultData.runData) {
@@ -1519,7 +1520,6 @@ export default mixins(
 						this.pullConnActive = true;
 						this.newNodeInsertPosition = null;
 						CanvasHelpers.resetConnection(connection);
-						CanvasHelpers.addOverlays(connection, CanvasHelpers.CONNECTOR_DROP_NODE_OVERLAY);
 						const nodes = [...document.querySelectorAll('.node-default')];
 
 						const onMouseMove = (e: MouseEvent | TouchEvent) => {
@@ -1579,6 +1579,17 @@ export default mixins(
 						console.error(e); // eslint-disable-line no-console
 					}
 				});
+
+				// @ts-ignore
+				this.instance.bind(('plusEndpointClick'), (endpoint: Endpoint) => {
+					if (endpoint && endpoint.__meta) {
+						insertNodeAfterSelected({
+							sourceId: endpoint.__meta.nodeId,
+							index: endpoint.__meta.index,
+							eventSource: 'plus_endpoint',
+						});
+					}
+				});
 			},
 			async newWorkflow (): Promise<void> {
 				await this.resetWorkspace();
@@ -1633,11 +1644,19 @@ export default mixins(
 					if (workflowId !== null) {
 						const workflow = await this.restApi().getWorkflow(workflowId);
 						if (!workflow) {
-							throw new Error('Could not find workflow');
+							this.$router.push({
+								name: "NodeViewNew",
+							});
+							this.$showMessage({
+								title: 'Error',
+								message: 'Could not find workflow',
+								type: 'error',
+							});
+						} else {
+							this.$titleSet(workflow.name, 'IDLE');
+							// Open existing workflow
+							await this.openWorkflow(workflowId);
 						}
-						this.$titleSet(workflow.name, 'IDLE');
-						// Open existing workflow
-						await this.openWorkflow(workflowId);
 					} else {
 						// Create new workflow
 						await this.newWorkflow();
@@ -1707,8 +1726,13 @@ export default mixins(
 				// it visibly stays behind free floating without a connection.
 				connection.removeOverlays();
 
+				const sourceEndpoint = connection.endpoints && connection.endpoints[0];
 				this.pullConnActiveNodeName = null; // prevent new connections when connectionDetached is triggered
 				this.instance.deleteConnection(connection); // on delete, triggers connectionDetached event which applies mutation to store
+				if (sourceEndpoint) {
+					const endpoints = this.instance.getEndpoints(sourceEndpoint.elementId);
+					endpoints.forEach((endpoint: Endpoint) => endpoint.repaint()); // repaint both circle and plus endpoint
+				}
 			},
 			__removeConnectionByConnectionInfo (info: OnConnectionBindInfo, removeVisualConnection = false) {
 				// @ts-ignore
@@ -1800,6 +1824,16 @@ export default mixins(
 					return uuids[0] === sourceEndpoint && uuids[1] === targetEndpoint;
 				});
 			},
+			getJSPlumbEndpoints (nodeName: string): Endpoint[] {
+				const nodeIndex = this.getNodeIndex(nodeName);
+				const nodeId = `${NODE_NAME_PREFIX}${nodeIndex}`;
+				return this.instance.getEndpoints(nodeId);
+			},
+			getPlusEndpoint (nodeName: string, outputIndex: number): Endpoint | undefined {
+				const endpoints = this.getJSPlumbEndpoints(nodeName);
+				// @ts-ignore
+				return endpoints.find((endpoint: Endpoint) => endpoint.type === 'N8nPlus' && endpoint.__meta && endpoint.__meta.index === outputIndex);
+			},
 			getIncomingOutgoingConnections(nodeName: string): {incoming: Connection[], outgoing: Connection[]} {
 				const name = `${NODE_NAME_PREFIX}${this.$store.getters.getNodeIndex(nodeName)}`;
 				// @ts-ignore
@@ -1839,33 +1873,47 @@ export default mixins(
 					outgoing.forEach((connection: Connection) => {
 						CanvasHelpers.resetConnection(connection);
 					});
+					const endpoints = this.getJSPlumbEndpoints(sourceNodeName);
+					endpoints.forEach((endpoint: Endpoint) => {
+						// @ts-ignore
+						if (endpoint.type === 'N8nPlus') {
+							(endpoint.endpoint as N8nPlusEndpoint).clearSuccessOutput();
+						}
+					});
 
 					return;
 				}
 
 				const nodeConnections = (this.$store.getters.outgoingConnectionsByNodeName(sourceNodeName) as INodeConnections).main;
-				if (!nodeConnections) {
-					return;
-				}
-
-				const outputMap = CanvasHelpers.getOutputSummary(data, nodeConnections);
+				const outputMap = CanvasHelpers.getOutputSummary(data, nodeConnections || []);
 
 				Object.keys(outputMap).forEach((sourceOutputIndex: string) => {
 					Object.keys(outputMap[sourceOutputIndex]).forEach((targetNodeName: string) => {
 						Object.keys(outputMap[sourceOutputIndex][targetNodeName]).forEach((targetInputIndex: string) => {
-							const connection = this.getJSPlumbConnection(sourceNodeName, parseInt(sourceOutputIndex, 10), targetNodeName, parseInt(targetInputIndex, 10));
+							if (targetNodeName) {
+								const connection = this.getJSPlumbConnection(sourceNodeName, parseInt(sourceOutputIndex, 10), targetNodeName, parseInt(targetInputIndex, 10));
 
-							if (!connection) {
-								return;
+								if (connection) {
+									const output = outputMap[sourceOutputIndex][targetNodeName][targetInputIndex];
+									if (!output || !output.total) {
+										CanvasHelpers.resetConnection(connection);
+									}
+									else {
+										CanvasHelpers.addConnectionOutputSuccess(connection, output);
+									}
+								}
 							}
 
-							const output = outputMap[sourceOutputIndex][targetNodeName][targetInputIndex];
-							if (!output || !output.total) {
-								CanvasHelpers.resetConnection(connection);
-								return;
+							const endpoint = this.getPlusEndpoint(sourceNodeName, parseInt(sourceOutputIndex, 10));
+							if (endpoint && endpoint.endpoint) {
+								const output = outputMap[sourceOutputIndex][NODE_OUTPUT_DEFAULT_KEY][0];
+								if (output && output.total > 0) {
+									(endpoint.endpoint as N8nPlusEndpoint).setSuccessOutput(CanvasHelpers.getRunItemsLabel(output));
+								}
+								else {
+									(endpoint.endpoint as N8nPlusEndpoint).clearSuccessOutput();
+								}
 							}
-
-							CanvasHelpers.addConnectionOutputSuccess(connection, output);
 						});
 					});
 				});
@@ -1903,6 +1951,7 @@ export default mixins(
 					}
 				}
 
+				let waitForNewConnection = false;
 				// connect nodes before/after deleted node
 				const nodeType: INodeTypeDescription | null = this.$store.getters.nodeType(node.type, node.typeVersion);
 				if (nodeType && nodeType.outputs.length === 1
@@ -1912,6 +1961,7 @@ export default mixins(
 						const conn1 = incoming[0];
 						const conn2 = outgoing[0];
 						if (conn1.__meta && conn2.__meta) {
+							waitForNewConnection = true;
 							const sourceNodeName = conn1.__meta.sourceNodeName;
 							const sourceNodeOutputIndex = conn1.__meta.sourceOutputIndex;
 							const targetNodeName = conn2.__meta.targetNodeName;
@@ -1919,7 +1969,12 @@ export default mixins(
 
 							setTimeout(() => {
 								this.connectTwoNodes(sourceNodeName, sourceNodeOutputIndex, targetNodeName, targetNodeOuputIndex);
-							}, 100);
+
+								if (waitForNewConnection) {
+									this.instance.setSuspendDrawing(false, true);
+									waitForNewConnection = false;
+								}
+							}, 100); // just to make it clear to users that this is a new connection
 						}
 					}
 				}
@@ -1944,8 +1999,10 @@ export default mixins(
 					this.$store.commit('removeNode', node);
 					this.$store.commit('clearNodeExecutionData', node.name);
 
-					// Now it can draw again
-					this.instance.setSuspendDrawing(false, true);
+					if (!waitForNewConnection) {
+						// Now it can draw again
+						this.instance.setSuspendDrawing(false, true);
+					}
 
 					// Remove node from selected index if found in it
 					this.$store.commit('removeNodeFromSelection', node);
@@ -2003,10 +2060,8 @@ export default mixins(
 				this.$store.commit('renameNodeSelectedAndExecution', { old: currentName, new: newName });
 
 				// Reset all nodes and connections to load the new ones
-				if (this.instance) {
-					// On first load it does not exist
-					this.instance.deleteEveryEndpoint();
-				}
+				this.deleteEveryEndpoint();
+
 				this.$store.commit('removeAllConnections');
 				this.$store.commit('removeAllNodes', {setStateDirty: true});
 
@@ -2019,6 +2074,16 @@ export default mixins(
 				// Make sure that the node is selected again
 				this.deselectAllNodes();
 				this.nodeSelectedByName(newName);
+			},
+			deleteEveryEndpoint () {
+				// Check as it does not exist on first load
+				if (this.instance) {
+					const nodes = this.$store.getters.allNodes as INodeUi[];
+					// @ts-ignore
+					nodes.forEach((node: INodeUi) => this.instance.destroyDraggable(`${NODE_NAME_PREFIX}${this.$store.getters.getNodeIndex(node.name)}`));
+
+					this.instance.deleteEveryEndpoint();
+				}
 			},
 			matchCredentials(node: INodeUi) {
 				if (!node.credentials) {
@@ -2336,10 +2401,7 @@ export default mixins(
 			},
 			resetWorkspace () {
 				// Reset nodes
-				if (this.instance) {
-					// On first load it does not exist
-					this.instance.deleteEveryEndpoint();
-				}
+				this.deleteEveryEndpoint();
 
 				if (this.executionWaitingForWebhook === true) {
 					// Make sure that if there is a waiting test-webhook that
@@ -2590,7 +2652,7 @@ export default mixins(
 		color: var(--color-success);
 	}
 
-	> span.floating {
+	.floating {
 		position: absolute;
 		top: -22px;
 		transform: translateX(-50%);

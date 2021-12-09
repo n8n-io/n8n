@@ -1,6 +1,6 @@
 import { INodeProperties } from 'n8n-workflow';
 
-export const threadOperations = [
+export const threadOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -27,9 +27,9 @@ export const threadOperations = [
 		default: 'create',
 		description: 'The operation to perform.',
 	},
-] as INodeProperties[];
+];
 
-export const threadFields = [
+export const threadFields: INodeProperties[] = [
 /* -------------------------------------------------------------------------- */
 /*                                thread:create                               */
 /* -------------------------------------------------------------------------- */
@@ -294,4 +294,4 @@ export const threadFields = [
 		default: 50,
 		description: 'How many results to return.',
 	},
-] as INodeProperties[];
+];
