@@ -39,8 +39,10 @@ import {
 } from 'n8n-workflow';
 // eslint-disable-next-line import/no-cycle
 import {
+	Db,
 	GenericHelpers,
 	IExecutionDb,
+	IExecutionFlattedDb,
 	IResponseCallbackData,
 	IWorkflowDb,
 	IWorkflowExecutionDataProcess,
@@ -52,6 +54,7 @@ import {
 
 // eslint-disable-next-line import/no-cycle
 import * as ActiveExecutions from './ActiveExecutions';
+import * as config from '../config';
 
 const activeExecutions = ActiveExecutions.getInstance();
 
@@ -426,7 +429,22 @@ export async function executeWebhook(
 					);
 				});
 		}
-
+		// Check for queue mode and save data to db
+		const executionsMode = config.get('executions.mode') as string;
+		if (executionId && executionsMode === 'queue' && runData.executionMode !== 'manual') {
+			const fullExecutionData: IExecutionDb = {
+				data: runData.executionData!,
+				mode: runData.executionMode,
+				finished: false,
+				startedAt: new Date(),
+				workflowData: runData.workflowData,
+			};
+			const flattenedExecutionData = ResponseHelper.flattenExecutionData(fullExecutionData);
+			await Db.collections.Execution!.update(
+				executionId,
+				flattenedExecutionData as IExecutionFlattedDb,
+			);
+		}
 		// Start now to run the workflow
 		const workflowRunner = new WorkflowRunner();
 		executionId = await workflowRunner.run(
