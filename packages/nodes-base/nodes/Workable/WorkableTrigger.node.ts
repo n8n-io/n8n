@@ -155,8 +155,8 @@ export class WorkableTrigger implements INodeType {
 					event: snakeCase(triggerOn).toLowerCase(),
 					args: {
 						account_id: credentials.subdomain,
-						job_shortcode: job,
-						stage_slug: stage,
+						...(job) && { job_shortcode: job },
+						...(stage) && { stage_slug: stage },
 					},
 					target: webhookUrl,
 				};
