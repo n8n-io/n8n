@@ -71,11 +71,25 @@ export class AwsFirehose implements INodeType {
 					'The name of the delivery stream.',
 			},
 			{
+				displayName: 'JSON Parameters For Files',
+				name: 'jsonParametersFiles',
+				type: 'boolean',
+				default: false,
+				description: 'Choose if the files should be passed as JSON Array.',
+			},
+			{
 				displayName: 'Files',
 				name: 'files',
 				placeholder: 'Add File',
 				type: 'fixedCollection',
 				default: '',
+				displayOptions: {
+					show: {
+						jsonParametersFiles: [
+							false,
+						],
+					},
+				},
 				typeOptions: {
 					multipleValues: true,
 				},
@@ -97,11 +111,43 @@ export class AwsFirehose implements INodeType {
 				],
 			},
 			{
+				displayName: 'Files JSON',
+				name: 'filesJson',
+				type: 'json',
+				typeOptions: {
+					alwaysOpenEditWindow: true,
+				},
+				default: '',
+				displayOptions: {
+					show: {
+						jsonParametersFiles: [
+							true,
+						],
+					},
+				},
+
+				description: 'Files to send to firehose in JSON Format. Needs to be structured as an Array.',
+			},
+			{
+				displayName: 'JSON Parameters For Records',
+				name: 'jsonParametersRecords',
+				type: 'boolean',
+				default: false,
+				description: 'Choose if the records should be passed as JSON Array.',
+			},
+			{
 				displayName: 'Records',
 				name: 'records',
 				placeholder: 'Add Record',
 				type: 'fixedCollection',
 				default: '',
+				displayOptions: {
+					show: {
+						jsonParametersRecords: [
+							false,
+						],
+					},
+				},
 				typeOptions: {
 					multipleValues: true,
 				},
@@ -121,6 +167,24 @@ export class AwsFirehose implements INodeType {
 						],
 					},
 				],
+			},
+			{
+				displayName: 'Records JSON',
+				name: 'recordsJson',
+				type: 'json',
+				typeOptions: {
+					alwaysOpenEditWindow: true,
+				},
+				default: '',
+				displayOptions: {
+					show: {
+						jsonParametersRecords: [
+							true,
+						],
+					},
+				},
+
+				description: 'Records to send to firehose in JSON Format. Needs to be structured as an Array.',
 			},
 		],
 	};
