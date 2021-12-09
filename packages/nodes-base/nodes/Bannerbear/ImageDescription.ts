@@ -2,7 +2,7 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const imageOperations = [
+export const imageOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -29,9 +29,9 @@ export const imageOperations = [
 		default: 'create',
 		description: 'The operation to perform.',
 	},
-] as INodeProperties[];
+];
 
-export const imageFields = [
+export const imageFields: INodeProperties[] = [
 
 /* -------------------------------------------------------------------------- */
 /*                                image:create                                */
@@ -205,4 +205,4 @@ export const imageFields = [
 		},
 		description: 'Unique identifier for the image.',
 	},
-] as INodeProperties[];
+];

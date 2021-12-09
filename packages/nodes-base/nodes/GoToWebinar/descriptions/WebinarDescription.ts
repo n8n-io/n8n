@@ -2,7 +2,7 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const webinarOperations = [
+export const webinarOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -39,9 +39,9 @@ export const webinarOperations = [
 			},
 		},
 	},
-] as INodeProperties[];
+];
 
-export const webinarFields = [
+export const webinarFields: INodeProperties[] = [
 	// ----------------------------------
 	//         webinar: create
 	// ----------------------------------
@@ -466,6 +466,7 @@ export const webinarFields = [
 				displayName: 'Times',
 				name: 'times',
 				type: 'fixedCollection',
+				default: {},
 				typeOptions: {
 					multipleValues: true,
 				},
@@ -540,4 +541,4 @@ export const webinarFields = [
 			},
 		],
 	},
-] as INodeProperties[];
+];
