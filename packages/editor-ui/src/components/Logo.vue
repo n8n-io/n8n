@@ -1,6 +1,6 @@
 <template>
 	<img
-		:src="basePath + 'n8n-logo.png'"
+		:src="basePath + 'n8n-logo.svg'"
 		:class="$style.img"
 		alt="n8n.io"
 	/>
