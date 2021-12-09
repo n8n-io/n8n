@@ -248,13 +248,13 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 		shouldShowTriggerTooltip () : boolean {
 			return !!this.node &&
 				this.isTriggerNode &&
-				!this.isPollingTypeNode  &&
-				!this.isNodeDisabled  &&
-				this.workflowRunning  &&
-				this.workflowDataItems === 0   &&
-				this.isSingleActiveTriggerNode  &&
-				!this.isTriggerNodeTooltipEmpty  &&
-				!this.hasIssues  &&
+				!this.isPollingTypeNode &&
+				!this.isNodeDisabled &&
+				this.workflowRunning &&
+				this.workflowDataItems === 0  &&
+				this.isSingleActiveTriggerNode &&
+				!this.isTriggerNodeTooltipEmpty &&
+				!this.hasIssues &&
 				!this.dragging;
 		},
  	},
