@@ -1,6 +1,6 @@
 import { IExecuteFunctions } from 'n8n-core';
 
-import { GenericValue, IDataObject, INodeExecutionData, INodeType, INodeTypeDescription,
+import { IDataObject, INodeExecutionData, INodeType, INodeTypeDescription,
 	NodeOperationError, } from 'n8n-workflow';
 
 import { awsApiRequestREST } from './GenericFunctions';
