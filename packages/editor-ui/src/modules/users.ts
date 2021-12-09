@@ -1,5 +1,5 @@
 import { changePassword, deleteUser, getCurrentUser, getUsers, inviteUsers, login, logout, reinvite, sendForgotPasswordEmail, setupOwner, signup, updateUser, updateUserPassword, validatePasswordToken, validateSignupToken } from '@/api/users-mock';
-import { LOGIN_STATUS } from '@/constants';
+import { LOGIN_STATUS, ROLE } from '@/constants';
 import Vue from 'vue';
 import { RouteRecordPublic } from 'vue-router';
 import {  ActionContext, Module } from 'vuex';
@@ -61,6 +61,11 @@ const module: Module<IUsersState, IRootState> = {
 
 				return true;
 			};
+		},
+		canUserDeleteTags(state: IUsersState, getters: any) {
+			const user = getters.currentUser as IUser | null;
+
+			return user && user.globalRole.name === ROLE.Owner;
 		},
 		getUserById(state: IUsersState): (userId: string) => IUser | null {
 			return (userId: string): IUser | null => state.users[userId];

@@ -31,6 +31,7 @@ import Vue from "vue";
 import { ITag, ITagRow } from "@/Interface";
 import TagsTableHeader from "@/components/TagsManager/TagsView/TagsTableHeader.vue";
 import TagsTable from "@/components/TagsManager/TagsView/TagsTable.vue";
+import { mapGetters } from 'vuex';
 
 const matches = (name: string, filter: string) => name.toLowerCase().trim().includes(filter.toLowerCase().trim());
 const getUsage = (count: number | undefined) => count && count > 0 ? `${count} workflow${count > 1 ? "s" : ""}` : 'Not being used';
@@ -51,6 +52,7 @@ export default Vue.extend({
 		};
 	},
 	computed: {
+		...mapGetters('users', ['canUserDeleteTags']),
 		isCreateEnabled(): boolean {
 			return (this.$props.tags || []).length === 0 || this.$data.createEnabled;
 		},
@@ -64,6 +66,7 @@ export default Vue.extend({
 					disable: disabled && tag.id !== this.deleteId && tag.id !== this.$data.updateId,
 					update: disabled && tag.id === this.$data.updateId,
 					delete: disabled && tag.id === this.$data.deleteId,
+					canDelete: this.canUserDeleteTags,
 				}));
 
 			return this.isCreateEnabled
@@ -102,7 +105,7 @@ export default Vue.extend({
 					this.stickyIds.add(this.updateId);
 					this.disableUpdate();
 				}
-			}; 
+			};
 
 			this.$emit("update", this.updateId, name, onUpdate);
 		},

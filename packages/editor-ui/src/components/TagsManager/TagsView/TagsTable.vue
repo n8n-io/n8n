@@ -57,7 +57,7 @@
 					</div>
 					<div class="ops main" v-else-if="!scope.row.disable">
 						<n8n-icon-button title="Edit Tag" @click.stop="enableUpdate(scope.row)" icon="pen" />
-						<n8n-icon-button title="Delete Tag" @click.stop="enableDelete(scope.row)" icon="trash" />
+						<n8n-icon-button v-if="scope.row.canDelete" title="Delete Tag" @click.stop="enableDelete(scope.row)" icon="trash" />
 					</div>
 				</transition>
 			</template>
